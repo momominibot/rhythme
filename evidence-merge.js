@@ -12,6 +12,6 @@
  if(pending && content && !document.getElementById('source-review-note')) {
    var note=document.createElement('aside');note.id='source-review-note';note.className='evidence-route-note';
    note.textContent='This page includes guidance whose sources need further review. Confirm personal care with a qualified clinician. ';
-   var link=document.createElement('a');link.href='evidence-library.html';link.textContent='View source status and limitations';note.appendChild(link);content.prepend(note);
+   var link=document.createElement('a');link.href='settings.html';link.textContent='View data settings';note.appendChild(link);content.prepend(note);
  }
 })();

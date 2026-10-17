@@ -39,7 +39,7 @@ window.OVULUNA_CHAPTERS = [
       },
       {
         "label": "Learn about cycle phases",
-        "href": "learn-cycle-phases.html"
+        "href": "cycle-home.html"
       },
       {
         "label": "Your privacy choices",
@@ -192,7 +192,7 @@ window.OVULUNA_CHAPTERS = [
       },
       {
         "label": "Learn about the transition",
-        "href": "learn-perimenopause.html"
+        "href": "journey-peri.html"
       },
       {
         "label": "Keep dated results",

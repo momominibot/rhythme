@@ -38,8 +38,8 @@
     });
   }
   var route=location.pathname.split('/').pop() || 'index.html',section='home.html';
-  if(/^(learn|journey|life-journey|evidence|postpartum|exercise-guide|straw-calculator)/.test(route))section='learn.html';
-  else if(/^(tcm|acupoints|myofascial)/.test(route))section='tcm-hub.html';
+  if(/^(journey|life-journey|postpartum|exercise-guide|straw-calculator)/.test(route))section='home.html';
+
   else if(/^(food|nutrition|diet|medas|nutrient|supplement|hydration)/.test(route))section='foods.html';
   else if(/^(profile|premium|settings|privacy|personal-info|health-profile|partner|community|circle|login|onboarding|terms)/.test(route))section='profile.html';
   document.querySelectorAll('.nav a').forEach(function(a){var active=a.getAttribute('href')===section;a.classList.toggle('on',active);a.classList.toggle('active',active);if(active)a.setAttribute('aria-current',route===section?'page':'true');else a.removeAttribute('aria-current');});
