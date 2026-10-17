@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en" data-persona="nurture">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Ovumind · Breathwork</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+  <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="darkmode.css">
+  <link rel="stylesheet" href="ovuluna-persona.css">
+  <style>
+    .breath-hero { text-align:center; padding:24px 16px 12px; }
+    .breath-circle-wrap { position:relative; width:260px; height:260px; margin:20px auto; display:flex; align-items:center; justify-content:center; }
+    .breath-glow { position:absolute; inset:-30px; border-radius:50%; background:radial-gradient(circle, rgba(196,181,224,.5) 0%, rgba(232,168,152,.25) 40%, transparent 70%); filter:blur(20px); transition:all 1.5s ease; opacity:.6; }
+    .breath-glow.active { opacity:1; transform:scale(1.15); background:radial-gradient(circle, rgba(196,181,224,.7) 0%, rgba(232,168,152,.4) 40%, transparent 70%); }
+    .breath-circle { width:220px; height:220px; border-radius:50%; border:3px solid var(--ovaria-text-primary); display:flex; align-items:center; justify-content:center; transition:transform 0.8s cubic-bezier(.4,0,.2,1); background:var(--ovaria-surface); position:relative; z-index:2; box-shadow:0 0 40px rgba(196,181,224,.3), inset 0 0 30px rgba(196,181,224,.1); }
+    .breath-label { font-size:18px; font-weight:800; text-transform:uppercase; letter-spacing:1px; }
+    .timer { font-size:48px; font-weight:800; margin-top:8px; }
+    .controls { display:flex; gap:12px; justify-content:center; margin:20px 0; flex-wrap:wrap; }
+    .controls button { padding:12px 24px; border:none; border-radius:12px; background:var(--ovaria-text-primary); color:var(--ovaria-surface); font-weight:700; cursor:pointer; }
+    .controls select { padding:12px; border-radius:12px; border:2px solid var(--ovaria-border); background:var(--ovaria-surface); font-family:inherit; }
+    .technique-card { margin:12px 16px; padding:16px; border:2px solid var(--ovaria-border); border-radius:16px; background:var(--ovaria-surface); }
+    .technique-card h4 { margin-bottom:4px; }
+    .technique-card p { font-size:13px; color:var(--ovaria-text-secondary); line-height:1.5; }
+    .mood-selector { margin:0 16px 16px; }
+    .mood-selector h3 { font-family:var(--serif); font-size:16px; color:var(--cocoa); margin-bottom:10px; text-align:center; }
+    .mood-chips { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+    .mood-chip { padding:8px 14px; border-radius:99px; border:1.5px solid var(--line-soft); background:var(--card); font-size:11.5px; font-weight:700; color:var(--cocoa); cursor:pointer; transition:.15s; }
+    .mood-chip.on { background:var(--mauve); color:#fff; border-color:var(--mauve); }
+    .mood-recommendation { margin-top:10px; padding:12px; border-radius:14px; background:rgba(196,181,224,.1); border:1px solid rgba(196,181,224,.2); font-size:12px; line-height:1.5; color:var(--cocoa); display:none; }
+    .mood-recommendation.show { display:block; }
+    .mood-recommendation b { color:var(--mauve); }
+    .quote-card { margin:16px; padding:18px 16px; border-radius:20px; background:linear-gradient(135deg, rgba(196,181,224,.15), rgba(232,168,152,.1)); border:1px solid rgba(196,181,224,.25); text-align:center; position:relative; }
+    .quote-text { font-family:var(--serif); font-size:15px; font-style:italic; color:var(--cocoa); line-height:1.6; margin-bottom:8px; }
+    .quote-author { font-size:10.5px; font-weight:700; color:var(--taupe); text-transform:uppercase; letter-spacing:.5px; }
+    .quote-refresh { position:absolute; top:10px; right:10px; font-size:16px; cursor:pointer; opacity:.5; transition:.15s; }
+    .quote-refresh:hover { opacity:1; transform:rotate(180deg); }
+    .audio-toggle { display:inline-flex; align-items:center; gap:5px; padding:8px 14px; border-radius:99px; border:1.5px solid var(--line-soft); background:var(--card); font-size:11px; font-weight:700; color:var(--cocoa); cursor:pointer; margin-bottom:12px; }
+    .audio-toggle.on { background:rgba(127,180,212,.15); border-color:var(--d-sleep); color:var(--d-sleep); }
+  </style>
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+    <div class="scroll">
+      <div class="breath-hero">
+        <div class="eyebrow">STRESS & HRV</div>
+        <h2>Breathe to lower stress</h2>
+        <p class="sub">Resonance breathing at ~5-6 breaths/min increases HRV and calms the HPA axis — supporting hormonal balance.</p>
+      </div>
+
+      <!-- Mood selector -->
+      <div class="mood-selector">
+        <h3>How are you feeling right now?</h3>
+        <div class="mood-chips">
+          <div class="mood-chip" data-mood="stressed"> Stressed</div>
+          <div class="mood-chip" data-mood="anxious"> Anxious</div>
+          <div class="mood-chip" data-mood="overwhelmed"> Overwhelmed</div>
+          <div class="mood-chip" data-mood="work"> Work bully / tension</div>
+          <div class="mood-chip" data-mood="insomnia"> Can't sleep</div>
+          <div class="mood-chip" data-mood="lowenergy"> Low energy</div>
+          <div class="mood-chip" data-mood="anger"> Frustrated / angry</div>
+        </div>
+        <div class="mood-recommendation" id="moodRec"></div>
+      </div>
+
+      <!-- Glowing breathing circle -->
+      <div style="text-align:center">
+        <button class="audio-toggle" id="audioToggle"> Ambient sound</button>
+      </div>
+      <div class="breath-circle-wrap">
+        <div class="breath-glow" id="breathGlow"></div>
+        <div class="breath-circle" id="breathCircle">
+          <div style="text-align:center">
+            <div class="breath-label" id="breathText">Ready</div>
+            <div class="timer" id="breathTimer">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <select id="patternSelect">
+          <option value="resonance">Resonance (4-7-8)</option>
+          <option value="box">Box (4-4-4-4)</option>
+          <option value="coherent">Coherent (5.5 in / 5.5 out)</option>
+        </select>
+        <button id="startBtn" onclick="toggleBreathing()">Start</button>
+      </div>
+
+      <!-- Motivation quote -->
+      <div class="quote-card">
+        <span class="quote-refresh" id="quoteRefresh">↻</span>
+        <div class="quote-text" id="quoteText">"You are not here to be small. You are here to bloom into the fullness of who you are."</div>
+        <div class="quote-author" id="quoteAuthor">— Ovumind Daily Affirmation</div>
+      </div>
+
+      <div class="technique-card">
+        <h4> Resonance Breathing</h4>
+        <p>Inhale 4s, hold 7s, exhale 8s. Shown to reduce cortisol and improve HRV. Best before bed or during high-stress moments.</p>
+      </div>
+
+      <div class="technique-card">
+        <h4> Box Breathing</h4>
+        <p>Equal inhale, hold, exhale, hold. Used by athletes and clinicians to quickly down-regulate the nervous system.</p>
+      </div>
+
+      <div class="technique-card">
+        <h4> Coherent Breathing</h4>
+        <p>5.5 seconds in, 5.5 seconds out. Targets cardiac resonance frequency, maximizing heart rate variability.</p>
+      </div>
+
+      <div class="card" style="margin:16px">
+        <h3 style="margin-bottom:8px"> Why this helps ovaries</h3>
+        <p class="sub" style="font-size:13px;line-height:1.5">Chronic stress elevates cortisol, which can disrupt GnRH pulsatility and ovarian function. Regular breathwork is a free, evidence-based tool to support hormonal resilience.</p>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a href="home.html"><span class="n-ic">home</span>Home</a>
+      <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+      <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+    </nav>
+  </div>
+
+  <script>
+    let running = false, interval = null, timeout = null;
+    const patterns = {
+      resonance: { inhale:4, hold1:7, exhale:8, hold2:0, label:['Inhale','Hold','Exhale'] },
+      box: { inhale:4, hold1:4, exhale:4, hold2:4, label:['Inhale','Hold','Exhale','Hold'] },
+      coherent: { inhale:5.5, hold1:0, exhale:5.5, hold2:0, label:['Inhale','Exhale'] }
+    };
+
+    // Mood → breathing recommendations
+    const moodRecs = {
+      stressed: { pattern:'resonance', title:'Resonance Breathing (4-7-8)', desc:'Your nervous system is in fight-or-flight. The extended exhale activates your parasympathetic "rest and digest" response, lowering cortisol within minutes. <b>Do 5 cycles</b> — inhale 4s, hold 7s, exhale 8s.' },
+      anxious: { pattern:'box', title:'Box Breathing (4-4-4-4)', desc:'Anxiety thrives on irregular breathing. Box breathing creates a predictable, calming rhythm that regulates your vagus nerve. Used by Navy SEALs to stay calm under pressure. <b>Do 4 cycles</b> — equal inhale, hold, exhale, hold.' },
+      overwhelmed: { pattern:'coherent', title:'Coherent Breathing (5.5-5.5)', desc:'When overwhelmed, your brain needs simplicity. Coherent breathing at 5.5 breaths/min maximizes heart rate variability and creates a state of calm alertness. <b>Do 3 minutes</b> — slow, equal breaths.' },
+      work: { pattern:'box', title:'Box Breathing for Work Tension', desc:'Work bullies and workplace tension create chronic sympathetic activation. Box breathing gives you a private, invisible reset — no one will notice. <b>Do 4 cycles at your desk</b>. You\'ve got this. Their behavior says more about them than you.' },
+      insomnia: { pattern:'resonance', title:'Resonance Breathing for Sleep', desc:'The 4-7-8 pattern is Dr. Andrew Weil\'s famous sleep-inducing technique. The long exhale slows your heart rate and prepares your brain for delta sleep waves. <b>Do 4 cycles lying down</b> — you\'ll likely drift off before finishing.' },
+      lowenergy: { pattern:'coherent', title:'Coherent Breathing for Energy', desc:'Low energy often comes from shallow chest breathing. Coherent breathing oxygenates your blood and stimulates your reticular activating system. <b>Do 2 minutes standing</b> — feel the energy return.' },
+      anger: { pattern:'resonance', title:'Resonance Breathing for Anger', desc:'Anger spikes your amygdala and floods your body with adrenaline. The 7-second hold gives your prefrontal cortex time to re-engage. <b>Do 3 cycles before responding</b> — you\'ll make a better decision. You don\'t have to attend every argument you\'re invited to.' }
+    };
+
+    // Motivation quotes for women
+    const quotes = [
+      { text:'"You are not here to be small. You are here to bloom into the fullness of who you are."', author:'Ovumind Daily Affirmation' },
+      { text:'"She remembered who she was and the game changed."', author:'Lalah Delia' },
+      { text:'"A strong woman stands up for herself. A stronger woman stands up for everybody else."', author:'Unknown' },
+      { text:'"You don\'t have to attend every argument you\'re invited to."', author:'Unknown' },
+      { text:'"The most common way people give up their power is by thinking they don\'t have any."', author:'Alice Walker' },
+      { text:'"She believed she could, so she did."', author:'R.S. Grey' },
+      { text:'"Your value doesn\'t decrease based on someone\'s inability to see your worth."', author:'Unknown' },
+      { text:'"Breathe. Let go. And remind yourself that this very moment is the only one you know you have for sure."', author:'Oprah Winfrey' },
+      { text:'"A woman is the full circle. Within her is the power to create, nurture and transform."', author:'Diane Mariechild' },
+      { text:'"You are allowed to be both a masterpiece and a work in progress, simultaneously."', author:'Sophia Bush' },
+      { text:'"The thing that makes you different is the thing that makes you powerful."', author:'Unknown' },
+      { text:'"She wasn\'t waiting for a knight in shining armor. She was her own hero."', author:'Unknown' }
+    ];
+
+    // Ambient audio (Web Audio API)
+    let audioCtx = null, audioOn = false, osc1 = null, osc2 = null, gainNode = null;
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode = audioCtx.createGain();
+        gainNode.gain.value = 0;
+        gainNode.connect(audioCtx.destination);
+        osc1 = audioCtx.createOscillator();
+        osc1.type = 'sine';
+        osc1.frequency.value = 174; // Solfeggio frequency - grounding
+        osc1.connect(gainNode);
+        osc1.start();
+        osc2 = audioCtx.createOscillator();
+        osc2.type = 'sine';
+        osc2.frequency.value = 285; // Solfeggio - energy
+        osc2.connect(gainNode);
+        osc2.start();
+      }
+    }
+    function setAudioFreq(inhaling) {
+      if (!audioCtx || !audioOn) return;
+      var target1 = inhaling ? 196 : 174; // G3 vs F3
+      var target2 = inhaling ? 329.63 : 285; // E4 vs D4
+      osc1.frequency.linearRampToValueAtTime(target1, audioCtx.currentTime + 1.5);
+      osc2.frequency.linearRampToValueAtTime(target2, audioCtx.currentTime + 1.5);
+    }
+    document.getElementById('audioToggle').addEventListener('click', function() {
+      initAudio();
+      audioOn = !audioOn;
+      this.classList.toggle('on', audioOn);
+      this.textContent = audioOn ? ' Ambient on' : '🔇 Ambient off';
+      if (audioOn) {
+        audioCtx.resume();
+        gainNode.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 1);
+      } else {
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+      }
+    });
+
+    // Mood selection
+    document.querySelectorAll('.mood-chip').forEach(function(chip) {
+      chip.addEventListener('click', function() {
+        document.querySelectorAll('.mood-chip').forEach(function(c) { c.classList.remove('on'); });
+        chip.classList.add('on');
+        var mood = chip.dataset.mood;
+        var rec = moodRecs[mood];
+        var recEl = document.getElementById('moodRec');
+        recEl.innerHTML = '<b>✓ Recommended: ' + rec.title + '</b><br>' + rec.desc;
+        recEl.classList.add('show');
+        // Auto-select pattern
+        document.getElementById('patternSelect').value = rec.pattern;
+      });
+    });
+
+    // Quote rotation
+    var quoteIdx = 0;
+    function showQuote() {
+      var q = quotes[quoteIdx];
+      document.getElementById('quoteText').textContent = q.text;
+      document.getElementById('quoteAuthor').textContent = '— ' + q.author;
+      quoteIdx = (quoteIdx + 1) % quotes.length;
+    }
+    document.getElementById('quoteRefresh').addEventListener('click', showQuote);
+    setInterval(showQuote, 15000); // Rotate every 15s
+
+    function toggleBreathing() {
+      if(running) stop(); else start();
+    }
+
+    function start() {
+      running = true;
+      document.getElementById('startBtn').textContent = 'Stop';
+      document.getElementById('breathGlow').classList.add('active');
+      const p = patterns[document.getElementById('patternSelect').value];
+      runCycle(p, 0, 0);
+    }
+
+    function runCycle(p, phaseIndex, count) {
+      if(!running) return;
+      const phases = [];
+      if(p.inhale) phases.push({label:p.label[0], dur:p.inhale, scale:1.35, inhale:true});
+      if(p.hold1) phases.push({label:p.label[1], dur:p.hold1, scale:1.35, inhale:false});
+      if(p.exhale) phases.push({label:p.label[phases.length] || 'Exhale', dur:p.exhale, scale:1.0, inhale:false});
+      if(p.hold2) phases.push({label:p.label[phases.length] || 'Hold', dur:p.hold2, scale:1.0, inhale:false});
+
+      const phase = phases[phaseIndex % phases.length];
+      document.getElementById('breathText').textContent = phase.label;
+      document.getElementById('breathCircle').style.transform = `scale(${phase.scale})`;
+      setAudioFreq(phase.inhale);
+
+      let remaining = phase.dur;
+      document.getElementById('breathTimer').textContent = remaining.toFixed(1);
+      interval = setInterval(() => {
+        remaining -= 0.1;
+        document.getElementById('breathTimer').textContent = remaining > 0 ? remaining.toFixed(1) : '0.0';
+      }, 100);
+
+      timeout = setTimeout(() => {
+        clearInterval(interval);
+        runCycle(p, phaseIndex+1, count+1);
+      }, phase.dur * 1000);
+    }
+
+    function stop() {
+      running = false;
+      clearInterval(interval);
+      clearTimeout(timeout);
+      document.getElementById('startBtn').textContent = 'Start';
+      document.getElementById('breathText').textContent = 'Done';
+      document.getElementById('breathCircle').style.transform = 'scale(1)';
+      document.getElementById('breathGlow').classList.remove('active');
+      document.getElementById('breathTimer').textContent = '—';
+    }
+  </script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+<script src="appnav.js" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body>
+</html>

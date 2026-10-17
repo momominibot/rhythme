@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ovumind · Cycle observations</title>
+<link rel="icon" href="assets/onboarding/egg.png"><link rel="apple-touch-icon" href="assets/onboarding/egg.png">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="darkmode.css"><link rel="stylesheet" href="observations.css"><link rel="stylesheet" href="evidence.css"><link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body class="observations-page text-scaled-page">
+<div class="app">
+<header class="top"><div class="brandline"><b>OVUMIND</b></div><a class="t-icon ms" href="notifications.html" aria-label="Notifications">notifications</a><a class="t-icon ms" href="settings.html" aria-label="Settings">settings</a></header>
+<main class="scroll">
+<section class="card observation-hero"><img src="assets/knowledge/cycle.webp" width="80" height="80" alt=""><p class="observation-eyebrow">Cycle observations</p><h1>Little details, kept together</h1><p>Record what you notice, with the date and source. Bring your questions and a copy of your notes to your care team.</p><p class="observation-note">Saved only in this browser or app installation. No account sync or medical interpretation.</p></section>
+<div class="observation-kinds" id="observation-kinds" role="group" aria-label="Type of observation"></div>
+<section class="card" aria-labelledby="observation-form-title">
+<form id="observation-form" novalidate>
+<div class="observation-heading"><h2 id="observation-form-title">Add an observation</h2><span class="observation-tag" id="observation-mode">New entry</span></div>
+<p id="observation-hint"></p>
+<p class="observation-note">Fields marked * are required for a reading. You can record a missed reading instead.</p>
+<div class="observation-grid">
+<div class="observation-field"><label for="observation-date">Observation date *</label><input id="observation-date" type="date" required></div>
+<div class="observation-field"><label for="observation-time">Time, if known</label><input id="observation-time" type="time"></div>
+</div>
+<details class="observation-extra"><summary>Time zone, if known</summary><div class="observation-field"><label for="observation-offset">UTC offset at the observation</label><input id="observation-offset" type="text" maxlength="6" placeholder="e.g. +08:00" aria-describedby="offset-hint"><p class="observation-note" id="offset-hint">Leave blank if unknown. Use the offset at that time, including any daylight saving. Historical times are not assigned your current time zone.</p></div></details>
+<div class="observation-field"><label for="observation-missing">Reading status</label><select id="observation-missing"><option value="">Observation available</option></select></div>
+<div id="observation-fields"></div>
+<details class="observation-extra" id="observation-context"><summary>Context & notes (optional)</summary><p class="observation-note">Only add details you want to keep. Leaving context blank means it was not recorded.</p><fieldset id="observation-context-flags"><legend>Context at the time</legend></fieldset><div class="observation-field"><label for="observation-notes">Your notes or care team's instructions, as you understood them</label><textarea id="observation-notes" rows="3" maxlength="1500"></textarea></div></details>
+<p class="observation-note" id="observation-source"></p>
+<p id="observation-error" role="alert" tabindex="-1"></p>
+<div class="observation-actions"><button class="observation-primary" type="submit" id="observation-save">Save observation</button><button type="button" id="observation-reset">Start new / discard draft</button></div>
+</form>
+<noscript><p>JavaScript is required to save and review observations. No data is saved while this page is displayed.</p></noscript>
+</section>
+<p id="observation-status" role="status" aria-live="polite"></p>
+<section class="card" aria-labelledby="observation-history-title"><div class="observation-heading"><h2 id="observation-history-title">Your saved timeline</h2><span class="observation-tag" id="observation-count">0 entries</span></div><p class="observation-note">Each entry keeps its original units and source. No readings are filled in for days you did not record.</p><div class="observation-field"><label for="observation-filter">Show</label><select id="observation-filter"><option value="">All observations</option></select></div><div id="observation-history"></div><button type="button" id="observation-more" hidden>Show more entries</button><div class="observation-actions"><button type="button" id="observation-export" disabled>Prepare all observations for export</button></div><p class="observation-note"><a href="labs.html">Keep lab reports in Lab records</a> · <a href="wellness-checkin.html">Open wellness journal</a> · <a href="privacy.html#privacy-local-title">Export or delete local data</a></p></section>
+<section class="card" id="observation-export-panel" hidden aria-labelledby="observation-export-title"><h2 id="observation-export-title">A copy for your records</h2><p>This export includes all saved observation types and their recorded context. It is not a diagnosis or a complete medical record. Nothing is sent to anyone.</p><div class="observation-field"><label for="observation-export-format">Format</label><select id="observation-export-format"><option value="text">Readable notes for a care visit</option><option value="json">JSON with original fields</option></select></div><label for="observation-export-text">Export preview</label><textarea id="observation-export-text" readonly spellcheck="false" rows="10"></textarea><div class="observation-actions"><button type="button" id="observation-download">Download in browser</button><button type="button" id="observation-copy">Select to copy</button><button type="button" id="observation-export-close">Hide and clear preview</button></div></section>
+<section class="card observation-guidance" aria-labelledby="observation-guidance-title"><h2 id="observation-guidance-title">Consistent notes, with context</h2>
+<details><summary>Temperature & cycle signs</summary><p>For waking BBT, record your actual reading, method and time. Temperature and mucus observations are indirect signs; they cannot confirm ovulation here. A wrist temperature or an app estimate stays a separate device entry.</p><p><a href="https://www.asrm.org/practice-guidance/practice-committee-documents/fertility-evaluation-of-infertile-women-a-committee-opinion-2021/" target="_blank" rel="noopener noreferrer">ASRM fertility evaluation</a> · <a href="https://www.cdc.gov/contraception/hcp/usmec/fertility-awareness-based-methods.html" target="_blank" rel="noopener noreferrer">CDC cycle-sign considerations</a></p></details>
+<details><summary>Tests, treatment & devices</summary><p>Follow your test kit's instructions and keep its brand and result format. Urine tests and blood results are different records. Copy an outside app's estimate as its output, with the app and device details. Ovumind does not verify it or change your treatment.</p><p><a href="https://www.fda.gov/medical-devices/home-use-tests/ovulation-urine-test" target="_blank" rel="noopener noreferrer">FDA urine LH test guidance</a> · <a href="https://support.apple.com/en-us/102674" target="_blank" rel="noopener noreferrer">Apple wrist-temperature guidance</a> · </p></details>
+<p class="observation-note"><a href="ovarian-health.html">Understand how these records relate to ovarian health</a>. Use these notes for discussion, not to identify days safe for unprotected sex, calculate ovarian age or change prescribed care.</p></section>
+</main></div>
+<dialog id="observation-confirm" aria-labelledby="observation-confirm-title"><h2 id="observation-confirm-title">Review this action</h2><p id="observation-confirm-description"></p><div class="observation-actions"><button type="button" id="observation-confirm-cancel">Cancel</button><button type="button" id="observation-confirm-continue">Continue</button></div></dialog>
+<nav class="nav" aria-label="Main navigation"><a href="home.html"><span class="n-ic" aria-hidden="true">home</span>Home</a><a href="foods.html"><span class="n-ic" aria-hidden="true">restaurant</span>Foods</a><a href="profile.html"><span class="n-ic" aria-hidden="true">person</span>Profile</a></nav>
+<script src="observation-records.js" defer></script><script src="observations-ui.js" defer></script><script src="appnav.js" defer></script><script src="luna-chat.js" defer></script><script src="darkmode.js?v=7" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

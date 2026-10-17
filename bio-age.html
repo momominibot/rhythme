@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ovumind · Biological Age Research</title>
+  <link rel="icon" type="image/png" href="assets/onboarding/egg.png">
+  <link rel="apple-touch-icon" href="assets/onboarding/egg.png">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;family=Manrope:wght@400;600;700;800&amp;family=Material+Symbols+Outlined" rel="stylesheet">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="anim.css">
+  <link rel="stylesheet" href="darkmode.css">
+  <link rel="stylesheet" href="evidence.css">
+  <link rel="stylesheet" href="luna-chat.css">
+  <style>
+    /* Keep the existing Ovumind shell and palette. This page uses rem type with
+       a single accessibility scale; shared legacy zoom would otherwise double it. */
+    .bio-age-page .scroll { zoom: 1 !important; gap: 1rem; min-width: 0; }
+    .bio-age-page .card { background: var(--card-solid); min-width: 0; }
+    .bio-age-page .app { padding-top: calc(76px + env(safe-area-inset-top)); }
+    .bio-age-page .top { padding-top: calc(14px + env(safe-area-inset-top)); }
+    .bio-age-page .brandline b { font-family: var(--serif); font-size: 17px; letter-spacing: .14em; color: var(--mauve); }
+    .bio-age-page h1 { font: 600 1.9rem/1.15 var(--serif); margin: .5rem 0; }
+    .bio-age-page h2 { font: 600 1.5rem/1.25 var(--serif); margin-bottom: .7rem; }
+    .bio-age-page h3 { font: 700 1rem/1.45 var(--sans); }
+    .bio-age-page p, .bio-age-page li, .bio-age-page summary { font-size: .94rem; line-height: 1.6; }
+    .bio-age-page p + p { margin-top: .6rem; }
+    .bio-age-page .pheno-eyebrow { color: var(--taupe); font-size: .75rem; letter-spacing: .09em; text-transform: uppercase; font-weight: 800; }
+    .bio-age-page .pheno-note { color: var(--taupe); font-size: .85rem; line-height: 1.6; }
+    .bio-age-page .pheno-back { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; color: var(--ink); font-size: .9rem; }
+    .bio-age-page a:not(.btn):not(.t-icon) { text-underline-offset: .18em; }
+    .bio-age-page .pheno-result { text-align: center; padding: 1.25rem; }
+    .bio-age-page .pheno-orbit { width: 250px; max-width: 100%; aspect-ratio: 1; margin: .5rem auto 1rem; position: relative; display: grid; place-items: center; isolation: isolate; }
+    .bio-age-page .pheno-orbit::before, .bio-age-page .pheno-orbit::after { content: ""; position: absolute; pointer-events: none; border-radius: 50%; z-index: -1; }
+    .bio-age-page .pheno-orbit::before { inset: 0; border: 9px solid var(--lavender); box-shadow: 0 0 22px rgba(196,181,224,.30), inset 0 0 20px rgba(229,201,138,.17); }
+    .bio-age-page .pheno-orbit::after { inset: 19px; border: 4px solid var(--gold); opacity: .85; }
+    .bio-age-page .pheno-number { font: 500 3.6rem/1.1 var(--serif); overflow-wrap: anywhere; }
+    .bio-age-page .pheno-number-wrap { max-width: 75%; }
+    .bio-age-page .pheno-age-line { margin: .65rem 0; font-size: .9rem; }
+    .bio-age-page .pheno-field { display: grid; gap: .45rem; min-width: 0; }
+    .bio-age-page .pheno-field > label { font-size: .92rem; font-weight: 700; line-height: 1.5; }
+    .bio-age-page fieldset { border: 0; min-width: 0; margin: 1rem 0; padding: 0; }
+    .bio-age-page legend { font-size: 1rem; font-weight: 800; margin-bottom: .85rem; }
+    .bio-age-page .pheno-fields { display: grid; gap: 1rem; }
+    .bio-age-page .pheno-input-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
+    .bio-age-page input, .bio-age-page select { width: 100%; max-width: 100%; min-width: 0; min-height: 48px; border: 1px solid var(--taupe); border-radius: 12px; padding: .65rem .6rem; font: 400 1rem/1.4 var(--sans); background: var(--sunken); color: var(--ink); color-scheme: light; }
+    [data-theme="dark"] .bio-age-page input, [data-theme="dark"] .bio-age-page select { color-scheme: dark; }
+    .bio-age-page [aria-invalid="true"] { border: 2px solid var(--ink); }
+    .bio-age-page .btn { font-size: .92rem; line-height: 1.5; min-height: 48px; padding: .8rem 1rem; white-space: normal; }
+    .bio-age-page .btn.mauve { background: #73538d; color: #fff; }
+    [data-theme="dark"] .bio-age-page .btn.mauve { background: #d0b3e5; color: #291b3d; }
+    .bio-age-page .btn:disabled { opacity: .7; cursor: default; transform: none; }
+    .bio-age-page .pheno-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .9rem; }
+    .bio-age-page .pheno-actions > * { flex: 1 1 9rem; }
+    .bio-age-page #pheno-message:not(:empty) { padding: .8rem; border: 1px solid var(--taupe); border-radius: 12px; margin: .8rem 0; background: var(--sunken); }
+    .bio-age-page details { margin-top: 1rem; }
+    .bio-age-page summary { cursor: pointer; min-height: 44px; padding-block: .5rem; font-weight: 700; }
+    .bio-age-page details ul { padding-left: 1.25rem; }
+    .bio-age-page details li + li { margin-top: .45rem; }
+    .bio-age-page .pheno-method-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink); font-size: .9rem; }
+    .bio-age-page .pheno-method-button { border: 1px solid var(--taupe); border-radius: 12px; padding: .65rem; min-height: 44px; font: 700 .9rem/1.5 var(--sans); background: var(--sunken); color: var(--ink); width: 100%; cursor: pointer; }
+    .bio-age-page .pheno-history { list-style: none; display: grid; gap: 1rem; margin-top: 1rem; }
+    .bio-age-page .pheno-history-item { border-top: 1px solid var(--line); padding-top: 1rem; }
+    .bio-age-page .pheno-normalized { text-align: left; }
+    .bio-age-page .pheno-normalized > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem; padding: .5rem 0; border-bottom: 1px solid var(--line); font-size: .85rem; line-height: 1.5; }
+    .bio-age-page .pheno-normalized dd { font-weight: 700; }
+    .bio-age-page :focus-visible { outline: 3px solid var(--mauve); outline-offset: 4px; }
+    .bio-age-page [tabindex="-1"] { scroll-margin-top: calc(90px + env(safe-area-inset-top)); }
+    .bio-age-page [hidden] { display: none !important; }
+    .pheno-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    @media (max-width: 360px) { .bio-age-page .scroll { padding-inline: 12px; } .bio-age-page .card { padding: 1rem; } }
+    [data-fontsize="xlarge"] .bio-age-page .pheno-input-pair { grid-template-columns: minmax(0, 1fr); }
+    @media (prefers-reduced-motion: reduce) { .bio-age-page *, .bio-age-page *::before, .bio-age-page *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+  </style>
+<link rel="stylesheet" href="dreamy.css">
+</head>
+<body class="bio-age-page">
+<div class="app">
+  <header class="top">
+    <div class="brandline"><b>OVUMIND</b></div>
+    <a class="t-icon ms" href="notifications.html" aria-label="Notifications">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html" aria-label="Cycle calendar">calendar_today</a>
+  </header>
+  <main class="scroll">
+    
+    <div>
+      <p class="pheno-eyebrow">Explore the science</p>
+      <h1>Biological age research</h1>
+      <p>A place to understand your lab records through the published clinical PhenoAge formula.</p>
+    </div>
+    <section class="card pheno-result" id="pheno-result" tabindex="-1" aria-labelledby="pheno-result-title">
+      <h2 id="pheno-result-title">Your research reference</h2>
+      <p class="pheno-note" id="pheno-result-label">Awaiting your panel</p>
+      <div class="pheno-orbit">
+        <div class="pheno-number-wrap"><div class="pheno-number" id="pheno-number">—</div><span class="pheno-note">PhenoAge</span></div>
+      </div>
+      <p class="pheno-age-line">Your age at blood draw: <strong id="pheno-age-value">—</strong></p>
+      <p id="pheno-result-detail">Enter all nine results from one blood draw to calculate a research reference.</p>
+      <p class="pheno-note">This approximation is not ovarian age, a diagnosis, or a validated Ovumind health assessment. It does not set fasting, supplement or treatment recommendations.</p>
+      <details id="pheno-normalized-wrap" hidden>
+        <summary>Values used after unit conversion</summary>
+        <dl class="pheno-normalized" id="pheno-normalized"></dl>
+      </details>
+    </section>
+    <section class="card" aria-labelledby="panel-title">
+      <h2 id="panel-title">Enter your blood panel</h2>
+      <p id="panel-help" class="pheno-note">Use exact numeric results from the same blood draw, with the units shown on your report. Choose a unit for every result. Do not substitute a value for a result reported as “less than” or “not detected”.</p>
+      <noscript><p>JavaScript is needed for on-device calculations and local history. No result is available while it is disabled.</p></noscript>
+      <form id="pheno-form" autocomplete="off">
+        <fieldset>
+          <legend>Panel details</legend>
+          <div class="pheno-fields">
+            <div class="pheno-field"><label for="chronological-age">Age at blood draw · years</label><input id="chronological-age" name="chronologicalAge" type="number" min="20" max="100" step="any" inputmode="decimal" required aria-describedby="supported-inputs"></div>
+            <div class="pheno-field"><label for="panel-date">Blood-draw date</label><input id="panel-date" name="panelDate" type="date" min="1900-01-01" required></div>
+          </div>
+        </fieldset>
+        <fieldset><legend>Nine required lab results</legend><div class="pheno-fields" id="biomarker-fields"></div></fieldset>
+        <p id="pheno-message" role="status" aria-live="polite" aria-atomic="true"></p>
+        <div class="pheno-actions">
+          <button class="btn mauve" type="submit">Calculate research reference</button>
+          <button class="btn ghost" id="clear-pheno" type="button">Clear form</button>
+        </div>
+      </form>
+      <div class="pheno-actions"><button class="btn ghost" id="save-pheno" type="button" hidden disabled>Save this panel on this browser</button></div>
+      <p class="pheno-note">Saving is optional. Saved panels include the values, units, date, age and calculated result. They stay in this browser without cloud sync and can be read by anyone using this browser profile. Clearing browser data can remove them.</p>
+      <details id="supported-inputs">
+        <summary>Supported inputs and entry limits</summary>
+        <p class="pheno-note">These software limits catch entry mistakes; they are not normal lab ranges or a claim that the model is validated across every value. Values outside these limits remain suitable for your own lab records, but cannot be calculated here.</p>
+        <ul>
+          <li>Age at blood draw: 20–100 years.</li>
+          <li>Albumin: 20–60 g/L; creatinine: 20–400 µmol/L.</li>
+          <li>Serum glucose: 2–30 mmol/L; CRP: greater than 0 and up to 50 mg/dL.</li>
+          <li>Lymphocytes: 5–70%; MCV: 60–120 fL.</li>
+          <li>RDW-CV: 10–25% (not RDW-SD in fL).</li>
+          <li>ALP: 20–500 U/L; WBC: 2–30 × 10³/µL.</li>
+        </ul>
+        <p class="pheno-note">The same limits apply after converting your selected units. A CRP value of zero cannot be used because the formula takes its natural logarithm. Outputs outside 0–120 years are not displayed; this is a software sanity boundary, not a validated clinical interval.</p>
+      </details>
+    </section>
+    <section class="card" aria-labelledby="method-title">
+      <h2 id="method-title">What the formula can tell you</h2>
+      <p>Clinical PhenoAge combines nine blood markers and chronological age. The original research developed the model in US adults aged 20 and older. This page uses the rounded coefficients printed in the 2018 supplement, so values may differ slightly from implementations with more decimal places.</p>
+      <p>This is distinct from the DNA methylation model called DNAm PhenoAge. A number here cannot establish ovarian reserve, egg quality, fertility, your individual life expectancy or the effect of a lifestyle change.</p>
+      <button type="button" class="pheno-method-button qi" data-evidence="phenoage-2018-method">Read the method and limitations</button>
+      <a class="pheno-method-link" href="https://www.aging-us.com/article/101414/text" target="_blank" rel="noopener noreferrer">Levine et al. · Original 2018 study ↗</a>
+      <a class="pheno-method-link" href="https://cdn.aging-us.com/article/101414/supplementary/SD1/0/aging-v10i4-101414-supplementary-material-SD1.pdf" target="_blank" rel="noopener noreferrer">Supplement 1 · Equations and Table S1 (PDF) ↗</a>
+    </section>
+    <section class="card" aria-labelledby="history-title">
+      <h2 id="history-title" tabindex="-1">Your saved panels</h2>
+      <p class="pheno-note" id="pheno-history-status">No saved panels yet. Calculating alone does not save your lab results.</p>
+      <ul class="pheno-history" id="pheno-history"></ul>
+    </section>
+    <a class="btn ghost" href="labs.html">Keep separate lab records</a>
+  </main>
+</div>
+<nav class="nav" aria-label="Main navigation">
+  <a href="home.html"><span class="n-ic" aria-hidden="true">home</span>Home</a>
+  
+  
+  <a href="foods.html"><span class="n-ic" aria-hidden="true">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic" aria-hidden="true">person</span>Profile</a>
+</nav>
+<script src="appnav.js" defer></script>
+
+
+<script src="bio-age.js" defer></script>
+<script src="luna-chat.js" defer></script>
+<script src="darkmode.js?v=6" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body>
+</html>

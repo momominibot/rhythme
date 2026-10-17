@@ -1,0 +1,1141 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovumind · Foods</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="darkmode.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="evidence.css">
+<script src="anim.js" defer></script>
+<style>
+.foods-hero{ background:linear-gradient(135deg,rgba(168,192,160,.22),rgba(196,181,224,.18)); border:1.5px solid rgba(168,192,160,.4); border-radius:var(--r); padding:20px; position:relative; overflow:hidden; }
+.foods-hero::after{ content:''; position:absolute; top:-30px; right:-20px; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,.25); }
+.foods-badge{ display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:99px; background:rgba(255,255,255,.7); font:800 11px var(--sans); color:#5a7a52; letter-spacing:.06em; text-transform:uppercase; }
+.foods-title{ font-family:var(--serif); font-size:28px; font-weight:600; color:var(--cocoa); line-height:1.1; margin-top:10px; }
+.foods-desc{ font-size:12.5px; color:var(--taupe); line-height:1.5; margin-top:6px; }
+.search-bar{ display:flex; align-items:center; gap:10px; padding:14px 16px; background:var(--card-solid); border:1.5px solid var(--line-soft); border-radius:16px; margin-top:14px; }
+.search-bar .ms{ color:var(--taupe); font-size:20px; }
+.search-bar input{ flex:1; border:none; outline:none; font:600 14px var(--sans); color:var(--ink); background:transparent; }
+.search-bar input::placeholder{ color:var(--faded); }
+.cat-chips{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+.cat-chip{ flex-shrink:0; padding:8px 16px; border-radius:99px; border:1.5px solid var(--line-soft); background:var(--card-solid); font:700 12px var(--sans); color:var(--taupe); cursor:pointer; transition:.15s; display:flex; align-items:center; gap:5px; }
+.cat-chip.on{ border-color:var(--mauve); background:rgba(139,108,130,.1); color:var(--ink); }
+/* Dropdown filter */
+.filter-dropdown{ display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--card-solid); border:1.5px solid var(--line-soft); border-radius:14px; margin-top:10px; }
+.filter-dropdown .fd-label{ font:800 11px var(--sans); color:var(--taupe); letter-spacing:.04em; text-transform:uppercase; flex-shrink:0; display:flex; align-items:center; gap:5px; }
+.filter-dropdown select{ flex:1; border:none; outline:none; background:transparent; font:700 13px var(--sans); color:var(--ink); cursor:pointer; appearance:none; -webkit-appearance:none; padding-right:24px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a5c96' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right center; }
+.filter-dropdown select option{ background:var(--card-solid); color:var(--ink); }
+/* Open Food Facts search results */
+.off-results{ margin-top:10px; }
+.off-result{ display:flex; gap:12px; padding:12px; background:var(--card); border:1px solid var(--line-soft); border-radius:12px; margin-bottom:8px; align-items:flex-start; }
+.off-result .off-img{ width:56px; height:56px; border-radius:10px; object-fit:cover; flex-shrink:0; background:var(--sunken); }
+.off-result .off-body{ flex:1; min-width:0; }
+.off-result .off-name{ font:800 13px var(--sans); color:var(--ink); line-height:1.3; }
+.off-result .off-brand{ font:600 11px var(--sans); color:var(--taupe); margin-top:2px; }
+.off-result .off-nova{ display:inline-flex; align-items:center; gap:4px; font:800 10px var(--sans); padding:2px 8px; border-radius:99px; margin-top:5px; }
+.off-result .off-nova.n1{ background:rgba(168,192,160,.18); color:#5a7a52; }
+.off-result .off-nova.n2{ background:rgba(229,201,138,.2); color:#a08830; }
+.off-result .off-nova.n3{ background:rgba(245,198,184,.2); color:var(--coral-deep); }
+.off-result .off-nova.n4{ background:rgba(196,122,106,.15); color:var(--low); }
+.off-loading{ text-align:center; padding:20px; color:var(--taupe); font:600 12px var(--sans); }
+.off-powered{ font:600 10px var(--sans); color:var(--faded); text-align:center; margin-top:8px; }
+.food-card{ background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r-sm); padding:14px; box-shadow:0 4px 16px -10px rgba(107,82,142,.15); backdrop-filter:blur(8px); display:flex; gap:12px; }
+.food-card .fc-ic{ width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0; background:var(--sunken); }
+.food-card .fc-body{ flex:1; min-width:0; }
+.food-card .fc-name{ font-size:14px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.food-card .fc-nutrients{ font-size:10.5px; color:var(--taupe); margin-top:3px; line-height:1.4; }
+.food-card .fc-nutrients b{ color:var(--mauve); font-weight:700; }
+.food-card .fc-benefit{ font-size:11.5px; color:var(--cocoa); line-height:1.45; margin-top:6px; padding-top:6px; border-top:1px solid var(--line-soft); }
+.food-card .fc-benefit b{ color:var(--ink); }
+.food-tags{ display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
+.food-tag{ font-size:9px; font-weight:800; letter-spacing:.03em; padding:2px 7px; border-radius:99px; background:rgba(168,192,160,.15); color:#5a7a52; }
+.food-tag.iron{ background:rgba(212,154,138,.15); color:var(--coral-deep); }
+.food-tag.omega{ background:rgba(168,184,216,.2); color:#5a6a9a; }
+.food-tag.mag{ background:rgba(196,181,224,.2); color:var(--mauve); }
+.food-tag.protein{ background:rgba(229,201,138,.2); color:#a08830; }
+.food-tag.antiox{ background:rgba(245,198,184,.2); color:var(--coral-deep); }
+.food-tag.phyto{ background:rgba(168,192,160,.18); color:#5a7a52; }
+.food-tag.calcium{ background:rgba(168,184,216,.18); color:#5a6a9a; }
+.food-tag.b6{ background:rgba(229,201,138,.18); color:#a08830; }
+.limit-card{ display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--line-soft); }
+.limit-card:last-child{ border-bottom:none; }
+.limit-card .lc-ic{ width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; background:rgba(196,122,106,.1); }
+.limit-card .lc-body{ flex:1; }
+.limit-card .lc-name{ font-size:13px; font-weight:800; color:var(--ink); }
+.limit-card .lc-why{ font-size:11.5px; color:var(--cocoa); line-height:1.45; margin-top:3px; }
+.limit-card .lc-why b{ color:var(--low); }
+.wellness-note{ font-size:11px; color:var(--taupe); line-height:1.5; padding:10px 12px; background:rgba(245,198,184,.12); border-radius:12px; border:1px solid rgba(212,154,138,.25); }
+.scan-cta{ display:flex; align-items:center; gap:14px; padding:16px; background:linear-gradient(135deg,rgba(196,181,224,.2),rgba(245,198,184,.16)); border:1.5px solid rgba(196,181,224,.45); border-radius:var(--r); text-decoration:none; color:var(--ink); transition:.18s; }
+.scan-cta:hover{ transform:translateY(-1px); box-shadow:0 6px 20px -8px rgba(107,82,142,.25); }
+.scan-cta .sc-ic{ width:48px; height:48px; border-radius:14px; background:var(--mauve); color:#fff; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; box-shadow:0 4px 12px rgba(139,108,130,.35); }
+.scan-cta .sc-body{ flex:1; min-width:0; }
+.scan-cta .sc-t{ font-family:var(--serif); font-size:17px; font-weight:700; color:var(--ink); line-height:1.2; }
+.scan-cta .sc-d{ font-size:11.5px; color:var(--taupe); margin-top:3px; line-height:1.4; }
+.scan-cta .sc-arr{ color:var(--mauve); font-size:22px; flex-shrink:0; }
+
+/* herb card */
+.herb-card{ background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r-sm); padding:14px; box-shadow:0 4px 16px -10px rgba(107,82,142,.12); }
+.herb-card .hc-head{ display:flex; gap:10px; align-items:flex-start; }
+.herb-card .hc-ic{ width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; background:var(--sunken); }
+.herb-card .hc-title{ font-size:14px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.herb-card .hc-latin{ font-size:10.5px; color:var(--taupe); font-style:italic; margin-top:2px; }
+.herb-card .hc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin-top:10px; }
+.herb-card .hc-field{ font-size:10.5px; line-height:1.4; }
+.herb-card .hc-field .hc-label{ font-weight:800; color:var(--mauve); letter-spacing:.03em; text-transform:uppercase; font-size:9px; display:block; margin-bottom:1px; }
+.herb-card .hc-field .hc-val{ color:var(--cocoa); }
+.herb-card .hc-prep{ font-size:11px; color:var(--cocoa); line-height:1.45; margin-top:8px; padding-top:8px; border-top:1px solid var(--line-soft); }
+.herb-card .hc-prep b{ color:var(--ink); }
+.herb-card .hc-caution{ font-size:10.5px; color:var(--low); line-height:1.4; margin-top:6px; padding:6px 8px; background:rgba(196,122,106,.08); border-radius:8px; }
+.herb-card .hc-caution b{ color:var(--low); }
+.herb-card .hc-evidence{ font-size:10.5px; color:var(--taupe); line-height:1.4; margin-top:6px; padding:6px 8px; background:rgba(168,192,160,.08); border-radius:8px; }
+.herb-card .hc-evidence b{ color:#5a7a52; }
+.formula-card{ background:var(--card); border:1.5px solid rgba(168,192,160,.3); border-radius:var(--r-sm); padding:14px; box-shadow:0 4px 16px -10px rgba(107,82,142,.12); }
+.formula-card .fc-head{ display:flex; gap:10px; align-items:flex-start; }
+.formula-card .fc-ic{ width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; background:rgba(168,192,160,.15); }
+.formula-card .fc-title{ font-size:14px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.formula-card .fc-composition{ font-size:11px; color:var(--mauve); font-weight:700; margin-top:2px; }
+.phase-section{ margin-bottom:6px; }
+.phase-section.hidden{ display:none; }
+.correction-box{ background:rgba(196,122,106,.08); border:1px solid rgba(196,122,106,.25); border-radius:12px; padding:12px 14px; margin:10px 0; }
+.correction-box .cb-title{ font-size:12px; font-weight:800; color:var(--low); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.correction-box .cb-item{ font-size:11px; color:var(--cocoa); line-height:1.5; padding:3px 0; }
+.correction-box .cb-item b{ color:var(--ink); }
+
+/* Collapsible sections */
+.collapsible-header{ cursor:pointer; user-select:none; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:var(--card); border:1px solid var(--line-soft); border-radius:12px; margin-bottom:0; transition:all .2s; }
+.collapsible-header:hover{ border-color:var(--mauve); box-shadow:0 2px 12px -6px rgba(107,82,142,.2); }
+.collapsible-header .chevron{ font-size:18px; color:var(--mauve); transition:transform .3s; flex-shrink:0; }
+.collapsible-header.open .chevron{ transform:rotate(180deg); }
+.collapsible-header .sec-title{ font-size:15px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:8px; }
+.collapsible-header .count{ font-size:10px; font-weight:700; color:var(--taupe); background:var(--sunken); padding:2px 8px; border-radius:10px; }
+.collapsible-content{ max-height:5000px; overflow:hidden; transition:max-height .4s ease, opacity .3s, margin .3s; opacity:1; margin-bottom:16px; }
+.collapsible-content.collapsed{ max-height:0; opacity:0; margin-bottom:0; }
+.collapsible-content-inner{ padding-top:12px; }
+
+</style>
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+  <div class="scroll">
+
+    <!-- Hero -->
+    <div class="foods-hero">
+      <div class="foods-badge"><span class="ms" style="font-size:13px">nutrition</span> Cycle-Aligned Eating</div>
+      <div class="foods-title">Eat for your cycle</div>
+      <div class="foods-desc">Nutrient-dense foods, evidence-based herbs, and cycle-aligned teas. Search, filter by phase or condition, and discover what to eat — and why.</div>
+      <div class="search-bar">
+        <span class="ms">search</span>
+        <input type="text" placeholder="Search foods, herbs, nutrients…" id="foodSearch" oninput="filterFoods()"/>
+      </div>
+    </div>
+
+    <!-- Scan label CTA -->
+    <a href="label-scan.html" class="scan-cta">
+      <div class="sc-ic ms">center_focus_strong</div>
+      <div class="sc-body">
+        <div class="sc-t">Scan a food label</div>
+        <div class="sc-d">Instant clean score, endocrine disruptor flags &amp; cycle-phase insights</div>
+      </div>
+      <span class="sc-arr ms">chevron_right</span>
+    </a>
+
+    <!-- Phase / condition filters -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">Filter by Phase &amp; Condition</h2>
+      <div class="cat-chips" id="catChips">
+        <div class="cat-chip on" data-cat="all">✨ All</div>
+        <div class="cat-chip" data-cat="menstrual">🩸 Menstrual</div>
+        <div class="cat-chip" data-cat="follicular">🌱 Follicular</div>
+        <div class="cat-chip" data-cat="ovulation">✨ Ovulation</div>
+        <div class="cat-chip" data-cat="luteal">🌙 Luteal</div>
+        <div class="cat-chip" data-cat="perimenopause">🔥 Perimenopause</div>
+        <div class="cat-chip" data-cat="pcos">📊 PCOS</div>
+        <div class="cat-chip" data-cat="endometriosis">🌀 Endometriosis</div>
+        <div class="cat-chip" data-cat="herbs">🍵 Herbs &amp; Teas</div>
+      </div>
+    </div>
+
+    <!-- ═══════════ CYCLE PHASE FOODS ═══════════ -->
+    <div class="phase-section" data-section="cycle">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px">
+        <div class="collapsible-header open" id="cycle-foods-header"><span class="sec-title">Cycle-Supportive Foods</span><span style="display:flex;align-items:center;gap:8px"><span class="count" id="cycle-foods-count"></span><span class="chevron">▼</span></span></div>
+<div class="collapsible-content" id="cycle-foods-content"><div class="collapsible-content-inner">
+        <span style="font-size:11px;font-weight:800;color:var(--taupe)" id="foodCount">18 foods</span>
+      </div>
+
+      <div id="foodGrid" style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+
+        <!-- 1. Spinach -->
+        <div class="food-card" data-cats="iron antiox" data-phase="menstrual follicular">
+          <div class="fc-ic">🥬</div>
+          <div class="fc-body">
+            <div class="fc-name">Spinach </div>
+            <div class="fc-nutrients"><b>Iron</b> · Folate · Vitamin C · Magnesium · Calcium</div>
+            <div class="food-tags"><span class="food-tag iron">Iron-rich</span><span class="food-tag antiox">Antioxidant</span></div>
+            <div class="fc-benefit"><b>Best: Menstrual &amp; Follicular.</b> Replenishes iron lost during menstruation <span class="qi" data-evidence="iron-menstruation">i</span>. Pair with vitamin C (citrus, bell peppers) to boost absorption.</div>
+          </div>
+        </div>
+
+        <!-- 2. Salmon -->
+        <div class="food-card" data-cats="omega protein" data-phase="menstrual follicular ovulation luteal perimenopause pcos endometriosis">
+          <div class="fc-ic">🐟</div>
+          <div class="fc-body">
+            <div class="fc-name">Wild Salmon </div>
+            <div class="fc-nutrients"><b>Omega-3 (EPA/DHA)</b> · Vitamin D · Selenium · High-quality protein</div>
+            <div class="food-tags"><span class="food-tag omega">Omega-3</span><span class="food-tag protein">Protein</span></div>
+            <div class="fc-benefit"><b>Best: All phases.</b> Omega-3s reduce inflammation and may significantly ease menstrual cramps (large effect size d=-1.02 in meta-analysis) <span class="qi" data-evidence="omega3-dysmenorrhea">i</span>. Vitamin D supports fertility and bone health <span class="qi" data-evidence="vitamin-d-fertility">i</span>.</div>
+          </div>
+        </div>
+
+        <!-- 3. Lentils -->
+        <div class="food-card" data-cats="iron protein phyto" data-phase="follicular menstrual">
+          <div class="fc-ic">🫘</div>
+          <div class="fc-body">
+            <div class="fc-name">Lentils <span class="qi" data-evidence="iron-menstruation">i</span> <span class="qi" data-evidence="folate-reproduction">i</span></div>
+            <div class="fc-nutrients"><b>Iron</b> · Folate · Plant protein · Fiber · B vitamins</div>
+            <div class="food-tags"><span class="food-tag iron">Iron-rich</span><span class="food-tag protein">Protein</span><span class="food-tag phyto">Phytoestrogen</span></div>
+            <div class="fc-benefit"><b>Best: Follicular.</b> Excellent plant-based iron and folate to support follicle development and red blood cell production <span class="qi" data-evidence="folate-reproduction">i</span>. Soak overnight to improve mineral absorption.</div>
+          </div>
+        </div>
+
+        <!-- 4. Pumpkin seeds -->
+        <div class="food-card" data-cats="mag omega" data-phase="luteal ovulation">
+          <div class="fc-ic">🎃</div>
+          <div class="fc-body">
+            <div class="fc-name">Pumpkin Seeds </div>
+            <div class="fc-nutrients"><b>Magnesium</b> · Zinc · Omega-3 · Iron · Tryptophan</div>
+            <div class="food-tags"><span class="food-tag mag">Magnesium</span><span class="food-tag omega">Omega-3</span></div>
+            <div class="fc-benefit"><b>Best: Luteal.</b> Magnesium helps relax muscles; small RCTs suggest PMS symptom reduction but systematic reviews say evidence is insufficient <span class="qi" data-evidence="magnesium-pms-mixed">i</span>. Zinc supports immune function and hormone balance.</div>
+          </div>
+        </div>
+
+        <!-- 5. Greek yogurt -->
+        <div class="food-card" data-cats="protein calcium" data-phase="luteal perimenopause">
+          <div class="fc-ic">🥛</div>
+          <div class="fc-body">
+            <div class="fc-name">Greek Yogurt </div>
+            <div class="fc-nutrients"><b>Protein</b> · Calcium · Probiotics · Vitamin B12 · Iodine</div>
+            <div class="food-tags"><span class="food-tag protein">Protein</span><span class="food-tag calcium">Calcium</span></div>
+            <div class="fc-benefit"><b>Best: All phases.</b> High protein stabilizes blood sugar; probiotics support gut health and hormone metabolism. Calcium 1,200mg/day reduced PMS symptoms by 48% in a large multi-center RCT (n=466) <span class="qi" data-evidence="calcium-pms">i</span>. Choose unsweetened, add fruit.</div>
+          </div>
+        </div>
+
+        <!-- 6. Blueberries -->
+        <div class="food-card" data-cats="antiox" data-phase="ovulation follicular perimenopause pcos endometriosis">
+          <div class="fc-ic">🫐</div>
+          <div class="fc-body">
+            <div class="fc-name">Blueberries </div>
+            <div class="fc-nutrients"><b>Anthocyanins</b> · Vitamin C · Vitamin K · Manganese · Fiber</div>
+            <div class="food-tags"><span class="food-tag antiox">Antioxidant</span></div>
+            <div class="fc-benefit"><b>Best: All phases.</b> Powerful antioxidants reduce oxidative stress and inflammation. May support cognitive function and skin health. Frozen blueberries are just as nutritious.</div>
+          </div>
+        </div>
+
+        <!-- 7. Avocado -->
+        <div class="food-card" data-cats="antiox" data-phase="follicular ovulation">
+          <div class="fc-ic">🥑</div>
+          <div class="fc-body">
+            <div class="fc-name">Avocado </div>
+            <div class="fc-nutrients"><b>Healthy fats</b> · Vitamin E · Potassium · Folate · Fiber</div>
+            <div class="food-tags"><span class="food-tag antiox">Antioxidant</span></div>
+            <div class="fc-benefit"><b>Best: Follicular &amp; Ovulation.</b> Monounsaturated fats support hormone synthesis (estrogen, progesterone) <span class="qi" data-evidence="nutrition-follicular">i</span>. Vitamin E supports skin and reproductive health. Keeps you full and satisfied.</div>
+          </div>
+        </div>
+
+        <!-- 8. Almonds -->
+        <div class="food-card" data-cats="mag protein antiox" data-phase="luteal perimenopause">
+          <div class="fc-ic">🌰</div>
+          <div class="fc-body">
+            <div class="fc-name">Almonds </div>
+            <div class="fc-nutrients"><b>Magnesium</b> · Vitamin E · Protein · Calcium · Healthy fats</div>
+            <div class="food-tags"><span class="food-tag mag">Magnesium</span><span class="food-tag protein">Protein</span><span class="food-tag antiox">Antioxidant</span></div>
+            <div class="fc-benefit"><b>Best: Luteal.</b> Magnesium supports muscle relaxation; small RCTs suggest PMS benefit but evidence is mixed <span class="qi" data-evidence="magnesium-pms-mixed">i</span>. Vitamin E supports skin and hormonal health. A small handful (23) is a perfect snack.</div>
+          </div>
+        </div>
+
+        <!-- 9. Eggs -->
+        <div class="food-card" data-cats="protein" data-phase="follicular ovulation menstrual luteal">
+          <div class="fc-ic">🥚</div>
+          <div class="fc-body">
+            <div class="fc-name">Pasture-Raised Eggs <span class="qi" data-evidence="nutrition-follicular">i</span> <span class="qi" data-evidence="folate-reproduction">i</span></div>
+            <div class="fc-nutrients"><b>Complete protein</b> · Choline · B12 · Vitamin D · Folate · Lutein</div>
+            <div class="food-tags"><span class="food-tag protein">Protein</span></div>
+            <div class="fc-benefit"><b>Best: All phases.</b> Choline supports fetal brain development (important if TTC) <span class="qi" data-evidence="folate-reproduction">i</span>. Complete protein stabilizes energy. Yolks contain vitamin D and lutein for eye and skin health.</div>
+          </div>
+        </div>
+
+        <!-- 10. Dark chocolate -->
+        <div class="food-card" data-cats="mag antiox iron" data-phase="luteal menstrual">
+          <div class="fc-ic">🍫</div>
+          <div class="fc-body">
+            <div class="fc-name">Dark Chocolate (70%+) </div>
+            <div class="fc-nutrients"><b>Magnesium</b> · Iron · Flavanols · Copper · Antioxidants</div>
+            <div class="food-tags"><span class="food-tag mag">Magnesium</span><span class="food-tag antiox">Antioxidant</span><span class="food-tag iron">Iron-rich</span></div>
+            <div class="fc-benefit"><b>Best: Luteal.</b> Magnesium may help with chocolate cravings and PMS mood, though evidence is mixed <span class="qi" data-evidence="magnesium-pms-mixed">i</span>. Flavanols support blood flow and heart health. Stick to 1-2 squares (20-30g) to avoid excess sugar.</div>
+          </div>
+        </div>
+
+        <!-- 11. Flaxseeds — CORRECTED -->
+        <div class="food-card" data-cats="omega phyto" data-phase="follicular perimenopause">
+          <div class="fc-ic">🌾</div>
+          <div class="fc-body">
+            <div class="fc-name">Ground Flaxseeds </div>
+            <div class="fc-nutrients"><b>ALA (Omega-3)</b> · Lignans (phytoestrogens) · Fiber · Magnesium</div>
+            <div class="food-tags"><span class="food-tag omega">Omega-3</span><span class="food-tag phyto">Phytoestrogen</span></div>
+            <div class="fc-benefit"><b>Best: All phases (fiber source).</b> Nutritious for fiber and ALA omega-3. ⚠️ <b>Honest evidence:</b> A Phase III RCT (n=188) found flaxseed was <b>no better than placebo</b> for hot flashes <span class="qi" data-evidence="flaxseed-null">i</span>. Do not claim flaxseed reduces hot flashes. Ground flax is more digestible than whole.</div>
+          </div>
+        </div>
+
+        <!-- 12. Broccoli -->
+        <div class="food-card" data-cats="antiox iron" data-phase="follicular ovulation endometriosis pcos">
+          <div class="fc-ic">🥦</div>
+          <div class="fc-body">
+            <div class="fc-name">Broccoli </div>
+            <div class="fc-nutrients"><b>Folate</b> · Vitamin C · Vitamin K · Calcium · Sulforaphane · Fiber</div>
+            <div class="food-tags"><span class="food-tag antiox">Antioxidant</span><span class="food-tag iron">Iron-rich</span></div>
+            <div class="fc-benefit"><b>Best: Follicular.</b> Folate supports cell division and reproductive health <span class="qi" data-evidence="folate-reproduction">i</span>. Sulforaphane supports detoxification and may help metabolize excess estrogen. Steam lightly to preserve nutrients.</div>
+          </div>
+        </div>
+
+        <!-- 13. Chickpeas -->
+        <div class="food-card" data-cats="protein phyto iron b6" data-phase="luteal follicular pcos">
+          <div class="fc-ic">🫛</div>
+          <div class="fc-body">
+            <div class="fc-name">Chickpeas </div>
+            <div class="fc-nutrients"><b>Plant protein</b> · Iron · Folate · Phytoestrogens · Fiber · Vitamin B6 · Manganese</div>
+            <div class="food-tags"><span class="food-tag protein">Protein</span><span class="food-tag phyto">Phytoestrogen</span><span class="food-tag b6">B6</span></div>
+            <div class="fc-benefit"><b>Best: Luteal &amp; Follicular.</b> Vitamin B6 supports serotonin production and may reduce PMS mood symptoms <span class="qi" data-evidence="b6-pms">i</span>. Plant-based protein and iron with phytoestrogens. Hummus is an easy way to include them.</div>
+          </div>
+        </div>
+
+        <!-- 14. Walnuts -->
+        <div class="food-card" data-cats="omega mag" data-phase="luteal perimenopause endometriosis">
+          <div class="fc-ic">🌰</div>
+          <div class="fc-body">
+            <div class="fc-name">Walnuts <span class="qi" data-evidence="omega3-dysmenorrhea">i</span> <span class="qi" data-evidence="magnesium-pms-mixed">i</span></div>
+            <div class="fc-nutrients"><b>ALA (Omega-3)</b> · Magnesium · Copper · Melatonin · Vitamin E</div>
+            <div class="food-tags"><span class="food-tag omega">Omega-3</span><span class="food-tag mag">Magnesium</span></div>
+            <div class="fc-benefit"><b>Best: Luteal.</b> Plant-based omega-3s reduce inflammation and may ease menstrual pain <span class="qi" data-evidence="omega3-dysmenorrhea">i</span>. Contains melatonin precursors that may support sleep — important during luteal phase when sleep can be disrupted <span class="qi" data-evidence="sleep-cycle-hormones">i</span>.</div>
+          </div>
+        </div>
+
+        <!-- 15. Sweet potato -->
+        <div class="food-card" data-cats="antiox b6" data-phase="luteal pcos">
+          <div class="fc-ic">🍠</div>
+          <div class="fc-body">
+            <div class="fc-name">Sweet Potato </div>
+            <div class="fc-nutrients"><b>Beta-carotene</b> · Vitamin B6 · Fiber · Potassium · Vitamin C</div>
+            <div class="food-tags"><span class="food-tag antiox">Antioxidant</span><span class="food-tag b6">B6</span></div>
+            <div class="fc-benefit"><b>Best: Luteal.</b> Vitamin B6 supports serotonin production and may reduce PMS mood symptoms <span class="qi" data-evidence="b6-pms">i</span>. Complex carbs stabilize blood sugar and reduce cravings. Beta-carotene supports skin and immune health.</div>
+          </div>
+        </div>
+
+        <!-- 16. Turmeric -->
+        <div class="food-card" data-cats="antiox" data-phase="menstrual luteal endometriosis pcos perimenopause">
+          <div class="fc-ic">🧡</div>
+          <div class="fc-body">
+            <div class="fc-name">Turmeric </div>
+            <div class="fc-nutrients"><b>Curcumin</b> · Antioxidants · Iron · Manganese · Vitamin B6</div>
+            <div class="food-tags"><span class="food-tag antiox">Antioxidant</span></div>
+            <div class="fc-benefit"><b>Best: All phases.</b> Curcumin is a powerful anti-inflammatory that may reduce menstrual pain and PMS. Pair with black pepper (piperine) to boost absorption by up to 2000%. Golden milk is a soothing option.</div>
+          </div>
+        </div>
+
+        <!-- 17. Oats -->
+        <div class="food-card" data-cats="mag protein" data-phase="luteal menstrual pcos">
+          <div class="fc-ic">🥣</div>
+          <div class="fc-body">
+            <div class="fc-name">Rolled Oats </div>
+            <div class="fc-nutrients"><b>Magnesium</b> · B vitamins · Fiber · Iron · Zinc · Complex carbs</div>
+            <div class="food-tags"><span class="food-tag mag">Magnesium</span><span class="food-tag protein">Protein</span></div>
+            <div class="fc-benefit"><b>Best: Luteal &amp; Menstrual.</b> Complex carbs stabilize blood sugar and reduce PMS cravings <span class="qi" data-evidence="nutrition-luteal">i</span>. Magnesium supports relaxation; evidence for PMS is mixed <span class="qi" data-evidence="magnesium-pms-mixed">i</span>. B vitamins support energy and mood. Top with berries and nuts.</div>
+          </div>
+        </div>
+
+        <!-- 18. Kale -->
+        <div class="food-card" data-cats="iron antiox calcium" data-phase="menstrual follicular endometriosis">
+          <div class="fc-ic">🥗</div>
+          <div class="fc-body">
+            <div class="fc-name">Kale </div>
+            <div class="fc-nutrients"><b>Iron</b> · Vitamin K · Vitamin C · Calcium · Antioxidants · Folate</div>
+            <div class="food-tags"><span class="food-tag iron">Iron-rich</span><span class="food-tag antiox">Antioxidant</span><span class="food-tag calcium">Calcium</span></div>
+            <div class="fc-benefit"><b>Best: Menstrual &amp; Follicular.</b> Dark leafy green with iron to replenish losses <span class="qi" data-evidence="iron-menstruation">i</span>. Vitamin C in kale enhances iron absorption. Massage with olive oil to soften and improve digestibility. Great in salads, smoothies, or soups.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════ PERIMENOPAUSE / MENOPAUSE ═══════════ -->
+    <div class="phase-section" data-section="perimenopause">
+      </div></div>
+<div class="collapsible-header" id="perimenopause-foods-header"><span class="sec-title"><span class="ms" style="font-size:16px;color:var(--coral-deep)">local_fire_department</span> Perimenopause & Menopause</span><span style="display:flex;align-items:center;gap:8px"><span class="count" id="perimenopause-foods-count"></span><span class="chevron">▼</span></span></div>
+<div class="collapsible-content collapsed" id="perimenopause-foods-content"><div class="collapsible-content-inner">
+      <div class="sub" style="margin-bottom:10px">Evidence-based nutritional support for vasomotor symptoms, bone health, and body composition</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+
+        <!-- Soy -->
+        <div class="food-card" data-cats="phyto protein" data-phase="perimenopause">
+          <div class="fc-ic">🫛</div>
+          <div class="fc-body">
+            <div class="fc-name">Soy: Edamame, Tofu, Tempeh <span class="qi" data-evidence="soy-isoflavones-hot-flashes">i</span> <span class="qi" data-evidence="soy-isoflavones-bone">i</span></div>
+            <div class="fc-nutrients"><b>Isoflavones (50-100mg/day)</b> · Complete protein · Calcium · Fiber</div>
+            <div class="food-tags"><span class="food-tag phyto">Phytoestrogen</span><span class="food-tag protein">Protein</span><span class="food-tag calcium">Calcium</span></div>
+            <div class="fc-benefit"><b>Best: Perimenopause.</b> Meta-analysis of RCTs: soy isoflavones reduced hot flash frequency by <b>20.6%</b> vs placebo <span class="qi" data-evidence="soy-isoflavones-hot-flashes">i</span>. Also increased lumbar spine BMD by +2.38% <span class="qi" data-evidence="soy-isoflavones-bone">i</span>. Whole soy foods preferred over isolated supplements. Effects may take 6+ weeks.</div>
+          </div>
+        </div>
+
+        <!-- Omega-3 -->
+        <div class="food-card" data-cats="omega" data-phase="perimenopause">
+          <div class="fc-ic">🐟</div>
+          <div class="fc-body">
+            <div class="fc-name">Omega-3 Rich Foods </div>
+            <div class="fc-nutrients"><b>EPA/DHA</b> · Vitamin D · Anti-inflammatory</div>
+            <div class="food-tags"><span class="food-tag omega">Omega-3</span></div>
+            <div class="fc-benefit"><b>Best: Perimenopause.</b> EPA/DHA reduce pro-inflammatory cytokines linked to vasomotor symptoms. Fatty fish (salmon, sardines, mackerel) 2-3x/week. Meta-analysis shows large effect for menstrual pain reduction (d=-1.02) <span class="qi" data-evidence="omega3-dysmenorrhea">i</span>.</div>
+          </div>
+        </div>
+
+        <!-- Magnesium -->
+        <div class="food-card" data-cats="mag" data-phase="perimenopause">
+          <div class="fc-ic">🥬</div>
+          <div class="fc-body">
+            <div class="fc-name">Magnesium-Rich Foods </div>
+            <div class="fc-nutrients"><b>Magnesium (310-320mg/day)</b> · Muscle relaxation · Sleep support</div>
+            <div class="food-tags"><span class="food-tag mag">Magnesium</span></div>
+            <div class="fc-benefit"><b>Best: Perimenopause.</b> Magnesium supports thermoregulation, muscle relaxation, and sleep quality. Sources: pumpkin seeds, almonds, dark chocolate, leafy greens, black beans. Evidence for PMS is mixed <span class="qi" data-evidence="magnesium-pms-mixed">i</span>; food sources are safe and nutritious.</div>
+          </div>
+        </div>
+
+        <!-- Calcium + Vitamin D -->
+        <div class="food-card" data-cats="calcium" data-phase="perimenopause luteal">
+          <div class="fc-ic">🥛</div>
+          <div class="fc-body">
+            <div class="fc-name">Calcium 1,200mg + Vitamin D <span class="qi" data-evidence="calcium-pms">i</span> <span class="qi" data-evidence="bone-estrogen">i</span></div>
+            <div class="fc-nutrients"><b>Calcium (1,200mg/day)</b> · Vitamin D (600-800 IU) · Bone health</div>
+            <div class="food-tags"><span class="food-tag calcium">Calcium</span></div>
+            <div class="fc-benefit"><b>Best: Perimenopause &amp; Luteal.</b> Large multi-center RCT (n=466): calcium 1,200mg/day reduced PMS symptoms by 48% vs 30% placebo <span class="qi" data-evidence="calcium-pms">i</span>. Critical for bone density as estrogen declines after menopause <span class="qi" data-evidence="bone-estrogen">i</span>. Sources: dairy, fortified plant milks, kale, almonds, sardines.</div>
+          </div>
+        </div>
+
+        <!-- Mediterranean diet -->
+        <div class="food-card" data-cats="antiox omega" data-phase="perimenopause pcos endometriosis">
+          <div class="fc-ic">🫒</div>
+          <div class="fc-body">
+            <div class="fc-name">Mediterranean Diet Pattern </div>
+            <div class="fc-nutrients"><b>Anti-inflammatory pattern</b> · Olive oil · Vegetables · Fish · Legumes · Whole grains</div>
+            <div class="food-tags"><span class="food-tag antiox">Antioxidant</span><span class="food-tag omega">Omega-3</span></div>
+            <div class="fc-benefit"><b>Best: Perimenopause &amp; all conditions.</b> Systematic review (Maturitas 2023): higher Mediterranean diet adherence associated with reduced vasomotor symptom frequency and severity <span class="qi" data-evidence="mediterranean-menopause">i</span>. Rich in phytoestrogens, anti-inflammatory compounds, and fiber. Also benefits cardiovascular and metabolic health.</div>
+          </div>
+        </div>
+
+        <!-- Protein -->
+        <div class="food-card" data-cats="protein" data-phase="perimenopause">
+          <div class="fc-ic">🍳</div>
+          <div class="fc-body">
+            <div class="fc-name">Protein 1.1-1.5g/kg/day </div>
+            <div class="fc-nutrients"><b>High-quality protein</b> · Muscle maintenance · Satiety</div>
+            <div class="food-tags"><span class="food-tag protein">Protein</span></div>
+            <div class="fc-benefit"><b>Best: Perimenopause.</b> Higher protein intake (1.1-1.5g/kg body weight) helps maintain lean muscle mass as estrogen declines, supports satiety and weight management. Sources: eggs, fish, poultry, legumes, Greek yogurt, tofu. Spread protein across meals for best utilization.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════ PCOS ═══════════ -->
+    <div class="phase-section" data-section="pcos">
+      </div></div>
+<div class="collapsible-header" id="pcos-foods-header"><span class="sec-title"><span class="ms" style="font-size:16px;color:var(--gold)">monitoring</span> PCOS Foods</span><span style="display:flex;align-items:center;gap:8px"><span class="count" id="pcos-foods-count"></span><span class="chevron">▼</span></span></div>
+<div class="collapsible-content collapsed" id="pcos-foods-content"><div class="collapsible-content-inner">
+      <div class="sub" style="margin-bottom:10px">Insulin-sensitizing, anti-inflammatory nutrition for polycystic ovary syndrome <span class="qi" data-evidence="pcos-lifestyle">i</span></div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+
+        <!-- Myo-inositol -->
+        <div class="food-card" data-cats="protein" data-phase="pcos">
+          <div class="fc-ic">🧪</div>
+          <div class="fc-body">
+            <div class="fc-name">Myo-Inositol 4,000mg/day </div>
+            <div class="fc-nutrients"><b>Myo-inositol (2-4g/day)</b> · Insulin signaling · Ovulation support</div>
+            <div class="food-tags"><span class="food-tag protein">Supplement</span></div>
+            <div class="fc-benefit"><b>Best: PCOS.</b> Multiple RCTs and systematic reviews (Unfer et al.): myo-inositol 2-4g/day improves insulin sensitivity, ovulation frequency, and metabolic parameters in PCOS <span class="qi" data-evidence="myo-inositol-pcos">i</span>. The 40:1 myo-inositol:D-chiro-inositol ratio is most studied. Generally well-tolerated. Lifestyle modification remains first-line <span class="qi" data-evidence="pcos-lifestyle">i</span>.</div>
+          </div>
+        </div>
+
+        <!-- Anti-inflammatory -->
+        <div class="food-card" data-cats="omega antiox" data-phase="pcos endometriosis perimenopause">
+          <div class="fc-ic">🧡</div>
+          <div class="fc-body">
+            <div class="fc-name">Anti-Inflammatory Foods </div>
+            <div class="fc-nutrients"><b>Omega-3 · Polyphenols · Curcumin · Sulforaphane</b></div>
+            <div class="food-tags"><span class="food-tag omega">Omega-3</span><span class="food-tag antiox">Antioxidant</span></div>
+            <div class="fc-benefit"><b>Best: PCOS &amp; Endometriosis.</b> Chronic low-grade inflammation is central to PCOS. Omega-3 (EPA/DHA), polyphenol-rich foods (berries, dark chocolate, green tea), curcumin (turmeric + black pepper), and sulforaphane (cruciferous veggies) reduce inflammatory markers. Fatty fish 2-3x/week <span class="qi" data-evidence="omega3-inflammation">i</span>.</div>
+          </div>
+        </div>
+
+        <!-- Low GI carbs -->
+        <div class="food-card" data-cats="protein" data-phase="pcos">
+          <div class="fc-ic">🍚</div>
+          <div class="fc-body">
+            <div class="fc-name">Low GI Carbs &amp; Fiber </div>
+            <div class="fc-nutrients"><b>Low glycemic index</b> · High fiber · Stable blood sugar</div>
+            <div class="food-tags"><span class="food-tag protein">Carbs</span></div>
+            <div class="fc-benefit"><b>Best: PCOS.</b> Low-GI carbohydrates (oats, quinoa, sweet potato, legumes, non-starchy vegetables) improve insulin sensitivity and reduce androgen levels. Aim for 25-30g fiber/day. International PCOS guidelines recommend lifestyle modification as first-line <span class="qi" data-evidence="pcos-lifestyle">i</span>. Even 5-10% weight loss improves ovulation.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════ ENDOMETRIOSIS ═══════════ -->
+    <div class="phase-section" data-section="endometriosis">
+      </div></div>
+<div class="collapsible-header" id="endo-foods-header"><span class="sec-title"><span class="ms" style="font-size:16px;color:var(--mauve)">all_inclusive</span> Endometriosis Foods</span><span style="display:flex;align-items:center;gap:8px"><span class="count" id="endo-foods-count"></span><span class="chevron">▼</span></span></div>
+<div class="collapsible-content collapsed" id="endo-foods-content"><div class="collapsible-content-inner">
+      <div class="sub" style="margin-bottom:10px">Estrogen-lowering, anti-inflammatory dietary approaches <span class="qi" data-evidence="endometriosis-overview">i</span></div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+
+        <!-- High fiber -->
+        <div class="food-card" data-cats="antiox" data-phase="endometriosis">
+          <div class="fc-ic">🥦</div>
+          <div class="fc-body">
+            <div class="fc-name">High-Fiber Foods </div>
+            <div class="fc-nutrients"><b>Dietary fiber (25-30g/day)</b> · Estrogen excretion</div>
+            <div class="food-tags"><span class="food-tag antiox">Antioxidant</span></div>
+            <div class="fc-benefit"><b>Best: Endometriosis.</b> High dietary fiber supports gut microbiome and increases estrogen excretion, potentially reducing circulating estrogen by 10-25%. Endometriosis is estrogen-dependent. Sources: vegetables, fruits, whole grains, legumes, flaxseeds, chia seeds. Cruciferous veggies (broccoli, Brussels sprouts) provide sulforaphane for detoxification.</div>
+          </div>
+        </div>
+
+        <!-- Omega-3 EPA/DHA -->
+        <div class="food-card" data-cats="omega" data-phase="endometriosis">
+          <div class="fc-ic">🐟</div>
+          <div class="fc-body">
+            <div class="fc-name">Omega-3 (EPA/DHA) </div>
+            <div class="fc-nutrients"><b>EPA/DHA</b> · Anti-proliferative · Anti-angiogenic</div>
+            <div class="food-tags"><span class="food-tag omega">Omega-3</span></div>
+            <div class="fc-benefit"><b>Best: Endometriosis.</b> EPA and DHA have anti-proliferative and anti-angiogenic properties relevant to endometriosis lesion growth. Meta-analysis shows large effect for menstrual pain reduction (d=-1.02) <span class="qi" data-evidence="omega3-dysmenorrhea">i</span>. Fatty fish (salmon, sardines, mackerel) 2-3x/week. Reduce omega-6 (processed oils, fried foods) which promotes inflammation.</div>
+          </div>
+        </div>
+
+        <!-- Anti-inflammatory diet -->
+        <div class="food-card" data-cats="antiox omega" data-phase="endometriosis pcos perimenopause">
+          <div class="fc-ic">🫒</div>
+          <div class="fc-body">
+            <div class="fc-name">Anti-Inflammatory Diet </div>
+            <div class="fc-nutrients"><b>Mediterranean pattern</b> · Reduce red meat · Limit alcohol</div>
+            <div class="food-tags"><span class="food-tag antiox">Antioxidant</span><span class="food-tag omega">Omega-3</span></div>
+            <div class="fc-benefit"><b>Best: Endometriosis.</b> An anti-inflammatory dietary pattern (Mediterranean-style) is associated with reduced endometriosis risk and improved pain outcomes. Emphasize vegetables, fruits, whole grains, legumes, olive oil, and fatty fish. Limit red meat, processed foods, and alcohol. Cochrane notes very low-quality evidence for CHM in endometriosis <span class="qi" data-evidence="endometriosis-overview">i</span>.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════ CRITICAL CORRECTIONS ═══════════ -->
+    <div class="correction-box">
+      <div class="cb-title">⚠️ Evidence Corrections — What the Research Actually Shows</div>
+      <div class="cb-item"><b>1. Dong Quai alone does NOT reduce hot flashes.</b> The only rigorous RCT (n=71) was definitively negative <span class="qi" data-evidence="dong-quai-null">i</span>. Dong quai works only in multi-herb formulas like Danggui Buxue Tang <span class="qi" data-evidence="danggui-buxue-tang">i</span>.</div>
+      <div class="cb-item"><b>2. Flaxseed does NOT reduce hot flashes better than placebo.</b> Phase III RCT (n=188) was null <span class="qi" data-evidence="flaxseed-null">i</span>. Flaxseed is still nutritious for fiber and ALA.</div>
+      <div class="cb-item"><b>3. Pueraria mirifica ≠ Pueraria lobata (Chinese 葛根).</b> Hot flash evidence is for the Thai species P. mirifica, which contains potent phytoestrogens (miroestrol). Chinese kudzu has lower phytoestrogen content <span class="qi" data-evidence="pueraria-mirifica">i</span>.</div>
+      <div class="cb-item"><b>4. Soy isoflavone extract ≠ black bean.</b> Black bean contains isoflavones at lower concentrations than soybean. Do not attribute soy study results (20.6% hot flash reduction) to black bean <span class="qi" data-evidence="soy-isoflavones-hot-flashes">i</span>.</div>
+      <div class="cb-item"><b>5. 8 herbs have NO human clinical data</b> for women's health: astragalus, goji, ligustrum, mulberry, motherwort, salvia, ophiopogon, and black bean. All evidence is preclinical (animal/in vitro) only.</div>
+      <div class="cb-item"><b>6. Cochrane rates TCM formulas overall as very low quality</b> (60 trials, n=6,059). No single formula can be broadly recommended <span class="qi" data-evidence="tcm-menopause-cochrane">i</span>.</div>
+    </div>
+
+    <!-- ═══════════ CHINESE HERBS & TEAS ═══════════ -->
+    <div class="phase-section" data-section="herbs">
+      </div></div>
+<div class="collapsible-header" id="herbs-teas-header"><span class="sec-title"><span class="ms" style="font-size:16px;color:var(--sage)">emoji_food_beverage</span> Chinese Herbs & Teas</span><span style="display:flex;align-items:center;gap:8px"><span class="count" id="herbs-teas-count"></span><span class="chevron">▼</span></span></div>
+<div class="collapsible-content collapsed" id="herbs-teas-content"><div class="collapsible-content-inner">
+      <div class="sub" style="margin-bottom:10px">Traditional usage with honest evidence status. Dosages and frequencies from Chinese health platforms; clinical claims verified against PubMed/PMC.</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+
+        <!-- 1. Dong Quai -->
+        <div class="herb-card" data-phase="herbs menstrual follicular perimenopause">
+          <div class="hc-head">
+            <div class="hc-ic" style="width:56px;height:56px;background:transparent;padding:0;overflow:visible"><img src="assets/danggui.png?v=2" alt="Dang Gui" style="width:56px;height:56px;object-fit:contain;border-radius:12px;display:block"/></div>
+            <div>
+              <div class="hc-title">当归 Dong Quai <span class="qi" data-evidence="dong-quai-null">i</span> <span class="qi" data-evidence="danggui-buxue-tang">i</span></div>
+              <div class="hc-latin">Angelica sinensis</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">3-6g (养血) · 6-10g (调经) · 10-15g (活血)</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">2-3x/week; post-period 7 consecutive days</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Post-period (blood tonification); pre-period for dysmenorrhea</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Boil 15-20 min; soup with black chicken/pork ribs; congee</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Blood-nourishing" herb; classic pair with 黄芪 (5:1 ratio = Danggui Buxue Tang). Dosage determines function: low dose nourishes blood, medium regulates menstruation, high dose quickens blood.</div>
+          <div class="hc-evidence"><b>Evidence:</b> ⚠️ Dong quai ALONE does NOT reduce hot flashes — RCT n=71, 4.5g/day × 24 weeks, null result <span class="qi" data-evidence="dong-quai-null">i</span>. ✅ As Danggui Buxue Tang (当归+黄芪 1:5), 6g/day × 12 weeks → 35-37% hot flash reduction <span class="qi" data-evidence="danggui-buxue-tang">i</span>.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Pregnancy contraindicated. Stop during heavy menses. Avoid with yin-deficiency heat, infection, or diarrhea.</div>
+        </div>
+
+        <!-- 2. Astragalus -->
+        <div class="herb-card" data-phase="herbs follicular perimenopause">
+          <div class="hc-head">
+            <div class="hc-ic">🌱</div>
+            <div>
+              <div class="hc-title">黄芪 Astragalus</div>
+              <div class="hc-latin">Astragalus membranaceus</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">5-10g daily tea; 30g in DBT formula</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">Daily as tea OK; tonic formulas 2-3x/week</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Post-period (qi tonification); can continue during period</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Boil 15 min; steep 10 min; soup; congee; classic 黄芪:当归 = 5:1</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> Qi tonification; foundational herb in Danggui Buxue Tang (30g 黄芪 : 6g 当归). Modulates immune function in TCM theory.</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🔴 <b>No human RCTs</b> for ovarian reserve, menopause, or PCOS. Animal data: modulated E2/FSH/LH and IL-2/IL-6 in ovariectomized rats (PMC3746351). Individual contribution in multi-herb formulas cannot be isolated.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Stop during fever or acute infection. May interact with immunosuppressants. Do not claim clinical ovarian benefits.</div>
+        </div>
+
+        <!-- 3. Goji -->
+        <div class="herb-card" data-phase="herbs ovulation perimenopause">
+          <div class="hc-head">
+            <div class="hc-ic">🔴</div>
+            <div>
+              <div class="hc-title">枸杞 Goji Berry <span class="qi" data-evidence="goji-ovarian-animal">i</span></div>
+              <div class="hc-latin">Lycium barbarum</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">5-15g (≈10-30 berries)</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">Can be daily (food-grade); 1 cup/day tea</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">All phases; ovulatory phase ovary-nourishing teas</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Steep (add last at ≤60°C); congee; soup; eat directly</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Liver-kidney yin nourishing" fruit; common in ovary-nourishing tea blends. Pair with chrysanthemum, mulberry, or longan.</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🔴 <b>No human clinical trials</b> for ovarian aging or menopause. Animal study: increased pregnancy/live birth rates in aged mice (PMID 39224078) <span class="qi" data-evidence="goji-ovarian-animal">i</span>. Safe to recommend as antioxidant food, but do not claim human ovarian benefits.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Generally safe as food. Add at ≤60°C to preserve nutrients. May interact with warfarin (rare).</div>
+        </div>
+
+        <!-- 4. Red Date -->
+        <div class="herb-card" data-phase="herbs menstrual follicular perimenopause">
+          <div class="hc-head">
+            <div class="hc-ic">🟤</div>
+            <div>
+              <div class="hc-title">红枣 Red Date</div>
+              <div class="hc-latin">Ziziphus jujuba</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">3-10 pieces (≈10-20g); pit removed</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">Can be daily; base ingredient in nearly all wellness teas</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">All phases; post-period blood nourishment; period warming</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Boil/steep (pit removed, torn); soup; congee; direct</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Qi and blood tonic"; harmonizing herb in formulas. Contains cAMP traditionally believed to promote uterine circulation. Pair with ginger, longan, goji.</div>
+          <div class="hc-evidence"><b>Evidence:</b> No specific menopause/ovarian RCTs. Food-grade, generally safe. No clinical evidence needed for general culinary use.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> High sugar content — moderate if diabetic or watching sugar intake. Remove pit to reduce "heat" in TCM terms.</div>
+        </div>
+
+        <!-- 5. Longan -->
+        <div class="herb-card" data-phase="herbs follicular ovulation perimenopause">
+          <div class="hc-head">
+            <div class="hc-ic">🟡</div>
+            <div>
+              <div class="hc-title">桂圆 Longan</div>
+              <div class="hc-latin">Dimocarpus longan</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">2-10 pieces (≈5-10g flesh)</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">2-3x/week; can be daily but watch for "heat"</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Post-period blood/qi; ovulatory phase; insomnia</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Boil 15 min; steep; soup; congee; pair with goji/red date/astragalus</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Heart-spleen blood tonic"; used for insomnia, palpitations, and forgetfulness. Menopause: drink 2 hours before bed for sleep support.</div>
+          <div class="hc-evidence"><b>Evidence:</b> No specific RCTs for menopause/ovarian health. Food-grade. Traditional use for heart-spleen blood deficiency and insomnia.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Can cause "heat" (上火) in some people — limit if prone to sore throat, acne, or constipation. High sugar content.</div>
+        </div>
+
+        <!-- 6. Rose -->
+        <div class="herb-card" data-phase="herbs luteal menstrual">
+          <div class="hc-head">
+            <div class="hc-ic">🌹</div>
+            <div>
+              <div class="hc-title">玫瑰花 Rose <span class="qi" data-evidence="rose-tea-dysmenorrhea">i</span></div>
+              <div class="hc-latin">Rosa rugosa / Rosa damascena</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">3-6 buds (≈1-3g dried); don't boil long</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">Daily as tea OK; pre-period week is key window</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Pre-menstrual (7 days before) — liver-soothing, qi-moving</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">80-95°C water, steep 5-15 min (add last, don't boil)</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Liver-soothing, qi-moving" herb for premenstrual irritability, breast tenderness, and mood. Canonical pre-period tea pair with 陈皮 (tangerine peel).</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🟡 RCT n=130 adolescents: rose tea 2 cups/day, pre-period through day 5, 6 cycles → reduced menstrual pain, psychological distress, and anxiety <span class="qi" data-evidence="rose-tea-dysmenorrhea">i</span>. However, meta-analysis (n=548) found null pooled effect on pain; some benefit for anxiety/fatigue/bloating. Evidence is mixed.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Generally safe. Don't boil (volatile oils). Can re-steep until flavor fades. Pair with tangerine peel or silktree flower for enhanced effect.</div>
+        </div>
+
+        <!-- 7. Mulberry -->
+        <div class="herb-card" data-phase="herbs ovulation perimenopause">
+          <div class="hc-head">
+            <div class="hc-ic">🟣</div>
+            <div>
+              <div class="hc-title">桑葚 Mulberry</div>
+              <div class="hc-latin">Morus alba</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">Dried 5-15g; daily tea 10g</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">2-3x/week; not daily in large amounts</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Ovulatory phase (core ovary-nourishing); menopause</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Boil 10-15 min; steep; add at ≤60°C; pair with ligustrum/goji</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Yin-nourishing, blood-tonifying" fruit; core ingredient in ovary-nourishing "black foods" teas. Rich in anthocyanins.</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🔴 <b>No human clinical trials</b> for menopause/ovarian health. Animal: astragalin (isolated flavonoid) increased E2/P4 by inhibiting granulosa cell apoptosis in aged rats (PMC6273233). Do not claim human clinical benefits.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> "Over-nourishing yin" in TCM — not recommended daily in large amounts. May cause loose stools in sensitive individuals.</div>
+        </div>
+
+        <!-- 8. Black Bean -->
+        <div class="herb-card" data-phase="herbs ovulation follicular">
+          <div class="hc-head">
+            <div class="hc-ic">⚫</div>
+            <div>
+              <div class="hc-title">黑豆 Black Bean <span class="qi" data-evidence="soy-isoflavones-hot-flashes">i</span></div>
+              <div class="hc-latin">Glycine max</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">20-50g (≈one handful); soymilk 30g</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">Daily morning soymilk OK; ovulatory phase daily × 7 days</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Ovulatory phase (days 8-14) — "black enters kidney"</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Soak 30 min-12 hours; soymilk; congee; boil; pair with walnut/black sesame</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Kidney-tonifying" food; core in ovary-nourishing teas. Trying-to-conceive: 7 consecutive days after period ends.</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🔴 <b>No specific RCTs</b> of black bean for menopause. Contains isoflavones but at <b>lower concentrations</b> than soybean. ⚠️ Do NOT extrapolate soy isoflavone evidence (20.6% hot flash reduction) to black bean <span class="qi" data-evidence="soy-isoflavones-hot-flashes">i</span>. Safe as food.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Generally safe as food. Soak to improve digestibility. Do not claim black bean has the same isoflavone effects as soy extract.</div>
+        </div>
+
+        <!-- 9. Ligustrum -->
+        <div class="herb-card" data-phase="herbs ovulation perimenopause">
+          <div class="hc-head">
+            <div class="hc-ic">🫐</div>
+            <div>
+              <div class="hc-title">女贞子 Ligustrum</div>
+              <div class="hc-latin">Ligustrum lucidum</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">5-15g (≈10-15 berries); crush for better extraction</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">2-3x/week; <b>NOT daily</b> ("avoid over-nourishing yin")</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Ovulatory/post-period yin nourishment; menopause liver-kidney tonic</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Boiling water steep 10-15 min (crushed); boil 10-15 min</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Liver-kidney yin nourishing" herb; pair with 旱莲草 (eclipta) = 二至丸 for ovarian reserve. Used in menopause formulas (Kun Bao Wan).</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🔴 <b>No human RCTs</b> for menopause/bone. Preclinical: suppresses osteoclastogenesis, increases BMD in OVX rats (PMC6151717). Wine-steamed improved postmenopausal osteoporosis in rats (PMID 38142661). Do not claim human benefits.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Not for daily use — "over-nourishes yin." Avoid with spleen-cold diarrhea or dampness. Crush before steeping for better extraction.</div>
+        </div>
+
+        <!-- 10. Ophiopogon -->
+        <div class="herb-card" data-phase="herbs follicular perimenopause">
+          <div class="hc-head">
+            <div class="hc-ic">🌾</div>
+            <div>
+              <div class="hc-title">麦冬 Ophiopogon</div>
+              <div class="hc-latin">Ophiopogon japonicus</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">2-10g; daily pairing 2-5g</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">Can be daily as tea; continuous use ≤2 weeks</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">All phases as yin-moistening pairing; menopause heart-calming</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Boil 15 min; steep; pair with goji/mulberry/astragalus</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Yin-nourishing, moistening" herb for dryness (dry mouth, dry throat, constipation). Used post-period to prevent heat from tonics.</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🔴 <b>No menopause/women's health RCTs.</b> In vitro/animal: anti-inflammatory, antioxidant, mucin-stimulating. One dry eye study (goblet cell stimulation) relevant to menopause dryness but not a menopause trial.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Avoid with spleen-cold diarrhea or damp-phlegm. Pair with cooling herbs to prevent heat. No clinical evidence for menopause symptoms.</div>
+        </div>
+
+        <!-- 11. Motherwort -->
+        <div class="herb-card" data-phase="herbs menstrual">
+          <div class="hc-head">
+            <div class="hc-ic">🌿</div>
+            <div>
+              <div class="hc-title">益母草 Motherwort</div>
+              <div class="hc-latin">Leonurus japonicus</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">Dried 5-15g; daily tea 5-10g; decoction 10-15g</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">Pre-period 3-5 days, daily × 5-7 days through period day 2-3; <b>NOT daily non-period</b></span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Pre-period through early period only (blood-stasis pattern)</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Decoct 20 min; steep 10 min; extract; boil eggs; pair with brown sugar</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Blood-invigorating, menstruation-regulating" herb for dysmenorrhea, scanty menses, clots, and postpartum lochia. Strictly cycle-gated.</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🔴 <b>No human RCTs</b> for menstrual regulation/dysmenorrhea. Animal: leonurine anti-dysmenorrhea via JNK/p38 MAPK inhibition (PMID 41762356). In vitro: bidirectional uterine smooth muscle effects (PMC11432705).</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> <b>Pregnancy absolutely contraindicated</b> (uterine contraction risk). Stop for heavy menses. If no improvement after 2-3 cycles, see a doctor. Not for daily use.</div>
+        </div>
+
+        <!-- 12. Kudzu -->
+        <div class="herb-card" data-phase="herbs perimenopause">
+          <div class="hc-head">
+            <div class="hc-ic">🌱</div>
+            <div>
+              <div class="hc-title">葛根 Kudzu <span class="qi" data-evidence="pueraria-mirifica">i</span></div>
+              <div class="hc-latin">Pueraria lobata (Chinese) ≠ Pueraria mirifica (Thai)</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">Dried 10-15g/day; kudzu powder 10-20g; daily tea 5-10g</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">3-5x/week; not daily long-term high-dose</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Perimenopause/menopause hot flashes; not cycle-specific</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Steep 20 min (sliced); boil; kudzu powder 80°C water; congee</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Muscle-relaxing, fluid-generating" herb; used for hot flashes/night sweats in menopause. Pair with rose or black bean.</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🟡 <b>Critical species distinction:</b> Hot flash evidence is for <b>Pueraria mirifica</b> (Thai, 50-100mg/day, small RCTs) <span class="qi" data-evidence="pueraria-mirifica">i</span>, NOT Chinese P. lobata (葛根). P. mirifica contains miroestrol (potent phytoestrogen); P. lobata has lower phytoestrogen content. Safety signals: mild anemia, liver enzyme elevation.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Pregnancy/lactation contraindicated. Estrogen-sensitive conditions, SERM users (tamoxifen), anticoagulants. Pre-surgery stop. Avoid iron cookware. Monitor hormones after 3 months.</div>
+        </div>
+
+        <!-- 13. Salvia -->
+        <div class="herb-card" data-phase="herbs luteal menstrual perimenopause">
+          <div class="hc-head">
+            <div class="hc-ic">🔴</div>
+            <div>
+              <div class="hc-title">丹参 Salvia / Danshen</div>
+              <div class="hc-latin">Salvia miltiorrhiza</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">3-15g; daily tea 3-5g; salvia-rose tea 15g</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">3-4x/week; not daily long-term; ≤2 weeks continuous</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Pre-period blood-moving; menopause CV/mood; stop for heavy menses</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Steep; decoct; pair with safflower/rose/goji; single-herb 15g</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Blood-circulation activating" herb; most commonly prescribed TCM herb for gynecological diseases in Taiwan. Used for menstrual irregularity, dysmenorrhea, and menopause mood.</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🔴 <b>No women's health RCTs.</b> Taiwan NHIRD data: most commonly prescribed for gynecological diseases (usage data, not efficacy). In vitro: salvianolic acids protected granulosa cells from H₂O₂ damage (PMC7716637).</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> <b>Pregnancy contraindicated.</b> Anticoagulant interaction (bleeding risk) — avoid with aspirin/warfarin. Stop for heavy menses. Never with 藜芦 (Eighteen Incompatibilities).</div>
+        </div>
+
+        <!-- 14. Safflower -->
+        <div class="herb-card" data-phase="herbs menstrual">
+          <div class="hc-head">
+            <div class="hc-ic">🌺</div>
+            <div>
+              <div class="hc-title">红花 Safflower</div>
+              <div class="hc-latin">Carthamus tinctorius</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">3-6g; daily 3-5 dried flowers; max 20g/day</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">2-3x/week; <b>≤7 consecutive days</b> (depletes qi/blood)</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Pre-period (blood-stasis dysmenorrhea/scanty menses); postpartum stasis</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Steep 5-10 min; decoct; pair with salvia/rose/peach kernel; honey to taste</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> Strong "blood-invigorating" herb for blood-stasis patterns: dysmenorrhea, scanty menses, amenorrhea, clots. Strictly cycle-gated and short-term.</div>
+          <div class="hc-evidence"><b>Evidence:</b> No specific women's health RCTs. Strong traditional blood-moving herb. Distinguish from 西红花 (saffron/Crocus sativus) — more potent, lower dose.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> <b>Pregnancy absolutely contraindicated</b> (abortifacient risk). Heavy menses/bleeding disorders/anticoagulant users contraindicated. Max 7 consecutive days — "耗伤气血" (depletes qi and blood).</div>
+        </div>
+
+        <!-- 15. White Peony -->
+        <div class="herb-card" data-phase="herbs follicular luteal perimenopause">
+          <div class="hc-head">
+            <div class="hc-ic">🌸</div>
+            <div>
+              <div class="hc-title">白芍 White Peony</div>
+              <div class="hc-latin">Paeonia lactiflora</div>
+            </div>
+          </div>
+          <div class="hc-grid">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">Daily tea 3-6g; decoction 5-15g; max 20g/day</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">3-4x/week; not daily; ≤2 weeks continuous</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Post-period blood nourishment; pre-period cramp relief; menopause</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">Steep 10-15 min; decoct; pair with dong quai/licorice/rose</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Blood-nourishing, yin-conserving, pain-relieving" herb. Common in formulas (Si Wu Tang, Xiao Yao San). Pair with licorice for pain relief (芍药甘草汤).</div>
+          <div class="hc-evidence"><b>Evidence:</b> No specific solo menopause RCTs. Common in formulas. Paeoniflorin has preclinical anti-inflammatory/analgesic data. Individual contribution in formulas cannot be isolated.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> <b>Never with 藜芦</b> (Eighteen Incompatibilities). Caution with spleen-cold diarrhea. Not for daily long-term use.</div>
+        </div>
+
+      </div>
+
+      <!-- ═══════════ COMPOUND FORMULAS ═══════════ -->
+      </div></div>
+<div class="collapsible-header" id="formulas-header"><span class="sec-title"><span class="ms" style="font-size:16px;color:var(--terracotta)">menu_book</span> Compound Formulas</span><span style="display:flex;align-items:center;gap:8px"><span class="count" id="formulas-count"></span><span class="chevron">▼</span></span></div>
+<div class="collapsible-content collapsed" id="formulas-content"><div class="collapsible-content-inner">
+      <div class="sub" style="margin-bottom:10px">Evidence-supported TCM formulas and cycle-aligned tea protocols</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+
+        <!-- DBT -->
+        <div class="formula-card" data-phase="herbs perimenopause follicular">
+          <div class="fc-head">
+            <div class="fc-ic">🍵</div>
+            <div>
+              <div class="fc-title">当归补血汤 Danggui Buxue Tang <span class="qi" data-evidence="danggui-buxue-tang">i</span></div>
+              <div class="fc-composition">黄芪30g : 当归6g (5:1 golden ratio)</div>
+            </div>
+          </div>
+          <div class="hc-grid" style="margin-top:10px">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">6g/day (as prepared formula), or 黄芪30g+当归6g decoction</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">Daily 1 dose, 2-3 consecutive cycles; post-period only</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Post-period (blood tonification golden window); menopause</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">600ml water → 300ml, split into 2 warm servings; add 5 red dates</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> From 李东垣《内外伤辨惑论》. "Qi-blood double tonification" for post-period weakness, postpartum recovery, and menopausal hot flashes.</div>
+          <div class="hc-evidence"><b>Evidence:</b> ✅ <b>Best-evidenced TCM formula for hot flashes.</b> Dose-escalation RCT (n=60): 6g/day → 34.9-37.4% hot flash reduction (P<0.01), night sweats -39.6%; 3g/day → 14.5-21.2%; 1.5g/day not significant <span class="qi" data-evidence="danggui-buxue-tang">i</span>. Separate RCT (n=103): significant reduction in mild hot flashes. No estrogenic effects.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Stop during period. Not for acute infection or fever. Best for mild-to-moderate hot flashes; severe may not respond. Consult a TCM practitioner.</div>
+        </div>
+
+        <!-- GMDZ -->
+        <div class="formula-card" data-phase="herbs perimenopause luteal">
+          <div class="fc-head">
+            <div class="fc-ic">🌾</div>
+            <div>
+              <div class="fc-title">甘麦大枣汤 Gan Mai Da Zao Tang <span class="qi" data-evidence="gan-mai-da-zao-tang">i</span></div>
+              <div class="fc-composition">甘草6g + 淮小麦30g + 大枣3枚</div>
+            </div>
+          </div>
+          <div class="hc-grid" style="margin-top:10px">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">甘草6-10g (honey-fried preferred) + 淮小麦15-30g + 大枣3-10枚</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">Daily 1 dose; can be daily tea; mild cases 2x/week</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Perimenopause "脏躁" (emotional lability); pre-period low mood; no cycle restriction</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">800ml → 400ml, drink soup + eat dates; or congee; use 淮小麦 NOT 浮小麦</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> From《金匮要略》. For "脏躁" — emotional lability, crying, yawning, insomnia. All food-grade ingredients (wheat, licorice, jujube).</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🟡 Meta-analyses (35 RCTs pooled): GMDZ significantly alleviated depression/anxiety, improved sleep; combination with antidepressants > alone <span class="qi" data-evidence="gan-mai-da-zao-tang">i</span>. <b>Overall evidence quality LOW</b> (heterogeneity, unclear allocation, lack of blinding). Network pharmacology: estrogen receptor, serotonergic, inflammatory pathways.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Very safe (all food-grade). Use 淮小麦 (sinks in water, heart-calming) NOT 浮小麦 (stops sweating). Long-term high-dose licorice can cause water retention/hypokalemia — monitor if hypertensive.</div>
+        </div>
+
+        <!-- Xiao Yao Wan -->
+        <div class="formula-card" data-phase="herbs luteal perimenopause">
+          <div class="fc-head">
+            <div class="fc-ic">🌿</div>
+            <div>
+              <div class="fc-title">逍遥丸 Xiao Yao Wan <span class="qi" data-evidence="jiawei-xiaoyao-pms">i</span></div>
+              <div class="fc-composition">柴胡, 当归, 白芍, 白术, 茯苓, 炙甘草, 薄荷, 生姜</div>
+            </div>
+          </div>
+          <div class="hc-grid" style="margin-top:10px">
+            <div class="hc-field"><span class="hc-label">Dosage</span><span class="hc-val">6-9g water pills 1-2x/day; large honey pill 1 pill 2x/day</span></div>
+            <div class="hc-field"><span class="hc-label">Frequency</span><span class="hc-val">Start 1 week pre-period; 2-4 weeks = 1 course; stop when symptoms improve</span></div>
+            <div class="hc-field"><span class="hc-label">Best Phase</span><span class="hc-val">Pre-period (7 days before) — liver-depression spleen-deficiency PMS</span></div>
+            <div class="hc-field"><span class="hc-label">Preparation</span><span class="hc-val">OTC patent medicine; take 1 hour after meals with warm water</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> "Soothe liver, strengthen spleen, nourish blood, regulate menstruation." Go-to OTC formula for PMS mood, irritability, breast tenderness, and menstrual irregularity.</div>
+          <div class="hc-evidence"><b>Evidence:</b> ✅ <b>Jiawei Xiaoyao pill</b> (modified with 牡丹皮+栀子): multi-center RCT n=144, 12g/day × 3 cycles → significant PMS symptom improvement vs placebo <span class="qi" data-evidence="jiawei-xiaoyao-pms">i</span>. ⚠️ Evidence is for <b>Jiawei</b> (modified) version, not classic Xiao Yao Wan. Meta-analysis for perimenopause: superior to HRT but Chinese, unblinded, high bias.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Evidence specifically for Jiawei version. Not for daily maintenance — requires pattern differentiation. Avoid cold/raw foods during use. Consult a TCM practitioner.</div>
+        </div>
+
+        <!-- 28-day cycle tea protocol -->
+        <div class="formula-card" data-phase="herbs menstrual follicular ovulation luteal">
+          <div class="fc-head">
+            <div class="fc-ic">📅</div>
+            <div>
+              <div class="fc-title">28-Day Cycle Tea Protocol</div>
+              <div class="fc-composition">Four-phase traditional tea template (no RCTs of this specific protocol)</div>
+            </div>
+          </div>
+          <div class="hc-grid" style="margin-top:10px;grid-template-columns:1fr">
+            <div class="hc-field"><span class="hc-label">🩸 Menstrual (Days 1-5) — Warm uterus, dispel cold</span><span class="hc-val">干姜3g + 红枣3颗 + 红糖. Daily 1 cup, days 1-3. Heavy menses: only ginger-date tea (no dong quai/motherwort/safflower).</span></div>
+            <div class="hc-field"><span class="hc-label">🌱 Follicular (Days 6-12) — Tonify qi/blood, nourish yin</span><span class="hc-val">黄芪6g + 当归2g + 党参3g + 红枣3颗 + 麦冬3g + 玉竹3g. Daily 1 cup × 7 days from period end ("进补黄金期").</span></div>
+            <div class="hc-field"><span class="hc-label">✨ Ovulation (Days 13-16) — Nourish ovaries, warm kidney</span><span class="hc-val">黑豆10g + 桑葚5-8g + 桂圆3颗 + 枸杞6-10粒 + 红枣2-3颗. Daily 1 cup × 7 days around ovulation.</span></div>
+            <div class="hc-field"><span class="hc-label">🌙 Luteal (Days 17-28) — Soothe liver, move qi</span><span class="hc-val">玫瑰花5-6朵 + 陈皮2-3g + 桑葚5g + 桂圆2颗 + 红枣3颗. Daily 1 cup, 7 days pre-period. Rose added last, don't boil.</span></div>
+          </div>
+          <div class="hc-prep"><b>Traditional use:</b> Widely circulated on Chinese platforms (小红书/抖音). Phase logic aligns with TCM cycle theory: warm during period, tonify after, nourish at ovulation, soothe pre-period.</div>
+          <div class="hc-evidence"><b>Evidence:</b> 🟡 <b>No RCTs of this specific protocol.</b> Individual ingredients have varying evidence (see individual herb cards). The phase-aligned framework is traditional, not clinically validated. Frame as wellness practice, not clinical treatment.</div>
+          <div class="hc-caution"><b>⚠️ Cautions:</b> Blood-activating herbs (益母草, 红花, 丹参) are pregnancy contraindicated and cycle-gated. Heavy menses: avoid dong quai/motherwort/safflower during period. Consult a TCM practitioner for personalized formula.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Foods to limit -->
+    <div class="card tint-blush">
+      </div></div>
+<div class="collapsible-header" id="foods-limit-header"><span class="sec-title"><span class="ms" style="font-size:16px;color:var(--low)">block</span> Foods to Limit</span><span style="display:flex;align-items:center;gap:8px"><span class="count" id="foods-limit-count"></span><span class="chevron">▼</span></span></div>
+<div class="collapsible-content collapsed" id="foods-limit-content"><div class="collapsible-content-inner">
+      <div class="sub" style="margin-bottom:8px">These may worsen cycle symptoms</div>
+      <div class="limit-card">
+        <div class="lc-ic">🍟</div>
+        <div class="lc-body">
+          <div class="lc-name">Processed &amp; Fried Foods</div>
+          <div class="lc-why"><b>Why:</b> High in trans fats and sodium, which can increase inflammation and water retention — worsening bloating and breast tenderness. They also disrupt blood sugar balance, amplifying mood swings and cravings.</div>
+        </div>
+      </div>
+      <div class="limit-card">
+        <div class="lc-ic">☕</div>
+        <div class="lc-body">
+          <div class="lc-name">Excessive Caffeine <span class="qi" data-evidence="sleep-cycle-hormones">i</span></div>
+          <div class="lc-why"><b>Why:</b> More than 200-300mg/day (2-3 cups) can worsen breast tenderness, anxiety, and sleep disruption — especially in the luteal phase. Caffeine also affects cortisol levels and can amplify stress responses <span class="qi" data-evidence="stress-cortisol-cycle">i</span>.</div>
+        </div>
+      </div>
+      <div class="limit-card">
+        <div class="lc-ic">🍷</div>
+        <div class="lc-body">
+          <div class="lc-name">Alcohol <span class="qi" data-evidence="sleep-duration">i</span></div>
+          <div class="lc-why"><b>Why:</b> Disrupts sleep quality (especially REM sleep), affects liver hormone metabolism, and can worsen PMS mood symptoms. It may also increase hot flash frequency in perimenopause <span class="qi" data-evidence="hot-flashes">i</span>. Limit to occasional use.</div>
+        </div>
+      </div>
+      <div class="limit-card">
+        <div class="lc-ic">🍬</div>
+        <div class="lc-body">
+          <div class="lc-name">High-Sugar Foods</div>
+          <div class="lc-why"><b>Why:</b> Rapid blood sugar spikes and crashes worsen energy fluctuations, irritability, and cravings — particularly in the luteal phase. Excess sugar also promotes inflammation and can disrupt gut microbiome balance, affecting hormone metabolism.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- More resources -->
+    <div class="card">
+      </div></div>
+<div class="collapsible-header" id="go-deeper-header"><span class="sec-title"><span class="ms" style="font-size:16px;color:var(--periwinkle)">library_books</span> Go Deeper</span><span style="display:flex;align-items:center;gap:8px"><span class="count" id="go-deeper-count"></span><span class="chevron">▼</span></span></div>
+<div class="collapsible-content collapsed" id="go-deeper-content"><div class="collapsible-content-inner">
+      <div class="sub" style="margin-bottom:10px">Personalized nutrition &amp; smart scanning</div>
+      <a href="nutrition-plan.html" class="lrow" style="padding:14px 4px">
+        <div class="l-ic" style="background:rgba(168,192,160,.15)">📋</div>
+        <div class="l-t"><b>Personalized Nutrition Plan</b><span>Cycle-aligned meal plans &amp; recipes</span></div>
+        <span class="l-arr ms">chevron_right</span>
+      </a>
+      <a href="label-scan.html" class="lrow" style="padding:14px 4px">
+        <div class="l-ic" style="background:rgba(196,181,224,.15)">🔍</div>
+        <div class="l-t"><b>Label Scanner</b><span>Scan food labels for cycle-friendly ingredients</span></div>
+        <span class="l-arr ms">chevron_right</span>
+      </a>
+      <a href="supplements.html" class="lrow" style="padding:14px 4px">
+        <div class="l-ic" style="background:rgba(245,198,184,.15)">💊</div>
+        <div class="l-t"><b>Supplement Guide</b><span>Evidence-based supplements for cycle health</span></div>
+        <span class="l-arr ms">chevron_right</span>
+      </a>
+      
+    </div>
+
+    <!-- Wellness disclaimer -->
+    <div class="wellness-note">
+      💛 <b>Wellness, not diagnosis.</b> Consult a qualified TCM practitioner or physician before starting herbal regimens, especially if pregnant, nursing, on medication, or with pre-existing conditions. Food and herb recommendations are based on general nutritional science, cycle physiology, and verified clinical research where available. Many traditional herbs have no human clinical trials — preclinical evidence is noted honestly. Evidence markers (i) link to supporting research with real PMIDs/DOIs. Individual needs vary based on health conditions, medications, allergies, and personal goals.
+    </div>
+
+  </div>
+
+  <nav class="nav">
+    <a href="home.html"><span class="n-ic">home</span>Home</a>
+    <a href="foods.html" class="on"><span class="n-ic">restaurant</span>Foods</a>
+    <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+  </nav>
+</div>
+
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script>
+// Phase/condition filter
+var activeCat = 'all';
+document.querySelectorAll('.cat-chip').forEach(function(chip){
+  chip.addEventListener('click', function(){
+    document.querySelectorAll('.cat-chip').forEach(function(c){c.classList.remove('on');});
+    chip.classList.add('on');
+    activeCat = chip.dataset.cat;
+    filterFoods();
+  });
+});
+
+function filterFoods(){
+  var query = (document.getElementById('foodSearch').value || '').toLowerCase().trim();
+
+  // Filter all cards (food cards + herb cards + formula cards)
+  var allCards = document.querySelectorAll('.food-card, .herb-card, .formula-card');
+  var visible = 0;
+  allCards.forEach(function(card){
+    var phases = (card.dataset.phase || '').split(' ');
+    var phaseMatch = (activeCat === 'all') || phases.indexOf(activeCat) !== -1;
+    var text = card.textContent.toLowerCase();
+    var searchMatch = !query || text.indexOf(query) !== -1;
+    if(phaseMatch && searchMatch){
+      card.style.display = '';
+      visible++;
+    } else {
+      card.style.display = 'none';
+    }
+  });
+
+  // Show/hide section headers based on visible cards
+  document.querySelectorAll('.phase-section').forEach(function(section){
+    var sectionCards = section.querySelectorAll('.food-card, .herb-card, .formula-card');
+    var hasVisible = false;
+    sectionCards.forEach(function(c){
+      if(c.style.display !== 'none') hasVisible = true;
+    });
+    if(hasVisible || activeCat === 'all'){
+      section.classList.remove('hidden');
+    } else {
+      section.classList.add('hidden');
+    }
+  });
+
+  document.getElementById('foodCount').textContent = visible + ' item' + (visible === 1 ? '' : 's');
+}
+</script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+</div></div>
+
+<script>
+
+// Count items in each collapsible section
+document.addEventListener('DOMContentLoaded', function() {
+  var sections = ['cycle-foods','perimenopause-foods','pcos-foods','endo-foods','herbs-teas','formulas','foods-limit','go-deeper'];
+  sections.forEach(function(id) {
+    var content = document.getElementById(id + '-content');
+    var countEl = document.getElementById(id + '-count');
+    if (content && countEl) {
+      var cards = content.querySelectorAll('.food-card, .herb-card, .formula-card, .cb-item, li');
+      if (cards.length > 0) countEl.textContent = cards.length + ' items';
+    }
+  });
+});
+
+// Collapsible sections
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.collapsible-header').forEach(function(header) {
+    header.addEventListener('click', function() {
+      var content = header.nextElementSibling;
+      header.classList.toggle('open');
+      content.classList.toggle('collapsed');
+    });
+  });
+});
+</script>
+
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

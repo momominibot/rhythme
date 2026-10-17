@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dream Room — Ovumind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { width:100%; height:100%; overflow:hidden; font-family:'Manrope',system-ui,sans-serif; background:#0d0a14; }
+  #canvas-container { position:fixed; inset:0; z-index:1; }
+  canvas { display:block; }
+
+  /* Dreamy UI overlay */
+  .ui-overlay { position:fixed; inset:0; z-index:10; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+
+  .top-bar { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; pointer-events:auto; }
+  .back-btn { background:rgba(255,255,255,.1); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,.15); color:#f0e8f5; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; text-decoration:none; transition:.2s; }
+  .back-btn:active { transform:scale(.92); }
+  .room-title { text-align:center; }
+  .room-title h1 { font-family:'Newsreader',serif; font-size:20px; font-weight:600; color:#f5edfa; letter-spacing:.02em; }
+  .room-title p { font-size:11px; color:rgba(245,237,250,.6); font-weight:600; letter-spacing:.1em; text-transform:uppercase; margin-top:2px; }
+  .spacer { width:40px; }
+
+  /* Center breathing guide */
+  .breath-guide { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; transition:opacity .5s; }
+  .breath-guide.hidden { opacity:0; }
+  .breath-text { font-family:'Newsreader',serif; font-size:28px; font-weight:500; color:rgba(255,255,255,.9); text-shadow:0 2px 20px rgba(122,92,150,.5); animation:breathPulse 8s ease-in-out infinite; }
+  @keyframes breathPulse { 0%,100%{opacity:.7;transform:scale(.95)} 50%{opacity:1;transform:scale(1.05)} }
+  .breath-sub { font-size:12px; color:rgba(255,255,255,.5); margin-top:8px; font-weight:600; letter-spacing:.08em; }
+
+  /* Bottom controls */
+  .bottom-panel { padding:0 20px 24px; pointer-events:auto; }
+  .control-card { background:rgba(255,255,255,.08); backdrop-filter:blur(30px); border:1px solid rgba(255,255,255,.12); border-radius:24px; padding:16px; max-width:430px; margin:0 auto; }
+  .control-row { display:flex; gap:10px; align-items:center; }
+  .ctrl-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; padding:12px 8px; border-radius:16px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); color:#f0e8f5; cursor:pointer; transition:.2s; font-family:inherit; }
+  .ctrl-btn:active { transform:scale(.95); background:rgba(255,255,255,.12); }
+  .ctrl-btn.active { background:linear-gradient(135deg,rgba(122,92,150,.4),rgba(212,154,138,.3)); border-color:rgba(196,181,224,.4); }
+  .ctrl-btn .ms { font-size:22px; }
+  .ctrl-btn span { font-size:10.5px; font-weight:700; letter-spacing:.04em; }
+  .erin-card { display:flex; align-items:center; gap:12px; margin-top:12px; padding:12px; border-radius:16px; background:rgba(122,92,150,.15); border:1px solid rgba(196,181,224,.2); cursor:pointer; transition:.2s; }
+  .erin-card:active { transform:scale(.98); }
+  .erin-avatar { width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,.2); flex-shrink:0; }
+  .erin-info { flex:1; }
+  .erin-info h4 { font-family:'Newsreader',serif; font-size:14px; font-weight:600; color:#f5edfa; margin:0; }
+  .erin-info p { font-size:11px; color:rgba(245,237,250,.6); margin:2px 0 0; }
+  .play-btn { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#7a5c96,#9b7bb0); border:none; color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:.2s; }
+  .play-btn:active { transform:scale(.9); }
+  .play-btn .ms { font-size:18px; }
+
+  /* Ambient info */
+  .ambient-tag { position:absolute; top:80px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,.06); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.1); padding:6px 14px; border-radius:99px; font-size:10px; font-weight:700; color:rgba(255,255,255,.5); letter-spacing:.1em; text-transform:uppercase; pointer-events:none; }
+
+  /* Loading */
+  .loading { position:fixed; inset:0; z-index:100; background:linear-gradient(160deg,#1a1428,#0d0a14); display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity .8s; }
+  .loading.hidden { opacity:0; pointer-events:none; }
+  .loading-orb { width:60px; height:60px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#c4b5e0,#7a5c96); animation:loadPulse 2s ease-in-out infinite; box-shadow:0 0 60px rgba(196,181,224,.4); }
+  @keyframes loadPulse { 0%,100%{transform:scale(.8);opacity:.7} 50%{transform:scale(1.1);opacity:1} }
+  .loading p { margin-top:20px; font-family:'Newsreader',serif; font-size:16px; color:rgba(245,237,250,.7); }
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="loading-orb"></div>
+  <p>Entering the dream room...</p>
+</div>
+
+<div id="canvas-container"></div>
+
+<div class="ui-overlay">
+  <div class="top-bar">
+    <a href="mindfulness.html" class="back-btn"><span class="material-symbols-outlined">arrow_back</span></a>
+    <div class="room-title">
+      <h1>The Dream Room</h1>
+      <p>A space to breathe and be</p>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <div class="ambient-tag" id="ambientTag">Drag to look around</div>
+
+  <div class="breath-guide" id="breathGuide">
+    <div class="breath-text" id="breathText">Breathe in</div>
+    <div class="breath-sub">4 counts in · 4 counts hold · 6 counts out</div>
+  </div>
+
+  <div class="bottom-panel">
+    <div class="control-card">
+      <div class="control-row">
+        <button class="ctrl-btn active" id="modeBreath" onclick="setMode('breath')">
+          <span class="material-symbols-outlined">air</span>
+          <span>Breathe</span>
+        </button>
+        <button class="ctrl-btn" id="modeMeditate" onclick="setMode('meditate')">
+          <span class="material-symbols-outlined">self_improvement</span>
+          <span>Meditate</span>
+        </button>
+        <button class="ctrl-btn" id="modeSleep" onclick="setMode('sleep')">
+          <span class="material-symbols-outlined">bedtime</span>
+          <span>Sleep</span>
+        </button>
+        <button class="ctrl-btn" id="modeExplore" onclick="setMode('explore')">
+          <span class="material-symbols-outlined">travel_explore</span>
+          <span>Wander</span>
+        </button>
+      </div>
+      <div class="erin-card" onclick="toggleErinVoice()">
+        <img src="assets/avatars/erin/erin_profile.png" alt="Erin" class="erin-avatar" onerror="this.style.display='none'">
+        <div class="erin-info">
+          <h4>Erin Lee</h4>
+          <p id="erinStatus">Guided meditation available</p>
+        </div>
+        <button class="play-btn" id="erinPlayBtn"><span class="material-symbols-outlined">play_arrow</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<audio id="erinAudio" preload="auto"></audio>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Scene setup ──
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x1a1428, 0.025);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(0, 2.5, 8);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 4;
+controls.maxDistance = 20;
+controls.maxPolarAngle = Math.PI * 0.6;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.3;
+
+// ── Dreamy gradient sky (shader) ──
+const skyGeo = new THREE.SphereGeometry(80, 32, 32);
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  uniforms: {
+    topColor: { value: new THREE.Color(0x2a1f42) },
+    midColor: { value: new THREE.Color(0x4a3560) },
+    bottomColor: { value: new THREE.Color(0x8b6a7a) },
+    offset: { value: 20 },
+    exponent: { value: 0.8 }
+  },
+  vertexShader: `
+    varying vec3 vWorldPosition;
+    void main() {
+      vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+      vWorldPosition = worldPosition.xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 topColor; uniform vec3 midColor; uniform vec3 bottomColor;
+    uniform float offset; uniform float exponent;
+    varying vec3 vWorldPosition;
+    void main() {
+      float h = normalize(vWorldPosition + offset).y;
+      vec3 color;
+      if (h > 0.0) {
+        color = mix(midColor, topColor, pow(h, exponent));
+      } else {
+        color = mix(midColor, bottomColor, pow(-h, exponent * 0.5));
+      }
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `
+});
+scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+// ── Soft ground ──
+const groundGeo = new THREE.CircleGeometry(30, 64);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x3d2f52, roughness: 0.9, metalness: 0.1,
+  transparent: true, opacity: 0.8
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.5;
+scene.add(ground);
+
+// ── Central breathing orb ──
+const orbGeo = new THREE.SphereGeometry(1.2, 64, 64);
+const orbMat = new THREE.MeshPhysicalMaterial({
+  color: 0xc4b5e0,
+  emissive: 0x7a5c96,
+  emissiveIntensity: 0.4,
+  roughness: 0.1,
+  metalness: 0.1,
+  transparent: true,
+  opacity: 0.85,
+  clearcoat: 1.0,
+  clearcoatRoughness: 0.1
+});
+const orb = new THREE.Mesh(orbGeo, orbMat);
+orb.position.y = 1.5;
+scene.add(orb);
+
+// Orb glow
+const glowGeo = new THREE.SphereGeometry(2.5, 32, 32);
+const glowMat = new THREE.MeshBasicMaterial({
+  color: 0xc4b5e0, transparent: true, opacity: 0.08, side: THREE.BackSide
+});
+const glow = new THREE.Mesh(glowGeo, glowMat);
+glow.position.copy(orb.position);
+scene.add(glow);
+
+// ── Floating particles (fireflies/dust) ──
+const particleCount = 300;
+const particleGeo = new THREE.BufferGeometry();
+const positions = new Float32Array(particleCount * 3);
+const colors = new Float32Array(particleCount * 3);
+const particleColors = [0xc4b5e0, 0xf5c6b8, 0xe5c98a, 0xa8c0a0, 0xb8cde0];
+
+for (let i = 0; i < particleCount; i++) {
+  const radius = 3 + Math.random() * 12;
+  const angle = Math.random() * Math.PI * 2;
+  const height = Math.random() * 8 - 1;
+  positions[i*3] = Math.cos(angle) * radius;
+  positions[i*3+1] = height;
+  positions[i*3+2] = Math.sin(angle) * radius;
+  const c = new THREE.Color(particleColors[Math.floor(Math.random() * particleColors.length)]);
+  colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
+}
+particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+const particleMat = new THREE.PointsMaterial({
+  size: 0.08, vertexColors: true, transparent: true, opacity: 0.8,
+  blending: THREE.AdditiveBlending, depthWrite: false
+});
+const particles = new THREE.Points(particleGeo, particleMat);
+scene.add(particles);
+
+// ── Floating dreamy shapes (soft organic) ──
+const shapes = [];
+const shapeColors = [0xc4b5e0, 0xf5c6b8, 0xe5c98a, 0xa8b8d8, 0xd49ab8];
+for (let i = 0; i < 12; i++) {
+  const geo = new THREE.IcosahedronGeometry(0.3 + Math.random() * 0.5, 2);
+  // Soften vertices for organic look
+  const pos = geo.attributes.position;
+  for (let v = 0; v < pos.count; v++) {
+    const noise = 0.85 + Math.random() * 0.3;
+    pos.setXYZ(v, pos.getX(v)*noise, pos.getY(v)*noise, pos.getZ(v)*noise);
+  }
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({
+    color: shapeColors[i % shapeColors.length],
+    roughness: 0.6, metalness: 0.2,
+    transparent: true, opacity: 0.6,
+    emissive: shapeColors[i % shapeColors.length],
+    emissiveIntensity: 0.15
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  const angle = (i / 12) * Math.PI * 2;
+  const radius = 4 + Math.random() * 4;
+  mesh.position.set(Math.cos(angle)*radius, 1 + Math.random()*4, Math.sin(angle)*radius);
+  mesh.userData = {
+    baseY: mesh.position.y,
+    floatSpeed: 0.3 + Math.random() * 0.5,
+    floatOffset: Math.random() * Math.PI * 2,
+    rotSpeed: 0.002 + Math.random() * 0.005
+  };
+  scene.add(mesh);
+  shapes.push(mesh);
+}
+
+// ── Meditation cushion ──
+const cushionGroup = new THREE.Group();
+const cushionGeo = new THREE.CylinderGeometry(0.8, 0.9, 0.25, 32);
+const cushionMat = new THREE.MeshStandardMaterial({
+  color: 0x7a5c96, roughness: 0.8, metalness: 0.1
+});
+const cushion = new THREE.Mesh(cushionGeo, cushionMat);
+cushion.position.y = -0.35;
+cushionGroup.add(cushion);
+
+const cushionTopGeo = new THREE.CylinderGeometry(0.7, 0.75, 0.1, 32);
+const cushionTopMat = new THREE.MeshStandardMaterial({
+  color: 0x9b7bb0, roughness: 0.7, metalness: 0.1
+});
+const cushionTop = new THREE.Mesh(cushionTopGeo, cushionTopMat);
+cushionTop.position.y = -0.18;
+cushionGroup.add(cushionTop);
+cushionGroup.position.set(0, 0, 0);
+scene.add(cushionGroup);
+
+// ── Lighting ──
+const ambient = new THREE.AmbientLight(0xc4b5e0, 0.4);
+scene.add(ambient);
+
+const mainLight = new THREE.PointLight(0xf5c6b8, 2, 30);
+mainLight.position.set(5, 8, 5);
+scene.add(mainLight);
+
+const orbLight = new THREE.PointLight(0xc4b5e0, 3, 15);
+orbLight.position.copy(orb.position);
+scene.add(orbLight);
+
+const rimLight = new THREE.DirectionalLight(0xa8b8d8, 0.5);
+rimLight.position.set(-5, 5, -5);
+scene.add(rimLight);
+
+// ── Animation ──
+const clock = new THREE.Clock();
+let breathPhase = 0;
+let currentMode = 'breath';
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  // Breathing orb
+  const breathScale = 1 + Math.sin(t * 0.5) * 0.15;
+  orb.scale.setScalar(breathScale);
+  glow.scale.setScalar(breathScale * 1.1);
+  orbLight.intensity = 2.5 + Math.sin(t * 0.5) * 1;
+
+  // Orb slow rotation
+  orb.rotation.y = t * 0.1;
+  orb.rotation.x = Math.sin(t * 0.07) * 0.1;
+
+  // Particles drift
+  const pPos = particles.geometry.attributes.position;
+  for (let i = 0; i < particleCount; i++) {
+    const y = pPos.getY(i);
+    pPos.setY(i, y + Math.sin(t * 0.3 + i) * 0.002);
+  }
+  pPos.needsUpdate = true;
+  particles.rotation.y = t * 0.02;
+
+  // Floating shapes
+  shapes.forEach((s, i) => {
+    s.position.y = s.userData.baseY + Math.sin(t * s.userData.floatSpeed + s.userData.floatOffset) * 0.5;
+    s.rotation.x += s.userData.rotSpeed;
+    s.rotation.y += s.userData.rotSpeed * 1.3;
+  });
+
+  // Cushion subtle bob
+  cushionGroup.position.y = Math.sin(t * 0.5) * 0.03;
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ── Breath text cycle ──
+const breathTexts = ['Breathe in', 'Hold', 'Breathe out', 'Rest'];
+let breathIndex = 0;
+setInterval(() => {
+  if (currentMode === 'breath' || currentMode === 'meditate') {
+    breathIndex = (breathIndex + 1) % breathTexts.length;
+    document.getElementById('breathText').textContent = breathTexts[breathIndex];
+  }
+}, 3500);
+
+// ── Mode switching ──
+window.setMode = function(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+
+  const guide = document.getElementById('breathGuide');
+  const tag = document.getElementById('ambientTag');
+
+  if (mode === 'breath') {
+    guide.classList.remove('hidden');
+    tag.textContent = '4-4-6 breathing';
+    controls.autoRotateSpeed = 0.3;
+    scene.fog.density = 0.025;
+  } else if (mode === 'meditate') {
+    guide.classList.remove('hidden');
+    tag.textContent = 'Meditation space';
+    controls.autoRotateSpeed = 0.1;
+    scene.fog.density = 0.03;
+  } else if (mode === 'sleep') {
+    guide.classList.add('hidden');
+    tag.textContent = 'Drift off';
+    controls.autoRotateSpeed = 0.05;
+    scene.fog.density = 0.04;
+    camera.position.lerp(new THREE.Vector3(0, 1.5, 5), 0.02);
+  } else if (mode === 'explore') {
+    guide.classList.add('hidden');
+    tag.textContent = 'Drag to wander';
+    controls.autoRotateSpeed = 0.5;
+    scene.fog.density = 0.02;
+  }
+};
+
+// ── Erin voice ──
+let erinPlaying = false;
+window.toggleErinVoice = function() {
+  const audio = document.getElementById('erinAudio');
+  const btn = document.getElementById('erinPlayBtn');
+  const status = document.getElementById('erinStatus');
+
+  if (erinPlaying) {
+    audio.pause();
+    erinPlaying = false;
+    btn.querySelector('.ms').textContent = 'play_arrow';
+    status.textContent = 'Guided meditation available';
+  } else {
+    // Try pre-generated phrase first
+    const phrases = ['meditation_begin', 'greeting_welcome', 'closing_patience'];
+    const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+    audio.src = `assets/audio/erin-tts/${phrase}.mp3`;
+    audio.play().then(() => {
+      erinPlaying = true;
+      btn.querySelector('.ms').textContent = 'stop';
+      status.textContent = 'Erin is guiding you...';
+    }).catch(() => {
+      // Fallback: try TTS proxy
+      fetch('http://localhost:8765/tts', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text: 'Welcome to the dream room. Find a comfortable seat. Let us breathe together, and arrive in this moment.', voice: 'S_PLWb4DCd2', speed: 0.85})
+      }).then(r => r.blob()).then(blob => {
+        audio.src = URL.createObjectURL(blob);
+        audio.play();
+        erinPlaying = true;
+        btn.querySelector('.ms').textContent = 'stop';
+        status.textContent = 'Erin is guiding you...';
+      }).catch(() => {
+        status.textContent = 'Start TTS proxy for Erin voice';
+      });
+    });
+  }
+};
+
+document.getElementById('erinAudio').addEventListener('ended', () => {
+  erinPlaying = false;
+  document.getElementById('erinPlayBtn').querySelector('.ms').textContent = 'play_arrow';
+  document.getElementById('erinStatus').textContent = 'Guided meditation available';
+});
+
+// ── Resize ──
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── Start ──
+animate();
+setTimeout(() => {
+  document.getElementById('loading').classList.add('hidden');
+}, 1500);
+</script>
+
+</body>
+</html>

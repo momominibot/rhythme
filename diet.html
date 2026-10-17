@@ -1,0 +1,221 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovumind · Diet</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<script src="anim.js" defer></script>
+<style>
+.foodgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ftile{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1.5px solid var(--line-soft);border-radius:14px;background:var(--card-solid)}
+.ftile .fem{font-size:21px;line-height:1;flex-shrink:0}
+.ftile b{font-size:12.5px;color:var(--cocoa);display:block}
+.ftile span{font-size:10.5px;color:var(--taupe);line-height:1.3;display:block;margin-top:1px}
+.fsci{font-size:11px;color:var(--taupe);line-height:1.55;margin-top:13px;display:flex;gap:6px;align-items:flex-start}
+.fsci a{color:var(--mauve)}
+/* nutrient goals card */
+.ntoggle{display:inline-flex;background:var(--sunken);border-radius:99px;padding:3px}
+.ntoggle button{border:none;background:none;font:700 11.5px var(--sans);color:var(--taupe);padding:6px 13px;border-radius:99px;cursor:pointer;transition:.15s}
+.ntoggle button.on{background:var(--paper);color:var(--mauve);box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.nrow{padding:11px 2px;border-bottom:1px solid var(--line-soft)}
+.nrow:last-child{border-bottom:none}
+.nhead{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px}
+.nnm{font-weight:700;color:var(--cocoa)} .nnm small{color:var(--faded);font-weight:600;font-size:10px;margin-left:5px}
+.nval{color:var(--taupe);font-size:11.5px;font-weight:600}
+.npct{font-weight:800;font-size:11px;margin-left:7px}
+.nbar{height:8px;background:var(--sunken);border-radius:99px;margin-top:7px;overflow:hidden}
+.nbar i{display:block;height:100%;border-radius:99px}
+.ndots{display:flex;gap:5px;margin-top:8px}
+.ndots i{flex:1;height:15px;border-radius:4px}
+.nlegend{display:flex;gap:16px;justify-content:center;margin-top:15px;font-size:10.5px;color:var(--taupe)}
+.nlegend span{display:inline-flex;align-items:center;gap:5px}
+.nlegend em{width:9px;height:9px;border-radius:3px;font-style:normal}
+</style>
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+  <div class="scroll">
+    <div class="row" style="justify-content:center;gap:18px">
+      <span class="ms" style="color:var(--faded)">chevron_left</span>
+      <b style="font-size:14px;letter-spacing:.08em">TODAY · MAY 18</b>
+      <span class="ms" style="color:var(--faded)">chevron_right</span>
+    </div>
+
+    <!-- Daily nutrition hero: calorie ring + macro bars -->
+    <div class="card tint-sage" style="display:flex;flex-direction:column;align-items:center;padding:24px 18px">
+      <svg width="184" height="184" viewBox="0 0 184 184" role="img" aria-label="1,240 of 2,000 kcal logged today">
+        <circle cx="92" cy="92" r="80" fill="none" stroke="rgba(147,187,143,.2)" stroke-width="13"/>
+        <circle cx="92" cy="92" r="80" fill="none" stroke="var(--d-diet)" stroke-width="13" stroke-linecap="round"
+                stroke-dasharray="311 502" transform="rotate(-90 92 92)"/>
+        <text x="92" y="86" text-anchor="middle" style="font:500 38px Newsreader;fill:var(--ink)">1,240</text>
+        <text x="92" y="110" text-anchor="middle" style="font:600 11px Manrope;letter-spacing:.1em;fill:var(--taupe)">/ 2,000 KCAL</text>
+      </svg>
+      <span class="badge ok" style="margin-top:10px">62% of daily goal · On track</span>
+      <a href="nutrition-plan.html" style="margin-top:12px;font:700 12px var(--sans);color:var(--mauve);text-decoration:none;display:flex;align-items:center;gap:4px"><span class="ms" style="font-size:16px">tune</span> Personalise my calories & plate</a>
+    </div>
+
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h2 class="sec" style="margin-top:0">Nutrient goals</h2>
+      <div class="ntoggle" id="ntoggle"><button class="on" data-v="day">Today</button><button data-v="week">This week</button></div>
+    </div>
+    <div class="card" id="nutCard" style="padding:6px 16px 14px"></div>
+
+    <!-- UPF label scanner entry -->
+    <a href="label-scan.html" class="card" style="display:flex;align-items:center;gap:14px;padding:16px 18px;text-decoration:none;background:linear-gradient(135deg,rgba(147,187,143,.22),rgba(255,255,255,.7))">
+      <img src="assets/icons/label-scan.png" alt="" style="width:52px;height:52px;flex-shrink:0;border-radius:12px"/>
+      <div style="flex:1">
+        <b style="font-family:var(--serif);font-size:17px;color:var(--cocoa)">Scan a food label</b>
+        <div class="sub" style="font-size:12px;margin-top:1px">Check how ultra-processed it is · get a whole-food score</div>
+      </div>
+      <span class="ms" style="color:var(--taupe)">chevron_right</span>
+    </a>
+
+    <!-- Today's logged meals -->
+    <div class="row" style="justify-content:space-between">
+      <h2 class="sec">Today's Meals</h2>
+      <a href="food-scan.html" style="font:700 13px var(--sans);color:var(--d-diet);text-decoration:none">+ Add</a>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;gap:0;padding:6px 18px">
+      <div class="lrow">
+        <div class="l-ic" style="background:rgba(147,187,143,.18);color:var(--d-diet)"><span class="ms">coffee</span></div>
+        <div class="l-t"><b>Avocado Toast &amp; Eggs</b><span>Breakfast · 8:15 AM</span></div>
+        <div style="text-align:right"><div style="font-family:var(--serif);font-size:16px;font-weight:500;color:var(--cocoa)">380</div><div class="sub" style="font-size:10px">22g P · kcal</div></div>
+      </div>
+      <div class="lrow">
+        <div class="l-ic" style="background:rgba(147,187,143,.18);color:var(--d-diet)"><span class="ms">nutrition</span></div>
+        <div class="l-t"><b>Greek Yogurt &amp; Berries</b><span>Snack · 10:30 AM</span></div>
+        <div style="text-align:right"><div style="font-family:var(--serif);font-size:16px;font-weight:500;color:var(--cocoa)">180</div><div class="sub" style="font-size:10px">15g P · kcal</div></div>
+      </div>
+      <div class="lrow">
+        <div class="l-ic" style="background:rgba(110,70,84,.14);color:var(--mauve)"><span class="ms">restaurant</span></div>
+        <div class="l-t"><b>Grilled Salmon Bowl</b><span>Lunch · 12:30 PM · <span style="color:var(--d-diet);font-weight:700">AI Scanned</span></span></div>
+        <div style="text-align:right"><div style="font-family:var(--serif);font-size:16px;font-weight:500;color:var(--cocoa)">430</div><div class="sub" style="font-size:10px">32g P · kcal</div></div>
+      </div>
+    </div>
+
+    <!-- Ovarian-health nutrition (evidence-based) -->
+    <h2 class="sec">Eat for your ovaries</h2>
+    <div class="card">
+      <p class="sub" style="margin-bottom:12px">A Mediterranean-style plate is linked to better ovarian reserve and egg quality. Foods worth leaning into:</p>
+      <div class="foodgrid">
+        <div class="ftile"><span class="fem">🐟</span><div><b>Oily fish</b><span>Omega-3s support egg quality — salmon, sardines, mackerel</span></div></div>
+        <div class="ftile"><span class="fem">🥬</span><div><b>Greens &amp; legumes</b><span>Folate for reproductive health — spinach, lentils, beans</span></div></div>
+        <div class="ftile"><span class="fem">🫐</span><div><b>Berries &amp; colour</b><span>Antioxidants shield eggs from oxidative stress</span></div></div>
+        <div class="ftile"><span class="fem">🫒</span><div><b>Olive oil &amp; nuts</b><span>Healthy fats over trans fats — the Mediterranean core</span></div></div>
+        <div class="ftile"><span class="fem">🌾</span><div><b>Whole grains</b><span>Low-GI carbs for steadier hormones &amp; insulin</span></div></div>
+        <div class="ftile"><span class="fem">🚫</span><div><b>Limit UPF &amp; sugar</b><span>Trans fats, refined carbs &amp; added sugar → poorer fertility</span></div></div>
+      </div>
+      <div class="fsci"><span class="ms" style="font-size:14px;color:var(--faded)">menu_book</span>
+        <span>Mediterranean patterns rich in fish, vegetables, legumes, whole grains and olive oil are tied to better ovarian reserve; trans fats and refined carbs to worse. <a href="https://doi.org/10.1016/j.ajog.2017.08.010">Gaskins &amp; Chavarro 2017</a> · <a href="https://doi.org/10.1093/advances/nmab068">Skoracka 2021</a> · <a href="https://doi.org/10.3390/nu15092280">Prieto-Huecas 2023</a></span>
+      </div>
+    </div>
+
+    <!-- AI insight tying nutrition to cycle phase -->
+    <div class="insight">
+      <span class="i-ic ms" style="color:var(--mauve)">auto_awesome</span>
+      <p><b>Luteal Phase Insight</b><br/>Great protein balance today. This meal supports stable energy and hormone balance — particularly beneficial during the luteal phase for managing cravings and steadying blood sugar.</p>
+    </div>
+    <div class="insight" style="background:linear-gradient(140deg, rgba(147,187,143,.22), rgba(255,255,255,.78))">
+      <span class="i-ic ms" style="color:var(--ok)">lightbulb</span>
+      <p><b>AI Tip</b> · You're 38g under your protein goal. Adding an evening serving of legumes or a protein snack will help meet luteal-phase needs.</p>
+    </div>
+  </div>
+</div>
+
+<nav class="nav">
+  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav>
+<script>
+(function(){
+  // macros first, then the ovarian-relevant micronutrients (answers "what about fibre & etc")
+  var NUT=[
+    {n:'Protein',   v:82, g:120, u:'g',  wk:[62,88,55,96,78,102,68]},
+    {n:'Carbs',     v:110,g:180, u:'g',  wk:[70,61,58,80,66,72,61]},
+    {n:'Fat',       v:45, g:60,  u:'g',  wk:[80,75,66,88,72,90,75]},
+    {n:'Fibre',     v:19, g:28,  u:'g',  note:'gut & estrogen balance', wk:[55,68,50,72,60,64,68]}
+  ];
+  function col(p){ return p>=90 ? '#5E8C5A' : (p>=65 ? '#E3B563' : '#C46F4F'); }
+  function fmt(x){ return (x%1===0)?x:x.toFixed(1); }
+  var host=document.getElementById('nutCard'), tog=document.getElementById('ntoggle'), mode='day';
+  function renderDay(){
+    host.innerHTML = NUT.map(function(x){
+      var p=Math.round(x.v/x.g*100);
+      return '<div class="nrow"><div class="nhead">'
+        +'<span class="nnm">'+x.n+(x.note?'<small>'+x.note+'</small>':'')+'</span>'
+        +'<span class="nval">'+fmt(x.v)+' / '+x.g+' '+x.u+'<span class="npct" style="color:'+col(p)+'">'+p+'%</span></span></div>'
+        +'<div class="nbar"><i style="width:'+Math.min(100,p)+'%;background:'+col(p)+'"></i></div></div>';
+    }).join('')
+    + legend();
+  }
+  function renderWeek(){
+    host.innerHTML = NUT.map(function(x){
+      var avg=Math.round(x.wk.reduce(function(a,b){return a+b;},0)/x.wk.length);
+      var met=x.wk.filter(function(p){return p>=90;}).length;
+      var dots=x.wk.map(function(p){return '<i style="background:'+col(p)+'" title="'+p+'%"></i>';}).join('');
+      return '<div class="nrow"><div class="nhead">'
+        +'<span class="nnm">'+x.n+'</span>'
+        +'<span class="nval">avg '+avg+'% · '+met+'/7 on goal</span></div>'
+        +'<div class="ndots">'+dots+'</div></div>';
+    }).join('')
+    + '<div class="sub" style="font-size:10px;text-align:center;margin-top:8px">Mon → Sun</div>' + legend();
+  }
+  function legend(){
+    return '<div class="nlegend">'
+      +'<span><em style="background:#5E8C5A"></em>On goal</span>'
+      +'<span><em style="background:#E3B563"></em>Close</span>'
+      +'<span><em style="background:#C46F4F"></em>Low</span></div>';
+  }
+  function paint(){ mode==='day'?renderDay():renderWeek(); }
+  tog.querySelectorAll('button').forEach(function(b){ b.onclick=function(){
+    tog.querySelectorAll('button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on');
+    mode=b.dataset.v; paint();
+  };});
+  paint();
+})();
+</script>
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

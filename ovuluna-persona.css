@@ -1,0 +1,623 @@
+/* ══════════════════════════════════════════════════════════════
+   OVULUNA — Persona Theme System (Warm Minimal)
+   4 life-stage themes via data-persona attribute on <html>
+   Subtle accents on the warm cream base — not full background changes.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Transitions ── */
+html[data-persona] body {
+  transition: background-color 400ms cubic-bezier(0.4, 0, 0.2, 1),
+              color 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+html[data-persona] .card,
+html[data-persona] .nav,
+html[data-persona] .top,
+html[data-persona] .btn,
+html[data-persona] .chip,
+html[data-persona] .badge,
+html[data-persona] .metric {
+  transition: background-color 400ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 400ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Persona Selector UI ── */
+.persona-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.persona-opt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 10px;
+  border-radius: 14px;
+  border: 2px solid rgba(107,82,142,0.15);
+  background: #FFFFFF;
+  cursor: pointer;
+  transition: .2s;
+}
+.persona-opt .p-emoji { font-size: 32px; }
+.persona-opt .p-name { font-weight: 800; font-size: 13px; color: #3d2f52; }
+.persona-opt .p-age  { font-size: 11px; color: #8a78a0; }
+.persona-opt.on {
+  border-color: #3d2f52;
+  background: #f7f2fa;
+}
+.persona-opt .p-check {
+  position: absolute; top: 8px; right: 8px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #3d2f52;
+  color: #fff; font-size: 12px;
+  display: none; align-items: center; justify-content: center;
+}
+.persona-opt.on .p-check { display: flex; }
+
+/* ── Co-branding footer ── */
+.ovuluna-footer {
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-size: 12px;
+  color: #8a78a0;
+  opacity: 0.6;
+  text-align: center;
+  padding: 24px 0 8px;
+}
+
+/* ═══════════════════════════════════════════════
+   PERSONA: BLOOM — Teens 13–17 (pink accent)
+   ═══════════════════════════════════════════════ */
+[data-persona="bloom"] {
+  --ovuluna-surface:              #f7f2fa;
+  --ovuluna-surface-alt:          #f0e8f5;
+  --ovuluna-surface-card:         #FFFFFF;
+  --ovuluna-surface-dark:         #2a2335;
+  --ovuluna-accent:               #D4A0B2;
+  --ovuluna-accent-secondary:     #7EC8A8;
+  --ovuluna-accent-glow:          rgba(212, 160, 178, 0.18);
+  --ovuluna-cta:                  #3d2f52;
+  --ovuluna-cta-hover:            #4a3f5e;
+  --ovuluna-cta-text:             #FFFFFF;
+  --ovuluna-success:              #5CB89B;
+  --ovuluna-warning:              #D4A85C;
+  --ovuluna-text-primary:         #3d2f52;
+  --ovuluna-text-secondary:       var(--taupe);
+  --ovuluna-text-emphasis:        #3d2f52;
+  --ovuluna-text-on-cta:          #FFFFFF;
+  --ovuluna-text-on-accent:       #3d2f52;
+  --ovuluna-border:               rgba(107,82,142,0.15);
+  --ovuluna-border-focus:         #D4A0B2;
+  --ovuluna-radius-sm:            8px;
+  --ovuluna-radius-md:            14px;
+  --ovuluna-radius-lg:            20px;
+  --ovuluna-radius-pill:          999px;
+  --ovuluna-shadow-card:          0 4px 14px rgba(29,27,24,.08);
+  --ovuluna-shadow-elevated:      0 8px 24px rgba(29,27,24,.12);
+  --ovuluna-font-heading:         'Manrope', system-ui, sans-serif;
+  --ovuluna-font-body:            'Manrope', system-ui, sans-serif;
+  --ovuluna-font-data:            'Manrope', system-ui, sans-serif;
+  --ovuluna-font-size-h1:         32px;
+  --ovuluna-font-size-h2:         24px;
+  --ovuluna-font-size-h3:         20px;
+  --ovuluna-font-size-body:       16px;
+  --ovuluna-font-size-caption:    14px;
+  --ovuluna-font-size-label:      13px;
+  --ovuluna-font-size-micro:      12px;
+  --ovuluna-easing-bounce:        cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ovuluna-easing-smooth:        cubic-bezier(0.4, 0, 0.2, 1);
+  --ovuluna-duration-fast:        150ms;
+  --ovuluna-duration-normal:      300ms;
+  --ovuluna-duration-slow:        500ms;
+  --ovuluna-icon-style:           'filled';
+  --ovuluna-icon-weight:          600;
+}
+
+/* ── Bloom: pink accent touches ── */
+[data-persona="bloom"] .top .t-icon { border-color: #D4A0B2; }
+[data-persona="bloom"] .nav { border-top-color: #D4A0B2; }
+[data-persona="bloom"] .card { border-color: rgba(212,160,178,.4); }
+[data-persona="bloom"] .btn.ghost { border-color: #D4A0B2; }
+[data-persona="bloom"] .chip.on { border-color: #D4A0B2; background: rgba(212,160,178,.12); color: #8B5C6E; }
+[data-persona="bloom"] .badge.info { background: rgba(212,160,178,.18); color: #7B4A5C; }
+
+/* ═══════════════════════════════════════════════
+   PERSONA: GROW — Women 25–38 (terracotta accent)
+   ═══════════════════════════════════════════════ */
+[data-persona="grow"] {
+  --ovuluna-surface:              #f7f2fa;
+  --ovuluna-surface-alt:          #f0e8f5;
+  --ovuluna-surface-card:         #FFFFFF;
+  --ovuluna-surface-dark:         #2C2620;
+  --ovuluna-accent:               #C88B6E;
+  --ovuluna-accent-secondary:     #9BB7AD;
+  --ovuluna-accent-glow:          rgba(200, 139, 110, 0.16);
+  --ovuluna-cta:                  #3d2f52;
+  --ovuluna-cta-hover:            #4a3f5e;
+  --ovuluna-cta-text:             #FFFFFF;
+  --ovuluna-success:              #9BB7AD;
+  --ovuluna-warning:              #D4A85C;
+  --ovuluna-highlight:            #D4A85C;
+  --ovuluna-text-primary:         #3d2f52;
+  --ovuluna-text-secondary:       var(--taupe);
+  --ovuluna-text-emphasis:        #3d2f52;
+  --ovuluna-text-on-cta:          #FFFFFF;
+  --ovuluna-text-on-accent:       #FFFFFF;
+  --ovuluna-data-primary:         #C17767;
+  --ovuluna-data-secondary:       #C88B6E;
+  --ovuluna-data-tertiary:        #9BB7AD;
+  --ovuluna-border:               rgba(107,82,142,0.15);
+  --ovuluna-border-focus:         #C88B6E;
+  --ovuluna-radius-sm:            8px;
+  --ovuluna-radius-md:            12px;
+  --ovuluna-radius-lg:            16px;
+  --ovuluna-radius-pill:          999px;
+  --ovuluna-shadow-card:          0 4px 14px rgba(29,27,24,.08);
+  --ovuluna-shadow-elevated:      0 8px 24px rgba(29,27,24,.12);
+  --ovuluna-font-heading:         'Manrope', system-ui, sans-serif;
+  --ovuluna-font-body:            'Manrope', system-ui, sans-serif;
+  --ovuluna-font-data:            'Manrope', system-ui, sans-serif;
+  --ovuluna-font-size-h1:         32px;
+  --ovuluna-font-size-h2:         24px;
+  --ovuluna-font-size-h3:         20px;
+  --ovuluna-font-size-body:       16px;
+  --ovuluna-font-size-caption:    14px;
+  --ovuluna-font-size-label:      13px;
+  --ovuluna-font-size-micro:      12px;
+  --ovuluna-easing-bounce:        cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ovuluna-easing-smooth:        cubic-bezier(0.4, 0, 0.2, 1);
+  --ovuluna-duration-fast:        200ms;
+  --ovuluna-duration-normal:      400ms;
+  --ovuluna-duration-slow:        800ms;
+  --ovuluna-icon-style:           'outlined';
+  --ovuluna-icon-weight:          300;
+}
+
+/* ── Grow: terracotta accent touches ── */
+[data-persona="grow"] .top .t-icon { border-color: #C88B6E; }
+[data-persona="grow"] .nav { border-top-color: #C88B6E; }
+[data-persona="grow"] .card { border-color: rgba(200,139,110,.4); }
+[data-persona="grow"] .btn.ghost { border-color: #C88B6E; }
+[data-persona="grow"] .chip.on { border-color: #C88B6E; background: rgba(200,139,110,.12); color: #8B4E30; }
+[data-persona="grow"] .badge.info { background: rgba(200,139,110,.16); color: #7A4230; }
+
+/* ═══════════════════════════════════════════════
+   PERSONA: NURTURE — Post-Pregnancy Recovery (lavender accent)
+   ═══════════════════════════════════════════════ */
+[data-persona="nurture"] {
+  --ovuluna-surface:              #f7f2fa;
+  --ovuluna-surface-alt:          #f0e8f5;
+  --ovuluna-surface-card:         #FFFFFF;
+  --ovuluna-surface-night:        #2A2330;
+  --ovuluna-accent:               #B0A0C0;
+  --ovuluna-accent-secondary:     #A3C4BC;
+  --ovuluna-accent-glow:          rgba(176, 160, 192, 0.16);
+  --ovuluna-cta:                  #3d2f52;
+  --ovuluna-cta-hover:            #4a3f5e;
+  --ovuluna-cta-text:             #FFFFFF;
+  --ovuluna-success:              #A3C4BC;
+  --ovuluna-warning:              #D4A85C;
+  --ovuluna-warm-pop:             #E8C4B8;
+  --ovuluna-earth:                #C88B6E;
+  --ovuluna-text-primary:         #3d2f52;
+  --ovuluna-text-secondary:       var(--taupe);
+  --ovuluna-text-emphasis:        #3d2f52;
+  --ovuluna-text-on-cta:          #FFFFFF;
+  --ovuluna-text-on-accent:       #3d2f52;
+  --ovuluna-timer-display:        #3d2f52;
+  --ovuluna-timer-bg:             #f7f2fa;
+  --ovuluna-timer-active:         #B0A0C0;
+  --ovuluna-night-surface:        #2A2330;
+  --ovuluna-night-text:           #D4CCDD;
+  --ovuluna-night-accent:         #C9BED9;
+  --ovuluna-night-amber:          #D4A85C;
+  --ovuluna-border:               rgba(107,82,142,0.15);
+  --ovuluna-border-focus:         #B0A0C0;
+  --ovuluna-radius-sm:            8px;
+  --ovuluna-radius-md:            14px;
+  --ovuluna-radius-lg:            18px;
+  --ovuluna-radius-pill:          999px;
+  --ovuluna-shadow-card:          0 4px 14px rgba(29,27,24,.08);
+  --ovuluna-shadow-elevated:      0 8px 24px rgba(29,27,24,.12);
+  --ovuluna-font-heading:         'Manrope', system-ui, sans-serif;
+  --ovuluna-font-body:            'Manrope', system-ui, sans-serif;
+  --ovuluna-font-data:            'Manrope', system-ui, sans-serif;
+  --ovuluna-font-timer:           'Manrope', system-ui, sans-serif;
+  --ovuluna-font-size-h1:         32px;
+  --ovuluna-font-size-h2:         24px;
+  --ovuluna-font-size-h3:         20px;
+  --ovuluna-font-size-body:       16px;
+  --ovuluna-font-size-caption:    14px;
+  --ovuluna-font-size-label:      13px;
+  --ovuluna-font-size-micro:      12px;
+  --ovuluna-font-size-timer-lg:   48px;
+  --ovuluna-font-size-timer-md:   32px;
+  --ovuluna-easing-bounce:        cubic-bezier(0.4, 0, 0.2, 1);
+  --ovuluna-easing-smooth:        cubic-bezier(0.4, 0, 0.2, 1);
+  --ovuluna-easing-pulse:         cubic-bezier(0.4, 0, 0.6, 1);
+  --ovuluna-duration-fast:        300ms;
+  --ovuluna-duration-normal:      600ms;
+  --ovuluna-duration-slow:        1000ms;
+  --ovuluna-icon-style:           'filled';
+  --ovuluna-icon-weight:          400;
+}
+
+/* ── Nurture: lavender accent touches ── */
+[data-persona="nurture"] .top .t-icon { border-color: #B0A0C0; }
+[data-persona="nurture"] .nav { border-top-color: #B0A0C0; }
+[data-persona="nurture"] .card { border-color: rgba(176,160,192,.4); }
+[data-persona="nurture"] .btn.ghost { border-color: #B0A0C0; }
+[data-persona="nurture"] .chip.on { border-color: #B0A0C0; background: rgba(176,160,192,.12); color: #6B5A82; }
+[data-persona="nurture"] .badge.info { background: rgba(176,160,192,.18); color: #5A4A72; }
+
+/* ═══════════════════════════════════════════════
+   PERSONA: WISDOM — Women 40–60 (gold accent)
+   ═══════════════════════════════════════════════ */
+[data-persona="wisdom"] {
+  --ovuluna-surface:              #f7f2fa;
+  --ovuluna-surface-alt:          #f0e8f5;
+  --ovuluna-surface-card:         #FFFFFF;
+  --ovuluna-surface-dark:         #26211E;
+  --ovuluna-accent:               #B8956A;
+  --ovuluna-accent-secondary:     #C4A882;
+  --ovuluna-accent-glow:          rgba(184, 149, 106, 0.14);
+  --ovuluna-cta:                  #3d2f52;
+  --ovuluna-cta-hover:            #4a3f5e;
+  --ovuluna-cta-text:             #FFFFFF;
+  --ovuluna-success:              #5D7B6F;
+  --ovuluna-warning:              #C4A882;
+  --ovuluna-depth:                #8C5C61;
+  --ovuluna-cool:                 #5D7B6F;
+  --ovuluna-text-primary:         #3d2f52;
+  --ovuluna-text-secondary:       var(--taupe);
+  --ovuluna-text-emphasis:        #3d2f52;
+  --ovuluna-text-on-cta:          #FFFFFF;
+  --ovuluna-text-on-accent:       #FFFFFF;
+  --ovuluna-data-primary:         #B8956A;
+  --ovuluna-data-secondary:       #8C5C61;
+  --ovuluna-data-tertiary:        #5D7B6F;
+  --ovuluna-border:               rgba(107,82,142,0.15);
+  --ovuluna-border-focus:         #B8956A;
+  --ovuluna-radius-sm:            6px;
+  --ovuluna-radius-md:            8px;
+  --ovuluna-radius-lg:            12px;
+  --ovuluna-radius-pill:          999px;
+  --ovuluna-shadow-card:          0 4px 14px rgba(29,27,24,.08);
+  --ovuluna-shadow-elevated:      0 8px 24px rgba(29,27,24,.12);
+  --ovuluna-font-heading:         'Manrope', system-ui, sans-serif;
+  --ovuluna-font-body:            'Manrope', system-ui, sans-serif;
+  --ovuluna-font-data:            'Manrope', system-ui, sans-serif;
+  --ovuluna-font-size-h1:         32px;
+  --ovuluna-font-size-h2:         24px;
+  --ovuluna-font-size-h3:         20px;
+  --ovuluna-font-size-body:       17px;
+  --ovuluna-font-size-caption:    15px;
+  --ovuluna-font-size-label:      15px;
+  --ovuluna-font-size-micro:      13px;
+  --ovuluna-easing-bounce:        cubic-bezier(0.4, 0, 0.2, 1);
+  --ovuluna-easing-smooth:        cubic-bezier(0.4, 0, 0.2, 1);
+  --ovuluna-duration-fast:        250ms;
+  --ovuluna-duration-normal:      500ms;
+  --ovuluna-duration-slow:        900ms;
+  --ovuluna-icon-style:           'outlined';
+  --ovuluna-icon-weight:          300;
+}
+
+/* ── Wisdom: gold accent touches ── */
+[data-persona="wisdom"] .top .t-icon { border-color: #B8956A; }
+[data-persona="wisdom"] .nav { border-top-color: #B8956A; }
+[data-persona="wisdom"] .card { border-color: rgba(184,149,106,.4); }
+[data-persona="wisdom"] .btn.ghost { border-color: #B8956A; }
+[data-persona="wisdom"] .chip.on { border-color: #B8956A; background: rgba(184,149,106,.12); color: #7A5A2A; }
+[data-persona="wisdom"] .badge.info { background: rgba(184,149,106,.16); color: #6A4A20; }
+
+/* ── Persona-aware body styles ── */
+html[data-persona] body {
+  background: var(--ovuluna-surface);
+  color: var(--ovuluna-text-primary);
+  font-family: var(--ovuluna-font-body);
+}
+html[data-persona] .card {
+  border-radius: var(--ovuluna-radius-md);
+  box-shadow: var(--ovuluna-shadow-card);
+  border-color: var(--ovuluna-border);
+  background: var(--ovuluna-surface-card);
+}
+html[data-persona] .btn {
+  border-radius: var(--ovuluna-radius-pill);
+  background: var(--ovuluna-cta);
+  color: var(--ovuluna-text-on-cta);
+}
+html[data-persona] .top {
+  background: linear-gradient(180deg, var(--ovuluna-surface) 62%, transparent);
+}
+html[data-persona] h2.sec {
+  font-family: var(--ovuluna-font-heading);
+}
+html[data-persona] .sub {
+  color: var(--ovuluna-text-secondary);
+}
+
+/* ── Card tints (persona-aware) ── */
+html[data-persona] .card.tint-lavender { background: #F8F3FA; }
+html[data-persona] .card.tint-sage     { background: #F6F8F3; }
+html[data-persona] .card.tint-blush    { background: #FCF6F5; }
+html[data-persona] .card.tint-gold     { background: #FDFAF3; }
+
+/* ── Page-specific persona cards ── */
+.acupoint-card {
+  background: #FFFFFF;
+  border: 2px solid rgba(107,82,142,0.15);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 14px rgba(29,27,24,.08);
+  transition: .2s;
+}
+.acupoint-card h3 {
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #3d2f52;
+  margin: 0 0 2px;
+  letter-spacing: -.01em;
+}
+.acupoint-card .cn-name {
+  font-size: 13px;
+  color: #8B6C82;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.body-map { position: relative; max-width: 380px; margin: 0 auto; }
+.body-map svg { width: 100%; display: block; }
+.body-map .point-dot {
+  cursor: pointer;
+  transition: .2s;
+}
+.body-map .point-dot:hover {
+  transform: scale(1.3);
+}
+
+/* Filter chips */
+.filter-row { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; scrollbar-width: none; }
+.filter-row::-webkit-scrollbar { display: none; }
+.filter-chip {
+  flex-shrink: 0; padding: 8px 15px; border-radius: 99px;
+  background: #FFFFFF;
+  border: 2px solid rgba(107,82,142,0.15);
+  font: 700 12px 'Manrope', system-ui, sans-serif;
+  color: #3d2f52;
+  cursor: pointer; transition: .15s; white-space: nowrap;
+}
+.filter-chip.on {
+  background: #3d2f52;
+  color: #FFFFFF;
+  border-color: #3d2f52;
+}
+
+/* Evidence badge */
+.evidence-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 99px;
+  font-size: 10px; font-weight: 800; letter-spacing: .04em;
+}
+.evidence-badge.strong { background: rgba(78,140,106,.14); color: #4E8C6A; }
+.evidence-badge.moderate { background: rgba(201,138,46,.14); color: #C98A2E; }
+.evidence-badge.consensus { background: rgba(158,174,200,.22); color: #5A6BB0; }
+
+/* Safety warning */
+.safety-warn {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; border-radius: 8px;
+  background: rgba(212,168,92,.14);
+  border: 1.5px solid rgba(212,168,92,.35);
+  font-size: 12px; line-height: 1.5; color: #3d2f52;
+}
+
+/* Technique card */
+.tech-card {
+  background: #FFFFFF;
+  border: 2px solid rgba(107,82,142,0.15);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 4px 14px rgba(29,27,24,.08);
+  transition: transform .2s, box-shadow .2s;
+  position: relative;
+  overflow: hidden;
+}
+.tech-card::after {
+  content: "";
+  position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--ovuluna-accent-secondary, #A0AD90), var(--ovuluna-accent, #8B6C82));
+  opacity: 0.4;
+}
+.tech-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,27,24,.12); }
+.tech-card h3 {
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #3d2f52;
+  margin: 0 0 4px;
+  letter-spacing: -.01em;
+}
+.tech-card .tech-icon { font-size: 32px; flex-shrink: 0; }
+.tech-step {
+  display: flex; gap: 12px; padding: 10px 0;
+  font-size: 14px;
+  color: #3d2f52; line-height: 1.55;
+  border-bottom: 1px solid rgba(107,82,142,0.15);
+}
+.tech-step:last-child { border-bottom: none; }
+.tech-step .step-num {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #3d2f52; color: #FFFFFF;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; flex-shrink: 0;
+  margin-top: 1px;
+}
+.tech-meta { display: flex; gap: 14px; flex-wrap: wrap; margin: 12px 0; }
+.tech-meta-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8a78a0; font-weight: 600; }
+.tech-meta-item .ms { font-size: 17px; color: #8B6C82; }
+.contraindication {
+  margin-top: 12px; padding: 10px 14px; border-radius: 8px;
+  background: rgba(212,168,92,.12); border-left: 3px solid #D4A85C;
+  font-size: 11.5px; line-height: 1.5; color: #3d2f52;
+}
+.contraindication b { color: #C98A2E; font-weight: 800; }
+.lifestage-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.lifestage-chips span { padding: 4px 10px; border-radius: 99px; font-size: 10px; font-weight: 800; }
+.ls-bloom { background: rgba(212,160,178,.2); color: #7B4A5C; }
+.ls-grow { background: rgba(200,139,110,.2); color: #7A4230; }
+.ls-nurture { background: rgba(176,160,192,.2); color: #5A4A72; }
+.ls-wisdom { background: rgba(184,149,106,.16); color: #6A4A20; }
+.ls-all { background: rgba(147,187,143,.18); color: #3F6B3A; }
+
+/* Session card */
+.session-card {
+  text-align: center; padding: 20px; border-radius: 14px;
+  background: #f7f2fa;
+  border: 2px solid rgba(107,82,142,0.15);
+  cursor: pointer; transition: .2s;
+}
+.session-card:hover { transform: translateY(-2px); border-color: #3d2f52; }
+
+/* Food card dual-view */
+.food-card {
+  background: #FFFFFF;
+  border: 2px solid rgba(107,82,142,0.15);
+  border-radius: 14px;
+  padding: 18px 16px;
+  box-shadow: 0 4px 14px rgba(29,27,24,.08);
+  transition: transform .2s, box-shadow .2s;
+  position: relative;
+  overflow: hidden;
+}
+.food-card::before {
+  content: "";
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--ovuluna-accent, #8B6C82), var(--ovuluna-accent-secondary, #A0AD90));
+  opacity: 0.5;
+}
+.food-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,27,24,.12); }
+.food-card .food-header { display: flex; align-items: center; gap: 10px; }
+.food-card .food-icon { font-size: 36px; flex-shrink: 0; }
+.food-card .food-title { font-family: 'Manrope', system-ui, sans-serif; font-size: 17px; font-weight: 800; color: #3d2f52; margin: 0; letter-spacing: -.01em; }
+.food-card .food-cn { font-size: 13px; color: #8B6C82; font-weight: 700; margin-left: 6px; letter-spacing: .02em; }
+.food-dual { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.food-tcm, .food-western {
+  padding: 12px 14px; border-radius: 8px;
+  font-size: 14px; line-height: 1.55;
+}
+.food-tcm { background: rgba(139,108,130,.08); }
+.food-western { background: rgba(147,187,143,.1); }
+.food-tcm .f-label, .food-western .f-label {
+  font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 5px;
+}
+.food-tcm .f-label { color: #8B6C82; }
+.food-western .f-label { color: #5CB89B; }
+.food-benefit {
+  font-size: 12px; margin-top: 10px; line-height: 1.45;
+  padding: 8px 12px; border-radius: 8px;
+  background: rgba(232,200,192,.16);
+  border-left: 3px solid #E89580;
+  color: #3d2f52;
+}
+.food-benefit b { color: #8B6C82; font-weight: 800; }
+.thermal-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 99px;
+  font-size: 10.5px; font-weight: 700;
+}
+.thermal-warm { background: rgba(196,111,79,.14); color: #C46F4F; }
+.thermal-cool { background: rgba(127,174,201,.14); color: #5A8AAA; }
+.thermal-neutral { background: rgba(150,150,150,.1); color: #8a78a0; }
+
+/* Life-stage accents stay independent of the user's light/dark preference.
+   Without these aliases, persona rules paint light surfaces under dark text tokens. */
+html[data-persona][data-theme="dark"] {
+  --ovuluna-surface: var(--paper);
+  --ovuluna-surface-alt: var(--sunken);
+  --ovuluna-surface-card: var(--card-solid);
+  --ovuluna-text-primary: var(--ink);
+  --ovuluna-text-secondary: var(--taupe);
+  --ovuluna-text-emphasis: var(--ink);
+  --ovuluna-border: var(--line);
+  --ovuluna-cta: var(--mauve);
+  --ovuluna-cta-hover: var(--lavender);
+  --ovuluna-text-on-cta: var(--paper);
+  --ovuluna-cta-text: var(--paper);
+  --ovuluna-shadow-card: 0 8px 24px -12px rgba(0, 0, 0, .5);
+}
+html[data-persona][data-theme="dark"] body {
+  background: linear-gradient(160deg, var(--paper), var(--paper-deep) 60%, #0f0820);
+}
+html[data-persona][data-theme="dark"] .top {
+  background: rgba(26, 16, 48, .96);
+}
+html[data-persona][data-theme="dark"] .card.tint-lavender {
+  background: #322244;
+}
+html[data-persona][data-theme="dark"] .card.tint-sage {
+  background: #252b36;
+}
+html[data-persona][data-theme="dark"] .card.tint-blush {
+  background: #35243c;
+}
+html[data-persona][data-theme="dark"] .card.tint-gold {
+  background: #342b36;
+}
+html[data-persona][data-theme="dark"] .chip.on,
+html[data-persona][data-theme="dark"] .badge.info {
+  color: var(--ink);
+}
+
+/* Shared TCM and nutrition surfaces used alongside the persona palette. */
+[data-theme="dark"] .acupoint-card,
+[data-theme="dark"] .tech-card,
+[data-theme="dark"] .food-card,
+[data-theme="dark"] .session-card,
+[data-theme="dark"] .persona-opt,
+[data-theme="dark"] .filter-chip {
+  background: var(--card-solid);
+  border-color: var(--line);
+  color: var(--ink);
+}
+[data-theme="dark"] .acupoint-card h3,
+[data-theme="dark"] .tech-card h3,
+[data-theme="dark"] .tech-step,
+[data-theme="dark"] .food-card .food-title,
+[data-theme="dark"] .safety-warn,
+[data-theme="dark"] .contraindication,
+[data-theme="dark"] .food-benefit,
+[data-theme="dark"] .persona-opt .p-name {
+  color: var(--ink);
+}
+[data-theme="dark"] .acupoint-card .cn-name,
+[data-theme="dark"] .tech-meta-item,
+[data-theme="dark"] .persona-opt .p-age,
+[data-theme="dark"] .ovuluna-footer {
+  color: var(--taupe);
+}
+[data-theme="dark"] .food-card .food-cn,
+[data-theme="dark"] .food-tcm .f-label,
+[data-theme="dark"] .food-benefit b,
+[data-theme="dark"] .tech-meta-item .ms {
+  color: var(--mauve);
+}
+[data-theme="dark"] .food-western .f-label {
+  color: var(--sage);
+}
+[data-theme="dark"] .filter-chip.on,
+[data-theme="dark"] .persona-opt.on,
+[data-theme="dark"] .session-card:hover {
+  border-color: var(--mauve);
+  background: var(--sunken);
+}
+[data-theme="dark"] .evidence-badge.strong { color: var(--ok); }
+[data-theme="dark"] .evidence-badge.moderate,
+[data-theme="dark"] .contraindication b { color: var(--warn); }
+[data-theme="dark"] .evidence-badge.consensus { color: var(--periwinkle); }
+[data-theme="dark"] .thermal-warm { color: var(--coral); }
+[data-theme="dark"] .thermal-cool { color: var(--sky); }
+[data-theme="dark"] .thermal-neutral { color: var(--taupe); }
+[data-theme="dark"] .lifestage-chips span { color: var(--ink); }

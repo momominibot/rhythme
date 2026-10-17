@@ -1,0 +1,161 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovumind · Medication Profile</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<script src="anim.js" defer></script>
+<style>
+.ctgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.ctgrid .chip { min-width:0; flex:none; font-size:10.5px; line-height:1.18; text-align:center; word-break:break-word; padding:12px 5px; }
+.addform { display:none; flex-direction:column; gap:9px; margin:2px 0 4px; padding:14px; background:var(--card-solid); border:1.5px solid var(--line-soft); border-radius:var(--r-sm); }
+.addform.show { display:flex; }
+.addform input, .addform select { border:1.5px solid var(--line-soft); border-radius:12px; padding:11px 13px; font:500 14px var(--sans); color:var(--ink); background:var(--paper); outline:none; width:100%; }
+.addform input:focus, .addform select:focus { border-color:var(--sage); }
+</style>
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+  <div class="scroll">
+    <div class="card tint-lavender" style="padding:18px">
+      <div class="row" style="gap:10px">
+        <span class="ms sway" style="color:var(--mauve)">settings_slow_motion</span>
+        <div style="flex:1"><b style="font-size:14px;color:var(--cocoa)">Engine Status</b><div class="sub">Calibration Mode Active</div></div>
+        <span class="badge info">Calibrating</span>
+      </div>
+      <div style="border-top:1px solid var(--line-soft);margin:12px 0"></div>
+      <div class="row" style="gap:10px;align-items:flex-start">
+        <span class="ms" style="color:var(--terracotta)">auto_awesome</span>
+        <p style="font-size:12.5px;line-height:1.55;color:var(--ink)">Synthetic hormones alter endogenous peaks. Our algorithm adjusts Ovarian Age calculations to account for suppressed ovulation.</p>
+      </div>
+      <div class="row" style="gap:10px;align-items:flex-start;margin-top:8px">
+        <span class="ms beat" style="color:var(--d-cycle)">monitor_heart</span>
+        <p style="font-size:12.5px;line-height:1.55;color:var(--ink)">HRV tracking is recalibrated to detect underlying metabolic signals through the "hormonal noise."</p>
+      </div>
+    </div>
+
+    <h2 class="sec">Contraceptive Method</h2>
+    <div class="chiprow ctgrid" data-single>
+      <span class="chip"><span class="ms" style="font-size:15px">eco</span> Natural / None</span>
+      <span class="chip on"><span class="ms" style="font-size:15px">medication</span> Combined Pill</span>
+      <span class="chip"><span class="ms" style="font-size:15px">medication_liquid</span> Progestin-only</span>
+      <span class="chip"><span class="ms" style="font-size:15px">change_history</span> Hormonal IUD</span>
+      <span class="chip"><span class="ms" style="font-size:15px">change_history</span> Copper IUD</span>
+      <span class="chip"><span class="ms" style="font-size:15px">horizontal_rule</span> Implant</span>
+      <span class="chip"><span class="ms" style="font-size:15px">vaccines</span> Injection</span>
+    </div>
+
+    <h2 class="sec">Supplements & HRT</h2>
+    <div class="card" style="padding:4px 18px">
+      <div class="lrow"><span class="l-ic ms" style="background:rgba(147,187,143,.14);color:var(--d-diet)">pill</span>
+        <div class="l-t"><b>DHEA</b><span>Ovarian Reserve Support · 25mg daily, AM</span></div><span class="badge ok">Active</span></div>
+      <div class="lrow"><span class="l-ic ms" style="background:rgba(229,180,92,.18);color:var(--warn)">bolt</span>
+        <div class="l-t"><b>CoQ10</b><span>Cellular Energy & Egg Quality · 200mg daily</span></div><span class="badge ok">Active</span></div>
+      <div class="lrow"><span class="l-ic ms" style="background:rgba(217,131,164,.16);color:var(--d-cycle)">spa</span>
+        <div class="l-t"><b>Vitex (Chasteberry)</b><span>Cycle Regularity · 400mg daily, AM</span></div><span class="badge ok">Active</span></div>
+      <div class="lrow"><span class="l-ic ms" style="background:rgba(110,70,84,.1);color:var(--mauve)">water_drop</span>
+        <div class="l-t"><b>HRT</b><span>Hormone Replacement Therapy · as prescribed</span></div><span class="badge info">Tracking</span></div>
+      <button class="lrow" id="addMedBtn" style="width:100%;background:none;border:none;text-align:left;cursor:pointer"><span class="l-ic ms" style="background:rgba(99,54,36,.08);color:var(--cocoa)">add_circle</span>
+        <div class="l-t"><b>Add supplement or injection</b><span>Log a new supplement, injection, dose & schedule</span></div><span class="l-arr ms">chevron_right</span></button>
+    </div>
+
+    <div class="addform" id="addForm">
+      <select id="mType">
+        <option value="Supplement|pill|rgba(147,187,143,.14)|var(--d-diet)">Supplement</option>
+        <option value="Injection|vaccines|rgba(110,70,84,.1)|var(--mauve)">Injection</option>
+        <option value="HRT|water_drop|rgba(217,131,164,.16)|var(--d-cycle)">HRT / hormone</option>
+        <option value="Medication|medication|rgba(229,180,92,.18)|var(--warn)">Other medication</option>
+      </select>
+      <input id="mName" placeholder="Name — e.g. Depo-Provera, Ubiquinol, Myo-inositol">
+      <input id="mDose" placeholder="Dose & schedule — e.g. 150 mg every 12 weeks">
+      <div class="row" style="gap:8px">
+        <button class="btn mauve" id="mSave" style="flex:1;border-radius:99px"><span class="ms">add</span> Add to my stack</button>
+        <button class="btn ghost" id="mCancel" style="width:auto;padding:0 18px">Cancel</button>
+      </div>
+    </div>
+
+    <div class="insight">
+      <span class="i-ic ms" style="color:var(--mauve)">psychology</span>
+      <p><b>AI Engine Insight</b><br/>"Your profile indicates a blend of Combined Pill and CoQ10. We have adjusted your metabolic baseline. Expect a 12% shift in your Ovarian Bio-Age metrics due to pharmacological suppression."</p>
+    </div>
+
+    <div class="card" style="display:flex;align-items:center;gap:10px;padding:14px 18px">
+      <span class="ms" style="color:var(--sage)">info</span>
+      <p style="font-size:12px;color:var(--taupe)"><b style="color:var(--cocoa)">Sync reliability:</b> Medications you log here directly recalibrate how Ovumind reads your cycle and vascular-age scans.</p>
+    </div>
+
+    <button class="btn">Save Engine Profile <span class="ms" style="font-size:18px">arrow_forward</span></button>
+  </div>
+</div>
+
+<nav class="nav">
+  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav>
+<script>
+(function(){
+  var form=document.getElementById('addForm'), btn=document.getElementById('addMedBtn'),
+      addRowBefore=btn; // insert new rows before the add button
+  btn.addEventListener('click',function(){ form.classList.add('show'); document.getElementById('mName').focus(); });
+  document.getElementById('mCancel').addEventListener('click',function(){ form.classList.remove('show'); });
+  document.getElementById('mSave').addEventListener('click',function(){
+    var name=document.getElementById('mName').value.trim(), dose=document.getElementById('mDose').value.trim();
+    if(!name){ document.getElementById('mName').focus(); return; }
+    var p=document.getElementById('mType').value.split('|'), type=p[0], icon=p[1], bg=p[2], col=p[3];
+    var row=document.createElement('div'); row.className='lrow';
+    row.innerHTML='<span class="l-ic ms" style="background:'+bg+';color:'+col+'">'+icon+'</span>'
+      +'<div class="l-t"><b>'+name.replace(/</g,'&lt;')+'</b><span>'+type+(dose?' · '+dose.replace(/</g,'&lt;'):'')+'</span></div>'
+      +'<span class="badge ok">Active</span>';
+    addRowBefore.parentNode.insertBefore(row, addRowBefore);
+    document.getElementById('mName').value=''; document.getElementById('mDose').value=''; form.classList.remove('show');
+    var t=document.createElement('div'); t.textContent='✓ '+name+' added to your stack';
+    t.style.cssText='position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:rgba(46,34,30,.92);color:#F6EDF0;padding:10px 18px;border-radius:99px;font:700 12px Manrope;z-index:80';
+    document.body.appendChild(t); setTimeout(function(){t.remove();},2200);
+  });
+})();
+</script>
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

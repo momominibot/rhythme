@@ -1,0 +1,343 @@
+/* ppg.css — Camera Finger PPG Heart Rate & HRV — Ovuluna mystical pastel */
+
+.ppg-container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Step indicator */
+.ppg-steps {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.ppg-step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-soft);
+  transition: all .3s;
+}
+.ppg-step-dot.active {
+  background: var(--mauve);
+  width: 24px;
+  border-radius: 4px;
+}
+.ppg-step-dot.done {
+  background: var(--ok);
+}
+
+/* Camera viewport */
+.ppg-camera-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #1a1030;
+  box-shadow: 0 8px 32px -8px rgba(107,82,142,.3);
+  margin-bottom: 16px;
+}
+.ppg-camera-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ppg-camera-wrap canvas {
+  display: none;
+}
+
+/* Sample box indicator */
+.ppg-sample-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  border: 2px solid rgba(255,255,255,.5);
+  border-radius: 8px;
+  pointer-events: none;
+  transition: border-color .3s, box-shadow .3s;
+}
+.ppg-sample-box.calibrated {
+  border-color: #8ab87e;
+  box-shadow: 0 0 20px rgba(138,184,126,.5);
+}
+
+/* Calibration overlay */
+.ppg-calibration-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(26,16,48,.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  backdrop-filter: blur(4px);
+}
+.ppg-calibration-overlay .ppg-warning-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  animation: pulse-warning 1.5s ease-in-out infinite;
+}
+@keyframes pulse-warning {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: .8; }
+}
+.ppg-calibration-overlay p {
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 280px;
+}
+.ppg-calibration-overlay .ppg-tip {
+  color: rgba(255,255,255,.6);
+  font-size: 11px;
+  margin-top: 8px;
+}
+
+/* Red intensity meter */
+.ppg-red-meter {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  height: 4px;
+  background: rgba(255,255,255,.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.ppg-red-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e8a898, #c44);
+  border-radius: 2px;
+  transition: width .1s;
+}
+
+/* Countdown ring */
+.ppg-countdown-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 20px 0;
+}
+.ppg-countdown-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+.ppg-countdown-ring svg {
+  transform: rotate(-90deg);
+}
+.ppg-countdown-ring .ring-bg {
+  fill: none;
+  stroke: var(--line-soft);
+  stroke-width: 6;
+}
+.ppg-countdown-ring .ring-progress {
+  fill: none;
+  stroke: url(#ppgGradient);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset .1s linear;
+}
+.ppg-countdown-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.ppg-countdown-number {
+  font-family: var(--serif);
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.ppg-countdown-label {
+  font-size: 10px;
+  color: var(--taupe);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+/* Pulse wave visualization */
+.ppg-pulse-wave {
+  width: 100%;
+  height: 80px;
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  position: relative;
+}
+.ppg-pulse-wave canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* Results dashboard */
+.ppg-results {
+  animation: fadeInUp .5s ease;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ppg-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.ppg-metric-card {
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 4px 16px -8px rgba(107,82,142,.15);
+}
+.ppg-metric-card.bpm {
+  background: linear-gradient(135deg, rgba(232,168,152,.12), rgba(232,168,152,.05));
+  border-color: rgba(232,168,152,.3);
+}
+.ppg-metric-card.hrv {
+  background: linear-gradient(135deg, rgba(196,181,224,.12), rgba(196,181,224,.05));
+  border-color: rgba(196,181,224,.3);
+}
+.ppg-metric-value {
+  font-family: var(--serif);
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+.ppg-metric-unit {
+  font-size: 14px;
+  color: var(--taupe);
+  font-weight: 600;
+}
+.ppg-metric-label {
+  font-size: 11px;
+  color: var(--taupe);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-top: 6px;
+  font-weight: 700;
+}
+
+/* TCM advice */
+.ppg-advice {
+  background: linear-gradient(135deg, rgba(196,181,224,.1), rgba(245,198,184,.08));
+  border: 1px solid rgba(196,181,224,.25);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.ppg-advice-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--mauve);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ppg-advice-item {
+  font-size: 12px;
+  color: var(--cocoa);
+  line-height: 1.6;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(196,181,224,.15);
+}
+.ppg-advice-item:last-child {
+  border-bottom: none;
+}
+
+/* Quality badge */
+.ppg-quality {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.ppg-quality.good { background: rgba(138,184,126,.15); color: #5a7a52; }
+.ppg-quality.poor { background: rgba(240,168,96,.15); color: #b87a3a; }
+.ppg-quality.unreliable { background: rgba(196,122,106,.15); color: #a05a4a; }
+
+/* Buttons */
+.ppg-btn {
+  width: 100%;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  font-family: var(--sans);
+}
+.ppg-btn-primary {
+  background: linear-gradient(135deg, var(--mauve), #9b7fc4);
+  color: #fff;
+  box-shadow: 0 4px 16px -4px rgba(122,92,150,.4);
+}
+.ppg-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px -4px rgba(122,92,150,.5);
+}
+.ppg-btn-primary:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none;
+}
+.ppg-btn-secondary {
+  background: var(--card);
+  color: var(--mauve);
+  border: 1px solid var(--line-soft);
+}
+.ppg-btn-secondary:hover {
+  border-color: var(--mauve);
+}
+
+/* Torch warning */
+.ppg-torch-warning {
+  background: rgba(240,168,96,.1);
+  border: 1px solid rgba(240,168,96,.3);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: #b87a3a;
+  line-height: 1.5;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* Disclaimer */
+.ppg-disclaimer {
+  font-size: 10px;
+  color: var(--taupe);
+  text-align: center;
+  line-height: 1.5;
+  margin-top: 16px;
+  padding: 0 20px;
+  opacity: .7;
+}

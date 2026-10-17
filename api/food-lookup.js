@@ -1,9 +1,9 @@
-// Ovuluna · Food Lookup API — Vercel serverless function
+// Ovumind · Food Lookup API — Vercel serverless function
 // Barcode lookup via Open Food Facts + OCR text processing.
 // Returns standardized food data for the label scanner.
 
 const OFF_BASE = 'https://world.openfoodfacts.org/api/v2';
-const USER_AGENT = 'Ovuluna/1.0 (food-label-scanner; wellness app)';
+const USER_AGENT = 'Ovumind/1.0 (food-label-scanner; wellness app)';
 
 // ── Allergen normalization (port of mallow allergens.ts) ──
 const ALLERGEN_SYNONYMS = {

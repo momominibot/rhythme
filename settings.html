@@ -1,0 +1,163 @@
+<!doctype html><html lang="en" data-persona="bloom"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovumind · Settings</title>
+<link rel="icon" type="image/png" href="assets/onboarding/egg.png">
+<link rel="apple-touch-icon" href="assets/onboarding/egg.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<link rel="stylesheet" href="ovuluna-persona.css">
+<script src="anim.js" defer></script>
+
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="privacy-local.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body class="privacy-page settings-page text-scaled-page">
+
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html" aria-label="Notifications">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html" aria-label="Cycle records">calendar_today</a>
+  </div>
+
+  <main class="scroll">
+    <section class="card privacy-hero">
+      <p class="privacy-eyebrow">Settings</p>
+      <h1>Make space for you</h1>
+      <p>Manage your daily routine, account status and local records.</p>
+      <span class="privacy-badge">Development build · local health records</span>
+    </section>
+
+    <section class="card settings-data" aria-labelledby="settings-data-title">
+      <h2 id="settings-data-title">Your data & account</h2>
+      <p>You can stop using this build and remove its local records. Review the items first and export anything you want to keep.</p>
+      <a id="settings-delete-data" class="settings-action settings-danger" href="privacy.html#privacy-local-title">
+        <span class="ms" aria-hidden="true">delete_outline</span>
+        <span><b>Delete my data</b><small>Choose local records, export a copy, then confirm deletion.</small></span>
+        <span class="ms" aria-hidden="true">chevron_right</span>
+      </a>
+      <a id="settings-delete-account" class="settings-action settings-danger" href="account.html#account-deletion">
+        <span class="ms" aria-hidden="true">person_remove</span>
+        <span><b>Delete my account</b><small>Review verified account status and deletion availability.</small></span>
+        <span class="ms" aria-hidden="true">chevron_right</span>
+      </a>
+      <a class="privacy-back" href="privacy.html">Privacy & local data details</a>
+    </section>
+
+    <section class="card" aria-labelledby="settings-records-title">
+      <h2 id="settings-records-title">Your records</h2><a class="settings-action" href="daily.html"><img src="assets/icons/persona-wisdom-64.png" width="44" height="44" alt=""><span><b>My daily guidance</b><small>Confirm context, choose an in-app reminder and review today’s suggestions.</small></span><span class="ms" aria-hidden="true">chevron_right</span></a>
+      <a class="settings-action" href="health-profile.html"><span class="ms" aria-hidden="true">medical_information</span><span><b>Health profile</b><small>Review the local profile form.</small></span><span class="ms" aria-hidden="true">chevron_right</span></a>
+      <a class="settings-action" href="cycle-log.html"><span class="ms" aria-hidden="true">edit_note</span><span><b>Cycle observations</b><small>Save dated signs, treatment and device notes.</small></span><span class="ms" aria-hidden="true">chevron_right</span></a>
+      <a class="settings-action" href="labs.html"><span class="ms" aria-hidden="true">science</span><span><b>Lab records</b><small>Enter, review and export dated results.</small></span><span class="ms" aria-hidden="true">chevron_right</span></a>
+      <a class="settings-action" href="wellness-checkin.html"><span class="ms" aria-hidden="true">edit_note</span><span><b>Wellness journal</b><small>Review saved journal entries.</small></span><span class="ms" aria-hidden="true">chevron_right</span></a>
+    </section>
+
+    <h2 class="sec">Appearance</h2>
+    <div class="card" style="padding:18px">
+      <div style="font-weight:700;font-size:13px;color:var(--ovuluna-text-primary);margin-bottom:10px">Life Stage Persona</div>
+      <div class="sub" style="font-size:12px;margin-bottom:12px">Choose a life-stage appearance. This preference does not measure your cycle or change a clinical assessment.</div>
+      <div class="persona-picker" id="personaPicker">
+        <button type="button" class="persona-opt" aria-pressed="false" data-persona="bloom">
+          <span class="p-check ms">check</span>
+          <span class="p-emoji">🌸</span>
+          <span class="p-name">Bloom</span>
+          <span class="p-age">First cycles</span>
+        </button>
+        <button type="button" class="persona-opt" aria-pressed="false" data-persona="grow">
+          <span class="p-check ms">check</span>
+          <span class="p-emoji">🌱</span>
+          <span class="p-name">Grow</span>
+          <span class="p-age">Trying to conceive</span>
+        </button>
+        <button type="button" class="persona-opt" aria-pressed="false" data-persona="nurture">
+          <span class="p-check ms">check</span>
+          <span class="p-emoji">🌿</span>
+          <span class="p-name">Nurture</span>
+          <span class="p-age">Post-pregnancy</span>
+        </button>
+        <button type="button" class="persona-opt" aria-pressed="false" data-persona="wisdom">
+          <span class="p-check ms">check</span>
+          <span class="p-emoji">🌙</span>
+          <span class="p-name">Wisdom</span>
+          <span class="p-age">Menopause & beyond</span>
+        </button>
+      </div>
+      <p id="settings-preference-status" role="status" aria-live="polite"></p>
+    </div>
+
+    <section class="card" aria-labelledby="settings-services-title">
+      <h2 id="settings-services-title">Connected services</h2>
+      <p>Account status is checked on the account page. Subscriptions, cloud backup, device sync and phone push reminders are not connected in this development build.</p>
+      <a class="settings-action" href="account.html"><span><b>Sign in & account status</b><small>Apple, Google or email when enabled by the account service.</small></span></a>
+    </section>
+
+    <div class="sub" style="text-align:center;font-size:11px">Ovumind offers wellness insights, not medical diagnosis.</div>
+  </main>
+</div>
+
+<nav class="nav">
+  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav>
+<script>
+// Appearance is a local preference, not an identity or health classification.
+(function(){
+  var picker = document.getElementById('personaPicker');
+  var status = document.getElementById('settings-preference-status');
+  if (!picker) return;
+  var allowed = ['bloom', 'grow', 'nurture', 'wisdom'];
+  var saved = 'bloom';
+  try { var stored = localStorage.getItem('ovuluna_persona'); if (allowed.includes(stored)) saved = stored; }
+  catch (_) { status.textContent = 'Local storage is unavailable. Appearance changes will apply to this page only.'; }
+  function display(persona) {
+    document.documentElement.setAttribute('data-persona', persona);
+    picker.querySelectorAll('.persona-opt').forEach(function(opt){
+      var active = opt.dataset.persona === persona;
+      opt.classList.toggle('on', active); opt.setAttribute('aria-pressed', String(active));
+    });
+  }
+  display(saved);
+  picker.querySelectorAll('.persona-opt').forEach(function(opt){
+    opt.addEventListener('click', function(){
+      display(opt.dataset.persona);
+      try { localStorage.setItem('ovuluna_persona', opt.dataset.persona); status.textContent = 'Appearance preference saved on this device.'; }
+      catch (_) { status.textContent = 'Appearance changed for this page, but could not be saved.'; }
+    });
+  });
+})();
+</script>
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="darkmode.js?v=6" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

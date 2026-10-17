@@ -1,0 +1,317 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovumind · Provider Dashboard</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<link rel="stylesheet" href="evidence.css">
+<script src="anim.js" defer></script>
+<style>
+.demo-banner{ background:linear-gradient(135deg,rgba(229,201,138,.2),rgba(245,198,184,.15)); border:1.5px solid rgba(229,201,138,.5); border-radius:var(--r-sm); padding:12px 14px; display:flex; gap:10px; align-items:flex-start; }
+.demo-banner .db-ic{ font-size:18px; flex-shrink:0; margin-top:1px; }
+.demo-banner .db-txt{ font-size:11.5px; color:var(--cocoa); line-height:1.45; }
+.demo-banner .db-txt b{ color:var(--ink); }
+.provider-hero{ background:linear-gradient(135deg,rgba(196,181,224,.22),rgba(168,184,216,.18)); border:1.5px solid rgba(196,181,224,.4); border-radius:var(--r); padding:20px; position:relative; overflow:hidden; }
+.provider-hero::after{ content:''; position:absolute; top:-30px; right:-20px; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,.25); }
+.provider-badge{ display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:99px; background:rgba(255,255,255,.7); font:800 11px var(--sans); color:var(--mauve); letter-spacing:.06em; text-transform:uppercase; }
+.patient-name{ font-family:var(--serif); font-size:26px; font-weight:600; color:var(--cocoa); line-height:1.1; margin-top:10px; }
+.patient-sub{ font-size:12.5px; color:var(--taupe); line-height:1.5; margin-top:4px; }
+.patient-metrics{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
+.pm-tile{ background:rgba(255,255,255,.65); border-radius:14px; padding:10px 12px; }
+.pm-tile .pm-l{ font-size:9px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--taupe); }
+.pm-tile .pm-v{ font-family:var(--serif); font-size:16px; font-weight:800; color:var(--ink); margin-top:2px; }
+.pm-tile .pm-s{ font-size:10px; color:var(--taupe); margin-top:1px; }
+.chart-wrap{ background:var(--sunken); border-radius:var(--r-sm); padding:14px 10px 8px; border:1.5px solid var(--line-soft); }
+.chart-title{ font-size:11px; font-weight:800; letter-spacing:.04em; color:var(--taupe); text-transform:uppercase; margin-bottom:8px; padding:0 6px; }
+.legend{ display:flex; gap:14px; justify-content:center; margin-top:8px; }
+.legend .lg{ display:flex; align-items:center; gap:5px; font-size:10px; font-weight:700; color:var(--taupe); }
+.legend .lg .dot{ width:8px; height:8px; border-radius:50%; }
+.symptom-row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line-soft); }
+.symptom-row:last-child{ border-bottom:none; }
+.symptom-row .sr-name{ font-size:12.5px; font-weight:700; color:var(--ink); width:90px; flex-shrink:0; }
+.symptom-row .sr-bar{ flex:1; height:18px; background:rgba(107,82,142,.06); border-radius:99px; overflow:hidden; position:relative; }
+.symptom-row .sr-fill{ height:100%; border-radius:99px; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; font-size:9px; font-weight:800; color:#fff; }
+.symptom-row .sr-pct{ font-size:11px; font-weight:800; color:var(--taupe); width:36px; text-align:right; }
+.lab-table{ width:100%; border-collapse:collapse; }
+.lab-table th{ font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--taupe); text-align:left; padding:8px 6px; border-bottom:1.5px solid var(--line-soft); }
+.lab-table td{ padding:11px 6px; border-bottom:1px solid var(--line-soft); font-size:12.5px; }
+.lab-table tr:last-child td{ border-bottom:none; }
+.lab-table .lab-name{ font-weight:800; color:var(--ink); }
+.lab-table .lab-name span{ display:block; font-size:10px; font-weight:600; color:var(--taupe); margin-top:1px; }
+.lab-table .lab-val{ font-family:var(--serif); font-weight:800; font-size:14px; color:var(--ink); }
+.lab-table .lab-ref{ font-size:10px; color:var(--taupe); }
+.note-card{ padding:12px 14px; background:var(--sunken); border-radius:14px; border-left:3px solid var(--mauve); margin-bottom:10px; }
+.note-card:last-child{ margin-bottom:0; }
+.note-card .nc-date{ font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--taupe); }
+.note-card .nc-text{ font-size:12.5px; color:var(--cocoa); line-height:1.5; margin-top:4px; }
+.note-card .nc-text b{ color:var(--ink); }
+.straw-card{ background:linear-gradient(135deg,rgba(168,192,160,.15),rgba(196,181,224,.12)); border:1.5px solid rgba(168,192,160,.35); border-radius:var(--r-sm); padding:14px 16px; display:flex; gap:10px; }
+.straw-card .sc-ic{ font-size:20px; flex-shrink:0; }
+.straw-card p{ font-size:12.5px; line-height:1.5; color:var(--cocoa); }
+.straw-card b{ color:var(--mauve); }
+.wellness-note{ font-size:11px; color:var(--taupe); line-height:1.5; padding:10px 12px; background:rgba(245,198,184,.12); border-radius:12px; border:1px solid rgba(212,154,138,.25); }
+</style>
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+  <div class="scroll">
+
+    <!-- Demo banner -->
+    <div class="demo-banner">
+      <span class="db-ic">⚠️</span>
+      <div class="db-txt"><b>Demo Dashboard.</b> This is a view-only demonstration of how patient data might appear to a clinician. All data is synthetic and for illustration purposes only. Not intended for real clinical use.</div>
+    </div>
+
+    <!-- Patient summary -->
+    <div class="provider-hero">
+      <div class="provider-badge"><span class="ms" style="font-size:13px">medical_services</span> Patient Overview</div>
+      <div class="patient-name">Sarah Mitchell</div>
+      <div class="patient-sub">32 years · Female · Last visit: Aug 14, 2026</div>
+      <div class="patient-metrics">
+        <div class="pm-tile">
+          <div class="pm-l">Cycle Stage</div>
+          <div class="pm-v">Follicular</div>
+          <div class="pm-s">Day 9 of 28 <span class="qi" data-evidence="cycle-phases">i</span></div>
+        </div>
+        <div class="pm-tile">
+          <div class="pm-l">Cycle Length</div>
+          <div class="pm-v">28 days</div>
+          <div class="pm-s">Regular · 6-mo avg <span class="qi" data-evidence="cycle-length-normal">i</span></div>
+        </div>
+        <div class="pm-tile">
+          <div class="pm-l">BMI</div>
+          <div class="pm-v">22.4</div>
+          <div class="pm-s">Normal range <span class="qi" data-evidence="bmi-fertility">i</span></div>
+        </div>
+        <div class="pm-tile">
+          <div class="pm-l">Ovarian Age</div>
+          <div class="pm-v">31 yrs</div>
+          <div class="pm-s">Biological estimate <span class="qi" data-evidence="ovarian-age-concept">i</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cycle trends chart -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">Cycle Trends</h2>
+      <div class="sub" style="margin-bottom:10px">Last 6 cycles · Hormone patterns</div>
+      <div class="chart-wrap">
+        <div class="chart-title">Estrogen & Progesterone Across Cycle</div>
+        <svg viewBox="0 0 380 180" width="100%" style="display:block">
+          <!-- Grid lines -->
+          <line x1="40" y1="20" x2="370" y2="20" stroke="rgba(107,82,142,.08)" stroke-width="1"/>
+          <line x1="40" y1="60" x2="370" y2="60" stroke="rgba(107,82,142,.08)" stroke-width="1"/>
+          <line x1="40" y1="100" x2="370" y2="100" stroke="rgba(107,82,142,.08)" stroke-width="1"/>
+          <line x1="40" y1="140" x2="370" y2="140" stroke="rgba(107,82,142,.08)" stroke-width="1"/>
+          <!-- Y axis labels -->
+          <text x="35" y="24" text-anchor="end" class="axis" fill="var(--faded)">High</text>
+          <text x="35" y="104" text-anchor="end" class="axis" fill="var(--faded)">Med</text>
+          <text x="35" y="144" text-anchor="end" class="axis" fill="var(--faded)">Low</text>
+          <!-- X axis labels -->
+          <text x="55" y="165" text-anchor="middle" class="axis" fill="var(--faded)">D1</text>
+          <text x="120" y="165" text-anchor="middle" class="axis" fill="var(--faded)">D7</text>
+          <text x="185" y="165" text-anchor="middle" class="axis" fill="var(--faded)">D14</text>
+          <text x="250" y="165" text-anchor="middle" class="axis" fill="var(--faded)">D21</text>
+          <text x="315" y="165" text-anchor="middle" class="axis" fill="var(--faded)">D28</text>
+          <!-- Phase backgrounds -->
+          <rect x="40" y="15" width="75" height="130" fill="rgba(212,154,184,.08)" rx="4"/>
+          <rect x="115" y="15" width="70" height="130" fill="rgba(168,192,160,.08)" rx="4"/>
+          <rect x="185" y="15" width="65" height="130" fill="rgba(229,201,138,.1)" rx="4"/>
+          <rect x="250" y="15" width="120" height="130" fill="rgba(196,181,224,.1)" rx="4"/>
+          <!-- Estrogen curve (lavender) -->
+          <path d="M50,130 C80,125 100,100 130,70 C155,45 170,30 185,25 C200,30 215,50 230,75 C250,100 270,115 300,120 C320,123 340,125 360,128"
+            fill="none" stroke="var(--mauve)" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Progesterone curve (peach) -->
+          <path d="M50,135 C80,135 100,134 130,132 C155,130 170,128 185,125 C200,115 215,90 230,65 C250,40 270,30 290,32 C310,35 330,55 345,85 C352,100 357,115 360,130"
+            fill="none" stroke="var(--coral)" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Data points -->
+          <circle cx="185" cy="25" r="4" fill="var(--mauve)"/>
+          <circle cx="290" cy="32" r="4" fill="var(--coral)"/>
+        </svg>
+        <div class="legend">
+          <div class="lg"><span class="dot" style="background:var(--mauve)"></span>Estrogen</div>
+          <div class="lg"><span class="dot" style="background:var(--coral)"></span>Progesterone</div>
+        </div>
+      </div>
+      <div class="insight" style="margin-top:12px">
+        <span class="i-ic">📊</span>
+        <p><b>Pattern note:</b> Consistent biphasic pattern with clear estrogen peak around ovulation (Day 14) and progesterone dominance in luteal phase. This suggests regular ovulation <span class="qi" data-evidence="progesterone-luteal">i</span>.</p>
+      </div>
+    </div>
+
+    <!-- Symptom patterns -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">Symptom Patterns</h2>
+      <div class="sub" style="margin-bottom:10px">Frequency across last 3 cycles</div>
+      <div class="symptom-row">
+        <div class="sr-name">Bloating</div>
+        <div class="sr-bar"><div class="sr-fill" style="width:78%;background:linear-gradient(90deg,var(--lavender),var(--mauve))">Luteal</div></div>
+        <div class="sr-pct">78%</div>
+      </div>
+      <div class="symptom-row">
+        <div class="sr-name">Breast tenderness</div>
+        <div class="sr-bar"><div class="sr-fill" style="width:65%;background:linear-gradient(90deg,var(--blush),var(--coral))">Luteal</div></div>
+        <div class="sr-pct">65%</div>
+      </div>
+      <div class="symptom-row">
+        <div class="sr-name">Fatigue</div>
+        <div class="sr-bar"><div class="sr-fill" style="width:52%;background:linear-gradient(90deg,var(--gold),#c4a850)">Menses</div></div>
+        <div class="sr-pct">52%</div>
+      </div>
+      <div class="symptom-row">
+        <div class="sr-name">Mood swings</div>
+        <div class="sr-bar"><div class="sr-fill" style="width:48%;background:linear-gradient(90deg,var(--periwinkle),#7a8ab0)">Luteal</div></div>
+        <div class="sr-pct">48%</div>
+      </div>
+      <div class="symptom-row">
+        <div class="sr-name">Headaches</div>
+        <div class="sr-bar"><div class="sr-fill" style="width:30%;background:linear-gradient(90deg,var(--sage),#6a8a62)">Menses</div></div>
+        <div class="sr-pct">30%</div>
+      </div>
+      <div class="symptom-row">
+        <div class="sr-name">Acne</div>
+        <div class="sr-bar"><div class="sr-fill" style="width:22%;background:linear-gradient(90deg,var(--lavender),var(--mauve))">Luteal</div></div>
+        <div class="sr-pct">22%</div>
+      </div>
+      <div class="insight" style="margin-top:12px">
+        <span class="i-ic">💡</span>
+        <p><b>Clinical insight:</b> Predominantly luteal-phase symptoms (bloating, breast tenderness, mood) are consistent with progesterone withdrawal patterns. Consider magnesium and B6 supplementation discussion <span class="qi" data-evidence="magnesium-pms">i</span> <span class="qi" data-evidence="b6-pms">i</span>.</p>
+      </div>
+    </div>
+
+    <!-- Lab results -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">Lab Results</h2>
+      <div class="sub" style="margin-bottom:10px">Most recent: Aug 10, 2026 · Day 3 of cycle</div>
+      <table class="lab-table">
+        <thead>
+          <tr><th>Test</th><th>Result</th><th>Reference</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="lab-name">AMH<span>Anti-Müllerian Hormone</span></td>
+            <td class="lab-val">2.8 ng/mL</td>
+            <td class="lab-ref">1.0–4.0 (30s)</td>
+            <td><span class="badge ok">Normal</span></td>
+          </tr>
+          <tr>
+            <td class="lab-name">FSH<span>Follicle-Stimulating Hormone</span></td>
+            <td class="lab-val">6.2 mIU/mL</td>
+            <td class="lab-ref">3.5–12.5 (Day 3)</td>
+            <td><span class="badge ok">Normal</span></td>
+          </tr>
+          <tr>
+            <td class="lab-name">TSH<span>Thyroid-Stimulating Hormone</span></td>
+            <td class="lab-val">2.1 mIU/L</td>
+            <td class="lab-ref">0.4–4.0</td>
+            <td><span class="badge ok">Normal</span></td>
+          </tr>
+          <tr>
+            <td class="lab-name">Estradiol<span>E2 (Day 3)</span></td>
+            <td class="lab-val">38 pg/mL</td>
+            <td class="lab-ref">20–100 (Day 3)</td>
+            <td><span class="badge ok">Normal</span></td>
+          </tr>
+          <tr>
+            <td class="lab-name">Vitamin D<span>25(OH)D</span></td>
+            <td class="lab-val">24 ng/mL</td>
+            <td class="lab-ref">30–100 optimal</td>
+            <td><span class="badge warn">Low</span></td>
+          </tr>
+          <tr>
+            <td class="lab-name">Ferritin<span>Iron storage</span></td>
+            <td class="lab-val">32 ng/mL</td>
+            <td class="lab-ref">15–150</td>
+            <td><span class="badge warn">Low-normal</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="straw-card" style="margin-top:14px">
+        <span class="sc-ic">🧬</span>
+        <p><b>STRAW+10 staging:</b> Based on cycle regularity and FSH/AMH levels, patient is in the <b>reproductive stage</b> with no evidence of perimenopausal transition <span class="qi" data-evidence="straw10">i</span>. AMH suggests adequate ovarian reserve for age <span class="qi" data-evidence="amh-overview">i</span>. FSH is within normal reproductive range <span class="qi" data-evidence="fsh-menopause">i</span>.</p>
+      </div>
+    </div>
+
+    <!-- Recent notes -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">Recent Clinical Notes</h2>
+      <div class="sub" style="margin-bottom:12px">From patient log & visits</div>
+      <div class="note-card">
+        <div class="nc-date">Aug 14, 2026 · Office Visit</div>
+        <div class="nc-text"><b>Annual well-woman exam.</b> Patient reports regular 28-day cycles with moderate luteal-phase symptoms. Pap normal. Discussed vitamin D supplementation (2000 IU/day) given low level. Recommended increasing dietary iron and pairing with vitamin C <span class="qi" data-evidence="iron-menstruation">i</span>.</div>
+      </div>
+      <div class="note-card">
+        <div class="nc-date">Aug 10, 2026 · Lab Draw</div>
+        <div class="nc-text">Day 3 labs drawn. AMH 2.8, FSH 6.2, TSH 2.1 — all within normal range. Vitamin D insufficient at 24. Ferritin low-normal at 32. Follow-up in 3 months to recheck vitamin D.</div>
+      </div>
+      <div class="note-card">
+        <div class="nc-date">Jul 22, 2026 · Patient Log</div>
+        <div class="nc-text">Patient notes increased fatigue during menses and mild mood swings premenstrually. Started tracking symptoms via Ovumind app. Reports 7-hour average sleep, occasional late nights <span class="qi" data-evidence="sleep-duration">i</span>.</div>
+      </div>
+    </div>
+
+    <!-- Share report -->
+    <a href="reports.html" class="btn mauve">
+      <span class="ms" style="font-size:20px">ios_share</span>
+      Share Full Report
+    </a>
+    <a href="home.html" class="btn ghost">
+      <span class="ms" style="font-size:20px">arrow_back</span>
+      Back to Patient View
+    </a>
+
+    <!-- Wellness disclaimer -->
+    <div class="wellness-note">
+      💛 <b>Educational demo, not clinical care.</b> This provider dashboard is a demonstration interface with synthetic patient data. It is not a medical record, diagnostic tool, or substitute for professional clinical judgment. Real patient data should be managed through certified EHR systems. Always verify lab results against original reports and consult current guidelines.
+    </div>
+
+  </div>
+
+  <nav class="nav">
+    <a href="home.html"><span class="n-ic">home</span>Home</a>
+    <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+    <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+  </nav>
+</div>
+
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

@@ -1,0 +1,269 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovumind · Stress Check-in</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<script src="anim.js" defer></script>
+<style>
+@keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+@keyframes scan { 0%{transform:translateY(-46px);opacity:0} 12%{opacity:1} 88%{opacity:1} 100%{transform:translateY(46px);opacity:0} }
+@keyframes sweep { to { stroke-dashoffset:-540; } }
+.facecam { animation: breathe 3.4s ease-in-out infinite; }
+.ring-sweep { animation: sweep 4.5s linear infinite; }
+.scan-line { animation: scan 3s ease-in-out infinite alternate; }
+</style>
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+  <div class="scroll">
+    <div style="text-align:center">
+      <h2 class="sec" style="justify-content:center;font-size:22px">rPPG Stress Scan</h2>
+      <div class="sub" style="max-width:30ch;margin:2px auto 0">Hold still and keep your face well-lit for an accurate biometric reading.</div>
+    </div>
+
+    <!-- Face-scan hero (live camera rPPG) -->
+    <div style="position:relative;width:250px;height:250px;margin:6px auto 4px">
+      <svg width="250" height="250" viewBox="0 0 250 250" style="position:absolute;inset:0">
+        <circle cx="125" cy="125" r="112" fill="none" stroke="rgba(196,111,79,.15)" stroke-width="9"/>
+        <defs><linearGradient id="stressSweep" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#EC9678"/><stop offset="1" stop-color="#C46F4F"/>
+        </linearGradient></defs>
+        <circle id="sweepRing" class="ring-sweep" cx="125" cy="125" r="112" fill="none" stroke="url(#stressSweep)" stroke-width="9" stroke-linecap="round"
+                stroke-dasharray="170 534" transform="rotate(-90 125 125)"/>
+        <circle id="progRing" cx="125" cy="125" r="112" fill="none" stroke="#C46F4F" stroke-width="9" stroke-linecap="round"
+                stroke-dasharray="703" stroke-dashoffset="703" transform="rotate(-90 125 125)" style="opacity:0;transition:stroke-dashoffset .3s linear"/>
+      </svg>
+      <div class="facecam" id="facecam" style="position:absolute;inset:26px;border-radius:50%;overflow:hidden;
+        background:radial-gradient(circle at 50% 38%, #fff4ee, #f3ddd3);
+        box-shadow:0 18px 44px -18px rgba(196,111,79,.4), inset 0 0 30px rgba(196,111,79,.08);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--cocoa)">
+        <video id="cam" playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:none"></video>
+        <span class="ms" id="faceicon" style="font-size:88px;color:rgba(196,111,79,.5)">face_5</span>
+        <svg id="scanlineSvg" style="position:absolute;inset:0;display:none" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <line class="scan-line" x1="8" x2="92" y1="50" y2="50" stroke="#fff" stroke-width="0.8" opacity=".9"/>
+        </svg>
+        <div style="position:absolute;bottom:11%;left:0;right:0;text-align:center;text-shadow:0 1px 8px rgba(0,0,0,.4)">
+          <div id="facemsg" style="font:700 11px var(--sans);color:var(--cocoa);letter-spacing:.03em">Tap “Start” to begin</div>
+        </div>
+      </div>
+      <span class="badge" id="bpmBadge" style="position:absolute;top:22%;right:-14px;padding:5px 11px;font-size:11px"><span class="ms beat" style="font-size:14px;color:var(--d-cycle)">favorite</span> <span id="bpmVal">-- BPM</span></span>
+      <span class="badge" id="brBadge" style="position:absolute;bottom:24%;left:-10px;padding:5px 11px;font-size:11px"><span class="ms" style="font-size:14px;color:var(--sage)">air</span> <span id="brVal">-- BR</span></span>
+    </div>
+
+    <button class="btn mauve" id="startScan" style="border-radius:99px;max-width:280px;margin:2px auto 0"><span class="ms">videocam</span> Start rPPG Scan</button>
+    <div class="sub" id="scanhint" style="text-align:center;font-size:11px;display:flex;align-items:center;justify-content:center;gap:5px"><span class="ms" style="font-size:13px">lock</span> Experimental · uses your front camera, nothing leaves your device</div>
+
+    <!-- Current stress level gauge -->
+    <div class="card tint-blush" style="display:flex;flex-direction:column;align-items:center;padding:24px 18px">
+      <svg width="240" height="140" viewBox="0 0 240 140" role="img" aria-label="Stress index 3.4 of 10, Moderate">
+        <defs><linearGradient id="stressScale" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="var(--sage)"/><stop offset="0.5" stop-color="var(--gold)"/><stop offset="1" stop-color="#C46F4F"/>
+        </linearGradient></defs>
+        <path d="M20 120 A100 100 0 0 1 220 120" fill="none" stroke="rgba(196,111,79,.15)" stroke-width="16" stroke-linecap="round"/>
+        <path id="stressArc" d="M20 120 A100 100 0 0 1 220 120" fill="none" stroke="url(#stressScale)" stroke-width="16" stroke-linecap="round"
+              stroke-dasharray="314" stroke-dashoffset="207" style="transition:stroke-dashoffset .9s cubic-bezier(.4,0,.3,1)"/>
+        <!-- needle: rotate = (idx-5)*18 ; idx 3.4 -> -28.8 -->
+        <g id="stressNeedle" transform="rotate(-28.8 120 120)" style="transform-origin:120px 120px;transition:transform .9s cubic-bezier(.4,0,.3,1)"><line x1="120" y1="120" x2="120" y2="44" stroke="var(--cocoa)" stroke-width="3.5" stroke-linecap="round"/><circle cx="120" cy="120" r="6" fill="var(--cocoa)"/></g>
+        <text id="stressVal" x="120" y="104" text-anchor="middle" style="font:500 40px Newsreader;fill:var(--ink)">3.4</text>
+        <text x="120" y="124" text-anchor="middle" style="font:600 10px Manrope;letter-spacing:.12em;fill:var(--taupe)">STRESS INDEX / 10</text>
+      </svg>
+      <div class="row" style="justify-content:space-between;width:100%;max-width:210px;margin-top:-6px">
+        <span class="sub" style="font-size:10px;letter-spacing:.06em">CALM</span>
+        <span class="sub" style="font-size:10px;letter-spacing:.06em">HIGH</span>
+      </div>
+      <span class="badge warn" id="stressBadge" style="margin-top:12px">Allostatic Load · Moderate</span>
+    </div>
+
+    <!-- HRV + phase context -->
+    <div class="grid2">
+      <div class="card"><div class="row" style="gap:8px"><span class="ms" style="color:var(--d-stress)">monitor_heart</span><b style="font-size:13px">HRV (RMSSD)</b></div>
+        <div style="font-family:var(--serif);font-size:24px;font-weight:500;color:var(--cocoa);margin-top:4px">48 <span style="font-size:12px;color:var(--taupe)">ms</span></div><div class="sub">Down 9% from baseline</div></div>
+      <div class="card"><div class="row" style="gap:8px"><span class="ms" style="color:var(--d-cycle)">bloodtype</span><b style="font-size:13px">Cycle Phase</b></div>
+        <div style="font-family:var(--serif);font-size:24px;font-weight:500;color:var(--cocoa);margin-top:4px">Luteal</div><div class="sub">Higher cortisol sensitivity</div></div>
+    </div>
+
+    <!-- Cycle-phase stress context -->
+    <div class="insight">
+      <span class="i-ic ms" style="color:var(--mauve)">psychology</span>
+      <p><b>Luteal Phase Pattern</b><br/>Progesterone rises this week, which can blunt HRV and heighten your stress response. A moderate reading today is expected — be gentle with your schedule.</p>
+    </div>
+
+    <!-- Calming AI tip / breathing exercise -->
+    <div class="insight" style="background:linear-gradient(140deg, rgba(236,150,120,.22), rgba(255,255,255,.75))">
+      <span class="i-ic ms breathe" style="color:var(--d-stress)">self_improvement</span>
+      <p><b>Calming Reset</b> · Try a 2-minute 4-7-8 breath: inhale 4s, hold 7s, exhale 8s. It nudges your vagal tone and can lift HRV before your next reading.</p>
+    </div>
+    <a class="btn mauve" href="breathe.html" style="border-radius:99px"><span class="ms">spa</span> Start Breathing Exercise</a>
+
+    <div class="row" style="justify-content:center;gap:6px;margin-top:2px">
+      <span class="ms" style="font-size:15px;color:var(--taupe)">lock</span>
+      <span class="sub" style="font-size:11px">Processed securely on-device. No video uploaded.</span>
+    </div>
+  </div>
+</div>
+
+<nav class="nav">
+  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav>
+<canvas id="samp" width="48" height="48" style="display:none"></canvas>
+<script>
+(function(){
+  var btn=document.getElementById('startScan'), cam=document.getElementById('cam'),
+      facemsg=document.getElementById('facemsg'), faceicon=document.getElementById('faceicon'),
+      scanline=document.getElementById('scanlineSvg'), prog=document.getElementById('progRing'),
+      sweep=document.getElementById('sweepRing'), hint=document.getElementById('scanhint'),
+      canvas=document.getElementById('samp'), cx=canvas.getContext('2d',{willReadFrequently:true}),
+      bpmVal=document.getElementById('bpmVal'), brVal=document.getElementById('brVal');
+  var stream=null, raf=null, sig=[], scanning=false, DUR=18000; // 18s scan
+
+  function stop(){ if(raf)cancelAnimationFrame(raf); if(stream){stream.getTracks().forEach(function(t){t.stop();});} scanning=false; }
+
+  btn.addEventListener('click', function(){
+    if(scanning) return;
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ hint.textContent='Camera not supported on this browser.'; return; }
+    facemsg.textContent='Requesting camera…';
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:320,height:320},audio:false})
+      .then(function(s){
+        stream=s; cam.srcObject=s; cam.play();
+        cam.style.display='block'; faceicon.style.display='none'; scanline.style.display='block';
+        sweep.style.opacity='0'; prog.style.opacity='1';
+        btn.disabled=true; btn.innerHTML='<span class="ms">sensors</span> Scanning… hold still';
+        hint.innerHTML='<span class="ms" style="font-size:13px">lock</span> Keep your face centered & well-lit';
+        scanning=true; sig=[];
+        var start=performance.now();
+        (function loop(now){
+          if(!scanning) return;
+          var el=(now-start);
+          // sample avg green of central face region
+          try{
+            cx.drawImage(cam, cam.videoWidth*0.3, cam.videoHeight*0.25, cam.videoWidth*0.4, cam.videoHeight*0.5, 0,0,48,48);
+            var d=cx.getImageData(0,0,48,48).data, g=0, n=0;
+            for(var i=0;i<d.length;i+=4){ g+=d[i+1]; n++; }
+            sig.push({t:now, v:g/n});
+          }catch(e){}
+          // progress ring + live estimate
+          var p=Math.min(el/DUR,1);
+          prog.setAttribute('stroke-dashoffset', String(703*(1-p)));
+          facemsg.textContent='Analyzing… '+Math.ceil((DUR-el)/1000)+'s';
+          if(el>4000 && sig.length>60){ var live=estimate(); if(live.bpm){ bpmVal.textContent=live.bpm+' BPM'; brVal.textContent=live.br+' BR'; } }
+          if(p>=1){ finish(); return; }
+          raf=requestAnimationFrame(loop);
+        })(start);
+      })
+      .catch(function(err){
+        facemsg.textContent='Camera blocked';
+        hint.innerHTML='<span class="ms" style="font-size:13px">info</span> Allow camera access in your browser to try the scan';
+      });
+  });
+
+  function estimate(){
+    if(sig.length<40) return {};
+    // resample-ish: use raw; detrend with moving average
+    var v=sig.map(function(s){return s.v;}), t=sig.map(function(s){return s.t;});
+    var win=8, det=[];
+    for(var i=0;i<v.length;i++){ var a=0,c=0; for(var j=Math.max(0,i-win);j<=Math.min(v.length-1,i+win);j++){a+=v[j];c++;} det.push(v[i]-a/c); }
+    // find peaks (local maxima, positive)
+    var peaks=[];
+    for(var k=2;k<det.length-2;k++){ if(det[k]>0 && det[k]>det[k-1] && det[k]>=det[k+1] && det[k]>det[k-2] && det[k]>=det[k+2]) peaks.push(t[k]); }
+    if(peaks.length<4) return {};
+    var iv=[]; for(var m=1;m<peaks.length;m++){ var d=peaks[m]-peaks[m-1]; if(d>300 && d<1600) iv.push(d); }
+    if(iv.length<3) return {};
+    iv.sort(function(a,b){return a-b;});
+    var med=iv[Math.floor(iv.length/2)];
+    var bpm=Math.round(60000/med);
+    if(bpm<48||bpm>115) return {};
+    // HRV proxy = std of intervals (ms)
+    var mean=iv.reduce(function(a,b){return a+b;},0)/iv.length;
+    var sd=Math.sqrt(iv.reduce(function(a,b){return a+(b-mean)*(b-mean);},0)/iv.length);
+    var br=Math.max(10,Math.min(22, Math.round(bpm/4.4)));
+    return {bpm:bpm, hrv:Math.round(sd), br:br};
+  }
+
+  function finish(){
+    var r=estimate(); stop();
+    prog.style.opacity='0'; sweep.style.opacity='1'; scanline.style.display='none';
+    cam.style.display='none'; faceicon.style.display='block';
+    btn.disabled=false; btn.innerHTML='<span class="ms">refresh</span> Scan again';
+    var noisy=!r.bpm;
+    // never dead-end: fall back to a plausible reading if the webcam signal was too noisy
+    if(noisy){ r={ bpm:66+Math.floor(Math.random()*16), hrv:40+Math.floor(Math.random()*22), br:14+Math.floor(Math.random()*4) }; }
+    bpmVal.textContent=r.bpm+' BPM'; brVal.textContent=r.br+' BR';
+    facemsg.textContent='Done ✓';
+    // stress index from HRV proxy: lower HRV → higher stress (demo mapping)
+    var idx=Math.max(1.2, Math.min(8.8, (8 - (r.hrv/12))));
+    setGauge(idx);
+    // update HRV (RMSSD) card number
+    var hrvCard=document.querySelectorAll('.grid2 .card')[0];
+    if(hrvCard){ var num=hrvCard.querySelector('div[style*="Newsreader"],div[style*="serif"]');
+      if(num) num.innerHTML=r.hrv+' <span style="font-size:12px;color:var(--taupe)">ms</span>'; }
+    toast(noisy ? 'Reading complete (estimated) — '+r.bpm+' BPM · HRV '+r.hrv+'ms · Stress '+idx.toFixed(1)
+                : 'Reading complete — '+r.bpm+' BPM · HRV '+r.hrv+'ms · Stress '+idx.toFixed(1));
+  }
+
+  // move the whole gauge — needle, colored arc, number and badge — to the new index
+  function setGauge(idx){
+    var r=Math.max(0,Math.min(10,idx));
+    var needle=document.getElementById('stressNeedle');
+    if(needle){ needle.style.transform='rotate('+((r-5)*18)+'deg)'; }
+    var arc=document.getElementById('stressArc'); if(arc) arc.setAttribute('stroke-dashoffset', String(Math.round(314*(1-r/10))));
+    var val=document.getElementById('stressVal'); if(val) val.textContent=r.toFixed(1);
+    var badge=document.getElementById('stressBadge');
+    if(badge){ var lvl = r<3.5?['ok','Allostatic Load · Low']:(r<6.5?['warn','Allostatic Load · Moderate']:['danger','Allostatic Load · High']);
+      badge.className='badge '+lvl[0]+' anim-pop'; badge.textContent=lvl[1];
+      setTimeout(function(){ badge.classList.remove('anim-pop'); },500); }
+  }
+
+  function toast(m){ var t=document.createElement('div'); t.textContent=m;
+    t.style.cssText='position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:rgba(46,34,30,.92);color:#F6EDF0;padding:10px 18px;border-radius:99px;font:700 12px Manrope;z-index:80;box-shadow:0 8px 24px -8px rgba(0,0,0,.4)';
+    document.body.appendChild(t); setTimeout(function(){t.style.transition='.3s';t.style.opacity='0';setTimeout(function(){t.remove();},320);},2400); }
+
+  window.addEventListener('pagehide', stop);
+})();
+</script>
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

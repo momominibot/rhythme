@@ -299,11 +299,11 @@
 
   <!-- Bottom nav -->
   <div class="bottom-nav">
-    <a class="nav-item" href="cycle.html"><span class="material-symbols-outlined">cycle</span>Cycle</a>
-    <a class="nav-item" href="food.html"><span class="material-symbols-outlined">restaurant</span>Food</a>
+    <a class="nav-item" href="cycle-home.html"><span class="material-symbols-outlined">cycle</span>Cycle</a>
+    <a class="nav-item" href="food-journal.html"><span class="material-symbols-outlined">restaurant</span>Food</a>
     <div class="nav-item room-btn active" id="roomNavBtn"><span class="material-symbols-outlined">home</span></div>
-    <a class="nav-item" href="mind.html"><span class="material-symbols-outlined">self_improvement</span>Mind</a>
-    <a class="nav-item" href="you.html"><span class="material-symbols-outlined">person</span>You</a>
+    <a class="nav-item" href="mindfulness.html"><span class="material-symbols-outlined">self_improvement</span>Mind</a>
+    <a class="nav-item" href="profile.html"><span class="material-symbols-outlined">person</span>You</a>
   </div>
 
   <!-- Walk overlays -->
@@ -519,7 +519,7 @@ renderer.render(scene,camera);}
 
 // Onboarding
 const onboardingOverlay=document.getElementById('onboardingOverlay');
-const hasOnboarded=localStorage.getItem('ovumind_onboarding_complete');
+const hasOnboarded=localStorage.getItem('ovuluna_onboarding');
 if(hasOnboarded){onboardingOverlay.classList.add('hidden');}
 document.getElementById('startOnboarding').onclick=()=>{window.location.href='onboarding.html';};
 document.getElementById('skipOnboarding').onclick=()=>{onboardingOverlay.classList.add('hidden');localStorage.setItem('ovumind_room_skipped','1');};

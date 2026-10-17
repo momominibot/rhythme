@@ -1,0 +1,675 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovumind · Breathe</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<link rel="stylesheet" href="evidence.css">
+<script src="anim.js" defer></script>
+<style>
+/* breathing circle */
+.breathe-stage{ display:flex; flex-direction:column; align-items:center; padding:24px 0 12px; position:relative; }
+.circle-wrap{ position:relative; width:200px; height:200px; display:flex; align-items:center; justify-content:center; }
+.circle-bg{ position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle, rgba(196,181,224,.25), rgba(245,198,184,.15)); border:1.5px solid rgba(196,181,224,.3); }
+.circle-orb{ width:120px; height:120px; border-radius:50%; background:linear-gradient(135deg, var(--lavender), var(--blush)); box-shadow:0 8px 32px rgba(122,92,150,.25); transition: transform 4s ease-in-out, opacity .3s; opacity:.85; }
+.circle-orb.inhale{ transform:scale(1.5); }
+.circle-orb.exhale{ transform:scale(0.7); }
+.circle-orb.hold{ transform:scale(1.5); }
+.circle-label{ position:absolute; font:800 16px var(--sans); color:var(--ink); letter-spacing:.06em; text-transform:uppercase; z-index:2; transition:.3s; }
+.circle-timer{ position:absolute; bottom:-30px; font:700 13px var(--sans); color:var(--taupe); }
+.pulse-ring{ position:absolute; inset:0; border-radius:50%; border:2px solid rgba(196,181,224,.4); animation:pulseRing 4s ease-in-out infinite; opacity:0; }
+@keyframes pulseRing{ 0%{transform:scale(.8);opacity:.6} 100%{transform:scale(1.3);opacity:0} }
+
+/* phase tabs */
+.btabs{ display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; }
+.btab{ flex-shrink:0; padding:9px 14px; border-radius:99px; border:1.5px solid var(--line-soft); background:var(--card-solid); font:700 11.5px var(--sans); color:var(--taupe); cursor:pointer; transition:.15s; }
+.btab.on{ border-color:var(--mauve); background:rgba(139,108,130,.1); color:var(--ink); }
+
+/* exercise card */
+.ex-card{ background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r); padding:18px; }
+.ex-head{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.ex-ic{ width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+.ex-info{ flex:1; }
+.ex-name{ font:800 15px var(--sans); color:var(--ink); }
+.ex-phase{ font-size:11px; font-weight:700; color:var(--mauve); letter-spacing:.04em; text-transform:uppercase; margin-top:2px; }
+.ex-desc{ font-size:12.5px; color:var(--taupe); line-height:1.5; margin-bottom:12px; }
+.ex-pattern{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.ex-step{ display:flex; align-items:center; gap:5px; padding:6px 10px; border-radius:10px; background:var(--sunken); font:700 11px var(--sans); color:var(--ink); }
+.ex-step .es-n{ font:800 13px var(--serif); color:var(--mauve); }
+
+/* controls */
+.controls{ display:flex; gap:10px; align-items:center; }
+.controls .btn{ flex:1; }
+.dur-select{ display:flex; gap:6px; }
+.dur-btn{ padding:8px 12px; border-radius:10px; border:1.5px solid var(--line); background:var(--card-solid); font:700 11px var(--sans); color:var(--taupe); cursor:pointer; transition:.15s; }
+.dur-btn.on{ border-color:var(--mauve); background:rgba(122,92,150,.1); color:var(--ink); }
+
+/* session history */
+.hist-row{ display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line-soft); }
+.hist-row:last-child{ border-bottom:none; }
+.hist-ic{ width:36px; height:36px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:17px; background:rgba(196,181,224,.2); flex-shrink:0; }
+.hist-body{ flex:1; }
+.hist-name{ font-size:13px; font-weight:800; color:var(--ink); }
+.hist-meta{ font-size:11px; color:var(--taupe); margin-top:1px; }
+.hist-dur{ font:800 13px var(--serif); color:var(--mauve); }
+
+/* stats */
+.breath-stat{ text-align:center; padding:10px 4px; }
+.breath-stat .bs-v{ font-family:var(--serif); font-size:22px; font-weight:800; color:var(--ink); }
+.breath-stat .bs-l{ font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--taupe); font-weight:700; margin-top:2px; }
+
+.wellness-note{ font-size:11px; color:var(--taupe); line-height:1.5; padding:10px 12px; background:rgba(245,198,184,.12); border-radius:12px; border:1px solid rgba(212,154,138,.25); }
+
+/* mini breathing circle (per-exercise) */
+.mini-breathe{ display:flex; flex-direction:column; align-items:center; padding:16px 0 4px; gap:10px; }
+.mini-circle-wrap{ position:relative; width:130px; height:130px; display:flex; align-items:center; justify-content:center; }
+.mini-circle-bg{ position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle, rgba(196,181,224,.2), rgba(245,198,184,.12)); border:1.5px solid rgba(196,181,224,.25); }
+.mini-orb{ width:78px; height:78px; border-radius:50%; background:linear-gradient(135deg, var(--lavender), var(--blush)); box-shadow:0 4px 20px rgba(122,92,150,.2); transition: transform 4s ease-in-out, opacity .3s; opacity:.85; }
+.mini-orb.inhale{ transform:scale(1.45); }
+.mini-orb.exhale{ transform:scale(0.65); }
+.mini-orb.hold{ transform:scale(1.45); }
+.mini-label{ position:absolute; font:800 12px var(--sans); color:var(--ink); letter-spacing:.05em; text-transform:uppercase; z-index:2; transition:.3s; text-align:center; }
+.mini-start-btn{ display:inline-flex; align-items:center; gap:5px; padding:7px 16px; border-radius:99px; border:1.5px solid var(--mauve); background:rgba(139,108,130,.08); color:var(--ink); font:700 11.5px var(--sans); cursor:pointer; transition:.15s; }
+.mini-start-btn:active{ transform:scale(.96); }
+.cramps-section-head{ display:flex; align-items:center; gap:10px; margin:20px 0 12px; }
+.cramps-section-head .cs-icon{ width:40px; height:40px; border-radius:12px; background:rgba(212,154,138,.18); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.cramps-section-head .cs-text h3{ font:800 17px var(--sans); color:var(--ink); margin:0; }
+.cramps-section-head .cs-text p{ font-size:11.5px; color:var(--taupe); margin:2px 0 0; line-height:1.4; }
+</style>
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+  <div class="scroll">
+
+    <!-- Hero / breathing circle -->
+    <div class="card tint-lavender">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div>
+          <div class="badge info" style="margin-bottom:6px"><span class="ms" style="font-size:12px">auto_awesome</span> Follicular Phase</div>
+          <h2 class="sec" style="margin:0;font-size:20px">Today's Breath</h2>
+        </div>
+        <div style="font-size:32px">🫁</div>
+      </div>
+      <div class="sub" style="margin-bottom:4px">Coherent breathing at 6 breaths/min maximizes HRV and calms your nervous system <span class="qi" data-evidence="breathwork-hrv">i</span>.</div>
+
+      <div class="breathe-stage">
+        <div class="circle-wrap">
+          <div class="circle-bg"></div>
+          <div class="pulse-ring" id="pulseRing"></div>
+          <div class="circle-orb" id="breathOrb"></div>
+          <div class="circle-label" id="breathLabel">Ready</div>
+          <div class="circle-timer" id="breathTimer">05:00</div>
+        </div>
+      </div>
+
+      <div class="dur-select" style="justify-content:center;margin-top:36px;margin-bottom:14px">
+        <div class="dur-btn" onclick="setDuration(3,this)">3 min</div>
+        <div class="dur-btn on" onclick="setDuration(5,this)">5 min</div>
+        <div class="dur-btn" onclick="setDuration(10,this)">10 min</div>
+        <div class="dur-btn" onclick="setDuration(15,this)">15 min</div>
+      </div>
+
+      <div class="controls">
+        <button class="btn mauve" id="startBtn" onclick="toggleSession()"><span class="ms" style="font-size:18px">play_arrow</span> Start Session</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid2">
+      <div class="metric breath-stat">
+        <div class="bs-v" id="statSessions">12</div>
+        <div class="bs-l">Sessions this week</div>
+      </div>
+      <div class="metric breath-stat">
+        <div class="bs-v" id="statMinutes">48</div>
+        <div class="bs-l">Total minutes</div>
+      </div>
+    </div>
+
+    <!-- Exercise tabs -->
+    <div class="btabs" id="exTabs">
+      <div class="btab on" data-ex="coherent">🌱 Coherent</div>
+      <div class="btab" data-ex="478">🌙 4-7-8</div>
+      <div class="btab" data-ex="box">📦 Box</div>
+      <div class="btab" data-ex="bodyscan">😴 Body Scan</div>
+      <div class="btab" data-ex="cramps">🩸 Cramps Relief</div>
+    </div>
+
+    <!-- Coherent Breathing -->
+    <div class="ex-card" id="ex-coherent">
+      <div class="ex-head">
+        <div class="ex-ic" style="background:rgba(168,192,160,.2)">🌱</div>
+        <div class="ex-info">
+          <div class="ex-name">Coherent Breathing</div>
+          <div class="ex-phase">Follicular · Energy & Focus</div>
+        </div>
+      </div>
+      <div class="ex-desc">Slow, rhythmic breathing at 6 breaths per minute. This maximizes heart rate variability (HRV), balances your autonomic nervous system, and boosts the energy and clarity your follicular phase naturally supports <span class="qi" data-evidence="breathwork-hrv">i</span>. HRV is a key marker of stress resilience and overall wellness in women <span class="qi" data-evidence="hrv-women-health">i</span>.</div>
+      <div class="ex-pattern">
+        <div class="ex-step"><span class="es-n">5s</span> Inhale</div>
+        <div class="ex-step"><span class="es-n">5s</span> Exhale</div>
+        <div class="ex-step"><span class="es-n">6</span> breaths/min</div>
+      </div>
+      <div class="insight" style="margin-top:4px">
+        <span class="i-ic">💡</span>
+        <p><b>Guided:</b> Sit comfortably, shoulders relaxed. Inhale through your nose for a slow count of 5, feeling your belly expand. Exhale gently through pursed lips for 5. Let the breath be smooth and even, like ocean waves.</p>
+      </div>
+    </div>
+
+    <!-- 4-7-8 Breathing -->
+    <div class="ex-card" id="ex-478" style="display:none">
+      <div class="ex-head">
+        <div class="ex-ic" style="background:rgba(196,181,224,.25)">🌙</div>
+        <div class="ex-info">
+          <div class="ex-name">4-7-8 Breathing</div>
+          <div class="ex-phase">Luteal · PMS & Calm</div>
+        </div>
+      </div>
+      <div class="ex-desc">A calming breath pattern developed by Dr. Andrew Weil. The extended exhale and hold activate your parasympathetic nervous system, reducing anxiety and easing the tension and irritability common in the luteal phase <span class="qi" data-evidence="478-breathing">i</span>.</div>
+      <div class="ex-pattern">
+        <div class="ex-step"><span class="es-n">4s</span> Inhale</div>
+        <div class="ex-step"><span class="es-n">7s</span> Hold</div>
+        <div class="ex-step"><span class="es-n">8s</span> Exhale</div>
+      </div>
+      <div class="insight" style="margin-top:4px">
+        <span class="i-ic">💡</span>
+        <p><b>Guided:</b> Place the tip of your tongue behind your upper front teeth. Inhale quietly through your nose for 4 counts. Hold your breath for 7 counts. Exhale completely through your mouth, making a whoosh sound, for 8 counts. Repeat 4 cycles to start.</p>
+      </div>
+    </div>
+
+    <!-- Box Breathing -->
+    <div class="ex-card" id="ex-box" style="display:none">
+      <div class="ex-head">
+        <div class="ex-ic" style="background:rgba(168,184,216,.25)">📦</div>
+        <div class="ex-info">
+          <div class="ex-name">Box Breathing</div>
+          <div class="ex-phase">Anytime · Stress Relief</div>
+        </div>
+      </div>
+      <div class="ex-desc">Also known as square breathing, used by Navy SEALs to stay calm under pressure. Equal four-part breathing creates a steady, meditative rhythm that lowers cortisol and sharpens focus <span class="qi" data-evidence="stress-cortisol-cycle">i</span>. Perfect before a stressful meeting or when you feel overwhelmed.</div>
+      <div class="ex-pattern">
+        <div class="ex-step"><span class="es-n">4s</span> Inhale</div>
+        <div class="ex-step"><span class="es-n">4s</span> Hold</div>
+        <div class="ex-step"><span class="es-n">4s</span> Exhale</div>
+        <div class="ex-step"><span class="es-n">4s</span> Hold</div>
+      </div>
+      <div class="insight" style="margin-top:4px">
+        <span class="i-ic">💡</span>
+        <p><b>Guided:</b> Visualize tracing the four sides of a square. Inhale as you trace the top (4 counts). Hold tracing the right side (4). Exhale down the left side (4). Hold along the bottom (4). Each full square is one cycle. Aim for 5–10 squares.</p>
+      </div>
+    </div>
+
+    <!-- Body Scan -->
+    <div class="ex-card" id="ex-bodyscan" style="display:none">
+      <div class="ex-head">
+        <div class="ex-ic" style="background:rgba(245,198,184,.3)">😴</div>
+        <div class="ex-info">
+          <div class="ex-name">Body Scan Meditation</div>
+          <div class="ex-phase">Evening · Sleep & Release</div>
+        </div>
+      </div>
+      <div class="ex-desc">A progressive relaxation practice that moves awareness through each body part, releasing tension and preparing you for deep sleep. Especially helpful during the luteal phase when progesterone rises and sleep can become more restless <span class="qi" data-evidence="sleep-cycle-hormones">i</span>. Quality sleep is foundational for hormonal balance <span class="qi" data-evidence="sleep-duration">i</span>.</div>
+      <div class="ex-pattern">
+        <div class="ex-step"><span class="es-n">10m</span> Full body</div>
+        <div class="ex-step"><span class="es-n">→</span> Head to toe</div>
+        <div class="ex-step"><span class="es-n">🌙</span> Best before bed</div>
+      </div>
+      <div class="insight" style="margin-top:4px">
+        <span class="i-ic">💡</span>
+        <p><b>Guided:</b> Lie down comfortably. Bring attention to the top of your head, slowly scanning down — forehead, eyes, jaw, neck, shoulders, arms, chest, belly, hips, legs, feet. At each area, notice tension without judgment, then breathe into it and let it soften. Let your body feel heavy and supported by the bed.</p>
+      </div>
+    </div>
+
+    <!-- Cramps Relief Breathing -->
+    <div id="ex-cramps" style="display:none">
+      <div class="cramps-section-head">
+        <div class="cs-icon">🩸</div>
+        <div class="cs-text">
+          <h3>Cramps Relief Breathing</h3>
+          <p>Evidence-based breathing techniques to ease menstrual pain, improve uterine blood flow, and calm your nervous system.</p>
+        </div>
+      </div>
+
+      <!-- a. Diaphragmatic Breathing for Cramps -->
+      <div class="ex-card" style="margin-bottom:14px">
+        <div class="ex-head">
+          <div class="ex-ic" style="background:rgba(168,192,160,.2)">🫁</div>
+          <div class="ex-info">
+            <div class="ex-name">Diaphragmatic Breathing</div>
+            <div class="ex-phase">Menses · Pain Relief</div>
+          </div>
+        </div>
+        <div class="ex-desc">Deep belly breathing directly targets cramp physiology. It increases intra-abdominal pressure, improves uterine blood flow, reduces prostaglandin secretion, and decreases uterine smooth muscle contraction intensity. Studies show a significant decrease in menstrual symptoms vs control (p=0.0008) <span class="qi" data-evidence="breath-cramps-diaphragmatic">i</span>.</div>
+        <div class="ex-pattern">
+          <div class="ex-step"><span class="es-n">4s</span> Inhale</div>
+          <div class="ex-step"><span class="es-n">6s</span> Exhale</div>
+          <div class="ex-step"><span class="es-n">5m</span> Per session</div>
+        </div>
+        <div class="insight" style="margin-top:4px">
+          <span class="i-ic">💡</span>
+          <p><b>How:</b> Lie on your back, knees bent, one hand on your chest and the other on your abdomen. Inhale slowly through your nose, letting your abdomen rise (hand on belly moves out, chest stays still). Exhale gently through pursed lips, contracting your abdomen. Keep breaths slow and deep.</p>
+        </div>
+        <div class="mini-breathe" data-pattern="diaphragmatic">
+          <div class="mini-circle-wrap">
+            <div class="mini-circle-bg"></div>
+            <div class="mini-orb"></div>
+            <div class="mini-label">Ready</div>
+          </div>
+          <button class="mini-start-btn"><span class="ms" style="font-size:14px">play_arrow</span> Start Guided</button>
+        </div>
+      </div>
+
+      <!-- b. 4-7-8 Breathing -->
+      <div class="ex-card" style="margin-bottom:14px">
+        <div class="ex-head">
+          <div class="ex-ic" style="background:rgba(196,181,224,.25)">🌙</div>
+          <div class="ex-info">
+            <div class="ex-name">4-7-8 Breathing</div>
+            <div class="ex-phase">Menses · Pain & Anxiety</div>
+          </div>
+        </div>
+        <div class="ex-desc">The extended exhale and hold activate your parasympathetic nervous system, inhibiting pain signal conduction and reducing both pain perception and anxiety. Especially helpful when cramps make it hard to rest or sleep <span class="qi" data-evidence="breath-478-relaxation">i</span>.</div>
+        <div class="ex-pattern">
+          <div class="ex-step"><span class="es-n">4s</span> Inhale</div>
+          <div class="ex-step"><span class="es-n">7s</span> Hold</div>
+          <div class="ex-step"><span class="es-n">8s</span> Exhale</div>
+          <div class="ex-step"><span class="es-n">10</span> Cycles</div>
+        </div>
+        <div class="insight" style="margin-top:4px">
+          <span class="i-ic">💡</span>
+          <p><b>How:</b> Place the tip of your tongue behind your upper front teeth. Inhale quietly through your nose for 4 counts. Hold your breath for 7 counts. Exhale completely through your mouth, making a soft whoosh sound, for 8 counts. That's one cycle. Repeat for 10 cycles. If 7-second hold feels too long, reduce to 4-5-6 while keeping the ratio.</p>
+        </div>
+        <div class="mini-breathe" data-pattern="478-cramps">
+          <div class="mini-circle-wrap">
+            <div class="mini-circle-bg"></div>
+            <div class="mini-orb"></div>
+            <div class="mini-label">Ready</div>
+          </div>
+          <button class="mini-start-btn"><span class="ms" style="font-size:14px">play_arrow</span> Start Guided</button>
+        </div>
+      </div>
+
+      <!-- c. Box Breathing -->
+      <div class="ex-card" style="margin-bottom:14px">
+        <div class="ex-head">
+          <div class="ex-ic" style="background:rgba(168,184,216,.25)">📦</div>
+          <div class="ex-info">
+            <div class="ex-name">Box Breathing (4-4-4-4)</div>
+            <div class="ex-phase">PMS · Stress & Irritability</div>
+          </div>
+        </div>
+        <div class="ex-desc">Equal four-part breathing creates a steady, meditative rhythm that calms the nervous system and sharpens focus. Best for stress, irritability, and anxiety during PMS, when emotional tension can amplify pain perception <span class="qi" data-evidence="stress-cortisol-cycle">i</span>.</div>
+        <div class="ex-pattern">
+          <div class="ex-step"><span class="es-n">4s</span> Inhale</div>
+          <div class="ex-step"><span class="es-n">4s</span> Hold</div>
+          <div class="ex-step"><span class="es-n">4s</span> Exhale</div>
+          <div class="ex-step"><span class="es-n">4s</span> Hold</div>
+          <div class="ex-step"><span class="es-n">4-6</span> Cycles</div>
+        </div>
+        <div class="insight" style="margin-top:4px">
+          <span class="i-ic">💡</span>
+          <p><b>How:</b> Visualize tracing the four sides of a square. Inhale as you trace the top (4 counts). Hold tracing the right side (4). Exhale down the left side (4). Hold along the bottom (4). Each full square is one cycle. Aim for 4-6 squares, or more if you find it calming.</p>
+        </div>
+        <div class="mini-breathe" data-pattern="box-cramps">
+          <div class="mini-circle-wrap">
+            <div class="mini-circle-bg"></div>
+            <div class="mini-orb"></div>
+            <div class="mini-label">Ready</div>
+          </div>
+          <button class="mini-start-btn"><span class="ms" style="font-size:14px">play_arrow</span> Start Guided</button>
+        </div>
+      </div>
+
+      <!-- d. Benson Relaxation Technique -->
+      <div class="ex-card" style="margin-bottom:14px">
+        <div class="ex-head">
+          <div class="ex-ic" style="background:rgba(245,198,184,.3)">🧘</div>
+          <div class="ex-info">
+            <div class="ex-name">Benson Relaxation Technique</div>
+            <div class="ex-phase">Daily · Long-term Relief</div>
+          </div>
+        </div>
+        <div class="ex-desc">Developed by Dr. Herbert Benson, this technique induces the "relaxation response" through regulated breathing and a focus word. It effectively reduces menstrual pain intensity and anxiety in adolescent girls. Mechanisms include decreased sympathetic activity, stimulated endogenous endorphin release, and reduced stress hormones <span class="qi" data-evidence="benson-menstrual-pain">i</span>.</div>
+        <div class="ex-pattern">
+          <div class="ex-step"><span class="es-n">10-20m</span> Per session</div>
+          <div class="ex-step"><span class="es-n">1-2x</span> Daily</div>
+          <div class="ex-step"><span class="es-n">🌿</span> Focus word</div>
+        </div>
+        <div class="insight" style="margin-top:4px">
+          <span class="i-ic">💡</span>
+          <p><b>How:</b> Sit quietly in a comfortable position. Close your eyes. Relax your muscles, starting from your feet and progressing upward. Breathe naturally through your nose. As you breathe out, silently repeat a focus word or phrase (e.g., "calm," "one," "peace," or a meaningful word). When other thoughts come, gently return to your word. Practice for 10-20 minutes. Best done daily, not just during pain.</p>
+        </div>
+        <div class="mini-breathe" data-pattern="benson">
+          <div class="mini-circle-wrap">
+            <div class="mini-circle-bg"></div>
+            <div class="mini-orb"></div>
+            <div class="mini-label">Ready</div>
+          </div>
+          <button class="mini-start-btn"><span class="ms" style="font-size:14px">play_arrow</span> Start Guided</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Why breathwork -->
+    <div class="card tint-blush">
+      <h2 class="sec" style="margin-top:0">Why Breathwork Works</h2>
+      <div class="tip-row" style="display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line-soft)">
+        <span style="font-size:17px;flex-shrink:0">💓</span>
+        <div style="font-size:12.5px;color:var(--cocoa);line-height:1.45"><b>Boosts HRV.</b> Slow breathing increases heart rate variability, a marker of autonomic balance and stress resilience <span class="qi" data-evidence="breathwork-hrv">i</span>. Ovumind can track your HRV via PPG sensor <span class="qi" data-evidence="ppg-hrv">i</span>.</div>
+      </div>
+      <div class="tip-row" style="display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line-soft)">
+        <span style="font-size:17px;flex-shrink:0">🧘</span>
+        <div style="font-size:12.5px;color:var(--cocoa);line-height:1.45"><b>Lowers cortisol.</b> Extended exhales activate the vagus nerve and parasympathetic response, reducing the stress hormone cortisol <span class="qi" data-evidence="stress-hrv">i</span>.</div>
+      </div>
+      <div class="tip-row" style="display:flex;gap:10px;align-items:flex-start;padding:11px 0">
+        <span style="font-size:17px;flex-shrink:0">🔄</span>
+        <div style="font-size:12.5px;color:var(--cocoa);line-height:1.45"><b>Cycle-synced benefits.</b> Matching breathwork to your phase — energizing coherent breathing in follicular, calming 4-7-8 in luteal — works with your natural hormonal rhythm rather than against it.</div>
+      </div>
+    </div>
+
+    <!-- Session History -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">Session History</h2>
+      <div class="sub" style="margin-bottom:8px">Your recent breathwork sessions</div>
+      <div class="hist-row">
+        <div class="hist-ic">🌱</div>
+        <div class="hist-body">
+          <div class="hist-name">Coherent Breathing</div>
+          <div class="hist-meta">Today · 7:42 AM · Follicular</div>
+        </div>
+        <div class="hist-dur">5m</div>
+      </div>
+      <div class="hist-row">
+        <div class="hist-ic">🌙</div>
+        <div class="hist-body">
+          <div class="hist-name">4-7-8 Breathing</div>
+          <div class="hist-meta">Yesterday · 10:15 PM · Luteal</div>
+        </div>
+        <div class="hist-dur">8m</div>
+      </div>
+      <div class="hist-row">
+        <div class="hist-ic">📦</div>
+        <div class="hist-body">
+          <div class="hist-name">Box Breathing</div>
+          <div class="hist-meta">Sep 5 · 3:30 PM · Pre-meeting</div>
+        </div>
+        <div class="hist-dur">4m</div>
+      </div>
+      <div class="hist-row">
+        <div class="hist-ic">😴</div>
+        <div class="hist-body">
+          <div class="hist-name">Body Scan Meditation</div>
+          <div class="hist-meta">Sep 4 · 11:00 PM · Bedtime</div>
+        </div>
+        <div class="hist-dur">12m</div>
+      </div>
+      <div class="hist-row">
+        <div class="hist-ic">🌱</div>
+        <div class="hist-body">
+          <div class="hist-name">Coherent Breathing</div>
+          <div class="hist-meta">Sep 3 · 8:00 AM · Follicular</div>
+        </div>
+        <div class="hist-dur">10m</div>
+      </div>
+      <a href="stress-checkin.html" class="btn ghost" style="margin-top:12px">Stress Check-in <span class="ms" style="font-size:18px">arrow_forward</span></a>
+    </div>
+
+    <!-- Wellness disclaimer -->
+    <div class="wellness-note">
+      💛 <b>Wellness, not diagnosis.</b> Breathwork and meditation are complementary wellness practices. If you have respiratory conditions, cardiovascular concerns, or severe anxiety, please consult a healthcare provider before beginning a new practice. Stop if you feel lightheaded or unwell.
+    </div>
+
+  </div>
+
+  <nav class="nav">
+    <a href="home.html"><span class="n-ic">home</span>Home</a>
+    <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+    <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+  </nav>
+</div>
+
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script>
+// Exercise tab switching
+var currentEx = 'coherent';
+document.querySelectorAll('.btab').forEach(function(tab){
+  tab.addEventListener('click', function(){
+    document.querySelectorAll('.btab').forEach(function(t){t.classList.remove('on');});
+    tab.classList.add('on');
+    currentEx = tab.dataset.ex;
+    var crampsSection = document.getElementById('ex-cramps');
+    if(currentEx === 'cramps'){
+      // Hide standalone exercise cards only (not those inside cramps section)
+      document.querySelectorAll('.ex-card').forEach(function(c){
+        if(!c.closest('#ex-cramps')) c.style.display='none';
+      });
+      crampsSection.style.display = 'block';
+    } else {
+      crampsSection.style.display = 'none';
+      document.querySelectorAll('.ex-card').forEach(function(c){c.style.display='none';});
+      document.getElementById('ex-'+currentEx).style.display='block';
+    }
+    resetSession();
+  });
+});
+
+// Breathing session logic
+var sessionRunning = false;
+var sessionDuration = 5 * 60; // seconds
+var sessionRemaining = sessionDuration;
+var breathTimer = null;
+var phaseTimer = null;
+var orb = document.getElementById('breathOrb');
+var label = document.getElementById('breathLabel');
+var timerEl = document.getElementById('breathTimer');
+var startBtn = document.getElementById('startBtn');
+var pulseRing = document.getElementById('pulseRing');
+
+// Patterns: array of {label, duration, class}
+var patterns = {
+  coherent: [
+    {label:'Breathe In', duration:5000, cls:'inhale'},
+    {label:'Breathe Out', duration:5000, cls:'exhale'}
+  ],
+  '478': [
+    {label:'Breathe In', duration:4000, cls:'inhale'},
+    {label:'Hold', duration:7000, cls:'hold'},
+    {label:'Breathe Out', duration:8000, cls:'exhale'}
+  ],
+  box: [
+    {label:'Breathe In', duration:4000, cls:'inhale'},
+    {label:'Hold', duration:4000, cls:'hold'},
+    {label:'Breathe Out', duration:4000, cls:'exhale'},
+    {label:'Hold', duration:4000, cls:'hold'}
+  ],
+  bodyscan: [
+    {label:'Breathe In', duration:5000, cls:'inhale'},
+    {label:'Breathe Out', duration:7000, cls:'exhale'}
+  ]
+};
+
+function setDuration(min, btn){
+  document.querySelectorAll('.dur-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  sessionDuration = min * 60;
+  sessionRemaining = sessionDuration;
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay(){
+  var m = Math.floor(sessionRemaining / 60);
+  var s = sessionRemaining % 60;
+  timerEl.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function toggleSession(){
+  if(sessionRunning){
+    stopSession();
+  } else {
+    startSession();
+  }
+}
+
+function startSession(){
+  sessionRunning = true;
+  startBtn.innerHTML = '<span class="ms" style="font-size:18px">stop</span> End Session';
+  pulseRing.style.animation = 'none';
+  void pulseRing.offsetWidth;
+  pulseRing.style.animation = '';
+  runBreathCycle();
+  breathTimer = setInterval(function(){
+    sessionRemaining--;
+    updateTimerDisplay();
+    if(sessionRemaining <= 0){
+      finishSession();
+    }
+  }, 1000);
+}
+
+function runBreathCycle(){
+  var pattern = patterns[currentEx];
+  var idx = 0;
+  function nextPhase(){
+    if(!sessionRunning) return;
+    var phase = pattern[idx % pattern.length];
+    label.textContent = phase.label;
+    orb.className = 'circle-orb ' + phase.cls;
+    idx++;
+    phaseTimer = setTimeout(nextPhase, phase.duration);
+  }
+  nextPhase();
+}
+
+function stopSession(){
+  sessionRunning = false;
+  clearInterval(breathTimer);
+  clearTimeout(phaseTimer);
+  resetSession();
+}
+
+function finishSession(){
+  stopSession();
+  label.textContent = 'Complete 🌸';
+  orb.className = 'circle-orb';
+  startBtn.innerHTML = '<span class="ms" style="font-size:18px">replay</span> Start Again';
+  // update stats
+  var mins = Math.round(sessionDuration / 60);
+  var s = document.getElementById('statSessions');
+  var m = document.getElementById('statMinutes');
+  s.textContent = parseInt(s.textContent) + 1;
+  m.textContent = parseInt(m.textContent) + mins;
+}
+
+function resetSession(){
+  sessionRunning = false;
+  clearInterval(breathTimer);
+  clearTimeout(phaseTimer);
+  sessionRemaining = sessionDuration;
+  updateTimerDisplay();
+  label.textContent = 'Ready';
+  orb.className = 'circle-orb';
+  startBtn.innerHTML = '<span class="ms" style="font-size:18px">play_arrow</span> Start Session';
+}
+
+/* ── Mini breathing circles (cramps relief exercises) ── */
+var miniPatterns = {
+  diaphragmatic: [
+    {label:'Breathe In', duration:4000, cls:'inhale'},
+    {label:'Breathe Out', duration:6000, cls:'exhale'}
+  ],
+  '478-cramps': [
+    {label:'Breathe In', duration:4000, cls:'inhale'},
+    {label:'Hold', duration:7000, cls:'hold'},
+    {label:'Breathe Out', duration:8000, cls:'exhale'}
+  ],
+  'box-cramps': [
+    {label:'Breathe In', duration:4000, cls:'inhale'},
+    {label:'Hold', duration:4000, cls:'hold'},
+    {label:'Breathe Out', duration:4000, cls:'exhale'},
+    {label:'Hold', duration:4000, cls:'hold'}
+  ],
+  benson: [
+    {label:'Breathe In', duration:4000, cls:'inhale'},
+    {label:'Breathe Out', duration:6000, cls:'exhale'}
+  ]
+};
+
+document.querySelectorAll('.mini-breathe').forEach(function(el){
+  var patternName = el.dataset.pattern;
+  var orb = el.querySelector('.mini-orb');
+  var label = el.querySelector('.mini-label');
+  var btn = el.querySelector('.mini-start-btn');
+  var running = false;
+  var phaseTimer = null;
+
+  btn.addEventListener('click', function(){
+    if(running){
+      running = false;
+      clearTimeout(phaseTimer);
+      orb.className = 'mini-orb';
+      label.textContent = 'Ready';
+      btn.innerHTML = '<span class="ms" style="font-size:14px">play_arrow</span> Start Guided';
+    } else {
+      running = true;
+      btn.innerHTML = '<span class="ms" style="font-size:14px">stop</span> Stop';
+      runCycle();
+    }
+  });
+
+  function runCycle(){
+    var pattern = miniPatterns[patternName];
+    var idx = 0;
+    function nextPhase(){
+      if(!running) return;
+      var phase = pattern[idx % pattern.length];
+      label.textContent = phase.label;
+      orb.className = 'mini-orb ' + phase.cls;
+      idx++;
+      phaseTimer = setTimeout(nextPhase, phase.duration);
+    }
+    nextPhase();
+  }
+});
+
+updateTimerDisplay();
+</script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

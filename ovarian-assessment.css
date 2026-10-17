@@ -1,0 +1,44 @@
+/* Ovarian assessment: existing lunar palette, readable clinical entry layout. */
+.assessment{font-size:16px;line-height:1.6;gap:16px}
+.assessment .card{background:var(--card-solid);padding:20px;overflow-wrap:anywhere}
+.assessment h1{font:600 28px/1.15 var(--serif);margin:8px 0 14px;color:var(--ink)}
+.assessment h2{font:600 23px/1.25 var(--serif);margin-bottom:12px;color:var(--ink)}
+.assessment p{margin:8px 0 16px;color:var(--taupe)}
+.assessment a{color:var(--ink);text-underline-offset:3px}
+.assessment .assessment-eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:800;color:var(--mauve);margin:0}
+.assessment-art{width:112px;height:112px;margin:0 auto 20px;border:1px solid var(--lavender);border-radius:50%;display:grid;place-items:center;box-shadow:0 0 25px color-mix(in srgb,var(--lavender) 38%,transparent)}
+.assessment-art img{border-radius:50%;width:92px;height:92px;animation:assessment-breathe 5s ease-in-out infinite}
+@keyframes assessment-breathe{50%{transform:translateY(-3px)}}
+.assessment .assessment-unavailable{font:600 27px/1.2 var(--serif);color:var(--ink)}
+.assessment-back{display:inline-flex;align-items:center;min-height:44px;font-weight:700}
+.assessment-fields{display:grid;gap:18px;margin-top:20px}
+.assessment-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.assessment-field label{font-size:15px;font-weight:700;line-height:1.45;color:var(--ink)}
+.assessment-field input,.assessment-field select{width:100%;min-width:0;min-height:48px;border:1.5px solid var(--taupe);background:var(--sunken);border-radius:12px;font:400 16px var(--sans);padding:12px;color:var(--ink);color-scheme:light}
+[data-theme="dark"] .assessment-field input,[data-theme="dark"] .assessment-field select{color-scheme:dark}
+.assessment :focus-visible{outline:3px solid var(--mauve);outline-offset:3px}
+.assessment-field [aria-invalid="true"]{border-color:var(--ink);border-width:3px}
+.assessment-error{font-size:14px;font-weight:700;color:var(--ink)}
+.assessment-error:empty{display:none}
+.assessment fieldset{border:1px solid var(--taupe);border-radius:16px;padding:16px;margin:24px 0}
+.assessment legend{padding:0 5px;font-weight:800;font-size:16px;max-width:100%}
+.assessment details{margin:18px 0 24px}
+.assessment summary{font-weight:700;min-height:44px;cursor:pointer;padding:8px 0}
+.assessment .assessment-note{font-size:14px;line-height:1.6}
+.assessment .btn{font-size:15px;white-space:normal;line-height:1.5;min-height:48px}
+.assessment .btn.mauve{background:#76548e;color:#fff}
+.assessment .btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
+.assessment [hidden]{display:none!important}
+.assessment #formError{border:2px solid var(--ink);border-radius:12px;padding:12px;margin-top:12px;font-weight:700}
+.assessment dl>div{padding:12px 0;border-bottom:1px solid var(--line);display:grid;gap:4px}
+.assessment dt{color:var(--taupe);font-size:14px}
+.assessment dd{font-weight:700;color:var(--ink)}
+.assessment-history-item{border-top:1px solid var(--line);padding:16px 0;display:grid;gap:8px}
+.assessment-history-item button{border:1px solid var(--taupe);border-radius:12px;background:var(--sunken);color:var(--ink);padding:10px;min-height:44px;font:700 14px var(--sans);cursor:pointer}
+.assessment-links{display:grid;gap:12px}
+@media(prefers-reduced-motion:reduce){.assessment-art img{animation:none}}
+
+.ovarian-page .app{padding-top:calc(76px + env(safe-area-inset-top));padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+.ovarian-page .top{padding-top:calc(14px + env(safe-area-inset-top))}
+.ovarian-page .nav{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+.ovarian-page input,.ovarian-page select{scroll-margin-top:calc(90px + env(safe-area-inset-top))}

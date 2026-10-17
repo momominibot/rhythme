@@ -1,0 +1,17 @@
+/* Shared with Home's rem text scale; values remain visible without animation. */
+.hormone-card{padding:1.25rem;background:var(--card-solid);border:1px solid var(--line-soft);border-radius:1.25rem;color:var(--ink)}
+.hormone-card>*+*{margin-top:1rem}
+.hormone-header{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.hormone-header h2{flex:1;min-width:0}
+.hormone-selects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.hormone-selects label{display:block;font-weight:700;min-width:0}
+.hormone-selects select{display:block;box-sizing:border-box;width:100%;min-height:48px;font:400 1rem var(--sans);padding:.5rem;background:var(--paper);color:var(--ink);border:1px solid var(--line-soft);border-radius:.75rem}
+.hormone-view{display:flex;gap:.5rem;flex-wrap:wrap}
+.hormone-view button{flex:1}
+.hormone-view button[aria-pressed=true]{box-shadow:inset 0 0 0 2px var(--mauve);background:var(--paper)}
+#hormone-plot svg{width:100%;display:block;overflow:visible}
+#hormone-record-table{overflow-x:auto}
+#hormone-record-table table{width:100%;border-collapse:collapse;font-size:.875rem;line-height:1.5;table-layout:fixed}
+#hormone-record-table :is(td,th){text-align:left;border-bottom:1px solid var(--line-soft);padding:.6rem .25rem;vertical-align:top;overflow-wrap:anywhere}
+#hormone-record-table caption{text-align:left;font-weight:700;padding:.5rem 0}
+@media(max-width:359px){.hormone-selects{grid-template-columns:1fr}.hormone-card{padding:1rem}}

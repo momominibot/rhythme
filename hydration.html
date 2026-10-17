@@ -1,0 +1,239 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovumind · Hydration</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<script src="anim.js" defer></script>
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+  <div class="scroll">
+
+    <div style="margin-bottom:2px">
+      <h1 style="font-family:var(--serif);font-weight:600;font-size:27px;line-height:1.15;color:var(--mauve);margin:0">Hydration &amp; Metabolic Load</h1>
+      <p class="sub" style="margin-top:6px;font-size:13px">Balancing metabolic load for your <b style="color:var(--mauve)">Luteal Phase</b></p>
+    </div>
+
+    <!-- Hero ring -->
+    <div class="card tint-sage" style="display:flex;flex-direction:column;align-items:center;padding:26px 18px">
+      <svg width="190" height="190" viewBox="0 0 190 190" role="img" aria-label="Water intake progress ring">
+        <circle cx="95" cy="95" r="82" fill="none" stroke="rgba(147,187,143,.2)" stroke-width="13"/>
+        <circle id="hRing" cx="95" cy="95" r="82" fill="none" stroke="var(--d-diet)" stroke-width="13" stroke-linecap="round"
+                stroke-dasharray="0 515" transform="rotate(-90 95 95)" style="transition:stroke-dasharray .5s ease"/>
+        <text x="95" y="82" text-anchor="middle" style="font:600 10px Manrope;letter-spacing:.14em;fill:#8B9678">CURRENT INTAKE</text>
+        <text x="95" y="112" text-anchor="middle" style="font:500 36px Newsreader;fill:var(--ink)"><tspan id="hCur">0.0</tspan><tspan style="font:500 18px Newsreader">L</tspan></text>
+        <text x="95" y="130" text-anchor="middle" style="font:600 11px Manrope;fill:var(--taupe)">of <tspan id="hGoalTxt">2.0</tspan>L daily goal</text>
+      </svg>
+      <div class="row" style="gap:10px;margin-top:12px">
+        <span class="badge ok" id="hBadge"><span class="ms" style="font-size:14px">water_drop</span>Let's begin</span>
+        <span class="badge info" id="hPct">0% complete</span>
+      </div>
+    </div>
+
+    <!-- weight-personalised goal -->
+    <div class="card" style="padding:14px 16px">
+      <div class="row" style="justify-content:space-between">
+        <b style="font-size:13.5px"><span class="ms" style="font-size:16px;color:var(--mauve);vertical-align:-3px">monitor_weight</span> Your personalised goal</b>
+        <span class="badge info" id="hFormula">35 ml × 58 kg</span>
+      </div>
+      <div class="row" style="gap:10px;margin-top:10px;align-items:center">
+        <span class="sub" style="font-size:12px">Body weight</span>
+        <input id="hWeight" type="number" min="35" max="150" value="58" style="width:74px;border:1.5px solid var(--line-soft);border-radius:12px;padding:8px 10px;font:700 14px var(--sans);color:var(--cocoa);text-align:center;background:var(--card-solid)"/>
+        <span class="sub" style="font-size:12px">kg →</span>
+        <b id="hGoalBig" style="font-family:var(--serif);font-size:20px;color:var(--mauve)">2.0 L</b>
+      </div>
+      <p class="sub" style="font-size:11px;line-height:1.5;margin-top:8px">Guideline: ~30–35 ml per kg body weight daily; we use 35 ml/kg in your luteal phase (+ core temperature is slightly higher). Add ~500 ml per hour of exercise.</p>
+    </div>
+
+    <!-- Quick log — full volume range -->
+    <p class="card" id="hydrationStorageStatus" role="status" aria-live="polite" hidden></p>
+    <h2 class="sec" style="margin-bottom:-4px">Log water</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px">
+      <button class="btn ghost hlog" data-ml="100" style="padding:12px 6px;display:flex;flex-direction:column;gap:2px"><span class="ms" style="font-size:20px">water_medium</span><b style="font-size:13px">100ml</b><span class="sub" style="font-size:9.5px">Sip</span></button>
+      <button class="btn ghost hlog" data-ml="150" style="padding:12px 6px;display:flex;flex-direction:column;gap:2px"><span class="ms" style="font-size:20px">coffee</span><b style="font-size:13px">150ml</b><span class="sub" style="font-size:9.5px">Cup</span></button>
+      <button class="btn ghost hlog" data-ml="250" style="padding:12px 6px;display:flex;flex-direction:column;gap:2px"><span class="ms" style="font-size:20px">local_drink</span><b style="font-size:13px">250ml</b><span class="sub" style="font-size:9.5px">Glass</span></button>
+      <button class="btn ghost hlog" data-ml="330" style="padding:12px 6px;display:flex;flex-direction:column;gap:2px"><span class="ms" style="font-size:20px">grocery</span><b style="font-size:13px">330ml</b><span class="sub" style="font-size:9.5px">Can</span></button>
+      <button class="btn ghost hlog" data-ml="500" style="padding:12px 6px;display:flex;flex-direction:column;gap:2px"><span class="ms" style="font-size:20px">water_bottle</span><b style="font-size:13px">500ml</b><span class="sub" style="font-size:9.5px">Bottle</span></button>
+      <button class="btn ghost hlog" data-ml="750" style="padding:12px 6px;display:flex;flex-direction:column;gap:2px"><span class="ms" style="font-size:20px">water_full</span><b style="font-size:13px">750ml</b><span class="sub" style="font-size:9.5px">Large</span></button>
+    </div>
+    <div class="row" style="gap:8px">
+      <input id="hCustom" type="number" min="10" max="2000" placeholder="Custom ml…" style="flex:1;border:1.5px solid var(--line-soft);border-radius:99px;padding:11px 16px;font:600 13px var(--sans);color:var(--cocoa);background:var(--card-solid)"/>
+      <button class="btn mauve" id="hAddC" style="width:auto;padding:11px 20px;border-radius:99px">Add</button>
+      <button class="btn ghost" id="hUndo" style="width:auto;padding:11px 16px;border-radius:99px" title="Undo last"><span class="ms" style="font-size:18px">undo</span></button>
+    </div>
+
+    <!-- Intake breakdown -->
+    <div class="grid4">
+      <div class="metric"><div class="m-v" id="mLogged">0L</div><div class="m-l">Logged</div></div>
+      <div class="metric"><div class="m-v" id="mGoal">2.0L</div><div class="m-l">Goal</div></div>
+      <div class="metric"><div class="m-v" id="mLeft">2.0L</div><div class="m-l">Remaining</div></div>
+      <div class="metric"><div class="m-v" id="mPct">0%</div><div class="m-l">Progress</div></div>
+    </div>
+    <div class="card" id="hHistCard" style="padding:12px 16px;display:none">
+      <b style="font-size:13px">Today's log</b>
+      <div id="hHist" class="sub" style="font-size:11.5px;margin-top:6px;line-height:1.8"></div>
+    </div>
+
+    <!-- Metabolic load -->
+    <h2 class="sec">Metabolic Load</h2>
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div class="row" style="gap:8px"><span class="ms" style="color:var(--terracotta)">local_fire_department</span><b style="font-size:13px">Luteal Heat Load</b></div>
+        <span class="badge warn">Moderate</span>
+      </div>
+      <div style="height:9px;border-radius:99px;background:var(--sunken);position:relative;margin:14px 0 6px;overflow:hidden">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:64%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--terracotta))"></div>
+      </div>
+      <div class="row" style="justify-content:space-between"><span class="sub" style="font-size:10.5px">Low</span><span class="sub" style="font-size:10.5px">Moderate</span><span class="sub" style="font-size:10.5px">High</span></div>
+      <p class="sub" style="font-size:11.5px;line-height:1.5;margin-top:10px">Your core body temperature runs higher during the Luteal phase, raising baseline fluid demand. Current hydration is offsetting <b style="color:var(--mauve)">64%</b> of that added load.</p>
+    </div>
+
+    <!-- Cycle-phase hydration note -->
+    <div class="insight" style="background:linear-gradient(140deg, rgba(147,187,143,.2), rgba(255,255,255,.8))">
+      <span class="i-ic ms" style="color:var(--d-diet)">cycle</span>
+      <p><b>Luteal Phase Note</b><br/>Progesterone drives a small rise in core temperature this week. Aim for the higher end of your goal (2.5L) to keep metabolic heat and bloating in check.</p>
+    </div>
+
+    <!-- AI insight -->
+    <div class="insight" style="background:linear-gradient(140deg, rgba(229,180,92,.22), rgba(255,255,255,.75))">
+      <span class="i-ic ms" style="color:var(--warn)">auto_awesome</span>
+      <p><b>AI Insight · Metabolic Buffer Active</b><br/>Your consistent hydration today is effectively lowering your core body temperature, mitigating the natural metabolic heat increase typical of the Luteal phase.</p>
+    </div>
+
+  </div>
+</div>
+<nav class="nav">
+  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav>
+<script>
+(function(){
+  var MLPERKG=35; // luteal phase → top of the 30-35 ml/kg guideline
+  var today=new Date().toISOString().slice(0,10);
+  var st={w:58, day:today, logs:[]};
+  // A stale tab must not restore a record removed through Settings.
+  var hydrationSnapshot=null, hydrationStorageReadable=true;
+  function storageNotice(message){
+    var status=document.getElementById('hydrationStorageStatus');
+    status.textContent=message; status.hidden=!message;
+    if(message) status.scrollIntoView({block:'nearest'});
+  }
+  try {
+    hydrationSnapshot=localStorage.getItem('ov_hydro');
+    var s=JSON.parse(hydrationSnapshot||'null');
+    if(s){
+      if(typeof s.w!=='number'||!Number.isFinite(s.w)||s.w<=0||typeof s.day!=='string'||!Array.isArray(s.logs)||s.logs.some(function(l){return !l||typeof l.ml!=='number'||!Number.isFinite(l.ml)||l.ml<0||typeof l.at!=='string';})) throw new Error('Invalid hydration record');
+      st=s; if(st.day!==today){ st=Object.assign({},st,{day:today,logs:[]}); }
+    } else if(hydrationSnapshot!==null) { throw new Error('Invalid hydration record'); }
+  } catch (_) {
+    hydrationStorageReadable=false;
+    storageNotice('Saved hydration data could not be read. Nothing will be overwritten. Review your data in Settings before trying again.');
+  }
+  var wIn=document.getElementById('hWeight');
+  wIn.value=st.w;
+
+  function goalL(){ return Math.round(st.w*MLPERKG/100)/10; }
+  function totalL(){ return st.logs.reduce(function(a,b){return a+b.ml;},0)/1000; }
+  function save(next){
+    if(!hydrationStorageReadable){ storageNotice('Hydration storage is unavailable or unreadable. Nothing was saved. Review your data in Settings before trying again.'); return false; }
+    try {
+      if(localStorage.getItem('ov_hydro')!==hydrationSnapshot){
+        storageNotice('Saved hydration data changed or was deleted elsewhere. This change was not saved. Keep any unsaved input, then reload this page before editing again.'); return false;
+      }
+      var raw=JSON.stringify(next);
+      localStorage.setItem('ov_hydro',raw);
+      hydrationSnapshot=raw; st=next; storageNotice(''); return true;
+    } catch (_) { storageNotice('Hydration could not be saved. Your previous log and current input have been kept. Try again when storage is available.'); return false; }
+  }
+  function fmtL(x){ return (Math.round(x*10)/10).toFixed(1); }
+
+  function paint(){
+    var g=goalL(), t=totalL(), p=Math.min(t/g,1), pct=Math.round(t/g*100);
+    document.getElementById('hRing').setAttribute('stroke-dasharray', (515*p)+' 515');
+    document.getElementById('hCur').textContent=fmtL(t);
+    document.getElementById('hGoalTxt').textContent=fmtL(g);
+    document.getElementById('hGoalBig').textContent=fmtL(g)+' L';
+    document.getElementById('hFormula').textContent=MLPERKG+' ml × '+st.w+' kg';
+    document.getElementById('mLogged').textContent=fmtL(t)+'L';
+    document.getElementById('mGoal').textContent=fmtL(g)+'L';
+    document.getElementById('mLeft').textContent=fmtL(Math.max(g-t,0))+'L';
+    document.getElementById('mPct').textContent=pct+'%';
+    document.getElementById('hPct').textContent=pct+'% complete';
+    var b=document.getElementById('hBadge');
+    if(pct>=100){ b.className='badge ok'; b.innerHTML='<span class="ms" style="font-size:14px">celebration</span>Goal reached!'; }
+    else if(pct>=50){ b.className='badge ok'; b.innerHTML='<span class="ms" style="font-size:14px">water_drop</span>On Track'; }
+    else if(pct>0){ b.className='badge warn'; b.innerHTML='<span class="ms" style="font-size:14px">water_drop</span>Keep sipping'; }
+    else { b.className='badge info'; b.innerHTML='<span class="ms" style="font-size:14px">water_drop</span>Let\'s begin'; }
+    var hc=document.getElementById('hHistCard');
+    if(st.logs.length){ hc.style.display='block';
+      document.getElementById('hHist').innerHTML=st.logs.slice().reverse().map(function(l){
+        return '<span class="ms" style="font-size:13px;color:var(--d-sleep);vertical-align:-2px">water_drop</span> '+l.ml+' ml · '+l.at; }).join('<br/>');
+    } else hc.style.display='none';
+  }
+  function toast(m){ var t=document.createElement('div'); t.textContent=m;
+    t.style.cssText='position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:rgba(46,34,30,.92);color:#F6EDF0;padding:10px 18px;border-radius:99px;font:700 12px Manrope;z-index:80';
+    document.body.appendChild(t); setTimeout(function(){t.style.transition='.3s';t.style.opacity='0';setTimeout(function(){t.remove();},320);},1800); }
+  function add(ml){
+    if(!(ml>0)) return;
+    var next=Object.assign({},st,{logs:st.logs.concat({ml:Math.round(ml), at:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})})});
+    if(!save(next)) return false;
+    paint();
+    var g=goalL(), t=totalL();
+    toast(t>=g ? 'Goal reached — beautifully hydrated 💧' : '+'+Math.round(ml)+' ml — '+fmtL(Math.max(g-t,0))+'L to go');
+    return true;
+  }
+  document.querySelectorAll('.hlog').forEach(function(btn){ btn.addEventListener('click',function(){ add(+btn.dataset.ml); }); });
+  document.getElementById('hAddC').addEventListener('click',function(){
+    var v=+document.getElementById('hCustom').value; if(v>0 && add(v)){ document.getElementById('hCustom').value=''; } });
+  document.getElementById('hUndo').addEventListener('click',function(){
+    var last=st.logs[st.logs.length-1]; if(!save(Object.assign({},st,{logs:st.logs.slice(0,-1)}))) return; paint(); toast(last ? 'Removed '+last.ml+' ml' : 'Nothing to undo'); });
+  wIn.addEventListener('change',function(){
+    var w=Math.max(35,Math.min(150,+wIn.value||58)); if(!save(Object.assign({},st,{w:w}))) return; wIn.value=w; paint();
+    toast('Goal updated to '+fmtL(goalL())+'L ('+MLPERKG+' ml/kg)'); });
+  paint();
+})();
+</script>
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>
