@@ -28,8 +28,8 @@
     { id: 'cozy', name: 'Cloud hoodie', note: 'Lazy Sunday' },
     { id: 'yoga', name: 'Mint yoga set', note: 'Move gently' },
     { id: 'party', name: 'Lilac tulle', note: 'Sparkle day' },
-    /* cabin-crew sarong kebaya, rank colours: blue flight stewardess, green leading, red chief */
-    { id: 'kebaya-navy', name: 'Navy kebaya', note: 'Flight stewardess' },
+    /* Singapore Girl sarong kebaya (Balmain batik); rank colours: cobalt blue flight stewardess, green leading, red chief */
+    { id: 'kebaya-blue', name: 'Blue kebaya', note: 'Flight stewardess' },
     { id: 'kebaya-green', name: 'Green kebaya', note: 'Leading stewardess' },
     { id: 'kebaya-red', name: 'Red kebaya', note: 'Chief stewardess' }
   ];
