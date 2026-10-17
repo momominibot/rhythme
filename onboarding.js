@@ -10,7 +10,7 @@
   var t = (window.OVULUNA_I18N && window.OVULUNA_I18N.t) || function(s) { return s; };
 
   var STORAGE_KEY = 'ovuluna_onboarding';
-  var answers = {};
+  var answers = {language: 'en'};
   var currentStep = 0;
   var expectedRaw = null, readable = true, persistenceStatus;
 
@@ -20,23 +20,15 @@
       id: 'welcome',
       section: 'Welcome',
       type: 'welcome',
-      title: 'Your ovarian wellness journey begins here',
-      subtitle: 'A few gentle questions to personalize your experience. Takes about 2 minutes.'
-    },
-    {
-      id: 'language',
-      section: 'Welcome',
-      type: 'language',
-      title: 'Choose your language',
-      subtitle: 'Select your preferred language. You can change this anytime in settings.',
-      field: 'language'
+      title: 'Welcome to Ovumind',
+      subtitle: 'A few quick questions to make the app feel like yours.'
     },
     {
       id: 'age',
       section: 'About You',
       type: 'wheel',
       title: 'How old are you?',
-      subtitle: 'Optional context for educational topics. Age alone does not determine your reproductive stage.',
+      subtitle: 'This helps us show you relevant info.',
       field: 'age',
       min: 10, max: 100, default: 28, unit: t('years')
     },
@@ -45,7 +37,7 @@
       section: 'About You',
       type: 'height-weight',
       title: 'Your height and weight',
-      subtitle: 'Optional profile details. They do not establish a medical hydration or exercise target.',
+      subtitle: 'Helps us personalize your daily tips.',
       fields: ['heightCm', 'weightKg']
     },
     {
@@ -53,7 +45,7 @@
       section: 'Your Cycle',
       type: 'single',
       title: 'How would you describe your cycle?',
-      subtitle: 'This helps us understand where you are in your reproductive journey.',
+      subtitle: 'So we can give you the right guidance.',
       field: 'cycle',
       options: [
         { value: 'regular', label: 'Regular cycles', desc: 'Predictable 21-35 day cycles' },
@@ -69,7 +61,7 @@
       section: 'Your Cycle',
       type: 'wheel',
       title: "What's your average cycle length?",
-      subtitle: 'From the first day of one period to the first day of the next.',
+      subtitle: 'Count from day 1 of your period to day 1 of the next.',
       field: 'cycleLength',
       min: 21, max: 45, default: 28, unit: t('days'),
       showIf: function(a) { return a.cycle === 'regular' || a.cycle === 'variable'; }
@@ -88,7 +80,7 @@
       section: 'Your Cycle',
       type: 'wheel',
       title: 'How old were you when your first period started?',
-      subtitle: "This helps us understand your cycle patterns. Optional — skip if you're not sure.",
+      subtitle: "Helps us understand your patterns. Skip if unsure.",
       field: 'firstPeriodAge',
       min: 8, max: 18, default: 12, unit: t('years'),
       showIf: function(a) { return a.cycle !== 'post12'; }
@@ -98,7 +90,7 @@
       section: 'Family History',
       type: 'wheel',
       title: 'At what age did your mother reach menopause?',
-      subtitle: 'Optional family context. This app does not calculate when you will reach menopause.',
+      subtitle: 'Optional family history. Skip if unsure.',
       field: 'momMeno',
       min: 35, max: 60, default: 51, unit: t('years'),
       optional: true, optionalLabel: "I don't know"
@@ -108,7 +100,7 @@
       section: 'Lifestyle',
       type: 'single',
       title: 'Do you smoke?',
-      subtitle: 'Smoking can affect hormone balance and ovarian health.',
+      subtitle: 'Helps us tailor your wellness tips.',
       field: 'smoke',
       options: [
         { value: 'never', label: 'Never smoked' },
@@ -121,7 +113,7 @@
       section: 'Lifestyle',
       type: 'single',
       title: 'How would you describe your sleep?',
-      subtitle: 'Good sleep supports hormone balance and overall wellness.',
+      subtitle: 'Sleep affects your energy and cycle.',
       field: 'sleep',
       options: [
         { value: 'good', label: 'Good — 7-9h, consistent' },
