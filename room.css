@@ -292,6 +292,9 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 /* Loading */
 .loading{position:absolute;inset:0;z-index:300;background:linear-gradient(160deg,#2a1f3d,#4a3560);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .6s}
 .loading.hidden{opacity:0;pointer-events:none}
+/* fail-safe: if timers are throttled (background tab, emulation), the veil still lifts */
+.loading{animation:veil-lift .6s ease 2.4s forwards}
+@keyframes veil-lift{to{opacity:0;visibility:hidden;pointer-events:none}}
 .loading-orb{width:54px;height:54px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f3e6ff,#c2a7e6,#7a5c96);box-shadow:0 0 50px rgba(194,167,230,.55);animation:orb 2s ease-in-out infinite}
 @keyframes orb{0%,100%{transform:scale(.9);opacity:.8}50%{transform:scale(1.1);opacity:1}}
 .loading p{font-family:var(--serif);font-size:16px;color:rgba(245,237,250,.8)}
