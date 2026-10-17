@@ -1,6 +1,6 @@
 # Ovumind dream room homepage, 17 October 2026
 
-**Local build complete and browser-tested; deploy_needed (not pushed).** Source: `~/Doubao/chats/2026-10-16/new-chat-12/ovumind`, branch `main`. The live GitHub Pages site stays on the previous commit until a push.
+**Deployed.** Jamie approved the push on 17 October 2026; commits `5f5a6d9`, `65f3110`, `53ecbf3` are on `origin/main`, the Pages workflow run 39042848826 succeeded, and https://momominibot.github.io/ovumind.github.io/ now serves the dream room (verified live in the browser; every new file returns 200). Source: `~/Doubao/chats/2026-10-16/new-chat-12/ovumind`, branch `main`.
 
 - New homepage `room.html` replaces the Three.js box room (kept as `room-3d.html`). Art: Seedream 5.0 pro (`doubao-seedream-5-0-pro-260628`, data-plane key, no SSO needed) isometric clay-render room at 1472x1840 plus a chibi avatar in six outfits made with reference-guided edits, keyed offline from a green screen into WebP sprites under `assets/room/dream/`. Night plates with a reference image were cut by the server at about 65 s every time, so night mode is CSS dimming plus stars.
 - One 4:5 scene holds the illustration, percent-positioned labelled hotspot buttons and avatar waypoints, so they scale together. The avatar hop-walks to the object, then the bottom sheet opens. Bed: Good night dims the room, puts her to sleep in pyjamas, Wake up finishes the entry. Clock: record or backdate a night. Wall calendar: period days (flow, clots, affected my day) and a Symptoms tab (18 chips, pain 0 to 10, mood, notes) with backdating; predictions are labelled estimates. Diary: meals with tags and phase tips. Computer: six eduvid videos and twelve existing pages. Wardrobe: outfits and display name. Window: tonight summary and opt-in chimes.
@@ -9,7 +9,7 @@
 - `journal.html`: Dr shares card, pattern notes, reflections, filtered timeline with daily summaries, backup, import, delete. `doctor.html`: decrypts a file or code locally, shows coverage, flags, patient questions, cycle strip, sleep chart, symptom, mood and food bars, daily summaries and raw entries, with a fictional sample preview.
 - Verified in the built-in browser at 127.0.0.1:4310: load, bed to night to wake to saved entry, backdated heavy-flow day, backdated symptoms raising the severe-pain note, diary entry, Learn screen, wardrobe and name, journal render, legacy keys populated. Doctor decrypt round trip: see the line below.
 - Decisions: jev-1.13.0 chose illustrated hotspots (1.0), soft 3D clay (0.93), lavender and blush (0.99), night mode on sleep (0.84), hop-walk (0.99) and local-first encrypted sharing (0.99); Codex independently agreed with the approach and supplied the mitigations adopted (fixed-aspect container, labelled 44px hotspots, offline matting, encrypted export as default, agents as named functions over one event store).
-- Not done: real accounts, server storage, LLM agent mode (needs a deployed API with authentication), clinical validation, physical-device check. No push, deploy or external message.
+- Not done: real accounts, server storage, LLM agent mode (needs a deployed API with authentication), clinical validation, physical-device check.
 
 ---
 
