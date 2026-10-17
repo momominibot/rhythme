@@ -2,10 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=room.html">
+<meta http-equiv="refresh" content="0; url=onboarding.html">
 <title>Ovumind</title>
 </head>
 <body>
-<script>window.location.replace('room.html');</script>
+<script>
+  if(localStorage.getItem('ovumind_onboarding_complete')) {
+    window.location.replace('room.html');
+  } else {
+    window.location.replace('onboarding.html');
+  }
+</script>
 </body>
 </html>

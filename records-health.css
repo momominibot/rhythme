@@ -1,9 +1,0 @@
-.record-health{font-size:1rem;line-height:1.65;overflow-wrap:anywhere}
-.record-health .card{margin:1rem 0;padding:1.25rem;border-radius:1.5rem;background:var(--ovuluna-bg-card,var(--cream));color:var(--ovuluna-text-primary,var(--ink))}
-.record-health h1{font:500 2.1rem/1.15 var(--serif)}.record-health h2{font:600 1.5rem/1.25 var(--serif)}.record-health h3{font-size:1.08rem}
-.record-health select{width:100%;font:inherit;padding:.8rem;border:1px solid var(--ovuluna-border,#b8a5c8);border-radius:1rem;background:var(--ovuluna-bg-card,var(--cream));color:inherit}
-.record-health a{color:inherit;text-decoration:underline;text-underline-offset:3px;display:inline-block;padding:.4rem 0}
-.record-health [hidden]{display:none!important}.record-health-note{color:var(--ovuluna-text-secondary,var(--taupe));font-size:.9rem}
-.record-health details{border-top:1px solid var(--ovuluna-border,#b8a5c8);padding:.8rem 0}.record-health summary{cursor:pointer;min-height:44px;font-weight:700}
-.record-health article{padding:.75rem 0}.records-health-counts{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}.record-health .care-note{border:2px solid var(--terracotta)}
-.record-health .record-item{padding:.75rem;border-radius:1rem;background:var(--ovuluna-bg-secondary,rgba(130,96,160,.1));margin:.5rem 0}.record-health .record-meta{font-size:.9rem}.record-health .record-note{white-space:pre-wrap}
