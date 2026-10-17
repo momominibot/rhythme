@@ -664,7 +664,7 @@
     var cfg = ORB.aiConfig();
     openSheet('luna', 'Luna', 'Tell me how you are; I’ll write it down', 'dark_mode',
       '<div class="chat" id="chat"></div>' +
-      '<div class="quick" id="quick"><button type="button" class="chipbtn">Slept 11pm to 7am, quality 4</button><button type="button" class="chipbtn">Period started today, medium</button><button type="button" class="chipbtn">Cramps and bloating, pain 5, mood ok</button><button type="button" class="chipbtn">Had oats and a latte for breakfast</button><button type="button" class="chipbtn">Meditated 10 min</button></div>' +
+      '<div class="quick" id="quick">' + ['Slept 11pm to 7am, quality 4', 'Period started today, medium', 'Cramps and bloating, pain 5, mood ok', 'Had oats and a latte for breakfast', 'Meditated 10 min'].map(function (q) { return '<span class="qchip"><button type="button" class="qsend" data-q="' + esc(q) + '">' + esc(q) + '</button><button type="button" class="qpen" data-q="' + esc(q) + '" aria-label="Edit this shortcut before sending"><span class="ms">edit</span></button></span>'; }).join('') + '</div>' +
       '<div class="composer"><input class="input" id="lunaIn" maxlength="400" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice" value="' + esc(prefill || '') + '"><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
       '<details class="aibox" id="aibox"' + (cfg.on ? ' open' : '') + '><summary><span class="ms">auto_awesome</span>AI mode ' + (cfg.on ? 'on' : 'off') + ' · your own key' + infoBtn('luna') + '</summary>' + guideHTML('luna') +
       '<div class="grid2"><div class="field"><label for="aiProv">Provider</label><select class="input" id="aiProv"><option value="openrouter"' + (cfg.provider === 'openrouter' ? ' selected' : '') + '>OpenRouter</option><option value="ark"' + (cfg.provider === 'ark' ? ' selected' : '') + '>Volcengine Ark</option></select></div><div class="field"><label for="aiModel">Model</label><input class="input" id="aiModel" value="' + esc(cfg.model || ORB.DEFAULT_MODEL) + '"></div></div>' +
@@ -701,7 +701,11 @@
     }
     $('#lunaSend').addEventListener('click', function () { send($('#lunaIn').value); });
     $('#lunaIn').addEventListener('keydown', function (e) { if (e.key === 'Enter') send(this.value); });
-    $('#quick').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) send(b.textContent); });
+    $('#quick').addEventListener('click', function (e) {
+      var pen = e.target.closest('.qpen'), go = e.target.closest('.qsend');
+      if (pen) { var inp = $('#lunaIn'); inp.value = pen.dataset.q; inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (err) { } toast('Edit the numbers, then send.', 'edit'); return; }
+      if (go) send(go.dataset.q);
+    });
     $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.provider = $('#aiProv').value; c.model = $('#aiModel').value.trim() || ORB.DEFAULT_MODEL; c.key = $('#aiKey').value.trim(); ORB.setAiConfig(c); toast('Saved on this device.', 'save'); });
     $('#aiToggle').addEventListener('click', function () { var c = ORB.aiConfig(); c.on = !c.on; if (c.on && !$('#aiKey').value.trim()) { c.on = false; toast('Paste a key first.', 'key'); } c.provider = $('#aiProv').value; c.model = $('#aiModel').value.trim() || ORB.DEFAULT_MODEL; c.key = $('#aiKey').value.trim(); ORB.setAiConfig(c); openLuna($('#lunaIn').value); });
     if (prefill) send(prefill);

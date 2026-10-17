@@ -459,7 +459,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .confirm input{accent-color:var(--rm-mauve);margin-top:2px}
 .quick{display:flex;gap:6px;overflow-x:auto;padding:4px 0;scrollbar-width:none}
 .quick::-webkit-scrollbar{display:none}
-.quick .chipbtn{flex-shrink:0}
+.quick .qchip{flex-shrink:0;display:inline-flex;align-items:center;background:#fff;border:1.5px solid rgba(107,82,142,.14);border-radius:99px;overflow:hidden}
+.quick .qsend{border:none;background:none;padding:8px 6px 8px 12px;font:700 12px var(--sans);color:var(--rm-ink-2);cursor:pointer;white-space:nowrap}
+.quick .qsend:hover{color:var(--rm-plum)}
+.quick .qpen{border:none;border-left:1px solid rgba(107,82,142,.12);background:var(--rm-paper-2);color:var(--rm-mauve);width:30px;align-self:stretch;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.quick .qpen .ms{font-size:15px}
+.quick .qpen:hover{background:var(--rm-lilac-2)}
 .composer{display:flex;gap:8px;margin-top:8px}
 .composer .input{flex:1}
 .composer button{flex:0 0 auto;width:46px;border-radius:14px}
