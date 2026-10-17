@@ -28,6 +28,10 @@ open index.html
 python3 -m http.server 8080
 ```
 
+## Dream room (homepage)
+
+`room.html` is an illustrated isometric room (Seedream 5.0 pro art) where every object is a labelled button: bed (sleep session), bedside clock (record or backdate sleep), wall calendar (period and symptoms with backdating), diary (food journal), computer (learn), wardrobe (avatar outfits). Data lives in one versioned local event log (`ovu-store.js`); rule-based agents (`ovu-agents.js`) write daily summaries for `journal.html` and a 4-week summary for the Dr shares card. `doctor.html` decrypts a passphrase-protected share entirely in the browser. The earlier Three.js room is kept as `room-3d.html`.
+
 ## Features
 
 ### Cycle Tracking
