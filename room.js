@@ -66,7 +66,7 @@
   var ERIN = 'assets/audio/erin-tts/';
   var CAPTION = { greeting_morning: 'Erin says good morning', greeting_evening: 'Erin says good evening', greeting_welcome: 'Welcome', meditation_begin: 'Settling in', breathing_in: 'Breathe in', breathing_out: 'Breathe out', meditation_end: 'Coming back', closing_steady: 'Steady, and done', closing_patience: 'Patience, and done', guide_soften: 'Let your shoulders soften, and notice the breath moving on its own.', guide_nothing_to_fix: 'There is nothing to fix right now. Just this one breath.', guide_quiet_work: 'Change is quiet work. One small, kind choice at a time.', guide_wander: 'When your mind wanders, that is not a mistake. Gently come back.', guide_feet: 'Feel your feet, your seat, and the weight of your hands.', guide_thanks: 'Before you go, thank yourself for pausing today.', guide_cramps: 'If there is cramping, breathe into your belly and let it be soft.' };
   /* acupoint markers on the standing avatar sprite (percent of the image) */
-  var ACU_XY = { cv6: [50, 69], cv4: [50, 73], cv3: [50, 77], st29: [56, 77], sp10: [54, 82.5], st36: [41, 87], sp6: [48, 94], ki3: [49.5, 96.5], lr3: [44, 98.5], li4: [73, 72.5], pc6: [71.5, 68] };
+  var ACU_XY = { cv6: [50, 66], cv4: [50, 70.5], cv3: [50, 75], st29: [57, 75], sp10: [54, 82.5], st36: [41, 87.5], sp6: [48, 94], ki3: [50, 96.5], lr3: [44, 98.5], li4: [70, 74.5], pc6: [69, 69.5] };
   var ACU_CAUTION = { sp6: 'SP6 is traditionally avoided in pregnancy. Ask your clinician before using it if you are or might be pregnant.', li4: 'LI4 is traditionally avoided in pregnancy. Ask your clinician before using it if you are or might be pregnant.' };
 
   /* ---------- evidence guides behind every (i) ---------- */
@@ -256,7 +256,7 @@
   /* ---------- tap routing ---------- */
   function tap(h) {
     var btn = $('.hotspot[data-id="' + h.id + '"]'); if (btn) { btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump'); }
-    chime('tap'); hideBubble();
+    chime('tap'); hideBubble(); clearTimeout(idleTimer); /* a pending walk home must not cancel this walk */
     var visited = S.state().visited || {}; visited[h.id] = true; S.setState({ visited: visited });
     $('#hint').classList.remove('on');
     if (h.id === 'window') { openWindow(); return; }

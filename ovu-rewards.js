@@ -6,7 +6,7 @@
   var RULES = { sleep: 10, period: 10, symptom: 8, food: 6, reflection: 5, mindfulness: 0 };
   var SHOP = [
     { id: 'cat', name: 'Mochi the kitten', cost: 150, kind: 'pet', note: 'Curls up by the bed and purrs when you log.', img: 'prop-cat.webp', pos: { x: 50, y: 81, w: 9 } },
-    { id: 'dog', name: 'Biscuit the puppy', cost: 220, kind: 'pet', note: 'Waits for you on the floor with a wagging tail.', img: 'prop-dog.webp', pos: { x: 16, y: 70.5, w: 10 } },
+    { id: 'dog', name: 'Biscuit the puppy', cost: 220, kind: 'pet', note: 'Waits for you on the floor with a wagging tail.', img: 'prop-dog.webp', pos: { x: 13.5, y: 68.5, w: 9.5 } },
     { id: 'plant', name: 'Fairy-light monstera', cost: 60, kind: 'furniture', note: 'A glow-wrapped plant for the corner.', img: 'prop-plant.webp', pos: { x: 95, y: 71, w: 9 } },
     { id: 'lamp', name: 'Crescent floor lamp', cost: 80, kind: 'furniture', note: 'Warm moonlight beside the wardrobe.', img: 'prop-lamp.webp', pos: { x: 84, y: 72, w: 7 } },
     { id: 'house', name: 'Two-storey dream house', cost: 2000, kind: 'home', note: 'A bigger home with a second floor. Coming soon; hearts you save now count.', img: null, locked: true }
