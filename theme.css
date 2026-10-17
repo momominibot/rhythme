@@ -549,3 +549,128 @@ html { scroll-padding-top: calc(var(--shell-top-size) + 12px); scroll-padding-bo
   .top .brandline, .top .t-title { flex-basis: 100%; }
   :is(.nav, .bottom-nav) { flex-wrap: wrap; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   OVUMIND PHONE FRAME — unified device wrapper for all pages
+   Desktop: 390x844 iPhone frame with notch + shadow
+   Mobile: fullscreen
+   ══════════════════════════════════════════════════════════════ */
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100dvh;
+  background: linear-gradient(135deg, #e8dff5 0%, #f5c4a8 50%, #e8dff5 100%);
+}
+
+@media (min-width: 500px) {
+  body {
+    padding: 20px;
+    align-items: center;
+  }
+  
+  .app {
+    width: 390px;
+    max-width: 390px;
+    min-height: 844px;
+    max-height: 90vh;
+    border-radius: 44px;
+    box-shadow: 
+      0 0 0 10px #1a1228,
+      0 0 0 12px #3a2a50,
+      0 50px 100px -20px rgba(0,0,0,0.6);
+    overflow: hidden;
+    position: relative;
+    background: var(--paper);
+  }
+  
+  /* Notch */
+  .app::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 28px;
+    background: #1a1228;
+    border-radius: 0 0 18px 18px;
+    z-index: 1000;
+  }
+  
+  /* Status bar area */
+  .app > .top,
+  .app > header,
+  .app > .status-bar {
+    padding-top: 36px !important;
+  }
+}
+
+@media (max-width: 499px) {
+  body {
+    padding: 0;
+    background: var(--paper);
+  }
+  .app {
+    border-radius: 0;
+    box-shadow: none;
+    max-height: none;
+  }
+}
+
+/* Ensure scrollable content fits within phone frame */
+.app > .scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fix for pages that set body overflow hidden (room.html etc) */
+body.overflow-hidden {
+  overflow: hidden;
+}
+
+/* Universal centering for pages without .app wrapper */
+@media (min-width: 500px) {
+  body > .topbar,
+  body > .content,
+  body > .chat-container,
+  body > .chat-header,
+  body > .chat-area,
+  body > .ppg-container,
+  body > .lwrap,
+  body > .gallery,
+  body > main,
+  body > section {
+    max-width: 390px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  /* Pages with .content wrapper */
+  .content {
+    max-width: 390px !important;
+    margin: 0 auto;
+  }
+  
+  /* Topbar alignment */
+  .topbar {
+    max-width: 390px !important;
+    margin: 0 auto;
+  }
+  
+  /* Bottom nav alignment */
+  .bottom-nav,
+  .bn {
+    max-width: 390px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+}
+
+/* Ensure all pages have consistent background on desktop */
+@media (min-width: 500px) {
+  body {
+    background: linear-gradient(135deg, #e8dff5 0%, #f5c4a8 50%, #e8dff5 100%) !important;
+  }
+}
