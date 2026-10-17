@@ -23,7 +23,7 @@
     if (event.type === 'period') tools.push('cycleAgent');
     if (event.type === 'symptom') tools.push('symptomAgent', 'cycleAgent');
     if (event.type === 'food') tools.push('foodAgent');
-    if (event.type === 'reflection') tools.push('reflectionAgent');
+    if (event.type === 'reflection' || event.type === 'mindfulness') tools.push('reflectionAgent');
     return { event: event.id, tools: tools, decidedAt: new Date().toISOString() };
   }
 
@@ -77,12 +77,26 @@
     var flags = [];
     if ((tags['alcohol'] || 0) >= 5) flags.push(flag('info', 'ALCOHOL_FREQ', 'Alcohol on 5+ meals this week', 'Noted as a pattern only. Alcohol can affect sleep quality and cycle symptoms.', end));
     if ((tags['late night'] || 0) >= 4) flags.push(flag('info', 'LATE_EATING', 'Several late-night meals', 'Late eating often shows up as lighter sleep the same night.', end));
-    return { agent: 'foodAgent', metrics: { meals: meals.length, daysLogged: Object.keys(days).length, tags: tags }, flags: flags };
+    var nut = nutrientDays(meals);
+    if (nut.days >= 3 && nut.avg.fiber !== null && nut.avg.fiber < 15 && nut.complete.fiber >= 3) flags.push(flag('info', 'FIBRE_LOW', 'Fibre looks low on logged days', 'Averaging ' + Math.round(nut.avg.fiber) + ' g per logged day; common guidance is 25 g or more for adults. Only days with complete entries count.', end));
+    return { agent: 'foodAgent', metrics: { meals: meals.length, daysLogged: Object.keys(days).length, tags: tags, nutrients: nut }, flags: flags };
+  }
+  /* Per-day nutrient totals from entries that carry database values. A day counts
+     as complete for a nutrient only when every item that day has that value. */
+  function nutrientDays(meals) {
+    var keys = ['kcal', 'protein', 'carb', 'fat', 'fiber', 'fe', 'ca'], byDay = {};
+    meals.forEach(function (m) { var d = byDay[m.date] = byDay[m.date] || { items: 0, missing: {}, totals: {} }; (m.data.items || []).forEach(function (it) { d.items++; keys.forEach(function (k) { var v = it.nutrients ? it.nutrients[k] : null; if (v === null || v === undefined) d.missing[k] = (d.missing[k] || 0) + 1; else d.totals[k] = (d.totals[k] || 0) + v; }); }); if (!(m.data.items || []).length) { keys.forEach(function (k) { d.missing[k] = (d.missing[k] || 0) + 1; }); } });
+    var out = { days: 0, avg: {}, complete: {} };
+    keys.forEach(function (k) { var sum = 0, n = 0; Object.keys(byDay).forEach(function (d) { if (!byDay[d].missing[k] && byDay[d].totals[k] !== undefined) { sum += byDay[d].totals[k]; n++; } }); out.avg[k] = n ? Math.round(sum / n * 10) / 10 : null; out.complete[k] = n; });
+    out.days = Object.keys(byDay).length;
+    return out;
   }
   function reflectionAgent(end) {
     end = end || S.today();
     var notes = S.list('reflection', { from: S.addDays(end, -13), to: end });
-    return { agent: 'reflectionAgent', metrics: { count: notes.length }, flags: [] };
+    var sessions = S.list('mindfulness', { from: S.addDays(end, -13), to: end });
+    var minutes = sessions.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
+    return { agent: 'reflectionAgent', metrics: { count: notes.length, sessions: sessions.length, minutes: Math.round(minutes) }, flags: [] };
   }
   var AGENTS = { sleepAgent: sleepAgent, cycleAgent: cycleAgent, symptomAgent: symptomAgent, foodAgent: foodAgent, reflectionAgent: reflectionAgent };
 
@@ -114,7 +128,14 @@
     if (period) { parts.push('Period day' + (cs.cycleDay ? ' ' + cs.cycleDay : '') + ', ' + period.data.flow + ' flow' + (period.data.clots ? ' with clots' : '') + '.'); highlights.push({ icon: 'water_drop', text: period.data.flow + ' flow' }); }
     else if (cs.cycleDay) { parts.push('Cycle day ' + cs.cycleDay + (cs.phase ? ', estimated ' + cs.phase + ' phase' : '') + '.'); }
     if (sym) { var list = (sym.data.symptoms || []); parts.push((list.length ? 'Logged ' + list.join(', ') : 'No symptoms ticked') + (typeof sym.data.pain === 'number' ? ', pain ' + sym.data.pain + '/10' : '') + (sym.data.mood ? ', mood ' + sym.data.mood : '') + '.'); if (list.length) highlights.push({ icon: 'spa', text: list.slice(0, 2).join(', ') + (list.length > 2 ? ' +' + (list.length - 2) : '') }); }
-    if (food.length) { var tags = {}; food.forEach(function (f) { (f.data.tags || []).forEach(function (t) { tags[t] = (tags[t] || 0) + 1; }); }); parts.push(food.length + ' meal' + (food.length > 1 ? 's' : '') + ' logged' + (tags['home-cooked'] ? ' (' + tags['home-cooked'] + ' home-cooked)' : '') + '.'); highlights.push({ icon: 'restaurant', text: food.length + ' meal' + (food.length > 1 ? 's' : '') }); }
+    if (food.length) {
+      var tags = {}, items = [], withItems = 0; food.forEach(function (f) { (f.data.tags || []).forEach(function (t) { tags[t] = (tags[t] || 0) + 1; }); if ((f.data.items || []).length) { withItems++; items = items.concat(f.data.items); } });
+      var nutri = '';
+      if (items.length && root.OvuFood) { var sm = root.OvuFood.sum(items); nutri = ' ' + (sm.totals.kcal !== null ? Math.round(sm.totals.kcal) + ' kcal' : '') + (sm.totals.protein !== null ? ', ' + Math.round(sm.totals.protein) + ' g protein' : '') + (sm.totals.fiber !== null ? ', ' + Math.round(sm.totals.fiber) + ' g fibre' : '') + (withItems < food.length ? ' from ' + withItems + ' of ' + food.length + ' entries' : '') + '.'; }
+      parts.push(food.length + ' meal' + (food.length > 1 ? 's' : '') + ' logged' + (tags['home-cooked'] ? ' (' + tags['home-cooked'] + ' home-cooked)' : '') + '.' + nutri); highlights.push({ icon: 'restaurant', text: food.length + ' meal' + (food.length > 1 ? 's' : '') });
+    }
+    var mind = entries.filter(function (e) { return e.type === 'mindfulness'; });
+    if (mind.length) { var mins = mind.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0); parts.push(Math.round(mins) + ' min of mindfulness' + (mind.some(function (e) { return e.data.kind === 'erin'; }) ? ' with Erin' : '') + '.'); highlights.push({ icon: 'self_improvement', text: Math.round(mins) + ' min calm' }); }
     if (refl.length) parts.push(refl.length + ' reflection' + (refl.length > 1 ? 's' : '') + '.');
     var flags = allFlags(date).filter(function (f) { return f.date === date; });
     return { date: date, text: parts.length ? parts.join(' ') : 'Nothing logged this day.', highlights: highlights, flags: flags, count: entries.length, agent: 'DailySummaryAgent v1 (rule-based)' };
@@ -145,7 +166,8 @@
       cycle: { periodDays: periodDays.length, episodes: cs.episodes.filter(function (ep) { return ep.end >= from; }).map(function (ep) { return { start: ep.start, end: ep.end, length: ep.length, heavyDays: ep.heavyDays }; }), cycleLengths: cs.lengths.slice(-4), averageLength: cs.averageLength, lastStart: cs.lastStart, predictedNext: cs.predictedNext, cycleDay: cs.cycleDay, phase: cs.phase, basis: cs.basis },
       sleep: { nights: sl.count, average: sl.avg, under6: sl.under6, series: sl.nights.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality }; }) },
       symptoms: { daysLogged: symptoms.length, top: top, painAvg: pain.length ? Math.round(pain.reduce(function (a, b) { return a + b; }, 0) / pain.length * 10) / 10 : null, painMax: pain.length ? Math.max.apply(null, pain) : null, moods: moods },
-      food: { meals: meals.length, daysLogged: Object.keys(foodDays).length, tags: tags },
+      food: { meals: meals.length, daysLogged: Object.keys(foodDays).length, tags: tags, nutrients: nutrientDays(meals) },
+      mindfulness: (function () { var ss = S.list('mindfulness', { from: from, to: end }); return { sessions: ss.length, minutes: Math.round(ss.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) }; })(),
       flags: flags, questions: questions,
       disclaimer: 'Self-reported entries summarised by deterministic rules in the browser. For clinician review; not a diagnosis.'
     };

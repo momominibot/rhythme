@@ -51,7 +51,7 @@
       <h2><span class="ms">auto_stories</span>Journal logs</h2>
       <p class="sub">Every entry with its daily summary. Tap the bin to remove one.</p>
       <div class="chips" id="filters" style="margin-top:10px">
-        <button class="chipbtn on" data-f="">All</button><button class="chipbtn" data-f="sleep"><span class="ms">bedtime</span>Sleep</button><button class="chipbtn" data-f="period"><span class="ms">water_drop</span>Period</button><button class="chipbtn" data-f="symptom"><span class="ms">spa</span>Symptoms</button><button class="chipbtn" data-f="food"><span class="ms">restaurant</span>Food</button><button class="chipbtn" data-f="reflection"><span class="ms">edit_note</span>Reflections</button>
+        <button class="chipbtn on" data-f="">All</button><button class="chipbtn" data-f="sleep"><span class="ms">bedtime</span>Sleep</button><button class="chipbtn" data-f="period"><span class="ms">water_drop</span>Period</button><button class="chipbtn" data-f="symptom"><span class="ms">spa</span>Symptoms</button><button class="chipbtn" data-f="food"><span class="ms">restaurant</span>Food</button><button class="chipbtn" data-f="reflection"><span class="ms">edit_note</span>Reflections</button><button class="chipbtn" data-f="mindfulness"><span class="ms">self_improvement</span>Calm</button>
       </div>
       <div id="timeline"></div>
     </section>
@@ -78,6 +78,7 @@
 </nav>
 
 <script src="ovu-store.js"></script>
+<script src="ovu-food.js"></script>
 <script src="ovu-agents.js"></script>
 <script>
 (function(){
@@ -88,7 +89,7 @@
   function pretty(iso,o){return new Date(iso+'T12:00:00').toLocaleDateString(undefined,o||{weekday:'short',day:'numeric',month:'short'});}
   function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
   function message(el,t,cls){el.textContent=t;el.className='msg on '+cls;}
-  var ICON={sleep:'bedtime',period:'water_drop',symptom:'spa',food:'restaurant',reflection:'edit_note'};
+  var ICON={sleep:'bedtime',period:'water_drop',symptom:'spa',food:'restaurant',reflection:'edit_note',mindfulness:'self_improvement'};
   var filter='';
 
   function entryHTML(e){
@@ -96,9 +97,10 @@
     if(e.type==='sleep'){title='Sleep · '+A.fmtHours(S.sleepHours(d));text=(d.bedTime||'?')+' → '+(d.wakeTime||'?')+(d.quality?' · quality '+d.quality+'/5':'')+(d.notes?'\n'+d.notes:'');}
     if(e.type==='period'){title='Period · '+cap(d.flow);text=[d.clots?'clots':'',d.impact?'affected my day':''].filter(Boolean).join(' · ')||'no extra details';}
     if(e.type==='symptom'){title='Symptoms'+(typeof d.pain==='number'?' · pain '+d.pain+'/10':'');text=((d.symptoms||[]).join(', ')||'none ticked')+(d.mood?' · mood '+d.mood:'')+(d.notes?'\n'+d.notes:'');}
-    if(e.type==='food'){title=cap(d.meal)+(d.time?' · '+d.time:'');text=(d.foods||'')+((d.tags||[]).length?'\n'+d.tags.join(' · '):'');}
+    if(e.type==='food'){title=cap(d.meal)+(d.time?' · '+d.time:'');var tot=(d.items&&d.items.length&&window.OvuFood)?window.OvuFood.sum(d.items):null;text=(d.foods||'')+(tot?'\n'+window.OvuFood.line(tot.totals)+' · '+d.items.map(function(it){return it.source&&it.source.label?it.source.label:'';}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}).join(', '):'')+((d.tags||[]).length?'\n'+d.tags.join(' · '):'');}
+    if(e.type==='mindfulness'){title='Mindfulness · '+(d.minutes||0)+' min';text=(d.kind==='erin'?'Guided by Erin':'Breathing orb')+(d.completed?' · completed':' · stopped early');}
     if(e.type==='reflection'){title='Reflection'+(d.mood?' · '+d.mood:'');text=d.text||'';}
-    return '<div class="entry"><span class="ms">'+ICON[e.type]+'</span><div class="body"><b>'+esc(title)+'</b><span>'+esc(text)+'</span></div><button class="del" data-del="'+esc(e.id)+'" aria-label="Delete entry"><span class="ms">delete</span></button></div>';
+    return '<div class="entry">'+(e.type==='food'&&d.photo?'<img class="ethumb" src="'+d.photo+'" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0">':'<span class="ms">'+ICON[e.type]+'</span>')<div class="body"><b>'+esc(title)+'</b><span>'+esc(text)+'</span></div><button class="del" data-del="'+esc(e.id)+'" aria-label="Delete entry"><span class="ms">delete</span></button></div>';
   }
   function renderTimeline(){
     var events=S.list(filter||null).slice().reverse(),groups={},order=[];

@@ -67,6 +67,7 @@
 </main>
 
 <script src="ovu-store.js"></script>
+<script src="ovu-food.js"></script>
 <script src="ovu-agents.js"></script>
 <script>
 (function(){
@@ -130,7 +131,8 @@
     else $('#sleepChart').innerHTML='<p class="note">No sleep entries in range.</p>';
     $('#symKpis').innerHTML=kpi('Days logged',sy.daysLogged||0,'')+kpi('Pain avg',sy.painAvg!==null&&sy.painAvg!==undefined?sy.painAvg+'/10':'—','max '+(sy.painMax!==null&&sy.painMax!==undefined?sy.painMax:'—'))+kpi('Top symptom',(sy.top||[])[0]?cap(sy.top[0].name):'—',(sy.top||[])[0]?sy.top[0].days+' days':'');
     var symObj={};(sy.top||[]).forEach(function(t){symObj[t.name]=t.days;});bars($('#symBars'),symObj,' d');bars($('#moodBars'),sy.moods||{},' d');
-    $('#foodKpis').innerHTML=kpi('Meals',fd.meals||0,'')+kpi('Days',fd.daysLogged||0,'with food entries')+kpi('Home-cooked',(fd.tags||{})['home-cooked']||0,'meals');bars($('#foodBars'),fd.tags||{},'');
+    var nu=fd.nutrients||{avg:{},complete:{},days:0};
+    $('#foodKpis').innerHTML=kpi('Meals',fd.meals||0,(fd.daysLogged||0)+' days logged')+kpi('Energy',nu.avg.kcal!==null&&nu.avg.kcal!==undefined?Math.round(nu.avg.kcal)+' kcal':'—',nu.complete.kcal?'avg of '+nu.complete.kcal+' complete days':'no complete days')+kpi('Protein',nu.avg.protein!==null&&nu.avg.protein!==undefined?Math.round(nu.avg.protein)+' g':'—',nu.complete.protein?'per complete day':'')+kpi('Fibre',nu.avg.fiber!==null&&nu.avg.fiber!==undefined?Math.round(nu.avg.fiber)+' g':'—',nu.complete.fiber?'per complete day':'')+kpi('Iron',nu.avg.fe!==null&&nu.avg.fe!==undefined?(Math.round(nu.avg.fe*10)/10)+' mg':'—',nu.complete.fe?'per complete day':'')+kpi('Calm',(sum.mindfulness||{}).minutes||0,((sum.mindfulness||{}).sessions||0)+' mindfulness sessions');bars($('#foodBars'),fd.tags||{},'');
     $('#dailies').innerHTML=(share.dailies||[]).slice().reverse().map(function(d){return '<div class="summary" style="margin-top:8px"><span class="ms">auto_awesome</span><div><b>'+esc(pretty(d.date,{weekday:'short',day:'numeric',month:'short'}))+'</b> · '+esc(d.text)+((d.flags||[]).length?'<br><b>Note:</b> '+esc(d.flags.map(function(f){return f.title;}).join('; ')):'')+'</div></div>';}).join('')||'<p class="note">No daily summaries.</p>';
     var rows=(share.events||[]).slice().sort(function(a,b){return a.date<b.date?1:-1;});$('#rawCount').textContent=rows.length;
     $('#rawTable').innerHTML='<tr><th>Date</th><th>Type</th><th>Details</th></tr>'+rows.map(function(e){return '<tr><td>'+esc(e.date)+'</td><td>'+esc(e.type)+'</td><td>'+esc(JSON.stringify(e.data).replace(/[{}"]/g,'').replace(/,/g,', ').replace(/:/g,': '))+'</td></tr>';}).join('');

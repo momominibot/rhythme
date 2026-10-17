@@ -1,10 +1,10 @@
 /* Ovumind dream room — interaction engine.
  * One fixed-aspect scene holds the illustration, labelled hotspot buttons,
  * avatar waypoints and overlays, so everything scales together. Data goes
- * through OvuStore; pattern notes come from OvuAgents. */
+ * through OvuStore; pattern notes come from OvuAgents; food maths from OvuFood. */
 (function () {
   'use strict';
-  var S = window.OvuStore, A = window.OvuAgents;
+  var S = window.OvuStore, A = window.OvuAgents, FD = window.OvuFood;
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -18,6 +18,7 @@
     { id: 'computer', x: 65, y: 46, label: 'Computer · learn', icon: 'computer', wp: { x: 63, y: 66, flip: false } },
     { id: 'wardrobe', x: 81, y: 52, label: 'Wardrobe · outfits', icon: 'checkroom', wp: { x: 76, y: 73, flip: false } },
     { id: 'diary', x: 64, y: 73, label: 'Diary · food journal', icon: 'menu_book', wp: { x: 54, y: 80, flip: false } },
+    { id: 'mat', x: 29, y: 78, label: 'Yoga mat · mindfulness with Erin', icon: 'self_improvement', wp: { x: 36, y: 81, flip: true } },
     { id: 'window', x: 44, y: 29, label: 'Window · tonight', icon: 'dark_mode', wp: null }
   ];
   var HOME = { x: 44, y: 79, flip: false };
@@ -64,6 +65,73 @@
     none: { title: 'Any phase', text: 'A balanced plate with protein, colour and slow carbs is a good default while your pattern builds.', foods: ['Eggs', 'Greens', 'Whole grains', 'Fruit'] }
   };
 
+  /* ---------- evidence guides behind every (i) ---------- */
+  function padSVG(level) {
+    var fills = { spotting: 0.08, light: 0.25, medium: 0.55, heavy: 0.95 }[level] || 0;
+    var w = Math.round(44 * fills), clots = level === 'heavy' ? '<circle cx="26" cy="24" r="3.4" fill="#7a1f3a"/><circle cx="36" cy="30" r="2.6" fill="#7a1f3a"/>' : '';
+    var dots = level === 'spotting' ? '<circle cx="30" cy="26" r="1.8" fill="#c1517a"/><circle cx="37" cy="31" r="1.3" fill="#c1517a"/>' : '';
+    return '<svg viewBox="0 0 64 48" aria-hidden="true"><rect x="6" y="10" width="52" height="28" rx="14" fill="#fff" stroke="#e5d7f0" stroke-width="2"/>' +
+      (fills > 0.1 ? '<rect x="' + (32 - w / 2) + '" y="14" width="' + w + '" height="20" rx="10" fill="' + (level === 'heavy' ? '#b43f68' : level === 'medium' ? '#dd6f94' : '#f3b9cb') + '"/>' : '') + dots + clots + '</svg>';
+  }
+  var GUIDES = {
+    bleeding: {
+      icon: 'water_drop', title: 'What light, medium and heavy mean',
+      body: '<div class="flows">' +
+        '<div class="flow">' + padSVG('spotting') + '<b>Spotting</b><small>A few drops; a liner is enough</small></div>' +
+        '<div class="flow">' + padSVG('light') + '<b>Light</b><small>A pad or tampon lasts most of the day</small></div>' +
+        '<div class="flow">' + padSVG('medium') + '<b>Medium</b><small>Change about every 3 to 4 hours</small></div>' +
+        '<div class="flow">' + padSVG('heavy') + '<b>Heavy</b><small>Change every 1 to 2 hours, clots over 2.5 cm, leaks</small></div></div>' +
+        '<p>Heavy bleeding is defined by its effect on your life, not a number. Signs the NHS lists: changing protection every 1 to 2 hours, clots larger than about 2.5 cm (a 10p coin), bleeding through clothes or bedding, needing two products together, or periods longer than 7 days. Tick <b>Clots</b> and <b>Affected my day</b> on those days so the pattern is visible to your clinician.</p>',
+      evidence: [
+        ['NHS, Heavy periods: signs of heavy bleeding (2.5 cm clots, 1 to 2 hourly changes, bleeding through, 7+ days)', 'https://www.nhs.uk/conditions/heavy-periods/'],
+        ['NICE NG88 (2018, updated 2021): heavy menstrual bleeding is excessive loss that interferes with physical, emotional, social and material quality of life', 'https://www.nice.org.uk/guidance/ng88'],
+        ['Higham, O’Brien & Shaw 1990, BJOG: pictorial blood loss assessment chart; a score of 100 or more corresponds to about 80 mL loss', 'https://doi.org/10.1111/j.1471-0528.1990.tb16249.x'],
+        ['FIGO AUB System 1 (Munro et al. 2018): typical cycle 24 to 38 days, bleeding up to 8 days', 'https://doi.org/10.1002/ijgo.12666']
+      ]
+    },
+    pain: {
+      icon: 'spa', title: 'The 0 to 10 pain scale',
+      body: '<div class="scale"><div><b>0</b><small>No pain</small></div><div><b>1 to 3</b><small>Mild, easy to ignore</small></div><div><b>4 to 6</b><small>Moderate, hard to ignore</small></div><div><b>7 to 10</b><small>Severe, stops normal activity</small></div></div><p>Rate the worst pain of the day. Period pain that reaches 7 or more, needs time off, or does not respond to usual pain relief is worth a conversation; the app flags 8 or more.</p>',
+      evidence: [
+        ['Hjermstad et al. 2011, J Pain Symptom Manage: systematic review supporting 0 to 10 numeric rating scales for pain intensity', 'https://doi.org/10.1016/j.jpainsymman.2010.08.016'],
+        ['NICE NG88 and NHS guidance: period pain affecting daily life warrants assessment', 'https://www.nhs.uk/conditions/period-pain/']
+      ]
+    },
+    sleep: {
+      icon: 'bedtime', title: 'How the sleep notes work',
+      body: '<p>Duration is bedtime to wake time, so it counts time in bed rather than measured sleep. Quality is your own 1 to 5 rating. The app notes weeks averaging under 6 hours and runs of three nights under 5 hours.</p>',
+      evidence: [
+        ['American Academy of Sleep Medicine and Sleep Research Society consensus (Watson et al. 2015, Sleep): adults should sleep 7 or more hours per night on a regular basis', 'https://doi.org/10.5665/sleep.4716']
+      ]
+    },
+    food: {
+      icon: 'restaurant', title: 'Where the numbers come from',
+      body: '<p>Nutrients are calculated as <b>value per 100 g × grams you confirm ÷ 100</b>. Generic foods use USDA FoodData Central (SR Legacy, per 100 g edible portion, with USDA household measures). Barcodes use Open Food Facts label transcriptions, kept per 100 g or 100 ml as published. Missing values show as <b>?</b> and are left out of totals rather than counted as zero. Carbohydrate follows USDA “by difference” and already includes fibre.</p><p>Photos are kept only as a reminder. In a 2026 NIH controlled test, photo-only apps under-counted meals by about a third, mostly hidden fats and portions, which is why you confirm the food and the amount here.</p>',
+      evidence: [
+        ['USDA FoodData Central, SR Legacy data and documentation', 'https://fdc.nal.usda.gov/'],
+        ['Open Food Facts API and data fields', 'https://openfoodfacts.github.io/openfoodfacts-server/api/'],
+        ['NIH-led evaluation of photo-based calorie apps, NUTRITION 2026 (preliminary conference abstract)', 'https://www.eurekalert.org/news-releases/1136415']
+      ]
+    },
+    cycle: {
+      icon: 'calendar_month', title: 'How predictions are made',
+      body: '<p>The next period is estimated from the average of your last logged cycles (or your profile setting, or 28 days until there is history). The fertile window shown is a calendar estimate around 14 days before the expected period and is not a contraceptive method. Tapping a past day fills a typical period length so you can backdate quickly, then adjust any day.</p>',
+      evidence: [
+        ['FIGO AUB System 1 (Munro et al. 2018): normal frequency 24 to 38 days, regularity within 7 to 9 days, duration up to 8 days', 'https://doi.org/10.1002/ijgo.12666']
+      ]
+    }
+  };
+  function infoBtn(topic) { return '<button type="button" class="ibtn" data-guide="' + topic + '" aria-label="Evidence and guidance">i</button>'; }
+  function guideHTML(topic) { var g = GUIDES[topic]; if (!g) return ''; return '<div class="guide" data-guide-panel="' + topic + '"><h4><span class="ms">' + g.icon + '</span>' + esc(g.title) + '</h4>' + g.body + '<div class="ev"><b>Evidence</b>' + g.evidence.map(function (e) { return '<a href="' + e[1] + '" target="_blank" rel="noopener">' + esc(e[0]) + '</a>'; }).join('') + '<span>Guidance, not a diagnosis. Bring the pattern to a clinician you trust.</span></div></div>'; }
+  function wireGuides(root) {
+    root.addEventListener('click', function (e) {
+      var b = e.target.closest('.ibtn'); if (!b) return;
+      var panel = root.querySelector('.guide[data-guide-panel="' + b.dataset.guide + '"]'); if (!panel) return;
+      var on = !panel.classList.contains('on'); panel.classList.toggle('on', on); b.classList.toggle('on', on);
+      if (on) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
+
   /* ---------- helpers ---------- */
   function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
   function nowHM() { var d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
@@ -76,19 +144,19 @@
   }
   /* opt-in tiny chime; nothing plays until the user turns sound on */
   var audioCtx = null;
-  function chime(kind) {
-    if (!S.state().sound) return;
+  function chime(kind, force) {
+    if (!S.state().sound && !force) return;
     try {
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
       var o = audioCtx.createOscillator(), g = audioCtx.createGain();
-      o.type = 'sine'; o.frequency.value = kind === 'save' ? 880 : kind === 'sleep' ? 392 : 660;
-      g.gain.setValueAtTime(0.0001, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.08, audioCtx.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
-      o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.4);
+      o.type = 'sine'; o.frequency.value = kind === 'save' ? 880 : kind === 'sleep' ? 392 : kind === 'bell' ? 523 : 660;
+      g.gain.setValueAtTime(0.0001, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(kind === 'bell' ? 0.12 : 0.08, audioCtx.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + (kind === 'bell' ? 1.2 : 0.35));
+      o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + (kind === 'bell' ? 1.3 : 0.4));
     } catch (e) { /* no audio */ }
   }
 
   /* ---------- scene build ---------- */
-  var scene = $('#scene'), inner = $('#sceneInner'), avatar = $('#avatar'), avatarImg = $('#avatarImg'), sleeper = $('#sleeper');
+  var scene = $('#scene'), inner = $('#sceneInner'), avatar = $('#avatar'), avatarImg = $('#avatarImg'), sleeper = $('#sleeper'), meditator = $('#meditator');
   function buildScene() {
     var hs = $('#hotspots');
     HOTSPOTS.forEach(function (h) {
@@ -99,16 +167,15 @@
       b.addEventListener('click', function () { tap(h); });
       hs.appendChild(b);
     });
+    var aura = document.createElement('div'); aura.className = 'aura'; aura.id = 'aura'; inner.insertBefore(aura, meditator);
     var sp = $('#sparkles');
     for (var i = 0; i < 14; i++) { var s = document.createElement('i'); s.className = 'sparkle'; s.style.left = (5 + Math.random() * 90) + '%'; s.style.top = (4 + Math.random() * 60) + '%'; s.style.animationDelay = (Math.random() * 4) + 's'; s.style.animationDuration = (3 + Math.random() * 3) + 's'; sp.appendChild(s); }
     var st = $('#stars');
     for (var j = 0; j < 26; j++) { var z = document.createElement('i'); z.className = 'star'; z.style.left = (2 + Math.random() * 96) + '%'; z.style.top = (2 + Math.random() * 40) + '%'; z.style.animationDelay = (Math.random() * 3) + 's'; z.style.transform = 'scale(' + (0.5 + Math.random()) + ')'; st.appendChild(z); }
-    /* optional generated night plate */
     var night = $('#roomNight');
     night.addEventListener('load', function () { scene.classList.add('has-night-img'); });
     night.addEventListener('error', function () { night.remove(); });
     night.src = ART + 'room-night.webp';
-    /* gentle parallax on pointer devices only */
     if (!reduced && window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
       scene.addEventListener('pointermove', function (e) { var r = scene.getBoundingClientRect(); var dx = (e.clientX - r.left) / r.width - 0.5, dy = (e.clientY - r.top) / r.height - 0.5; inner.style.transform = 'rotateY(' + (dx * 4) + 'deg) rotateX(' + (-dy * 3) + 'deg) scale(1.02)'; });
       scene.addEventListener('pointerleave', function () { inner.style.transform = ''; });
@@ -141,11 +208,12 @@
       done && done();
     }, ms + 30);
   }
-  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping) walkTo(HOME); }, 1400); }
+  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
   function openSheet(id, title, sub, icon, html) {
+    if (current === 'diary') stopCamera();
     current = id; $('#sheetTitle').innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');
     $('#sheetIcon').innerHTML = '<span class="ms">' + esc(icon) + '</span>';
     body.innerHTML = html; body.scrollTop = 0;
@@ -153,9 +221,14 @@
     sheet.setAttribute('aria-hidden', 'false');
     var first = body.querySelector('input,button,select,textarea,a'); if (first && window.matchMedia('(hover:hover)').matches) try { first.focus({ preventScroll: true }); } catch (e) { }
   }
-  function closeSheet() { current = null; sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); stopVideo(); goHome(); }
+  function closeSheet() {
+    if (current === 'diary') stopCamera();
+    if (current === 'mind') stopSession(true);
+    current = null; sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); stopVideo(); goHome();
+  }
   veil.addEventListener('click', closeSheet); $('#sheetClose').addEventListener('click', closeSheet);
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeSheet(); hideBubble(); } });
+  wireGuides(body);
   function message(el, text, ok) { el.textContent = text; el.className = 'msg on ' + (ok ? 'ok' : 'err'); }
 
   /* ---------- tap routing ---------- */
@@ -165,7 +238,7 @@
     var visited = S.state().visited || {}; visited[h.id] = true; S.setState({ visited: visited });
     $('#hint').classList.remove('on');
     if (h.id === 'window') { openWindow(); return; }
-    if (S.state().sleeping && h.id !== 'bed' && h.id !== 'clock') { openSheetFor(h.id); return; }
+    if ((S.state().sleeping && h.id !== 'bed' && h.id !== 'clock') || meditating) { openSheetFor(h.id); return; }
     walkTo(h.wp, function () { openSheetFor(h.id); });
   }
   function openSheetFor(id) {
@@ -175,6 +248,7 @@
     if (id === 'computer') return openLearn();
     if (id === 'wardrobe') return openWardrobe();
     if (id === 'diary') return openDiary();
+    if (id === 'mat') return openMindfulness();
   }
 
   /* ---------- sleep flows ---------- */
@@ -206,7 +280,7 @@
     openSheet('wake', 'Good morning!', 'Finish last night’s sleep entry', 'wb_twilight',
       '<div class="stat"><span class="ms">bedtime</span><div><b>Bedtime ' + esc(sl.bedTime || '--:--') + '</b><span>Started ' + esc(sl.startedAt ? new Date(sl.startedAt).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '') + '</span></div></div>' +
       '<div class="grid2"><div class="field"><label for="wakeTime">Wake time</label><input class="input" id="wakeTime" type="time" value="' + nowHM() + '"></div><div class="field"><label for="wakeDate">Morning of</label><input class="input" id="wakeDate" type="date" value="' + S.today() + '" max="' + S.today() + '"></div></div>' +
-      '<div class="field"><span class="lbl">How did you sleep?</span>' + moonsHTML('q', 0) + '</div>' +
+      '<div class="field"><div class="lbl-row"><span class="lbl">How did you sleep?</span>' + infoBtn('sleep') + '</div>' + moonsHTML('q', 0) + guideHTML('sleep') + '</div>' +
       '<div class="field"><label for="wakeNotes">Notes (optional)</label><textarea class="input" id="wakeNotes" placeholder="Woke twice, vivid dreams, warm night..."></textarea></div>' +
       '<div class="row"><button class="btn primary" id="saveWake"><span class="ms">wb_sunny</span>Save my sleep</button><button class="btn ghost" id="cancelSleep">I did not sleep</button></div>' +
       '<div class="msg" id="sleepMsg"></div>');
@@ -224,7 +298,7 @@
   function openSleepRecord() {
     openSheet('sleep', 'Record sleep', 'Any night, any date', 'alarm',
       '<div class="grid2"><div class="field"><label for="slDate">Morning of</label><input class="input" id="slDate" type="date" value="' + S.today() + '" max="' + S.today() + '"></div><div class="field"><label for="slBed">Bedtime</label><input class="input" id="slBed" type="time" value="23:00"></div></div>' +
-      '<div class="grid2"><div class="field"><label for="slWake">Wake time</label><input class="input" id="slWake" type="time" value="07:00"></div><div class="field"><span class="lbl">Quality</span>' + moonsHTML('q', 0) + '</div></div>' +
+      '<div class="grid2"><div class="field"><label for="slWake">Wake time</label><input class="input" id="slWake" type="time" value="07:00"></div><div class="field"><div class="lbl-row"><span class="lbl">Quality</span>' + infoBtn('sleep') + '</div>' + moonsHTML('q', 0) + '</div></div>' + guideHTML('sleep') +
       '<div class="field"><label for="slNotes">Notes (optional)</label><textarea class="input" id="slNotes" placeholder="Night sweats, cramps, late coffee..."></textarea></div>' +
       '<button class="btn primary" id="saveSleep" style="width:100%"><span class="ms">check</span>Save night</button><div class="msg" id="sleepMsg"></div>' +
       '<div class="field"><span class="lbl">Last 7 nights</span><div id="sleepList">' + sleepListHTML() + '</div></div>');
@@ -232,8 +306,8 @@
     $('#saveSleep').addEventListener('click', function () {
       try {
         var q = Number($('.moons', body).dataset.value || 0) || null;
+        if (!S.validTime($('#slBed').value) || !S.validTime($('#slWake').value)) throw new Error('Enter both bedtime and wake time.');
         var ev = S.add('sleep', $('#slDate').value, { bedTime: $('#slBed').value, wakeTime: $('#slWake').value, quality: q, notes: $('#slNotes').value.trim(), mode: 'manual' });
-        if (!S.validTime(ev.data.bedTime) || !S.validTime(ev.data.wakeTime)) { S.remove(ev.id); throw new Error('Enter both bedtime and wake time.'); }
         message($('#sleepMsg'), 'Saved: ' + A.fmtHours(S.sleepHours(ev.data)) + ' of sleep.', true); chime('save');
         $('#sleepList').innerHTML = sleepListHTML(); afterSave(ev);
       } catch (e) { message($('#sleepMsg'), e.message, false); }
@@ -256,21 +330,40 @@
   }
   sleeper.addEventListener('click', function () { openWake(); });
 
-  /* ---------- calendar: period + symptoms with backdating ---------- */
-  var cal = { y: 0, m: 0, tab: 'period', sel: S.today() };
+  /* ---------- calendar: period (5-day fill) + symptoms with backdating ---------- */
+  var cal = { y: 0, m: 0, tab: 'period', sel: S.today(), lastFill: [] };
   function openCalendar(tab, date) {
-    var d = new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab || 'period'; cal.sel = date || S.today();
-    openSheet('calendar', 'Your calendar', 'Tap any past day to log or backdate', 'calendar_month',
-      '<div class="tabs" id="calTabs"><button data-tab="period" class="on">Period</button><button data-tab="symptom">Symptoms</button></div>' +
+    var d = new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab || 'period'; cal.sel = date || S.today(); cal.lastFill = [];
+    openSheet('calendar', 'Your calendar', 'Tap a past day to log or backdate', 'calendar_month',
+      '<div class="tabs" id="calTabs"><button data-tab="period" class="' + (cal.tab === 'period' ? 'on' : '') + '">Period</button><button data-tab="symptom" class="' + (cal.tab === 'symptom' ? 'on' : '') + '">Symptoms</button></div>' +
       '<div class="cal-head"><button class="cal-nav" id="calPrev" aria-label="Previous month"><span class="ms">chevron_left</span></button><b id="calTitle"></b><button class="cal-nav" id="calNext" aria-label="Next month"><span class="ms">chevron_right</span></button></div>' +
       '<div class="cal-grid" id="calGrid" role="grid"></div>' +
-      '<div class="legend"><span><i style="background:#e58aa8"></i>Period</span><span><i style="background:repeating-linear-gradient(135deg,#fff 0 3px,#f6e3ea 3px 6px);border:1px solid #f0cfdb"></i>Expected</span><span><i style="background:#eaf5ee;border:1px solid #cfe6d8"></i>Est. fertile</span><span><i style="background:#7a5c96;border-radius:50%"></i>Symptoms</span></div>' +
+      '<div class="legend"><span><i style="background:#e58aa8"></i>Period</span><span><i style="background:repeating-linear-gradient(135deg,#fff 0 3px,#f6e3ea 3px 6px);border:1px solid #f0cfdb"></i>Expected</span><span><i style="background:#eaf5ee;border:1px solid #cfe6d8"></i>Est. fertile</span><span><i style="background:#7a5c96;border-radius:50%"></i>Symptoms</span>' + infoBtn('cycle') + '</div>' + guideHTML('cycle') +
       '<div id="cycleStat"></div><div class="day-editor" id="dayEditor"></div>');
     $('#calTabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; cal.tab = b.dataset.tab; $$('button', $('#calTabs')).forEach(function (x) { x.classList.toggle('on', x === b); }); renderEditor(); });
     $('#calPrev').addEventListener('click', function () { cal.m--; if (cal.m < 0) { cal.m = 11; cal.y--; } renderCal(); });
     $('#calNext').addEventListener('click', function () { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } renderCal(); });
-    $('#calGrid').addEventListener('click', function (e) { var b = e.target.closest('.cal-day'); if (!b || !b.dataset.date || b.classList.contains('future')) return; cal.sel = b.dataset.date; renderCal(); renderEditor(); });
+    $('#calGrid').addEventListener('click', function (e) {
+      var b = e.target.closest('.cal-day'); if (!b || !b.dataset.date || b.classList.contains('future')) return;
+      cal.sel = b.dataset.date;
+      if (cal.tab === 'period' && !S.list('period', { from: cal.sel, to: cal.sel }).length) autoFillPeriod(cal.sel);
+      renderCal(); renderEditor();
+    });
     renderCal(); renderEditor();
+  }
+  function periodFillLength() { var cs = S.cycleStats(), p = S.profile(); return Math.min(10, Math.max(2, Number(p.periodLength) || cs.periodLength || 5)); }
+  /* Tapping an unmarked day marks a typical period from that day: medium for the first
+     three days, light after, capped at today. Every day stays editable; Undo removes the fill. */
+  function autoFillPeriod(start) {
+    var len = periodFillLength(), today = S.today(), ids = [], days = 0;
+    for (var i = 0; i < len; i++) {
+      var d = S.addDays(start, i); if (d > today) break;
+      if (S.list('period', { from: d, to: d }).length) break;
+      var ev = S.add('period', d, { flow: i < 3 ? 'medium' : 'light', clots: false, impact: false, autofill: true }); ids.push(ev.id); days++;
+    }
+    cal.lastFill = ids; chime('save');
+    toast('Marked ' + days + ' day' + (days === 1 ? '' : 's') + ' from ' + prettyDate(start) + '. Adjust any day or undo.', 'water_drop');
+    renderDeck();
   }
   function renderCal() {
     var first = new Date(cal.y, cal.m, 1), days = new Date(cal.y, cal.m + 1, 0).getDate(), startDow = (first.getDay() + 6) % 7;
@@ -289,17 +382,18 @@
       html += '<button type="button" class="' + cls + '" data-date="' + iso + '" aria-label="' + prettyDate(iso) + '">' + dd + (syms[iso] ? '<span class="sdot"></span>' : '') + '</button>';
     }
     $('#calGrid').innerHTML = html;
-    var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>Next period expected around ' + prettyDate(cs.predictedNext) + ' (estimate from ' + esc(cs.basis) + ').</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>Tap the first day of your last period, or use the button below.</span></div></div>';
-    statHtml += '<div class="row"><button class="btn blush" id="menstruatingNow"><span class="ms">water_drop</span>I’m menstruating now</button></div>';
+    var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>Next period expected around ' + prettyDate(cs.predictedNext) + ' (estimate from ' + esc(cs.basis) + ').</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>Tap the first day of your last period and ' + periodFillLength() + ' typical days are filled for you to adjust.</span></div></div>';
+    statHtml += '<div class="row"><button class="btn blush" id="menstruatingNow"><span class="ms">water_drop</span>I’m menstruating now</button>' + (cal.lastFill.length ? '<button class="btn ghost" id="undoFill"><span class="ms">undo</span>Undo ' + cal.lastFill.length + '-day fill</button>' : '') + '</div>';
     $('#cycleStat').innerHTML = statHtml;
-    $('#menstruatingNow').addEventListener('click', function () { var ev = S.add('period', S.today(), { flow: 'medium', clots: false, impact: false }); cal.sel = S.today(); renderCal(); renderEditor(); afterSave(ev, 'Period logged for today.'); });
+    $('#menstruatingNow').addEventListener('click', function () { var ev = S.add('period', S.today(), { flow: 'medium', clots: false, impact: false }); cal.sel = S.today(); cal.lastFill = []; renderCal(); renderEditor(); afterSave(ev, 'Period logged for today.'); });
+    var undo = $('#undoFill'); if (undo) undo.addEventListener('click', function () { cal.lastFill.forEach(function (id) { S.remove(id); }); cal.lastFill = []; renderCal(); renderEditor(); renderDeck(); toast('Fill removed.', 'undo'); });
   }
   function renderEditor() {
     var ed = $('#dayEditor'), date = cal.sel;
     if (cal.tab === 'period') {
       var cur = S.list('period', { from: date, to: date })[0], data = cur ? cur.data : { flow: 'none', clots: false, impact: false };
       ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' +
-        '<div class="field"><span class="lbl">Bleeding</span><div class="chips" id="flowChips">' + ['none', 'spotting', 'light', 'medium', 'heavy'].map(function (f) { return '<button type="button" class="chipbtn flow-' + f + (data.flow === f ? ' on' : '') + '" data-flow="' + f + '">' + cap(f) + '</button>'; }).join('') + '</div></div>' +
+        '<div class="field"><div class="lbl-row"><span class="lbl">Bleeding</span>' + infoBtn('bleeding') + '</div><div class="chips" id="flowChips">' + ['none', 'spotting', 'light', 'medium', 'heavy'].map(function (f) { return '<button type="button" class="chipbtn flow-' + f + (data.flow === f ? ' on' : '') + '" data-flow="' + f + '">' + cap(f) + '</button>'; }).join('') + '</div>' + guideHTML('bleeding') + '</div>' +
         '<div class="field"><span class="lbl">Details</span><div class="chips"><button type="button" class="chipbtn' + (data.clots ? ' on' : '') + '" id="clots"><span class="ms">bubble_chart</span>Clots</button><button type="button" class="chipbtn' + (data.impact ? ' on' : '') + '" id="impact"><span class="ms">event_busy</span>Affected my day</button></div></div>' +
         '<div class="row"><button class="btn primary" id="savePeriod"><span class="ms">check</span>Save day</button>' + (cur ? '<button class="btn ghost" id="clearPeriod">Clear</button>' : '') + '</div><div class="msg" id="calMsg"></div>';
       $('#flowChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#flowChips')).forEach(function (x) { x.classList.toggle('on', x === b); }); });
@@ -318,7 +412,7 @@
       var cs = S.list('symptom', { from: date, to: date })[0], sd = cs ? cs.data : { symptoms: [], pain: 0, mood: '', notes: '' };
       ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' +
         '<div class="field"><span class="lbl">Symptoms</span><div class="chips" id="symChips">' + A.SYMPTOMS.map(function (s) { return '<button type="button" class="chipbtn' + ((sd.symptoms || []).indexOf(s) > -1 ? ' on' : '') + '" data-sym="' + esc(s) + '">' + esc(cap(s)) + '</button>'; }).join('') + '</div></div>' +
-        '<div class="field"><label for="pain">Pain · <span id="painVal">' + (sd.pain || 0) + '</span>/10</label><input class="range" type="range" id="pain" min="0" max="10" step="1" value="' + (sd.pain || 0) + '"></div>' +
+        '<div class="field"><div class="lbl-row"><label for="pain" class="lbl" style="margin:0">Pain · <span id="painVal">' + (sd.pain || 0) + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="pain" min="0" max="10" step="1" value="' + (sd.pain || 0) + '">' + guideHTML('pain') + '</div>' +
         '<div class="field"><span class="lbl">Mood</span><div class="faces" id="moodFaces">' + [['great', 'sentiment_very_satisfied'], ['good', 'sentiment_satisfied'], ['ok', 'sentiment_neutral'], ['low', 'sentiment_dissatisfied'], ['bad', 'sentiment_very_dissatisfied']].map(function (m) { return '<button type="button" data-mood="' + m[0] + '" class="' + (sd.mood === m[0] ? 'on' : '') + '"><span class="ms">' + m[1] + '</span>' + cap(m[0]) + '</button>'; }).join('') + '</div></div>' +
         '<div class="field"><label for="symNotes">Notes</label><textarea class="input" id="symNotes" placeholder="Anything else you noticed...">' + esc(sd.notes || '') + '</textarea></div>' +
         '<div class="row"><button class="btn primary" id="saveSym"><span class="ms">check</span>Save day</button>' + (cs ? '<button class="btn ghost" id="clearSym">Clear</button>' : '') + '</div><div class="msg" id="calMsg"></div>';
@@ -336,38 +430,133 @@
     }
   }
 
-  /* ---------- diary: food journal ---------- */
-  var diaryDate = S.today();
+  /* ---------- diary: camera-assisted food journal ---------- */
+  var diaryDate = S.today(), draft = { items: [], photo: null }, picked = null, stopScan = null;
+  function stopCamera() { if (stopScan) { try { stopScan(); } catch (e) { } stopScan = null; } var cw = $('#camwrap'); if (cw) cw.classList.remove('on'); }
   function foodEntriesHTML(date) {
     var items = S.list('food', { from: date, to: date });
     if (!items.length) return '<div class="empty">Nothing logged for ' + esc(prettyDate(date)) + ' yet.</div>';
-    return '<div class="entries">' + items.map(function (e) { return '<div class="entry"><span class="ms">' + ({ breakfast: 'egg_alt', lunch: 'rice_bowl', dinner: 'dinner_dining', snack: 'icecream' })[e.data.meal] + '</span><div class="body"><b>' + esc(cap(e.data.meal)) + (e.data.time ? ' · ' + esc(e.data.time) : '') + '</b><span>' + esc(e.data.foods) + ((e.data.tags || []).length ? '\n' + esc(e.data.tags.join(' · ')) : '') + '</span></div><button class="del" data-del="' + esc(e.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>'; }).join('') + '</div>';
+    return '<div class="entries">' + items.map(function (e) {
+      var d = e.data, tot = d.items && d.items.length ? FD.sum(d.items) : null;
+      return '<div class="entry">' + (d.photo ? '<img class="ethumb" src="' + d.photo + '" alt="">' : '<span class="ms">' + ({ breakfast: 'egg_alt', lunch: 'rice_bowl', dinner: 'dinner_dining', snack: 'icecream' })[d.meal] + '</span>') + '<div class="body"><b>' + esc(cap(d.meal)) + (d.time ? ' · ' + esc(d.time) : '') + '</b><span>' + esc(d.foods) + (tot ? '\n' + esc(FD.line(tot.totals)) : '') + ((d.tags || []).length ? '\n' + esc(d.tags.join(' · ')) : '') + '</span></div><button class="del" data-del="' + esc(e.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>';
+    }).join('') + '</div>';
   }
+  function resultsHTML(list) {
+    if (!list.length) return '<div class="empty">No match in the food table. Try another word, scan the barcode, or add a custom food.</div>';
+    return list.map(function (f) { return '<button type="button" class="result" data-food="' + esc(f.id) + '">' + (f.image ? '<img src="' + f.image + '" alt="">' : '<span class="ms">' + (f.cat === 'packaged' ? 'qr_code_2' : 'restaurant') + '</span>') + '<span><b>' + esc(f.name) + '</b><small>' + esc(f.n.kcal !== null && f.n.kcal !== undefined ? Math.round(f.n.kcal) + ' kcal' : '? kcal') + ' · ' + esc(FD.fmt('protein', f.n.protein)) + ' g protein per 100 ' + (f.basis === '100ml' ? 'ml' : 'g') + (f.sr ? ' · ' + esc(f.sr.slice(0, 48)) + (f.sr.length > 48 ? '…' : '') : '') + '</small></span></button>'; }).join('');
+  }
+  function showPicker(food) {
+    picked = { food: food, portion: food.portions[1] || food.portions[0], grams: (food.portions[1] || food.portions[0]).g };
+    var p = $('#picker'); p.classList.add('on');
+    p.innerHTML = '<h4>' + esc(food.name) + '</h4><div class="src">' + esc(food.source.label) + (food.source.ref ? ' · ' + esc(food.source.ref) : '') + (food.source.date ? ' · ' + esc(food.source.date) : '') + (food.source.detail ? '<br>' + esc(food.source.detail) : '') + '</div>' +
+      '<div class="portions" id="portions">' + food.portions.map(function (po, i) { return '<button type="button" class="chipbtn' + (po === picked.portion ? ' on' : '') + '" data-i="' + i + '">' + esc(po.label) + ' · ' + po.g + ' g</button>'; }).join('') + '</div>' +
+      '<div class="grams"><input class="input" type="number" id="gramsIn" min="1" max="3000" step="1" value="' + picked.grams + '"><span>' + (food.basis === '100ml' ? 'ml' : 'g') + ' you ate</span></div>' +
+      '<div class="nutline" id="nutline"></div>' +
+      '<div class="row"><button class="btn primary" id="addItem"><span class="ms">add</span>Add to this meal</button><button class="btn ghost" id="cancelPick">Cancel</button></div>';
+    function refresh() { var n = FD.scale(food.n, picked.grams); $('#nutline').innerHTML = esc(FD.line(n)) + '<small>' + esc(FD.line(n, ['fe', 'ca', 'sugar', 'na'])) + ' · ? means the source has no value</small>'; }
+    $('#portions').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; picked.portion = food.portions[Number(b.dataset.i)]; picked.grams = picked.portion.g; $('#gramsIn').value = picked.grams; $$('button', $('#portions')).forEach(function (x) { x.classList.toggle('on', x === b); }); refresh(); });
+    $('#gramsIn').addEventListener('input', function () { var v = Number(this.value); if (v > 0) { picked.grams = v; picked.portion = { label: v + (food.basis === '100ml' ? ' ml' : ' g'), g: v }; $$('button', $('#portions')).forEach(function (x) { x.classList.remove('on'); }); refresh(); } });
+    $('#cancelPick').addEventListener('click', function () { p.classList.remove('on'); picked = null; });
+    $('#addItem').addEventListener('click', function () {
+      if (!picked || !(picked.grams > 0)) return;
+      draft.items.push(FD.makeItem(food, picked.portion, picked.grams, picked.portion.g === picked.grams && picked.portion.label.indexOf(' g') < 0 ? 'household measure' : 'typed amount'));
+      p.classList.remove('on'); picked = null; chime('tap'); renderItems();
+      var fs = $('#fdSearch'); if (fs) { fs.value = ''; $('#fdResults').innerHTML = ''; }
+    });
+    refresh(); p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  function renderItems() {
+    var wrap = $('#items'), tot = $('#totals');
+    if (!draft.items.length) { wrap.innerHTML = ''; tot.innerHTML = ''; return; }
+    wrap.innerHTML = draft.items.map(function (it, i) { return '<div class="item"><span class="ms">' + (it.source.kind === 'off' ? 'qr_code_2' : it.source.kind === 'custom' ? 'edit' : 'restaurant') + '</span><span><b>' + esc(it.name) + '</b><small>' + esc(it.portionLabel) + ' · ' + it.grams + ' g · ' + esc(FD.fmt('kcal', it.nutrients.kcal)) + ' kcal · ' + esc(FD.fmt('protein', it.nutrients.protein)) + ' g protein</small></span><button class="del" data-i="' + i + '" aria-label="Remove"><span class="ms">close</span></button></div>'; }).join('');
+    var sm = FD.sum(draft.items), miss = ['kcal', 'protein', 'carb', 'fat', 'fiber'].filter(function (k) { return sm.missing[k]; });
+    tot.innerHTML = '<b>This meal</b><div class="nuts">' + ['kcal', 'protein', 'carb', 'fat', 'fiber'].map(function (k) { return '<div><strong>' + esc(FD.fmt(k, sm.totals[k])) + '</strong><small>' + esc(k === 'kcal' ? 'kcal' : FD.LABEL[k]) + '</small></div>'; }).join('') + '</div><p>' + sm.count + ' item' + (sm.count === 1 ? '' : 's') + (miss.length ? ' · ' + miss.map(function (k) { return sm.missing[k] + ' missing ' + FD.LABEL[k].toLowerCase(); }).join(', ') : ' · all values present') + '. Estimated from the sources shown, with the amounts you confirmed.</p>';
+  }
+  function customFoodForm() {
+    return '<div class="picker on" id="customForm"><h4>Custom food from the label</h4><div class="src">Type the per-100 g (or per-100 ml) values printed on the pack. Leave blanks for anything not shown.</div>' +
+      '<div class="field"><label for="cfName">Name</label><input class="input" id="cfName" maxlength="60" placeholder="e.g. Meiji low-fat milk"></div>' +
+      '<div class="grid2"><div class="field"><label for="cfKcal">Energy kcal /100</label><input class="input" id="cfKcal" type="number" min="0" step="0.1"></div><div class="field"><label for="cfProt">Protein g /100</label><input class="input" id="cfProt" type="number" min="0" step="0.1"></div></div>' +
+      '<div class="grid2"><div class="field"><label for="cfCarb">Carbs g /100</label><input class="input" id="cfCarb" type="number" min="0" step="0.1"></div><div class="field"><label for="cfFat">Fat g /100</label><input class="input" id="cfFat" type="number" min="0" step="0.1"></div></div>' +
+      '<div class="grid2"><div class="field"><label for="cfFib">Fibre g /100</label><input class="input" id="cfFib" type="number" min="0" step="0.1"></div><div class="field"><label for="cfServe">Serving size g</label><input class="input" id="cfServe" type="number" min="1" step="1" placeholder="optional"></div></div>' +
+      '<div class="row"><button class="btn primary" id="cfUse"><span class="ms">check</span>Use this food</button><button class="btn ghost" id="cfCancel">Cancel</button></div></div>';
+  }
+  function num(id) { var v = $(id).value; return v === '' ? null : Number(v); }
   function openDiary() {
-    diaryDate = S.today();
+    diaryDate = S.today(); draft = { items: [], photo: null }; picked = null;
     var cs = S.cycleStats(), tip = PHASE_TIPS[cs.phase] || PHASE_TIPS.none;
     var h = new Date().getHours(), defMeal = h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 20 ? 'dinner' : 'snack';
-    openSheet('diary', 'Food diary', 'What nourished you today?', 'menu_book',
+    openSheet('diary', 'Food diary', 'Snap, scan or search, then confirm the amount', 'menu_book',
       '<div class="stat"><span class="ms">local_florist</span><div><b>' + esc(tip.title) + '</b><span>' + esc(tip.text) + ' Try: ' + esc(tip.foods.join(', ')) + '.</span></div></div>' +
       '<div class="grid2"><div class="field"><label for="fdDate">Date</label><input class="input" id="fdDate" type="date" value="' + diaryDate + '" max="' + S.today() + '"></div><div class="field"><label for="fdTime">Time</label><input class="input" id="fdTime" type="time" value="' + nowHM() + '"></div></div>' +
       '<div class="field"><span class="lbl">Meal</span><div class="chips" id="mealChips">' + ['breakfast', 'lunch', 'dinner', 'snack'].map(function (m) { return '<button type="button" class="chipbtn' + (m === defMeal ? ' on' : '') + '" data-meal="' + m + '">' + cap(m) + '</button>'; }).join('') + '</div></div>' +
-      '<div class="field"><label for="fdFoods">What did you eat?</label><textarea class="input" id="fdFoods" placeholder="Oats with berries and a latte"></textarea></div>' +
+      '<div class="field"><div class="lbl-row"><span class="lbl">What did you eat?</span>' + infoBtn('food') + '</div>' +
+      '<div class="foodmodes"><button type="button" data-mode="search" class="on"><span class="ms">search</span>Search foods</button><button type="button" data-mode="scan"><span class="ms">qr_code_scanner</span>Scan barcode</button><button type="button" data-mode="photo"><span class="ms">photo_camera</span>Snap a photo</button></div>' + guideHTML('food') +
+      '<div id="modeArea"></div><img class="thumb" id="thumb" alt=""><div class="picker" id="picker"></div><div id="customWrap"></div><div class="items" id="items"></div><div class="totals" id="totals"></div></div>' +
+      '<div class="field"><label for="fdFoods">Notes or anything not in the list</label><textarea class="input" id="fdFoods" placeholder="Kopi C, two slices of kaya toast..."></textarea></div>' +
       '<div class="field"><span class="lbl">Tags</span><div class="chips" id="tagChips">' + A.FOOD_TAGS.map(function (t) { return '<button type="button" class="chipbtn" data-tag="' + esc(t) + '">' + esc(cap(t)) + '</button>'; }).join('') + '</div></div>' +
-      '<button class="btn primary" id="saveFood" style="width:100%"><span class="ms">check</span>Add to diary</button><div class="msg" id="foodMsg"></div>' +
+      '<button class="btn primary" id="saveFood" style="width:100%"><span class="ms">check</span>Save meal</button><div class="msg" id="foodMsg"></div>' +
       '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' +
       '<a class="btn soft" href="food-journal.html" style="margin-top:12px"><span class="ms">restaurant</span>Open the full food journal</a>');
+    var area = $('#modeArea');
+    function setMode(mode) {
+      stopCamera(); $$('.foodmodes button').forEach(function (b) { b.classList.toggle('on', b.dataset.mode === mode); });
+      if (mode === 'search') {
+        area.innerHTML = '<input class="input" id="fdSearch" placeholder="Type a food: oats, salmon, tofu, bee hoon…" autocomplete="off"><div class="results" id="fdResults"></div><div class="row"><button type="button" class="btn ghost" id="customBtn"><span class="ms">edit</span>Add a custom food</button></div>';
+        var inp = $('#fdSearch');
+        FD.load().then(function () { $('#fdResults').innerHTML = resultsHTML(['rice-white', 'egg-boiled', 'chicken-breast', 'oats-cooked', 'salmon', 'tofu-firm', 'banana', 'yogurt-greek'].map(FD.byId).filter(Boolean)); }).catch(function (e) { $('#fdResults').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
+        inp.addEventListener('input', function () { $('#fdResults').innerHTML = resultsHTML(FD.search(inp.value, 12)); });
+        $('#customBtn').addEventListener('click', function () { $('#customWrap').innerHTML = customFoodForm(); wireCustom(); });
+      } else if (mode === 'scan') {
+        area.innerHTML = '<div class="camwrap on" id="camwrap"><video id="bcVideo" playsinline muted></video><div class="reticle"></div><div class="camhint">Point the camera at the barcode</div></div><div class="row" style="margin-top:8px"><input class="input" id="bcManual" inputmode="numeric" placeholder="or type the barcode digits"><button type="button" class="btn soft" id="bcLookup" style="flex:0 0 auto">Look up</button></div><div class="msg" id="bcMsg"></div>';
+        stopScan = FD.scanLive($('#bcVideo'), function (code) { stopCamera(); $('#bcManual').value = code; lookup(code); }, function (err) { message($('#bcMsg'), err.message, false); });
+        $('#bcLookup').addEventListener('click', function () { lookup($('#bcManual').value); });
+      } else {
+        area.innerHTML = '<label class="btn soft" style="width:100%;cursor:pointer"><span class="ms">photo_camera</span>Take a photo of the plate<input type="file" id="fdPhoto" accept="image/*" capture="environment" hidden></label><p class="help">The photo is kept as a reminder on this device. If it shows a barcode we read it; otherwise pick what is on the plate below and confirm how much.</p><input class="input" id="fdSearch" placeholder="Pick what is on the plate…" autocomplete="off" style="margin-top:8px"><div class="results" id="fdResults"></div>';
+        var inp2 = $('#fdSearch'); inp2.addEventListener('input', function () { $('#fdResults').innerHTML = resultsHTML(FD.search(inp2.value, 12)); });
+        FD.load();
+        $('#fdPhoto').addEventListener('change', function () {
+          var f = this.files[0]; if (!f) return;
+          FD.shrink(f, 420).then(function (r) {
+            draft.photo = r.dataUrl; var t = $('#thumb'); t.src = r.dataUrl; t.classList.add('on');
+            return FD.detectInImage(r.image).then(function (code) { if (code) { toast('Barcode found: ' + code, 'qr_code_2'); lookup(code); } else { toast('Photo saved. Now pick the foods you see.', 'photo_camera'); inp2.focus(); } });
+          }).catch(function (e) { toast(e.message, 'error'); });
+        });
+      }
+    }
+    function lookup(code) {
+      var m = $('#bcMsg'); if (m) message(m, 'Looking up ' + code + '…', true);
+      FD.lookupBarcode(code).then(function (food) { if (m) message(m, 'Found: ' + food.name, true); showPicker(food); }).catch(function (e) { if (m) message(m, e.message, false); else toast(e.message, 'error'); $('#customWrap').innerHTML = customFoodForm(); wireCustom(); });
+    }
+    function wireCustom() {
+      $('#cfCancel').addEventListener('click', function () { $('#customWrap').innerHTML = ''; });
+      $('#cfUse').addEventListener('click', function () {
+        var name = $('#cfName').value.trim(); if (!name) return toast('Give the food a name.', 'error');
+        var serve = num('#cfServe'), food = { id: 'custom:' + Date.now(), name: name, cat: 'custom', basis: '100g', n: { kcal: num('#cfKcal'), protein: num('#cfProt'), carb: num('#cfCarb'), fat: num('#cfFat'), fiber: num('#cfFib') }, portions: [{ label: '100 g', g: 100 }].concat(serve > 0 ? [{ label: '1 serving', g: serve }] : []), source: { kind: 'custom', label: 'Typed from the label', ref: null, date: S.today(), detail: 'Values entered by you; unknowns stay blank.' } };
+        $('#customWrap').innerHTML = ''; showPicker(food);
+      });
+    }
+    setMode('search');
+    $('.foodmodes').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) setMode(b.dataset.mode); });
+    body.addEventListener('click', function (e) {
+      var r = e.target.closest('.result'); if (r) { var f = r.dataset.food.indexOf('off:') === 0 ? null : FD.byId(r.dataset.food); if (f) showPicker(f); return; }
+      var del = e.target.closest('#items .del'); if (del) { draft.items.splice(Number(del.dataset.i), 1); renderItems(); return; }
+      var d = e.target.closest('#foodList [data-del]'); if (d && confirm('Delete this entry?')) { S.remove(d.dataset.del); $('#foodList').innerHTML = foodEntriesHTML(diaryDate); renderDeck(); }
+    });
     $('#mealChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#mealChips')).forEach(function (x) { x.classList.toggle('on', x === b); }); });
     $('#tagChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) b.classList.toggle('on'); });
     $('#fdDate').addEventListener('change', function () { diaryDate = this.value; $('#fdLabel').textContent = prettyDate(diaryDate); $('#foodList').innerHTML = foodEntriesHTML(diaryDate); });
     $('#saveFood').addEventListener('click', function () {
       try {
-        var foods = $('#fdFoods').value.trim(); if (!foods) throw new Error('Write what you ate, even one word.');
-        var ev = S.add('food', $('#fdDate').value, { meal: $('#mealChips .on').dataset.meal, time: $('#fdTime').value, foods: foods, tags: $$('#tagChips .on').map(function (b) { return b.dataset.tag; }) });
-        $('#fdFoods').value = ''; $$('#tagChips .on').forEach(function (b) { b.classList.remove('on'); });
-        message($('#foodMsg'), 'Added to your diary.', true); $('#foodList').innerHTML = foodEntriesHTML(diaryDate); afterSave(ev);
+        var notes = $('#fdFoods').value.trim();
+        if (!draft.items.length && !notes) throw new Error('Add at least one food, or write a note.');
+        var names = draft.items.map(function (it) { return it.name.split(' · ')[0]; });
+        var sm = draft.items.length ? FD.sum(draft.items) : null;
+        var ev = S.add('food', $('#fdDate').value, { meal: $('#mealChips .on').dataset.meal, time: $('#fdTime').value, foods: (names.join(', ') + (notes ? (names.length ? ' · ' : '') + notes : '')), notes: notes, tags: $$('#tagChips .on').map(function (b) { return b.dataset.tag; }), items: draft.items, photo: draft.photo, totals: sm ? sm.totals : null, method: 'camera-assisted v1' });
+        draft = { items: [], photo: null }; renderItems(); $('#thumb').classList.remove('on'); $('#fdFoods').value = ''; $$('#tagChips .on').forEach(function (b) { b.classList.remove('on'); });
+        message($('#foodMsg'), 'Saved' + (sm && sm.totals.kcal !== null ? ': ' + Math.round(sm.totals.kcal) + ' kcal, ' + FD.fmt('protein', sm.totals.protein) + ' g protein, ' + FD.fmt('fiber', sm.totals.fiber) + ' g fibre.' : '.'), true);
+        $('#foodList').innerHTML = foodEntriesHTML(diaryDate); afterSave(ev);
       } catch (e) { message($('#foodMsg'), e.message, false); }
     });
-    body.addEventListener('click', function (e) { var d = e.target.closest('[data-del]'); if (d && confirm('Delete this entry?')) { S.remove(d.dataset.del); $('#foodList').innerHTML = foodEntriesHTML(diaryDate); renderDeck(); } });
   }
 
   /* ---------- computer: learn ---------- */
@@ -396,6 +585,73 @@
     $('#saveName').addEventListener('click', function () { S.setProfile({ name: $('#nameInput').value.trim() }); updateGreeting(); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); });
   }
 
+  /* ---------- yoga mat: mindfulness with Erin ---------- */
+  var meditating = false, session = null;
+  var ERIN = 'assets/audio/erin-tts/';
+  function enterMeditation() { meditating = true; avatar.classList.add('hidden'); setTimeout(function () { meditator.classList.add('on'); $('#aura').classList.add('on'); }, 350); }
+  function exitMeditation() { meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); setTimeout(function () { avatar.classList.remove('hidden'); placeAvatar(HOME, false); avatar.classList.add('idle'); }, 300); }
+  meditator.addEventListener('click', function () { if (current !== 'mind') openMindfulness(); });
+  function playClip(name) {
+    return new Promise(function (resolve) {
+      if (!session || session.stopped) return resolve();
+      var a = new Audio(ERIN + name + '.mp3'); session.audio = a;
+      a.onended = function () { resolve(); }; a.onerror = function () { resolve(); };
+      a.play().catch(function () { resolve(); });
+    });
+  }
+  function wait(ms) { return new Promise(function (resolve) { if (!session || session.stopped) return resolve(); session.timer = setTimeout(resolve, ms); }); }
+  function setOrb(phase, text) { var o = $('#orb'), t = $('#orbText'); if (!o) return; o.className = 'orb ' + phase; t.textContent = text; }
+  function runSession(kind, minutes) {
+    session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: null, timer: null };
+    var total = minutes * 60000, cycleMs = kind === 'erin' ? 11000 : 14000;
+    var hour = new Date().getHours();
+    var p = Promise.resolve();
+    if (kind === 'erin') {
+      p = p.then(function () { setOrb('hold', 'Hello'); return playClip(hour < 12 ? 'greeting_morning' : 'greeting_evening'); })
+        .then(function () { setOrb('hold', 'Settling in'); return playClip('meditation_begin'); });
+    }
+    p = p.then(function () {
+      var fixed = kind === 'erin' ? 40000 : 0, cycles = Math.max(3, Math.round((total - fixed) / cycleMs));
+      var chain = Promise.resolve();
+      for (var i = 0; i < cycles; i++) {
+        chain = chain.then(function () { if (session.stopped) return; setOrb('in', 'Breathe in'); if (kind === 'erin') return playClip('breathing_in').then(function () { return wait(2000); }); chime('bell', true); return wait(4000); })
+          .then(function () { if (session.stopped) return; setOrb('hold', 'Hold'); return wait(kind === 'erin' ? 3000 : 4000); })
+          .then(function () { if (session.stopped) return; setOrb('out', 'Breathe out'); if (kind === 'erin') return playClip('breathing_out').then(function () { return wait(3000); }); return wait(6000); });
+      }
+      return chain;
+    });
+    if (kind === 'erin') p = p.then(function () { setOrb('hold', 'Coming back'); return playClip('meditation_end'); }).then(function () { return playClip(Math.random() < 0.5 ? 'closing_steady' : 'closing_patience'); });
+    p.then(function () { if (!session || session.stopped) return; finishSession(true); });
+  }
+  function finishSession(completed) {
+    if (!session) return;
+    var mins = Math.max(0.5, Math.round((Date.now() - session.startedAt) / 6000) / 10);
+    var ev = S.add('mindfulness', S.today(), { kind: session.kind, minutes: completed ? session.minutes : mins, completed: completed, startedAt: new Date(session.startedAt).toISOString(), guide: session.kind === 'erin' ? 'Erin Lee, Take A Pause (cloned voice clips)' : 'Breathing orb' });
+    session.stopped = true; session = null;
+    setOrb('out', completed ? 'Well done' : 'Paused'); chime('bell', true);
+    var b = $('#mindStart'); if (b) { b.disabled = false; b.innerHTML = '<span class="ms">self_improvement</span>Begin again'; }
+    exitMeditation(); afterSave(ev, (completed ? 'Session complete. ' : 'Session saved. ') + (ev.data.minutes) + ' min of calm added to your journal.');
+  }
+  function stopSession(fromClose) {
+    if (!session) { if (meditating) exitMeditation(); return; }
+    var elapsedMin = (Date.now() - session.startedAt) / 60000;
+    session.stopped = true; clearTimeout(session.timer); if (session.audio) { try { session.audio.pause(); } catch (e) { } }
+    if (elapsedMin >= 1) finishSession(false); else { session = null; exitMeditation(); if (!fromClose) toast('Stopped. Nothing under a minute is recorded.', 'self_improvement'); }
+  }
+  function openMindfulness() {
+    var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
+    enterMeditation();
+    openSheet('mind', 'Your mat', 'A pause with Erin, or just your breath', 'self_improvement',
+      '<div class="erin"><img src="assets/avatars/erin/erin_square.jpeg" alt=""><div><b>Erin Lee · Take A Pause</b><small>Guided in Erin’s voice: a greeting, a short settling in, slow breaths, and a gentle close. Headphones are nice but not needed.</small></div></div>' +
+      '<div class="sessions" id="sessions"><button type="button" class="session on" data-kind="erin" data-min="3"><b>Erin · 3 minutes</b><small>Guided breathing, a soft close</small></button><button type="button" class="session" data-kind="erin" data-min="6"><b>Erin · 6 minutes</b><small>A longer settle and more breaths</small></button><button type="button" class="session" data-kind="breathe" data-min="2"><b>Just breathe · 2 min</b><small>4-4-6 orb with a quiet bell</small></button><button type="button" class="session" data-kind="breathe" data-min="5"><b>Just breathe · 5 min</b><small>Silent, follow the orb</small></button></div>' +
+      '<div class="orbwrap"><div class="orb out" id="orb"></div><div class="orbtext" id="orbText">Ready when you are</div><div class="orbsub" id="orbSub">' + (mins ? Math.round(mins) + ' min this week' : 'First session this week') + '</div></div>' +
+      '<div class="row"><button class="btn primary" id="mindStart"><span class="ms">self_improvement</span>Begin</button><button class="btn ghost" id="mindStop"><span class="ms">stop_circle</span>Stop</button></div>' +
+      '<p class="help">Sessions of a minute or more are saved to your journal. Erin’s clips are pre-recorded, so this works offline once loaded.</p>');
+    $('#sessions').addEventListener('click', function (e) { var b = e.target.closest('.session'); if (!b || session) return; $$('.session').forEach(function (x) { x.classList.toggle('on', x === b); }); });
+    $('#mindStart').addEventListener('click', function () { if (session) return; var sel = $('.session.on'); this.disabled = true; this.innerHTML = '<span class="ms">graphic_eq</span>In session'; runSession(sel.dataset.kind, Number(sel.dataset.min)); });
+    $('#mindStop').addEventListener('click', function () { stopSession(false); });
+  }
+
   /* ---------- window: tonight ---------- */
   function openWindow() {
     var cs = S.cycleStats(), st = S.sleepStats(7), d = new Date();
@@ -403,7 +659,7 @@
       '<div class="stat"><span class="ms">bedtime</span><div><b>' + (st.avg ? 'Averaging ' + st.avg + ' h over ' + st.count + ' nights' : 'No sleep logged this week') + '</b><span>Adults generally do best with 7 hours or more.</span></div></div>' +
       '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedNext ? 'Next period expected around ' + prettyDate(cs.predictedNext) + '.' : 'Log a period on the wall calendar to start predictions.') + '</span></div></div>' +
       '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button class="btn soft" id="winSound"><span class="ms">' + (S.state().sound ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (S.state().sound ? 'on' : 'off') + '</button></div>' +
-      '<p class="help">Sounds are tiny chimes and stay off unless you turn them on.</p>');
+      '<p class="help">Sounds are tiny chimes and stay off unless you turn them on. Erin’s guided sessions always play when you start one.</p>');
     $('#winSleep').addEventListener('click', function () { closeSheet(); tap(HOTSPOTS[0]); });
     $('#winSound').addEventListener('click', function () { S.setState({ sound: !S.state().sound }); chime('tap'); openWindow(); });
   }
@@ -415,10 +671,10 @@
     e.stopPropagation(); chime('tap');
     var r = avatar.getBoundingClientRect(), sr = scene.getBoundingClientRect();
     bubble.style.left = Math.min(sr.width - 95, Math.max(95, r.left - sr.left + r.width / 2)) + 'px'; bubble.style.top = (r.top - sr.top - 6) + 'px';
-    bubble.innerHTML = '<button data-act="wardrobe"><span class="ms">checkroom</span>Change outfit</button><button data-act="sleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button data-act="journal"><span class="ms">auto_stories</span>Open my journal</button>';
+    bubble.innerHTML = '<button data-act="wardrobe"><span class="ms">checkroom</span>Change outfit</button><button data-act="sleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button data-act="mat"><span class="ms">self_improvement</span>Sit with Erin</button><button data-act="journal"><span class="ms">auto_stories</span>Open my journal</button>';
     bubble.classList.add('on');
   });
-  bubble.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; hideBubble(); if (b.dataset.act === 'wardrobe') tap(HOTSPOTS[4]); if (b.dataset.act === 'sleep') tap(HOTSPOTS[0]); if (b.dataset.act === 'journal') location.href = 'journal.html'; });
+  bubble.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; hideBubble(); var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(HOTSPOTS.filter(function (h) { return h.id === id; })[0]); if (b.dataset.act === 'journal') location.href = 'journal.html'; });
   document.addEventListener('click', function (e) { if (!e.target.closest('#bubble') && !e.target.closest('#avatar')) hideBubble(); });
 
   /* ---------- after save: agents ---------- */
@@ -433,14 +689,16 @@
 
   /* ---------- deck below the scene ---------- */
   function renderDeck() {
-    var cs = S.cycleStats(), st = S.sleepStats(7), today = S.today();
+    var cs = S.cycleStats(), today = S.today();
     var lastNight = S.list('sleep', { from: today, to: today })[0] || S.list('sleep').slice(-1)[0];
-    var meals = S.list('food', { from: today, to: today }).length;
+    var foodToday = S.list('food', { from: today, to: today }), meals = foodToday.length;
+    var items = []; foodToday.forEach(function (f) { items = items.concat(f.data.items || []); });
+    var sm = items.length ? FD.sum(items) : null;
     var sym = S.list('symptom', { from: today, to: today })[0];
     $('#tiles').innerHTML =
       '<button class="tile" data-go="calendar"><span class="ms">water_drop</span><b>' + (cs.cycleDay ? 'Day ' + cs.cycleDay : '—') + '</b><small>' + (cs.phase ? cap(cs.phase) : 'Log a period') + '</small></button>' +
       '<button class="tile" data-go="clock"><span class="ms">bedtime</span><b>' + (lastNight ? A.fmtHours(S.sleepHours(lastNight.data)) : '—') + '</b><small>' + (lastNight ? (lastNight.date === today ? 'Last night' : prettyDate(lastNight.date)) : 'No sleep yet') + '</small></button>' +
-      '<button class="tile" data-go="diary"><span class="ms">restaurant</span><b>' + meals + '</b><small>' + (meals === 1 ? 'meal today' : 'meals today') + '</small></button>';
+      '<button class="tile" data-go="diary"><span class="ms">restaurant</span><b>' + (sm && sm.totals.kcal !== null ? Math.round(sm.totals.kcal) : meals) + '</b><small>' + (sm && sm.totals.kcal !== null ? 'kcal · ' + FD.fmt('protein', sm.totals.protein) + ' g protein' : (meals === 1 ? 'meal today' : 'meals today')) + '</small></button>';
     var flags = A.allFlags();
     $('#flagCard').style.display = flags.length ? '' : 'none';
     $('#flags').innerHTML = flags.slice(0, 3).map(function (f) { return '<div class="flag ' + f.level + '"><span class="ms">' + (f.level === 'high' ? 'emergency_home' : f.level === 'watch' ? 'flag' : 'info') + '</span><div><b>' + esc(f.title) + '</b><span>' + esc(f.detail) + '</span></div></div>'; }).join('');
@@ -471,11 +729,11 @@
     placeAvatar(HOME, false); avatar.classList.add('idle');
     if (S.state().sleeping) enterNight(false);
     updateGreeting(); renderDeck();
+    FD.load().catch(function () { });
     S.subscribe(function (reason) { if (reason === 'external') { renderDeck(); updateGreeting(); } });
     $('#journalBtn').href = 'journal.html'; $('#shareBtn').href = 'journal.html#share';
     if (!S.state().tourDone) { setTimeout(function () { $('#hint').classList.add('on'); }, 1200); setTimeout(function () { $('#hint').classList.remove('on'); S.setState({ tourDone: true }); }, 7000); }
     setTimeout(function () { $('#loading').classList.add('hidden'); }, 500);
-    /* clock in the status bar */
     function tick() { var d = new Date(); $('#clockTime').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); } tick(); setInterval(tick, 20000);
   }
   var dayImg = $('#roomDay');
