@@ -1,0 +1,322 @@
+{
+"source": "Ovuluna food database (food-journal.html FOOD_DB and PHASE_INFO): TCM and Western notes, phase matching; nutrient maths uses the USDA table where a match exists",
+"foods": [
+{
+"name": "Salmon",
+"emoji": "🐟",
+"tags": "Omega-3 · Vitamin D · Blood builder",
+"tcm": "Nourishes blood, warms yang",
+"phase": [
+"follicular",
+"ovulatory",
+"luteal"
+],
+"usda": "salmon"
+},
+{
+"name": "Eggs",
+"emoji": "🥚",
+"tags": "Protein · Choline · B12",
+"tcm": "Nourishes yin, builds blood",
+"phase": [
+"follicular",
+"luteal",
+"menstrual"
+],
+"usda": "egg-boiled"
+},
+{
+"name": "Spinach",
+"emoji": "🥬",
+"tags": "Iron · Folate · Magnesium",
+"tcm": "Clears heat, nourishes blood",
+"phase": [
+"follicular",
+"menstrual"
+],
+"usda": "spinach-cooked"
+},
+{
+"name": "Sweet Potato",
+"emoji": "🍠",
+"tags": "Beta-carotene · Fiber · Vitamin A",
+"tcm": "Tonifies qi, harmonizes stomach",
+"phase": [
+"luteal",
+"menstrual"
+],
+"usda": "sweet-potato"
+},
+{
+"name": "Oats",
+"emoji": "🥣",
+"tags": "Fiber · B vitamins · Iron",
+"tcm": "Tonifies spleen, nourishes qi",
+"phase": [
+"follicular",
+"menstrual"
+],
+"usda": "oats-cooked"
+},
+{
+"name": "Ginger",
+"emoji": "🫚",
+"tags": "Anti-inflammatory · Digestive",
+"tcm": "Warms middle, dispels cold",
+"phase": [
+"menstrual",
+"luteal"
+],
+"usda": null
+},
+{
+"name": "Turmeric",
+"emoji": "🟡",
+"tags": "Curcumin · Anti-inflammatory",
+"tcm": "Invigorates blood, moves qi",
+"phase": [
+"luteal",
+"menstrual"
+],
+"usda": null
+},
+{
+"name": "Berries",
+"emoji": "🫐",
+"tags": "Antioxidants · Vitamin C",
+"tcm": "Nourishes yin, generates fluids",
+"phase": [
+"follicular",
+"ovulatory"
+],
+"usda": "blueberries"
+},
+{
+"name": "Avocado",
+"emoji": "🥑",
+"tags": "Healthy fats · Vitamin E",
+"tcm": "Nourishes blood, moistens",
+"phase": [
+"follicular",
+"luteal"
+],
+"usda": "avocado"
+},
+{
+"name": "Walnuts",
+"emoji": "🌰",
+"tags": "Omega-3 · Vitamin E",
+"tcm": "Tonifies kidney, warms yang",
+"phase": [
+"luteal",
+"menstrual"
+],
+"usda": "walnuts"
+},
+{
+"name": "Dark Chocolate",
+"emoji": "🍫",
+"tags": "Magnesium · Iron · Mood",
+"tcm": "Moves blood, lifts mood",
+"phase": [
+"luteal"
+],
+"usda": "dark-chocolate"
+},
+{
+"name": "Chamomile Tea",
+"emoji": "🍵",
+"tags": "Calming · Digestive",
+"tcm": "Calms spirit, soothes liver",
+"phase": [
+"luteal",
+"menstrual"
+],
+"usda": "tea"
+},
+{
+"name": "Bone Broth",
+"emoji": "🍲",
+"tags": "Collagen · Minerals · Amino acids",
+"tcm": "Nourishes yin, builds blood",
+"phase": [
+"menstrual",
+"follicular"
+],
+"usda": null
+},
+{
+"name": "Beetroot",
+"emoji": "🟣",
+"tags": "Iron · Folate · Nitrates",
+"tcm": "Builds blood, moves stagnation",
+"phase": [
+"follicular",
+"menstrual"
+],
+"usda": null
+},
+{
+"name": "Pumpkin Seeds",
+"emoji": "🎃",
+"tags": "Zinc · Magnesium · Iron",
+"tcm": "Tonifies kidney, anchors spirit",
+"phase": [
+"luteal",
+"ovulatory"
+],
+"usda": "pumpkin-seeds"
+},
+{
+"name": "Citrus",
+"emoji": "🍊",
+"tags": "Vitamin C · Bioflavonoids",
+"tcm": "Moves qi, regulates liver",
+"phase": [
+"ovulatory",
+"luteal"
+],
+"usda": "orange"
+},
+{
+"name": "Leafy Greens",
+"emoji": "🥗",
+"tags": "Iron · Calcium · Folate",
+"tcm": "Clears heat, nourishes blood",
+"phase": [
+"follicular",
+"ovulatory"
+],
+"usda": "kale"
+},
+{
+"name": "Lentils",
+"emoji": "🫘",
+"tags": "Protein · Iron · Folate",
+"tcm": "Tonifies qi, builds blood",
+"phase": [
+"follicular",
+"menstrual"
+],
+"usda": "lentils"
+},
+{
+"name": "Yogurt",
+"emoji": "🥛",
+"tags": "Probiotics · Calcium · Protein",
+"tcm": "Nourishes yin, clears heat",
+"phase": [
+"follicular",
+"ovulatory"
+],
+"usda": "yogurt-plain"
+},
+{
+"name": "Quinoa",
+"emoji": "🌾",
+"tags": "Complete protein · Iron · Magnesium",
+"tcm": "Tonifies spleen, harmonizes",
+"phase": [
+"follicular",
+"luteal"
+],
+"usda": "quinoa"
+},
+{
+"name": "Cinnamon",
+"emoji": "🪵",
+"tags": "Blood sugar · Anti-inflammatory",
+"tcm": "Warms yang, invigorates blood",
+"phase": [
+"menstrual",
+"luteal"
+],
+"usda": null
+},
+{
+"name": "Sesame Seeds",
+"emoji": "⚪",
+"tags": "Calcium · Iron · Healthy fats",
+"tcm": "Nourishes liver blood, moistens",
+"phase": [
+"follicular",
+"menstrual"
+],
+"usda": null
+},
+{
+"name": "Green Tea",
+"emoji": "🍃",
+"tags": "Antioxidants · L-theanine",
+"tcm": "Clears heat, calms spirit",
+"phase": [
+"ovulatory",
+"follicular"
+],
+"usda": "green-tea"
+},
+{
+"name": "Mushrooms",
+"emoji": "🍄",
+"tags": "Vitamin D · Immunity · Adaptogens",
+"tcm": "Tonifies qi, nourishes yin",
+"phase": [
+"follicular",
+"luteal"
+],
+"usda": "mushroom"
+}
+],
+"phases": {
+"menstrual": {
+"label": "Menstrual phase",
+"text": "Your body is releasing and renewing. Focus on warming, blood-building foods that are easy to digest. Rest and nourish.",
+"foods": [
+"Bone Broth",
+"Ginger",
+"Oats",
+"Eggs",
+"Beetroot",
+"Cinnamon",
+"Sesame Seeds"
+]
+},
+"follicular": {
+"label": "Follicular phase",
+"text": "Energy is rising. Support follicle growth with nutrient-dense, blood-building foods and gentle movement.",
+"foods": [
+"Salmon",
+"Eggs",
+"Spinach",
+"Berries",
+"Avocado",
+"Lentils",
+"Leafy Greens"
+]
+},
+"ovulatory": {
+"label": "Ovulatory phase",
+"text": "Peak energy and vitality. Support liver detox and hormone balance with fresh, light foods.",
+"foods": [
+"Berries",
+"Citrus",
+"Leafy Greens",
+"Green Tea",
+"Yogurt",
+"Salmon"
+]
+},
+"luteal": {
+"label": "Luteal phase",
+"text": "Progesterone rises. Support mood stability and reduce inflammation with magnesium-rich, warming foods.",
+"foods": [
+"Dark Chocolate",
+"Pumpkin Seeds",
+"Walnuts",
+"Sweet Potato",
+"Turmeric",
+"Chamomile Tea"
+]
+}
+}
+}

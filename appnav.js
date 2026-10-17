@@ -148,6 +148,9 @@
     setTimeout(function(){ c.style.strokeDashoffset='0'; }, 250);
   });
 
+  // ---- the room is the homepage: point nav Home links at it ----
+  document.querySelectorAll('.nav a[href="home.html"], nav a[href="home.html"], .brandline').forEach(function(a){ if(a.tagName==='A') a.setAttribute('href','room.html'); else a.onclick=function(){ location.href='room.html'; }; });
+
   // ---- count-up any element with data-count ----
   document.querySelectorAll('[data-count]').forEach(function(el){
     var raw=el.getAttribute('data-count'), target=parseFloat(raw); if(isNaN(target)) return;

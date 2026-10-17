@@ -28,7 +28,8 @@
         <header class="topbar">
           <a class="brand" href="room.html" aria-label="Ovumind home">OVUMIND</a>
           <div class="top-actions">
-            <a class="icon-btn" id="journalBtn" href="journal.html" aria-label="My journal"><span class="ms">auto_stories</span><span class="dot"></span></a>
+            <button class="chip hearts" id="heartsChip" type="button" aria-label="Hearts, opens the reward shop"><span class="ms fill">favorite</span><span id="heartsVal">0</span></button>
+      <a class="icon-btn" id="journalBtn" href="journal.html" aria-label="My journal"><span class="ms">auto_stories</span><span class="dot"></span></a>
             <a class="icon-btn" id="shareBtn" href="journal.html#share" aria-label="Share with my doctor"><span class="ms">medical_services</span></a>
           </div>
         </header>
@@ -36,6 +37,9 @@
         <button class="chip phase-chip" id="phaseChip" type="button" aria-label="Cycle status, opens the calendar"><span class="ms">water_drop</span>Start your cycle</button>
         <div id="hotspots"></div>
         <img class="prop mat" id="matProp" src="assets/room/dream/prop-yogamat.webp" alt="" aria-hidden="true">
+        <div id="ownedProps" aria-hidden="true"></div>
+        <div class="holo" id="holo" aria-hidden="true"><div class="holo-cone"></div><div class="holo-disc"><img src="assets/avatars/erin/erin_square.jpeg" alt=""><i class="scan"></i></div><div class="holo-base"></div></div>
+        <div class="hud" id="hud" role="status" aria-live="polite"><div class="hud-orb" id="hudOrb"></div><div class="hud-text"><b id="hudTitle">With Erin</b><span id="hudLine">Settling in</span></div><button class="hud-stop" id="hudStop" type="button" aria-label="Stop session"><span class="ms">stop_circle</span></button></div>
         <div class="meditator" id="meditator" role="button" aria-label="You are meditating. Tap to finish"><img src="assets/room/dream/avatar-meditate.webp" alt=""></div>
         <div class="sleeper" id="sleeper" role="button" aria-label="You are asleep. Tap to wake up"><img src="assets/room/dream/avatar-sleeping.webp" alt=""></div>
         <div class="zzz" aria-hidden="true"><span>z</span><span>z</span><span>z</span></div>
@@ -67,6 +71,8 @@
     </section>
   </div>
 
+  <button class="luna" id="lunaBtn" type="button" aria-label="Luna, tell me how you are"><img src="assets/room/dream/orb-moon.webp" alt=""><span class="luna-hint" id="lunaHint">Tell Luna</span></button>
+
   <nav class="nav" aria-label="Main">
     <a href="room.html" class="on" aria-current="page"><span class="ms">home</span>Home</a>
     <a href="cycle-home.html"><span class="ms">water_drop</span>Cycle</a>
@@ -87,6 +93,8 @@
 <script src="ovu-store.js"></script>
 <script src="ovu-food.js"></script>
 <script src="ovu-agents.js"></script>
+<script src="ovu-orb.js"></script>
+<script src="ovu-rewards.js"></script>
 <script src="room.js"></script>
 </body>
 </html>

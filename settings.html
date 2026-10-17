@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="luna-chat.css">
 <link rel="stylesheet" href="privacy-local.css">
 <link rel="stylesheet" href="dreamy.css">
-</head><body class="privacy-page settings-page text-scaled-page">
+<style>.hc-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}.hc-row{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:var(--sunken)}.hc-row>.ms{font-size:20px;color:var(--mauve);flex-shrink:0;margin-top:2px}.hc-row b{display:block;font-size:13px}.hc-row small{display:block;font-size:11px;color:var(--taupe);line-height:1.4;margin-top:2px}.hc-row span:nth-child(2){flex:1}.hc-status{font:800 9.5px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--taupe);background:#fff;border-radius:99px;padding:4px 8px;flex-shrink:0}.hc-import{margin-top:12px;padding:12px;border-radius:14px;border:1.5px dashed var(--line)}.hc-import b{display:block;font-size:13px}.hc-import small{display:block;font-size:11px;color:var(--taupe);line-height:1.45;margin:4px 0 8px}.hc-import code{font-size:10.5px;background:var(--sunken);padding:1px 4px;border-radius:4px}#hc-import-status{font-size:12px;margin-top:6px;color:var(--ink)}</style></head><body class="privacy-page settings-page text-scaled-page">
 
 
 <div class="app">
@@ -94,6 +94,22 @@
       <p id="settings-preference-status" role="status" aria-live="polite"></p>
     </div>
 
+    <section class="card" aria-labelledby="settings-health-title" id="health-connections">
+      <h2 id="settings-health-title">Health connections</h2>
+      <p>Your room stores everything on this device. Connections below bring sleep and pulse data in; none of them is live yet in this web build, and each is labelled honestly.</p>
+      <div class="hc-list">
+        <div class="hc-row"><span class="ms" aria-hidden="true">ios</span><span><b>Apple Health</b><small>Needs the native iOS build (HealthKit is not available to web pages). Until then, export from the Health app or the Health Auto Export app as CSV and import it below.</small></span><span class="hc-status">Not connected</span></div>
+        <div class="hc-row"><span class="ms" aria-hidden="true">android</span><span><b>Google Fit / Health Connect</b><small>Health Connect is Android-only and the Google Fit API needs an OAuth client this build does not ship. Planned with the native app.</small></span><span class="hc-status">Not connected</span></div>
+        <div class="hc-row"><span class="ms" aria-hidden="true">radio_button_checked</span><span><b>Smart rings</b><small>Ring APIs (Oura, Ultrahuman, RingConn) are next; today you can import their CSV exports.</small></span><span class="hc-status">Planned</span></div>
+      </div>
+      <div class="hc-import">
+        <b>Import a sleep CSV</b>
+        <small>One night per line: <code>date,bedTime,wakeTime,quality</code> (quality 1 to 5, optional), e.g. <code>2026-10-17,23:10,06:45,4</code>. Header rows are skipped; nights already in your journal are updated.</small>
+        <label class="settings-action" style="cursor:pointer"><span><b>Choose CSV file</b><small>Sleep only for now. Nothing is uploaded.</small></span><input type="file" id="hc-sleep-csv" accept=".csv,text/csv" hidden></label>
+        <p id="hc-import-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
     <section class="card" aria-labelledby="settings-services-title">
       <h2 id="settings-services-title">Connected services</h2>
       <p>Account status is checked on the account page. Subscriptions, cloud backup, device sync and phone push reminders are not connected in this development build.</p>
@@ -105,7 +121,7 @@
 </div>
 
 <nav class="nav">
-  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a href="room.html"><span class="n-ic">home</span>Home</a>
   <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
   <a href="profile.html"><span class="n-ic">person</span>Profile</a>
 </nav>
@@ -133,6 +149,28 @@
       try { localStorage.setItem('ovuluna_persona', opt.dataset.persona); status.textContent = 'Appearance preference saved on this device.'; }
       catch (_) { status.textContent = 'Appearance changed for this page, but could not be saved.'; }
     });
+  });
+})();
+</script>
+<script src="ovu-store.js"></script>
+<script>
+(function(){
+  var input=document.getElementById('hc-sleep-csv'), status=document.getElementById('hc-import-status');
+  if(!input||!window.OvuStore) return;
+  input.addEventListener('change',function(){
+    var f=this.files[0]; if(!f) return;
+    var r=new FileReader();
+    r.onload=function(){
+      var lines=String(r.result).split(/\r?\n/), ok=0, bad=0;
+      lines.forEach(function(line){
+        var c=line.split(',').map(function(x){return x.trim();});
+        if(c.length<3||!window.OvuStore.validDate(c[0])||!window.OvuStore.validTime(c[1])||!window.OvuStore.validTime(c[2])){ if(line.trim()&&!/^date/i.test(line)) bad++; return; }
+        try{ window.OvuStore.add('sleep',c[0],{bedTime:c[1],wakeTime:c[2],quality:c[3]&&Number(c[3])>=1&&Number(c[3])<=5?Number(c[3]):null,notes:'Imported from CSV',mode:'import'},'import'); ok++; }catch(e){ bad++; }
+      });
+      status.textContent='Imported '+ok+' night'+(ok===1?'':'s')+(bad?', skipped '+bad+' unreadable line'+(bad===1?'':'s'):'')+'.';
+      this.value='';
+    }.bind(this);
+    r.readAsText(f);
   });
 })();
 </script>

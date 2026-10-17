@@ -28,7 +28,7 @@
       section: 'About You',
       type: 'wheel',
       title: 'How old are you?',
-      subtitle: 'We'll tailor what you see to your age.',
+      subtitle: 'We\'ll tailor what you see to your age.',
       field: 'age',
       min: 10, max: 100, default: 28, unit: t('years')
     },
@@ -37,14 +37,14 @@
       section: 'About You',
       type: 'height-weight',
       title: 'About your body',
-      subtitle: 'Height and weight help us tune your daily tips. Skip anything you'd rather not share.',
+      subtitle: 'Height and weight help us tune your daily tips. Skip anything you\'d rather not share.',
       fields: ['heightCm', 'weightKg']
     },
     {
       id: 'cycle-status',
       section: 'Your Cycle',
       type: 'single',
-      title: 'What's your cycle usually like?',
+      title: 'What\'s your cycle usually like?',
       subtitle: 'Regular, unpredictable, or somewhere in between. This shapes your guidance.',
       field: 'cycle',
       options: [
@@ -90,7 +90,7 @@
       section: 'Family History',
       type: 'wheel',
       title: 'When did your mum go through menopause?',
-      subtitle: 'It can say a lot about your own timeline. Skip if you don't know.',
+      subtitle: 'It can say a lot about your own timeline. Skip if you don\'t know.',
       field: 'momMeno',
       min: 35, max: 60, default: 51, unit: t('years'),
       optional: true, optionalLabel: "I don't know"
@@ -112,7 +112,7 @@
       id: 'sleep',
       section: 'Lifestyle',
       type: 'single',
-      title: 'How's your sleep lately?',
+      title: 'How\'s your sleep lately?',
       subtitle: 'Sleep and your cycle influence each other.',
       field: 'sleep',
       options: [
@@ -126,7 +126,7 @@
       section: 'Lifestyle',
       type: 'single',
       title: 'Is your sleep schedule all over the place?',
-      subtitle: 'Night shifts and late nights count. They can nudge your cycle, so we'll factor them in.',
+      subtitle: 'Night shifts and late nights count. They can nudge your cycle, so we\'ll factor them in.',
       field: 'circ',
       options: [
         { value: 'none', label: 'No — regular schedule' },
@@ -139,7 +139,7 @@
       section: 'Lifestyle',
       type: 'single',
       title: 'How much do you move day to day?',
-      subtitle: 'We'll suggest goals that suit your routine.',
+      subtitle: 'We\'ll suggest goals that suit your routine.',
       field: 'activity',
       options: [
         { value: 'sedentary', label: 'Mostly sedentary', desc: 'Little or no exercise' },
@@ -172,7 +172,7 @@
       id: 'diet',
       section: 'Your Goals',
       type: 'multi',
-      title: 'Anything you do or don't eat?',
+      title: 'Anything you do or don\'t eat?',
       subtitle: "We'll keep food ideas relevant to you.",
       field: 'diet',
       options: [
@@ -195,8 +195,8 @@
       id: 'done',
       section: 'All Set',
       type: 'done',
-      title: 'You're all set!',
-      subtitle: 'Let's get started.'
+      title: 'You\'re all set!',
+      subtitle: 'Let\'s get started.'
     }
   ];
 
@@ -654,8 +654,8 @@
       '<h1 class="q">' + t(step.title) + '</h1>' +
       '<p class="sub">' + t(step.subtitle) + '</p>' +
       '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">' +
-        '<button id="menstruatingNow" style="flex:1;min-width:140px;padding:12px 16px;border:1.5px solid var(--terracotta);border-radius:14px;background:#fff5f2;color:var(--terracotta);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">I'm menstruating now</button>' +
-        '<button id="dontRemember" style="flex:1;min-width:120px;padding:12px 16px;border:1.5px solid #d4c5e0;border-radius:14px;background:#faf7fc;color:var(--mauve);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">I don't remember</button>' +
+        '<button id="menstruatingNow" style="flex:1;min-width:140px;padding:12px 16px;border:1.5px solid var(--terracotta);border-radius:14px;background:#fff5f2;color:var(--terracotta);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">I\'m menstruating now</button>' +
+        '<button id="dontRemember" style="flex:1;min-width:120px;padding:12px 16px;border:1.5px solid #d4c5e0;border-radius:14px;background:#faf7fc;color:var(--mauve);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">I don\'t remember</button>' +
       '</div>' +
       '<div class="cal" id="calWidget"></div>';
     scrollEl.appendChild(div);

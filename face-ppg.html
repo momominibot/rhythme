@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f8f3fb">
+<title>Ovumind · Calm check (beta)</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet">
+<link rel="stylesheet" href="ovu-pages.css">
+<style>
+.cam{position:relative;border-radius:22px;overflow:hidden;background:#1a1228;aspect-ratio:3/4;max-height:380px;margin-top:10px}
+.cam video{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1)}
+.cam .oval{position:absolute;left:50%;top:48%;width:58%;aspect-ratio:3/4;transform:translate(-50%,-50%);border:3px solid rgba(255,255,255,.85);border-radius:50%;box-shadow:0 0 0 999px rgba(20,10,40,.45);pointer-events:none}
+.cam .roi{position:absolute;left:50%;top:30%;width:26%;height:11%;transform:translate(-50%,-50%);border:2px dashed rgba(246,201,214,.9);border-radius:10px;pointer-events:none}
+.cam .camhint{position:absolute;left:0;right:0;bottom:10px;text-align:center;font:700 11px var(--sans);color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.cam canvas{display:none}
+.meter{height:10px;border-radius:99px;background:var(--rm-paper-2);overflow:hidden;margin-top:10px}
+.meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c9b6e6,#7a5c96);transition:width .3s}
+.trace{margin-top:10px;background:var(--rm-paper-2);border-radius:16px;padding:8px}
+.trace svg{width:100%;height:70px;display:block}
+.big{font-family:var(--serif);font-size:34px;font-weight:600;color:var(--rm-plum);line-height:1}
+.calm{margin-top:10px;background:linear-gradient(135deg,#f3ecfb,#fdf1f5);border-radius:18px;padding:12px 14px;text-align:center}
+.calm .lbl{font:800 10px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-ink-3)}
+.calm p{font:600 11.5px var(--sans);color:var(--rm-ink-2);line-height:1.45;margin-top:6px}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <a class="back" href="room.html" aria-label="Back to your room"><span class="ms">arrow_back</span></a>
+    <h1>Calm check<small>Beta · pulse from your face camera, on this device</small></h1>
+    <a class="act" href="ppg.html" aria-label="Finger pulse instead" title="Finger pulse"><span class="ms">fingerprint</span></a>
+  </header>
+  <div class="stack">
+    <section class="card">
+      <h2><span class="ms">monitor_heart</span>Sit still for 30 seconds</h2>
+      <p class="sub">Good, even light on your face, no talking, phone steady. The camera stream never leaves your phone; only the numbers below are kept.</p>
+      <div class="cam" id="cam"><video id="v" playsinline muted></video><canvas id="c"></canvas><div class="oval"></div><div class="roi"></div><div class="camhint" id="hint">Tap Start, then keep your forehead in the dashed box</div></div>
+      <div class="meter"><i id="bar"></i></div>
+      <div class="trace"><svg id="trace" viewBox="0 0 300 70" preserveAspectRatio="none"><polyline id="line" fill="none" stroke="#7a5c96" stroke-width="2" points=""/></svg></div>
+      <div class="row"><button class="btn primary" id="start"><span class="ms">play_arrow</span>Start 30 s</button><button class="btn ghost" id="stop" disabled><span class="ms">stop</span>Stop</button></div>
+      <div class="msg" id="msg"></div>
+    </section>
+    <section class="card" id="result" style="display:none">
+      <h2><span class="ms">favorite</span>Your reading</h2>
+      <div class="kpis"><div class="kpi"><small>Pulse</small><b id="bpm">—</b><span>beats per minute</span></div><div class="kpi"><small>RMSSD</small><b id="rmssd">—</b><span>ms, beat-to-beat variability</span></div><div class="kpi"><small>Signal</small><b id="quality">—</b><span id="qnote">beats detected</span></div></div>
+      <div class="calm"><div class="lbl">Calm index · experimental</div><div class="big" id="calm">—</div><p id="calmNote"></p></div>
+      <div class="row"><button class="btn soft" id="save"><span class="ms">save</span>Keep this reading</button><button class="btn ghost" id="again"><span class="ms">refresh</span>Again</button></div>
+      <p class="note">Camera pulse readings are sensitive to light, movement and skin tone, and beat-to-beat variability from a 30-second face video is noisy. Treat the calm index as a wellness cue, never as a stress diagnosis. Finger-on-camera readings (the fingerprint button) are usually steadier.</p>
+    </section>
+    <section class="card">
+      <h2><span class="ms">history</span>Recent readings</h2>
+      <div id="history"></div>
+    </section>
+    <section class="card">
+      <h2><span class="ms">science</span>What the open-source field says</h2>
+      <p class="sub">Face pulse (remote photoplethysmography, rPPG) reads tiny colour changes in the skin. This page uses the simplest robust method, the green channel of a forehead patch, plus the app’s existing peak detector. The best-validated open-source toolkit for face pulse research is rPPG-Toolbox (NeurIPS 2023, about 1.2k stars, Python, with classic POS/CHROM and trained DeepPhys/TS-CAN models); it is the reference to validate against before any stress claim. A 2024 study found uncontrolled webcam conditions can severely degrade accuracy, so readings here are labelled experimental.</p>
+      <div class="flaglist">
+        <a class="flag info" href="https://github.com/ubicomplab/rPPG-Toolbox" target="_blank" rel="noopener" style="text-decoration:none"><span class="ms">code</span><span><b>rPPG-Toolbox</b>Deep remote PPG toolbox, NeurIPS 2023; the benchmark to validate against.</span></a>
+        <a class="flag info" href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11362249/" target="_blank" rel="noopener" style="text-decoration:none"><span class="ms">article</span><span><b>rPPG in the wild (2024)</b>Webcam recording conditions can severely compromise accuracy.</span></a>
+        <a class="flag info" href="https://github.com/youssof20/pulsecam" target="_blank" rel="noopener" style="text-decoration:none"><span class="ms">code</span><span><b>pulsecam</b>MediaPipe forehead tracking with CHROM, a compact reference implementation.</span></a>
+      </div>
+    </section>
+  </div>
+</main>
+<nav class="nav" aria-label="Main">
+  <a href="room.html"><span class="ms">home</span>Home</a>
+  <a href="cycle-home.html"><span class="ms">water_drop</span>Cycle</a>
+  <a href="food-journal.html"><span class="ms">restaurant</span>Food</a>
+  <a href="mindfulness.html"><span class="ms">self_improvement</span>Mind</a>
+  <a href="profile.html"><span class="ms">person</span>You</a>
+</nav>
+<script src="ppg.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $=function(s){return document.querySelector(s);};
+  var KEY='ovumind_pulse_v1', v=$('#v'), c=$('#c'), ctx=c.getContext('2d',{willReadFrequently:true});
+  var stream=null, raf=0, samples=[], times=[], t0=0, running=false;
+  var Processor=window.OvumindPPG&&window.OvumindPPG.PPGProcessor;
+  function msg(t,cls){var m=$('#msg');m.textContent=t;m.className='msg on '+(cls||'info');}
+  function history(){var list=[];try{list=JSON.parse(localStorage.getItem(KEY)||'[]');}catch(e){}var h=$('#history');h.innerHTML=list.length?'<div class="entries">'+list.slice(0,10).map(function(r){return '<div class="entry"><span class="ms">monitor_heart</span><div class="body"><b>'+new Date(r.at).toLocaleString()+' · '+r.bpm+' bpm</b><span>RMSSD '+r.rmssd+' ms · calm index '+r.calm+' · '+r.beats+' beats · '+r.method+'</span></div></div>';}).join('')+'</div>':'<div class="empty">No readings kept yet.</div>';}
+  function draw(){var pts=samples.slice(-150);if(pts.length<2)return;var mn=Math.min.apply(null,pts),mx=Math.max.apply(null,pts),rg=(mx-mn)||1;$('#line').setAttribute('points',pts.map(function(y,i){return (i/(pts.length-1)*300).toFixed(1)+','+(65-(y-mn)/rg*60).toFixed(1);}).join(' '));}
+  function tick(){
+    if(!running)return;
+    if(v.readyState>=2){
+      c.width=160;c.height=Math.round(160*v.videoHeight/v.videoWidth)||213;ctx.drawImage(v,0,0,c.width,c.height);
+      var rx=Math.round(c.width*0.37),ry=Math.round(c.height*0.245),rw=Math.round(c.width*0.26),rh=Math.round(c.height*0.11);
+      var d=ctx.getImageData(rx,ry,rw,rh).data,g=0,n=0;for(var i=1;i<d.length;i+=4){g+=d[i];n++;}
+      samples.push(g/n);times.push(performance.now());
+      var el=(performance.now()-t0)/1000;$('#bar').style.width=Math.min(100,el/30*100)+'%';$('#hint').textContent=Math.max(0,Math.ceil(30-el))+' s · keep still';
+      if(samples.length%5===0)draw();
+      if(el>=30){finish();return;}
+    }
+    raf=requestAnimationFrame(tick);
+  }
+  function start(){
+    if(!Processor)return msg('The pulse engine (ppg.js) did not load.','err');
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false}).then(function(s){
+      stream=s;v.srcObject=s;return v.play();
+    }).then(function(){samples=[];times=[];t0=performance.now();running=true;$('#start').disabled=true;$('#stop').disabled=false;$('#result').style.display='none';msg('Measuring. Breathe normally.','info');raf=requestAnimationFrame(tick);})
+    .catch(function(e){msg(e&&e.name==='NotAllowedError'?'Camera permission was declined.':'Camera unavailable: '+(e.message||e),'err');});
+  }
+  function stopCam(){running=false;cancelAnimationFrame(raf);if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}v.srcObject=null;$('#start').disabled=false;$('#stop').disabled=true;}
+  function finish(){
+    stopCam();
+    try{
+      var fps=samples.length/((times[times.length-1]-times[0])/1000);
+      var proc=new Processor({samplingRate:Math.round(fps)||30});
+      var res=proc.process(samples.map(function(y,i){return {value:y,timestamp:times[i]};}));
+      var bpm=Math.round(res.bpm||0),rmssd=Math.round(res.hrv||res.rmssd||0),beats=(res.peaks||[]).length||res.peakCount||0;
+      if(!bpm||bpm<40||bpm>180||beats<15){msg('The signal was too noisy ('+beats+' beats found). Try brighter, even light and hold still.','err');return;}
+      var calm=Math.max(0,Math.min(100,Math.round(50+ (rmssd-35)*0.8 - Math.max(0,bpm-75)*0.6)));
+      $('#bpm').textContent=bpm;$('#rmssd').textContent=rmssd;$('#quality').textContent=beats;$('#calm').textContent=calm;
+      $('#calmNote').textContent=calm>=65?'Settled: steady pulse with healthy variability for this moment.':calm>=40?'Middling: a few slow breaths on the mat usually nudge this up.':'Activated: a quick pulse with low variability. Rest, water, and a short pause with Erin may help; if you also feel unwell, check in with a clinician.';
+      $('#result').style.display='';window._lastReading={at:new Date().toISOString(),bpm:bpm,rmssd:rmssd,beats:beats,calm:calm,method:'face green-channel, '+Math.round(fps)+' fps'};
+      msg('Done.','ok');
+    }catch(e){msg('Could not compute a reading: '+e.message,'err');}
+  }
+  $('#start').addEventListener('click',start);$('#stop').addEventListener('click',function(){stopCam();msg('Stopped.','info');});
+  $('#again').addEventListener('click',start);
+  $('#save').addEventListener('click',function(){if(!window._lastReading)return;var list=[];try{list=JSON.parse(localStorage.getItem(KEY)||'[]');}catch(e){}list.unshift(window._lastReading);localStorage.setItem(KEY,JSON.stringify(list.slice(0,60)));history();msg('Kept on this device.','ok');});
+  history();
+})();
+</script>
+</body>
+</html>

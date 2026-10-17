@@ -1,0 +1,252 @@
+{
+"source": "Ovumind educational atlas (acupoint-atlas.js), WHO 2008 standard locations; coordinates are interface markers, not body measurements",
+"points": [
+{
+"id": "sp6",
+"code": "SP6",
+"name": "Sanyinjiao",
+"cn": "三阴交",
+"channel": "Spleen channel",
+"region": "leg",
+"whoPage": 72,
+"kind": "ankle",
+"side": "front",
+"bilateral": false,
+"location": "Inner leg: 3 B-cun above the inner ankle prominence, behind the tibia’s medial border.",
+"research": "SP6 has been studied for primary period pain. Findings are promising but do not establish a treatment schedule for you.",
+"evidence": "atlas-period-pain"
+},
+{
+"id": "cv4",
+"code": "CV4",
+"name": "Guanyuan",
+"cn": "关元",
+"channel": "Conception vessel",
+"region": "abdomen",
+"whoPage": 221,
+"kind": "abdomen",
+"side": "front",
+"bilateral": false,
+"location": "Abdominal midline, 3 B-cun below the navel.",
+"research": null,
+"evidence": null
+},
+{
+"id": "st36",
+"code": "ST36",
+"name": "Zusanli",
+"cn": "足三里",
+"channel": "Stomach channel",
+"region": "leg",
+"whoPage": 64,
+"kind": "knee",
+"side": "front",
+"bilateral": false,
+"location": "Front of leg, 3 B-cun below ST35, along the ST35 to ST41 line on tibialis anterior.",
+"research": null,
+"evidence": null
+},
+{
+"id": "lr3",
+"code": "LR3",
+"name": "Taichong",
+"cn": "太冲",
+"channel": "Liver channel",
+"region": "foot",
+"whoPage": 193,
+"kind": "foot",
+"side": "front",
+"bilateral": false,
+"location": "Top of foot, between first and second metatarsals, just beyond their base junction toward the toes.",
+"research": null,
+"evidence": null
+},
+{
+"id": "li4",
+"code": "LI4",
+"name": "Hegu",
+"cn": "合谷",
+"channel": "Large intestine channel",
+"region": "hand",
+"whoPage": 35,
+"kind": "hand",
+"side": "back",
+"bilateral": false,
+"location": "Back of hand, thumb-side of the second metacarpal’s midpoint.",
+"research": null,
+"evidence": null
+},
+{
+"id": "pc6",
+"code": "PC6",
+"name": "Neiguan",
+"cn": "内关",
+"channel": "Pericardium channel",
+"region": "hand",
+"whoPage": 159,
+"kind": "wrist",
+"side": "front",
+"bilateral": false,
+"location": "Palmar forearm, 2 B-cun above the wrist crease, between palmaris longus and flexor carpi radialis.",
+"research": null,
+"evidence": null
+},
+{
+"id": "cv6",
+"code": "CV6",
+"name": "Qihai",
+"cn": "气海",
+"channel": "Conception vessel",
+"region": "abdomen",
+"whoPage": 222,
+"kind": "abdomen",
+"side": "front",
+"bilateral": false,
+"location": "Abdominal midline, 1.5 B-cun below the navel.",
+"research": null,
+"evidence": null
+},
+{
+"id": "cv3",
+"code": "CV3",
+"name": "Zhongji",
+"cn": "中极",
+"channel": "Conception vessel",
+"region": "abdomen",
+"whoPage": 221,
+"kind": "abdomen",
+"side": "front",
+"bilateral": false,
+"location": "Abdominal midline, 4 B-cun below the navel.",
+"research": null,
+"evidence": null
+},
+{
+"id": "st29",
+"code": "ST29",
+"name": "Guilai",
+"cn": "归来",
+"channel": "Stomach channel",
+"region": "abdomen",
+"whoPage": 60,
+"kind": "abdomen",
+"side": "front",
+"bilateral": true,
+"location": "4 B-cun below the navel and 2 B-cun either side of the abdominal midline.",
+"research": null,
+"evidence": null
+},
+{
+"id": "sp10",
+"code": "SP10",
+"name": "Xuehai",
+"cn": "血海",
+"channel": "Spleen channel",
+"region": "leg",
+"whoPage": 74,
+"kind": "knee",
+"side": "front",
+"bilateral": false,
+"location": "Inner-front thigh, on vastus medialis, 2 B-cun above the kneecap’s upper inner end.",
+"research": null,
+"evidence": null
+},
+{
+"id": "ki3",
+"code": "KI3",
+"name": "Taixi",
+"cn": "太溪",
+"channel": "Kidney channel",
+"region": "leg",
+"whoPage": 137,
+"kind": "ankle",
+"side": "front",
+"bilateral": false,
+"location": "Inner ankle, in the hollow between its bony prominence and the Achilles tendon.",
+"research": null,
+"evidence": null
+},
+{
+"id": "bl23",
+"code": "BL23",
+"name": "Shenshu",
+"cn": "肾俞",
+"channel": "Bladder channel",
+"region": "back",
+"whoPage": 111,
+"kind": "back",
+"side": "back",
+"bilateral": true,
+"location": "Lower back: 1.5 B-cun either side of the midline, level with L2’s spinous-process lower border.",
+"research": null,
+"evidence": null
+},
+{
+"id": "gv4",
+"code": "GV4",
+"name": "Mingmen",
+"cn": "命门",
+"channel": "Governing vessel",
+"region": "back",
+"whoPage": 205,
+"kind": "back",
+"side": "back",
+"bilateral": false,
+"location": "Back midline, in the hollow immediately below L2’s spinous process.",
+"research": null,
+"evidence": null
+}
+],
+"evidence": {
+"atlas-period-pain": {
+"claim": "Research on acupressure for primary period pain is promising but remains limited.",
+"evidence": "A 2025 review reported pain improvement but described the evidence as low quality, with sparse adverse-event reporting. A 2024 SP6 review found heterogeneous results. A 2025 single-center trial tested combined LI4, ST36 and SP6 in 56 adolescents; it cannot isolate any one point. Older Cochrane evidence was inconclusive.",
+"sources": [
+{
+"authors": "Yu X et al.",
+"year": 2025,
+"journal": "Complementary Therapies in Medicine",
+"title": "Efficacy and safety of acupressure for primary dysmenorrhea: A systematic review and meta-analysis of randomized controlled trials",
+"url": "https://pubmed.ncbi.nlm.nih.gov/41138782/"
+},
+{
+"authors": "Ravi P et al.",
+"year": 2024,
+"journal": "Medical Acupuncture",
+"title": "Effect of Sanyinjiao (Spleen-6) Acupoint for Pain Management in Primary Dysmenorrhea: An Updated Systematic Review and Meta-Analysis",
+"url": "https://pubmed.ncbi.nlm.nih.gov/39309625/"
+},
+{
+"authors": "Aksoy-Can A, Buldum A, Abic A, Vefikulucay-Yilmaz D",
+"year": 2025,
+"journal": "BMC Complementary Medicine and Therapies",
+"title": "The effect of acupressure on pain, menstrual symptoms, and comfort in adolescents with primary dysmenorrhea: a single-blind randomized controlled trial",
+"url": "https://link.springer.com/article/10.1186/s12906-025-04965-0"
+},
+{
+"authors": "Smith CA et al.",
+"year": 2016,
+"journal": "Cochrane Database of Systematic Reviews",
+"title": "Acupuncture for dysmenorrhoea",
+"url": "https://www.cochrane.org/evidence/CD007854_acupuncture-period-pain"
+},
+{
+"authors": "Zhang GS, Lim ECN, Cheng NCL, Lim CED",
+"year": 2025,
+"journal": "Cochrane Database of Systematic Reviews",
+"title": "Acupuncture for polycystic ovary syndrome",
+"url": "https://www.cochrane.org/evidence/CD007689_what-are-benefits-and-harms-acupuncture-women-polycystic-ovary-syndrome"
+},
+{
+"authors": "The North American Menopause Society Advisory Panel",
+"year": 2023,
+"journal": "Menopause",
+"title": "The 2023 nonhormone therapy position statement of The North American Menopause Society",
+"url": "https://pubmed.ncbi.nlm.nih.gov/37252752/"
+}
+],
+"limitations": "The 2025 and 2024 review abstracts were read; full review appraisal remains pending. The 2025 adolescent trial full text was read: small single-center sample, uncertain adherence, variable pressure, and incomplete information about concurrent analgesic use. These results cannot validate the atlas, prove long-term safety, or be generalized to secondary causes of pain.",
+"wellnessNote": "Pain that limits daily life, persists or changes deserves clinical assessment. Do not substitute this atlas for evaluation of pelvic pain."
+}
+}
+}
