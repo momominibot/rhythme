@@ -21,14 +21,14 @@
       section: 'Welcome',
       type: 'welcome',
       title: 'Welcome to Ovumind',
-      subtitle: 'A few quick questions to make the app feel like yours.'
+      subtitle: 'A few quick questions to get to know you.'
     },
     {
       id: 'age',
       section: 'About You',
       type: 'wheel',
       title: 'How old are you?',
-      subtitle: 'This helps us show you relevant info.',
+      subtitle: 'We'll tailor what you see to your age.',
       field: 'age',
       min: 10, max: 100, default: 28, unit: t('years')
     },
@@ -36,16 +36,16 @@
       id: 'height-weight',
       section: 'About You',
       type: 'height-weight',
-      title: 'Your height and weight',
-      subtitle: 'Helps us personalize your daily tips.',
+      title: 'About your body',
+      subtitle: 'Height and weight help us tune your daily tips. Skip anything you'd rather not share.',
       fields: ['heightCm', 'weightKg']
     },
     {
       id: 'cycle-status',
       section: 'Your Cycle',
       type: 'single',
-      title: 'How would you describe your cycle?',
-      subtitle: 'So we can give you the right guidance.',
+      title: 'What's your cycle usually like?',
+      subtitle: 'Regular, unpredictable, or somewhere in between. This shapes your guidance.',
       field: 'cycle',
       options: [
         { value: 'regular', label: 'Regular cycles', desc: 'Predictable 21-35 day cycles' },
@@ -60,8 +60,8 @@
       id: 'cycle-length',
       section: 'Your Cycle',
       type: 'wheel',
-      title: "What's your average cycle length?",
-      subtitle: 'Count from day 1 of your period to day 1 of the next.',
+      title: "About how long is your cycle?",
+      subtitle: 'Day 1 of one period to day 1 of the next. A rough guess is fine.',
       field: 'cycleLength',
       min: 21, max: 45, default: 28, unit: t('days'),
       showIf: function(a) { return a.cycle === 'regular' || a.cycle === 'variable'; }
@@ -71,7 +71,7 @@
       section: 'Your Cycle',
       type: 'calendar',
       title: 'When did your last period start?',
-      subtitle: 'Tap the date on the calendar.',
+      subtitle: 'Select the first day of your most recent period.',
       field: 'lastPeriod',
       showIf: function(a) { return a.cycle !== 'post12' && a.cycle !== 'contraceptive'; }
     },
@@ -79,8 +79,8 @@
       id: 'first-period-age',
       section: 'Your Cycle',
       type: 'wheel',
-      title: 'How old were you when your first period started?',
-      subtitle: "Helps us understand your patterns. Skip if unsure.",
+      title: 'When did you get your first period?',
+      subtitle: "Your best guess is fine. Skip it if you don't remember.",
       field: 'firstPeriodAge',
       min: 8, max: 18, default: 12, unit: t('years'),
       showIf: function(a) { return a.cycle !== 'post12'; }
@@ -89,8 +89,8 @@
       id: 'mom-meno',
       section: 'Family History',
       type: 'wheel',
-      title: 'At what age did your mother reach menopause?',
-      subtitle: 'Optional family history. Skip if unsure.',
+      title: 'When did your mum go through menopause?',
+      subtitle: 'It can say a lot about your own timeline. Skip if you don't know.',
       field: 'momMeno',
       min: 35, max: 60, default: 51, unit: t('years'),
       optional: true, optionalLabel: "I don't know"
@@ -99,8 +99,8 @@
       id: 'smoking',
       section: 'Lifestyle',
       type: 'single',
-      title: 'Do you smoke?',
-      subtitle: 'Helps us tailor your wellness tips.',
+      title: 'Do you currently smoke?',
+      subtitle: 'No judgment. It just helps us give you advice that fits.',
       field: 'smoke',
       options: [
         { value: 'never', label: 'Never smoked' },
@@ -112,8 +112,8 @@
       id: 'sleep',
       section: 'Lifestyle',
       type: 'single',
-      title: 'How would you describe your sleep?',
-      subtitle: 'Sleep affects your energy and cycle.',
+      title: 'How's your sleep lately?',
+      subtitle: 'Sleep and your cycle influence each other.',
       field: 'sleep',
       options: [
         { value: 'good', label: 'Good — 7-9h, consistent' },
@@ -125,8 +125,8 @@
       id: 'circadian',
       section: 'Lifestyle',
       type: 'single',
-      title: 'Do you work night shifts or have irregular sleep hours?',
-      subtitle: 'Consistent sleep rhythms support regular cycles and ovarian wellness.',
+      title: 'Is your sleep schedule all over the place?',
+      subtitle: 'Night shifts and late nights count. They can nudge your cycle, so we'll factor them in.',
       field: 'circ',
       options: [
         { value: 'none', label: 'No — regular schedule' },
@@ -138,8 +138,8 @@
       id: 'activity',
       section: 'Lifestyle',
       type: 'single',
-      title: 'How active are you?',
-      subtitle: 'This helps us set movement goals that fit your lifestyle.',
+      title: 'How much do you move day to day?',
+      subtitle: 'We'll suggest goals that suit your routine.',
       field: 'activity',
       options: [
         { value: 'sedentary', label: 'Mostly sedentary', desc: 'Little or no exercise' },
@@ -152,8 +152,8 @@
       id: 'goals',
       section: 'Your Goals',
       type: 'multi',
-      title: 'What are your main wellness goals?',
-      subtitle: "Select all that apply — we'll personalize your journey around what matters to you.",
+      title: 'What would you like help with?',
+      subtitle: "Pick as many as you like.",
       field: 'goals',
       options: [
         { value: 'wellness', label: 'Overall wellness' },
@@ -172,8 +172,8 @@
       id: 'diet',
       section: 'Your Goals',
       type: 'multi',
-      title: 'Any dietary preferences?',
-      subtitle: "We'll tailor food suggestions to your preferences.",
+      title: 'Anything you do or don't eat?',
+      subtitle: "We'll keep food ideas relevant to you.",
       field: 'diet',
       options: [
         { value: 'omnivore', label: 'No restrictions' },
@@ -189,14 +189,14 @@
       id: 'personalize',
       section: 'Your Profile',
       type: 'personalize',
-      title: "We're crafting your personalized experience"
+      title: "Setting things up for you..."
     },
     {
       id: 'done',
       section: 'All Set',
       type: 'done',
-      title: 'Welcome to Ovuluna',
-      subtitle: 'Your personalized ovarian wellness journey is ready to begin.'
+      title: 'You're all set!',
+      subtitle: 'Let's get started.'
     }
   ];
 
