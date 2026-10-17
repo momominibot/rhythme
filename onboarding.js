@@ -638,18 +638,35 @@
   /* ── Calendar step ── */
   function renderCalendar(step) {
     var today = new Date();
-    var selected = answers[step.field] ? new Date(answers[step.field]) : null;
+    today.setHours(0,0,0,0);
+    // Auto-select 5 days ago if nothing selected
+    var defaultDate = new Date(today);
+    defaultDate.setDate(defaultDate.getDate() - 5);
+    var selected = answers[step.field] ? new Date(answers[step.field]) : defaultDate;
+    if (!answers[step.field]) {
+      answers[step.field] = selected.toISOString();
+      saveAnswers();
+    }
+
     var div = document.createElement('div');
     div.style.cssText = 'flex:1;display:flex;flex-direction:column;padding:20px 24px;';
     div.innerHTML =
       '<h1 class="q">' + t(step.title) + '</h1>' +
       '<p class="sub">' + t(step.subtitle) + '</p>' +
+      '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">' +
+        '<button id="menstruatingNow" style="flex:1;min-width:140px;padding:12px 16px;border:1.5px solid var(--terracotta);border-radius:14px;background:#fff5f2;color:var(--terracotta);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">I'm menstruating now</button>' +
+        '<button id="dontRemember" style="flex:1;min-width:120px;padding:12px 16px;border:1.5px solid #d4c5e0;border-radius:14px;background:#faf7fc;color:var(--mauve);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">I don't remember</button>' +
+      '</div>' +
       '<div class="cal" id="calWidget"></div>';
     scrollEl.appendChild(div);
 
     var calWidget = document.getElementById('calWidget');
-    var month = today.getMonth();
-    var year = today.getFullYear();
+    var month = selected.getMonth();
+    var year = selected.getFullYear();
+
+    function fmtDate(d) {
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
 
     function renderMonth() {
       var firstDay = new Date(year, month, 1).getDay();
@@ -666,7 +683,7 @@
       for (var i = 0; i < firstDay; i++) html += '<div></div>';
       for (var d = 1; d <= daysInMonth; d++) {
         var dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-        var isSel = selected && selected.toISOString().slice(0,10) === dateStr;
+        var isSel = selected && fmtDate(selected) === dateStr;
         var isFuture = new Date(year, month, d) > today;
         html += '<button class="day' + (isSel ? ' on' : '') + (isFuture ? ' mut' : '') + '" data-date="' + dateStr + '"' + (isFuture ? ' disabled' : '') + '>' + d + '</button>';
       }
@@ -678,6 +695,8 @@
         renderMonth();
       });
       document.getElementById('nextMonth').addEventListener('click', function() {
+        // Don't allow navigating beyond current month
+        if (month === today.getMonth() && year === today.getFullYear()) return;
         month++; if (month > 11) { month = 0; year++; }
         renderMonth();
       });
@@ -685,16 +704,48 @@
         btn.addEventListener('click', function() {
           selected = new Date(this.dataset.date);
           answers[step.field] = selected.toISOString();
+          answers.periodStatus = 'past';
           saveAnswers();
           calWidget.querySelectorAll('.day').forEach(function(d) { d.classList.remove('on'); });
           this.classList.add('on');
           document.getElementById('nextBtn').disabled = false;
+          // Reset button styles
+          document.getElementById('menstruatingNow').style.background = '#fff5f2';
+          document.getElementById('dontRemember').style.background = '#faf7fc';
         });
       });
     }
     renderMonth();
 
-    footEl.innerHTML = '<button class="cta" id="nextBtn" ' + (selected ? '' : 'disabled') + '>' + t('Continue') + '</button>';
+    // "I'm menstruating now" button
+    document.getElementById('menstruatingNow').addEventListener('click', function() {
+      selected = new Date(today);
+      answers[step.field] = selected.toISOString();
+      answers.periodStatus = 'current';
+      saveAnswers();
+      month = today.getMonth();
+      year = today.getFullYear();
+      renderMonth();
+      this.style.background = 'var(--terracotta)';
+      this.style.color = '#fff';
+      document.getElementById('dontRemember').style.background = '#faf7fc';
+      document.getElementById('nextBtn').disabled = false;
+    });
+
+    // "I don't remember" button
+    document.getElementById('dontRemember').addEventListener('click', function() {
+      answers[step.field] = null;
+      answers.periodStatus = 'unknown';
+      saveAnswers();
+      selected = null;
+      calWidget.querySelectorAll('.day').forEach(function(d) { d.classList.remove('on'); });
+      this.style.background = 'var(--mauve)';
+      this.style.color = '#fff';
+      document.getElementById('menstruatingNow').style.background = '#fff5f2';
+      document.getElementById('nextBtn').disabled = false;
+    });
+
+    footEl.innerHTML = '<button class="cta" id="nextBtn">' + t('Continue') + '</button>';
     document.getElementById('nextBtn').addEventListener('click', nextStep);
   }
 
