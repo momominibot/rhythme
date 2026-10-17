@@ -1,0 +1,132 @@
+{
+  "checkedAt": "2026-10-01",
+  "tool": "Codex computer use; actual UI interactions",
+  "liveEntry": {
+    "url": "https://ovuluna.vercel.app/login.html",
+    "attempt": "Continue with Email",
+    "result": "Agreement gate prevented progress; public handler is browser demo flag, not verified authentication",
+    "termsAccepted": false,
+    "credentialsEntered": false,
+    "realAccountPassed": false
+  },
+  "localEntry": {
+    "origin": "http://localhost:4198",
+    "action": "Continue on this device",
+    "result": "Reached Home without credentials; local mode explicitly disclosed"
+  },
+  "personas": [
+    {
+      "context": "Early menstrual years",
+      "origin": "http://localhost:4197",
+      "savedAndEdited": [
+        "Bleeding: Moderate to Light on 2026-09-22",
+        "Journal Energy: Low to Some"
+      ],
+      "reloadVerified": true,
+      "summaryCounts": {
+        "observations": 1,
+        "journal": 1,
+        "labs": 0,
+        "checkins": 0
+      }
+    },
+    {
+      "context": "Trying to conceive",
+      "origin": "http://localhost:4198",
+      "savedAndEdited": [
+        "Oral BBT36.5 to36.6°C on2026-09-26",
+        "Qualitative LHPositive with copied brand/model",
+        "AMH2.4 to2.7ng/mL, collected2026-09-25"
+      ],
+      "reloadVerified": true,
+      "summaryCounts": {
+        "observations": 2,
+        "journal": 0,
+        "labs": 1,
+        "checkins": 0
+      },
+      "evidenceOpenEscape": true
+    },
+    {
+      "context": "After pregnancy",
+      "origin": "http://localhost:4199",
+      "savedAndEdited": [
+        "Light flow to Spotting2026-09-28; Postpartum/Breastfeeding retained; firstfullflow No",
+        "Home sleep3.5 to4hours/Poor"
+      ],
+      "reloadVerified": true,
+      "summaryCounts": {
+        "observations": 1,
+        "journal": 0,
+        "labs": 0,
+        "checkins": 1
+      },
+      "sleepViewShowsEnteredValues": true
+    },
+    {
+      "context": "Perimenopause",
+      "origin": "http://localhost:4200",
+      "savedAndEdited": [
+        "FSH12 to13IU/L, collected2026-09-20",
+        "JournalEnergy Low toSome; hotflush/sleep note"
+      ],
+      "reloadVerified": true,
+      "summaryCounts": {
+        "observations": 0,
+        "journal": 1,
+        "labs": 1,
+        "checkins": 0
+      }
+    },
+    {
+      "context": "After menopause",
+      "origin": "http://localhost:4201",
+      "savedAndEdited": [
+        "Spotting2026-09-30, firstfullflowNo, explicitpostmenopause context; edited note",
+        "NicknameTest Moonbeam toTest Starlight"
+      ],
+      "reloadVerified": true,
+      "summaryCounts": {
+        "observations": 1,
+        "journal": 0,
+        "labs": 0,
+        "checkins": 0
+      },
+      "directEditCareNote": true,
+      "evidenceOpenEscape": true,
+      "wisdomAppearanceRestoredInHome": true
+    }
+  ],
+  "responsiveChecks": {
+    "widths": [
+      320,
+      390
+    ],
+    "theme": "dark",
+    "text": "A++130percent",
+    "routes": [
+      "ovarian-health.html",
+      "cycle-log.html"
+    ],
+    "observedHorizontalDocumentOverflow": false,
+    "scope": "Targeted visual/reflow checks, not WCAG or physical device certification"
+  },
+  "proof": {
+    "contains": "Fictional-context care note only; no real health data",
+    "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3DKcCgpB8NriqMPJYuMKBaVpbQv/62c2c20f-b445-4877-b185-449e4b502927.png"
+  },
+  "limits": [
+    "No authenticated accounts or account-isolation verification",
+    "Separate localhost origins simulate storage isolation only",
+    "No clinical correlation algorithm or validated ovarian-age prediction",
+    "No production deployment or real user data mutation",
+    "Other legacy/demo routes and qualified clinical review remain pending"
+  ],
+  "additionalDiaryQA": {
+    "origin": "http://localhost:4199",
+    "saved": "2026-09-30, bedtime23:40, wake05:30, qualityFairly bad; optional answers blank",
+    "edited": "Wake05:45; reloaded single entry with date/bedtime/quality retained",
+    "scoreProduced": false,
+    "legacyDataChanged": false
+  }
+}

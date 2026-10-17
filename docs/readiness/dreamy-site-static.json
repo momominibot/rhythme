@@ -1,0 +1,2678 @@
+{
+  "generatedAt": "2026-09-30T12:27:40.842Z",
+  "root": "/private/tmp/ovuluna-dreamy-20260930/app",
+  "scope": "Static document, reference, JavaScript syntax and evidence-key presence checks only. Passing does not prove UI behavior, backend integrations, citation correctness, clinical validity or publication readiness.",
+  "pages": 88,
+  "learnLeafPages": 14,
+  "scriptsParsed": 244,
+  "filesContainingParsedScripts": 92,
+  "javaScriptFilesParsed": 57,
+  "inlineScriptBlocks": 34,
+  "eventHandlersParsed": 153,
+  "externalScriptFiles": 33,
+  "stylesheetsChecked": 18,
+  "localReferences": 2906,
+  "localPageLinks": 967,
+  "evidence": {
+    "databaseEntries": 136,
+    "sourceMetadataRecords": 191,
+    "entriesWithoutSourceMetadata": [],
+    "triggerOccurrences": 333,
+    "distinctKeys": 103,
+    "coverage": "Record/source-metadata presence and required evidence-script references only; metadata counts are not verified citations. Source validity and runtime handler behavior are not checked"
+  },
+  "noDiscoveredInbound": [
+    "terms.html"
+  ],
+  "unresolved": [
+    {
+      "file": "appnav.js",
+      "kind": "script-markup-href",
+      "ref": "'+s[0]+'",
+      "reason": "Computed reference requires runtime verification"
+    },
+    {
+      "file": "onboarding.js",
+      "kind": "script-markup-onerror",
+      "ref": "this.style.display=\\'none\\'",
+      "reason": "Handler inside escaped JavaScript markup requires runtime verification; its containing script is parsed"
+    },
+    {
+      "file": "onboarding.js",
+      "kind": "script-markup-onerror",
+      "ref": "this.style.display=\\'none\\'",
+      "reason": "Handler inside escaped JavaScript markup requires runtime verification; its containing script is parsed"
+    },
+    {
+      "file": "onboarding.js",
+      "kind": "script-markup-onerror",
+      "ref": "this.style.display=\\'none\\'",
+      "reason": "Handler inside escaped JavaScript markup requires runtime verification; its containing script is parsed"
+    }
+  ],
+  "failures": [
+    {
+      "file": "acupoints.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "bio-age.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "bio-age.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "breathe.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "breathe.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "breathwork.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "breathwork.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "circle.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "circle.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "community.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "community.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "cycle-delay.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "cycle-delay.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "cycle-home.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "cycle-home.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "cycle-log.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "cycle-log.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "cycle-trends.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "cycle-trends.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "diet.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "diet.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "evidence-library.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "evidence-library.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "exercise-guide.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "exercise-guide.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "exercise.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "exercise.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "fertility.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "fertility.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "food-scan.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "food-scan.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "foods.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "foods.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "health-profile.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "health-profile.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "home.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "home.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "hormones.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "hormones.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "hydration.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "hydration.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "index.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "index.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "insights.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "insights.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "journey-bloom.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "journey-bloom.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "journey-grow.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "journey-grow.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "journey-nurture.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "journey-nurture.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "journey-peri.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "journey-peri.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "journey-post.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "journey-post.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "label-scan.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "label-scan.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "labs.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "labs.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-biomarkers.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-biomarkers.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-cycle-phases.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-cycle-phases.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-discharge.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-discharge.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-fertile-window.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-fertile-window.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-hormone-phase-locking.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-hormone-phase-locking.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-lifestyle.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-lifestyle.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-longevity-pathways.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-longevity-pathways.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-ovarian-age.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-ovarian-age.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-ovarian-biology.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-ovarian-biology.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-ovarian-longevity.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-ovarian-longevity.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-ppg-tech.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-ppg-tech.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-straw10.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-straw10.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn-wearables.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn-wearables.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "learn.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "learn.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "life-journey.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "life-journey.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "login.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "login.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "logo.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "logo.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "longevity.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "longevity.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "medas14.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "medas14.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "meds.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "meds.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "mental-health.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "mental-health.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "myofascial.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "myofascial.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "notifications.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "notifications.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "nutrients.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "nutrients.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "nutrition-plan.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "nutrition-plan.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "nutrition-scanner.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "nutrition-scanner.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "onboarding.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "onboarding.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "ovarian-age.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "ovarian-age.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "overview.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "overview.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "partner-code.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "partner-code.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "partner-connect.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "partner-connect.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "period-start.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "period-start.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "personal-info.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "personal-info.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "phase-coach.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "phase-coach.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "postpartum-guide.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "postpartum-guide.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "ppg-review.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "ppg-review.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "ppg.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "ppg.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "premium.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "premium.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "privacy.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "privacy.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "profile.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "profile.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "provider-dashboard.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "provider-dashboard.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "reports.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "reports.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "settings.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "settings.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "sleep-diary.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "sleep-diary.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "sleep.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "sleep.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "straw-calculator.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "straw-calculator.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "stress-checkin.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "stress-checkin.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "stress.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "stress.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "supplements.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "supplements.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "tcm-footsoak.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "tcm-footsoak.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "tcm-herbs.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "tcm-herbs.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "tcm-hub.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "tcm-hub.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "tcm-topical.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "tcm-topical.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "terms.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "terms.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "trends.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "trends.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "vascular.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "vascular.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "wellness-checkin.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-acupoint.js",
+      "target": "evidence-acupoint.js"
+    },
+    {
+      "file": "wellness-checkin.html",
+      "reason": "Missing local target",
+      "kind": "src",
+      "ref": "evidence-safety.js",
+      "target": "evidence-safety.js"
+    },
+    {
+      "file": "acupoints.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "atlas-who-landmarks"
+    },
+    {
+      "file": "acupoints.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "atlas-safety"
+    },
+    {
+      "file": "acupoints.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "atlas-who-landmarks"
+    },
+    {
+      "file": "acupoints.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "atlas-period-pain"
+    },
+    {
+      "file": "acupoints.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "atlas-fertility"
+    },
+    {
+      "file": "acupoints.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "atlas-menopause"
+    },
+    {
+      "file": "acupoints.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "atlas-red-flags"
+    },
+    {
+      "file": "acupoints.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "atlas-source-license"
+    },
+    {
+      "file": "mental-health.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "mental-health-scope"
+    },
+    {
+      "file": "mental-health.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "mental-health-scope"
+    },
+    {
+      "file": "mental-health.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "mental-health-scope"
+    },
+    {
+      "file": "mental-health.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "mental-health-support-worldwide"
+    },
+    {
+      "file": "mental-health.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "mental-health-support-worldwide"
+    },
+    {
+      "file": "tcm-footsoak.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "tcm-evidence-limits"
+    },
+    {
+      "file": "tcm-footsoak.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "foot-care-safety"
+    },
+    {
+      "file": "tcm-footsoak.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "foot-care-safety"
+    },
+    {
+      "file": "tcm-footsoak.html",
+      "reason": "Missing resolvable evidence entry",
+      "key": "tcm-evidence-limits"
+    }
+  ],
+  "passed": false,
+  "checkedPages": [
+    "acupoints.html",
+    "bio-age.html",
+    "breathe.html",
+    "breathwork.html",
+    "circle.html",
+    "community.html",
+    "cycle-delay.html",
+    "cycle-home.html",
+    "cycle-log.html",
+    "cycle-trends.html",
+    "diet.html",
+    "evidence-library.html",
+    "exercise-guide.html",
+    "exercise.html",
+    "fertility.html",
+    "food-scan.html",
+    "foods.html",
+    "health-profile.html",
+    "home.html",
+    "hormones.html",
+    "hydration.html",
+    "index.html",
+    "insights.html",
+    "journey-bloom.html",
+    "journey-grow.html",
+    "journey-nurture.html",
+    "journey-peri.html",
+    "journey-post.html",
+    "label-scan.html",
+    "labs.html",
+    "learn-biomarkers.html",
+    "learn-cycle-phases.html",
+    "learn-discharge.html",
+    "learn-fertile-window.html",
+    "learn-hormone-phase-locking.html",
+    "learn-lifestyle.html",
+    "learn-longevity-pathways.html",
+    "learn-ovarian-age.html",
+    "learn-ovarian-biology.html",
+    "learn-ovarian-longevity.html",
+    "learn-perimenopause.html",
+    "learn-ppg-tech.html",
+    "learn-straw10.html",
+    "learn-wearables.html",
+    "learn.html",
+    "life-journey.html",
+    "login.html",
+    "logo.html",
+    "longevity.html",
+    "medas14.html",
+    "meds.html",
+    "mental-health.html",
+    "myofascial.html",
+    "notifications.html",
+    "nutrients.html",
+    "nutrition-plan.html",
+    "nutrition-scanner.html",
+    "onboarding.html",
+    "ovarian-age.html",
+    "overview.html",
+    "partner-code.html",
+    "partner-connect.html",
+    "period-start.html",
+    "personal-info.html",
+    "phase-coach.html",
+    "postpartum-guide.html",
+    "ppg-review.html",
+    "ppg.html",
+    "premium.html",
+    "privacy.html",
+    "profile.html",
+    "provider-dashboard.html",
+    "reports.html",
+    "settings.html",
+    "sleep-diary.html",
+    "sleep.html",
+    "straw-calculator.html",
+    "stress-checkin.html",
+    "stress.html",
+    "supplements.html",
+    "tcm-footsoak.html",
+    "tcm-herbs.html",
+    "tcm-hub.html",
+    "tcm-topical.html",
+    "terms.html",
+    "trends.html",
+    "vascular.html",
+    "wellness-checkin.html"
+  ],
+  "scriptChecks": [
+    {
+      "file": "appnav.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-db.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "acupoint-atlas.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "luna-chat.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "i18n.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "darkmode.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "bio-age.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-reconciled.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-lifecycle.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-core.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-merge.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "dreamy.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "anim.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "breathwork.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "breathwork.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "circle.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "circle.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "circle.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "cycle-home.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "observation-records.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "observations-ui.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "diet.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "lifecycle-content.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "dream-assets.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "source-library.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "exercise-guide.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "foods.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "foods.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "foods.html",
+      "label": "inline oninput",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "ovarian-model.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "labs-records.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "home-records.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "hormone-graph.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "mystical-ring.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "journey.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "hydration.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "insights-records.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "food-score.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "knowledge-hero.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "life-journey.html",
+      "label": "inline onerror",
+      "type": "event-handler"
+    },
+    {
+      "file": "login.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "login.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "login.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "medas14.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "medas14.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "medas14.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "medas14.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "meds.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "mental-health.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "mental-health.html",
+      "label": "inline onerror",
+      "type": "event-handler"
+    },
+    {
+      "file": "myofascial.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "myofascial.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "myofascial.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "myofascial.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "notifications.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "nutrition-plan.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "nutrition-scanner.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "nutrition-scanner.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "onboarding.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "ovarian-assessment.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "partner-code.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "partner-code.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "partner-code.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "partner-code.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "period-start.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "period-start.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "period-start.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "personal-info.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "personal-info.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "personal-info.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "personal-info.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "phase-coach.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "ppg.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "ppg.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "premium.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "privacy-local.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "profile-dream.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "reports.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "settings.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "straw-calculator.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "supplements.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "tcm-herbs.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "tcm-topical.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "wellness-checkin.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "cyclering.js",
+      "label": "standalone source (parse only)",
+      "type": "classic"
+    },
+    {
+      "file": "ovarian-ring.js",
+      "label": "standalone source (parse only)",
+      "type": "classic"
+    },
+    {
+      "file": "ovuluna-mascot.js",
+      "label": "standalone source (parse only)",
+      "type": "classic"
+    },
+    {
+      "file": "scripts/build-web.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-api.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-bio-age.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-home-visuals.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-home.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-insights-records.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-labs.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-native-bundle.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-observation-ui.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-observations.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-ovarian.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-ppg.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-privacy-luna.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-shell.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-site.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-stale-writers.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "api/chat.js",
+      "label": "standalone source (parse only)",
+      "type": "module"
+    },
+    {
+      "file": "api/food-lookup.js",
+      "label": "standalone source (parse only)",
+      "type": "module"
+    },
+    {
+      "file": "api/food-vision.js",
+      "label": "standalone source (parse only)",
+      "type": "module"
+    },
+    {
+      "file": "api/nfc-verify.js",
+      "label": "standalone source (parse only)",
+      "type": "module"
+    },
+    {
+      "file": "api/nfc.js",
+      "label": "standalone source (parse only)",
+      "type": "module"
+    }
+  ]
+}

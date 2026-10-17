@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-09-11T06:15:09.528908+00:00",
+  "scope": "settings/privacy local deletion; no real accounts or user records",
+  "pureGroups": 11,
+  "pureStatus": "pass",
+  "browserStatus": "pass",
+  "browser": "isolated Chromium via Playwright",
+  "url": "http://127.0.0.1:4208",
+  "syntheticOnly": true,
+  "apiRequests": 0,
+  "viewports": [
+    320,
+    390
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "fontSize": "xlarge (A++)",
+  "checks": [
+    "settings data/account links and heading focus",
+    "truthful account-unavailable notice",
+    "explicit select-all and clear",
+    "raw export and download",
+    "disabled confirmation",
+    "Cancel/Escape/focus return",
+    "export first without deletion",
+    "scoped deletion",
+    "stale snapshot rejection",
+    "partial deletion failure",
+    "native export limitation",
+    "offline Luna and safe text",
+    "generated guide destinations exist",
+    "responsive Settings/guide panels",
+    "Luna open focuses close control, not input",
+    "Luna close after input focus returns focus to launcher"
+  ],
+  "limitations": [
+    "real account deletion backend absent",
+    "native verification separate",
+    "external icon fonts blocked in this source browser test",
+    "reproduced Acupoints/Hydration stale writers repaired separately; simultaneous cross-context storage transactions remain unsupported"
+  ],
+  "sourceSha256": {
+    "settings.html": "2bb393252c434cf38a6a9dc73bbd9014e5dc896216195a21e2499bba21a18d5e",
+    "privacy.html": "f6313fb64cef1a0cf28aaa84d28a91050ae2be6f525444efb2d4e9e023100d52",
+    "privacy-local.js": "5e621c545768f61eedb19153cea7ea67c59d31af302a6dc34d7a176486385dbc",
+    "privacy-local.css": "b64b3e1c21dcac8cb1b60c342b062092b2b331bc5ceea0aeb55439e56d793109",
+    "luna-chat.js": "2642380521de36671e6b015a33e562ce306cb388423dd2507b2550c3258968ca",
+    "luna-chat.css": "d1aa24da1fd789bb67e521df7e2b4fb790893042817132b255197f8703c2a712",
+    "scripts/check-privacy-luna.cjs": "45f2a16929791726477cf461529cdee48d99d7f94f1e1de5b96c2ccbe6591104"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "checkedAt": "2026-09-30T12:48:11.647Z",
+  "scope": "Isolated jsdom execution of owned inline behaviors and evidence merge with synthetic storage only. No network requests, patient records, physical camera, clinical validation or production publication.",
+  "checks": [
+    {
+      "name": "Mental-health urgent support is available before any answer and does not assume a country or universal phone number",
+      "passed": true
+    },
+    {
+      "name": "Mood choices are descriptive and ephemeral; a low or calm selection cannot hide urgent help or assign a reassuring screening score",
+      "passed": true
+    },
+    {
+      "name": "STRAW summary starts without assumed values or classifications and refuses an empty submission",
+      "passed": true
+    },
+    {
+      "name": "A plausible regular cycle series produces only typed observations; no stage, fertility, ovarian age or diagnosis is calculated or persisted",
+      "passed": true
+    },
+    {
+      "name": "A very long gap or a context choice cannot yield menopause classification",
+      "passed": true
+    },
+    {
+      "name": "Invalid zero, fractional and over-limit values fail visibly; the numeric limit is explicitly software validation",
+      "passed": true
+    },
+    {
+      "name": "Input/context edits invalidate stale summaries and additional rows have a 20-row entry cap",
+      "passed": true
+    },
+    {
+      "name": "The foot-care page contains explicit limits, not a prescribed herb/heat regimen or fabricated efficacy statistics",
+      "passed": true
+    },
+    {
+      "name": "New clinical regions declare English and opt out of partial interface dictionary translation",
+      "passed": true
+    },
+    {
+      "name": "Fresh safety evidence keys resolve to dated supporting sources and disclaim app validation; the STRAW record replaces legacy metadata",
+      "passed": true
+    }
+  ],
+  "passed": true
+}

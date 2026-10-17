@@ -1,0 +1,156 @@
+/* Learn articles share readable paper/plum surfaces without changing their content. */
+.learning-article {
+  --article-lavender: #f0e9f7;
+  --article-sage: #edf2e9;
+  --article-blush: #faf0ed;
+  --article-gold: #f6f0e3;
+}
+[data-theme="dark"] .learning-article {
+  --article-lavender: #342345;
+  --article-sage: #253336;
+  --article-blush: #39263f;
+  --article-gold: #382e37;
+}
+.learning-article .scroll {
+  min-width: 0;
+  padding: 8px 14px 28px;
+  gap: 16px;
+}
+.learning-article .card {
+  min-width: 0;
+  background: var(--card-solid);
+  border-color: var(--line);
+  overflow-wrap: anywhere;
+}
+.learning-article .card.tint-lavender { background: var(--article-lavender); }
+.learning-article .card.tint-sage { background: var(--article-sage); }
+.learning-article .card.tint-blush { background: var(--article-blush); }
+.learning-article .card.tint-gold { background: var(--article-gold); }
+.learning-article .learning-article-hero {
+  border-radius: 24px;
+  box-shadow: 0 12px 32px -24px rgba(96, 57, 128, .55);
+}
+.learning-article .learning-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.learning-article .learning-back .ms { font-size: 18px; }
+.learning-article .learning-back:hover { background: var(--sunken); }
+.learning-article .learning-back:focus-visible,
+.learning-article .learning-table-scroll:focus-visible,
+.learning-article .topicchip:focus-visible,
+.learning-article .ref a:focus-visible {
+  outline: 2px solid var(--mauve);
+  outline-offset: 3px;
+}
+.learning-article .artsec {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 8px;
+  margin-bottom: 10px;
+}
+.learning-article .sub {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.learning-article .card li {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.learning-article .card li + li { margin-top: 5px; }
+.learning-article .wikicallout {
+  background: var(--article-lavender);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--mauve);
+}
+.learning-article .wikicallout-sage { background: var(--article-sage); }
+.learning-article .wikicallout b { font-size: 13.5px; }
+.learning-article .wikicallout p {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.learning-article .ref {
+  color: var(--taupe);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.learning-article .ref a,
+.learning-article .topicchip {
+  color: var(--mauve);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.learning-article .topicchip {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.learning-article .bmarker .b-body,
+.learning-article .row > div { min-width: 0; }
+.learning-article .bmarker .b-note { font-size: 13px; line-height: 1.65; }
+.learning-article .bmarker .b-range { font-size: 12px; line-height: 1.6; }
+.learning-article .row { flex-wrap: wrap; }
+/* Keep the table semantic and scrollable, rather than squeezing columns into tiny type. */
+.learning-article .learning-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin: 14px 0;
+  scrollbar-color: var(--mauve) var(--sunken);
+  scrollbar-width: thin;
+}
+.learning-article .datatable {
+  min-width: 360px;
+  width: 100%;
+  margin: 0;
+  font-size: 13px;
+  background: var(--card-solid);
+}
+.learning-article .datatable th {
+  color: var(--ink);
+  background: var(--sunken);
+  font-size: 11px;
+  letter-spacing: .03em;
+  line-height: 1.5;
+  padding: 11px 12px;
+  vertical-align: top;
+}
+.learning-article .datatable td {
+  color: var(--ink);
+  line-height: 1.55;
+  padding: 11px 12px;
+  vertical-align: top;
+}
+.learning-article .datatable tr:nth-child(odd) td { background: var(--sunken); }
+/* These existing accent tokens are also used as text inside the article. */
+html:not([data-theme="dark"]) .learning-article {
+  --ok: #367557;
+  --low: #9e4f42;
+  --sage: #486d43;
+  --terracotta: #965446;
+  --coral: #965446;
+  --d-cycle: #8c4e6e;
+}
+@media (max-width: 380px) {
+  .learning-article .grid2 { grid-template-columns: 1fr; }
+  .learning-article .bmarker { flex-direction: column; gap: 8px; }
+}
+[data-fontsize="large"] .learning-article .grid2,
+[data-fontsize="xlarge"] .learning-article .grid2 { grid-template-columns: 1fr; }

@@ -1,0 +1,123 @@
+{
+  "checkedAt": "2026-10-01T05:05:10.899122+00:00",
+  "environment": {
+    "OVULUNA_JSDOM_PATH": "/Users/michiyomimi/Desktop/ovuluna/node_modules/jsdom"
+  },
+  "groups": 167,
+  "failedSuites": 0,
+  "scope": "Isolated synthetic arithmetic, DOM and local-store checks. No clinical, live-account, physical-device or whole-app accessibility certification.",
+  "suites": [
+    {
+      "command": "node scripts/check-observations.cjs",
+      "groups": 21,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "PASS browser global loads without Node bindings or a DOM\nPASS a read or validation never creates storage\nPASS save, reload, edit and remove preserve canonical identity and provenance\nPASS multiple events on one day and original unknown offset are preserved\nPASS every observation kind survives JSON export and reload with complete metadata\nPASS unsure differs from missing and omitted context never becomes a negative answer\nPASS all missing observations permit no result and reject contradictory filled results\nPASS zero is retained for concentrations and ratios; blank and unsupported units are rejected\nPASS urine formats never mix outputs and invalid or uncertain exact text stays descriptive\nPASS temperature units remain original, wrist readings and baseline changes remain separate\nPASS spotting is distinct from full flow and contradictory dates cannot be saved\nPASS treatment notes remain user transcribed, ordered dates and withheld context are explicit\nPASS multiline plan and notes survive editing; single-line fields reject hidden line breaks\nPASS invalid dates, times, NaN, infinity, coercions, options and oversized text fail\nPASS spoofed provenance, unknown fields and inherited-type injection fail closed\nPASS stale new and edit drafts cannot restore data after Settings clears the store\nPASS stale update and delete cannot overwrite an intervening save\nPASS the immediate prewrite check catches a change during validation/read\nPASS corrupt or future stores and malformed records cannot be silently repaired\nPASS denied reads and failed writes do not report save or deletion success\nPASS editing cannot move update time backwards\n{\"passed\":21,\"storeKey\":\"ovuluna_observations_v1\",\"scope\":\"Synthetic local observation contract; no clinical validation, real user data, backend or browser atomic-write claim.\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-home.cjs",
+      "groups": 19,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "{\n  \"suite\": \"Home dated check-ins\",\n  \"passed\": 19,\n  \"failed\": 0,\n  \"results\": [\n    {\n      \"name\": \"Opening and closing every category writes nothing and leaves required inputs blank\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"With shared navigation loaded, tapping each check-in label/icon opens its own form without a competing route\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Home restores an explicit appearance preference on return without inferring a health stage or writing records\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Missing required fields in all six categories block saves with visible errors\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"All six real forms save supplied values; explicit numeric zero and midnight time are retained\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Optional unanswered fields remain null rather than becoming zero or a healthy default\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Legacy check-in bytes are preserved and never promoted to a dated personal measurement\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Same date/category updates its existing ID while other dates and categories remain byte-equivalent\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Out-of-range, negative, fractional whole-number, future date and inconsistent rest-day inputs are rejected\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Saved text is restored as text without creating DOM markup or changing a saved zero\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Malformed or unsupported storage remains untouched when opening, submitting and exporting\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Invalid saved values and duplicate identities cannot be overwritten by a new save\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Quota failures preserve the existing store and keep the form open with a failure message\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Export includes the complete dated history beyond the 20 entries shown on Home\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"A storage failure after a successful load clears stale personal summaries and recovers its status\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Other-tab removal of an assessment resets its stale saved-date summary\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"A visible Home rolls over at local midnight without requiring navigation or a new record\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Local-day helper follows Singapore, Honolulu and New York dates rather than UTC slicing\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Close returns focus to an existing trigger, including after an edited history row is rebuilt\",\n      \"passed\": true\n    }\n  ],\n  \"scope\": \"Actual HTML/controller in isolated jsdom; no live storage or network. Dialog events are shimmed; native focus containment, layout and screen readers require browser/device verification.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-home-visuals.cjs",
+      "groups": 13,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "{\n  \"suite\": \"Home hormone chart and lunar illustration\",\n  \"passed\": 13,\n  \"failed\": 0,\n  \"results\": [\n    {\n      \"name\": \"Empty storage gives explicit empty chart, correct unit choices and no invented point or health write\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Changing hormone and reported unit selects only matching records; exact zeros remain visible\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Graph x spacing follows collection-date distances and the bar/graph controls update accessible state\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Same-date results and all-zero series have finite coordinates and preserve every table row\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Values from 1e-308 through 1e308 and Number.MAX_VALUE cannot overflow chart coordinates\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Reported bounds retain their original symbols and units and are never plotted as exact concentrations\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Original report source and method are visible as inert text, including markup-looking content\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Corrupt/null/invalid stores clear an existing chart and table without overwriting any record\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"View preference survives reload; denied read/write storage leaves usable controls without a false data point\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"New LH and P4 records round-trip through the real labs save/read API into their matching chart units\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Latest-12 limit retains dates and table context without mutating the longer saved history\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Ring range input and previous/next controls stay within bounds and expose the example day accessibly\",\n      \"passed\": true\n    },\n    {\n      \"name\": \"Pointer interaction retains one SVG and listener set; cancelled drags cannot move the ring or schedule stale animation\",\n      \"passed\": true\n    }\n  ],\n  \"scope\": \"Actual HTML, labs API and display scripts in isolated jsdom. Native range keyboard defaults, pointer capture, SVG layout and assistive-technology announcements still need browser/device checks.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-insights-records.cjs",
+      "groups": 9,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "{\n  \"suite\": \"Insights and Overview record summaries\",\n  \"groups\": 9,\n  \"passed\": [\n    \"Empty storage shows explicit empty states and no personal health metrics\",\n    \"Actual saved values, comparator, original units, collection dates, journal and v2 snapshots render as text\",\n    \"Invalid numbers, units, impossible dates and fractional AFC are withheld without changing saved records\",\n    \"Corrupt, unsupported and denied storage report unavailable instead of pretending records are empty\",\n    \"Legacy predictions are never read and a v2 record containing a numerical ovarian-age prediction is rejected\",\n    \"Summaries refresh on other-tab updates and back navigation without accumulating duplicate entries\",\n    \"Real observation/check-in contracts render recorded context, missing readings and all six category counts safely as text\",\n    \"Changed/deleted and corrupt observation/check-in stores refresh accurately without repairing or writing data\",\n    \"Both pages have one H1, working local destinations, evidence controls and no removed fake metrics/no-op actions\"\n  ],\n  \"limitation\": \"Isolated renderer and static-link checks; not device, clinical or whole-app validation.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-journal.cjs",
+      "groups": 13,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "{\n  \"suite\": \"Date-keyed journal edit and stale-write safeguards\",\n  \"groups\": 13,\n  \"passed\": [\n    \"Read-only empty and legacy date-keyed entries remain unchanged\",\n    \"New save, reload and explicit edit preserve other dates and existing metadata\",\n    \"Invalid choices, impossible/future dates and oversized notes cannot write\",\n    \"An existing date needs an explicit loaded edit, with no accidental rename or recreation\",\n    \"Intervening save/deletion cannot be replaced by a stale draft\",\n    \"Corrupt, duplicated, unsupported and denied stores are never silently repaired\",\n    \"Failed writes and a changed snapshot during validation do not report success\",\n    \"Editing cannot move the recorded update time backwards\",\n    \"Edit restores original values; saving changes updates one date and displays literal notes\",\n    \"Choosing dates restores saved values or clears fields for a new date; cancelling preserves data\",\n    \"Declining draft discard preserves typed values and the original selected date\",\n    \"Other-tab deletion disables a loaded edit and cannot restore deleted data\",\n    \"Corrupt/denied reads disable saving/export; failed writes keep the draft without success\"\n  ],\n  \"scope\": \"Synthetic in-memory contracts and isolated DOM only. No user data, real login, device or clinical validation.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-records-health.cjs",
+      "groups": 6,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "{\n  \"suite\": \"Understand records reading-context and no-write integration\",\n  \"groups\": 6,\n  \"passed\": [\n    \"All five chapter cards are reachable through a labeled native reading selector\",\n    \"Reading context is never inferred from a persona preference and changing it never modifies records\",\n    \"Actual collection summaries retain entered inequalities, units, zero, missingness and safe literal text\",\n    \"Source buttons resolve to source records and have accessible labels\",\n    \"Empty, corrupt and denied stores remain explicit without inserting healthy defaults or writing data\",\n    \"Other-tab deletion and back navigation refresh collections without duplicate or stale personal values\"\n  ],\n  \"scope\": \"Synthetic in-memory records and isolated DOM; no live user data, login, layout, accessibility certification or clinical validation.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-observation-care.cjs",
+      "groups": 7,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "{\n  \"suite\": \"Explicit bleeding-context care notes\",\n  \"groups\": 7,\n  \"passed\": [\n    \"Appearance alone and blank observation/context do not produce a postmenopause or postpartum care note\",\n    \"Explicit postmenopause plus any available bleeding choice shows bounded sourced guidance next to Save\",\n    \"No bleeding, missed/withheld readings and withheld context hide the note without clearing draft fields\",\n    \"Explicit postpartum bleeding shows after-birth context and preserves the entered full-flow choice\",\n    \"Editing a saved bleeding entry restores its care note without changing any saved fields\",\n    \"Care notes are scoped to available bleeding, never another observation type\",\n    \"Dynamic care-note source controls resolve to existing records and open the shared evidence dialog without saving\"\n  ],\n  \"scope\": \"Actual local observation/evidence controllers in isolated DOM, synthetic records only. No medical diagnosis, inference, live storage, browser layout or clinical validation.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-sleep-records.cjs",
+      "groups": 10,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "PASS Actual Sleep HTML loads shared reader first and contains no invented biometrics, stages, score or AI advice\nPASS Missing entries show explicit empty state without default metrics or storage writes\nPASS Saved zero hours, midnight times and missing quality remain exact instead of becoming normal/healthy defaults\nPASS Multiple actual dates are sorted newest first with supplied hours and quality unchanged\nPASS Unanswered optional times show Not recorded; the view does not derive hours from clock times\nPASS Corrupt, unsupported and inconsistent stores remain untouched and never fall back to fake data\nPASS Denied storage shows unavailable state without JS exceptions or writes\nPASS Unrelated and legacy diary/check-in stores are preserved and not promoted into this view\nPASS Refresh, pageshow and storage updates reflect changed/deleted records without resurrecting them\nPASS Invalid text fields cannot create DOM markup or become a displayed saved quality\nPASS 10 Sleep read-only regression groups.\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-sleep-diary.cjs",
+      "groups": 15,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "PASS Blank measurement fields and unchecked questions create no healthy defaults or writes\nPASS Dated clock times and selected zero-category descriptions save exactly without a total/duration score\nPASS Legacy outputs are explicitly archived, never treated as confirmed sleep, and all prior entry bytes survive append\nPASS Saving never truncates older diary history\nPASS Invalid/future dates and missing clock times prevent saves instead of inventing measurements\nPASS Corrupt, unsupported or inaccessible stores remain unchanged and fail visibly\nPASS Blocked write retains draft and all old bytes with retry feedback instead of a Saved claim\nPASS Stale/deleted diary is not resurrected from an open form, and explicit refresh keeps the draft\nPASS Hostile legacy data renders as plain unavailable/archive text without inserted markup\nPASS Actual diary HTML removes reserve causation, prescriptions and total-score advice; keeps source receipt and separate record links\nPASS Current-format entry supports actual reload, edit, Save changes and reload without append or first-save changes\nPASS Editing patches known values while nested escaped unknown fields, precise numbers and legacy raw bytes remain exact\nPASS Cancel editing writes nothing and preserves saved data while leaving legacy entries noneditable\nPASS Editing refuses stale/deleted storage and blocked writes retain the editing draft for a successful retry\nPASS Duplicate edited keys are patched consistently rather than leaving a shadowed unchanged value\nPASS 15 Sleep diary integrity groups.\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-entry-preferences.cjs",
+      "groups": 12,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "PASS Local entry collects no credentials or pretends to authenticate with Google/Apple\nPASS Personal info contains no fabricated customer, encrypted-record or subscription status\nPASS Opening preferences performs no writes and never invents a saved nickname\nPASS Save, reload and edit preserve unknown preference fields and unrelated/legacy health bytes\nPASS Restore is an explicit local read and leaves all saved bytes unchanged\nPASS Failed preference write retains draft, saved bytes and visible retry feedback\nPASS Malformed or unsupported preferences are never repaired/overwritten by opening or saving\nPASS Stale or deleted preferences are not resurrected from an open editor\nPASS Nickname validation rejects long/control text, permits literal markup as harmless input, and clears to default\nPASS Onboarding blocked write prevents progress and preserves saved answers plus visible draft feedback\nPASS Onboarding completion does not navigate or claim completion after a failed write; retry succeeds\nPASS Onboarding corrupt, denied or stale records remain unchanged instead of being overwritten\n{\"passed\":12,\"failed\":0}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-privacy-luna.cjs",
+      "groups": 14,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "PASS inventory preserves raw stores and excludes unrelated/unknown keys\nPASS legacy daily dates are individually recognized without prefix-wide deletion\nPASS export is byte-exact for malformed JSON and hostile text\nPASS empty and unrecognized selections fail without changes\nPASS delete scope leaves legacy and unrelated bytes intact\nPASS legacy deletion requires that exact key in reviewed selection\nPASS changed data aborts entire reviewed deletion\nPASS missing item aborts selection and unauthorized reviewed key fails\nPASS partial storage failure is accurately reported\nPASS duplicate selections are exported only once\nPASS all generated Luna guide destinations exist\nPASS onboarding, language, units and local nickname are included in exact reviewed export\nPASS selected onboarding deletion preserves unselected nickname/units and unknown stores\nPASS legacy loggedIn appearance can be reviewed/deleted without being treated as real authentication\nPASS 14 local storage/link regression groups.\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-labs.cjs",
+      "groups": 9,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "{\n  \"passed\": 9,\n  \"checks\": [\n    \"Blank, negative, nonfinite and malformed values are rejected\",\n    \"Zero and report inequalities are retained; follicle counts require whole numbers\",\n    \"Actual valid collection date is required, with no future date or substituted age\",\n    \"Explicit compatible units/symbols are required and values are never converted\",\n    \"Only entered numeric limits are compared; absent/one-sided/bounded results stay explicit\",\n    \"Dated result/source/assay survive reload while legacy snapshot stays byte-for-byte unchanged\",\n    \"New results append; explicit edit updates one record while preserving others and creation time\",\n    \"Malformed or unsupported saved data cannot be overwritten by a new save\",\n    \"Storage read/write failures propagate without modifying prior records\"\n  ],\n  \"scope\": \"Input, storage and arithmetic behavior only; no clinical interpretation or validation\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-ovarian.cjs",
+      "groups": 11,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "PASS empty/blank entries never acquire a default personal age\nPASS invalid numeric input and unknown choices fail explicitly\nPASS teen/postpartum/contraception do not become menopause or stress diagnoses\nPASS all other patterns have an explicit unavailable-model result, never fabricated confidence\nPASS AMH zero retained; units unchanged; no undisclosed conversions\nPASS missing/negative/nonfinite AMH, wrong units and impossible/future dates rejected\nPASS optional missing data remains missing, never healthy defaults\nPASS save persists full versioned input/provenance and preserves legacy estimates\nPASS invalid submission does not write; corrupt and denied storage cannot be overwritten silently\nPASS stored predictions, duplicate IDs and invalid input snapshots cannot re-enter the current log\nPASS legacy model calls and synthetic Home age display are removed\n{\"groups\":11,\"passed\":true,\"scope\":\"Input, storage and source contract only; not clinical or iOS validation\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-stale-writers.cjs",
+      "groups": 8,
+      "passed": true,
+      "exitCode": 0,
+      "stdout": "PASS Educational atlas has no storage writer and preserves the legacy deletion inventory\nPASS Hydration refuses restoration after deletion and retains custom input\nPASS Hydration preserves newer external bytes on Add, Undo and weight change\nPASS Hydration successful writes advance snapshot and preserve extra fields\nPASS Hydration failed write keeps old log/input and retry adds only once\nPASS Hydration read failure before save preserves original bytes\nPASS Hydration malformed or unsupported stored data is never replaced\nPASS Hydration fresh empty storage can save\nPASS 8 stale-writer regression groups.\n",
+      "stderr": ""
+    }
+  ]
+}

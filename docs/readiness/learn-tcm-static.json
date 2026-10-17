@@ -1,0 +1,84 @@
+{
+  "root": "/Users/michiyomimi/Desktop/ovuluna-doubao",
+  "learnLeafPages": 14,
+  "checkedPages": [
+    "learn-biomarkers.html",
+    "learn-cycle-phases.html",
+    "learn-discharge.html",
+    "learn-fertile-window.html",
+    "learn-hormone-phase-locking.html",
+    "learn-lifestyle.html",
+    "learn-longevity-pathways.html",
+    "learn-ovarian-age.html",
+    "learn-ovarian-biology.html",
+    "learn-ovarian-longevity.html",
+    "learn-perimenopause.html",
+    "learn-ppg-tech.html",
+    "learn-straw10.html",
+    "learn-wearables.html",
+    "learn.html",
+    "tcm-hub.html"
+  ],
+  "scriptsChecked": 7,
+  "localReferencesChecked": 394,
+  "syntaxFailures": [],
+  "linkFailures": [],
+  "evidenceReferences": [
+    {
+      "file": "learn-ovarian-age.html",
+      "key": "ovarian-age-concept"
+    },
+    {
+      "file": "learn-ovarian-age.html",
+      "key": "amh-overview"
+    },
+    {
+      "file": "learn-ovarian-age.html",
+      "key": "afc-reserve"
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "key": "perimenopause-symptoms"
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "key": "straw10"
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "key": "hot-flashes"
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "key": "sleep-perimenopause"
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "key": "fsh-menopause"
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "key": "amh-overview"
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "key": "bone-estrogen"
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "key": "stress-cortisol-cycle"
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "key": "hrt-benefits-risks"
+    },
+    {
+      "file": "tcm-hub.html",
+      "key": "sp6-acupressure-cramps"
+    },
+    {
+      "file": "tcm-hub.html",
+      "key": "acupressure-dysmenorrhea-meta"
+    }
+  ]
+}

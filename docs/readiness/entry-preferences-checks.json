@@ -1,0 +1,56 @@
+{
+  "checkedAt": "2026-10-01T06:02:35.297Z",
+  "scope": "Synthetic DOM and local preference regression only. Authentication provider activation and real sign-in require separate verification.",
+  "passed": 12,
+  "failed": 0,
+  "groups": [
+    {
+      "name": "Local entry collects no credentials or pretends to authenticate with Google/Apple",
+      "passed": true
+    },
+    {
+      "name": "Personal info contains no fabricated customer, encrypted-record or subscription status",
+      "passed": true
+    },
+    {
+      "name": "Opening preferences performs no writes and never invents a saved nickname",
+      "passed": true
+    },
+    {
+      "name": "Save, reload and edit preserve unknown preference fields and unrelated/legacy health bytes",
+      "passed": true
+    },
+    {
+      "name": "Restore is an explicit local read and leaves all saved bytes unchanged",
+      "passed": true
+    },
+    {
+      "name": "Failed preference write retains draft, saved bytes and visible retry feedback",
+      "passed": true
+    },
+    {
+      "name": "Malformed or unsupported preferences are never repaired/overwritten by opening or saving",
+      "passed": true
+    },
+    {
+      "name": "Stale or deleted preferences are not resurrected from an open editor",
+      "passed": true
+    },
+    {
+      "name": "Nickname validation rejects long/control text, permits literal markup as harmless input, and clears to default",
+      "passed": true
+    },
+    {
+      "name": "Onboarding blocked write prevents progress and preserves saved answers plus visible draft feedback",
+      "passed": true
+    },
+    {
+      "name": "Onboarding completion does not navigate or claim completion after a failed write; retry succeeds",
+      "passed": true
+    },
+    {
+      "name": "Onboarding corrupt, denied or stale records remain unchanged instead of being overwritten",
+      "passed": true
+    }
+  ]
+}

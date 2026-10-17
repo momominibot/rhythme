@@ -1,0 +1,39 @@
+{
+  "checkedAt": "2026-10-05T15:44:23.432426+00:00",
+  "localCommit": "100fbcc",
+  "scope": "Read-only public HTTP retrieval and source comparison, no account or record mutation",
+  "pages": [
+    {
+      "page": "login.html",
+      "url": "https://ovuluna.vercel.app/login.html",
+      "status": 200,
+      "liveSha256": "d30861defa238354cc3dcb9cfd5eaf5cdf2277ac71bce04282d1d99d8e104be7",
+      "liveBytes": 14206,
+      "sourceMatches": false,
+      "containsDemoAuthFlag": true
+    },
+    {
+      "page": "home.html",
+      "url": "https://ovuluna.vercel.app/home.html",
+      "status": 200,
+      "liveSha256": "1586d81fd7627dcc149a0707a70d6e328062139673ba6ec3b26244f099919ff5",
+      "liveBytes": 94742,
+      "sourceMatches": false
+    },
+    {
+      "page": "daily.html",
+      "url": "https://ovuluna.vercel.app/daily.html",
+      "status": 404
+    },
+    {
+      "page": "account.html",
+      "url": "https://ovuluna.vercel.app/account.html",
+      "status": 404
+    },
+    {
+      "page": "ovarian-health.html",
+      "url": "https://ovuluna.vercel.app/ovarian-health.html",
+      "status": 404
+    }
+  ]
+}

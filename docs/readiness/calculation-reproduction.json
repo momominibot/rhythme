@@ -1,0 +1,197 @@
+{
+  "scope": "Deterministic implementation probes only, not clinical validation",
+  "ovarianDefaults": {
+    "ovAge": 33,
+    "chrono": 33,
+    "delta": 0,
+    "straw": {
+      "code": "-3b",
+      "name": "peak reproductive"
+    },
+    "ttm": {
+      "median": 18,
+      "lo": 12,
+      "hi": 24
+    }
+  },
+  "ovarianSkippedAge16": {
+    "ovAge": 50,
+    "chrono": 16,
+    "delta": 34,
+    "straw": {
+      "code": "-1",
+      "name": "late menopause transition"
+    },
+    "ttm": {
+      "median": 1.5,
+      "lo": 0.5,
+      "hi": 3.5
+    }
+  },
+  "ovarianPostpartumUISelection": {
+    "ovAge": 34,
+    "chrono": 34,
+    "delta": 0,
+    "straw": {
+      "code": "-2",
+      "name": "early menopause transition"
+    },
+    "ttm": {
+      "median": 17,
+      "lo": 13,
+      "hi": 21
+    }
+  },
+  "ovarianContraceptive": {
+    "ovAge": 30,
+    "chrono": 30,
+    "delta": 0,
+    "straw": {
+      "code": "?",
+      "name": "cycle masked by contraception"
+    },
+    "ttm": {
+      "median": 21,
+      "lo": 15,
+      "hi": 27
+    }
+  },
+  "partialWellness": {
+    "chronologicalAge": 30,
+    "isWellnessTool": true,
+    "disclaimer": "This is a wellness habit score for personal awareness and lifestyle motivation only. It is not a medical diagnosis, clinical measurement, biological age, or predictor of health outcomes. Always consult a qualified healthcare professional for medical advice.",
+    "lastUpdated": "2026-09-10T17:03:51.434Z",
+    "wellnessScore": {
+      "score": 20,
+      "maxScore": 100,
+      "factors": [
+        {
+          "name": "Sleep",
+          "points": 10,
+          "max": 20,
+          "icon": "bedtime"
+        },
+        {
+          "name": "Physical Activity",
+          "points": 0,
+          "max": 20,
+          "icon": "directions_run"
+        },
+        {
+          "name": "Nutrition",
+          "points": 0,
+          "max": 15,
+          "icon": "restaurant"
+        },
+        {
+          "name": "Stress Management",
+          "points": 0,
+          "max": 15,
+          "icon": "spa"
+        },
+        {
+          "name": "Hydration",
+          "points": 0,
+          "max": 10,
+          "icon": "water_drop"
+        },
+        {
+          "name": "No Smoking",
+          "points": 10,
+          "max": 10,
+          "icon": "smoke_free"
+        },
+        {
+          "name": "Alcohol Moderation",
+          "points": 0,
+          "max": 10,
+          "icon": "wine_bar"
+        }
+      ],
+      "level": "Getting Started",
+      "note": "This score reflects self-reported wellness habits. It is not a biological age, health assessment, or clinical measurement."
+    },
+    "suggestions": [
+      {
+        "icon": "spa",
+        "title": "Consider a daily stress-management practice",
+        "detail": "Try 5-10 minutes of slow breathing, meditation, or gentle movement daily. Find what helps you relax.",
+        "type": "wellness"
+      },
+      {
+        "icon": "info",
+        "title": "Wellness, not medical",
+        "detail": "This is a wellness habit score for personal awareness and lifestyle motivation only. It is not a medical diagnosis, clinical measurement, biological age, or predictor of health outcomes. Always consult a qualified healthcare professional for medical advice.",
+        "type": "disclaimer"
+      }
+    ]
+  },
+  "missingSmokingGetsPoints": {
+    "name": "No Smoking",
+    "points": 10,
+    "max": 10,
+    "icon": "smoke_free"
+  },
+  "standardUSPanel": {
+    "phenoAge": 31.1,
+    "chronologicalAge": 40,
+    "isResearchModel": true,
+    "note": "PhenoAge is a research-grade model (Levine et al., 2018). It is provided for educational reference only and is not a clinical diagnostic or health assessment."
+  },
+  "samePanelNativeUnits": {
+    "error": "Complete biomarker panel required",
+    "missing": [],
+    "invalid": [
+      "albumin=450",
+      "creatinine=6251.648",
+      "glucose=0.2772169001903373"
+    ],
+    "note": "PhenoAge requires all 9 biomarkers. Partial data cannot produce a valid estimate."
+  },
+  "validBoundaryPanel": {
+    "validation": {
+      "valid": true,
+      "missing": [],
+      "invalid": []
+    },
+    "result": {
+      "phenoAge": "Infinity",
+      "chronologicalAge": 100,
+      "isResearchModel": true,
+      "note": "PhenoAge is a research-grade model (Levine et al., 2018). It is provided for educational reference only and is not a clinical diagnostic or health assessment."
+    }
+  },
+  "lowQualityStillDiagnosed": {
+    "diagnosis": "stress_override+luteal_confirmed",
+    "advice": [
+      "High stress / Liver Qi Stagnation detected. Ovuluna has automatically adjusted your Intermittent Fasting window to a gentle 12 hours max. Prioritize warm, cooked NOVA Group 1 foods today.",
+      "Elevated resting pulse consistent with active Luteal Yang energy. Progesterone requires steady fuel — keep your fasting window capped at 12 hours."
+    ],
+    "flags": [
+      "stress_override",
+      "luteal_confirmed"
+    ],
+    "bpm": 90,
+    "hrv": 10
+  },
+  "rmssdArithmetic": {
+    "timestamps": [
+      0,
+      1000,
+      2020,
+      3000
+    ],
+    "expected": 32,
+    "actual": 32
+  },
+  "evidenceReferencesTotal": 85,
+  "calibrationReplay": {
+    "elapsedMs": 4000.0000000000005,
+    "calibrationReadyNotifications": 34,
+    "measurementStarts": 30,
+    "remainingAnimationLoops": 31,
+    "samples": 1,
+    "description": "Replay ppg.html ready handler (500ms start timer) with steady 200 red signal and 60Hz animation clock"
+  },
+  "missingEvidenceKeys": []
+}

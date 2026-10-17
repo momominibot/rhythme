@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-10-01T05:12:53.565188+00:00",
+  "checks": [
+    {
+      "command": "node scripts/build-web.cjs",
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "{\n  \"target\": \"web\",\n  \"files\": 270,\n  \"bytes\": 76002763,\n  \"entry\": \"index.html\",\n  \"output\": \"www\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-native-bundle.cjs",
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "{\n  \"target\": \"web\",\n  \"passed\": true,\n  \"checks\": [\n    \"Every manifest asset has the recorded size/hash and stays inside the public allowlist.\",\n    \"Server handlers, dependencies, environment files and project sources are excluded.\",\n    \"All 89 bundled routes reference local fonts/scripts and available static resources.\",\n    \"Offline typography and pinned animation assets include their distribution licenses.\"\n  ],\n  \"pages\": 89,\n  \"assets\": 270,\n  \"limits\": \"Asset and configuration checks only. Native launch, persistence, media permissions, accessibility and clinical validation require their own evidence.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/build-web.cjs --native",
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "{\n  \"target\": \"ios-development\",\n  \"files\": 270,\n  \"bytes\": 76028320,\n  \"entry\": \"home.html\",\n  \"output\": \"www\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/check-native-bundle.cjs",
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "{\n  \"target\": \"ios-development\",\n  \"passed\": true,\n  \"checks\": [\n    \"Every manifest asset has the recorded size/hash and stays inside the public allowlist.\",\n    \"Server handlers, dependencies, environment files and project sources are excluded.\",\n    \"All 89 bundled routes reference local fonts/scripts and available static resources.\",\n    \"Native launch uses bundledHome with no remote URL/backend, broad navigation, logging or HTTP override.\",\n    \"Offline typography and pinned animation assets include their distribution licenses.\"\n  ],\n  \"pages\": 89,\n  \"assets\": 270,\n  \"limits\": \"Asset and configuration checks only. Native launch, persistence, media permissions, accessibility and clinical validation require their own evidence.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/build-web.cjs",
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "{\n  \"target\": \"web\",\n  \"files\": 270,\n  \"bytes\": 76002763,\n  \"entry\": \"index.html\",\n  \"output\": \"www\"\n}\n",
+      "stderr": ""
+    }
+  ],
+  "passed": true,
+  "scope": "Generated public assets and configuration only. No signed/native-device, authenticated-account, clinical or production deployment acceptance."
+}

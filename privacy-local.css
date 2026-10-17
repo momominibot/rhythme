@@ -1,0 +1,48 @@
+/* Rem-based, scoped local-data controls; shared shell/theme remain authoritative. */
+.privacy-page .scroll { font-size: 1rem; line-height: 1.6; }
+.privacy-page .card { background: var(--card-solid); color: var(--ink); padding: 1.15rem; overflow-wrap: anywhere; }
+.privacy-page .brandline b { font-family: var(--serif); letter-spacing: .16em; color: var(--mauve); }
+.privacy-page h1 { font: 600 1.9rem/1.15 var(--serif); margin: .5rem 0; }
+.privacy-page h2, #privacy-delete-dialog h2 { font: 600 1.4rem/1.2 var(--serif); margin: 0 0 .7rem; }
+.privacy-page p + p { margin-top: .7rem; }
+.privacy-hero { text-align: center; border: 1px solid var(--line); }
+.privacy-hero > .ms { font-size: 2rem; color: var(--mauve); }
+.privacy-eyebrow { font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--mauve); }
+.privacy-badge { display: inline-block; margin-top: 1rem; padding: .3rem .7rem; border-radius: 99px; background: var(--sunken); color: var(--ink); font-size: .8rem; }
+.privacy-back { display: inline-flex; align-items: center; min-height: 44px; color: var(--mauve); font-weight: 700; text-decoration: underline; margin-bottom: .5rem; }
+.privacy-capabilities > div { padding: .8rem 0; border-bottom: 1px solid var(--line); }
+.privacy-capabilities { margin-bottom: 1rem; }
+.privacy-capabilities dt { font-weight: 800; }
+.privacy-capabilities dd { margin: .3rem 0 0; color: var(--taupe); }
+#privacy-stores fieldset { border: 1px solid var(--line); border-radius: 16px; padding: .65rem; margin-top: 1rem; min-width: 0; }
+#privacy-stores legend { padding: 0 .3rem; font-weight: 800; font-size: .9rem; }
+#privacy-stores label, .privacy-confirm-label { display: flex; align-items: flex-start; gap: .7rem; min-height: 44px; padding: .65rem .2rem; cursor: pointer; }
+#privacy-stores input, .privacy-confirm-label input { width: 22px; height: 22px; flex: 0 0 22px; accent-color: var(--mauve); margin-top: .2rem; }
+#privacy-stores span { min-width: 0; }
+#privacy-stores strong, #privacy-stores small { display: block; }
+#privacy-stores small { font-size: .8rem; color: var(--taupe); overflow-wrap: anywhere; margin-top: .15rem; }
+.privacy-actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1rem; }
+.privacy-actions button { min-height: 44px; padding: .65rem .85rem; border: 1px solid var(--mauve); border-radius: 14px; background: var(--sunken); color: var(--ink); font: 700 .9rem/1.4 var(--sans); cursor: pointer; white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+.privacy-actions button:disabled { opacity: .55; cursor: not-allowed; }
+.privacy-actions .privacy-danger { border-color: var(--coral); }
+#privacy-status { min-height: 1.5em; margin-top: 1rem; font-weight: 600; }
+.privacy-page [hidden] { display: none !important; }
+#privacy-export-json { display: block; width: 100%; max-width: 100%; min-height: 10rem; margin-top: .5rem; padding: .7rem; font: .8rem/1.5 monospace; background: var(--sunken); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; resize: vertical; }
+#privacy-delete-dialog { margin: auto; width: min(92vw, 440px); max-height: calc(100dvh - var(--shell-safe-top) - var(--shell-safe-bottom) - 24px); padding: 1.2rem; border: 1px solid var(--line); border-radius: 22px; background: var(--card-solid); color: var(--ink); font: 1rem/1.6 var(--sans); overflow: auto; overflow-wrap: anywhere; }
+#privacy-delete-dialog::backdrop { background: rgba(15, 8, 30, .7); }
+#privacy-delete-summary { padding-left: 1.3rem; margin: .8rem 0; }
+.privacy-page :focus-visible { outline: 3px solid var(--mauve); outline-offset: 3px; }
+
+/* Settings uses the same palette and accessible deletion entry points. */
+.settings-data { border: 1px solid var(--coral); }
+.settings-action { display: flex; gap: .7rem; align-items: center; min-height: 44px; color: var(--ink); text-decoration: none; padding: 1rem 0; border-bottom: 1px solid var(--line); }
+.settings-action > span:nth-child(2) { flex: 1; min-width: 0; }
+.settings-action > .ms { flex: 0 0 24px; width: 24px; overflow: hidden; font-size: 24px; }
+.settings-action b, .settings-action small { display: block; }
+.settings-action small { color: var(--taupe); font-size: .85rem; margin-top: .3rem; }
+.settings-danger b { text-decoration: underline; text-decoration-color: var(--coral); text-underline-offset: .2em; }
+.settings-page .persona-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.settings-page .persona-opt { min-width: 0; white-space: normal; color: var(--ink); font-family: var(--sans); }
+.settings-page .persona-opt .p-age, .settings-page .persona-opt .p-name { font-size: .8rem; overflow-wrap: anywhere; }
+#privacy-account-title, #privacy-local-title { scroll-margin-top: 1rem; }
+.privacy-account { border: 1px solid var(--line); }

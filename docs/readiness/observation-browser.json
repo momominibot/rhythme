@@ -1,0 +1,60 @@
+{
+  "status": "passed",
+  "checks": [
+    "Home link, blank rejection, BBT units/timezone, real save/reload/edit",
+    "Draft Cancel/discard and zero ratio stays separate from concentration",
+    "Missing observations retain missing state without invented values",
+    "Treatment text is escaped; complete readable/JSON export and honest native fallback",
+    "Per-entry deletion review, Cancel and unrelated draft preservation",
+    "Settings inventory/export/Cancel/delete works; another tab cannot restore deleted records",
+    "Corrupt and denied storage preserve bytes and unsaved input",
+    "Six A++ light/dark mobile/tablet layouts with no page errors or API calls"
+  ],
+  "layouts": [
+    {
+      "theme": "light",
+      "width": 320,
+      "doc": 320,
+      "top": 69,
+      "content": 77
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "doc": 390,
+      "top": 69,
+      "content": 77
+    },
+    {
+      "theme": "light",
+      "width": 768,
+      "doc": 768,
+      "top": 69,
+      "content": 77
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "doc": 320,
+      "top": 69,
+      "content": 77
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "doc": 390,
+      "top": 69,
+      "content": 77
+    },
+    {
+      "theme": "dark",
+      "width": 768,
+      "doc": 768,
+      "top": 69,
+      "content": 77
+    }
+  ],
+  "errors": [],
+  "apiRequests": [],
+  "scope": "Fresh Chromium profile, synthetic records only; not device or clinical validation"
+}

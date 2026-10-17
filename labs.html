@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en" data-persona="grow">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Ovuluna · Lab Log</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+  <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="darkmode.css">
+  <link rel="stylesheet" href="ovuluna-persona.css">
+  <style>
+    .eyebrow { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:var(--taupe); margin-bottom:6px; }
+    .lab-form { margin:16px; padding:16px; border:2px solid var(--line-soft); border-radius:var(--r); background:var(--card); }
+    .field { margin-bottom:14px; }
+    .field label { display:block; font-size:13px; font-weight:700; margin-bottom:6px; }
+    .field input, .field select { width:100%; padding:12px; border:2px solid var(--line-soft); border-radius:12px; background:var(--paper); font-family:inherit; font-size:15px; color:var(--ink); }
+    .field .hint { font-size:12px; color:var(--taupe); margin-top:4px; }
+    .save-btn { width:100%; padding:14px; border:none; border-radius:12px; background:var(--ink); color:var(--card); font-weight:800; font-size:15px; cursor:pointer; }
+    .result-card { margin:12px 16px; padding:16px; border:2px solid var(--line-soft); border-radius:var(--r); background:var(--card); }
+    .result-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line-soft); }
+    .result-row:last-child { border-bottom:none; }
+    .result-value { font-size:20px; font-weight:800; }
+    .status { display:inline-block; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:800; text-transform:uppercase; }
+    .status-ok { background:rgba(78,140,106,.15); color:#2E6B4E; }
+    .status-warn { background:rgba(201,138,46,.15); color:#8B5E16; }
+    .status-low { background:rgba(190,74,62,.12); color:#8B2E24; }
+    .summary { margin:16px; padding:16px; border-radius:var(--r); background:rgba(201,138,46,.12); border:1.5px solid rgba(201,138,46,.35); font-size:13px; line-height:1.55; }
+    .export-btn { margin:16px 0; padding:14px; border:2px solid var(--ink); border-radius:12px; background:var(--card); font-weight:800; cursor:pointer; }
+    .lab-note { font-size:13px;line-height:1.65;color:var(--ink);margin-top:10px;overflow-wrap:anywhere; }
+    .lab-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+    .lab-grid .field { min-width:0; }
+    .field textarea { width:100%;min-height:88px;padding:12px;border:2px solid var(--line-soft);border-radius:12px;background:var(--paper);font:inherit;color:var(--ink);resize:vertical; }
+    .lab-context { margin:4px 0 18px; }
+    summary { cursor:pointer;font-size:13px;font-weight:700;line-height:1.5; }
+    .lab-context[open] summary { margin-bottom:10px; }
+    .lab-entry { padding:16px 0;border-bottom:1px solid var(--line-soft); }
+    .lab-entry:last-child { border-bottom:none; }
+    .lab-entry h3 { font-size:15px;font-weight:700; }
+    .lab-comparison { font-size:13px;line-height:1.5;margin-top:8px; }
+    .lab-edit { border:1px solid var(--mauve);border-radius:10px;color:var(--ink);background:var(--card);font:inherit;font-size:13px;padding:9px 12px;cursor:pointer;margin-top:12px; }
+    .is-error { font-weight:700; }
+    #lab-legacy-value { font:12px/1.6 monospace;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:12px; }
+    .save-btn:disabled,.export-btn:disabled { opacity:.5;cursor:not-allowed; }
+    :focus-visible { outline:3px solid var(--mauve);outline-offset:3px; }
+    @media(max-width:359px) { .lab-grid { grid-template-columns:1fr;gap:0; } }
+  </style>
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html" aria-label="Notifications">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html" aria-label="Cycle trends">calendar_today</a>
+  </div>
+
+    <main class="scroll">
+      <div style="text-align:center; padding:24px 16px 8px">
+        <div class="eyebrow">YOUR LAB RECORDS</div>
+        <h1 style="font-size:26px; margin-bottom:8px">Keep the details together</h1>
+        <p class="lab-note">Copy each result, unit and collection date from your report. Your record keeps what was reported, without calculating an ovarian age or a fertility prediction.</p>
+      </div>
+
+      <form class="lab-form" id="lab-record-form">
+        <div class="field"><label for="lab-analyte">Test</label><select id="lab-analyte" required><option value="">Choose a test</option><option value="amh">AMH</option><option value="fsh">FSH</option><option value="e2">Estradiol (E2)</option><option value="lh">Luteinizing hormone (LH)</option><option value="p4">Progesterone (P4)</option><option value="afc">Antral follicle count (AFC)</option><option value="vitd">Vitamin D</option></select></div>
+        <div class="lab-grid">
+          <div class="field"><label for="lab-qualifier">Result symbol</label><select id="lab-qualifier" required><option value="">Choose report symbol</option><option value="=">Exact number (=)</option><option value="&lt;">Less than (&lt;)</option><option value="&gt;">Greater than (&gt;)</option><option value="≤">At most (≤)</option><option value="≥">At least (≥)</option></select></div>
+          <div class="field"><label for="lab-value">Result</label><input type="text" inputmode="decimal" id="lab-value" required maxlength="40" placeholder="Number from your report"></div>
+        </div>
+        <div class="field"><label for="lab-unit">Unit on report</label><select id="lab-unit" required><option value="">Choose report unit</option></select><p class="hint">Values are stored in the unit you choose. No conversion is applied.</p></div>
+        <div class="field"><label for="lab-collectedOn">Actual collection date</label><input type="date" id="lab-collectedOn" required><p class="hint">Use the sample collection or ultrasound date, rather than today's entry date.</p></div>
+        <details class="lab-context"><summary>Add report limits and context (optional)</summary>
+          <p class="lab-note">Copy limits applicable to this result in the same unit. A comparison only checks the entered numbers; it is not a clinical interpretation. Leave a limit blank if your report does not give it.</p>
+          <div class="lab-grid">
+            <div class="field"><label for="lab-referenceLow">Lower report limit</label><input type="text" inputmode="decimal" id="lab-referenceLow" maxlength="40" placeholder="Optional"></div>
+            <div class="field"><label for="lab-referenceHigh">Upper report limit</label><input type="text" inputmode="decimal" id="lab-referenceHigh" maxlength="40" placeholder="Optional"></div>
+          </div>
+          <div class="field"><label for="lab-sourceName">Lab / report source</label><input type="text" id="lab-sourceName" maxlength="160" placeholder="Name printed on the report"></div>
+          <div class="field"><label for="lab-assay">Assay / test method</label><input type="text" id="lab-assay" maxlength="160" placeholder="If provided on the report"></div>
+          <div class="field"><label for="lab-context">Report context or notes</label><textarea id="lab-context" maxlength="1000" placeholder="For example, the report's cycle-day context or the clinician's note"></textarea></div>
+        </details>
+        <button class="save-btn" id="lab-save" type="submit">Save lab result</button>
+        <button class="lab-edit" id="lab-cancel-edit" type="button" hidden>Cancel edit</button>
+        <p class="lab-note">Saved on this browser. This is not a cloud backup or an encrypted health record.</p>
+        <p id="lab-status" class="lab-note" role="status" aria-live="polite"></p>
+      </form>
+
+      <section class="result-card" aria-labelledby="lab-history-title">
+        <h2 id="lab-history-title" style="font-size:22px;margin-bottom:14px">Your dated results</h2>
+        <div id="lab-history"></div>
+        <button class="export-btn" id="lab-export" type="button" disabled>Download lab records</button>
+      </section>
+      <section class="result-card" id="lab-legacy" hidden aria-labelledby="lab-legacy-title">
+        <h2 id="lab-legacy-title" style="font-size:20px">Earlier saved snapshot</h2>
+        <p class="lab-note">Your earlier record is preserved below. Its “date” was a save timestamp, not a verified collection date. It has not been imported as a dated lab result. You can re-enter its values above after checking your original report.</p>
+        <details><summary>View unchanged snapshot</summary><pre id="lab-legacy-value"></pre></details>
+        <button class="export-btn" id="lab-legacy-export" type="button">Download earlier snapshot</button>
+      </section>
+      <div class="card" style="margin:16px;padding:16px">
+        <h2 style="font-size:19px;margin-bottom:8px">Understanding your results</h2>
+        <p class="lab-note">Your clinician can interpret the report in context. <button type="button" class="qi" data-evidence="ovarian-age-concept">i</button> <a href="learn-ovarian-age.html">Read about ovarian reserve measurements.</a></p>
+      </div>
+    </main>
+
+    <nav class="nav" aria-label="Main navigation">
+      <a href="home.html"><span class="n-ic">home</span>Home</a>
+      <a href="learn.html"><span class="n-ic">menu_book</span>Learn</a>
+      <a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a>
+      <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+      <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+    </nav>
+  </div>
+
+  <script src="labs-records.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="darkmode.js?v=6" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body>
+</html>

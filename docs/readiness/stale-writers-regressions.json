@@ -1,0 +1,23 @@
+{
+  "date": "2026-09-11T06:11:36.907Z",
+  "status": "pass",
+  "scope": "Actual Acupoints and Hydration inline scripts under synthetic localStorage and a minimal DOM",
+  "groups": 14,
+  "checks": [
+    "Acupoints refuses restoration after a reviewed deletion",
+    "Acupoints preserves a newer external record and current selection",
+    "Acupoints updates its snapshot after own saves and supports removal without an element",
+    "Acupoints failed write preserves selection and can retry",
+    "Acupoints read failure before write cannot overwrite",
+    "Acupoints malformed, empty and non-array stores are preserved",
+    "Acupoints fresh empty storage can save",
+    "Hydration refuses restoration after deletion and retains custom input",
+    "Hydration preserves newer external bytes on Add, Undo and weight change",
+    "Hydration successful writes advance snapshot and preserve extra fields",
+    "Hydration failed write keeps old log/input and retry adds only once",
+    "Hydration read failure before save preserves original bytes",
+    "Hydration malformed or unsupported stored data is never replaced",
+    "Hydration fresh empty storage can save"
+  ],
+  "limitations": "Not a browser/native layout test or a transaction guarantee across simultaneous localStorage writers."
+}

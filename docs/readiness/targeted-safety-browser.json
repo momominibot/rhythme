@@ -1,0 +1,36 @@
+{
+  "checkedAt": "2026-09-30T12:41:59.918Z",
+  "scope": "Ephemeral headless Google Chrome UI checks with remote requests blocked and synthetic empty storage. No device testing, clinical validation, translation validation or production publication.",
+  "checks": [
+    {
+      "name": "Global urgent support is visible before a mood choice; no universal telephone number is displayed",
+      "passed": true
+    },
+    {
+      "name": "Mood selection updates accessible state and is not a stored or reassuring screening result",
+      "passed": true
+    },
+    {
+      "name": "Shared evidence button opens source details and Escape returns keyboard focus to the trigger",
+      "passed": true
+    },
+    {
+      "name": "STRAW entries produce descriptive text only and editing removes stale output",
+      "passed": true
+    },
+    {
+      "name": "Native number input rejects a zero and announces an entry error; source sheet remains linked",
+      "passed": true
+    },
+    {
+      "name": "Foot-care safety source opens with CDC and NHS references and no regimen is written to storage",
+      "passed": true
+    },
+    {
+      "name": "Owned pages have no horizontal document overflow at 320px in dark theme and declare an English clinical-copy region",
+      "passed": true
+    }
+  ],
+  "pageErrors": [],
+  "passed": true
+}

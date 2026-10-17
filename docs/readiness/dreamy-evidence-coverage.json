@@ -1,0 +1,1386 @@
+{
+  "checkedAt": "2026-09-30T12:41:07.044Z",
+  "scope": "Current static key-to-record coverage. Source verification is separate from clinical, translation, accessibility and regulatory validation. Raw data-evidence occurrences in scripts are not proof of rendered UI. Missing bundle files can still be under active teammate construction.",
+  "loadedBundles": [
+    "evidence-db.js",
+    "evidence-reconciled.js",
+    "evidence-lifecycle.js",
+    "evidence-acupoint.js",
+    "evidence-safety.js",
+    "evidence-core.js",
+    "evidence-merge.js"
+  ],
+  "totalRecords": 148,
+  "sourceCheckedRecords": [
+    "phenoage-2018-method",
+    "straw10",
+    "ovarian-age-concept",
+    "hrv-women-health",
+    "sp6-acupressure-cramps",
+    "acupressure-dysmenorrhea-meta",
+    "heat-therapy-dysmenorrhea",
+    "camera-ppg-study-scope",
+    "wearable-data-permissions",
+    "hrv-source-methods",
+    "cycle-teaching-model",
+    "atlas-who-landmarks",
+    "atlas-traditional-rationale",
+    "atlas-fertility",
+    "atlas-menopause",
+    "atlas-safety",
+    "atlas-red-flags",
+    "atlas-source-license",
+    "life-teen-pattern",
+    "life-teen-flow",
+    "life-teen-comfort",
+    "life-teen-support",
+    "life-teen-pcos",
+    "life-ttc-observations",
+    "life-ttc-folate",
+    "life-ttc-planning",
+    "life-ttc-help",
+    "life-postnatal-care",
+    "life-postnatal-bleeding",
+    "life-postnatal-fertility",
+    "life-postnatal-mood",
+    "life-postnatal-redflags",
+    "life-peri-pattern",
+    "life-peri-comfort",
+    "life-peri-options",
+    "life-peri-testing",
+    "life-peri-pregnancy",
+    "life-post-definition",
+    "life-post-strength",
+    "life-post-comfort",
+    "life-post-bleeding",
+    "life-tcm-safety",
+    "apple-review",
+    "life-teen-urgent",
+    "life-ttc-pregnancy-test",
+    "life-peri-care",
+    "life-post-urgent",
+    "cycle-physiology-updated",
+    "discharge-observation-updated",
+    "fertility-app-limits",
+    "mental-health-scope",
+    "mental-health-support-worldwide",
+    "foot-care-safety",
+    "tcm-evidence-limits",
+    "tcm-herbs-scope",
+    "movement-individual-variation",
+    "evidence-reading-scope"
+  ],
+  "legacyOrPendingRecords": [
+    "cycle-phases",
+    "cycle-length-normal",
+    "estradiol-follicular",
+    "progesterone-luteal",
+    "amh-overview",
+    "fsh-menopause",
+    "afc-reserve",
+    "perimenopause-symptoms",
+    "menopause-age",
+    "hot-flashes",
+    "hrt-benefits-risks",
+    "sleep-duration",
+    "sleep-cycle-hormones",
+    "stress-hrv",
+    "stress-cortisol-cycle",
+    "breathwork-hrv",
+    "478-breathing",
+    "iron-menstruation",
+    "magnesium-pms",
+    "omega3-inflammation",
+    "vitamin-d-fertility",
+    "inositol-pcos",
+    "b6-pms",
+    "folate-reproduction",
+    "exercise-cycle",
+    "exercise-luteal",
+    "pcos-criteria",
+    "pcos-lifestyle",
+    "endometriosis-overview",
+    "thyroid-menstrual",
+    "bmi-fertility",
+    "smoking-menopause",
+    "bone-estrogen",
+    "cardiovascular-menopause",
+    "vaginal-dryness",
+    "hormonal-contraception",
+    "ppg-hrv",
+    "supplements-caution",
+    "partner-support-outcomes",
+    "endocrine-disruptors",
+    "family-history-ovarian",
+    "nutrition-follicular",
+    "nutrition-luteal",
+    "fertile-window",
+    "sleep-perimenopause",
+    "stress-fertility",
+    "ovarian-longevity",
+    "longevity-lifestyle",
+    "soy-isoflavones-hot-flashes",
+    "soy-isoflavones-bone",
+    "danggui-buxue-tang",
+    "dong-quai-null",
+    "flaxseed-null",
+    "calcium-pms",
+    "omega3-dysmenorrhea",
+    "red-ginseng-menopause",
+    "pueraria-mirifica",
+    "gan-mai-da-zao-tang",
+    "rose-tea-dysmenorrhea",
+    "magnesium-pms-mixed",
+    "tcm-menopause-cochrane",
+    "jiawei-xiaoyao-pms",
+    "goji-ovarian-animal",
+    "mediterranean-menopause",
+    "myo-inositol-pcos",
+    "breath-cramps-diaphragmatic",
+    "breath-478-relaxation",
+    "benson-menstrual-pain",
+    "exercise-dysmenorrhea",
+    "yoga-dysmenorrhea",
+    "cold-drinks-dysmenorrhea",
+    "estrogen-insulin-follicular",
+    "moxibustion-pcos",
+    "castor-oil-pack",
+    "ginger-poultice-cramps",
+    "menstrual-cycle-hormones",
+    "lh-surge-ovulation",
+    "progesterone-thermogenic",
+    "pms-hormone-withdrawal",
+    "atlas-period-pain",
+    "straw-hormonal",
+    "straw-pcos",
+    "straw-60day",
+    "bone-health-menopause",
+    "perimenopause-duration",
+    "ppd-prevalence",
+    "exercise-pms",
+    "acupressure-dysmenorrhea",
+    "epds-validity",
+    "mood-tracking-benefit",
+    "ppd-treatment"
+  ],
+  "pages": [
+    {
+      "file": "acupoints.html",
+      "keys": [
+        "atlas-who-landmarks",
+        "atlas-safety",
+        "atlas-period-pain",
+        "atlas-fertility",
+        "atlas-menopause",
+        "atlas-red-flags",
+        "atlas-source-license"
+      ],
+      "reviewedKeys": [
+        "atlas-who-landmarks",
+        "atlas-safety",
+        "atlas-fertility",
+        "atlas-menopause",
+        "atlas-red-flags",
+        "atlas-source-license"
+      ],
+      "pendingKeys": [
+        "atlas-period-pain"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": false
+    },
+    {
+      "file": "bio-age.html",
+      "keys": [
+        "phenoage-2018-method"
+      ],
+      "reviewedKeys": [
+        "phenoage-2018-method"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "breathe.html",
+      "keys": [
+        "breathwork-hrv",
+        "hrv-women-health",
+        "478-breathing",
+        "stress-cortisol-cycle",
+        "sleep-cycle-hormones",
+        "sleep-duration",
+        "breath-cramps-diaphragmatic",
+        "breath-478-relaxation",
+        "benson-menstrual-pain",
+        "ppg-hrv",
+        "stress-hrv"
+      ],
+      "reviewedKeys": [
+        "hrv-women-health"
+      ],
+      "pendingKeys": [
+        "breathwork-hrv",
+        "478-breathing",
+        "stress-cortisol-cycle",
+        "sleep-cycle-hormones",
+        "sleep-duration",
+        "breath-cramps-diaphragmatic",
+        "breath-478-relaxation",
+        "benson-menstrual-pain",
+        "ppg-hrv",
+        "stress-hrv"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "breathwork.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "circle.html",
+      "keys": [
+        "amh-overview",
+        "478-breathing",
+        "stress-cortisol-cycle",
+        "perimenopause-symptoms",
+        "menopause-age",
+        "pcos-criteria",
+        "inositol-pcos",
+        "pcos-lifestyle",
+        "iron-menstruation",
+        "endometriosis-overview"
+      ],
+      "reviewedKeys": [],
+      "pendingKeys": [
+        "amh-overview",
+        "478-breathing",
+        "stress-cortisol-cycle",
+        "perimenopause-symptoms",
+        "menopause-age",
+        "pcos-criteria",
+        "inositol-pcos",
+        "pcos-lifestyle",
+        "iron-menstruation",
+        "endometriosis-overview"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "community.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "cycle-delay.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "cycle-home.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "cycle-log.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "cycle-trends.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "diet.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "evidence-library.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "exercise-guide.html",
+      "keys": [
+        "exercise-cycle",
+        "exercise-dysmenorrhea",
+        "heat-therapy-dysmenorrhea",
+        "exercise-pms",
+        "stress-cortisol-cycle",
+        "acupressure-dysmenorrhea"
+      ],
+      "reviewedKeys": [
+        "heat-therapy-dysmenorrhea"
+      ],
+      "pendingKeys": [
+        "exercise-cycle",
+        "exercise-dysmenorrhea",
+        "exercise-pms",
+        "stress-cortisol-cycle",
+        "acupressure-dysmenorrhea"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "exercise.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "fertility.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "food-scan.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "foods.html",
+      "keys": [
+        "iron-menstruation",
+        "omega3-dysmenorrhea",
+        "vitamin-d-fertility",
+        "folate-reproduction",
+        "magnesium-pms-mixed",
+        "calcium-pms",
+        "nutrition-follicular",
+        "flaxseed-null",
+        "b6-pms",
+        "sleep-cycle-hormones",
+        "nutrition-luteal",
+        "soy-isoflavones-hot-flashes",
+        "soy-isoflavones-bone",
+        "bone-estrogen",
+        "mediterranean-menopause",
+        "pcos-lifestyle",
+        "myo-inositol-pcos",
+        "omega3-inflammation",
+        "endometriosis-overview",
+        "dong-quai-null",
+        "danggui-buxue-tang",
+        "pueraria-mirifica",
+        "tcm-menopause-cochrane",
+        "goji-ovarian-animal",
+        "rose-tea-dysmenorrhea",
+        "gan-mai-da-zao-tang",
+        "jiawei-xiaoyao-pms",
+        "stress-cortisol-cycle",
+        "sleep-duration",
+        "hot-flashes"
+      ],
+      "reviewedKeys": [],
+      "pendingKeys": [
+        "iron-menstruation",
+        "omega3-dysmenorrhea",
+        "vitamin-d-fertility",
+        "folate-reproduction",
+        "magnesium-pms-mixed",
+        "calcium-pms",
+        "nutrition-follicular",
+        "flaxseed-null",
+        "b6-pms",
+        "sleep-cycle-hormones",
+        "nutrition-luteal",
+        "soy-isoflavones-hot-flashes",
+        "soy-isoflavones-bone",
+        "bone-estrogen",
+        "mediterranean-menopause",
+        "pcos-lifestyle",
+        "myo-inositol-pcos",
+        "omega3-inflammation",
+        "endometriosis-overview",
+        "dong-quai-null",
+        "danggui-buxue-tang",
+        "pueraria-mirifica",
+        "tcm-menopause-cochrane",
+        "goji-ovarian-animal",
+        "rose-tea-dysmenorrhea",
+        "gan-mai-da-zao-tang",
+        "jiawei-xiaoyao-pms",
+        "stress-cortisol-cycle",
+        "sleep-duration",
+        "hot-flashes"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "health-profile.html",
+      "keys": [
+        "bmi-fertility",
+        "family-history-ovarian",
+        "cycle-length-normal",
+        "pcos-criteria",
+        "endometriosis-overview",
+        "thyroid-menstrual",
+        "hot-flashes",
+        "perimenopause-symptoms",
+        "hormonal-contraception",
+        "vitamin-d-fertility",
+        "magnesium-pms",
+        "inositol-pcos",
+        "supplements-caution",
+        "sleep-duration",
+        "sleep-cycle-hormones",
+        "stress-cortisol-cycle",
+        "smoking-menopause",
+        "endocrine-disruptors",
+        "fertile-window",
+        "stress-fertility"
+      ],
+      "reviewedKeys": [],
+      "pendingKeys": [
+        "bmi-fertility",
+        "family-history-ovarian",
+        "cycle-length-normal",
+        "pcos-criteria",
+        "endometriosis-overview",
+        "thyroid-menstrual",
+        "hot-flashes",
+        "perimenopause-symptoms",
+        "hormonal-contraception",
+        "vitamin-d-fertility",
+        "magnesium-pms",
+        "inositol-pcos",
+        "supplements-caution",
+        "sleep-duration",
+        "sleep-cycle-hormones",
+        "stress-cortisol-cycle",
+        "smoking-menopause",
+        "endocrine-disruptors",
+        "fertile-window",
+        "stress-fertility"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "home.html",
+      "keys": [
+        "cycle-teaching-model"
+      ],
+      "reviewedKeys": [
+        "cycle-teaching-model"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "hormones.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "hydration.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "index.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "insights.html",
+      "keys": [
+        "ovarian-age-concept"
+      ],
+      "reviewedKeys": [
+        "ovarian-age-concept"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "journey-bloom.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "journey-grow.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "journey-nurture.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "journey-peri.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "journey-post.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "label-scan.html",
+      "keys": [
+        "endocrine-disruptors",
+        "pcos-lifestyle",
+        "nutrition-luteal",
+        "iron-menstruation",
+        "omega3-inflammation",
+        "nutrition-follicular",
+        "magnesium-pms"
+      ],
+      "reviewedKeys": [],
+      "pendingKeys": [
+        "endocrine-disruptors",
+        "pcos-lifestyle",
+        "nutrition-luteal",
+        "iron-menstruation",
+        "omega3-inflammation",
+        "nutrition-follicular",
+        "magnesium-pms"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "labs.html",
+      "keys": [
+        "ovarian-age-concept"
+      ],
+      "reviewedKeys": [
+        "ovarian-age-concept"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-biomarkers.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-cycle-phases.html",
+      "keys": [
+        "cycle-physiology-updated",
+        "movement-individual-variation"
+      ],
+      "reviewedKeys": [
+        "cycle-physiology-updated",
+        "movement-individual-variation"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-discharge.html",
+      "keys": [
+        "discharge-observation-updated"
+      ],
+      "reviewedKeys": [
+        "discharge-observation-updated"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-fertile-window.html",
+      "keys": [
+        "cycle-physiology-updated",
+        "discharge-observation-updated",
+        "evidence-reading-scope"
+      ],
+      "reviewedKeys": [
+        "cycle-physiology-updated",
+        "discharge-observation-updated",
+        "evidence-reading-scope"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-hormone-phase-locking.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-lifestyle.html",
+      "keys": [
+        "evidence-reading-scope"
+      ],
+      "reviewedKeys": [
+        "evidence-reading-scope"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-longevity-pathways.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-ovarian-age.html",
+      "keys": [
+        "ovarian-age-concept"
+      ],
+      "reviewedKeys": [
+        "ovarian-age-concept"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-ovarian-biology.html",
+      "keys": [
+        "evidence-reading-scope"
+      ],
+      "reviewedKeys": [
+        "evidence-reading-scope"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-ovarian-longevity.html",
+      "keys": [
+        "ovarian-longevity",
+        "ovarian-age-concept",
+        "smoking-menopause",
+        "sleep-cycle-hormones",
+        "sleep-duration",
+        "exercise-cycle",
+        "stress-cortisol-cycle",
+        "longevity-lifestyle",
+        "amh-overview",
+        "afc-reserve"
+      ],
+      "reviewedKeys": [
+        "ovarian-age-concept"
+      ],
+      "pendingKeys": [
+        "ovarian-longevity",
+        "smoking-menopause",
+        "sleep-cycle-hormones",
+        "sleep-duration",
+        "exercise-cycle",
+        "stress-cortisol-cycle",
+        "longevity-lifestyle",
+        "amh-overview",
+        "afc-reserve"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-perimenopause.html",
+      "keys": [
+        "perimenopause-symptoms",
+        "straw10",
+        "hot-flashes",
+        "sleep-perimenopause",
+        "fsh-menopause",
+        "amh-overview",
+        "bone-estrogen",
+        "stress-cortisol-cycle",
+        "hrt-benefits-risks"
+      ],
+      "reviewedKeys": [
+        "straw10"
+      ],
+      "pendingKeys": [
+        "perimenopause-symptoms",
+        "hot-flashes",
+        "sleep-perimenopause",
+        "fsh-menopause",
+        "amh-overview",
+        "bone-estrogen",
+        "stress-cortisol-cycle",
+        "hrt-benefits-risks"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-ppg-tech.html",
+      "keys": [
+        "camera-ppg-study-scope"
+      ],
+      "reviewedKeys": [
+        "camera-ppg-study-scope"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-straw10.html",
+      "keys": [
+        "evidence-reading-scope"
+      ],
+      "reviewedKeys": [
+        "evidence-reading-scope"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn-wearables.html",
+      "keys": [
+        "wearable-data-permissions",
+        "hrv-source-methods"
+      ],
+      "reviewedKeys": [
+        "wearable-data-permissions",
+        "hrv-source-methods"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "learn.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "life-journey.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "login.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "logo.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "longevity.html",
+      "keys": [
+        "perimenopause-symptoms",
+        "bone-estrogen",
+        "cardiovascular-menopause"
+      ],
+      "reviewedKeys": [],
+      "pendingKeys": [
+        "perimenopause-symptoms",
+        "bone-estrogen",
+        "cardiovascular-menopause"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "medas14.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "meds.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "mental-health.html",
+      "keys": [
+        "mental-health-scope",
+        "mental-health-support-worldwide"
+      ],
+      "reviewedKeys": [
+        "mental-health-scope",
+        "mental-health-support-worldwide"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "myofascial.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "notifications.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "nutrients.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "nutrition-plan.html",
+      "keys": [
+        "cycle-phases",
+        "iron-menstruation",
+        "magnesium-pms-mixed",
+        "omega3-dysmenorrhea",
+        "nutrition-follicular",
+        "folate-reproduction",
+        "omega3-inflammation",
+        "fertile-window",
+        "vitamin-d-fertility",
+        "nutrition-luteal",
+        "b6-pms",
+        "perimenopause-symptoms",
+        "soy-isoflavones-hot-flashes",
+        "calcium-pms",
+        "bone-estrogen",
+        "mediterranean-menopause",
+        "flaxseed-null",
+        "hot-flashes",
+        "danggui-buxue-tang",
+        "gan-mai-da-zao-tang",
+        "dong-quai-null",
+        "pueraria-mirifica",
+        "cold-drinks-dysmenorrhea"
+      ],
+      "reviewedKeys": [],
+      "pendingKeys": [
+        "cycle-phases",
+        "iron-menstruation",
+        "magnesium-pms-mixed",
+        "omega3-dysmenorrhea",
+        "nutrition-follicular",
+        "folate-reproduction",
+        "omega3-inflammation",
+        "fertile-window",
+        "vitamin-d-fertility",
+        "nutrition-luteal",
+        "b6-pms",
+        "perimenopause-symptoms",
+        "soy-isoflavones-hot-flashes",
+        "calcium-pms",
+        "bone-estrogen",
+        "mediterranean-menopause",
+        "flaxseed-null",
+        "hot-flashes",
+        "danggui-buxue-tang",
+        "gan-mai-da-zao-tang",
+        "dong-quai-null",
+        "pueraria-mirifica",
+        "cold-drinks-dysmenorrhea"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "nutrition-scanner.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "onboarding.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "ovarian-age.html",
+      "keys": [
+        "ovarian-age-concept"
+      ],
+      "reviewedKeys": [
+        "ovarian-age-concept"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "overview.html",
+      "keys": [
+        "hrv-women-health"
+      ],
+      "reviewedKeys": [
+        "hrv-women-health"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "partner-code.html",
+      "keys": [
+        "partner-support-outcomes",
+        "fertile-window",
+        "perimenopause-symptoms"
+      ],
+      "reviewedKeys": [],
+      "pendingKeys": [
+        "partner-support-outcomes",
+        "fertile-window",
+        "perimenopause-symptoms"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "partner-connect.html",
+      "keys": [
+        "partner-support-outcomes",
+        "cycle-phases",
+        "sleep-cycle-hormones",
+        "magnesium-pms",
+        "vaginal-dryness",
+        "breathwork-hrv"
+      ],
+      "reviewedKeys": [],
+      "pendingKeys": [
+        "partner-support-outcomes",
+        "cycle-phases",
+        "sleep-cycle-hormones",
+        "magnesium-pms",
+        "vaginal-dryness",
+        "breathwork-hrv"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "period-start.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "personal-info.html",
+      "keys": [
+        "bmi-fertility",
+        "fertile-window"
+      ],
+      "reviewedKeys": [],
+      "pendingKeys": [
+        "bmi-fertility",
+        "fertile-window"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "phase-coach.html",
+      "keys": [
+        "cycle-phases",
+        "estradiol-follicular",
+        "nutrition-follicular",
+        "exercise-cycle",
+        "iron-menstruation",
+        "exercise-luteal",
+        "exercise-dysmenorrhea",
+        "yoga-dysmenorrhea",
+        "estrogen-insulin-follicular",
+        "magnesium-pms-mixed",
+        "partner-support-outcomes",
+        "cycle-length-normal",
+        "breathwork-hrv"
+      ],
+      "reviewedKeys": [],
+      "pendingKeys": [
+        "cycle-phases",
+        "estradiol-follicular",
+        "nutrition-follicular",
+        "exercise-cycle",
+        "iron-menstruation",
+        "exercise-luteal",
+        "exercise-dysmenorrhea",
+        "yoga-dysmenorrhea",
+        "estrogen-insulin-follicular",
+        "magnesium-pms-mixed",
+        "partner-support-outcomes",
+        "cycle-length-normal",
+        "breathwork-hrv"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "postpartum-guide.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "ppg-review.html",
+      "keys": [
+        "ppg-hrv",
+        "hrv-women-health",
+        "stress-hrv",
+        "stress-cortisol-cycle",
+        "cardiovascular-menopause",
+        "breathwork-hrv",
+        "478-breathing"
+      ],
+      "reviewedKeys": [
+        "hrv-women-health"
+      ],
+      "pendingKeys": [
+        "ppg-hrv",
+        "stress-hrv",
+        "stress-cortisol-cycle",
+        "cardiovascular-menopause",
+        "breathwork-hrv",
+        "478-breathing"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "ppg.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "premium.html",
+      "keys": [
+        "evidence-reading-scope"
+      ],
+      "reviewedKeys": [
+        "evidence-reading-scope"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "privacy.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "profile.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "provider-dashboard.html",
+      "keys": [
+        "cycle-phases",
+        "cycle-length-normal",
+        "bmi-fertility",
+        "ovarian-age-concept",
+        "progesterone-luteal",
+        "magnesium-pms",
+        "b6-pms",
+        "straw10",
+        "amh-overview",
+        "fsh-menopause",
+        "iron-menstruation",
+        "sleep-duration"
+      ],
+      "reviewedKeys": [
+        "ovarian-age-concept",
+        "straw10"
+      ],
+      "pendingKeys": [
+        "cycle-phases",
+        "cycle-length-normal",
+        "bmi-fertility",
+        "progesterone-luteal",
+        "magnesium-pms",
+        "b6-pms",
+        "amh-overview",
+        "fsh-menopause",
+        "iron-menstruation",
+        "sleep-duration"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "reports.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "settings.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "sleep-diary.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "sleep.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "straw-calculator.html",
+      "keys": [
+        "straw10"
+      ],
+      "reviewedKeys": [
+        "straw10"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "stress-checkin.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "stress.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "supplements.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "tcm-footsoak.html",
+      "keys": [
+        "tcm-evidence-limits",
+        "foot-care-safety",
+        "heat-therapy-dysmenorrhea"
+      ],
+      "reviewedKeys": [
+        "tcm-evidence-limits",
+        "foot-care-safety",
+        "heat-therapy-dysmenorrhea"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "tcm-herbs.html",
+      "keys": [
+        "tcm-herbs-scope"
+      ],
+      "reviewedKeys": [
+        "tcm-herbs-scope"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "tcm-hub.html",
+      "keys": [
+        "sp6-acupressure-cramps",
+        "acupressure-dysmenorrhea-meta",
+        "heat-therapy-dysmenorrhea"
+      ],
+      "reviewedKeys": [
+        "sp6-acupressure-cramps",
+        "acupressure-dysmenorrhea-meta",
+        "heat-therapy-dysmenorrhea"
+      ],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "tcm-topical.html",
+      "keys": [
+        "moxibustion-pcos",
+        "sp6-acupressure-cramps",
+        "heat-therapy-dysmenorrhea",
+        "ginger-poultice-cramps",
+        "castor-oil-pack"
+      ],
+      "reviewedKeys": [
+        "sp6-acupressure-cramps",
+        "heat-therapy-dysmenorrhea"
+      ],
+      "pendingKeys": [
+        "moxibustion-pcos",
+        "ginger-poultice-cramps",
+        "castor-oil-pack"
+      ],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "terms.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "trends.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "vascular.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    },
+    {
+      "file": "wellness-checkin.html",
+      "keys": [],
+      "reviewedKeys": [],
+      "pendingKeys": [],
+      "missingKeys": [],
+      "sharedEvidence": true
+    }
+  ]
+}

@@ -1,0 +1,372 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovuluna · Circle</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<link rel="stylesheet" href="evidence.css">
+<script src="anim.js" defer></script>
+<style>
+.circle-hero{ background:linear-gradient(135deg,rgba(196,181,224,.25),rgba(245,198,184,.2)); border:1.5px solid rgba(196,181,224,.4); border-radius:var(--r); padding:20px; position:relative; overflow:hidden; }
+.circle-hero::after{ content:''; position:absolute; top:-30px; right:-20px; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,.3); }
+.circle-badge{ display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:99px; background:rgba(255,255,255,.7); font:800 12px var(--sans); color:var(--mauve); letter-spacing:.04em; }
+.circle-title{ font-family:var(--serif); font-size:28px; font-weight:600; color:var(--cocoa); line-height:1.1; margin-top:10px; }
+.circle-desc{ font-size:12.5px; color:var(--taupe); line-height:1.5; margin-top:6px; }
+.circle-stats{ display:flex; gap:10px; margin-top:14px; }
+.circle-stats .cs{ flex:1; text-align:center; background:rgba(255,255,255,.6); border-radius:14px; padding:10px 4px; }
+.circle-stats .cs .cs-v{ font-family:var(--serif); font-size:18px; font-weight:800; color:var(--ink); }
+.circle-stats .cs .cs-l{ font-size:9px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--taupe); margin-top:2px; }
+.topic-chips{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+.topic-chip{ flex-shrink:0; padding:8px 16px; border-radius:99px; border:1.5px solid var(--line-soft); background:var(--card-solid); font:700 12px var(--sans); color:var(--taupe); cursor:pointer; transition:.15s; }
+.topic-chip.on{ border-color:var(--mauve); background:rgba(139,108,130,.1); color:var(--ink); }
+.trend-item{ display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--line-soft); }
+.trend-item:last-child{ border-bottom:none; }
+.trend-item .ti-rank{ font-family:var(--serif); font-size:18px; font-weight:800; color:var(--lavender); width:24px; text-align:center; }
+.trend-item .ti-body{ flex:1; }
+.trend-item .ti-t{ font-size:13px; font-weight:800; color:var(--ink); }
+.trend-item .ti-s{ font-size:11px; color:var(--taupe); margin-top:1px; }
+.trend-item .ti-fire{ font-size:16px; }
+.anon-toggle{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:var(--sunken); border-radius:14px; border:1.5px solid var(--line-soft); }
+.anon-toggle .at-l{ font-size:12.5px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px; }
+.anon-switch{ width:44px; height:24px; border-radius:99px; background:var(--line); position:relative; cursor:pointer; transition:.2s; }
+.anon-switch.on{ background:var(--mauve); }
+.anon-switch::after{ content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:#fff; transition:.2s; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+.anon-switch.on::after{ left:22px; }
+.post-card{ background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r); padding:16px; box-shadow:0 8px 24px -12px rgba(107,82,142,.18); backdrop-filter:blur(8px); }
+.post-head{ display:flex; align-items:center; gap:10px; }
+.post-avatar{ width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; border:2px solid var(--line-soft); }
+.post-meta{ flex:1; }
+.post-user{ font-size:13px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:5px; }
+.post-user .verified{ font-size:12px; color:var(--mauve); }
+.post-time{ font-size:10.5px; color:var(--taupe); margin-top:1px; }
+.post-tag{ display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.04em; padding:3px 8px; border-radius:99px; background:rgba(196,181,224,.2); color:var(--mauve); }
+.post-body{ font-size:13px; color:var(--cocoa); line-height:1.55; margin-top:10px; }
+.post-body b{ color:var(--ink); }
+.post-actions{ display:flex; gap:18px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line-soft); }
+.post-action{ display:flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; color:var(--taupe); cursor:pointer; transition:.15s; }
+.post-action:hover{ color:var(--mauve); }
+.post-action .ms{ font-size:17px; }
+.expert-card{ display:flex; gap:12px; padding:14px; background:var(--card-solid); border:1.5px solid var(--line-soft); border-radius:16px; }
+.expert-card .ec-ic{ width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:19px; flex-shrink:0; background:rgba(196,181,224,.2); }
+.expert-card .ec-body{ flex:1; }
+.expert-card .ec-name{ font-size:13px; font-weight:800; color:var(--ink); }
+.expert-card .ec-role{ font-size:10.5px; color:var(--taupe); margin-top:1px; }
+.expert-card .ec-q{ font-size:12px; color:var(--cocoa); line-height:1.45; margin-top:6px; font-style:italic; }
+.guideline-item{ display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--line-soft); }
+.guideline-item:last-child{ border-bottom:none; }
+.guideline-item .gi-ic{ font-size:15px; flex-shrink:0; margin-top:1px; }
+.guideline-item .gi-txt{ font-size:12px; color:var(--cocoa); line-height:1.45; }
+.guideline-item .gi-txt b{ color:var(--ink); }
+.fab-create{ position:fixed; bottom:100px; right:calc(50% - 195px); z-index:35; width:56px; height:56px; border-radius:50%; background:var(--mauve); color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 20px rgba(139,108,130,.4); cursor:pointer; border:none; font-size:26px; transition:.18s; }
+.fab-create:hover{ transform:scale(1.08); }
+@media(max-width:430px){ .fab-create{ right:18px; } }
+.wellness-note{ font-size:11px; color:var(--taupe); line-height:1.5; padding:10px 12px; background:rgba(245,198,184,.12); border-radius:12px; border:1px solid rgba(212,154,138,.25); }
+</style>
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+  <div class="scroll">
+
+    <!-- Hero -->
+    <div class="circle-hero">
+      <div class="circle-badge"><span class="ms" style="font-size:14px">groups</span> Your Community</div>
+      <div class="circle-title">You're not alone 🌸</div>
+      <div class="circle-desc">Connect with women navigating similar cycles, symptoms, and life stages. Share, learn, and grow together in a safe, moderated space.</div>
+      <div class="circle-stats">
+        <div class="cs"><div class="cs-v">12.4k</div><div class="cs-l">Members</div></div>
+        <div class="cs"><div class="cs-v">348</div><div class="cs-l">Online Now</div></div>
+        <div class="cs"><div class="cs-v">1.2k</div><div class="cs-l">Posts Today</div></div>
+      </div>
+    </div>
+
+    <!-- Anonymous toggle -->
+    <div class="anon-toggle">
+      <div class="at-l"><span class="ms" style="font-size:18px">visibility_off</span> Post anonymously</div>
+      <div class="anon-switch" id="anonSwitch" onclick="this.classList.toggle('on')"></div>
+    </div>
+
+    <!-- Topic groups -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">Topic Groups</h2>
+      <div class="sub" style="margin-bottom:10px">Find your people</div>
+      <div class="topic-chips" id="topicChips">
+        <div class="topic-chip on">🌸 All</div>
+        <div class="topic-chip">🫘 PCOS</div>
+        <div class="topic-chip">🌙 Perimenopause</div>
+        <div class="topic-chip">🤰 TTC</div>
+        <div class="topic-chip">🌀 Endometriosis</div>
+        <div class="topic-chip">🥗 Nutrition</div>
+        <div class="topic-chip">🧠 Mental Health</div>
+      </div>
+    </div>
+
+    <!-- Trending topics -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">Trending Topics</h2>
+      <div class="sub" style="margin-bottom:8px">What the community is talking about</div>
+      <div class="trend-item">
+        <div class="ti-rank">1</div>
+        <div class="ti-body"><div class="ti-t">First period after baby — what's normal?</div><div class="ti-s">2.1k posts · 847 comments</div></div>
+        <div class="ti-fire">🔥</div>
+      </div>
+      <div class="trend-item">
+        <div class="ti-rank">2</div>
+        <div class="ti-body"><div class="ti-t">Magnesium for PMS — does it actually work?</div><div class="ti-s">1.5k posts · 623 comments</div></div>
+        <div class="ti-fire">🔥</div>
+      </div>
+      <div class="trend-item">
+        <div class="ti-rank">3</div>
+        <div class="ti-body"><div class="ti-t">Perimenopause brain fog is real — share your tips</div><div class="ti-s">980 posts · 412 comments</div></div>
+        <div class="ti-fire">🔥</div>
+      </div>
+      <div class="trend-item">
+        <div class="ti-rank">4</div>
+        <div class="ti-body"><div class="ti-t">PCOS diagnosis journey — what tests to ask for</div><div class="ti-s">756 posts · 389 comments</div></div>
+        <div class="ti-fire">📈</div>
+      </div>
+    </div>
+
+    <!-- Feed header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px">
+      <h2 class="sec" style="margin:0">Community Feed</h2>
+      <span style="font-size:11px;font-weight:800;color:var(--mauve);cursor:pointer">Latest ▾</span>
+    </div>
+
+    <!-- Post 1 -->
+    <div class="post-card">
+      <div class="post-head">
+        <div class="post-avatar" style="background:rgba(245,198,184,.3)">🌷</div>
+        <div class="post-meta">
+          <div class="post-user">Maya R. <span class="verified ms">verified</span></div>
+          <div class="post-time">2h ago · Follicular Phase</div>
+        </div>
+        <span class="post-tag">TTC</span>
+      </div>
+      <div class="post-body">Just got my <b>AMH results back</b> — 2.8 ng/mL at 32. My doctor said this is within normal range for my age, but I'm still anxious about ovarian reserve. Anyone else gone through this? What questions should I be asking? <span class="qi" data-evidence="amh-overview">i</span></div>
+      <div class="post-actions">
+        <div class="post-action"><span class="ms">favorite</span> 247</div>
+        <div class="post-action"><span class="ms">chat_bubble</span> 89</div>
+        <div class="post-action"><span class="ms">share</span> Share</div>
+      </div>
+    </div>
+
+    <!-- Post 2 -->
+    <div class="post-card">
+      <div class="post-head">
+        <div class="post-avatar" style="background:rgba(196,181,224,.3)">🌙</div>
+        <div class="post-meta">
+          <div class="post-user">Anonymous</div>
+          <div class="post-time">4h ago · Luteal Phase</div>
+        </div>
+        <span class="post-tag" style="background:rgba(245,198,184,.25);color:var(--coral-deep)">Mental Health</span>
+      </div>
+      <div class="post-body">The luteal phase anxiety is hitting hard this month. I know progesterone shifts can affect mood, but it feels overwhelming some cycles. <b>Breathwork has been helping</b> — 4-7-8 breathing before bed seems to take the edge off. What are your go-to coping strategies? <span class="qi" data-evidence="478-breathing">i</span> <span class="qi" data-evidence="stress-cortisol-cycle">i</span></div>
+      <div class="post-actions">
+        <div class="post-action"><span class="ms">favorite</span> 512</div>
+        <div class="post-action"><span class="ms">chat_bubble</span> 156</div>
+        <div class="post-action"><span class="ms">share</span> Share</div>
+      </div>
+    </div>
+
+    <!-- Post 3 -->
+    <div class="post-card">
+      <div class="post-head">
+        <div class="post-avatar" style="background:rgba(168,192,160,.3)">🌿</div>
+        <div class="post-meta">
+          <div class="post-user">Sofia L.</div>
+          <div class="post-time">6h ago · Perimenopause</div>
+        </div>
+        <span class="post-tag" style="background:rgba(168,192,160,.25);color:#5a7a52">Perimenopause</span>
+      </div>
+      <div class="post-body">44 and suddenly my cycles are all over the place — some 24 days, some 38. Hot flashes started last month, mostly at night. My mom went through menopause at 51. Is this perimenopause? How long does this phase typically last? <span class="qi" data-evidence="perimenopause-symptoms">i</span> <span class="qi" data-evidence="menopause-age">i</span></div>
+      <div class="post-actions">
+        <div class="post-action"><span class="ms">favorite</span> 389</div>
+        <div class="post-action"><span class="ms">chat_bubble</span> 203</div>
+        <div class="post-action"><span class="ms">share</span> Share</div>
+      </div>
+    </div>
+
+    <!-- Post 4 -->
+    <div class="post-card">
+      <div class="post-head">
+        <div class="post-avatar" style="background:rgba(168,184,216,.3)">🫘</div>
+        <div class="post-meta">
+          <div class="post-user">Priya K. <span class="verified ms">verified</span></div>
+          <div class="post-time">8h ago</div>
+        </div>
+        <span class="post-tag" style="background:rgba(212,154,184,.2);color:#a05a7a">PCOS</span>
+      </div>
+      <div class="post-body">Finally got a formal PCOS diagnosis after 3 years of symptoms. My doctor recommended lifestyle changes first — regular exercise, balanced meals, and inositol supplements. Has anyone seen real improvements with inositol? How long did it take? <span class="qi" data-evidence="pcos-criteria">i</span> <span class="qi" data-evidence="inositol-pcos">i</span> <span class="qi" data-evidence="pcos-lifestyle">i</span></div>
+      <div class="post-actions">
+        <div class="post-action"><span class="ms">favorite</span> 678</div>
+        <div class="post-action"><span class="ms">chat_bubble</span> 234</div>
+        <div class="post-action"><span class="ms">share</span> Share</div>
+      </div>
+    </div>
+
+    <!-- Post 5 -->
+    <div class="post-card">
+      <div class="post-head">
+        <div class="post-avatar" style="background:rgba(229,201,138,.3)">🥗</div>
+        <div class="post-meta">
+          <div class="post-user">Emma T.</div>
+          <div class="post-time">12h ago · Menstrual Phase</div>
+        </div>
+        <span class="post-tag" style="background:rgba(229,201,138,.25);color:#a08830">Nutrition</span>
+      </div>
+      <div class="post-body">Started tracking my iron levels after heavy periods left me exhausted. My nutritionist suggested pairing <b>iron-rich foods with vitamin C</b> — lentils + bell peppers, spinach + citrus. It's made a noticeable difference in my energy. Anyone else have iron-deficiency stories? <span class="qi" data-evidence="iron-menstruation">i</span></div>
+      <div class="post-actions">
+        <div class="post-action"><span class="ms">favorite</span> 421</div>
+        <div class="post-action"><span class="ms">chat_bubble</span> 112</div>
+        <div class="post-action"><span class="ms">share</span> Share</div>
+      </div>
+    </div>
+
+    <!-- Post 6 -->
+    <div class="post-card">
+      <div class="post-head">
+        <div class="post-avatar" style="background:rgba(245,198,184,.3)">💜</div>
+        <div class="post-meta">
+          <div class="post-user">Jordan M.</div>
+          <div class="post-time">1d ago</div>
+        </div>
+        <span class="post-tag" style="background:rgba(196,181,224,.25);color:var(--mauve)">Endometriosis</span>
+      </div>
+      <div class="post-body">Endometriosis awareness post: it took <b>7 years</b> from first symptoms to laparoscopic diagnosis. The pain isn't "normal period pain." If your symptoms are interfering with daily life, please advocate for yourself. Pelvic pain, heavy bleeding, and pain during intercourse deserve investigation. <span class="qi" data-evidence="endometriosis-overview">i</span></div>
+      <div class="post-actions">
+        <div class="post-action"><span class="ms">favorite</span> 1.2k</div>
+        <div class="post-action"><span class="ms">chat_bubble</span> 347</div>
+        <div class="post-action"><span class="ms">share</span> Share</div>
+      </div>
+    </div>
+
+    <!-- Expert Q&A -->
+    <div class="card tint-lavender">
+      <h2 class="sec" style="margin-top:0">Expert Q&A</h2>
+      <div class="sub" style="margin-bottom:12px">Verified clinicians answer your questions</div>
+      <div class="expert-card">
+        <div class="ec-ic">👩‍⚕️</div>
+        <div class="ec-body">
+          <div class="ec-name">Dr. Amelia Chen, MD</div>
+          <div class="ec-role">Reproductive Endocrinologist · Verified</div>
+          <div class="ec-q">"Does AMH really predict fertility, or is it just a marketing number?"</div>
+          <a href="learn-biomarkers.html" class="btn ghost" style="margin-top:10px;font-size:12.5px;padding:12px">Read Her Answer <span class="ms" style="font-size:16px">arrow_forward</span></a>
+        </div>
+      </div>
+      <div style="height:10px"></div>
+      <div class="expert-card">
+        <div class="ec-ic" style="background:rgba(168,192,160,.2)">🥗</div>
+        <div class="ec-body">
+          <div class="ec-name">Nadia Okonkwo, RD</div>
+          <div class="ec-role">Registered Dietitian · Women's Health</div>
+          <div class="ec-q">"What should I actually eat during the luteal phase to reduce PMS?"</div>
+          <a href="nutrition-plan.html" class="btn ghost" style="margin-top:10px;font-size:12.5px;padding:12px">Read Her Answer <span class="ms" style="font-size:16px">arrow_forward</span></a>
+        </div>
+      </div>
+      <a href="learn.html" class="btn mauve" style="margin-top:14px">Ask an Expert <span class="ms" style="font-size:18px">help</span></a>
+    </div>
+
+    <!-- Community guidelines -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">Community Guidelines</h2>
+      <div class="sub" style="margin-bottom:8px">We keep Circle safe and supportive</div>
+      <div class="guideline-item">
+        <span class="gi-ic">💛</span>
+        <div class="gi-txt"><b>Be kind and supportive.</b> Every person's journey is different. No judgment, no unsolicited advice unless asked.</div>
+      </div>
+      <div class="guideline-item">
+        <span class="gi-ic">🔒</span>
+        <div class="gi-txt"><b>Respect privacy.</b> Don't share personal information — yours or others'. Anonymous posting is available for sensitive topics.</div>
+      </div>
+      <div class="guideline-item">
+        <span class="gi-ic">🚫</span>
+        <div class="gi-txt"><b>No medical diagnosis.</b> Community shares are experiences, not medical advice. Always consult a healthcare provider for personal concerns.</div>
+      </div>
+      <div class="guideline-item">
+        <span class="gi-ic">📢</span>
+        <div class="gi-txt"><b>No spam or self-promotion.</b> Keep posts relevant to women's health journeys. Report inappropriate content — we moderate actively.</div>
+      </div>
+      <div class="guideline-item">
+        <span class="gi-ic">🌈</span>
+        <div class="gi-txt"><b>Inclusive space.</b> We welcome all women and people with cycles, regardless of background, identity, or experience.</div>
+      </div>
+    </div>
+
+    <!-- Wellness disclaimer -->
+    <div class="wellness-note">
+      💛 <b>Community, not clinical care.</b> Circle is a peer support space. Posts reflect individual experiences and opinions, not medical advice. Evidence markers (i) link to general health information. For personal medical concerns, please consult a qualified healthcare provider.
+    </div>
+
+  </div>
+
+  <!-- Create post FAB -->
+  <button class="fab-create" onclick="alert('Create post — coming soon')"><span class="ms" style="font-size:26px">edit</span></button>
+
+  <nav class="nav">
+    <a href="home.html"><span class="n-ic">home</span>Home</a>
+    <a href="learn.html"><span class="n-ic">menu_book</span>Learn</a>
+    <a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a>
+    <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+    <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+  </nav>
+</div>
+
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script>
+// Topic chip switching
+document.querySelectorAll('.topic-chip').forEach(function(chip){
+  chip.addEventListener('click', function(){
+    document.querySelectorAll('.topic-chip').forEach(function(c){c.classList.remove('on');});
+    chip.classList.add('on');
+  });
+});
+// Post like toggle
+document.querySelectorAll('.post-action').forEach(function(act){
+  if(act.querySelector('.ms').textContent === 'favorite'){
+    act.addEventListener('click', function(){
+      var ic = act.querySelector('.ms');
+      if(ic.textContent === 'favorite'){ ic.textContent = 'favorite'; ic.style.color = 'var(--mauve)'; }
+    });
+  }
+});
+</script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

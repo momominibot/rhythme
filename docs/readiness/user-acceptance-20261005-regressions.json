@@ -1,0 +1,165 @@
+{
+  "checkedAt": "2026-10-05T15:43:52.800365+00:00",
+  "source": "/Users/michiyomimi/Desktop/ovuluna-dreamy",
+  "branch": "codex/daily-guidance-auth",
+  "head": "100fbcca58d47db174388f9ec82519380125b130",
+  "node": "v26.3.0",
+  "scope": "Existing synthetic deterministic and isolated DOM regressions only. No browser, providers, real data or external configuration. Counts are assertions grouped by suite, not people or end-to-end acceptance journeys.",
+  "suites": [
+    {
+      "suite": "daily-guidance",
+      "command": "node scripts/check-daily-guidance.cjs",
+      "groups": 32,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "b6b828ff32b92529829f17b24fa237b1f066b4cd2c983b07e5b84219d675b869",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "account-auth",
+      "command": "node scripts/check-account-auth.cjs",
+      "groups": 30,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "72f2a7f3590f2f7dcbf2ab481ee8cb13eaa9f06b893c2d40f4ea1e3bd9a5f612",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "observations",
+      "command": "node scripts/check-observations.cjs",
+      "groups": 21,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "64b4698766419a778490095ed7e0092bf839b241443d31f86306e17f5337060d",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "observation-care",
+      "command": "node scripts/check-observation-care.cjs",
+      "groups": 7,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "8a995f6cbdb46aee081e2ef616cfcce8a1161055d18308c425dd0668fc5c4900",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "labs",
+      "command": "node scripts/check-labs.cjs",
+      "groups": 9,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "564a96b55bcf7b22be35bc7a3a5c1cf827c175fc93d45edd98ed6e4888c58d02",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "journal",
+      "command": "node scripts/check-journal.cjs",
+      "groups": 13,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "4ae9d6e05afdc964ebc5189706f5d384a3c790bef81a0d4497c1b055580767bf",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "privacy-luna",
+      "command": "node scripts/check-privacy-luna.cjs",
+      "groups": 15,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "79a45ef6750c2fa1badbb3eacfc4c8aab126f2a81a61627cb29892a33f90bf5e",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "home",
+      "command": "node scripts/check-home.cjs",
+      "groups": 19,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "5ed62a4b18ffce71a35a4614e97a809716dadd11a1b472f054366de41e602032",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "records-health",
+      "command": "node scripts/check-records-health.cjs",
+      "groups": 6,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "1907e6a12f639aa634b5040156ffa3c621f5188820220beea79549df0ae94adb",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "insights-records",
+      "command": "node scripts/check-insights-records.cjs",
+      "groups": 9,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "afe4c97a3ddd68f27df55e361050219db9af62dc7316d23bdd550195de1976be",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "api",
+      "command": "node scripts/check-api.cjs",
+      "groups": 22,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "8b75df510d2225007c424d622ff2aa11ae04356288fe60612d0f2026b92da3fa",
+      "stderr": "(node:96662) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/michiyomimi/Desktop/ovuluna-dreamy/api/chat.js is not specified and it doesn't parse as CommonJS.\nReparsing as ES module because module syntax was detected. This incurs a performance overhead.\nTo eliminate this warning, add \"type\": \"module\" to /Users/michiyomimi/Desktop/ovuluna-dreamy/package.json.\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+      "failureOutput": null
+    },
+    {
+      "suite": "sleep-records",
+      "command": "node scripts/check-sleep-records.cjs",
+      "groups": 10,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "b061278e6e9d0be312e1d2bad0ede82955291fd553a3a0e3d63c773fe0743bae",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "sleep-diary",
+      "command": "node scripts/check-sleep-diary.cjs",
+      "groups": 15,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "825c15024393208c59bb1d2f1cff63f2d608252eaa824d1278fec2eeb25abf46",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "stale-writers",
+      "command": "node scripts/check-stale-writers.cjs",
+      "groups": 8,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "aacbfacfb6277d2e5522c5b3f53537b725fcaf2f4892f142822dadda50134290",
+      "stderr": "",
+      "failureOutput": null
+    },
+    {
+      "suite": "ovarian",
+      "command": "node scripts/check-ovarian.cjs",
+      "groups": 11,
+      "passed": true,
+      "exitCode": 0,
+      "scriptSha256": "c3ec06819cabc95b41c067dd6223283e00fb74a679e5548d31c4dade1a5d554b",
+      "stderr": "",
+      "failureOutput": null
+    }
+  ],
+  "passedGroups": 227,
+  "failedSuites": 0,
+  "omitted": "Entry/preferences suite unconditionally writes a repo receipt; excluded under no-repo-edits scope. Browser/layout/provider/device acceptance not rerun.",
+  "realUserAcceptance": "Not established: account lifecycle/protected per-user storage, distributed sessions, abuse controls, live provider/email verification, native/device/accessibility and qualified clinical review remain open per current source handoffs.",
+  "gitStatusAfter": ""
+}

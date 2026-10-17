@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Ovuluna · Wellness journal</title><link rel="icon" href="/assets/onboarding/egg.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet"><link rel="stylesheet" href="/theme.css"><link rel="stylesheet" href="/darkmode.css"><style>
+main.scroll{padding:12px 18px 34px;gap:0}h1{font:600 25px var(--serif);margin:0}h2{font:500 25px var(--serif);margin:0 0 10px}h3{font:700 15px var(--sans);margin:0 0 8px}p,li{font-size:14px;line-height:1.65}p+p{margin-top:10px}a{color:var(--mauve)}.note{color:var(--ink);font-size:13px;line-height:1.6}.card{margin:16px 0;padding:20px}.card ul,.card ol{padding-left:20px}.eyebrow{font:800 10px var(--sans);letter-spacing:.12em;text-transform:uppercase;margin:0 0 8px;color:var(--mauve)}label{display:block;font-size:14px;font-weight:700;margin:16px 0 7px}input,select,textarea{width:100%;padding:12px;border:1px solid var(--mauve);border-radius:12px;background:var(--card-solid);color:var(--ink);font:inherit}textarea{min-height:94px;resize:vertical}input[type=checkbox]{width:20px;height:20px;flex-shrink:0}.check{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.5}button{font:inherit;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}.btn{margin-top:14px}.status{margin-top:12px;font-size:13px;line-height:1.6}.row{display:flex;gap:10px;flex-wrap:wrap}.row .btn{flex:1}.journal-entry{padding:12px 0;border-bottom:1px solid var(--line)}.journal-entry p{white-space:pre-wrap;overflow-wrap:anywhere}.timer{text-align:center;font:500 58px var(--serif);font-variant-numeric:tabular-nums;margin:16px 0}.empty{font-size:14px;color:var(--ink)}:focus-visible{outline:3px solid var(--mauve);outline-offset:4px}.hero-icon{width:72px;height:72px;object-fit:contain;margin-bottom:12px}
+</style><link rel="stylesheet" href="dreamy.css">
+</head>
+<body><div class="app"><header class="top">
+  <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+  <a class="t-icon ms" href="notifications.html" aria-label="Notifications">notifications</a>
+  <a class="t-icon ms" href="cycle-trends.html" aria-label="Cycle trends">calendar_today</a>
+</header><main class="scroll"><img class="hero-icon" src="/assets/icons/stress.png" alt=""><p class="eyebrow">Wellness journal</p><h1>How are you feeling today?</h1><p>Your own words and observations, kept on this browser. Record what you notice today and review your entries over time.</p>
+<form id="journal"><div class="card"><label for="entry-date">Date</label><input id="entry-date" type="date" required><label for="mood">Mood</label><select id="mood" required><option value="">Choose how you feel</option><option>Low</option><option>Mixed</option><option>Steady</option><option>Good</option></select><label for="energy">Energy</label><select id="energy" required><option value="">Choose your energy</option><option>Low</option><option>Some</option><option>Steady</option><option>High</option></select><label for="comfort">Body comfort</label><select id="comfort" required><option value="">Choose your comfort</option><option>Uncomfortable</option><option>Some discomfort</option><option>Comfortable</option></select><label for="notes">Anything you want to remember? (optional)</label><textarea id="notes" maxlength="1000" placeholder="A symptom, a small win, or something you need today"></textarea><p id="journal-mode" class="note" aria-live="polite">New journal entry</p><button id="journal-save" class="btn" type="submit">Save journal entry</button><button id="journal-cancel" class="btn ghost" type="button" hidden>Cancel / restore saved entry</button><p class="note">Choose a saved date or Edit entry to restore its values before saving changes. One journal entry is kept per date. Browser storage is not an encrypted health record or a cloud backup.</p><p id="journal-status" class="status" role="status" aria-live="polite"></p></div></form>
+<section class="card" aria-labelledby="history-title"><h3 id="history-title">Your recent entries</h3><div id="history"></div><button id="export" class="btn ghost" type="button">Download journal</button></section><div class="row"><a class="btn ghost" href="ovarian-health.html">Understand my records</a><a class="btn ghost" href="insights.html">Review all records</a><a class="btn ghost" href="/sleep-diary.html">Sleep diary</a><a class="btn ghost" href="/stress-checkin.html">Stress check-in</a></div></main><nav class="nav" aria-label="Main navigation">
+  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a href="learn.html"><span class="n-ic">menu_book</span>Learn</a>
+  <a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a>
+  <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav></div><script src="journal-records.js" defer></script><script src="/appnav.js" defer></script><script src="/darkmode.js?v=6" defer></script>
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

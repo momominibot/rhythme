@@ -1,0 +1,10 @@
+{
+  "ownedFiles": [
+    "labs.html",
+    "labs-records.js",
+    "scripts/check-labs.cjs"
+  ],
+  "localReferencesChecked": 18,
+  "syntaxAndLinkFailures": [],
+  "clinicalScope": "User-entered report values, units, dates and optional limits. No age inference, conversions, diagnosis or universal lab thresholds."
+}

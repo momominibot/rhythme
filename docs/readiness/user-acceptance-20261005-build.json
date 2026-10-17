@@ -1,0 +1,15 @@
+{
+  "revision": "100fbcca58d47db174388f9ec82519380125b130",
+  "target": "web",
+  "sourceDirty": false,
+  "files": 277,
+  "bytes": 76058440,
+  "result": "pass after npm ci --ignore-scripts restored the pinned build dependencies",
+  "dependencyAudit": {
+    "scope": "Installed packages, not a runtime-exposure assessment",
+    "findings": 4,
+    "high": 1,
+    "moderate": 3,
+    "note": "Transitive native-development tooling advisories require separate assessment; no force upgrade or native release was performed"
+  }
+}

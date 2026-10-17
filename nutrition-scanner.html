@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-persona="grow">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Ovuluna · Nutrition Scanner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+  <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="darkmode.css">
+  <link rel="stylesheet" href="ovuluna-persona.css">
+  <style>
+    .scanner-hero { text-align:center; padding:24px 16px; }
+    .scanner-input { display:flex; gap:8px; margin:16px 0; }
+    .scanner-input input { flex:1; padding:12px 16px; border:2px solid var(--ovaria-border); border-radius:12px; font-family:inherit; font-size:15px; background:var(--ovaria-surface); color:var(--ovaria-text-primary); }
+    .scanner-input button { padding:12px 20px; border:none; border-radius:12px; background:var(--ovaria-text-primary); color:var(--ovaria-surface); font-weight:700; cursor:pointer; }
+    .result-card { display:none; margin-top:16px; padding:16px; border:2px solid var(--ovaria-border); border-radius:16px; background:var(--ovaria-surface); }
+    .result-card.show { display:block; }
+    .nova-badge { display:inline-block; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:800; text-transform:uppercase; margin-bottom:8px; }
+    .nova-1 { background:#d4edda; color:#155724; }
+    .nova-2 { background:#fff3cd; color:#856404; }
+    .nova-3 { background:#ffe0b2; color:#e65100; }
+    .nova-4 { background:#f8d7da; color:#721c24; }
+    .score-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--ovaria-border); font-size:14px; }
+    .score-row:last-child { border-bottom:none; }
+    .loading { text-align:center; padding:20px; color:var(--ovaria-text-secondary); }
+    .suggestion { margin-top:12px; padding:12px; border-radius:12px; background:var(--ovaria-accent-bg); font-size:13px; }
+  </style>
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+    <div class="scroll">
+      <div class="scanner-hero">
+        <div class="eyebrow">METABOLIC HEALTH</div>
+        <h2>Scan for ovarian-friendly nutrition</h2>
+        <p class="sub">Look up packaged foods by barcode or name. We use Open Food Facts to flag ultra-processed ingredients linked to metabolic stress.</p>
+      </div>
+
+      <div class="card" style="margin:0 16px">
+        <div class="scanner-input">
+          <input type="text" id="foodInput" placeholder="Barcode (e.g. 3017620422003) or product name">
+          <button onclick="lookupFood()">Scan</button>
+        </div>
+        <div class="sub" style="font-size:12px">Examples: “Nutella”, “Greek yogurt”, “3017620422003”</div>
+      </div>
+
+      <div id="loading" class="loading" style="display:none">Looking up...</div>
+
+      <div id="result" class="result-card">
+        <div id="novaBadge" class="nova-badge"></div>
+        <h3 id="productName"></h3>
+        <div class="score-row"><span>NOVA processing group</span><strong id="novaGroup"></strong></div>
+        <div class="score-row"><span>Nutri-Score</span><strong id="nutriScore"></strong></div>
+        <div class="score-row"><span>Added sugars</span><strong id="sugars"></strong></div>
+        <div class="score-row"><span>Saturated fat</span><strong id="satFat"></strong></div>
+        <div class="score-row"><span>Ultra-processed markers</span><strong id="markers"></strong></div>
+        <div id="suggestion" class="suggestion"></div>
+      </div>
+
+      <div class="card" style="margin:16px">
+        <h3 style="margin-bottom:8px">🤖 Why this matters</h3>
+        <p class="sub" style="font-size:13px;line-height:1.5">Ultra-processed foods (UPFs) are linked to insulin resistance and chronic inflammation — both associated with accelerated ovarian aging. Reducing UPFs is one of the highest-impact nutrition changes for ovarian wellness.</p>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a href="home.html"><span class="n-ic">home</span>Home</a>
+      <a href="learn.html"><span class="n-ic">menu_book</span>Learn</a>
+      <a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a>
+      <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+      <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+    </nav>
+  </div>
+
+  <script>
+    async function lookupFood() {
+      const q = document.getElementById('foodInput').value.trim();
+      if(!q) return;
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('result').classList.remove('show');
+
+      let url;
+      if(/^\d+$/.test(q)) {
+        url = `https://world.openfoodfacts.org/api/v2/product/${q}.json`;
+      } else {
+        url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=1`;
+      }
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const product = data.product || (data.products && data.products[0]);
+        if(!product) throw new Error('Product not found');
+        render(product);
+      } catch(e) {
+        alert(e.message);
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+      }
+    }
+
+    function render(p) {
+      const nova = p.nova_group || 0;
+      const novaClass = `nova-${nova}`;
+      const novaText = {
+        1: 'Unprocessed / minimally processed',
+        2: 'Processed culinary ingredient',
+        3: 'Processed food',
+        4: 'Ultra-processed food'
+      }[nova] || 'Unknown';
+
+      document.getElementById('novaBadge').className = `nova-badge ${novaClass}`;
+      document.getElementById('novaBadge').textContent = `NOVA ${nova || '?'}`;
+      document.getElementById('productName').textContent = p.product_name || 'Unknown product';
+      document.getElementById('novaGroup').textContent = novaText;
+      document.getElementById('nutriScore').textContent = (p.nutriscore_grade || '?').toUpperCase();
+      document.getElementById('sugars').textContent = (p.nutriments?.sugars_100g || '?') + 'g/100g';
+      document.getElementById('satFat').textContent = (p.nutriments?.['saturated-fat_100g'] || '?') + 'g/100g';
+
+      const upfMarkers = detectUPFMarkers(p.ingredients_text || '', p.additives_tags || []);
+      document.getElementById('markers').textContent = upfMarkers.length ? upfMarkers.join(', ') : 'None flagged';
+
+      let suggestion = '';
+      if(nova === 4) {
+        suggestion = '⚠️ This is an ultra-processed food. Regular UPF intake is linked to higher inflammation and insulin resistance — both associated with faster ovarian aging. Try swapping for a whole-food alternative when possible.';
+      } else if(nova === 3) {
+        suggestion = 'ℹ️ Processed food. OK occasionally, but prioritize whole foods for ovarian wellness.';
+      } else if(nova === 1 || nova === 2) {
+        suggestion = '✓ Great choice. Minimally processed foods support metabolic and hormonal health.';
+      } else {
+        suggestion = 'Could not determine processing level. Check the ingredient list for added sugars, industrial oils, and additives.';
+      }
+      document.getElementById('suggestion').textContent = suggestion;
+      document.getElementById('result').classList.add('show');
+    }
+
+    function detectUPFMarkers(text, additives) {
+      const markers = [];
+      const lower = text.toLowerCase();
+      const patterns = [
+        'high fructose corn syrup','maltodextrin','hydrolyzed protein','soy protein isolate',
+        'invert sugar','hydrogenated','interesterified','emulsifier','stabilizer','sweetener',
+        'flavour enhancer','colour','artificial','preservative'
+      ];
+      patterns.forEach(p => { if(lower.includes(p)) markers.push(p); });
+      if(additives.length) markers.push(`${additives.length} additive(s)`);
+      return [...new Set(markers)].slice(0,5);
+    }
+  </script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+<script src="appnav.js" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body>
+</html>

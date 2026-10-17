@@ -1,0 +1,229 @@
+/* ══════════════════════════════════════════════════════════════════════
+   OVULUNA V2 — ANIMATION SYSTEM
+   Lightweight CSS animations + Lottie integration points.
+   No heavy GIFs/MP4s. CSS keyframes for universal support,
+   Lottie JSON for complex vector animations (opt-in, <15KB each).
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Persona Theme Transition ── */
+[data-persona] {
+  transition:
+    background-color var(--ovuluna-duration-slow, 400ms) ease,
+    color var(--ovuluna-duration-slow, 400ms) ease,
+    border-color var(--ovuluna-duration-slow, 400ms) ease,
+    box-shadow var(--ovuluna-duration-slow, 400ms) ease;
+}
+
+/* Crossfade overlay for persona switch */
+.persona-crossfade {
+  position: fixed; inset: 0; z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+.persona-crossfade.active {
+  opacity: 1;
+  animation: crossfade-wash 400ms ease forwards;
+}
+@keyframes crossfade-wash {
+  0%   { backdrop-filter: blur(0px); }
+  50%  { backdrop-filter: blur(4px); }
+  100% { backdrop-filter: blur(0px); }
+}
+
+/* ── Persona Icon Morph ── */
+.persona-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; border-radius: var(--ovuluna-radius-md);
+  transition: transform 300ms var(--ovuluna-easing-bounce);
+}
+.persona-icon:hover { transform: scale(1.08); }
+.persona-icon:active { transform: scale(0.95); }
+.persona-icon.selected {
+  box-shadow: 0 0 0 3px var(--ovuluna-accent);
+}
+
+/* ── Acupoint Pulse (Body Map) ── */
+.acupoint-marker {
+  position: absolute;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--ovuluna-accent);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+.acupoint-marker::before {
+  content: '';
+  position: absolute; inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--ovuluna-accent);
+  opacity: 0.4;
+  animation: acupoint-pulse 2s ease-in-out infinite;
+}
+.acupoint-marker::after {
+  content: '';
+  position: absolute; inset: -12px;
+  border-radius: 50%;
+  border: 1px solid var(--ovuluna-accent);
+  opacity: 0.2;
+  animation: acupoint-pulse 2s ease-in-out infinite 0.4s;
+}
+@keyframes acupoint-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50%      { transform: scale(1.5); opacity: 0; }
+}
+
+/* ── Cycle Phase Wave ── */
+.phase-wave {
+  position: relative; height: 4px;
+  background: linear-gradient(90deg,
+    var(--ovuluna-accent-secondary) 0%,
+    var(--ovuluna-accent) 33%,
+    var(--ovuluna-cta) 66%,
+    var(--ovuluna-accent-secondary) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: 2px;
+  animation: phase-flow 4s ease-in-out infinite;
+}
+@keyframes phase-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ── Milestone Sparkle (Bloom) ── */
+.sparkle-container {
+  position: relative; display: inline-block;
+}
+.sparkle {
+  position: absolute;
+  width: 6px; height: 6px;
+  background: var(--ovuluna-cta);
+  border-radius: 50%;
+  animation: sparkle-pop 1s ease-out forwards;
+  opacity: 0;
+}
+@keyframes sparkle-pop {
+  0%   { transform: scale(0) rotate(0deg); opacity: 0; }
+  30%  { transform: scale(1.2) rotate(20deg); opacity: 1; }
+  100% { transform: scale(0) rotate(45deg) translateY(-20px); opacity: 0; }
+}
+
+/* ── Watercolor Loading Spinner ── */
+.wc-spinner {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--ovuluna-accent);
+  border-right-color: var(--ovuluna-accent-secondary);
+  animation: wc-spin 1s linear infinite;
+  position: relative;
+}
+.wc-spinner::after {
+  content: '';
+  position: absolute; inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--ovuluna-accent);
+  opacity: 0.2;
+  animation: wc-wash 2s ease-in-out infinite;
+}
+@keyframes wc-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes wc-wash {
+  0%, 100% { transform: scale(1); opacity: 0.15; }
+  50%      { transform: scale(1.2); opacity: 0.05; }
+}
+
+/* ── Card Enter Animation ── */
+.card-enter {
+  animation: card-rise 400ms var(--ovuluna-easing-smooth) both;
+}
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card-enter:nth-child(1) { animation-delay: 0ms; }
+.card-enter:nth-child(2) { animation-delay: 60ms; }
+.card-enter:nth-child(3) { animation-delay: 120ms; }
+.card-enter:nth-child(4) { animation-delay: 180ms; }
+.card-enter:nth-child(5) { animation-delay: 240ms; }
+
+/* ── Breathing Guide (Myofascial) ── */
+.breath-circle {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: radial-gradient(circle, var(--ovuluna-accent) 0%, transparent 70%);
+  opacity: 0.3;
+  animation: breath 6s ease-in-out infinite;
+}
+@keyframes breath {
+  0%, 100% { transform: scale(0.8); opacity: 0.2; }  /* exhale */
+  50%      { transform: scale(1.2); opacity: 0.5; }  /* inhale */
+}
+
+/* ── Fertile Window Glow (Grow) ── */
+.fertile-glow {
+  animation: fertile-pulse 3s ease-in-out infinite;
+}
+@keyframes fertile-pulse {
+  0%, 100% { box-shadow: 0 0 8px var(--ovuluna-accent-glow); }
+  50%      { box-shadow: 0 0 20px var(--ovuluna-accent-glow), 0 0 40px rgba(212, 165, 116, 0.1); }
+}
+
+/* ── Wisdom Slow Dissolve ── */
+.dissolve-in {
+  animation: dissolve 800ms ease both;
+}
+@keyframes dissolve {
+  from { opacity: 0; filter: blur(2px); }
+  to   { opacity: 1; filter: blur(0); }
+}
+
+/* ── Nurture Gentle Pulse ── */
+.gentle-pulse {
+  animation: nurture-pulse 4s ease-in-out infinite;
+}
+@keyframes nurture-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+
+/* ── Floating Petals (Bloom background) ── */
+.petal {
+  position: fixed; pointer-events: none; z-index: 0;
+  animation: petal-fall linear infinite;
+  opacity: 0.15;
+}
+@keyframes petal-fall {
+  0%   { transform: translateY(-10vh) rotate(0deg) translateX(0); }
+  100% { transform: translateY(110vh) rotate(360deg) translateX(40px); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LOTTIE INTEGRATION POINTS
+   For complex vector animations, use Lottie JSON (<15KB each).
+   Drop .json files in /assets/lottie/ and load with lottie-web or dotlottie.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/*
+  LOTTIE FILES TO CREATE (lightweight <15KB each):
+  
+  1. persona-bloom.json   — budding flower unfurls (800ms, bounce ease)
+  2. persona-grow.json    — flower blooming open (1200ms, smooth ease)
+  3. persona-nurture.json — gentle sway + soft glow (2000ms, pulse)
+  4. persona-wisdom.json  — slow petal drift + dissolve (3000ms)
+  5. acupoint-tap.json    — ripple from tap point (600ms, 3 rings)
+  6. milestone-confetti.json — 4-6 particles burst (Bloom-only, 800ms)
+  7. loading-brush.json   — watercolor brush stroke fills circle (loop)
+
+  USAGE:
+  <dotlottie-player src="/assets/lottie/persona-bloom.json"
+    autoplay loop style="width:48px;height:48px">
+  </dotlottie-player>
+  
+  CDN (no build step): 
+  <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.js">
+  
+  Total Lottie payload: ~70KB for all 7 animations (vs 500KB+ for GIF/MP4).
+*/

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ovuluna · Your daily companion</title>
+  <link rel="icon" href="assets/onboarding/egg.png">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="darkmode.css">
+  <link rel="stylesheet" href="evidence.css">
+  <link rel="stylesheet" href="luna-chat.css">
+  <link rel="stylesheet" href="dreamy.css">
+  <link rel="stylesheet" href="daily-guidance.css">
+</head>
+<body class="text-scaled-page" data-dream-skip-translate>
+<div class="app">
+  <header class="top"><div class="brandline"><b>OVULUNA</b></div><a class="t-icon ms" href="daily.html" aria-label="Your daily companion">notifications</a><a class="t-icon ms" href="cycle-trends.html" aria-label="Your cycle calendar">calendar_today</a></header>
+  <main class="scroll daily-page" id="main">
+    <a class="daily-back" href="home.html">Back to your home</a>
+    <header class="daily-hero">
+      <img src="assets/knowledge/lifestyle.webp" width="100" height="100" alt="">
+      <p class="eyebrow">A little care, in your own rhythm</p>
+      <h1>Your daily companion</h1>
+      <p id="daily-date"></p>
+      <p>A useful note, a care question, or a moment of support. These suggestions read what you actually entered. Your colors and the illustrated cycle ring are never used to decide your health context.</p>
+      <button type="button" class="qi" data-evidence="daily-record-method" aria-label="Sources and limitations: how daily suggestions are selected">i</button>
+    </header>
+
+    <p id="daily-message" role="status" aria-live="polite"></p>
+    <section class="daily-section" aria-labelledby="daily-tasks-title">
+      <h2 id="daily-tasks-title">A small space for today</h2>
+      <p id="daily-context-state"></p>
+      <div id="daily-tasks"></div>
+      <p class="daily-note">Optional marks mean you reviewed or did something today. They are not a health score, a streak or a record that medical assessment happened. Care notes stay visible.</p>
+    </section>
+
+    <section class="daily-section" aria-labelledby="daily-context-title">
+      <h2 id="daily-context-title">Your context, in your words</h2>
+      <p>This is a separate, self-reported answer. It does not diagnose a life stage, change your appearance palette or replace the context saved with an individual observation.</p>
+      <form id="daily-context-form">
+        <div class="daily-field"><label for="daily-stage">Which context fits you today?</label><select id="daily-stage" name="stage" required>
+          <option value="">Choose your own answer</option>
+          <option value="teen">Early menstrual years</option>
+          <option value="cycling">Menstrual cycles</option>
+          <option value="ttc">Trying to conceive</option>
+          <option value="pregnant">Pregnant</option>
+          <option value="postpartum">After pregnancy</option>
+          <option value="peri">Perimenopause (self-reported)</option>
+          <option value="post">After menopause (self-reported)</option>
+          <option value="unspecified">Prefer not to specify</option>
+        </select></div>
+        <div class="daily-field"><label for="daily-contraception">Your current contraception context</label><select id="daily-contraception" name="contraception" required>
+          <option value="">Choose your own answer</option>
+          <option value="none">No contraception reported</option>
+          <option value="hormonal">Hormonal contraception</option>
+          <option value="nonhormonal">Non-hormonal contraception</option>
+          <option value="unsure">Not sure</option>
+          <option value="undisclosed">Prefer not to specify</option>
+        </select></div>
+        <div class="daily-field"><label for="daily-status-date">Date you checked these answers</label><input id="daily-status-date" name="statusOn" type="date" required aria-describedby="daily-context-freshness"></div>
+        <p id="daily-context-freshness" class="daily-note">We ask you to check these answers again after 30 days, or whenever they change. This is an app freshness reminder, not a clinical threshold. Choose today's date when reconfirming today's answers.</p>
+        <label class="daily-check"><input id="daily-confirm" name="confirmed" type="checkbox" required><span>I confirm these are my own current answers, including any choice not to specify.</span></label>
+        <div class="daily-actions"><button type="submit" id="daily-save-context" class="btn">Save my context</button><button type="button" id="daily-reload-context" class="daily-secondary">Reopen saved context</button></div>
+      </form>
+      <p class="daily-note">A logged bleed is an observation. This page does not call it a period, confirm ovulation or identify a menstrual phase.</p>
+      <a href="cycle-log.html">Review context with your observations</a>
+    </section>
+
+    <section class="daily-section" aria-labelledby="daily-routine-title">
+      <h2 id="daily-routine-title">Return in your own rhythm</h2>
+      <p id="daily-return"></p>
+      <form id="daily-routine-form">
+        <div class="daily-field"><label for="daily-routine-time">A local time that suits you</label><input id="daily-routine-time" name="time" type="time" required></div>
+        <label class="daily-check"><input id="daily-routine-enabled" name="enabled" type="checkbox"><span>Show this routine cue while I use the app</span></label>
+        <div class="daily-actions"><button type="submit" id="daily-save-routine" class="btn">Save in-app routine</button><button type="button" id="daily-reload-routine" class="daily-secondary">Reopen saved routine</button></div>
+      </form>
+      <p class="daily-note">No push notification, email or device alarm is scheduled. The cue follows this device's local time. Optional marks reset for each local calendar day; their original dates remain in local storage.</p>
+    </section>
+
+    <section class="daily-section" aria-labelledby="daily-records-title">
+      <h2 id="daily-records-title">What was used today</h2>
+      <ul id="daily-record-status"></ul>
+      <p class="daily-note">Today's Home check-ins and journal, plus observations dated today or the previous six days, form the reading window. Older records stay saved but do not drive today's prompts. These windows are product choices, not validated clinical rules. Missing or unreadable data cannot show that a symptom is absent or that everything is normal.</p>
+      <div class="daily-links"><a href="home.html#checkin-title">Edit a Home check-in</a><a href="cycle-log.html">Edit observations</a><a href="wellness-checkin.html">Edit your journal</a><a href="ovarian-health.html">Understand my records</a><a href="settings.html">Review or delete local data</a></div>
+      <button type="button" class="qi" data-evidence="daily-record-method" aria-label="Sources and limitations: record freshness and interpretation">i</button>
+    </section>
+
+    <details class="daily-section daily-help"><summary>When you need help now</summary>
+      <p>If you currently feel seriously unwell, have severe or concerning symptoms, or may harm yourself, seek immediate help through local emergency services or urgent care. Do not wait for this page to update. Ovuluna does not monitor or triage emergencies.</p>
+      <div class="daily-links"><a href="https://findahelpline.com/" target="_blank" rel="noopener noreferrer">Find emotional support in your country</a><a href="https://www.cdc.gov/hearher/maternal-warning-signs/index.html" target="_blank" rel="noopener noreferrer">Pregnancy and after-birth warning signs</a></div>
+      <button type="button" class="qi" data-evidence="mental-health-support-worldwide" aria-label="Sources: emotional support and urgent help">i</button><button type="button" class="qi" data-evidence="life-postnatal-redflags" aria-label="Sources: pregnancy and after-birth warning signs">i</button>
+    </details>
+    <p class="daily-note">Source-linked education and optional routines. Qualified clinical review of the app's content and routing remains pending. No ovarian age, fertility probability, diagnosis, TCM diagnosis or fasting regimen is calculated.</p>
+    <noscript><p>JavaScript is needed to read and save this browser's daily context and routine. The explanations, sources and record-page links remain available.</p></noscript>
+  </main>
+</div>
+<nav class="nav" aria-label="Main navigation"><a class="on" href="home.html"><span class="n-ic">home</span>Home</a><a href="learn.html"><span class="n-ic">menu_book</span>Learn</a><a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a><a href="foods.html"><span class="n-ic">restaurant</span>Foods</a><a href="profile.html"><span class="n-ic">person</span>Profile</a></nav>
+<script src="observation-records.js" defer></script><script src="home-records.js" defer></script><script src="journal-records.js" defer></script><script src="daily-guidance.js" defer></script>
+<script src="appnav.js" defer></script><script src="darkmode.js" defer></script><script src="luna-chat.js" defer></script><script src="dream-assets.js" defer></script>
+<script src="evidence-db.js" defer></script><script src="evidence-reconciled.js" defer></script><script src="evidence-lifecycle.js" defer></script><script src="evidence-acupoint.js" defer></script><script src="evidence-safety.js" defer></script><script src="evidence-core.js" defer></script><script src="evidence-daily.js" defer></script><script src="evidence-merge.js" defer></script><script src="evidence.js" defer></script><script src="dreamy.js" defer></script>
+</body></html>

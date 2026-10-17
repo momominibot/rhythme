@@ -1,0 +1,29 @@
+{
+  "name": "ovumind",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ovumind - menstrual ovarian optimization, food journaling, and mindfulness",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build-web.cjs",
+    "native:sync": "npm run build:native && cap sync ios",
+    "native:open": "cap open ios",
+    "check:site": "node scripts/check-site.cjs",
+    "check:bundle": "node scripts/check-native-bundle.cjs",
+    "build:native": "node scripts/build-web.cjs --native"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.1",
+    "@capacitor/ios": "8.5.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.1",
+    "@fontsource-variable/manrope": "5.3.0",
+    "@fontsource-variable/newsreader": "5.3.0",
+    "@fontsource/material-symbols-outlined": "5.3.5",
+    "@lottiefiles/lottie-player": "2.0.8",
+    "lottie-web": "5.12.2"
+  }
+}

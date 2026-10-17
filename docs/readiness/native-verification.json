@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-09-11T06:18:43Z",
+  "simulator": "Ovuluna Development QA",
+  "simulatorId": "22145717-2AC1-42CC-A0F4-661FEAE6DC70",
+  "bundleId": "app.vercel.ovuluna.dev",
+  "xcode": "26.6",
+  "iOS": "26.5",
+  "tests": 2,
+  "failures": 0,
+  "seconds": 67.935,
+  "sourceRevisionAtBuild": "3c6fefbce0404ba0a1021c847a5ee0ed2b692ce1",
+  "sourceDirtyAtBuild": true,
+  "nativeManifestSHA256": "5173a20d47a0ed59b5089e776809dc3aa44ef1910988e93c2e6267497f3b2828",
+  "testResultBundle": "/private/tmp/ovuluna-native-smoke/final-complete.xcresult",
+  "buildLog": "/private/tmp/ovuluna-ios-final-build.log",
+  "checks": [
+    "Unsigned development build succeeds",
+    "Rapid font double-tap enlarges text without WebView width expansion",
+    "Offline guide topic, close and subsequent Learn navigation",
+    "Learn to ovarian article; source body scrolls to actual citation and limitations",
+    "Evidence A++ portrait and landscape geometry plus screen screenshot",
+    "Appearance persists after cold restart",
+    "Settings local deletion review requires acknowledgment; Cancel preserves data",
+    "Settings account control shows no connected account instead of success"
+  ],
+  "limits": [
+    "No actual user records deleted; native deletion was canceled, actual scoped deletion tested separately with synthetic browser data",
+    "No physical camera/torch/ECG, VoiceOver, HealthKit, signed distribution, live authentication, community or clinical validation",
+    "No production push/deploy/submission"
+  ]
+}

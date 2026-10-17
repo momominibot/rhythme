@@ -1,0 +1,260 @@
+<!doctype html><html lang="en" data-persona="bloom"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Ovuluna · Exercise Guide</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<link rel="stylesheet" href="ovuluna-persona.css">
+<script src="anim.js" defer></script>
+<style>
+.phase-tabs { display:flex;gap:6px;padding:0 16px;margin-bottom:8px;overflow-x:auto;-webkit-overflow-scrolling:touch; }
+.phase-tab { flex-shrink:0;padding:8px 14px;border:1.5px solid var(--line);border-radius:99px;background:var(--card);font:700 12px var(--sans);color:var(--muted);cursor:pointer;transition:.15s;white-space:nowrap; }
+.phase-tab.on { background:var(--mauve);color:#fff;border-color:var(--mauve); }
+.phase-content { display:none; }
+.phase-content.on { display:block;animation:fadeIn .3s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.met-row { display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line-soft); }
+.met-row:last-child { border-bottom:none; }
+.met-icon { width:36px;height:36px;border-radius:10px;background:rgba(139,108,130,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.met-name { flex:1;font:700 13px var(--sans);color:var(--ink); }
+.met-val { font:800 14px var(--sans);color:var(--mauve);min-width:50px;text-align:right; }
+.met-intensity { font:600 10px var(--sans);color:var(--muted);text-transform:uppercase;letter-spacing:.05em; }
+.rec-card { margin:12px 16px;padding:16px;border:2px solid var(--line-soft);border-radius:var(--r);background:var(--card); }
+.rec-card h3 { font-family:var(--serif);font-size:17px;font-weight:600;color:var(--cocoa);margin:0 0 8px; }
+.rec-card p { font:500 13px var(--sans);color:var(--taupe);line-height:1.5;margin:0 0 8px; }
+.rec-card ul { margin:4px 0;padding-left:18px; }
+.rec-card li { font:500 12.5px var(--sans);color:var(--taupe);line-height:1.5;margin-bottom:4px; }
+.persona-note { margin:12px 16px;padding:14px;border-radius:12px;background:rgba(139,108,130,.08);border:1px solid rgba(139,108,130,.2);font:500 12.5px var(--sans);color:var(--cocoa);line-height:1.5; }
+.persona-note b { color:var(--mauve); }
+.warning-box { margin:12px 16px;padding:14px;border-radius:12px;background:rgba(229,180,92,.1);border:1px solid rgba(229,180,92,.3);font:500 12.5px var(--sans);color:var(--cocoa);line-height:1.5; }
+.warning-box b { color:#B8860B; }
+</style>
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+  <div class="scroll" style="padding-bottom:100px">
+    <div style="text-align:center;padding:20px 16px 8px">
+      <div style="font:800 11px var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--mauve);margin-bottom:6px">Cycle-Aware Movement</div>
+      <h2 style="font-family:var(--serif);font-size:24px;font-weight:600;color:var(--cocoa);margin:0 0 8px">Exercise that flows with you</h2>
+      <p style="font:500 13px var(--sans);color:var(--taupe);line-height:1.5;margin:0">Your energy, strength, and recovery shift across your cycle. Train in harmony — not against — your hormones. <span class="qi" data-evidence="exercise-cycle">i</span></p>
+    </div>
+
+    <!-- Persona note (dynamic) -->
+    <div class="persona-note" id="personaNote"></div>
+
+    <!-- Phase tabs -->
+    <div class="phase-tabs" id="phaseTabs">
+      <button class="phase-tab on" data-phase="menstrual"><span class="ms" style="font-size:14px">water_drop</span> Menstrual</button>
+      <button class="phase-tab" data-phase="follicular"><span class="ms" style="font-size:14px">spa</span> Follicular</button>
+      <button class="phase-tab" data-phase="ovulatory"><span class="ms" style="font-size:14px">auto_awesome</span> Ovulatory</button>
+      <button class="phase-tab" data-phase="luteal"><span class="ms" style="font-size:14px">nightlight</span> Luteal</button>
+    </div>
+
+    <!-- MENSTRUAL PHASE -->
+    <div class="phase-content on" id="phase-menstrual">
+      <div class="rec-card">
+        <h3><span class="ms" style="font-size:14px">water_drop</span> Menstrual Phase (Days 1–5)</h3>
+        <p>Estrogen and progesterone are at their lowest. Your body is shedding the uterine lining and conserving energy. This is a time for <b>gentle, restorative movement</b>. <span class="qi" data-evidence="exercise-dysmenorrhea">i</span></p>
+        <ul>
+          <li><b>Recommended:</b> Light walking, restorative yoga, stretching, gentle swimming</li>
+          <li><b>Intensity:</b> Low (2–4 METs)</li>
+          <li><b>Duration:</b> 15–30 minutes, 3–4 days this week</li>
+          <li><b>Avoid:</b> High-intensity interval training (HIIT), heavy lifting, inversion poses if flow is heavy</li>
+        </ul>
+      </div>
+      <div class="warning-box">
+        <b>TCM Wisdom:</b> During menstruation, avoid cold drinks and raw foods — they can cause "cold stagnation" in the uterus, worsening cramps. Warm ginger tea and cooked foods support smooth flow. <span class="qi" data-evidence="heat-therapy-dysmenorrhea">i</span>
+      </div>
+      <div class="card" style="margin:12px 16px;padding:0;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line-soft);font:800 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--mauve)">Best Exercises This Phase</div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">directions_walk</span></div><div><div class="met-name">Slow walking</div><div class="met-intensity">Light</div></div><div class="met-val">2.5 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">self_improvement</span></div><div><div class="met-name">Restorative yoga</div><div class="met-intensity">Light</div></div><div class="met-val">2.5 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">pool</span></div><div><div class="met-name">Gentle swimming</div><div class="met-intensity">Light-Moderate</div></div><div class="met-val">4.0 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">stretching</span></div><div><div class="met-name">Stretching / foam rolling</div><div class="met-intensity">Light</div></div><div class="met-val">2.3 MET</div></div>
+      </div>
+    </div>
+
+    <!-- FOLLICULAR PHASE -->
+    <div class="phase-content" id="phase-follicular">
+      <div class="rec-card">
+        <h3><span class="ms" style="font-size:14px">spa</span> Follicular Phase (Days 6–13)</h3>
+        <p>Estrogen is rising steadily, boosting energy, mood, and muscle recovery. This is your <b>strength-building phase</b> — you'll feel stronger and recover faster. <span class="qi" data-evidence="exercise-cycle">i</span></p>
+        <ul>
+          <li><b>Recommended:</b> Strength training, running, cycling, dance, HIIT (later in phase)</li>
+          <li><b>Intensity:</b> Moderate-High (5–9 METs)</li>
+          <li><b>Duration:</b> 30–45 minutes, 4–5 days this week</li>
+          <li><b>Focus:</b> Progressive overload — this is the best time to increase weights or try new exercises</li>
+        </ul>
+      </div>
+      <div class="card" style="margin:12px 16px;padding:0;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line-soft);font:800 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--mauve)">Best Exercises This Phase</div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">fitness_center</span></div><div><div class="met-name">Strength training (moderate)</div><div class="met-intensity">Moderate</div></div><div class="met-val">5.0 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">directions_run</span></div><div><div class="met-name">Jogging / running</div><div class="met-intensity">High</div></div><div class="met-val">7.0 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">pedal_bike</span></div><div><div class="met-name">Cycling (moderate)</div><div class="met-intensity">Moderate-High</div></div><div class="met-val">6.8 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">bolt</span></div><div><div class="met-name">HIIT / circuit training</div><div class="met-intensity">Very High</div></div><div class="met-val">8.5 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">music_note</span></div><div><div class="met-name">Dance / Zumba</div><div class="met-intensity">High</div></div><div class="met-val">7.5 MET</div></div>
+      </div>
+    </div>
+
+    <!-- OVULATORY PHASE -->
+    <div class="phase-content" id="phase-ovulatory">
+      <div class="rec-card">
+        <h3><span class="ms" style="font-size:14px">auto_awesome</span> Ovulatory Phase (Days 14–16)</h3>
+        <p>Estrogen peaks and testosterone rises, giving you a natural energy surge. This is your <b>peak performance window</b> — great for personal records and high-intensity efforts. <span class="qi" data-evidence="exercise-cycle">i</span></p>
+        <ul>
+          <li><b>Recommended:</b> HIIT, sprint intervals, heavy lifting, competitive sports, long runs</li>
+          <li><b>Intensity:</b> High-Very High (7–10 METs)</li>
+          <li><b>Duration:</b> 30–60 minutes, 3–4 days this window</li>
+          <li><b>Tip:</b> Schedule your hardest workouts around ovulation — you'll have more power and better recovery</li>
+        </ul>
+      </div>
+      <div class="warning-box">
+        <b>Note:</b> Some women experience mild ovulation pain ("mittelschmerz") on one side. If this is uncomfortable, scale back to moderate intensity for that day.
+      </div>
+      <div class="card" style="margin:12px 16px;padding:0;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line-soft);font:800 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--mauve)">Best Exercises This Phase</div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">flash_on</span></div><div><div class="met-name">Sprint intervals</div><div class="met-intensity">Very High</div></div><div class="met-val">9.8 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">fitness_center</span></div><div><div class="met-name">Heavy strength training</div><div class="met-intensity">High</div></div><div class="met-val">8.0 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">sports_soccer</span></div><div><div class="met-name">Competitive sports</div><div class="met-intensity">High-Very High</div></div><div class="met-val">9.0 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">directions_run</span></div><div><div class="met-name">Long distance running</div><div class="met-intensity">High</div></div><div class="met-val">8.3 MET</div></div>
+      </div>
+    </div>
+
+    <!-- LUTEAL PHASE -->
+    <div class="phase-content" id="phase-luteal">
+      <div class="rec-card">
+        <h3><span class="ms" style="font-size:14px">nightlight</span> Luteal Phase (Days 17–28)</h3>
+        <p>Progesterone rises then falls, which can increase fatigue, body temperature, and PMS symptoms. Energy gradually declines. This is a time for <b>moderate, steady movement</b> with extra recovery. <span class="qi" data-evidence="exercise-pms">i</span></p>
+        <ul>
+          <li><b>Recommended:</b> Moderate cardio, Pilates, yoga, swimming, light strength training</li>
+          <li><b>Intensity:</b> Moderate (4–6 METs) — scale back as you approach your period</li>
+          <li><b>Duration:</b> 25–40 minutes, 3–4 days this week</li>
+          <li><b>Focus:</b> Consistency over intensity. Movement helps reduce PMS symptoms and bloating</li>
+        </ul>
+      </div>
+      <div class="warning-box">
+        <b>TCM Wisdom:</b> In the luteal phase, avoid excessive cold foods and drinks. If you experience breast tenderness or irritability, gentle liver-meridian stretches (side bends, twists) can help move "Liver Qi stagnation." <span class="qi" data-evidence="stress-cortisol-cycle">i</span>
+      </div>
+      <div class="card" style="margin:12px 16px;padding:0;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line-soft);font:800 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--mauve)">Best Exercises This Phase</div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">self_improvement</span></div><div><div class="met-name">Vinyasa / flow yoga</div><div class="met-intensity">Moderate</div></div><div class="met-val">4.0 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">pool</span></div><div><div class="met-name">Swimming (moderate)</div><div class="met-intensity">Moderate</div></div><div class="met-val">5.8 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">fitness_center</span></div><div><div class="met-name">Pilates</div><div class="met-intensity">Moderate</div></div><div class="met-val">4.5 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">directions_walk</span></div><div><div class="met-name">Brisk walking</div><div class="met-intensity">Moderate</div></div><div class="met-val">4.3 MET</div></div>
+        <div class="met-row"><div class="met-icon"><span class="ms" style="font-size:20px;color:var(--mauve)">pedal_bike</span></div><div><div class="met-name">Light cycling</div><div class="met-intensity">Light-Moderate</div></div><div class="met-val">4.0 MET</div></div>
+      </div>
+    </div>
+
+    <!-- Weekly MET Goal -->
+    <div class="card tint-lavender" style="margin:16px;padding:18px">
+      <div style="font:800 11px var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--mauve);margin-bottom:8px"> Weekly MET Goal</div>
+      <p style="font:500 13px var(--sans);color:var(--cocoa);line-height:1.5;margin:0 0 10px">The WHO recommends <b>150 minutes of moderate-intensity</b> (5 METs) or <b>75 minutes of vigorous-intensity</b> (7.5 METs) aerobic activity per week = approximately <b>600–750 MET minutes/week</b>. <span class="qi" data-evidence="exercise-dysmenorrhea">i</span></p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px;padding:10px;border-radius:10px;background:rgba(255,255,255,.6);text-align:center">
+          <div style="font-family:var(--serif);font-size:24px;font-weight:600;color:var(--mauve)">150</div>
+          <div style="font:600 10px var(--sans);color:var(--taupe);text-transform:uppercase;letter-spacing:.05em">min moderate</div>
+        </div>
+        <div style="flex:1;min-width:120px;padding:10px;border-radius:10px;background:rgba(255,255,255,.6);text-align:center">
+          <div style="font-family:var(--serif);font-size:24px;font-weight:600;color:var(--mauve)">2x</div>
+          <div style="font:600 10px var(--sans);color:var(--taupe);text-transform:uppercase;letter-spacing:.05em">strength days</div>
+        </div>
+        <div style="flex:1;min-width:120px;padding:10px;border-radius:10px;background:rgba(255,255,255,.6);text-align:center">
+          <div style="font-family:var(--serif);font-size:24px;font-weight:600;color:var(--mauve)">600</div>
+          <div style="font:600 10px var(--sans);color:var(--taupe);text-transform:uppercase;letter-spacing:.05em">MET min/wk</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acupoints for cramps -->
+    <div class="rec-card">
+      <h3>️ Acupressure for Cramps & Fatigue</h3>
+      <p>These TCM acupoints can be massaged during exercise or anytime for relief:</p>
+      <ul>
+        <li><b>SP6 (Sanyinjiao):</b> 4 finger-widths above the inner ankle bone. Massage for 1–2 minutes each side. Relieves menstrual cramps, regulates cycles. <span class="qi" data-evidence="acupressure-dysmenorrhea">i</span></li>
+        <li><b>LV3 (Taichong):</b> Between the big toe and second toe, 2 finger-widths up from the web. Relieves PMS irritability and breast tenderness.</li>
+        <li><b>ST36 (Zusanli):</b> 4 finger-widths below the kneecap, 1 finger-width outward. Boosts energy and supports digestion.</li>
+      </ul>
+    </div>
+
+    <div style="margin:24px 16px;padding:14px;border-radius:12px;background:rgba(139,108,130,.08);border:1px solid rgba(139,108,130,.2);font:500 11.5px var(--sans);color:var(--taupe);line-height:1.5;text-align:center">
+      <b style="color:var(--mauve)">Wellness, not medical advice.</b> MET values from the Compendium of Physical Activities (2011). Always listen to your body — if something hurts, stop. Consult a healthcare provider before starting a new exercise program, especially if pregnant or postpartum.
+    </div>
+  </div>
+</div>
+
+<nav class="nav">
+  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a href="learn.html"><span class="n-ic">menu_book</span>Learn</a>
+  <a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a>
+  <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav>
+
+<script>
+// Phase tab switching
+document.querySelectorAll('.phase-tab').forEach(function(tab){
+  tab.addEventListener('click', function(){
+    var phase = this.dataset.phase;
+    document.querySelectorAll('.phase-tab').forEach(function(t){ t.classList.remove('on'); });
+    document.querySelectorAll('.phase-content').forEach(function(c){ c.classList.remove('on'); });
+    this.classList.add('on');
+    document.getElementById('phase-' + phase).classList.add('on');
+  });
+});
+
+// Persona-specific note
+(function(){
+  var persona = localStorage.getItem('ovuluna_persona') || 'bloom';
+  var notes = {
+    bloom: '<b>🌸 Bloom (Teens 10–17):</b> Focus on fun, social movement — dance, sports, swimming. Aim for 60 minutes of daily activity. Don\'t worry about MET tracking; build healthy habits first. Avoid restrictive exercise — your body is still developing.',
+    grow: '<b>🌱 Grow (TTC 25–38):</b> Moderate exercise (3–6 METs) supports fertility. Avoid extreme overtraining (>10 hours/week high intensity) which can disrupt ovulation. Yoga and walking are excellent during the two-week wait. Continue moderate cardio through the cycle.',
+    nurture: '<b>🌿 Nurture (Postpartum):</b> Wait for medical clearance (usually 6 weeks vaginal, 8 weeks cesarean). Start with pelvic floor exercises and gentle walking. Gradually increase intensity over 3–6 months. Avoid high-impact until pelvic floor strength returns. Diastasis recti-safe core work only.',
+    wisdom: '<b>🌙 Wisdom (35+ Peri/Menopause):</b> Prioritize weight-bearing exercise (walking, strength training) for bone health — osteoporosis risk rises after menopause. Include balance work (tai chi, yoga) to prevent falls. Moderate cardio helps with hot flashes and mood. Strength training 2–3x/week preserves muscle mass.'
+  };
+  var el = document.getElementById('personaNote');
+  if (el && notes[persona]) el.innerHTML = notes[persona];
+})();
+</script>
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

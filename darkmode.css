@@ -1,0 +1,287 @@
+/* ══════════════════════════════════════════════════════════════
+   OVULUNA · Dark Mode — Sun/Moon Toggle & Celestial Overlay
+   Deep midnight purple · lavender text · gold accents · twinkling stars
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Smooth theme transition on all themed elements ── */
+body, .top, .card, .t-icon, .nav, .btn, .chip, .metric,
+.badge, .lrow, .insight, input, textarea, .qi, .g-card,
+.metric, .hstat, .search-bar, .cat-chip, .food-card,
+.chart-frame, .gallery, .luna-header, .luna-credits,
+.luna-messages, .luna-input-row, .qi-sheet, .qi-header,
+.qi-body, .qi-claim, .qi-source, .qi-disclaimer,
+.mystical-step-btn, .mystical-today-btn {
+  transition: background .4s ease, color .4s ease,
+    border-color .4s ease, box-shadow .4s ease;
+}
+
+/* ── Theme toggle button (injected into .top) ── */
+.theme-toggle {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(29, 27, 24, .08);
+  -webkit-tap-highlight-color: transparent;
+  transition: background .4s, border-color .4s, color .4s,
+    transform .2s, box-shadow .4s;
+  flex-shrink: 0;
+}
+.theme-toggle:hover { transform: translateY(-1px); }
+.theme-toggle:active { transform: scale(0.92); }
+
+/* Sun & moon icons — crossfade + rotate */
+.theme-toggle .tt-sun,
+.theme-toggle .tt-moon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity .4s ease, transform .5s cubic-bezier(.4, 0, .2, 1);
+  font-size: 18px;
+  line-height: 1;
+}
+.theme-toggle .tt-sun {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+.theme-toggle .tt-moon {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.6);
+}
+/* In dark mode: show moon, hide sun */
+[data-theme="dark"] .theme-toggle .tt-sun {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.6);
+}
+[data-theme="dark"] .theme-toggle .tt-moon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+/* ── Celestial starfield overlay (dark mode only) ── */
+.dark-stars {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .8s ease;
+  overflow: hidden;
+}
+[data-theme="dark"] .dark-stars { opacity: 1; }
+
+.dark-stars i {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #f0e0c0;
+  border-radius: 50%;
+  animation: starTwinkleDark 3s ease-in-out infinite;
+}
+.dark-stars i:nth-child(odd) {
+  width: 1.5px;
+  height: 1.5px;
+  background: #c8b8e0;
+}
+.dark-stars i:nth-child(3n) {
+  width: 1px;
+  height: 1px;
+  background: #f0c878;
+}
+
+@keyframes starTwinkleDark {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ── Dark mode: evidence popup overrides ── */
+[data-theme="dark"] .qi-backdrop {
+  background: rgba(10, 5, 25, 0.6);
+}
+[data-theme="dark"] .qi-sheet {
+  background: var(--card-solid);
+  box-shadow: 0 -12px 48px -12px rgba(0, 0, 0, 0.5);
+  border-top: 1px solid var(--line);
+}
+[data-theme="dark"] .qi-handle {
+  background: rgba(200, 180, 240, 0.25);
+}
+[data-theme="dark"] .qi-header {
+  border-bottom-color: var(--line-soft);
+}
+[data-theme="dark"] .qi-header .qi-icon {
+  background: linear-gradient(135deg, rgba(196, 168, 224, 0.3), rgba(240, 200, 120, 0.2));
+}
+[data-theme="dark"] .qi-close {
+  background: rgba(200, 180, 240, 0.1);
+  color: var(--taupe);
+}
+[data-theme="dark"] .qi-close:hover {
+  background: rgba(200, 180, 240, 0.2);
+}
+[data-theme="dark"] .qi-claim {
+  background: rgba(196, 168, 224, 0.12);
+  border-left-color: var(--mauve);
+}
+[data-theme="dark"] .qi-source {
+  background: rgba(200, 180, 240, 0.06);
+}
+[data-theme="dark"] .qi-source b { color: var(--ink); }
+[data-theme="dark"] .qi-disclaimer {
+  background: rgba(224, 138, 122, 0.1);
+  border-color: rgba(224, 138, 122, 0.3);
+}
+[data-theme="dark"] .qi-disclaimer b { color: var(--low); }
+[data-theme="dark"] .qi-level.strong   { background: rgba(122, 200, 160, 0.15); color: var(--ok); }
+[data-theme="dark"] .qi-level.moderate { background: rgba(224, 184, 96, 0.16); color: var(--warn); }
+[data-theme="dark"] .qi-level.weak     { background: rgba(224, 138, 122, 0.13); color: var(--low); }
+[data-theme="dark"] .qi-level.consensus{ background: rgba(168, 184, 216, 0.2); color: var(--periwinkle); }
+
+/* ── Dark mode: Luna chat panel overrides ── */
+[data-theme="dark"] #lunaPanel {
+  background: rgba(45, 27, 78, 0.96);
+  border-color: rgba(200, 180, 240, 0.2);
+  box-shadow: 0 20px 60px -12px rgba(0, 0, 0, 0.5);
+}
+[data-theme="dark"] .luna-header {
+  background: linear-gradient(135deg, rgba(196, 168, 224, 0.18), rgba(240, 200, 120, 0.1));
+  border-bottom-color: rgba(200, 180, 240, 0.15);
+}
+[data-theme="dark"] .luna-header .luna-name { color: var(--ink); }
+[data-theme="dark"] .luna-header .luna-status { color: var(--taupe); }
+[data-theme="dark"] .luna-close {
+  background: rgba(200, 180, 240, 0.1);
+  color: var(--taupe);
+}
+[data-theme="dark"] .luna-close:hover { background: rgba(200, 180, 240, 0.2); }
+[data-theme="dark"] .luna-credits {
+  background: rgba(196, 168, 224, 0.08);
+  border-bottom-color: rgba(200, 180, 240, 0.1);
+  color: var(--taupe);
+}
+[data-theme="dark"] .luna-credits b { color: var(--mauve); }
+[data-theme="dark"] .luna-credits .luna-upgrade { color: var(--gold); }
+[data-theme="dark"] .luna-msg.luna-bot {
+  background: linear-gradient(135deg, rgba(196, 168, 224, 0.15), rgba(240, 200, 120, 0.08));
+  border-color: rgba(196, 168, 224, 0.2);
+  color: var(--ink);
+}
+[data-theme="dark"] .luna-msg.luna-error {
+  background: rgba(224, 138, 122, 0.1);
+  border-color: rgba(224, 138, 122, 0.25);
+  color: var(--low);
+}
+[data-theme="dark"] .luna-typing {
+  background: linear-gradient(135deg, rgba(196, 168, 224, 0.15), rgba(240, 200, 120, 0.08));
+  border-color: rgba(196, 168, 224, 0.2);
+}
+[data-theme="dark"] .luna-typing span { background: var(--mauve); }
+[data-theme="dark"] .luna-chip {
+  background: rgba(196, 168, 224, 0.12);
+  border-color: rgba(196, 168, 224, 0.25);
+  color: var(--mauve);
+}
+[data-theme="dark"] .luna-chip:hover { background: rgba(196, 168, 224, 0.25); }
+[data-theme="dark"] .luna-input-row {
+  background: rgba(31, 20, 56, 0.8);
+  border-top-color: rgba(200, 180, 240, 0.15);
+}
+[data-theme="dark"] .luna-input {
+  background: rgba(26, 16, 48, 0.8);
+  border-color: rgba(200, 180, 240, 0.25);
+  color: var(--ink);
+}
+[data-theme="dark"] .luna-input:focus {
+  border-color: rgba(196, 168, 224, 0.5);
+  box-shadow: 0 0 0 3px rgba(196, 168, 224, 0.15);
+}
+[data-theme="dark"] .luna-input::placeholder { color: var(--faded); }
+[data-theme="dark"] .luna-disclaimer { color: var(--faded); }
+[data-theme="dark"] #lunaTooltip {
+  background: var(--card-solid);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+[data-theme="dark"] #lunaTooltip::after { background: var(--card-solid); }
+
+/* ── Dark mode: mystical ring overrides ── */
+[data-theme="dark"] .mystical-day { color: var(--ink); }
+[data-theme="dark"] .mystical-day-label { color: var(--taupe); }
+[data-theme="dark"] .mystical-desc { color: var(--taupe); }
+[data-theme="dark"] .mystical-step-btn {
+  background: rgba(45, 27, 78, 0.7);
+  border-color: rgba(200, 180, 240, 0.25);
+  color: var(--mauve);
+}
+[data-theme="dark"] .mystical-step-btn:hover {
+  background: rgba(196, 168, 224, 0.15);
+}
+[data-theme="dark"] .mystical-step-label { color: var(--taupe); }
+[data-theme="dark"] .mystical-today-btn {
+  background: linear-gradient(135deg, rgba(196, 168, 224, 0.2), rgba(240, 200, 120, 0.12));
+  border-color: rgba(196, 168, 224, 0.35);
+  color: var(--mauve);
+}
+[data-theme="dark"] .mystical-hint { color: var(--faded); }
+[data-theme="dark"] .phase-menstrual { background: rgba(216, 96, 122, 0.2); color: #e8809a; }
+[data-theme="dark"] .phase-follicular { background: rgba(138, 154, 216, 0.22); color: #a0b0e8; }
+[data-theme="dark"] .phase-ovulation { background: rgba(240, 192, 96, 0.22); color: var(--gold); }
+[data-theme="dark"] .phase-luteal { background: rgba(155, 123, 184, 0.22); color: #c4a8e0; }
+
+/* ── Dark mode: common inline-style overrides ── */
+[data-theme="dark"] .hstat {
+  background: var(--card-solid) !important;
+  border-color: var(--line-soft) !important;
+  color: var(--cocoa) !important;
+}
+[data-theme="dark"] .search-bar {
+  background: var(--card-solid) !important;
+  border-color: var(--line-soft) !important;
+}
+[data-theme="dark"] .search-bar input { color: var(--ink) !important; }
+[data-theme="dark"] .cat-chip {
+  background: var(--card-solid) !important;
+  border-color: var(--line-soft) !important;
+  color: var(--taupe) !important;
+}
+[data-theme="dark"] .cat-chip.on {
+  border-color: var(--mauve) !important;
+  background: rgba(196, 168, 224, 0.12) !important;
+  color: var(--ink) !important;
+}
+[data-theme="dark"] .chart-frame {
+  background: var(--sunken) !important;
+  border-color: var(--line-soft) !important;
+}
+[data-theme="dark"] .g-card {
+  background: var(--card) !important;
+  border-color: var(--line) !important;
+}
+[data-theme="dark"] .g-tag {
+  background: var(--sunken) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+/* Theme controls and stars also respect reduced motion on pages without anim.css. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .dark-stars i { opacity: .45; }
+  .theme-toggle:hover, .theme-toggle:active, .font-toggle:active { transform: none; }
+}

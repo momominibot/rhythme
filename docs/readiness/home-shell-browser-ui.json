@@ -1,0 +1,28 @@
+{
+  "date": "2026-09-11",
+  "method": "Root interactive Chromium/CUA checks; observed UI and read-only DOM styles. Not a physical-device or clinical study.",
+  "testOrigin": "http://localhost:4194",
+  "userOrigin": "http://127.0.0.1:4194",
+  "userRecordsModified": false,
+  "checks": [
+    "Empty Water submission blocked with a visible field error; explicit 0mL saved and displayed.",
+    "Saved Water zero survived reload/reopen; Escape returned focus to the trigger.",
+    "FSH Graph showed the saved 6.3IU/L fixture and collection date; mIU/mL selection cleared the unmatched chart.",
+    "Cycle next control and native ArrowRight changed the example day; four colored SVG arcs remained visible without generic dash offsets.",
+    "Cycle source dialog displayed both sources; Escape restored focus to its trigger.",
+    "Home dark and light at320px/A++ had body/document width320px; no broken images in final light view.",
+    "Final Home light header controls retain 44x44px boxes with2px deep-plum borders; check-in and Save styles remain scoped.",
+    "TCM darkA++ and lightnormal at320px visually readable; no horizontal page overflow observed.",
+    "Camera guide: worked example expands, research source popup opens, Escape restores trigger focus.",
+    "Camera-to-wearables link navigates correctly; wearable guide has no page overflow at320px/A++ and its permission-source dialog opens.",
+    "Final isolated browser console had no error/warning entries.",
+    "Viewport override reset; main-origin TCM preview opened and marked for review."
+  ],
+  "limits": [
+    "Synthetic records used only the separate localhost origin.",
+    "No camera permission was requested; no real health/API/account/community traffic was exercised.",
+    "Contrast/reflow is targeted visual verification, not full WCAG certification.",
+    "Native iOS keyboard, VoiceOver, Dynamic Type and hardware testing remain open."
+  ],
+  "unrelatedHtmlEditsVerifiedViewportOnly": 70
+}

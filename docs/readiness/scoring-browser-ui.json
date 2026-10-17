@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-09-11",
+  "origin": "http://localhost:4194",
+  "data": "Synthetic test fixtures only; separate origin from user preview at 127.0.0.1.",
+  "passed": [
+    "Ovarian blank submission rejects three required fields and focuses age.",
+    "Age34/variable/postpartum with AMH0 ng/mL dated2026-09-10 saves actual inputs with no numerical prediction; reload retains history and Review restores values.",
+    "Clearing age with keyboard clears summary; submission rejects and history count stays unchanged.",
+    "Negative FSH rejected;6.2 IU/L dated2026-09-10 saves and editing to6.3 updates one entry.",
+    "Insights and Overview show actual FSH6.3/date and saved assessment/journal counts; navigation works.",
+    "Nine-marker synthetic PhenoAge fixture displays33.0; no save until explicit action; save/reload/review restores original values and units.",
+    "Changing CRP to0 clears displayed result; Calculate rejects/focusesCRP and existing history remains unchanged.",
+    "PhenoAge evidence popup includes actual sources, implemented method/version and publication discrepancy; Escape restores trigger focus.",
+    "Repaired Insights and Overview evidence buttons open the correct source dialogs.",
+    "Targeted320px dark/A++ checks on ovarian, overview and Bio-Age have no document horizontal overflow; Insights normal-size320px also checked.",
+    "TCM dark SP6 surface visually rechecked on main preview origin; viewport reset after tests.",
+    "No warning/error console entries returned in final targeted inspection."
+  ],
+  "toolNote": "An empty fill call did not clear an existing number input; keyboard select-all/backspace was used and verified. Two intentionally saved synthetic ovarian snapshots remain on the isolated test origin.",
+  "limits": [
+    "Not an all-page action audit",
+    "No native iOS or physical camera validation",
+    "No clinical validation",
+    "Export/delete UI coverage is isolated test coverage where reported, not a claim of end-to-end native verification"
+  ]
+}

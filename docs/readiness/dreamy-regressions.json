@@ -1,0 +1,20 @@
+{
+  "scope": "Synthetic local software checks only; no production or personal data",
+  "checkedAt": "2026-09-30",
+  "suites": {
+    "ppg": 9,
+    "privacy-luna": 11,
+    "ovarian": 11,
+    "observations": 21,
+    "labs": 9,
+    "bio-age": 20,
+    "stale-writers": 8,
+    "insights-records": 7,
+    "home": 17,
+    "home-visuals": 13,
+    "api": 22
+  },
+  "totalGroups": 148,
+  "failed": 0,
+  "browserScriptNote": "check-observation-ui.cjs could not start because its Playwright dependency was absent; used CUA for browser checks instead, not counted as a pass."
+}

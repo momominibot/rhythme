@@ -1,0 +1,71 @@
+{
+  "checkedAt": "2026-10-05T15:50:48.372Z",
+  "scope": "Actual CUA UI interactions, five fresh localhost origins, fictional data only, no production record or account change",
+  "personas": [
+    {
+      "persona": "teen",
+      "initialMoodRestored": "Low",
+      "editedMoodRestored": "Good",
+      "supportPromptRemovedImmediately": true,
+      "dailyCount": "- listitem: \"Home check-ins (today only): 1 readable entries.\""
+    },
+    {
+      "persona": "ttc",
+      "initialMoodRestored": "Low",
+      "editedMoodRestored": "Good",
+      "supportPromptRemovedImmediately": true,
+      "dailyCount": "- listitem: \"Home check-ins (today only): 1 readable entries.\""
+    },
+    {
+      "persona": "postpartum",
+      "initialMoodRestored": "Low",
+      "editedMoodRestored": "Good",
+      "supportPromptRemovedImmediately": true,
+      "dailyCount": "- listitem: \"Home check-ins (today only): 1 readable entries.\""
+    },
+    {
+      "persona": "peri",
+      "initialMoodRestored": "Low",
+      "editedMoodRestored": "Good",
+      "supportPromptRemovedImmediately": true,
+      "dailyCount": "- listitem: \"Home check-ins (today only): 1 readable entries.\""
+    },
+    {
+      "persona": "post",
+      "initialMoodRestored": "Low",
+      "editedMoodRestored": "Good",
+      "supportPromptRemovedImmediately": true,
+      "dailyCount": "- listitem: \"Home check-ins (today only): 1 readable entries.\""
+    }
+  ],
+  "additionalChecks": [
+    "Each separately confirmed daily life context saved and restored on reload",
+    "Explicit postmenopause spotting saved with current date and routed to persistent daily care note",
+    "Postmenopause care evidence drawer opens, displays two cited sources and limits, closes normally",
+    "Actual unconfigured account dispatcher shows unavailable service; no account verified"
+  ],
+  "live": {
+    "url": "https://ovuluna.vercel.app/login.html",
+    "attempt": "Continue with Email without accepting terms",
+    "result": "No sign-in; current public handler stores a browser demo flag",
+    "termsAccepted": false,
+    "credentialsEntered": false
+  },
+  "notVerified": [
+    "Real OAuth or email account creation",
+    "Per-account isolation and encrypted cloud health records",
+    "Server deletion/provider revocation",
+    "Community chat",
+    "Health platform sync",
+    "PPG physical-device accuracy",
+    "Whole-app accessibility",
+    "Clinical validation"
+  ],
+  "proof": {
+    "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3DKcCgpB8NriqMPJYuMKBaVpbQv/80b1fe84-a657-4476-b9ab-ecbe4303ddef.jpg",
+    "label": "Fictional saved postmenopause observation shown in local daily guidance",
+    "anonymousHttpStatus": 200,
+    "contentType": "image/jpeg",
+    "sha256": "a90ae6b82a7667d5d37bb8f5c6445a0346a3d91f7e5ddd63ac4242155a7987f4"
+  }
+}

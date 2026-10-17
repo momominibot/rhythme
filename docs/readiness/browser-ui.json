@@ -1,0 +1,21 @@
+{
+  "date": "2026-09-11",
+  "scope": "Local Chromium UI verification; no native iOS or clinical validation",
+  "viewports": ["390x844", "320x780"],
+  "themes": ["light", "dark"],
+  "checksPassed": [
+    "All six generated topic icons load",
+    "Topic filter yields the two lab-marker guides",
+    "Unmatched search shows zero-results state; reset restores all 18 guides",
+    "Bloom chapter filter yields 10 guides",
+    "Existing film opens in native dialog; media readyState 4; closing returns focus",
+    "Learn, ovarian article, biomarkers and TCM have no document horizontal overflow at 320px/A++",
+    "Large-text hero decoration no longer intersects title bounds",
+    "Top font control applies zoom to TCM content and resets correctly",
+    "Ovarian source popup opens with Enter, exposes two checked sources, closes with Escape and restores focus",
+    "Legacy TCM record shows Source review pending with missing source link disclosure",
+    "No warning/error entries in verification tab console"
+  ],
+  "darkSP6ContrastMinimum": {"primaryText": 10.121469625912868, "secondaryText": 5.928297312574155},
+  "notVerified": ["Whole-app WCAG conformance", "VoiceOver on iPhone", "Physical camera/torch measurement", "Medical accuracy", "App Store acceptance"]
+}

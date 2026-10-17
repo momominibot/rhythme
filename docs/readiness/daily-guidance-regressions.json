@@ -1,0 +1,136 @@
+{
+  "suite": "Daily companion and independent Home preview",
+  "groups": 32,
+  "passed": 32,
+  "results": [
+    {
+      "name": "Five life contexts are explicitly self-reported and theme cannot change any daily card",
+      "passed": true
+    },
+    {
+      "name": "No-data and undisclosed context remain useful without clinical defaults",
+      "passed": true
+    },
+    {
+      "name": "Thirty-day freshness is labeled a product rule and stale context pauses stage prompts until reconfirmed",
+      "passed": true
+    },
+    {
+      "name": "Invalid input, unknown metadata and corrupt stores cannot be overwritten by a save",
+      "passed": true
+    },
+    {
+      "name": "Snapshots block other-tab changes, deletion and missing snapshots without losing records",
+      "passed": true
+    },
+    {
+      "name": "A backward device clock cannot silently replace a newer context or routine",
+      "passed": true
+    },
+    {
+      "name": "All six actual Home categories preserve entered zero, null and original units without constructing scores",
+      "passed": true
+    },
+    {
+      "name": "Old observations and previous-day check-ins stay saved but do not drive todays prompts",
+      "passed": true
+    },
+    {
+      "name": "Observation window is exactly today plus six calendar days and preserves missing readings",
+      "passed": true
+    },
+    {
+      "name": "Recent postmenopausal bleeding is source-linked, undismissable and labeled historical when appropriate",
+      "passed": true
+    },
+    {
+      "name": "No bleeding, missed reading and undisclosed observation context never create an after-menopause bleeding finding",
+      "passed": true
+    },
+    {
+      "name": "Newer ordinary, private or absent bleeding entries cannot hide earlier explicit care-relevant bleeding",
+      "passed": true
+    },
+    {
+      "name": "All-window care priority favors explicit postmenopausal context and never borrows conflicted daily context",
+      "passed": true
+    },
+    {
+      "name": "After-birth bleeding stays in after-birth context and is never used to reset a cycle",
+      "passed": true
+    },
+    {
+      "name": "Contradictory explicit observation context invites review and suppresses context-specific comfort",
+      "passed": true
+    },
+    {
+      "name": "An entered pain number does not choose treatment, identify a period or use an arbitrary clinical threshold",
+      "passed": true
+    },
+    {
+      "name": "Poor sleep in explicitly reported menopause context offers comfort without claiming a hot-flush treatment",
+      "passed": true
+    },
+    {
+      "name": "TTC folic-acid prompt asks a professional and does not prescribe a dose or quantify fertility",
+      "passed": true
+    },
+    {
+      "name": "Low mood uses worldwide support only for a current dated self-report",
+      "passed": true
+    },
+    {
+      "name": "Unreadable and denied source stores are reported without recovery writes or false reassuring prompts",
+      "passed": true
+    },
+    {
+      "name": "Routine completion is reversible per local day, protects stale writers and never completes a care note",
+      "passed": true
+    },
+    {
+      "name": "International travel and DST retain original local completion dates and context without corrupting history",
+      "passed": true
+    },
+    {
+      "name": "Routine times include midnight, validate strictly and only produce an in-app local cue",
+      "passed": true
+    },
+    {
+      "name": "Full-page form saves and restores explicit context, edits contraception and requires fresh confirmation",
+      "passed": true
+    },
+    {
+      "name": "Dirty context and routine drafts survive denied writes and other-tab changes until explicitly reopened",
+      "passed": true
+    },
+    {
+      "name": "Stale rendered completion controls cannot recreate deleted completion data",
+      "passed": true
+    },
+    {
+      "name": "Home preview needs no forms, prioritizes care, exposes why/source/edit links and never writes data",
+      "passed": true
+    },
+    {
+      "name": "An actual same-page Home form save immediately updates the daily preview and failed saves emit no success event",
+      "passed": true
+    },
+    {
+      "name": "Same-page record changes refresh daily reading output without replacing unsaved context or routine drafts",
+      "passed": true
+    },
+    {
+      "name": "Routine cue updates while open at the selected time, clears on pagehide and refreshes on return",
+      "passed": true
+    },
+    {
+      "name": "Midnight, focus and back navigation refresh dated records and completion without duplicates or writes",
+      "passed": true
+    },
+    {
+      "name": "Every static and dynamic source button resolves; local record links exist and readable assets are present",
+      "passed": true
+    }
+  ],
+  "scope": "Synthetic records, actual strict readers and isolated DOM. No clinical validity, screen-reader or visual-layout claim."
+}

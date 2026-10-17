@@ -1,0 +1,15 @@
+{
+  "passed": 9,
+  "checks": [
+    "Required fields block an empty form with visible status",
+    "Negative input fails visibly and saves no record",
+    "Zero result is saved/rendered with no inferred limits; report text is escaped",
+    "Earlier snapshot is displayed verbatim and remains untouched",
+    "Reload restores the dated history",
+    "Edit saves changes to the selected record without duplicating it",
+    "Current-record export and unchanged legacy export retain exact saved data",
+    "Malformed storage remains intact; history/export/save fail visibly",
+    "Storage quota failure shows error without claiming success or replacing records"
+  ],
+  "scope": "Isolated jsdom fixture data only; no user browser/storage/network interaction"
+}

@@ -1,0 +1,24 @@
+{
+  "appId": "app.vercel.ovuluna.dev",
+  "appName": "Ovuluna Dev",
+  "webDir": "www",
+  "loggingBehavior": "none",
+  "zoomEnabled": true,
+  "server": {
+    "hostname": "localhost",
+    "iosScheme": "capacitor",
+    "appStartPath": "/home.html"
+  },
+  "ios": {
+    "contentInset": "never",
+    "preferredContentMode": "mobile",
+    "webContentsDebuggingEnabled": false,
+    "handleApplicationNotifications": false,
+    "limitsNavigationsToAppBoundDomains": true
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": false
+    }
+  }
+}

@@ -1,0 +1,1149 @@
+{
+  "schema": 1,
+  "target": "ios-development",
+  "revision": "3c6fefbce0404ba0a1021c847a5ee0ed2b692ce1",
+  "sourceDirty": true,
+  "entry": "home.html",
+  "files": [
+    {
+      "path": "acupoints.html",
+      "bytes": 30074,
+      "sha256": "0270edd229a5524655c41ebccae0cc5ffe967a4d8ea2a62146a32b645a7db885"
+    },
+    {
+      "path": "anim.css",
+      "bytes": 7743,
+      "sha256": "df37d84c0b510e7361842ac5ab3ddefe07606549fb389457943c25c34602491c"
+    },
+    {
+      "path": "anim.js",
+      "bytes": 3245,
+      "sha256": "4ced579058be5414483970e7f0406d997d03473a0b0402f92e416ec84750406f"
+    },
+    {
+      "path": "animations.css",
+      "bytes": 7824,
+      "sha256": "eacef06005d61357ae16133d13e8da7cf46a226dde8df83f4a7201f209379e8a"
+    },
+    {
+      "path": "appnav.js",
+      "bytes": 14278,
+      "sha256": "b9729c18712e01b68fc8e0aef1218ea00d17c03cccafb7b516182c63b6344658"
+    },
+    {
+      "path": "assets/articles/discharge.jpg",
+      "bytes": 1571027,
+      "sha256": "44ca674683f9cbc2df2824f880a7256b7907340d3f356d978788b76c6752eca8"
+    },
+    {
+      "path": "assets/avatars/av1.jpg",
+      "bytes": 41492,
+      "sha256": "16d52946ab07644e3dc79866c3f1a0d155411ede34e02f4dcb8d6cbc57fb9ff3"
+    },
+    {
+      "path": "assets/avatars/av2.jpg",
+      "bytes": 35236,
+      "sha256": "b4d2011106835cb2b9d2107550bcb0a2c2d8cc84085a17637919ec9c7fb1ab79"
+    },
+    {
+      "path": "assets/avatars/av3.jpg",
+      "bytes": 31606,
+      "sha256": "b40166664382e023ef773a84c322efc084a1e7d38afe5398336883632eccd340"
+    },
+    {
+      "path": "assets/avatars/av4.jpg",
+      "bytes": 36932,
+      "sha256": "7b866517842361420d81ee02646626b2dd9440fb8b3e263770e30e00f2d0ebcd"
+    },
+    {
+      "path": "assets/avatars/av5.jpg",
+      "bytes": 48965,
+      "sha256": "1ec52a1e2a84fb3332ca0218697f6a7763b029a5f945046b67d3293534a5c1aa"
+    },
+    {
+      "path": "assets/avatars/av6.jpg",
+      "bytes": 28587,
+      "sha256": "3def3f6b9d13b8af021b92595d6929b28fbde91e2cc0cc271c8e808c4efed74a"
+    },
+    {
+      "path": "assets/danggui.png",
+      "bytes": 71148,
+      "sha256": "f09a9dfa1ffe8cca70bdb4f5f571afdb412b5e07781d54f45b08a86ac216bea0"
+    },
+    {
+      "path": "assets/discharge/brown.jpg",
+      "bytes": 99768,
+      "sha256": "84a8f1a5fdc183ec5c1d28df85b15fc8be0baa6330cf0e321f752d4cba1db523"
+    },
+    {
+      "path": "assets/discharge/clear.jpg",
+      "bytes": 47904,
+      "sha256": "396621002d6d61daf9893af0a074dfacb3ddab9eebd4589da040756dc6d2c9af"
+    },
+    {
+      "path": "assets/discharge/clumpy.jpg",
+      "bytes": 47916,
+      "sha256": "06b6b3e14cfcea05483f876b494d6064a2cda003dbafaa5f0304cd7ada45f629"
+    },
+    {
+      "path": "assets/discharge/creamy.jpg",
+      "bytes": 45562,
+      "sha256": "f745a49e51cd6037af4de168f735d03aa565c0ab370ab94c4b1d22f4b384c4d8"
+    },
+    {
+      "path": "assets/discharge/green.jpg",
+      "bytes": 94253,
+      "sha256": "f4bd52f9e52dbf0bc8d2f682b505b80f4ee430e1aab414d89e3b967b71c5b68b"
+    },
+    {
+      "path": "assets/discharge/grey.jpg",
+      "bytes": 92911,
+      "sha256": "8028d33dbc915e1aa1d7ce58e337171fa9c4734dee88cdfda0d5c2afb4615f30"
+    },
+    {
+      "path": "assets/discharge/pink.jpg",
+      "bytes": 94642,
+      "sha256": "a6fe7e96a220e114ac662bcf643a954b36c59dee225269c1202e6569dba19546"
+    },
+    {
+      "path": "assets/discharge/yellow.jpg",
+      "bytes": 47777,
+      "sha256": "80085e8690fd94bd76df3741c9d65388d59e6a72545a7091b6fcf57e94e63370"
+    },
+    {
+      "path": "assets/eduvid/fertile-v4.mp4",
+      "bytes": 1374965,
+      "sha256": "38d1043d67cff75603fd6ba14bd86b16dd11359b676f069af77431d636f620af"
+    },
+    {
+      "path": "assets/eduvid/fertile.jpg",
+      "bytes": 30498,
+      "sha256": "a3baa8b45d2ee2dd32757e0db6a3dbef0f18d877d369d4b44a6dd6cdd7dd94e1"
+    },
+    {
+      "path": "assets/eduvid/hormones-v4.mp4",
+      "bytes": 2742957,
+      "sha256": "908ec86ad3bcd3342ce30732c5d515f0dad3690cd83060f186ac907fadb1f22b"
+    },
+    {
+      "path": "assets/eduvid/hormones.jpg",
+      "bytes": 32048,
+      "sha256": "69302f6b82909eda6049e43c0a0964ce5f402410acb5da1a0871b4942cc5413f"
+    },
+    {
+      "path": "assets/eduvid/menarche-v1.mp4",
+      "bytes": 3374220,
+      "sha256": "cfd321e5a15db2e0d8b73bfc5e04d8de77a5692ef43d7a853817ba1ee173e8d2"
+    },
+    {
+      "path": "assets/eduvid/menarche.jpg",
+      "bytes": 25901,
+      "sha256": "26d1edd50bdb4111d29339fe9a19e98569ea1a0c62cc20c88b325f95dbb3b9d2"
+    },
+    {
+      "path": "assets/eduvid/menopause-v1.mp4",
+      "bytes": 3934018,
+      "sha256": "7d26908828ac3dea37933750a77f58e5531bb3177bb076787d2c3df9042166d7"
+    },
+    {
+      "path": "assets/eduvid/menopause.jpg",
+      "bytes": 29383,
+      "sha256": "2bffb1b08a785fe918c4be30a226ed2978d432cac7a158aff5dc24b5f23dc6b2"
+    },
+    {
+      "path": "assets/eduvid/normal-v4.mp4",
+      "bytes": 1572406,
+      "sha256": "917547c0ee2592782f56344b7424fb85d4ddd42c8dc8a57a396f8331b85b5119"
+    },
+    {
+      "path": "assets/eduvid/normal.jpg",
+      "bytes": 32811,
+      "sha256": "1281e482924f34c2a443bdcb0c718828f047c7cba1b85ce3b8a6c1c26d00fa17"
+    },
+    {
+      "path": "assets/eduvid/peri-v4.mp4",
+      "bytes": 1365240,
+      "sha256": "f010c2d03d3bc35bcdfa6220ebf62dcb8d0373a79a92dc180924c34daa3e629b"
+    },
+    {
+      "path": "assets/eduvid/peri.jpg",
+      "bytes": 33360,
+      "sha256": "5b2efd7a0a2fd955afdc66f1ae401b18877fe841246e343c227c9002c6cd2307"
+    },
+    {
+      "path": "assets/icons/breath.png",
+      "bytes": 329623,
+      "sha256": "3e739e0a7f08456cd774cfc0864aede722f4d6c395e86d6c849e4ce1927a71e7"
+    },
+    {
+      "path": "assets/icons/community.png",
+      "bytes": 317502,
+      "sha256": "53b3218512b0b67e7cc2138a279c831401f4db9bb49d5aca4916557f9e243fdb"
+    },
+    {
+      "path": "assets/icons/cycle-fertile.png",
+      "bytes": 348564,
+      "sha256": "241e6a471d5f9f340f77b4869dded97bfcd674263634684599f5dd68d19e75a1"
+    },
+    {
+      "path": "assets/icons/cycle-luteal.png",
+      "bytes": 298596,
+      "sha256": "92424835a70b5738a845677b7fcd9a155e00f6b40427b16efef1cec29463c662"
+    },
+    {
+      "path": "assets/icons/cycle-ovulation.png",
+      "bytes": 361787,
+      "sha256": "75299b3b8595ab5799c75c5a11a4f69f05007ff65fbd72aa326de4c89cafd5f1"
+    },
+    {
+      "path": "assets/icons/cycle-period.png",
+      "bytes": 310994,
+      "sha256": "e25effa0af534511dc64bbd4960386e873bcf53a8c930e9675f2a886258c2153"
+    },
+    {
+      "path": "assets/icons/exercise.png",
+      "bytes": 331793,
+      "sha256": "5911ad979eec984a2bfac7b289b67ccc729b5923af59ea5a0f918371d90f9a21"
+    },
+    {
+      "path": "assets/icons/herbs.png",
+      "bytes": 394071,
+      "sha256": "01a7e3ea4f58bda8d53a604d12424cdb2ef68737b8cd84125e54cb2e7dec0d31"
+    },
+    {
+      "path": "assets/icons/hydration.png",
+      "bytes": 320103,
+      "sha256": "275bbf4027705672ea75aa74b4f842c320b0cec179e328d1a6f01b37ad72d842"
+    },
+    {
+      "path": "assets/icons/label-scan.png",
+      "bytes": 105915,
+      "sha256": "73fb3d125b5e567a26d8b1fd0fb85e63094803eadd04e238a358465c068c56d1"
+    },
+    {
+      "path": "assets/icons/labs.png",
+      "bytes": 332491,
+      "sha256": "8e17cc3193034c4d77ef5faebe56b9b6a716768b6893b375c9d52698689c7ce1"
+    },
+    {
+      "path": "assets/icons/notifications.png",
+      "bytes": 339474,
+      "sha256": "013624ec991a6e3e7315e8fa9741169517078635981fbd8a098f31e9451080c3"
+    },
+    {
+      "path": "assets/icons/nutrition.png",
+      "bytes": 321643,
+      "sha256": "52e89ddccdf577936911cee6c82787a7e0ef6237f6094ff6903e9715364fcf82"
+    },
+    {
+      "path": "assets/icons/ovarian-age.png",
+      "bytes": 314662,
+      "sha256": "661186345e31661050e00888d50dff9224d04e74a197b8a24739bb54f6d9fb97"
+    },
+    {
+      "path": "assets/icons/partner.png",
+      "bytes": 334983,
+      "sha256": "5abc7de0d67482f050361f915e239e5e786b1d847d04c2aa6e100db8c4d1779f"
+    },
+    {
+      "path": "assets/icons/persona-bloom-256.png",
+      "bytes": 147594,
+      "sha256": "90a01d8c7a19b287813b417d04c343ba0a426778288c4b5328188dd9eeb77af6"
+    },
+    {
+      "path": "assets/icons/persona-bloom-64.png",
+      "bytes": 89533,
+      "sha256": "741e526fa71b2ed6d7a2a1462e957ab7584f90bc6c77629a71c3439ea80f3510"
+    },
+    {
+      "path": "assets/icons/persona-bloom.png",
+      "bytes": 270594,
+      "sha256": "294f2bb59d25e1a40f2d900ce8b666bca6818bbacf49366e6e76c33da6c575fb"
+    },
+    {
+      "path": "assets/icons/persona-grow-256.png",
+      "bytes": 74758,
+      "sha256": "1382f0fc2cafa20f199562d5da64ca3783451af4d6a3f61e5041b1ecbb4fc30e"
+    },
+    {
+      "path": "assets/icons/persona-grow-64.png",
+      "bytes": 59407,
+      "sha256": "be7ed3641c48627b8d0a7d49b8b88c72dfdcc58d64e5c769c96bb98f0b315b67"
+    },
+    {
+      "path": "assets/icons/persona-grow.png",
+      "bytes": 85575,
+      "sha256": "ec1a3c31a138d45069d471a13c7a6c58d34d8d47e1206052f39ef9ab9153ff37"
+    },
+    {
+      "path": "assets/icons/persona-nurture-256.png",
+      "bytes": 156621,
+      "sha256": "21263a245673355a83b378c6bce18dd7aea3976c02a29287bb0ac41bbf4be234"
+    },
+    {
+      "path": "assets/icons/persona-nurture-64.png",
+      "bytes": 65984,
+      "sha256": "872c02b8fbefca7e85dea4d7344bbf27b8cc619d26fa4451429ddc8e53c41074"
+    },
+    {
+      "path": "assets/icons/persona-nurture.png",
+      "bytes": 295011,
+      "sha256": "c570b243abcabb6ee0a36e4b89b9e6f98db0643d39068aa17658215e0f841d81"
+    },
+    {
+      "path": "assets/icons/persona-wisdom-256.png",
+      "bytes": 71644,
+      "sha256": "faac6251583b77f42daa09688fad767eb9839f5fe60a3fdb89d1be99e766df46"
+    },
+    {
+      "path": "assets/icons/persona-wisdom-64.png",
+      "bytes": 53458,
+      "sha256": "af57399e4995e7ef27d504f6a5a223b5ed58ac9f50f1a4f9a8e930ab49d57836"
+    },
+    {
+      "path": "assets/icons/persona-wisdom.png",
+      "bytes": 74078,
+      "sha256": "d5d33b5285266b6c510bbdc39b6c0d98b6b2bbb74369f50cf0bd2b1e0299fd18"
+    },
+    {
+      "path": "assets/icons/premium.png",
+      "bytes": 309396,
+      "sha256": "01c3ebabbbd40465c96a61226998a18336b8939b3a1fff5950a89e61bd6a5d82"
+    },
+    {
+      "path": "assets/icons/profile.png",
+      "bytes": 318052,
+      "sha256": "4b4223fcf20f6bb9cad184ace42f0848f4ef07f7fb3818ea8fdc7debd05beff8"
+    },
+    {
+      "path": "assets/icons/settings.png",
+      "bytes": 354066,
+      "sha256": "55ae3ae3edb19cad96ddcd522bc4a93fa657f3d90d32689e2c617b4781bae182"
+    },
+    {
+      "path": "assets/icons/sleep.png",
+      "bytes": 349644,
+      "sha256": "72b7d5449bcf20bca463c426428a614a2c260f2dc12202c2430b776669a1929d"
+    },
+    {
+      "path": "assets/icons/stress.png",
+      "bytes": 370473,
+      "sha256": "6bf7e5c20e60668e3b1220b4e0f1293919abf80a32bff105419b734d59202907"
+    },
+    {
+      "path": "assets/icons/tcm.png",
+      "bytes": 328105,
+      "sha256": "ecb736b30ed05a2844561e8147d5a59c98ae4044e0352455ecf16347ffa2742a"
+    },
+    {
+      "path": "assets/illustrations/body-bloom-600.png",
+      "bytes": 95161,
+      "sha256": "1168db723c832b5bcbc7701799f0c93233c929ad7b10cf13ecedc121d280c8cc"
+    },
+    {
+      "path": "assets/illustrations/body-bloom.png",
+      "bytes": 363316,
+      "sha256": "bc3875db78a8a4106d7325fc2e8bb3bd9397aaaf5890bc220a64ab0e4fcb4117"
+    },
+    {
+      "path": "assets/illustrations/body-grow-600.png",
+      "bytes": 128185,
+      "sha256": "8b5b14ea4309b18b48b989555ededa5586ce87840ba52a211a5b62de76711dcd"
+    },
+    {
+      "path": "assets/illustrations/body-grow.png",
+      "bytes": 419124,
+      "sha256": "54943b895c53aafda25c56b25ca4ba76b368e2cf0afe94314faedd1f22549cfc"
+    },
+    {
+      "path": "assets/illustrations/body-nurture-600.png",
+      "bytes": 418122,
+      "sha256": "6b271a420a06cb27b363e4016354577328e9c952feda919907f86d36cb63b053"
+    },
+    {
+      "path": "assets/illustrations/body-nurture.png",
+      "bytes": 1611801,
+      "sha256": "da54f907b938aa332ff5d8d107ae7836079adf61de61a2d392dd899572456f2a"
+    },
+    {
+      "path": "assets/illustrations/body-silhouette-300.png",
+      "bytes": 86927,
+      "sha256": "696abccf0bb83303b779242d2166b131a7dde72e7bbf225a21063c0432fbaaeb"
+    },
+    {
+      "path": "assets/illustrations/body-silhouette-600.png",
+      "bytes": 351198,
+      "sha256": "670912b66a10e5958074595921be6849aa7e436501f677f24165981846f73b90"
+    },
+    {
+      "path": "assets/illustrations/body-silhouette.png",
+      "bytes": 1102786,
+      "sha256": "97993d62e606ca1b3b3452247e70e10c273ca30be0779e5702c490985d7171b1"
+    },
+    {
+      "path": "assets/illustrations/body-wisdom-600.png",
+      "bytes": 117009,
+      "sha256": "8ea16804b97ed624c82b23666e90ec8755f181ecf1f38e2d3ae2f551e580f03f"
+    },
+    {
+      "path": "assets/illustrations/body-wisdom.png",
+      "bytes": 490696,
+      "sha256": "4ebda5154873e485462b18a00531d8780b7b9425cf14b884b55f19284bc584a7"
+    },
+    {
+      "path": "assets/illustrations/cycle-wheel.png",
+      "bytes": 1853296,
+      "sha256": "d74871d0795c1322b31e9ef63e75449136a5f86b2c72c5a96da6405171b04e3d"
+    },
+    {
+      "path": "assets/illustrations/lab-card.png",
+      "bytes": 1835191,
+      "sha256": "64cd17587b86a0cfbf2a99df606895b7b47e3317a91bba563f5b561080f1db3c"
+    },
+    {
+      "path": "assets/illustrations/life-stages.png",
+      "bytes": 776104,
+      "sha256": "6b1bb7a4a49b9f4a28d39e7dd0e655970c60072682d6914b3bacc29cbac47841"
+    },
+    {
+      "path": "assets/illustrations/ovarian-age-dashboard.png",
+      "bytes": 3506455,
+      "sha256": "fbf2d0415893e81d4d8b5a52143225946ef3099bb4664aa97a084b25e8bf6f69"
+    },
+    {
+      "path": "assets/illustrations/self-massage.png",
+      "bytes": 4269833,
+      "sha256": "568fc22561a8d603e0a3e720a48d0662053019608c17dcffdc581d6f5da29bc0"
+    },
+    {
+      "path": "assets/knowledge/biomarkers.webp",
+      "bytes": 31932,
+      "sha256": "92f8217ffeb2f935fb69d9dc27bf95febd4bbbf9da246aaa010bf4848f721474"
+    },
+    {
+      "path": "assets/knowledge/cycle.webp",
+      "bytes": 35742,
+      "sha256": "51a43d7419381f7b667c484cdc409f95eb0647638c8bbc615e0db56797e42907"
+    },
+    {
+      "path": "assets/knowledge/lifestyle.webp",
+      "bytes": 37482,
+      "sha256": "48ca79e6cb15dc8aeac6ddbf9ddc37534fcbf9ed04e2054c9ae16d6032e5517b"
+    },
+    {
+      "path": "assets/knowledge/science.webp",
+      "bytes": 34756,
+      "sha256": "8b9f0bb3212389f3e96769277e422bdebb2d6542537ef65ccd39734c14043e92"
+    },
+    {
+      "path": "assets/knowledge/tcm.webp",
+      "bytes": 45046,
+      "sha256": "c18f4064bbdd906fd1ee950dc3fc842bbab03beac9b6829df3324a44bb851d22"
+    },
+    {
+      "path": "assets/knowledge/technology.webp",
+      "bytes": 46616,
+      "sha256": "4bb752ae1d293e6fdae99e7f2adb88aa9b75db0f2ee542e222cb97af05322e8b"
+    },
+    {
+      "path": "assets/login/mystic-sky.jpg",
+      "bytes": 68889,
+      "sha256": "cf6097a22651ac9b104d43cd877a1306f764fe84f1c6a563a538fa30de1fa3ea"
+    },
+    {
+      "path": "assets/lottie/drop.json",
+      "bytes": 935,
+      "sha256": "3005fac70beb1474f8894a6c233d79766b7cb044a9a66dfb19a03381d4fdd2c2"
+    },
+    {
+      "path": "assets/lottie/flower.json",
+      "bytes": 1343,
+      "sha256": "9bff8f7732b3ed7c32a674bcbe5bc66b3073ef3b0d474a10ce56260ee0e2c332"
+    },
+    {
+      "path": "assets/lottie/leaf.json",
+      "bytes": 933,
+      "sha256": "f4b85c4b887e6345337b75823544b2ee26bf65d559c5b32b5e03927ea0d1d3e2"
+    },
+    {
+      "path": "assets/lottie/moon.json",
+      "bytes": 1314,
+      "sha256": "83ff95b474a80579273dac79c0a34247673a4b73813e1c0955318e6d3cd3f7dc"
+    },
+    {
+      "path": "assets/lottie/sparkle.json",
+      "bytes": 1193,
+      "sha256": "0b4e0378b1ebd0ad9ea1b2e5c9bf37cb1dc33702c917007281f9188ebc216bd7"
+    },
+    {
+      "path": "assets/lottie/sun.json",
+      "bytes": 970,
+      "sha256": "a716629a33381b255183b59f83069bc6c397a4228f66a1b9c19b080448585324"
+    },
+    {
+      "path": "assets/mascot/luna-cloud.png",
+      "bytes": 656194,
+      "sha256": "206163f6a7bb2123da65c86d10df44c0368fae3e749a4e7f824ac13ef01dec31"
+    },
+    {
+      "path": "assets/mascot/luna-mascot.png",
+      "bytes": 594315,
+      "sha256": "a4abe0f40f5773ec1edb5f6e2be0a7f1176b5b40f3ef992943aa45694358b34c"
+    },
+    {
+      "path": "assets/mascot/mascot.mp4",
+      "bytes": 2622419,
+      "sha256": "6c86321c7e5e4940cd597cea6eda222194cee07baee0ae13c4dbeca45d1ef6ae"
+    },
+    {
+      "path": "assets/mascot/mascot.png",
+      "bytes": 328833,
+      "sha256": "6791a6739c26a34b838c91752dd51f1bab7378583c55c4572a51a38868f6d3f5"
+    },
+    {
+      "path": "assets/moon-follicular.png",
+      "bytes": 1460904,
+      "sha256": "ebe691f814ebae004090e3ef8b6cbf38565b4391965efc66d2495b441fa3e5d6"
+    },
+    {
+      "path": "assets/nfc-card/card-back.png",
+      "bytes": 1792636,
+      "sha256": "638c8cb5ba582945feb82990baf4b0189d283b8afa96253df43c650e7406c2ec"
+    },
+    {
+      "path": "assets/nfc-card/card-front.png",
+      "bytes": 1867605,
+      "sha256": "af06ece75ff7f1379671b05159af0bd2ac101818ba5c6447738e72d0fb7a4100"
+    },
+    {
+      "path": "assets/onboarding/egg.png",
+      "bytes": 116843,
+      "sha256": "627bcd12f03be35ebf84b8f33dc07d7d13f8363223402f980fb7081de0f524b6"
+    },
+    {
+      "path": "assets/vendor/fonts.css",
+      "bytes": 941,
+      "sha256": "b7e212dcc90c8004a7d92f3a4da94d9432e8ed8fe2eb34c355a21362ef958cc1"
+    },
+    {
+      "path": "assets/vendor/licenses/_fontsource_material-symbols-outlined.txt",
+      "bytes": 4314,
+      "sha256": "18aabf190848725e2576eefb5c29ba06aac1029d02132252a7f312eac2e50cf3"
+    },
+    {
+      "path": "assets/vendor/licenses/_fontsource-variable_manrope.txt",
+      "bytes": 4383,
+      "sha256": "d826ab6583b12c26807d8716a545bdbbb672df04f48608a364ba9efdbe501c30"
+    },
+    {
+      "path": "assets/vendor/licenses/_fontsource-variable_newsreader.txt",
+      "bytes": 4520,
+      "sha256": "26028ec4e13b650065fa525a09532176f8a668b76ff849ea01c564a7480f91e7"
+    },
+    {
+      "path": "assets/vendor/licenses/_lottiefiles_lottie-player.txt",
+      "bytes": 1072,
+      "sha256": "398a02a6e9ada64d60a18c04f4d48b40b0e5eb65402d1581903f906d683e8f54"
+    },
+    {
+      "path": "assets/vendor/licenses/lottie-web.txt",
+      "bytes": 1095,
+      "sha256": "4750849de81eeee983513f7e66c419abf4656146a23283e8e93532075e2c242b"
+    },
+    {
+      "path": "assets/vendor/lottie-player.js",
+      "bytes": 380213,
+      "sha256": "f16bdeb47f643a09ec70a37397bf0134c311413395d164744d12cba7098bce49"
+    },
+    {
+      "path": "assets/vendor/lottie.min.js",
+      "bytes": 305543,
+      "sha256": "a0757321f974527bda3cc2593bf56cc7ffe4578421249ced6ae49ffb1c529f90"
+    },
+    {
+      "path": "assets/vendor/manrope.woff2",
+      "bytes": 24836,
+      "sha256": "a30ddcd349703aff7464c34bef3fffdff405ee50c113440d7c8693c02d210972"
+    },
+    {
+      "path": "assets/vendor/material-symbols.woff2",
+      "bytes": 321388,
+      "sha256": "86af947cac5b43a5473f61980ace21931a8d6f55a9a4d0ac54e107ae305e3cbd"
+    },
+    {
+      "path": "assets/vendor/newsreader-italic.woff2",
+      "bytes": 146872,
+      "sha256": "5dfcd10d24af8c82927ba57f7983dd997f7b200594c09c35a1b1ed9fc4597506"
+    },
+    {
+      "path": "assets/vendor/newsreader-normal.woff2",
+      "bytes": 132000,
+      "sha256": "6e4f2958c3a7c4a80acde4e5a679abe7e01bc1e30b92be3c7a8b696ef401d101"
+    },
+    {
+      "path": "assets/videos/acupressure-demo.mp4",
+      "bytes": 7451727,
+      "sha256": "6620081a71ca9378fce263727538d0f3f2613044ae04fe7fae8ebfc54e273489"
+    },
+    {
+      "path": "assets/videos/back-massage.mp4",
+      "bytes": 5630762,
+      "sha256": "9a8e634b1e6e85389b2f894a9e2b688206640001ce0d52d9171a66bba81aac1e"
+    },
+    {
+      "path": "assets/videos/blooming-flower.mp4",
+      "bytes": 4333328,
+      "sha256": "9ebe4a6733ccc17b097b2fb07d6b41b706e888c562c5251b022bd116980b16d0"
+    },
+    {
+      "path": "assets/videos/breathing-guide.mp4",
+      "bytes": 2360314,
+      "sha256": "8d3968f1671ff84f654e23c6e231208a405229c9ca02726117d561cfe347313c"
+    },
+    {
+      "path": "bio-age.html",
+      "bytes": 14261,
+      "sha256": "b99073cc96955c183d6af8823899ab9bbf1a298fdbdaa973f1104fcf7d29bb78"
+    },
+    {
+      "path": "bio-age.js",
+      "bytes": 22323,
+      "sha256": "4ddc21eec273238c0ca7a85829f80a66138ef24bb6bf118745d4c187ae5cbcf1"
+    },
+    {
+      "path": "breathe.html",
+      "bytes": 34448,
+      "sha256": "fc04f02a9467d4b49dce0d42866d71d1eb65f98ca75cb8e823decec6a1f7c829"
+    },
+    {
+      "path": "breathwork.html",
+      "bytes": 17757,
+      "sha256": "1c77726c163100726d52221659e58fdbb4ff7885e671bcdcda33d55709b471ed"
+    },
+    {
+      "path": "circle.html",
+      "bytes": 22072,
+      "sha256": "906b57598f4a551cdac6dbc5c970846ef0dcf96c194d20bff8ee7e6f0e86c581"
+    },
+    {
+      "path": "community.html",
+      "bytes": 6032,
+      "sha256": "c73ac5f31563a47bb455ce9a485f7bd111f9ff9608b417f61ac0435e00239542"
+    },
+    {
+      "path": "cycle-delay.html",
+      "bytes": 8291,
+      "sha256": "2c7f37dee7b99e9d26aaa21d98fa3493d5c5a6a87c966282244718b375f1e947"
+    },
+    {
+      "path": "cycle-home.html",
+      "bytes": 16545,
+      "sha256": "d46082cbbfe207fd697364812acfceac8bb7255bead1cb5abf68bd46d6be740a"
+    },
+    {
+      "path": "cycle-log.html",
+      "bytes": 25438,
+      "sha256": "e175925996ccfec4df7cba4db12a2a04e7637e0cfd7a23a1e9c92948947ec1a2"
+    },
+    {
+      "path": "cycle-trends.html",
+      "bytes": 9223,
+      "sha256": "75771b20227dcd17b219b89f9e1a23f36384fa20ba4187b442bb4b9263849747"
+    },
+    {
+      "path": "cyclering.js",
+      "bytes": 1580,
+      "sha256": "0104d25318e8a28528163e938a99e1ec508faac06dd9db9c396759a42dda9039"
+    },
+    {
+      "path": "darkmode.css",
+      "bytes": 10031,
+      "sha256": "1260cee393dde71544f9d3bd61a0a297560259b64e51673c4edb99c75eb670f2"
+    },
+    {
+      "path": "darkmode.js",
+      "bytes": 10828,
+      "sha256": "5291f91ff7ccad0f0d7dd585cce884549bd0a905bc827fa377e0197dfe32438e"
+    },
+    {
+      "path": "diet.html",
+      "bytes": 13369,
+      "sha256": "bfb2ab6a0750550456c63e25234fcaba6acf9eae2b56e0a1a32c41edf421a663"
+    },
+    {
+      "path": "evidence-db.js",
+      "bytes": 99837,
+      "sha256": "05ed50394cde84a5d851f0e389a662ec186f1dcb47d2167264bb92f792794655"
+    },
+    {
+      "path": "evidence.css",
+      "bytes": 4814,
+      "sha256": "f6d95898c0d3661dbed27b98b8ba6967b585e0f2ba409eff6a3895de076d40a0"
+    },
+    {
+      "path": "evidence.js",
+      "bytes": 12723,
+      "sha256": "7a81130b61205cf8f6573498823d0a3c19cf310d7c41b3ff7b1451e1fddcd3bc"
+    },
+    {
+      "path": "exercise.html",
+      "bytes": 8895,
+      "sha256": "291ae27168a8eb7d459fc8820b484e5eec575e9739dc7be248be47b6d1956288"
+    },
+    {
+      "path": "fertility.html",
+      "bytes": 10732,
+      "sha256": "a36ea9bb80f9d67eb7da14a78a24064ba1615162369b25bfe9a35f8943abac93"
+    },
+    {
+      "path": "food-scan.html",
+      "bytes": 7876,
+      "sha256": "d367e7bc3933658e30d8c2bbb205c4bf28fc80c61af6d4328ef0e0aaa0b8a49d"
+    },
+    {
+      "path": "food-score.js",
+      "bytes": 3974,
+      "sha256": "2eb66635c345ce4ccf30d866206350a450cce1f657c34e363cec133faca0672c"
+    },
+    {
+      "path": "foods.html",
+      "bytes": 92131,
+      "sha256": "b81a1625876a9b260158ca93095031552d15963bf204e1a330e5254b8ebbea05"
+    },
+    {
+      "path": "health-profile.html",
+      "bytes": 32624,
+      "sha256": "e57d8416fdd01b6f632e6882c89ffcaf99b0b5a6cad1777d6b08dfbc923b8a86"
+    },
+    {
+      "path": "home-records.js",
+      "bytes": 13622,
+      "sha256": "315c95914daa20724dfe1cbfa92df513d726f6ca2dfdab34f1ca6c31281f64ce"
+    },
+    {
+      "path": "home.css",
+      "bytes": 4653,
+      "sha256": "d78f26e97ecd4af6cf4708c19996b20f1e0e71e036732bbb512e29e06e30cd73"
+    },
+    {
+      "path": "home.html",
+      "bytes": 9498,
+      "sha256": "c77c3c190f1ea300dd9387817c748e27724d2ddcd939d757f38390197e5689d6"
+    },
+    {
+      "path": "hormone-graph.css",
+      "bytes": 1475,
+      "sha256": "d3073520a41c0c1f6b466e9e2840de01099ad2f334427a96143b532353b043d7"
+    },
+    {
+      "path": "hormone-graph.js",
+      "bytes": 6569,
+      "sha256": "6bb867b15ebc360673beb5f80bb44195b402576b24afb37d06c42b7e5cc1e1c0"
+    },
+    {
+      "path": "hormones.html",
+      "bytes": 8546,
+      "sha256": "8c6576a8d5d84179aa3dec6eef16f7539a3f50269801fbf14b52d395e0284164"
+    },
+    {
+      "path": "hydration.html",
+      "bytes": 16108,
+      "sha256": "10fa26762d7f209cf238ad776bc2393a53f9a37c1a981dd645cacdff083a9fc9"
+    },
+    {
+      "path": "index.html",
+      "bytes": 10113,
+      "sha256": "f1a3888fae9626a9d1ebc293aa5600187aa0cf804ab8a13522f777343fb88b64"
+    },
+    {
+      "path": "insights-records.js",
+      "bytes": 8888,
+      "sha256": "12dc3e2c2222a86cae7671b69b8eafb8bbdde92fcc368c4cb04c6e912b4cca1a"
+    },
+    {
+      "path": "insights.html",
+      "bytes": 9374,
+      "sha256": "a1f3fca68e1c59471f7d8019bdc1ecdd094e166843c78a5c200cba500158846a"
+    },
+    {
+      "path": "knowledge-hero.css",
+      "bytes": 8954,
+      "sha256": "76037b861df1136770128457fa5869cba13dc56647e42b1ad7ec3d8464b23337"
+    },
+    {
+      "path": "knowledge-hero.js",
+      "bytes": 4107,
+      "sha256": "5800ebe199011d539e01747b5198d32db99f14aad7bf36e17241264e2306c6c8"
+    },
+    {
+      "path": "label-scan.html",
+      "bytes": 51670,
+      "sha256": "65c0edd9e0d66a7912eba889eb3e6714a815d709a274864dabe55a4d678afa07"
+    },
+    {
+      "path": "labs-records.js",
+      "bytes": 13335,
+      "sha256": "d205ded295a80748255d92e94d0bb271ca0f581d480b8437ae50565b4a13b964"
+    },
+    {
+      "path": "labs.html",
+      "bytes": 10606,
+      "sha256": "ae4dbdcdd53571cd4671d013ff1ef29cb27d5d250d999efcb2a301f9297cd568"
+    },
+    {
+      "path": "learn-biomarkers.html",
+      "bytes": 11832,
+      "sha256": "951bd2ee82c53334b46c507f9859bf0efa807e2d4b6a538e11385b033d4d501f"
+    },
+    {
+      "path": "learn-cycle-phases.html",
+      "bytes": 4682,
+      "sha256": "1dbb03f74b64db5883557091592a385d3f937ef236e44cc90b7dc4c396aaab1f"
+    },
+    {
+      "path": "learn-discharge.html",
+      "bytes": 4813,
+      "sha256": "abe7e60f701c801d24529f3ae7d3ed3b619a6a178e6a758bb0577b8f1c61e1a0"
+    },
+    {
+      "path": "learn-fertile-window.html",
+      "bytes": 4407,
+      "sha256": "36bcbac153fa9ef8fc86a7f2918819706e2344da36947017362b985deca1da2f"
+    },
+    {
+      "path": "learn-hormone-phase-locking.html",
+      "bytes": 9918,
+      "sha256": "41e826728c52989bc06bed4adfb2c376bdeb2a22553a68dfc9c7d0256a673541"
+    },
+    {
+      "path": "learn-lifestyle.html",
+      "bytes": 10245,
+      "sha256": "84116db3af2ec4783f8f5da4e007d6cd256f0177f123ee6f5a5052926e9ce91f"
+    },
+    {
+      "path": "learn-longevity-pathways.html",
+      "bytes": 12220,
+      "sha256": "56d86a727dc4881bd1218cd3abc7fa7c409805454b0d942d4b6e80dca4eb92e9"
+    },
+    {
+      "path": "learn-ovarian-age.html",
+      "bytes": 6311,
+      "sha256": "30f03d2f34bf288852bd14b297ef7ecb7ce93a9b77f789bff6469c52d3f69122"
+    },
+    {
+      "path": "learn-ovarian-biology.html",
+      "bytes": 11004,
+      "sha256": "c197d48ac857bd7dc2792773869c0ec9ee98d25325b59f47c0d10457496833d0"
+    },
+    {
+      "path": "learn-ovarian-longevity.html",
+      "bytes": 5060,
+      "sha256": "4670970819bbf0c41580f96f5beca42556eb2e5bbb3890d258d0afc2bd0ebf1d"
+    },
+    {
+      "path": "learn-perimenopause.html",
+      "bytes": 5494,
+      "sha256": "ad0839577bf8696a141f8ae13f00775ee1620336df3a4c1fcfefad7574962eb3"
+    },
+    {
+      "path": "learn-ppg-tech.html",
+      "bytes": 11185,
+      "sha256": "36b1e1eef9e88110fb2711652547ec5b11daf3da2b3ac352de9cf40d8e800362"
+    },
+    {
+      "path": "learn-straw10.html",
+      "bytes": 10157,
+      "sha256": "ac7f5e9345692c114bb40758b4b7658465840289c88984f7d6f42c0f2a5aeaf4"
+    },
+    {
+      "path": "learn-wearables.html",
+      "bytes": 11340,
+      "sha256": "8cb852043a59f4ffd54c63c0ab27585ebc31cc1e6fe3b6f1c3db2948c11987e5"
+    },
+    {
+      "path": "learn.html",
+      "bytes": 14905,
+      "sha256": "988415b3fc236e67c559d3c2e580919c0a67ae634f76fbf4be8e63a7987e65b4"
+    },
+    {
+      "path": "learning-article.css",
+      "bytes": 4465,
+      "sha256": "029a4080a231a6109775f3f248ab6a93257f31872bfc872fe5fac3cf1f029a53"
+    },
+    {
+      "path": "login.html",
+      "bytes": 13889,
+      "sha256": "2ffaa9a7543e3eaac63c5f406c3223d3cb32afb8037d91c32febd2fddb19f061"
+    },
+    {
+      "path": "logo.html",
+      "bytes": 8190,
+      "sha256": "98e33301432a7c79052ea5249e024d18e22159fe2b30bc706152b6a102cd52d7"
+    },
+    {
+      "path": "longevity.html",
+      "bytes": 13130,
+      "sha256": "8ae2d370b2906693f877e324e467a03d5255fe3645e001379f42f93e243bebf8"
+    },
+    {
+      "path": "luna-chat.css",
+      "bytes": 11690,
+      "sha256": "d1aa24da1fd789bb67e521df7e2b4fb790893042817132b255197f8703c2a712"
+    },
+    {
+      "path": "luna-chat.js",
+      "bytes": 10194,
+      "sha256": "2642380521de36671e6b015a33e562ce306cb388423dd2507b2550c3258968ca"
+    },
+    {
+      "path": "medas14.html",
+      "bytes": 8429,
+      "sha256": "a7a4878c711727c63e4279e53380fd38804b9fe7e310c2a43c8433e3fd2d2711"
+    },
+    {
+      "path": "meds.html",
+      "bytes": 9849,
+      "sha256": "827e9259dde30a87fc87203083ab6138cd7a564c07f7c9e78c17af6fa1a55ad8"
+    },
+    {
+      "path": "myofascial.html",
+      "bytes": 19061,
+      "sha256": "11e41b7d24a923a82d675b2bc89631593025c1e29014b357b5446ccaa41c8d02"
+    },
+    {
+      "path": "mystical-ring.css",
+      "bytes": 4909,
+      "sha256": "3c40b89b04e8acc2350fdbad1948e74caf696d8419bce388fd6bd99118c31c5a"
+    },
+    {
+      "path": "mystical-ring.js",
+      "bytes": 4021,
+      "sha256": "a1c724dea238aa69639c8926eb3956915aceb892b3dce0affaa68a307c0e49c1"
+    },
+    {
+      "path": "notifications.html",
+      "bytes": 6756,
+      "sha256": "b0ae34f51911b03f5d46ced2194933d1600dfad2dd010e74c057f7e74a2af21f"
+    },
+    {
+      "path": "nutrients.html",
+      "bytes": 16101,
+      "sha256": "a7e52cb348e118137bf220d0391d8db38f753c1a4dd03cfade956aeb8c461e68"
+    },
+    {
+      "path": "nutrition-plan.html",
+      "bytes": 47911,
+      "sha256": "86c2b1687ac6882b3a760b5682e0d74d5f5b04e2fae864ec9619ba4093c879c2"
+    },
+    {
+      "path": "nutrition-scanner.html",
+      "bytes": 8828,
+      "sha256": "c0f4339bde576335963469ff907044e528f0971ff858d709c9c343749694c09d"
+    },
+    {
+      "path": "onboarding.html",
+      "bytes": 24208,
+      "sha256": "2bcbfc9912cec1076aa8c067437e35633736f7c2064c38245ea6eeeabd595feb"
+    },
+    {
+      "path": "onboarding.js",
+      "bytes": 4169,
+      "sha256": "06f0b8d28efa9ec328777dd2c4dbf970f283e264ec4fd6cbd000fa8bb61c66f4"
+    },
+    {
+      "path": "ovarian-age.html",
+      "bytes": 9447,
+      "sha256": "10c185f6752d91f7647c61f0a5ab03c29b165dc254f901ad14905764db90be1b"
+    },
+    {
+      "path": "ovarian-assessment.css",
+      "bytes": 3735,
+      "sha256": "64133fdd5eb4d331bb5a590a594666f2724945e99dd0344ed5a1a636b5dbd2bb"
+    },
+    {
+      "path": "ovarian-assessment.js",
+      "bytes": 6876,
+      "sha256": "ffb2714864148655438596d297b57272ab6eef441cf4681d85d776ce66da5111"
+    },
+    {
+      "path": "ovarian-model.js",
+      "bytes": 6883,
+      "sha256": "8ff50d38b9eb38e1d640690fb4aea391538752e591ad04a322a97e58f45c04ae"
+    },
+    {
+      "path": "ovarian-ring.js",
+      "bytes": 1559,
+      "sha256": "becc8abf11543049a711d961440d637c1a45580323de30aa97b9bfb022e3a6c0"
+    },
+    {
+      "path": "overview.html",
+      "bytes": 9203,
+      "sha256": "93be2567a79e495b260420fa8d28dfba9c301367f12ca73d5065aadbb7c15095"
+    },
+    {
+      "path": "ovuluna-mascot.js",
+      "bytes": 18629,
+      "sha256": "a7bcbcb23ee57368e4da75d9d7976d83bbbc3f9ba9725e273b553d3139c95fb3"
+    },
+    {
+      "path": "ovuluna-persona.css",
+      "bytes": 25601,
+      "sha256": "ed0a9263d05ec3dc06f75f5abc9e7ed68a9aea22348b75b3e4d46a31a2b7e2cc"
+    },
+    {
+      "path": "partner-code.html",
+      "bytes": 16119,
+      "sha256": "159d934c962fc726fa255e7f44202e28468bac8e104a6f13f5f0f56753f1f921"
+    },
+    {
+      "path": "partner-connect.html",
+      "bytes": 15326,
+      "sha256": "c0fd74720400a5bacc3a1f0a8abb247148059f42590d105a2c804c808fdf8a2c"
+    },
+    {
+      "path": "period-start.html",
+      "bytes": 7192,
+      "sha256": "d42114899ad5632f8164e9d92aa969065df7a78287703ac0d100e500e5502678"
+    },
+    {
+      "path": "personal-info.html",
+      "bytes": 14621,
+      "sha256": "2fdd141805f8b8547a2c739ebd9b3ab78f659921339d12c1bcf60f7f4015e65f"
+    },
+    {
+      "path": "phase-coach.html",
+      "bytes": 19096,
+      "sha256": "f044d4534361e0fe71a19705c16366eb815df1aa05d37b925bbea08332088787"
+    },
+    {
+      "path": "ppg-review.html",
+      "bytes": 19236,
+      "sha256": "8042a70ea17131f05cacfaef66e6b6750611a30b9b8b91c5ec6ae0130007497d"
+    },
+    {
+      "path": "ppg.css",
+      "bytes": 7105,
+      "sha256": "41988861b05f467aa66ad33ab683859bcd7d4e8d4c2d7e5ff2406d2ef0e1a357"
+    },
+    {
+      "path": "ppg.html",
+      "bytes": 21360,
+      "sha256": "1880d274f4b8689054bd223159e2a127caaeeb847637cf4c2c512b753a5415c1"
+    },
+    {
+      "path": "ppg.js",
+      "bytes": 14505,
+      "sha256": "b11ab70c11bd9bb76ee0f8f5cf0d88c87f4b34faae8fd34787cb078792819691"
+    },
+    {
+      "path": "premium.html",
+      "bytes": 11206,
+      "sha256": "f51d696c201bc3d744dadccdfd2009528a32e70cafa702f5d663cf8a744fc783"
+    },
+    {
+      "path": "privacy-local.css",
+      "bytes": 4796,
+      "sha256": "b64b3e1c21dcac8cb1b60c342b062092b2b331bc5ceea0aeb55439e56d793109"
+    },
+    {
+      "path": "privacy-local.js",
+      "bytes": 12805,
+      "sha256": "5e621c545768f61eedb19153cea7ea67c59d31af302a6dc34d7a176486385dbc"
+    },
+    {
+      "path": "privacy.html",
+      "bytes": 8693,
+      "sha256": "b9603be0ae05839f59ff7258559d881b6d29c839035e293dbf2d3c5b5cc0cb77"
+    },
+    {
+      "path": "profile.html",
+      "bytes": 16121,
+      "sha256": "f0a8fc6344321e7b1315cac37dc6b0fe9ca9029ece4fbb27b07794c9947d3169"
+    },
+    {
+      "path": "provider-dashboard.html",
+      "bytes": 18865,
+      "sha256": "a208c89c7629ceedaf46ad7d693457e78b9302d29a645a6f7f142577cff0d18d"
+    },
+    {
+      "path": "reports.html",
+      "bytes": 18873,
+      "sha256": "631a54987731ba960d0ec7c98c8caca1560cb1653f2eae548a1b1870361528ce"
+    },
+    {
+      "path": "runtime-config.js",
+      "bytes": 150,
+      "sha256": "45589f6a3087ade88058dbb8f4816ee455cf484742e5707ce53107ae1511905f"
+    },
+    {
+      "path": "settings.html",
+      "bytes": 8297,
+      "sha256": "25e12add124d43dc036df03c37ac03ec6e364124c6b43d28dce2da2d2417ef52"
+    },
+    {
+      "path": "sleep-diary.html",
+      "bytes": 10280,
+      "sha256": "a9b5bba481c950f366f2e8b30e70b73d745b068d072cbf60e9d59ac495b599df"
+    },
+    {
+      "path": "sleep.html",
+      "bytes": 6726,
+      "sha256": "8b7a8154f5b4f7ae5007908709c7ba03bd7d4d7f97341a58ed62b67128ddb235"
+    },
+    {
+      "path": "stress-checkin.html",
+      "bytes": 7856,
+      "sha256": "0990faecb082faba7113efdcf21870393199a9e667f3fccd0f605c8be4601ed7"
+    },
+    {
+      "path": "stress.html",
+      "bytes": 16780,
+      "sha256": "3bf5fc388378d5252e014a05a1ad82211416f4553190fb16bfb9d3032b234845"
+    },
+    {
+      "path": "supplements.html",
+      "bytes": 14502,
+      "sha256": "b65ffe40f94c38dc6b0f46b0b1dcdcf931ca01962d28fd3f25d58d5963eb5c85"
+    },
+    {
+      "path": "tcm-footsoak.html",
+      "bytes": 18241,
+      "sha256": "55fcabf3327a6134ec07e8d3c884f82ba9337b0d2c13f1089a287e239654610a"
+    },
+    {
+      "path": "tcm-herbs.html",
+      "bytes": 13317,
+      "sha256": "17313c04f4ed7403fef6c50665cff88b09f0d7158711a00ce6d4c28f32a9ce56"
+    },
+    {
+      "path": "tcm-hub.html",
+      "bytes": 21895,
+      "sha256": "4a65839f3a10b429b6e88425ce5e11c5cdffec8b0a5571584da4513137c61950"
+    },
+    {
+      "path": "tcm-topical.html",
+      "bytes": 12153,
+      "sha256": "08464ce78ff1b0f293b00542d1d267d7c4efbacd8ae35370579b308964f3ce44"
+    },
+    {
+      "path": "theme.css",
+      "bytes": 21874,
+      "sha256": "cba6be30998dcb2a46d28fc36a6f737341fd22cb26998f0cc5dd8e4f0ece452d"
+    },
+    {
+      "path": "trends.html",
+      "bytes": 9893,
+      "sha256": "4e7c81bf8b5c0c3718f4c47c1e3d4236a7368a33749468c631381dbd567cc259"
+    },
+    {
+      "path": "vascular.html",
+      "bytes": 6015,
+      "sha256": "247eedb2317ba1c2bd15c59ef9204e8678394142c69aa5a1e85e72d6567445b0"
+    },
+    {
+      "path": "wellness-checkin.html",
+      "bytes": 8026,
+      "sha256": "56fb94700a1988592d707f80057d745322f60710f703d78934819b132bae9660"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "date": "2026-09-11T06:04:55.610Z",
+  "scope": "Three TCM evidence records and tcm-hub.html source consistency only",
+  "status": "pass",
+  "checks": [
+    "sp6-acupressure-cramps: reviewed record exact match",
+    "acupressure-dysmenorrhea-meta: reviewed record exact match",
+    "heat-therapy-dysmenorrhea: reviewed record exact match",
+    "Every hub evidence key resolves",
+    "Eight former unsupported or harmful instructions absent",
+    "Study distinction, corrected heat popup and symptom guidance retained",
+    "No suggested five-point treatment sequence"
+  ],
+  "limitations": "Does not establish clinical efficacy, full-site citation coverage or browser/native layout correctness."
+}

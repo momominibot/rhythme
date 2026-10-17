@@ -1,0 +1,7 @@
+{
+  "framework": null,
+  "outputDirectory": "www",
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "buildCommand": "npm run build"
+}

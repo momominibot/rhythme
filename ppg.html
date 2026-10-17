@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en" data-persona="bloom">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Ovuluna · Heart Rate & HRV</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Manrope:wght@400;500;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+  <link rel="stylesheet" href="theme.css?v=3">
+  <link rel="stylesheet" href="darkmode.css?v=3">
+  <link rel="stylesheet" href="ppg.css?v=3">
+  <style>
+    /* Always-rendered video (never display:none) */
+    .ppg-shared-media {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+      opacity: 0.01;
+      pointer-events: none;
+      z-index: -1;
+    }
+    .ppg-shared-media video,
+    .ppg-shared-media canvas {
+      width: 100%;
+      height: 100%;
+    }
+    /* Visible preview canvas */
+    .ppg-preview-canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .ppg-finger-lost {
+      position: absolute;
+      inset: 0;
+      background: rgba(196,122,106,.92);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      z-index: 10;
+      border-radius: 20px;
+    }
+    .ppg-finger-lost.show { display: flex; }
+    .ppg-finger-lost p { color: #fff; font-size: 14px; line-height: 1.5; margin: 8px 0; }
+    .ppg-finger-lost .ppg-resume-btn {
+      margin-top: 12px;
+      padding: 10px 24px;
+      background: #fff;
+      color: #a05a4a;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+  </style>
+<link rel="stylesheet" href="dreamy.css">
+</head>
+<body>
+  <!-- Always-rendered shared video + processing canvas (never display:none) -->
+  <div class="ppg-shared-media">
+    <video id="ppgVideo" playsinline muted></video>
+    <canvas id="ppgCanvas" width="640" height="480"></canvas>
+  </div>
+
+  <div class="ppg-container">
+    <!-- Header -->
+    <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+    <!-- Step indicators -->
+    <div class="ppg-steps" id="ppgSteps">
+      <div class="ppg-step-dot active" data-step="1"></div>
+      <div class="ppg-step-dot" data-step="2"></div>
+      <div class="ppg-step-dot" data-step="3"></div>
+      <div class="ppg-step-dot" data-step="4"></div>
+    </div>
+
+    <!-- STEP 1: Welcome -->
+    <div id="step1" class="ppg-step">
+      <div style="text-align:center;padding:30px 20px">
+        <div style="font-size:64px;margin-bottom:16px">💗</div>
+        <h1 style="font-family:var(--serif);font-size:24px;font-weight:700;color:var(--ink);margin-bottom:8px">Camera Heart Rate</h1>
+        <p style="font-size:14px;color:var(--taupe);line-height:1.6;margin-bottom:24px;max-width:320px;margin-left:auto;margin-right:auto">
+          Place your index finger over the rear camera and flash. 
+          Ovuluna estimates your pulse from changes in light passing through your fingertip. Sit quietly first and keep your hand supported.
+        </p>
+        <div style="background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:14px;margin-bottom:20px;text-align:left">
+          <div style="font-size:12px;font-weight:700;color:var(--mauve);margin-bottom:8px">60-second measurement:</div>
+          <div style="font-size:12px;color:var(--cocoa);line-height:1.8">
+            <div>✓ Estimated pulse rate (BPM)</div>
+            <div>✓ Pulse-rate variability (RMSSD, ms)</div>
+            <div>✓ Signal checks before displaying an observation</div>
+            <div>✓ Fresh recording after a signal interruption</div>
+          </div>
+        </div>
+        <button class="ppg-btn ppg-btn-primary" id="startBtn">
+          <span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:6px">favorite</span>
+          Start Measurement
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Camera + Calibration -->
+    <div id="step2" class="ppg-step" style="display:none">
+      <div id="torchWarning" class="ppg-torch-warning" style="display:none">
+        <span class="material-symbols-outlined" style="font-size:16px;flex-shrink:0">light_mode</span>
+        <span>Your device doesn't support camera flash control. Please position under a bright light source for best results.</span>
+      </div>
+      
+      <div class="ppg-camera-wrap">
+        <canvas id="previewCanvas2" class="ppg-preview-canvas" width="640" height="480"></canvas>
+        <div class="ppg-sample-box" id="sampleBox"></div>
+        <div class="ppg-calibration-overlay" id="calibrationOverlay">
+          <div class="ppg-warning-icon">👆</div>
+          <p><b>Please place your index finger firmly over the camera lens and flash.</b></p>
+          <p class="ppg-tip">Keep your hand steady. Measurement starts automatically when finger is detected.</p>
+        </div>
+        <div class="ppg-red-meter">
+          <div class="ppg-red-meter-fill" id="redMeterFill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-bottom:16px">
+        <div id="calibrationStatus" style="font-size:13px;font-weight:700;color:var(--taupe)">
+          Waiting for finger placement...
+        </div>
+      </div>
+
+      <button class="ppg-btn ppg-btn-secondary" id="cancelBtn2" style="margin-top:auto">
+        Cancel
+      </button>
+    </div>
+
+    <!-- STEP 3: Measuring (60s) -->
+    <div id="step3" class="ppg-step" style="display:none">
+      <div class="ppg-camera-wrap" style="aspect-ratio:16/9;max-height:160px">
+        <canvas id="previewCanvas3" class="ppg-preview-canvas" width="640" height="480"></canvas>
+        <div class="ppg-red-meter">
+          <div class="ppg-red-meter-fill" id="redMeterFill2" style="width:0%"></div>
+        </div>
+        <!-- Finger lost overlay -->
+        <div class="ppg-finger-lost" id="fingerLostOverlay">
+          <span class="material-symbols-outlined" style="font-size:40px;color:#fff">warning</span>
+          <p><b>Signal interrupted</b></p>
+          <p>This recording was discarded. Re-place your finger, then start a fresh 60-second recording.</p>
+          <button class="ppg-resume-btn" id="resumeBtn">Restart measurement</button>
+        </div>
+      </div>
+
+      <div class="ppg-countdown-wrap">
+        <div class="ppg-countdown-ring">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="ppgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#c4b5e0"/>
+                <stop offset="100%" stop-color="#e8a898"/>
+              </linearGradient>
+            </defs>
+            <circle class="ring-bg" cx="60" cy="60" r="54"/>
+            <circle class="ring-progress" id="countdownRing" cx="60" cy="60" r="54"
+              stroke-dasharray="339.292" stroke-dashoffset="0"/>
+          </svg>
+          <div class="ppg-countdown-text">
+            <div class="ppg-countdown-number" id="countdownNumber">60</div>
+            <div class="ppg-countdown-label">seconds</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--taupe);margin-top:8px;font-weight:600" id="measuringStatus">
+          Keep your finger steady...
+        </div>
+      </div>
+
+      <div class="ppg-pulse-wave" style="min-height:80px;height:80px">
+        <canvas id="pulseWaveCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- STEP 4: Results -->
+    <div id="step4" class="ppg-step ppg-results" style="display:none">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:40px;margin-bottom:8px">✨</div>
+        <h2 style="font-family:var(--serif);font-size:22px;font-weight:700;color:var(--ink)">Your Pulse Reading</h2>
+        <div id="qualityBadge" class="ppg-quality good" style="margin-top:8px">Good Quality</div>
+      </div>
+
+      <div class="ppg-metrics-grid">
+        <div class="ppg-metric-card bpm">
+          <div class="ppg-metric-value"><span id="resultBPM">--</span><span class="ppg-metric-unit"> BPM</span></div>
+          <div class="ppg-metric-label">Estimated pulse</div>
+        </div>
+        <div class="ppg-metric-card hrv">
+          <div class="ppg-metric-value"><span id="resultHRV">--</span><span class="ppg-metric-unit"> ms</span></div>
+          <div class="ppg-metric-label">Pulse variability (RMSSD)</div>
+        </div>
+      </div>
+
+      <div class="ppg-advice" id="adviceSection">
+        <div class="ppg-advice-title">
+          <span class="material-symbols-outlined" style="font-size:16px">psychology</span>
+          About this observation
+        </div>
+        <div id="adviceList"></div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="ppg-btn ppg-btn-secondary" id="remeasureBtn" style="flex:1">
+          <span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px">refresh</span>
+          Re-measure
+        </button>
+        <button class="ppg-btn ppg-btn-primary" id="doneBtn" style="flex:1">
+          <span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px">check</span>
+          Done
+        </button>
+      </div>
+    </div>
+
+    <div class="ppg-disclaimer">
+      This experimental camera measurement has not been clinically validated. It cannot confirm ovulation or diagnose a health condition. Stop if the flash feels hot. Consult a healthcare professional for medical concerns.
+    </div>
+  </div>
+
+  <script src="ppg.js?v=4"></script>
+  <script src="darkmode.js?v=6"></script>
+  <script>
+  (function() {
+    'use strict';
+
+    const { CameraPPG, PulseObservationMapper } = window.OvulunaPPG;
+    
+    const MEASUREMENT_DURATION = 60; // Recording duration; not a clinical validation claim
+    let ppg = null;
+    let currentStep = 1;
+    let calibrationStartTimer = null;
+    let measurementCheck = null;
+    let previewFrame = null;
+    let pulseWaveData = [];
+    const MAX_PULSE_POINTS = 120;
+
+    // DOM
+    const steps = {
+      1: document.getElementById('step1'),
+      2: document.getElementById('step2'),
+      3: document.getElementById('step3'),
+      4: document.getElementById('step4')
+    };
+    const stepDots = document.querySelectorAll('.ppg-step-dot');
+    const video = document.getElementById('ppgVideo');
+    const canvas = document.getElementById('ppgCanvas');
+    const preview2 = document.getElementById('previewCanvas2');
+    const preview3 = document.getElementById('previewCanvas3');
+    const sampleBox = document.getElementById('sampleBox');
+    const calibrationOverlay = document.getElementById('calibrationOverlay');
+    const calibrationStatus = document.getElementById('calibrationStatus');
+    const redMeterFill = document.getElementById('redMeterFill');
+    const redMeterFill2 = document.getElementById('redMeterFill2');
+    const torchWarning = document.getElementById('torchWarning');
+    const countdownNumber = document.getElementById('countdownNumber');
+    const countdownRing = document.getElementById('countdownRing');
+    const pulseWaveCanvas = document.getElementById('pulseWaveCanvas');
+    const pulseCtx = pulseWaveCanvas.getContext('2d');
+    const fingerLostOverlay = document.getElementById('fingerLostOverlay');
+    const measuringStatus = document.getElementById('measuringStatus');
+
+    function showStep(stepNum) {
+      currentStep = stepNum;
+      Object.keys(steps).forEach(k => {
+        steps[k].style.display = (parseInt(k) === stepNum) ? 'block' : 'none';
+      });
+      stepDots.forEach((dot, i) => {
+        dot.classList.remove('active', 'done');
+        if (i + 1 < stepNum) dot.classList.add('done');
+        if (i + 1 === stepNum) dot.classList.add('active');
+      });
+    }
+
+    function releaseCamera() {
+      clearTimeout(calibrationStartTimer);
+      calibrationStartTimer = null;
+      clearInterval(measurementCheck);
+      measurementCheck = null;
+      if (previewFrame !== null) cancelAnimationFrame(previewFrame);
+      previewFrame = null;
+      if (ppg) ppg.release();
+      ppg = null;
+    }
+
+    // Keep only one preview animation loop for the current camera session.
+    function drawPreviews() {
+      if (!ppg) return;
+      if (video.readyState >= 2) {
+        [preview2, preview3].forEach(c => {
+          if (c && c.offsetParent !== null) {
+            const ctx = c.getContext('2d');
+            ctx.drawImage(video, 0, 0, c.width, c.height);
+          }
+        });
+      }
+      previewFrame = requestAnimationFrame(drawPreviews);
+    }
+
+    document.getElementById('startBtn').addEventListener('click', async () => {
+      if (currentStep !== 1) return;
+      showStep(2);
+      await initCamera();
+    });
+
+    document.getElementById('cancelBtn2').addEventListener('click', () => {
+      releaseCamera();
+      showStep(1);
+    });
+
+    document.getElementById('remeasureBtn').addEventListener('click', async () => {
+      releaseCamera();
+      pulseWaveData = [];
+      showStep(2);
+      await initCamera();
+    });
+
+    document.getElementById('doneBtn').addEventListener('click', () => {
+      releaseCamera();
+      window.location.href = 'home.html';
+    });
+
+    document.getElementById('resumeBtn').addEventListener('click', async () => {
+      if (currentStep !== 3 || ppg) return;
+      fingerLostOverlay.classList.remove('show');
+      pulseWaveData = [];
+      showStep(2);
+      await initCamera();
+    });
+
+    async function initCamera() {
+      const camera = new CameraPPG(canvas, video, {
+        onFrame: (redMean, calibrated) => {
+          const pct = Math.min(100, (redMean / 255) * 100);
+          redMeterFill.style.width = pct + '%';
+          redMeterFill2.style.width = pct + '%';
+        },
+        onCalibrationChange: (isCalibrated, redMean, ready) => {
+          if (isCalibrated) {
+            sampleBox.classList.add('calibrated');
+            calibrationOverlay.style.display = 'none';
+            calibrationStatus.textContent = ready ? '✓ Finger detected — starting measurement...' : 'Hold still...';
+            calibrationStatus.style.color = '#5a7a52';
+            if (ready && calibrationStartTimer === null) {
+              calibrationStartTimer = setTimeout(() => {
+                calibrationStartTimer = null;
+                if (ppg === camera && currentStep === 2) startMeasurement();
+              }, 500);
+            }
+          } else {
+            sampleBox.classList.remove('calibrated');
+            calibrationOverlay.style.display = 'flex';
+            calibrationStatus.textContent = 'Waiting for finger placement...';
+            calibrationStatus.style.color = 'var(--taupe)';
+          }
+        }
+      });
+
+      ppg = camera;
+      const result = await camera.init();
+      // Cancel/retry may have replaced this session while permission was pending.
+      if (ppg !== camera || currentStep !== 2) {
+        camera.release();
+        return;
+      }
+      if (!result.success) {
+        alert('Unable to access camera: ' + result.error + '\n\nPlease allow camera permissions and try again.');
+        releaseCamera();
+        showStep(1);
+        return;
+      }
+
+      if (!result.torchSupported) {
+        torchWarning.style.display = 'flex';
+      } else {
+        torchWarning.style.display = 'none';
+        await ppg.enableTorch();
+      }
+
+      if (ppg !== camera || currentStep !== 2) {
+        camera.release();
+        return;
+      }
+      drawPreviews();
+      camera.startCalibration();
+    }
+
+    function startMeasurement() {
+      if (!ppg || ppg.isMeasuring || currentStep !== 2) return;
+      clearTimeout(calibrationStartTimer);
+      calibrationStartTimer = null;
+      showStep(3);
+      pulseWaveData = [];
+      resizePulseCanvas();
+      
+      const CIRCUMFERENCE = 2 * Math.PI * 54;
+      
+      countdownNumber.textContent = MEASUREMENT_DURATION;
+      countdownRing.style.strokeDashoffset = 0;
+      measuringStatus.textContent = 'Keep your finger steady...';
+      fingerLostOverlay.classList.remove('show');
+      const originalOnFrame = ppg.onFrame;
+      ppg.onFrame = (redMean, calibrated) => {
+        originalOnFrame(redMean, calibrated);
+        if (!Number.isFinite(redMean) || redMean < 150) {
+          // Never concatenate pulse intervals across an unobserved gap.
+          ppg.rawData = [];
+          releaseCamera();
+          pulseWaveData = [];
+          fingerLostOverlay.classList.add('show');
+          countdownNumber.textContent = MEASUREMENT_DURATION;
+          countdownRing.style.strokeDashoffset = 0;
+          measuringStatus.textContent = 'Recording discarded — restart for a continuous 60 seconds.';
+          return;
+        }
+        pulseWaveData.push(redMean);
+        if (pulseWaveData.length > MAX_PULSE_POINTS) pulseWaveData.shift();
+        drawPulseWave();
+      };
+
+      ppg.startMeasurement(MEASUREMENT_DURATION, (progress, elapsed) => {
+        const remaining = Math.max(0, MEASUREMENT_DURATION - Math.floor(elapsed / 1000));
+        countdownNumber.textContent = remaining;
+        countdownRing.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress / 100);
+      });
+
+      // The first acquisition sample can discard the recording synchronously.
+      if (!ppg) return;
+      clearInterval(measurementCheck);
+      measurementCheck = setInterval(() => {
+        if (ppg && !ppg.isMeasuring && ppg.rawData.length > 0) {
+          clearInterval(measurementCheck);
+          measurementCheck = null;
+          processResults();
+        }
+      }, 100);
+    }
+
+    function drawPulseWave() {
+      try {
+        const w = pulseWaveCanvas.width || 300;
+        const h = pulseWaveCanvas.height || 80;
+        if (w < 10 || h < 10) return;
+        pulseCtx.clearRect(0, 0, w, h);
+        if (pulseWaveData.length < 2) return;
+
+        let min = Infinity, max = -Infinity;
+        for (let i = 0; i < pulseWaveData.length; i++) {
+          if (pulseWaveData[i] < min) min = pulseWaveData[i];
+          if (pulseWaveData[i] > max) max = pulseWaveData[i];
+        }
+        const range = max - min || 1;
+
+        pulseCtx.beginPath();
+        pulseCtx.strokeStyle = '#9b7fc4';
+        pulseCtx.lineWidth = 2;
+        pulseCtx.lineJoin = 'round';
+        const stepX = w / (MAX_PULSE_POINTS - 1);
+        
+        for (let i = 0; i < pulseWaveData.length; i++) {
+          const x = i * stepX;
+          const normalized = (pulseWaveData[i] - min) / range;
+          const y = h - (normalized * (h * 0.8) + h * 0.1);
+          if (i === 0) pulseCtx.moveTo(x, y);
+          else pulseCtx.lineTo(x, y);
+        }
+        pulseCtx.stroke();
+        pulseCtx.shadowColor = '#c4b5e0';
+        pulseCtx.shadowBlur = 8;
+        pulseCtx.stroke();
+        pulseCtx.shadowBlur = 0;
+      } catch(e) {
+        console.warn('Pulse wave draw error:', e);
+      }
+    }
+
+    function resizePulseCanvas() {
+      try {
+        const parent = pulseWaveCanvas.parentElement;
+        const rect = parent ? parent.getBoundingClientRect() : { width: 300, height: 80 };
+        pulseWaveCanvas.width = Math.max(100, rect.width || 300);
+        pulseWaveCanvas.height = Math.max(50, rect.height || 80);
+      } catch(e) {
+        pulseWaveCanvas.width = 300;
+        pulseWaveCanvas.height = 80;
+      }
+    }
+
+    function processResults() {
+      const results = ppg.processor.process(ppg.rawData);
+      const analysis = new PulseObservationMapper().analyze(results);
+
+      document.getElementById('resultBPM').textContent = analysis.accepted ? results.bpm : '--';
+      document.getElementById('resultHRV').textContent = analysis.accepted ? results.hrv : '--';
+
+      const qualityBadge = document.getElementById('qualityBadge');
+      qualityBadge.className = 'ppg-quality ' + results.quality;
+      const qualityLabels = { good: 'Good Quality', poor: 'Low Quality', unreliable: 'Unreliable', uncertain: 'Uncertain', insufficient: 'Insufficient Data' };
+      qualityBadge.textContent = qualityLabels[results.quality] || results.quality;
+
+      const adviceList = document.getElementById('adviceList');
+      adviceList.innerHTML = '';
+      analysis.advice.forEach(advice => {
+        const div = document.createElement('div');
+        div.className = 'ppg-advice-item';
+        div.textContent = advice;
+        adviceList.appendChild(div);
+      });
+
+      // No automatic baseline/phase inference; existing stored records are untouched.
+      releaseCamera();
+      showStep(4);
+    }
+
+    window.addEventListener('pagehide', releaseCamera);
+    window.addEventListener('resize', resizePulseCanvas);
+  })();
+  </script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body>
+</html>

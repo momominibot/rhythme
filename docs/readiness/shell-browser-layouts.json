@@ -1,0 +1,219 @@
+{
+  "status": "passed",
+  "observations": [
+    {
+      "page": "home.html",
+      "width": 320,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "rem"
+    },
+    {
+      "page": "learn.html",
+      "width": 320,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "tcm-hub.html",
+      "width": 320,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 73.53125,
+      "mode": "legacy"
+    },
+    {
+      "page": "bio-age.html",
+      "width": 320,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "rem"
+    },
+    {
+      "page": "ovarian-age.html",
+      "width": 320,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 78.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "learn-biomarkers.html",
+      "width": 320,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "profile.html",
+      "width": 320,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "home.html",
+      "width": 390,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "rem"
+    },
+    {
+      "page": "learn.html",
+      "width": 390,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "tcm-hub.html",
+      "width": 390,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 73.53125,
+      "mode": "legacy"
+    },
+    {
+      "page": "bio-age.html",
+      "width": 390,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "rem"
+    },
+    {
+      "page": "ovarian-age.html",
+      "width": 390,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 78.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "learn-biomarkers.html",
+      "width": 390,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "profile.html",
+      "width": 390,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "home.html",
+      "width": 768,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "rem"
+    },
+    {
+      "page": "learn.html",
+      "width": 768,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "tcm-hub.html",
+      "width": 768,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 73.53125,
+      "mode": "legacy"
+    },
+    {
+      "page": "bio-age.html",
+      "width": 768,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "rem"
+    },
+    {
+      "page": "ovarian-age.html",
+      "width": 768,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 78.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "learn-biomarkers.html",
+      "width": 768,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "profile.html",
+      "width": 768,
+      "text": "A++",
+      "theme": "dark",
+      "topHeight": 69,
+      "navHeight": 76.890625,
+      "mode": "legacy"
+    },
+    {
+      "page": "learn.html",
+      "effectiveTextHeights": [
+        16,
+        18.40625,
+        20.796875
+      ]
+    },
+    {
+      "page": "tcm-hub.html",
+      "effectiveTextHeights": [
+        16,
+        18.40625,
+        20.796875
+      ]
+    },
+    {
+      "page": "bio-age.html",
+      "effectiveTextHeights": [
+        16,
+        18.40625,
+        20.796875
+      ]
+    }
+  ],
+  "limits": "Chromium with local/fallback fonts; representative pages only; real iOS safe areas and full WCAG/native Dynamic Type review remain open."
+}

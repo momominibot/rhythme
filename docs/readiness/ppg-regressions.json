@@ -1,0 +1,15 @@
+{
+  "passed": 9,
+  "checks": [
+    "Steady placement starts once; duplicate start cannot reset samples or multiply loops",
+    "Cancel during readiness delay prevents measurement and releases all scheduled work",
+    "Retry cannot be started or overwritten by an earlier session callback",
+    "A late camera permission response after Cancel is released without restarting UI",
+    "Finger loss during the readiness delay leaves no recording or completion timer",
+    "Finger loss discards the entire recording; restart recalibrates a fresh continuous window",
+    "Only finite observations passing signal gates are accepted; no diagnostic flags are emitted",
+    "Actual results page withholds rejected numbers, writes no baseline and releases camera/timers",
+    "Known beat timestamps retain correct BPM and rounded RMSSD arithmetic"
+  ],
+  "scope": "Deterministic software behavior only; no clinical or hardware validation"
+}

@@ -1,0 +1,25 @@
+{
+  "root": "/Users/michiyomimi/Desktop/ovuluna-doubao",
+  "pages": 76,
+  "markdownFailures": [],
+  "checkedScripts": 68,
+  "syntaxFailures": [],
+  "localPageLinks": 776,
+  "linkFailures": [],
+  "noDiscoveredInbound": [
+    "learn-hormone-phase-locking.html"
+  ],
+  "journalBehavior": {
+    "environment": "Ephemeral jsdom; no real browser or user storage",
+    "passed": 5,
+    "checks": [
+      "Incomplete required fields reject submission without storage write",
+      "Complete fictional entry saves correct values into isolated localStorage",
+      "Reload restores the stored entry in journal history",
+      "Same-date submission updates existing record without duplicate",
+      "Malformed stored record remains unchanged with clear read/save failure states"
+    ],
+    "runtimeErrors": []
+  },
+  "diffCheck": "git diff --check passed"
+}

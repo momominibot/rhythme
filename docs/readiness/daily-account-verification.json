@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-10-01T06:02:19.356841+00:00",
+  "baseCommit": "47ba327d5b0eb1f2146b24560fd7258845a00d71",
+  "suites": {
+    "daily": 32,
+    "account": 30,
+    "Home": 19,
+    "entryPreferences": 12,
+    "privacy": 15,
+    "existingAPIBoundary": 22
+  },
+  "targetedGroups": 130,
+  "newGroups": 62,
+  "allPassed": true,
+  "webBuild": {
+    "assets": 277,
+    "passed": true
+  },
+  "nativeBuild": {
+    "assets": 277,
+    "pages": 91,
+    "assetCheckPassed": true
+  },
+  "scope": "Synthetic deterministic records/DOM/server responses plus separately recorded actual fictional browser QA. Not a live-provider or clinical acceptance result.",
+  "staticCheck": {
+    "pages": 91,
+    "scriptsParsed": 142,
+    "localReferences": 3199,
+    "localPageLinks": 1107,
+    "passed": true,
+    "unresolvedComputedReferences": 4
+  }
+}

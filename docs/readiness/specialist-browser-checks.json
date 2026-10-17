@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-09-11T06:15:18.001Z",
+  "passed": true,
+  "scope": "Isolated routed Chromium origin; source files, no live server/backend or user storage. Fonts routed to the same pinned local assets as native build. No native/hardware claim.",
+  "checks": [
+    "clear descriptive result",
+    "dry no pregnancy reassurance",
+    "mucus deselection",
+    "keyboard texture selection",
+    "preview selection no persisted health data",
+    "no fake Save or unsaved textarea",
+    "320px largest app text both themes no document overflow",
+    "real journal navigation no success toast",
+    "no page errors"
+  ],
+  "errors": []
+}

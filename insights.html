@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Ovuluna · Your observations</title>
+<link rel="icon" type="image/png" href="assets/onboarding/egg.png">
+<link rel="apple-touch-icon" href="assets/onboarding/egg.png">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="anim.css"><link rel="stylesheet" href="darkmode.css">
+<link rel="stylesheet" href="evidence.css"><link rel="stylesheet" href="luna-chat.css">
+<script src="anim.js" defer></script>
+<style>
+.scroll h1{font:600 25px var(--serif);color:var(--cocoa)}
+.scroll h2.sec{font:600 21px var(--serif)}
+.record-copy,.record-item p{font-size:13px;line-height:1.65;color:var(--cocoa)}
+.record-copy+.record-copy{margin-top:10px}.record-copy a,.record-item a{color:var(--mauve)}
+.record-eyebrow{font:800 10.5px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--mauve);margin-bottom:8px}
+.record-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.record-actions .btn{flex:1;min-width:110px;padding:12px;white-space:normal;text-align:center}
+.record-actions button{font:700 12px var(--sans);cursor:pointer}
+.record-item{padding:12px 0;border-bottom:1px solid var(--line-soft);overflow-wrap:anywhere}.record-item:last-child{border-bottom:0}.record-item h3{font:700 14px var(--sans);margin-bottom:5px}.record-item .record-meta{color:var(--taupe);font-size:12px}.record-item .record-note{white-space:pre-wrap;margin-top:5px}
+.record-count{font:600 24px var(--serif);color:var(--cocoa);margin:7px 0}.record-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.record-summary-grid .card{min-width:0}.record-summary-grid .card .sub{overflow-wrap:anywhere}
+.record-summary-grid a.card{color:inherit;text-decoration:none}.record-summary-grid a.card:focus-visible,.record-actions :focus-visible{outline:3px solid var(--mauve);outline-offset:3px}
+.record-ring{position:relative;width:280px;max-width:100%;aspect-ratio:1;margin:0 auto;display:grid;place-items:center}
+.record-ring svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 0 9px rgba(196,181,224,.27));pointer-events:none}
+.record-ring-inner{position:relative;text-align:center;width:62%;color:var(--cocoa)}.record-ring-inner img{width:60px;height:60px;object-fit:contain;filter:drop-shadow(0 0 9px rgba(229,201,138,.38))}.record-ring-inner b{display:block;font:600 22px var(--serif);margin-top:8px}.record-ring-inner p{font-size:12px;margin-top:6px;line-height:1.5;color:var(--taupe)}
+.record-callout{display:flex;align-items:center;gap:12px;color:inherit;text-decoration:none}.record-callout img{width:55px;height:55px;object-fit:contain;flex-shrink:0}.record-callout b{font:600 18px var(--serif)}
+@media(max-width:359px){.record-summary-grid{grid-template-columns:1fr}.record-actions{flex-direction:column}.record-ring-inner b{font-size:19px}.record-ring-inner img{width:46px;height:46px}}
+</style><link rel="stylesheet" href="dreamy.css">
+</head><body>
+<div class="app"><header class="top">
+<div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+<a class="t-icon ms" href="notifications.html" aria-label="Notifications">notifications</a>
+<a class="t-icon ms" href="cycle-trends.html" aria-label="Cycle trends">calendar_today</a>
+</header><main class="scroll">
+
+<div><p class="record-eyebrow">Suggestions &amp; insights</p><h1>Your observations, together</h1><p class="sub">A clear view of the records you have saved.</p></div>
+<div class="card tint-lavender">
+<div class="record-ring">
+<svg viewBox="0 0 300 300" aria-hidden="true"><g fill="none" stroke-width="19" stroke-linecap="round" transform="rotate(-90 150 150)"><circle cx="150" cy="150" r="117" stroke="var(--line-soft)"/>
+<circle cx="150" cy="150" r="117" stroke="#bd5d83" stroke-dasharray="150 736"/>
+<circle cx="150" cy="150" r="117" stroke="#8e8bc9" stroke-dasharray="160 736" stroke-dashoffset="-174"/>
+<circle cx="150" cy="150" r="117" stroke="#d4aa5b" stroke-dasharray="140 736" stroke-dashoffset="-362"/>
+<circle cx="150" cy="150" r="117" stroke="#9b7bb0" stroke-dasharray="185 736" stroke-dashoffset="-530"/></g></svg>
+<div class="record-ring-inner"><img src="assets/moon-follicular.png" alt=""><b>A moment to notice</b><p>Your records, without a predicted phase or score.</p></div></div>
+<p class="record-copy" style="text-align:center">The lunar ring is decorative.</p>
+</div>
+<div class="record-summary-grid">
+<a class="card tint-lavender" href="labs.html"><span class="ms" aria-hidden="true">science</span><div class="record-count" data-summary="lab-count">—</div><b>Lab records</b><p class="sub" data-summary="lab-date">Reading local records…</p></a>
+<a class="card tint-blush" href="wellness-checkin.html"><span class="ms" aria-hidden="true">edit_note</span><div class="record-count" data-summary="journal-count">—</div><b>Journal entries</b><p class="sub" data-summary="journal-date">Reading local records…</p></a>
+</div>
+
+<a class="card tint-gold" href="ovarian-age.html" style="color:inherit;text-decoration:none"><p class="record-eyebrow">Your entered context</p><b>Saved input snapshots</b><div class="record-count" data-summary="assessment-count">—</div><p class="sub" data-summary="assessment-date">Reading local records…</p><p class="record-copy">Review your cycle and lab context. These snapshots contain no ovarian-age prediction.</p></a>
+<section class="card" aria-labelledby="observation-records-title"><h2 class="sec" id="observation-records-title">Cycle observations</h2><div class="record-count" data-summary="observation-count">—</div><p class="sub" data-summary="observation-date">Reading local observations…</p><p class="record-copy">The bleeding, temperature, mucus, tests, treatment and device entries you recorded. Missing readings stay missing; no phase or diagnosis is inferred.</p><div data-records="observations" aria-live="polite"></div><div class="record-actions"><a class="btn mauve" href="cycle-log.html">Review or edit observations</a><a class="btn ghost" href="ovarian-health.html">Understand my records</a></div></section>
+<section class="card" aria-labelledby="checkin-records-title"><h2 class="sec" id="checkin-records-title">Home check-ins</h2><div class="record-count" data-summary="checkin-count">—</div><p class="sub" data-summary="checkin-date">Reading local check-ins…</p><p class="record-copy">Your dated mood, sleep, symptoms, water, activity and food entries. These are separate from the wellness journal; they do not measure ovarian reserve.</p><div data-records="checkins" aria-live="polite"></div><div class="record-actions"><a class="btn ghost" href="home.html#checkin-title">Review or edit Home check-ins</a></div></section>
+<section class="card" aria-labelledby="lab-records-title"><h2 class="sec" id="lab-records-title">Latest lab records</h2>
+<p class="record-copy">Values you entered, with their original units and collection dates. A saved value is not a lab-verified result or an interpretation.</p>
+<div data-records="labs" aria-live="polite"><p class="record-copy">Reading local records…</p></div>
+<div class="record-actions"><a class="btn mauve" href="labs.html">Manage lab records</a></div></section>
+<section class="card" aria-labelledby="journal-records-title"><h2 class="sec" id="journal-records-title">Recent journal entries</h2>
+<p class="record-copy">Your own reported mood, energy and comfort.</p>
+<div data-records="journal" aria-live="polite"><p class="record-copy">Reading local records…</p></div>
+<div class="record-actions"><a class="btn ghost" href="wellness-checkin.html">Open wellness journal</a></div></section>
+
+<section class="card tint-lavender" aria-labelledby="meaning-title"><p class="record-eyebrow">Context for your records</p><h2 class="sec" id="meaning-title">What can these entries tell me?</h2>
+<p class="record-copy">Review the dates, units and context alongside the original lab report. This page does not turn individual values or journal entries into a personal ovarian-age estimate.</p>
+<div class="record-actions"><a class="btn ghost" href="ovarian-age.html">Review your inputs</a><button type="button" class="btn ghost qi" data-evidence="ovarian-age-concept">Read the evidence</button></div></section>
+<section class="card" aria-labelledby="connections-title"><h2 class="sec" id="connections-title">Biometrics &amp; connections</h2>
+<div class="record-item"><h3>Wearables · Not connected</h3><p>Apple Health and Android Health Connect imports are not available in this web version. No sync percentage or wearable trend is shown.</p></div>
+<div class="record-item"><h3>Camera pulse · Session only</h3><p>The camera check shows an experimental estimate at the end of a session. It does not supply a saved overnight HRV trend to this page.</p></div>
+<div class="record-actions"><a class="btn mauve" href="ppg.html">Open camera check</a><a class="btn ghost" href="overview.html">Daily overview</a></div></section>
+
+<div class="card"><p class="record-copy"><span class="ms" aria-hidden="true" style="font-size:16px;vertical-align:middle">lock</span> These summaries read records saved on this browser. They are not a cloud backup or shared medical record.</p>
+<p class="record-copy">No ovarian-age, hormone-phase or treatment recommendation is calculated from these entries.</p></div>
+
+<noscript><p class="card record-copy">Enable JavaScript to read records saved on this browser. No personal metrics are prefilled here.</p></noscript>
+</main></div>
+<nav class="nav" aria-label="Main navigation">
+<a href="home.html"><span class="n-ic">home</span>Home</a>
+<a href="learn.html"><span class="n-ic">menu_book</span>Learn</a>
+<a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a>
+<a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+<a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav>
+<script src="observation-records.js" defer></script><script src="home-records.js" defer></script><script src="insights-records.js" defer></script>
+<script src="appnav.js" defer></script>
+<script src="luna-chat.js" defer></script><script src="darkmode.js?v=6" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

@@ -1,0 +1,162 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovuluna · Exercise</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<script src="anim.js" defer></script>
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+  <div class="scroll">
+    <!-- Day/Week/Month toggle -->
+    <div class="chiprow" data-single>
+      <span class="chip">Day</span>
+      <span class="chip on">Week</span>
+      <span class="chip">Month</span>
+    </div>
+    <div class="row" style="justify-content:center;gap:16px">
+      <span class="ms" style="color:var(--faded)">chevron_left</span>
+      <b style="font-size:13px;letter-spacing:.06em">MAY 14 – MAY 20</b>
+      <span class="ms" style="color:var(--faded)">chevron_right</span>
+    </div>
+
+    <!-- Hero: active minutes + METs -->
+    <div class="card tint-gold" style="padding:22px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="sub" style="letter-spacing:.1em;font-size:10.5px"><span class="ms" style="font-size:14px;color:var(--gold)">landscape</span> WEEKLY INTENSITY</div>
+          <div style="font-family:var(--serif);font-size:44px;font-weight:500;color:var(--cocoa);line-height:1;margin-top:6px">420 <span style="font-size:16px;color:var(--taupe);font-family:var(--sans)">MET min</span></div>
+          <div class="sub" style="margin-top:4px">Goal 500 MET min · Current focus: Strength &amp; Stability</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--serif);font-size:28px;font-weight:500;color:var(--mauve)">312</div>
+          <div class="sub" style="font-size:10.5px">active min</div>
+        </div>
+      </div>
+      <!-- Weekly goal progress -->
+      <div style="height:10px;width:100%;background:rgba(196,111,79,.12);border-radius:99px;overflow:hidden;margin-top:16px">
+        <div style="height:100%;width:84%;background:linear-gradient(90deg,var(--gold),#C46F4F);border-radius:99px"></div>
+      </div>
+      <div class="row" style="justify-content:space-between;margin-top:6px">
+        <span class="sub" style="font-size:10.5px">0</span>
+        <span class="sub" style="font-size:10.5px">84% Complete</span>
+      </div>
+    </div>
+
+    <!-- METs Mountain chart -->
+    <h2 class="sec">METs Mountain</h2>
+    <div class="card chart-frame">
+      <svg viewBox="0 0 340 170" width="100%" role="img" aria-label="Daily activity intensity, METs mountain">
+        <defs>
+          <linearGradient id="mtnFar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="var(--gold)" stop-opacity=".35"/><stop offset="1" stop-color="var(--gold)" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="mtnNear" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#C46F4F" stop-opacity=".55"/><stop offset="1" stop-color="#C46F4F" stop-opacity=".05"/>
+          </linearGradient>
+        </defs>
+        <!-- back ridge (sage haze) -->
+        <path d="M0 150 L0 92 L48 72 L97 108 L146 58 L194 96 L243 46 L291 84 L340 66 L340 150 Z" fill="var(--sage)" opacity=".18"/>
+        <!-- mid ridge (gold) -->
+        <path d="M0 150 L0 104 L48 88 L97 118 L146 78 L194 110 L243 64 L291 100 L340 82 L340 150 Z" fill="url(#mtnFar)"/>
+        <path d="M0 104 L48 88 L97 118 L146 78 L194 110 L243 64 L291 100 L340 82" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round"/>
+        <!-- near ridge (terracotta) -->
+        <path d="M0 150 L0 122 L48 112 L97 132 L146 104 L194 126 L243 96 L291 120 L340 108 L340 150 Z" fill="url(#mtnNear)"/>
+        <path d="M0 122 L48 112 L97 132 L146 104 L194 126 L243 96 L291 120 L340 108" fill="none" stroke="#C46F4F" stroke-width="2" stroke-linejoin="round"/>
+        <g class="axis" style="font:600 10px Manrope;fill:#817477">
+          <text x="0" y="166">Mon</text><text x="48" y="166">Tue</text><text x="94" y="166">Wed</text>
+          <text x="143" y="166">Thu</text><text x="191" y="166">Fri</text><text x="240" y="166">Sat</text><text x="315" y="166">Sun</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Strength vs Cardio breakdown -->
+    <h2 class="sec">Strength vs Cardio</h2>
+    <div class="grid2">
+      <div class="card tint-gold"><div class="row" style="gap:8px"><span class="ms" style="color:var(--gold)">exercise</span><b style="font-size:13px">Strength</b></div>
+        <div style="font-family:var(--serif);font-size:26px;font-weight:500;color:var(--cocoa);margin-top:4px">180 <span style="font-size:12px;color:var(--taupe)">MET min</span></div>
+        <div style="height:7px;width:100%;background:rgba(196,111,79,.12);border-radius:99px;overflow:hidden;margin-top:8px"><div style="height:100%;width:58%;background:var(--gold);border-radius:99px"></div></div>
+        <div class="sub" style="margin-top:5px">58% of weekly load</div></div>
+      <div class="card tint-sage"><div class="row" style="gap:8px"><span class="ms" style="color:var(--sage)">directions_run</span><b style="font-size:13px">Cardio</b></div>
+        <div style="font-family:var(--serif);font-size:26px;font-weight:500;color:var(--cocoa);margin-top:4px">130 <span style="font-size:12px;color:var(--taupe)">MET min</span></div>
+        <div style="height:7px;width:100%;background:rgba(159,167,143,.18);border-radius:99px;overflow:hidden;margin-top:8px"><div style="height:100%;width:42%;background:var(--sage);border-radius:99px"></div></div>
+        <div class="sub" style="margin-top:5px">42% of weekly load</div></div>
+    </div>
+
+    <!-- Top contributors -->
+    <h2 class="sec">Top Contributors</h2>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div class="row" style="gap:12px">
+        <span class="ms" style="color:var(--gold);background:rgba(229,180,92,.15);border-radius:12px;padding:9px">exercise</span>
+        <div style="flex:1"><b style="font-size:14px">Strength</b><div class="sub">180 MET min</div></div>
+      </div>
+      <div class="row" style="gap:12px">
+        <span class="ms" style="color:var(--sage);background:rgba(159,167,143,.18);border-radius:12px;padding:9px">self_improvement</span>
+        <div style="flex:1"><b style="font-size:14px">Vinyasa Yoga</b><div class="sub">90 MET min</div></div>
+      </div>
+      <div class="row" style="gap:12px">
+        <span class="ms" style="color:var(--mauve);background:rgba(110,70,84,.12);border-radius:12px;padding:9px">directions_walk</span>
+        <div style="flex:1"><b style="font-size:14px">Brisk Walk</b><div class="sub">40 MET min</div></div>
+      </div>
+    </div>
+
+    <!-- Phase-synced training tip -->
+    <div class="insight" style="background:linear-gradient(140deg, rgba(229,180,92,.22), rgba(255,255,255,.75))">
+      <span class="i-ic ms" style="color:var(--tertiary,#8F947A)">psychiatry</span>
+      <p><b>Luteal Phase Insight</b><br/>Your energy is naturally lowering. Hold your METs with lower-impact strength training and yoga rather than high-intensity cardio to support hormone balance this week.</p>
+    </div>
+  </div>
+</div>
+
+<nav class="nav">
+  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a href="learn.html"><span class="n-ic">menu_book</span>Learn</a>
+  <a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a>
+  <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav>
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

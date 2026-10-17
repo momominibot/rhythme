@@ -1,0 +1,148 @@
+/* Explicit, origin-scoped local storage controls. This controller never
+   writes, migrates or removes data merely because the page is opened. Export retains raw strings, including damaged
+   JSON, rather than silently repairing a person's record. */
+(function (root) {
+  'use strict';
+  const STORES = [
+    ['ovuluna_observations_v1', 'Cycle observations, treatment and device notes', 'current'],
+    ['ovuluna_lab_records_v1', 'Lab records', 'current'],
+    ['ovuluna_wellness_journal_v1', 'Wellness journal', 'current'],
+    ['ovuluna_daily_checkins_v1', 'Daily check-ins', 'current'],
+    ['ovuluna_daily_context_v1', 'Confirmed daily guidance context', 'current'],
+    ['ovuluna_daily_routine_v1', 'In-app routine reminder preference', 'preferences'],
+    ['ovuluna_daily_completions_v1', 'Daily guidance checklist history', 'current'],
+    ['ovuluna_ovarian_assessments_v2', 'Ovarian assessment inputs and history', 'current'],
+    ['ovuluna_phenoage_records_v1', 'PhenoAge research inputs and history', 'current'],
+    ['ovuluna_profile', 'Health profile', 'additional'],
+    ['ovuluna_label_scans', 'Label scan history', 'additional'],
+    ['ovuluna_medas14', 'Diet questionnaire', 'additional'],
+    ['ovuluna_pss10', 'Stress questionnaire history', 'additional'],
+    ['ovuluna_sleep_logs', 'Sleep diary', 'additional'],
+    ['ov_hydro', 'Hydration log', 'additional'],
+    ['ov_acupoint_routine', 'Acupoint routine', 'additional'],
+    ['ovuluna_footsoak_reminder', 'Footsoak reminder preference', 'additional'],
+    ['ovuluna_luna', 'Legacy Luna conversation and credit settings', 'legacy'],
+    ['ovuluna_ovarian_age', 'Legacy ovarian-age data', 'legacy'],
+    ['ov_result', 'Legacy assessment result', 'legacy'],
+    ['ovuluna_labs', 'Legacy lab data', 'legacy'],
+    ['ovuluna_wellness_data', 'Legacy wellness engine data', 'legacy'],
+    ['ovuluna_cycle_data', 'Legacy cycle data', 'legacy'],
+    ['ovuluna_onboarding', 'Self-reported onboarding answers', 'additional'],
+    ['ovuluna_language', 'Language preference', 'preferences'],
+    ['ovuluna_units', 'Measurement units preference', 'preferences'],
+    ['ovuluna_auth', 'Legacy local sign-in appearance (not a verified account)', 'legacy'],
+    ['ovuluna_preferences_v1', 'Welcome preferences', 'preferences'],
+    ['ovuluna_persona', 'Life-stage appearance', 'preferences'],
+    ['ovuluna_theme', 'Color theme', 'preferences'],
+    ['ovuluna_fontsize', 'Text size', 'preferences'],
+    ['ovuluna_hormone_view', 'Hormone chart view', 'preferences'],
+    ['ov_mascot_hide', 'Mascot visibility', 'preferences'],
+    ['ovuluna_luna_seen', 'Legacy Luna welcome preference', 'preferences']
+  ];
+  const LEGACY_DAILY = /^ovuluna_daily_log_\d{4}-\d{2}-\d{2}$/;
+  function definition(key) {
+    const known = STORES.find(item => item[0] === key);
+    if (known) return { key: known[0], label: known[1], group: known[2] };
+    if (LEGACY_DAILY.test(key)) return { key: key, label: 'Legacy daily log · ' + key.slice(-10), group: 'legacy' };
+    return null;
+  }
+  function inventory(storage) {
+    const keys = [];
+    for (let i = 0; i < storage.length; i++) { const key = storage.key(i); if (typeof key === 'string') keys.push(key); }
+    return keys.sort().map(key => { const item = definition(key); if (!item) return null; const raw = storage.getItem(key); return raw === null ? null : Object.assign(item, { characters: raw.length }); }).filter(Boolean);
+  }
+  function snapshot(storage, keys) {
+    if (!Array.isArray(keys) || !keys.length) throw new Error('Select at least one stored item.');
+    return [...new Set(keys)].map(key => {
+      const item = definition(key); if (!item) throw new Error('Unrecognized storage key. Nothing was changed.');
+      const raw = storage.getItem(key); if (raw === null) throw new Error('A selected item changed. Review your selection again.');
+      return Object.assign(item, { raw: raw });
+    });
+  }
+  function exportData(storage, keys, origin) {
+    return { format: 'ovuluna-local-export', version: 1, exportedAt: new Date().toISOString(), origin: origin, note: 'Raw local storage strings, not clinically interpreted results. Keep this file private. No restore or cloud backup is provided by this export.', stores: snapshot(storage, keys) };
+  }
+  function removeReviewed(storage, reviewed) {
+    if (!Array.isArray(reviewed) || !reviewed.length) throw new Error('Review selected items before deleting.');
+    // Validate every item before removing any. A changed record invalidates consent.
+    reviewed.forEach(item => { if (!item || !definition(item.key) || typeof item.raw !== 'string' || storage.getItem(item.key) !== item.raw) throw new Error('Stored data changed after review. Nothing was deleted. Review again.'); });
+    const deleted = [], failed = [];
+    reviewed.forEach(item => { try { storage.removeItem(item.key); if (storage.getItem(item.key) !== null) throw new Error('not removed'); deleted.push(item.key); } catch (_) { failed.push(item.key); } });
+    return { deleted: deleted, failed: failed };
+  }
+  if (typeof module !== 'undefined' && module.exports) { module.exports = { inventory, snapshot, exportData, removeReviewed, definition }; return; }
+  const d = root.document; if (!d) return;
+  function boot() {
+    const list = d.getElementById('privacy-stores'); if (!list) return;
+    const status = d.getElementById('privacy-status'), dialog = d.getElementById('privacy-delete-dialog'), confirm = d.getElementById('privacy-confirm-delete'), agree = d.getElementById('privacy-delete-agree');
+    const reviewButton = d.getElementById('privacy-review-delete'), exportButton = d.getElementById('privacy-export');
+    let reviewed = null, downloadable = null;
+    function message(text) { status.textContent = text; }
+    function selected() { return Array.from(list.querySelectorAll('input:checked')).map(input => input.value); }
+    function setActions() { const hasSelection = selected().length > 0; exportButton.disabled = !hasSelection; reviewButton.disabled = !hasSelection; d.getElementById('privacy-clear-selection').disabled = !hasSelection; d.getElementById('privacy-select-all').disabled = list.querySelectorAll('input').length === 0; }
+    function refresh() {
+      list.replaceChildren();
+      try {
+        const items = inventory(root.localStorage);
+        d.getElementById('privacy-inventory-count').textContent = items.length ? items.length + ' recognized stored items. Select exactly what to include.' : 'No recognized Ovuluna records are stored in this origin.';
+        [['current', 'Current records'], ['additional', 'Other app records'], ['legacy', 'Legacy data · preserved unless selected'], ['preferences', 'Appearance and preferences']].forEach(group => {
+          const records = items.filter(item => item.group === group[0]); if (!records.length) return;
+          const fieldset = d.createElement('fieldset'), legend = d.createElement('legend'); legend.textContent = group[1]; fieldset.append(legend);
+          records.forEach(item => {
+            const label = d.createElement('label'), input = d.createElement('input'), text = d.createElement('span'), name = d.createElement('strong'), key = d.createElement('small');
+            input.type = 'checkbox'; input.value = item.key; input.addEventListener('change', setActions);
+            name.textContent = item.label; key.textContent = item.key + ' · ' + item.characters.toLocaleString() + ' stored characters'; text.append(name, key); label.append(input, text); fieldset.append(label);
+          }); list.append(fieldset);
+        });
+      } catch (_) { message('Browser storage is unavailable. Export and deletion cannot run here.'); }
+      setActions();
+    }
+    function clearExport() { downloadable = null; d.getElementById('privacy-export-json').value = ''; d.getElementById('privacy-export-result').hidden = true; }
+    function closeReview() { reviewed = null; if (dialog.open) dialog.close(); reviewButton.focus(); }
+    function finishDelete() {
+      if (!reviewed || !agree.checked) return;
+      try {
+        const result = removeReviewed(root.localStorage, reviewed); closeReview(); clearExport(); refresh();
+        message(result.deleted.length + ' selected items deleted from this origin.' + (result.failed.length ? ' ' + result.failed.length + ' could not be deleted; review the remaining list.' : ' Unselected and unrecognized stores were preserved.') + ' Other devices, downloads and server-held records are unaffected. Reload other open tabs before editing records.');
+      } catch (error) { closeReview(); refresh(); message(error.message || 'Deletion failed. Review the stored items again.'); }
+    }
+    d.getElementById('privacy-select-all').addEventListener('click', function () { list.querySelectorAll('input').forEach(input => { input.checked = true; }); setActions(); message('All listed local items selected. Review before deleting; no data has changed.'); });
+    d.getElementById('privacy-clear-selection').addEventListener('click', function () { list.querySelectorAll('input').forEach(input => { input.checked = false; }); setActions(); message('Selection cleared. No data has changed.'); });
+    d.getElementById('privacy-export-before-delete').addEventListener('click', function () { closeReview(); exportButton.click(); });
+    exportButton.addEventListener('click', function () {
+      try {
+        downloadable = JSON.stringify(exportData(root.localStorage, selected(), root.location.origin), null, 2);
+        d.getElementById('privacy-export-json').value = downloadable; d.getElementById('privacy-export-result').hidden = false;
+        d.getElementById('privacy-export-result').scrollIntoView({ block: 'nearest' });
+        message('Selected JSON export is ready below. It contains personal data. Save it somewhere private.');
+      } catch (error) { clearExport(); message(error.message || 'Export could not be prepared.'); }
+    });
+    d.getElementById('privacy-download').addEventListener('click', function () {
+      if (!downloadable) return;
+      if (root.OvulunaRuntime?.platform === 'ios-development' || root.location.protocol === 'capacitor:') { message('Native file sharing is not connected in this build. The JSON below can be selected and copied; no download was started.'); return; }
+      let url;
+      try {
+        url = URL.createObjectURL(new Blob([downloadable], { type: 'application/json' })); const link = d.createElement('a'); link.href = url; link.download = 'ovuluna-local-data-' + new Date().toISOString().slice(0, 10) + '.json'; d.body.append(link); link.click(); link.remove(); root.setTimeout(() => URL.revokeObjectURL(url), 1000); message('Browser download requested. Check that the file was saved.');
+      } catch (_) { if (url) URL.revokeObjectURL(url); message('Download unavailable here. Select and copy the JSON below.'); }
+    });
+    d.getElementById('privacy-select-json').addEventListener('click', function () { const text = d.getElementById('privacy-export-json'); text.focus(); text.select(); message('JSON selected. Use your device’s Copy command to copy it.'); });
+    d.getElementById('privacy-hide-export').addEventListener('click', function () { clearExport(); exportButton.focus(); message('Export preview cleared. Any downloaded copies remain on your device.'); });
+    reviewButton.addEventListener('click', function () {
+      try { reviewed = snapshot(root.localStorage, selected()); } catch (error) { message(error.message); refresh(); return; }
+      const summary = d.getElementById('privacy-delete-summary'); summary.replaceChildren();
+      reviewed.forEach(item => { const li = d.createElement('li'); li.textContent = item.label + ' (' + item.key + ')'; summary.append(li); });
+      agree.checked = false; confirm.disabled = true;
+      if (typeof dialog.showModal === 'function') { dialog.showModal(); d.getElementById('privacy-cancel-delete').focus(); }
+      else if (root.confirm('Permanently delete only these local stores?\n' + reviewed.map(item => item.label + ' (' + item.key + ')').join('\n') + '\nNo undo. Other devices and downloads are unaffected.')) { agree.checked = true; finishDelete(); } else reviewed = null;
+    });
+    agree.addEventListener('change', () => { confirm.disabled = !agree.checked; }); confirm.addEventListener('click', finishDelete);
+    d.getElementById('privacy-cancel-delete').addEventListener('click', closeReview);
+    dialog.addEventListener('cancel', () => { reviewed = null; }); dialog.addEventListener('close', () => { reviewed = null; reviewButton.focus(); });
+    root.addEventListener('storage', event => { if (event.key === null || definition(event.key)) { if (dialog.open) closeReview(); clearExport(); refresh(); message('Local data changed in another tab. Review your selection again.'); } });
+    root.addEventListener('pagehide', () => { reviewed = null; clearExport(); if (dialog.open) dialog.close(); });
+    function focusDestination() { const id = root.location.hash.slice(1); if (id === 'privacy-local-title' || id === 'privacy-account-title') { const heading = d.getElementById(id); heading.focus({ preventScroll: true }); heading.scrollIntoView({ block: 'start' }); } }
+    root.addEventListener('hashchange', focusDestination);
+    root.addEventListener('pageshow', refresh); refresh(); focusDestination();
+  }
+  if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', boot); else boot();
+})(typeof window !== 'undefined' ? window : globalThis);

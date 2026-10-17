@@ -1,0 +1,1370 @@
+{
+  "generatedAt": "2026-09-30T12:48:11.920Z",
+  "root": "/private/tmp/ovuluna-dreamy-20260930/app",
+  "scope": "Static document, reference, JavaScript syntax and evidence-key presence checks only. Passing does not prove UI behavior, backend integrations, citation correctness, clinical validity or publication readiness.",
+  "pages": 88,
+  "learnLeafPages": 14,
+  "scriptsParsed": 245,
+  "filesContainingParsedScripts": 93,
+  "javaScriptFilesParsed": 59,
+  "inlineScriptBlocks": 33,
+  "eventHandlersParsed": 153,
+  "externalScriptFiles": 35,
+  "stylesheetsChecked": 18,
+  "localReferences": 3005,
+  "localPageLinks": 982,
+  "evidence": {
+    "databaseEntries": 148,
+    "sourceMetadataRecords": 233,
+    "entriesWithoutSourceMetadata": [],
+    "triggerOccurrences": 336,
+    "distinctKeys": 103,
+    "coverage": "Record/source-metadata presence and required evidence-script references only; metadata counts are not verified citations. Source validity and runtime handler behavior are not checked"
+  },
+  "noDiscoveredInbound": [],
+  "unresolved": [
+    {
+      "file": "appnav.js",
+      "kind": "script-markup-href",
+      "ref": "'+s[0]+'",
+      "reason": "Computed reference requires runtime verification"
+    },
+    {
+      "file": "onboarding.js",
+      "kind": "script-markup-onerror",
+      "ref": "this.style.display=\\'none\\'",
+      "reason": "Handler inside escaped JavaScript markup requires runtime verification; its containing script is parsed"
+    },
+    {
+      "file": "onboarding.js",
+      "kind": "script-markup-onerror",
+      "ref": "this.style.display=\\'none\\'",
+      "reason": "Handler inside escaped JavaScript markup requires runtime verification; its containing script is parsed"
+    },
+    {
+      "file": "onboarding.js",
+      "kind": "script-markup-onerror",
+      "ref": "this.style.display=\\'none\\'",
+      "reason": "Handler inside escaped JavaScript markup requires runtime verification; its containing script is parsed"
+    }
+  ],
+  "failures": [],
+  "passed": true,
+  "checkedPages": [
+    "acupoints.html",
+    "bio-age.html",
+    "breathe.html",
+    "breathwork.html",
+    "circle.html",
+    "community.html",
+    "cycle-delay.html",
+    "cycle-home.html",
+    "cycle-log.html",
+    "cycle-trends.html",
+    "diet.html",
+    "evidence-library.html",
+    "exercise-guide.html",
+    "exercise.html",
+    "fertility.html",
+    "food-scan.html",
+    "foods.html",
+    "health-profile.html",
+    "home.html",
+    "hormones.html",
+    "hydration.html",
+    "index.html",
+    "insights.html",
+    "journey-bloom.html",
+    "journey-grow.html",
+    "journey-nurture.html",
+    "journey-peri.html",
+    "journey-post.html",
+    "label-scan.html",
+    "labs.html",
+    "learn-biomarkers.html",
+    "learn-cycle-phases.html",
+    "learn-discharge.html",
+    "learn-fertile-window.html",
+    "learn-hormone-phase-locking.html",
+    "learn-lifestyle.html",
+    "learn-longevity-pathways.html",
+    "learn-ovarian-age.html",
+    "learn-ovarian-biology.html",
+    "learn-ovarian-longevity.html",
+    "learn-perimenopause.html",
+    "learn-ppg-tech.html",
+    "learn-straw10.html",
+    "learn-wearables.html",
+    "learn.html",
+    "life-journey.html",
+    "login.html",
+    "logo.html",
+    "longevity.html",
+    "medas14.html",
+    "meds.html",
+    "mental-health.html",
+    "myofascial.html",
+    "notifications.html",
+    "nutrients.html",
+    "nutrition-plan.html",
+    "nutrition-scanner.html",
+    "onboarding.html",
+    "ovarian-age.html",
+    "overview.html",
+    "partner-code.html",
+    "partner-connect.html",
+    "period-start.html",
+    "personal-info.html",
+    "phase-coach.html",
+    "postpartum-guide.html",
+    "ppg-review.html",
+    "ppg.html",
+    "premium.html",
+    "privacy.html",
+    "profile.html",
+    "provider-dashboard.html",
+    "reports.html",
+    "settings.html",
+    "sleep-diary.html",
+    "sleep.html",
+    "straw-calculator.html",
+    "stress-checkin.html",
+    "stress.html",
+    "supplements.html",
+    "tcm-footsoak.html",
+    "tcm-herbs.html",
+    "tcm-hub.html",
+    "tcm-topical.html",
+    "terms.html",
+    "trends.html",
+    "vascular.html",
+    "wellness-checkin.html"
+  ],
+  "scriptChecks": [
+    {
+      "file": "appnav.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "acupoint-atlas.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "luna-chat.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "i18n.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "darkmode.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "dream-assets.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-db.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-reconciled.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-lifecycle.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-acupoint.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-safety.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-core.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence-merge.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "evidence.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "dreamy.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "bio-age.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "anim.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "breathe.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "breathwork.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "breathwork.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "circle.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "circle.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "circle.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "cycle-home.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "observation-records.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "observations-ui.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "diet.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "lifecycle-content.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "source-library.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "exercise-guide.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "foods.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "foods.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "foods.html",
+      "label": "inline oninput",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "health-profile.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "ovarian-model.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "labs-records.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "home-records.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "hormone-graph.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "mystical-ring.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "journey.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "hydration.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "insights-records.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "food-score.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "label-scan.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "knowledge-hero.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "life-journey.html",
+      "label": "inline onerror",
+      "type": "event-handler"
+    },
+    {
+      "file": "login.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "login.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "login.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "medas14.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "medas14.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "medas14.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "medas14.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "meds.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "mental-health.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "mental-health.html",
+      "label": "inline onerror",
+      "type": "event-handler"
+    },
+    {
+      "file": "myofascial.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "myofascial.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "myofascial.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "myofascial.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "notifications.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "nutrition-plan.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "nutrition-scanner.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "nutrition-scanner.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "onboarding.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "ovarian-assessment.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "partner-code.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "partner-code.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "partner-code.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "partner-code.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "period-start.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "period-start.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "period-start.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "personal-info.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "personal-info.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "personal-info.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "personal-info.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "phase-coach.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "ppg.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "ppg.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "privacy-local.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "profile-dream.js",
+      "label": "external script",
+      "type": "classic"
+    },
+    {
+      "file": "reports.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "settings.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "sleep-diary.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "straw-calculator.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onchange",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress-checkin.html",
+      "label": "inline onclick",
+      "type": "event-handler"
+    },
+    {
+      "file": "stress.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "supplements.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "tcm-herbs.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "tcm-topical.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "wellness-checkin.html",
+      "label": "inline script",
+      "type": "classic"
+    },
+    {
+      "file": "cyclering.js",
+      "label": "standalone source (parse only)",
+      "type": "classic"
+    },
+    {
+      "file": "ovarian-ring.js",
+      "label": "standalone source (parse only)",
+      "type": "classic"
+    },
+    {
+      "file": "ovuluna-mascot.js",
+      "label": "standalone source (parse only)",
+      "type": "classic"
+    },
+    {
+      "file": "scripts/build-web.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-api.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-bio-age.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-home-visuals.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-home.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-insights-records.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-labs.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-native-bundle.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-observation-ui.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-observations.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-ovarian.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-ppg.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-privacy-luna.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-shell.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-site.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "scripts/check-stale-writers.cjs",
+      "label": "regression script (parse only)",
+      "type": "commonjs"
+    },
+    {
+      "file": "api/chat.js",
+      "label": "standalone source (parse only)",
+      "type": "module"
+    },
+    {
+      "file": "api/food-lookup.js",
+      "label": "standalone source (parse only)",
+      "type": "module"
+    },
+    {
+      "file": "api/food-vision.js",
+      "label": "standalone source (parse only)",
+      "type": "module"
+    },
+    {
+      "file": "api/nfc-verify.js",
+      "label": "standalone source (parse only)",
+      "type": "module"
+    },
+    {
+      "file": "api/nfc.js",
+      "label": "standalone source (parse only)",
+      "type": "module"
+    }
+  ]
+}

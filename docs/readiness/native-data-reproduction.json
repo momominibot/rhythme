@@ -1,0 +1,39 @@
+{
+  "checkedAt": "2026-09-10T17:54:35.418Z",
+  "root": "/Users/michiyomimi/Desktop/ovuluna-doubao",
+  "scope": "Isolated source handlers with synthetic inputs and stubbed network; no production requests, user storage, secrets or paid API usage.",
+  "checks": [
+    {
+      "name": "Unsigned synthetic future-dated NFC token accepted",
+      "observed": {
+        "status": 200,
+        "valid": true,
+        "tier": "premium"
+      },
+      "interpretation": "Format/expiry is not proof of a user purchase or entitlement."
+    },
+    {
+      "name": "Synthetic premium card type accepted without a database",
+      "observed": {
+        "isPremium": true
+      },
+      "interpretation": "Card route must not be used as an authorization boundary."
+    },
+    {
+      "name": "Unauthenticated synthetic chat request reaches stubbed provider with client-selected model/system",
+      "observed": {
+        "status": 200,
+        "modelOverridden": true,
+        "systemOverridden": true
+      },
+      "interpretation": "Server entry has no session check and does not enforce its own system instruction or model allowlist."
+    },
+    {
+      "name": "Arbitrary synthetic partner invite reports success",
+      "observed": {
+        "reportedRedeemed": true
+      },
+      "interpretation": "UI alert only; no user, membership, record write or network involved."
+    }
+  ]
+}

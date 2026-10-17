@@ -1,0 +1,143 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Ovuluna · Understanding Reproductive Stages</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<script src="anim.js" defer></script>
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<style>
+.cycle-row{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:12px;align-items:center;margin-bottom:12px}.cycle-row label{font-size:14px;overflow-wrap:anywhere}.cycle-input,.numinput{min-height:44px;width:100%;font-size:16px;background:var(--card-solid);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px}.qlabel{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:8px}.card .sub{font-size:14px;line-height:1.65}.card .btn{min-height:44px;white-space:normal;text-align:center}.card a:not(.btn){text-decoration:underline;color:var(--mauve)}
+</style>
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="learn-straw10.html">menu_book</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+  <main class="scroll" lang="en" data-dream-skip-translate>
+    <a href="learn.html" class="back-link">Back to Knowledge Hub</a>
+    <section class="card tint-lavender" style="text-align:center;padding:22px 18px">
+      <img src="assets/icons/persona-wisdom-256.png" width="80" height="80" alt="" style="object-fit:contain">
+      <h1 style="font-family:var(--serif);font-size:26px;line-height:1.2">Understanding reproductive stages</h1>
+      <p class="sub" style="margin-top:12px">STRAW+10 describes patterns across reproductive life, the menopause transition and postmenopause. It does not turn age alone into a stage. <button type="button" class="qi" data-evidence="straw10">i</button></p>
+      <p class="sub" style="margin-top:12px">This page explains the framework and summarizes what you enter. It does not classify your stage, ovarian age or fertility.</p>
+    </section>
+    <section class="card" aria-labelledby="criteria-title">
+      <h2 class="sec" id="criteria-title">What clinicians look at</h2>
+      <p class="sub" style="margin-top:12px">Bleeding patterns over time matter. The research criteria include recurring changes between consecutive cycle lengths and long gaps without bleeding, interpreted in context. <button type="button" class="qi" data-evidence="straw10">i</button></p>
+      <p class="sub" style="margin-top:12px">Menopause is identified retrospectively after 12 months without a period in an appropriate clinical context. Hormonal treatment can make bleeding patterns difficult to interpret. <button type="button" class="qi" data-evidence="straw10">i</button></p>
+      <p class="sub" style="margin-top:12px">Bleeding changes can have different explanations. Discuss pregnancy, postpartum or breastfeeding, PCOS, surgery and medicine history with your clinician. A cycle gap alone does not establish menopause. <button type="button" class="qi" data-evidence="straw10">i</button></p>
+      <a class="btn ghost" href="learn-straw10.html" style="margin-top:14px">Read the stage framework</a>
+    </section>
+    <section class="card" aria-labelledby="input-title">
+      <h2 class="sec" id="input-title">A summary for your care visit</h2>
+      <p class="sub" style="margin:12px 0">Optional cycle lengths, in chronological order from oldest to newest. Leave unknown values blank. These entries stay on this page and are not saved.</p>
+      <form id="cycleSummaryForm" novalidate>
+        <div id="cycle-inputs"></div>
+        <button type="button" class="btn ghost" id="addCycleButton" style="margin-top:10px">Add another cycle</button>
+        <label class="qlabel" for="cycle-context" style="display:block;margin-top:16px">Context to mention (optional)</label>
+        <select id="cycle-context" class="numinput">
+          <option value="">Choose only if you want to</option>
+          <option>Hormonal medicine or contraception</option><option>Pregnancy or postpartum</option><option>Breastfeeding</option><option>A diagnosed condition or surgery</option><option>A new change that concerns me</option><option>Unsure</option>
+        </select>
+        <button type="submit" class="btn" style="margin-top:14px;width:100%">Review my entries</button>
+        <p class="sub" id="summary-status" role="status" aria-live="polite" style="margin-top:12px"></p>
+      </form>
+      <div id="summary-output" hidden style="margin-top:14px;padding:14px;background:var(--sunken);border-radius:14px"></div>
+      <a href="cycle-log.html" class="btn ghost" style="margin-top:14px">Open dated observations</a>
+      <p class="sub" style="margin-top:10px">Use the observation log to save actual dates and context. Bring original lab reports and your questions to your clinician.</p>
+    </section>
+    <section class="card">
+      <h2 class="sec">When something has changed</h2>
+      <p class="sub" style="margin-top:12px">Seek medical advice for new or concerning bleeding or symptoms. Pregnancy can still be possible during the transition. Ovuluna’s illustration and summary are not contraception or an ovulation test. <button type="button" class="qi" data-evidence="straw10">i</button></p>
+      <p class="sub" style="margin-top:12px">Sources checked 30 September 2026: <a href="https://prod.asrm.org/practice-guidance/practice-committee-documents/executive-summary-of-the-stages-of-reproductive-aging-workshopd10-addressing-the-unfinished-agenda-of-staging-reproductive-aging-2012/" target="_blank" rel="noopener noreferrer">ASRM STRAW+10</a> and <a href="https://www.nice.org.uk/guidance/ng23/chapter/Recommendations" target="_blank" rel="noopener noreferrer">NICE NG23</a>. Source checking is separate from clinical approval of this app.</p>
+    </section>
+  </main>
+</div>
+
+<nav class="nav">
+  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a href="learn.html"><span class="n-ic">menu_book</span>Learn</a>
+  <a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a>
+  <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav>
+
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=9" defer></script>
+
+<script>
+(function () {
+  'use strict';
+  var container = document.getElementById('cycle-inputs');
+  var addButton = document.getElementById('addCycleButton');
+  var form = document.getElementById('cycleSummaryForm');
+  var status = document.getElementById('summary-status');
+  var output = document.getElementById('summary-output');
+  function clearSummary() { output.hidden = true; output.replaceChildren(); status.textContent = ''; }
+  function addRow() {
+    if (container.children.length >= 20) return;
+    clearSummary();
+    var index = container.children.length + 1;
+    var row = document.createElement('div'); row.className = 'cycle-row';
+    var label = document.createElement('label'); label.htmlFor = 'summary-cycle-' + index; label.textContent = 'Cycle ' + index + ' length (days)';
+    var input = document.createElement('input'); input.type = 'number'; input.id = label.htmlFor; input.className = 'cycle-input'; input.min = '1'; input.max = '366'; input.step = '1'; input.inputMode = 'numeric';
+    row.append(label, input); container.appendChild(row); addButton.disabled = container.children.length >= 20;
+  }
+  addButton.addEventListener('click', addRow); form.addEventListener('input', clearSummary); form.addEventListener('change', clearSummary);
+  addRow(); addRow(); addRow();
+  form.addEventListener('submit', function (event) {
+    event.preventDefault(); clearSummary();
+    var entries = []; var invalid = null;
+    container.querySelectorAll('input').forEach(function (input, index) {
+      if (input.validity.badInput) { invalid = invalid || input; return; }
+      var raw = input.value.trim(); if (!raw) return;
+      var value = Number(raw);
+      if (!Number.isInteger(value) || value < 1 || value > 366 || input.validity.badInput) { invalid = invalid || input; return; }
+      entries.push({ index: index + 1, value: value });
+    });
+    if (invalid) { status.textContent = 'Use whole numbers between 1 and 366 days, or leave unknown entries blank. This is a software entry limit, not a normal-cycle range.'; invalid.focus(); return; }
+    if (!entries.length) { status.textContent = 'No cycle lengths entered. You can still use the observation log or discuss your questions with your clinician.'; return; }
+    var summary = document.createElement('p'); summary.className = 'sub'; summary.textContent = 'You entered: ' + entries.map(function (entry) { return 'Cycle ' + entry.index + ': ' + entry.value + ' days'; }).join('; ') + '.';
+    var context = document.createElement('p'); context.className = 'sub'; context.style.marginTop = '10px'; var selected = document.getElementById('cycle-context').value; context.textContent = selected ? 'Context you selected: ' + selected + '.' : 'No context selected.';
+    var limits = document.createElement('p'); limits.className = 'sub'; limits.style.marginTop = '10px'; limits.textContent = 'No stage or fertility interpretation has been calculated. Nothing entered here has been saved.';
+    output.append(summary, context, limits); output.hidden = false; status.textContent = 'Your descriptive summary is ready.';
+  });
+})();
+</script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

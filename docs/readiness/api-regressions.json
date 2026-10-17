@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-09-11T06:02:50.480Z",
+  "scope": "All requests use synthetic credentials/records and stubbed fetch. No external service, production endpoint, user storage or paid API was contacted. This is not live authentication or security certification.",
+  "passed": 22,
+  "checks": [
+    "Only supported methods and explicit CORS origins pass",
+    "JSON type, serialization and byte limits reject malformed requests",
+    "Absent or insecure verifier configuration fails closed",
+    "Introspection credentials use form encoding before Basic authentication",
+    "No arbitrary bearer format or fabricated token is trusted",
+    "Active flag and token time bounds are verified",
+    "Issuer, audience, subject and exact endpoint scope are mandatory",
+    "Verifier failures and oversized responses do not reach paid provider",
+    "Server owns model/system and accepts a verified scoped chat",
+    "Role, message, part and text limits cannot be bypassed",
+    "Remote, SVG, malformed, mismatched and oversized images are rejected",
+    "Verified OCR uses a fixed purpose/prompt and bounded data image",
+    "Missing provider configuration returns unavailable, not demo success",
+    "Provider HTTP errors never leak upstream content or log health data",
+    "Malformed, oversized or empty provider replies fail safely",
+    "Timed-out network operation aborts and exposes only timeout status",
+    "Scoped food vision succeeds without forwarding cycle context",
+    "Food request policy and returned numeric/array schema are bounded",
+    "Unsigned, fabricated and expired NFC strings never grant access",
+    "NFC validation rejects missing/oversized/structured credential input",
+    "NFC public navigation is fixed and never premium-by-card-type",
+    "Per-instance authenticated backstop bounds repeated provider use"
+  ]
+}

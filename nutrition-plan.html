@@ -1,0 +1,694 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovuluna · Nutrition Plan</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<link rel="stylesheet" href="evidence.css">
+<script src="anim.js" defer></script>
+<style>
+/* phase hero */
+.nutri-hero{ background:linear-gradient(135deg,rgba(168,192,160,.2),rgba(245,198,184,.18)); border:1.5px solid rgba(168,192,160,.35); border-radius:var(--r); padding:20px; position:relative; overflow:hidden; }
+.nutri-hero::after{ content:''; position:absolute; top:-30px; right:-20px; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,.3); }
+.nutri-badge{ display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:99px; background:rgba(255,255,255,.7); font:800 12px var(--sans); color:var(--mauve); letter-spacing:.04em; }
+.nutri-day{ font-family:var(--serif); font-size:34px; font-weight:600; color:var(--cocoa); line-height:1; margin-top:10px; }
+.nutri-phase{ font-size:15px; font-weight:700; color:var(--ink); margin-top:4px; }
+.nutri-desc{ font-size:12.5px; color:var(--taupe); line-height:1.5; margin-top:6px; }
+
+/* today's meal */
+.meal-card{ display:flex; gap:12px; padding:14px; background:var(--card-solid); border:1.5px solid var(--line-soft); border-radius:16px; margin-bottom:10px; }
+.meal-card:last-child{ margin-bottom:0; }
+.meal-ic{ width:40px; height:40px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.meal-body{ flex:1; }
+.meal-type{ font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--taupe); }
+.meal-name{ font-size:14px; font-weight:800; color:var(--ink); margin-top:2px; }
+.meal-desc{ font-size:11.5px; color:var(--taupe); line-height:1.4; margin-top:2px; }
+.meal-macro{ display:flex; gap:8px; margin-top:6px; }
+.meal-macro span{ font-size:10px; font-weight:700; padding:3px 8px; border-radius:99px; background:var(--sunken); color:var(--taupe); }
+
+/* phase tabs */
+.ntabs{ display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; }
+.ntab{ flex-shrink:0; padding:9px 14px; border-radius:99px; border:1.5px solid var(--line-soft); background:var(--card-solid); font:700 11.5px var(--sans); color:var(--taupe); cursor:pointer; transition:.15s; }
+.ntab.on{ border-color:var(--mauve); background:rgba(139,108,130,.1); color:var(--ink); }
+
+/* phase section */
+.phase-sec{ display:none; }
+.phase-sec.on{ display:block; animation:fadeUp .3s ease; }
+@keyframes fadeUp{ from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+.phase-h{ display:flex; align-items:center; gap:10px; margin-bottom:4px; }
+.phase-h .ph-ic{ font-size:24px; }
+.phase-h .ph-t{ font-family:var(--serif); font-size:21px; font-weight:700; color:var(--ink); }
+.phase-sub{ font-size:12.5px; color:var(--taupe); line-height:1.5; margin-bottom:14px; }
+
+/* food lists */
+.food-col h4{ font-size:12px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px; }
+.food-col h4.good{ color:var(--ok); }
+.food-col h4.limit{ color:var(--low); }
+.food-item{ display:flex; align-items:center; gap:8px; padding:7px 0; font-size:12.5px; color:var(--cocoa); border-bottom:1px solid var(--line-soft); }
+.food-item:last-child{ border-bottom:none; }
+.food-item .fi-ic{ font-size:14px; flex-shrink:0; }
+
+/* macro bar */
+.macro-row{ display:flex; align-items:center; gap:10px; padding:8px 0; }
+.macro-row .mr-label{ width:70px; font-size:11.5px; font-weight:800; color:var(--ink); }
+.macro-row .mr-track{ flex:1; height:8px; background:var(--sunken); border-radius:99px; overflow:hidden; }
+.macro-row .mr-fill{ height:100%; border-radius:99px; }
+.macro-row .mr-val{ width:50px; text-align:right; font-size:11.5px; font-weight:700; color:var(--taupe); }
+
+/* meal plan */
+.mp-row{ display:flex; gap:10px; padding:12px 0; border-bottom:1px solid var(--line-soft); }
+.mp-row:last-child{ border-bottom:none; }
+.mp-ic{ width:34px; height:34px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; background:var(--sunken); }
+.mp-body{ flex:1; }
+.mp-type{ font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--mauve); }
+.mp-name{ font-size:13px; font-weight:800; color:var(--ink); margin-top:1px; }
+.mp-desc{ font-size:11.5px; color:var(--taupe); line-height:1.4; margin-top:2px; }
+
+.wellness-note{ font-size:11px; color:var(--taupe); line-height:1.5; padding:10px 12px; background:rgba(245,198,184,.12); border-radius:12px; border:1px solid rgba(212,154,138,.25); }
+</style>
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+  <div class="scroll">
+
+    <!-- Hero -->
+    <div class="nutri-hero">
+      <div class="nutri-badge"><span class="ms" style="font-size:14px">eco</span> Cycle-Synced Eating</div>
+      <div class="nutri-day">Day 9</div>
+      <div class="nutri-phase">Follicular Phase <span class="qi" data-evidence="cycle-phases">i</span></div>
+      <div class="nutri-desc">Estrogen is rising — fuel up with protein and healthy fats to support follicle development and sustained energy.</div>
+    </div>
+
+    <!-- Today's meals -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">Today's Meals</h2>
+      <div class="sub" style="margin-bottom:12px">Follicular-phase meal plan · protein-forward</div>
+      <div class="meal-card">
+        <div class="meal-ic" style="background:rgba(224,192,128,.2)">🍳</div>
+        <div class="meal-body">
+          <div class="meal-type">Breakfast</div>
+          <div class="meal-name">Veggie egg scramble with avocado toast</div>
+          <div class="meal-desc">2 eggs + spinach + bell peppers, sourdough with ¼ avocado, side of berries</div>
+          <div class="meal-macro"><span>P 24g</span><span>C 32g</span><span>F 18g</span></div>
+        </div>
+      </div>
+      <div class="meal-card">
+        <div class="meal-ic" style="background:rgba(168,192,160,.2)">🥗</div>
+        <div class="meal-body">
+          <div class="meal-type">Lunch</div>
+          <div class="meal-name">Grilled salmon quinoa bowl</div>
+          <div class="meal-desc">Salmon fillet, quinoa, roasted broccoli, tahini-lemon dressing, pumpkin seeds</div>
+          <div class="meal-macro"><span>P 32g</span><span>C 40g</span><span>F 22g</span></div>
+        </div>
+      </div>
+      <div class="meal-card">
+        <div class="meal-ic" style="background:rgba(196,181,224,.2)">🥜</div>
+        <div class="meal-body">
+          <div class="meal-type">Snack</div>
+          <div class="meal-name">Greek yogurt with walnuts & honey</div>
+          <div class="meal-desc">½ cup plain Greek yogurt, 1 tbsp walnuts, 1 tsp honey, cinnamon</div>
+          <div class="meal-macro"><span>P 12g</span><span>C 15g</span><span>F 8g</span></div>
+        </div>
+      </div>
+      <div class="meal-card">
+        <div class="meal-ic" style="background:rgba(245,198,184,.25)">🍲</div>
+        <div class="meal-body">
+          <div class="meal-type">Dinner</div>
+          <div class="meal-name">Lentil & sweet potato stew</div>
+          <div class="meal-desc">Red lentils, sweet potato, kale, coconut milk, ginger-turmeric broth, side salad</div>
+          <div class="meal-macro"><span>P 18g</span><span>C 48g</span><span>F 10g</span></div>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        <a href="foods.html" class="btn ghost">Food Library <span class="ms" style="font-size:18px">restaurant</span></a>
+        <a href="label-scan.html" class="btn ghost">Scan Label <span class="ms" style="font-size:18px">qr_code_scanner</span></a>
+      </div>
+    </div>
+
+    <!-- Phase tabs -->
+    <div class="ntabs" id="nutriTabs">
+      <div class="ntab" data-phase="menstrual">🩸 Menstrual</div>
+      <div class="ntab on" data-phase="follicular">🌱 Follicular</div>
+      <div class="ntab" data-phase="ovulation">✨ Ovulation</div>
+      <div class="ntab" data-phase="luteal">🌙 Luteal</div>
+      <div class="ntab" data-phase="perimenopause">🔥 Perimenopause</div>
+    </div>
+
+    <!-- ═══════ MENSTRUAL ═══════ -->
+    <div class="phase-sec" id="sec-menstrual">
+      <div class="phase-h"><span class="ph-ic">🩸</span><span class="ph-t">Menstrual Phase</span></div>
+      <div class="phase-sub">Days 1–5 · Your body is shedding the uterine lining. Focus on iron replenishment, gentle nourishment, and warming foods <span class="qi" data-evidence="iron-menstruation">i</span>.</div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Macro Targets</h2>
+        <div class="macro-row"><span class="mr-label">Protein</span><div class="mr-track"><div class="mr-fill" style="width:30%;background:var(--d-diet)"></div></div><span class="mr-val">25%</span></div>
+        <div class="macro-row"><span class="mr-label">Carbs</span><div class="mr-track"><div class="mr-fill" style="width:45%;background:var(--gold)"></div></div><span class="mr-val">45%</span></div>
+        <div class="macro-row"><span class="mr-label">Fats</span><div class="mr-track"><div class="mr-fill" style="width:30%;background:var(--blush)"></div></div><span class="mr-val">30%</span></div>
+        <div class="sub" style="margin-top:8px">Calories: ~1,800–2,000 kcal · Iron target: 18mg/day</div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Foods to Emphasize</h2>
+        <div class="food-col">
+          <h4 class="good">✓ Iron-rich &amp; nourishing</h4>
+          <div class="food-item"><span class="fi-ic">🥩</span> Red meat, liver (heme iron — highly absorbable) <span class="qi" data-evidence="iron-menstruation">i</span></div>
+          <div class="food-item"><span class="fi-ic">🦪</span> Oysters, clams (iron + B12 + zinc)</div>
+          <div class="food-item"><span class="fi-ic">🥬</span> Spinach, kale, Swiss chard (pair with vitamin C) <span class="qi" data-evidence="iron-menstruation">i</span></div>
+          <div class="food-item"><span class="fi-ic">🍫</span> Dark chocolate 70%+ (iron + magnesium) <span class="qi" data-evidence="magnesium-pms-mixed">i</span></div>
+          <div class="food-item"><span class="fi-ic">🫘</span> Lentils, black beans (plant iron + fiber)</div>
+          <div class="food-item"><span class="fi-ic">🍊</span> Citrus, bell peppers (vitamin C boosts iron absorption)</div>
+          <div class="food-item"><span class="fi-ic">🍵</span> Ginger tea, warm broths (soothe cramps, reduce inflammation) <span class="qi" data-evidence="omega3-dysmenorrhea">i</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Foods to Limit</h2>
+        <div class="food-col">
+          <h4 class="limit">✗ May worsen symptoms</h4>
+          <div class="food-item"><span class="fi-ic">🧊</span> Very cold/raw foods (can increase cramping in TCM view)</div>
+          <div class="food-item"><span class="fi-ic">🧂</span> Excess sodium (worsens bloating and water retention)</div>
+          <div class="food-item"><span class="fi-ic">☕</span> Excess caffeine (can constrict blood vessels, increase tension)</div>
+          <div class="food-item"><span class="fi-ic">🍬</span> High-sugar foods (energy crashes, inflammation)</div>
+          <div class="food-item"><span class="fi-ic">🍷</span> Heavy alcohol (impairs iron absorption, disrupts sleep)</div>
+        </div>
+      </div>
+
+      <div class="card tint-blush">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Sample Meal Plan</h2>
+        <div class="mp-row">
+          <div class="mp-ic">🍳</div>
+          <div class="mp-body">
+            <div class="mp-type">Breakfast</div>
+            <div class="mp-name">Iron-boost oatmeal</div>
+            <div class="mp-desc">Rolled oats cooked with almond milk, 1 tbsp chia seeds, ½ cup raspberries, 1 tsp blackstrap molasses, sprinkle of pumpkin seeds</div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🥗</div>
+          <div class="mp-body">
+            <div class="mp-type">Lunch</div>
+            <div class="mp-name">Beet & lentil salad with citrus</div>
+            <div class="mp-desc">Roasted beets, cooked lentils, arugula, orange segments, goat cheese, walnuts, lemon-olive oil dressing</div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🥜</div>
+          <div class="mp-body">
+            <div class="mp-type">Snack</div>
+            <div class="mp-name">Dark chocolate & dried apricots</div>
+            <div class="mp-desc">2 squares 70% dark chocolate, 5 dried apricots, handful of cashews — iron + magnesium + healthy fats</div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🍲</div>
+          <div class="mp-body">
+            <div class="mp-type">Dinner</div>
+            <div class="mp-name">Beef & kale stir-fry with ginger</div>
+            <div class="mp-desc">Lean beef strips, kale, bok choy, bell peppers, ginger-garlic sauce, served over brown rice. Pair with vitamin C-rich peppers for iron absorption <span class="qi" data-evidence="iron-menstruation">i</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ FOLLICULAR ═══════ -->
+    <div class="phase-sec on" id="sec-follicular">
+      <div class="phase-h"><span class="ph-ic">🌱</span><span class="ph-t">Follicular Phase</span></div>
+      <div class="phase-sub">Days 6–13 · Estrogen is rising, energy is building. Focus on protein, healthy fats, and complex carbs to fuel follicle development <span class="qi" data-evidence="nutrition-follicular">i</span>.</div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Macro Targets</h2>
+        <div class="macro-row"><span class="mr-label">Protein</span><div class="mr-track"><div class="mr-fill" style="width:35%;background:var(--d-diet)"></div></div><span class="mr-val">35%</span></div>
+        <div class="macro-row"><span class="mr-label">Carbs</span><div class="mr-track"><div class="mr-fill" style="width:40%;background:var(--gold)"></div></div><span class="mr-val">40%</span></div>
+        <div class="macro-row"><span class="mr-label">Fats</span><div class="mr-track"><div class="mr-fill" style="width:25%;background:var(--blush)"></div></div><span class="mr-val">25%</span></div>
+        <div class="sub" style="margin-top:8px">Calories: ~2,000–2,200 kcal · Protein: 1.2–1.6g/kg body weight</div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Foods to Emphasize</h2>
+        <div class="food-col">
+          <h4 class="good">✓ Protein + healthy fats + fiber</h4>
+          <div class="food-item"><span class="fi-ic">🥚</span> Eggs (choline, protein, vitamin D — supports hormone synthesis) <span class="qi" data-evidence="nutrition-follicular">i</span></div>
+          <div class="food-item"><span class="fi-ic">🐟</span> Salmon, sardines (omega-3s reduce inflammation) <span class="qi" data-evidence="omega3-dysmenorrhea">i</span></div>
+          <div class="food-item"><span class="fi-ic">🥑</span> Avocado, olive oil (monounsaturated fats for hormone production) <span class="qi" data-evidence="nutrition-follicular">i</span></div>
+          <div class="food-item"><span class="fi-ic">🫘</span> Legumes, chickpeas (plant protein + fiber + folate) <span class="qi" data-evidence="folate-reproduction">i</span></div>
+          <div class="food-item"><span class="fi-ic">🌾</span> Whole grains, oats (B vitamins, sustained energy)</div>
+          <div class="food-item"><span class="fi-ic">🥦</span> Cruciferous veggies (support estrogen metabolism via DIM)</div>
+          <div class="food-item"><span class="fi-ic">🥜</span> Nuts &amp; seeds (vitamin E, zinc, healthy fats)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Foods to Limit</h2>
+        <div class="food-col">
+          <h4 class="limit">✗ May disrupt hormone balance</h4>
+          <div class="food-item"><span class="fi-ic">🍩</span> Refined carbs & pastries (blood sugar spikes, insulin resistance)</div>
+          <div class="food-item"><span class="fi-ic">🥤</span> Sugary drinks (energy crashes, inflammation)</div>
+          <div class="food-item"><span class="fi-ic">🧈</span> Trans fats & fried foods (disrupt hormone signaling)</div>
+          <div class="food-item"><span class="fi-ic">☕</span> Excess caffeine (can affect estrogen levels in some women)</div>
+          <div class="food-item"><span class="fi-ic">🍷</span> Excess alcohol (impairs liver estrogen metabolism)</div>
+        </div>
+      </div>
+
+      <div class="card tint-sage">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Sample Meal Plan</h2>
+        <div class="mp-row">
+          <div class="mp-ic">🍳</div>
+          <div class="mp-body">
+            <div class="mp-type">Breakfast</div>
+            <div class="mp-name">Veggie egg scramble with avocado toast</div>
+            <div class="mp-desc">2 eggs + spinach + bell peppers, sourdough with ¼ avocado, side of berries. Protein + healthy fats to start the day <span class="qi" data-evidence="nutrition-follicular">i</span></div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🥗</div>
+          <div class="mp-body">
+            <div class="mp-type">Lunch</div>
+            <div class="mp-name">Grilled salmon quinoa bowl</div>
+            <div class="mp-desc">Salmon fillet, quinoa, roasted broccoli, tahini-lemon dressing, pumpkin seeds. Omega-3s support hormone health <span class="qi" data-evidence="omega3-inflammation">i</span></div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🥜</div>
+          <div class="mp-body">
+            <div class="mp-type">Snack</div>
+            <div class="mp-name">Greek yogurt with walnuts & honey</div>
+            <div class="mp-desc">½ cup plain Greek yogurt, 1 tbsp walnuts, 1 tsp honey, cinnamon. Protein + probiotics + omega-3s</div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🍲</div>
+          <div class="mp-body">
+            <div class="mp-type">Dinner</div>
+            <div class="mp-name">Lentil & sweet potato stew</div>
+            <div class="mp-desc">Red lentils, sweet potato, kale, coconut milk, ginger-turmeric broth, side salad. Plant protein + complex carbs + anti-inflammatory turmeric</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ OVULATION ═══════ -->
+    <div class="phase-sec" id="sec-ovulation">
+      <div class="phase-h"><span class="ph-ic">✨</span><span class="ph-t">Ovulation Phase</span></div>
+      <div class="phase-sub">Days 14–16 · Estrogen peaks, LH surge triggers egg release. Focus on antioxidant-rich foods to protect the egg and support fertile cervical mucus <span class="qi" data-evidence="fertile-window">i</span>.</div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Macro Targets</h2>
+        <div class="macro-row"><span class="mr-label">Protein</span><div class="mr-track"><div class="mr-fill" style="width:30%;background:var(--d-diet)"></div></div><span class="mr-val">30%</span></div>
+        <div class="macro-row"><span class="mr-label">Carbs</span><div class="mr-track"><div class="mr-fill" style="width:40%;background:var(--gold)"></div></div><span class="mr-val">40%</span></div>
+        <div class="macro-row"><span class="mr-label">Fats</span><div class="mr-track"><div class="mr-fill" style="width:30%;background:var(--blush)"></div></div><span class="mr-val">30%</span></div>
+        <div class="sub" style="margin-top:8px">Calories: ~2,000–2,100 kcal · Antioxidant focus: vitamins A, C, E, selenium</div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Foods to Emphasize</h2>
+        <div class="food-col">
+          <h4 class="good">✓ Antioxidant-rich &amp; fertility-supporting</h4>
+          <div class="food-item"><span class="fi-ic">🫐</span> Blueberries, blackberries (anthocyanins — powerful antioxidants)</div>
+          <div class="food-item"><span class="fi-ic">🥑</span> Avocado (vitamin E, healthy fats for egg quality)</div>
+          <div class="food-item"><span class="fi-ic">🐟</span> Wild salmon, mackerel (omega-3s + vitamin D) <span class="qi" data-evidence="vitamin-d-fertility">i</span></div>
+          <div class="food-item"><span class="fi-ic">🥦</span> Broccoli, Brussels sprouts (folate + vitamin C + fiber) <span class="qi" data-evidence="folate-reproduction">i</span></div>
+          <div class="food-item"><span class="fi-ic">🍋</span> Citrus fruits (vitamin C supports fertile mucus)</div>
+          <div class="food-item"><span class="fi-ic">🌰</span> Brazil nuts (selenium — protects egg from oxidative damage)</div>
+          <div class="food-item"><span class="fi-ic">🥬</span> Leafy greens (folate, iron, calcium) <span class="qi" data-evidence="folate-reproduction">i</span></div>
+          <div class="food-item"><span class="fi-ic">🧅</span> Garlic, onions (allicin — antioxidant + immune support)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Foods to Limit</h2>
+        <div class="food-col">
+          <h4 class="limit">✗ May reduce fertility potential</h4>
+          <div class="food-item"><span class="fi-ic">🍷</span> Alcohol (impairs ovulation and egg quality)</div>
+          <div class="food-item"><span class="fi-ic">☕</span> High caffeine (>200mg/day may affect fertility)</div>
+          <div class="food-item"><span class="fi-ic">🍔</span> Processed meats (nitrates, inflammation)</div>
+          <div class="food-item"><span class="fi-ic">🧃</span> High-fructose drinks (insulin resistance, inflammation)</div>
+          <div class="food-item"><span class="fi-ic">🥫</span> Soy products in excess (phytoestrogens may interfere)</div>
+        </div>
+      </div>
+
+      <div class="card tint-lavender">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Sample Meal Plan</h2>
+        <div class="mp-row">
+          <div class="mp-ic">🥞</div>
+          <div class="mp-body">
+            <div class="mp-type">Breakfast</div>
+            <div class="mp-name">Antioxidant smoothie bowl</div>
+            <div class="mp-desc">Blend frozen blueberries, banana, spinach, almond milk, protein powder. Top with granola, chia seeds, sliced almonds, goji berries</div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🥗</div>
+          <div class="mp-body">
+            <div class="mp-type">Lunch</div>
+            <div class="mp-name">Rainbow fertility salad</div>
+            <div class="mp-desc">Mixed greens, roasted beets, avocado, cherry tomatoes, broccoli florets, pumpkin seeds, olive oil-lemon dressing. Full spectrum of antioxidants <span class="qi" data-evidence="fertile-window">i</span></div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🥑</div>
+          <div class="mp-body">
+            <div class="mp-type">Snack</div>
+            <div class="mp-name">Avocado toast with everything seasoning</div>
+            <div class="mp-desc">Sourdough, ½ avocado, sesame seeds, red pepper flakes, squeeze of lemon. Healthy fats + vitamin E for egg quality</div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🐟</div>
+          <div class="mp-body">
+            <div class="mp-type">Dinner</div>
+            <div class="mp-name">Baked salmon with roasted veg & quinoa</div>
+            <div class="mp-desc">Wild salmon fillet, roasted asparagus & sweet potato, quinoa, dill-yogurt sauce. Omega-3s + vitamin D + folate support fertility <span class="qi" data-evidence="omega3-inflammation">i</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ LUTEAL ═══════ -->
+    <div class="phase-sec" id="sec-luteal">
+      <div class="phase-h"><span class="ph-ic">🌙</span><span class="ph-t">Luteal Phase</span></div>
+      <div class="phase-sub">Days 17–28 · Progesterone rises, then drops before your period. Focus on complex carbs, magnesium, and B6 to ease PMS and stabilize mood <span class="qi" data-evidence="nutrition-luteal">i</span>.</div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Macro Targets</h2>
+        <div class="macro-row"><span class="mr-label">Protein</span><div class="mr-track"><div class="mr-fill" style="width:25%;background:var(--d-diet)"></div></div><span class="mr-val">25%</span></div>
+        <div class="macro-row"><span class="mr-label">Carbs</span><div class="mr-track"><div class="mr-fill" style="width:50%;background:var(--gold)"></div></div><span class="mr-val">50%</span></div>
+        <div class="macro-row"><span class="mr-label">Fats</span><div class="mr-track"><div class="mr-fill" style="width:25%;background:var(--blush)"></div></div><span class="mr-val">25%</span></div>
+        <div class="sub" style="margin-top:8px">Calories: ~1,900–2,100 kcal · Magnesium target: 310–320mg/day · B6: 1.3–1.9mg/day</div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Foods to Emphasize</h2>
+        <div class="food-col">
+          <h4 class="good">✓ Complex carbs + magnesium + B6</h4>
+          <div class="food-item"><span class="fi-ic">🍠</span> Sweet potato, squash (complex carbs stabilize blood sugar) <span class="qi" data-evidence="nutrition-luteal">i</span></div>
+          <div class="food-item"><span class="fi-ic">🍫</span> Dark chocolate 70%+ (magnesium eases cramps &amp; cravings) <span class="qi" data-evidence="magnesium-pms-mixed">i</span></div>
+          <div class="food-item"><span class="fi-ic">🥜</span> Almonds, pumpkin seeds (magnesium + tryptophan for mood) <span class="qi" data-evidence="magnesium-pms-mixed">i</span></div>
+          <div class="food-item"><span class="fi-ic">🍌</span> Bananas (B6 + potassium — reduces bloating) <span class="qi" data-evidence="b6-pms">i</span></div>
+          <div class="food-item"><span class="fi-ic">🐟</span> Salmon, tuna (B6 + omega-3s reduce PMS inflammation) <span class="qi" data-evidence="omega3-dysmenorrhea">i</span></div>
+          <div class="food-item"><span class="fi-ic">🥬</span> Spinach, Swiss chard (magnesium + iron + calcium)</div>
+          <div class="food-item"><span class="fi-ic">🌾</span> Oats, brown rice (B vitamins, fiber, stable energy)</div>
+          <div class="food-item"><span class="fi-ic">🫘</span> Chickpeas, lentils (B6 + fiber + plant protein) <span class="qi" data-evidence="b6-pms">i</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Foods to Limit</h2>
+        <div class="food-col">
+          <h4 class="limit">✗ May worsen PMS symptoms</h4>
+          <div class="food-item"><span class="fi-ic">🧂</span> High-sodium foods (worsens bloating & water retention)</div>
+          <div class="food-item"><span class="fi-ic">🍬</span> Refined sugar (mood swings, energy crashes, cravings cycle)</div>
+          <div class="food-item"><span class="fi-ic">☕</span> Excess caffeine (increases breast tenderness & anxiety)</div>
+          <div class="food-item"><span class="fi-ic">🍷</span> Alcohol (worsens mood swings, disrupts sleep, depletes magnesium)</div>
+          <div class="food-item"><span class="fi-ic">🧈</span> High-fat dairy (may increase inflammation in some women)</div>
+        </div>
+      </div>
+
+      <div class="card tint-gold">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Sample Meal Plan</h2>
+        <div class="mp-row">
+          <div class="mp-ic">🥣</div>
+          <div class="mp-body">
+            <div class="mp-type">Breakfast</div>
+            <div class="mp-name">Creamy banana oat bowl</div>
+            <div class="mp-desc">Rolled oats cooked with almond milk, ½ banana, 1 tbsp almond butter, cinnamon, sprinkle of pumpkin seeds. B6 + magnesium + complex carbs <span class="qi" data-evidence="b6-pms">i</span></div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🥗</div>
+          <div class="mp-body">
+            <div class="mp-type">Lunch</div>
+            <div class="mp-name">Chickpea & sweet potato Buddha bowl</div>
+            <div class="mp-desc">Roasted sweet potato, chickpeas, quinoa, kale, avocado, tahini dressing. Complex carbs + magnesium + plant protein <span class="qi" data-evidence="nutrition-luteal">i</span></div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🍫</div>
+          <div class="mp-body">
+            <div class="mp-type">Snack</div>
+            <div class="mp-name">Dark chocolate & almond energy balls</div>
+            <div class="mp-desc">2 homemade balls: dates, almonds, cocoa powder, chia seeds, pinch of sea salt. Magnesium-rich treat for cravings <span class="qi" data-evidence="magnesium-pms-mixed">i</span></div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🍲</div>
+          <div class="mp-body">
+            <div class="mp-type">Dinner</div>
+            <div class="mp-name">Baked salmon with roasted root vegetables</div>
+            <div class="mp-desc">Salmon fillet, roasted carrots & parsnips, steamed spinach, side of wild rice. B6 + omega-3s + magnesium to ease PMS <span class="qi" data-evidence="omega3-inflammation">i</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ PERIMENOPAUSE ═══════ -->
+    <div class="phase-sec" id="sec-perimenopause">
+      <div class="phase-h"><span class="ph-ic">🔥</span><span class="ph-t">Perimenopause &amp; Menopause</span></div>
+      <div class="phase-sub">Irregular cycles, hot flashes, night sweats, and mood changes. Focus on soy isoflavones, calcium, omega-3s, and protein to support this transition <span class="qi" data-evidence="perimenopause-symptoms">i</span>.</div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Macro Targets</h2>
+        <div class="macro-row"><span class="mr-label">Protein</span><div class="mr-track"><div class="mr-fill" style="width:30%;background:var(--d-diet)"></div></div><span class="mr-val">30%</span></div>
+        <div class="macro-row"><span class="mr-label">Carbs</span><div class="mr-track"><div class="mr-fill" style="width:40%;background:var(--gold)"></div></div><span class="mr-val">40%</span></div>
+        <div class="macro-row"><span class="mr-label">Fats</span><div class="mr-track"><div class="mr-fill" style="width:30%;background:var(--blush)"></div></div><span class="mr-val">30%</span></div>
+        <div class="sub" style="margin-top:8px">Calories: ~1,800-2,000 kcal · Protein: 1.1-1.5g/kg body weight · Calcium: 1,200mg/day</div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Foods to Emphasize</h2>
+        <div class="food-col">
+          <h4 class="good">✓ Soy isoflavones &amp; phytoestrogens</h4>
+          <div class="food-item"><span class="fi-ic">🫛</span> Edamame, tofu, tempeh (isoflavones reduce hot flashes ~20.6%) <span class="qi" data-evidence="soy-isoflavones-hot-flashes">i</span></div>
+          <div class="food-item"><span class="fi-ic">🥛</span> Soy milk, miso, natto (fermented soy — better absorption)</div>
+          <h4 class="good" style="margin-top:10px">✓ Bone &amp; heart protection</h4>
+          <div class="food-item"><span class="fi-ic">🥛</span> Calcium-rich foods (1,200mg/day: dairy, kale, almonds, sardines) <span class="qi" data-evidence="calcium-pms">i</span> <span class="qi" data-evidence="bone-estrogen">i</span></div>
+          <div class="food-item"><span class="fi-ic">🐟</span> Fatty fish (omega-3s reduce inflammation; vitamin D for bone) <span class="qi" data-evidence="omega3-dysmenorrhea">i</span></div>
+          <div class="food-item"><span class="fi-ic">☀️</span> Vitamin D (600-800 IU/day; supports calcium absorption)</div>
+          <h4 class="good" style="margin-top:10px">✓ Body composition &amp; mood</h4>
+          <div class="food-item"><span class="fi-ic">🍳</span> High-quality protein (1.1-1.5g/kg maintains muscle mass)</div>
+          <div class="food-item"><span class="fi-ic">🫒</span> Mediterranean diet pattern (reduced vasomotor symptoms) <span class="qi" data-evidence="mediterranean-menopause">i</span></div>
+          <div class="food-item"><span class="fi-ic">🥬</span> Magnesium-rich foods (supports thermoregulation &amp; sleep) <span class="qi" data-evidence="magnesium-pms-mixed">i</span></div>
+          <div class="food-item"><span class="fi-ic">🌾</span> Ground flaxseed (fiber &amp; ALA; ⚠️ NOT proven for hot flashes) <span class="qi" data-evidence="flaxseed-null">i</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Foods to Limit</h2>
+        <div class="food-col">
+          <h4 class="limit">✗ May worsen vasomotor symptoms</h4>
+          <div class="food-item"><span class="fi-ic">🍷</span> Alcohol (may increase hot flash frequency) <span class="qi" data-evidence="hot-flashes">i</span></div>
+          <div class="food-item"><span class="fi-ic">☕</span> Excess caffeine (can worsen hot flashes &amp; sleep)</div>
+          <div class="food-item"><span class="fi-ic">🌶️</span> Spicy foods (common hot flash trigger for some women)</div>
+          <div class="food-item"><span class="fi-ic">🍬</span> Added sugars (weight gain, insulin resistance, inflammation)</div>
+          <div class="food-item"><span class="fi-ic">🍔</span> Processed &amp; fried foods (inflammation, cardiovascular risk)</div>
+        </div>
+      </div>
+
+      <div class="card tint-blush">
+        <h2 class="sec" style="margin-top:0;font-size:16px">Sample Meal Plan</h2>
+        <div class="mp-row">
+          <div class="mp-ic">🍳</div>
+          <div class="mp-body">
+            <div class="mp-type">Breakfast</div>
+            <div class="mp-name">Tofu scramble with spinach &amp; whole-grain toast</div>
+            <div class="mp-desc">Firm tofu (soy isoflavones), spinach, turmeric, black pepper, sourdough toast, side of berries. Soy + calcium + anti-inflammatory turmeric <span class="qi" data-evidence="soy-isoflavones-hot-flashes">i</span></div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🥗</div>
+          <div class="mp-body">
+            <div class="mp-type">Lunch</div>
+            <div class="mp-name">Mediterranean salmon salad</div>
+            <div class="mp-desc">Grilled salmon, mixed greens, chickpeas, cucumber, olives, olive oil-lemon dressing, almonds. Omega-3s + Mediterranean pattern <span class="qi" data-evidence="mediterranean-menopause">i</span></div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🥜</div>
+          <div class="mp-body">
+            <div class="mp-type">Snack</div>
+            <div class="mp-name">Greek yogurt with pumpkin seeds &amp; dark chocolate</div>
+            <div class="mp-desc">½ cup plain Greek yogurt (calcium + protein), 1 tbsp pumpkin seeds (magnesium), 2 squares dark chocolate. Calcium 1,200mg/day target <span class="qi" data-evidence="calcium-pms">i</span></div>
+          </div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-ic">🍲</div>
+          <div class="mp-body">
+            <div class="mp-type">Dinner</div>
+            <div class="mp-name">Tempeh stir-fry with broccoli &amp; brown rice</div>
+            <div class="mp-desc">Tempeh (fermented soy), broccoli (sulforaphane), bell peppers, ginger-garlic sauce, brown rice. Soy isoflavones + fiber + cruciferous detox support</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec" style="margin-top:0;font-size:16px">🍵 Herbs &amp; Teas for Perimenopause</h2>
+        <div class="sub" style="margin-bottom:8px">Evidence-based herbal support — always consult a qualified TCM practitioner</div>
+        <div class="food-item"><span class="fi-ic">🍵</span> <b>Danggui Buxue Tang</b> (当归补血汤): 6g/day, 35-37% hot flash reduction in RCTs <span class="qi" data-evidence="danggui-buxue-tang">i</span></div>
+        <div class="food-item"><span class="fi-ic">🌾</span> <b>Gan Mai Da Zao Tang</b> (甘麦大枣汤): for anxiety/mood; low-quality evidence <span class="qi" data-evidence="gan-mai-da-zao-tang">i</span></div>
+        <div class="food-item"><span class="fi-ic">🌿</span> <b>⚠️ Dong quai alone does NOT reduce hot flashes</b> — only effective in DBT formula <span class="qi" data-evidence="dong-quai-null">i</span></div>
+        <div class="food-item"><span class="fi-ic">🌱</span> <b>Pueraria mirifica</b>: small Thai trials positive, but ≠ Chinese 葛根; safety concerns <span class="qi" data-evidence="pueraria-mirifica">i</span></div>
+        <div class="food-item"><span class="fi-ic">📖</span> <a href="foods.html" style="color:var(--mauve);font-weight:700">See full Herbs &amp; Teas database →</a></div>
+      </div>
+    </div>
+
+    <!-- ═══════ COLD DRINKS & YOUR CYCLE ═══════ -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">🧊 Cold Drinks &amp; Your Cycle</h2>
+      <div class="sub" style="margin-bottom:12px">Why temperature matters — and when to reach for something warm instead.</div>
+
+      <div class="card tint-blush" style="margin-bottom:12px">
+        <div style="font-size:12.5px;font-weight:800;color:var(--ink);margin-bottom:8px">When to avoid cold drinks</div>
+        <div class="tip-row"><span class="tr-ic">🩸</span><div class="tr-txt"><b>During menstruation</b>, especially the first 2–3 days when flow and cramping are at their peak.</div></div>
+        <div class="tip-row"><span class="tr-ic">❄️</span><div class="tr-txt"><b>Cold constitution</b> — cold hands/feet, pale tongue, frequent chills. Your body runs cooler and is more sensitive to cold invasion.</div></div>
+        <div class="tip-row"><span class="tr-ic">⚡</span><div class="tr-txt"><b>Prone to severe cramps</b> — cold can intensify uterine contraction and pain.</div></div>
+        <div class="tip-row" style="border-bottom:none"><span class="tr-ic">🌙</span><div class="tr-txt"><b>Luteal phase</b> if you're prone to PMS or cramping — your body is already more sensitive.</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div style="font-size:12.5px;font-weight:800;color:var(--ink);margin-bottom:8px">Why it matters (TCM + modern)</div>
+        <div class="tip-row">
+          <span class="tr-ic">🌿</span>
+          <div class="tr-txt"><b>TCM view — 寒凝血瘀 (cold coagulation, blood stasis):</b> Cold invades the uterus, blood congeals, flow becomes obstructed → pain. Habitual cold consumption extinguishes Spleen/Stomach Yang Qi → internal cold-dampness → worsens uterine stagnation.</div>
+        </div>
+        <div class="tip-row">
+          <span class="tr-ic">🔬</span>
+          <div class="tr-txt"><b>Modern view:</b> Low-temperature stimulation causes uterine vascular and smooth muscle contraction → menstrual blood discharge受阻 → uterine ischemia/hypoxia → spasmodic pain.</div>
+        </div>
+        <div class="tip-row" style="border-bottom:none">
+          <span class="tr-ic">📊</span>
+          <div class="tr-txt"><b>Evidence:</b> Among Asian women, higher ice cream consumption in winter associated with dysmenorrhea (beta=1.19, p=0.0002). Among White women, increased cold water/drinks in winter associated (beta=0.49, p=0.04) <span class="qi" data-evidence="cold-drinks-dysmenorrhea">i</span>.</div>
+        </div>
+      </div>
+
+      <div class="wellness-note" style="margin-bottom:12px">
+        💡 <b>Nuance:</b> An occasional cold drink is warmed by the digestive tract and unlikely to reach the pelvic cavity at low temperature. The risk is <b>habitual</b> consumption, especially during menstruation — not the rare iced coffee.
+      </div>
+
+      <div class="card tint-sage">
+        <div style="font-size:12.5px;font-weight:800;color:var(--ink);margin-bottom:8px">What to do instead</div>
+        <div class="tip-row"><span class="tr-ic">🍵</span><div class="tr-txt"><b>Warm ginger tea, cinnamon tea, or brown sugar water</b> during your period — these are warming and soothing.</div></div>
+        <div class="tip-row"><span class="tr-ic">💧</span><div class="tr-txt"><b>Room temperature or warm water</b> for daily hydration.</div></div>
+        <div class="tip-row"><span class="tr-ic">🧊</span><div class="tr-txt"><b>If craving cold:</b> slightly cool (not ice cold), small amounts, and not on an empty stomach.</div></div>
+        <div class="tip-row" style="border-bottom:none"><span class="tr-ic">🔥</span><div class="tr-txt"><b>Keep your lower abdomen and lower back warm</b> — heating pad, warm clothing, or a hot water bottle.</div></div>
+      </div>
+    </div>
+
+    <!-- Key nutrients -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">Key Nutrients by Phase</h2>
+      <div class="grid2">
+        <div class="metric">
+          <div class="m-ic">🩸</div>
+          <div class="m-v">Iron</div>
+          <div class="m-l">Menstrual</div>
+        </div>
+        <div class="metric">
+          <div class="m-ic">🌱</div>
+          <div class="m-v">Protein</div>
+          <div class="m-l">Follicular</div>
+        </div>
+        <div class="metric">
+          <div class="m-ic">✨</div>
+          <div class="m-v">Antioxidants</div>
+          <div class="m-l">Ovulation</div>
+        </div>
+        <div class="metric">
+          <div class="m-ic">🌙</div>
+          <div class="m-v">Magnesium</div>
+          <div class="m-l">Luteal</div>
+        </div>
+      </div>
+      <a href="nutrients.html" class="btn ghost" style="margin-top:12px">Explore Nutrients <span class="ms" style="font-size:18px">arrow_forward</span></a>
+    </div>
+
+    <!-- Herbs & teas reference -->
+    <div class="card">
+      <h2 class="sec" style="margin-top:0">🍵 Cycle-Aligned Herbs &amp; Teas</h2>
+      <div class="sub" style="margin-bottom:10px">Traditional Chinese herbs with evidence-verified dosage, frequency, and cautions</div>
+      <a href="foods.html" class="lrow" style="padding:14px 4px">
+        <div class="l-ic" style="background:rgba(168,192,160,.15)">🍵</div>
+        <div class="l-t"><b>Herbs &amp; Teas Database</b><span>15 herbs + 4 compound formulas with real PMID evidence</span></div>
+        <span class="l-arr ms">chevron_right</span>
+      </a>
+      <div class="food-item" style="margin-top:8px"><span class="fi-ic">✅</span> Danggui Buxue Tang: 35-37% hot flash reduction (2 RCTs) <span class="qi" data-evidence="danggui-buxue-tang">i</span></div>
+      <div class="food-item"><span class="fi-ic">✅</span> Calcium 1,200mg/day: 48% PMS reduction (RCT n=466) <span class="qi" data-evidence="calcium-pms">i</span></div>
+      <div class="food-item"><span class="fi-ic">⚠️</span> Dong quai alone does NOT reduce hot flashes <span class="qi" data-evidence="dong-quai-null">i</span></div>
+      <div class="food-item"><span class="fi-ic">⚠️</span> 8 herbs have NO human clinical data (preclinical only)</div>
+    </div>
+
+    <!-- AI insight -->
+    <div class="insight">
+      <span class="i-ic">🌙</span>
+      <p><b>Luna says:</b> Cycle-synced eating works with your natural hormonal rhythm rather than against it. In the follicular phase, your body is more insulin-sensitive — great for complex carbs and higher intensity training. In the luteal phase, progesterone increases your core temperature and calorie needs slightly; complex carbs and magnesium help keep cravings and mood stable <span class="qi" data-evidence="nutrition-luteal">i</span>. In perimenopause, soy isoflavones and adequate calcium are the most evidence-supported nutritional additions <span class="qi" data-evidence="soy-isoflavones-hot-flashes">i</span> <span class="qi" data-evidence="calcium-pms">i</span>.</p>
+    </div>
+
+    <!-- Wellness disclaimer -->
+    <div class="wellness-note">
+      💛 <b>Wellness, not diagnosis.</b> Consult a qualified TCM practitioner or physician before starting herbal regimens, especially if pregnant, nursing, on medication, or with pre-existing conditions. Nutrition guidance is educational and based on general cycle physiology and verified clinical research. Individual needs vary based on health conditions, medications, activity level, and personal goals. If you have specific dietary needs, food allergies, or medical conditions (PCOS, endometriosis, etc.), please consult a registered dietitian or qualified healthcare provider. Evidence markers (i) link to supporting research with real PMIDs/DOIs.
+    </div>
+
+  </div>
+
+  <nav class="nav">
+    <a href="home.html"><span class="n-ic">home</span>Home</a>
+    <a href="learn.html"><span class="n-ic">menu_book</span>Learn</a>
+    <a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a>
+    <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+    <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+  </nav>
+</div>
+
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script>
+// Phase tab switching
+document.querySelectorAll('.ntab').forEach(function(tab){
+  tab.addEventListener('click', function(){
+    document.querySelectorAll('.ntab').forEach(function(t){t.classList.remove('on');});
+    tab.classList.add('on');
+    var phase = tab.dataset.phase;
+    document.querySelectorAll('.phase-sec').forEach(function(s){s.classList.remove('on');});
+    document.getElementById('sec-'+phase).classList.add('on');
+    window.scrollTo({top: document.getElementById('nutriTabs').offsetTop - 80, behavior:'smooth'});
+  });
+});
+</script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

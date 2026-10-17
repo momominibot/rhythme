@@ -1,0 +1,3786 @@
+{
+  "reviewedAt": "2026-09-30T12:10:37.569981+00:00",
+  "scope": "Read-only source/design and claim-screening audit. Candidate findings require source and clinical checking; this is not a verified medical-content audit. App files may change after this snapshot. Exact literals are included for relocation. No user records used.",
+  "root": "/private/tmp/ovuluna-dreamy-20260930/app",
+  "pages": [
+    {
+      "page": "acupoints.html",
+      "sha256": "1617c76d01ff11ccc85adc90d976401c0d98790176717f7ce948d085fa7bbdd7",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 24,
+      "namedReviewer": false
+    },
+    {
+      "page": "bio-age.html",
+      "sha256": "4e802f2022ec2b2f90309e83927dd8d300d7952f626fde34f863152dc269aa13",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "phenoage-2018-method"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "breathe.html",
+      "sha256": "1fd253b6da9cceb2ed69d1094fbe2a0fe209d6853cc5e0740942764d592802cf",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "478-breathing",
+        "benson-menstrual-pain",
+        "breath-478-relaxation",
+        "breath-cramps-diaphragmatic",
+        "breathwork-hrv",
+        "hrv-women-health",
+        "ppg-hrv",
+        "sleep-cycle-hormones",
+        "sleep-duration",
+        "stress-cortisol-cycle",
+        "stress-hrv"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 35,
+      "namedReviewer": false
+    },
+    {
+      "page": "breathwork.html",
+      "sha256": "bb5ff42576c344c390f21f0ec0343e9075626fd9d1f0d8a8a56ccf4aec403289",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 2,
+      "namedReviewer": false
+    },
+    {
+      "page": "circle.html",
+      "sha256": "0f03cfd8f983921cea565969a06767e2066888bb1c86fe72ec1ddfd4ac2ec862",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "478-breathing",
+        "amh-overview",
+        "endometriosis-overview",
+        "inositol-pcos",
+        "iron-menstruation",
+        "menopause-age",
+        "pcos-criteria",
+        "pcos-lifestyle",
+        "perimenopause-symptoms",
+        "stress-cortisol-cycle"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 27,
+      "namedReviewer": false
+    },
+    {
+      "page": "community.html",
+      "sha256": "885d1e0ded402e8bc84f98bf217de089b361766f5a21de46bb967d89d3984a1f",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "cycle-delay.html",
+      "sha256": "a8255800ab820293b8fff268a1ee78e8d1bad220681feb0308561f7a32267557",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "cycle-home.html",
+      "sha256": "7e021261aa0f279b93368a4dd865ca1ac84058fa154f64ccc0c3d74ce304cedd",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 10,
+      "namedReviewer": false
+    },
+    {
+      "page": "cycle-log.html",
+      "sha256": "92366619394c2d20d4534fdc5404640b07337a3250f62a89bffd1360e8547dbe",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "cycle-trends.html",
+      "sha256": "1b2dd30d536f236fa4b820d03d1bf7e7cb2f74f817760a97dfa8df7402364bd3",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "diet.html",
+      "sha256": "f9ce828af52eec1c3130c54068d1b4c68efe31d9d435272053abe0676462b852",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 6,
+      "namedReviewer": false
+    },
+    {
+      "page": "exercise-guide.html",
+      "sha256": "a1751fd794114d050095a2de51c74e6de210f32e56c38e5dcd2bc34afab23732",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "acupressure-dysmenorrhea",
+        "exercise-cycle",
+        "exercise-dysmenorrhea",
+        "exercise-pms",
+        "heat-therapy-dysmenorrhea",
+        "stress-cortisol-cycle"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 4,
+      "namedReviewer": false
+    },
+    {
+      "page": "exercise.html",
+      "sha256": "55847671c1e6808865a9a940b39f4c105c09cb08b1ea5f9ed80ad8387abd3cdd",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "fertility.html",
+      "sha256": "4298a1c31f3a7ece143f9e8101762a2066043c4e10bd746d2e2e37adc9add1d4",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "food-scan.html",
+      "sha256": "0db00004b27ad57d91a966dd704087f58867414f233ee0efb86e1e7daab35855",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "foods.html",
+      "sha256": "082a456f4bfb5da78710673ef0d551b14ef7716afe05f2d68a7e1bf821b48d3c",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "b6-pms",
+        "bone-estrogen",
+        "calcium-pms",
+        "danggui-buxue-tang",
+        "dong-quai-null",
+        "endometriosis-overview",
+        "flaxseed-null",
+        "folate-reproduction",
+        "gan-mai-da-zao-tang",
+        "goji-ovarian-animal",
+        "hot-flashes",
+        "iron-menstruation",
+        "jiawei-xiaoyao-pms",
+        "magnesium-pms-mixed",
+        "mediterranean-menopause",
+        "myo-inositol-pcos",
+        "nutrition-follicular",
+        "nutrition-luteal",
+        "omega3-dysmenorrhea",
+        "omega3-inflammation",
+        "pcos-lifestyle",
+        "pueraria-mirifica",
+        "rose-tea-dysmenorrhea",
+        "sleep-cycle-hormones",
+        "sleep-duration",
+        "soy-isoflavones-bone",
+        "soy-isoflavones-hot-flashes",
+        "stress-cortisol-cycle",
+        "tcm-menopause-cochrane",
+        "vitamin-d-fertility"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 109,
+      "namedReviewer": false
+    },
+    {
+      "page": "health-profile.html",
+      "sha256": "62f0eb0a15961c98090e4aebe4348c5846f07e5e7e66e8bfe81128ba21a74a7e",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "bmi-fertility",
+        "cycle-length-normal",
+        "endocrine-disruptors",
+        "endometriosis-overview",
+        "family-history-ovarian",
+        "fertile-window",
+        "hormonal-contraception",
+        "hot-flashes",
+        "inositol-pcos",
+        "magnesium-pms",
+        "pcos-criteria",
+        "perimenopause-symptoms",
+        "sleep-cycle-hormones",
+        "sleep-duration",
+        "smoking-menopause",
+        "stress-cortisol-cycle",
+        "stress-fertility",
+        "supplements-caution",
+        "thyroid-menstrual",
+        "vitamin-d-fertility"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 6,
+      "namedReviewer": false
+    },
+    {
+      "page": "home.html",
+      "sha256": "145a7ef50a7bf5f20480d74f984671909e6c4a85a3b0fc4d70952168d9ce30f1",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "cycle-teaching-model"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "hormones.html",
+      "sha256": "f9f3bb57d94dfa50450dc9e96fda1e1f840ed1924352b7f8cd706a70268b5e50",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "hydration.html",
+      "sha256": "15abd7ba6f0b126efa8afff51abc67bb9932f14b55ed82ca630496843fb4f3a3",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "index.html",
+      "sha256": "876642f7febb18aa543dd601f208c389e4b3eba61b57373ef65ad31691edfe15",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 32,
+      "namedReviewer": false
+    },
+    {
+      "page": "insights.html",
+      "sha256": "dd6338f47972f6bdacc2eabb386bad78bb64b469ae77aa8d9510dfb8f529ee21",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "ovarian-age-concept"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "label-scan.html",
+      "sha256": "69400b868ba4ab06fc85d9f98364e7439af276451fbb028d40770f7c1744fa42",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "endocrine-disruptors",
+        "iron-menstruation",
+        "magnesium-pms",
+        "nutrition-follicular",
+        "nutrition-luteal",
+        "omega3-inflammation",
+        "pcos-lifestyle"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 37,
+      "namedReviewer": false
+    },
+    {
+      "page": "labs.html",
+      "sha256": "7715caa05a04e05c21abf7f1c382ec734efa1b125df2e27df44a1c7072a27742",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "ovarian-age-concept"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "learn-biomarkers.html",
+      "sha256": "8f22b39f44f9b67ac88c83d5f61aec829da4adc028e680213944fa46db839161",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 8,
+      "namedReviewer": true
+    },
+    {
+      "page": "learn-cycle-phases.html",
+      "sha256": "111105ef4ae13b947f73ae468c21e7bfd9526eac5a64a8bdfc9b99bf1dfeddb4",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "cycle-length-normal",
+        "estradiol-follicular",
+        "fertile-window",
+        "lh-surge-ovulation",
+        "menstrual-cycle-hormones",
+        "progesterone-luteal",
+        "progesterone-thermogenic"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 5,
+      "namedReviewer": true
+    },
+    {
+      "page": "learn-discharge.html",
+      "sha256": "6bdf5e52ffc6ad2aff6596a7adde2a304fb084c83637569a6e178034d6e9b857",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "estradiol-follicular",
+        "fertile-window",
+        "lh-surge-ovulation"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 5,
+      "namedReviewer": true
+    },
+    {
+      "page": "learn-fertile-window.html",
+      "sha256": "22a9cabf4dd4e5ada2dc51f3020481bbd8b7dc4d9feb20dab8d78ecbc5dcfe4d",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "fertile-window",
+        "lh-surge-ovulation",
+        "ppg-hrv",
+        "progesterone-thermogenic"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 3,
+      "namedReviewer": true
+    },
+    {
+      "page": "learn-hormone-phase-locking.html",
+      "sha256": "0b179a3ec0d1d773b75ed780702affb2056cc32d69ff1688ed21558302ce5790",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 3,
+      "namedReviewer": true
+    },
+    {
+      "page": "learn-lifestyle.html",
+      "sha256": "13c2a8fd68b0e521d15747012180088ffd007f94140a1f56a7dc56f663deee39",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 7,
+      "namedReviewer": true
+    },
+    {
+      "page": "learn-longevity-pathways.html",
+      "sha256": "3566f1b64e1a4741a0bad5240ae093e8b3e31f76258f17f4cb6301db21e26954",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 7,
+      "namedReviewer": true
+    },
+    {
+      "page": "learn-ovarian-age.html",
+      "sha256": "929b44d71963441bf79ea500a852bad6c69605895ad627e4af15ae9acd39504c",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "ovarian-age-concept"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "learn-ovarian-biology.html",
+      "sha256": "68b668374ae488cf234334714d2528c9b618b47dfccc44a21ecf514a07c5abe0",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 8,
+      "namedReviewer": true
+    },
+    {
+      "page": "learn-ovarian-longevity.html",
+      "sha256": "1d644380b3cc33b30808b8badecd81bb441495f0f5929dccaa074a46f79fea53",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "afc-reserve",
+        "amh-overview",
+        "exercise-cycle",
+        "longevity-lifestyle",
+        "ovarian-age-concept",
+        "ovarian-longevity",
+        "sleep-cycle-hormones",
+        "sleep-duration",
+        "smoking-menopause",
+        "stress-cortisol-cycle"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 4,
+      "namedReviewer": true
+    },
+    {
+      "page": "learn-perimenopause.html",
+      "sha256": "b54575d658740661518f25003c7ea9c39fe8f7ea8e0091c38862f8659295fe56",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "amh-overview",
+        "bone-estrogen",
+        "fsh-menopause",
+        "hot-flashes",
+        "hrt-benefits-risks",
+        "perimenopause-symptoms",
+        "sleep-perimenopause",
+        "straw10",
+        "stress-cortisol-cycle"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 4,
+      "namedReviewer": true
+    },
+    {
+      "page": "learn-ppg-tech.html",
+      "sha256": "7cf7bb416d00e73035673f78273ab9271a9eede2af119a27ccc837a70e8f1712",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "camera-ppg-study-scope"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "learn-straw10.html",
+      "sha256": "49c95d2e6c2d9d66be6e927c8878bb0bb1e9f9ec0763d4c96575522f52db3645",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 2,
+      "namedReviewer": true
+    },
+    {
+      "page": "learn-wearables.html",
+      "sha256": "02184312cc55b977fd4c27c39a2f73f86eee41f972a40ba80fdf42551bd0295d",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "hrv-source-methods",
+        "wearable-data-permissions"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "learn.html",
+      "sha256": "048db5fe9af5e4711716945cfb3aa445d04f987d669a3d22e1bea4c737690329",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "login.html",
+      "sha256": "f9dce0e3a2b43ca4fd9aa70916168119ec05dbaad5fc463970bc9318c04c9577",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "logo.html",
+      "sha256": "86737738caa797ad4a97155071447e1ada590ddb73cafa650404894266b65a59",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "longevity.html",
+      "sha256": "d70b1746c5416c78516a2ab1dfe8c9291fb9e3211d2caba86d673510236de672",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "bone-estrogen",
+        "cardiovascular-menopause",
+        "perimenopause-symptoms"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "medas14.html",
+      "sha256": "dae2f190d09b7885b3e96fdb498f205424dce2034b48176cd861bdf73f35cfb4",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "meds.html",
+      "sha256": "10f53579c77b4233418b01d31fa328ce4c77dadfc7ee8d681f7dc407a2941511",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "mental-health.html",
+      "sha256": "881a63ad51bed45fbeb2051e154a3efb4ef904a691583fef727323233b8a2b5d",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "epds-validity",
+        "mood-tracking-benefit",
+        "ppd-treatment"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "myofascial.html",
+      "sha256": "b53b8700d13ea0728c6a9b52df1548e867d1f69819007db1f71dd34262006caf",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 34,
+      "namedReviewer": false
+    },
+    {
+      "page": "notifications.html",
+      "sha256": "9cc608ce2fa2454fac344e207260db5e9b233460bcba97a4372f4488f0e757bd",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "nutrients.html",
+      "sha256": "64fc48573d30ccafb210fae9ecada83609cc45dfde897162be7a977f54acaccf",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "nutrition-plan.html",
+      "sha256": "2a54a25dafa629c908471b5adb20803160167036167049d11ab1e53836121660",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "b6-pms",
+        "bone-estrogen",
+        "calcium-pms",
+        "cold-drinks-dysmenorrhea",
+        "cycle-phases",
+        "danggui-buxue-tang",
+        "dong-quai-null",
+        "fertile-window",
+        "flaxseed-null",
+        "folate-reproduction",
+        "gan-mai-da-zao-tang",
+        "hot-flashes",
+        "iron-menstruation",
+        "magnesium-pms-mixed",
+        "mediterranean-menopause",
+        "nutrition-follicular",
+        "nutrition-luteal",
+        "omega3-dysmenorrhea",
+        "omega3-inflammation",
+        "perimenopause-symptoms",
+        "pueraria-mirifica",
+        "soy-isoflavones-hot-flashes",
+        "vitamin-d-fertility"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 143,
+      "namedReviewer": false
+    },
+    {
+      "page": "nutrition-scanner.html",
+      "sha256": "a4bdadf6e5641ff64e09c3c653ca7b094364d925a22fcc21c04392e54e7c6c01",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 3,
+      "namedReviewer": false
+    },
+    {
+      "page": "onboarding.html",
+      "sha256": "f390e85a0da00a27b9ee8fe9ee5ff7e6882f6a2855396aa716a7cabed541fb5d",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "ovarian-age.html",
+      "sha256": "a029eac7e270fbc7560af34d10174fce0d87cd818b145aaf43efba49de836277",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "ovarian-age-concept"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "overview.html",
+      "sha256": "78ea7d1da6699c2f1c1e9d43843c07b1ddc3e54f0c7a003f2daf10da782ca47b",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "hrv-women-health"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "partner-code.html",
+      "sha256": "4705e7df9469b44ed33603af3904e3fda00842cf63f4a27a1641131173fbb479",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "fertile-window",
+        "partner-support-outcomes",
+        "perimenopause-symptoms"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 15,
+      "namedReviewer": false
+    },
+    {
+      "page": "partner-connect.html",
+      "sha256": "0e9eefa9a5ac33f77b12bb063beb0440f435caf5a8c9ae8be78781f61b634059",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "breathwork-hrv",
+        "cycle-phases",
+        "magnesium-pms",
+        "partner-support-outcomes",
+        "sleep-cycle-hormones",
+        "vaginal-dryness"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 16,
+      "namedReviewer": false
+    },
+    {
+      "page": "period-start.html",
+      "sha256": "685494d2f92e1c377196d44184d434493d0af65ccd156baa5a0727f23cf8930b",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "personal-info.html",
+      "sha256": "a932f9b51ec492ae0b9af058ea813362a2015aa990dcaedeba34dd2868663557",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "bmi-fertility",
+        "fertile-window"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 16,
+      "namedReviewer": false
+    },
+    {
+      "page": "phase-coach.html",
+      "sha256": "3b0c161b3c2b618ac25a9c00d2d063dfdc75450d2e5925083cfd7ce8b6a829f3",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "breathwork-hrv",
+        "cycle-length-normal",
+        "cycle-phases",
+        "estradiol-follicular",
+        "estrogen-insulin-follicular",
+        "exercise-cycle",
+        "exercise-dysmenorrhea",
+        "exercise-luteal",
+        "iron-menstruation",
+        "magnesium-pms-mixed",
+        "nutrition-follicular",
+        "partner-support-outcomes",
+        "yoga-dysmenorrhea"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 3,
+      "namedReviewer": false
+    },
+    {
+      "page": "postpartum-guide.html",
+      "sha256": "65c7ee5f5f442daf3c1f6051bedd7d38713390ceb7cf0b5f678b4182f9fd2ad7",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "cycle-length-normal",
+        "exercise-cycle",
+        "exercise-dysmenorrhea",
+        "nutrition-follicular",
+        "ppd-prevalence"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 10,
+      "namedReviewer": false
+    },
+    {
+      "page": "ppg-review.html",
+      "sha256": "5d29717768df2af6da2a8a76d05657801f096bfd370fdddc2d9267f3b1564b5e",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "478-breathing",
+        "breathwork-hrv",
+        "cardiovascular-menopause",
+        "hrv-women-health",
+        "ppg-hrv",
+        "stress-cortisol-cycle",
+        "stress-hrv"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 13,
+      "namedReviewer": false
+    },
+    {
+      "page": "ppg.html",
+      "sha256": "e6d203fad80f54283c84eccecab06f30f4da3840f12598e2a8a2e91ab1940306",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 8,
+      "namedReviewer": false
+    },
+    {
+      "page": "premium.html",
+      "sha256": "d2604f9e210c2f77bf6f8d7f8c8d558dc40c12505a02cff2e1016b4b31bc0e4c",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "privacy.html",
+      "sha256": "f6313fb64cef1a0cf28aaa84d28a91050ae2be6f525444efb2d4e9e023100d52",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "profile.html",
+      "sha256": "54cb80c4a14a3102cac911a84258fe5c027bd16f579406fa7be8468868c449ca",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 12,
+      "namedReviewer": false
+    },
+    {
+      "page": "provider-dashboard.html",
+      "sha256": "342f034908dea6a691e48b4a88944cd5efc5c2bab427e75d39ee3a7310ed04ca",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "amh-overview",
+        "b6-pms",
+        "bmi-fertility",
+        "cycle-length-normal",
+        "cycle-phases",
+        "fsh-menopause",
+        "iron-menstruation",
+        "magnesium-pms",
+        "ovarian-age-concept",
+        "progesterone-luteal",
+        "sleep-duration",
+        "straw10"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 5,
+      "namedReviewer": false
+    },
+    {
+      "page": "reports.html",
+      "sha256": "66fb0e2a05b345cf5ec8782e2758ec499956821d09ee43b0c38f357e3e9c22b9",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 2,
+      "namedReviewer": false
+    },
+    {
+      "page": "settings.html",
+      "sha256": "fa69b7ccd1f143573b47e94e42532ff85455bacf17f66331b24d5008b1c5ecd0",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 4,
+      "namedReviewer": false
+    },
+    {
+      "page": "sleep-diary.html",
+      "sha256": "0e9276d0ef4babfb3db630fc7304b54861959a223d5dff2f528e827187f16e30",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "sleep.html",
+      "sha256": "215bc41e3c377ffc1a1249df7d8259a6f6a3a96dc66ad5375e8d183f8c1ac4e0",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "straw-calculator.html",
+      "sha256": "f5696491a5d1b7af39947a0b8a58816dedfa50421e7f5c41b97d1be4ecd255b8",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [
+        "straw-hormonal",
+        "straw-pcos",
+        "straw-60day"
+      ],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "stress-checkin.html",
+      "sha256": "beccbdcfb45cfb19cc58286dee23b07b3be0dd70322f2113848e9cf136318806",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "stress.html",
+      "sha256": "b6bb75e197e1c8504d5ff9e324de2ac4d61875c3b6cfe8149a2f2662ad2e2184",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "supplements.html",
+      "sha256": "3ae42d9d900d5de46b152b011cf6bc2bac4dc098892b7cfd9928fd1a9295764c",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 2,
+      "namedReviewer": false
+    },
+    {
+      "page": "tcm-footsoak.html",
+      "sha256": "8f48d21f60233dd14826f12469c348c4a90f0bd3cafc6784a97d702ed177ede0",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [
+        "fs-seasonal",
+        "fs-duration",
+        "fs-mugwort",
+        "fs-meta",
+        "fs-sleep"
+      ],
+      "standardEmojiCodepoints": 4,
+      "namedReviewer": false
+    },
+    {
+      "page": "tcm-herbs.html",
+      "sha256": "507276ab9c5f6eb1b56fe46495bf18559dc6dff80c4beefdae7be9cb0b18e625",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 14,
+      "namedReviewer": false
+    },
+    {
+      "page": "tcm-hub.html",
+      "sha256": "8ad47b97f1d00b6e55b9c114ff3c4c07974bc63994a42d2d1c48f4e918abbd1c",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "acupressure-dysmenorrhea-meta",
+        "heat-therapy-dysmenorrhea",
+        "sp6-acupressure-cramps"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 18,
+      "namedReviewer": false
+    },
+    {
+      "page": "tcm-topical.html",
+      "sha256": "6ae119b7b222b041d1170b5ffcb8ff42a73608dff28db04d73ce269c413f4b18",
+      "sharedEvidence": true,
+      "evidenceKeys": [
+        "castor-oil-pack",
+        "ginger-poultice-cramps",
+        "heat-therapy-dysmenorrhea",
+        "moxibustion-pcos",
+        "sp6-acupressure-cramps"
+      ],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "terms.html",
+      "sha256": "3e274da1df2e806f5c5f44b1fa0fd2ad318fe3c91ec7373e430dfd94afdb4f7d",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "trends.html",
+      "sha256": "fa8f836f03b84f247e8601292cf7404ec69587372927a63245c834dcb4710183",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    },
+    {
+      "page": "vascular.html",
+      "sha256": "d8fdcc330aaffb688ac534ed9371c231b902f0aab773f489c41007aab4d3eeaf",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 1,
+      "namedReviewer": false
+    },
+    {
+      "page": "wellness-checkin.html",
+      "sha256": "c0f41759b62b6a4d856836fa4a6f22ce34bef173514e9fbf588cd94e825b815e",
+      "sharedEvidence": false,
+      "evidenceKeys": [],
+      "alternateEvidenceKeys": [],
+      "standardEmojiCodepoints": 0,
+      "namedReviewer": false
+    }
+  ],
+  "claimCandidates": [
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "breathe.html",
+      "line": 380,
+      "literal": "synced",
+      "context": "Cycle-synced benefits. Matching breathwork to your phase — energizing coherent breathing in follicular, calming 4-7-8 in luteal — works with your natural hormonal rhythm rather than against it.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "circle.html",
+      "line": 264,
+      "literal": "Dr. Amelia Chen",
+      "context": "Dr. Amelia Chen, MD",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "circle.html",
+      "line": 293,
+      "literal": "Anonymous posting",
+      "context": "Respect privacy. Don't share personal information — yours or others'. Anonymous posting is available for sensitive topics.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "circle.html",
+      "line": 301,
+      "literal": "we moderate actively",
+      "context": "self-promotion. Keep posts relevant to women's health journeys. Report inappropriate content — we moderate actively.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "diet.html",
+      "line": 114,
+      "literal": "your ovaries",
+      "context": "Eat for your ovaries",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "diet.html",
+      "line": 137,
+      "literal": "AI Tip",
+      "context": "AI Tip · You're 38g under your protein goal. Adding an evening serving of legumes or a protein snack will help meet luteal-phase needs.",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "exercise-guide.html",
+      "line": 78,
+      "literal": "Avoid:</b> High-intensity interval training (HIIT",
+      "context": "Avoid: High-intensity interval training (HIIT), heavy lifting, inversion poses if flow is heavy",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "exercise-guide.html",
+      "line": 102,
+      "literal": "best time to increase",
+      "context": "Focus: Progressive overload — this is the best time to increase weights or try new exercises",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "exercise-guide.html",
+      "line": 124,
+      "literal": "Schedule your hardest",
+      "context": "Tip: Schedule your hardest workouts around ovulation — you'll have more power and better recovery",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "exercise-guide.html",
+      "line": 226,
+      "literal": "high intensity",
+      "context": "8): Moderate exercise (3–6 METs) supports fertility. Avoid extreme overtraining (>10 hours/week high intensity) which can disrupt ovulation. Yoga and walking are excellent during the two-week wait. Continue moderate cardio through the cycle.',",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "exercise-guide.html",
+      "line": 227,
+      "literal": "clearance (usually 6 weeks vaginal, 8 week",
+      "context": "nurture: ' 🌿 Nurture (Postpartum): Wait for medical clearance (usually 6 weeks vaginal, 8 weeks cesarean). Start with pelvic floor exercises and gentle walking. Gradually increase intensity over 3–6 months. Avoid high-impact until pelvic floor strength returns. Diastasis recti-safe core work only.',",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "exercise.html",
+      "line": 121,
+      "literal": "synced",
+      "context": "",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "fertility.html",
+      "line": 42,
+      "literal": "Predicted ovulation:",
+      "context": "tyle=\"font-size:11.5px;font-weight:800;color:var(--terracotta);margin-top:8px;letter-spacing:.03em\">Predicted ovulation: Tomorrow",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "fertility.html",
+      "line": 131,
+      "literal": "pinpoints the exact",
+      "context": "Biological Markers Consistent tracking of your BBT shift and LH peak pinpoints the exact window of ovulation rather than estimating from calendar days alone — and reflects your ovarian reserve over time.",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 582,
+      "literal": "Best Phase",
+      "context": "Best Phase Post-period (blood tonification); pre-period for dysmenorrhea",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 602,
+      "literal": "Best Phase",
+      "context": "Best Phase Post-period (qi tonification); can continue during period",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 622,
+      "literal": "Best Phase",
+      "context": "Best Phase All phases; ovulatory phase ovary-nourishing teas",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 642,
+      "literal": "Best Phase",
+      "context": "Best Phase All phases; post-period blood nourishment; period warming",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 662,
+      "literal": "Best Phase",
+      "context": "Best Phase Post-period blood/qi; ovulatory phase; insomnia",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 682,
+      "literal": "Best Phase",
+      "context": "Best Phase Pre-menstrual (7 days before) — liver-soothing, qi-moving",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 702,
+      "literal": "Best Phase",
+      "context": "Best Phase Ovulatory phase (core ovary-nourishing); menopause",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 722,
+      "literal": "Best Phase",
+      "context": "Best Phase Ovulatory phase (days 8-14) — \"black enters kidney\"",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 742,
+      "literal": "Best Phase",
+      "context": "Best Phase Ovulatory/post-period yin nourishment; menopause liver-kidney tonic",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 762,
+      "literal": "Best Phase",
+      "context": "Best Phase All phases as yin-moistening pairing; menopause heart-calming",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 782,
+      "literal": "Best Phase",
+      "context": "Best Phase Pre-period through early period only (blood-stasis pattern)",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 802,
+      "literal": "Best Phase",
+      "context": "Best Phase Perimenopause/menopause hot flashes; not cycle-specific",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 822,
+      "literal": "Best Phase",
+      "context": "Best Phase Pre-period blood-moving; menopause CV/mood; stop for heavy menses",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 842,
+      "literal": "Best Phase",
+      "context": "Best Phase Pre-period (blood-stasis dysmenorrhea/scanty menses); postpartum stasis",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 862,
+      "literal": "Best Phase",
+      "context": "Best Phase Post-period blood nourishment; pre-period cramp relief; menopause",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 892,
+      "literal": "Best Phase",
+      "context": "Best Phase Post-period (blood tonification golden window); menopause",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 912,
+      "literal": "Best Phase",
+      "context": "Best Phase Perimenopause \"脏躁\" (emotional lability); pre-period low mood; no cycle restriction",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "foods.html",
+      "line": 932,
+      "literal": "Best Phase",
+      "context": "Best Phase Pre-period (7 days before) — liver-depression spleen-deficiency PMS",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "foods.html",
+      "line": 627,
+      "literal": "Generally safe",
+      "context": "⚠️ Cautions: Generally safe as food. Add at ≤60°C to preserve nutrients. May interact with warfarin (rare).",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "foods.html",
+      "line": 646,
+      "literal": "generally safe",
+      "context": "Evidence: No specific menopause/ovarian RCTs. Food-grade, generally safe. No clinical evidence needed for general culinary use.",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "foods.html",
+      "line": 687,
+      "literal": "Generally safe",
+      "context": "⚠️ Cautions: Generally safe. Don't boil (volatile oils). Can re-steep until flavor fades. Pair with tangerine peel or silktree flower for enhanced effect.",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "foods.html",
+      "line": 727,
+      "literal": "Generally safe",
+      "context": "⚠️ Cautions: Generally safe as food. Soak to improve digestibility. Do not claim black bean has the same isoflavone effects as soy extract.",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "health-profile.html",
+      "line": 144,
+      "literal": "shap",
+      "context": "Your reproductive history shapes your hormonal baseline and helps us tailor fertility and cycle guidance.",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "index.html",
+      "line": 44,
+      "literal": "synced",
+      "context": "⛰️ Exercise · METs Mountain Activity intensity mountain, strength vs cardio, phase-synced tips",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "insights.html",
+      "line": 65,
+      "literal": "Apple Health and Android Health Connect",
+      "context": "Wearables · Not connected Apple Health and Android Health Connect imports are not available in this web version. No sync percentage or wearable trend is shown.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "learn-biomarkers.html",
+      "line": 54,
+      "literal": "Reviewed by Dr.",
+      "context": "12px;justify-content:center\"> verified Reviewed by Dr. Priya Menon, OB-GYN · 8 min read",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "learn-biomarkers.html",
+      "line": 53,
+      "literal": "shap",
+      "context": "v class=\"sub\" style=\"font-size:12px;margin-top:8px\">Understanding the key hormones and markers that shape your fertility, cycle health, and aging trajectory",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "learn-biomarkers.html",
+      "line": 82,
+      "literal": "short fertility window",
+      "context": "day. AMH",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "learn-biomarkers.html",
+      "line": 142,
+      "literal": "HbA1C reflects average blood glucose over the past 2–3 months. Elevated glucose causes follicular oxidative stress, accelerating ovarian aging. The GeroScience paper (2024) identifies glycemic control as a key modifiable factor for preserving ovarian reserve. HbA1C < 5.0",
+      "context": "HbA1C reflects average blood glucose over the past 2–3 months. Elevated glucose causes follicular oxidative stress, accelerating ovarian aging. The GeroScience paper (2024) identifies glycemic control as a key modifiable factor for preserving ovarian reserve. HbA1C",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "learn-cycle-phases.html",
+      "line": 35,
+      "literal": "Reviewed by Dr.",
+      "context": "12px;justify-content:center\"> verified Reviewed by Dr. Priya Menon, OB-GYN · 4 min read",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "learn-discharge.html",
+      "line": 35,
+      "literal": "Reviewed by Dr.",
+      "context": "12px;justify-content:center\"> verified Reviewed by Dr. Priya Menon, OB-GYN · 5 min read",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "learn-fertile-window.html",
+      "line": 35,
+      "literal": "Reviewed by Dr.",
+      "context": "12px;justify-content:center\"> verified Reviewed by Dr. Aisha Rahman, OB-GYN · 5 min read",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "learn-hormone-phase-locking.html",
+      "line": 47,
+      "literal": "Reviewed by Dr.",
+      "context": "12px;justify-content:center\"> verified Reviewed by Dr. Priya Menon, OB-GYN · 7 min read",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "learn-hormone-phase-locking.html",
+      "line": 80,
+      "literal": "r ≥ 0.85",
+      "context": "PPG surrogate: No direct hormone measurement, but r ≥ 0.85 correlation with key hormonal state transitions via physiological proxies (HRV, RHR, temperature)",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "learn-hormone-phase-locking.html",
+      "line": 83,
+      "literal": "r ≥ 0.85",
+      "context": "🔬 The r ≥ 0.85 Threshold",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "learn-hormone-phase-locking.html",
+      "line": 84,
+      "literal": "achieves a cross-correlation",
+      "context": "Ovuluna's phase-locking algorithm achieves a cross-correlation coefficient of r ≥ 0.85 between PPG-derived autonomic markers and expected hormonal state. This is the validation threshold at which autonomic signals can reliably substitute for direct hormone measurement for the purpo",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "learn-hormone-phase-locking.html",
+      "line": 84,
+      "literal": "r ≥ 0.85",
+      "context": "Ovuluna's phase-locking algorithm achieves a cross-correlation coefficient of r ≥ 0.85 between PPG-derived autonomic markers and expected hormonal state. This is the validation threshold at which autonomic signals can reliably substitute for direct hormone measurement for the purpose of phase classificati",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "learn-hormone-phase-locking.html",
+      "line": 91,
+      "literal": "ML model",
+      "context": "Ovuluna's ML model identifies specific PPG waveform features that correlate with hormonal phase transitions:",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "learn-hormone-phase-locking.html",
+      "line": 95,
+      "literal": "r><td>HRV (rMSSD) decline (> 10%)</td><td>Sympathetic shift, luteal phase</td><td>0.85",
+      "context": "HRV (rMSSD) decline (> 10%) Sympathetic shift, luteal phase 0.85",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "learn-hormone-phase-locking.html",
+      "line": 100,
+      "literal": "validation study",
+      "context": "Reference: Ovuluna phase-locking validation study (n=1,200 cycles). Cross-correlation coefficients calculated against serum E2 and P4 measured at 48-hour intervals.",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "learn-hormone-phase-locking.html",
+      "line": 100,
+      "literal": "n=1,200",
+      "context": "Reference: Ovuluna phase-locking validation study (n=1,200 cycles). Cross-correlation coefficients calculated against serum E2 and P4 measured at 48-hour intervals.",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "learn-lifestyle.html",
+      "line": 47,
+      "literal": "Reviewed by Dr.",
+      "context": "12px;justify-content:center\"> verified Reviewed by Dr. Priya Menon, OB-GYN · 7 min read",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "learn-lifestyle.html",
+      "line": 53,
+      "literal": "your ovaries",
+      "context": "ifestyle choice you make — what you eat, how you sleep, how you move — sends biochemical signals to your ovaries. These signals influence follicular health, hormone production, and the rate of ovarian aging. Research published in GeroScience (2024) identifies three primary modifiable pillars that directly affect ovarian lon",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "learn-lifestyle.html",
+      "line": 70,
+      "literal": "HbA1C:</b> < 5.0",
+      "context": "HbA1C:",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "learn-longevity-pathways.html",
+      "line": 47,
+      "literal": "Reviewed by Dr.",
+      "context": "12px;justify-content:center\"> verified Reviewed by Dr. Lena Okoro, OB-GYN · 8 min read",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "learn-longevity-pathways.html",
+      "line": 69,
+      "literal": "CGM-guided",
+      "context": "Zone 2 training (3–4 sessions/week, 30–45 min at 70–80% of FatMax), protein intake ≥ 1.6 g/kg/day, CGM-guided glycemic control (HbA1C",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "learn-longevity-pathways.html",
+      "line": 69,
+      "literal": "HbA1C < 5.0",
+      "context": "s/week, 30–45 min at 70–80% of FatMax), protein intake ≥ 1.6 g/kg/day, CGM-guided glycemic control (HbA1C",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "learn-longevity-pathways.html",
+      "line": 79,
+      "literal": "2000–4000 IU",
+      "context": "stance training (3x/week, sets of 6–10 reps at 75–85% 1RM), protein at 1.6–2.2 g/kg/day, vitamin D (2000–4000 IU/day unless contraindicated), calcium (1200 mg/day from diet, not supplements), and impact loading (jumping, skipping) for bone density. DEXA scan baseline at menopause + follow-up every 2 years.",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "learn-longevity-pathways.html",
+      "line": 79,
+      "literal": "1200 mg/day from diet, not supplements",
+      "context": "5% 1RM), protein at 1.6–2.2 g/kg/day, vitamin D (2000–4000 IU/day unless contraindicated), calcium (1200 mg/day from diet, not supplements), and impact loading (jumping, skipping) for bone density. DEXA scan baseline at menopause + follow-up every 2 years.",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "learn-longevity-pathways.html",
+      "line": 109,
+      "literal": "Estradiol > 20",
+      "context": "Hormonal MHT (if eligible, within critical window) Estradiol > 20 pg/mL, symptom control",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "learn-longevity-pathways.html",
+      "line": 110,
+      "literal": "HbA1C < 5.0",
+      "context": "Metabolic Zone 2 cardio + glycemic control HbA1C",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "learn-ovarian-biology.html",
+      "line": 47,
+      "literal": "Reviewed by Dr.",
+      "context": "12px;justify-content:center\"> verified Reviewed by Dr. Priya Menon, OB-GYN · 7 min read",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "learn-ovarian-biology.html",
+      "line": 46,
+      "literal": "your ovaries",
+      "context": "How your ovaries orchestrate fertility, aging, and whole-body health",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "learn-ovarian-biology.html",
+      "line": 56,
+      "literal": "hormonal shift",
+      "context": "ctory establishes it as the body's \"aging pacemaker.\" When ovarian function declines, the resulting hormonal shifts cascade across every major physiological system — making ovarian health central to women's longevity.",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "learn-ovarian-longevity.html",
+      "line": 35,
+      "literal": "Reviewed by Dr.",
+      "context": "12px;justify-content:center\"> verified Reviewed by Dr. Lena Okoro, OB-GYN · 5 min read",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "learn-ovarian-longevity.html",
+      "line": 40,
+      "literal": "personalised ovarian aging trajectory",
+      "context": "our age — tells the real story. Ovuluna tracks your AMH alongside your PPG biomarkers to give you a personalised ovarian aging trajectory. i i Ovarian Age",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "learn-ovarian-longevity.html",
+      "line": 39,
+      "literal": "HbA1C < 5.0",
+      "context": "ss=\"artsec\">🛡️ What Protects Ovarian Health Glycemic stability — keeping HbA1C Quality sleep (7–9 hours, deep sleep ≥ 20%). i Regular moderate exercise — not extreme volumes, which can suppr",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "learn-perimenopause.html",
+      "line": 35,
+      "literal": "Reviewed by Dr.",
+      "context": "12px;justify-content:center\"> verified Reviewed by Dr. Lena Okoro, OB-GYN · 5 min read",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P1",
+      "category": "clinician-identity",
+      "page": "learn-straw10.html",
+      "line": 47,
+      "literal": "Reviewed by Dr.",
+      "context": "12px;justify-content:center\"> verified Reviewed by Dr. Lena Okoro, OB-GYN · 6 min read",
+      "action": "A named clinical reviewer/expert is presented without a review/identity receipt in the audited source. Remove or accurately label until established."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "learn-straw10.html",
+      "line": 149,
+      "literal": "ML model",
+      "context": "Ovuluna's PPG sensor data and cycle tracking feed into a proprietary ML model that estimates your STRAW+10 stage with increasing accuracy over successive cycles. By combining nocturnal physiological signals (RHR, HRV, temperature) with menstrual patterns, Ovuluna can detect stage transitions earl",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "learn-wearables.html",
+      "line": 52,
+      "literal": "Apple Health, Health Connect",
+      "context": "This web version does not import Apple Health, Health Connect, Oura or WHOOP records. Your saved lab entries and wellness journal are available on this browser. The camera check is a separate experimental session.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "learn-wearables.html",
+      "line": 58,
+      "literal": "Apple Health</h3><p>HealthKit lets an iPhone app request access to individual health-data types. It requires an implemented native connect",
+      "context": "Apple Health HealthKit lets an iPhone app request access to individual health-data types. It requires an implemented native connection and your permission. Apple · HealthKit authorization",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "learn-wearables.html",
+      "line": 62,
+      "literal": "Apple HealthKit’s HRV type records the standard deviation of normal heartbeat intervals.</p></div><div><b>RMSSD</b><p>Health Connect",
+      "context": "SDNN Apple HealthKit’s HRV type records the standard deviation of normal heartbeat intervals. RMSSD Health Connect has a type for the root mean square of successive normal heartbeat-interval differences.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "longevity.html",
+      "line": 54,
+      "literal": "Your biological age",
+      "context": "AI Insight Your biological age is trending 2.8 years younger than your chronological age. Focus on sleep consistency to maintain this trajectory.",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "longevity.html",
+      "line": 108,
+      "literal": "Biological Shift Detected",
+      "context": "ay:block;font-family:var(--serif);font-size:17px;color:var(--cocoa);margin-top:6px;line-height:1.3\">Biological Shift Detected: Early Perimenopause Transition",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "longevity.html",
+      "line": 111,
+      "literal": "synced",
+      "context": "Based on recent biomarker trends and synced physiological data, you are entering a new supportive phase. This is a natural transition — here is how to move through it well.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "longevity.html",
+      "line": 127,
+      "literal": "Synced",
+      "context": "architecture shift 15% reduction in deep sleep aligned with luteal-phase drops. Synced via Oura.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P1",
+      "category": "crisis-contact",
+      "page": "mental-health.html",
+      "line": 228,
+      "literal": "tel:1767",
+      "context": "SOS (Samaritans of Singapore) 24-hour emotional support: 1-767",
+      "action": "Verify jurisdiction, current number, availability and urgent routing against first-party sources."
+    },
+    {
+      "priority": "P1",
+      "category": "crisis-contact",
+      "page": "mental-health.html",
+      "line": 228,
+      "literal": "1-767",
+      "context": "SOS (Samaritans of Singapore) 24-hour emotional support: 1-767",
+      "action": "Verify jurisdiction, current number, availability and urgent routing against first-party sources."
+    },
+    {
+      "priority": "P1",
+      "category": "crisis-contact",
+      "page": "mental-health.html",
+      "line": 232,
+      "literal": "741741",
+      "context": "Text line Text 741741 to connect with a crisis responder",
+      "action": "Verify jurisdiction, current number, availability and urgent routing against first-party sources."
+    },
+    {
+      "priority": "P1",
+      "category": "crisis-contact",
+      "page": "mental-health.html",
+      "line": 332,
+      "literal": "1-767",
+      "context": "tal health professional soon. If you are having thoughts of harming yourself or your baby, call SOS 1-767 (24/7) or go to the nearest emergency department.';",
+      "action": "Verify jurisdiction, current number, availability and urgent routing against first-party sources."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 30,
+      "literal": "EPDS",
+      "context": "/* EPDS Screening */",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 31,
+      "literal": "epds",
+      "context": ".epds-card { background:var(--card); border:1.5px solid var(--line-soft); border-radius:18px; padding:18px; margin-bottom:14px; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 32,
+      "literal": "epds",
+      "context": ".epds-progress { display:flex; align-items:center; gap:10px; margin-bottom:14px; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 33,
+      "literal": "epds",
+      "context": ".epds-bar { flex:1; height:6px; background:var(--sunken); border-radius:99px; overflow:hidden; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 34,
+      "literal": "epds",
+      "context": ".epds-bar-fill { height:100%; background:linear-gradient(90deg,var(--lavender),var(--mauve)); border-radius:99px; transition:width .3s ease; width:0%; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 35,
+      "literal": "epds",
+      "context": ".epds-count { font-size:12px; font-weight:700; color:var(--taupe); white-space:nowrap; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 36,
+      "literal": "epds",
+      "context": ".epds-q { margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line-soft); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 37,
+      "literal": "epds",
+      "context": ".epds-q:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 38,
+      "literal": "epds",
+      "context": ".epds-q-text { font-size:13px; color:var(--cocoa); font-weight:600; margin-bottom:8px; line-height:1.45; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 39,
+      "literal": "epds",
+      "context": ".epds-opts { display:grid; grid-template-columns:1fr 1fr; gap:6px; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 40,
+      "literal": "epds",
+      "context": ".epds-opt { padding:9px 10px; border-radius:12px; border:1.5px solid var(--line-soft); background:var(--card-solid); font-size:11.5px; color:var(--taupe); cursor:pointer; transition:all .2s; text-align:left; line-height:1.35;",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 41,
+      "literal": "epds",
+      "context": ".epds-opt:hover { border-color:var(--lavender); background:rgba(196,181,224,.08); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 42,
+      "literal": "epds",
+      "context": ".epds-opt.sel { border-color:var(--mauve); background:rgba(122,92,150,.1); color:var(--cocoa); font-weight:700; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 43,
+      "literal": "epds",
+      "context": ".epds-result { display:none; margin-top:16px; padding:16px; border-radius:14px; text-align:center; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 44,
+      "literal": "epds",
+      "context": ".epds-result.show { display:block; animation:fadeUp .4s ease; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 46,
+      "literal": "epds",
+      "context": ".epds-result.low { background:rgba(107,168,138,.12); border:1.5px solid rgba(107,168,138,.35); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 47,
+      "literal": "epds",
+      "context": ".epds-result.mid { background:rgba(212,168,90,.12); border:1.5px solid rgba(212,168,90,.35); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 48,
+      "literal": "epds",
+      "context": ".epds-result.high { background:rgba(196,122,106,.12); border:1.5px solid rgba(196,122,106,.4); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 49,
+      "literal": "epds",
+      "context": ".epds-score { font-size:36px; font-weight:800; font-family:var(--serif); margin-bottom:4px; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 50,
+      "literal": "epds",
+      "context": ".epds-result.low .epds-score { color:var(--ok); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 50,
+      "literal": "epds",
+      "context": ".epds-result.low .epds-score { color:var(--ok); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 51,
+      "literal": "epds",
+      "context": ".epds-result.mid .epds-score { color:var(--warn); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 51,
+      "literal": "epds",
+      "context": ".epds-result.mid .epds-score { color:var(--warn); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 52,
+      "literal": "epds",
+      "context": ".epds-result.high .epds-score { color:var(--low); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 52,
+      "literal": "epds",
+      "context": ".epds-result.high .epds-score { color:var(--low); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 53,
+      "literal": "epds",
+      "context": ".epds-label { font-size:13px; font-weight:700; margin-bottom:6px; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 54,
+      "literal": "epds",
+      "context": ".epds-result.low .epds-label { color:var(--ok); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 54,
+      "literal": "epds",
+      "context": ".epds-result.low .epds-label { color:var(--ok); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 55,
+      "literal": "epds",
+      "context": ".epds-result.mid .epds-label { color:var(--warn); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 55,
+      "literal": "epds",
+      "context": ".epds-result.mid .epds-label { color:var(--warn); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 56,
+      "literal": "epds",
+      "context": ".epds-result.high .epds-label { color:var(--low); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 56,
+      "literal": "epds",
+      "context": ".epds-result.high .epds-label { color:var(--low); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 57,
+      "literal": "epds",
+      "context": ".epds-desc { font-size:12px; color:var(--taupe); line-height:1.5; margin-bottom:10px; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 58,
+      "literal": "epds",
+      "context": ".epds-disclaimer { font-size:10.5px; color:var(--faded); line-height:1.45; margin-top:10px; font-style:italic; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 124,
+      "literal": "epds",
+      "context": ".epds-opts { grid-template-columns:1fr; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 128,
+      "literal": "epds",
+      "context": ".glow-ring, .epds-result.show, .mood-btn:hover, .quick-card:hover { animation:none; transition:none; transform:none; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 187,
+      "literal": "EPDS",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 190,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 191,
+      "literal": "EPDS",
+      "context": ";color:var(--taupe);line-height:1.55;margin-bottom:14px;\">The Edinburgh Postnatal Depression Scale (EPDS) is a validated 10-question screening tool. Answer based on how you have felt in the past 7 days . i",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 191,
+      "literal": "epds",
+      "context": "tool. Answer based on how you have felt in the past 7 days . i",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 193,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 194,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 194,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 194,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 195,
+      "literal": "epds",
+      "context": "0/10",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 195,
+      "literal": "epds",
+      "context": "0/10",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 198,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 200,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 200,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 201,
+      "literal": "epds",
+      "context": "0",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 201,
+      "literal": "epds",
+      "context": "0",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 202,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 202,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 203,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 203,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 204,
+      "literal": "epds",
+      "context": "refresh Retake screening",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 205,
+      "literal": "epds",
+      "context": "This screening is for informational purposes only and does not constitute a medical diagnosis. If you are concerned about your mental health, please talk to your doctor, midwife, or a mental health professio",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 270,
+      "literal": "EPDS",
+      "context": "// ── EPDS-10 Questions ──",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 271,
+      "literal": "epds",
+      "context": "var epdsQuestions = [",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 283,
+      "literal": "epds",
+      "context": "var epdsScores = [0,1,2,3];",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 284,
+      "literal": "epds",
+      "context": "var epdsAnswers = new Array(10).fill(null);",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 285,
+      "literal": "epds",
+      "context": "var qContainer = document.getElementById('epdsQuestions');",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 286,
+      "literal": "epds",
+      "context": "var barFill = document.getElementById('epdsBarFill');",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 287,
+      "literal": "epds",
+      "context": "var countEl = document.getElementById('epdsCount');",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 288,
+      "literal": "epds",
+      "context": "var resultEl = document.getElementById('epdsResult');",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 290,
+      "literal": "epds",
+      "context": "epdsQuestions.forEach(function(q, i){",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 292,
+      "literal": "epds",
+      "context": "div.className = 'epds-q';",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 293,
+      "literal": "epds",
+      "context": "div.innerHTML = ' '+(i+1)+'. '+q.q+' '+q.opts.map(function(o,j){return ' '+o+' ';}).join('')+' ';",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 293,
+      "literal": "epds",
+      "context": "div.innerHTML = ' '+(i+1)+'. '+q.q+' '+q.opts.map(function(o,j){return ' '+o+' ';}).join('')+' ';",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 293,
+      "literal": "epds",
+      "context": "t\">'+(i+1)+'. '+q.q+' '+q.opts.map(function(o,j){return ' '+o+' ';}).join('')+' ';",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 298,
+      "literal": "epds",
+      "context": "var btn = e.target.closest('.epds-opt');",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 302,
+      "literal": "epds",
+      "context": "epdsAnswers[qi] = vi;",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 303,
+      "literal": "epds",
+      "context": "var siblings = btn.parentElement.querySelectorAll('.epds-opt');",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 306,
+      "literal": "Epds",
+      "context": "updateEpdsProgress();",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 309,
+      "literal": "Epds",
+      "context": "function updateEpdsProgress(){",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 310,
+      "literal": "epds",
+      "context": "var answered = epdsAnswers.filter(function(a){return a!==null;}).length;",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 313,
+      "literal": "answered===10",
+      "context": "if(answered===10){",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 314,
+      "literal": "Epds",
+      "context": "showEpdsResult();",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 318,
+      "literal": "Epds",
+      "context": "function showEpdsResult(){",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 319,
+      "literal": "epds",
+      "context": "var total = epdsAnswers.reduce(function(sum,v,i){",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 321,
+      "literal": "epds",
+      "context": "return sum + epdsScores[v];",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 323,
+      "literal": "selfHarmFlag",
+      "context": "var selfHarmFlag = epdsAnswers[9] > 0;",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 323,
+      "literal": "epds",
+      "context": "var selfHarmFlag = epdsAnswers[9] > 0;",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 324,
+      "literal": "epds",
+      "context": "var scoreNum = document.getElementById('epdsScoreNum');",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 325,
+      "literal": "epds",
+      "context": "var scoreLabel = document.getElementById('epdsScoreLabel');",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 326,
+      "literal": "epds",
+      "context": "var scoreDesc = document.getElementById('epdsScoreDesc');",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 329,
+      "literal": "selfHarmFlag",
+      "context": "if(selfHarmFlag || total >= 13){",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 330,
+      "literal": "epds",
+      "context": "resultEl.className = 'epds-result show high';",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 334,
+      "literal": "epds",
+      "context": "resultEl.className = 'epds-result show mid';",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 338,
+      "literal": "epds",
+      "context": "resultEl.className = 'epds-result show low';",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 339,
+      "literal": "Doing okay",
+      "context": "scoreLabel.textContent = 'Doing okay';",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 345,
+      "literal": "epds",
+      "context": "document.getElementById('epdsReset').addEventListener('click', function(){",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 346,
+      "literal": "epds",
+      "context": "epdsAnswers = new Array(10).fill(null);",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 347,
+      "literal": "epds",
+      "context": "document.querySelectorAll('.epds-opt').forEach(function(b){b.classList.remove('sel');});",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 348,
+      "literal": "epds",
+      "context": "resultEl.className = 'epds-result';",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "mental-health.html",
+      "line": 349,
+      "literal": "Epds",
+      "context": "updateEpdsProgress();",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "notifications.html",
+      "line": 81,
+      "literal": "AI Tip",
+      "context": "AI Tip · Keeping period and fertile-window reminders on helps Ovuluna refine your cycle predictions faster.",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "nutrients.html",
+      "line": 165,
+      "literal": "AI Tip",
+      "context": "AI Tip · Diet alone may not restore optimal stores quickly. A clinical-grade iron bisglycinate supplement is recommended — re-test in 8–12 weeks.",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "nutrients.html",
+      "line": 165,
+      "literal": "supplement is recommended",
+      "context": ">AI Tip · Diet alone may not restore optimal stores quickly. A clinical-grade iron bisglycinate supplement is recommended — re-test in 8–12 weeks.",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "nutrition-plan.html",
+      "line": 91,
+      "literal": "Synced",
+      "context": "eco Cycle-Synced Eating",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "nutrition-plan.html",
+      "line": 636,
+      "literal": "synced",
+      "context": "Luna says: Cycle-synced eating works with your natural hormonal rhythm rather than against it. In the follicular phase, your body is more insulin-sensitive — great for complex carbs and higher intensity training. In the luteal phase, progester",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "ovarian-age.html",
+      "line": 30,
+      "literal": "validated ovarian-age prediction model",
+      "context": "Not available This build has no validated ovarian-age prediction model. AMH and cycle answers will not be converted into years, a fertility score or a menopause countdown.",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "partner-code.html",
+      "line": 183,
+      "literal": "hormonal shift",
+      "context": "Better emotional support. When partners understand hormonal shifts, they can offer the right kind of support at the right time — practical help during low-energy phases, space when needed.",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "partner-code.html",
+      "line": 84,
+      "literal": "your partner",
+      "context": "Invite your partner to understand your rhythm. They'll see gentle updates — never raw data — so they can support you better.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "partner-code.html",
+      "line": 108,
+      "literal": "Your Partner",
+      "context": "What Your Partner Sees",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "partner-connect.html",
+      "line": 71,
+      "literal": "your partner",
+      "context": "Invite your partner to understand your cycle, share insights, and build stronger connection. Research shows partner support improves cycle awareness and relationship satisfaction i<",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "partner-connect.html",
+      "line": 76,
+      "literal": "Your Partner",
+      "context": "Your Partner",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "partner-connect.html",
+      "line": 95,
+      "literal": "your partner",
+      "context": "Generate a unique code and share it with your partner. They'll enter it in the Ovuluna Partner app to connect.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "partner-connect.html",
+      "line": 106,
+      "literal": "Your partner",
+      "context": "Your partner receives gentle, anonymized updates about your phase and needs. You control what's shared.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "partner-connect.html",
+      "line": 109,
+      "literal": "your partner",
+      "context": "Luteal phase — your partner knows you may need more rest and comfort this week i .",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "partner-connect.html",
+      "line": 126,
+      "literal": "your partner",
+      "context": "",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "partner-connect.html",
+      "line": 128,
+      "literal": "Your Partner",
+      "context": "What Your Partner Should Know",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "partner-connect.html",
+      "line": 186,
+      "literal": "your partner",
+      "context": "Use these prompts to open a dialogue with your partner about your cycle and needs.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "partner-connect.html",
+      "line": 197,
+      "literal": "your partner",
+      "context": "Invites your partner to contribute and feel involved.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "phase-coach.html",
+      "line": 167,
+      "literal": "High intensity",
+      "context": "px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ok);margin-bottom:6px\">High intensity · Power phase",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "phase-coach.html",
+      "line": 168,
+      "literal": "body's strongest",
+      "context": "c\"> HIIT, strength training, running, cycling, dance. This is your body's strongest window for intense training.",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "phase-coach.html",
+      "line": 188,
+      "literal": "Energy is at its peak",
+      "context": "Why: Energy is at its peak, but your body is in the vulnerable ovulation window. Moderate activity is safest — significant metabolic stress can suppress ovulation. Ovulation itself is a sign of metabolic health <span class=\"qi\" data-evidence=\"cyc",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "phase-coach.html",
+      "line": 188,
+      "literal": "vulnerable ovulation window",
+      "context": "Why: Energy is at its peak, but your body is in the vulnerable ovulation window. Moderate activity is safest — significant metabolic stress can suppress ovulation. Ovulation itself is a sign of metabolic health i .",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "phase-prescription",
+      "page": "phase-coach.html",
+      "line": 188,
+      "literal": "Moderate activity is safest",
+      "context": "Why: Energy is at its peak, but your body is in the vulnerable ovulation window. Moderate activity is safest — significant metabolic stress can suppress ovulation. Ovulation itself is a sign of metabolic health i .",
+      "action": "General phase schedule is presented as a universal prescription; review evidence and use symptom-led choices."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "phase-coach.html",
+      "line": 218,
+      "literal": "your partner",
+      "context": "Communicate with your partner. Sharing your cycle phase helps them understand your energy and needs i .",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P1",
+      "category": "derived-prediction",
+      "page": "postpartum-guide.html",
+      "line": 358,
+      "literal": "hormonal shift",
+      "context": "Desire may be low: Fatigue, body image changes, hormonal shifts, and the demands of a newborn all affect libido. This is normal and usually improves over time. Non-sexual intimacy (cuddling, massage, holding hands) matters too.",
+      "action": "Unvalidated personal prediction or biological attribution; cite app validation or remove/relabel as general education."
+    },
+    {
+      "priority": "P1",
+      "category": "crisis-contact",
+      "page": "postpartum-guide.html",
+      "line": 270,
+      "literal": "1-767",
+      "context": "If you score anything other than 0 on question 10, seek help immediately. In Singapore: SOS 1-767 (24/7), text 741741, or go to the nearest emergency department. You can also ask your partner, family, or friend to help you get support.",
+      "action": "Verify jurisdiction, current number, availability and urgent routing against first-party sources."
+    },
+    {
+      "priority": "P1",
+      "category": "crisis-contact",
+      "page": "postpartum-guide.html",
+      "line": 270,
+      "literal": "741741",
+      "context": "ything other than 0 on question 10, seek help immediately. In Singapore: SOS 1-767 (24/7), text 741741, or go to the nearest emergency department. You can also ask your partner, family, or friend to help you get support.",
+      "action": "Verify jurisdiction, current number, availability and urgent routing against first-party sources."
+    },
+    {
+      "priority": "P1",
+      "category": "crisis-contact",
+      "page": "postpartum-guide.html",
+      "line": 446,
+      "literal": "1-767",
+      "context": "• SOS (24/7 mental health): 1-767",
+      "action": "Verify jurisdiction, current number, availability and urgent routing against first-party sources."
+    },
+    {
+      "priority": "P1",
+      "category": "crisis-contact",
+      "page": "postpartum-guide.html",
+      "line": 447,
+      "literal": "741741",
+      "context": "• Text line: 741741",
+      "action": "Verify jurisdiction, current number, availability and urgent routing against first-party sources."
+    },
+    {
+      "priority": "P1",
+      "category": "crisis-contact",
+      "page": "postpartum-guide.html",
+      "line": 448,
+      "literal": "6389 2222",
+      "context": "• IMH (Institute of Mental Health): 6389 2222",
+      "action": "Verify jurisdiction, current number, availability and urgent routing against first-party sources."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 47,
+      "literal": "epds",
+      "context": ".epds-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 48,
+      "literal": "epds",
+      "context": ".epds-item { background:rgba(196,181,224,.1); border-radius:10px; padding:10px; text-align:center; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 49,
+      "literal": "epds",
+      "context": ".epds-item .num { font-size:20px; font-weight:800; color:var(--mauve); }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 50,
+      "literal": "epds",
+      "context": ".epds-item .lbl { font-size:10px; color:var(--taupe); font-weight:700; text-transform:uppercase; letter-spacing:.05em; }",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 248,
+      "literal": "EPDS",
+      "context": "psychology Edinburgh Postnatal Depression Scale (EPDS)",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 249,
+      "literal": "EPDS",
+      "context": "The EPDS is a 10-item screening tool used worldwide. It's not a diagnosis — it's a way to check in with yourself. Scores range 0-30.",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 251,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 252,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 254,
+      "literal": "Likely OK",
+      "context": "Likely OK",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 256,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 260,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P1",
+      "category": "mental-screening",
+      "page": "postpartum-guide.html",
+      "line": 264,
+      "literal": "epds",
+      "context": "",
+      "action": "Screening wording/scoring/licensing and immediate safety escalation need independent validation; low scores must not falsely reassure."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "postpartum-guide.html",
+      "line": 152,
+      "literal": "heavier than your baby",
+      "context": "ing as soon as you're able (usually within 24 hours) to prevent blood clots. Avoid lifting anything heavier than your baby for 6-8 weeks.",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "postpartum-guide.html",
+      "line": 162,
+      "literal": "Kegels",
+      "context": "Kegels: Gently contract and release the muscles you use to stop urine flow. Start with 3 sets of 10 daily, but only after any tears have healed. Quality matters more than quantity — fully relax between contractions.",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "postpartum-guide.html",
+      "line": 205,
+      "literal": "generally safe",
+      "context": "hese foods and herbs have traditional use for supporting milk supply. Evidence is mixed but they're generally safe when consumed as food:",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "postpartum-guide.html",
+      "line": 208,
+      "literal": "Fenugreek",
+      "context": "Fenugreek: The most studied galactagogue herb. Can increase supply in some people, but may cause GI upset in baby. Use short-term (2-3 weeks) and stop if supply doesn't improve.",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "postpartum-guide.html",
+      "line": 208,
+      "literal": "Use short-term",
+      "context": "most studied galactagogue herb. Can increase supply in some people, but may cause GI upset in baby. Use short-term (2-3 weeks) and stop if supply doesn't improve.",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "postpartum-guide.html",
+      "line": 299,
+      "literal": "clearance at your 6-week",
+      "context": "Exercise after birth is gradual. Always get medical clearance at your 6-week checkup (or 8 weeks for C-section) before starting structured exercise. Before that, gentle walking is fine if you feel up to it.",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "postpartum-guide.html",
+      "line": 313,
+      "literal": "Kegels",
+      "context": "With clearance: pelvic floor exercises (Kegels with full relaxation), transverse abdominis activation, gentle yoga or Pilates (modified), brisk walking. Avoid crunches, sit-ups, planks, and high-impact until diastasis recti has improved. Focus on form, not intensity",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "postpartum-guide.html",
+      "line": 335,
+      "literal": "first 6 months",
+      "context": "warning What to avoid in the first 6 months",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "postpartum-guide.html",
+      "line": 340,
+      "literal": "heavier than your baby",
+      "context": "Heavy lifting: Nothing heavier than your baby for 6-8 weeks, especially after C-section.",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "postpartum-guide.html",
+      "line": 404,
+      "literal": "Soaking a maxi pad in 1 hour or less (for 2+ hours",
+      "context": "Soaking a maxi pad in 1 hour or less (for 2+ hours)",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "postpartum-guide.html",
+      "line": 164,
+      "literal": "your partner",
+      "context": "g sex: Common due to hormonal changes and scar tissue. Use lubricant, go slow, communicate with your partner. If pain persists, see your provider or pelvic floor PT.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "postpartum-guide.html",
+      "line": 270,
+      "literal": "your partner",
+      "context": "ngapore: SOS 1-767 (24/7), text 741741, or go to the nearest emergency department. You can also ask your partner, family, or friend to help you get support.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "postpartum-guide.html",
+      "line": 278,
+      "literal": "your partner",
+      "context": "• Talk to your partner about how you're really feeling",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "premium.html",
+      "line": 100,
+      "literal": "shap",
+      "context": ":11px;margin-top:6px\">Members unlock 7 of 10 insight engines that shape your Bio-Age.",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P1",
+      "category": "clinical-validation",
+      "page": "premium.html",
+      "line": 105,
+      "literal": "shap",
+      "context": ".3\">Less than a coffee a week — for insight into the biology that shapes your future fertility.",
+      "action": "App validation/performance claim is not supported by a retrieved study or implementation receipt."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "premium.html",
+      "line": 71,
+      "literal": "synced",
+      "context": "Phase-synced workouts Train with your energy, not against it",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "premium.html",
+      "line": 93,
+      "literal": "synced",
+      "context": "Phase-synced workouts &amp; nutrition close check",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "premium.html",
+      "line": 119,
+      "literal": "synced",
+      "context": "r:var(--cocoa);line-height:1.5;margin:4px 0 3px;font-style:italic\">\"Premium showed my AMH trend and synced my training to my cycle — I finally understand my own body.\"",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P2",
+      "category": "account-status",
+      "page": "profile.html",
+      "line": 124,
+      "literal": "your partner",
+      "context": "Let your partner gently understand your cycle & mood — so they know how to support you, with the science behind it.",
+      "action": "Feature claim may be a prototype. Trace actual authenticated integration and backend before showing as active."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "sleep.html",
+      "line": 76,
+      "literal": "AI Tip",
+      "context": "AI Tip · Maintain cool room temperature (65–68°F) to support BBT drop and improve deep sleep efficiency tonight.",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 143,
+      "literal": "stage:",
+      "context": "Reproductive stage: unable to determine",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 324,
+      "literal": "stage:",
+      "context": "stage: '-1', label: 'Late Menopausal Transition',",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 334,
+      "literal": "most recent as baseline",
+      "context": "const baseline = cycles[cycles.length - 1]; // most recent as baseline",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 336,
+      "literal": "variabilityCount",
+      "context": "const variabilityCount = diffs.filter(d => d >= 7).length;",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 337,
+      "literal": "hasPersistentVariability",
+      "context": "const hasPersistentVariability = variabilityCount >= 2; // 2+ cycles differing by 7+ days",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 337,
+      "literal": "variabilityCount",
+      "context": "const hasPersistentVariability = variabilityCount >= 2; // 2+ cycles differing by 7+ days",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 339,
+      "literal": "hasPersistentVariability",
+      "context": "if (hasPersistentVariability) {",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 341,
+      "literal": "stage:",
+      "context": "stage: '-2', label: 'Early Menopausal Transition',",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 343,
+      "literal": "variabilityCount",
+      "context": "desc: `Your cycle lengths have varied by 7+ days across ${variabilityCount} of your last ${cycles.length} tracked cycles. This persistent variability marks early transition.`,",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 350,
+      "literal": "age < 20",
+      "context": "if (age !== null && age < 20) {",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 352,
+      "literal": "stage:",
+      "context": "stage: '-5', label: 'Early Reproductive',",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 360,
+      "literal": "age >= 35",
+      "context": "if (age !== null && age >= 35) {",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 362,
+      "literal": "stage:",
+      "context": "stage: '-3b', label: 'Late Reproductive',",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 372,
+      "literal": "stage:",
+      "context": "stage: '-4', label: 'Peak Reproductive',",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "straw-calculator.html",
+      "line": 374,
+      "literal": "reproductive function",
+      "context": "desc: 'Your cycles are regular and predictable. This is consistent with peak reproductive function.',",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    },
+    {
+      "priority": "P2",
+      "category": "unhandled-evidence",
+      "page": "straw-calculator.html",
+      "line": 61,
+      "literal": "class=\"ev-btn\"",
+      "context": "margin-top:8px\">Based on the STRAW+10 international standard for reproductive aging staging i",
+      "action": "Alternate evidence control is not matched by shared .qi[data-evidence] handler."
+    },
+    {
+      "priority": "P2",
+      "category": "unhandled-evidence",
+      "page": "straw-calculator.html",
+      "line": 73,
+      "literal": "class=\"ev-btn\"",
+      "context": "le=\"font-size:16px;color:var(--mauve)\">medication Are you on hormonal contraception? i",
+      "action": "Alternate evidence control is not matched by shared .qi[data-evidence] handler."
+    },
+    {
+      "priority": "P2",
+      "category": "unhandled-evidence",
+      "page": "straw-calculator.html",
+      "line": 83,
+      "literal": "class=\"ev-btn\"",
+      "context": "lor:var(--mauve)\">medical_information Any diagnosed condition affecting your cycles? i",
+      "action": "Alternate evidence control is not matched by shared .qi[data-evidence] handler."
+    },
+    {
+      "priority": "P2",
+      "category": "unhandled-evidence",
+      "page": "straw-calculator.html",
+      "line": 120,
+      "literal": "class=\"ev-btn\"",
+      "context": "s=\"qlabel\" style=\"margin-top:8px\">Have you gone 60+ days without a period in the last year? i",
+      "action": "Alternate evidence control is not matched by shared .qi[data-evidence] handler."
+    },
+    {
+      "priority": "P1",
+      "category": "restricted-treatment",
+      "page": "stress.html",
+      "line": 109,
+      "literal": "AI tip",
+      "context": "",
+      "action": "Universal biomarker/dose target or personal supplement recommendation needs current population-specific source and clinical review."
+    },
+    {
+      "priority": "P1",
+      "category": "benefit-overclaim",
+      "page": "supplements.html",
+      "line": 153,
+      "literal": "OR 2.22",
+      "context": "ovarian response & embryo quality in diminished reserve; meta-analysis ~2× clinical pregnancy odds (OR 2.22). Start ≥90 days ahead.'},",
+      "action": "Specific treatment/supplement/mechanistic claim not source-reviewed here; investigate original population, comparator, units and harms."
+    },
+    {
+      "priority": "P1",
+      "category": "benefit-overclaim",
+      "page": "supplements.html",
+      "line": 155,
+      "literal": "~70%",
+      "context": "why:'Restored ovulation in ~70% of women with PCOS in 16 weeks; improves insulin sensitivity, oocyte maturation & cycle regularity. Not a stand-alone fertility treatment.'},",
+      "action": "Specific treatment/supplement/mechanistic claim not source-reviewed here; investigate original population, comparator, units and harms."
+    },
+    {
+      "priority": "P1",
+      "category": "benefit-overclaim",
+      "page": "supplements.html",
+      "line": 156,
+      "literal": "most are",
+      "context": "meal', ic:'wb_sunny', col:'var(--terracotta)', bg:'rgba(196,111,79,.16)', ev:'Strong', tag:'If low (most are)',",
+      "action": "Specific treatment/supplement/mechanistic claim not source-reviewed here; investigate original population, comparator, units and harms."
+    },
+    {
+      "priority": "P1",
+      "category": "benefit-overclaim",
+      "page": "supplements.html",
+      "line": 161,
+      "literal": "Methylated form preferred",
+      "context": "why:'Foundational for DNA synthesis & early development — start before conception. Methylated form preferred with MTHFR variants.'},",
+      "action": "Specific treatment/supplement/mechanistic claim not source-reviewed here; investigate original population, comparator, units and harms."
+    },
+    {
+      "priority": "P1",
+      "category": "benefit-overclaim",
+      "page": "supplements.html",
+      "line": 161,
+      "literal": "MTHFR",
+      "context": "nal for DNA synthesis & early development — start before conception. Methylated form preferred with MTHFR variants.'},",
+      "action": "Specific treatment/supplement/mechanistic claim not source-reviewed here; investigate original population, comparator, units and harms."
+    },
+    {
+      "priority": "P1",
+      "category": "benefit-overclaim",
+      "page": "tcm-footsoak.html",
+      "line": 200,
+      "literal": "penetrates deep",
+      "context": "Strong warming action that penetrates deep into the channels. Relieves cold-type pain, reduces dampness, and improves circulation in the lower body. Use in smaller quantities due to its potency.",
+      "action": "Specific treatment/supplement/mechanistic claim not source-reviewed here; investigate original population, comparator, units and harms."
+    },
+    {
+      "priority": "P1",
+      "category": "benefit-overclaim",
+      "page": "tcm-footsoak.html",
+      "line": 236,
+      "literal": "transdermally",
+      "context": "reasing peripheral blood flow by 2–3×. Herbal compounds (volatile oils, flavonoids) may be absorbed transdermally at low levels.",
+      "action": "Specific treatment/supplement/mechanistic claim not source-reviewed here; investigate original population, comparator, units and harms."
+    },
+    {
+      "priority": "P1",
+      "category": "benefit-overclaim",
+      "page": "tcm-footsoak.html",
+      "line": 237,
+      "literal": "15 RCTs",
+      "context": "Menstrual pain: Meta-analysis of 15 RCTs (n=1,236) found herbal footbaths reduced VAS pain scores by 2.1 points vs. control (p (i)",
+      "action": "Specific treatment/supplement/mechanistic claim not source-reviewed here; investigate original population, comparator, units and harms."
+    },
+    {
+      "priority": "P1",
+      "category": "benefit-overclaim",
+      "page": "tcm-footsoak.html",
+      "line": 237,
+      "literal": "1,236",
+      "context": "Menstrual pain: Meta-analysis of 15 RCTs (n=1,236) found herbal footbaths reduced VAS pain scores by 2.1 points vs. control (p (i)",
+      "action": "Specific treatment/supplement/mechanistic claim not source-reviewed here; investigate original population, comparator, units and harms."
+    },
+    {
+      "priority": "P1",
+      "category": "benefit-overclaim",
+      "page": "tcm-footsoak.html",
+      "line": 237,
+      "literal": "2.1 points",
+      "context": "rual pain: Meta-analysis of 15 RCTs (n=1,236) found herbal footbaths reduced VAS pain scores by 2.1 points vs. control (p (i)",
+      "action": "Specific treatment/supplement/mechanistic claim not source-reviewed here; investigate original population, comparator, units and harms."
+    },
+    {
+      "priority": "P1",
+      "category": "benefit-overclaim",
+      "page": "tcm-footsoak.html",
+      "line": 238,
+      "literal": "by 8 min",
+      "context": "eep: Foot soaking at 40°C for 20 minutes before bed significantly improved sleep onset latency (by 8 min) and sleep quality (PSQI) in adults with mild insomnia, via body temperature downregulation after warming. (i)",
+      "action": "Specific treatment/supplement/mechanistic claim not source-reviewed here; investigate original population, comparator, units and harms."
+    },
+    {
+      "priority": "P2",
+      "category": "unhandled-evidence",
+      "page": "tcm-footsoak.html",
+      "line": 113,
+      "literal": "class=\"evidence-dot\"",
+      "context": "p disperse cold. In summer, excessive sweating from frequent soaks can deplete qi and fluids. (i)",
+      "action": "Alternate evidence control is not matched by shared .qi[data-evidence] handler."
+    },
+    {
+      "priority": "P2",
+      "category": "unhandled-evidence",
+      "page": "tcm-footsoak.html",
+      "line": 140,
+      "literal": "class=\"evidence-dot\"",
+      "context": "ould feel gentle warmth spreading upward, perhaps a light sweat on the upper lip or forehead. (i)",
+      "action": "Alternate evidence control is not matched by shared .qi[data-evidence] handler."
+    },
+    {
+      "priority": "P2",
+      "category": "unhandled-evidence",
+      "page": "tcm-footsoak.html",
+      "line": 165,
+      "literal": "class=\"evidence-dot\"",
+      "context": "baths including mugwort significantly reduced dysmenorrhea pain intensity vs. control groups. (i)",
+      "action": "Alternate evidence control is not matched by shared .qi[data-evidence] handler."
+    },
+    {
+      "priority": "P2",
+      "category": "unhandled-evidence",
+      "page": "tcm-footsoak.html",
+      "line": 237,
+      "literal": "class=\"evidence-dot\"",
+      "context": "pain scores by 2.1 points vs. control (p (i)",
+      "action": "Alternate evidence control is not matched by shared .qi[data-evidence] handler."
+    },
+    {
+      "priority": "P2",
+      "category": "unhandled-evidence",
+      "page": "tcm-footsoak.html",
+      "line": 238,
+      "literal": "class=\"evidence-dot\"",
+      "context": "ality (PSQI) in adults with mild insomnia, via body temperature downregulation after warming. (i)",
+      "action": "Alternate evidence control is not matched by shared .qi[data-evidence] handler."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "tcm-herbs.html",
+      "line": 115,
+      "literal": "Generally safe",
+      "context": "recovery after menstruation or postpartum.', evidence: 'Traditional', evClass: 'ev-low', caution: 'Generally safe as food tea. Caution with diabetes due to sweetness.' },",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P2",
+      "category": "postpartum-prescription",
+      "page": "tcm-herbs.html",
+      "line": 117,
+      "literal": "Generally safe",
+      "context": "rts mood. Gentle for mild menstrual discomfort.', evidence: 'Limited', evClass: 'ev-low', caution: 'Generally safe.' },",
+      "action": "Rigid postpartum timing, herb/dose or urgent-care delay requires individual clinical context and updated evidence."
+    },
+    {
+      "priority": "P1",
+      "category": "app-staging",
+      "page": "tcm-hub.html",
+      "line": 194,
+      "literal": "reproductive function",
+      "context": "i and the lower Jiao. These traditional descriptions do not demonstrate uterine warming or improved reproductive function.",
+      "action": "Automated STRAW stage assignment from age/differences alone requires source-faithful eligibility/persistence rules and validation; use descriptive log instead."
+    }
+  ],
+  "sharedImports": {
+    "theme.css": 81,
+    "darkmode.css": 81,
+    "darkmode.js": 81,
+    "ovuluna-persona.css": 17,
+    "appnav.js": 74,
+    "evidence-db.js": 76,
+    "evidence.js": 76,
+    "i18n.js": 62
+  },
+  "standardEmojiCodepoints": 682,
+  "emojiPages": {
+    "acupoints.html": 24,
+    "breathe.html": 35,
+    "breathwork.html": 2,
+    "circle.html": 27,
+    "cycle-home.html": 10,
+    "diet.html": 6,
+    "exercise-guide.html": 4,
+    "fertility.html": 1,
+    "foods.html": 109,
+    "health-profile.html": 6,
+    "home.html": 1,
+    "hydration.html": 1,
+    "index.html": 32,
+    "label-scan.html": 37,
+    "learn-biomarkers.html": 8,
+    "learn-cycle-phases.html": 5,
+    "learn-discharge.html": 5,
+    "learn-fertile-window.html": 3,
+    "learn-hormone-phase-locking.html": 3,
+    "learn-lifestyle.html": 7,
+    "learn-longevity-pathways.html": 7,
+    "learn-ovarian-biology.html": 8,
+    "learn-ovarian-longevity.html": 4,
+    "learn-perimenopause.html": 4,
+    "learn-straw10.html": 2,
+    "login.html": 1,
+    "medas14.html": 1,
+    "meds.html": 1,
+    "myofascial.html": 34,
+    "nutrition-plan.html": 143,
+    "nutrition-scanner.html": 3,
+    "partner-code.html": 15,
+    "partner-connect.html": 16,
+    "personal-info.html": 16,
+    "phase-coach.html": 3,
+    "postpartum-guide.html": 10,
+    "ppg-review.html": 13,
+    "ppg.html": 8,
+    "premium.html": 1,
+    "profile.html": 12,
+    "provider-dashboard.html": 5,
+    "reports.html": 2,
+    "settings.html": 4,
+    "sleep-diary.html": 1,
+    "stress-checkin.html": 1,
+    "stress.html": 1,
+    "supplements.html": 2,
+    "tcm-footsoak.html": 4,
+    "tcm-herbs.html": 14,
+    "tcm-hub.html": 18,
+    "tcm-topical.html": 1,
+    "vascular.html": 1
+  },
+  "emojiCharacters": {
+    "⚠": 43,
+    "🌙": 32,
+    "🌱": 27,
+    "✓": 25,
+    "🌸": 19,
+    "🌿": 19,
+    "💛": 17,
+    "🩸": 16,
+    "💡": 15,
+    "💧": 14,
+    "✨": 12,
+    "🔥": 11,
+    "🥗": 11,
+    "🐟": 10,
+    "🍵": 10,
+    "🔴": 10,
+    "👆": 9,
+    "🌾": 9,
+    "🧘": 8,
+    "🥬": 8,
+    "🍬": 8,
+    "🟡": 7,
+    "🫘": 7,
+    "☕": 7,
+    "🫁": 6,
+    "🧪": 6,
+    "📊": 6,
+    "🥛": 6,
+    "🥚": 6,
+    "🍫": 6,
+    "🍳": 6,
+    "✅": 6,
+    "🍷": 6,
+    "🍲": 6,
+    "🥜": 6,
+    "📦": 5,
+    "😴": 5,
+    "🫐": 5,
+    "🫒": 5,
+    "🥑": 5,
+    "🥦": 5,
+    "🧬": 5,
+    "✗": 5,
+    "📍": 5,
+    "🔍": 4,
+    "📈": 4,
+    "🔒": 4,
+    "🌰": 4,
+    "🔬": 4,
+    "⚡": 4,
+    "✕": 3,
+    "💓": 3,
+    "🌡": 3,
+    "🫛": 3,
+    "🥣": 3,
+    "📅": 3,
+    "📋": 3,
+    "✦": 3,
+    "🔑": 3,
+    "📚": 3,
+    "🤲": 3,
+    "🌬": 3,
+    "🧊": 3,
+    "💬": 3,
+    "🍼": 3,
+    "🫖": 3,
+    "🟢": 2,
+    "🔄": 2,
+    "🤰": 2,
+    "🌀": 2,
+    "🧠": 2,
+    "👩": 2,
+    "🚫": 2,
+    "★": 2,
+    "🍠": 2,
+    "🧡": 2,
+    "🍚": 2,
+    "🌺": 2,
+    "🍟": 2,
+    "💊": 2,
+    "🌅": 2,
+    "⚙": 2,
+    "📖": 2,
+    "🌼": 2,
+    "🥤": 2,
+    "🥫": 2,
+    "🎯": 2,
+    "🕊": 2,
+    "📱": 2,
+    "🪷": 2,
+    "🎾": 2,
+    "🦵": 2,
+    "🥩": 2,
+    "🧂": 2,
+    "🧈": 2,
+    "🍔": 2,
+    "🌶": 2,
+    "🔗": 2,
+    "📄": 2,
+    "😰": 2,
+    "🫀": 2,
+    "🫚": 2,
+    "🗺": 1,
+    "🔵": 1,
+    "💉": 1,
+    "🔇": 1,
+    "🌷": 1,
+    "💜": 1,
+    "⚕": 1,
+    "📢": 1,
+    "🌈": 1,
+    "➕": 1,
+    "🎃": 1,
+    "🟤": 1,
+    "🌹": 1,
+    "🟣": 1,
+    "⚫": 1,
+    "🪡": 1,
+    "🫧": 1,
+    "⛰": 1,
+    "📸": 1,
+    "🧴": 1,
+    "🤍": 1,
+    "🔔": 1,
+    "💠": 1,
+    "👭": 1,
+    "✍": 1,
+    "🏷": 1,
+    "🍞": 1,
+    "🍪": 1,
+    "🍝": 1,
+    "🧀": 1,
+    "🍖": 1,
+    "🍎": 1,
+    "🍦": 1,
+    "🧁": 1,
+    "🦋": 1,
+    "💍": 1,
+    "🏃": 1,
+    "♀": 1,
+    "🦴": 1,
+    "❤": 1,
+    "🛡": 1,
+    "🩹": 1,
+    "👥": 1,
+    "🦪": 1,
+    "🍊": 1,
+    "🍩": 1,
+    "🍋": 1,
+    "🧅": 1,
+    "🧃": 1,
+    "🥞": 1,
+    "🍌": 1,
+    "☀": 1,
+    "❄": 1,
+    "🤖": 1,
+    "💞": 1,
+    "✉": 1,
+    "😊": 1,
+    "🗓": 1,
+    "🧑": 1,
+    "💕": 1,
+    "🤗": 1,
+    "🗣": 1,
+    "📏": 1,
+    "📐": 1,
+    "📥": 1,
+    "🔕": 1,
+    "👤": 1,
+    "💎": 1,
+    "💗": 1,
+    "🎨": 1,
+    "🫔": 1,
+    "🌻": 1,
+    "🪶": 1
+  },
+  "candidateCounts": {
+    "account-status": 32,
+    "clinician-identity": 12,
+    "derived-prediction": 12,
+    "restricted-treatment": 15,
+    "phase-prescription": 27,
+    "postpartum-prescription": 17,
+    "clinical-validation": 14,
+    "crisis-contact": 9,
+    "mental-screening": 108,
+    "app-staging": 16,
+    "unhandled-evidence": 9,
+    "benefit-overclaim": 11
+  }
+}

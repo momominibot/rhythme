@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-09-11",
+  "suiteGroups": {
+    "check-ovarian.cjs": 11,
+    "check-labs.cjs": 9,
+    "check-insights-records.cjs": 7,
+    "check-bio-age.cjs": 20
+  },
+  "totalGroups": 47,
+  "status": "passed",
+  "additionalChecks": {
+    "isolatedLabUI": 9,
+    "staticCheckerFixtures": 8
+  },
+  "note": "Summary of commands executed against current source this pass; each scripts/check-*.cjs command is reproducible. Tests verify software contracts, not clinical accuracy."
+}

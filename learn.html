@@ -1,0 +1,128 @@
+<!doctype html><html lang="en" data-persona="bloom"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovuluna · Knowledge Hub</title>
+<link rel="icon" type="image/png" href="assets/onboarding/egg.png">
+<link rel="apple-touch-icon" href="assets/onboarding/egg.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="darkmode.css">
+<link rel="stylesheet" href="ovuluna-persona.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="knowledge-hero.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body class="knowledge-page">
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html" aria-label="Notifications">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html" aria-label="Cycle calendar">calendar_today</a>
+  </div>
+<main class="scroll" id="main">
+  <header class="kh-hero">
+    <div class="kh-sky" aria-hidden="true"></div>
+    <div class="kh-intro">
+      <p class="kh-eyebrow">A little wonder. A little wisdom.</p>
+      <h1>Knowledge Hub</h1>
+      <p class="kh-sub">Understand your body,<br>one gentle discovery at a time.</p>
+      <a class="kh-start" href="life-journey.html">Find your chapter <span aria-hidden="true">↗</span></a>
+    </div>
+    <div class="kh-luna-scene" aria-hidden="true"><span class="kh-halo"></span><img src="assets/mascot/luna-mascot.png" width="100" height="100" alt=""></div>
+  </header>
+
+  <section class="dream-section" aria-labelledby="life-journey-title"><p class="journey-eyebrow">Your life, your chapter</p><h2 class="dream-heading" id="life-journey-title">A little guidance for where you are</h2><p class="dream-small">First cycles, conceiving, after pregnancy and the menopause years. Practical care, with sources close by.</p><a class="journey-choice" href="life-journey.html">Explore all five chapters →</a><div class="journey-grid" data-journey-cards></div></section><section aria-labelledby="topics-title" class="kh-section">
+    <div class="kh-section-heading"><h2 id="topics-title">Follow your curiosity</h2><button type="button" class="kh-text-button" id="all-topics" hidden>View all</button></div>
+    <div class="kh-topic-grid">
+      <a href="#guide-library" class="kh-topic" data-topic="cycle" aria-controls="guide-list"><img src="assets/knowledge/cycle.webp" width="64" height="64" alt=""><span>Your cycle</span></a>
+      <a href="#guide-library" class="kh-topic" data-topic="science" aria-controls="guide-list"><img src="assets/knowledge/science.webp" width="64" height="64" alt=""><span>Ovarian science</span></a>
+      <a href="#guide-library" class="kh-topic" data-topic="biomarkers" aria-controls="guide-list"><img src="assets/knowledge/biomarkers.webp" width="64" height="64" alt=""><span>Lab markers</span></a>
+      <a href="#guide-library" class="kh-topic" data-topic="technology" aria-controls="guide-list"><img src="assets/knowledge/technology.webp" width="64" height="64" alt=""><span>Technology</span></a>
+      <a href="#guide-library" class="kh-topic" data-topic="lifestyle" aria-controls="guide-list"><img src="assets/knowledge/lifestyle.webp" width="64" height="64" alt=""><span>Daily wellbeing</span></a>
+      <a href="#guide-library" class="kh-topic" data-topic="tcm" aria-controls="guide-list"><img src="assets/knowledge/tcm.webp" width="64" height="64" alt=""><span>TCM &amp; herbs</span></a>
+    </div>
+  </section>
+
+  <section class="kh-section" id="guide-library" aria-labelledby="library-title">
+    <div class="kh-section-heading"><h2 id="library-title">Your reading room</h2><span class="kh-count" id="guide-count" role="status" aria-live="polite">18 guides</span></div>
+    <div class="kh-search-panel" id="guide-filters" hidden>
+      <label for="guide-search" class="kh-search-label">What would you like to explore?</label>
+      <div class="kh-search-box"><span class="ms" aria-hidden="true">search</span><input id="guide-search" type="search" placeholder="Try AMH, sleep or your cycle" autocomplete="off" aria-controls="guide-list"><button type="button" id="clear-search" aria-label="Clear search" hidden>×</button></div>
+      <div class="kh-stage-row"><label for="guide-stage">Your chapter</label><select id="guide-stage" aria-controls="guide-list"><option value="all">All chapters</option><option value="bloom">Bloom · First cycles</option><option value="grow">Grow · Trying to conceive</option><option value="nurture">Nurture · Postpartum</option><option value="wisdom">Wisdom · Transition years</option></select></div>
+      <p class="kh-filter-state" id="filter-state" hidden></p>
+    </div>
+    <div class="kh-guide-list" id="guide-list"><a class="kh-guide" href="journey-bloom.html" data-category="cycle" data-stages="bloom" data-keywords="First cycles, at your own pace"><div><span class="kh-guide-topic">Life chapter</span><h3>First cycles, at your own pace</h3><p>Practical guidance, symptoms to record and signs to seek care.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a><a class="kh-guide" href="journey-grow.html" data-category="cycle" data-stages="grow" data-keywords="A thoughtful start to conceiving"><div><span class="kh-guide-topic">Life chapter</span><h3>A thoughtful start to conceiving</h3><p>Practical guidance, symptoms to record and signs to seek care.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a><a class="kh-guide" href="journey-nurture.html" data-category="cycle" data-stages="nurture" data-keywords="Care after pregnancy"><div><span class="kh-guide-topic">Life chapter</span><h3>Care after pregnancy</h3><p>Practical guidance, symptoms to record and signs to seek care.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a><a class="kh-guide" href="journey-peri.html" data-category="cycle" data-stages="wisdom" data-keywords="Through perimenopause"><div><span class="kh-guide-topic">Life chapter</span><h3>Through perimenopause</h3><p>Practical guidance, symptoms to record and signs to seek care.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a><a class="kh-guide" href="journey-post.html" data-category="cycle" data-stages="wisdom" data-keywords="The years after menopause"><div><span class="kh-guide-topic">Life chapter</span><h3>The years after menopause</h3><p>Practical guidance, symptoms to record and signs to seek care.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-cycle-phases.html" data-category="cycle" data-stages="bloom grow nurture wisdom" data-keywords="period menstruation hormones"><div><span class="kh-guide-topic">Cycle</span><h3>The four cycle phases</h3><p>Explore menstrual, follicular, ovulatory and luteal phases.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-discharge.html" data-category="cycle" data-stages="bloom grow nurture wisdom" data-keywords="mucus discharge"><div><span class="kh-guide-topic">Cycle</span><h3>Decoding your discharge</h3><p>A guide to cervical fluid and body literacy.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-fertile-window.html" data-category="cycle" data-stages="grow" data-keywords="ttc conception fertility"><div><span class="kh-guide-topic">Cycle</span><h3>Your fertile window</h3><p>An introduction to fertility signals and cycle tracking.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-perimenopause.html" data-category="cycle" data-stages="wisdom" data-keywords="menopause transition"><div><span class="kh-guide-topic">Cycle</span><h3>Perimenopause, decoded</h3><p>Explore the transition, common terms and questions.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-ovarian-biology.html" data-category="science" data-stages="bloom grow nurture wisdom" data-keywords="ovary follicles biology"><div><span class="kh-guide-topic">Science</span><h3>Ovarian biology, gently explained</h3><p>Start with the anatomy and language of ovarian science.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-ovarian-age.html" data-category="science" data-stages="grow wisdom" data-keywords="age reserve amh"><div><span class="kh-guide-topic">Science</span><h3>Understanding ovarian age</h3><p>Explore the concept, measurements and limitations.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-straw10.html" data-category="science" data-stages="grow wisdom" data-keywords="aging menopause staging"><div><span class="kh-guide-topic">Science</span><h3>STRAW+10 stages</h3><p>An introduction to reproductive ageing terminology.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-ovarian-longevity.html" data-category="science" data-stages="grow wisdom" data-keywords="ovary longevity"><div><span class="kh-guide-topic">Science</span><h3>Ovarian longevity</h3><p>Explore the questions around long-term ovarian health.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-biomarkers.html" data-category="biomarkers" data-stages="grow nurture wisdom" data-keywords="labs blood amh fsh estradiol e2"><div><span class="kh-guide-topic">Lab markers</span><h3>Getting to know your biomarkers</h3><p>A guide to AMH, FSH, estradiol and other lab terms.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-hormone-phase-locking.html" data-category="biomarkers" data-stages="grow wisdom" data-keywords="hormone phase locking"><div><span class="kh-guide-topic">Lab markers</span><h3>Hormones across the cycle</h3><p>Explore the language of hormone timing and patterns.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-ppg-tech.html" data-category="technology" data-stages="bloom grow nurture wisdom" data-keywords="camera heart rate hrv pulse"><div><span class="kh-guide-topic">Technology</span><h3>How camera PPG works</h3><p>Learn about the light-based pulse measurement method.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-wearables.html" data-category="technology" data-stages="bloom grow nurture wisdom" data-keywords="watch ring temperature sleep"><div><span class="kh-guide-topic">Technology</span><h3>Understanding wearables</h3><p>Explore the sensors and signals behind wearable devices.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-lifestyle.html" data-category="lifestyle" data-stages="bloom grow nurture wisdom" data-keywords="exercise stress sleep lifestyle"><div><span class="kh-guide-topic">Wellbeing</span><h3>Your everyday wellbeing</h3><p>Explore sleep, movement, nutrition and daily routines.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="learn-longevity-pathways.html" data-category="lifestyle" data-stages="grow wisdom" data-keywords="lifestyle research longevity"><div><span class="kh-guide-topic">Wellbeing</span><h3>Longevity pathways</h3><p>An introduction to the terms used in longevity research.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="foods.html" data-category="lifestyle" data-stages="bloom grow nurture wisdom" data-keywords="nutrition meals food"><div><span class="kh-guide-topic">Wellbeing</span><h3>Explore food knowledge</h3><p>Browse Ovuluna’s food and nutrition collection.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="tcm-hub.html" data-category="tcm" data-stages="bloom grow nurture wisdom" data-keywords="tea herbs traditional chinese"><div><span class="kh-guide-topic">TCM</span><h3>Explore TCM traditions</h3><p>Browse the app’s traditional Chinese medicine collection.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="acupoints.html" data-category="tcm" data-stages="bloom grow nurture wisdom" data-keywords="acupressure points"><div><span class="kh-guide-topic">TCM</span><h3>Find your way around acupoints</h3><p>Explore the app’s acupoint library.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+      <a class="kh-guide" href="myofascial.html" data-category="tcm" data-stages="bloom grow nurture wisdom" data-keywords="massage tension fascia"><div><span class="kh-guide-topic">TCM</span><h3>Myofascial care library</h3><p>Browse the app’s movement and self-care guides.</p></div><span class="kh-arrow" aria-hidden="true">↗</span></a>
+    </div>
+    <div class="kh-empty" id="no-guides" hidden><span class="ms" aria-hidden="true">auto_stories</span><h3>No guides found just yet</h3><p>Try another word, or explore the full collection.</p><button type="button" id="reset-filters" class="kh-reset">Show all guides</button></div>
+  </section>
+
+  <section class="kh-section" aria-labelledby="video-title">
+    <div class="kh-section-heading"><h2 id="video-title">A moment to watch</h2><span class="ms" aria-hidden="true">play_circle</span></div>
+    <p class="kh-section-copy">Short films from the Ovuluna collection.</p>
+    <div class="kh-video-row">
+      <a class="kh-video" href="assets/eduvid/menarche-v1.mp4" data-video-title="Your very first cycles"><span class="kh-poster"><img loading="lazy" src="assets/eduvid/menarche.jpg" width="176" height="176" alt=""><span class="kh-play ms" aria-hidden="true">play_arrow</span></span><span>Your very first cycles</span></a>
+      <a class="kh-video" href="assets/eduvid/hormones-v4.mp4" data-video-title="Your hormones, wave by wave"><span class="kh-poster"><img loading="lazy" src="assets/eduvid/hormones.jpg" width="176" height="176" alt=""><span class="kh-play ms" aria-hidden="true">play_arrow</span></span><span>Your hormones, wave by wave</span></a>
+      <a class="kh-video" href="assets/eduvid/normal-v4.mp4" data-video-title="Normal — or worth checking?"><span class="kh-poster"><img loading="lazy" src="assets/eduvid/normal.jpg" width="176" height="176" alt=""><span class="kh-play ms" aria-hidden="true">play_arrow</span></span><span>Normal — or worth checking?</span></a>
+      <a class="kh-video" href="assets/eduvid/fertile-v4.mp4" data-video-title="Your fertile window"><span class="kh-poster"><img loading="lazy" src="assets/eduvid/fertile.jpg" width="176" height="176" alt=""><span class="kh-play ms" aria-hidden="true">play_arrow</span></span><span>Your fertile window</span></a>
+      <a class="kh-video" href="assets/eduvid/peri-v4.mp4" data-video-title="Perimenopause, decoded"><span class="kh-poster"><img loading="lazy" src="assets/eduvid/peri.jpg" width="176" height="176" alt=""><span class="kh-play ms" aria-hidden="true">play_arrow</span></span><span>Perimenopause, decoded</span></a>
+      <a class="kh-video" href="assets/eduvid/menopause-v1.mp4" data-video-title="Menopause &amp; the years beyond"><span class="kh-poster"><img loading="lazy" src="assets/eduvid/menopause.jpg" width="176" height="176" alt=""><span class="kh-play ms" aria-hidden="true">play_arrow</span></span><span>Menopause &amp; the years beyond</span></a>
+    </div>
+  </section>
+<section class="chapter-card"><h2>Why we say what we say</h2><p class="dream-small">Sources and limitations sit beside the guidance. Review them at your own pace.</p><a class="journey-choice" href="evidence-library.html">Open the evidence library →</a></section></main></div>
+<nav class="nav">
+  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a class="on" href="learn.html" aria-current="page"><span class="n-ic">menu_book</span>Learn</a>
+  <a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a>
+  <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav>
+<dialog class="kh-player" id="video-player" aria-labelledby="player-title">
+  <div class="kh-player-heading"><h2 id="player-title">Ovuluna film</h2><button type="button" id="close-player" aria-label="Close video">×</button></div>
+  <video id="player-video" controls playsinline preload="none"></video>
+  <p id="video-error" role="status" hidden>This film couldn’t load. Please close it and try again.</p>
+</dialog>
+<script src="knowledge-hero.js" defer></script>
+<script src="appnav.js" defer></script>
+<script src="luna-chat.js" defer></script>
+<script src="darkmode.js?v=6" defer></script>
+<script src="lifecycle-content.js" defer></script><script src="journey.js" defer></script>
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

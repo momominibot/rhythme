@@ -1,0 +1,20 @@
+{
+  "environment": "Isolated jsdom; no user browser storage",
+  "negativeFSH": {
+    "value": "FSH -10 IU/L Typical Within common range",
+    "summary": "No red flags. Your logged values fall within typical ranges. Keep tracking over time and discuss any concerns with your provider."
+  },
+  "vitaminD": {
+    "value": "Vitamin D 35 ng/mL Sufficient undefined"
+  },
+  "blankAge": {
+    "displayedChronologicalAge": "30",
+    "displayedOvarianAge": "30",
+    "meaning": "Your ovarian age is close to your calendar age. This suggests your reserve is declining at a typical pace."
+  },
+  "postpartumPersona": {
+    "age": "34",
+    "classification": "early menopause transition",
+    "menopause": "17 yrs"
+  }
+}

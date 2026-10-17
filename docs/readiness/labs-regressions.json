@@ -1,0 +1,15 @@
+{
+  "passed": 9,
+  "checks": [
+    "Blank, negative, nonfinite and malformed values are rejected",
+    "Zero and report inequalities are retained; follicle counts require whole numbers",
+    "Actual valid collection date is required, with no future date or substituted age",
+    "Explicit compatible units/symbols are required and values are never converted",
+    "Only entered numeric limits are compared; absent/one-sided/bounded results stay explicit",
+    "Dated result/source/assay survive reload while legacy snapshot stays byte-for-byte unchanged",
+    "New results append; explicit edit updates one record while preserving others and creation time",
+    "Malformed or unsupported saved data cannot be overwritten by a new save",
+    "Storage read/write failures propagate without modifying prior records"
+  ],
+  "scope": "Input, storage and arithmetic behavior only; no clinical interpretation or validation"
+}

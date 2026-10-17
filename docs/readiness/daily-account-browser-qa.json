@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-10-01T06:02:19.356841+00:00",
+  "origin": "http://127.0.0.1:4203",
+  "scope": "Actual browser form/navigation actions using fictional test data only. No production records, real account or provider sign-in.",
+  "checks": [
+    "Unconfirmed daily context displays a general prompt and never uses appearance as a medical answer.",
+    "TTC context and contraception saved, reloaded and changed to self-reported perimenopause.",
+    "09:00 in-app routine survives reload; optional completion survives reload and remains editable.",
+    "TTC evidence drawer displays both sources, 2026-10-01 source check and limitations.",
+    "A fictional Low mood was saved; its support prompt appears on the daily page.",
+    "Editing mood Low to Good immediately refreshes the Home preview and readable entry count without reload.",
+    "Perimenopause plus entered 5-hour Poor sleep immediately shows a comfort prompt, original entered values and treatment limits.",
+    "Actual unconfigured local auth-status handler displays unavailable account service and local continuation works.",
+    "320px dark and light extra-large app text have scrollWidth equal to viewport width."
+  ],
+  "proof": {
+    "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3DKcCgpB8NriqMPJYuMKBaVpbQv/d77be1a0-dcf0-4a23-84d2-6541b2f96142.jpg",
+    "label": "Fictional perimenopause sleep suggestion with entered-data explanation and source links",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "theme": "dark",
+    "textSize": "normal"
+  },
+  "notVerified": [
+    "Live Apple/Google login",
+    "Email delivery",
+    "Production cross-instance coordination",
+    "Server account deletion",
+    "Native provider sign-in",
+    "Whole-app accessibility",
+    "Clinical validity"
+  ]
+}

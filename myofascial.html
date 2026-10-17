@@ -1,0 +1,290 @@
+<!doctype html><html lang="en" data-persona="bloom"><head>
+<meta charset="utf-8"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Ovuluna · Myofascial Relief Guide</title>
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="apple-touch-icon" href="assets/onboarding/luna.png">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="anim.css">
+<link rel="stylesheet" href="darkmode.css">
+<link rel="stylesheet" href="ovuluna-persona.css">
+<script src="anim.js" defer></script>
+<style>
+.tech-card h3 { font-family:var(--ovuluna-font-heading); font-size:var(--ovuluna-font-size-h3); color:var(--ovuluna-text-emphasis); margin:0 0 4px; }
+.tech-card .tech-sub { font-size:12.5px; color:var(--ovuluna-text-secondary); margin-bottom:12px; }
+.session-timer-wrap { text-align:center; padding:20px; }
+.session-timer { font-family:var(--ovuluna-font-heading); font-size:56px; color:var(--ovuluna-accent); }
+.session-active { animation:pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+.session-step { padding:10px 0; border-bottom:1px solid var(--ovuluna-border); }
+.session-step.current { background:var(--ovuluna-accent-glow); border-radius:var(--ovuluna-radius-sm); padding:10px 12px; }
+.session-step .ss-num { width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:var(--ovuluna-border);color:var(--ovuluna-text-secondary); }
+.session-step.current .ss-num { background:var(--ovuluna-accent);color:var(--ovuluna-text-on-cta); }
+</style>
+<link rel="stylesheet" href="evidence.css">
+<link rel="stylesheet" href="luna-chat.css">
+<link rel="stylesheet" href="dreamy.css">
+</head><body>
+
+
+<div class="app">
+  <div class="top">
+    <div class="brandline"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVULUNA</b></div>
+    <a class="t-icon ms" href="notifications.html">notifications</a>
+    <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
+  </div>
+
+  <div class="scroll">
+    <!-- Hero -->
+    <div class="card tint-sage" style="padding:20px 18px;text-align:center">
+      <span style="font-size:42px">🤲</span>
+      <div style="font-family:var(--ovuluna-font-heading);font-weight:600;font-size:19px;color:var(--ovuluna-text-emphasis);margin-top:6px">Release & Restore</div>
+      <div class="sub" style="font-size:12px;margin-top:3px">Evidence-based myofascial techniques for pelvic & abdominal relief.</div>
+    </div>
+
+    <!-- Demo video -->
+    <div class="card" style="padding:0;overflow:hidden;border-radius:var(--ovuluna-radius-md)">
+      <video src="assets/videos/back-massage.mp4" autoplay loop muted playsinline style="width:100%;display:block;border-radius:var(--ovuluna-radius-md)"></video>
+    </div>
+
+    <!-- Evidence note -->
+    <div class="card" style="padding:14px 16px;background:rgba(78,140,106,.08)">
+      <div class="row" style="gap:8px">
+        <span class="ms" style="font-size:20px;color:var(--ok)">verified</span>
+        <div style="font-size:12px;line-height:1.5"><b>Evidence basis:</b> Pelvic floor physical therapy is a first-line treatment for chronic pelvic pain.</div>
+      </div>
+    </div>
+
+    <!-- Filter row -->
+    <div class="filter-row" id="stageFilter">
+      <span class="filter-chip on" data-filter="all">All Techniques</span>
+      <span class="filter-chip" data-filter="bloom">🌸 Bloom</span>
+      <span class="filter-chip" data-filter="grow">🌱 Grow</span>
+      <span class="filter-chip" data-filter="nurture">🌿 Nurture</span>
+      <span class="filter-chip" data-filter="wisdom">🌙 Wisdom</span>
+    </div>
+
+    <!-- Relief Sessions -->
+    <h2 class="sec">🧘 Guided Relief Sessions</h2>
+    <div class="grid2" id="sessionCards">
+      <div class="session-card" onclick="startSession(5)">
+        <div style="font-size:28px">⏱️</div>
+        <b style="display:block;font-size:15px;color:var(--ovuluna-text-emphasis);margin:6px 0">5 Minutes</b>
+        <div class="sub" style="font-size:11px">Quick Reset<br>Breathing + Stretch</div>
+      </div>
+      <div class="session-card" onclick="startSession(10)">
+        <div style="font-size:28px">🧘</div>
+        <b style="display:block;font-size:15px;color:var(--ovuluna-text-emphasis);margin:6px 0">10 Minutes</b>
+        <div class="sub" style="font-size:11px">Daily Relief<br>Massage + Breathing</div>
+      </div>
+    </div>
+    <div class="session-card" onclick="startSession(15)" style="grid-column:span 2">
+      <div style="font-size:28px">🌿</div>
+      <b style="display:block;font-size:15px;color:var(--ovuluna-text-emphasis);margin:6px 0">15 Minutes</b>
+      <div class="sub" style="font-size:11px">Deep Restore — Full session with breathing, self-massage, trigger point release & stretching</div>
+    </div>
+
+    <!-- Active Session -->
+    <div id="activeSession" style="display:none">
+      <div class="card" style="background:var(--ovuluna-accent-glow);border:2px solid var(--ovuluna-accent)">
+        <div class="session-timer-wrap">
+          <div class="session-timer session-active" id="sessionTimer">05:00</div>
+          <div class="sub" id="sessionLabel" style="margin-top:4px">Quick Reset</div>
+        </div>
+        <div id="sessionSteps"></div>
+        <div class="row" style="justify-content:center;gap:10px;margin-top:14px">
+          <button class="btn" id="sessionStartBtn" style="width:auto;padding:10px 24px;font-size:13px">▶ Begin</button>
+          <button class="btn ghost" id="sessionStopBtn" style="width:auto;padding:10px 24px;font-size:13px">✕ End</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Technique cards -->
+    <h2 class="sec">All Techniques</h2>
+    <div id="techniqueGrid" style="display:flex;flex-direction:column;gap:16px"></div>
+
+    <div class="ovuluna-footer"><span>Ovuluna</span></div>
+  </div>
+</div>
+
+<nav class="nav">
+  <a href="home.html"><span class="n-ic">home</span>Home</a>
+  <a href="learn.html"><span class="n-ic">menu_book</span>Learn</a>
+  <a href="tcm-hub.html"><span class="n-ic">acupuncture</span>TCM</a>
+  <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
+  <a href="profile.html"><span class="n-ic">person</span>Profile</a>
+</nav>
+
+<script>
+const TECHNIQUES = [
+  { id:1, title:"Abdominal Self-Massage", emoji:"🤲", desc:"Gentle clockwise abdominal massage targeting the lower abdomen — releases abdominal wall fascia and improves pelvic circulation.", duration:"5–10 min", frequency:"Daily (evening)", stages:["grow","nurture","wisdom"], stagePrimary:"grow",
+    steps:["Lie on back, knees bent, feet flat. Apply oil to lower abdomen.","Start at CV4 (3 finger-widths below navel), using 2-3 fingers.","Make small clockwise circles, gradually expanding outward.","Spend 30-60 sec on tender spots — breathe into them until tissue softens.","Follow with warm compress or heating pad."],
+    contraindications:"Active heavy menstruation · ovarian cysts >5cm · acute pelvic infection · first trimester pregnancy · post-cesarean <6-8 weeks",
+    evidence:"Mitidieri 2016: acupuncture at abdominal wall trigger points reduced CPP pain sustained at 6 months. Carnett's test positive in 21% of DIE patients (PMID 33973308)." },
+  { id:2, title:"Pelvic Floor Relaxation", emoji:"🪷", desc:"'Reverse Kegel' — consciously relaxing and lengthening pelvic floor muscles on inhale. Most women are taught to contract but not relax.", duration:"5 min", frequency:"2-3× daily", stages:["bloom","grow","nurture","wisdom"], stagePrimary:"all",
+    steps:["Lie comfortably, knees bent. Place one hand on lower belly.","Inhale slowly through nose — feel belly rise, imagine pelvic floor softening/dropping.","Exhale through mouth — gentle contraction if desired.","Goal: 10 breaths, 2-3× daily. Cue: 'Imagine a flower opening.'"],
+    contraindications:"Severe pelvic organ prolapse (work with PFPT)",
+    evidence:"Torosis et al. 2024 ACOG Delphi Consensus: at-home guided pelvic floor relaxation recommended when PFPT inaccessible. High-tone PF dysfunction affects up to 80% of CPP patients." },
+  { id:3, title:"Gluteal & Piriformis Trigger Point Release", emoji:"🎾", desc:"Self-administered trigger point release for gluteal muscles using a tennis/lacrosse ball against floor or wall.", duration:"5–10 min", frequency:"3-4× per week", stages:["nurture","wisdom","grow","bloom"], stagePrimary:"nurture",
+    steps:["Lie on back, tennis ball under one glute.","Roll slowly until you find a tender/'zinging' spot.","Hold there, breathe deeply for 30-90 seconds until sensation softens.","Move to next spot. Repeat both sides.","For piriformis (deep): use lacrosse ball."],
+    contraindications:"Acute sciatica flare · recent hip surgery",
+    evidence:"Fuentes-Márquez 2019: CPP patients show significantly more trigger points in gluteus, QL, adductor magnus. Gluteal TrPs refer pain to sacrum and pelvis (PMID 29025041)." },
+  { id:4, title:"Diaphragmatic Breathing + Fascial Unwinding", emoji:"🌬️", desc:"Deep diaphragmatic breathing combined with gentle self-touch to release abdominal fascia and activate vagus nerve.", duration:"5–10 min", frequency:"Daily", stages:["bloom","grow","nurture","wisdom"], stagePrimary:"all",
+    steps:["Lie on back, knees bent, one hand on chest, one on belly.","Inhale 4 counts — belly hand rises, chest stays still.","Exhale 6 counts — belly falls.","After 5 breaths, place both hands on lower abdomen.","On exhale, gently press hands into abdomen. On inhale, let hands rise."],
+    contraindications:"None significant — safe for all stages",
+    evidence:"Core component of all pelvic floor PT protocols. Activates parasympathetic nervous system via vagus nerve. Reduces sympathetic tone and pelvic tension." },
+  { id:5, title:"Hip Flexor + Adductor Stretch", emoji:"🧘", desc:"Gentle stretching of iliopsoas and adductors — muscles that connect to pelvic basin and influence pelvic floor tension.", duration:"3–5 min", frequency:"2× daily", stages:["nurture","wisdom","grow","bloom"], stagePrimary:"nurture",
+    steps:["Hip flexor: Half-kneeling lunge, tuck pelvis, lean forward gently. Hold 30 sec each side.","Adductor: Seated butterfly (soles together, knees outward). Hold 60 sec.","Child's pose with wide knees: 60-90 sec."],
+    contraindications:"Acute groin strain · recent hip surgery",
+    evidence:"Fraga 2021: 30% of DIE patients had bilateral anterior thigh shortening vs 10% controls. IT band shortening significantly more common in CPP (p<0.001, PMID 33973308)." },
+  { id:6, title:"Abdominal Scar Massage", emoji:"🩹", desc:"Gentle scar mobilization for cesarean section scars, laparoscopy ports, or any abdominal surgical scars. Restore tissue glide, reduce adhesions.", duration:"5 min", frequency:"Daily", stages:["nurture"], stagePrimary:"nurture",
+    steps:["Must be ≥6-8 weeks post-surgery, fully healed incision.","Desensitize: gently stroke scar in all directions with light touch, 2 min.","Mobilize: 2 fingers, move scar tissue up-down, left-right, clockwise, counter-clockwise.","Pick up: gently lift scar and surrounding skin between thumb and fingers.","Use vitamin E oil or silicone gel."],
+    contraindications:"Signs of infection · keloid formation · <6 weeks post-surgery · pain with touch",
+    evidence:"Standard of care in surgical physiotherapy. Included in postpartum rehabilitation protocols. Scar adhesions can pull on pelvic organs." },
+  { id:7, title:"IT Band Foam Rolling", emoji:"🦵", desc:"Foam rolling lateral thigh to release IT band tension that pulls on pelvic structures and influences alignment.", duration:"4–6 min", frequency:"3-4× per week", stages:["nurture","wisdom"], stagePrimary:"wisdom",
+    steps:["Lie on side, foam roller under outer thigh.","Roll slowly from hip to just above knee.","Pause on tender spots for 20-30 sec.","2-3 min each side."],
+    contraindications:"IT band syndrome flare · recent knee/hip surgery",
+    evidence:"PMID 33973308: IT band shortening significantly more common in CPP. Women with DIE + CPP had higher rates of IT band and piriformis shortening." },
+  { id:8, title:"Warm Compress / Heat Therapy", emoji:"🔥", desc:"Sustained gentle heat to lower abdomen (CV4-CV6) and lower back (BL23-GV4). Increases blood flow, relaxes smooth muscle, disperses cold stagnation per TCM.", duration:"15–20 min", frequency:"1-2× daily", stages:["bloom","grow","wisdom"], stagePrimary:"bloom",
+    steps:["Use electric heating pad, hot water bottle, or TCM moxa heat lamp.","Apply to lower abdomen (CV4 area) for 15-20 min.","Or lower back (BL23 area).","Can combine with abdominal self-massage."],
+    contraindications:"Active heavy bleeding · suspected pregnancy (abdomen only) · acute inflammation · skin sensitivity",
+    evidence:"Cochrane reviews support heat therapy for dysmenorrhea. TCM: warm needle therapy reduced antral follicle count in PCOS (Du 2026, PMID 41837127)." }
+];
+
+const stageNames = { bloom:"🌸 Bloom", grow:"🌱 Grow", nurture:"🌿 Nurture", wisdom:"🌙 Wisdom", all:"👥 All Stages" };
+let activeFilter = "all";
+let sessionActive = false;
+let sessionInterval = null;
+let sessionSeconds = 0;
+let sessionCurrentStep = 0;
+
+const stageLabel = s => s==='all'?'ls-all':`ls-${s}`;
+
+function renderTechniques(){
+  const grid = document.getElementById('techniqueGrid');
+  let html = '';
+  TECHNIQUES.forEach(t => {
+    if(activeFilter !== 'all' && !t.stages.includes(activeFilter)) return;
+    html += `<div class="tech-card">
+      <div class="row" style="gap:8px;align-items:flex-start">
+        <span style="font-size:28px">${t.emoji}</span>
+        <div style="flex:1">
+          <h3>${t.id}. ${t.title}</h3>
+          <div class="tech-sub">${t.desc}</div>
+        </div>
+      </div>
+      <div class="tech-meta">
+        <span class="tech-meta-item"><span class="ms">schedule</span> ${t.duration}</span>
+        <span class="tech-meta-item"><span class="ms">repeat</span> ${t.frequency}</span>
+        <span class="evidence-badge ${t.stagePrimary==='all'?'moderate':'strong'}">${t.stagePrimary==='all'?'🟡 Moderate':'🟢 Strong'}</span>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--ovuluna-text-emphasis);margin-bottom:6px">How to do it:</div>
+      ${t.steps.map((s,i)=>`<div class="tech-step"><span class="step-num">${i+1}</span><span>${s}</span></div>`).join('')}
+      <div class="contraindication"><b>⚠️ Contraindications:</b> ${t.contraindications}</div>
+      <div class="lifestage-chips">
+        ${t.stages.map(s=>`<span class="${stageLabel(s)}">${stageNames[s]}</span>`).join('')}
+      </div>
+      <div style="font-size:10.5px;color:var(--ovuluna-text-secondary);margin-top:6px;line-height:1.4"><b>Evidence:</b> ${t.evidence}</div>
+    </div>`;
+  });
+  grid.innerHTML = html || '<div class="card" style="text-align:center;padding:30px"><span style="font-size:32px">🔍</span><div class="sub" style="margin-top:8px">No techniques match this filter.</div></div>';
+}
+
+// Session logic
+function startSession(minutes){
+  sessionSeconds = minutes * 60;
+  sessionActive = true;
+  sessionCurrentStep = 0;
+  document.getElementById('activeSession').style.display = 'block';
+  document.getElementById('sessionLabel').textContent = minutes===5?'Quick Reset (5 min)':minutes===10?'Daily Relief (10 min)':'Deep Restore (15 min)';
+  updateSessionTimer();
+  renderSessionSteps();
+}
+
+function updateSessionTimer(){
+  const m = Math.floor(sessionSeconds/60), s = sessionSeconds%60;
+  document.getElementById('sessionTimer').textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function renderSessionSteps(){
+  const steps = [
+    { emoji:"🌬️", text:"Diaphragmatic breathing — 5 deep belly breaths" },
+    { emoji:"🪷", text:"Pelvic floor relaxation — 5 gentle releases" },
+    { emoji:"🤲", text:"Lower abdominal self-massage — clockwise circles" },
+    { emoji:"🧘", text:"Hip flexor stretch — 30 sec each side" },
+    { emoji:"🎾", text:"Gluteal trigger point release — 60 sec each side" },
+    { emoji:"🦵", text:"IT band foam rolling — 60 sec each side" },
+    { emoji:"🌬️", text:"Closing breath — 3 deep breaths, body scan" }
+  ];
+  const el = document.getElementById('sessionSteps');
+  el.innerHTML = steps.map((s,i) => `
+    <div class="session-step${sessionCurrentStep===i?' current':''}" style="display:flex;align-items:center;gap:10px;font-size:13px">
+      <span class="ss-num">${i+1}</span><span style="font-size:18px">${s.emoji}</span><span style="flex:1">${s.text}</span>
+    </div>
+  `).join('');
+}
+
+document.getElementById('sessionStartBtn').addEventListener('click',function(){
+  if(sessionInterval){ clearInterval(sessionInterval); sessionInterval=null; this.textContent='▶ Begin'; return; }
+  this.textContent = '⏸ Pause';
+  sessionInterval = setInterval(function(){
+    if(sessionSeconds <= 0){ clearInterval(sessionInterval); sessionInterval=null; document.getElementById('sessionStartBtn').textContent='✅ Done!'; return; }
+    sessionSeconds--; updateSessionTimer();
+    // Advance step every ~session_seconds/steps seconds
+    const totalSteps = 7;
+    const stepDuration = Math.floor((sessionSeconds / (sessionSeconds + 1)) * totalSteps) || totalSteps - sessionCurrentStep;
+    const newStep = totalSteps - Math.ceil((sessionSeconds / (sessionSeconds + 1)) * totalSteps);
+    if(newStep !== sessionCurrentStep && newStep < totalSteps){
+      sessionCurrentStep = newStep;
+      renderSessionSteps();
+    }
+  },1000);
+});
+
+document.getElementById('sessionStopBtn').addEventListener('click',function(){
+  clearInterval(sessionInterval); sessionInterval=null;
+  sessionActive = false;
+  document.getElementById('activeSession').style.display = 'none';
+  document.getElementById('sessionStartBtn').textContent = '▶ Begin';
+});
+
+// Filters
+document.querySelectorAll('#stageFilter .filter-chip').forEach(c => {
+  c.addEventListener('click',function(){
+    document.querySelectorAll('#stageFilter .filter-chip').forEach(x=>x.classList.remove('on'));
+    this.classList.add('on'); activeFilter = this.dataset.filter; renderTechniques();
+  });
+});
+
+renderTechniques();
+</script>
+<script src="appnav.js" defer></script>
+
+
+<script src="luna-chat.js" defer></script>
+<script src="i18n.js"></script>
+  <script src="darkmode.js?v=8" defer></script>
+
+
+
+
+
+
+
+
+
+<script defer src="dream-assets.js"></script>
+<script defer src="evidence-db.js"></script>
+<script defer src="evidence-reconciled.js"></script>
+<script defer src="evidence-lifecycle.js"></script>
+<script defer src="evidence-acupoint.js"></script>
+<script defer src="evidence-safety.js"></script>
+<script defer src="evidence-core.js"></script>
+<script defer src="evidence-merge.js"></script>
+<script defer src="evidence.js"></script>
+<script defer src="dreamy.js"></script>
+</body></html>

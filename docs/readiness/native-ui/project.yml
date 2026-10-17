@@ -1,0 +1,24 @@
+name: OvulunaInstalledSmoke
+options:
+  deploymentTarget:
+    iOS: '16.0'
+targets:
+  OvulunaSmokeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.vercel.ovuluna.smokeuitests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+        SWIFT_VERSION: '5.0'
+        TARGETED_DEVICE_FAMILY: '1'
+schemes:
+  OvulunaSmoke:
+    build:
+      targets:
+        OvulunaSmokeUITests: [test]
+    test:
+      targets:
+        - OvulunaSmokeUITests

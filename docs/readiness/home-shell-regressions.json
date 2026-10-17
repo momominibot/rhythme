@@ -1,0 +1,188 @@
+{
+  "date": "2026-09-11",
+  "baseline": "b866852",
+  "groups": 46,
+  "suites": [
+    {
+      "script": "check-home.cjs",
+      "exitCode": 0,
+      "result": {
+        "suite": "Home dated check-ins",
+        "passed": 17,
+        "failed": 0,
+        "results": [
+          {
+            "name": "Opening and closing every category writes nothing and leaves required inputs blank",
+            "passed": true
+          },
+          {
+            "name": "Missing required fields in all six categories block saves with visible errors",
+            "passed": true
+          },
+          {
+            "name": "All six real forms save supplied values; explicit numeric zero and midnight time are retained",
+            "passed": true
+          },
+          {
+            "name": "Optional unanswered fields remain null rather than becoming zero or a healthy default",
+            "passed": true
+          },
+          {
+            "name": "Legacy check-in bytes are preserved and never promoted to a dated personal measurement",
+            "passed": true
+          },
+          {
+            "name": "Same date/category updates its existing ID while other dates and categories remain byte-equivalent",
+            "passed": true
+          },
+          {
+            "name": "Out-of-range, negative, fractional whole-number, future date and inconsistent rest-day inputs are rejected",
+            "passed": true
+          },
+          {
+            "name": "Saved text is restored as text without creating DOM markup or changing a saved zero",
+            "passed": true
+          },
+          {
+            "name": "Malformed or unsupported storage remains untouched when opening, submitting and exporting",
+            "passed": true
+          },
+          {
+            "name": "Invalid saved values and duplicate identities cannot be overwritten by a new save",
+            "passed": true
+          },
+          {
+            "name": "Quota failures preserve the existing store and keep the form open with a failure message",
+            "passed": true
+          },
+          {
+            "name": "Export includes the complete dated history beyond the 20 entries shown on Home",
+            "passed": true
+          },
+          {
+            "name": "A storage failure after a successful load clears stale personal summaries and recovers its status",
+            "passed": true
+          },
+          {
+            "name": "Other-tab removal of an assessment resets its stale saved-date summary",
+            "passed": true
+          },
+          {
+            "name": "A visible Home rolls over at local midnight without requiring navigation or a new record",
+            "passed": true
+          },
+          {
+            "name": "Local-day helper follows Singapore, Honolulu and New York dates rather than UTC slicing",
+            "passed": true
+          },
+          {
+            "name": "Close returns focus to an existing trigger, including after an edited history row is rebuilt",
+            "passed": true
+          }
+        ],
+        "scope": "Actual HTML/controller in isolated jsdom; no live storage or network. Dialog events are shimmed; native focus containment, layout and screen readers require browser/device verification."
+      }
+    },
+    {
+      "script": "check-home-visuals.cjs",
+      "exitCode": 0,
+      "result": {
+        "suite": "Home hormone chart and lunar illustration",
+        "passed": 13,
+        "failed": 0,
+        "results": [
+          {
+            "name": "Empty storage gives explicit empty chart, correct unit choices and no invented point or health write",
+            "passed": true
+          },
+          {
+            "name": "Changing hormone and reported unit selects only matching records; exact zeros remain visible",
+            "passed": true
+          },
+          {
+            "name": "Graph x spacing follows collection-date distances and the bar/graph controls update accessible state",
+            "passed": true
+          },
+          {
+            "name": "Same-date results and all-zero series have finite coordinates and preserve every table row",
+            "passed": true
+          },
+          {
+            "name": "Values from 1e-308 through 1e308 and Number.MAX_VALUE cannot overflow chart coordinates",
+            "passed": true
+          },
+          {
+            "name": "Reported bounds retain their original symbols and units and are never plotted as exact concentrations",
+            "passed": true
+          },
+          {
+            "name": "Original report source and method are visible as inert text, including markup-looking content",
+            "passed": true
+          },
+          {
+            "name": "Corrupt/null/invalid stores clear an existing chart and table without overwriting any record",
+            "passed": true
+          },
+          {
+            "name": "View preference survives reload; denied read/write storage leaves usable controls without a false data point",
+            "passed": true
+          },
+          {
+            "name": "New LH and P4 records round-trip through the real labs save/read API into their matching chart units",
+            "passed": true
+          },
+          {
+            "name": "Latest-12 limit retains dates and table context without mutating the longer saved history",
+            "passed": true
+          },
+          {
+            "name": "Ring range input and previous/next controls stay within bounds and expose the example day accessibly",
+            "passed": true
+          },
+          {
+            "name": "Pointer interaction retains one SVG and listener set; cancelled drags cannot move the ring or schedule stale animation",
+            "passed": true
+          }
+        ],
+        "scope": "Actual HTML, labs API and display scripts in isolated jsdom. Native range keyboard defaults, pointer capture, SVG layout and assistive-technology announcements still need browser/device checks."
+      }
+    },
+    {
+      "script": "check-labs.cjs",
+      "exitCode": 0,
+      "result": {
+        "passed": 9,
+        "checks": [
+          "Blank, negative, nonfinite and malformed values are rejected",
+          "Zero and report inequalities are retained; follicle counts require whole numbers",
+          "Actual valid collection date is required, with no future date or substituted age",
+          "Explicit compatible units/symbols are required and values are never converted",
+          "Only entered numeric limits are compared; absent/one-sided/bounded results stay explicit",
+          "Dated result/source/assay survive reload while legacy snapshot stays byte-for-byte unchanged",
+          "New results append; explicit edit updates one record while preserving others and creation time",
+          "Malformed or unsupported saved data cannot be overwritten by a new save",
+          "Storage read/write failures propagate without modifying prior records"
+        ],
+        "scope": "Input, storage and arithmetic behavior only; no clinical interpretation or validation"
+      }
+    },
+    {
+      "script": "check-insights-records.cjs",
+      "exitCode": 0,
+      "result": {
+        "suite": "Insights and Overview record summaries",
+        "groups": 7,
+        "passed": [
+          "Empty storage shows explicit empty states and no personal health metrics",
+          "Actual saved values, comparator, original units, collection dates, journal and v2 snapshots render as text",
+          "Invalid numbers, units, impossible dates and fractional AFC are withheld without changing saved records",
+          "Corrupt, unsupported and denied storage report unavailable instead of pretending records are empty",
+          "Legacy predictions are never read and a v2 record containing a numerical ovarian-age prediction is rejected",
+          "Summaries refresh on other-tab updates and back navigation without accumulating duplicate entries",
+          "Both pages have one H1, working local destinations, evidence controls and no removed fake metrics/no-op actions"
+        ],
+        "limitation": "Isolated renderer and static-link checks; not device, clinical or whole-app validation."
+      }
+    }
+  ]
+}
