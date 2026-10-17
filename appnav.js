@@ -39,7 +39,7 @@
   });
 
   // ---- home domain names/legend → domain detail screens ----
-  var DOMAP={medical:'reports.html',cycle:'cycle-home.html',stress:'stress.html',exercise:'exercise.html',diet:'diet.html',sleep:'sleep.html'};
+  var DOMAP={medical:'reports.html',cycle:'cycle-home.html',stress:'stress.html',exercise:'exercise.html',diet:'diet.html',sleep:'sleep.html',mind:'mindfulness.html',mindfulness:'mindfulness.html'};
   document.querySelectorAll('.scroll span, .metric').forEach(function(el){
     // Text inside a real control belongs to that control. Binding a second
     // route to its label can hijack check-in dialogs when the label is tapped.
@@ -72,6 +72,7 @@
     [/hormone/i,'hormones.html'],
     [/sleep/i,'sleep.html'],
     [/stress|breathing|calm/i,'stress.html'],
+    [/mindful|meditation|erin|pause/i,'mindfulness.html'],
     [/exercise|workout|training|fitness/i,'exercise.html'],
     [/food|meal|nutrition|diet/i,'diet.html'],
     [/supplement/i,'supplements.html'],
@@ -166,6 +167,7 @@
     ['Cycle',[['cycle-home.html','bloodtype','Cycle Home'],['cycle-log.html','edit_note','Log Today'],['period-start.html','water_drop','Period Start'],['cycle-trends.html','insights','Analytics'],['hormones.html','show_chart','Hormones'],['fertility.html','spa','Fertility'],['cycle-delay.html','favorite','Delay Support']]],
     ['Body systems',[['wellness-checkin.html','spa','Wellness journal'],['sleep-diary.html','bedtime','Sleep Diary'],['stress-checkin.html','self_improvement','Stress Check'],['breathwork.html','air','Breathwork'],['partner-connect.html','favorite','Partner connection'],['exercise.html','fitness_center','Exercise'],['diet.html','restaurant','Diet'],['sleep.html','bedtime','Sleep'],['vascular.html','cardiology','Vascular'],['ppg.html','fingerprint','Measure']]],
     ['TCM',[['tcm-hub.html','acupuncture','TCM Wellness'],['acupoints.html','touch_app','Acupoints'],['tcm-herbs.html','eco','Herbs & Teas'],['tcm-footsoak.html','bathtub','Foot Soaks'],['tcm-topical.html','local_fire_department','Topical & Moxa'],['myofascial.html','self_improvement','Myofascial']]],
+    ['Mindfulness',[['mindfulness.html','self_improvement','Mindfulness Hub'],['erin-chat.html','forum','Talk with Erin'],['breathe.html','air','Breathing'],['breathwork.html','spa','Breathwork'],['stress-checkin.html','favorite','Stress Check-in'],['mental-health.html','psychology','Mental Wellbeing']]],
     ['Nutrition',[['food-scan.html','photo_camera','Food Scan'],['nutrition-scanner.html','barcode_reader','UPF Scanner'],['medas14.html','nutrition','Mediterranean Score'],['nutrients.html','medication','Nutrients'],['supplements.html','grocery','Supplements'],['hydration.html','water_full','Hydration']]],
     ['Learn',[['learn.html','menu_book','Knowledge Hub'],['learn-cycle-phases.html','favorite','Cycle Phases'],['learn-fertile-window.html','spa','Fertile Window'],['learn-discharge.html','science','Discharge Guide'],['learn-perimenopause.html','wb_twilight','Perimenopause'],['learn-ovarian-longevity.html','eco','Ovarian Longevity']]],
     ['Health',[['reports.html','description','Medical Reports'],['labs.html','biotech','Lab Log']]],
@@ -174,7 +176,7 @@
   var fab=document.createElement('button'); fab.className='mapfab'; fab.setAttribute('aria-label','All screens');
   fab.innerHTML='<span class="ms">apps</span>'; document.body.appendChild(fab);
   var veil=document.createElement('div'); veil.className='mapveil';
-  var h='<div class="mapsheet"><h3>Explore Ovuluna</h3><div class="sub">Every screen — tap to jump anywhere</div>';
+  var h='<div class="mapsheet"><h3>Explore Ovumind</h3><div class="sub">Every screen — tap to jump anywhere</div>';
   SCREENS.forEach(function(g){ h+='<div class="mapgrp">'+g[0]+'</div><div class="maprow">';
     g[1].forEach(function(s){ h+='<a class="mapitem'+(s[0]===here?' here':'')+'" href="'+s[0]+'"><span class="ms">'+s[1]+'</span>'+s[2]+'</a>'; });
     h+='</div>'; });

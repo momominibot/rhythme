@@ -1,0 +1,1258 @@
+{
+  "meta": {
+    "name": "Erin Lee - Take A Pause Knowledge Base",
+    "description": "Structured knowledge base from erinmindfulmoments.substack.com for mindfulness avatar app",
+    "created": "2026-10-16T11:26:31.232131",
+    "total_posts": 23,
+    "free_posts": 20,
+    "paid_posts": 3,
+    "total_words": 10392,
+    "author": "Erin Lee",
+    "series": "Take A Pause",
+    "tradition": "Theravada Buddhism / Mindfulness",
+    "primary_text": "Dhammapada (trans. Gil Fronsdal, Shambhala 2006)"
+  },
+  "themes": {
+    "mindfulness_awareness": {
+      "name": "Mindfulness & Awareness",
+      "pali": "sati",
+      "description": "Paying attention, on purpose, in the present moment, without judgment",
+      "keywords": [
+        "mindfulness",
+        "awareness",
+        "notice",
+        "present",
+        "attention",
+        "body scan",
+        "observe",
+        "sati"
+      ],
+      "posts": [
+        "seeing-things-clearly",
+        "the-mind-leads-the-way",
+        "a-view-is-not-the-whole"
+      ]
+    },
+    "patience": {
+      "name": "Patience",
+      "pali": "khanti",
+      "description": "The capacity to stay with difficulty without collapsing, retaliating, or running away",
+      "keywords": [
+        "patience",
+        "khanti",
+        "stay",
+        "endure",
+        "wait",
+        "slow",
+        "body scan"
+      ],
+      "posts": [
+        "the-strength-to-stay",
+        "the-quiet-work-of-change"
+      ]
+    },
+    "equanimity": {
+      "name": "Equanimity",
+      "pali": "upekkha",
+      "description": "Looking on steadily; remaining balanced amid the eight worldly winds",
+      "keywords": [
+        "equanimity",
+        "upekkha",
+        "balance",
+        "steady",
+        "winds",
+        "island",
+        "rock"
+      ],
+      "posts": [
+        "the-capacity-to-remain-balanced",
+        "an-island-within"
+      ]
+    },
+    "loving_kindness": {
+      "name": "Loving-Kindness",
+      "pali": "metta",
+      "description": "Friendliness; wishing well for oneself and all beings",
+      "keywords": [
+        "metta",
+        "loving-kindness",
+        "kindness",
+        "friendly",
+        "compassion",
+        "goodwill",
+        "wish well"
+      ],
+      "posts": [
+        "uncovering-a-friendly-heart",
+        "the-freedom-beyond-anger"
+      ]
+    },
+    "wise_effort": {
+      "name": "Wise Effort",
+      "pali": "viriya",
+      "description": "Courageous, sustainable energy; the middle way between overexertion and passivity",
+      "keywords": [
+        "viriya",
+        "effort",
+        "energy",
+        "persistence",
+        "sustainable",
+        "steady",
+        "tension",
+        "lute"
+      ],
+      "posts": [
+        "steady-sustainable-effort",
+        "when-persistence-stops-working"
+      ]
+    },
+    "wisdom": {
+      "name": "Wisdom",
+      "pali": "paññā",
+      "description": "Seeing things clearly; understanding what leads to suffering and what leads away from it",
+      "keywords": [
+        "wisdom",
+        "paññā",
+        "panna",
+        "clearly",
+        "discern",
+        "essential",
+        "mortality",
+        "death"
+      ],
+      "posts": [
+        "seeing-things-clearly",
+        "what-truly-matters"
+      ]
+    },
+    "truthfulness": {
+      "name": "Truthfulness",
+      "pali": "sacca",
+      "description": "Authenticity; living in alignment with reality",
+      "keywords": [
+        "sacca",
+        "truth",
+        "honest",
+        "real",
+        "authentic",
+        "alignment",
+        "curated"
+      ],
+      "posts": [
+        "being-real-and-honest"
+      ]
+    },
+    "determination": {
+      "name": "Determination",
+      "pali": "adhiṭṭhāna",
+      "description": "Resolve; the commitment that holds steady when things get hard",
+      "keywords": [
+        "adhiṭṭhāna",
+        "adhitthana",
+        "determination",
+        "commit",
+        "resolve",
+        "stay",
+        "retreat"
+      ],
+      "posts": [
+        "committing-wholeheartedly"
+      ]
+    },
+    "right_speech": {
+      "name": "Right Speech",
+      "pali": "sammā-vācā",
+      "description": "Wise, meaningful words carried out in action; restraint as self-regulation",
+      "keywords": [
+        "speech",
+        "words",
+        "restraint",
+        "meaningful",
+        "flower",
+        "scent",
+        "thousand"
+      ],
+      "posts": [
+        "better-than-a-thousand-words"
+      ]
+    },
+    "ethical_living": {
+      "name": "Ethical Living",
+      "pali": "sīla",
+      "description": "Thoughtful participation; leaving no wound behind; many small skillful acts",
+      "keywords": [
+        "sila",
+        "ethical",
+        "bee",
+        "flower",
+        "garland",
+        "skillful",
+        "goodness",
+        "village"
+      ],
+      "posts": [
+        "the-scent-of-a-life-well-lived"
+      ]
+    },
+    "happiness": {
+      "name": "Happiness",
+      "pali": "sukha",
+      "description": "Freedom from what binds us; peace not dependent on winning or external conditions",
+      "keywords": [
+        "happiness",
+        "sukha",
+        "happy",
+        "ambition",
+        "victory",
+        "scoreboard",
+        "peace"
+      ],
+      "posts": [
+        "the-happiness-chapter"
+      ]
+    },
+    "the_path": {
+      "name": "The Path",
+      "pali": "magga",
+      "description": "The Noble Eightfold Path; walking it oneself; wisdom arises from practice",
+      "keywords": [
+        "path",
+        "magga",
+        "eightfold",
+        "walk",
+        "practice",
+        "ehipassiko",
+        "come and see"
+      ],
+      "posts": [
+        "the-path-beneath-our-feet"
+      ]
+    },
+    "community_wellbeing": {
+      "name": "Community & Wellbeing",
+      "pali": "kalyāṇamittatā",
+      "description": "Our wellbeing is intertwined; tending to our own mind protects others",
+      "keywords": [
+        "wellbeing",
+        "community",
+        "acrobats",
+        "bamboo",
+        "balance",
+        "relationship",
+        "others"
+      ],
+      "posts": [
+        "my-wellbeing-our-wellbeing"
+      ]
+    },
+    "anger": {
+      "name": "Working with Anger",
+      "pali": "kodha",
+      "description": "Non-hate as equanimity; freedom from resentment not dependent on others changing",
+      "keywords": [
+        "anger",
+        "hatred",
+        "non-hate",
+        "resentment",
+        "charioteer",
+        "rein-holder",
+        "equanimity"
+      ],
+      "posts": [
+        "the-freedom-beyond-anger"
+      ]
+    }
+  },
+  "pali_terms": {
+    "sati": "Mindfulness; bare attention; remembering to be present",
+    "khanti": "Patience; the capacity to stay with difficulty",
+    "upekkha": "Equanimity; impartiality; balance",
+    "metta": "Loving-kindness; friendliness; wishing well",
+    "viriya": "Energy; effort; courageous persistence",
+    "paññā": "Wisdom; discernment; seeing things clearly",
+    "sacca": "Truthfulness; authenticity; alignment with reality",
+    "adhiṭṭhāna": "Determination; resolve; wholehearted commitment",
+    "sīla": "Virtue; ethical conduct; thoughtful participation",
+    "sukha": "Happiness; ease; well-being",
+    "dukkha": "Suffering; unsatisfactoriness; stress",
+    "magga": "Path; the Noble Eightfold Path",
+    "kodha": "Anger; aversion; resentment",
+    "tanha": "Craving; thirst; clinging",
+    "karuna": "Compassion; the wish to relieve suffering",
+    "mudita": "Sympathetic joy; delight in others' success",
+    "anatta": "Non-self; not-self; emptiness of fixed identity",
+    "anicca": "Impermanence; change; uncertainty",
+    "ehipassiko": "Come and see for yourself; invitation to direct experience"
+  },
+  "style_guide": {
+    "voice": "Warm, reflective, grounded. A teacher who speaks from personal experience, not from a pedestal.",
+    "signature_phrases": [
+      "Now don't be mistaken",
+      "This is, most straightforwardly, cause and effect",
+      "The invitation is a little quieter",
+      "Can I...",
+      "What are the saws in your life?",
+      "A path becomes a path only when it is walked",
+      "We do not go looking for the island. We become it."
+    ],
+    "tone": "Gentle but direct. Uses metaphors from nature and everyday life. References Pali terms with clear explanations. Ends with reflective questions or loving-kindness phrases.",
+    "structure": [
+      "Open with a relatable observation or question",
+      "Introduce a teaching (Dhammapada verse, sutta, Pali term)",
+      "Explain it in everyday language",
+      "Connect to meditation practice",
+      "End with a reflective question or practice"
+    ],
+    "avoid": [
+      "Preachy or dogmatic tone",
+      "Toxic positivity",
+      "Jargon without explanation",
+      "Quick fixes or instant results",
+      "Judgmental language"
+    ]
+  },
+  "meditation_practices": [
+    {
+      "name": "Body Scan",
+      "description": "Systematically noticing sensations throughout the body. Cultivates patience and presence.",
+      "duration": "10-30 minutes",
+      "posts": [
+        "the-strength-to-stay",
+        "the-quiet-work-of-change",
+        "being-real-and-honest"
+      ]
+    },
+    {
+      "name": "Mindfulness of Breath",
+      "description": "Using the breath as an anchor for attention. Noticing when the mind wanders and gently returning.",
+      "duration": "5-20 minutes",
+      "posts": [
+        "the-mind-leads-the-way",
+        "steady-sustainable-effort"
+      ]
+    },
+    {
+      "name": "Loving-Kindness (Metta) Meditation",
+      "description": "Offering phrases of goodwill to oneself, loved ones, neutral people, difficult people, and all beings.",
+      "duration": "10-20 minutes",
+      "phrases": [
+        "May I be happy",
+        "May I be healthy",
+        "May you be happy",
+        "May you be healthy"
+      ],
+      "posts": [
+        "uncovering-a-friendly-heart",
+        "the-strength-to-stay"
+      ]
+    },
+    {
+      "name": "Observing Thoughts",
+      "description": "Watching thoughts arise and pass without grasping or identifying with them.",
+      "duration": "10-15 minutes",
+      "posts": [
+        "the-mind-leads-the-way",
+        "a-view-is-not-the-whole"
+      ]
+    },
+    {
+      "name": "Equanimity Practice",
+      "description": "Noticing pleasant, unpleasant, and neutral experiences without grasping or resisting.",
+      "duration": "10-15 minutes",
+      "posts": [
+        "the-capacity-to-remain-balanced",
+        "an-island-within"
+      ]
+    },
+    {
+      "name": "Sound Meditation",
+      "description": "Listening to sounds without following stories about them. Noticing thought impulses and returning.",
+      "duration": "5-10 minutes",
+      "posts": [
+        "a-view-is-not-the-whole"
+      ]
+    }
+  ],
+  "key_quotes": [
+    {
+      "text": "The mind is a natural storyteller — constantly predicting, replaying, catastrophising, judging, comparing, often before we've finished our coffee.",
+      "source": "the-mind-leads-the-way"
+    },
+    {
+      "text": "Hatred never ends through hatred. By non-hate alone does it end.",
+      "source": "the-freedom-beyond-anger",
+      "teaching": "Dhammapada"
+    },
+    {
+      "text": "A poorly directed mind does more harm than an enemy, while a well-directed one does more good than your own parents.",
+      "source": "the-mind-leads-the-way",
+      "teaching": "Dhammapada v.42-43"
+    },
+    {
+      "text": "It is the capacity to stay. To stay when things don't go your way. To stay without collapsing, without retaliating, and without running away.",
+      "source": "the-strength-to-stay"
+    },
+    {
+      "text": "Can I stay with this moment without making it worse?",
+      "source": "the-strength-to-stay"
+    },
+    {
+      "text": "We do not go looking for the island. We become it.",
+      "source": "an-island-within"
+    },
+    {
+      "text": "A path becomes a path only when it is walked.",
+      "source": "the-path-beneath-our-feet"
+    },
+    {
+      "text": "Better than a thousand meaningless statements is one meaningful word which, having been heard, brings peace.",
+      "source": "better-than-a-thousand-words",
+      "teaching": "Dhammapada v.100-102"
+    },
+    {
+      "text": "What deserves your limited number of days?",
+      "source": "what-truly-matters"
+    },
+    {
+      "text": "Wisdom is the ability to see things clearly.",
+      "source": "seeing-things-clearly"
+    },
+    {
+      "text": "The bee takes the nourishment it needs and leaves no wound behind.",
+      "source": "the-scent-of-a-life-well-lived"
+    },
+    {
+      "text": "Can I give myself wholeheartedly to something without making winning the condition for my peace?",
+      "source": "the-happiness-chapter"
+    },
+    {
+      "text": "Balance is not standing still. It is the quiet inner strength that allows us to respond wisely.",
+      "source": "the-capacity-to-remain-balanced"
+    },
+    {
+      "text": "To practise metta is to remember that beneath our defences, there is still a friendly heart waiting to be uncovered.",
+      "source": "uncovering-a-friendly-heart"
+    },
+    {
+      "text": "Our words aren't only meant to be spoken — they're meant to be lived.",
+      "source": "better-than-a-thousand-words"
+    },
+    {
+      "text": "Each return is an opportunity to practise patience and attention.",
+      "source": "the-quiet-work-of-change"
+    },
+    {
+      "text": "Effort can reach a point where it gets in the way.",
+      "source": "when-persistence-stops-working"
+    },
+    {
+      "text": "Non-hate sits closer with equanimity — a refusal to swing to extremes, and a choice of not picking at our own wounds.",
+      "source": "the-freedom-beyond-anger"
+    },
+    {
+      "text": "When we loosen our grip on perceived certainty, there is room for curiosity.",
+      "source": "a-view-is-not-the-whole"
+    },
+    {
+      "text": "Awakening, healing, and growth rarely happen through one dramatic breakthrough. More often than not, they are the fruit of choosing to show up, one breath, one step, one day at a time.",
+      "source": "steady-sustainable-effort"
+    }
+  ],
+  "reflective_questions": [
+    {
+      "question": "What are the saws in your life right now?",
+      "theme": "patience",
+      "source": "the-strength-to-stay"
+    },
+    {
+      "question": "Does this need my attention because it demands it, or because it truly matters to me?",
+      "theme": "wisdom",
+      "source": "what-truly-matters"
+    },
+    {
+      "question": "Can I stay with this moment without making it worse?",
+      "theme": "patience",
+      "source": "the-strength-to-stay"
+    },
+    {
+      "question": "What do I know for sure? What am I feeling? What meaning have I given this moment?",
+      "theme": "mindfulness",
+      "source": "a-view-is-not-the-whole"
+    },
+    {
+      "question": "Can I give myself wholeheartedly to something without making winning the condition for my peace?",
+      "theme": "happiness",
+      "source": "the-happiness-chapter"
+    },
+    {
+      "question": "What would someone else conclude that you believe matters most, based on how you spend your time?",
+      "theme": "wisdom",
+      "source": "what-truly-matters"
+    },
+    {
+      "question": "What is worth giving my energy to? What drains me unnecessarily?",
+      "theme": "wise_effort",
+      "source": "steady-sustainable-effort"
+    },
+    {
+      "question": "Am I who I appear to be?",
+      "theme": "truthfulness",
+      "source": "being-real-and-honest"
+    },
+    {
+      "question": "Is there a gap between what I say and how I actually live?",
+      "theme": "right_speech",
+      "source": "better-than-a-thousand-words"
+    },
+    {
+      "question": "Who are you when nobody needs anything from you?",
+      "theme": "self-inquiry",
+      "source": "who-are-you-when-nobody-needs-anything-from-you"
+    },
+    {
+      "question": "Can I meet this person or situation I don't like with greater ease?",
+      "theme": "anger",
+      "source": "the-freedom-beyond-anger"
+    },
+    {
+      "question": "What conditions am I creating for my own growth?",
+      "theme": "mindfulness",
+      "source": "the-quiet-work-of-change"
+    }
+  ],
+  "posts": [
+    {
+      "slug": "the-quiet-work-of-change",
+      "title": "The Quiet Work of Change",
+      "subtitle": "Take A Pause Ep. 99: How properly tending to conditions will allow results to develop",
+      "date": "2026-10-12",
+      "audience": "everyone",
+      "wordcount": 490,
+      "url": "https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change",
+      "themes": [
+        "mindfulness_awareness",
+        "wise_effort",
+        "patience"
+      ],
+      "body_text": "It is easy to want a calmer mind and then become impatient with the effort involved. \n\nWe sit down to meditate, encounter the familiar distraction or drowsiness, and wonder whether anything is really changing. The wish for progress can itself become a hindrance. \n\nIn the Nava Sutta, the Buddha describes a hen caring for her eggs. Wishing for them to hatch is insufficient; she must provide warmth and proper incubation. The teaching invites us to consider the conditions we create for our own development. If we want to grow, we have to create the conditions that support our growth.\n\nOur practice can draw on four qualities associated with the four bases of power: aspiration, energy, intent, and investigation. Applied to everyday practice, these offer practical guidance:\n\n(1) Remember why we practise. \n(2) Make the effort sustainable. \n(3) Give it our attention and will. \n(4) Examine what helps or doesn’t, and adjust accordingly.\n\nThis might mean putting the phone aside, asking for twenty uninterrupted minutes, or choosing a time when we are more alert. If evening meditation repeatedly ends in drowsiness, trying the morning is a useful experiment. If we miss a day, begin again. Curiosity makes it easier to learn from these experiences without turning them into judgments about ourselves.\n\nThe same sutta describes a carpenter whose tool handle gradually wears down through daily use. The incremental change is difficult to measure, yet its cumulative effect becomes apparent. This offers a helpful perspective when we feel compelled to assess every meditation session.\n\nDuring a meditation like the body scan, this work is quiet and straightforward: notice sensations, recognise when attention has wandered, and return. Each return is an opportunity to practise patience and attention. Each practice creates the conditions for the transformation we want to see. \n\n---\n\nOver 10 and 11 October, the Take A Pause community reflected on “the quiet work of change” and patiently practiced the body scan together. We closed the session with the reading of the poem “The Seedling” by Paul Laurence Dunbar. \n\nTap Play to Meditate:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. To support Erin’s work, upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nJoin Erin at Take A Pause Live\n\nSaturdays 7:30 AM Singapore Time\n\nSundays 9:00 PM Singapore Time\n\nSometimes all we need is a pause, to understand how to live better.\n\nInitiated by Mindfulness Coach Erin Lee, we keep the spirit of Take A Pause intentionally simple: gathering at the end of each week, paying attention together, sharing a short reading, and reflecting on a key teaching to carry into the days ahead.​\n\nWe are a community not because of structure or formality, but because we show up—for ourselves and for one another—and become quiet accountability partners on this path of mindful living.\n\nAll are welcome to join!\n\nJoin Take A Pause Live",
+      "description": "Take A Pause Ep. 99: How properly tending to conditions will allow results to develop",
+      "podcast": {
+        "slug": "the-quiet-work-of-change",
+        "title": "The Quiet Work of Change",
+        "episode": "99",
+        "duration": 970.3445,
+        "duration_min": 16.2,
+        "filename": "the-quiet-work-of-change.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/ba298ba0-947a-439d-821c-7abbe70d7b9f_500x500.png"
+      }
+    },
+    {
+      "slug": "my-wellbeing-our-wellbeing",
+      "title": "My Wellbeing, Our Wellbeing",
+      "subtitle": "Take A Pause Ep. 98: How tending to ourselves transforms the way we meet one another",
+      "date": "2026-10-05",
+      "audience": "everyone",
+      "wordcount": 518,
+      "url": "https://erinmindfulmoments.substack.com/p/my-wellbeing-our-wellbeing",
+      "themes": [
+        "community_wellbeing",
+        "mindfulness_awareness",
+        "equanimity"
+      ],
+      "body_text": "Wellbeing may feel personal, yet it shapes our shared lives. This was the key theme of the latest Take A Pause Live session.\n\nWe turned to the Sedaka Sutta (SN 47.19), which describes a metaphor of two acrobats balancing on a bamboo pole. Each acrobat must attend to their own balance for both of them to be safe. \n\nThe teaching goes further: cultivating mindfulness protects both ourselves and others. \n\nWhen we tend to our own mind and body, we are at the same time taking care of our relationship with others. \n\nAnd when we choose to meet others with patience, harmlessness, goodwill, and sympathy, these qualities, in turn, help steady us.\n\nImagine a tense morning at home or a difficult conversation at work. When we pause to notice a tight jaw, tiredness, or a flash of impatience, we gain a moment to choose our response more wisely. This pause is what keeps a hurtful remark or unwholesome behaviour from landing on someone else. \n\nAnd when we listen with attentiveness and compassion to a person who is struggling, the sense of balance, steadiness and ease we are cultivating within will protect us.\n\nIn our meditation, we were invited to begin with the body: watch what is present, notice any worry or fatigue, and resist the urge to judge or fix it. \n\nWe were reminded that no perfect calm was required, and that honest awareness and acceptance of each moment offered a useful place to start.\n\nFrom there, we considered how an inner state might shape the next interaction with our experience. \n\nWe reflected on the nature of cause and effect — how a reaction to an inner state can translate into impulses and behaviours that impact our outer landscape. \n\nErin also introduced mettā, the practice of offering kind wishes to ourselves and others. \n\nWe might quietly wish for patience with our feelings and enough space to respond wisely. Then we can extend that wish to the people sharing our day.\n\nA key takeaway from practising together: Our wellbeing is interconnected. Caring for ourselves gives us more room to care for others, and caring for others can strengthen the qualities that sustain our own peace of mind.\n\n---\n\nTap Play to Meditate:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. To support Erin’s work, upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nJoin Erin at Take A Pause Live \n\nSaturdays 7:30 AM Singapore Time\n\nSundays 9:00 PM Singapore Time\n\nSometimes all we need is a pause, to understand how to live better. \n\nInitiated by Mindfulness Coach Erin Lee, we keep the spirit of Take A Pause intentionally simple: gathering at the end of each week, paying attention together, sharing a short reading, and reflecting on a key teaching to carry into the days ahead.​ \n\nWe are a community not because of structure or formality, but because we show up—for ourselves and for one another—and become quiet accountability partners on this path of mindful living. \n\nAll are welcome to join!\n\nJoin Take A Pause Live",
+      "description": "Take A Pause Ep. 98: How tending to ourselves transforms the way we meet one another",
+      "podcast": {
+        "slug": "my-wellbeing-our-wellbeing",
+        "title": "My Wellbeing, Our Wellbeing",
+        "episode": "98",
+        "duration": 837.2506,
+        "duration_min": 14.0,
+        "filename": "my-wellbeing-our-wellbeing.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/f8f05fc3-7c1c-4b5d-9287-ff5714d941cd_500x500.png"
+      }
+    },
+    {
+      "slug": "a-view-is-not-the-whole",
+      "title": "A View is Not The Whole",
+      "subtitle": "Take A Pause Ep. 97: Making room for what we don’t yet know",
+      "date": "2026-09-28",
+      "audience": "everyone",
+      "wordcount": 320,
+      "url": "https://erinmindfulmoments.substack.com/p/a-view-is-not-the-whole",
+      "themes": [
+        "truthfulness"
+      ],
+      "body_text": "How often do we feel certain about someone or something, only to realise later that we did not have the whole picture?\n\nIn a recent Take A Pause live session, we reflected on an old Buddhist story of people — blind by birth — who were each shown only one part of an elephant. \n\nOne felt its ear and described it as a basket. Another touched its foot and insisted it was like a post. \n\nEach had encountered something real. Yet each mistook that one part for the whole animal, and soon they were arguing over who was right.\n\nWe can easily recognise this in our own lives. \n\nSomeone raises their voice… that is what happened. We feel afraid… that is what we felt. \n\nThen, very quickly, the mind adds a judgement: “They wanted to hurt me.” \n\nPerhaps they did. Perhaps something else was happening. We do not yet know.\n\nThis is where a pause can help. \n\nWe can ask: What do I know for sure? What am I feeling? What meaning have I given this moment? \n\nThese questions are not about dismissing our thoughts and feelings. They help us notice the difference between our experience and our interpretation of it.\n\nWe can practise this in meditation, too. \n\nListen to the sounds around you. Feel the body, notice the breath. When a thought arises about a sound, notice the thought and any impulse to follow it. Then gently return to what is actually here.\n\nA view can be very useful, and it may even hold some truth. \n\nBut when we loosen our grip on perceived certainty, there is room for curiosity, and for what we have not yet seen.\n\n---\n\nTap Play to Meditate:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. To support Erin’s work, upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---",
+      "description": "Take A Pause Ep. 97: Making room for what we don’t yet know",
+      "podcast": {
+        "slug": "a-view-is-not-the-whole",
+        "title": "A View is Not The Whole",
+        "episode": "97",
+        "duration": 976.7445,
+        "duration_min": 16.3,
+        "filename": "a-view-is-not-the-whole.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/446d84fa-495c-4b00-bd59-2fe7d2870a6e_500x500.png"
+      }
+    },
+    {
+      "slug": "when-persistence-stops-working",
+      "title": "When Persistence Stops Working",
+      "subtitle": "Take A Pause Ep. 96: Knowing when to adjust our efforts",
+      "date": "2026-09-21",
+      "audience": "everyone",
+      "wordcount": 327,
+      "url": "https://erinmindfulmoments.substack.com/p/when-persistence-stops-working",
+      "themes": [
+        "mindfulness_awareness",
+        "wise_effort",
+        "patience"
+      ],
+      "body_text": "We are often encouraged to keep going. Persistence is celebrated as a sign of strength, and when something isn’t working, we tend to assume we just need to try harder.\n\nBut effort can reach a point where it gets in the way.\n\nIn the Sona Sutta, a monk practises walking meditation until his feet bleed. Despite his dedication, he feels he is making no progress and considers giving up.\n\nThe Buddha asks him about the lute he used to play, and helps him understand that strings that are too tight or too loose cannot make music properly. They need the right tension.\n\nOur effort needs this kind of adjustment too.\n\nWe can recognise it in meditation. \n\nWe want to be calmer, get frustrated when the mind wanders, and begin criticising ourselves. Practice becomes another thing we expect ourselves to perform well at.\n\nAt Take A Pause Live, we explored three qualities of attention: straining, drifting, and relaxed alertness.\n\nRelaxed alertness allows us to stay engaged with patience and interest. When we notice strain in the mind and body, we soften our effort. When we are drifting, we gently bring our attention back to the present moment.\n\nThis same awareness can support everyday life. \n\nWe might prepare thoughtfully for a conversation while loosening our attachment to how it turns out, or take a pause during work when we know another hour of pushing is getting us nowhere.\n\nWe can learn to recognise our need for rest without feeling guilty about it.\n\nEach new moment offers a chance to adjust and recalibrate.\n\nWith skill and wisdom, this is what we learn to ask ourselves: \n\nHow much effort does this moment — right here, right now — actually need?\n\n---\n\nTap Play to Meditate:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. To support Erin’s work, upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---",
+      "description": "Take A Pause Ep. 96: Knowing when to adjust our efforts",
+      "podcast": {
+        "slug": "when-persistence-stops-working",
+        "title": "When Persistence Stops Working",
+        "episode": "96",
+        "duration": 1064.751,
+        "duration_min": 17.7,
+        "filename": "when-persistence-stops-working.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/3924dcc0-7adb-4dd5-b7e4-3c9937e81547_500x500.png"
+      }
+    },
+    {
+      "slug": "what-truly-matters",
+      "title": "What Truly Matters",
+      "subtitle": "Take A Pause Ep. 95: What deserves your limited number of days? ",
+      "date": "2026-09-14",
+      "audience": "everyone",
+      "wordcount": 400,
+      "url": "https://erinmindfulmoments.substack.com/p/what-truly-matters",
+      "themes": [
+        "mindfulness_awareness",
+        "wise_effort",
+        "wisdom"
+      ],
+      "body_text": "As we closed our Dhammapada-inspired series on Insight Timer last weekend, the final theme of “what truly matters” reminded us of the importance of practice.\n\nVerses 11 and 12, in Gil Fronsdal’s translation, say that those who mistake the inessential to be essential, and the essential as inessential, never reach the essential. \n\nInessential here does not mean bad or wrong. Rather, it points out what is not necessary or not important.\n\nWe are often too close to our own lives to see this. \n\nSo imagine someone else looking at how you spend your time, your energy and your attention. \n\nWhat would they conclude that you believe matters most?\n\nThere is usually a gap between what we say matters to us and what our life reveals to matter to us. \n\nWe say family is everything, and then we sit with them without being present. We say we want a simple life, and then we fill every moment with stimulation. We say meditation is a priority, and then we postpone it for everything else.\n\nSo part of the practice is telling the urgent apart from the important. \n\nModern life makes everything feel urgent, with the notifications, the updates, and the deadlines. \n\nWhat is truly essential tends to come quietly. It is the conversation we keep avoiding, the body that has been struggling in the background. \n\nIt helps to ask: \n\nDoes this need my attention because it demands it, or because it truly matters to me?\n\nThe final verses turn to reflections on mortality, which is heavy — and meant to be. They are not there to create despair, but drive a healthy sense of urgency. \n\nTime is finite, and a mindful life does not just drop into our lap. We have to cultivate it, and that takes effort and practice.\n\nThis was the closing reflection I left the community with: \n\nWhat deserves your limited number of days?\n\n---\n\nAt Take A Pause Live on Insight Timer over 12-13 September 2026, we reflected on where we would like to expend our time, attention, and energy. We then listened to the poem When Death Comes by Mary Oliver. \n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. To support Erin’s work, upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---",
+      "description": "Take A Pause Ep. 95: What deserves your limited number of days?",
+      "podcast": {
+        "slug": "what-truly-matters",
+        "title": "What Truly Matters",
+        "episode": "95",
+        "duration": 857.8612,
+        "duration_min": 14.3,
+        "filename": "what-truly-matters.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/24426bc1-27ab-4ef9-bfee-1439d0a3dffa_500x500.png"
+      }
+    },
+    {
+      "slug": "the-path-beneath-our-feet",
+      "title": "The Path Beneath Our Feet",
+      "subtitle": "Take A Pause Ep. 94: Only when walking happens can the benefits of walking happen.",
+      "date": "2026-09-07",
+      "audience": "everyone",
+      "wordcount": 380,
+      "url": "https://erinmindfulmoments.substack.com/p/the-path-beneath-our-feet",
+      "themes": [
+        "the_path",
+        "patience",
+        "wise_effort"
+      ],
+      "body_text": "Seven sessions into our Dhammapada series, we arrive at the chapter called The Path. The path here is the Noble Eightfold Path - right view, right intention, right speech, and the rest.\n\nThis is the path I have proclaimed, Having pulled out the arrows. It is up to you to make strong effort. Tathagatas merely tell you how. \n\n(verse 276, trans. Gil Fronsdal)\n\nTathagatas are those who have arrived at the truth. They tell you about the ‘how’, and that is all they can do. \n\nYou may revere your teacher and trust the teachings completely, and still the walking is yours and yours alone. Your teacher cannot walk the path for you.\n\nUnderstanding the path is not the same as standing on it. We can name everything that’s required for walking the path and still not have put our feet down. \n\nOnly when walking happens can the benefits of walking happen.\n\nWisdom arises from practice. Without practice, it decays.\n\n(verse 282, trans. Gil Fronsdal)\n\nCause and effect, stated plainly. Practice, and wisdom grows. Leave it, and knowledge stays knowledge, never becoming a true knowing.\n\nThe Buddha did not ask for these words to be believed. Ehipassiko, he said - come and see for yourself. So there is nothing here to take on faith. \n\nA path becomes a path only when it is walked.\n\nAnd there is no need to wait, for the path is right under our feet. \n\nIt is in everyday life — how we hold our minds this morning, in what our hands do today, in the words we offer the people in front of us. \n\nIt is also remarkably simple — do no harm, engage in what is skilful, and purify your own mind. \n\nMay we all start walking, and keep walking. \n\n---\n\nAt Take A Pause Live on Insight Timer over 5-6 September 2026, we practiced walking the path right here, right now, through mindfulness meditation. We then shared a reading from Erin Lee’s Take A Pause: Waking Up to a Life of Clarity. \n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. To support Erin’s work, upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare",
+      "description": "Take A Pause Ep. 94: Only when walking happens can the benefits of walking happen.",
+      "podcast": {
+        "slug": "the-path-beneath-our-feet",
+        "title": "The Path Beneath Our Feet",
+        "episode": "94",
+        "duration": 1188.5192,
+        "duration_min": 19.8,
+        "filename": "the-path-beneath-our-feet.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/81aa7f98-9725-4ac6-b60c-33cabf0c4b9f_500x500.png"
+      }
+    },
+    {
+      "slug": "the-scent-of-a-life-well-lived",
+      "title": "The Scent of a Life Well Lived",
+      "subtitle": "Take A Pause Ep. 93: May we move through this world gently ",
+      "date": "2026-08-31",
+      "audience": "everyone",
+      "wordcount": 528,
+      "url": "https://erinmindfulmoments.substack.com/p/the-scent-of-a-life-well-lived",
+      "themes": [
+        "ethical_living",
+        "right_speech",
+        "the_path"
+      ],
+      "body_text": "Six sessions into our Dhammapada-inspired series, we arrive at the chapter called Flowers.\n\nAs a bee gathers nectar \nAnd moves on without harming \nThe flower, its color, or its fragrance, \nJust so should a sage walk through a village.\n\n(verse 49, trans. Gil Fronsdal)\n\nThe bee takes the nourishment it needs and leaves no wound behind. \n\nNow don’t be mistaken — this is not a call to have no impact at all. It is an invitation to thoughtful participation. Instead of asking what we can get from a place, we can be more cognisant of what we will leave behind once we have passed through it. \n\nCan I disagree with someone without humiliating them? Can I receive care from a community without taking it for granted?\n\nVerse 50 then turns our attention inward.\n\nIt is easy to look outward and begin sorting the world into what should and shouldn’t be done. This verse asks us to turn the other way first and ask what I have done, and what I have left undone. \n\nCultivating goodness is self-cultivation before it is anything else, and looking inward is what keeps it from hardening into self-righteousness.\n\nJust as from a heap of flowers \nMany garlands can be made, \nSo you, with your mortal life, \nShould do many skillful things.\n\n(verse 53, trans. Gil Fronsdal)\n\nGoodness is rarely one heroic act. Instead, it is often found in many ordinary moments: the tray returned at the food court, the trolley pushed back at the supermarket, the cruel post we decline to forward on our socials. \n\nA life is fragrant because of the little good things we repeatedly do.\n\nVerses 54 to 56 tell us that the scent of a virtuous person travels even against the wind. \n\nSo think of who has quietly influenced you on one way or another — an acquaintance who treats service staff with respect, a colleague who never joins the office gossip. \n\nFlowers are not fragrant because we are watching them. Likewise, goodness is not meant to be performative; it quietly influences through embodiment. \n\nVerses 58 and 59 leave us with the image of a sweet-smelling lotus growing in a heap of rubbish. \n\nWe have a saying — “no mud, no lotus.” The messiness of our lives is not what we have to clear away before practice begins. It is what we practice with, and through this mess, wisdom and compassion emerge, and the scent of goodness arrives. \n\nMay we move through the world gently, and thoughtfully. \n\n---\n\nAt Take A Pause Live on Insight Timer over 29-30 August 2026, we reflected on the kind of presence we’d like to leave in this world. We then shared a reading from Yung Pueblo’s The Way Forward. \n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. To support Erin’s work, upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\n1–5 October 2026 · Siem Reap, Cambodia\n\nwith Erin Lee\n\n*Early bird rate available\n\nLearn More about this Retreat\n\n---\n\nNew to Retreats with Erin?\n\nHere’s what to expect.\n\nRetreat Guide",
+      "description": "Take A Pause Ep. 93: May we move through this world gently",
+      "podcast": {
+        "slug": "the-scent-of-a-life-well-lived",
+        "title": "The Scent of a Life Well Lived",
+        "episode": "93",
+        "duration": 1079.3013,
+        "duration_min": 18.0,
+        "filename": "the-scent-of-a-life-well-lived.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/ce591d29-13d7-4045-b408-5887303c4ac6_500x500.png"
+      }
+    },
+    {
+      "slug": "the-happiness-chapter",
+      "title": "The Happiness Chapter",
+      "subtitle": "Take A Pause Episode 92: A practice of putting down, rather than adding.",
+      "date": "2026-08-24",
+      "audience": "everyone",
+      "wordcount": 409,
+      "url": "https://erinmindfulmoments.substack.com/p/the-happiness-chapter",
+      "themes": [
+        "happiness",
+        "mindfulness_awareness"
+      ],
+      "body_text": "Five sessions into our Dhammapada series, we arrive at the theme of happiness. The teachings are so often heard as suffering, suffering, suffering… and yet there really is a whole chapter on happiness.\n\nAh, so happily we live, without ambition among those with ambition.\n\n(verse 199, trans. Gil Fronsdal)\n\nNow don’t be mistaken — this is not about withdrawing from the world. We are part of this ecosystem, and we are participating. \n\nWe simply stop letting its agitations reproduce inside us. \n\nSomeone else’s anger in the office does not have to become our anger. \n\nA consumer culture repeating “more, more, more” does not have to turn into a sense of lacking within us.\n\nThe text tells us that victory gives birth to hate, that the defeated sleep in anguish, and that those who give up both sleep happily. \n\nModern life is very much organised around a scoreboard — who performed better, whose opinion won, who was right. \n\nThere is suffering on both sides of that board, and this includes the winning side, when we hold tightly to what we win.\n\nThere is nothing wrong with winning, of course, and nothing wrong with aspiration; in fact, our practice carries one of the largest aspirations of all — the complete freedom from suffering. \n\nThe invitation is a little quieter: \n\nCan I give myself wholeheartedly to something without making winning the condition for my peace?\n\nWith this, our understanding of happiness moves from a merely pleasurable experience to freedom from what we are bound to or compelled by.\n\nHappiness comes from what we choose to put down, not what we acquire or add to our lives.\n\nSo this week, before reaching for one more thing, let us notice what is already present, and see that just being here, alive and breathing, is perhaps enough.\n\n---\n\nAt Take A Pause Live on Insight Timer over 22-23 August 2026, we cultivated a sense of enough-ness with a body awareness meditation. We then listened to the poem, So Much Happiness, by Naomi Shihab Nye. \n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. To support Erin’s work, upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\n1–5 October 2026 · Siem Reap, Cambodia\n\nwith Erin Lee\n\n*Early bird rate available\n\nLearn More about this Retreat\n\n---\n\nNew to Retreats with Erin?\n\nHere’s what to expect.\n\nRetreat Guide",
+      "description": "Take A Pause Episode 92: A practice of putting down, rather than adding.",
+      "podcast": {
+        "slug": "the-happiness-chapter",
+        "title": "The Happiness Chapter",
+        "episode": "92",
+        "duration": 777.1429,
+        "duration_min": 13.0,
+        "filename": "the-happiness-chapter.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/2e1758f5-702a-4713-9503-1945b46d690f_500x500.png"
+      }
+    },
+    {
+      "slug": "an-island-within",
+      "title": "An Island Within",
+      "subtitle": "Take A Pause Ep. 91: Staying steady with our inner refuge",
+      "date": "2026-08-17",
+      "audience": "everyone",
+      "wordcount": 384,
+      "url": "https://erinmindfulmoments.substack.com/p/an-island-within",
+      "themes": [
+        "equanimity",
+        "wise_effort",
+        "determination"
+      ],
+      "body_text": "Four sessions into our Dhammapada-inspired series, the text offers us a few metaphors:\n\nThrough effort, vigilance, \nRestraint, and self-control, \nThe wise person can become an island \nNo flood will overwhelm.\n\n(verse 25, trans. Gil Fronsdal)\n\nWe do not go looking for the island. We become it.\n\nThe floods in our life are ordinary enough. They are other people’s opinions of your work, a conflict you did not ask for, the plain uncertainty of being alive. \n\nThey come and go as they wish, and they will not stop coming because you have started practicing.\n\nThe text then turns from water to wind: \n\nA solid mass of rock is not moved by the wind (verse 81).\n\nIn the teachings there are eight worldly winds - gain and loss, pleasure and pain, praise and blame, fame and disrepute. The pleasant four blow just as hard as the others, only because we hold them tightly and they leave anyway.\n\nNow don’t be mistaken — being a rock is not being cold, or unresponsive, or hidden away. The rock sits bravely out in the open. It meets the wind, and it stays.\n\nOneself, indeed, is one’s own protector. What other protector could there be? (verse 160)\n\nThis verse sits in a chapter called Oneself, which is not about self-importance. It is about ownership. \n\nWe can have teachers we trust and wise friends we lean on, but they guide us from outside. \n\nTaking ownership of our own mind means staying with ourselves in difficulty rather than abandoning ourselves there, and being willing to say: I am worth this effort.\n\n---\n\nAt Take A Pause Live on Insight Timer over 15-16 August 2026, we cultivated our inner refuge through staying with the body in the midst of “floods” and “winds”. We shared a reading from Erin’s book, Take A Pause: Waking Up to a Life of Clarity. \n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. To support Erin’s work, upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\n1–5 October 2026 · Siem Reap, Cambodia\n\nwith Erin Lee\n\n*Early bird rate available \n\nLearn More about this Retreat\n\n---\n\nNew to Retreats with Erin? \n\nHere’s what to expect.\n\nRetreat Guide",
+      "description": "Take A Pause Ep. 91: Staying steady with our inner refuge",
+      "podcast": {
+        "slug": "an-island-within",
+        "title": "An Island Within",
+        "episode": "91",
+        "duration": 1064.4636,
+        "duration_min": 17.7,
+        "filename": "an-island-within.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/ac2694e6-c1d9-49e7-aefd-bcbb1e1d616b_500x500.png"
+      }
+    },
+    {
+      "slug": "join-erin-at-impact-week-2026",
+      "title": "Join Erin at Impact Week 2026",
+      "subtitle": "Learn the art of non-reactivity and letting go",
+      "date": "2026-08-13",
+      "audience": "only_paid",
+      "wordcount": 408,
+      "url": "https://erinmindfulmoments.substack.com/p/join-erin-at-impact-week-2026",
+      "themes": [
+        "mindfulness_awareness"
+      ],
+      "body_text": "I am once again hosting a few mindfulness sessions at Impact Week this year. \n\nThese themes are curated around a single, quiet skill — the pause. Not the productivity kind, where you stop only to briefly catch your breath before diving back in, but the deeper kind that lets you notice an impulse before you act on it, and discern a pressure before you agre…",
+      "description": "Learn the art of non-reactivity and letting go",
+      "podcast": null
+    },
+    {
+      "slug": "better-than-a-thousand-words",
+      "title": "Better Than A Thousand Words",
+      "subtitle": "Take A Pause Ep. 90: On saying less, and living what we say",
+      "date": "2026-08-10",
+      "audience": "everyone",
+      "wordcount": 507,
+      "url": "https://erinmindfulmoments.substack.com/p/better-than-a-thousand-words",
+      "themes": [
+        "right_speech",
+        "ethical_living",
+        "patience"
+      ],
+      "body_text": "We live in an age of too many words. \n\nContent is constantly produced, and constantly consumed. We’re communicating more, but are we communicating better?\n\nThe Dhammapada puts it plainly: \n\n“Better than a thousand meaningless statements is one meaningful word which, having been heard, brings peace” (verses 100-102, trans. Gil Fronsdal). \n\nNot more words, but wiser ones.\n\nThen this, from the same text: \n\n“Like a beautiful flower, brightly coloured but lacking scent, so are well-spoken words, fruitless when not carried out” (verses 51-52, trans. Gil Fronsdal). \n\nA flower can look lovely and still have nothing to give. So can our words.\n\nCarried out — that’s the phrase I keep returning to. \n\nOur words aren’t only meant to be spoken - they’re meant to be lived. So the question isn’t did I say the right thing, but is there a gap between what I say and how I actually live? Is there alignment between my speech and my action, or is there dissonance?\n\nI always sit with this one. I can speak very beautifully about compassion, and then find myself snapping at my family. I can give someone gentle advice about patience, and then lose my temper at a service counter minutes later. The words were true. They just weren’t carried out.\n\nThis is where restraint comes in, and I want to clarify a possible misreading of it. Restraint is not suppression. It’s self-regulation - noticing the anger, the judgement, the opinion forming, and knowing it doesn’t have to become that sarcastic email, the harmful gossip, the harsh comment.\n\nMindful speech isn’t about being agreeable, either. It can be firm, with boundaries. It just has to be skillful and wise.\n\nSo before your next difficult conversation, ask yourself: what impact will my words have? What do I want my words to leave behind?\n\n---\n\nAt Take A Pause Live on Insight Timer over 8-9 August 2026, we reflected on speaking more skillfully and wisely, keeping intention and impact of our words in mind. We closed the session with a reading from Eight Mindful Steps to Happiness by Bhante Gunaratana. \n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. Upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nIf the question of alignment stays with you - the gap between what we say and how we actually live - it’s the same space we’ll be sitting with at The Wholehearted Woman Retreat this October.\n\nOver five days near the temples of Angkor, we loosen the grip of perfection, achievement and constant positivity, and return instead to something steadier: a life where our words and our actions are no longer two separate performances. \n\nWe step out of the many roles we carry - professional, partner, mother, daughter, leader - and back into the gentle strength that was always there, carried out rather than just spoken of.\n\nThe Wholehearted Woman Retreat \n1–5 October 2026 · Siem Reap, Cambodia\n\nwith Erin Lee\n\nLearn More about this Retreat",
+      "description": "Listen now | Take A Pause Ep. 90: On saying less, and living what we say",
+      "podcast": {
+        "slug": "better-than-a-thousand-words",
+        "title": "Better Than A Thousand Words",
+        "episode": "90",
+        "duration": 994.37714,
+        "duration_min": 16.6,
+        "filename": "better-than-a-thousand-words.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/071fd6f2-5705-402d-8b50-3acf55e95c0d_500x500.png"
+      }
+    },
+    {
+      "slug": "the-freedom-beyond-anger",
+      "title": "The Freedom Beyond Anger",
+      "subtitle": "Take A Pause Ep. 89: Peace of mind that is not dependent on anyone else",
+      "date": "2026-08-04",
+      "audience": "everyone",
+      "wordcount": 439,
+      "url": "https://erinmindfulmoments.substack.com/p/the-freedom-beyond-anger",
+      "themes": [
+        "anger",
+        "mindfulness_awareness"
+      ],
+      "body_text": "Think about something that irritated you recently — perhaps not a deep wound, just a tone in a message or a decision made without you. \n\nNotice how readily the mind returns to it, and starts obsessing over it, even now.\n\nThe Dhammapada is interested in exactly that kind of fixation. \n\nThe text from this ancient collection of teachings doesn’t deny that something happened to us. It points at what the mind does afterwards — in the endless replaying and rehearsing. \n\nWhen a story is repeated enough, it can stop feeling like a memory and start to feel like a fact about who we are. This identification is where suffering sets in, rather than in the event itself. \n\n“Hatred never ends through hatred. By non-hate alone does it end,” says the teachings. \n\nNon-hate here doesn’t equate to love. The practice doesn’t ask you to feel affection towards someone who hurt you, nor is forgiveness the entry fee. \n\nNon-hate sits closer with equanimity — a refusal to swing to extremes, and a choice of not picking at our own wounds. \n\nThe Dhammapada draws a useful distinction between someone who works skilfully with anger — called a charioteer, and everyone else — merely a rein-holder: composed on the outside but still seething underneath. \n\nSuppression can easily be mistaken as having control over the emotion.\n\nThe freedom beyond anger being described here isn’t tolerance, and it isn’t passivity in the face of harm either. \n\nIt’s the capacity to meet a person or situation we don’t like with greater ease. \n\nIt is the ability to enjoy peace of mind without being dependent on someone else changing.\n\n---\n\nAt Take A Pause Live on Insight Timer over 1-2 August 2026, we practiced watching anger show up in the body and mind, moment by moment, with awareness and equanimity. We closed the session with a reading from Erin Lee’s Take A Pause: Waking up to a life of clarity.\n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. Upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\nA five-day mindfulness retreat into quiet wisdom and the light within\n\n1-5 October 2026\nSiem Reap, Cambodia\n\n*Early Bird Offer till 31 August 2026\n\nLed by Erin Lee\n\nJoin Erin at Angkor Wat\n\n---\n\nPower & Pause Retreat\n\nA high-touch program supported by structured processes, guided practices, and reflective assignments\n\n8 - 12 October 2026\nUbud, Bali\n\nLed by Subba Sattvic and Erin Lee\n\nHave a chat with Erin and Subba on the retreat program and details.\n\nArrange a Personal Chat\n\n---",
+      "description": "Take A Pause Ep. 89: Peace of mind that is not dependent on anyone else",
+      "podcast": {
+        "slug": "the-freedom-beyond-anger",
+        "title": "The Freedom Beyond Anger",
+        "episode": "89",
+        "duration": 1355.6506,
+        "duration_min": 22.6,
+        "filename": "the-freedom-beyond-anger.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/95fd82d2-73be-47d7-bb7a-436ce7fc5989_500x500.png"
+      }
+    },
+    {
+      "slug": "the-mind-leads-the-way",
+      "title": "The Mind Leads the Way",
+      "subtitle": "Take A Pause Ep. 88: How thoughts shape our experiences",
+      "date": "2026-07-27",
+      "audience": "everyone",
+      "wordcount": 466,
+      "url": "https://erinmindfulmoments.substack.com/p/the-mind-leads-the-way",
+      "themes": [
+        "mindfulness_awareness",
+        "the_path"
+      ],
+      "body_text": "Two people can walk away from the same experience with completely different stories. \n\nOne replays it all evening, simmering. The other has already moved on. Same event, different state of mind.\n\nThe Dhammapada opens with this: \n\nEvery experience is shaped by the mind that meets it. An agitated mind, and stress trails you like a shadow; a settled mind, and ease follows just as faithfully (v. 1-2). \n\nThis is, most straightforwardly, cause and effect.\n\nThe mind is a natural storyteller — constantly predicting, replaying, catastrophising, judging, comparing, often before we’ve finished our coffee. \n\nThe Dhammapada calls the mind “hard to control, flighty, alighting where it wishes”, but emphasises that it can be tamed, and that a watched mind brings happiness (v. 33–36). \n\nThe goal isn’t to silence the inner chatter, but to notice it: catch a spiralling thought, see it as just a thought — a mental event — rather than a verdict on reality, and let it pass instead of grasping at it.\n\nThis doesn’t mean that all hardship or misfortune is the mind’s fault, or that positive thinking fixes our problems — plenty of conditions sit outside our control. But one verse from the text puts it plainly: \n\nA poorly directed mind does more harm than an enemy, while a well-directed one does more good than your own parents (v. 42–43). \n\nThe conversation inside our own head is the one thing we always get to work with, not because nothing else matters, but because it’s the one lever we get to hold.\n\nThis, fundamentally, is a practice of ownership — learning to meet our thoughts differently, rather than being run by them. \n\nHowever each moment unfolds, the mind leads the way.\n\nNote: Verse translations are from The Dhammapada, trans. Gil Fronsdal (Shambhala, 2006).\n\n---\n\nAt Take A Pause Live on Insight Timer over 25-26 July 2026, we practiced observing thoughts arising and changing in the mind, and reflected on how our relationship with thoughts shape our experiences. We closed the session with a reading from Erin Lee’s Take A Pause: Waking up to a life of clarity. \n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. Upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\nA five-day mindfulness retreat into quiet wisdom and the light within\n\n1-5 October 2026\nSiem Reap, Cambodia\n\n*Early Bird Offer till 31 August 2026\n\nLed by Erin Lee\n\nJoin Erin at Angkor Wat\n\n---\n\nPower & Pause Retreat\n\nA high-touch program supported by structured processes, guided practices, and reflective assignments\n\n8 - 12 October 2026\nUbud, Bali\n\nLed by Subba Sattvic and Erin Lee\n\nHave a chat with Erin and Subba on the retreat program and details.\n\nArrange a Personal Chat\n\n---",
+      "description": "Take A Pause Ep. 88: How thoughts shape our experiences",
+      "podcast": {
+        "slug": "the-mind-leads-the-way",
+        "title": "The Mind Leads the Way",
+        "episode": "88",
+        "duration": 1249.5935,
+        "duration_min": 20.8,
+        "filename": "the-mind-leads-the-way.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/f1e22a99-cd2f-43cd-b962-3bd8df641d27_500x500.png"
+      }
+    },
+    {
+      "slug": "the-capacity-to-remain-balanced",
+      "title": "The Capacity to Remain Balanced",
+      "subtitle": "Take A Pause Ep. 87: Staying grounded no matter how the winds blow",
+      "date": "2026-07-20",
+      "audience": "everyone",
+      "wordcount": 367,
+      "url": "https://erinmindfulmoments.substack.com/p/the-capacity-to-remain-balanced",
+      "themes": [
+        "equanimity",
+        "mindfulness_awareness",
+        "wise_effort"
+      ],
+      "body_text": "We often imagine balance as a life in which nothing difficult happens. \n\nBut a life with upekkha, translated as equanimity, is not absent of disruption. It is having the capacity to remain steady and grounded while everything continues to move. \n\nThe Pali word upekkha suggests “looking on steadily” — meeting each experience with clarity rather than indifference. \n\nPraise and blame, gain and loss, recognition and criticism, pleasure and pain: these winds are always blowing. \n\nEquanimity does not ask us to avoid them, suppress our feelings, or become emotionally distant. \n\nIt helps us notice when we are being pulled too strongly towards what we like, or pushed away by what we dislike.\n\nThis steadiness matters especially when we care deeply. Without it, generosity can become depletion, determination can become strain, and compassion can become burnout. \n\nWith equanimity, we can offer care without being overly fixated on outcomes we cannot control.\n\nThe practice begins in ordinary moments: noticing pleasant, unpleasant, or neutral experiences without immediately grasping, resisting, or drifting away. \n\nIn other words, we learn to stay present without being swept away.\n\nBalance is not standing still. \n\nIt is the quiet inner strength that allows us to respond wisely, offer care sustainably, and hold the results of our efforts a little more lightly each day.\n\n---\n\nAt Take A Pause Live on Insight Timer over 18-19 July 2026, we practiced cultivating equanimity towards pleasant and unpleasant experiences. We closed the session with a reading of the poem Me Imperturbe by Walt Whitman.\n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. Upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\nA five-day mindfulness retreat into quiet wisdom and the light within\n\n1-5 October 2026\nSiem Reap, Cambodia\n*Early Bird Offer till 31 August 2026\n\nLed by Erin Lee\n\nJoin Erin at Angkor Wat\n\n---\n\nPower & Pause Retreat\n\nA high-touch program supported by structured processes, guided practices, and reflective assignments\n\n8 - 12 October 2026\nUbud, Bali\n\nLed by Subba Sattvic and Erin Lee\n\nHave a chat with Erin and Subba on the retreat program and details.\n\nArrange a Personal Chat\n\n---",
+      "description": "Take A Pause Ep. 87: Staying grounded no matter how the winds blow",
+      "podcast": {
+        "slug": "the-capacity-to-remain-balanced",
+        "title": "The Capacity to Remain Balanced",
+        "episode": "87",
+        "duration": 974.57635,
+        "duration_min": 16.2,
+        "filename": "the-capacity-to-remain-balanced.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/4030a766-b558-4f9f-b4c8-78b93ef4e861_500x500.png"
+      }
+    },
+    {
+      "slug": "early-bird-now-open-the-wholehearted-woman",
+      "title": "Early Bird Now Open: The Wholehearted Woman Retreat",
+      "subtitle": "Save your place and join us at Angkor, Siem Reap",
+      "date": "2026-07-17",
+      "audience": "everyone",
+      "wordcount": 310,
+      "url": "https://erinmindfulmoments.substack.com/p/early-bird-now-open-the-wholehearted-woman",
+      "themes": [
+        "mindfulness_awareness"
+      ],
+      "body_text": "Sometimes, all we really need is a little space to hear ourselves again.\n\nFrom 1–5 October 2026, I’ll be leading The Wholehearted Woman, a five-day mindfulness retreat near the ancient temples of Angkor in Siem Reap, Cambodia.\n\nThis retreat is an invitation to step away from the many roles we carry — as professionals, partners, mothers, daughters, caregivers and leaders — and reconnect with the human being beneath them all.\n\nOver five days, we will move through a gentle journey of Softening, Listening, Clarity, Strength, and Carrying the Light Home. There will be meditation and mindfulness practices, quiet reflection, time in nature, meaningful conversations, rest, and a special excursion to Angkor.\n\nWe are not retreating from life. \n\nWe are creating enough space to see how we have been living, and how we might return to our everyday lives with greater presence, self-compassion and inner steadiness.\n\nThe retreat will be held at TUI BLUE Angkor Grace Wellness Resort, a beautiful villa-style property in Siem Reap. \n\nThe spacious setting also means that you may choose to bring your family along. While you take part in the retreat programme, they can enjoy their own holiday and time at the resort — and you can still share parts of the journey together outside the scheduled sessions. \n\nPlease reach out to discuss the most suitable accommodation arrangements and any additional considerations for accompanying family members.\n\nYour retreat package includes four nights’ accommodation, full-board meals, airport transfers, retreat sessions and the Angkor excursion.\n\nEarly Bird Offer\n\nAvailable until 31 August 2026:\n\nSingle occupancy: USD 1,689\n\nDouble occupancy: USD 1,295 per person\n\nFrom 1 September 2026, the full prices will be:\n\nSingle occupancy: USD 1,875\n\nDouble occupancy: USD 1,435 per person\n\nPerhaps this is just the pause you’ve been needing — a few days to soften, listen inwardly and remember the quiet strength already within you.\n\nLearn more and save your place\n\n---",
+      "description": "Save your place and join us at Angkor, Siem Reap",
+      "podcast": null
+    },
+    {
+      "slug": "uncovering-a-friendly-heart",
+      "title": "Uncovering a Friendly Heart",
+      "subtitle": "Take A Pause Ep. 86: What unconditional goodwill means",
+      "date": "2026-07-13",
+      "audience": "everyone",
+      "wordcount": 360,
+      "url": "https://erinmindfulmoments.substack.com/p/uncovering-a-friendly-heart",
+      "themes": [
+        "loving_kindness",
+        "patience",
+        "the_path"
+      ],
+      "body_text": "Metta is often translated as loving-kindness, and at its root is something very simple: friendliness. \n\nNot so much politeness, not people-pleasing, and definitely not pretending everything is fine. \n\nA friendly heart is one that learns to wish well, even when life feels difficult, even when another person is difficult, even when we ourselves feel difficult to love.\n\nThis does not mean we abandon boundaries. \n\nWe can say no, disagree, walk away, or hold someone accountable, and still choose not to feed hatred and hostility in our own hearts. \n\nMetta is not weakness. \n\nIt is a quiet strength that helps us soften the sharp edges of resentment without denying what has happened.\n\nThe practice can begin simply. \n\nBring to mind someone you care for and offer a few quiet phrases: May you be happy. May you be healthy. \n\nThen, slowly, extend the same wishes to yourself, to someone neutral, to someone challenging, and eventually to all beings.\n\nSome days, the words may feel mechanical, and that is okay. \n\nThe heart does not always open dramatically. Sometimes it softens subtly, almost imperceptibly.\n\nTo practise metta is to remember that beneath our defences, there is still a friendly heart waiting to be uncovered.\n\nAt Take A Pause Live on Insight Timer over 11 - 12 July 2026, we practiced extending thoughts of kindness and unconditional goodwill to ourselves and others. We closed the session with a reading from the book Loving Kindness in Plain English by Bhante Gunaratana. \n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. Upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\nA five-day mindfulness retreat into quiet wisdom and the light within\n\n1-5 October 2026\nSiem Reap, Cambodia\n*Limited space available\n\nLed by Erin Lee\n\nJoin Erin at Angkor Wat\n\n---\n\nPower & Pause Retreat\n\nA high-touch program supported by structured processes, guided practices, and reflective assignments\n\n8 - 12 October 2026\n\nUbud, Bali\n\nLed by Subba Sattvic and Erin Lee\n\nHave a chat with Erin and Subba on the retreat program and details.\n\nArrange a Personal Chat",
+      "description": "Take A Pause Ep. 86: What unconditional goodwill means",
+      "podcast": {
+        "slug": "uncovering-a-friendly-heart",
+        "title": "Uncovering a Friendly Heart",
+        "episode": "86",
+        "duration": 1105.7372,
+        "duration_min": 18.4,
+        "filename": "uncovering-a-friendly-heart.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/824b4271-a29c-45f7-8e67-8dfbca6fff04_500x500.png"
+      }
+    },
+    {
+      "slug": "how-do-you-holiday",
+      "title": "How Do You Holiday?",
+      "subtitle": "Rethinking the way we travel",
+      "date": "2026-07-09",
+      "audience": "only_paid",
+      "wordcount": 1127,
+      "url": "https://erinmindfulmoments.substack.com/p/how-do-you-holiday",
+      "themes": [
+        "mindfulness_awareness"
+      ],
+      "body_text": "A bench in Xishuangbanna inviting passers-by to “waste time with interesting people”.\n\nOver the past week, I travelled through Kunming and Xishuangbanna in Yunnan. As with every trip, people ask me where I’ve been, what I’ve seen, and what I would recommend. While those are enjoyable conversations, I realise I’ve been thinking about something else:\n\nHow do …",
+      "description": "Rethinking the way we travel",
+      "podcast": null
+    },
+    {
+      "slug": "who-are-you-when-nobody-needs-anything-from-you",
+      "title": "Who Are You When Nobody Needs Anything From You?",
+      "subtitle": "Recognising parts of you that have grown quiet from the demands of everyday life",
+      "date": "2026-07-06",
+      "audience": "only_paid",
+      "wordcount": 411,
+      "url": "https://erinmindfulmoments.substack.com/p/who-are-you-when-nobody-needs-anything-from-you",
+      "themes": [
+        "mindfulness_awareness"
+      ],
+      "body_text": "Dear You:\n\nThere are so many ways you are needed.\n\nYou may be needed as a parent, a child, a partner, a friend, a colleague, a leader, a caregiver. \n\nYou’ve learned to anticipate, organise, remember, respond to people and situations. \n\nYou’ve become capable at holding things together, without noticing how much of yourself has been shaped around what others requ…",
+      "description": "Recognising parts of you that have grown quiet from the demands of everyday life",
+      "podcast": null
+    },
+    {
+      "slug": "committing-wholeheartedly",
+      "title": "Committing Wholeheartedly",
+      "subtitle": "Take A Pause Ep. 85: Holding steady when things get hard ",
+      "date": "2026-06-30",
+      "audience": "everyone",
+      "wordcount": 323,
+      "url": "https://erinmindfulmoments.substack.com/p/committing-wholeheartedly",
+      "themes": [
+        "determination",
+        "mindfulness_awareness",
+        "wise_effort"
+      ],
+      "body_text": "There is a quality of heart the teachings call adhiṭṭhāna — determination, resolve, the kind of commitment that holds steady when things get hard. \n\nIt isn’t sheer willpower, and it isn’t rigidity. Adhiṭṭhāna is something more grounded than that.\n\nAt my first Vipassana retreat, I learned what it really means to stay. \n\nThe instruction was simple: do your best not to move. No shifting posture, no opening your eyes. \n\nI took it seriously, and what followed was some of the most intense discomfort I’d ever sat with. Physical pain, mental anguish, swirling anxiety, burning anger, the urge to get up and walk out. \n\nBut I stayed. \n\nAnd at some point, something changed. The pain was still there, but it no longer had the same hold on me. I felt calm, even aware. \n\nThat was my first real taste and cultivation of adhiṭṭhāna.\n\nIn everyday life, we tend toward extremes — pushing hard, then giving up entirely when results don’t come quickly. \n\nAdhiṭṭhāna is what keeps us from falling back into that cycle. More than motivation, which comes and goes, this is a deeper commitment to staying the course.\n\nAnd when we lapse? We begin again. That, too, is part of the practice.\n\n---\n\nAt Take A Pause Live over 27-28 June 2026, we dwelled in moment-by-moment awareness and learned to cultivate the capacity to stay, reminding ourselves of our wholehearted commitment to the practice. We closed the session with a reading from the book The First Free Women by Matt Weingast.\n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for some time, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. Upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\nA five-day mindfulness retreat into quiet wisdom and the light within\n\n1-5 October 2026\nSiem Reap, Cambodia\n\n*Limited space available\n\nLed by Erin Lee\n\nJoin Erin at Angkor Wat\n\n---",
+      "description": "Take A Pause Ep. 85: Holding steady when things get hard",
+      "podcast": {
+        "slug": "committing-wholeheartedly",
+        "title": "Committing Wholeheartedly",
+        "episode": "85",
+        "duration": 1256.2546,
+        "duration_min": 20.9,
+        "filename": "committing-wholeheartedly.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/af384497-7777-40f6-92b7-14366a7ec4e1_500x500.png"
+      }
+    },
+    {
+      "slug": "being-real-and-honest",
+      "title": "Being Real and Honest",
+      "subtitle": "Take A Pause Ep. 84: A practice of living in alignment with reality",
+      "date": "2026-06-23",
+      "audience": "everyone",
+      "wordcount": 316,
+      "url": "https://erinmindfulmoments.substack.com/p/being-real-and-honest",
+      "themes": [
+        "truthfulness",
+        "mindfulness_awareness",
+        "wisdom"
+      ],
+      "body_text": "What does it mean to truly be honest? Not just with others, but with ourselves?\n\nIn Buddhist teachings, there’s a quality of heart called sacca — often translated as truthfulness or authenticity. \n\nAnd it’s more than just not lying. \n\nIt’s about living in alignment with reality: making sure our words, actions, and intentions actually match up.\n\nIn everyday life, this may be harder than it sounds.\n\nWe live in an age of curated identities. Social media nudges us into performance mode — presenting the best version of ourselves rather than the real one. \n\nSacca invites us to pause and ask: Am I who I appear to be?\n\nIt also shows up in subtler ways. \n\nWhen we do something kind, is there a small ego boost in it? When we set a boundary, is fear quietly driving that decision? When we love someone, is it truly unconditional — or does it come with strings?\n\nNone of this is about self-judgment. It’s simply about seeing clearly.\n\nAnd there’s a practical piece too: keeping our word. \n\nWhen we make a commitment, do you follow through?\n\nCultivating this kind of honesty — gently, without self-criticism — is one of the most grounding things we can do for ourselves and for everyone around us.\n\n---\n\nAt Take A Pause Live over 20 & 21 June 2026, we practiced body awareness and learned to meet each moment of our experience truthfully, as it it. We closed the session with a reading of the poem Telescope by Louise Glück. \n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for 4 weeks, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. Upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\nA five-day mindfulness retreat into quiet wisdom and the light within\n\n1-5 October 2026\nSiem Reap, Cambodia\n\nLed by Erin Lee\n\nJoin Erin at Angkor Wat",
+      "description": "Take A Pause Ep. 84: A practice of living in alignment with reality",
+      "podcast": {
+        "slug": "being-real-and-honest",
+        "title": "Being Real and Honest",
+        "episode": "84",
+        "duration": 800.9404,
+        "duration_min": 13.3,
+        "filename": "being-real-and-honest.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/71a3c099-dd46-4bd4-ab69-2ac0a872ac6d_500x500.png"
+      }
+    },
+    {
+      "slug": "the-strength-to-stay",
+      "title": "The Strength to Stay",
+      "subtitle": "Take A Pause Ep. 83: Patience as a quiet power",
+      "date": "2026-06-15",
+      "audience": "everyone",
+      "wordcount": 811,
+      "url": "https://erinmindfulmoments.substack.com/p/the-strength-to-stay",
+      "themes": [
+        "patience",
+        "mindfulness_awareness",
+        "loving_kindness"
+      ],
+      "body_text": "We often think of patience as something we simply have — or don’t have.\n\nTo us, it’s a personality trait, a virtue some people are born with, or something we tell ourselves to just be when things get difficult.\n\nBut khanti — patience as a quality of heart — is something far deeper than that.\n\nIt is the capacity to stay.\n\nTo stay when things don’t go your way.\n\nTo stay without collapsing, without retaliating, and without running away.\n\nThere is a teaching in the Buddhist tradition — a simile — that makes this viscerally clear. \n\nThe Buddha described a scenario in which bandits cut a person apart with a saw, bone by bone. Even then, he said, a good practitioner does not let hatred take over the heart. \n\nIt’s intentionally extreme, and we’re not meant to take it literally. That’s the nature of a simile — it stretches the imagination so the principle lands more deeply.\n\nThe point is this: no matter what comes at you, the heart can be protected.\n\nThink about our modern-day saws. The meeting that runs over, the WiFi dropping right when we need it most. The message we’ve tried to communicate ten different ways, and still no one seems to understand. The illness that isn’t healing as quickly as we would like.\n\nWhat are the saws in your life?\n\nThese moments of friction — small and large — are not obstacles to patience. They are the practice itself.\n\nThis is also a reframing of what it means to be strong.\n\nWe tend to associate strength with control: pushing through, winning, conquering. But khanti points us toward a different kind of strength — one that is deeply enduring.\n\nIt is the strength to remain present without being swept away.\n\nNot suppressing what we feel, not tolerating harm, but meeting reality as it is, without immediately adding to our suffering through reactivity.\n\nCan I stay with this moment without making it worse?\n\nThis simple question is the whole practice.\n\nKhanti asks something of us in three directions:\n\nPatience with discomfort. Life is full of things beyond our control. When we can’t immediately fix or escape what’s uncomfortable, we have a choice: to resist and suffer more, or to stay and meet it with some steadiness.\n\nPatience with others. This isn’t about putting up with people, or staying in situations that harm us. It’s about bringing more wisdom and compassion into how we respond — even when someone is difficult, even when we feel misunderstood. Kind speech is a form of patience. It takes real inner strength to soften the edges of our words when we’re frustrated.\n\nPatience with ourselves. This is perhaps the hardest one. We can be relentlessly harsh with ourselves — for not doing enough, not progressing fast enough, not being who we think we should be by now. Khanti invites us to trust a little more in the unfolding of our own path and becoming.\n\n---\n\nAt Take A Pause Live over 13 & 14 June 2026, we practiced the body scan as a way of cultivating patience.\n\nI won’t pretend the body scan is everyone’s favourite.\n\nI hear this often: “Please, not the body scan. It’s too slow, too long, too much.”\n\nAnd yet, that resistance is exactly why it’s so valuable for cultivating patience.\n\nThe body scan asks us to be with the body as it is — not to feel a certain way, not to reach a special state, but simply to notice what’s actually here. \n\nPleasant, unpleasant, neutral. Comfortable, uncomfortable. Whatever your reality is, that is what you’re meeting.\n\nAnd when the mind wanders — which it will — there will be that familiar flicker of impatience. Why can’t I focus? Why am I so restless? Why is this so hard?\n\nThose are the very moments khanti asks us to stay.\n\n---\n\nWe read the poem Wait by Galway Kinnell, and ended with some loving-kindness — a few quiet phrases offered to ourselves:\n\nMay I meet this moment with patience. \n\nMay I protect my heart from hatred and agitation. \n\nMay I breathe with this discomfort, one moment at a time. \n\nMay I remain steady when things don’t go my way.\n\n---\n\nMeditation Practice\n\nTap Play to Practice Together:\n\nThis post is free for 4 weeks, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. Upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\nA five-day mindfulness retreat into quiet wisdom and the light within\n\n1-5 October 2026\nSiem Reap, Cambodia\n\nLed by Erin Lee\n\nJoin Erin at Angkor Wat\n\n---\n\nPower & Pause Retreat\n\nA high-touch program supported by structured processes, guided practices, and reflective assignments\n\n24 - 28 September 2026\nUbud, Bali\n\nLed by Subba Sattvic and Erin Lee\n\nFree Online Intro Session\n\nRegister your interest here to join our free online introductory session to learn about the framework that we will be sharing during the program.\n\nIntro Session Details\n\n---",
+      "description": "Take A Pause Ep. 83: Patience as a quiet power",
+      "podcast": {
+        "slug": "the-strength-to-stay",
+        "title": "The Strength to Stay",
+        "episode": "83",
+        "duration": 666.671,
+        "duration_min": 11.1,
+        "filename": "the-strength-to-stay.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/a1907684-612e-41f7-b12f-10a31fb555c2_500x500.png"
+      }
+    },
+    {
+      "slug": "steady-sustainable-effort",
+      "title": "Steady, Sustainable Effort",
+      "subtitle": "Take A Pause Ep. 82: A wiser relationship with our energy",
+      "date": "2026-06-08",
+      "audience": "everyone",
+      "wordcount": 400,
+      "url": "https://erinmindfulmoments.substack.com/p/steady-sustainable-effort",
+      "themes": [
+        "wise_effort",
+        "community_wellbeing",
+        "mindfulness_awareness"
+      ],
+      "body_text": "It’s 2026. How often are we still celebrating exhaustion as a badge of honour, or mistaking constant busyness for true effort? \n\nWe push, strive, overextend, and tell ourselves we are simply being committed. \n\nAnd the parami of viriya invites us into a wiser relationship with energy.\n\nViriya is often translated as energy or effort, but it carries the spirit of courage — the courage to keep showing up, especially when life feels difficult. \n\nThis doesn’t mean we force ourselves into exhaustion. And we certainly don’t have to swing to the other extreme of giving up, checking out, or “lying flat” — 躺平 (tǎng píng), as the trending Chinese phrase goes. \n\nWe want to find the middle way between overexertion and passivity. \n\nLike tuning a string instrument, the effort cannot be too tight or too loose. It needs the right tension for harmony and balance to arise.\n\nInvestigating their relationship with viriya, the practitioner asks:\n\nWhat is worth giving my energy to? What drains me unnecessarily? What supports clarity and well-being?\n\nThis is especially important in meditation. \n\nWe show up for practice because it is well worth the effort. \n\nEach time the mind wanders, we begin again. Not harshly, not lazily, but steadily. \n\nOver time, this sustained effort becomes a quiet strength.\n\nAwakening, healing, and growth rarely happen through one dramatic breakthrough. \n\nMore often than not, they are the fruit of choosing to show up, one breath, one step, one day at a time. \n\n---\n\nMeditation Practice:\n\nOver 6-7 June 2026, the TAP community cultivated the parami of viriya with a mindfulness practice of awareness of breath. We closed the session with reading a poem by Ullie-Kaye.\n\nTap Play to Practice Together:\n\nThis post is free for 4 weeks, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. Upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\nA five-day mindfulness retreat into quiet wisdom and the light within\n\n1-5 October 2026\nSiem Reap, Cambodia\n\nLed by Erin Lee\n\nJoin Erin at Angkor Wat\n\n---\n\nPower & Pause Retreat\n\nA high-touch program supported by structured processes, guided practices, and reflective assignments\n\n24 - 28 September 2026\nUbud, Bali\n\nLed by Subba Sattvic and Erin Lee\n\nFree Online Intro Session\n\nRegister your interest here to join our free online introductory session to learn about the framework that we will be sharing during the program.\n\nIntro Session Details\n\n---",
+      "description": "Take A Pause Ep. 82: A wiser relationship with our energy",
+      "podcast": {
+        "slug": "steady-sustainable-effort",
+        "title": "Steady, Sustainable Effort",
+        "episode": "82",
+        "duration": 932.04895,
+        "duration_min": 15.5,
+        "filename": "steady-sustainable-effort.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/77a9ffa0-77b4-4898-a993-4c6c64f3cda9_500x500.png"
+      }
+    },
+    {
+      "slug": "seeing-things-clearly",
+      "title": "Seeing Things Clearly",
+      "subtitle": "Take A Pause Ep. 81: Wisdom is not the same as intelligence. ",
+      "date": "2026-06-01",
+      "audience": "everyone",
+      "wordcount": 391,
+      "url": "https://erinmindfulmoments.substack.com/p/seeing-things-clearly",
+      "themes": [
+        "mindfulness_awareness",
+        "wisdom"
+      ],
+      "body_text": "When we think about wisdom, we may associate it with knowledge, intelligence, or years of experience. \n\nFrom the perspective of mindfulness, wisdom — or paññā — is something much more profound.\n\nWisdom is the ability to see things clearly.\n\nIt is the capacity to understand what leads to suffering and what leads away from it. \n\nIt is recognising how fear, attachment, craving, and resistance shape our experience, and how often we create additional (and often unnecessary) struggle by holding on too tightly to what we want life to be.\n\nIn today’s world, we are surrounded by more information than ever before. We have access to endless opinions, perspectives, and advice. Yet despite all this knowledge, many of us still feel overwhelmed, reactive, and dissatisfied. Information alone does not guarantee wisdom.\n\nWisdom begins with pausing.\n\nWhen we slow down and pay attention, we start to observe our thoughts, emotions, and habits more clearly. \n\nWe notice what is helpful and what is not. We learn that not every thought deserves to be believed, and not every emotion needs to dictate our response.\n\nOver time, wisdom reveals itself in ordinary moments: pausing before reacting in anger, letting go of the need to be right, or accepting that change is simply part of life.\n\nWisdom is not about becoming someone who is special or highly-regarded. \n\nIt is learning to meet life as it is, with greater clarity, understanding, and ease.\n\n---\n\nMeditation Practice:\n\nOver 30-31 May 2026, the TAP community created the conditions for cultivating wisdom through a mindfulness meditation practice. We closed the session with reading a poem by Ullie-Kaye. \n\nTap Play to Practice Together:\n\nThis post is free for 4 weeks, and then archived for paid subscribers to support a sustainable, long-term sharing of mindful content. Upgrade to receive lifetime access to the full archive and ongoing updates.\n\nShare\n\n---\n\nThe Wholehearted Woman Retreat\n\nA five-day mindfulness retreat into quiet wisdom and the light within\n\n1-5 October 2026\nSiem Reap, Cambodia\n\nLed by Erin Lee\n\nJoin Erin at Angkor Wat\n\n---\n\nPower & Pause Retreat\n\nA high-touch program supported by structured processes, guided practices, and reflective assignments\n\n24 - 28 September 2026\nUbud, Bali\n\nLed by Subba Sattvic and Erin Lee\n\nFree Online Intro Session\n\nRegister your interest here to join our free online introductory session to learn about the framework that we will be sharing during the program.\n\nIntro Session Details\n\n---",
+      "description": "Take A Pause Ep. 81: Wisdom is not the same as intelligence.",
+      "podcast": {
+        "slug": "seeing-things-clearly",
+        "title": "Seeing Things Clearly",
+        "episode": "81",
+        "duration": 1112.32,
+        "duration_min": 18.5,
+        "filename": "seeing-things-clearly.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/2e93e1de-af63-4b50-9235-7247130d2e78_500x500.png"
+      }
+    }
+  ],
+  "avatar_persona": {
+    "name": "Erin",
+    "role": "Mindfulness Guide",
+    "based_on": "Erin Lee, Take A Pause series",
+    "personality": [
+      "Warm and grounded",
+      "Speaks from personal experience",
+      "Uses nature metaphors and everyday examples",
+      "Gentle but direct",
+      "Never preachy or dogmatic",
+      "Encourages curiosity over judgment",
+      "References Pali terms with clear explanations",
+      "Ends with reflective questions"
+    ],
+    "greetings": [
+      "Welcome. Let's take a pause together.",
+      "Hello. It's good to see you here.",
+      "Take a breath. What's on your mind today?",
+      "Welcome. There's nothing to fix here — just space to understand."
+    ],
+    "closing_phrases": [
+      "May you meet this moment with patience.",
+      "May your heart be protected from agitation.",
+      "May you breathe with this, one moment at a time.",
+      "May you remain steady when things don't go your way."
+    ]
+  },
+  "podcasts": {
+    "total": 19,
+    "total_duration_min": 321,
+    "episodes": [
+      {
+        "slug": "the-quiet-work-of-change",
+        "title": "The Quiet Work of Change",
+        "episode": "99",
+        "duration": 970.3445,
+        "duration_min": 16.2,
+        "filename": "the-quiet-work-of-change.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/ba298ba0-947a-439d-821c-7abbe70d7b9f_500x500.png"
+      },
+      {
+        "slug": "my-wellbeing-our-wellbeing",
+        "title": "My Wellbeing, Our Wellbeing",
+        "episode": "98",
+        "duration": 837.2506,
+        "duration_min": 14.0,
+        "filename": "my-wellbeing-our-wellbeing.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/f8f05fc3-7c1c-4b5d-9287-ff5714d941cd_500x500.png"
+      },
+      {
+        "slug": "a-view-is-not-the-whole",
+        "title": "A View is Not The Whole",
+        "episode": "97",
+        "duration": 976.7445,
+        "duration_min": 16.3,
+        "filename": "a-view-is-not-the-whole.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/446d84fa-495c-4b00-bd59-2fe7d2870a6e_500x500.png"
+      },
+      {
+        "slug": "when-persistence-stops-working",
+        "title": "When Persistence Stops Working",
+        "episode": "96",
+        "duration": 1064.751,
+        "duration_min": 17.7,
+        "filename": "when-persistence-stops-working.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/3924dcc0-7adb-4dd5-b7e4-3c9937e81547_500x500.png"
+      },
+      {
+        "slug": "what-truly-matters",
+        "title": "What Truly Matters",
+        "episode": "95",
+        "duration": 857.8612,
+        "duration_min": 14.3,
+        "filename": "what-truly-matters.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/24426bc1-27ab-4ef9-bfee-1439d0a3dffa_500x500.png"
+      },
+      {
+        "slug": "the-path-beneath-our-feet",
+        "title": "The Path Beneath Our Feet",
+        "episode": "94",
+        "duration": 1188.5192,
+        "duration_min": 19.8,
+        "filename": "the-path-beneath-our-feet.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/81aa7f98-9725-4ac6-b60c-33cabf0c4b9f_500x500.png"
+      },
+      {
+        "slug": "the-scent-of-a-life-well-lived",
+        "title": "The Scent of a Life Well Lived",
+        "episode": "93",
+        "duration": 1079.3013,
+        "duration_min": 18.0,
+        "filename": "the-scent-of-a-life-well-lived.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/ce591d29-13d7-4045-b408-5887303c4ac6_500x500.png"
+      },
+      {
+        "slug": "the-happiness-chapter",
+        "title": "The Happiness Chapter",
+        "episode": "92",
+        "duration": 777.1429,
+        "duration_min": 13.0,
+        "filename": "the-happiness-chapter.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/2e1758f5-702a-4713-9503-1945b46d690f_500x500.png"
+      },
+      {
+        "slug": "an-island-within",
+        "title": "An Island Within",
+        "episode": "91",
+        "duration": 1064.4636,
+        "duration_min": 17.7,
+        "filename": "an-island-within.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/ac2694e6-c1d9-49e7-aefd-bcbb1e1d616b_500x500.png"
+      },
+      {
+        "slug": "better-than-a-thousand-words",
+        "title": "Better Than A Thousand Words",
+        "episode": "90",
+        "duration": 994.37714,
+        "duration_min": 16.6,
+        "filename": "better-than-a-thousand-words.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/071fd6f2-5705-402d-8b50-3acf55e95c0d_500x500.png"
+      },
+      {
+        "slug": "the-freedom-beyond-anger",
+        "title": "The Freedom Beyond Anger",
+        "episode": "89",
+        "duration": 1355.6506,
+        "duration_min": 22.6,
+        "filename": "the-freedom-beyond-anger.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/95fd82d2-73be-47d7-bb7a-436ce7fc5989_500x500.png"
+      },
+      {
+        "slug": "the-mind-leads-the-way",
+        "title": "The Mind Leads the Way",
+        "episode": "88",
+        "duration": 1249.5935,
+        "duration_min": 20.8,
+        "filename": "the-mind-leads-the-way.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/f1e22a99-cd2f-43cd-b962-3bd8df641d27_500x500.png"
+      },
+      {
+        "slug": "the-capacity-to-remain-balanced",
+        "title": "The Capacity to Remain Balanced",
+        "episode": "87",
+        "duration": 974.57635,
+        "duration_min": 16.2,
+        "filename": "the-capacity-to-remain-balanced.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/4030a766-b558-4f9f-b4c8-78b93ef4e861_500x500.png"
+      },
+      {
+        "slug": "uncovering-a-friendly-heart",
+        "title": "Uncovering a Friendly Heart",
+        "episode": "86",
+        "duration": 1105.7372,
+        "duration_min": 18.4,
+        "filename": "uncovering-a-friendly-heart.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/824b4271-a29c-45f7-8e67-8dfbca6fff04_500x500.png"
+      },
+      {
+        "slug": "committing-wholeheartedly",
+        "title": "Committing Wholeheartedly",
+        "episode": "85",
+        "duration": 1256.2546,
+        "duration_min": 20.9,
+        "filename": "committing-wholeheartedly.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/af384497-7777-40f6-92b7-14366a7ec4e1_500x500.png"
+      },
+      {
+        "slug": "being-real-and-honest",
+        "title": "Being Real and Honest",
+        "episode": "84",
+        "duration": 800.9404,
+        "duration_min": 13.3,
+        "filename": "being-real-and-honest.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/71a3c099-dd46-4bd4-ab69-2ac0a872ac6d_500x500.png"
+      },
+      {
+        "slug": "the-strength-to-stay",
+        "title": "The Strength to Stay",
+        "episode": "83",
+        "duration": 666.671,
+        "duration_min": 11.1,
+        "filename": "the-strength-to-stay.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/a1907684-612e-41f7-b12f-10a31fb555c2_500x500.png"
+      },
+      {
+        "slug": "steady-sustainable-effort",
+        "title": "Steady, Sustainable Effort",
+        "episode": "82",
+        "duration": 932.04895,
+        "duration_min": 15.5,
+        "filename": "steady-sustainable-effort.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/77a9ffa0-77b4-4898-a993-4c6c64f3cda9_500x500.png"
+      },
+      {
+        "slug": "seeing-things-clearly",
+        "title": "Seeing Things Clearly",
+        "episode": "81",
+        "duration": 1112.32,
+        "duration_min": 18.5,
+        "filename": "seeing-things-clearly.mp3",
+        "art_url": "https://substack-post-media.s3.amazonaws.com/public/images/2e93e1de-af63-4b50-9235-7247130d2e78_500x500.png"
+      }
+    ]
+  }
+}
