@@ -121,7 +121,8 @@
     if (!validTime(d.bedTime) || !validTime(d.wakeTime)) return typeof d.hours === 'number' ? d.hours : null;
     var b = d.bedTime.split(':'), w = d.wakeTime.split(':');
     var mins = (Number(w[0]) * 60 + Number(w[1])) - (Number(b[0]) * 60 + Number(b[1]));
-    if (mins <= 0) mins += 24 * 60;
+    // Only a wake time earlier than bedtime crosses midnight; identical times mean no sleep, not a full day.
+    if (mins < 0) mins += 24 * 60;
     return Math.round(mins / 6) / 10;
   }
   function sleepStats(days, end) {
