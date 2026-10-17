@@ -45,7 +45,7 @@ button{font-family:inherit;color:inherit}
 .main::-webkit-scrollbar{display:none}
 
 /* Scene */
-.scene{position:relative;width:100%;aspect-ratio:4/5;overflow:hidden;background:linear-gradient(180deg,#d8c8ec 0%,#cdb9e6 50%,#d9c9ea 100%);transform-style:preserve-3d;perspective:900px}
+.scene{position:relative;width:100%;aspect-ratio:1652/1840;overflow:hidden;background:linear-gradient(180deg,#d8c8ec 0%,#cdb9e6 50%,#d9c9ea 100%);transform-style:preserve-3d;perspective:900px}
 .scene-inner{position:absolute;inset:0;transition:transform .5s ease-out;will-change:transform}
 .room-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none;transition:opacity 1.6s ease,filter 1.6s ease}
 .room-img.night{opacity:0}
@@ -91,7 +91,7 @@ button{font-family:inherit;color:inherit}
 .hotspot:hover .glow{opacity:1}
 
 /* Avatar */
-.avatar{position:absolute;left:44%;top:79%;width:12.5%;transform:translate(-50%,-100%);z-index:9;cursor:pointer;transition:left .9s cubic-bezier(.45,.05,.3,1),top .9s cubic-bezier(.45,.05,.3,1),opacity .6s;background:none;border:none;padding:0;filter:drop-shadow(0 10px 8px rgba(70,40,100,.28))}
+.avatar{position:absolute;left:50.1%;top:79%;width:11.1%;transform:translate(-50%,-100%);z-index:9;cursor:pointer;transition:left .9s cubic-bezier(.45,.05,.3,1),top .9s cubic-bezier(.45,.05,.3,1),opacity .6s;background:none;border:none;padding:0;filter:drop-shadow(0 10px 8px rgba(70,40,100,.28))}
 .avatar img{width:100%;height:auto;display:block;transform-origin:50% 100%;transition:transform .25s}
 .avatar.flip img{transform:scaleX(-1)}
 .avatar.walking img{animation:hop .36s ease-in-out infinite}
@@ -109,11 +109,11 @@ button{font-family:inherit;color:inherit}
 .avatar.poofing .poof{animation:poof .7s ease-out}
 .avatar .poof i{position:absolute;left:50%;top:55%;width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 10px 3px rgba(255,255,255,.8)}
 @keyframes poof{0%{opacity:0;transform:scale(.6)}30%{opacity:1}100%{opacity:0;transform:scale(1.5)}}
-.sleeper{position:absolute;left:36%;top:56%;width:24%;transform:translate(-50%,-50%) rotate(34deg);z-index:9;opacity:0;pointer-events:none;transition:opacity .8s;filter:drop-shadow(0 6px 8px rgba(70,40,100,.3))}
+.sleeper{position:absolute;left:43%;top:56%;width:21.4%;transform:translate(-50%,-50%) rotate(34deg);z-index:9;opacity:0;pointer-events:none;transition:opacity .8s;filter:drop-shadow(0 6px 8px rgba(70,40,100,.3))}
 .sleeper img{width:100%;display:block;animation:sleepbreathe 4s ease-in-out infinite}
 @keyframes sleepbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
 .sleeper.on{opacity:1;pointer-events:auto;cursor:pointer}
-.zzz{position:absolute;left:50%;top:40%;font:700 16px var(--serif);color:#fff;text-shadow:0 1px 6px rgba(60,30,90,.6);z-index:10;pointer-events:none;opacity:0}
+.zzz{position:absolute;left:55.4%;top:40%;font:700 16px var(--serif);color:#fff;text-shadow:0 1px 6px rgba(60,30,90,.6);z-index:10;pointer-events:none;opacity:0}
 .sleeper.on~.zzz{opacity:1}
 .zzz span{position:absolute;animation:zz 3s ease-in-out infinite;opacity:0}
 .zzz span:nth-child(2){animation-delay:1s;font-size:20px}
@@ -306,12 +306,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 }
 
 /* ---------- props and meditation ---------- */
-.prop.mat{position:absolute;left:26.5%;top:75.5%;width:24%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;filter:drop-shadow(0 4px 6px rgba(70,40,100,.18))}
-.meditator{position:absolute;left:26.5%;top:73%;width:13%;transform:translate(-50%,-62%);z-index:9;opacity:0;pointer-events:none;transition:opacity .8s;filter:drop-shadow(0 8px 8px rgba(70,40,100,.28))}
+.prop.mat{position:absolute;left:34.5%;top:75.5%;width:21.4%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;filter:drop-shadow(0 4px 6px rgba(70,40,100,.18))}
+.meditator{position:absolute;left:34.5%;top:73%;width:11.6%;transform:translate(-50%,-62%);z-index:9;opacity:0;pointer-events:none;transition:opacity .8s;filter:drop-shadow(0 8px 8px rgba(70,40,100,.28))}
 .meditator img{width:100%;display:block;animation:meditbreathe 6s ease-in-out infinite;transform-origin:50% 100%}
 @keyframes meditbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.025,1.035)}}
 .meditator.on{opacity:1;pointer-events:auto;cursor:pointer}
-.aura{position:absolute;left:26.5%;top:70.5%;width:20%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.55),rgba(201,182,230,.25) 45%,rgba(201,182,230,0) 70%);z-index:7;opacity:0;pointer-events:none;transition:opacity 1s}
+.aura{position:absolute;left:34.5%;top:70.5%;width:17.8%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.55),rgba(201,182,230,.25) 45%,rgba(201,182,230,0) 70%);z-index:7;opacity:0;pointer-events:none;transition:opacity 1s}
 .aura.on{opacity:1;animation:auraPulse 8s ease-in-out infinite}
 @keyframes auraPulse{0%,100%{transform:translate(-50%,-50%) scale(.85)}50%{transform:translate(-50%,-50%) scale(1.15)}}
 
@@ -426,7 +426,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .prop.owned img{width:100%;display:block}
 @keyframes petbob{0%,100%{transform:scale(1,1)}50%{transform:scale(1.03,.97)}}
 @keyframes propin{from{opacity:0;transform:translate(-50%,-90%) scale(.8)}to{opacity:1;transform:translate(-50%,-100%) scale(1)}}
-.holo{position:absolute;left:38%;top:72%;width:17%;transform:translate(-50%,-100%);z-index:10;opacity:0;pointer-events:none;transition:opacity 1s}
+.holo{position:absolute;left:44.8%;top:72%;width:15.1%;transform:translate(-50%,-100%);z-index:10;opacity:0;pointer-events:none;transition:opacity 1s}
 .holo.on{opacity:1}
 .holo-cone{position:absolute;left:50%;bottom:-8%;width:160%;height:120%;transform:translateX(-50%);background:linear-gradient(to top,rgba(201,182,230,.0),rgba(201,182,230,.35) 30%,rgba(230,220,250,.55) 70%,rgba(255,255,255,0));clip-path:polygon(44% 100%,56% 100%,100% 0,0 0);filter:blur(1px);animation:holoflicker 3s ease-in-out infinite}
 .holo-disc{position:relative;width:100%;aspect-ratio:1;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,.8);box-shadow:0 0 24px rgba(201,182,230,.9),inset 0 0 20px rgba(255,255,255,.5);background:#c9b6e6;animation:holobob 4s ease-in-out infinite}

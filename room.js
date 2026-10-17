@@ -13,16 +13,18 @@
 
   /* ---------- scene configuration (percent of the 4:5 scene) ---------- */
   var HOTSPOTS = [
-    { id: 'bed', x: 36, y: 56, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 42, y: 72, flip: true } },
-    { id: 'clock', x: 13.5, y: 57, label: 'Clock · record sleep', icon: 'alarm', wp: { x: 20, y: 71, flip: true } },
-    { id: 'calendar', x: 49.5, y: 44, label: 'Calendar · cycle & symptoms', icon: 'calendar_month', wp: { x: 54, y: 64, flip: false } },
-    { id: 'computer', x: 65, y: 46, label: 'Computer · learn', icon: 'computer', wp: { x: 63, y: 66, flip: false } },
-    { id: 'wardrobe', x: 81, y: 52, label: 'Wardrobe · outfits', icon: 'checkroom', wp: { x: 76, y: 73, flip: false } },
-    { id: 'diary', x: 64, y: 73, label: 'Diary · food journal', icon: 'menu_book', wp: { x: 54, y: 80, flip: false } },
-    { id: 'mat', x: 29, y: 78, label: 'Yoga mat · mindfulness with Erin', icon: 'self_improvement', wp: { x: 36, y: 81, flip: true } },
-    { id: 'window', x: 44, y: 29, label: 'Window · tonight', icon: 'dark_mode', wp: null }
+    /* Percentages are of the 1652x1840 plate (the 2026-10-18 wide floor); the room art
+     * sits 180px further right than on the original 1472px plate. */
+    { id: 'bed', x: 43, y: 56, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 48.3, y: 72, flip: true } },
+    { id: 'clock', x: 22.9, y: 57, label: 'Clock · record sleep', icon: 'alarm', wp: { x: 28.7, y: 71, flip: true } },
+    { id: 'calendar', x: 55, y: 44, label: 'Calendar · cycle & symptoms', icon: 'calendar_month', wp: { x: 59, y: 64, flip: false } },
+    { id: 'computer', x: 68.8, y: 46, label: 'Computer · learn', icon: 'computer', wp: { x: 67, y: 66, flip: false } },
+    { id: 'wardrobe', x: 83.1, y: 52, label: 'Wardrobe · outfits', icon: 'checkroom', wp: { x: 78.6, y: 73, flip: false } },
+    { id: 'diary', x: 67.9, y: 73, label: 'Diary · food journal', icon: 'menu_book', wp: { x: 59, y: 80, flip: false } },
+    { id: 'mat', x: 36.7, y: 78, label: 'Yoga mat · mindfulness with Erin', icon: 'self_improvement', wp: { x: 43, y: 81, flip: true } },
+    { id: 'window', x: 50.1, y: 29, label: 'Window · tonight', icon: 'dark_mode', wp: null }
   ];
-  var HOME = { x: 44, y: 79, flip: false };
+  var HOME = { x: 50.1, y: 79, flip: false };
   var OUTFITS = [
     { id: 'base', name: 'Cosy knit', note: 'Cream sweater & blush skirt' },
     { id: 'pajamas', name: 'Starry pyjamas', note: 'For sleepy nights' },
