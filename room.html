@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>My Room — Ovumind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { width:100%; height:100%; overflow:hidden; font-family:'Manrope',system-ui,sans-serif; background:#1a1428; }
+  #canvas-container { position:fixed; inset:0; z-index:1; }
+  canvas { display:block; }
+
+  .ui-overlay { position:fixed; inset:0; z-index:10; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; }
+
+  /* Top bar */
+  .top-bar { display:flex; align-items:center; justify-content:space-between; padding:calc(env(safe-area-inset-top) + 12px) 16px 12px; pointer-events:auto; background:linear-gradient(180deg,rgba(26,20,40,.8),transparent); }
+  .back-btn { background:rgba(255,255,255,.1); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,.15); color:#f0e8f5; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; text-decoration:none; }
+  .room-title { text-align:center; }
+  .room-title h1 { font-family:'Newsreader',serif; font-size:19px; font-weight:600; color:#f5edfa; }
+  .room-title p { font-size:10px; color:rgba(245,237,250,.55); font-weight:600; letter-spacing:.1em; text-transform:uppercase; margin-top:1px; }
+  .top-actions { display:flex; gap:8px; }
+  .icon-btn { background:rgba(255,255,255,.1); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,.15); color:#f0e8f5; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; }
+  .icon-btn:active { transform:scale(.9); }
+  .icon-btn .ms { font-size:20px; }
+
+  /* Object catalog - bottom sheet */
+  .catalog { pointer-events:auto; padding:0 12px calc(env(safe-area-inset-bottom) + 12px); }
+  .catalog-card { background:rgba(26,20,40,.85); backdrop-filter:blur(30px); border:1px solid rgba(255,255,255,.1); border-radius:24px 24px 20px 20px; overflow:hidden; max-width:460px; margin:0 auto; }
+  .catalog-handle { width:36px; height:4px; border-radius:2px; background:rgba(255,255,255,.2); margin:8px auto 0; }
+  .catalog-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px 8px; }
+  .catalog-header h3 { font-family:'Newsreader',serif; font-size:15px; font-weight:600; color:#f5edfa; }
+  .catalog-tabs { display:flex; gap:6px; padding:0 16px 10px; overflow-x:auto; scrollbar-width:none; }
+  .catalog-tabs::-webkit-scrollbar { display:none; }
+  .cat-tab { flex-shrink:0; padding:6px 14px; border-radius:99px; font:700 11px var(--sans); cursor:pointer; transition:.2s; background:rgba(255,255,255,.06); color:rgba(245,237,250,.6); border:1px solid transparent; }
+  .cat-tab.active { background:rgba(122,92,150,.3); color:#f5edfa; border-color:rgba(196,181,224,.3); }
+  .catalog-grid { display:flex; gap:8px; padding:0 16px 14px; overflow-x:auto; scrollbar-width:none; }
+  .catalog-grid::-webkit-scrollbar { display:none; }
+  .cat-item { flex-shrink:0; width:72px; display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 6px; border-radius:14px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); cursor:pointer; transition:.2s; }
+  .cat-item:active { transform:scale(.92); background:rgba(196,181,224,.15); }
+  .cat-item .emoji { font-size:28px; line-height:1; }
+  .cat-item .label { font:700 9.5px var(--sans); color:rgba(245,237,250,.7); text-align:center; }
+
+  /* Selected object controls */
+  .obj-controls { position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); display:flex; gap:8px; pointer-events:auto; }
+  .obj-ctrl-btn { width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.15); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,.2); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; }
+  .obj-ctrl-btn:active { transform:scale(.88); }
+  .obj-ctrl-btn .ms { font-size:18px; }
+  .obj-ctrl-btn.delete { background:rgba(196,122,106,.3); border-color:rgba(196,122,106,.4); }
+
+  /* Toast */
+  .toast { position:fixed; top:70px; left:50%; transform:translateX(-50%) translateY(-10px); background:rgba(26,20,40,.9); backdrop-filter:blur(20px); border:1px solid rgba(196,181,224,.3); color:#f5edfa; padding:10px 20px; border-radius:99px; font:700 12px var(--sans); z-index:100; opacity:0; transition:.3s; pointer-events:none; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* Loading */
+  .loading { position:fixed; inset:0; z-index:200; background:linear-gradient(160deg,#1a1428,#0d0a14); display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity .8s; }
+  .loading.hidden { opacity:0; pointer-events:none; }
+  .loading-orb { width:56px; height:56px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#c4b5e0,#7a5c96); animation:loadPulse 2s ease-in-out infinite; box-shadow:0 0 50px rgba(196,181,224,.4); }
+  @keyframes loadPulse { 0%,100%{transform:scale(.8);opacity:.7} 50%{transform:scale(1.1);opacity:1} }
+  .loading p { margin-top:16px; font-family:'Newsreader',serif; font-size:15px; color:rgba(245,237,250,.7); }
+
+  /* Hint */
+  .hint { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; transition:opacity .5s; }
+  .hint.hidden { opacity:0; }
+  .hint .ms { font-size:48px; color:rgba(196,181,224,.4); }
+  .hint p { font-family:'Newsreader',serif; font-size:18px; color:rgba(245,237,250,.5); margin-top:8px; }
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="loading-orb"></div>
+  <p>Building your dream room...</p>
+</div>
+
+<div id="canvas-container"></div>
+
+<div class="toast" id="toast">Tap an item to place it</div>
+
+<div class="ui-overlay">
+  <div class="top-bar">
+    <a href="mindfulness.html" class="back-btn"><span class="material-symbols-outlined">arrow_back</span></a>
+    <div class="room-title">
+      <h1>My Dream Room</h1>
+      <p>Tap items below to decorate</p>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="resetBtn" title="Reset room"><span class="material-symbols-outlined">restart_alt</span></button>
+      <button class="icon-btn" id="saveBtn" title="Save"><span class="material-symbols-outlined">bookmark</span></button>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">
+    <span class="material-symbols-outlined">touch_app</span>
+    <p>Tap items from the catalog to place them</p>
+  </div>
+
+  <div class="catalog">
+    <div class="catalog-card">
+      <div class="catalog-handle"></div>
+      <div class="catalog-header">
+        <h3>Decorate</h3>
+        <span style="font:600 10px var(--sans);color:rgba(245,237,250,.4)" id="objCount">0 items</span>
+      </div>
+      <div class="catalog-tabs" id="catTabs">
+        <div class="cat-tab active" data-cat="all">All</div>
+        <div class="cat-tab" data-cat="seating">Seating</div>
+        <div class="cat-tab" data-cat="nature">Nature</div>
+        <div class="cat-tab" data-cat="light">Light</div>
+        <div class="cat-tab" data-cat="crystals">Crystals</div>
+        <div class="cat-tab" data-cat="decor">Decor</div>
+      </div>
+      <div class="catalog-grid" id="catGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Scene ──
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x1a1428, 0.02);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 100);
+camera.position.set(6, 5, 8);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 4;
+controls.maxDistance = 18;
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.target.set(0, 1, 0);
+
+// ── Dreamy room ──
+const roomGroup = new THREE.Group();
+scene.add(roomGroup);
+
+// Floor - soft circular rug
+const floorGeo = new THREE.CircleGeometry(8, 64);
+const floorMat = new THREE.MeshStandardMaterial({
+  color: 0x3d2f52, roughness: 0.9, metalness: 0.05
+});
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+roomGroup.add(floor);
+
+// Rug center
+const rugGeo = new THREE.CircleGeometry(4, 64);
+const rugMat = new THREE.MeshStandardMaterial({
+  color: 0x7a5c96, roughness: 0.95, metalness: 0,
+  transparent: true, opacity: 0.6
+});
+const rug = new THREE.Mesh(rugGeo, rugMat);
+rug.rotation.x = -Math.PI / 2;
+rug.position.y = 0.01;
+rug.receiveShadow = true;
+roomGroup.add(rug);
+
+// Walls - soft curved backdrop
+const wallGeo = new THREE.CylinderGeometry(8, 8, 6, 64, 1, true, Math.PI * 0.2, Math.PI * 0.6);
+const wallMat = new THREE.MeshStandardMaterial({
+  color: 0x2a1f42, roughness: 0.95, metalness: 0,
+  side: THREE.DoubleSide, transparent: true, opacity: 0.5
+});
+const wall = new THREE.Mesh(wallGeo, wallMat);
+wall.position.y = 3;
+roomGroup.add(wall);
+
+// ── Lighting ──
+const ambient = new THREE.AmbientLight(0xc4b5e0, 0.5);
+scene.add(ambient);
+
+const mainLight = new THREE.DirectionalLight(0xf5c6b8, 1.2);
+mainLight.position.set(5, 10, 5);
+mainLight.castShadow = true;
+mainLight.shadow.mapSize.set(2048, 2048);
+mainLight.shadow.camera.near = 0.5;
+mainLight.shadow.camera.far = 30;
+mainLight.shadow.camera.left = -10;
+mainLight.shadow.camera.right = 10;
+mainLight.shadow.camera.top = 10;
+mainLight.shadow.camera.bottom = -10;
+scene.add(mainLight);
+
+const fillLight = new THREE.PointLight(0xc4b5e0, 1.5, 15);
+fillLight.position.set(-4, 4, -3);
+scene.add(fillLight);
+
+const warmLight = new THREE.PointLight(0xf5c6b8, 1, 10);
+warmLight.position.set(3, 2, 3);
+scene.add(warmLight);
+
+// ── Object catalog ──
+const OBJECTS = {
+  cushion: { emoji:'🪷', label:'Meditation Cushion', cat:'seating', color:0x9b7bb0, scale:1 },
+  pillow: { emoji:'🛋️', label:'Floor Pillow', cat:'seating', color:0xd49a8a, scale:0.9 },
+  chair: { emoji:'🪑', label:'Chair', cat:'seating', color:0x7a5c96, scale:1.1 },
+  plant: { emoji:'🌿', label:'Plant', cat:'nature', color:0xa8c0a0, scale:1 },
+  tree: { emoji:'🌳', label:'Small Tree', cat:'nature', color:0x8ba880, scale:1.2 },
+  flowers: { emoji:'🌸', label:'Flowers', cat:'nature', color:0xf5c6b8, scale:0.8 },
+  candle: { emoji:'🕯️', label:'Candle', cat:'light', color:0xe5c98a, scale:0.7, glow:true },
+  lamp: { emoji:'💡', label:'Lamp', cat:'light', color:0xe5c98a, scale:1, glow:true },
+  lantern: { emoji:'🏮', label:'Lantern', cat:'light', color:0xd49a8a, scale:0.9, glow:true },
+  crystal: { emoji:'💎', label:'Crystal', cat:'crystals', color:0xa8b8d8, scale:0.7, glow:true },
+  amethyst: { emoji:'🔮', label:'Amethyst', cat:'crystals', color:0x9b7bb0, scale:0.8, glow:true },
+  quartz: { emoji:'✨', label:'Quartz', cat:'crystals', color:0xc4b5e0, scale:0.6, glow:true },
+  book: { emoji:'📖', label:'Book', cat:'decor', color:0xd49a8a, scale:0.7 },
+  tea: { emoji:'🍵', label:'Tea Set', cat:'decor', color:0xa8c0a0, scale:0.7 },
+  incense: { emoji:'🪔', label:'Incense', cat:'decor', color:0xc47a6a, scale:0.6, glow:true },
+  mirror: { emoji:'🪞', label:'Mirror', cat:'decor', color:0xb8cde0, scale:0.9 },
+  rug2: { emoji:'🟣', label:'Round Rug', cat:'decor', color:0x7a5c96, scale:1.3 },
+  moon: { emoji:'🌙', label:'Moon Lamp', cat:'light', color:0xe5c98a, scale:0.8, glow:true },
+};
+
+let placedObjects = [];
+let selectedObject = null;
+let currentCat = 'all';
+
+// ── Build catalog UI ──
+function buildCatalog() {
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = '';
+  Object.entries(OBJECTS).forEach(([key, obj]) => {
+    if (currentCat !== 'all' && obj.cat !== currentCat) return;
+    const item = document.createElement('div');
+    item.className = 'cat-item';
+    item.innerHTML = `<div class="emoji">${obj.emoji}</div><div class="label">${obj.label}</div>`;
+    item.onclick = () => placeObject(key);
+    grid.appendChild(item);
+  });
+}
+buildCatalog();
+
+// Category tabs
+document.querySelectorAll('.cat-tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentCat = tab.dataset.cat;
+    buildCatalog();
+  };
+});
+
+// ── Create 3D object ──
+function createObject(key) {
+  const def = OBJECTS[key];
+  const group = new THREE.Group();
+  group.userData = { key, ...def };
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: def.color,
+    roughness: 0.6,
+    metalness: 0.15,
+    emissive: def.glow ? def.color : 0x000000,
+    emissiveIntensity: def.glow ? 0.3 : 0
+  });
+
+  // Different shapes per category
+  let geo;
+  if (def.cat === 'seating') {
+    geo = new THREE.CylinderGeometry(0.6 * def.scale, 0.7 * def.scale, 0.3 * def.scale, 24);
+  } else if (def.cat === 'nature') {
+    geo = new THREE.IcosahedronGeometry(0.5 * def.scale, 1);
+    // Add stem
+    const stemGeo = new THREE.CylinderGeometry(0.03, 0.05, 0.4 * def.scale, 8);
+    const stemMat = new THREE.MeshStandardMaterial({ color: 0x6b7a5a, roughness: 0.8 });
+    const stem = new THREE.Mesh(stemGeo, stemMat);
+    stem.position.y = -0.3 * def.scale;
+    group.add(stem);
+  } else if (def.cat === 'light') {
+    geo = new THREE.SphereGeometry(0.35 * def.scale, 24, 24);
+    // Add base
+    const baseGeo = new THREE.CylinderGeometry(0.15, 0.2, 0.2 * def.scale, 16);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x5a4a6a, roughness: 0.7 });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = -0.35 * def.scale;
+    group.add(base);
+  } else if (def.cat === 'crystals') {
+    geo = new THREE.OctahedronGeometry(0.4 * def.scale, 0);
+  } else {
+    geo = new THREE.BoxGeometry(0.6 * def.scale, 0.4 * def.scale, 0.6 * def.scale);
+  }
+
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+
+  // Glow light for glowing objects
+  if (def.glow) {
+    const light = new THREE.PointLight(def.color, 0.8, 3);
+    light.position.y = 0.3;
+    group.add(light);
+  }
+
+  return group;
+}
+
+// ── Place object ──
+function placeObject(key) {
+  const obj = createObject(key);
+  // Random position within rug
+  const angle = Math.random() * Math.PI * 2;
+  const radius = 1 + Math.random() * 2.5;
+  obj.position.set(Math.cos(angle) * radius, 0.3, Math.sin(angle) * radius);
+  obj.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(obj);
+  placedObjects.push(obj);
+  updateObjCount();
+  showToast(`Placed ${OBJECTS[key].label}`);
+  document.getElementById('hint').classList.add('hidden');
+  saveRoom();
+}
+
+// ── Raycasting for selection ──
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let isDragging = false;
+let dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let dragOffset = new THREE.Vector3();
+
+function onPointerDown(e) {
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+
+  const meshes = [];
+  placedObjects.forEach(obj => obj.traverse(child => { if (child.isMesh) meshes.push(child); }));
+  const hits = raycaster.intersectObjects(meshes);
+
+  if (hits.length > 0) {
+    let obj = hits[0].object;
+    while (obj.parent && !placedObjects.includes(obj)) obj = obj.parent;
+    if (placedObjects.includes(obj)) {
+      selectObject(obj);
+      isDragging = true;
+      controls.enabled = false;
+      const hitPoint = new THREE.Vector3();
+      raycaster.ray.intersectPlane(dragPlane, hitPoint);
+      dragOffset.copy(obj.position).sub(hitPoint);
+    }
+  } else {
+    deselectObject();
+  }
+}
+
+function onPointerMove(e) {
+  if (!isDragging || !selectedObject) return;
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hitPoint = new THREE.Vector3();
+  if (raycaster.ray.intersectPlane(dragPlane, hitPoint)) {
+    selectedObject.position.x = hitPoint.x + dragOffset.x;
+    selectedObject.position.z = hitPoint.z + dragOffset.z;
+    // Clamp to room
+    const dist = Math.sqrt(selectedObject.position.x**2 + selectedObject.position.z**2);
+    if (dist > 6.5) {
+      selectedObject.position.x *= 6.5 / dist;
+      selectedObject.position.z *= 6.5 / dist;
+    }
+  }
+}
+
+function onPointerUp() {
+  if (isDragging) {
+    isDragging = false;
+    controls.enabled = true;
+    saveRoom();
+  }
+}
+
+renderer.domElement.addEventListener('pointerdown', onPointerDown);
+renderer.domElement.addEventListener('pointermove', onPointerMove);
+renderer.domElement.addEventListener('pointerup', onPointerUp);
+
+// ── Selection ──
+function selectObject(obj) {
+  deselectObject();
+  selectedObject = obj;
+  // Add selection ring
+  const ringGeo = new THREE.RingGeometry(0.5, 0.6, 32);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xc4b5e0, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.02;
+  ring.userData.isSelectionRing = true;
+  obj.add(ring);
+}
+
+function deselectObject() {
+  if (selectedObject) {
+    selectedObject.traverse(child => {
+      if (child.userData.isSelectionRing) child.removeFromParent();
+    });
+    selectedObject = null;
+  }
+}
+
+// ── Object controls (rotate/delete) ──
+function rotateSelected() {
+  if (!selectedObject) return;
+  selectedObject.rotation.y += Math.PI / 4;
+  saveRoom();
+}
+
+function deleteSelected() {
+  if (!selectedObject) return;
+  const idx = placedObjects.indexOf(selectedObject);
+  if (idx > -1) {
+    scene.remove(selectedObject);
+    placedObjects.splice(idx, 1);
+    selectedObject = null;
+    updateObjCount();
+    showToast('Removed');
+    saveRoom();
+  }
+}
+
+// Add keyboard controls
+document.addEventListener('keydown', e => {
+  if (e.key === 'r' || e.key === 'R') rotateSelected();
+  if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+});
+
+// ── Save / Load ──
+function saveRoom() {
+  const data = placedObjects.map(obj => ({
+    key: obj.userData.key,
+    x: obj.position.x,
+    y: obj.position.y,
+    z: obj.position.z,
+    ry: obj.rotation.y
+  }));
+  localStorage.setItem('ovumind_dream_room', JSON.stringify(data));
+}
+
+function loadRoom() {
+  try {
+    const data = JSON.parse(localStorage.getItem('ovumind_dream_room') || '[]');
+    data.forEach(item => {
+      if (!OBJECTS[item.key]) return;
+      const obj = createObject(item.key);
+      obj.position.set(item.x, item.y, item.z);
+      obj.rotation.y = item.ry;
+      scene.add(obj);
+      placedObjects.push(obj);
+    });
+    updateObjCount();
+    if (placedObjects.length > 0) {
+      document.getElementById('hint').classList.add('hidden');
+    }
+  } catch(e) {}
+}
+
+function resetRoom() {
+  placedObjects.forEach(obj => scene.remove(obj));
+  placedObjects = [];
+  selectedObject = null;
+  updateObjCount();
+  localStorage.removeItem('ovumind_dream_room');
+  document.getElementById('hint').classList.remove('hidden');
+  showToast('Room reset');
+}
+
+function updateObjCount() {
+  document.getElementById('objCount').textContent = placedObjects.length + ' items';
+}
+
+// ── Toast ──
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── Buttons ──
+document.getElementById('saveBtn').onclick = () => { saveRoom(); showToast('Room saved'); };
+document.getElementById('resetBtn').onclick = () => {
+  if (placedObjects.length > 0) resetRoom();
+};
+
+// ── Floating particles ──
+const pCount = 150;
+const pGeo = new THREE.BufferGeometry();
+const pPos = new Float32Array(pCount * 3);
+const pCol = new Float32Array(pCount * 3);
+for (let i = 0; i < pCount; i++) {
+  pPos[i*3] = (Math.random() - 0.5) * 14;
+  pPos[i*3+1] = Math.random() * 6;
+  pPos[i*3+2] = (Math.random() - 0.5) * 14;
+  const c = new THREE.Color([0xc4b5e0, 0xf5c6b8, 0xe5c98a][Math.floor(Math.random()*3)]);
+  pCol[i*3] = c.r; pCol[i*3+1] = c.g; pCol[i*3+2] = c.b;
+}
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
+const pMat = new THREE.PointsMaterial({ size: 0.06, vertexColors: true, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
+const particles = new THREE.Points(pGeo, pMat);
+scene.add(particles);
+
+// ── Animate ──
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  // Gentle float for placed objects
+  placedObjects.forEach((obj, i) => {
+    if (!isDragging || obj !== selectedObject) {
+      obj.position.y = 0.3 + Math.sin(t * 0.8 + i) * 0.03;
+    }
+  });
+
+  // Particles drift
+  const pos = particles.geometry.attributes.position;
+  for (let i = 0; i < pCount; i++) {
+    pos.setY(i, pos.getY(i) + Math.sin(t * 0.2 + i) * 0.001);
+  }
+  pos.needsUpdate = true;
+  particles.rotation.y = t * 0.01;
+
+  // Warm light pulse
+  warmLight.intensity = 0.8 + Math.sin(t * 1.5) * 0.2;
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ── Resize ──
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── Start ──
+loadRoom();
+animate();
+setTimeout(() => document.getElementById('loading').classList.add('hidden'), 1200);
+</script>
+
+</body>
+</html>
