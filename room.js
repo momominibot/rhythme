@@ -351,7 +351,13 @@
     });
     renderCal(); renderEditor();
   }
-  function periodFillLength() { var cs = S.cycleStats(), p = S.profile(); return Math.min(10, Math.max(2, Number(p.periodLength) || cs.periodLength || 5)); }
+  /* Observed length only counts once two full periods (3+ days) are logged; otherwise the
+     profile setting or a typical 5 days, so a single half-logged day never shortens the fill. */
+  function periodFillLength() {
+    var p = S.profile(), eps = S.periodEpisodes().filter(function (ep) { return ep.length >= 3; });
+    var observed = eps.length >= 2 ? Math.round(eps.slice(-3).reduce(function (a, e) { return a + e.length; }, 0) / Math.min(3, eps.length)) : null;
+    return Math.min(10, Math.max(3, Number(p.periodLength) || observed || 5));
+  }
   /* Tapping an unmarked day marks a typical period from that day: medium for the first
      three days, light after, capped at today. Every day stays editable; Undo removes the fill. */
   function autoFillPeriod(start) {
