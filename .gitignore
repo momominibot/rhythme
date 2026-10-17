@@ -11,3 +11,4 @@ ios/App/Pods/
 .DS_Store
 
 /node_modules
+.claude/

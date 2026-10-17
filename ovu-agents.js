@@ -1,0 +1,162 @@
+/* Ovumind analysis agents (rule-based, run in this browser).
+ * Mirrors the reference architecture: a Supervisor decides which analysis
+ * tools an entry needs, each agent returns flags and metrics, a Daily Summary
+ * agent writes the journal-log line and a 4-Week Summary agent builds the
+ * "Dr shares" card. Everything is deterministic and labelled
+ * "for clinician review": these are pattern notes, not a diagnosis.
+ * Reference ranges: FIGO 2018 normal cycle frequency 24 to 38 days and bleeding
+ * up to 8 days; AASM/SRS 2015 adult sleep recommendation of 7 or more hours.
+ */
+(function (root) {
+  'use strict';
+  var S = root.OvuStore;
+  var SYMPTOMS = ['cramps', 'headache', 'bloating', 'breast tenderness', 'back pain', 'fatigue', 'nausea', 'acne', 'cravings', 'insomnia', 'hot flushes', 'dizziness', 'spotting', 'discharge change', 'low mood', 'anxiety', 'irritability', 'brain fog'];
+  var MOODS = ['great', 'good', 'ok', 'low', 'bad'];
+  var FOOD_TAGS = ['home-cooked', 'veggies', 'protein', 'iron-rich', 'sweet', 'caffeine', 'alcohol', 'ultra-processed', 'late night'];
+
+  function flag(level, code, title, detail, date) { return { level: level, code: code, title: title, detail: detail, date: date || null }; }
+
+  /* ---------- Supervisor: tool decisions ---------- */
+  function supervisor(event) {
+    var tools = [];
+    if (event.type === 'sleep') tools.push('sleepAgent');
+    if (event.type === 'period') tools.push('cycleAgent');
+    if (event.type === 'symptom') tools.push('symptomAgent', 'cycleAgent');
+    if (event.type === 'food') tools.push('foodAgent');
+    if (event.type === 'reflection') tools.push('reflectionAgent');
+    return { event: event.id, tools: tools, decidedAt: new Date().toISOString() };
+  }
+
+  /* ---------- Analysis agents ---------- */
+  function sleepAgent(end) {
+    var st = S.sleepStats(7, end), flags = [];
+    if (st.count >= 5 && st.avg !== null && st.avg < 6) flags.push(flag('watch', 'SLEEP_SHORT_AVG', 'Short sleep this week', 'Average ' + st.avg + ' h over ' + st.count + ' nights, below the 7+ hours recommended for adults.', end));
+    var run = 0, worst = 0;
+    st.nights.forEach(function (n) { run = n.hours < 5 ? run + 1 : 0; worst = Math.max(worst, run); });
+    if (worst >= 3) flags.push(flag('watch', 'SLEEP_SHORT_RUN', 'Three or more very short nights in a row', 'Several consecutive nights under 5 hours. Worth mentioning if this continues.', end));
+    return { agent: 'sleepAgent', metrics: st, flags: flags };
+  }
+  function cycleAgent(end) {
+    end = end || S.today();
+    var cs = S.cycleStats(end), flags = [], p = S.profile();
+    cs.lengths.slice(-3).forEach(function (L, i) {
+      var startIdx = cs.lengths.length - 3 + i; if (startIdx < 0) startIdx = i;
+      if (L < 24 || L > 38) flags.push(flag('watch', L < 24 ? 'CYCLE_SHORT' : 'CYCLE_LONG', 'Cycle of ' + L + ' days', 'Outside the typical 24 to 38 day range (FIGO 2018). Cycles of 21 to 45 days can still be typical in the first years after a first period.', cs.starts[startIdx + 1] || null));
+    });
+    cs.episodes.slice(-3).forEach(function (ep) {
+      if (ep.length > 8) flags.push(flag('watch', 'BLEED_LONG', 'Bleeding lasted ' + ep.length + ' days', 'Longer than the typical up to 8 days. Worth mentioning to a clinician.', ep.start));
+      var impact = ep.days.filter(function (d) { return d.data.flow === 'heavy' && (d.data.clots || d.data.impact); }).length;
+      if (impact >= 2) flags.push(flag('watch', 'BLEED_HEAVY_IMPACT', 'Heavy bleeding that affected your day', impact + ' heavy days with clots or disruption in one period. Heavy bleeding that interferes with daily life is a reason to ask for a review.', ep.start));
+    });
+    if (cs.lastStart && cs.lengths.length >= 1 && S.diffDays(cs.lastStart, end) > 45) flags.push(flag('info', 'PERIOD_LATE', 'No period logged for ' + S.diffDays(cs.lastStart, end) + ' days', 'If a period is overdue and pregnancy is possible, a test is a sensible first step. Persistent gaps are worth a clinician visit.', end));
+    var spotting = S.list('symptom', { from: S.addDays(end, -27), to: end }).filter(function (e) { return (e.data.symptoms || []).indexOf('spotting') > -1 && !cs.episodes.some(function (ep) { return e.date >= S.addDays(ep.start, -1) && e.date <= S.addDays(ep.end, 1); }); });
+    if (spotting.length >= 2) flags.push(flag('watch', 'SPOTTING_BETWEEN', 'Spotting between periods', spotting.length + ' days of spotting outside a period in the last 4 weeks.', spotting[spotting.length - 1].date));
+    if (p.lifeStage === 'postmenopause' && S.list('period', { from: S.addDays(end, -27), to: end }).some(function (e) { return e.data.flow && e.data.flow !== 'none'; })) flags.push(flag('high', 'POSTMENO_BLEED', 'Bleeding after menopause', 'Any bleeding after menopause should be checked by a clinician promptly.', end));
+    return { agent: 'cycleAgent', metrics: cs, flags: flags };
+  }
+  function symptomAgent(end) {
+    end = end || S.today();
+    var recent = S.list('symptom', { from: S.addDays(end, -13), to: end }), flags = [];
+    var severe = recent.filter(function (e) { return typeof e.data.pain === 'number' && e.data.pain >= 8; });
+    if (severe.length) flags.push(flag('watch', 'PAIN_SEVERE', 'Severe pain logged', severe.length + ' day(s) with pain 8/10 or more in the last two weeks. Pain that stops normal activities deserves a proper review.', severe[severe.length - 1].date));
+    var low = recent.filter(function (e) { return e.data.mood === 'low' || e.data.mood === 'bad'; });
+    if (recent.length >= 7 && low.length >= 5) flags.push(flag('watch', 'MOOD_LOW', 'Low mood on most logged days', low.length + ' of the last ' + recent.length + ' logged days were low. You deserve support; this is worth talking about.', low[low.length - 1].date));
+    var dizzyHeavy = recent.filter(function (e) {
+      var heavy = S.byDate(e.date).some(function (x) { return x.type === 'period' && x.data.flow === 'heavy'; });
+      return heavy && (e.data.symptoms || []).indexOf('dizziness') > -1;
+    });
+    if (dizzyHeavy.length) flags.push(flag('high', 'HEAVY_DIZZY', 'Heavy bleeding with dizziness', 'Heavy bleeding together with dizziness or faintness should be checked soon, today if it is happening now.', dizzyHeavy[dizzyHeavy.length - 1].date));
+    var counts = {};
+    recent.forEach(function (e) { (e.data.symptoms || []).forEach(function (s) { counts[s] = (counts[s] || 0) + 1; }); });
+    return { agent: 'symptomAgent', metrics: { days: recent.length, counts: counts }, flags: flags };
+  }
+  function foodAgent(end) {
+    end = end || S.today();
+    var meals = S.list('food', { from: S.addDays(end, -6), to: end }), tags = {}, days = {};
+    meals.forEach(function (m) { days[m.date] = true; (m.data.tags || []).forEach(function (t) { tags[t] = (tags[t] || 0) + 1; }); });
+    var flags = [];
+    if ((tags['alcohol'] || 0) >= 5) flags.push(flag('info', 'ALCOHOL_FREQ', 'Alcohol on 5+ meals this week', 'Noted as a pattern only. Alcohol can affect sleep quality and cycle symptoms.', end));
+    if ((tags['late night'] || 0) >= 4) flags.push(flag('info', 'LATE_EATING', 'Several late-night meals', 'Late eating often shows up as lighter sleep the same night.', end));
+    return { agent: 'foodAgent', metrics: { meals: meals.length, daysLogged: Object.keys(days).length, tags: tags }, flags: flags };
+  }
+  function reflectionAgent(end) {
+    end = end || S.today();
+    var notes = S.list('reflection', { from: S.addDays(end, -13), to: end });
+    return { agent: 'reflectionAgent', metrics: { count: notes.length }, flags: [] };
+  }
+  var AGENTS = { sleepAgent: sleepAgent, cycleAgent: cycleAgent, symptomAgent: symptomAgent, foodAgent: foodAgent, reflectionAgent: reflectionAgent };
+
+  function analyze(event) {
+    var decision = supervisor(event), results = [];
+    decision.tools.forEach(function (name) { results.push(AGENTS[name](event.date > S.today() ? S.today() : S.today())); });
+    var flags = [];
+    results.forEach(function (r) { r.flags.forEach(function (f) { if (!flags.some(function (x) { return x.code === f.code && x.date === f.date; })) flags.push(f); }); });
+    return { decision: decision, results: results, flags: flags };
+  }
+  function allFlags(end) {
+    var flags = [];
+    Object.keys(AGENTS).forEach(function (k) { AGENTS[k](end).flags.forEach(function (f) { if (!flags.some(function (x) { return x.code === f.code && x.date === f.date; })) flags.push(f); }); });
+    var rank = { high: 0, watch: 1, info: 2 };
+    return flags.sort(function (a, b) { return rank[a.level] - rank[b.level]; });
+  }
+
+  /* ---------- Daily Summary agent ---------- */
+  function fmtHours(h) { if (h === null || h === undefined) return ''; var H = Math.floor(h), M = Math.round((h - H) * 60); return H + 'h' + (M ? ' ' + M + 'm' : ''); }
+  function dailySummary(date) {
+    var entries = S.byDate(date), parts = [], highlights = [];
+    var sleep = entries.filter(function (e) { return e.type === 'sleep'; })[0];
+    var period = entries.filter(function (e) { return e.type === 'period'; })[0];
+    var sym = entries.filter(function (e) { return e.type === 'symptom'; })[0];
+    var food = entries.filter(function (e) { return e.type === 'food'; });
+    var refl = entries.filter(function (e) { return e.type === 'reflection'; });
+    var cs = S.cycleStats(date);
+    if (sleep) { var h = S.sleepHours(sleep.data); parts.push('Slept ' + fmtHours(h) + (sleep.data.quality ? ' (quality ' + sleep.data.quality + '/5)' : '') + '.'); highlights.push({ icon: 'bedtime', text: fmtHours(h) + ' sleep' }); }
+    if (period) { parts.push('Period day' + (cs.cycleDay ? ' ' + cs.cycleDay : '') + ', ' + period.data.flow + ' flow' + (period.data.clots ? ' with clots' : '') + '.'); highlights.push({ icon: 'water_drop', text: period.data.flow + ' flow' }); }
+    else if (cs.cycleDay) { parts.push('Cycle day ' + cs.cycleDay + (cs.phase ? ', estimated ' + cs.phase + ' phase' : '') + '.'); }
+    if (sym) { var list = (sym.data.symptoms || []); parts.push((list.length ? 'Logged ' + list.join(', ') : 'No symptoms ticked') + (typeof sym.data.pain === 'number' ? ', pain ' + sym.data.pain + '/10' : '') + (sym.data.mood ? ', mood ' + sym.data.mood : '') + '.'); if (list.length) highlights.push({ icon: 'spa', text: list.slice(0, 2).join(', ') + (list.length > 2 ? ' +' + (list.length - 2) : '') }); }
+    if (food.length) { var tags = {}; food.forEach(function (f) { (f.data.tags || []).forEach(function (t) { tags[t] = (tags[t] || 0) + 1; }); }); parts.push(food.length + ' meal' + (food.length > 1 ? 's' : '') + ' logged' + (tags['home-cooked'] ? ' (' + tags['home-cooked'] + ' home-cooked)' : '') + '.'); highlights.push({ icon: 'restaurant', text: food.length + ' meal' + (food.length > 1 ? 's' : '') }); }
+    if (refl.length) parts.push(refl.length + ' reflection' + (refl.length > 1 ? 's' : '') + '.');
+    var flags = allFlags(date).filter(function (f) { return f.date === date; });
+    return { date: date, text: parts.length ? parts.join(' ') : 'Nothing logged this day.', highlights: highlights, flags: flags, count: entries.length, agent: 'DailySummaryAgent v1 (rule-based)' };
+  }
+
+  /* ---------- 4-Week Summary agent ---------- */
+  function fourWeekSummary(end) {
+    end = end || S.today();
+    var from = S.addDays(end, -27);
+    var events = S.list(null, { from: from, to: end });
+    var daysWithEntries = {}; events.forEach(function (e) { daysWithEntries[e.date] = true; });
+    var cs = S.cycleStats(end), sl = S.sleepStats(28, end);
+    var periodDays = S.list('period', { from: from, to: end }).filter(function (e) { return e.data.flow && e.data.flow !== 'none'; });
+    var symptoms = S.list('symptom', { from: from, to: end }), counts = {}, pain = [], moods = {};
+    symptoms.forEach(function (e) { (e.data.symptoms || []).forEach(function (s) { counts[s] = (counts[s] || 0) + 1; }); if (typeof e.data.pain === 'number') pain.push(e.data.pain); if (e.data.mood) moods[e.data.mood] = (moods[e.data.mood] || 0) + 1; });
+    var top = Object.keys(counts).map(function (k) { return { name: k, days: counts[k] }; }).sort(function (a, b) { return b.days - a.days; }).slice(0, 6);
+    var meals = S.list('food', { from: from, to: end }), tags = {}, foodDays = {};
+    meals.forEach(function (m) { foodDays[m.date] = true; (m.data.tags || []).forEach(function (t) { tags[t] = (tags[t] || 0) + 1; }); });
+    var flags = allFlags(end).filter(function (f) { return !f.date || f.date >= from; });
+    var questions = [];
+    flags.forEach(function (f) {
+      var q = ({ CYCLE_SHORT: 'My cycles have been shorter than 24 days. Is that something to look into?', CYCLE_LONG: 'My cycles have been longer than 38 days. Should we check hormones or thyroid?', BLEED_LONG: 'My period lasted more than 8 days. What could cause that?', BLEED_HEAVY_IMPACT: 'Heavy bleeding is affecting my day. Could I be low in iron, and what are my options?', SLEEP_SHORT_AVG: 'I am averaging under 6 hours of sleep. Could my cycle or stress be part of it?', SLEEP_SHORT_RUN: 'I had several nights under 5 hours. What should I try first?', PAIN_SEVERE: 'My pain reached 8/10. Could this be more than typical cramps?', MOOD_LOW: 'My mood has been low on most days. What support is available?', SPOTTING_BETWEEN: 'I have had spotting between periods. Should this be checked?', PERIOD_LATE: 'My period is overdue. What should I rule out?', POSTMENO_BLEED: 'I had bleeding after menopause and understand this needs checking.', HEAVY_DIZZY: 'I felt dizzy during heavy bleeding. Should I be checked for anaemia?' })[f.code];
+      if (q && questions.indexOf(q) < 0) questions.push(q);
+    });
+    return {
+      agent: 'FourWeekSummaryAgent v1 (rule-based)', generatedAt: new Date().toISOString(), range: { from: from, to: end },
+      coverage: { daysWithEntries: Object.keys(daysWithEntries).length, totalDays: 28 },
+      cycle: { periodDays: periodDays.length, episodes: cs.episodes.filter(function (ep) { return ep.end >= from; }).map(function (ep) { return { start: ep.start, end: ep.end, length: ep.length, heavyDays: ep.heavyDays }; }), cycleLengths: cs.lengths.slice(-4), averageLength: cs.averageLength, lastStart: cs.lastStart, predictedNext: cs.predictedNext, cycleDay: cs.cycleDay, phase: cs.phase, basis: cs.basis },
+      sleep: { nights: sl.count, average: sl.avg, under6: sl.under6, series: sl.nights.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality }; }) },
+      symptoms: { daysLogged: symptoms.length, top: top, painAvg: pain.length ? Math.round(pain.reduce(function (a, b) { return a + b; }, 0) / pain.length * 10) / 10 : null, painMax: pain.length ? Math.max.apply(null, pain) : null, moods: moods },
+      food: { meals: meals.length, daysLogged: Object.keys(foodDays).length, tags: tags },
+      flags: flags, questions: questions,
+      disclaimer: 'Self-reported entries summarised by deterministic rules in the browser. For clinician review; not a diagnosis.'
+    };
+  }
+  function saveMonthlySummary() {
+    var db = S.load(), sum = fourWeekSummary();
+    db.summaries = (db.summaries || []).filter(function (s) { return s.range.to !== sum.range.to; });
+    db.summaries.push(sum);
+    S.setState({ lastSummaryAt: sum.generatedAt });
+    return sum;
+  }
+
+  root.OvuAgents = { SYMPTOMS: SYMPTOMS, MOODS: MOODS, FOOD_TAGS: FOOD_TAGS, supervisor: supervisor, analyze: analyze, allFlags: allFlags, dailySummary: dailySummary, fourWeekSummary: fourWeekSummary, saveMonthlySummary: saveMonthlySummary, agents: AGENTS, fmtHours: fmtHours };
+})(window);

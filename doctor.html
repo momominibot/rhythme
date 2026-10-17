@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f8f3fb">
+<title>Ovumind · Doctor view</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet">
+<link rel="stylesheet" href="ovu-pages.css">
+</head>
+<body>
+<main class="app wide">
+  <header class="top">
+    <a class="back" href="room.html" aria-label="Back"><span class="ms">arrow_back</span></a>
+    <h1>Doctor view<small>Opens a patient's encrypted share in this browser only. Nothing is uploaded.</small></h1>
+    <button class="act no-print" id="printBtn" aria-label="Print" title="Print or save as PDF"><span class="ms">print</span></button>
+  </header>
+
+  <div class="stack">
+    <section class="card no-print" id="openCard">
+      <h2><span class="ms">lock_open</span>Open a share</h2>
+      <p class="sub">Load the <b>.ovushare</b> file the patient gave you, or paste their share code, then enter the passphrase they told you separately.</p>
+      <div class="row">
+        <label class="btn soft" style="cursor:pointer"><span class="ms">upload_file</span><span id="fileLabel">Choose .ovushare file</span><input type="file" id="shareFile" accept=".ovushare,application/json,.json" hidden></label>
+        <button class="btn ghost" id="pasteToggle"><span class="ms">content_paste</span>Paste a code instead</button>
+      </div>
+      <div class="field" id="codeField" style="display:none"><label for="codeInput">Share code</label><textarea class="input" id="codeInput" placeholder="Paste the long code here"></textarea></div>
+      <div class="field"><label for="passInput">Passphrase</label><input class="input" id="passInput" type="password" autocomplete="off" placeholder="e.g. lilac-moon-fern-47"></div>
+      <div class="row"><button class="btn primary" id="openBtn"><span class="ms">key</span>Decrypt and open</button><button class="btn ghost" id="demoBtn"><span class="ms">science</span>Preview with sample data</button></div>
+      <div class="msg" id="openMsg"></div>
+      <p class="note">Decryption uses WebCrypto AES-GCM with a PBKDF2-derived key. The share stays in memory and is gone when you close this tab. Pattern notes are rule-based and labelled for clinician review; they are not diagnoses.</p>
+    </section>
+
+    <div id="dash" style="display:none" class="stack">
+      <section class="card hero">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+          <div><span class="badge" id="demoBadge" style="display:none">Fictional sample</span> <span class="badge">Patient-shared · decrypted locally</span>
+          <h2 style="margin-top:8px;font-size:24px" id="pAlias">Patient</h2><p class="sub" id="pMeta"></p></div>
+          <button class="btn ghost no-print" id="closeShare" style="flex:0 0 auto;min-width:0"><span class="ms">close</span>Close</button>
+        </div>
+        <div class="kpis" id="kpis"></div>
+      </section>
+
+      <div class="cols">
+        <section class="card" id="flagCard"><h2><span class="ms">flag</span>For clinician review</h2><p class="sub">Deterministic pattern notes from the patient's entries. FIGO 2018 cycle ranges; AASM adult sleep guidance.</p><div class="flaglist" id="flags"></div></section>
+        <section class="card"><h2><span class="ms">help</span>Questions the patient prepared</h2><div class="flaglist" id="questions"></div></section>
+      </div>
+
+      <div class="cols">
+        <section class="card"><h2><span class="ms">water_drop</span>Cycle</h2><div class="kpis" id="cycleKpis"></div><div class="chart"><div class="ct">Last 28 days · bleeding and symptom days</div><div class="strip" id="strip"></div><p class="note">Pink shades: spotting → heavy. Purple underline: symptoms logged. Outline: last day of range.</p></div></section>
+        <section class="card"><h2><span class="ms">bedtime</span>Sleep</h2><div class="kpis" id="sleepKpis"></div><div class="chart"><div class="ct">Hours per night</div><div id="sleepChart"></div></div></section>
+      </div>
+
+      <div class="cols">
+        <section class="card"><h2><span class="ms">spa</span>Symptoms and mood</h2><div class="kpis" id="symKpis"></div><div class="bars" id="symBars"></div><div class="bars" id="moodBars" style="margin-top:12px"></div></section>
+        <section class="card"><h2><span class="ms">restaurant</span>Food diary</h2><div class="kpis" id="foodKpis"></div><div class="bars" id="foodBars"></div></section>
+      </div>
+
+      <section class="card"><h2><span class="ms">auto_awesome</span>Daily summaries</h2><p class="sub">One line per day, written by the daily summary agent from that day's entries.</p><div id="dailies"></div></section>
+      <section class="card"><details class="more"><summary>Raw entries (<span id="rawCount">0</span>)</summary><div style="overflow:auto"><table class="tbl" id="rawTable"></table></div></details></section>
+      <p class="note" id="disclaimer"></p>
+    </div>
+  </div>
+</main>
+
+<script src="ovu-store.js"></script>
+<script src="ovu-agents.js"></script>
+<script>
+(function(){
+  'use strict';
+  var S=window.OvuStore,A=window.OvuAgents;
+  var $=function(s,r){return (r||document).querySelector(s);};
+  function esc(s){return String(s===undefined||s===null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];});}
+  function pretty(iso,o){return new Date(iso+'T12:00:00').toLocaleDateString(undefined,o||{day:'numeric',month:'short'});}
+  function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
+  function message(t,cls){var el=$('#openMsg');el.textContent=t;el.className='msg on '+cls;}
+  var loadedFile=null;
+  $('#shareFile').addEventListener('change',function(){var f=this.files[0];if(!f)return;$('#fileLabel').textContent=f.name;var r=new FileReader();r.onload=function(){loadedFile=r.result;message('File loaded. Enter the passphrase and open.','info');};r.readAsText(f);});
+  $('#pasteToggle').addEventListener('click',function(){var f=$('#codeField');f.style.display=f.style.display==='none'?'':'none';});
+  $('#openBtn').addEventListener('click',function(){
+    var raw=loadedFile,code=$('#codeInput').value.trim(),bundle;
+    try{ if(code)bundle=S.crypto.fromCode(code); else if(raw)bundle=JSON.parse(raw); else throw new Error('Choose a file or paste a share code first.'); }
+    catch(e){return message('That is not a readable share: '+e.message,'err');}
+    S.crypto.decrypt(bundle,$('#passInput').value).then(function(share){ if(share.kind!=='ovumind-share')throw new Error('Decrypted, but this is not an Ovumind share.'); render(share,false); message('Opened.','ok'); }).catch(function(e){message(e.message,'err');});
+  });
+  $('#closeShare').addEventListener('click',function(){$('#dash').style.display='none';$('#openCard').style.display='';window.scrollTo(0,0);});
+  $('#printBtn').addEventListener('click',function(){window.print();});
+
+  /* fictional sample share, generated on the fly through the same agents */
+  function sampleShare(){
+    var today=S.today(),events=[],id=0,rnd=function(a,b){return a+Math.random()*(b-a);};
+    function ev(type,date,data){events.push({id:'demo'+(id++),type:type,date:date,createdAt:date+'T20:00:00.000Z',updatedAt:date+'T20:00:00.000Z',source:'demo',data:data});}
+    var start1=S.addDays(today,-50),start2=S.addDays(today,-22);
+    [start1,start2].forEach(function(st,i){var len=i?7:6;for(var d=0;d<len;d++){var flow=d<2?'heavy':d<4?'medium':d<len-1?'light':'spotting';ev('period',S.addDays(st,d),{flow:flow,clots:d<2,impact:d===1});}});
+    for(var k=0;k<56;k++){var date=S.addDays(today,-k);if(Math.random()<0.8){var bt=Math.floor(rnd(22,25))%24,hrs=rnd(5.2,8.4);var bedH=String(bt).padStart(2,'0')+':'+(Math.random()<.5?'00':'30');var wakeMin=((bt*60)+Math.round(hrs*60))%1440;ev('sleep',date,{bedTime:bedH,wakeTime:String(Math.floor(wakeMin/60)).padStart(2,'0')+':'+String(wakeMin%60).padStart(2,'0'),quality:Math.round(rnd(2,5)),notes:''});}
+      var nearPeriod=(k>=20&&k<=27)||(k>=48&&k<=54);
+      if(Math.random()<(nearPeriod?0.9:0.35)){var syms=[];if(nearPeriod){syms.push('cramps');if(Math.random()<.6)syms.push('fatigue');if(Math.random()<.4)syms.push('back pain');}else{if(Math.random()<.4)syms.push('bloating');if(Math.random()<.3)syms.push('headache');}
+        ev('symptom',date,{symptoms:syms,pain:nearPeriod?Math.round(rnd(4,8)):Math.round(rnd(0,3)),mood:['great','good','ok','low'][Math.floor(rnd(0,nearPeriod?4:3))],notes:''});}
+      if(Math.random()<0.7){ev('food',date,{meal:'breakfast',time:'08:10',foods:'Oats, berries, latte',tags:['home-cooked','caffeine']});if(Math.random()<.8)ev('food',date,{meal:'dinner',time:'19:30',foods:'Salmon, greens, rice',tags:['home-cooked','protein','veggies']});}
+    }
+    return S.sandbox({profile:{name:'Sample patient',lifeStage:'reproductive'},events:events},function(){
+      var from=S.addDays(today,-27),dates={};S.list(null,{from:from,to:today}).forEach(function(e){dates[e.date]=true;});
+      return {kind:'ovumind-share',v:1,created:new Date().toISOString(),alias:'Sample patient (fictional)',lifeStage:'reproductive',range:{from:from,to:today},summary:A.fourWeekSummary(today),dailies:Object.keys(dates).sort().map(function(d){var s=A.dailySummary(d);return {date:d,text:s.text,flags:s.flags};}),events:S.list(null,{from:S.addDays(today,-55),to:today})};
+    });
+  }
+  $('#demoBtn').addEventListener('click',function(){render(sampleShare(),true);});
+
+  function kpi(l,v,s){return '<div class="kpi"><small>'+esc(l)+'</small><b>'+esc(v)+'</b><span>'+esc(s||'')+'</span></div>';}
+  function bars(el,obj,unit){var keys=Object.keys(obj).sort(function(a,b){return obj[b]-obj[a];}).slice(0,8),max=keys.length?obj[keys[0]]:1;el.innerHTML=keys.length?keys.map(function(k){return '<div class="bar"><span class="lbl">'+esc(cap(k))+'</span><span class="trk"><span class="fil" style="width:'+Math.round(obj[k]/max*100)+'%"></span></span><span class="val">'+obj[k]+(unit||'')+'</span></div>';}).join(''):'<p class="note">Nothing logged.</p>';}
+  function render(share,isDemo){
+    var sum=share.summary||{},c=sum.cycle||{},sl=sum.sleep||{},sy=sum.symptoms||{},fd=sum.food||{},cov=sum.coverage||{};
+    $('#openCard').style.display='none';$('#dash').style.display='';$('#demoBadge').style.display=isDemo?'':'none';
+    $('#pAlias').textContent=share.alias||'Patient';
+    $('#pMeta').textContent=(share.lifeStage?cap(share.lifeStage)+' · ':'')+'Range '+pretty(sum.range.from,{day:'numeric',month:'short',year:'numeric'})+' – '+pretty(sum.range.to,{day:'numeric',month:'short',year:'numeric'})+' · generated '+new Date(sum.generatedAt||share.created).toLocaleString()+' · '+(sum.agent||'');
+    $('#kpis').innerHTML=kpi('Coverage',cov.daysWithEntries+'/'+cov.totalDays,'days with entries')+kpi('Pattern notes',(sum.flags||[]).length,(sum.flags||[]).filter(function(f){return f.level==='high';}).length+' marked urgent')+kpi('Entries',(share.events||[]).length,'in this share');
+    var flags=sum.flags||[];$('#flags').innerHTML=flags.length?flags.map(function(f){return '<div class="flag '+f.level+'"><span class="ms">'+(f.level==='high'?'emergency_home':f.level==='watch'?'flag':'info')+'</span><div><b>'+esc(f.title)+'</b><span>'+esc(f.detail)+'</span>'+(f.date?'<em>'+esc(pretty(f.date))+' · '+esc(f.code)+'</em>':'')+'</div></div>';}).join(''):'<p class="note">No pattern notes raised in this range.</p>';
+    $('#questions').innerHTML=(sum.questions||[]).length?sum.questions.map(function(q){return '<div class="flag info"><span class="ms">help</span><span>'+esc(q)+'</span></div>';}).join(''):'<p class="note">None prepared.</p>';
+    $('#cycleKpis').innerHTML=kpi('Average cycle',c.averageLength?c.averageLength+' d':'—',(c.cycleLengths||[]).length?'lengths '+c.cycleLengths.join(', '):c.basis||'')+kpi('Bleeding days',c.periodDays||0,(c.episodes||[]).length+' period'+((c.episodes||[]).length===1?'':'s'))+kpi('Cycle day',c.cycleDay||'—',c.phase?'est. '+c.phase:'')+(c.predictedNext?kpi('Next expected',pretty(c.predictedNext),'estimate'):'')+((c.episodes||[]).length?kpi('Longest bleed',Math.max.apply(null,c.episodes.map(function(e){return e.length;}))+' d',c.episodes.reduce(function(a,e){return a+e.heavyDays;},0)+' heavy days'):'');
+    var byDate={};(share.events||[]).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
+    var strip='';for(var i=27;i>=0;i--){var d=S.addDays(sum.range.to,-i),list=byDate[d]||[],p=list.filter(function(e){return e.type==='period'&&e.data.flow&&e.data.flow!=='none';})[0],s=list.some(function(e){return e.type==='symptom'&&(e.data.symptoms||[]).length;});strip+='<i class="'+(p?p.data.flow:'')+(s?' sym':'')+(i===0?' today':'')+'" title="'+esc(pretty(d))+(p?' · '+p.data.flow:'')+'"></i>';}
+    $('#strip').innerHTML=strip;
+    $('#sleepKpis').innerHTML=kpi('Average',sl.average?sl.average+' h':'—',sl.nights+' nights logged')+kpi('Under 6 h',sl.under6||0,'nights')+kpi('Longest',(sl.series||[]).length?Math.max.apply(null,sl.series.map(function(n){return n.hours;}))+' h':'—','');
+    var series=sl.series||[];
+    if(series.length){var W=280,H=110,bw=W/Math.max(series.length,1);var svg='<svg viewBox="0 0 '+W+' '+(H+18)+'" role="img" aria-label="Sleep hours per night">';[6,7,8].forEach(function(h){var y=H-h/10*H;svg+='<line x1="0" x2="'+W+'" y1="'+y+'" y2="'+y+'" stroke="rgba(107,82,142,.18)" stroke-dasharray="3 3"/><text x="'+W+'" y="'+(y-2)+'" font-size="8" text-anchor="end" fill="#9a8cb3" font-family="Manrope">'+h+'h</text>';});
+      series.forEach(function(n,i){var h=Math.min(10,n.hours)/10*H,x=i*bw+1,y=H-h;svg+='<rect x="'+x+'" y="'+y+'" width="'+Math.max(2,bw-2)+'" height="'+h+'" rx="2" fill="'+(n.hours<6?'#e58aa8':'#a98ad0')+'"><title>'+esc(pretty(n.date))+': '+n.hours+' h</title></rect>';});
+      svg+='<text x="0" y="'+(H+14)+'" font-size="8" fill="#9a8cb3" font-family="Manrope">'+esc(pretty(series[0].date))+'</text><text x="'+W+'" y="'+(H+14)+'" font-size="8" text-anchor="end" fill="#9a8cb3" font-family="Manrope">'+esc(pretty(series[series.length-1].date))+'</text></svg>';$('#sleepChart').innerHTML=svg;}
+    else $('#sleepChart').innerHTML='<p class="note">No sleep entries in range.</p>';
+    $('#symKpis').innerHTML=kpi('Days logged',sy.daysLogged||0,'')+kpi('Pain avg',sy.painAvg!==null&&sy.painAvg!==undefined?sy.painAvg+'/10':'—','max '+(sy.painMax!==null&&sy.painMax!==undefined?sy.painMax:'—'))+kpi('Top symptom',(sy.top||[])[0]?cap(sy.top[0].name):'—',(sy.top||[])[0]?sy.top[0].days+' days':'');
+    var symObj={};(sy.top||[]).forEach(function(t){symObj[t.name]=t.days;});bars($('#symBars'),symObj,' d');bars($('#moodBars'),sy.moods||{},' d');
+    $('#foodKpis').innerHTML=kpi('Meals',fd.meals||0,'')+kpi('Days',fd.daysLogged||0,'with food entries')+kpi('Home-cooked',(fd.tags||{})['home-cooked']||0,'meals');bars($('#foodBars'),fd.tags||{},'');
+    $('#dailies').innerHTML=(share.dailies||[]).slice().reverse().map(function(d){return '<div class="summary" style="margin-top:8px"><span class="ms">auto_awesome</span><div><b>'+esc(pretty(d.date,{weekday:'short',day:'numeric',month:'short'}))+'</b> · '+esc(d.text)+((d.flags||[]).length?'<br><b>Note:</b> '+esc(d.flags.map(function(f){return f.title;}).join('; ')):'')+'</div></div>';}).join('')||'<p class="note">No daily summaries.</p>';
+    var rows=(share.events||[]).slice().sort(function(a,b){return a.date<b.date?1:-1;});$('#rawCount').textContent=rows.length;
+    $('#rawTable').innerHTML='<tr><th>Date</th><th>Type</th><th>Details</th></tr>'+rows.map(function(e){return '<tr><td>'+esc(e.date)+'</td><td>'+esc(e.type)+'</td><td>'+esc(JSON.stringify(e.data).replace(/[{}"]/g,'').replace(/,/g,', ').replace(/:/g,': '))+'</td></tr>';}).join('');
+    $('#disclaimer').textContent=sum.disclaimer||'Self-reported entries summarised by deterministic rules. For clinician review; not a diagnosis.';
+    window.scrollTo(0,0);
+  }
+})();
+</script>
+</body>
+</html>
