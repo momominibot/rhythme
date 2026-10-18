@@ -1,7 +1,7 @@
-// Ovumind Luna proxy (Supabase Edge Function).
+// Rhythme Luna proxy (Supabase Edge Function).
 // Turns one short health note into journal entries with a Doubao model on
 // Volcengine Ark. The Ark key lives in Supabase Vault and is read through a
-// security-definer function; the browser never sees it. Only the Ovumind
+// security-definer function; the browser never sees it. Only the Rhythme
 // origins may call it, and every call is counted per day (per IP and overall).
 //
 // Deploy: through the Supabase MCP / CLI with verify_jwt = false (the function
@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: data === true, error: error?.message || null }, 200, cors);
   }
 
-  if (!allowed) return json({ error: "This endpoint only serves the Ovumind app." }, 403, cors);
+  if (!allowed) return json({ error: "This endpoint only serves the Rhythme app." }, 403, cors);
   let body: { text?: unknown; today?: unknown; image?: unknown } = {};
   try { body = await req.json(); } catch { return json({ error: "bad json" }, 400, cors); }
   const text = String(body.text || "").trim().slice(0, 600);
@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
     if (ipOk.error || allOk.error) return json({ error: "Luna's counter is unavailable right now." }, 503, cors);
     if (ipOk.data === false || allOk.data === false) return json({ error: "Luna has looked at enough photos for today. You can still log the meal by hand." }, 429, cors);
     const { data: key, error: kerr } = await sb.rpc("luna_secret_get");
-    if (kerr || !key) return json({ error: "Luna's model key is not set up yet." }, 503, cors);
+    if (kerr || !key) return json({ error: "Luna is not set up yet." }, 503, cors);
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 30000);
     let r: Response;
@@ -118,11 +118,11 @@ Deno.serve(async (req: Request) => {
       });
     } catch {
       clearTimeout(timer);
-      return json({ error: "The model did not answer in time. Try again, or log the meal by hand." }, 504, cors);
+      return json({ error: "Luna did not answer in time. Try again, or log the meal by hand." }, 504, cors);
     }
     clearTimeout(timer);
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) return json({ error: "The model replied " + r.status + "." }, 502, cors);
+    if (!r.ok) return json({ error: "Luna could not answer just now (" + r.status + ")." }, 502, cors);
     const content: string = d?.choices?.[0]?.message?.content || "";
     const m = content.match(/\{[\s\S]*\}/);
     let parsed: Record<string, unknown> | null = null;
@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
   if (ipOk.data === false || allOk.data === false) return json({ error: "Luna is resting for today. The on-device rules still work." }, 429, cors);
 
   const { data: key, error: kerr } = await sb.rpc("luna_secret_get");
-  if (kerr || !key) return json({ error: "Luna's model key is not set up yet." }, 503, cors);
+  if (kerr || !key) return json({ error: "Luna is not set up yet." }, 503, cors);
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 25000);
@@ -156,11 +156,11 @@ Deno.serve(async (req: Request) => {
     });
   } catch {
     clearTimeout(timer);
-    return json({ error: "The model did not answer in time." }, 504, cors);
+    return json({ error: "Luna did not answer in time. Try again in a moment." }, 504, cors);
   }
   clearTimeout(timer);
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) return json({ error: "The model replied " + r.status + "." }, 502, cors);
+  if (!r.ok) return json({ error: "Luna could not answer just now (" + r.status + ")." }, 502, cors);
   const content: string = d?.choices?.[0]?.message?.content || "";
   const m = content.match(/\{[\s\S]*\}/);
   let out: { entries?: unknown; reply?: unknown } | null = null;

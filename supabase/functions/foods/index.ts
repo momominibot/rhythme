@@ -1,7 +1,7 @@
-// Ovumind product search (Supabase Edge Function).
+// Rhythme product search (Supabase Edge Function).
 // Open Food Facts' text search does not send CORS headers, so the browser
 // cannot call it directly. This function searches by product name for the
-// Ovumind origins only, returns a short list (Singapore products first) and
+// Rhythme origins only, returns a short list (Singapore products first) and
 // lets the app fetch full nutrition by barcode from the normal OFF product API.
 // No key and no personal data: only the typed product name is sent.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
   };
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "GET") return json({ error: "GET only" }, 405, cors);
-  if (!allowed) return json({ error: "This endpoint only serves the Ovumind app." }, 403, cors);
+  if (!allowed) return json({ error: "This endpoint only serves the Rhythme app." }, 403, cors);
 
   const q = (new URL(req.url).searchParams.get("q") || "").trim().replace(/\s+/g, " ").slice(0, 60);
   if (q.length < 2) return json({ error: "Type at least two letters." }, 400, cors);
@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
   try {
     r = await fetch("https://search.openfoodfacts.org/search?q=" + encodeURIComponent(q) + "&page_size=24&fields=" + FIELDS, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "Ovumind/1.0 (https://momominibot.github.io/ovumind.github.io/)" },
+      headers: { "User-Agent": "Rhythme/1.0 (https://momominibot.github.io/ovumind.github.io/)" },
     });
   } catch {
     clearTimeout(timer);

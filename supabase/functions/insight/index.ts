@@ -1,4 +1,4 @@
-// Ovumind insight agents (Supabase Edge Function).
+// Rhythme insight agents (Supabase Edge Function).
 // Two model-assisted summary agents that sit on top of the deterministic rule
 // agents in the app: the Daily Summary Agent (journal) and the Four-Week
 // Summary Agent (Dr shares card). The browser sends compact, de-identified
@@ -12,11 +12,11 @@ const ORIGINS = ["https://momominibot.github.io", "http://127.0.0.1:4310", "http
 const MODELS = { daily: "doubao-seed-2-1-turbo-260628", fourweeks: "doubao-seed-2-1-pro-260915" };
 const CAPS = { daily: 24, fourweeks: 8, all: 3000 };
 
-const DAILY_SYSTEM = `You are the Daily Summary Agent of Ovumind, a women's cycle and ovarian-health journal. You receive one person's entries for today and the previous seven days (dates are ISO, no name, no identifiers) plus minimal context. Write for her, in the second person, warm and plain. Output ONLY strict JSON:
+const DAILY_SYSTEM = `You are the Daily Summary Agent of Rhythme, a women's cycle and ovarian-health journal. You receive one person's entries for today and the previous seven days (dates are ISO, no name, no identifiers) plus minimal context. Write for her, in the second person, warm and plain. Output ONLY strict JSON:
 {"summary":"two short sentences about today, grounded only in the entries","patterns":[{"title":"short","detail":"one sentence","basis":"which entries or days support it","confidence":"low|medium|high"}],"suggestion":"one gentle non-medical idea for tomorrow, or empty string","questions":["up to two questions she could raise with a clinician if something keeps recurring"],"caution":"empty string, or one sentence if an entry suggests she should seek care soon"}
 Rules: at most three patterns; never name a condition as present or likely; never advise medicines, supplements or doses; do not restate the deterministic flags already given in context; if data is thin say so instead of guessing; never invent values. If there are no entries today, summarise the week gently and invite one small log.`;
 
-const FOURWEEK_SYSTEM = `You are the Four-Week Summary Agent of Ovumind. You receive aggregated 28-day statistics from one person's self-reported entries, the deterministic pattern flags the app already raised, and intake context. Write two things: a clinician-facing summary in neutral clinical prose, and a short user-facing summary in the second person. Output ONLY strict JSON:
+const FOURWEEK_SYSTEM = `You are the Four-Week Summary Agent of Rhythme. You receive aggregated 28-day statistics from one person's self-reported entries, the deterministic pattern flags the app already raised, and intake context. Write two things: a clinician-facing summary in neutral clinical prose, and a short user-facing summary in the second person. Output ONLY strict JSON:
 {"clinician":{"overview":"2-3 sentences with coverage and the main themes","cycle":"","bleeding":"","symptoms_pain":"","sleep":"","nutrition":"","mood_calm":"","patterns":[{"title":"","detail":"","basis":""}],"questions":["questions worth raising at the visit"],"limits":"data limits and what the summary cannot say"},"user":{"summary":"three warm sentences","wins":["up to three things that went well"],"watch":["up to three things worth noticing, non-alarming"]}}
 Rules: label everything as self-reported; do not diagnose, stage, or recommend treatment; do not change or add to the deterministic flags, you may refer to them; if coverage is low (under 14 days) say so first; keep each section under 60 words; never invent numbers that are not in the input; use "the patient" in clinician text and "you" in user text.`;
 
@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
   };
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return json({ error: "POST only" }, 405, cors);
-  if (!allowed) return json({ error: "This endpoint only serves the Ovumind app." }, 403, cors);
+  if (!allowed) return json({ error: "This endpoint only serves the Rhythme app." }, 403, cors);
 
   let body: { mode?: unknown; input?: unknown } = {};
   try { body = await req.json(); } catch { return json({ error: "bad json" }, 400, cors); }
@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
   if (ipOk.data === false || allOk.data === false) return json({ error: "Enough summaries for today. The rule-based summary is always available." }, 429, cors);
 
   const { data: key, error: kerr } = await sb.rpc("luna_secret_get");
-  if (kerr || !key) return json({ error: "The model key is not set up yet." }, 503, cors);
+  if (kerr || !key) return json({ error: "Luna is not set up yet." }, 503, cors);
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 70000);
@@ -82,11 +82,11 @@ Deno.serve(async (req: Request) => {
     });
   } catch {
     clearTimeout(timer);
-    return json({ error: "The model did not answer in time." }, 504, cors);
+    return json({ error: "Luna did not answer in time. Try again in a moment." }, 504, cors);
   }
   clearTimeout(timer);
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) return json({ error: "The model replied " + r.status + "." }, 502, cors);
+  if (!r.ok) return json({ error: "Luna could not answer just now (" + r.status + ")." }, 502, cors);
   const content: string = d?.choices?.[0]?.message?.content || "";
   const tryParse = (s: string) => { try { return JSON.parse(s); } catch { return null; } };
   const m = content.match(/\{[\s\S]*\}?/);
@@ -95,6 +95,6 @@ Deno.serve(async (req: Request) => {
     let s = m[0].replace(/,\s*"[^"]*"?\s*:?\s*"?[^"]*$/, "");
     for (let i = 0; i < 8 && !out; i++) { s = s.replace(/,\s*$/, ""); s += (s.split("[").length > s.split("]").length) ? "]" : "}"; out = tryParse(s); }
   }
-  if (!out) return json({ error: "The model did not return a readable summary.", finish: d?.choices?.[0]?.finish_reason || null, chars: content.length }, 502, cors);
+  if (!out) return json({ error: "Luna could not write a readable summary this time.", finish: d?.choices?.[0]?.finish_reason || null, chars: content.length }, 502, cors);
   return json({ ok: true, mode, result: out, generatedAt: new Date().toISOString() }, 200, cors);
 });
