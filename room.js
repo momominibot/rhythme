@@ -32,7 +32,7 @@
       sleeper: { x: 31, y: 58, w: 21, rot: 34 }, zzz: { x: 30, y: 44 },
       meditator: { x: 28, y: 77, w: 11.5 }, aura: { x: 28, y: 75, w: 18 }, holo: { x: 39, y: 75, w: 15 },
       window: { x: 37.3, y: 31.5, rx: 7, ry: 9.6 },
-      winPatch: { x: 29.348, y: 23.424, w: 14.946, base: 'room-v3-win-' },
+      winPatch: { x: 14.470, y: 11.522, w: 44.701, base: 'room-v3-win-' },
       props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 87, y: 66, w: 10 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 40, y: 73.5, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
     },
     house: {
@@ -274,7 +274,7 @@
     place($('.zzz'), L.zzz); place(meditator, L.meditator); place($('#aura'), L.aura); place(holo, L.holo);
     var mp = $('#matProp'); if (mp) { mp.style.display = L.mat ? '' : 'none'; if (L.mat) place(mp, L.mat); }
     /* the room's window sky is cut from the plate itself (tools/art/window_patch.py), so it follows the tilted oval exactly */
-    var wp = L.winPatch; ['night', 'sunset', 'sunrise'].forEach(function (k) { var el = $('#winPatch' + k.charAt(0).toUpperCase() + k.slice(1)); if (!el) return; if (wp) { var want = ART + wp.base + k + '.webp'; if (el.getAttribute('src') !== want) el.src = want; el.style.left = wp.x + '%'; el.style.top = wp.y + '%'; el.style.width = wp.w + '%'; } else el.removeAttribute('src'); });
+    var wp = L.winPatch; ['night', 'sunset', 'sunrise'].forEach(function (k) { var el = $('#winPatch' + k.charAt(0).toUpperCase() + k.slice(1)); if (!el) return; if (wp) { var want = ART + wp.base + k + '.webp'; if (el.getAttribute('src') !== want) el.src = want; el.style.left = wp.x + '%'; el.style.top = wp.y + '%'; el.style.width = wp.w + '%'; } else if (el.getAttribute('src')) el.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; /* Safari keeps a removed image on screen; a blank one does not */ });
     scene.classList.toggle('has-win-patch', !!wp);
     var wn = $('#winNight'); if (wn && L.window) { wn.style.left = L.window.x + '%'; wn.style.top = L.window.y + '%'; wn.style.width = (L.window.rx * 2) + '%'; wn.style.height = (L.window.ry * 2) + '%'; }
     var vb = $('#visitBar'); if (vb) { vb.classList.toggle('on', !!visiting); vb.innerHTML = visiting && houseItem(L.id) ? '<span class="ms">cottage</span><span>Visiting ' + esc(houseItem(L.id).name.replace(/^./, function (c) { return c.toLowerCase(); })) + ' · <b>' + houseItem(L.id).cost + ' ♥ to move in</b></span><button type="button" id="visitBack"><span class="ms">arrow_back</span>Back</button>' : ''; }

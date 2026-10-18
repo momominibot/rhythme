@@ -40,6 +40,13 @@ Breathe comfortably with a ring that opens and closes. Tap if you like, or just 
   at 20 per entry like other practice, and never counting toward the daily streak bonus. Hearts never depend on
   taps.
 
+## Water (Jamie, after the first build: "it must be a therapeutic water tap effect")
+- The stage is a still pond seen from above, lit by the companion's moonlight. A tap drops a ripple that
+  spreads, fades and refracts the light; the ring's breath turns send a gentle wide ripple from the companion so
+  the water breathes with you even if you never tap. The tap sound is a soft water drop, not a chime.
+- Built as a coarse height field on a canvas (one cell per three pixels, a few thousand cells, no library),
+  so it runs at full frame rate on a phone. Reduced motion falls back to a single soft bloom.
+
 ## Feel
 - Micro-rewards only: the bloom, a soft tone (two sine pads a fifth apart, 220 and 330 Hz, gain 0.05), a faint
   haptic pulse where the browser allows it. No confetti, no stacking chimes, no numbers during play.

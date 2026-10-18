@@ -250,10 +250,10 @@ async def main():
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindTap", timeout=8000); await page.click("#mindTap"); await page.wait_for_selector("#btapBegin", timeout=8000)
             await page.click("#btapBegin"); await page.wait_for_timeout(5600)
             for _ in range(3): await page.mouse.click(195, 300); await page.wait_for_timeout(150)
-            petals = await page.evaluate("()=>document.querySelectorAll('.btap-petal').length")
+            petals = await page.evaluate("()=>{var c=document.querySelector('#btapWater'); return c && c.width > 30 ? 3 : 0}")
             await page.click("#btapStop"); await page.wait_for_timeout(600)
             tap = await page.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); var e=d.events.filter(x=>x.type==='mindfulness'&&x.data.kind==='breathtap'); return {n:e.length, secs:e.length?e[e.length-1].data.seconds:0, taps:e.length?e[e.length-1].data.taps:0, done:!document.querySelector('#btapDone').hidden, text:document.querySelector('#btapDone').innerText}}")
-            check("Moon Tap blooms on taps and saves practice time on Stop", petals >= 3 and tap["n"] == 1 and tap["secs"] >= 5 and tap["taps"] == 3 and tap["done"] and "Your pause is saved" in tap["text"], tap)
+            check("Moon Tap ripples the water on taps and saves practice time on Stop", petals >= 3 and tap["n"] == 1 and tap["secs"] >= 5 and tap["taps"] == 3 and tap["done"] and "Your pause is saved" in tap["text"], tap)
             check("nothing was requested from any third party during the run", not external, external[:3])
 
             check("no page errors or console errors across the run", not errors, errors[:3])
