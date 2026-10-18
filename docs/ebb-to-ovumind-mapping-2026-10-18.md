@@ -100,6 +100,23 @@ Postmenopausal bleeding uses a separate card: "Any bleeding after menopause shou
 Rejected: replacing the intake with three questions; "No forms to fill in"; cycle-phase, stress, recovery or sleep claims from the camera; HRV as the explanation for anxiety; any model authority over dates, counts, flags or deletions; Day 1 declared before confirmation; a one-page PDF replacing the full bundle; "keep chat history" (chat is not a record).
 Deferred: partner sharing; research contribution; exclusive-key cloud backup; A&E map search until a validated Singapore directory exists; body signals by phase.
 
-## 8. Sources opened during the debate
+## 8. Ideas extracted from another team's build (theme and concept unchanged)
+
+Jamie shared nine screens of a pixel-art cottage build by another team on 2026-10-18 (not ours; kept only as reference, not copied as art). Ovumind keeps its Seedream dream room, Luna and Erin. Ideas worth taking, each tied to an item above:
+
+| Reference screen | Idea | Lands in |
+|---|---|---|
+| Period sheet: Entry = Started / Bleeding / Ended / Spotting, Flow, optional symptoms, date stepper | Make the kind of period event explicit instead of inferring it from flow. "Spotting" and "Ended" as their own kinds solve D1 cleanly and give 2b its chips. Date stepper for backfill. | 01, 12, 09 |
+| Sleep sheet: bedtime yesterday, wake time today, live "Time in bed 8h 30m", Restfulness Rested / Okay / Tired | Show time in bed as the user sets the times; a three-word restfulness scale maps onto quality 1 to 5 (Tired 2, Okay 3, Rested 4) and gives Luna a quality-only sleep entry | 10 |
+| Furniture bar: Place · Move · Close · Undo | Undo in arrange mode; same Undo affordance Luna gets after a save | 09 |
+| Erin sits in the scene per practice: chair by the bed (body scan), table (mindful tea), garden path (grounding), studio cushions (breathe) | Place Erin's sprite at the object a practice belongs to instead of only the projection HUD; each everyday practice already has a room object (coffee at the table, stretch on the mat) | everyday practices, garden and activity-hall homes |
+| Two practice formats: timed bar (00:45 / 03:00, Pause, End) and stepped senses (SENSE 1 / 3, Next, Skip, Finish) | Model each guide step as timed or stepped; sensory practices (tea, dishes, shower) use Next and Skip rather than a timer | `ovu-mindful.js` step schema |
+| Grounding in the garden: "Notice three things you can see", a glowing ring on the path | First outdoor practice for the garden home; glowing ring plus dotted path as the walk target in `walkTo` | garden home, room polish |
+| Journal menu: Period, Sleep, Food, Mood, Symptoms, Water, Movement, Mindfulness, and one "Chat & Log" entry | Water and Movement have no entry types in Ovumind yet (water is only a reminder); Mood sits inside symptoms. Add `water` and `movement` entry types with Luna rules ("drank 2 glasses", "walked 20 min") and count them in the check-in | 10 |
+| XP leaf counter and a settings gear pinned to the corners | Our hearts chip already does this; keep one counter, no second currency | none |
+
+Not taken: pixel-art style, the cottage layout, a separate XP currency, the kitchen as a logging surface.
+
+## 9. Sources opened during the debate
 
 KKH Urgent O&G Centre (24-hour, heavy vaginal bleeding for immediate assessment); SCDF emergency medical services (excessive bleeding, fainting, breathlessness are 995 cases); NHS heavy periods and post-menopausal bleeding pages; Schmalenberger et al. 2024, BMC Women's Health (luteal HRV decrease not associated with premenstrual emotional change); Frontiers in Physiology 2025 camera HRV validation (device- and protocol-specific); Apple App Review 5.1.2(i) (explicit permission before sharing personal data with third-party AI).
