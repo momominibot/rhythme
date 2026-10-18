@@ -17,7 +17,7 @@
    * own plate, read off a 5% grid overlay. */
   var LAYOUTS = {
     room: {
-      id: 'room', name: 'Your room', img: 'room-v3.webp', night: 'room-night-v1.webp', w: 1472, h: 1840, avatarW: 12,
+      id: 'room', name: 'Your room', img: 'room-v3.webp', w: 1472, h: 1840, avatarW: 12,
       hotspots: [
         { id: 'bed', x: 30, y: 56, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 40, y: 72, flip: true } },
         { id: 'clock', x: 14, y: 60, label: 'Clock · reminders', icon: 'alarm', wp: { x: 21, y: 70, flip: true } },
@@ -129,7 +129,7 @@
     { id: 'fertility', name: 'Fertility', color: '#bfe3d4', items: [['page', 'fertility.html', 'spa', 'Fertile window', 'Ovulation signs, explained'], ['video', 'fertile', 'Fertile window', 'Your most fertile days'], ['page', 'journey-grow.html', 'eco', 'Trying to conceive', 'Timing, tests and support'], ['page', 'ovarian-health.html', 'menu_book', 'Understand your records', 'What your entries can and cannot show']] },
     { id: 'chapters', name: 'Life chapters', color: '#c9b6e6', items: [['page', 'life-journey.html', 'auto_stories', 'Your life journey', 'Five chapters, one body'], ['page', 'journey-bloom.html', 'local_florist', 'First cycles', 'Teens and the first years'], ['video', 'menarche', 'First period', 'Menarche explained'], ['page', 'journey-nurture.html', 'favorite', 'After pregnancy', 'Recovery and cycles returning'], ['page', 'journey-peri.html', 'dark_mode', 'Perimenopause', 'Hot flushes, sleep and mood'], ['video', 'peri', 'Perimenopause', 'The transition years'], ['page', 'journey-post.html', 'wb_sunny', 'After menopause', 'Bone, heart and bleeding rules'], ['video', 'menopause', 'Menopause', 'Life after periods']] },
     { id: 'nutrition', name: 'Nutrition', color: '#f3d49b', items: [['page', 'foods.html', 'restaurant', 'Foods by phase', 'TCM and Western notes'], ['page', 'nutrients.html', 'medication', 'Micronutrients', 'Iron, folate, magnesium'], ['page', 'medas14.html', 'nutrition', 'Mediterranean score', 'A 14-point check'], ['page', 'hydration.html', 'water_full', 'Hydration', 'Fluids through the cycle'], ['action', 'diary', 'menu_book', 'Open the food diary', 'Snap, scan or search']] },
-    { id: 'mind', name: 'Mind & mood', color: '#b8cde0', items: [['page', 'room.html#mind', 'self_improvement', 'Mindfulness hub', 'Erin Lee’s pauses and podcasts'], ['link', 'https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change', 'article', 'The Quiet Work of Change', 'Erin’s essay on Substack'], ['page', 'mental-health.html', 'psychology', 'Mood & calm', 'When to reach for support'], ['page', 'breathe.html', 'air', 'Breathing', 'Guided breath'], ['action', 'mat', 'self_improvement', 'Sit on the mat', 'A session with Erin']] },
+    { id: 'mind', name: 'Mind & mood', color: '#b8cde0', items: [['page', 'room.html#mind', 'self_improvement', 'Mindfulness hub', 'Erin Lee’s pauses and podcasts'], ['link', 'https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change', 'article', 'The Quiet Work of Change', 'An essay by Erin'], ['page', 'mental-health.html', 'psychology', 'Mood & calm', 'When to reach for support'], ['page', 'breathe.html', 'air', 'Breathing', 'Guided breath'], ['action', 'mat', 'self_improvement', 'Sit on the mat', 'A session with Erin']] },
     { id: 'body', name: 'Body & relief', color: '#f5c6b8', items: [['action', 'acu', 'spa', 'Acupressure on your avatar', 'Points for cramps, with evidence'], ['page', 'sleep.html', 'bedtime', 'Sleep & your cycle', 'Why some weeks feel lighter'], ['page', 'face-ppg.html', 'monitor_heart', 'Calm check (beta)', 'Pulse from your face camera'], ['page', 'ppg.html', 'fingerprint', 'Finger pulse', 'Camera and flash'], ['page', 'stress.html', 'self_improvement', 'Stress check-in', 'PSS-10 questionnaire']] },
     { id: 'videos', name: 'All videos', color: '#e7dcf5', items: VIDEOS.map(function (v) { return ['video', v[0], v[2], v[3]]; }) },
     { id: 'doctor', name: 'Share with doctor', color: '#ffffff', items: [['page', 'journal.html#share', 'medical_services', 'Dr shares card', 'Your 4-week summary'], ['page', 'doctor.html', 'stethoscope', 'Doctor view', 'How your clinician opens it']] }
@@ -267,12 +267,6 @@
     scene.style.aspectRatio = L.w + '/' + L.h; scene.dataset.layout = L.id;
     if (dayImg.getAttribute('src') !== ART + L.img) dayImg.src = ART + L.img;
     dayImg.width = L.w; dayImg.height = L.h;
-    /* A rendered night plate replaces the dark wash when the layout has one; without it the CSS filter stays. */
-    var nightImg = $('#roomNight');
-    if (nightImg) {
-      if (L.night) { if (nightImg.getAttribute('src') !== ART + L.night) nightImg.src = ART + L.night; nightImg.width = L.w; nightImg.height = L.h; scene.classList.add('has-night-img'); }
-      else { nightImg.removeAttribute('src'); scene.classList.remove('has-night-img'); }
-    }
     buildHotspots();
     avatar.style.width = L.avatarW + '%';
     place(sleeper, L.sleeper); sleeper.style.transform = 'translate(-50%,-50%) rotate(' + L.sleeper.rot + 'deg)';
@@ -1574,7 +1568,7 @@
   $('#hudStop').addEventListener('click', function () { if (practice) stopPractice(); else stopSession(false); });
   /* ---------- Listen with Erin: Take A Pause, streamed from her own Substack ---------- */
   var POD = window.OvuPodcast;
-  function podLabel(ep) { return (ep.number ? 'Episode ' + ep.number + ' · ' : '') + Math.round(ep.durationSeconds / 60) + ' min'; }
+  function podLabel(ep) { var n = POD.indexOf ? POD.indexOf(ep.id) : 0; return (n ? 'Episode ' + n + ' · ' : '') + Math.round(ep.durationSeconds / 60) + ' min'; }
   function fillPodShelf() {
     var el = $('#podShelf'); if (!el || !POD) return;
     POD.load().then(function () {
@@ -1591,7 +1585,7 @@
       var cs = S.cycleStats(), sug = POD.suggestFor(cs.mode === 'suspended' ? null : cs.phase), last = POD.lastId() && POD.episode(POD.lastId());
       if (selId) POD.select(selId); else if (!POD.state().ep) POD.select((last || sug).id);
       openSheet('erin-listen', 'Listen with Erin', 'Take A Pause, by Erin Lee', 'headphones',
-        '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Erin Lee · certified MBSR teacher</b><small>Short talks on patience, kindness and balance, drawn from the Dhammapada. They stream from Erin’s Substack; listening does not earn hearts, so there is nothing to chase.</small></div></div>' +
+        '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Erin Lee · certified MBSR teacher</b><small>Short talks on patience, kindness and balance, drawn from the Dhammapada. Put one on when the day feels loud.</small></div></div>' +
         '<div id="podPlayer"></div>' +
         (sug ? '<div class="podsug"><span class="ms">wb_twilight</span><span>' + (cs.phase && cs.mode !== 'suspended' ? 'A gentle pick for your ' + esc(cs.phase === 'late' ? 'luteal' : cs.phase) + ' days: ' : 'A gentle place to start: ') + '<button type="button" class="linkbtn" data-ep="' + sug.id + '">' + esc(sug.title) + '</button>. Choose anything that suits you.</span></div>' : '') +
         '<div class="field"><span class="lbl">All episodes</span><div class="podlist">' + d.episodes.map(podCard).join('') + '</div></div>' +
@@ -1646,7 +1640,7 @@
       '<div class="podopts"><span class="lbl">Speed</span><div class="chips">' + [0.75, 1, 1.25, 1.5].map(function (r) { return '<button type="button" class="chipbtn' + (Math.abs(st.speed - r) < 0.01 ? ' on' : '') + '" data-speed="' + r + '">' + r + '×</button>'; }).join('') + '</div><span class="lbl">Sleep timer</span><div class="chips">' + [['off', 'Off'], ['10', '10 min'], ['20', '20 min'], ['30', '30 min'], ['end', 'End of episode']].map(function (o) { var on = (o[0] === 'off' && !st.sleep) || (o[0] === 'end' && st.sleep === 'end'); return '<button type="button" class="chipbtn' + (on ? ' on' : '') + '" data-sleep="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div></div>' +
       (ep.themes && ep.themes.length ? '<div class="podthemes">' + ep.themes.map(function (t) { return '<span class="slotchip">' + esc(t.name) + ' · ' + esc(t.pali) + '</span>'; }).join('') + '</div>' : '') +
       (ep.quote ? '<blockquote class="podquote">' + esc(ep.quote) + '</blockquote>' : '') +
-      '<div class="row"><button type="button" class="btn soft" id="podReflect"><span class="ms">dark_mode</span>' + (ep.question ? 'Reflect with Luna' : 'Tell Luna how it felt') + '</button><a class="btn ghost" href="' + esc(ep.sourceUrl) + '" target="_blank" rel="noopener"><span class="ms">open_in_new</span>Read on Substack</a></div>' +
+      '<div class="row"><button type="button" class="btn soft" id="podReflect"><span class="ms">dark_mode</span>' + (ep.question ? 'Reflect with Luna' : 'Tell Luna how it felt') + '</button></div>' +
       (ep.question ? '<p class="help">Erin asks: “' + esc(ep.question) + '”</p>' : '') + '</div>';
     $$('.podep', body).forEach(function (b) { b.classList.toggle('on', b.dataset.ep === ep.id); });
   }
@@ -1666,7 +1660,7 @@
     if (type === 'locked') openPlus();
     if (type === 'preparing') toast('Getting the episode ready…', 'hourglass_top');
     if (type === 'plus' && current === 'erin-listen') openListen(st.ep && st.ep.id);
-    if (type === 'error') toast('This episode could not play here. It may now be in Erin’s paid archive; open it on Substack.', 'error');
+    if (type === 'error') toast('This episode will not play right now. Try again in a little while.', 'error');
     if (type === 'ended') toast('Episode finished. Take a breath before the next thing.', 'self_improvement');
     if (type === 'sleep') toast('Sleep timer: paused.', 'bedtime');
     updatePodMini();
@@ -2086,7 +2080,7 @@
   /* ---------- window: follows the sun (ovu-sun.js) ---------- */
   function sunNow() { return window.OvuSun ? OvuSun.phase() : { key: 'night', title: 'Tonight', icon: 'dark_mode', sunrise: '', sunset: '' }; }
   function applySky() {
-    var sp = sunNow(); var was = scene.dataset.sky; scene.dataset.sky = sp.key; if (was && was !== sp.key && window.OvuPets) renderProps();
+    var sp = sunNow(); var was = scene.dataset.sky; scene.dataset.sky = sp.key; scene.classList.toggle('sky-night', sp.key === 'night'); if (was && was !== sp.key && window.OvuPets) renderProps();
     var wb = document.querySelector('.hotspot[data-id="window"]');
     if (wb && sp.windowLabel) { wb.setAttribute('aria-label', sp.windowLabel); var tip = wb.querySelector('.tip'); if (tip) tip.textContent = cap(sp.windowLabel.split(' · ')[1]); }
     updateGreeting();

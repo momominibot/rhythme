@@ -32,6 +32,8 @@
   }
   function remember() { if (!cur || !audio || !isFinite(audio.currentTime)) return; var pos = store().pos || {}; pos[cur.id] = Math.floor(audio.currentTime); save({ pos: pos, last: cur.id, speed: audio.playbackRate }); }
   function episode(id) { return data ? data.episodes.filter(function (e) { return e.id === id; })[0] || null : null; }
+  /* our own count, oldest first, so the newest of 19 talks is Episode 19 and not the feed's running number */
+  function indexOf(id) { if (!data) return 0; var order = data.episodes.slice().sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); }); for (var i = 0; i < order.length; i++) if (order[i].id === id) return i + 1; return 0; }
   /* Select an episode without playing it; Play is always the listener's own tap. */
   function select(id) {
     var ep = episode(id); if (!ep) return null;
@@ -101,5 +103,5 @@
   var PHASE_PICK = { menstrual: 86, follicular: 82, ovulatory: 98, luteal: 87, late: 87 };
   function suggestFor(phase) { if (!data) return null; var n = PHASE_PICK[phase]; return data.episodes.filter(function (e) { return e.number === n; })[0] || data.episodes[0]; }
   function fmt(s) { s = Math.max(0, Math.floor(s || 0)); var m = Math.floor(s / 60), r = s % 60; return m + ':' + String(r).padStart(2, '0'); }
-  root.OvuPodcast = { plus: plus, plusActive: plusActive, redeem: redeem, removePlus: removePlus, load: load, select: select, play: play, pause: pause, toggle: toggle, skip: skip, seekTo: seekTo, setSpeed: setSpeed, setSleep: setSleep, state: state, episode: episode, lastId: lastId, progress: progress, finished: finished, suggestFor: suggestFor, fmt: fmt, on: function (fn) { listeners.push(fn); }, data: function () { return data; } };
+  root.OvuPodcast = { plus: plus, plusActive: plusActive, redeem: redeem, removePlus: removePlus, load: load, select: select, play: play, pause: pause, toggle: toggle, skip: skip, seekTo: seekTo, setSpeed: setSpeed, setSleep: setSleep, state: state, episode: episode, indexOf: indexOf, lastId: lastId, progress: progress, finished: finished, suggestFor: suggestFor, fmt: fmt, on: function (fn) { listeners.push(fn); }, data: function () { return data; } };
 })(window);

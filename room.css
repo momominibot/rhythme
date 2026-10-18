@@ -47,16 +47,12 @@ button{font-family:inherit;color:inherit}
 .scene{position:relative;width:100%;aspect-ratio:1472/1840;overflow:hidden;background:linear-gradient(180deg,#d8c8ec 0%,#cdb9e6 50%,#d9c9ea 100%);transform-style:preserve-3d;perspective:900px}
 .scene-inner{position:absolute;inset:0;transition:transform .5s ease-out;will-change:transform}
 .room-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none;transition:opacity 1.6s ease,filter 1.6s ease}
-.room-img.night{opacity:0}
-.scene.is-night .room-img.day{filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg)}
-.scene.is-night .room-img.night{opacity:1}
-.scene.is-night.has-night-img .room-img.day{filter:none}
+.scene:is(.is-night,.sky-night) .room-img.day{filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg)}
 .night-veil{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.6s ease;
   background:radial-gradient(28% 22% at 13% 50%,rgba(255,214,160,.45),transparent 70%),radial-gradient(18% 16% at 44% 29%,rgba(214,200,255,.55),transparent 70%),linear-gradient(180deg,rgba(40,24,80,.35),rgba(30,18,60,.45))}
-.scene.is-night .night-veil{opacity:1}
-.scene.is-night.has-night-img .night-veil{opacity:.35}
+.scene:is(.is-night,.sky-night) .night-veil{opacity:1}
 .stars{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.2s}
-.scene.is-night .stars{opacity:1}
+.scene:is(.is-night,.sky-night) .stars{opacity:1}
 .star{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff;box-shadow:0 0 8px 2px rgba(255,255,255,.7);animation:twinkle 2.6s ease-in-out infinite}
 @keyframes twinkle{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1.2)}}
 .sparkles{position:absolute;inset:0;pointer-events:none}
@@ -68,7 +64,7 @@ button{font-family:inherit;color:inherit}
 @media(min-width:520px){.greeting{top:50px}}
 .greeting h1{font-family:var(--serif);font-weight:600;font-size:22px;line-height:1.15;color:var(--rm-plum);text-shadow:0 1px 0 rgba(255,255,255,.6)}
 .greeting p{font:600 12px var(--sans);color:var(--rm-ink-2);margin-top:3px;text-shadow:0 1px 0 rgba(255,255,255,.6)}
-.scene.is-night .greeting h1,.scene.is-night .greeting p{color:#f3ecfb;text-shadow:0 1px 8px rgba(20,10,40,.5)}
+.scene:is(.is-night,.sky-night) .greeting h1,.scene:is(.is-night,.sky-night) .greeting p{color:#f3ecfb;text-shadow:0 1px 8px rgba(20,10,40,.5)}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.82);backdrop-filter:blur(8px);font:700 11px var(--sans);color:var(--rm-mauve);box-shadow:0 3px 10px rgba(90,66,116,.12)}
 .chip .ms{font-size:14px}
 .phase-chip{position:absolute;right:12px;top:52px;z-index:5;pointer-events:auto;cursor:pointer;border:none}
@@ -85,7 +81,7 @@ button{font-family:inherit;color:inherit}
 .hotspot:hover .tip,.hotspot:focus-visible .tip,.hotspot.show-tip .tip{opacity:1;transform:translate(-50%,0)}
 .hotspot.bump{animation:bump .45s ease}
 @keyframes bump{0%{transform:translate(-50%,-50%) scale(1)}40%{transform:translate(-50%,-50%) scale(1.25)}100%{transform:translate(-50%,-50%) scale(1)}}
-.scene.quiet .hotspot .pulse,.scene.is-night .hotspot .pulse{opacity:.35}
+.scene.quiet .hotspot .pulse,.scene:is(.is-night,.sky-night) .hotspot .pulse{opacity:.35}
 .hotspot .glow{position:absolute;inset:-6px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.55),rgba(255,255,255,0) 70%);opacity:0;transition:opacity .25s}
 .hotspot:hover .glow{opacity:1}
 
@@ -591,7 +587,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 
 /* ---- 18 Oct round 4: night window, visiting bar, reminders, desk drag + wallpaper, acupoint locator, dream house ---- */
 .win-night{position:absolute;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%);box-shadow:inset 0 0 22px rgba(0,0,0,.4);opacity:0;transition:opacity 1.6s ease;pointer-events:none;overflow:hidden;z-index:2}
-.scene.is-night .win-night{opacity:.97}
+.scene:is(.is-night,.sky-night) .win-night{opacity:.97}
 .win-night .moon{position:absolute;left:52%;top:24%;width:30%;aspect-ratio:1;border-radius:50%;background:#fff3cf;box-shadow:0 0 16px #ffe7a6,0 0 40px rgba(255,231,166,.5)}
 .win-night .moon::after{content:'';position:absolute;left:-26%;top:-8%;width:100%;height:100%;border-radius:50%;background:#2a2152}
 .win-night i.s{position:absolute;width:5%;aspect-ratio:1;border-radius:50%;background:#fff;box-shadow:0 0 6px #fff;animation:twinkle 2.6s ease-in-out infinite}
@@ -710,18 +706,40 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .nexthomes div>.ms{font-size:22px;color:var(--rm-mauve);flex-shrink:0}
 .nexthomes div b{display:block;font:800 12px var(--sans);color:var(--rm-ink)}
 .nexthomes div small{display:block;font:600 10.5px var(--sans);color:var(--rm-ink-3);line-height:1.4}
-.welcome{position:absolute;inset:0;z-index:70;background:radial-gradient(circle at 30% 12%,#fbeaf4,#e4d7f3 48%,#cdbce6);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 24px;gap:4px;animation:pop2 .4s ease-out}
+.welcome{position:absolute;inset:0;z-index:70;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 24px;gap:4px;animation:pop2 .4s ease-out;
+  background:
+    radial-gradient(42% 30% at 18% 14%,rgba(255,214,236,.75),transparent 70%),
+    radial-gradient(46% 34% at 84% 10%,rgba(205,186,245,.8),transparent 70%),
+    radial-gradient(60% 40% at 50% 112%,rgba(255,226,196,.55),transparent 70%),
+    radial-gradient(30% 22% at 70% 62%,rgba(255,240,250,.5),transparent 70%),
+    linear-gradient(168deg,#f7ebf8 0%,#e7d8f5 42%,#d4c1ea 100%)}
+.welcome::after{content:'';position:absolute;inset:-20%;pointer-events:none;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.35),transparent 55%);mix-blend-mode:screen;animation:bloom 9s ease-in-out infinite}
+@keyframes bloom{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+.w-stars{position:absolute;inset:0;pointer-events:none;opacity:.85;background-image:
+  radial-gradient(1.6px 1.6px at 12% 18%,#fff,transparent),radial-gradient(1.2px 1.2px at 28% 8%,#fff,transparent),radial-gradient(1.8px 1.8px at 44% 22%,#fff,transparent),
+  radial-gradient(1.2px 1.2px at 62% 12%,#fff,transparent),radial-gradient(1.6px 1.6px at 78% 26%,#fff,transparent),radial-gradient(1.2px 1.2px at 90% 9%,#fff,transparent),
+  radial-gradient(1.4px 1.4px at 8% 46%,#fff,transparent),radial-gradient(1.2px 1.2px at 94% 44%,#fff,transparent),radial-gradient(1.6px 1.6px at 20% 70%,#fff,transparent),
+  radial-gradient(1.2px 1.2px at 84% 72%,#fff,transparent),radial-gradient(1.4px 1.4px at 52% 88%,#fff,transparent),radial-gradient(1.2px 1.2px at 36% 56%,#fff,transparent),
+  radial-gradient(1.2px 1.2px at 70% 84%,#fff,transparent),radial-gradient(1.6px 1.6px at 60% 50%,#fff,transparent);animation:twinkle 3.2s ease-in-out infinite}
+.w-moon{position:relative;width:40%;max-width:168px;margin:0 auto 8px;z-index:1}
+.w-moon::before{content:'';position:absolute;inset:-38%;border-radius:50%;background:radial-gradient(circle,rgba(255,243,204,.85) 0%,rgba(222,204,255,.45) 42%,transparent 70%);filter:blur(8px);animation:moonglow 5s ease-in-out infinite}
+.w-moon img{position:relative;width:100%;display:block;filter:drop-shadow(0 0 20px rgba(255,236,190,.7)) drop-shadow(0 14px 18px rgba(90,66,116,.3));animation:moonfloat 6s ease-in-out infinite}
+@keyframes moonglow{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.07)}}
+@keyframes moonfloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-8px) rotate(3deg)}}
+.welcome>:not(.w-stars){position:relative;z-index:1}
 .welcome[hidden]{display:none}
 .w-art{position:relative;width:44%;margin-bottom:6px}
 .w-art img:first-child{width:100%;display:block;filter:drop-shadow(0 16px 20px rgba(90,66,116,.3))}
 .w-art .w-pet{position:absolute;width:62%;right:-34%;bottom:-4%;filter:drop-shadow(0 10px 12px rgba(90,66,116,.3))}
 .w-brand{font-family:var(--serif);letter-spacing:.3em;font-size:12px;color:var(--rm-mauve);margin-top:10px}
-.w-erin{font-family:var(--serif);font-weight:600;font-size:clamp(44px,13vw,64px);letter-spacing:.04em;color:var(--rm-plum);line-height:1.05;margin:2px 0 4px}
+.w-erin{font-family:var(--serif);font-weight:600;font-size:clamp(44px,13vw,64px);letter-spacing:.04em;color:var(--rm-plum);line-height:1.05;margin:2px 0 4px;text-shadow:0 0 22px rgba(255,255,255,.9),0 2px 14px rgba(214,196,255,.6)}
 .w-ex{font:700 13px var(--sans);color:var(--rm-ink-2);letter-spacing:.02em}
 .w-ex b{color:var(--rm-plum);font-weight:900}
 .w-tag{font-family:var(--serif);font-style:italic;font-size:17px;color:var(--rm-plum);margin:6px 0 10px}
 .w-note{font:600 11.5px var(--sans);color:var(--rm-ink-3);line-height:1.5;max-width:300px;margin-bottom:14px}
-.welcome .btn{min-width:210px;justify-content:center}
+.welcome .btn{min-width:210px;justify-content:center;flex:0 0 auto}
+.welcome .btn.primary{box-shadow:0 10px 26px rgba(117,86,196,.42),0 0 28px rgba(226,210,255,.75)}
+.welcome .btn.ghost{background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .welcome .btn+.btn{margin-top:8px}
 .onb{display:flex;flex-direction:column}
 .onb-head{display:flex;gap:12px;align-items:flex-end;margin-top:4px}
@@ -778,12 +796,10 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .scene[data-sky="night"] .win-night{opacity:.97}
 .scene[data-sky="sunrise"]:not(.is-night) .room-img.day{filter:sepia(.06) saturate(1.05) hue-rotate(-4deg) brightness(.98)}
 .scene[data-sky="sunset"]:not(.is-night) .room-img.day{filter:sepia(.16) saturate(1.12) hue-rotate(-8deg) brightness(.95)}
-.scene[data-sky="night"]:not(.is-night) .room-img.day{filter:brightness(.74) saturate(.88) hue-rotate(-6deg)}
-.scene[data-sky="night"]:not(.is-night) .stars{opacity:.55}
-/* asleep always shows the night window, whatever the hour */
-.scene.is-night .win-night{background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%)}
-.scene.is-night .win-night .sun{opacity:0}
-.scene.is-night .win-night .moon,.scene.is-night .win-night i.s{opacity:1}
+/* asleep, or after sunset, the window shows the night sky whatever the hour */
+.scene:is(.is-night,.sky-night) .win-night{background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%)}
+.scene:is(.is-night,.sky-night) .win-night .sun{opacity:0}
+.scene:is(.is-night,.sky-night) .win-night .moon,.scene:is(.is-night,.sky-night) .win-night i.s{opacity:1}
 /* diary: photo choices, recognition state, amount box; date and time never overflow on iOS */
 .grid2>*{min-width:0}
 .input[type=date],.input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;box-sizing:border-box;min-height:46px;text-align:left}
@@ -871,16 +887,20 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .welcome.consent{z-index:90;justify-content:flex-start;padding:0;text-align:left}
 .c-scroll{width:100%;max-width:440px;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(22px + env(safe-area-inset-top,0px)) 20px calc(26px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;margin:0 auto}
 .c-head{display:flex;align-items:center;gap:12px}
-.c-head img{width:76px;height:auto;flex:none;filter:drop-shadow(0 8px 10px rgba(90,66,116,.25))}
+.c-moon{position:relative;width:66px;flex:none}
+.c-moon::before{content:'';position:absolute;inset:-45%;border-radius:50%;background:radial-gradient(circle,rgba(255,243,204,.8),rgba(222,204,255,.4) 45%,transparent 70%);filter:blur(6px);animation:moonglow 5s ease-in-out infinite}
+.c-moon img{position:relative;width:100%;display:block;filter:drop-shadow(0 0 14px rgba(255,236,190,.7)) drop-shadow(0 8px 12px rgba(90,66,116,.28));animation:moonfloat 6s ease-in-out infinite}
+.c-head h2{text-shadow:0 0 18px rgba(255,255,255,.85)}
+.c-scroll{position:relative;z-index:1}
 .c-head .w-brand{margin:0 0 2px}
 .c-head h2{font-family:var(--serif);font-weight:600;font-size:25px;line-height:1.15;color:var(--rm-plum);margin:0;text-wrap:balance}
 .c-head p{font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin:4px 0 0}
 .c-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.c-list li{display:flex;gap:11px;align-items:flex-start;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.9);border-radius:18px;padding:11px 13px;box-shadow:0 6px 16px rgba(90,66,116,.08)}
-.c-list .ms{flex:none;width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);color:var(--rm-plum);font-size:19px}
+.c-list li{display:flex;gap:11px;align-items:flex-start;background:rgba(255,255,255,.62);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.95);border-radius:18px;padding:11px 13px;box-shadow:0 8px 22px rgba(90,66,116,.12),inset 0 1px 0 rgba(255,255,255,.9),0 0 0 1px rgba(214,196,255,.35)}
+.c-list .ms{flex:none;width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);color:var(--rm-plum);font-size:19px;box-shadow:0 0 12px rgba(236,214,255,.8)}
 .c-list b{display:block;font:800 13.5px/1.3 var(--sans);color:var(--rm-plum)}
 .c-list span:not(.ms){display:block;font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:2px}
-.c-opt{display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.55);border:1.5px dashed rgba(150,120,190,.45);border-radius:16px;padding:11px 13px;cursor:pointer}
+.c-opt{display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1.5px dashed rgba(150,120,190,.45);border-radius:16px;padding:11px 13px;cursor:pointer}
 .c-opt input{margin-top:3px;width:18px;height:18px;accent-color:var(--rm-plum);flex:none}
 .c-opt b{display:block;font:800 13px/1.3 var(--sans);color:var(--rm-plum)}
 .c-opt small{display:block;font:600 12px/1.45 var(--sans);color:var(--rm-ink-3);margin-top:2px}
@@ -1137,13 +1157,4 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .lsnote{display:flex;gap:6px;align-items:flex-start;margin:6px 0;font-weight:600;color:#8a3a58}
 .lstext{width:100%;margin:6px 0;font:500 13px var(--sans);line-height:1.4;resize:vertical}
 
-/* a real night plate: no wash, no drawn moon over the window, a soft crossfade at sunset */
-.scene.has-night-img .night-veil{opacity:0}
-.scene.is-night.has-night-img .night-veil{opacity:0}
-.scene.is-night.has-night-img .win-night{opacity:0}
-.scene.has-night-img .stars{opacity:0}
-.scene[data-sky="sunset"].has-night-img:not(.is-night) .room-img.night{opacity:.42}
-.scene[data-sky="sunset"].has-night-img:not(.is-night) .room-img.day{filter:sepia(.1) saturate(1.08) hue-rotate(-6deg) brightness(.97)}
-.scene[data-sky="night"].has-night-img:not(.is-night) .room-img.night{opacity:1}
-.scene[data-sky="night"].has-night-img:not(.is-night) .room-img.day{filter:none}
 .aculist button span em{display:block;font:700 11px var(--sans);color:var(--rm-mauve);font-style:normal;margin-top:2px;line-height:1.3}
