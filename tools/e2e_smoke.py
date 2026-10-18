@@ -91,6 +91,12 @@ async def main():
             food = await page.evaluate("()=>({modes: document.querySelectorAll('.foodmodes button').length, panes: document.querySelectorAll('.dtabs button, .dpane').length})")
             check("food diary opens with its modes and panes", food["modes"] >= 2 and food["panes"] >= 2, food)
 
+            # 4b. the You tab shows the Your account row; a signed-out visitor makes no auth or data call
+            await page.goto(BASE + "room.html#you", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] #youAccount .ygroup', timeout=10000)
+            acct = await page.evaluate("()=>{var a=document.querySelector('#youAccount');return {label:a&&a.querySelector('.lbl')?a.querySelector('.lbl').textContent:null, email: !!(a&&a.querySelector('[data-ya=\"email-start\"]')), intro: ((a&&a.querySelector('.ya-intro')?a.querySelector('.ya-intro').textContent:'')||'').toLowerCase().indexOf('cloud backup')>=0};}")
+            check("You tab shows the Your account row with email sign-in and the backup line", acct["label"] == "Your account" and acct["email"] and acct["intro"], acct)
+            check("no sign-in or data request leaves the page for a signed-out person", not [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1" in u)], relay_calls[:3])
+
             # 5. journal: icon tiles, structured summary, the PDF downloads and is a PDF
             await page.goto(BASE + "journal.html", wait_until="networkidle"); await page.wait_for_timeout(900)
             jr = await page.evaluate("()=>({kpis: document.querySelectorAll('#shareKpis .kpi').length, pdfBtn: !!document.querySelector('#makePdf'), entries: document.querySelectorAll('#timeline .entry').length})")
@@ -147,6 +153,7 @@ async def main():
             await p3.goto(BASE + "hormones.html", wait_until="load"); await p3.wait_for_timeout(700)
             check("a v1 consent is sent back to the room to be asked again", p3.url.endswith("room.html"), p3.url)
             await ctx3.close()
+            check("no Supabase auth or data request was made anywhere in the signed-out run", not [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1" in u)], relay_calls[:3])
             check("nothing was requested from any third party during the run", not external, external[:3])
 
             check("no page errors or console errors across the run", not errors, errors[:3])
