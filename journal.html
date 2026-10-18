@@ -27,8 +27,8 @@
       <div class="msg" id="insightMsg"></div>
     </section>
     <section class="card hero" id="share">
-      <h2><span class="ms">medical_services</span>Dr shares card</h2>
-      <p class="sub">A 4-week summary built by the summary agent from your own entries. For clinician review; not a diagnosis.</p>
+      <h2><span class="ms">medical_services</span>Four-week summary</h2>
+      <p class="sub">Built from your own entries by the summary agent. Luna can write it up for you and for your clinician. For review, not a diagnosis.</p>
       <div class="kpis" id="shareKpis"></div>
       <div id="shareBody"></div>
       <div id="aiShare"></div>
@@ -131,24 +131,35 @@
     $('#flagCard').style.display=flags.length?'':'none';
     $('#flags').innerHTML=flags.map(function(f){return '<div class="flag '+f.level+'"><span class="ms">'+(f.level==='high'?'emergency_home':f.level==='watch'?'flag':'info')+'</span><div><b>'+esc(f.title)+'</b><span>'+esc(f.detail)+'</span>'+(f.date?'<em>'+esc(pretty(f.date))+' · '+esc(f.code)+'</em>':'')+'</div></div>';}).join('');
   }
+  var KICON={coverage:'event_available',period:'water_drop',cycle:'calendar_month',sleep:'bedtime',symptoms:'healing',calm:'self_improvement'};
+  function kpi(key,label,val,sub){return '<div class="kpi"><small><span class="ms">'+KICON[key]+'</span>'+label+'</small><b>'+val+'</b><span>'+esc(sub)+'</span></div>';}
   function renderShare(){
-    var sum=A.fourWeekSummary();
+    var sum=A.fourWeekSummary(),cov=sum.coverage.daysWithEntries,low=cov<14,eps=sum.cycle.episodes.length,cl=sum.cycle.cycleLengths.length;
     $('#shareKpis').innerHTML=
-      '<div class="kpi"><small>Coverage</small><b>'+sum.coverage.daysWithEntries+'/28</b><span>days with entries</span></div>'+
-      '<div class="kpi"><small>Cycle</small><b>'+(sum.cycle.averageLength?sum.cycle.averageLength+'d':'—')+'</b><span>'+(sum.cycle.cycleLengths.length?'avg of '+sum.cycle.cycleLengths.length+' cycles':'no full cycle yet')+'</span></div>'+
-      '<div class="kpi"><small>Sleep</small><b>'+(sum.sleep.average?sum.sleep.average+'h':'—')+'</b><span>'+sum.sleep.nights+' nights'+(sum.sleep.under6?' · '+sum.sleep.under6+' under 6h':'')+'</span></div>';
+      kpi('coverage','Logged',cov+'<em>/28</em>','days with entries')+
+      kpi('period','Period',String(sum.cycle.periodDays),eps?'bleeding day'+(sum.cycle.periodDays===1?'':'s')+' in '+eps+' period'+(eps===1?'':'s'):'bleeding days')+
+      kpi('cycle','Cycle',sum.cycle.averageLength?sum.cycle.averageLength+'<em>d</em>':'—',cl?'average of '+cl+' cycle'+(cl===1?'':'s'):'no full cycle yet')+
+      kpi('sleep','Sleep',sum.sleep.average?sum.sleep.average+'<em>h</em>':'—',sum.sleep.nights+' night'+(sum.sleep.nights===1?'':'s')+(sum.sleep.under6?', '+sum.sleep.under6+' under 6h':''))+
+      kpi('symptoms','Symptoms',String(sum.symptoms.daysLogged),sum.symptoms.painMax!==null?'pain up to '+sum.symptoms.painMax+'/10':'days logged')+
+      kpi('calm','Calm',sum.mindfulness.minutes+'<em> min</em>',sum.mindfulness.sessions+' session'+(sum.mindfulness.sessions===1?'':'s'))+
+      '<div class="covbar" role="img" aria-label="'+cov+' of 28 days logged"><i style="width:'+Math.round(cov/28*100)+'%"></i></div>'+
+      '<div class="covnote"><span class="ms">date_range</span>'+esc(pretty(sum.range.from))+' to '+esc(pretty(sum.range.to))+(low?' · sparse so far: patterns need more days':'')+'</div>';
     var top=sum.symptoms.top.map(function(t){return t.name+' ('+t.days+')';}).join(', ');
-    $('#shareBody').innerHTML='<p class="sub" style="margin-top:10px"><b>'+esc(pretty(sum.range.from))+' – '+esc(pretty(sum.range.to))+'.</b> '+sum.cycle.periodDays+' bleeding day'+(sum.cycle.periodDays===1?'':'s')+(sum.cycle.episodes.length?' across '+sum.cycle.episodes.length+' period'+(sum.cycle.episodes.length===1?'':'s'):'')+'. '+(top?'Most logged: '+esc(top)+'. ':'')+(sum.symptoms.painMax!==null?'Pain up to '+sum.symptoms.painMax+'/10. ':'')+sum.food.meals+' meals over '+sum.food.daysLogged+' days. '+(sum.flags.length?sum.flags.length+' pattern note'+(sum.flags.length===1?'':'s')+' for review.':'No pattern notes raised.')+'</p>'+
-      (sum.questions.length?'<div class="field"><span class="lbl">Questions you could ask</span>'+sum.questions.map(function(q){return '<div class="flag info"><span class="ms">help</span><span>'+esc(q)+'</span></div>';}).join('')+'</div>':'');
+    $('#shareBody').innerHTML=(top?'<div class="ilist" style="margin-top:10px"><li><span class="ms">healing</span><span>Most logged: '+esc(top)+'</span></li></div>':'')+
+      '<div class="ilist" style="margin-top:6px"><li><span class="ms">restaurant</span><span>'+sum.food.meals+' meal'+(sum.food.meals===1?'':'s')+' over '+sum.food.daysLogged+' day'+(sum.food.daysLogged===1?'':'s')+'</span></li><li><span class="ms">'+(sum.flags.length?'flag':'check_circle')+'</span><span>'+(sum.flags.length?sum.flags.length+' pattern note'+(sum.flags.length===1?'':'s')+' for review (listed below)':'No pattern notes raised')+'</span></li></div>'+
+      (sum.questions.length?'<div class="pat" style="margin-top:8px"><b><span class="ms">help</span>Questions you could ask</b>'+ilist('arrow_right','',sum.questions)+'</div>':'');
   }
+  function ilist(icon,cls,items){return '<ul class="ilist '+cls+'">'+items.map(function(t){return '<li><span class="ms">'+icon+'</span><span>'+esc(t)+'</span></li>';}).join('')+'</ul>';}
+  function sechead(icon,title,sub){return '<div class="sechead"><span class="ms">'+icon+'</span><div><b>'+esc(title)+'</b>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</div></div>';}
+  function stamp(ins,label){return '<div class="meta"><span class="ms">auto_awesome</span>'+esc(label)+' · '+esc(new Date(ins.generatedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))+' · from your own entries · not a diagnosis</div>';}
   function insightHTML(ins,compact){
     if(!ins)return '';
     var h='<div class="summary ins"><div class="lead">'+esc(ins.summary)+'</div>';
-    if(ins.caution)h+='<div class="caution">'+esc(ins.caution)+'</div>';
-    if(ins.patterns&&ins.patterns.length)h+=ins.patterns.map(function(p){return '<div class="pat"><b>'+esc(p.title)+(p.confidence?'<i>'+esc(p.confidence)+'</i>':'')+'</b>'+esc(p.detail)+(p.basis?'<small>Based on: '+esc(p.basis)+'</small>':'')+'</div>';}).join('');
-    if(!compact&&ins.suggestion)h+='<div class="pat"><b>For tomorrow</b>'+esc(ins.suggestion)+'</div>';
-    if(!compact&&ins.questions&&ins.questions.length)h+='<div class="pat"><b>You could ask</b>'+ins.questions.map(esc).join('<br>')+'</div>';
-    h+='<div class="meta">Luna’s reading · '+esc(new Date(ins.generatedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))+'</div></div>';
+    if(ins.caution)h+='<div class="caution"><span class="ms">warning</span>'+esc(ins.caution)+'</div>';
+    if(ins.patterns&&ins.patterns.length)h+=ins.patterns.map(function(p){return '<div class="pat"><b><span class="ms">insights</span>'+esc(p.title)+(p.confidence?'<i>'+esc(p.confidence)+'</i>':'')+'</b>'+esc(p.detail)+(p.basis?'<small>Based on: '+esc(p.basis)+'</small>':'')+'</div>';}).join('');
+    if(!compact&&ins.suggestion)h+='<div class="pat tone-good"><b><span class="ms">wb_sunny</span>For tomorrow</b>'+esc(ins.suggestion)+'</div>';
+    if(!compact&&ins.questions&&ins.questions.length)h+='<div class="pat"><b><span class="ms">help</span>You could ask</b>'+ilist('arrow_right','',ins.questions)+'</div>';
+    h+=stamp(ins,'Luna’s reading')+'</div>';
     return h;
   }
   function renderInsight(){
@@ -157,10 +168,31 @@
     btn.style.display='';btn.innerHTML='<span class="ms">auto_awesome</span>'+(ins?(I.stale('daily')?'Update today’s reading':'Read today again'):'Write today’s reading');
     $('#insightBody').innerHTML=ins?insightHTML(ins,false):'<div class="empty">'+(S.byDate(S.today()).length?'Tap the button and Luna will read today’s entries.':'Log something today first, then Luna can read it.')+'</div>';
   }
+  var SEC=[['cycle','Cycle','calendar_month'],['bleeding','Bleeding','water_drop'],['symptoms_pain','Symptoms and pain','healing'],['sleep','Sleep','bedtime'],['nutrition','Nutrition','restaurant'],['mood_calm','Mood and calm','self_improvement']];
   function fourHTML(ins){
     var c=ins.clinician||{},u=ins.user||{};
-    var secs=[['Cycle',c.cycle],['Bleeding',c.bleeding],['Symptoms and pain',c.symptoms_pain],['Sleep',c.sleep],['Nutrition',c.nutrition],['Mood and calm',c.mood_calm]].filter(function(s){return s[1];});
-    return '<div class="summary ins"><h5>For you</h5><div class="lead">'+esc(u.summary||'')+'</div>'+(u.wins&&u.wins.length?'<div class="pat"><b>Went well</b>'+u.wins.map(esc).join('<br>')+'</div>':'')+(u.watch&&u.watch.length?'<div class="pat"><b>Worth noticing</b>'+u.watch.map(esc).join('<br>')+'</div>':'')+'<h5>For your clinician</h5><div class="lead">'+esc(c.overview||'')+'</div><div class="secs">'+secs.map(function(s){return '<div class="sec"><b>'+esc(s[0])+'</b>'+esc(s[1])+'</div>';}).join('')+'</div>'+(c.patterns&&c.patterns.length?c.patterns.map(function(p){return '<div class="pat"><b>'+esc(p.title)+'</b>'+esc(p.detail)+(p.basis?'<small>Based on: '+esc(p.basis)+'</small>':'')+'</div>';}).join(''):'')+(c.questions&&c.questions.length?'<div class="pat"><b>Questions for the visit</b>'+c.questions.map(esc).join('<br>')+'</div>':'')+(c.limits?'<div class="pat"><b>Limits</b>'+esc(c.limits)+'</div>':'')+'<div class="meta">'+esc(ins.agent)+' · '+esc(ins.model||'')+' · '+esc(new Date(ins.generatedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))+' · included in your next encrypted share</div></div>';
+    var secs=SEC.filter(function(s){return c[s[0]];});
+    var h='<div class="summary ins four">';
+    h+=sechead('favorite','For you','Three warm lines from your own entries')+'<div class="lead">'+esc(u.summary||'')+'</div>';
+    if(u.wins&&u.wins.length)h+='<div class="pat tone-good"><b><span class="ms">check_circle</span>Went well</b>'+ilist('check','good',u.wins)+'</div>';
+    if(u.watch&&u.watch.length)h+='<div class="pat tone-note"><b><span class="ms">lightbulb</span>Worth noticing</b>'+ilist('arrow_right','note',u.watch)+'</div>';
+    h+=sechead('stethoscope','For your clinician','Neutral wording, labelled self-reported')+'<div class="lead">'+esc(c.overview||'')+'</div>';
+    if(secs.length)h+='<div class="secs">'+secs.map(function(s){return '<div class="sec"><span class="ms">'+s[2]+'</span><div><b>'+esc(s[1])+'</b>'+esc(c[s[0]])+'</div></div>';}).join('')+'</div>';
+    if(c.patterns&&c.patterns.length)h+=c.patterns.map(function(p){return '<div class="pat"><b><span class="ms">insights</span>'+esc(p.title)+'</b>'+esc(p.detail)+(p.basis?'<small>Based on: '+esc(p.basis)+'</small>':'')+'</div>';}).join('');
+    if(c.questions&&c.questions.length)h+='<div class="pat"><b><span class="ms">help</span>Questions for the visit</b>'+ilist('arrow_right','',c.questions)+'</div>';
+    if(c.limits)h+='<div class="pat tone-lim"><b><span class="ms">info</span>Limits</b>'+esc(c.limits)+'</div>';
+    h+='<div class="row"><button type="button" class="btn soft" id="copyClin"><span class="ms">content_copy</span>Copy the clinician summary</button></div>';
+    h+=stamp(ins,'Written by Luna')+'</div>';
+    return h;
+  }
+  function clinicianText(ins){
+    var c=ins.clinician||{},lines=['Rhythme four-week summary (self-reported entries, not a diagnosis)',''];
+    if(c.overview)lines.push(c.overview,'');
+    SEC.forEach(function(s){if(c[s[0]])lines.push(s[1]+': '+c[s[0]]);});
+    if(c.patterns&&c.patterns.length){lines.push('','Patterns:');c.patterns.forEach(function(p){lines.push('- '+p.title+': '+p.detail+(p.basis?' (based on: '+p.basis+')':''));});}
+    if(c.questions&&c.questions.length){lines.push('','Questions for the visit:');c.questions.forEach(function(q){lines.push('- '+q);});}
+    if(c.limits)lines.push('','Limits: '+c.limits);
+    return lines.join('\n');
   }
   function renderAiShare(){
     var ins=I.cachedFourWeeks(S.today()),btn=$('#aiShareBtn');
@@ -169,6 +201,7 @@
     $('#aiShare').innerHTML=ins?fourHTML(ins):'';
   }
   $('#insightBtn').addEventListener('click',function(){message($('#insightMsg'),'Luna is reading today’s entries…','info');I.daily(S.today(),true).then(function(){$('#insightMsg').className='msg';renderInsight();renderTimeline();}).catch(function(e){message($('#insightMsg'),e.message,'err');});});
+  $('#aiShare').addEventListener('click',function(e){if(!e.target.closest('#copyClin'))return;var ins=I.cachedFourWeeks(S.today());if(!ins)return;navigator.clipboard.writeText(clinicianText(ins)).then(function(){message($('#shareMsg2'),'Clinician summary copied as plain text.','ok');},function(){message($('#shareMsg2'),'Copying is blocked here; use the encrypted share instead.','info');});});
   $('#aiShareBtn').addEventListener('click',function(){message($('#shareMsg2'),'Writing the 4-week summary, about half a minute…','info');I.fourweeks(S.today(),true).then(function(){message($('#shareMsg2'),'Written. It is included in your next encrypted share.','ok');renderAiShare();}).catch(function(e){message($('#shareMsg2'),e.message,'err');});});
   function buildBundle(weeks){
     var end=S.today(),from=S.addDays(end,-(weeks*7-1));

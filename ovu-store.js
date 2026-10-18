@@ -253,7 +253,7 @@
       else phase = 'luteal';
       if (day > L + 7) phase = 'late';
     }
-    return { mode: mode, uncertain: mode === 'wide', episodes: eps, starts: starts, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, predictedFrom: predictedFrom, predictedTo: predictedTo, recalled: rr, fromRecall: useRecall || anchorRecalled, observedRange: lo !== null ? { lo: lo, hi: hi } : null, basis: recent.length ? recent.length + ' logged cycles' : (p.cycleLength ? 'your profile setting' : 'a 28-day default'), estimate: true };
+    return { mode: mode, uncertain: mode === 'wide', episodes: eps, starts: starts, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, predictedFrom: predictedFrom, predictedTo: predictedTo, recalled: rr, fromRecall: useRecall || anchorRecalled, observedRange: lo !== null ? { lo: lo, hi: hi } : null, basis: recent.length ? recent.length + ' logged cycle' + (recent.length === 1 ? '' : 's') : (useRecall ? 'remembered period dates' : (p.cycleLength ? 'your profile setting' : 'no cycle length yet')), estimate: true };
   }
 
   /* ---------- legacy mirrors (so older screens keep showing the same data) ---------- */
