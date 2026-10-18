@@ -98,8 +98,8 @@
       <h2 id="settings-health-title">Health connections</h2>
       <p>Your room stores everything on this device. Connections below bring sleep and pulse data in; none of them is live yet in this web build, and each is labelled honestly.</p>
       <div class="hc-list">
-        <div class="hc-row"><span class="ms" aria-hidden="true">ios</span><span><b>Apple Health</b><small>Needs the native iOS build (HealthKit is not available to web pages). Until then, export from the Health app or the Health Auto Export app as CSV and import it below.</small></span><span class="hc-status">Not connected</span></div>
-        <div class="hc-row"><span class="ms" aria-hidden="true">android</span><span><b>Google Fit / Health Connect</b><small>Health Connect is Android-only and the Google Fit API needs an OAuth client this build does not ship. Planned with the native app.</small></span><span class="hc-status">Not connected</span></div>
+        <div class="hc-row"><span class="ms" aria-hidden="true">ios</span><span><b>Apple Health</b><small>HealthKit is not open to web pages, so a live link needs the native app. Today: Health app &gt; your picture &gt; Export All Health Data, then in your room open You &gt; Import from Apple Health or Google and choose export.zip. Sleep, weight and period days come in; nothing is uploaded.</small></span><span class="hc-status">File import</span></div>
+        <div class="hc-row"><span class="ms" aria-hidden="true">android</span><span><b>Google Fit / Health Connect</b><small>Health Connect has no file export and a live link needs the native app. Today: Google Takeout with Fit ticked, then You &gt; Import from Apple Health or Google in your room with the Takeout zip. Sleep and weight come in.</small></span><span class="hc-status">File import</span></div>
         <div class="hc-row"><span class="ms" aria-hidden="true">radio_button_checked</span><span><b>Smart rings</b><small>Ring APIs (Oura, Ultrahuman, RingConn) are next; today you can import their CSV exports.</small></span><span class="hc-status">Planned</span></div>
       </div>
       <div class="hc-import">

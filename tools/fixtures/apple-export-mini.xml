@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE HealthData [
+<!ELEMENT HealthData (ExportDate,Me,(Record|Correlation|Workout|ActivitySummary)*)>
+<!ATTLIST Record
+  type CDATA #REQUIRED
+  unit CDATA #IMPLIED
+  value CDATA #IMPLIED
+>
+]>
+<HealthData locale="en_SG">
+ <ExportDate value="2025-06-10 09:00:00 +0800"/>
+ <Me HKCharacteristicTypeIdentifierDateOfBirth="1992-04-02" HKCharacteristicTypeIdentifierBiologicalSex="HKBiologicalSexFemale" HKCharacteristicTypeIdentifierBloodType="HKBloodTypeNotSet" HKCharacteristicTypeIdentifierFitzpatrickSkinType="HKFitzpatrickSkinTypeNotSet" HKCharacteristicTypeIdentifierCardioFitnessMedicationsUse="None"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="iPhone" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="" creationDate="2025-06-02 07:10:00 +0800" startDate="2025-06-01 23:05:00 +0800" endDate="2025-06-02 07:10:00 +0800" value="HKCategoryValueSleepAnalysisInBed"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Apple Watch" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="" creationDate="2025-06-02 02:30:00 +0800" startDate="2025-06-01 23:20:00 +0800" endDate="2025-06-02 02:30:00 +0800" value="HKCategoryValueSleepAnalysisAsleepCore"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Apple Watch" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="" creationDate="2025-06-02 02:50:00 +0800" startDate="2025-06-02 02:30:00 +0800" endDate="2025-06-02 02:50:00 +0800" value="HKCategoryValueSleepAnalysisAwake"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Apple Watch" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="" creationDate="2025-06-02 06:50:00 +0800" startDate="2025-06-02 02:50:00 +0800" endDate="2025-06-02 06:50:00 +0800" value="HKCategoryValueSleepAnalysisAsleepDeep"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Apple Watch" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="" creationDate="2025-06-02 05:00:00 +0800" startDate="2025-06-02 04:00:00 +0800" endDate="2025-06-02 05:00:00 +0800" value="HKCategoryValueSleepAnalysisAsleepREM"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Apple Watch" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="" creationDate="2025-06-02 14:40:00 +0800" startDate="2025-06-02 14:00:00 +0800" endDate="2025-06-02 14:40:00 +0800" value="HKCategoryValueSleepAnalysisAsleepUnspecified"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Apple Watch" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="" creationDate="2025-06-03 07:25:00 +0800" startDate="2025-06-03 00:40:00 +0800" endDate="2025-06-03 07:25:00 +0800" value="1"/>
+ <Record type="HKQuantityTypeIdentifierBodyMass" sourceName="Health" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="lb" creationDate="2025-06-02 07:30:00 +0800" startDate="2025-06-02 07:30:00 +0800" endDate="2025-06-02 07:30:00 +0800" value="128.5"/>
+ <Record type="HKQuantityTypeIdentifierBodyMass" sourceName="Health" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="kg" creationDate="2025-06-02 19:30:00 +0800" startDate="2025-06-02 19:30:00 +0800" endDate="2025-06-02 19:30:00 +0800" value="58.1"/>
+ <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="count" creationDate="2025-06-02 08:10:00 +0800" startDate="2025-06-02 08:00:00 +0800" endDate="2025-06-02 08:10:00 +0800" value="120"/>
+ <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="count" creationDate="2025-06-02 09:10:00 +0800" startDate="2025-06-02 09:00:00 +0800" endDate="2025-06-02 09:10:00 +0800" value="121"/>
+ <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="count" creationDate="2025-06-02 10:10:00 +0800" startDate="2025-06-02 10:00:00 +0800" endDate="2025-06-02 10:10:00 +0800" value="122"/>
+ <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="count" creationDate="2025-06-02 11:10:00 +0800" startDate="2025-06-02 11:00:00 +0800" endDate="2025-06-02 11:10:00 +0800" value="123"/>
+ <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="count" creationDate="2025-06-02 12:10:00 +0800" startDate="2025-06-02 12:00:00 +0800" endDate="2025-06-02 12:10:00 +0800" value="124"/>
+ <Record type="HKQuantityTypeIdentifierHeartRate" sourceName="Apple Watch" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="count/min" creationDate="2025-06-02 09:00:00 +0800" startDate="2025-06-02 09:00:00 +0800" endDate="2025-06-02 09:00:00 +0800" value="60"/>
+ <Record type="HKQuantityTypeIdentifierHeartRate" sourceName="Apple Watch" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="count/min" creationDate="2025-06-02 10:00:00 +0800" startDate="2025-06-02 10:00:00 +0800" endDate="2025-06-02 10:00:00 +0800" value="61"/>
+ <Record type="HKQuantityTypeIdentifierHeartRate" sourceName="Apple Watch" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="count/min" creationDate="2025-06-02 11:00:00 +0800" startDate="2025-06-02 11:00:00 +0800" endDate="2025-06-02 11:00:00 +0800" value="62"/>
+ <Record type="HKCategoryTypeIdentifierMenstrualFlow" sourceName="Health" sourceVersion="18.0" unit="" creationDate="2025-06-04 08:00:00 +0800" startDate="2025-06-04 00:00:00 +0800" endDate="2025-06-04 00:00:00 +0800" value="HKCategoryValueMenstrualFlowMedium">
+  <MetadataEntry key="HKMenstrualCycleStart" value="1"/>
+ </Record>
+ <Record type="HKCategoryTypeIdentifierMenstrualFlow" sourceName="Health" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="" creationDate="2025-06-05 00:00:00 +0800" startDate="2025-06-05 00:00:00 +0800" endDate="2025-06-05 00:00:00 +0800" value="2"/>
+ <Record type="HKCategoryTypeIdentifierMenstrualFlow" sourceName="Health" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="" creationDate="2025-06-06 00:00:00 +0800" startDate="2025-06-06 00:00:00 +0800" endDate="2025-06-06 00:00:00 +0800" value="HKCategoryValueMenstrualFlowNone"/>
+</HealthData>

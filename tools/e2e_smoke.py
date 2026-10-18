@@ -69,6 +69,64 @@ async def main():
             check("eight or more hotspots and the five tabs render", info["hots"] >= 8 and info["tabs"] == 5, info)
             check("no sideways scroll at phone width", info["width"] <= 390, info["width"])
 
+            # 1b. garden, Dream Street and the plaza: the door walks her out, the joystick and keys move her, the mini-map jumps
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_timeout(1200)
+            ctl = await page.evaluate("()=>({api: !!window.OvuRoom && !!window.OvuWalk && !!window.OvuGarden && !!window.OvuCommunity && !!window.OvuStreet, pad: !!document.querySelector('#walkpad'), stops: [...document.querySelectorAll('#minimap [data-scene]')].map(b=>b.dataset.scene).join(','), door: !!document.querySelector('.hotspot[data-id=door]'), lit: document.querySelector('#minimap .on')?.dataset.scene})")
+            check("walk controls, a four-stop mini-map lit on Home, and a door hotspot are in the room", ctl["api"] and ctl["pad"] and ctl["stops"] == "home,garden,street,plaza" and ctl["door"] and ctl["lit"] == "home", ctl)
+            await page.click(".hotspot[data-id=door]")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=8000)
+            except Exception: pass
+            g = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, img: document.querySelector('#roomDay').getAttribute('src'), hots: [...document.querySelectorAll('.hotspot')].map(b=>b.dataset.id).join(','), plot: !!document.querySelector('#ownedProps .plot svg'), pos: OvuRoom.pos(), lit: document.querySelector('#minimap .on')?.dataset.scene})")
+            check("tapping the door walks her into the garden with its hotspots, the plot and the mini-map lit on Garden", g["layout"] == "garden" and "garden-v1" in g["img"] and "plot" in g["hots"] and "bench" in g["hots"] and g["plot"] and g["lit"] == "garden", g)
+            box = await page.evaluate("()=>{var r=document.querySelector('#walkpad .walkpad-base').getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2};}")
+            before = g["pos"]
+            await page.mouse.move(box["x"], box["y"]); await page.mouse.down(); await page.mouse.move(box["x"] + 30, box["y"] - 2, steps=6); await page.wait_for_timeout(650); await page.mouse.up(); await page.wait_for_timeout(150)
+            after = await page.evaluate("()=>({pos: OvuRoom.pos(), layout: document.querySelector('#scene').dataset.layout, walking: OvuWalk.walking(), tf: document.querySelector('#avatar').style.transform})")
+            check("a joystick drag to the right moves the avatar and the position is committed on release", after["pos"]["x"] > before["x"] + 2 and abs(after["pos"]["y"] - before["y"]) < 3 and after["layout"] == "garden" and not after["walking"] and after["tf"] == "", {"before": before, "after": after})
+            await page.keyboard.down("ArrowLeft"); await page.wait_for_timeout(400); await page.keyboard.up("ArrowLeft"); await page.wait_for_timeout(150)
+            key = await page.evaluate("()=>({pos: OvuRoom.pos(), flip: document.querySelector('#avatar').classList.contains('flip')})")
+            check("the left arrow key walks her back and turns her around", key["pos"]["x"] < after["pos"]["x"] - 1 and key["flip"], key)
+            await page.click('#minimap [data-scene=street]')
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            st = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, stores: [...document.querySelectorAll('.hotspot')].map(b=>b.dataset.id).filter(i=>['petshop','furniture','homes'].includes(i)).length, lit: document.querySelector('#minimap .on')?.dataset.scene})")
+            check("the mini-map takes her to Dream Street with its three storefronts", st["layout"] == "street" and st["stores"] == 3 and st["lit"] == "street", st)
+            await page.click(".hotspot[data-id=petshop]")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] .shopitem, #sheet[aria-hidden="false"] .shop', timeout=8000)
+            except Exception: pass
+            shop = await page.evaluate("()=>({open: document.querySelector('#sheet').getAttribute('aria-hidden')==='false', title: document.querySelector('#sheetTitle')?.textContent.slice(0,8), layout: document.querySelector('#scene').dataset.layout})")
+            check("walking up to the pet shop opens the pet store sheet and she stays on the street", shop["open"] and shop["title"].startswith("Pet shop") and shop["layout"] == "street", shop)
+            await page.click("#sheetClose"); await page.wait_for_timeout(300)
+            await page.click('#minimap [data-scene=plaza]')
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            pz = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, nbs: document.querySelectorAll('#ownedProps .nbperson').length, pets: document.querySelectorAll('#ownedProps .nbpet').length, board: !!document.querySelector('.hotspot[data-id=board]'), stall: !!document.querySelector('.hotspot[data-id=stall]')})")
+            check("the plaza shows four sample neighbours with their pets, a noticeboard and a tea stall", pz["layout"] == "plaza" and pz["nbs"] == 4 and pz["pets"] == 4 and pz["board"] and pz["stall"], pz)
+            await page.click(".hotspot[data-id=board]")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] .notice.today', timeout=8000)
+            except Exception: pass
+            bd = await page.evaluate("()=>({prompt: document.querySelector('#sheet .notice.today p')?.textContent.length, samples: document.querySelectorAll('#sheet .notice:not(.today)').length})")
+            check("the noticeboard shows today's prompt and the sample notes", bd["prompt"] and bd["prompt"] > 10 and bd["samples"] >= 3, bd)
+            await page.click("#sheetClose"); await page.wait_for_timeout(300)
+            await page.click('#ownedProps .nbperson[data-nb=mei]')
+            try: await page.wait_for_selector('#nbVisit', timeout=5000)
+            except Exception: pass
+            await page.click('#nbVisit')
+            try: await page.wait_for_function("()=>document.querySelector('#scene').classList.contains('nbvisit') && !!document.querySelector('#nbBack')", timeout=10000)
+            except Exception: pass
+            vs = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, visit: document.querySelector('#scene').classList.contains('nbvisit'), back: !!document.querySelector('#nbBack'), nb: document.querySelectorAll('#ownedProps .nbperson').length, own: document.querySelectorAll('#ownedProps .prop.owned').length, inert: getComputedStyle(document.querySelector('.hotspot[data-id=bed]')).pointerEvents, minimapHidden: !!document.querySelector('#minimap.hidden')})")
+            check("visiting Mei opens her cottage read-only: she is there, your props are not, hotspots are inert, a Back button shows", vs["layout"] == "house" and vs["visit"] and vs["back"] and vs["nb"] == 1 and vs["own"] == 0 and vs["inert"] == "none" and vs["minimapHidden"], vs)
+            await page.click('#nbBack')
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && !document.querySelector('#scene').classList.contains('nbvisit')", timeout=10000)
+            except Exception: pass
+            bk = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, visit: document.querySelector('#scene').classList.contains('nbvisit'), nbs: document.querySelectorAll('#ownedProps .nbperson').length})")
+            check("Back returns to the plaza and the neighbours", bk["layout"] == "plaza" and not bk["visit"] and bk["nbs"] == 4, bk)
+            await page.click('#minimap [data-scene=home]')
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='room' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            hm = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: document.querySelectorAll('.hotspot').length, garden: JSON.parse(localStorage.getItem('ovumind_db_v1')).state.garden})")
+            check("home again with the room's hotspots; the plot already credits the seeded diary days", hm["layout"] == "room" and hm["hots"] >= 9 and hm["garden"] and len(hm["garden"]["credited"]) >= 2, hm)
+
             # 2. the Cycle tab opens a sheet with the calendar
             await page.goto(BASE + "room.html#cycle", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] [data-date], #sheet[aria-hidden="false"] .rday', timeout=10000)
             cyc = await page.evaluate("()=>{var cells=document.querySelectorAll('#sheet [data-date], #sheet .rday'); return {sheet: document.querySelector('#sheet')?.getAttribute('aria-hidden') === 'false', title: document.querySelector('#sheetTitle')?.textContent.slice(0,13), days: cells.length, visible: (cells[0]?.getBoundingClientRect().height || 0) > 0};}")
@@ -125,6 +183,25 @@ async def main():
                     except Exception: pass
                 dests[old_page] = await page.evaluate("()=>(location.pathname.endsWith('room.html') ? (document.querySelector('nav a.on')?.dataset.tab || 'home') : location.pathname)")
             check("old screens redirect into the room and open the right tab", all(dests[k] == v for k, v in [("home.html", "home"), ("cycle-log.html", "cycle"), ("diet.html", "food"), ("breathwork.html", "mind")]), dests)
+
+            # 6b. health import: a tiny Apple Health export.xml and a Takeout Fit zip are read on the phone, summarised, and removable in one tap
+            await page.goto(BASE + "room.html#you", wait_until="load"); await page.reload(wait_until="networkidle")
+            await page.wait_for_selector('#sheet[aria-hidden="false"] [data-yact="import"]', timeout=10000)
+            await page.click('[data-yact="import"]'); await page.wait_for_selector("#impApple", state="attached", timeout=10000)
+            imp0 = await page.evaluate("()=>({title: document.querySelector('#sheetTitle')?.textContent, cards: document.querySelectorAll('.imp-card').length, bar: !!document.querySelector('#impBar'), remove: !!document.querySelector('#impRemove')})")
+            check("import sheet opens from You with two cards, a progress bar and no remove button yet", imp0["cards"] == 2 and imp0["bar"] and not imp0["remove"] and "Bring in" in (imp0["title"] or ""), imp0)
+            await page.set_input_files("#impApple", os.path.join(ROOT, "tools", "fixtures", "apple-export-mini.xml"))
+            await page.wait_for_function("()=>document.querySelector('#impSummary')?.dataset.run === '1'", timeout=15000)
+            imp = await page.evaluate("()=>({text: document.querySelector('#impSummary').innerText, bar: document.querySelector('#impBar').style.width, remove: document.querySelector('#impRemove')?.textContent || '', db: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(e=>e.source==='apple-health').map(e=>e.type).sort().join(',')})")
+            check("Apple Health import shows 2 nights, 1 weigh-in, 2 period days and the never-left-your-phone line", "2 nights" in imp["text"] and "1 weigh-in" in imp["text"] and "2 period days" in imp["text"] and "never left" in imp["text"] and imp["bar"] == "100%", imp)
+            check("imported entries carry source apple-health and the remove button counts them", imp["db"] == "period,period,sleep,sleep,weight" and "(5)" in imp["remove"], imp)
+            await page.set_input_files("#impGoogle", os.path.join(ROOT, "tools", "fixtures", "takeout-fit-mini.zip"))
+            await page.wait_for_function("()=>document.querySelector('#impSummary')?.dataset.run === '2'", timeout=20000)
+            tk = await page.evaluate("()=>({text: document.querySelector('#impSummary').innerText, remove: document.querySelector('#impRemove')?.textContent || '', db: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(e=>e.source==='google-fit').map(e=>e.type).sort().join(',')})")
+            check("Takeout zip import shows 2 nights and 2 weigh-ins with the zip read on the phone", "2 nights" in tk["text"] and "2 weigh-ins" in tk["text"] and tk["db"] == "sleep,sleep,weight,weight" and "(9)" in tk["remove"], tk)
+            await page.click("#impRemove"); await page.wait_for_selector("#impDelYes", timeout=5000); await page.click("#impDelYes"); await page.wait_for_timeout(600)
+            left = await page.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); return {imported: db.events.filter(e=>e.source==='apple-health'||e.source==='google-fit').length, own: db.events.filter(e=>['s1','s2','s3'].includes(e.id)).length, total: db.events.length, remove: !!document.querySelector('#impRemove')};}")
+            check("Remove imported data takes out only the imported entries and keeps the seeded ones", left["imported"] == 0 and left["own"] == 3 and left["total"] == 5 and not left["remove"], left)
 
             # 7. first launch without consent: the room shows the welcome, not the diary
             ctx2 = await browser.new_context(viewport={"width": 390, "height": 844})

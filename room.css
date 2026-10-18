@@ -47,16 +47,12 @@ button{font-family:inherit;color:inherit}
 .scene{position:relative;width:100%;aspect-ratio:1472/1840;overflow:hidden;background:linear-gradient(180deg,#d8c8ec 0%,#cdb9e6 50%,#d9c9ea 100%);transform-style:preserve-3d;perspective:900px}
 .scene-inner{position:absolute;inset:0;transition:transform .5s ease-out;will-change:transform}
 .room-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none;transition:opacity 1.6s ease,filter 1.6s ease}
-.room-img.night{opacity:0}
-.scene.is-night .room-img.day{filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg)}
-.scene.is-night .room-img.night{opacity:1}
-.scene.is-night.has-night-img .room-img.day{filter:none}
+.scene:is(.is-night,.sky-night) .room-img.day{filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg)}
 .night-veil{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.6s ease;
   background:radial-gradient(28% 22% at 13% 50%,rgba(255,214,160,.45),transparent 70%),radial-gradient(18% 16% at 44% 29%,rgba(214,200,255,.55),transparent 70%),linear-gradient(180deg,rgba(40,24,80,.35),rgba(30,18,60,.45))}
-.scene.is-night .night-veil{opacity:1}
-.scene.is-night.has-night-img .night-veil{opacity:.35}
+.scene:is(.is-night,.sky-night) .night-veil{opacity:1}
 .stars{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.2s}
-.scene.is-night .stars{opacity:1}
+.scene:is(.is-night,.sky-night) .stars{opacity:1}
 .star{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff;box-shadow:0 0 8px 2px rgba(255,255,255,.7);animation:twinkle 2.6s ease-in-out infinite}
 @keyframes twinkle{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1.2)}}
 .sparkles{position:absolute;inset:0;pointer-events:none}
@@ -68,7 +64,7 @@ button{font-family:inherit;color:inherit}
 @media(min-width:520px){.greeting{top:50px}}
 .greeting h1{font-family:var(--serif);font-weight:600;font-size:22px;line-height:1.15;color:var(--rm-plum);text-shadow:0 1px 0 rgba(255,255,255,.6)}
 .greeting p{font:600 12px var(--sans);color:var(--rm-ink-2);margin-top:3px;text-shadow:0 1px 0 rgba(255,255,255,.6)}
-.scene.is-night .greeting h1,.scene.is-night .greeting p{color:#f3ecfb;text-shadow:0 1px 8px rgba(20,10,40,.5)}
+.scene:is(.is-night,.sky-night) .greeting h1,.scene:is(.is-night,.sky-night) .greeting p{color:#f3ecfb;text-shadow:0 1px 8px rgba(20,10,40,.5)}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.82);backdrop-filter:blur(8px);font:700 11px var(--sans);color:var(--rm-mauve);box-shadow:0 3px 10px rgba(90,66,116,.12)}
 .chip .ms{font-size:14px}
 .phase-chip{position:absolute;right:12px;top:52px;z-index:5;pointer-events:auto;cursor:pointer;border:none}
@@ -85,7 +81,7 @@ button{font-family:inherit;color:inherit}
 .hotspot:hover .tip,.hotspot:focus-visible .tip,.hotspot.show-tip .tip{opacity:1;transform:translate(-50%,0)}
 .hotspot.bump{animation:bump .45s ease}
 @keyframes bump{0%{transform:translate(-50%,-50%) scale(1)}40%{transform:translate(-50%,-50%) scale(1.25)}100%{transform:translate(-50%,-50%) scale(1)}}
-.scene.quiet .hotspot .pulse,.scene.is-night .hotspot .pulse{opacity:.35}
+.scene.quiet .hotspot .pulse,.scene:is(.is-night,.sky-night) .hotspot .pulse{opacity:.35}
 .hotspot .glow{position:absolute;inset:-6px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.55),rgba(255,255,255,0) 70%);opacity:0;transition:opacity .25s}
 .hotspot:hover .glow{opacity:1}
 
@@ -421,7 +417,9 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 @keyframes lunafloat{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-8px) rotate(4deg)}}
 @media(min-width:520px){.luna{bottom:92px}}
 .prop.owned{position:absolute;transform:translate(-50%,-100%);z-index:7;pointer-events:none;filter:drop-shadow(0 6px 6px rgba(70,40,100,.22));animation:propin .6s ease-out}
-.prop.owned.pet img{animation:petbob 3.4s ease-in-out infinite;transform-origin:50% 100%}
+.prop.owned .petbody{display:block;position:relative}
+.prop.owned.pet .petbody{animation:petbob 3.4s ease-in-out infinite;transform-origin:50% 100%}
+.prop.owned .worn{position:absolute;transform:translate(-50%,-50%);width:46%;pointer-events:none;filter:drop-shadow(0 2px 2px rgba(70,40,100,.25))}
 .prop.owned img{width:100%;display:block}
 @keyframes petbob{0%,100%{transform:scale(1,1)}50%{transform:scale(1.03,.97)}}
 @keyframes propin{from{opacity:0;transform:translate(-50%,-90%) scale(.8)}to{opacity:1;transform:translate(-50%,-100%) scale(1)}}
@@ -534,6 +532,31 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .heartbar .big{font-family:var(--serif);font-size:30px;font-weight:600;color:#c0507c;display:flex;align-items:center;gap:6px}
 .heartbar .big .ms{font-size:28px;color:#e26a93}
 .heartbar p{font:600 11.5px var(--sans);color:var(--rm-ink-2);line-height:1.4}
+/* Luna's look picker */
+.mascots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.mascots button{border:2px solid transparent;background:linear-gradient(160deg,#fff,#f6effc);border-radius:18px;padding:10px 8px 9px;text-align:center;cursor:pointer;font:inherit;color:inherit;box-shadow:0 4px 14px rgba(90,66,116,.08);display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.mascots button.on{border-color:var(--rm-plum);box-shadow:0 6px 18px rgba(117,86,196,.22),0 0 0 4px rgba(214,196,255,.35)}
+.mascots img{width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(90,66,116,.18))}
+.mascots b{display:block;font:800 12px/1.2 var(--sans);color:var(--rm-plum)}
+.mascots small{display:block;font:600 10px/1.3 var(--sans);color:var(--rm-ink-3)}
+/* Dream Street: three storefronts, then each store's own list */
+.street{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.street .store{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid rgba(255,255,255,.95);background:linear-gradient(135deg,#fff,#f7f1fc);border-radius:20px;padding:10px 12px;box-shadow:0 6px 18px rgba(90,66,116,.10),0 0 0 1px rgba(214,196,255,.3);cursor:pointer;font:inherit;color:inherit}
+.street .store img{width:86px;height:86px;object-fit:contain;flex:none;filter:drop-shadow(0 6px 8px rgba(90,66,116,.18))}
+.street .store>span:not(.ms){flex:1;min-width:0}
+.street .store b{display:block;font-family:var(--serif);font-weight:600;font-size:19px;color:var(--rm-plum);line-height:1.15}
+.street .store small{display:block;font:600 11.5px/1.4 var(--sans);color:var(--rm-ink-3);margin-top:3px}
+.street .store .ms{color:var(--rm-mauve);flex:none}
+.streetnav{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.streetnav .back{border:none;background:var(--rm-paper-2);border-radius:999px;padding:8px 12px 8px 8px;font:800 12px var(--sans);color:var(--rm-plum);display:flex;align-items:center;gap:4px;cursor:pointer}
+.streetnav .back .ms{font-size:18px}
+.heartsmini{display:flex;align-items:center;gap:4px;font:800 13px var(--sans);color:#c0507c}
+.heartsmini .ms{font-size:16px;color:#e26a93}
+.streetnav+.help{margin:8px 0 2px}
+.shelf{display:flex;align-items:center;gap:6px;margin:16px 2px 0;font:800 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-mauve)}
+.shelf .ms{font-size:16px}
+.ownchip{font:800 11px var(--sans);color:var(--rm-plum);background:var(--rm-lilac-2);border-radius:999px;padding:6px 10px;white-space:nowrap}
+.petbub button small{font:700 10px var(--sans);color:var(--rm-ink-3);margin-left:4px}
 
 /* ---------- desktop (Learn) ---------- */
 .desk{border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(60,40,90,.25);background:#2d2147;margin-top:6px}
@@ -591,7 +614,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 
 /* ---- 18 Oct round 4: night window, visiting bar, reminders, desk drag + wallpaper, acupoint locator, dream house ---- */
 .win-night{position:absolute;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%);box-shadow:inset 0 0 22px rgba(0,0,0,.4);opacity:0;transition:opacity 1.6s ease;pointer-events:none;overflow:hidden;z-index:2}
-.scene.is-night .win-night{opacity:.97}
+.scene:is(.is-night,.sky-night) .win-night{opacity:.97}
 .win-night .moon{position:absolute;left:52%;top:24%;width:30%;aspect-ratio:1;border-radius:50%;background:#fff3cf;box-shadow:0 0 16px #ffe7a6,0 0 40px rgba(255,231,166,.5)}
 .win-night .moon::after{content:'';position:absolute;left:-26%;top:-8%;width:100%;height:100%;border-radius:50%;background:#2a2152}
 .win-night i.s{position:absolute;width:5%;aspect-ratio:1;border-radius:50%;background:#fff;box-shadow:0 0 6px #fff;animation:twinkle 2.6s ease-in-out infinite}
@@ -701,7 +724,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .steps li{margin-bottom:4px}
 .avatar.acting img{animation:breathe 3.2s ease-in-out infinite}
 .scene.arranging .prop.owned{pointer-events:auto;cursor:grab;touch-action:none;outline:2px dashed rgba(255,255,255,.75);outline-offset:4px;border-radius:14px}
-.scene.arranging .prop.owned.pet img{animation:none}
+.scene.arranging .prop.owned.pet .petbody{animation:none}
 .scene.arranging .hotspot,.scene.arranging .avatar,.scene.arranging .phase-chip{pointer-events:none;opacity:.45}
 .prop.owned.lift{filter:drop-shadow(0 16px 14px rgba(70,40,100,.4)) brightness(1.05);z-index:12}
 .nexthomes{margin-top:12px;background:#fff;border-radius:16px;padding:10px 12px;box-shadow:0 2px 10px rgba(90,66,116,.06)}
@@ -710,18 +733,40 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .nexthomes div>.ms{font-size:22px;color:var(--rm-mauve);flex-shrink:0}
 .nexthomes div b{display:block;font:800 12px var(--sans);color:var(--rm-ink)}
 .nexthomes div small{display:block;font:600 10.5px var(--sans);color:var(--rm-ink-3);line-height:1.4}
-.welcome{position:absolute;inset:0;z-index:70;background:radial-gradient(circle at 30% 12%,#fbeaf4,#e4d7f3 48%,#cdbce6);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 24px;gap:4px;animation:pop2 .4s ease-out}
+.welcome{position:absolute;inset:0;z-index:70;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 24px;gap:4px;animation:pop2 .4s ease-out;
+  background:
+    radial-gradient(42% 30% at 18% 14%,rgba(255,214,236,.75),transparent 70%),
+    radial-gradient(46% 34% at 84% 10%,rgba(205,186,245,.8),transparent 70%),
+    radial-gradient(60% 40% at 50% 112%,rgba(255,226,196,.55),transparent 70%),
+    radial-gradient(30% 22% at 70% 62%,rgba(255,240,250,.5),transparent 70%),
+    linear-gradient(168deg,#f7ebf8 0%,#e7d8f5 42%,#d4c1ea 100%)}
+.welcome::after{content:'';position:absolute;inset:-20%;pointer-events:none;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.35),transparent 55%);mix-blend-mode:screen;animation:bloom 9s ease-in-out infinite}
+@keyframes bloom{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+.w-stars{position:absolute;inset:0;pointer-events:none;opacity:.85;background-image:
+  radial-gradient(1.6px 1.6px at 12% 18%,#fff,transparent),radial-gradient(1.2px 1.2px at 28% 8%,#fff,transparent),radial-gradient(1.8px 1.8px at 44% 22%,#fff,transparent),
+  radial-gradient(1.2px 1.2px at 62% 12%,#fff,transparent),radial-gradient(1.6px 1.6px at 78% 26%,#fff,transparent),radial-gradient(1.2px 1.2px at 90% 9%,#fff,transparent),
+  radial-gradient(1.4px 1.4px at 8% 46%,#fff,transparent),radial-gradient(1.2px 1.2px at 94% 44%,#fff,transparent),radial-gradient(1.6px 1.6px at 20% 70%,#fff,transparent),
+  radial-gradient(1.2px 1.2px at 84% 72%,#fff,transparent),radial-gradient(1.4px 1.4px at 52% 88%,#fff,transparent),radial-gradient(1.2px 1.2px at 36% 56%,#fff,transparent),
+  radial-gradient(1.2px 1.2px at 70% 84%,#fff,transparent),radial-gradient(1.6px 1.6px at 60% 50%,#fff,transparent);animation:twinkle 3.2s ease-in-out infinite}
+.w-moon{position:relative;width:40%;max-width:168px;margin:0 auto 8px;z-index:1}
+.w-moon::before{content:'';position:absolute;inset:-38%;border-radius:50%;background:radial-gradient(circle,rgba(255,243,204,.85) 0%,rgba(222,204,255,.45) 42%,transparent 70%);filter:blur(8px);animation:moonglow 5s ease-in-out infinite}
+.w-moon img{position:relative;width:100%;display:block;filter:drop-shadow(0 0 20px rgba(255,236,190,.7)) drop-shadow(0 14px 18px rgba(90,66,116,.3));animation:moonfloat 6s ease-in-out infinite}
+@keyframes moonglow{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.07)}}
+@keyframes moonfloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-8px) rotate(3deg)}}
+.welcome>:not(.w-stars){position:relative;z-index:1}
 .welcome[hidden]{display:none}
 .w-art{position:relative;width:44%;margin-bottom:6px}
 .w-art img:first-child{width:100%;display:block;filter:drop-shadow(0 16px 20px rgba(90,66,116,.3))}
 .w-art .w-pet{position:absolute;width:62%;right:-34%;bottom:-4%;filter:drop-shadow(0 10px 12px rgba(90,66,116,.3))}
 .w-brand{font-family:var(--serif);letter-spacing:.3em;font-size:12px;color:var(--rm-mauve);margin-top:10px}
-.w-erin{font-family:var(--serif);font-weight:600;font-size:clamp(44px,13vw,64px);letter-spacing:.04em;color:var(--rm-plum);line-height:1.05;margin:2px 0 4px}
+.w-erin{font-family:var(--serif);font-weight:600;font-size:clamp(44px,13vw,64px);letter-spacing:.04em;color:var(--rm-plum);line-height:1.05;margin:2px 0 4px;text-shadow:0 0 22px rgba(255,255,255,.9),0 2px 14px rgba(214,196,255,.6)}
 .w-ex{font:700 13px var(--sans);color:var(--rm-ink-2);letter-spacing:.02em}
 .w-ex b{color:var(--rm-plum);font-weight:900}
 .w-tag{font-family:var(--serif);font-style:italic;font-size:17px;color:var(--rm-plum);margin:6px 0 10px}
 .w-note{font:600 11.5px var(--sans);color:var(--rm-ink-3);line-height:1.5;max-width:300px;margin-bottom:14px}
-.welcome .btn{min-width:210px;justify-content:center}
+.welcome .btn{min-width:210px;justify-content:center;flex:0 0 auto}
+.welcome .btn.primary{box-shadow:0 10px 26px rgba(117,86,196,.42),0 0 28px rgba(226,210,255,.75)}
+.welcome .btn.ghost{background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .welcome .btn+.btn{margin-top:8px}
 .onb{display:flex;flex-direction:column}
 .onb-head{display:flex;gap:12px;align-items:flex-end;margin-top:4px}
@@ -778,12 +823,10 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .scene[data-sky="night"] .win-night{opacity:.97}
 .scene[data-sky="sunrise"]:not(.is-night) .room-img.day{filter:sepia(.06) saturate(1.05) hue-rotate(-4deg) brightness(.98)}
 .scene[data-sky="sunset"]:not(.is-night) .room-img.day{filter:sepia(.16) saturate(1.12) hue-rotate(-8deg) brightness(.95)}
-.scene[data-sky="night"]:not(.is-night) .room-img.day{filter:brightness(.74) saturate(.88) hue-rotate(-6deg)}
-.scene[data-sky="night"]:not(.is-night) .stars{opacity:.55}
-/* asleep always shows the night window, whatever the hour */
-.scene.is-night .win-night{background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%)}
-.scene.is-night .win-night .sun{opacity:0}
-.scene.is-night .win-night .moon,.scene.is-night .win-night i.s{opacity:1}
+/* asleep, or after sunset, the window shows the night sky whatever the hour */
+.scene:is(.is-night,.sky-night) .win-night{background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%)}
+.scene:is(.is-night,.sky-night) .win-night .sun{opacity:0}
+.scene:is(.is-night,.sky-night) .win-night .moon,.scene:is(.is-night,.sky-night) .win-night i.s{opacity:1}
 /* diary: photo choices, recognition state, amount box; date and time never overflow on iOS */
 .grid2>*{min-width:0}
 .input[type=date],.input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;box-sizing:border-box;min-height:46px;text-align:left}
@@ -871,16 +914,20 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .welcome.consent{z-index:90;justify-content:flex-start;padding:0;text-align:left}
 .c-scroll{width:100%;max-width:440px;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(22px + env(safe-area-inset-top,0px)) 20px calc(26px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;margin:0 auto}
 .c-head{display:flex;align-items:center;gap:12px}
-.c-head img{width:76px;height:auto;flex:none;filter:drop-shadow(0 8px 10px rgba(90,66,116,.25))}
+.c-moon{position:relative;width:66px;flex:none}
+.c-moon::before{content:'';position:absolute;inset:-45%;border-radius:50%;background:radial-gradient(circle,rgba(255,243,204,.8),rgba(222,204,255,.4) 45%,transparent 70%);filter:blur(6px);animation:moonglow 5s ease-in-out infinite}
+.c-moon img{position:relative;width:100%;display:block;filter:drop-shadow(0 0 14px rgba(255,236,190,.7)) drop-shadow(0 8px 12px rgba(90,66,116,.28));animation:moonfloat 6s ease-in-out infinite}
+.c-head h2{text-shadow:0 0 18px rgba(255,255,255,.85)}
+.c-scroll{position:relative;z-index:1}
 .c-head .w-brand{margin:0 0 2px}
 .c-head h2{font-family:var(--serif);font-weight:600;font-size:25px;line-height:1.15;color:var(--rm-plum);margin:0;text-wrap:balance}
 .c-head p{font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin:4px 0 0}
 .c-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.c-list li{display:flex;gap:11px;align-items:flex-start;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.9);border-radius:18px;padding:11px 13px;box-shadow:0 6px 16px rgba(90,66,116,.08)}
-.c-list .ms{flex:none;width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);color:var(--rm-plum);font-size:19px}
+.c-list li{display:flex;gap:11px;align-items:flex-start;background:rgba(255,255,255,.62);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.95);border-radius:18px;padding:11px 13px;box-shadow:0 8px 22px rgba(90,66,116,.12),inset 0 1px 0 rgba(255,255,255,.9),0 0 0 1px rgba(214,196,255,.35)}
+.c-list .ms{flex:none;width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);color:var(--rm-plum);font-size:19px;box-shadow:0 0 12px rgba(236,214,255,.8)}
 .c-list b{display:block;font:800 13.5px/1.3 var(--sans);color:var(--rm-plum)}
 .c-list span:not(.ms){display:block;font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:2px}
-.c-opt{display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.55);border:1.5px dashed rgba(150,120,190,.45);border-radius:16px;padding:11px 13px;cursor:pointer}
+.c-opt{display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1.5px dashed rgba(150,120,190,.45);border-radius:16px;padding:11px 13px;cursor:pointer}
 .c-opt input{margin-top:3px;width:18px;height:18px;accent-color:var(--rm-plum);flex:none}
 .c-opt b{display:block;font:800 13px/1.3 var(--sans);color:var(--rm-plum)}
 .c-opt small{display:block;font:600 12px/1.45 var(--sans);color:var(--rm-ink-3);margin-top:2px}
@@ -1137,13 +1184,93 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .lsnote{display:flex;gap:6px;align-items:flex-start;margin:6px 0;font-weight:600;color:#8a3a58}
 .lstext{width:100%;margin:6px 0;font:500 13px var(--sans);line-height:1.4;resize:vertical}
 
-/* a real night plate: no wash, no drawn moon over the window, a soft crossfade at sunset */
-.scene.has-night-img .night-veil{opacity:0}
-.scene.is-night.has-night-img .night-veil{opacity:0}
-.scene.is-night.has-night-img .win-night{opacity:0}
-.scene.has-night-img .stars{opacity:0}
-.scene[data-sky="sunset"].has-night-img:not(.is-night) .room-img.night{opacity:.42}
-.scene[data-sky="sunset"].has-night-img:not(.is-night) .room-img.day{filter:sepia(.1) saturate(1.08) hue-rotate(-6deg) brightness(.97)}
-.scene[data-sky="night"].has-night-img:not(.is-night) .room-img.night{opacity:1}
-.scene[data-sky="night"].has-night-img:not(.is-night) .room-img.day{filter:none}
 .aculist button span em{display:block;font:700 11px var(--sans);color:var(--rm-mauve);font-style:normal;margin-top:2px;line-height:1.3}
+
+/* ---- health import sheet (You > Import from Apple Health or Google), ovu-health.js ---- */
+.imp-card{margin-top:12px;background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:18px;padding:12px 14px}
+.imp-head{display:flex;gap:10px;align-items:center}
+.imp-head>.ms{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);color:var(--rm-plum);font-size:20px;flex:none}
+.imp-head b{display:block;font:800 14px var(--sans);color:var(--rm-plum)}
+.imp-head small{display:block;font:600 11.5px var(--sans);color:var(--rm-ink-3);margin-top:1px}
+.imp-steps{margin:10px 0 0;padding-left:18px;font:600 12px/1.5 var(--sans);color:var(--rm-ink-2)}
+.imp-steps li+li{margin-top:4px}
+.imp-steps b{color:var(--rm-plum)}
+.imp-card .help{margin-top:8px}
+.imp-pick{margin-top:10px;width:100%;cursor:pointer}
+.imp-pick.busy{opacity:.55;pointer-events:none}
+.ibar{height:8px;border-radius:4px;background:var(--rm-paper-2);overflow:hidden;margin-top:14px}
+.ibar i{display:block;height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#a98ad0,#7a5c96);transition:width .25s}
+.cal-day.p-unspecified{background:#f3b9cb}
+
+/* ---- 18 Oct: garden, Dream Street, plaza and walking like a game (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---- */
+.walkpad{position:absolute;left:12px;bottom:14px;z-index:31;width:92px;height:92px;touch-action:none;user-select:none;-webkit-user-select:none;opacity:.9;transition:opacity .3s}
+.walkpad-base{width:92px;height:92px;border-radius:50%;background:rgba(255,255,255,.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.9);box-shadow:0 6px 18px rgba(90,66,116,.18);display:grid;place-items:center;position:relative}
+.walkpad-base::before{content:'';position:absolute;inset:14px;border-radius:50%;border:1.5px dashed rgba(122,92,150,.25)}
+.walkpad-knob{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#e7dcf5 55%,#c9b6e6);box-shadow:0 4px 12px rgba(90,66,116,.3);transition:transform .08s linear;will-change:transform}
+.walkpad.live .walkpad-knob{transition:none}
+.walkpad.live .walkpad-base{background:rgba(255,255,255,.72)}
+.minimap{position:absolute;right:10px;bottom:14px;z-index:31;display:flex;gap:2px;background:rgba(255,255,255,.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.9);border-radius:999px;padding:4px;box-shadow:0 6px 18px rgba(90,66,116,.18)}
+.minimap button{border:none;background:transparent;border-radius:999px;padding:5px 6px;display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--rm-ink-3);cursor:pointer;min-width:38px}
+.minimap button .ms{font-size:18px}
+.minimap button i{font:800 8px var(--sans);font-style:normal;letter-spacing:.04em;text-transform:uppercase}
+.minimap button.on{background:var(--rm-lilac-2);color:var(--rm-plum)}
+.minimap.hidden{display:none}
+/* the walk pad sits on the bottom edge: the hint moves above it, and while a visit bar is up the pad steps aside */
+.hint{bottom:112px}
+.scene.visiting .walkpad{opacity:0;pointer-events:none}
+.scene:is(.quiet,.is-night,.arranging,.hudon) :is(.walkpad,.minimap){opacity:0;pointer-events:none}
+.scenefade{position:absolute;inset:0;z-index:60;background:linear-gradient(180deg,#e9ddf6,#d8c8ec);opacity:0;pointer-events:none;transition:opacity .35s ease}
+.scene.fading .scenefade{opacity:1;pointer-events:auto}
+.scene.arranging .prop.owned.lift{z-index:12!important}
+/* neighbours, the garden plot and little effects, all percent-positioned inside #ownedProps */
+.nb{position:absolute;transform:translate(-50%,-100%);pointer-events:none;filter:drop-shadow(0 6px 6px rgba(70,40,100,.22))}
+.nb img{width:100%;display:block}
+.nb.flip img{transform:scaleX(-1)}
+.nbperson{pointer-events:auto;cursor:pointer}
+.nbperson img{animation:alive 4.4s ease-in-out infinite;transform-origin:50% 100%}
+.nbperson.flip img{animation:aliveflip 4.4s ease-in-out infinite}
+.nbperson.wave img{animation:joyhop .55s ease-out!important}
+.nbperson:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
+.nbtag{position:absolute;left:50%;top:-4px;transform:translate(-50%,-100%);background:rgba(255,255,255,.92);border-radius:999px;padding:3px 8px;font:800 10px var(--sans);color:var(--rm-plum);white-space:nowrap;box-shadow:0 3px 10px rgba(90,66,116,.18)}
+.nbpet img{animation:petbob 3.4s ease-in-out infinite;transform-origin:50% 100%}
+.scene.nbvisit .hotspot{pointer-events:none;opacity:.3}
+.plot{position:absolute;transform:translate(-50%,-78%);pointer-events:none;filter:drop-shadow(0 4px 6px rgba(70,40,100,.18))}
+.plot svg{width:100%;height:auto;display:block;overflow:visible}
+.plot.stage-5 svg{animation:plotsway 5s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes plotsway{0%,100%{transform:rotate(-1.5deg)}50%{transform:rotate(1.5deg)}}
+.drops{position:absolute;transform:translate(-50%,-100%);height:12%;pointer-events:none;z-index:10}
+.drops i{position:absolute;top:0;width:6px;height:9px;border-radius:50% 50% 60% 60%;background:linear-gradient(#dff0ff,#8fc3f0);opacity:0;animation:drop 1.1s ease-in infinite}
+@keyframes drop{0%{transform:translateY(0);opacity:0}15%{opacity:.95}100%{transform:translateY(80px);opacity:0}}
+.ripple{position:absolute;transform:translate(-50%,-50%);aspect-ratio:2/1;border:2px solid rgba(255,255,255,.85);border-radius:50%;pointer-events:none;animation:ripple 2.2s ease-out forwards}
+@keyframes ripple{0%{transform:translate(-50%,-50%) scale(.3);opacity:.9}100%{transform:translate(-50%,-50%) scale(1.6);opacity:0}}
+.wish{position:absolute;transform:translate(-50%,-100%);height:12%;pointer-events:none;z-index:10}
+.wish i{position:absolute;bottom:0;width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 10px 2px rgba(255,255,255,.8);opacity:0;animation:wish 1.6s ease-out forwards}
+@keyframes wish{0%{transform:translateY(0) scale(.5);opacity:0}20%{opacity:1}100%{transform:translateY(-90px) scale(1.2);opacity:0}}
+/* sheets: the plot, a neighbour, the noticeboard, teas */
+.plotcard{display:flex;gap:12px;align-items:center;background:#fff;border-radius:16px;padding:12px;margin-top:10px}
+.plotart{width:84px;flex-shrink:0;background:linear-gradient(180deg,#fbe3ea,#e7dcf5);border-radius:14px;padding:6px}
+.plotart svg{width:100%;height:auto;display:block}
+.plotcard b{font:800 15px var(--sans);color:var(--rm-plum)}
+.plotcard p{font-family:var(--serif);font-size:14px;color:var(--rm-ink);margin:3px 0;line-height:1.35}
+.plotcard small{font:700 11px var(--sans);color:var(--rm-ink-3)}
+.plotcard .bar{margin-top:6px;height:6px;border-radius:99px;background:var(--rm-lilac-2);overflow:hidden}
+.plotcard .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f6c9d6,#c9b6e6)}
+.nbcard{display:flex;gap:12px;align-items:center;background:#fff;border-radius:16px;padding:12px;margin-top:10px}
+.nbcard img{width:64px;height:auto;flex-shrink:0}
+.nbcard p{font-family:var(--serif);font-size:15px;color:var(--rm-ink);line-height:1.35}
+.nbcard small{display:block;margin-top:4px;font:700 11px var(--sans);color:var(--rm-ink-3)}
+.notice{display:flex;gap:10px;align-items:flex-start;background:#fff;border-radius:16px;padding:10px 12px;margin-top:8px}
+.notice>.ms{color:var(--rm-mauve);font-size:20px;flex-shrink:0}
+.notice.today{background:linear-gradient(135deg,#fbe3ea,#e7dcf5)}
+.notice b{font:800 11px var(--sans);color:var(--rm-ink-3);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:2px}
+.notice p{font-family:var(--serif);font-size:14.5px;color:var(--rm-ink);line-height:1.35}
+.notice small{display:block;margin-top:3px;font:700 11px var(--sans);color:var(--rm-ink-3)}
+.notice.mine{border:1px dashed var(--rm-lilac)}
+.teas{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.tea{display:flex;gap:10px;align-items:flex-start;background:#fff;border-radius:16px;padding:10px 12px}
+.tea>.ms{color:var(--rm-mauve);font-size:22px;flex-shrink:0}
+.tea b{display:block;font:800 13px var(--sans);color:var(--rm-plum)}
+.tea span:not(.ms){display:block;font-family:var(--serif);font-size:13.5px;color:var(--rm-ink);line-height:1.35}
+.tea small{display:block;margin-top:3px;font:600 11px var(--sans);color:var(--rm-ink-3);line-height:1.4}
+.tea em{display:block;margin-top:3px;font:700 11px var(--sans);color:#a06b2a;font-style:normal}
+@media (prefers-reduced-motion: reduce){.nbperson img,.nbpet img,.plot svg,.drops i,.wish i{animation:none!important}.scenefade{transition:none}}

@@ -21,6 +21,14 @@
     { id: 'armchair', name: 'Cloud armchair', cost: 90, kind: 'furniture', note: 'A puffy lilac cloud to sink into. Swaps with the bunny beanbag.', img: 'prop-armchair.webp', slot: 'seat', pos: { x: 57, y: 70.5, w: 9.5 } },
     { id: 'scale', name: 'Weighing scale', cost: 5, kind: 'furniture', note: 'Switches on weigh-ins: tap it to note your weight. Private, never judged, and no hearts for numbers.', img: 'prop-scale.webp', pos: { x: 44, y: 74.5, w: 7 } },
     { id: 'mewmew', name: 'Mewmew the Pomeranian', cost: 180, kind: 'pet', note: 'Jamie’s real girl: cream fluff, a pink nose and the happiest smile in Singapore. She sits wherever you place her.', img: 'prop-mewmew-v3.webp', pos: { x: 62, y: 86, w: 9 } },
+    /* pet shop shelves: treats are packs you use up (a treat tops up Full and Fun between meals), accessories are worn by one pet at a time */
+    { id: 'treat-fish', name: 'Fish biscuits', cost: 12, kind: 'treat', qty: 5, for: 'cat', note: 'Five crunchy little fish for a kitten.', img: 'pet-treat-fish.webp' },
+    { id: 'treat-bone', name: 'Bone crunchies', cost: 12, kind: 'treat', qty: 5, for: 'dog', note: 'Five pastel bones for a puppy.', img: 'pet-treat-bone.webp' },
+    { id: 'treat-cake', name: 'Pupcake', cost: 10, kind: 'treat', qty: 1, for: 'any', note: 'One little cake for a special day. Any pet.', img: 'pet-treat-cake.webp' },
+    { id: 'acc-bow', name: 'Satin bow', cost: 40, kind: 'accessory', wear: 'head', note: 'A big pink bow for the top of a head.', img: 'acc-bow.webp' },
+    { id: 'acc-hat', name: 'Party hat', cost: 45, kind: 'accessory', wear: 'head', note: 'A tiny lilac hat with a pompom.', img: 'acc-hat.webp' },
+    { id: 'acc-bandana', name: 'Polka bandana', cost: 40, kind: 'accessory', wear: 'neck', note: 'Lilac with cream dots, tied at the neck.', img: 'acc-bandana.webp' },
+    { id: 'acc-charm', name: 'Moon charm collar', cost: 50, kind: 'accessory', wear: 'neck', note: 'A cream collar with a golden crescent.', img: 'acc-charm.webp' },
     /* jev-1.13.0 (18 Oct): 1500 hearts chosen over 1200/2000/3000 (0.73) as motivating yet long-term; letting people visit first scored 0.74 */
     { id: 'house', name: 'Two-storey dream house', cost: 1500, kind: 'home', note: 'A cottage of your own: a sunny bedroom upstairs, a study and a yoga corner below, flowers at the door. Visit any time; move in when you have the hearts.', img: 'house-thumb.webp' },
     { id: 'bathhouse', name: 'Dream house with a bathtub', cost: 2500, kind: 'home', note: 'The cottage with a bubble bath upstairs beside your bedroom: tap the tub for a mindful soak. Visit first, move in when you have the hearts.', img: 'house-bath-thumb.webp' },
@@ -53,9 +61,39 @@
   function buy(id) {
     var l = ledger(), item = SHOP.filter(function (s) { return s.id === id; })[0];
     if (!item || item.locked) throw new Error('Not available yet.');
-    if (l.owned.indexOf(id) > -1) throw new Error('Already yours.');
+    if (item.kind !== 'treat' && l.owned.indexOf(id) > -1) throw new Error('Already yours.');
     if (l.hearts < item.cost) throw new Error('You need ' + (item.cost - l.hearts) + ' more hearts.');
-    l.hearts -= item.cost; l.owned.push(id); l.placed[id] = true; item.swapped = swapOut(l, item); write(l); return item;
+    l.hearts -= item.cost;
+    if (item.kind === 'treat') { l.treats = l.treats || {}; l.treats[id] = (l.treats[id] || 0) + (item.qty || 1); write(l); return item; }
+    l.owned.push(id); l.placed[id] = item.kind !== 'accessory'; item.swapped = swapOut(l, item); write(l); return item;
+  }
+  function item(id) { return SHOP.filter(function (s) { return s.id === id; })[0] || null; }
+  function petKind(petId) { var p = item(petId); return p && p.slot === 'cat' ? 'cat' : 'dog'; }
+  /* treats in the cupboard that this pet can have, most plentiful first */
+  function treatsFor(petId) {
+    var l = ledger(), t = l.treats || {}, k = petKind(petId);
+    return SHOP.filter(function (s) { return s.kind === 'treat' && (t[s.id] || 0) > 0 && (s.for === 'any' || s.for === k); })
+      .map(function (s) { return { id: s.id, name: s.name, img: s.img, left: t[s.id] }; }).sort(function (a, b) { return b.left - a.left; });
+  }
+  function useTreat(petId, treatId) {
+    var l = ledger(), t = l.treats || {}; if (!(t[treatId] > 0)) throw new Error('None of those left.');
+    t[treatId] -= 1; if (!t[treatId]) delete t[treatId]; l.treats = t; write(l); return { left: t[treatId] || 0, item: item(treatId) };
+  }
+  /* accessories: one per pet, and each piece is worn by one pet at a time */
+  function wearing(petId) { var w = ledger().wear || {}; return w[petId] ? item(w[petId]) : null; }
+  function wear(petId, accId) {
+    var l = ledger(), w = l.wear || {};
+    if (accId && (l.owned.indexOf(accId) < 0 || !item(accId) || item(accId).kind !== 'accessory')) throw new Error('Not in the drawer.');
+    Object.keys(w).forEach(function (p) { if (w[p] === accId) delete w[p]; });
+    if (accId) w[petId] = accId; else delete w[petId];
+    l.wear = w; write(l); return accId ? item(accId) : null;
+  }
+  /* tap Dress up again and again: each owned piece in turn, then nothing */
+  function nextWear(petId) {
+    var l = ledger(), owned = SHOP.filter(function (s) { return s.kind === 'accessory' && l.owned.indexOf(s.id) > -1; }).map(function (s) { return s.id; });
+    if (!owned.length) return null;
+    var cur = (l.wear || {})[petId] || null, i = owned.indexOf(cur), next = i < 0 ? owned[0] : (i + 1 < owned.length ? owned[i + 1] : null);
+    return wear(petId, next);
   }
   /* a one-off gift, e.g. finishing the intro */
   function grant(points, type) { var l = ledger(); points = Math.max(0, Math.round(points)); if (!points) return l; if ((l.log || []).some(function (x) { return x.type === type && x.gift; })) return l; l.hearts += points; l.earned += points; l.log.unshift({ at: new Date().toISOString(), type: type, points: points, bonus: 0, gift: true }); write(l); return l; }
@@ -73,5 +111,5 @@
     if (add) { l.hearts += add; l.earned += add; l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'petcare', pet: pet, action: action, points: add }); l.log = l.log.slice(0, 200); }
     write(l); return { points: add, hearts: l.hearts, capped: add < pts };
   }
-  root.OvuRewards = { SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, ledger: ledger, award: award, buy: buy, toggle: toggle, grant: grant, care: care, CARE: CARE, CARE_CAP: CARE_CAP };
+  root.OvuRewards = { SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, ledger: ledger, award: award, buy: buy, toggle: toggle, grant: grant, care: care, item: item, treatsFor: treatsFor, useTreat: useTreat, wearing: wearing, wear: wear, nextWear: nextWear, CARE: CARE, CARE_CAP: CARE_CAP };
 })(window);
