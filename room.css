@@ -47,10 +47,12 @@ button{font-family:inherit;color:inherit}
 .scene{position:relative;width:100%;aspect-ratio:1472/1840;overflow:hidden;background:linear-gradient(180deg,#d8c8ec 0%,#cdb9e6 50%,#d9c9ea 100%);transform-style:preserve-3d;perspective:900px}
 .scene-inner{position:absolute;inset:0;transition:transform .5s ease-out;will-change:transform}
 .room-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none;transition:opacity 1.6s ease,filter 1.6s ease}
-.scene:is(.is-night,.sky-night) .room-img.day{filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg)}
+.scene.is-night .room-img.day{filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg)}
+.scene.sky-night:not(.is-night) .room-img.day{filter:brightness(.9) saturate(1.02) hue-rotate(-3deg)}
 .night-veil{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.6s ease;
   background:radial-gradient(28% 22% at 13% 50%,rgba(255,214,160,.45),transparent 70%),radial-gradient(18% 16% at 44% 29%,rgba(214,200,255,.55),transparent 70%),linear-gradient(180deg,rgba(40,24,80,.35),rgba(30,18,60,.45))}
-.scene:is(.is-night,.sky-night) .night-veil{opacity:1}
+.scene.is-night .night-veil{opacity:1}
+.scene.sky-night:not(.is-night) .night-veil{opacity:.28}
 .stars{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.2s}
 .scene:is(.is-night,.sky-night) .stars{opacity:1}
 .star{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff;box-shadow:0 0 8px 2px rgba(255,255,255,.7);animation:twinkle 2.6s ease-in-out infinite}
@@ -64,7 +66,8 @@ button{font-family:inherit;color:inherit}
 @media(min-width:520px){.greeting{top:50px}}
 .greeting h1{font-family:var(--serif);font-weight:600;font-size:22px;line-height:1.15;color:var(--rm-plum);text-shadow:0 1px 0 rgba(255,255,255,.6)}
 .greeting p{font:600 12px var(--sans);color:var(--rm-ink-2);margin-top:3px;text-shadow:0 1px 0 rgba(255,255,255,.6)}
-.scene:is(.is-night,.sky-night) .greeting h1,.scene:is(.is-night,.sky-night) .greeting p{color:#f3ecfb;text-shadow:0 1px 8px rgba(20,10,40,.5)}
+.scene.is-night .brand{color:#f3ecfb;text-shadow:0 1px 10px rgba(20,10,40,.6)}
+.scene.is-night .greeting h1,.scene.is-night .greeting p{color:#f3ecfb;text-shadow:0 1px 8px rgba(20,10,40,.5)}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.82);backdrop-filter:blur(8px);font:700 11px var(--sans);color:var(--rm-mauve);box-shadow:0 3px 10px rgba(90,66,116,.12)}
 .chip .ms{font-size:14px}
 .phase-chip{position:absolute;right:12px;top:52px;z-index:5;pointer-events:auto;cursor:pointer;border:none}
@@ -615,6 +618,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 /* ---- 18 Oct round 4: night window, visiting bar, reminders, desk drag + wallpaper, acupoint locator, dream house ---- */
 .win-night{position:absolute;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%);box-shadow:inset 0 0 22px rgba(0,0,0,.4);opacity:0;transition:opacity 1.6s ease;pointer-events:none;overflow:hidden;z-index:2}
 .scene:is(.is-night,.sky-night) .win-night{opacity:.97}
+/* window sky cut from the plate (room layout): fades in by sky phase; the oval overlay is only for homes without a cut */
+.win-patch{position:absolute;height:auto;opacity:0;transition:opacity 1.6s ease;pointer-events:none;z-index:2}
+.scene.has-win-patch .win-night{display:none}
+.scene:is(.is-night,.sky-night) .win-patch.night{opacity:1}
+.scene[data-sky="sunset"]:not(.is-night):not(.sky-night) .win-patch.sunset{opacity:1}
+.scene[data-sky="sunrise"]:not(.is-night):not(.sky-night) .win-patch.sunrise{opacity:1}
 .win-night .moon{position:absolute;left:52%;top:24%;width:30%;aspect-ratio:1;border-radius:50%;background:#fff3cf;box-shadow:0 0 16px #ffe7a6,0 0 40px rgba(255,231,166,.5)}
 .win-night .moon::after{content:'';position:absolute;left:-26%;top:-8%;width:100%;height:100%;border-radius:50%;background:#2a2152}
 .win-night i.s{position:absolute;width:5%;aspect-ratio:1;border-radius:50%;background:#fff;box-shadow:0 0 6px #fff;animation:twinkle 2.6s ease-in-out infinite}

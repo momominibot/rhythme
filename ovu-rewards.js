@@ -45,6 +45,8 @@
     S.setState({ rewards: l }); return l;
   }
   function write(l) { S.setState({ rewards: l }); return l; }
+  /* tester mode (room.html?tester=hearts): nothing is deducted on this device, so every shelf can be tried */
+  function tester() { var t = S.state().tester; return !!(t && t.hearts); }
   /* Award for a saved entry; a first log on a new day also grows the streak. */
   function award(ev) {
     if (ev.type === 'weight') return { points: 0, bonus: 0, hearts: ledger().hearts }; /* numbers are never rewarded */
@@ -62,8 +64,8 @@
     var l = ledger(), item = SHOP.filter(function (s) { return s.id === id; })[0];
     if (!item || item.locked) throw new Error('Not available yet.');
     if (item.kind !== 'treat' && l.owned.indexOf(id) > -1) throw new Error('Already yours.');
-    if (l.hearts < item.cost) throw new Error('You need ' + (item.cost - l.hearts) + ' more hearts.');
-    l.hearts -= item.cost;
+    if (l.hearts < item.cost && !tester()) throw new Error('You need ' + (item.cost - l.hearts) + ' more hearts.');
+    if (!tester()) l.hearts -= item.cost;
     if (item.kind === 'treat') { l.treats = l.treats || {}; l.treats[id] = (l.treats[id] || 0) + (item.qty || 1); write(l); return item; }
     l.owned.push(id); l.placed[id] = item.kind !== 'accessory'; item.swapped = swapOut(l, item); write(l); return item;
   }
@@ -111,5 +113,5 @@
     if (add) { l.hearts += add; l.earned += add; l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'petcare', pet: pet, action: action, points: add }); l.log = l.log.slice(0, 200); }
     write(l); return { points: add, hearts: l.hearts, capped: add < pts };
   }
-  root.OvuRewards = { SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, ledger: ledger, award: award, buy: buy, toggle: toggle, grant: grant, care: care, item: item, treatsFor: treatsFor, useTreat: useTreat, wearing: wearing, wear: wear, nextWear: nextWear, CARE: CARE, CARE_CAP: CARE_CAP };
+  root.OvuRewards = { SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, ledger: ledger, award: award, buy: buy, tester: tester, toggle: toggle, grant: grant, care: care, item: item, treatsFor: treatsFor, useTreat: useTreat, wearing: wearing, wear: wear, nextWear: nextWear, CARE: CARE, CARE_CAP: CARE_CAP };
 })(window);

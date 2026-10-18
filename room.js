@@ -32,6 +32,7 @@
       sleeper: { x: 31, y: 58, w: 21, rot: 34 }, zzz: { x: 30, y: 44 },
       meditator: { x: 28, y: 77, w: 11.5 }, aura: { x: 28, y: 75, w: 18 }, holo: { x: 39, y: 75, w: 15 },
       window: { x: 37.3, y: 31.5, rx: 7, ry: 9.6 },
+      winPatch: { x: 29.008, y: 23.152, w: 15.625, base: 'room-v3-win-' },
       props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 87, y: 66, w: 10 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 40, y: 73.5, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
     },
     house: {
@@ -272,6 +273,9 @@
     if (L.sleeper) { place(sleeper, L.sleeper); sleeper.style.transform = 'translate(-50%,-50%) rotate(' + L.sleeper.rot + 'deg)'; }
     place($('.zzz'), L.zzz); place(meditator, L.meditator); place($('#aura'), L.aura); place(holo, L.holo);
     var mp = $('#matProp'); if (mp) { mp.style.display = L.mat ? '' : 'none'; if (L.mat) place(mp, L.mat); }
+    /* the room's window sky is cut from the plate itself (tools/art/window_patch.py), so it follows the tilted oval exactly */
+    var wp = L.winPatch; ['night', 'sunset', 'sunrise'].forEach(function (k) { var el = $('#winPatch' + k.charAt(0).toUpperCase() + k.slice(1)); if (!el) return; if (wp) { var want = ART + wp.base + k + '.webp'; if (el.getAttribute('src') !== want) el.src = want; el.style.left = wp.x + '%'; el.style.top = wp.y + '%'; el.style.width = wp.w + '%'; } else el.removeAttribute('src'); });
+    scene.classList.toggle('has-win-patch', !!wp);
     var wn = $('#winNight'); if (wn && L.window) { wn.style.left = L.window.x + '%'; wn.style.top = L.window.y + '%'; wn.style.width = (L.window.rx * 2) + '%'; wn.style.height = (L.window.ry * 2) + '%'; }
     var vb = $('#visitBar'); if (vb) { vb.classList.toggle('on', !!visiting); vb.innerHTML = visiting && houseItem(L.id) ? '<span class="ms">cottage</span><span>Visiting ' + esc(houseItem(L.id).name.replace(/^./, function (c) { return c.toLowerCase(); })) + ' · <b>' + houseItem(L.id).cost + ' ♥ to move in</b></span><button type="button" id="visitBack"><span class="ms">arrow_back</span>Back</button>' : ''; }
     renderProps(); placeAvatar(HOME, false);
@@ -332,10 +336,6 @@
     for (var i = 0; i < 14; i++) { var s = document.createElement('i'); s.className = 'sparkle'; s.style.left = (5 + Math.random() * 90) + '%'; s.style.top = (4 + Math.random() * 60) + '%'; s.style.animationDelay = (Math.random() * 4) + 's'; s.style.animationDuration = (3 + Math.random() * 3) + 's'; sp.appendChild(s); }
     var st = $('#stars');
     for (var j = 0; j < 26; j++) { var z = document.createElement('i'); z.className = 'star'; z.style.left = (2 + Math.random() * 96) + '%'; z.style.top = (2 + Math.random() * 40) + '%'; z.style.animationDelay = (Math.random() * 3) + 's'; z.style.transform = 'scale(' + (0.5 + Math.random()) + ')'; st.appendChild(z); }
-    if (!reduced && window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
-      scene.addEventListener('pointermove', function (e) { if (cam.z > 1.01 || camPointers.size) return; var r = scene.getBoundingClientRect(); var dx = (e.clientX - r.left) / r.width - 0.5, dy = (e.clientY - r.top) / r.height - 0.5; inner.style.transform = 'rotateY(' + (dx * 4) + 'deg) rotateX(' + (-dy * 3) + 'deg) scale(1.02)'; });
-      scene.addEventListener('pointerleave', function () { if (cam.z <= 1.01) inner.style.transform = ''; });
-    }
     applyLayout(currentHomeId(), false);
     camControls();
   }
@@ -365,7 +365,7 @@
         });
       }
     });
-    $('#heartsVal').textContent = l.hearts;
+    $('#heartsVal').textContent = RW.tester && RW.tester() ? '∞' : l.hearts;
     emit('props', L);
   }
   /* ---------- no-stress pet care (ovu-pets.js): feed, play, cuddle, tidy up ---------- */
@@ -1245,7 +1245,7 @@
     openSheet('you', P.name ? P.name : 'You', 'Your room, your answers, your data', 'person',
       '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '</span></div></div>' +
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
-      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Heart shop', 'Pets, furniture and homes', 'shop') + row('auto_awesome', 'Luna’s look', 'Choose the friend in the corner of your room', 'mascot') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Heart shop', 'Pets, furniture and homes', 'shop') + row('auto_awesome', 'Luna’s look', 'Choose the friend in the corner of your room', 'mascot') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('move_to_inbox', 'Import from Apple Health or Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S) + ' entries brought in so far' : 'Sleep, weight and period days you already have', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
@@ -1257,6 +1257,7 @@
       if (act === 'intro') { var A0 = JSON.parse(JSON.stringify(P)); Object.assign(A0, P.habits || {}); ['cycleLength', 'periodLength'].forEach(function (k) { if (A0[k] !== null && A0[k] !== undefined) A0[k] = String(A0[k]); }); openOnboarding(0, A0); return; }
       if (act === 'wardrobe') return openWardrobe();
       if (act === 'shop') return openShop();
+      if (act === 'testeroff') { S.setState({ tester: null }); renderProps(); toast('Tester mode is off. Hearts count again.', 'science'); return; }
       if (act === 'mascot') return openMascot();
       if (act === 'clock') return openClock();
       if (act === 'plus') return openPlus();
@@ -1373,6 +1374,7 @@
     if (tab) shopTab = tab;
     if (shopTab !== 'street' && !STORES[shopTab]) shopTab = 'street';
     var l = RW.ledger(), home = currentHomeId(), st = STORES[shopTab], street = shopTab === 'street';
+    var testing = RW.tester && RW.tester(); if (testing) l = Object.assign({}, l, { hearts: 999999 });
     var items = street ? [] : RW.SHOP.filter(function (it) { return it.kind === shopTab; });
     var SHELVES = { treat: 'Treats', accessory: 'Accessories' };
     var nav = street
@@ -1380,9 +1382,9 @@
           var s = STORES[k], all = RW.SHOP.filter(function (it) { return it.kind === k; }), mine = all.filter(function (it) { return l.owned.indexOf(it.id) > -1; }).length;
           return '<button type="button" class="store" data-tab="' + k + '"><img src="' + ART + s.img + '" alt=""><span><b>' + s.title + '</b><small>' + s.blurb + ' · ' + all.length + (mine ? ' · ' + mine + ' yours' : '') + '</small></span><span class="ms">chevron_right</span></button>';
         }).join('') + '</div>'
-      : '<div class="streetnav"><button type="button" class="back" data-tab="street"><span class="ms">arrow_back</span>Dream Street</button><span class="heartsmini"><span class="ms fill">favorite</span>' + l.hearts + '</span></div><p class="help">' + st.sub + '</p>';
+      : '<div class="streetnav"><button type="button" class="back" data-tab="street"><span class="ms">arrow_back</span>Dream Street</button><span class="heartsmini"><span class="ms fill">favorite</span>' + (testing ? '∞' : l.hearts) + '</span></div><p class="help">' + st.sub + '</p>';
     openSheet('shop', street ? 'Dream Street' : st.title, street ? 'Three little shops. Hearts from logging pay for everything.' : st.tag, street ? 'storefront' : st.icon,
-      (street ? '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + l.hearts + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, everyday practice 5 (+10 the first time), +5 from day three of a streak.</p></div>' : '') +
+      (street ? '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + (testing ? '∞' : l.hearts) + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, everyday practice 5 (+10 the first time), +5 from day three of a streak.</p></div>' : '') +
       nav +
       (street ? '' : shopList(items, l, home) +
         (shopTab === 'pet' ? Object.keys(SHELVES).map(function (k) { var li = RW.SHOP.filter(function (it) { return it.kind === k; }); return li.length ? '<p class="shelf"><span class="ms">' + (k === 'treat' ? 'cookie' : 'checkroom') + '</span>' + SHELVES[k] + '</p>' + shopList(li, l, home) : ''; }).join('') : '')) +
@@ -1882,7 +1884,9 @@
 
   /* ---------- a livelier avatar: micro-moments between taps ---------- */
   var lifeTimer = null, lifeBusy = false;
-  function scheduleLife() { clearTimeout(lifeTimer); if (reduced) return; lifeTimer = setTimeout(lifeMoment, 12000 + Math.random() * 14000); }
+  /* Jamie, 18 Oct: no random moments. The avatar keeps her outfit and pose until she is asked to do something. */
+  var LIFE_MOMENTS = false;
+  function scheduleLife() { clearTimeout(lifeTimer); if (reduced || !LIFE_MOMENTS) return; lifeTimer = setTimeout(lifeMoment, 12000 + Math.random() * 14000); }
   function lifeMoment() {
     if (S.state().sleeping || meditating || practice || current || arranging || lifeBusy || document.hidden || avatar.classList.contains('walking')) { scheduleLife(); return; }
     lifeBusy = true;
@@ -2307,6 +2311,7 @@
     setOutfit(S.profile().outfit || 'base', true);
     avatar.classList.add('idle');
     if (S.state().sleeping) enterNight(false);
+    try { var tq = new URLSearchParams(location.search).get('tester'); if (tq === 'hearts') { S.setState({ tester: { hearts: true } }); toast('Tester mode: hearts are unlimited on this device.', 'science'); } else if (tq === 'off') { S.setState({ tester: null }); } if (tq) history.replaceState(null, '', location.pathname + location.hash); } catch (e) { }
     if (window.OvuMascot) OvuMascot.apply();
     updateGreeting(); renderDeck(); renderProps(); applySky();
     setInterval(function () { applySky(); if (window.OvuPets) renderProps(); }, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });
