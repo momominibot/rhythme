@@ -290,7 +290,7 @@
     if (!mini) return; var s = sceneOf(L), visit = !!R.visiting();
     mini.classList.toggle('hidden', visit && s === 'home' && !!(root.OvuCommunity && root.OvuCommunity.visiting()));
     Array.prototype.slice.call(mini.querySelectorAll('[data-scene]')).forEach(function (b) { b.classList.toggle('on', b.dataset.scene === s); b.setAttribute('aria-current', b.dataset.scene === s ? 'location' : 'false'); });
-    scene.classList.toggle('outdoors', s !== 'home');
+    scene.classList.toggle('outdoors', s !== 'home'); scene.classList.toggle('visiting', visit);
   }
   /* opt-in overlay: zones, solids, door triggers and stand points over the plate (OvuWalk.debug(true)) */
   function debug(on) {

@@ -45,6 +45,22 @@
     if (p.fun >= FUN_ENOUGH) { save(id, p); return { ok: false, reason: 'played', pet: p }; }
     p.fun = 100; p.full = Math.max(FLOOR, p.full - 4); p.playedAt = iso(t); return { ok: true, pet: save(id, p) };
   }
+  /* a treat between meals: a top-up, never a full meal, and still one poop per feed */
+  function treat(id, t) {
+    t = now(t); var p = current(id, t);
+    if (p.full >= 96) { save(id, p); return { ok: false, reason: 'full', pet: p }; }
+    p.full = Math.min(100, p.full + 25); p.fun = Math.min(100, p.fun + 12); p.fedAt = iso(t); return { ok: true, pet: save(id, p) };
+  }
+  /* where a head piece or a neck piece sits, as fractions of the sprite box (x from the left, y from the top, w of the box width) */
+  var WEAR = {
+    cat: { head: { x: 0.50, y: 0.10, w: 0.46 }, neck: { x: 0.50, y: 0.60, w: 0.42 } },
+    catblack: { head: { x: 0.50, y: 0.10, w: 0.46 }, neck: { x: 0.50, y: 0.60, w: 0.42 } },
+    catginger: { head: { x: 0.50, y: 0.10, w: 0.46 }, neck: { x: 0.50, y: 0.60, w: 0.42 } },
+    dog: { head: { x: 0.52, y: 0.08, w: 0.46 }, neck: { x: 0.50, y: 0.68, w: 0.52 } },
+    shiba: { head: { x: 0.52, y: 0.08, w: 0.46 }, neck: { x: 0.50, y: 0.66, w: 0.52 } },
+    mewmew: { head: { x: 0.50, y: 0.10, w: 0.46 }, neck: { x: 0.50, y: 0.62, w: 0.50 } }
+  };
+  function wearSpot(id, where) { var w = WEAR[id] || WEAR.cat; return w[where] || w.head; }
   function cuddle(id, t) { t = now(t); var p = current(id, t); p.fun = Math.min(100, p.fun + 8); p.cuddledAt = iso(t); return { ok: true, pet: save(id, p) }; }
   function clean(id, poopId, t) {
     var p = current(id, now(t)), n = p.poops.length;
@@ -62,5 +78,5 @@
   }
   /* 2 to 5 little hearts: the floor keeps it from ever looking empty. */
   function pips(v) { return Math.max(2, Math.min(5, Math.round(v / 20))); }
-  root.OvuPets = { NAMES: NAMES, current: current, tick: tick, feed: feed, play: play, cuddle: cuddle, clean: clean, mood: mood, pips: pips, FLOOR: FLOOR, POOP_AFTER: POOP_AFTER, MAX_POOPS: MAX_POOPS };
+  root.OvuPets = { NAMES: NAMES, current: current, tick: tick, feed: feed, treat: treat, play: play, cuddle: cuddle, clean: clean, mood: mood, pips: pips, wearSpot: wearSpot, WEAR: WEAR, FLOOR: FLOOR, POOP_AFTER: POOP_AFTER, MAX_POOPS: MAX_POOPS };
 })(window);

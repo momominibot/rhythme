@@ -13,3 +13,7 @@ chroma green. Both scripts read the key from `~/.config/volcengine/ark_api_key`;
   mint-coloured details (collars, ribbons) do not punch holes. Avoid mint or green in the prompt.
 
 Finished assets go to `assets/room/dream/` as WebP (`cwebp -q 82`), with a `-sm` variant for plates.
+
+Observed limits (18 Oct 2026): Seedream 5.0 pro rejects `--size 768x768` with a BadRequest on `size`, so stay at
+1024x1024 or above. Two 1024 PNG renders of the same prompt died with `IncompleteRead` at about 1.35 MB; the same
+prompt with `--fmt jpeg` is a far smaller body and is the thing to try next, not a third PNG attempt.

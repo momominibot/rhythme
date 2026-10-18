@@ -116,6 +116,33 @@
     mirrorLegacy(ev);
     return ev;
   }
+  /* Bulk write for imports (ovu-health.js): one save and one change event for the whole batch, so a
+   * thousand nights do not mean a thousand localStorage rewrites. Each item is {type, date, data, source}
+   * to add, or {id, data} to update in place. Single-per-day kinds never gain a second entry here; a
+   * date that already has one is skipped, so a hand-written day is left alone. Nothing is mirrored to the
+   * legacy keys except the cycle summary, which is recomputed once when a period day was written. */
+  function addMany(items) {
+    var db = load(), t = today(), added = 0, updated = 0, skipped = 0, touchedPeriod = false;
+    var have = {}; db.events.forEach(function (e) { if (SINGLE_PER_DAY[e.type]) have[e.type + '|' + e.date] = true; });
+    (items || []).forEach(function (it) {
+      if (!it || typeof it !== 'object') { skipped++; return; }
+      if (it.id) { var ev = get(it.id); if (!ev || !it.data || typeof it.data !== 'object') { skipped++; return; } ev.data = it.data; ev.updatedAt = nowIso(); updated++; if (ev.type === 'period') touchedPeriod = true; return; }
+      if (TYPES.indexOf(it.type) < 0 || !validDate(it.date) || it.date > t || !it.data || typeof it.data !== 'object') { skipped++; return; }
+      if (SINGLE_PER_DAY[it.type]) { if (have[it.type + '|' + it.date]) { skipped++; return; } have[it.type + '|' + it.date] = true; }
+      db.events.push({ id: uid(), type: it.type, date: it.date, createdAt: nowIso(), updatedAt: nowIso(), source: it.source || 'import', data: it.data });
+      added++; if (it.type === 'period') touchedPeriod = true;
+    });
+    if (added || updated) { save('import'); if (touchedPeriod) mirrorLegacy({ type: 'period' }); }
+    return { added: added, updated: updated, skipped: skipped };
+  }
+  function removeWhere(pred) {
+    var db = load(), before = db.events.length, gone = db.events.filter(function (e) { return !!pred(e); });
+    if (!gone.length) return 0;
+    db.events = db.events.filter(function (e) { return !pred(e); });
+    save('remove:bulk');
+    if (gone.some(function (e) { return e.type === 'period'; })) mirrorLegacy({ type: 'period' });
+    return before - db.events.length;
+  }
   function remove(id) {
     var db = load(), ev = get(id);
     if (!ev) return false;
@@ -133,6 +160,9 @@
 
   /* ---------- derived: sleep ---------- */
   function sleepHours(d) {
+    /* An imported night carries the minutes actually asleep (stages added up), which is the honest number;
+     * a hand-written night only has bed and wake times, so the window between them is used. */
+    if (typeof d.asleepMin === 'number' && isFinite(d.asleepMin) && d.asleepMin > 0) return Math.round(d.asleepMin / 6) / 10;
     if (!validTime(d.bedTime) || !validTime(d.wakeTime)) return typeof d.hours === 'number' ? d.hours : null;
     var b = d.bedTime.split(':'), w = d.wakeTime.split(':');
     var mins = (Number(w[0]) * 60 + Number(w[1])) - (Number(b[0]) * 60 + Number(b[1]));
@@ -342,6 +372,7 @@
   root.OvuStore = {
     KEY: KEY, TYPES: TYPES, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
     load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox,
+    addMany: addMany, removeWhere: removeWhere,
     profile: profile, setProfile: setProfile, state: state, setState: setState,
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
     sleepHours: sleepHours, sleepStats: sleepStats, periodEpisodes: periodEpisodes, cycleStats: cycleStats, rhythmFromRecall: rhythmFromRecall,

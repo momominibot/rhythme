@@ -93,7 +93,7 @@
     const privacy = element('a', 'luna-read-more', 'Privacy & local data'); privacy.href = 'privacy.html'; footer.append(help, clear, privacy); panel.append(footer);
     document.body.append(fab, panel);
     /* One Luna across the app: this button now opens Luna in the room, with the same moon orb. */
-    fab.replaceChildren(); const orb = document.createElement('img'); orb.src = 'assets/room/dream/orb-moon.webp'; orb.alt = ''; orb.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block'; fab.append(orb);
+    fab.replaceChildren(); const orb = document.createElement('img'); orb.src = window.OvuMascot ? OvuMascot.src(null, true) : 'assets/room/dream/orb-bunny.webp'; orb.alt = ''; orb.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block'; fab.append(orb);
     fab.setAttribute('aria-label', 'Tell Luna how you are'); fab.removeAttribute('aria-controls'); fab.removeAttribute('aria-expanded');
     fab.addEventListener('click', () => { location.href = 'room.html#luna'; }); close.addEventListener('click', () => setOpen(false));
     panel.addEventListener('keydown', event => { if (event.key === 'Escape' && !document.querySelector('dialog[open]')) { event.preventDefault(); setOpen(false); } });
