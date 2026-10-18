@@ -185,3 +185,6 @@
   fab.addEventListener('click',function(){ veil.classList.add('on'); });
   veil.addEventListener('click',function(e){ if(e.target===veil||e.target.id==='mapx') veil.classList.remove('on'); });
 })();
+
+/* PWA on every page: manifest, home-screen icon and the service worker (offline shell + reminder notifications) */
+(function(){ try { if (!document.querySelector('link[rel="manifest"]')) { var l=document.createElement('link'); l.rel='manifest'; l.href='manifest.webmanifest'; document.head.appendChild(l); } if (!document.querySelector('link[rel="apple-touch-icon"]')) { var t=document.createElement('link'); t.rel='apple-touch-icon'; t.href='assets/icons/apple-touch-icon.png'; document.head.appendChild(t); } if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function(){}); } catch(e){} })();

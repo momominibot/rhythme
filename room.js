@@ -11,20 +11,50 @@
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var ART = 'assets/room/dream/';
 
-  /* ---------- scene configuration (percent of the 4:5 scene) ---------- */
-  var HOTSPOTS = [
-    /* Percentages are of the 1652x1840 plate (the 2026-10-18 wide floor); the room art
-     * sits 180px further right than on the original 1472px plate. */
-    { id: 'bed', x: 43, y: 56, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 48.3, y: 72, flip: true } },
-    { id: 'clock', x: 22.9, y: 57, label: 'Clock · record sleep', icon: 'alarm', wp: { x: 28.7, y: 71, flip: true } },
-    { id: 'calendar', x: 55, y: 44, label: 'Calendar · cycle & symptoms', icon: 'calendar_month', wp: { x: 59, y: 64, flip: false } },
-    { id: 'computer', x: 68.8, y: 46, label: 'Computer · learn', icon: 'computer', wp: { x: 67, y: 66, flip: false } },
-    { id: 'wardrobe', x: 83.1, y: 52, label: 'Wardrobe · outfits', icon: 'checkroom', wp: { x: 78.6, y: 73, flip: false } },
-    { id: 'diary', x: 67.9, y: 73, label: 'Diary · food journal', icon: 'menu_book', wp: { x: 59, y: 80, flip: false } },
-    { id: 'mat', x: 36.7, y: 78, label: 'Yoga mat · mindfulness with Erin', icon: 'self_improvement', wp: { x: 43, y: 81, flip: true } },
-    { id: 'window', x: 50.1, y: 29, label: 'Window · tonight', icon: 'dark_mode', wp: null }
-  ];
-  var HOME = { x: 50.1, y: 79, flip: false };
+  /* ---------- scene configuration (percent of each plate) ---------- */
+  /* Two homes share one engine: the room (a 1472x1840 plate, 18 Oct morning render)
+   * and the two-storey dream house (1024x1280). Every position is a percent of its
+   * own plate, read off a 5% grid overlay. */
+  var LAYOUTS = {
+    room: {
+      id: 'room', name: 'Your room', img: 'room-v3.webp', w: 1472, h: 1840, avatarW: 12,
+      hotspots: [
+        { id: 'bed', x: 30, y: 56, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 40, y: 72, flip: true } },
+        { id: 'clock', x: 14, y: 60, label: 'Clock · reminders', icon: 'alarm', wp: { x: 21, y: 70, flip: true } },
+        { id: 'calendar', x: 56, y: 30, label: 'Calendar · cycle & symptoms', icon: 'calendar_month', wp: { x: 55, y: 60, flip: false } },
+        { id: 'computer', x: 58, y: 42, label: 'Computer · learn', icon: 'computer', wp: { x: 60, y: 61, flip: false } },
+        { id: 'wardrobe', x: 78, y: 48, label: 'Wardrobe · outfits', icon: 'checkroom', wp: { x: 72, y: 64, flip: false } },
+        { id: 'diary', x: 66, y: 73, label: 'Diary · food journal', icon: 'menu_book', wp: { x: 58, y: 78, flip: false } },
+        { id: 'mat', x: 28, y: 79, label: 'Yoga mat · mindfulness with Erin', icon: 'self_improvement', wp: { x: 36, y: 83, flip: true } },
+        { id: 'window', x: 37, y: 30, label: 'Window · tonight', icon: 'dark_mode', wp: null }
+      ],
+      home: { x: 48, y: 80, flip: false },
+      sleeper: { x: 31, y: 58, w: 21, rot: 34 }, zzz: { x: 30, y: 44 },
+      meditator: { x: 28, y: 77, w: 11.5 }, aura: { x: 28, y: 75, w: 18 }, holo: { x: 39, y: 75, w: 15 },
+      window: { x: 37.3, y: 31.5, rx: 7, ry: 9.6 },
+      props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, lamp: { x: 86, y: 73, w: 7 } }
+    },
+    house: {
+      id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8,
+      stairs: [{ x: 46, y: 78 }, { x: 55, y: 57 }], upstairsY: 55,
+      hotspots: [
+        { id: 'bed', x: 28, y: 46, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 44, y: 52, flip: true } },
+        { id: 'clock', x: 37, y: 34, label: 'Clock · reminders', icon: 'alarm', wp: { x: 42, y: 52, flip: true } },
+        { id: 'calendar', x: 52, y: 38, label: 'Calendar · cycle & symptoms', icon: 'calendar_month', wp: { x: 54, y: 52, flip: false } },
+        { id: 'computer', x: 68, y: 64, label: 'Computer · learn', icon: 'computer', wp: { x: 58, y: 80, flip: false } },
+        { id: 'wardrobe', x: 67, y: 40, label: 'Wardrobe · outfits', icon: 'checkroom', wp: { x: 62, y: 52, flip: false } },
+        { id: 'diary', x: 38, y: 74, label: 'Diary · food journal', icon: 'menu_book', wp: { x: 31, y: 80, flip: false } },
+        { id: 'mat', x: 49, y: 83, label: 'Yoga mat · mindfulness with Erin', icon: 'self_improvement', wp: { x: 40, y: 86, flip: true } },
+        { id: 'window', x: 48, y: 27, label: 'Window · tonight', icon: 'dark_mode', wp: null }
+      ],
+      home: { x: 56, y: 82, flip: false },
+      sleeper: { x: 34, y: 44, w: 20, rot: 14 }, zzz: { x: 36, y: 30 },
+      meditator: { x: 49, y: 82, w: 8 }, aura: { x: 49, y: 80, w: 13 }, holo: { x: 62, y: 80, w: 10 },
+      window: { x: 48, y: 27, rx: 6.8, ry: 5.4 },
+      props: { cat: { x: 27, y: 80, w: 7 }, dog: { x: 53, y: 51, w: 7 }, plant: { x: 76, y: 80, w: 7 }, lamp: { x: 76, y: 50, w: 5.5 } }
+    }
+  };
+  var L = LAYOUTS.room, HOTSPOTS = L.hotspots, HOME = L.home, visiting = null;
   var OUTFITS = [
     { id: 'base', name: 'Cosy knit', note: 'Cream sweater & blush skirt' },
     { id: 'pajamas', name: 'Starry pyjamas', note: 'For sleepy nights' },
@@ -127,10 +157,20 @@
       body: '<p>Studies of acupressure for primary period pain are promising but limited: reviews describe low-quality evidence, mixed results for SP6 alone, and small trials that combine points. Gentle pressure is low risk for most people; it is not a treatment for pelvic pain that limits your life, which deserves clinical assessment.</p>',
       evidence: []
     },
+    reminders: {
+      icon: 'alarm', title: 'Why these four nudges',
+      body: '<p>Regular sleep and wake times, water through the day, short movement breaks and a couple of minutes of slow breathing are the everyday habits with the broadest support for sleep, energy and mood. The clock reminds you; it does not track whether you did it. Notifications depend on your phone: they fire while Ovumind is open or installed to the Home Screen, and the calendar file gives you alarms that always ring.</p>',
+      evidence: [
+        ['American Academy of Sleep Medicine and Sleep Research Society consensus (Watson et al. 2015, Sleep): 7 or more hours on a regular schedule', 'https://doi.org/10.5665/sleep.4716'],
+        ['WHO 2020 guidelines on physical activity and sedentary behaviour: limit sitting time and replace it with activity of any intensity', 'https://www.who.int/publications/i/item/9789240015128'],
+        ['EFSA 2010 scientific opinion on dietary reference values for water: adequate total water intake 2.0 L a day for women', 'https://doi.org/10.2903/j.efsa.2010.1459'],
+        ['Zaccaro et al. 2018, Frontiers in Human Neuroscience: slow breathing techniques and psychophysiological outcomes, systematic review', 'https://doi.org/10.3389/fnhum.2018.00353']
+      ]
+    },
     luna: {
       icon: 'dark_mode', title: 'How Luna reads your notes',
-      body: '<p>Luna first tries simple rules on this device (sleep times, period words, the symptom list, pain out of 10, mood words, meal words, minutes of practice). Nothing leaves your phone. If you turn on AI mode and paste your own key, the note is sent to the model you choose and the reply is still shown to you for confirmation before anything is saved. Luna never diagnoses.</p>',
-      evidence: [['Model choice: jev-1.13.0 preferred Gemini 2.5 Flash-Lite for cost and strict JSON (0.73), Qwen3 30B as runner-up; prices change, check your provider', 'https://openrouter.ai/models']]
+      body: '<p>Luna first tries simple rules on this device (sleep times, period words, the symptom list, pain out of 10, mood words, meal words, minutes of practice). If the rules cannot read a note, Luna’s own model reads it: the note alone (no name, no history) goes through a small Ovumind relay to a Doubao model, the reply is shown to you for confirmation, and nothing is stored on the way. You can switch to your own OpenRouter or Ark key, or turn AI off and keep the rules only. Luna never diagnoses.</p>',
+      evidence: [['Model: Doubao Seed 2.1 turbo on Volcengine Ark, strict JSON, temperature 0; relay allows about 80 notes a day per person', 'https://www.volcengine.com/docs/82379'], ['Own-key default: jev-1.13.0 preferred Gemini 2.5 Flash-Lite for cost and strict JSON (0.73), Qwen3 30B as runner-up', 'https://openrouter.ai/models']]
     }
   };
   function infoBtn(topic) { return '<button type="button" class="ibtn" data-guide="' + topic + '" aria-label="Evidence and guidance">i</button>'; }
@@ -169,8 +209,8 @@
 
   /* ---------- scene build ---------- */
   var scene = $('#scene'), inner = $('#sceneInner'), avatar = $('#avatar'), avatarImg = $('#avatarImg'), sleeper = $('#sleeper'), meditator = $('#meditator'), holo = $('#holo'), hud = $('#hud');
-  function buildScene() {
-    var hs = $('#hotspots');
+  function buildHotspots() {
+    var hs = $('#hotspots'); hs.innerHTML = '';
     HOTSPOTS.forEach(function (h) {
       var b = document.createElement('button');
       b.className = 'hotspot'; b.type = 'button'; b.dataset.id = h.id; b.setAttribute('aria-label', h.label);
@@ -179,30 +219,49 @@
       b.addEventListener('click', function () { tap(h); });
       hs.appendChild(b);
     });
+  }
+  function place(el, p) { if (!el || !p) return; el.style.left = p.x + '%'; el.style.top = p.y + '%'; if (p.w) el.style.width = p.w + '%'; }
+  function houseItem() { return RW.SHOP.filter(function (s) { return s.id === 'house'; })[0]; }
+  function currentHomeId() { return S.state().home === 'house' && RW.ledger().owned.indexOf('house') > -1 ? 'house' : 'room'; }
+  /* Switch the plate and every percent-positioned overlay to a layout; asVisit previews without moving in. */
+  function applyLayout(id, asVisit) {
+    L = LAYOUTS[id] || LAYOUTS.room; HOTSPOTS = L.hotspots; HOME = L.home; visiting = asVisit ? L.id : null;
+    scene.style.aspectRatio = L.w + '/' + L.h; scene.dataset.layout = L.id;
+    if (dayImg.getAttribute('src') !== ART + L.img) dayImg.src = ART + L.img;
+    dayImg.width = L.w; dayImg.height = L.h;
+    buildHotspots();
+    avatar.style.width = L.avatarW + '%';
+    place(sleeper, L.sleeper); sleeper.style.transform = 'translate(-50%,-50%) rotate(' + L.sleeper.rot + 'deg)';
+    place($('.zzz'), L.zzz); place(meditator, L.meditator); place($('#aura'), L.aura); place(holo, L.holo);
+    var mp = $('#matProp'); if (mp) { mp.style.display = L.mat ? '' : 'none'; if (L.mat) place(mp, L.mat); }
+    var wn = $('#winNight'); if (wn) { wn.style.left = L.window.x + '%'; wn.style.top = L.window.y + '%'; wn.style.width = (L.window.rx * 2) + '%'; wn.style.height = (L.window.ry * 2) + '%'; }
+    var vb = $('#visitBar'); if (vb) { vb.classList.toggle('on', !!visiting); vb.innerHTML = visiting ? '<span class="ms">cottage</span><span>Visiting the dream house · <b>' + houseItem().cost + ' ♥ to move in</b></span><button type="button" id="visitBack"><span class="ms">arrow_back</span>Back</button>' : ''; }
+    renderProps(); placeAvatar(HOME, false);
+  }
+  function buildScene() {
     var aura = document.createElement('div'); aura.className = 'aura'; aura.id = 'aura'; inner.insertBefore(aura, meditator);
     var sp = $('#sparkles');
     for (var i = 0; i < 14; i++) { var s = document.createElement('i'); s.className = 'sparkle'; s.style.left = (5 + Math.random() * 90) + '%'; s.style.top = (4 + Math.random() * 60) + '%'; s.style.animationDelay = (Math.random() * 4) + 's'; s.style.animationDuration = (3 + Math.random() * 3) + 's'; sp.appendChild(s); }
     var st = $('#stars');
     for (var j = 0; j < 26; j++) { var z = document.createElement('i'); z.className = 'star'; z.style.left = (2 + Math.random() * 96) + '%'; z.style.top = (2 + Math.random() * 40) + '%'; z.style.animationDelay = (Math.random() * 3) + 's'; z.style.transform = 'scale(' + (0.5 + Math.random()) + ')'; st.appendChild(z); }
-    var night = $('#roomNight');
-    night.addEventListener('load', function () { scene.classList.add('has-night-img'); });
-    night.addEventListener('error', function () { night.remove(); });
-    night.src = ART + 'room-night.webp';
     if (!reduced && window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
       scene.addEventListener('pointermove', function (e) { var r = scene.getBoundingClientRect(); var dx = (e.clientX - r.left) / r.width - 0.5, dy = (e.clientY - r.top) / r.height - 0.5; inner.style.transform = 'rotateY(' + (dx * 4) + 'deg) rotateX(' + (-dy * 3) + 'deg) scale(1.02)'; });
       scene.addEventListener('pointerleave', function () { inner.style.transform = ''; });
     }
+    applyLayout(currentHomeId(), false);
   }
-  /* owned props from the reward shop */
+  /* owned props from the reward shop, placed per layout */
   function renderProps() {
     var l = RW.ledger(), wrap = $('#ownedProps'); wrap.innerHTML = '';
     RW.SHOP.forEach(function (it) {
-      if (!it.img || l.owned.indexOf(it.id) < 0 || !l.placed[it.id]) return;
-      var d = document.createElement('div'); d.className = 'prop owned ' + it.kind; d.style.left = it.pos.x + '%'; d.style.top = it.pos.y + '%'; d.style.width = it.pos.w + '%';
+      if (!it.img || it.kind === 'home' || l.owned.indexOf(it.id) < 0 || !l.placed[it.id]) return;
+      var p = (L.props && L.props[it.id]) || it.pos; if (!p) return;
+      var d = document.createElement('div'); d.className = 'prop owned ' + it.kind; d.style.left = p.x + '%'; d.style.top = p.y + '%'; d.style.width = p.w + '%';
       d.innerHTML = '<img src="' + ART + it.img + '" alt="">'; wrap.appendChild(d);
     });
     $('#heartsVal').textContent = l.hearts;
   }
+
 
   /* ---------- avatar ---------- */
   var pos = { x: HOME.x, y: HOME.y }, walkTimer = null, idleTimer = null;
@@ -215,7 +274,16 @@
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
   }
   function placeAvatar(p, flip) { pos = { x: p.x, y: p.y }; avatar.style.left = p.x + '%'; avatar.style.top = p.y + '%'; avatar.classList.toggle('flip', !!flip); }
+  function sameFloor(a, b) { if (!L.stairs) return true; return (a.y < L.upstairsY) === (b.y < L.upstairsY); }
   function walkTo(wp, done) {
+    if (wp && !reduced && !sameFloor(pos, wp)) {
+      var up = wp.y < L.upstairsY, seq = (up ? L.stairs.slice() : L.stairs.slice().reverse()).concat([wp]), i = 0;
+      (function next() { if (i >= seq.length) { done && done(); return; } walkLeg(seq[i++], next); })();
+      return;
+    }
+    walkLeg(wp, done);
+  }
+  function walkLeg(wp, done) {
     if (!wp || reduced) { if (wp) placeAvatar(wp, wp.flip); done && done(); return; }
     var dx = wp.x - pos.x, dy = wp.y - pos.y, dist = Math.sqrt(dx * dx + dy * dy);
     var ms = Math.min(1100, Math.max(350, dist * 22));
@@ -268,7 +336,7 @@
   function hotspot(id) { return HOTSPOTS.filter(function (h) { return h.id === id; })[0]; }
   function openSheetFor(id) {
     if (id === 'bed') return S.state().sleeping ? openWake() : openBedtime();
-    if (id === 'clock') return openSleepRecord();
+    if (id === 'clock') return openClock();
     if (id === 'calendar') return openCalendar('period');
     if (id === 'computer') return openLearn();
     if (id === 'wardrobe') return openWardrobe();
@@ -322,14 +390,73 @@
       } catch (e) { message($('#sleepMsg'), e.message, false); }
     });
   }
+  /* ---------- bedside clock: reminders you set yourself ---------- */
+  var RM = window.OvuRemind;
+  var DAYN = ['S', 'M', 'T', 'W', 'T', 'F', 'S'], DAYF = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  function clockTabs(on) { return '<div class="tabs" id="clockTabs"><button type="button" data-tab="reminders" class="' + (on === 'reminders' ? 'on' : '') + '">Reminders</button><button type="button" data-tab="sleep" class="' + (on === 'sleep' ? 'on' : '') + '">Record a night</button></div>'; }
+  function wireClockTabs() { var t = $('#clockTabs'); if (!t) return; t.addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b) return; chime('tap'); if (b.dataset.tab === 'sleep') openSleepRecord(); else openClock(); }); }
+  function daysText(days) { if (days.length === 7) return 'Every day'; if (days.join() === '1,2,3,4,5') return 'Weekdays'; if (days.join() === '0,6') return 'Weekends'; return days.map(function (d) { return DAYF[d].slice(0, 3); }).join(', '); }
+  function fmtTime(t) { var h = Number(t.slice(0, 2)), m = t.slice(3), ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12; return h + (m === '00' ? '' : ':' + m) + ap; }
+  function permBox() {
+    var p = RM.permission(), ios = RM.isIOS() && !RM.standalone();
+    if (!RM.supported() || ios) return '<div class="stat"><span class="ms">ios_share</span><div><b>' + (ios ? 'Add Ovumind to your Home Screen for notifications' : 'This browser cannot show notifications') + '</b><span>' + (ios ? 'In Safari tap Share, then “Add to Home Screen”, and open Ovumind from there. Or add the reminders to your calendar below; those alarms always ring.' : 'Add the reminders to your calendar below instead; those alarms always ring.') + '</span></div></div>';
+    if (p === 'granted') return '<div class="stat"><span class="ms">notifications_active</span><div><b>Notifications are on</b><span>They fire while Ovumind is open or installed. For alarms that always ring, add them to your calendar too.</span></div></div>';
+    if (p === 'denied') return '<div class="stat"><span class="ms">notifications_off</span><div><b>Notifications are blocked</b><span>Allow them for this site in your browser settings, or add the reminders to your calendar below.</span></div></div>';
+    return '<div class="stat"><span class="ms">notifications</span><div><b>Allow notifications</b><span>So the clock can nudge you at the times you choose.</span></div><button type="button" class="btn soft" id="remAllow" style="flex:0 0 auto">Allow</button></div>';
+  }
+  function reminderRow(it) {
+    var next = RM.nextFor(it);
+    return '<div class="rem' + (it.on ? '' : ' off') + '"><span class="ms ico">' + esc(it.icon) + '</span><div class="body"><b>' + esc(it.label) + '</b><span>' + it.times.map(fmtTime).join(' · ') + ' · ' + esc(daysText(it.days)) + '</span>' + (next && it.on ? '<small>Next ' + esc(next.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })) + '</small>' : '') + '</div><button type="button" class="pen" data-edit="' + it.id + '" aria-label="Edit ' + esc(it.label) + '"><span class="ms">edit</span></button><button type="button" class="sw' + (it.on ? ' on' : '') + '" role="switch" aria-checked="' + (it.on ? 'true' : 'false') + '" data-toggle="' + it.id + '" aria-label="' + (it.on ? 'Turn off ' : 'Turn on ') + esc(it.label) + '"><i></i></button></div>';
+  }
+  function timeChips(times) { return times.map(function (t) { return '<span class="chipbtn on tm" data-t="' + t + '">' + fmtTime(t) + '<button type="button" aria-label="Remove ' + fmtTime(t) + '">×</button></span>'; }).join(''); }
+  function openClock(editItem) {
+    var items = RM.list();
+    openSheet('clock', 'Bedside clock', 'Gentle nudges, set by you', 'alarm',
+      clockTabs('reminders') + permBox() +
+      '<div class="field"><div class="lbl-row"><span class="lbl">Your reminders</span>' + infoBtn('reminders') + '</div>' + guideHTML('reminders') + '<div class="rems" id="rems">' + (items.length ? items.map(reminderRow).join('') : '<div class="empty">No reminders yet. Start with one of the templates below.</div>') + '</div></div>' +
+      '<div class="field"><span class="lbl">Add one</span><div class="chips">' + RM.TEMPLATES.map(function (t) { return '<button type="button" class="chipbtn" data-tpl="' + t.kind + '"><span class="ms">' + t.icon + '</span>' + esc({ sleep: 'Sleep', water: 'Water', move: 'Move', breathe: 'Breathe' }[t.kind] || t.label) + '</button>'; }).join('') + '<button type="button" class="chipbtn" data-tpl="custom"><span class="ms">add</span>Custom</button></div></div>' +
+      '<div class="remedit" id="remEdit"></div>' +
+      '<div class="row"><button type="button" class="btn soft" id="remIcs"><span class="ms">event</span>Add to my calendar</button><button type="button" class="btn ghost" id="remTest"><span class="ms">notifications</span>Send a test</button></div>' +
+      '<p class="help">Reminders live on this device. Notifications fire while Ovumind is open or installed to your Home Screen; the calendar file carries the same reminders, with alarms, into your phone’s own calendar.</p>');
+    wireClockTabs();
+    function editor(it) {
+      var old = $('#remEdit'), ed = old.cloneNode(false); old.parentNode.replaceChild(ed, old);
+      ed.innerHTML = '<div class="editcard"><div class="field"><label for="remLabel">What should it say?</label><input class="input" id="remLabel" maxlength="60" value="' + esc(it.label) + '" placeholder="e.g. Take iron with orange juice"></div>' +
+        '<div class="field"><span class="lbl">Icon</span><div class="chips icons">' + RM.ICONS.map(function (ic) { return '<button type="button" class="chipbtn' + (ic === it.icon ? ' on' : '') + '" data-icon="' + ic + '" aria-label="' + ic.replace(/_/g, ' ') + '"><span class="ms">' + ic + '</span></button>'; }).join('') + '</div></div>' +
+        '<div class="field"><span class="lbl">Times</span><div class="chips" id="remTimes">' + timeChips(it.times) + '</div><div class="row" style="margin-top:8px"><input class="input" id="remNewTime" type="time" value="09:00"><button type="button" class="btn soft" id="remAddTime" style="flex:0 0 auto"><span class="ms">add</span>Add time</button></div></div>' +
+        '<div class="field"><span class="lbl">Days</span><div class="chips days" id="remDays">' + DAYN.map(function (d, i) { return '<button type="button" class="chipbtn' + (it.days.indexOf(i) > -1 ? ' on' : '') + '" data-day="' + i + '" aria-label="' + DAYF[i] + '">' + d + '</button>'; }).join('') + '</div></div>' +
+        '<div class="field"><label for="remNote">Note shown with it (optional)</label><input class="input" id="remNote" maxlength="160" value="' + esc(it.note || '') + '"></div>' +
+        '<div class="row"><button type="button" class="btn primary" id="remSave"><span class="ms">check</span>Save reminder</button>' + (it.id ? '<button type="button" class="btn ghost" id="remDelete">Delete</button>' : '<button type="button" class="btn ghost" id="remCancel">Cancel</button>') + '</div><div class="msg" id="remMsg"></div></div>';
+      ed.classList.add('on'); ed.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      var icon = it.icon, times = it.times.slice(), days = it.days.slice();
+      ed.addEventListener('click', function (e) {
+        var ic = e.target.closest('[data-icon]'); if (ic) { icon = ic.dataset.icon; $$('[data-icon]', ed).forEach(function (b) { b.classList.toggle('on', b === ic); }); return; }
+        var dy = e.target.closest('[data-day]'); if (dy) { var d = Number(dy.dataset.day); days = days.indexOf(d) > -1 ? days.filter(function (x) { return x !== d; }) : days.concat([d]); dy.classList.toggle('on', days.indexOf(d) > -1); return; }
+        var rm = e.target.closest('.tm button'); if (rm) { var t = rm.parentNode.dataset.t; times = times.filter(function (x) { return x !== t; }); rm.parentNode.remove(); return; }
+        if (e.target.closest('#remAddTime')) { var nt = $('#remNewTime').value; if (RM.valid(nt) && times.indexOf(nt) < 0) { times.push(nt); times.sort(); $('#remTimes').innerHTML = timeChips(times); } return; }
+        if (e.target.closest('#remSave')) { try { RM.upsert({ id: it.id, kind: it.kind, label: $('#remLabel').value, icon: icon, times: times, days: days, note: $('#remNote').value, on: it.on !== false }); chime('save'); toast('Reminder saved.', 'alarm'); openClock(); } catch (err) { message($('#remMsg'), err.message, false); } return; }
+        if (e.target.closest('#remDelete')) { RM.remove(it.id); toast('Reminder removed.', 'alarm'); openClock(); return; }
+        if (e.target.closest('#remCancel')) { ed.classList.remove('on'); ed.innerHTML = ''; }
+      });
+    }
+    body.addEventListener('click', function (e) {
+      var tpl = e.target.closest('[data-tpl]'); if (tpl) { chime('tap'); editor(RM.fromTemplate(tpl.dataset.tpl)); return; }
+      var ed = e.target.closest('[data-edit]'); if (ed) { editor(RM.get(ed.dataset.edit)); return; }
+      var tg = e.target.closest('[data-toggle]'); if (tg) { RM.toggle(tg.dataset.toggle); chime('tap'); openClock(); return; }
+      if (e.target.closest('#remAllow')) { RM.requestPermission().then(function (p) { if (p === 'granted') RM.notify('Ovumind', 'Reminders are on. I will nudge you gently.', 'ovumind-test'); openClock(); }); return; }
+      if (e.target.closest('#remIcs')) { if (!RM.list().some(function (x) { return x.on; })) { toast('Add a reminder first.', 'alarm'); return; } RM.download(); toast('Calendar file ready. Open it to add the alarms.', 'event'); return; }
+      if (e.target.closest('#remTest')) { RM.notify('Ovumind', 'This is how a reminder looks.', 'ovumind-test').then(function (ok) { toast(ok ? 'Sent. Check your notifications.' : 'Allow notifications first, or use the calendar file.', 'notifications'); }); }
+    });
+    if (editItem) editor(editItem);
+  }
   function openSleepRecord() {
-    openSheet('sleep', 'Record sleep', 'Any night, any date', 'alarm',
-      '<div class="grid2"><div class="field"><label for="slDate">Morning of</label><input class="input" id="slDate" type="date" value="' + S.today() + '" max="' + S.today() + '"></div><div class="field"><label for="slBed">Bedtime</label><input class="input" id="slBed" type="time" value="23:00"></div></div>' +
+    openSheet('sleep', 'Bedside clock', 'Record any night, any date', 'alarm',
+      clockTabs('sleep') + '<div class="grid2"><div class="field"><label for="slDate">Morning of</label><input class="input" id="slDate" type="date" value="' + S.today() + '" max="' + S.today() + '"></div><div class="field"><label for="slBed">Bedtime</label><input class="input" id="slBed" type="time" value="23:00"></div></div>' +
       '<div class="grid2"><div class="field"><label for="slWake">Wake time</label><input class="input" id="slWake" type="time" value="07:00"></div><div class="field"><div class="lbl-row"><span class="lbl">Quality</span>' + infoBtn('sleep') + '</div>' + moonsHTML('q', 0) + '</div></div>' + guideHTML('sleep') +
       '<div class="field"><label for="slNotes">Notes (optional)</label><textarea class="input" id="slNotes" placeholder="Night sweats, cramps, late coffee..."></textarea></div>' +
       '<button class="btn primary" id="saveSleep" style="width:100%"><span class="ms">check</span>Save night</button><div class="msg" id="sleepMsg"></div>' +
       '<div class="field"><span class="lbl">Last 7 nights</span><div id="sleepList">' + sleepListHTML() + '</div></div>');
-    wireMoons(body);
+    wireMoons(body); wireClockTabs();
     $('#saveSleep').addEventListener('click', function () {
       try {
         var q = Number($('.moons', body).dataset.value || 0) || null;
@@ -599,15 +726,35 @@
     });
   }
 
-  /* ---------- computer: a little desktop ---------- */
-  var player = null;
+  /* ---------- computer: a little desktop with draggable folders and your own wallpaper ---------- */
+  var player = null, DESK_KEY = 'ovumind_desk_v1';
+  var WALLS = [{ id: 'cat', name: 'Me & Mochi', src: ART + 'wallpaper-cat.webp' }, { id: 'room', name: 'My room', src: ART + 'room-v3.webp' }, { id: 'house', name: 'Dream house', src: ART + 'house-v1.webp' }, { id: 'sky', name: 'Morning sky', src: '' }];
+  var SKY = 'linear-gradient(160deg,#cfe6ff,#f6d7ec 60%,#fde7c9)';
+  function deskPrefs() { try { return JSON.parse(localStorage.getItem(DESK_KEY) || 'null') || { pos: {}, wall: 'cat', custom: null }; } catch (e) { return { pos: {}, wall: 'cat', custom: null }; } }
+  function setDeskPrefs(p) { try { localStorage.setItem(DESK_KEY, JSON.stringify(p)); return true; } catch (e) { toast('Could not save that (storage is full).', 'error'); return false; } }
+  function wallStyle(p) { if (p.wall === 'custom' && p.custom) return 'background-image:url(' + p.custom + ')'; var w = WALLS.filter(function (x) { return x.id === p.wall; })[0] || WALLS[0]; return w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY; }
   function stopVideo() { if (player) { try { player.pause(); } catch (e) { } player = null; } }
   function folderSVG(color) { return '<svg viewBox="0 0 64 54" aria-hidden="true"><path d="M4 12a6 6 0 0 1 6-6h14l6 6h28a6 6 0 0 1 6 6v26a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6z" fill="' + color + '"/><path d="M4 20h56v24a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6z" fill="#fff" fill-opacity=".55"/><circle cx="50" cy="38" r="4" fill="#fff" fill-opacity=".8"/></svg>'; }
+  function shrinkPhoto(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var w = Math.min(960, img.width), h = Math.round(img.height * w / img.width), c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h); URL.revokeObjectURL(url);
+        var q = 0.82, out = c.toDataURL('image/jpeg', q); while (out.length > 420000 && q > 0.4) { q -= 0.12; out = c.toDataURL('image/jpeg', q); }
+        resolve(out);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('That file is not an image I can read.')); };
+      img.src = url;
+    });
+  }
   function openLearn() {
-    openSheet('learn', 'Your desk', 'A little desktop for learning', 'computer',
-      '<div class="desk"><div class="menubar"><span class="brandy">OVUMIND</span><span>Learn</span><span class="sp"></span><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
-      '<div class="wallpaper" style="background-image:url(' + ART + 'wallpaper-cat.webp)"><div class="dicons" id="dicons">' + FOLDERS.map(function (f) { return '<button type="button" class="dicon" data-folder="' + f.id + '">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
+    var p = deskPrefs();
+    openSheet('learn', 'Your desk', 'Drag the folders around; make it yours', 'computer',
+      '<div class="desk"><div class="menubar"><span class="brandy">OVUMIND</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
+      '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f, i) { var q = p.pos[f.id] || [2 + (i % 4) * 25, 4 + Math.floor(i / 4) * 46]; return '<button type="button" class="dicon" data-folder="' + f.id + '" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="dock"><button type="button" data-dock="videos" aria-label="Videos"><span class="ms">play_circle</span></button><button type="button" data-dock="mind" aria-label="Erin"><span class="ms">self_improvement</span></button><button type="button" data-dock="acu" aria-label="Acupressure"><span class="ms">spa</span></button><button type="button" data-dock="luna" aria-label="Luna"><span class="ms">dark_mode</span></button><button type="button" data-dock="doctor" aria-label="Share with doctor"><span class="ms">medical_services</span></button></div></div>' +
+      '<div class="wallpanel" id="wallpanel"><b>Wallpaper</b><div class="walls">' + WALLS.map(function (w) { return '<button type="button" class="wall' + (p.wall === w.id ? ' on' : '') + '" data-wall="' + w.id + '" style="' + (w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY) + '"><span>' + esc(w.name) + '</span></button>'; }).join('') + '<button type="button" class="wall upload' + (p.wall === 'custom' ? ' on' : '') + '" data-wall="custom" style="' + (p.custom ? 'background-image:url(' + p.custom + ')' : '') + '"><span class="ms">add_photo_alternate</span><span>' + (p.custom ? 'My photo' : 'Upload a photo') + '</span></button></div><input type="file" id="wallFile" accept="image/*" hidden><div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="deskTidy"><span class="ms">grid_view</span>Tidy the icons</button>' + (p.custom ? '<button type="button" class="btn ghost" id="wallForget"><span class="ms">delete</span>Forget my photo</button>' : '') + '</div><p class="help">Your photo is stored only on this device.</p></div>' +
       '<div class="finder" id="finder"></div><div class="player" id="player"></div>' +
       '<p class="help" style="margin-top:10px">Short, sourced reads and six little videos. Nothing here is personal medical advice; bring questions to your clinician.</p>');
     function openFolder(id) {
@@ -621,11 +768,42 @@
       }).join('');
       fd.classList.add('on'); fd.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
+    /* drag the folders; a short press without movement opens the folder */
+    var icons = $('#dicons'), drag = null;
+    icons.addEventListener('pointerdown', function (e) {
+      var b = e.target.closest('.dicon'); if (!b) return;
+      var r = icons.getBoundingClientRect();
+      drag = { b: b, id: b.dataset.folder, sx: e.clientX, sy: e.clientY, ox: parseFloat(b.style.left) || 0, oy: parseFloat(b.style.top) || 0, rw: r.width, rh: r.height, moved: false };
+      try { b.setPointerCapture(e.pointerId); } catch (err) { }
+      b.classList.add('lift'); e.preventDefault();
+    });
+    icons.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+      if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true;
+      if (!drag.moved) return;
+      var x = Math.max(0, Math.min(78, drag.ox + dx / drag.rw * 100)), y = Math.max(0, Math.min(64, drag.oy + dy / drag.rh * 100));
+      drag.b.style.left = x + '%'; drag.b.style.top = y + '%';
+    });
+    function endDrag() {
+      if (!drag) return; var d = drag; drag = null; d.b.classList.remove('lift');
+      if (d.moved) { var pr = deskPrefs(); pr.pos[d.id] = [Math.round(parseFloat(d.b.style.left) * 10) / 10, Math.round(parseFloat(d.b.style.top) * 10) / 10]; setDeskPrefs(pr); }
+      else { chime('tap'); openFolder(d.id); }
+    }
+    icons.addEventListener('pointerup', endDrag); icons.addEventListener('pointercancel', endDrag);
+    function setWall(id) { var pr = deskPrefs(); pr.wall = id; setDeskPrefs(pr); $('#wallpaper').style.cssText = wallStyle(pr); $$('.wall').forEach(function (w) { w.classList.toggle('on', w.dataset.wall === id); }); }
+    $('#wallFile').addEventListener('change', function () {
+      var f = this.files && this.files[0]; if (!f) return;
+      shrinkPhoto(f).then(function (data) { var pr = deskPrefs(); pr.custom = data; pr.wall = 'custom'; if (setDeskPrefs(pr)) { toast('Wallpaper changed.', 'wallpaper'); openLearn(); $('#wallpanel').classList.add('on'); } }).catch(function (err) { toast(err.message, 'error'); });
+    });
     body.addEventListener('click', function (e) {
-      var di = e.target.closest('.dicon'); if (di) { chime('tap'); openFolder(di.dataset.folder); return; }
-      var dk = e.target.closest('[data-dock]'); if (dk) { var k = dk.dataset.dock; if (k === 'videos' || k === 'mind' || k === 'doctor') openFolder(k); if (k === 'acu') openAcupressure(); if (k === 'luna') openLuna(); return; }
+      if (e.target.closest('#wallBtn')) { chime('tap'); $('#wallpanel').classList.toggle('on'); return; }
+      var wl = e.target.closest('[data-wall]'); if (wl) { chime('tap'); if (wl.dataset.wall === 'custom' && !deskPrefs().custom) { $('#wallFile').click(); return; } if (wl.dataset.wall === 'custom') { $('#wallFile').value = ''; } setWall(wl.dataset.wall); if (wl.dataset.wall === 'custom') { /* tapping the photo tile again swaps it */ $('#wallFile').click(); } return; }
+      if (e.target.closest('#deskTidy')) { var pr = deskPrefs(); pr.pos = {}; setDeskPrefs(pr); openLearn(); $('#wallpanel').classList.add('on'); return; }
+      if (e.target.closest('#wallForget')) { var pr2 = deskPrefs(); pr2.custom = null; if (pr2.wall === 'custom') pr2.wall = 'cat'; setDeskPrefs(pr2); openLearn(); $('#wallpanel').classList.add('on'); return; }
+      var dk = e.target.closest('[data-dock]'); if (dk) { var k = dk.dataset.dock; chime('tap'); if (k === 'videos' || k === 'mind' || k === 'doctor') openFolder(k); if (k === 'acu') openAcupressure(); if (k === 'luna') openLuna(); return; }
       if (e.target.closest('.finder .x')) { $('#finder').classList.remove('on'); return; }
-      var v = e.target.closest('[data-video]'); if (v) { var meta = VIDEOS.filter(function (x) { return x[0] === v.dataset.video; })[0]; stopVideo(); var p = $('#player'); p.innerHTML = '<video controls playsinline poster="assets/eduvid/' + meta[0] + '.jpg" src="assets/eduvid/' + meta[1] + '"></video>'; p.classList.add('on'); player = p.querySelector('video'); player.play().catch(function () { }); p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
+      var v = e.target.closest('[data-video]'); if (v) { var meta = VIDEOS.filter(function (x) { return x[0] === v.dataset.video; })[0]; stopVideo(); var pl = $('#player'); pl.innerHTML = '<video controls playsinline poster="assets/eduvid/' + meta[0] + '.jpg" src="assets/eduvid/' + meta[1] + '"></video>'; pl.classList.add('on'); player = pl.querySelector('video'); player.play().catch(function () { }); pl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
       var act = e.target.closest('[data-action]'); if (act) { var a = act.dataset.action; if (a === 'diary') openDiary(); if (a === 'mat') tap(hotspot('mat')); if (a === 'acu') openAcupressure(); }
     });
   }
@@ -641,20 +819,34 @@
     $('#saveName').addEventListener('click', function () { S.setProfile({ name: $('#nameInput').value.trim() }); updateGreeting(); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); });
   }
 
-  /* ---------- heart shop ---------- */
+  /* ---------- heart shop: props, pets and the dream house ---------- */
   function openShop() {
-    var l = RW.ledger();
-    openSheet('shop', 'Heart shop', 'Hearts come from logging; spend them on your room', 'favorite',
+    var l = RW.ledger(), home = currentHomeId();
+    openSheet('shop', 'Heart shop', 'Hearts come from logging; spend them on your home', 'favorite',
       '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + l.hearts + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, +5 from day three of a streak.</p></div>' +
       '<div class="shop">' + RW.SHOP.map(function (it) {
-        var owned = l.owned.indexOf(it.id) > -1, placed = !!l.placed[it.id];
-        return '<div class="shopitem">' + (it.img ? '<img src="' + ART + it.img + '" alt="">' : '<span class="ph"><span class="ms">cottage</span></span>') + '<span><b>' + esc(it.name) + '</b><small>' + esc(it.note) + '</small></span><span class="cost"><b><span class="ms fill">favorite</span>' + it.cost + '</b>' + (it.locked ? '<span class="badge warn">Coming soon</span>' : owned ? '<button type="button" class="btn soft" data-toggle="' + it.id + '">' + (placed ? 'Hide' : 'Place') + '</button>' : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>' + (it.kind === 'pet' ? 'Adopt' : 'Buy') + '</button>') + '</span></div>';
+        var owned = l.owned.indexOf(it.id) > -1, placed = !!l.placed[it.id], ctl, extra = '';
+        if (it.kind === 'home') {
+          var pct = Math.min(100, Math.round(l.hearts / it.cost * 100));
+          ctl = owned ? '<button type="button" class="btn soft" data-home="' + (home === 'house' ? 'room' : 'house') + '">' + (home === 'house' ? 'Back to my room' : 'Move in') + '</button>'
+            : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>Move in</button><button type="button" class="btn ghost" data-visit="house">Visit</button>';
+          if (!owned) extra = '<div class="bar"><i style="width:' + pct + '%"></i></div><small>' + pct + '% saved' + (l.hearts < it.cost ? ' · ' + (it.cost - l.hearts) + ' hearts to go' : ' · you can move in!') + '</small>';
+        } else {
+          ctl = owned ? '<button type="button" class="btn soft" data-toggle="' + it.id + '">' + (placed ? 'Hide' : 'Place') + '</button>' : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>' + (it.kind === 'pet' ? 'Adopt' : 'Buy') + '</button>';
+        }
+        return '<div class="shopitem' + (it.kind === 'home' ? ' home' : '') + '">' + (it.img ? '<img src="' + ART + it.img + '" alt="">' : '<span class="ph"><span class="ms">cottage</span></span>') + '<span><b>' + esc(it.name) + '</b><small>' + esc(it.note) + '</small>' + extra + '</span><span class="cost"><b><span class="ms fill">favorite</span>' + it.cost + '</b>' + ctl + '</span></div>';
       }).join('') + '</div><div class="msg" id="shopMsg"></div>');
     body.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-buy]'), t = e.target.closest('[data-toggle]');
+      var b = e.target.closest('[data-buy]'), t = e.target.closest('[data-toggle]'), v = e.target.closest('[data-visit]'), hm = e.target.closest('[data-home]');
       try {
-        if (b) { var it = RW.buy(b.dataset.buy); chime('save', true); renderProps(); toast(it.name + ' is now in your room!', 'favorite'); openShop(); }
+        if (b) {
+          var it = RW.buy(b.dataset.buy); chime('save', true);
+          if (it.kind === 'home') { S.setState({ home: 'house' }); closeSheet(); applyLayout('house', false); toast('Welcome home. The dream house is yours!', 'cottage'); }
+          else { renderProps(); toast(it.name + ' is now in your home!', 'favorite'); openShop(); }
+        }
         if (t) { RW.toggle(t.dataset.toggle); renderProps(); openShop(); }
+        if (v) { chime('tap'); closeSheet(); applyLayout('house', true); toast('Have a look around. Tap Back when you are done.', 'cottage'); }
+        if (hm) { chime('tap'); S.setState({ home: hm.dataset.home }); applyLayout(hm.dataset.home, false); openShop(); toast(hm.dataset.home === 'house' ? 'Moved in.' : 'Back in your room.', 'home'); }
       } catch (err) { message($('#shopMsg'), err.message, false); }
     });
   }
@@ -668,10 +860,10 @@
       '<div class="chat" id="chat"></div>' +
       '<div class="quick" id="quick">' + ['Slept 11pm to 7am, quality 4', 'Period started today, medium', 'Cramps and bloating, pain 5, mood ok', 'Had oats and a latte for breakfast', 'Meditated 10 min'].map(function (q) { return '<span class="qchip"><button type="button" class="qsend" data-q="' + esc(q) + '">' + esc(q) + '</button><button type="button" class="qpen" data-q="' + esc(q) + '" aria-label="Edit this shortcut before sending"><span class="ms">edit</span></button></span>'; }).join('') + '</div>' +
       '<div class="composer"><input class="input" id="lunaIn" maxlength="400" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice" value="' + esc(prefill || '') + '"><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
-      '<details class="aibox" id="aibox"' + (cfg.on ? ' open' : '') + '><summary><span class="ms">auto_awesome</span>AI mode ' + (cfg.on ? 'on' : 'off') + ' · your own key' + infoBtn('luna') + '</summary>' + guideHTML('luna') +
-      '<div class="grid2"><div class="field"><label for="aiProv">Provider</label><select class="input" id="aiProv"><option value="openrouter"' + (cfg.provider === 'openrouter' ? ' selected' : '') + '>OpenRouter</option><option value="ark"' + (cfg.provider === 'ark' ? ' selected' : '') + '>Volcengine Ark</option></select></div><div class="field"><label for="aiModel">Model</label><input class="input" id="aiModel" value="' + esc(cfg.model || ORB.DEFAULT_MODEL) + '"></div></div>' +
-      '<div class="field"><label for="aiKey">API key (stays on this device)</label><input class="input" id="aiKey" type="password" autocomplete="off" value="' + esc(cfg.key || '') + '" placeholder="sk-or-..."></div>' +
-      '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn AI mode off' : 'Turn AI mode on') + '</button></div><p>Default ' + esc(ORB.DEFAULT_MODEL) + ', runner-up ' + esc(ORB.FALLBACK_MODEL) + '. With AI mode off, Luna uses the on-device rules only.</p></details>');
+      '<details class="aibox" id="aibox"><summary><span class="ms">auto_awesome</span>' + (cfg.on ? (cfg.provider === 'ovumind' ? 'Luna’s own model is on' : 'AI mode on · your own key') : 'AI mode off · rules only') + infoBtn('luna') + '</summary>' + guideHTML('luna') +
+      '<div class="field"><label for="aiProv">Who reads a note the rules cannot</label><select class="input" id="aiProv"><option value="ovumind"' + (cfg.provider === 'ovumind' ? ' selected' : '') + '>Luna’s own model (Doubao Seed 2.1, free, no key)</option><option value="openrouter"' + (cfg.provider === 'openrouter' ? ' selected' : '') + '>My OpenRouter key</option><option value="ark"' + (cfg.provider === 'ark' ? ' selected' : '') + '>My Volcengine Ark key</option></select></div>' +
+      '<div class="grid2 ownkey' + (cfg.provider === 'ovumind' ? ' hidden' : '') + '" id="ownKey"><div class="field"><label for="aiModel">Model</label><input class="input" id="aiModel" value="' + esc(cfg.model || '') + '" placeholder="' + esc(ORB.OR_MODEL) + '"></div><div class="field"><label for="aiKey">API key (stays on this device)</label><input class="input" id="aiKey" type="password" autocomplete="off" value="' + esc(cfg.key || '') + '" placeholder="sk-or-..."></div></div>' +
+      '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn AI off (rules only)' : 'Turn AI on') + '</button></div><p>Luna’s own model runs through a small Ovumind relay that holds the key, allows about 80 notes a day per person and keeps nothing. Rules on this device always run first, and whatever is understood is shown to you before it is saved.</p></details>');
     var chat = $('#chat');
     function bubble(kind, html) { var d = document.createElement('div'); d.className = 'bub ' + (kind === 'luna' ? 'from-luna' : kind); d.innerHTML = html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d; }
     if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took. I will show you what I understood before saving.');
@@ -692,14 +884,25 @@
     function send(text) {
       text = (text || '').trim(); if (!text) return;
       bubble('me', esc(text)); remember('me', esc(text)); $('#lunaIn').value = '';
-      var local = ORB.parseLocal(text), cfg2 = ORB.aiConfig();
-      if (local.length) { confirmCard(local); return; }
-      if (cfg2.on && cfg2.key) {
-        var thinking = bubble('luna', '<b>Luna</b>Thinking with ' + esc(cfg2.model || ORB.DEFAULT_MODEL) + '…');
-        ORB.parseAI(text).then(function (res) { thinking.remove(); if (res.entries.length) { if (res.reply) bubble('luna', '<b>Luna</b>' + esc(res.reply)); confirmCard(res.entries); } else bubble('luna', '<b>Luna</b>' + esc(res.reply || 'I could not find anything to log in that. Try naming the sleep, period, symptom, meal or minutes.')); }).catch(function (e) { thinking.remove(); bubble('luna', '<b>Luna</b>' + esc(e.message)); });
+      var local = ORB.parseLocal(text), cfg2 = ORB.aiConfig(), aiOk = cfg2.on && (cfg2.provider === 'ovumind' || cfg2.key);
+      /* Short canonical notes (the shortcut chips) are read by the rules instantly; longer or
+       * unmatched notes go to the model first, and the rules stay as the offline fallback. */
+      if (aiOk && (!local.length || text.length > 36)) {
+        var thinking = bubble('luna', '<b>Luna</b>Thinking with ' + esc(cfg2.provider === 'ovumind' ? 'Doubao' : (cfg2.model || ORB.OR_MODEL)) + '…');
+        ORB.parseAI(text).then(function (res) {
+          thinking.remove();
+          if (res.entries.length) { if (res.reply) bubble('luna', '<b>Luna</b>' + esc(res.reply)); confirmCard(res.entries); }
+          else if (local.length) confirmCard(local);
+          else bubble('luna', '<b>Luna</b>' + esc(res.reply || 'I could not find anything to log in that. Try naming the sleep, period, symptom, meal or minutes.'));
+        }).catch(function (e) {
+          thinking.remove();
+          if (local.length) { bubble('luna', '<b>Luna</b>' + esc(e.message) + ' I used the on-device rules instead.'); confirmCard(local); }
+          else bubble('luna', '<b>Luna</b>' + esc(e.message));
+        });
         return;
       }
-      bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "period started, heavy", "cramps 6/10", "had chicken rice for lunch" or "meditated 10 min". AI mode (your own key) understands freer wording.');
+      if (local.length) { confirmCard(local); return; }
+      bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "period started, heavy", "cramps 6/10", "had chicken rice for lunch" or "meditated 10 min". Turn AI on in the panel below and freer wording works too.');
     }
     $('#lunaSend').addEventListener('click', function () { send($('#lunaIn').value); });
     $('#lunaIn').addEventListener('keydown', function (e) { if (e.key === 'Enter') send(this.value); });
@@ -708,8 +911,9 @@
       if (pen) { var inp = $('#lunaIn'); inp.value = pen.dataset.q; inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (err) { } toast('Edit the numbers, then send.', 'edit'); return; }
       if (go) send(go.dataset.q);
     });
-    $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.provider = $('#aiProv').value; c.model = $('#aiModel').value.trim() || ORB.DEFAULT_MODEL; c.key = $('#aiKey').value.trim(); ORB.setAiConfig(c); toast('Saved on this device.', 'save'); });
-    $('#aiToggle').addEventListener('click', function () { var c = ORB.aiConfig(); c.on = !c.on; if (c.on && !$('#aiKey').value.trim()) { c.on = false; toast('Paste a key first.', 'key'); } c.provider = $('#aiProv').value; c.model = $('#aiModel').value.trim() || ORB.DEFAULT_MODEL; c.key = $('#aiKey').value.trim(); ORB.setAiConfig(c); openLuna($('#lunaIn').value); });
+    $('#aiProv').addEventListener('change', function () { $('#ownKey').classList.toggle('hidden', this.value === 'ovumind'); });
+    $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.provider = $('#aiProv').value; c.model = $('#aiModel').value.trim(); c.key = $('#aiKey').value.trim(); if (c.provider !== 'ovumind' && !c.key) { toast('Paste a key, or choose Luna’s own model.', 'key'); return; } c.on = true; ORB.setAiConfig(c); toast('Saved on this device.', 'save'); openLuna($('#lunaIn').value); });
+    $('#aiToggle').addEventListener('click', function () { var c = ORB.aiConfig(); c.on = !c.on; if (c.on && c.provider !== 'ovumind' && !c.key) c.provider = 'ovumind'; ORB.setAiConfig(c); openLuna($('#lunaIn').value); });
     if (prefill) send(prefill);
   }
   $('#lunaBtn').addEventListener('click', function () { chime('tap'); $('#lunaBtn').classList.remove('hinting'); openLuna(); });
@@ -776,7 +980,7 @@
     var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
     enterMeditation();
     openSheet('mind', 'Your mat', 'Erin appears beside you while you practise', 'self_improvement',
-      '<div class="erin"><img src="assets/avatars/erin/erin_square.jpeg" alt=""><div><b>Erin Lee · Take A Pause</b><small>When you begin, the sheet closes and Erin’s projection sits beside you on the mat, speaking in her voice: a greeting, settling in, slow breaths with gentle reminders, and a soft close. Her words are shown as captions.</small></div></div>' +
+      '<div class="erin"><img src="assets/avatars/erin/erin_square.jpeg" alt="Erin Lee"><div><b>Erin Lee · Mindful Moments</b><small>Mindfulness teacher and author in Singapore. When you begin, the sheet closes and Erin’s projection sits beside you on the mat, speaking in her voice: a greeting, settling in, slow breaths with gentle reminders, and a soft close. Her words are shown as captions.</small><a href="https://mindfulmoments.sg/" target="_blank" rel="noopener">mindfulmoments.sg</a></div></div>' +
       '<div class="sessions" id="sessions"><button type="button" class="session on" data-kind="erin" data-min="3"><b>Erin · 3 minutes</b><small>Guided breathing, a soft close</small></button><button type="button" class="session" data-kind="erin" data-min="6"><b>Erin · 6 minutes</b><small>A longer settle and more reminders</small></button><button type="button" class="session" data-kind="breathe" data-min="2"><b>Just breathe · 2 min</b><small>4-4-6 orb with a quiet bell</small></button><button type="button" class="session" data-kind="breathe" data-min="5"><b>Just breathe · 5 min</b><small>Silent, follow the orb</small></button></div>' +
       '<div class="orbwrap"><div class="orb out" id="orb"></div><div class="orbtext" id="orbText">Ready when you are</div><div class="orbsub" id="orbSub">' + (mins ? Math.round(mins) + ' min this week' : 'First session this week') + '</div></div>' +
       '<div class="row"><button class="btn primary" id="mindStart"><span class="ms">self_improvement</span>Begin</button><button class="btn soft" id="mindAcu"><span class="ms">spa</span>Cramp relief points</button></div>' +
@@ -787,25 +991,60 @@
     $('#mindAcu').addEventListener('click', openAcupressure);
   }
 
-  /* ---------- acupressure on your avatar ---------- */
+  /* ---------- acupressure: numbered points on your avatar, then a zoomed locator ---------- */
   var acuData = null;
+  /* region illustrations (Seedream, 18 Oct) and where each point sits on them, percent of the image */
+  var ACU_REGIONS = {
+    belly: { img: 'belly', title: 'Lower belly', pts: { cv6: [[56, 63]], cv4: [[56, 73.5]], cv3: [[56, 81]], st29: [[42, 81], [70, 81]] } },
+    innerleg: { img: 'innerleg', title: 'Inner lower leg', pts: { sp6: [[61, 63]], ki3: [[68, 79]], sp10: [[49, 7]] } },
+    outerleg: { img: 'outerleg', title: 'Outer lower leg', pts: { st36: [[41, 36]] } },
+    foot: { img: 'foot', title: 'Top of the foot', pts: { lr3: [[46, 46]] } },
+    hand: { img: 'hand', title: 'Back of the hand', pts: { li4: [[40, 55]] } },
+    forearm: { img: 'forearm', title: 'Inner forearm, palm up', pts: { pc6: [[53, 58]] } },
+    back: { img: 'back', title: 'Lower back', pts: { bl23: [[44, 43], [56, 43]], gv4: [[50, 43]] } }
+  };
+  var ACU_ORDER = ['belly', 'innerleg', 'outerleg', 'foot', 'hand', 'forearm', 'back'];
+  /* one badge per body region on the small avatar, so the markers never crowd */
+  var ACU_BADGE = { belly: [50, 70], innerleg: [51, 93], outerleg: [39, 87], foot: [44, 99], hand: [71, 75], forearm: [69, 68.5] };
+  var ACU_FIND = {
+    sp6: 'Find the bump of your inner ankle. Lay four fingers flat above it; the point is level with your top finger, just behind the shin bone.',
+    cv6: 'Two finger-widths straight below your navel, on the midline.',
+    cv4: 'Four finger-widths below your navel, on the midline.',
+    cv3: 'One thumb-width above the pubic bone on the midline (four finger-widths plus a thumb below the navel).',
+    st29: 'Level with CV3, three finger-widths either side of the midline.',
+    st36: 'Find the dip just below the outer edge of the kneecap. Go four finger-widths down and one finger-width outward from the shin bone.',
+    sp10: 'Sit with the knee bent. Two thumb-widths above the top inner corner of the kneecap, on the bulge of the thigh muscle.',
+    ki3: 'In the hollow between the inner ankle bone and the Achilles tendon, level with the tip of the bone.',
+    lr3: 'Slide a finger up from the web between the big toe and the second toe until it stops where the two long bones meet.',
+    li4: 'Press the thumb against the index finger; the point is the highest spot of the mound on the back of the hand, toward the index-finger bone.',
+    pc6: 'Three finger-widths above the inner wrist crease, between the two tendons you feel when you make a fist.',
+    bl23: 'At waist level, two finger-widths either side of the spine, roughly level with your navel at the front.',
+    gv4: 'On the spine at waist level, in the dip below the second lumbar bone, roughly level with your navel.'
+  };
+  function regionOf(id) { var r = null; Object.keys(ACU_REGIONS).forEach(function (k) { if (ACU_REGIONS[k].pts[id]) r = k; }); return r; }
   function openAcupressure() {
     if (current !== 'mind' && meditating && !session) exitMeditation();
     (acuData ? Promise.resolve(acuData) : loadJSON('assets/data/acupoints.json').then(function (d) { acuData = d; return d; })).then(function (d) {
-      var front = d.points.filter(function (p) { return ACU_XY[p.id]; }), back = d.points.filter(function (p) { return !ACU_XY[p.id]; }), ev = d.evidence['atlas-period-pain'];
+      var ev = d.evidence['atlas-period-pain'];
       GUIDES.acu.evidence = ev.sources.map(function (s) { return [s.authors + ' (' + s.year + '), ' + s.journal + ': ' + s.title, s.url]; });
-      openSheet('acu', 'Cramp relief points', 'Gentle pressure, shown on you', 'spa',
-        '<p class="help">Tap a glowing point. Use a thumb or fingertip, press gently for one to two minutes on each side, breathe slowly, and stop if anything hurts. These points are an educational atlas, not a treatment plan. ' + infoBtn('acu') + '</p>' + guideHTML('acu') +
-        '<div class="acu" id="acu"><img src="' + ART + 'avatar-base.webp" alt="Your avatar, standing">' + front.map(function (p) { return '<button type="button" class="pt' + (ACU_CAUTION[p.id] ? ' caution' : '') + '" data-pt="' + p.id + '" style="left:' + ACU_XY[p.id][0] + '%;top:' + ACU_XY[p.id][1] + '%" aria-label="' + esc(p.code + ' ' + p.name) + '"></button><span class="lab" style="left:' + ACU_XY[p.id][0] + '%;top:' + ACU_XY[p.id][1] + '%">' + esc(p.code) + '</span>'; }).join('') + '</div>' +
-        '<div class="chips" style="margin-top:10px">' + back.map(function (p) { return '<button type="button" class="chipbtn" data-pt="' + p.id + '"><span class="ms">flip</span>' + esc(p.code) + ' · lower back</button>'; }).join('') + '</div>' +
-        '<div class="acucard" id="acuCard"></div>');
+      var byId = {}; d.points.forEach(function (p) { byId[p.id] = p; });
+      var order = []; ACU_ORDER.forEach(function (rk) { Object.keys(ACU_REGIONS[rk].pts).forEach(function (id) { if (byId[id] && order.indexOf(id) < 0) order.push(id); }); });
+      var num = {}; order.forEach(function (id, k) { num[id] = k + 1; });
+      openSheet('acu', 'Cramp relief points', 'Numbered on you, then zoomed in so you can find them', 'spa',
+        '<p class="help">Tap a number. Use a thumb or fingertip, press gently for one to two minutes on each side, breathe slowly, and stop if anything hurts. An educational atlas, not a treatment plan. ' + infoBtn('acu') + '</p>' + guideHTML('acu') +
+        '<div class="acuwrap"><div class="acufig"><img src="' + ART + 'avatar-base.webp" alt="Your avatar, standing">' + ACU_ORDER.filter(function (rk) { return ACU_BADGE[rk]; }).map(function (rk) { var ids = Object.keys(ACU_REGIONS[rk].pts).filter(function (id) { return byId[id]; }); if (!ids.length) return ''; var ns = ids.map(function (id) { return num[id]; }); var lab = ns.length > 1 ? ns[0] + '–' + ns[ns.length - 1] : String(ns[0]); return '<button type="button" class="pt range" data-region="' + rk + '" data-pt="' + ids[0] + '" style="left:' + ACU_BADGE[rk][0] + '%;top:' + ACU_BADGE[rk][1] + '%" aria-label="' + esc(ACU_REGIONS[rk].title + ', points ' + lab) + '">' + lab + '</button>'; }).join('') + '</div>' +
+        '<div class="aculist" id="aculist">' + ACU_ORDER.map(function (rk) { var ids = Object.keys(ACU_REGIONS[rk].pts).filter(function (id) { return byId[id]; }); if (!ids.length) return ''; return '<h5>' + esc(ACU_REGIONS[rk].title) + '</h5>' + ids.map(function (id) { return '<button type="button" data-pt="' + id + '"><i>' + num[id] + '</i><span><b>' + esc(byId[id].code) + ' · ' + esc(byId[id].name) + '</b><small>' + esc(byId[id].kind === 'abdomen' ? 'below the navel' : byId[id].kind) + (ACU_CAUTION[id] ? ' · not in pregnancy' : '') + '</small></span></button>'; }).join(''); }).join('') + '</div></div>' +
+        '<div class="locator" id="locator"></div>');
       function show(id) {
-        var p = d.points.filter(function (x) { return x.id === id; })[0]; if (!p) return;
-        $$('.acu .pt').forEach(function (b) { b.classList.toggle('on', b.dataset.pt === id); });
-        $('#acuCard').innerHTML = '<h3>' + esc(p.code) + ' · ' + esc(p.name) + '<small>' + esc(p.cn) + ' · ' + esc(p.channel) + '</small></h3><p><b>Where:</b> ' + esc(p.location) + (p.bilateral ? ' Both sides.' : '') + '</p>' + (p.research ? '<p>' + esc(p.research) + '</p>' : '') +
+        var p = byId[id]; if (!p) return; var rk = regionOf(id), R = ACU_REGIONS[rk];
+        $$('[data-pt]', body).forEach(function (b) { b.classList.toggle('on', b.dataset.region ? b.dataset.region === rk : b.dataset.pt === id); });
+        $('#locator').innerHTML = '<div class="zoom"><img src="assets/room/acu/' + R.img + '.webp" alt="' + esc(R.title) + '">' + R.pts[id].map(function (xy) { return '<i class="mark' + (ACU_CAUTION[id] ? ' caution' : '') + '" style="left:' + xy[0] + '%;top:' + xy[1] + '%"></i>'; }).join('') + '<span class="ztitle">' + num[id] + ' · ' + esc(p.code) + ' · ' + esc(R.title.toLowerCase()) + '</span></div>' +
+          '<div class="txt"><h3>' + esc(p.code) + ' · ' + esc(p.name) + '<small>' + esc(p.cn) + ' · ' + esc(p.channel) + '</small></h3>' +
+          '<div class="find"><span class="ms">touch_app</span><span>' + esc(ACU_FIND[id] || p.location) + (p.bilateral ? ' Both sides.' : '') + '</span></div>' +
+          '<p><b>Atlas wording:</b> ' + esc(p.location) + '</p>' + (p.research ? '<p>' + esc(p.research) + '</p>' : '') +
           '<div class="how"><div><span class="ms">touch_app</span>Thumb or fingertip</div><div><span class="ms">timer</span>1 to 2 minutes</div><div><span class="ms">air</span>Slow breaths</div></div>' + (ACU_CAUTION[id] ? '<div class="warn">' + esc(ACU_CAUTION[id]) + '</div>' : '') +
-          '<p style="font-size:10.5px;color:var(--rm-ink-3)">Location per WHO standard acupuncture point locations (2008), page ' + p.whoPage + '. B-cun are proportional body units, not centimetres.</p>';
-        $('#acuCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          '<p class="cunkey">Finger-widths are the traditional body units (B-cun): one thumb-width is 1, two fingers 1.5, three fingers 2, four fingers 3. The marker shows the area; the written location is the standard. WHO standard acupuncture point locations (2008), page ' + p.whoPage + '.</p></div>';
+        $('#locator').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
       body.addEventListener('click', function (e) { var b = e.target.closest('[data-pt]'); if (b) { chime('tap'); show(b.dataset.pt); } });
       show('sp6');
@@ -889,7 +1128,7 @@
   function boot() {
     buildScene();
     setOutfit(S.profile().outfit || 'base', true);
-    placeAvatar(HOME, false); avatar.classList.add('idle');
+    avatar.classList.add('idle');
     if (S.state().sleeping) enterNight(false);
     updateGreeting(); renderDeck(); renderProps();
     FD.load().catch(function () { });
@@ -897,6 +1136,10 @@
     $('#journalBtn').href = 'journal.html'; $('#shareBtn').href = 'journal.html#share';
     if (!S.state().tourDone) { setTimeout(function () { $('#hint').classList.add('on'); }, 1200); setTimeout(function () { $('#hint').classList.remove('on'); S.setState({ tourDone: true }); }, 7000); }
     if (!S.state().lunaSeen) { setTimeout(function () { $('#lunaBtn').classList.add('hinting'); }, 2500); setTimeout(function () { $('#lunaBtn').classList.remove('hinting'); S.setState({ lunaSeen: true }); }, 9000); }
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () { });
+    RM.start(function (h) { chime('bell', true); toast(h.item.label + (h.item.note ? ' · ' + h.item.note : ''), h.item.icon); });
+    document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } });
+    if (location.hash === '#luna') setTimeout(function () { openLuna(); }, 600);
     setTimeout(function () { $('#loading').classList.add('hidden'); }, 500);
     function tick() { var d = new Date(); $('#clockTime').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); var dc = $('#deskClock'); if (dc) dc.textContent = nowHM(); } tick(); setInterval(tick, 20000);
   }

@@ -1,13 +1,16 @@
 /* Luna, the crystal moon orb. Type a note; Luna turns it into journal entries.
- * A local rule parser runs first and never leaves the device. AI mode is off
- * unless the user pastes their own API key (OpenRouter format), and even then
- * every extracted entry is shown for confirmation before it is saved. */
+ * A local rule parser runs first and never leaves the device. When the rules
+ * cannot read a note, Luna's own model reads it through a keyless Ovumind relay
+ * (or the user's own OpenRouter/Ark key), and every extracted entry is still
+ * shown for confirmation before it is saved. */
 (function (root) {
   'use strict';
   var S = root.OvuStore, A = root.OvuAgents, FD = root.OvuFood;
   var AI_KEY = 'ovumind_ai_v1';
-  var DEFAULT_MODEL = 'google/gemini-2.5-flash-lite';
-  var FALLBACK_MODEL = 'qwen/qwen3-30b-a3b-instruct'; /* jev-1.13.0: default 0.73, runner-up 0.29 */
+  var PROXY_URL = 'https://zodkohwaznqgrfrcfdkf.supabase.co/functions/v1/luna'; /* keyless relay: Doubao Seed 2.1 turbo, origin-locked, 80 notes a day per person */
+  var DEFAULT_MODEL = 'doubao-seed-2-1-turbo-260628';
+  var OR_MODEL = 'google/gemini-2.5-flash-lite'; /* default when someone brings an OpenRouter key; jev-1.13.0: 0.73 */
+  var FALLBACK_MODEL = 'qwen/qwen3-30b-a3b-instruct';
   var SYSTEM = 'You convert one short personal health note into strict JSON for a women\'s health journal. Output only JSON: {"entries":[...],"reply":"one warm sentence"}. Entry shapes: {"type":"sleep","date":"YYYY-MM-DD","data":{"bedTime":"HH:MM","wakeTime":"HH:MM","quality":1-5|null,"notes":""}}; {"type":"period","date":"YYYY-MM-DD","data":{"flow":"spotting|light|medium|heavy","clots":bool,"impact":bool}}; {"type":"symptom","date":"YYYY-MM-DD","data":{"symptoms":[from: cramps, headache, bloating, breast tenderness, back pain, fatigue, nausea, acne, cravings, insomnia, hot flushes, dizziness, spotting, discharge change, low mood, anxiety, irritability, brain fog],"pain":0-10|null,"mood":"great|good|ok|low|bad|","notes":""}}; {"type":"food","date":"YYYY-MM-DD","data":{"meal":"breakfast|lunch|dinner|snack","time":"HH:MM"|null,"foods":"text","tags":[]}}; {"type":"mindfulness","date":"YYYY-MM-DD","data":{"kind":"breathe","minutes":number}}. Use the given today date; "yesterday" means the day before. Never invent values that are not in the note; use null. Do not diagnose.';
 
   function todayPlus(n) { return S.addDays(S.today(), n); }
@@ -49,13 +52,14 @@
     }
     // symptoms, pain, mood
     var syms = A.SYMPTOMS.filter(function (s) { return t.indexOf(' ' + s) > -1 || (s === 'cramps' && /\bcramp/.test(t)) || (s === 'anxiety' && /\banxious\b/.test(t)) || (s === 'low mood' && /\b(sad|down|low)\b/.test(t) && !/\blow (flow|energy)\b/.test(t)) || (s === 'fatigue' && /\b(tired|exhausted)\b/.test(t)) || (s === 'headache' && /\bmigraine\b/.test(t)); });
-    var pain = t.match(/\bpain\D{0,6}(\d{1,2})(?:\s*\/\s*10)?/) || t.match(/\b(\d{1,2})\s*\/\s*10\b/);
+    var pain = t.match(/\bpain\D{0,6}(\d{1,2})(?:\s*(?:\/|out of)\s*10)?/) || t.match(/\b(\d{1,2})\s*(?:\/|out of)\s*10\b/);
     var mood = /\b(great|amazing|wonderful)\b/.test(t) ? 'great' : /\b(good|happy|fine|calm)\b/.test(t) ? 'good' : /\b(ok|okay|meh|so-so)\b/.test(t) ? 'ok' : /\b(low|sad|down|flat)\b/.test(t) ? 'low' : /\b(bad|awful|terrible|miserable)\b/.test(t) ? 'bad' : '';
     if (syms.length || pain || mood) entries.push({ type: 'symptom', date: date, data: { symptoms: syms, pain: pain ? Math.min(10, Number(pain[1])) : null, mood: mood, notes: '' } });
     // food
     var meal = /\bbreakfast\b/.test(t) ? 'breakfast' : /\blunch\b/.test(t) ? 'lunch' : /\bdinner\b/.test(t) ? 'dinner' : /\b(snack|tea break)\b/.test(t) ? 'snack' : null;
     var ate = t.match(/\b(?:ate|had|eating|drank|having)\s+(.{3,120}?)(?:\s+for\s+(?:breakfast|lunch|dinner|snack)|[.!,;]|$)/);
-    if (meal || ate) {
+    var skipped = /\b(?:skip|skipped|skipping|missed|no|without|didn'?t (?:have|eat)|haven'?t (?:had|eaten)|forgot)\b[^.;,]{0,14}\b(?:breakfast|lunch|dinner|snack|meals?)\b/.test(t);
+    if ((meal || ate) && !skipped) {
       var foods = ate ? ate[1].trim() : text.trim();
       var hr = new Date().getHours(); if (!meal) meal = hr < 11 ? 'breakfast' : hr < 15 ? 'lunch' : hr < 20 ? 'dinner' : 'snack';
       var tags = []; if (/\bcoffee|kopi|latte|espresso|tea\b/.test(t)) tags.push('caffeine'); if (/\bwine|beer|cocktail|alcohol\b/.test(t)) tags.push('alcohol'); if (/\bhome ?cooked|cooked at home\b/.test(t)) tags.push('home-cooked');
@@ -67,14 +71,22 @@
     return entries;
   }
 
-  /* ---------- optional AI mode (user's own key) ---------- */
-  function aiConfig() { try { return JSON.parse(localStorage.getItem(AI_KEY) || 'null') || { on: false, provider: 'openrouter', key: '', model: DEFAULT_MODEL }; } catch (e) { return { on: false, provider: 'openrouter', key: '', model: DEFAULT_MODEL }; } }
+  /* ---------- AI mode: Luna's own model through the relay, or the user's own key ---------- */
+  function defaults() { return { on: true, provider: 'ovumind', key: '', model: '' }; }
+  function aiConfig() { try { var c = JSON.parse(localStorage.getItem(AI_KEY) || 'null'); if (!c || !c.provider || (c.provider !== 'ovumind' && !c.key)) return defaults(); return c; } catch (e) { return defaults(); } }
   function setAiConfig(cfg) { localStorage.setItem(AI_KEY, JSON.stringify(cfg)); }
+  function okEntry(e) { return e && S.TYPES.indexOf(e.type) > -1 && S.validDate(e.date) && e.date <= S.today() && e.data; }
   function parseAI(text) {
     var cfg = aiConfig();
-    if (!cfg.on || !cfg.key) return Promise.reject(new Error('AI mode is off.'));
+    if (!cfg.on) return Promise.reject(new Error('AI mode is off.'));
+    if (cfg.provider === 'ovumind') {
+      return fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text, today: S.today() }) })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna’s relay replied ' + r.status + '.')); return d; }); })
+        .then(function (d) { return { entries: (d.entries || []).filter(okEntry), reply: d.reply || '', usage: d.usage || null }; });
+    }
+    if (!cfg.key) return Promise.reject(new Error('Paste a key in Luna’s settings, or choose Luna’s own model.'));
     var url = cfg.provider === 'ark' ? 'https://ark.cn-beijing.volces.com/api/v3/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions';
-    var body = { model: cfg.model || DEFAULT_MODEL, temperature: 0, max_tokens: 400, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: 'Today is ' + S.today() + '. Note: ' + text }] };
+    var body = { model: cfg.model || OR_MODEL, temperature: 0, max_tokens: 400, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: 'Today is ' + S.today() + '. Note: ' + text }] };
     if (cfg.provider !== 'ark') body.response_format = { type: 'json_object' };
     return fetch(url, { method: 'POST', headers: { 'Authorization': 'Bearer ' + cfg.key, 'Content-Type': 'application/json', 'HTTP-Referer': location.origin, 'X-Title': 'Ovumind Luna' }, body: JSON.stringify(body) })
       .then(function (r) { if (!r.ok) throw new Error('The model replied ' + r.status + '. Check the key and model name in Luna’s settings.'); return r.json(); })
@@ -82,7 +94,7 @@
         var txt = (((d.choices || [])[0] || {}).message || {}).content || '';
         var m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error('The model did not return JSON.');
         var out = JSON.parse(m[0]);
-        var entries = (out.entries || []).filter(function (e) { return e && S.TYPES.indexOf(e.type) > -1 && S.validDate(e.date) && e.date <= S.today() && e.data; });
+        var entries = (out.entries || []).filter(okEntry);
         return { entries: entries, reply: out.reply || '', usage: d.usage || null };
       });
   }
@@ -113,5 +125,5 @@
   var REPLIES = ['Noted, gently.', 'Written down. Thank you for telling me.', 'Got it. One small step logged.', 'Saved. Be soft with yourself today.'];
   function reply() { return REPLIES[Math.floor(Math.random() * REPLIES.length)]; }
 
-  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, DEFAULT_MODEL: DEFAULT_MODEL, FALLBACK_MODEL: FALLBACK_MODEL, dateFrom: dateFrom };
+  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, DEFAULT_MODEL: DEFAULT_MODEL, OR_MODEL: OR_MODEL, FALLBACK_MODEL: FALLBACK_MODEL, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
 })(window);

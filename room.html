@@ -6,11 +6,16 @@
 <meta name="theme-color" content="#2b1f44">
 <title>Ovumind · Your dream room</title>
 <meta name="description" content="A dreamy pink and lavender room where you log sleep, your cycle, symptoms and meals by tapping the things around you. Everything stays on your device.">
-<link rel="icon" type="image/png" href="assets/onboarding/luna.png">
+<link rel="icon" type="image/png" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ovumind">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet">
-<link rel="preload" as="image" href="assets/room/dream/room-day-v2.webp">
+<link rel="preload" as="image" href="assets/room/dream/room-v3.webp">
 <link rel="stylesheet" href="room.css">
 </head>
 <body>
@@ -20,9 +25,9 @@
   <div class="main" id="main">
     <section class="scene" id="scene" aria-label="Your room. Tap objects to log sleep, cycle, symptoms, meals, or to learn.">
       <div class="scene-inner" id="sceneInner">
-        <img class="room-img day" id="roomDay" src="assets/room/dream/room-day-v2.webp" alt="" width="1652" height="1840" fetchpriority="high">
-        <img class="room-img night" id="roomNight" alt="" width="1652" height="1840" loading="lazy">
+        <img class="room-img day" id="roomDay" src="assets/room/dream/room-v3.webp" alt="" width="1472" height="1840" fetchpriority="high">
         <div class="night-veil" aria-hidden="true"></div>
+        <div class="win-night" id="winNight" aria-hidden="true"><i class="moon"></i><i class="s" style="left:20%;top:28%"></i><i class="s" style="left:72%;top:60%;animation-delay:1s"></i><i class="s" style="left:30%;top:72%;animation-delay:.6s"></i><i class="s" style="left:62%;top:22%;animation-delay:1.6s"></i></div>
         <div class="stars" id="stars" aria-hidden="true"></div>
         <div class="sparkles" id="sparkles" aria-hidden="true"></div>
         <header class="topbar">
@@ -46,6 +51,7 @@
         <button class="avatar idle" id="avatar" type="button" aria-label="Your avatar, opens a menu"><img id="avatarImg" src="assets/room/dream/avatar-base.webp" alt=""><span class="poof" aria-hidden="true"><i></i></span></button>
         <div class="bubble" id="bubble" role="menu"></div>
         <div class="hint" id="hint"><span class="ms">touch_app</span>Tap anything in your room to begin</div>
+        <div class="visitbar" id="visitBar"></div>
       </div>
     </section>
 
@@ -95,6 +101,7 @@
 <script src="ovu-agents.js"></script>
 <script src="ovu-orb.js"></script>
 <script src="ovu-rewards.js"></script>
+<script src="ovu-remind.js"></script>
 <script src="room.js"></script>
 </body>
 </html>

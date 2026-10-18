@@ -9,7 +9,8 @@
     { id: 'dog', name: 'Biscuit the puppy', cost: 220, kind: 'pet', note: 'Waits for you on the floor with a wagging tail.', img: 'prop-dog.webp', pos: { x: 22.9, y: 68.5, w: 8.5 } },
     { id: 'plant', name: 'Fairy-light monstera', cost: 60, kind: 'furniture', note: 'A glow-wrapped plant for the corner.', img: 'prop-plant.webp', pos: { x: 95.5, y: 71, w: 8 } },
     { id: 'lamp', name: 'Crescent floor lamp', cost: 80, kind: 'furniture', note: 'Warm moonlight beside the wardrobe.', img: 'prop-lamp.webp', pos: { x: 85.7, y: 72, w: 6.2 } },
-    { id: 'house', name: 'Two-storey dream house', cost: 2000, kind: 'home', note: 'A bigger home with a second floor. Coming soon; hearts you save now count.', img: null, locked: true }
+    /* jev-1.13.0 (18 Oct): 1500 hearts chosen over 1200/2000/3000 (0.73) as motivating yet long-term; letting people visit first scored 0.74 */
+    { id: 'house', name: 'Two-storey dream house', cost: 1500, kind: 'home', note: 'A cottage of your own: a sunny bedroom upstairs, a study and a yoga corner below, flowers at the door. Visit any time; move in when you have the hearts.', img: 'house-thumb.webp' }
   ];
   function ledger() { var st = S.state(); return st.rewards || { hearts: 0, earned: 0, log: [], owned: [], placed: {}, lastDay: null, streak: 0 }; }
   function write(l) { S.setState({ rewards: l }); return l; }
