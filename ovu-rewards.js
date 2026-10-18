@@ -37,5 +37,15 @@
   /* a one-off gift, e.g. finishing the intro */
   function grant(points, type) { var l = ledger(); points = Math.max(0, Math.round(points)); if (!points) return l; if ((l.log || []).some(function (x) { return x.type === type && x.gift; })) return l; l.hearts += points; l.earned += points; l.log.unshift({ at: new Date().toISOString(), type: type, points: points, bonus: 0, gift: true }); write(l); return l; }
   function toggle(id, on) { var l = ledger(); if (l.owned.indexOf(id) < 0) return false; l.placed[id] = !l.placed[id]; write(l); return l.placed[id]; }
-  root.OvuRewards = { SHOP: SHOP, RULES: RULES, ledger: ledger, award: award, buy: buy, toggle: toggle, grant: grant };
+  /* Pet care: a few hearts for kindness, capped per pet per day so it never becomes a chore. */
+  var CARE = { feed: 2, play: 2, clean: 1, cuddle: 1 }, CARE_CAP = 10;
+  function care(pet, action) {
+    var l = ledger(), today = S.today(), pts = CARE[action] || 0;
+    var c = l.care && l.care.day === today ? l.care : { day: today, by: {} };
+    var got = c.by[pet] || 0, add = Math.max(0, Math.min(pts, CARE_CAP - got));
+    c.by[pet] = got + add; l.care = c;
+    if (add) { l.hearts += add; l.earned += add; l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'petcare', pet: pet, action: action, points: add }); l.log = l.log.slice(0, 200); }
+    write(l); return { points: add, hearts: l.hearts, capped: add < pts };
+  }
+  root.OvuRewards = { SHOP: SHOP, RULES: RULES, ledger: ledger, award: award, buy: buy, toggle: toggle, grant: grant, care: care, CARE: CARE, CARE_CAP: CARE_CAP };
 })(window);

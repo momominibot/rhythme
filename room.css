@@ -829,3 +829,41 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .onb-ico{width:64px;height:64px;flex-shrink:0;border-radius:22px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 30% 25%,#fff 0,#f4ecfb 38%,#e6d8f5 100%);box-shadow:inset 0 -4px 8px rgba(120,90,160,.18),0 8px 16px rgba(90,66,116,.18)}
 .onb-ico .ms{font-size:34px;color:var(--rm-plum);font-variation-settings:'FILL' 1}
 .onb .chips[data-key="lastPeriodStatus"]{margin-top:8px}
+/* no-stress pet care */
+.prop.owned.pet{pointer-events:auto;cursor:pointer}
+.prop.owned.pet:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
+.petmood{position:absolute;left:50%;top:-6%;transform:translate(-50%,-100%);width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 4px 10px rgba(70,40,100,.2);display:flex;align-items:center;justify-content:center;animation:petmood 2.6s ease-in-out infinite;pointer-events:none}
+.petmood .ms{font-size:15px;color:var(--rm-plum)}
+@keyframes petmood{0%,100%{transform:translate(-50%,-100%)}50%{transform:translate(-50%,-118%)}}
+.prop.owned.pet.napping::after{content:'z z';position:absolute;right:-8%;top:-4%;font:800 11px var(--sans);color:#fff;text-shadow:0 1px 4px rgba(40,20,70,.6);animation:petz 3s ease-in-out infinite;pointer-events:none}
+@keyframes petz{0%{opacity:0;transform:translateY(4px)}40%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}
+.poop{position:absolute;transform:translate(-50%,-100%);z-index:8;border:none;background:none;padding:0;cursor:pointer;animation:poopin .5s ease-out}
+.poop img{width:100%;display:block;filter:drop-shadow(0 3px 4px rgba(70,40,100,.25))}
+.poop:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:10px}
+.poop.poof{animation:poof .6s ease-out forwards}
+@keyframes poopin{0%{transform:translate(-50%,-100%) scale(.2);opacity:0}70%{transform:translate(-50%,-100%) scale(1.12)}100%{transform:translate(-50%,-100%) scale(1);opacity:1}}
+@keyframes poof{0%{opacity:1;transform:translate(-50%,-100%) scale(1)}100%{opacity:0;transform:translate(-50%,-135%) scale(1.5);filter:brightness(2) blur(2px)}}
+.petfx{position:absolute;transform:translate(-50%,-100%);z-index:9;pointer-events:none}
+.petfx.bowl{animation:bowlin 2.3s ease-out forwards}
+.petfx.ball{animation:ballbounce 2.3s ease-in-out forwards}
+@keyframes bowlin{0%{opacity:0;transform:translate(-50%,-70%) scale(.6)}15%{opacity:1;transform:translate(-50%,-100%) scale(1)}85%{opacity:1}100%{opacity:0}}
+@keyframes ballbounce{0%{opacity:0;transform:translate(-170%,-100%)}10%{opacity:1}25%{transform:translate(-120%,-270%)}40%{transform:translate(-80%,-100%)}55%{transform:translate(-45%,-200%)}70%{transform:translate(-25%,-100%)}85%{opacity:1;transform:translate(-12%,-150%)}100%{opacity:0;transform:translate(0,-100%)}}
+.prop.owned.pet.eat img{animation:peteat .5s ease-in-out 4}
+.prop.owned.pet.hop img{animation:pethop .45s ease-out 4}
+.prop.owned.pet.wiggle img{animation:petwiggle .35s ease-in-out 4}
+@keyframes peteat{0%,100%{transform:rotate(0)}50%{transform:rotate(6deg) translateY(4%)}}
+@keyframes pethop{0%,100%{transform:translateY(0)}45%{transform:translateY(-22%)}}
+@keyframes petwiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-7deg)}75%{transform:rotate(7deg)}}
+.petheart{position:absolute;z-index:10;pointer-events:none;color:#ff7aa2;font-size:16px;animation:petheart 1.6s ease-out forwards;font-variation-settings:'FILL' 1}
+@keyframes petheart{0%{opacity:0;transform:translateY(0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translateY(-36px) scale(1.15)}}
+.bubble.petbub{min-width:210px}
+.pethead{padding:4px 8px 8px;border-bottom:1px solid rgba(107,82,142,.1);margin-bottom:2px}
+.pethead b{display:block;font:600 16px var(--serif);color:var(--rm-plum)}
+.pethead>span{display:block;font:600 11.5px var(--sans);color:var(--rm-ink-2);margin-top:2px;line-height:1.35}
+.petstat{display:flex;gap:14px;margin-top:6px}
+.petstat>span{display:flex;align-items:center;gap:4px}
+.petstat .ms{font-size:15px;color:var(--rm-mauve)}
+.pips{display:inline-flex;gap:2px}
+.pips i{width:7px;height:7px;border-radius:50%;background:#e9e1f2}
+.pips i.on{background:#ff8fb1}
+@media (prefers-reduced-motion: reduce){.petfx,.petheart,.petmood,.poop,.prop.owned.pet img{animation:none!important}}

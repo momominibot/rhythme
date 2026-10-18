@@ -276,9 +276,75 @@
       var p = propPosFor(it); if (!p) return;
       var d = document.createElement('div'); d.className = 'prop owned ' + it.kind; d.dataset.id = it.id; d.style.left = p.x + '%'; d.style.top = p.y + '%'; d.style.width = p.w + '%';
       d.innerHTML = '<img src="' + ART + it.img + '" alt="">'; wrap.appendChild(d);
+      if (it.kind === 'pet' && PETS) {
+        var pet = PETS.tick(it.id), md = PETS.mood(it.id, { night: isNight() });
+        d.setAttribute('role', 'button'); d.setAttribute('tabindex', '0'); d.setAttribute('aria-label', md.text + ' Tap to feed, play or cuddle.');
+        if (md.key === 'nap') d.classList.add('napping');
+        if (md.key === 'snack' || md.key === 'play') d.insertAdjacentHTML('beforeend', '<span class="petmood" aria-hidden="true"><span class="ms">' + md.icon + '</span></span>');
+        pet.poops.forEach(function (pp) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'poop'; b.dataset.pet = it.id; b.dataset.poop = pp.id;
+          b.setAttribute('aria-label', 'Tidy up after ' + (PETS.NAMES[it.id] || 'your pet'));
+          b.style.left = (p.x + (pp.side || 1) * p.w * 0.72) + '%'; b.style.top = (p.y + 0.6) + '%'; b.style.width = (p.w * 0.42) + '%';
+          b.innerHTML = '<img src="' + ART + 'pet-poop.webp" alt="">'; wrap.appendChild(b);
+        });
+      }
     });
     $('#heartsVal').textContent = l.hearts;
   }
+  /* ---------- no-stress pet care (ovu-pets.js): feed, play, cuddle, tidy up ---------- */
+  var PETS = window.OvuPets || null;
+  function isNight() { return !!S.state().sleeping || (scene && scene.dataset.sky === 'night'); }
+  function petEl(id) { return document.querySelector('.prop.owned.pet[data-id="' + id + '"]'); }
+  function petPips(v) { var n = PETS.pips(v); return '<span class="pips">' + [1, 2, 3, 4, 5].map(function (i) { return '<i class="' + (i <= n ? 'on' : '') + '"></i>'; }).join('') + '</span>'; }
+  function openPetBubble(id, el) {
+    if (!PETS) return;
+    chime('tap');
+    var cur = PETS.current(id), md = PETS.mood(id, { night: isNight() }), name = PETS.NAMES[id] || 'Your pet';
+    var r = el.getBoundingClientRect(), sr = scene.getBoundingClientRect();
+    bubble.style.left = Math.min(sr.width - 105, Math.max(105, r.left - sr.left + r.width / 2)) + 'px'; bubble.style.top = (r.top - sr.top - 6) + 'px';
+    bubble.innerHTML = '<div class="pethead"><b>' + esc(name) + '</b><span>' + esc(md.text) + '</span><div class="petstat"><span title="Full"><span class="ms">restaurant</span>' + petPips(cur.full) + '</span><span title="Fun"><span class="ms">sports_baseball</span>' + petPips(cur.fun) + '</span></div></div>' +
+      (cur.poops.length ? '<button type="button" data-pact="tidy"><span class="ms">cleaning_services</span>Tidy up</button>' : '') +
+      '<button type="button" data-pact="feed"><span class="ms">restaurant</span>Feed a treat</button><button type="button" data-pact="play"><span class="ms">sports_baseball</span>Play ball</button><button type="button" data-pact="cuddle"><span class="ms">favorite</span>Cuddle</button>';
+    bubble.dataset.pet = id; bubble.classList.add('on', 'petbub');
+  }
+  function petFx(id, act) {
+    var el = petEl(id); if (!el) return; var wrap = $('#ownedProps');
+    var x = parseFloat(el.style.left), y = parseFloat(el.style.top), w = parseFloat(el.style.width);
+    el.classList.remove('eat', 'hop', 'wiggle'); void el.offsetWidth; el.classList.add(act === 'feed' ? 'eat' : act === 'play' ? 'hop' : 'wiggle');
+    if (act === 'feed' || act === 'play') {
+      var fx = document.createElement('img'); fx.className = 'petfx ' + (act === 'feed' ? 'bowl' : 'ball'); fx.src = ART + (act === 'feed' ? 'pet-bowl.webp' : 'pet-ball.webp'); fx.alt = '';
+      fx.style.left = (x + (act === 'feed' ? w * 0.6 : -w * 0.75)) + '%'; fx.style.top = (y + 0.5) + '%'; fx.style.width = (w * (act === 'feed' ? 0.55 : 0.42)) + '%';
+      wrap.appendChild(fx); setTimeout(function () { fx.remove(); }, 2300);
+    }
+    for (var i = 0; i < 3; i++) {
+      var h = document.createElement('span'); h.className = 'petheart ms'; h.textContent = 'favorite';
+      h.style.left = (x - w * 0.25 + i * w * 0.25) + '%'; h.style.top = (y - w * 0.95) + '%'; h.style.animationDelay = (i * 0.18) + 's';
+      wrap.appendChild(h); (function (n) { setTimeout(function () { n.remove(); }, 2000); })(h);
+    }
+  }
+  function cleanPoop(id, poopId, btn) {
+    var res = PETS.clean(id, poopId); if (!res.ok) { renderProps(); return; }
+    var rw = RW.care(id, 'clean');
+    if (btn) { btn.classList.add('poof'); btn.disabled = true; }
+    chime('tap'); toast('All tidy. ' + (PETS.NAMES[id] || 'Your pet') + ' thanks you.' + (rw.points ? ' +' + rw.points + ' ♥' : ''), 'cleaning_services');
+    setTimeout(renderProps, 650);
+  }
+  function petAction(id, act) {
+    var name = PETS.NAMES[id] || 'Your pet';
+    if (act === 'tidy') { PETS.current(id).poops.forEach(function (pp) { cleanPoop(id, pp.id, document.querySelector('.poop[data-poop="' + pp.id + '"]')); }); return; }
+    var r = act === 'feed' ? PETS.feed(id) : act === 'play' ? PETS.play(id) : PETS.cuddle(id);
+    if (!r.ok) { toast(act === 'feed' ? name + ' is already full. Maybe a cuddle instead?' : name + ' is happily tired. Maybe a cuddle instead?', 'favorite'); return; }
+    var rw = RW.care(id, act);
+    petFx(id, act); chime('save');
+    toast((act === 'feed' ? name + ' munched happily.' : act === 'play' ? name + ' loved chasing the ball.' : name + ' snuggled in.') + (rw.points ? ' +' + rw.points + ' ♥' : ''), act === 'feed' ? 'restaurant' : act === 'play' ? 'sports_baseball' : 'favorite');
+    setTimeout(renderProps, act === 'cuddle' ? 1500 : 2400);
+  }
+  $('#ownedProps').addEventListener('click', function (e) {
+    if (arranging) return;
+    var pb = e.target.closest('.poop'); if (pb) { e.stopPropagation(); cleanPoop(pb.dataset.pet, pb.dataset.poop, pb); return; }
+    var pe = e.target.closest('.prop.owned.pet'); if (pe) { e.stopPropagation(); openPetBubble(pe.dataset.id, pe); }
+  });
+  $('#ownedProps').addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var pe = e.target.closest('.prop.owned.pet'); if (pe && !arranging) { e.preventDefault(); openPetBubble(pe.dataset.id, pe); } });
 
 
   /* ---------- avatar ---------- */
@@ -1536,7 +1602,7 @@
   /* ---------- window: follows the sun (ovu-sun.js) ---------- */
   function sunNow() { return window.OvuSun ? OvuSun.phase() : { key: 'night', title: 'Tonight', icon: 'dark_mode', sunrise: '', sunset: '' }; }
   function applySky() {
-    var sp = sunNow(); scene.dataset.sky = sp.key;
+    var sp = sunNow(); var was = scene.dataset.sky; scene.dataset.sky = sp.key; if (was && was !== sp.key && window.OvuPets) renderProps();
     var wb = document.querySelector('.hotspot[data-id="window"]');
     if (wb && sp.windowLabel) { wb.setAttribute('aria-label', sp.windowLabel); var tip = wb.querySelector('.tip'); if (tip) tip.textContent = cap(sp.windowLabel.split(' · ')[1]); }
     updateGreeting();
@@ -1562,7 +1628,7 @@
 
   /* ---------- avatar bubble ---------- */
   var bubble = $('#bubble');
-  function hideBubble() { bubble.classList.remove('on'); }
+  function hideBubble() { bubble.classList.remove('on', 'petbub'); }
   avatar.addEventListener('click', function (e) {
     e.stopPropagation(); chime('tap'); joy(); hideThought();
     var r = avatar.getBoundingClientRect(), sr = scene.getBoundingClientRect();
@@ -1570,7 +1636,7 @@
     bubble.innerHTML = '<button data-act="wardrobe"><span class="ms">checkroom</span>Change outfit</button><button data-act="sleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button data-act="mat"><span class="ms">self_improvement</span>Sit with Erin</button><button data-act="acu"><span class="ms">spa</span>Cramp relief points</button><button data-act="luna"><span class="ms">dark_mode</span>Tell Luna</button><button data-act="journal"><span class="ms">auto_stories</span>Open my journal</button><button data-act="everyday"><span class="ms">home</span>Everyday practice</button>' + (S.profile().onboarded ? '' : '<button data-act="intro"><span class="ms">favorite</span>Tell me about you</button>') + '';
     bubble.classList.add('on');
   });
-  bubble.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; hideBubble(); var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
+  bubble.addEventListener('click', function (e) { var pb = e.target.closest('[data-pact]'); if (pb) { var pid = bubble.dataset.pet; hideBubble(); petAction(pid, pb.dataset.pact); return; } var b = e.target.closest('button'); if (!b) return; hideBubble(); var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
   document.addEventListener('click', function (e) { if (!e.target.closest('#bubble') && !e.target.closest('#avatar')) hideBubble(); });
 
   /* ---------- after save: agents + hearts ---------- */
@@ -1628,7 +1694,7 @@
     avatar.classList.add('idle');
     if (S.state().sleeping) enterNight(false);
     updateGreeting(); renderDeck(); renderProps(); applySky();
-    setInterval(applySky, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });
+    setInterval(function () { applySky(); if (window.OvuPets) renderProps(); }, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });
     FD.load().catch(function () { });
     S.subscribe(function (reason) { if (reason === 'external') { renderDeck(); renderProps(); updateGreeting(); } });
     $('#journalBtn').href = 'journal.html'; $('#shareBtn').href = 'journal.html#share';
