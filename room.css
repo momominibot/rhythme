@@ -1136,3 +1136,14 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .labelsnap.busy label{opacity:.6;pointer-events:none}
 .lsnote{display:flex;gap:6px;align-items:flex-start;margin:6px 0;font-weight:600;color:#8a3a58}
 .lstext{width:100%;margin:6px 0;font:500 13px var(--sans);line-height:1.4;resize:vertical}
+
+/* a real night plate: no wash, no drawn moon over the window, a soft crossfade at sunset */
+.scene.has-night-img .night-veil{opacity:0}
+.scene.is-night.has-night-img .night-veil{opacity:0}
+.scene.is-night.has-night-img .win-night{opacity:0}
+.scene.has-night-img .stars{opacity:0}
+.scene[data-sky="sunset"].has-night-img:not(.is-night) .room-img.night{opacity:.42}
+.scene[data-sky="sunset"].has-night-img:not(.is-night) .room-img.day{filter:sepia(.1) saturate(1.08) hue-rotate(-6deg) brightness(.97)}
+.scene[data-sky="night"].has-night-img:not(.is-night) .room-img.night{opacity:1}
+.scene[data-sky="night"].has-night-img:not(.is-night) .room-img.day{filter:none}
+.aculist button span em{display:block;font:700 11px var(--sans);color:var(--rm-mauve);font-style:normal;margin-top:2px;line-height:1.3}

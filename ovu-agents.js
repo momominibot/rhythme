@@ -47,7 +47,7 @@
     });
     cs.episodes.slice(-3).forEach(function (ep) {
       if (ep.length > 8) flags.push(flag('watch', 'BLEED_LONG', 'Bleeding lasted ' + ep.length + ' days', 'Longer than the typical up to 8 days. Worth mentioning to a clinician.', ep.start));
-      var impact = ep.days.filter(function (d) { return d.data.flow === 'heavy' && (d.data.clots || d.data.impact); }).length;
+      var impact = ep.days.filter(function (d) { return (d.data.flow === 'heavy' && (d.data.clots || d.data.largeClots || d.data.flooding || d.data.impact)) || d.data.flooding || d.data.largeClots; }).length;
       if (impact >= 2) flags.push(flag('watch', 'BLEED_HEAVY_IMPACT', 'Heavy bleeding that affected your day', impact + ' heavy days with clots or disruption in one period. Heavy bleeding that interferes with daily life is a reason to ask for a review.', ep.start));
     });
     if (cs.lastStart && cs.lengths.length >= 1 && S.diffDays(cs.lastStart, end) > 45) flags.push(flag('info', 'PERIOD_LATE', 'No period logged for ' + S.diffDays(cs.lastStart, end) + ' days', 'If a period is overdue and pregnancy is possible, a test is a sensible first step. Persistent gaps are worth a clinician visit.', end));

@@ -17,7 +17,7 @@
    * own plate, read off a 5% grid overlay. */
   var LAYOUTS = {
     room: {
-      id: 'room', name: 'Your room', img: 'room-v3.webp', w: 1472, h: 1840, avatarW: 12,
+      id: 'room', name: 'Your room', img: 'room-v3.webp', night: 'room-night-v1.webp', w: 1472, h: 1840, avatarW: 12,
       hotspots: [
         { id: 'bed', x: 30, y: 56, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 40, y: 72, flip: true } },
         { id: 'clock', x: 14, y: 60, label: 'Clock · reminders', icon: 'alarm', wp: { x: 21, y: 70, flip: true } },
@@ -32,7 +32,7 @@
       sleeper: { x: 31, y: 58, w: 21, rot: 34 }, zzz: { x: 30, y: 44 },
       meditator: { x: 28, y: 77, w: 11.5 }, aura: { x: 28, y: 75, w: 18 }, holo: { x: 39, y: 75, w: 15 },
       window: { x: 37.3, y: 31.5, rx: 7, ry: 9.6 },
-      props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 91.5, y: 70, w: 12 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 40, y: 73.5, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
+      props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 87, y: 66, w: 10 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 40, y: 73.5, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
     },
     house: {
       id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8,
@@ -267,6 +267,12 @@
     scene.style.aspectRatio = L.w + '/' + L.h; scene.dataset.layout = L.id;
     if (dayImg.getAttribute('src') !== ART + L.img) dayImg.src = ART + L.img;
     dayImg.width = L.w; dayImg.height = L.h;
+    /* A rendered night plate replaces the dark wash when the layout has one; without it the CSS filter stays. */
+    var nightImg = $('#roomNight');
+    if (nightImg) {
+      if (L.night) { if (nightImg.getAttribute('src') !== ART + L.night) nightImg.src = ART + L.night; nightImg.width = L.w; nightImg.height = L.h; scene.classList.add('has-night-img'); }
+      else { nightImg.removeAttribute('src'); scene.classList.remove('has-night-img'); }
+    }
     buildHotspots();
     avatar.style.width = L.avatarW + '%';
     place(sleeper, L.sleeper); sleeper.style.transform = 'translate(-50%,-50%) rotate(' + L.sleeper.rot + 'deg)';
@@ -726,18 +732,22 @@
   function renderEditor() {
     var ed = $('#dayEditor'), date = cal.sel;
     if (cal.tab === 'period') {
-      var cur = S.list('period', { from: date, to: date })[0], data = cur ? cur.data : { flow: 'none', clots: false, impact: false };
+      var cur = S.list('period', { from: date, to: date })[0], data = cur ? cur.data : { flow: 'none', clots: false, largeClots: false, flooding: false, impact: false };
+      var symToday = S.list('symptom', { from: date, to: date })[0], painToday = symToday && typeof symToday.data.pain === 'number' ? symToday.data.pain : 0;
       ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' +
         '<div class="field"><div class="lbl-row"><span class="lbl">Bleeding</span>' + infoBtn('bleeding') + '</div><div class="chips" id="flowChips">' + ['none', 'spotting', 'light', 'medium', 'heavy'].map(function (f) { return '<button type="button" class="chipbtn flow-' + f + (data.flow === f ? ' on' : '') + '" data-flow="' + f + '">' + cap(f) + '</button>'; }).join('') + '</div>' + guideHTML('bleeding') + '</div>' +
-        '<div class="field"><span class="lbl">Details</span><div class="chips"><button type="button" class="chipbtn' + (data.clots ? ' on' : '') + '" id="clots"><span class="ms">bubble_chart</span>Clots</button><button type="button" class="chipbtn' + (data.impact ? ' on' : '') + '" id="impact"><span class="ms">event_busy</span>Affected my day</button></div></div>' +
+        '<div class="field"><span class="lbl">Details</span><div class="chips"><button type="button" class="chipbtn' + (data.clots ? ' on' : '') + '" id="clots"><span class="ms">bubble_chart</span>Clots</button><button type="button" class="chipbtn' + (data.largeClots ? ' on' : '') + '" id="largeClots"><span class="ms">circle</span>Clots over 2.5 cm</button><button type="button" class="chipbtn' + (data.flooding ? ' on' : '') + '" id="flooding"><span class="ms">water_damage</span>Soaked through or changed every 1 to 2 h</button><button type="button" class="chipbtn' + (data.impact ? ' on' : '') + '" id="impact"><span class="ms">event_busy</span>Affected my day</button></div>' +
+        '<div class="field"><div class="lbl-row"><label for="ppain" class="lbl" style="margin:0">Pain today · <span id="ppainVal">' + painToday + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="ppain" min="0" max="10" step="1" value="' + painToday + '">' + '</div></div>' +
         '<div class="row"><button class="btn primary" id="savePeriod"><span class="ms">check</span>Save day</button>' + (cur ? '<button class="btn ghost" id="clearPeriod"><span class="ms">remove_done</span>Untick this day</button>' : '') + '</div><div class="msg" id="calMsg"></div>';
       $('#flowChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#flowChips')).forEach(function (x) { x.classList.toggle('on', x === b); }); });
-      $('#clots').addEventListener('click', function () { this.classList.toggle('on'); }); $('#impact').addEventListener('click', function () { this.classList.toggle('on'); });
+      ['clots', 'largeClots', 'flooding', 'impact'].forEach(function (k) { $('#' + k).addEventListener('click', function () { this.classList.toggle('on'); if (k === 'largeClots' && this.classList.contains('on')) $('#clots').classList.add('on'); }); });
+      $('#ppain').addEventListener('input', function () { $('#ppainVal').textContent = this.value; });
       $('#savePeriod').addEventListener('click', function () {
         try {
           var flow = ($('#flowChips .on') || {}).dataset ? $('#flowChips .on').dataset.flow : 'none';
           if (flow === 'none') { if (cur) S.remove(cur.id); message($('#calMsg'), 'Marked as no bleeding.', true); renderCal(); renderEditor(); renderDeck(); return; }
-          var ev = S.add('period', date, { flow: flow, clots: $('#clots').classList.contains('on'), impact: $('#impact').classList.contains('on') });
+          var ev = S.add('period', date, { flow: flow, clots: $('#clots').classList.contains('on'), largeClots: $('#largeClots').classList.contains('on'), flooding: $('#flooding').classList.contains('on'), impact: $('#impact').classList.contains('on') });
+          var pn = Number($('#ppain').value); if (pn > 0 || symToday) S.add('symptom', date, { pain: pn }, 'room', { merge: true });
           message($('#calMsg'), 'Saved ' + flow + ' flow for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev);
         } catch (e) { message($('#calMsg'), e.message, false); }
       });
@@ -1744,7 +1754,7 @@
       openSheet('acu', 'Cramp relief points', 'Numbered on you, then zoomed in so you can find them', 'spa',
         '<p class="help">Tap a number. Use a thumb or fingertip, press gently for one to two minutes on each side, breathe slowly, and stop if anything hurts. An educational atlas, not a treatment plan. ' + infoBtn('acu') + '</p>' + guideHTML('acu') +
         '<div class="acuwrap"><div class="acufig"><img src="' + ART + 'avatar-base.webp" alt="Your avatar, standing">' + ACU_ORDER.filter(function (rk) { return ACU_BADGE[rk]; }).map(function (rk) { var ids = Object.keys(ACU_REGIONS[rk].pts).filter(function (id) { return byId[id]; }); if (!ids.length) return ''; var ns = ids.map(function (id) { return num[id]; }); var lab = ns.length > 1 ? ns[0] + '–' + ns[ns.length - 1] : String(ns[0]); return '<button type="button" class="pt range" data-region="' + rk + '" data-pt="' + ids[0] + '" style="left:' + ACU_BADGE[rk][0] + '%;top:' + ACU_BADGE[rk][1] + '%" aria-label="' + esc(ACU_REGIONS[rk].title + ', points ' + lab) + '">' + lab + '</button>'; }).join('') + '</div>' +
-        '<div class="aculist" id="aculist">' + ACU_ORDER.map(function (rk) { var ids = Object.keys(ACU_REGIONS[rk].pts).filter(function (id) { return byId[id]; }); if (!ids.length) return ''; return '<h5>' + esc(ACU_REGIONS[rk].title) + '</h5>' + ids.map(function (id) { return '<button type="button" data-pt="' + id + '"><i>' + num[id] + '</i><span><b>' + esc(byId[id].code) + ' · ' + esc(byId[id].name) + '</b><small>' + esc(byId[id].kind === 'abdomen' ? 'below the navel' : byId[id].kind) + (ACU_CAUTION[id] ? ' · ask first if pregnant' : '') + '</small></span></button>'; }).join(''); }).join('') + '</div></div>' +
+        '<div class="aculist" id="aculist">' + ACU_ORDER.map(function (rk) { var ids = Object.keys(ACU_REGIONS[rk].pts).filter(function (id) { return byId[id]; }); if (!ids.length) return ''; return '<h5>' + esc(ACU_REGIONS[rk].title) + '</h5>' + ids.map(function (id) { return '<button type="button" data-pt="' + id + '"><i>' + num[id] + '</i><span><b>' + esc(byId[id].code) + ' · ' + esc(byId[id].name) + '</b><small>' + esc(byId[id].kind === 'abdomen' ? 'below the navel' : byId[id].kind) + (ACU_CAUTION[id] ? ' · ask first if pregnant' : '') + '</small>' + (ACU_USE[id] ? '<em>For: ' + esc(ACU_USE[id][0]) + '</em>' : '') + '</span></button>'; }).join(''); }).join('') + '</div></div>' +
         '<div class="locator" id="locator"></div>');
       function show(id) {
         var p = byId[id]; if (!p) return; var rk = regionOf(id), R = ACU_REGIONS[rk];

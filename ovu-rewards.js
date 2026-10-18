@@ -13,7 +13,7 @@
     { id: 'dog', name: 'Peach the corgi', cost: 220, kind: 'pet', slot: 'dog', wk: 1.02, note: 'Big ears, short legs and a lilac bow. Waits for you with a wiggly tail.', img: 'prop-corgi.webp', pos: { x: 22.9, y: 68.5, w: 8.5 } },
     { id: 'shiba', name: 'Hana the shiba', cost: 220, kind: 'pet', slot: 'dog', posAs: 'dog', wk: 1.13, note: 'Honey fur, a curly tail and a lavender bandana.', img: 'prop-shiba.webp', pos: { x: 22.9, y: 68.5, w: 8.5 } },
     { id: 'plant', name: 'Fairy-light monstera', cost: 60, kind: 'furniture', note: 'A glow-wrapped plant for the corner.', img: 'prop-plant.webp', slot: 'corner', pos: { x: 95.5, y: 71, w: 8 } },
-    { id: 'bookshelf', name: 'Arched bookshelf', cost: 100, kind: 'furniture', note: 'Pastel books, a plush bunny and a tiny candle. Swaps with the monstera.', img: 'prop-bookshelf.webp', slot: 'corner', pos: { x: 94.5, y: 71.5, w: 8.5 } },
+    { id: 'bookshelf', name: 'Arched bookshelf', cost: 100, kind: 'furniture', note: 'Pastel books, a plush bunny and a tiny candle. Swaps with the monstera.', img: 'prop-bookshelf.webp', slot: 'corner', pos: { x: 87, y: 66, w: 10 } },
     { id: 'lamp', name: 'Crescent floor lamp', cost: 80, kind: 'furniture', note: 'Warm moonlight beside the wardrobe.', img: 'prop-lamp.webp', slot: 'lamp', pos: { x: 85.7, y: 72, w: 6.2 } },
     { id: 'mushlamp', name: 'Mushroom lamp', cost: 60, kind: 'furniture', note: 'A spotty pink glow. Swaps with the other lamps.', img: 'prop-mushlamp.webp', slot: 'lamp', pos: { x: 85.7, y: 72, w: 6.4 } },
     { id: 'starlamp', name: 'Star lantern', cost: 70, kind: 'furniture', note: 'A puffy star on a slim pole. Swaps with the other lamps.', img: 'prop-starlamp.webp', slot: 'lamp', pos: { x: 85.7, y: 72, w: 5.6 } },

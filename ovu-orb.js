@@ -205,7 +205,7 @@
   function describe(e) {
     var d = e.data;
     if (e.type === 'sleep') return 'Sleep ' + d.bedTime + ' → ' + d.wakeTime + ' (' + A.fmtHours(S.sleepHours(d)) + ')' + (d.quality ? ', quality ' + d.quality + '/5' : '');
-    if (e.type === 'period') return 'Period: ' + d.flow + ' flow' + (d.clots ? ', clots' : '') + (d.impact ? ', affected the day' : '');
+    if (e.type === 'period') return 'Period: ' + d.flow + ' flow' + (d.largeClots ? ', clots over 2.5 cm' : d.clots ? ', clots' : '') + (d.flooding ? ', soaked through' : '') + (d.impact ? ', affected the day' : '');
     if (e.type === 'symptom') return 'Symptoms: ' + ((d.symptoms || []).join(', ') || 'none ticked') + (d.pain !== null && d.pain !== undefined ? ', pain ' + d.pain + '/10' : '') + (d.mood ? ', mood ' + d.mood : '');
     if (e.type === 'food') return (d.meal ? d.meal.charAt(0).toUpperCase() + d.meal.slice(1) : 'Meal') + ': ' + d.foods + ((d.tags || []).length ? ' (' + d.tags.join(', ') + ')' : '');
     if (e.type === 'mindfulness') return 'Mindfulness: ' + d.minutes + ' min';

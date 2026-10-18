@@ -110,7 +110,7 @@
   function entryHTML(e){
     var d=e.data,title='',text='';
     if(e.type==='sleep'){title='Sleep · '+A.fmtHours(S.sleepHours(d));text=(d.bedTime||'?')+' → '+(d.wakeTime||'?')+(d.quality?' · quality '+d.quality+'/5':'')+(d.notes?'\n'+d.notes:'');}
-    if(e.type==='period'){title='Period · '+cap(d.flow);text=[d.clots?'clots':'',d.impact?'affected my day':''].filter(Boolean).join(' · ')||'no extra details';}
+    if(e.type==='period'){title='Period · '+cap(d.flow);text=[d.largeClots?'clots over 2.5 cm':d.clots?'clots':'',d.flooding?'soaked through or changed every 1 to 2 h':'',d.impact?'affected my day':''].filter(Boolean).join(' · ')||'no extra details';}
     if(e.type==='symptom'){title='Symptoms'+(typeof d.pain==='number'?' · pain '+d.pain+'/10':'');text=((d.symptoms||[]).join(', ')||'none ticked')+(d.mood?' · mood '+d.mood:'')+(d.notes?'\n'+d.notes:'');}
     if(e.type==='food'){title=cap(d.meal)+(d.time?' · '+d.time:'');var tot=(d.items&&d.items.length&&window.OvuFood)?window.OvuFood.sum(d.items):null;text=(d.foods||'')+(tot?'\n'+window.OvuFood.line(tot.totals)+' · '+d.items.map(function(it){return it.source&&it.source.label?it.source.label:'';}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}).join(', '):'')+((d.tags||[]).length?'\n'+d.tags.join(' · '):'');}
     if(e.type==='mindfulness'){title='Mindfulness · '+(d.minutes||0)+' min';text=(d.kind==='erin'?'Guided by Erin':'Breathing orb')+(d.completed?' · completed':' · stopped early');}
@@ -214,7 +214,7 @@
   function entryText(e){
     var d=e.data;
     if(e.type==='sleep')return ['Sleep '+A.fmtHours(S.sleepHours(d)),(d.bedTime||'?')+' to '+(d.wakeTime||'?')+(d.quality?', quality '+d.quality+'/5':'')+(d.notes?'. '+d.notes:'')];
-    if(e.type==='period')return ['Period, '+d.flow+' flow',[d.clots?'clots':'',d.impact?'affected the day':''].filter(Boolean).join(', ')];
+    if(e.type==='period')return ['Period, '+d.flow+' flow',[d.largeClots?'clots over 2.5 cm':d.clots?'clots':'',d.flooding?'soaked through or changed every 1 to 2 h':'',d.impact?'affected the day':''].filter(Boolean).join(', ')];
     if(e.type==='symptom')return ['Symptoms'+(typeof d.pain==='number'?', pain '+d.pain+'/10':''),((d.symptoms||[]).join(', ')||'none ticked')+(d.mood?', mood '+d.mood:'')+(d.notes?'. '+d.notes:'')];
     if(e.type==='food'){var tot=(d.items&&d.items.length&&window.OvuFood)?window.OvuFood.sum(d.items):null;return [cap(d.meal||'meal'),(d.foods||'')+(tot?' ('+window.OvuFood.line(tot.totals)+')':'')+((d.tags||[]).length?'; '+d.tags.join(', '):'')];}
     if(e.type==='mindfulness')return ['Mindfulness, '+(d.minutes||0)+' min',(d.kind==='erin'?'guided by Erin':d.kind==='informal'?'everyday practice':'breathing')+(d.completed?', completed':'')];
