@@ -382,8 +382,6 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('no reflection or meal bullets when none were logged', !d.items.some(function (it) { return /reflection|meal/.test(it.text); }), JSON.stringify(d.items));
 })();
 
-console.log('\n' + passes + ' passed, ' + fails + ' failed');
-process.exit(fails ? 1 : 0);
 
 (function lunaLook() {
   console.log("Luna's look (ovu-mascot.js)");
@@ -395,3 +393,6 @@ process.exit(fails ? 1 : 0);
   check('an unknown look is ignored', M.set('dragon').id === 'kitten');
   check('the small button falls back to the full sprite until a head badge exists', /orb-kitten\.webp$/.test(M.src(null, true)));
 })();
+
+console.log('\n' + passes + ' passed, ' + fails + ' failed');
+process.exit(fails ? 1 : 0);
