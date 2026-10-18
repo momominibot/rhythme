@@ -812,7 +812,9 @@
   function showPicker(food) {
     picked = { food: food, portion: food.portions[1] || food.portions[0], grams: (food.portions[1] || food.portions[0]).g };
     var p = $('#picker'); p.classList.add('on');
-    p.innerHTML = '<h4>' + esc(food.name) + '</h4><div class="src">' + esc(food.source.label) + (food.source.ref ? ' · ' + esc(food.source.ref) : '') + (food.source.date ? ' · ' + esc(food.source.date) : '') + (food.source.detail ? '<br>' + esc(food.source.detail) : '') + '</div>' + (NV ? (function (c) { return '<div class="nrow">' + novaChip(c) + '<small>' + esc(NV.basisText(c)) + '</small></div>'; })(NV.classify(food)) : '') +
+    var cls = NV ? NV.classify(food) : null, offerLabel = cls && (cls.group === 'unknown' || (cls.likely && cls.basis !== 'label'));
+    p.innerHTML = '<h4>' + esc(food.name) + '</h4><div class="src">' + esc(food.source.label) + (food.source.ref ? ' · ' + esc(food.source.ref) : '') + (food.source.date ? ' · ' + esc(food.source.date) : '') + (food.source.detail ? '<br>' + esc(food.source.detail) : '') + '</div>' + (cls ? '<div class="nrow">' + novaChip(cls) + '<small>' + esc(NV.basisText(cls)) + '</small></div>' : '') +
+      (offerLabel ? labelSnapHTML('pk') : '') +
       '<div class="portions" id="portions">' + food.portions.map(function (po, i) { return '<button type="button" class="chipbtn' + (po === picked.portion ? ' on' : '') + '" data-i="' + i + '">' + esc(po.label) + ' · ' + po.g + ' g</button>'; }).join('') + '</div>' +
       '<div class="grams"><input class="input" type="number" id="gramsIn" min="1" max="3000" step="1" value="' + picked.grams + '"><span>' + (food.basis === '100ml' ? 'ml' : 'g') + ' you ate</span></div>' +
       '<div class="nutline" id="nutline"></div>' +
@@ -821,6 +823,15 @@
     $('#portions').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; picked.portion = food.portions[Number(b.dataset.i)]; picked.grams = picked.portion.g; $('#gramsIn').value = picked.grams; $$('button', $('#portions')).forEach(function (x) { x.classList.toggle('on', x === b); }); refresh(); });
     $('#gramsIn').addEventListener('input', function () { var v = Number(this.value); if (v > 0) { picked.grams = v; picked.portion = { label: v + (food.basis === '100ml' ? ' ml' : ' g'), g: v }; $$('button', $('#portions')).forEach(function (x) { x.classList.remove('on'); }); refresh(); } });
     $('#cancelPick').addEventListener('click', function () { p.classList.remove('on'); picked = null; });
+    if (offerLabel) wireLabelSnap('pk', function (r) {
+      if (!picked || picked.food !== food) return; /* the picker moved on or closed while Luna was reading */
+      food.ingredients = { text: r.ingredientsText, source: 'label-photo', rule: 'ingredients-v1' };
+      var was = { portion: picked.portion, grams: picked.grams };
+      showPicker(food);
+      picked.portion = was.portion; picked.grams = was.grams; $('#gramsIn').value = was.grams;
+      $$('button', $('#portions')).forEach(function (x) { x.classList.toggle('on', food.portions[Number(x.dataset.i)] === was.portion); });
+      refresh();
+    });
     $('#addItem').addEventListener('click', function () {
       if (!picked || !(picked.grams > 0)) return;
       draft.items.push(FD.makeItem(food, picked.portion, picked.grams, picked.portion.g === picked.grams && picked.portion.label.indexOf(' g') < 0 ? 'household measure' : 'typed amount'));
@@ -841,12 +852,44 @@
     var sm = FD.sum(draft.items), miss = ['kcal', 'protein', 'carb', 'fat', 'fiber'].filter(function (k) { return sm.missing[k]; });
     tot.innerHTML = '<b>This meal</b><div class="nuts">' + ['kcal', 'protein', 'carb', 'fat', 'fiber'].map(function (k) { return '<div><strong>' + esc(FD.fmt(k, sm.totals[k])) + '</strong><small>' + esc(k === 'kcal' ? 'kcal' : FD.LABEL[k]) + '</small></div>'; }).join('') + '</div><p>' + sm.count + ' item' + (sm.count === 1 ? '' : 's') + (miss.length ? ' · ' + miss.map(function (k) { return sm.missing[k] + ' missing ' + FD.LABEL[k].toLowerCase(); }).join(', ') : ' · all values present') + '. Estimated from the sources shown, with the amounts you confirmed.</p>' + (NV ? novaBar(NV.share(draft.items), 'How processed this meal is') : '');
   }
+  /* "Snap the ingredients list": Luna transcribes the panel once (same permission as food photos), the NOVA
+   * rule in ovu-nova.js runs on the phone, and the photo is not kept. */
+  function labelSnapHTML(id) {
+    return '<div class="labelsnap" id="ls-' + id + '"><label class="btn soft"><span class="ms">document_scanner</span>Snap the ingredients list<input type="file" id="lsFile-' + id + '" accept="image/*" capture="environment" hidden></label><div class="msg" id="lsMsg-' + id + '"></div></div>';
+  }
+  function wireLabelSnap(id, done) {
+    var inp = $('#lsFile-' + id), m = $('#lsMsg-' + id), wrap = $('#ls-' + id); if (!inp || !m) return;
+    var busy = false;
+    inp.addEventListener('change', function () {
+      var f = this.files && this.files[0]; this.value = ''; if (!f || busy) return;
+      var go = function () {
+        busy = true; wrap.classList.add('busy'); message(m, 'Reading the label…', true);
+        FD.shrink(f, 1536).then(function (rs) { return ORB.parseLabel(rs.dataUrl); }).then(function (r) {
+          busy = false; wrap.classList.remove('busy');
+          if (!document.body.contains(m)) return; /* the picker or form was closed while Luna was reading */
+          if (!r.isLabel || !r.ingredientsText) { message(m, 'I could not read an ingredients list in that photo. Try a flatter, brighter shot of the label.', false); return; }
+          /* the transcript is shown before it is used: Luna can misread, and a cut-off list can change the group */
+          m.className = 'msg on'; m.innerHTML = '<b>Check the list Luna read</b>' + (r.complete === false || r.note ? '<span class="lsnote"><span class="ms">warning</span>' + esc(r.note || 'Part of the list may be cut off. Fix it below or take the photo again.') + '</span>' : '') +
+            '<textarea class="input lstext" id="lsText-' + id + '" rows="4" maxlength="4000">' + esc(r.ingredientsText) + '</textarea>' +
+            '<div class="row"><button type="button" class="btn primary" id="lsUse-' + id + '"><span class="ms">check</span>Use this list</button><button type="button" class="btn ghost" id="lsNo-' + id + '">Cancel</button></div>';
+          $('#lsUse-' + id).addEventListener('click', function () { var txt = $('#lsText-' + id).value.trim(); if (!txt) return; message(m, 'Classified from the label you photographed.', true); done({ isLabel: true, ingredientsText: txt, productName: r.productName, quantity: r.quantity, note: r.note }); });
+          $('#lsNo-' + id).addEventListener('click', function () { m.className = 'msg'; m.innerHTML = ''; });
+        }).catch(function (e) { busy = false; wrap.classList.remove('busy'); if (document.body.contains(m)) message(m, e.message, false); });
+      };
+      if (ORB.photosAllowed()) { go(); return; }
+      m.className = 'msg on'; m.innerHTML = '<b>Let Luna read the label?</b> The photo goes once through Rhythme’s server to a third-party AI service in China; Rhythme does not keep it. <button type="button" class="btn soft" id="lsAllow-' + id + '">Allow food photos</button>';
+      $('#lsAllow-' + id).addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c); go(); });
+    });
+  }
+  var customIngredients = null;
   function customFoodForm() {
+    customIngredients = null;
     return '<div class="picker on" id="customForm"><h4>Custom food from the label</h4><div class="src">Type the per-100 g (or per-100 ml) values printed on the pack. Leave blanks for anything not shown.</div>' +
       '<div class="field"><label for="cfName">Name</label><input class="input" id="cfName" maxlength="60" placeholder="e.g. Meiji low-fat milk"></div>' +
       '<div class="grid2"><div class="field"><label for="cfKcal">Energy kcal /100</label><input class="input" id="cfKcal" type="number" min="0" step="0.1"></div><div class="field"><label for="cfProt">Protein g /100</label><input class="input" id="cfProt" type="number" min="0" step="0.1"></div></div>' +
       '<div class="grid2"><div class="field"><label for="cfCarb">Carbs g /100</label><input class="input" id="cfCarb" type="number" min="0" step="0.1"></div><div class="field"><label for="cfFat">Fat g /100</label><input class="input" id="cfFat" type="number" min="0" step="0.1"></div></div>' +
       '<div class="grid2"><div class="field"><label for="cfFib">Fibre g /100</label><input class="input" id="cfFib" type="number" min="0" step="0.1"></div><div class="field"><label for="cfServe">Serving size g</label><input class="input" id="cfServe" type="number" min="1" step="1" placeholder="optional"></div></div>' +
+      labelSnapHTML('cf') + '<div class="nrow" id="cfNova"></div>' +
       '<div class="row"><button class="btn primary" id="cfUse"><span class="ms">check</span>Use this food</button><button class="btn ghost" id="cfCancel">Cancel</button></div></div>';
   }
   function num(id) { var v = $(id).value; return v === '' ? null : Number(v); }
@@ -890,7 +933,8 @@
         $('#customBtn').addEventListener('click', function () { $('#customWrap').innerHTML = customFoodForm(); wireCustom(); });
       } else if (mode === 'scan') {
         area.innerHTML = '<div class="camwrap on" id="camwrap"><video id="bcVideo" playsinline muted></video><div class="reticle"></div><div class="camhint">Point the camera at the barcode</div></div><div class="row" style="margin-top:8px"><input class="input" id="bcManual" placeholder="Barcode digits or a product name, e.g. Milo" autocomplete="off" enterkeyhint="search"><button type="button" class="btn soft" id="bcLookup" style="flex:0 0 auto">Search</button></div><div class="msg" id="bcMsg"></div><div id="bcResults"></div>';
-        stopScan = FD.scanLive($('#bcVideo'), function (code) { stopCamera(); $('#bcManual').value = code; lookup(code); }, function (err) { message($('#bcMsg'), err.message, false); });
+        if (FD.warmDecoder) FD.warmDecoder();
+        stopScan = FD.scanLive($('#bcVideo'), function (code) { stopCamera(); $('#bcManual').value = code; lookup(code); }, function (err) { message($('#bcMsg'), err.message, false); }, function () { var h = $('.camhint'); if (h) h.textContent = 'Hold the pack steady and closer so the barcode fills the box, or type the digits below.'; });
         FD.load();
         var bcTimer = null, bcSeq = 0;
         var bcGo = function (now) {
@@ -953,9 +997,15 @@
     }
     function wireCustom() {
       $('#cfCancel').addEventListener('click', function () { $('#customWrap').innerHTML = ''; });
+      wireLabelSnap('cf', function (r) {
+        if (!$('#customForm')) return;
+        customIngredients = { text: r.ingredientsText, source: 'label-photo', rule: 'ingredients-v1' };
+        if (r.productName && !$('#cfName').value.trim()) $('#cfName').value = r.productName.slice(0, 60);
+        if (NV) { var c = NV.classify({ name: $('#cfName').value, ingredients: customIngredients }); $('#cfNova').innerHTML = novaChip(c) + '<small>' + esc(NV.basisText(c)) + '</small>'; }
+      });
       $('#cfUse').addEventListener('click', function () {
         var name = $('#cfName').value.trim(); if (!name) return toast('Give the food a name.', 'error');
-        var serve = num('#cfServe'), food = { id: 'custom:' + Date.now(), name: name, cat: 'custom', basis: '100g', n: { kcal: num('#cfKcal'), protein: num('#cfProt'), carb: num('#cfCarb'), fat: num('#cfFat'), fiber: num('#cfFib') }, portions: [{ label: '100 g', g: 100 }].concat(serve > 0 ? [{ label: '1 serving', g: serve }] : []), source: { kind: 'custom', label: 'Typed from the label', ref: null, date: S.today(), detail: 'Values entered by you; unknowns stay blank.' } };
+        var serve = num('#cfServe'), food = { id: 'custom:' + Date.now(), name: name, cat: 'custom', basis: '100g', ingredients: customIngredients, n: { kcal: num('#cfKcal'), protein: num('#cfProt'), carb: num('#cfCarb'), fat: num('#cfFat'), fiber: num('#cfFib') }, portions: [{ label: '100 g', g: 100 }].concat(serve > 0 ? [{ label: '1 serving', g: serve }] : []), source: { kind: 'custom', label: 'Typed from the label', ref: null, date: S.today(), detail: 'Values entered by you; unknowns stay blank.' } };
         $('#customWrap').innerHTML = ''; showPicker(food);
       });
     }

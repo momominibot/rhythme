@@ -1,0 +1,32 @@
+<!-- Scratch page for the barcode decoders (not part of the app). Serve the repo root and open tools/fixtures/bctest.html. -->
+<!doctype html><meta charset="utf-8"><title>bc test</title>
+<body style="font:14px monospace;padding:12px">
+<pre id="out">running…</pre>
+<img id="i1" src="ean13_clean.png"><img id="i2" src="ean13_photo.jpg" width="400"><img id="i3" src="ean13_hard.jpg" width="300">
+<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js"></script>
+<script src="../../assets/vendor/barcode-detector-3.2.2.ponyfill.js"></script>
+<script>BarcodeDetectionAPI.setZXingModuleOverrides({locateFile:function(p,prefix){return /\.wasm$/.test(p)?"../../assets/vendor/zxing_reader-3.1.3.wasm":prefix+p;}});</script>
+<script>
+(async function(){
+  var out=[], imgs=['i1','i2','i3'].map(function(id){return document.getElementById(id);});
+  await Promise.all(imgs.map(function(im){return im.complete?1:new Promise(function(r){im.onload=r;im.onerror=r;});}));
+  function t(){return performance.now();}
+  // 1. ZXing JS, default
+  var Z=window.ZXingBrowser, rd=new Z.BrowserMultiFormatReader();
+  for (var i=0;i<3;i++){ var a=t(); try{ var r=await rd.decodeFromImageElement(imgs[i]); out.push('zxing-js default img'+(i+1)+': '+r.getText()+' ('+Math.round(t()-a)+' ms)'); }catch(e){ out.push('zxing-js default img'+(i+1)+': FAIL '+(e&&e.name)+' ('+Math.round(t()-a)+' ms)'); } }
+  // 2. ZXing JS with TRY_HARDER (hint key 3) and formats (hint key 2)
+  var hints=new Map(); hints.set(3,true); hints.set(2,[7,6,14,15,4,8]); var rd2=new Z.BrowserMultiFormatReader(hints);
+  for (var i=0;i<3;i++){ var a=t(); try{ var r=await rd2.decodeFromImageElement(imgs[i]); out.push('zxing-js tryharder img'+(i+1)+': '+r.getText()+' ('+Math.round(t()-a)+' ms)'); }catch(e){ out.push('zxing-js tryharder img'+(i+1)+': FAIL '+(e&&e.name)+' ('+Math.round(t()-a)+' ms)'); } }
+  // 3. WASM ponyfill (barcode-detector 3.2.2 -> zxing-wasm)
+  try {
+    var BD=window.BarcodeDetectionAPI||null;
+    out.push('ponyfill globals: '+Object.keys(window).filter(function(k){return /barcode|zxing/i.test(k);}).join(','));
+    var Ctor = BD && (BD.BarcodeDetector||BD);
+    if (typeof Ctor!=='function') throw new Error('no ctor');
+    var a0=t(); var det=new Ctor({formats:['ean_13','ean_8','upc_a','upc_e','code_128']});
+    for (var i=0;i<3;i++){ var a=t(); try{ var cs=await det.detect(imgs[i]); out.push('wasm img'+(i+1)+': '+(cs.length?cs[0].rawValue+' '+cs[0].format:'none')+' ('+Math.round(t()-a)+' ms)'); }catch(e){ out.push('wasm img'+(i+1)+': FAIL '+(e&&e.message)+' ('+Math.round(t()-a)+' ms)'); } }
+    out.push('wasm total incl load '+Math.round(t()-a0)+' ms; ua '+navigator.userAgent.slice(0,80));
+  } catch(e){ out.push('wasm: '+e.message); }
+  document.getElementById('out').textContent=out.join('\n'); window.__done=out;
+})();
+</script>

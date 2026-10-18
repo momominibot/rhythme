@@ -19,6 +19,11 @@
   };
   var R1 = /\b(kopi|teh) o kosong\b|\bblack coffee\b|\bcoffee,? brewed\b|\bespresso\b|\b(black|green|jasmine|oolong) tea\b|\btea,? brewed\b|\bplain water\b|^ water\b|\bcoconut water\b|\bsugarcane juice\b|\bpopcorn,? air popped\b|\bplain (yogh?urt|greek yogh?urt)\b|\byogh?urt,? plain\b|\bgreek yogh?urt,? plain\b|\btempeh\b|\brolled oats\b|\boatmeal\b|\b(cooked |steamed |plain )?(white|brown) rice\b|\b(soft|hard) boiled\b.*\begg\b|\bboiled eggs?\b/;
   var R4 = /\b(cola|soda|soft drink|fizzy drink|energy drink|isotonic|sports drink|milo|ovaltine|horlicks|3 ?in ?1|instant (noodles?|coffee|oats|porridge)|cup noodles?|maggi|sausages?|hot ?dogs?|frankfurters?|chicken franks?|luncheon meat|spam|nuggets?|fish ?balls?|crab ?sticks?|surimi|ham|bacon|salami|pepperoni|potato chips|crisps|breakfast cereals?|cereal bars?|protein bars?|cookies?|biscuits?|crackers?|wafers?|sponge cake|cakes?|doughnuts?|donuts?|croissants?|pastr(y|ies)|muffins?|ice cream|chocolate|candy|sweets|gumm(y|ies)|marshmallows?|margarine|mayonnaise|mayo|ketchup|creamer|non dairy|flavou?red (milk|yogh?urt)|sweetened (drink|beverage)|syrup drink|grass jelly drink|fast food|french fries|fries|hamburgers?|burgers?|pizza|flour tortilla|pancake mix)\b/;
+  /* Packaged popcorn: flavoured or microwave packs are ultra-processed; air-popped kernels are whole food;
+   * anything else packaged is most often popped in oil with salt, processed (NOVA 3) but not certain. */
+  var POP = /\bpop ?corn\b|\bkettle ?corn\b/, POP_NOT = /\bpop ?corn (chicken|shrimps?|prawns?|bites?)\b|\b(chicken|shrimp|prawn) pop ?corn\b/;
+  var POP4 = /\b(caramel|sweet|cheese|cheesy|butter|buttered|flavou?r(ed|ing)?|microwave|kettle ?corn|toffee|chocolate|chilli|truffle)\b/;
+  var POP1 = /\bair ?popped\b|\bplain pop ?corn\b|\bpop ?corn kernels?\b|\bpopping corn\b/, POP_SALT = /\bsalt(ed)?\b|\boil\b/;
   /* Usually ultra-processed, but the name alone cannot prove it (ingredient lists vary). */
   var L4 = /\b(white bread|wholemeal bread|whole wheat bread|sandwich (loaf|bread)|sliced bread|toast|otah|fish ?cakes?|fishcake|corn ?flakes|granola|bubble tea|boba|milk tea|(almond|oat|soy|rice) milk,? unsweetened|unsweetened (almond|oat|soy|rice) milk|(almond|oat) milk)\b/;
   var R3 = /\b(cheese|cheddar|mozzarella|parmesan|feta|cottage cheese|canned|tinned|in brine|in oil|smoked|salted fish|ikan bilis|cured|pickled|kimchi|miso|soy sauce|fish sauce|oyster sauce|tofu|tau kwa|beancurd|condensed milk|evaporated milk|coconut milk|santan|peanut butter|hummus|salted egg|century egg|beer|wine|sake|bread|bagel|chapati|tortilla|naan|roti|prata|pancakes?|roasted (peanuts|cashews|almonds)|salted (nuts|peanuts|cashews)|char siew|kaya)\b/;
@@ -32,6 +37,101 @@
   var WHOLE = /\b(apples?|bananas?|oranges?|mandarins?|papayas?|mangoe?s?|watermelon|melon|grapes|berries|blueberries|strawberries|pears?|kiwis?|durian|guava|dragon ?fruit|pineapple|longans?|lychees?|rambutans?|mangosteens?|dates|avocados?|vegetables?|salad leaves|lettuce|broccoli|spinach|kale|cabbage|bok choy|kai ?lan|chye sim|carrots?|cucumbers?|tomato(es)?|corn|sweet potato(es)?|potato(es)?|pumpkin|mushrooms?|eggs?|chicken breast|chicken thigh|fish fillet|salmon|mackerel|prawns?|shrimps?|nuts|almonds|walnuts|cashews|peanuts|lentils|chickpeas|beans|milk|plain water|water)\b/;
   var USDA_CAT = { fruit: 1, vegetables: 1, protein: 1, grains: 1, dairy: 1, nuts: 1, drinks: 1, fats: 2, condiments: 3, treats: 4, meals: 4 };
 
+  /* ---------- NOVA from an ingredient list ----------
+   * Monteiro et al. 2019 (Public Health Nutrition, E1): a product is ultra-processed when its list carries
+   * food substances of no culinary use (hydrolysed proteins, protein isolates, casein, whey, maltodextrin,
+   * dextrose, fructose, glucose-fructose syrup, invert sugar, lactose, hydrogenated or interesterified oil,
+   * modified starch) or cosmetic additives (flavours, flavour enhancers, colours, emulsifiers, emulsifying
+   * salts, sweeteners, thickeners, anti-foaming, bulking, carbonating, foaming, gelling and glazing agents).
+   * Preservatives, antioxidants and acidity regulators are used in processed foods too, so alone they do
+   * not mark group 4. Open Food Facts applies the same markers; its own list wins when the record has one.
+   * Ingredient lists are transcribed by people, so the result is always "likely". */
+  var SUBST4 = [
+    [/\bhydroly[sz]ed (vegetable |plant |soy[a]? |wheat |milk |corn |pea )?proteins?\b|\bprotein hydroly[sz]ate\b/, 'hydrolysed protein'],
+    [/\b(soy[a]?|pea|whey|milk|wheat|rice|potato) protein (isolate|concentrate)s?\b|\bprotein isolates?\b|\bisolated (soy[a]?|pea) protein\b/, 'protein isolate'],
+    [/\bcaseinates?\b|\bcasein\b/, 'casein'], [/\bwhey\b/, 'whey'],
+    [/\bmechanically (separated|recovered|deboned) (meat|chicken|poultry|turkey)\b/, 'mechanically separated meat'],
+    [/\bhigh[- ]fructose corn syrup\b|\bglucose[- ]fructose syrup\b|\bfructose[- ]glucose syrup\b|\bhfcs\b|\bcorn syrup\b|\bglucose syrup\b/, 'glucose syrup'],
+    [/\b(wheat |vital )?gluten\b/, 'added gluten'],
+    [/\bfructose\b/, 'fructose'], [/\b(fruit|apple|grape|pear|pineapple) juice concentrate\b/, 'fruit juice concentrate'],
+    [/\binvert(ed)? (sugar|syrup)\b/, 'invert sugar'], [/\bmaltodextrins?\b/, 'maltodextrin'], [/\bdextrose\b/, 'dextrose'], [/\blactose\b/, 'lactose'],
+    [/\b(partially |fully )?hydrogenated\b|\binteresterified\b/, 'hydrogenated or interesterified oil'],
+    [/\bmodified (corn |maize |tapioca |potato |food |wheat )?starch(es)?\b/, 'modified starch']
+  ];
+  var COSM4 = [
+    [/\bflavou?r(ing|ings|s)?\b|\baromas?\b|\bflavou?r extracts?\b/, 'flavouring'],
+    [/\bflavou?r enhancers?\b|\bmonosodium glutamate\b|\bmsg\b|\bdisodium (inosinate|guanylate|5 ribonucleotides)\b/, 'flavour enhancer'],
+    [/\bcolou?r(ing|ings|s)?\b|\bcaramel colou?r\b|\bannatto\b|\bcarmine\b|\btartrazine\b|\bsunset yellow\b|\ballura red\b|\bbrilliant blue\b/, 'colour'],
+    [/\bemulsifiers?\b|\blecithins?\b|\bmono[- ]?and di[- ]?glycerides\b|\bpolysorbates?\b|\bsucrose esters\b|\bpolyglycerol\b/, 'emulsifier'],
+    [/\bemulsifying salts?\b/, 'emulsifying salt'],
+    [/\bsweeteners?\b|\baspartame\b|\bsucralose\b|\bacesulfame\b|\bsaccharin\b|\bstevi(a|ol)\b|\bxylitol\b|\bsorbitol\b|\bmaltitol\b|\berythritol\b|\bisomalt\b|\bmonk fruit extract\b/, 'sweetener'],
+    [/\bthickeners?\b|\bgelling agents?\b|\bcarrageenan\b|\bxanthan\b|\bguar gum\b|\bgellan\b|\bpectins?\b|\bcarboxymethyl ?cellulose\b|\blocust bean gum\b|\bagar\b/, 'thickener or gelling agent'],
+    [/\banti[- ]?caking\b/, 'anti-caking agent'], [/\bglazing agents?\b|\bshellac\b|\bcarnauba\b/, 'glazing agent'],
+    [/\bhumectants?\b|\bglycerol\b|\bglycerine?\b|\bpropylene glycol\b/, 'humectant'], [/\bbulking agents?\b|\bpolydextrose\b/, 'bulking agent'],
+    [/\banti[- ]?foaming\b|\bdimethylpolysiloxane\b/, 'anti-foaming agent'], [/\bfoaming agents?\b|\bcarbonating agents?\b|\bfirming agents?\b|\bsequestrants?\b/, 'other cosmetic additive']
+  ];
+  /* E-number classes that mark ultra-processing; preservatives (200s), antioxidants and acidity regulators do not */
+  function eClass(code) {
+    var m = /^e ?(\d{3,4})/.exec(String(code || '').toLowerCase()); if (!m) return null; var n = Number(m[1]);
+    if (n >= 100 && n <= 199) return 'colour';
+    if (n === 322) return 'emulsifier';
+    if (n >= 400 && n <= 418) return 'thickener or gelling agent';
+    if (n === 420 || n === 421) return 'sweetener';
+    if (n === 422) return 'humectant';
+    if (n >= 423 && n <= 440) return 'thickener or gelling agent';
+    if (n === 441) return 'gelling agent (E441)';
+    if (n >= 442 && n <= 449) return 'emulsifier';
+    if (n >= 450 && n <= 452) return 'emulsifying salt';
+    if (n >= 460 && n <= 469) return 'thickener or gelling agent';
+    if (n >= 470 && n <= 499) return 'emulsifier';
+    if ((n >= 535 && n <= 538) || (n >= 551 && n <= 559)) return 'anti-caking agent';
+    if (n >= 620 && n <= 650) return 'flavour enhancer';
+    if (n === 900) return 'anti-foaming agent';
+    if (n >= 901 && n <= 914) return 'glazing agent';
+    if (n >= 950 && n <= 969) return 'sweetener';
+    if (n === 1200) return 'bulking agent';
+    if (n >= 1400 && n <= 1452) return 'modified starch';
+    if (n === 1518 || n === 1520) return 'humectant';
+    return null;
+  }
+  var CULINARY = /\b(salt|sea salt|sugar|cane sugar|raw sugar|brown sugar|oil|butter|ghee|lard|honey|vinegar|syrup|preservative|antioxidant|acidity regulator|starch|cornflour|corn starch)\b|\bsodium (benzoate|nitrite|nitrate|metabisulphite)\b|\bpotassium sorbate\b|\bcitric acid\b|\bascorbic acid\b|\bcalcium propionate\b/;
+  var ONLY_CULINARY = /^(?:(?:extra virgin |virgin |cold pressed |refined |pure )?(?:olive|coconut|sunflower|canola|rapeseed|vegetable|sesame|peanut|groundnut|corn|palm|avocado) oil|butter|ghee|lard|sea salt|salt|sugar|cane sugar|raw sugar|brown sugar|honey|vinegar|rice vinegar|apple cider vinegar|maple syrup|cornflour|corn starch|tapioca starch|water|and|\d+ ?%?)(?:\s|$)+$/;
+  /* claims that mention a marker to deny it: "non-hydrogenated oil", "lactose-free milk", "no added colours" */
+  var NEG_WORD = '(?:colou?r(?:s|ings?)?|flavou?r(?:s|ings?)?|preservatives?|additives?|sweeteners?|msg|gluten|lactose|dairy|sugar)';
+  var NEGATED = new RegExp('\\bnon hydrogenated\\b|\\b' + NEG_WORD + ' free\\b|\\b(?:no|without|free (?:of|from))(?: added| artificial| any| all)* ' + NEG_WORD + '(?:(?: or| and)(?: added| artificial)* ' + NEG_WORD + ')*\\b', 'g');
+  var WHOLE_INGR = /\b(milk|oats?|rolled oats|rice|brown rice|wholegrain|whole grain|wheat|flour|corn|maize|pop ?corn|peanuts?|almonds?|cashews?|walnuts?|hazelnuts?|pistachios?|seeds?|beans?|lentils?|chickpeas?|soy ?beans?|eggs?|chicken|beef|pork|fish|salmon|tuna|sardines?|prawns?|tofu|tempeh|dates?|raisins?|cranberries|apples?|bananas?|mangoes?|coconut|cocoa|coffee|tea|water|yogh?urt|cream|fruit|vegetables?|tomato(es)?|potato(es)?|sweet potato(es)?|cassava|tapioca)\b/;
+  /* text, additive tags (e.g. "e471"), OFF nova_groups_markers -> { group: 1|3|4, markers: [], likely: true } or null */
+  function fromIngredients(text, additives, markers) {
+    var found = [], seen = {};
+    /* one entry per class: "emulsifier (E322)" and a bare "emulsifier" from the same list count once */
+    function add(n) { n = String(n || '').trim(); var key = n.replace(/ \(E\d+[A-D]?\)$/i, ''); if (n && !seen[key]) { seen[key] = true; found.push(n); } }
+    function tidy(m) { return String(Array.isArray(m) ? m[1] : m).replace(/^en:/, '').replace(/-/g, ' '); }
+    if (markers && typeof markers === 'object') {
+      var g4 = markers['4'] || markers[4], g3 = markers['3'] || markers[3], g2 = markers['2'] || markers[2];
+      if (Array.isArray(g4) && g4.length) { g4.forEach(function (m) { add(tidy(m)); }); return { group: 4, markers: found.slice(0, 6), likely: true }; }
+      if (Array.isArray(g3) && g3.length) { g3.forEach(function (m) { add(tidy(m)); }); return { group: 3, markers: found.slice(0, 6), likely: true }; }
+      if (Array.isArray(g2) && g2.length) { g2.forEach(function (m) { add(tidy(m)); }); return { group: 2, markers: found.slice(0, 6), likely: true }; }
+    }
+    var raw = String(text || '');
+    if (raw.trim().length < 3) return null;
+    /* a list in another script (Chinese, Thai, Arabic...) cannot be judged by English markers: unknown, never "whole food" */
+    if (/[\u0600-\u06ff\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(raw)) return null;
+    var t = ' ' + raw.toLowerCase().replace(/[’']/g, "'").replace(/[-–/]/g, ' ').replace(/[()\[\]{},;:.*%]/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+    t = t.replace(NEGATED, ' ');
+    (additives || []).forEach(function (a) { var code = String(a).toLowerCase().replace(/^en:/, '').replace(/\s+/g, ''); var cls = eClass(code); if (cls) add(cls + ' (' + code.toUpperCase() + ')'); });
+    (t.match(/\be ?\d{3,4}[a-z]?\b/g) || []).forEach(function (code) { code = code.replace(/\s+/g, ''); var cls = eClass(code); if (cls) add(cls + ' (' + code.toUpperCase() + ')'); });
+    SUBST4.forEach(function (r) { if (r[0].test(t)) add(r[1]); });
+    COSM4.forEach(function (r) { if (r[0].test(t)) add(r[1]); });
+    if (found.length) return { group: 4, markers: found.slice(0, 6), likely: true };
+    var body = t.trim();
+    if (ONLY_CULINARY.test(body + ' ')) return { group: 2, markers: [], likely: true };
+    var culinary = CULINARY.test(t), whole = WHOLE_INGR.test(t);
+    if (culinary && whole) return { group: 3, markers: [], likely: true };
+    /* nothing recognised at all: say so rather than call it whole food */
+    if (!whole) return null;
+    return { group: 1, markers: [], likely: true };
+  }
+
   /* lower case, hyphens and slashes as spaces ("3-in-1", "Kopi-O"), padded for word rules */
   function text(x) { return ' ' + String(x || '').toLowerCase().replace(/[’']/g, "'").replace(/[-/]/g, ' ').replace(/\s+/g, ' ').trim() + ' '; }
   function out(group, basis, extra) { return Object.assign({ group: group, basis: basis, upfParts: false, likely: false }, extra || {}); }
@@ -39,6 +139,11 @@
   function classify(x) {
     if (!x) return out('unknown', 'none');
     if (/^[1-4]$/.test(String(x.nova == null ? '' : x.nova).trim())) return out(Number(x.nova), 'off');
+    var ing = x.ingredients;
+    if (ing && (ing.text || (ing.additives && ing.additives.length) || ing.markers)) {
+      var fi = fromIngredients(ing.text, ing.additives, ing.markers);
+      if (fi) return out(fi.group, ing.source === 'label-photo' ? 'label' : 'ingredients', { likely: true, markers: fi.markers });
+    }
     var name = x.name || '', hpb = x.hpb || null, kind = x.source && x.source.kind;
     var cat = (hpb && hpb.cat) || x.hpbCat || x.cat || '', desc = (hpb && hpb.desc) || x.desc || '';
     var t = text(name), all = text(name + ' ' + desc);
@@ -47,6 +152,8 @@
     var composite = COMPOSITE.test(t);
     /* An ultra-processed product word that is not just a part inside a dish ("rice crackers", "3-in-1 kopi"). */
     var product = !composite && R4.test(t.replace(UPF_PARTS_G, ' ').replace(/\bcarrot cakes?\b/g, ' '));
+    /* a name alone never settles popcorn: flavoured packs are usually ultra-processed, air-popped kernels are whole, the rest is likely popped in oil with salt */
+    if (POP.test(t) && !POP_NOT.test(t)) { if (POP4.test(t)) return out(4, 'rule', { likely: true }); if (POP1.test(t) && !POP_SALT.test(t)) return out(1, 'rule'); return out(3, 'rule', { likely: true }); }
     if (/\bdark chocolate\b/.test(t)) return out(3, 'rule', { likely: true });
     if (/\bo kosong\b/.test(t)) return out(1, 'rule');
     if (product) return out(4, 'rule');
@@ -100,7 +207,7 @@
     if (s.count.cooked) bits.push('freshly made dishes and drinks are not scored' + (s.partsDishes ? ' (' + s.partsDishes + ' include processed parts such as fishballs or syrups)' : ''));
     if (s.count.unknown) bits.push(s.count.unknown + ' item' + (s.count.unknown === 1 ? '' : 's') + ' not classified');
     var nk = s.noKcal[1] + s.noKcal[2] + s.noKcal[3] + s.noKcal[4]; if (nk) bits.push(nk + ' item' + (nk === 1 ? ' has' : 's have') + ' no calories logged');
-    if (s.likely) bits.push('“likely” means the name alone cannot settle it');
+    if (s.likely) bits.push('“likely” means the name or ingredient list alone cannot settle it');
     var t = bits.join('; '); return t ? t.charAt(0).toUpperCase() + t.slice(1) + '.' : '';
   }
   /* Short form for one saved meal. */
@@ -113,8 +220,9 @@
     return 'Ultra-processed ' + pctText(s.upfShare) + ' of classified calories';
   }
   function basisText(c) {
-    var b = c.basis === 'off' ? 'NOVA group from Open Food Facts' : c.basis === 'rule' ? (c.likely ? 'Rhythme estimate from the food type; ingredients vary, so this is likely, not certain' : 'Rhythme estimate from the food type') : c.basis === 'dish' ? 'Freshly made dish: NOVA studies split dishes into ingredients with recipes, so it is not scored here' : c.basis === 'fresh' ? 'Freshly made drink or dessert mixing several groups, so it is not scored here' : 'Not enough information to classify';
+    var mk = c.group === 4 ? (c.markers && c.markers.length ? '; ultra-processing markers: ' + c.markers.join(', ') : '') : c.group === 3 ? (c.markers && c.markers.length ? '; signs of processing: ' + c.markers.join(', ') : '; oil, salt, sugar or a preservative beside a whole food') : '; no processing markers in the list';
+    var b = c.basis === 'off' ? 'NOVA group from Open Food Facts' : c.basis === 'ingredients' ? 'Rhythme estimate from the ingredient list on Open Food Facts' + mk + ', so likely, not certain' : c.basis === 'label' ? 'Rhythme estimate from the ingredients you photographed' + mk + ', so likely, not certain' : c.basis === 'rule' ? (c.likely ? 'Rhythme estimate from the food type; ingredients vary, so this is likely, not certain' : 'Rhythme estimate from the food type') : c.basis === 'dish' ? 'Freshly made dish: NOVA studies split dishes into ingredients with recipes, so it is not scored here' : c.basis === 'fresh' ? 'Freshly made drink or dessert mixing several groups, so it is not scored here' : 'Not enough information to classify';
     return b + (c.upfParts ? '; includes processed parts such as fishballs, luncheon meat or syrups' : '');
   }
-  root.OvuNova = { GROUPS: GROUPS, classify: classify, share: share, entriesItems: entriesItems, headline: headline, coverageText: coverageText, short: short, basisText: basisText, pct: pct };
+  root.OvuNova = { GROUPS: GROUPS, classify: classify, fromIngredients: fromIngredients, share: share, entriesItems: entriesItems, headline: headline, coverageText: coverageText, short: short, basisText: basisText, pct: pct };
 })(window);

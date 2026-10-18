@@ -63,7 +63,9 @@
       name: food.name, foodId: food.id, source: food.source, basis: food.basis || '100g', prep: food.prep || null,
       grams: Math.round(grams * 10) / 10, portionLabel: portion ? portion.label : grams + ' g', method: method || (portion && portion.g === grams ? 'household measure' : 'typed amount'),
       per100: food.n, nutrients: scale(food.n, grams),
-      nova: food.nova || null, cat: food.cat || null
+      nova: food.nova || null, cat: food.cat || null,
+      /* the whole list is kept: the diary reclassifies from it, and a cut list could change the group */
+      ingredients: food.ingredients ? { source: food.ingredients.source || 'off', text: String(food.ingredients.text || '').slice(0, 4000), additives: (food.ingredients.additives || []).slice(0, 80), markers: food.ingredients.markers || null, rule: 'ingredients-v1' } : null
     };
   }
   function sum(items) {
@@ -87,7 +89,14 @@
   }
 
   /* ---------- Open Food Facts (label data for barcodes) ---------- */
-  var OFF_FIELDS = 'code,product_name,product_name_en,brands,quantity,serving_size,serving_quantity,nutrition_data_per,nutriments,nutriscore_grade,nova_group,image_front_small_url,last_modified_t,categories_tags_en';
+  var OFF_FIELDS = 'code,product_name,product_name_en,brands,quantity,serving_size,serving_quantity,nutrition_data_per,nutriments,nutriscore_grade,nova_group,image_front_small_url,last_modified_t,categories_tags_en,ingredients_text,additives_tags,nova_groups_markers,ingredients_n';
+  /* The ingredient list, additive tags and Open Food Facts' own NOVA markers, when the record has them.
+   * ovu-nova.js reads these when nova_group is missing, so a product is not left "Not classified". */
+  function offIngredients(p) {
+    var txt = String(p.ingredients_text || '').trim(), adds = Array.isArray(p.additives_tags) ? p.additives_tags : [], mk = p.nova_groups_markers && typeof p.nova_groups_markers === 'object' ? p.nova_groups_markers : null;
+    if (!txt && !adds.length && !mk) return null;
+    return { text: txt.slice(0, 4000), additives: adds.map(function (a) { return String(a).replace(/^en:/, '').toLowerCase(); }).slice(0, 80), markers: mk, source: 'off' };
+  }
   function g(n, key, mult) { var v = n[key]; if (v === undefined || v === null || v === '') return null; v = Number(v); return isNaN(v) ? null : v * (mult || 1); }
   function offToFood(p) {
     var n = p.nutriments || {};
@@ -98,7 +107,7 @@
     var sq = Number(p.serving_quantity);
     if (sq > 0) portions.push({ label: '1 serving' + (p.serving_size ? ' (' + p.serving_size + ')' : ''), g: sq });
     var name = (p.product_name_en || p.product_name || 'Packaged food').trim() + (p.brands ? ' · ' + p.brands.split(',')[0].trim() : '');
-    return { id: 'off:' + p.code, name: name, cat: 'packaged', n: per100, basis: basis, portions: portions, image: p.image_front_small_url || null, nutriscore: p.nutriscore_grade || null, nova: p.nova_group || null,
+    return { id: 'off:' + p.code, name: name, cat: 'packaged', n: per100, basis: basis, portions: portions, image: p.image_front_small_url || null, nutriscore: p.nutriscore_grade || null, nova: p.nova_group || null, ingredients: offIngredients(p),
       source: { kind: 'off', ref: 'Barcode ' + p.code, date: p.last_modified_t ? new Date(p.last_modified_t * 1000).toISOString().slice(0, 10) : null, label: 'Open Food Facts label data', url: 'https://world.openfoodfacts.org/product/' + p.code, detail: 'Community-maintained label transcription; check against the pack.' } };
   }
   /* Product search by name through Rhythme's `foods` relay (Open Food Facts text search sends no CORS
@@ -154,40 +163,133 @@
       img.src = url;
     });
   }
-  var zxingLoading = null;
-  function loadZXing() {
-    if (root.ZXingBrowser) return Promise.resolve(root.ZXingBrowser);
-    zxingLoading = zxingLoading || new Promise(function (resolve, reject) {
-      var s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js'; s.async = true;
-      s.onload = function () { resolve(root.ZXingBrowser); }; s.onerror = function () { reject(new Error('Barcode reader could not load (offline?).')); };
+  /* ---------- barcode decoders ----------
+   * Native BarcodeDetector where the browser has one (Chrome, Android). iOS Safari ships none, so the
+   * app carries its own decoder: the barcode-detector ponyfill over zxing-wasm (assets/vendor, MIT),
+   * served from this origin and cached by the service worker. No third-party script is loaded. */
+  var WASM_JS = 'assets/vendor/barcode-detector-3.2.2.ponyfill.js', WASM_BIN = 'assets/vendor/zxing_reader-3.1.3.wasm';
+  var FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'];
+  var wasmLoading = null;
+  function loadWasm() {
+    if (root.BarcodeDetectionAPI) return Promise.resolve(root.BarcodeDetectionAPI);
+    wasmLoading = wasmLoading || new Promise(function (resolve, reject) {
+      var s = document.createElement('script'); s.src = WASM_JS; s.async = true;
+      s.onload = function () {
+        var B = root.BarcodeDetectionAPI;
+        if (!B) { reject(new Error('Barcode reader did not load.')); return; }
+        try { B.setZXingModuleOverrides({ locateFile: function (path, prefix) { return /\.wasm$/.test(path) ? WASM_BIN : prefix + path; } }); } catch (e) { }
+        resolve(B);
+      };
+      s.onerror = function () { reject(new Error('Barcode reader could not load (offline?). You can type the digits instead.')); };
       document.head.appendChild(s);
     });
-    return zxingLoading;
+    return wasmLoading;
   }
-  var FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'];
-  function detectInImage(imageEl) {
-    if ('BarcodeDetector' in root) {
-      return new root.BarcodeDetector({ formats: FORMATS }).detect(imageEl).then(function (codes) { return codes.length ? codes[0].rawValue : null; }).catch(function () { return null; });
-    }
-    return loadZXing().then(function (Z) { var reader = new Z.BrowserMultiFormatReader(); return reader.decodeFromImageElement(imageEl).then(function (r) { return r.getText(); }, function () { return null; }); }).catch(function () { return null; });
+  /* Last resort for photos only: the older ZXing JS port (self-hosted, lazy) reads some small blurred
+   * 1D codes the WASM build misses. Not used for live frames, where it was too slow to be useful. */
+  var ZX_JS = 'assets/vendor/zxing-browser-0.1.5.min.js', zxLoading = null;
+  function loadZXingJs() {
+    if (root.ZXingBrowser) return Promise.resolve(root.ZXingBrowser);
+    zxLoading = zxLoading || new Promise(function (resolve, reject) {
+      var s = document.createElement('script'); s.src = ZX_JS; s.async = true;
+      s.onload = function () { root.ZXingBrowser ? resolve(root.ZXingBrowser) : reject(new Error('no ZXingBrowser')); }; s.onerror = function () { reject(new Error('ZXing JS did not load')); };
+      document.head.appendChild(s);
+    });
+    return zxLoading;
   }
-  /* live scan: returns a stop() function; onCode(code) fires once */
-  function scanLive(videoEl, onCode, onError) {
-    var stopped = false, stream = null, raf = 0, zxControls = null;
-    function stop() { stopped = true; cancelAnimationFrame(raf); try { zxControls && zxControls.stop(); } catch (e) { } if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); videoEl.srcObject = null; }
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }).then(function (s) {
-      stream = s; videoEl.srcObject = s; videoEl.setAttribute('playsinline', ''); videoEl.muted = true; return videoEl.play();
-    }).then(function () {
-      if ('BarcodeDetector' in root) {
-        var det = new root.BarcodeDetector({ formats: FORMATS }), busy = false;
-        (function tick() { if (stopped) return; if (!busy && videoEl.readyState >= 2) { busy = true; det.detect(videoEl).then(function (codes) { busy = false; if (codes.length && !stopped) { stop(); onCode(codes[0].rawValue); } }, function () { busy = false; }); } raf = requestAnimationFrame(tick); })();
-      } else {
-        loadZXing().then(function (Z) {
-          var reader = new Z.BrowserMultiFormatReader();
-          return reader.decodeFromVideoElement(videoEl, function (result) { if (result && !stopped) { stop(); onCode(result.getText()); } });
-        }).then(function (c) { zxControls = c; }).catch(function (e) { stop(); onError && onError(e); });
+  function zxingJsTry(sources) {
+    return loadZXingJs().then(function (Z) {
+      var hints = new Map(); hints.set(3, true); /* DecodeHintType.TRY_HARDER */
+      var reader = new Z.BrowserMultiFormatReader(hints), i = 0;
+      function next() {
+        if (i >= sources.length) return null;
+        var src; try { src = sources[i++](); } catch (e) { return next(); }
+        var p = src.tagName === 'CANVAS' ? reader.decodeFromCanvas(src) : reader.decodeFromImageElement(src);
+        return Promise.resolve(p).then(function (r) { return r && r.getText ? r.getText() : next(); }, function () { return next(); });
       }
-    }).catch(function (e) { stop(); onError && onError(new Error(e && e.name === 'NotAllowedError' ? 'Camera permission was declined. You can type the barcode instead.' : 'Camera unavailable: ' + (e.message || e))); });
+      return next();
+    }).catch(function () { return null; });
+  }
+  function hasNative() { return 'BarcodeDetector' in root; }
+  /* a detector with detect(source) -> Promise<[{ rawValue }]>, native or self-hosted */
+  function detector() {
+    if (hasNative()) return Promise.resolve(new root.BarcodeDetector({ formats: FORMATS }));
+    return loadWasm().then(function (B) { return new B.BarcodeDetector({ formats: FORMATS }); });
+  }
+  /* Warm the self-hosted decoder (one WASM fetch) when scan mode opens, so the first live frame does not wait. */
+  function warmDecoder() {
+    if (hasNative()) return Promise.resolve();
+    return detector().then(function (det) { var c = document.createElement('canvas'); c.width = 8; c.height = 8; return det.detect(c); }).catch(function () { });
+  }
+  function fit(img, max) {
+    var w = img.naturalWidth || img.videoWidth || img.width, h = img.naturalHeight || img.videoHeight || img.height, s = Math.min(1, max / Math.max(w, h));
+    if (s >= 1 && img.tagName !== 'VIDEO') return img;
+    var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s)); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); return c;
+  }
+  function rotated(src, deg) {
+    var w = src.width, h = src.height, c = document.createElement('canvas'); c.width = h; c.height = w;
+    var x = c.getContext('2d'); x.translate(c.width / 2, c.height / 2); x.rotate(deg * Math.PI / 180); x.drawImage(src, -w / 2, -h / 2); return c;
+  }
+  function centreCrop(src, fw, fh) {
+    var w = src.width, h = src.height, c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * fw)); c.height = Math.max(1, Math.round(h * fh));
+    c.getContext('2d').drawImage(src, (w - c.width) / 2, (h - c.height) / 2, c.width, c.height, 0, 0, c.width, c.height); return c;
+  }
+  /* Photo path: the photo at up to 2048 px, then rotated 90 and 270 degrees (a pack held sideways), then the middle. */
+  function detectInImage(imageEl) {
+    return detector().then(function (det) {
+      var base = fit(imageEl, 2048);
+      var tries = [function () { return base; }, function () { return rotated(base, 90); }, function () { return rotated(base, 270); }, function () { return centreCrop(base, 0.6, 0.6); }];
+      var i = 0;
+      function next() {
+        if (i >= tries.length) return zxingJsTry(tries);
+        var src; try { src = tries[i++](); } catch (e) { return next(); }
+        return det.detect(src).then(function (codes) { return codes && codes.length ? codes[0].rawValue : next(); }, function () { return next(); });
+      }
+      return next();
+    }).catch(function () { return zxingJsTry([function () { return fit(imageEl, 2048); }]); });
+  }
+  /* live scan: returns a stop() function; onCode(code) fires once; onHint() once after 6 s without a read */
+  function scanLive(videoEl, onCode, onError, onHint) {
+    var stopped = false, stream = null, timer = 0, hinted = false, t0 = 0;
+    function stop() { stopped = true; clearTimeout(timer); if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); videoEl.srcObject = null; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { setTimeout(function () { if (!stopped && onError) onError(new Error('This browser has no camera access here. You can type the barcode digits instead.')); }, 0); return stop; }
+    /* ask for 1080p frames: a barcode a few centimetres wide needs the pixels; the default is often 640 by 480 */
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }).then(function (s) {
+      if (stopped) { s.getTracks().forEach(function (t) { t.stop(); }); throw { name: 'Cancelled' }; } /* the sheet closed while the permission prompt was up */
+      stream = s; videoEl.srcObject = s; videoEl.setAttribute('playsinline', ''); videoEl.muted = true;
+      try {
+        var track = s.getVideoTracks()[0], caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (caps.focusMode && caps.focusMode.indexOf('continuous') > -1) track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function () { });
+      } catch (e) { }
+      return videoEl.play();
+    }).then(function () { return detector(); }).then(function (det) {
+      if (stopped) return;
+      var crop = false, failures = 0; t0 = Date.now();
+      function hint() { if (!hinted && !stopped && onHint && Date.now() - t0 > 6000) { hinted = true; onHint(); } }
+      function frame() {
+        if (stopped) return;
+        if (videoEl.readyState < 2 || !videoEl.videoWidth) { timer = setTimeout(frame, 120); return; }
+        var src;
+        /* every other frame: just the reticle box (room.css: 12% in from the sides, 30% from top and bottom) */
+        try { src = crop ? centreCrop(fit(videoEl, 1920), 0.76, 0.40) : videoEl; } catch (e) { src = videoEl; }
+        crop = !crop;
+        det.detect(src).then(function (codes) {
+          if (stopped) return;
+          failures = 0;
+          if (codes && codes.length) { stop(); onCode(codes[0].rawValue); return; }
+          hint(); timer = setTimeout(frame, 150);
+        }, function () {
+          if (stopped) return;
+          if (++failures >= 12) { stop(); onError && onError(new Error('The barcode reader is not working on this phone. You can type the digits instead.')); return; }
+          hint(); timer = setTimeout(frame, 250);
+        });
+      }
+      frame();
+    }).catch(function (e) {
+      var cancelled = stopped || (e && e.name === 'Cancelled'); stop();
+      if (cancelled || !onError) return;
+      onError(new Error(e && e.name === 'NotAllowedError' ? 'Camera permission was declined. You can type the barcode instead.' : ((e && e.message) || 'Camera unavailable. You can type the barcode instead.')));
+    });
     return stop;
   }
 
@@ -241,5 +343,5 @@
   }
   function sgTableLoaded() { return sgTable; }
 
-  root.OvuFood = { groupProducts: groupProducts, KEYS: KEYS, LABEL: LABEL, UNIT: UNIT, load: load, search: search, byId: byId, scale: scale, makeItem: makeItem, sum: sum, fmt: fmt, line: line, lookupBarcode: lookupBarcode, searchProducts: searchProducts, offToFood: offToFood, shrink: shrink, detectInImage: detectInImage, scanLive: scanLive, hasNativeDetector: 'BarcodeDetector' in root, sgLoad: sgLoad, sgUse: sgUse, sgMatch: sgMatch, sgNorm: sgNorm, sgTable: sgTableLoaded };
+  root.OvuFood = { groupProducts: groupProducts, KEYS: KEYS, LABEL: LABEL, UNIT: UNIT, load: load, search: search, byId: byId, scale: scale, makeItem: makeItem, sum: sum, fmt: fmt, line: line, lookupBarcode: lookupBarcode, searchProducts: searchProducts, offToFood: offToFood, shrink: shrink, detectInImage: detectInImage, scanLive: scanLive, warmDecoder: warmDecoder, hasNativeDetector: 'BarcodeDetector' in root, sgLoad: sgLoad, sgUse: sgUse, sgMatch: sgMatch, sgNorm: sgNorm, sgTable: sgTableLoaded };
 })(window);
