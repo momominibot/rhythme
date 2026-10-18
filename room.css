@@ -1339,3 +1339,10 @@ body.btap-open{overflow:hidden}
 .teaimg{width:64px;height:64px;object-fit:contain;flex:none;filter:drop-shadow(0 4px 6px rgba(90,66,116,.18))}
 .tea summary>.teaimg{width:40px;height:40px}
 .teas .tea{display:flex;gap:12px;align-items:flex-start}
+
+/* Jamie, 18 Oct 23:35: the joystick is gone (tap-to-walk replaces it); until the walk cycle lands, walking is a gentle step bob, not a hop */
+.walkpad{display:none!important}
+.avatar.walking img{animation:stepbob .42s ease-in-out infinite}
+.avatar.flip.walking img{animation:stepbobflip .42s ease-in-out infinite}
+@keyframes stepbob{0%,100%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-1.5%) rotate(-1.2deg)}75%{transform:translateY(-1.5%) rotate(1.2deg)}}
+@keyframes stepbobflip{0%,100%{transform:translateY(0) scale(-1,1) rotate(0deg)}25%{transform:translateY(-1.5%) scale(-1,1) rotate(1.2deg)}75%{transform:translateY(-1.5%) scale(-1,1) rotate(-1.2deg)}}
