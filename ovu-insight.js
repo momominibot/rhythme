@@ -8,7 +8,7 @@
 (function (root) {
   'use strict';
   var S = root.OvuStore, A = root.OvuAgents, ORB = root.OvuOrb;
-  var URL = 'https://zodkohwaznqgrfrcfdkf.supabase.co/functions/v1/insight';
+  var URL = ((root.OVU_CONFIG && root.OVU_CONFIG.functionsBase) || 'https://zodkohwaznqgrfrcfdkf.supabase.co/functions/v1') + '/insight';
   var KEEP_DAILY = 14, KEEP_4W = 3;
 
   /* Readings need their own permission (insights: true), separate from letting Luna's model read a note. */

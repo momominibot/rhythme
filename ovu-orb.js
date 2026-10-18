@@ -7,7 +7,7 @@
   'use strict';
   var S = root.OvuStore, A = root.OvuAgents, FD = root.OvuFood;
   var AI_KEY = 'ovumind_ai_v1';
-  var PROXY_URL = 'https://zodkohwaznqgrfrcfdkf.supabase.co/functions/v1/luna'; /* keyless relay: Doubao Seed 2.1 turbo, origin-locked, 80 notes a day per person */
+  var PROXY_URL = ((root.OVU_CONFIG && root.OVU_CONFIG.functionsBase) || 'https://zodkohwaznqgrfrcfdkf.supabase.co/functions/v1') + '/luna'; /* keyless relay: Doubao Seed 2.1 turbo, origin-locked, 80 notes a day per person */
   var DEFAULT_MODEL = 'doubao-seed-2-1-turbo-260628';
   var OR_MODEL = 'google/gemini-2.5-flash-lite'; /* default when someone brings an OpenRouter key; jev-1.13.0: 0.73 */
   var FALLBACK_MODEL = 'qwen/qwen3-30b-a3b-instruct';
