@@ -391,7 +391,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the moon rabbit is the default', M.current().id === 'rabbit', M.current().id);
   check('choosing the kitten sticks in the profile', M.set('kitten').id === 'kitten' && w.OvuStore.profile().mascot === 'kitten' && M.current().id === 'kitten');
   check('an unknown look is ignored', M.set('dragon').id === 'kitten');
-  check('the small button falls back to the full sprite until a head badge exists', /orb-kitten\.webp$/.test(M.src(null, true)));
+  check('the small button uses the head badge, the welcome the full sprite', /orb-kitten-head\.webp$/.test(M.src(null, true)) && /orb-kitten\.webp$/.test(M.src(null, false)));
 })();
 
 console.log('\n' + passes + ' passed, ' + fails + ' failed');
