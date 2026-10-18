@@ -20,7 +20,7 @@
     if (!root || root.nodeType !== 1 || root.closest('script,style,textarea,input,select,option,svg,code,pre,.qi-source,.dream-icon,[data-dream-skip]')) return;
     root.querySelectorAll('img').forEach(function(img){var match=(img.getAttribute('src') || '').match(/assets\/icons\/(persona-(?:bloom|grow|nurture|wisdom)|cycle-luteal)(?:-\d+)?\.png$/);if(match)upgradeArt(img,match[1]);});
     root.querySelectorAll('.ms,.n-ic,.material-symbols-outlined').forEach(function(node){
-      if(node.dataset.dreamIcon || node.childElementCount) return;
+      if(node.dataset.dreamIcon || node.childElementCount || node.closest('[data-dream-skip]')) return;
       var key=node.textContent.trim(), name=icons[key];if(!name)return;
       // Keep aria names on icon-only controls before replacing the ligature.
       var parent=node.closest('button,a');if(parent && parent.textContent.trim()===key && !parent.hasAttribute('aria-label')) parent.setAttribute('aria-label',key.replace(/_/g,' '));

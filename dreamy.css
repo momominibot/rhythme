@@ -1,4 +1,4 @@
-/* Ovuluna's existing palette, with luminous edges and watercolor wayfinding. */
+/* Rhythme's existing palette, with luminous edges and watercolor wayfinding. */
 :root { --dream-glow: rgba(160,124,200,.18); --dream-edge: rgba(160,124,200,.26); }
 [data-theme="dark"] { --dream-glow: rgba(201,162,237,.16); --dream-edge: rgba(210,183,243,.24); }
 .card, .kh-guide, .kh-topic, .persona-card { box-shadow: 0 8px 32px -20px var(--dream-glow); }

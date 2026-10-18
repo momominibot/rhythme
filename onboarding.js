@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════
-   OVULUNA · Onboarding Flow
+   RHYTHME · Onboarding Flow
    Multi-step questionnaire that personalizes the app experience.
    Saves answers to localStorage under 'ovuluna_onboarding'.
    Answers are preferences and self-reported context, not a clinical prediction.
@@ -298,7 +298,7 @@
     var div = document.createElement('div');
     div.className = 'welcome';
     div.innerHTML =
-      '<div class="brandmark"><span class="dot"></span><b>OVULUNA</b></div>' +
+      '<div class="brandmark"><span class="dot"></span><b>RHYTHME</b></div>' +
       '<img class="hero" src="assets/onboarding/luna.png" alt="Rhythme" onerror="this.style.display=\'none\'">' +
       '<h1>' + t(step.title) + '</h1>' +
       '<p>' + t(step.subtitle) + '</p>';
@@ -807,7 +807,7 @@
     var div = document.createElement('div');
     div.className = 'welcome';
     div.innerHTML =
-      '<div class="brandmark"><span class="dot"></span><b>OVULUNA</b></div>' +
+      '<div class="brandmark"><span class="dot"></span><b>RHYTHME</b></div>' +
       '<img class="hero" src="assets/onboarding/luna.png" alt="" onerror="this.style.display=\'none\'">' +
       '<h1>' + t(step.title) + '</h1>' +
       '<p>' + step.subtitle + '</p>' +

@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════
-   OVULUNA · Food Score Engine (pure JS port of Mallow score.ts)
+   RHYTHME · Food Score Engine (pure JS port of Mallow score.ts)
    Gentle 0–100 score: starts at 100, eases down for NOVA,
    added sugar, and additives. Information, not a verdict.
    "You're allowed to eat the cookie."

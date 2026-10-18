@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════
-   OVULUNA · Clinical Evidence Database
+   RHYTHME · Clinical Evidence Database
    Centralized source for every (i) popup in the app.
    Each entry: { key, claim, evidence, source, level, wellnessNote }
    Source metadata is legacy unless an explicit verification record is present.

@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════
-   OVULUNA · i18n — Multi-language support
+   RHYTHME · i18n — Multi-language support
    Reads saved language from localStorage, provides t() lookup.
    Currently supports: en, zh, ja, ms, es, de
    ══════════════════════════════════════════════════════════════ */

@@ -1,0 +1,35 @@
+/* Rhythme alignment for the older reading pages (loaded by appnav.js): the room's header,
+   tabs, fonts and palette, so Learn pages look like the rest of the app. */
+:root{
+  --paper:#f8f3fb; --paper-deep:#f1e9f7; --card:#ffffff; --card-solid:#ffffff; --sunken:#f1e9f7;
+  --ink:#3b2d52; --cocoa:#3b2d52; --taupe:#6f5f8c; --faded:#9a8cb3; --mauve:#7a5c96;
+  --line:rgba(107,82,142,.14); --line-soft:rgba(107,82,142,.08);
+  --rh-plum:#5a4274; --rh-lilac:#c9b6e6; --rh-lilac-2:#e7dcf5;
+  --serif:'Newsreader',Georgia,serif; --sans:'Manrope',system-ui,sans-serif;
+}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper)}
+
+/* header: the room's soft bar with the RHYTHME wordmark and round icon buttons */
+.top{background:rgba(248,243,251,.9)!important;border-bottom:1px solid rgba(201,182,230,.25)!important;box-shadow:0 6px 18px rgba(90,66,116,.06)}
+.top .rh-brand{font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--rh-plum);text-decoration:none}
+.top .brandline{flex:1}
+.top .t-icon{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;border-radius:50%!important;border:1px solid rgba(255,255,255,.9)!important;background:rgba(255,255,255,.85)!important;box-shadow:0 4px 14px rgba(90,66,116,.14)!important;color:var(--rh-plum)!important;font-size:20px!important}
+.top .t-title{font-family:var(--serif);font-weight:600;color:var(--rh-plum)}
+
+/* tabs: same five as the room, same look */
+.nav{border-top:1px solid rgba(107,82,142,.08)!important;background:rgba(255,255,255,.92)!important;padding-top:8px!important}
+.nav a{font:700 10px var(--sans)!important;color:var(--faded)!important;gap:2px!important;outline:none}
+.nav a .ms,.nav a .n-ic{font-family:'Material Symbols Outlined'!important;font-size:22px!important;font-weight:400}
+.nav a.on{color:var(--mauve)!important;background:rgba(231,220,245,.55)}
+.nav a.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.nav a:focus-visible{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--rh-lilac);background:rgba(231,220,245,.6)}
+.nav .dream-symbol{display:none!important}
+
+/* cards, headings and links in the room's style */
+.card{background:#fff!important;border:1px solid rgba(150,120,190,.14)!important;border-radius:22px!important;box-shadow:0 10px 30px rgba(90,66,116,.10)!important}
+h1,h2,h3{font-family:var(--serif);color:var(--rh-plum)}
+main :is(p,li,td,small) > a:not([class]){color:var(--rh-plum);text-decoration-color:rgba(122,92,150,.35);text-underline-offset:2px}
+.learning-back{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;background:#fff;border:1px solid rgba(150,120,190,.2);border-radius:999px;padding:7px 14px;font:800 12.5px var(--sans);color:var(--rh-plum)!important;text-decoration:none!important;box-shadow:0 4px 12px rgba(90,66,116,.08)}
+.top .theme-toggle{display:none!important}
+.top .font-toggle{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.9)!important;background:rgba(255,255,255,.85)!important;box-shadow:0 4px 14px rgba(90,66,116,.14);color:var(--rh-plum)}
+.top .t-icon.ms{font-family:'Material Symbols Outlined'!important}

@@ -27,6 +27,26 @@
   `;
   var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
 
+  // ---- Rhythme alignment: the room's header, five tabs and theme on every older page ----
+  (function(){
+    function align(){
+      try {
+        if(!document.querySelector('link[href*="rhythme-legacy.css"]')){ var l=document.createElement('link'); l.rel='stylesheet'; l.href='rhythme-legacy.css'; document.head.appendChild(l); }
+        if(!document.querySelector('link[href*="Material+Symbols"]')){ var m=document.createElement('link'); m.rel='stylesheet'; m.href='https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block'; document.head.appendChild(m); }
+        if(!document.querySelector('link[href*="family=Newsreader"]')){ var f=document.createElement('link'); f.rel='stylesheet'; f.href='https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Manrope:wght@400;600;700;800&display=swap'; document.head.appendChild(f); }
+        var top=document.querySelector('.top');
+        if(top){ top.setAttribute('data-dream-skip',''); var bl=top.querySelector('.brandline'); if(bl) bl.innerHTML='<a class="rh-brand" href="room.html" aria-label="Rhythme, back to your room">RHYTHME</a>'; }
+        var nav=document.querySelector('nav.nav, nav.bottom-nav');
+        if(nav && !nav.dataset.rhythme){
+          nav.setAttribute('data-dream-skip',''); nav.dataset.rhythme='1'; nav.className='nav'; nav.setAttribute('aria-label','Main');
+          nav.innerHTML=[['room.html','home','Home'],['room.html#cycle','water_drop','Cycle'],['room.html#food','restaurant','Food'],['room.html#mind','self_improvement','Mind'],['room.html#you','person','You']].map(function(t,i){ return '<a href="'+t[0]+'"'+(i===0?' class="on" aria-current="true"':'')+'><span class="ms">'+t[1]+'</span>'+t[2]+'</a>'; }).join('');
+        }
+        document.querySelectorAll('a.learning-back').forEach(function(a){ var h=a.getAttribute('href')||''; if(h==='home.html'||/Knowledge Hub/.test(a.textContent)){ a.setAttribute('href','room.html#learn'); a.textContent='← Back to your desk'; } });
+      } catch(e){}
+    }
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', align); else align();
+  })();
+
   var here=(location.pathname.split('/').pop()||'index.html');
 
   // ---- back buttons: history.back with home fallback ----

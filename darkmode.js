@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════
-   OVULUNA · Dark Mode + Font Size Controller
+   RHYTHME · Dark Mode + Font Size Controller
    Self-injects a sun/moon theme toggle and Aa font size toggle
    into .top on every page.
    Persists preferences in localStorage.

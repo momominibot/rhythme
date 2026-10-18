@@ -1011,3 +1011,44 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .psizes{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:0 4px 6px 52px}
 .psizes span{font:800 10px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--rm-ink-3);margin-right:2px}
 .psizes .chipbtn{padding:5px 10px;font-size:11.5px}
+.calhint{display:flex;align-items:center;gap:5px;margin:4px 0 2px}
+.calhint .ms{font-size:16px;color:var(--rm-mauve)}
+
+/* Today card: one short line per topic */
+.daylist{list-style:none;margin:6px 0 2px;padding:0;display:flex;flex-direction:column;gap:5px}
+.daylist li{display:flex;gap:8px;align-items:flex-start;font:600 13px/1.4 var(--sans);color:var(--rm-ink-2)}
+.daylist .ms{flex:none;width:22px;height:22px;border-radius:8px;display:grid;place-items:center;background:var(--rm-lilac-2,#e7dcf5);color:var(--rm-plum);font-size:15px;margin-top:-1px}
+
+/* acupressure: what it is for, tradition kept apart from research */
+.acuuse{margin-top:10px;background:linear-gradient(135deg,#f6eefc,#fdf0f4);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.acuuse>div{display:flex;gap:8px;align-items:flex-start}
+.acuuse .ms{flex:none;font-size:17px;color:var(--rm-mauve);margin-top:1px}
+.acuuse b{display:block;font:800 10.5px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--rm-ink-3)}
+.acuuse span span,.acuuse>div>span:last-child{font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2)}
+.acuuse .evrefs{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 0}
+.acuuse .evrefs a{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid rgba(150,120,190,.22);border-radius:999px;padding:3px 4px 3px 9px;font:700 11px/1.2 var(--sans);color:var(--rm-plum);text-decoration:none}
+.acuuse .evrefs a i{font-style:normal;font:800 9.5px var(--sans);background:var(--rm-lilac-2,#e7dcf5);color:var(--rm-mauve);border-radius:999px;padding:3px 6px}
+
+/* teas and herbs */
+.dsec.teas>h4 .ms{font-size:18px;color:var(--rm-mauve)}
+.tea{border:1px solid rgba(150,120,190,.16);border-radius:14px;margin-top:6px;background:#fff}
+.tea summary{display:flex;align-items:center;gap:10px;padding:9px 10px;cursor:pointer;list-style:none}
+.tea summary::-webkit-details-marker{display:none}
+.tea summary>.ms:first-child{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);color:var(--rm-plum);font-size:18px;flex:none}
+.tea summary>span:nth-child(2){flex:1;min-width:0}
+.tea summary b{display:block;font:800 13px var(--sans);color:var(--rm-plum)}
+.tea summary small{display:block;font:600 11.5px/1.35 var(--sans);color:var(--rm-ink-3)}
+.tea summary .go{color:var(--rm-ink-3);transition:transform .2s}
+.tea[open] summary .go{transform:rotate(180deg)}
+.teabody{padding:0 12px 10px 52px}
+.teabody p{font:600 12px/1.45 var(--sans);color:var(--rm-ink-2);margin:4px 0}
+.teabody p b,.teacare p b{display:block;font:800 10px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--rm-ink-3)}
+.teabody p.care{color:#8a3b56}
+.teabody .evrefs,.teacare .evrefs{display:flex;flex-wrap:wrap;gap:5px}
+.teabody .evrefs a,.teacare .evrefs a{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid rgba(150,120,190,.22);border-radius:999px;padding:3px 4px 3px 9px;font:700 11px/1.2 var(--sans);color:var(--rm-plum);text-decoration:none}
+.teabody .evrefs a i,.teacare .evrefs a i{font-style:normal;font:800 9.5px var(--sans);background:var(--rm-lilac-2,#e7dcf5);color:var(--rm-mauve);border-radius:999px;padding:3px 6px}
+.teacare{margin-top:10px;background:#fdf0f4;border:1px solid #f3d3df;border-radius:14px;padding:10px 12px}
+.teacare>b{display:flex;align-items:center;gap:6px;font:800 12.5px var(--sans);color:#8a3b56;margin-bottom:4px}
+.teacare>b .ms{font-size:17px}
+.teacare p{font:600 12px/1.45 var(--sans);color:var(--rm-ink-2);margin:6px 0 0}
+.teacare p b{color:#8a3b56}

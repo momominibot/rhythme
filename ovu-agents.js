@@ -121,28 +121,28 @@
   /* ---------- Daily Summary agent ---------- */
   function fmtHours(h) { if (h === null || h === undefined) return ''; var H = Math.floor(h), M = Math.round((h - H) * 60); return H + 'h' + (M ? ' ' + M + 'm' : ''); }
   function dailySummary(date) {
-    var entries = S.byDate(date), parts = [], highlights = [];
+    var entries = S.byDate(date), parts = [], highlights = [], bullets = [];
     var sleep = entries.filter(function (e) { return e.type === 'sleep'; })[0];
     var period = entries.filter(function (e) { return e.type === 'period'; })[0];
     var sym = entries.filter(function (e) { return e.type === 'symptom'; })[0];
     var food = entries.filter(function (e) { return e.type === 'food'; });
     var refl = entries.filter(function (e) { return e.type === 'reflection'; });
     var cs = S.cycleStats(date);
-    if (sleep) { var h = S.sleepHours(sleep.data); parts.push('Slept ' + fmtHours(h) + (sleep.data.quality ? ' (quality ' + sleep.data.quality + '/5)' : '') + '.'); highlights.push({ icon: 'bedtime', text: fmtHours(h) + ' sleep' }); }
-    if (period) { parts.push('Period day' + (cs.cycleDay ? ' ' + cs.cycleDay : '') + ', ' + period.data.flow + ' flow' + (period.data.clots ? ' with clots' : '') + '.'); highlights.push({ icon: 'water_drop', text: period.data.flow + ' flow' }); }
-    else if (cs.cycleDay) { parts.push('Cycle day ' + cs.cycleDay + (cs.phase ? ', estimated ' + cs.phase + ' phase' : '') + '.'); }
-    if (sym) { var list = (sym.data.symptoms || []); parts.push((list.length ? 'Logged ' + list.join(', ') : 'No symptoms ticked') + (typeof sym.data.pain === 'number' ? ', pain ' + sym.data.pain + '/10' : '') + (sym.data.mood ? ', mood ' + sym.data.mood : '') + '.'); if (list.length) highlights.push({ icon: 'spa', text: list.slice(0, 2).join(', ') + (list.length > 2 ? ' +' + (list.length - 2) : '') }); }
+    if (sleep) { var h = S.sleepHours(sleep.data); bullets.push('bedtime'); parts.push('Slept ' + fmtHours(h) + (sleep.data.quality ? ' (quality ' + sleep.data.quality + '/5)' : '') + '.'); highlights.push({ icon: 'bedtime', text: fmtHours(h) + ' sleep' }); }
+    if (period) { bullets.push('water_drop'); parts.push('Period day' + (cs.cycleDay ? ' ' + cs.cycleDay : '') + ', ' + period.data.flow + ' flow' + (period.data.clots ? ' with clots' : '') + '.'); highlights.push({ icon: 'water_drop', text: period.data.flow + ' flow' }); }
+    else if (cs.cycleDay) { bullets.push('water_drop'); parts.push('Cycle day ' + cs.cycleDay + (cs.phase ? ', estimated ' + cs.phase + ' phase' : '') + '.'); }
+    if (sym) { var list = (sym.data.symptoms || []); bullets.push('sentiment_satisfied'); parts.push((list.length ? 'Logged ' + list.join(', ') : 'No symptoms ticked') + (typeof sym.data.pain === 'number' ? ', pain ' + sym.data.pain + '/10' : '') + (sym.data.mood ? ', mood ' + sym.data.mood : '') + '.'); if (list.length) highlights.push({ icon: 'spa', text: list.slice(0, 2).join(', ') + (list.length > 2 ? ' +' + (list.length - 2) : '') }); }
     if (food.length) {
       var tags = {}, items = [], withItems = 0; food.forEach(function (f) { (f.data.tags || []).forEach(function (t) { tags[t] = (tags[t] || 0) + 1; }); if ((f.data.items || []).length) { withItems++; items = items.concat(f.data.items); } });
       var nutri = '';
       if (items.length && root.OvuFood) { var sm = root.OvuFood.sum(items); nutri = ' ' + (sm.totals.kcal !== null ? Math.round(sm.totals.kcal) + ' kcal' : '') + (sm.totals.protein !== null ? ', ' + Math.round(sm.totals.protein) + ' g protein' : '') + (sm.totals.fiber !== null ? ', ' + Math.round(sm.totals.fiber) + ' g fibre' : '') + (withItems < food.length ? ' from ' + withItems + ' of ' + food.length + ' entries' : '') + '.'; }
-      parts.push(food.length + ' meal' + (food.length > 1 ? 's' : '') + ' logged' + (tags['home-cooked'] ? ' (' + tags['home-cooked'] + ' home-cooked)' : '') + '.' + nutri); highlights.push({ icon: 'restaurant', text: food.length + ' meal' + (food.length > 1 ? 's' : '') });
+      bullets.push('restaurant'); parts.push(food.length + ' meal' + (food.length > 1 ? 's' : '') + ' logged' + (tags['home-cooked'] ? ' (' + tags['home-cooked'] + ' home-cooked)' : '') + '.' + nutri); highlights.push({ icon: 'restaurant', text: food.length + ' meal' + (food.length > 1 ? 's' : '') });
     }
     var mind = entries.filter(function (e) { return e.type === 'mindfulness'; });
-    if (mind.length) { var mins = mind.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0); parts.push(Math.round(mins) + ' min of mindfulness' + (mind.some(function (e) { return e.data.kind === 'erin'; }) ? ' with Erin' : '') + '.'); highlights.push({ icon: 'self_improvement', text: Math.round(mins) + ' min calm' }); }
-    if (refl.length) parts.push(refl.length + ' reflection' + (refl.length > 1 ? 's' : '') + '.');
+    if (mind.length) { var mins = mind.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0); bullets.push('self_improvement'); parts.push(Math.round(mins) + ' min of mindfulness' + (mind.some(function (e) { return e.data.kind === 'erin'; }) ? ' with Erin' : '') + '.'); highlights.push({ icon: 'self_improvement', text: Math.round(mins) + ' min calm' }); }
+    if (refl.length) bullets.push('edit_note'); parts.push(refl.length + ' reflection' + (refl.length > 1 ? 's' : '') + '.');
     var flags = allFlags(date).filter(function (f) { return f.date === date; });
-    return { date: date, text: parts.length ? parts.join(' ') : 'Nothing logged this day.', highlights: highlights, flags: flags, count: entries.length, agent: 'DailySummaryAgent v1 (rule-based)' };
+    return { date: date, text: parts.length ? parts.join(' ') : 'Nothing logged this day.', items: parts.map(function (t, k) { return { icon: bullets[k] || 'circle', text: t }; }), highlights: highlights, flags: flags, count: entries.length, agent: 'DailySummaryAgent v1 (rule-based)' };
   }
 
   /* ---------- 4-Week Summary agent ---------- */
