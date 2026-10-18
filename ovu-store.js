@@ -163,6 +163,55 @@
     episodes.forEach(function (ep) { ep.length = diffDays(ep.start, ep.end) + 1; ep.heavyDays = ep.days.filter(function (d) { return d.data.flow === 'heavy'; }).length; });
     return episodes;
   }
+  /* ---------- remembered period starts (the onboarding calendar) ----------
+   * Remembered starts live in profile.periodRecall, apart from logged bleeding: they never create flow,
+   * episodes, coverage, streaks or hearts. They can only give a first, wide window until real periods are
+   * logged. These are product rules, not clinically validated thresholds:
+   * - a gap of 38 days or less counts as consecutive (a missed start inside it would need a cycle under
+   *   20 days); a longer gap counts only when the person says none are missing;
+   * - an approximate month between two marks breaks the chain, and is never turned into a date;
+   * - starts 14 days or less apart need an answer: separate periods, or one bleed that restarted;
+   * - a window needs two consecutive gaps of 15 to 60 days whose spread is 20 days or less, and a
+   *   confirmed most recent start no more than 60 days ago. */
+  function rhythmFromRecall(rc, asOf) {
+    asOf = asOf || today();
+    var out = { exact: [], approx: [], gaps: [], adjacent: [], run: [], median: null, min: null, max: null, spread: null, ok: false, reason: 'none', latest: null, unresolved: [] };
+    if (!rc || !Array.isArray(rc.starts)) return out;
+    var dates = [], months = [];
+    rc.starts.forEach(function (st) {
+      if (st && st.precision === 'day' && validDate(st.date) && st.date <= asOf) dates.push(st.date);
+      else if (st && st.precision === 'month' && /^\d{4}-\d{2}$/.test(st.month || '') && st.month <= asOf.slice(0, 7)) months.push(st.month);
+    });
+    dates = dates.filter(function (d, i) { return dates.indexOf(d) === i; }).sort();
+    months = months.filter(function (m, i) { return months.indexOf(m) === i; }).sort();
+    var cl = rc.clusters || {}, kept = [];
+    dates.forEach(function (d) {
+      var prev = kept[kept.length - 1];
+      if (prev && diffDays(prev, d) <= 14) { var ans = cl[prev + '|' + d]; if (ans === 'one') return; if (ans !== 'separate') out.unresolved.push([prev, d]); }
+      kept.push(d);
+    });
+    out.exact = kept; out.approx = months;
+    var run = [];
+    for (var i = 1; i < kept.length; i++) {
+      var a = kept[i - 1], b = kept[i], g = diffDays(a, b);
+      var broken = months.some(function (m) { return m >= a.slice(0, 7) && m <= b.slice(0, 7); });
+      var adjacent = !broken && (g <= 38 || rc.complete === 'yes');
+      out.gaps.push(g);
+      if (adjacent) out.adjacent.push({ from: a, to: b, gap: g });
+      if (adjacent && g >= 15 && g <= 60) run.push(g); else run = [];
+    }
+    run = run.slice(-6); out.run = run;
+    if (run.length) { out.min = Math.min.apply(null, run); out.max = Math.max.apply(null, run); out.spread = out.max - out.min; var sr = run.slice().sort(function (x, y) { return x - y; }), mid = Math.floor(sr.length / 2); out.median = sr.length % 2 ? sr[mid] : Math.round((sr[mid - 1] + sr[mid]) / 2); }
+    if (rc.latest === 'yes' && kept.length) out.latest = kept[kept.length - 1];
+    if (out.unresolved.length) out.reason = 'cluster';
+    else if (run.length < 2) out.reason = 'few';
+    else if (out.spread > 20) out.reason = 'irregular';
+    else if (!out.latest) out.reason = 'latest-unconfirmed';
+    else if (diffDays(out.latest, asOf) > 60) out.reason = 'latest-old';
+    else if (run.length && kept.indexOf(out.latest) !== kept.length - 1) out.reason = 'latest-unconfirmed';
+    else { out.ok = true; out.reason = 'ok'; }
+    return out;
+  }
   function cycleStats(asOf) {
     asOf = asOf || today();
     var eps = periodEpisodes().filter(function (ep) { return ep.start <= asOf; });
@@ -171,18 +220,23 @@
     for (var i = 1; i < starts.length; i++) lengths.push(diffDays(starts[i - 1], starts[i]));
     var recent = lengths.slice(-6);
     var p = profile();
-    var avg = recent.length ? Math.round(recent.reduce(function (a, b) { return a + b; }, 0) / recent.length) : (p.cycleLength || null);
+    var rr = p.periodRecall ? rhythmFromRecall(p.periodRecall, asOf) : null;
+    var useRecall = recent.length < 2 && !!(rr && rr.ok);
+    var avg = recent.length >= 2 ? Math.round(recent.reduce(function (a, b) { return a + b; }, 0) / recent.length) : (useRecall ? rr.median : (recent.length ? recent[0] : (p.cycleLength || null)));
     var periodLen = eps.length ? Math.round(eps.slice(-3).reduce(function (a, ep) { return a + ep.length; }, 0) / Math.min(3, eps.length)) : (p.periodLength || null);
-    var last = starts[starts.length - 1] || null;
+    var last = starts[starts.length - 1] || null, anchorRecalled = false;
+    if (rr && rr.latest && (!last || rr.latest > last)) { last = rr.latest; anchorRecalled = true; }
     var day = last ? diffDays(last, asOf) + 1 : null;
     /* no silent 28-day assumption: predictions need a logged or stated length, and pause while pregnant, after a hysterectomy or past menopause */
     var mode = p.predictionMode || 'normal';
+    if (useRecall && mode === 'normal') mode = 'wide'; /* remembered dates only ever give a wide window */
     var predictedNext = last && avg && mode !== 'suspended' ? addDays(last, avg) : null;
     /* An observed window, not a point: the shortest to longest of the last six logged cycles (at least
      * plus or minus a day), plus or minus two days around a single length or a stated profile length.
      * 'wide' adds three days each side; 'suspended' predicts nothing. */
     var lo = null, hi = null;
     if (recent.length >= 2) { lo = Math.min.apply(null, recent); hi = Math.max.apply(null, recent); if (hi - lo < 2) { lo -= 1; hi += 1; } }
+    else if (useRecall) { lo = rr.min; hi = rr.max; if (hi - lo < 2) { lo -= 1; hi += 1; } }
     else if (recent.length === 1) { lo = recent[0] - 2; hi = recent[0] + 2; }
     else if (p.cycleLength && Number(p.cycleLength) > 0) { lo = Number(p.cycleLength) - 2; hi = Number(p.cycleLength) + 2; }
     if (lo !== null && mode === 'wide') { lo -= 3; hi += 3; }
@@ -190,7 +244,8 @@
     var predictedTo = last && hi !== null && mode !== 'suspended' ? addDays(last, hi) : null;
     /* No silent 28-day phase either: without a logged or stated length the phase stays unknown. */
     var phase = null;
-    if (day && avg && mode !== 'suspended') {
+    /* A remembered start gives a day count but no phase: the bleeding days themselves were not logged. */
+    if (day && avg && mode !== 'suspended' && !anchorRecalled) {
       var L = avg, pl = periodLen || 5;
       if (day <= pl) phase = 'menstrual';
       else if (day < L - 16) phase = 'follicular';
@@ -198,7 +253,7 @@
       else phase = 'luteal';
       if (day > L + 7) phase = 'late';
     }
-    return { mode: mode, uncertain: mode === 'wide', episodes: eps, starts: starts, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, predictedFrom: predictedFrom, predictedTo: predictedTo, observedRange: lo !== null ? { lo: lo, hi: hi } : null, basis: recent.length ? recent.length + ' logged cycles' : (p.cycleLength ? 'your profile setting' : 'a 28-day default'), estimate: true };
+    return { mode: mode, uncertain: mode === 'wide', episodes: eps, starts: starts, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, predictedFrom: predictedFrom, predictedTo: predictedTo, recalled: rr, fromRecall: useRecall || anchorRecalled, observedRange: lo !== null ? { lo: lo, hi: hi } : null, basis: recent.length ? recent.length + ' logged cycles' : (p.cycleLength ? 'your profile setting' : 'a 28-day default'), estimate: true };
   }
 
   /* ---------- legacy mirrors (so older screens keep showing the same data) ---------- */
@@ -289,7 +344,7 @@
     load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox,
     profile: profile, setProfile: setProfile, state: state, setState: setState,
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
-    sleepHours: sleepHours, sleepStats: sleepStats, periodEpisodes: periodEpisodes, cycleStats: cycleStats,
+    sleepHours: sleepHours, sleepStats: sleepStats, periodEpisodes: periodEpisodes, cycleStats: cycleStats, rhythmFromRecall: rhythmFromRecall,
     exportJSON: exportJSON, importJSON: importJSON, clearAll: clearAll,
     crypto: { encrypt: encrypt, decrypt: decrypt, generatePassphrase: generatePassphrase, toCode: toCode, fromCode: fromCode }
   };

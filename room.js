@@ -1489,8 +1489,8 @@
     { id: 'regular', icon: 'calendar_month', pose: 'stretch', title: 'Your periods', sub: 'Pick what fits best. If you are pregnant or past menopause, choose the closest; you can change it later.', type: 'rows', rows: [{ key: 'regularity', label: 'How regular', options: [['regular', 'Fairly regular'], ['irregular', 'Irregular'], ['rare', 'Rare, with gaps of 3 months or more'], ['none12', 'No period for 12 months or more'], ['notyet', 'My periods haven’t started yet'], ['unsure', 'Not sure']] }, { key: 'menarche', label: 'Age at your first period (optional)', options: [['lt10', 'Under 10'], ['10-12', '10–12'], ['13-15', '13–15'], ['16+', '16 or older'], ['unknown', 'Don’t remember']], showIf: function (A) { return !!A.regularity && A.regularity !== 'notyet'; } }] },
     { id: 'preg', icon: 'pregnant_woman', pose: 'plants', title: 'Pregnancy and plans', sub: 'These change how dates should be read.', type: 'rows', rows: [{ key: 'pregState', label: 'Right now', options: [['none', 'None of these'], ['maybe', 'I could be pregnant'], ['pregnant', 'Pregnant'], ['postpartum', 'Gave birth in the last year'], ['loss', 'Recent pregnancy loss']] }, { key: 'breastfeeding', label: 'Breastfeeding', options: [['yes', 'Yes'], ['no', 'No']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'periodsBack', label: 'Have periods returned?', options: [['yes', 'Yes'], ['no', 'Not yet']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'plans', label: 'Plans', showIf: function (A) { return !isMinor(A); }, options: [['ttc', 'Trying to conceive now'], ['later', 'Maybe later'], ['no', 'Not planning']] }, { key: 'ttcMonths', label: 'Months trying', showIf: function (A) { return !isMinor(A) && A.plans === 'ttc'; }, options: [['0-5', '0–5'], ['6-11', '6–11'], ['12+', '12 or more']], showIf: function (A) { return A.plans === 'ttc'; } }, { key: 'fertilityTx', label: 'Fertility treatment before?', options: [['no', 'No'], ['yes', 'Yes']], showIf: function (A) { return A.plans === 'ttc'; } }] },
     { id: 'hormones', icon: 'medication', pose: 'outfit', title: 'Hormones and medicines', sub: 'Tick what you use now. These change what cycle dates mean.', type: 'multi', key: 'hormones', options: [['pill', 'Combined pill'], ['pop', 'Progestogen-only pill'], ['iud_h', 'Hormonal IUD'], ['iud_cu', 'Copper IUD'], ['implant', 'Implant or injection'], ['hrt', 'HRT (MHT)'], ['fertility', 'Fertility medicines'], ['ec', 'Emergency contraception this month'], ['other', 'Other relevant medicine'], ['none', 'None']], exclusive: ['none'] },
-    { id: 'last', icon: 'event', pose: 'bed', title: 'When did your last period start?', sub: 'The first day of bleeding, not spotting. Pregnant, breastfeeding, past menopause or no periods for another reason? Choose No periods right now.', type: 'date', key: 'lastPeriodStart', extraKey: 'lastPeriodStatus', extra: [['unknown', 'I don’t remember'], ['none', 'No periods right now']], optional: true, showIf: function (A) { return periodsMayCome(A); } },
-    { id: 'cycle', icon: 'autorenew', pose: 'stretch', title: 'Your usual rhythm', sub: 'Cycle length is from the first day of one period to the first day of the next.', type: 'rows', showIf: function (A) { return periodsMayCome(A) && A.lastPeriodStatus !== 'none'; }, rows: [{ key: 'cycleLength', label: 'Days from one period to the next', options: [['19', 'Under 21'], ['23', '21–24'], ['28', '25–30'], ['33', '31–35'], ['40', '36–45'], ['rare', '46 or more'], ['varies', 'Varies a lot'], ['unknown', 'Don’t know']] }, { key: 'periodLength', label: 'Days of bleeding', options: [['1', '1'], ['3', '2–3'], ['5', '4–5'], ['6', '6–7'], ['8', '8 or more']] }] },
+    { id: 'recall', icon: 'calendar_month', pose: 'bed', title: 'Which periods do you remember?', sub: 'Tap the first day of each period you remember. A few is enough.', type: 'recall', optional: true, showIf: function (A) { return periodsMayCome(A); } },
+    { id: 'bleedlen', icon: 'water_drop', pose: 'stretch', title: 'How long does bleeding usually last?', sub: 'Count the days of real bleeding, not spotting.', type: 'rows', optional: true, showIf: function (A) { return periodsMayCome(A) && !(A.periodRecall && A.periodRecall.status === 'no-periods'); }, rows: [{ key: 'periodLength', label: 'Usually', options: [['3', '1 to 3 days'], ['5', '4 to 5 days'], ['7', '6 to 8 days'], ['9', 'More than 8 days'], ['weeks', 'Weeks or months'], ['unknown', 'Not sure']] }] },
     { id: 'bleed', icon: 'water_drop', pose: 'teeth', title: 'Bleeding and pain', sub: 'Tick anything that happens. These are worth a conversation, not a worry.', type: 'multi', key: 'bleedSigns', options: [['flooding', 'Soaking through protection every 1 to 2 hours, or flooding'], ['between', 'Bleeding between periods or after sex'], ['postmeno', 'Bleeding after 12+ months without periods'], ['painlife', 'Pain that disrupts school, work or sleep'], ['none', 'None of these']], exclusive: ['none'], showIf: function (A) { return A.regularity !== 'notyet'; } },
     { id: 'urgent', icon: 'emergency', pose: 'shower', title: 'Anything happening right now?', sub: 'Only tick if it is happening today.', type: 'multi', key: 'urgent', options: [['severepain', 'Sudden severe pelvic pain'], ['faint', 'Fainting or dizziness with bleeding'], ['shoulder', 'Shoulder-tip pain with pelvic pain'], ['uncontrolled', 'Bleeding I cannot control'], ['none', 'None of these']], exclusive: ['none'] },
     { id: 'dx', icon: 'stethoscope', pose: 'dishes', title: 'Has a clinician told you about any of these?', sub: 'Self-reported is fine. Tick all that apply.', type: 'multi', key: 'conditions', options: [['pcos', 'PCOS'], ['endo', 'Endometriosis'], ['fibroids', 'Fibroids'], ['thyroid', 'Thyroid condition'], ['poi', 'Early menopause or POI'], ['cysts', 'Ovarian cysts'], ['pid', 'Pelvic infection'], ['surgery', 'Surgery on womb, tubes or ovaries'], ['oophorectomy', 'One or both ovaries removed'], ['hysterectomy', 'Hysterectomy'], ['chemo', 'Chemotherapy or pelvic radiotherapy'], ['anaemia', 'Low iron or anaemia'], ['other', 'Something else'], ['unsure', 'Not sure'], ['none', 'None']], exclusive: ['none'] },
@@ -1507,6 +1507,63 @@
   function periodsMayCome(A) { return A.regularity !== 'notyet' && A.regularity !== 'none12' && A.pregState !== 'pregnant' && !(A.pregState === 'postpartum' && A.periodsBack === 'no'); }
   function onbVisible(A) { return ONB.filter(function (s) { return !s.showIf || s.showIf(A); }); }
   function chipRow(key, options, val, multi) { return '<div class="chips" data-key="' + key + '"' + (multi ? ' data-multi="1"' : '') + '>' + options.map(function (o) { var v = o[0], lab = o[1], on = multi ? (val || []).indexOf(v) > -1 : val === v; return '<button type="button" class="chipbtn' + (on ? ' on' : '') + '" data-v="' + esc(v) + '">' + esc(lab) + '</button>'; }).join('') + '</div>'; }
+  /* ---------- remembered periods: a 12-month calendar, newest month first ---------- */
+  function recallState(A) { var r = A.periodRecall; if (!r || !Array.isArray(r.starts)) r = A.periodRecall = { version: 1, status: '', starts: [], clusters: {}, complete: '', latest: '' }; if (!r.clusters) r.clusters = {}; return r; }
+  function recallDays(r) { return r.starts.filter(function (x) { return x.precision === 'day'; }).map(function (x) { return x.date; }).sort(); }
+  function shortDate(iso) { return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); }
+  function recallHTML(A) {
+    var r = recallState(A), today = S.today(), t = new Date(today + 'T00:00:00'), h = '<p class="help rhelp">Mark when bleeding began, not spotting or every bleeding day. If one bleed lasted weeks, mark its start once. Remember the month but not the day? Tap <b>About this month</b>.</p><div class="rcal" id="rcal">';
+    for (var k = 0; k < 12; k++) {
+      var d0 = new Date(t.getFullYear(), t.getMonth() - k, 1), y = d0.getFullYear(), m = d0.getMonth(), mk = y + '-' + String(m + 1).padStart(2, '0');
+      var lead = (d0.getDay() + 6) % 7, dim = new Date(y, m + 1, 0).getDate();
+      var ap = r.starts.some(function (x) { return x.precision === 'month' && x.month === mk; });
+      h += '<div class="rmonth"><div class="rmhead"><b>' + d0.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) + '</b><button type="button" class="rapprox' + (ap ? ' on' : '') + '" data-rmonth="' + mk + '" aria-pressed="' + ap + '">' + (ap ? '<span class="ms">check</span>' : '') + 'About this month</button></div><div class="rgrid">' + ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(function (x) { return '<i>' + x + '</i>'; }).join('') + new Array(lead + 1).join('<span></span>');
+      for (var d = 1; d <= dim; d++) {
+        var iso = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'), on = r.starts.some(function (x) { return x.precision === 'day' && x.date === iso; });
+        h += '<button type="button" class="rday' + (on ? ' on' : '') + (iso === today ? ' today' : '') + '" data-rday="' + iso + '"' + (iso > today ? ' disabled' : '') + ' aria-pressed="' + on + '" aria-label="' + esc(shortDate(iso) + (iso === today ? ', today' : '') + (on ? ', period start' : '')) + '">' + d + '</button>';
+      }
+      h += '</div></div>';
+    }
+    return h + '</div><div id="recallMore">' + recallMoreHTML(A) + '</div>';
+  }
+  function rchips(attr, val, cur, opts) { return '<div class="chips">' + opts.map(function (o) { return '<button type="button" class="chipbtn' + (cur === o[0] ? ' on' : '') + '" ' + attr + '="' + esc(val) + '" data-rv="' + o[0] + '">' + esc(o[1]) + '</button>'; }).join('') + '</div>'; }
+  function recallMoreHTML(A) {
+    var r = recallState(A), days = recallDays(r), months = r.starts.filter(function (x) { return x.precision === 'month'; }).length, n = days.length + months, h = '';
+    h += '<div class="rstatus"><span class="ms">' + (r.status === 'no-periods' ? 'pause_circle' : 'favorite') + '</span>' + (n ? n + ' start' + (n === 1 ? '' : 's') + ' remembered. You can add more later.' : (r.status === 'none-remembered' ? 'That’s okay. Start with your next period.' : (r.status === 'no-periods' ? 'No periods right now. Predictions stay paused.' : 'Newest months are at the top. Scroll down for older ones.'))) + '</div>';
+    for (var i = 1; i < days.length; i++) {
+      var g = S.diffDays(days[i - 1], days[i]);
+      if (g <= 14) { var key = days[i - 1] + '|' + days[i]; h += '<div class="field"><span class="lbl">' + esc(shortDate(days[i - 1]) + ' and ' + shortDate(days[i]) + ' are ' + g + ' days apart') + '</span>' + rchips('data-rcl', key, r.clusters[key] || '', [['separate', 'Separate periods'], ['one', 'One bleed that stopped and restarted'], ['unsure', 'Not sure']]) + '</div>'; }
+    }
+    if (days.length >= 2) h += '<div class="field"><span class="lbl">Could any periods be missing between these marks?</span>' + rchips('data-rk', 'complete', r.complete || '', [['yes', 'No, these are all'], ['some', 'Some may be missing'], ['unsure', 'Not sure']]) + '</div>';
+    if (days.length) h += '<div class="field"><span class="lbl">' + esc('Was ' + shortDate(days[days.length - 1]) + ' your most recent period start?') + '</span>' + rchips('data-rk', 'latest', r.latest || '', [['yes', 'Yes'], ['no', 'No, there was a later one'], ['unsure', 'Not sure']]) + '</div>';
+    h += '<div class="field"><span class="lbl">Or</span>' + rchips('data-rk', 'status', n ? '' : r.status, [['none-remembered', 'I don’t remember any'], ['no-periods', 'No periods right now']]) + '</div>';
+    return h;
+  }
+  function recallClick(e, A) {
+    var rd = e.target.closest('[data-rday]'), ra = e.target.closest('[data-rmonth]'), rk = e.target.closest('[data-rk]'), rc = e.target.closest('[data-rcl]');
+    if (!rd && !ra && !rk && !rc) return false;
+    var r = recallState(A), before = recallDays(r).slice(-1)[0];
+    if (rd && !rd.disabled) {
+      var iso = rd.dataset.rday, had = r.starts.some(function (x) { return x.precision === 'day' && x.date === iso; });
+      r.starts = had ? r.starts.filter(function (x) { return !(x.precision === 'day' && x.date === iso); }) : r.starts.concat([{ id: 'r' + Date.now().toString(36) + r.starts.length, precision: 'day', date: iso }]);
+      rd.classList.toggle('on', !had); rd.setAttribute('aria-pressed', String(!had)); r.status = 'entered';
+    }
+    if (ra) {
+      var mk = ra.dataset.rmonth, hadM = r.starts.some(function (x) { return x.precision === 'month' && x.month === mk; });
+      r.starts = hadM ? r.starts.filter(function (x) { return !(x.precision === 'month' && x.month === mk); }) : r.starts.concat([{ id: 'r' + Date.now().toString(36) + r.starts.length, precision: 'month', month: mk }]);
+      ra.classList.toggle('on', !hadM); ra.setAttribute('aria-pressed', String(!hadM)); ra.innerHTML = (!hadM ? '<span class="ms">check</span>' : '') + 'About this month'; r.status = 'entered';
+    }
+    if (rk) {
+      r[rk.dataset.rk] = rk.dataset.rv;
+      if (rk.dataset.rk === 'status') { r.starts = []; r.clusters = {}; r.complete = ''; r.latest = ''; $$('.rday.on', body).forEach(function (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); }); $$('.rapprox.on', body).forEach(function (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); b.innerHTML = 'About this month'; }); }
+    }
+    if (rc) r.clusters[rc.dataset.rcl] = rc.dataset.rv;
+    /* a new most-recent mark needs its own confirmation */
+    if (recallDays(r).slice(-1)[0] !== before) r.latest = '';
+    A.lastPeriodStatus = r.status === 'no-periods' ? 'none' : '';
+    $('#recallMore').innerHTML = recallMoreHTML(A); chime('tap');
+    return true;
+  }
   function openOnboarding(i, a) {
     if (!onb || a !== undefined) onb = { i: 0, a: a || {} };
     var steps = onbVisible(onb.a), A = onb.a;
@@ -1517,6 +1574,7 @@
     if (st.type === 'multi') html = chipRow(st.key, st.options, A[st.key], true);
     if (st.type === 'date') html = '<div class="field"><input class="input" id="onbDate" type="date" max="' + S.today() + '" value="' + esc(A[st.key] || '') + '"></div>' + (st.extra ? chipRow(st.extraKey, st.extra, A[st.extraKey], false) : '');
     if (st.type === 'rows') html = st.rows.filter(function (r) { return !r.showIf || r.showIf(A); }).map(function (r) { return '<div class="field"><span class="lbl">' + esc(r.label) + '</span>' + chipRow(r.key, r.options, A[r.key], false) + '</div>'; }).join('');
+    if (st.type === 'recall') html = recallHTML(A);
     if (st.type === 'body') html = '<div class="grid2"><div class="field"><label for="onbH">Height (cm)</label><input class="input" id="onbH" type="number" inputmode="numeric" min="120" max="220" value="' + (A.heightCm || '') + '"></div><div class="field"><label for="onbW">Weight (kg)</label><input class="input" id="onbW" type="number" inputmode="decimal" min="30" max="250" step="0.1" value="' + (A.weightKg || '') + '"></div></div>';
     if (st.type === 'final') html = '<div class="field"><input class="input" id="onbName" maxlength="24" placeholder="Your name" value="' + esc(A.name || S.profile().name || '') + '"></div>';
     openSheet('onboarding', 'Getting to know you', 'Step ' + (onb.i + 1) + ' of ' + steps.length, 'favorite',
@@ -1527,8 +1585,10 @@
       if (st.type === 'date') { var d = $('#onbDate').value; A[st.key] = S.validDate(d) && d <= S.today() ? d : ''; if (A[st.key] && st.extraKey) A[st.extraKey] = ''; }
       if (st.type === 'body') { A.heightCm = Number($('#onbH').value) || null; A.weightKg = Number($('#onbW').value) || null; }
       if (st.type === 'final') { A.name = $('#onbName').value.trim(); }
+      if (st.type === 'recall') { var rr0 = recallState(A); if (!rr0.starts.length && !rr0.status) rr0.status = 'none-remembered'; }
     }
     body.addEventListener('click', function (e) {
+      if (st.type === 'recall' && recallClick(e, A)) return;
       var c = e.target.closest('.chipbtn[data-v]');
       if (c) {
         var row = c.parentNode, key = row.dataset.key, v = c.dataset.v;
@@ -1537,7 +1597,7 @@
         chime('tap'); return;
       }
       if (e.target.closest('#onbBack')) { collect(); openOnboarding(onb.i - 1); return; }
-      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; } openOnboarding(onb.i + 1); return; }
+      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; } if (st.type === 'recall') { A.periodRecall = { version: 1, status: 'none-remembered', starts: [], clusters: {}, complete: '', latest: '' }; A.lastPeriodStatus = ''; } openOnboarding(onb.i + 1); return; }
       if (e.target.closest('#onbNext')) {
         collect();
         if (st.id === 'urgent' && (A.urgent || []).some(function (x) { return x !== 'none'; })) { openUrgentCard(function () { openOnboarding(onb.i + 1); }); return; }
@@ -1572,8 +1632,8 @@
   }
   function predictionModeFor(A) {
     var h = A.hormones || [], c = A.conditions || [];
-    if (A.pregState === 'pregnant' || A.pregState === 'maybe' || A.regularity === 'notyet' || A.periodsStarted === 'no' || A.regularity === 'none12' || A.lastPeriodStatus === 'none' || c.indexOf('hysterectomy') > -1) return 'suspended';
-    if (A.regularity === 'rare' || A.regularity === 'irregular' || A.pregState === 'postpartum' || A.pregState === 'loss' || ['13-16', '13-17', '17'].indexOf(A.ageBand) > -1 || A.cycleLength === 'varies' || h.some(function (x) { return ['pill', 'pop', 'iud_h', 'implant', 'hrt', 'fertility', 'ec'].indexOf(x) > -1; }) || (A.signals || []).indexOf('flushes') > -1) return 'wide';
+    if (isMinor(A) || h.some(function (x) { return ['pill', 'pop', 'iud_h', 'implant', 'hrt', 'fertility'].indexOf(x) > -1; }) || A.pregState === 'pregnant' || A.pregState === 'maybe' || A.regularity === 'notyet' || A.periodsStarted === 'no' || A.regularity === 'none12' || A.lastPeriodStatus === 'none' || c.indexOf('hysterectomy') > -1) return 'suspended';
+    if (A.regularity === 'rare' || A.regularity === 'irregular' || A.pregState === 'postpartum' || A.pregState === 'loss' || A.ageBand === '17' || h.indexOf('ec') > -1 || A.periodLength === 'weeks' || (A.signals || []).indexOf('flushes') > -1) return 'wide';
     return 'normal';
   }
   function intakeNotes(A) {
@@ -1590,13 +1650,21 @@
     if (fam.indexOf('meno40') > -1) n.push({ level: 'watch', title: 'Family history of menopause before 40', detail: 'Worth mentioning when you discuss fertility or ovarian health.' });
     if (fam.indexOf('brca') > -1 || fam.indexOf('cancer') > -1) n.push({ level: 'watch', title: 'Family history of ovarian or breast cancer', detail: 'A clinician can advise whether genetic counselling is relevant.' });
     if (ur.some(function (x) { return x !== 'none'; })) n.push({ level: 'high', title: 'Urgent symptoms reported at set-up', detail: 'You were shown urgent-care guidance. Please follow it today.' });
+    /* remembered periods: only gaps the person confirmed as consecutive say anything */
+    if (A.periodRecall) {
+      var rr = S.rhythmFromRecall(A.periodRecall, S.today()), teen = ['under13', '13-16', '13-17', '17'].indexOf(A.ageBand) > -1, shortCut = teen ? 21 : 24;
+      var shortGap = rr.adjacent.filter(function (x) { return x.gap < shortCut && (x.gap >= 15 || (A.periodRecall.clusters || {})[x.from + '|' + x.to] === 'separate'); })[0];
+      if (shortGap) n.push({ level: 'watch', title: 'Periods starting close together', detail: 'You remember starts ' + shortGap.gap + ' days apart. Check these dates; periods that start less than ' + shortCut + ' days apart are worth discussing.' });
+      var longGap = rr.adjacent.filter(function (x) { return x.gap > 90; })[0];
+      if (longGap) n.push({ level: 'watch', title: 'A long gap between periods', detail: 'You remember a gap of ' + longGap.gap + ' days without another period. Consider discussing this with a clinician.' });
+    }
+    if (A.periodLength === '9' || A.periodLength === 'weeks') n.push({ level: 'watch', title: 'Bleeding that lasts more than 8 days', detail: 'FIGO describes bleeding beyond 8 days as prolonged. It is worth a clinician’s review, especially if it is new.' });
     return n;
   }
   function finishOnboarding(A) {
     var num = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : null; };
-    var patch = { name: A.name || S.profile().name || '', ageBand: A.ageBand || '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', minorAck: A.minorAck || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: A.lastPeriodStart || '', cycleLength: num(A.cycleLength), periodLength: num(A.periodLength), cycleVaries: A.cycleLength === 'varies' || A.cycleLength === 'rare', bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (A.ageBand && ['40-44', '45-49', '50+'].indexOf(A.ageBand) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), consent: { terms: true, at: new Date().toISOString() }, onboarded: true, onboardedAt: new Date().toISOString() };
+    var patch = { name: A.name || S.profile().name || '', ageBand: A.ageBand || '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', minorAck: A.minorAck || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: (function () { var r = A.periodRecall, d = r ? recallDays(recallState(A)) : []; return r && r.latest === 'yes' && d.length ? d[d.length - 1] : ''; })(), cycleLength: null, periodLength: num(A.periodLength), periodLengthAnswer: A.periodLength || '', periodRecall: A.periodRecall ? Object.assign({}, A.periodRecall, { capturedAt: new Date().toISOString() }) : null, cycleVaries: false, bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' && ['40-44', '45-49', '50+'].indexOf(A.ageBand) > -1 && A.pregState !== 'pregnant' && A.pregState !== 'postpartum' && !(A.hormones || []).some(function (x) { return x !== 'none' && x !== 'other' && x !== 'iud_cu'; }) ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (A.ageBand && ['40-44', '45-49', '50+'].indexOf(A.ageBand) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), onboarded: true, onboardedAt: new Date().toISOString() };
     S.setProfile(patch);
-    if (patch.lastPeriodStart && !S.list('period').length) { try { S.add('period', patch.lastPeriodStart, { flow: 'medium', clots: false, impact: false }, 'onboarding'); } catch (e) { } }
     try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, patch))); } catch (e) { }
     RW.grant(20, 'welcome');
     onb = null; closeSheet(); updateGreeting(); renderDeck(); renderProps();
