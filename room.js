@@ -32,7 +32,7 @@
       sleeper: { x: 31, y: 58, w: 21, rot: 34 }, zzz: { x: 30, y: 44 },
       meditator: { x: 28, y: 77, w: 11.5 }, aura: { x: 28, y: 75, w: 18 }, holo: { x: 39, y: 75, w: 15 },
       window: { x: 37.3, y: 31.5, rx: 7, ry: 9.6 },
-      winPatch: { x: 29.008, y: 23.152, w: 15.625, base: 'room-v3-win-' },
+      winPatch: { x: 29.144, y: 23.261, w: 15.353, base: 'room-v3-win-' },
       props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 87, y: 66, w: 10 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 40, y: 73.5, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
     },
     house: {
