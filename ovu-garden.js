@@ -143,6 +143,20 @@
     var L = R.layout(); placeEl(R.els.meditator, spot); placeEl(doc.getElementById('aura'), { x: spot.x, y: spot.y - 2, w: spot.w * 1.55 }); placeEl(R.els.holo, holoSpot || { x: spot.x + 10, y: spot.y - 2, w: spot.w * 1.27 });
     if (back) { L.home.x = back.x; L.home.y = back.y; L.home.flip = !!back.flip; } /* she comes back beside the bench, not to the gate */
   }
+  var sitting = null;
+  function sitDown(spot, back) {
+    standUp(); var wrap = R.els.props, el = doc.createElement('div');
+    el.className = 'nb sitter'; el.dataset.id = 'sitter'; el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', 'You are sitting on the bench. Tap to get up.');
+    el.style.left = spot.x + '%'; el.style.top = spot.y + '%'; el.style.width = spot.w + '%';
+    el.innerHTML = '<img src="' + ART + 'avatar-meditate.webp" alt="">'; wrap.appendChild(el);
+    sitting = { spot: spot, back: back, el: el }; R.els.scene.classList.add('sitting'); R.chime('tap');
+    R.toast('Sitting a while. Tap anywhere to get up.', 'chair');
+  }
+  function standUp() {
+    if (!sitting) return; var st = sitting; sitting = null;
+    if (st.el && st.el.parentNode) st.el.remove(); R.els.scene.classList.remove('sitting');
+    if (st.back) { R.els.avatar.style.transition = 'none'; R.placeAvatar(st.back, st.back.flip); void R.els.avatar.offsetWidth; R.els.avatar.style.transition = ''; }
+  }
   function openBench(spot, holoSpot, back) {
     if (R.sessionOn()) { R.hudOn(true); return; }
     var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
@@ -150,8 +164,9 @@
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Breathe with Erin, outdoors</b><small>Pick a length and Erin sits beside you on the bench, speaking in her own voice. Or follow the breathing orb with its soft bell.</small></div></div>' +
       '<div class="sessions" id="benchSessions"><button type="button" class="session on" data-kind="erin" data-min="3"><b>Erin · 3 minutes</b><small>Guided breathing, a soft close</small></button><button type="button" class="session" data-kind="erin" data-min="6"><b>Erin · 6 minutes</b><small>A longer settle</small></button><button type="button" class="session" data-kind="breathe" data-min="2"><b>Orb · 2 min</b><small>4-4-6 with a quiet bell</small></button><button type="button" class="session" data-kind="breathe" data-min="5"><b>Orb · 5 min</b><small>Follow the orb</small></button></div>' +
       '<div class="orbwrap"><div class="orb out" id="orb"></div><div class="orbtext" id="orbText">Ready when you are</div><div class="orbsub" id="orbSub">' + (mins ? Math.round(mins) + ' min this week' : 'First session this week') + '</div></div>' +
-      '<div class="row"><button type="button" class="btn primary" id="benchStart"><span class="ms">self_improvement</span>Begin</button></div>' +
-      '<p class="help">Sessions of a minute or more are saved to your journal, the same as on your mat.</p>');
+      '<div class="row"><button type="button" class="btn primary" id="benchStart"><span class="ms">self_improvement</span>Begin</button><button type="button" class="btn soft" id="benchSit"><span class="ms">chair</span>Just sit a while</button></div>' +
+      '<p class="help">Sessions of a minute or more are saved to your journal, the same as on your mat. Sitting is just sitting.</p>');
+    doc.getElementById('benchSit').addEventListener('click', function () { R.hideSheet(); sitDown(spot, back); });
     doc.getElementById('benchSessions').addEventListener('click', function (e) { var b = e.target.closest('.session'); if (!b) return; Array.prototype.slice.call(doc.querySelectorAll('#benchSessions .session')).forEach(function (x) { x.classList.toggle('on', x === b); }); });
     doc.getElementById('benchStart').addEventListener('click', function () {
       if (R.sessionOn()) return; var sel = doc.querySelector('#benchSessions .session.on');
@@ -179,6 +194,12 @@
   R.hotspotHandlers.pond = function (id, L) { if (!inGarden(L)) return false; openPond(); return true; };
   R.hotspotHandlers.greenhouse = function (id, L) { if (!inGarden(L)) return false; openGreenhouse(); return true; };
   R.hotspotHandlers.bench = function (id, L) { if (!inGarden(L)) return false; openBench(GARDEN.meditator, GARDEN.holo, { x: 37, y: 53, flip: true }); return true; };
-  G.openBench = openBench; G.sitAt = sitAt; G.renderPlot = renderPlot; G.openPlot = openPlot; G.watering = function () { return !!watering; };
-  R.on('boot', function () { R.on('props', renderPlot); R.on('layout', function (L) { if (watering) finishWatering(false); if (inGarden(L)) renderPlot(); }); });
+  G.openBench = openBench; G.sitAt = sitAt; G.sitDown = sitDown; G.standUp = standUp; G.sitting = function () { return !!sitting; }; G.renderPlot = renderPlot; G.openPlot = openPlot; G.watering = function () { return !!watering; };
+  R.on('boot', function () {
+    R.on('props', function (L) { renderPlot(L); if (sitting && !R.els.props.contains(sitting.el)) R.els.props.appendChild(sitting.el); }); /* a props re-render keeps her seated */
+    R.on('layout', function (L) { if (watering) finishWatering(false); if (sitting) { sitting.el.remove(); sitting = null; R.els.scene.classList.remove('sitting'); } if (inGarden(L)) renderPlot(); });
+    /* seated: the first tap anywhere stands her up, then the tap goes on to do what it does */
+    R.els.scene.addEventListener('click', function () { if (sitting) standUp(); }, true);
+    doc.addEventListener('keydown', function (e) { if (sitting && /^(Arrow|w|a|s|d|W|A|S|D)/.test(e.key)) standUp(); }, true);
+  });
 })(window);
