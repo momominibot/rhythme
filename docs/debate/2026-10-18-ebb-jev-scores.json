@@ -1,0 +1,8 @@
+{"model":"jev-1.13.0","date":"2026-10-18","note":"State was the Ebb copy, the app facts, the five confirmed defects, cited guidance and the three reviewers' positions. Thresholds are product guardrails, not clinical validation.",
+ "answers":{"urgency_wording":{"choice":"emergency_now","p":{"emergency_now":0.99,"doctor_today":0.01,"call_995_now":0}},
+ "ai_consent":{"choice":"opt_in_onboarding","p":{"opt_in_onboarding":0.97,"opt_in_settings_only":0.03,"default_on_disclose":0}},
+ "hrv_presentation":{"choice":"readings_on_cycle_day","p":{"readings_on_cycle_day":0.88,"defer_all_linkage":0.09,"phase_averages":0.03}},
+ "fix_defects_before_features":{"noul":0.87},
+ "naming":{"choice":"luna","p":{"luna":0.56,"luna_ebb_mode":0.44,"rename_to_ebb":0}},
+ "research_opt_in_placement":{"choice":"separate_later","p":{"separate_later":0.79,"mention_then_later":0.21,"onboarding_checkbox":0}},
+ "question_mode_descriptive_is_safe":{"noul":0.70}}}
