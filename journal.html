@@ -33,13 +33,14 @@
       <div id="shareBody"></div>
       <div id="aiShare"></div>
       <div class="row">
-        <button class="btn primary" id="makeShare"><span class="ms">lock</span>Create encrypted share</button>
+        <button class="btn primary" id="makePdf"><span class="ms">picture_as_pdf</span>Download PDF</button>
         <button class="btn soft" id="aiShareBtn"><span class="ms">auto_awesome</span>Write it up</button>
+        <button class="btn soft" id="makeShare"><span class="ms">lock</span>Encrypted share</button>
         <button class="btn soft" id="saveMonthly"><span class="ms">save</span>Save this summary</button>
       </div>
       <div class="msg" id="shareMsg2"></div>
       <div id="shareForm"></div>
-      <p class="note">Shares are files encrypted in your browser with a passphrase (AES-GCM). Hand the file to your clinician and tell them the passphrase separately. They open it in the <a href="doctor.html" style="color:var(--rm-mauve)">Doctor view</a>; nothing is uploaded anywhere.</p>
+      <p class="note">The PDF is made on this phone and is yours to print, save or send. The encrypted share is for clinicians who use the <a href="doctor.html" style="color:var(--rm-mauve)">Doctor view</a>; nothing is uploaded anywhere.</p>
     </section>
 
     <section class="card" id="flagCard">
@@ -93,6 +94,7 @@
 <script src="ovu-agents.js"></script>
 <script src="ovu-orb.js"></script>
 <script src="ovu-insight.js"></script>
+<script src="ovu-pdf.js"></script>
 <script>
 (function(){
   'use strict';
@@ -209,6 +211,52 @@
     var dates={};events.forEach(function(e){dates[e.date]=true;});
     return {kind:'ovumind-share',v:1,created:new Date().toISOString(),alias:S.profile().name||'Rhythme user',lifeStage:S.profile().lifeStage||'',range:{from:from,to:end},summary:A.fourWeekSummary(end),insight:I.cachedFourWeeks(end)||null,dailies:Object.keys(dates).sort().map(function(d){var s=A.dailySummary(d);return {date:d,text:s.text,flags:s.flags};}),events:events};
   }
+  function entryText(e){
+    var d=e.data;
+    if(e.type==='sleep')return ['Sleep '+A.fmtHours(S.sleepHours(d)),(d.bedTime||'?')+' to '+(d.wakeTime||'?')+(d.quality?', quality '+d.quality+'/5':'')+(d.notes?'. '+d.notes:'')];
+    if(e.type==='period')return ['Period, '+d.flow+' flow',[d.clots?'clots':'',d.impact?'affected the day':''].filter(Boolean).join(', ')];
+    if(e.type==='symptom')return ['Symptoms'+(typeof d.pain==='number'?', pain '+d.pain+'/10':''),((d.symptoms||[]).join(', ')||'none ticked')+(d.mood?', mood '+d.mood:'')+(d.notes?'. '+d.notes:'')];
+    if(e.type==='food'){var tot=(d.items&&d.items.length&&window.OvuFood)?window.OvuFood.sum(d.items):null;return [cap(d.meal||'meal'),(d.foods||'')+(tot?' ('+window.OvuFood.line(tot.totals)+')':'')+((d.tags||[]).length?'; '+d.tags.join(', '):'')];}
+    if(e.type==='mindfulness')return ['Mindfulness, '+(d.minutes||0)+' min',(d.kind==='erin'?'guided by Erin':d.kind==='informal'?'everyday practice':'breathing')+(d.completed?', completed':'')];
+    if(e.type==='reflection')return ['Reflection'+(d.mood?', '+d.mood:''),d.text||''];
+    if(e.type==='weight')return ['Weight',d.kg+' kg'];
+    return [e.type,''];
+  }
+  function pdfDoc(weeks){
+    var end=S.today(),from=S.addDays(end,-(weeks*7-1)),sum=A.fourWeekSummary(end),ins=I.cachedFourWeeks(end),c=ins&&ins.clinician||null;
+    var who=S.profile().name?S.profile().name+' · ':'',gen=new Date().toLocaleString(undefined,{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'});
+    var B=[{t:'h1',text:'Rhythme summary for your clinician'},{t:'small',text:who+'self-reported entries, '+pretty(sum.range.from,{day:'numeric',month:'short'})+' to '+pretty(sum.range.to,{day:'numeric',month:'short',year:'numeric'})+' · made on the phone '+gen+' · not a diagnosis'},{t:'rule'},{t:'h2',text:'At a glance (last 28 days)'}];
+    var eps=sum.cycle.episodes.length,cl=sum.cycle.cycleLengths.length;
+    B.push({t:'kv',label:'Logged',text:sum.coverage.daysWithEntries+' of 28 days with entries'+(sum.coverage.daysWithEntries<14?' (sparse: patterns need more days)':'')});
+    B.push({t:'kv',label:'Period',text:sum.cycle.periodDays+' bleeding day'+(sum.cycle.periodDays===1?'':'s')+(eps?' in '+eps+' period'+(eps===1?'':'s')+' ('+sum.cycle.episodes.map(function(ep){return pretty(ep.start,{day:'numeric',month:'short'})+(ep.length>1?' to '+pretty(ep.end,{day:'numeric',month:'short'}):'')+(ep.heavyDays?', '+ep.heavyDays+' heavy':'');}).join('; ')+')':'')});
+    B.push({t:'kv',label:'Cycle',text:sum.cycle.averageLength?sum.cycle.averageLength+' days average of '+cl+' logged cycle'+(cl===1?'':'s')+(cl?' ('+sum.cycle.cycleLengths.join(', ')+' days)':'')+(sum.cycle.basis==='your profile setting'?' (stated at set-up, not yet logged)':''):'no full cycle logged yet'+(sum.cycle.basis==='remembered period dates'?' (remembered dates give a day count only)':'')});
+    B.push({t:'kv',label:'Sleep',text:sum.sleep.average?sum.sleep.average+' h average over '+sum.sleep.nights+' night'+(sum.sleep.nights===1?'':'s')+', '+sum.sleep.under6+' under 6 h':'no nights logged'});
+    B.push({t:'kv',label:'Symptoms',text:sum.symptoms.daysLogged?sum.symptoms.daysLogged+' day'+(sum.symptoms.daysLogged===1?'':'s')+' logged'+(sum.symptoms.top.length?'; most often '+sum.symptoms.top.map(function(x){return x.name+' ('+x.days+')';}).join(', '):'')+(sum.symptoms.painMax!==null?'; pain average '+sum.symptoms.painAvg+'/10, up to '+sum.symptoms.painMax+'/10':''):'none logged'});
+    var moods=Object.keys(sum.symptoms.moods||{});if(moods.length)B.push({t:'kv',label:'Mood',text:moods.map(function(k){return k+' ('+sum.symptoms.moods[k]+')';}).join(', ')});
+    B.push({t:'kv',label:'Food',text:sum.food.meals+' meal'+(sum.food.meals===1?'':'s')+' over '+sum.food.daysLogged+' day'+(sum.food.daysLogged===1?'':'s')+(Object.keys(sum.food.tags||{}).length?'; tags: '+Object.keys(sum.food.tags).map(function(k){return k+' ('+sum.food.tags[k]+')';}).join(', '):'')});
+    B.push({t:'kv',label:'Calm',text:sum.mindfulness.sessions+' session'+(sum.mindfulness.sessions===1?'':'s')+', '+sum.mindfulness.minutes+' min'});
+    if(c){
+      B.push({t:'h2',text:'Summary'},{t:'p',text:c.overview||''});
+      SEC.forEach(function(sc){if(c[sc[0]])B.push({t:'kv',label:sc[1],text:c[sc[0]]});});
+      if(c.patterns&&c.patterns.length){B.push({t:'h2',text:'Patterns noted'});c.patterns.forEach(function(pt){B.push({t:'li',text:pt.title+': '+pt.detail+(pt.basis?' (based on: '+pt.basis+')':'')});});}
+    }
+    var flags=sum.flags||[];
+    B.push({t:'h2',text:'Pattern notes raised by the app’s rules'});
+    if(flags.length)flags.forEach(function(f){B.push({t:'li',text:f.title+': '+f.detail+(f.date?' ('+pretty(f.date,{day:'numeric',month:'short'})+')':'')});});else B.push({t:'p',text:'None in this window. Ranges used: FIGO 2018 for cycles (24 to 38 days, bleeding up to 8 days), AASM for sleep (7 hours or more).'});
+    var qs=(c&&c.questions&&c.questions.length?c.questions:sum.questions)||[];
+    if(qs.length){B.push({t:'h2',text:'Questions to raise'});qs.forEach(function(q){B.push({t:'li',text:q});});}
+    B.push({t:'h2',text:'Limits'},{t:'p',text:(c&&c.limits?c.limits+' ':'')+'Everything here is self-reported in a diary app. Missing days are not absence of symptoms or bleeding. Rules are deterministic'+(c?'; the written summary was drafted by a model from the same aggregated data and shown to the person first':'')+'. Not a diagnosis.'});
+    var events=S.list(null,{from:from,to:end}).slice().reverse();
+    B.push({t:'page'},{t:'h1',text:'Entries, '+pretty(from,{day:'numeric',month:'short'})+' to '+pretty(end,{day:'numeric',month:'short',year:'numeric'})},{t:'small',text:events.length+' entr'+(events.length===1?'y':'ies')+', newest first'},{t:'rule'});
+    var last=null;events.forEach(function(e){if(e.date!==last){last=e.date;B.push({t:'h2',text:pretty(e.date,{weekday:'long',day:'numeric',month:'long',year:'numeric'})});}var et=entryText(e);B.push({t:'kv',label:et[0],text:et[1]||'—'});});
+    if(!events.length)B.push({t:'p',text:'No entries in this range.'});
+    return {title:'Rhythme summary '+end,footer:'Rhythme · self-reported entries · not a diagnosis',blocks:B};
+  }
+  function download(blob,name){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);}
+  $('#makePdf').addEventListener('click',function(){
+    try{var weeks=4;var doc=pdfDoc(weeks),out=window.OvuPdf.make(doc);download(new Blob([out.bytes],{type:'application/pdf'}),'Rhythme-summary-'+S.today()+'.pdf');message($('#shareMsg2'),'PDF saved ('+out.pages+' page'+(out.pages===1?'':'s')+'). Print it, keep it, or send it to your clinician however you like.','ok');}
+    catch(e){message($('#shareMsg2'),'Could not make the PDF: '+e.message,'err');}
+  });
   $('#makeShare').addEventListener('click',function(){
     var pass=S.crypto.generatePassphrase();
     $('#shareForm').innerHTML='<div class="field"><label for="passInput">Passphrase (share it separately, by voice or another channel)</label><input class="input" id="passInput" value="'+esc(pass)+'"></div><div class="grid2"><div class="field"><label for="weeksSel">Range</label><select class="input" id="weeksSel"><option value="4">Last 4 weeks</option><option value="8">Last 8 weeks</option><option value="12">Last 12 weeks</option></select></div><div class="field"><label>&nbsp;</label><button class="btn primary" id="doShare" style="width:100%"><span class="ms">download</span>Encrypt & download</button></div></div><div class="msg" id="shareMsg"></div><div id="codeWrap"></div>';
@@ -216,11 +264,11 @@
       var pass=$('#passInput').value,weeks=Number($('#weeksSel').value);
       S.crypto.encrypt(buildBundle(weeks),pass).then(function(bundle){
         var text=JSON.stringify(bundle),blob=new Blob([text],{type:'application/json'}),a=document.createElement('a');
-        a.href=URL.createObjectURL(blob);a.download='ovumind-share-'+S.today()+'.ovushare';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
+        a.href=URL.createObjectURL(blob);a.download='Rhythme-share-'+S.today()+'.ovushare';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
         var code=S.crypto.toCode(bundle);
-        message($('#shareMsg'),'Encrypted share downloaded. Give your clinician the file (or the code below) and the passphrase separately.','ok');
-        $('#codeWrap').innerHTML='<div class="field"><span class="lbl">Share code ('+Math.round(code.length/1024)+' KB, contains the whole encrypted bundle)</span><div class="code" id="codeBox">'+esc(code)+'</div><div class="row"><button class="btn soft" id="copyCode"><span class="ms">content_copy</span>Copy code</button></div></div>';
-        $('#copyCode').addEventListener('click',function(){navigator.clipboard.writeText(code).then(function(){message($('#shareMsg'),'Code copied.','ok');},function(){message($('#shareMsg'),'Select the code box and copy it manually.','info');});});
+        message($('#shareMsg'),'Encrypted share saved. Give your clinician the file and tell them the passphrase separately.','ok');
+        $('#codeWrap').innerHTML='<div class="row"><button class="btn soft" id="copyCode"><span class="ms">content_copy</span>Copy as a share code ('+Math.round(code.length/1024)+' KB)</button></div><p class="note">Only if a file is awkward: the code is the whole encrypted bundle as text, for pasting into the Doctor view.</p>';
+        $('#copyCode').addEventListener('click',function(){navigator.clipboard.writeText(code).then(function(){message($('#shareMsg'),'Share code copied.','ok');},function(){message($('#shareMsg'),'Copying is blocked here; use the file instead.','info');});});
       }).catch(function(e){message($('#shareMsg'),e.message,'err');});
     });
   });
@@ -229,7 +277,7 @@
   $('#saveRf').addEventListener('click',function(){try{var t=$('#rfText').value.trim();if(!t)throw new Error('Write a few words first.');S.add('reflection',$('#rfDate').value,{text:t,mood:$('#rfMood').value});$('#rfText').value='';message($('#rfMsg'),'Reflection saved.','ok');renderAll();}catch(e){message($('#rfMsg'),e.message,'err');}});
   $('#filters').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;filter=b.dataset.f;$$('button',$('#filters')).forEach(function(x){x.classList.toggle('on',x===b);});renderTimeline();});
   $('#timeline').addEventListener('click',function(e){var d=e.target.closest('[data-del]');if(d&&confirm('Delete this entry?')){S.remove(d.dataset.del);renderAll();}});
-  $('#exportBtn').addEventListener('click',function(){var blob=new Blob([S.exportJSON()],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ovumind-backup-'+S.today()+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);message($('#dataMsg'),'Backup downloaded (unencrypted, keep it private).','ok');});
+  $('#exportBtn').addEventListener('click',function(){var blob=new Blob([S.exportJSON()],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Rhythme-backup-'+S.today()+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);message($('#dataMsg'),'Backup downloaded (unencrypted, keep it private).','ok');});
   $('#importFile').addEventListener('change',function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var n=S.importJSON(r.result,'merge');message($('#dataMsg'),'Imported. '+n+' entries now on this device.','ok');renderAll();}catch(e){message($('#dataMsg'),'Could not import: '+e.message,'err');}};r.readAsText(f);this.value='';});
   $('#deleteAll').addEventListener('click',function(){if(confirm('Delete every Rhythme room entry on this device? Exports you already downloaded are not affected.')&&confirm('This cannot be undone. Delete now?')){S.clearAll();message($('#dataMsg'),'Deleted. Your room is empty again.','ok');renderAll();}});
   $('#refreshBtn').addEventListener('click',renderAll);
