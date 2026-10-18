@@ -238,12 +238,15 @@
   }
   function clearInput() { keys = {}; }
   function livePos() { return active && cur ? { x: cur.x, y: cur.y } : R.pos(); }
+  /* while she sleeps nothing starts: the room's rule, with its own words (room.js asleep()) */
+  function napping() { if (!(R.asleep && R.asleep())) return false; R.toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return true; }
+  function shopsOpen() { return !R.shopOpenNow || !!R.shopOpenNow(); }
   function start() {
     if (active) return true;
     if (travelling) return false;
     if (R.busy()) { clearInput(); route = null; return false; }
     if (avatar.classList.contains('walking')) return false; /* a tap walk of the room's own is under way; let it land */
-    active = true; anchor = R.pos(); cur = { x: anchor.x, y: anchor.y };
+    active = true; anchor = R.pos(); cur = { x: anchor.x, y: anchor.y }; R.emit('walk', 'start');
     dims = { w: inner.clientWidth, h: inner.clientHeight };
     R.cancelIdle(); R.hideThought();
     avatar.classList.remove('idle', 'landing'); if (!reduced) avatar.classList.add('walking');
@@ -365,7 +368,7 @@
     if (!res) { showRing(x, y, true); return false; }
     var goal = res.pts[res.pts.length - 1]; showRing(goal.x, goal.y, false);
     if (!start()) return false;
-    route = { pts: res.pts.slice(1), i: 0, left: res.cost }; inDoor = !!doorAt(worldNow().doors, cur.x, cur.y);
+    route = { pts: res.pts.slice(1), i: 0, left: res.cost }; inDoor = !!doorAt(worldNow().doors, cur.x, cur.y); R.emit('walk', 'tap'); /* an accepted walk: the camera follows again */
     return true;
   }
   function isInteractive(t) { return !!(t && t.closest && t.closest(INTERACTIVE)); }
@@ -386,15 +389,21 @@
   function travel(to, opts) {
     opts = opts || {};
     if (travelling) return false;
+    if (napping()) return false;
     if (R.busy()) { R.toast('Finish what you are doing first.', 'info'); return false; }
     var fromL = R.layout(), from = fromL.id, fromScene = sceneOf(fromL), target = to === 'home' ? R.homeId() : to, T = R.LAYOUTS[target];
     if (!T) return false;
+    if (T.store && !shopsOpen()) { R.toast('The shutters are down. Dream Street opens at 9 in the morning and closes at 10 at night.', 'storefront'); return false; } /* the interiors keep the street's hours */
     travelling = true; clearInput(); if (active) commit();
     scene.classList.add('fading'); R.chime('tap');
     var t0 = Date.now();
     preload(R.ART + T.img).then(function () {
       var left = Math.max(0, (reduced ? 80 : 380) - (Date.now() - t0));
       root.setTimeout(function () {
+        if (napping() || (T.store && !shopsOpen())) { /* she fell asleep or the shutters came down during the fade */
+          if (T.store && !shopsOpen() && !(R.asleep && R.asleep())) R.toast('The shutters are down. Dream Street opens at 9 in the morning and closes at 10 at night.', 'storefront');
+          scene.classList.remove('fading'); travelling = false; return;
+        }
         R.applyLayout(target, !!opts.visit);
         var L = R.layout(), e = opts.entry || entryFor(L, from, fromScene);
         avatar.style.transition = 'none'; R.placeAvatar(e, e.flip); flip = !!e.flip; void avatar.offsetWidth; avatar.style.transition = '';
@@ -494,6 +503,6 @@
     if (root.MutationObserver) new MutationObserver(function () { if (avatar.classList.contains('walking') && !active && !cyc.cssRaf) cyc.cssRaf = root.requestAnimationFrame(function () { cssCycle(); }); }).observe(avatar, { attributes: true, attributeFilter: ['class'] });
     R.setMoving(function () { return active || travelling; }); /* goHome waits while she is walking somewhere of her own choosing */
   }
-  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
+  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
   R.on('boot', mount);
 })(window);

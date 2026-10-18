@@ -314,10 +314,10 @@
       var pts = Array.from(camPointers.values()), d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), mx = (pts[0].x + pts[1].x) / 2, my = (pts[0].y + pts[1].y) / 2;
       var z = Math.max(1, Math.min(CAM_MAX, camGesture.z * d / Math.max(20, camGesture.d)));
       var cx = (camGesture.mx - camGesture.x) / camGesture.z, cy = (camGesture.my - camGesture.y) / camGesture.z;
-      cam.z = z; cam.x = mx - cx * z; cam.y = my - cy * z; camApply(false); camSuppressClick = true; e.preventDefault();
+      if (!camGesture.told) { camGesture.told = true; emit('cam', 'pinch'); } cam.z = z; cam.x = mx - cx * z; cam.y = my - cy * z; camApply(false); camSuppressClick = true; e.preventDefault();
     } else if (camGesture && camGesture.type === 'pan') {
       var q = camLocal(e), dx = q.x - camGesture.sx, dy = q.y - camGesture.sy; camGesture.moved = Math.max(camGesture.moved, Math.abs(dx) + Math.abs(dy));
-      if (camGesture.moved > 6) { cam.x = camGesture.x + dx; cam.y = camGesture.y + dy; camApply(false); camSuppressClick = true; e.preventDefault(); }
+      if (camGesture.moved > 6) { if (!camGesture.told) { camGesture.told = true; emit('cam', 'pan'); } cam.x = camGesture.x + dx; cam.y = camGesture.y + dy; camApply(false); camSuppressClick = true; e.preventDefault(); }
     }
   }, { passive: false });
   function camEnd(e) { camPointers.delete(e.pointerId); if (camPointers.size < 2 && camGesture && camGesture.type === 'pinch') camGesture = null; if (!camPointers.size) camGesture = null; if (camSuppressClick) setTimeout(function () { camSuppressClick = false; }, 60); }
@@ -325,17 +325,17 @@
   /* a drag or a pinch is not a tap: swallow the click that follows it */
   scene.addEventListener('click', function (e) { if (camSuppressClick) { e.stopPropagation(); e.preventDefault(); camSuppressClick = false; } }, true);
   /* trackpad pinch (ctrl + wheel) and double-tap zoom where you point */
-  scene.addEventListener('wheel', function (e) { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); var p = camLocal(e); camZoomAt(p.x, p.y, cam.z * Math.exp(-e.deltaY * 0.01), false); }, { passive: false });
-  scene.addEventListener('dblclick', function (e) { if (camInteractive(e.target)) return; var p = camLocal(e); if (cam.z > 1.2) camFit(true); else camZoomAt(p.x, p.y, 2, true); });
+  scene.addEventListener('wheel', function (e) { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); var p = camLocal(e); emit('cam', 'wheel'); camZoomAt(p.x, p.y, cam.z * Math.exp(-e.deltaY * 0.01), false); }, { passive: false });
+  scene.addEventListener('dblclick', function (e) { if (camInteractive(e.target)) return; var p = camLocal(e); if (cam.z > 1.2) { emit('cam', 'fit'); camFit(true); } else { emit('cam', 'dbl'); camZoomAt(p.x, p.y, 2, true); } });
   function camControls() {
     if ($('#camCtl')) return;
     var c = document.createElement('div'); c.className = 'camctl'; c.id = 'camCtl';
     c.innerHTML = '<button type="button" id="camIn" aria-label="Zoom in"><span class="ms">add</span></button><button type="button" id="camOut" aria-label="Zoom out"><span class="ms">remove</span></button><button type="button" id="camFit" aria-label="Show the whole home" disabled><span class="ms">fit_screen</span></button>';
     scene.appendChild(c);
-    var mid = function () { return { x: scene.clientWidth / 2, y: scene.clientHeight / 2 }; };
-    $('#camIn').addEventListener('click', function (e) { e.stopPropagation(); var m = mid(); camZoomAt(m.x, m.y, cam.z * 1.5, true); });
-    $('#camOut').addEventListener('click', function (e) { e.stopPropagation(); var m = mid(); camZoomAt(m.x, m.y, cam.z / 1.5, true); });
-    $('#camFit').addEventListener('click', function (e) { e.stopPropagation(); camFit(true); });
+    var mid = function () { var f = hooks.camFocus && hooks.camFocus(); return f || { x: scene.clientWidth / 2, y: scene.clientHeight / 2 }; }; /* the follow camera zooms about her */
+    $('#camIn').addEventListener('click', function (e) { e.stopPropagation(); var m = mid(); emit('cam', 'zoom'); camZoomAt(m.x, m.y, cam.z * 1.5, true); });
+    $('#camOut').addEventListener('click', function (e) { e.stopPropagation(); var m = mid(); emit('cam', 'zoom'); camZoomAt(m.x, m.y, cam.z / 1.5, true); });
+    $('#camFit').addEventListener('click', function (e) { e.stopPropagation(); emit('cam', 'fit'); camFit(true); });
     window.addEventListener('resize', function () { camApply(false); });
   }
   function buildScene() {
@@ -2333,12 +2333,14 @@
   /* ---------- hooks for the scene modules: ovu-walk.js, ovu-garden.js, ovu-community.js ----------
    * They add layouts, doors and hotspot handlers of their own and listen for layout, props and boot;
    * everything else here stays private. */
-  var hooks = { on: {}, hotspotHandlers: {}, fallbackHotspot: null, hudStop: null, moving: null }, booted = false;
+  var hooks = { on: {}, hotspotHandlers: {}, fallbackHotspot: null, hudStop: null, moving: null, camFocus: null }, booted = false;
   function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = {
     LAYOUTS: LAYOUTS, ART: ART, hotspotHandlers: hooks.hotspotHandlers,
     on: function (name, f) { (hooks.on[name] = hooks.on[name] || []).push(f); if (name === 'boot' && booted) f(); },
     setFallbackHotspot: function (f) { hooks.fallbackHotspot = f; }, setHudStop: function (f) { hooks.hudStop = f; }, setMoving: function (f) { hooks.moving = f; }, emit: emit,
+    /* the camera, for ovu-camera.js: read it, set it, and say where + and − should zoom about */
+    cam: function () { return { x: cam.x, y: cam.y, z: cam.z }; }, camSet: function (x, y, z, anim) { cam.z = z; cam.x = x; cam.y = y; camApply(anim); }, setCamFocus: function (f) { hooks.camFocus = f; },
     layout: function () { return L; }, pos: function () { return { x: pos.x, y: pos.y }; }, visiting: function () { return visiting; }, homeId: currentHomeId,
     /* anything that should pause walking and scene changes */
     busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },

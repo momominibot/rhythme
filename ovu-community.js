@@ -89,7 +89,7 @@
     });
   }
   function openNeighbour(id) {
-    var n = neighbour(id); if (!n) return; var hellos = notesState().hellos, said = hellos[id] === S.today();
+    var n = neighbour(id); if (!n || root.OvuWalk.napping()) return; var hellos = notesState().hellos, said = hellos[id] === S.today();
     R.openSheet('neighbour', n.name, n.sample ? 'A sample neighbour, until friends can join' : 'Your neighbour', 'waving_hand',
       '<div class="nbcard"><img src="' + ART + 'avatar-' + n.outfit + '.webp" alt=""><div><p>“' + esc(n.line) + '”</p><small>' + (n.pet ? 'With ' + esc(n.pet.name) + '. ' : '') + 'Lives in ' + esc({ house: 'the two-storey cottage', bathhouse: 'the cottage with the bath', familyhome: 'the family home' }[n.home] || 'a dream house') + '.</small></div></div>' +
       '<div class="row"><button type="button" class="btn primary" id="nbHello"' + (said ? ' disabled' : '') + '><span class="ms">waving_hand</span>' + (said ? 'You said hello today' : 'Say hello') + '</button><button type="button" class="btn soft" id="nbVisit"><span class="ms">cottage</span>Visit her home</button></div>' +
@@ -121,6 +121,7 @@
   }
   function endVisit() { if (!visit) return; visit = null; R.els.scene.classList.remove('nbvisit'); }
   function openBoard() {
+    if (root.OvuWalk.napping()) return;
     var st = notesState(), today = S.today();
     R.openSheet('board', 'Noticeboard', 'A gentle note for today, and what neighbours pinned', 'push_pin',
       '<div class="notice today"><span class="ms">auto_awesome</span><div><b>Today’s gentle prompt</b><p>' + esc(promptFor(today)) + '</p></div></div>' +
@@ -136,6 +137,7 @@
     });
   }
   function openStall() {
+    if (root.OvuWalk.napping()) return;
     var H = root.OvuHerbs, cs = S.cycleStats(), teas = H ? H.forPhase(cs.mode === 'suspended' ? null : cs.phase).slice(0, 3) : [];
     R.openSheet('stall', 'The tea stall', 'A cup for where you are in your cycle', 'emoji_food_beverage',
       '<p class="help">' + (cs.phase ? 'Day ' + cs.cycleDay + ', ' + esc(cs.phase) + ' phase: these come first.' : 'No phase yet, so a few gentle favourites.') + ' Food notes, not medicine. If you are pregnant, breastfeeding or on medicines, ask first.</p>' +
@@ -145,6 +147,7 @@
   }
   var WISHES = ['A petal drifts. A wish for a gentle day.', 'The water keeps moving. So can you, slowly.', 'A coin would be nice, but a breath is free.', 'Wish made. Now one soft breath out.'];
   function openFountain() {
+    if (root.OvuWalk.napping()) return;
     var wrap = R.els.props, fx = doc.createElement('div'); fx.className = 'wish'; fx.setAttribute('aria-hidden', 'true'); fx.style.left = '50%'; fx.style.top = '44%'; fx.style.width = '18%';
     for (var i = 0; i < 6; i++) fx.innerHTML += '<i style="left:' + (15 + i * 14) + '%;animation-delay:' + (i * 0.12) + 's"></i>';
     wrap.appendChild(fx); root.setTimeout(function () { fx.remove(); }, 2400);

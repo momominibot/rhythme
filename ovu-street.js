@@ -27,13 +27,15 @@
   };
   root.OvuStreet = { LAYOUT: STREET, STORES: STORES };
   var R = root.OvuRoom; if (!R || !root.document || !root.document.createElement) return;
+  var doc = root.document;
   R.LAYOUTS.street = STREET;
   function onStreet(L) { return L && L.id === 'street'; }
   STORES.forEach(function (s) {
     R.hotspotHandlers[s.id] = function (id, L) {
       if (!onStreet(L)) return false;
       L.home.x = s.wp.x; L.home.y = s.wp.y; L.home.flip = !!s.wp.flip; /* back on the street she stands at this door */
-      if (R.LAYOUTS[s.layout]) root.OvuWalk.travel(s.layout); else if (R.openShop) R.openShop(s.tab); /* the sheet is the fallback */
+      if (!root.OvuWalk.shopsOpen() || (R.asleep && R.asleep())) { if (R.openShop) R.openShop(s.tab); } /* after hours or asleep: the room's own closed card */
+      else if (R.LAYOUTS[s.layout]) root.OvuWalk.travel(s.layout); else if (R.openShop) R.openShop(s.tab); /* the sheet is the fallback */
       return true;
     };
   });
@@ -41,4 +43,20 @@
   var prevArch = R.hotspotHandlers.arch, prevBench = R.hotspotHandlers.bench;
   R.hotspotHandlers.arch = function (id, L) { if (onStreet(L)) { root.OvuWalk.travel('garden'); return true; } return prevArch ? prevArch(id, L) : false; };
   R.hotspotHandlers.bench = function (id, L) { if (onStreet(L)) { root.OvuGarden.openBench(STREET.meditator, STREET.holo, { x: 44, y: 70, flip: false }); return true; } return prevBench ? prevBench(id, L) : false; };
+  /* Dream Street keeps hours (room.js shopOpenNow, 9 am to 10 pm, tester mode may visit): outside them each storefront
+   * wears a small closed sign on the plate, re-drawn with the props and checked once a minute while she is on the street */
+  function renderSigns(L) {
+    if (!L || !onStreet(L) || !R.els.props) return;
+    Array.prototype.slice.call(R.els.props.querySelectorAll('.closedsign')).forEach(function (el) { el.remove(); });
+    if (root.OvuWalk.shopsOpen()) return;
+    STORES.forEach(function (s) {
+      var el = doc.createElement('div'); el.className = 'closedsign'; el.setAttribute('aria-hidden', 'true');
+      el.style.left = s.x + '%'; el.style.top = (s.y + 7) + '%'; el.innerHTML = '<span class="ms">nights_stay</span>Closed · 9 am to 10 pm';
+      R.els.props.appendChild(el);
+    });
+  }
+  R.on('boot', function () {
+    R.on('layout', renderSigns); R.on('props', renderSigns);
+    root.setInterval(function () { var L = R.layout(); if (onStreet(L)) renderSigns(L); }, 60000);
+  });
 })(window);

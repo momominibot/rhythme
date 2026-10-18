@@ -102,6 +102,7 @@
     wrap.appendChild(el);
   }
   function openPlot() {
+    if (root.OvuWalk.napping()) return;
     var sm = summary(S), total = STAGES[STAGES.length - 1].at;
     R.openSheet('plot', 'Your plot', 'It grows with your days, never against them', 'yard',
       '<div class="plotcard"><div class="plotart">' + plantSVG(sm.stage) + '</div><div><b>' + esc(sm.name) + '</b><p>' + esc(sm.note) + '</p><small>' + sm.days + ' day' + (sm.days === 1 ? '' : 's') + ' counted' + (sm.nextAt ? ' · next stage at ' + sm.nextAt : '') + '</small><div class="bar"><i style="width:' + Math.min(100, Math.round(sm.days / total * 100)) + '%"></i></div></div></div>' +
@@ -111,7 +112,7 @@
     doc.getElementById('plotWater').addEventListener('click', function () { startWatering(); });
   }
   function startWatering() {
-    if (watering || R.sessionOn()) return;
+    if (watering || R.sessionOn() || root.OvuWalk.napping()) return;
     var sm = summary(S);
     watering = { startedAt: Date.now(), timers: [], done: false, rewarded: !sm.wateredToday };
     R.hideSheet(); R.hudOn(true, 'Watering'); R.caption(WATER_LINES[0]); say(0);
@@ -145,6 +146,7 @@
   }
   var sitting = null;
   function sitDown(spot, back) {
+    if (root.OvuWalk.napping()) return;
     standUp(); var wrap = R.els.props, el = doc.createElement('div');
     el.className = 'nb sitter'; el.dataset.id = 'sitter'; el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', 'You are sitting on the bench. Tap to get up.');
     el.style.left = spot.x + '%'; el.style.top = spot.y + '%'; el.style.width = spot.w + '%';
@@ -158,6 +160,7 @@
     if (st.back) { R.els.avatar.style.transition = 'none'; R.placeAvatar(st.back, st.back.flip); void R.els.avatar.offsetWidth; R.els.avatar.style.transition = ''; }
   }
   function openBench(spot, holoSpot, back) {
+    if (root.OvuWalk.napping()) return;
     if (R.sessionOn()) { R.hudOn(true); return; }
     var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
     R.openSheet('bench', 'Sit a while', 'The bench is yours for a few minutes', 'chair',
@@ -175,11 +178,13 @@
   }
   var POND_LINES = ['A lotus opens in its own time. So do you.', 'Three slow breaths by the water. In, and out.', 'Whatever today held, it can rest here a moment.', 'Still water, still mind, for a breath or two.'];
   function openPond() {
+    if (root.OvuWalk.napping()) return;
     var line = POND_LINES[Math.floor(Date.now() / 3600000) % POND_LINES.length];
     R.showThought('🌸'); root.setTimeout(R.hideThought, 2600); R.toast(line, 'water');
     var wrap = R.els.props, rip = doc.createElement('div'); rip.className = 'ripple'; rip.setAttribute('aria-hidden', 'true'); rip.style.left = '68%'; rip.style.top = '58%'; rip.style.width = '14%'; wrap.appendChild(rip); root.setTimeout(function () { rip.remove(); }, 2200);
   }
   function openGreenhouse() {
+    if (root.OvuWalk.napping()) return;
     var H = root.OvuHerbs, cs = S.cycleStats(), teas = H ? H.forPhase(cs.mode === 'suspended' ? null : cs.phase).slice(0, 4) : [];
     R.openSheet('greenhouse', 'The greenhouse', 'Teas and herbs, with their evidence', 'local_florist',
       '<p class="help">' + (cs.phase ? 'Picked for your ' + esc(cs.phase) + ' phase first.' : 'Pick what sounds kind today.') + ' Guidance, not a prescription; check with a clinician if you are pregnant, breastfeeding or on medicines.</p>' +
@@ -199,7 +204,7 @@
     R.on('props', function (L) { renderPlot(L); if (sitting && !R.els.props.contains(sitting.el)) R.els.props.appendChild(sitting.el); }); /* a props re-render keeps her seated */
     R.on('layout', function (L) { if (watering) finishWatering(false); if (sitting) { sitting.el.remove(); sitting = null; R.els.scene.classList.remove('sitting'); } if (inGarden(L)) renderPlot(); });
     /* seated: the first tap anywhere stands her up, then the tap goes on to do what it does */
-    R.els.scene.addEventListener('click', function () { if (sitting) standUp(); }, true);
+    R.els.scene.addEventListener('click', function (e) { if (sitting && !e.defaultPrevented) standUp(); }, true); /* not the click the camera swallowed after a drag */
     doc.addEventListener('keydown', function (e) { if (sitting && /^(Arrow|w|a|s|d|W|A|S|D)/.test(e.key)) standUp(); }, true);
   });
 })(window);

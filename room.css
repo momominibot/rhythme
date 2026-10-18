@@ -1376,3 +1376,6 @@ body.btap-open{overflow:hidden}
 .closedcard .ms{font-size:40px;color:var(--rm-mauve)}
 .closedcard b{display:block;font-family:var(--serif);font-weight:600;font-size:20px;color:var(--rm-plum);margin-top:6px}
 .closedcard p{font:600 12.5px/1.5 var(--sans);color:var(--rm-ink-2);margin-top:6px}
+/* ---------- Dream Street after hours: the closed sign on each storefront (ovu-street.js) ---------- */
+.closedsign{position:absolute;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:4px;background:var(--rm-card,#fff);color:var(--rm-plum);font:600 .62rem/1.2 var(--sans,system-ui);padding:4px 9px;border-radius:999px;box-shadow:var(--rm-shadow,0 4px 14px rgba(90,66,116,.18));border:1px solid rgba(255,255,255,.8);white-space:nowrap;pointer-events:none;z-index:8}
+.closedsign .ms{font-size:14px;color:var(--rm-mauve,#8b6fb0)}

@@ -126,6 +126,7 @@
     root.setTimeout(function () { renderStore(R.layout()); }, 720);
   }
   function openCard(itemId) {
+    if (root.OvuWalk.napping()) return;
     var it = RW.item(itemId); if (!it) return; var l = ledger(), st = status(it, l), can = l.hearts >= it.cost, btns = '', note = '';
     if (it.kind === 'pet') btns = st.owned ? (st.placed ? '<button type="button" class="btn soft" data-act="toggle"><span class="ms">inventory_2</span>Put away for now</button>' : '<button type="button" class="btn primary" data-act="toggle"><span class="ms">home</span>Bring her home</button>') : '<button type="button" class="btn primary" data-act="buy"' + (can ? '' : ' disabled') + '><span class="ms">favorite</span>Adopt · ' + it.cost + ' ♥</button>';
     else if (it.kind === 'treat') { btns = '<button type="button" class="btn primary" data-act="buy"' + (can ? '' : ' disabled') + '><span class="ms">cookie</span>Buy a pack · ' + it.cost + ' ♥</button>'; note = (st.have ? st.have + ' in your cupboard. ' : '') + 'A pack holds ' + (it.qty || 1) + '. Give one from a pet’s care bubble at home.'; }
@@ -151,7 +152,7 @@
   /* tap a prop: walk over, then the card */
   function tapProp(el) {
     var id = el.dataset.item, L = R.layout(), p = placements(L.id, RW.SHOP, ledger(), R.LAYOUTS.room.props).filter(function (x) { return x.item.id === id; })[0];
-    if (!p) return; R.chime('tap'); R.cancelIdle(); if (root.OvuWalk.walking()) root.OvuWalk.stop();
+    if (!p || root.OvuWalk.napping()) return; R.chime('tap'); R.cancelIdle(); if (root.OvuWalk.walking()) root.OvuWalk.stop();
     L.home.x = p.spot.wp.x; L.home.y = p.spot.wp.y; L.home.flip = !!p.spot.wp.flip; /* after the card she stays by the shelf */
     R.walkTo(p.spot.wp, function () { if (!R.busy()) openCard(id); });
   }
