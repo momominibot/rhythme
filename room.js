@@ -111,6 +111,11 @@
       (fills > 0.1 ? '<rect x="' + (32 - w / 2) + '" y="14" width="' + w + '" height="20" rx="10" fill="' + (level === 'heavy' ? '#b43f68' : level === 'medium' ? '#dd6f94' : '#f3b9cb') + '"/>' : '') + dots + clots + '</svg>';
   }
   var GUIDES = {
+    nova: {
+      icon: 'factory', title: 'How processed is it? (NOVA)',
+      body: '<p>Foods are grouped by the nature, extent and purpose of the industrial processing they have been through, using the NOVA system: <b>1 whole or minimally processed</b> (fruit, vegetables, eggs, plain rice, fresh meat and fish, plain milk), <b>2 kitchen staples</b> (oil, butter, sugar, salt), <b>3 processed</b> (cheese, canned fish, bakery bread) and <b>4 ultra-processed</b> (soft drinks, instant noodles, sausages, luncheon meat, fishballs, biscuits, chocolate bars, malt drink powders).</p><p>Packaged foods use the NOVA group published by Open Food Facts. Generic foods, hawker items and photo estimates have no published group, so Ovumind estimates one from the food type and says so; <b>likely</b> means the name alone cannot settle it (sliced bread, otah, bubble tea). NOVA studies split home and hawker dishes into their ingredients using recipes. Ovumind has no recipes yet, so freshly made dishes and drinks such as bak chor mee or kopi are not scored. They are shown in their own colour and flagged when they include parts such as fishballs, luncheon meat or coloured syrups.</p><p>The headline is the share of calories from ultra-processed foods among the foods Ovumind could classify, shown with how much of your log that covers. When less than half is classified, it gives no percentage. Large studies link diets high in ultra-processed foods with poorer health, but they show association, not cause, and one meal says little. Use it as a gentle pattern guide, not a verdict on a meal or on you. Tap <b>Words only</b> to hide the numbers.</p>',
+      evidence: [['Monteiro et al. 2019, Public Health Nutrition: Ultra-processed foods, what they are and how to identify them (NOVA)', 'https://doi.org/10.1017/S1368980018003762'], ['Lane et al. 2024, BMJ: umbrella review of ultra-processed food exposure and 32 health outcomes (observational)', 'https://www.bmj.com/content/384/bmj-2023-077310'], ['Open Food Facts: NOVA groups for packaged products', 'https://world.openfoodfacts.org/nova']]
+    },
     bleeding: {
       icon: 'water_drop', title: 'What light, medium and heavy mean',
       body: '<div class="flows">' +
@@ -609,12 +614,35 @@
   /* ---------- diary: camera-assisted food journal ---------- */
   var diaryDate = S.today(), draft = { items: [], photo: null }, picked = null, stopScan = null, ovarian = null;
   function stopCamera() { if (stopScan) { try { stopScan(); } catch (e) { } stopScan = null; } var cw = $('#camwrap'); if (cw) cw.classList.remove('on'); }
+  var NV = window.OvuNova || null;
+  function novaChip(c) {
+    if (!NV || !c) return '';
+    var g = NV.GROUPS[c.group] || NV.GROUPS.unknown;
+    return '<span class="nchip" style="--nc:' + g.color + '" title="' + esc(NV.basisText(c)) + '">' + esc(g.label) + (typeof c.group === 'number' ? ' · NOVA ' + c.group : '') + (c.upfParts ? ' · has processed parts' : '') + '</span>';
+  }
+  function novaWords() { try { return localStorage.getItem('ovumind_nova_words') === '1'; } catch (e) { return false; } }
+  function novaBar(sh, titleHtml) {
+    if (!NV || !sh || !sh.items) return '';
+    var words = novaWords(), order = [1, 2, 3, 4, 'cooked', 'unknown'].filter(function (k) { return sh.count[k] > 0; }), cov = NV.coverageText(sh, words);
+    return '<div class="nbar-wrap">' + '<div class="nbar-t"><span>' + (titleHtml || 'How processed') + '</span><button type="button" class="nwords" data-nwords="1">' + (words ? 'Show numbers' : 'Words only') + '</button></div>' +
+      (words || sh.total <= 0 ? '' : '<div class="nbar" role="img" aria-label="' + esc(NV.headline(sh)) + '">' + order.filter(function (k) { return sh.kcal[k] > 0; }).map(function (k) { return '<i style="flex:' + sh.kcal[k].toFixed(1) + ';background:' + NV.GROUPS[k].color + '"></i>'; }).join('') + '</div>') +
+      '<div class="nbar-h">' + esc(NV.headline(sh, words)) + '</div>' + (cov ? '<div class="nbar-c">' + esc(cov) + '</div>' : '') +
+      '<div class="nbar-k">' + order.map(function (k) { return '<span>' + (words ? '' : '<i style="background:' + NV.GROUPS[k].color + '"></i>') + esc(NV.GROUPS[k].label) + (words ? '' : ' · ' + sh.count[k]) + '</span>'; }).join('') + '</div></div>';
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('[data-nwords]')) return;
+    try { localStorage.setItem('ovumind_nova_words', novaWords() ? '0' : '1'); } catch (err) { }
+    var fl = document.getElementById('foodList'); if (fl && typeof diaryDate !== 'undefined') fl.innerHTML = foodEntriesHTML(diaryDate);
+    if (document.getElementById('items')) renderItems();
+  });
   function foodEntriesHTML(date) {
     var items = S.list('food', { from: date, to: date });
     if (!items.length) return '<div class="empty">Nothing logged for ' + esc(prettyDate(date)) + ' yet.</div>';
-    return '<div class="entries">' + items.map(function (e) {
+    var dayItems = NV ? NV.entriesItems(items) : [];
+    var dayBar = dayItems.length ? novaBar(NV.share(dayItems), 'How processed ' + (date === S.today() ? 'today' : 'on ' + esc(prettyDate(date))) + ' ' + infoBtn('nova')) : '';
+    return dayBar + '<div class="entries">' + items.map(function (e) {
       var d = e.data, tot = d.items && d.items.length ? FD.sum(d.items) : null;
-      return '<div class="entry">' + (d.photo ? '<img class="ethumb" src="' + d.photo + '" alt="">' : '<span class="ms">' + ({ breakfast: 'egg_alt', lunch: 'rice_bowl', dinner: 'dinner_dining', snack: 'icecream' })[d.meal] + '</span>') + '<div class="body"><b>' + esc(cap(d.meal)) + (d.time ? ' · ' + esc(d.time) : '') + '</b><span>' + esc(d.foods) + (tot ? '\n' + esc(FD.line(tot.totals)) : '') + ((d.tags || []).length ? '\n' + esc(d.tags.join(' · ')) : '') + '</span></div><button class="del" data-del="' + esc(e.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>';
+      return '<div class="entry">' + (d.photo ? '<img class="ethumb" src="' + d.photo + '" alt="">' : '<span class="ms">' + ({ breakfast: 'egg_alt', lunch: 'rice_bowl', dinner: 'dinner_dining', snack: 'icecream' })[d.meal] + '</span>') + '<div class="body"><b>' + esc(cap(d.meal)) + (d.time ? ' · ' + esc(d.time) : '') + '</b><span>' + esc(d.foods) + (tot ? '\n' + esc(FD.line(tot.totals)) : '') + ((d.tags || []).length ? '\n' + esc(d.tags.join(' · ')) : '') + '</span>' + (NV && d.items && d.items.length ? '<small class="nmini">' + esc(NV.short(NV.share(d.items), novaWords())) + '</small>' : '') + '</div><button class="del" data-del="' + esc(e.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>';
     }).join('') + '</div>';
   }
   function resultsHTML(list) {
@@ -630,7 +658,7 @@
   function showPicker(food) {
     picked = { food: food, portion: food.portions[1] || food.portions[0], grams: (food.portions[1] || food.portions[0]).g };
     var p = $('#picker'); p.classList.add('on');
-    p.innerHTML = '<h4>' + esc(food.name) + '</h4><div class="src">' + esc(food.source.label) + (food.source.ref ? ' · ' + esc(food.source.ref) : '') + (food.source.date ? ' · ' + esc(food.source.date) : '') + (food.source.detail ? '<br>' + esc(food.source.detail) : '') + '</div>' +
+    p.innerHTML = '<h4>' + esc(food.name) + '</h4><div class="src">' + esc(food.source.label) + (food.source.ref ? ' · ' + esc(food.source.ref) : '') + (food.source.date ? ' · ' + esc(food.source.date) : '') + (food.source.detail ? '<br>' + esc(food.source.detail) : '') + '</div>' + (NV ? (function (c) { return '<div class="nrow">' + novaChip(c) + '<small>' + esc(NV.basisText(c)) + '</small></div>'; })(NV.classify(food)) : '') +
       '<div class="portions" id="portions">' + food.portions.map(function (po, i) { return '<button type="button" class="chipbtn' + (po === picked.portion ? ' on' : '') + '" data-i="' + i + '">' + esc(po.label) + ' · ' + po.g + ' g</button>'; }).join('') + '</div>' +
       '<div class="grams"><input class="input" type="number" id="gramsIn" min="1" max="3000" step="1" value="' + picked.grams + '"><span>' + (food.basis === '100ml' ? 'ml' : 'g') + ' you ate</span></div>' +
       '<div class="nutline" id="nutline"></div>' +
@@ -655,9 +683,9 @@
     wireItemGrams();
     var wrap = $('#items'), tot = $('#totals');
     if (!draft.items.length) { wrap.innerHTML = ''; tot.innerHTML = ''; return; }
-    wrap.innerHTML = draft.items.map(function (it, i) { return '<div class="item"><span class="ms">' + (it.source.kind === 'off' ? 'qr_code_2' : it.source.kind === 'custom' ? 'edit' : it.source.kind === 'hpb' ? 'verified' : it.source.kind === 'estimate' ? 'photo_camera' : 'restaurant') + '</span><span><b>' + esc(it.name) + '</b><small>' + esc(it.portionLabel) + ' · ' + it.grams + ' g · ' + esc(FD.fmt('kcal', it.nutrients.kcal)) + ' kcal · ' + esc(FD.fmt('protein', it.nutrients.protein)) + ' g protein</small></span>' + (it.source.kind === 'estimate' || it.source.kind === 'hpb' ? '<label class="igrams"><input class="input" type="number" inputmode="numeric" min="1" max="2000" data-g="' + i + '" value="' + Math.round(it.grams || 0) + '" aria-label="Grams of ' + esc(it.name) + '">g</label>' : '') + '<button class="del" data-i="' + i + '" aria-label="Remove"><span class="ms">close</span></button></div>'; }).join('');
+    wrap.innerHTML = draft.items.map(function (it, i) { return '<div class="item"><span class="ms">' + (it.source.kind === 'off' ? 'qr_code_2' : it.source.kind === 'custom' ? 'edit' : it.source.kind === 'hpb' ? 'verified' : it.source.kind === 'estimate' ? 'photo_camera' : 'restaurant') + '</span><span><b>' + esc(it.name) + '</b><small>' + esc(it.portionLabel) + ' · ' + it.grams + ' g · ' + esc(FD.fmt('kcal', it.nutrients.kcal)) + ' kcal · ' + esc(FD.fmt('protein', it.nutrients.protein)) + ' g protein</small>' + (NV ? novaChip(NV.classify(it)) : '') + '</span>' + (it.source.kind === 'estimate' || it.source.kind === 'hpb' ? '<label class="igrams"><input class="input" type="number" inputmode="numeric" min="1" max="2000" data-g="' + i + '" value="' + Math.round(it.grams || 0) + '" aria-label="Grams of ' + esc(it.name) + '">g</label>' : '') + '<button class="del" data-i="' + i + '" aria-label="Remove"><span class="ms">close</span></button></div>'; }).join('');
     var sm = FD.sum(draft.items), miss = ['kcal', 'protein', 'carb', 'fat', 'fiber'].filter(function (k) { return sm.missing[k]; });
-    tot.innerHTML = '<b>This meal</b><div class="nuts">' + ['kcal', 'protein', 'carb', 'fat', 'fiber'].map(function (k) { return '<div><strong>' + esc(FD.fmt(k, sm.totals[k])) + '</strong><small>' + esc(k === 'kcal' ? 'kcal' : FD.LABEL[k]) + '</small></div>'; }).join('') + '</div><p>' + sm.count + ' item' + (sm.count === 1 ? '' : 's') + (miss.length ? ' · ' + miss.map(function (k) { return sm.missing[k] + ' missing ' + FD.LABEL[k].toLowerCase(); }).join(', ') : ' · all values present') + '. Estimated from the sources shown, with the amounts you confirmed.</p>';
+    tot.innerHTML = '<b>This meal</b><div class="nuts">' + ['kcal', 'protein', 'carb', 'fat', 'fiber'].map(function (k) { return '<div><strong>' + esc(FD.fmt(k, sm.totals[k])) + '</strong><small>' + esc(k === 'kcal' ? 'kcal' : FD.LABEL[k]) + '</small></div>'; }).join('') + '</div><p>' + sm.count + ' item' + (sm.count === 1 ? '' : 's') + (miss.length ? ' · ' + miss.map(function (k) { return sm.missing[k] + ' missing ' + FD.LABEL[k].toLowerCase(); }).join(', ') : ' · all values present') + '. Estimated from the sources shown, with the amounts you confirmed.</p>' + (NV ? novaBar(NV.share(draft.items), 'How processed this meal is') : '');
   }
   function customFoodForm() {
     return '<div class="picker on" id="customForm"><h4>Custom food from the label</h4><div class="src">Type the per-100 g (or per-100 ml) values printed on the pack. Leave blanks for anything not shown.</div>' +
@@ -683,7 +711,7 @@
       '<div class="field"><label for="fdFoods">Notes or anything not in the list</label><textarea class="input" id="fdFoods" placeholder="Kopi C, two slices of kaya toast..."></textarea></div>' +
       '<div class="field"><span class="lbl">Tags</span><div class="chips" id="tagChips">' + A.FOOD_TAGS.map(function (t) { return '<button type="button" class="chipbtn" data-tag="' + esc(t) + '">' + esc(cap(t)) + '</button>'; }).join('') + '</div></div>' +
       '<button class="btn primary" id="saveFood" style="width:100%"><span class="ms">check</span>Save meal</button><div class="msg" id="foodMsg"></div>' +
-      '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' +
+      guideHTML('nova') + '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' +
       '<a class="btn soft" href="food-journal.html" style="margin-top:12px"><span class="ms">restaurant</span>Open the full food journal</a>');
     (ovarian ? Promise.resolve(ovarian) : loadJSON('assets/data/ovarian-foods.json').then(function (d) { ovarian = d; return d; })).then(function () { var w = $('#picksWrap'); if (w) w.innerHTML = picksHTML(phase === 'late' ? 'luteal' : phase); }).catch(function () { });
     var area = $('#modeArea');
@@ -711,7 +739,7 @@
           bcTimer = setTimeout(function () {
             (FD.searchProducts ? FD.searchProducts(q) : Promise.reject(new Error('Product search is not available in this version.'))).then(function (list) {
               if (seq !== bcSeq) return;
-              out.innerHTML = head + (list.length ? '<div class="results">' + list.map(function (p) { return '<button type="button" class="result" data-code="' + esc(p.code) + '">' + (p.image ? '<img src="' + esc(p.image) + '" alt="" loading="lazy">' : '<span class="ms">qr_code_2</span>') + '<span><b>' + esc(p.name) + '</b><small>' + esc([p.brands, p.quantity].filter(Boolean).join(' · ')) + (p.sg ? ' · sold in Singapore' : '') + '</small></span></button>'; }).join('') + '</div><p class="help">Product data from Open Food Facts, a community database. Check the label if something looks off.</p>' : '<p class="help">No packaged products found for “' + esc(q) + '”. Try the brand name, or add it as a custom food from the label.</p>');
+              out.innerHTML = head + (list.length ? '<div class="results">' + list.map(function (p) { return '<button type="button" class="result" data-code="' + esc(p.code) + '">' + (p.image ? '<img src="' + esc(p.image) + '" alt="" loading="lazy">' : '<span class="ms">qr_code_2</span>') + '<span><b>' + esc(p.name) + '</b><small>' + esc([p.brands, p.quantity].filter(Boolean).join(' · ')) + (p.sg ? ' · sold in Singapore' : '') + '</small>' + (NV && p.nova ? novaChip(NV.classify({ nova: p.nova })) : '') + '</span></button>'; }).join('') + '</div><p class="help">Product data from Open Food Facts, a community database. Check the label if something looks off.</p>' : '<p class="help">No packaged products found for “' + esc(q) + '”. Try the brand name, or add it as a custom food from the label.</p>');
             }).catch(function (err) { if (seq === bcSeq) out.innerHTML = head + '<p class="help">' + esc(err.message) + '</p>'; });
           }, now ? 0 : 450);
         };
@@ -1108,10 +1136,11 @@
             var chip = '<i class="fl-src ' + (hpb ? 'hpb' : 'est') + '" title="' + esc(hpb ? it.source.ref + ' · ' + it.source.detail : 'Estimated from the photo by Luna’s model') + '">' + (hpb ? 'HPB' : 'photo estimate') + '</i>';
             return '<div class="fl-item">' + (editing
               ? '<input class="input fl-name" data-name="' + i + '" value="' + esc(it.name) + '" aria-label="Food name"><label class="fl-g"><input class="input" type="number" inputmode="numeric" min="1" max="2000" data-grams="' + i + '" value="' + Math.round(it.grams || 0) + '" aria-label="Grams">' + (it.basis === '100ml' ? 'ml' : 'g') + '</label><button type="button" class="fl-x" data-x="' + i + '" aria-label="Remove ' + esc(it.name) + '"><span class="ms">close</span></button>'
-              : '<div><b>' + esc(it.name) + '</b><span>' + esc(it.portionLabel) + (it.confidence === 'low' ? ' · not sure' : '') + ' ' + chip + '</span></div>') +
+              : '<div><b>' + esc(it.name) + '</b><span>' + esc(it.portionLabel) + (it.confidence === 'low' ? ' · not sure' : '') + ' ' + chip + '</span>' + (NV ? novaChip(NV.classify(it)) : '') + '</div>') +
               '<em>' + FD.fmt('kcal', it.nutrients.kcal) + ' kcal</em></div>';
           }).join('') + '</div>' +
           '<div class="fl-macros"><span><i class="d p"></i>Protein ' + FD.fmt('protein', t.protein) + ' g</span><span><i class="d c"></i>Carbs ' + FD.fmt('carb', t.carb) + ' g</span><span><i class="d f"></i>Fat ' + FD.fmt('fat', t.fat) + ' g</span></div>' +
+          (NV ? novaBar(NV.share(items), '') : '') +
           '<p class="fl-note">' + foodNote(items) + '</p>' +
           '<div class="row"><button type="button" class="btn primary" data-act="save"><span class="ms">check</span>Save</button><button type="button" class="btn ghost" data-act="edit">' + (editing ? 'Done' : 'Edit') + '</button><button type="button" class="btn ghost" data-act="skip">Not now</button></div>';
       }

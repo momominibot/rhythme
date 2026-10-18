@@ -805,3 +805,22 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .bcbusy{font:600 12px var(--sans);color:var(--rm-ink-3);padding:8px 2px}
 #bcResults .result img{width:38px;height:38px;object-fit:contain;border-radius:8px;background:#fff;flex:0 0 auto}
 .snapbtns label{text-transform:none;letter-spacing:normal;font:700 13px var(--sans)}
+/* processed-food score (NOVA) */
+.nchip{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:2px 8px 2px 6px;border-radius:99px;font:700 10.5px var(--sans);color:var(--rm-ink);background:color-mix(in srgb,var(--nc) 16%,#fff);border:1px solid color-mix(in srgb,var(--nc) 45%,transparent);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.nchip::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--nc);flex:0 0 auto}
+.nrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 2px}
+.nrow small{font:500 11px var(--sans);color:var(--rm-ink-3)}
+.nbar-wrap{margin:10px 0 6px;padding:10px 12px;background:#fff;border-radius:14px;box-shadow:var(--rm-shadow)}
+.nbar-t{display:flex;align-items:center;gap:6px;font:800 12px var(--sans);color:var(--rm-plum);margin-bottom:6px}
+.nbar{display:flex;height:12px;border-radius:99px;overflow:hidden;background:#eee9f3;gap:2px}
+.nbar i{display:block;min-width:4px}
+.nbar-h{font:700 12.5px var(--sans);color:var(--rm-ink);margin-top:6px}
+.nbar-k{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px;font:600 10.5px var(--sans);color:var(--rm-ink-3)}
+.nbar-k i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:0}
+.foodlog .nbar-wrap{box-shadow:none;background:var(--rm-paper-2);padding:8px 10px}
+.nmini{display:block;margin-top:3px;font:700 10.5px var(--sans);color:var(--rm-ink-3)}
+.item .nchip{margin-left:0}
+.nbar-t{justify-content:space-between}
+.nbar-t>span{display:flex;align-items:center;gap:6px}
+.nwords{border:1px solid rgba(107,82,142,.18);background:var(--rm-paper-2);color:var(--rm-ink-2);border-radius:99px;padding:3px 9px;font:700 10.5px var(--sans);cursor:pointer;white-space:nowrap}
+.nbar-c{font:500 11px var(--sans);color:var(--rm-ink-3);margin-top:3px;line-height:1.4}

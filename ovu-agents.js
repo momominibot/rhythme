@@ -81,7 +81,9 @@
     if ((tags['late night'] || 0) >= 4) flags.push(flag('info', 'LATE_EATING', 'Several late-night meals', 'Late eating often shows up as lighter sleep the same night.', end));
     var nut = nutrientDays(meals);
     if (nut.days >= 3 && nut.avg.fiber !== null && nut.avg.fiber < 15 && nut.complete.fiber >= 3) flags.push(flag('info', 'FIBRE_LOW', 'Fibre looks low on logged days', 'Averaging ' + Math.round(nut.avg.fiber) + ' g per logged day; common guidance is 25 g or more for adults. Only days with complete entries count.', end));
-    return { agent: 'foodAgent', metrics: { meals: meals.length, daysLogged: Object.keys(days).length, tags: tags, nutrients: nut }, flags: flags };
+    /* NOVA processing over the week: calories by group, ultra-processed share (ovu-nova.js). A metric only, never a flag. */
+    var NV = root.OvuNova, processing = NV ? NV.share(NV.entriesItems(meals)) : null;
+    return { agent: 'foodAgent', metrics: { meals: meals.length, daysLogged: Object.keys(days).length, tags: tags, nutrients: nut, processing: processing && processing.items ? { upfSharePctOfClassified: processing.coverage !== null && processing.coverage >= 0.5 && !processing.noKcal[4] ? NV.pct(processing.upfShare) : null, coveragePct: NV.pct(processing.coverage), itemsByGroup: processing.count, itemsWithoutCalories: processing.noKcal, freshlyMadeWithProcessedParts: processing.partsDishes, likelyEstimates: processing.likely } : null }, flags: flags };
   }
   /* Per-day nutrient totals from entries that carry database values. A day counts
      as complete for a nutrient only when every item that day has that value. */

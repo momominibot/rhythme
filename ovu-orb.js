@@ -154,7 +154,7 @@
       name: f.name, foodId: f.id, basis: f.basis || '100g', prep: null, source: f.source, grams: g,
       portionLabel: viaServing ? (f.serving.label || '1 serving') + ' (HPB serving)' : (est.portionLabel.replace(/\s*\(.*\)$/, '') || '1 serving') + ' (about ' + Math.round(g) + ' ' + unit + ')',
       method: 'photo + HPB SG FoodID', confidence: est.confidence, per100: f.n, nutrients: FD.scale(f.n, g),
-      hpb: { crId: f.crId, alias: m.alias, servingG: sv, viaServing: viaServing, modelName: est.name, modelGrams: est.grams || null, modelKcal: est.nutrients.kcal },
+      hpb: { crId: f.crId, cat: f.cat || null, desc: String(f.desc || '').slice(0, 200), alias: m.alias, servingG: sv, viaServing: viaServing, modelName: est.name, modelGrams: est.grams || null, modelKcal: est.nutrients.kcal },
       estimate: est
     };
   }

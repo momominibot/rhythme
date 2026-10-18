@@ -62,7 +62,8 @@
     return {
       name: food.name, foodId: food.id, source: food.source, basis: food.basis || '100g', prep: food.prep || null,
       grams: Math.round(grams * 10) / 10, portionLabel: portion ? portion.label : grams + ' g', method: method || (portion && portion.g === grams ? 'household measure' : 'typed amount'),
-      per100: food.n, nutrients: scale(food.n, grams)
+      per100: food.n, nutrients: scale(food.n, grams),
+      nova: food.nova || null, cat: food.cat || null
     };
   }
   function sum(items) {
