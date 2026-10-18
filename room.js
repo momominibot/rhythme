@@ -1256,7 +1256,7 @@
   var STORES = {
     pet: { title: 'Pet shop', tag: 'Adopt a friend', sub: 'One kitten and one puppy are home at a time; the others nap in your inventory until you swap.', icon: 'pets', img: 'shop-pets.webp', blurb: 'Kittens, puppies and Mewmew' },
     furniture: { title: 'Furniture store', tag: 'Pieces for your room', sub: 'Lamps, seats and shelves. Pieces that share a spot swap with each other.', icon: 'chair', img: 'shop-furniture.webp', blurb: 'Lamps, seats and shelves' },
-    home: { title: 'Property showroom', tag: 'Dream houses to move into', sub: 'Visit any home first. Move in when you have the hearts.', icon: 'cottage', img: 'house-thumb.webp', blurb: 'Houses to visit and move into' }
+    home: { title: 'Property showroom', tag: 'Dream houses to move into', sub: 'Visit any home first. Move in when you have the hearts.', icon: 'cottage', img: 'shop-homes.webp', blurb: 'Houses to visit and move into' }
   };
   var NEXT_HOMES = [{ icon: 'yard', name: 'Garden', note: 'Outdoor practices among the flowers: watering, morning light, a bench for tea.' }, { icon: 'groups', name: 'Community plaza', note: 'A fountain, lanterns and a tea stall where neighbours gather; friends join once accounts arrive.' }];
   function openShop(tab) {
