@@ -1400,7 +1400,7 @@
     if (!shopOpenNow() || asleep()) {
       openSheet('shop', 'Dream Street', asleep() ? 'The shops can wait until morning' : 'Open 9 am to 10 pm', 'storefront',
         '<div class="closedcard"><span class="ms">nights_stay</span><b>' + (asleep() ? 'She is asleep.' : 'The shutters are down.') + '</b><p>' + (asleep() ? 'Tap the bed to wake her, then come back.' : 'Dream Street opens at 9 in the morning and closes at 10 at night. Your things are still yours; arranging the home works any time.') + '</p>' +
-        (RW.ledger().owned.some(function (id) { var it = RW.item(id); return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div>' : '') + '</div>');
+        (!asleep() && RW.ledger().owned.some(function (id) { var it = RW.item(id); return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div>' : '') + '</div>');
       body.addEventListener('click', function (e) { if (e.target.closest('#arrangeBtn')) enterArrange(); });
       return;
     }
@@ -1440,6 +1440,9 @@
   function shopAct(action, id, opts) {
     opts = opts || {}; var again = function () { if (opts.sheet) openShop(); }, go = function (lid, asVisit) { if (opts.go) opts.go(lid, asVisit); else applyLayout(lid, asVisit); };
     if (action === 'buy') {
+      /* one hours check for every way of buying: the sheet, the storefront cards and the interiors */
+      if (asleep()) throw new Error('She is asleep. Tap the bed to wake her first.');
+      if (!shopOpenNow()) throw new Error('Dream Street is closed now. It opens at 9 in the morning.');
       var it = RW.buy(id); chime('save', true);
       if (it.kind === 'home') { S.setState({ home: it.id }); closeSheet(); go(it.id, false); toast('Welcome home. ' + it.name + ' is yours!', 'cottage'); }
       else if (it.kind === 'treat') { toast(it.name + ' are in the cupboard. Tap a pet to give one.', 'cookie'); again(); }
