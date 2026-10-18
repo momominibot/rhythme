@@ -32,7 +32,7 @@
       sleeper: { x: 31, y: 58, w: 21, rot: 34 }, zzz: { x: 30, y: 44 },
       meditator: { x: 28, y: 77, w: 11.5 }, aura: { x: 28, y: 75, w: 18 }, holo: { x: 39, y: 75, w: 15 },
       window: { x: 37.3, y: 31.5, rx: 7, ry: 9.6 },
-      props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, lamp: { x: 86, y: 73, w: 7 }, mewmew: { x: 63, y: 86, w: 9 } }
+      props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, lamp: { x: 86, y: 73, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
     },
     house: {
       id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8,
@@ -52,7 +52,7 @@
       sleeper: { x: 34, y: 44, w: 20, rot: 14 }, zzz: { x: 36, y: 30 },
       meditator: { x: 49, y: 82, w: 8 }, aura: { x: 49, y: 80, w: 13 }, holo: { x: 62, y: 80, w: 10 },
       window: { x: 48, y: 27, rx: 6.8, ry: 5.4 },
-      props: { cat: { x: 27, y: 80, w: 7 }, dog: { x: 53, y: 51, w: 7 }, plant: { x: 76, y: 80, w: 7 }, lamp: { x: 76, y: 50, w: 5.5 }, mewmew: { x: 63, y: 85, w: 6.5 } }
+      props: { cat: { x: 27, y: 80, w: 7 }, dog: { x: 53, y: 51, w: 7 }, plant: { x: 76, y: 80, w: 7 }, lamp: { x: 76, y: 50, w: 5.5 }, mewmew: { x: 62, y: 86, w: 8.5 } }
     }
   };
   var L = LAYOUTS.room, HOTSPOTS = L.hotspots, HOME = L.home, visiting = null;
@@ -1392,7 +1392,7 @@
     toast('Stopped. Nothing under a minute is recorded.', 'self_improvement');
   }
 
-  /* ---------- ERIN welcome + getting to know you (in the room, so the theme never changes) ---------- */
+  /* ---------- Rhythme welcome + getting to know you (in the room, so the theme never changes) ---------- */
   var ONB = [
     { id: 'privacy', pose: 'bed', title: 'First, the honest part', sub: 'Before any question, here is what happens to your answers.', type: 'info', items: [['lock', 'They stay in this browser', 'Entries, answers and hearts live on this phone. There is no account. Nothing leaves the phone unless you allow it in the last step.'], ['tune', 'They tune your room', 'Cycle answers shape predictions; the rest chooses guides and notes. Nothing here diagnoses.'], ['visibility', 'Nobody is watching', 'No one at Ovumind sees your records or receives alerts. If you later let Luna’s model read a note, that note passes through a relay that keeps nothing.']] },
     { id: 'age', pose: 'coffee', title: 'How old are you?', sub: 'Age shapes what is typical for cycles, so the notes stay honest.', type: 'chips', key: 'ageBand', options: [['under13', 'Under 13'], ['13-17', '13–17'], ['18-24', '18–24'], ['25-29', '25–29'], ['30-34', '30–34'], ['35-39', '35–39'], ['40-44', '40–44'], ['45-49', '45–49'], ['50+', '50+']], note: function (A) { return A.ageBand === 'under13' ? 'Please set Ovumind up together with a parent or guardian. We keep it gentle and short.' : (A.ageBand === '13-17' ? 'Welcome. Your answers stay private on this phone; a trusted adult can help if anything here feels confusing.' : ''); } },

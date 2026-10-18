@@ -680,7 +680,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .shopitem .bar i{display:block;height:100%;background:linear-gradient(90deg,#e08aa6,#c0507c);border-radius:3px}
 .shopitem .cost{gap:5px}
 
-/* ---- round 5: M badge, everyday practice, arrange mode, shop tabs, ERIN welcome, onboarding ---- */
+/* ---- round 5: M badge, everyday practice, arrange mode, shop tabs, Rhythme welcome, onboarding ---- */
 .hotspot.m .mbadge{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#fff,#e7dcf5);color:var(--rm-plum);font:900 15px var(--serif);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px rgba(255,255,255,.35),0 4px 10px rgba(90,66,116,.35);animation:pulse 2.2s ease-out infinite}
 .erin.small img{width:40px;height:40px}
 .acts{display:flex;flex-direction:column;gap:6px;margin-top:10px}
@@ -715,9 +715,9 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .welcome[hidden]{display:none}
 .w-art{position:relative;width:44%;margin-bottom:6px}
 .w-art img:first-child{width:100%;display:block;filter:drop-shadow(0 16px 20px rgba(90,66,116,.3))}
-.w-art .w-pet{position:absolute;width:52%;right:-30%;bottom:-2%;filter:drop-shadow(0 10px 12px rgba(90,66,116,.3))}
+.w-art .w-pet{position:absolute;width:62%;right:-34%;bottom:-4%;filter:drop-shadow(0 10px 12px rgba(90,66,116,.3))}
 .w-brand{font-family:var(--serif);letter-spacing:.3em;font-size:12px;color:var(--rm-mauve);margin-top:10px}
-.w-erin{font-family:var(--serif);font-weight:600;font-size:60px;letter-spacing:.16em;color:var(--rm-plum);line-height:1;margin:2px 0 4px;padding-left:.16em}
+.w-erin{font-family:var(--serif);font-weight:600;font-size:clamp(44px,13vw,64px);letter-spacing:.04em;color:var(--rm-plum);line-height:1.05;margin:2px 0 4px}
 .w-ex{font:700 13px var(--sans);color:var(--rm-ink-2);letter-spacing:.02em}
 .w-ex b{color:var(--rm-plum);font-weight:900}
 .w-tag{font-family:var(--serif);font-style:italic;font-size:17px;color:var(--rm-plum);margin:6px 0 10px}
