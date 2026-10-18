@@ -1,0 +1,175 @@
+/* Everyday mindfulness: short guided practices tied to things you are really
+ * doing at home right now (brushing teeth, a shower, the first coffee...).
+ * Each activity has more than one script so repeats stay fresh. The scripts
+ * below are interim text by the Ovumind team, voiced in Erin Lee's cloned voice
+ * (with her consent); her own scripts will replace them clip by clip (same ids),
+ * so the data shape is the contract:
+ * activity -> variations -> steps [{ text, secs, audio? }]. */
+(function (root) {
+  'use strict';
+  var S = root.OvuStore;
+  var KEY_STATE = 'explored'; /* S.state().explored[activityId] = times completed */
+  var ACTIVITIES = [
+    { id: 'teeth', name: 'Brushing teeth', icon: 'mood', minutes: 2, pose: 'teeth', when: 'Morning or night, at the sink', intro: 'Two minutes you already spend every day. Let them be two minutes you actually feel.',
+      variations: [
+        { title: 'Bristle by bristle', steps: [
+          { text: 'Before you start, feel the weight of the brush in your hand. Notice the texture of the handle.', secs: 14 },
+          { text: 'Begin brushing. Follow the sensation: the bristles, the taste, the small sound in your head.', secs: 40 },
+          { text: 'When your mind runs ahead to the day, come back to the next tooth. Just this one.', secs: 36 },
+          { text: 'Rinse slowly. Notice the cool water and the clean feeling it leaves.', secs: 20 },
+          { text: 'Done. One ordinary minute, fully lived. Carry that softness into the next thing.', secs: 10 }
+        ] },
+        { title: 'Top, bottom, breathe', steps: [
+          { text: 'Stand with both feet flat. Let your shoulders drop before the brush touches a tooth.', secs: 12 },
+          { text: 'Brush the top teeth first. Count the strokes if it helps you stay.', secs: 38 },
+          { text: 'Now the bottom. Notice how the jaw loosens when you stop clenching around the brush.', secs: 38 },
+          { text: 'Rinse, and take one slow breath out through the nose. Smell the mint.', secs: 20 },
+          { text: 'That is the practice. Nothing extra was needed.', secs: 12 }
+        ] }
+      ] },
+    { id: 'shower', name: 'Showering', icon: 'shower', minutes: 5, pose: 'shower', when: 'Any shower, from the first drop', intro: 'Water on skin is one of the easiest places to land in the present.',
+      variations: [
+        { title: 'First warmth', steps: [
+          { text: 'Before the water, notice the air on your skin and the sound of the room.', secs: 20 },
+          { text: 'Step in. Feel exactly where the water lands first, and how the warmth spreads.', secs: 60 },
+          { text: 'Wash slowly. Let your hands do the work while your attention rests on touch and scent.', secs: 100 },
+          { text: 'If a thought arrives, let the water carry it past. Return to the temperature.', secs: 80 },
+          { text: 'Turn the water off and stand for three breaths before you reach for the towel.', secs: 40 }
+        ] },
+        { title: 'Letting the day go', steps: [
+          { text: 'As the water warms, name silently one thing you are putting down for now.', secs: 30 },
+          { text: 'Let the stream run over your shoulders and neck. Notice any holding, and soften there.', secs: 90 },
+          { text: 'Wash from the feet up, one part at a time, as if each part deserves a little attention.', secs: 110 },
+          { text: 'Finish with a slightly cooler rinse if you like, and notice the alertness it brings.', secs: 40 },
+          { text: 'Dry off slowly. You arrived here, fully.', secs: 30 }
+        ] }
+      ] },
+    { id: 'coffee', name: 'Morning coffee or tea', icon: 'local_cafe', minutes: 3, pose: 'coffee', when: 'The first warm cup', intro: 'The first cup becomes a small ceremony instead of a reflex.',
+      variations: [
+        { title: 'Steam and warmth', steps: [
+          { text: 'Hold the cup with both hands. Feel the warmth move into your palms.', secs: 20 },
+          { text: 'Bring it close and breathe in the steam. Notice the scent before the taste.', secs: 30 },
+          { text: 'Take the first sip slowly. Where do you taste it? What follows the warmth?', secs: 50 },
+          { text: 'Between sips, set the cup down and notice the pause. There is no hurry here.', secs: 60 },
+          { text: 'Finish knowing you tasted it. A good way to begin.', secs: 20 }
+        ] },
+        { title: 'Three sips', steps: [
+          { text: 'Sit, or stand by a window. Let the cup rest a moment before you drink.', secs: 25 },
+          { text: 'First sip: only the temperature.', secs: 35 },
+          { text: 'Second sip: only the flavour, as it changes across the tongue.', secs: 45 },
+          { text: 'Third sip: notice how your body receives it. The swallow, the warmth going down.', secs: 50 },
+          { text: 'The rest of the cup is yours to enjoy however you like.', secs: 25 }
+        ] }
+      ] },
+    { id: 'dishes', name: 'Washing the dishes', icon: 'countertops', minutes: 5, pose: 'dishes', when: 'After a meal, at the sink', intro: 'A chore becomes a hand practice: water, weight, warmth.',
+      variations: [
+        { title: 'One plate at a time', steps: [
+          { text: 'Run the water and notice the temperature on your hands before the first dish.', secs: 20 },
+          { text: 'Pick up one plate. Feel its weight. Wash it as if it were the only one.', secs: 70 },
+          { text: 'When the mind lists what is left, come back to the plate in your hands.', secs: 90 },
+          { text: 'Notice the sounds: water, the clink, the squeak of clean.', secs: 80 },
+          { text: 'Dry your hands slowly. Look at the clear counter for a breath.', secs: 40 }
+        ] },
+        { title: 'Warm water practice', steps: [
+          { text: 'Soften your knees and your jaw. Let your weight settle into your feet.', secs: 20 },
+          { text: 'Wash with slightly slower movements than usual. Notice what changes.', secs: 100 },
+          { text: 'Each rinse is a small ending. Let it be complete before the next begins.', secs: 100 },
+          { text: 'Finish the last item, turn off the tap, and listen to the quiet.', secs: 50 },
+          { text: 'Done, and present for all of it.', secs: 30 }
+        ] }
+      ] },
+    { id: 'outfit', name: 'Changing outfits', icon: 'checkroom', minutes: 2, pose: 'outfit', when: 'Getting dressed, morning or evening', intro: 'Choosing what to wear can be kind rather than critical.',
+      variations: [
+        { title: 'How do I want to feel', steps: [
+          { text: 'Before you choose, ask quietly: how do I want to feel today?', secs: 20 },
+          { text: 'Touch the fabric before you put it on. Notice its weight and texture.', secs: 30 },
+          { text: 'As you dress, notice each movement: the arm through the sleeve, the fastening.', secs: 45 },
+          { text: 'Look once in the mirror with the same kindness you would give a friend.', secs: 15 },
+          { text: 'Ready. You dressed your body with attention today.', secs: 10 }
+        ] },
+        { title: 'Slow fastenings', steps: [
+          { text: 'Lay out what you will wear. Notice the colours together.', secs: 25 },
+          { text: 'Dress one item at a time, feeling the fabric settle on your skin.', secs: 50 },
+          { text: 'Do up buttons or zips a little slower than usual. Feel your fingers work.', secs: 30 },
+          { text: 'Stand tall for one breath before you move on.', secs: 15 }
+        ] }
+      ] },
+    { id: 'bed', name: 'Making the bed', icon: 'bed', minutes: 2, pose: 'bed', when: 'Right after getting up', intro: 'Two minutes of order that your evening self will thank you for.',
+      variations: [
+        { title: 'Smooth and tuck', steps: [
+          { text: 'Pull back the covers and notice the cool air reaching the sheets.', secs: 20 },
+          { text: 'Smooth the sheet with both palms. Feel the fabric and the small resistance of each crease.', secs: 40 },
+          { text: 'Shake the pillow once and set it down gently, as a gift to tonight.', secs: 30 },
+          { text: 'Straighten the quilt. Step back and look. Take one slow breath.', secs: 30 }
+        ] },
+        { title: 'Beginning the day', steps: [
+          { text: 'Open the curtain or a window first if you can. Notice the light.', secs: 20 },
+          { text: 'Make each side of the bed in turn, moving slowly enough to feel your arms work.', secs: 60 },
+          { text: 'Place the pillows and rest your hand on the bed for a moment. The day can begin.', secs: 40 }
+        ] }
+      ] },
+    { id: 'plants', name: 'Watering plants', icon: 'potted_plant', minutes: 2, pose: 'plants', when: 'Whenever the soil feels dry', intro: 'Caring for something green slows the hands and the mind.',
+      variations: [
+        { title: 'Look before you pour', steps: [
+          { text: 'Before watering, look at the plant properly. New leaf? A dry edge? Just notice.', secs: 25 },
+          { text: 'Touch the soil. Feel whether it is dry, cool or damp.', secs: 20 },
+          { text: 'Pour slowly and watch the water disappear into the soil.', secs: 45 },
+          { text: 'Turn the pot a little toward the light. One small kindness.', secs: 20 },
+          { text: 'Done. Growth is quiet work too.', secs: 10 }
+        ] },
+        { title: 'Small gardener', steps: [
+          { text: 'Fill the can and feel its weight change as the water rises.', secs: 25 },
+          { text: 'Water each plant in turn, listening to the sound the water makes.', secs: 60 },
+          { text: 'Pinch off anything dry if you like. Thank the plant, silently or out loud.', secs: 35 }
+        ] }
+      ] },
+    { id: 'pets', name: 'Feeding your pet', icon: 'pets', minutes: 2, pose: 'pets', when: 'Breakfast or dinner for them', intro: 'Your pet is already fully present. Join them for a minute.',
+      variations: [
+        { title: 'Their happiest moment', steps: [
+          { text: 'Before you open the food, notice how your pet is waiting. The eyes, the tail, the sounds.', secs: 25 },
+          { text: 'Prepare the bowl slowly. Smell, texture, the scoop. Let it be unhurried.', secs: 40 },
+          { text: 'Set it down and simply watch them eat for a little while. Nothing else to do.', secs: 45 },
+          { text: 'Notice what their contentment does in your own chest.', secs: 20 }
+        ] },
+        { title: 'Shared breakfast', steps: [
+          { text: 'Say their name and wait for them to look at you.', secs: 15 },
+          { text: 'Fill the bowl with attention, as if preparing a meal for a friend.', secs: 40 },
+          { text: 'Sit nearby while they eat. Match three breaths to the sound of them eating.', secs: 50 },
+          { text: 'Refill the water. Done.', secs: 15 }
+        ] }
+      ] },
+    { id: 'stretch', name: 'Morning or evening stretch', icon: 'self_improvement', minutes: 4, pose: 'stretch', when: 'Standing, anywhere with arm room', intro: 'A gentle reach and release, nothing athletic.',
+      variations: [
+        { title: 'Reach and release', steps: [
+          { text: 'Stand with feet hip-width apart. Breathe in and float both arms up overhead.', secs: 30 },
+          { text: 'Breathe out and let the arms drift down. Repeat three times, slowly.', secs: 60 },
+          { text: 'Roll the shoulders back five times, then forward five times.', secs: 50 },
+          { text: 'Tilt the head gently ear to shoulder, each side, breathing into the stretch.', secs: 50 },
+          { text: 'Shake out the hands, stand still, and notice how you feel now.', secs: 50 }
+        ] },
+        { title: 'Evening unwind', steps: [
+          { text: 'Reach up and yawn if it comes. Let the ribs expand.', secs: 30 },
+          { text: 'Fold forward softly, knees bent, and let the head hang. Breathe into the back.', secs: 60 },
+          { text: 'Roll up slowly, one vertebra at a time, head last.', secs: 40 },
+          { text: 'Circle the hips a few times each way, loosening the lower back.', secs: 60 },
+          { text: 'Finish standing tall. The day can soften now.', secs: 50 }
+        ] }
+      ] }
+  ];
+  function byId(id) { return ACTIVITIES.filter(function (a) { return a.id === id; })[0] || null; }
+  function explored() { return S.state()[KEY_STATE] || {}; }
+  function timesDone(id) { return explored()[id] || 0; }
+  /* pick the variation the user has seen least, rotating through them */
+  function nextVariation(a) { var n = timesDone(a.id); return a.variations[n % a.variations.length]; }
+  function totalSecs(v) { return v.steps.reduce(function (t, s) { return t + s.secs; }, 0); }
+  /* called after a practice is confirmed; returns the saved event */
+  function complete(id, variationIndex, secsDone, confirmed) {
+    var a = byId(id); if (!a) return null;
+    var ex = explored(); var first = !ex[id]; ex[id] = (ex[id] || 0) + 1;
+    S.setState({ explored: ex });
+    var minutes = Math.max(1, Math.round(secsDone / 60 * 10) / 10);
+    var ev = S.add('mindfulness', S.today(), { kind: 'informal', activity: id, activityName: a.name, variation: variationIndex, minutes: minutes, completed: true, confirmedReal: !!confirmed, guide: 'Everyday mindfulness, Erin’s voice (interim script)', first: first });
+    return { event: ev, first: first, count: ex[id] };
+  }
+  root.OvuMindful = { ACTIVITIES: ACTIVITIES, byId: byId, explored: explored, timesDone: timesDone, nextVariation: nextVariation, totalSecs: totalSecs, complete: complete };
+})(window);

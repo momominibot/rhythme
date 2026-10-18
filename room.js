@@ -32,7 +32,7 @@
       sleeper: { x: 31, y: 58, w: 21, rot: 34 }, zzz: { x: 30, y: 44 },
       meditator: { x: 28, y: 77, w: 11.5 }, aura: { x: 28, y: 75, w: 18 }, holo: { x: 39, y: 75, w: 15 },
       window: { x: 37.3, y: 31.5, rx: 7, ry: 9.6 },
-      props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, lamp: { x: 86, y: 73, w: 7 } }
+      props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, lamp: { x: 86, y: 73, w: 7 }, mewmew: { x: 63, y: 86, w: 9 } }
     },
     house: {
       id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8,
@@ -45,13 +45,14 @@
         { id: 'wardrobe', x: 67, y: 40, label: 'Wardrobe · outfits', icon: 'checkroom', wp: { x: 62, y: 52, flip: false } },
         { id: 'diary', x: 38, y: 74, label: 'Diary · food journal', icon: 'menu_book', wp: { x: 31, y: 80, flip: false } },
         { id: 'mat', x: 49, y: 83, label: 'Yoga mat · mindfulness with Erin', icon: 'self_improvement', wp: { x: 40, y: 86, flip: true } },
-        { id: 'window', x: 48, y: 27, label: 'Window · tonight', icon: 'dark_mode', wp: null }
+        { id: 'window', x: 48, y: 27, label: 'Window · tonight', icon: 'dark_mode', wp: null },
+        { id: 'coach', x: 20, y: 59, label: 'M · everyday mindfulness', icon: 'self_improvement', badge: 'M', wp: { x: 28, y: 80, flip: true } }
       ],
       home: { x: 56, y: 82, flip: false },
       sleeper: { x: 34, y: 44, w: 20, rot: 14 }, zzz: { x: 36, y: 30 },
       meditator: { x: 49, y: 82, w: 8 }, aura: { x: 49, y: 80, w: 13 }, holo: { x: 62, y: 80, w: 10 },
       window: { x: 48, y: 27, rx: 6.8, ry: 5.4 },
-      props: { cat: { x: 27, y: 80, w: 7 }, dog: { x: 53, y: 51, w: 7 }, plant: { x: 76, y: 80, w: 7 }, lamp: { x: 76, y: 50, w: 5.5 } }
+      props: { cat: { x: 27, y: 80, w: 7 }, dog: { x: 53, y: 51, w: 7 }, plant: { x: 76, y: 80, w: 7 }, lamp: { x: 76, y: 50, w: 5.5 }, mewmew: { x: 63, y: 85, w: 6.5 } }
     }
   };
   var L = LAYOUTS.room, HOTSPOTS = L.hotspots, HOME = L.home, visiting = null;
@@ -215,7 +216,8 @@
       var b = document.createElement('button');
       b.className = 'hotspot'; b.type = 'button'; b.dataset.id = h.id; b.setAttribute('aria-label', h.label);
       b.style.left = h.x + '%'; b.style.top = h.y + '%';
-      b.innerHTML = '<span class="glow"></span><span class="pulse" aria-hidden="true"></span><span class="tip" aria-hidden="true">' + esc(h.label.split(' · ')[1] ? cap(h.label.split(' · ')[1]) : h.label) + '</span>';
+      if (h.badge) b.classList.add('m');
+      b.innerHTML = '<span class="glow"></span>' + (h.badge ? '<span class="mbadge" aria-hidden="true">' + h.badge + '</span>' : '<span class="pulse" aria-hidden="true"></span>') + '<span class="tip" aria-hidden="true">' + esc(h.label.split(' · ')[1] ? cap(h.label.split(' · ')[1]) : h.label) + '</span>';
       b.addEventListener('click', function () { tap(h); });
       hs.appendChild(b);
     });
@@ -250,13 +252,15 @@
     }
     applyLayout(currentHomeId(), false);
   }
+  /* where an owned prop sits: the user's own arrangement, else the layout default, else the shop default */
+  function propPosFor(it) { var pp = (S.state().propPos || {})[L.id] || {}; var o = pp[it.id]; var base = (L.props && L.props[it.id]) || it.pos; if (!base) return null; return o ? { x: o.x, y: o.y, w: base.w } : base; }
   /* owned props from the reward shop, placed per layout */
   function renderProps() {
     var l = RW.ledger(), wrap = $('#ownedProps'); wrap.innerHTML = '';
     RW.SHOP.forEach(function (it) {
       if (!it.img || it.kind === 'home' || l.owned.indexOf(it.id) < 0 || !l.placed[it.id]) return;
-      var p = (L.props && L.props[it.id]) || it.pos; if (!p) return;
-      var d = document.createElement('div'); d.className = 'prop owned ' + it.kind; d.style.left = p.x + '%'; d.style.top = p.y + '%'; d.style.width = p.w + '%';
+      var p = propPosFor(it); if (!p) return;
+      var d = document.createElement('div'); d.className = 'prop owned ' + it.kind; d.dataset.id = it.id; d.style.left = p.x + '%'; d.style.top = p.y + '%'; d.style.width = p.w + '%';
       d.innerHTML = '<img src="' + ART + it.img + '" alt="">'; wrap.appendChild(d);
     });
     $('#heartsVal').textContent = l.hearts;
@@ -295,7 +299,7 @@
     walkTimer = setTimeout(function () {
       avatar.classList.remove('walking'); avatar.classList.add('landing'); avatar.classList.toggle('flip', !!wp.flip);
       setTimeout(function () { avatar.classList.remove('landing'); avatar.classList.add('idle'); }, 420);
-      done && done();
+      scheduleLife(); done && done();
     }, ms + 30);
   }
   function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating) walkTo(HOME); }, 1400); }
@@ -306,12 +310,14 @@
     if (current === 'diary') stopCamera();
     current = id; $('#sheetTitle').innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');
     $('#sheetIcon').innerHTML = '<span class="ms">' + esc(icon) + '</span>';
+    /* a fresh body node each time, so listeners from the previous sheet (or a re-render of this one) never pile up */
+    var fresh = body.cloneNode(false); body.parentNode.replaceChild(fresh, body); body = fresh; wireGuides(body);
     body.innerHTML = html; body.scrollTop = 0;
     sheet.classList.add('on'); veil.classList.add('on'); scene.classList.add('quiet');
     sheet.setAttribute('aria-hidden', 'false');
     var first = body.querySelector('input,button,select,textarea,a'); if (first && window.matchMedia('(hover:hover)').matches) try { first.focus({ preventScroll: true }); } catch (e) { }
   }
-  function hideSheet() { current = null; sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
+  function hideSheet() { current = null; scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
   function closeSheet() {
     if (current === 'diary') stopCamera();
     if (current === 'mind' && session) stopSession(true);
@@ -342,6 +348,7 @@
     if (id === 'wardrobe') return openWardrobe();
     if (id === 'diary') return openDiary();
     if (id === 'mat') return openMindfulness();
+    if (id === 'coach') return openEveryday();
   }
 
   /* ---------- sleep flows ---------- */
@@ -540,7 +547,7 @@
       html += '<button type="button" class="' + cls + '" data-date="' + iso + '" aria-label="' + prettyDate(iso) + '">' + dd + (syms[iso] ? '<span class="sdot"></span>' : '') + '</button>';
     }
     $('#calGrid').innerHTML = html;
-    var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>Next period expected around ' + prettyDate(cs.predictedNext) + ' (estimate from ' + esc(cs.basis) + ').</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>Tap the first day of your last period and ' + periodFillLength() + ' typical days are filled for you to adjust.</span></div></div>';
+    var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>' + (cs.predictedNext ? 'Next period expected around ' + prettyDate(cs.predictedNext) + ' (estimate from ' + esc(cs.basis) + ')' + (cs.uncertain ? ', a loose estimate while cycles are changing' : '') + '.' : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Add a cycle length in your intro or log another period to start predictions.')) + '</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>Tap the first day of your last period and ' + periodFillLength() + ' typical days are filled for you to adjust.</span></div></div>';
     statHtml += '<div class="row"><button class="btn blush" id="menstruatingNow"><span class="ms">water_drop</span>I’m menstruating now</button>' + (cal.lastFill.length ? '<button class="btn ghost" id="undoFill"><span class="ms">undo</span>Undo ' + cal.lastFill.length + '-day fill</button>' : '') + '</div>';
     $('#cycleStat').innerHTML = statHtml;
     $('#menstruatingNow').addEventListener('click', function () { var ev = S.add('period', S.today(), { flow: 'medium', clots: false, impact: false }); cal.sel = S.today(); cal.lastFill = []; renderCal(); renderEditor(); afterSave(ev, 'Period logged for today.'); });
@@ -819,12 +826,17 @@
     $('#saveName').addEventListener('click', function () { S.setProfile({ name: $('#nameInput').value.trim() }); updateGreeting(); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); });
   }
 
-  /* ---------- heart shop: props, pets and the dream house ---------- */
-  function openShop() {
+  /* ---------- heart shop: pets, furniture and homes, plus arranging what you own ---------- */
+  var shopTab = 'all', arranging = false, dragProp = null;
+  var NEXT_HOMES = [{ icon: 'yard', name: 'Garden', note: 'Outdoor practices among the flowers: watering, morning light, a bench for tea.' }, { icon: 'groups', name: 'Activity hall', note: 'A gentle place for circles and community gatherings with Erin.' }];
+  function openShop(tab) {
+    if (tab) shopTab = tab;
     var l = RW.ledger(), home = currentHomeId();
+    var items = RW.SHOP.filter(function (it) { return shopTab === 'all' || (shopTab === 'pet' && it.kind === 'pet') || (shopTab === 'furniture' && it.kind === 'furniture') || (shopTab === 'home' && it.kind === 'home'); });
     openSheet('shop', 'Heart shop', 'Hearts come from logging; spend them on your home', 'favorite',
-      '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + l.hearts + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, +5 from day three of a streak.</p></div>' +
-      '<div class="shop">' + RW.SHOP.map(function (it) {
+      '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + l.hearts + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, everyday practice 5 (+10 the first time), +5 from day three of a streak.</p></div>' +
+      '<div class="tabs" id="shopTabs">' + [['all', 'All'], ['pet', 'Pets'], ['furniture', 'Furniture'], ['home', 'Homes']].map(function (t) { return '<button type="button" data-tab="' + t[0] + '" class="' + (shopTab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="shop">' + items.map(function (it) {
         var owned = l.owned.indexOf(it.id) > -1, placed = !!l.placed[it.id], ctl, extra = '';
         if (it.kind === 'home') {
           var pct = Math.min(100, Math.round(l.hearts / it.cost * 100));
@@ -835,7 +847,11 @@
           ctl = owned ? '<button type="button" class="btn soft" data-toggle="' + it.id + '">' + (placed ? 'Hide' : 'Place') + '</button>' : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>' + (it.kind === 'pet' ? 'Adopt' : 'Buy') + '</button>';
         }
         return '<div class="shopitem' + (it.kind === 'home' ? ' home' : '') + '">' + (it.img ? '<img src="' + ART + it.img + '" alt="">' : '<span class="ph"><span class="ms">cottage</span></span>') + '<span><b>' + esc(it.name) + '</b><small>' + esc(it.note) + '</small>' + extra + '</span><span class="cost"><b><span class="ms fill">favorite</span>' + it.cost + '</b>' + ctl + '</span></div>';
-      }).join('') + '</div><div class="msg" id="shopMsg"></div>');
+      }).join('') + '</div>' +
+      (shopTab === 'all' || shopTab === 'home' ? '<div class="nexthomes"><b>Growing next</b>' + NEXT_HOMES.map(function (n) { return '<div><span class="ms">' + n.icon + '</span><span><b>' + esc(n.name) + '</b><small>' + esc(n.note) + '</small></span></div>'; }).join('') + '</div>' : '') +
+      (l.owned.some(function (id) { var it = RW.SHOP.filter(function (s) { return s.id === id; })[0]; return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div><p class="help">Drag pets and furniture anywhere; the bed, clock, calendar and the rest stay where they are so logging keeps working.</p>' : '') +
+      '<div class="msg" id="shopMsg"></div>');
+    $('#shopTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) { chime('tap'); openShop(b.dataset.tab); } });
     body.addEventListener('click', function (e) {
       var b = e.target.closest('[data-buy]'), t = e.target.closest('[data-toggle]'), v = e.target.closest('[data-visit]'), hm = e.target.closest('[data-home]');
       try {
@@ -847,10 +863,41 @@
         if (t) { RW.toggle(t.dataset.toggle); renderProps(); openShop(); }
         if (v) { chime('tap'); closeSheet(); applyLayout('house', true); toast('Have a look around. Tap Back when you are done.', 'cottage'); }
         if (hm) { chime('tap'); S.setState({ home: hm.dataset.home }); applyLayout(hm.dataset.home, false); openShop(); toast(hm.dataset.home === 'house' ? 'Moved in.' : 'Back in your room.', 'home'); }
+        if (e.target.closest('#arrangeBtn')) enterArrange();
       } catch (err) { message($('#shopMsg'), err.message, false); }
     });
   }
   $('#heartsChip').addEventListener('click', function () { chime('tap'); openShop(); });
+  /* arrange mode: drag what you own; hotspots and the avatar pause until Done */
+  function enterArrange() {
+    arranging = true; hideSheet(); scene.classList.add('arranging');
+    var vb = $('#visitBar'); vb.classList.add('on');
+    vb.innerHTML = '<span class="ms">open_with</span><span>Drag pets and furniture where you like</span><button type="button" id="arrReset"><span class="ms">restart_alt</span>Reset</button><button type="button" id="arrDone"><span class="ms">check</span>Done</button>';
+    toast('Arranging. Drag anything you own.', 'open_with');
+  }
+  function exitArrange(reset) {
+    if (reset) { var pp = S.state().propPos || {}; delete pp[L.id]; S.setState({ propPos: pp }); }
+    arranging = false; scene.classList.remove('arranging'); applyLayout(L.id, !!visiting);
+    toast(reset ? 'Back to the default arrangement.' : 'Saved your arrangement.', 'check_circle');
+  }
+  var owned = $('#ownedProps');
+  owned.addEventListener('pointerdown', function (e) {
+    if (!arranging) return; var p = e.target.closest('.prop'); if (!p) return;
+    var r = scene.getBoundingClientRect();
+    dragProp = { el: p, id: p.dataset.id, sx: e.clientX, sy: e.clientY, ox: parseFloat(p.style.left), oy: parseFloat(p.style.top), rw: r.width, rh: r.height };
+    try { p.setPointerCapture(e.pointerId); } catch (err) { }
+    p.classList.add('lift'); e.preventDefault();
+  });
+  owned.addEventListener('pointermove', function (e) {
+    if (!dragProp) return;
+    var x = Math.max(2, Math.min(98, dragProp.ox + (e.clientX - dragProp.sx) / dragProp.rw * 100)), y = Math.max(10, Math.min(99, dragProp.oy + (e.clientY - dragProp.sy) / dragProp.rh * 100));
+    dragProp.el.style.left = x + '%'; dragProp.el.style.top = y + '%';
+  });
+  function endPropDrag() {
+    if (!dragProp) return; var d = dragProp; dragProp = null; d.el.classList.remove('lift');
+    var pp = S.state().propPos || {}; pp[L.id] = pp[L.id] || {}; pp[L.id][d.id] = { x: Math.round(parseFloat(d.el.style.left) * 10) / 10, y: Math.round(parseFloat(d.el.style.top) * 10) / 10 }; S.setState({ propPos: pp });
+  }
+  owned.addEventListener('pointerup', endPropDrag); owned.addEventListener('pointercancel', endPropDrag);
 
   /* ---------- Luna, the moon orb ---------- */
   var lunaLog = [];
@@ -974,7 +1021,7 @@
     session.stopped = true; clearTimeout(session.timer); if (session.audio) { try { session.audio.pause(); } catch (e) { } }
     if (elapsedMin >= 1) finishSession(false); else { session = null; exitMeditation(); if (!fromClose) toast('Stopped. Nothing under a minute is recorded.', 'self_improvement'); }
   }
-  $('#hudStop').addEventListener('click', function () { stopSession(false); });
+  $('#hudStop').addEventListener('click', function () { if (practice) stopPractice(); else stopSession(false); });
   function openMindfulness() {
     if (session) { hud.classList.add('on'); return; }
     var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
@@ -984,11 +1031,12 @@
       '<div class="sessions" id="sessions"><button type="button" class="session on" data-kind="erin" data-min="3"><b>Erin · 3 minutes</b><small>Guided breathing, a soft close</small></button><button type="button" class="session" data-kind="erin" data-min="6"><b>Erin · 6 minutes</b><small>A longer settle and more reminders</small></button><button type="button" class="session" data-kind="breathe" data-min="2"><b>Just breathe · 2 min</b><small>4-4-6 orb with a quiet bell</small></button><button type="button" class="session" data-kind="breathe" data-min="5"><b>Just breathe · 5 min</b><small>Silent, follow the orb</small></button></div>' +
       '<div class="orbwrap"><div class="orb out" id="orb"></div><div class="orbtext" id="orbText">Ready when you are</div><div class="orbsub" id="orbSub">' + (mins ? Math.round(mins) + ' min this week' : 'First session this week') + '</div></div>' +
       '<div class="row"><button class="btn primary" id="mindStart"><span class="ms">self_improvement</span>Begin</button><button class="btn soft" id="mindAcu"><span class="ms">spa</span>Cramp relief points</button></div>' +
-      '<div class="row"><a class="btn ghost" href="https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change" target="_blank" rel="noopener"><span class="ms">article</span>Read Erin: The Quiet Work of Change</a></div>' +
+      '<div class="row"><button type="button" class="btn soft" id="mindEveryday"><span class="ms">home</span>Everyday practice</button><a class="btn ghost" href="https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change" target="_blank" rel="noopener"><span class="ms">article</span>Read Erin</a></div>' +
       '<p class="help">Sessions of a minute or more are saved to your journal. Erin’s clips are pre-recorded in her cloned voice (with her consent), so this works offline once loaded.</p>');
     $('#sessions').addEventListener('click', function (e) { var b = e.target.closest('.session'); if (!b || session) return; $$('.session').forEach(function (x) { x.classList.toggle('on', x === b); }); });
     $('#mindStart').addEventListener('click', function () { if (session) return; var sel = $('.session.on'); runSession(sel.dataset.kind, Number(sel.dataset.min)); });
     $('#mindAcu').addEventListener('click', openAcupressure);
+    $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
   }
 
   /* ---------- acupressure: numbered points on your avatar, then a zoomed locator ---------- */
@@ -1051,30 +1099,222 @@
     }).catch(function (e) { toast('Could not load the atlas: ' + e.message, 'error'); });
   }
 
+  /* ---------- a livelier avatar: micro-moments between taps ---------- */
+  var lifeTimer = null, lifeBusy = false;
+  function scheduleLife() { clearTimeout(lifeTimer); if (reduced) return; lifeTimer = setTimeout(lifeMoment, 12000 + Math.random() * 14000); }
+  function lifeMoment() {
+    if (S.state().sleeping || meditating || practice || current || arranging || lifeBusy || document.hidden || avatar.classList.contains('walking')) { scheduleLife(); return; }
+    lifeBusy = true;
+    var h = new Date().getHours(), pool = h < 11 ? ['coffee', 'stretch', 'plants', 'bed'] : h < 18 ? ['plants', 'pets', 'outfit', 'coffee'] : ['bed', 'stretch', 'pets', 'coffee'];
+    var pose = pool[Math.floor(Math.random() * pool.length)];
+    var thought = { coffee: '☕', stretch: '✨', bed: '💤', plants: '🌱', pets: '🐾', outfit: '👗' }[pose];
+    avatar.classList.add('moment'); setPose(pose); showThought(thought);
+    setTimeout(function () { avatar.classList.remove('moment'); if (!practice) restorePose(); hideThought(); lifeBusy = false; scheduleLife(); }, 3200 + Math.random() * 1400);
+  }
+  function showThought(t) { var el = $('#thought'); if (!el) return; el.textContent = t; el.classList.add('on'); }
+  function hideThought() { var el = $('#thought'); if (el) el.classList.remove('on'); }
+  function joy() { avatar.classList.remove('joy'); void avatar.offsetWidth; avatar.classList.add('joy'); setTimeout(function () { avatar.classList.remove('joy'); }, 560); }
+
+  /* ---------- everyday mindfulness: guides for what you are really doing ---------- */
+  var MF = window.OvuMindful, practice = null, GUIDE = 'assets/audio/guide-interim/';
+  function playUrl(url) { return new Promise(function (resolve) { if (!practice || practice.stopped) return resolve(); var a = new Audio(url); practice.audio = a; a.onended = function () { resolve(); }; a.onerror = function () { resolve(); }; a.play().catch(function () { resolve(); }); }); }
+  function pwait(ms) { return new Promise(function (resolve) { if (!practice || practice.stopped) return resolve(); practice.timer = setTimeout(resolve, ms); }); }
+  function setPose(pose) { var img = new Image(); img.onload = function () { avatarImg.src = img.src; }; img.src = ART + 'avatar-act-' + pose + '.webp'; }
+  function restorePose() { setOutfit(S.profile().outfit || 'base', true); }
+  function openEveryday(selId) {
+    var ex = MF.explored();
+    openSheet('everyday', 'Everyday mindfulness', 'Guides for things you are really doing', 'self_improvement',
+      '<div class="erin small"><img src="assets/avatars/erin/erin_square.jpeg" alt="Erin Lee"><div><b>Informal practice, with Erin</b><small>Pick what you are about to do for real, press Begin as you start, and let the guide walk alongside you. The guides are spoken in Erin’s voice from interim scripts; her own written scripts will replace them one by one.</small></div></div>' +
+      '<div class="acts" id="acts">' + MF.ACTIVITIES.map(function (a) { var n = ex[a.id] || 0; return '<button type="button" class="act' + (selId === a.id ? ' on' : '') + '" data-act="' + a.id + '"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><span><b>' + esc(a.name) + '</b><small>' + esc(a.when) + ' · ' + a.minutes + ' min</small></span><em>' + (n ? '<span class="ms">check_circle</span>' + n : '<span class="ms fill">favorite</span>15') + '</em></button>'; }).join('') + '</div>' +
+      '<div class="actdetail" id="actDetail"></div>' +
+      '<p class="help">Each completed practice earns 5 hearts, and 10 more the first time you try an activity. The point is not the points: it is two ordinary minutes, fully lived. Please only confirm practices you really did.</p>');
+    function detail(id) {
+      var a = MF.byId(id), v = MF.nextVariation(a), vi = a.variations.indexOf(v), n = MF.timesDone(id);
+      $$('.act', body).forEach(function (b) { b.classList.toggle('on', b.dataset.act === id); });
+      $('#actDetail').innerHTML = '<div class="actcard"><div class="acthead"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><div><h3>' + esc(a.name) + '</h3><p>' + esc(a.intro) + '</p><small>Script ' + (vi + 1) + ' of ' + a.variations.length + ' · “' + esc(v.title) + '” · about ' + Math.max(1, Math.round(MF.totalSecs(v) / 60)) + ' min' + (n ? ' · done ' + n + ' time' + (n > 1 ? 's' : '') : ' · first time: +10 ♥') + '</small></div></div>' +
+        '<ol class="steps">' + v.steps.map(function (s) { return '<li>' + esc(s.text) + '</li>'; }).join('') + '</ol>' +
+        '<div class="row"><button type="button" class="btn primary" id="actStart" data-act="' + id + '" data-v="' + vi + '"><span class="ms">play_arrow</span>Begin as you begin</button></div></div>';
+      $('#actDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    body.addEventListener('click', function (e) { var st = e.target.closest('#actStart'); if (st) { runPractice(st.dataset.act, Number(st.dataset.v)); return; } var b = e.target.closest('[data-act]'); if (b) { chime('tap'); detail(b.dataset.act); } });
+    if (selId) detail(selId);
+  }
+  function runPractice(id, vi) {
+    var a = MF.byId(id); if (!a || practice) return; var v = a.variations[vi] || a.variations[0]; vi = a.variations.indexOf(v);
+    practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: null, timer: null, total: MF.totalSecs(v) };
+    hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting');
+    var chain = Promise.resolve();
+    v.steps.forEach(function (s, si) {
+      chain = chain.then(function () {
+        if (!practice || practice.stopped) return;
+        caption(s.text); if (si) chime('bell', true);
+        var t0 = Date.now();
+        return playUrl(GUIDE + id + '-' + vi + '-' + si + '.mp3').then(function () { return pwait(Math.max(0, s.secs * 1000 - (Date.now() - t0))); });
+      });
+    });
+    chain.then(function () { if (practice && !practice.stopped) askPracticeDone(true); });
+  }
+  function askPracticeDone(finished) {
+    var p = practice; if (!p) return;
+    p.stopped = true; clearTimeout(p.timer); if (p.audio) { try { p.audio.pause(); } catch (e) { } }
+    var secs = Math.round((Date.now() - p.startedAt) / 1000);
+    chime('bell', true); caption(finished ? 'That is the practice.' : 'Paused');
+    openSheet('practiceDone', finished ? 'How was that?' : 'Stopping early', p.a.name, 'self_improvement',
+      '<div class="orbwrap"><div class="orb out"></div><div class="orbtext">' + (finished ? 'Did you really do it, with attention?' : 'You did about ' + Math.max(1, Math.round(secs / 60)) + ' minute' + (secs >= 90 ? 's' : '') + '. Count it?') + '</div></div>' +
+      '<div class="row"><button type="button" class="btn primary" id="pdYes"><span class="ms">check</span>Yes, I did</button><button type="button" class="btn ghost" id="pdNo">Not really</button></div>' +
+      '<p class="help">Only real practice counts. This stays between you and your room.</p>');
+    function end(confirmed) {
+      hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null; closeSheet();
+      if (confirmed && secs >= 30) { var r = MF.complete(p.a.id, p.vi, secs, true); afterSave(r.event, (r.first ? 'First ' + p.a.name.toLowerCase() + ' practice! ' : '') + 'Saved to your journal.'); }
+      else toast('No worries. The practice is there whenever you are.', 'self_improvement');
+    }
+    $('#pdYes').addEventListener('click', function () { end(true); });
+    $('#pdNo').addEventListener('click', function () { end(false); });
+  }
+  function stopPractice() {
+    if (!practice) return;
+    var elapsed = (Date.now() - practice.startedAt) / 1000;
+    if (elapsed >= Math.min(60, practice.total * 0.5)) { askPracticeDone(false); return; }
+    practice.stopped = true; clearTimeout(practice.timer); if (practice.audio) { try { practice.audio.pause(); } catch (e) { } }
+    hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null;
+    toast('Stopped. Nothing under a minute is recorded.', 'self_improvement');
+  }
+
+  /* ---------- ERIN welcome + getting to know you (in the room, so the theme never changes) ---------- */
+  var ONB = [
+    { id: 'privacy', pose: 'bed', title: 'First, the honest part', sub: 'Before any question, here is what happens to your answers.', type: 'info', items: [['lock', 'They stay in this browser', 'Entries, answers and hearts live on this phone. There is no account and nothing is uploaded.'], ['tune', 'They tune your room', 'Cycle answers shape predictions; the rest chooses guides and notes. Nothing here diagnoses.'], ['visibility', 'Nobody is watching', 'No one at Ovumind sees your records or receives alerts. The relay that reads a Luna note keeps nothing.']] },
+    { id: 'age', pose: 'coffee', title: 'How old are you?', sub: 'Age shapes what is typical for cycles, so the notes stay honest.', type: 'chips', key: 'ageBand', options: [['under13', 'Under 13'], ['13-17', '13–17'], ['18-24', '18–24'], ['25-29', '25–29'], ['30-34', '30–34'], ['35-39', '35–39'], ['40-44', '40–44'], ['45-49', '45–49'], ['50+', '50+']], note: function (A) { return A.ageBand === 'under13' ? 'Please set Ovumind up together with a parent or guardian. We keep it gentle and short.' : (A.ageBand === '13-17' ? 'Welcome. Your answers stay private on this phone; a trusted adult can help if anything here feels confusing.' : ''); } },
+    { id: 'started', pose: 'teeth', title: 'Have your periods started?', sub: 'Everything that follows adapts to this.', type: 'rows', rows: [{ key: 'periodsStarted', label: 'Periods', options: [['yes', 'Yes'], ['no', 'Not yet'], ['unsure', 'Not sure']] }, { key: 'menarche', label: 'How old were you at the first one?', options: [['lt10', 'Under 10'], ['10-12', '10–12'], ['13-15', '13–15'], ['16+', '16 or older'], ['unknown', 'Don’t remember']], showIf: function (A) { return A.periodsStarted === 'yes'; } }] },
+    { id: 'regular', pose: 'stretch', title: 'How regular are they?', sub: 'Regular means you can roughly guess the next one.', type: 'chips', key: 'regularity', options: [['regular', 'Fairly regular'], ['irregular', 'Irregular'], ['rare', 'Rare, with gaps of 3 months or more'], ['none12', 'No period for 12 months or more'], ['unsure', 'Not sure']], showIf: function (A) { return A.periodsStarted !== 'no'; } },
+    { id: 'preg', pose: 'plants', title: 'Pregnancy and plans', sub: 'These change how dates should be read.', type: 'rows', rows: [{ key: 'pregState', label: 'Right now', options: [['none', 'None of these'], ['maybe', 'I could be pregnant'], ['pregnant', 'Pregnant'], ['postpartum', 'Gave birth in the last year'], ['loss', 'Recent pregnancy loss']] }, { key: 'breastfeeding', label: 'Breastfeeding', options: [['yes', 'Yes'], ['no', 'No']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'periodsBack', label: 'Have periods returned?', options: [['yes', 'Yes'], ['no', 'Not yet']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'plans', label: 'Plans', options: [['ttc', 'Trying to conceive now'], ['later', 'Maybe later'], ['no', 'Not planning']] }, { key: 'ttcMonths', label: 'Months trying', options: [['0-5', '0–5'], ['6-11', '6–11'], ['12+', '12 or more']], showIf: function (A) { return A.plans === 'ttc'; } }, { key: 'fertilityTx', label: 'Fertility treatment before?', options: [['no', 'No'], ['yes', 'Yes']], showIf: function (A) { return A.plans === 'ttc'; } }] },
+    { id: 'hormones', pose: 'outfit', title: 'Hormones and medicines', sub: 'Tick what you use now. These change what cycle dates mean.', type: 'multi', key: 'hormones', options: [['pill', 'Combined pill'], ['pop', 'Progestogen-only pill'], ['iud_h', 'Hormonal IUD'], ['iud_cu', 'Copper IUD'], ['implant', 'Implant or injection'], ['hrt', 'HRT (MHT)'], ['fertility', 'Fertility medicines'], ['ec', 'Emergency contraception this month'], ['other', 'Other relevant medicine'], ['none', 'None']], exclusive: ['none'] },
+    { id: 'last', pose: 'bed', title: 'When did your last period start?', sub: 'The first day of bleeding, not spotting. Skip if you are not sure.', type: 'date', key: 'lastPeriodStart', optional: true, showIf: function (A) { return A.periodsStarted !== 'no' && A.regularity !== 'none12'; } },
+    { id: 'cycle', pose: 'stretch', title: 'Your usual rhythm', sub: 'Cycle length is from the first day of one period to the first day of the next.', type: 'rows', showIf: function (A) { return A.periodsStarted !== 'no' && A.regularity !== 'none12'; }, rows: [{ key: 'cycleLength', label: 'Days from one period to the next', options: [['19', 'Under 21'], ['23', '21–24'], ['28', '25–30'], ['33', '31–35'], ['40', '36–45'], ['rare', '46 or more'], ['varies', 'Varies a lot'], ['unknown', 'Don’t know']] }, { key: 'periodLength', label: 'Days of bleeding', options: [['1', '1'], ['3', '2–3'], ['5', '4–5'], ['6', '6–7'], ['8', '8 or more']] }] },
+    { id: 'bleed', pose: 'teeth', title: 'Bleeding and pain', sub: 'Tick anything that happens. These are worth a conversation, not a worry.', type: 'multi', key: 'bleedSigns', options: [['flooding', 'Soaking through protection every 1 to 2 hours, or flooding'], ['between', 'Bleeding between periods or after sex'], ['postmeno', 'Bleeding after 12+ months without periods'], ['painlife', 'Pain that disrupts school, work or sleep'], ['none', 'None of these']], exclusive: ['none'], showIf: function (A) { return A.periodsStarted !== 'no'; } },
+    { id: 'urgent', pose: 'shower', title: 'Anything happening right now?', sub: 'Only tick if it is happening today.', type: 'multi', key: 'urgent', options: [['severepain', 'Sudden severe pelvic pain'], ['faint', 'Fainting or dizziness with bleeding'], ['shoulder', 'Shoulder-tip pain with pelvic pain'], ['uncontrolled', 'Bleeding I cannot control'], ['none', 'None of these']], exclusive: ['none'] },
+    { id: 'dx', pose: 'dishes', title: 'Has a clinician told you about any of these?', sub: 'Self-reported is fine. Tick all that apply.', type: 'multi', key: 'conditions', options: [['pcos', 'PCOS'], ['endo', 'Endometriosis'], ['fibroids', 'Fibroids'], ['thyroid', 'Thyroid condition'], ['poi', 'Early menopause or POI'], ['cysts', 'Ovarian cysts'], ['pid', 'Pelvic infection'], ['surgery', 'Surgery on womb, tubes or ovaries'], ['oophorectomy', 'One or both ovaries removed'], ['hysterectomy', 'Hysterectomy'], ['chemo', 'Chemotherapy or pelvic radiotherapy'], ['anaemia', 'Low iron or anaemia'], ['other', 'Something else'], ['unsure', 'Not sure'], ['none', 'None']], exclusive: ['none'] },
+    { id: 'family', pose: 'pets', title: 'In your family', sub: 'Relationships only, no names. Family patterns help read your own.', type: 'multi', key: 'family', options: [['meno40', 'Mother or sister: menopause before 40'], ['meno44', 'Mother or sister: menopause at 40–44'], ['pcosendo', 'PCOS or endometriosis'], ['cancer', 'Ovarian or breast cancer'], ['brca', 'Known BRCA or Lynch finding'], ['none', 'None that I know of'], ['unknown', 'Don’t know']], exclusive: ['none', 'unknown'] },
+    { id: 'signals', pose: 'coffee', title: 'Body signals lately', sub: 'New or persistent in the last few months.', type: 'multi', key: 'signals', options: [['hair', 'New facial or body hair'], ['discharge', 'Nipple discharge (not breastfeeding)'], ['weight', 'Big weight change'], ['restrict', 'Restrictive eating or intense training'], ['bloating', 'Persistent bloating or feeling full quickly'], ['pelvic', 'New pelvic pain or needing to wee more often'], ['flushes', 'Hot flushes or night sweats'], ['none', 'None of these']], exclusive: ['none'] },
+    { id: 'goals', pose: 'plants', title: 'What would you like from Ovumind?', sub: 'Pick as many as you like. The room will lean toward them.', type: 'multi', key: 'goals', options: [['understand', 'Understand my cycle'], ['conceive', 'Conceive'], ['symptoms', 'Ease cramps and PMS'], ['sleep', 'Sleep better'], ['peri', 'Perimenopause support'], ['calm', 'Build calm habits'], ['doctor', 'Clear records for my doctor']] },
+    { id: 'habits', pose: 'stretch', title: 'Everyday habits (optional)', sub: 'No judgement. Smoking and sleep in particular shape ovarian health over the years.', type: 'rows', optional: true, rows: [{ key: 'smoking', label: 'Smoking', options: [['no', 'No'], ['sometimes', 'Sometimes'], ['daily', 'Daily']] }, { key: 'alcohol', label: 'Alcohol', options: [['none', 'None'], ['weekly', 'Some weeks'], ['most', 'Most days']] }, { key: 'sleep', label: 'Usual sleep', options: [['lt6', 'Under 6 h'], ['6-7', '6–7 h'], ['7-8', '7–8 h'], ['8+', '8 h or more']] }, { key: 'exercise', label: 'Movement days a week', options: [['0', '0'], ['1-2', '1–2'], ['3-4', '3–4'], ['5+', '5+']] }] },
+    { id: 'body', pose: 'shower', title: 'Height and weight (optional)', sub: 'Only if you want. Weight at either extreme can change ovulation, so it helps the notes.', type: 'body', optional: true },
+    { id: 'final', pose: 'outfit', title: 'Lastly, what should I call you?', sub: 'A first name or a nickname, or leave it blank.', type: 'final' }
+  ];
+  var onb = null;
+  function onbVisible(A) { return ONB.filter(function (s) { return !s.showIf || s.showIf(A); }); }
+  function chipRow(key, options, val, multi) { return '<div class="chips" data-key="' + key + '"' + (multi ? ' data-multi="1"' : '') + '>' + options.map(function (o) { var v = o[0], lab = o[1], on = multi ? (val || []).indexOf(v) > -1 : val === v; return '<button type="button" class="chipbtn' + (on ? ' on' : '') + '" data-v="' + esc(v) + '">' + esc(lab) + '</button>'; }).join('') + '</div>'; }
+  function openOnboarding(i, a) {
+    if (!onb || a !== undefined) onb = { i: 0, a: a || {} };
+    var steps = onbVisible(onb.a), A = onb.a;
+    onb.i = Math.max(0, Math.min(steps.length - 1, i || 0));
+    var st = steps[onb.i], last = onb.i === steps.length - 1, html = '';
+    if (st.type === 'info') html = st.items.map(function (it) { return '<div class="stat"><span class="ms">' + it[0] + '</span><div><b>' + esc(it[1]) + '</b><span>' + esc(it[2]) + '</span></div></div>'; }).join('');
+    if (st.type === 'chips') html = chipRow(st.key, st.options, A[st.key], false) + (st.note && st.note(A) ? '<div class="onb-note"><span class="ms">favorite</span>' + esc(st.note(A)) + '</div>' : '');
+    if (st.type === 'multi') html = chipRow(st.key, st.options, A[st.key], true);
+    if (st.type === 'date') html = '<div class="field"><input class="input" id="onbDate" type="date" max="' + S.today() + '" value="' + esc(A[st.key] || '') + '"></div>';
+    if (st.type === 'rows') html = st.rows.filter(function (r) { return !r.showIf || r.showIf(A); }).map(function (r) { return '<div class="field"><span class="lbl">' + esc(r.label) + '</span>' + chipRow(r.key, r.options, A[r.key], false) + '</div>'; }).join('');
+    if (st.type === 'body') html = '<div class="grid2"><div class="field"><label for="onbH">Height (cm)</label><input class="input" id="onbH" type="number" inputmode="numeric" min="120" max="220" value="' + (A.heightCm || '') + '"></div><div class="field"><label for="onbW">Weight (kg)</label><input class="input" id="onbW" type="number" inputmode="decimal" min="30" max="250" step="0.1" value="' + (A.weightKg || '') + '"></div></div>';
+    if (st.type === 'final') html = '<div class="field"><input class="input" id="onbName" maxlength="24" placeholder="Your name" value="' + esc(A.name || S.profile().name || '') + '"></div>' +
+      '<div class="stat"><span class="ms">lock</span><div><b>On this phone only</b><span>Entries live in this browser. The page loads fonts from Google; GitHub Pages serves the files with ordinary server logs; if Luna’s model reads a note, only that note goes through the Ovumind relay and comes straight back to you.</span></div></div>' +
+      '<label class="agree"><input type="checkbox" id="onbAgree"' + (A.consent ? ' checked' : '') + '> I have read the <a href="privacy.html" target="_blank" rel="noopener">privacy notes</a> and <a href="terms.html" target="_blank" rel="noopener">terms</a>. Ovumind is not a medical device and does not replace care.</label>' +
+      (A.ageBand === 'under13' ? '<div class="onb-note"><span class="ms">family_restroom</span>Under 13: a parent or guardian should tick this with you.</div>' : '');
+    openSheet('onboarding', 'Getting to know you', 'Step ' + (onb.i + 1) + ' of ' + steps.length, 'favorite',
+      '<div class="onb"><div class="onb-head"><img src="' + ART + 'avatar-act-' + st.pose + '.webp" alt=""><div><h3>' + esc(st.title) + '</h3><p>' + esc(st.sub) + '</p></div></div><div class="onb-dots">' + steps.map(function (_, k) { return '<i class="' + (k <= onb.i ? 'on' : '') + '"></i>'; }).join('') + '</div>' + html +
+      '<div class="onb-nav">' + (onb.i ? '<button type="button" class="btn ghost" id="onbBack"><span class="ms">arrow_back</span>Back</button>' : '') + '<span class="sp"></span>' + (st.optional ? '<button type="button" class="btn ghost" id="onbSkip">Skip</button>' : '') + '<button type="button" class="btn primary" id="onbNext">' + (last ? '<span class="ms">favorite</span>Enter my room' : 'Next<span class="ms">arrow_forward</span>') + '</button></div><div class="msg" id="onbMsg"></div></div>');
+    function collect() {
+      if (st.type === 'date') { var d = $('#onbDate').value; A[st.key] = S.validDate(d) && d <= S.today() ? d : ''; }
+      if (st.type === 'body') { A.heightCm = Number($('#onbH').value) || null; A.weightKg = Number($('#onbW').value) || null; }
+      if (st.type === 'final') { A.name = $('#onbName').value.trim(); A.consent = $('#onbAgree').checked; }
+    }
+    body.addEventListener('click', function (e) {
+      var c = e.target.closest('.chipbtn[data-v]');
+      if (c) {
+        var row = c.parentNode, key = row.dataset.key, v = c.dataset.v;
+        if (row.dataset.multi) { var cur = (A[key] || []).slice(), excl = st.exclusive || []; if (cur.indexOf(v) > -1) cur = cur.filter(function (x) { return x !== v; }); else if (excl.indexOf(v) > -1) cur = [v]; else cur = cur.filter(function (x) { return excl.indexOf(x) < 0; }).concat([v]); A[key] = cur; $$('.chipbtn', row).forEach(function (b) { b.classList.toggle('on', cur.indexOf(b.dataset.v) > -1); }); }
+        else { A[key] = v; $$('.chipbtn', row).forEach(function (b) { b.classList.toggle('on', b === c); }); if (st.type === 'rows' && st.rows.some(function (r) { return r.showIf; }) || st.note) openOnboarding(onb.i); }
+        chime('tap'); return;
+      }
+      if (e.target.closest('#onbBack')) { collect(); openOnboarding(onb.i - 1); return; }
+      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; } openOnboarding(onb.i + 1); return; }
+      if (e.target.closest('#onbNext')) {
+        collect();
+        if (st.type === 'final' && !A.consent) { message($('#onbMsg'), 'Please tick the box to continue.', false); return; }
+        if (st.id === 'urgent' && (A.urgent || []).some(function (x) { return x !== 'none'; })) { openUrgentCard(function () { openOnboarding(onb.i + 1); }); return; }
+        if (last) finishOnboarding(A); else openOnboarding(onb.i + 1);
+      }
+    });
+  }
+  function openUrgentCard(next) {
+    openSheet('urgent', 'Please get care today', 'This is not something to track; it needs a clinician now', 'emergency_home',
+      '<div class="flag high"><span class="ms">emergency_home</span><div><b>Sudden severe pelvic pain, fainting with bleeding, shoulder-tip pain or bleeding you cannot control</b><span>In Singapore call 995 or go to the nearest A&E; KK Women’s and Children’s Hospital runs a 24-hour O&G emergency service. If you could be pregnant, say so when you arrive.</span></div></div>' +
+      '<p class="help">Ovumind cannot assess this. Your answers are kept as a note for your records, not sent anywhere.</p>' +
+      '<div class="row"><a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><button type="button" class="btn ghost" id="urgentNext">Continue</button></div>');
+    $('#urgentNext').addEventListener('click', next);
+  }
+  function predictionModeFor(A) {
+    var h = A.hormones || [], c = A.conditions || [];
+    if (A.pregState === 'pregnant' || A.pregState === 'maybe' || A.periodsStarted === 'no' || A.regularity === 'none12' || c.indexOf('hysterectomy') > -1) return 'suspended';
+    if (A.regularity === 'rare' || A.regularity === 'irregular' || A.pregState === 'postpartum' || A.pregState === 'loss' || A.ageBand === '13-17' || A.cycleLength === 'varies' || h.some(function (x) { return ['pill', 'pop', 'iud_h', 'implant', 'hrt', 'fertility', 'ec'].indexOf(x) > -1; }) || (A.signals || []).indexOf('flushes') > -1) return 'wide';
+    return 'normal';
+  }
+  function intakeNotes(A) {
+    var n = [], bs = A.bleedSigns || [], sg = A.signals || [], fam = A.family || [], ur = A.urgent || [];
+    if (bs.indexOf('flooding') > -1) n.push({ level: 'watch', title: 'Heavy bleeding signs', detail: 'You reported soaking through protection every 1 to 2 hours or flooding. The NHS lists this among the signs of heavy periods worth discussing.' });
+    if (bs.indexOf('between') > -1) n.push({ level: 'watch', title: 'Bleeding between periods or after sex', detail: 'Worth a clinician’s review, especially if new or recurring.' });
+    if (bs.indexOf('postmeno') > -1) n.push({ level: 'high', title: 'Bleeding after 12 months without periods', detail: 'Postmenopausal bleeding should always be assessed by a clinician.' });
+    if (bs.indexOf('painlife') > -1) n.push({ level: 'watch', title: 'Period pain that disrupts your days', detail: 'Pain that stops school, work or sleep deserves assessment rather than endurance.' });
+    if (A.periodsStarted === 'no' && A.ageBand && A.ageBand !== 'under13') n.push({ level: 'watch', title: 'Periods not yet started', detail: 'Guidance suggests an assessment if periods have not started by 15.' });
+    if (A.regularity === 'rare') n.push({ level: 'watch', title: 'Long gaps between periods', detail: 'Gaps of three months or more are worth discussing with a clinician.' });
+    if (A.plans === 'ttc' && (A.ttcMonths === '12+' || (A.ttcMonths === '6-11' && ['35-39', '40-44', '45-49', '50+'].indexOf(A.ageBand) > -1))) n.push({ level: 'watch', title: 'Time to consider a fertility check', detail: 'ASRM suggests an evaluation after 12 months of trying under 35, or 6 months at 35 and over.' });
+    if (sg.indexOf('bloating') > -1 || sg.indexOf('pelvic') > -1) n.push({ level: 'watch', title: 'New persistent bloating, fullness, pelvic pain or urinary frequency', detail: 'The NHS advises a GP review when these are new, frequent and persistent.' });
+    if (sg.indexOf('hair') > -1 || sg.indexOf('discharge') > -1) n.push({ level: 'watch', title: 'New body signals', detail: 'New facial or body hair, or nipple discharge outside breastfeeding, are worth a review.' });
+    if (fam.indexOf('meno40') > -1) n.push({ level: 'watch', title: 'Family history of menopause before 40', detail: 'Worth mentioning when you discuss fertility or ovarian health.' });
+    if (fam.indexOf('brca') > -1 || fam.indexOf('cancer') > -1) n.push({ level: 'watch', title: 'Family history of ovarian or breast cancer', detail: 'A clinician can advise whether genetic counselling is relevant.' });
+    if (ur.some(function (x) { return x !== 'none'; })) n.push({ level: 'high', title: 'Urgent symptoms reported at set-up', detail: 'You were shown urgent-care guidance. Please follow it today.' });
+    return n;
+  }
+  function finishOnboarding(A) {
+    var num = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : null; };
+    var patch = { name: A.name || S.profile().name || '', ageBand: A.ageBand || '', periodsStarted: A.periodsStarted || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: A.lastPeriodStart || '', cycleLength: num(A.cycleLength), periodLength: num(A.periodLength), cycleVaries: A.cycleLength === 'varies' || A.cycleLength === 'rare', bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (A.ageBand && ['40-44', '45-49', '50+'].indexOf(A.ageBand) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), consent: { terms: true, at: new Date().toISOString() }, onboarded: true, onboardedAt: new Date().toISOString() };
+    S.setProfile(patch);
+    if (patch.lastPeriodStart && !S.list('period').length) { try { S.add('period', patch.lastPeriodStart, { flow: 'medium', clots: false, impact: false }, 'onboarding'); } catch (e) { } }
+    try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, patch))); } catch (e) { }
+    RW.grant(20, 'welcome');
+    onb = null; closeSheet(); updateGreeting(); renderDeck(); renderProps();
+    toast('Welcome home' + (patch.name ? ', ' + patch.name : '') + '. 20 hearts to start your nest.', 'favorite');
+  }
+  function showWelcome() {
+    var w = $('#welcome'); if (!w) return; w.hidden = false;
+    $('#wBegin').addEventListener('click', function () { chime('tap'); w.hidden = true; S.setState({ welcomeSeen: true }); openOnboarding(0, {}); });
+    $('#wSkip').addEventListener('click', function () { chime('tap'); w.hidden = true; S.setState({ welcomeSeen: true }); toast('Welcome back. Your intro is under the window whenever you want it.', 'favorite'); });
+  }
+
   /* ---------- window: tonight ---------- */
   function openWindow() {
     var cs = S.cycleStats(), st = S.sleepStats(7), d = new Date();
     openSheet('window', 'Tonight', d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }), 'dark_mode',
       '<div class="stat"><span class="ms">bedtime</span><div><b>' + (st.avg ? 'Averaging ' + st.avg + ' h over ' + st.count + ' nights' : 'No sleep logged this week') + '</b><span>Adults generally do best with 7 hours or more.</span></div></div>' +
-      '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedNext ? 'Next period expected around ' + prettyDate(cs.predictedNext) + '.' : 'Log a period on the wall calendar to start predictions.') + '</span></div></div>' +
+      '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedNext ? 'Next period expected around ' + prettyDate(cs.predictedNext) + (cs.uncertain ? ' (a loose estimate while cycles are changing).' : '.') : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Log a period on the wall calendar to start predictions.')) + '</span></div></div>' +
       '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button class="btn soft" id="winSound"><span class="ms">' + (S.state().sound ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (S.state().sound ? 'on' : 'off') + '</button></div>' +
       '<div class="row"><a class="btn ghost" href="settings.html"><span class="ms">settings</span>Settings & health connections</a><a class="btn ghost" href="face-ppg.html"><span class="ms">monitor_heart</span>Calm check (beta)</a></div>' +
+      '<div class="row"><button type="button" class="btn ghost" id="winIntro"><span class="ms">favorite</span>' + (S.profile().onboarded ? 'Update my intro' : 'Tell me about you') + '</button></div>' +
       '<p class="help">Sounds are tiny chimes plus Erin’s good-night and good-morning lines; they stay off unless you turn them on. Guided sessions always play when you start one.</p>');
     $('#winSleep').addEventListener('click', function () { closeSheet(); tap(hotspot('bed')); });
     $('#winSound').addEventListener('click', function () { S.setState({ sound: !S.state().sound }); chime('tap'); openWindow(); });
+    $('#winIntro').addEventListener('click', function () { openOnboarding(0, {}); });
   }
 
   /* ---------- avatar bubble ---------- */
   var bubble = $('#bubble');
   function hideBubble() { bubble.classList.remove('on'); }
   avatar.addEventListener('click', function (e) {
-    e.stopPropagation(); chime('tap');
+    e.stopPropagation(); chime('tap'); joy(); hideThought();
     var r = avatar.getBoundingClientRect(), sr = scene.getBoundingClientRect();
     bubble.style.left = Math.min(sr.width - 95, Math.max(95, r.left - sr.left + r.width / 2)) + 'px'; bubble.style.top = (r.top - sr.top - 6) + 'px';
-    bubble.innerHTML = '<button data-act="wardrobe"><span class="ms">checkroom</span>Change outfit</button><button data-act="sleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button data-act="mat"><span class="ms">self_improvement</span>Sit with Erin</button><button data-act="acu"><span class="ms">spa</span>Cramp relief points</button><button data-act="luna"><span class="ms">dark_mode</span>Tell Luna</button><button data-act="journal"><span class="ms">auto_stories</span>Open my journal</button>';
+    bubble.innerHTML = '<button data-act="wardrobe"><span class="ms">checkroom</span>Change outfit</button><button data-act="sleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button data-act="mat"><span class="ms">self_improvement</span>Sit with Erin</button><button data-act="acu"><span class="ms">spa</span>Cramp relief points</button><button data-act="luna"><span class="ms">dark_mode</span>Tell Luna</button><button data-act="journal"><span class="ms">auto_stories</span>Open my journal</button><button data-act="everyday"><span class="ms">home</span>Everyday practice</button>' + (S.profile().onboarded ? '' : '<button data-act="intro"><span class="ms">favorite</span>Tell me about you</button>') + '';
     bubble.classList.add('on');
   });
-  bubble.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; hideBubble(); var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); });
+  bubble.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; hideBubble(); var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
   document.addEventListener('click', function (e) { if (!e.target.closest('#bubble') && !e.target.closest('#avatar')) hideBubble(); });
 
   /* ---------- after save: agents + hearts ---------- */
@@ -1101,7 +1341,7 @@
       '<button class="tile" data-go="calendar"><span class="ms">water_drop</span><b>' + (cs.cycleDay ? 'Day ' + cs.cycleDay : '—') + '</b><small>' + (cs.phase ? cap(cs.phase) : 'Log a period') + '</small></button>' +
       '<button class="tile" data-go="clock"><span class="ms">bedtime</span><b>' + (lastNight ? A.fmtHours(S.sleepHours(lastNight.data)) : '—') + '</b><small>' + (lastNight ? (lastNight.date === today ? 'Last night' : prettyDate(lastNight.date)) : 'No sleep yet') + '</small></button>' +
       '<button class="tile" data-go="diary"><span class="ms">restaurant</span><b>' + (sm && sm.totals.kcal !== null ? Math.round(sm.totals.kcal) : meals) + '</b><small>' + (sm && sm.totals.kcal !== null ? 'kcal · ' + FD.fmt('protein', sm.totals.protein) + ' g protein' : (meals === 1 ? 'meal today' : 'meals today')) + '</small></button>';
-    var flags = A.allFlags();
+    var flags = A.allFlags().concat((S.profile().intakeNotes || []).map(function (n) { return { level: n.level || 'watch', title: n.title, detail: n.detail }; }));
     $('#flagCard').style.display = flags.length ? '' : 'none';
     $('#flags').innerHTML = flags.slice(0, 3).map(function (f) { return '<div class="flag ' + f.level + '"><span class="ms">' + (f.level === 'high' ? 'emergency_home' : f.level === 'watch' ? 'flag' : 'info') + '</span><div><b>' + esc(f.title) + '</b><span>' + esc(f.detail) + '</span></div></div>'; }).join('');
     $('#journalBtn').classList.toggle('has-flag', flags.some(function (f) { return f.level !== 'info'; }));
@@ -1138,9 +1378,12 @@
     if (!S.state().lunaSeen) { setTimeout(function () { $('#lunaBtn').classList.add('hinting'); }, 2500); setTimeout(function () { $('#lunaBtn').classList.remove('hinting'); S.setState({ lunaSeen: true }); }, 9000); }
     if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () { });
     RM.start(function (h) { chime('bell', true); toast(h.item.label + (h.item.note ? ' · ' + h.item.note : ''), h.item.icon); });
-    document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } });
+    document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } if (e.target.closest('#arrDone')) exitArrange(false); if (e.target.closest('#arrReset')) exitArrange(true); });
     if (location.hash === '#luna') setTimeout(function () { openLuna(); }, 600);
-    setTimeout(function () { $('#loading').classList.add('hidden'); }, 500);
+    if (location.hash === '#onboarding') setTimeout(function () { openOnboarding(0, {}); }, 400);
+    else if (!S.profile().onboarded && !S.state().welcomeSeen) showWelcome();
+    setTimeout(function () { $('#loading').classList.add('hidden'); joy(); }, 500);
+    scheduleLife();
     function tick() { var d = new Date(); $('#clockTime').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); var dc = $('#deskClock'); if (dc) dc.textContent = nowHM(); } tick(); setInterval(tick, 20000);
   }
   var dayImg = $('#roomDay');

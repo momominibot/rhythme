@@ -157,9 +157,11 @@
     var periodLen = eps.length ? Math.round(eps.slice(-3).reduce(function (a, ep) { return a + ep.length; }, 0) / Math.min(3, eps.length)) : (p.periodLength || null);
     var last = starts[starts.length - 1] || null;
     var day = last ? diffDays(last, asOf) + 1 : null;
-    var predictedNext = last && (avg || 28) ? addDays(last, avg || 28) : null;
+    /* no silent 28-day assumption: predictions need a logged or stated length, and pause while pregnant, after a hysterectomy or past menopause */
+    var mode = p.predictionMode || 'normal';
+    var predictedNext = last && avg && mode !== 'suspended' ? addDays(last, avg) : null;
     var phase = null;
-    if (day) {
+    if (day && mode !== 'suspended') {
       var L = avg || 28, pl = periodLen || 5;
       if (day <= pl) phase = 'menstrual';
       else if (day < L - 16) phase = 'follicular';
@@ -167,7 +169,7 @@
       else phase = 'luteal';
       if (day > L + 7) phase = 'late';
     }
-    return { episodes: eps, starts: starts, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, basis: recent.length ? recent.length + ' logged cycles' : (p.cycleLength ? 'your profile setting' : 'a 28-day default'), estimate: true };
+    return { mode: mode, uncertain: mode === 'wide', episodes: eps, starts: starts, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, basis: recent.length ? recent.length + ' logged cycles' : (p.cycleLength ? 'your profile setting' : 'a 28-day default'), estimate: true };
   }
 
   /* ---------- legacy mirrors (so older screens keep showing the same data) ---------- */
