@@ -1,0 +1,16 @@
+# Supabase project settings for the GitHub integration and the CLI.
+# Project: ovaria-app (ap-southeast-1). Functions are called from the static site
+# without a user session, so JWT verification stays off; each function checks the
+# Origin header, counts calls per day and reads its key from Vault.
+project_id = "zodkohwaznqgrfrcfdkf"
+
+[functions.luna]
+verify_jwt = false
+entrypoint = "./functions/luna/index.ts"
+
+[functions.insight]
+verify_jwt = false
+entrypoint = "./functions/insight/index.ts"
+
+[db.migrations]
+enabled = true
