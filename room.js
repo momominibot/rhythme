@@ -32,7 +32,7 @@
       sleeper: { x: 31, y: 58, w: 21, rot: 34 }, zzz: { x: 30, y: 44 },
       meditator: { x: 28, y: 77, w: 11.5 }, aura: { x: 28, y: 75, w: 18 }, holo: { x: 39, y: 75, w: 15 },
       window: { x: 37.3, y: 31.5, rx: 7, ry: 9.6 },
-      winPatch: { x: 29.144, y: 23.261, w: 15.353, base: 'room-v3-win-' },
+      winPatch: { x: 29.348, y: 23.424, w: 14.946, base: 'room-v3-win-' },
       props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 87, y: 66, w: 10 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 40, y: 73.5, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
     },
     house: {
@@ -1811,13 +1811,14 @@
       '<div class="erin"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Erin Lee · Mindful Moments</b><small>Certified MBSR mindfulness teacher and author in Singapore. When you begin, the sheet closes and Erin’s projection sits beside you on the mat, speaking in her voice: a greeting, settling in, slow breaths with gentle reminders, and a soft close. Her words are shown as captions.</small><a href="https://mindfulmoments.sg/" target="_blank" rel="noopener">mindfulmoments.sg</a></div></div>' +
       '<div class="sessions" id="sessions"><button type="button" class="session on" data-kind="erin" data-min="3"><b>Erin · 3 minutes</b><small>Guided breathing, a soft close</small></button><button type="button" class="session" data-kind="erin" data-min="6"><b>Erin · 6 minutes</b><small>A longer settle and more reminders</small></button><button type="button" class="session" data-kind="breathe" data-min="2"><b>Just breathe · 2 min</b><small>4-4-6 orb with a quiet bell</small></button><button type="button" class="session" data-kind="breathe" data-min="5"><b>Just breathe · 5 min</b><small>Silent, follow the orb</small></button></div>' +
       '<div class="orbwrap"><div class="orb out" id="orb"></div><div class="orbtext" id="orbText">Ready when you are</div><div class="orbsub" id="orbSub">' + (mins ? Math.round(mins) + ' min this week' : 'First session this week') + '</div></div>' +
-      '<div class="row"><button class="btn primary" id="mindStart"><span class="ms">self_improvement</span>Begin</button><button class="btn soft" id="mindAcu"><span class="ms">spa</span>Cramp relief points</button></div>' +
-      '<div class="row"><button type="button" class="btn soft" id="mindEveryday"><span class="ms">home</span>Everyday practice</button><a class="btn ghost" href="https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change" target="_blank" rel="noopener"><span class="ms">article</span>Read Erin</a></div>' +
+      '<div class="row"><button class="btn primary" id="mindStart"><span class="ms">self_improvement</span>Begin</button><button type="button" class="btn soft" id="mindTap"><span class="ms">blur_on</span>Moon Tap</button></div>' +
+      '<div class="row"><button class="btn soft" id="mindAcu"><span class="ms">spa</span>Cramp relief points</button><button type="button" class="btn soft" id="mindEveryday"><span class="ms">home</span>Everyday practice</button><a class="btn ghost" href="https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change" target="_blank" rel="noopener"><span class="ms">article</span>Read Erin</a></div>' +
       '<p class="help">Sessions of a minute or more are saved to your journal. Erin’s clips are pre-recorded in her cloned voice (with her consent), so this works offline once loaded.</p>');
     $('#sessions').addEventListener('click', function (e) { var b = e.target.closest('.session'); if (!b || session) return; $$('.session').forEach(function (x) { x.classList.toggle('on', x === b); }); });
     $('#mindStart').addEventListener('click', function () { if (session) return; var sel = $('.session.on'); runSession(sel.dataset.kind, Number(sel.dataset.min)); });
     $('#mindAcu').addEventListener('click', openAcupressure);
     $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
+    $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { afterSave(ev); }, onClose: function () { renderDeck(); } }); });
   }
 
   /* ---------- acupressure: numbered points on your avatar, then a zoomed locator ---------- */

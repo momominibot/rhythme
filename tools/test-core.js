@@ -13,7 +13,7 @@ function fresh(todayIso) {
   w.window = w; w.self = w; w.globalThis = w;
   var ctx = vm.createContext(w);
   w.Uint8Array = Uint8Array; w.ArrayBuffer = ArrayBuffer; w.isFinite = isFinite; w.isNaN = isNaN; w.Blob = Blob; w.File = File;
-  ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
+  ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-breathtap.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
   return w;
 }
@@ -609,6 +609,27 @@ function scenes(todayIso) {
   check('every shelf item has a sprite on disk', RW.SHOP.filter(function (s) { return s.kind === 'treat' || s.kind === 'accessory'; }).every(function (s) { return fs.existsSync(path.join(root, 'assets/room/dream', s.img)); }));
   check('every pet has a rendered sprite for every accessory', ['cat', 'catblack', 'catginger', 'dog', 'shiba', 'mewmew'].every(function (id) { return ['acc-bow', 'acc-hat', 'acc-bandana', 'acc-charm'].every(function (acc) { var f = P.wornSprite(id, acc); return f && fs.existsSync(path.join(root, 'assets/room/dream', f)); }); }));
   check('head and neck spots exist for every pet', ['cat', 'catblack', 'catginger', 'dog', 'shiba', 'mewmew'].every(function (id) { return P.wearSpot(id, 'head').w > 0 && P.wearSpot(id, 'neck').w > 0; }));
+})();
+
+(function moonTap() {
+  console.log('Moon Tap: the ring follows the preset, stopping saves seconds, hearts never depend on taps');
+  var w = fresh(), T = w.OvuBreathTap, RW = w.OvuRewards, S = w.OvuStore;
+  var p0 = T.phaseAt('easy', 0), p1 = T.phaseAt('easy', 1500), p2 = T.phaseAt('easy', 3000), p3 = T.phaseAt('easy', 6000), p4 = T.phaseAt('longout', 4000 + 3000);
+  check('easy starts closed on the in-breath', p0.phase === 'in' && p0.size < 0.01);
+  check('halfway through the in-breath the ring is half open', p1.phase === 'in' && Math.abs(p1.size - 0.5) < 0.01, p1.size);
+  check('at three seconds the out-breath begins fully open', p2.phase === 'out' && p2.size > 0.99);
+  check('six seconds later a new cycle starts', p3.cycle === 1 && p3.phase === 'in');
+  check('long out: three seconds into the six second out-breath is half way', p4.phase === 'out' && Math.abs(p4.progress - 0.5) < 0.01);
+  var e = T.entryFor(50.4, 'steady', 3, 3);
+  check('an early stop keeps the seconds, the preset and the taps, and is not completed', e.seconds === 50 && e.preset === 'steady' && e.taps === 3 && !e.completed && e.minutes === 0.8, JSON.stringify(e));
+  check('a full planned session counts as completed', T.entryFor(179, 'easy', 0, 3).completed === true);
+  var l0 = RW.ledger(), before = l0.hearts, day = l0.lastDay;
+  var r1 = RW.award(S.add('mindfulness', S.today(), T.entryFor(50, 'easy', 40, 0), 'room'));
+  var r2 = RW.award(S.add('mindfulness', S.today(), T.entryFor(55, 'easy', 0, 0), 'room'));
+  check('fifty seconds earns nothing yet, the next fifty-five complete a minute for two hearts', r1.points === 0 && r2.points === 2 && RW.ledger().hearts === before + 2, r1.points + '/' + r2.points);
+  check('the leftover forty-five seconds carry on', RW.ledger().breathCarry === 45, RW.ledger().breathCarry);
+  check('Moon Tap never touches the daily streak', RW.ledger().lastDay === day && r2.bonus === 0);
+  check('taps change nothing: forty taps and none earned the same', r1.points === 0);
 })();
 
 console.log('\n' + passes + ' passed, ' + fails + ' failed');

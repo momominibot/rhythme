@@ -1303,3 +1303,30 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .itemcard small{display:flex;align-items:center;gap:4px;margin-top:5px;font:700 11.5px var(--sans);color:var(--rm-ink-3)}
 .itemcard small .ms{font-size:14px;color:#e58aa8}
 @media (prefers-reduced-motion: reduce){.shopprop.kind-pet img{animation:none!important}}
+
+/* Moon Tap: a no-fail breath break (ovu-breathtap.js) */
+.btap{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 90% at 50% 10%,#3b2a5e 0%,#1b1330 60%,#120c22 100%);color:#f1e9fb;font-family:var(--sans);overflow:hidden;padding:16px}
+.btap[hidden]{display:none}
+.btap .w-stars{opacity:.9}
+.btap-card{position:relative;z-index:2;width:min(92vw,400px);background:rgba(255,255,255,.08);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.14);border-radius:24px;padding:20px 18px;display:flex;flex-direction:column;gap:12px;text-align:center}
+.btap-card[hidden]{display:none}
+.btap-card h2{font-family:var(--serif);font-weight:600;font-size:26px;color:#fff}
+.btap-card p{font:600 13px/1.5 var(--sans);color:#d9cdef}
+.btap-card .safe{font:600 11.5px/1.5 var(--sans);color:#b9abd6}
+.btap-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.btap-chips button{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#f1e9fb;border-radius:999px;padding:8px 12px;font:800 12px var(--sans);cursor:pointer;min-width:0}
+.btap-chips button.on{background:#f1e9fb;color:#3b2d52}
+.btap-chips button small{display:block;font:600 10px var(--sans);opacity:.8}
+.btap .btn.primary{box-shadow:0 10px 26px rgba(117,86,196,.45),0 0 28px rgba(226,210,255,.4)}
+.btap .btn.ghost{color:#d9cdef;border-color:rgba(255,255,255,.2)}
+.btap-stage{position:absolute;inset:0;z-index:1;touch-action:manipulation;cursor:pointer}
+.btap-stage[hidden]{display:none}
+.btap-ring{position:absolute;left:50%;top:44%;width:min(62vw,300px);aspect-ratio:1;transform:translate(-50%,-50%) scale(.75);border-radius:50%;border:2px solid rgba(255,255,255,.55);box-shadow:0 0 40px rgba(214,196,255,.45),inset 0 0 40px rgba(214,196,255,.25);display:flex;align-items:center;justify-content:center;will-change:transform;pointer-events:none}
+.btap-ring img{width:48%;filter:drop-shadow(0 0 18px rgba(255,236,190,.6));animation:moonfloat 6s ease-in-out infinite}
+.btap-word{position:absolute;left:50%;top:calc(44% + min(31vw,150px) + 26px);transform:translateX(-50%);font-family:var(--serif);font-size:26px;color:#fff;letter-spacing:.08em;opacity:.9;pointer-events:none}
+.btap-stop{position:absolute;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);min-width:140px;flex:none;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22)}
+.btap-petal{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:radial-gradient(circle,#fff7e6 0%,rgba(255,214,236,.85) 35%,rgba(214,196,255,0) 70%);pointer-events:none;animation:btapbloom 1.4s ease-out forwards}
+@keyframes btapbloom{0%{transform:scale(.4);opacity:0}20%{opacity:1}100%{transform:scale(4.2);opacity:0}}
+.btap-done b{display:block;font-family:var(--serif);font-weight:600;font-size:22px;color:#fff}
+body.btap-open{overflow:hidden}
+@media(prefers-reduced-motion:reduce){.btap-ring{transition:opacity .6s}.btap-ring img{animation:none}.btap-petal{animation-duration:.8s}}

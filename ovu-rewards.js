@@ -50,6 +50,13 @@
   /* Award for a saved entry; a first log on a new day also grows the streak. */
   function award(ev) {
     if (ev.type === 'weight') return { points: 0, bonus: 0, hearts: ledger().hearts }; /* numbers are never rewarded */
+    if (ev.type === 'mindfulness' && ev.data && ev.data.kind === 'breathtap') {
+      /* Moon Tap: 2 hearts per full minute of practice, seconds carried between sessions, capped like other practice, no streak bonus, nothing for taps */
+      var lb = ledger(), carry = (lb.breathCarry || 0) + Math.max(0, Number(ev.data.seconds) || 0), whole = Math.floor(carry / 60), bp = Math.min(20, whole * 2);
+      lb.breathCarry = carry - whole * 60;
+      if (bp) { lb.hearts += bp; lb.earned += bp; lb.log = lb.log || []; lb.log.unshift({ at: new Date().toISOString(), type: 'breathtap', points: bp }); lb.log = lb.log.slice(0, 200); }
+      write(lb); return { points: bp, bonus: 0, hearts: lb.hearts, streak: lb.streak };
+    }
     var l = ledger(), pts = RULES[ev.type] || 0;
     if (ev.type === 'food') pts += Math.min(6, ((ev.data.items || []).length) * 2);
     if (ev.type === 'mindfulness') pts = ev.data.kind === 'informal' ? 5 + (ev.data.first ? 10 : 0) : Math.min(20, Math.round(Number(ev.data.minutes) || 0) * 2); /* everyday practice: 5, +10 the first time (jev 0.58 / 0.72) */

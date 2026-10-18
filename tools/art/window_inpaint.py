@@ -16,11 +16,12 @@ lab, n = ndimage.label(inner); m = lab == lab[cy, cx]
 m = ndimage.binary_closing(m, iterations=4); m = ndimage.binary_fill_holes(m); m = ndimage.binary_opening(m, iterations=3); m = ndimage.binary_fill_holes(m)
 pts = np.stack(np.where(m)[::-1], 1); hull = ConvexHull(pts); poly = [tuple(map(float, pts[v])) for v in hull.vertices]
 pm = Image.new('L', (W, H), 0); ImageDraw.Draw(pm).polygon(poly, fill=255); m = np.asarray(pm) > 0
-m = ndimage.binary_erosion(m, iterations=3)             # stay inside the frame's inner edge
+m = ndimage.binary_erosion(m, iterations=6)             # stay inside the frame's inner edge and its soft bevel
 ys, xs = np.where(m); x0, x1, y0, y1 = xs.min() - 2, xs.max() + 2, ys.min() - 2, ys.max() + 2
 sub = m[y0:y1 + 1, x0:x1 + 1]; h, w = sub.shape
-alpha = np.clip(ndimage.distance_transform_edt(sub) / 3.0, 0, 1)
-pv = Image.open(painted).convert('RGB').resize((512, 512), Image.LANCZOS)
+alpha = np.clip(ndimage.distance_transform_edt(sub) / 9.0, 0, 1)
+from PIL import ImageFilter
+pv = Image.open(painted).convert('RGB').resize((512, 512), Image.LANCZOS).filter(ImageFilter.GaussianBlur(2.2))   # the day view through the glass is soft focus; match it
 full = np.zeros((H, W, 3), np.uint8); full[cy0:cy0 + 512, cx0:cx0 + 512] = np.asarray(pv)
 rgb = full[y0:y1 + 1, x0:x1 + 1]
 patch = np.dstack([rgb, (alpha * 255).astype(np.uint8)])
