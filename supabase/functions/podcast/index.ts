@@ -64,7 +64,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return json({ error: "POST only" }, 405, cors);
   if (!allowed) return json({ error: "This endpoint only serves the Rhythme app." }, 403, cors);
-  let body: { action?: unknown; code?: unknown; grant?: unknown; id?: unknown; token?: unknown } = {};
+  let body: { action?: unknown; code?: unknown; grant?: unknown; id?: unknown; token?: unknown; jwt?: unknown } = {};
   try { body = await req.json(); } catch { return json({ error: "bad json" }, 400, cors); }
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   const ip = (req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || "0").split(",")[0].trim();
@@ -83,6 +83,21 @@ Deno.serve(async (req: Request) => {
       if (!row || row.status !== "ok") return json({ error: row && row.status === "revoked" ? "This access has been switched off." : "That code is not valid, or it has already been used." }, 403, cors);
       const exp = Math.floor(new Date(row.expires_at).getTime() / 1000);
       return json({ token: await signToken(sb, { v: 1, g: row.grant_id, exp }), expiresAt: row.expires_at }, 200, cors);
+    }
+    if (body.action === "account") {
+      // a signed-in person whose email carries a grant (account_grants) gets a normal Plus token, plus the tester flag
+      const jwt = String(body.jwt || "");
+      if (!jwt || jwt.length > 4096) return json({ error: "Please sign in again." }, 401, cors);
+      if (!(await bump("plusacct:" + ipHash, 60))) return json({ error: "Too many tries for today." }, 429, cors);
+      const { data: who, error: whoErr } = await sb.auth.getUser(jwt);
+      const uid = who?.user?.id, email = (who?.user?.email || "").toLowerCase();
+      if (whoErr || !uid || !email) return json({ error: "Your session is not valid. Please sign in again." }, 401, cors);
+      const { data: gdata, error: gerr } = await sb.rpc("plus_account_grant", { p_email: email, p_uid: uid });
+      if (gerr) return json({ error: "Rhythme Plus is unavailable right now." }, 503, cors);
+      const g = Array.isArray(gdata) ? gdata[0] : gdata;
+      if (!g || g.status !== "ok") return json({ plus: false, tester: !!(g && g.tester) }, 200, cors);
+      const exp = Math.floor(new Date(g.expires_at).getTime() / 1000);
+      return json({ plus: true, tester: !!g.tester, token: await signToken(sb, { v: 1, g: g.grant_id, exp }), expiresAt: g.expires_at }, 200, cors);
     }
     if (body.action === "url") {
       const id = String(body.id || ""), path = PREMIUM[id];

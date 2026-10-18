@@ -95,6 +95,15 @@
       emit('plus'); return d;
     }, function (e) { if (e.code === 403 || e.code === 400) { try { localStorage.removeItem(PLUS + '_pending'); } catch (x) { } } throw e; });
   }
+  /* after sign-in: the account itself may carry Plus (and tester mode); nothing is sent unless there is a session */
+  function claimAccount(jwt) {
+    if (!jwt) return Promise.resolve(null);
+    return call({ action: 'account', jwt: jwt }).then(function (d) {
+      if (d && d.plus && d.token) { try { localStorage.setItem(PLUS, JSON.stringify({ token: d.token, expiresAt: d.expiresAt, at: new Date().toISOString(), account: true })); } catch (e) { } if (cur && cur.access === 'premium') prepare(cur).catch(function () { }); emit('plus'); }
+      if (d && d.tester && store && root.OvuStore) { try { root.OvuStore.setState({ tester: { hearts: true, account: true } }); } catch (e) { } }
+      return d;
+    }).catch(function () { return null; });
+  }
   function removePlus() { try { localStorage.removeItem(PLUS); } catch (e) { } signed = {}; if (cur && cur.access === 'premium') { pause(); el().removeAttribute('src'); } emit('plus'); }
   function lastId() { return store().last || null; }
   function progress(id) { return (store().pos || {})[id] || 0; }
@@ -103,5 +112,5 @@
   var PHASE_PICK = { menstrual: 86, follicular: 82, ovulatory: 98, luteal: 87, late: 87 };
   function suggestFor(phase) { if (!data) return null; var n = PHASE_PICK[phase]; return data.episodes.filter(function (e) { return e.number === n; })[0] || data.episodes[0]; }
   function fmt(s) { s = Math.max(0, Math.floor(s || 0)); var m = Math.floor(s / 60), r = s % 60; return m + ':' + String(r).padStart(2, '0'); }
-  root.OvuPodcast = { plus: plus, plusActive: plusActive, redeem: redeem, removePlus: removePlus, load: load, select: select, play: play, pause: pause, toggle: toggle, skip: skip, seekTo: seekTo, setSpeed: setSpeed, setSleep: setSleep, state: state, episode: episode, indexOf: indexOf, lastId: lastId, progress: progress, finished: finished, suggestFor: suggestFor, fmt: fmt, on: function (fn) { listeners.push(fn); }, data: function () { return data; } };
+  root.OvuPodcast = { plus: plus, plusActive: plusActive, redeem: redeem, removePlus: removePlus, load: load, select: select, play: play, pause: pause, toggle: toggle, skip: skip, seekTo: seekTo, setSpeed: setSpeed, setSleep: setSleep, state: state, episode: episode, indexOf: indexOf, lastId: lastId, claimAccount: claimAccount, progress: progress, finished: finished, suggestFor: suggestFor, fmt: fmt, on: function (fn) { listeners.push(fn); }, data: function () { return data; } };
 })(window);

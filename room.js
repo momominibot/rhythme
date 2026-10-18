@@ -1837,16 +1837,34 @@
     var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
     enterMeditation();
     setTimeout(fillPodShelf, 0);
+    /* what fits now: the hour, today's cycle and this week's practice choose one suggestion; everything else is one tap away */
+    var hr = new Date().getHours(), cs = S.cycleStats(), today = S.today();
+    var crampy = S.list('symptom', { from: today, to: today }).some(function (e) { return (e.data.symptoms || []).indexOf('cramps') > -1; }) || S.list('period', { from: today, to: today }).length > 0;
+    var sessions = recent.length, days = {}; recent.forEach(function (e) { days[e.date] = 1; });
+    var sug = hr >= 20 || hr < 5 ? { t: 'Tonight: wind down', s: 'Two quiet minutes with the orb, then bed.', kind: 'breathe', min: 2, icon: 'bedtime' }
+      : crampy ? { t: 'Today: ease the cramps', s: 'Three minutes with Erin, then the pressure points.', kind: 'erin', min: 3, icon: 'spa' }
+      : hr < 11 ? { t: 'This morning: start slow', s: 'Three guided minutes before the day picks up.', kind: 'erin', min: 3, icon: 'wb_twilight' }
+      : !mins ? { t: 'This week: a first pause', s: 'Erin guides three minutes. Nothing to get right.', kind: 'erin', min: 3, icon: 'self_improvement' }
+      : { t: 'This afternoon: a reset', s: 'Five silent minutes, follow the orb.', kind: 'breathe', min: 5, icon: 'light_mode' };
+    var last = S.list('mindfulness', { from: S.addDays(today, -30), to: today }).slice(-3).reverse();
+    function label(e) { var k = e.data.kind; return k === 'erin' ? 'With Erin' : k === 'breathe' ? 'Just breathe' : k === 'breathtap' ? 'Moon Tap' : k === 'garden' ? 'Garden watering' : k === 'informal' ? 'Everyday practice' : 'Practice'; }
     openSheet('mind', 'Your mat', 'Erin appears beside you while you practise', 'self_improvement',
       '<div class="podshelf" id="podShelf"></div>' +
-      '<div class="erin"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Erin Lee · Mindful Moments</b><small>Certified MBSR mindfulness teacher and author in Singapore. When you begin, the sheet closes and Erin’s projection sits beside you on the mat, speaking in her voice: a greeting, settling in, slow breaths with gentle reminders, and a soft close. Her words are shown as captions.</small><a href="https://mindfulmoments.sg/" target="_blank" rel="noopener">mindfulmoments.sg</a></div></div>' +
-      '<div class="sessions" id="sessions"><button type="button" class="session on" data-kind="erin" data-min="3"><b>Erin · 3 minutes</b><small>Guided breathing, a soft close</small></button><button type="button" class="session" data-kind="erin" data-min="6"><b>Erin · 6 minutes</b><small>A longer settle and more reminders</small></button><button type="button" class="session" data-kind="breathe" data-min="2"><b>Just breathe · 2 min</b><small>4-4-6 orb with a quiet bell</small></button><button type="button" class="session" data-kind="breathe" data-min="5"><b>Just breathe · 5 min</b><small>Silent, follow the orb</small></button></div>' +
-      '<div class="orbwrap"><div class="orb out" id="orb"></div><div class="orbtext" id="orbText">Ready when you are</div><div class="orbsub" id="orbSub">' + (mins ? Math.round(mins) + ' min this week' : 'First session this week') + '</div></div>' +
-      '<div class="row"><button class="btn primary" id="mindStart"><span class="ms">self_improvement</span>Begin</button><button type="button" class="btn soft" id="mindTap"><span class="ms">blur_on</span>Moon Tap</button></div>' +
-      '<div class="row"><button class="btn soft" id="mindAcu"><span class="ms">spa</span>Cramp relief points</button><button type="button" class="btn soft" id="mindEveryday"><span class="ms">home</span>Everyday practice</button><a class="btn ghost" href="https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change" target="_blank" rel="noopener"><span class="ms">article</span>Read Erin</a></div>' +
-      '<p class="help">Sessions of a minute or more are saved to your journal. Erin’s clips are pre-recorded in her cloned voice (with her consent), so this works offline once loaded.</p>');
-    $('#sessions').addEventListener('click', function (e) { var b = e.target.closest('.session'); if (!b || session) return; $$('.session').forEach(function (x) { x.classList.toggle('on', x === b); }); });
-    $('#mindStart').addEventListener('click', function () { if (session) return; var sel = $('.session.on'); runSession(sel.dataset.kind, Number(sel.dataset.min)); });
+      '<div class="matnow"><span class="ms">' + sug.icon + '</span><div><b>' + esc(sug.t) + '</b><small>' + esc(sug.s) + '</small></div><button type="button" class="btn primary" data-kind="' + sug.kind + '" data-min="' + sug.min + '">Start</button></div>' +
+      '<div class="mattiles">' +
+        '<button type="button" class="mattile" data-kind="erin" data-min="3"><span class="ms">record_voice_over</span><b>With Erin</b><small>3 min, guided</small></button>' +
+        '<button type="button" class="mattile" data-kind="erin" data-min="6"><span class="ms">record_voice_over</span><b>With Erin</b><small>6 min, longer settle</small></button>' +
+        '<button type="button" class="mattile" data-kind="breathe" data-min="2"><span class="ms">blur_circular</span><b>Just breathe</b><small>2 min, 4-4-6 with a bell</small></button>' +
+        '<button type="button" class="mattile" data-kind="breathe" data-min="5"><span class="ms">blur_circular</span><b>Just breathe</b><small>5 min, silent</small></button>' +
+        '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Moon Tap</b><small>Tap the water, 3 to 5 min</small></button>' +
+        '<button type="button" class="mattile" id="mindEveryday"><span class="ms">home</span><b>Everyday practice</b><small>Teeth, tea, dishes, plants</small></button>' +
+        '<button type="button" class="mattile" id="mindAcu"><span class="ms">spa</span><b>Cramp relief points</b><small>Pressure points on your body</small></button>' +
+      '</div>' +
+      '<div class="matweek"><span><b>' + Math.round(mins) + '</b> min this week</span><span><b>' + sessions + '</b> ' + (sessions === 1 ? 'session' : 'sessions') + '</span><span><b>' + Object.keys(days).length + '</b> ' + (Object.keys(days).length === 1 ? 'day' : 'days') + '</span></div>' +
+      (last.length ? '<ul class="matlast">' + last.map(function (e) { return '<li><span>' + esc(label(e)) + '</span><small>' + esc(e.date === today ? 'Today' : S.fmtDate ? S.fmtDate(e.date) : e.date) + ' · ' + (Math.round((Number(e.data.minutes) || 0) * 10) / 10) + ' min</small></li>'; }).join('') + '</ul>' : '') +
+      '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Erin Lee · certified MBSR teacher</b><small>Her projection sits beside you on the mat and speaks in her own voice, pre-recorded with her consent, so it works offline.</small></div></div>' +
+      '<p class="help">Sessions of a minute or more are saved to your journal.</p>');
+    body.addEventListener('click', function (e) { var b = e.target.closest('[data-kind][data-min]'); if (!b || session) return; chime('tap'); runSession(b.dataset.kind, Number(b.dataset.min)); });
     $('#mindAcu').addEventListener('click', openAcupressure);
     $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
     $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { afterSave(ev); }, onClose: function () { renderDeck(); } }); });
