@@ -18,3 +18,11 @@ entrypoint = "./functions/foods/index.ts"
 
 [db.migrations]
 enabled = true
+
+[functions.podcast]
+verify_jwt = false
+entrypoint = "./functions/podcast/index.ts"
+
+[functions.plus-upload]
+verify_jwt = false
+entrypoint = "./functions/plus-upload/index.ts"

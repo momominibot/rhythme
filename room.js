@@ -1174,7 +1174,7 @@
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Heart shop', 'Pets, furniture and homes', 'shop') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
-      '<div class="ygroup"><span class="lbl">Your data</span>' + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is not a medical device and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
@@ -1185,6 +1185,7 @@
       if (act === 'wardrobe') return openWardrobe();
       if (act === 'shop') return openShop();
       if (act === 'clock') return openClock();
+      if (act === 'plus') return openPlus();
       if (act === 'luna') { openLuna(); var ab = $('#aibox'); if (ab) { ab.open = true; setTimeout(function () { ab.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); } return; }
       if (act === 'export') {
         try { var blob = new Blob([S.exportJSON()], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'rhythme-' + S.today() + '.json'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000); toast('Your data is saved as a file.', 'download'); } catch (err) { toast('Could not export: ' + err.message, 'error'); }
@@ -1538,16 +1539,40 @@
       body.addEventListener('input', function (e) { if (e.target.id === 'podSeek') POD.seekTo(Number(e.target.value) / 1000); });
     }).catch(function (err) { toast(err.message, 'error'); });
   }
+  /* Rhythme Plus preview: access codes until purchases open (Codex review: say plainly it is a preview) */
+  function openPlus() {
+    if (!POD) return;
+    POD.load().then(function (d) {
+      var prem = d.episodes.filter(function (e) { return e.access === 'premium'; }), mins = Math.round(prem.reduce(function (a, e) { return a + e.durationSeconds; }, 0) / 60), on = POD.plusActive(), p = POD.plus();
+      openSheet('rhythme-plus', 'Rhythme Plus', 'A preview, opened with an access code', 'auto_awesome',
+        '<div class="plushero"><img src="assets/avatars/erin/erin-chibi.webp" alt=""><div><b>Erin’s full Take A Pause library</b><span>' + prem.length + ' more episodes, about ' + (mins >= 120 ? (Math.round(mins / 6) / 10) + ' hours' : mins + ' minutes') + ', on patience, honesty, kindness and steady effort, listened to right here in your room.</span></div></div>' +
+        (on ? '<div class="flag info"><span class="ms">check_circle</span><div><b>Plus is on for this phone</b><span>Until ' + esc(new Date(p.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })) + '.</span></div></div><div class="row"><button type="button" class="btn soft" data-pod-open=""><span class="ms">headphones</span>Listen now</button><button type="button" class="btn ghost" id="plusRemove">Remove from this phone</button></div>'
+          : '<div class="field"><label for="plusCode">I have an access code</label><div class="row" style="margin-top:0"><input class="input" id="plusCode" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="RHY-XXXXX-XXXXX-…"><button type="button" class="btn primary" id="plusGo" style="flex:0 0 auto;min-width:0"><span class="ms">lock_open</span>Unlock</button></div><div class="msg" id="plusMsg"></div></div>') +
+        '<p class="help">Purchases are not open yet. During this preview, an access code from the Rhythme team opens Plus on this phone for 12 months from when you use it. If you clear this browser or change phones, ask the team for help.</p>' +
+        '<p class="help">When you use a code, Rhythme’s service records that the code was used, with a scrambled form of your network address to stop misuse. Nothing from your diary is involved.</p>');
+      if (on) { $('#plusRemove').addEventListener('click', function () { POD.removePlus(); chime('tap'); toast('Plus removed from this phone.', 'lock'); openPlus(); }); return; }
+      var go = function () {
+        var code = $('#plusCode').value.trim(); if (!code) { message($('#plusMsg'), 'Type or paste your code first.', false); return; }
+        $('#plusGo').disabled = true; message($('#plusMsg'), 'Checking your code…', true);
+        POD.redeem(code).then(function () { chime('save', true); toast('Rhythme Plus is on. Enjoy Erin’s full library.', 'auto_awesome'); openListen(POD.state().ep && POD.state().ep.id); })
+          .catch(function (e) { $('#plusGo').disabled = false; message($('#plusMsg'), e.message, false); });
+      };
+      $('#plusGo').addEventListener('click', go); $('#plusCode').addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    });
+  }
+  document.addEventListener('click', function (e) { if (e.target.closest('[data-plus-open]')) { chime('tap'); openPlus(); } });
   function podCard(ep) {
     var pos = POD.progress(ep.id), pct = ep.durationSeconds ? Math.min(100, Math.round(pos / ep.durationSeconds * 100)) : 0, done = POD.finished(ep.id), sel = POD.state().ep && POD.state().ep.id === ep.id;
-    return '<button type="button" class="podep' + (sel ? ' on' : '') + '" data-ep="' + ep.id + '"><i>' + (ep.number || '') + '</i><span><b>' + esc(ep.title) + '</b><small>' + Math.round(ep.durationSeconds / 60) + ' min' + (ep.themes && ep.themes[0] ? ' · ' + esc(ep.themes[0].pali) : '') + (done ? ' · listened' : '') + '</small>' + (pct && !done ? '<em style="--p:' + pct + '%"></em>' : '') + '</span><span class="ms">' + (done ? 'check_circle' : 'play_circle') + '</span></button>';
+    var locked = ep.access === 'premium' && !POD.plusActive();
+    return '<button type="button" class="podep' + (sel ? ' on' : '') + (locked ? ' locked' : '') + '" data-ep="' + ep.id + '"><i>' + (ep.number || '') + '</i><span><b>' + esc(ep.title) + (ep.access === 'premium' ? ' <em class="pluschip">Plus</em>' : '') + '</b><small>' + Math.round(ep.durationSeconds / 60) + ' min' + (ep.themes && ep.themes[0] ? ' · ' + esc(ep.themes[0].pali) : '') + (done ? ' · listened' : '') + '</small>' + (pct && !done ? '<em class="bar" style="--p:' + pct + '%"></em>' : '') + '</span><span class="ms">' + (locked ? 'lock' : done ? 'check_circle' : 'play_circle') + '</span></button>';
   }
   function renderPodPlayer() {
     var host = $('#podPlayer'), st = POD && POD.state(); if (!host || !st || !st.ep) return;
     var ep = st.ep, frac = st.duration ? st.time / st.duration : 0;
     host.innerHTML = '<div class="podplayer"><div class="podhead"><img src="' + esc(ep.cover || 'assets/avatars/erin/erin-chibi-face.webp') + '" alt="" onerror="this.src=\'assets/avatars/erin/erin-chibi-face.webp\'"><div><small>' + esc(podLabel(ep)) + '</small><b>' + esc(ep.title) + '</b><span>' + esc(ep.subtitle || '') + '</span></div></div>' +
       '<input type="range" class="mrange podseek" id="podSeek" min="0" max="1000" value="' + Math.round(frac * 1000) + '" aria-label="Position in the episode" style="--fill:' + (frac * 100).toFixed(1) + '%"><div class="podtimes"><span id="podT">' + POD.fmt(st.time) + '</span><span id="podD">-' + POD.fmt(Math.max(0, st.duration - st.time)) + '</span></div>' +
-      '<div class="podctl"><button type="button" id="podBack" aria-label="Back 15 seconds"><span class="ms">replay</span><small>15</small></button><button type="button" class="big" id="podPlay" aria-label="' + (st.playing ? 'Pause' : 'Play') + '"><span class="ms">' + (st.playing ? 'pause' : 'play_arrow') + '</span></button><button type="button" id="podFwd" aria-label="Forward 15 seconds"><span class="ms">forward_media</span><small>15</small></button></div>' +
+      (ep.access === 'premium' && !POD.plusActive() ? '<div class="pluslock"><span class="ms">lock</span><span><b>A Rhythme Plus episode</b>Unlock Erin’s full library to listen.</span><button type="button" class="btn primary" data-plus-open="1"><span class="ms">auto_awesome</span>Rhythme Plus</button></div>' : '') +
+      '<div class="podctl' + (ep.access === 'premium' && !POD.plusActive() ? ' hidden' : '') + '"><button type="button" id="podBack" aria-label="Back 15 seconds"><span class="ms">replay</span><small>15</small></button><button type="button" class="big" id="podPlay" aria-label="' + (st.playing ? 'Pause' : 'Play') + '"><span class="ms">' + (st.playing ? 'pause' : 'play_arrow') + '</span></button><button type="button" id="podFwd" aria-label="Forward 15 seconds"><span class="ms">forward_media</span><small>15</small></button></div>' +
       '<div class="podopts"><span class="lbl">Speed</span><div class="chips">' + [0.75, 1, 1.25, 1.5].map(function (r) { return '<button type="button" class="chipbtn' + (Math.abs(st.speed - r) < 0.01 ? ' on' : '') + '" data-speed="' + r + '">' + r + '×</button>'; }).join('') + '</div><span class="lbl">Sleep timer</span><div class="chips">' + [['off', 'Off'], ['10', '10 min'], ['20', '20 min'], ['30', '30 min'], ['end', 'End of episode']].map(function (o) { var on = (o[0] === 'off' && !st.sleep) || (o[0] === 'end' && st.sleep === 'end'); return '<button type="button" class="chipbtn' + (on ? ' on' : '') + '" data-sleep="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div></div>' +
       (ep.themes && ep.themes.length ? '<div class="podthemes">' + ep.themes.map(function (t) { return '<span class="slotchip">' + esc(t.name) + ' · ' + esc(t.pali) + '</span>'; }).join('') + '</div>' : '') +
       (ep.quote ? '<blockquote class="podquote">' + esc(ep.quote) + '</blockquote>' : '') +
@@ -1568,6 +1593,9 @@
       else renderPodPlayer();
     }
     if (type === 'blocked') toast('Tap play once more to start the episode.', 'play_circle');
+    if (type === 'locked') openPlus();
+    if (type === 'preparing') toast('Getting the episode ready…', 'hourglass_top');
+    if (type === 'plus' && current === 'erin-listen') openListen(st.ep && st.ep.id);
     if (type === 'error') toast('This episode could not play here. It may now be in Erin’s paid archive; open it on Substack.', 'error');
     if (type === 'ended') toast('Episode finished. Take a breath before the next thing.', 'self_improvement');
     if (type === 'sleep') toast('Sleep timer: paused.', 'bedtime');

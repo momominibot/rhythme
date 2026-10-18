@@ -1090,7 +1090,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .podep>span:nth-child(2){flex:1;min-width:0}
 .podep b{display:block;font:800 13px/1.3 var(--sans);color:var(--rm-plum)}
 .podep small{display:block;font:600 11px var(--sans);color:var(--rm-ink-3)}
-.podep em{display:block;height:3px;border-radius:3px;margin-top:4px;background:linear-gradient(90deg,var(--rm-mauve) var(--p),#ece4f6 var(--p))}
+.podep em.bar{display:block;height:3px;border-radius:3px;margin-top:4px;background:linear-gradient(90deg,var(--rm-mauve) var(--p),#ece4f6 var(--p))}
 .podep>.ms{color:var(--rm-mauve);font-size:22px}
 .podmini{position:absolute;left:10px;right:10px;bottom:calc(var(--navh,64px) + 8px);z-index:64;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border:1px solid rgba(201,182,230,.6);border-radius:18px;padding:6px 6px 6px 8px;box-shadow:0 10px 26px rgba(60,30,90,.2)}
 .podmini[hidden]{display:none}
@@ -1110,3 +1110,18 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .camctl button .ms{font-size:20px}
 .camctl button:disabled{opacity:.45;cursor:default}
 .scene.quiet .camctl{opacity:0;pointer-events:none}
+
+/* Rhythme Plus */
+.pluschip{font-style:normal;display:inline-block;font:800 9px var(--sans);letter-spacing:.04em;background:linear-gradient(135deg,#f3d49b,#e8a3bf);color:#5a3a2a;border-radius:999px;padding:2px 7px;margin-left:4px;vertical-align:2px}
+.podep.locked{opacity:.92}
+.podep.locked>.ms{color:#b48a3a}
+.pluslock{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:10px;background:linear-gradient(135deg,#fff6e6,#fbe3ea);border:1px solid #f1d9b0;border-radius:16px;padding:10px 12px}
+.pluslock>.ms{color:#b48a3a;font-size:22px}
+.pluslock>span:nth-child(2){flex:1;min-width:140px;font:600 12px/1.4 var(--sans);color:var(--rm-ink-2)}
+.pluslock b{display:block;font:800 13px var(--sans);color:var(--rm-plum)}
+.pluslock .btn{flex:0 0 auto;min-width:0}
+.podctl.hidden{display:none}
+.plushero{display:flex;gap:12px;align-items:flex-end;background:linear-gradient(135deg,#fff6e6,#efe4fb);border:1.5px solid #f1d9b0;border-radius:20px;padding:10px 12px 12px;margin-bottom:10px}
+.plushero img{width:60px;flex:none;filter:drop-shadow(0 6px 8px rgba(90,66,116,.22));margin-bottom:-4px}
+.plushero b{display:block;font-family:var(--serif);font-weight:600;font-size:18px;color:var(--rm-plum);line-height:1.2}
+.plushero span{display:block;font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}

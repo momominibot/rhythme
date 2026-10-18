@@ -3,8 +3,8 @@
  "series": "Take A Pause",
  "author": "Erin Lee",
  "publication": "https://erinmindfulmoments.substack.com",
- "note": "Streams from Erin's own Substack; each episode links back to its post. Rights confirmation with Erin pending.",
- "rightsStatus": "stream-from-source",
+ "note": "Free episodes stream from Erin's Substack; premium episodes come from Rhythme's private storage through the podcast function. Each episode links back to its post.",
+ "rightsStatus": "permission confirmed by Erin Lee via the owner, 18 Oct 2026",
  "episodes": [
   {
    "id": "tap-99",
@@ -27,7 +27,8 @@
    ],
    "about": "Take A Pause Ep. 99: How properly tending to conditions will allow results to develop",
    "question": "What conditions am I creating for my own growth?",
-   "quote": "Each return is an opportunity to practise patience and attention."
+   "quote": "Each return is an opportunity to practise patience and attention.",
+   "access": "free"
   },
   {
    "id": "tap-98",
@@ -45,17 +46,18 @@
     {
      "id": "community_wellbeing",
      "name": "Community & Wellbeing",
-     "pali": "kalyāṇamittatā"
+     "pali": "kaly\u0101\u1e47amittat\u0101"
     }
    ],
-   "about": "Take A Pause Ep. 98: How tending to ourselves transforms the way we meet one another"
+   "about": "Take A Pause Ep. 98: How tending to ourselves transforms the way we meet one another",
+   "access": "free"
   },
   {
    "id": "tap-97",
    "slug": "a-view-is-not-the-whole",
    "number": 97,
    "title": "A View is Not The Whole",
-   "subtitle": "Making room for what we don’t yet know",
+   "subtitle": "Making room for what we don\u2019t yet know",
    "date": "2026-09-28",
    "durationSeconds": 977,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/a-view-is-not-the-whole",
@@ -69,9 +71,10 @@
      "pali": "sati"
     }
    ],
-   "about": "Take A Pause Ep. 97: Making room for what we don’t yet know",
+   "about": "Take A Pause Ep. 97: Making room for what we don\u2019t yet know",
    "question": "What do I know for sure? What am I feeling? What meaning have I given this moment?",
-   "quote": "When we loosen our grip on perceived certainty, there is room for curiosity."
+   "quote": "When we loosen our grip on perceived certainty, there is room for curiosity.",
+   "access": "free"
   },
   {
    "id": "tap-96",
@@ -82,7 +85,7 @@
    "date": "2026-09-21",
    "durationSeconds": 1065,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/when-persistence-stops-working",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/77adfb15-d2e7-4f0a-b427-3d6fab3a6a43/src",
+   "audioUrl": null,
    "cover": "https://substack-video.s3.amazonaws.com/video_upload/post/216552178/77adfb15-d2e7-4f0a-b427-3d6fab3a6a43/transcoded-1789896361.png",
    "audienceAtCapture": "everyone",
    "themes": [
@@ -93,7 +96,8 @@
     }
    ],
    "about": "Take A Pause Ep. 96: Knowing when to adjust our efforts",
-   "quote": "Effort can reach a point where it gets in the way."
+   "quote": "Effort can reach a point where it gets in the way.",
+   "access": "premium"
   },
   {
    "id": "tap-95",
@@ -104,19 +108,20 @@
    "date": "2026-09-14",
    "durationSeconds": 858,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/what-truly-matters",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/456a157a-801e-4130-86f9-64715a520c14/src",
+   "audioUrl": null,
    "cover": "https://substack-video.s3.amazonaws.com/video_upload/post/215451132/456a157a-801e-4130-86f9-64715a520c14/transcoded-1789281357.png",
    "audienceAtCapture": "everyone",
    "themes": [
     {
      "id": "wisdom",
      "name": "Wisdom",
-     "pali": "paññā"
+     "pali": "pa\u00f1\u00f1\u0101"
     }
    ],
    "about": "Take A Pause Ep. 95: What deserves your limited number of days?",
    "question": "Does this need my attention because it demands it, or because it truly matters to me?",
-   "quote": "What deserves your limited number of days?"
+   "quote": "What deserves your limited number of days?",
+   "access": "premium"
   },
   {
    "id": "tap-94",
@@ -127,7 +132,7 @@
    "date": "2026-09-07",
    "durationSeconds": 1189,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/the-path-beneath-our-feet",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/ca72268f-155c-4af9-ba3e-05f28c791089/src",
+   "audioUrl": null,
    "cover": "https://substack-video.s3.amazonaws.com/video_upload/post/214406914/ca72268f-155c-4af9-ba3e-05f28c791089/transcoded-1788692224.png",
    "audienceAtCapture": "everyone",
    "themes": [
@@ -138,7 +143,8 @@
     }
    ],
    "about": "Take A Pause Ep. 94: Only when walking happens can the benefits of walking happen.",
-   "quote": "A path becomes a path only when it is walked."
+   "quote": "A path becomes a path only when it is walked.",
+   "access": "premium"
   },
   {
    "id": "tap-93",
@@ -149,18 +155,19 @@
    "date": "2026-08-31",
    "durationSeconds": 1079,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/the-scent-of-a-life-well-lived",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/b7bdc5cb-152f-4125-8530-66de26366023/src",
+   "audioUrl": null,
    "cover": "https://substack-video.s3.amazonaws.com/video_upload/post/213231421/b7bdc5cb-152f-4125-8530-66de26366023/transcoded-1787972379.png",
    "audienceAtCapture": "everyone",
    "themes": [
     {
      "id": "ethical_living",
      "name": "Ethical Living",
-     "pali": "sīla"
+     "pali": "s\u012bla"
     }
    ],
    "about": "Take A Pause Ep. 93: May we move through this world gently",
-   "quote": "The bee takes the nourishment it needs and leaves no wound behind."
+   "quote": "The bee takes the nourishment it needs and leaves no wound behind.",
+   "access": "premium"
   },
   {
    "id": "tap-92",
@@ -171,7 +178,7 @@
    "date": "2026-08-24",
    "durationSeconds": 777,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/the-happiness-chapter",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/507e3100-c071-4d0f-bfa3-653467dfe74c/src",
+   "audioUrl": null,
    "cover": "https://substack-video.s3.amazonaws.com/video_upload/post/212264348/507e3100-c071-4d0f-bfa3-653467dfe74c/transcoded-1787395690.png",
    "audienceAtCapture": "everyone",
    "themes": [
@@ -183,7 +190,8 @@
    ],
    "about": "Take A Pause Episode 92: A practice of putting down, rather than adding.",
    "question": "Can I give myself wholeheartedly to something without making winning the condition for my peace?",
-   "quote": "Can I give myself wholeheartedly to something without making winning the condition for my peace?"
+   "quote": "Can I give myself wholeheartedly to something without making winning the condition for my peace?",
+   "access": "premium"
   },
   {
    "id": "tap-91",
@@ -194,7 +202,7 @@
    "date": "2026-08-17",
    "durationSeconds": 1064,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/an-island-within",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/fdd0df07-aa12-41e8-accf-0388184c46c2/src",
+   "audioUrl": null,
    "cover": "https://substack-video.s3.amazonaws.com/video_upload/post/211260452/fdd0df07-aa12-41e8-accf-0388184c46c2/transcoded-1786774937.png",
    "audienceAtCapture": "everyone",
    "themes": [
@@ -205,7 +213,8 @@
     }
    ],
    "about": "Take A Pause Ep. 91: Staying steady with our inner refuge",
-   "quote": "We do not go looking for the island. We become it."
+   "quote": "We do not go looking for the island. We become it.",
+   "access": "premium"
   },
   {
    "id": "tap-90",
@@ -216,19 +225,20 @@
    "date": "2026-08-10",
    "durationSeconds": 994,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/better-than-a-thousand-words",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/9d1fb7eb-fef2-42d8-bc49-94aaf4f5d96e/src",
+   "audioUrl": null,
    "cover": "https://substackcdn.com/image/fetch/$s_!NXtf!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Ff5b74b78-2c16-4c4a-be32-562e18da9bed_1920x1080.jpeg",
    "audienceAtCapture": "everyone",
    "themes": [
     {
      "id": "right_speech",
      "name": "Right Speech",
-     "pali": "sammā-vācā"
+     "pali": "samm\u0101-v\u0101c\u0101"
     }
    ],
    "about": "Listen now | Take A Pause Ep. 90: On saying less, and living what we say. ",
    "question": "Is there a gap between what I say and how I actually live?",
-   "quote": "Better than a thousand meaningless statements is one meaningful word which, having been heard, brings peace."
+   "quote": "Better than a thousand meaningless statements is one meaningful word which, having been heard, brings peace.",
+   "access": "premium"
   },
   {
    "id": "tap-89",
@@ -239,7 +249,7 @@
    "date": "2026-08-04",
    "durationSeconds": 1356,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/the-freedom-beyond-anger",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/4358e0ea-bacf-4057-884d-dac06136b10f/src",
+   "audioUrl": null,
    "cover": "https://substack-video.s3.amazonaws.com/video_upload/post/209734490/4358e0ea-bacf-4057-884d-dac06136b10f/transcoded-1785824341.png",
    "audienceAtCapture": "everyone",
    "themes": [
@@ -256,7 +266,8 @@
    ],
    "about": "Listen now | Take A Pause Ep. 89: Peace of mind that is not dependent on anyone else | Non-hate sits closer with the choice of not picking at our own wounds.",
    "question": "Can I meet this person or situation I don't like with greater ease?",
-   "quote": "Hatred never ends through hatred. By non-hate alone does it end."
+   "quote": "Hatred never ends through hatred. By non-hate alone does it end.",
+   "access": "premium"
   },
   {
    "id": "tap-88",
@@ -267,7 +278,7 @@
    "date": "2026-07-27",
    "durationSeconds": 1250,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/the-mind-leads-the-way",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/2343439f-4b4e-41d5-b0ed-971f42fa8c95/src",
+   "audioUrl": null,
    "cover": "https://substack-video.s3.amazonaws.com/video_upload/post/208425387/2343439f-4b4e-41d5-b0ed-971f42fa8c95/transcoded-1784966529.png",
    "audienceAtCapture": "everyone",
    "themes": [
@@ -278,7 +289,8 @@
     }
    ],
    "about": "Take A Pause Ep. 88: How thoughts shape our experiences",
-   "quote": "The mind is a natural storyteller — constantly predicting, replaying, catastrophising, judging, comparing, often before we've finished our coffee."
+   "quote": "The mind is a natural storyteller \u2014 constantly predicting, replaying, catastrophising, judging, comparing, often before we've finished our coffee.",
+   "access": "premium"
   },
   {
    "id": "tap-87",
@@ -300,7 +312,8 @@
     }
    ],
    "about": "Listen now | Take A Pause Ep. 87: Staying grounded no matter how the winds blow | A life with equanimity is not absent of disruption...",
-   "quote": "Balance is not standing still. It is the quiet inner strength that allows us to respond wisely."
+   "quote": "Balance is not standing still. It is the quiet inner strength that allows us to respond wisely.",
+   "access": "free"
   },
   {
    "id": "tap-86",
@@ -322,7 +335,8 @@
     }
    ],
    "about": "Listen now | Take A Pause Ep. 86: What unconditional goodwill means. A friendly heart is one that learns to wish well, even when life feels difficult.",
-   "quote": "To practise metta is to remember that beneath our defences, there is still a friendly heart waiting to be uncovered."
+   "quote": "To practise metta is to remember that beneath our defences, there is still a friendly heart waiting to be uncovered.",
+   "access": "free"
   },
   {
    "id": "tap-85",
@@ -333,17 +347,18 @@
    "date": "2026-06-30",
    "durationSeconds": 1256,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/committing-wholeheartedly",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/ddb22827-50aa-40f9-9af7-cf91d12997ac/src",
+   "audioUrl": null,
    "cover": "https://substackcdn.com/image/fetch/$s_!RuAW!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fb1f710f4-517f-4ae8-ba9d-1032f88776f8_1920x1080.jpeg",
    "audienceAtCapture": "everyone",
    "themes": [
     {
      "id": "determination",
      "name": "Determination",
-     "pali": "adhiṭṭhāna"
+     "pali": "adhi\u1e6d\u1e6dh\u0101na"
     }
    ],
-   "about": "Listen now | Take A Pause Ep. 85: Holding steady when things get hard | Cultivating aditthana, or strong determination"
+   "about": "Listen now | Take A Pause Ep. 85: Holding steady when things get hard | Cultivating aditthana, or strong determination",
+   "access": "premium"
   },
   {
    "id": "tap-84",
@@ -354,7 +369,7 @@
    "date": "2026-06-23",
    "durationSeconds": 801,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/being-real-and-honest",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/1d6f23c2-74fb-40d6-a24f-ffc9f8638b58/src",
+   "audioUrl": null,
    "cover": "https://substackcdn.com/image/fetch/$s_!8Lj4!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fca2c1c0b-c092-406a-8dc7-0c4727487cb7_1920x1080.jpeg",
    "audienceAtCapture": "everyone",
    "themes": [
@@ -365,7 +380,8 @@
     }
    ],
    "about": "Listen now | Take A Pause Ep. 84: A practice of living in alignment with reality | There's a quality of heart called sacca...",
-   "question": "Am I who I appear to be?"
+   "question": "Am I who I appear to be?",
+   "access": "premium"
   },
   {
    "id": "tap-83",
@@ -376,7 +392,7 @@
    "date": "2026-06-15",
    "durationSeconds": 667,
    "sourceUrl": "https://erinmindfulmoments.substack.com/p/the-strength-to-stay",
-   "audioUrl": "https://api.substack.com/api/v1/audio/upload/7510b18c-ab3d-4710-aacc-db5b6f743a08/src",
+   "audioUrl": null,
    "cover": "https://substackcdn.com/image/fetch/$s_!v9yz!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fed00e676-9797-4c51-a9d5-892898f3edc8_1920x1080.jpeg",
    "audienceAtCapture": "everyone",
    "themes": [
@@ -388,7 +404,8 @@
    ],
    "about": "Listen now | Take A Pause Ep. 83: Patience as a quiet power | The point is this: no matter what comes at you, the heart can be protected.",
    "question": "What are the saws in your life right now?",
-   "quote": "It is the capacity to stay. To stay when things don't go your way. To stay without collapsing, without retaliating, and without running away."
+   "quote": "It is the capacity to stay. To stay when things don't go your way. To stay without collapsing, without retaliating, and without running away.",
+   "access": "premium"
   },
   {
    "id": "tap-82",
@@ -411,7 +428,8 @@
    ],
    "about": "Listen now | Take A Pause Ep. 82: A wiser relationship with our energy. Overtime, sustained effort becomes a quiet strength.",
    "question": "What is worth giving my energy to? What drains me unnecessarily?",
-   "quote": "Awakening, healing, and growth rarely happen through one dramatic breakthrough. More often than not, they are the fruit of choosing to show up, one breath, one step, one day at a time."
+   "quote": "Awakening, healing, and growth rarely happen through one dramatic breakthrough. More often than not, they are the fruit of choosing to show up, one breath, one step, one day at a time.",
+   "access": "free"
   },
   {
    "id": "tap-81",
@@ -434,11 +452,12 @@
     {
      "id": "wisdom",
      "name": "Wisdom",
-     "pali": "paññā"
+     "pali": "pa\u00f1\u00f1\u0101"
     }
    ],
    "about": "Take A Pause Ep. 81: Wisdom is not the same as intelligence.",
-   "quote": "Wisdom is the ability to see things clearly."
+   "quote": "Wisdom is the ability to see things clearly.",
+   "access": "free"
   }
  ]
 }
