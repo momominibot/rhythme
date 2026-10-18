@@ -1,7 +1,11 @@
-name: Deploy to GitHub Pages
+name: Test and deploy to GitHub Pages
 
+# Every push to main is a release, so nothing deploys until the rule tests, the page
+# checker and the end-to-end smoke suite pass on the exact commit.
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -15,7 +19,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    name: Rules, pages and links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rule agents, store, NOVA, PDF writer (tools/test-core.js)
+        run: node tools/test-core.js
+      - name: Inline script syntax, JS syntax, local links (tools/check.py)
+        run: python3 tools/check.py
+
+  smoke:
+    name: End-to-end smoke in Chromium
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Playwright
+        run: |
+          pip install playwright==1.63.0
+          python3 -m playwright install --with-deps chromium
+      - name: Drive the real pages (tools/e2e_smoke.py)
+        run: python3 tools/e2e_smoke.py
+
   deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request'
+    needs: [test, smoke]
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
