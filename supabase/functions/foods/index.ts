@@ -8,7 +8,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 const ORIGINS = ["https://momominibot.github.io", "http://127.0.0.1:4310", "http://localhost:4310"];
 const PER_IP_PER_DAY = 300;
-const FIELDS = "code,product_name,product_name_en,brands,quantity,nova_group,countries_tags,image_front_small_url";
+const FIELDS = "code,product_name,product_name_en,brands,quantity,nova_group,countries_tags,image_front_small_url,unique_scans_n,completeness";
 
 function json(body: unknown, status = 200, extra: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...extra } });
@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
   const timer = setTimeout(() => ctrl.abort(), 12000);
   let r: Response;
   try {
-    r = await fetch("https://search.openfoodfacts.org/search?q=" + encodeURIComponent(q) + "&page_size=24&fields=" + FIELDS, {
+    r = await fetch("https://search.openfoodfacts.org/search?q=" + encodeURIComponent(q) + "&page_size=40&fields=" + FIELDS, {
       signal: ctrl.signal,
       headers: { "User-Agent": "Rhythme/1.0 (https://momominibot.github.io/ovumind.github.io/)" },
     });
@@ -70,9 +70,11 @@ Deno.serve(async (req: Request) => {
       nova: [1, 2, 3, 4].includes(Number(h.nova_group)) ? Number(h.nova_group) : null,
       sg: countries.includes("en:singapore"),
       image: typeof h.image_front_small_url === "string" ? h.image_front_small_url : null,
+      scans: Number(h.unique_scans_n) || 0,
+      complete: Math.round((Number(h.completeness) || 0) * 100) / 100,
     };
   }).filter((p) => /^\d{8,14}$/.test(p.code) && p.name && !seen.has(p.code) && seen.add(p.code))
-    .sort((a, b) => Number(b.sg) - Number(a.sg))
-    .slice(0, 12);
+    .sort((a, b) => Number(b.sg) - Number(a.sg) || b.complete - a.complete || b.scans - a.scans)
+    .slice(0, 30);
   return json({ q, products, source: "Open Food Facts (ODbL)" }, 200, { ...cors, "Cache-Control": "public, max-age=3600" });
 });

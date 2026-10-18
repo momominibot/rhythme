@@ -981,3 +981,33 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .whist b{font:800 14px var(--sans);color:var(--rm-plum)}
 .prop.owned.tool{pointer-events:auto;cursor:pointer}
 .prop.owned.tool:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
+.slotchip{display:inline-block;font:800 9.5px var(--sans);font-style:normal;letter-spacing:.03em;background:var(--rm-lilac-2,#e7dcf5);color:var(--rm-mauve);border-radius:999px;padding:2px 7px;margin-left:4px;vertical-align:2px}
+
+/* arrange: turn a piece (mirror) or put it back in the inventory */
+.prop.owned.flip{transform:translate(-50%,-100%) scaleX(-1)}
+.prop.owned.flip .petmood{transform:scaleX(-1)}
+.prop.owned.pet.napping.flip::after{transform:scaleX(-1)}
+.propctl{position:absolute;transform:translate(-50%,-100%);z-index:20;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:999px;padding:4px 5px 4px 10px;box-shadow:0 8px 20px rgba(60,30,90,.28);white-space:nowrap;pointer-events:auto;animation:pop2 .2s ease-out}
+.propctl b{font:800 11px var(--sans);color:var(--rm-plum);margin-right:2px}
+.propctl button{display:inline-flex;align-items:center;gap:3px;border:none;background:var(--rm-lilac-2,#e7dcf5);color:var(--rm-plum);border-radius:999px;padding:6px 9px;font:800 11px var(--sans);cursor:pointer}
+.propctl button .ms{font-size:15px}
+.propctl button[data-pc="store"]{background:#fbe3ea;color:#a04a66}
+
+/* food diary: three tabs and numbered cards instead of one long column */
+.dtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:var(--rm-lilac-2,#e7dcf5);border-radius:16px;padding:4px;margin-bottom:10px;position:sticky;top:-4px;z-index:3}
+.dtabs button{border:none;background:transparent;border-radius:12px;padding:8px 4px;font:800 12px var(--sans);color:var(--rm-ink-2);display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+.dtabs button .ms{font-size:17px}
+.dtabs button.on{background:#fff;color:var(--rm-plum);box-shadow:0 3px 10px rgba(90,66,116,.14)}
+.dsec{background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:18px;padding:10px 12px 12px;margin-bottom:10px}
+.dsec>h4{display:flex;align-items:center;gap:7px;font:800 13px var(--sans);color:var(--rm-plum);margin:0 0 2px}
+.dsec>h4 i{font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);font:900 11px var(--sans);color:var(--rm-plum)}
+.dsec>h4 small{font:700 11px var(--sans);color:var(--rm-ink-3);margin-left:auto}
+.dsec .field:first-of-type{margin-top:8px}
+.dpane[data-pane="today"] .guide,.dpane[data-pane="today"]>.field{margin-top:4px}
+
+/* packaged products: one row per product, pack sizes as chips */
+.pgroup{display:flex;flex-direction:column;gap:4px}
+.pgroup .result{width:100%}
+.psizes{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:0 4px 6px 52px}
+.psizes span{font:800 10px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--rm-ink-3);margin-right:2px}
+.psizes .chipbtn{padding:5px 10px;font-size:11.5px}

@@ -108,6 +108,28 @@
     return fetch(base + '/foods?q=' + encodeURIComponent(String(q || '').trim().slice(0, 60)))
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Product search replied ' + r.status + '.')); return d.products || []; }); });
   }
+  /* Open Food Facts lists every pack size and country edition as its own product, so one jar can
+   * appear many times. Group by name and brand, keep one entry per pack size (the most complete,
+   * then the most scanned), and rank groups: sold in Singapore first, then most complete data. */
+  function normKey(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
+  function normQty(q) { var m = String(q || '').toLowerCase().replace(',', '.').match(/(\d+(?:\.\d+)?)\s*(kg|g|ml|l|cl|oz)\b/); if (!m) return ''; var n = Number(m[1]), u = m[2]; if (u === 'kg') { n *= 1000; u = 'g'; } if (u === 'l') { n *= 1000; u = 'ml'; } if (u === 'cl') { n *= 10; u = 'ml'; } return Math.round(n) + ' ' + u; }
+  function groupProducts(list) {
+    var groups = {}, order = [];
+    (list || []).forEach(function (p) {
+      if (!p || !p.code || !p.name) return;
+      var brand = normKey(String(p.brands || '').split(',')[0]), name = normKey(p.name), key = name + '|' + (brand === name ? '' : brand);
+      if (!groups[key]) { groups[key] = { key: key, name: p.name, brands: String(p.brands || '').split(',')[0].trim(), variants: [], sg: false }; order.push(key); }
+      groups[key].variants.push(p); if (p.sg) groups[key].sg = true;
+    });
+    var score = function (p) { return (p.image ? 2 : 0) + (normQty(p.quantity) ? 1 : 0) + (p.nova ? 1 : 0) + (Number(p.complete) || 0) * 3 + Math.min(1, (Number(p.scans) || 0) / 500); };
+    return order.map(function (k) {
+      var g = groups[k], bySize = {};
+      g.variants.sort(function (a, b) { return (Number(!!b.sg) - Number(!!a.sg)) || (score(b) - score(a)); }).forEach(function (p) { var q = normQty(p.quantity) || 'size not listed'; if (!bySize[q]) bySize[q] = p; });
+      var sizes = Object.keys(bySize).map(function (q) { return { label: q, code: bySize[q].code }; }).sort(function (a, b) { return (a.label === 'size not listed') - (b.label === 'size not listed') || parseFloat(a.label) - parseFloat(b.label); });
+      var best = g.variants[0];
+      return { name: g.name, brands: g.brands, best: best, image: (g.variants.filter(function (p) { return p.image; })[0] || {}).image || null, nova: best.nova || (g.variants.filter(function (p) { return p.nova; })[0] || {}).nova || null, sg: g.sg, sizes: sizes, count: g.variants.length, rank: score(best) + (g.sg ? 10 : 0) };
+    }).sort(function (a, b) { return b.rank - a.rank; });
+  }
   function lookupBarcode(code) {
     code = String(code || '').replace(/\D/g, '');
     if (code.length < 8) return Promise.reject(new Error('That does not look like a product barcode.'));
@@ -219,5 +241,5 @@
   }
   function sgTableLoaded() { return sgTable; }
 
-  root.OvuFood = { KEYS: KEYS, LABEL: LABEL, UNIT: UNIT, load: load, search: search, byId: byId, scale: scale, makeItem: makeItem, sum: sum, fmt: fmt, line: line, lookupBarcode: lookupBarcode, searchProducts: searchProducts, offToFood: offToFood, shrink: shrink, detectInImage: detectInImage, scanLive: scanLive, hasNativeDetector: 'BarcodeDetector' in root, sgLoad: sgLoad, sgUse: sgUse, sgMatch: sgMatch, sgNorm: sgNorm, sgTable: sgTableLoaded };
+  root.OvuFood = { groupProducts: groupProducts, KEYS: KEYS, LABEL: LABEL, UNIT: UNIT, load: load, search: search, byId: byId, scale: scale, makeItem: makeItem, sum: sum, fmt: fmt, line: line, lookupBarcode: lookupBarcode, searchProducts: searchProducts, offToFood: offToFood, shrink: shrink, detectInImage: detectInImage, scanLive: scanLive, hasNativeDetector: 'BarcodeDetector' in root, sgLoad: sgLoad, sgUse: sgUse, sgMatch: sgMatch, sgNorm: sgNorm, sgTable: sgTableLoaded };
 })(window);

@@ -32,7 +32,7 @@
       sleeper: { x: 31, y: 58, w: 21, rot: 34 }, zzz: { x: 30, y: 44 },
       meditator: { x: 28, y: 77, w: 11.5 }, aura: { x: 28, y: 75, w: 18 }, holo: { x: 39, y: 75, w: 15 },
       window: { x: 37.3, y: 31.5, rx: 7, ry: 9.6 },
-      props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, lamp: { x: 86, y: 73, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
+      props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 80, y: 76.5, w: 10 }, lamp: { x: 89, y: 73, w: 7 }, mushlamp: { x: 89.5, y: 73, w: 7.5 }, starlamp: { x: 89.5, y: 73, w: 6.2 }, beanbag: { x: 57, y: 70.5, w: 10 }, armchair: { x: 57, y: 71, w: 11 }, scale: { x: 80, y: 82, w: 7.5 }, mewmew: { x: 62, y: 88, w: 12 } }
     },
     house: {
       id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8,
@@ -52,7 +52,53 @@
       sleeper: { x: 34, y: 44, w: 20, rot: 14 }, zzz: { x: 36, y: 30 },
       meditator: { x: 49, y: 82, w: 8 }, aura: { x: 49, y: 80, w: 13 }, holo: { x: 62, y: 80, w: 10 },
       window: { x: 48, y: 27, rx: 6.8, ry: 5.4 },
-      props: { cat: { x: 27, y: 80, w: 7 }, dog: { x: 53, y: 51, w: 7 }, plant: { x: 76, y: 80, w: 7 }, lamp: { x: 76, y: 50, w: 5.5 }, mewmew: { x: 62, y: 86, w: 8.5 } }
+      props: { cat: { x: 27, y: 80, w: 7 }, dog: { x: 53, y: 51, w: 7 }, plant: { x: 76, y: 80, w: 7 }, bookshelf: { x: 76, y: 80, w: 7 }, lamp: { x: 76, y: 50, w: 5.5 }, mushlamp: { x: 76, y: 50, w: 5.8 }, starlamp: { x: 76, y: 50, w: 4.8 }, beanbag: { x: 18, y: 82, w: 7.5 }, armchair: { x: 18, y: 82, w: 8 }, scale: { x: 64, y: 51, w: 5.5 }, mewmew: { x: 62, y: 86, w: 8.5 } }
+    },
+    /* rendered 18 Oct 2026 (Seedream 5.0 pro, seed 7201): bedroom and bubble bath upstairs, sofa, study and wardrobe below */
+    bathhouse: {
+      id: 'bathhouse', name: 'Your bath house', img: 'house-bath-v1.webp', w: 1024, h: 1280, avatarW: 8,
+      stairs: [{ x: 42, y: 75 }, { x: 52, y: 51 }], upstairsY: 55,
+      hotspots: [
+        { id: 'bed', x: 37, y: 42, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 44, y: 50, flip: true } },
+        { id: 'clock', x: 18, y: 41, label: 'Clock · reminders', icon: 'alarm', wp: { x: 25, y: 50, flip: true } },
+        { id: 'calendar', x: 33, y: 33, label: 'Calendar · cycle & symptoms', icon: 'calendar_month', wp: { x: 34, y: 50, flip: true } },
+        { id: 'bath', x: 66, y: 44, label: 'Bathtub · a mindful soak', icon: 'bathtub', wp: { x: 60, y: 50, flip: false } },
+        { id: 'window', x: 52.5, y: 30.5, label: 'Window · tonight', icon: 'dark_mode', wp: null },
+        { id: 'sofa', x: 27, y: 71, label: 'Sofa · tell Luna about today', icon: 'chair', wp: { x: 32, y: 79, flip: true } },
+        { id: 'diary', x: 40, y: 71, label: 'Diary · food journal', icon: 'menu_book', wp: { x: 40, y: 80, flip: true } },
+        { id: 'computer', x: 62, y: 66, label: 'Computer · learn', icon: 'computer', wp: { x: 60, y: 80, flip: false } },
+        { id: 'wardrobe', x: 73, y: 69, label: 'Wardrobe · outfits', icon: 'checkroom', wp: { x: 68, y: 80, flip: false } },
+        { id: 'mat', x: 29, y: 82, label: 'Yoga mat · mindfulness with Erin', icon: 'self_improvement', wp: { x: 42, y: 82, flip: true } },
+        { id: 'coach', x: 13, y: 58, label: 'M · everyday mindfulness', icon: 'self_improvement', badge: 'M', wp: { x: 24, y: 81, flip: true } }
+      ],
+      home: { x: 50, y: 82, flip: false },
+      sleeper: { x: 38, y: 43, w: 18, rot: 12 }, zzz: { x: 40, y: 31 },
+      meditator: { x: 33, y: 80, w: 8 }, aura: { x: 33, y: 78, w: 13 }, holo: { x: 45, y: 78, w: 10 },
+      window: { x: 52.5, y: 30.5, rx: 7, ry: 5.6 },
+      props: { cat: { x: 41, y: 86, w: 6.5 }, dog: { x: 54, y: 51, w: 6.5 }, plant: { x: 86, y: 80, w: 6.5 }, bookshelf: { x: 86, y: 80, w: 6.5 }, lamp: { x: 81, y: 51, w: 5 }, mushlamp: { x: 81, y: 51, w: 5.3 }, starlamp: { x: 81, y: 51, w: 4.4 }, beanbag: { x: 20, y: 82, w: 7 }, armchair: { x: 20, y: 82, w: 7.5 }, scale: { x: 74, y: 51, w: 5.5 }, mewmew: { x: 60, y: 85, w: 7.5 } }
+    },
+    /* rendered 18 Oct 2026 (seed 7202): kitchen and comfy living room below, bedroom, wardrobe and bubble bath upstairs */
+    familyhome: {
+      id: 'familyhome', name: 'Your family home', img: 'house-family-v1.webp', w: 896, h: 1120, avatarW: 8,
+      stairs: [{ x: 45, y: 78 }, { x: 58, y: 52 }], upstairsY: 55,
+      hotspots: [
+        { id: 'bed', x: 35, y: 44, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 40, y: 51, flip: true } },
+        { id: 'clock', x: 16, y: 44, label: 'Clock · reminders', icon: 'alarm', wp: { x: 22, y: 51, flip: true } },
+        { id: 'calendar', x: 14, y: 36, label: 'Calendar · cycle & symptoms', icon: 'calendar_month', wp: { x: 20, y: 51, flip: true } },
+        { id: 'wardrobe', x: 56, y: 39, label: 'Wardrobe · outfits', icon: 'checkroom', wp: { x: 55, y: 51, flip: false } },
+        { id: 'bath', x: 80, y: 45, label: 'Bathtub · a mindful soak', icon: 'bathtub', wp: { x: 72, y: 51, flip: false } },
+        { id: 'window', x: 40, y: 30, label: 'Window · tonight', icon: 'dark_mode', wp: null },
+        { id: 'diary', x: 33, y: 75, label: 'Kitchen · food diary', icon: 'menu_book', wp: { x: 34, y: 84, flip: true } },
+        { id: 'coach', x: 22, y: 62, label: 'M · everyday mindfulness', icon: 'self_improvement', badge: 'M', wp: { x: 28, y: 85, flip: true } },
+        { id: 'computer', x: 66, y: 64, label: 'Computer · learn', icon: 'computer', wp: { x: 62, y: 82, flip: false } },
+        { id: 'sofa', x: 78, y: 71, label: 'Sofa · tell Luna about today', icon: 'chair', wp: { x: 72, y: 85, flip: false } },
+        { id: 'mat', x: 61, y: 82, label: 'Yoga mat · mindfulness with Erin', icon: 'self_improvement', wp: { x: 50, y: 86, flip: false } }
+      ],
+      home: { x: 48, y: 88, flip: false },
+      sleeper: { x: 35, y: 45, w: 19, rot: 14 }, zzz: { x: 37, y: 33 },
+      meditator: { x: 58, y: 83, w: 8 }, aura: { x: 58, y: 81, w: 13 }, holo: { x: 70, y: 80, w: 10 },
+      window: { x: 40, y: 30, rx: 9, ry: 7 },
+      props: { cat: { x: 35, y: 88, w: 6.5 }, dog: { x: 46, y: 52, w: 6.5 }, plant: { x: 88, y: 86, w: 6 }, bookshelf: { x: 88, y: 86, w: 6.5 }, lamp: { x: 63, y: 51, w: 4.6 }, mushlamp: { x: 63, y: 51, w: 5 }, starlamp: { x: 63, y: 51, w: 4.2 }, beanbag: { x: 15, y: 87, w: 7 }, armchair: { x: 15, y: 87, w: 7.5 }, scale: { x: 70, y: 52, w: 5.5 }, mewmew: { x: 76, y: 88, w: 7.5 } }
     }
   };
   var L = LAYOUTS.room, HOTSPOTS = L.hotspots, HOME = L.home, visiting = null;
@@ -209,8 +255,8 @@
     });
   }
   function place(el, p) { if (!el || !p) return; el.style.left = p.x + '%'; el.style.top = p.y + '%'; if (p.w) el.style.width = p.w + '%'; }
-  function houseItem() { return RW.SHOP.filter(function (s) { return s.id === 'house'; })[0]; }
-  function currentHomeId() { return S.state().home === 'house' && RW.ledger().owned.indexOf('house') > -1 ? 'house' : 'room'; }
+  function houseItem(id) { return RW.SHOP.filter(function (s) { return s.id === (id || 'house'); })[0]; }
+  function currentHomeId() { var h = S.state().home; return h && h !== 'room' && LAYOUTS[h] && RW.ledger().owned.indexOf(h) > -1 ? h : 'room'; }
   /* Switch the plate and every percent-positioned overlay to a layout; asVisit previews without moving in. */
   function applyLayout(id, asVisit) {
     L = LAYOUTS[id] || LAYOUTS.room; HOTSPOTS = L.hotspots; HOME = L.home; visiting = asVisit ? L.id : null;
@@ -223,7 +269,7 @@
     place($('.zzz'), L.zzz); place(meditator, L.meditator); place($('#aura'), L.aura); place(holo, L.holo);
     var mp = $('#matProp'); if (mp) { mp.style.display = L.mat ? '' : 'none'; if (L.mat) place(mp, L.mat); }
     var wn = $('#winNight'); if (wn) { wn.style.left = L.window.x + '%'; wn.style.top = L.window.y + '%'; wn.style.width = (L.window.rx * 2) + '%'; wn.style.height = (L.window.ry * 2) + '%'; }
-    var vb = $('#visitBar'); if (vb) { vb.classList.toggle('on', !!visiting); vb.innerHTML = visiting ? '<span class="ms">cottage</span><span>Visiting the dream house · <b>' + houseItem().cost + ' ♥ to move in</b></span><button type="button" id="visitBack"><span class="ms">arrow_back</span>Back</button>' : ''; }
+    var vb = $('#visitBar'); if (vb) { vb.classList.toggle('on', !!visiting); vb.innerHTML = visiting ? '<span class="ms">cottage</span><span>Visiting ' + esc(houseItem(L.id).name.replace(/^./, function (c) { return c.toLowerCase(); })) + ' · <b>' + houseItem(L.id).cost + ' ♥ to move in</b></span><button type="button" id="visitBack"><span class="ms">arrow_back</span>Back</button>' : ''; }
     renderProps(); placeAvatar(HOME, false);
   }
   function buildScene() {
@@ -239,14 +285,14 @@
     applyLayout(currentHomeId(), false);
   }
   /* where an owned prop sits: the user's own arrangement, else the layout default, else the shop default */
-  function propPosFor(it) { var pp = (S.state().propPos || {})[L.id] || {}; var o = pp[it.id]; var base = (L.props && L.props[it.id]) || it.pos; if (!base) return null; return o ? { x: o.x, y: o.y, w: base.w } : base; }
+  function propPosFor(it) { var pp = (S.state().propPos || {})[L.id] || {}; var o = pp[it.id]; var base = (L.props && L.props[it.id]) || it.pos; if (!base) return null; return o ? { x: o.x !== undefined ? o.x : base.x, y: o.y !== undefined ? o.y : base.y, w: base.w, flip: !!o.flip } : base; }
   /* owned props from the reward shop, placed per layout */
   function renderProps() {
     var l = RW.ledger(), wrap = $('#ownedProps'); wrap.innerHTML = '';
     RW.SHOP.forEach(function (it) {
       if (!it.img || it.kind === 'home' || l.owned.indexOf(it.id) < 0 || !l.placed[it.id]) return;
       var p = propPosFor(it); if (!p) return;
-      var d = document.createElement('div'); d.className = 'prop owned ' + it.kind; d.dataset.id = it.id; d.style.left = p.x + '%'; d.style.top = p.y + '%'; d.style.width = p.w + '%';
+      var d = document.createElement('div'); d.className = 'prop owned ' + it.kind + (p.flip ? ' flip' : ''); d.dataset.id = it.id; d.style.left = p.x + '%'; d.style.top = p.y + '%'; d.style.width = p.w + '%';
       d.innerHTML = '<img src="' + ART + it.img + '" alt="">'; wrap.appendChild(d);
       if (it.id === 'scale') { d.classList.add('tool'); d.setAttribute('role', 'button'); d.setAttribute('tabindex', '0'); d.setAttribute('aria-label', 'Weighing scale. Tap to note your weight.'); }
       if (it.kind === 'pet' && PETS) {
@@ -397,6 +443,8 @@
   function openSheetFor(id) {
     if (id === 'bed') return S.state().sleeping ? openWake() : openBedtime();
     if (id === 'clock') return openClock();
+    if (id === 'bath') return openEveryday('shower');
+    if (id === 'sofa') return openLuna();
     if (id === 'calendar') return openCalendar('period');
     if (id === 'computer') return openLearn();
     if (id === 'wardrobe') return openWardrobe();
@@ -740,20 +788,21 @@
     diaryDate = S.today(); draft = { items: [], photo: null }; picked = null;
     var cs = S.cycleStats(), phase = cs.phase || 'none', tip = PHASE_TIPS[phase] || PHASE_TIPS.none;
     var h = new Date().getHours(), defMeal = h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 17 ? 'snack' : h < 22 ? 'dinner' : 'snack';
-    openSheet('diary', 'Food diary', 'Snap, scan or search, then confirm the amount', 'menu_book',
-      '<div class="stat"><span class="ms">local_florist</span><div><b>' + esc(tip.title) + '</b><span>' + esc(tip.text) + '</span></div></div>' +
-      '<div id="picksWrap"></div>' +
-      '<div class="grid2"><div class="field"><label for="fdDate">Date</label><input class="input" id="fdDate" type="date" value="' + diaryDate + '" max="' + S.today() + '"></div><div class="field"><label for="fdTime">Time</label><input class="input" id="fdTime" type="time" value="' + nowHM() + '"></div></div>' +
-      '<div class="field"><span class="lbl">Meal</span><div class="chips" id="mealChips">' + ['breakfast', 'lunch', 'dinner', 'snack'].map(function (m) { return '<button type="button" class="chipbtn' + (m === defMeal ? ' on' : '') + '" data-meal="' + m + '">' + cap(m) + '</button>'; }).join('') + '</div></div>' +
-      '<div class="field"><div class="lbl-row"><span class="lbl">What did you eat?</span>' + infoBtn('food') + '</div>' +
+    openSheet('diary', 'Food diary', 'Add a meal, see today, or find ideas', 'menu_book',
+      '<div class="dtabs" id="dTabs" role="tablist"><button type="button" role="tab" data-dpane="add" class="on"><span class="ms">add_circle</span>Add a meal</button><button type="button" role="tab" data-dpane="today"><span class="ms">today</span>Today</button><button type="button" role="tab" data-dpane="ideas"><span class="ms">local_florist</span>Ideas</button></div>' +
+      '<div class="dpane" data-pane="add">' +
+        '<section class="dsec"><h4><i>1</i>When</h4>' + '<div class="grid2"><div class="field"><label for="fdDate">Date</label><input class="input" id="fdDate" type="date" value="' + diaryDate + '" max="' + S.today() + '"></div><div class="field"><label for="fdTime">Time</label><input class="input" id="fdTime" type="time" value="' + nowHM() + '"></div></div>' + '<div class="field"><span class="lbl">Meal</span><div class="chips" id="mealChips">' + ['breakfast', 'lunch', 'dinner', 'snack'].map(function (m) { return '<button type="button" class="chipbtn' + (m === defMeal ? ' on' : '') + '" data-meal="' + m + '">' + cap(m) + '</button>'; }).join('') + '</div></div>' + '</section>' +
+        '<section class="dsec"><h4><i>2</i>What you ate</h4>' + '<div class="field"><div class="lbl-row"><span class="lbl">Search, scan or snap</span>' + infoBtn('food') + '</div>' +
       '<div class="foodmodes"><button type="button" data-mode="search" class="on"><span class="ms">search</span>Search foods</button><button type="button" data-mode="scan"><span class="ms">qr_code_scanner</span>Scan barcode</button><button type="button" data-mode="photo"><span class="ms">photo_camera</span>Snap a photo</button></div>' + guideHTML('food') +
-      '<div id="modeArea"></div><img class="thumb" id="thumb" alt=""><div class="picker" id="picker"></div><div id="customWrap"></div><div class="items" id="items"></div><div class="totals" id="totals"></div></div>' +
-      '<div class="field"><label for="fdFoods">Notes or anything not in the list</label><textarea class="input" id="fdFoods" placeholder="Kopi C, two slices of kaya toast..."></textarea></div>' +
-      '<div class="field"><span class="lbl">Tags</span><div class="chips" id="tagChips">' + A.FOOD_TAGS.map(function (t) { return '<button type="button" class="chipbtn" data-tag="' + esc(t) + '">' + esc(cap(t)) + '</button>'; }).join('') + '</div></div>' +
-      '<button class="btn primary" id="saveFood" style="width:100%"><span class="ms">check</span>Save meal</button><div class="msg" id="foodMsg"></div>' +
-      guideHTML('nova') + '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' +
-      '<a class="btn soft" href="room.html#food" style="margin-top:12px"><span class="ms">restaurant</span>Open the full food journal</a>');
+      '<div id="modeArea"></div><img class="thumb" id="thumb" alt=""><div class="picker" id="picker"></div><div id="customWrap"></div><div class="items" id="items"></div><div class="totals" id="totals"></div></div>' + '</section>' +
+        '<section class="dsec"><h4><i>3</i>Anything else <small>optional</small></h4>' + '<div class="field"><label for="fdFoods">Notes or anything not in the list</label><textarea class="input" id="fdFoods" placeholder="Kopi C, two slices of kaya toast..."></textarea></div>' + '<div class="field"><span class="lbl">Tags</span><div class="chips" id="tagChips">' + A.FOOD_TAGS.map(function (t) { return '<button type="button" class="chipbtn" data-tag="' + esc(t) + '">' + esc(cap(t)) + '</button>'; }).join('') + '</div></div>' + '</section>' +
+        '<button class="btn primary" id="saveFood" style="width:100%"><span class="ms">check</span>Save meal</button><div class="msg" id="foodMsg"></div>' +
+      '</div>' +
+      '<div class="dpane" data-pane="today" hidden>' + guideHTML('nova') + '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' + '</div>' +
+      '<div class="dpane" data-pane="ideas" hidden>' + '<div class="stat"><span class="ms">local_florist</span><div><b>' + esc(tip.title) + '</b><span>' + esc(tip.text) + '</span></div></div>' + '<div id="picksWrap"></div></div>');
     (ovarian ? Promise.resolve(ovarian) : loadJSON('assets/data/ovarian-foods.json').then(function (d) { ovarian = d; return d; })).then(function () { var w = $('#picksWrap'); if (w) w.innerHTML = picksHTML(phase === 'late' ? 'luteal' : phase); }).catch(function () { });
+    function setPane(k) { $$('#dTabs button').forEach(function (b) { var on = b.dataset.dpane === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); }); $$('.dpane', body).forEach(function (pn) { pn.hidden = pn.dataset.pane !== k; }); if (k !== 'add') stopCamera(); body.scrollTop = 0; }
+    $('#dTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-dpane]'); if (b) { chime('tap'); setPane(b.dataset.dpane); } });
     var area = $('#modeArea');
     function setMode(mode) {
       stopCamera(); $$('.foodmodes button').forEach(function (b) { b.classList.toggle('on', b.dataset.mode === mode); });
@@ -779,7 +828,8 @@
           bcTimer = setTimeout(function () {
             (FD.searchProducts ? FD.searchProducts(q) : Promise.reject(new Error('Product search is not available in this version.'))).then(function (list) {
               if (seq !== bcSeq) return;
-              out.innerHTML = head + (list.length ? '<div class="results">' + list.map(function (p) { return '<button type="button" class="result" data-code="' + esc(p.code) + '">' + (p.image ? '<img src="' + esc(p.image) + '" alt="" loading="lazy">' : '<span class="ms">qr_code_2</span>') + '<span><b>' + esc(p.name) + '</b><small>' + esc([p.brands, p.quantity].filter(Boolean).join(' · ')) + (p.sg ? ' · sold in Singapore' : '') + '</small>' + (NV && p.nova ? novaChip(NV.classify({ nova: p.nova })) : '') + '</span></button>'; }).join('') + '</div><p class="help">Product data from Open Food Facts, a community database. Check the label if something looks off.</p>' : '<p class="help">No packaged products found for “' + esc(q) + '”. Try the brand name, or add it as a custom food from the label.</p>');
+              var groups = FD.groupProducts ? FD.groupProducts(list).slice(0, 10) : list.map(function (p) { return { name: p.name, brands: p.brands, best: p, image: p.image, nova: p.nova, sg: p.sg, sizes: [] }; });
+              out.innerHTML = head + (groups.length ? '<div class="results">' + groups.map(function (g) { var one = g.sizes.length < 2; return '<div class="pgroup"><button type="button" class="result" data-code="' + esc(g.best.code) + '">' + (g.image ? '<img src="' + esc(g.image) + '" alt="" loading="lazy">' : '<span class="ms">qr_code_2</span>') + '<span><b>' + esc(g.name) + '</b><small>' + esc([g.brands, one && g.sizes[0] && g.sizes[0].label !== 'size not listed' ? g.sizes[0].label : ''].filter(Boolean).join(' · ')) + (g.sg ? ' · sold in Singapore' : '') + (one ? '' : ' · ' + g.sizes.length + ' sizes') + '</small>' + (NV && g.nova ? novaChip(NV.classify({ nova: g.nova })) : '') + '</span></button>' + (one ? '' : '<div class="psizes"><span>Pick your size</span>' + g.sizes.map(function (z) { return '<button type="button" class="chipbtn" data-code="' + esc(z.code) + '">' + esc(z.label) + '</button>'; }).join('') + '</div>') + '</div>'; }).join('') + '</div><p class="help">Product data from Open Food Facts, a community database. Check the label if something looks off.</p>' : '<p class="help">No packaged products found for “' + esc(q) + '”. Try the brand name, or add it as a custom food from the label.</p>');
             }).catch(function (err) { if (seq === bcSeq) out.innerHTML = head + '<p class="help">' + esc(err.message) + '</p>'; });
           }, now ? 0 : 450);
         };
@@ -853,7 +903,7 @@
         var ev = S.add('food', $('#fdDate').value, { meal: $('#mealChips .on').dataset.meal, time: $('#fdTime').value, foods: (names.join(', ') + (notes ? (names.length ? ' · ' : '') + notes : '')), notes: notes, tags: $$('#tagChips .on').map(function (b) { return b.dataset.tag; }), items: draft.items, photo: draft.photo, totals: sm ? sm.totals : null, method: 'camera-assisted v1' });
         draft = { items: [], photo: null }; renderItems(); $('#thumb').classList.remove('on'); $('#fdFoods').value = ''; $$('#tagChips .on').forEach(function (b) { b.classList.remove('on'); });
         message($('#foodMsg'), 'Saved' + (sm && sm.totals.kcal !== null ? ': ' + Math.round(sm.totals.kcal) + ' kcal, ' + FD.fmt('protein', sm.totals.protein) + ' g protein, ' + FD.fmt('fiber', sm.totals.fiber) + ' g fibre.' : '.'), true);
-        $('#foodList').innerHTML = foodEntriesHTML(diaryDate); afterSave(ev);
+        $('#foodList').innerHTML = foodEntriesHTML(diaryDate); afterSave(ev); setPane('today');
       } catch (e) { message($('#foodMsg'), e.message, false); }
     });
   }
@@ -1084,13 +1134,14 @@
         var owned = l.owned.indexOf(it.id) > -1, placed = !!l.placed[it.id], ctl, extra = '';
         if (it.kind === 'home') {
           var pct = Math.min(100, Math.round(l.hearts / it.cost * 100));
-          ctl = owned ? '<button type="button" class="btn soft" data-home="' + (home === 'house' ? 'room' : 'house') + '">' + (home === 'house' ? 'Back to my room' : 'Move in') + '</button>'
-            : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>Move in</button><button type="button" class="btn ghost" data-visit="house">Visit</button>';
+          ctl = owned ? '<button type="button" class="btn soft" data-home="' + (home === it.id ? 'room' : it.id) + '">' + (home === it.id ? 'Back to my room' : 'Move in') + '</button>'
+            : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>Move in</button><button type="button" class="btn ghost" data-visit="' + it.id + '">Visit</button>';
           if (!owned) extra = '<div class="bar"><i style="width:' + pct + '%"></i></div><small>' + pct + '% saved' + (l.hearts < it.cost ? ' · ' + (it.cost - l.hearts) + ' hearts to go' : ' · you can move in!') + '</small>';
         } else {
-          ctl = owned ? '<button type="button" class="btn soft" data-toggle="' + it.id + '">' + (placed ? 'Hide' : 'Place') + '</button>' : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>' + (it.kind === 'pet' ? 'Adopt' : 'Buy') + '</button>';
+          var slotBusy = it.slot && !placed && RW.SHOP.some(function (o) { return o.slot === it.slot && o.id !== it.id && l.placed[o.id]; });
+          ctl = owned ? '<button type="button" class="btn soft" data-toggle="' + it.id + '">' + (placed ? 'Put away' : (slotBusy ? 'Swap in' : 'Place')) + '</button>' : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>' + (it.kind === 'pet' ? 'Adopt' : 'Buy') + '</button>';
         }
-        return '<div class="shopitem' + (it.kind === 'home' ? ' home' : '') + '">' + (it.img ? '<img src="' + ART + it.img + '" alt="">' : '<span class="ph"><span class="ms">cottage</span></span>') + '<span><b>' + esc(it.name) + '</b><small>' + esc(it.note) + '</small>' + extra + '</span><span class="cost"><b><span class="ms fill">favorite</span>' + it.cost + '</b>' + ctl + '</span></div>';
+        return '<div class="shopitem' + (it.kind === 'home' ? ' home' : '') + '">' + (it.img ? '<img src="' + ART + it.img + '" alt="">' : '<span class="ph"><span class="ms">cottage</span></span>') + '<span><b>' + esc(it.name) + (it.slot && RW.SLOTS ? ' <em class="slotchip">' + esc(RW.SLOTS[it.slot]) + '</em>' : '') + '</b><small>' + esc(it.note) + '</small>' + extra + '</span><span class="cost"><b><span class="ms fill">favorite</span>' + it.cost + '</b>' + ctl + '</span></div>';
       }).join('') + '</div>' +
       (shopTab === 'all' || shopTab === 'home' ? '<div class="nexthomes"><b>Growing next</b>' + NEXT_HOMES.map(function (n) { return '<div><span class="ms">' + n.icon + '</span><span><b>' + esc(n.name) + '</b><small>' + esc(n.note) + '</small></span></div>'; }).join('') + '</div>' : '') +
       (l.owned.some(function (id) { var it = RW.SHOP.filter(function (s) { return s.id === id; })[0]; return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div><p class="help">Drag pets and furniture anywhere; the bed, clock, calendar and the rest stay where they are so logging keeps working.</p>' : '') +
@@ -1101,12 +1152,12 @@
       try {
         if (b) {
           var it = RW.buy(b.dataset.buy); chime('save', true);
-          if (it.kind === 'home') { S.setState({ home: 'house' }); closeSheet(); applyLayout('house', false); toast('Welcome home. The dream house is yours!', 'cottage'); }
-          else { renderProps(); toast(it.name + ' is now in your home!', 'favorite'); openShop(); }
+          if (it.kind === 'home') { S.setState({ home: it.id }); closeSheet(); applyLayout(it.id, false); toast('Welcome home. ' + it.name + ' is yours!', 'cottage'); }
+          else { renderProps(); toast(it.name + ' is now in your home!' + (it.swapped && it.swapped.length ? ' ' + it.swapped.join(' and ') + ' went into storage; swap back any time.' : ''), 'favorite'); openShop(); }
         }
         if (t) { RW.toggle(t.dataset.toggle); renderProps(); openShop(); }
-        if (v) { chime('tap'); closeSheet(); applyLayout('house', true); toast('Have a look around. Tap Back when you are done.', 'cottage'); }
-        if (hm) { chime('tap'); S.setState({ home: hm.dataset.home }); applyLayout(hm.dataset.home, false); openShop(); toast(hm.dataset.home === 'house' ? 'Moved in.' : 'Back in your room.', 'home'); }
+        if (v) { chime('tap'); closeSheet(); applyLayout(v.dataset.visit, true); toast('Have a look around. Tap Back when you are done.', 'cottage'); }
+        if (hm) { chime('tap'); S.setState({ home: hm.dataset.home }); applyLayout(hm.dataset.home, false); openShop(); toast(hm.dataset.home !== 'room' ? 'Moved in.' : 'Back in your room.', 'home'); }
         if (e.target.closest('#arrangeBtn')) enterArrange();
       } catch (err) { message($('#shopMsg'), err.message, false); }
     });
@@ -1116,17 +1167,18 @@
   function enterArrange() {
     arranging = true; hideSheet(); scene.classList.add('arranging');
     var vb = $('#visitBar'); vb.classList.add('on');
-    vb.innerHTML = '<span class="ms">open_with</span><span>Drag pets and furniture where you like</span><button type="button" id="arrReset"><span class="ms">restart_alt</span>Reset</button><button type="button" id="arrDone"><span class="ms">check</span>Done</button>';
+    vb.innerHTML = '<span class="ms">open_with</span><span>Drag to move. Tap one to turn it or put it away.</span><button type="button" id="arrReset"><span class="ms">restart_alt</span>Reset</button><button type="button" id="arrDone"><span class="ms">check</span>Done</button>';
     toast('Arranging. Drag anything you own.', 'open_with');
   }
   function exitArrange(reset) {
+    hidePropCtl();
     if (reset) { var pp = S.state().propPos || {}; delete pp[L.id]; S.setState({ propPos: pp }); }
     arranging = false; scene.classList.remove('arranging'); applyLayout(L.id, !!visiting);
     toast(reset ? 'Back to the default arrangement.' : 'Saved your arrangement.', 'check_circle');
   }
   var owned = $('#ownedProps');
   owned.addEventListener('pointerdown', function (e) {
-    if (!arranging) return; var p = e.target.closest('.prop'); if (!p) return;
+    if (!arranging || e.target.closest('.propctl')) return; var p = e.target.closest('.prop'); if (!p) return;
     var r = scene.getBoundingClientRect();
     dragProp = { el: p, id: p.dataset.id, sx: e.clientX, sy: e.clientY, ox: parseFloat(p.style.left), oy: parseFloat(p.style.top), rw: r.width, rh: r.height };
     try { p.setPointerCapture(e.pointerId); } catch (err) { }
@@ -1137,11 +1189,29 @@
     var x = Math.max(2, Math.min(98, dragProp.ox + (e.clientX - dragProp.sx) / dragProp.rw * 100)), y = Math.max(10, Math.min(99, dragProp.oy + (e.clientY - dragProp.sy) / dragProp.rh * 100));
     dragProp.el.style.left = x + '%'; dragProp.el.style.top = y + '%';
   });
-  function endPropDrag() {
+  function endPropDrag(e) {
     if (!dragProp) return; var d = dragProp; dragProp = null; d.el.classList.remove('lift');
-    var pp = S.state().propPos || {}; pp[L.id] = pp[L.id] || {}; pp[L.id][d.id] = { x: Math.round(parseFloat(d.el.style.left) * 10) / 10, y: Math.round(parseFloat(d.el.style.top) * 10) / 10 }; S.setState({ propPos: pp });
+    var moved = e && e.clientX !== undefined ? Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) : 99;
+    if (moved < 6) { showPropCtl(d.el); return; } /* a tap, not a drag: offer turn and put away */
+    var pp = S.state().propPos || {}; pp[L.id] = pp[L.id] || {}; pp[L.id][d.id] = Object.assign({}, pp[L.id][d.id] || {}, { x: Math.round(parseFloat(d.el.style.left) * 10) / 10, y: Math.round(parseFloat(d.el.style.top) * 10) / 10 }); S.setState({ propPos: pp });
+    hidePropCtl();
   }
-  owned.addEventListener('pointerup', endPropDrag); owned.addEventListener('pointercancel', endPropDrag);
+  /* turn (mirror) or put away a piece while arranging; put-away pieces wait in the heart shop */
+  function hidePropCtl() { var c = $('#propCtl'); if (c) c.remove(); }
+  function showPropCtl(el) {
+    hidePropCtl(); var id = el.dataset.id, it = RW.SHOP.filter(function (x) { return x.id === id; })[0]; if (!it) return;
+    var c = document.createElement('div'); c.id = 'propCtl'; c.className = 'propctl';
+    c.style.left = el.style.left; c.style.top = 'calc(' + el.style.top + ' - ' + (el.offsetHeight / inner.offsetHeight * 100 + 1.5).toFixed(1) + '%)';
+    c.innerHTML = '<b>' + esc(it.name) + '</b><button type="button" data-pc="flip" data-id="' + id + '"><span class="ms">flip</span>Turn</button><button type="button" data-pc="store" data-id="' + id + '"><span class="ms">inventory_2</span>Put away</button>';
+    $('#ownedProps').appendChild(c); chime('tap');
+  }
+  owned.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pc]'); if (!b || !arranging) return; e.stopPropagation();
+    var id = b.dataset.id, it = RW.SHOP.filter(function (x) { return x.id === id; })[0];
+    if (b.dataset.pc === 'flip') { var pp = S.state().propPos || {}; pp[L.id] = pp[L.id] || {}; var cur = pp[L.id][id] || {}; pp[L.id][id] = Object.assign({}, cur, { flip: !cur.flip }); S.setState({ propPos: pp }); renderProps(); var el = $('#ownedProps .prop.owned[data-id="' + id + '"]'); if (el) showPropCtl(el); chime('tap'); }
+    if (b.dataset.pc === 'store') { if (RW.ledger().placed[id]) RW.toggle(id); hidePropCtl(); renderProps(); chime('save'); toast((it ? it.name : 'It') + ' is back in your inventory. Place it again from the heart shop.', 'inventory_2'); }
+  }, true);
+  owned.addEventListener('pointerup', function (e) { if (e.target.closest('.propctl')) return; endPropDrag(e); }); owned.addEventListener('pointercancel', endPropDrag);
 
   /* ---------- Luna, the moon orb ---------- */
   var lunaLog = [];
@@ -1709,7 +1779,7 @@
     RW.grant(20, 'welcome');
     var gotScale = false; if (A.wantScale === 'yes') { try { RW.buy('scale'); gotScale = true; } catch (e) { gotScale = RW.ledger().owned.indexOf('scale') > -1; } }
     onb = null; closeSheet(); updateGreeting(); renderDeck(); renderProps();
-    toast('Welcome home' + (patch.name ? ', ' + patch.name : '') + '. ' + (gotScale ? 'Your scale is on the floor by the mat, and 15 hearts are left for your nest.' : '20 hearts to start your nest.'), 'favorite');
+    toast('Welcome home' + (patch.name ? ', ' + patch.name : '') + '. ' + (gotScale ? 'Your scale is by the round table, and 15 hearts are left for your nest.' : '20 hearts to start your nest.'), 'favorite');
   }
   /* ---------- data notice: one friendly read and a required OK before the room opens ---------- */
   var CONSENT_V = 1;
