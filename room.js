@@ -32,11 +32,12 @@
       sleeper: { x: 31, y: 58, w: 21, rot: 34 }, zzz: { x: 30, y: 44 },
       meditator: { x: 28, y: 77, w: 11.5 }, aura: { x: 28, y: 75, w: 18 }, holo: { x: 39, y: 75, w: 15 },
       window: { x: 37.3, y: 31.5, rx: 7, ry: 9.6 },
-      winPatch: { x: 14.470, y: 11.522, w: 44.701, base: 'room-v3-win-' },
+      winPatch: { x: 14.470, y: 11.522, w: 44.701, base: 'room-v3-sky2-room-' },
       props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 87, y: 66, w: 10 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 40, y: 73.5, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
     },
     house: {
       id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8,
+      winPatches: [{ x: 27.539, y: 10.859, w: 42.480, base: 'house-v1-sky2-house-' }],
       stairs: [{ x: 46, y: 78 }, { x: 55, y: 57 }], upstairsY: 55,
       hotspots: [
         { id: 'bed', x: 28, y: 46, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 44, y: 52, flip: true } },
@@ -58,6 +59,7 @@
     /* rendered 18 Oct 2026 (Seedream 5.0 pro, seed 7201): bedroom and bubble bath upstairs, sofa, study and wardrobe below */
     bathhouse: {
       id: 'bathhouse', name: 'Your bath house', img: 'house-bath-v1.webp', w: 1024, h: 1280, avatarW: 8,
+      winPatches: [{ x: 26.465, y: 13.438, w: 36.230, base: 'house-bath-v1-sky2-bathhouse-' }],
       stairs: [{ x: 42, y: 75 }, { x: 52, y: 51 }], upstairsY: 55,
       hotspots: [
         { id: 'bed', x: 37, y: 42, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 44, y: 50, flip: true } },
@@ -81,6 +83,7 @@
     /* rendered 18 Oct 2026 (seed 7202): kitchen and comfy living room below, bedroom, wardrobe and bubble bath upstairs */
     familyhome: {
       id: 'familyhome', name: 'Your family home', img: 'house-family-v1.webp', w: 896, h: 1120, avatarW: 8,
+      winPatches: [{ x: 15.513, y: 14.107, w: 35.491, base: 'house-family-v1-sky2-familyhome-' }, { x: 61.496, y: 50.000, w: 32.478, base: 'house-family-v1-sky2-familyhome2-' }],
       stairs: [{ x: 45, y: 78 }, { x: 58, y: 52 }], upstairsY: 55,
       hotspots: [
         { id: 'bed', x: 35, y: 44, label: 'Bed · go to sleep', icon: 'bedtime', wp: { x: 40, y: 51, flip: true } },
@@ -273,9 +276,14 @@
     if (L.sleeper) { place(sleeper, L.sleeper); sleeper.style.transform = 'translate(-50%,-50%) rotate(' + L.sleeper.rot + 'deg)'; }
     place($('.zzz'), L.zzz); place(meditator, L.meditator); place($('#aura'), L.aura); place(holo, L.holo);
     var mp = $('#matProp'); if (mp) { mp.style.display = L.mat ? '' : 'none'; if (L.mat) place(mp, L.mat); }
-    /* the room's window sky is cut from the plate itself (tools/art/window_patch.py), so it follows the tilted oval exactly */
-    var wp = L.winPatch; ['night', 'sunset', 'sunrise'].forEach(function (k) { var el = $('#winPatch' + k.charAt(0).toUpperCase() + k.slice(1)); if (!el) return; if (wp) { var want = ART + wp.base + k + '.webp'; if (el.getAttribute('src') !== want) el.src = want; el.style.left = wp.x + '%'; el.style.top = wp.y + '%'; el.style.width = wp.w + '%'; } else if (el.getAttribute('src')) el.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; /* Safari keeps a removed image on screen; a blank one does not */ });
-    scene.classList.toggle('has-win-patch', !!wp);
+    /* window skies: model-repainted views composited inside each window's exact opening (tools/art/window_inpaint2.py);
+     * a layout lists its windows in winPatches, and the images are rebuilt on every switch so none can linger */
+    var wps = L.winPatches || (L.winPatch ? [L.winPatch] : []), wbox = $('#winPatches');
+    if (wbox && wbox.dataset.layout !== L.id) {
+      wbox.innerHTML = wps.map(function (wp) { return ['night', 'sunset', 'sunrise'].map(function (k) { return '<img class="win-patch ' + k + '" alt="" src="' + ART + wp.base + k + '.webp" style="left:' + wp.x + '%;top:' + wp.y + '%;width:' + wp.w + '%">'; }).join(''); }).join('');
+      wbox.dataset.layout = L.id;
+    }
+    scene.classList.toggle('has-win-patch', wps.length > 0);
     var wn = $('#winNight'); if (wn && L.window) { wn.style.left = L.window.x + '%'; wn.style.top = L.window.y + '%'; wn.style.width = (L.window.rx * 2) + '%'; wn.style.height = (L.window.ry * 2) + '%'; }
     var vb = $('#visitBar'); if (vb) { vb.classList.toggle('on', !!visiting); vb.innerHTML = visiting && houseItem(L.id) ? '<span class="ms">cottage</span><span>Visiting ' + esc(houseItem(L.id).name.replace(/^./, function (c) { return c.toLowerCase(); })) + ' · <b>' + houseItem(L.id).cost + ' ♥ to move in</b></span><button type="button" id="visitBack"><span class="ms">arrow_back</span>Back</button>' : ''; }
     renderProps(); placeAvatar(HOME, false);

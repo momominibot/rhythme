@@ -632,5 +632,12 @@ function scenes(todayIso) {
   check('taps change nothing: forty taps and none earned the same', r1.points === 0);
 })();
 
+(function windowSkies() {
+  console.log('window skies: every layout that lists a window has all three sky images on disk');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), bases = src.match(/base: '([^']+)'/g) || [];
+  check('four layouts list window skies (room, house, bath house, family home with two)', bases.length === 5, bases.length);
+  check('night, sunset and sunrise exist for each', bases.every(function (b) { var base = b.slice(7, -1); return ['night', 'sunset', 'sunrise'].every(function (k) { return fs.existsSync(path.join(root, 'assets/room/dream', base + k + '.webp')); }); }));
+})();
+
 console.log('\n' + passes + ' passed, ' + fails + ' failed');
 process.exit(fails ? 1 : 0);

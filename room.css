@@ -619,7 +619,8 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .win-night{position:absolute;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%);box-shadow:inset 0 0 22px rgba(0,0,0,.4);opacity:0;transition:opacity 1.6s ease;pointer-events:none;overflow:hidden;z-index:2}
 .scene:is(.is-night,.sky-night) .win-night{opacity:.97}
 /* window sky cut from the plate (room layout): fades in by sky phase; the oval overlay is only for homes without a cut */
-.win-patch{position:absolute;height:auto;opacity:0;display:none;transition:opacity 1.6s ease;pointer-events:none;z-index:2}
+.win-patches{position:absolute;inset:0;pointer-events:none;z-index:2}
+.win-patch{position:absolute;height:auto;opacity:0;display:none;transition:opacity 1.6s ease;pointer-events:none}
 .scene.has-win-patch .win-patch{display:block}
 .scene.has-win-patch .win-night{display:none}
 .scene.has-win-patch:is(.is-night,.sky-night) .win-patch.night{opacity:1}
@@ -1335,6 +1336,6 @@ body.btap-open{overflow:hidden}
 @media(prefers-reduced-motion:reduce){.btap-ring{transition:opacity .6s}.btap-ring img{animation:none}.btap-petal{animation-duration:.8s}}
 
 /* herb and tea pictures (pastel clay icons) on the greenhouse cards and the diary's tea list */
-.teaimg{width:52px;height:52px;object-fit:contain;flex:none;filter:drop-shadow(0 4px 6px rgba(90,66,116,.18))}
+.teaimg{width:64px;height:64px;object-fit:contain;flex:none;filter:drop-shadow(0 4px 6px rgba(90,66,116,.18))}
 .tea summary>.teaimg{width:40px;height:40px}
 .teas .tea{display:flex;gap:12px;align-items:flex-start}
