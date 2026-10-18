@@ -1226,7 +1226,7 @@
     openSheet('you', P.name ? P.name : 'You', 'Your room, your answers, your data', 'person',
       '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '</span></div></div>' +
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
-      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Heart shop', 'Pets, furniture and homes', 'shop') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Heart shop', 'Pets, furniture and homes', 'shop') + row('auto_awesome', 'Luna’s look', 'Choose the friend in the corner of your room', 'mascot') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
@@ -1238,6 +1238,7 @@
       if (act === 'intro') { var A0 = JSON.parse(JSON.stringify(P)); Object.assign(A0, P.habits || {}); ['cycleLength', 'periodLength'].forEach(function (k) { if (A0[k] !== null && A0[k] !== undefined) A0[k] = String(A0[k]); }); openOnboarding(0, A0); return; }
       if (act === 'wardrobe') return openWardrobe();
       if (act === 'shop') return openShop();
+      if (act === 'mascot') return openMascot();
       if (act === 'clock') return openClock();
       if (act === 'plus') return openPlus();
       if (act === 'luna') { openLuna(); var ab = $('#aibox'); if (ab) { ab.open = true; setTimeout(function () { ab.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); } return; }
@@ -1251,10 +1252,17 @@
     });
   }
 
+  /* ---------- Luna's look: pick the friend who sits in the corner ---------- */
+  function openMascot() {
+    var M = window.OvuMascot; if (!M) return; var cur = M.current();
+    openSheet('mascot', 'Luna’s look', 'Pick the friend who keeps you company. Luna stays Luna whichever face she wears.', 'auto_awesome',
+      '<div class="mascots">' + M.LIST.map(function (m) { return '<button type="button" data-mascot-pick="' + m.id + '" class="' + (m.id === cur.id ? 'on' : '') + '" aria-pressed="' + (m.id === cur.id) + '"><img src="' + M.src(m) + '" alt=""><b>' + esc(m.name) + '</b><small>' + esc(m.note) + '</small></button>'; }).join('') + '</div>');
+    body.addEventListener('click', function (e) { var b = e.target.closest('[data-mascot-pick]'); if (!b) return; chime('save'); var m = M.set(b.dataset.mascotPick); toast(m.name + ' will keep you company.', 'auto_awesome'); openMascot(); });
+  }
   /* ---------- Dream Street: a pet shop, a furniture store and a property showroom, plus arranging what you own ---------- */
   var shopTab = 'street', arranging = false, dragProp = null;
   var STORES = {
-    pet: { title: 'Pet shop', tag: 'Adopt a friend', sub: 'One kitten and one puppy are home at a time; the others nap in your inventory until you swap.', icon: 'pets', img: 'shop-pets.webp', blurb: 'Kittens, puppies and Mewmew' },
+    pet: { title: 'Pet shop', tag: 'Adopt a friend', sub: 'One kitten and one puppy are home at a time; the others nap in your inventory until you swap.', icon: 'pets', img: 'shop-pets.webp', blurb: 'Kittens and puppies' },
     furniture: { title: 'Furniture store', tag: 'Pieces for your room', sub: 'Lamps, seats and shelves. Pieces that share a spot swap with each other.', icon: 'chair', img: 'shop-furniture.webp', blurb: 'Lamps, seats and shelves' },
     home: { title: 'Property showroom', tag: 'Dream houses to move into', sub: 'Visit any home first. Move in when you have the hearts.', icon: 'cottage', img: 'shop-homes.webp', blurb: 'Houses to visit and move into' }
   };
@@ -2184,6 +2192,7 @@
     setOutfit(S.profile().outfit || 'base', true);
     avatar.classList.add('idle');
     if (S.state().sleeping) enterNight(false);
+    if (window.OvuMascot) OvuMascot.apply();
     updateGreeting(); renderDeck(); renderProps(); applySky();
     setInterval(function () { applySky(); if (window.OvuPets) renderProps(); }, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });
     FD.load().catch(function () { });
