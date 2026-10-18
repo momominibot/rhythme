@@ -38,10 +38,10 @@
   function renderNav() {
     const items = [
       { href: 'home.html', icon: 'home', label: 'Home' },
-      { href: 'cycle-home.html', icon: 'cycle', label: 'Cycle' },
-      { href: 'food-journal.html', icon: 'restaurant', label: 'Food' },
-      { href: 'mindfulness.html', icon: 'self_improvement', label: 'Mind' },
-      { href: 'profile.html', icon: 'person', label: 'You' }
+      { href: 'room.html#cycle', icon: 'cycle', label: 'Cycle' },
+      { href: 'room.html#food', icon: 'restaurant', label: 'Food' },
+      { href: 'room.html#mind', icon: 'self_improvement', label: 'Mind' },
+      { href: 'room.html#you', icon: 'person', label: 'You' }
     ];
     return `<nav class="nav">` + items.map(item => {
       const active = currentPage === item.href ? ' class="active"' : '';

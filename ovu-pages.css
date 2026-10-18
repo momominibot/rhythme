@@ -125,3 +125,5 @@ details.more summary::-webkit-details-marker{display:none}
 .ins .sec{background:#fff;border-radius:12px;padding:8px 10px;font:600 11.5px var(--sans);color:var(--rm-ink-2);line-height:1.45}
 .ins .sec b{display:block;font:800 10.5px var(--sans);color:var(--rm-plum);margin-bottom:2px}
 .msg.info{display:block;background:#eef0fb;color:#3b3f72}
+.nav a{outline:none}
+.nav a:focus-visible{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--rm-lilac);background:rgba(231,220,245,.6);border-radius:12px}

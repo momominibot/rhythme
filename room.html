@@ -80,11 +80,11 @@
   <button class="luna" id="lunaBtn" type="button" aria-label="Luna, tell me how you are"><img src="assets/room/dream/orb-moon.webp" alt=""><span class="luna-hint" id="lunaHint">Tell Luna</span></button>
 
   <nav class="nav" aria-label="Main">
-    <a href="room.html" class="on" aria-current="page"><span class="ms">home</span>Home</a>
-    <a href="cycle-home.html"><span class="ms">water_drop</span>Cycle</a>
-    <a href="food-journal.html"><span class="ms">restaurant</span>Food</a>
-    <a href="mindfulness.html"><span class="ms">self_improvement</span>Mind</a>
-    <a href="profile.html"><span class="ms">person</span>You</a>
+    <a href="room.html" data-tab="home" class="on" aria-current="page"><span class="ms">home</span>Home</a>
+    <a href="room.html#cycle" data-tab="cycle"><span class="ms">water_drop</span>Cycle</a>
+    <a href="room.html#food" data-tab="food"><span class="ms">restaurant</span>Food</a>
+    <a href="room.html#mind" data-tab="mind"><span class="ms">self_improvement</span>Mind</a>
+    <a href="room.html#you" data-tab="you"><span class="ms">person</span>You</a>
   </nav>
 
   <div class="veil" id="veil"></div>
@@ -110,7 +110,7 @@
         <li><span class="ms">cloud_sync</span><div><b>Where it goes</b><span>Your diary is saved on this phone. When Luna reads a note or a photo, that piece goes to Rhythme’s service without your name, and her answer comes straight back.</span></div></li>
         <li><span class="ms">lock</span><div><b>How we look after it</b><span>We never sell your data or use it for ads, and nobody at Rhythme browses your diary.</span></div></li>
         <li><span class="ms">medical_information</span><div><b>A friend, not a doctor</b><span>Rhythme helps you notice patterns. It does not diagnose and never replaces care. In an emergency, call 995.</span></div></li>
-        <li><span class="ms">tune</span><div><b>Always your choice</b><span>Switch Luna’s reading off in her settings, and export or delete your records any time on the Privacy page.</span></div></li>
+        <li><span class="ms">tune</span><div><b>Always your choice</b><span>Switch Luna’s reading off in her settings, and export or delete your records any time from You.</span></div></li>
       </ul>
       <label class="c-opt"><input type="checkbox" id="cImprove" checked><span><b>Help make Rhythme better</b><small>Share de-identified patterns, never your name or the words in your diary, so predictions improve for everyone. You can change this in Luna’s settings.</small></span></label>
       <p class="c-kid"><span class="ms">family_restroom</span>Under 16? Please read this with a parent or guardian.</p>

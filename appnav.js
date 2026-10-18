@@ -39,7 +39,7 @@
   });
 
   // ---- home domain names/legend → domain detail screens ----
-  var DOMAP={medical:'reports.html',cycle:'cycle-home.html',stress:'stress.html',exercise:'exercise.html',diet:'diet.html',sleep:'sleep.html',mind:'mindfulness.html',mindfulness:'mindfulness.html'};
+  var DOMAP={medical:'reports.html',cycle:'room.html#cycle',stress:'stress.html',exercise:'exercise.html',diet:'diet.html',sleep:'sleep.html',mind:'room.html#mind',mindfulness:'room.html#mind'};
   document.querySelectorAll('.scroll span, .metric').forEach(function(el){
     // Text inside a real control belongs to that control. Binding a second
     // route to its label can hijack check-in dialogs when the label is tapped.
@@ -72,7 +72,7 @@
     [/hormone/i,'hormones.html'],
     [/sleep/i,'sleep.html'],
     [/stress|breathing|calm/i,'stress.html'],
-    [/mindful|meditation|erin|pause/i,'mindfulness.html'],
+    [/mindful|meditation|erin|pause/i,'room.html#mind'],
     [/exercise|workout|training|fitness/i,'exercise.html'],
     [/food|meal|nutrition|diet/i,'diet.html'],
     [/supplement/i,'supplements.html'],
@@ -86,7 +86,7 @@
     [/medication|contracept/i,'meds.html'],
     [/period ended|period start/i,'period-start.html'],
     [/measure|scan|pulse|ppg/i,'ppg.html'],
-    [/profile|account/i,'profile.html'],
+    [/profile|account/i,'room.html#you'],
     [/community|circle|discussion/i,'community.html']
   ];
   function toast(m){ var t=document.createElement('div'); t.className='otoast'; t.textContent=m; document.body.appendChild(t);
@@ -165,13 +165,13 @@
   // ---- floating "all screens" launcher ----
   var SCREENS=[
     ['Life chapters',[["life-journey.html","auto_stories","Your life journey"],["journey-bloom.html","local_florist","First cycles"],["journey-grow.html","eco","Trying to conceive"],["journey-nurture.html","favorite","After pregnancy"],["journey-peri.html","bedtime","Perimenopause"],["journey-post.html","wb_sunny","After menopause"],["mental-health.html","self_improvement","Mental wellbeing"]]],
-    ['Core',[['cycle-home.html','bloodtype','Cycle'],['home.html','insights','Home'],['overview.html','grid_view','Overview'],['bio-age.html','radio_button_checked','Bio-Age'],['daily.html','auto_awesome','Your daily companion'],['phase-coach.html','tips_and_updates','Daily overview'],['insights.html','auto_awesome','Your observations'],['ovarian-health.html','menu_book','Understand your records'],['trends.html','trending_up','Trends'],['longevity.html','eco','Longevity']]],
-    ['Cycle',[['cycle-home.html','bloodtype','Cycle Home'],['cycle-log.html','edit_note','Log Today'],['period-start.html','water_drop','Period Start'],['cycle-trends.html','insights','Analytics'],['hormones.html','show_chart','Hormones'],['fertility.html','spa','Fertility'],['cycle-delay.html','favorite','Delay Support']]],
+    ['Core',[['room.html#cycle','bloodtype','Cycle'],['home.html','insights','Home'],['overview.html','grid_view','Overview'],['bio-age.html','radio_button_checked','Bio-Age'],['daily.html','auto_awesome','Your daily companion'],['phase-coach.html','tips_and_updates','Daily overview'],['insights.html','auto_awesome','Your observations'],['ovarian-health.html','menu_book','Understand your records'],['trends.html','trending_up','Trends'],['longevity.html','eco','Longevity']]],
+    ['Cycle',[['room.html#cycle','bloodtype','Cycle Home'],['cycle-log.html','edit_note','Log Today'],['period-start.html','water_drop','Period Start'],['cycle-trends.html','insights','Analytics'],['hormones.html','show_chart','Hormones'],['fertility.html','spa','Fertility'],['cycle-delay.html','favorite','Delay Support']]],
     ['Body systems',[['wellness-checkin.html','spa','Wellness journal'],['sleep-diary.html','bedtime','Sleep Diary'],['stress-checkin.html','self_improvement','Stress Check'],['breathwork.html','air','Breathwork'],['partner-connect.html','favorite','Partner connection'],['exercise.html','fitness_center','Exercise'],['diet.html','restaurant','Diet'],['sleep.html','bedtime','Sleep'],['vascular.html','cardiology','Vascular'],['ppg.html','fingerprint','Measure']]],
-    ['Mindfulness',[['mindfulness.html','self_improvement','Mindfulness Hub'],['dream-room.html','nightlight','Dream Room'],['room.html','home','My Room'],['journal.html','auto_stories','My journal'],['doctor.html','stethoscope','Doctor view'],['room-3d.html','view_in_ar','3D room (legacy)'],['erin-chat.html','forum','Talk with Erin'],['breathe.html','air','Breathing'],['breathwork.html','spa','Breathwork'],['stress-checkin.html','favorite','Stress Check-in'],['mental-health.html','psychology','Mental Wellbeing']]],
-    ['Nutrition',[['food-journal.html','restaurant','Food Journal'],['foods.html','menu_book','Food Database'],['food-scan.html','photo_camera','Food Scan'],['nutrition-scanner.html','barcode_reader','UPF Scanner'],['medas14.html','nutrition','Mediterranean Score'],['nutrients.html','medication','Nutrients'],['supplements.html','grocery','Supplements'],['hydration.html','water_full','Hydration']]],
+    ['Mindfulness',[['room.html#mind','self_improvement','Mindfulness Hub'],['dream-room.html','nightlight','Dream Room'],['room.html','home','My Room'],['journal.html','auto_stories','My journal'],['doctor.html','stethoscope','Doctor view'],['room-3d.html','view_in_ar','3D room (legacy)'],['erin-chat.html','forum','Talk with Erin'],['breathe.html','air','Breathing'],['breathwork.html','spa','Breathwork'],['stress-checkin.html','favorite','Stress Check-in'],['mental-health.html','psychology','Mental Wellbeing']]],
+    ['Nutrition',[['room.html#food','restaurant','Food Journal'],['foods.html','menu_book','Food Database'],['food-scan.html','photo_camera','Food Scan'],['nutrition-scanner.html','barcode_reader','UPF Scanner'],['medas14.html','nutrition','Mediterranean Score'],['nutrients.html','medication','Nutrients'],['supplements.html','grocery','Supplements'],['hydration.html','water_full','Hydration']]],
     ['Health',[['reports.html','description','Medical Reports'],['labs.html','biotech','Lab Log']]],
-    ['Account',[['profile.html','person','Profile'],['account.html','verified_user','Sign-in & account status'],['personal-info.html','badge','Personal Info'],['health-profile.html','medical_information','Health Profile'],['settings.html','settings','Settings'],['notifications.html','notifications','Notifications'],['privacy.html','lock','Privacy'],['meds.html','medication_liquid','Medications'],['premium.html','star','Premium'],['circle.html','groups','My Circle'],['partner-connect.html','favorite','Loved One'],['partner-code.html','key','Partner Code'],['community.html','forum','Community'],['onboarding.html','waving_hand','Onboarding'],['login.html','auto_awesome','Login']]]
+    ['Account',[['room.html#you','person','Profile'],['account.html','verified_user','Sign-in & account status'],['personal-info.html','badge','Personal Info'],['health-profile.html','medical_information','Health Profile'],['settings.html','settings','Settings'],['notifications.html','notifications','Notifications'],['privacy.html','lock','Privacy'],['meds.html','medication_liquid','Medications'],['premium.html','star','Premium'],['circle.html','groups','My Circle'],['partner-connect.html','favorite','Loved One'],['partner-code.html','key','Partner Code'],['community.html','forum','Community'],['onboarding.html','waving_hand','Onboarding'],['login.html','auto_awesome','Login']]]
   ];
   var fab=document.createElement('button'); fab.className='mapfab'; fab.setAttribute('aria-label','All screens');
   fab.innerHTML='<span class="ms">apps</span>'; document.body.appendChild(fab);

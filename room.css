@@ -904,3 +904,31 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .guide .ev .evrefs a{display:inline-flex;align-items:center;gap:5px;margin:0;background:#fff;border:1px solid rgba(150,120,190,.22);border-radius:999px;padding:3px 4px 3px 9px;font:700 11px/1.2 var(--sans);color:var(--rm-plum)}
 .guide .ev .evrefs a i{font-style:normal;font:800 9.5px var(--sans);letter-spacing:.03em;background:var(--rm-lilac-2,#e7dcf5);color:var(--rm-mauve);border-radius:999px;padding:3px 6px}
 .guide .ev span a{display:inline;margin:0;color:var(--rm-plum);font-weight:800}
+
+/* tabs: a soft focus ring that belongs to the room, never the browser's blue box */
+.nav a{outline:none;-webkit-tap-highlight-color:transparent;transition:color .2s,background .2s}
+.nav a:focus-visible{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--rm-lilac,#c9b6e6);background:rgba(231,220,245,.6)}
+.nav a.on{background:rgba(231,220,245,.55)}
+/* You sheet */
+.you-card{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#efe4fb,#fbe3ea);border-radius:20px;padding:10px 14px;border:1.5px solid rgba(201,182,230,.6)}
+.you-card img{width:52px;height:auto;flex:none;filter:drop-shadow(0 6px 8px rgba(90,66,116,.22))}
+.you-card b{display:block;font-family:var(--serif);font-weight:600;font-size:20px;color:var(--rm-plum)}
+.you-card span{display:block;font:700 12px var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.ygroup{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+.ygroup .lbl{display:block;font:800 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3);margin-bottom:2px}
+.yrow{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:16px;padding:10px 12px;cursor:pointer;text-decoration:none;color:inherit;font:inherit}
+.yrow>.ms:first-child{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);color:var(--rm-plum);font-size:19px;flex:none}
+.yrow b{display:block;font:800 13.5px/1.25 var(--sans);color:var(--rm-plum)}
+.yrow small{display:block;font:600 11.5px/1.35 var(--sans);color:var(--rm-ink-3);margin-top:1px}
+.yrow>span:nth-child(2){flex:1;min-width:0}
+.yrow .go{color:var(--rm-ink-3);font-size:20px}
+.yrow:active{transform:scale(.99)}
+.yrow[data-yact="delete"] b{color:#9b2f3c}
+#yDel .row{margin-top:8px}
+.btn.danger{background:#fbe3e6;color:#9b2f3c}
+
+/* the tab bar stays visible and tappable above open sheets, like a real app */
+.nav{z-index:65}
+.sheet{bottom:var(--navh,64px);max-height:calc(88% - var(--navh,64px))}
+.sheet:not(.on){box-shadow:none}
+.sheet:not(.on){transform:translateY(calc(100% + var(--navh,64px) + 24px))}

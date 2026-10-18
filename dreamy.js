@@ -41,7 +41,7 @@
   if(/^(journey|life-journey|postpartum|exercise-guide|straw-calculator)/.test(route))section='home.html';
 
   else if(/^(food|nutrition|diet|medas|nutrient|supplement|hydration)/.test(route))section='foods.html';
-  else if(/^(profile|premium|settings|privacy|personal-info|health-profile|partner|community|circle|login|onboarding|terms)/.test(route))section='profile.html';
+  else if(/^(profile|premium|settings|privacy|personal-info|health-profile|partner|community|circle|login|onboarding|terms)/.test(route))section='room.html#you';
   document.querySelectorAll('.nav a').forEach(function(a){var active=a.getAttribute('href')===section;a.classList.toggle('on',active);a.classList.toggle('active',active);if(active)a.setAttribute('aria-current',route===section?'page':'true');else a.removeAttribute('aria-current');});
   decorate(document.body);
   var pending=new Set(),queued=false;
