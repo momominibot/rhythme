@@ -161,5 +161,55 @@
     return stop;
   }
 
-  root.OvuFood = { KEYS: KEYS, LABEL: LABEL, UNIT: UNIT, load: load, search: search, byId: byId, scale: scale, makeItem: makeItem, sum: sum, fmt: fmt, line: line, lookupBarcode: lookupBarcode, offToFood: offToFood, shrink: shrink, detectInImage: detectInImage, scanLive: scanLive, hasNativeDetector: 'BarcodeDetector' in root };
+  /* ---------- Singapore dishes: HPB SG FoodID ----------
+   * assets/data/nutrients-sg-hpb.json is built by tools/build-hpb-table.py from the Health Promotion
+   * Board's Singapore Food Insights Database (licence: SG FoodID Terms of Use s.10, attribution s.11).
+   * `n` is per 100 g (100 ml for drinks) as served, so nutrients = n × grams on the plate ÷ 100. */
+  var SG_URL = 'assets/data/nutrients-sg-hpb.json', sgTable = null, sgLoading = null;
+  /* words that make a dish a different dish: a match is only confident when every one of these that
+   * appears in the photo name also appears in the HPB row's own name or aliases */
+  var SG_QUALIFIERS = ['kimchi', 'pineapple', 'seafood', 'korean', 'thai', 'japanese', 'vietnamese', 'indian', 'vegetarian', 'vegan', 'mock', 'cheese', 'mushroom', 'mala', 'salted', 'truffle', 'curry', 'sambal', 'french', 'oat', 'oatmeal', 'pandan', 'wholemeal', 'garlic', 'butter', 'honey', 'lemon', 'green', 'matcha', 'chocolate', 'strawberry', 'mango', 'durian', 'packaged', 'canned', 'instant', 'raw', 'uncooked', 'dried', 'ice cream', 'jelly', 'pearl', 'penang', 'ipoh', 'claypot', 'crayfish', 'beef', 'mutton', 'lamb', 'duck', 'pork', 'chicken', 'fish', 'prawn', 'shrimp', 'crab', 'egg', 'tofu', 'soup', 'dry', 'fried', 'iced', 'ice'];
+  function sgNorm(s) {
+    return String(s || '').toLowerCase().replace(/[’'`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+      .split(' ').map(function (t) { return t.length > 3 && /[^s]s$/.test(t) ? t.slice(0, -1) : t; }).join(' ');
+  }
+  function sgUse(t) {
+    (t.foods || []).forEach(function (f) {
+      f._keys = [f.name].concat(f.aliases || []).map(sgNorm).filter(Boolean);
+      f._text = ' ' + f._keys.join(' ') + ' ';
+      f.portions = [{ label: f.basis === '100ml' ? '100 ml' : '100 g', g: 100 }].concat(f.serving && f.serving.g ? [{ label: f.serving.label || '1 serving', g: f.serving.g }] : []);
+      f.source = { kind: 'hpb', label: 'HPB SG FoodID', ref: f.crId + ' ' + f.name, date: 'data ' + f.year + ', read ' + t.retrieved, detail: (f.method || 'HPB') + ' · per 100 ' + (f.basis === '100ml' ? 'ml' : 'g') + ' as served · HPB serving ' + ((f.serving && f.serving.label) || '?'), url: f.url || (t.licence && t.licence.link) || 'https://pphtpc.hpb.gov.sg/web/sgfoodid' };
+    });
+    sgTable = t; return t;
+  }
+  function sgLoad() {
+    if (sgTable) return Promise.resolve(sgTable);
+    sgLoading = sgLoading || fetch(SG_URL).then(function (r) { if (!r.ok) throw new Error('HPB table unavailable (' + r.status + ')'); return r.json(); }).then(sgUse);
+    return sgLoading;
+  }
+  var SG_PROTEINS = ['beef', 'mutton', 'lamb', 'duck', 'pork', 'chicken', 'fish', 'prawn', 'shrimp', 'crab', 'egg', 'tofu'];
+  /* The longest alias found as a whole phrase inside the dish name wins ("bak chor mee soup" beats
+   * "bak chor mee"). Then the qualifier guard: the head of the name (before "with", "and", a comma or a
+   * bracket) must not carry a qualifier word the row does not know, so "kimchi fried rice" stays an
+   * estimate instead of becoming egg fried rice; in the tail, where the model lists ingredients
+   * ("... with minced pork, mushrooms, cabbage"), only a protein the row does not know rejects it.
+   * Returns null or { food, alias } where alias is the matched phrase. */
+  function sgMatch(name) {
+    if (!sgTable) return null;
+    var raw = String(name || ''), nq = sgNorm(raw), q = ' ' + nq + ' ', best = null, hit = '';
+    if (nq.length < 3) return null;
+    sgTable.foods.forEach(function (f) {
+      f._keys.forEach(function (k) { if (k.length > hit.length && q.indexOf(' ' + k + ' ') > -1) { best = f; hit = k; } });
+    });
+    if (!best) return null;
+    var head = ' ' + sgNorm(raw.split(/,|\(|\bwith\b|\band\b|\bserved\b|\btopped\b|\bplus\b/i)[0]) + ' ';
+    for (var i = 0; i < SG_QUALIFIERS.length; i++) {
+      var w = ' ' + sgNorm(SG_QUALIFIERS[i]) + ' ', inHead = head.indexOf(w) > -1, inTail = !inHead && q.indexOf(w) > -1 && SG_PROTEINS.indexOf(SG_QUALIFIERS[i]) > -1;
+      if ((inHead || inTail) && best._text.indexOf(w) < 0) return null;
+    }
+    return { food: best, alias: hit };
+  }
+  function sgTableLoaded() { return sgTable; }
+
+  root.OvuFood = { KEYS: KEYS, LABEL: LABEL, UNIT: UNIT, load: load, search: search, byId: byId, scale: scale, makeItem: makeItem, sum: sum, fmt: fmt, line: line, lookupBarcode: lookupBarcode, offToFood: offToFood, shrink: shrink, detectInImage: detectInImage, scanLive: scanLive, hasNativeDetector: 'BarcodeDetector' in root, sgLoad: sgLoad, sgUse: sgUse, sgMatch: sgMatch, sgNorm: sgNorm, sgTable: sgTableLoaded };
 })(window);

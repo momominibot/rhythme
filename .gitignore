@@ -12,3 +12,4 @@ ios/App/Pods/
 
 /node_modules
 .claude/
+__pycache__/

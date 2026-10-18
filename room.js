@@ -141,10 +141,12 @@
     },
     food: {
       icon: 'restaurant', title: 'Where the numbers come from',
-      body: '<p>Nutrients are calculated as <b>value per 100 g × grams you confirm ÷ 100</b>. Generic foods use USDA FoodData Central (SR Legacy, per 100 g edible portion, with USDA household measures). Barcodes use Open Food Facts label transcriptions, kept per 100 g or 100 ml as published. Missing values show as <b>?</b> and are left out of totals rather than counted as zero. Carbohydrate follows USDA “by difference” and already includes fibre. Phase picks come from the Ovuluna food notes (TCM and Western), matched to USDA entries where one exists.</p><p>Photos are kept only as a reminder. In a 2026 NIH controlled test, photo-only apps under-counted meals by about a third, mostly hidden fats and portions, which is why you confirm the food and the amount here.</p>',
+      body: '<p>Nutrients are calculated as <b>value per 100 g × grams you confirm ÷ 100</b>. Generic foods use USDA FoodData Central (SR Legacy, per 100 g edible portion, with USDA household measures). Barcodes use Open Food Facts label transcriptions, kept per 100 g or 100 ml as published. Local dishes that Luna recognises in a photo use the Health Promotion Board’s Singapore Food Insights Database (SG FoodID, formerly FOCOS): HPB per-100 g values, converted to per 100 g as served, times the grams on your plate, or the HPB serving weight when the photo estimate is far from a normal serving. Dishes without an HPB match keep the model’s estimate and say so. Contains information from SG FoodID, Health Promotion Board, accessed 18 October 2026, made available under <a href="https://pphtpc.hpb.gov.sg/web/sgfoodid" target="_blank" rel="noopener">its terms</a>; the data is provided as is and HPB does not endorse this app. Missing values show as <b>?</b> and are left out of totals rather than counted as zero. Carbohydrate follows USDA “by difference” and already includes fibre. Phase picks come from the Ovuluna food notes (TCM and Western), matched to USDA entries where one exists.</p><p>Photos are kept only as a reminder. In a 2026 NIH controlled test, photo-only apps under-counted meals by about a third, mostly hidden fats and portions, which is why you confirm the food and the amount here.</p>',
       evidence: [
         ['USDA FoodData Central, SR Legacy data and documentation', 'https://fdc.nal.usda.gov/'],
         ['Open Food Facts API and data fields', 'https://openfoodfacts.github.io/openfoodfacts-server/api/'],
+        ['Health Promotion Board, Singapore Food Insights Database (SG FoodID) food search', 'https://pphtpc.hpb.gov.sg/web/sgfoodid/tools/food-search'],
+        ['SG FoodID Terms of Use (section 10 data licence, section 11 attribution)', 'https://file.go.gov.sg/termsofuse-hpbsgfoodid.pdf'],
         ['NIH-led evaluation of photo-based calorie apps, NUTRITION 2026 (preliminary conference abstract)', 'https://www.eurekalert.org/news-releases/1136415']
       ]
     },
@@ -647,7 +649,7 @@
   function renderItems() {
     var wrap = $('#items'), tot = $('#totals');
     if (!draft.items.length) { wrap.innerHTML = ''; tot.innerHTML = ''; return; }
-    wrap.innerHTML = draft.items.map(function (it, i) { return '<div class="item"><span class="ms">' + (it.source.kind === 'off' ? 'qr_code_2' : it.source.kind === 'custom' ? 'edit' : 'restaurant') + '</span><span><b>' + esc(it.name) + '</b><small>' + esc(it.portionLabel) + ' · ' + it.grams + ' g · ' + esc(FD.fmt('kcal', it.nutrients.kcal)) + ' kcal · ' + esc(FD.fmt('protein', it.nutrients.protein)) + ' g protein</small></span><button class="del" data-i="' + i + '" aria-label="Remove"><span class="ms">close</span></button></div>'; }).join('');
+    wrap.innerHTML = draft.items.map(function (it, i) { return '<div class="item"><span class="ms">' + (it.source.kind === 'off' ? 'qr_code_2' : it.source.kind === 'custom' ? 'edit' : it.source.kind === 'hpb' ? 'verified' : it.source.kind === 'estimate' ? 'photo_camera' : 'restaurant') + '</span><span><b>' + esc(it.name) + '</b><small>' + esc(it.portionLabel) + ' · ' + it.grams + ' g · ' + esc(FD.fmt('kcal', it.nutrients.kcal)) + ' kcal · ' + esc(FD.fmt('protein', it.nutrients.protein)) + ' g protein</small></span><button class="del" data-i="' + i + '" aria-label="Remove"><span class="ms">close</span></button></div>'; }).join('');
     var sm = FD.sum(draft.items), miss = ['kcal', 'protein', 'carb', 'fat', 'fiber'].filter(function (k) { return sm.missing[k]; });
     tot.innerHTML = '<b>This meal</b><div class="nuts">' + ['kcal', 'protein', 'carb', 'fat', 'fiber'].map(function (k) { return '<div><strong>' + esc(FD.fmt(k, sm.totals[k])) + '</strong><small>' + esc(k === 'kcal' ? 'kcal' : FD.LABEL[k]) + '</small></div>'; }).join('') + '</div><p>' + sm.count + ' item' + (sm.count === 1 ? '' : 's') + (miss.length ? ' · ' + miss.map(function (k) { return sm.missing[k] + ' missing ' + FD.LABEL[k].toLowerCase(); }).join(', ') : ' · all values present') + '. Estimated from the sources shown, with the amounts you confirmed.</p>';
   }
@@ -1000,6 +1002,14 @@
         }).catch(function (err) { thinking.remove(); bubble('luna', '<b>Luna</b>' + esc(err.message) + byHand); });
       }).catch(function (err) { toast(err.message, 'error'); });
     }
+    /* Says where the numbers on the card come from. The SG FoodID licence (s.11) asks for a conspicuous notice. */
+    function foodNote(items) {
+      var h = items.filter(function (it) { return it.source && it.source.kind === 'hpb'; }).length, n = items.length;
+      var hpbLine = ' Contains information from the Singapore Food Insights Database (SG FoodID), Health Promotion Board, under <a href="https://pphtpc.hpb.gov.sg/web/sgfoodid" target="_blank" rel="noopener">its terms</a>.';
+      if (!h) return 'Estimated from your photo by Luna’s model. Hawker portions vary, so change the grams if they look off.';
+      if (h === n) return (n === 1 ? 'This dish uses' : 'All ' + n + ' dishes use') + ' Health Promotion Board SG FoodID values for the grams shown. Hawker portions vary, so change the grams if they look off.' + hpbLine;
+      return h + ' of ' + n + ' dishes use Health Promotion Board SG FoodID values; the rest are estimated from your photo by Luna’s model. Change the grams if they look off.' + hpbLine;
+    }
     function foodCard(res, thumb) {
       var hr = new Date().getHours(), meal = hr < 11 ? 'breakfast' : hr < 15 ? 'lunch' : hr >= 18 && hr < 22 ? 'dinner' : 'snack';
       var items = res.items.slice(), editing = false, card = bubble('confirm foodlog', '');
@@ -1009,13 +1019,15 @@
           '<div class="fl-head"><img src="' + thumb + '" alt=""><div><div class="fl-meals">' + ['breakfast', 'lunch', 'dinner', 'snack'].map(function (m) { return '<button type="button" class="fl-meal' + (m === meal ? ' on' : '') + '" data-meal="' + m + '">' + cap(m) + '</button>'; }).join('') + '</div>' +
           '<b class="fl-kcal">About ' + FD.fmt('kcal', t.kcal) + ' kcal</b>' + (res.mealName ? '<small>' + esc(res.mealName) + '</small>' : '') + '</div></div>' +
           '<div class="fl-items">' + items.map(function (it, i) {
+            var hpb = it.source && it.source.kind === 'hpb';
+            var chip = '<i class="fl-src ' + (hpb ? 'hpb' : 'est') + '" title="' + esc(hpb ? it.source.ref + ' · ' + it.source.detail : 'Estimated from the photo by Luna’s model') + '">' + (hpb ? 'HPB' : 'photo estimate') + '</i>';
             return '<div class="fl-item">' + (editing
-              ? '<input class="input fl-name" data-name="' + i + '" value="' + esc(it.name) + '" aria-label="Food name"><label class="fl-g"><input class="input" type="number" inputmode="numeric" min="1" max="2000" data-grams="' + i + '" value="' + Math.round(it.grams || 0) + '" aria-label="Grams">g</label><button type="button" class="fl-x" data-x="' + i + '" aria-label="Remove ' + esc(it.name) + '"><span class="ms">close</span></button>'
-              : '<div><b>' + esc(it.name) + '</b><span>' + esc(it.portionLabel) + (it.confidence === 'low' ? ' · not sure' : '') + '</span></div>') +
+              ? '<input class="input fl-name" data-name="' + i + '" value="' + esc(it.name) + '" aria-label="Food name"><label class="fl-g"><input class="input" type="number" inputmode="numeric" min="1" max="2000" data-grams="' + i + '" value="' + Math.round(it.grams || 0) + '" aria-label="Grams">' + (it.basis === '100ml' ? 'ml' : 'g') + '</label><button type="button" class="fl-x" data-x="' + i + '" aria-label="Remove ' + esc(it.name) + '"><span class="ms">close</span></button>'
+              : '<div><b>' + esc(it.name) + '</b><span>' + esc(it.portionLabel) + (it.confidence === 'low' ? ' · not sure' : '') + ' ' + chip + '</span></div>') +
               '<em>' + FD.fmt('kcal', it.nutrients.kcal) + ' kcal</em></div>';
           }).join('') + '</div>' +
           '<div class="fl-macros"><span><i class="d p"></i>Protein ' + FD.fmt('protein', t.protein) + ' g</span><span><i class="d c"></i>Carbs ' + FD.fmt('carb', t.carb) + ' g</span><span><i class="d f"></i>Fat ' + FD.fmt('fat', t.fat) + ' g</span></div>' +
-          '<p class="fl-note">Estimated from your photo by Luna’s model. Hawker portions vary, so change the grams if they look off.</p>' +
+          '<p class="fl-note">' + foodNote(items) + '</p>' +
           '<div class="row"><button type="button" class="btn primary" data-act="save"><span class="ms">check</span>Save</button><button type="button" class="btn ghost" data-act="edit">' + (editing ? 'Done' : 'Edit') + '</button><button type="button" class="btn ghost" data-act="skip">Not now</button></div>';
       }
       render();
@@ -1036,7 +1048,7 @@
       card.addEventListener('change', function (e) {
         var g = e.target.closest('[data-grams]'), n = e.target.closest('[data-name]');
         if (g) { var i = Number(g.dataset.grams); items[i] = ORB.regram(items[i], g.value); render(); }
-        if (n) { var j = Number(n.dataset.name), v = n.value.trim(); if (v) items[j] = Object.assign({}, items[j], { name: v.slice(0, 80) }); }
+        if (n) { var j = Number(n.dataset.name), v = n.value.trim(); if (v) { items[j] = ORB.rename(items[j], v); render(); } }
       });
     }
     $('#quick').addEventListener('click', function (e) {

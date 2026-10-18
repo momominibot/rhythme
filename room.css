@@ -510,6 +510,10 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .fl-macros .d{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:1px}
 .fl-macros .d.p{background:#6b528e}.fl-macros .d.c{background:#e8b84a}.fl-macros .d.f{background:#d9756a}
 .fl-note{font:500 11px var(--sans);color:var(--rm-ink-3);line-height:1.4;margin:4px 0 8px}
+.fl-note a{color:inherit;text-decoration:underline}
+.fl-src{display:inline-block;vertical-align:1px;margin-left:2px;padding:1px 6px;border-radius:999px;font:700 9.5px var(--sans);font-style:normal;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}
+.fl-src.hpb{background:rgba(99,170,120,.16);color:#2f7a4d}
+.fl-src.est{background:rgba(217,117,106,.14);color:#b85b50}
 .foodlog .row{flex-wrap:wrap}
 .aibox{margin-top:10px;background:var(--rm-paper-2);border-radius:16px;padding:10px 12px}
 .aibox summary{cursor:pointer;font:800 12px var(--sans);color:var(--rm-plum);list-style:none;display:flex;align-items:center;gap:6px}

@@ -130,37 +130,85 @@
   /* ---------- food photos: Luna's relay looks at the photo, the user confirms ---------- */
   function photosAllowed() { var c = aiConfig(); return c.photos === true; }
   function clampNum(v, max) { var n = Number(v); return isFinite(n) && n >= 0 ? Math.min(max, Math.round(n * 10) / 10) : null; }
-  /* Turns the relay's estimate into diary items in the same shape as hand-logged foods, labelled as an
-   * estimate. Nutrients are kept per item and also per 100 g so changing the grams rescales them. */
+  function conf(c) { return ['high', 'medium', 'low'].indexOf(c) > -1 ? c : 'low'; }
+  /* One diary item straight from the model's numbers, labelled as an estimate. */
+  function estimateItem(it, name, grams, model) {
+    var n = { kcal: clampNum(it.kcal, 3000), protein: clampNum(it.protein_g, 300), carb: clampNum(it.carb_g, 500), fat: clampNum(it.fat_g, 300), fiber: clampNum(it.fiber_g, 100) };
+    var per100 = {}; Object.keys(n).forEach(function (k) { per100[k] = grams && n[k] !== null ? n[k] * 100 / grams : null; });
+    var nutrients = {}; (FD ? FD.KEYS : Object.keys(n)).forEach(function (k) { nutrients[k] = n.hasOwnProperty(k) ? n[k] : null; });
+    var portion = String(it.portion || 'serving').slice(0, 20);
+    return {
+      name: name, foodId: null, basis: '100g', prep: null,
+      source: { kind: 'estimate', label: 'Luna’s photo estimate', ref: model || 'Doubao Seed 2.1 pro', date: S.today(), detail: 'Estimated from a photo; confidence ' + conf(it.confidence) },
+      grams: grams || 0, portionLabel: '1 ' + portion + (grams ? ' (about ' + Math.round(grams) + ' g)' : ''), method: 'photo estimate',
+      confidence: conf(it.confidence), per100: per100, nutrients: nutrients
+    };
+  }
+  /* The same dish from an HPB SG FoodID row: HPB per-100 g values × the model's grams, or × the HPB
+   * serving weight when the model's grams are missing or far from a normal serving (under 40 % or over
+   * 250 % of it). The model's own estimate is kept on the item so a rename can fall back to it. */
+  function hpbItem(m, est) {
+    var f = m.food, sv = (f.serving && f.serving.g) || null, g = est.grams || null, unit = f.basis === '100ml' ? 'ml' : 'g', viaServing = false;
+    if (!g || (sv && (g < sv * 0.4 || g > sv * 2.5))) { g = sv || g || 100; viaServing = !!sv; }
+    return {
+      name: f.name, foodId: f.id, basis: f.basis || '100g', prep: null, source: f.source, grams: g,
+      portionLabel: viaServing ? (f.serving.label || '1 serving') + ' (HPB serving)' : (est.portionLabel.replace(/\s*\(.*\)$/, '') || '1 serving') + ' (about ' + Math.round(g) + ' ' + unit + ')',
+      method: 'photo + HPB SG FoodID', confidence: est.confidence, per100: f.n, nutrients: FD.scale(f.n, g),
+      hpb: { crId: f.crId, alias: m.alias, servingG: sv, viaServing: viaServing, modelName: est.name, modelGrams: est.grams || null, modelKcal: est.nutrients.kcal },
+      estimate: est
+    };
+  }
+  /* Turns the relay's estimate into diary items in the same shape as hand-logged foods. A dish whose
+   * name matches an HPB SG FoodID row (when the table is loaded) uses HPB's per-100 g values and is
+   * labelled 'hpb'; anything else stays the model's estimate. Nutrients are kept per item and also per
+   * 100 g so changing the grams rescales them. */
   function foodItemsFrom(food, model) {
     if (!food || food.is_food !== true || !Array.isArray(food.items)) return [];
-    return food.items.slice(0, 8).map(function (it) {
+    var items = food.items.slice(0, 8).map(function (it) {
       var name = String((it && it.name) || '').trim().slice(0, 80); if (!name) return null;
-      var grams = clampNum(it.grams, 2000) || null;
-      var n = { kcal: clampNum(it.kcal, 3000), protein: clampNum(it.protein_g, 300), carb: clampNum(it.carb_g, 500), fat: clampNum(it.fat_g, 300), fiber: clampNum(it.fiber_g, 100) };
-      var per100 = {}; Object.keys(n).forEach(function (k) { per100[k] = grams && n[k] !== null ? n[k] * 100 / grams : null; });
-      var nutrients = {}; (FD ? FD.KEYS : Object.keys(n)).forEach(function (k) { nutrients[k] = n.hasOwnProperty(k) ? n[k] : null; });
-      var portion = String(it.portion || 'serving').slice(0, 20);
-      return {
-        name: name, foodId: null, basis: '100g', prep: null,
-        source: { kind: 'estimate', label: 'Luna’s photo estimate', ref: model || 'Doubao Seed 2.1 pro', date: S.today(), detail: 'Estimated from a photo; confidence ' + (['high', 'medium', 'low'].indexOf(it.confidence) > -1 ? it.confidence : 'low') },
-        grams: grams || 0, portionLabel: '1 ' + portion + (grams ? ' (about ' + Math.round(grams) + ' g)' : ''), method: 'photo estimate',
-        confidence: ['high', 'medium', 'low'].indexOf(it.confidence) > -1 ? it.confidence : 'low',
-        per100: per100, nutrients: nutrients
-      };
+      var est = estimateItem(it, name, clampNum(it.grams, 2000) || null, model);
+      var m = FD && FD.sgMatch ? FD.sgMatch(name) : null;
+      return m ? hpbItem(m, est) : est;
     }).filter(Boolean);
+    /* The model often names the dish only in meal_name ("Bak chor mee dry with soup") and describes the
+     * items ("dry flat noodles with minced pork ..."). When nothing matched by item name, the meal name
+     * is matched onto the dominant dish (at least 60 % of the photo's kcal), so sides such as the soup
+     * stay estimates and a set split into several parts is never counted twice. */
+    var mm = FD && FD.sgMatch && items.length && !items.some(function (it) { return it.source.kind === 'hpb'; }) ? FD.sgMatch(food.meal_name) : null;
+    if (mm) {
+      var total = 0, main = null;
+      items.forEach(function (it) { var k = it.nutrients.kcal || 0; total += k; if (!main || k > (main.nutrients.kcal || 0)) main = it; });
+      if (main && (items.length === 1 || (total > 0 && (main.nutrients.kcal || 0) / total >= 0.6))) {
+        var i = items.indexOf(main), viaMeal = hpbItem(mm, main);
+        viaMeal.hpb.via = 'meal name'; viaMeal.hpb.mealName = String(food.meal_name || '').slice(0, 80);
+        items[i] = viaMeal;
+      }
+    }
+    return items;
+  }
+  /* A renamed item is matched again: an HPB row if the new name has one, otherwise the model's own estimate under the new name. */
+  function rename(item, name) {
+    name = String(name || '').trim().slice(0, 80); if (!name) return item;
+    var est = Object.assign({}, item.estimate || item, { name: name });
+    if (est.source && est.source.kind === 'hpb') { est = Object.assign({}, est, { foodId: null, source: { kind: 'estimate', label: 'Luna’s photo estimate', ref: 'renamed', date: S.today(), detail: 'Renamed; the HPB match no longer applies' }, method: 'photo estimate', per100: {}, hpb: undefined, estimate: undefined }); }
+    var m = FD && FD.sgMatch ? FD.sgMatch(name) : null;
+    if (m) { var it = hpbItem(m, Object.assign({}, est, { grams: item.grams })); return it; }
+    return regram(est, item.grams) || est;
   }
   function regram(item, grams) {
     grams = clampNum(grams, 2000); if (!grams) return item;
-    var out = Object.assign({}, item, { grams: grams, portionLabel: item.portionLabel.replace(/\(about \d+ g\)/, '(about ' + Math.round(grams) + ' g)'), nutrients: Object.assign({}, item.nutrients) });
+    var unit = item.basis === '100ml' ? 'ml' : 'g', base = item.hpb && item.hpb.viaServing ? '1 serving' : item.portionLabel.replace(/\s*\([^()]*\)$/, '');
+    var out = Object.assign({}, item, { grams: grams, portionLabel: base + ' (about ' + Math.round(grams) + ' ' + unit + ')', nutrients: Object.assign({}, item.nutrients) });
+    if (item.hpb) out.hpb = Object.assign({}, item.hpb, { viaServing: false });
     Object.keys(item.per100 || {}).forEach(function (k) { var v = item.per100[k]; out.nutrients[k] = v === null || v === undefined ? null : Math.round(v * grams / 10) / 10; });
     return out;
   }
   function parsePhoto(dataUrl) {
     if (!photosAllowed()) return Promise.reject(new Error('Food photos are off. Allow them in Luna’s settings first.'));
-    return fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl, today: S.today() }) })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna’s relay replied ' + r.status + '.')); return d; }); })
-      .then(function (d) { var f = d.food || {}; return { isFood: f.is_food === true, mealName: f.meal_name || '', note: f.note || '', items: foodItemsFrom(f, d.model), model: d.model || '' }; });
+    var table = FD && FD.sgLoad ? FD.sgLoad().catch(function () { return null; }) : Promise.resolve(null);
+    var relay = fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl, today: S.today() }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna’s relay replied ' + r.status + '.')); return d; }); });
+    return Promise.all([table, relay]).then(function (rs) { var d = rs[1], f = d.food || {}; return { isFood: f.is_food === true, mealName: f.meal_name || '', note: f.note || '', items: foodItemsFrom(f, d.model), model: d.model || '', hpb: !!rs[0] }; });
   }
 
   /* ---------- describe entries for the confirmation card ---------- */
@@ -189,5 +237,5 @@
   var REPLIES = ['Noted, gently.', 'Written down. Thank you for telling me.', 'Got it. One small step logged.', 'Saved. Be soft with yourself today.'];
   function reply() { return REPLIES[Math.floor(Math.random() * REPLIES.length)]; }
 
-  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, parsePhoto: parsePhoto, foodItemsFrom: foodItemsFrom, regram: regram, photosAllowed: photosAllowed, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, DEFAULT_MODEL: DEFAULT_MODEL, OR_MODEL: OR_MODEL, FALLBACK_MODEL: FALLBACK_MODEL, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
+  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, parsePhoto: parsePhoto, foodItemsFrom: foodItemsFrom, regram: regram, rename: rename, photosAllowed: photosAllowed, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, DEFAULT_MODEL: DEFAULT_MODEL, OR_MODEL: OR_MODEL, FALLBACK_MODEL: FALLBACK_MODEL, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
 })(window);
