@@ -269,12 +269,13 @@
     dayImg.width = L.w; dayImg.height = L.h;
     buildHotspots();
     avatar.style.width = L.avatarW + '%';
-    place(sleeper, L.sleeper); sleeper.style.transform = 'translate(-50%,-50%) rotate(' + L.sleeper.rot + 'deg)';
+    if (L.sleeper) { place(sleeper, L.sleeper); sleeper.style.transform = 'translate(-50%,-50%) rotate(' + L.sleeper.rot + 'deg)'; }
     place($('.zzz'), L.zzz); place(meditator, L.meditator); place($('#aura'), L.aura); place(holo, L.holo);
     var mp = $('#matProp'); if (mp) { mp.style.display = L.mat ? '' : 'none'; if (L.mat) place(mp, L.mat); }
-    var wn = $('#winNight'); if (wn) { wn.style.left = L.window.x + '%'; wn.style.top = L.window.y + '%'; wn.style.width = (L.window.rx * 2) + '%'; wn.style.height = (L.window.ry * 2) + '%'; }
-    var vb = $('#visitBar'); if (vb) { vb.classList.toggle('on', !!visiting); vb.innerHTML = visiting ? '<span class="ms">cottage</span><span>Visiting ' + esc(houseItem(L.id).name.replace(/^./, function (c) { return c.toLowerCase(); })) + ' · <b>' + houseItem(L.id).cost + ' ♥ to move in</b></span><button type="button" id="visitBack"><span class="ms">arrow_back</span>Back</button>' : ''; }
+    var wn = $('#winNight'); if (wn && L.window) { wn.style.left = L.window.x + '%'; wn.style.top = L.window.y + '%'; wn.style.width = (L.window.rx * 2) + '%'; wn.style.height = (L.window.ry * 2) + '%'; }
+    var vb = $('#visitBar'); if (vb) { vb.classList.toggle('on', !!visiting); vb.innerHTML = visiting && houseItem(L.id) ? '<span class="ms">cottage</span><span>Visiting ' + esc(houseItem(L.id).name.replace(/^./, function (c) { return c.toLowerCase(); })) + ' · <b>' + houseItem(L.id).cost + ' ♥ to move in</b></span><button type="button" id="visitBack"><span class="ms">arrow_back</span>Back</button>' : ''; }
     renderProps(); placeAvatar(HOME, false);
+    emit('layout', L, !!asVisit); /* the scene modules (walk, garden, community) re-read floors, doors and props */
   }
   /* ---------- camera: zoom and pan any scene. Built for the room and houses now, and for a future
    * city map or a neighbour's home: each is just a layout, and the camera works on whichever is showing. */
@@ -288,7 +289,7 @@
   function camZoomAt(px, py, z, anim) { var cx = (px - cam.x) / cam.z, cy = (py - cam.y) / cam.z; cam.z = Math.max(1, Math.min(CAM_MAX, z)); cam.x = px - cx * cam.z; cam.y = py - cy * cam.z; camApply(anim); }
   function camFit(anim) { cam = { z: 1, x: 0, y: 0 }; camApply(anim); }
   function camLocal(e) { var r = scene.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
-  function camInteractive(t) { return t.closest('.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,button,a,input'); }
+  function camInteractive(t) { return t.closest('.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.walkpad,.minimap,.nb,.plot,button,a,input'); }
   scene.addEventListener('pointerdown', function (e) {
     if (arranging || e.pointerType === 'mouse' && e.button !== 0) return;
     camPointers.set(e.pointerId, camLocal(e));
@@ -345,6 +346,7 @@
     var l = RW.ledger(), wrap = $('#ownedProps'); wrap.innerHTML = '';
     RW.SHOP.forEach(function (it) {
       if (!it.img || it.kind === 'home' || l.owned.indexOf(it.id) < 0 || !l.placed[it.id]) return;
+      if (L.only && L.only.indexOf(it.kind) < 0) return; /* outdoors only pets come along; the plaza shows none of your things */
       var p = propPosFor(it); if (!p) return;
       var d = document.createElement('div'); d.className = 'prop owned ' + it.kind + (p.flip ? ' flip' : ''); d.dataset.id = it.id; d.style.left = p.x + '%'; d.style.top = p.y + '%'; d.style.width = p.w + '%';
       d.innerHTML = '<img src="' + ART + it.img + '" alt="">'; wrap.appendChild(d);
@@ -363,6 +365,7 @@
       }
     });
     $('#heartsVal').textContent = l.hearts;
+    emit('props', L);
   }
   /* ---------- no-stress pet care (ovu-pets.js): feed, play, cuddle, tidy up ---------- */
   var PETS = window.OvuPets || null;
@@ -485,6 +488,7 @@
 
   /* ---------- tap routing ---------- */
   function tap(h) {
+    if (!h) return;
     var btn = $('.hotspot[data-id="' + h.id + '"]'); if (btn) { btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump'); }
     chime('tap'); hideBubble(); clearTimeout(idleTimer); /* a pending walk home must not cancel this walk */
     var visited = S.state().visited || {}; visited[h.id] = true; S.setState({ visited: visited });
@@ -493,8 +497,11 @@
     if ((S.state().sleeping && h.id !== 'bed' && h.id !== 'clock') || meditating) { openSheetFor(h.id); return; }
     walkTo(h.wp, function () { openSheetFor(h.id); });
   }
-  function hotspot(id) { return HOTSPOTS.filter(function (h) { return h.id === id; })[0]; }
+  /* outdoors (or in a neighbour's home) the bed, clock and the rest are not in this layout: the scene modules
+   * hand back a stand-in so the avatar menu, Today tiles and the phase chip still work by going home first */
+  function hotspot(id) { return HOTSPOTS.filter(function (h) { return h.id === id; })[0] || (hooks.fallbackHotspot ? hooks.fallbackHotspot(id) : undefined); }
   function openSheetFor(id) {
+    var ext = hooks.hotspotHandlers[id]; if (ext && ext(id, L) === true) return; /* garden gate, plot, bench, noticeboard... */
     if (id === 'bed') return S.state().sleeping ? openWake() : openBedtime();
     if (id === 'clock') return openClock();
     if (id === 'bath') return openEveryday('shower');
@@ -1565,7 +1572,7 @@
     session.stopped = true; clearTimeout(session.timer); if (session.audio) { try { session.audio.pause(); } catch (e) { } }
     if (elapsedMin >= 1) finishSession(false); else { session = null; exitMeditation(); if (!fromClose) toast('Stopped. Nothing under a minute is recorded.', 'self_improvement'); }
   }
-  $('#hudStop').addEventListener('click', function () { if (practice) stopPractice(); else stopSession(false); });
+  $('#hudStop').addEventListener('click', function () { if (practice) stopPractice(); else if (hooks.hudStop && hooks.hudStop()) return; else stopSession(false); });
   /* ---------- Listen with Erin: Take A Pause, streamed from her own Substack ---------- */
   var POD = window.OvuPodcast;
   function podLabel(ep) { var n = POD.indexOf ? POD.indexOf(ep.id) : 0; return (n ? 'Episode ' + n + ' · ' : '') + Math.round(ep.durationSeconds / 60) + ' min'; }
@@ -2166,8 +2173,29 @@
   }
   $('#phaseChip').addEventListener('click', function () { tap(hotspot('calendar')); });
 
+  /* ---------- hooks for the scene modules: ovu-walk.js, ovu-garden.js, ovu-community.js ----------
+   * They add layouts, doors and hotspot handlers of their own and listen for layout, props and boot;
+   * everything else here stays private. */
+  var hooks = { on: {}, hotspotHandlers: {}, fallbackHotspot: null, hudStop: null }, booted = false;
+  function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
+  window.OvuRoom = {
+    LAYOUTS: LAYOUTS, ART: ART, hotspotHandlers: hooks.hotspotHandlers,
+    on: function (name, f) { (hooks.on[name] = hooks.on[name] || []).push(f); if (name === 'boot' && booted) f(); },
+    setFallbackHotspot: function (f) { hooks.fallbackHotspot = f; }, setHudStop: function (f) { hooks.hudStop = f; }, emit: emit,
+    layout: function () { return L; }, pos: function () { return { x: pos.x, y: pos.y }; }, visiting: function () { return visiting; }, homeId: currentHomeId,
+    /* anything that should pause walking and scene changes */
+    busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },
+    sheetOpen: function () { return !!current; }, cancelIdle: function () { clearTimeout(idleTimer); },
+    els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
+    applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
+    openSheet: openSheet, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop,
+    enterMeditation: enterMeditation, exitMeditation: exitMeditation, runSession: runSession, sessionOn: function () { return !!session; },
+    setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
+  };
+
   /* ---------- boot ---------- */
   function boot() {
+    if (booted) return; booted = true;
     buildScene();
     setOutfit(S.profile().outfit || 'base', true);
     avatar.classList.add('idle');
@@ -2190,7 +2218,9 @@
     setTimeout(function () { $('#loading').classList.add('hidden'); joy(); }, 500);
     scheduleLife();
     function tick() { var d = new Date(); $('#clockTime').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); var dc = $('#deskClock'); if (dc) dc.textContent = nowHM(); } tick(); setInterval(tick, 20000);
+    emit('boot');
   }
   var dayImg = $('#roomDay');
-  if (dayImg.complete) boot(); else { dayImg.addEventListener('load', boot); dayImg.addEventListener('error', boot); }
+  /* boot once: the same image changes src on every scene change, so its load must never boot again */
+  if (dayImg.complete) boot(); else { dayImg.addEventListener('load', boot, { once: true }); dayImg.addEventListener('error', boot, { once: true }); }
 })();
