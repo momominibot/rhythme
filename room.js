@@ -458,6 +458,7 @@
     walkLeg(wp, done);
   }
   function walkLeg(wp, done) {
+    emit('beforeWalk'); /* a floor walk in progress commits its live position first, so this leg starts from there */
     if (!wp || reduced) { if (wp) placeAvatar(wp, wp.flip); done && done(); return; }
     var dx = wp.x - pos.x, dy = wp.y - pos.y, dist = Math.sqrt(dx * dx + dy * dy);
     var ms = Math.min(1100, Math.max(350, dist * 22));
@@ -472,7 +473,7 @@
       scheduleLife(); done && done();
     }, ms + 30);
   }
-  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating) walkTo(HOME); }, 1400); }
+  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
@@ -2301,12 +2302,12 @@
   /* ---------- hooks for the scene modules: ovu-walk.js, ovu-garden.js, ovu-community.js ----------
    * They add layouts, doors and hotspot handlers of their own and listen for layout, props and boot;
    * everything else here stays private. */
-  var hooks = { on: {}, hotspotHandlers: {}, fallbackHotspot: null, hudStop: null }, booted = false;
+  var hooks = { on: {}, hotspotHandlers: {}, fallbackHotspot: null, hudStop: null, moving: null }, booted = false;
   function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = {
     LAYOUTS: LAYOUTS, ART: ART, hotspotHandlers: hooks.hotspotHandlers,
     on: function (name, f) { (hooks.on[name] = hooks.on[name] || []).push(f); if (name === 'boot' && booted) f(); },
-    setFallbackHotspot: function (f) { hooks.fallbackHotspot = f; }, setHudStop: function (f) { hooks.hudStop = f; }, emit: emit,
+    setFallbackHotspot: function (f) { hooks.fallbackHotspot = f; }, setHudStop: function (f) { hooks.hudStop = f; }, setMoving: function (f) { hooks.moving = f; }, emit: emit,
     layout: function () { return L; }, pos: function () { return { x: pos.x, y: pos.y }; }, visiting: function () { return visiting; }, homeId: currentHomeId,
     /* anything that should pause walking and scene changes */
     busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },

@@ -16,10 +16,13 @@
     zones: [[[47, 44], [86, 58], [50, 80], [10, 63]]],
     solids: [{ id: 'beds', x0: 8, x1: 50, y0: 42, y1: 60 }, { id: 'shelf', x0: 54, x1: 71, y0: 40, y1: 60 }, { id: 'shelf2', x0: 74, x1: 90, y0: 48, y1: 65 }, { id: 'counter', x0: 22, x1: 38, y0: 58, y1: 70 }],
     doors: [{ id: 'mat', to: 'street', x: 46, y: 75, r: 4, flip: false }],
+    /* ordered spots per kind, more than there are items today, so new stock lands somewhere sensible without code:
+     * pets fill the three beds, then the rug cushions, then the floor by the beds; treats fill the tall shelf top down;
+     * accessories fill the awning shelf. The lane from the mat (46,75) up the rug to the shelves stays clear. */
     spots: {
-      pet: [{ x: 19, y: 56, w: 8, wp: { x: 40, y: 67, flip: true } }, { x: 30, y: 51, w: 8, wp: { x: 40, y: 65, flip: true } }, { x: 42, y: 46, w: 8, wp: { x: 46, y: 62, flip: true } }, { x: 56, y: 64, w: 8, wp: { x: 52, y: 71, flip: false } }, { x: 63, y: 69.5, w: 8, wp: { x: 58, y: 74, flip: false } }, { x: 67, y: 60.5, w: 8, wp: { x: 62, y: 68, flip: false } }],
-      treat: [{ x: 58, y: 45, w: 5, wp: { x: 60, y: 64, flip: false } }, { x: 65, y: 47, w: 5, wp: { x: 60, y: 64, flip: false } }, { x: 61, y: 52, w: 5, wp: { x: 60, y: 64, flip: false } }, { x: 67, y: 54, w: 5, wp: { x: 60, y: 64, flip: false } }],
-      accessory: [{ x: 78, y: 56.5, w: 4.6, wp: { x: 72, y: 64, flip: false } }, { x: 84, y: 58, w: 4.6, wp: { x: 72, y: 64, flip: false } }, { x: 79, y: 63.5, w: 4.6, wp: { x: 72, y: 64, flip: false } }, { x: 85.5, y: 65, w: 4.6, wp: { x: 72, y: 64, flip: false } }]
+      pet: [{ x: 19, y: 56, w: 8, wp: { x: 40, y: 67, flip: true } }, { x: 30, y: 51, w: 8, wp: { x: 40, y: 65, flip: true } }, { x: 42, y: 46, w: 8, wp: { x: 46, y: 62, flip: true } }, { x: 56, y: 61.5, w: 8, wp: { x: 52, y: 69, flip: false } }, { x: 63.5, y: 67.5, w: 8, wp: { x: 58, y: 73, flip: false } }, { x: 47, y: 65.5, w: 7.5, wp: { x: 52, y: 71, flip: true } }, { x: 16, y: 62.5, w: 7.5, wp: { x: 22, y: 69, flip: true } }, { x: 36, y: 48, w: 7.5, wp: { x: 44, y: 63, flip: true } }],
+      treat: [{ x: 58, y: 44.8, w: 4.6, wp: { x: 60, y: 64, flip: false } }, { x: 62, y: 46, w: 4.6, wp: { x: 60, y: 64, flip: false } }, { x: 66, y: 47.3, w: 4.6, wp: { x: 60, y: 64, flip: false } }, { x: 58, y: 51.8, w: 4.6, wp: { x: 60, y: 64, flip: false } }, { x: 62, y: 53, w: 4.6, wp: { x: 60, y: 64, flip: false } }, { x: 66, y: 54.3, w: 4.6, wp: { x: 60, y: 64, flip: false } }, { x: 58, y: 58.6, w: 4.6, wp: { x: 60, y: 64, flip: false } }, { x: 62, y: 59.8, w: 4.6, wp: { x: 60, y: 64, flip: false } }, { x: 66, y: 61, w: 4.6, wp: { x: 60, y: 64, flip: false } }],
+      accessory: [{ x: 77, y: 56, w: 4.2, wp: { x: 72, y: 64, flip: false } }, { x: 82, y: 57.5, w: 4.2, wp: { x: 72, y: 64, flip: false } }, { x: 87, y: 59, w: 4.2, wp: { x: 72, y: 64, flip: false } }, { x: 77.5, y: 63, w: 4.2, wp: { x: 72, y: 64, flip: false } }, { x: 82.5, y: 64.5, w: 4.2, wp: { x: 72, y: 64, flip: false } }, { x: 87.5, y: 66, w: 4.2, wp: { x: 72, y: 64, flip: false } }]
     },
     meditator: { x: 50, y: 70, w: 11 }, aura: { x: 50, y: 68, w: 17 }, holo: { x: 60, y: 68, w: 14 }, sleeper: NOSLEEP, zzz: OFF, window: NOWIN,
     props: { cat: { x: 30, y: 71, w: 9 }, dog: { x: 56, y: 74, w: 9.5 }, mewmew: { x: 36, y: 72, w: 12 } }
@@ -31,8 +34,14 @@
     zones: [[[49, 44], [88, 57], [50, 78], [11, 60]]],
     solids: [{ id: 'platform', x0: 14, x1: 48, y0: 44, y1: 60 }, { id: 'platform2', x0: 50, x1: 76, y0: 46, y1: 58 }, { id: 'stool', x0: 68, x1: 80, y0: 58, y1: 66 }, { id: 'counter', x0: 24, x1: 40, y0: 58, y1: 70 }],
     doors: [{ id: 'mat', to: 'street', x: 50, y: 72, r: 4, flip: false }],
-    /* catalogue order: plant, bookshelf, lamp, mushlamp (cream platform), starlamp, beanbag, armchair (lilac platform), scale (the stool) */
-    spots: { furniture: [{ x: 18, y: 55.5, w: 7, wp: { x: 20, y: 63, flip: true } }, { x: 26, y: 52.5, w: 7, wp: { x: 44, y: 63, flip: true } }, { x: 34, y: 49.5, w: 5.5, wp: { x: 44, y: 63, flip: true } }, { x: 41, y: 47, w: 5.8, wp: { x: 44, y: 63, flip: true } }, { x: 56, y: 53.5, w: 5, wp: { x: 56, y: 62, flip: false } }, { x: 64, y: 52.5, w: 8, wp: { x: 64, y: 62, flip: false } }, { x: 72, y: 51.5, w: 8.5, wp: { x: 66, y: 64, flip: false } }, { x: 73, y: 60.5, w: 6, wp: { x: 66, y: 68, flip: false } }] },
+    /* grouped by the catalogue's slot so the shop reads by kind: corner pieces and seats along the cream platform,
+     * lamps along the lilac platform, anything else (the scale) on the stool; each list has spares */
+    spots: { furniture: {
+      corner: [{ x: 18, y: 55.5, w: 7, wp: { x: 20, y: 63, flip: true } }, { x: 25, y: 52.8, w: 7, wp: { x: 22, y: 63, flip: true } }, { x: 32, y: 50, w: 7, wp: { x: 44, y: 63, flip: true } }],
+      seat: [{ x: 39, y: 47.3, w: 7.5, wp: { x: 44, y: 63, flip: true } }, { x: 46, y: 44.8, w: 7.5, wp: { x: 48, y: 61, flip: true } }],
+      lamp: [{ x: 55, y: 53, w: 5.2, wp: { x: 56, y: 62, flip: false } }, { x: 61, y: 51.6, w: 5.2, wp: { x: 60, y: 62, flip: false } }, { x: 67, y: 50.3, w: 5.2, wp: { x: 64, y: 62, flip: false } }, { x: 73, y: 49.1, w: 5.2, wp: { x: 66, y: 63, flip: false } }],
+      other: [{ x: 73, y: 60.5, w: 6, wp: { x: 66, y: 68, flip: false } }, { x: 30, y: 60.5, w: 6, wp: { x: 42, y: 64, flip: true } }]
+    } },
     meditator: { x: 50, y: 68, w: 11 }, aura: { x: 50, y: 66, w: 17 }, holo: { x: 60, y: 66, w: 14 }, sleeper: NOSLEEP, zzz: OFF, window: NOWIN,
     props: {}
   };
@@ -43,7 +52,7 @@
     zones: [[[47, 42], [88, 58], [50, 78], [10, 62]]],
     solids: [{ id: 'bench', x0: 12, x1: 33, y0: 52, y1: 66 }, { id: 'stand', x0: 36, x1: 48, y0: 56, y1: 66 }, { id: 'stand', x0: 47, x1: 59, y0: 58, y1: 69 }, { id: 'stand', x0: 57, x1: 69, y0: 62, y1: 71 }, { id: 'desk', x0: 68, x1: 88, y0: 54, y1: 66 }, { id: 'plant', x0: 44, x1: 54, y0: 48, y1: 56 }],
     doors: [{ id: 'mat', to: 'street', x: 44, y: 75, r: 4, flip: false }],
-    spots: { home: [{ x: 42, y: 57, w: 9, wp: { x: 34, y: 70, flip: true } }, { x: 53, y: 59.5, w: 9, wp: { x: 52, y: 74, flip: false } }, { x: 63, y: 63.5, w: 9, wp: { x: 60, y: 72, flip: false } }] },
+    spots: { home: [{ x: 42, y: 57, w: 9, wp: { x: 34, y: 70, flip: true } }, { x: 53, y: 59.5, w: 9, wp: { x: 52, y: 74, flip: false } }, { x: 63, y: 63.5, w: 9, wp: { x: 60, y: 72, flip: false } }, { x: 78, y: 56.5, w: 8, wp: { x: 70, y: 68, flip: false } }, { x: 23, y: 57, w: 8, wp: { x: 34, y: 70, flip: true } }] },
     meditator: { x: 22, y: 60, w: 11 }, aura: { x: 22, y: 58, w: 17 }, holo: { x: 32, y: 58, w: 14 }, sleeper: NOSLEEP, zzz: OFF, window: NOWIN,
     props: {}
   };
@@ -56,12 +65,19 @@
   function placements(layoutId, SHOP) {
     var L = LAYOUTS[layoutId], out = []; if (!L) return out;
     (KINDS[layoutId] || []).forEach(function (kind) {
-      var spots = (L.spots || {})[kind] || [], n = 0;
-      SHOP.forEach(function (it) { if (it.kind !== kind || !spots[n]) return; out.push({ item: it, spot: spots[n], kind: kind }); n++; });
+      var spots = (L.spots || {})[kind] || [], used = {};
+      SHOP.forEach(function (it) {
+        if (it.kind !== kind) return;
+        var list = Array.isArray(spots) ? spots : (spots[it.slot] || spots.other || []), key = Array.isArray(spots) ? '' : (spots[it.slot] ? it.slot : 'other');
+        var n = used[key] || 0; if (!list[n]) return; used[key] = n + 1;
+        out.push({ item: it, spot: list[n], kind: kind, group: key });
+      });
     });
     return out;
   }
-  var SH = { LAYOUTS: LAYOUTS, KINDS: KINDS, MODELS: MODELS, placements: placements };
+  /* how many spots each store keeps for its kinds (spares included) */
+  function capacity(layoutId) { var L = LAYOUTS[layoutId], out = {}; if (!L) return out; Object.keys(L.spots || {}).forEach(function (k) { var sp = L.spots[k]; out[k] = Array.isArray(sp) ? sp.length : Object.keys(sp).reduce(function (a, g) { return a + sp[g].length; }, 0); }); return out; }
+  var SH = { LAYOUTS: LAYOUTS, KINDS: KINDS, MODELS: MODELS, placements: placements, capacity: capacity };
   root.OvuShops = SH;
 
   /* ---------- the scenes ---------- */
@@ -91,7 +107,7 @@
       var d = doc.createElement('div'); d.className = 'nb shopprop kind-' + it.kind + (st.owned ? ' owned' : ''); d.dataset.id = 'shop-' + it.id; d.dataset.item = it.id;
       d.setAttribute('role', 'button'); d.setAttribute('tabindex', '0'); d.setAttribute('aria-label', it.name + ', ' + st.tag + '. Tap for details.');
       d.style.left = p.spot.x + '%'; d.style.top = p.spot.y + '%'; d.style.width = p.spot.w + '%';
-      d.innerHTML = '<img src="' + ART + spriteFor(it) + '" alt=""><span class="shoptag' + (st.owned || st.have ? ' mine' : '') + '">' + esc(st.tag) + '</span>';
+      d.innerHTML = '<img src="' + ART + spriteFor(it) + '" alt="">' + (st.owned || st.have ? '<span class="owntick" aria-hidden="true"><span class="ms">check</span></span>' : '');
       wrap.appendChild(d);
     });
   }

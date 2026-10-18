@@ -52,7 +52,7 @@
       { id: 'fountain', x: 50, y: 39, label: 'Fountain · make a wish', icon: 'water', wp: { x: 50, y: 56, flip: false } },
       { id: 'stall', x: 66, y: 43, label: 'Tea stall · a cup for your phase', icon: 'emoji_food_beverage', wp: { x: 62, y: 58, flip: false } },
       { id: 'bench', x: 38, y: 69, label: 'Bench · sit a while', icon: 'chair', wp: { x: 34, y: 64, flip: true } },
-      { id: 'bench2', x: 73, y: 60, label: 'Bench · sit a while', icon: 'chair', wp: { x: 71, y: 66, flip: false } },
+      { id: 'bench2', x: 73, y: 60, label: 'Bench · sit a while', icon: 'chair', wp: { x: 62, y: 62, flip: false } },
       { id: 'gate', x: 62, y: 67, label: 'Gate · home', icon: 'door_open', wp: { x: 54, y: 64, flip: false } }
     ],
     home: { x: 20, y: 58, flip: false },
@@ -63,7 +63,7 @@
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
     props: {}
   };
-  var BENCH2 = { sit: { x: 72, y: 59, w: 11 }, holo: { x: 82, y: 58, w: 14 }, back: { x: 71, y: 66, flip: false } };
+  var BENCH2 = { sit: { x: 72, y: 59, w: 11 }, holo: { x: 82, y: 58, w: 14 }, back: { x: 62, y: 62, flip: false } };
   C.LAYOUT = PLAZA; C.BENCH2 = BENCH2;
   /* ---------- the scene ---------- */
   var R = root.OvuRoom; if (!R || !root.document || !root.document.createElement) return;

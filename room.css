@@ -16,7 +16,7 @@ button{font-family:inherit;color:inherit}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* Phone frame: full screen on phones, framed on desktop */
-.frame{position:relative;width:100%;height:100%;max-width:430px;max-height:100dvh;overflow:hidden;background:var(--rm-paper);display:flex;flex-direction:column}
+.frame{position:relative;width:100%;min-width:0;height:100%;max-width:430px;max-height:100dvh;overflow:hidden;overflow:clip;background:var(--rm-paper);display:flex;flex-direction:column} /* clip, not hidden: a hidden overflow can still be scrolled by focus() or scrollIntoView, which shoved the room 162 px sideways when icon ligatures rendered as words before the font loaded */
 .status{display:none;height:44px;flex-shrink:0;justify-content:space-between;align-items:center;padding:0 26px;font:700 14px var(--sans);color:var(--rm-ink);background:linear-gradient(#efe6f7,#f8f3fb)}
 /* no phone mock-up on wide screens: the app fills the window like it does on a phone */
 @media(min-width:520px){
@@ -40,7 +40,7 @@ button{font-family:inherit;color:inherit}
 .icon-btn{position:relative}
 
 /* Main scroll column */
-.main{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.main{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overflow-x:clip;-webkit-overflow-scrolling:touch;scrollbar-width:none} /* clip: nothing, not even a scrollIntoView, can shove the room sideways */
 .main::-webkit-scrollbar{display:none}
 
 /* Scene */
@@ -1213,22 +1213,16 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .cal-day.p-unspecified{background:#f3b9cb}
 
 /* ---- 18 Oct: garden, Dream Street, plaza and walking like a game (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---- */
-.walkpad{position:absolute;left:12px;bottom:14px;z-index:31;width:92px;height:92px;touch-action:none;user-select:none;-webkit-user-select:none;opacity:.9;transition:opacity .3s}
-.walkpad-base{width:92px;height:92px;border-radius:50%;background:rgba(255,255,255,.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.9);box-shadow:0 6px 18px rgba(90,66,116,.18);display:grid;place-items:center;position:relative}
-.walkpad-base::before{content:'';position:absolute;inset:14px;border-radius:50%;border:1.5px dashed rgba(122,92,150,.25)}
-.walkpad-knob{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#e7dcf5 55%,#c9b6e6);box-shadow:0 4px 12px rgba(90,66,116,.3);transition:transform .08s linear;will-change:transform}
-.walkpad.live .walkpad-knob{transition:none}
-.walkpad.live .walkpad-base{background:rgba(255,255,255,.72)}
 .minimap{position:absolute;right:10px;bottom:14px;z-index:31;display:flex;gap:2px;background:rgba(255,255,255,.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.9);border-radius:999px;padding:4px;box-shadow:0 6px 18px rgba(90,66,116,.18)}
 .minimap button{border:none;background:transparent;border-radius:999px;padding:5px 6px;display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--rm-ink-3);cursor:pointer;min-width:38px}
-.minimap button .ms{font-size:18px}
+.minimap button .ms{font-size:18px;display:block;width:20px;height:20px;line-height:20px;overflow:hidden;text-align:center} /* a fixed box, so the pill never widens before the icon font arrives */
 .minimap button i{font:800 8px var(--sans);font-style:normal;letter-spacing:.04em;text-transform:uppercase}
 .minimap button.on{background:var(--rm-lilac-2);color:var(--rm-plum)}
 .minimap.hidden{display:none}
-/* the walk pad sits on the bottom edge: the hint moves above it, and while a visit bar is up the pad steps aside */
-.hint{bottom:112px}
-.scene.visiting .walkpad{opacity:0;pointer-events:none}
-.scene:is(.quiet,.is-night,.arranging,.hudon) :is(.walkpad,.minimap){opacity:0;pointer-events:none}
+.scene:is(.quiet,.is-night,.arranging,.hudon) .minimap{opacity:0;pointer-events:none}
+/* the hint and the visit bar share the bottom edge with the mini-map on the right: keep them clear of it */
+.hint{left:12px;transform:none;max-width:58%}
+.visitbar{right:12px}
 .scenefade{position:absolute;inset:0;z-index:60;background:linear-gradient(180deg,#e9ddf6,#d8c8ec);opacity:0;pointer-events:none;transition:opacity .35s ease}
 .scene.fading .scenefade{opacity:1;pointer-events:auto}
 .scene.arranging .prop.owned.lift{z-index:12!important}
@@ -1289,15 +1283,15 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .minimap-sub{display:none;position:absolute;right:0;bottom:calc(100% + 6px);gap:2px;background:rgba(255,255,255,.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.9);border-radius:999px;padding:3px;box-shadow:0 6px 18px rgba(90,66,116,.18)}
 .minimap.sub-on .minimap-sub{display:flex}
 .minimap-sub button{min-width:44px;padding:3px 6px}
-.minimap-sub button .ms{font-size:15px}
-.shopprop.kind-treat .shoptag,.shopprop.kind-accessory .shoptag{font-size:8px;padding:1px 5px;top:0}
+.minimap-sub button .ms{font-size:15px;width:18px;height:18px;line-height:18px}
 .shopprop{pointer-events:auto;cursor:pointer}
 .shopprop:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
 .shopprop img{transition:transform .2s}
 .shopprop:hover img,.shopprop:active img{transform:scale(1.06)}
 .shopprop.kind-pet img{animation:petbob 3.4s ease-in-out infinite;transform-origin:50% 100%}
-.shoptag{position:absolute;left:50%;top:-2px;transform:translate(-50%,-100%);background:rgba(255,255,255,.92);border-radius:999px;padding:2px 7px;font:800 9.5px var(--sans);color:var(--rm-plum);white-space:nowrap;box-shadow:0 3px 10px rgba(90,66,116,.18)}
-.shoptag.mine{background:var(--rm-lilac-2)}
+/* no prices on the shelves (the card has them); a small tick marks what is already yours */
+.owntick{position:absolute;right:-6%;top:-4%;width:16px;height:16px;border-radius:50%;background:var(--rm-ok,#6ba88a);color:#fff;display:grid;place-items:center;box-shadow:0 2px 6px rgba(60,40,90,.3)}
+.owntick .ms{font-size:11px;font-variation-settings:'FILL' 0,'wght' 700,'GRAD' 0,'opsz' 20}
 .itemcard{display:flex;gap:12px;align-items:center;background:var(--rm-card,#fff);border-radius:16px;padding:12px;margin-top:10px}
 .itemcard img{width:84px;height:84px;object-fit:contain;flex-shrink:0;background:linear-gradient(180deg,#fbe3ea,#e7dcf5);border-radius:14px;padding:6px}
 .itemcard p{font-family:var(--serif);font-size:14.5px;color:var(--rm-ink);line-height:1.35}
@@ -1333,3 +1327,11 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .btap-done b{display:block;font-family:var(--serif);font-weight:600;font-size:22px;color:#fff}
 body.btap-open{overflow:hidden}
 @media(prefers-reduced-motion:reduce){.btap-ring{transition:opacity .6s}.btap-ring img{animation:none}.btap-petal{animation-duration:.8s}}
+/* ---- 19 Oct: tap to walk (ovu-walk.js): a ring where you tapped, inside the plate so it zooms with the camera ---- */
+.tapring{position:absolute;width:9%;aspect-ratio:1.9/1;transform:translate(-50%,-50%) scale(.5);border-radius:50%;border:2.5px solid rgba(255,255,255,.95);box-shadow:0 0 14px rgba(255,255,255,.7),inset 0 0 10px rgba(201,182,230,.6);opacity:0;pointer-events:none;z-index:4}
+.tapring.on{animation:tapring .7s ease-out forwards}
+.tapring.bad{border-color:rgba(212,112,122,.95);box-shadow:0 0 12px rgba(212,112,122,.5)}
+.tapring.on.bad{animation:tapringbad .42s ease-out forwards}
+@keyframes tapring{0%{opacity:0;transform:translate(-50%,-50%) scale(.45)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.35)}}
+@keyframes tapringbad{0%{opacity:1;transform:translate(-50%,-50%) scale(.9)}50%{transform:translate(-50%,-50%) scale(1) translateX(2%)}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+@media (prefers-reduced-motion: reduce){.tapring.on{animation:none;opacity:.9;transform:translate(-50%,-50%) scale(1)}}
