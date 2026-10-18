@@ -31,11 +31,8 @@ earlier and are recorded in `supabase_migrations.schema_migrations`, so they are
 `__SETUP_TOKEN__` in the Luna source stays a placeholder: the key is already in Vault and
 `luna_secret_set_once` refuses a second write, so a redeploy from the repo cannot change it.
 
-## Moving to a new project (decided 2026-10-18: Ovumind gets its own project, not ovaria-app)
+## Project decision (2026-10-18)
 
-1. Create the project in ap-southeast-1 (organisation Ranklore Pte Ltd; US$10 a month on the Pro plan).
-2. Apply `migrations/20261018100000_luna.sql` and `migrations/20261018110000_sync.sql` in order, then record both versions in `supabase_migrations.schema_migrations`.
-3. Deploy `functions/luna` and `functions/insight` with JWT verification off (each checks the Origin header and counts calls).
-4. Set the Ark key once through the luna function's setup route (`x-setup-token`), which writes it to Vault as `ovumind_ark_api_key`; redeploy luna without the token afterwards.
-5. Change `SUPABASE_REF` in `ovu-config.js` and `project_id` in `config.toml`. Nothing else in the app names the project.
-6. Verify both functions from the live origin, run the security advisors, push, then point the GitHub integration at this project and unlink ovaria-app.
+Ovumind keeps project `zodkohwaznqgrfrcfdkf`, renamed from `ovaria-app` to `ovumind` the same day. No second project was created. The empty leftovers of the earlier Ovaria app (`user_snapshots`, `research_consent`, `research_events`, view `research_analysis`) were dropped by `migrations/20261018180000_drop_ovaria_leftovers.sql`, and the remote migration history now lists exactly the three repo migrations. Ovumind's research tables will be designed fresh with their own consent flow. One email test account from 13 August 2026 remains in Auth and was left untouched.
+
+If the project ever has to move: change `SUPABASE_REF` in `ovu-config.js` and `project_id` in `config.toml`, apply the migrations in order, deploy `luna` and `insight` with JWT verification off, set the Ark key once through the luna setup route, and verify from the live origin.
