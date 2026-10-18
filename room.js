@@ -170,7 +170,7 @@
     },
     luna: {
       icon: 'dark_mode', title: 'How Luna reads your notes',
-      body: '<p>Luna first tries simple rules on this device (sleep times, period words, the symptom list, pain out of 10, mood words, meal words, minutes of practice). If the rules cannot read a note, Luna’s own model reads it: the note alone (no name, no history) goes through a small Ovumind relay to a Doubao model, the reply is shown to you for confirmation, and nothing is stored on the way. You can switch to your own OpenRouter or Ark key, or turn AI off and keep the rules only. Luna never diagnoses.</p>',
+      body: '<p>Luna first tries simple rules on this device (sleep times, period words, the symptom list, pain out of 10, mood words, meal words, minutes of practice). If the rules cannot read a note, Luna’s own model reads it: the note alone (no name, no history) goes through a small Ovumind relay to a Doubao model, the reply is shown to you for confirmation, and nothing is stored on the way. You can switch to your own OpenRouter or Ark key, or turn AI off and keep the rules only. Food photos are a separate permission: a photo goes once through the same relay to a Doubao vision model, which estimates the dishes, portions and nutrients; you check and change them before anything is saved, and only a small thumbnail stays on this phone. Photo estimates are rough, especially for oil, sauces and portion size. Luna never diagnoses.</p>',
       evidence: [['Model: Doubao Seed 2.1 turbo on Volcengine Ark, strict JSON, temperature 0; relay allows about 80 notes a day per person', 'https://www.volcengine.com/docs/82379'], ['Own-key default: jev-1.13.0 preferred Gemini 2.5 Flash-Lite for cost and strict JSON (0.73), Qwen3 30B as runner-up', 'https://openrouter.ai/models']]
     }
   };
@@ -914,15 +914,16 @@
     openSheet('luna', 'Luna', 'Tell me how you are; I’ll write it down', 'dark_mode',
       '<div class="chat" id="chat"></div>' +
       '<div class="quick" id="quick">' + ['Slept 11pm to 7am, quality 4', 'Period started today, medium', 'Cramps and bloating, pain 5, mood ok', 'Had oats and a latte for breakfast', 'Meditated 10 min'].map(function (q) { return '<span class="qchip"><button type="button" class="qsend" data-q="' + esc(q) + '">' + esc(q) + '</button><button type="button" class="qpen" data-q="' + esc(q) + '" aria-label="Edit this shortcut before sending"><span class="ms">edit</span></button></span>'; }).join('') + '</div>' +
-      '<div class="composer"><input class="input" id="lunaIn" maxlength="400" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice" value="' + esc(prefill || '') + '"><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
+      '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><input class="input" id="lunaIn" maxlength="400" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice" value="' + esc(prefill || '') + '"><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
       '<details class="aibox" id="aibox"><summary><span class="ms">auto_awesome</span>' + (cfg.on ? (cfg.provider === 'ovumind' ? 'Luna’s own model is on' : 'AI mode on · your own key') : 'AI mode off · rules only') + infoBtn('luna') + '</summary>' + guideHTML('luna') +
       '<div class="field"><label for="aiProv">Who reads a note the rules cannot</label><select class="input" id="aiProv"><option value="ovumind"' + (cfg.provider === 'ovumind' ? ' selected' : '') + '>Luna’s own model (Doubao Seed 2.1, free, no key)</option><option value="openrouter"' + (cfg.provider === 'openrouter' ? ' selected' : '') + '>My OpenRouter key</option><option value="ark"' + (cfg.provider === 'ark' ? ' selected' : '') + '>My Volcengine Ark key</option></select></div>' +
       '<div class="grid2 ownkey' + (cfg.provider === 'ovumind' ? ' hidden' : '') + '" id="ownKey"><div class="field"><label for="aiModel">Model</label><input class="input" id="aiModel" value="' + esc(cfg.model || '') + '" placeholder="' + esc(ORB.OR_MODEL) + '"></div><div class="field"><label for="aiKey">API key (stays on this device)</label><input class="input" id="aiKey" type="password" autocomplete="off" value="' + esc(cfg.key || '') + '" placeholder="sk-or-..."></div></div>' +
       '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Also let the reading agent write journal readings</b><span>A de-identified 7 or 28 day summary (no name) goes the same way. Off means no readings are written.</span></div></label>' +
+      '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Let Luna’s model look at food photos</b><span>Each photo goes once through Ovumind’s relay to recognise the food and is not kept there. Only a small thumbnail stays in your diary on this phone.</span></div></label>' +
       '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn AI off (rules only)' : 'Turn AI on') + '</button></div><p>Both are off until you say yes. Luna’s own model runs through a small Ovumind relay that holds the key, allows about 80 notes a day per person and keeps nothing. Rules on this device always run first, and whatever is understood is shown to you before it is saved.</p></details>');
     var chat = $('#chat');
     function bubble(kind, html) { var d = document.createElement('div'); d.className = 'bub ' + (kind === 'luna' ? 'from-luna' : kind); d.innerHTML = html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d; }
-    if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took. I will show you what I understood before saving.');
+    if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took, or send a photo of your meal with the camera button. I will show you what I understood before saving.');
     lunaLog.forEach(function (m) { bubble(m.kind, m.html); });
     function remember(kind, html) { lunaLog.push({ kind: kind, html: html }); lunaLog = lunaLog.slice(-12); }
     function confirmCard(entries) {
@@ -977,13 +978,74 @@
     }
     $('#lunaSend').addEventListener('click', function () { send($('#lunaIn').value); });
     $('#lunaIn').addEventListener('keydown', function (e) { if (e.key === 'Enter') send(this.value); });
+    /* ---------- food photos ---------- */
+    var byHand = '<div class="row"><button type="button" class="btn ghost" data-byhand="1"><span class="ms">menu_book</span>Log it by hand</button></div>';
+    chat.addEventListener('click', function (e) { if (e.target.closest('[data-byhand]')) openDiary(); });
+    $('#lunaPhoto').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; if (f) photoFlow(f); });
+    function askPhotos(f) {
+      var ask = bubble('luna', '<b>Luna</b>To recognise the food I need to send this photo once through Ovumind’s relay to Luna’s model. It is not kept there, and only a small thumbnail stays in your diary on this phone.' +
+        '<div class="row"><button type="button" class="btn primary" data-allow="1"><span class="ms">photo_camera</span>Allow food photos</button><button type="button" class="btn ghost" data-byhand="1">Log it by hand</button></div>');
+      ask.querySelector('[data-allow]').addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c); ask.remove(); photoFlow(f); });
+    }
+    function photoFlow(f) {
+      if (!ORB.photosAllowed()) { askPhotos(f); return; }
+      Promise.all([FD.shrink(f, 1024), FD.shrink(f, 360)]).then(function (rs) {
+        var big = rs[0].dataUrl, thumb = rs[1].dataUrl;
+        bubble('me photo', '<img class="lphoto-img" src="' + thumb + '" alt="Your meal photo">'); remember('me', 'Sent a food photo.');
+        var thinking = bubble('luna', '<b>Luna</b>Looking at your meal…');
+        ORB.parsePhoto(big).then(function (res) {
+          thinking.remove();
+          if (!res.isFood || !res.items.length) { bubble('luna', '<b>Luna</b>I could not see food in that photo. Try a closer, brighter shot from above, or log it by hand.' + byHand); return; }
+          foodCard(res, thumb);
+        }).catch(function (err) { thinking.remove(); bubble('luna', '<b>Luna</b>' + esc(err.message) + byHand); });
+      }).catch(function (err) { toast(err.message, 'error'); });
+    }
+    function foodCard(res, thumb) {
+      var hr = new Date().getHours(), meal = hr < 11 ? 'breakfast' : hr < 15 ? 'lunch' : hr >= 18 && hr < 22 ? 'dinner' : 'snack';
+      var items = res.items.slice(), editing = false, card = bubble('confirm foodlog', '');
+      function render() {
+        var t = FD.sum(items).totals;
+        card.innerHTML = '<h4><span class="ms">edit_note</span>Log for today</h4>' +
+          '<div class="fl-head"><img src="' + thumb + '" alt=""><div><div class="fl-meals">' + ['breakfast', 'lunch', 'dinner', 'snack'].map(function (m) { return '<button type="button" class="fl-meal' + (m === meal ? ' on' : '') + '" data-meal="' + m + '">' + cap(m) + '</button>'; }).join('') + '</div>' +
+          '<b class="fl-kcal">About ' + FD.fmt('kcal', t.kcal) + ' kcal</b>' + (res.mealName ? '<small>' + esc(res.mealName) + '</small>' : '') + '</div></div>' +
+          '<div class="fl-items">' + items.map(function (it, i) {
+            return '<div class="fl-item">' + (editing
+              ? '<input class="input fl-name" data-name="' + i + '" value="' + esc(it.name) + '" aria-label="Food name"><label class="fl-g"><input class="input" type="number" inputmode="numeric" min="1" max="2000" data-grams="' + i + '" value="' + Math.round(it.grams || 0) + '" aria-label="Grams">g</label><button type="button" class="fl-x" data-x="' + i + '" aria-label="Remove ' + esc(it.name) + '"><span class="ms">close</span></button>'
+              : '<div><b>' + esc(it.name) + '</b><span>' + esc(it.portionLabel) + (it.confidence === 'low' ? ' · not sure' : '') + '</span></div>') +
+              '<em>' + FD.fmt('kcal', it.nutrients.kcal) + ' kcal</em></div>';
+          }).join('') + '</div>' +
+          '<div class="fl-macros"><span><i class="d p"></i>Protein ' + FD.fmt('protein', t.protein) + ' g</span><span><i class="d c"></i>Carbs ' + FD.fmt('carb', t.carb) + ' g</span><span><i class="d f"></i>Fat ' + FD.fmt('fat', t.fat) + ' g</span></div>' +
+          '<p class="fl-note">Estimated from your photo by Luna’s model. Hawker portions vary, so change the grams if they look off.</p>' +
+          '<div class="row"><button type="button" class="btn primary" data-act="save"><span class="ms">check</span>Save</button><button type="button" class="btn ghost" data-act="edit">' + (editing ? 'Done' : 'Edit') + '</button><button type="button" class="btn ghost" data-act="skip">Not now</button></div>';
+      }
+      render();
+      card.addEventListener('click', function (e) {
+        var m = e.target.closest('[data-meal]'), x = e.target.closest('[data-x]'), a = e.target.closest('[data-act]');
+        if (m) { meal = m.dataset.meal; render(); return; }
+        if (x) { items.splice(Number(x.dataset.x), 1); render(); return; }
+        if (!a) return;
+        if (a.dataset.act === 'edit') { editing = !editing; render(); return; }
+        if (a.dataset.act === 'skip') { card.remove(); bubble('luna', '<b>Luna</b>Okay, nothing saved.'); return; }
+        if (!items.length) { toast('Keep at least one food, or tap Not now.', 'info'); return; }
+        var now = new Date(), sm = FD.sum(items);
+        var ev = S.add('food', S.today(), { meal: meal, time: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'), foods: items.map(function (it) { return it.name; }).join(', '), notes: res.note || '', tags: [], items: items, photo: thumb, totals: sm.totals, method: 'luna-photo v1' }, 'luna');
+        card.remove();
+        var line = '<b>Luna</b>Saved your ' + meal + ', about ' + FD.fmt('kcal', sm.totals.kcal) + ' kcal. It is in your food diary, where you can change it any time.';
+        bubble('luna', line); remember('luna', line); afterSave(ev, 'Meal saved from your photo.');
+      });
+      card.addEventListener('change', function (e) {
+        var g = e.target.closest('[data-grams]'), n = e.target.closest('[data-name]');
+        if (g) { var i = Number(g.dataset.grams); items[i] = ORB.regram(items[i], g.value); render(); }
+        if (n) { var j = Number(n.dataset.name), v = n.value.trim(); if (v) items[j] = Object.assign({}, items[j], { name: v.slice(0, 80) }); }
+      });
+    }
     $('#quick').addEventListener('click', function (e) {
       var pen = e.target.closest('.qpen'), go = e.target.closest('.qsend');
       if (pen) { var inp = $('#lunaIn'); inp.value = pen.dataset.q; inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (err) { } toast('Edit the numbers, then send.', 'edit'); return; }
       if (go) send(go.dataset.q);
     });
     $('#aiProv').addEventListener('change', function () { $('#ownKey').classList.toggle('hidden', this.value === 'ovumind'); });
-    $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.provider = $('#aiProv').value; c.model = $('#aiModel').value.trim(); c.key = $('#aiKey').value.trim(); c.insights = $('#aiInsights').checked; if (c.provider !== 'ovumind' && !c.key) { toast('Paste a key, or choose Luna’s own model.', 'key'); return; } c.on = true; ORB.setAiConfig(c); toast('Saved on this device.', 'save'); openLuna($('#lunaIn').value); });
+    $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.provider = $('#aiProv').value; c.model = $('#aiModel').value.trim(); c.key = $('#aiKey').value.trim(); c.insights = $('#aiInsights').checked; c.photos = $('#aiPhotos').checked; if (c.provider !== 'ovumind' && !c.key) { toast('Paste a key, or choose Luna’s own model.', 'key'); return; } c.on = true; ORB.setAiConfig(c); toast('Saved on this device.', 'save'); openLuna($('#lunaIn').value); });
     $('#aiToggle').addEventListener('click', function () { var c = ORB.aiConfig(); c.on = !c.on; if (c.on && c.provider !== 'ovumind' && !c.key) c.provider = 'ovumind'; ORB.setAiConfig(c); openLuna($('#lunaIn').value); });
     if (prefill) send(prefill);
   }

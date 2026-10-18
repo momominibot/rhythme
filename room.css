@@ -482,6 +482,35 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .composer{display:flex;gap:8px;margin-top:8px}
 .composer .input{flex:1}
 .composer button{flex:0 0 auto;width:46px;border-radius:14px}
+.composer .lphoto{flex:0 0 auto;width:46px;min-width:0;padding:0;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.bub.me.photo{padding:4px;background:var(--rm-mauve)}
+.lphoto-img{display:block;width:150px;max-width:100%;border-radius:12px}
+.bub.foodlog{max-width:100%}
+.foodlog h4{display:flex;align-items:center;gap:6px}
+.foodlog h4 .ms{font-size:18px;color:var(--rm-plum)}
+.fl-head{display:flex;gap:10px;align-items:center;margin:8px 0}
+.fl-head img{width:76px;height:76px;object-fit:cover;border-radius:14px;flex:0 0 auto}
+.fl-head>div{min-width:0}
+.fl-meals{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.fl-meal{border:1.5px solid rgba(107,82,142,.16);background:#fff;border-radius:99px;padding:4px 9px;font:700 11px var(--sans);color:var(--rm-ink-2);cursor:pointer}
+.fl-meal.on{background:var(--rm-plum);border-color:var(--rm-plum);color:#fff}
+.fl-kcal{display:block;font:600 19px var(--serif);color:#d9756a}
+.fl-head small{display:block;font:600 11px var(--sans);color:var(--rm-ink-3);margin-top:2px}
+.fl-items{border-top:1px solid rgba(107,82,142,.1)}
+.fl-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(107,82,142,.08)}
+.fl-item>div{flex:1;min-width:0}
+.fl-item b{display:block;font:700 12.5px var(--sans);color:var(--rm-ink)}
+.fl-item span{display:block;font:500 11px var(--sans);color:var(--rm-ink-3)}
+.fl-item em{font:600 12px var(--sans);font-style:normal;color:var(--rm-ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.fl-item .fl-name{flex:1;min-width:0;padding:6px 8px;font-size:12px}
+.fl-g{display:flex;align-items:center;gap:3px;font:600 11px var(--sans);color:var(--rm-ink-3)}
+.fl-g .input{width:64px;padding:6px;font-size:12px}
+.fl-x{border:none;background:none;color:var(--rm-ink-3);cursor:pointer;padding:2px}
+.fl-macros{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 4px;font:600 11.5px var(--sans);color:var(--rm-ink-2)}
+.fl-macros .d{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:1px}
+.fl-macros .d.p{background:#6b528e}.fl-macros .d.c{background:#e8b84a}.fl-macros .d.f{background:#d9756a}
+.fl-note{font:500 11px var(--sans);color:var(--rm-ink-3);line-height:1.4;margin:4px 0 8px}
+.foodlog .row{flex-wrap:wrap}
 .aibox{margin-top:10px;background:var(--rm-paper-2);border-radius:16px;padding:10px 12px}
 .aibox summary{cursor:pointer;font:800 12px var(--sans);color:var(--rm-plum);list-style:none;display:flex;align-items:center;gap:6px}
 .aibox summary::-webkit-details-marker{display:none}

@@ -100,7 +100,7 @@
   /* ---------- AI mode: Luna's own model through the relay, or the user's own key ---------- */
   /* Off until the user says yes: notes stay on the device unless Luna's model was allowed in onboarding
    * or in Luna's settings, and written readings need their own separate permission (insights). */
-  function defaults() { return { on: false, provider: 'ovumind', key: '', model: '', insights: false }; }
+  function defaults() { return { on: false, provider: 'ovumind', key: '', model: '', insights: false, photos: false }; }
   function aiConfig() { try { var c = JSON.parse(localStorage.getItem(AI_KEY) || 'null'); if (!c || !c.provider || (c.provider !== 'ovumind' && !c.key)) return defaults(); return c; } catch (e) { return defaults(); } }
   function setAiConfig(cfg) { localStorage.setItem(AI_KEY, JSON.stringify(cfg)); }
   function okEntry(e) { return e && S.TYPES.indexOf(e.type) > -1 && S.validDate(e.date) && e.date <= S.today() && e.data; }
@@ -125,6 +125,42 @@
         var entries = (out.entries || []).filter(okEntry);
         return { entries: entries, reply: out.reply || '', usage: d.usage || null };
       });
+  }
+
+  /* ---------- food photos: Luna's relay looks at the photo, the user confirms ---------- */
+  function photosAllowed() { var c = aiConfig(); return c.photos === true; }
+  function clampNum(v, max) { var n = Number(v); return isFinite(n) && n >= 0 ? Math.min(max, Math.round(n * 10) / 10) : null; }
+  /* Turns the relay's estimate into diary items in the same shape as hand-logged foods, labelled as an
+   * estimate. Nutrients are kept per item and also per 100 g so changing the grams rescales them. */
+  function foodItemsFrom(food, model) {
+    if (!food || food.is_food !== true || !Array.isArray(food.items)) return [];
+    return food.items.slice(0, 8).map(function (it) {
+      var name = String((it && it.name) || '').trim().slice(0, 80); if (!name) return null;
+      var grams = clampNum(it.grams, 2000) || null;
+      var n = { kcal: clampNum(it.kcal, 3000), protein: clampNum(it.protein_g, 300), carb: clampNum(it.carb_g, 500), fat: clampNum(it.fat_g, 300), fiber: clampNum(it.fiber_g, 100) };
+      var per100 = {}; Object.keys(n).forEach(function (k) { per100[k] = grams && n[k] !== null ? n[k] * 100 / grams : null; });
+      var nutrients = {}; (FD ? FD.KEYS : Object.keys(n)).forEach(function (k) { nutrients[k] = n.hasOwnProperty(k) ? n[k] : null; });
+      var portion = String(it.portion || 'serving').slice(0, 20);
+      return {
+        name: name, foodId: null, basis: '100g', prep: null,
+        source: { kind: 'estimate', label: 'Luna’s photo estimate', ref: model || 'Doubao Seed 2.1 pro', date: S.today(), detail: 'Estimated from a photo; confidence ' + (['high', 'medium', 'low'].indexOf(it.confidence) > -1 ? it.confidence : 'low') },
+        grams: grams || 0, portionLabel: '1 ' + portion + (grams ? ' (about ' + Math.round(grams) + ' g)' : ''), method: 'photo estimate',
+        confidence: ['high', 'medium', 'low'].indexOf(it.confidence) > -1 ? it.confidence : 'low',
+        per100: per100, nutrients: nutrients
+      };
+    }).filter(Boolean);
+  }
+  function regram(item, grams) {
+    grams = clampNum(grams, 2000); if (!grams) return item;
+    var out = Object.assign({}, item, { grams: grams, portionLabel: item.portionLabel.replace(/\(about \d+ g\)/, '(about ' + Math.round(grams) + ' g)'), nutrients: Object.assign({}, item.nutrients) });
+    Object.keys(item.per100 || {}).forEach(function (k) { var v = item.per100[k]; out.nutrients[k] = v === null || v === undefined ? null : Math.round(v * grams / 10) / 10; });
+    return out;
+  }
+  function parsePhoto(dataUrl) {
+    if (!photosAllowed()) return Promise.reject(new Error('Food photos are off. Allow them in Luna’s settings first.'));
+    return fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl, today: S.today() }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna’s relay replied ' + r.status + '.')); return d; }); })
+      .then(function (d) { var f = d.food || {}; return { isFood: f.is_food === true, mealName: f.meal_name || '', note: f.note || '', items: foodItemsFrom(f, d.model), model: d.model || '' }; });
   }
 
   /* ---------- describe entries for the confirmation card ---------- */
@@ -153,5 +189,5 @@
   var REPLIES = ['Noted, gently.', 'Written down. Thank you for telling me.', 'Got it. One small step logged.', 'Saved. Be soft with yourself today.'];
   function reply() { return REPLIES[Math.floor(Math.random() * REPLIES.length)]; }
 
-  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, DEFAULT_MODEL: DEFAULT_MODEL, OR_MODEL: OR_MODEL, FALLBACK_MODEL: FALLBACK_MODEL, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
+  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, parsePhoto: parsePhoto, foodItemsFrom: foodItemsFrom, regram: regram, photosAllowed: photosAllowed, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, DEFAULT_MODEL: DEFAULT_MODEL, OR_MODEL: OR_MODEL, FALLBACK_MODEL: FALLBACK_MODEL, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
 })(window);
