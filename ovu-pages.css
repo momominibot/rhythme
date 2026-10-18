@@ -31,7 +31,7 @@ button{font-family:inherit;color:inherit}
 .row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .btn{flex:1;min-width:120px;border:none;border-radius:16px;padding:12px 14px;font:800 13px var(--sans);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;transition:transform .15s}
 .btn:active{transform:scale(.97)}
-.btn.primary{background:linear-gradient(135deg,#a98ad0,#7a5c96);color:#fff;box-shadow:0 6px 18px rgba(122,92,150,.35)}
+.btn.primary{background:linear-gradient(135deg,#7b5db3,#5f4596);color:#fff;box-shadow:0 6px 18px rgba(122,92,150,.35)}
 .btn.soft{background:var(--rm-lilac-2);color:var(--rm-plum)}
 .btn.blush{background:var(--rm-blush-2);color:#a04a66}
 .btn.ghost{background:transparent;color:var(--rm-ink-2);border:1.5px solid rgba(107,82,142,.18)}

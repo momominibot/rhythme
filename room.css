@@ -142,7 +142,7 @@ button{font-family:inherit;color:inherit}
 .row{display:flex;gap:8px;margin-top:10px}
 .btn{flex:1;border:none;border-radius:16px;padding:12px 14px;font:800 13px var(--sans);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;transition:transform .15s}
 .btn:active{transform:scale(.97)}
-.btn.primary{background:linear-gradient(135deg,#a98ad0,#7a5c96);color:#fff;box-shadow:0 6px 18px rgba(122,92,150,.35)}
+.btn.primary{background:linear-gradient(135deg,#7b5db3,#5f4596);color:#fff;box-shadow:0 6px 18px rgba(122,92,150,.35)}
 .btn.soft{background:var(--rm-lilac-2);color:var(--rm-plum)}
 .btn.blush{background:var(--rm-blush-2);color:#a04a66}
 .btn.ghost{background:transparent;color:var(--rm-ink-2);border:1.5px solid rgba(107,82,142,.18)}
@@ -1371,3 +1371,8 @@ body.btap-open{overflow:hidden}
 .sitter{pointer-events:auto;cursor:pointer;transform:translate(-50%,-62%)}
 .sitter img{animation:breathe 3.2s ease-in-out infinite;transform-origin:50% 100%}
 .sitter:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
+/* Dream Street after hours */
+.closedcard{margin-top:12px;background:var(--rm-card);border-radius:20px;padding:22px 16px;text-align:center;box-shadow:var(--rm-shadow)}
+.closedcard .ms{font-size:40px;color:var(--rm-mauve)}
+.closedcard b{display:block;font-family:var(--serif);font-weight:600;font-size:20px;color:var(--rm-plum);margin-top:6px}
+.closedcard p{font:600 12.5px/1.5 var(--sans);color:var(--rm-ink-2);margin-top:6px}

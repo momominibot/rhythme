@@ -580,14 +580,12 @@ function scenes(todayIso) {
   check('noticeboard sample notes are marked as samples', C.NOTES.length >= 3 && C.NOTES.every(function (n) { return n.sample; }));
 })();
 (function lunaLook() {
-  console.log("Luna's look (ovu-mascot.js)");
-  var w = fresh(), M = w.OvuMascot, ids = M.LIST.map(function (m) { return m.id; });
-  check('nine looks with unique ids', M.LIST.length === 9 && ids.filter(function (id, i) { return ids.indexOf(id) === i; }).length === 9, ids.join(','));
-  check('every look has its sprite on disk', M.LIST.every(function (m) { return fs.existsSync(path.join(root, 'assets/room/dream', m.img)) && (!m.head || fs.existsSync(path.join(root, 'assets/room/dream', m.head))); }));
-  check('the moon rabbit is the default', M.current().id === 'rabbit', M.current().id);
-  check('choosing the kitten sticks in the profile', M.set('kitten').id === 'kitten' && w.OvuStore.profile().mascot === 'kitten' && M.current().id === 'kitten');
-  check('an unknown look is ignored', M.set('dragon').id === 'kitten');
-  check('the small button uses the head badge, the welcome the full sprite', /orb-kitten-head\.webp$/.test(M.src(null, true)) && /orb-kitten\.webp$/.test(M.src(null, false)));
+  console.log("Luna's look (ovu-mascot.js): one pastel crescent moon");
+  var w = fresh(), M = w.OvuMascot;
+  check('one look only, the moon', M.LIST.length === 1 && M.LIST[0].id === 'moon');
+  check('its sprite and head badge are on disk', fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].img)) && fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].head)));
+  check('the moon is the default and an unknown look is ignored', M.current().id === 'moon' && M.set('rabbit').id === 'moon');
+  check('the small button uses the head badge, the welcome the full sprite', /orb-moon-head\.webp$/.test(M.src(null, true)) && /orb-moon\.webp$/.test(M.src(null, false)));
 })();
 
 (function healthImportParsers() {

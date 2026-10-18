@@ -4,16 +4,9 @@
 (function (root) {
   'use strict';
   var ART = 'assets/room/dream/';
+  /* Jamie, 18 Oct 23:50: one Luna, the pastel crescent moon. The other looks stay on disk but are not offered. */
   var LIST = [
-    { id: 'rabbit', name: 'Moon rabbit', img: 'orb-bunny.webp', head: 'orb-bunny-head.webp', note: 'Curled on her crescent with a star to hold.' },
-    { id: 'moon', name: 'Luna the moon', img: 'orb-moon.webp', head: 'orb-moon-head.webp', note: 'The glowing crescent Rhythme began with.' },
-    { id: 'kitten', name: 'Cloud kitten', img: 'orb-kitten.webp', head: 'orb-kitten-head.webp', note: 'Sits on a puff of cloud with a moon charm.' },
-    { id: 'star', name: 'Star sprite', img: 'orb-star.webp', head: 'orb-star-head.webp', note: 'A little star with stubby arms and stardust.' },
-    { id: 'fox', name: 'Starry fox', img: 'orb-fox.webp', head: 'orb-fox-head.webp', note: 'A fluffy tail that fades into galaxy sparkles.' },
-    { id: 'whale', name: 'Moon whale', img: 'orb-whale.webp', head: 'orb-whale-head.webp', note: 'Plump, lilac and freckled with stars.' },
-    { id: 'seal', name: 'Moon seal', img: 'orb-seal.webp', head: 'orb-seal-head.webp', note: 'A chubby pup with a crescent on her forehead.' },
-    { id: 'axolotl', name: 'Axolotl', img: 'orb-axolotl.webp', head: 'orb-axolotl-head.webp', note: 'Frilly gills that glow like tiny stars.' },
-    { id: 'bear', name: 'Moon bear', img: 'orb-bear.webp', head: 'orb-bear-head.webp', note: 'Hugs a star pillow, a crescent on the chest.' }
+    { id: 'moon', name: 'Luna the moon', img: 'orb-moon.webp', head: 'orb-moon-head.webp', note: 'The glowing crescent Rhythme began with.' }
   ];
   function store() { return root.OvuStore || null; }
   function byId(id) { for (var i = 0; i < LIST.length; i++) if (LIST[i].id === id) return LIST[i]; return null; }

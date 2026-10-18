@@ -45,3 +45,55 @@ html[data-sky="night"] :is(.moons button.on,.foodmodes button.on,.faces button.o
 html[data-sky="night"] .fl-meal{background:var(--rm-card);color:var(--rm-ink-2);border-color:rgba(255,255,255,.14)}
 html[data-sky="night"] .fl-meal.on{background:var(--rm-lilac);color:#fff;border-color:var(--rm-lilac)}
 html[data-sky="night"] .tea summary>.ms:first-child{background:linear-gradient(145deg,#4b3560,#3a2d5a)}
+
+/* audit, 18 Oct 23:50: groups the contrast audit found failing at night */
+html[data-sky="night"] .nav{background:rgba(31,23,51,.96)!important;border-top-color:rgba(255,255,255,.06)!important}
+html[data-sky="night"] .nav a{color:#b9abd6!important}
+html[data-sky="night"] .nav a.on,html[data-sky="night"] .nav a.active{color:#f1e9fb!important;background:rgba(255,255,255,.1)!important}
+html[data-sky="night"] .nav a.on .n-ic,html[data-sky="night"] .nav a.on .ms{color:#f1e9fb!important}
+html[data-sky="night"] :is(.btn,.btn.mauve,.journey-choice,.share-btn,.sb-l){background:#6a4c99;color:#fff}
+html[data-sky="night"] .btn.primary{background:linear-gradient(135deg,#7b5db3,#5f4596);color:#fff}
+html[data-sky="night"] .btn.soft{background:#3b2e5a;color:#ebe0fb}
+html[data-sky="night"] .btn.ghost{background:transparent;color:#d9cdef}
+html[data-sky="night"] .btn.blush{background:#5a3550;color:#f6c9d6}
+html[data-sky="night"] :is(.bub,.bub.luna,.teabody,.teacare,.you-card,.daygroup .summary,.summary,.pm-tile,.cs,.partner-hero,.partner-badge,.persona-opt,.hc-row,.question-card,.post-card,.circle-stats,.scan-row,.symptom-row,.fc-body,.phase-section .card){background:var(--rm-card);color:var(--rm-ink);border-color:rgba(255,255,255,.08)}
+html[data-sky="night"] .you-card{background:linear-gradient(135deg,#352853,#3f2a4a)}
+html[data-sky="night"] .you-card b,html[data-sky="night"] .question-card label,html[data-sky="night"] .question-card .q,html[data-sky="night"] .question-card .option{color:var(--rm-ink)}
+html[data-sky="night"] .teacare{border-color:rgba(255,255,255,.1)}
+html[data-sky="night"] .teacare p,html[data-sky="night"] .teabody p{color:var(--rm-ink-2)}
+html[data-sky="night"] .evrefs a{color:#cbb2ec;background:rgba(255,255,255,.08)}
+html[data-sky="night"] .ya-intro{color:var(--rm-ink-2)}
+html[data-sky="night"] .yrow.danger b,html[data-sky="night"] .yrow b.danger,html[data-sky="night"] [data-yact="wipe"] b,html[data-sky="night"] [data-yact="delete"] b{color:#f1a3ac}
+html[data-sky="night"] .food-tag{background:rgba(255,255,255,.1);color:#e6dcf5}
+html[data-sky="night"] .post-tag,html[data-sky="night"] .sr-phase,html[data-sky="night"] .pm-l,html[data-sky="night"] .pm-s,html[data-sky="night"] .cs-l,html[data-sky="night"] .hc-status,html[data-sky="night"] .p-age{color:#cdbfe4}
+html[data-sky="night"] .pm-v,html[data-sky="night"] .cs-v{color:#f1e9fb}
+html[data-sky="night"] .sr-fill{background:#8a6cbf;color:#fff}
+html[data-sky="night"] .summary small{color:#b9abd6}
+html[data-sky="night"] .summary .ms{color:#cbb2ec}
+html[data-sky="night"] :is(.sr-fill,.fab-create,.scan-cta .sc-ic,.code-copy,.redeem-btn,.journey-choice){background:#5f4596;color:#fff}
+html[data-sky="night"] :is(.teacare b,.teacare b .ms){color:#f1a3ac}
+html[data-sky="night"] :is(.post-tag,.sr-phase,.foods-badge,.circle-badge,.ppg-badge,.provider-badge,.partner-badge,.preview-pill){background:rgba(255,255,255,.1);color:#e6dcf5}
+html[data-sky="night"] :is(.foods-badge .ms,.circle-badge .ms,.ppg-badge .ms,.provider-badge .ms){color:#e6dcf5}
+html[data-sky="night"] :is(.persona-opt,.persona-opt .p-name,.hc-row){background:var(--rm-card);color:var(--rm-ink)}
+html[data-sky="night"] .persona-opt .p-name{color:var(--rm-ink)}
+html[data-sky="night"] .hc-row .hc-status{color:#cdbfe4}
+html[data-sky="night"] .cal-strip div,html[data-sky="night"] .week-strip div,html[data-sky="night"] .days div{background:#5f4596;color:#fff}
+html[data-sky="night"] .row span .ms,html[data-sky="night"] .sec-title .ms{color:#f0c9bd}
+/* legacy heroes keep their own light gradients: badges and pills on them become dark glass, whatever sits behind */
+html[data-sky="night"] :is(.circle-badge,.foods-badge,.ppg-badge,.provider-badge,.partner-badge,.preview-pill,.post-tag,.sr-phase,.hc-status,.p-age){background:rgba(31,23,51,.62)!important;color:#f1e9fb!important}
+html[data-sky="night"] :is(.circle-badge,.foods-badge,.ppg-badge,.provider-badge,.partner-badge) .ms{color:#f1e9fb!important}
+html[data-sky="night"] .sr-fill{background:#5f4596!important;color:#fff!important}
+html[data-sky="night"] .hc-row{background:var(--rm-card)!important}
+html[data-sky="night"] .card .tab.on,html[data-sky="night"] .tabs .tab.on{background:#5f4596!important;color:#fff!important}
+html[data-sky="night"] .persona-opt,html[data-sky="night"] .persona-picker button{background:var(--rm-card)!important;color:var(--rm-ink)!important}
+html[data-sky="night"] .persona-picker button *{color:inherit!important}
+html[data-sky="night"] .card > div:first-child:not([class]){color:var(--rm-ink)}
+html[data-sky="night"] .facecam{background:#2b2147!important}
+html[data-sky="night"] .facecam .ms{color:#f0c9bd!important}
+html[data-sky="night"] .row > span > .ms{color:#f0c9bd!important}
+html[data-sky="night"] .fertility-days div,html[data-sky="night"] .daystrip div,html[data-sky="night"] .week div,html[data-sky="night"] .calendar-strip div{background:#5f4596!important;color:#fff!important}
+html[data-sky="night"] .shopitem .cost b{color:#f3a7c4}
+html[data-sky="night"] .shopitem .cost .ms{color:#f3a7c4}
+html[data-sky="night"] div[style*="--d-cycle"]{background:#5f4596!important}
+html[data-sky="night"] main.scroll > .card > div{color:var(--rm-ink)}
+html[data-sky="night"] .sec-title .ms,html[data-sky="night"] .row .ms{color:#f3c6b9!important}

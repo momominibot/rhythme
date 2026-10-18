@@ -661,7 +661,17 @@
     });
     body.addEventListener('click', function (e) { var d = e.target.closest('[data-del]'); if (d && confirm('Delete this night?')) { S.remove(d.dataset.del); $('#sleepList').innerHTML = sleepListHTML(); renderDeck(); } });
   }
+  function stopEverything() {
+    /* bedtime: a running practice, breathing session, Moon Tap or garden task ends quietly before she sleeps */
+    try { if (practice) stopPractice(); } catch (e) { }
+    try { if (session) finishSession(false); } catch (e) { }
+    try { if (window.OvuBreathTap) OvuBreathTap.close(); } catch (e) { }
+    try { if (hooks.hudStop) hooks.hudStop(); } catch (e) { }
+    hud.classList.remove('on'); avatar.classList.remove('acting');
+  }
+  function asleep() { return !!S.state().sleeping; }
   function enterNight(withPj) {
+    stopEverything();
     scene.classList.add('is-night'); avatar.classList.add('hidden');
     var sl = S.state().sleeping; if (withPj && sl && sl.pj) setOutfit('pajamas', true);
     setTimeout(function () { sleeper.classList.add('on'); }, 500);
@@ -1256,7 +1266,7 @@
       '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '</span></div></div>' +
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
       '<div id="youAccount"></div>' +
-      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('auto_awesome', 'Luna’s look', 'Choose the friend in the corner of your room', 'mascot') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('move_to_inbox', 'Import from Apple Health or Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S) + ' entries brought in so far' : 'Sleep, weight and period days you already have', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
@@ -1382,9 +1392,18 @@
         return '<div class="shopitem' + (it.kind === 'home' ? ' home' : '') + '">' + (it.img ? '<img src="' + ART + it.img + '" alt="">' : '<span class="ph"><span class="ms">cottage</span></span>') + '<span><b>' + esc(it.name) + (it.slot && RW.SLOTS ? ' <em class="slotchip">' + esc(RW.SLOTS[it.slot]) + '</em>' : '') + '</b><small>' + esc(it.note) + '</small>' + extra + '</span><span class="cost"><b><span class="ms fill">favorite</span>' + it.cost + '</b>' + ctl + '</span></div>';
       }
   function shopList(items, l, home) { return '<div class="shop">' + items.map(function (it) { return shopItemHTML(it, l, home); }).join('') + '</div>'; }
+  var SHOP_OPEN = 9, SHOP_CLOSE = 22;
+  function shopOpenNow() { var h = new Date().getHours(); return (h >= SHOP_OPEN && h < SHOP_CLOSE) || (RW.tester && RW.tester()); }
   function openShop(tab) {
     if (tab) shopTab = tab;
     if (shopTab !== 'street' && !STORES[shopTab]) shopTab = 'street';
+    if (!shopOpenNow() || asleep()) {
+      openSheet('shop', 'Dream Street', asleep() ? 'The shops can wait until morning' : 'Open 9 am to 10 pm', 'storefront',
+        '<div class="closedcard"><span class="ms">nights_stay</span><b>' + (asleep() ? 'She is asleep.' : 'The shutters are down.') + '</b><p>' + (asleep() ? 'Tap the bed to wake her, then come back.' : 'Dream Street opens at 9 in the morning and closes at 10 at night. Your things are still yours; arranging the home works any time.') + '</p>' +
+        (RW.ledger().owned.some(function (id) { var it = RW.item(id); return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div>' : '') + '</div>');
+      body.addEventListener('click', function (e) { if (e.target.closest('#arrangeBtn')) enterArrange(); });
+      return;
+    }
     var l = RW.ledger(), home = currentHomeId(), st = STORES[shopTab], street = shopTab === 'street';
     var testing = RW.tester && RW.tester(); if (testing) l = Object.assign({}, l, { hearts: 999999 });
     var items = street ? [] : RW.SHOP.filter(function (it) { return it.kind === shopTab; });
@@ -1665,6 +1684,7 @@
   function setOrb(phase, text) { var o = $('#orb'), t = $('#orbText'); if (o) { o.className = 'orb ' + phase; if (text) t.textContent = text; } var ho = $('#hudOrb'); ho.className = 'hud-orb ' + phase; if (text) $('#hudLine').textContent = text; }
   function caption(text) { if (!text) return; $('#hudLine').textContent = text; var t = $('#orbText'); if (t) t.textContent = text; }
   function runSession(kind, minutes) {
+    if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (window.OvuPodcast) OvuPodcast.pause();
     session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: null, timer: null };
     hideSheet(); holo.classList.toggle('on', kind === 'erin'); hud.classList.add('on'); $('#hudTitle').textContent = kind === 'erin' ? 'With Erin' : 'Just breathe';
@@ -1829,7 +1849,7 @@
     $('#mindStart').addEventListener('click', function () { if (session) return; var sel = $('.session.on'); runSession(sel.dataset.kind, Number(sel.dataset.min)); });
     $('#mindAcu').addEventListener('click', openAcupressure);
     $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
-    $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { afterSave(ev); }, onClose: function () { renderDeck(); } }); });
+    $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { afterSave(ev); }, onClose: function () { renderDeck(); } }); });
   }
 
   /* ---------- acupressure: numbered points on your avatar, then a zoomed locator ---------- */
@@ -1961,6 +1981,7 @@
     if (selId) detail(selId);
   }
   function runPractice(id, vi) {
+    if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     var a = MF.byId(id); if (!a || practice) return; var v = a.variations[vi] || a.variations[0]; vi = a.variations.indexOf(v);
     if (window.OvuPodcast) OvuPodcast.pause();
     practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: null, timer: null, total: MF.totalSecs(v) };
@@ -2326,6 +2347,7 @@
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
     enterMeditation: enterMeditation, exitMeditation: exitMeditation, runSession: runSession, sessionOn: function () { return !!session; },
+    asleep: asleep, stopEverything: stopEverything, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
   };
 
