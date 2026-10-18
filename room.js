@@ -340,7 +340,7 @@
   }
   /* where an owned prop sits: the user's own arrangement, else the layout default, else the shop default */
   function propPosFor(it) { var pp = (S.state().propPos || {})[L.id] || {}; var o = pp[it.id]; var base = (L.props && (L.props[it.id] || (it.posAs && L.props[it.posAs]))) || it.pos; if (!base) return null; var w = base.w * (it.wk || 1); return o ? { x: o.x !== undefined ? o.x : base.x, y: o.y !== undefined ? o.y : base.y, w: w, flip: !!o.flip } : { x: base.x, y: base.y, w: w, flip: !!base.flip }; }
-  /* owned props from the reward shop, placed per layout */
+  /* owned props from Dream Street, placed per layout */
   function renderProps() {
     var l = RW.ledger(), wrap = $('#ownedProps'); wrap.innerHTML = '';
     RW.SHOP.forEach(function (it) {
@@ -1164,7 +1164,7 @@
     openSheet('wardrobe', 'Wardrobe', 'Pick an outfit for today', 'checkroom',
       '<div class="outfits">' + OUTFITS.map(function (o) { return '<button type="button" class="outfit' + (o.id === cur ? ' on' : '') + '" data-id="' + o.id + '"><img src="' + ART + 'avatar-' + o.id + '.webp" alt=""><b>' + esc(o.name) + '</b><small>' + esc(o.note) + '</small></button>'; }).join('') + '</div>' +
       '<div class="field"><label for="nameInput">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="nameInput" maxlength="24" placeholder="Your name" value="' + esc(S.profile().name || '') + '"><button class="btn soft" id="saveName" style="flex:0 0 auto">Save</button></div></div>' +
-      '<p class="help">Your avatar remembers her outfit on this device. Pyjamas go on automatically at bedtime. Pets and furniture live in the heart shop.</p>');
+      '<p class="help">Your avatar remembers her outfit on this device. Pyjamas go on automatically at bedtime. Pets and furniture come from Dream Street.</p>');
     body.addEventListener('click', function (e) { var o = e.target.closest('.outfit'); if (!o) return; setOutfit(o.dataset.id); chime('tap'); toast(OUTFITS.filter(function (x) { return x.id === o.dataset.id; })[0].name + ' it is!', 'checkroom'); });
     $('#saveName').addEventListener('click', function () { S.setProfile({ name: $('#nameInput').value.trim() }); updateGreeting(); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); });
   }
@@ -1226,7 +1226,7 @@
     openSheet('you', P.name ? P.name : 'You', 'Your room, your answers, your data', 'person',
       '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '</span></div></div>' +
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
-      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Heart shop', 'Pets, furniture and homes', 'shop') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Heart shop', 'Pets, furniture and homes', 'shop') + row('auto_awesome', 'Luna’s look', 'Choose the friend in the corner of your room', 'mascot') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('move_to_inbox', 'Import from Apple Health or Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S) + ' entries brought in so far' : 'Sleep, weight and period days you already have', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
@@ -1238,6 +1238,7 @@
       if (act === 'intro') { var A0 = JSON.parse(JSON.stringify(P)); Object.assign(A0, P.habits || {}); ['cycleLength', 'periodLength'].forEach(function (k) { if (A0[k] !== null && A0[k] !== undefined) A0[k] = String(A0[k]); }); openOnboarding(0, A0); return; }
       if (act === 'wardrobe') return openWardrobe();
       if (act === 'shop') return openShop();
+      if (act === 'mascot') return openMascot();
       if (act === 'clock') return openClock();
       if (act === 'plus') return openPlus();
       if (act === 'luna') { openLuna(); var ab = $('#aibox'); if (ab) { ab.open = true; setTimeout(function () { ab.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); } return; }
@@ -1316,17 +1317,36 @@
     toast(p.total ? 'Brought in ' + plural(c.sleep, 'night', 'nights') + ', ' + plural(c.weight, 'weigh-in', 'weigh-ins') + ' and ' + plural(c.period, 'period day', 'period days') + '.' : 'Nothing new to add from that file.', 'move_to_inbox');
   }
 
-  /* ---------- heart shop: pets, furniture and homes, plus arranging what you own ---------- */
-  var shopTab = 'all', arranging = false, dragProp = null;
-  var NEXT_HOMES = [{ icon: 'yard', name: 'Garden', note: 'Outdoor practices among the flowers: watering, morning light, a bench for tea.' }, { icon: 'groups', name: 'Activity hall', note: 'A gentle place for circles and community gatherings with Erin.' }];
+  /* ---------- Luna's look: pick the friend who sits in the corner ---------- */
+  function openMascot() {
+    var M = window.OvuMascot; if (!M) return; var cur = M.current();
+    openSheet('mascot', 'Luna’s look', 'Pick the friend who keeps you company. Luna stays Luna whichever face she wears.', 'auto_awesome',
+      '<div class="mascots">' + M.LIST.map(function (m) { return '<button type="button" data-mascot-pick="' + m.id + '" class="' + (m.id === cur.id ? 'on' : '') + '" aria-pressed="' + (m.id === cur.id) + '"><img src="' + M.src(m) + '" alt=""><b>' + esc(m.name) + '</b><small>' + esc(m.note) + '</small></button>'; }).join('') + '</div>');
+    body.addEventListener('click', function (e) { var b = e.target.closest('[data-mascot-pick]'); if (!b) return; chime('save'); var m = M.set(b.dataset.mascotPick); toast(m.name + ' will keep you company.', 'auto_awesome'); openMascot(); });
+  }
+  /* ---------- Dream Street: a pet shop, a furniture store and a property showroom, plus arranging what you own ---------- */
+  var shopTab = 'street', arranging = false, dragProp = null;
+  var STORES = {
+    pet: { title: 'Pet shop', tag: 'Adopt a friend', sub: 'One kitten and one puppy are home at a time; the others nap in your inventory until you swap.', icon: 'pets', img: 'shop-pets.webp', blurb: 'Kittens and puppies' },
+    furniture: { title: 'Furniture store', tag: 'Pieces for your room', sub: 'Lamps, seats and shelves. Pieces that share a spot swap with each other.', icon: 'chair', img: 'shop-furniture.webp', blurb: 'Lamps, seats and shelves' },
+    home: { title: 'Property showroom', tag: 'Dream houses to move into', sub: 'Visit any home first. Move in when you have the hearts.', icon: 'cottage', img: 'shop-homes.webp', blurb: 'Houses to visit and move into' }
+  };
+  var NEXT_HOMES = [{ icon: 'yard', name: 'Garden', note: 'Outdoor practices among the flowers: watering, morning light, a bench for tea.' }, { icon: 'groups', name: 'Community plaza', note: 'A fountain, lanterns and a tea stall where neighbours gather; friends join once accounts arrive.' }];
   function openShop(tab) {
     if (tab) shopTab = tab;
-    var l = RW.ledger(), home = currentHomeId();
-    var items = RW.SHOP.filter(function (it) { return shopTab === 'all' || (shopTab === 'pet' && it.kind === 'pet') || (shopTab === 'furniture' && it.kind === 'furniture') || (shopTab === 'home' && it.kind === 'home'); });
-    openSheet('shop', 'Heart shop', 'Hearts come from logging; spend them on your home', 'favorite',
-      '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + l.hearts + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, everyday practice 5 (+10 the first time), +5 from day three of a streak.</p></div>' +
-      '<div class="tabs" id="shopTabs">' + [['all', 'All'], ['pet', 'Pets'], ['furniture', 'Furniture'], ['home', 'Homes']].map(function (t) { return '<button type="button" data-tab="' + t[0] + '" class="' + (shopTab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>' +
-      '<div class="shop">' + items.map(function (it) {
+    if (shopTab !== 'street' && !STORES[shopTab]) shopTab = 'street';
+    var l = RW.ledger(), home = currentHomeId(), st = STORES[shopTab], street = shopTab === 'street';
+    var items = street ? [] : RW.SHOP.filter(function (it) { return it.kind === shopTab; });
+    var nav = street
+      ? '<div class="street">' + Object.keys(STORES).map(function (k) {
+          var s = STORES[k], all = RW.SHOP.filter(function (it) { return it.kind === k; }), mine = all.filter(function (it) { return l.owned.indexOf(it.id) > -1; }).length;
+          return '<button type="button" class="store" data-tab="' + k + '"><img src="' + ART + s.img + '" alt=""><span><b>' + s.title + '</b><small>' + s.blurb + ' · ' + all.length + (mine ? ' · ' + mine + ' yours' : '') + '</small></span><span class="ms">chevron_right</span></button>';
+        }).join('') + '</div>'
+      : '<div class="streetnav"><button type="button" class="back" data-tab="street"><span class="ms">arrow_back</span>Dream Street</button><span class="heartsmini"><span class="ms fill">favorite</span>' + l.hearts + '</span></div><p class="help">' + st.sub + '</p>';
+    openSheet('shop', street ? 'Dream Street' : st.title, street ? 'Three little shops. Hearts from logging pay for everything.' : st.tag, street ? 'storefront' : st.icon,
+      (street ? '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + l.hearts + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, everyday practice 5 (+10 the first time), +5 from day three of a streak.</p></div>' : '') +
+      nav +
+      (street ? '' : '<div class="shop">' + items.map(function (it) {
         var owned = l.owned.indexOf(it.id) > -1, placed = !!l.placed[it.id], ctl, extra = '';
         if (it.kind === 'home') {
           var pct = Math.min(100, Math.round(l.hearts / it.cost * 100));
@@ -1338,12 +1358,12 @@
           ctl = owned ? '<button type="button" class="btn soft" data-toggle="' + it.id + '">' + (placed ? 'Put away' : (slotBusy ? 'Swap in' : 'Place')) + '</button>' : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>' + (it.kind === 'pet' ? 'Adopt' : 'Buy') + '</button>';
         }
         return '<div class="shopitem' + (it.kind === 'home' ? ' home' : '') + '">' + (it.img ? '<img src="' + ART + it.img + '" alt="">' : '<span class="ph"><span class="ms">cottage</span></span>') + '<span><b>' + esc(it.name) + (it.slot && RW.SLOTS ? ' <em class="slotchip">' + esc(RW.SLOTS[it.slot]) + '</em>' : '') + '</b><small>' + esc(it.note) + '</small>' + extra + '</span><span class="cost"><b><span class="ms fill">favorite</span>' + it.cost + '</b>' + ctl + '</span></div>';
-      }).join('') + '</div>' +
-      (shopTab === 'all' || shopTab === 'home' ? '<div class="nexthomes"><b>Growing next</b>' + NEXT_HOMES.map(function (n) { return '<div><span class="ms">' + n.icon + '</span><span><b>' + esc(n.name) + '</b><small>' + esc(n.note) + '</small></span></div>'; }).join('') + '</div>' : '') +
+      }).join('') + '</div>') +
+      (shopTab === 'street' || shopTab === 'home' ? '<div class="nexthomes"><b>Growing next</b>' + NEXT_HOMES.map(function (n) { return '<div><span class="ms">' + n.icon + '</span><span><b>' + esc(n.name) + '</b><small>' + esc(n.note) + '</small></span></div>'; }).join('') + '</div>' : '') +
       (l.owned.some(function (id) { var it = RW.SHOP.filter(function (s) { return s.id === id; })[0]; return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div><p class="help">Drag pets and furniture anywhere; the bed, clock, calendar and the rest stay where they are so logging keeps working.</p>' : '') +
       '<div class="msg" id="shopMsg"></div>');
-    $('#shopTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) { chime('tap'); openShop(b.dataset.tab); } });
     body.addEventListener('click', function (e) {
+      var tb = e.target.closest('[data-tab]'); if (tb) { chime('tap'); openShop(tb.dataset.tab); return; }
       var b = e.target.closest('[data-buy]'), t = e.target.closest('[data-toggle]'), v = e.target.closest('[data-visit]'), hm = e.target.closest('[data-home]');
       try {
         if (b) {
@@ -1392,7 +1412,7 @@
     var pp = S.state().propPos || {}; pp[L.id] = pp[L.id] || {}; pp[L.id][d.id] = Object.assign({}, pp[L.id][d.id] || {}, { x: Math.round(parseFloat(d.el.style.left) * 10) / 10, y: Math.round(parseFloat(d.el.style.top) * 10) / 10 }); S.setState({ propPos: pp });
     hidePropCtl();
   }
-  /* turn (mirror) or put away a piece while arranging; put-away pieces wait in the heart shop */
+  /* turn (mirror) or put away a piece while arranging; put-away pieces wait in Dream Street */
   function hidePropCtl() { var c = $('#propCtl'); if (c) c.remove(); }
   function showPropCtl(el) {
     hidePropCtl(); var id = el.dataset.id, it = RW.SHOP.filter(function (x) { return x.id === id; })[0]; if (!it) return;
@@ -2237,6 +2257,7 @@
     setOutfit(S.profile().outfit || 'base', true);
     avatar.classList.add('idle');
     if (S.state().sleeping) enterNight(false);
+    if (window.OvuMascot) OvuMascot.apply();
     updateGreeting(); renderDeck(); renderProps(); applySky();
     setInterval(function () { applySky(); if (window.OvuPets) renderProps(); }, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });
     FD.load().catch(function () { });

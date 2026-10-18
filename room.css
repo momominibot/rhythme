@@ -530,6 +530,27 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .heartbar .big{font-family:var(--serif);font-size:30px;font-weight:600;color:#c0507c;display:flex;align-items:center;gap:6px}
 .heartbar .big .ms{font-size:28px;color:#e26a93}
 .heartbar p{font:600 11.5px var(--sans);color:var(--rm-ink-2);line-height:1.4}
+/* Luna's look picker */
+.mascots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.mascots button{border:2px solid transparent;background:linear-gradient(160deg,#fff,#f6effc);border-radius:18px;padding:10px 8px 9px;text-align:center;cursor:pointer;font:inherit;color:inherit;box-shadow:0 4px 14px rgba(90,66,116,.08);display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.mascots button.on{border-color:var(--rm-plum);box-shadow:0 6px 18px rgba(117,86,196,.22),0 0 0 4px rgba(214,196,255,.35)}
+.mascots img{width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(90,66,116,.18))}
+.mascots b{display:block;font:800 12px/1.2 var(--sans);color:var(--rm-plum)}
+.mascots small{display:block;font:600 10px/1.3 var(--sans);color:var(--rm-ink-3)}
+/* Dream Street: three storefronts, then each store's own list */
+.street{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.street .store{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid rgba(255,255,255,.95);background:linear-gradient(135deg,#fff,#f7f1fc);border-radius:20px;padding:10px 12px;box-shadow:0 6px 18px rgba(90,66,116,.10),0 0 0 1px rgba(214,196,255,.3);cursor:pointer;font:inherit;color:inherit}
+.street .store img{width:86px;height:86px;object-fit:contain;flex:none;filter:drop-shadow(0 6px 8px rgba(90,66,116,.18))}
+.street .store>span:not(.ms){flex:1;min-width:0}
+.street .store b{display:block;font-family:var(--serif);font-weight:600;font-size:19px;color:var(--rm-plum);line-height:1.15}
+.street .store small{display:block;font:600 11.5px/1.4 var(--sans);color:var(--rm-ink-3);margin-top:3px}
+.street .store .ms{color:var(--rm-mauve);flex:none}
+.streetnav{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.streetnav .back{border:none;background:var(--rm-paper-2);border-radius:999px;padding:8px 12px 8px 8px;font:800 12px var(--sans);color:var(--rm-plum);display:flex;align-items:center;gap:4px;cursor:pointer}
+.streetnav .back .ms{font-size:18px}
+.heartsmini{display:flex;align-items:center;gap:4px;font:800 13px var(--sans);color:#c0507c}
+.heartsmini .ms{font-size:16px;color:#e26a93}
+.streetnav+.help{margin:8px 0 2px}
 
 /* ---------- desktop (Learn) ---------- */
 .desk{border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(60,40,90,.25);background:#2d2147;margin-top:6px}

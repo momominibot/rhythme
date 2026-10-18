@@ -13,7 +13,7 @@ function fresh(todayIso) {
   w.window = w; w.self = w; w.globalThis = w;
   var ctx = vm.createContext(w);
   w.Uint8Array = Uint8Array; w.ArrayBuffer = ArrayBuffer; w.isFinite = isFinite; w.isNaN = isNaN; w.Blob = Blob; w.File = File;
-  ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
+  ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
   return w;
 }
@@ -381,6 +381,18 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var d = A.dailySummary(today);
   check('sleep gives one bullet with the bed icon', d.items.length >= 1 && d.items[0].icon === 'bedtime');
   check('no reflection or meal bullets when none were logged', !d.items.some(function (it) { return /reflection|meal/.test(it.text); }), JSON.stringify(d.items));
+})();
+
+
+(function lunaLook() {
+  console.log("Luna's look (ovu-mascot.js)");
+  var w = fresh(), M = w.OvuMascot, ids = M.LIST.map(function (m) { return m.id; });
+  check('nine looks with unique ids', M.LIST.length === 9 && ids.filter(function (id, i) { return ids.indexOf(id) === i; }).length === 9, ids.join(','));
+  check('every look has its sprite on disk', M.LIST.every(function (m) { return fs.existsSync(path.join(root, 'assets/room/dream', m.img)) && (!m.head || fs.existsSync(path.join(root, 'assets/room/dream', m.head))); }));
+  check('the moon rabbit is the default', M.current().id === 'rabbit', M.current().id);
+  check('choosing the kitten sticks in the profile', M.set('kitten').id === 'kitten' && w.OvuStore.profile().mascot === 'kitten' && M.current().id === 'kitten');
+  check('an unknown look is ignored', M.set('dragon').id === 'kitten');
+  check('the small button uses the head badge, the welcome the full sprite', /orb-kitten-head\.webp$/.test(M.src(null, true)) && /orb-kitten\.webp$/.test(M.src(null, false)));
 })();
 
 (function healthImportParsers() {
