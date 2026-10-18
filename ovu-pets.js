@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
   var S = root.OvuStore;
-  var NAMES = { cat: 'Mochi', dog: 'Biscuit', mewmew: 'Mewmew' };
+  var NAMES = { cat: 'Mochi', catgrey: 'Pebble', catblack: 'Sesame', catginger: 'Mango', dog: 'Peach', shiba: 'Hana', mewmew: 'Mewmew' };
   var FLOOR = 35, DECAY_FULL = 6, DECAY_FUN = 5, POOP_AFTER = 90, MAX_POOPS = 2, FULL_ENOUGH = 88, FUN_ENOUGH = 92;
   function all() { return Object.assign({}, S.state().pets || {}); }
   function iso(t) { return new Date(t).toISOString(); }

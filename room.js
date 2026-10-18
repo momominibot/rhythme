@@ -339,7 +339,7 @@
     camControls();
   }
   /* where an owned prop sits: the user's own arrangement, else the layout default, else the shop default */
-  function propPosFor(it) { var pp = (S.state().propPos || {})[L.id] || {}; var o = pp[it.id]; var base = (L.props && L.props[it.id]) || it.pos; if (!base) return null; return o ? { x: o.x !== undefined ? o.x : base.x, y: o.y !== undefined ? o.y : base.y, w: base.w, flip: !!o.flip } : base; }
+  function propPosFor(it) { var pp = (S.state().propPos || {})[L.id] || {}; var o = pp[it.id]; var base = (L.props && (L.props[it.id] || (it.posAs && L.props[it.posAs]))) || it.pos; if (!base) return null; var w = base.w * (it.wk || 1); return o ? { x: o.x !== undefined ? o.x : base.x, y: o.y !== undefined ? o.y : base.y, w: w, flip: !!o.flip } : { x: base.x, y: base.y, w: w, flip: !!base.flip }; }
   /* owned props from the reward shop, placed per layout */
   function renderProps() {
     var l = RW.ledger(), wrap = $('#ownedProps'); wrap.innerHTML = '';

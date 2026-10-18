@@ -288,6 +288,19 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('one weight note per day, the latest wins', S.list('weight').length === 1 && S.list('weight')[0].data.kg === 54.1);
 })();
 
+(function petOptions() {
+  console.log('pet options: kittens and puppies swap within their slot, Mewmew stays');
+  var w = fresh(), RW = w.OvuRewards, P = w.OvuPets;
+  RW.grant(2000, 'welcome'); RW.buy('cat'); RW.buy('dog'); RW.buy('mewmew'); RW.buy('catgrey');
+  var l = RW.ledger();
+  check('buying Pebble puts Mochi away and keeps the puppy and Mewmew out', l.placed.catgrey && !l.placed.cat && l.placed.dog && l.placed.mewmew, JSON.stringify(l.placed));
+  RW.buy('shiba'); RW.toggle('cat'); l = RW.ledger();
+  check('Hana swaps with Peach, and bringing Mochi back puts Pebble away', l.placed.shiba && !l.placed.dog && l.placed.cat && !l.placed.catgrey, JSON.stringify(l.placed));
+  var opts = RW.SHOP.filter(function (s) { return s.slot === 'cat'; }).map(function (s) { return s.id; });
+  check('four kittens and two puppies to choose from, all named', opts.join() === 'cat,catgrey,catblack,catginger' && RW.SHOP.filter(function (s) { return s.slot === 'dog'; }).length === 2 && ['catgrey', 'catblack', 'catginger', 'shiba', 'dog'].every(function (id) { return !!P.NAMES[id]; }));
+  check('new pets borrow the original pet spot', RW.SHOP.filter(function (s) { return s.posAs; }).every(function (s) { return s.posAs === 'cat' || s.posAs === 'dog'; }));
+})();
+
 (function productGroups() {
   console.log('packaged search: one row per product, one chip per pack size');
   var w = fresh(), FD = w.OvuFood;

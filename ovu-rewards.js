@@ -5,8 +5,14 @@
   var S = root.OvuStore;
   var RULES = { sleep: 10, period: 10, symptom: 8, food: 6, reflection: 5, mindfulness: 0 };
   var SHOP = [
-    { id: 'cat', name: 'Mochi the kitten', cost: 150, kind: 'pet', note: 'Curls up by the bed and purrs when you log.', img: 'prop-cat.webp', pos: { x: 55.4, y: 81, w: 8 } },
-    { id: 'dog', name: 'Biscuit the puppy', cost: 220, kind: 'pet', note: 'Waits for you on the floor with a wagging tail.', img: 'prop-dog.webp', pos: { x: 22.9, y: 68.5, w: 8.5 } },
+    /* pets in a slot are options: one kitten and one puppy show at a time, the rest wait in your inventory.
+     * posAs borrows the layout spot of the original pet; wk keeps each sprite the same height as the original. */
+    { id: 'cat', name: 'Mochi the kitten', cost: 150, kind: 'pet', slot: 'cat', note: 'Cream and peach, curls up by the bed and purrs when you log.', img: 'prop-cat.webp', pos: { x: 55.4, y: 81, w: 8 } },
+    { id: 'catgrey', name: 'Pebble the British shorthair', cost: 150, kind: 'pet', slot: 'cat', posAs: 'cat', wk: 0.99, note: 'Round, grey and very serious about naps.', img: 'prop-cat-grey.webp', pos: { x: 55.4, y: 81, w: 8 } },
+    { id: 'catblack', name: 'Sesame the black kitten', cost: 150, kind: 'pet', slot: 'cat', posAs: 'cat', wk: 1.03, note: 'Golden eyes and a little moon charm. Happiest at night.', img: 'prop-cat-black.webp', pos: { x: 55.4, y: 81, w: 8 } },
+    { id: 'catginger', name: 'Mango the ginger tabby', cost: 150, kind: 'pet', slot: 'cat', posAs: 'cat', wk: 1.17, note: 'Orange stripes, a lavender collar and a jingly bell.', img: 'prop-cat-ginger.webp', pos: { x: 55.4, y: 81, w: 8 } },
+    { id: 'dog', name: 'Peach the corgi', cost: 220, kind: 'pet', slot: 'dog', wk: 1.02, note: 'Big ears, short legs and a lilac bow. Waits for you with a wiggly tail.', img: 'prop-corgi.webp', pos: { x: 22.9, y: 68.5, w: 8.5 } },
+    { id: 'shiba', name: 'Hana the shiba', cost: 220, kind: 'pet', slot: 'dog', posAs: 'dog', wk: 1.13, note: 'Honey fur, a curly tail and a lavender bandana.', img: 'prop-shiba.webp', pos: { x: 22.9, y: 68.5, w: 8.5 } },
     { id: 'plant', name: 'Fairy-light monstera', cost: 60, kind: 'furniture', note: 'A glow-wrapped plant for the corner.', img: 'prop-plant.webp', slot: 'corner', pos: { x: 95.5, y: 71, w: 8 } },
     { id: 'bookshelf', name: 'Arched bookshelf', cost: 100, kind: 'furniture', note: 'Pastel books, a plush bunny and a tiny candle. Swaps with the monstera.', img: 'prop-bookshelf.webp', slot: 'corner', pos: { x: 94.5, y: 71.5, w: 8.5 } },
     { id: 'lamp', name: 'Crescent floor lamp', cost: 80, kind: 'furniture', note: 'Warm moonlight beside the wardrobe.', img: 'prop-lamp.webp', slot: 'lamp', pos: { x: 85.7, y: 72, w: 6.2 } },
@@ -47,7 +53,7 @@
   function grant(points, type) { var l = ledger(); points = Math.max(0, Math.round(points)); if (!points) return l; if ((l.log || []).some(function (x) { return x.type === type && x.gift; })) return l; l.hearts += points; l.earned += points; l.log.unshift({ at: new Date().toISOString(), type: type, points: points, bonus: 0, gift: true }); write(l); return l; }
   function toggle(id, on) { var l = ledger(); if (l.owned.indexOf(id) < 0) return false; l.placed[id] = !l.placed[id]; if (l.placed[id]) swapOut(l, SHOP.filter(function (s) { return s.id === id; })[0]); write(l); return l.placed[id]; }
   /* One piece per slot (seat, lamp, corner): placing one puts the others in its slot away. */
-  var SLOTS = { seat: 'Seat on the rug', lamp: 'Lamp by the wardrobe', corner: 'Corner by the wardrobe' };
+  var SLOTS = { seat: 'Seat on the rug', lamp: 'Lamp by the wardrobe', corner: 'Corner by the wardrobe', cat: 'One kitten at a time', dog: 'One puppy at a time' };
   function swapOut(l, item) { var out = []; if (!item || !item.slot) return out; SHOP.forEach(function (o) { if (o.slot === item.slot && o.id !== item.id && l.placed[o.id]) { l.placed[o.id] = false; out.push(o.name); } }); return out; }
   /* Pet care: a few hearts for kindness, capped per pet per day so it never becomes a chore. */
   var CARE = { feed: 2, play: 2, clean: 1, cuddle: 1 }, CARE_CAP = 10;
