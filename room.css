@@ -1125,3 +1125,9 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .plushero img{width:60px;flex:none;filter:drop-shadow(0 6px 8px rgba(90,66,116,.22));margin-bottom:-4px}
 .plushero b{display:block;font-family:var(--serif);font-weight:600;font-size:18px;color:var(--rm-plum);line-height:1.2}
 .plushero span{display:block;font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}
+
+.c-choices{display:flex;flex-direction:column;gap:8px}
+.c-lbl{font:800 10.5px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)}
+.c-opt.c-req{border-style:solid;border-color:rgba(122,92,150,.45);background:rgba(255,255,255,.7)}
+.consent #cAgree:disabled{opacity:.5;cursor:not-allowed}
+.bub .jit{display:block;margin-top:6px;font-size:12px;color:var(--rm-ink-3);line-height:1.45}

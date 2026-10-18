@@ -104,19 +104,24 @@
   </div>
   <div class="welcome consent" id="consent" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
     <div class="c-scroll">
-      <div class="c-head"><img src="assets/room/dream/prop-mewmew-v3.webp" alt=""><div><div class="w-brand">RHYTHME</div><h2 id="cTitle">Before your room opens</h2><p>What Rhythme keeps, why, and how we look after it.</p></div></div>
+      <div class="c-head"><img src="assets/room/dream/prop-mewmew-v3.webp" alt=""><div><div class="w-brand">RHYTHME</div><h2 id="cTitle">Before your room opens</h2><p>What Rhythme keeps, where it goes, and the choices that stay yours.</p></div></div>
       <ul class="c-list">
-        <li><span class="ms">edit_note</span><div><b>What we collect</b><span>What you log: periods, symptoms, sleep, meals and food photos, mood and calm minutes, plus your getting-to-know-you answers.</span></div></li>
-        <li><span class="ms">auto_awesome</span><div><b>Why we collect it</b><span>To predict your cycle, notice patterns over time, and let Luna understand your notes and food photos and write your journal readings.</span></div></li>
-        <li><span class="ms">cloud_sync</span><div><b>Where it goes</b><span>Your diary is saved on this phone. When Luna reads a note or a photo, that piece goes to Rhythme’s service without your name, and her answer comes straight back.</span></div></li>
-        <li><span class="ms">lock</span><div><b>How we look after it</b><span>We never sell your data or use it for ads, and nobody at Rhythme browses your diary.</span></div></li>
-        <li><span class="ms">medical_information</span><div><b>A friend, not a doctor</b><span>Rhythme helps you notice patterns. It does not diagnose and never replaces care. In an emergency, call 995.</span></div></li>
-        <li><span class="ms">tune</span><div><b>Always your choice</b><span>Switch Luna’s reading off in her settings, and export or delete your records any time from You.</span></div></li>
+        <li><span class="ms">edit_note</span><div><b>What you log</b><span>Periods, symptoms, pain, mood, sleep, meals and food photos, weight, calm minutes, and your getting-to-know-you answers, which can include pregnancy, hormones, medicines and health history.</span></div></li>
+        <li><span class="ms">smartphone</span><div><b>Kept on this phone</b><span>Today your diary stays in this browser. There is no account and no Rhythme cloud yet, so clearing the browser or losing the phone can lose it. You can export a copy any time from You.</span></div></li>
+        <li><span class="ms">auto_awesome</span><div><b>Luna’s AI help is your choice</b><span>It stays off unless you turn it on. When it is on, a note Luna cannot read, a food photo, or a 7 or 28 day summary goes through Rhythme’s server to a third-party AI service in China. No name is attached, but what you write can still say a lot about your health.</span></div></li>
+        <li><span class="ms">lock</span><div><b>What we will not do</b><span>We do not sell your data or use it for ads, and Rhythme does not keep what Luna reads for you.</span></div></li>
+        <li><span class="ms">dns</span><div><b>Ordinary service records</b><span>Our web host keeps standard connection logs and fonts load from Google. Using a Rhythme Plus code records that use with a scrambled network address, to stop misuse. There are no analytics and no advertising.</span></div></li>
+        <li><span class="ms">tune</span><div><b>You stay in control</b><span>Turn Luna’s help on or off, export your diary, or delete everything on this phone, any time from You. Before any cloud backup starts, we will show a new notice and ask you again.</span></div></li>
+        <li><span class="ms">medical_information</span><div><b>A friend, not a doctor</b><span>Predictions and Luna can be wrong. Rhythme does not diagnose, treat, or work as contraception. In an emergency in Singapore, call 995.</span></div></li>
       </ul>
-      <label class="c-opt"><input type="checkbox" id="cImprove" checked><span><b>Help make Rhythme better</b><small>Share de-identified patterns, never your name or the words in your diary, so predictions improve for everyone. You can change this in Luna’s settings.</small></span></label>
-      <p class="c-kid"><span class="ms">family_restroom</span>Under 16? Please read this with a parent or guardian.</p>
-      <button class="btn primary" id="cAgree" type="button"><span class="ms">favorite</span>I agree, open my room</button>
-      <p class="c-small">By tapping, you agree to the <a href="privacy.html">privacy notes</a> and <a href="terms.html">terms</a>. Rhythme needs your OK to work, so the room stays closed until then. Nothing has been saved yet.</p>
+      <div class="c-choices">
+        <span class="c-lbl">Your choices (both optional, both off until you tick them)</span>
+        <label class="c-opt"><input type="checkbox" id="cLuna"><span><b>Turn on Luna’s AI help</b><small>For notes she cannot read, food photos and journal readings, sent to the AI service in China as described above. You can change this any time in Luna’s settings.</small></span></label>
+        <label class="c-opt"><input type="checkbox" id="cImprove"><span><b>Help make Rhythme better</b><small>When we add this, de-identified patterns, never your name, notes, photos or diary text, would help improve predictions. Nothing is shared today, and we will tell you before it starts. Research would always be asked about separately.</small></span></label>
+      </div>
+      <label class="c-opt c-req"><input type="checkbox" id="cAge"><span><b>I am 13 or older</b><small>Under 13? A parent or guardian needs to set Rhythme up with you and agree for you. 13 to 16? Please go through this with a parent or guardian.</small></span></label>
+      <button class="btn primary" id="cAgree" type="button" disabled><span class="ms">favorite</span>I agree, open my room</button>
+      <p class="c-small">By tapping, you agree to the <a href="privacy.html">privacy notes</a> and <a href="terms.html">terms</a>. Optional features stay off unless you tick them. No diary entries have been saved yet. Notice version 2, 18 October 2026. If what we collect or where it goes changes, we will ask you again.</p>
     </div>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
