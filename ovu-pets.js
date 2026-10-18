@@ -60,6 +60,16 @@
     shiba: { head: { x: 0.52, y: 0.08, w: 0.46 }, neck: { x: 0.50, y: 0.66, w: 0.52 } },
     mewmew: { head: { x: 0.50, y: 0.10, w: 0.46 }, neck: { x: 0.50, y: 0.62, w: 0.50 } }
   };
+  /* each pet rendered wearing each piece (tools/art, reference edits of the pet sprite), same width and feet as the plain sprite */
+  var WORN_SPRITES = {
+    cat: { 'acc-bow': 'prop-cat--bow.webp', 'acc-hat': 'prop-cat--hat.webp', 'acc-bandana': 'prop-cat--bandana.webp', 'acc-charm': 'prop-cat--charm.webp' },
+    catblack: { 'acc-bow': 'prop-cat-black--bow.webp', 'acc-hat': 'prop-cat-black--hat.webp', 'acc-bandana': 'prop-cat-black--bandana.webp', 'acc-charm': 'prop-cat-black--charm.webp' },
+    catginger: { 'acc-bow': 'prop-cat-ginger--bow.webp', 'acc-hat': 'prop-cat-ginger--hat.webp', 'acc-bandana': 'prop-cat-ginger--bandana.webp', 'acc-charm': 'prop-cat-ginger--charm.webp' },
+    dog: { 'acc-bow': 'prop-corgi--bow.webp', 'acc-hat': 'prop-corgi--hat.webp', 'acc-bandana': 'prop-corgi--bandana.webp', 'acc-charm': 'prop-corgi--charm.webp' },
+    shiba: { 'acc-bow': 'prop-shiba--bow.webp', 'acc-hat': 'prop-shiba--hat.webp', 'acc-bandana': 'prop-shiba--bandana.webp', 'acc-charm': 'prop-shiba--charm.webp' },
+    mewmew: { 'acc-bow': 'prop-mewmew-v3--bow.webp', 'acc-hat': 'prop-mewmew-v3--hat.webp', 'acc-bandana': 'prop-mewmew-v3--bandana.webp', 'acc-charm': 'prop-mewmew-v3--charm.webp' }
+  };
+  function wornSprite(id, accId) { var w = WORN_SPRITES[id]; return w && w[accId] ? w[accId] : null; }
   function wearSpot(id, where) { var w = WEAR[id] || WEAR.cat; return w[where] || w.head; }
   function cuddle(id, t) { t = now(t); var p = current(id, t); p.fun = Math.min(100, p.fun + 8); p.cuddledAt = iso(t); return { ok: true, pet: save(id, p) }; }
   function clean(id, poopId, t) {
@@ -78,5 +88,5 @@
   }
   /* 2 to 5 little hearts: the floor keeps it from ever looking empty. */
   function pips(v) { return Math.max(2, Math.min(5, Math.round(v / 20))); }
-  root.OvuPets = { NAMES: NAMES, current: current, tick: tick, feed: feed, treat: treat, play: play, cuddle: cuddle, clean: clean, mood: mood, pips: pips, wearSpot: wearSpot, WEAR: WEAR, FLOOR: FLOOR, POOP_AFTER: POOP_AFTER, MAX_POOPS: MAX_POOPS };
+  root.OvuPets = { NAMES: NAMES, current: current, tick: tick, feed: feed, treat: treat, play: play, cuddle: cuddle, clean: clean, mood: mood, pips: pips, wearSpot: wearSpot, WEAR: WEAR, wornSprite: wornSprite, WORN_SPRITES: WORN_SPRITES, FLOOR: FLOOR, POOP_AFTER: POOP_AFTER, MAX_POOPS: MAX_POOPS };
 })(window);

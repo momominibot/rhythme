@@ -1,0 +1,41 @@
+/* Night on every page. ovu-sky.js sets html[data-sky]; after sunset the palette turns deep lilac and the
+ * white surfaces follow. The room scene, the welcome and the consent keep their own light palette because
+ * their backgrounds are pictures and gradients of their own. */
+html[data-sky="night"]{
+  --rm-bg-1:#120c22;--rm-bg-2:#2a1d44;
+  --rm-paper:#1f1733;--rm-paper-2:#2a2044;--rm-card:#2b2147;
+  --rm-ink:#f1e9fb;--rm-ink-2:#cdbfe4;--rm-ink-3:#a596c0;
+  --rm-mauve:#cbb2ec;--rm-lilac:#5b477f;--rm-lilac-2:#3b2e5a;--rm-blush:#7c4e6b;--rm-blush-2:#4d3252;--rm-cream:#3a2d52;
+  --rm-plum:#ebe0fb;--rm-gold:#f3d49b;--rm-mint:#4f7f6a;--rm-ok:#86c7a6;--rm-warn:#e2bc74;--rm-high:#e58a94;
+  --rm-shadow:0 10px 30px rgba(0,0,0,.35);
+  --paper:#1f1733;--paper-deep:#2a2044;--card:#2b2147;--card-solid:#2b2147;--sunken:#2a2044;
+  --ink:#f1e9fb;--cocoa:#f1e9fb;--taupe:#cdbfe4;--faded:#a596c0;--mauve:#cbb2ec;
+  --line:rgba(255,255,255,.1);--line-soft:rgba(255,255,255,.06);--rh-plum:#ebe0fb;--rh-lilac:#5b477f;--rh-lilac-2:#3b2e5a;
+  color-scheme:dark;
+}
+html[data-sky="night"] body{background:radial-gradient(120% 90% at 50% 0%,#2a1d44 0%,#120c22 65%)}
+html[data-sky="night"] :is(.icon-btn,.chip,.bubble,.sheet-close,.input,.chipbtn,.moons button,.faces button,.cal-nav,.cal-day,.day-editor,.stat,.entry,.empty,.outfit,.topic,.vid,.hint,.ibtn,.guide,.foodmodes button,.result,.picker,.item,.session,.hud,.perm,.confirm,.quick .qchip,.fl-meal,.shopitem,.menubar,.dock button,.finder,.acucard,.pick,.visitbar,.rem,.editcard,.wallpanel,.aculist button,.locator,.act,.actcard,.nexthomes,.thought,.top .back,.top .act,.kpi,.badge,.ins .pat,.ins .sec,.covbar,.learning-back,.shelf,.podshelf,.erin,.c-list li,.c-opt,.tabs button.on){background:var(--rm-card);color:var(--rm-ink)}
+html[data-sky="night"] .card{background:var(--rm-card)!important;border-color:rgba(255,255,255,.08)!important;box-shadow:0 10px 30px rgba(0,0,0,.3)!important}
+html[data-sky="night"] :is(.street .store,.mascots button,.heartbar){background:linear-gradient(135deg,#2f2550,#261d42);border-color:rgba(255,255,255,.08)}
+html[data-sky="night"] :is(.c-list li,.c-opt,.shopitem,.mascots button,.street .store){box-shadow:0 6px 18px rgba(0,0,0,.28)}
+html[data-sky="night"] .nav{background:rgba(31,23,51,.94);border-top:1px solid rgba(255,255,255,.06);box-shadow:none}
+html[data-sky="night"] .nav a.on{background:rgba(255,255,255,.08)}
+html[data-sky="night"] .btn.ghost{border-color:rgba(255,255,255,.18)}
+html[data-sky="night"] .top{background:linear-gradient(var(--rm-paper) 70%,rgba(31,23,51,0))}
+html[data-sky="night"] :is(input,select,textarea){background:var(--rm-card);color:var(--rm-ink);border-color:rgba(255,255,255,.14)}
+html[data-sky="night"] .tabs{background:rgba(255,255,255,.06)}
+html[data-sky="night"] .sechead{border-top-color:rgba(255,255,255,.12)}
+html[data-sky="night"] :is(.tone-good,.tone-note,.tone-high){filter:saturate(.9)}
+/* picture-backed surfaces stay light */
+html[data-sky="night"] :is(.scene,.welcome){
+  --rm-paper:#f8f3fb;--rm-paper-2:#f1e9f7;--rm-card:#ffffff;--rm-ink:#3b2d52;--rm-ink-2:#6f5f8c;--rm-ink-3:#9a8cb3;
+  --rm-mauve:#7a5c96;--rm-lilac:#c9b6e6;--rm-lilac-2:#e7dcf5;--rm-blush:#f6c9d6;--rm-blush-2:#fbe3ea;--rm-cream:#fff6ec;--rm-plum:#5a4274;
+  --rm-shadow:0 10px 30px rgba(90,66,116,.18);color-scheme:light;
+}
+html[data-sky="night"] .welcome :is(.c-list li,.c-opt){background:rgba(255,255,255,.62);color:var(--rm-ink)}
+html[data-sky="night"] .scene :is(.chip,.icon-btn,.bubble,.hud,.visitbar,.thought,.menubar,.dock button,.hint,.perm,.confirm){background:rgba(255,255,255,.86);color:var(--rm-ink)}
+html[data-sky="night"] .yrow{background:var(--rm-card);border-color:rgba(255,255,255,.08)}
+html[data-sky="night"] .yrow>.ms:first-child{background:linear-gradient(145deg,#4b3560,#3a2d5a)}
+html[data-sky="night"] .top{background:rgba(31,23,51,.94)!important;border-bottom-color:rgba(255,255,255,.06)!important;box-shadow:none}
+html[data-sky="night"] .top .t-icon{background:rgba(255,255,255,.08)!important;border-color:rgba(255,255,255,.1)!important;color:var(--rm-ink)!important}
+html[data-sky="night"] .sheet-head .ico{background:rgba(255,255,255,.08)}
