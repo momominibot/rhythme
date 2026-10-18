@@ -291,13 +291,17 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
 (function petOptions() {
   console.log('pet options: kittens and puppies swap within their slot, Mewmew stays');
   var w = fresh(), RW = w.OvuRewards, P = w.OvuPets;
-  RW.grant(2000, 'welcome'); RW.buy('cat'); RW.buy('dog'); RW.buy('mewmew'); RW.buy('catgrey');
+  RW.grant(2000, 'welcome'); RW.buy('cat'); RW.buy('dog'); RW.buy('mewmew'); RW.buy('catblack');
   var l = RW.ledger();
-  check('buying Pebble puts Mochi away and keeps the puppy and Mewmew out', l.placed.catgrey && !l.placed.cat && l.placed.dog && l.placed.mewmew, JSON.stringify(l.placed));
+  check('buying Sesame puts Mochi away and keeps the puppy and Mewmew out', l.placed.catblack && !l.placed.cat && l.placed.dog && l.placed.mewmew, JSON.stringify(l.placed));
   RW.buy('shiba'); RW.toggle('cat'); l = RW.ledger();
-  check('Hana swaps with Peach, and bringing Mochi back puts Pebble away', l.placed.shiba && !l.placed.dog && l.placed.cat && !l.placed.catgrey, JSON.stringify(l.placed));
+  check('Hana swaps with Peach, and bringing Mochi back puts Sesame away', l.placed.shiba && !l.placed.dog && l.placed.cat && !l.placed.catblack, JSON.stringify(l.placed));
   var opts = RW.SHOP.filter(function (s) { return s.slot === 'cat'; }).map(function (s) { return s.id; });
-  check('four kittens and two puppies to choose from, all named', opts.join() === 'cat,catgrey,catblack,catginger' && RW.SHOP.filter(function (s) { return s.slot === 'dog'; }).length === 2 && ['catgrey', 'catblack', 'catginger', 'shiba', 'dog'].every(function (id) { return !!P.NAMES[id]; }));
+  check('three kittens and two puppies to choose from, all named', opts.join() === 'cat,catblack,catginger' && RW.SHOP.filter(function (s) { return s.slot === 'dog'; }).length === 2 && ['catblack', 'catginger', 'shiba', 'dog'].every(function (id) { return !!P.NAMES[id]; }));
+  var w2 = fresh(), RW2 = w2.OvuRewards, S2 = w2.OvuStore;
+  RW2.grant(400, 'welcome'); RW2.buy('cat'); var l2 = RW2.ledger(); l2.owned.push('catgrey'); l2.placed.catgrey = true; l2.placed.cat = false; S2.setState({ rewards: l2 });
+  var l3 = RW2.ledger();
+  check('a removed kitten is refunded once and Mochi comes back out', l3.owned.indexOf('catgrey') < 0 && l3.hearts === 400 && l3.placed.cat && RW2.ledger().hearts === 400, JSON.stringify({ h: l3.hearts, p: l3.placed }));
   check('new pets borrow the original pet spot', RW.SHOP.filter(function (s) { return s.posAs; }).every(function (s) { return s.posAs === 'cat' || s.posAs === 'dog'; }));
 })();
 

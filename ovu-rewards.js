@@ -8,7 +8,6 @@
     /* pets in a slot are options: one kitten and one puppy show at a time, the rest wait in your inventory.
      * posAs borrows the layout spot of the original pet; wk keeps each sprite the same height as the original. */
     { id: 'cat', name: 'Mochi the kitten', cost: 150, kind: 'pet', slot: 'cat', note: 'Cream and peach, curls up by the bed and purrs when you log.', img: 'prop-cat.webp', pos: { x: 55.4, y: 81, w: 8 } },
-    { id: 'catgrey', name: 'Pebble the British shorthair', cost: 150, kind: 'pet', slot: 'cat', posAs: 'cat', wk: 0.99, note: 'Round, grey and very serious about naps.', img: 'prop-cat-grey.webp', pos: { x: 55.4, y: 81, w: 8 } },
     { id: 'catblack', name: 'Sesame the black kitten', cost: 150, kind: 'pet', slot: 'cat', posAs: 'cat', wk: 1.03, note: 'Golden eyes and a little moon charm. Happiest at night.', img: 'prop-cat-black.webp', pos: { x: 55.4, y: 81, w: 8 } },
     { id: 'catginger', name: 'Mango the ginger tabby', cost: 150, kind: 'pet', slot: 'cat', posAs: 'cat', wk: 1.17, note: 'Orange stripes, a lavender collar and a jingly bell.', img: 'prop-cat-ginger.webp', pos: { x: 55.4, y: 81, w: 8 } },
     { id: 'dog', name: 'Peach the corgi', cost: 220, kind: 'pet', slot: 'dog', wk: 1.02, note: 'Big ears, short legs and a lilac bow. Waits for you with a wiggly tail.', img: 'prop-corgi.webp', pos: { x: 22.9, y: 68.5, w: 8.5 } },
@@ -27,7 +26,16 @@
     { id: 'bathhouse', name: 'Dream house with a bathtub', cost: 2500, kind: 'home', note: 'The cottage with a bubble bath upstairs beside your bedroom: tap the tub for a mindful soak. Visit first, move in when you have the hearts.', img: 'house-bath-thumb.webp' },
     { id: 'familyhome', name: 'Family dream home', cost: 4000, kind: 'home', note: 'A pastel kitchen for your food diary, a comfy living room with a big pink sofa, and a bubble bath upstairs. Visit first, move in when you have the hearts.', img: 'house-family-thumb.webp' }
   ];
-  function ledger() { var st = S.state(); return st.rewards || { hearts: 0, earned: 0, log: [], owned: [], placed: {}, lastDay: null, streak: 0 }; }
+  /* items taken out of the shop: anyone who bought one gets the hearts back once */
+  var RETIRED = { catgrey: 150 };
+  function ledger() {
+    var st = S.state(), l = st.rewards || { hearts: 0, earned: 0, log: [], owned: [], placed: {}, lastDay: null, streak: 0 };
+    var gone = (l.owned || []).filter(function (id) { return RETIRED[id]; });
+    if (!gone.length) return l;
+    gone.forEach(function (id) { l.hearts += RETIRED[id]; l.owned.splice(l.owned.indexOf(id), 1); delete l.placed[id]; l.log.unshift({ at: new Date().toISOString(), type: 'refund', item: id, points: RETIRED[id] }); });
+    if (l.owned.indexOf('cat') > -1 && !SHOP.some(function (o) { return o.slot === 'cat' && l.placed[o.id]; })) l.placed.cat = true;
+    S.setState({ rewards: l }); return l;
+  }
   function write(l) { S.setState({ rewards: l }); return l; }
   /* Award for a saved entry; a first log on a new day also grows the streak. */
   function award(ev) {
