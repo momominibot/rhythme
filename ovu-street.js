@@ -6,9 +6,9 @@
   'use strict';
   /* rendered 18 Oct 2026 (Seedream 5.0 pro, seed 7303, 1472x1840): positions read off a 5% grid */
   var STORES = [
-    { id: 'petshop', tab: 'pet', x: 27, y: 47, label: 'Pet shop · adopt a friend', wp: { x: 23, y: 58, flip: false } },
-    { id: 'furniture', tab: 'furniture', x: 53, y: 46, label: 'Furniture store · pieces for your room', wp: { x: 52, y: 58, flip: false } },
-    { id: 'homes', tab: 'home', x: 70, y: 45, label: 'Property showroom · dream houses', wp: { x: 76, y: 57, flip: true } }
+    { id: 'petshop', tab: 'pet', layout: 'shop-pet', x: 27, y: 47, label: 'Pet shop · adopt a friend', wp: { x: 23, y: 58, flip: false } },
+    { id: 'furniture', tab: 'furniture', layout: 'shop-furniture', x: 53, y: 46, label: 'Furniture store · pieces for your room', wp: { x: 52, y: 58, flip: false } },
+    { id: 'homes', tab: 'home', layout: 'shop-homes', x: 70, y: 45, label: 'Property showroom · dream houses', wp: { x: 76, y: 57, flip: true } }
   ];
   var STREET = {
     id: 'street', scene: 'street', name: 'Dream Street', img: 'street-v1.webp', w: 1472, h: 1840, avatarW: 12, only: [],
@@ -20,7 +20,7 @@
     home: { x: 16, y: 60, flip: false },
     zones: [[[14, 54], [86, 54], [92, 60], [50, 79], [7, 63]]],
     solids: [{ id: 'lamp', x0: 26, x1: 30, y0: 56, y1: 62 }, { id: 'bench', x0: 46, x1: 58, y0: 64, y1: 72 }, { id: 'tree', x0: 60, x1: 73, y0: 52, y1: 66 }, { id: 'pot', x0: 28, x1: 38, y0: 62, y1: 70 }, { id: 'pot', x0: 60, x1: 68, y0: 66, y1: 72 }, { id: 'bush', x0: 18, x1: 26, y0: 61, y1: 66 }, { id: 'arch', x0: 6, x1: 14, y0: 46, y1: 62 }, { id: 'arch', x0: 86, x1: 92, y0: 46, y1: 62 }],
-    doors: [{ id: 'arch', to: 'garden', x: 16, y: 60, r: 4.5, flip: true }, { id: 'arch2', to: 'plaza', x: 84, y: 60, r: 4.5, flip: false }].concat(STORES.map(function (s) { return { id: s.id, tap: s.id, x: s.wp.x, y: s.wp.y, r: 3.5, flip: !!s.wp.flip }; })),
+    doors: [{ id: 'arch', to: 'garden', x: 16, y: 60, r: 4.5, flip: true }, { id: 'arch2', to: 'plaza', x: 84, y: 60, r: 4.5, flip: false }].concat(STORES.map(function (s) { return { id: s.id, to: s.layout, tap: s.id, x: s.wp.x, y: s.wp.y, r: 3.5, flip: !!s.wp.flip }; })),
     meditator: { x: 53, y: 65, w: 11 }, aura: { x: 53, y: 63, w: 17 }, holo: { x: 63, y: 63, w: 14 },
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
     props: {}
@@ -32,8 +32,9 @@
   STORES.forEach(function (s) {
     R.hotspotHandlers[s.id] = function (id, L) {
       if (!onStreet(L)) return false;
-      L.home.x = s.wp.x; L.home.y = s.wp.y; L.home.flip = !!s.wp.flip; /* after the sheet she stays at this door */
-      if (R.openShop) R.openShop(s.tab); return true;
+      L.home.x = s.wp.x; L.home.y = s.wp.y; L.home.flip = !!s.wp.flip; /* back on the street she stands at this door */
+      if (R.LAYOUTS[s.layout]) root.OvuWalk.travel(s.layout); else if (R.openShop) R.openShop(s.tab); /* the sheet is the fallback */
+      return true;
     };
   });
   R.hotspotHandlers.arch2 = function (id, L) { if (!onStreet(L)) return false; root.OvuWalk.travel('plaza'); return true; };

@@ -1283,3 +1283,23 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .tea small{display:block;margin-top:3px;font:600 11px var(--sans);color:var(--rm-ink-3);line-height:1.4}
 .tea em{display:block;margin-top:3px;font:700 11px var(--sans);color:#a06b2a;font-style:normal}
 @media (prefers-reduced-motion: reduce){.nbperson img,.nbpet img,.plot svg,.drops i,.wish i{animation:none!important}.scenefade{transition:none}}
+/* ---- 18 Oct, later: walkable store interiors (ovu-shops.js) and the mini-map's store sub-stops ---- */
+/* the store row sits in its own pill above the main one, so the walk pad on the left keeps its room */
+.minimap-sub{display:none;position:absolute;right:0;bottom:calc(100% + 6px);gap:2px;background:rgba(255,255,255,.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.9);border-radius:999px;padding:3px;box-shadow:0 6px 18px rgba(90,66,116,.18)}
+.minimap.sub-on .minimap-sub{display:flex}
+.minimap-sub button{min-width:44px;padding:3px 6px}
+.minimap-sub button .ms{font-size:15px}
+.shopprop.kind-treat .shoptag,.shopprop.kind-accessory .shoptag{font-size:8px;padding:1px 5px;top:0}
+.shopprop{pointer-events:auto;cursor:pointer}
+.shopprop:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
+.shopprop img{transition:transform .2s}
+.shopprop:hover img,.shopprop:active img{transform:scale(1.06)}
+.shopprop.kind-pet img{animation:petbob 3.4s ease-in-out infinite;transform-origin:50% 100%}
+.shoptag{position:absolute;left:50%;top:-2px;transform:translate(-50%,-100%);background:rgba(255,255,255,.92);border-radius:999px;padding:2px 7px;font:800 9.5px var(--sans);color:var(--rm-plum);white-space:nowrap;box-shadow:0 3px 10px rgba(90,66,116,.18)}
+.shoptag.mine{background:var(--rm-lilac-2)}
+.itemcard{display:flex;gap:12px;align-items:center;background:#fff;border-radius:16px;padding:12px;margin-top:10px}
+.itemcard img{width:84px;height:84px;object-fit:contain;flex-shrink:0;background:linear-gradient(180deg,#fbe3ea,#e7dcf5);border-radius:14px;padding:6px}
+.itemcard p{font-family:var(--serif);font-size:14.5px;color:var(--rm-ink);line-height:1.35}
+.itemcard small{display:flex;align-items:center;gap:4px;margin-top:5px;font:700 11.5px var(--sans);color:var(--rm-ink-3)}
+.itemcard small .ms{font-size:14px;color:#e58aa8}
+@media (prefers-reduced-motion: reduce){.shopprop.kind-pet img{animation:none!important}}

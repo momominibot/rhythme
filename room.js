@@ -1395,19 +1395,31 @@
       var tb = e.target.closest('[data-tab]'); if (tb) { chime('tap'); openShop(tb.dataset.tab); return; }
       var b = e.target.closest('[data-buy]'), t = e.target.closest('[data-toggle]'), v = e.target.closest('[data-visit]'), hm = e.target.closest('[data-home]');
       try {
-        if (b) {
-          var it = RW.buy(b.dataset.buy); chime('save', true);
-          if (it.kind === 'home') { S.setState({ home: it.id }); closeSheet(); applyLayout(it.id, false); toast('Welcome home. ' + it.name + ' is yours!', 'cottage'); }
-          else if (it.kind === 'treat') { toast(it.name + ' are in the cupboard. Tap a pet to give one.', 'cookie'); openShop(); }
-          else if (it.kind === 'accessory') { toast(it.name + ' is in the drawer. Tap a pet, then Dress up.', 'checkroom'); openShop(); }
-          else { renderProps(); toast(it.name + ' is now in your home!' + (it.swapped && it.swapped.length ? ' ' + it.swapped.join(' and ') + ' went into storage; swap back any time.' : ''), 'favorite'); openShop(); }
-        }
-        if (t) { RW.toggle(t.dataset.toggle); renderProps(); openShop(); }
-        if (v) { chime('tap'); closeSheet(); applyLayout(v.dataset.visit, true); toast('Have a look around. Tap Back when you are done.', 'cottage'); }
-        if (hm) { chime('tap'); S.setState({ home: hm.dataset.home }); applyLayout(hm.dataset.home, false); openShop(); toast(hm.dataset.home !== 'room' ? 'Moved in.' : 'Back in your room.', 'home'); }
+        if (b) shopAct('buy', b.dataset.buy, { sheet: true });
+        if (t) shopAct('toggle', t.dataset.toggle, { sheet: true });
+        if (v) shopAct('visit', v.dataset.visit, { sheet: true });
+        if (hm) shopAct('home', hm.dataset.home, { sheet: true });
         if (e.target.closest('#arrangeBtn')) enterArrange();
       } catch (err) { message($('#shopMsg'), err.message, false); }
     });
+  }
+  /* One place for every Dream Street action: the store sheet uses it, and so do the walkable store interiors
+   * (ovu-shops.js). opts.sheet re-opens the sheet afterwards; opts.go(layoutId, asVisit) replaces the plain
+   * applyLayout when the caller wants its own fade. Throws the same messages as before when hearts are short. */
+  function shopAct(action, id, opts) {
+    opts = opts || {}; var again = function () { if (opts.sheet) openShop(); }, go = function (lid, asVisit) { if (opts.go) opts.go(lid, asVisit); else applyLayout(lid, asVisit); };
+    if (action === 'buy') {
+      var it = RW.buy(id); chime('save', true);
+      if (it.kind === 'home') { S.setState({ home: it.id }); closeSheet(); go(it.id, false); toast('Welcome home. ' + it.name + ' is yours!', 'cottage'); }
+      else if (it.kind === 'treat') { toast(it.name + ' are in the cupboard. Tap a pet to give one.', 'cookie'); again(); }
+      else if (it.kind === 'accessory') { toast(it.name + ' is in the drawer. Tap a pet, then Dress up.', 'checkroom'); again(); }
+      else { renderProps(); toast(it.name + ' is now in your home!' + (it.swapped && it.swapped.length ? ' ' + it.swapped.join(' and ') + ' went into storage; swap back any time.' : ''), 'favorite'); again(); }
+      return it;
+    }
+    if (action === 'toggle') { var on = RW.toggle(id); renderProps(); again(); return on; }
+    if (action === 'visit') { chime('tap'); closeSheet(); go(id, true); toast('Have a look around. Tap Back when you are done.', 'cottage'); return true; }
+    if (action === 'home') { chime('tap'); S.setState({ home: id }); go(id, false); again(); toast(id !== 'room' ? 'Moved in.' : 'Back in your room.', 'home'); return true; }
+    throw new Error('Unknown shop action ' + action);
   }
   $('#heartsChip').addEventListener('click', function () { chime('tap'); openShop(); });
   /* arrange mode: drag what you own; hotspots and the avatar pause until Done */
@@ -2299,7 +2311,7 @@
     sheetOpen: function () { return !!current; }, cancelIdle: function () { clearTimeout(idleTimer); },
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
-    openSheet: openSheet, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop,
+    openSheet: openSheet, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
     enterMeditation: enterMeditation, exitMeditation: exitMeditation, runSession: runSession, sessionOn: function () { return !!session; },
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
   };

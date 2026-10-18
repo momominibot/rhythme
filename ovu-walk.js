@@ -96,9 +96,11 @@
   }
   /* which scene a layout belongs to on the mini-map */
   function sceneOf(L) { return L && L.scene ? L.scene : 'home'; }
-  /* where to stand when arriving in `L` from scene `from`: the door that leads back there, else the layout's home spot */
-  function entryFor(L, from) {
-    var d = (L.doors || []).filter(function (x) { return x.to === from; })[0] || (L.doors || [])[0];
+  /* where to stand when arriving in `L`: the door that leads back to the layout you came from (a store interior), else
+   * to its scene (home, garden, street, plaza), else the first door, else the layout's home spot */
+  function entryFor(L, from, fromScene) {
+    var doors = L.doors || [], pick = function (key) { return key ? doors.filter(function (x) { return x.to === key || x.tap === key; })[0] : null; };
+    var d = pick(from) || pick(fromScene) || doors[0];
     return d ? { x: d.x, y: d.y, flip: !!d.flip } : (L.home || { x: 50, y: 80, flip: false });
   }
   /* every spot the engine will put the avatar on must be walkable: used by the tests and the debug overlay */
@@ -195,7 +197,7 @@
     opts = opts || {};
     if (travelling) return false;
     if (R.busy()) { R.toast('Finish what you are doing first.', 'info'); return false; }
-    var from = sceneOf(R.layout()), target = to === 'home' ? R.homeId() : to, T = R.LAYOUTS[target];
+    var fromL = R.layout(), from = fromL.id, fromScene = sceneOf(fromL), target = to === 'home' ? R.homeId() : to, T = R.LAYOUTS[target];
     if (!T) return false;
     travelling = true; clearInput(); if (active) commit();
     scene.classList.add('fading'); R.chime('tap');
@@ -204,7 +206,7 @@
       var left = Math.max(0, (reduced ? 80 : 380) - (Date.now() - t0));
       root.setTimeout(function () {
         R.applyLayout(target, !!opts.visit);
-        var L = R.layout(), e = opts.entry || entryFor(L, from);
+        var L = R.layout(), e = opts.entry || entryFor(L, from, fromScene);
         avatar.style.transition = 'none'; R.placeAvatar(e, e.flip); flip = !!e.flip; void avatar.offsetWidth; avatar.style.transition = '';
         inDoor = !!doorAt(L.doors, e.x, e.y); sortDepth(e.y);
         if (opts.after) { try { opts.after(L); } catch (err) { console.error(err); } }
@@ -225,6 +227,14 @@
   }
   /* the door of every home leads into the garden */
   R.hotspotHandlers.door = function (id, L) { if (sceneOf(L) !== 'home') return false; travel('garden'); return true; };
+  /* a store sub-stop on the mini-map: on the street walk to its door first, inside another store fade across */
+  function goToStore(layoutId) {
+    var L = R.layout(); if (travelling || R.busy() || !R.LAYOUTS[layoutId] || L.id === layoutId) return;
+    if (active) commit();
+    var d = L.id === 'street' ? (L.doors || []).filter(function (x) { return x.to === layoutId; })[0] : null;
+    if (d) { R.chime('tap'); R.cancelIdle(); R.walkTo({ x: d.x, y: d.y, flip: !!d.flip }, function () { if (!R.busy()) travel(layoutId); }); }
+    else travel(layoutId);
+  }
   /* bed, wardrobe, mat and the rest are at home: from anywhere else, go home first and tap there */
   R.setFallbackHotspot(function (id) { return HOME_ONLY.indexOf(id) > -1 ? { id: id, label: id, wp: null, away: true } : undefined; });
   HOME_ONLY.forEach(function (id) {
@@ -242,9 +252,12 @@
     scene.appendChild(pad); knob = pad.querySelector('.walkpad-knob');
     mini = doc.createElement('nav'); mini.className = 'minimap'; mini.id = 'minimap'; mini.setAttribute('aria-label', 'Where you are');
     mini.innerHTML = [['home', 'home', 'Home'], ['garden', 'yard', 'Garden'], ['street', 'storefront', 'Street'], ['plaza', 'groups', 'Plaza']].map(function (s) { return '<button type="button" data-scene="' + s[0] + '" aria-label="' + s[2] + '"><span class="ms">' + s[1] + '</span><i>' + s[2] + '</i></button>'; }).join('');
+    var sub = doc.createElement('div'); sub.className = 'minimap-sub'; sub.id = 'minimapSub';
+    sub.innerHTML = [['shop-pet', 'pets', 'Pets'], ['shop-furniture', 'chair', 'Furniture'], ['shop-homes', 'cottage', 'Homes']].map(function (s) { return '<button type="button" data-sub="' + s[0] + '" aria-label="' + s[2] + ' store"><span class="ms">' + s[1] + '</span><i>' + s[2] + '</i></button>'; }).join('');
+    mini.appendChild(sub);
     scene.appendChild(mini);
     fade = doc.createElement('div'); fade.className = 'scenefade'; fade.setAttribute('aria-hidden', 'true'); scene.appendChild(fade);
-    mini.addEventListener('click', function (e) { var b = e.target.closest('[data-scene]'); if (b) { e.stopPropagation(); goTo(b.dataset.scene); } });
+    mini.addEventListener('click', function (e) { var sb = e.target.closest('[data-sub]'); if (sb) { e.stopPropagation(); goToStore(sb.dataset.sub); return; } var b = e.target.closest('[data-scene]'); if (b) { e.stopPropagation(); goTo(b.dataset.scene); } });
     mini.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
 
     var R0 = 34, DEAD = 6;
@@ -290,6 +303,8 @@
     if (!mini) return; var s = sceneOf(L), visit = !!R.visiting();
     mini.classList.toggle('hidden', visit && s === 'home' && !!(root.OvuCommunity && root.OvuCommunity.visiting()));
     Array.prototype.slice.call(mini.querySelectorAll('[data-scene]')).forEach(function (b) { b.classList.toggle('on', b.dataset.scene === s); b.setAttribute('aria-current', b.dataset.scene === s ? 'location' : 'false'); });
+    mini.classList.toggle('sub-on', s === 'street');
+    Array.prototype.slice.call(mini.querySelectorAll('[data-sub]')).forEach(function (b) { b.classList.toggle('on', b.dataset.sub === L.id); });
     scene.classList.toggle('outdoors', s !== 'home'); scene.classList.toggle('visiting', visit);
   }
   /* opt-in overlay: zones, solids, door triggers and stand points over the plate (OvuWalk.debug(true)) */
@@ -311,6 +326,6 @@
     R.on('props', function () { sortDepth(active ? cur.y : undefined); });
     R.on('scene', function (s, L) { lightMini(L); }); /* after a travel's own after() ran, e.g. a neighbour visit began */
   }
-  W.travel = travel; W.goTo = goTo; W.mount = mount; W.walking = function () { return active; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; };
+  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; };
   R.on('boot', mount);
 })(window);

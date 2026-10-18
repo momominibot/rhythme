@@ -60,3 +60,21 @@ Only scene changes use a 350 ms lavender fade over the scene; the avatar appears
 
 - `tools/test-core.js`: `OvuWalk` zone containment, sliding, substeps against a thin wall, walking out of furniture, door ellipses, depth rank; every layout's home, waypoints, doors and stairs checked walkable (the home layouts are lifted from room.js source); the scene map and entry points; `OvuGarden` stages, credited dates, watering once a day, no shrink after deletion, the 2-heart rule; `OvuCommunity.neighbours()` shape, floor placement and the daily prompt.
 - `tools/e2e_smoke.py`: the door walks her into the garden, a joystick drag and the arrow key move her, the mini-map reaches Dream Street and the plaza, the pet shop door opens the pet store, the noticeboard shows today's prompt, Mei's home opens read-only and Back returns, home again, and no console errors.
+
+## Store interiors (added later the same night, on Jamie's "physical area to enter and explore each space")
+
+The three storefronts on Dream Street open into walkable rooms (`ovu-shops.js`, plates `shop-pet-int-v1.webp`,
+`shop-furniture-int-v1.webp` at 1248x1560 because the 1472x1840 render hit the 60 s cutoff twice, and
+`shop-homes-int-v1.webp`). The plates were rendered with empty beds, shelves, platforms and pedestals on purpose: the
+catalogue items from `ovu-rewards.js` are drawn on them as tappable props in catalogue order (`spots` per kind, so new
+shelf items land in the next free spot and anything beyond the spots stays in the sheet only). The house models are three
+keyed sprites rendered from the shop thumbnails (`model-*.webp`), since the thumbnails are opaque cards.
+
+Tapping a prop walks the avatar to that shelf and opens a card; its buttons call `OvuRoom.shopAct`, a small function
+extracted from the store sheet's click handler so buy, place/put away, visit and move in share one code path (the sheet
+re-opens itself after an action, the card re-renders the shelf). Pets you own and have at home sit on the pet shop rug
+(`only: ['pet']` plus `props` spots), so they are not sold twice; owned pets kept in storage show in a bed with "Bring her
+home". Hearts short: the button is disabled and the card says how many more. The door mat (hotspot and door trigger) takes
+you back to the same storefront doorstep. The mini-map gains a second row with the three stores while you are on the
+street or inside one; from the street it walks to that door first, inside another store it fades across. `openShop` stays
+as the inventory view ("See the whole shelf") and as the fallback if an interior layout is missing.
