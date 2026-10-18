@@ -248,6 +248,7 @@
       var p = propPosFor(it); if (!p) return;
       var d = document.createElement('div'); d.className = 'prop owned ' + it.kind; d.dataset.id = it.id; d.style.left = p.x + '%'; d.style.top = p.y + '%'; d.style.width = p.w + '%';
       d.innerHTML = '<img src="' + ART + it.img + '" alt="">'; wrap.appendChild(d);
+      if (it.id === 'scale') { d.classList.add('tool'); d.setAttribute('role', 'button'); d.setAttribute('tabindex', '0'); d.setAttribute('aria-label', 'Weighing scale. Tap to note your weight.'); }
       if (it.kind === 'pet' && PETS) {
         var pet = PETS.tick(it.id), md = PETS.mood(it.id, { night: isNight() });
         d.setAttribute('role', 'button'); d.setAttribute('tabindex', '0'); d.setAttribute('aria-label', md.text + ' Tap to feed, play or cuddle.');
@@ -314,9 +315,10 @@
   $('#ownedProps').addEventListener('click', function (e) {
     if (arranging) return;
     var pb = e.target.closest('.poop'); if (pb) { e.stopPropagation(); cleanPoop(pb.dataset.pet, pb.dataset.poop, pb); return; }
-    var pe = e.target.closest('.prop.owned.pet'); if (pe) { e.stopPropagation(); openPetBubble(pe.dataset.id, pe); }
+    var pe = e.target.closest('.prop.owned.pet'); if (pe) { e.stopPropagation(); openPetBubble(pe.dataset.id, pe); return; }
+    var tl = e.target.closest('.prop.owned.tool'); if (tl) { e.stopPropagation(); chime('tap'); openWeigh(); }
   });
-  $('#ownedProps').addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var pe = e.target.closest('.prop.owned.pet'); if (pe && !arranging) { e.preventDefault(); openPetBubble(pe.dataset.id, pe); } });
+  $('#ownedProps').addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var pe = e.target.closest('.prop.owned.pet'); if (pe && !arranging) { e.preventDefault(); openPetBubble(pe.dataset.id, pe); return; } var tl = e.target.closest('.prop.owned.tool'); if (tl && !arranging) { e.preventDefault(); openWeigh(); } });
 
 
   /* ---------- avatar ---------- */
@@ -987,6 +989,42 @@
     $('#saveName').addEventListener('click', function () { S.setProfile({ name: $('#nameInput').value.trim() }); updateGreeting(); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); });
   }
 
+  /* ---------- metric slider bars: height and weight ---------- */
+  function ftIn(cm) { var t = Math.round(cm / 2.54), f = Math.floor(t / 12); return f + ' ft ' + (t - f * 12) + ' in'; }
+  function lbs(kg) { return Math.round(kg * 2.20462) + ' lb'; }
+  function sliderHTML(id, label, unit, min, max, step, val, set) {
+    var v = val || Math.round((min + max) / 2);
+    return '<div class="mslider' + (set ? ' set' : '') + '" data-unit="' + unit + '"><div class="mstop"><label for="' + id + '">' + esc(label) + '</label><output id="' + id + 'Out" for="' + id + '">' + (set ? '<b>' + v + '</b> ' + unit + '<small>' + (unit === 'cm' ? ftIn(v) : lbs(v)) + '</small>' : '<em>Slide to set</em>') + '</output></div>' +
+      '<input type="range" class="mrange" id="' + id + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + v + '"' + (set ? ' data-set="1"' : '') + ' aria-valuetext="' + v + ' ' + unit + '"><div class="mscale"><span>' + min + '</span><span>' + max + ' ' + unit + '</span></div></div>';
+  }
+  function wireSliders(root) {
+    $$('.mrange', root).forEach(function (r) {
+      var paint = function () { var unit = r.closest('.mslider').dataset.unit, v = Number(r.value), pct = (v - Number(r.min)) / (Number(r.max) - Number(r.min)) * 100; r.style.setProperty('--fill', pct + '%'); if (r.dataset.set) { $('#' + r.id + 'Out').innerHTML = '<b>' + (unit === 'kg' ? v.toFixed(1) : v) + '</b> ' + unit + '<small>' + (unit === 'cm' ? ftIn(v) : lbs(v)) + '</small>'; r.setAttribute('aria-valuetext', v + ' ' + unit); } };
+      r.addEventListener('input', function () { r.dataset.set = '1'; r.closest('.mslider').classList.add('set'); paint(); });
+      paint();
+    });
+  }
+  function sliderVal(id) { var r = $('#' + id); return r && r.dataset.set ? Number(r.value) : null; }
+
+  /* ---------- weighing scale (5 hearts in the shop): a private note, never rewarded ---------- */
+  function openWeigh() {
+    var P = S.profile(), logs = S.list('weight').slice(-6).reverse(), last = logs[0] ? logs[0].data.kg : (P.weightKg || null), mine = S.byDate(S.today()).filter(function (e) { return e.type === 'weight'; })[0];
+    var hist = logs.length ? '<div class="field"><span class="lbl">Recent notes</span><div class="whist">' + logs.map(function (e) { return '<div><span>' + esc(prettyDate(e.date)) + '</span><b>' + e.data.kg + ' kg</b></div>'; }).join('') + '</div>' + (logs.length > 1 ? '<p class="help">Since ' + esc(prettyDate(logs[logs.length - 1].date)) + ': ' + (function (d) { return (d > 0 ? '+' : '') + d.toFixed(1); })(logs[0].data.kg - logs[logs.length - 1].data.kg) + ' kg. Day-to-day changes are mostly water.</p>' : '') + '</div>' : '';
+    openSheet('weigh', 'Weighing scale', 'A private note, never judged', 'monitor_weight',
+      '<div class="weighart"><img src="' + ART + 'prop-scale.webp" alt=""></div>' +
+      sliderHTML('wKg', mine ? 'Today’s weight (update it)' : 'Today’s weight', 'kg', 30, 150, 0.1, last, !!last) +
+      '<div class="row"><button type="button" class="btn primary" id="wSave"><span class="ms">check</span>' + (mine ? 'Update today' : 'Save today') + '</button></div><div class="msg" id="wMsg"></div>' + hist +
+      '<details class="field"><summary class="lbl" style="cursor:pointer">My height</summary>' + sliderHTML('wCm', 'Height', 'cm', 130, 200, 1, P.heightCm || null, !!P.heightCm) + '<div class="row"><button type="button" class="btn soft" id="wCmSave"><span class="ms">save</span>Save height</button></div></details>' +
+      '<p class="help">Weight shifts a kilo or two with your cycle, salt, sleep and water. Rhythme never judges it and gives no hearts for numbers, so there is nothing to chase. If weighing yourself feels stressful, put the scale away in the heart shop any time.</p>');
+    wireSliders(body);
+    $('#wSave').addEventListener('click', function () {
+      var kg = sliderVal('wKg'); if (!kg) { message($('#wMsg'), 'Slide to your weight first.', false); return; }
+      kg = Math.round(kg * 10) / 10;
+      try { S.add('weight', S.today(), { kg: kg }, 'scale'); S.setProfile({ weightKg: kg }); chime('save'); toast('Noted: ' + kg + ' kg. One number among many.', 'monitor_weight'); renderDeck(); openWeigh(); } catch (err) { message($('#wMsg'), err.message, false); }
+    });
+    $('#wCmSave').addEventListener('click', function () { var cm = sliderVal('wCm'); if (!cm) return; S.setProfile({ heightCm: cm }); chime('save'); toast('Height saved: ' + cm + ' cm.', 'height'); });
+  }
+
   /* ---------- bottom tabs: every tab opens a sheet in the room, so the look and the data never change ---------- */
   var TABS = { cycle: function () { openCalendar('period'); }, food: function () { openDiary(); }, mind: function () { openMindfulness(); }, you: function () { openYou(); } };
   function setTab(k) { $$('.nav a').forEach(function (a) { var on = (a.dataset.tab || 'home') === k; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); }
@@ -1575,15 +1613,17 @@
     if (st.type === 'date') html = '<div class="field"><input class="input" id="onbDate" type="date" max="' + S.today() + '" value="' + esc(A[st.key] || '') + '"></div>' + (st.extra ? chipRow(st.extraKey, st.extra, A[st.extraKey], false) : '');
     if (st.type === 'rows') html = st.rows.filter(function (r) { return !r.showIf || r.showIf(A); }).map(function (r) { return '<div class="field"><span class="lbl">' + esc(r.label) + '</span>' + chipRow(r.key, r.options, A[r.key], false) + '</div>'; }).join('');
     if (st.type === 'recall') html = recallHTML(A);
-    if (st.type === 'body') html = '<div class="grid2"><div class="field"><label for="onbH">Height (cm)</label><input class="input" id="onbH" type="number" inputmode="numeric" min="120" max="220" value="' + (A.heightCm || '') + '"></div><div class="field"><label for="onbW">Weight (kg)</label><input class="input" id="onbW" type="number" inputmode="decimal" min="30" max="250" step="0.1" value="' + (A.weightKg || '') + '"></div></div>';
+    if (st.type === 'body') html = sliderHTML('onbH', 'Height', 'cm', 130, 200, 1, A.heightCm || 160, !!A.heightCm) + sliderHTML('onbW', 'Weight', 'kg', 30, 150, 0.5, A.weightKg || 55, !!A.weightKg) +
+      (RW.ledger().owned.indexOf('scale') > -1 ? '' : '<div class="field scaleoffer"><img src="' + ART + 'prop-scale.webp" alt=""><div><span class="lbl">Add a weighing scale to your room?</span><p class="help" style="margin:0 0 6px">' + (S.profile().onboarded ? 'It costs 5 hearts.' : 'It costs 5 of the 20 hearts you get for finishing.') + ' Tap it any day to note your weight; nothing is rewarded or judged.</p>' + chipRow('wantScale', [['yes', 'Yes, add it'], ['no', 'Not now']], A.wantScale, false) + '</div></div>');
     if (st.type === 'final') html = '<div class="field"><input class="input" id="onbName" maxlength="24" placeholder="Your name" value="' + esc(A.name || S.profile().name || '') + '"></div>';
     openSheet('onboarding', 'Getting to know you', 'Step ' + (onb.i + 1) + ' of ' + steps.length, 'favorite',
       '<div class="onb"><div class="onb-head"><div class="onb-ico" aria-hidden="true"><span class="ms">' + (st.icon || 'favorite') + '</span></div><div><h3>' + esc(st.title) + '</h3><p>' + esc(st.sub) + '</p></div></div><div class="onb-dots">' + steps.map(function (_, k) { return '<i class="' + (k <= onb.i ? 'on' : '') + '"></i>'; }).join('') + '</div>' + html +
       '<div class="onb-nav">' + (onb.i ? '<button type="button" class="btn ghost" id="onbBack"><span class="ms">arrow_back</span>Back</button>' : '') + '<span class="sp"></span>' + (st.optional ? '<button type="button" class="btn ghost" id="onbSkip">Skip</button>' : '') + '<button type="button" class="btn primary" id="onbNext">' + (last ? '<span class="ms">favorite</span>Enter my room' : 'Next<span class="ms">arrow_forward</span>') + '</button></div><div class="msg" id="onbMsg"></div></div>');
+    if (st.type === 'body') wireSliders(body);
     if (st.type === 'date' && st.extraKey) $('#onbDate').addEventListener('input', function () { if (this.value) { delete A[st.extraKey]; $$('.chips[data-key="' + st.extraKey + '"] .chipbtn').forEach(function (b) { b.classList.remove('on'); }); } });
     function collect() {
       if (st.type === 'date') { var d = $('#onbDate').value; A[st.key] = S.validDate(d) && d <= S.today() ? d : ''; if (A[st.key] && st.extraKey) A[st.extraKey] = ''; }
-      if (st.type === 'body') { A.heightCm = Number($('#onbH').value) || null; A.weightKg = Number($('#onbW').value) || null; }
+      if (st.type === 'body') { var hv = sliderVal('onbH'), wv = sliderVal('onbW'); A.heightCm = hv || A.heightCm || null; A.weightKg = wv || A.weightKg || null; }
       if (st.type === 'final') { A.name = $('#onbName').value.trim(); }
       if (st.type === 'recall') { var rr0 = recallState(A); if (!rr0.starts.length && !rr0.status) rr0.status = 'none-remembered'; }
     }
@@ -1597,7 +1637,7 @@
         chime('tap'); return;
       }
       if (e.target.closest('#onbBack')) { collect(); openOnboarding(onb.i - 1); return; }
-      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; } if (st.type === 'recall') { A.periodRecall = { version: 1, status: 'none-remembered', starts: [], clusters: {}, complete: '', latest: '' }; A.lastPeriodStatus = ''; } openOnboarding(onb.i + 1); return; }
+      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; delete A.wantScale; } if (st.type === 'recall') { A.periodRecall = { version: 1, status: 'none-remembered', starts: [], clusters: {}, complete: '', latest: '' }; A.lastPeriodStatus = ''; } openOnboarding(onb.i + 1); return; }
       if (e.target.closest('#onbNext')) {
         collect();
         if (st.id === 'urgent' && (A.urgent || []).some(function (x) { return x !== 'none'; })) { openUrgentCard(function () { openOnboarding(onb.i + 1); }); return; }
@@ -1667,8 +1707,9 @@
     S.setProfile(patch);
     try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, patch))); } catch (e) { }
     RW.grant(20, 'welcome');
+    var gotScale = false; if (A.wantScale === 'yes') { try { RW.buy('scale'); gotScale = true; } catch (e) { gotScale = RW.ledger().owned.indexOf('scale') > -1; } }
     onb = null; closeSheet(); updateGreeting(); renderDeck(); renderProps();
-    toast('Welcome home' + (patch.name ? ', ' + patch.name : '') + '. 20 hearts to start your nest.', 'favorite');
+    toast('Welcome home' + (patch.name ? ', ' + patch.name : '') + '. ' + (gotScale ? 'Your scale is on the floor by the mat, and 15 hearts are left for your nest.' : '20 hearts to start your nest.'), 'favorite');
   }
   /* ---------- data notice: one friendly read and a required OK before the room opens ---------- */
   var CONSENT_V = 1;

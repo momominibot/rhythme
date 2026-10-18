@@ -8,8 +8,8 @@
   'use strict';
   var KEY = 'ovumind_db_v1';
   var VERSION = 1;
-  var TYPES = ['sleep', 'period', 'symptom', 'food', 'reflection', 'mindfulness'];
-  var SINGLE_PER_DAY = { period: true, symptom: true };
+  var TYPES = ['sleep', 'period', 'symptom', 'food', 'reflection', 'mindfulness', 'weight'];
+  var SINGLE_PER_DAY = { period: true, symptom: true, weight: true };
   var listeners = [];
   var cache = null;
 

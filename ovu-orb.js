@@ -201,6 +201,7 @@
     if (e.type === 'symptom') return 'Symptoms: ' + ((d.symptoms || []).join(', ') || 'none ticked') + (d.pain !== null && d.pain !== undefined ? ', pain ' + d.pain + '/10' : '') + (d.mood ? ', mood ' + d.mood : '');
     if (e.type === 'food') return (d.meal ? d.meal.charAt(0).toUpperCase() + d.meal.slice(1) : 'Meal') + ': ' + d.foods + ((d.tags || []).length ? ' (' + d.tags.join(', ') + ')' : '');
     if (e.type === 'mindfulness') return 'Mindfulness: ' + d.minutes + ' min';
+    if (e.type === 'weight') return 'Weight: ' + d.kg + ' kg';
     return e.type;
   }
   function save(entries) {

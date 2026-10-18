@@ -9,6 +9,7 @@
     { id: 'dog', name: 'Biscuit the puppy', cost: 220, kind: 'pet', note: 'Waits for you on the floor with a wagging tail.', img: 'prop-dog.webp', pos: { x: 22.9, y: 68.5, w: 8.5 } },
     { id: 'plant', name: 'Fairy-light monstera', cost: 60, kind: 'furniture', note: 'A glow-wrapped plant for the corner.', img: 'prop-plant.webp', pos: { x: 95.5, y: 71, w: 8 } },
     { id: 'lamp', name: 'Crescent floor lamp', cost: 80, kind: 'furniture', note: 'Warm moonlight beside the wardrobe.', img: 'prop-lamp.webp', pos: { x: 85.7, y: 72, w: 6.2 } },
+    { id: 'scale', name: 'Weighing scale', cost: 5, kind: 'furniture', note: 'Switches on weigh-ins: tap it to note your weight. Private, never judged, and no hearts for numbers.', img: 'prop-scale.webp', pos: { x: 39.5, y: 85.5, w: 7.5 } },
     { id: 'mewmew', name: 'Mewmew the Pomeranian', cost: 180, kind: 'pet', note: 'Jamie’s real girl: cream fluff, a pink nose and the happiest smile in Singapore. She sits wherever you place her.', img: 'prop-mewmew-v3.webp', pos: { x: 62, y: 86, w: 9 } },
     /* jev-1.13.0 (18 Oct): 1500 hearts chosen over 1200/2000/3000 (0.73) as motivating yet long-term; letting people visit first scored 0.74 */
     { id: 'house', name: 'Two-storey dream house', cost: 1500, kind: 'home', note: 'A cottage of your own: a sunny bedroom upstairs, a study and a yoga corner below, flowers at the door. Visit any time; move in when you have the hearts.', img: 'house-thumb.webp' }
@@ -17,6 +18,7 @@
   function write(l) { S.setState({ rewards: l }); return l; }
   /* Award for a saved entry; a first log on a new day also grows the streak. */
   function award(ev) {
+    if (ev.type === 'weight') return { points: 0, bonus: 0, hearts: ledger().hearts }; /* numbers are never rewarded */
     var l = ledger(), pts = RULES[ev.type] || 0;
     if (ev.type === 'food') pts += Math.min(6, ((ev.data.items || []).length) * 2);
     if (ev.type === 'mindfulness') pts = ev.data.kind === 'informal' ? 5 + (ev.data.first ? 10 : 0) : Math.min(20, Math.round(Number(ev.data.minutes) || 0) * 2); /* everyday practice: 5, +10 the first time (jev 0.58 / 0.72) */
