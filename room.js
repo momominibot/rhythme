@@ -515,7 +515,7 @@
   function hotspot(id) { return HOTSPOTS.filter(function (h) { return h.id === id; })[0] || (hooks.fallbackHotspot ? hooks.fallbackHotspot(id) : undefined); }
   function openSheetFor(id) {
     var ext = hooks.hotspotHandlers[id]; if (ext && ext(id, L) === true) return; /* garden gate, plot, bench, noticeboard... */
-    if (id === 'bed') return S.state().sleeping ? openWake() : openBedtime();
+    if (id === 'bed') { if (visiting && !S.state().sleeping) { toast('A lovely bed, but it is not yours yet. Head back to sleep in your own.', 'cottage'); return; } return S.state().sleeping ? openWake() : openBedtime(); }
     if (id === 'clock') return openClock();
     if (id === 'bath') return openEveryday('shower');
     if (id === 'fridge') return openDiary('ideas');

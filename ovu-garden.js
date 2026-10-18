@@ -85,7 +85,9 @@
   var S = root.OvuStore, doc = root.document, ART = R.ART;
   R.LAYOUTS.garden = GARDEN;
   var WATER_LINES = ['Pick up the can. Feel its weight before you pour.', 'Let the water fall slowly. Watch the soil darken.', 'Breathe in as you move to the next corner.', 'Nothing to hurry. The plants drink at their own pace.', 'Notice the sound of it, and the smell of wet earth.', 'Set the can down. One ordinary minute, fully lived.'];
-  var watering = null, lastWaterAt = 0;
+  var watering = null, lastWaterAt = 0, VOICE = 'assets/audio/guide-interim/garden-water-';
+  /* Erin's cloned voice reads each line (pre-recorded clips, like the everyday practices); a missing clip is just silent */
+  function say(i) { try { if (watering && watering.audio) watering.audio.pause(); var a = new Audio(VOICE + i + '.mp3'); if (watering) watering.audio = a; a.play().catch(function () { }); } catch (e) { } }
 
   function esc(s) { return R.esc(s); }
   function placeEl(el, p) { if (!el || !p) return; el.style.left = p.x + '%'; el.style.top = p.y + '%'; if (p.w) el.style.width = p.w + '%'; }
@@ -112,20 +114,20 @@
     if (watering || R.sessionOn()) return;
     var sm = summary(S);
     watering = { startedAt: Date.now(), timers: [], done: false, rewarded: !sm.wateredToday };
-    R.hideSheet(); R.hudOn(true, 'Watering'); R.caption(WATER_LINES[0]);
+    R.hideSheet(); R.hudOn(true, 'Watering'); R.caption(WATER_LINES[0]); say(0);
     R.setPose('plants'); R.els.avatar.classList.add('acting');
     var wrap = R.els.props, drops = doc.createElement('div'); drops.className = 'drops'; drops.setAttribute('aria-hidden', 'true');
     drops.style.left = PLOT.x + '%'; drops.style.top = (PLOT.y - 2) + '%'; drops.style.width = PLOT.w + '%';
     for (var i = 0; i < 7; i++) drops.innerHTML += '<i style="left:' + (10 + i * 12) + '%;animation-delay:' + (i * 0.17) + 's"></i>';
     wrap.appendChild(drops); watering.drops = drops;
-    WATER_LINES.forEach(function (line, i) { if (i) watering.timers.push(root.setTimeout(function () { if (watering && !watering.done) { R.caption(line); R.chime('bell', true); } }, i * 10000)); });
+    WATER_LINES.forEach(function (line, i) { if (i) watering.timers.push(root.setTimeout(function () { if (watering && !watering.done) { R.caption(line); R.chime('bell', true); root.setTimeout(function () { if (watering && !watering.done) say(i); }, 350); } }, i * 10000)); });
     watering.timers.push(root.setTimeout(function () { finishWatering(true); }, 60000));
     R.setHudStop(function () { if (!watering) return false; finishWatering(false); return true; });
   }
   /* one completion path, one saved entry, one award, however it ends */
   function finishWatering(completed) {
     var w = watering; if (!w || w.done) return; w.done = true;
-    w.timers.forEach(root.clearTimeout); if (w.drops) w.drops.remove(); watering = null; R.setHudStop(null);
+    w.timers.forEach(root.clearTimeout); if (w.drops) w.drops.remove(); if (w.audio) { try { w.audio.pause(); } catch (e) { } } watering = null; R.setHudStop(null);
     R.hudOn(false); R.els.avatar.classList.remove('acting'); R.restorePose();
     if (!completed) { R.toast('Stopped. The plants are glad of the drink anyway.', 'yard'); return; }
     lastWaterAt = Date.now();
