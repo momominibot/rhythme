@@ -48,6 +48,8 @@
     if (/\b(?:fainted|passed out|blacked out|collapsed)\b/.test(t) && BLEED_WORDS.test(t)) return { level: 'emergency', code: 'FAINT_BLEED_NOW', title: 'Get emergency care now', trigger: 'fainting with bleeding' };
     if (/\bpregnan\w*\b/.test(t) && !/\bnot pregnant\b/.test(t) && (BLEED_WORDS.test(t) || SEVERE_PAIN.test(t))) return { level: 'emergency', code: 'PREG_BLEED_NOW', title: 'Get emergency care now', trigger: 'bleeding or severe pain in pregnancy' };
     if (SEVERE_PAIN.test(t) || (/\bshoulder[- ]tip\b/.test(t) && /\bpain\b/.test(t))) return { level: 'emergency', code: 'SEVERE_PAIN_NOW', title: 'Get emergency care now', trigger: 'sudden severe pelvic or abdominal pain' };
+    /* Under-16s who mention a possible pregnancy get support contacts, never logging advice. */
+    if (['under13', '13-16', '13-17'].indexOf((profile && profile.ageBand) || '') > -1 && /\b(pregnan\w*|missed (my )?period|period (is |was )?late|late period|unprotected|condom (broke|tore)|morning after pill|plan b|pregnancy test)\b/.test(t)) return { level: 'safeguard', code: 'MINOR_PREGNANCY', title: 'You don’t have to handle this alone', trigger: 'a possible pregnancy at 16 or under' };
     var stage = (profile && profile.lifeStage) || '';
     if (['post', 'postmenopause', 'postmenopausal'].indexOf(stage) > -1 && BLEED_WORDS.test(t)) return { level: 'prompt', code: 'POSTMENO_BLEED', title: 'Please get this checked this week', trigger: 'bleeding after menopause' };
     return null;
