@@ -78,14 +78,12 @@ async def main():
             except Exception: pass
             g = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, img: document.querySelector('#roomDay').getAttribute('src'), hots: [...document.querySelectorAll('.hotspot')].map(b=>b.dataset.id).join(','), plot: !!document.querySelector('#ownedProps .plot svg'), pos: OvuRoom.pos(), lit: document.querySelector('#minimap .on')?.dataset.scene})")
             check("tapping the door walks her into the garden with its hotspots, the plot and the mini-map lit on Garden", g["layout"] == "garden" and "garden-v1" in g["img"] and "plot" in g["hots"] and "bench" in g["hots"] and g["plot"] and g["lit"] == "garden", g)
-            box = await page.evaluate("()=>{var r=document.querySelector('#walkpad .walkpad-base').getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2};}")
+            hidden = await page.evaluate("()=>{var p=document.querySelector('#walkpad'); return !p || getComputedStyle(p).display==='none'}")
+            check("the joystick stays hidden (tap-to-walk replaces it)", hidden, hidden)
             before = g["pos"]
-            await page.mouse.move(box["x"], box["y"]); await page.mouse.down(); await page.mouse.move(box["x"] + 30, box["y"] - 2, steps=6); await page.wait_for_timeout(650); await page.mouse.up(); await page.wait_for_timeout(150)
-            after = await page.evaluate("()=>({pos: OvuRoom.pos(), layout: document.querySelector('#scene').dataset.layout, walking: OvuWalk.walking(), tf: document.querySelector('#avatar').style.transform})")
-            check("a joystick drag to the right moves the avatar and the position is committed on release", after["pos"]["x"] > before["x"] + 2 and abs(after["pos"]["y"] - before["y"]) < 3 and after["layout"] == "garden" and not after["walking"] and after["tf"] == "", {"before": before, "after": after})
             await page.keyboard.down("ArrowLeft"); await page.wait_for_timeout(400); await page.keyboard.up("ArrowLeft"); await page.wait_for_timeout(150)
             key = await page.evaluate("()=>({pos: OvuRoom.pos(), flip: document.querySelector('#avatar').classList.contains('flip')})")
-            check("the left arrow key walks her back and turns her around", key["pos"]["x"] < after["pos"]["x"] - 1 and key["flip"], key)
+            check("the left arrow key walks her and turns her around", key["pos"]["x"] < before["x"] - 1 and key["flip"], key)
             await page.click('#minimap [data-scene=street]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
