@@ -168,7 +168,7 @@
     var H = root.OvuHerbs, cs = S.cycleStats(), teas = H ? H.forPhase(cs.mode === 'suspended' ? null : cs.phase).slice(0, 4) : [];
     R.openSheet('greenhouse', 'The greenhouse', 'Teas and herbs, with their evidence', 'local_florist',
       '<p class="help">' + (cs.phase ? 'Picked for your ' + esc(cs.phase) + ' phase first.' : 'Pick what sounds kind today.') + ' Guidance, not a prescription; check with a clinician if you are pregnant, breastfeeding or on medicines.</p>' +
-      '<div class="teas">' + teas.map(function (t) { return '<div class="tea"><span class="ms">' + esc(t.icon || 'local_cafe') + '</span><div><b>' + esc(t.name) + '</b><span>' + esc(t.why) + '</span><small>' + esc(t.research) + '</small>' + (t.care ? '<em>' + esc(t.care) + '</em>' : '') + '</div></div>'; }).join('') + '</div>' +
+      '<div class="teas">' + teas.map(function (t) { return '<div class="tea">' + (t.img ? '<img class="teaimg" src="' + R.ART + t.img + '" alt="">' : '<span class="ms">' + esc(t.icon || 'local_cafe') + '</span>') + '<div><b>' + esc(t.name) + '</b><span>' + esc(t.why) + '</span><small>' + esc(t.research) + '</small>' + (t.care ? '<em>' + esc(t.care) + '</em>' : '') + '</div></div>'; }).join('') + '</div>' +
       (H && H.TAKE_CARE ? '<p class="help">' + esc(typeof H.TAKE_CARE === 'string' ? H.TAKE_CARE : '') + '</p>' : ''));
   }
   /* hotspot handlers are consulted first by the room; each checks it is in the garden */
