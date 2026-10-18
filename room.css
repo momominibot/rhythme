@@ -1376,6 +1376,26 @@ body.btap-open{overflow:hidden}
 .closedcard .ms{font-size:40px;color:var(--rm-mauve)}
 .closedcard b{display:block;font-family:var(--serif);font-weight:600;font-size:20px;color:var(--rm-plum);margin-top:6px}
 .closedcard p{font:600 12.5px/1.5 var(--sans);color:var(--rm-ink-2);margin-top:6px}
+
+/* the mat: one suggestion for now, every practice one tap away, this week in three numbers */
+.matnow{display:flex;align-items:center;gap:12px;margin-top:12px;background:linear-gradient(135deg,var(--rm-lilac-2),var(--rm-blush-2));border-radius:20px;padding:12px 14px}
+.matnow>.ms{font-size:28px;color:var(--rm-plum);flex:none}
+.matnow>div{flex:1;min-width:0}
+.matnow b{display:block;font-family:var(--serif);font-weight:600;font-size:17px;color:var(--rm-plum);line-height:1.15}
+.matnow small{display:block;font:600 12px/1.4 var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.matnow .btn{flex:none;min-width:0;padding:10px 16px}
+.mattiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.mattile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--rm-card);border:1px solid rgba(150,120,190,.14);border-radius:16px;padding:11px 12px;cursor:pointer;font:inherit;color:inherit;min-width:0}
+.mattile>.ms{font-size:22px;color:var(--rm-mauve);margin-bottom:2px}
+.mattile b{font:800 13px/1.2 var(--sans);color:var(--rm-plum)}
+.mattile small{font:600 11px/1.35 var(--sans);color:var(--rm-ink-3)}
+.matweek{display:flex;justify-content:space-around;margin-top:10px;background:var(--rm-paper-2);border-radius:14px;padding:9px 6px;font:600 11.5px var(--sans);color:var(--rm-ink-2)}
+.matweek b{font:800 15px var(--sans);color:var(--rm-plum);margin-right:3px}
+.matlast{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.matlast li{display:flex;justify-content:space-between;align-items:center;font:700 12px var(--sans);color:var(--rm-ink);background:var(--rm-card);border-radius:12px;padding:8px 10px}
+.matlast small{font:600 11px var(--sans);color:var(--rm-ink-3)}
+html[data-sky="night"] .matnow{background:linear-gradient(135deg,#3b2e5a,#4d3252)}
+html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);border-color:rgba(255,255,255,.08)}
 /* ---------- Dream Street after hours: the closed sign on each storefront (ovu-street.js) ---------- */
 .closedsign{position:absolute;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:4px;background:var(--rm-card,#fff);color:var(--rm-plum);font:600 .62rem/1.2 var(--sans,system-ui);padding:4px 9px;border-radius:999px;box-shadow:var(--rm-shadow,0 4px 14px rgba(90,66,116,.18));border:1px solid rgba(255,255,255,.8);white-space:nowrap;pointer-events:none;z-index:8}
 .closedsign .ms{font-size:14px;color:var(--rm-mauve,#8b6fb0)}

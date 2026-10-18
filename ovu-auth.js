@@ -43,7 +43,11 @@
   function userId() { var s = getSession(); return s && s.user ? s.user.id : null; }
   function email() { var s = getSession(); return s && s.user ? s.user.email : null; }
   function isSignedIn() { return !!getSession(); }
-  function notifyAuth() { listeners.slice().forEach(function (fn) { try { fn(); } catch (e) { } }); }
+  function notifyAuth() {
+    listeners.slice().forEach(function (fn) { try { fn(); } catch (e) { } });
+    /* the account's own grants (Rhythme Plus, tester mode) follow the person onto every device they sign in on */
+    try { var s = getSession(); if (s && s.access_token && root.OvuPodcast && OvuPodcast.claimAccount) OvuPodcast.claimAccount(s.access_token).then(function (d) { if (d && (d.plus || d.tester) && root.OvuRoom && OvuRoom.renderProps) { OvuRoom.renderProps(); } }); } catch (e) { }
+  }
 
   /* ---------- network ---------- */
   function call(method, path, body, bearer) {
