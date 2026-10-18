@@ -1,4 +1,4 @@
-/* Ovumind — app navigation + interaction layer (loaded on every screen) */
+/* Rhythme — app navigation + interaction layer (loaded on every screen) */
 (function(){
   // ---- inject self-contained CSS (works even if a screen skips anim.css) ----
   var css = `
@@ -176,7 +176,7 @@
   var fab=document.createElement('button'); fab.className='mapfab'; fab.setAttribute('aria-label','All screens');
   fab.innerHTML='<span class="ms">apps</span>'; document.body.appendChild(fab);
   var veil=document.createElement('div'); veil.className='mapveil';
-  var h='<div class="mapsheet"><h3>Explore Ovumind</h3><div class="sub">Every screen — tap to jump anywhere</div>';
+  var h='<div class="mapsheet"><h3>Explore Rhythme</h3><div class="sub">Every screen — tap to jump anywhere</div>';
   SCREENS.forEach(function(g){ h+='<div class="mapgrp">'+g[0]+'</div><div class="maprow">';
     g[1].forEach(function(s){ h+='<a class="mapitem'+(s[0]===here?' here':'')+'" href="'+s[0]+'"><span class="ms">'+s[1]+'</span>'+s[2]+'</a>'; });
     h+='</div>'; });
@@ -188,3 +188,6 @@
 
 /* PWA on every page: manifest, home-screen icon and the service worker (offline shell + reminder notifications) */
 (function(){ try { if (!document.querySelector('link[rel="manifest"]')) { var l=document.createElement('link'); l.rel='manifest'; l.href='manifest.webmanifest'; document.head.appendChild(l); } if (!document.querySelector('link[rel="apple-touch-icon"]')) { var t=document.createElement('link'); t.rel='apple-touch-icon'; t.href='assets/icons/apple-touch-icon.png'; document.head.appendChild(t); } if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function(){}); } catch(e){} })();
+
+/* Rhythme asks for the data notice in the room first: a first-time visitor who lands on another page is sent there. */
+(function () { try { var pg = location.pathname.split('/').pop() || 'index.html'; if (/^(room|privacy|terms|index|404)\.html$/.test(pg)) return; var db = JSON.parse(localStorage.getItem('ovumind_db_v1') || 'null'), c = db && db.profile && db.profile.consent; if (!(c && c.at)) location.replace('room.html'); } catch (e) { } })();

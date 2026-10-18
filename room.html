@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#2b1f44">
-<title>Ovumind · Your dream room</title>
+<title>Rhythme · Your dream room</title>
 <meta name="description" content="A dreamy pink and lavender room where you log sleep, your cycle, symptoms and meals by tapping the things around you. Everything stays on your device.">
 <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ovumind">
+<meta name="apple-mobile-web-app-title" content="Rhythme">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet">
@@ -31,7 +31,7 @@
         <div class="stars" id="stars" aria-hidden="true"></div>
         <div class="sparkles" id="sparkles" aria-hidden="true"></div>
         <header class="topbar">
-          <a class="brand" href="room.html" aria-label="Ovumind home">OVUMIND</a>
+          <a class="brand" href="room.html" aria-label="Rhythme home">RHYTHME</a>
           <div class="top-actions">
             <button class="chip hearts" id="heartsChip" type="button" aria-label="Hearts, opens the reward shop"><span class="ms fill">favorite</span><span id="heartsVal">0</span></button>
       <a class="icon-btn" id="journalBtn" href="journal.html" aria-label="My journal"><span class="ms">auto_stories</span><span class="dot"></span></a>
@@ -95,12 +95,28 @@
   </section>
   <div class="welcome" id="welcome" hidden>
     <div class="w-art"><img src="assets/room/dream/avatar-act-coffee.webp" alt=""><img class="w-pet" src="assets/room/dream/prop-mewmew-v3.webp" alt=""></div>
-    <div class="w-brand">OVUMIND</div>
     <h1 class="w-erin">Rhythme</h1>
     <p class="w-tag">Her body, her rhythm, mindfully aged.</p>
-    <p class="w-note">A dreamy room where you log sleep, cycle, symptoms, meals and calm by tapping the things around you. Everything stays on your phone.</p>
+    <p class="w-note">A dreamy room where you log sleep, cycle, symptoms, meals and calm by tapping the things around you.</p>
     <button class="btn primary" id="wBegin" type="button"><span class="ms">favorite</span>Let’s begin</button>
     <button class="btn ghost" id="wSkip" type="button">I’ve been here before</button>
+  </div>
+  <div class="welcome consent" id="consent" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
+    <div class="c-scroll">
+      <div class="c-head"><img src="assets/room/dream/prop-mewmew-v3.webp" alt=""><div><div class="w-brand">RHYTHME</div><h2 id="cTitle">Before your room opens</h2><p>What Rhythme keeps, why, and how we look after it.</p></div></div>
+      <ul class="c-list">
+        <li><span class="ms">edit_note</span><div><b>What we collect</b><span>What you log: periods, symptoms, sleep, meals and food photos, mood and calm minutes, plus your getting-to-know-you answers.</span></div></li>
+        <li><span class="ms">auto_awesome</span><div><b>Why we collect it</b><span>To predict your cycle, notice patterns over time, and let Luna understand your notes and food photos and write your journal readings.</span></div></li>
+        <li><span class="ms">cloud_sync</span><div><b>Where it goes</b><span>Your diary is saved on this phone. When Luna reads a note or a photo, that piece goes to Rhythme’s service without your name, and her answer comes straight back.</span></div></li>
+        <li><span class="ms">lock</span><div><b>How we look after it</b><span>We never sell your data or use it for ads, and nobody at Rhythme browses your diary.</span></div></li>
+        <li><span class="ms">medical_information</span><div><b>A friend, not a doctor</b><span>Rhythme helps you notice patterns. It does not diagnose and never replaces care. In an emergency, call 995.</span></div></li>
+        <li><span class="ms">tune</span><div><b>Always your choice</b><span>Switch Luna’s reading off in her settings, and export or delete your records any time on the Privacy page.</span></div></li>
+      </ul>
+      <label class="c-opt"><input type="checkbox" id="cImprove" checked><span><b>Help make Rhythme better</b><small>Share de-identified patterns, never your name or the words in your diary, so predictions improve for everyone. You can change this in Luna’s settings.</small></span></label>
+      <p class="c-kid"><span class="ms">family_restroom</span>Under 16? Please read this with a parent or guardian.</p>
+      <button class="btn primary" id="cAgree" type="button"><span class="ms">favorite</span>I agree, open my room</button>
+      <p class="c-small">By tapping, you agree to the <a href="privacy.html">privacy notes</a> and <a href="terms.html">terms</a>. Rhythme needs your OK to work, so the room stays closed until then. Nothing has been saved yet.</p>
+    </div>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <div class="loading" id="loading"><div class="loading-orb"></div><p>Tidying your room…</p></div>
@@ -117,6 +133,7 @@
 <script src="ovu-pets.js"></script>
 <script src="ovu-nova.js"></script>
 <script src="ovu-sun.js"></script>
+<script src="ovu-evidence.js"></script>
 <script src="room.js"></script>
 </body>
 </html>

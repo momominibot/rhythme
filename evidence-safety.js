@@ -1,5 +1,5 @@
 /* Primary-source safety receipts checked 2026-09-30.
-   Verification applies to supporting passages, not clinical validation of Ovumind.
+   Verification applies to supporting passages, not clinical validation of Rhythme.
    Retrieval limits and changes are documented in docs/readiness/TARGETED-SAFETY-REVIEW.md. */
 window.SAFETY_EVIDENCE = {
   "mental-health-scope": {
@@ -25,7 +25,7 @@ window.SAFETY_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "These source passages support educational copy only. They do not validate Ovumind as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. The mood choices on this page are original, non-scored reflection prompts, not an EPDS implementation. NHS clinical descriptions are used without importing UK phone numbers or access pathways worldwide.",
+    "limitations": "These source passages support educational copy only. They do not validate Rhythme as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. The mood choices on this page are original, non-scored reflection prompts, not an EPDS implementation. NHS clinical descriptions are used without importing UK phone numbers or access pathways worldwide.",
     "supportingPassages": [
       {
         "url": "https://www.nhs.uk/mental-health/conditions/postnatal-depression/",
@@ -62,7 +62,7 @@ window.SAFETY_EVIDENCE = {
         "url": "https://findahelpline.com/"
       }
     ],
-    "limitations": "These source passages support educational copy only. They do not validate Ovumind as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. Find A Helpline is a third-party contact directory, not a medical guideline. Ovumind has not verified every listing or a service response time, and does not share check-in answers with it. No country or phone number is assumed.",
+    "limitations": "These source passages support educational copy only. They do not validate Rhythme as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. Find A Helpline is a third-party contact directory, not a medical guideline. Rhythme has not verified every listing or a service response time, and does not share check-in answers with it. No country or phone number is assumed.",
     "supportingPassages": [
       {
         "url": "https://www.who.int/news-room/questions-and-answers/item/suicide",
@@ -100,7 +100,7 @@ window.SAFETY_EVIDENCE = {
         "year": "2015, amended 2024"
       }
     ],
-    "limitations": "These source passages support educational copy only. They do not validate Ovumind as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. This page summarizes typed observations only and does not implement staging criteria. Pregnancy, breastfeeding, hormonal treatment, PCOS, primary ovarian insufficiency, hysterectomy and treatment history can complicate interpretation. ASRM and NICE are different guidance bodies, not independent trials validating an app. The ASRM full text was retrieved through its indexed first-party page after direct open failed; NICE recommendations were read from indexed first-party content. This record replaces legacy citation metadata without reusing an unconfirmed PMID or DOI.",
+    "limitations": "These source passages support educational copy only. They do not validate Rhythme as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. This page summarizes typed observations only and does not implement staging criteria. Pregnancy, breastfeeding, hormonal treatment, PCOS, primary ovarian insufficiency, hysterectomy and treatment history can complicate interpretation. ASRM and NICE are different guidance bodies, not independent trials validating an app. The ASRM full text was retrieved through its indexed first-party page after direct open failed; NICE recommendations were read from indexed first-party content. This record replaces legacy citation metadata without reusing an unconfirmed PMID or DOI.",
     "supportingPassages": [
       {
         "url": "https://prod.asrm.org/practice-guidance/practice-committee-documents/executive-summary-of-the-stages-of-reproductive-aging-workshopd10-addressing-the-unfinished-agenda-of-staging-reproductive-aging-2012/",
@@ -137,7 +137,7 @@ window.SAFETY_EVIDENCE = {
         "url": "https://www.guysandstthomas.nhs.uk/health-information/falls/keeping-your-feet-healthy"
       }
     ],
-    "limitations": "These source passages support educational copy only. They do not validate Ovumind as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. These are foot-care recommendations, not evidence that soaking improves fertility, hormones, menstrual pain or sleep. The NHS page sits within falls guidance, not a trial in pregnant or menstruating users. The CDC no-soak advice for diabetes takes priority over the general duration limit. A 10-minute limit is not a prescribed frequency or treatment dose.",
+    "limitations": "These source passages support educational copy only. They do not validate Rhythme as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. These are foot-care recommendations, not evidence that soaking improves fertility, hormones, menstrual pain or sleep. The NHS page sits within falls guidance, not a trial in pregnant or menstruating users. The CDC no-soak advice for diabetes takes priority over the general duration limit. A 10-minute limit is not a prescribed frequency or treatment dose.",
     "supportingPassages": [
       {
         "url": "https://www.cdc.gov/diabetes/diabetes-complications/diabetes-and-your-feet.html",
@@ -173,7 +173,7 @@ window.SAFETY_EVIDENCE = {
         "url": "https://www.fda.gov/food/information-consumers-using-dietary-supplements/questions-and-answers-dietary-supplements"
       }
     ],
-    "limitations": "These source passages support educational copy only. They do not validate Ovumind as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. These sources do not establish the efficacy or safety of a particular foot-bath herb formula. FDA dietary-supplement guidance applies to ingestion, not topical foot baths. Traditional Qi language is not a measured diagnosis or evidence of hormone, ovarian-reserve or fertility changes. This page provides no herb formula, dosage, frequency or pregnancy treatment recommendation.",
+    "limitations": "These source passages support educational copy only. They do not validate Rhythme as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. These sources do not establish the efficacy or safety of a particular foot-bath herb formula. FDA dietary-supplement guidance applies to ingestion, not topical foot baths. Traditional Qi language is not a measured diagnosis or evidence of hormone, ovarian-reserve or fertility changes. This page provides no herb formula, dosage, frequency or pregnancy treatment recommendation.",
     "supportingPassages": [
       {
         "url": "https://www.nccih.nih.gov/health/traditional-chinese-medicine-what-you-need-to-know",

@@ -1,7 +1,7 @@
 /* Insight agents: model-assisted summaries layered on the rule agents.
  * The rules in ovu-agents.js decide every flag deterministically. These two
  * agents only write prose and pattern hypotheses from compact, de-identified
- * inputs, through the Ovumind insight relay (same guard rails as Luna). A tiny
+ * inputs, through the Rhythme insight relay (same guard rails as Luna). A tiny
  * supervisor decides when each one runs; results are cached on the device.
  *   daily     -> Daily Summary Agent, shown in the journal and on the home card
  *   fourweeks -> Four-Week Summary Agent, shown on the Dr shares card and in the doctor view */
@@ -53,17 +53,17 @@
 
   function call(mode, input) {
     return fetch(URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: mode, input: input }) })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('The insight relay replied ' + r.status + '.')); return d; }); });
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna could not write a reading just now (' + r.status + '). Try again in a moment.')); return d; }); });
   }
   /* Daily Summary Agent: cached per day; refreshes when the day's entries changed and force is set */
   function daily(date, force) {
     date = date || S.today();
     var cached = store().daily[date], sig = sigFor(S.addDays(date, -7), date);
     if (cached && (!force || cached.sig === sig)) return Promise.resolve(cached);
-    if (!enabled()) return Promise.reject(new Error('Luna’s own model is off. Turn it on in Luna’s settings for written summaries.'));
+    if (!enabled()) return Promise.reject(new Error('Luna’s readings are off. Turn them on in Luna’s settings for written summaries.'));
     return call('daily', dailyInput(date)).then(function (d) {
       var r = d.result || {};
-      return put('daily', date, { date: date, sig: sig, generatedAt: d.generatedAt, model: d.model, agent: 'DailySummaryAgent v2 (rules + model)', summary: String(r.summary || ''), patterns: Array.isArray(r.patterns) ? r.patterns.slice(0, 3) : [], suggestion: String(r.suggestion || ''), questions: Array.isArray(r.questions) ? r.questions.slice(0, 2) : [], caution: String(r.caution || '') });
+      return put('daily', date, { date: date, sig: sig, generatedAt: d.generatedAt, agent: 'DailySummaryAgent v2', summary: String(r.summary || ''), patterns: Array.isArray(r.patterns) ? r.patterns.slice(0, 3) : [], suggestion: String(r.suggestion || ''), questions: Array.isArray(r.questions) ? r.questions.slice(0, 2) : [], caution: String(r.caution || '') });
     });
   }
   /* Four-Week Summary Agent: explicit, cached per range end */
@@ -71,10 +71,10 @@
     end = end || S.today();
     var cached = store().fourweeks[end], sig = sigFor(S.addDays(end, -27), end);
     if (cached && (!force || cached.sig === sig)) return Promise.resolve(cached);
-    if (!enabled()) return Promise.reject(new Error('Luna’s own model is off. Turn it on in Luna’s settings for a written summary.'));
+    if (!enabled()) return Promise.reject(new Error('Luna’s readings are off. Turn them on in Luna’s settings for a written summary.'));
     return call('fourweeks', fourWeekInput(end)).then(function (d) {
       var r = d.result || {}, c = r.clinician || {}, u = r.user || {};
-      return put('fourweeks', end, { end: end, sig: sig, generatedAt: d.generatedAt, model: d.model, agent: 'FourWeekSummaryAgent v2 (rules + model)', clinician: { overview: c.overview || '', cycle: c.cycle || '', bleeding: c.bleeding || '', symptoms_pain: c.symptoms_pain || '', sleep: c.sleep || '', nutrition: c.nutrition || '', mood_calm: c.mood_calm || '', patterns: Array.isArray(c.patterns) ? c.patterns.slice(0, 5) : [], questions: Array.isArray(c.questions) ? c.questions.slice(0, 6) : [], limits: c.limits || '' }, user: { summary: u.summary || '', wins: Array.isArray(u.wins) ? u.wins.slice(0, 3) : [], watch: Array.isArray(u.watch) ? u.watch.slice(0, 3) : [] } });
+      return put('fourweeks', end, { end: end, sig: sig, generatedAt: d.generatedAt, agent: 'FourWeekSummaryAgent v2', clinician: { overview: c.overview || '', cycle: c.cycle || '', bleeding: c.bleeding || '', symptoms_pain: c.symptoms_pain || '', sleep: c.sleep || '', nutrition: c.nutrition || '', mood_calm: c.mood_calm || '', patterns: Array.isArray(c.patterns) ? c.patterns.slice(0, 5) : [], questions: Array.isArray(c.questions) ? c.questions.slice(0, 6) : [], limits: c.limits || '' }, user: { summary: u.summary || '', wins: Array.isArray(u.wins) ? u.wins.slice(0, 3) : [], watch: Array.isArray(u.watch) ? u.watch.slice(0, 3) : [] } });
     });
   }
   function cachedDaily(date) { return store().daily[date || S.today()] || null; }

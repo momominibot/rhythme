@@ -1,4 +1,4 @@
-/* Ovumind dream room — pastel lavender/blush, soft clay diorama, phone-framed. */
+/* Rhythme dream room — pastel lavender/blush, soft clay diorama, phone-framed. */
 :root{
   --rm-bg-1:#2b1f44; --rm-bg-2:#4a3666;
   --rm-paper:#f8f3fb; --rm-paper-2:#f1e9f7; --rm-card:#ffffff;
@@ -867,3 +867,40 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .pips i{width:7px;height:7px;border-radius:50%;background:#e9e1f2}
 .pips i.on{background:#ff8fb1}
 @media (prefers-reduced-motion: reduce){.petfx,.petheart,.petmood,.poop,.prop.owned.pet img{animation:none!important}}
+
+/* data notice: same dreamy ground as the welcome, scrolls on short phones */
+.welcome.consent{z-index:90;justify-content:flex-start;padding:0;text-align:left}
+.c-scroll{width:100%;max-width:440px;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(22px + env(safe-area-inset-top,0px)) 20px calc(26px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;margin:0 auto}
+.c-head{display:flex;align-items:center;gap:12px}
+.c-head img{width:76px;height:auto;flex:none;filter:drop-shadow(0 8px 10px rgba(90,66,116,.25))}
+.c-head .w-brand{margin:0 0 2px}
+.c-head h2{font-family:var(--serif);font-weight:600;font-size:25px;line-height:1.15;color:var(--rm-plum);margin:0;text-wrap:balance}
+.c-head p{font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin:4px 0 0}
+.c-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.c-list li{display:flex;gap:11px;align-items:flex-start;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.9);border-radius:18px;padding:11px 13px;box-shadow:0 6px 16px rgba(90,66,116,.08)}
+.c-list .ms{flex:none;width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);color:var(--rm-plum);font-size:19px}
+.c-list b{display:block;font:800 13.5px/1.3 var(--sans);color:var(--rm-plum)}
+.c-list span:not(.ms){display:block;font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.c-opt{display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.55);border:1.5px dashed rgba(150,120,190,.45);border-radius:16px;padding:11px 13px;cursor:pointer}
+.c-opt input{margin-top:3px;width:18px;height:18px;accent-color:var(--rm-plum);flex:none}
+.c-opt b{display:block;font:800 13px/1.3 var(--sans);color:var(--rm-plum)}
+.c-opt small{display:block;font:600 12px/1.45 var(--sans);color:var(--rm-ink-3);margin-top:2px}
+.c-kid{display:flex;gap:6px;align-items:center;font:700 12px/1.4 var(--sans);color:var(--rm-ink-2);margin:0}
+.c-kid .ms{font-size:17px;color:var(--rm-mauve)}
+.consent #cAgree{width:100%;justify-content:center;min-height:48px;font-size:15px}
+.c-small{font:600 11.5px/1.5 var(--sans);color:var(--rm-ink-3);margin:0;text-align:center}
+.c-small a{color:var(--rm-plum);font-weight:800}
+
+/* acupressure: a plain finger-measure key instead of traditional units */
+.fingerkey{margin-top:10px;background:rgba(255,255,255,.6);border:1px solid rgba(150,120,190,.25);border-radius:14px;padding:10px 12px}
+.fingerkey b{display:block;font:800 12.5px var(--sans);color:var(--rm-plum);margin-bottom:6px}
+.fingerkey div{display:flex;flex-wrap:wrap;gap:6px}
+.fingerkey span{display:inline-flex;align-items:center;gap:5px;font:700 11.5px var(--sans);color:var(--rm-ink-2);background:#fff;border-radius:999px;padding:4px 9px 4px 4px}
+.fingerkey i{font-style:normal;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);color:var(--rm-plum);font-weight:900;font-size:11px}
+.fingerkey small{display:block;font:600 11px/1.45 var(--sans);color:var(--rm-ink-3);margin-top:7px}
+
+/* evidence: short numbered citations; the full note lives on evidence.html */
+.guide .ev .evrefs{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 4px}
+.guide .ev .evrefs a{display:inline-flex;align-items:center;gap:5px;margin:0;background:#fff;border:1px solid rgba(150,120,190,.22);border-radius:999px;padding:3px 4px 3px 9px;font:700 11px/1.2 var(--sans);color:var(--rm-plum)}
+.guide .ev .evrefs a i{font-style:normal;font:800 9.5px var(--sans);letter-spacing:.03em;background:var(--rm-lilac-2,#e7dcf5);color:var(--rm-mauve);border-radius:999px;padding:3px 6px}
+.guide .ev span a{display:inline;margin:0;color:var(--rm-plum);font-weight:800}

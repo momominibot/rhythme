@@ -84,7 +84,7 @@
       list.replaceChildren();
       try {
         const items = inventory(root.localStorage);
-        d.getElementById('privacy-inventory-count').textContent = items.length ? items.length + ' recognized stored items. Select exactly what to include.' : 'No recognized Ovumind records are stored in this origin.';
+        d.getElementById('privacy-inventory-count').textContent = items.length ? items.length + ' recognized stored items. Select exactly what to include.' : 'No recognized Rhythme records are stored in this origin.';
         [['current', 'Current records'], ['additional', 'Other app records'], ['legacy', 'Legacy data · preserved unless selected'], ['preferences', 'Appearance and preferences']].forEach(group => {
           const records = items.filter(item => item.group === group[0]); if (!records.length) return;
           const fieldset = d.createElement('fieldset'), legend = d.createElement('legend'); legend.textContent = group[1]; fieldset.append(legend);

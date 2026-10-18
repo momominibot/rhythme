@@ -1,4 +1,4 @@
-/* Ovumind — playful interactions */
+/* Rhythme — playful interactions */
 document.addEventListener('DOMContentLoaded', function () {
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 

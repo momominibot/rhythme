@@ -1,4 +1,4 @@
-/* Ovumind no-stress pet care (a gentle Tamagotchi). Pets can be fed, played with, cuddled and
+/* Rhythme no-stress pet care (a gentle Tamagotchi). Pets can be fed, played with, cuddled and
  * tidied up after, and nothing bad ever happens: needs fade slowly but never below "would love a
  * snack", there is no illness, sadness, death or nagging notification, and a little poop appears
  * about 90 minutes after a meal (at most two waiting) and simply waits until it is tapped.

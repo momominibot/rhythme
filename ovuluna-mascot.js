@@ -1,4 +1,4 @@
-/* Ovumind — floating mascot companion (loaded on every screen) */
+/* Rhythme — floating mascot companion (loaded on every screen) */
 (function(){
   if(document.querySelector('.ovmascot')) return;
   var css=`
@@ -68,18 +68,18 @@
   var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
 
   var PNG='assets/mascot/mascot-cutout.png';
-  function orbHTML(){ return '<img src="'+PNG+'" alt="Ovumind"/>'; }
+  function orbHTML(){ return '<img src="'+PNG+'" alt="Rhythme"/>'; }
 
   // hidden preference
   var HIDDEN=false; try{ HIDDEN=localStorage.getItem('ov_mascot_hide')==='1'; }catch(e){}
 
   // floating mascot (+ dismiss cross)
-  var fab=document.createElement('div'); fab.className='ovmascot'; fab.setAttribute('aria-label','Ovumind companion');
-  fab.innerHTML=orbHTML()+'<span class="ovx" aria-label="Hide Ovumind">✕</span>';
+  var fab=document.createElement('div'); fab.className='ovmascot'; fab.setAttribute('aria-label','Rhythme companion');
+  fab.innerHTML=orbHTML()+'<span class="ovx" aria-label="Hide Rhythme">✕</span>';
   document.body.appendChild(fab);
 
   // small restore button (shown when hidden)
-  var restore=document.createElement('button'); restore.className='ovrestore'; restore.setAttribute('aria-label','Show Ovumind');
+  var restore=document.createElement('button'); restore.className='ovrestore'; restore.setAttribute('aria-label','Show Rhythme');
   restore.innerHTML='<img src="'+PNG+'" alt=""/>'; document.body.appendChild(restore);
 
   function hideMascot(){ HIDDEN=true; fab.style.display='none'; bub.classList.remove('on'); restore.classList.add('on');
@@ -89,7 +89,7 @@
   restore.addEventListener('click',showMascot);
   if(HIDDEN){ fab.style.display='none'; restore.classList.add('on'); }
 
-  // random pop-ups from Ovumind (gentle nudges + jokes) triggered as you scroll
+  // random pop-ups from Rhythme (gentle nudges + jokes) triggered as you scroll
   var NUDGES=['Psst… time for some water? 💧','Take one deep breath with me? 🌬️','How are you feeling today? 💛','You\'re doing lovely today ✨','Little reminder: unclench your jaw & drop your shoulders 😌','Have you moved your body today? A stretch counts 🧘‍♀️'];
   var bub=document.createElement('div'); bub.className='ovbub'; document.body.appendChild(bub);
   bub.addEventListener('click',open);
@@ -129,7 +129,7 @@
   // panel
   var veil=document.createElement('div'); veil.className='ovveil';
   veil.innerHTML='<div class="ovsheet"><div class="ovgrab"></div>'
-    +'<div class="ovhead"><div class="orb">'+orbHTML()+'</div><div><b>Hi, I\'m Ovumind</b><span>Your cycle companion ✨</span></div></div>'
+    +'<div class="ovhead"><div class="orb">'+orbHTML()+'</div><div><b>Hi, I\'m Rhythme</b><span>Your cycle companion ✨</span></div></div>'
     +'<div class="ovchips" id="ovchips">'
     +'<div class="ovchip on" data-t="ask"><span class="ms">chat</span>Ask me anything</div>'
     +'<div class="ovchip" data-t="mood"><span class="ms">mood</span>Mood</div>'
@@ -219,7 +219,7 @@
   }
   function renderAsk(){
     pane.innerHTML='<div class="ovchat" id="ovChat"></div>'
-      +'<div class="ovask"><input id="ovIn" placeholder="Ask Ovumind anything…"/><button id="ovSend"><span class="ms">arrow_upward</span></button></div>';
+      +'<div class="ovask"><input id="ovIn" placeholder="Ask Rhythme anything…"/><button id="ovSend"><span class="ms">arrow_upward</span></button></div>';
     var box=pane.querySelector('#ovChat');
     if(!chat.length) chat.push(['o','Ask me anything about your cycle, or tell me how you\'re doing 💛']);
     function paint(){ box.innerHTML=chat.map(function(m){return '<div class="ovmsg '+m[0]+'">'+m[1]+'</div>';}).join(''); box.scrollTop=box.scrollHeight; }

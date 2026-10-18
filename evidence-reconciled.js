@@ -17,7 +17,7 @@ window.RECONCILED_EVIDENCE = {
         "year": "2015, amended 2024"
       }
     ],
-    "limitations": "These source passages support educational copy only. They do not validate Ovumind as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. This page summarizes typed observations only and does not implement staging criteria. Pregnancy, breastfeeding, hormonal treatment, PCOS, primary ovarian insufficiency, hysterectomy and treatment history can complicate interpretation. ASRM and NICE are different guidance bodies, not independent trials validating an app. The ASRM full text was retrieved through its indexed first-party page after direct open failed; NICE recommendations were read from indexed first-party content. This record replaces legacy citation metadata without reusing an unconfirmed PMID or DOI.",
+    "limitations": "These source passages support educational copy only. They do not validate Rhythme as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. This page summarizes typed observations only and does not implement staging criteria. Pregnancy, breastfeeding, hormonal treatment, PCOS, primary ovarian insufficiency, hysterectomy and treatment history can complicate interpretation. ASRM and NICE are different guidance bodies, not independent trials validating an app. The ASRM full text was retrieved through its indexed first-party page after direct open failed; NICE recommendations were read from indexed first-party content. This record replaces legacy citation metadata without reusing an unconfirmed PMID or DOI.",
     "supportingPassages": [
       {
         "url": "https://prod.asrm.org/practice-guidance/practice-committee-documents/executive-summary-of-the-stages-of-reproductive-aging-workshopd10-addressing-the-unfinished-agenda-of-staging-reproductive-aging-2012/",
@@ -55,7 +55,7 @@ window.RECONCILED_EVIDENCE = {
         "year": "2015, amended 2024"
       }
     ],
-    "limitations": "These source passages support educational copy only. They do not validate Ovumind as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. This page summarizes typed observations only and does not implement staging criteria. Pregnancy, breastfeeding, hormonal treatment, PCOS, primary ovarian insufficiency, hysterectomy and treatment history can complicate interpretation. ASRM and NICE are different guidance bodies, not independent trials validating an app. The ASRM full text was retrieved through its indexed first-party page after direct open failed; NICE recommendations were read from indexed first-party content. This record replaces legacy citation metadata without reusing an unconfirmed PMID or DOI.",
+    "limitations": "These source passages support educational copy only. They do not validate Rhythme as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. This page summarizes typed observations only and does not implement staging criteria. Pregnancy, breastfeeding, hormonal treatment, PCOS, primary ovarian insufficiency, hysterectomy and treatment history can complicate interpretation. ASRM and NICE are different guidance bodies, not independent trials validating an app. The ASRM full text was retrieved through its indexed first-party page after direct open failed; NICE recommendations were read from indexed first-party content. This record replaces legacy citation metadata without reusing an unconfirmed PMID or DOI.",
     "supportingPassages": [
       {
         "url": "https://prod.asrm.org/practice-guidance/practice-committee-documents/executive-summary-of-the-stages-of-reproductive-aging-workshopd10-addressing-the-unfinished-agenda-of-staging-reproductive-aging-2012/",
@@ -93,7 +93,7 @@ window.RECONCILED_EVIDENCE = {
         "year": "2015, amended 2024"
       }
     ],
-    "limitations": "These source passages support educational copy only. They do not validate Ovumind as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. This page summarizes typed observations only and does not implement staging criteria. Pregnancy, breastfeeding, hormonal treatment, PCOS, primary ovarian insufficiency, hysterectomy and treatment history can complicate interpretation. ASRM and NICE are different guidance bodies, not independent trials validating an app. The ASRM full text was retrieved through its indexed first-party page after direct open failed; NICE recommendations were read from indexed first-party content. This record replaces legacy citation metadata without reusing an unconfirmed PMID or DOI.",
+    "limitations": "These source passages support educational copy only. They do not validate Rhythme as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. This page summarizes typed observations only and does not implement staging criteria. Pregnancy, breastfeeding, hormonal treatment, PCOS, primary ovarian insufficiency, hysterectomy and treatment history can complicate interpretation. ASRM and NICE are different guidance bodies, not independent trials validating an app. The ASRM full text was retrieved through its indexed first-party page after direct open failed; NICE recommendations were read from indexed first-party content. This record replaces legacy citation metadata without reusing an unconfirmed PMID or DOI.",
     "supportingPassages": [
       {
         "url": "https://prod.asrm.org/practice-guidance/practice-committee-documents/executive-summary-of-the-stages-of-reproductive-aging-workshopd10-addressing-the-unfinished-agenda-of-staging-reproductive-aging-2012/",
@@ -131,11 +131,11 @@ window.RECONCILED_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. This is not a fracture-risk calculation or a supplement prescription. Exercise should fit mobility, current health and professional advice. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. This is not a fracture-risk calculation or a supplement prescription. Exercise should fit mobility, current health and professional advice. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -157,11 +157,11 @@ window.RECONCILED_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -183,11 +183,11 @@ window.RECONCILED_EVIDENCE = {
         "year": "2024"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -209,13 +209,13 @@ window.RECONCILED_EVIDENCE = {
         "year": "2021"
       }
     ],
-    "limitations": "Reviews differ in populations and methods. Neither validates Ovumind activity targets, pregnancy/postpartum training or a universal daily schedule. PubMed summaries were checked; this is not a full-text appraisal of every trial.",
+    "limitations": "Reviews differ in populations and methods. Neither validates Rhythme activity targets, pregnancy/postpartum training or a universal daily schedule. PubMed summaries were checked; this is not a full-text appraisal of every trial.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30"
     },
     "level": "guidance",
-    "wellnessNote": "Educational information. Discuss symptoms, medicines and personal decisions with a qualified clinician. Source checking is not clinical validation of Ovumind."
+    "wellnessNote": "Educational information. Discuss symptoms, medicines and personal decisions with a qualified clinician. Source checking is not clinical validation of Rhythme."
   },
   "acupressure-dysmenorrhea": {
     "claim": "Research on acupressure for primary period pain is promising but remains limited.",
@@ -292,7 +292,7 @@ window.RECONCILED_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "These source passages support educational copy only. They do not validate Ovumind as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. The mood choices on this page are original, non-scored reflection prompts, not an EPDS implementation. NHS clinical descriptions are used without importing UK phone numbers or access pathways worldwide.",
+    "limitations": "These source passages support educational copy only. They do not validate Rhythme as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. The mood choices on this page are original, non-scored reflection prompts, not an EPDS implementation. NHS clinical descriptions are used without importing UK phone numbers or access pathways worldwide.",
     "supportingPassages": [
       {
         "url": "https://www.nhs.uk/mental-health/conditions/postnatal-depression/",
@@ -336,7 +336,7 @@ window.RECONCILED_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "These source passages support educational copy only. They do not validate Ovumind as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. The mood choices on this page are original, non-scored reflection prompts, not an EPDS implementation. NHS clinical descriptions are used without importing UK phone numbers or access pathways worldwide.",
+    "limitations": "These source passages support educational copy only. They do not validate Rhythme as a diagnostic, screening, fertility, contraception or treatment tool. Clinical review of the app remains pending. The mood choices on this page are original, non-scored reflection prompts, not an EPDS implementation. NHS clinical descriptions are used without importing UK phone numbers or access pathways worldwide.",
     "supportingPassages": [
       {
         "url": "https://www.nhs.uk/mental-health/conditions/postnatal-depression/",
@@ -374,11 +374,11 @@ window.RECONCILED_EVIDENCE = {
         "year": "2024"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."

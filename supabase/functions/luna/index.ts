@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
     const m = content.match(/\{[\s\S]*\}/);
     let parsed: Record<string, unknown> | null = null;
     try { parsed = m ? JSON.parse(m[0]) : null; } catch { parsed = null; }
-    return json({ food: cleanFood(parsed), model: VISION_MODEL, usage: d.usage || null }, 200, cors);
+    return json({ food: cleanFood(parsed) }, 200, cors);
   }
 
   if (!text) return json({ error: "empty" }, 400, cors);
@@ -168,7 +168,5 @@ Deno.serve(async (req: Request) => {
   return json({
     entries: Array.isArray(out?.entries) ? out!.entries : [],
     reply: typeof out?.reply === "string" ? out!.reply : "",
-    model: MODEL,
-    usage: d.usage || null,
   }, 200, cors);
 });

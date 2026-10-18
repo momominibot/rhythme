@@ -8,7 +8,7 @@
 window.EVIDENCE_DB = {
   "phenoage-2018-method": {
   "claim": "Clinical PhenoAge combines age and nine blood markers as a research measure of phenotypic aging.",
-  "evidence": "Levine and colleagues developed a clinical phenotypic-age model before creating the separate DNA-methylation predictor. Ovumind reproduces the rounded Aging 2018 supplement coefficients as a research reference, not as an ovarian-age estimate.",
+  "evidence": "Levine and colleagues developed a clinical phenotypic-age model before creating the separate DNA-methylation predictor. Rhythme reproduces the rounded Aging 2018 supplement coefficients as a research reference, not as an ovarian-age estimate.",
   "sources": [
     {
       "authors": "Levine ME et al.",
@@ -44,7 +44,7 @@ window.EVIDENCE_DB = {
     "population": "Research in US adult NHANES cohorts. App entry limits are software guards, not validated clinical ranges.",
     "version": "levine-2018-published-coefficients-v1"
   },
-  "limitations": "This source check is not clinical approval of Ovumind. Clinical PhenoAge is not DNAm PhenoAge, ovarian age, fertility, a menopause date or a treatment rule. This implementation consistently uses the rounded coefficients and 0.090165 denominator in the original Aging 2018 supplement. Other printed versions and software using additional coefficient precision can give different results; their constants must not be mixed. The current app and its intended population have not undergone clinical validation.",
+  "limitations": "This source check is not clinical approval of Rhythme. Clinical PhenoAge is not DNAm PhenoAge, ovarian age, fertility, a menopause date or a treatment rule. This implementation consistently uses the rounded coefficients and 0.090165 denominator in the original Aging 2018 supplement. Other printed versions and software using additional coefficient precision can give different results; their constants must not be mixed. The current app and its intended population have not undergone clinical validation.",
   "verification": {
     "status": "verified",
     "checkedAt": "2026-09-11"
@@ -134,8 +134,8 @@ window.EVIDENCE_DB = {
         "status": "verified",
         "checkedAt": "2026-09-11"
     },
-    "limitations": "These sources support interpretation limits. They do not validate Ovumind’s combined score, age offsets, fertility predictions or treatment recommendations.",
-    "method": "No clinically validated Ovumind ovarian-age conversion formula has been established in this release.",
+    "limitations": "These sources support interpretation limits. They do not validate Rhythme’s combined score, age offsets, fertility predictions or treatment recommendations.",
+    "method": "No clinically validated Rhythme ovarian-age conversion formula has been established in this release.",
     "wellnessNote": "Discuss ovarian reserve results and fertility questions with a qualified clinician."
 },
 
@@ -389,7 +389,7 @@ window.EVIDENCE_DB = {
         "status": "verified",
         "checkedAt": "2026-09-11"
     },
-    "limitations": "This review does not validate Ovumind’s camera readings, diagnose stress or ovulation, or establish an ovarian-age formula or fasting rule.",
+    "limitations": "This review does not validate Rhythme’s camera readings, diagnose stress or ovulation, or establish an ovarian-age formula or fasting rule.",
     "wellnessNote": "Interpret personal trends cautiously and seek clinical advice for symptoms."
 },
 
@@ -665,7 +665,7 @@ window.EVIDENCE_DB = {
   /* ── Cramps relief: acupressure ── */
   "sp6-acupressure-cramps": {
     "claim": "Small trials suggest SP6 acupressure may ease primary menstrual symptoms. Benefit and the best self-care protocol remain uncertain.",
-    "evidence": "A cluster-randomized trial enrolled 72 students and compared two cycles of SP6 acupressure with a control group after a baseline cycle. It reported improved menstrual symptom scores, less resting time and lower ibuprofen use. Participants received instruction; this was not a validation of Ovumind.",
+    "evidence": "A cluster-randomized trial enrolled 72 students and compared two cycles of SP6 acupressure with a control group after a baseline cycle. It reported improved menstrual symptom scores, less resting time and lower ibuprofen use. Participants received instruction; this was not a validation of Rhythme.",
     "sources": [
       {
         "authors": "Charandabi SMA et al.",
@@ -853,8 +853,8 @@ window.EVIDENCE_DB = {
     wellnessNote: "PMS is common (affects up to 75% of women) but PMDD (severe form affecting 3-8%) is a recognized clinical condition. If symptoms significantly affect your life, talk to a clinician — treatments include SSRIs, hormonal contraception, and lifestyle modifications."
   },
   "camera-ppg-study-scope": {
-  "claim": "A camera can estimate pulse timing optically. Published smartphone studies do not validate the Ovumind implementation or establish an ovulation-accuracy claim.",
-  "evidence": "Bolkhovsky et al. compared fingertip video signals with ECG using two phone models. Plews et al. studied 29 healthy people at rest during five-minute guided and normal breathing recordings and found acceptable RMSSD agreement for their tested system. Bae et al. evaluated a distinct camera heart-rate algorithm in 95 participants. These are specific methods and populations, not evidence of an Ovumind ring, internal trial or clinical accuracy.",
+  "claim": "A camera can estimate pulse timing optically. Published smartphone studies do not validate the Rhythme implementation or establish an ovulation-accuracy claim.",
+  "evidence": "Bolkhovsky et al. compared fingertip video signals with ECG using two phone models. Plews et al. studied 29 healthy people at rest during five-minute guided and normal breathing recordings and found acceptable RMSSD agreement for their tested system. Bae et al. evaluated a distinct camera heart-rate algorithm in 95 participants. These are specific methods and populations, not evidence of an Rhythme ring, internal trial or clinical accuracy.",
   "sources": [
     {
       "authors": "Bolkhovsky JB, Scully CG, Chon KH",
@@ -890,12 +890,12 @@ window.EVIDENCE_DB = {
     "status": "verified",
     "checkedAt": "2026-09-11"
   },
-  "method": "Optical pulse intervals support a PRV calculation. RMSSD takes the square root of the mean squared differences between successive intervals. ECG HRV uses normal heartbeat intervals. Ovumind's camera implementation currently follows red-channel changes and applies its own unvalidated signal checks.",
-  "limitations": "Measurement method, phone, protocol, sampling and participant population matter. A study of another device does not establish this app's clinical performance. The referenced studies do not establish ovarian-age estimation, diagnosis, ovulation confirmation or fasting rules for Ovumind.",
+  "method": "Optical pulse intervals support a PRV calculation. RMSSD takes the square root of the mean squared differences between successive intervals. ECG HRV uses normal heartbeat intervals. Rhythme's camera implementation currently follows red-channel changes and applies its own unvalidated signal checks.",
+  "limitations": "Measurement method, phone, protocol, sampling and participant population matter. A study of another device does not establish this app's clinical performance. The referenced studies do not establish ovarian-age estimation, diagnosis, ovulation confirmation or fasting rules for Rhythme.",
   "wellnessNote": "The camera check is experimental. Stop if the flash becomes uncomfortable and follow its placement instructions. Do not use its results to make medical or fertility decisions."
 },
   "wearable-data-permissions": {
-  "claim": "Health platforms and wearable-provider APIs require an implemented connection and permission. Their existence is not proof of an active Ovumind integration.",
+  "claim": "Health platforms and wearable-provider APIs require an implemented connection and permission. Their existence is not proof of an active Rhythme integration.",
   "evidence": "Apple HealthKit and Android Health Connect document permissions for individual data types. Oura and WHOOP describe account authorization through OAuth. Google Health API is a separate OAuth-based route for Fitbit, Pixel Watch and supported third-party health data. Source availability and permissions constrain what can be read.",
   "sources": [
     {
@@ -933,8 +933,8 @@ window.EVIDENCE_DB = {
     "status": "verified",
     "checkedAt": "2026-09-11"
   },
-  "method": "Platform descriptions were checked against current official documentation. The current local Ovumind web source has no operational imports from these providers.",
-  "limitations": "Documentation may change. A provider API does not guarantee access to every metric or historical record. These references are technical documentation, not clinical validation or evidence of completed Ovumind integrations.",
+  "method": "Platform descriptions were checked against current official documentation. The current local Rhythme web source has no operational imports from these providers.",
+  "limitations": "Documentation may change. A provider API does not guarantee access to every metric or historical record. These references are technical documentation, not clinical validation or evidence of completed Rhythme integrations.",
   "wellnessNote": "Review what an app asks to read and why. Missing measurements should be displayed as unavailable rather than replaced with invented values."
 },
   "hrv-source-methods": {
@@ -965,7 +965,7 @@ window.EVIDENCE_DB = {
     "status": "verified",
     "checkedAt": "2026-09-11"
   },
-  "method": "SDNN summarizes the standard deviation of normal intervals. RMSSD summarizes successive interval differences. A shared millisecond unit is not a conversion rule. Keeping metric, source, protocol and duration visible is an Ovumind display-design decision derived from those distinctions.",
+  "method": "SDNN summarizes the standard deviation of normal intervals. RMSSD summarizes successive interval differences. A shared millisecond unit is not a conversion rule. Keeping metric, source, protocol and duration visible is an Rhythme display-design decision derived from those distinctions.",
   "limitations": "Do not pool different HRV metrics or camera PRV and wearable summaries into an unlabelled baseline. None of these definitions establishes a personal diagnosis or ovarian-age formula.",
   "wellnessNote": "Compare observations only with their source and measurement context visible."
 },

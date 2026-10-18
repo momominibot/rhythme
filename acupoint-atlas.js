@@ -1,4 +1,4 @@
-/* Ovumind educational atlas, 2026. Original schematic artwork: CC BY 4.0.
+/* Rhythme educational atlas, 2026. Original schematic artwork: CC BY 4.0.
    Location facts checked against WHO 2008 (2009 reprint). Coordinates below
    are approximate interface markers, NOT coordinates for an individual's body.
    No health data, routines or pregnancy flags are stored or inferred here. */

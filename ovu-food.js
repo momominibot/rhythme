@@ -1,4 +1,4 @@
-/* Ovumind camera-assisted food logging.
+/* Rhythme camera-assisted food logging.
  * Accuracy comes from data the camera cannot see: a real nutrient database
  * (USDA SR Legacy per-100 g values, Open Food Facts label data for barcodes)
  * and a portion the user confirms. Photos are kept as thumbnails and barcodes
@@ -101,7 +101,7 @@
     return { id: 'off:' + p.code, name: name, cat: 'packaged', n: per100, basis: basis, portions: portions, image: p.image_front_small_url || null, nutriscore: p.nutriscore_grade || null, nova: p.nova_group || null,
       source: { kind: 'off', ref: 'Barcode ' + p.code, date: p.last_modified_t ? new Date(p.last_modified_t * 1000).toISOString().slice(0, 10) : null, label: 'Open Food Facts label data', url: 'https://world.openfoodfacts.org/product/' + p.code, detail: 'Community-maintained label transcription; check against the pack.' } };
   }
-  /* Product search by name through Ovumind's `foods` relay (Open Food Facts text search sends no CORS
+  /* Product search by name through Rhythme's `foods` relay (Open Food Facts text search sends no CORS
    * headers). Returns [{code, name, brands, quantity, nova, sg, image}], Singapore products first. */
   function searchProducts(q) {
     var base = (root.OVU_CONFIG && root.OVU_CONFIG.functionsBase) || 'https://zodkohwaznqgrfrcfdkf.supabase.co/functions/v1';

@@ -1,4 +1,4 @@
-/* Ovumind server settings: the one place the Supabase project is named.
+/* Rhythme server settings: the one place the Supabase project is named.
  * Moving to another project means changing SUPABASE_REF here, `project_id` in
  * supabase/config.toml, and nothing else in the app. No keys live here: the
  * relay functions read the model key from Vault on the server. */

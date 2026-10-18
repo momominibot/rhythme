@@ -2,7 +2,7 @@
   "name": "ovumind",
   "version": "0.1.0",
   "private": true,
-  "description": "Ovumind - menstrual ovarian optimization, food journaling, and mindfulness",
+  "description": "Rhythme - menstrual ovarian optimization, food journaling, and mindfulness",
   "engines": {
     "node": ">=22"
   },

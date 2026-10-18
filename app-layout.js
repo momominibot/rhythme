@@ -1,5 +1,5 @@
 /**
- * Ovumind Shared Layout Injector
+ * Rhythme Shared Layout Injector
  * Injects canonical header and bottom nav into every page.
  * This ensures 100% consistency across all 80+ pages.
  * Usage: add <div id="app-header"></div> and <div id="app-nav"></div> to any page,
@@ -24,7 +24,7 @@
     const personaNames = { grow: 'Grow', nurture: 'Nurture', wisdom: 'Wisdom' };
     return `
     <div class="top" id="app-top-bar">
-      <div class="brandline" style="cursor:pointer" onclick="window.location.href='home.html'"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">OVUMIND</b></div>
+      <div class="brandline" style="cursor:pointer" onclick="window.location.href='home.html'"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">RHYTHME</b></div>
       <div style="display:flex;align-items:center;gap:6px">
         <button class="t-icon" id="app-font-toggle" title="Adjust font size" style="background:none;border:none;cursor:pointer;padding:6px;border-radius:8px;color:var(--cocoa);font-size:16px;font-weight:700" onclick="window.cycleFontSize && window.cycleFontSize()">A</button>
         <button class="t-icon" id="app-theme-toggle" title="Toggle dark mode" style="background:none;border:none;cursor:pointer;padding:6px;border-radius:8px;color:var(--cocoa);font-size:16px" onclick="window.toggleDarkMode && window.toggleDarkMode()"><span class="ms" style="font-size:18px">dark_mode</span></button>

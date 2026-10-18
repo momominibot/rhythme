@@ -1,7 +1,7 @@
 /* Everyday mindfulness: short guided practices tied to things you are really
  * doing at home right now (brushing teeth, a shower, the first coffee...).
  * Each activity has more than one script so repeats stay fresh. The scripts
- * below are interim text by the Ovumind team, voiced in Erin Lee's cloned voice
+ * below are interim text by the Rhythme team, voiced in Erin Lee's cloned voice
  * (with her consent); her own scripts will replace them clip by clip (same ids),
  * so the data shape is the contract:
  * activity -> variations -> steps [{ text, secs, audio? }]. */

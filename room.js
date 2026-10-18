@@ -1,4 +1,4 @@
-/* Ovumind dream room — interaction engine.
+/* Rhythme dream room — interaction engine.
  * One fixed-aspect scene holds the illustration, labelled hotspot buttons,
  * avatar waypoints and overlays, so everything scales together. Data goes
  * through OvuStore; pattern notes come from OvuAgents; food maths from OvuFood;
@@ -113,8 +113,7 @@
   var GUIDES = {
     nova: {
       icon: 'factory', title: 'How processed is it? (NOVA)',
-      body: '<p>Foods are grouped by the nature, extent and purpose of the industrial processing they have been through, using the NOVA system: <b>1 whole or minimally processed</b> (fruit, vegetables, eggs, plain rice, fresh meat and fish, plain milk), <b>2 kitchen staples</b> (oil, butter, sugar, salt), <b>3 processed</b> (cheese, canned fish, bakery bread) and <b>4 ultra-processed</b> (soft drinks, instant noodles, sausages, luncheon meat, fishballs, biscuits, chocolate bars, malt drink powders).</p><p>Packaged foods use the NOVA group published by Open Food Facts. Generic foods, hawker items and photo estimates have no published group, so Ovumind estimates one from the food type and says so; <b>likely</b> means the name alone cannot settle it (sliced bread, otah, bubble tea). NOVA studies split home and hawker dishes into their ingredients using recipes. Ovumind has no recipes yet, so freshly made dishes and drinks such as bak chor mee or kopi are not scored. They are shown in their own colour and flagged when they include parts such as fishballs, luncheon meat or coloured syrups.</p><p>The headline is the share of calories from ultra-processed foods among the foods Ovumind could classify, shown with how much of your log that covers. When less than half is classified, it gives no percentage. Large studies link diets high in ultra-processed foods with poorer health, but they show association, not cause, and one meal says little. Use it as a gentle pattern guide, not a verdict on a meal or on you. Tap <b>Words only</b> to hide the numbers.</p>',
-      evidence: [['Monteiro et al. 2019, Public Health Nutrition: Ultra-processed foods, what they are and how to identify them (NOVA)', 'https://doi.org/10.1017/S1368980018003762'], ['Lane et al. 2024, BMJ: umbrella review of ultra-processed food exposure and 32 health outcomes (observational)', 'https://www.bmj.com/content/384/bmj-2023-077310'], ['Open Food Facts: NOVA groups for packaged products', 'https://world.openfoodfacts.org/nova']]
+      body: '<p>Foods are grouped by the nature, extent and purpose of the industrial processing they have been through, using the NOVA system: <b>1 whole or minimally processed</b> (fruit, vegetables, eggs, plain rice, fresh meat and fish, plain milk), <b>2 kitchen staples</b> (oil, butter, sugar, salt), <b>3 processed</b> (cheese, canned fish, bakery bread) and <b>4 ultra-processed</b> (soft drinks, instant noodles, sausages, luncheon meat, fishballs, biscuits, chocolate bars, malt drink powders).</p><p>Packaged foods use the NOVA group published by Open Food Facts. Generic foods, hawker items and photo estimates have no published group, so Rhythme estimates one from the food type and says so; <b>likely</b> means the name alone cannot settle it (sliced bread, otah, bubble tea). NOVA studies split home and hawker dishes into their ingredients using recipes. Rhythme has no recipes yet, so freshly made dishes and drinks such as bak chor mee or kopi are not scored. They are shown in their own colour and flagged when they include parts such as fishballs, luncheon meat or coloured syrups.</p><p>The headline is the share of calories from ultra-processed foods among the foods Rhythme could classify, shown with how much of your log that covers. When less than half is classified, it gives no percentage. Large studies link diets high in ultra-processed foods with poorer health, but they show association, not cause, and one meal says little. Use it as a gentle pattern guide, not a verdict on a meal or on you. Tap <b>Words only</b> to hide the numbers.</p>'
     },
     bleeding: {
       icon: 'water_drop', title: 'What light, medium and heavy mean',
@@ -123,66 +122,39 @@
         '<div class="flow">' + padSVG('light') + '<b>Light</b><small>A pad or tampon lasts most of the day</small></div>' +
         '<div class="flow">' + padSVG('medium') + '<b>Medium</b><small>Change about every 3 to 4 hours</small></div>' +
         '<div class="flow">' + padSVG('heavy') + '<b>Heavy</b><small>Change every 1 to 2 hours, clots over 2.5 cm, leaks</small></div></div>' +
-        '<p>Heavy bleeding is defined by its effect on your life, not a number. Signs the NHS lists: changing protection every 1 to 2 hours, clots larger than about 2.5 cm (a 10p coin), bleeding through clothes or bedding, needing two products together, or periods longer than 7 days. Tick <b>Clots</b> and <b>Affected my day</b> on those days so the pattern is visible to your clinician.</p>',
-      evidence: [
-        ['NHS, Heavy periods: signs of heavy bleeding (2.5 cm clots, 1 to 2 hourly changes, bleeding through, 7+ days)', 'https://www.nhs.uk/conditions/heavy-periods/'],
-        ['NICE NG88 (2018, updated 2021): heavy menstrual bleeding is excessive loss that interferes with physical, emotional, social and material quality of life', 'https://www.nice.org.uk/guidance/ng88'],
-        ['Higham, O’Brien & Shaw 1990, BJOG: pictorial blood loss assessment chart; a score of 100 or more corresponds to about 80 mL loss', 'https://doi.org/10.1111/j.1471-0528.1990.tb16249.x'],
-        ['FIGO AUB System 1 (Munro et al. 2018): typical cycle 24 to 38 days, bleeding up to 8 days', 'https://doi.org/10.1002/ijgo.12666']
-      ]
+        '<p>Heavy bleeding is defined by its effect on your life, not a number. Signs the NHS lists: changing protection every 1 to 2 hours, clots larger than about 2.5 cm (a 10p coin), bleeding through clothes or bedding, needing two products together, or periods longer than 7 days. Tick <b>Clots</b> and <b>Affected my day</b> on those days so the pattern is visible to your clinician.</p>'
     },
     pain: {
       icon: 'spa', title: 'The 0 to 10 pain scale',
-      body: '<div class="scale"><div><b>0</b><small>No pain</small></div><div><b>1 to 3</b><small>Mild, easy to ignore</small></div><div><b>4 to 6</b><small>Moderate, hard to ignore</small></div><div><b>7 to 10</b><small>Severe, stops normal activity</small></div></div><p>Rate the worst pain of the day. Period pain that reaches 7 or more, needs time off, or does not respond to usual pain relief is worth a conversation; the app flags 8 or more.</p>',
-      evidence: [
-        ['Hjermstad et al. 2011, J Pain Symptom Manage: systematic review supporting 0 to 10 numeric rating scales for pain intensity', 'https://doi.org/10.1016/j.jpainsymman.2010.08.016'],
-        ['NHS guidance: period pain affecting daily life warrants assessment', 'https://www.nhs.uk/conditions/period-pain/']
-      ]
+      body: '<div class="scale"><div><b>0</b><small>No pain</small></div><div><b>1 to 3</b><small>Mild, easy to ignore</small></div><div><b>4 to 6</b><small>Moderate, hard to ignore</small></div><div><b>7 to 10</b><small>Severe, stops normal activity</small></div></div><p>Rate the worst pain of the day. Period pain that reaches 7 or more, needs time off, or does not respond to usual pain relief is worth a conversation; the app flags 8 or more.</p>'
     },
     sleep: {
       icon: 'bedtime', title: 'How the sleep notes work',
-      body: '<p>Duration is bedtime to wake time, so it counts time in bed rather than measured sleep. Quality is your own 1 to 5 rating. The app notes weeks averaging under 6 hours and runs of three nights under 5 hours.</p>',
-      evidence: [['American Academy of Sleep Medicine and Sleep Research Society consensus (Watson et al. 2015, Sleep): adults should sleep 7 or more hours per night on a regular basis', 'https://doi.org/10.5665/sleep.4716']]
+      body: '<p>Duration is bedtime to wake time, so it counts time in bed rather than measured sleep. Quality is your own 1 to 5 rating. The app notes weeks averaging under 6 hours and runs of three nights under 5 hours.</p>'
     },
     food: {
       icon: 'restaurant', title: 'Where the numbers come from',
-      body: '<p>Nutrients are calculated as <b>value per 100 g × grams you confirm ÷ 100</b>. Generic foods use USDA FoodData Central (SR Legacy, per 100 g edible portion, with USDA household measures). Barcodes use Open Food Facts label transcriptions, kept per 100 g or 100 ml as published. Local dishes that Luna recognises in a photo use the Health Promotion Board’s Singapore Food Insights Database (SG FoodID, formerly FOCOS): HPB per-100 g values, converted to per 100 g as served, times the grams on your plate, or the HPB serving weight when the photo estimate is far from a normal serving. Dishes without an HPB match keep the model’s estimate and say so. Contains information from SG FoodID, Health Promotion Board, accessed 18 October 2026, made available under <a href="https://pphtpc.hpb.gov.sg/web/sgfoodid" target="_blank" rel="noopener">its terms</a>; the data is provided as is and HPB does not endorse this app. Missing values show as <b>?</b> and are left out of totals rather than counted as zero. Carbohydrate follows USDA “by difference” and already includes fibre. Phase picks come from the Ovuluna food notes (TCM and Western), matched to USDA entries where one exists.</p><p>Photos are kept only as a reminder. In a 2026 NIH controlled test, photo-only apps under-counted meals by about a third, mostly hidden fats and portions, which is why you confirm the food and the amount here.</p>',
-      evidence: [
-        ['USDA FoodData Central, SR Legacy data and documentation', 'https://fdc.nal.usda.gov/'],
-        ['Open Food Facts API and data fields', 'https://openfoodfacts.github.io/openfoodfacts-server/api/'],
-        ['Health Promotion Board, Singapore Food Insights Database (SG FoodID) food search', 'https://pphtpc.hpb.gov.sg/web/sgfoodid/tools/food-search'],
-        ['SG FoodID Terms of Use (section 10 data licence, section 11 attribution)', 'https://file.go.gov.sg/termsofuse-hpbsgfoodid.pdf'],
-        ['NIH-led evaluation of photo-based calorie apps, NUTRITION 2026 (preliminary conference abstract)', 'https://www.eurekalert.org/news-releases/1136415']
-      ]
+      body: '<p>Nutrients are calculated as <b>value per 100 g × grams you confirm ÷ 100</b>. Generic foods use USDA FoodData Central (SR Legacy, per 100 g edible portion, with USDA household measures). Barcodes use Open Food Facts label transcriptions, kept per 100 g or 100 ml as published. Local dishes that Luna recognises in a photo use the Health Promotion Board’s Singapore Food Insights Database (SG FoodID, formerly FOCOS): HPB per-100 g values, converted to per 100 g as served, times the grams on your plate, or the HPB serving weight when the photo estimate is far from a normal serving. Dishes without an HPB match keep the model’s estimate and say so. Contains information from SG FoodID, Health Promotion Board, accessed 18 October 2026, made available under <a href="https://pphtpc.hpb.gov.sg/web/sgfoodid" target="_blank" rel="noopener">its terms</a>; the data is provided as is and HPB does not endorse this app. Missing values show as <b>?</b> and are left out of totals rather than counted as zero. Carbohydrate follows USDA “by difference” and already includes fibre. Phase picks come from the Ovuluna food notes (TCM and Western), matched to USDA entries where one exists.</p><p>Photos are kept only as a reminder. In a 2026 NIH controlled test, photo-only apps under-counted meals by about a third, mostly hidden fats and portions, which is why you confirm the food and the amount here.</p>'
     },
     cycle: {
       icon: 'calendar_month', title: 'How predictions are made',
-      body: '<p>The next period is estimated from the average of your last logged cycles (or your profile setting, or 28 days until there is history). The fertile window shown is a calendar estimate around 14 days before the expected period and is not a contraceptive method. Tapping a past day fills a typical period length so you can backdate quickly, then adjust any day.</p>',
-      evidence: [['FIGO AUB System 1 (Munro et al. 2018): normal frequency 24 to 38 days, regularity within 7 to 9 days, duration up to 8 days', 'https://doi.org/10.1002/ijgo.12666']]
+      body: '<p>The next period is estimated from the average of your last logged cycles (or your profile setting, or 28 days until there is history). The fertile window shown is a calendar estimate around 14 days before the expected period and is not a contraceptive method. Tapping a past day fills a typical period length so you can backdate quickly, then adjust any day.</p>'
     },
     acu: {
       icon: 'spa', title: 'What the research says about acupressure',
-      body: '<p>Studies of acupressure for primary period pain are promising but limited: reviews describe low-quality evidence, mixed results for SP6 alone, and small trials that combine points. Gentle pressure is low risk for most people; it is not a treatment for pelvic pain that limits your life, which deserves clinical assessment.</p>',
-      evidence: []
+      body: '<p>Studies of acupressure for primary period pain are promising but limited: reviews describe low-quality evidence, mixed results for SP6 alone, and small trials that combine points. Gentle pressure is low risk for most people; it is not a treatment for pelvic pain that limits your life, which deserves clinical assessment.</p>'
     },
     reminders: {
       icon: 'alarm', title: 'Why these four nudges',
-      body: '<p>Regular sleep and wake times, water through the day, short movement breaks and a couple of minutes of slow breathing are the everyday habits with the broadest support for sleep, energy and mood. The clock reminds you; it does not track whether you did it. Notifications depend on your phone: they fire while Ovumind is open or installed to the Home Screen, and the calendar file gives you alarms that always ring.</p>',
-      evidence: [
-        ['American Academy of Sleep Medicine and Sleep Research Society consensus (Watson et al. 2015, Sleep): 7 or more hours on a regular schedule', 'https://doi.org/10.5665/sleep.4716'],
-        ['WHO 2020 guidelines on physical activity and sedentary behaviour: limit sitting time and replace it with activity of any intensity', 'https://www.who.int/publications/i/item/9789240015128'],
-        ['EFSA 2010 scientific opinion on dietary reference values for water: adequate total water intake 2.0 L a day for women', 'https://doi.org/10.2903/j.efsa.2010.1459'],
-        ['Zaccaro et al. 2018, Frontiers in Human Neuroscience: slow breathing techniques and psychophysiological outcomes, systematic review', 'https://doi.org/10.3389/fnhum.2018.00353']
-      ]
+      body: '<p>Regular sleep and wake times, water through the day, short movement breaks and a couple of minutes of slow breathing are the everyday habits with the broadest support for sleep, energy and mood. The clock reminds you; it does not track whether you did it. Notifications depend on your phone: they fire while Rhythme is open or installed to the Home Screen, and the calendar file gives you alarms that always ring.</p>'
     },
     luna: {
       icon: 'dark_mode', title: 'How Luna reads your notes',
-      body: '<p>Luna first tries simple rules on this device (sleep times, period words, the symptom list, pain out of 10, mood words, meal words, minutes of practice). If the rules cannot read a note, Luna’s own model reads it: the note alone (no name, no history) goes through a small Ovumind relay to a Doubao model, the reply is shown to you for confirmation, and nothing is stored on the way. You can switch to your own OpenRouter or Ark key, or turn AI off and keep the rules only. Food photos are a separate permission: a photo goes once through the same relay to a Doubao vision model, which estimates the dishes, portions and nutrients; you check and change them before anything is saved, and only a small thumbnail stays on this phone. Photo estimates are rough, especially for oil, sauces and portion size. Luna never diagnoses.</p>',
-      evidence: [['Model: Doubao Seed 2.1 turbo on Volcengine Ark, strict JSON, temperature 0; relay allows about 80 notes a day per person', 'https://www.volcengine.com/docs/82379'], ['Own-key default: jev-1.13.0 preferred Gemini 2.5 Flash-Lite for cost and strict JSON (0.73), Qwen3 30B as runner-up', 'https://openrouter.ai/models']]
+      body: '<p>Luna first tries simple rules on this phone (sleep times, period words, the symptom list, pain out of 10, mood words, meal words, minutes of practice). If the rules cannot read a note, the note alone, without your name or history, goes to Rhythme’s own service; Luna’s answer is shown to you to confirm, and nothing is kept on the way. Food photos work the same way: Luna estimates the dishes, portions and nutrients, matches Singapore dishes to HPB data where she can, and you check and change everything before it is saved. Only a small thumbnail stays on this phone. Photo estimates are rough, especially for oil, sauces and portion size. You can switch any of this off in Luna’s settings and keep the rules only. Luna never diagnoses.</p>'
     }
   };
   function infoBtn(topic) { return '<button type="button" class="ibtn" data-guide="' + topic + '" aria-label="Evidence and guidance">i</button>'; }
-  function guideHTML(topic) { var g = GUIDES[topic]; if (!g) return ''; return '<div class="guide" data-guide-panel="' + topic + '"><h4><span class="ms">' + g.icon + '</span>' + esc(g.title) + '</h4>' + g.body + '<div class="ev"><b>Evidence</b>' + g.evidence.map(function (e) { return '<a href="' + e[1] + '" target="_blank" rel="noopener">' + esc(e[0]) + '</a>'; }).join('') + '<span>Guidance, not a diagnosis. Bring the pattern to a clinician you trust.</span></div></div>'; }
+  function guideHTML(topic) { var g = GUIDES[topic]; if (!g) return ''; var ev = window.OvuEvidence ? OvuEvidence.forTopic(topic) : []; return '<div class="guide" data-guide-panel="' + topic + '"><h4><span class="ms">' + g.icon + '</span>' + esc(g.title) + '</h4>' + g.body + '<div class="ev">' + (ev.length ? '<b>Sources</b><p class="evrefs">' + ev.map(function (e) { return '<a href="evidence.html#' + e.id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + e.id + '</i></a>'; }).join('') + '</p>' : '') + '<span>Guidance, not a diagnosis. Bring the pattern to a clinician you trust. Look up any number on the <a href="evidence.html" target="_blank" rel="noopener">Evidence page</a>.</span></div></div>'; }
   function wireGuides(root) {
     root.addEventListener('click', function (e) {
       var b = e.target.closest('.ibtn'); if (!b) return;
@@ -486,8 +458,8 @@
   function fmtTime(t) { var h = Number(t.slice(0, 2)), m = t.slice(3), ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12; return h + (m === '00' ? '' : ':' + m) + ap; }
   function permBox() {
     var p = RM.permission(), ios = RM.isIOS() && !RM.standalone();
-    if (!RM.supported() || ios) return '<div class="stat"><span class="ms">ios_share</span><div><b>' + (ios ? 'Add Ovumind to your Home Screen for notifications' : 'This browser cannot show notifications') + '</b><span>' + (ios ? 'In Safari tap Share, then “Add to Home Screen”, and open Ovumind from there. Or add the reminders to your calendar below; those alarms always ring.' : 'Add the reminders to your calendar below instead; those alarms always ring.') + '</span></div></div>';
-    if (p === 'granted') return '<div class="stat"><span class="ms">notifications_active</span><div><b>Notifications are on</b><span>They fire while Ovumind is open or installed. For alarms that always ring, add them to your calendar too.</span></div></div>';
+    if (!RM.supported() || ios) return '<div class="stat"><span class="ms">ios_share</span><div><b>' + (ios ? 'Add Rhythme to your Home Screen for notifications' : 'This browser cannot show notifications') + '</b><span>' + (ios ? 'In Safari tap Share, then “Add to Home Screen”, and open Rhythme from there. Or add the reminders to your calendar below; those alarms always ring.' : 'Add the reminders to your calendar below instead; those alarms always ring.') + '</span></div></div>';
+    if (p === 'granted') return '<div class="stat"><span class="ms">notifications_active</span><div><b>Notifications are on</b><span>They fire while Rhythme is open or installed. For alarms that always ring, add them to your calendar too.</span></div></div>';
     if (p === 'denied') return '<div class="stat"><span class="ms">notifications_off</span><div><b>Notifications are blocked</b><span>Allow them for this site in your browser settings, or add the reminders to your calendar below.</span></div></div>';
     return '<div class="stat"><span class="ms">notifications</span><div><b>Allow notifications</b><span>So the clock can nudge you at the times you choose.</span></div><button type="button" class="btn soft" id="remAllow" style="flex:0 0 auto">Allow</button></div>';
   }
@@ -504,7 +476,7 @@
       '<div class="field"><span class="lbl">Add one</span><div class="chips">' + RM.TEMPLATES.map(function (t) { return '<button type="button" class="chipbtn" data-tpl="' + t.kind + '"><span class="ms">' + t.icon + '</span>' + esc({ sleep: 'Sleep', water: 'Water', move: 'Move', breathe: 'Breathe' }[t.kind] || t.label) + '</button>'; }).join('') + '<button type="button" class="chipbtn" data-tpl="custom"><span class="ms">add</span>Custom</button></div></div>' +
       '<div class="remedit" id="remEdit"></div>' +
       '<div class="row"><button type="button" class="btn soft" id="remIcs"><span class="ms">event</span>Add to my calendar</button><button type="button" class="btn ghost" id="remTest"><span class="ms">notifications</span>Send a test</button></div>' +
-      '<p class="help">Reminders live on this device. Notifications fire while Ovumind is open or installed to your Home Screen; the calendar file carries the same reminders, with alarms, into your phone’s own calendar.</p>');
+      '<p class="help">Reminders live on this device. Notifications fire while Rhythme is open or installed to your Home Screen; the calendar file carries the same reminders, with alarms, into your phone’s own calendar.</p>');
     wireClockTabs();
     function editor(it) {
       var old = $('#remEdit'), ed = old.cloneNode(false); old.parentNode.replaceChild(ed, old);
@@ -530,9 +502,9 @@
       var tpl = e.target.closest('[data-tpl]'); if (tpl) { chime('tap'); editor(RM.fromTemplate(tpl.dataset.tpl)); return; }
       var ed = e.target.closest('[data-edit]'); if (ed) { editor(RM.get(ed.dataset.edit)); return; }
       var tg = e.target.closest('[data-toggle]'); if (tg) { RM.toggle(tg.dataset.toggle); chime('tap'); openClock(); return; }
-      if (e.target.closest('#remAllow')) { RM.requestPermission().then(function (p) { if (p === 'granted') RM.notify('Ovumind', 'Reminders are on. I will nudge you gently.', 'ovumind-test'); openClock(); }); return; }
+      if (e.target.closest('#remAllow')) { RM.requestPermission().then(function (p) { if (p === 'granted') RM.notify('Rhythme', 'Reminders are on. I will nudge you gently.', 'ovumind-test'); openClock(); }); return; }
       if (e.target.closest('#remIcs')) { if (!RM.list().some(function (x) { return x.on; })) { toast('Add a reminder first.', 'alarm'); return; } RM.download(); toast('Calendar file ready. Open it to add the alarms.', 'event'); return; }
-      if (e.target.closest('#remTest')) { RM.notify('Ovumind', 'This is how a reminder looks.', 'ovumind-test').then(function (ok) { toast(ok ? 'Sent. Check your notifications.' : 'Allow notifications first, or use the calendar file.', 'notifications'); }); }
+      if (e.target.closest('#remTest')) { RM.notify('Rhythme', 'This is how a reminder looks.', 'ovumind-test').then(function (ok) { toast(ok ? 'Sent. Check your notifications.' : 'Allow notifications first, or use the calendar file.', 'notifications'); }); }
     });
     if (editItem) editor(editItem);
   }
@@ -837,7 +809,7 @@
             return FD.detectInImage(rs[0].image).then(function (code) {
               if (code) { toast('Barcode found: ' + code, 'qr_code_2'); lookup(code); return; }
               if (ORB.photosAllowed()) { recognise(rs[1].dataUrl); return; }
-              st.innerHTML = '<div class="fdstate ask"><span class="ms">photo_camera</span><div><b>Let Luna recognise the food?</b><span>The photo goes once through Ovumind’s relay to Luna’s model and is not kept there. Only the small thumbnail stays on this phone.</span><div class="row"><button type="button" class="btn primary" id="fdAllow">Allow food photos</button><button type="button" class="btn ghost" id="fdPick">I’ll pick myself</button></div></div></div>';
+              st.innerHTML = '<div class="fdstate ask"><span class="ms">photo_camera</span><div><b>Let Luna recognise the food?</b><span>The photo goes once to Rhythme’s service so Luna can recognise the food, and is not kept there. Only the small thumbnail stays on this phone.</span><div class="row"><button type="button" class="btn primary" id="fdAllow">Allow food photos</button><button type="button" class="btn ghost" id="fdPick">I’ll pick myself</button></div></div></div>';
               $('#fdAllow').addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c); recognise(rs[1].dataUrl); });
               $('#fdPick').addEventListener('click', function () { st.innerHTML = ''; inp2.focus(); });
             });
@@ -914,7 +886,7 @@
   function openLearn() {
     var p = deskPrefs();
     openSheet('learn', 'Your desk', 'Drag the folders around; make it yours', 'computer',
-      '<div class="desk"><div class="menubar"><span class="brandy">OVUMIND</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
+      '<div class="desk"><div class="menubar"><span class="brandy">RHYTHME</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
       '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f, i) { var q = p.pos[f.id] || [2 + (i % 4) * 25, 4 + Math.floor(i / 4) * 46]; return '<button type="button" class="dicon" data-folder="' + f.id + '" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="dock"><button type="button" data-dock="videos" aria-label="Videos"><span class="ms">play_circle</span></button><button type="button" data-dock="mind" aria-label="Erin"><span class="ms">self_improvement</span></button><button type="button" data-dock="acu" aria-label="Acupressure"><span class="ms">spa</span></button><button type="button" data-dock="luna" aria-label="Luna"><span class="ms">dark_mode</span></button><button type="button" data-dock="doctor" aria-label="Share with doctor"><span class="ms">medical_services</span></button></div></div>' +
       '<div class="wallpanel" id="wallpanel"><b>Wallpaper</b><div class="wadjust" id="wallAdjust" hidden><p><span class="ms">open_with</span>Drag your photo on the screen above to move it, and use the slider to zoom.</p><div class="field"><label for="wallZoom">Zoom</label><input type="range" id="wallZoom" min="100" max="300" step="5" value="100"></div><div class="row"><button type="button" class="btn primary" id="wallDone"><span class="ms">check</span>Done</button><button type="button" class="btn ghost" id="wallReset">Reset</button></div></div><div class="walls">' + WALLS.map(function (w) { return '<button type="button" class="wall' + (p.wall === w.id ? ' on' : '') + '" data-wall="' + w.id + '" style="' + (w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY) + '"><span>' + esc(w.name) + '</span></button>'; }).join('') + '<button type="button" class="wall upload' + (p.wall === 'custom' ? ' on' : '') + '" data-wall="custom" style="' + (p.custom ? customWallCss(p).replace(/background-size:[^;]+/, 'background-size:cover') : '') + '"><span class="ms">add_photo_alternate</span><span>' + (p.custom ? 'My photo' : 'Upload a photo') + '</span></button></div><input type="file" id="wallFile" accept="image/*" hidden><div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="deskTidy"><span class="ms">grid_view</span>Tidy the icons</button>' + (p.custom ? '<button type="button" class="btn ghost" id="wallAdjustBtn"><span class="ms">open_with</span>Adjust my photo</button><button type="button" class="btn ghost" id="wallForget"><span class="ms">delete</span>Forget my photo</button>' : '') + '</div><p class="help">Your photo is stored only on this device.</p></div>' +
@@ -1096,12 +1068,11 @@
       '<div class="chat" id="chat"></div>' +
       '<div class="quick" id="quick">' + ['Slept 11pm to 7am, quality 4', 'Period started today, medium', 'Cramps and bloating, pain 5, mood ok', 'Had oats and a latte for breakfast', 'Meditated 10 min'].map(function (q) { return '<span class="qchip"><button type="button" class="qsend" data-q="' + esc(q) + '">' + esc(q) + '</button><button type="button" class="qpen" data-q="' + esc(q) + '" aria-label="Edit this shortcut before sending"><span class="ms">edit</span></button></span>'; }).join('') + '</div>' +
       '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><input class="input" id="lunaIn" maxlength="400" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice" value="' + esc(prefill || '') + '"><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
-      '<details class="aibox" id="aibox"><summary><span class="ms">auto_awesome</span>' + (cfg.on ? (cfg.provider === 'ovumind' ? 'Luna’s own model is on' : 'AI mode on · your own key') : 'AI mode off · rules only') + infoBtn('luna') + '</summary>' + guideHTML('luna') +
-      '<div class="field"><label for="aiProv">Who reads a note the rules cannot</label><select class="input" id="aiProv"><option value="ovumind"' + (cfg.provider === 'ovumind' ? ' selected' : '') + '>Luna’s own model (Doubao Seed 2.1, free, no key)</option><option value="openrouter"' + (cfg.provider === 'openrouter' ? ' selected' : '') + '>My OpenRouter key</option><option value="ark"' + (cfg.provider === 'ark' ? ' selected' : '') + '>My Volcengine Ark key</option></select></div>' +
-      '<div class="grid2 ownkey' + (cfg.provider === 'ovumind' ? ' hidden' : '') + '" id="ownKey"><div class="field"><label for="aiModel">Model</label><input class="input" id="aiModel" value="' + esc(cfg.model || '') + '" placeholder="' + esc(ORB.OR_MODEL) + '"></div><div class="field"><label for="aiKey">API key (stays on this device)</label><input class="input" id="aiKey" type="password" autocomplete="off" value="' + esc(cfg.key || '') + '" placeholder="sk-or-..."></div></div>' +
-      '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Also let the reading agent write journal readings</b><span>A de-identified 7 or 28 day summary (no name) goes the same way. Off means no readings are written.</span></div></label>' +
-      '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Let Luna’s model look at food photos</b><span>Each photo goes once through Ovumind’s relay to recognise the food and is not kept there. Only a small thumbnail stays in your diary on this phone.</span></div></label>' +
-      '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn AI off (rules only)' : 'Turn AI on') + '</button></div><p>Both are off until you say yes. Luna’s own model runs through a small Ovumind relay that holds the key, allows about 80 notes a day per person and keeps nothing. Rules on this device always run first, and whatever is understood is shown to you before it is saved.</p></details>');
+      '<details class="aibox" id="aibox"><summary><span class="ms">auto_awesome</span>' + (cfg.on ? 'Luna’s reading is on' : 'Luna’s reading is off · rules only') + infoBtn('luna') + '</summary>' + guideHTML('luna') +
+      '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Write journal readings</b><span>A short summary of your last 7 or 28 days, without your name, goes to Rhythme’s service so Luna can write a reading. Off means no readings.</span></div></label>' +
+      '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Recognise food photos</b><span>Each photo goes once to Rhythme’s service so Luna can recognise the food, and is not kept there. Only a small thumbnail stays in your diary on this phone.</span></div></label>' +
+      '<label class=\"perm\"><input type=\"checkbox\" id=\"aiImprove\"' + (S.profile().consent && S.profile().consent.improve === false ? '' : ' checked') + '><span class=\"ms\">volunteer_activism</span><div><b>Help make Rhythme better</b><span>Share de-identified patterns, never your name or the words in your diary, so predictions improve for everyone.</span></div></label>' +
+      '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn Luna’s reading off (rules only)' : 'Turn Luna’s reading on') + '</button></div><p>Rules on this phone always run first. When they cannot read a note, the note goes to Rhythme’s service without your name and nothing is kept there. Whatever Luna understands is shown to you before it is saved.</p></details>');
     var chat = $('#chat');
     function bubble(kind, html) { var d = document.createElement('div'); d.className = 'bub ' + (kind === 'luna' ? 'from-luna' : kind); d.innerHTML = html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d; }
     if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took, or send a photo of your meal with the camera button. I will show you what I understood before saving.');
@@ -1128,8 +1099,8 @@
           ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 now if the bleeding is excessive or will not stop, you faint, have trouble breathing, or have chest pain.</p>'
           : '<p>Any bleeding after menopause should be checked by a clinician promptly. Book a GP or gynaecologist visit this week; it is usually not serious, but it needs a check.</p>') +
         '<div class="row">' + (emergency ? '<a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><a class="btn soft" href="https://www.kkh.com.sg/our-specialties/urgent-og-centre" target="_blank" rel="noopener"><span class="ms">local_hospital</span>KKH Urgent O&amp;G (24h)</a>' : '') + '<a class="btn ghost" href="journal.html"><span class="ms">medical_information</span>Show my chart</a></div>' +
-        '<small>Ovumind cannot assess your condition or diagnose. This alert follows published guidance (KKH, SCDF, NHS). No clinician receives this alert.</small>';
-      if (u.level === 'safeguard') html = '<b>' + esc(u.title) + '</b><p>If you might be pregnant, please talk to someone today. ' + BABES + ' A doctor can confirm a pregnancy and check that you are well, and a trusted adult or school counsellor can come with you.</p><p class="esc">Strong tummy pain, heavy bleeding or feeling faint: go to the 24-hour Urgent O&amp;G Centre at KK Women’s and Children’s Hospital, or call 995.</p><div class="row"><a class="btn primary" href="tel:62066641"><span class="ms">call</span>Call Babes</a><a class="btn soft" href="https://wa.me/6581113535" target="_blank" rel="noopener"><span class="ms">chat</span>WhatsApp Babes</a></div><small>Ovumind cannot give pregnancy advice. Nothing you type here is sent to anyone.</small>';
+        '<small>Rhythme cannot assess your condition or diagnose. This alert follows published guidance (KKH, SCDF, NHS). No clinician receives this alert.</small>';
+      if (u.level === 'safeguard') html = '<b>' + esc(u.title) + '</b><p>If you might be pregnant, please talk to someone today. ' + BABES + ' A doctor can confirm a pregnancy and check that you are well, and a trusted adult or school counsellor can come with you.</p><p class="esc">Strong tummy pain, heavy bleeding or feeling faint: go to the 24-hour Urgent O&amp;G Centre at KK Women’s and Children’s Hospital, or call 995.</p><div class="row"><a class="btn primary" href="tel:62066641"><span class="ms">call</span>Call Babes</a><a class="btn soft" href="https://wa.me/6581113535" target="_blank" rel="noopener"><span class="ms">chat</span>WhatsApp Babes</a></div><small>Rhythme cannot give pregnancy advice. Nothing you type here is sent to anyone.</small>';
       var card = bubble('urgent' + (emergency ? ' emergency' : ''), html); remember('urgent' + (emergency ? ' emergency' : ''), html);
       try { chime('alert', true); } catch (err) { }
       return card;
@@ -1138,11 +1109,11 @@
       text = (text || '').trim(); if (!text) return;
       bubble('me', esc(text)); remember('me', esc(text)); $('#lunaIn').value = '';
       var u = ORB.urgent(text, S.profile()); if (u) urgentCard(u);
-      var local = ORB.parseLocal(text), cfg2 = ORB.aiConfig(), aiOk = cfg2.on && (cfg2.provider === 'ovumind' || cfg2.key);
+      var local = ORB.parseLocal(text), cfg2 = ORB.aiConfig(), aiOk = cfg2.on;
       /* Short canonical notes (the shortcut chips) are read by the rules instantly; longer or
        * unmatched notes go to the model first, and the rules stay as the offline fallback. */
       if (aiOk && (!local.length || text.length > 36)) {
-        var thinking = bubble('luna', '<b>Luna</b>Thinking with ' + esc(cfg2.provider === 'ovumind' ? 'Doubao' : (cfg2.model || ORB.OR_MODEL)) + '…');
+        var thinking = bubble('luna', '<b>Luna</b>Reading your note…');
         ORB.parseAI(text).then(function (res) {
           thinking.remove();
           if (res.entries.length) { if (res.reply) bubble('luna', '<b>Luna</b>' + esc(res.reply)); confirmCard(res.entries); }
@@ -1165,7 +1136,7 @@
     chat.addEventListener('click', function (e) { if (e.target.closest('[data-byhand]')) openDiary(); });
     $('#lunaPhoto').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; if (f) photoFlow(f); });
     function askPhotos(f) {
-      var ask = bubble('luna', '<b>Luna</b>To recognise the food I need to send this photo once through Ovumind’s relay to Luna’s model. It is not kept there, and only a small thumbnail stays in your diary on this phone.' +
+      var ask = bubble('luna', '<b>Luna</b>To recognise the food I need to send this photo once to Rhythme’s service. It is not kept there, and only a small thumbnail stays in your diary on this phone.' +
         '<div class="row"><button type="button" class="btn primary" data-allow="1"><span class="ms">photo_camera</span>Allow food photos</button><button type="button" class="btn ghost" data-byhand="1">Log it by hand</button></div>');
       ask.querySelector('[data-allow]').addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c); ask.remove(); photoFlow(f); });
     }
@@ -1186,9 +1157,9 @@
     function foodNote(items) {
       var h = items.filter(function (it) { return it.source && it.source.kind === 'hpb'; }).length, n = items.length;
       var hpbLine = ' Contains information from the Singapore Food Insights Database (SG FoodID), Health Promotion Board, under <a href="https://pphtpc.hpb.gov.sg/web/sgfoodid" target="_blank" rel="noopener">its terms</a>.';
-      if (!h) return 'Estimated from your photo by Luna’s model. Hawker portions vary, so change the grams if they look off.';
+      if (!h) return 'Estimated from your photo by Luna. Hawker portions vary, so change the grams if they look off.';
       if (h === n) return (n === 1 ? 'This dish uses' : 'All ' + n + ' dishes use') + ' Health Promotion Board SG FoodID values for the grams shown. Hawker portions vary, so change the grams if they look off.' + hpbLine;
-      return h + ' of ' + n + ' dishes use Health Promotion Board SG FoodID values; the rest are estimated from your photo by Luna’s model. Change the grams if they look off.' + hpbLine;
+      return h + ' of ' + n + ' dishes use Health Promotion Board SG FoodID values; the rest are estimated from your photo by Luna. Change the grams if they look off.' + hpbLine;
     }
     function foodCard(res, thumb) {
       var hr = new Date().getHours(), meal = hr < 11 ? 'breakfast' : hr < 15 ? 'lunch' : hr >= 17 && hr < 22 ? 'dinner' : 'snack';
@@ -1200,7 +1171,7 @@
           '<b class="fl-kcal">About ' + FD.fmt('kcal', t.kcal) + ' kcal</b>' + (res.mealName ? '<small>' + esc(res.mealName) + '</small>' : '') + '</div></div>' +
           '<div class="fl-items">' + items.map(function (it, i) {
             var hpb = it.source && it.source.kind === 'hpb';
-            var chip = '<i class="fl-src ' + (hpb ? 'hpb' : 'est') + '" title="' + esc(hpb ? it.source.ref + ' · ' + it.source.detail : 'Estimated from the photo by Luna’s model') + '">' + (hpb ? 'HPB' : 'photo estimate') + '</i>';
+            var chip = '<i class="fl-src ' + (hpb ? 'hpb' : 'est') + '" title="' + esc(hpb ? it.source.ref + ' · ' + it.source.detail : 'Estimated from the photo by Luna') + '">' + (hpb ? 'HPB' : 'photo estimate') + '</i>';
             return '<div class="fl-item">' + (editing
               ? '<input class="input fl-name" data-name="' + i + '" value="' + esc(it.name) + '" aria-label="Food name"><label class="fl-g"><input class="input" type="number" inputmode="numeric" min="1" max="2000" data-grams="' + i + '" value="' + Math.round(it.grams || 0) + '" aria-label="Grams">' + (it.basis === '100ml' ? 'ml' : 'g') + '</label><button type="button" class="fl-x" data-x="' + i + '" aria-label="Remove ' + esc(it.name) + '"><span class="ms">close</span></button>'
               : '<div><b>' + esc(it.name) + '</b><span>' + esc(it.portionLabel) + (it.confidence === 'low' ? ' · not sure' : '') + ' ' + chip + '</span>' + (NV ? novaChip(NV.classify(it)) : '') + '</div>') +
@@ -1237,9 +1208,8 @@
       if (pen) { var inp = $('#lunaIn'); inp.value = pen.dataset.q; inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (err) { } toast('Edit the numbers, then send.', 'edit'); return; }
       if (go) send(go.dataset.q);
     });
-    $('#aiProv').addEventListener('change', function () { $('#ownKey').classList.toggle('hidden', this.value === 'ovumind'); });
-    $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.provider = $('#aiProv').value; c.model = $('#aiModel').value.trim(); c.key = $('#aiKey').value.trim(); c.insights = $('#aiInsights').checked; c.photos = $('#aiPhotos').checked; if (c.provider !== 'ovumind' && !c.key) { toast('Paste a key, or choose Luna’s own model.', 'key'); return; } c.on = true; ORB.setAiConfig(c); toast('Saved on this device.', 'save'); openLuna($('#lunaIn').value); });
-    $('#aiToggle').addEventListener('click', function () { var c = ORB.aiConfig(); c.on = !c.on; if (c.on && c.provider !== 'ovumind' && !c.key) c.provider = 'ovumind'; ORB.setAiConfig(c); openLuna($('#lunaIn').value); });
+    $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.insights = $('#aiInsights').checked; c.photos = $('#aiPhotos').checked; ORB.setAiConfig(c); S.setProfile({ consent: Object.assign({}, S.profile().consent || {}, { improve: $('#aiImprove').checked }) }); chime('save'); toast('Luna’s settings saved.', 'check_circle'); openLuna($('#lunaIn').value); });
+    $('#aiToggle').addEventListener('click', function () { var c = ORB.aiConfig(); c.on = !c.on; ORB.setAiConfig(c); openLuna($('#lunaIn').value); });
     if (prefill) send(prefill);
   }
   $('#lunaBtn').addEventListener('click', function () { chime('tap'); $('#lunaBtn').classList.remove('hinting'); openLuna(); });
@@ -1352,8 +1322,6 @@
   function openAcupressure() {
     if (current !== 'mind' && meditating && !session) exitMeditation();
     (acuData ? Promise.resolve(acuData) : loadJSON('assets/data/acupoints.json').then(function (d) { acuData = d; return d; })).then(function (d) {
-      var ev = d.evidence['atlas-period-pain'];
-      GUIDES.acu.evidence = ev.sources.map(function (s) { return [s.authors + ' (' + s.year + '), ' + s.journal + ': ' + s.title, s.url]; });
       var byId = {}; d.points.forEach(function (p) { byId[p.id] = p; });
       var order = []; ACU_ORDER.forEach(function (rk) { Object.keys(ACU_REGIONS[rk].pts).forEach(function (id) { if (byId[id] && order.indexOf(id) < 0) order.push(id); }); });
       var num = {}; order.forEach(function (id, k) { num[id] = k + 1; });
@@ -1368,9 +1336,9 @@
         $('#locator').innerHTML = '<div class="zoom"><img src="assets/room/acu/' + R.img + '.webp" alt="' + esc(R.title) + '">' + R.pts[id].map(function (xy) { return '<i class="mark' + (ACU_CAUTION[id] ? ' caution' : '') + '" style="left:' + xy[0] + '%;top:' + xy[1] + '%"></i>'; }).join('') + '<span class="ztitle">' + num[id] + ' · ' + esc(p.code) + ' · ' + esc(R.title.toLowerCase()) + '</span></div>' +
           '<div class="txt"><h3>' + esc(p.code) + ' · ' + esc(p.name) + '<small>' + esc(p.cn) + ' · ' + esc(p.channel) + '</small></h3>' +
           '<div class="find"><span class="ms">touch_app</span><span>' + esc(ACU_FIND[id] || p.location) + (p.bilateral ? ' Both sides.' : '') + '</span></div>' +
-          '<p><b>Atlas wording:</b> ' + esc(p.location) + '</p>' + (p.research ? '<p>' + esc(p.research) + '</p>' : '') +
+          (p.research ? '<p>' + esc(p.research) + '</p>' : '') +
           '<div class="how"><div><span class="ms">touch_app</span>Thumb or fingertip</div><div><span class="ms">timer</span>1 to 2 minutes</div><div><span class="ms">air</span>Slow breaths</div></div>' + (ACU_CAUTION[id] ? '<div class="warn">' + esc(ACU_CAUTION[id]) + '</div>' : '') +
-          '<p class="cunkey">Finger-widths are the traditional body units (B-cun): one thumb-width is 1, two fingers 1.5, three fingers 2, four fingers 3. The marker shows the area; the written location is the standard. WHO standard acupuncture point locations (2008), page ' + p.whoPage + '.</p></div>';
+          '<div class="fingerkey"><b>Measure with your own hand</b><div><span><i>1</i>thumb-width</span><span><i>2</i>finger-widths</span><span><i>3</i>finger-widths</span><span><i>4</i>finger-widths</span></div><small>Your own fingers fit your own body, so the distances work for any size. The pink dot shows the area; press around it until you find a slightly tender spot. Location checked against the WHO standard (2008), p. ' + p.whoPage + '.</small></div></div>';
         $('#locator').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
       body.addEventListener('click', function (e) { var b = e.target.closest('[data-pt]'); if (b) { chime('tap'); show(b.dataset.pt); } });
@@ -1398,6 +1366,17 @@
   var MF = window.OvuMindful, practice = null, GUIDE = 'assets/audio/guide-interim/';
   function playUrl(url) { return new Promise(function (resolve) { if (!practice || practice.stopped) return resolve(); var a = new Audio(url); practice.audio = a; a.onended = function () { resolve(); }; a.onerror = function () { resolve(); }; a.play().catch(function () { resolve(); }); }); }
   function pwait(ms) { return new Promise(function (resolve) { if (!practice || practice.stopped) return resolve(); practice.timer = setTimeout(resolve, ms); }); }
+  /* Pose and outfit images include their props (a watering can, a pillow, a wardrobe), so each one is
+   * scaled by how wide the girl's head is in it: [image width relative to her head, her centre as a
+   * fraction of the image]. Her head, and so her size, stays the same in every pose. */
+  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513]};
+  function fitAvatar() {
+    var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatarImg.src || ''), f = m && AVATAR_FIT[m[1]]; if (!f) f = [1, 0.5];
+    avatarImg.style.width = (f[0] * 100).toFixed(2) + '%'; avatarImg.style.maxWidth = 'none';
+    avatarImg.style.marginLeft = ((0.5 - f[1] * f[0]) * 100).toFixed(2) + '%';
+    avatarImg.style.transformOrigin = (f[1] * 100).toFixed(1) + '% 100%';
+  }
+  avatarImg.addEventListener('load', fitAvatar); if (avatarImg.complete) fitAvatar();
   function setPose(pose) { var img = new Image(); img.onload = function () { avatarImg.src = img.src; }; img.src = ART + 'avatar-act-' + pose + '.webp'; }
   function restorePose() { setOutfit(S.profile().outfit || 'base', true); }
   function openEveryday(selId) {
@@ -1461,8 +1440,7 @@
 
   /* ---------- Rhythme welcome + getting to know you (in the room, so the theme never changes) ---------- */
   var ONB = [
-    { id: 'privacy', icon: 'lock', pose: 'bed', title: 'First, the honest part', sub: 'Before any question, here is what happens to your answers.', type: 'info', items: [['lock', 'They stay in this browser', 'Entries, answers and hearts live on this phone. There is no account. Nothing leaves the phone unless you allow it in the last step.'], ['tune', 'They tune your room', 'Cycle answers shape predictions; the rest chooses guides and notes. Nothing here diagnoses.'], ['visibility', 'Nobody is watching', 'No one at Ovumind sees your records or receives alerts. If you later let Luna’s model read a note, that note passes through a relay that keeps nothing.']] },
-    { id: 'age', icon: 'cake', pose: 'coffee', title: 'How old are you?', sub: 'Age shapes what is typical for cycles, so the notes stay honest.', type: 'chips', key: 'ageBand', options: [['under13', 'Under 13'], ['13-16', '13–16'], ['17', '17'], ['18-24', '18–24'], ['25-29', '25–29'], ['30-34', '30–34'], ['35-39', '35–39'], ['40-44', '40–44'], ['45-49', '45–49'], ['50+', '50+']], note: function (A) { return A.ageBand === 'under13' ? 'Please set Ovumind up together with a parent or guardian. There is a short note for you next.' : (A.ageBand === '13-16' ? 'Ovumind is made for adults, so there is a short note for you next.' : (A.ageBand === '17' ? 'Welcome. Your answers stay private on this phone; a trusted adult can help if anything here feels confusing.' : '')); } },
+    { id: 'age', icon: 'cake', pose: 'coffee', title: 'How old are you?', sub: 'Age shapes what is typical for cycles, so the notes stay honest.', type: 'chips', key: 'ageBand', options: [['under13', 'Under 13'], ['13-16', '13–16'], ['17', '17'], ['18-24', '18–24'], ['25-29', '25–29'], ['30-34', '30–34'], ['35-39', '35–39'], ['40-44', '40–44'], ['45-49', '45–49'], ['50+', '50+']], note: function (A) { return A.ageBand === 'under13' ? 'Please set Rhythme up together with a parent or guardian. There is a short note for you next.' : (A.ageBand === '13-16' ? 'Rhythme is made for adults, so there is a short note for you next.' : (A.ageBand === '17' ? 'Welcome. Your answers stay private on this phone; a trusted adult can help if anything here feels confusing.' : '')); } },
     { id: 'regular', icon: 'calendar_month', pose: 'stretch', title: 'Your periods', sub: 'Pick what fits best. If you are pregnant or past menopause, choose the closest; you can change it later.', type: 'rows', rows: [{ key: 'regularity', label: 'How regular', options: [['regular', 'Fairly regular'], ['irregular', 'Irregular'], ['rare', 'Rare, with gaps of 3 months or more'], ['none12', 'No period for 12 months or more'], ['notyet', 'My periods haven’t started yet'], ['unsure', 'Not sure']] }, { key: 'menarche', label: 'Age at your first period (optional)', options: [['lt10', 'Under 10'], ['10-12', '10–12'], ['13-15', '13–15'], ['16+', '16 or older'], ['unknown', 'Don’t remember']], showIf: function (A) { return !!A.regularity && A.regularity !== 'notyet'; } }] },
     { id: 'preg', icon: 'pregnant_woman', pose: 'plants', title: 'Pregnancy and plans', sub: 'These change how dates should be read.', type: 'rows', rows: [{ key: 'pregState', label: 'Right now', options: [['none', 'None of these'], ['maybe', 'I could be pregnant'], ['pregnant', 'Pregnant'], ['postpartum', 'Gave birth in the last year'], ['loss', 'Recent pregnancy loss']] }, { key: 'breastfeeding', label: 'Breastfeeding', options: [['yes', 'Yes'], ['no', 'No']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'periodsBack', label: 'Have periods returned?', options: [['yes', 'Yes'], ['no', 'Not yet']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'plans', label: 'Plans', showIf: function (A) { return !isMinor(A); }, options: [['ttc', 'Trying to conceive now'], ['later', 'Maybe later'], ['no', 'Not planning']] }, { key: 'ttcMonths', label: 'Months trying', showIf: function (A) { return !isMinor(A) && A.plans === 'ttc'; }, options: [['0-5', '0–5'], ['6-11', '6–11'], ['12+', '12 or more']], showIf: function (A) { return A.plans === 'ttc'; } }, { key: 'fertilityTx', label: 'Fertility treatment before?', options: [['no', 'No'], ['yes', 'Yes']], showIf: function (A) { return A.plans === 'ttc'; } }] },
     { id: 'hormones', icon: 'medication', pose: 'outfit', title: 'Hormones and medicines', sub: 'Tick what you use now. These change what cycle dates mean.', type: 'multi', key: 'hormones', options: [['pill', 'Combined pill'], ['pop', 'Progestogen-only pill'], ['iud_h', 'Hormonal IUD'], ['iud_cu', 'Copper IUD'], ['implant', 'Implant or injection'], ['hrt', 'HRT (MHT)'], ['fertility', 'Fertility medicines'], ['ec', 'Emergency contraception this month'], ['other', 'Other relevant medicine'], ['none', 'None']], exclusive: ['none'] },
@@ -1473,15 +1451,10 @@
     { id: 'dx', icon: 'stethoscope', pose: 'dishes', title: 'Has a clinician told you about any of these?', sub: 'Self-reported is fine. Tick all that apply.', type: 'multi', key: 'conditions', options: [['pcos', 'PCOS'], ['endo', 'Endometriosis'], ['fibroids', 'Fibroids'], ['thyroid', 'Thyroid condition'], ['poi', 'Early menopause or POI'], ['cysts', 'Ovarian cysts'], ['pid', 'Pelvic infection'], ['surgery', 'Surgery on womb, tubes or ovaries'], ['oophorectomy', 'One or both ovaries removed'], ['hysterectomy', 'Hysterectomy'], ['chemo', 'Chemotherapy or pelvic radiotherapy'], ['anaemia', 'Low iron or anaemia'], ['other', 'Something else'], ['unsure', 'Not sure'], ['none', 'None']], exclusive: ['none'] },
     { id: 'family', icon: 'family_restroom', pose: 'pets', title: 'In your family', sub: 'Relationships only, no names. Family patterns help read your own.', type: 'multi', key: 'family', options: [['meno40', 'Mother or sister: menopause before 40'], ['meno44', 'Mother or sister: menopause at 40–44'], ['pcosendo', 'PCOS or endometriosis'], ['cancer', 'Ovarian or breast cancer'], ['brca', 'Known BRCA or Lynch finding'], ['none', 'None that I know of'], ['unknown', 'Don’t know']], exclusive: ['none', 'unknown'] },
     { id: 'signals', icon: 'monitor_heart', pose: 'coffee', title: 'Body signals lately', sub: 'New or persistent in the last few months.', type: 'multi', key: 'signals', options: [['hair', 'New facial or body hair'], ['discharge', 'Nipple discharge (not breastfeeding)'], ['weight', 'Big weight change'], ['restrict', 'Restrictive eating or intense training'], ['bloating', 'Persistent bloating or feeling full quickly'], ['pelvic', 'New pelvic pain or needing to wee more often'], ['flushes', 'Hot flushes or night sweats'], ['none', 'None of these']], exclusive: ['none'] },
-    { id: 'goals', icon: 'favorite', pose: 'plants', title: 'What would you like from Ovumind?', sub: 'Pick as many as you like. The room will lean toward them.', type: 'multi', key: 'goals', options: [['understand', 'Understand my cycle'], ['conceive', 'Conceive'], ['symptoms', 'Ease cramps and PMS'], ['sleep', 'Sleep better'], ['peri', 'Perimenopause support'], ['calm', 'Build calm habits'], ['doctor', 'Clear records for my doctor']] },
+    { id: 'goals', icon: 'favorite', pose: 'plants', title: 'What would you like from Rhythme?', sub: 'Pick as many as you like. The room will lean toward them.', type: 'multi', key: 'goals', options: [['understand', 'Understand my cycle'], ['conceive', 'Conceive'], ['symptoms', 'Ease cramps and PMS'], ['sleep', 'Sleep better'], ['peri', 'Perimenopause support'], ['calm', 'Build calm habits'], ['doctor', 'Clear records for my doctor']] },
     { id: 'habits', icon: 'spa', pose: 'stretch', title: 'Everyday habits (optional)', sub: 'No judgement. Smoking and sleep in particular shape ovarian health over the years.', type: 'rows', optional: true, rows: [{ key: 'smoking', label: 'Smoking', options: [['no', 'No'], ['sometimes', 'Sometimes'], ['daily', 'Daily']] }, { key: 'alcohol', label: 'Alcohol', options: [['none', 'None'], ['weekly', 'Some weeks'], ['most', 'Most days']] }, { key: 'sleep', label: 'Usual sleep', options: [['lt6', 'Under 6 h'], ['6-7', '6–7 h'], ['7-8', '7–8 h'], ['8+', '8 h or more']] }, { key: 'exercise', label: 'Movement days a week', options: [['0', '0'], ['1-2', '1–2'], ['3-4', '3–4'], ['5+', '5+']] }] },
     { id: 'body', icon: 'monitor_weight', pose: 'shower', title: 'Height and weight (optional)', sub: 'Only if you want. Weight at either extreme can change ovulation, so it helps the notes.', type: 'body', optional: true },
-    { id: 'perms', icon: 'shield_person', pose: 'coffee', title: 'Two permissions, both off until you say yes', sub: 'Luna’s on-device rules always work. These two send text to a model and can be changed any time in Luna’s settings.', type: 'perms', optional: true },
     { id: 'final', icon: 'waving_hand', pose: 'outfit', title: 'Lastly, what should I call you?', sub: 'A first name or a nickname, or leave it blank.', type: 'final' }
-  ];
-  var PERMS = [
-    ['permLuna', 'auto_awesome', 'Let Luna’s model read a note the rules cannot', 'Only that note (no name, no history) goes through Ovumind’s relay to a Doubao model and comes straight back for you to confirm. Nothing is stored on the way.'],
-    ['permInsights', 'menu_book', 'Let the reading agent write journal readings', 'A de-identified summary of your last 7 or 28 days (entries, cycle day, your intake answers, no name) is sent the same way to write a short reading. Rules on this device remain the only source of flags.']
   ];
   var onb = null;
   /* Under-16 safeguarding: '13-17' is an older band kept for existing profiles and treated as possibly under 16. */
@@ -1500,12 +1473,7 @@
     if (st.type === 'date') html = '<div class="field"><input class="input" id="onbDate" type="date" max="' + S.today() + '" value="' + esc(A[st.key] || '') + '"></div>' + (st.extra ? chipRow(st.extraKey, st.extra, A[st.extraKey], false) : '');
     if (st.type === 'rows') html = st.rows.filter(function (r) { return !r.showIf || r.showIf(A); }).map(function (r) { return '<div class="field"><span class="lbl">' + esc(r.label) + '</span>' + chipRow(r.key, r.options, A[r.key], false) + '</div>'; }).join('');
     if (st.type === 'body') html = '<div class="grid2"><div class="field"><label for="onbH">Height (cm)</label><input class="input" id="onbH" type="number" inputmode="numeric" min="120" max="220" value="' + (A.heightCm || '') + '"></div><div class="field"><label for="onbW">Weight (kg)</label><input class="input" id="onbW" type="number" inputmode="decimal" min="30" max="250" step="0.1" value="' + (A.weightKg || '') + '"></div></div>';
-    if (st.type === 'perms') html = PERMS.map(function (p) { return '<label class="perm"><input type="checkbox" id="' + p[0] + '"' + (A[p[0]] ? ' checked' : '') + '><span class="ms">' + p[1] + '</span><div><b>' + esc(p[2]) + '</b><span>' + esc(p[3]) + '</span></div></label>'; }).join('') +
-      '<div class="onb-note"><span class="ms">lock</span>Skip, or leave both off, and Luna stays rules-only: notes never leave this phone. No clinician monitors anything either way.</div>';
-    if (st.type === 'final') html = '<div class="field"><input class="input" id="onbName" maxlength="24" placeholder="Your name" value="' + esc(A.name || S.profile().name || '') + '"></div>' +
-      '<div class="stat"><span class="ms">lock</span><div><b>On this phone only</b><span>Entries live in this browser. The page loads fonts from Google; GitHub Pages serves the files with ordinary server logs; if Luna’s model reads a note, only that note goes through the Ovumind relay and comes straight back to you.</span></div></div>' +
-      '<label class="agree"><input type="checkbox" id="onbAgree"' + (A.consent ? ' checked' : '') + '> I have read the <a href="privacy.html" target="_blank" rel="noopener">privacy notes</a> and <a href="terms.html" target="_blank" rel="noopener">terms</a>. Ovumind is not a medical device and does not replace care.</label>' +
-      (A.ageBand === 'under13' ? '<div class="onb-note"><span class="ms">family_restroom</span>Under 13: a parent or guardian should tick this with you.</div>' : '');
+    if (st.type === 'final') html = '<div class="field"><input class="input" id="onbName" maxlength="24" placeholder="Your name" value="' + esc(A.name || S.profile().name || '') + '"></div>';
     openSheet('onboarding', 'Getting to know you', 'Step ' + (onb.i + 1) + ' of ' + steps.length, 'favorite',
       '<div class="onb"><div class="onb-head"><div class="onb-ico" aria-hidden="true"><span class="ms">' + (st.icon || 'favorite') + '</span></div><div><h3>' + esc(st.title) + '</h3><p>' + esc(st.sub) + '</p></div></div><div class="onb-dots">' + steps.map(function (_, k) { return '<i class="' + (k <= onb.i ? 'on' : '') + '"></i>'; }).join('') + '</div>' + html +
       '<div class="onb-nav">' + (onb.i ? '<button type="button" class="btn ghost" id="onbBack"><span class="ms">arrow_back</span>Back</button>' : '') + '<span class="sp"></span>' + (st.optional ? '<button type="button" class="btn ghost" id="onbSkip">Skip</button>' : '') + '<button type="button" class="btn primary" id="onbNext">' + (last ? '<span class="ms">favorite</span>Enter my room' : 'Next<span class="ms">arrow_forward</span>') + '</button></div><div class="msg" id="onbMsg"></div></div>');
@@ -1513,8 +1481,7 @@
     function collect() {
       if (st.type === 'date') { var d = $('#onbDate').value; A[st.key] = S.validDate(d) && d <= S.today() ? d : ''; if (A[st.key] && st.extraKey) A[st.extraKey] = ''; }
       if (st.type === 'body') { A.heightCm = Number($('#onbH').value) || null; A.weightKg = Number($('#onbW').value) || null; }
-      if (st.type === 'final') { A.name = $('#onbName').value.trim(); A.consent = $('#onbAgree').checked; }
-      if (st.type === 'perms') { PERMS.forEach(function (p) { var el = $('#' + p[0]); A[p[0]] = !!(el && el.checked); }); }
+      if (st.type === 'final') { A.name = $('#onbName').value.trim(); }
     }
     body.addEventListener('click', function (e) {
       var c = e.target.closest('.chipbtn[data-v]');
@@ -1525,10 +1492,9 @@
         chime('tap'); return;
       }
       if (e.target.closest('#onbBack')) { collect(); openOnboarding(onb.i - 1); return; }
-      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; } if (st.type === 'perms') { A.permLuna = false; A.permInsights = false; } openOnboarding(onb.i + 1); return; }
+      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; } openOnboarding(onb.i + 1); return; }
       if (e.target.closest('#onbNext')) {
         collect();
-        if (st.type === 'final' && !A.consent) { message($('#onbMsg'), 'Please tick the box to continue.', false); return; }
         if (st.id === 'urgent' && (A.urgent || []).some(function (x) { return x !== 'none'; })) { openUrgentCard(function () { openOnboarding(onb.i + 1); }); return; }
         if (st.id === 'age' && isMinor(A)) { openMinorNote(function () { A.minorAck = new Date().toISOString(); openOnboarding(onb.i + 1); }); return; }
         if (st.id === 'preg' && isMinor(A) && (A.pregState === 'pregnant' || A.pregState === 'maybe')) { openTeenPregnancyCard(function () { openOnboarding(onb.i + 1); }); return; }
@@ -1539,7 +1505,7 @@
   var BABES = '<b>Babes Pregnancy Crisis Support</b> helps young people for free, any time: call <a href="tel:62066641">6206 6641</a> or WhatsApp <a href="https://wa.me/6581113535" target="_blank" rel="noopener">8111 3535</a>.';
   function openMinorNote(next) {
     openSheet('minor', 'A note before we go on', 'For anyone 16 or under', 'family_restroom',
-      '<div class="flag info"><span class="ms">favorite</span><div><b>Ovumind is made for adults</b><span>If you are 16 or under, please use it together with a parent, guardian or school counsellor. It can help you notice your own patterns, but it cannot give advice about sex, contraception or pregnancy, and it never replaces a doctor.</span></div></div>' +
+      '<div class="flag info"><span class="ms">favorite</span><div><b>Rhythme is made for adults</b><span>If you are 16 or under, please use it together with a parent, guardian or school counsellor. It can help you notice your own patterns, but it cannot give advice about sex, contraception or pregnancy, and it never replaces a doctor.</span></div></div>' +
       '<div class="flag info"><span class="ms">support_agent</span><div><b>If something is worrying you</b><span>Talk to a trusted adult or your school counsellor. If you think you might be pregnant, ' + BABES + ' At primary school or under 13: Tinkle Friend, <a href="tel:18002744788">1800 274 4788</a> (weekday afternoons). In an emergency, call 995.</span></div></div>' +
       '<div class="row"><button type="button" class="btn primary" id="minorOk"><span class="ms">check</span>I understand</button></div>');
     $('#minorOk').addEventListener('click', next);
@@ -1548,14 +1514,14 @@
     openSheet('teenpreg', 'You don’t have to handle this alone', 'Free, private help in Singapore, any time', 'favorite',
       '<div class="flag high"><span class="ms">support_agent</span><div><b>Please talk to someone today</b><span>' + BABES + ' A doctor can confirm a pregnancy and check that you are well. A trusted adult or your school counsellor can come with you.</span></div></div>' +
       '<div class="flag high"><span class="ms">emergency_home</span><div><b>Get care now if</b><span>you have strong pain in your tummy, heavy bleeding, or feel faint: go to the 24-hour Urgent O&amp;G Centre at KK Women’s and Children’s Hospital, or call 995.</span></div></div>' +
-      '<p class="help">Ovumind pauses period predictions and cannot give pregnancy advice. Your answers stay on this phone.</p>' +
+      '<p class="help">Rhythme pauses period predictions and cannot give pregnancy advice. Your answers stay on this phone.</p>' +
       '<div class="row"><a class="btn primary" href="tel:62066641"><span class="ms">call</span>Call Babes</a><a class="btn soft" href="https://wa.me/6581113535" target="_blank" rel="noopener"><span class="ms">chat</span>WhatsApp Babes</a><button type="button" class="btn ghost" id="teenNext">Continue</button></div>');
     $('#teenNext').addEventListener('click', next);
   }
   function openUrgentCard(next) {
     openSheet('urgent', 'Please get care today', 'This is not something to track; it needs a clinician now', 'emergency_home',
       '<div class="flag high"><span class="ms">emergency_home</span><div><b>Sudden severe pelvic pain, fainting with bleeding, shoulder-tip pain or bleeding you cannot control</b><span>In Singapore call 995 or go to the nearest A&E; KK Women’s and Children’s Hospital runs a 24-hour O&G emergency service. If you could be pregnant, say so when you arrive.</span></div></div>' +
-      '<p class="help">Ovumind cannot assess this. Your answers are kept as a note for your records, not sent anywhere.</p>' +
+      '<p class="help">Rhythme cannot assess this. Your answers are kept as a note for your records, not sent anywhere.</p>' +
       '<div class="row"><a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><button type="button" class="btn ghost" id="urgentNext">Continue</button></div>');
     $('#urgentNext').addEventListener('click', next);
   }
@@ -1585,18 +1551,31 @@
     var num = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : null; };
     var patch = { name: A.name || S.profile().name || '', ageBand: A.ageBand || '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', minorAck: A.minorAck || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: A.lastPeriodStart || '', cycleLength: num(A.cycleLength), periodLength: num(A.periodLength), cycleVaries: A.cycleLength === 'varies' || A.cycleLength === 'rare', bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (A.ageBand && ['40-44', '45-49', '50+'].indexOf(A.ageBand) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), consent: { terms: true, at: new Date().toISOString() }, onboarded: true, onboardedAt: new Date().toISOString() };
     S.setProfile(patch);
-    /* The two model permissions are the only way the relay gets switched on; both default to off. */
-    var ai = ORB.aiConfig(); ai.provider = 'ovumind'; ai.on = !!A.permLuna; ai.insights = !!A.permInsights; ORB.setAiConfig(ai);
     if (patch.lastPeriodStart && !S.list('period').length) { try { S.add('period', patch.lastPeriodStart, { flow: 'medium', clots: false, impact: false }, 'onboarding'); } catch (e) { } }
     try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, patch))); } catch (e) { }
     RW.grant(20, 'welcome');
     onb = null; closeSheet(); updateGreeting(); renderDeck(); renderProps();
     toast('Welcome home' + (patch.name ? ', ' + patch.name : '') + '. 20 hearts to start your nest.', 'favorite');
   }
+  /* ---------- data notice: one friendly read and a required OK before the room opens ---------- */
+  var CONSENT_V = 1;
+  function hasConsent() { var c = S.profile().consent; return !!(c && c.v >= CONSENT_V && c.at); }
+  function requireConsent(next) {
+    if (hasConsent()) { if (next) next(); return; }
+    var c = $('#consent'); if (!c) return;
+    c.hidden = false; try { c.querySelector('.c-scroll').scrollTop = 0; } catch (e) { }
+    $('#cAgree').onclick = function () {
+      chime('tap');
+      S.setProfile({ consent: { v: CONSENT_V, at: new Date().toISOString(), improve: !!$('#cImprove').checked } });
+      /* Accepting turns Luna's reading, written readings and food photos on; each can be switched off in her settings. */
+      var ai = ORB.aiConfig(); ai.on = true; ai.insights = true; ai.photos = true; ORB.setAiConfig(ai);
+      c.hidden = true; if (next) next();
+    };
+  }
   function showWelcome() {
     var w = $('#welcome'); if (!w) return; w.hidden = false;
-    $('#wBegin').addEventListener('click', function () { chime('tap'); w.hidden = true; S.setState({ welcomeSeen: true }); openOnboarding(0, {}); });
-    $('#wSkip').addEventListener('click', function () { chime('tap'); w.hidden = true; S.setState({ welcomeSeen: true }); toast('Welcome back. Your intro is under the window whenever you want it.', 'favorite'); });
+    $('#wBegin').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); }); });
+    $('#wSkip').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); toast('Welcome back. Your intro is under the window whenever you want it.', 'favorite'); }); });
   }
 
   /* ---------- window: follows the sun (ovu-sun.js) ---------- */
@@ -1703,9 +1682,10 @@
     if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () { });
     RM.start(function (h) { chime('bell', true); toast(h.item.label + (h.item.note ? ' · ' + h.item.note : ''), h.item.icon); });
     document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } if (e.target.closest('#arrDone')) exitArrange(false); if (e.target.closest('#arrReset')) exitArrange(true); });
-    if (location.hash === '#luna') setTimeout(function () { openLuna(); }, 600);
-    if (location.hash === '#onboarding') setTimeout(function () { openOnboarding(0, {}); }, 400);
+    if (location.hash === '#luna') setTimeout(function () { requireConsent(function () { openLuna(); }); }, 600);
+    if (location.hash === '#onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
     else if (!S.profile().onboarded && !S.state().welcomeSeen) showWelcome();
+    else if (location.hash !== '#luna') requireConsent();
     setTimeout(function () { $('#loading').classList.add('hidden'); joy(); }, 500);
     scheduleLife();
     function tick() { var d = new Date(); $('#clockTime').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); var dc = $('#deskClock'); if (dc) dc.textContent = nowHM(); } tick(); setInterval(tick, 20000);

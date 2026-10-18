@@ -1,4 +1,4 @@
-// ppg.js — Camera Finger PPG Engine for Ovumind
+// ppg.js — Camera Finger PPG Engine for Rhythme
 // Client-side signal processing: detrending, peak detection, BPM, HRV (RMSSD)
 // No external dependencies, fully Vercel-compatible static client asset.
 

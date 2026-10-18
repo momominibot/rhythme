@@ -20,7 +20,7 @@
       id: 'welcome',
       section: 'Welcome',
       type: 'welcome',
-      title: 'Welcome to Ovumind',
+      title: 'Welcome to Rhythme',
       subtitle: 'A few quick questions to get to know you.'
     },
     {
@@ -299,7 +299,7 @@
     div.className = 'welcome';
     div.innerHTML =
       '<div class="brandmark"><span class="dot"></span><b>OVULUNA</b></div>' +
-      '<img class="hero" src="assets/onboarding/luna.png" alt="Ovumind" onerror="this.style.display=\'none\'">' +
+      '<img class="hero" src="assets/onboarding/luna.png" alt="Rhythme" onerror="this.style.display=\'none\'">' +
       '<h1>' + t(step.title) + '</h1>' +
       '<p>' + t(step.subtitle) + '</p>';
     scrollEl.appendChild(div);
@@ -813,9 +813,9 @@
       '<p>' + step.subtitle + '</p>' +
       ovInfo +
       minorNote +
-      '<p class="disc">This onboarding saves your answers in this browser\'s local storage; it does not upload them. You can review local data and deletion options in Settings. Ovumind provides education and observations, not a diagnosis or a fertility forecast.</p>';
+      '<p class="disc">This onboarding saves your answers in this browser\'s local storage; it does not upload them. You can review local data and deletion options in Settings. Rhythme provides education and observations, not a diagnosis or a fertility forecast.</p>';
     scrollEl.appendChild(div);
-    footEl.innerHTML = '<button class="cta coral" id="enterBtn">Enter Ovumind</button>';
+    footEl.innerHTML = '<button class="cta coral" id="enterBtn">Enter Rhythme</button>';
     document.getElementById('enterBtn').addEventListener('click', function() {
       finish();
     });

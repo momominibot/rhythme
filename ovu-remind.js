@@ -92,7 +92,7 @@
     if (changed) { Object.keys(d.fired).forEach(function (k) { if (d.fired[k] !== today) delete d.fired[k]; }); save(d); }
     return hits;
   }
-  function check() { due().forEach(function (h) { notify(h.item.label, h.item.note || 'From your Ovumind room', 'ovumind-' + h.item.id); if (onFire) onFire(h); }); }
+  function check() { due().forEach(function (h) { notify(h.item.label, h.item.note || 'From your Rhythme room', 'ovumind-' + h.item.id); if (onFire) onFire(h); }); }
   function start(cb) {
     onFire = cb || null;
     if (timer) clearInterval(timer);
@@ -105,13 +105,13 @@
   function ics() {
     var d = load(), BY = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'], now = new Date();
     var stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-    var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Ovumind//Reminders//EN', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Ovumind reminders'];
+    var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Rhythme//Reminders//EN', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Rhythme reminders'];
     d.items.forEach(function (it) {
       if (!it.on) return;
       it.times.forEach(function (t) {
         lines.push('BEGIN:VEVENT', 'UID:' + it.id + '-' + t.replace(':', '') + '@ovumind', 'DTSTAMP:' + stamp,
           'DTSTART:' + isoDate(now).replace(/-/g, '') + 'T' + t.replace(':', '') + '00', 'DURATION:PT5M',
-          'SUMMARY:' + escIcs(it.label), 'DESCRIPTION:' + escIcs(it.note || 'From your Ovumind room'),
+          'SUMMARY:' + escIcs(it.label), 'DESCRIPTION:' + escIcs(it.note || 'From your Rhythme room'),
           'RRULE:FREQ=WEEKLY;BYDAY=' + it.days.map(function (x) { return BY[x]; }).join(','),
           'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + escIcs(it.label), 'TRIGGER:PT0M', 'END:VALARM', 'END:VEVENT');
       });

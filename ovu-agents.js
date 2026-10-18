@@ -1,4 +1,4 @@
-/* Ovumind analysis agents (rule-based, run in this browser).
+/* Rhythme analysis agents (rule-based, run in this browser).
  * Mirrors the reference architecture: a Supervisor decides which analysis
  * tools an entry needs, each agent returns flags and metrics, a Daily Summary
  * agent writes the journal-log line and a 4-Week Summary agent builds the

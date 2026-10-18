@@ -182,7 +182,7 @@
   });
   function renderExport() {
     if(!exportLog)return;
-    if($('export-format').value==='json')$('export-text').value=JSON.stringify({exportVersion:1,exportedAt:new Date().toISOString(),scope:'Ovumind locally entered observations only; no lab/journal records or clinical interpretation',...exportLog},null,2);
+    if($('export-format').value==='json')$('export-text').value=JSON.stringify({exportVersion:1,exportedAt:new Date().toISOString(),scope:'Rhythme locally entered observations only; no lab/journal records or clinical interpretation',...exportLog},null,2);
     else $('export-text').value=['OVULUNA · OBSERVATIONS FOR A CARE VISIT','Prepared '+new Date().toISOString(),'User-entered, not independently verified. No diagnoses or inferred missing readings.','Includes saved observations only. Lab reports and wellness journal entries are exported separately.','Dates/times are as entered; an unknown time zone remains unknown.','',...ordered(exportLog.records).flatMap(r=>[api.FIELDS[r.kind].title+' · '+r.observedOn,'Entry ID: '+r.id,...lines(r).map(([label,value])=>label+': '+value),''])].join('\n');
   }
   $('export').addEventListener('click',()=>{try{exportLog=api.read(root.localStorage);renderExport();$('export-panel').hidden=false;$('export-panel').scrollIntoView({block:'start'});status('Export prepared locally. Store it privately; nothing has been sent.');}catch(err){clearExport();error(err);}});

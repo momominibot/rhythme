@@ -96,5 +96,5 @@ Deno.serve(async (req: Request) => {
     for (let i = 0; i < 8 && !out; i++) { s = s.replace(/,\s*$/, ""); s += (s.split("[").length > s.split("]").length) ? "]" : "}"; out = tryParse(s); }
   }
   if (!out) return json({ error: "The model did not return a readable summary.", finish: d?.choices?.[0]?.finish_reason || null, chars: content.length }, 502, cors);
-  return json({ ok: true, mode, model: MODELS[mode], result: out, usage: d.usage || null, generatedAt: new Date().toISOString() }, 200, cors);
+  return json({ ok: true, mode, result: out, generatedAt: new Date().toISOString() }, 200, cors);
 });

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f8f3fb">
-<title>Ovumind · My journal</title>
+<title>Rhythme · My journal</title>
 <link rel="icon" type="image/png" href="assets/onboarding/luna.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet">
@@ -148,12 +148,12 @@
     if(ins.patterns&&ins.patterns.length)h+=ins.patterns.map(function(p){return '<div class="pat"><b>'+esc(p.title)+(p.confidence?'<i>'+esc(p.confidence)+'</i>':'')+'</b>'+esc(p.detail)+(p.basis?'<small>Based on: '+esc(p.basis)+'</small>':'')+'</div>';}).join('');
     if(!compact&&ins.suggestion)h+='<div class="pat"><b>For tomorrow</b>'+esc(ins.suggestion)+'</div>';
     if(!compact&&ins.questions&&ins.questions.length)h+='<div class="pat"><b>You could ask</b>'+ins.questions.map(esc).join('<br>')+'</div>';
-    h+='<div class="meta">'+esc(ins.agent)+' · '+esc(ins.model||'')+' · '+esc(new Date(ins.generatedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))+'</div></div>';
+    h+='<div class="meta">Luna’s reading · '+esc(new Date(ins.generatedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))+'</div></div>';
     return h;
   }
   function renderInsight(){
     var ins=I.cachedDaily(S.today()),btn=$('#insightBtn');
-    if(!I.enabled()){$('#insightBody').innerHTML='<div class="empty">Luna’s own model is off. Turn it on in Luna’s settings (the moon in your room) to get written readings.</div>';btn.style.display='none';return;}
+    if(!I.enabled()){$('#insightBody').innerHTML='<div class="empty">Luna’s readings are off. Turn them on in Luna’s settings (the moon in your room) to get written readings.</div>';btn.style.display='none';return;}
     btn.style.display='';btn.innerHTML='<span class="ms">auto_awesome</span>'+(ins?(I.stale('daily')?'Update today’s reading':'Read today again'):'Write today’s reading');
     $('#insightBody').innerHTML=ins?insightHTML(ins,false):'<div class="empty">'+(S.byDate(S.today()).length?'Tap the button and Luna will read today’s entries.':'Log something today first, then Luna can read it.')+'</div>';
   }
@@ -174,7 +174,7 @@
     var end=S.today(),from=S.addDays(end,-(weeks*7-1));
     var events=S.list(null,{from:from,to:end});
     var dates={};events.forEach(function(e){dates[e.date]=true;});
-    return {kind:'ovumind-share',v:1,created:new Date().toISOString(),alias:S.profile().name||'Ovumind user',lifeStage:S.profile().lifeStage||'',range:{from:from,to:end},summary:A.fourWeekSummary(end),insight:I.cachedFourWeeks(end)||null,dailies:Object.keys(dates).sort().map(function(d){var s=A.dailySummary(d);return {date:d,text:s.text,flags:s.flags};}),events:events};
+    return {kind:'ovumind-share',v:1,created:new Date().toISOString(),alias:S.profile().name||'Rhythme user',lifeStage:S.profile().lifeStage||'',range:{from:from,to:end},summary:A.fourWeekSummary(end),insight:I.cachedFourWeeks(end)||null,dailies:Object.keys(dates).sort().map(function(d){var s=A.dailySummary(d);return {date:d,text:s.text,flags:s.flags};}),events:events};
   }
   $('#makeShare').addEventListener('click',function(){
     var pass=S.crypto.generatePassphrase();
@@ -198,7 +198,7 @@
   $('#timeline').addEventListener('click',function(e){var d=e.target.closest('[data-del]');if(d&&confirm('Delete this entry?')){S.remove(d.dataset.del);renderAll();}});
   $('#exportBtn').addEventListener('click',function(){var blob=new Blob([S.exportJSON()],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ovumind-backup-'+S.today()+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);message($('#dataMsg'),'Backup downloaded (unencrypted, keep it private).','ok');});
   $('#importFile').addEventListener('change',function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var n=S.importJSON(r.result,'merge');message($('#dataMsg'),'Imported. '+n+' entries now on this device.','ok');renderAll();}catch(e){message($('#dataMsg'),'Could not import: '+e.message,'err');}};r.readAsText(f);this.value='';});
-  $('#deleteAll').addEventListener('click',function(){if(confirm('Delete every Ovumind room entry on this device? Exports you already downloaded are not affected.')&&confirm('This cannot be undone. Delete now?')){S.clearAll();message($('#dataMsg'),'Deleted. Your room is empty again.','ok');renderAll();}});
+  $('#deleteAll').addEventListener('click',function(){if(confirm('Delete every Rhythme room entry on this device? Exports you already downloaded are not affected.')&&confirm('This cannot be undone. Delete now?')){S.clearAll();message($('#dataMsg'),'Deleted. Your room is empty again.','ok');renderAll();}});
   $('#refreshBtn').addEventListener('click',renderAll);
   function renderAll(){renderShare();renderAiShare();renderInsight();renderFlags();renderTimeline();}
   S.subscribe(function(r){if(r==='external')renderAll();});

@@ -16,7 +16,7 @@
     ultra:     'Ultra-processed'
   };
 
-  // Colors matching Ovumind theme
+  // Colors matching Rhythme theme
   var COLORS = {
     scoreHigh:  '#6ba88a',  // green — minimal
     scoreMid:   '#d4a85a',  // amber — light / processed

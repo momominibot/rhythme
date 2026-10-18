@@ -80,7 +80,7 @@ window.OVULUNA_CHAPTERS = [
       }
     ],
     "care": {
-      "text": "If a period is late and pregnancy is possible, use an appropriate pregnancy test and seek advice when unsure. Ovumind does not provide contraception or diagnose infertility.",
+      "text": "If a period is late and pregnancy is possible, use an appropriate pregnancy test and seek advice when unsure. Rhythme does not provide contraception or diagnose infertility.",
       "key": "life-ttc-pregnancy-test"
     },
     "links": [

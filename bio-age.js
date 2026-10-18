@@ -1,4 +1,4 @@
-/* Ovumind · Clinical PhenoAge research reference.
+/* Rhythme · Clinical PhenoAge research reference.
  * Explicit lab units are required. Nothing is inferred from wearable, cycle or habit data.
  * This is the clinical (blood-marker) model, NOT DNAm PhenoAge or an ovarian-age model.
  * Primary source: Levine et al., Aging (2018), doi:10.18632/aging.101414,
@@ -11,7 +11,7 @@
   const MODEL_VERSION = 'levine-2018-published-coefficients-v1';
   const STORAGE_KEY = 'ovuluna_phenoage_records_v1';
   const SOURCE = 'https://www.aging-us.com/article/101414/text';
-  const NOTE = 'Approximation using the published, rounded clinical PhenoAge coefficients. It is not ovarian age, a diagnosis, or a validated Ovumind health assessment.';
+  const NOTE = 'Approximation using the published, rounded clinical PhenoAge coefficients. It is not ovarian age, a diagnosis, or a validated Rhythme health assessment.';
   const WELLNESS_DISCLAIMER = 'No validated habit-to-age or composite wellness scoring rule is available. Self-reports remain observations, not measured health outcomes.';
 
   const PHENO_COEFFS = Object.freeze({

@@ -1,4 +1,4 @@
-/* Ovumind — ovarian-age ring gauge — 270° arc mapping reproductive age 25..55.
+/* Rhythme — ovarian-age ring gauge — 270° arc mapping reproductive age 25..55.
    drawOvarianRing(el, chrono, ovAge) → fills el with an SVG gauge. */
 function drawOvarianRing(el, chrono, ovAge){
   var AMIN=24, AMAX=56, cx=110, cy=112, R=86, W=15, start=135, sweep=270;

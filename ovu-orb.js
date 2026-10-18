@@ -1,17 +1,12 @@
 /* Luna, the crystal moon orb. Type a note; Luna turns it into journal entries.
  * A local rule parser runs first and never leaves the device. When the rules
- * cannot read a note, Luna's own model reads it through a keyless Ovumind relay
- * (or the user's own OpenRouter/Ark key), and every extracted entry is still
- * shown for confirmation before it is saved. */
+ * cannot read a note, Luna reads it through Rhythme's own service, and every
+ * extracted entry is still shown for confirmation before it is saved. */
 (function (root) {
   'use strict';
   var S = root.OvuStore, A = root.OvuAgents, FD = root.OvuFood;
   var AI_KEY = 'ovumind_ai_v1';
-  var PROXY_URL = ((root.OVU_CONFIG && root.OVU_CONFIG.functionsBase) || 'https://zodkohwaznqgrfrcfdkf.supabase.co/functions/v1') + '/luna'; /* keyless relay: Doubao Seed 2.1 turbo, origin-locked, 80 notes a day per person */
-  var DEFAULT_MODEL = 'doubao-seed-2-1-turbo-260628';
-  var OR_MODEL = 'google/gemini-2.5-flash-lite'; /* default when someone brings an OpenRouter key; jev-1.13.0: 0.73 */
-  var FALLBACK_MODEL = 'qwen/qwen3-30b-a3b-instruct';
-  var SYSTEM = 'You convert one short personal health note into strict JSON for a women\'s health journal. Output only JSON: {"entries":[...],"reply":"one warm sentence"}. Entry shapes: {"type":"sleep","date":"YYYY-MM-DD","data":{"bedTime":"HH:MM","wakeTime":"HH:MM","quality":1-5|null,"notes":""}}; {"type":"period","date":"YYYY-MM-DD","data":{"flow":"spotting|light|medium|heavy","clots":bool,"impact":bool}}; {"type":"symptom","date":"YYYY-MM-DD","data":{"symptoms":[from: cramps, headache, bloating, breast tenderness, back pain, fatigue, nausea, acne, cravings, insomnia, hot flushes, dizziness, spotting, discharge change, low mood, anxiety, irritability, brain fog],"pain":0-10|null,"mood":"great|good|ok|low|bad|","notes":""}}; {"type":"food","date":"YYYY-MM-DD","data":{"meal":"breakfast|lunch|dinner|snack","time":"HH:MM"|null,"foods":"text","tags":[]}}; {"type":"mindfulness","date":"YYYY-MM-DD","data":{"kind":"breathe","minutes":number}}. Use the given today date; "yesterday" means the day before. Never invent values that are not in the note; use null. Do not diagnose.';
+  var PROXY_URL = ((root.OVU_CONFIG && root.OVU_CONFIG.functionsBase) || 'https://zodkohwaznqgrfrcfdkf.supabase.co/functions/v1') + '/luna'; /* Rhythme's own service: origin-locked, about 80 notes a day per person */
 
   function todayPlus(n) { return S.addDays(S.today(), n); }
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -99,34 +94,19 @@
     return entries;
   }
 
-  /* ---------- AI mode: Luna's own model through the relay, or the user's own key ---------- */
-  /* Off until the user says yes: notes stay on the device unless Luna's model was allowed in onboarding
-   * or in Luna's settings, and written readings need their own separate permission (insights). */
-  function defaults() { return { on: false, provider: 'ovumind', key: '', model: '', insights: false, photos: false }; }
-  function aiConfig() { try { var c = JSON.parse(localStorage.getItem(AI_KEY) || 'null'); if (!c || !c.provider || (c.provider !== 'ovumind' && !c.key)) return defaults(); return c; } catch (e) { return defaults(); } }
+  /* ---------- Luna's reading through Rhythme's own service ---------- */
+  /* Switched on when the data notice is accepted at first launch; reading notes, written readings
+   * (insights) and food photos can each be switched off in Luna's settings. */
+  function defaults() { return { on: false, provider: 'ovumind', insights: false, photos: false }; }
+  function aiConfig() { var c; try { c = JSON.parse(localStorage.getItem(AI_KEY) || 'null'); } catch (e) { c = null; } if (!c) return defaults(); return { on: !!c.on, provider: 'ovumind', insights: c.insights === true, photos: c.photos === true }; }
   function setAiConfig(cfg) { localStorage.setItem(AI_KEY, JSON.stringify(cfg)); }
   function okEntry(e) { return e && S.TYPES.indexOf(e.type) > -1 && S.validDate(e.date) && e.date <= S.today() && e.data; }
   function parseAI(text) {
     var cfg = aiConfig();
     if (!cfg.on) return Promise.reject(new Error('AI mode is off.'));
-    if (cfg.provider === 'ovumind') {
-      return fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text, today: S.today() }) })
-        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna’s relay replied ' + r.status + '.')); return d; }); })
+    return fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text, today: S.today() }) })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna could not answer just now (' + r.status + '). Try again in a moment.')); return d; }); })
         .then(function (d) { return { entries: (d.entries || []).filter(okEntry), reply: d.reply || '', usage: d.usage || null }; });
-    }
-    if (!cfg.key) return Promise.reject(new Error('Paste a key in Luna’s settings, or choose Luna’s own model.'));
-    var url = cfg.provider === 'ark' ? 'https://ark.cn-beijing.volces.com/api/v3/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions';
-    var body = { model: cfg.model || OR_MODEL, temperature: 0, max_tokens: 400, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: 'Today is ' + S.today() + '. Note: ' + text }] };
-    if (cfg.provider !== 'ark') body.response_format = { type: 'json_object' };
-    return fetch(url, { method: 'POST', headers: { 'Authorization': 'Bearer ' + cfg.key, 'Content-Type': 'application/json', 'HTTP-Referer': location.origin, 'X-Title': 'Ovumind Luna' }, body: JSON.stringify(body) })
-      .then(function (r) { if (!r.ok) throw new Error('The model replied ' + r.status + '. Check the key and model name in Luna’s settings.'); return r.json(); })
-      .then(function (d) {
-        var txt = (((d.choices || [])[0] || {}).message || {}).content || '';
-        var m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error('The model did not return JSON.');
-        var out = JSON.parse(m[0]);
-        var entries = (out.entries || []).filter(okEntry);
-        return { entries: entries, reply: out.reply || '', usage: d.usage || null };
-      });
   }
 
   /* ---------- food photos: Luna's relay looks at the photo, the user confirms ---------- */
@@ -141,7 +121,7 @@
     var portion = String(it.portion || 'serving').slice(0, 20);
     return {
       name: name, foodId: null, basis: '100g', prep: null,
-      source: { kind: 'estimate', label: 'Luna’s photo estimate', ref: model || 'Doubao Seed 2.1 pro', date: S.today(), detail: 'Estimated from a photo; confidence ' + conf(it.confidence) },
+      source: { kind: 'estimate', label: 'Luna’s photo estimate', ref: 'Luna', date: S.today(), detail: 'Estimated from a photo; confidence ' + conf(it.confidence) },
       grams: grams || 0, portionLabel: '1 ' + portion + (grams ? ' (about ' + Math.round(grams) + ' g)' : ''), method: 'photo estimate',
       confidence: conf(it.confidence), per100: per100, nutrients: nutrients
     };
@@ -209,8 +189,8 @@
     if (!photosAllowed()) return Promise.reject(new Error('Food photos are off. Allow them in Luna’s settings first.'));
     var table = FD && FD.sgLoad ? FD.sgLoad().catch(function () { return null; }) : Promise.resolve(null);
     var relay = fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl, today: S.today() }) })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna’s relay replied ' + r.status + '.')); return d; }); });
-    return Promise.all([table, relay]).then(function (rs) { var d = rs[1], f = d.food || {}; return { isFood: f.is_food === true, mealName: f.meal_name || '', note: f.note || '', items: foodItemsFrom(f, d.model), model: d.model || '', hpb: !!rs[0] }; });
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna could not answer just now (' + r.status + '). Try again in a moment.')); return d; }); });
+    return Promise.all([table, relay]).then(function (rs) { var d = rs[1], f = d.food || {}; return { isFood: f.is_food === true, mealName: f.meal_name || '', note: f.note || '', items: foodItemsFrom(f), hpb: !!rs[0] }; });
   }
 
   /* ---------- describe entries for the confirmation card ---------- */
@@ -239,5 +219,5 @@
   var REPLIES = ['Noted, gently.', 'Written down. Thank you for telling me.', 'Got it. One small step logged.', 'Saved. Be soft with yourself today.'];
   function reply() { return REPLIES[Math.floor(Math.random() * REPLIES.length)]; }
 
-  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, parsePhoto: parsePhoto, foodItemsFrom: foodItemsFrom, regram: regram, rename: rename, photosAllowed: photosAllowed, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, DEFAULT_MODEL: DEFAULT_MODEL, OR_MODEL: OR_MODEL, FALLBACK_MODEL: FALLBACK_MODEL, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
+  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, parsePhoto: parsePhoto, foodItemsFrom: foodItemsFrom, regram: regram, rename: rename, photosAllowed: photosAllowed, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
 })(window);

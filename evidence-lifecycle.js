@@ -18,11 +18,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2025"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -44,18 +44,18 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2024"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
   },
   "life-teen-comfort": {
     "claim": "Comfort measures may help cramps; persistent or severe pain needs clinical review.",
-    "evidence": "NHS lists wrapped heat and gentle movement as options. RCH focuses on quality of life and assessment when pain has atypical features or persists despite treatment. No medicine or dose is selected by Ovumind.",
+    "evidence": "NHS lists wrapped heat and gentle movement as options. RCH focuses on quality of life and assessment when pain has atypical features or persists despite treatment. No medicine or dose is selected by Rhythme.",
     "sources": [
       {
         "authors": "NHS",
@@ -70,11 +70,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2025"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -96,11 +96,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2017"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. A missing period has multiple possible causes. These thresholds prompt a conversation, not a diagnosis.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. A missing period has multiple possible causes. These thresholds prompt a conversation, not a diagnosis.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -122,11 +122,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2025"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. The 2025 article summarizes the 2023 international guideline; much adolescent evidence has low to moderate certainty. It is not a new Ovumind diagnostic algorithm. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. The 2025 article summarizes the 2023 international guideline; much adolescent evidence has low to moderate certainty. It is not a new Rhythme diagnostic algorithm. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -148,11 +148,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2024"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Studies of other apps, kits or wearables do not establish Ovumind accuracy. A mucus photo, pulse reading or predicted window cannot confirm ovulation. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Studies of other apps, kits or wearables do not establish Rhythme accuracy. A mucus photo, pulse reading or predicted window cannot confirm ovulation. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -174,11 +174,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Ask your clinician or pharmacist about the appropriate dose for you. Do not add supplements or change a prescription based solely on this card. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Ask your clinician or pharmacist about the appropriate dose for you. Do not add supplements or change a prescription based solely on this card. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -200,11 +200,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -226,11 +226,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2023"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. These age thresholds are guidance in different health systems, not a diagnosis or a countdown to fertility loss. Discuss irregular/absent periods, previous treatment or known conditions earlier. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. These age thresholds are guidance in different health systems, not a diagnosis or a countdown to fertility loss. Discuss irregular/absent periods, previous treatment or known conditions earlier. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -252,11 +252,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -278,11 +278,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2024"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -304,11 +304,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2024"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Ovumind does not assess eligibility for lactational amenorrhea or recommend a contraceptive prescription.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Rhythme does not assess eligibility for lactational amenorrhea or recommend a contraceptive prescription.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -330,11 +330,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2024"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -356,11 +356,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. The list is not exhaustive. Feeling seriously unwell or unsafe warrants care even without an app warning. Do not delay care to finish a checklist.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. The list is not exhaustive. Feeling seriously unwell or unsafe warrants care even without an app warning. Do not delay care to finish a checklist.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -382,11 +382,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -408,11 +408,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2024"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -434,11 +434,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. This card does not select HRT, a medicine or a dose. Local availability and guidance differ; an individual risk-benefit discussion is required. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. This card does not select HRT, a medicine or a dose. Local availability and guidance differ; an individual risk-benefit discussion is required. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -460,11 +460,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "n.d."
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. The app cannot diagnose menopause. Treatment and contraception can complicate interpretation; clinician assessment is required.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. The app cannot diagnose menopause. Treatment and contraception can complicate interpretation; clinician assessment is required.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -486,11 +486,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -512,11 +512,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. A 12-month app counter cannot by itself confirm menopause or exclude pregnancy, illness or medication effects. It is not a reason to stop contraception without professional advice. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. A 12-month app counter cannot by itself confirm menopause or exclude pregnancy, illness or medication effects. It is not a reason to stop contraception without professional advice. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -538,11 +538,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. This is not a fracture-risk calculation or a supplement prescription. Exercise should fit mobility, current health and professional advice. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. This is not a fracture-risk calculation or a supplement prescription. Exercise should fit mobility, current health and professional advice. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -570,11 +570,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -596,11 +596,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "n.d."
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Any new bleeding on hormone treatment also deserves advice. The app must not dismiss bleeding or promise a local referral deadline.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Any new bleeding on hormone treatment also deserves advice. The app must not dismiss bleeding or promise a local referral deadline.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -622,11 +622,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Traditional explanations are not established biomedical diagnoses. An anatomy/acupoint illustration cannot validate a treatment, guide needling, or establish safety for pregnancy. Recommendations and care pathways can differ by country.",
+    "limitations": "Educational guidance for discussing your own observations with a qualified clinician. These sources do not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Traditional explanations are not established biomedical diagnoses. An anatomy/acupoint illustration cannot validate a treatment, guide needling, or establish safety for pregnancy. Recommendations and care pathways can differ by country.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -646,7 +646,7 @@ window.LIFECYCLE_EVIDENCE = {
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "platform policy",
     "wellnessNote": "Seek professional advice before making medical decisions. Your notes can help that conversation."
@@ -668,11 +668,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "n.d."
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Product absorbency and individual circumstances differ; do not wait for an app threshold when seriously unwell.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Product absorbency and individual circumstances differ; do not wait for an app threshold when seriously unwell.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -694,11 +694,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2024"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. A negative early result does not reliably exclude pregnancy. Seek clinical advice if uncertain or symptoms persist.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. A negative early result does not reliably exclude pregnancy. Seek clinical advice if uncertain or symptoms persist.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -726,11 +726,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2026"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Do not stop contraception because an app labels menopause. Local guidance and individual circumstances determine care.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Do not stop contraception because an app labels menopause. Local guidance and individual circumstances determine care.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -752,11 +752,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "n.d."
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Use local emergency services or the nearest emergency department when bleeding is heavy or you feel seriously unwell.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Use local emergency services or the nearest emergency department when bleeding is heavy or you feel seriously unwell.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -784,11 +784,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2022"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Cycle diagrams are illustrations. Bleeding does not prove ovulation; age, medication, postpartum status and health conditions affect patterns.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. Cycle diagrams are illustrations. Bleeding does not prove ovulation; age, medication, postpartum status and health conditions affect patterns.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
@@ -810,18 +810,18 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2021"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. A photograph is not a validated Ovumind test. Seek care for a concerning change, itching, soreness, pelvic pain or bleeding; do not infer an infection from colour alone.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. A photograph is not a validated Rhythme test. Seek care for a concerning change, itching, soreness, pelvic pain or bleeding; do not infer an infection from colour alone.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."
   },
   "fertility-app-limits": {
-    "claim": "Ovumind observations do not establish ovulation, ovarian age or a personal fertility probability.",
-    "evidence": "ASRM separates ovarian reserve from egg quality and notes limits in predicting unassisted pregnancy. NHS warns that fertility-awareness methods need instruction; another product's study is not Ovumind validation.",
+    "claim": "Rhythme observations do not establish ovulation, ovarian age or a personal fertility probability.",
+    "evidence": "ASRM separates ovarian reserve from egg quality and notes limits in predicting unassisted pregnancy. NHS warns that fertility-awareness methods need instruction; another product's study is not Rhythme validation.",
     "sources": [
       {
         "authors": "ASRM Practice Committee",
@@ -836,11 +836,11 @@ window.LIFECYCLE_EVIDENCE = {
         "year": "2024"
       }
     ],
-    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Ovumind as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. This is a boundary on Ovumind claims, not a claim that no clinically validated method exists. No independent Ovumind performance study was available in this review. Camera pulse, HRV and mucus photos cannot be promoted as validated ovarian-age measurements.",
+    "limitations": "Educational guidance for discussing observations with a qualified clinician. It does not validate Rhythme as a diagnostic, fertility, contraception or treatment tool. Source checking is not clinical approval. Recommendations and care pathways can differ by country. This is a boundary on Rhythme claims, not a claim that no clinically validated method exists. No independent Rhythme performance study was available in this review. Camera pulse, HRV and mucus photos cannot be promoted as validated ovarian-age measurements.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30",
-      "scope": "The supporting cited source passages were retrieved and checked; Ovumind clinical review and algorithm validation remain pending."
+      "scope": "The supporting cited source passages were retrieved and checked; Rhythme clinical review and algorithm validation remain pending."
     },
     "level": "guideline",
     "wellnessNote": "Seek professional advice before medical decisions. For urgent symptoms, contact local emergency services or the nearest emergency department."

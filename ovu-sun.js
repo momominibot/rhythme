@@ -1,4 +1,4 @@
-/* Ovumind sun clock: today's sunrise and sunset for the user's place, and the
+/* Rhythme sun clock: today's sunrise and sunset for the user's place, and the
  * part of the day the room should show (sunrise, morning, afternoon, sunset,
  * night). Uses the NOAA solar position equations, accurate to about a minute
  * near the equator. No location permission is asked: the place comes from the

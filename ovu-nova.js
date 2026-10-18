@@ -1,8 +1,8 @@
-/* Ovumind processed-food score, built on the NOVA classification (Monteiro et al. 2019).
+/* Rhythme processed-food score, built on the NOVA classification (Monteiro et al. 2019).
  * Packaged foods use the NOVA group Open Food Facts publishes. Generic foods, Singapore HPB
  * items and photo estimates have no published group, so explicit name rules below assign one,
- * labelled as Ovumind's estimate ("likely" where the name alone cannot settle it).
- * NOVA studies split home and hawker dishes into their ingredients using recipes; Ovumind has no
+ * labelled as Rhythme's estimate ("likely" where the name alone cannot settle it).
+ * NOVA studies split home and hawker dishes into their ingredients using recipes; Rhythme has no
  * recipes yet, so freshly made dishes and drinks are left unscored in their own bucket, flagged
  * when they plainly include ultra-processed parts. The headline is the share of calories from
  * NOVA 4 among the foods that could be classified, always shown with that coverage, and withheld
@@ -86,7 +86,7 @@
     if (!s || !s.items) return 'Log foods to see how processed they are.';
     var classified = s.count[1] + s.count[2] + s.count[3] + s.count[4];
     if (!classified) return s.count.cooked ? 'Freshly made food, not scored without a recipe' : 'Not enough information to score yet';
-    if (!s.upfItems) return 'No ultra-processed foods among the items Ovumind could classify';
+    if (!s.upfItems) return 'No ultra-processed foods among the items Rhythme could classify';
     if (s.noKcal[4]) return words ? 'Some ultra-processed food' : s.upfItems + ' ultra-processed item' + (s.upfItems === 1 ? '' : 's') + '; ' + (s.noKcal[4] === 1 ? 'one has' : s.noKcal[4] + ' have') + ' no calories logged, so no percentage';
     if (s.upfShare === null || s.coverage === null || s.coverage < 0.5) return words ? 'Some ultra-processed food' : s.upfItems + ' ultra-processed item' + (s.upfItems === 1 ? '' : 's') + '; too little classified for a percentage';
     if (words) return s.upfShare < 0.15 ? 'A little ultra-processed food' : s.upfShare < 0.5 ? 'Some ultra-processed food' : 'Mostly ultra-processed food';
@@ -113,7 +113,7 @@
     return 'Ultra-processed ' + pctText(s.upfShare) + ' of classified calories';
   }
   function basisText(c) {
-    var b = c.basis === 'off' ? 'NOVA group from Open Food Facts' : c.basis === 'rule' ? (c.likely ? 'Ovumind estimate from the food type; ingredients vary, so this is likely, not certain' : 'Ovumind estimate from the food type') : c.basis === 'dish' ? 'Freshly made dish: NOVA studies split dishes into ingredients with recipes, so it is not scored here' : c.basis === 'fresh' ? 'Freshly made drink or dessert mixing several groups, so it is not scored here' : 'Not enough information to classify';
+    var b = c.basis === 'off' ? 'NOVA group from Open Food Facts' : c.basis === 'rule' ? (c.likely ? 'Rhythme estimate from the food type; ingredients vary, so this is likely, not certain' : 'Rhythme estimate from the food type') : c.basis === 'dish' ? 'Freshly made dish: NOVA studies split dishes into ingredients with recipes, so it is not scored here' : c.basis === 'fresh' ? 'Freshly made drink or dessert mixing several groups, so it is not scored here' : 'Not enough information to classify';
     return b + (c.upfParts ? '; includes processed parts such as fishballs, luncheon meat or syrups' : '');
   }
   root.OvuNova = { GROUPS: GROUPS, classify: classify, share: share, entriesItems: entriesItems, headline: headline, coverageText: coverageText, short: short, basisText: basisText, pct: pct };

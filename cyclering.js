@@ -1,4 +1,4 @@
-/* Ovumind — cycle ring renderer for #cyclering */
+/* Rhythme — cycle ring renderer for #cyclering */
 (function(){
   var el = document.getElementById('cyclering');
   if(!el) return;

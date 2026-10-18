@@ -4,7 +4,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<title>Ovumind · Label Scan</title>
+<title>Rhythme · Label Scan</title>
 <link rel="icon" type="image/png" href="assets/onboarding/luna.png">
 <link rel="apple-touch-icon" href="assets/onboarding/luna.png">
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet">
@@ -138,7 +138,7 @@
     <div class="scan-hero">
       <div class="scan-badge"><span class="ms" style="font-size:14px">center_focus_strong</span> Nutrition Intelligence</div>
       <div class="scan-title">Scan. Understand. Align.</div>
-      <div class="scan-desc">Point your camera at any food label. Ovumind analyzes ingredients, flags endocrine disruptors <span class="qi" data-evidence="endocrine-disruptors">i</span>, and tells you how it fits your cycle phase.</div>
+      <div class="scan-desc">Point your camera at any food label. Rhythme analyzes ingredients, flags endocrine disruptors <span class="qi" data-evidence="endocrine-disruptors">i</span>, and tells you how it fits your cycle phase.</div>
     </div>
 
     <!-- Upload / Scan -->
@@ -464,7 +464,7 @@
       if (data.error) {
         // If demo mode or error, try to still work with what we have
         if (data.demo) {
-          showError('AI not connected', 'The vision API is in demo mode. Enter ingredients manually or configure VOLCENGINE_API_KEY.');
+          showError('AI not connected', 'Label reading is not available yet. Enter the ingredients by hand for now.');
         } else {
           showError('OCR failed', data.error || 'Could not process the image. Try again or enter ingredients manually.');
         }

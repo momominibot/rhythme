@@ -77,7 +77,7 @@ window.DAILY_EVIDENCE = {
   },
   "daily-record-method": {
     "claim": "Daily suggestions read explicitly entered context and dated notes; they are not a health score.",
-    "evidence": "Ovumind selects today’s dated check-ins and journal plus observations within a visible seven-day software window. Context-specific prompts require separate confirmation; appearance and the cycle illustration are excluded. The 30-day context reminder is a product freshness convention. ASRM describes why single tracking markers cannot establish ovulation or personal fertility.",
+    "evidence": "Rhythme selects today’s dated check-ins and journal plus observations within a visible seven-day software window. Context-specific prompts require separate confirmation; appearance and the cycle illustration are excluded. The 30-day context reminder is a product freshness convention. ASRM describes why single tracking markers cannot establish ovulation or personal fertility.",
     "sources": [
       {
         "authors": "ASRM Practice Committee",

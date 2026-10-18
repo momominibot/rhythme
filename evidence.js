@@ -1,4 +1,4 @@
-/* Ovumind evidence details. Source records are displayed as text, never HTML.
+/* Rhythme evidence details. Source records are displayed as text, never HTML.
    The database's review status is distinct from validation of the app or its models. */
 (function () {
   'use strict';

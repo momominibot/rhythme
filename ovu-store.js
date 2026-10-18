@@ -1,4 +1,4 @@
-/* Ovumind local-first record store.
+/* Rhythme local-first record store.
  * One versioned event log in this browser's localStorage. Observation date
  * (`date`) is separate from creation time, so backdated entries are first-class.
  * Nothing here uploads anything. Sharing is an explicit, passphrase-encrypted
@@ -264,7 +264,7 @@
     });
   }
   function decrypt(bundle, pass) {
-    if (!bundle || bundle.format !== 'ovumind-share' || !bundle.ct) return Promise.reject(new Error('This is not an Ovumind share file.'));
+    if (!bundle || bundle.format !== 'ovumind-share' || !bundle.ct) return Promise.reject(new Error('This is not an Rhythme share file.'));
     return deriveKey(pass, new Uint8Array(unb64(bundle.salt)), bundle.iter || 310000).then(function (key) {
       return crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(unb64(bundle.iv)) }, key, unb64(bundle.ct));
     }).then(function (pt) { return JSON.parse(new TextDecoder().decode(pt)); }, function () { throw new Error('Could not decrypt. Check the passphrase.'); });
@@ -294,3 +294,6 @@
     crypto: { encrypt: encrypt, decrypt: decrypt, generatePassphrase: generatePassphrase, toCode: toCode, fromCode: fromCode }
   };
 })(window);
+
+/* Rhythme asks for the data notice in the room first: a first-time visitor who lands on another page is sent there. */
+(function () { try { var pg = location.pathname.split('/').pop() || 'index.html'; if (/^(room|privacy|terms|index|404)\.html$/.test(pg)) return; var db = JSON.parse(localStorage.getItem('ovumind_db_v1') || 'null'), c = db && db.profile && db.profile.consent; if (!(c && c.at)) location.replace('room.html'); } catch (e) { } })();

@@ -1,6 +1,6 @@
 {
-  "name": "Ovumind",
-  "short_name": "Ovumind",
+  "name": "Rhythme",
+  "short_name": "Rhythme",
   "description": "A dreamy room where you log sleep, your cycle, symptoms, meals and calm by tapping the things around you. Everything stays on your device.",
   "id": "./room.html",
   "start_url": "./room.html",

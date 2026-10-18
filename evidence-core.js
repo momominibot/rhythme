@@ -23,7 +23,7 @@ window.CORE_EVIDENCE = {
       "checkedAt": "2026-09-30"
     },
     "level": "guidance",
-    "wellnessNote": "Educational information. Discuss symptoms, medicines and personal decisions with a qualified clinician. Source checking is not clinical validation of Ovumind."
+    "wellnessNote": "Educational information. Discuss symptoms, medicines and personal decisions with a qualified clinician. Source checking is not clinical validation of Rhythme."
   },
   "movement-individual-variation": {
     "claim": "Choose movement by symptoms and capacity, rather than a universal cycle prescription.",
@@ -42,13 +42,13 @@ window.CORE_EVIDENCE = {
         "year": "2021"
       }
     ],
-    "limitations": "Reviews differ in populations and methods. Neither validates Ovumind activity targets, pregnancy/postpartum training or a universal daily schedule. PubMed summaries were checked; this is not a full-text appraisal of every trial.",
+    "limitations": "Reviews differ in populations and methods. Neither validates Rhythme activity targets, pregnancy/postpartum training or a universal daily schedule. PubMed summaries were checked; this is not a full-text appraisal of every trial.",
     "verification": {
       "status": "verified",
       "checkedAt": "2026-09-30"
     },
     "level": "guidance",
-    "wellnessNote": "Educational information. Discuss symptoms, medicines and personal decisions with a qualified clinician. Source checking is not clinical validation of Ovumind."
+    "wellnessNote": "Educational information. Discuss symptoms, medicines and personal decisions with a qualified clinician. Source checking is not clinical validation of Rhythme."
   },
   "evidence-reading-scope": {
     "claim": "A citation documents a claim; it does not certify an app.",
@@ -73,6 +73,6 @@ window.CORE_EVIDENCE = {
       "checkedAt": "2026-09-30"
     },
     "level": "guidance",
-    "wellnessNote": "Educational information. Discuss symptoms, medicines and personal decisions with a qualified clinician. Source checking is not clinical validation of Ovumind."
+    "wellnessNote": "Educational information. Discuss symptoms, medicines and personal decisions with a qualified clinician. Source checking is not clinical validation of Rhythme."
   }
 };

@@ -1,4 +1,4 @@
-/* Ovumind ovarian assessment contract. Clinical predictions require a validated model.
+/* Rhythme ovarian assessment contract. Clinical predictions require a validated model.
    Keep real observations and missingness; never turn these fields into age offsets. */
 (function (g) {
   'use strict';

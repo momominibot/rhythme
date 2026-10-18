@@ -100,7 +100,7 @@
     },
     'atlas-source-license': {
       claim: 'BodyParts3D is a linked external anatomy resource. Its models are not embedded in this page.',
-      evidence: 'The archive license page, updated 27 February 2025, specifies CC BY 4.0 for its database. The exact attribution requested by the archive is visible beside the link. Ovumind\u2019s orientation drawings are original schematics and are not derived from a BodyParts3D model or WHO figure.',
+      evidence: 'The archive license page, updated 27 February 2025, specifies CC BY 4.0 for its database. The exact attribution requested by the archive is visible beside the link. Rhythme\u2019s orientation drawings are original schematics and are not derived from a BodyParts3D model or WHO figure.',
       sources: [
         {authors: 'Database Center for Life Science; LSDB Archive', year: 2025, title: 'BodyParts3D license', url: 'https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html'},
         {authors: 'Creative Commons', title: 'Attribution 4.0 International (CC BY 4.0)', url: 'https://creativecommons.org/licenses/by/4.0/'}
