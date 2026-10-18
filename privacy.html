@@ -38,12 +38,13 @@
     <section class="card" aria-labelledby="privacy-current-title">
       <h2 id="privacy-current-title">What this build does</h2>
       <dl class="privacy-capabilities">
-        <div><dt>Your diary</dt><dd>Periods, symptoms, pain, mood, sleep, meals and food photo thumbnails, weight, calm minutes and your getting-to-know-you answers (which can include pregnancy, hormones, medicines and health history) are saved in this browser on this phone. There is no account and no Rhythme cloud yet, and no app-layer encryption, so anyone who can open this browser profile may be able to read them. Clearing the browser or losing the phone can lose them.</dd></div>
+        <div><dt>Your diary</dt><dd>Periods, symptoms, pain, mood, sleep, meals and food photo thumbnails, weight, calm minutes and your getting-to-know-you answers (which can include pregnancy, hormones, medicines and health history) are saved in this browser on this phone, and there is no app-layer encryption, so anyone who can open this browser profile may be able to read them. Your diary stays on this phone unless you sign in and turn on cloud backup. Clearing the browser or losing the phone can lose anything that is only on this phone.</dd></div>
+        <div><dt>Accounts and cloud backup (optional, off unless you turn it on)</dt><dd>You can sign in with email, Google or Apple and turn on cloud backup. A copy of your entries, your getting-to-know-you answers and your cycle settings is then kept in your account in a secure database hosted outside Singapore, protected by row-level security so only your signed-in account can read it. Food photo thumbnails are never uploaded, and Luna’s AI help settings are unchanged by signing in. Turn backup off, or delete your account and its cloud copy, from Your account in the room. Your sign-in is handled by the authentication service; the publishable key in the app grants nothing on its own.</dd></div>
         <div><dt>Luna’s AI help (optional, off unless you turn it on)</dt><dd>When it is on, a note the on-phone rules cannot read, a food photo, or a 7 or 28 day summary for a journal reading goes through Rhythme’s server to a third-party AI service in China, and the answer comes back to you. No name is attached, but what you write can still say a lot about your health. Rhythme does not keep what Luna reads. Turn each part on or off in Luna’s settings.</dd></div>
         <div><dt>Rhythme Plus codes</dt><dd>When you use an access code, Rhythme’s server records that the code was used, with a scrambled form of your network address, to stop misuse. Plus episodes stream through short-lived links. Nothing from your diary is sent.</dd></div>
         <div><dt>Ordinary service records</dt><dd>Our web host keeps standard connection logs, fonts load from Google, and free podcast episodes stream from their podcast host. There are no analytics and no advertising, and we do not sell your data.</dd></div>
         <div><dt>Help make Rhythme better</dt><dd>Off unless you tick it. Nothing is shared today. If we add it, we will explain exactly what de-identified patterns would be used and ask before it starts. Research would always be asked about separately.</dd></div>
-        <div><dt>Before anything changes</dt><dd>Before cloud backup or any new use starts, the app will show a new versioned notice and ask you again. Current notice: version 2, 18 October 2026.</dd></div>
+        <div><dt>Before anything changes</dt><dd>The first-visit data notice is version 2 (18 October 2026). Cloud backup is separate: it stays off until you sign in and accept its own short notice, and turning it on never changes Luna’s AI help. Any further new use of your data will again show a versioned notice and ask you first.</dd></div>
       </dl>
       <p>Changing browser, origin or app installation can show a different set of records. These controls do not delete accounts, other devices, previously downloaded files or records held by a service.</p>
     </section>
@@ -74,10 +75,10 @@
     </section>
     <section class="card privacy-account" aria-labelledby="privacy-account-title">
       <h2 id="privacy-account-title" tabindex="-1">Delete my account</h2>
-      <p>Account sign-in and local health records are separate. The account page checks the authentication service; an older example name or a local sign-in flag is not evidence of a verified account.</p><a class="privacy-back" href="account.html#account-deletion">Review account status & deletion availability</a>
-      <p>You can delete this installation’s recognized local records above. This does not delete records held by another app, an external service, or a different Rhythme installation. It does not cancel any external subscription.</p>
+      <p>Account sign-in and local records are separate things. If you have signed in and turned on cloud backup, you can delete your account and everything backed up to it from <strong>Your account</strong> in the room: it removes your cloud rows and closes the account on the authentication service. Your diary on this phone is kept; use the controls above to clear local records too.</p>
+      <a class="privacy-back" href="room.html#you">Open Your account in the room</a>
+      <p>Deleting local records here does not delete records held by another app, an external service, or a different Rhythme installation, and it does not cancel any external subscription. Deleting your account does not erase this phone’s local diary.</p>
       <a class="privacy-back" href="#privacy-local-title">Choose local data to delete</a>
-      <p>Account deletion will need a verified sign-in, a review of the account’s data and confirmation from the account service before it can be offered as a completed action.</p>
     </section>
     <section class="card" aria-labelledby="privacy-notice-title">
       <h2 id="privacy-notice-title">About this notice</h2>

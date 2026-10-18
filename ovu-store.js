@@ -152,6 +152,38 @@
     return true;
   }
 
+  /* ---------- cloud sync adapter (used only by ovu-sync.js) ----------
+   * Insert or replace events by id, trusting the caller's own timestamps, so a
+   * pull from the cloud restores rows with their original ids and edit times
+   * instead of minting new ones (add()/update() would). Deletions in a pull go
+   * through applyRemote too. Nothing here uploads; ovu-sync does the network. */
+  function putEvent(ev) {
+    if (!ev || typeof ev !== 'object' || TYPES.indexOf(ev.type) < 0 || !validDate(ev.date) || !ev.data || typeof ev.data !== 'object') return false;
+    applyRemote([ev], null); return true;
+  }
+  /* Apply a batch of pulled cloud changes in one save: puts (insert or replace
+   * by id), then deletes (by id). Emits 'sync' so the room can re-render. */
+  function applyRemote(puts, dels) {
+    var db = load(), changed = [];
+    (puts || []).forEach(function (ev) {
+      if (!ev || typeof ev !== 'object' || TYPES.indexOf(ev.type) < 0 || !validDate(ev.date) || !ev.data || typeof ev.data !== 'object') return;
+      var id = String(ev.id || uid());
+      var norm = { id: id, type: ev.type, date: ev.date, createdAt: ev.createdAt || nowIso(), updatedAt: ev.updatedAt || ev.createdAt || nowIso(), source: ev.source || 'cloud', data: ev.data };
+      var found = false;
+      for (var i = 0; i < db.events.length; i++) { if (db.events[i].id === id) { db.events[i] = norm; found = true; break; } }
+      if (!found) db.events.push(norm);
+      changed.push({ ev: norm });
+    });
+    (dels || []).forEach(function (id) {
+      id = String(id);
+      db.events = db.events.filter(function (e) { if (e.id === id) { changed.push({ removed: e }); return false; } return true; });
+    });
+    if (!changed.length) return 0;
+    save('sync');
+    changed.forEach(function (c) { if (c.removed) mirrorLegacy(c.removed, true); else mirrorLegacy(c.ev); });
+    return changed.length;
+  }
+
   /* ---------- profile / state ---------- */
   function profile() { return Object.assign({}, load().profile); }
   function setProfile(patch) { Object.assign(load().profile, patch); save('profile'); return profile(); }
@@ -372,6 +404,7 @@
   root.OvuStore = {
     KEY: KEY, TYPES: TYPES, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
     load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox,
+    putEvent: putEvent, applyRemote: applyRemote,
     addMany: addMany, removeWhere: removeWhere,
     profile: profile, setProfile: setProfile, state: state, setState: setState,
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },

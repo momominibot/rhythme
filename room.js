@@ -1255,12 +1255,14 @@
     openSheet('you', P.name ? P.name : 'You', 'Your room, your answers, your data', 'person',
       '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '</span></div></div>' +
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
+      '<div id="youAccount"></div>' +
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('auto_awesome', 'Luna’s look', 'Choose the friend in the corner of your room', 'mascot') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('move_to_inbox', 'Import from Apple Health or Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S) + ' entries brought in so far' : 'Sleep, weight and period days you already have', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is not a medical device and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
+    if (window.OvuAuth) { var ya = $('#youAccount'); if (ya) OvuAuth.renderAccount(ya, { toast: toast, chime: chime }); }
     if (confirmDelete) { var yd = $('#yDel'); if (yd) yd.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     body.addEventListener('click', function (e) {
       var b = e.target.closest('[data-yact]'); if (!b) return; var act = b.dataset.yact; chime('tap');
@@ -2339,7 +2341,10 @@
     updateGreeting(); renderDeck(); renderProps(); applySky();
     setInterval(function () { applySky(); if (window.OvuPets) renderProps(); }, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });
     FD.load().catch(function () { });
-    S.subscribe(function (reason) { if (reason === 'external') { renderDeck(); renderProps(); updateGreeting(); } });
+    /* accounts and cloud backup: quiet until the person signs in and opts in */
+    if (window.OvuAuth) OvuAuth.init();
+    if (window.OvuSync) OvuSync.init();
+    S.subscribe(function (reason) { if (reason === 'external' || (reason && reason.indexOf('sync') === 0)) { renderDeck(); renderProps(); updateGreeting(); } });
     $('#journalBtn').href = 'journal.html'; $('#shareBtn').href = 'journal.html#share';
     if (!S.state().tourDone) { setTimeout(function () { $('#hint').classList.add('on'); }, 1200); setTimeout(function () { $('#hint').classList.remove('on'); S.setState({ tourDone: true }); }, 7000); }
     if (!S.state().lunaSeen) { setTimeout(function () { $('#lunaBtn').classList.add('hinting'); }, 2500); setTimeout(function () { $('#lunaBtn').classList.remove('hinting'); S.setState({ lunaSeen: true }); }, 9000); }
