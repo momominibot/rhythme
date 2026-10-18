@@ -47,8 +47,9 @@ button{font-family:inherit;color:inherit}
 .scene{position:relative;width:100%;aspect-ratio:1472/1840;overflow:hidden;background:linear-gradient(180deg,#d8c8ec 0%,#cdb9e6 50%,#d9c9ea 100%);transform-style:preserve-3d;perspective:900px}
 .scene-inner{position:absolute;inset:0;transition:transform .5s ease-out;will-change:transform}
 .room-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none;transition:opacity 1.6s ease,filter 1.6s ease}
-.scene.is-night .room-img.day{filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg)}
-.scene.sky-night:not(.is-night) .room-img.day{filter:brightness(.9) saturate(1.02) hue-rotate(-3deg)}
+/* the window patches are part of the plate: whatever dims or tints the plate dims or tints them too */
+.scene.is-night :is(.room-img.day,.win-patch){filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg)}
+.scene.sky-night:not(.is-night) :is(.room-img.day,.win-patch){filter:brightness(.9) saturate(1.02) hue-rotate(-3deg)}
 .night-veil{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.6s ease;
   background:radial-gradient(28% 22% at 13% 50%,rgba(255,214,160,.45),transparent 70%),radial-gradient(18% 16% at 44% 29%,rgba(214,200,255,.55),transparent 70%),linear-gradient(180deg,rgba(40,24,80,.35),rgba(30,18,60,.45))}
 .scene.is-night .night-veil{opacity:1}
@@ -620,7 +621,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .scene:is(.is-night,.sky-night) .win-night{opacity:.97}
 /* window sky cut from the plate (room layout): fades in by sky phase; the oval overlay is only for homes without a cut */
 .win-patches{position:absolute;inset:0;pointer-events:none;z-index:2}
-.win-patch{position:absolute;height:auto;opacity:0;display:none;transition:opacity 1.6s ease;pointer-events:none}
+.win-patch{position:absolute;height:auto;opacity:0;display:none;transition:opacity 1.6s ease,filter 1.6s ease;pointer-events:none}
 .scene.has-win-patch .win-patch{display:block}
 .scene.has-win-patch .win-night{display:none}
 .scene.has-win-patch:is(.is-night,.sky-night) .win-patch.night{opacity:1}
@@ -832,8 +833,8 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .scene[data-sky="sunset"] .win-night .sun{top:84%}
 .scene[data-sky="sunrise"] .win-night .moon,.scene[data-sky="sunset"] .win-night .moon,.scene[data-sky="sunrise"] .win-night i.s,.scene[data-sky="sunset"] .win-night i.s{opacity:0}
 .scene[data-sky="night"] .win-night{opacity:.97}
-.scene[data-sky="sunrise"]:not(.is-night) .room-img.day{filter:sepia(.06) saturate(1.05) hue-rotate(-4deg) brightness(.98)}
-.scene[data-sky="sunset"]:not(.is-night) .room-img.day{filter:sepia(.16) saturate(1.12) hue-rotate(-8deg) brightness(.95)}
+.scene[data-sky="sunrise"]:not(.is-night) :is(.room-img.day,.win-patch){filter:sepia(.06) saturate(1.05) hue-rotate(-4deg) brightness(.98)}
+.scene[data-sky="sunset"]:not(.is-night) :is(.room-img.day,.win-patch){filter:sepia(.16) saturate(1.12) hue-rotate(-8deg) brightness(.95)}
 /* asleep, or after sunset, the window shows the night sky whatever the hour */
 .scene:is(.is-night,.sky-night) .win-night{background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%)}
 .scene:is(.is-night,.sky-night) .win-night .sun{opacity:0}
