@@ -340,7 +340,7 @@
   }
   /* where an owned prop sits: the user's own arrangement, else the layout default, else the shop default */
   function propPosFor(it) { var pp = (S.state().propPos || {})[L.id] || {}; var o = pp[it.id]; var base = (L.props && (L.props[it.id] || (it.posAs && L.props[it.posAs]))) || it.pos; if (!base) return null; var w = base.w * (it.wk || 1); return o ? { x: o.x !== undefined ? o.x : base.x, y: o.y !== undefined ? o.y : base.y, w: w, flip: !!o.flip } : { x: base.x, y: base.y, w: w, flip: !!base.flip }; }
-  /* owned props from the reward shop, placed per layout */
+  /* owned props from Dream Street, placed per layout */
   function renderProps() {
     var l = RW.ledger(), wrap = $('#ownedProps'); wrap.innerHTML = '';
     RW.SHOP.forEach(function (it) {
@@ -1164,7 +1164,7 @@
     openSheet('wardrobe', 'Wardrobe', 'Pick an outfit for today', 'checkroom',
       '<div class="outfits">' + OUTFITS.map(function (o) { return '<button type="button" class="outfit' + (o.id === cur ? ' on' : '') + '" data-id="' + o.id + '"><img src="' + ART + 'avatar-' + o.id + '.webp" alt=""><b>' + esc(o.name) + '</b><small>' + esc(o.note) + '</small></button>'; }).join('') + '</div>' +
       '<div class="field"><label for="nameInput">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="nameInput" maxlength="24" placeholder="Your name" value="' + esc(S.profile().name || '') + '"><button class="btn soft" id="saveName" style="flex:0 0 auto">Save</button></div></div>' +
-      '<p class="help">Your avatar remembers her outfit on this device. Pyjamas go on automatically at bedtime. Pets and furniture live in the heart shop.</p>');
+      '<p class="help">Your avatar remembers her outfit on this device. Pyjamas go on automatically at bedtime. Pets and furniture come from Dream Street.</p>');
     body.addEventListener('click', function (e) { var o = e.target.closest('.outfit'); if (!o) return; setOutfit(o.dataset.id); chime('tap'); toast(OUTFITS.filter(function (x) { return x.id === o.dataset.id; })[0].name + ' it is!', 'checkroom'); });
     $('#saveName').addEventListener('click', function () { S.setProfile({ name: $('#nameInput').value.trim() }); updateGreeting(); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); });
   }
@@ -1251,17 +1251,29 @@
     });
   }
 
-  /* ---------- heart shop: pets, furniture and homes, plus arranging what you own ---------- */
-  var shopTab = 'all', arranging = false, dragProp = null;
-  var NEXT_HOMES = [{ icon: 'yard', name: 'Garden', note: 'Outdoor practices among the flowers: watering, morning light, a bench for tea.' }, { icon: 'groups', name: 'Activity hall', note: 'A gentle place for circles and community gatherings with Erin.' }];
+  /* ---------- Dream Street: a pet shop, a furniture store and a property showroom, plus arranging what you own ---------- */
+  var shopTab = 'street', arranging = false, dragProp = null;
+  var STORES = {
+    pet: { title: 'Pet shop', tag: 'Adopt a friend', sub: 'One kitten and one puppy are home at a time; the others nap in your inventory until you swap.', icon: 'pets', img: 'shop-pets.webp', blurb: 'Kittens, puppies and Mewmew' },
+    furniture: { title: 'Furniture store', tag: 'Pieces for your room', sub: 'Lamps, seats and shelves. Pieces that share a spot swap with each other.', icon: 'chair', img: 'shop-furniture.webp', blurb: 'Lamps, seats and shelves' },
+    home: { title: 'Property showroom', tag: 'Dream houses to move into', sub: 'Visit any home first. Move in when you have the hearts.', icon: 'cottage', img: 'house-thumb.webp', blurb: 'Houses to visit and move into' }
+  };
+  var NEXT_HOMES = [{ icon: 'yard', name: 'Garden', note: 'Outdoor practices among the flowers: watering, morning light, a bench for tea.' }, { icon: 'groups', name: 'Community plaza', note: 'A fountain, lanterns and a tea stall where neighbours gather; friends join once accounts arrive.' }];
   function openShop(tab) {
     if (tab) shopTab = tab;
-    var l = RW.ledger(), home = currentHomeId();
-    var items = RW.SHOP.filter(function (it) { return shopTab === 'all' || (shopTab === 'pet' && it.kind === 'pet') || (shopTab === 'furniture' && it.kind === 'furniture') || (shopTab === 'home' && it.kind === 'home'); });
-    openSheet('shop', 'Heart shop', 'Hearts come from logging; spend them on your home', 'favorite',
-      '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + l.hearts + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, everyday practice 5 (+10 the first time), +5 from day three of a streak.</p></div>' +
-      '<div class="tabs" id="shopTabs">' + [['all', 'All'], ['pet', 'Pets'], ['furniture', 'Furniture'], ['home', 'Homes']].map(function (t) { return '<button type="button" data-tab="' + t[0] + '" class="' + (shopTab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>' +
-      '<div class="shop">' + items.map(function (it) {
+    if (shopTab !== 'street' && !STORES[shopTab]) shopTab = 'street';
+    var l = RW.ledger(), home = currentHomeId(), st = STORES[shopTab], street = shopTab === 'street';
+    var items = street ? [] : RW.SHOP.filter(function (it) { return it.kind === shopTab; });
+    var nav = street
+      ? '<div class="street">' + Object.keys(STORES).map(function (k) {
+          var s = STORES[k], all = RW.SHOP.filter(function (it) { return it.kind === k; }), mine = all.filter(function (it) { return l.owned.indexOf(it.id) > -1; }).length;
+          return '<button type="button" class="store" data-tab="' + k + '"><img src="' + ART + s.img + '" alt=""><span><b>' + s.title + '</b><small>' + s.blurb + ' · ' + all.length + (mine ? ' · ' + mine + ' yours' : '') + '</small></span><span class="ms">chevron_right</span></button>';
+        }).join('') + '</div>'
+      : '<div class="streetnav"><button type="button" class="back" data-tab="street"><span class="ms">arrow_back</span>Dream Street</button><span class="heartsmini"><span class="ms fill">favorite</span>' + l.hearts + '</span></div><p class="help">' + st.sub + '</p>';
+    openSheet('shop', street ? 'Dream Street' : st.title, street ? 'Three little shops. Hearts from logging pay for everything.' : st.tag, street ? 'storefront' : st.icon,
+      (street ? '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + l.hearts + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, everyday practice 5 (+10 the first time), +5 from day three of a streak.</p></div>' : '') +
+      nav +
+      (street ? '' : '<div class="shop">' + items.map(function (it) {
         var owned = l.owned.indexOf(it.id) > -1, placed = !!l.placed[it.id], ctl, extra = '';
         if (it.kind === 'home') {
           var pct = Math.min(100, Math.round(l.hearts / it.cost * 100));
@@ -1273,12 +1285,12 @@
           ctl = owned ? '<button type="button" class="btn soft" data-toggle="' + it.id + '">' + (placed ? 'Put away' : (slotBusy ? 'Swap in' : 'Place')) + '</button>' : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>' + (it.kind === 'pet' ? 'Adopt' : 'Buy') + '</button>';
         }
         return '<div class="shopitem' + (it.kind === 'home' ? ' home' : '') + '">' + (it.img ? '<img src="' + ART + it.img + '" alt="">' : '<span class="ph"><span class="ms">cottage</span></span>') + '<span><b>' + esc(it.name) + (it.slot && RW.SLOTS ? ' <em class="slotchip">' + esc(RW.SLOTS[it.slot]) + '</em>' : '') + '</b><small>' + esc(it.note) + '</small>' + extra + '</span><span class="cost"><b><span class="ms fill">favorite</span>' + it.cost + '</b>' + ctl + '</span></div>';
-      }).join('') + '</div>' +
-      (shopTab === 'all' || shopTab === 'home' ? '<div class="nexthomes"><b>Growing next</b>' + NEXT_HOMES.map(function (n) { return '<div><span class="ms">' + n.icon + '</span><span><b>' + esc(n.name) + '</b><small>' + esc(n.note) + '</small></span></div>'; }).join('') + '</div>' : '') +
+      }).join('') + '</div>') +
+      (shopTab === 'street' || shopTab === 'home' ? '<div class="nexthomes"><b>Growing next</b>' + NEXT_HOMES.map(function (n) { return '<div><span class="ms">' + n.icon + '</span><span><b>' + esc(n.name) + '</b><small>' + esc(n.note) + '</small></span></div>'; }).join('') + '</div>' : '') +
       (l.owned.some(function (id) { var it = RW.SHOP.filter(function (s) { return s.id === id; })[0]; return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div><p class="help">Drag pets and furniture anywhere; the bed, clock, calendar and the rest stay where they are so logging keeps working.</p>' : '') +
       '<div class="msg" id="shopMsg"></div>');
-    $('#shopTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) { chime('tap'); openShop(b.dataset.tab); } });
     body.addEventListener('click', function (e) {
+      var tb = e.target.closest('[data-tab]'); if (tb) { chime('tap'); openShop(tb.dataset.tab); return; }
       var b = e.target.closest('[data-buy]'), t = e.target.closest('[data-toggle]'), v = e.target.closest('[data-visit]'), hm = e.target.closest('[data-home]');
       try {
         if (b) {
@@ -1327,7 +1339,7 @@
     var pp = S.state().propPos || {}; pp[L.id] = pp[L.id] || {}; pp[L.id][d.id] = Object.assign({}, pp[L.id][d.id] || {}, { x: Math.round(parseFloat(d.el.style.left) * 10) / 10, y: Math.round(parseFloat(d.el.style.top) * 10) / 10 }); S.setState({ propPos: pp });
     hidePropCtl();
   }
-  /* turn (mirror) or put away a piece while arranging; put-away pieces wait in the heart shop */
+  /* turn (mirror) or put away a piece while arranging; put-away pieces wait in Dream Street */
   function hidePropCtl() { var c = $('#propCtl'); if (c) c.remove(); }
   function showPropCtl(el) {
     hidePropCtl(); var id = el.dataset.id, it = RW.SHOP.filter(function (x) { return x.id === id; })[0]; if (!it) return;
