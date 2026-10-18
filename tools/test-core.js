@@ -478,3 +478,30 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   console.log('\n' + passes + ' passed, ' + fails + ' failed');
   process.exit(fails ? 1 : 0);
 });
+(function petShopShelves() {
+  console.log('pet shop shelves: treats are used up, accessories are worn by one pet at a time');
+  var w = fresh(), RW = w.OvuRewards, P = w.OvuPets, S = w.OvuStore;
+  var l = RW.ledger(); l.hearts = 500; S.setState({ rewards: l });
+  RW.buy('cat'); RW.buy('dog'); RW.buy('treat-fish'); RW.buy('treat-fish'); RW.buy('acc-bow'); RW.buy('acc-charm');
+  l = RW.ledger();
+  check('two packs of fish biscuits make ten in the cupboard', l.treats && l.treats['treat-fish'] === 10, JSON.stringify(l.treats));
+  check('accessories are owned but never placed as props', l.owned.indexOf('acc-bow') > -1 && !l.placed['acc-bow']);
+  check('a kitten can have fish biscuits, a puppy cannot', RW.treatsFor('cat').length === 1 && RW.treatsFor('dog').length === 0);
+  var t0 = Date.parse('2026-10-18T10:00:00+08:00'); P.feed('cat', t0); P.tick('cat', t0 + 5 * 3600 * 1000);
+  var full0 = P.current('cat', t0 + 5 * 3600 * 1000).full, tr = P.treat('cat', t0 + 5 * 3600 * 1000);
+  check('a treat tops up a hungry kitten without a full meal', tr.ok && tr.pet.full > full0 && tr.pet.full < 100, full0 + ' -> ' + (tr.pet && tr.pet.full));
+  P.feed('dog', t0);
+  check('a puppy straight after a meal says no to a treat', P.treat('dog', t0 + 1000).ok === false);
+  var used = RW.useTreat('cat', 'treat-fish');
+  check('giving one leaves nine', used.left === 9 && RW.ledger().treats['treat-fish'] === 9);
+  check('dress up cycles bow, collar, then nothing', RW.nextWear('cat').id === 'acc-bow' && RW.nextWear('cat').id === 'acc-charm' && RW.nextWear('cat') === null);
+  RW.wear('cat', 'acc-bow'); RW.wear('dog', 'acc-bow');
+  check('one bow cannot be on two pets', !RW.wearing('cat') && RW.wearing('dog').id === 'acc-bow');
+  var threw = false; try { RW.wear('cat', 'acc-hat'); } catch (e) { threw = true; }
+  check('cannot wear what you do not own', threw);
+  check('every shelf item has a sprite on disk', RW.SHOP.filter(function (s) { return s.kind === 'treat' || s.kind === 'accessory'; }).every(function (s) { return fs.existsSync(path.join(root, 'assets/room/dream', s.img)); }));
+  check('head and neck spots exist for every pet', ['cat', 'catblack', 'catginger', 'dog', 'shiba', 'mewmew'].every(function (id) { return P.wearSpot(id, 'head').w > 0 && P.wearSpot(id, 'neck').w > 0; }));
+})();
+
+console.log('\n' + passes + ' passed, ' + fails + ' failed');
+process.exit(fails ? 1 : 0);

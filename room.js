@@ -344,10 +344,11 @@
   function renderProps() {
     var l = RW.ledger(), wrap = $('#ownedProps'); wrap.innerHTML = '';
     RW.SHOP.forEach(function (it) {
-      if (!it.img || it.kind === 'home' || l.owned.indexOf(it.id) < 0 || !l.placed[it.id]) return;
+      if (!it.img || it.kind === 'home' || it.kind === 'treat' || it.kind === 'accessory' || l.owned.indexOf(it.id) < 0 || !l.placed[it.id]) return;
       var p = propPosFor(it); if (!p) return;
       var d = document.createElement('div'); d.className = 'prop owned ' + it.kind + (p.flip ? ' flip' : ''); d.dataset.id = it.id; d.style.left = p.x + '%'; d.style.top = p.y + '%'; d.style.width = p.w + '%';
-      d.innerHTML = '<img src="' + ART + it.img + '" alt="">'; wrap.appendChild(d);
+      var worn = it.kind === 'pet' && RW.wearing ? RW.wearing(it.id) : null, spot = worn && PETS ? PETS.wearSpot(it.id, worn.wear) : null;
+      d.innerHTML = '<span class="petbody"><img src="' + ART + it.img + '" alt="">' + (worn ? '<img class="worn ' + worn.wear + '" src="' + ART + worn.img + '" alt="" style="left:' + (spot.x * 100) + '%;top:' + (spot.y * 100) + '%;width:' + (spot.w * 100) + '%">' : '') + '</span>'; wrap.appendChild(d);
       if (it.id === 'scale') { d.classList.add('tool'); d.setAttribute('role', 'button'); d.setAttribute('tabindex', '0'); d.setAttribute('aria-label', 'Weighing scale. Tap to note your weight.'); }
       if (it.kind === 'pet' && PETS) {
         var pet = PETS.tick(it.id), md = PETS.mood(it.id, { night: isNight() });
@@ -373,11 +374,14 @@
     if (!PETS) return;
     chime('tap');
     var cur = PETS.current(id), md = PETS.mood(id, { night: isNight() }), name = PETS.NAMES[id] || 'Your pet';
+    var treats = RW.treatsFor ? RW.treatsFor(id) : [], worn = RW.wearing ? RW.wearing(id) : null, hasAcc = RW.SHOP.some(function (o) { return o.kind === 'accessory' && RW.ledger().owned.indexOf(o.id) > -1; });
     var r = el.getBoundingClientRect(), sr = scene.getBoundingClientRect();
     bubble.style.left = Math.min(sr.width - 105, Math.max(105, r.left - sr.left + r.width / 2)) + 'px'; bubble.style.top = (r.top - sr.top - 6) + 'px';
     bubble.innerHTML = '<div class="pethead"><b>' + esc(name) + '</b><span>' + esc(md.text) + '</span><div class="petstat"><span title="Full"><span class="ms">restaurant</span>' + petPips(cur.full) + '</span><span title="Fun"><span class="ms">sports_baseball</span>' + petPips(cur.fun) + '</span></div></div>' +
       (cur.poops.length ? '<button type="button" data-pact="tidy"><span class="ms">cleaning_services</span>Tidy up</button>' : '') +
-      '<button type="button" data-pact="feed"><span class="ms">restaurant</span>Feed a treat</button><button type="button" data-pact="play"><span class="ms">sports_baseball</span>Play ball</button><button type="button" data-pact="cuddle"><span class="ms">favorite</span>Cuddle</button>';
+      '<button type="button" data-pact="feed"><span class="ms">restaurant</span>Feed</button><button type="button" data-pact="play"><span class="ms">sports_baseball</span>Play ball</button><button type="button" data-pact="cuddle"><span class="ms">favorite</span>Cuddle</button>' +
+      (treats.length ? '<button type="button" data-pact="treat"><span class="ms">cookie</span>' + esc(treats[0].name) + ' <small>' + treats[0].left + ' left</small></button>' : '') +
+      (hasAcc ? '<button type="button" data-pact="dress"><span class="ms">checkroom</span>' + (worn ? 'Wearing ' + esc(worn.name) : 'Dress up') + '</button>' : '');
     bubble.dataset.pet = id; bubble.classList.add('on', 'petbub');
   }
   function petFx(id, act) {
@@ -405,6 +409,14 @@
   function petAction(id, act) {
     var name = PETS.NAMES[id] || 'Your pet';
     if (act === 'tidy') { PETS.current(id).poops.forEach(function (pp) { cleanPoop(id, pp.id, document.querySelector('.poop[data-poop="' + pp.id + '"]')); }); return; }
+    if (act === 'dress') { var piece = RW.nextWear(id); chime('save'); renderProps(); toast(piece ? name + ' is wearing the ' + piece.name.toLowerCase() + '.' : name + ' is back to her natural look.', 'checkroom'); bubble.classList.remove('on', 'petbub'); return; }
+    if (act === 'treat') {
+      var tl = RW.treatsFor(id); if (!tl.length) { toast('The treat cupboard is empty. Dream Street has more.', 'cookie'); return; }
+      var tr = PETS.treat(id); if (!tr.ok) { toast(name + ' is full right now. Save the treat for later.', 'favorite'); return; }
+      var used = RW.useTreat(id, tl[0].id); petFx(id, 'feed'); chime('save');
+      toast(name + ' loved the ' + used.item.name.toLowerCase() + '.' + (used.left ? ' ' + used.left + ' left.' : ' That was the last one.'), 'cookie');
+      bubble.classList.remove('on', 'petbub'); setTimeout(renderProps, 2400); return;
+    }
     var r = act === 'feed' ? PETS.feed(id) : act === 'play' ? PETS.play(id) : PETS.cuddle(id);
     if (!r.ok) { toast(act === 'feed' ? name + ' is already full. Maybe a cuddle instead?' : name + ' is happily tired. Maybe a cuddle instead?', 'favorite'); return; }
     var rw = RW.care(id, act);
@@ -1332,11 +1344,30 @@
     home: { title: 'Property showroom', tag: 'Dream houses to move into', sub: 'Visit any home first. Move in when you have the hearts.', icon: 'cottage', img: 'shop-homes.webp', blurb: 'Houses to visit and move into' }
   };
   var NEXT_HOMES = [{ icon: 'yard', name: 'Garden', note: 'Outdoor practices among the flowers: watering, morning light, a bench for tea.' }, { icon: 'groups', name: 'Community plaza', note: 'A fountain, lanterns and a tea stall where neighbours gather; friends join once accounts arrive.' }];
+  function shopItemHTML(it, l, home) {
+        var owned = l.owned.indexOf(it.id) > -1, placed = !!l.placed[it.id], ctl, extra = '';
+        if (it.kind === 'home') {
+          var pct = Math.min(100, Math.round(l.hearts / it.cost * 100));
+          ctl = owned ? '<button type="button" class="btn soft" data-home="' + (home === it.id ? 'room' : it.id) + '">' + (home === it.id ? 'Back to my room' : 'Move in') + '</button>'
+            : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>Move in</button><button type="button" class="btn ghost" data-visit="' + it.id + '">Visit</button>';
+          if (!owned) extra = '<div class="bar"><i style="width:' + pct + '%"></i></div><small>' + pct + '% saved' + (l.hearts < it.cost ? ' · ' + (it.cost - l.hearts) + ' hearts to go' : ' · you can move in!') + '</small>';
+        } else {
+          if (it.kind === 'treat') { var have = (l.treats || {})[it.id] || 0; ctl = '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>Buy ' + it.qty + '</button>'; if (have) extra = '<small>' + have + ' in the cupboard</small>'; }
+          else if (it.kind === 'accessory') { var by = Object.keys(l.wear || {}).filter(function (p) { return l.wear[p] === it.id; })[0]; ctl = owned ? '<span class="ownchip">' + (by ? 'Worn by ' + esc(PETS && PETS.NAMES[by] || 'a pet') : 'In the drawer') + '</span>' : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>Buy</button>'; if (owned) extra = '<small>Tap a pet, then Dress up.</small>'; }
+          else {
+          var slotBusy = it.slot && !placed && RW.SHOP.some(function (o) { return o.slot === it.slot && o.id !== it.id && l.placed[o.id]; });
+          ctl = owned ? '<button type="button" class="btn soft" data-toggle="' + it.id + '">' + (placed ? 'Put away' : (slotBusy ? 'Swap in' : 'Place')) + '</button>' : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>' + (it.kind === 'pet' ? 'Adopt' : 'Buy') + '</button>';
+          }
+        }
+        return '<div class="shopitem' + (it.kind === 'home' ? ' home' : '') + '">' + (it.img ? '<img src="' + ART + it.img + '" alt="">' : '<span class="ph"><span class="ms">cottage</span></span>') + '<span><b>' + esc(it.name) + (it.slot && RW.SLOTS ? ' <em class="slotchip">' + esc(RW.SLOTS[it.slot]) + '</em>' : '') + '</b><small>' + esc(it.note) + '</small>' + extra + '</span><span class="cost"><b><span class="ms fill">favorite</span>' + it.cost + '</b>' + ctl + '</span></div>';
+      }
+  function shopList(items, l, home) { return '<div class="shop">' + items.map(function (it) { return shopItemHTML(it, l, home); }).join('') + '</div>'; }
   function openShop(tab) {
     if (tab) shopTab = tab;
     if (shopTab !== 'street' && !STORES[shopTab]) shopTab = 'street';
     var l = RW.ledger(), home = currentHomeId(), st = STORES[shopTab], street = shopTab === 'street';
     var items = street ? [] : RW.SHOP.filter(function (it) { return it.kind === shopTab; });
+    var SHELVES = { treat: 'Treats', accessory: 'Accessories' };
     var nav = street
       ? '<div class="street">' + Object.keys(STORES).map(function (k) {
           var s = STORES[k], all = RW.SHOP.filter(function (it) { return it.kind === k; }), mine = all.filter(function (it) { return l.owned.indexOf(it.id) > -1; }).length;
@@ -1346,19 +1377,8 @@
     openSheet('shop', street ? 'Dream Street' : st.title, street ? 'Three little shops. Hearts from logging pay for everything.' : st.tag, street ? 'storefront' : st.icon,
       (street ? '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + l.hearts + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, everyday practice 5 (+10 the first time), +5 from day three of a streak.</p></div>' : '') +
       nav +
-      (street ? '' : '<div class="shop">' + items.map(function (it) {
-        var owned = l.owned.indexOf(it.id) > -1, placed = !!l.placed[it.id], ctl, extra = '';
-        if (it.kind === 'home') {
-          var pct = Math.min(100, Math.round(l.hearts / it.cost * 100));
-          ctl = owned ? '<button type="button" class="btn soft" data-home="' + (home === it.id ? 'room' : it.id) + '">' + (home === it.id ? 'Back to my room' : 'Move in') + '</button>'
-            : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>Move in</button><button type="button" class="btn ghost" data-visit="' + it.id + '">Visit</button>';
-          if (!owned) extra = '<div class="bar"><i style="width:' + pct + '%"></i></div><small>' + pct + '% saved' + (l.hearts < it.cost ? ' · ' + (it.cost - l.hearts) + ' hearts to go' : ' · you can move in!') + '</small>';
-        } else {
-          var slotBusy = it.slot && !placed && RW.SHOP.some(function (o) { return o.slot === it.slot && o.id !== it.id && l.placed[o.id]; });
-          ctl = owned ? '<button type="button" class="btn soft" data-toggle="' + it.id + '">' + (placed ? 'Put away' : (slotBusy ? 'Swap in' : 'Place')) + '</button>' : '<button type="button" class="btn primary" data-buy="' + it.id + '"' + (l.hearts < it.cost ? ' disabled' : '') + '>' + (it.kind === 'pet' ? 'Adopt' : 'Buy') + '</button>';
-        }
-        return '<div class="shopitem' + (it.kind === 'home' ? ' home' : '') + '">' + (it.img ? '<img src="' + ART + it.img + '" alt="">' : '<span class="ph"><span class="ms">cottage</span></span>') + '<span><b>' + esc(it.name) + (it.slot && RW.SLOTS ? ' <em class="slotchip">' + esc(RW.SLOTS[it.slot]) + '</em>' : '') + '</b><small>' + esc(it.note) + '</small>' + extra + '</span><span class="cost"><b><span class="ms fill">favorite</span>' + it.cost + '</b>' + ctl + '</span></div>';
-      }).join('') + '</div>') +
+      (street ? '' : shopList(items, l, home) +
+        (shopTab === 'pet' ? Object.keys(SHELVES).map(function (k) { var li = RW.SHOP.filter(function (it) { return it.kind === k; }); return li.length ? '<p class="shelf"><span class="ms">' + (k === 'treat' ? 'cookie' : 'checkroom') + '</span>' + SHELVES[k] + '</p>' + shopList(li, l, home) : ''; }).join('') : '')) +
       (shopTab === 'street' || shopTab === 'home' ? '<div class="nexthomes"><b>Growing next</b>' + NEXT_HOMES.map(function (n) { return '<div><span class="ms">' + n.icon + '</span><span><b>' + esc(n.name) + '</b><small>' + esc(n.note) + '</small></span></div>'; }).join('') + '</div>' : '') +
       (l.owned.some(function (id) { var it = RW.SHOP.filter(function (s) { return s.id === id; })[0]; return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div><p class="help">Drag pets and furniture anywhere; the bed, clock, calendar and the rest stay where they are so logging keeps working.</p>' : '') +
       '<div class="msg" id="shopMsg"></div>');
@@ -1369,6 +1389,8 @@
         if (b) {
           var it = RW.buy(b.dataset.buy); chime('save', true);
           if (it.kind === 'home') { S.setState({ home: it.id }); closeSheet(); applyLayout(it.id, false); toast('Welcome home. ' + it.name + ' is yours!', 'cottage'); }
+          else if (it.kind === 'treat') { toast(it.name + ' are in the cupboard. Tap a pet to give one.', 'cookie'); openShop(); }
+          else if (it.kind === 'accessory') { toast(it.name + ' is in the drawer. Tap a pet, then Dress up.', 'checkroom'); openShop(); }
           else { renderProps(); toast(it.name + ' is now in your home!' + (it.swapped && it.swapped.length ? ' ' + it.swapped.join(' and ') + ' went into storage; swap back any time.' : ''), 'favorite'); openShop(); }
         }
         if (t) { RW.toggle(t.dataset.toggle); renderProps(); openShop(); }
