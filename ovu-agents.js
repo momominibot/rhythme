@@ -140,7 +140,7 @@
     }
     var mind = entries.filter(function (e) { return e.type === 'mindfulness'; });
     if (mind.length) { var mins = mind.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0); bullets.push('self_improvement'); parts.push(Math.round(mins) + ' min of mindfulness' + (mind.some(function (e) { return e.data.kind === 'erin'; }) ? ' with Erin' : '') + '.'); highlights.push({ icon: 'self_improvement', text: Math.round(mins) + ' min calm' }); }
-    if (refl.length) bullets.push('edit_note'); parts.push(refl.length + ' reflection' + (refl.length > 1 ? 's' : '') + '.');
+    if (refl.length) { bullets.push('edit_note'); parts.push(refl.length + ' reflection' + (refl.length > 1 ? 's' : '') + '.'); }
     var flags = allFlags(date).filter(function (f) { return f.date === date; });
     return { date: date, text: parts.length ? parts.join(' ') : 'Nothing logged this day.', items: parts.map(function (t, k) { return { icon: bullets[k] || 'circle', text: t }; }), highlights: highlights, flags: flags, count: entries.length, agent: 'DailySummaryAgent v1 (rule-based)' };
   }

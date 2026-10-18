@@ -299,5 +299,14 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the Singapore jar is the main pick and the row has a picture', nut.best.code === '4' && nut.sg && !!nut.image);
 })();
 
+(function todayBullets() {
+  console.log('Today card: one bullet per topic, nothing for topics not logged');
+  var w = fresh(), S = w.OvuStore, A = w.OvuAgents, today = S.today();
+  S.add('sleep', today, { bedTime: '23:00', wakeTime: '07:00', quality: 4, notes: '' });
+  var d = A.dailySummary(today);
+  check('sleep gives one bullet with the bed icon', d.items.length >= 1 && d.items[0].icon === 'bedtime');
+  check('no reflection or meal bullets when none were logged', !d.items.some(function (it) { return /reflection|meal/.test(it.text); }), JSON.stringify(d.items));
+})();
+
 console.log('\n' + passes + ' passed, ' + fails + ' failed');
 process.exit(fails ? 1 : 0);

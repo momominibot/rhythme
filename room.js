@@ -262,6 +262,7 @@
   function currentHomeId() { var h = S.state().home; return h && h !== 'room' && LAYOUTS[h] && RW.ledger().owned.indexOf(h) > -1 ? h : 'room'; }
   /* Switch the plate and every percent-positioned overlay to a layout; asVisit previews without moving in. */
   function applyLayout(id, asVisit) {
+    if (typeof camFit === 'function' && inner) camFit(false);
     L = LAYOUTS[id] || LAYOUTS.room; HOTSPOTS = L.hotspots; HOME = L.home; visiting = asVisit ? L.id : null;
     scene.style.aspectRatio = L.w + '/' + L.h; scene.dataset.layout = L.id;
     if (dayImg.getAttribute('src') !== ART + L.img) dayImg.src = ART + L.img;
@@ -275,6 +276,55 @@
     var vb = $('#visitBar'); if (vb) { vb.classList.toggle('on', !!visiting); vb.innerHTML = visiting ? '<span class="ms">cottage</span><span>Visiting ' + esc(houseItem(L.id).name.replace(/^./, function (c) { return c.toLowerCase(); })) + ' · <b>' + houseItem(L.id).cost + ' ♥ to move in</b></span><button type="button" id="visitBack"><span class="ms">arrow_back</span>Back</button>' : ''; }
     renderProps(); placeAvatar(HOME, false);
   }
+  /* ---------- camera: zoom and pan any scene. Built for the room and houses now, and for a future
+   * city map or a neighbour's home: each is just a layout, and the camera works on whichever is showing. */
+  var cam = { z: 1, x: 0, y: 0 }, CAM_MAX = 3, camPointers = new Map(), camGesture = null, camSuppressClick = false;
+  function camClamp() { var W = scene.clientWidth, H = scene.clientHeight; cam.z = Math.max(1, Math.min(CAM_MAX, cam.z)); cam.x = Math.min(0, Math.max(W - W * cam.z, cam.x)); cam.y = Math.min(0, Math.max(H - H * cam.z, cam.y)); }
+  function camApply(anim) {
+    camClamp(); inner.style.transformOrigin = '0 0'; inner.style.transition = anim ? 'transform .35s ease' : 'none';
+    inner.style.transform = cam.z > 1.001 ? 'translate(' + cam.x.toFixed(1) + 'px,' + cam.y.toFixed(1) + 'px) scale(' + cam.z.toFixed(3) + ')' : '';
+    scene.classList.toggle('zoomed', cam.z > 1.01); var f = $('#camFit'); if (f) f.disabled = cam.z <= 1.01;
+  }
+  function camZoomAt(px, py, z, anim) { var cx = (px - cam.x) / cam.z, cy = (py - cam.y) / cam.z; cam.z = Math.max(1, Math.min(CAM_MAX, z)); cam.x = px - cx * cam.z; cam.y = py - cy * cam.z; camApply(anim); }
+  function camFit(anim) { cam = { z: 1, x: 0, y: 0 }; camApply(anim); }
+  function camLocal(e) { var r = scene.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  function camInteractive(t) { return t.closest('.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,button,a,input'); }
+  scene.addEventListener('pointerdown', function (e) {
+    if (arranging || e.pointerType === 'mouse' && e.button !== 0) return;
+    camPointers.set(e.pointerId, camLocal(e));
+    if (camPointers.size === 2) { var pts = Array.from(camPointers.values()); camGesture = { type: 'pinch', d: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), z: cam.z, mx: (pts[0].x + pts[1].x) / 2, my: (pts[0].y + pts[1].y) / 2, x: cam.x, y: cam.y }; }
+    else if (cam.z > 1.01 && !camInteractive(e.target)) { var p = camLocal(e); camGesture = { type: 'pan', sx: p.x, sy: p.y, x: cam.x, y: cam.y, moved: 0 }; }
+  });
+  scene.addEventListener('pointermove', function (e) {
+    if (!camPointers.has(e.pointerId)) return; camPointers.set(e.pointerId, camLocal(e));
+    if (camGesture && camGesture.type === 'pinch' && camPointers.size === 2) {
+      var pts = Array.from(camPointers.values()), d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), mx = (pts[0].x + pts[1].x) / 2, my = (pts[0].y + pts[1].y) / 2;
+      var z = Math.max(1, Math.min(CAM_MAX, camGesture.z * d / Math.max(20, camGesture.d)));
+      var cx = (camGesture.mx - camGesture.x) / camGesture.z, cy = (camGesture.my - camGesture.y) / camGesture.z;
+      cam.z = z; cam.x = mx - cx * z; cam.y = my - cy * z; camApply(false); camSuppressClick = true; e.preventDefault();
+    } else if (camGesture && camGesture.type === 'pan') {
+      var q = camLocal(e), dx = q.x - camGesture.sx, dy = q.y - camGesture.sy; camGesture.moved = Math.max(camGesture.moved, Math.abs(dx) + Math.abs(dy));
+      if (camGesture.moved > 6) { cam.x = camGesture.x + dx; cam.y = camGesture.y + dy; camApply(false); camSuppressClick = true; e.preventDefault(); }
+    }
+  }, { passive: false });
+  function camEnd(e) { camPointers.delete(e.pointerId); if (camPointers.size < 2 && camGesture && camGesture.type === 'pinch') camGesture = null; if (!camPointers.size) camGesture = null; if (camSuppressClick) setTimeout(function () { camSuppressClick = false; }, 60); }
+  scene.addEventListener('pointerup', camEnd); scene.addEventListener('pointercancel', camEnd); scene.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') camEnd(e); });
+  /* a drag or a pinch is not a tap: swallow the click that follows it */
+  scene.addEventListener('click', function (e) { if (camSuppressClick) { e.stopPropagation(); e.preventDefault(); camSuppressClick = false; } }, true);
+  /* trackpad pinch (ctrl + wheel) and double-tap zoom where you point */
+  scene.addEventListener('wheel', function (e) { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); var p = camLocal(e); camZoomAt(p.x, p.y, cam.z * Math.exp(-e.deltaY * 0.01), false); }, { passive: false });
+  scene.addEventListener('dblclick', function (e) { if (camInteractive(e.target)) return; var p = camLocal(e); if (cam.z > 1.2) camFit(true); else camZoomAt(p.x, p.y, 2, true); });
+  function camControls() {
+    if ($('#camCtl')) return;
+    var c = document.createElement('div'); c.className = 'camctl'; c.id = 'camCtl';
+    c.innerHTML = '<button type="button" id="camIn" aria-label="Zoom in"><span class="ms">add</span></button><button type="button" id="camOut" aria-label="Zoom out"><span class="ms">remove</span></button><button type="button" id="camFit" aria-label="Show the whole home" disabled><span class="ms">fit_screen</span></button>';
+    scene.appendChild(c);
+    var mid = function () { return { x: scene.clientWidth / 2, y: scene.clientHeight / 2 }; };
+    $('#camIn').addEventListener('click', function (e) { e.stopPropagation(); var m = mid(); camZoomAt(m.x, m.y, cam.z * 1.5, true); });
+    $('#camOut').addEventListener('click', function (e) { e.stopPropagation(); var m = mid(); camZoomAt(m.x, m.y, cam.z / 1.5, true); });
+    $('#camFit').addEventListener('click', function (e) { e.stopPropagation(); camFit(true); });
+    window.addEventListener('resize', function () { camApply(false); });
+  }
   function buildScene() {
     var aura = document.createElement('div'); aura.className = 'aura'; aura.id = 'aura'; inner.insertBefore(aura, meditator);
     var sp = $('#sparkles');
@@ -282,10 +332,11 @@
     var st = $('#stars');
     for (var j = 0; j < 26; j++) { var z = document.createElement('i'); z.className = 'star'; z.style.left = (2 + Math.random() * 96) + '%'; z.style.top = (2 + Math.random() * 40) + '%'; z.style.animationDelay = (Math.random() * 3) + 's'; z.style.transform = 'scale(' + (0.5 + Math.random()) + ')'; st.appendChild(z); }
     if (!reduced && window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
-      scene.addEventListener('pointermove', function (e) { var r = scene.getBoundingClientRect(); var dx = (e.clientX - r.left) / r.width - 0.5, dy = (e.clientY - r.top) / r.height - 0.5; inner.style.transform = 'rotateY(' + (dx * 4) + 'deg) rotateX(' + (-dy * 3) + 'deg) scale(1.02)'; });
-      scene.addEventListener('pointerleave', function () { inner.style.transform = ''; });
+      scene.addEventListener('pointermove', function (e) { if (cam.z > 1.01 || camPointers.size) return; var r = scene.getBoundingClientRect(); var dx = (e.clientX - r.left) / r.width - 0.5, dy = (e.clientY - r.top) / r.height - 0.5; inner.style.transform = 'rotateY(' + (dx * 4) + 'deg) rotateX(' + (-dy * 3) + 'deg) scale(1.02)'; });
+      scene.addEventListener('pointerleave', function () { if (cam.z <= 1.01) inner.style.transform = ''; });
     }
     applyLayout(currentHomeId(), false);
+    camControls();
   }
   /* where an owned prop sits: the user's own arrangement, else the layout default, else the shop default */
   function propPosFor(it) { var pp = (S.state().propPos || {})[L.id] || {}; var o = pp[it.id]; var base = (L.props && L.props[it.id]) || it.pos; if (!base) return null; return o ? { x: o.x !== undefined ? o.x : base.x, y: o.y !== undefined ? o.y : base.y, w: base.w, flip: !!o.flip } : base; }
@@ -416,11 +467,11 @@
     /* a fresh body node each time, so listeners from the previous sheet (or a re-render of this one) never pile up */
     var fresh = body.cloneNode(false); body.parentNode.replaceChild(fresh, body); body = fresh; wireGuides(body);
     body.innerHTML = html; body.scrollTop = 0;
-    sheet.classList.add('on'); veil.classList.add('on'); scene.classList.add('quiet');
+    sheet.classList.add('on'); veil.classList.add('on'); scene.classList.add('quiet'); var pm = document.getElementById('podMini'); if (pm) pm.hidden = true;
     sheet.setAttribute('aria-hidden', 'false');
     var first = body.querySelector('input,button,select,textarea,a'); if (first && window.matchMedia('(hover:hover)').matches) try { first.focus({ preventScroll: true }); } catch (e) { }
   }
-  function hideSheet() { current = null; setTab('home'); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
+  function hideSheet() { current = null; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
   function closeSheet() {
     if (current === 'diary') stopCamera();
     if (current === 'mind' && session) stopSession(true);
@@ -1240,7 +1291,7 @@
 
   /* ---------- Luna, the moon orb ---------- */
   var lunaLog = [];
-  function openLuna(prefill) {
+  function openLuna(prefill, draft) {
     var cfg = ORB.aiConfig();
     openSheet('luna', 'Luna', 'Tell me how you are; I’ll write it down', 'dark_mode',
       '<div class="chat" id="chat"></div>' +
@@ -1388,7 +1439,7 @@
     });
     $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.insights = $('#aiInsights').checked; c.photos = $('#aiPhotos').checked; ORB.setAiConfig(c); S.setProfile({ consent: Object.assign({}, S.profile().consent || {}, { improve: $('#aiImprove').checked }) }); chime('save'); toast('Luna’s settings saved.', 'check_circle'); openLuna($('#lunaIn').value); });
     $('#aiToggle').addEventListener('click', function () { var c = ORB.aiConfig(); c.on = !c.on; ORB.setAiConfig(c); openLuna($('#lunaIn').value); });
-    if (prefill) send(prefill);
+    if (prefill && !draft) send(prefill);
   }
   $('#lunaBtn').addEventListener('click', function () { chime('tap'); $('#lunaBtn').classList.remove('hinting'); openLuna(); });
 
@@ -1409,6 +1460,7 @@
   function setOrb(phase, text) { var o = $('#orb'), t = $('#orbText'); if (o) { o.className = 'orb ' + phase; if (text) t.textContent = text; } var ho = $('#hudOrb'); ho.className = 'hud-orb ' + phase; if (text) $('#hudLine').textContent = text; }
   function caption(text) { if (!text) return; $('#hudLine').textContent = text; var t = $('#orbText'); if (t) t.textContent = text; }
   function runSession(kind, minutes) {
+    if (window.OvuPodcast) OvuPodcast.pause();
     session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: null, timer: null };
     hideSheet(); holo.classList.toggle('on', kind === 'erin'); hud.classList.add('on'); $('#hudTitle').textContent = kind === 'erin' ? 'With Erin' : 'Just breathe';
     var total = minutes * 60000, cycleMs = kind === 'erin' ? 11000 : 14000, hour = new Date().getHours();
@@ -1449,11 +1501,92 @@
     if (elapsedMin >= 1) finishSession(false); else { session = null; exitMeditation(); if (!fromClose) toast('Stopped. Nothing under a minute is recorded.', 'self_improvement'); }
   }
   $('#hudStop').addEventListener('click', function () { if (practice) stopPractice(); else stopSession(false); });
+  /* ---------- Listen with Erin: Take A Pause, streamed from her own Substack ---------- */
+  var POD = window.OvuPodcast;
+  function podLabel(ep) { return (ep.number ? 'Episode ' + ep.number + ' · ' : '') + Math.round(ep.durationSeconds / 60) + ' min'; }
+  function fillPodShelf() {
+    var el = $('#podShelf'); if (!el || !POD) return;
+    POD.load().then(function () {
+      var cs = S.cycleStats(), sug = POD.suggestFor(cs.mode === 'suspended' ? null : cs.phase), last = POD.lastId() && POD.episode(POD.lastId());
+      var pick = last && POD.progress(last.id) && !POD.finished(last.id) ? last : sug;
+      el.innerHTML = '<img src="assets/avatars/erin/erin-chibi.webp" alt="" class="podshelf-erin"><div><span class="lbl">Listen with Erin</span><b>' + esc(pick.title) + '</b><small>' + (pick === last ? 'Continue where you left off · ' : 'A starting point for today · ') + esc(podLabel(pick)) + '</small><div class="row" style="margin-top:6px"><button type="button" class="btn soft" data-pod-open="' + pick.id + '"><span class="ms">headphones</span>Listen</button><button type="button" class="btn ghost" data-pod-open="">All 19 episodes</button></div></div>';
+    }).catch(function () { el.innerHTML = ''; });
+  }
+  document.addEventListener('click', function (e) { var b = e.target.closest('[data-pod-open]'); if (!b) return; chime('tap'); openListen(b.dataset.podOpen || null); });
+  function openListen(selId) {
+    if (!POD) return;
+    if (current === 'mind' && !session && meditating) exitMeditation();
+    POD.load().then(function (d) {
+      var cs = S.cycleStats(), sug = POD.suggestFor(cs.mode === 'suspended' ? null : cs.phase), last = POD.lastId() && POD.episode(POD.lastId());
+      if (selId) POD.select(selId); else if (!POD.state().ep) POD.select((last || sug).id);
+      openSheet('erin-listen', 'Listen with Erin', 'Take A Pause, by Erin Lee', 'headphones',
+        '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Erin Lee · certified MBSR teacher</b><small>Short talks on patience, kindness and balance, drawn from the Dhammapada. They stream from Erin’s Substack; listening does not earn hearts, so there is nothing to chase.</small></div></div>' +
+        '<div id="podPlayer"></div>' +
+        (sug ? '<div class="podsug"><span class="ms">wb_twilight</span><span>' + (cs.phase && cs.mode !== 'suspended' ? 'A gentle pick for your ' + esc(cs.phase === 'late' ? 'luteal' : cs.phase) + ' days: ' : 'A gentle place to start: ') + '<button type="button" class="linkbtn" data-ep="' + sug.id + '">' + esc(sug.title) + '</button>. Choose anything that suits you.</span></div>' : '') +
+        '<div class="field"><span class="lbl">All episodes</span><div class="podlist">' + d.episodes.map(podCard).join('') + '</div></div>' +
+        '<p class="help">From <a href="' + esc(d.publication) + '" target="_blank" rel="noopener">Take A Pause by Erin Lee</a>. Each episode links to its post, where you can read Erin’s notes.</p>');
+      renderPodPlayer();
+      body.addEventListener('click', function (e) {
+        var ep = e.target.closest('[data-ep]'); if (ep) { chime('tap'); POD.select(ep.dataset.ep); renderPodPlayer(); var pl = $('#podPlayer'); if (pl) pl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
+        if (e.target.closest('#podPlay')) { POD.toggle(); return; }
+        if (e.target.closest('#podBack')) { POD.skip(-15); return; }
+        if (e.target.closest('#podFwd')) { POD.skip(15); return; }
+        var sp = e.target.closest('[data-speed]'); if (sp) { POD.setSpeed(Number(sp.dataset.speed)); renderPodPlayer(); return; }
+        var sl = e.target.closest('[data-sleep]'); if (sl) { var v = sl.dataset.sleep; POD.setSleep(v === 'off' ? null : v === 'end' ? 'end' : Number(v)); toast(v === 'off' ? 'Sleep timer off.' : v === 'end' ? 'Stops at the end of this episode.' : 'Stops in ' + v + ' minutes.', 'bedtime'); renderPodPlayer(); return; }
+        if (e.target.closest('#podReflect')) { var q = POD.state().ep && POD.state().ep.question; openLuna(q ? 'Reflecting on Erin’s question, “' + q + '”: ' : 'After listening to Erin: ', true); return; }
+      });
+      body.addEventListener('input', function (e) { if (e.target.id === 'podSeek') POD.seekTo(Number(e.target.value) / 1000); });
+    }).catch(function (err) { toast(err.message, 'error'); });
+  }
+  function podCard(ep) {
+    var pos = POD.progress(ep.id), pct = ep.durationSeconds ? Math.min(100, Math.round(pos / ep.durationSeconds * 100)) : 0, done = POD.finished(ep.id), sel = POD.state().ep && POD.state().ep.id === ep.id;
+    return '<button type="button" class="podep' + (sel ? ' on' : '') + '" data-ep="' + ep.id + '"><i>' + (ep.number || '') + '</i><span><b>' + esc(ep.title) + '</b><small>' + Math.round(ep.durationSeconds / 60) + ' min' + (ep.themes && ep.themes[0] ? ' · ' + esc(ep.themes[0].pali) : '') + (done ? ' · listened' : '') + '</small>' + (pct && !done ? '<em style="--p:' + pct + '%"></em>' : '') + '</span><span class="ms">' + (done ? 'check_circle' : 'play_circle') + '</span></button>';
+  }
+  function renderPodPlayer() {
+    var host = $('#podPlayer'), st = POD && POD.state(); if (!host || !st || !st.ep) return;
+    var ep = st.ep, frac = st.duration ? st.time / st.duration : 0;
+    host.innerHTML = '<div class="podplayer"><div class="podhead"><img src="' + esc(ep.cover || 'assets/avatars/erin/erin-chibi-face.webp') + '" alt="" onerror="this.src=\'assets/avatars/erin/erin-chibi-face.webp\'"><div><small>' + esc(podLabel(ep)) + '</small><b>' + esc(ep.title) + '</b><span>' + esc(ep.subtitle || '') + '</span></div></div>' +
+      '<input type="range" class="mrange podseek" id="podSeek" min="0" max="1000" value="' + Math.round(frac * 1000) + '" aria-label="Position in the episode" style="--fill:' + (frac * 100).toFixed(1) + '%"><div class="podtimes"><span id="podT">' + POD.fmt(st.time) + '</span><span id="podD">-' + POD.fmt(Math.max(0, st.duration - st.time)) + '</span></div>' +
+      '<div class="podctl"><button type="button" id="podBack" aria-label="Back 15 seconds"><span class="ms">replay</span><small>15</small></button><button type="button" class="big" id="podPlay" aria-label="' + (st.playing ? 'Pause' : 'Play') + '"><span class="ms">' + (st.playing ? 'pause' : 'play_arrow') + '</span></button><button type="button" id="podFwd" aria-label="Forward 15 seconds"><span class="ms">forward_media</span><small>15</small></button></div>' +
+      '<div class="podopts"><span class="lbl">Speed</span><div class="chips">' + [0.75, 1, 1.25, 1.5].map(function (r) { return '<button type="button" class="chipbtn' + (Math.abs(st.speed - r) < 0.01 ? ' on' : '') + '" data-speed="' + r + '">' + r + '×</button>'; }).join('') + '</div><span class="lbl">Sleep timer</span><div class="chips">' + [['off', 'Off'], ['10', '10 min'], ['20', '20 min'], ['30', '30 min'], ['end', 'End of episode']].map(function (o) { var on = (o[0] === 'off' && !st.sleep) || (o[0] === 'end' && st.sleep === 'end'); return '<button type="button" class="chipbtn' + (on ? ' on' : '') + '" data-sleep="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div></div>' +
+      (ep.themes && ep.themes.length ? '<div class="podthemes">' + ep.themes.map(function (t) { return '<span class="slotchip">' + esc(t.name) + ' · ' + esc(t.pali) + '</span>'; }).join('') + '</div>' : '') +
+      (ep.quote ? '<blockquote class="podquote">' + esc(ep.quote) + '</blockquote>' : '') +
+      '<div class="row"><button type="button" class="btn soft" id="podReflect"><span class="ms">dark_mode</span>' + (ep.question ? 'Reflect with Luna' : 'Tell Luna how it felt') + '</button><a class="btn ghost" href="' + esc(ep.sourceUrl) + '" target="_blank" rel="noopener"><span class="ms">open_in_new</span>Read on Substack</a></div>' +
+      (ep.question ? '<p class="help">Erin asks: “' + esc(ep.question) + '”</p>' : '') + '</div>';
+    $$('.podep', body).forEach(function (b) { b.classList.toggle('on', b.dataset.ep === ep.id); });
+  }
+  function updatePodMini() {
+    var m = $('#podMini'), st = POD && POD.state(); if (!m || !st) return;
+    var show = !!st.ep && !current && (st.playing || st.time > 1);
+    m.hidden = !show; if (!show) return;
+    $('#podMiniTitle').textContent = st.ep.title; $('#podMiniSub').textContent = POD.fmt(st.time) + ' / ' + POD.fmt(st.duration) + ' · Erin Lee';
+    $('#podMiniPlay').innerHTML = '<span class="ms">' + (st.playing ? 'pause' : 'play_arrow') + '</span>'; $('#podMiniPlay').setAttribute('aria-label', st.playing ? 'Pause' : 'Play');
+  }
+  if (POD) POD.on(function (type, st) {
+    if (current === 'erin-listen') {
+      if (type === 'time') { var sk = $('#podSeek'); if (sk && document.activeElement !== sk && st.duration) { sk.value = Math.round(st.time / st.duration * 1000); sk.style.setProperty('--fill', (st.time / st.duration * 100).toFixed(1) + '%'); } var t1 = $('#podT'), t2 = $('#podD'); if (t1) t1.textContent = POD.fmt(st.time); if (t2) t2.textContent = '-' + POD.fmt(Math.max(0, st.duration - st.time)); }
+      else renderPodPlayer();
+    }
+    if (type === 'blocked') toast('Tap play once more to start the episode.', 'play_circle');
+    if (type === 'error') toast('This episode could not play here. It may now be in Erin’s paid archive; open it on Substack.', 'error');
+    if (type === 'ended') toast('Episode finished. Take a breath before the next thing.', 'self_improvement');
+    if (type === 'sleep') toast('Sleep timer: paused.', 'bedtime');
+    updatePodMini();
+  });
+  (function wireMini() {
+    var m = $('#podMini'); if (!m) return;
+    $('#podMiniOpen').addEventListener('click', function () { chime('tap'); openListen(); });
+    $('#podMiniPlay').addEventListener('click', function () { POD.toggle(); });
+    $('#podMiniClose').addEventListener('click', function () { POD.pause(); m.hidden = true; });
+  })();
+
   function openMindfulness() {
     if (session) { hud.classList.add('on'); return; }
     var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
     enterMeditation();
+    setTimeout(fillPodShelf, 0);
     openSheet('mind', 'Your mat', 'Erin appears beside you while you practise', 'self_improvement',
+      '<div class="podshelf" id="podShelf"></div>' +
       '<div class="erin"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Erin Lee · Mindful Moments</b><small>Certified MBSR mindfulness teacher and author in Singapore. When you begin, the sheet closes and Erin’s projection sits beside you on the mat, speaking in her voice: a greeting, settling in, slow breaths with gentle reminders, and a soft close. Her words are shown as captions.</small><a href="https://mindfulmoments.sg/" target="_blank" rel="noopener">mindfulmoments.sg</a></div></div>' +
       '<div class="sessions" id="sessions"><button type="button" class="session on" data-kind="erin" data-min="3"><b>Erin · 3 minutes</b><small>Guided breathing, a soft close</small></button><button type="button" class="session" data-kind="erin" data-min="6"><b>Erin · 6 minutes</b><small>A longer settle and more reminders</small></button><button type="button" class="session" data-kind="breathe" data-min="2"><b>Just breathe · 2 min</b><small>4-4-6 orb with a quiet bell</small></button><button type="button" class="session" data-kind="breathe" data-min="5"><b>Just breathe · 5 min</b><small>Silent, follow the orb</small></button></div>' +
       '<div class="orbwrap"><div class="orb out" id="orb"></div><div class="orbtext" id="orbText">Ready when you are</div><div class="orbsub" id="orbSub">' + (mins ? Math.round(mins) + ' min this week' : 'First session this week') + '</div></div>' +
@@ -1594,6 +1727,7 @@
   }
   function runPractice(id, vi) {
     var a = MF.byId(id); if (!a || practice) return; var v = a.variations[vi] || a.variations[0]; vi = a.variations.indexOf(v);
+    if (window.OvuPodcast) OvuPodcast.pause();
     practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: null, timer: null, total: MF.totalSecs(v) };
     hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting');
     var chain = Promise.resolve();
