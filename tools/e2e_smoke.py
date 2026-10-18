@@ -120,6 +120,25 @@ async def main():
                 dests[old_page] = await page.evaluate("()=>(location.pathname.endsWith('room.html') ? (document.querySelector('nav a.on')?.dataset.tab || 'home') : location.pathname)")
             check("old screens redirect into the room and open the right tab", all(dests[k] == v for k, v in [("home.html", "home"), ("cycle-log.html", "cycle"), ("diet.html", "food"), ("breathwork.html", "mind")]), dests)
 
+            # 6b. health import: a tiny Apple Health export.xml and a Takeout Fit zip are read on the phone, summarised, and removable in one tap
+            await page.goto(BASE + "room.html#you", wait_until="load"); await page.reload(wait_until="networkidle")
+            await page.wait_for_selector('#sheet[aria-hidden="false"] [data-yact="import"]', timeout=10000)
+            await page.click('[data-yact="import"]'); await page.wait_for_selector("#impApple", state="attached", timeout=10000)
+            imp0 = await page.evaluate("()=>({title: document.querySelector('#sheetTitle')?.textContent, cards: document.querySelectorAll('.imp-card').length, bar: !!document.querySelector('#impBar'), remove: !!document.querySelector('#impRemove')})")
+            check("import sheet opens from You with two cards, a progress bar and no remove button yet", imp0["cards"] == 2 and imp0["bar"] and not imp0["remove"] and "Bring in" in (imp0["title"] or ""), imp0)
+            await page.set_input_files("#impApple", os.path.join(ROOT, "tools", "fixtures", "apple-export-mini.xml"))
+            await page.wait_for_function("()=>document.querySelector('#impSummary')?.dataset.run === '1'", timeout=15000)
+            imp = await page.evaluate("()=>({text: document.querySelector('#impSummary').innerText, bar: document.querySelector('#impBar').style.width, remove: document.querySelector('#impRemove')?.textContent || '', db: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(e=>e.source==='apple-health').map(e=>e.type).sort().join(',')})")
+            check("Apple Health import shows 2 nights, 1 weigh-in, 2 period days and the never-left-your-phone line", "2 nights" in imp["text"] and "1 weigh-in" in imp["text"] and "2 period days" in imp["text"] and "never left" in imp["text"] and imp["bar"] == "100%", imp)
+            check("imported entries carry source apple-health and the remove button counts them", imp["db"] == "period,period,sleep,sleep,weight" and "(5)" in imp["remove"], imp)
+            await page.set_input_files("#impGoogle", os.path.join(ROOT, "tools", "fixtures", "takeout-fit-mini.zip"))
+            await page.wait_for_function("()=>document.querySelector('#impSummary')?.dataset.run === '2'", timeout=20000)
+            tk = await page.evaluate("()=>({text: document.querySelector('#impSummary').innerText, remove: document.querySelector('#impRemove')?.textContent || '', db: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(e=>e.source==='google-fit').map(e=>e.type).sort().join(',')})")
+            check("Takeout zip import shows 2 nights and 2 weigh-ins with the zip read on the phone", "2 nights" in tk["text"] and "2 weigh-ins" in tk["text"] and tk["db"] == "sleep,sleep,weight,weight" and "(9)" in tk["remove"], tk)
+            await page.click("#impRemove"); await page.wait_for_selector("#impDelYes", timeout=5000); await page.click("#impDelYes"); await page.wait_for_timeout(600)
+            left = await page.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); return {imported: db.events.filter(e=>e.source==='apple-health'||e.source==='google-fit').length, own: db.events.filter(e=>['s1','s2','s3'].includes(e.id)).length, total: db.events.length, remove: !!document.querySelector('#impRemove')};}")
+            check("Remove imported data takes out only the imported entries and keeps the seeded ones", left["imported"] == 0 and left["own"] == 3 and left["total"] == 5 and not left["remove"], left)
+
             # 7. first launch without consent: the room shows the welcome, not the diary
             ctx2 = await browser.new_context(viewport={"width": 390, "height": 844})
             p2 = await ctx2.new_page(); await p2.route("**/*", gate)

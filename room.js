@@ -1228,7 +1228,7 @@
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Heart shop', 'Pets, furniture and homes', 'shop') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
-      '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('move_to_inbox', 'Import from Apple Health or Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S) + ' entries brought in so far' : 'Sleep, weight and period days you already have', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is not a medical device and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
@@ -1241,6 +1241,7 @@
       if (act === 'clock') return openClock();
       if (act === 'plus') return openPlus();
       if (act === 'luna') { openLuna(); var ab = $('#aibox'); if (ab) { ab.open = true; setTimeout(function () { ab.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); } return; }
+      if (act === 'import') return openImport();
       if (act === 'export') {
         try { var blob = new Blob([S.exportJSON()], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'rhythme-' + S.today() + '.json'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000); toast('Your data is saved as a file.', 'download'); } catch (err) { toast('Could not export: ' + err.message, 'error'); }
         return;
@@ -1249,6 +1250,70 @@
       if (act === 'delete-no') return openYou();
       if (act === 'delete-yes') { S.clearAll(); ['ovumind_ai_v1', 'ovumind_desk_v1', 'ovumind_nova_words', 'ovuluna_onboarding'].forEach(function (k) { try { localStorage.removeItem(k); } catch (err) { } }); location.replace('room.html'); }
     });
+  }
+
+  /* ---------- import from Apple Health or Google Takeout (ovu-health.js): read on this phone, never uploaded ---------- */
+  var importing = false, importRuns = 0;
+  function openImport(view) {
+    var H = window.OvuHealth, n = H ? H.importedCount(S) : 0;
+    openSheet('import', 'Bring in your health data', 'Read on this phone, never uploaded', 'move_to_inbox',
+      '<p class="help" style="margin-top:6px">Sleep, weight and period days you already have can join your diary. Rhythme reads the file right here on your phone and sends nothing anywhere.</p>' +
+      '<div class="imp-card"><div class="imp-head"><span class="ms">ios</span><div><b>Apple Health</b><small>From an iPhone</small></div></div>' +
+        '<ol class="imp-steps"><li>Open the Health app and tap your picture or initials at the top right.</li><li>Scroll down, tap <b>Export All Health Data</b>, then <b>Export</b>. It takes a minute or two.</li><li>Save <b>export.zip</b> to Files, then choose it here. Big files are fine; only sleep, weight and period days are kept.</li></ol>' +
+        '<label class="btn primary imp-pick"><span class="ms">folder_open</span>Choose export.zip<input type="file" id="impApple" accept=".zip,.xml,application/zip,text/xml,application/xml" hidden></label></div>' +
+      '<div class="imp-card"><div class="imp-head"><span class="ms">android</span><div><b>Google</b><small>Fit data through Google Takeout</small></div></div>' +
+        '<ol class="imp-steps"><li>Go to <b>takeout.google.com</b>, tap <b>Deselect all</b>, then tick <b>Fit</b> only.</li><li>Tap <b>Next step</b>, keep <b>Export once</b> and the zip format, then <b>Create export</b>.</li><li>Download the zip when Google emails you, then choose it here, or pick the files from its Fit folder.</li></ol>' +
+        '<p class="help">Health Connect has no file export yet; it can only back up to cloud storage for moving to another phone. Period days are not in Takeout’s Fit folder, so those stay with the calendar.</p>' +
+        '<label class="btn primary imp-pick"><span class="ms">folder_open</span>Choose Takeout zip or Fit files<input type="file" id="impGoogle" accept=".zip,.json,.csv,application/zip,application/json,text/csv" multiple hidden></label></div>' +
+      '<div id="impProgress"' + (importing ? '' : ' hidden') + '><div class="ibar"><i id="impBar" style="width:' + (importing ? '30%' : '0') + '"></i></div><p class="help" id="impStatus" role="status" aria-live="polite">' + (importing ? 'Still reading your file…' : '') + '</p></div>' +
+      '<div id="impSummary" data-run="' + importRuns + '"></div>' +
+      '<div id="impRemoveWrap">' + (n ? '<div class="row"><button type="button" class="btn ghost" id="impRemove"><span class="ms">delete_sweep</span>Remove imported data (' + n + ')</button></div>' : '') + '</div>' +
+      (view === 'confirm-remove' && n ? '<div class="flag high" id="impDel"><span class="ms">warning</span><div><b>Remove ' + n + ' imported entr' + (n === 1 ? 'y' : 'ies') + '?</b><span>Only entries brought in from Apple Health or Google go. Everything you logged yourself stays exactly as it is.</span><div class="row"><button type="button" class="btn danger" id="impDelYes"><span class="ms">delete_sweep</span>Remove imported</button><button type="button" class="btn ghost" id="impDelNo">Keep them</button></div></div></div>' : '') +
+      '<p class="help">A day you logged yourself always wins: an imported entry never replaces one you wrote by hand. Imported entries are marked, so one tap removes only them.</p>');
+    if (!H) { $('#impSummary').innerHTML = '<div class="flag watch"><span class="ms">info</span><div><b>The import helper did not load</b><span>Reload the room once and try again.</span></div></div>'; return; }
+    ['impApple', 'impGoogle'].forEach(function (id) {
+      var inp = $('#' + id); if (!inp) return;
+      inp.addEventListener('change', function () { var files = Array.prototype.slice.call(inp.files || []); inp.value = ''; if (files.length) runImport(files); });
+    });
+    var rm = $('#impRemove'); if (rm) rm.addEventListener('click', function () { chime('tap'); openImport('confirm-remove'); var d = $('#impDel'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+    var yes = $('#impDelYes'); if (yes) yes.addEventListener('click', function () { var gone = H.removeImported(S); chime('save'); renderDeck(); renderProps(); toast('Removed ' + gone + ' imported entr' + (gone === 1 ? 'y' : 'ies') + '. Your own entries are untouched.', 'delete_sweep'); openImport(); });
+    var no = $('#impDelNo'); if (no) no.addEventListener('click', function () { chime('tap'); openImport(); });
+  }
+  /* The sheet body is rebuilt on every open, so progress writes look the elements up fresh and simply miss when another sheet is showing. */
+  function runImport(files) {
+    var H = window.OvuHealth; if (!H || importing) return; importing = true;
+    var ui = function (id) { return current === 'import' ? $('#' + id) : null; }, last = 0;
+    var show = function (frac, label) { var p = ui('impProgress'), b = ui('impBar'), st = ui('impStatus'); if (p) p.hidden = false; if (b) b.style.width = Math.max(2, Math.min(100, Math.round(frac * 100))) + '%'; if (st) st.textContent = label; };
+    var busy = function (on) { $$('.imp-pick').forEach(function (l) { l.classList.toggle('busy', on); }); };
+    busy(true); var sm = ui('impSummary'); if (sm) sm.innerHTML = ''; show(0.02, 'Opening ' + files[0].name + '…');
+    H.importFiles(files, { onProgress: function (f, label) { var now = Date.now(); if (f < 1 && now - last < 120) return; last = now; show(f, label + ' · ' + Math.round(f * 100) + '%'); } })
+      .then(function (res) { show(1, 'Adding to your diary…'); return new Promise(function (r) { setTimeout(r, 40); }).then(function () { var p = H.apply(res, S); showImportSummary(res, p); }); })
+      .catch(function (err) { show(0, ''); var p = ui('impProgress'); if (p) p.hidden = true; var s2 = ui('impSummary'); if (s2) s2.innerHTML = '<div class="flag watch"><span class="ms">info</span><div><b>That file did not go through</b><span>' + esc(err && err.message ? err.message : String(err)) + '</span></div></div>'; })
+      .then(function () { importing = false; busy(false); });
+  }
+  function showImportSummary(res, p) {
+    var H = window.OvuHealth, c = p.counts, plural = function (n, one, many) { return n + ' ' + (n === 1 ? one : many); };
+    var long = { day: 'numeric', month: 'short', year: 'numeric' };
+    var stat = function (icon, big, small) { return '<div class="stat"><span class="ms">' + icon + '</span><div><b>' + esc(big) + '</b><span>' + esc(small) + '</span></div></div>'; };
+    var google = res.source === H.SOURCE.google;
+    var html = stat('bedtime', plural(c.sleep, 'night', 'nights'), c.sleep ? 'Bedtime, wake time and hours asleep' + (res.inBedNights ? ', ' + res.inBedNights + ' from time in bed only' : '') + (res.naps ? ' · ' + plural(res.naps, 'nap', 'naps') + ' left out' : '') : 'No sleep records in this file') +
+      stat('monitor_weight', plural(c.weight, 'weigh-in', 'weigh-ins'), c.weight ? 'One per day, in kilograms' : 'No weight records in this file') +
+      stat('water_drop', plural(c.period, 'period day', 'period days'), google ? 'Takeout’s Fit folder carries no period data' : (c.period ? 'Flow as recorded' + (res.counts.flowNone ? '; days marked no bleeding were skipped' : '') : 'No period records in this file'));
+    var notes = [];
+    if (p.from) notes.push('From ' + prettyDate(p.from, long) + ' to ' + prettyDate(p.to, long) + '.');
+    if (p.refreshed) notes.push(plural(p.refreshed, 'entry', 'entries') + ' from an earlier import refreshed.');
+    if (p.kept) notes.push(plural(p.kept, 'day', 'days') + ' you logged yourself left as they were.');
+    if (p.future) notes.push(plural(p.future, 'future-dated entry', 'future-dated entries') + ' skipped.');
+    if (res.skippedTotal) { var kinds = Object.keys(res.skipped).sort(function (a, b) { return res.skipped[b] - res.skipped[a]; }).slice(0, 3).map(H.friendlyType); notes.push('Skipped ' + res.skippedTotal.toLocaleString() + ' records of ' + plural(res.skippedKinds, 'other kind', 'other kinds') + ' Rhythme has no place for yet (' + kinds.join(', ') + (res.skippedKinds > 3 ? ' and more' : '') + ').'); }
+    if (!p.total && !p.kept) notes.push('Nothing here was new for your diary.');
+    notes.push('This file was read on your phone and never left it.');
+    html += '<p class="help">' + esc(notes.join(' ')) + '</p>';
+    importRuns++;
+    var sm = $('#impSummary'); if (current === 'import' && sm) { sm.innerHTML = html; sm.dataset.run = String(importRuns); var st = $('#impStatus'); if (st) st.textContent = 'Done.'; }
+    var n = H.importedCount(S), wrap = current === 'import' ? $('#impRemoveWrap') : null;
+    if (wrap) { wrap.innerHTML = n ? '<div class="row"><button type="button" class="btn ghost" id="impRemove"><span class="ms">delete_sweep</span>Remove imported data (' + n + ')</button></div>' : ''; var rm = $('#impRemove'); if (rm) rm.addEventListener('click', function () { chime('tap'); openImport('confirm-remove'); }); }
+    chime('save'); renderDeck(); renderProps();
+    toast(p.total ? 'Brought in ' + plural(c.sleep, 'night', 'nights') + ', ' + plural(c.weight, 'weigh-in', 'weigh-ins') + ' and ' + plural(c.period, 'period day', 'period days') + '.' : 'Nothing new to add from that file.', 'move_to_inbox');
   }
 
   /* ---------- heart shop: pets, furniture and homes, plus arranging what you own ---------- */

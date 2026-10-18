@@ -1158,3 +1158,19 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .lstext{width:100%;margin:6px 0;font:500 13px var(--sans);line-height:1.4;resize:vertical}
 
 .aculist button span em{display:block;font:700 11px var(--sans);color:var(--rm-mauve);font-style:normal;margin-top:2px;line-height:1.3}
+
+/* ---- health import sheet (You > Import from Apple Health or Google), ovu-health.js ---- */
+.imp-card{margin-top:12px;background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:18px;padding:12px 14px}
+.imp-head{display:flex;gap:10px;align-items:center}
+.imp-head>.ms{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);color:var(--rm-plum);font-size:20px;flex:none}
+.imp-head b{display:block;font:800 14px var(--sans);color:var(--rm-plum)}
+.imp-head small{display:block;font:600 11.5px var(--sans);color:var(--rm-ink-3);margin-top:1px}
+.imp-steps{margin:10px 0 0;padding-left:18px;font:600 12px/1.5 var(--sans);color:var(--rm-ink-2)}
+.imp-steps li+li{margin-top:4px}
+.imp-steps b{color:var(--rm-plum)}
+.imp-card .help{margin-top:8px}
+.imp-pick{margin-top:10px;width:100%;cursor:pointer}
+.imp-pick.busy{opacity:.55;pointer-events:none}
+.ibar{height:8px;border-radius:4px;background:var(--rm-paper-2);overflow:hidden;margin-top:14px}
+.ibar i{display:block;height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#a98ad0,#7a5c96);transition:width .25s}
+.cal-day.p-unspecified{background:#f3b9cb}
