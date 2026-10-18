@@ -12,5 +12,9 @@ entrypoint = "./functions/luna/index.ts"
 verify_jwt = false
 entrypoint = "./functions/insight/index.ts"
 
+[functions.foods]
+verify_jwt = false
+entrypoint = "./functions/foods/index.ts"
+
 [db.migrations]
 enabled = true

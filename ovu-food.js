@@ -100,6 +100,13 @@
     return { id: 'off:' + p.code, name: name, cat: 'packaged', n: per100, basis: basis, portions: portions, image: p.image_front_small_url || null, nutriscore: p.nutriscore_grade || null, nova: p.nova_group || null,
       source: { kind: 'off', ref: 'Barcode ' + p.code, date: p.last_modified_t ? new Date(p.last_modified_t * 1000).toISOString().slice(0, 10) : null, label: 'Open Food Facts label data', url: 'https://world.openfoodfacts.org/product/' + p.code, detail: 'Community-maintained label transcription; check against the pack.' } };
   }
+  /* Product search by name through Ovumind's `foods` relay (Open Food Facts text search sends no CORS
+   * headers). Returns [{code, name, brands, quantity, nova, sg, image}], Singapore products first. */
+  function searchProducts(q) {
+    var base = (root.OVU_CONFIG && root.OVU_CONFIG.functionsBase) || 'https://zodkohwaznqgrfrcfdkf.supabase.co/functions/v1';
+    return fetch(base + '/foods?q=' + encodeURIComponent(String(q || '').trim().slice(0, 60)))
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Product search replied ' + r.status + '.')); return d.products || []; }); });
+  }
   function lookupBarcode(code) {
     code = String(code || '').replace(/\D/g, '');
     if (code.length < 8) return Promise.reject(new Error('That does not look like a product barcode.'));
@@ -211,5 +218,5 @@
   }
   function sgTableLoaded() { return sgTable; }
 
-  root.OvuFood = { KEYS: KEYS, LABEL: LABEL, UNIT: UNIT, load: load, search: search, byId: byId, scale: scale, makeItem: makeItem, sum: sum, fmt: fmt, line: line, lookupBarcode: lookupBarcode, offToFood: offToFood, shrink: shrink, detectInImage: detectInImage, scanLive: scanLive, hasNativeDetector: 'BarcodeDetector' in root, sgLoad: sgLoad, sgUse: sgUse, sgMatch: sgMatch, sgNorm: sgNorm, sgTable: sgTableLoaded };
+  root.OvuFood = { KEYS: KEYS, LABEL: LABEL, UNIT: UNIT, load: load, search: search, byId: byId, scale: scale, makeItem: makeItem, sum: sum, fmt: fmt, line: line, lookupBarcode: lookupBarcode, searchProducts: searchProducts, offToFood: offToFood, shrink: shrink, detectInImage: detectInImage, scanLive: scanLive, hasNativeDetector: 'BarcodeDetector' in root, sgLoad: sgLoad, sgUse: sgUse, sgMatch: sgMatch, sgNorm: sgNorm, sgTable: sgTableLoaded };
 })(window);

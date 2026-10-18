@@ -222,10 +222,11 @@
     var hs = $('#hotspots'); hs.innerHTML = '';
     HOTSPOTS.forEach(function (h) {
       var b = document.createElement('button');
-      b.className = 'hotspot'; b.type = 'button'; b.dataset.id = h.id; b.setAttribute('aria-label', h.label);
+      var hl = h.id === 'window' && window.OvuSun ? OvuSun.phase().windowLabel : h.label;
+      b.className = 'hotspot'; b.type = 'button'; b.dataset.id = h.id; b.setAttribute('aria-label', hl);
       b.style.left = h.x + '%'; b.style.top = h.y + '%';
       if (h.badge) b.classList.add('m');
-      b.innerHTML = '<span class="glow"></span>' + (h.badge ? '<span class="mbadge" aria-hidden="true">' + h.badge + '</span>' : '<span class="pulse" aria-hidden="true"></span>') + '<span class="tip" aria-hidden="true">' + esc(h.label.split(' · ')[1] ? cap(h.label.split(' · ')[1]) : h.label) + '</span>';
+      b.innerHTML = '<span class="glow"></span>' + (h.badge ? '<span class="mbadge" aria-hidden="true">' + h.badge + '</span>' : '<span class="pulse" aria-hidden="true"></span>') + '<span class="tip" aria-hidden="true">' + esc(hl.split(' · ')[1] ? cap(hl.split(' · ')[1]) : hl) + '</span>';
       b.addEventListener('click', function () { tap(h); });
       hs.appendChild(b);
     });
@@ -646,10 +647,15 @@
     });
     refresh(); p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+  function wireItemGrams() {
+    var wrap = $('#items'); if (!wrap || wrap.dataset.gw) return; wrap.dataset.gw = '1';
+    wrap.addEventListener('change', function (e) { var g = e.target.closest('[data-g]'); if (!g) return; var i = Number(g.dataset.g); if (draft.items[i]) { draft.items[i] = ORB.regram(draft.items[i], g.value); renderItems(); } });
+  }
   function renderItems() {
+    wireItemGrams();
     var wrap = $('#items'), tot = $('#totals');
     if (!draft.items.length) { wrap.innerHTML = ''; tot.innerHTML = ''; return; }
-    wrap.innerHTML = draft.items.map(function (it, i) { return '<div class="item"><span class="ms">' + (it.source.kind === 'off' ? 'qr_code_2' : it.source.kind === 'custom' ? 'edit' : it.source.kind === 'hpb' ? 'verified' : it.source.kind === 'estimate' ? 'photo_camera' : 'restaurant') + '</span><span><b>' + esc(it.name) + '</b><small>' + esc(it.portionLabel) + ' · ' + it.grams + ' g · ' + esc(FD.fmt('kcal', it.nutrients.kcal)) + ' kcal · ' + esc(FD.fmt('protein', it.nutrients.protein)) + ' g protein</small></span><button class="del" data-i="' + i + '" aria-label="Remove"><span class="ms">close</span></button></div>'; }).join('');
+    wrap.innerHTML = draft.items.map(function (it, i) { return '<div class="item"><span class="ms">' + (it.source.kind === 'off' ? 'qr_code_2' : it.source.kind === 'custom' ? 'edit' : it.source.kind === 'hpb' ? 'verified' : it.source.kind === 'estimate' ? 'photo_camera' : 'restaurant') + '</span><span><b>' + esc(it.name) + '</b><small>' + esc(it.portionLabel) + ' · ' + it.grams + ' g · ' + esc(FD.fmt('kcal', it.nutrients.kcal)) + ' kcal · ' + esc(FD.fmt('protein', it.nutrients.protein)) + ' g protein</small></span>' + (it.source.kind === 'estimate' || it.source.kind === 'hpb' ? '<label class="igrams"><input class="input" type="number" inputmode="numeric" min="1" max="2000" data-g="' + i + '" value="' + Math.round(it.grams || 0) + '" aria-label="Grams of ' + esc(it.name) + '">g</label>' : '') + '<button class="del" data-i="' + i + '" aria-label="Remove"><span class="ms">close</span></button></div>'; }).join('');
     var sm = FD.sum(draft.items), miss = ['kcal', 'protein', 'carb', 'fat', 'fiber'].filter(function (k) { return sm.missing[k]; });
     tot.innerHTML = '<b>This meal</b><div class="nuts">' + ['kcal', 'protein', 'carb', 'fat', 'fiber'].map(function (k) { return '<div><strong>' + esc(FD.fmt(k, sm.totals[k])) + '</strong><small>' + esc(k === 'kcal' ? 'kcal' : FD.LABEL[k]) + '</small></div>'; }).join('') + '</div><p>' + sm.count + ' item' + (sm.count === 1 ? '' : 's') + (miss.length ? ' · ' + miss.map(function (k) { return sm.missing[k] + ' missing ' + FD.LABEL[k].toLowerCase(); }).join(', ') : ' · all values present') + '. Estimated from the sources shown, with the amounts you confirmed.</p>';
   }
@@ -665,7 +671,7 @@
   function openDiary() {
     diaryDate = S.today(); draft = { items: [], photo: null }; picked = null;
     var cs = S.cycleStats(), phase = cs.phase || 'none', tip = PHASE_TIPS[phase] || PHASE_TIPS.none;
-    var h = new Date().getHours(), defMeal = h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 20 ? 'dinner' : 'snack';
+    var h = new Date().getHours(), defMeal = h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 17 ? 'snack' : h < 22 ? 'dinner' : 'snack';
     openSheet('diary', 'Food diary', 'Snap, scan or search, then confirm the amount', 'menu_book',
       '<div class="stat"><span class="ms">local_florist</span><div><b>' + esc(tip.title) + '</b><span>' + esc(tip.text) + '</span></div></div>' +
       '<div id="picksWrap"></div>' +
@@ -690,20 +696,61 @@
         inp.addEventListener('input', function () { $('#fdResults').innerHTML = resultsHTML(FD.search(inp.value, 12)); });
         $('#customBtn').addEventListener('click', function () { $('#customWrap').innerHTML = customFoodForm(); wireCustom(); });
       } else if (mode === 'scan') {
-        area.innerHTML = '<div class="camwrap on" id="camwrap"><video id="bcVideo" playsinline muted></video><div class="reticle"></div><div class="camhint">Point the camera at the barcode</div></div><div class="row" style="margin-top:8px"><input class="input" id="bcManual" inputmode="numeric" placeholder="or type the barcode digits"><button type="button" class="btn soft" id="bcLookup" style="flex:0 0 auto">Look up</button></div><div class="msg" id="bcMsg"></div>';
+        area.innerHTML = '<div class="camwrap on" id="camwrap"><video id="bcVideo" playsinline muted></video><div class="reticle"></div><div class="camhint">Point the camera at the barcode</div></div><div class="row" style="margin-top:8px"><input class="input" id="bcManual" placeholder="Barcode digits or a product name, e.g. Milo" autocomplete="off" enterkeyhint="search"><button type="button" class="btn soft" id="bcLookup" style="flex:0 0 auto">Search</button></div><div class="msg" id="bcMsg"></div><div id="bcResults"></div>';
         stopScan = FD.scanLive($('#bcVideo'), function (code) { stopCamera(); $('#bcManual').value = code; lookup(code); }, function (err) { message($('#bcMsg'), err.message, false); });
-        $('#bcLookup').addEventListener('click', function () { lookup($('#bcManual').value); });
+        FD.load();
+        var bcTimer = null, bcSeq = 0;
+        var bcGo = function (now) {
+          var q = $('#bcManual').value.trim(), out = $('#bcResults'), digits = q.replace(/[\s-]/g, '');
+          clearTimeout(bcTimer);
+          if (/^\d{8,14}$/.test(digits)) { if (now) { out.innerHTML = ''; lookup(digits); } return; }
+          if (q.length < 2) { out.innerHTML = ''; return; }
+          var local = FD.search(q, 5), seq = ++bcSeq;
+          var head = (local.length ? '<div class="bchead">From the food table</div>' + resultsHTML(local) : '') + '<div class="bchead">Packaged products</div>';
+          out.innerHTML = head + '<div class="bcbusy">Searching Open Food Facts…</div>';
+          bcTimer = setTimeout(function () {
+            (FD.searchProducts ? FD.searchProducts(q) : Promise.reject(new Error('Product search is not available in this version.'))).then(function (list) {
+              if (seq !== bcSeq) return;
+              out.innerHTML = head + (list.length ? '<div class="results">' + list.map(function (p) { return '<button type="button" class="result" data-code="' + esc(p.code) + '">' + (p.image ? '<img src="' + esc(p.image) + '" alt="" loading="lazy">' : '<span class="ms">qr_code_2</span>') + '<span><b>' + esc(p.name) + '</b><small>' + esc([p.brands, p.quantity].filter(Boolean).join(' · ')) + (p.sg ? ' · sold in Singapore' : '') + '</small></span></button>'; }).join('') + '</div><p class="help">Product data from Open Food Facts, a community database. Check the label if something looks off.</p>' : '<p class="help">No packaged products found for “' + esc(q) + '”. Try the brand name, or add it as a custom food from the label.</p>');
+            }).catch(function (err) { if (seq === bcSeq) out.innerHTML = head + '<p class="help">' + esc(err.message) + '</p>'; });
+          }, now ? 0 : 450);
+        };
+        $('#bcLookup').addEventListener('click', function () { bcGo(true); });
+        $('#bcManual').addEventListener('input', function () { bcGo(false); });
+        $('#bcManual').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); bcGo(true); } });
+        $('#bcResults').addEventListener('click', function (e) { var b = e.target.closest('[data-code]'); if (!b) return; stopCamera(); lookup(b.dataset.code); });
       } else {
-        area.innerHTML = '<label class="btn soft" style="width:100%;cursor:pointer"><span class="ms">photo_camera</span>Take a photo of the plate<input type="file" id="fdPhoto" accept="image/*" capture="environment" hidden></label><p class="help">The photo is kept as a reminder on this device. If it shows a barcode we read it; otherwise pick what is on the plate below and confirm how much.</p><input class="input" id="fdSearch" placeholder="Pick what is on the plate…" autocomplete="off" style="margin-top:8px"><div class="results" id="fdResults"></div>';
+        area.innerHTML = '<div class="snapbtns"><label class="btn primary"><span class="ms">photo_camera</span>Take a photo<input type="file" id="fdPhotoCam" accept="image/*" capture="environment" hidden></label><label class="btn soft"><span class="ms">photo_library</span>Choose from library<input type="file" id="fdPhotoLib" accept="image/*" hidden></label></div>' +
+          '<div id="fdPhotoState"></div>' +
+          '<p class="help">' + (ORB.photosAllowed() ? 'Luna recognises the dishes and fills them in below, with Singapore HPB values where the dish matches. Check the amounts, then save.' : 'Luna can recognise the dishes for you if you allow food photos. Otherwise the photo stays as a reminder and you pick the foods below.') + ' A barcode in the photo is read on this phone.</p>' +
+          '<input class="input" id="fdSearch" placeholder="Add something else: type a food…" autocomplete="off" style="margin-top:8px"><div class="results" id="fdResults"></div>';
         var inp2 = $('#fdSearch'); inp2.addEventListener('input', function () { $('#fdResults').innerHTML = resultsHTML(FD.search(inp2.value, 12)); });
         FD.load();
-        $('#fdPhoto').addEventListener('change', function () {
-          var f = this.files[0]; if (!f) return;
-          FD.shrink(f, 420).then(function (r) {
-            draft.photo = r.dataUrl; var t = $('#thumb'); t.src = r.dataUrl; t.classList.add('on');
-            return FD.detectInImage(r.image).then(function (code) { if (code) { toast('Barcode found: ' + code, 'qr_code_2'); lookup(code); } else { toast('Photo saved. Now pick the foods you see.', 'photo_camera'); inp2.focus(); } });
+        var st = $('#fdPhotoState');
+        var recognise = function (big) {
+          st.innerHTML = '<div class="fdstate busy"><span class="ms">auto_awesome</span>Luna is looking at your plate…</div>';
+          ORB.parsePhoto(big).then(function (res) {
+            if (!res.isFood || !res.items.length) { st.innerHTML = '<div class="fdstate"><span class="ms">help</span>I could not see food in that photo. Pick what you ate below, or try a closer, brighter shot from above.</div>'; inp2.focus(); return; }
+            res.items.forEach(function (it) { draft.items.push(it); }); renderItems();
+            var hpb = res.items.filter(function (it) { return it.source && it.source.kind === 'hpb'; }).length;
+            st.innerHTML = '<div class="fdstate ok"><span class="ms">check_circle</span>Found ' + res.items.length + ' item' + (res.items.length === 1 ? '' : 's') + (res.mealName ? ': ' + esc(res.mealName) : '') + '. ' + (hpb ? hpb + ' matched to HPB values. ' : '') + 'Change the grams below if they look off, then save.</div>';
+          }).catch(function (err) { st.innerHTML = '<div class="fdstate"><span class="ms">error</span>' + esc(err.message) + ' You can pick the foods below.</div>'; });
+        };
+        var onPhoto = function () {
+          var f = this.files && this.files[0]; this.value = ''; if (!f) return;
+          Promise.all([FD.shrink(f, 420), FD.shrink(f, 1024)]).then(function (rs) {
+            draft.photo = rs[0].dataUrl; var t = $('#thumb'); t.src = rs[0].dataUrl; t.classList.add('on');
+            return FD.detectInImage(rs[0].image).then(function (code) {
+              if (code) { toast('Barcode found: ' + code, 'qr_code_2'); lookup(code); return; }
+              if (ORB.photosAllowed()) { recognise(rs[1].dataUrl); return; }
+              st.innerHTML = '<div class="fdstate ask"><span class="ms">photo_camera</span><div><b>Let Luna recognise the food?</b><span>The photo goes once through Ovumind’s relay to Luna’s model and is not kept there. Only the small thumbnail stays on this phone.</span><div class="row"><button type="button" class="btn primary" id="fdAllow">Allow food photos</button><button type="button" class="btn ghost" id="fdPick">I’ll pick myself</button></div></div></div>';
+              $('#fdAllow').addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c); recognise(rs[1].dataUrl); });
+              $('#fdPick').addEventListener('click', function () { st.innerHTML = ''; inp2.focus(); });
+            });
           }).catch(function (e) { toast(e.message, 'error'); });
-        });
+        };
+        $('#fdPhotoCam').addEventListener('change', onPhoto);
+        $('#fdPhotoLib').addEventListener('change', onPhoto);
       }
     }
     function lookup(code) {
@@ -749,7 +796,12 @@
   var SKY = 'linear-gradient(160deg,#cfe6ff,#f6d7ec 60%,#fde7c9)';
   function deskPrefs() { try { return JSON.parse(localStorage.getItem(DESK_KEY) || 'null') || { pos: {}, wall: 'cat', custom: null }; } catch (e) { return { pos: {}, wall: 'cat', custom: null }; } }
   function setDeskPrefs(p) { try { localStorage.setItem(DESK_KEY, JSON.stringify(p)); return true; } catch (e) { toast('Could not save that (storage is full).', 'error'); return false; } }
-  function wallStyle(p) { if (p.wall === 'custom' && p.custom) return 'background-image:url(' + p.custom + ')'; var w = WALLS.filter(function (x) { return x.id === p.wall; })[0] || WALLS[0]; return w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY; }
+  /* The desk screen is 16:10. A photo wallpaper keeps a framing (x, y in percent, zoom z) so a portrait can
+   * show the face instead of the centre; ar is the photo's width / height, needed to zoom and drag. */
+  function fitOf(p) { var f = (p && p.customFit) || {}; return { x: isFinite(f.x) ? f.x : 50, y: isFinite(f.y) ? f.y : 22, z: isFinite(f.z) ? Math.min(3, Math.max(1, f.z)) : 1, ar: f.ar > 0 ? f.ar : null }; }
+  function customWallCss(p) { var f = fitOf(p); return 'background-image:url(' + p.custom + ');background-repeat:no-repeat;background-size:' + (f.ar ? (Math.round(f.z * Math.max(100, 62.5 * f.ar) * 10) / 10) + '% auto' : 'cover') + ';background-position:' + f.x + '% ' + f.y + '%'; }
+  function photoAr(src) { return new Promise(function (res) { var im = new Image(); im.onload = function () { res(im.naturalHeight ? im.naturalWidth / im.naturalHeight : null); }; im.onerror = function () { res(null); }; im.src = src; }); }
+  function wallStyle(p) { if (p.wall === 'custom' && p.custom) return customWallCss(p); var w = WALLS.filter(function (x) { return x.id === p.wall; })[0] || WALLS[0]; return w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY; }
   function stopVideo() { if (player) { try { player.pause(); } catch (e) { } player = null; } }
   function folderSVG(color) { return '<svg viewBox="0 0 64 54" aria-hidden="true"><path d="M4 12a6 6 0 0 1 6-6h14l6 6h28a6 6 0 0 1 6 6v26a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6z" fill="' + color + '"/><path d="M4 20h56v24a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6z" fill="#fff" fill-opacity=".55"/><circle cx="50" cy="38" r="4" fill="#fff" fill-opacity=".8"/></svg>'; }
   function shrinkPhoto(file) {
@@ -771,7 +823,7 @@
       '<div class="desk"><div class="menubar"><span class="brandy">OVUMIND</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
       '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f, i) { var q = p.pos[f.id] || [2 + (i % 4) * 25, 4 + Math.floor(i / 4) * 46]; return '<button type="button" class="dicon" data-folder="' + f.id + '" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="dock"><button type="button" data-dock="videos" aria-label="Videos"><span class="ms">play_circle</span></button><button type="button" data-dock="mind" aria-label="Erin"><span class="ms">self_improvement</span></button><button type="button" data-dock="acu" aria-label="Acupressure"><span class="ms">spa</span></button><button type="button" data-dock="luna" aria-label="Luna"><span class="ms">dark_mode</span></button><button type="button" data-dock="doctor" aria-label="Share with doctor"><span class="ms">medical_services</span></button></div></div>' +
-      '<div class="wallpanel" id="wallpanel"><b>Wallpaper</b><div class="walls">' + WALLS.map(function (w) { return '<button type="button" class="wall' + (p.wall === w.id ? ' on' : '') + '" data-wall="' + w.id + '" style="' + (w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY) + '"><span>' + esc(w.name) + '</span></button>'; }).join('') + '<button type="button" class="wall upload' + (p.wall === 'custom' ? ' on' : '') + '" data-wall="custom" style="' + (p.custom ? 'background-image:url(' + p.custom + ')' : '') + '"><span class="ms">add_photo_alternate</span><span>' + (p.custom ? 'My photo' : 'Upload a photo') + '</span></button></div><input type="file" id="wallFile" accept="image/*" hidden><div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="deskTidy"><span class="ms">grid_view</span>Tidy the icons</button>' + (p.custom ? '<button type="button" class="btn ghost" id="wallForget"><span class="ms">delete</span>Forget my photo</button>' : '') + '</div><p class="help">Your photo is stored only on this device.</p></div>' +
+      '<div class="wallpanel" id="wallpanel"><b>Wallpaper</b><div class="wadjust" id="wallAdjust" hidden><p><span class="ms">open_with</span>Drag your photo on the screen above to move it, and use the slider to zoom.</p><div class="field"><label for="wallZoom">Zoom</label><input type="range" id="wallZoom" min="100" max="300" step="5" value="100"></div><div class="row"><button type="button" class="btn primary" id="wallDone"><span class="ms">check</span>Done</button><button type="button" class="btn ghost" id="wallReset">Reset</button></div></div><div class="walls">' + WALLS.map(function (w) { return '<button type="button" class="wall' + (p.wall === w.id ? ' on' : '') + '" data-wall="' + w.id + '" style="' + (w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY) + '"><span>' + esc(w.name) + '</span></button>'; }).join('') + '<button type="button" class="wall upload' + (p.wall === 'custom' ? ' on' : '') + '" data-wall="custom" style="' + (p.custom ? customWallCss(p).replace(/background-size:[^;]+/, 'background-size:cover') : '') + '"><span class="ms">add_photo_alternate</span><span>' + (p.custom ? 'My photo' : 'Upload a photo') + '</span></button></div><input type="file" id="wallFile" accept="image/*" hidden><div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="deskTidy"><span class="ms">grid_view</span>Tidy the icons</button>' + (p.custom ? '<button type="button" class="btn ghost" id="wallAdjustBtn"><span class="ms">open_with</span>Adjust my photo</button><button type="button" class="btn ghost" id="wallForget"><span class="ms">delete</span>Forget my photo</button>' : '') + '</div><p class="help">Your photo is stored only on this device.</p></div>' +
       '<div class="finder" id="finder"></div><div class="player" id="player"></div>' +
       '<p class="help" style="margin-top:10px">Short, sourced reads and six little videos. Nothing here is personal medical advice; bring questions to your clinician.</p>');
     function openFolder(id) {
@@ -809,13 +861,46 @@
     }
     icons.addEventListener('pointerup', endDrag); icons.addEventListener('pointercancel', endDrag);
     function setWall(id) { var pr = deskPrefs(); pr.wall = id; setDeskPrefs(pr); $('#wallpaper').style.cssText = wallStyle(pr); $$('.wall').forEach(function (w) { w.classList.toggle('on', w.dataset.wall === id); }); }
+    /* ---------- photo framing: drag to move, slider to zoom ---------- */
+    var adj = null, wdrag = null, wpEl = $('#wallpaper');
+    function clampPct(v) { return Math.round(Math.max(0, Math.min(100, v)) * 10) / 10; }
+    function applyAdj() { var pr = deskPrefs(); pr.customFit = adj; wpEl.style.cssText = customWallCss(pr); }
+    function startAdjust() {
+      var pr = deskPrefs(); if (!pr.custom) return;
+      if (pr.wall !== 'custom') setWall('custom');
+      var f0 = fitOf(pr);
+      (f0.ar ? Promise.resolve(f0.ar) : photoAr(pr.custom)).then(function (ar) {
+        var pr2 = deskPrefs(); adj = fitOf(pr2); adj.ar = ar || 1; pr2.customFit = adj; setDeskPrefs(pr2);
+        wpEl.classList.add('adjusting'); applyAdj();
+        var box = $('#wallAdjust'); box.hidden = false; $('#wallZoom').value = Math.round(adj.z * 100);
+        try { wpEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (err) { }
+      });
+    }
+    function endAdjust(save) {
+      if (save && adj) { var pr = deskPrefs(); pr.customFit = adj; setDeskPrefs(pr); toast('Photo position saved.', 'wallpaper'); }
+      adj = null; wdrag = null; wpEl.classList.remove('adjusting'); wpEl.style.cssText = wallStyle(deskPrefs()); $('#wallAdjust').hidden = true;
+      var tile = document.querySelector('.wall.upload'); var pr3 = deskPrefs(); if (tile && pr3.custom) tile.style.cssText = customWallCss(pr3).replace(/background-size:[^;]+/, 'background-size:cover');
+    }
+    wpEl.addEventListener('pointerdown', function (e) { if (!adj) return; wdrag = { x: e.clientX, y: e.clientY, fx: adj.x, fy: adj.y }; try { wpEl.setPointerCapture(e.pointerId); } catch (err) { } e.preventDefault(); });
+    wpEl.addEventListener('pointermove', function (e) {
+      if (!adj || !wdrag) return;
+      var r = wpEl.getBoundingClientRect(), W = r.width, H = r.height, iw = W * adj.z * Math.max(1, 0.625 * adj.ar), ih = iw / adj.ar;
+      adj.x = W - iw < -0.5 ? clampPct(wdrag.fx + (e.clientX - wdrag.x) / (W - iw) * 100) : 50;
+      adj.y = H - ih < -0.5 ? clampPct(wdrag.fy + (e.clientY - wdrag.y) / (H - ih) * 100) : 50;
+      applyAdj();
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) { wpEl.addEventListener(ev, function () { wdrag = null; }); });
+    $('#wallZoom').addEventListener('input', function () { if (!adj) return; adj.z = Math.min(3, Math.max(1, Number(this.value) / 100)); applyAdj(); });
     $('#wallFile').addEventListener('change', function () {
       var f = this.files && this.files[0]; if (!f) return;
-      shrinkPhoto(f).then(function (data) { var pr = deskPrefs(); pr.custom = data; pr.wall = 'custom'; if (setDeskPrefs(pr)) { toast('Wallpaper changed.', 'wallpaper'); openLearn(); $('#wallpanel').classList.add('on'); } }).catch(function (err) { toast(err.message, 'error'); });
+      shrinkPhoto(f).then(function (data) { return photoAr(data).then(function (ar) { var pr = deskPrefs(); pr.custom = data; pr.wall = 'custom'; pr.customFit = { x: 50, y: ar && ar < 1 ? 22 : 45, z: 1, ar: ar }; if (setDeskPrefs(pr)) { toast('Wallpaper changed. Tap Adjust my photo to move or zoom it.', 'wallpaper'); openLearn(); $('#wallpanel').classList.add('on'); } }); }).catch(function (err) { toast(err.message, 'error'); });
     });
     body.addEventListener('click', function (e) {
       if (e.target.closest('#wallBtn')) { chime('tap'); $('#wallpanel').classList.toggle('on'); return; }
       var wl = e.target.closest('[data-wall]'); if (wl) { chime('tap'); if (wl.dataset.wall === 'custom' && !deskPrefs().custom) { $('#wallFile').click(); return; } if (wl.dataset.wall === 'custom') { $('#wallFile').value = ''; } setWall(wl.dataset.wall); if (wl.dataset.wall === 'custom') { /* tapping the photo tile again swaps it */ $('#wallFile').click(); } return; }
+      if (e.target.closest('#wallAdjustBtn')) { chime('tap'); startAdjust(); return; }
+      if (e.target.closest('#wallDone')) { chime('save'); endAdjust(true); return; }
+      if (e.target.closest('#wallReset')) { if (adj) { adj.x = 50; adj.y = adj.ar && adj.ar < 1 ? 22 : 45; adj.z = 1; $('#wallZoom').value = 100; applyAdj(); } return; }
       if (e.target.closest('#deskTidy')) { var pr = deskPrefs(); pr.pos = {}; setDeskPrefs(pr); openLearn(); $('#wallpanel').classList.add('on'); return; }
       if (e.target.closest('#wallForget')) { var pr2 = deskPrefs(); pr2.custom = null; if (pr2.wall === 'custom') pr2.wall = 'cat'; setDeskPrefs(pr2); openLearn(); $('#wallpanel').classList.add('on'); return; }
       var dk = e.target.closest('[data-dock]'); if (dk) { var k = dk.dataset.dock; chime('tap'); if (k === 'videos' || k === 'mind' || k === 'doctor') openFolder(k); if (k === 'acu') openAcupressure(); if (k === 'luna') openLuna(); return; }
@@ -1011,7 +1096,7 @@
       return h + ' of ' + n + ' dishes use Health Promotion Board SG FoodID values; the rest are estimated from your photo by Luna’s model. Change the grams if they look off.' + hpbLine;
     }
     function foodCard(res, thumb) {
-      var hr = new Date().getHours(), meal = hr < 11 ? 'breakfast' : hr < 15 ? 'lunch' : hr >= 18 && hr < 22 ? 'dinner' : 'snack';
+      var hr = new Date().getHours(), meal = hr < 11 ? 'breakfast' : hr < 15 ? 'lunch' : hr >= 17 && hr < 22 ? 'dinner' : 'snack';
       var items = res.items.slice(), editing = false, card = bubble('confirm foodlog', '');
       function render() {
         var t = FD.sum(items).totals;
@@ -1397,17 +1482,29 @@
     $('#wSkip').addEventListener('click', function () { chime('tap'); w.hidden = true; S.setState({ welcomeSeen: true }); toast('Welcome back. Your intro is under the window whenever you want it.', 'favorite'); });
   }
 
-  /* ---------- window: tonight ---------- */
+  /* ---------- window: follows the sun (ovu-sun.js) ---------- */
+  function sunNow() { return window.OvuSun ? OvuSun.phase() : { key: 'night', title: 'Tonight', icon: 'dark_mode', sunrise: '', sunset: '' }; }
+  function applySky() {
+    var sp = sunNow(); scene.dataset.sky = sp.key;
+    var wb = document.querySelector('.hotspot[data-id="window"]');
+    if (wb && sp.windowLabel) { wb.setAttribute('aria-label', sp.windowLabel); var tip = wb.querySelector('.tip'); if (tip) tip.textContent = cap(sp.windowLabel.split(' · ')[1]); }
+    updateGreeting();
+  }
   function openWindow() {
-    var cs = S.cycleStats(), st = S.sleepStats(7), d = new Date();
-    openSheet('window', 'Tonight', d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }), 'dark_mode',
+    var cs = S.cycleStats(), st = S.sleepStats(7), d = new Date(), sp = sunNow(), sleeping = S.state().sleeping;
+    var loggedToday = S.byDate(S.today()).some(function (e) { return e.type === 'sleep'; });
+    var act = sleeping ? { id: 'bed', icon: 'wb_sunny', text: 'Wake up' }
+      : (sp.key === 'sunrise' || sp.key === 'morning') ? (loggedToday ? { id: 'mat', icon: 'self_improvement', text: 'Breathe with Erin' } : { id: 'log', icon: 'edit_calendar', text: 'Log last night’s sleep' })
+      : sp.key === 'afternoon' ? { id: 'mat', icon: 'self_improvement', text: 'Take a short rest' }
+      : { id: 'bed', icon: 'bedtime', text: 'Go to sleep' };
+    openSheet('window', sp.title, d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + (sp.sunrise ? ' · sunrise ' + sp.sunrise + ', sunset ' + sp.sunset : ''), sp.icon,
       '<div class="stat"><span class="ms">bedtime</span><div><b>' + (st.avg ? 'Averaging ' + st.avg + ' h over ' + st.count + ' nights' : 'No sleep logged this week') + '</b><span>Adults generally do best with 7 hours or more.</span></div></div>' +
-      '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + (cs.uncertain ? ' (a loose estimate while cycles are changing).' : '.') : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Log a period on the wall calendar to start predictions.')) + '</span></div></div>' +
-      '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button class="btn soft" id="winSound"><span class="ms">' + (S.state().sound ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (S.state().sound ? 'on' : 'off') + '</button></div>' +
+      '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + (cs.uncertain ? ' (a loose estimate while cycles are changing).' : '.') : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : (cs.lastStart ? 'Predictions begin once your next period is logged, or add your usual cycle length in Tell me about you.' : 'Log a period on the wall calendar to start predictions.'))) + '</span></div></div>' +
+      '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">' + act.icon + '</span>' + act.text + '</button><button class="btn soft" id="winSound"><span class="ms">' + (S.state().sound ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (S.state().sound ? 'on' : 'off') + '</button></div>' +
       '<div class="row"><a class="btn ghost" href="settings.html"><span class="ms">settings</span>Settings & health connections</a><a class="btn ghost" href="face-ppg.html"><span class="ms">monitor_heart</span>Calm check (beta)</a></div>' +
       '<div class="row"><button type="button" class="btn ghost" id="winIntro"><span class="ms">favorite</span>' + (S.profile().onboarded ? 'Update my intro' : 'Tell me about you') + '</button></div>' +
       '<p class="help">Sounds are tiny chimes plus Erin’s good-night and good-morning lines; they stay off unless you turn them on. Guided sessions always play when you start one.</p>');
-    $('#winSleep').addEventListener('click', function () { closeSheet(); tap(hotspot('bed')); });
+    $('#winSleep').addEventListener('click', function () { if (act.id === 'log') { openSleepRecord(); return; } closeSheet(); tap(hotspot(act.id)); });
     $('#winSound').addEventListener('click', function () { S.setState({ sound: !S.state().sound }); chime('tap'); openWindow(); });
     $('#winIntro').addEventListener('click', function () { openOnboarding(0, {}); });
   }
@@ -1465,7 +1562,7 @@
   /* ---------- greeting ---------- */
   function updateGreeting() {
     var h = new Date().getHours(), p = S.profile(), name = p.name ? ', ' + p.name : '';
-    var g = S.state().sleeping ? 'Sleep well' : h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    var g = S.state().sleeping ? 'Sleep well' : window.OvuSun ? OvuSun.phase().greeting : h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
     $('#greetTitle').textContent = g + name;
     $('#greetSub').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
     var cs = S.cycleStats(); var chip = $('#phaseChip');
@@ -1479,7 +1576,8 @@
     setOutfit(S.profile().outfit || 'base', true);
     avatar.classList.add('idle');
     if (S.state().sleeping) enterNight(false);
-    updateGreeting(); renderDeck(); renderProps();
+    updateGreeting(); renderDeck(); renderProps(); applySky();
+    setInterval(applySky, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });
     FD.load().catch(function () { });
     S.subscribe(function (reason) { if (reason === 'external') { renderDeck(); renderProps(); updateGreeting(); } });
     $('#journalBtn').href = 'journal.html'; $('#shareBtn').href = 'journal.html#share';

@@ -758,3 +758,50 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .thought{position:absolute;left:62%;top:-4px;transform:translate(-50%,-100%) scale(.5);opacity:0;background:#fff;border-radius:16px 16px 16px 4px;padding:5px 9px;font-size:17px;line-height:1;box-shadow:0 6px 14px rgba(90,66,116,.25);transition:opacity .3s,transform .3s;pointer-events:none;z-index:3}
 .thought.on{opacity:1;transform:translate(-50%,-115%) scale(1)}
 .thought::after{content:'';position:absolute;left:14px;bottom:-7px;width:7px;height:7px;border-radius:50%;background:#fff}
+/* wallpaper framing (Adjust my photo) */
+.wallpaper.adjusting{cursor:grab;touch-action:none;outline:2px dashed rgba(255,255,255,.85);outline-offset:-6px}
+.wallpaper.adjusting:active{cursor:grabbing}
+.wallpaper.adjusting .dicons{display:none}
+.wadjust{margin:8px 0 10px;padding:10px 12px;background:var(--rm-paper-2);border-radius:14px}
+.wadjust[hidden]{display:none}
+.wadjust p{display:flex;gap:6px;align-items:flex-start;font:600 12px var(--sans);color:var(--rm-ink-2);margin:0 0 6px;line-height:1.4}
+.wadjust p .ms{font-size:18px;color:var(--rm-plum)}
+.wadjust input[type=range]{width:100%;accent-color:var(--rm-plum)}
+/* the sky follows the sun (ovu-sun.js sets data-sky): the plate shows a day sky; sunrise, sunset and night tint the window and the room */
+.win-night .sun{position:absolute;left:50%;top:78%;width:36%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,#fff7dc 0 34%,#ffd58f 52%,rgba(255,196,128,0) 72%);opacity:0;transition:opacity 1s ease}
+.win-night .moon,.win-night i.s{transition:opacity 1s ease}
+.room-img.day{transition:filter 1.2s ease}
+.scene[data-sky="sunrise"] .win-night{opacity:.9;background:linear-gradient(180deg,#a9bde9 0%,#f6c8d2 50%,#ffd8a6 78%,#ffeacc 100%)}
+.scene[data-sky="sunset"] .win-night{opacity:.92;background:linear-gradient(180deg,#6f5cab 0%,#d98aab 44%,#f5a46d 72%,#ffd08b 100%)}
+.scene[data-sky="sunrise"] .win-night .sun,.scene[data-sky="sunset"] .win-night .sun{opacity:1}
+.scene[data-sky="sunset"] .win-night .sun{top:84%}
+.scene[data-sky="sunrise"] .win-night .moon,.scene[data-sky="sunset"] .win-night .moon,.scene[data-sky="sunrise"] .win-night i.s,.scene[data-sky="sunset"] .win-night i.s{opacity:0}
+.scene[data-sky="night"] .win-night{opacity:.97}
+.scene[data-sky="sunrise"]:not(.is-night) .room-img.day{filter:sepia(.06) saturate(1.05) hue-rotate(-4deg) brightness(.98)}
+.scene[data-sky="sunset"]:not(.is-night) .room-img.day{filter:sepia(.16) saturate(1.12) hue-rotate(-8deg) brightness(.95)}
+.scene[data-sky="night"]:not(.is-night) .room-img.day{filter:brightness(.74) saturate(.88) hue-rotate(-6deg)}
+.scene[data-sky="night"]:not(.is-night) .stars{opacity:.55}
+/* asleep always shows the night window, whatever the hour */
+.scene.is-night .win-night{background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%)}
+.scene.is-night .win-night .sun{opacity:0}
+.scene.is-night .win-night .moon,.scene.is-night .win-night i.s{opacity:1}
+/* diary: photo choices, recognition state, amount box; date and time never overflow on iOS */
+.grid2>*{min-width:0}
+.input[type=date],.input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;box-sizing:border-box;min-height:46px;text-align:left}
+.snapbtns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.snapbtns .btn{cursor:pointer;min-width:0;justify-content:center}
+.fdstate{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-radius:14px;background:#fff;box-shadow:var(--rm-shadow);font:600 12.5px var(--sans);color:var(--rm-ink-2);line-height:1.45}
+.fdstate .ms{font-size:20px;color:var(--rm-plum);flex:0 0 auto}
+.fdstate.ok .ms{color:#3f8f6b}
+.fdstate.busy .ms{animation:spin 1.6s linear infinite}
+.fdstate>div{min-width:0}
+.fdstate b{display:block;color:var(--rm-ink);font-weight:800}
+.fdstate .row{margin-top:8px;flex-wrap:wrap}
+.igrams{display:flex;align-items:center;gap:3px;font:600 11px var(--sans);color:var(--rm-ink-3);flex:0 0 auto}
+.igrams .input{width:64px;padding:6px;font-size:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* barcode tab: type a name to search */
+.bchead{font:800 10.5px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-ink-3);margin:12px 0 4px}
+.bcbusy{font:600 12px var(--sans);color:var(--rm-ink-3);padding:8px 2px}
+#bcResults .result img{width:38px;height:38px;object-fit:contain;border-radius:8px;background:#fff;flex:0 0 auto}
+.snapbtns label{text-transform:none;letter-spacing:normal;font:700 13px var(--sans)}
