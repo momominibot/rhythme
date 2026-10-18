@@ -77,12 +77,17 @@ async def main():
             async def floor_tap(px, py):
                 r = await page.evaluate("()=>{var b=document.querySelector('#sceneInner').getBoundingClientRect(); return {l:b.left,t:b.top,w:b.width,h:b.height};}")
                 await page.mouse.click(r["l"] + r["w"] * px / 100, r["t"] + r["h"] * py / 100)
-            start = await page.evaluate("()=>OvuRoom.pos()")
+            start = await page.evaluate("()=>({pos: OvuRoom.pos(), src: document.querySelector('#avatarImg').getAttribute('src')})")
+            await page.wait_for_function("()=>{var w=window.OvuWalk; return w && w.cycle && document.querySelector('#avatarImg').complete;}", timeout=5000); await page.wait_for_timeout(700)
             await floor_tap(56, 66); await page.wait_for_timeout(60)
             mid = await page.evaluate("()=>({ring: !!document.querySelector('.tapring.on'), walking: OvuWalk.walking(), route: !!OvuWalk.route()})")
+            frames = []
+            for _ in range(5):
+                await page.wait_for_timeout(90); frames.append(await page.evaluate("()=>({f: OvuWalk.cycle().frame, on: document.querySelector('#avatar').classList.contains('cycling'), hidden: getComputedStyle(document.querySelector('#avatarImg')).visibility})"))
             await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(120)
-            end = await page.evaluate("()=>({pos: OvuRoom.pos(), tf: document.querySelector('#avatar').style.transform, idle: document.querySelector('#avatar').classList.contains('idle')})")
-            check("a floor tap shows a ring, walks her across the room and lands within a cell of the tap", mid["ring"] and mid["walking"] and mid["route"] and abs(end["pos"]["x"] - 56) < 1.5 and abs(end["pos"]["y"] - 66) < 1.5 and end["tf"] == "" and end["idle"] and (abs(start["x"] - 56) > 4 or abs(start["y"] - 66) > 4), {"start": start, "mid": mid, "end": end})
+            end = await page.evaluate("()=>({pos: OvuRoom.pos(), tf: document.querySelector('#avatar').style.transform, idle: document.querySelector('#avatar').classList.contains('idle'), cycling: document.querySelector('#avatar').classList.contains('cycling'), vis: getComputedStyle(document.querySelector('#avatarImg')).visibility, src: document.querySelector('#avatarImg').getAttribute('src')})")
+            check("a floor tap shows a ring, walks her across the room and lands within a cell of the tap", mid["ring"] and mid["walking"] and mid["route"] and abs(end["pos"]["x"] - 56) < 1.5 and abs(end["pos"]["y"] - 66) < 1.5 and end["tf"] == "" and end["idle"] and (abs(start["pos"]["x"] - 56) > 4 or abs(start["pos"]["y"] - 66) > 4), {"start": start, "mid": mid, "end": end})
+            check("while she walks the walk cycle plays (frames change, the standing sprite is hidden) and afterwards she stands in the same outfit", all(f["on"] and f["hidden"] == "hidden" for f in frames) and len(set(f["f"] for f in frames)) >= 3 and not end["cycling"] and end["vis"] == "visible" and end["src"] == start["src"], {"frames": frames, "end": end})
             await floor_tap(20, 52)  # the pillows, away from the bed and clock pins: blocked, so the goal snaps beside the bed
             await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(120)
             bed = await page.evaluate("()=>({pos: OvuRoom.pos(), inBed: OvuWalk.blocked(OvuWalk.HOMES.room.solids, OvuRoom.pos().x, OvuRoom.pos().y) !== null, sheet: document.querySelector('#sheet').getAttribute('aria-hidden')})")

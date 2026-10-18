@@ -39,3 +39,9 @@ html[data-sky="night"] .yrow>.ms:first-child{background:linear-gradient(145deg,#
 html[data-sky="night"] .top{background:rgba(31,23,51,.94)!important;border-bottom-color:rgba(255,255,255,.06)!important;box-shadow:none}
 html[data-sky="night"] .top .t-icon{background:rgba(255,255,255,.08)!important;border-color:rgba(255,255,255,.1)!important;color:var(--rm-ink)!important}
 html[data-sky="night"] .sheet-head .ico{background:rgba(255,255,255,.08)}
+/* panels inside sheets that paint their own white */
+html[data-sky="night"] :is(.dsec,.dtabs button.on,.onb-note,.fdstate,.rcal,.rmhead,.rapprox,.mslider,.whist div,.podplayer,.podep,.imp-card,.nbar-wrap,.fingerkey span,.sw i,.moons button,.faces button,.foodmodes button,.luna .luna-hint,.quick .qchip){background:var(--rm-card);color:var(--rm-ink)}
+html[data-sky="night"] :is(.moons button.on,.foodmodes button.on,.faces button.on){background:var(--rm-lilac)}
+html[data-sky="night"] .fl-meal{background:var(--rm-card);color:var(--rm-ink-2);border-color:rgba(255,255,255,.14)}
+html[data-sky="night"] .fl-meal.on{background:var(--rm-lilac);color:#fff;border-color:var(--rm-lilac)}
+html[data-sky="night"] .tea summary>.ms:first-child{background:linear-gradient(145deg,#4b3560,#3a2d5a)}

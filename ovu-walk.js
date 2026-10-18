@@ -10,6 +10,7 @@
   var Y_SCALE = 0.5;      /* the floor is foreshortened: a stride up the plate covers fewer percent than one across */
   var SPEED = 26;         /* percent of plate width per second at full tilt */
   var SUBSTEP = 0.02;     /* seconds per collision substep, so a long frame can never jump a wall */
+  var FRAMES = 8, FPS = 10, STRIDE = SPEED / FPS * FRAMES; /* walk cycle: 8 frames, 10 per second at full speed, so one cycle per STRIDE iso units */
 
   /* ---------- geometry ---------- */
   function inPoly(poly, x, y) {
@@ -49,6 +50,11 @@
   }
   /* a door triggers inside an ellipse around its stand point (radius in x percent, squashed in y) */
   function doorAt(doors, x, y) { for (var i = 0; i < (doors || []).length; i++) { var d = doors[i]; if (Math.hypot(x - d.x, (y - d.y) / Y_SCALE) <= (d.r || 4)) return d; } return null; }
+  /* which strip for a movement direction: mostly vertical goes away or towards, otherwise the side strip, mirrored by flip */
+  function dirFor(dx, dy) { var iy = dy / Y_SCALE; if (Math.abs(iy) > Math.abs(dx) * 1.25) return iy < 0 ? 'away' : 'towards'; return 'side'; }
+  /* the walk cycle's phase: one full cycle (FRAMES frames) per STRIDE iso units of travel */
+  function cycleAdvance(acc, distIso) { return acc + distIso / STRIDE; }
+  function frameOf(acc) { return Math.floor(((acc % 1) + 1) % 1 * FRAMES); }
   /* depth: things lower on the plate draw in front. Ranks are packed into z 2..9 so nothing ever rises
    * above the hotspot pins (10) or the HUD (11); ties keep DOM order. items: [{y, ...}] */
   function depthRank(items) {
@@ -196,7 +202,7 @@
     return null;
   }
 
-  var W = { Y_SCALE: Y_SCALE, SPEED: SPEED, SUBSTEP: SUBSTEP, CELL: CELL, ROWH: ROWH, COLS: COLS, ROWS: ROWS, rasterise: rasterise, cellOf: cellOf, centre: centre, cellFree: cellFree, nearestFree: nearestFree, nearestFreeList: nearestFreeList, inBox: inBox, lineFree: lineFree, astar: astar, pull: pull, plan: plan, inPoly: inPoly, inZones: inZones, blocked: blocked, propBox: propBox, step: step, doorAt: doorAt, depthRank: depthRank, world: world, HOMES: HOMES, HOME_ONLY: HOME_ONLY, dressHomes: dressHomes, sceneOf: sceneOf, entryFor: entryFor, checkLayout: checkLayout, SCENES: ['home', 'garden', 'street', 'plaza'] };
+  var W = { Y_SCALE: Y_SCALE, SPEED: SPEED, SUBSTEP: SUBSTEP, CELL: CELL, ROWH: ROWH, COLS: COLS, ROWS: ROWS, rasterise: rasterise, cellOf: cellOf, centre: centre, cellFree: cellFree, nearestFree: nearestFree, nearestFreeList: nearestFreeList, inBox: inBox, lineFree: lineFree, astar: astar, pull: pull, plan: plan, inPoly: inPoly, inZones: inZones, blocked: blocked, propBox: propBox, step: step, doorAt: doorAt, depthRank: depthRank, world: world, HOMES: HOMES, HOME_ONLY: HOME_ONLY, dressHomes: dressHomes, sceneOf: sceneOf, entryFor: entryFor, checkLayout: checkLayout, SCENES: ['home', 'garden', 'street', 'plaza'], FRAMES: FRAMES, FPS: FPS, STRIDE: STRIDE, cycleAdvance: cycleAdvance, frameOf: frameOf, dirFor: dirFor };
   root.OvuWalk = W;
 
   /* ---------- DOM wiring (only in the room page) ---------- */
@@ -206,6 +212,10 @@
   var scene, inner, avatar, hud, mini, fade, ring, ringTimer = 0;
   var keys = {}, raf = 0, last = 0, active = false, anchor = null, cur = null, dims = null, inDoor = false, travelling = false, flip = false;
   var route = null; /* { pts, i, left } while following a tapped path */
+  /* the walk cycle: one strip per outfit and direction (assets/room/dream/avatar-walk-<outfit>-<side|away|towards>.webp,
+   * FRAMES frames in a row, made by tools/art/walkcycle.py); frames step at FPS only while she moves. A missing strip
+   * falls back to the side strip, then to the room's own step bob, so her outfit never changes to get a walk. */
+  var cyc = { box: null, img: null, sheets: {}, key: '', frame: -1, acc: 0, dir: 'side', on: false, cssFrom: null, cssRaf: 0 };
   var EASE = 6, MIN_EASE = 0.35, SNAP = 8, lastTap = { t: 0, x: -99, y: -99 };
   var KEYS = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r', w: 'u', s: 'd', a: 'l', d: 'r', W: 'u', S: 'd', A: 'l', D: 'r' };
   var INTERACTIVE = '.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.nb,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.minimap,.hud,.sleeper,.meditator,.holo,.phase-chip,.greeting,.hint,button,a,input,textarea,select,label';
@@ -244,17 +254,59 @@
     avatar.style.transform = 'translate(-50%,-100%) translate3d(' + ((cur.x - anchor.x) / 100 * dims.w).toFixed(1) + 'px,' + ((cur.y - anchor.y) / 100 * dims.h).toFixed(1) + 'px,0)';
     sortDepth(cur.y);
   }
+  /* ---------- the walk cycle ---------- */
+  function outfitNow() { var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatar.querySelector('#avatarImg').getAttribute('src') || ''); return m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; }
+  function sheet(outfit, dir) {
+    var k = outfit + '-' + dir, e = cyc.sheets[k];
+    if (!e) { e = cyc.sheets[k] = { ok: null, img: new Image() }; e.img.onload = function () { if (e.img.decode) e.img.decode().then(function () { e.ok = true; }, function () { e.ok = true; }); else e.ok = true; }; e.img.onerror = function () { e.ok = false; }; e.img.src = R.ART + 'avatar-walk-' + k + '.webp'; }
+    return e;
+  }
+  var BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+  function preloadCycle() {
+    var o = outfitNow(); if (!o) return;
+    Object.keys(cyc.sheets).forEach(function (k) { if (k.indexOf(o + '-') !== 0) { cyc.sheets[k].img.src = BLANK; delete cyc.sheets[k]; } }); /* only her current outfit stays decoded; a blank data URI, not an empty src, so Safari lets go of the pixels */
+    ['side', 'away', 'towards'].forEach(function (d) { sheet(o, d); });
+  }
+  function cycleShow(dir) {
+    var o = outfitNow(); if (!o || reduced) { cycleHide(); return false; }
+    var e = sheet(o, dir); if (e.ok === false || (e.ok === null && dir !== 'side')) e = sheet(o, 'side');
+    if (e.ok !== true) { cycleHide(); return false; } /* not there (yet): the step bob carries the walk */
+    if (!cyc.box) { cyc.box = doc.createElement('div'); cyc.box.className = 'walkcycle'; cyc.box.setAttribute('aria-hidden', 'true'); cyc.img = doc.createElement('img'); cyc.img.alt = ''; cyc.box.appendChild(cyc.img); avatar.appendChild(cyc.box); }
+    var key = o + '-' + (e === cyc.sheets[o + '-' + dir] ? dir : 'side');
+    if (cyc.key !== key) {
+      cyc.key = key; cyc.img.src = e.img.src; var fw = e.img.naturalWidth / FRAMES, fh = e.img.naturalHeight;
+      var imgW = parseFloat(avatar.querySelector('#avatarImg').style.width) || 100, standW = fh * (parseFloat(avatar.querySelector('#avatarImg').naturalWidth) / Math.max(1, avatar.querySelector('#avatarImg').naturalHeight)) || fw;
+      cyc.box.style.width = (imgW * fw / Math.max(1, standW)).toFixed(2) + '%'; cyc.box.style.aspectRatio = fw + '/' + fh; cyc.frame = -1;
+    }
+    cyc.dir = dir; avatar.classList.add('cycling'); cyc.on = true; return true;
+  }
+  function cycleHide() { if (cyc.on) { avatar.classList.remove('cycling'); cyc.on = false; } cyc.acc = 0; }
+  /* advance the cycle by distance walked (iso units), never by time, so blocked pushes and the ease-out read on the feet */
+  function cycleStep(distIso) {
+    if (!cyc.on || !(distIso > 0)) return; cyc.acc = cycleAdvance(cyc.acc, distIso);
+    var f = frameOf(cyc.acc); if (f !== cyc.frame) { cyc.frame = f; cyc.img.style.transform = 'translate3d(-' + (f * 100 / FRAMES).toFixed(3) + '%,0,0)'; }
+  }
+  /* the room's own CSS walks (hotspot taps) play the cycle too: beforeWalk notes where she stands, the walking
+   * class tells us the leg has started, and R.pos() the next frame says where it goes */
+  function cssCycle() {
+    if (active || !avatar.classList.contains('walking')) { cycleHide(); cyc.cssRaf = 0; return; }
+    var from = cyc.cssFrom || R.pos(), to = R.pos(), dx = to.x - from.x, dy = to.y - from.y, t0 = performance.now();
+    var total = Math.hypot(dx, dy / Y_SCALE), ms = parseFloat(avatar.style.transitionDuration) || Math.min(1100, Math.max(350, Math.hypot(dx, dy) * 22));
+    if (dx || dy) { var dir = dirFor(dx, dy); cycleShow(dir); if (dir === 'side') avatar.classList.toggle('flip', dx < 0); }
+    var last = t0;
+    (function tick(t) { if (active || !avatar.classList.contains('walking')) { cycleHide(); cyc.cssRaf = 0; return; } cycleStep(total * Math.min(0.1, (t - last) / 1000) * 1000 / ms); last = t; cyc.cssRaf = root.requestAnimationFrame(tick); })(t0);
+  }
   /* stop walking and write the position back through the room, with its slide transition suppressed */
   function commit() {
     if (!active) return;
     active = false; route = null; root.cancelAnimationFrame(raf); raf = 0; last = 0;
     avatar.style.transition = 'none'; R.placeAvatar({ x: cur.x, y: cur.y }, flip); avatar.style.transform = '';
     void avatar.offsetWidth; avatar.style.transition = '';
-    avatar.classList.remove('walking'); avatar.classList.add('idle');
+    avatar.classList.remove('walking'); avatar.classList.add('idle'); cycleHide();
     sortDepth(cur.y);
   }
   /* someone else (a hotspot walk, a scene change, waking up) moved the avatar: let go without writing back */
-  function yieldWalk() { active = false; route = null; root.cancelAnimationFrame(raf); raf = 0; last = 0; avatar.style.transform = ''; avatar.classList.remove('walking'); clearInput(); }
+  function yieldWalk() { active = false; route = null; root.cancelAnimationFrame(raf); raf = 0; last = 0; avatar.style.transform = ''; avatar.classList.remove('walking'); cycleHide(); clearInput(); }
   function face(dx) { if (dx) { flip = dx < 0; avatar.classList.toggle('flip', flip); } }
   /* one frame along the tapped route: constant speed in iso units, easing out over the last EASE units */
   function followRoute(dt) {
@@ -286,6 +338,9 @@
       if (route) { followRoute(dt); w = worldNow(); }
       else { w = worldNow(); var np = step(w, cur, v, dt); if (np.moved) { face(v.x); cur.x = np.x; cur.y = np.y; } }
       if (cur.x !== before.x || cur.y !== before.y) {
+        var mdx = cur.x - before.x, mdy = cur.y - before.y, dirNow = dirFor(mdx, mdy);
+        if (dirNow !== cyc.dir || !cyc.on) cycleShow(dirNow);
+        cycleStep(Math.hypot(mdx, mdy / Y_SCALE));
         render();
         var d = doorAt(w.doors, cur.x, cur.y);
         if (d && !inDoor) { inDoor = true; commit(); clearInput(); if (d.to) travel(d.to); else if (d.tap) R.tap(R.hotspot(d.tap)); return; }
@@ -434,9 +489,11 @@
     R.on('layout', function (L) { if (active) yieldWalk(); inDoor = false; lightMini(L); sortDepth(); });
     R.on('props', function () { sortDepth(active ? cur.y : undefined); });
     R.on('scene', function (s, L) { lightMini(L); }); /* after a travel's own after() ran, e.g. a neighbour visit began */
-    R.on('beforeWalk', function () { if (active) commit(); }); /* a hotspot walk starts from where she really is */
+    R.on('beforeWalk', function () { if (active) commit(); cyc.cssFrom = R.pos(); }); /* a hotspot walk starts from where she really is */
+    preloadCycle(); avatar.querySelector('#avatarImg').addEventListener('load', preloadCycle);
+    if (root.MutationObserver) new MutationObserver(function () { if (avatar.classList.contains('walking') && !active && !cyc.cssRaf) cyc.cssRaf = root.requestAnimationFrame(function () { cssCycle(); }); }).observe(avatar, { attributes: true, attributeFilter: ['class'] });
     R.setMoving(function () { return active || travelling; }); /* goHome waits while she is walking somewhere of her own choosing */
   }
-  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.route = function () { return route; };
+  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
   R.on('boot', mount);
 })(window);

@@ -443,7 +443,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .hud-orb.out{transform:scale(.8)}
 .hud-text{flex:1;min-width:0}
 .hud-text b{display:block;font:800 11px var(--sans);color:var(--rm-ink-3);letter-spacing:.06em;text-transform:uppercase}
-.hud-text span{display:block;font-family:var(--serif);font-size:14px;color:var(--rm-plum);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-text span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;font-family:var(--serif);font-size:14px;color:var(--rm-plum);line-height:1.25;overflow:hidden;text-wrap:pretty}
 .hud-stop{width:36px;height:36px;border-radius:50%;border:none;background:var(--rm-lilac-2);color:var(--rm-plum);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
 /* ---------- Luna chat ---------- */
@@ -619,7 +619,8 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .win-night{position:absolute;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%);box-shadow:inset 0 0 22px rgba(0,0,0,.4);opacity:0;transition:opacity 1.6s ease;pointer-events:none;overflow:hidden;z-index:2}
 .scene:is(.is-night,.sky-night) .win-night{opacity:.97}
 /* window sky cut from the plate (room layout): fades in by sky phase; the oval overlay is only for homes without a cut */
-.win-patch{position:absolute;height:auto;opacity:0;display:none;transition:opacity 1.6s ease;pointer-events:none;z-index:2}
+.win-patches{position:absolute;inset:0;pointer-events:none;z-index:2}
+.win-patch{position:absolute;height:auto;opacity:0;display:none;transition:opacity 1.6s ease;pointer-events:none}
 .scene.has-win-patch .win-patch{display:block}
 .scene.has-win-patch .win-night{display:none}
 .scene.has-win-patch:is(.is-night,.sky-night) .win-patch.night{opacity:1}
@@ -1327,6 +1328,19 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .btap-done b{display:block;font-family:var(--serif);font-weight:600;font-size:22px;color:#fff}
 body.btap-open{overflow:hidden}
 @media(prefers-reduced-motion:reduce){.btap-ring{transition:opacity .6s}.btap-ring img{animation:none}.btap-petal{animation-duration:.8s}}
+
+/* herb and tea pictures (pastel clay icons) on the greenhouse cards and the diary's tea list */
+.teaimg{width:64px;height:64px;object-fit:contain;flex:none;filter:drop-shadow(0 4px 6px rgba(90,66,116,.18))}
+.tea summary>.teaimg{width:40px;height:40px}
+.teas .tea{display:flex;gap:12px;align-items:flex-start}
+
+/* Jamie, 18 Oct 23:35: the joystick is gone (tap-to-walk replaces it); until the walk cycle lands, walking is a gentle step bob, not a hop */
+.walkpad{display:none!important}
+.avatar.walking img{animation:stepbob .42s ease-in-out infinite}
+.avatar.flip.walking img{animation:stepbobflip .42s ease-in-out infinite}
+@keyframes stepbob{0%,100%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-1.5%) rotate(-1.2deg)}75%{transform:translateY(-1.5%) rotate(1.2deg)}}
+@keyframes stepbobflip{0%,100%{transform:translateY(0) scale(-1,1) rotate(0deg)}25%{transform:translateY(-1.5%) scale(-1,1) rotate(1.2deg)}75%{transform:translateY(-1.5%) scale(-1,1) rotate(-1.2deg)}}
+
 /* ---- 19 Oct: tap to walk (ovu-walk.js): a ring where you tapped, inside the plate so it zooms with the camera ---- */
 .tapring{position:absolute;width:9%;aspect-ratio:1.9/1;transform:translate(-50%,-50%) scale(.5);border-radius:50%;border:2.5px solid rgba(255,255,255,.95);box-shadow:0 0 14px rgba(255,255,255,.7),inset 0 0 10px rgba(201,182,230,.6);opacity:0;pointer-events:none;z-index:4}
 .tapring.on{animation:tapring .7s ease-out forwards}
@@ -1335,3 +1349,11 @@ body.btap-open{overflow:hidden}
 @keyframes tapring{0%{opacity:0;transform:translate(-50%,-50%) scale(.45)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.35)}}
 @keyframes tapringbad{0%{opacity:1;transform:translate(-50%,-50%) scale(.9)}50%{transform:translate(-50%,-50%) scale(1) translateX(2%)}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
 @media (prefers-reduced-motion: reduce){.tapring.on{animation:none;opacity:.9;transform:translate(-50%,-50%) scale(1)}}
+/* ---- 19 Oct: the walk cycle (ovu-walk.js): a strip of frames inside the avatar, shown only while she moves ---- */
+.walkcycle{display:none;position:absolute;left:50%;bottom:0;overflow:hidden;transform:translateX(-50%);pointer-events:none;will-change:transform}
+.walkcycle img{display:block;width:800%;height:auto;will-change:transform;transition:none!important}
+.avatar.cycling .walkcycle{display:block}
+.avatar.cycling #avatarImg{visibility:hidden}
+.avatar.cycling .walkcycle img{animation:none!important}
+.avatar.flip .walkcycle{transform:translateX(-50%) scaleX(-1)}
+.avatar.flip.cycling .walkcycle img{transform:none}

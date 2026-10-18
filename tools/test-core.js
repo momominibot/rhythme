@@ -452,6 +452,20 @@ function scenes(todayIso) {
     check(id + ': from home every door and hotspot is reachable on the floor', bad.length === 0, bad.join('; '));
   });
 })();
+(function walkCycle() {
+  console.log('walk cycle: frames follow distance, directions follow velocity, strips exist for the base outfit');
+  var w = scenes(), K = w.OvuWalk;
+  check('eight frames, ten a second at full speed, so one cycle per STRIDE iso units', K.FRAMES === 8 && K.FPS === 10 && Math.abs(K.STRIDE - K.SPEED / K.FPS * K.FRAMES) < 1e-9, K.STRIDE);
+  var a = 0; var seq = []; for (var i = 0; i < 16; i++) { a = K.cycleAdvance(a, K.STRIDE / 8); seq.push(K.frameOf(a)); }
+  check('walking one stride steps through every frame once and wraps', seq.join() === '1,2,3,4,5,6,7,0,1,2,3,4,5,6,7,0', seq.join());
+  var b = 0; for (var j = 0; j < 7; j++) b = K.cycleAdvance(b, K.STRIDE * 2 / 7);
+  check('the same distance in different step sizes lands on the same phase', Math.abs((((a - b) % 1) + 1.5) % 1 - 0.5) < 1e-9, [a, b].join());
+  check('no distance, no frame change', K.frameOf(K.cycleAdvance(0.4, 0)) === K.frameOf(0.4));
+  check('mostly sideways uses the side strip, up uses away, down uses towards', K.dirFor(1, 0) === 'side' && K.dirFor(1, 0.3) === 'side' && K.dirFor(0, -1) === 'away' && K.dirFor(0.2, 1) === 'towards' && K.dirFor(-1, 0.2) === 'side');
+  ['side', 'away', 'towards'].forEach(function (d) { check('base outfit has a ' + d + ' strip on disk', fs.existsSync(path.join(root, 'assets/room/dream/avatar-walk-base-' + d + '.webp'))); });
+  var src = fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8');
+  check('the walk engine never sets her outfit or writes the profile', !/setOutfit\(|setProfile\(|outfit:\s*'/.test(src));
+})();
 (function layoutsAreWalkable() {
   console.log('every stand point the engine uses is on a floor and clear of furniture, in every home and outdoors');
   var w = scenes(), K = w.OvuWalk;
@@ -661,6 +675,13 @@ function scenes(todayIso) {
   check('the leftover forty-five seconds carry on', RW.ledger().breathCarry === 45, RW.ledger().breathCarry);
   check('Moon Tap never touches the daily streak', RW.ledger().lastDay === day && r2.bonus === 0);
   check('taps change nothing: forty taps and none earned the same', r1.points === 0);
+})();
+
+(function windowSkies() {
+  console.log('window skies: every layout that lists a window has all three sky images on disk');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), bases = src.match(/base: '([^']+)'/g) || [];
+  check('four layouts list window skies (room, house, bath house, family home with two)', bases.length === 5, bases.length);
+  check('night, sunset and sunrise exist for each', bases.every(function (b) { var base = b.slice(7, -1); return ['night', 'sunset', 'sunrise'].every(function (k) { return fs.existsSync(path.join(root, 'assets/room/dream', base + k + '.webp')); }); }));
 })();
 
 console.log('\n' + passes + ' passed, ' + fails + ' failed');

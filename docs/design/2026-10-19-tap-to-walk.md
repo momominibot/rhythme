@@ -96,3 +96,39 @@ we click on the floor to move", and asked how 2D and 3D games do this. This page
 - `tools/e2e_smoke.py`: tapping empty floor in the room walks the avatar there (position changes, a ring appears), the
   walk pad is gone, a tap on the bed hotspot still opens the bedtime sheet, a floor tap in the garden works, and no console
   errors.
+
+## A real walk cycle instead of a hop (19 Oct, Jamie: "Can the avatar walk normally instead of hopping?")
+
+What the sources say:
+
+- **Eight frames is the standard basic walk.** Adobe's walk-cycle guide says the standard number of frames is eight, more
+  for a brisker pace ([Adobe: animation walk cycle](https://www.adobe.com/uk/creativecloud/animation/discover/animation-walk-cycle.html)).
+  Cornell's game design lab lists the four poses, contact, recoil, passing and high point, so a two-legged character needs
+  at least eight images (four per leg); draw the key poses first, keep every frame the same size, draw a ground line so
+  the feet step at the same height, and make the loop seamless ([Cornell CS 3152 design lab](https://www.cs.cornell.edu/courses/cs3152/2025sp/labs/design3)).
+- **Timing in a web game engine.** Phaser 3 registers an animation per key with a frame range and a `frameRate`; its
+  examples use 10 fps for a walk and 15 fps for a run, `repeat: -1` to loop, and `timeScale` to speed playback up or down
+  ([Phaser 3 animation docs](https://tessl.io/registry/tessl/npm-phaser/3.90.0/files/docs/animation.md)). Directional
+  walks are separate animation keys chosen from the velocity; the docs do not show that part, so it is practice, not doc.
+- **Direction sets.** Isometric sprite packs ship four or eight directions with a standstill per direction, and name the
+  directions relative to the screen, since isometric north is not screen up
+  ([OpenGameArt isometric walking sprite](https://opengameart.org/content/isometric-walking-sprite),
+  [8-direction walk cycle template](https://ordinary-bumblebee.itch.io/8-direction-walk-cycle)). Mirroring the side view
+  for the other side is common practice; the sources do not settle it, so it is checked by eye here.
+
+How Rhythme does it:
+
+- **Sheets from the model, one image per direction so frames stay consistent.** `tools/art/gen.py` with the standing
+  sprite composited on chroma green as the reference: "exactly 8 frames in a single horizontal row, evenly spaced, feet on
+  the same ground line, SIDE VIEW facing RIGHT / walking AWAY seen from BEHIND / walking TOWARDS seen from the FRONT",
+  2048x1024, about 40 s each. One sheet per outfit and direction, so her outfit never changes to get a walk.
+- **Slicing** (`tools/art/walkcycle.py`): frames are runs of non-green columns (a touching pair is split at its thinnest
+  column), each keyed with the same matte and despill as the props, scaled so the figure is as tall as the standing
+  sprite's figure, feet on the strip's bottom edge, head centre on the frame's centre so she neither bobs sideways nor
+  slides; a labelled contact sheet is written for a look.
+- **Playback** (`ovu-walk.js`): a strip element inside the avatar shows one frame by translating the strip image
+  (transform only); the standing sprite is hidden while she moves and shown again when she stops; frames step at 10 per
+  second scaled by the walk's ease, only while moving; the strip is chosen from the movement direction (mostly vertical:
+  away or towards, otherwise side, mirrored by the existing flip); the room's own hotspot walks play the cycle too,
+  from the position noted at `beforeWalk` to the destination. A missing strip falls back to the side strip, then to the
+  step bob. Reduced motion keeps the standing sprite.
