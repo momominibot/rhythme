@@ -350,5 +350,5 @@
   };
 })(window);
 
-/* Rhythme asks for the data notice in the room first: a first-time visitor who lands on another page is sent there. */
-(function () { try { var pg = location.pathname.split('/').pop() || 'index.html'; if (/^(room|privacy|terms|index|404)\.html$/.test(pg)) return; var db = JSON.parse(localStorage.getItem('ovumind_db_v1') || 'null'), c = db && db.profile && db.profile.consent; if (!(c && c.at)) location.replace('room.html'); } catch (e) { } })();
+/* Rhythme asks for the data notice in the room first: a first-time visitor, or anyone whose consent is older than notice v2 or unreadable, is sent there. Keep the 2 in step with CONSENT_V in room.js. */
+(function () { try { var pg = location.pathname.split('/').pop() || 'index.html'; if (/^(room|privacy|terms|index|404)\.html$/.test(pg)) return; var db = JSON.parse(localStorage.getItem('ovumind_db_v1') || 'null'), c = db && db.profile && db.profile.consent; if (!(c && c.at && c.v >= 2)) location.replace('room.html'); } catch (e) { try { location.replace('room.html'); } catch (e2) { } } })();

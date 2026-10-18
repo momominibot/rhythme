@@ -9,25 +9,27 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Tests need only read access; the deploy job asks for Pages and OIDC itself.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# Checks run per ref (a newer push to the same branch supersedes an older one);
+# deployments queue in their own group and are never cancelled mid-flight.
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
     name: Rules, pages and links
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: '20'
-      - uses: actions/setup-python@v5
+          node-version: '22'
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Rule agents, store, NOVA, PDF writer (tools/test-core.js)
@@ -38,35 +40,45 @@ jobs:
   smoke:
     name: End-to-end smoke in Chromium
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install Playwright
         run: |
           pip install playwright==1.63.0
-          python3 -m playwright install --with-deps chromium
+          python3 -m playwright install --with-deps --only-shell chromium
       - name: Drive the real pages (tools/e2e_smoke.py)
         run: python3 tools/e2e_smoke.py
 
   deploy:
     name: Deploy to GitHub Pages
-    if: github.event_name != 'pull_request'
+    # only the main branch ever deploys, whatever triggered the run
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: [test, smoke]
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: '.'
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
