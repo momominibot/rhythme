@@ -174,6 +174,7 @@
   }
   function saveMonthlySummary() {
     var db = S.load(), sum = fourWeekSummary();
+    if (root.OvuInsight) sum.insight = root.OvuInsight.cachedFourWeeks(sum.range.to) || null; /* the model-written prose rides along with the rule summary */
     db.summaries = (db.summaries || []).filter(function (s) { return s.range.to !== sum.range.to; });
     db.summaries.push(sum);
     S.setState({ lastSummaryAt: sum.generatedAt });

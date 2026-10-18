@@ -110,3 +110,18 @@ details.more summary::-webkit-details-marker{display:none}
 .badge.warn{color:#9b6b1b;background:#fff4dc}
 @media print{body::before,.nav,.top .act,.no-print{display:none!important}.app{max-width:none;padding:0}.card{box-shadow:none;border:1px solid #ddd;break-inside:avoid}}
 @media(min-width:720px){.app.wide .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}}
+
+/* insight agents: model-written prose under the rule summaries */
+.summary.ins{flex-direction:column;gap:6px;margin-top:8px}
+.ins .lead{font:600 12.5px var(--sans);color:var(--rm-ink);line-height:1.5}
+.ins .pat{background:#fff;border-radius:12px;padding:8px 10px;font:600 11.5px var(--sans);color:var(--rm-ink-2);line-height:1.45}
+.ins .pat b{display:block;font:800 12px var(--sans);color:var(--rm-plum)}
+.ins .pat i{font-style:normal;font:700 10px var(--sans);color:var(--rm-mauve);margin-left:6px;text-transform:uppercase;letter-spacing:.04em}
+.ins .pat small{display:block;color:var(--rm-ink-3);font:600 10.5px var(--sans);margin-top:2px}
+.ins .meta{font:700 10px var(--sans);color:var(--rm-ink-3)}
+.ins .caution{background:#fff4dc;color:#7a4b00;border-radius:12px;padding:8px 10px;font:700 11.5px var(--sans);line-height:1.4}
+.ins h5{font:800 10px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-ink-3);margin:4px 0 0}
+.ins .secs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.ins .sec{background:#fff;border-radius:12px;padding:8px 10px;font:600 11.5px var(--sans);color:var(--rm-ink-2);line-height:1.45}
+.ins .sec b{display:block;font:800 10.5px var(--sans);color:var(--rm-plum);margin-bottom:2px}
+.msg.info{display:block;background:#eef0fb;color:#3b3f72}

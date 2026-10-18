@@ -19,15 +19,25 @@
   </header>
 
   <div class="stack">
+    <section class="card" id="insightCard">
+      <h2><span class="ms">auto_awesome</span>Today, read by Luna</h2>
+      <p class="sub">The daily summary agent writes a few warm lines from today and the past week. The rules raise the flags; this only adds words and gentle pattern hypotheses, shown to you first.</p>
+      <div id="insightBody"><div class="empty">Nothing yet.</div></div>
+      <div class="row"><button class="btn soft" id="insightBtn"><span class="ms">auto_awesome</span>Write today’s reading</button></div>
+      <div class="msg" id="insightMsg"></div>
+    </section>
     <section class="card hero" id="share">
       <h2><span class="ms">medical_services</span>Dr shares card</h2>
       <p class="sub">A 4-week summary built by the summary agent from your own entries. For clinician review; not a diagnosis.</p>
       <div class="kpis" id="shareKpis"></div>
       <div id="shareBody"></div>
+      <div id="aiShare"></div>
       <div class="row">
         <button class="btn primary" id="makeShare"><span class="ms">lock</span>Create encrypted share</button>
+        <button class="btn soft" id="aiShareBtn"><span class="ms">auto_awesome</span>Write it up</button>
         <button class="btn soft" id="saveMonthly"><span class="ms">save</span>Save this summary</button>
       </div>
+      <div class="msg" id="shareMsg2"></div>
       <div id="shareForm"></div>
       <p class="note">Shares are files encrypted in your browser with a passphrase (AES-GCM). Hand the file to your clinician and tell them the passphrase separately. They open it in the <a href="doctor.html" style="color:var(--rm-mauve)">Doctor view</a>; nothing is uploaded anywhere.</p>
     </section>
@@ -80,10 +90,12 @@
 <script src="ovu-store.js"></script>
 <script src="ovu-food.js"></script>
 <script src="ovu-agents.js"></script>
+<script src="ovu-orb.js"></script>
+<script src="ovu-insight.js"></script>
 <script>
 (function(){
   'use strict';
-  var S=window.OvuStore,A=window.OvuAgents;
+  var S=window.OvuStore,A=window.OvuAgents,I=window.OvuInsight;
   var $=function(s,r){return (r||document).querySelector(s);},$$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
   function esc(s){return String(s===undefined||s===null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];});}
   function pretty(iso,o){return new Date(iso+'T12:00:00').toLocaleDateString(undefined,o||{weekday:'short',day:'numeric',month:'short'});}
@@ -100,7 +112,7 @@
     if(e.type==='food'){title=cap(d.meal)+(d.time?' · '+d.time:'');var tot=(d.items&&d.items.length&&window.OvuFood)?window.OvuFood.sum(d.items):null;text=(d.foods||'')+(tot?'\n'+window.OvuFood.line(tot.totals)+' · '+d.items.map(function(it){return it.source&&it.source.label?it.source.label:'';}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}).join(', '):'')+((d.tags||[]).length?'\n'+d.tags.join(' · '):'');}
     if(e.type==='mindfulness'){title='Mindfulness · '+(d.minutes||0)+' min';text=(d.kind==='erin'?'Guided by Erin':'Breathing orb')+(d.completed?' · completed':' · stopped early');}
     if(e.type==='reflection'){title='Reflection'+(d.mood?' · '+d.mood:'');text=d.text||'';}
-    return '<div class="entry">'+(e.type==='food'&&d.photo?'<img class="ethumb" src="'+d.photo+'" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0">':'<span class="ms">'+ICON[e.type]+'</span>')<div class="body"><b>'+esc(title)+'</b><span>'+esc(text)+'</span></div><button class="del" data-del="'+esc(e.id)+'" aria-label="Delete entry"><span class="ms">delete</span></button></div>';
+    return '<div class="entry">'+(e.type==='food'&&d.photo?'<img class="ethumb" src="'+d.photo+'" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0">':'<span class="ms">'+ICON[e.type]+'</span>')+'<div class="body"><b>'+esc(title)+'</b><span>'+esc(text)+'</span></div><button class="del" data-del="'+esc(e.id)+'" aria-label="Delete entry"><span class="ms">delete</span></button></div>';
   }
   function renderTimeline(){
     var events=S.list(filter||null).slice().reverse(),groups={},order=[];
@@ -109,7 +121,8 @@
     if(!order.length){tl.innerHTML='<div class="empty">No entries yet. Go back to your room and tap the bed, the calendar, the diary or the clock.</div>';return;}
     tl.innerHTML=order.slice(0,60).map(function(date){
       var ds=A.dailySummary(date);
-      return '<div class="daygroup"><div class="dayhead"><b>'+esc(pretty(date,{weekday:'long',day:'numeric',month:'long'}))+'</b><span>'+groups[date].length+' entr'+(groups[date].length===1?'y':'ies')+'</span></div><div class="summary"><span class="ms">auto_awesome</span><div>'+esc(ds.text)+(ds.flags.length?'<br><b>Note:</b> '+esc(ds.flags.map(function(f){return f.title;}).join('; ')):'')+'<small>'+esc(ds.agent)+'</small></div></div><div class="entries">'+groups[date].map(entryHTML).join('')+'</div></div>';
+      var di=I.cachedDaily(date);
+      return '<div class="daygroup"><div class="dayhead"><b>'+esc(pretty(date,{weekday:'long',day:'numeric',month:'long'}))+'</b><span>'+groups[date].length+' entr'+(groups[date].length===1?'y':'ies')+'</span></div><div class="summary"><span class="ms">auto_awesome</span><div>'+esc(ds.text)+(ds.flags.length?'<br><b>Note:</b> '+esc(ds.flags.map(function(f){return f.title;}).join('; ')):'')+'<small>'+esc(ds.agent)+'</small></div></div>'+(di?insightHTML(di,true):'')+'<div class="entries">'+groups[date].map(entryHTML).join('')+'</div></div>';
     }).join('');
   }
   function renderFlags(){
@@ -127,11 +140,40 @@
     $('#shareBody').innerHTML='<p class="sub" style="margin-top:10px"><b>'+esc(pretty(sum.range.from))+' – '+esc(pretty(sum.range.to))+'.</b> '+sum.cycle.periodDays+' bleeding day'+(sum.cycle.periodDays===1?'':'s')+(sum.cycle.episodes.length?' across '+sum.cycle.episodes.length+' period'+(sum.cycle.episodes.length===1?'':'s'):'')+'. '+(top?'Most logged: '+esc(top)+'. ':'')+(sum.symptoms.painMax!==null?'Pain up to '+sum.symptoms.painMax+'/10. ':'')+sum.food.meals+' meals over '+sum.food.daysLogged+' days. '+(sum.flags.length?sum.flags.length+' pattern note'+(sum.flags.length===1?'':'s')+' for review.':'No pattern notes raised.')+'</p>'+
       (sum.questions.length?'<div class="field"><span class="lbl">Questions you could ask</span>'+sum.questions.map(function(q){return '<div class="flag info"><span class="ms">help</span><span>'+esc(q)+'</span></div>';}).join('')+'</div>':'');
   }
+  function insightHTML(ins,compact){
+    if(!ins)return '';
+    var h='<div class="summary ins"><div class="lead">'+esc(ins.summary)+'</div>';
+    if(ins.caution)h+='<div class="caution">'+esc(ins.caution)+'</div>';
+    if(ins.patterns&&ins.patterns.length)h+=ins.patterns.map(function(p){return '<div class="pat"><b>'+esc(p.title)+(p.confidence?'<i>'+esc(p.confidence)+'</i>':'')+'</b>'+esc(p.detail)+(p.basis?'<small>Based on: '+esc(p.basis)+'</small>':'')+'</div>';}).join('');
+    if(!compact&&ins.suggestion)h+='<div class="pat"><b>For tomorrow</b>'+esc(ins.suggestion)+'</div>';
+    if(!compact&&ins.questions&&ins.questions.length)h+='<div class="pat"><b>You could ask</b>'+ins.questions.map(esc).join('<br>')+'</div>';
+    h+='<div class="meta">'+esc(ins.agent)+' · '+esc(ins.model||'')+' · '+esc(new Date(ins.generatedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))+'</div></div>';
+    return h;
+  }
+  function renderInsight(){
+    var ins=I.cachedDaily(S.today()),btn=$('#insightBtn');
+    if(!I.enabled()){$('#insightBody').innerHTML='<div class="empty">Luna’s own model is off. Turn it on in Luna’s settings (the moon in your room) to get written readings.</div>';btn.style.display='none';return;}
+    btn.style.display='';btn.innerHTML='<span class="ms">auto_awesome</span>'+(ins?(I.stale('daily')?'Update today’s reading':'Read today again'):'Write today’s reading');
+    $('#insightBody').innerHTML=ins?insightHTML(ins,false):'<div class="empty">'+(S.byDate(S.today()).length?'Tap the button and Luna will read today’s entries.':'Log something today first, then Luna can read it.')+'</div>';
+  }
+  function fourHTML(ins){
+    var c=ins.clinician||{},u=ins.user||{};
+    var secs=[['Cycle',c.cycle],['Bleeding',c.bleeding],['Symptoms and pain',c.symptoms_pain],['Sleep',c.sleep],['Nutrition',c.nutrition],['Mood and calm',c.mood_calm]].filter(function(s){return s[1];});
+    return '<div class="summary ins"><h5>For you</h5><div class="lead">'+esc(u.summary||'')+'</div>'+(u.wins&&u.wins.length?'<div class="pat"><b>Went well</b>'+u.wins.map(esc).join('<br>')+'</div>':'')+(u.watch&&u.watch.length?'<div class="pat"><b>Worth noticing</b>'+u.watch.map(esc).join('<br>')+'</div>':'')+'<h5>For your clinician</h5><div class="lead">'+esc(c.overview||'')+'</div><div class="secs">'+secs.map(function(s){return '<div class="sec"><b>'+esc(s[0])+'</b>'+esc(s[1])+'</div>';}).join('')+'</div>'+(c.patterns&&c.patterns.length?c.patterns.map(function(p){return '<div class="pat"><b>'+esc(p.title)+'</b>'+esc(p.detail)+(p.basis?'<small>Based on: '+esc(p.basis)+'</small>':'')+'</div>';}).join(''):'')+(c.questions&&c.questions.length?'<div class="pat"><b>Questions for the visit</b>'+c.questions.map(esc).join('<br>')+'</div>':'')+(c.limits?'<div class="pat"><b>Limits</b>'+esc(c.limits)+'</div>':'')+'<div class="meta">'+esc(ins.agent)+' · '+esc(ins.model||'')+' · '+esc(new Date(ins.generatedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))+' · included in your next encrypted share</div></div>';
+  }
+  function renderAiShare(){
+    var ins=I.cachedFourWeeks(S.today()),btn=$('#aiShareBtn');
+    if(!I.enabled()){$('#aiShare').innerHTML='';btn.style.display='none';return;}
+    btn.style.display='';btn.innerHTML='<span class="ms">auto_awesome</span>'+(ins?(I.stale('fourweeks')?'Update the write-up':'Write it up again'):'Write it up');
+    $('#aiShare').innerHTML=ins?fourHTML(ins):'';
+  }
+  $('#insightBtn').addEventListener('click',function(){message($('#insightMsg'),'Luna is reading today’s entries…','info');I.daily(S.today(),true).then(function(){$('#insightMsg').className='msg';renderInsight();renderTimeline();}).catch(function(e){message($('#insightMsg'),e.message,'err');});});
+  $('#aiShareBtn').addEventListener('click',function(){message($('#shareMsg2'),'Writing the 4-week summary, about half a minute…','info');I.fourweeks(S.today(),true).then(function(){message($('#shareMsg2'),'Written. It is included in your next encrypted share.','ok');renderAiShare();}).catch(function(e){message($('#shareMsg2'),e.message,'err');});});
   function buildBundle(weeks){
     var end=S.today(),from=S.addDays(end,-(weeks*7-1));
     var events=S.list(null,{from:from,to:end});
     var dates={};events.forEach(function(e){dates[e.date]=true;});
-    return {kind:'ovumind-share',v:1,created:new Date().toISOString(),alias:S.profile().name||'Ovumind user',lifeStage:S.profile().lifeStage||'',range:{from:from,to:end},summary:A.fourWeekSummary(end),dailies:Object.keys(dates).sort().map(function(d){var s=A.dailySummary(d);return {date:d,text:s.text,flags:s.flags};}),events:events};
+    return {kind:'ovumind-share',v:1,created:new Date().toISOString(),alias:S.profile().name||'Ovumind user',lifeStage:S.profile().lifeStage||'',range:{from:from,to:end},summary:A.fourWeekSummary(end),insight:I.cachedFourWeeks(end)||null,dailies:Object.keys(dates).sort().map(function(d){var s=A.dailySummary(d);return {date:d,text:s.text,flags:s.flags};}),events:events};
   }
   $('#makeShare').addEventListener('click',function(){
     var pass=S.crypto.generatePassphrase();
@@ -157,9 +199,10 @@
   $('#importFile').addEventListener('change',function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var n=S.importJSON(r.result,'merge');message($('#dataMsg'),'Imported. '+n+' entries now on this device.','ok');renderAll();}catch(e){message($('#dataMsg'),'Could not import: '+e.message,'err');}};r.readAsText(f);this.value='';});
   $('#deleteAll').addEventListener('click',function(){if(confirm('Delete every Ovumind room entry on this device? Exports you already downloaded are not affected.')&&confirm('This cannot be undone. Delete now?')){S.clearAll();message($('#dataMsg'),'Deleted. Your room is empty again.','ok');renderAll();}});
   $('#refreshBtn').addEventListener('click',renderAll);
-  function renderAll(){renderShare();renderFlags();renderTimeline();}
+  function renderAll(){renderShare();renderAiShare();renderInsight();renderFlags();renderTimeline();}
   S.subscribe(function(r){if(r==='external')renderAll();});
   renderAll();
+  if(I.plan('journal').indexOf('daily')>-1){message($('#insightMsg'),'Luna is reading today’s entries…','info');I.daily(S.today()).then(function(){$('#insightMsg').className='msg';renderInsight();renderTimeline();}).catch(function(e){message($('#insightMsg'),e.message,'err');});}
   if(location.hash==='#share')setTimeout(function(){$('#share').scrollIntoView({behavior:'smooth'});},100);
 })();
 </script>
