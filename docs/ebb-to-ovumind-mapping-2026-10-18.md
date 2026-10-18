@@ -2,7 +2,7 @@
 
 **Input:** Dr Patrick's 12-screen chat-first design "Ebb cycle chat flows" (copy in `docs/dr-patrick-ebb-chat-flows-2026-10-18.md`).
 **Process:** four blind reviews (Claude, Codex gpt-6.1, DeepSeek V4 flash, Doubao Seed 2.1 pro), a Codex arbitration round against Claude's draft, jev 1.13.0 scoring of the seven contested calls, and a Node harness that reproduces the defects the reviews found. Everything is in `docs/debate/` and `tools/test-core.js`.
-**Status:** mapping agreed; nothing below is implemented yet except the test harness. Phase 0 starts next.
+**Status:** mapping agreed. Phase 0 (items 01 to 07) landed the same afternoon: `node tools/test-core.js` now passes 26 of 26 checks, the urgent card and the permissions step were verified in the browser at phone width, and D7 (the pulse timestamp field) remains open for Phase 3. Phase 1 starts next.
 
 ## 1. The verdict in one paragraph
 
@@ -10,7 +10,7 @@ Borrow Ebb's interaction patterns, keep Ovumind's room, intake and safety archit
 
 ## 2. Defects confirmed by two reviewers and reproduced by `tools/test-core.js`
 
-Run `node tools/test-core.js` (10 failing checks, 1 passing, as of this commit).
+Run `node tools/test-core.js`. At the first commit 10 checks failed and 1 passed; after Phase 0 all 26 pass (D1 to D6 fixed, D7 still open).
 
 | # | Defect | Where | Why it matters |
 |---|---|---|---|

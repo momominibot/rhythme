@@ -11,7 +11,8 @@
   var URL = 'https://zodkohwaznqgrfrcfdkf.supabase.co/functions/v1/insight';
   var KEEP_DAILY = 14, KEEP_4W = 3;
 
-  function enabled() { var c = ORB ? ORB.aiConfig() : { on: false }; return !!(c.on && c.provider === 'ovumind'); }
+  /* Readings need their own permission (insights: true), separate from letting Luna's model read a note. */
+  function enabled() { var c = ORB ? ORB.aiConfig() : { on: false }; return !!(c.on && c.provider === 'ovumind' && c.insights === true); }
   function store() { return S.state().insights || { daily: {}, fourweeks: {} }; }
   function put(kind, key, value) {
     var st = store(); st[kind] = st[kind] || {}; st[kind][key] = value;

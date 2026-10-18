@@ -32,6 +32,27 @@
   }
 
   /* ---------- local rules ---------- */
+  /* ---------- red flags read before anything else ---------- */
+  var SOAK = /\b(?:soak(?:ing|ed|s)?\s+(?:through|a|my|the|one)\b|flood(?:ing|ed|s)?\b|(?:pads?|tampons?|cups?|protection)\s+(?:every|each)\s+(?:hour|half|\d+\s*(?:min|minutes))|(?:chang(?:e|ing|ed)|new)\s+(?:my\s+|a\s+)?(?:pads?|tampons?)\s+(?:every|each)\s+(?:hour|half|\d+\s*min)|bleeding\s+(?:won'?t|will\s*not|does\s*not|doesn'?t|hasn'?t)\s+stop|can'?t\s+stop\s+(?:the\s+)?bleeding|bleeding\s+through\s+(?:my\s+)?(?:clothes|sheets|bedding))/;
+  var DIZZY = /\b(?:dizz(?:y|iness)|light-?headed|faint(?:ed|ing|y)?|passed\s+out|black(?:ed|ing)\s+out|woozy)\b/;
+  var SEVERE_PAIN = /\b(?:sudden|severe|worst|unbearable|excruciating|stabbing|can'?t\s+stand)\b[^.;]{0,40}\b(?:pelvi\w*|abdom\w*|tummy|belly|stomach|side)\b[^.;]{0,12}\bpain\b|\bpain\b[^.;]{0,25}\b(?:sudden|severe|unbearable|excruciating|worst)\b/;
+  var BLEED_WORDS = /\b(?:bleed\w*|period|spotting|blood)\b/;
+  /* Returns an urgent card to show before parsing, or null. Emergency cards need care now (995 or an
+   * emergency department); the postmenopausal card is prompt care, not an emergency. Rules only, never a model. */
+  function urgent(text, profile) {
+    var t = ' ' + String(text || '').toLowerCase().replace(/\s+/g, ' ') + ' ';
+    if (/\bno (?:period|bleeding|pain)\b/.test(t) && !SOAK.test(t)) return null;
+    var heavy = SOAK.test(t) || (/\bheavy\b/.test(t) && BLEED_WORDS.test(t)), dizzy = DIZZY.test(t);
+    if (SOAK.test(t) && !/\b(?:yesterday|last (?:week|month|cycle)|used to|before)\b/.test(t)) return { level: 'emergency', code: 'HEAVY_BLEED_NOW', title: 'Get emergency care now', trigger: 'bleeding that soaks through protection every hour' + (dizzy ? ' with dizziness' : '') };
+    if (heavy && dizzy) return { level: 'emergency', code: 'HEAVY_DIZZY_NOW', title: 'Get emergency care now', trigger: 'heavy bleeding with dizziness or faintness' };
+    if (/\b(?:fainted|passed out|blacked out|collapsed)\b/.test(t) && BLEED_WORDS.test(t)) return { level: 'emergency', code: 'FAINT_BLEED_NOW', title: 'Get emergency care now', trigger: 'fainting with bleeding' };
+    if (/\bpregnan\w*\b/.test(t) && !/\bnot pregnant\b/.test(t) && (BLEED_WORDS.test(t) || SEVERE_PAIN.test(t))) return { level: 'emergency', code: 'PREG_BLEED_NOW', title: 'Get emergency care now', trigger: 'bleeding or severe pain in pregnancy' };
+    if (SEVERE_PAIN.test(t) || (/\bshoulder[- ]tip\b/.test(t) && /\bpain\b/.test(t))) return { level: 'emergency', code: 'SEVERE_PAIN_NOW', title: 'Get emergency care now', trigger: 'sudden severe pelvic or abdominal pain' };
+    var stage = (profile && profile.lifeStage) || '';
+    if (['post', 'postmenopause', 'postmenopausal'].indexOf(stage) > -1 && BLEED_WORDS.test(t)) return { level: 'prompt', code: 'POSTMENO_BLEED', title: 'Please get this checked this week', trigger: 'bleeding after menopause' };
+    return null;
+  }
+
   function parseLocal(text) {
     var t = ' ' + text.toLowerCase().replace(/\s+/g, ' ') + ' ', date = dateFrom(text), entries = [];
     // sleep: "slept 7h", "slept 11pm to 7am", "bed at 11:30 woke 6:45", "sleep quality 4"
@@ -45,13 +66,15 @@
       var h = Number(hours[1]), wake = '07:00', mins = Math.round(h * 60), bm = (7 * 60 - mins + 1440) % 1440;
       entries.push({ type: 'sleep', date: date, data: { bedTime: pad(Math.floor(bm / 60)) + ':' + pad(bm % 60), wakeTime: wake, quality: quality ? Number(quality[1]) : null, notes: 'Luna assumed a 07:00 wake time from "' + hours[0].trim() + '"' } });
     }
-    // period
-    if (/\b(period|menses|menstruat|bleeding|flow)\b/.test(t) && !/\bno (period|bleeding)\b/.test(t)) {
-      var flow = /\bheavy\b/.test(t) ? 'heavy' : /\blight\b/.test(t) ? 'light' : /\bspotting\b/.test(t) ? 'spotting' : 'medium';
-      entries.push({ type: 'period', date: date, data: { flow: flow, clots: /\bclots?\b/.test(t), impact: /\b(couldn'?t|missed|stayed home|affected)\b/.test(t) } });
+    // period. Soaking through protection, flooding or bleeding that will not stop is heavy flow with impact,
+    // even when the word "period" is missing (the red-flag sentences are written that way).
+    var soaking = SOAK.test(t);
+    if ((/\b(period|menses|menstruat|bleeding|bleed|flow|pads?|tampons?)\b/.test(t) || soaking) && !/\bno (period|bleeding)\b/.test(t)) {
+      var flow = (soaking || /\bheavy\b/.test(t)) ? 'heavy' : /\blight\b/.test(t) ? 'light' : /\bspotting\b/.test(t) ? 'spotting' : 'medium';
+      entries.push({ type: 'period', date: date, data: { flow: flow, clots: /\bclots?\b/.test(t), impact: soaking || /\b(couldn'?t|missed|stayed home|affected)\b/.test(t) } });
     }
     // symptoms, pain, mood
-    var syms = A.SYMPTOMS.filter(function (s) { return t.indexOf(' ' + s) > -1 || (s === 'cramps' && /\bcramp/.test(t)) || (s === 'anxiety' && /\banxious\b/.test(t)) || (s === 'low mood' && /\b(sad|down|low)\b/.test(t) && !/\blow (flow|energy)\b/.test(t)) || (s === 'fatigue' && /\b(tired|exhausted)\b/.test(t)) || (s === 'headache' && /\bmigraine\b/.test(t)); });
+    var syms = A.SYMPTOMS.filter(function (s) { return t.indexOf(' ' + s) > -1 || (s === 'cramps' && /\bcramp/.test(t)) || (s === 'anxiety' && /\banxious\b/.test(t)) || (s === 'low mood' && /\b(sad|down|low)\b/.test(t) && !/\blow (flow|energy)\b/.test(t)) || (s === 'fatigue' && /\b(tired|exhausted)\b/.test(t)) || (s === 'headache' && /\bmigraine\b/.test(t)) || (s === 'dizziness' && DIZZY.test(t)) || (s === 'discharge change' && /\bdischarge\b/.test(t)); });
     var pain = t.match(/\bpain\D{0,6}(\d{1,2})(?:\s*(?:\/|out of)\s*10)?/) || t.match(/\b(\d{1,2})\s*(?:\/|out of)\s*10\b/);
     var mood = /\b(great|amazing|wonderful)\b/.test(t) ? 'great' : /\b(good|happy|fine|calm)\b/.test(t) ? 'good' : /\b(ok|okay|meh|so-so)\b/.test(t) ? 'ok' : /\b(low|sad|down|flat)\b/.test(t) ? 'low' : /\b(bad|awful|terrible|miserable)\b/.test(t) ? 'bad' : '';
     if (syms.length || pain || mood) entries.push({ type: 'symptom', date: date, data: { symptoms: syms, pain: pain ? Math.min(10, Number(pain[1])) : null, mood: mood, notes: '' } });
@@ -59,7 +82,10 @@
     var meal = /\bbreakfast\b/.test(t) ? 'breakfast' : /\blunch\b/.test(t) ? 'lunch' : /\bdinner\b/.test(t) ? 'dinner' : /\b(snack|tea break)\b/.test(t) ? 'snack' : null;
     var ate = t.match(/\b(?:ate|had|eating|drank|having)\s+(.{3,120}?)(?:\s+for\s+(?:breakfast|lunch|dinner|snack)|[.!,;]|$)/);
     var skipped = /\b(?:skip|skipped|skipping|missed|no|without|didn'?t (?:have|eat)|haven'?t (?:had|eaten)|forgot)\b[^.;,]{0,14}\b(?:breakfast|lunch|dinner|snack|meals?)\b/.test(t);
-    if ((meal || ate) && !skipped) {
+    // A meal word alone ("since lunch", "before dinner") is not a meal: an eating cue is needed, and a red-flag
+    // sentence is never a meal.
+    var eatingCue = /\b(?:for|ate|eat|eating|had|having|drank|grabbed|cooked|ordered|bought)\b/.test(t);
+    if ((ate || (meal && eatingCue)) && !skipped && !soaking && !urgent(text)) {
       var foods = ate ? ate[1].trim() : text.trim();
       var hr = new Date().getHours(); if (!meal) meal = hr < 11 ? 'breakfast' : hr < 15 ? 'lunch' : hr < 20 ? 'dinner' : 'snack';
       var tags = []; if (/\bcoffee|kopi|latte|espresso|tea\b/.test(t)) tags.push('caffeine'); if (/\bwine|beer|cocktail|alcohol\b/.test(t)) tags.push('alcohol'); if (/\bhome ?cooked|cooked at home\b/.test(t)) tags.push('home-cooked');
@@ -72,7 +98,9 @@
   }
 
   /* ---------- AI mode: Luna's own model through the relay, or the user's own key ---------- */
-  function defaults() { return { on: true, provider: 'ovumind', key: '', model: '' }; }
+  /* Off until the user says yes: notes stay on the device unless Luna's model was allowed in onboarding
+   * or in Luna's settings, and written readings need their own separate permission (insights). */
+  function defaults() { return { on: false, provider: 'ovumind', key: '', model: '', insights: false }; }
   function aiConfig() { try { var c = JSON.parse(localStorage.getItem(AI_KEY) || 'null'); if (!c || !c.provider || (c.provider !== 'ovumind' && !c.key)) return defaults(); return c; } catch (e) { return defaults(); } }
   function setAiConfig(cfg) { localStorage.setItem(AI_KEY, JSON.stringify(cfg)); }
   function okEntry(e) { return e && S.TYPES.indexOf(e.type) > -1 && S.validDate(e.date) && e.date <= S.today() && e.data; }
@@ -118,12 +146,12 @@
       if (e.type === 'sleep') { if (!S.validTime(data.bedTime) || !S.validTime(data.wakeTime)) return; data = { bedTime: data.bedTime, wakeTime: data.wakeTime, quality: data.quality ? Math.max(1, Math.min(5, Number(data.quality))) : null, notes: data.notes || '', mode: 'luna' }; }
       if (e.type === 'period') { data = { flow: ['spotting', 'light', 'medium', 'heavy'].indexOf(data.flow) > -1 ? data.flow : 'medium', clots: !!data.clots, impact: !!data.impact }; }
       if (e.type === 'mindfulness') { data = { kind: 'breathe', minutes: Math.max(1, Number(data.minutes) || 1), completed: true, guide: 'Logged through Luna' }; }
-      saved.push(S.add(e.type, e.date, data, 'luna'));
+      saved.push(S.add(e.type, e.date, data, 'luna', { merge: e.type === 'symptom' || e.type === 'period' }));
     });
     return saved;
   }
   var REPLIES = ['Noted, gently.', 'Written down. Thank you for telling me.', 'Got it. One small step logged.', 'Saved. Be soft with yourself today.'];
   function reply() { return REPLIES[Math.floor(Math.random() * REPLIES.length)]; }
 
-  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, DEFAULT_MODEL: DEFAULT_MODEL, OR_MODEL: OR_MODEL, FALLBACK_MODEL: FALLBACK_MODEL, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
+  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, DEFAULT_MODEL: DEFAULT_MODEL, OR_MODEL: OR_MODEL, FALLBACK_MODEL: FALLBACK_MODEL, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
 })(window);

@@ -15,6 +15,8 @@
   var FOOD_TAGS = ['home-cooked', 'veggies', 'protein', 'iron-rich', 'sweet', 'caffeine', 'alcohol', 'ultra-processed', 'late night'];
 
   function flag(level, code, title, detail, date) { return { level: level, code: code, title: title, detail: detail, date: date || null }; }
+  /* The onboarding writes 'post'; older profiles and the legacy pages wrote 'postmenopause'. Both count. */
+  function isPostmenopausal(p) { return ['post', 'postmenopause', 'postmenopausal'].indexOf((p && p.lifeStage) || '') > -1; }
 
   /* ---------- Supervisor: tool decisions ---------- */
   function supervisor(event) {
@@ -51,7 +53,7 @@
     if (cs.lastStart && cs.lengths.length >= 1 && S.diffDays(cs.lastStart, end) > 45) flags.push(flag('info', 'PERIOD_LATE', 'No period logged for ' + S.diffDays(cs.lastStart, end) + ' days', 'If a period is overdue and pregnancy is possible, a test is a sensible first step. Persistent gaps are worth a clinician visit.', end));
     var spotting = S.list('symptom', { from: S.addDays(end, -27), to: end }).filter(function (e) { return (e.data.symptoms || []).indexOf('spotting') > -1 && !cs.episodes.some(function (ep) { return e.date >= S.addDays(ep.start, -1) && e.date <= S.addDays(ep.end, 1); }); });
     if (spotting.length >= 2) flags.push(flag('watch', 'SPOTTING_BETWEEN', 'Spotting between periods', spotting.length + ' days of spotting outside a period in the last 4 weeks.', spotting[spotting.length - 1].date));
-    if (p.lifeStage === 'postmenopause' && S.list('period', { from: S.addDays(end, -27), to: end }).some(function (e) { return e.data.flow && e.data.flow !== 'none'; })) flags.push(flag('high', 'POSTMENO_BLEED', 'Bleeding after menopause', 'Any bleeding after menopause should be checked by a clinician promptly.', end));
+    if (isPostmenopausal(p) && S.list('period', { from: S.addDays(end, -27), to: end }).some(function (e) { return e.data.flow && e.data.flow !== 'none'; })) flags.push(flag('high', 'POSTMENO_BLEED', 'Bleeding after menopause', 'Any bleeding after menopause should be checked by a clinician promptly.', end));
     return { agent: 'cycleAgent', metrics: cs, flags: flags };
   }
   function symptomAgent(end) {

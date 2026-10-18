@@ -190,6 +190,12 @@
   function nowHM() { var d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
   function prettyDate(iso, opts) { var d = new Date(iso + 'T12:00:00'); return d.toLocaleDateString(undefined, opts || { weekday: 'short', day: 'numeric', month: 'short' }); }
   function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+  /* "31 Oct to 3 Nov": the observed window of likely start days from cycleStats, never a single date. */
+  function windowText(cs) {
+    if (!cs || !cs.predictedFrom || !cs.predictedTo) return '';
+    if (cs.predictedFrom === cs.predictedTo) return 'around ' + prettyDate(cs.predictedFrom);
+    return 'between ' + prettyDate(cs.predictedFrom) + ' and ' + prettyDate(cs.predictedTo);
+  }
   function loadJSON(url) { return fetch(url).then(function (r) { if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); }); }
   var toastTimer;
   function toast(text, icon) {
@@ -536,7 +542,9 @@
     var periods = {}; S.list('period').forEach(function (e) { if (e.data.flow && e.data.flow !== 'none') periods[e.date] = e.data.flow; });
     var syms = {}; S.list('symptom').forEach(function (e) { syms[e.date] = true; });
     var cs = S.cycleStats(), predicted = {}, fertile = {};
-    if (cs.predictedNext) { var pl = cs.periodLength || 5; for (var i = 0; i < pl; i++) predicted[S.addDays(cs.predictedNext, i)] = true; var ov = S.addDays(cs.predictedNext, -14); for (var k = -5; k <= 1; k++) fertile[S.addDays(ov, k)] = true; }
+    /* The predicted band is the observed window of likely start days, not one date plus a period length. */
+    if (cs.predictedFrom && cs.predictedTo) { for (var pd = cs.predictedFrom; pd <= cs.predictedTo; pd = S.addDays(pd, 1)) predicted[pd] = true; }
+    if (cs.predictedNext) { var ov = S.addDays(cs.predictedNext, -14); for (var k = -5; k <= 1; k++) fertile[S.addDays(ov, k)] = true; }
     var html = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(function (d) { return '<div class="cal-dow">' + d + '</div>'; }).join('');
     for (var b = 0; b < startDow; b++) html += '<div class="cal-day empty"></div>';
     var today = S.today();
@@ -547,7 +555,7 @@
       html += '<button type="button" class="' + cls + '" data-date="' + iso + '" aria-label="' + prettyDate(iso) + '">' + dd + (syms[iso] ? '<span class="sdot"></span>' : '') + '</button>';
     }
     $('#calGrid').innerHTML = html;
-    var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>' + (cs.predictedNext ? 'Next period expected around ' + prettyDate(cs.predictedNext) + ' (estimate from ' + esc(cs.basis) + ')' + (cs.uncertain ? ', a loose estimate while cycles are changing' : '') + '.' : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Add a cycle length in your intro or log another period to start predictions.')) + '</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>Tap the first day of your last period and ' + periodFillLength() + ' typical days are filled for you to adjust.</span></div></div>';
+    var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + ' (estimate from ' + esc(cs.basis) + ')' + (cs.uncertain ? ', a loose estimate while cycles are changing' : '') + '.' : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Add a cycle length in your intro or log another period to start predictions.')) + '</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>Tap the first day of your last period and ' + periodFillLength() + ' typical days are filled for you to adjust.</span></div></div>';
     statHtml += '<div class="row"><button class="btn blush" id="menstruatingNow"><span class="ms">water_drop</span>I’m menstruating now</button>' + (cal.lastFill.length ? '<button class="btn ghost" id="undoFill"><span class="ms">undo</span>Undo ' + cal.lastFill.length + '-day fill</button>' : '') + '</div>';
     $('#cycleStat').innerHTML = statHtml;
     $('#menstruatingNow').addEventListener('click', function () { var ev = S.add('period', S.today(), { flow: 'medium', clots: false, impact: false }); cal.sel = S.today(); cal.lastFill = []; renderCal(); renderEditor(); afterSave(ev, 'Period logged for today.'); });
@@ -910,7 +918,8 @@
       '<details class="aibox" id="aibox"><summary><span class="ms">auto_awesome</span>' + (cfg.on ? (cfg.provider === 'ovumind' ? 'Luna’s own model is on' : 'AI mode on · your own key') : 'AI mode off · rules only') + infoBtn('luna') + '</summary>' + guideHTML('luna') +
       '<div class="field"><label for="aiProv">Who reads a note the rules cannot</label><select class="input" id="aiProv"><option value="ovumind"' + (cfg.provider === 'ovumind' ? ' selected' : '') + '>Luna’s own model (Doubao Seed 2.1, free, no key)</option><option value="openrouter"' + (cfg.provider === 'openrouter' ? ' selected' : '') + '>My OpenRouter key</option><option value="ark"' + (cfg.provider === 'ark' ? ' selected' : '') + '>My Volcengine Ark key</option></select></div>' +
       '<div class="grid2 ownkey' + (cfg.provider === 'ovumind' ? ' hidden' : '') + '" id="ownKey"><div class="field"><label for="aiModel">Model</label><input class="input" id="aiModel" value="' + esc(cfg.model || '') + '" placeholder="' + esc(ORB.OR_MODEL) + '"></div><div class="field"><label for="aiKey">API key (stays on this device)</label><input class="input" id="aiKey" type="password" autocomplete="off" value="' + esc(cfg.key || '') + '" placeholder="sk-or-..."></div></div>' +
-      '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn AI off (rules only)' : 'Turn AI on') + '</button></div><p>Luna’s own model runs through a small Ovumind relay that holds the key, allows about 80 notes a day per person and keeps nothing. Rules on this device always run first, and whatever is understood is shown to you before it is saved.</p></details>');
+      '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Also let the reading agent write journal readings</b><span>A de-identified 7 or 28 day summary (no name) goes the same way. Off means no readings are written.</span></div></label>' +
+      '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn AI off (rules only)' : 'Turn AI on') + '</button></div><p>Both are off until you say yes. Luna’s own model runs through a small Ovumind relay that holds the key, allows about 80 notes a day per person and keeps nothing. Rules on this device always run first, and whatever is understood is shown to you before it is saved.</p></details>');
     var chat = $('#chat');
     function bubble(kind, html) { var d = document.createElement('div'); d.className = 'bub ' + (kind === 'luna' ? 'from-luna' : kind); d.innerHTML = html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d; }
     if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took. I will show you what I understood before saving.');
@@ -928,9 +937,24 @@
         saved.forEach(function (ev) { afterSave(ev, 'Saved through Luna.'); });
       });
     }
+    /* Red flags are read on the device before any parsing or saving. The card is guidance, not a save:
+     * the entries still go through the confirm card below it. */
+    function urgentCard(u) {
+      var emergency = u.level === 'emergency';
+      var html = '<b>' + esc(u.title) + '</b>' +
+        (emergency
+          ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 now if the bleeding is excessive or will not stop, you faint, have trouble breathing, or have chest pain.</p>'
+          : '<p>Any bleeding after menopause should be checked by a clinician promptly. Book a GP or gynaecologist visit this week; it is usually not serious, but it needs a check.</p>') +
+        '<div class="row">' + (emergency ? '<a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><a class="btn soft" href="https://www.kkh.com.sg/our-specialties/urgent-og-centre" target="_blank" rel="noopener"><span class="ms">local_hospital</span>KKH Urgent O&amp;G (24h)</a>' : '') + '<a class="btn ghost" href="journal.html"><span class="ms">medical_information</span>Show my chart</a></div>' +
+        '<small>Ovumind cannot assess your condition or diagnose. This alert follows published guidance (KKH, SCDF, NHS). No clinician receives this alert.</small>';
+      var card = bubble('urgent' + (emergency ? ' emergency' : ''), html); remember('urgent' + (emergency ? ' emergency' : ''), html);
+      try { chime('alert', true); } catch (err) { }
+      return card;
+    }
     function send(text) {
       text = (text || '').trim(); if (!text) return;
       bubble('me', esc(text)); remember('me', esc(text)); $('#lunaIn').value = '';
+      var u = ORB.urgent(text, S.profile()); if (u) urgentCard(u);
       var local = ORB.parseLocal(text), cfg2 = ORB.aiConfig(), aiOk = cfg2.on && (cfg2.provider === 'ovumind' || cfg2.key);
       /* Short canonical notes (the shortcut chips) are read by the rules instantly; longer or
        * unmatched notes go to the model first, and the rules stay as the offline fallback. */
@@ -959,7 +983,7 @@
       if (go) send(go.dataset.q);
     });
     $('#aiProv').addEventListener('change', function () { $('#ownKey').classList.toggle('hidden', this.value === 'ovumind'); });
-    $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.provider = $('#aiProv').value; c.model = $('#aiModel').value.trim(); c.key = $('#aiKey').value.trim(); if (c.provider !== 'ovumind' && !c.key) { toast('Paste a key, or choose Luna’s own model.', 'key'); return; } c.on = true; ORB.setAiConfig(c); toast('Saved on this device.', 'save'); openLuna($('#lunaIn').value); });
+    $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.provider = $('#aiProv').value; c.model = $('#aiModel').value.trim(); c.key = $('#aiKey').value.trim(); c.insights = $('#aiInsights').checked; if (c.provider !== 'ovumind' && !c.key) { toast('Paste a key, or choose Luna’s own model.', 'key'); return; } c.on = true; ORB.setAiConfig(c); toast('Saved on this device.', 'save'); openLuna($('#lunaIn').value); });
     $('#aiToggle').addEventListener('click', function () { var c = ORB.aiConfig(); c.on = !c.on; if (c.on && c.provider !== 'ovumind' && !c.key) c.provider = 'ovumind'; ORB.setAiConfig(c); openLuna($('#lunaIn').value); });
     if (prefill) send(prefill);
   }
@@ -1182,7 +1206,7 @@
 
   /* ---------- ERIN welcome + getting to know you (in the room, so the theme never changes) ---------- */
   var ONB = [
-    { id: 'privacy', pose: 'bed', title: 'First, the honest part', sub: 'Before any question, here is what happens to your answers.', type: 'info', items: [['lock', 'They stay in this browser', 'Entries, answers and hearts live on this phone. There is no account and nothing is uploaded.'], ['tune', 'They tune your room', 'Cycle answers shape predictions; the rest chooses guides and notes. Nothing here diagnoses.'], ['visibility', 'Nobody is watching', 'No one at Ovumind sees your records or receives alerts. The relay that reads a Luna note keeps nothing.']] },
+    { id: 'privacy', pose: 'bed', title: 'First, the honest part', sub: 'Before any question, here is what happens to your answers.', type: 'info', items: [['lock', 'They stay in this browser', 'Entries, answers and hearts live on this phone. There is no account. Nothing leaves the phone unless you allow it in the last step.'], ['tune', 'They tune your room', 'Cycle answers shape predictions; the rest chooses guides and notes. Nothing here diagnoses.'], ['visibility', 'Nobody is watching', 'No one at Ovumind sees your records or receives alerts. If you later let Luna’s model read a note, that note passes through a relay that keeps nothing.']] },
     { id: 'age', pose: 'coffee', title: 'How old are you?', sub: 'Age shapes what is typical for cycles, so the notes stay honest.', type: 'chips', key: 'ageBand', options: [['under13', 'Under 13'], ['13-17', '13–17'], ['18-24', '18–24'], ['25-29', '25–29'], ['30-34', '30–34'], ['35-39', '35–39'], ['40-44', '40–44'], ['45-49', '45–49'], ['50+', '50+']], note: function (A) { return A.ageBand === 'under13' ? 'Please set Ovumind up together with a parent or guardian. We keep it gentle and short.' : (A.ageBand === '13-17' ? 'Welcome. Your answers stay private on this phone; a trusted adult can help if anything here feels confusing.' : ''); } },
     { id: 'started', pose: 'teeth', title: 'Have your periods started?', sub: 'Everything that follows adapts to this.', type: 'rows', rows: [{ key: 'periodsStarted', label: 'Periods', options: [['yes', 'Yes'], ['no', 'Not yet'], ['unsure', 'Not sure']] }, { key: 'menarche', label: 'How old were you at the first one?', options: [['lt10', 'Under 10'], ['10-12', '10–12'], ['13-15', '13–15'], ['16+', '16 or older'], ['unknown', 'Don’t remember']], showIf: function (A) { return A.periodsStarted === 'yes'; } }] },
     { id: 'regular', pose: 'stretch', title: 'How regular are they?', sub: 'Regular means you can roughly guess the next one.', type: 'chips', key: 'regularity', options: [['regular', 'Fairly regular'], ['irregular', 'Irregular'], ['rare', 'Rare, with gaps of 3 months or more'], ['none12', 'No period for 12 months or more'], ['unsure', 'Not sure']], showIf: function (A) { return A.periodsStarted !== 'no'; } },
@@ -1198,7 +1222,12 @@
     { id: 'goals', pose: 'plants', title: 'What would you like from Ovumind?', sub: 'Pick as many as you like. The room will lean toward them.', type: 'multi', key: 'goals', options: [['understand', 'Understand my cycle'], ['conceive', 'Conceive'], ['symptoms', 'Ease cramps and PMS'], ['sleep', 'Sleep better'], ['peri', 'Perimenopause support'], ['calm', 'Build calm habits'], ['doctor', 'Clear records for my doctor']] },
     { id: 'habits', pose: 'stretch', title: 'Everyday habits (optional)', sub: 'No judgement. Smoking and sleep in particular shape ovarian health over the years.', type: 'rows', optional: true, rows: [{ key: 'smoking', label: 'Smoking', options: [['no', 'No'], ['sometimes', 'Sometimes'], ['daily', 'Daily']] }, { key: 'alcohol', label: 'Alcohol', options: [['none', 'None'], ['weekly', 'Some weeks'], ['most', 'Most days']] }, { key: 'sleep', label: 'Usual sleep', options: [['lt6', 'Under 6 h'], ['6-7', '6–7 h'], ['7-8', '7–8 h'], ['8+', '8 h or more']] }, { key: 'exercise', label: 'Movement days a week', options: [['0', '0'], ['1-2', '1–2'], ['3-4', '3–4'], ['5+', '5+']] }] },
     { id: 'body', pose: 'shower', title: 'Height and weight (optional)', sub: 'Only if you want. Weight at either extreme can change ovulation, so it helps the notes.', type: 'body', optional: true },
+    { id: 'perms', pose: 'coffee', title: 'Two permissions, both off until you say yes', sub: 'Luna’s on-device rules always work. These two send text to a model and can be changed any time in Luna’s settings.', type: 'perms', optional: true },
     { id: 'final', pose: 'outfit', title: 'Lastly, what should I call you?', sub: 'A first name or a nickname, or leave it blank.', type: 'final' }
+  ];
+  var PERMS = [
+    ['permLuna', 'auto_awesome', 'Let Luna’s model read a note the rules cannot', 'Only that note (no name, no history) goes through Ovumind’s relay to a Doubao model and comes straight back for you to confirm. Nothing is stored on the way.'],
+    ['permInsights', 'menu_book', 'Let the reading agent write journal readings', 'A de-identified summary of your last 7 or 28 days (entries, cycle day, your intake answers, no name) is sent the same way to write a short reading. Rules on this device remain the only source of flags.']
   ];
   var onb = null;
   function onbVisible(A) { return ONB.filter(function (s) { return !s.showIf || s.showIf(A); }); }
@@ -1214,6 +1243,8 @@
     if (st.type === 'date') html = '<div class="field"><input class="input" id="onbDate" type="date" max="' + S.today() + '" value="' + esc(A[st.key] || '') + '"></div>';
     if (st.type === 'rows') html = st.rows.filter(function (r) { return !r.showIf || r.showIf(A); }).map(function (r) { return '<div class="field"><span class="lbl">' + esc(r.label) + '</span>' + chipRow(r.key, r.options, A[r.key], false) + '</div>'; }).join('');
     if (st.type === 'body') html = '<div class="grid2"><div class="field"><label for="onbH">Height (cm)</label><input class="input" id="onbH" type="number" inputmode="numeric" min="120" max="220" value="' + (A.heightCm || '') + '"></div><div class="field"><label for="onbW">Weight (kg)</label><input class="input" id="onbW" type="number" inputmode="decimal" min="30" max="250" step="0.1" value="' + (A.weightKg || '') + '"></div></div>';
+    if (st.type === 'perms') html = PERMS.map(function (p) { return '<label class="perm"><input type="checkbox" id="' + p[0] + '"' + (A[p[0]] ? ' checked' : '') + '><span class="ms">' + p[1] + '</span><div><b>' + esc(p[2]) + '</b><span>' + esc(p[3]) + '</span></div></label>'; }).join('') +
+      '<div class="onb-note"><span class="ms">lock</span>Skip, or leave both off, and Luna stays rules-only: notes never leave this phone. No clinician monitors anything either way.</div>';
     if (st.type === 'final') html = '<div class="field"><input class="input" id="onbName" maxlength="24" placeholder="Your name" value="' + esc(A.name || S.profile().name || '') + '"></div>' +
       '<div class="stat"><span class="ms">lock</span><div><b>On this phone only</b><span>Entries live in this browser. The page loads fonts from Google; GitHub Pages serves the files with ordinary server logs; if Luna’s model reads a note, only that note goes through the Ovumind relay and comes straight back to you.</span></div></div>' +
       '<label class="agree"><input type="checkbox" id="onbAgree"' + (A.consent ? ' checked' : '') + '> I have read the <a href="privacy.html" target="_blank" rel="noopener">privacy notes</a> and <a href="terms.html" target="_blank" rel="noopener">terms</a>. Ovumind is not a medical device and does not replace care.</label>' +
@@ -1225,6 +1256,7 @@
       if (st.type === 'date') { var d = $('#onbDate').value; A[st.key] = S.validDate(d) && d <= S.today() ? d : ''; }
       if (st.type === 'body') { A.heightCm = Number($('#onbH').value) || null; A.weightKg = Number($('#onbW').value) || null; }
       if (st.type === 'final') { A.name = $('#onbName').value.trim(); A.consent = $('#onbAgree').checked; }
+      if (st.type === 'perms') { PERMS.forEach(function (p) { var el = $('#' + p[0]); A[p[0]] = !!(el && el.checked); }); }
     }
     body.addEventListener('click', function (e) {
       var c = e.target.closest('.chipbtn[data-v]');
@@ -1235,7 +1267,7 @@
         chime('tap'); return;
       }
       if (e.target.closest('#onbBack')) { collect(); openOnboarding(onb.i - 1); return; }
-      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; } openOnboarding(onb.i + 1); return; }
+      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; } if (st.type === 'perms') { A.permLuna = false; A.permInsights = false; } openOnboarding(onb.i + 1); return; }
       if (e.target.closest('#onbNext')) {
         collect();
         if (st.type === 'final' && !A.consent) { message($('#onbMsg'), 'Please tick the box to continue.', false); return; }
@@ -1277,6 +1309,8 @@
     var num = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : null; };
     var patch = { name: A.name || S.profile().name || '', ageBand: A.ageBand || '', periodsStarted: A.periodsStarted || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: A.lastPeriodStart || '', cycleLength: num(A.cycleLength), periodLength: num(A.periodLength), cycleVaries: A.cycleLength === 'varies' || A.cycleLength === 'rare', bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (A.ageBand && ['40-44', '45-49', '50+'].indexOf(A.ageBand) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), consent: { terms: true, at: new Date().toISOString() }, onboarded: true, onboardedAt: new Date().toISOString() };
     S.setProfile(patch);
+    /* The two model permissions are the only way the relay gets switched on; both default to off. */
+    var ai = ORB.aiConfig(); ai.provider = 'ovumind'; ai.on = !!A.permLuna; ai.insights = !!A.permInsights; ORB.setAiConfig(ai);
     if (patch.lastPeriodStart && !S.list('period').length) { try { S.add('period', patch.lastPeriodStart, { flow: 'medium', clots: false, impact: false }, 'onboarding'); } catch (e) { } }
     try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, patch))); } catch (e) { }
     RW.grant(20, 'welcome');
@@ -1294,7 +1328,7 @@
     var cs = S.cycleStats(), st = S.sleepStats(7), d = new Date();
     openSheet('window', 'Tonight', d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }), 'dark_mode',
       '<div class="stat"><span class="ms">bedtime</span><div><b>' + (st.avg ? 'Averaging ' + st.avg + ' h over ' + st.count + ' nights' : 'No sleep logged this week') + '</b><span>Adults generally do best with 7 hours or more.</span></div></div>' +
-      '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedNext ? 'Next period expected around ' + prettyDate(cs.predictedNext) + (cs.uncertain ? ' (a loose estimate while cycles are changing).' : '.') : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Log a period on the wall calendar to start predictions.')) + '</span></div></div>' +
+      '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + (cs.uncertain ? ' (a loose estimate while cycles are changing).' : '.') : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Log a period on the wall calendar to start predictions.')) + '</span></div></div>' +
       '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button class="btn soft" id="winSound"><span class="ms">' + (S.state().sound ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (S.state().sound ? 'on' : 'off') + '</button></div>' +
       '<div class="row"><a class="btn ghost" href="settings.html"><span class="ms">settings</span>Settings & health connections</a><a class="btn ghost" href="face-ppg.html"><span class="ms">monitor_heart</span>Calm check (beta)</a></div>' +
       '<div class="row"><button type="button" class="btn ghost" id="winIntro"><span class="ms">favorite</span>' + (S.profile().onboarded ? 'Update my intro' : 'Tell me about you') + '</button></div>' +

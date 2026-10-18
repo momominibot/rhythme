@@ -78,13 +78,28 @@
   }
   function get(id) { return load().events.filter(function (e) { return e.id === id; })[0] || null; }
   function byDate(date) { return list(null, { from: date, to: date }); }
-  function add(type, date, data, source) {
+  /* Merge a second same-day note into a single-per-day entry instead of replacing it:
+   * symptoms are unioned, pain and mood are kept unless the new note restates them, notes are joined. */
+  function mergeData(type, oldData, newData) {
+    var o = oldData || {}, n = newData || {};
+    if (type === 'symptom') {
+      var syms = (o.symptoms || []).slice(); (n.symptoms || []).forEach(function (s) { if (syms.indexOf(s) < 0) syms.push(s); });
+      return Object.assign({}, o, n, {
+        symptoms: syms,
+        pain: n.pain === null || n.pain === undefined ? (o.pain === undefined ? null : o.pain) : n.pain,
+        mood: n.mood ? n.mood : (o.mood || ''),
+        notes: [o.notes, n.notes].filter(Boolean).join(' ')
+      });
+    }
+    return Object.assign({}, o, n);
+  }
+  function add(type, date, data, source, opts) {
     if (TYPES.indexOf(type) < 0) throw new Error('Unknown entry type: ' + type);
     if (!validDate(date)) throw new Error('Choose a real date.');
     if (date > today()) throw new Error('Entries cannot be in the future.');
     var db = load();
     var existing = SINGLE_PER_DAY[type] ? db.events.filter(function (e) { return e.type === type && e.date === date; })[0] : null;
-    if (existing) { return update(existing.id, { data: data }); }
+    if (existing) { return update(existing.id, { data: opts && opts.merge ? mergeData(type, existing.data, data) : data }); }
     var ev = { id: uid(), type: type, date: date, createdAt: nowIso(), updatedAt: nowIso(), source: source || 'room', data: data };
     db.events.push(ev);
     save('add:' + type);
@@ -134,8 +149,11 @@
   }
 
   /* ---------- derived: cycle ---------- */
+  /* Spotting is an observation, never the start of a cycle: episodes are built from bleeding days only
+   * (light, medium, heavy). A spotting day stays in the log and the agents read it separately. */
+  function isBleeding(e) { return !!(e.data.flow && e.data.flow !== 'none' && e.data.flow !== 'spotting'); }
   function periodEpisodes() {
-    var days = list('period').filter(function (e) { return e.data.flow && e.data.flow !== 'none'; });
+    var days = list('period').filter(isBleeding);
     var episodes = [];
     days.forEach(function (e) {
       var last = episodes[episodes.length - 1];
@@ -160,16 +178,27 @@
     /* no silent 28-day assumption: predictions need a logged or stated length, and pause while pregnant, after a hysterectomy or past menopause */
     var mode = p.predictionMode || 'normal';
     var predictedNext = last && avg && mode !== 'suspended' ? addDays(last, avg) : null;
+    /* An observed window, not a point: the shortest to longest of the last six logged cycles (at least
+     * plus or minus a day), plus or minus two days around a single length or a stated profile length.
+     * 'wide' adds three days each side; 'suspended' predicts nothing. */
+    var lo = null, hi = null;
+    if (recent.length >= 2) { lo = Math.min.apply(null, recent); hi = Math.max.apply(null, recent); if (hi - lo < 2) { lo -= 1; hi += 1; } }
+    else if (recent.length === 1) { lo = recent[0] - 2; hi = recent[0] + 2; }
+    else if (p.cycleLength && Number(p.cycleLength) > 0) { lo = Number(p.cycleLength) - 2; hi = Number(p.cycleLength) + 2; }
+    if (lo !== null && mode === 'wide') { lo -= 3; hi += 3; }
+    var predictedFrom = last && lo !== null && mode !== 'suspended' ? addDays(last, Math.max(15, lo)) : null;
+    var predictedTo = last && hi !== null && mode !== 'suspended' ? addDays(last, hi) : null;
+    /* No silent 28-day phase either: without a logged or stated length the phase stays unknown. */
     var phase = null;
-    if (day && mode !== 'suspended') {
-      var L = avg || 28, pl = periodLen || 5;
+    if (day && avg && mode !== 'suspended') {
+      var L = avg, pl = periodLen || 5;
       if (day <= pl) phase = 'menstrual';
       else if (day < L - 16) phase = 'follicular';
       else if (day <= L - 12) phase = 'ovulatory';
       else phase = 'luteal';
       if (day > L + 7) phase = 'late';
     }
-    return { mode: mode, uncertain: mode === 'wide', episodes: eps, starts: starts, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, basis: recent.length ? recent.length + ' logged cycles' : (p.cycleLength ? 'your profile setting' : 'a 28-day default'), estimate: true };
+    return { mode: mode, uncertain: mode === 'wide', episodes: eps, starts: starts, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, predictedFrom: predictedFrom, predictedTo: predictedTo, observedRange: lo !== null ? { lo: lo, hi: hi } : null, basis: recent.length ? recent.length + ' logged cycles' : (p.cycleLength ? 'your profile setting' : 'a 28-day default'), estimate: true };
   }
 
   /* ---------- legacy mirrors (so older screens keep showing the same data) ---------- */
