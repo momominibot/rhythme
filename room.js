@@ -203,7 +203,7 @@
     },
     luna: {
       icon: 'dark_mode', title: 'How Luna reads your notes',
-      body: '<p>Luna first tries simple rules on this phone (sleep times, period words, the symptom list, pain out of 10, mood words, meal words, minutes of practice). If the rules cannot read a note, the note alone, without your name or history, goes to Rhythme’s own service; Luna’s answer is shown to you to confirm, and nothing is kept on the way. Food photos work the same way: Luna estimates the dishes, portions and nutrients, matches Singapore dishes to HPB data where she can, and you check and change everything before it is saved. Only a small thumbnail stays on this phone. Photo estimates are rough, especially for oil, sauces and portion size. You can switch any of this off in Luna’s settings and keep the rules only. Luna never diagnoses.</p>'
+      body: '<p>Luna tries her own simple rules on this phone first: sleep times, period words, the symptom list, pain out of 10, mood, meals and minutes of practice. When they cannot read a note, and you have said yes, her AI help reads that note alone, never with your name. Food photos work the same way: she suggests the dishes and nutrients, using Singapore’s HPB data where she can, and you check and change everything before it is saved. Photo estimates are rough, especially for oil, sauces and portions. You can switch any of this off here or under Your choices in You.</p>'
     }
   };
   function infoBtn(topic) { return '<button type="button" class="ibtn" data-guide="' + topic + '" aria-label="Evidence and guidance">i</button>'; }
@@ -938,7 +938,7 @@
         }).catch(function (e) { busy = false; wrap.classList.remove('busy'); if (document.body.contains(m)) message(m, e.message, false); });
       };
       if (ORB.photosAllowed()) { go(); return; }
-      m.className = 'msg on'; m.innerHTML = '<b>Let Luna read the label?</b> The photo goes once through Rhythme’s server to a third-party AI service in China; Rhythme does not keep it. <button type="button" class="btn soft" id="lsAllow-' + id + '">Allow food photos</button>';
+      m.className = 'msg on'; m.innerHTML = '<b>Let Luna read the label?</b> She reads the photo once and does not keep it. <button type="button" class="btn soft" id="lsAllow-' + id + '">Allow food photos</button>';
       $('#lsAllow-' + id).addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c, 'jit'); go(); });
     });
   }
@@ -1042,7 +1042,7 @@
             return FD.detectInImage(rs[0].image).then(function (code) {
               if (code) { toast('Barcode found: ' + code, 'qr_code_2'); lookup(code); return; }
               if (ORB.photosAllowed()) { recognise(rs[1].dataUrl); return; }
-              st.innerHTML = '<div class="fdstate ask"><span class="ms">photo_camera</span><div><b>Let Luna recognise the food?</b><span>The photo goes once through Rhythme’s server to a third-party AI service in China so Luna can recognise the food. Rhythme does not keep it, and only a small thumbnail stays on this phone.</span><div class="row"><button type="button" class="btn primary" id="fdAllow">Allow food photos</button><button type="button" class="btn ghost" id="fdPick">I’ll pick myself</button></div></div></div>';
+              st.innerHTML = '<div class="fdstate ask"><span class="ms">photo_camera</span><div><b>Let Luna recognise the food?</b><span>She looks at the photo once and does not keep it. A small thumbnail stays on this phone.</span><div class="row"><button type="button" class="btn primary" id="fdAllow">Allow food photos</button><button type="button" class="btn ghost" id="fdPick">I’ll pick myself</button></div></div></div>';
               $('#fdAllow').addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c, 'jit'); recognise(rs[1].dataUrl); });
               $('#fdPick').addEventListener('click', function () { st.innerHTML = ''; inp2.focus(); });
             });
@@ -1552,9 +1552,9 @@
       '<div class="quick" id="quick">' + ['Slept 11pm to 7am, quality 4', 'Period started today, medium', 'Cramps and bloating, pain 5, mood ok', 'Had oats and a latte for breakfast', 'Meditated 10 min'].map(function (q) { return '<span class="qchip"><button type="button" class="qsend" data-q="' + esc(q) + '">' + esc(q) + '</button><button type="button" class="qpen" data-q="' + esc(q) + '" aria-label="Edit this shortcut before sending"><span class="ms">edit</span></button></span>'; }).join('') + '</div>' +
       '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><textarea class="input" id="lunaIn" rows="3" maxlength="400" enterkeyhint="send" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice">' + esc(prefill || '') + '</textarea><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
       '<details class="aibox" id="aibox"><summary><span class="ms">auto_awesome</span>' + (cfg.on ? 'Luna’s reading is on' : 'Luna’s reading is off · rules only') + infoBtn('luna') + '</summary>' + guideHTML('luna') +
-      '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Write journal readings</b><span>A summary of your last 7 or 28 days, without your name, goes to the same AI service in China so Luna can write a reading. Off means no readings.</span></div></label>' +
-      '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Recognise food photos</b><span>Each photo goes once through Rhythme’s server to the AI service in China so Luna can recognise the food; Rhythme does not keep it. Only a small thumbnail stays in your diary on this phone.</span></div></label>' +
-      '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn Luna’s reading off (rules only)' : 'Turn Luna’s reading on') + '</button></div><p>Rules on this phone always run first. When they cannot read a note, the note goes through Rhythme’s server to a third-party AI service in China, without your name; Rhythme does not keep it. Whatever Luna understands is shown to you before it is saved. Every choice here is also under Your choices in You, with your consent receipt.</p></details>');
+      '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Write journal readings</b><span>Luna writes a short reading of your last 7 or 28 days.</span></div></label>' +
+      '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Recognise food photos</b><span>Luna names the food in your photo. Only a small thumbnail is kept, on this phone.</span></div></label>' +
+      '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn Luna’s reading off (rules only)' : 'Turn Luna’s reading on') + '</button></div><p>You always see what Luna understood before it is saved. These choices are also under Your choices in You.</p></details>');
     var chat = $('#chat');
     function bubble(kind, html) { var d = document.createElement('div'); d.className = 'bub ' + (kind === 'luna' ? 'from-luna' : kind); d.innerHTML = html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d; }
     if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took, or send a photo of your meal with the camera button. I will show you what I understood before saving.');
@@ -1611,7 +1611,7 @@
       if (aiOk) { bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "period started, heavy", "cramps 6/10", "had chicken rice for lunch" or "meditated 10 min".'); return; }
       /* AI help is off: offer it just in time, saying where the note would go, and only send after a tap. */
       var ask = bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "cramps 6/10" or "had chicken rice for lunch".' +
-        '<span class="jit">Or I can read it with my AI help: this note would go through Rhythme’s server to a third-party AI service in China, without your name. Rhythme does not keep it.</span>' +
+        '<span class="jit">Or I can read it with my AI help. Your name is never added, and nothing is kept.</span>' +
         '<div class="row"><button type="button" class="btn primary" data-aion="1"><span class="ms">auto_awesome</span>Turn on and read it</button><button type="button" class="btn ghost" data-aino="1">Not now</button></div>');
       ask.querySelector('[data-aion]').addEventListener('click', function () {
         var c = ORB.aiConfig(); c.on = true; ORB.setAiConfig(c, 'jit'); /* recorded as a first-use grant of ai_reading */
@@ -1630,7 +1630,7 @@
     chat.addEventListener('click', function (e) { if (e.target.closest('[data-byhand]')) openDiary(); });
     $('#lunaPhoto').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; if (f) photoFlow(f); });
     function askPhotos(f) {
-      var ask = bubble('luna', '<b>Luna</b>To recognise the food I need to send this photo once, through Rhythme’s server, to a third-party AI service in China. Rhythme does not keep it, and only a small thumbnail stays in your diary on this phone.' +
+      var ask = bubble('luna', '<b>Luna</b>To recognise the food I read this photo once with my AI help. Nothing is kept except a small thumbnail on this phone.' +
         '<div class="row"><button type="button" class="btn primary" data-allow="1"><span class="ms">photo_camera</span>Allow food photos</button><button type="button" class="btn ghost" data-byhand="1">Log it by hand</button></div>');
       ask.querySelector('[data-allow]').addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c, 'jit'); ask.remove(); photoFlow(f); });
     }

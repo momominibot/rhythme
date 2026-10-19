@@ -124,3 +124,5 @@ html[data-sky="night"] .podctl .big{background:#7a5c96}
 html[data-sky="night"] [style*="--ovuluna-text-primary"]{color:var(--rm-ink)!important}
 html[data-sky="night"] .row>span[style*="border-radius:50%"]{background:rgba(248,201,194,.16)!important;color:#f6d3c8!important}
 html[data-sky="night"] .row>span[style*="border-radius:50%"] .ms{color:#f6d3c8!important}
+/* the account panel's injected state line uses a day-only grey */
+html[data-sky="night"] .ya-state{color:var(--rm-ink-3)}
