@@ -157,7 +157,7 @@
     if (!completed) { R.toast('Stopped. The plants are glad of the drink anyway.', 'yard'); return; }
     lastWaterAt = Date.now();
     var res = water(S); renderPlot(); R.chime('bell', true);
-    /* every completed minute is a practice like the everyday ones: five hearts, ten more the very first time, and a journal entry */
+    /* every completed minute is a practice like the everyday ones: the flat practice thank-you (ovu-rewards.js PRACTICE) and a journal entry */
     /* the very first watering ever: the day list has only today in it and today was just added (no extra field, which
      * gardenState would drop; Codex caught that the first-time bonus would otherwise pay every time) */
     var g = gardenState(S), ever = !(res.first && g.watered.length === 1);
