@@ -64,6 +64,8 @@ async def main():
             async def tap_hot(hid):
                 inside = await page.evaluate("(id)=>{var h=document.querySelector('.hotspot[data-id='+id+']'); if(!h) return false; var r=h.getBoundingClientRect(), b=document.querySelector('#scene').getBoundingClientRect(); return r.left>=b.left && r.right<=b.right && r.top>=b.top && r.bottom<=b.bottom}", hid)
                 if not inside: await page.click("#camFit"); await page.wait_for_timeout(450)   # a person would do the same: see the whole scene, then tap
+                inside = await page.evaluate("(id)=>{var h=document.querySelector('.hotspot[data-id='+id+']'); var r=h.getBoundingClientRect(), b=document.querySelector('#scene').getBoundingClientRect(); return r.left>=b.left && r.right<=b.right && r.top>=b.top && r.bottom<=b.bottom}", hid)
+                if not inside: await page.focus(".hotspot[data-id=%s]" % hid); await page.wait_for_timeout(450)   # along the wide street fit is not enough: keyboard focus brings the pin into view
                 await page.click(".hotspot[data-id=%s]" % hid)
 
             # 1. the room boots, the consent gate stays closed for a consenting person, hotspots and nav exist
@@ -213,7 +215,50 @@ async def main():
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
             back = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, pos: OvuRoom.pos(), sub: document.querySelectorAll('#minimap .minimap-sub [data-sub]').length})")
-            check("the door mat puts her back on the street outside the pet shop, with the three store stops on the mini-map", back["layout"] == "street" and abs(back["pos"]["x"] - 23) < 1 and back["sub"] == 3, back)
+            check("the door mat puts her back on the street outside the pet shop, with the three store stops on the mini-map", back["layout"] == "street" and abs(back["pos"]["x"] - 98.5) < 1 and back["sub"] == 3, back)
+            # 1c. the wide street (docs/design/2026-10-19-wide-street.md): a 2:1 plate 2.5 boxes wide, walked with real taps, the camera following
+            STREET = "()=>{var sc=document.querySelector('#scene'), b=sc.getBoundingClientRect(), im=document.querySelector('#roomDay').getBoundingClientRect(), nv=document.querySelector('.night-veil').getBoundingClientRect(), a=document.querySelector('#avatar').getBoundingClientRect(), s=OvuCamera.state(); return {layout: sc.dataset.layout, aspect: b.width/b.height, plate: im.width/(b.width*s.z), veil: nv.width/im.width, z: s.z, x: s.x, held: s.held, minX: b.width-b.width*2.5*s.z, pos: OvuRoom.pos(), sx: (a.left+a.width/2-b.left)/b.width, sy: (a.bottom-b.top)/b.height, scrollL: sc.scrollLeft, walking: OvuWalk.walking()}}"
+            ws = await page.evaluate(STREET)
+            check("on the wide street the box keeps its 0.8 view, the plate and the night veil run 2.5 boxes wide, and it opens at zoom 1.25", ws["layout"] == "street" and abs(ws["aspect"] - 0.8) < 0.01 and abs(ws["plate"] - 2.5) < 0.01 and abs(ws["veil"] - 1) < 0.01 and abs(ws["z"] - 1.25) < 0.01, ws)
+            trail = []
+            for _ in range(9):
+                tp = await page.evaluate("()=>{var sc=document.querySelector('#scene').getBoundingClientRect(), r=document.querySelector('#sceneInner').getBoundingClientRect(), sx=sc.left+sc.width*0.82, x=(sx-r.left)/r.width*100, y=63+0.0964*(x-15)-2.5, sy=r.top+y/100*r.height; if (sy>sc.top+sc.height*0.75) { sy=sc.top+sc.height*0.75; y=(sy-r.top)/r.height*100; } return {sx: sx, sy: sy, x: x, y: y}}")
+                if tp["x"] > 212: break   # the front of the cobbles, away from the storefront doorsteps (a walk that ends on one goes in), above the mini-map
+                await page.mouse.click(tp["sx"], tp["sy"])   # a genuine tap on the visible floor, near the right edge of the screen
+                try: await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000)
+                except Exception: pass
+                await page.wait_for_timeout(500)
+                st2 = await page.evaluate(STREET); trail.append({"tap": round(tp["x"], 1), "pos": round(st2["pos"]["x"], 1), "cam": round(st2["x"]), "sx": round(st2["sx"], 2)})
+            we = await page.evaluate(STREET)
+            check("real taps walk her along the street past x 100 and 180: the camera follows sideways, she stays on screen and the box never scrolls", we["pos"]["x"] > 180 and we["x"] < ws["x"] - 300 and all(0.1 < t["sx"] < 0.9 for t in trail) and any(t["tap"] > 100 for t in trail) and we["scrollL"] == 0 and we["layout"] == "street", {"trail": trail, "end": we})
+            await page.click("#avatar"); await page.wait_for_timeout(350)
+            bub = await page.evaluate("()=>{var bb=document.querySelector('#bubble'), r=bb.getBoundingClientRect(), b=document.querySelector('#scene').getBoundingClientRect(); return {on: bb.classList.contains('on'), lifted: !document.querySelector('#sceneInner').contains(bb), inside: r.width>0 && r.left>=b.left-1 && r.right<=b.right+1 && r.top>=b.top-1 && r.bottom<=b.bottom+1, layout: document.querySelector('#scene').dataset.layout}}")
+            check("at the far end, with the view panned two screens, tapping her opens her menu on screen", bub["on"] and bub["lifted"] and bub["inside"] and bub["layout"] == "street", bub)
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+            await tap_hot("arch2")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            pz = await page.evaluate("()=>document.querySelector('#scene').dataset.layout")
+            await page.evaluate("()=>OvuWalk.travel('street')")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            await page.wait_for_timeout(700); wr = await page.evaluate(STREET)
+            check("the plaza arch at the right end takes her to the plaza, and coming back she stands in that arch with the view at the plate's right edge", pz == "plaza" and wr["layout"] == "street" and abs(wr["pos"]["x"] - 222) < 1 and abs(wr["x"] - wr["minX"]) < 2 and 0.1 < wr["sx"] < 0.9, {"plaza": pz, "back": wr})
+            await page.focus(".hotspot[data-id=petshop]"); await page.wait_for_timeout(600)
+            fo = await page.evaluate("()=>{var h=document.querySelector('.hotspot[data-id=petshop]').getBoundingClientRect(), b=document.querySelector('#scene').getBoundingClientRect(); return {inside: h.left>=b.left && h.right<=b.right && h.top>=b.top && h.bottom<=b.bottom, held: OvuCamera.state().held, scrollL: document.querySelector('#scene').scrollLeft}}")
+            check("keyboard focus on a storefront two screens away brings it into view (the box itself never scrolls)", fo["inside"] and fo["held"] and fo["scrollL"] == 0, fo)
+            await page.evaluate("()=>document.activeElement && document.activeElement.blur()")
+            t0 = await page.evaluate("()=>Date.now()")
+            await page.click('#minimap [data-scene=garden]')
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            gl = await page.evaluate("(t0)=>({layout: document.querySelector('#scene').dataset.layout, ms: Date.now()-t0})", t0)
+            check("from the far end the mini-map fades straight to the garden instead of walking the whole street first", gl["layout"] == "garden" and gl["ms"] < 2500, gl)
+            await page.click('#minimap [data-scene=street]')
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            await page.wait_for_timeout(600); wl = await page.evaluate(STREET)
+            check("from the garden she arrives through the garden arch at the street's left end, the view at its left edge", wl["layout"] == "street" and abs(wl["pos"]["x"] - 38) < 1 and abs(wl["x"]) < 1, wl)
             await page.click('#minimap [data-sub="shop-homes"]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='shop-homes' && !document.querySelector('#scene').classList.contains('fading')", timeout=12000)
             except Exception: pass
@@ -390,6 +435,21 @@ async def main():
             except Exception: pass
             seat = await page.evaluate("()=>{var el=document.querySelector('.nb.sitter'); var img=el&&el.querySelector('img'); return {there: !!el, src: img&&img.getAttribute('src'), seated: !!(img&&img.classList.contains('seated')), layout: document.querySelector('#scene').dataset.layout}}")
             check("on the garden bench she sits in her own clothes (avatar-sit-base), not in the cross-legged mat pose", seat["there"] and seat["seated"] and seat["src"] == "assets/room/dream/avatar-sit-base.webp" and seat["layout"] == "garden", seat)
+            await page.mouse.click(30, 700); await page.wait_for_timeout(400)
+            # the street bench: on the wide plate the seated width comes from the box's aspect, not the plate's
+            went = await page.evaluate("()=>({went: OvuWalk.travel('street'), toast: (document.querySelector('#toast')||{}).textContent, cls: document.querySelector('#scene').className})")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            onst = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, bench: !!document.querySelector('.hotspot[data-id=bench]'), cls: document.querySelector('#scene').className})")
+            ST = "()=>({layout: document.querySelector('#scene').dataset.layout, pos: OvuRoom.pos(), sitting: OvuGarden.sitting(), walking: OvuWalk.walking(), cls: document.querySelector('#scene').className, toast: (document.querySelector('#toast')||{}).textContent})"
+            if onst["layout"] == "street" and onst["bench"]:
+                b0 = await page.evaluate(ST)
+                await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bench'))")
+                try: await page.wait_for_selector('#benchSit', timeout=12000); await page.click('#benchSit'); await page.wait_for_timeout(900)
+                except Exception: print("street bench card did not open:", b0, await page.evaluate(ST))
+            else: print("street bench skipped:", went, onst)
+            sb = await page.evaluate("()=>{var el=document.querySelector('.nb.sitter'), b=document.querySelector('#scene').getBoundingClientRect(), r=el&&el.getBoundingClientRect(); return {there: !!el, w: el&&parseFloat(el.style.width), left: el&&parseFloat(el.style.left), inside: !!r && r.left>=b.left && r.right<=b.right && r.bottom<=b.bottom, layout: document.querySelector('#scene').dataset.layout}}")
+            check("on the street bench she sits on its seat, on screen, sized from the box's aspect (about 10.5, not the clamped 7 a plate aspect would give)", sb["there"] and sb["layout"] == "street" and abs(sb["left"] - 126) < 0.5 and abs(sb["w"] - 10.53) < 0.2 and sb["inside"], sb)
             await page.mouse.click(30, 700); await page.wait_for_timeout(400)
             # the staff page: signed out it shows the sign-in gate only, no dashboard, no data call
             await page.goto(BASE + "admin.html", wait_until="networkidle"); await page.wait_for_timeout(500)

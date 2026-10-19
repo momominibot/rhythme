@@ -4,24 +4,34 @@
  * The catalogue itself stays in ovu-rewards.js and the sheet in room.js; this file is only the scene. */
 (function (root) {
   'use strict';
-  /* rendered 18 Oct 2026 (Seedream 5.0 pro, seed 7303, 1472x1840): positions read off a 5% grid */
+  /* A wide plate (docs/design/2026-10-19-wide-street.md): rendered 19 Oct 2026 (Seedream 5.0 pro, seed 7311, 2048x1024)
+   * and drawn 2.5 box widths wide (span), so every position below is a percent of the BOX: x runs 0 to 250, y 0 to 100.
+   * Read off a 5-unit grid. The street opens at zoom 1.25 (the plate stays under about 1.8 times its pixels on a 3x phone)
+   * and she is drawn at 15.4 so she stands as tall on screen as in the garden at 1.6. The Cosy Nook is a big lit window
+   * with the bench in front of it, so its doorstep is the cobbles in front of the bench. */
   var STORES = [
-    { id: 'petshop', tab: 'pet', layout: 'shop-pet', name: 'Whisker & Paw', hours: [10, 19], x: 27, y: 47, label: 'Whisker & Paw · adopt a friend', wp: { x: 23, y: 58, flip: false } },
-    { id: 'furniture', tab: 'furniture', layout: 'shop-furniture', name: 'The Cosy Nook', hours: [11, 21], x: 53, y: 46, label: 'The Cosy Nook · pieces for your room', wp: { x: 52, y: 58, flip: false } },
-    { id: 'homes', tab: 'home', layout: 'shop-homes', name: 'Moonrise Homes', hours: [9, 18], x: 70, y: 45, label: 'Moonrise Homes · dream houses', wp: { x: 76, y: 57, flip: true } }
+    { id: 'petshop', tab: 'pet', layout: 'shop-pet', name: 'Whisker & Paw', hours: [10, 19], x: 98.5, y: 50, label: 'Whisker & Paw · adopt a friend', wp: { x: 98.5, y: 62.6, flip: false } },
+    { id: 'furniture', tab: 'furniture', layout: 'shop-furniture', name: 'The Cosy Nook', hours: [11, 21], x: 129.5, y: 45, label: 'The Cosy Nook · pieces for your room', wp: { x: 128, y: 68.2, flip: false } },
+    { id: 'homes', tab: 'home', layout: 'shop-homes', name: 'Moonrise Homes', hours: [9, 18], x: 166, y: 52, label: 'Moonrise Homes · dream houses', wp: { x: 166, y: 68.6, flip: true } }
   ];
+  var BENCH_WP = { x: 141, y: 68.8, flip: true }; /* beside the bench, on the cobbles below the right-hand pot */
   var STREET = {
-    id: 'street', scene: 'street', name: 'Dream Street', img: 'street-v1.webp', w: 1472, h: 1840, avatarW: 12, only: [],
+    id: 'street', scene: 'street', name: 'Dream Street', img: 'street-wide-v1.webp', w: 2048, h: 1024, span: 2.5, cam: { z: 1.25, sy: 0.68 }, avatarW: 15.4, only: [],
     hotspots: STORES.map(function (s) { return { id: s.id, x: s.x, y: s.y, label: s.label, icon: 'storefront', wp: s.wp }; }).concat([
-      { id: 'arch', x: 12, y: 50, label: 'Arch · back to the garden', icon: 'park', wp: { x: 16, y: 60, flip: true } },
-      { id: 'arch2', x: 86, y: 50, label: 'Arch · on to the plaza', icon: 'park', wp: { x: 84, y: 60, flip: false } },
-      { id: 'bench', x: 54, y: 66, label: 'Bench · sit a while', icon: 'chair', wp: { x: 44, y: 70, flip: false } }
+      { id: 'arch', x: 38, y: 42, label: 'Arch · back to the garden', icon: 'park', wp: { x: 38, y: 60.2, flip: true } },
+      { id: 'arch2', x: 216, y: 50, label: 'Arch · on to the plaza', icon: 'park', wp: { x: 222, y: 73.6, flip: false } },
+      { id: 'bench', x: 128.5, y: 57, label: 'Bench · sit a while', icon: 'chair', wp: BENCH_WP }
     ]),
-    home: { x: 16, y: 60, flip: false },
-    zones: [[[14, 54], [86, 54], [92, 60], [50, 79], [7, 63]]],
-    solids: [{ id: 'lamp', x0: 26, x1: 30, y0: 56, y1: 62 }, { id: 'bench', x0: 46, x1: 58, y0: 64, y1: 72 }, { id: 'tree', x0: 64, x1: 70, y0: 57, y1: 65 }, { id: 'pot', x0: 28, x1: 38, y0: 62, y1: 70 }, { id: 'pot', x0: 59, x1: 65, y0: 68, y1: 72 }, { id: 'bush', x0: 18, x1: 26, y0: 61, y1: 66 }, { id: 'arch', x0: 6, x1: 14, y0: 46, y1: 62 }, { id: 'arch', x0: 86, x1: 92, y0: 46, y1: 62 }],
-    doors: [{ id: 'arch', to: 'garden', x: 16, y: 60, r: 4.5, flip: true }, { id: 'arch2', to: 'plaza', x: 84, y: 60, r: 4.5, flip: false }].concat(STORES.map(function (s) { return { id: s.id, to: s.layout, tap: s.id, x: s.wp.x, y: s.wp.y, r: 3.5, flip: !!s.wp.flip }; })),
-    meditator: { x: 53, y: 65, w: 11, seat: { x: 53, seatY: 65.5, groundY: 69, face: 'left' } }, aura: { x: 53, y: 63, w: 17 }, holo: { x: 63, y: 63, w: 14 },
+    home: { x: 47, y: 61.5, flip: false },
+    /* the cobbles between the shopfronts (back) and the slab's front edge, y = 63 + 0.0964 (x - 15) less a margin */
+    zones: [[[31, 58.5], [44, 57.8], [58, 58], [70, 59.2], [72, 60.8], [107, 62], [150, 63.5], [152, 67], [198, 68.2], [212, 70], [217, 71.2], [225, 71.8],
+      [225.5, 75.5], [214, 79.8], [100, 70], [60, 66.1], [33, 63.5], [26, 62.9]]],
+    solids: [{ id: 'arch', x0: 22, x1: 31, y0: 59.5, y1: 64 }, { id: 'arch', x0: 45, x1: 55, y0: 53, y1: 57.5 }, { id: 'tree', x0: 58, x1: 68, y0: 56, y1: 60 },
+      { id: 'lamp', x0: 72, x1: 77, y0: 60, y1: 63.5 }, { id: 'pot', x0: 108.5, x1: 120.5, y0: 60, y1: 64 }, { id: 'bench', x0: 119, x1: 138, y0: 60, y1: 65.5 },
+      { id: 'pot', x0: 138, x1: 148.5, y0: 61, y1: 66 }, { id: 'lamp', x0: 146.5, x1: 153, y0: 65, y1: 68.5 },
+      { id: 'arch', x0: 199, x1: 211, y0: 72.5, y1: 82 }, { id: 'arch', x0: 218, x1: 230, y0: 66, y1: 70.8 }], /* the plaza arch's front pillar reaches up the cobbles so she passes behind it, never stops there */
+    doors: [{ id: 'arch', to: 'garden', x: 38, y: 60.2, r: 4.5, flip: true }, { id: 'arch2', to: 'plaza', x: 222, y: 73.6, r: 4, flip: false }].concat(STORES.map(function (s) { return { id: s.id, to: s.layout, tap: s.id, x: s.wp.x, y: s.wp.y, r: 3, flip: !!s.wp.flip }; })),
+    meditator: { x: 126, y: 63, w: 11, seat: { x: 126, seatY: 60, groundY: 65.3, face: 'left' } }, aura: { x: 128, y: 61, w: 17 }, holo: { x: 142, y: 64, w: 13 },
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
     props: {}
   };
@@ -33,7 +43,7 @@
   function openAt(tab, d) { var hr = hoursFor(tab), h = d.getHours() + d.getMinutes() / 60; return h >= hr[0] && h < hr[1]; }
   function openNow(tab, d) { var RW = root.OvuRewards; if (RW && RW.tester && RW.tester()) return true; return openAt(tab, d || new Date()); }
   function hoursText(tab) { var hr = hoursFor(tab); return fmtHour(hr[0]) + ' to ' + fmtHour(hr[1]); }
-  root.OvuStreet = { LAYOUT: STREET, STORES: STORES, storeFor: storeFor, hoursFor: hoursFor, fmtHour: fmtHour, openAt: openAt, openNow: openNow, hoursText: hoursText };
+  root.OvuStreet = { LAYOUT: STREET, STORES: STORES, BENCH_WP: BENCH_WP, storeFor: storeFor, hoursFor: hoursFor, fmtHour: fmtHour, openAt: openAt, openNow: openNow, hoursText: hoursText };
   var R = root.OvuRoom; if (!R || !root.document || !root.document.createElement) return;
   var doc = root.document;
   R.LAYOUTS.street = STREET;
@@ -60,5 +70,5 @@
   R.hotspotHandlers.arch2 = function (id, L) { if (!onStreet(L)) return false; root.OvuWalk.travel('plaza'); return true; };
   var prevArch = R.hotspotHandlers.arch, prevBench = R.hotspotHandlers.bench;
   R.hotspotHandlers.arch = function (id, L) { if (onStreet(L)) { root.OvuWalk.travel('garden'); return true; } return prevArch ? prevArch(id, L) : false; };
-  R.hotspotHandlers.bench = function (id, L) { if (onStreet(L)) { root.OvuGarden.openBench(STREET.meditator, STREET.holo, { x: 44, y: 70, flip: false }); return true; } return prevBench ? prevBench(id, L) : false; };
+  R.hotspotHandlers.bench = function (id, L) { if (onStreet(L)) { root.OvuGarden.openBench(STREET.meditator, STREET.holo, BENCH_WP); return true; } return prevBench ? prevBench(id, L) : false; };
 })(window);

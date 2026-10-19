@@ -154,7 +154,7 @@
    * seat = { x, seatY, groundY, face } in plate percent; the width follows from the seat height so her legs reach */
   function seatPlace(el, seat) {
     var L = R.layout(), m = SIT[outfitId()], drop = Math.max(1.5, seat.groundY - seat.seatY);
-    var w = drop / ((1 - m.hip) * (L.w / L.h) * m.aspect);
+    var w = drop / ((1 - m.hip) * (L.w / (L.h * (L.span > 1 ? L.span : 1))) * m.aspect); /* the box's aspect, which on a wide plate is not the plate's */
     el.style.left = seat.x + '%'; el.style.top = seat.groundY + '%'; el.style.width = Math.min(14, Math.max(7, w)).toFixed(2) + '%';
     el.classList.toggle('faceright', seat.face === 'right');
   }

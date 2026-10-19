@@ -524,8 +524,9 @@ function scenes(todayIso) {
   check('the plaza leads back to the street and home', leads('plaza', 'street') && leads('plaza', 'home'));
   check('storefront doors tap the store instead of travelling', L.street.doors.filter(function (d) { return d.tap; }).map(function (d) { return d.tap; }).join() === 'petshop,furniture,homes' && w.OvuStreet.STORES.map(function (s) { return s.tab; }).join() === 'pet,furniture,home');
   var e = K.entryFor(L.garden, 'room', 'home'), e2 = K.entryFor(L.street, 'garden', 'garden'), e3 = K.entryFor(L.plaza, 'street', 'street'), e4 = K.entryFor(L.room, 'garden', 'garden');
-  var e5 = K.entryFor(L.street, 'shop-pet', 'street'); check('leaving the pet shop puts you on its own doorstep, not the garden arch', e5.x === 23 && e5.y === 58, JSON.stringify(e5));
-  check('arriving puts you at the door you came through', e.x === 29 && e.y === 58 && e2.x === 16 && e3.x === 20 && e4.x === 77, JSON.stringify([e, e2, e3, e4]));
+  var e5 = K.entryFor(L.street, 'shop-pet', 'street'); check('leaving the pet shop puts you on its own doorstep, not the garden arch', e5.x === 98.5 && e5.y === 62.6, JSON.stringify(e5));
+  check('arriving puts you at the door you came through', e.x === 29 && e.y === 58 && e2.x === 38 && e3.x === 20 && e4.x === 77, JSON.stringify([e, e2, e3, e4]));
+  var e6 = K.entryFor(L.street, 'plaza', 'plaza'); check('arriving from the plaza puts her at the far right end of the wide street, inside the arch', e6.x === 222 && e6.y === 73.6, JSON.stringify(e6));
   check('scene of a layout: homes are home, the others are themselves', K.sceneOf(L.room) === 'home' && K.sceneOf(L.familyhome) === 'home' && K.sceneOf(L.garden) === 'garden' && K.sceneOf(L.street) === 'street' && K.sceneOf(L.plaza) === 'plaza');
   check('outdoors only pets come along; the street and plaza show none of your things', L.garden.only.join() === 'pet' && L.plaza.only.length === 0 && L.street.only.length === 0);
   check('the mini-map knows four places', K.SCENES.join() === 'home,garden,street,plaza');
@@ -728,7 +729,7 @@ function scenes(todayIso) {
 (function followCamera() {
   console.log('follow camera: zoom per layout, dead zone, clamped target, frame-rate independent smoothing (ovu-camera.js)');
   var w = scenes('2026-10-19'), M = w.OvuCamera.M, sceneOf = w.OvuWalk.sceneOf, W = 390, H = 487;
-  check('home layouts open at zoom 1; the garden, the street, the plaza and the stores at 1.6', ['room', 'house', 'bathhouse', 'familyhome'].every(function (id) { return M.zoomFor(w.LAYOUTS[id], sceneOf) === 1; }) && ['garden', 'street', 'plaza', 'shop-pet', 'shop-furniture', 'shop-homes'].every(function (id) { return M.zoomFor(w.LAYOUTS[id], sceneOf) === 1.6; }));
+  check('home layouts open at zoom 1; the garden, the plaza and the stores at 1.6; the wide street at its own 1.25', ['room', 'house', 'bathhouse', 'familyhome'].every(function (id) { return M.zoomFor(w.LAYOUTS[id], sceneOf) === 1; }) && ['garden', 'plaza', 'shop-pet', 'shop-furniture', 'shop-homes'].every(function (id) { return M.zoomFor(w.LAYOUTS[id], sceneOf) === 1.6; }) && M.zoomFor(w.LAYOUTS.street, sceneOf) === 1.25);
   check("a layout's own cam.z wins and never drops below 1", M.zoomFor({ scene: 'garden', cam: { z: 2.2 } }, sceneOf) === 2.2 && M.zoomFor({ scene: 'garden', cam: { z: 0.4 } }, sceneOf) === 1 && M.zoomFor(null, sceneOf) === 1);
   var c0 = M.centreOn({ x: 50, y: 50 }, 1.6, W, H), s0 = M.toScreen({ x: 50, y: 50 }, { x: c0.x, y: c0.y, z: 1.6 }, W, H);
   check('centring puts her feet at the screen position, 50% across and 58% down the box', Math.abs(s0.x - W * 0.5) < 1e-6 && Math.abs(s0.y - H * 0.58) < 1e-6, JSON.stringify(s0));
@@ -749,6 +750,52 @@ function scenes(todayIso) {
   var ce = { x: 0, y: 0, z: 1.6 }, te = M.target({ x: 6, y: 5 }, ce, W, H);
   check('at the plate edge the target is the clamp itself, so the loop can rest there without centring her', te.x === 0 && te.y === 0);
   check('a store layout is marked so travel can keep the street hours', ['shop-pet', 'shop-furniture', 'shop-homes'].every(function (id) { return !!w.LAYOUTS[id].store; }) && !w.LAYOUTS.street.store && !w.LAYOUTS.garden.store);
+})();
+
+(function wideStreet() {
+  console.log('the wide street: a 2:1 plate drawn 2.5 box widths wide, walkable end to end, the camera clamped to it (docs/design/2026-10-19-wide-street.md)');
+  var w = scenes('2026-10-19'), K = w.OvuWalk, M = w.OvuCamera.M, L = w.LAYOUTS.street, W = 390, H = 487.5;
+  check('the street plate is 2048 x 1024, drawn 2.5 box widths wide, so the box keeps the 0.8 view of every other scene', L.w === 2048 && L.h === 1024 && L.span === 2.5 && Math.abs(L.w / (L.h * L.span) - 0.8) < 1e-9 && Math.abs(w.LAYOUTS.garden.w / w.LAYOUTS.garden.h - 0.8) < 1e-9);
+  check('the plate is on disk with its small copy', fs.existsSync(path.join(root, 'assets/room/dream/street-wide-v1.webp')) && fs.existsSync(path.join(root, 'assets/room/dream/street-wide-v1-sm.webp')));
+  var xs = [].concat.apply([], L.zones).map(function (p) { return p[0]; }).concat(L.doors.map(function (d) { return d.x; }), L.hotspots.map(function (h) { return h.x; }));
+  check('every position is a percent of the box: inside 0 to 250 across, and the street really runs past the first screen', xs.every(function (x) { return x >= 0 && x <= 250; }) && Math.max.apply(null, xs) > 200 && Math.min.apply(null, xs) < 50, [Math.min.apply(null, xs), Math.max.apply(null, xs)].join());
+  var arch = L.doors.filter(function (d) { return d.to === 'garden'; })[0], arch2 = L.doors.filter(function (d) { return d.to === 'plaza'; })[0];
+  check('the garden arch is at the left end and the plaza arch at the right end, more than two screens apart', arch.x < 50 && arch2.x > 200 && arch2.x - arch.x > 150, [arch.x, arch2.x].join());
+  var wl = K.world(L, []), m = K.rasterise(wl), m1 = K.rasterise(K.world(w.LAYOUTS.garden, []));
+  check('the planner grid grows with the plate: 125 columns on the street, 50 elsewhere', m.cols === 125 && m1.cols === 50 && m.length === 125 * K.ROWS && m1.length === K.COLS * K.ROWS, [m.cols, m1.cols].join());
+  check('cells past x 100 are addressed on the wide mask, and an unwidened call keeps the old clamp', K.cellOf(240, 70, m).c === 120 && K.cellOf(240, 70).c === K.COLS - 1);
+  /* independent check of every route segment: sample the segment against the floor polygons and the solids directly,
+   * not through the planner's own mask, so an indexing slip in the grid cannot vouch for itself */
+  function segOk(world, a, b) { var n = Math.max(2, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 0.4)); for (var i = 0; i <= n; i++) { var t = i / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t; if (!K.inZones(world.zones, x, y)) return false; } return true; }
+  var toPlaza = K.plan(wl, L.home, arch2), toArch = K.plan(wl, arch2, arch);
+  check('from the street home spot a route reaches the plaza arch, crossing x 100 and staying on the cobbles', toPlaza && toPlaza.pts.some(function (p) { return p.x > 100; }) && toPlaza.pts.every(function (p, i) { return i === 0 || segOk(wl, toPlaza.pts[i - 1], p); }), toPlaza && JSON.stringify(toPlaza.pts));
+  check('and back from the plaza arch to the garden arch, the whole length of the street', toArch && toArch.pts.every(function (p, i) { return i === 0 || segOk(wl, toArch.pts[i - 1], p); }) && Math.abs(toArch.pts[toArch.pts.length - 1].x - arch.x) < 2.5, toArch && JSON.stringify(toArch.pts));
+  var bad = [];
+  L.hotspots.forEach(function (h) { var r = K.plan(wl, L.home, h.wp); if (!r) bad.push(h.id + ': no route'); else if (!r.pts.every(function (p, i) { return i === 0 || segOk(wl, r.pts[i - 1], p); })) bad.push(h.id + ': off the floor'); else if (Math.hypot(r.pts[r.pts.length - 1].x - h.wp.x, r.pts[r.pts.length - 1].y - h.wp.y) > 1.5) bad.push(h.id + ': ends short'); });
+  check('every storefront, both arches and the bench are reachable from the home spot, checked segment by segment', bad.length === 0, bad.join('; '));
+  /* a synthetic wide floor with a wall at x 150 open only at the bottom: the planner must find the gap past x 100 */
+  var wall = { zones: [[[0, 40], [250, 40], [250, 90], [0, 90]]], solids: [{ id: 'wall', x0: 150, x1: 154, y0: 40, y1: 80 }], doors: [], span: 2.5 };
+  var gap = K.plan(wall, { x: 120, y: 60 }, { x: 200, y: 60 });
+  function clearOf(a, b) { var n = 400, q = wall.solids[0]; for (var i = 0; i <= n; i++) { var t = i / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t; if (x > q.x0 && x < q.x1 && y > q.y0 && y < q.y1) return false; } return true; } /* the wall's interior; grazing its corner at cell precision is not crossing it */
+  check('a wall beyond x 100 is routed round through its gap, never through it', gap && gap.pts.some(function (p) { return p.y > 80; }) && gap.pts.every(function (p, i) { return i === 0 || clearOf(gap.pts[i - 1], p); }), gap && JSON.stringify(gap.pts));
+  check('storefronts open where a walk ends, arches take her as she steps in', L.doors.filter(function (d) { return d.tap; }).every(K.passing) && !K.passing(arch) && !K.passing(arch2));
+  var near = K.plan(wl, L.home, arch), far = K.plan(wl, L.home, arch2);
+  check('the mini-map walks to a near door and fades to a far one: the garden arch is near the home spot, the plaza arch is not', near.cost <= K.FAR && far.cost > K.FAR, [near.cost.toFixed(1), far.cost.toFixed(1), K.FAR].join());
+  /* camera maths with the inner's content 2.5 boxes wide */
+  var z = 1.25, cs = M.clamp(-1e6, -1e6, z, W, H, 2.5);
+  check('the clamp lets the view travel to the plate’s right edge, W - 2.5 W z, and no further', Math.abs(cs.x - (W - W * 2.5 * z)) < 1e-9 && Math.abs(cs.y - (H - H * z)) < 1e-9, JSON.stringify(cs));
+  var atArch = M.centreOn(arch, z, W, H, 2.5), atArch2 = M.centreOn(arch2, z, W, H, 2.5);
+  check('centred on the garden arch the view holds the left edge; on the plaza arch it holds the right edge', atArch.x === 0 && Math.abs(atArch2.x - (W - W * 2.5 * z)) < 1e-9, JSON.stringify([atArch, atArch2]));
+  var mid1 = M.centreOn({ x: 120, y: 60 }, 1, W, H, 2.5);
+  check('at zoom 1 a wide plate still pans sideways (and never up or down)', Math.abs(mid1.x - (W * 0.5 - 1.2 * W)) < 1e-9 && mid1.y === 0, JSON.stringify(mid1));
+  var same = [{ x: 2, y: 2 }, { x: 50, y: 50 }, { x: 98, y: 98 }, { x: 70, y: 30 }].every(function (f) { var a = M.centreOn(f, 1.6, W, H), b = M.centreOn(f, 1.6, W, H, 1), c = M.target(f, { x: -100, y: -80, z: 1.6 }, W, H), d = M.target(f, { x: -100, y: -80, z: 1.6 }, W, H, 1); return a.x === b.x && a.y === b.y && c.x === d.x && c.y === d.y; });
+  check('span 1 (every other plate) gives exactly the old answers', same);
+  var low = M.centreOn({ x: 120, y: 60 }, z, W, H, 2.5, 0.68), lowS = M.toScreen({ x: 120, y: 60 }, { x: low.x, y: low.y, z: z }, W, H);
+  check('the street holds her feet lower on the box (cam.sy 0.68), so its roofs stay in view', L.cam.sy === 0.68 && Math.abs(lowS.y - H * 0.68) < 1e-6 && M.target({ x: 120, y: 60 }, { x: low.x, y: low.y, z: z }, W, H, 2.5, 0.68).y === low.y, JSON.stringify(lowS));
+  /* walk her the length of the street at walking speed with uneven frames: the view follows, stays in the clamp, keeps her on screen */
+  var cam = M.centreOn(arch, z, W, H, 2.5); cam.z = z; var f = { x: arch.x, y: arch.y }, minS = 1e9, maxS = -1e9, inClamp = true, steps = [1 / 60, 1 / 30, 1 / 120, 0.05];
+  for (var i = 0; f.x < arch2.x; i++) { var dt = steps[i % steps.length]; f = { x: Math.min(arch2.x, f.x + K.SPEED * dt), y: arch.y + (arch2.y - arch.y) * (f.x - arch.x) / (arch2.x - arch.x) }; var tg = M.target(f, cam, W, H, 2.5); cam = { x: M.approach(cam.x, tg.x, dt), y: M.approach(cam.y, tg.y, dt), z: z }; var sx = M.toScreen(f, cam, W, H).x; minS = Math.min(minS, sx); maxS = Math.max(maxS, sx); if (cam.x > 1e-9 || cam.x < W - W * 2.5 * z - 1e-9) inClamp = false; }
+  check('walking the whole street the camera follows inside the clamp and she never leaves the middle of the screen', inClamp && minS > W * 0.1 && maxS < W * 0.9 && cam.x < W - W * 2.5 * z + W * 0.2, JSON.stringify({ minS: minS, maxS: maxS, cam: cam.x }));
 })();
 
 (function petsWalk() {
