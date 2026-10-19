@@ -18,7 +18,7 @@ function fresh(todayIso) {
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
   return w;
 }
-var fails = 0, passes = 0, pending = []; /* async checks push a promise; the summary waits for them */
+var fails = 0, passes = 0;
 function check(name, cond, detail) { if (cond) { passes++; console.log('  ok   ' + name); } else { fails++; console.log('  FAIL ' + name + (detail ? '  ->  ' + detail : '')); } }
 function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
 
@@ -426,6 +426,152 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('evToRow carries the user id and strips the photo before upload', rowOut.user_id === 'u1' && rowOut.deleted === false && !('photo' in rowOut.data) && rowOut.data.foods === 'rice', JSON.stringify(rowOut));
 })();
 
+/* ---------- Movement: exercise entries, MET-minutes and the week against WHO (ovu-exercise.js) ---------- */
+(function exerciseTable() {
+  console.log('movement: the activity table is the 2024 Compendium, with WHO intensity bands');
+  var w = fresh(), EX = w.OvuExercise, ids = {}, codes = {}, okRows = true, bad = [];
+  EX.ACTIVITIES.forEach(function (a) {
+    if (ids[a.id]) bad.push('dup activity ' + a.id); ids[a.id] = 1;
+    var vids = {};
+    a.variants.forEach(function (v) {
+      if (vids[v.id]) bad.push('dup variant ' + a.id + '.' + v.id); vids[v.id] = 1;
+      if (a.id === 'other') { if (v.met !== null || v.code !== null || !v.effort) bad.push('other must have no MET ' + v.id); return; }
+      if (!/^\d{5}$/.test(v.code) || !(v.met > 0 && v.met < 25)) bad.push(a.id + '.' + v.id + ' code/met ' + v.code + '/' + v.met);
+      if (codes[v.code] && codes[v.code] !== v.met) bad.push('code ' + v.code + ' with two METs'); codes[v.code] = v.met;
+    });
+  });
+  check('every activity and variant is unique and carries a 5-digit Compendium code and a MET', !bad.length, bad.join('; '));
+  /* spot values read from pacompendium.com on 19 Oct 2026 (2024 Adult Compendium) */
+  var spot = { '17200': 4.8, '02185': 2.7, '02105': 2.8, '02150': 2.3, '12020': 7.5, '15030': 5.5, '02214': 11.0, '18240': 5.8, '01010': 4.0, '02054': 3.5 };
+  check('spot-checked MET values match the 2024 Compendium', Object.keys(spot).every(function (c) { return codes[c] === spot[c]; }), JSON.stringify(Object.keys(spot).map(function (c) { return c + '=' + codes[c]; })));
+  check('WHO absolute bands: under 3 light, 3 to under 6 moderate, 6 and over vigorous', EX.intensityOf(2.9) === 'light' && EX.intensityOf(3) === 'moderate' && EX.intensityOf(5.9) === 'moderate' && EX.intensityOf(6) === 'vigorous' && EX.intensityOf(null, 'moderate') === 'moderate' && EX.intensityOf(null) === null);
+  check('WHO targets are 150 to 300 moderate minutes and 2 strength days', EX.WHO.moderateMin === 150 && EX.WHO.moderateMax === 300 && EX.WHO.strengthDays === 2);
+})();
+
+(function exerciseEntries() {
+  console.log('movement: an entry is built only from a real choice, and copies its MET');
+  var w = fresh(), EX = w.OvuExercise, S = w.OvuStore, today = S.today();
+  var threw = function (fn) { try { fn(); return false; } catch (e) { return true; } };
+  check('no activity, no entry', threw(function () { EX.makeEntry({ minutes: 30 }); }));
+  check('an activity with several efforts needs one chosen', threw(function () { EX.makeEntry({ activity: 'walk', minutes: 30 }); }));
+  check('zero or missing minutes are refused', threw(function () { EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 0 }); }) && threw(function () { EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: '' }); }));
+  check('more than 10 hours in one entry is refused', threw(function () { EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 601 }); }));
+  var d = EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 30.4, note: '  park  ' });
+  check('a brisk walk copies code 17200, 4.8 MET, moderate, rounded minutes and a trimmed note', d.code === '17200' && d.met === 4.8 && d.intensity === 'moderate' && d.minutes === 30 && d.note === 'park' && d.strength === false && d.aerobic === true, JSON.stringify(d));
+  var st = EX.makeEntry({ activity: 'strength', variant: 'reps', minutes: 40, strength: false });
+  check('strength or weights always counts as strength work and not as aerobic minutes', st.strength === true && st.aerobic === false, JSON.stringify(st));
+  var one = EX.makeEntry({ activity: 'stretch', minutes: 10 });
+  check('an activity with one effort needs no choice', one.variant === 'mild' && one.met === 2.3 && one.intensity === 'light');
+  var oth = EX.makeEntry({ activity: 'other', variant: 'vigorous', minutes: 20 });
+  check('something else has no MET and takes its intensity from the effort chosen', oth.met === null && oth.code === null && oth.intensity === 'vigorous' && EX.metMinutes(oth) === null);
+  S.add('exercise', today, d); S.add('exercise', today, one);
+  var w2 = fresh(); w2.localStorage.setItem('ovumind_db_v1', w.localStorage.getItem('ovumind_db_v1')); w2.OvuStore.load(true);
+  check('two exercise entries on one day are both kept, and survive a reload', S.list('exercise').length === 2 && w2.OvuStore.list('exercise').length === 2);
+  check('a future day is refused for exercise like any entry', threw(function () { S.add('exercise', addDays(today, 1), d); }));
+})();
+
+(function exerciseWeek() {
+  console.log('movement: the last 7 days against WHO, with MET-minutes kept separate');
+  var w = fresh(), EX = w.OvuExercise, end = '2026-10-19';
+  var mk = function (date, input) { return { type: 'exercise', date: date, data: EX.makeEntry(input) }; };
+  var list = [
+    mk('2026-10-19', { activity: 'walk', variant: 'brisk', minutes: 30 }),
+    mk('2026-10-17', { activity: 'walk', variant: 'brisk', minutes: 30 }),
+    mk('2026-10-15', { activity: 'walk', variant: 'brisk', minutes: 30 }),
+    mk('2026-10-16', { activity: 'run', variant: 'jog', minutes: 25 }),
+    mk('2026-10-16', { activity: 'strength', variant: 'heavy', minutes: 40 }),
+    mk('2026-10-14', { activity: 'yoga', variant: 'hatha', minutes: 20 }),
+    mk('2026-10-13', { activity: 'other', variant: 'moderate', minutes: 15 }),
+    mk('2026-10-12', { activity: 'run', variant: 'run', minutes: 60 }),
+    { type: 'sleep', date: '2026-10-18', data: { minutes: 400 } }
+  ];
+  var s = EX.week(list, end);
+  check('the window is the 7 days ending today; an entry 8 days back is left out', s.from === '2026-10-13' && s.sessions === 7, JSON.stringify({ from: s.from, sessions: s.sessions }));
+  check('moderate 105, vigorous 25, a vigorous minute counts as two: 155 moderate-equivalent', s.moderate === 105 && s.vigorous === 25 && s.moderateEquivalent === 155, JSON.stringify(s));
+  check('155 is inside WHO’s 150 to 300 range', s.status === 'in' && s.toGo === 0);
+  check('light yoga and strength work are shown but not counted as aerobic minutes', s.light === 20 && s.strengthMinutes === 40);
+  check('MET-minutes add MET x minutes for known values only (432 + 187.5 + 200 + 46 = 866)', s.metMinutes === 866 && s.metUnknown === 1, 'metMinutes=' + s.metMinutes + ' unknown=' + s.metUnknown);
+  check('one strength day, six active days', s.strengthDays === 1 && s.activeDays === 6, JSON.stringify({ sd: s.strengthDays, ad: s.activeDays }));
+  var low = EX.week([mk(end, { activity: 'walk', variant: 'brisk', minutes: 40 })], end);
+  check('below the range says how many minutes are left, kindly', low.status === 'below' && low.toGo === 110 && /110 more moderate minutes/.test(EX.weekLine(low)) && /better than none/.test(EX.weekLine(low)), EX.weekLine(low));
+  var high = EX.week([mk(end, { activity: 'run', variant: 'run', minutes: 200 })], end);
+  check('above the range is described, not scored or warned', high.status === 'above' && /above WHO’s weekly range/.test(EX.weekLine(high)));
+  check('an empty week has its own line', /Nothing logged/.test(EX.weekLine(EX.week([], end))));
+})();
+
+(function exercisePeriodAndCopy() {
+  console.log('movement: the period note follows logged data only, and the words follow the sources');
+  var w = fresh(), EX = w.OvuExercise;
+  check('no period note without a logged period day or cramps', EX.periodContext([]) === null && EX.periodContext([{ type: 'period', data: { flow: 'none' } }]) === null);
+  check('a logged period day shows the period note', EX.periodContext([{ type: 'period', data: { flow: 'light' } }]) === 'period');
+  check('logged cramps show the cramps note', EX.periodContext([{ type: 'symptom', data: { symptoms: ['bloating', 'cramps'] } }]) === 'cramps');
+  var all = JSON.stringify(EX.COPY) + JSON.stringify(EX.ACTIVITIES);
+  check('no em or en dashes anywhere in the movement words', !/[—–]/.test(all));
+  check('no fixed cycle days, no "avoid HIIT", no ovulation scheduling', !/\b28\b|days? 1 ?to ?5|avoid (hiit|high)|around ovulation|peak performance/i.test(JSON.stringify(EX.COPY)));
+  check('the period words say movement is optional, may help, low certainty, listen to your body', /if you feel like it/.test(EX.COPY.period) && /may help/.test(EX.COPY.period) && /Listen to your body/.test(EX.COPY.period) && /low certainty/.test(EX.COPY.periodEvidence));
+  check('red flags include the urgent case and stopped periods with heavy training', /urgent appointment/.test(EX.COPY.redFlags) && /bleed between periods/.test(EX.COPY.redFlags) && /periods stop/.test(EX.COPY.redFlags));
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8'), w, { filename: 'ovu-evidence.js' });
+  var ev = w.OvuEvidence;
+  check('the movement guide cites WHO, the US guidelines, the Compendium, McNulty, Cochrane and the NHS', !!ev && ['E9', 'E67', 'E68', 'E69', 'E70', 'E71', 'E72'].every(function (id) { var e = ev.get(id); return e && e.topics.indexOf('move') > -1; }));
+})();
+
+(function exerciseHearts() {
+  console.log('movement: hearts once a day for logging, never for minutes or effort');
+  var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, EX = w.OvuExercise, today = S.today();
+  var a = S.add('exercise', today, EX.makeEntry({ activity: 'stretch', minutes: 5 }));
+  var r1 = RW.award(a);
+  var b = S.add('exercise', today, EX.makeEntry({ activity: 'run', variant: 'fast', minutes: 120 }));
+  var r2 = RW.award(b);
+  check('the first exercise log of the day earns 6', r1.points === 6, JSON.stringify(r1));
+  check('a second, longer and harder log the same day earns nothing more', r2.points === 0, JSON.stringify(r2));
+  check('saving the same entry again earns nothing', RW.award(a).points === 0);
+  var w2 = fresh(), S2 = w2.OvuStore, R2 = w2.OvuRewards, E2 = w2.OvuExercise;
+  var big = R2.award(S2.add('exercise', S2.today(), E2.makeEntry({ activity: 'run', variant: 'fast', minutes: 300 })));
+  check('a long vigorous session earns the same 6 as five minutes of stretching', big.points === r1.points);
+})();
+
+(function exerciseSyncHold() {
+  console.log('cloud sync: rows the server refuses by type are held, the rest upload, held rows go up later');
+  var SY = fresh().OvuSync;
+  var plan = { pushUp: [{ id: 'a' }], applyPut: [{ id: 'c' }], applyDel: ['d'], pushDel: [] };
+  var evs = { a: { id: 'a' }, b: { id: 'b' }, c: { id: 'c' }, d: { id: 'd' } };
+  SY.addHeld(plan, { a: 1, b: 1, c: 1, d: 1, gone: 1 }, function (id) { return evs[id] || null; });
+  check('held rows rejoin the push, without duplicates, skipping rows a newer cloud copy just replaced or deleted', plan.pushUp.map(function (e) { return e.id; }).join() === 'a,b', JSON.stringify(plan.pushUp));
+  var sp = SY.splitByType([{ id: 1, type: 'sleep' }, { id: 2, type: 'exercise' }, { id: 3, type: 'weight' }]);
+  check('a refused batch splits into the older types and the new ones', sp.ok.length === 2 && sp.held.length === 1 && sp.held[0].id === 2);
+  check('only a check-constraint refusal triggers the split', SY.typeRejected(new Error('rest 400 new row for relation "entries" violates check constraint "entries_type_check"')) && !SY.typeRejected(new Error('rest 401 JWT expired')));
+
+  /* end to end, with a pretend server that refuses 'exercise' until the migration is applied */
+  var w = fresh(), S = w.OvuStore, EX = w.OvuExercise, Y = w.OvuSync, migrated = false, posts = [];
+  w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
+  S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+  var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
+  w.fetch = function (url, opt) {
+    var m = (opt && opt.method) || 'GET';
+    if (m === 'GET') return reply(200, []);
+    if (m === 'POST' && /\/entries/.test(url)) {
+      var rows = JSON.parse(opt.body);
+      if (!migrated && rows.some(function (r) { return r.type === 'exercise'; })) return reply(400, { code: '23514', message: 'new row for relation "entries" violates check constraint "entries_type_check"' });
+      posts.push(rows.map(function (r) { return r.type + ':' + r.id; })); return reply(201, null);
+    }
+    return reply(201, null);
+  };
+  var t = S.today(), sl = S.add('sleep', t, { bedTime: '23:00', wakeTime: '07:00', quality: 3, notes: '' }), ex = S.add('exercise', t, EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 30 }));
+  return Y.syncNow().then(function (r1) {
+    var st1 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('the first sync succeeds: the sleep row uploads and the exercise row is held', r1.ok === true && r1.held === 1 && posts.length === 1 && posts[0].join() === 'sleep:' + sl.id && st1.held && st1.held[ex.id], JSON.stringify({ r1: r1, posts: posts, held: st1.held }));
+    /* a later edit to another row moves the push watermark past the held row's time */
+    return new Promise(function (res) { setTimeout(res, 15); }).then(function () { S.update(sl.id, { data: Object.assign({}, sl.data, { quality: 4 }) }); return Y.syncNow(); });
+  }).then(function (r2) {
+    check('while refused, later syncs still upload other rows and keep holding', r2.ok === true && r2.held === 1 && posts[posts.length - 1].join() === 'sleep:' + sl.id, JSON.stringify({ r2: r2, posts: posts }));
+    migrated = true;
+    return Y.syncNow();
+  }).then(function (r3) {
+    var st3 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('once the server accepts it, the held row goes up even though the watermark moved past it', r3.ok === true && r3.held === 0 && posts[posts.length - 1].indexOf('exercise:' + ex.id) > -1 && !Object.keys(st3.held || {}).length, JSON.stringify({ r3: r3, posts: posts, held: st3.held }));
+  }).catch(function (err) { check('the sync hold test ran to the end', false, String(err && err.stack || err)); });
+})();
+
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */
 function scenes(todayIso) {
   var w = fresh(todayIso);
@@ -644,9 +790,8 @@ function scenes(todayIso) {
   check('addMany writes once, keeps single-per-day kinds single and skips invalid items', res.added === 1 && res.skipped === 3 && S2.list('weight').length === 1 && S2.list('weight')[0].data.kg === 50, JSON.stringify(res));
 })();
 
-/* The zip path is asynchronous (slices read through Blob.arrayBuffer): its promise joins `pending`, and the totals
- * print once every async check has finished (before 19 Oct the totals printed here, so checks after it raced the exit). */
-pending.push((function healthImportZips() {
+/* The zip path is asynchronous (slices read through Blob.arrayBuffer), so it runs last and prints the totals. */
+(function healthImportZips() {
   console.log('health import: zips are read by central directory and inflated one entry at a time');
   var w = fresh('2026-10-18'), H = w.OvuHealth;
   var apple = new File([fs.readFileSync(path.join(root, 'tools/fixtures/apple-export-mini.zip'))], 'export.zip');
@@ -668,7 +813,7 @@ pending.push((function healthImportZips() {
   }).then(function (msg) {
     check('an unknown file type explains what can be read', /export\.zip or export\.xml/.test(msg), msg);
   }).catch(function (e) { check('zip tests ran without throwing', false, e && e.stack || e); });
-})());
+})(); /* the summary is printed once the loop drains (end of file), never from inside one block */
 (function petShopShelves() {
   console.log('pet shop shelves: treats are used up, accessories are worn by one pet at a time');
   var w = fresh(), RW = w.OvuRewards, P = w.OvuPets, S = w.OvuStore;
@@ -799,154 +944,6 @@ pending.push((function healthImportZips() {
   check('swapping a kitten for another kitten still works with two at home', RW.toggle('catblack') === true && !RW.ledger().placed.cat);
 })();
 
-
-/* ---------- Movement: exercise entries, MET-minutes and the week against WHO (ovu-exercise.js) ---------- */
-(function exerciseTable() {
-  console.log('movement: the activity table is the 2024 Compendium, with WHO intensity bands');
-  var w = fresh(), EX = w.OvuExercise, ids = {}, codes = {}, okRows = true, bad = [];
-  EX.ACTIVITIES.forEach(function (a) {
-    if (ids[a.id]) bad.push('dup activity ' + a.id); ids[a.id] = 1;
-    var vids = {};
-    a.variants.forEach(function (v) {
-      if (vids[v.id]) bad.push('dup variant ' + a.id + '.' + v.id); vids[v.id] = 1;
-      if (a.id === 'other') { if (v.met !== null || v.code !== null || !v.effort) bad.push('other must have no MET ' + v.id); return; }
-      if (!/^\d{5}$/.test(v.code) || !(v.met > 0 && v.met < 25)) bad.push(a.id + '.' + v.id + ' code/met ' + v.code + '/' + v.met);
-      if (codes[v.code] && codes[v.code] !== v.met) bad.push('code ' + v.code + ' with two METs'); codes[v.code] = v.met;
-    });
-  });
-  check('every activity and variant is unique and carries a 5-digit Compendium code and a MET', !bad.length, bad.join('; '));
-  /* spot values read from pacompendium.com on 19 Oct 2026 (2024 Adult Compendium) */
-  var spot = { '17200': 4.8, '02185': 2.7, '02105': 2.8, '02150': 2.3, '12020': 7.5, '15030': 5.5, '02214': 11.0, '18240': 5.8, '01010': 4.0, '02054': 3.5 };
-  check('spot-checked MET values match the 2024 Compendium', Object.keys(spot).every(function (c) { return codes[c] === spot[c]; }), JSON.stringify(Object.keys(spot).map(function (c) { return c + '=' + codes[c]; })));
-  check('WHO absolute bands: under 3 light, 3 to under 6 moderate, 6 and over vigorous', EX.intensityOf(2.9) === 'light' && EX.intensityOf(3) === 'moderate' && EX.intensityOf(5.9) === 'moderate' && EX.intensityOf(6) === 'vigorous' && EX.intensityOf(null, 'moderate') === 'moderate' && EX.intensityOf(null) === null);
-  check('WHO targets are 150 to 300 moderate minutes and 2 strength days', EX.WHO.moderateMin === 150 && EX.WHO.moderateMax === 300 && EX.WHO.strengthDays === 2);
-})();
-
-(function exerciseEntries() {
-  console.log('movement: an entry is built only from a real choice, and copies its MET');
-  var w = fresh(), EX = w.OvuExercise, S = w.OvuStore, today = S.today();
-  var threw = function (fn) { try { fn(); return false; } catch (e) { return true; } };
-  check('no activity, no entry', threw(function () { EX.makeEntry({ minutes: 30 }); }));
-  check('an activity with several efforts needs one chosen', threw(function () { EX.makeEntry({ activity: 'walk', minutes: 30 }); }));
-  check('zero or missing minutes are refused', threw(function () { EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 0 }); }) && threw(function () { EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: '' }); }));
-  check('more than 10 hours in one entry is refused', threw(function () { EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 601 }); }));
-  var d = EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 30.4, note: '  park  ' });
-  check('a brisk walk copies code 17200, 4.8 MET, moderate, rounded minutes and a trimmed note', d.code === '17200' && d.met === 4.8 && d.intensity === 'moderate' && d.minutes === 30 && d.note === 'park' && d.strength === false && d.aerobic === true, JSON.stringify(d));
-  var st = EX.makeEntry({ activity: 'strength', variant: 'reps', minutes: 40, strength: false });
-  check('strength or weights always counts as strength work and not as aerobic minutes', st.strength === true && st.aerobic === false, JSON.stringify(st));
-  var one = EX.makeEntry({ activity: 'stretch', minutes: 10 });
-  check('an activity with one effort needs no choice', one.variant === 'mild' && one.met === 2.3 && one.intensity === 'light');
-  var oth = EX.makeEntry({ activity: 'other', variant: 'vigorous', minutes: 20 });
-  check('something else has no MET and takes its intensity from the effort chosen', oth.met === null && oth.code === null && oth.intensity === 'vigorous' && EX.metMinutes(oth) === null);
-  S.add('exercise', today, d); S.add('exercise', today, one);
-  var w2 = fresh(); w2.localStorage.setItem('ovumind_db_v1', w.localStorage.getItem('ovumind_db_v1')); w2.OvuStore.load(true);
-  check('two exercise entries on one day are both kept, and survive a reload', S.list('exercise').length === 2 && w2.OvuStore.list('exercise').length === 2);
-  check('a future day is refused for exercise like any entry', threw(function () { S.add('exercise', addDays(today, 1), d); }));
-})();
-
-(function exerciseWeek() {
-  console.log('movement: the last 7 days against WHO, with MET-minutes kept separate');
-  var w = fresh(), EX = w.OvuExercise, end = '2026-10-19';
-  var mk = function (date, input) { return { type: 'exercise', date: date, data: EX.makeEntry(input) }; };
-  var list = [
-    mk('2026-10-19', { activity: 'walk', variant: 'brisk', minutes: 30 }),
-    mk('2026-10-17', { activity: 'walk', variant: 'brisk', minutes: 30 }),
-    mk('2026-10-15', { activity: 'walk', variant: 'brisk', minutes: 30 }),
-    mk('2026-10-16', { activity: 'run', variant: 'jog', minutes: 25 }),
-    mk('2026-10-16', { activity: 'strength', variant: 'heavy', minutes: 40 }),
-    mk('2026-10-14', { activity: 'yoga', variant: 'hatha', minutes: 20 }),
-    mk('2026-10-13', { activity: 'other', variant: 'moderate', minutes: 15 }),
-    mk('2026-10-12', { activity: 'run', variant: 'run', minutes: 60 }),
-    { type: 'sleep', date: '2026-10-18', data: { minutes: 400 } }
-  ];
-  var s = EX.week(list, end);
-  check('the window is the 7 days ending today; an entry 8 days back is left out', s.from === '2026-10-13' && s.sessions === 7, JSON.stringify({ from: s.from, sessions: s.sessions }));
-  check('moderate 105, vigorous 25, a vigorous minute counts as two: 155 moderate-equivalent', s.moderate === 105 && s.vigorous === 25 && s.moderateEquivalent === 155, JSON.stringify(s));
-  check('155 is inside WHO’s 150 to 300 range', s.status === 'in' && s.toGo === 0);
-  check('light yoga and strength work are shown but not counted as aerobic minutes', s.light === 20 && s.strengthMinutes === 40);
-  check('MET-minutes add MET x minutes for known values only (432 + 187.5 + 200 + 46 = 866)', s.metMinutes === 866 && s.metUnknown === 1, 'metMinutes=' + s.metMinutes + ' unknown=' + s.metUnknown);
-  check('one strength day, six active days', s.strengthDays === 1 && s.activeDays === 6, JSON.stringify({ sd: s.strengthDays, ad: s.activeDays }));
-  var low = EX.week([mk(end, { activity: 'walk', variant: 'brisk', minutes: 40 })], end);
-  check('below the range says how many minutes are left, kindly', low.status === 'below' && low.toGo === 110 && /110 more moderate minutes/.test(EX.weekLine(low)) && /better than none/.test(EX.weekLine(low)), EX.weekLine(low));
-  var high = EX.week([mk(end, { activity: 'run', variant: 'run', minutes: 200 })], end);
-  check('above the range is described, not scored or warned', high.status === 'above' && /above WHO’s weekly range/.test(EX.weekLine(high)));
-  check('an empty week has its own line', /Nothing logged/.test(EX.weekLine(EX.week([], end))));
-})();
-
-(function exercisePeriodAndCopy() {
-  console.log('movement: the period note follows logged data only, and the words follow the sources');
-  var w = fresh(), EX = w.OvuExercise;
-  check('no period note without a logged period day or cramps', EX.periodContext([]) === null && EX.periodContext([{ type: 'period', data: { flow: 'none' } }]) === null);
-  check('a logged period day shows the period note', EX.periodContext([{ type: 'period', data: { flow: 'light' } }]) === 'period');
-  check('logged cramps show the cramps note', EX.periodContext([{ type: 'symptom', data: { symptoms: ['bloating', 'cramps'] } }]) === 'cramps');
-  var all = JSON.stringify(EX.COPY) + JSON.stringify(EX.ACTIVITIES);
-  check('no em or en dashes anywhere in the movement words', !/[—–]/.test(all));
-  check('no fixed cycle days, no "avoid HIIT", no ovulation scheduling', !/\b28\b|days? 1 ?to ?5|avoid (hiit|high)|around ovulation|peak performance/i.test(JSON.stringify(EX.COPY)));
-  check('the period words say movement is optional, may help, low certainty, listen to your body', /if you feel like it/.test(EX.COPY.period) && /may help/.test(EX.COPY.period) && /Listen to your body/.test(EX.COPY.period) && /low certainty/.test(EX.COPY.periodEvidence));
-  check('red flags include the urgent case and stopped periods with heavy training', /urgent appointment/.test(EX.COPY.redFlags) && /bleed between periods/.test(EX.COPY.redFlags) && /periods stop/.test(EX.COPY.redFlags));
-  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8'), w, { filename: 'ovu-evidence.js' });
-  var ev = w.OvuEvidence;
-  check('the movement guide cites WHO, the US guidelines, the Compendium, McNulty, Cochrane and the NHS', !!ev && ['E9', 'E67', 'E68', 'E69', 'E70', 'E71', 'E72'].every(function (id) { var e = ev.get(id); return e && e.topics.indexOf('move') > -1; }));
-})();
-
-(function exerciseHearts() {
-  console.log('movement: hearts once a day for logging, never for minutes or effort');
-  var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, EX = w.OvuExercise, today = S.today();
-  var a = S.add('exercise', today, EX.makeEntry({ activity: 'stretch', minutes: 5 }));
-  var r1 = RW.award(a);
-  var b = S.add('exercise', today, EX.makeEntry({ activity: 'run', variant: 'fast', minutes: 120 }));
-  var r2 = RW.award(b);
-  check('the first exercise log of the day earns 6', r1.points === 6, JSON.stringify(r1));
-  check('a second, longer and harder log the same day earns nothing more', r2.points === 0, JSON.stringify(r2));
-  check('saving the same entry again earns nothing', RW.award(a).points === 0);
-  var w2 = fresh(), S2 = w2.OvuStore, R2 = w2.OvuRewards, E2 = w2.OvuExercise;
-  var big = R2.award(S2.add('exercise', S2.today(), E2.makeEntry({ activity: 'run', variant: 'fast', minutes: 300 })));
-  check('a long vigorous session earns the same 6 as five minutes of stretching', big.points === r1.points);
-})();
-
-pending.push((function exerciseSyncHold() {
-  console.log('cloud sync: rows the server refuses by type are held, the rest upload, held rows go up later');
-  var SY = fresh().OvuSync;
-  var plan = { pushUp: [{ id: 'a' }], applyPut: [{ id: 'c' }], applyDel: ['d'], pushDel: [] };
-  var evs = { a: { id: 'a' }, b: { id: 'b' }, c: { id: 'c' }, d: { id: 'd' } };
-  SY.addHeld(plan, { a: 1, b: 1, c: 1, d: 1, gone: 1 }, function (id) { return evs[id] || null; });
-  check('held rows rejoin the push, without duplicates, skipping rows a newer cloud copy just replaced or deleted', plan.pushUp.map(function (e) { return e.id; }).join() === 'a,b', JSON.stringify(plan.pushUp));
-  var sp = SY.splitByType([{ id: 1, type: 'sleep' }, { id: 2, type: 'exercise' }, { id: 3, type: 'weight' }]);
-  check('a refused batch splits into the older types and the new ones', sp.ok.length === 2 && sp.held.length === 1 && sp.held[0].id === 2);
-  check('only a check-constraint refusal triggers the split', SY.typeRejected(new Error('rest 400 new row for relation "entries" violates check constraint "entries_type_check"')) && !SY.typeRejected(new Error('rest 401 JWT expired')));
-
-  /* end to end, with a pretend server that refuses 'exercise' until the migration is applied */
-  var w = fresh(), S = w.OvuStore, EX = w.OvuExercise, Y = w.OvuSync, migrated = false, posts = [];
-  w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
-  S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
-  var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
-  w.fetch = function (url, opt) {
-    var m = (opt && opt.method) || 'GET';
-    if (m === 'GET') return reply(200, []);
-    if (m === 'POST' && /\/entries/.test(url)) {
-      var rows = JSON.parse(opt.body);
-      if (!migrated && rows.some(function (r) { return r.type === 'exercise'; })) return reply(400, { code: '23514', message: 'new row for relation "entries" violates check constraint "entries_type_check"' });
-      posts.push(rows.map(function (r) { return r.type + ':' + r.id; })); return reply(201, null);
-    }
-    return reply(201, null);
-  };
-  var t = S.today(), sl = S.add('sleep', t, { bedTime: '23:00', wakeTime: '07:00', quality: 3, notes: '' }), ex = S.add('exercise', t, EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 30 }));
-  return Y.syncNow().then(function (r1) {
-    var st1 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
-    check('the first sync succeeds: the sleep row uploads and the exercise row is held', r1.ok === true && r1.held === 1 && posts.length === 1 && posts[0].join() === 'sleep:' + sl.id && st1.held && st1.held[ex.id], JSON.stringify({ r1: r1, posts: posts, held: st1.held }));
-    /* a later edit to another row moves the push watermark past the held row's time */
-    return new Promise(function (res) { setTimeout(res, 15); }).then(function () { S.update(sl.id, { data: Object.assign({}, sl.data, { quality: 4 }) }); return Y.syncNow(); });
-  }).then(function (r2) {
-    check('while refused, later syncs still upload other rows and keep holding', r2.ok === true && r2.held === 1 && posts[posts.length - 1].join() === 'sleep:' + sl.id, JSON.stringify({ r2: r2, posts: posts }));
-    migrated = true;
-    return Y.syncNow();
-  }).then(function (r3) {
-    var st3 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
-    check('once the server accepts it, the held row goes up even though the watermark moved past it', r3.ok === true && r3.held === 0 && posts[posts.length - 1].indexOf('exercise:' + ex.id) > -1 && !Object.keys(st3.held || {}).length, JSON.stringify({ r3: r3, posts: posts, held: st3.held }));
-  }).catch(function (err) { check('the sync hold test ran to the end', false, String(err && err.stack || err)); });
-})());
-
-Promise.all(pending).then(function () {
-  console.log('\n' + passes + ' passed, ' + fails + ' failed');
-  process.exit(fails ? 1 : 0);
-});
+/* the summary waits for every timer and promise the blocks scheduled: the loop drains, then we report, so no async check is ever cut off */
+var summarised = false;
+process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
