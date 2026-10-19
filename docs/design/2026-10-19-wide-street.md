@@ -64,9 +64,7 @@ What B needs, and nothing more:
 
 Seedream 5.0 pro returns 2048 x 1024 inside the gateway's time limit; a denser 1472 x 1840 job has died at the cutoff,
 and a 3:1 plate at the same pixel count would be 2508 x 836, too short to hold storefronts and a walkable street with
-any detail. At 2:1 in a 0.8 box the street is 2.5 screens wide at zoom 1. The zoom it opens at is picked from the render
-so that she stands as tall on screen as she does in the garden, without blowing the plate up past about 1.8 times its
-pixels on a 3x phone.
+any detail. At 2:1 in a 0.8 box the street is 2.5 screens wide at zoom 1, which is where it opens (see below).
 
 ## Tests
 
@@ -86,12 +84,15 @@ three-quarter view, one long slab, shops along the back, open cobbles along the 
 units. The slab's front edge runs on `y = 63 + 0.0964 (x - 15)` (perspective), the shopfronts sit on a parallel line, so
 the floor polygon follows both with a margin. What the render decided:
 
-- **Zoom 1.25, her size 15.4.** At 1.25 the plate is drawn at 1.8 times its pixels on a 3x phone (Codex measured 2.3 at
-  1.6). Her width times zoom matches the garden's (12 x 1.6), so she is the same size on screen in both; she stands about
-  1.3 times the height of a shop door, the same chibi proportion as the other scenes.
-- **Feet held at 68 % down the box (`cam.sy`)** instead of 58 %: the street has empty lavender below the slab and roofs
-  above, so holding her lower keeps the shopfronts whole. `centreOn` and `target` take the screen height as an optional
-  last argument; every other layout keeps 58 %.
+- **Zoom 1, her size 12.** First built at zoom 1.25 with her drawn at 15.4 (her width times zoom matching the garden's
+  12 x 1.6). While this was in review Jamie asked for every scene to open "always zoomed out fit to screen" (main,
+  19 Oct), so the street opens at zoom 1 like the rest: the plate's full height in view, two and a half screens of street
+  across, the camera following her sideways, and her standard width of 12 (about the height of a shop door, the same
+  proportion as the other scenes). At zoom 1 the plate is drawn at 1.43 times its pixels on a 3x phone.
+- **Feet held at 68 % down the box (`cam.sy`) once zoomed in** instead of 58 %: the street has empty lavender below the
+  slab and roofs above, so holding her lower keeps the shopfronts whole. `centreOn` and `target` take the screen height
+  as an optional last argument; every other layout keeps 58 %. At zoom 1 the view cannot move up or down, so it does not
+  apply until the person zooms in with +.
 - **The Cosy Nook has no door**, only its big lit window with the bench in front. Its doorstep is the cobbles in front of
   the bench (128, 68.2), its pin on the window.
 - **Storefronts open where a walk ends.** On a street 2.5 screens long she passes doorsteps all the time, so a storefront
@@ -115,8 +116,23 @@ Verdict: proceed with changes. Outcomes:
 | 6 | `seatPlace()` uses the plate aspect, so the street bench sizes her wrong; duplicated return point | Fixed in ovu-garden.js (box aspect); the street bench uses one shared stand point (`OvuStreet.BENCH_WP`); smoke checks the seated width (10.5, not the clamped 7) |
 | 7 | grid contract: span, allocation, blocked start, every index; pets use global columns | Done for the walk engine; pets keep their home and garden limit (span 1), unchanged |
 | 8 | focus or `scrollIntoView` can scroll an `overflow: hidden` box | `.scene { overflow: clip }`, a scroll reset, and keyboard focus on an off-screen pin moves the camera to it (smoke) |
-| 9 | 4680 x 2340 device pixels at zoom 1.6 on a 3x phone, 2.3x the image | Opens at 1.25 instead (1.8x, about 26 MiB for one surface); profiling on a real phone is still to do |
+| 9 | 4680 x 2340 device pixels at zoom 1.6 on a 3x phone, 2.3x the image | Opens at zoom 1 (1.43x, 2925 x 1463 device pixels, about 16 MiB for one surface); + can still zoom to 3; profiling on a real phone is still to do |
 | 10 | 60 iso units is a fair threshold; share one helper; fade when unreachable | `walkOrFade()` shared by both mini-map handlers, decided after committing a live walk; unreachable or far fades |
 | 11 | pure maths cannot prove the DOM; independent route checks; real taps | Route segments are checked against the floor polygons directly, plus a wall beyond x 100; smoke taps the real viewport, checks the menu, focus, both arches, right-end entry, the night veil's width and the bench |
+
+## Codex review (the diff, read-only, gpt-6-astra)
+
+Verdict: ship with fixes. All five taken:
+
+| # | Finding | Outcome |
+|---|---|---|
+| 1 | after a key walk she can stand on valid floor in a grid cell whose centre is off the floor or in a solid (198, 78 beside the plaza arch pillar); every route from there was null | `plan()` now starts from free cells she can reach in a straight line checked in true geometry (`startCells`, `segClear`); the old forced start cell is the fallback. Core test reproduces it (fails on the old planner, passes now) |
+| 2 | from just left of the Nook's pot (108.04, 63.5) the first leg of a route clipped the pot, and the "independent" test only checked floor polygons | the first leg is pulled only as far as true geometry allows; the core route check samples the solids too (strict on the first leg, a 0.6 margin for grid-precision corner grazes in the middle). Reproduced and fixed |
+| 3 | fit while she sits on the street bench reset the view to the left end (her figure is hidden, so no focus) | on a wide plate fit zooms to 1 about the box centre when she is hidden |
+| 4 | fit was disabled at zoom 1 though the street still pans, so after a drag nothing brought the view back | fit stays on for a wide plate and resumes following; its label says "Zoom out and find her" there; smoke drags, then fits |
+| 5 | a floor tap replacing a hotspot walk kept the hotspot's callback and door quiet, so the old action fired where she stopped | a floor tap or a key takeover drops the pending action and the door quiet; smoke taps Moonrise Homes then the floor |
+
+Also from main while this was built: pets now walk with her into every scene. Their fallback placement (`floorStart` in
+ovu-petwalk.js) read the grid without the mask's column count, which clamps at x 99 on the street; it now passes the mask.
 
 Not covered: an iOS Safari device run and a 3x-phone memory profile (Chromium at 390 px, DPR 2 and 3, only).

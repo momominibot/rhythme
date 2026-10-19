@@ -238,7 +238,7 @@ async def main():
             # 1c. the wide street (docs/design/2026-10-19-wide-street.md): a 2:1 plate 2.5 boxes wide, walked with real taps, the camera following
             STREET = "()=>{var sc=document.querySelector('#scene'), b=sc.getBoundingClientRect(), im=document.querySelector('#roomDay').getBoundingClientRect(), nv=document.querySelector('.night-veil').getBoundingClientRect(), a=document.querySelector('#avatar').getBoundingClientRect(), s=OvuCamera.state(); return {layout: sc.dataset.layout, aspect: b.width/b.height, plate: im.width/(b.width*s.z), veil: nv.width/im.width, z: s.z, x: s.x, held: s.held, minX: b.width-b.width*2.5*s.z, pos: OvuRoom.pos(), sx: (a.left+a.width/2-b.left)/b.width, sy: (a.bottom-b.top)/b.height, scrollL: sc.scrollLeft, walking: OvuWalk.walking()}}"
             ws = await page.evaluate(STREET)
-            check("on the wide street the box keeps its 0.8 view, the plate and the night veil run 2.5 boxes wide, and it opens at zoom 1.25", ws["layout"] == "street" and abs(ws["aspect"] - 0.8) < 0.01 and abs(ws["plate"] - 2.5) < 0.01 and abs(ws["veil"] - 1) < 0.01 and abs(ws["z"] - 1.25) < 0.01, ws)
+            check("on the wide street the box keeps its 0.8 view, the plate and the night veil run 2.5 boxes wide, and it opens fitted (zoom 1) like every scene", ws["layout"] == "street" and abs(ws["aspect"] - 0.8) < 0.01 and abs(ws["plate"] - 2.5) < 0.01 and abs(ws["veil"] - 1) < 0.01 and abs(ws["z"] - 1) < 0.01, ws)
             trail = []
             for _ in range(9):
                 tp = await page.evaluate("()=>{var sc=document.querySelector('#scene').getBoundingClientRect(), r=document.querySelector('#sceneInner').getBoundingClientRect(), sx=sc.left+sc.width*0.82, x=(sx-r.left)/r.width*100, y=63+0.0964*(x-15)-2.5, sy=r.top+y/100*r.height; if (sy>sc.top+sc.height*0.75) { sy=sc.top+sc.height*0.75; y=(sy-r.top)/r.height*100; } return {sx: sx, sy: sy, x: x, y: y}}")
@@ -263,6 +263,20 @@ async def main():
             except Exception: pass
             await page.wait_for_timeout(700); wr = await page.evaluate(STREET)
             check("the plaza arch at the right end takes her to the plaza, and coming back she stands in that arch with the view at the plate's right edge", pz == "plaza" and wr["layout"] == "street" and abs(wr["pos"]["x"] - 222) < 1 and abs(wr["x"] - wr["minX"]) < 2 and 0.1 < wr["sx"] < 0.9, {"plaza": pz, "back": wr})
+            sb0 = await page.evaluate("()=>{var r=document.querySelector('#scene').getBoundingClientRect(); return {x: r.left, y: r.top, w: r.width, h: r.height}}")
+            await page.mouse.move(sb0["x"] + 40, sb0["y"] + sb0["h"] * 0.7); await page.mouse.down(); await page.mouse.move(sb0["x"] + 300, sb0["y"] + sb0["h"] * 0.7, steps=10); await page.mouse.up(); await page.wait_for_timeout(300)
+            dragged = await page.evaluate(STREET)
+            fitOn = await page.evaluate("()=>!document.querySelector('#camFit').disabled")
+            await page.click("#camFit"); await page.wait_for_timeout(1600)
+            refit = await page.evaluate(STREET)
+            check("at zoom 1 a sideways drag pans the street and holds the view; fit is on there and brings the view back to her", dragged["held"] and dragged["x"] > wr["x"] + 150 and fitOn and not refit["held"] and 0.1 < refit["sx"] < 0.9 and abs(refit["z"] - 1) < 0.01, {"dragged": dragged, "fit": fitOn, "refit": refit})
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('homes'))"); await page.wait_for_timeout(250)
+            await page.evaluate("()=>{var p=OvuRoom.pos(); return OvuWalk.tapWalk(p.x-14, p.y-1)}")
+            try: await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000)
+            except Exception: pass
+            await page.wait_for_timeout(900)
+            rt = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, sheet: document.querySelector('#sheet').getAttribute('aria-hidden'), pos: OvuRoom.pos()})")
+            check("a floor tap that replaces a walk to Moonrise Homes leaves her where she tapped, without opening the store", rt["layout"] == "street" and rt["sheet"] != "false" and rt["pos"]["x"] < 215, rt)
             await page.focus(".hotspot[data-id=petshop]"); await page.wait_for_timeout(600)
             fo = await page.evaluate("()=>{var h=document.querySelector('.hotspot[data-id=petshop]').getBoundingClientRect(), b=document.querySelector('#scene').getBoundingClientRect(); return {inside: h.left>=b.left && h.right<=b.right && h.top>=b.top && h.bottom<=b.bottom, held: OvuCamera.state().held, scrollL: document.querySelector('#scene').scrollLeft}}")
             check("keyboard focus on a storefront two screens away brings it into view (the box itself never scrolls)", fo["inside"] and fo["held"] and fo["scrollL"] == 0, fo)

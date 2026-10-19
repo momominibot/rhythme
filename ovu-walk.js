@@ -181,11 +181,28 @@
     return null;
   }
   /* greedy string pulling: from each corner, jump to the farthest later point still in line of sight */
-  function pull(m, pts) {
+  function pull(m, pts, first) {
     if (pts.length < 3) return pts.slice();
     var out = [pts[0]], i = 0;
-    while (i < pts.length - 1) { var j = pts.length - 1; while (j > i + 1 && !lineFree(m, pts[i], pts[j])) j--; out.push(pts[j]); i = j; }
+    while (i < pts.length - 1) { var j = pts.length - 1; while (j > i + 1 && !(lineFree(m, pts[i], pts[j]) && (i || !first || first(pts[0], pts[j])))) j--; out.push(pts[j]); i = j; }
     return out;
+  }
+  /* a straight segment in true geometry, not the grid: every quarter unit stays on the floor and out of the solids, except
+   * the one piece she may be standing in (box) */
+  function segClear(world, a, b, box) {
+    var n = Math.max(2, Math.ceil(Math.hypot(b.x - a.x, (b.y - a.y) / Y_SCALE) / 0.25));
+    for (var i = 1; i <= n; i++) { var t = i / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t; if (!inZones(world.zones, x, y)) return false; var bl = blocked(world.solids, x, y); if (bl && bl !== box) return false; }
+    return true;
+  }
+  /* where a grid route may start: free cells near her whose centres she reaches in a straight line in true geometry,
+   * nearest first. A key walk can leave her on the floor in a cell whose centre is off it or inside a pot (Codex, 19 Oct);
+   * starting from such a cell either finds no way out or clips the corner it hides */
+  function startCells(m, world, from, box) {
+    var s = cellOf(from.x, from.y, m), out = [];
+    for (var dr = -6; dr <= 6; dr++) for (var dc = -3; dc <= 3; dc++) { var c = s.c + dc, r = s.r + dr; if (!cellFree(m, c, r)) continue; var p = centre(c, r); out.push({ c: c, r: r, d: Math.hypot(p.x - from.x, (p.y - from.y) / Y_SCALE) }); }
+    out.sort(function (a, b) { return a.d - b.d; });
+    var ok = []; for (var i = 0; i < out.length && ok.length < 4; i++) { var q = centre(out[i].c, out[i].r); if (segClear(world, from, q, box)) ok.push(out[i]); }
+    return ok;
   }
   /* Plan a walk from `from` to the tapped `to` (both plate percent). The goal snaps to the nearest free cell within
    * `snap` cells when the tap lands on furniture or a wall. Returns { pts, snapped, cost } with pts starting at `from`,
@@ -196,20 +213,27 @@
     /* a blocked start (a hotspot walk can end on furniture): she may cross the piece she stands in, nothing else */
     var box = blocked(world.solids, from.x, from.y);
     if (box) for (var r = 0; r < ROWS; r++) for (var c = 0; c < cols; c++) { var q = centre(c, r); if (inBox(box, q.x, q.y) && inZones(world.zones, q.x, q.y)) m[r * cols + c] = 1; }
-    m[s.r * cols + s.c] = 1;
+    /* the route starts at a cell she can step to in a straight line (the first leg is checked in true geometry); with none,
+     * the cell she stands in is forced open as before */
+    var starts = startCells(m, world, from, box), forced = !starts.length;
+    if (forced) { m[s.r * cols + s.c] = 1; starts = [s]; }
+    var first = forced ? null : function (a, b) { return segClear(world, a, b, box); };
     for (var k = 0; k < Math.min(cands.length, 6); k++) {
       var g = cands[k], snapped = g.c !== g0.c || g.r !== g0.r, goal = snapped ? centre(g.c, g.r) : { x: to.x, y: to.y };
       if (g.c === s.c && g.r === s.r) return { pts: [{ x: from.x, y: from.y }, goal], snapped: snapped, cost: Math.hypot(goal.x - from.x, (goal.y - from.y) / Y_SCALE) };
-      var cells = astar(m, s, g); if (!cells) continue; /* an unreachable pocket: try the next nearest */
-      var pts = cells.map(function (x) { return centre(x.c, x.r); }); pts[0] = { x: from.x, y: from.y }; pts[pts.length - 1] = goal;
-      var corners = pull(m, pts), cost = 0;
-      for (var i = 1; i < corners.length; i++) cost += Math.hypot(corners[i].x - corners[i - 1].x, (corners[i].y - corners[i - 1].y) / Y_SCALE);
-      return { pts: corners, snapped: snapped, cost: cost };
+      for (var q = 0; q < starts.length; q++) {
+        var cells = astar(m, starts[q], g); if (!cells) continue; /* an unreachable pocket: try the next start, then the next goal */
+        var pts = cells.map(function (x) { return centre(x.c, x.r); }); pts[pts.length - 1] = goal;
+        if (forced) pts[0] = { x: from.x, y: from.y }; else pts.unshift({ x: from.x, y: from.y });
+        var corners = pull(m, pts, first), cost = 0;
+        for (var i = 1; i < corners.length; i++) cost += Math.hypot(corners[i].x - corners[i - 1].x, (corners[i].y - corners[i - 1].y) / Y_SCALE);
+        return { pts: corners, snapped: snapped, cost: cost };
+      }
     }
     return null;
   }
 
-  var W = { Y_SCALE: Y_SCALE, SPEED: SPEED, FAR: FAR, SUBSTEP: SUBSTEP, CELL: CELL, ROWH: ROWH, COLS: COLS, ROWS: ROWS, rasterise: rasterise, cellOf: cellOf, centre: centre, cellFree: cellFree, nearestFree: nearestFree, nearestFreeList: nearestFreeList, inBox: inBox, lineFree: lineFree, astar: astar, pull: pull, plan: plan, inPoly: inPoly, inZones: inZones, blocked: blocked, propBox: propBox, step: step, doorAt: doorAt, passing: passing, depthRank: depthRank, world: world, HOMES: HOMES, HOME_ONLY: HOME_ONLY, dressHomes: dressHomes, sceneOf: sceneOf, entryFor: entryFor, checkLayout: checkLayout, SCENES: ['home', 'garden', 'street', 'plaza'], FRAMES: FRAMES, FPS: FPS, STRIDE: STRIDE, cycleAdvance: cycleAdvance, frameOf: frameOf, dirFor: dirFor };
+  var W = { Y_SCALE: Y_SCALE, SPEED: SPEED, FAR: FAR, SUBSTEP: SUBSTEP, CELL: CELL, ROWH: ROWH, COLS: COLS, ROWS: ROWS, rasterise: rasterise, cellOf: cellOf, centre: centre, cellFree: cellFree, nearestFree: nearestFree, nearestFreeList: nearestFreeList, inBox: inBox, lineFree: lineFree, astar: astar, pull: pull, segClear: segClear, startCells: startCells, plan: plan, inPoly: inPoly, inZones: inZones, blocked: blocked, propBox: propBox, step: step, doorAt: doorAt, passing: passing, depthRank: depthRank, world: world, HOMES: HOMES, HOME_ONLY: HOME_ONLY, dressHomes: dressHomes, sceneOf: sceneOf, entryFor: entryFor, checkLayout: checkLayout, SCENES: ['home', 'garden', 'street', 'plaza'], FRAMES: FRAMES, FPS: FPS, STRIDE: STRIDE, cycleAdvance: cycleAdvance, frameOf: frameOf, dirFor: dirFor };
   root.OvuWalk = W;
 
   /* ---------- DOM wiring (only in the room page) ---------- */
@@ -398,6 +422,7 @@
     if (!res) { showRing(x, y, true); return false; }
     var goal = res.pts[res.pts.length - 1]; showRing(goal.x, goal.y, false);
     if (!start()) return false;
+    pendingDone = null; quietDoors = false; /* a floor tap replaces a hotspot walk under way: its action no longer waits at the end */
     route = { pts: res.pts.slice(1), i: 0, left: res.cost }; routeEnded = false; inDoor = !!doorAt(worldNow().doors, cur.x, cur.y); R.emit('walk', 'tap'); /* an accepted walk: the camera follows again */
     return true;
   }
@@ -496,7 +521,7 @@
       var k = KEYS[e.key]; if (!k || e.metaKey || e.ctrlKey || e.altKey) return;
       var t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       if (R.busy()) return;
-      e.preventDefault(); if (!keys[k]) { keys[k] = true; route = null; start(); }
+      e.preventDefault(); if (!keys[k]) { keys[k] = true; route = null; pendingDone = null; quietDoors = false; start(); } /* keys take over: a hotspot walk's action is dropped */
     });
     doc.addEventListener('keyup', function (e) { var k = KEYS[e.key]; if (k) delete keys[k]; });
     root.addEventListener('blur', function () { keys = {}; });

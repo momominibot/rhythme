@@ -304,12 +304,15 @@
   function camApply(anim) {
     camClamp(); inner.style.transformOrigin = '0 0'; inner.style.transition = anim ? 'transform .35s ease' : 'none';
     inner.style.transform = cam.z > 1.001 || Math.abs(cam.x) > 0.05 || Math.abs(cam.y) > 0.05 ? 'translate(' + cam.x.toFixed(1) + 'px,' + cam.y.toFixed(1) + 'px) scale(' + cam.z.toFixed(3) + ')' : ''; /* a wide plate pans at zoom 1 too */
-    scene.classList.toggle('zoomed', cam.z > 1.01); var f = $('#camFit'); if (f) f.disabled = cam.z <= 1.01;
+    scene.classList.toggle('zoomed', cam.z > 1.01); var f = $('#camFit'); if (f) { var wide = spanOf(L) > 1; f.disabled = cam.z <= 1.01 && !wide; f.setAttribute('aria-label', wide ? 'Zoom out and find her' : 'Show the whole home'); } /* on a wide plate fit also brings the view back to her after a drag */
   }
   function camZoomAt(px, py, z, anim) { var cx = (px - cam.x) / cam.z, cy = (py - cam.y) / cam.z; cam.z = Math.max(1, Math.min(CAM_MAX, z)); cam.x = px - cx * cam.z; cam.y = py - cy * cam.z; camApply(anim); }
   /* fit: the whole plate. A wide plate cannot fit, so the person's fit there zooms to 1 about her (aboutHer) rather than
    * jumping to its left end; a layout change always starts from the plain reset */
-  function camFit(anim, aboutHer) { var f = aboutHer && spanOf(L) > 1 && hooks.camFocus && hooks.camFocus(); if (f) { camZoomAt(f.x, f.y, 1, anim); return; } cam = { z: 1, x: 0, y: 0 }; camApply(anim); }
+  function camFit(anim, aboutHer) {
+    if (aboutHer && spanOf(L) > 1) { var f = (hooks.camFocus && hooks.camFocus()) || { x: scene.clientWidth / 2, y: scene.clientHeight / 2 }; camZoomAt(f.x, f.y, 1, anim); return; } /* sitting or meditating she is hidden: keep the part of the street in view */
+    cam = { z: 1, x: 0, y: 0 }; camApply(anim);
+  }
   function camLocal(e) { var r = scene.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   function camInteractive(t) { return t.closest('.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.walkpad,.minimap,.nb,.plot,button,a,input'); }
   scene.addEventListener('pointerdown', function (e) {

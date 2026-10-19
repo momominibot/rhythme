@@ -34,7 +34,7 @@
     return true;
   }
   /* the nearest floor cell to a point: where a pet placed on the plate's rim steps onto the floor */
-  function floorStart(W, world, p) { var m = W.rasterise(world), c = W.cellOf(p.x, p.y), n = W.nearestFree(m, c.c, c.r, 8); return n ? W.centre(n.c, n.r) : null; }
+  function floorStart(W, world, p) { var m = W.rasterise(world), c = W.cellOf(p.x, p.y, m), n = W.nearestFree(m, c.c, c.r, 8); return n ? W.centre(n.c, n.r) : null; }
   /* a route from where the pet stands; off the floor it first steps to the nearest floor cell, then the planner takes over */
   function planFrom(W, world, from, to, snap, startOff) {
     if (!startOff) return W.plan(world, from, to, snap);

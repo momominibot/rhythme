@@ -6,9 +6,10 @@
   'use strict';
   /* A wide plate (docs/design/2026-10-19-wide-street.md): rendered 19 Oct 2026 (Seedream 5.0 pro, seed 7311, 2048x1024)
    * and drawn 2.5 box widths wide (span), so every position below is a percent of the BOX: x runs 0 to 250, y 0 to 100.
-   * Read off a 5-unit grid. The street opens at zoom 1.25 (the plate stays under about 1.8 times its pixels on a 3x phone)
-   * and she is drawn at 15.4 so she stands as tall on screen as in the garden at 1.6. The Cosy Nook is a big lit window
-   * with the bench in front of it, so its doorstep is the cobbles in front of the bench. */
+   * Read off a 5-unit grid. Like every scene it opens fitted to the screen (zoom 1, Jamie 19 Oct): the whole height in view
+   * and two and a half screens of street to walk, the camera following her sideways. If the person zooms in, her feet are
+   * held a little lower on the box (cam.sy) so the shopfronts stay whole. The Cosy Nook is a big lit window with the bench
+   * in front of it, so its doorstep is the cobbles in front of the bench. */
   var STORES = [
     { id: 'petshop', tab: 'pet', layout: 'shop-pet', name: 'Whisker & Paw', hours: [10, 19], x: 98.5, y: 50, label: 'Whisker & Paw · adopt a friend', wp: { x: 98.5, y: 62.6, flip: false } },
     { id: 'furniture', tab: 'furniture', layout: 'shop-furniture', name: 'The Cosy Nook', hours: [11, 21], x: 129.5, y: 45, label: 'The Cosy Nook · pieces for your room', wp: { x: 128, y: 68.2, flip: false } },
@@ -16,7 +17,7 @@
   ];
   var BENCH_WP = { x: 141, y: 68.8, flip: true }; /* beside the bench, on the cobbles below the right-hand pot */
   var STREET = {
-    id: 'street', scene: 'street', name: 'Dream Street', img: 'street-wide-v1.webp', w: 2048, h: 1024, span: 2.5, cam: { z: 1.25, sy: 0.68 }, avatarW: 15.4, only: [],
+    id: 'street', scene: 'street', name: 'Dream Street', img: 'street-wide-v1.webp', w: 2048, h: 1024, span: 2.5, cam: { sy: 0.68 }, avatarW: 12, only: [],
     hotspots: STORES.map(function (s) { return { id: s.id, x: s.x, y: s.y, label: s.label, icon: 'storefront', wp: s.wp }; }).concat([
       { id: 'arch', x: 38, y: 42, label: 'Arch · back to the garden', icon: 'park', wp: { x: 38, y: 60.2, flip: true } },
       { id: 'arch2', x: 216, y: 50, label: 'Arch · on to the plaza', icon: 'park', wp: { x: 222, y: 73.6, flip: false } },
