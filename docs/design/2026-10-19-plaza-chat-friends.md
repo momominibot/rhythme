@@ -16,7 +16,7 @@ location, friendship is platonic, hearts come only from logging.
 | Where | Only people in **the same group at the same time** (both checked in within 75 s). | Being in PCOS is health information. Showing it only to people who are in PCOS at that moment adds little; showing it to anyone else would add a lot. |
 | What others see | Plaza name, look, and whether you are already friends or have asked. | Nothing else exists to show: no photo, no bio, no account name or email, no diary, no cycle, no group history, no online status. |
 | Friend requests | Tap a person in your group, then **Ask to be friends**, with an optional preset hello. Only while both of you are in the same group. | Requests need a shared moment, so handles cannot be harvested and sent requests later from anywhere. |
-| Answering | Accept or Not now. **Not now is silent**: the sender keeps seeing "asked" until it lapses after 14 days, and cannot ask again for 30 days. If you ask someone who already asked you, you are simply friends. | Saying no should cost nothing. |
+| Answering | Accept or Not now. **Not now is silent**: an ask leaves her list after 14 days; the sender sees "asked" for 30 days from sending whatever happened, and cannot ask again in that time, so a decline looks the same as no answer. If you ask someone who already asked you, you are simply friends. | Saying no should cost nothing. |
 | Unfriend | Either side, at any time, silent. The notes between you are deleted. | |
 | Block | On every card and every note. Silent and two-way: neither sees the other in any group, requests and notes stop, friendship and pending requests end. Blocks stay until you remove them or delete your account, even if you turn Plaza friends off. | Her safety settings must outlive a pause. |
 | Talking, phase 1 | **Kind notes between friends, from a set list of phrases only.** No free text anywhere. Strangers can send only a friend request (with an optional preset hello). | A fixed list cannot carry harassment, contact details, medical advice or a crisis disclosure that nobody is there to answer. |
@@ -110,6 +110,21 @@ The `consent_events.purpose` check gains `social`. The consent rebuild (PR #3) l
 
 Not shown by these tests: two live sessions racing (a single transaction cannot); the lock order is in the source and
 `pg_locks` shows both accounts held after a call.
+
+**Round two (19 Oct): REJECT. Stopped here for Jamie (AGENTS gate 6: a second failed review on the same findings).**
+Resolved: 1, 3, 4, 8, 9, 10, 11. Still open, with the smallest fix proposed and **not applied**:
+
+| # | Finding (round two) | Proposed fix |
+|---|---|---|
+| 2 (blocker, repeat) | Signing into another account in another tab does not reach this tab's listener, so the last account's card and friends stay on screen until something else changes it | Listen for the `storage` event on `ovumind_auth_v1` and check the signed-in id on every timer tick; either runs the same reset (cancel, clear, close the sheet) |
+| 5 (repeat) | Blocking someone who blocked you, while in the same group, copies her current card into your Blocked list | `social.visible` also requires no block either way and both accounts eligible; otherwise "Someone" |
+| 6 (repeat) | A hidden person can learn whether a remembered handle is in a group by blocking it (named or "Someone") | The co-presence branch requires both cards shown (mutual), as `social_people` does |
+| 7 (repeat) | After a failure, people and inbox checks still retry on their own (after a plaza check-in, and every minute) | Keep a failure flag for both until she acts (opens the plaza sheet, the friends sheet, or walks back in); no timer or check-in clears it |
+| 12 (repeat, partial) | No two-session race test; the cross-tab switch is not in the smoke run | Two-session tests need a second connection (a Supabase branch, which costs money, or a local Postgres); add the cross-tab case to the smoke run with the fix for 2 |
+| 13 (new) | Withdrawing 18+ is not serialised with friends calls | The consent trigger also takes the account lock for `age_18` withdrawals |
+| 14 (new) | Two staff decisions at once can dismiss a report while the other pauses | Lock the report row (`for update`) and the account first, recheck `open`, and guard the final update |
+| 15 (new) | `social_read` works while paused or after 18+ is withdrawn | Lock and require `social.ok` |
+| design | Daily clean-up means deletion up to a day after 30 days; an unanswered ask leaves her list after 14 days but the sender sees "asked" for 30 | Say "within a day after 30 days"; keep the two windows as designed and word them that way (section 1 says so) |
 
 ## 8. Phases
 
