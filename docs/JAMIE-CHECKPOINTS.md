@@ -26,8 +26,9 @@ list. Every change walks it before a push; `tools/checkpoints.sh` asks jev the s
 1. No walk toggle; tap the floor to walk; keys still work on desktop.
 2. She walks normally, a real eight-frame cycle in her own outfit; no hopping. Nothing changes her outfit by itself.
 3. The pets walk normally too (their own cycles) and wander, never through furniture, the pond or the plot.
-4. The screen follows her as she walks; outdoors and in stores the view is closer, like a game. Home shows the whole
-   room so every hotspot stays a tap away (Jamie may change this).
+4. The screen follows her as she walks, like a game. Every scene opens fitted to the screen (zoom 1; Jamie, 19 Oct:
+   "always zoomed out fit to screen"); + zooms in. Dream Street is one wide plate, two and a half screens long, that
+   the view scrolls across as she walks ("bigger space to walk").
 5. Stores: no plaques on the street; an attempt to go in shows that store's own hours; the three stores keep different
    hours and carry their own names (Whisker & Paw, The Cosy Nook, Moonrise Homes), not "Dream Street".
 6. Items in stores stand on surfaces, placed nicely, no price chips; bought things leave the shelf for the inventory.
