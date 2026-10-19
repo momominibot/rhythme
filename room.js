@@ -1400,13 +1400,24 @@
       }
   function shopList(items, l, home) { return '<div class="shop">' + items.map(function (it) { return shopItemHTML(it, l, home); }).join('') + '</div>'; }
   var SHOP_OPEN = 9, SHOP_CLOSE = 22;
-  function shopOpenNow() { var h = new Date().getHours(); return (h >= SHOP_OPEN && h < SHOP_CLOSE) || (RW.tester && RW.tester()); }
+  /* hours and names belong to the street (ovu-street.js); without it the whole street keeps 9 to 22 */
+  function storeTab(it) { return !it ? 'street' : it.kind === 'home' ? 'home' : it.kind === 'furniture' ? 'furniture' : 'pet'; }
+  function shopOpenNow(tab) {
+    if (RW.tester && RW.tester()) return true;
+    var ST = window.OvuStreet;
+    if (ST && ST.openNow && tab && tab !== 'street') return ST.openNow(tab);
+    if (ST && ST.openNow && (!tab || tab === 'street')) return ['pet', 'furniture', 'home'].some(function (t) { return ST.openNow(t); });
+    var h = new Date().getHours(); return h >= SHOP_OPEN && h < SHOP_CLOSE;
+  }
+  function storeName(tab) { var ST = window.OvuStreet, st = ST && ST.storeFor ? ST.storeFor(tab) : null; return st && st.name ? st.name : STORES[tab].title; }
+  function storeHours(tab) { var ST = window.OvuStreet; return ST && ST.hoursText ? ST.hoursText(tab) : '9 am to 10 pm'; }
   function openShop(tab) {
     if (tab) shopTab = tab;
     if (shopTab !== 'street' && !STORES[shopTab]) shopTab = 'street';
-    if (!shopOpenNow() || asleep()) {
-      openSheet('shop', 'Dream Street', asleep() ? 'The shops can wait until morning' : 'Open 9 am to 10 pm', 'storefront',
-        '<div class="closedcard"><span class="ms">nights_stay</span><b>' + (asleep() ? 'She is asleep.' : 'The shutters are down.') + '</b><p>' + (asleep() ? 'Tap the bed to wake her, then come back.' : 'Dream Street opens at 9 in the morning and closes at 10 at night. Your things are still yours; arranging the home works any time.') + '</p>' +
+    if (!shopOpenNow(shopTab) || asleep()) {
+      var closedName = shopTab === 'street' ? 'Dream Street' : storeName(shopTab), hoursLine = shopTab === 'street' ? ['pet', 'furniture', 'home'].map(function (t) { return storeName(t) + ' ' + storeHours(t); }).join(' · ') : storeName(shopTab) + ' opens ' + storeHours(shopTab) + ', every day';
+      openSheet('shop', closedName, asleep() ? 'The shops can wait until morning' : 'Closed right now', 'storefront',
+        '<div class="closedcard"><span class="ms">' + (asleep() ? 'nights_stay' : 'schedule') + '</span><b>' + (asleep() ? 'She is asleep.' : closedName + ' is closed right now.') + '</b><p>' + (asleep() ? 'Tap the bed to wake her, then come back.' : hoursLine + '. Your things are still yours; arranging the home works any time.') + '</p>' +
         (!asleep() && RW.ledger().owned.some(function (id) { var it = RW.item(id); return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div>' : '') + '</div>');
       body.addEventListener('click', function (e) { if (e.target.closest('#arrangeBtn')) enterArrange(); });
       return;
@@ -1418,10 +1429,10 @@
     var nav = street
       ? '<div class="street">' + Object.keys(STORES).map(function (k) {
           var s = STORES[k], all = RW.SHOP.filter(function (it) { return it.kind === k; }), mine = all.filter(function (it) { return l.owned.indexOf(it.id) > -1; }).length;
-          return '<button type="button" class="store" data-tab="' + k + '"><img src="' + ART + s.img + '" alt=""><span><b>' + s.title + '</b><small>' + s.blurb + ' · ' + all.length + (mine ? ' · ' + mine + ' yours' : '') + '</small></span><span class="ms">chevron_right</span></button>';
+          var openK = shopOpenNow(k); return '<button type="button" class="store' + (openK ? '' : ' closed') + '" data-tab="' + k + '"><img src="' + ART + s.img + '" alt=""><span><b>' + esc(storeName(k)) + '</b><small>' + s.blurb + ' · ' + all.length + (mine ? ' · ' + mine + ' yours' : '') + '</small><small class="hours">' + (openK ? 'Open now · ' : 'Closed · opens ') + esc(storeHours(k)) + '</small></span><span class="ms">chevron_right</span></button>';
         }).join('') + '</div>'
       : '<div class="streetnav"><button type="button" class="back" data-tab="street"><span class="ms">arrow_back</span>Dream Street</button><span class="heartsmini"><span class="ms fill">favorite</span>' + (testing ? '∞' : l.hearts) + '</span></div><p class="help">' + st.sub + '</p>';
-    openSheet('shop', street ? 'Dream Street' : st.title, street ? 'Three little shops. Hearts from logging pay for everything.' : st.tag, street ? 'storefront' : st.icon,
+    openSheet('shop', street ? 'Dream Street' : storeName(shopTab), street ? 'Three little shops. Hearts from logging pay for everything.' : st.tag + ' · ' + storeHours(shopTab), street ? 'storefront' : st.icon,
       (street ? '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + (testing ? '∞' : l.hearts) + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, everyday practice 5 (+10 the first time), +5 from day three of a streak.</p></div>' : '') +
       nav +
       (street ? '' : shopList(items, l, home) +
@@ -1449,11 +1460,12 @@
     if (action === 'buy') {
       /* one hours check for every way of buying: the sheet, the storefront cards and the interiors */
       if (asleep()) throw new Error('She is asleep. Tap the bed to wake her first.');
-      if (!shopOpenNow()) throw new Error('Dream Street is closed now. It opens at 9 in the morning.');
+      var sit = RW.item(id); if (!shopOpenNow(storeTab(sit))) throw new Error(storeName(storeTab(sit)) + ' is closed now. Open ' + storeHours(storeTab(sit)) + '.');
       var it = RW.buy(id); chime('save', true);
       if (it.kind === 'home') { S.setState({ home: it.id }); closeSheet(); go(it.id, false); toast('Welcome home. ' + it.name + ' is yours!', 'cottage'); }
       else if (it.kind === 'treat') { toast(it.name + ' are in the cupboard. Tap a pet to give one.', 'cookie'); again(); }
       else if (it.kind === 'accessory') { toast(it.name + ' is in the drawer. Tap a pet, then Dress up.', 'checkroom'); again(); }
+      else if (it.waiting) { toast(it.name + ' is yours and waits in the inventory: two pets at home at a time.', 'pets'); again(); }
       else { renderProps(); toast(it.name + ' is now in your home!' + (it.swapped && it.swapped.length ? ' ' + it.swapped.join(' and ') + ' went into storage; swap back any time.' : ''), 'favorite'); again(); }
       return it;
     }

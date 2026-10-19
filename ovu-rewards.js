@@ -48,12 +48,17 @@
   /* tester mode (room.html?tester=hearts): nothing is deducted on this device, so every shelf can be tried */
   function tester() { var t = S.state().tester; return !!(t && t.hearts); }
   /* Award for a saved entry; a first log on a new day also grows the streak. */
+  /* a saved record earns once: editing it again returns the same receipt and no hearts */
+  function receipted(l, ev) { l.receipts = l.receipts || {}; if (!ev || !ev.id) return false; if (l.receipts[ev.id]) return true; l.receipts[ev.id] = 1; var ks = Object.keys(l.receipts); if (ks.length > 3000) ks.slice(0, ks.length - 3000).forEach(function (k) { delete l.receipts[k]; }); return false; }
   function award(ev) {
     if (ev.type === 'weight') return { points: 0, bonus: 0, hearts: ledger().hearts }; /* numbers are never rewarded */
+    var l0 = ledger(); if (receipted(l0, ev)) { write(l0); return { points: 0, bonus: 0, hearts: l0.hearts, streak: l0.streak, again: true }; } write(l0);
     if (ev.type === 'mindfulness' && ev.data && ev.data.kind === 'breathtap') {
       /* Moon Tap: 2 hearts per full minute of practice, seconds carried between sessions, capped like other practice, no streak bonus, nothing for taps */
-      var lb = ledger(), carry = (lb.breathCarry || 0) + Math.max(0, Number(ev.data.seconds) || 0), whole = Math.floor(carry / 60), bp = Math.min(20, whole * 2);
-      lb.breathCarry = carry - whole * 60;
+      var lb = ledger(), carry = (lb.breathCarry || 0) + Math.max(0, Number(ev.data.seconds) || 0), whole = Math.floor(carry / 60), bday = S.today();
+      if (!lb.breathDay || lb.breathDay.day !== bday) lb.breathDay = { day: bday, pts: 0 };
+      var bp = Math.max(0, Math.min(20 - lb.breathDay.pts, whole * 2)); /* 20 a day across sessions, not 20 a session */
+      lb.breathCarry = carry - whole * 60; lb.breathDay.pts += bp;
       if (bp) { lb.hearts += bp; lb.earned += bp; lb.log = lb.log || []; lb.log.unshift({ at: new Date().toISOString(), type: 'breathtap', points: bp }); lb.log = lb.log.slice(0, 200); }
       write(lb); return { points: bp, bonus: 0, hearts: lb.hearts, streak: lb.streak };
     }
@@ -74,7 +79,9 @@
     if (l.hearts < item.cost && !tester()) throw new Error('You need ' + (item.cost - l.hearts) + ' more hearts.');
     if (!tester()) l.hearts -= item.cost;
     if (item.kind === 'treat') { l.treats = l.treats || {}; l.treats[id] = (l.treats[id] || 0) + (item.qty || 1); write(l); return item; }
-    l.owned.push(id); l.placed[id] = item.kind !== 'accessory'; item.swapped = swapOut(l, item); write(l); return item;
+    l.owned.push(id); l.placed[id] = item.kind !== 'accessory'; item.swapped = swapOut(l, item);
+    if (item.kind === 'pet' && l.placed[id] && petsAtHome(l, id) >= 2) { l.placed[id] = false; item.waiting = true; } /* adopted, waits in the inventory until a pet goes away */
+    write(l); return item;
   }
   function item(id) { return SHOP.filter(function (s) { return s.id === id; })[0] || null; }
   function petKind(petId) { var p = item(petId); return p && p.slot === 'cat' ? 'cat' : 'dog'; }
@@ -105,8 +112,10 @@
     return wear(petId, next);
   }
   /* a one-off gift, e.g. finishing the intro */
-  function grant(points, type) { var l = ledger(); points = Math.max(0, Math.round(points)); if (!points) return l; if ((l.log || []).some(function (x) { return x.type === type && x.gift; })) return l; l.hearts += points; l.earned += points; l.log.unshift({ at: new Date().toISOString(), type: type, points: points, bonus: 0, gift: true }); write(l); return l; }
-  function toggle(id, on) { var l = ledger(); if (l.owned.indexOf(id) < 0) return false; l.placed[id] = !l.placed[id]; if (l.placed[id]) swapOut(l, SHOP.filter(function (s) { return s.id === id; })[0]); write(l); return l.placed[id]; }
+  function grant(points, type) { var l = ledger(); points = Math.max(0, Math.round(points)); if (!points) return l; l.gifts = l.gifts || {}; if (l.gifts[type] || (l.log || []).some(function (x) { return x.type === type && x.gift; })) return l; l.gifts[type] = true; l.hearts += points; l.earned += points; l.log.unshift({ at: new Date().toISOString(), type: type, points: points, bonus: 0, gift: true }); write(l); return l; }
+  /* two pets at home at a time, whatever their kind */
+  function petsAtHome(l, except) { return SHOP.filter(function (s) { return s.kind === 'pet' && s.id !== except && l.owned.indexOf(s.id) > -1 && l.placed[s.id]; }).length; }
+  function toggle(id, on) { var l = ledger(); if (l.owned.indexOf(id) < 0) return false; var it = item(id); if (it && it.kind === 'pet' && !l.placed[id] && !(it.slot && SHOP.some(function (o) { return o.slot === it.slot && o.id !== id && l.placed[o.id]; })) && petsAtHome(l, id) >= 2) throw new Error('Two pets at home at a time. Put one away first.'); l.placed[id] = !l.placed[id]; if (l.placed[id]) swapOut(l, SHOP.filter(function (s) { return s.id === id; })[0]); write(l); return l.placed[id]; }
   /* One piece per slot (seat, lamp, corner): placing one puts the others in its slot away. */
   var SLOTS = { seat: 'Seat on the rug', lamp: 'Lamp by the wardrobe', corner: 'Corner by the wardrobe', cat: 'One kitten at a time', dog: 'One puppy at a time' };
   function swapOut(l, item) { var out = []; if (!item || !item.slot) return out; SHOP.forEach(function (o) { if (o.slot === item.slot && o.id !== item.id && l.placed[o.id]) { l.placed[o.id] = false; out.push(o.name); } }); return out; }
