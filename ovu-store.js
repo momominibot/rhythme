@@ -8,7 +8,7 @@
   'use strict';
   var KEY = 'ovumind_db_v1';
   var VERSION = 1;
-  var TYPES = ['sleep', 'period', 'symptom', 'food', 'reflection', 'mindfulness', 'weight'];
+  var TYPES = ['sleep', 'period', 'symptom', 'food', 'reflection', 'mindfulness', 'weight', 'exercise']; /* exercise: ovu-exercise.js, many a day */
   var SINGLE_PER_DAY = { period: true, symptom: true, weight: true };
   var IMPORTED = { 'apple-health': true, 'google-fit': true };
   var listeners = [];

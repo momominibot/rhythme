@@ -365,13 +365,14 @@
       var cloud = hasCloud();
       var st = root.OvuSync ? OvuSync.status() : { lastSyncAt: null, state: 'idle' };
       var when = st.lastSyncAt ? new Date(st.lastSyncAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
-      var sub = cloud ? (st.state === 'syncing' ? 'Backing up…' : st.state === 'error' ? 'Backup paused, will retry' : (when ? 'Cloud backup on · last sync ' + when : 'Cloud backup on')) : 'Signed in · cloud backup off';
+      var held = cloud && st.held ? st.held : 0; /* Movement entries the server cannot take yet stay on this phone (ovu-sync.js) */
+      var sub = cloud ? (st.state === 'syncing' ? 'Backing up…' : st.state === 'error' ? 'Backup paused, will retry' : held ? 'Cloud backup on · ' + held + ' Movement ' + (held === 1 ? 'entry' : 'entries') + ' not backed up yet' : (when ? 'Cloud backup on · last sync ' + when : 'Cloud backup on')) : 'Signed in · cloud backup off';
       html += '<div class="ya-who"><span class="ms">' + (cloud ? 'cloud_done' : 'account_circle') + '</span><div><b>' + esc(email() || 'Your account') + '</b><small>' + esc(sub) + '</small></div></div>' +
         '<div class="ya-btns">' +
         (cloud ? '<button type="button" class="btn soft" data-ya="sync"><span class="ms">sync</span>Sync now</button><button type="button" class="btn ghost" data-ya="disable-cloud"><span class="ms">cloud_off</span>Turn off cloud backup</button>' : '<button type="button" class="btn primary" data-ya="enable-cloud"><span class="ms">cloud_upload</span>Turn on cloud backup</button>') +
         '<button type="button" class="btn ghost" data-ya="signout"><span class="ms">logout</span>Sign out</button>' +
         '<button type="button" class="btn ghost ya-danger" data-ya="delete-account"><span class="ms">delete_forever</span>Delete my account</button>' +
-        '</div><p class="help">' + (cloud ? 'Your diary is backed up to your account and kept in step across your phones. Food photos stay on this phone.' : 'Backup is off, so nothing leaves this phone yet. Turn it on to back up your diary.') + '</p>' +
+        '</div><p class="help">' + (cloud ? (held ? 'Your diary is backed up except ' + held + ' Movement ' + (held === 1 ? 'entry, which stays' : 'entries, which stay') + ' on this phone until the backup can take ' + (held === 1 ? 'it' : 'them') + '. Please keep this phone’s data until then. ' : 'Your diary is backed up to your account and kept in step across your phones. ') + 'Food photos stay on this phone.' : 'Backup is off, so nothing leaves this phone yet. Turn it on to back up your diary.') + '</p>' +
         improveHTML(true);
     }
     html += '</div>';
@@ -390,7 +391,7 @@
       var act = b.dataset.ya;
       if (act === 'email-start') { if (form) { form.hidden = false; var i = el.querySelector('#yaEmail'); if (i) i.focus(); } return; }
       if (act === 'oauth') { b.disabled = true; signInWith(b.dataset.prov).catch(function (err) { b.disabled = false; toastVia(opts, 'Could not start sign-in: ' + err.message, 'error'); }); return; }
-      if (act === 'sync') { toastVia(opts, 'Syncing…', 'sync'); OvuSync.syncNow().then(function (r) { toastVia(opts, r && r.ok ? 'Backed up.' : ('Sync failed: ' + ((r && r.error) || 'try again')), r && r.ok ? 'cloud_done' : 'error'); rerenderOpen(); }); return; }
+      if (act === 'sync') { toastVia(opts, 'Syncing…', 'sync'); OvuSync.syncNow().then(function (r) { toastVia(opts, r && r.ok ? (r.held ? 'Backed up, except ' + r.held + ' Movement ' + (r.held === 1 ? 'entry' : 'entries') + ' kept on this phone for now.' : 'Backed up.') : ('Sync failed: ' + ((r && r.error) || 'try again')), r && r.ok ? (r.held ? 'cloud_sync' : 'cloud_done') : 'error'); rerenderOpen(); }); return; }
       if (act === 'enable-cloud') { promptCloud(); return; }
       if (act === 'disable-cloud') { confirmDisableCloud(el, opts); return; }
       if (act === 'signout') { confirmSignOut(el, opts); return; }

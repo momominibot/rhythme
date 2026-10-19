@@ -22,6 +22,11 @@
   /* keys whose values are, or may hold, a photo; never uploaded */
   var PHOTO_KEYS = { photo: 1, photos: 1, thumb: 1, thumbs: 1, thumbnail: 1, thumbnails: 1, image: 1, images: 1, img: 1, dataurl: 1, picture: 1, preview: 1, src: 1, base64: 1, b64: 1 };
 
+  /* Entry types the cloud table accepted before Movement (20261019000000_accounts_sync_tombstones.sql). A newer type
+     is sent too; if the server refuses it by its type check, those rows are held on this phone and sent again on the
+     next sync, while every other row still uploads. 20261019120000_exercise_entries.sql lets 'exercise' through. */
+  var CLOUD_TYPES_V1 = { sleep: 1, period: 1, symptom: 1, food: 1, reflection: 1, mindfulness: 1, weight: 1 };
+
   var listeners = [];
   var statusNow = { state: 'idle', at: null, error: null };
   var busy = false, busyPromise = null, debounceTimer = null;
@@ -94,6 +99,29 @@
     });
     return { applyPut: applyPut, applyDel: applyDel, pushUp: pushUp, pushDel: pushDel };
   }
+
+  /* ---------- held rows (pure, exported for tools/test-core.js) ----------
+   * Rows held back by an earlier sync go up again with this one, unless this sync already sends them or a newer
+   * cloud copy has just replaced or deleted them. The global push watermark can move past a held row's edit time,
+   * so without this the row would never be sent once the server accepts its type. */
+  function addHeld(plan, held, getEvent) {
+    var have = {};
+    plan.pushUp.forEach(function (e) { have[e.id] = 1; });
+    plan.applyPut.forEach(function (r) { have[r.id] = 1; });
+    plan.applyDel.forEach(function (id) { have[id] = 1; });
+    Object.keys(held || {}).forEach(function (id) { if (have[id]) return; var ev = getEvent(id); if (ev) { plan.pushUp.push(ev); have[id] = 1; } });
+    return plan;
+  }
+  /* the same row can arrive in both pulls; keep the copy the server stamped last */
+  function mergeRows(a, b) {
+    var by = {}, out = [];
+    (a || []).concat(b || []).forEach(function (r) { var k = r.id, cur = by[k]; if (!cur || ts(r.synced_at) > ts(cur.synced_at)) by[k] = r; });
+    Object.keys(by).forEach(function (k) { out.push(by[k]); });
+    return out.sort(function (x, y) { return ts(x.synced_at) - ts(y.synced_at); });
+  }
+  function typeRejected(err) { return /violates check constraint/i.test(String((err && err.message) || '')); }
+  /* Split a refused batch: the older types go up on their own, the newer ones are held. */
+  function splitByType(rows) { var ok = [], held = []; (rows || []).forEach(function (r) { (CLOUD_TYPES_V1[r.type] ? ok : held).push(r); }); return { ok: ok, held: held }; }
 
   /* ---------- row <-> event, with thumbnails stripped on the way up ---------- */
   function stripThumbs(v) {
@@ -169,6 +197,23 @@
     }
     return page();
   }
+  /* The one-time recovery of newly known types walks every row of those types in id order, resuming after the last id
+     it saw (keyset paging). Ids are unique, so rows that share a synced_at (one upload is stamped with one now()) can
+     neither be skipped nor fetched forever, and no timestamp rounding is involved. At most 20,000 rows a sync;
+     `done` is true only when a page came back short, meaning the scan reached the end. */
+  function pullTypedAfter(afterId, token, types) {
+    var PAGE = 1000, all = [], last = afterId || null;
+    var base = '/entries?select=*&type=in.(' + types.map(encodeURIComponent).join(',') + ')&order=id.asc&limit=' + PAGE;
+    function page() {
+      return rest('GET', base + (last ? '&id=gt.' + encodeURIComponent(last) : ''), null, null, token).then(function (rows) {
+        rows = rows || []; all = all.concat(rows);
+        if (rows.length) last = rows[rows.length - 1].id;
+        if (rows.length === PAGE && all.length < 20000) return page();
+        return { rows: all, lastId: last, done: rows.length < PAGE };
+      });
+    }
+    return page();
+  }
 
   /* ---------- the sync ---------- */
   function notify() { listeners.slice().forEach(function (fn) { try { fn(statusNow); } catch (e) { } }); }
@@ -185,6 +230,16 @@
       var st = loadState();
       if (st.userId && st.userId !== uid) { st = { v: 1, userId: uid, shadow: snapshot(), tombstones: st.tombstones || {}, pulledSeq: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: st.lastSyncAt || null }; }
       if (!st.userId) { st.userId = uid; st.shadow = snapshot(); if (S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage) st.profileDirty = true; }
+      /* An older app version drops rows of types it does not know, while its pull cursor moves past them. When this
+         version knows types the cursor was built without (Movement added 'exercise'), pull those types once from the
+         start. Only the new types: a full re-pull would bring back older entries someone deliberately cleared. */
+      var knownTypes = (S.TYPES || []).join(','), before = st.types ? st.types.split(',') : Object.keys(CLOUD_TYPES_V1);
+      var newTypes = st.pulledSeq ? (S.TYPES || []).filter(function (t) { return before.indexOf(t) < 0; }) : [];
+      /* the typed recovery keeps its own position (typedAfter, the last id it saw) and never moves the shared cursor,
+         so rows of other types that arrive between the two requests are still pulled next time; it resumes across
+         syncs when the backlog is larger than one sync's share, and only a scan that reached the end marks the new
+         types as known */
+      var incRows = [], typed = null, typedDone = !newTypes.length;
       saveState(st); /* persist the activation/reset before any network call */
       /* before any row moves: read the account's own record (a withdrawal made on another phone is adopted here and stops
          the sync), then make sure this account has heard this phone's cloud choice (the server refuses writes it has not
@@ -198,26 +253,38 @@
       });
       /* pull every row whose server arrival (synced_at) is after our cursor, in
          order and in pages, so a late-arriving older edit is never skipped */
-      return pre.then(function () { return pullSince(st.pulledSeq, token); }).then(function (remoteRows) {
+      return pre.then(function () { return pullSince(st.pulledSeq, token); }).then(function (rows) {
+        incRows = rows;
+        if (!newTypes.length) return rows;
+        return pullTypedAfter(st.typedAfter || null, token, newTypes).then(function (t) { typed = t; typedDone = t.done; return mergeRows(rows, t.rows); });
+      }).then(function (remoteRows) {
         /* consent or sign-in may have changed during the network wait */
         if (!canSync() || a.userId() !== uid) { busy = false; setStatus('idle'); return { ok: false, reason: 'cancelled' }; }
         var pushedAt = loadState().pushedAt || '';
-        var plan = merge(S.list(null), loadState().tombstones || {}, remoteRows, pushedAt);
+        var plan = addHeld(merge(S.list(null), loadState().tombstones || {}, remoteRows, pushedAt), loadState().held, S.get);
         /* serialise what we push NOW: an edit made to the same event during the
            upload must not move the watermark to an unsent time (pushUp holds live
            event references), or that edit would never be backed up. */
         var upRows = plan.pushUp.map(function (ev) { return evToRow(ev, uid); });
         if (plan.applyPut.length || plan.applyDel.length) S.applyRemote(plan.applyPut.map(function (r) { return keepLocalPhotos(rowToEvent(r)); }), plan.applyDel);
-        var step = Promise.resolve();
+        var step = Promise.resolve(), pushedRows = upRows, heldRows = [];
+        function post(rows) { return rest('POST', '/entries?on_conflict=user_id,id', rows, 'resolution=merge-duplicates,return=minimal', token); }
         if (upRows.length) {
-          step = step.then(function () { return rest('POST', '/entries?on_conflict=user_id,id', upRows, 'resolution=merge-duplicates,return=minimal', token); });
+          step = step.then(function () {
+            return post(upRows).catch(function (err) {
+              if (!typeRejected(err)) throw err;
+              var sp = splitByType(upRows); if (!sp.held.length) throw err;
+              pushedRows = sp.ok; heldRows = sp.held;
+              return sp.ok.length ? post(sp.ok) : null;
+            });
+          });
         }
         plan.pushDel.forEach(function (d) {
           step = step.then(function () { return rest('PATCH', '/entries?id=eq.' + encodeURIComponent(d.id) + '&user_id=eq.' + uid, { deleted: true, deleted_at: d.deleted_at, updated_at: d.deleted_at }, 'return=minimal', token); });
         });
         return step.then(function () {
-          var seqMax = remoteRows.reduce(function (m, r) { return maxIso(m, r.synced_at); }, '');
-          var upMax = upRows.reduce(function (m, r) { return maxIso(m, r.updated_at); }, '');
+          var seqMax = incRows.reduce(function (m, r) { return maxIso(m, r.synced_at); }, ''); /* the shared cursor: all-type rows only */
+          var upMax = pushedRows.reduce(function (m, r) { return maxIso(m, r.updated_at); }, ''); /* held rows did not go up */
           var delMax = plan.pushDel.reduce(function (m, d) { return maxIso(m, d.deleted_at); }, '');
           var remoteMax = remoteRows.reduce(function (m, r) { return maxIso(m, r.updated_at, r.deleted_at || ''); }, '');
           var settled = {};
@@ -228,14 +295,27 @@
           /* read-modify-write so a deletion made while this sync was in flight is kept */
           var cur = loadState(); cur.userId = uid;
           cur.pulledSeq = maxIso(cur.pulledSeq || '', seqMax) || cur.pulledSeq || null;
+          if (typedDone) { cur.types = knownTypes; delete cur.typedAfter; }
+          else if (typed && typed.lastId) cur.typedAfter = typed.lastId;
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
           Object.keys(settled).forEach(function (id) { delete cur.tombstones[id]; });
+          var held = cur.held || {};
+          /* a held row is released only if the version that went up is still the one on this phone; an edit made
+             during the upload keeps it held, so it is sent next time even if the watermark has moved past it */
+          pushedRows.forEach(function (r) { var now = S.get(r.id); if (!now || now.updatedAt === r.updated_at) delete held[r.id]; });
+          /* release a hold only where the cloud's version actually won; a remote deletion that lost to a newer local
+             edit settles its tombstone but must not drop the hold */
+          plan.applyPut.forEach(function (r) { delete held[r.id]; });
+          plan.applyDel.forEach(function (id) { delete held[id]; });
+          heldRows.forEach(function (r) { held[r.id] = r.updated_at; });
+          Object.keys(held).forEach(function (id) { if (!S.get(id)) delete held[id]; });
+          cur.held = held;
           cur.shadow = snapshot();
           saveState(cur);
           return syncProfile(token, uid).then(function () {
             var s2 = loadState(); s2.lastSyncAt = nowIso(); saveState(s2);
             busy = false; setStatus('ok');
-            return { ok: true, pulled: remoteRows.length, pushed: plan.pushUp.length + plan.pushDel.length };
+            return { ok: true, pulled: remoteRows.length, pushed: pushedRows.length + plan.pushDel.length, held: Object.keys(loadState().held || {}).length }; /* every row still waiting, not only this request's refusals */
           });
         });
       });
@@ -330,9 +410,9 @@
     consentOk: consentOk,
     deleteAccount: deleteAccount,
     resetPosition: resetPosition,
-    status: function () { var st = loadState(); return { state: statusNow.state, error: statusNow.error, lastSyncAt: st.lastSyncAt, pending: Object.keys(st.tombstones || {}).length }; },
+    status: function () { var st = loadState(); return { state: statusNow.state, error: statusNow.error, lastSyncAt: st.lastSyncAt, pending: Object.keys(st.tombstones || {}).length, held: Object.keys(st.held || {}).length }; },
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
     /* pure helpers, exported for the tests */
-    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud
+    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud, addHeld: addHeld, splitByType: splitByType, typeRejected: typeRejected, mergeRows: mergeRows
   };
 })(window);

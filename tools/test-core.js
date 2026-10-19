@@ -13,7 +13,7 @@ function fresh(todayIso) {
   w.window = w; w.self = w; w.globalThis = w;
   var ctx = vm.createContext(w);
   w.Uint8Array = Uint8Array; w.ArrayBuffer = ArrayBuffer; w.isFinite = isFinite; w.isNaN = isNaN; w.Blob = Blob; w.File = File;
-  ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-breathtap.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
+  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-breathtap.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sync.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
   return w;
@@ -623,6 +623,291 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
 
   var rowOut = SY.evToRow({ id: 'x', type: 'food', date: '2026-10-18', data: { foods: 'rice', photo: 'data:image/jpeg;base64,DDDD' }, createdAt: '2026-10-18T00:00:00Z', updatedAt: '2026-10-18T00:00:00Z' }, 'u1');
   check('evToRow carries the user id and strips the photo before upload', rowOut.user_id === 'u1' && rowOut.deleted === false && !('photo' in rowOut.data) && rowOut.data.foods === 'rice', JSON.stringify(rowOut));
+})();
+
+/* ---------- Movement: exercise entries, MET-minutes and the week against WHO (ovu-exercise.js) ---------- */
+(function exerciseTable() {
+  console.log('movement: the activity table is the 2024 Compendium, with WHO intensity bands');
+  var w = fresh(), EX = w.OvuExercise, ids = {}, codes = {}, okRows = true, bad = [];
+  EX.ACTIVITIES.forEach(function (a) {
+    if (ids[a.id]) bad.push('dup activity ' + a.id); ids[a.id] = 1;
+    var vids = {};
+    a.variants.forEach(function (v) {
+      if (vids[v.id]) bad.push('dup variant ' + a.id + '.' + v.id); vids[v.id] = 1;
+      if (a.id === 'other') { if (v.met !== null || v.code !== null || !v.effort) bad.push('other must have no MET ' + v.id); return; }
+      if (!/^\d{5}$/.test(v.code) || !(v.met > 0 && v.met < 25)) bad.push(a.id + '.' + v.id + ' code/met ' + v.code + '/' + v.met);
+      if (codes[v.code] && codes[v.code] !== v.met) bad.push('code ' + v.code + ' with two METs'); codes[v.code] = v.met;
+    });
+  });
+  check('every activity and variant is unique and carries a 5-digit Compendium code and a MET', !bad.length, bad.join('; '));
+  /* spot values read from pacompendium.com on 19 Oct 2026 (2024 Adult Compendium) */
+  var spot = { '17200': 4.8, '02185': 2.7, '02105': 2.8, '02150': 2.3, '12020': 7.5, '15030': 5.5, '02214': 11.0, '18240': 5.8, '01010': 4.0, '02054': 3.5 };
+  check('spot-checked MET values match the 2024 Compendium', Object.keys(spot).every(function (c) { return codes[c] === spot[c]; }), JSON.stringify(Object.keys(spot).map(function (c) { return c + '=' + codes[c]; })));
+  check('WHO absolute bands: under 3 light, 3 to under 6 moderate, 6 and over vigorous', EX.intensityOf(2.9) === 'light' && EX.intensityOf(3) === 'moderate' && EX.intensityOf(5.9) === 'moderate' && EX.intensityOf(6) === 'vigorous' && EX.intensityOf(null, 'moderate') === 'moderate' && EX.intensityOf(null) === null);
+  check('WHO targets are 150 to 300 moderate minutes and 2 strength days', EX.WHO.moderateMin === 150 && EX.WHO.moderateMax === 300 && EX.WHO.strengthDays === 2);
+})();
+
+(function exerciseEntries() {
+  console.log('movement: an entry is built only from a real choice, and copies its MET');
+  var w = fresh(), EX = w.OvuExercise, S = w.OvuStore, today = S.today();
+  var threw = function (fn) { try { fn(); return false; } catch (e) { return true; } };
+  check('no activity, no entry', threw(function () { EX.makeEntry({ minutes: 30 }); }));
+  check('an activity with several efforts needs one chosen', threw(function () { EX.makeEntry({ activity: 'walk', minutes: 30 }); }));
+  check('zero or missing minutes are refused', threw(function () { EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 0 }); }) && threw(function () { EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: '' }); }));
+  check('more than 10 hours in one entry is refused', threw(function () { EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 601 }); }));
+  var d = EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 30.4, note: '  park  ' });
+  check('a brisk walk copies code 17200, 4.8 MET, moderate, rounded minutes and a trimmed note', d.code === '17200' && d.met === 4.8 && d.intensity === 'moderate' && d.minutes === 30 && d.note === 'park' && d.strength === false && d.aerobic === true, JSON.stringify(d));
+  var st = EX.makeEntry({ activity: 'strength', variant: 'reps', minutes: 40 });
+  var st2 = EX.makeEntry({ activity: 'strength', variant: 'reps', minutes: 40, strength: false });
+  check('strength or weights is pre-ticked as a strength day but the person can untick it; never aerobic minutes', st.strength === true && st2.strength === false && st.aerobic === false && st2.aerobic === false, JSON.stringify([st, st2]));
+  var one = EX.makeEntry({ activity: 'stretch', minutes: 10 });
+  check('an activity with one effort needs no choice', one.variant === 'mild' && one.met === 2.3 && one.intensity === 'light');
+  var oth = EX.makeEntry({ activity: 'other', variant: 'vigorous', minutes: 20 });
+  check('something else has no MET and takes its intensity from the effort chosen', oth.met === null && oth.code === null && oth.intensity === 'vigorous' && EX.metMinutes(oth) === null);
+  S.add('exercise', today, d); S.add('exercise', today, one);
+  var w2 = fresh(); w2.localStorage.setItem('ovumind_db_v1', w.localStorage.getItem('ovumind_db_v1')); w2.OvuStore.load(true);
+  check('two exercise entries on one day are both kept, and survive a reload', S.list('exercise').length === 2 && w2.OvuStore.list('exercise').length === 2);
+  check('a future day is refused for exercise like any entry', threw(function () { S.add('exercise', addDays(today, 1), d); }));
+})();
+
+(function exerciseWeek() {
+  console.log('movement: the last 7 days against WHO, with MET-minutes kept separate');
+  var w = fresh(), EX = w.OvuExercise, end = '2026-10-19';
+  var mk = function (date, input) { return { type: 'exercise', date: date, data: EX.makeEntry(input) }; };
+  var list = [
+    mk('2026-10-19', { activity: 'walk', variant: 'brisk', minutes: 30 }),
+    mk('2026-10-17', { activity: 'walk', variant: 'brisk', minutes: 30 }),
+    mk('2026-10-15', { activity: 'walk', variant: 'brisk', minutes: 30 }),
+    mk('2026-10-16', { activity: 'run', variant: 'jog', minutes: 25 }),
+    mk('2026-10-16', { activity: 'strength', variant: 'heavy', minutes: 40 }),
+    mk('2026-10-14', { activity: 'yoga', variant: 'hatha', minutes: 20 }),
+    mk('2026-10-13', { activity: 'other', variant: 'moderate', minutes: 15 }),
+    mk('2026-10-12', { activity: 'run', variant: 'run', minutes: 60 }),
+    { type: 'sleep', date: '2026-10-18', data: { minutes: 400 } }
+  ];
+  var s = EX.week(list, end);
+  check('the window is the 7 days ending today; an entry 8 days back is left out', s.from === '2026-10-13' && s.sessions === 7, JSON.stringify({ from: s.from, sessions: s.sessions }));
+  check('moderate 105, vigorous 25, a vigorous minute counts as two: 155 moderate-equivalent', s.moderate === 105 && s.vigorous === 25 && s.moderateEquivalent === 155, JSON.stringify(s));
+  check('155 is inside WHO’s 150 to 300 range', s.status === 'in' && s.toGo === 0);
+  check('light yoga and strength work are shown but not counted as aerobic minutes', s.light === 20 && s.strengthMinutes === 40);
+  check('MET-minutes add MET x minutes for known values only (432 + 187.5 + 200 + 46 = 866)', s.metMinutes === 866 && s.metUnknown === 1, 'metMinutes=' + s.metMinutes + ' unknown=' + s.metUnknown);
+  check('one strength day, six active days', s.strengthDays === 1 && s.activeDays === 6, JSON.stringify({ sd: s.strengthDays, ad: s.activeDays }));
+  check('aerobic MET-minutes count only moderate and vigorous aerobic entries (432 + 187.5 = 620)', s.aerobicMetMinutes === 620, 'aerobic=' + s.aerobicMetMinutes);
+  var yoga = EX.week([mk(end, { activity: 'yoga', variant: 'hatha', minutes: 300 })], end);
+  check('300 minutes of hatha yoga: 690 MET-minutes in all, but none toward WHO’s minutes or the 500 to 1,000 guide', yoga.metMinutes === 690 && yoga.aerobicMetMinutes === 0 && yoga.moderateEquivalent === 0, JSON.stringify(yoga));
+  var pil = EX.week([mk(end, { activity: 'pilates', variant: 'mat', minutes: 30, strength: true }), mk('2026-10-18', { activity: 'pilates', variant: 'mat', minutes: 30, strength: true }), mk('2026-10-17', { activity: 'pilates', variant: 'mat', minutes: 30 })], end);
+  check('the person’s strength tick counts on its own: two ticked mat Pilates days are 2 strength days, an unticked one is not', pil.strengthDays === 2 && pil.light === 90, JSON.stringify(pil));
+  var low = EX.week([mk(end, { activity: 'walk', variant: 'brisk', minutes: 40 })], end);
+  check('below the range says how many minutes are left, kindly', low.status === 'below' && low.toGo === 110 && /110 more moderate minutes/.test(EX.weekLine(low)) && /better than none/.test(EX.weekLine(low)), EX.weekLine(low));
+  var high = EX.week([mk(end, { activity: 'run', variant: 'run', minutes: 200 })], end);
+  check('above the range is described, not scored or warned', high.status === 'above' && /above WHO’s weekly range/.test(EX.weekLine(high)));
+  check('an empty week has its own line', /Nothing logged/.test(EX.weekLine(EX.week([], end))));
+})();
+
+(function exercisePeriodAndCopy() {
+  console.log('movement: the period note follows logged data only, and the words follow the sources');
+  var w = fresh(), EX = w.OvuExercise;
+  check('no period note without a logged period day or cramps', EX.periodContext([]) === null && EX.periodContext([{ type: 'period', data: { flow: 'none' } }]) === null);
+  check('a logged period day shows the period note', EX.periodContext([{ type: 'period', data: { flow: 'light' } }]) === 'period');
+  check('spotting is not framed as a period', EX.periodContext([{ type: 'period', data: { flow: 'spotting' } }]) === null);
+  check('logged cramps show the cramps note', EX.periodContext([{ type: 'symptom', data: { symptoms: ['bloating', 'cramps'] } }]) === 'cramps');
+  var all = JSON.stringify(EX.COPY) + JSON.stringify(EX.ACTIVITIES);
+  check('no em or en dashes anywhere in the movement words', !/[—–]/.test(all));
+  check('no fixed cycle days, no "avoid HIIT", no ovulation scheduling', !/\b28\b|days? 1 ?to ?5|avoid (hiit|high)|around ovulation|peak performance/i.test(JSON.stringify(EX.COPY)));
+  check('the period words say movement is optional, may help, low certainty, listen to your body', /your choice/.test(EX.COPY.period) && /may help/.test(EX.COPY.period) && /Listen to your body/.test(EX.COPY.period) && /may ease/.test(EX.COPY.periodEvidence) && /low certainty/.test(EX.COPY.periodEvidence) && /not to exercise while bleeding/.test(EX.COPY.periodEvidence));
+  check('the cramps note (for example spotting with cramps) does not call it a period', !/period/i.test(EX.COPY.cramps) && /may help/.test(EX.COPY.cramps) && /Listen to your body/.test(EX.COPY.cramps));
+  check('no blanket reassurance about intensity on a period', !/any intensity|no rule to stop/i.test(EX.COPY.period + EX.COPY.periodEvidence));
+  check('pregnancy words carry WHO’s cautions: heat, contact and falls, lying on your back, caesarean', /excessive heat/.test(EX.COPY.pregnancy) && /contact sports/.test(EX.COPY.pregnancy) && /lying on your back/.test(EX.COPY.pregnancy) && /caesarean/.test(EX.COPY.pregnancy) && !/usually carry on/.test(EX.COPY.pregnancy));
+  check('red flags include the urgent case and stopped periods with heavy training', /urgent appointment/.test(EX.COPY.redFlags) && /bleed between periods/.test(EX.COPY.redFlags) && /periods stop/.test(EX.COPY.redFlags));
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8'), w, { filename: 'ovu-evidence.js' });
+  var ev = w.OvuEvidence;
+  check('the movement guide cites WHO, the US guidelines, the Compendium, McNulty, Cochrane and the NHS', !!ev && ['E9', 'E67', 'E68', 'E69', 'E70', 'E71', 'E72'].every(function (id) { var e = ev.get(id); return e && e.topics.indexOf('move') > -1; }));
+})();
+
+(function exerciseHearts() {
+  console.log('movement: hearts once a day for logging, never for minutes or effort');
+  var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, EX = w.OvuExercise, today = S.today();
+  var a = S.add('exercise', today, EX.makeEntry({ activity: 'stretch', minutes: 5 }));
+  var r1 = RW.award(a);
+  var b = S.add('exercise', today, EX.makeEntry({ activity: 'run', variant: 'fast', minutes: 120 }));
+  var r2 = RW.award(b);
+  check('the first exercise log of the day earns 6', r1.points === 6, JSON.stringify(r1));
+  check('a second, longer and harder log the same day earns nothing more', r2.points === 0, JSON.stringify(r2));
+  check('saving the same entry again earns nothing', RW.award(a).points === 0);
+  var w2 = fresh(), S2 = w2.OvuStore, R2 = w2.OvuRewards, E2 = w2.OvuExercise;
+  var big = R2.award(S2.add('exercise', S2.today(), E2.makeEntry({ activity: 'run', variant: 'fast', minutes: 300 })));
+  check('a long vigorous session earns the same 6 as five minutes of stretching', big.points === r1.points);
+  var w3 = fresh(), A3 = w3.OvuAgents, S3 = w3.OvuStore, E3 = w3.OvuExercise;
+  S3.add('exercise', S3.today(), E3.makeEntry({ activity: 'other', variant: 'vigorous', minutes: 30 }));
+  var mv = A3.fourWeekSummary().movement;
+  check('the four-week summary never turns an unknown MET into zero', mv.sessions === 1 && mv.metMinutes === null && mv.metUnknownSessions === 1, JSON.stringify(mv));
+})();
+
+(function exerciseSyncHold() {
+  console.log('cloud sync: rows the server refuses by type are held, the rest upload, held rows go up later');
+  var SY = fresh().OvuSync;
+  var plan = { pushUp: [{ id: 'a' }], applyPut: [{ id: 'c' }], applyDel: ['d'], pushDel: [] };
+  var evs = { a: { id: 'a' }, b: { id: 'b' }, c: { id: 'c' }, d: { id: 'd' } };
+  SY.addHeld(plan, { a: 1, b: 1, c: 1, d: 1, gone: 1 }, function (id) { return evs[id] || null; });
+  check('held rows rejoin the push, without duplicates, skipping rows a newer cloud copy just replaced or deleted', plan.pushUp.map(function (e) { return e.id; }).join() === 'a,b', JSON.stringify(plan.pushUp));
+  var sp = SY.splitByType([{ id: 1, type: 'sleep' }, { id: 2, type: 'exercise' }, { id: 3, type: 'weight' }]);
+  check('a refused batch splits into the older types and the new ones', sp.ok.length === 2 && sp.held.length === 1 && sp.held[0].id === 2);
+  check('only a check-constraint refusal triggers the split', SY.typeRejected(new Error('rest 400 new row for relation "entries" violates check constraint "entries_type_check"')) && !SY.typeRejected(new Error('rest 401 JWT expired')));
+
+  /* end to end, with a pretend server that refuses 'exercise' until the migration is applied */
+  var w = fresh(), S = w.OvuStore, EX = w.OvuExercise, Y = w.OvuSync, migrated = false, posts = [];
+  w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
+  S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+  var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
+  w.fetch = function (url, opt) {
+    var m = (opt && opt.method) || 'GET';
+    if (m === 'GET') return reply(200, []);
+    if (m === 'POST' && /\/entries/.test(url)) {
+      var rows = JSON.parse(opt.body);
+      if (!migrated && rows.some(function (r) { return r.type === 'exercise'; })) return reply(400, { code: '23514', message: 'new row for relation "entries" violates check constraint "entries_type_check"' });
+      posts.push(rows.map(function (r) { return r.type + ':' + r.id; })); return reply(201, null);
+    }
+    return reply(201, null);
+  };
+  var t = S.today(), sl = S.add('sleep', t, { bedTime: '23:00', wakeTime: '07:00', quality: 3, notes: '' }), ex = S.add('exercise', t, EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 30 }));
+  return Y.syncNow().then(function (r1) {
+    var st1 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('the first sync succeeds: the sleep row uploads and the exercise row is held', r1.ok === true && r1.held === 1 && posts.length === 1 && posts[0].join() === 'sleep:' + sl.id && st1.held && st1.held[ex.id], JSON.stringify({ r1: r1, posts: posts, held: st1.held }));
+    /* a later edit to another row moves the push watermark past the held row's time */
+    return new Promise(function (res) { setTimeout(res, 15); }).then(function () { S.update(sl.id, { data: Object.assign({}, sl.data, { quality: 4 }) }); return Y.syncNow(); });
+  }).then(function (r2) {
+    check('while refused, later syncs still upload other rows and keep holding', r2.ok === true && r2.held === 1 && posts[posts.length - 1].join() === 'sleep:' + sl.id, JSON.stringify({ r2: r2, posts: posts }));
+    migrated = true;
+    return Y.syncNow();
+  }).then(function (r3) {
+    var st3 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('once the server accepts it, the held row goes up even though the watermark moved past it', r3.ok === true && r3.held === 0 && posts[posts.length - 1].indexOf('exercise:' + ex.id) > -1 && !Object.keys(st3.held || {}).length, JSON.stringify({ r3: r3, posts: posts, held: st3.held }));
+  }).catch(function (err) { check('the sync hold test ran to the end', false, String(err && err.stack || err)); });
+})();
+
+(function exerciseSyncEdgeCases() {
+  console.log('cloud sync: an edit during the upload stays held; a phone that learns a new type pulls everything once');
+  var mkWorld = function () {
+    var w = fresh(), S = w.OvuStore;
+    w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
+    S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+    w.reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
+    return w;
+  };
+  /* 1. the held row is accepted, but the person edits it while the upload is in flight */
+  var w = mkWorld(), S = w.OvuStore, EX = w.OvuExercise, Y = w.OvuSync, refuse = true, sent = [], edited = false;
+  var ex = S.add('exercise', S.today(), EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 10 }));
+  /* another phone whose clock runs an hour ahead pushes the watermark past any edit made here (Codex's case) */
+  var tombGiven = false, ahead = new Date(Date.now() + 3600000).toISOString(), aheadRow = { id: 'ahead1', user_id: 'u1', type: 'reflection', date: S.today(), data: { text: 'from the other phone', mood: '' }, source: 'room', created_at: ahead, updated_at: ahead, synced_at: ahead, deleted: false, deleted_at: null }, gave = false;
+  w.fetch = function (url, opt) {
+    var m = (opt && opt.method) || 'GET';
+    if (m === 'GET' && /\/entries/.test(url) && !gave) { gave = true; return w.reply(200, [aheadRow]); }
+    /* second sync: an old deletion of the same row from another phone (it loses to the newer local entry) */
+    if (m === 'GET' && /\/entries/.test(url) && gave && !refuse && !tombGiven) { tombGiven = true; return w.reply(200, [{ id: ex.id, user_id: 'u1', type: 'exercise', date: S.today(), data: {}, source: 'room', created_at: '2000-01-01T00:00:00Z', updated_at: '2000-01-01T00:00:00Z', synced_at: ahead, deleted: true, deleted_at: '2000-01-01T00:00:00Z' }]); }
+    if (m === 'GET') return w.reply(200, []);
+    if (m === 'POST' && /\/entries/.test(url)) {
+      var rows = JSON.parse(opt.body);
+      if (refuse && rows.some(function (r) { return r.type === 'exercise'; })) return w.reply(400, { message: 'new row for relation "entries" violates check constraint "entries_type_check"' });
+      rows.forEach(function (r) { sent.push(r.type + ':' + r.data.minutes); });
+      if (!edited && rows.some(function (r) { return r.id === ex.id; })) { edited = true; S.update(ex.id, { data: Object.assign({}, ex.data, { minutes: 20 }) }); }
+      return w.reply(201, null);
+    }
+    return w.reply(201, null);
+  };
+  var t1 = Y.syncNow().then(function () { refuse = false; return Y.syncNow(); }).then(function (r2) {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('a held row edited during its upload stays held, even when an older deletion of it arrives in the same sync', tombGiven && !!(st.held && st.held[ex.id]), JSON.stringify({ held: st.held, sent: sent, tomb: tombGiven }));
+    check('and the sync reports it as still waiting, so the app cannot say "Backed up."', r2 && r2.ok === true && r2.held === 1, JSON.stringify(r2));
+    return Y.syncNow();
+  }).then(function () {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('and the newer version (20 minutes) goes up on the next sync, then the hold is released', sent.indexOf('exercise:20') > -1 && !(st.held && st.held[ex.id]), JSON.stringify({ held: st.held, sent: sent }));
+  });
+  /* 2. an older version advanced its cursor past an exercise row it could not keep; this version pulls everything once */
+  var v = mkWorld(), SV = v.OvuStore, YV = v.OvuSync, gets = [];
+  v.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-19T10:00:00Z', pushedAt: '2026-10-19T10:00:00Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }));
+  var cloudRow = { id: 'cloudex1', user_id: 'u1', type: 'exercise', date: SV.today(), data: { activity: 'swim', label: 'Swimming', variant: 'laps', code: '18240', met: 5.8, minutes: 30, intensity: 'moderate', strength: false, aerobic: true, note: '' }, source: 'room', created_at: '2026-10-19T09:00:00Z', updated_at: '2026-10-19T09:00:00Z', synced_at: '2026-10-19T09:30:00Z', deleted: false, deleted_at: null };
+  /* a reflection that was backed up and then cleared from this phone on purpose: an untyped pull from the start would bring it back */
+  var clearedRow = { id: 'oldrefl', user_id: 'u1', type: 'reflection', date: SV.today(), data: { text: 'cleared on purpose', mood: '' }, source: 'room', created_at: '2026-10-01T09:00:00Z', updated_at: '2026-10-01T09:00:00Z', synced_at: '2026-10-01T09:30:00Z', deleted: false, deleted_at: null };
+  v.fetch = function (url, opt) {
+    var m = (opt && opt.method) || 'GET';
+    if (m === 'GET' && /\/entries/.test(url)) { gets.push(url); if (/synced_at=gt/.test(url)) return v.reply(200, []); return v.reply(200, /type=in\.\(exercise\)/.test(url) ? [cloudRow] : [cloudRow, clearedRow]); }
+    if (m === 'GET') return v.reply(200, []);
+    return v.reply(201, null);
+  };
+  var t2 = YV.syncNow().then(function (r) {
+    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
+    check('after learning the exercise type, a one-time pull of that type alone brings back the row the old version skipped', gets.length === 2 && /synced_at=gt/.test(gets[0]) && /type=in\.\(exercise\)/.test(gets[1]) && !/synced_at=gt/.test(gets[1]) && SV.list('exercise').length === 1 && st.types === SV.TYPES.join(','), JSON.stringify({ r: r, gets: gets, n: SV.list('exercise').length, types: st.types }));
+    check('an older entry cleared from this phone on purpose is not brought back', SV.list('reflection').length === 0);
+    return YV.syncNow();
+  }).then(function () {
+    check('the next sync goes back to pulling only what is new', /synced_at=gt/.test(gets[gets.length - 1] || ''), JSON.stringify(gets));
+  });
+  Promise.all([t1, t2]).catch(function (err) { check('the sync edge-case tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
+(function exerciseTypedRecoveryCursor() {
+  console.log('cloud sync: the one-time typed pull never moves the shared cursor, and walks ids past the 20,000-row cap');
+  /* a small pretend server: rows ordered by synced_at, honouring the cursor, the type filter, limit and offset */
+  function server() {
+    var rows = [];
+    return {
+      rows: rows,
+      get: function (url) {
+        var q = decodeURIComponent(url), cur = /synced_at=gt\.([^&]+)/.exec(q), ty = /type=in\.\(([^)]*)\)/.exec(q), idgt = /[?&]id=gt\.([^&]+)/.exec(q), byId = /order=id\.asc/.test(q), lim = Number((/limit=(\d+)/.exec(q) || [])[1] || 1000), off = Number((/offset=(\d+)/.exec(q) || [])[1] || 0);
+        /* synced_at compared as text so microseconds count, as Postgres does; ids compared as text too */
+        var out = rows.filter(function (r) { return (!cur || r.synced_at > cur[1]) && (!ty || ty[1].split(',').indexOf(r.type) > -1) && (!idgt || r.id > idgt[1]); });
+        out.sort(function (a, b) { return byId ? (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) : (a.synced_at < b.synced_at ? -1 : a.synced_at > b.synced_at ? 1 : (a.id < b.id ? -1 : 1)); });
+        return out.slice(off, off + lim);
+      }
+    };
+  }
+  function world(srv, onGet) {
+    var w = fresh(), S = w.OvuStore;
+    w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
+    S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+    var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
+    w.fetch = function (url, opt) {
+      var m = (opt && opt.method) || 'GET';
+      if (m === 'GET' && /\/entries/.test(url)) { var res = srv.get(url); if (onGet) onGet(url); return reply(200, res); }
+      if (m === 'GET') return reply(200, []);
+      return reply(201, null);
+    };
+    w.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-19T10:00:00Z', pushedAt: '2026-10-19T10:00:00Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }));
+    return w;
+  }
+  var row = function (id, type, at, data) { return { id: id, user_id: 'u1', type: type, date: '2026-10-19', data: data, source: 'room', created_at: at, updated_at: at, synced_at: at, deleted: false, deleted_at: null }; };
+  /* 1. another phone uploads a reflection, then exercise, between this phone's two requests */
+  var srv = server(), calls = 0;
+  var w = world(srv, function (url) { calls++; if (calls === 1) { srv.rows.push(row('r101', 'reflection', '2026-10-19T10:01:00Z', { text: 'between the requests', mood: '' })); srv.rows.push(row('x102', 'exercise', '2026-10-19T10:02:00Z', { activity: 'walk', label: 'Walking', variant: 'brisk', code: '17200', met: 4.8, minutes: 20, intensity: 'moderate', strength: false, aerobic: true, note: '' })); } });
+  var S = w.OvuStore, Y = w.OvuSync;
+  var a = Y.syncNow().then(function () {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('the typed pull brings the exercise row but leaves the shared cursor where it was', S.list('exercise').length === 1 && Date.parse(st.pulledSeq) === Date.parse('2026-10-19T10:00:00Z'), JSON.stringify({ seq: st.pulledSeq, n: S.list('exercise').length }));
+    return Y.syncNow();
+  }).then(function () {
+    check('so the reflection that arrived between the two requests is pulled on the next sync', S.list('reflection').length === 1, JSON.stringify(S.list('reflection')));
+  });
+  /* 2. more historical exercise rows than one sync takes, all uploaded together (one shared synced_at, with
+     microseconds), and the last one by id is a deletion of an entry this phone still has */
+  var big = server(), gets = [], TIE = '2026-01-01T00:00:00.123456+00:00', pad = function (n) { return ('00000' + n).slice(-5); };
+  for (var i = 0; i < 20000; i++) big.rows.push(row('h' + pad(i), 'exercise', TIE, { activity: 'stretch', label: 'Stretching', variant: 'mild', code: '02101', met: 2.3, minutes: 5, intensity: 'light', strength: false, aerobic: true, note: '' }));
+  var tomb = row('h' + pad(20000), 'exercise', TIE, {}); tomb.deleted = true; tomb.deleted_at = '2026-01-02T00:00:00Z'; tomb.updated_at = '2026-01-02T00:00:00Z'; big.rows.push(tomb);
+  var v = world(big, function (url) { gets.push(url); }), SV = v.OvuStore, YV = v.OvuSync;
+  SV.putEvent({ id: 'h' + pad(20000), type: 'exercise', date: '2025-12-31', data: { activity: 'walk', label: 'Walking', variant: 'brisk', code: '17200', met: 4.8, minutes: 30, intensity: 'moderate', strength: false, aerobic: true, note: '' }, createdAt: '2025-12-31T09:00:00Z', updatedAt: '2025-12-31T09:00:00Z', source: 'cloud' });
+  var b = YV.syncNow().then(function () {
+    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
+    check('20,001 rows sharing one timestamp: the first sync takes 20,000 by id and is not marked recovered', SV.list('exercise').length === 20001 && !st.types && st.typedAfter === 'h19999', JSON.stringify({ n: SV.list('exercise').length, types: st.types, after: st.typedAfter }));
+    return YV.syncNow();
+  }).then(function () {
+    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1')), typedGets = gets.filter(function (u) { return /type=in/.test(u); });
+    check('the next sync resumes after the last id, applies the final deletion, then marks the type known', !SV.get('h' + pad(20000)) && SV.list('exercise').length === 20000 && st.types === SV.TYPES.join(',') && !st.typedAfter && /id=gt\.h19999/.test(typedGets[typedGets.length - 1]), JSON.stringify({ n: SV.list('exercise').length, types: st.types, after: st.typedAfter, last: typedGets[typedGets.length - 1] }));
+    return YV.syncNow();
+  }).then(function () {
+    var typedGets = gets.filter(function (u) { return /type=in/.test(u); });
+    check('once recovered, later syncs make no typed requests (20 pages, then 1, then none)', typedGets.length === 21, 'typed requests: ' + typedGets.length);
+  });
+  Promise.all([a, b]).catch(function (err) { check('the typed recovery tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */

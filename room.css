@@ -1441,6 +1441,48 @@ body.btap-open{overflow:hidden}
 .matlast{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
 .matlast li{display:flex;justify-content:space-between;align-items:center;font:700 12px var(--sans);color:var(--rm-ink);background:var(--rm-card);border-radius:12px;padding:8px 10px}
 .matlast small{font:600 11px var(--sans);color:var(--rm-ink-3)}
+/* Movement (ovu-exercise.js): the week bar against WHO's 150 to 300 minutes, activity and effort pickers, the list */
+.mvweek{margin-top:12px;background:var(--rm-card);border:1px solid rgba(150,120,190,.14);border-radius:18px;padding:12px 14px}
+.mvhead{display:flex;align-items:baseline;gap:8px}
+.mvhead b{font:800 28px/1 var(--sans);color:var(--rm-plum)}
+.mvhead span:not(.ms){flex:1;font:700 12px var(--sans);color:var(--rm-ink-2)}
+.mvbar{position:relative;height:12px;border-radius:99px;background:var(--rm-paper-2);margin-top:10px;overflow:hidden}
+.mvbar i{position:absolute;top:0;bottom:0;left:0;border-radius:99px}
+.mvbar .range{background:rgba(127,190,140,.35)}
+.mvbar .fill{background:linear-gradient(90deg,#9b7fd0,#6b4fa6)}
+.mvscale{position:relative;height:16px;font:700 10px var(--sans);color:var(--rm-ink-3)}
+.mvscale span{position:absolute;top:2px;transform:translateX(-50%)}
+.mvscale span:first-child{transform:none}
+.mvline{font:700 12.5px/1.45 var(--sans);color:var(--rm-ink);margin-top:2px}
+.mvacts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.mvact{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;background:#fff;border:1.5px solid rgba(107,82,142,.14);border-radius:14px;padding:8px 4px;cursor:pointer;font:700 11px/1.2 var(--sans);color:var(--rm-ink-2);min-width:0}
+.mvact .ms{font-size:22px;color:var(--rm-mauve)}
+.mvact.on{background:var(--rm-mauve);border-color:var(--rm-mauve);color:#fff}
+.mvact.on .ms{color:#fff}
+.mvvars{display:flex;flex-direction:column;gap:6px}
+.mvvar{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;background:#fff;border:1.5px solid rgba(107,82,142,.14);border-radius:14px;padding:9px 12px;cursor:pointer;font:inherit;color:var(--rm-ink)}
+.mvvar b{font:700 12.5px/1.3 var(--sans)}
+.mvvar small{flex:none;font:700 11px var(--sans);color:var(--rm-ink-3)}
+.mvvar.on{border-color:var(--rm-mauve);background:var(--rm-lilac-2)}
+.mvquick{margin-top:8px}
+.mvcheck{display:flex;align-items:center;gap:8px;margin-top:12px;font:700 12.5px var(--sans);color:var(--rm-ink-2);cursor:pointer}
+.mvcheck input{width:18px;height:18px;accent-color:#7b5db3;flex:none}
+.mvpreview{margin-top:12px;font:700 12px/1.45 var(--sans);color:var(--rm-plum);background:var(--rm-paper-2);border-radius:12px;padding:9px 12px}
+.mvlist li{gap:8px}
+.mvlist li>span{display:flex;flex-direction:column;min-width:0;flex:1}
+.mvlist li>span small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mvlist li>small{flex:none;text-align:right}
+.mvdel{flex:none;border:none;background:transparent;color:var(--rm-ink-3);cursor:pointer;border-radius:10px;padding:4px;font:800 11px var(--sans)}
+.mvdel .ms{font-size:18px}
+.mvdel.confirm{background:#fbe3e6;color:#9b2f3c;padding:4px 8px}
+.mvperiod{margin-top:12px}
+.mvperiod .mvflags{margin-top:6px;font:600 12px/1.45 var(--sans);color:var(--rm-ink-2)}
+.mvperiod .mvflags b{display:inline;font-weight:800;color:var(--rm-plum)}
+.mvperiod .btn{margin-top:8px;flex:none;width:auto;padding:8px 12px}
+.mvsec{display:block}
+html[data-sky="night"] :is(.mvweek,.mvact,.mvvar){background:var(--rm-card);border-color:rgba(255,255,255,.08)}
+html[data-sky="night"] .mvact.on{background:var(--rm-mauve)}
+html[data-sky="night"] .mvvar.on{border-color:#b89be6;background:rgba(155,127,208,.3)}
 html[data-sky="night"] .matnow{background:linear-gradient(135deg,#3b2e5a,#4d3252)}
 html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);border-color:rgba(255,255,255,.08)}
 /* ---------- the pets walk (ovu-petwalk.js): a strip box inside the pet's body, shown while it walks; the strip is clipped
