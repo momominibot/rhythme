@@ -32,4 +32,17 @@
  </Record>
  <Record type="HKCategoryTypeIdentifierMenstrualFlow" sourceName="Health" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="" creationDate="2025-06-05 00:00:00 +0800" startDate="2025-06-05 00:00:00 +0800" endDate="2025-06-05 00:00:00 +0800" value="2"/>
  <Record type="HKCategoryTypeIdentifierMenstrualFlow" sourceName="Health" sourceVersion="11.2" device="&lt;&lt;HKDevice: 0x1&gt;, name:Apple Watch, model:Watch&gt;" unit="" creationDate="2025-06-06 00:00:00 +0800" startDate="2025-06-06 00:00:00 +0800" endDate="2025-06-06 00:00:00 +0800" value="HKCategoryValueMenstrualFlowNone"/>
+ <Record type="HKCategoryTypeIdentifierIntermenstrualBleeding" sourceName="Health" sourceVersion="18.0" unit="" creationDate="2025-06-04 09:00:00 +0800" startDate="2025-06-04 09:00:00 +0800" endDate="2025-06-04 09:00:00 +0800" value="HKCategoryValueNotApplicable"/>
+ <Record type="HKCategoryTypeIdentifierIntermenstrualBleeding" sourceName="Health" sourceVersion="18.0" unit="" creationDate="2025-06-07 08:00:00 +0800" startDate="2025-06-07 08:00:00 +0800" endDate="2025-06-07 08:00:00 +0800" value="HKCategoryValueNotApplicable"/>
+ <Record type="HKCategoryTypeIdentifierAbdominalCramps" sourceName="Health" sourceVersion="18.0" unit="" creationDate="2025-06-04 08:00:00 +0800" startDate="2025-06-04 08:00:00 +0800" endDate="2025-06-04 08:00:00 +0800" value="HKCategoryValueSeverityModerate"/>
+ <Record type="HKCategoryTypeIdentifierHeadache" sourceName="Health" sourceVersion="18.0" unit="" creationDate="2025-06-04 08:00:00 +0800" startDate="2025-06-04 08:00:00 +0800" endDate="2025-06-04 08:00:00 +0800" value="HKCategoryValueSeverityMild"/>
+ <Record type="HKCategoryTypeIdentifierHeadache" sourceName="Health" sourceVersion="18.0" unit="" creationDate="2025-06-04 20:00:00 +0800" startDate="2025-06-04 20:00:00 +0800" endDate="2025-06-04 20:00:00 +0800" value="HKCategoryValueSeverityUnspecified"/>
+ <Record type="HKCategoryTypeIdentifierBloating" sourceName="Health" sourceVersion="18.0" unit="" creationDate="2025-06-05 08:00:00 +0800" startDate="2025-06-05 08:00:00 +0800" endDate="2025-06-05 08:00:00 +0800" value="HKCategoryValueSeverityNotPresent"/>
+ <Record type="HKCategoryTypeIdentifierNightSweats" sourceName="Health" sourceVersion="18.0" unit="" creationDate="2025-06-05 03:00:00 +0800" startDate="2025-06-05 03:00:00 +0800" endDate="2025-06-05 03:00:00 +0800" value="HKCategoryValueSeverityMild"/>
+ <Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Breathe" sourceVersion="18.0" unit="" creationDate="2025-06-02 07:50:00 +0800" startDate="2025-06-02 07:40:00 +0800" endDate="2025-06-02 07:50:00 +0800" value="HKCategoryValueNotApplicable"/>
+ <Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Breathe" sourceVersion="18.0" unit="" creationDate="2025-06-02 21:05:00 +0800" startDate="2025-06-02 21:00:00 +0800" endDate="2025-06-02 21:05:00 +0800" value="HKCategoryValueNotApplicable"/>
+ <Workout workoutActivityType="HKWorkoutActivityTypeWalking" duration="30" durationUnit="min" sourceName="Apple Watch" sourceVersion="11.2" creationDate="2025-06-03 18:31:00 +0800" startDate="2025-06-03 18:00:00 +0800" endDate="2025-06-03 18:30:00 +0800">
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-06-03 18:00:00 +0800" duration="30" durationUnit="min"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierStepCount" startDate="2025-06-03 18:00:00 +0800" endDate="2025-06-03 18:30:00 +0800" sum="3100" unit="count"/>
+ </Workout>
 </HealthData>

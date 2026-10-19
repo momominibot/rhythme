@@ -609,7 +609,7 @@ function scenes(todayIso) {
   check('an old numeric asleep value (1) within one date is a night of its own', r.sleep[1] && r.sleep[1].date === '2025-06-03' && r.sleep[1].bedTime === '00:40' && r.sleep[1].wakeTime === '07:25' && r.sleep[1].hours === 6.8, JSON.stringify(r.sleep[1]));
   check('body mass: pounds convert to kg and the later weigh-in of the day wins', r.weight.length === 1 && r.weight[0].date === '2025-06-02' && r.weight[0].kg === 58.1, JSON.stringify(r.weight));
   check('menstrual flow: a named Medium with a metadata child and a numeric 2 (light) become period days; None is skipped', r.period.length === 2 && r.period[0].flow === 'medium' && r.period[0].date === '2025-06-04' && r.period[1].flow === 'light' && r.counts.flowNone === 1, JSON.stringify(r.period));
-  check('steps and heart rate are skipped and counted by kind', r.skipped.HKQuantityTypeIdentifierStepCount === 5 && r.skipped.HKQuantityTypeIdentifierHeartRate === 3 && r.skippedTotal === 8 && r.skippedKinds === 2, JSON.stringify(r.skipped));
+  check('steps, heart rate, night sweats and a workout are skipped and counted by kind', r.skipped.HKQuantityTypeIdentifierStepCount === 5 && r.skipped.HKQuantityTypeIdentifierHeartRate === 3 && r.skippedTotal === 10 && r.skippedKinds === 4, JSON.stringify(r.skipped));
   check('friendly names for skipped kinds', H.friendlyType('HKQuantityTypeIdentifierStepCount') === 'steps' && H.friendlyType('HKQuantityTypeIdentifierSomethingNew') === 'something new');
   var sc = H.appleScanner(), cut = xml.indexOf('startDate="2025-06-02 02:50');
   sc.push(xml.slice(0, cut - 7), false); sc.push(xml.slice(cut - 7, cut + 40), false); sc.push(xml.slice(cut + 40), true);
@@ -635,14 +635,14 @@ function scenes(todayIso) {
   S.add('weight', '2025-06-02', { kg: 60 }, 'scale');
   S.add('period', '2025-06-05', { flow: 'heavy' });
   var r = H.parseAppleXml(fs.readFileSync(path.join(root, 'tools/fixtures/apple-export-mini.xml'), 'utf8'));
-  var p = H.apply(r, S);
+  var p = H.apply(r, S, { kinds: ['sleep', 'weight', 'period'] });
   check('three hand-written days are left alone and counted', p.kept === 3 && p.written.added === 2 && p.counts.sleep === 1 && p.counts.weight === 0 && p.counts.period === 1, JSON.stringify({ kept: p.kept, w: p.written, c: p.counts }));
   var mine = S.list('sleep', { from: '2025-06-02', to: '2025-06-02' });
   check('the hand-written night is untouched and no second night was added that day', mine.length === 1 && mine[0].data.notes === 'mine' && S.list('weight', { from: '2025-06-02', to: '2025-06-02' })[0].data.kg === 60 && S.list('period', { from: '2025-06-05', to: '2025-06-05' })[0].data.flow === 'heavy');
   var imp = S.list('sleep', { from: '2025-06-03', to: '2025-06-03' })[0];
   check('an imported night carries source apple-health, the sleep-sheet shape and its asleep minutes', imp && imp.source === 'apple-health' && imp.data.bedTime === '00:40' && imp.data.wakeTime === '07:25' && imp.data.mode === 'import' && S.sleepHours(imp.data) === 6.8, JSON.stringify(imp));
   check('date range covers what was written', p.from === '2025-06-03' && p.to === '2025-06-04', JSON.stringify([p.from, p.to]));
-  var again = H.apply(r, S);
+  var again = H.apply(r, S, { kinds: ['sleep', 'weight', 'period'] });
   check('importing the same file again refreshes in place: nothing added, nothing duplicated', again.written.added === 0 && again.written.updated === 2 && again.refreshed === 2 && S.list('sleep').length === 2 && S.list('period').length === 2, JSON.stringify(again.written));
   check('importedCount sees only imported entries', H.importedCount(S) === 2);
   var gone = H.removeImported(S);
@@ -651,6 +651,76 @@ function scenes(todayIso) {
   check('future-dated records are skipped, not written', future.future === 1 && future.total === 0);
   var w2 = fresh(), S2 = w2.OvuStore, res = S2.addMany([{ type: 'weight', date: '2025-01-01', data: { kg: 50 }, source: 'google-fit' }, { type: 'weight', date: '2025-01-01', data: { kg: 51 }, source: 'google-fit' }, { type: 'nope', date: '2025-01-01', data: {} }, { type: 'sleep', date: 'bad', data: {} }]);
   check('addMany writes once, keeps single-per-day kinds single and skips invalid items', res.added === 1 && res.skipped === 3 && S2.list('weight').length === 1 && S2.list('weight')[0].data.kg === 50, JSON.stringify(res));
+})();
+
+(function healthImportChoose() {
+  console.log('health import: every kind found is listed with counts and dates; only ticked kinds and dates are written');
+  var w = fresh('2026-10-18'), H = w.OvuHealth, S = w.OvuStore;
+  var r = H.parseAppleXml(fs.readFileSync(path.join(root, 'tools/fixtures/apple-export-mini.xml'), 'utf8'));
+  check('spotting on a day with recorded flow is dropped; spotting on its own day is kept', JSON.stringify(r.spotting) === JSON.stringify([{ date: '2025-06-07', flow: 'spotting' }]), JSON.stringify(r.spotting));
+  check('Apple symptoms map to Rhythme chips, repeats merge, NotPresent is skipped, unmapped ones are not guessed', JSON.stringify(r.symptoms) === JSON.stringify([{ date: '2025-06-04', symptoms: ['cramps', 'headache'] }]) && r.counts.symptomAbsent === 1 && r.skipped.HKCategoryTypeIdentifierNightSweats === 1, JSON.stringify({ s: r.symptoms, c: r.counts }));
+  check('mindful sessions add up per day (10 + 5 minutes, 2 sessions)', JSON.stringify(r.mindful) === JSON.stringify([{ date: '2025-06-02', minutes: 15, sessions: 2 }]), JSON.stringify(r.mindful));
+  check('a Workout element is counted as a kind not in Rhythme yet, its child elements are not Records', r.skipped.HKWorkout === 1 && r.counts.workouts === 1 && r.counts.records === 29, JSON.stringify(r.counts));
+  var k = H.kinds(r);
+  check('the picker lists the six kinds Rhythme has a place for, in order, with counts and date ranges', k.ready.map(function (x) { return x.id + ':' + x.count + ':' + x.from + ':' + x.to; }).join(' ') === 'sleep:2:2025-06-02:2025-06-03 period:2:2025-06-04:2025-06-05 spotting:1:2025-06-07:2025-06-07 symptoms:1:2025-06-04:2025-06-04 weight:1:2025-06-02:2025-06-02 mindful:1:2025-06-02:2025-06-02', JSON.stringify(k.ready));
+  check('kinds with no place yet are listed by friendly name with counts and dates, most first', k.later.map(function (x) { return x.name + ':' + x.count; }).join(',') === 'steps:5,heart rate:3,night sweats:1,workouts:1' && k.later[3].from === '2025-06-03', JSON.stringify(k.later));
+  var kr = H.kinds(r, { from: '2025-06-04' });
+  check('a date range narrows the counts; kinds with nothing in it stay listed with zero', kr.ready.filter(function (x) { return x.id === 'sleep'; })[0].count === 0 && kr.ready.filter(function (x) { return x.id === 'period'; })[0].count === 2 && kr.ready.length === 6);
+  S.add('symptom', '2025-06-04', { symptoms: ['acne'], pain: 2, mood: '', notes: 'mine' });
+  var preview = H.plan(r, S, { kinds: ['symptoms', 'period'] });
+  check('the plan for ticked kinds says which days she logged herself (keptBy)', preview.keptBy.symptoms === 1 && preview.keptBy.period === 0 && preview.counts.symptoms === 0 && preview.counts.period === 2);
+  var none = H.plan(r, S, { kinds: [] });
+  check('nothing ticked plans nothing', none.total === 0 && none.kept === 0);
+  var p = H.apply(r, S, { kinds: ['sleep', 'spotting', 'mindful'], from: '2025-06-03' });
+  var srcs = S.list().filter(function (e) { return H.isImported(e); }).map(function (e) { return e.type + ':' + e.date; }).sort().join(',');
+  check('only ticked kinds inside the date range are written (one night, one spotting day; mindful minutes fall before the range)', srcs === 'period:2025-06-07,sleep:2025-06-03' && p.counts.sleep === 1 && p.counts.spotting === 1 && p.counts.mindful === 0, srcs);
+  check('nothing unticked was written: no weight, no period flow, no symptoms from the file', S.list('weight').length === 0 && S.list('period').filter(function (e) { return e.data.flow !== 'spotting'; }).length === 0 && S.list('symptom').length === 1);
+  var spot = S.list('period', { from: '2025-06-07', to: '2025-06-07' })[0];
+  check('a spotting day never starts a cycle', S.cycleStats('2025-06-10').starts.length === 0 && spot.data.flow === 'spotting', JSON.stringify(S.cycleStats('2025-06-10').starts));
+  H.apply(r, S, { kinds: ['mindful', 'symptoms'] });
+  var mind = S.list('mindfulness')[0];
+  check('mindful minutes become one mindfulness entry for the day, marked as imported', mind && mind.source === 'apple-health' && mind.data.kind === 'imported' && mind.data.minutes === 15 && mind.data.sessions === 2 && mind.data.completed === true, JSON.stringify(mind));
+  var view = H.imported(S);
+  check('the Health data view lists what was brought in per kind, with counts, dates and sources', view.map(function (x) { return x.id + ':' + x.count + ':' + x.sources['apple-health']; }).join(',') === 'sleep:1:1,spotting:1:1,mindful:1:1', JSON.stringify(view.map(function (x) { return [x.id, x.count, x.sources]; })));
+  var gone = H.removeImported(S, 'spotting');
+  check('removing one kind takes only that kind', gone === 1 && H.importedCount(S) === 2 && H.importedCount(S, 'spotting') === 0 && H.importedCount(S, 'sleep') === 1);
+  var night = S.list('sleep')[0];
+  S.update(night.id, { data: Object.assign({}, night.data, { quality: 4 }) });
+  check('an imported night she edits by hand becomes hers', S.get(night.id).source === 'room' && H.importedCount(S, 'sleep') === 0);
+  var again = H.apply(r, S, { kinds: ['sleep'] });
+  check('a later import leaves her edited night alone and does not add a second one', again.keptBy.sleep === 1 && S.list('sleep', { from: '2025-06-03', to: '2025-06-03' }).length === 1 && S.list('sleep', { from: '2025-06-03', to: '2025-06-03' })[0].data.quality === 4);
+  H.apply(r, S, { kinds: ['period'] });
+  var pd = S.list('period', { from: '2025-06-04', to: '2025-06-04' })[0];
+  S.add('period', '2025-06-04', { flow: 'heavy', clots: true, impact: false });
+  check('changing an imported period day on the calendar makes it hers, and Remove keeps it', S.get(pd.id).source === 'room' && H.removeImported(S, 'period') === 1 && S.list('period', { from: '2025-06-04', to: '2025-06-04' })[0].data.flow === 'heavy');
+  check('symptomPresent reads Apple severity and presence values', H.symptomPresent('HKCategoryValueSeverityMild') && H.symptomPresent('HKCategoryValueSeverityUnspecified') && !H.symptomPresent('HKCategoryValueSeverityNotPresent') && !H.symptomPresent('HKCategoryValuePresenceNotPresent') && !H.symptomPresent('1'));
+  var gb = H.googleBuilder();
+  gb.json(JSON.stringify({ fitnessActivity: 'meditation', startTime: '2025-05-11T07:00:00.000+08:00', endTime: '2025-05-11T07:12:00.000+08:00' }), 'x_MEDITATION.json');
+  gb.json(JSON.stringify({ fitnessActivity: 'running', startTime: '2025-05-12T07:00:00.000+08:00', endTime: '2025-05-12T07:30:00.000+08:00' }), 'x_RUNNING.json');
+  gb.csv(fs.readFileSync(path.join(root, 'tools/fixtures/fit-daily-metrics.csv'), 'utf8'), 'Daily activity metrics.csv');
+  var g = gb.result(), gk = H.kinds(g);
+  var ln = {}; gk.later.forEach(function (x) { ln[x.name] = x; });
+  check('Takeout meditation sessions become mindful minutes; running and every other daily column are listed as not in Rhythme yet, weight columns are not', JSON.stringify(g.mindful) === JSON.stringify([{ date: '2025-05-11', minutes: 12, sessions: 1 }]) && ln.steps && ln.steps.count === 3 && ln.steps.from === '2025-05-10' && ln.calories && ln['heart points'] && ln.running && ln.running.count === 1 && !Object.keys(ln).some(function (n) { return /weight|date|time/.test(n); }), JSON.stringify(Object.keys(ln)));
+})();
+
+(function healthImportReviewFixes() {
+  console.log('health import: overlapping mindful sessions, session counts, date edits, future dates (Codex review, 19 Oct)');
+  var w = fresh('2026-10-18'), H = w.OvuHealth, S = w.OvuStore, A = w.OvuAgents;
+  var x = '<HealthData>' +
+    '<Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Breathe" startDate="2025-06-02 08:00:00 +0800" endDate="2025-06-02 08:10:00 +0800" value="HKCategoryValueNotApplicable"/>' +
+    '<Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Calm" startDate="2025-06-02 08:00:00 +0800" endDate="2025-06-02 08:10:00 +0800" value="HKCategoryValueNotApplicable"/>' +
+    '<Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Calm" startDate="2025-06-02 08:05:00 +0800" endDate="2025-06-02 08:15:00 +0800" value="HKCategoryValueNotApplicable"/>' +
+    '<Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Calm" startDate="2025-06-02 21:00:00 +0800" endDate="2025-06-02 21:15:00 +0800" value="HKCategoryValueNotApplicable"/>' +
+    '<Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Calm" startDate="2027-01-02 21:00:00 +0800" endDate="2027-01-02 21:15:00 +0800" value="HKCategoryValueNotApplicable"/>' +
+    '</HealthData>';
+  var r = H.parseAppleXml(x);
+  check('the same minutes recorded by two apps are merged before adding up (08:00 to 08:15 plus 21:00 to 21:15 is 30 minutes, 2 sessions)', r.mindful[0].minutes === 30 && r.mindful[0].sessions === 2, JSON.stringify(r.mindful));
+  check('the picker leaves out future dates when given today as the upper bound', H.kinds(r, { to: '2026-10-18' }).ready[0].count === 1 && H.kinds(r).ready[0].count === 2);
+  H.apply(r, S, { kinds: ['mindful'] });
+  check('the four-week summary counts the sessions inside a brought-in day, not the entry', A.fourWeekSummary('2025-06-10').mindfulness.sessions === 2 && A.fourWeekSummary('2025-06-10').mindfulness.minutes === 30, JSON.stringify(A.fourWeekSummary('2025-06-10').mindfulness));
+  var e = S.list('mindfulness')[0];
+  S.update(e.id, { date: '2025-06-03' });
+  check('moving an imported entry to another date makes it hers, so Remove keeps it', S.get(e.id).source === 'room' && H.removeImported(S) === 0);
 })();
 
 /* The zip path is asynchronous (slices read through Blob.arrayBuffer), so it runs last and prints the totals. */
