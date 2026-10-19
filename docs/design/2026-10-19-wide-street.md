@@ -207,7 +207,7 @@ Verdict: ship with fixes. All taken:
 | 2 | the night veil paints under positive-z cutouts, so matching filters still leaves them unveiled at night | each cutout carries the veil masked to its own alpha, aligned to the street-wide veil; smoke compares rendered pixels at night |
 | 3 | a sky change re-renders props, which recreated the cutouts at the destination filter while the plate transitioned | the cutouts moved to `#plateOcc`, rebuilt only on a layout change; smoke samples the filter mid-transition |
 | 4 | under reduced motion the plate's more specific `.room-img.day` transition survives while the cutouts snapped | the image shares that rule instead of a reduced-motion override; smoke compares the transitions with reduced motion |
-| 5 | travel preloads only the plate, so the street could appear before its cutouts | travel preloads the cutouts with the plate (each resolves on error or after 2.5 s); **still open after round two, see below** |
+| 5 | travel preloads only the plate, so the street could appear before its cutouts | round one preloaded them (resolving on error or a timeout, never decoding); open after round two, then fixed as decided below |
 | 6 | (205, 73) and (205, 79) lie inside the pillar's solid; tests feed `depthRank` synthetic values | the task's two points stay, and smoke adds two reachable spots; the pet settle path itself is not driven by a test yet |
 
 Also found here: moves the room makes itself (reduced motion, the CSS fallback) never re-ranked her; fixed with the
@@ -217,10 +217,23 @@ Round two (the fix diff): findings 1 to 4 closed (pet settle re-ranks, the maske
 the unmaskable fallback keeps an unveiled cutout rather than a dark box, `#plateOcc` survives props renders, both
 transitions match under reduced motion). New: `W.sortDepth()` from a pet's frame during the room's CSS slide ranked her
 by her destination; fixed by `herY()` (the engine's position while it walks, her live computed top during a CSS slide,
-else where she stands), with a smoke check that fails without it. **Held at AGENTS gate 6** (the same finding open after
-two reviews): finding 5, travel can reveal the street before a cutout has decoded, or with one that failed. Where it
-shows: she arrives at a doorstep or arch, and only the garden arch's stand point (38, 60.2) overlaps a cutout, by a
-sliver of its right-hand flowers, for the moment a cold cache takes to decode a 16 KB sprite; a sprite that fails to load
-leaves the street exactly as it was before this change. Options for Jamie: ship as is, or await `decode()` on the
-cutouts before the fade lifts (a few lines, then a third review). Test coverage for delayed or failed sprites on travel
-and for the real pet settle path is still missing.
+else where she stands), with a smoke check that fails without it.
+
+**Gate 6 and the decision.** Finding 5 was still open after round two (travel could reveal the street before a cutout
+had decoded), which is AGENTS gate 6. The decision, relayed by the session that leads this family (not by Jamie
+directly): wait for the cutouts under the existing fade, capped at about 1.5 s. Done: one kept image element per cutout
+file (`occImg`, so the bitmap travel waited for is the one drawn; a failed file is dropped and asked for again next
+visit), `occReady` resolves true once loaded and decoded and false on failure, and `travel()` waits for
+`Promise.all([plate, occWait(T)])`, where `occWait` races the cutouts against `OCC_CAP` (1500 ms) from the start of the
+fade. Smoke, each in a fresh context with the service worker blocked: sprites 0.7 s late, the fade lifts after them
+with all four decoded; sprites failing, it lifts at once; sprites hung for 4 s, it lifts at the cap and they draw when
+they arrive. Without the wait the first and third fail. The real pet settle path is still not driven by a test.
+
+**Round three (the decode wait, read-only): changes needed, finding 5 not fully closed.** Held again at gate 6 for Jamie.
+Four edge cases, none a deadlock: (1) a sprite that fails during the wait is dropped from the cache, so `renderOcc`
+makes a new request at once and the cutout can pop in after the fade instead of waiting for the next visit; (2) a
+rejected `decode()` with a non-zero `naturalWidth` counts as ready and is not retried; (3) while a request hangs, each
+capped wait adds a load and an error listener that stay until it settles; (4) the smoke cases do not prove decoding
+(only `complete` and size), and their 2600 ms upper bound would accept a 2.5 s cap. Small fixes, not applied: one shared
+readiness promise per image element, decode rejection treated as failure and retried on the next visit, failed files
+kept until then, a 2.2 s upper bound and a fail-then-slow-retry case.

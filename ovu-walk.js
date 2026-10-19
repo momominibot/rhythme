@@ -262,6 +262,30 @@
    * render (a sky change, pet care) leaves them alone and their filter keeps transitioning with the plate's. Each is a
    * wrapper holding the image and a copy of the night veil masked to the image's own alpha, sized and offset so its
    * gradient lines up with the veil across the whole street. Rebuilt only when the layout changes */
+  /* one image element per cutout file, kept between visits, so the bitmap travel waited to decode is the one drawn */
+  var occImgs = {};
+  function occImg(file) {
+    var im = occImgs[file]; if (im) return im;
+    im = occImgs[file] = doc.createElement('img'); im.className = 'occ-img'; im.alt = ''; im.draggable = false; im.decoding = 'async';
+    im.addEventListener('error', function () { if (occImgs[file] === im) delete occImgs[file]; }); /* a failed file is asked for again next visit */
+    im.src = R.ART + file; return im;
+  }
+  /* true once a cutout is loaded and decoded, false if it failed; never rejects */
+  function occReady(file) {
+    var im = occImg(file);
+    return new Promise(function (resolve) {
+      function ok() { if (im.decode) im.decode().then(function () { resolve(true); }, function () { resolve(im.naturalWidth > 0); }); else resolve(true); }
+      if (im.complete) { if (im.naturalWidth > 0) ok(); else resolve(false); return; }
+      im.addEventListener('load', ok, { once: true }); im.addEventListener('error', function () { resolve(false); }, { once: true });
+    });
+  }
+  /* travel holds the fade until the destination's cutouts are drawn-ready, at most OCC_CAP ms from the start of the fade:
+   * a slow or failed sprite never holds the walk longer, and only leaves the plate as it was until it arrives */
+  var OCC_CAP = 1500;
+  function occWait(T) {
+    var list = (T.occluders || []).map(function (o) { return occReady(o.img); }); if (!list.length) return Promise.resolve();
+    return Promise.race([Promise.all(list), new Promise(function (r) { root.setTimeout(r, OCC_CAP); })]);
+  }
   var occLayer = null, canMask = !!(root.CSS && root.CSS.supports && (root.CSS.supports('mask-image', 'url("a.webp")') || root.CSS.supports('-webkit-mask-image', 'url("a.webp")')));
   function renderOcc() {
     var L = R.layout(); if (!L || !R.els.props) return;
@@ -270,10 +294,9 @@
     occLayer.dataset.layout = L.id; occLayer.innerHTML = '';
     var S = 100 * (L.span > 1 ? L.span : 1);
     (L.occluders || []).forEach(function (o) {
-      var d = doc.createElement('div'), im = doc.createElement('img'), v = doc.createElement('i'), url = 'url("' + R.ART + o.img + '")';
+      var d = doc.createElement('div'), im = occImg(o.img), v = doc.createElement('i'), url = 'url("' + R.ART + o.img + '")';
       d.className = 'plate-occ'; d.dataset.id = o.id; d.dataset.base = o.base;
       d.style.left = o.x + '%'; d.style.top = o.y + '%'; d.style.width = o.w + '%'; d.style.height = o.h + '%';
-      im.className = 'occ-img'; im.alt = ''; im.draggable = false; im.decoding = 'async'; im.src = R.ART + o.img;
       v.className = 'occ-veil'; v.style.webkitMaskImage = url; v.style.maskImage = url;
       v.style.backgroundSize = (S / o.w * 100) + '% ' + (100 / o.h * 100) + '%';
       v.style.backgroundPosition = (o.x / (S - o.w) * 100) + '% ' + (o.y / (100 - o.h) * 100) + '%';
@@ -485,7 +508,7 @@
     travelling = true; clearInput(); if (active) commit();
     scene.classList.add('fading'); R.chime('tap');
     var t0 = Date.now();
-    Promise.all([preload(R.ART + T.img)].concat((T.occluders || []).map(function (o) { return preload(R.ART + o.img); }))).then(function () { /* the plate and its cutouts; a missing cutout only leaves the plate as it was */
+    Promise.all([preload(R.ART + T.img), occWait(T)]).then(function () { /* the plate, and its cutouts decoded or the cap reached */
       var left = Math.max(0, (reduced ? 80 : 380) - (Date.now() - t0));
       root.setTimeout(function () {
         if (napping() || (T.store && !storeOpen(T.store))) { /* she fell asleep or the store shut during the fade */
@@ -599,6 +622,6 @@
     if (R.setWalkTo) R.setWalkTo(routeTo); /* the room's own walks route around furniture */
   }
   W.setSpeedScale = function (k) { speedScale = Math.min(1, Math.max(0.4, Number(k) || 1)); }; W.speedScale = function () { return speedScale; };
-  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.travelling = function () { return !!travelling; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(); }; W.routeTo = routeTo; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
+  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.travelling = function () { return !!travelling; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(); }; W.routeTo = routeTo; W.OCC_CAP = OCC_CAP; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
   R.on('boot', mount);
 })(window);

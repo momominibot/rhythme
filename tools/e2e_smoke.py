@@ -408,6 +408,33 @@ async def main():
               return {start: start, end: end}}""")
             await page.evaluate("(p)=>OvuRoom.placeAvatar(p, false)", back_to)
             check("during the room's own straight slide a depth call from elsewhere ranks her where she is drawn: in front of the plaza pillar as she leaves, behind it on arrival", cs["start"]["live"] > 77 and cs["start"]["dest"] < 72 and cs["start"]["her"] > cs["start"]["pillar"] and cs["end"]["her"] < cs["end"]["pillar"], cs)
+            # travel waits under the fade for the street's cutouts to decode, never longer than OvuWalk.OCC_CAP (1.5 s): each case in a fresh
+            # context (no cache, service worker blocked so the route really delays or fails the sprites)
+            TRAVEL_FADE = """()=>new Promise(function(res){var sc=document.querySelector('#scene'), t0=performance.now(), seen=false, done=false, fin=function(v){if(!done){done=true; res(v)}};
+              var look=function(){var ims=[].slice.call(document.querySelectorAll('#plateOcc .occ-img')); return {n: ims.length, ready: ims.length>0 && ims.every(function(i){return i.complete && i.naturalWidth>0})}};
+              var mo=new MutationObserver(function(){ if(sc.classList.contains('fading')) seen=true; else if(seen){ mo.disconnect(); var l=look(); fin({ms: Math.round(performance.now()-t0), layout: sc.dataset.layout, n: l.n, ready: l.ready, cap: OvuWalk.OCC_CAP}); } });
+              mo.observe(sc,{attributes:true, attributeFilter:['class']}); if(!OvuWalk.travel('street')) fin({went:false}); setTimeout(function(){fin({timeout:true})}, 12000);})"""
+            async def travel_case(kind):
+                c2 = await browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, service_workers="block")
+                await c2.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB)))
+                p2 = await c2.new_page()
+                async def gate2(route):
+                    url = route.request.url
+                    if not url.startswith(BASE): return await route.abort()
+                    if "/street-occ-" in url:
+                        if kind == "fail": return await route.abort()
+                        await asyncio.sleep(0.7 if kind == "slow" else 4.0)
+                    return await route.continue_()
+                await p2.route("**/*", gate2)
+                await p2.goto(BASE + "room.html", wait_until="domcontentloaded"); await p2.wait_for_timeout(1500)
+                r = await p2.evaluate(TRAVEL_FADE)
+                if kind == "hang": await p2.wait_for_timeout(3500); r["later"] = await p2.evaluate("()=>[].slice.call(document.querySelectorAll('#plateOcc .occ-img')).every(function(i){return i.complete && i.naturalWidth>0})")
+                await c2.close()
+                return r
+            slow, fail, hang = await travel_case("slow"), await travel_case("fail"), await travel_case("hang")
+            check("travel to the street waits under the fade for its cutouts (sprites 0.7 s late): they are decoded when the fade lifts", slow.get("layout") == "street" and slow.get("ready") and slow.get("n") == 4 and slow.get("ms", 0) >= 650, slow)
+            check("if the cutouts fail, the fade still lifts at once on the street (the plate drawn as before)", fail.get("layout") == "street" and not fail.get("ready") and fail.get("ms", 9999) < 1400, fail)
+            check("if the cutouts hang, the fade lifts at the 1.5 s cap, and they draw once they arrive", hang.get("layout") == "street" and not hang.get("ready") and 1400 <= hang.get("ms", 0) <= 2600 and hang.get("later") is True, hang)
             await page.click('#minimap [data-sub="shop-homes"]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='shop-homes' && !document.querySelector('#scene').classList.contains('fading')", timeout=12000)
             except Exception: pass
