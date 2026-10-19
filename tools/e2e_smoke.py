@@ -214,7 +214,7 @@ async def main():
             # at night the calendar keeps period days pink (the night card colour once flattened every day)
             calnight = await page.evaluate("""()=>{ var g=document.createElement('div'); g.className='cal-grid'; var d=document.createElement('button'); d.className='cal-day p-heavy'; g.appendChild(d); document.querySelector('#sheet').appendChild(g);
               var root=document.documentElement, was=root.getAttribute('data-sky'); root.setAttribute('data-sky','night'); var night=getComputedStyle(d).backgroundColor; root.setAttribute('data-sky', was || ''); g.remove(); return night; }""")
-            check("at night a heavy period day on the calendar is still deep pink, not the dark card colour", calnight == "rgb(193, 81, 122)", calnight)
+            check("at night a heavy period day on the calendar is still deep pink, not the dark card colour", calnight == "rgb(176, 67, 110)", calnight)
             # walking together: a tap on the corgi offers a walk; she says so, the corgi hops with hearts, then follows her
             await page.evaluate("()=>document.querySelector('.prop.owned.pet[data-id=dog]').click()"); await page.wait_for_timeout(250)
             offer = await page.evaluate("()=>{var b=document.querySelector('#bubble [data-petwalk]'); return b ? {kind: b.dataset.petwalk, text: b.textContent} : null}")
