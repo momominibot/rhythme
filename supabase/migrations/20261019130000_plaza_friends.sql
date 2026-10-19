@@ -12,6 +12,12 @@
 -- * Every table is closed to the app's roles; every call is a security-definer function owned by postgres that checks
 --   the caller, her consent and her card. Withdrawing `social`, by any route, deletes the card, friendships, requests and
 --   notes (a trigger on consent_events); blocks stay, so a pause never reopens contact.
+-- * One lock per account (social.lock), taken before any check: every call that changes something between two people
+--   holds both, and withdrawal and staff pauses hold the account's, so a check and its write are never split.
+-- * Old rows are deleted daily by a pg_cron job as well as on use, so the retention the notice promises holds with no use.
+-- Second cut, after the first Codex review (19 Oct): explicit opt-in and stale-edit refusal on the card, account locks,
+--   hidden callers cannot ask, the 14-day answer window for reciprocal asks, declines keep their quota slot, blocks
+--   copy a card only when it was visible, inbox notes only from unblocked friends, the daily clean-up.
 -- Undo: at the bottom.
 
 -- ---------- the consent purpose ----------
@@ -168,6 +174,18 @@ revoke all on sequence public.social_notes_id_seq from public, anon, authenticat
 revoke all on table staff.social_reports from public, anon, authenticated;
 
 -- ---------- helpers (schema social, owned by postgres, callable only by the functions below) ----------
+-- one lock per account, in its own advisory namespace (4242); two accounts are locked in key order, so calls never wait
+-- on each other in a circle. Every call that changes something between two people takes both before it checks anything.
+create or replace function social.lock(p_a uuid, p_b uuid default null) returns void
+language plpgsql security definer set search_path = '' as $$
+declare ka integer := hashtext('social:acct:' || p_a::text); kb integer;
+begin
+  if p_b is null or p_b = p_a then perform pg_advisory_xact_lock(4242, ka); return; end if;
+  kb := hashtext('social:acct:' || p_b::text);
+  perform pg_advisory_xact_lock(4242, least(ka, kb));
+  if kb <> ka then perform pg_advisory_xact_lock(4242, greatest(ka, kb)); end if;
+end $$;
+
 -- until when staff paused this account, or null
 create or replace function social.paused(p_uid uuid) returns timestamptz
 language sql stable security definer set search_path = '' as $$
@@ -205,11 +223,11 @@ language sql stable security definer set search_path = '' as $$
     and (p_visit is null or p.visit = p_visit) and p.seen_at > clock_timestamp() - interval '75 seconds')
 $$;
 
--- one more of `kind` if fewer than p_max happened inside p_window; records it and says yes, or says no and records nothing
+-- one more of `kind` if fewer than p_max happened inside p_window; records it and says yes, or says no and records nothing.
+-- Callers hold social.lock(p_uid), which serialises the count and the insert.
 create or replace function social.hit(p_uid uuid, p_kind text, p_max integer, p_window interval) returns boolean
 language plpgsql security definer set search_path = '' as $$
 begin
-  perform pg_advisory_xact_lock(hashtext('social:rate:' || p_uid::text || ':' || p_kind));
   if (select count(*) from public.social_rate r where r.user_id = p_uid and r.kind = p_kind and r.at > clock_timestamp() - p_window) >= p_max then return false; end if;
   insert into public.social_rate (user_id, kind, at) values (p_uid, p_kind, clock_timestamp());
   return true;
@@ -250,12 +268,26 @@ begin
   delete from staff.social_reports where status <> 'open' and decided_at < now() - interval '365 days';
 end $$;
 
--- block: end everything between the two, quietly, and remember the card as it was
+-- could p_viewer see p_other's card right now: friends, a request between them in the last 30 days, or both in the same
+-- group with p_other shown
+create or replace function social.visible(p_viewer uuid, p_other uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select social.friends(p_viewer, p_other)
+      or exists (select 1 from public.social_requests r where ((r.from_user = p_viewer and r.to_user = p_other) or (r.from_user = p_other and r.to_user = p_viewer)) and r.at > now() - interval '30 days')
+      or exists (select 1 from public.plaza_presence a join public.plaza_presence b on b.server = a.server
+                   join public.social_profiles s on s.user_id = b.user_id and not s.hidden
+                 where a.user_id = p_viewer and b.user_id = p_other and a.seen_at > clock_timestamp() - interval '75 seconds' and b.seen_at > clock_timestamp() - interval '75 seconds')
+$$;
+
+-- block: end everything between the two, quietly. The Blocked list keeps her card as it was only if the blocker could see
+-- it at that moment; otherwise it says "Someone", so blocking a remembered handle is never a way to look a card up.
 create or replace function social.block(p_blocker uuid, p_blocked uuid) returns void
 language plpgsql security definer set search_path = '' as $$
+declare vis boolean := social.visible(p_blocker, p_blocked);
 begin
   insert into public.social_blocks (blocker, blocked, name, look)
-    select p_blocker, p_blocked, s.name, s.look from (select 1) x left join public.social_profiles s on s.user_id = p_blocked
+    select p_blocker, p_blocked, case when vis then s.name end, case when vis then s.look end
+    from (select 1) x left join public.social_profiles s on s.user_id = p_blocked
   on conflict (blocker, blocked) do nothing;
   delete from public.social_friends where a = least(p_blocker, p_blocked) and b = greatest(p_blocker, p_blocked);
   delete from public.social_requests where (from_user = p_blocker and to_user = p_blocked) or (from_user = p_blocked and to_user = p_blocker);
@@ -274,6 +306,7 @@ create or replace function social.on_consent() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
   if new.purpose = 'social' and new.action = 'withdraw' then
+    perform social.lock(new.user_id); -- waits for any call in flight for her account, so nothing it writes survives
     delete from public.social_notes where from_user = new.user_id or to_user = new.user_id;
     delete from public.social_requests where from_user = new.user_id or to_user = new.user_id;
     delete from public.social_friends where a = new.user_id or b = new.user_id;
@@ -300,14 +333,23 @@ begin
 end $$;
 
 -- make or change the card; the first time also records 18+ (if she ticked it) and Plaza friends, in the same step
+-- make or change the card. Turning Plaza friends on needs p_opt_in (the box she ticked on this form) and, without 18+ on
+-- record, p_adult (the box she ticked); an edit names the card it was opened on (p_expect), so a form left open on another
+-- phone can neither bring back a withdrawn choice nor overwrite a newer card
 create or replace function public.social_card_save(p_name text, p_look text, p_hidden boolean default false, p_adult boolean default false,
-  p_notice integer default 1, p_hash text default null, p_device text default null) returns jsonb
+  p_notice integer default 1, p_hash text default null, p_device text default null, p_opt_in boolean default false, p_expect uuid default null) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid := auth.uid(); n text := social.clean_name(p_name); why text; prev public.social_profiles%rowtype; recorded text[] := '{}';
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  perform social.lock(uid);
   if social.paused(uid) is not null then return jsonb_build_object('ok', false, 'why', 'paused', 'until', social.paused(uid)); end if;
   select * into prev from public.social_profiles where user_id = uid;
+  -- a new card names none, an edit names the card it was opened on; anything else was opened before a change elsewhere
+  if (prev.user_id is null and p_expect is not null) or (prev.user_id is not null and p_expect is distinct from prev.handle) then
+    return jsonb_build_object('ok', false, 'why', 'stale');
+  end if;
+  if not public.consent_allows(uid, 'social') and not coalesce(p_opt_in, false) then return jsonb_build_object('ok', false, 'why', 'consent'); end if;
   why := social.name_problem(n);
   if why is not null then return jsonb_build_object('ok', false, 'why', 'name', 'problem', why); end if;
   if p_look is null or p_look !~ '^[a-z][a-z0-9-]{1,29}$' then return jsonb_build_object('ok', false, 'why', 'look'); end if;
@@ -339,6 +381,7 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  perform social.lock(uid);
   insert into public.consent_events (user_id, purpose, action, notice_version, method, device_id, client_at)
     values (uid, 'social', 'withdraw', greatest(coalesce(p_notice, 1), 1), 'you', left(coalesce(p_device, ''), 64), now());
   return jsonb_build_object('ok', true);
@@ -373,16 +416,18 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid := auth.uid(); other uuid;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
-  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
-  if p_visit is null or not social.present(uid, p_server, p_visit) then return jsonb_build_object('ok', false, 'why', 'away'); end if;
   select user_id into other from public.social_profiles where handle = p_handle;
+  perform social.lock(uid, other);
+  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
+  if (select hidden from public.social_profiles where user_id = uid) then return jsonb_build_object('ok', false, 'why', 'hidden'); end if;
+  if p_visit is null or not social.present(uid, p_server, p_visit) then return jsonb_build_object('ok', false, 'why', 'away'); end if;
   if other is null or other = uid or not social.ok(other) or social.blocked(uid, other) or not social.present(other, p_server, null)
      or (select hidden from public.social_profiles where user_id = other) then
     return jsonb_build_object('ok', false, 'why', 'gone');
   end if;
-  perform pg_advisory_xact_lock(hashtext('social:pair:' || least(uid, other)::text || greatest(uid, other)::text));
   if social.friends(uid, other) then return jsonb_build_object('ok', true, 'status', 'friends'); end if;
-  if exists (select 1 from public.social_requests r where r.from_user = other and r.to_user = uid and r.status = 'pending' and r.at > now() - interval '30 days') then
+  -- she asked first and her ask is still answerable (14 days): asking back is accepting
+  if exists (select 1 from public.social_requests r where r.from_user = other and r.to_user = uid and r.status = 'pending' and r.at > now() - interval '14 days') then
     if social.friend_count(uid) >= 200 or social.friend_count(other) >= 200 then return jsonb_build_object('ok', false, 'why', 'full'); end if;
     insert into public.social_friends (a, b) values (least(uid, other), greatest(uid, other)) on conflict do nothing;
     delete from public.social_requests where (from_user = uid and to_user = other) or (from_user = other and to_user = uid);
@@ -394,7 +439,8 @@ begin
   if p_hello is not null and not exists (select 1 from public.social_phrases p where p.id = p_hello and p.kind = 'hello' and p.active) then
     return jsonb_build_object('ok', false, 'why', 'phrase');
   end if;
-  if (select count(*) from public.social_requests r where r.from_user = uid and r.status = 'pending' and r.at > now() - interval '14 days') >= 20 then
+  -- 20 asks in the last 14 days, answered "not now" or not: a decline keeps its slot, so the limit never reveals one
+  if (select count(*) from public.social_requests r where r.from_user = uid and r.at > now() - interval '14 days') >= 20 then
     return jsonb_build_object('ok', false, 'why', 'many');
   end if;
   if not social.hit(uid, 'ask', 10, interval '1 day') then return jsonb_build_object('ok', false, 'why', 'today'); end if;
@@ -409,10 +455,10 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid := auth.uid(); other uuid;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
-  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
   select user_id into other from public.social_profiles where handle = p_handle;
   if other is null then return jsonb_build_object('ok', false, 'why', 'gone'); end if;
-  perform pg_advisory_xact_lock(hashtext('social:pair:' || least(uid, other)::text || greatest(uid, other)::text));
+  perform social.lock(uid, other);
+  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
   if not exists (select 1 from public.social_requests r where r.from_user = other and r.to_user = uid and r.status = 'pending' and r.at > now() - interval '14 days') then
     return jsonb_build_object('ok', false, 'why', 'gone');
   end if;
@@ -432,9 +478,10 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid := auth.uid(); other uuid;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
-  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
   select user_id into other from public.social_profiles where handle = p_handle;
   if other is null then return jsonb_build_object('ok', true); end if;
+  perform social.lock(uid, other);
+  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
   delete from public.social_friends where a = least(uid, other) and b = greatest(uid, other);
   delete from public.social_notes where (from_user = uid and to_user = other) or (from_user = other and to_user = uid);
   return jsonb_build_object('ok', true);
@@ -445,9 +492,10 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid := auth.uid(); other uuid;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
-  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
   select user_id into other from public.social_profiles where handle = p_handle;
   if other is null or other = uid then return jsonb_build_object('ok', false, 'why', 'gone'); end if;
+  perform social.lock(uid, other);
+  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
   perform social.block(uid, other);
   return jsonb_build_object('ok', true);
 end $$;
@@ -457,6 +505,7 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  perform social.lock(uid);
   if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
   delete from public.social_blocks where blocker = uid and id = p_id;
   return jsonb_build_object('ok', true);
@@ -468,11 +517,12 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid := auth.uid(); other uuid; v_id bigint;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
-  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
   select user_id into other from public.social_profiles where handle = p_handle;
-  if other is null or not social.friends(uid, other) or not social.ok(other) or social.blocked(uid, other) then return jsonb_build_object('ok', false, 'why', 'gone'); end if;
+  if other is null then return jsonb_build_object('ok', false, 'why', 'gone'); end if;
+  perform social.lock(uid, other);
+  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
+  if not social.friends(uid, other) or not social.ok(other) or social.blocked(uid, other) then return jsonb_build_object('ok', false, 'why', 'gone'); end if;
   if not exists (select 1 from public.social_phrases p where p.id = p_phrase and p.kind = 'note' and p.active) then return jsonb_build_object('ok', false, 'why', 'phrase'); end if;
-  perform pg_advisory_xact_lock(hashtext('social:rate:' || uid::text || ':note'));
   if exists (select 1 from public.social_notes n where n.from_user = uid and n.at > clock_timestamp() - interval '5 seconds') then return jsonb_build_object('ok', false, 'why', 'slow'); end if;
   if (select count(*) from public.social_notes n where n.from_user = uid and n.to_user = other and n.at > now() - interval '1 day') >= 20 then return jsonb_build_object('ok', false, 'why', 'today'); end if;
   if not social.hit(uid, 'note', 60, interval '1 day') then return jsonb_build_object('ok', false, 'why', 'today'); end if;
@@ -513,7 +563,7 @@ begin
     'notes', coalesce((select jsonb_agg(x.j order by x.id desc) from (
       select n.id, jsonb_build_object('id', n.id, 'handle', s.handle, 'name', s.name, 'look', s.look, 'phrase', n.phrase, 'at', n.at, 'read', n.read_at is not null) as j
       from public.social_notes n join public.social_profiles s on s.user_id = n.from_user
-      where n.to_user = uid and n.at > now() - interval '30 days'
+      where n.to_user = uid and n.at > now() - interval '30 days' and social.friends(uid, n.from_user) and not social.blocked(uid, n.from_user)
       order by n.id desc limit 100) x), '[]'::jsonb),
     'blocked', coalesce((select jsonb_agg(jsonb_build_object('id', b.id, 'name', b.name, 'look', b.look, 'at', b.at) order by b.at desc)
       from public.social_blocks b where b.blocker = uid), '[]'::jsonb));
@@ -525,11 +575,13 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid := auth.uid(); other uuid; t public.social_profiles%rowtype; me public.social_profiles%rowtype; ph text; pt text;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
-  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
   if p_reason is null or p_reason not in ('unkind', 'spam', 'pretending', 'under18', 'worried', 'other') then return jsonb_build_object('ok', false, 'why', 'reason'); end if;
-  select * into t from public.social_profiles where handle = p_handle;
-  if not found or t.user_id = uid then return jsonb_build_object('ok', false, 'why', 'gone'); end if;
-  other := t.user_id;
+  select user_id into other from public.social_profiles where handle = p_handle;
+  if other is null or other = uid then return jsonb_build_object('ok', false, 'why', 'gone'); end if;
+  perform social.lock(uid, other);
+  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
+  select * into t from public.social_profiles where user_id = other and handle = p_handle;
+  if not found then return jsonb_build_object('ok', false, 'why', 'gone'); end if;
   if p_note is not null then
     select n.phrase, p.text into ph, pt from public.social_notes n join public.social_phrases p on p.id = n.phrase where n.id = p_note and n.to_user = uid and n.from_user = other;
     if ph is null then return jsonb_build_object('ok', false, 'why', 'gone'); end if;
@@ -569,11 +621,13 @@ begin
     update staff.social_reports set status = 'dismissed', decided_at = now(), decided_by = p_actor where id = p_id;
   elsif p_decision = 'pause' then
     if r.target is null then return jsonb_build_object('ok', false, 'error', 'That account no longer exists; dismiss the report.'); end if;
+    perform social.lock(r.target);
     d := least(greatest(coalesce(p_days, 7), 1), 365);
     insert into public.social_holds (user_id, until) values (r.target, now() + make_interval(days => d))
       on conflict (user_id) do update set until = greatest(public.social_holds.until, excluded.until), at = now();
     update staff.social_reports set status = 'paused', decided_at = now(), decided_by = p_actor, days = d where status = 'open' and (target = r.target or target_handle = r.target_handle);
   elsif p_decision = 'remove' then
+    if r.target is not null then perform social.lock(r.target); end if;
     delete from public.social_profiles where user_id = r.target and handle = r.target_handle;
     update staff.social_reports set status = 'removed', decided_at = now(), decided_by = p_actor where status = 'open' and target_handle = r.target_handle;
   else
@@ -599,6 +653,8 @@ begin
 end $$;
 
 -- ---------- owners and grants ----------
+alter function social.lock(uuid, uuid) owner to postgres;
+alter function social.visible(uuid, uuid) owner to postgres;
 alter function social.paused(uuid) owner to postgres;
 alter function social.ok(uuid) owner to postgres;
 alter function social.blocked(uuid, uuid) owner to postgres;
@@ -615,7 +671,7 @@ alter function social.on_consent() owner to postgres;
 alter function staff.social_reports_list(text) owner to postgres;
 alter function staff.social_decide(bigint, text, integer, uuid) owner to postgres;
 alter function public.social_me() owner to postgres;
-alter function public.social_card_save(text, text, boolean, boolean, integer, text, text) owner to postgres;
+alter function public.social_card_save(text, text, boolean, boolean, integer, text, text, boolean, uuid) owner to postgres;
 alter function public.social_off(integer, text) owner to postgres;
 alter function public.social_people(text, uuid) owner to postgres;
 alter function public.social_ask(uuid, text, uuid, text) owner to postgres;
@@ -630,27 +686,32 @@ alter function public.social_report(uuid, text, bigint, boolean) owner to postgr
 alter function public.admin_social_reports(text) owner to rhythme_staff_fn;
 alter function public.admin_social_decide(bigint, text, integer) owner to rhythme_staff_fn;
 
-revoke all on function social.paused(uuid), social.ok(uuid), social.blocked(uuid, uuid), social.friends(uuid, uuid), social.friend_count(uuid),
+revoke all on function social.lock(uuid, uuid), social.visible(uuid, uuid), social.paused(uuid), social.ok(uuid), social.blocked(uuid, uuid), social.friends(uuid, uuid), social.friend_count(uuid),
   social.present(uuid, text, uuid), social.hit(uuid, text, integer, interval), social.clean_name(text), social.name_problem(text),
   social.sweep(), social.block(uuid, uuid), social.card(uuid), social.on_consent() from public, anon, authenticated;
 revoke all on function staff.social_reports_list(text), staff.social_decide(bigint, text, integer, uuid) from public, anon, authenticated;
 grant execute on function staff.social_reports_list(text), staff.social_decide(bigint, text, integer, uuid) to rhythme_staff_fn;
-revoke all on function public.social_me(), public.social_card_save(text, text, boolean, boolean, integer, text, text), public.social_off(integer, text),
+revoke all on function public.social_me(), public.social_card_save(text, text, boolean, boolean, integer, text, text, boolean, uuid), public.social_off(integer, text),
   public.social_people(text, uuid), public.social_ask(uuid, text, uuid, text), public.social_answer(uuid, boolean), public.social_unfriend(uuid),
   public.social_block(uuid), public.social_unblock(uuid), public.social_note(uuid, text), public.social_read(bigint), public.social_inbox(),
   public.social_report(uuid, text, bigint, boolean), public.admin_social_reports(text), public.admin_social_decide(bigint, text, integer) from public, anon;
-grant execute on function public.social_me(), public.social_card_save(text, text, boolean, boolean, integer, text, text), public.social_off(integer, text),
+grant execute on function public.social_me(), public.social_card_save(text, text, boolean, boolean, integer, text, text, boolean, uuid), public.social_off(integer, text),
   public.social_people(text, uuid), public.social_ask(uuid, text, uuid, text), public.social_answer(uuid, boolean), public.social_unfriend(uuid),
   public.social_block(uuid), public.social_unblock(uuid), public.social_note(uuid, text), public.social_read(bigint), public.social_inbox(),
   public.social_report(uuid, text, bigint, boolean), public.admin_social_reports(text), public.admin_social_decide(bigint, text, integer) to authenticated;
 
+-- ---------- the daily clean-up: retention holds even when nobody uses Plaza friends ----------
+create extension if not exists pg_cron;
+select cron.schedule('rhythme-social-sweep', '17 19 * * *', 'select social.sweep()'); -- 03:17 Singapore time, every day
+
 -- Undo:
+--   select cron.unschedule('rhythme-social-sweep');
 --   drop trigger if exists consent_social_withdraw on public.consent_events;
 --   drop function if exists public.admin_social_decide(bigint, text, integer), public.admin_social_reports(text),
 --     public.social_report(uuid, text, bigint, boolean), public.social_inbox(), public.social_read(bigint), public.social_note(uuid, text),
 --     public.social_unblock(uuid), public.social_block(uuid), public.social_unfriend(uuid), public.social_answer(uuid, boolean),
 --     public.social_ask(uuid, text, uuid, text), public.social_people(text, uuid), public.social_off(integer, text),
---     public.social_card_save(text, text, boolean, boolean, integer, text, text), public.social_me(),
+--     public.social_card_save(text, text, boolean, boolean, integer, text, text, boolean, uuid), public.social_me(),
 --     staff.social_decide(bigint, text, integer, uuid), staff.social_reports_list(text);
 --   drop schema if exists social cascade;
 --   drop table if exists staff.social_reports, public.social_rate, public.social_notes, public.social_blocks, public.social_friends,

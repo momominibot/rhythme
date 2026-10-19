@@ -70,7 +70,7 @@ Every social action carries one short line before the button, never a delay the 
 | Rate counters (kind, time) | Nobody | Two days |
 | Consent events `social` and `age_18` | Her; the server | As every consent record (account life plus the limitation period, per the game plan 4.4) |
 
-Clean-up of old rows runs inside the social calls and the staff calls, the same way the plaza groups clean up. With no use at all, old rows wait for the next call; a scheduled clean-up can follow when the project adopts one. Account deletion removes everything above through the account's foreign keys (reports keep the snapshot with no account attached).
+Clean-up of old rows runs inside the social calls and the staff calls, and also once a day at 03:17 Singapore time from a pg_cron job (`rhythme-social-sweep`), so the 30-day promise holds even when nobody uses the plaza. The migration enables the pg_cron extension for this; it is the project's first scheduled job. Account deletion removes everything above through the account's foreign keys (reports keep the snapshot with no account attached).
 
 What never leaves her phone because of this feature: the diary, cycle, symptoms, food, sleep, Luna's readings, the account's own display name and email, which groups she has been in.
 
@@ -86,9 +86,30 @@ The `consent_events.purpose` check gains `social`. The consent rebuild (PR #3) l
 
 ## 7. Phase 1 as built (19 October 2026)
 
-- **Server** (`supabase/migrations/20261019130000_plaza_friends.sql`, **written and dry-run, not applied**): tables `social_profiles`, `social_requests`, `social_friends`, `social_blocks`, `social_notes`, `social_phrases`, `social_words`, `social_rate`, and `staff.social_reports`, all closed to the app's roles (no table grants; RLS on). Calls for a signed-in person: `social_me`, `social_card_save`, `social_off`, `social_people`, `social_ask`, `social_answer`, `social_unfriend`, `social_block`, `social_unblock`, `social_note`, `social_read`, `social_inbox`, `social_report`. Staff: `admin_social_reports`, `admin_social_decide`, owned by `rhythme_staff_fn`, audited.
+- **Server** (`supabase/migrations/20261019130000_plaza_friends.sql`, **written and dry-run, not applied**): tables `social_profiles`, `social_holds`, `social_requests`, `social_friends`, `social_blocks`, `social_notes`, `social_phrases`, `social_words`, `social_rate`, and `staff.social_reports`, all closed to the app's roles (no table grants; RLS on). Calls for a signed-in person: `social_me`, `social_card_save`, `social_off`, `social_people`, `social_ask`, `social_answer`, `social_unfriend`, `social_block`, `social_unblock`, `social_note`, `social_read`, `social_inbox`, `social_report`. Staff: `admin_social_reports`, `admin_social_decide`, owned by `rhythme_staff_fn`, audited.
 - **Phone** (`ovu-friends.js`): the card sheet, people in the group on the plaza (through the existing `OvuCommunity.neighbours()` seam), a person's card, the friends sheet, preset notes with the cue line, report and block, the inbox check on arrival and every minute while the app is open and the card is on.
 - **Staff** (`admin.js`): a Reports card on the Queue tab.
+
+## 7a. Review record (Codex, read-only)
+
+**Round one (19 Oct): REJECT, 12 findings, all fixed in the second cut.**
+
+| # | Finding | Fix | Proof |
+|---|---|---|---|
+| 1 | A form left open on another phone could re-grant a withdrawn choice | Turning on needs the box ticked on this form (`p_opt_in`); 18+ only from its own box; an edit names its card (`p_expect`), a new card names none | dry run `no_opt_in_refused`, `edit_needs_its_card`, `stale_edit_after_withdraw`; smoke sends the ticked boxes only |
+| 2 | Replies and open forms could act for the next account | Every request carries its account; it is cancelled before sending and dropped on reply if another account is signed in; social sheets close on any account change | smoke: a form sends nothing after a switch; a late reply is not kept |
+| 3, 4, 9 | Note/accept could race a block; writes could race a withdrawal; capacity checks could race | One lock per account (`social.lock`), both taken in key order before any check; withdrawal (trigger) and staff pauses take the account's lock; the inbox shows notes only from unblocked friends | dry run `locks_pair`, `locks_withdrawal` (read from `pg_locks`), `inbox_only_friends_notes` |
+| 5 | Blocking a remembered handle looked up her current card | The Blocked list copies a card only if the blocker could see it at that moment (friends, a request between them, or both in the same group); otherwise "Someone" | dry run `block_snapshot_only_if_visible` |
+| 6 | A hidden person could probe a friend's group | Hidden callers cannot ask | dry run `hidden_cannot_ask` |
+| 7 | A failed fetch left last group's people on the plate | People belong to the visit they were fetched for; a new group or a failure clears them at once; after a failure the next try waits until the plaza confirms the visit | smoke: failure clears and recovers after a check-in; a group change clears before any reply |
+| 8 | The 20-ask limit could reveal a silent decline | Declined asks keep their slot for 14 days, like unanswered ones | dry run `declines_keep_quota` |
+| 10 | Asking back accepted an ask past its 14 days | Asking back accepts only an answerable (14-day) ask | dry run `reciprocal_needs_14_days` |
+| 11 | A paused account could not turn Plaza friends off | The paused view keeps Turn Plaza friends off | smoke: paused view shows it |
+| 12 | Null assertions could pass the dry run | Every expected check must be present and true; a null fails | `count 53 / expected 53`, `missing null` |
+| Design | Retention ran only on use | Daily pg_cron clean-up | dry run `daily_cleanup_scheduled` |
+
+Not shown by these tests: two live sessions racing (a single transaction cannot); the lock order is in the source and
+`pg_locks` shows both accounts held after a call.
 
 ## 8. Phases
 

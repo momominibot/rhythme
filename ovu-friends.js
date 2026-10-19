@@ -74,7 +74,9 @@
       gone: 'She is not here right now.', off: 'Turn on Plaza friends first.', away: 'Join a group in the plaza first.',
       today: 'That is enough for today. Try again tomorrow.', slow: 'One moment between notes.', many: 'You have 20 asks waiting. Give them time.',
       full: 'One of you already has 200 friends.', phrase: 'Pick one from the list.', adult: 'Plaza friends is for adults 18 and over.',
-      look: 'Pick one of the looks.', reason: 'Pick a reason.'
+      look: 'Pick one of the looks.', reason: 'Pick a reason.', hidden: 'You are hidden from groups. Show your card to ask someone.',
+      consent: 'Plaza friends is off on this account, perhaps from another phone. Open Plaza friends again to turn it on.',
+      stale: 'Your card changed on another phone. Open Plaza friends again to see it.'
     })[w] || 'That did not work. Try again in a moment.';
   }
   function phraseText(id) { var p = PHRASES.filter(function (x) { return x[0] === id; })[0]; return p ? p[1] : ''; }
@@ -128,7 +130,7 @@
   /* ---------- the room ---------- */
   var R = root.OvuRoom, A = root.OvuAuth, S = root.OvuStore, doc = root.document, CFG = root.OVU_CONFIG || {};
   if (!R || !A || !S || !doc || !doc.createElement) return;
-  var me = null, inbox = null, people = [], peopleKey = '[]', inboxT = 0, peopleT = 0, peopleGen = 0, inboxGen = 0, sheetGen = 0, wordsHash = '';
+  var me = null, inbox = null, people = [], peopleKey = '[]', peopleVisit = null, failedVisit = null, inboxT = 0, peopleT = 0, peopleGen = 0, inboxGen = 0, sheetGen = 0, sheetOwner = null, wordsHash = '';
 
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s); }
   function uid() { var s = A.session && A.session(); return s && s.user ? s.user.id : null; }
@@ -145,11 +147,17 @@
     try { root.crypto.subtle.digest('SHA-256', new root.TextEncoder().encode('Plaza friends. ' + WORDS)).then(function (h) { wordsHash = Array.prototype.map.call(new Uint8Array(h), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }, function () { }); } catch (e) { }
   })();
 
-  /* one request: token, fetch and reply share one deadline; a reply for another account is dropped by the caller */
-  function rpc(name, args) {
+  /* one request, for one account: token, fetch and reply share one deadline. `owner` is the account it belongs to (the
+   * account that opened the sheet, or the one signed in when it was sent); if another account is signed in by the time
+   * it would leave or by the time its reply comes back, it is cancelled and nothing of it is shown or kept. */
+  function noop() { }
+  function cancelled() { var e = new Error('cancelled'); e.cancelled = true; return e; }
+  function rpc(name, args, owner) {
+    if (owner === undefined) owner = uid();
     var ctl = root.AbortController ? new root.AbortController() : null;
-    var call = Promise.resolve().then(function () { return A.token(); }).then(function (t) {
+    var call = Promise.resolve().then(function () { if (!owner || uid() !== owner) throw cancelled(); return A.token(); }).then(function (t) {
       if (!t) throw new Error('signed out');
+      if (uid() !== owner) throw cancelled();
       return root.fetch(CFG.supabaseUrl + '/rest/v1/rpc/' + name, {
         method: 'POST', signal: ctl ? ctl.signal : undefined,
         headers: { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -158,10 +166,10 @@
     });
     return new Promise(function (resolve, reject) {
       var timer = root.setTimeout(function () { if (ctl) ctl.abort(); reject(new Error('timeout')); }, TIMEOUT);
-      call.then(function (j) { root.clearTimeout(timer); resolve(j); }, function (e) { root.clearTimeout(timer); reject(e); });
+      call.then(function (j) { root.clearTimeout(timer); if (uid() !== owner) reject(cancelled()); else resolve(j); }, function (e) { root.clearTimeout(timer); reject(e); });
     });
   }
-  function offline() { R.toast('Could not reach Plaza friends. Check the connection and try again.', 'cloud_off'); }
+  function offline(e) { if (e && e.cancelled) return; R.toast('Could not reach Plaza friends. Check the connection and try again.', 'cloud_off'); }
 
   /* ---------- state from the server ---------- */
   function loadMe() {
@@ -196,28 +204,37 @@
 
   /* ---------- people in her group, on the plate ---------- */
   function visit() { var P = root.OvuPlaza, st = P && P.state ? P.state() : null; return st && st.joined && st.joined.visit ? { server: st.joined.id, visit: st.joined.visit } : null; }
-  function setPeople(list) {
-    var key = JSON.stringify(list || []);
+  function setPeople(list, forVisit) {
+    var key = JSON.stringify(list || []) + '|' + (forVisit || '');
+    peopleVisit = forVisit || null;
     if (key === peopleKey) return;
     peopleKey = key; people = list || [];
     if (root.OvuCommunity && root.OvuCommunity.redraw) root.OvuCommunity.redraw();
     fillPlazaRow();
   }
+  /* the people shown always belong to the visit they were fetched for: a new group clears them at once, and a failed
+   * fetch clears them too. After a failure the timer waits until the plaza has confirmed the visit again. */
   function loadPeople() {
     var v = visit(), u = uid(), g = ++peopleGen;
     if (!v || !u || !me || !me.card || me.card.hidden || me.paused_until || !inPlaza() || R.asleep()) { setPeople([]); return Promise.resolve(); }
-    return rpc('social_people', { p_server: v.server, p_visit: v.visit }).then(function (j) {
-      if (g !== peopleGen || uid() !== u) return;
-      setPeople(j && j.ok ? j.people || [] : []);
-    }, function () { /* keep what is shown; the next check tries again */ });
+    if (peopleVisit && peopleVisit !== v.visit) setPeople([]);
+    return rpc('social_people', { p_server: v.server, p_visit: v.visit }, u).then(function (j) {
+      var now = visit();
+      if (g !== peopleGen || !now || now.visit !== v.visit) return;
+      failedVisit = null;
+      setPeople(j && j.ok ? j.people || [] : [], v.visit);
+    }, function (e) {
+      if (g !== peopleGen || (e && e.cancelled)) return;
+      failedVisit = v.visit; setPeople([]);
+    });
   }
   function person(handle) { return people.filter(function (p) { return p.handle === handle; })[0] || null; }
 
   function startTimers() {
     stopTimers();
     if (!uid() || doc.hidden) return;
-    inboxT = root.setInterval(function () { if (!doc.hidden && me && me.card) loadInbox(); }, INBOX_MS);
-    peopleT = root.setInterval(function () { if (!doc.hidden) loadPeople(); }, PEOPLE_MS);
+    inboxT = root.setInterval(function () { if (!doc.hidden && me && me.card) loadInbox().catch(noop); }, INBOX_MS);
+    peopleT = root.setInterval(function () { var v = visit(); if (!doc.hidden && !(v && failedVisit === v.visit)) loadPeople(); }, PEOPLE_MS);
   }
   function stopTimers() { if (inboxT) root.clearInterval(inboxT); if (peopleT) root.clearInterval(peopleT); inboxT = peopleT = 0; }
   function refreshAll() {
@@ -230,6 +247,7 @@
     var row = doc.getElementById('plazaFriendsRow'); if (!row) return;
     if (!uid()) { row.innerHTML = ''; return; }
     var n = badgeCount(inbox), open = '<button type="button" class="btn soft" data-frp="open"><span class="ms">diversity_1</span>Plaza friends' + (n ? ' · ' + n + ' new' : '') + '</button>';
+    if (me && me.paused_until) { row.innerHTML = '<p class="help">Plaza friends is paused on this account for now.</p><div class="row">' + open + '</div>'; return; }
     if (!me || !me.card) { row.innerHTML = '<p class="help">Make a plaza card to see the other people here who have one, and to make friends.</p><div class="row">' + open.replace('Plaza friends', 'Make a plaza card') + '</div>'; return; }
     if (me.card.hidden) { row.innerHTML = '<p class="help">You are hidden from groups, so you see nobody here either.</p><div class="row">' + open + '</div>'; return; }
     var here = visit() ? people : [];
@@ -238,6 +256,7 @@
 
   /* ---------- sheets ---------- */
   function frSheet(id, title, sub, icon, html) {
+    sheetOwner = uid(); /* every change made from this sheet belongs to the account that opened it */
     R.openSheet(id, title, sub, icon, '<div class="fr" id="frSheet">' + html + '</div>');
     return doc.getElementById('frSheet');
   }
@@ -256,7 +275,12 @@
   }
   function renderFriends(editing) {
     var el = doc.getElementById('frSheet'); if (!el || !me) return;
-    if (me.paused_until) { el.innerHTML = '<div class="flag info"><span class="ms">pause_circle</span><div><b>Paused for now</b><span>Plaza friends is paused on this account until ' + esc(dayText(me.paused_until)) + ', after a report was reviewed. The rest of Rhythme works as usual.</span></div></div>'; return; }
+    if (me.paused_until) {
+      el.innerHTML = '<div class="flag info"><span class="ms">pause_circle</span><div><b>Paused for now</b><span>Plaza friends is paused on this account until ' + esc(dayText(me.paused_until)) + ', after a report was reviewed. The rest of Rhythme works as usual.</span></div></div>' +
+        '<p class="help">You can still turn Plaza friends off: your card, friends, requests and notes are then deleted. The pause stays with the account.</p>' +
+        '<div class="row"><button type="button" class="btn soft" data-fr="off"><span class="ms">toggle_off</span>Turn Plaza friends off</button></div>';
+      return;
+    }
     if (!me.card || editing) { renderCardForm(el, !!me.card); return; }
     var ib = inbox && inbox.ok ? inbox : { friends: [], asks: [], asked: [], notes: [], blocked: [] }, c = me.card;
     var row = function (p, inner, cls) { return '<div class="frrow' + (cls ? ' ' + cls : '') + '">' + img(p.look) + '<div class="frwho"><b>' + esc(p.name) + '</b>' + inner + '</div></div>'; };
@@ -299,7 +323,7 @@
       (me.on ? '' : '<label class="frcheck"><input type="checkbox" id="frOn"> <span>Turn on Plaza friends, as described above</span></label>') +
       (editing ? '<label class="frcheck"><input type="checkbox" id="frHidden"' + (c.hidden ? ' checked' : '') + '> <span>Hide me from groups for now (friends and notes still work)</span></label>' : '') +
       '<div class="row"><button type="button" class="btn primary" id="frSave"><span class="ms">badge</span>' + (editing ? 'Save my card' : 'Make my card') + '</button>' + (editing ? '<button type="button" class="btn soft" data-fr="back">Back</button>' : '') + '</div><p class="frmsg" id="frMsg" aria-live="polite"></p>';
-    var name = el.querySelector('#frName'), save = el.querySelector('#frSave');
+    var name = el.querySelector('#frName'), save = el.querySelector('#frSave'), expect = editing && me.card ? me.card.handle : null, owner = sheetOwner;
     var ready = function () {
       var p = nameProblem(name.value), a = el.querySelector('#frAdult'), o = el.querySelector('#frOn');
       el.querySelector('#frNameMsg').textContent = name.value.trim() && p ? problemText(p) : '';
@@ -313,14 +337,16 @@
     save.addEventListener('click', function () {
       var look = (el.querySelector('.frlook.on') || {}).dataset, hid = el.querySelector('#frHidden'), msg = el.querySelector('#frMsg');
       save.disabled = true; msg.textContent = 'Saving…';
-      rpc('social_card_save', { p_name: cleanName(name.value), p_look: look ? look.look : 'base', p_hidden: !!(hid && hid.checked), p_adult: !!(el.querySelector('#frAdult') || {}).checked || !!me.adult,
-        p_notice: noticeV(), p_hash: wordsHash || null, p_device: device() || null }).then(function (j) {
-        if (!j || !j.ok) { msg.textContent = whyText(j); save.disabled = false; return; }
+      /* 18+ and Plaza friends are sent only as the boxes she ticked on this form, never from what the phone remembers */
+      var adult = el.querySelector('#frAdult'), optIn = el.querySelector('#frOn');
+      rpc('social_card_save', { p_name: cleanName(name.value), p_look: look ? look.look : 'base', p_hidden: !!(hid && hid.checked), p_adult: !!(adult && adult.checked),
+        p_notice: noticeV(), p_hash: wordsHash || null, p_device: device() || null, p_opt_in: !!(optIn && optIn.checked), p_expect: expect }, owner).then(function (j) {
+        if (!j || !j.ok) { msg.textContent = whyText(j); if (j && (j.why === 'stale' || j.why === 'consent')) loadMe().catch(function () { }); else save.disabled = false; return; }
         var first = !me.card; me.card = j.card; me.on = true; me.adult = true;
         try { if ((j.recorded || []).indexOf('social') > -1 && root.OvuConsent && root.OvuConsent.grant) root.OvuConsent.grant('social', 'jit', { sent: true }); } catch (e) { }
         R.chime('save'); R.toast(first ? 'Your plaza card is ready. Walk into a group to meet people.' : 'Card saved.', 'badge');
-        loadInbox(true).then(function () { renderFriends(); }, function () { renderFriends(); }); loadPeople();
-      }, function () { msg.textContent = 'Could not reach Plaza friends. Try again in a moment.'; save.disabled = false; });
+        loadInbox(true).then(function () { renderFriends(); }, function (e) { if (!(e && e.cancelled)) renderFriends(); }); loadPeople();
+      }, function (e) { if (e && e.cancelled) return; msg.textContent = 'Could not reach Plaza friends. Try again in a moment.'; save.disabled = false; });
     });
     ready();
   }
@@ -348,7 +374,7 @@
     el.dataset.person = handle; draw();
   }
   function openNote(handle, name, back) {
-    var el = frSheet('note', 'A kind note for ' + name, 'Pick one', 'favorite', ''), pick = null;
+    var el = frSheet('note', 'A kind note for ' + name, 'Pick one', 'favorite', ''), pick = null, owner = sheetOwner;
     var draw = function () {
       el.innerHTML = cue('note') + '<div class="frphrases" role="radiogroup" aria-label="Kind notes">' + phrases('note').map(function (p) { var on = p[0] === pick; return '<button type="button" class="frphrase' + (on ? ' on' : '') + '" role="radio" aria-checked="' + on + '" data-phrase="' + p[0] + '">' + esc(p[1]) + '</button>'; }).join('') + '</div>' +
         '<div class="row"><button type="button" class="btn primary" id="frSend"' + (pick ? '' : ' disabled') + '><span class="ms">send</span>Send</button><button type="button" class="btn soft" id="frBack">Back</button></div><p class="frmsg" id="frMsg" aria-live="polite"></p>';
@@ -358,15 +384,15 @@
       if (e.target.closest('#frBack')) { back(); return; }
       var s = e.target.closest('#frSend'); if (!s || !pick) return;
       s.disabled = true;
-      rpc('social_note', { p_handle: handle, p_phrase: pick }).then(function (j) {
+      rpc('social_note', { p_handle: handle, p_phrase: pick }, owner).then(function (j) {
         if (!j || !j.ok) { el.querySelector('#frMsg').textContent = whyText(j); s.disabled = false; return; }
         R.chime('save'); R.toast('Sent. One kind thing, done.', 'favorite'); back();
-      }, function () { el.querySelector('#frMsg').textContent = 'Could not reach Plaza friends. Try again in a moment.'; s.disabled = false; });
+      }, function (e) { if (e && e.cancelled) return; el.querySelector('#frMsg').textContent = 'Could not reach Plaza friends. Try again in a moment.'; s.disabled = false; });
     });
     draw();
   }
   function openReport(handle, name, noteId, back) {
-    var el = frSheet('report', 'Report ' + name, noteId ? 'About a note she sent' : 'About her card', 'flag', ''), why = null;
+    var el = frSheet('report', 'Report ' + name, noteId ? 'About a note she sent' : 'About her card', 'flag', ''), why = null, owner = sheetOwner;
     var draw = function () {
       el.innerHTML = cue('report') + '<div class="frreasons" role="radiogroup" aria-label="What happened">' + REASONS.map(function (r) { var on = r[0] === why; return '<button type="button" class="frreason' + (on ? ' on' : '') + '" role="radio" aria-checked="' + on + '" data-reason="' + r[0] + '">' + esc(r[1]) + '</button>'; }).join('') + '</div>' +
         '<label class="frcheck"><input type="checkbox" id="frAlsoBlock"' + (el.dataset.block === '1' ? ' checked' : '') + '> <span>Also block her</span></label>' +
@@ -379,19 +405,20 @@
       if (e.target.closest('#frBack')) { back(); return; }
       var s = e.target.closest('#frSendReport'); if (!s || !why) return;
       var block = el.dataset.block === '1'; s.disabled = true;
-      rpc('social_report', { p_handle: handle, p_reason: why, p_note: noteId ? Number(noteId) : null, p_block: block }).then(function (j) {
+      rpc('social_report', { p_handle: handle, p_reason: why, p_note: noteId ? Number(noteId) : null, p_block: block }, owner).then(function (j) {
         if (!j || !j.ok) { el.querySelector('#frMsg').textContent = whyText(j); s.disabled = false; return; }
-        if (block) setPeople(people.filter(function (p) { return p.handle !== handle; }));
+        if (block) setPeople(people.filter(function (p) { return p.handle !== handle; }), peopleVisit);
         R.toast('Thank you. Rhythme staff will look at it.' + (block ? ' She is blocked, and will not be told.' : ''), 'flag');
         loadInbox(true).then(back, back);
-      }, function () { el.querySelector('#frMsg').textContent = 'Could not reach Plaza friends. Try again in a moment.'; s.disabled = false; });
+      }, function (e) { if (e && e.cancelled) return; el.querySelector('#frMsg').textContent = 'Could not reach Plaza friends. Try again in a moment.'; s.disabled = false; });
     });
     draw();
   }
 
   /* every button in the friends and person sheets */
   function act(b) {
-    var what = b.dataset.fr, h = b.dataset.h, inFriends = !doc.querySelector('#frSheet[data-person]');
+    var what = b.dataset.fr, h = b.dataset.h, inFriends = !doc.querySelector('#frSheet[data-person]'), owner = sheetOwner;
+    if (!owner || uid() !== owner) { R.closeSheet(); return; } /* a sheet left open from another account does nothing */
     var back = function () { if (inFriends) open(); else if (person(h)) openPerson(h); else R.closeSheet(); };
     var p = person(h);
     if (what === 'edit') { renderFriends(true); return; }
@@ -413,32 +440,32 @@
     var call;
     if (what === 'ask') {
       var sel = doc.querySelector('#frSheet .frhello.on');
-      call = (function () { var v = visit(); return v ? rpc('social_ask', { p_handle: h, p_server: v.server, p_visit: v.visit, p_hello: sel && sel.dataset.hello ? sel.dataset.hello : null }) : Promise.resolve({ ok: false, why: 'away' }); })().then(function (j) {
+      call = (function () { var v = visit(); return v ? rpc('social_ask', { p_handle: h, p_server: v.server, p_visit: v.visit, p_hello: sel && sel.dataset.hello ? sel.dataset.hello : null }, owner) : Promise.resolve({ ok: false, why: 'away' }); })().then(function (j) {
         done(j, j && j.status === 'friends' ? 'You are friends now.' : 'Asked. Let her answer in her own time.', 'person_add');
-        if (j && j.ok && p) { p.asked = j.status === 'asked'; p.friend = j.status === 'friends'; peopleKey = ''; setPeople(people.slice()); }
-        if (j && j.ok) { loadInbox(true); back(); }
+        if (j && j.ok && p) { p.asked = j.status === 'asked'; p.friend = j.status === 'friends'; peopleKey = ''; setPeople(people.slice(), peopleVisit); }
+        if (j && j.ok) { loadInbox(true).catch(noop); back(); }
       });
     } else if (what === 'accept' || what === 'notnow') {
-      call = rpc('social_answer', { p_handle: h, p_accept: what === 'accept' }).then(function (j) {
+      call = rpc('social_answer', { p_handle: h, p_accept: what === 'accept' }, owner).then(function (j) {
         done(j, what === 'accept' ? 'You are friends now. ' + CUES.accept : 'Done. She will not be told.', 'diversity_1');
-        if (j && j.ok && p) { p.asks = false; p.friend = what === 'accept'; peopleKey = ''; setPeople(people.slice()); }
+        if (j && j.ok && p) { p.asks = false; p.friend = what === 'accept'; peopleKey = ''; setPeople(people.slice(), peopleVisit); }
         if (j && j.ok) loadInbox(true).then(back, back);
       });
     } else if (what === 'unfriend') {
-      call = rpc('social_unfriend', { p_handle: h }).then(function (j) { done(j, 'Unfriended. She will not be told.'); if (j && j.ok) { if (p) { p.friend = false; peopleKey = ''; setPeople(people.slice()); } loadInbox(true).then(back, back); } });
+      call = rpc('social_unfriend', { p_handle: h }, owner).then(function (j) { done(j, 'Unfriended. She will not be told.'); if (j && j.ok) { if (p) { p.friend = false; peopleKey = ''; setPeople(people.slice(), peopleVisit); } loadInbox(true).then(back, back); } });
     } else if (what === 'block') {
-      call = rpc('social_block', { p_handle: h }).then(function (j) { done(j, 'Blocked. ' + CUES.block, 'block'); if (j && j.ok) { setPeople(people.filter(function (x) { return x.handle !== h; })); loadInbox(true).then(function () { if (inFriends) open(); else R.closeSheet(); }); } });
+      call = rpc('social_block', { p_handle: h }, owner).then(function (j) { done(j, 'Blocked. ' + CUES.block, 'block'); if (j && j.ok) { setPeople(people.filter(function (x) { return x.handle !== h; }), peopleVisit); var after = function () { if (inFriends) open(); else R.closeSheet(); }; loadInbox(true).then(after, after); } });
     } else if (what === 'unblock') {
-      call = rpc('social_unblock', { p_id: b.dataset.id }).then(function (j) { done(j, 'Unblocked.'); if (j && j.ok) loadInbox(true).then(open, open); });
+      call = rpc('social_unblock', { p_id: b.dataset.id }, owner).then(function (j) { done(j, 'Unblocked.'); if (j && j.ok) loadInbox(true).then(open, open); });
     } else if (what === 'off') {
-      call = rpc('social_off', { p_notice: noticeV(), p_device: device() || null }).then(function (j) {
+      call = rpc('social_off', { p_notice: noticeV(), p_device: device() || null }, owner).then(function (j) {
         done(j, 'Plaza friends is off. Your card, friends, requests and notes are deleted.', 'toggle_off');
         if (!j || !j.ok) return;
         try { if (root.OvuConsent && root.OvuConsent.withdraw) root.OvuConsent.withdraw('social', 'you', { sent: true }); } catch (e) { }
         me.card = null; me.on = false; inbox = null; setPeople([]); badge(); open();
       });
     }
-    if (call) call.catch(function () { offline(); b.disabled = false; });
+    if (call) call.catch(function (e) { if (e && e.cancelled) return; offline(e); b.disabled = false; });
   }
 
   function mount() {
@@ -452,8 +479,9 @@
     if (root.OvuPlaza && root.OvuPlaza.onChange) {
       var lastVisit = null;
       root.OvuPlaza.onChange(function () {
-        var v = visit(), key = v ? v.visit : null;
-        if (key !== lastVisit) { lastVisit = key; loadPeople(); }
+        var v = visit(), key = v ? v.visit : null, st = root.OvuPlaza.state();
+        if (key !== lastVisit) { lastVisit = key; failedVisit = null; setPeople([]); loadPeople(); }
+        else if (key && failedVisit === key && st && !st.offline) { failedVisit = null; loadPeople(); } /* the plaza just confirmed her visit: try once more */
         fillPlazaRow(); badge();
       });
     }
@@ -462,13 +490,14 @@
     var lastUid = uid();
     if (A.subscribe) A.subscribe(function () {
       var u = uid(); if (u === lastUid) return; lastUid = u;
-      me = null; inbox = null; peopleGen++; inboxGen++; setPeople([]); badge(); stopTimers();
+      me = null; inbox = null; peopleGen++; inboxGen++; sheetGen++; failedVisit = null; setPeople([]); badge(); stopTimers();
+      if (doc.getElementById('frSheet') && R.sheetOpen && R.sheetOpen()) R.closeSheet(); /* nothing from the last account stays on screen or can be sent */
       if (u) { startTimers(); refreshAll(); }
     });
     if (uid()) { startTimers(); refreshAll(); }
   }
   R.on('boot', mount);
   F.open = open; F.openPerson = openPerson; F.refresh = refreshAll; F.loadPeople = loadPeople;
-  F.state = function () { return { signedIn: !!uid(), me: me, inbox: inbox, people: people.slice(), timers: !!inboxT }; };
+  F.state = function () { return { signedIn: !!uid(), me: me, inbox: inbox, people: people.slice(), visit: peopleVisit, failed: failedVisit, timers: !!inboxT }; };
   F.summaryNow = function () { return summary({ signedIn: !!uid(), me: me, inbox: inbox }); };
 })(typeof window !== 'undefined' ? window : this);
