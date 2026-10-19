@@ -275,7 +275,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var texts = ['cat', 'dog', 'mewmew'].map(function (id) { return P.mood(id, { t: t0 + 200 * H }).text + ' ' + P.mood(id, { night: true, t: t0 }).text; }).join(' ');
   check('moods are kind: no hungry, sad, sick or starving', !/hungry|sad|sick|starv|dying|neglect|lonely/i.test(texts), texts);
   var got = 0; for (var i = 0; i < 12; i++) got += RW.care('mewmew', 'feed').points;
-  check('care hearts cap at 10 a day per pet', got === 10 && RW.care('dog', 'play').points === 2, got);
+  check('pet care earns no hearts: kindness is not play money', got === 0 && RW.care('dog', 'play').points === 0, got);
 })();
 
 (function rememberedPeriods() {
@@ -711,9 +711,9 @@ function scenes(todayIso) {
   check('a full planned session counts as completed', T.entryFor(179, 'easy', 0, 3).completed === true);
   var l0 = RW.ledger(), before = l0.hearts, day = l0.lastDay;
   var r1 = RW.award(S.add('mindfulness', S.today(), T.entryFor(50, 'easy', 40, 0), 'room'));
-  var r2 = RW.award(S.add('mindfulness', S.today(), T.entryFor(55, 'easy', 0, 0), 'room'));
-  check('fifty seconds earns nothing yet, the next fifty-five complete a minute for two hearts', r1.points === 0 && r2.points === 2 && RW.ledger().hearts === before + 2, r1.points + '/' + r2.points);
-  check('the leftover forty-five seconds carry on', RW.ledger().breathCarry === 45, RW.ledger().breathCarry);
+  var r2 = RW.award(S.add('mindfulness', S.today(), T.entryFor(65, 'easy', 0, 0), 'room'));
+  check('under a minute earns nothing, a full minute earns the flat two', r1.points === 0 && r2.points === 2 && RW.ledger().hearts === before + 2, r1.points + '/' + r2.points);
+  check('seconds are not carried between sessions', !RW.ledger().breathCarry);
   check('Moon Tap never touches the daily streak', RW.ledger().lastDay === day && r2.bonus === 0);
   check('taps change nothing: forty taps and none earned the same', r1.points === 0);
 })();
@@ -788,7 +788,7 @@ function scenes(todayIso) {
   check('the same saved record earns only once', r1.points > 0 && r2.points === 0 && r2.again === true, r1.points + '/' + r2.points);
   var h0 = RW.ledger().hearts;
   [600, 600, 600].forEach(function (secs) { RW.award(S.add('mindfulness', S.today(), T.entryFor(secs, 'easy', 0, 0), 'room')); });
-  check('three ten-minute Moon Taps in a day earn twenty, not sixty', RW.ledger().hearts - h0 === 20, RW.ledger().hearts - h0);
+  check('three ten-minute Moon Taps in a day earn six, the practice cap, not sixty', RW.ledger().hearts - h0 === 6, RW.ledger().hearts - h0);
   var g0 = RW.ledger().hearts; RW.grant(30, 'intro'); RW.grant(30, 'intro');
   check('a one-time gift is paid once, remembered outside the log', RW.ledger().hearts - g0 === 30 && RW.ledger().gifts.intro === true);
   var l = RW.ledger(); l.hearts = 2000; S.setState({ rewards: l });

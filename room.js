@@ -522,13 +522,15 @@
     var visited = S.state().visited || {}; visited[h.id] = true; S.setState({ visited: visited });
     $('#hint').classList.remove('on');
     if (h.id === 'window') { openWindow(); return; }
-    if ((S.state().sleeping && h.id !== 'bed' && h.id !== 'clock') || meditating) { openSheetFor(h.id); return; }
+    if (!awake(h.id)) return;
+    if (meditating) { openSheetFor(h.id); return; }
     walkTo(h.wp, function () { openSheetFor(h.id); });
   }
   /* outdoors (or in a neighbour's home) the bed, clock and the rest are not in this layout: the scene modules
    * hand back a stand-in so the avatar menu, Today tiles and the phase chip still work by going home first */
   function hotspot(id) { return HOTSPOTS.filter(function (h) { return h.id === id; })[0] || (hooks.fallbackHotspot ? hooks.fallbackHotspot(id) : undefined); }
   function openSheetFor(id) {
+    if (!awake(id)) return;
     var ext = hooks.hotspotHandlers[id]; if (ext && ext(id, L) === true) return; /* garden gate, plot, bench, noticeboard... */
     if (id === 'bed') { if (visiting && !S.state().sleeping) { toast('A lovely bed, but it is not yours yet. Head back to sleep in your own.', 'cottage'); return; } return S.state().sleeping ? openWake() : openBedtime(); }
     if (id === 'clock') return openClock();
@@ -676,6 +678,10 @@
     hud.classList.remove('on'); avatar.classList.remove('acting');
   }
   function asleep() { return !!S.state().sleeping; }
+  /* Jamie, 19 Oct: once she is asleep nothing else happens until the bed wakes her. The bed and the window (its sheet
+     offers "Wake up") stay open, and so does You: account, privacy and export are never locked away. */
+  var AWAKE_FREE = { bed: 1, window: 1, you: 1 };
+  function awake(id) { if (!asleep() || AWAKE_FREE[id]) return true; toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return false; }
   function enterNight(withPj) {
     stopEverything();
     scene.classList.add('is-night'); avatar.classList.add('hidden');
@@ -1256,6 +1262,7 @@
   function goTab(k) {
     hideBubble();
     if (k === 'home' || !TABS[k]) { if (current) closeSheet(); setTab('home'); return; }
+    if (!awake(k)) { setTab(current ? current : 'home'); return; }
     TABS[k](); setTab(k);
   }
   function measureNav() { var n = $('.nav'), f = $('#frame'); if (n && f) f.style.setProperty('--navh', n.offsetHeight + 'px'); }
@@ -1687,7 +1694,7 @@
     $('#aiToggle').addEventListener('click', function () { var c = ORB.aiConfig(); c.on = !c.on; ORB.setAiConfig(c); openLuna($('#lunaIn').value); });
     if (prefill && !draft) send(prefill);
   }
-  $('#lunaBtn').addEventListener('click', function () { chime('tap'); $('#lunaBtn').classList.remove('hinting'); openLuna(); });
+  $('#lunaBtn').addEventListener('click', function () { if (!awake('luna')) return; chime('tap'); $('#lunaBtn').classList.remove('hinting'); openLuna(); });
 
   /* ---------- yoga mat: mindfulness with Erin projected beside you ---------- */
   var meditating = false, session = null;
@@ -2030,7 +2037,7 @@
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Informal practice, with Erin</b><small>Pick what you are about to do for real, press Begin as you start, and let the guide walk alongside you. The guides are spoken in Erin’s voice from interim scripts; her own written scripts will replace them one by one.</small></div></div>' +
       '<div class="acts" id="acts">' + MF.ACTIVITIES.map(function (a) { var n = ex[a.id] || 0; return '<button type="button" class="act' + (selId === a.id ? ' on' : '') + '" data-act="' + a.id + '"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><span><b>' + esc(a.name) + '</b><small>' + esc(a.when) + ' · ' + a.minutes + ' min</small></span><em>' + (n ? '<span class="ms">check_circle</span>' + n : '<span class="ms fill">favorite</span>15') + '</em></button>'; }).join('') + '</div>' +
       '<div class="actdetail" id="actDetail"></div>' +
-      '<p class="help">Each completed practice earns 5 hearts, and 10 more the first time you try an activity. The point is not the points: it is two ordinary minutes, fully lived. Please only confirm practices you really did.</p>');
+      '<p class="help">Each completed practice earns 2 hearts, up to 6 a day. The point is not the points: it is two ordinary minutes, fully lived. Please only confirm practices you really did.</p>');
     function detail(id) {
       var a = MF.byId(id), v = MF.nextVariation(a), vi = a.variations.indexOf(v), n = MF.timesDone(id);
       $$('.act', body).forEach(function (b) { b.classList.toggle('on', b.dataset.act === id); });
@@ -2341,7 +2348,7 @@
     bubble.innerHTML = '<button data-act="wardrobe"><span class="ms">checkroom</span>Change outfit</button><button data-act="sleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button data-act="mat"><span class="ms">self_improvement</span>Sit with Erin</button><button data-act="acu"><span class="ms">spa</span>Cramp relief points</button><button data-act="luna"><span class="ms">dark_mode</span>Tell Luna</button><button data-act="journal"><span class="ms">auto_stories</span>Open my journal</button><button data-act="everyday"><span class="ms">home</span>Everyday practice</button>' + (S.profile().onboarded ? '' : '<button data-act="intro"><span class="ms">favorite</span>Tell me about you</button>') + '';
     bubble.classList.add('on');
   });
-  bubble.addEventListener('click', function (e) { var pb = e.target.closest('[data-pact]'); if (pb) { var pid = bubble.dataset.pet; hideBubble(); petAction(pid, pb.dataset.pact); return; } var b = e.target.closest('button'); if (!b) return; hideBubble(); var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
+  bubble.addEventListener('click', function (e) { var pb = e.target.closest('[data-pact]'); if (pb) { var pid = bubble.dataset.pet; hideBubble(); petAction(pid, pb.dataset.pact); return; } var b = e.target.closest('button'); if (!b) return; hideBubble(); if (b.dataset.act !== 'sleep' && !awake(b.dataset.act)) return; var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
   document.addEventListener('click', function (e) { if (!e.target.closest('#bubble') && !e.target.closest('#avatar')) hideBubble(); });
 
   /* ---------- after save: agents + hearts ---------- */

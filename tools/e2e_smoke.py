@@ -398,6 +398,29 @@ async def main():
             check("no Supabase auth or data request was made anywhere in the signed-out run", not [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1" in u)], relay_calls[:3])
             check("nothing was requested from any third party during the run", not external, external[:3])
 
+            # 9. asleep: nothing opens until the bed wakes her (hotspots, the nav sheets, Luna); You and the bed stay open
+            ctx9 = await browser.new_context(viewport={"width": 390, "height": 844})
+            zz = json.loads(json.dumps(DB)); zz["state"]["sleeping"] = {"startedAt": NOW, "bedTime": "23:00", "prevOutfit": "base", "pj": True}
+            await ctx9.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(zz)))
+            p9 = await ctx9.new_page(); await p9.route("**/*", gate)
+            p9.on("pageerror", lambda e: errors.append("asleep pageerror: " + str(e)))
+            await p9.goto(BASE + "room.html", wait_until="networkidle"); await p9.wait_for_selector(".hotspot"); await p9.wait_for_timeout(900)
+            await p9.click(".hotspot[data-id=diary]"); await p9.wait_for_timeout(500)
+            z1 = await p9.evaluate("()=>({toast: document.querySelector('#toast').textContent, sheet: document.querySelector('#sheet').getAttribute('aria-hidden')})")
+            await p9.click(".hotspot[data-id=door]"); await p9.wait_for_timeout(700)
+            z1["door"] = await p9.evaluate("()=>({sheet: document.querySelector('#sheet').getAttribute('aria-hidden'), layout: (document.querySelector('.scene')||{}).dataset ? document.querySelector('.scene').dataset.layout : null})")
+            await p9.click("nav a[data-tab=cycle]"); await p9.wait_for_timeout(500)
+            z2 = await p9.evaluate("()=>({sheet: document.querySelector('#sheet').getAttribute('aria-hidden'), tab: (document.querySelector('nav a.on')||{}).dataset ? document.querySelector('nav a.on').dataset.tab : null})")
+            await p9.evaluate("()=>document.querySelector('#lunaBtn').click()"); await p9.wait_for_timeout(500)  # the orb floats, so a synthetic click
+            z3 = await p9.evaluate("()=>document.querySelector('#sheet').getAttribute('aria-hidden')")
+            check("asleep, a room object, the street door, a nav sheet and Luna all answer with the bed toast and open nothing", "asleep" in z1["toast"] and z1["sheet"] == "true" and z1["door"]["sheet"] == "true" and (z1["door"]["layout"] in (None, "room")) and z2["sheet"] == "true" and z3 == "true", {"z1": z1, "z2": z2, "z3": z3})
+            await p9.evaluate("()=>document.querySelector('nav a[data-tab=you]').click()"); await p9.wait_for_selector('#sheet[aria-hidden="false"] #youAccount', timeout=8000)
+            await p9.keyboard.press("Escape"); await p9.wait_for_timeout(300)
+            await p9.evaluate("()=>document.querySelector('.hotspot[data-id=bed]').click()"); await p9.wait_for_selector('#sheet[aria-hidden="false"]', timeout=8000); await p9.wait_for_timeout(300)
+            z4 = await p9.evaluate("()=>(document.querySelector('#sheet h2')||document.querySelector('#sheet .sh-title')||{}).textContent")
+            check("asleep, You still opens and the bed offers the morning", z4 and "morning" in z4.lower(), z4)
+            await ctx9.close()
+
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()
     finally:
