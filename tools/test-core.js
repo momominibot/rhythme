@@ -329,7 +329,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var w = fresh(), RW = w.OvuRewards, P = w.OvuPets;
   RW.grant(2000, 'welcome'); RW.buy('cat'); RW.buy('dog'); RW.buy('mewmew'); RW.buy('catblack');
   var l = RW.ledger();
-  check('buying Sesame puts Mochi away and keeps the puppy and Mewmew out', l.placed.catblack && !l.placed.cat && l.placed.dog && l.placed.mewmew, JSON.stringify(l.placed));
+  check('buying Sesame puts Mochi away and keeps the puppy; Mewmew, adopted third, waits in the inventory (two pets at home)', l.placed.catblack && !l.placed.cat && l.placed.dog && !l.placed.mewmew && l.owned.indexOf('mewmew') > -1, JSON.stringify(l.placed));
   RW.buy('shiba'); RW.toggle('cat'); l = RW.ledger();
   check('Hana swaps with Peach, and bringing Mochi back puts Sesame away', l.placed.shiba && !l.placed.dog && l.placed.cat && !l.placed.catblack, JSON.stringify(l.placed));
   var opts = RW.SHOP.filter(function (s) { return s.slot === 'cat'; }).map(function (s) { return s.id; });
@@ -778,6 +778,27 @@ function scenes(todayIso) {
   check('all eighteen pet strips are on disk with valid sidecars', strips === 18, strips);
   var ST = w.OvuStreet;
   check('the three stores keep different hours and the hours helper reads a date', ST.hoursFor('pet')[0] === 10 && ST.hoursFor('furniture')[0] === 11 && ST.hoursFor('home')[0] === 9 && !ST.openAt('pet', new Date(2026, 9, 19, 8, 30)) && ST.openAt('pet', new Date(2026, 9, 19, 12, 0)) && !ST.openAt('pet', new Date(2026, 9, 19, 19, 0)) && ST.openAt('home', new Date(2026, 9, 19, 9, 0)) && ST.hoursText('furniture') === '11 am to 9 pm');
+})();
+
+(function ledgerAccounting() {
+  console.log('hearts accounting: a record earns once, Moon Tap caps per day, gifts never repeat, two pets at home');
+  var w = fresh(), RW = w.OvuRewards, S = w.OvuStore, T = w.OvuBreathTap;
+  var ev = S.add('sleep', S.today(), { bedtime: '23:00', wake: '07:00', quality: 4 }, 'room');
+  var r1 = RW.award(ev), r2 = RW.award(ev);
+  check('the same saved record earns only once', r1.points > 0 && r2.points === 0 && r2.again === true, r1.points + '/' + r2.points);
+  var h0 = RW.ledger().hearts;
+  [600, 600, 600].forEach(function (secs) { RW.award(S.add('mindfulness', S.today(), T.entryFor(secs, 'easy', 0, 0), 'room')); });
+  check('three ten-minute Moon Taps in a day earn twenty, not sixty', RW.ledger().hearts - h0 === 20, RW.ledger().hearts - h0);
+  var g0 = RW.ledger().hearts; RW.grant(30, 'intro'); RW.grant(30, 'intro');
+  check('a one-time gift is paid once, remembered outside the log', RW.ledger().hearts - g0 === 30 && RW.ledger().gifts.intro === true);
+  var l = RW.ledger(); l.hearts = 2000; S.setState({ rewards: l });
+  RW.buy('cat'); RW.buy('dog'); var mm = RW.buy('mewmew');
+  check('a third adopted pet waits in the inventory', mm.waiting === true && !RW.ledger().placed.mewmew && RW.ledger().owned.indexOf('mewmew') > -1);
+  var threw = false; try { RW.toggle('mewmew'); } catch (e) { threw = /Two pets/.test(e.message); }
+  check('placing a third pet from the inventory is refused with a plain reason', threw);
+  RW.toggle('dog'); check('after putting one away the third can come home', RW.toggle('mewmew') === true);
+  RW.buy('catblack'); RW.toggle('mewmew'); RW.toggle('cat');
+  check('swapping a kitten for another kitten still works with two at home', RW.toggle('catblack') === true && !RW.ledger().placed.cat);
 })();
 
 console.log('\n' + passes + ' passed, ' + fails + ' failed');

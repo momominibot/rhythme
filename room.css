@@ -1410,3 +1410,7 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .prop.owned.pet.walking:not(.cycling) .petbody>img{animation:petstep .4s ease-in-out infinite}
 @keyframes petstep{0%,100%{transform:translateY(0)}50%{transform:translateY(-5%)}}
 @media (prefers-reduced-motion: reduce){.prop.owned.pet.walking:not(.cycling) .petbody>img{animation:none}}
+
+.street .store .hours{color:var(--rm-ok)}
+.street .store.closed .hours{color:var(--rm-ink-3)}
+.street .store.closed img{filter:grayscale(.4) opacity(.8)}
