@@ -249,6 +249,13 @@ async def main():
             await page.click("#hudStop"); await page.wait_for_timeout(500)
             stopped = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), toast: document.querySelector('#toast').textContent})")
             check("watering at zoom keeps the HUD and its Stop button on screen (lifted out of the plate), and Stop ends the minute", hud["on"] and hud["z"] > 1.4 and hud["screenSpace"] and hud["inside"] and not stopped["on"] and "Stopped" in stopped["toast"], {"hud": hud, "stopped": stopped})
+            # Today pulls up from a drawer under the scene: closed it only peeks, a tap opens it, Escape closes it
+            d0 = await page.evaluate("()=>({open: OvuDeck.isOpen(), peek: document.querySelector('#deckPeek').textContent, top: document.querySelector('#deck').getBoundingClientRect().top, vh: innerHeight})")
+            await page.evaluate("()=>document.querySelector('#deckHandle').click()"); await page.wait_for_timeout(450)
+            d1 = await page.evaluate("()=>({open: OvuDeck.isOpen(), top: document.querySelector('#deck').getBoundingClientRect().top, tiles: document.querySelector('#tiles').getBoundingClientRect().height > 0})")
+            await page.evaluate("()=>document.querySelector('#deckHandle').click()"); await page.wait_for_timeout(450)
+            d2 = await page.evaluate("()=>OvuDeck.isOpen()")
+            check("Today lives in a pull-up drawer: closed it peeks with a one-line summary, a tap slides it up, another tap closes it", not d0["open"] and d0["top"] > d0["vh"] * 0.8 and len(d0["peek"]) > 3 and "water_drop" not in d0["peek"] and d1["open"] and d1["top"] < d0["top"] - 150 and d1["tiles"] and not d2, {"d0": d0, "d1": d1, "d2": d2})
             # a pose is drawn in what she is wearing; the shower keeps its robe
             ps = await page.evaluate("()=>({plants: OvuRoom.poseSrc('plants','sundress'), base: OvuRoom.poseSrc('plants','base'), shower: OvuRoom.poseSrc('shower','sundress')})")
             okfile = await page.evaluate("(u)=>fetch(u).then(r=>r.ok)", ps["plants"])
