@@ -36,7 +36,7 @@
       props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 87, y: 66, w: 10 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 40, y: 73.5, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
     },
     house: {
-      id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8,
+      id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8, cam: { z: 1.5 }, /* drawn at a smaller scale: zoomed 1.5x she is her usual size (Jamie, 19 Oct); fit shows the whole house */
       winPatches: [{ x: 27.539, y: 10.859, w: 42.480, base: 'house-v1-sky2-house-' }],
       stairs: [{ x: 46, y: 78 }, { x: 55, y: 57 }], upstairsY: 55,
       hotspots: [
@@ -58,7 +58,7 @@
     },
     /* rendered 18 Oct 2026 (Seedream 5.0 pro, seed 7201): bedroom and bubble bath upstairs, sofa, study and wardrobe below */
     bathhouse: {
-      id: 'bathhouse', name: 'Your bath house', img: 'house-bath-v1.webp', w: 1024, h: 1280, avatarW: 8,
+      id: 'bathhouse', name: 'Your bath house', img: 'house-bath-v1.webp', w: 1024, h: 1280, avatarW: 8, cam: { z: 1.5 }, /* drawn at a smaller scale: zoomed 1.5x she is her usual size (Jamie, 19 Oct); fit shows the whole house */
       winPatches: [{ x: 26.465, y: 13.438, w: 36.230, base: 'house-bath-v1-sky2-bathhouse-' }],
       stairs: [{ x: 42, y: 75 }, { x: 52, y: 51 }], upstairsY: 55,
       hotspots: [
@@ -82,7 +82,7 @@
     },
     /* rendered 18 Oct 2026 (seed 7202): kitchen and comfy living room below, bedroom, wardrobe and bubble bath upstairs */
     familyhome: {
-      id: 'familyhome', name: 'Your family home', img: 'house-family-v1.webp', w: 896, h: 1120, avatarW: 8,
+      id: 'familyhome', name: 'Your family home', img: 'house-family-v1.webp', w: 896, h: 1120, avatarW: 8, cam: { z: 1.5 }, /* drawn at a smaller scale: zoomed 1.5x she is her usual size (Jamie, 19 Oct); fit shows the whole house */
       winPatches: [{ x: 15.513, y: 14.107, w: 35.491, base: 'house-family-v1-sky2-familyhome-' }, { x: 61.496, y: 50.000, w: 32.478, base: 'house-family-v1-sky2-familyhome2-' }],
       stairs: [{ x: 45, y: 78 }, { x: 58, y: 52 }], upstairsY: 55,
       hotspots: [
@@ -559,7 +559,7 @@
   function sleepListHTML() {
     var st = S.sleepStats(7);
     if (!st.nights.length) return '<div class="empty">No nights recorded yet. Your first entry starts the pattern.</div>';
-    return '<div class="entries">' + st.nights.slice().reverse().map(function (n) { return '<div class="entry"><span class="ms">bedtime</span><div class="body"><b>' + esc(prettyDate(n.date)) + ' · ' + esc(A.fmtHours(n.hours)) + '</b><span>' + (n.quality ? 'Quality ' + n.quality + '/5' : 'Quality not rated') + '</span></div><button class="del" data-del="' + esc(n.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>'; }).join('') + '</div>';
+    return '<div class="entries">' + (st.entries || st.nights).slice().reverse().map(function (n) { /* one row per entry, so each can be deleted; the agents count one night per date */ return '<div class="entry"><span class="ms">bedtime</span><div class="body"><b>' + esc(prettyDate(n.date)) + ' · ' + esc(A.fmtHours(n.hours)) + '</b><span>' + (n.quality ? 'Quality ' + n.quality + '/5' : 'Quality not rated') + '</span></div><button class="del" data-del="' + esc(n.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>'; }).join('') + '</div>';
   }
   function openBedtime() {
     openSheet('bedtime', 'Ready for bed?', 'Your room will dim while you sleep', 'bedtime',
@@ -1530,7 +1530,15 @@
       openSheet('shop', closedName, asleep() ? 'The shops can wait until morning' : 'Closed right now', 'storefront',
         '<div class="closedcard"><span class="ms">' + (asleep() ? 'nights_stay' : 'schedule') + '</span><b>' + (asleep() ? 'She is asleep.' : closedName + ' is closed right now.') + '</b><p>' + (asleep() ? 'Tap the bed to wake her, then come back.' : hoursLine + '. Your things are still yours; arranging the home works any time.') + '</p>' +
         (!asleep() && RW.ledger().owned.some(function (id) { var it = RW.item(id); return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div>' : '') + '</div>');
-      body.addEventListener('click', function (e) { if (e.target.closest('#arrangeBtn')) enterArrange(); });
+      /* your things stay yours when the shops are shut (Jamie, 20 Oct): the inventory shows with its place, wear and visit buttons; only buying waits */
+      var lc = RW.ledger(), mine = RW.SHOP.filter(function (it) { return lc.owned.indexOf(it.id) > -1; });
+      if (!asleep() && mine.length) body.insertAdjacentHTML('beforeend', '<p class="shelf"><span class="ms">inventory_2</span>Your things</p>' + shopList(mine, lc, currentHomeId()) + '<div class="msg" id="shopMsg"></div>');
+      body.addEventListener('click', function (e) {
+        if (e.target.closest('#arrangeBtn')) { enterArrange(); return; }
+        var t = e.target.closest('[data-toggle]'), v = e.target.closest('[data-visit]'), hm = e.target.closest('[data-home]');
+        try { if (t) shopAct('toggle', t.dataset.toggle, { sheet: true }); if (v) shopAct('visit', v.dataset.visit, { sheet: true }); if (hm) shopAct('home', hm.dataset.home, { sheet: true }); }
+        catch (err) { var m = $('#shopMsg'); if (m) message(m, err.message, false); }
+      });
       return;
     }
     var l = RW.ledger(), home = currentHomeId(), st = STORES[shopTab], street = shopTab === 'street';
@@ -1669,6 +1677,14 @@
      * the entries still go through the confirm card below it. */
     function urgentCard(u) {
       var emergency = u.level === 'emergency';
+      /* a card that brings its own words and call links (thoughts of harming yourself or your baby: 995, SOS 1767, WhatsApp 9151 1767) */
+      if (u.message) {
+        var own = '<b>' + esc(u.title) + '</b><p>' + esc(u.message) + '</p><div class="row">' + (u.actions || []).map(function (a, i) { var web = /^https:/.test(a.href); return '<a class="btn ' + (i ? 'soft' : 'primary') + '" href="' + esc(a.href) + '"' + (web ? ' target="_blank" rel="noopener"' : '') + '><span class="ms">' + (web ? 'chat' : 'call') + '</span>' + esc(a.label) + '</a>'; }).join('') + '</div>' +
+          '<small>Rhythme cannot assess how you are or diagnose. No clinician or helpline receives this alert.</small>';
+        var ownCard = bubble('urgent emergency', own); remember('urgent emergency', own);
+        try { chime('alert', true); } catch (err) { }
+        return ownCard;
+      }
       var html = '<b>' + esc(u.title) + '</b>' +
         (emergency
           ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 now if the bleeding is excessive or will not stop, you faint, have trouble breathing, or have chest pain.</p>'
@@ -1686,10 +1702,13 @@
       var local = ORB.parseLocal(text), cfg2 = ORB.aiConfig(), aiOk = cfg2.on;
       /* Short canonical notes (the shortcut chips) are read by the rules instantly; longer or
        * unmatched notes go to the model first, and the rules stay as the offline fallback. */
-      if (aiOk && (!local.length || text.length > 36)) {
+      /* a note that only says there is no period is an observation the rules have read: it is not sent to the model */
+      if (aiOk && (!local.length || text.length > 36) && !(!local.length && ORB.noPeriod && ORB.noPeriod(text))) {
         var thinking = bubble('luna', '<b>Luna</b>Reading your note…');
         ORB.parseAI(text).then(function (res) {
           thinking.remove();
+          /* the rules have the last word on a note that says there is no bleeding: a period day the model read into it is dropped */
+          if (ORB.noPeriod && ORB.noPeriod(text)) res.entries = res.entries.filter(function (e) { return e.type !== 'period'; });
           if (res.entries.length) { if (res.reply) bubble('luna', '<b>Luna</b>' + esc(res.reply)); confirmCard(res.entries); }
           else if (local.length) confirmCard(local);
           else bubble('luna', '<b>Luna</b>' + esc(res.reply || 'I could not find anything to log in that. Try naming the sleep, period, symptom, meal or minutes.'));
@@ -1701,6 +1720,7 @@
         return;
       }
       if (local.length) { confirmCard(local); return; }
+      if (ORB.noPeriod && ORB.noPeriod(text)) { var np = '<b>Luna</b>Noted: no bleeding. Nothing was added to your period days.'; bubble('luna', np); remember('luna', np); return; }
       if (aiOk) { bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "period started, heavy", "cramps 6/10", "had chicken rice for lunch" or "meditated 10 min".'); return; }
       /* AI help is off: offer it just in time, saying where the note would go, and only send after a tap. */
       var ask = bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "cramps 6/10" or "had chicken rice for lunch".' +
@@ -1835,7 +1855,7 @@
     var guides = ['guide_soften', 'guide_feet', 'guide_wander', 'guide_nothing_to_fix', 'guide_quiet_work'].concat(cramps ? ['guide_cramps'] : []);
     var p = Promise.resolve();
     if (kind === 'erin') {
-      setOrb('hold', 'Hello'); p = playClip(hour < 12 ? 'greeting_morning' : 'greeting_evening') /* started inside the tap, which unlocks the element for every later line */
+      setOrb('hold', 'Hello'); p = playClip(hour >= 5 && hour < 12 ? 'greeting_morning' : hour >= 12 && hour < 17 ? 'greeting_welcome' : 'greeting_evening') /* never good morning after midnight (Jamie, 20 Oct) */ /* started inside the tap, which unlocks the element for every later line */
         .then(function () { setOrb('hold', 'Settling in'); return playClip('meditation_begin'); });
     }
     p = p.then(function () {
@@ -1989,7 +2009,7 @@
       : !mins ? { t: 'This week: a first pause', s: 'Erin guides three minutes. Nothing to get right.', kind: 'erin', min: 3, icon: 'self_improvement' }
       : { t: 'This afternoon: a reset', s: 'Five silent minutes, follow the orb.', kind: 'breathe', min: 5, icon: 'light_mode' };
     var last = S.list('mindfulness', { from: S.addDays(today, -30), to: today }).slice(-3).reverse();
-    function label(e) { var k = e.data.kind; return k === 'erin' ? 'With Erin' : k === 'breathe' ? 'Just breathe' : k === 'breathtap' ? 'Moon Tap' : k === 'garden' ? 'Garden watering' : k === 'informal' ? 'Everyday practice' : 'Practice'; }
+    function label(e) { var k = e.data.kind; return k === 'erin' ? 'With Erin' : k === 'breathe' ? 'Just breathe' : k === 'breathtap' ? 'Koi Pond' : k === 'garden' ? 'Garden watering' : k === 'informal' ? 'Everyday practice' : 'Practice'; }
     openSheet('mind', 'Your mat', 'Erin appears beside you while you practise', 'self_improvement',
       '<div class="podshelf" id="podShelf"></div>' +
       '<div class="matnow"><span class="ms">' + sug.icon + '</span><div><b>' + esc(sug.t) + '</b><small>' + esc(sug.s) + '</small></div><button type="button" class="btn primary" data-kind="' + sug.kind + '" data-min="' + sug.min + '">Start</button></div>' +
@@ -1998,7 +2018,7 @@
         '<button type="button" class="mattile" data-kind="erin" data-min="6"><span class="ms">record_voice_over</span><b>With Erin</b><small>6 min, longer settle</small></button>' +
         '<button type="button" class="mattile" data-kind="breathe" data-min="2"><span class="ms">blur_circular</span><b>Just breathe</b><small>2 min, 4-4-6 with a bell</small></button>' +
         '<button type="button" class="mattile" data-kind="breathe" data-min="5"><span class="ms">blur_circular</span><b>Just breathe</b><small>5 min, silent</small></button>' +
-        '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Moon Tap</b><small>Tap the water, 3 to 5 min</small></button>' +
+        '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Koi Pond</b><small>Tap the water, the koi come, 3 to 5 min</small></button>' +
         '<button type="button" class="mattile" id="mindEveryday"><span class="ms">home</span><b>Everyday practice</b><small>Teeth, tea, dishes, plants</small></button>' +
         '<button type="button" class="mattile" id="mindAcu"><span class="ms">spa</span><b>Cramp relief points</b><small>Pressure points on your body</small></button>' +
       '</div>' +
@@ -2419,13 +2439,8 @@
   function hideBubble() { bubble.classList.remove('on', 'petbub'); }
   /* the menu sits above her head; when the camera holds her tall on screen there is no room above, so it stays inside the box */
   function fitBubble() { var minTop = bubble.offsetHeight + 6; if (parseFloat(bubble.style.top) < minTop) bubble.style.top = minTop + 'px'; }
-  avatar.addEventListener('click', function (e) {
-    e.stopPropagation(); chime('tap'); joy(); hideThought();
-    var r = avatar.getBoundingClientRect(), sr = scene.getBoundingClientRect();
-    bubble.style.left = Math.min(sr.width - 95, Math.max(95, r.left - sr.left + r.width / 2)) + 'px'; bubble.style.top = (r.top - sr.top - 6) + 'px';
-    bubble.innerHTML = '<button data-act="wardrobe"><span class="ms">checkroom</span>Change outfit</button><button data-act="sleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button data-act="mat"><span class="ms">self_improvement</span>Sit with Erin</button><button data-act="acu"><span class="ms">spa</span>Cramp relief points</button><button data-act="luna"><span class="ms">dark_mode</span>Tell Luna</button><button data-act="journal"><span class="ms">auto_stories</span>Open my journal</button><button data-act="everyday"><span class="ms">home</span>Everyday practice</button>' + (S.profile().onboarded ? '' : '<button data-act="intro"><span class="ms">favorite</span>Tell me about you</button>') + '';
-    bubble.classList.add('on'); fitBubble();
-  });
+  /* a tap on her is a little hop and nothing more (Jamie, 19 Oct: the menu over her head is gone; every choice it held has its own place) */
+  avatar.addEventListener('click', function (e) { e.stopPropagation(); chime('tap'); joy(); hideThought(); hideBubble(); });
   bubble.addEventListener('click', function (e) { var pb = e.target.closest('[data-pact]'); if (pb) { var pid = bubble.dataset.pet; hideBubble(); petAction(pid, pb.dataset.pact); return; } var b = e.target.closest('button'); if (!b) return; hideBubble(); if (b.dataset.act !== 'sleep' && !awake(b.dataset.act)) return; var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
   document.addEventListener('click', function (e) { if (!e.target.closest('#bubble') && !e.target.closest('#avatar')) hideBubble(); });
 

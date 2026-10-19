@@ -208,12 +208,35 @@
     if (mins < 0) mins += 24 * 60;
     return Math.round(mins / 6) / 10;
   }
+  /* One night per date. Sleep is not single-per-day, so a broken night, a nap or the same night logged twice can give
+   * several entries on one date; they are joined before any rule counts nights (five same-date entries once fired
+   * five-night warnings). Timed entries become spans ending at their wake time and overlapping spans are merged, so a
+   * repeat counts once and separate blocks add up; an entry without clock times counts by its own length (the
+   * longest one). A night is `assumed` when any of its entries had back-computed times (Luna's "slept 7h"), so timing
+   * rules can leave it out while its duration still counts. `entries` keeps one row per entry for lists that delete. */
+  function oneNight(date, blocks) {
+    var spans = [], untimed = 0, longest = blocks[0], total = 0, cur = null;
+    blocks.forEach(function (b) {
+      if (b.hours > longest.hours) longest = b;
+      var mins = Math.round(b.hours * 60);
+      if (validTime(b.wakeTime) && mins > 0) { var w = b.wakeTime.split(':'), wm = Number(w[0]) * 60 + Number(w[1]); spans.push([wm - mins, wm]); }
+      else untimed = Math.max(untimed, mins);
+    });
+    spans.sort(function (a, b) { return a[0] - b[0]; }).forEach(function (sp) { if (cur && sp[0] <= cur[1]) cur[1] = Math.max(cur[1], sp[1]); else { if (cur) total += cur[1] - cur[0]; cur = sp.slice(); } });
+    if (cur) total += cur[1] - cur[0];
+    total = Math.min(24 * 60, Math.max(total, untimed));
+    var rated = blocks.filter(function (b) { return b.quality; })[0];
+    return { date: date, hours: Math.round(total / 6) / 10, quality: longest.quality || (rated ? rated.quality : null), id: longest.id, ids: blocks.map(function (b) { return b.id; }), blocks: blocks.length, longest: longest.hours, assumed: blocks.some(function (b) { return b.assumed; }) };
+  }
   function sleepStats(days, end) {
     end = end || today(); days = days || 7;
     var from = addDays(end, -(days - 1));
-    var nights = list('sleep', { from: from, to: end }).map(function (e) { return { date: e.date, hours: sleepHours(e.data), quality: e.data.quality || null, id: e.id }; }).filter(function (n) { return n.hours !== null; });
+    var entries = list('sleep', { from: from, to: end }).map(function (e) { return { date: e.date, hours: sleepHours(e.data), quality: e.data.quality || null, id: e.id, assumed: e.data.assumed === true, wakeTime: e.data.wakeTime }; }).filter(function (n) { return n.hours !== null; });
+    var byDay = {};
+    entries.forEach(function (n) { (byDay[n.date] = byDay[n.date] || []).push(n); });
+    var nights = Object.keys(byDay).sort().map(function (d) { return oneNight(d, byDay[d]); });
     var total = nights.reduce(function (s, n) { return s + n.hours; }, 0);
-    return { from: from, to: end, nights: nights, count: nights.length, avg: nights.length ? Math.round(total / nights.length * 10) / 10 : null, under6: nights.filter(function (n) { return n.hours < 6; }).length };
+    return { from: from, to: end, nights: nights, entries: entries.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality, id: n.id, assumed: n.assumed }; }), count: nights.length, avg: nights.length ? Math.round(total / nights.length * 10) / 10 : null, under6: nights.filter(function (n) { return n.hours < 6; }).length };
   }
 
   /* ---------- derived: cycle ---------- */
@@ -402,16 +425,19 @@
 
   /* Run fn against a throwaway in-memory database (used by the Doctor view to
      render a decrypted share or fictional sample data). Nothing is saved. */
+  var sandboxDepth = 0;
   function sandbox(dbLike, fn) {
-    var real = cache; cache = normalise(dbLike);
-    try { return fn(); } finally { cache = real; }
+    var real = cache; cache = normalise(dbLike); sandboxDepth++;
+    try { return fn(); } finally { sandboxDepth--; cache = real; }
   }
+  /* true while a sandbox runs: a save then would write the sample over the real record, so callers that write lazily check this */
+  function isSandbox() { return sandboxDepth > 0; }
 
   root.OvuStore = {
     /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
     NOTICE_V: 3,
     KEY: KEY, TYPES: TYPES, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
-    load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox,
+    load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
     putEvent: putEvent, applyRemote: applyRemote,
     addMany: addMany, removeWhere: removeWhere,
     profile: profile, setProfile: setProfile, state: state, setState: setState,

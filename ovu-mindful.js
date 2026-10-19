@@ -168,7 +168,7 @@
   function timesDone(id) { return explored()[id] || 0; }
   /* pick the variation for now: a script marked for this part of the day wins (morning before 3 pm, evening after);
    * otherwise rotate so repeats stay fresh */
-  function partOfDay(d) { var h = (d || new Date()).getHours(); return h < 15 ? 'morning' : 'evening'; }
+  function partOfDay(d) { var h = (d || new Date()).getHours(); return h >= 4 && h < 15 ? 'morning' : 'evening'; } /* after midnight is still the night before: the evening script */
   function nextVariation(a, d) { var pod = partOfDay(d), timed = a.variations.filter(function (v) { return v.when === pod; }); if (timed.length) return timed[0]; var n = timesDone(a.id); return a.variations[n % a.variations.length]; }
   function totalSecs(v) { return v.steps.reduce(function (t, s) { return t + s.secs; }, 0); }
   /* called after a practice is confirmed; returns the saved event */

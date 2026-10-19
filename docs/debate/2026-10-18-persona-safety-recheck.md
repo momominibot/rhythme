@@ -31,3 +31,7 @@ What this means for the rhythm check: any read built on these logs inherits fals
 - Add "night sweats", "irritable", "forgetful", "flat", "tearful" to the symptom vocabulary mapping (hot flushes, irritability, brain fog, low mood).
 - Keep "awake from", "woke every N hours", "took an hour to fall asleep" as night-detail fields (section 4 of the design doc) instead of discarding them.
 - Add movement, LH test and skipped-meal entry types or tags.
+
+## Status, 19 October 2026
+
+The urgent-rule and parser rows above are fixed in `ovu-orb.js`, `ovu-agents.js` and `ovu-store.js`, each with a check in `tools/test-core.js` (blocks 1 to 7 under "persona safety re-check"). Still open from this table, by design: night-detail fields ("awake from 3am", feeding wake-ups), movement and LH test entry types, and a skipped-meal tag.
