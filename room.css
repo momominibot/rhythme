@@ -1230,6 +1230,11 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .scene.arranging .prop.owned.lift{z-index:12!important}
 /* neighbours, the garden plot and little effects, all percent-positioned inside #ownedProps */
 .nb{position:absolute;transform:translate(-50%,-100%);pointer-events:none;filter:drop-shadow(0 6px 6px rgba(70,40,100,.22))}
+/* seated on a bench: the bench spot is where the cross-legged pose's 62% line sat (its bottom on the seat); the seated
+   sprite is taller (legs down), so it drops until its hip line (about 52% down) meets the seat and the feet hang in front */
+.nb.sitter{transform:translate(-50%,-100%)}
+.nb.sitter img.seated{transform:translateY(74%)}
+.meditator.onseat img.seated{transform:translateY(36%)}
 .nb img{width:100%;display:block}
 .nb.flip img{transform:scaleX(-1)}
 .nbperson{pointer-events:auto;cursor:pointer}

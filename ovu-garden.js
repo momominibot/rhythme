@@ -143,10 +143,30 @@
     try { ev = S.add('mindfulness', S.today(), { kind: 'informal', first: !ever, practice: 'garden', minutes: 1, completed: true, startedAt: new Date(w.startedAt).toISOString(), guide: 'Garden watering, one mindful minute' }); } catch (e) { R.toast('The minute could not be saved: ' + e.message, 'error'); }
     if (ev) R.afterSave(ev, 'One mindful minute in the garden. ' + (res.first && res.stage > stageFor(res.days - 1) ? 'Your plot reached ' + STAGES[res.stage].name.toLowerCase() + '!' : res.first ? 'Saved to your journal.' : 'The plants had their drink already today; the minute still counts.'));
   }
+  /* a seat is a bench or a chair: she sits on it in her own clothes (assets/room/dream/avatar-sit-<outfit>.webp, hips at
+   * seat height, feet down); the cross-legged pose stays for the yoga mat. A missing seated sprite falls back to the
+   * standing one, never to the cross-legged one */
+  function seatedSrc() { return ART + 'avatar-sit-' + ((S.profile().outfit) || 'base') + '.webp'; }
+  function seatedImg(img, fallback) {
+    var want = seatedSrc(), probe = new Image();
+    probe.onload = function () { img.src = want; img.classList.add('seated'); };
+    probe.onerror = function () { img.src = fallback; img.classList.remove('seated'); };
+    probe.src = want;
+  }
   /* the bench: breathing with Erin or the orb, seated on the bench itself */
+  var meditatorWatch = null;
   function sitAt(spot, holoSpot, back) {
     var L = R.layout(); placeEl(R.els.meditator, spot); placeEl(doc.getElementById('aura'), { x: spot.x, y: spot.y - 2, w: spot.w * 1.55 }); placeEl(R.els.holo, holoSpot || { x: spot.x + 10, y: spot.y - 2, w: spot.w * 1.27 });
     if (back) { L.home.x = back.x; L.home.y = back.y; L.home.flip = !!back.flip; } /* she comes back beside the bench, not to the gate */
+    var img = R.els.meditator && R.els.meditator.querySelector('img');
+    if (img) {
+      seatedImg(img, ART + 'avatar-meditate.webp'); R.els.meditator.classList.add('onseat');
+      if (!meditatorWatch && root.MutationObserver) {
+        /* when the session ends the mat gets its own pose back, so the next mat session is cross-legged again */
+        meditatorWatch = new MutationObserver(function () { if (!R.els.meditator.classList.contains('on') && R.els.meditator.classList.contains('onseat')) { R.els.meditator.classList.remove('onseat'); img.classList.remove('seated'); img.src = ART + 'avatar-meditate.webp'; } });
+        meditatorWatch.observe(R.els.meditator, { attributes: true, attributeFilter: ['class'] });
+      }
+    }
   }
   var sitting = null;
   function sitDown(spot, back) {
@@ -154,7 +174,7 @@
     standUp(); var wrap = R.els.props, el = doc.createElement('div');
     el.className = 'nb sitter'; el.dataset.id = 'sitter'; el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', 'You are sitting on the bench. Tap to get up.');
     el.style.left = spot.x + '%'; el.style.top = spot.y + '%'; el.style.width = spot.w + '%';
-    el.innerHTML = '<img src="' + ART + 'avatar-meditate.webp" alt="">'; wrap.appendChild(el);
+    el.innerHTML = '<img src="' + ART + (S.profile().outfit && S.profile().outfit !== 'base' ? 'avatar-' + S.profile().outfit : 'avatar-base') + '.webp" alt="">'; wrap.appendChild(el); seatedImg(el.querySelector('img'), el.querySelector('img').src);
     sitting = { spot: spot, back: back, el: el }; R.els.scene.classList.add('sitting'); R.chime('tap');
     R.toast('Sitting a while. Tap anywhere to get up.', 'chair');
   }

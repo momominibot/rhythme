@@ -63,3 +63,35 @@ changes inside a fixed silhouette, so they do not need renders if the recolour c
 3. Styles 3, 4 and the wrap, one per push; colours per the test's result.
 
 Pending the recolour test, the budget is 150 to 200 renders and about four evenings.
+
+## The recolour test, done (19 Oct, afternoon)
+
+Three renders of style 1's standing sprite with black, honey and auburn hair (seed 7407, the base sprite as reference, URL
+download) came back identical in face, pose, outfit and star clip. `tools/art/recolour.py` recolours the base sprite with a
+mask built from the hair's own hue (component filter to drop the blush, hole fill for highlights, per-target lightness
+curves). Sheet: scratchpad `look/recolour-sheet3.png`, sent to Jamie.
+
+Codex's verdict (image review, read-only): the recolour is tellable at both sizes. Black reads purple-charcoal with
+subdued highlights; honey reads muted beige; auburn reads flat terracotta; the dangling curl on the viewer's left and
+the perimeter wisps stay pink in all three; no cheek, eye or skin spill seen. Decision, as the plan's fallback said:
+**hair colour is rendered per preset by the model; the recolour is kept in the toolbox, not shipped.** Eye colour stays a
+candidate for recolour (tiny flat iris), untested. Skin tones: Codex says a recolour is plausible in principle but needs
+an explicit skin mask, blush handling, and a test across face, ears, neck, hands, arms and legs in every pose and walk
+direction; not attempted yet.
+
+What rendering hair colour costs. One (style, colour) pair needs, for the nine outfits: a standing sprite, three walk
+sheets and a seated pose each (45), plus the nine everyday-practice poses, the cross-legged pose and the sleeping pose
+(11): about 56 renders, roughly half an hour of background rendering and a contact-sheet check per pair. Four styles
+with three colours each is 12 pairs, about 670 renders; adding four skin tones by render would multiply that by four and
+is not sensible. Proposed order: style 1 in black and honey first (112 renders, one evening, proves consistency across
+strips and poses), then style 2 in its base colour, and the skin-tone recolour test with the stricter checks before any
+skin render. Jamie decides the palette per style and whether skin tones go by recolour (tested) or stay at one tone for
+now.
+
+## Seated poses (19 Oct)
+
+Nine seated renders (`assets/room/dream/avatar-sit-<outfit>.webp`, sized to each standing sprite by head width, feet at
+the bottom) now sit on the garden, street and plaza benches and under a bench breathing session; the cross-legged pose
+is only the mat's. `ovu-garden.js` probes the seated file and falls back to the standing sprite, never the cross-legged
+one; the CSS drops the sprite from the bench spot so the hip line meets the seat (74% for the sitter, 36% for the
+meditator on a seat).
