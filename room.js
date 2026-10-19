@@ -36,7 +36,7 @@
       props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 87, y: 66, w: 10 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 40, y: 73.5, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
     },
     house: {
-      id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8,
+      id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8, cam: { z: 1.5 }, /* drawn at a smaller scale: zoomed 1.5x she is her usual size (Jamie, 19 Oct); fit shows the whole house */
       winPatches: [{ x: 27.539, y: 10.859, w: 42.480, base: 'house-v1-sky2-house-' }],
       stairs: [{ x: 46, y: 78 }, { x: 55, y: 57 }], upstairsY: 55,
       hotspots: [
@@ -58,7 +58,7 @@
     },
     /* rendered 18 Oct 2026 (Seedream 5.0 pro, seed 7201): bedroom and bubble bath upstairs, sofa, study and wardrobe below */
     bathhouse: {
-      id: 'bathhouse', name: 'Your bath house', img: 'house-bath-v1.webp', w: 1024, h: 1280, avatarW: 8,
+      id: 'bathhouse', name: 'Your bath house', img: 'house-bath-v1.webp', w: 1024, h: 1280, avatarW: 8, cam: { z: 1.5 }, /* drawn at a smaller scale: zoomed 1.5x she is her usual size (Jamie, 19 Oct); fit shows the whole house */
       winPatches: [{ x: 26.465, y: 13.438, w: 36.230, base: 'house-bath-v1-sky2-bathhouse-' }],
       stairs: [{ x: 42, y: 75 }, { x: 52, y: 51 }], upstairsY: 55,
       hotspots: [
@@ -82,7 +82,7 @@
     },
     /* rendered 18 Oct 2026 (seed 7202): kitchen and comfy living room below, bedroom, wardrobe and bubble bath upstairs */
     familyhome: {
-      id: 'familyhome', name: 'Your family home', img: 'house-family-v1.webp', w: 896, h: 1120, avatarW: 8,
+      id: 'familyhome', name: 'Your family home', img: 'house-family-v1.webp', w: 896, h: 1120, avatarW: 8, cam: { z: 1.5 }, /* drawn at a smaller scale: zoomed 1.5x she is her usual size (Jamie, 19 Oct); fit shows the whole house */
       winPatches: [{ x: 15.513, y: 14.107, w: 35.491, base: 'house-family-v1-sky2-familyhome-' }, { x: 61.496, y: 50.000, w: 32.478, base: 'house-family-v1-sky2-familyhome2-' }],
       stairs: [{ x: 45, y: 78 }, { x: 58, y: 52 }], upstairsY: 55,
       hotspots: [
