@@ -136,7 +136,9 @@
     lastWaterAt = Date.now();
     var res = water(S); renderPlot(); R.chime('bell', true);
     /* every completed minute is a practice like the everyday ones: five hearts, ten more the very first time, and a journal entry */
-    var g = gardenState(S), ever = !!g.firstWaterAt; if (!ever) { g.firstWaterAt = new Date().toISOString(); S.setState({ garden: g }); }
+    /* the very first watering ever: the day list has only today in it and today was just added (no extra field, which
+     * gardenState would drop; Codex caught that the first-time bonus would otherwise pay every time) */
+    var g = gardenState(S), ever = !(res.first && g.watered.length === 1);
     var ev = null;
     try { ev = S.add('mindfulness', S.today(), { kind: 'informal', first: !ever, practice: 'garden', minutes: 1, completed: true, startedAt: new Date(w.startedAt).toISOString(), guide: 'Garden watering, one mindful minute' }); } catch (e) { R.toast('The minute could not be saved: ' + e.message, 'error'); }
     if (ev) R.afterSave(ev, 'One mindful minute in the garden. ' + (res.first && res.stage > stageFor(res.days - 1) ? 'Your plot reached ' + STAGES[res.stage].name.toLowerCase() + '!' : res.first ? 'Saved to your journal.' : 'The plants had their drink already today; the minute still counts.'));

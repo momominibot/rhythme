@@ -50,6 +50,10 @@ list. Every change walks it before a push; `tools/checkpoints.sh` asks jev the s
     weekly content drop; discussed with Codex before changing the rules (docs/design/2026-10-19-points-economy.md).
 21. Erin's lines in every practice play on one audio element unlocked by the tap, with a guard so a stalled clip never
     holds the script.
+22. Hearts never reward volume, edits, outcomes, consent or disclosure; one award per domain per date, a central daily
+    cap, free forgiveness (the economy review).
+23. Reminders and a home-screen widget: a web app cannot ring an alarm or draw a widget on an iPhone; those need a
+    native shell. (Explained to Jamie 19 Oct; the shell is a proposal.)
 
 ## Walking the list
 
