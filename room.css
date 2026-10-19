@@ -1434,8 +1434,8 @@ body.btap-open{overflow:hidden}
 .mvdel .ms{font-size:18px}
 .mvdel.confirm{background:#fbe3e6;color:#9b2f3c;padding:4px 8px}
 .mvperiod{margin-top:12px}
-.mvperiod details{margin-top:6px}
-.mvperiod summary{cursor:pointer;font-weight:800;color:var(--rm-plum)}
+.mvperiod .mvflags{margin-top:6px;font:600 12px/1.45 var(--sans);color:var(--rm-ink-2)}
+.mvperiod .mvflags b{display:inline;font-weight:800;color:var(--rm-plum)}
 .mvperiod .btn{margin-top:8px;flex:none;width:auto;padding:8px 12px}
 .mvsec{display:block}
 html[data-sky="night"] :is(.mvweek,.mvact,.mvvar){background:var(--rm-card);border-color:rgba(255,255,255,.08)}

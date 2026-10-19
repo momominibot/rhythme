@@ -202,6 +202,11 @@
       var st = loadState();
       if (st.userId && st.userId !== uid) { st = { v: 1, userId: uid, shadow: snapshot(), tombstones: st.tombstones || {}, pulledSeq: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: st.lastSyncAt || null }; }
       if (!st.userId) { st.userId = uid; st.shadow = snapshot(); if (S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage) st.profileDirty = true; }
+      /* An older app version drops rows of types it does not know, while its pull cursor moves past them. When this
+         version knows types the cursor was built without (Movement added 'exercise'), pull everything once: the
+         merge is last-write-wins, so rows already here are unchanged and skipped rows come back. */
+      var knownTypes = (S.TYPES || []).join(',');
+      if (st.pulledSeq && st.types !== knownTypes) st.pulledSeq = null;
       saveState(st); /* persist the activation/reset before any network call */
       /* pull every row whose server arrival (synced_at) is after our cursor, in
          order and in pages, so a late-arriving older edit is never skipped */
@@ -243,10 +248,13 @@
           /* read-modify-write so a deletion made while this sync was in flight is kept */
           var cur = loadState(); cur.userId = uid;
           cur.pulledSeq = maxIso(cur.pulledSeq || '', seqMax) || cur.pulledSeq || null;
+          cur.types = knownTypes;
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
           Object.keys(settled).forEach(function (id) { delete cur.tombstones[id]; });
           var held = cur.held || {};
-          pushedRows.forEach(function (r) { delete held[r.id]; });
+          /* a held row is released only if the version that went up is still the one on this phone; an edit made
+             during the upload keeps it held, so it is sent next time even if the watermark has moved past it */
+          pushedRows.forEach(function (r) { var now = S.get(r.id); if (!now || now.updatedAt === r.updated_at) delete held[r.id]; });
           Object.keys(settled).forEach(function (id) { delete held[id]; });
           heldRows.forEach(function (r) { held[r.id] = r.updated_at; });
           Object.keys(held).forEach(function (id) { if (!S.get(id)) delete held[id]; });

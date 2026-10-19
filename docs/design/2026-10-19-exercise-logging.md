@@ -40,9 +40,10 @@ feature is built. Every claim the app shows is listed at the end with the source
 - **Fixed-day phases (1 to 5, 6 to 13, 14 to 16, 17 to 28): left out.** Rhythme never assumes a 28-day cycle, and
   McNulty et al. 2020 found only a possibly trivial dip in performance in the early follicular phase, with low-quality
   evidence; the authors say general guidelines cannot be formed and recommend a personalised approach.
-- **"Avoid HIIT and heavy lifting on your period": reworded** to "any intensity is fine if it feels right; there is no
-  rule to stop or to push". No primary source supports avoiding intensity while bleeding. The Cochrane trials used
-  both low and high intensity.
+- **"Avoid HIIT and heavy lifting on your period": left out, with no intensity advice either way.** No primary source
+  supports avoiding intensity while bleeding, and none establishes that any intensity is safe for everyone on their
+  period either (Cochrane could not judge harms, and some trials asked women not to exercise while bleeding). The note
+  says moving is your choice, gentle exercise may help cramps, listen to your body, and shows the red flags in full.
 - **"Schedule your hardest workouts around ovulation": left out.** Same McNulty finding; no phase was clearly better.
 - **"Avoid inversions if flow is heavy": left out.** No source was found for harm.
 - **Intensity bands per phase (2 to 4, 5 to 9, 7 to 10, 4 to 6 METs): left out** for the same reason as the fixed days.
@@ -56,7 +57,9 @@ feature is built. Every claim the app shows is listed at the end with the source
   stop or change while you are training a lot, talk to a doctor.
 - **After birth, "wait 6 weeks (vaginal) or 8 weeks (caesarean)": reworded** to WHO: regular activity in pregnancy and
   after birth when there is no medical reason not to, at least 150 moderate minutes a week, aerobic and strengthening,
-  start small and build up, and check with a health professional if new symptoms appear.
+  start small and build up; in pregnancy avoid excessive heat and humidity (so not hot yoga), contact and high
+  fall-risk activities, and lying on your back after the first trimester; return gradually after birth, and after a
+  caesarean plan the return with a health professional; stop and get advice if new symptoms appear.
 - **Menopause, "moderate cardio helps hot flashes": left out.** The 2023 menopause society position statement (E24,
   already in Rhythme) does not support exercise as a treatment for hot flushes. Kept: WHO's advice for 65 and over to
   add balance and strength on 3 or more days.
@@ -71,19 +74,29 @@ feature is built. Every claim the app shows is listed at the end with the source
   (moderate and vigorous minutes, moderate-equivalent minutes, MET-minutes, strength days, light minutes) and the
   period context. "Other" has no MET; it counts toward minutes by the effort chosen and is left out of the MET total,
   shown as such, never counted as zero.
-- **Strength work** counts as a strength day and in MET-minutes, but not toward the aerobic minutes (US guidelines
-  treat muscle-strengthening as separate). An activity marked as strength by the person (for example a circuit) counts
-  both ways only if it is not the "Strength or weights" activity itself.
+- **Strength work** counts in MET-minutes but not toward the aerobic minutes (US guidelines treat muscle-strengthening as
+  separate). A strength day needs the person's tick "worked all my main muscle groups, at moderate effort or more"
+  (WHO's definition) and an effort that is not light; "Strength or weights" pre-ticks it but never locks it. Another
+  activity ticked as strength (a circuit) counts both as aerobic minutes and as a strength day.
+- **MET-minutes**: the total covers everything with a known MET; the "about 500 to 1,000" guide is compared with the
+  MET-minutes of moderate and vigorous aerobic activity only, which is what the US guideline equivalence describes
+  (300 minutes of hatha yoga is 690 MET-minutes but 0 toward WHO's minutes).
 - **Where it lives**: a Movement tile on the mat (Mind tab), `room.html#move`, the old `exercise.html` and
   `exercise-guide.html` stubs now point there, and a Movement folder on the Learn desk. The journal lists the entries.
 - **The period note** shows when today has a logged period day or logged cramps, never from a predicted phase.
-- **Hearts**: the first exercise log of the day earns 6 (the same as a meal); later ones that day earn nothing. Hearts
+  Spotting is not treated as a period (the store keeps it out of period episodes too).
+- **Hearts**: the first exercise log of the day earns 6 (the same as a meal), plus the usual streak bonus when it is the
+  day's first log of any kind; later exercise logs that day earn nothing. Hearts
   never depend on minutes, effort or MET, so there is no reason to log more or harder than you did. This follows
   Jamie's rule (hearts for logging data) and the economy review's "one award per domain per day, nothing for health
   outcomes".
 - **Cloud sync**: the server's entry table only accepts the seven older types, and one rejected row fails the whole
   upload. `ovu-sync.js` now holds back rows the server rejects by type, remembers them, uploads everything else, and
-  sends the held rows again on later syncs, so nothing is lost and the watermark cannot skip them. The migration
+  sends the held rows again on later syncs, so nothing is lost and the watermark cannot skip them. A held row edited
+  during its upload stays held until the newer version is sent. While rows are held, You says "N Movement entries not
+  backed up yet", the Sync now toast says so, and "Delete everything on this phone" warns they would be lost. A phone
+  whose app learns a new entry type pulls the whole cloud diary once, so rows an older version dropped come back. The
+  migration
   `20261019120000_exercise_entries.sql` widens the check; it is written but not applied (production migrations wait
   for Jamie).
 

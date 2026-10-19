@@ -458,8 +458,9 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('more than 10 hours in one entry is refused', threw(function () { EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 601 }); }));
   var d = EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 30.4, note: '  park  ' });
   check('a brisk walk copies code 17200, 4.8 MET, moderate, rounded minutes and a trimmed note', d.code === '17200' && d.met === 4.8 && d.intensity === 'moderate' && d.minutes === 30 && d.note === 'park' && d.strength === false && d.aerobic === true, JSON.stringify(d));
-  var st = EX.makeEntry({ activity: 'strength', variant: 'reps', minutes: 40, strength: false });
-  check('strength or weights always counts as strength work and not as aerobic minutes', st.strength === true && st.aerobic === false, JSON.stringify(st));
+  var st = EX.makeEntry({ activity: 'strength', variant: 'reps', minutes: 40 });
+  var st2 = EX.makeEntry({ activity: 'strength', variant: 'reps', minutes: 40, strength: false });
+  check('strength or weights is pre-ticked as a strength day but the person can untick it; never aerobic minutes', st.strength === true && st2.strength === false && st.aerobic === false && st2.aerobic === false, JSON.stringify([st, st2]));
   var one = EX.makeEntry({ activity: 'stretch', minutes: 10 });
   check('an activity with one effort needs no choice', one.variant === 'mild' && one.met === 2.3 && one.intensity === 'light');
   var oth = EX.makeEntry({ activity: 'other', variant: 'vigorous', minutes: 20 });
@@ -492,6 +493,11 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('light yoga and strength work are shown but not counted as aerobic minutes', s.light === 20 && s.strengthMinutes === 40);
   check('MET-minutes add MET x minutes for known values only (432 + 187.5 + 200 + 46 = 866)', s.metMinutes === 866 && s.metUnknown === 1, 'metMinutes=' + s.metMinutes + ' unknown=' + s.metUnknown);
   check('one strength day, six active days', s.strengthDays === 1 && s.activeDays === 6, JSON.stringify({ sd: s.strengthDays, ad: s.activeDays }));
+  check('aerobic MET-minutes count only moderate and vigorous aerobic entries (432 + 187.5 = 620)', s.aerobicMetMinutes === 620, 'aerobic=' + s.aerobicMetMinutes);
+  var yoga = EX.week([mk(end, { activity: 'yoga', variant: 'hatha', minutes: 300 })], end);
+  check('300 minutes of hatha yoga: 690 MET-minutes in all, but none toward WHO’s minutes or the 500 to 1,000 guide', yoga.metMinutes === 690 && yoga.aerobicMetMinutes === 0 && yoga.moderateEquivalent === 0, JSON.stringify(yoga));
+  var stretchy = EX.week([mk(end, { activity: 'stretch', minutes: 30, strength: true }), mk('2026-10-18', { activity: 'stretch', minutes: 30, strength: true })], end);
+  check('light stretching ticked as muscle work is not a strength day (WHO: moderate effort or more)', stretchy.strengthDays === 0, JSON.stringify(stretchy));
   var low = EX.week([mk(end, { activity: 'walk', variant: 'brisk', minutes: 40 })], end);
   check('below the range says how many minutes are left, kindly', low.status === 'below' && low.toGo === 110 && /110 more moderate minutes/.test(EX.weekLine(low)) && /better than none/.test(EX.weekLine(low)), EX.weekLine(low));
   var high = EX.week([mk(end, { activity: 'run', variant: 'run', minutes: 200 })], end);
@@ -504,11 +510,14 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var w = fresh(), EX = w.OvuExercise;
   check('no period note without a logged period day or cramps', EX.periodContext([]) === null && EX.periodContext([{ type: 'period', data: { flow: 'none' } }]) === null);
   check('a logged period day shows the period note', EX.periodContext([{ type: 'period', data: { flow: 'light' } }]) === 'period');
+  check('spotting is not framed as a period', EX.periodContext([{ type: 'period', data: { flow: 'spotting' } }]) === null);
   check('logged cramps show the cramps note', EX.periodContext([{ type: 'symptom', data: { symptoms: ['bloating', 'cramps'] } }]) === 'cramps');
   var all = JSON.stringify(EX.COPY) + JSON.stringify(EX.ACTIVITIES);
   check('no em or en dashes anywhere in the movement words', !/[—–]/.test(all));
   check('no fixed cycle days, no "avoid HIIT", no ovulation scheduling', !/\b28\b|days? 1 ?to ?5|avoid (hiit|high)|around ovulation|peak performance/i.test(JSON.stringify(EX.COPY)));
-  check('the period words say movement is optional, may help, low certainty, listen to your body', /if you feel like it/.test(EX.COPY.period) && /may help/.test(EX.COPY.period) && /Listen to your body/.test(EX.COPY.period) && /low certainty/.test(EX.COPY.periodEvidence));
+  check('the period words say movement is optional, may help, low certainty, listen to your body', /your choice/.test(EX.COPY.period) && /may help/.test(EX.COPY.period) && /Listen to your body/.test(EX.COPY.period) && /may ease/.test(EX.COPY.periodEvidence) && /low certainty/.test(EX.COPY.periodEvidence) && /not to exercise while bleeding/.test(EX.COPY.periodEvidence));
+  check('no blanket reassurance about intensity on a period', !/any intensity|no rule to stop/i.test(EX.COPY.period + EX.COPY.periodEvidence));
+  check('pregnancy words carry WHO’s cautions: heat, contact and falls, lying on your back, caesarean', /excessive heat/.test(EX.COPY.pregnancy) && /contact sports/.test(EX.COPY.pregnancy) && /lying on your back/.test(EX.COPY.pregnancy) && /caesarean/.test(EX.COPY.pregnancy) && !/usually carry on/.test(EX.COPY.pregnancy));
   check('red flags include the urgent case and stopped periods with heavy training', /urgent appointment/.test(EX.COPY.redFlags) && /bleed between periods/.test(EX.COPY.redFlags) && /periods stop/.test(EX.COPY.redFlags));
   vm.runInContext(fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8'), w, { filename: 'ovu-evidence.js' });
   var ev = w.OvuEvidence;
@@ -528,6 +537,10 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var w2 = fresh(), S2 = w2.OvuStore, R2 = w2.OvuRewards, E2 = w2.OvuExercise;
   var big = R2.award(S2.add('exercise', S2.today(), E2.makeEntry({ activity: 'run', variant: 'fast', minutes: 300 })));
   check('a long vigorous session earns the same 6 as five minutes of stretching', big.points === r1.points);
+  var w3 = fresh(), A3 = w3.OvuAgents, S3 = w3.OvuStore, E3 = w3.OvuExercise;
+  S3.add('exercise', S3.today(), E3.makeEntry({ activity: 'other', variant: 'vigorous', minutes: 30 }));
+  var mv = A3.fourWeekSummary().movement;
+  check('the four-week summary never turns an unknown MET into zero', mv.sessions === 1 && mv.metMinutes === null && mv.metUnknownSessions === 1, JSON.stringify(mv));
 })();
 
 (function exerciseSyncHold() {
@@ -570,6 +583,61 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
     var st3 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
     check('once the server accepts it, the held row goes up even though the watermark moved past it', r3.ok === true && r3.held === 0 && posts[posts.length - 1].indexOf('exercise:' + ex.id) > -1 && !Object.keys(st3.held || {}).length, JSON.stringify({ r3: r3, posts: posts, held: st3.held }));
   }).catch(function (err) { check('the sync hold test ran to the end', false, String(err && err.stack || err)); });
+})();
+
+(function exerciseSyncEdgeCases() {
+  console.log('cloud sync: an edit during the upload stays held; a phone that learns a new type pulls everything once');
+  var mkWorld = function () {
+    var w = fresh(), S = w.OvuStore;
+    w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
+    S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+    w.reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
+    return w;
+  };
+  /* 1. the held row is accepted, but the person edits it while the upload is in flight */
+  var w = mkWorld(), S = w.OvuStore, EX = w.OvuExercise, Y = w.OvuSync, refuse = true, sent = [], edited = false;
+  var ex = S.add('exercise', S.today(), EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 10 }));
+  /* another phone whose clock runs an hour ahead pushes the watermark past any edit made here (Codex's case) */
+  var ahead = new Date(Date.now() + 3600000).toISOString(), aheadRow = { id: 'ahead1', user_id: 'u1', type: 'reflection', date: S.today(), data: { text: 'from the other phone', mood: '' }, source: 'room', created_at: ahead, updated_at: ahead, synced_at: ahead, deleted: false, deleted_at: null }, gave = false;
+  w.fetch = function (url, opt) {
+    var m = (opt && opt.method) || 'GET';
+    if (m === 'GET' && /\/entries/.test(url) && !gave) { gave = true; return w.reply(200, [aheadRow]); }
+    if (m === 'GET') return w.reply(200, []);
+    if (m === 'POST' && /\/entries/.test(url)) {
+      var rows = JSON.parse(opt.body);
+      if (refuse && rows.some(function (r) { return r.type === 'exercise'; })) return w.reply(400, { message: 'new row for relation "entries" violates check constraint "entries_type_check"' });
+      rows.forEach(function (r) { sent.push(r.type + ':' + r.data.minutes); });
+      if (!edited && rows.some(function (r) { return r.id === ex.id; })) { edited = true; S.update(ex.id, { data: Object.assign({}, ex.data, { minutes: 20 }) }); }
+      return w.reply(201, null);
+    }
+    return w.reply(201, null);
+  };
+  var t1 = Y.syncNow().then(function () { refuse = false; return Y.syncNow(); }).then(function () {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('a held row edited during its upload stays held', !!(st.held && st.held[ex.id]), JSON.stringify({ held: st.held, sent: sent }));
+    return Y.syncNow();
+  }).then(function () {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('and the newer version (20 minutes) goes up on the next sync, then the hold is released', sent.indexOf('exercise:20') > -1 && !(st.held && st.held[ex.id]), JSON.stringify({ held: st.held, sent: sent }));
+  });
+  /* 2. an older version advanced its cursor past an exercise row it could not keep; this version pulls everything once */
+  var v = mkWorld(), SV = v.OvuStore, YV = v.OvuSync, gets = [];
+  v.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-19T10:00:00Z', pushedAt: '2026-10-19T10:00:00Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }));
+  var cloudRow = { id: 'cloudex1', user_id: 'u1', type: 'exercise', date: SV.today(), data: { activity: 'swim', label: 'Swimming', variant: 'laps', code: '18240', met: 5.8, minutes: 30, intensity: 'moderate', strength: false, aerobic: true, note: '' }, source: 'room', created_at: '2026-10-19T09:00:00Z', updated_at: '2026-10-19T09:00:00Z', synced_at: '2026-10-19T09:30:00Z', deleted: false, deleted_at: null };
+  v.fetch = function (url, opt) {
+    var m = (opt && opt.method) || 'GET';
+    if (m === 'GET' && /\/entries/.test(url)) { gets.push(url); return v.reply(200, /synced_at=gt/.test(url) ? [] : [cloudRow]); }
+    if (m === 'GET') return v.reply(200, []);
+    return v.reply(201, null);
+  };
+  var t2 = YV.syncNow().then(function (r) {
+    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
+    check('after learning the exercise type, one full pull brings back the row the old version skipped', !/synced_at=gt/.test(gets[0] || '') && SV.list('exercise').length === 1 && st.types === SV.TYPES.join(','), JSON.stringify({ r: r, gets: gets, n: SV.list('exercise').length, types: st.types }));
+    return YV.syncNow();
+  }).then(function () {
+    check('the next sync goes back to pulling only what is new', /synced_at=gt/.test(gets[gets.length - 1] || ''), JSON.stringify(gets));
+  });
+  Promise.all([t1, t2]).catch(function (err) { check('the sync edge-case tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */

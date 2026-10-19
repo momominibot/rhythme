@@ -345,7 +345,7 @@ async def main():
             await page.click("[data-mact=strength]"); await page.click("[data-mvar=reps]"); strd = await page.evaluate("()=>({on: document.querySelector('#mvStr').checked, locked: document.querySelector('#mvStr').disabled})")
             await page.fill("#mvMin", "0"); await page.click("#mvSave"); await page.wait_for_timeout(200)
             bad = await page.evaluate("()=>({msg: document.querySelector('#mvMsg').textContent, n: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(x=>x.type==='exercise').length})")
-            check("strength or weights ticks the strength day for you, and zero minutes is refused with a plain message", strd["on"] and strd["locked"] and bad["n"] == 1 and "minutes" in bad["msg"], {"str": strd, "bad": bad})
+            check("strength or weights pre-ticks the strength day but leaves it yours to change, and zero minutes is refused with a plain message", strd["on"] and not strd["locked"] and bad["n"] == 1 and "minutes" in bad["msg"], {"str": strd, "bad": bad})
             await page.evaluate("()=>OvuStore.add('symptom', OvuStore.today(), {symptoms:['cramps'], pain:4, mood:'', notes:''})")
             await page.goto(BASE + "room.html#move", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] #mvActs', timeout=10000)
             pc = await page.evaluate("()=>{var p=document.querySelector('#mvPeriod'); return {there: !!p, text: p?p.innerText:'', nav: document.querySelector('nav a.on')&&document.querySelector('nav a.on').dataset.tab}}")

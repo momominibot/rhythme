@@ -1280,7 +1280,7 @@
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('move_to_inbox', 'Import from Apple Health or Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S) + ' entries brought in so far' : 'Sleep, weight and period days you already have', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
-      (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
+      (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.' + (function () { var h = window.OvuSync && OvuSync.status ? OvuSync.status().held || 0 : 0; return h ? ' ' + h + ' Movement ' + (h === 1 ? 'entry is' : 'entries are') + ' not in your cloud backup yet, so ' + (h === 1 ? 'it' : 'they') + ' would be lost.' : ''; })() + '</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is not a medical device and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
     if (window.OvuAuth) { var ya = $('#youAccount'); if (ya) OvuAuth.renderAccount(ya, { toast: toast, chime: chime }); }
@@ -1920,12 +1920,12 @@
       '<div class="mvscale" aria-hidden="true"><span style="left:0">0</span><span style="left:' + pct(W.moderateMin) + '%">150</span><span style="left:' + pct(W.moderateMax) + '%">300</span></div>' +
       '<p class="mvline">' + esc(EX.weekLine(wk)) + '</p>' +
       '<div class="matweek"><span><b>' + wk.metMinutes + '</b>MET-min</span><span><b>' + wk.strengthDays + '</b>of 2 strength days</span><span><b>' + wk.sessions + '</b>' + (wk.sessions === 1 ? 'session' : 'sessions') + '</span></div>' +
-      '<p class="help">A vigorous minute counts as two. About 500 to 1,000 MET-minutes a week matches WHO’s range.' + extra + '</p></div>' + guideHTML('move');
+      '<p class="help">A vigorous minute counts as two. From moderate and vigorous activity: ' + wk.aerobicMetMinutes + ' MET-minutes; about 500 to 1,000 a week of that matches WHO’s range.' + extra + '</p></div>' + guideHTML('move');
   }
   function movePeriodHTML(ctx) {
     var C = EX.COPY;
     return '<div class="flag info mvperiod" id="mvPeriod"><span class="ms">water_drop</span><div><b>' + esc(C.periodTitle[ctx]) + '</b><span>' + esc(C.period) + ' ' + esc(C.periodEvidence) + '</span>' +
-      '<details><summary>When to see a doctor</summary><span>' + esc(C.redFlags) + '</span></details>' +
+      '<p class="mvflags"><b>When to see a doctor.</b> ' + esc(C.redFlags) + '</p>' +
       '<button type="button" class="btn soft" id="mvAcu"><span class="ms">spa</span>Cramp relief points</button></div></div>';
   }
   function moveRowHTML(e) {
@@ -1944,7 +1944,7 @@
       '<div class="field"><span class="lbl">What did you do?</span><div class="mvacts" id="mvActs">' + EX.ACTIVITIES.map(function (a) { return '<button type="button" class="mvact" data-mact="' + a.id + '" aria-pressed="false"><span class="ms">' + a.icon + '</span><span>' + esc(a.label) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="field" id="mvVarField" hidden><span class="lbl">How did it go?</span><div class="mvvars" id="mvVars"></div></div>' +
       '<div class="field"><label for="mvMin">Minutes</label><input class="input" id="mvMin" type="number" inputmode="numeric" min="1" max="' + EX.MAX_MINUTES + '" step="1" value="30"><div class="chips mvquick" id="mvQuick">' + [10, 20, 30, 45, 60, 90].map(function (n) { return '<button type="button" class="chipbtn' + (n === 30 ? ' on' : '') + '" data-min="' + n + '">' + n + ' min</button>'; }).join('') + '</div></div>' +
-      '<label class="mvcheck"><input type="checkbox" id="mvStr"><span>Worked my main muscles (counts as a strength day)</span></label>' +
+      '<label class="mvcheck"><input type="checkbox" id="mvStr"><span>' + esc(EX.COPY.strengthTick) + '</span></label>' +
       '<div class="field"><label for="mvDate">Day</label><input class="input" id="mvDate" type="date" max="' + today + '" value="' + today + '"></div>' +
       '<div class="field"><label for="mvNote">Note (optional)</label><input class="input" id="mvNote" maxlength="280" placeholder="How it felt, where you went"></div>' +
       '<p class="mvpreview" id="mvPreview">Choose what you did to see its MET value.</p>' +
@@ -1956,21 +1956,23 @@
       var a = EX.activity(st.act), v = a && EX.variant(st.act, st.variant), mins = Math.round(Number($('#mvMin').value) || 0), el = $('#mvPreview');
       if (!a) { el.textContent = 'Choose what you did to see its MET value.'; return; }
       if (!v) { el.textContent = 'Choose how it went.'; return; }
-      var it = EX.intensityOf(v.met, v.effort), counts = a.aerobic === false ? 'strength work: a strength day, not aerobic minutes' : it === 'vigorous' ? 'vigorous: each minute counts as two toward WHO’s range' : it === 'moderate' ? 'moderate: counts toward WHO’s range' : 'light: shown, not counted toward WHO’s range';
-      el.textContent = v.met === null ? (mins || '?') + ' min, ' + counts + '. No MET value for this one.' : (mins || '?') + ' min × ' + v.met + ' MET = ' + (mins ? Math.round(mins * v.met) : '?') + ' MET-minutes, ' + counts + '.';
+      var it = EX.intensityOf(v.met, v.effort), counts = a.aerobic === false ? 'strength work, not aerobic minutes' : it === 'vigorous' ? 'vigorous: each minute counts as two toward WHO’s range' : it === 'moderate' ? 'moderate: counts toward WHO’s range' : 'light: shown, not counted toward WHO’s range';
+      var str = $('#mvStr').checked ? (it === 'light' ? ' Light effort is not a strength day.' : ' Counts as a strength day.') : '';
+      el.textContent = (v.met === null ? (mins || '?') + ' min, ' + counts + '. No MET value for this one.' : (mins || '?') + ' min × ' + v.met + ' MET = ' + (mins ? Math.round(mins * v.met) : '?') + ' MET-minutes, ' + counts + '.') + str;
     }
     function renderVars() {
       var a = EX.activity(st.act), f = $('#mvVarField'), box = $('#mvVars'), str = $('#mvStr');
       if (!a) { f.hidden = true; return; }
       if (!EX.variant(a.id, st.variant)) st.variant = a.variants.length === 1 ? a.variants[0].id : null;
       box.innerHTML = a.variants.map(function (v) { var it = EX.intensityOf(v.met, v.effort); return '<button type="button" class="mvvar' + (v.id === st.variant ? ' on' : '') + '" data-mvar="' + v.id + '" aria-pressed="' + (v.id === st.variant) + '"><b>' + esc(v.label) + '</b><small>' + (v.met === null ? 'No MET value' : v.met + ' MET') + ' · ' + EX.WORD[it] + '</small></button>'; }).join('');
-      f.hidden = false; str.checked = !!a.strength || (str.checked && !str.disabled); str.disabled = !!a.strength;
+      f.hidden = false; str.checked = !!a.strength; /* pre-ticked for strength work, never locked: the person decides */
       preview();
     }
     var actsBox = $('#mvActs');
     actsBox.addEventListener('click', function (e) { var b = e.target.closest('[data-mact]'); if (!b) return; chime('tap'); st.act = b.dataset.mact; st.variant = null; $$('.mvact', actsBox).forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); }); renderVars(); });
     $('#mvVars').addEventListener('click', function (e) { var b = e.target.closest('[data-mvar]'); if (!b) return; chime('tap'); st.variant = b.dataset.mvar; $$('.mvvar', this).forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); }); preview(); });
     $('#mvQuick').addEventListener('click', function (e) { var b = e.target.closest('[data-min]'); if (!b) return; $('#mvMin').value = b.dataset.min; $$('.chipbtn', this).forEach(function (x) { x.classList.toggle('on', x === b); }); preview(); });
+    $('#mvStr').addEventListener('change', preview);
     $('#mvMin').addEventListener('input', function () { var v = this.value; $$('#mvQuick .chipbtn').forEach(function (x) { x.classList.toggle('on', x.dataset.min === v); }); preview(); });
     $('#mvSave').addEventListener('click', function () {
       try {
