@@ -249,10 +249,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
 (function underSixteenSafeguard() {
   console.log('under-16s who mention a possible pregnancy get support contacts');
   var w = fresh(), O = w.OvuOrb;
-  check('13-16: "I think I might be pregnant" -> support card', (O.urgent('I think I might be pregnant', { ageBand: '13-16' }) || {}).level === 'safeguard');
-  check('older 13-17 profiles are treated the same', (O.urgent('my period is late and the condom broke', { ageBand: '13-17' }) || {}).level === 'safeguard');
-  check('adults get no safeguarding card for the same words', O.urgent('I think I might be pregnant', { ageBand: '25-29' }) === null);
-  check('pregnancy with bleeding is still an emergency first, at any age', (O.urgent('I am pregnant and bleeding', { ageBand: '13-16' }) || {}).level === 'emergency');
+  check('no under-18 safeguarding card remains: Rhythme is 18+, a possible pregnancy is not an emergency on its own', O.urgent('I think I might be pregnant', { ageRange: '25-29' }) === null && O.urgent('my period is late and the condom broke', { ageBand: '13-16' }) === null);
+  check('pregnancy with bleeding is still an emergency first', (O.urgent('I am pregnant and bleeding', {}) || {}).level === 'emergency');
 })();
 
 (function noStressPets() {
@@ -667,10 +665,7 @@ function scenes(todayIso) {
   }).then(function (msg) {
     check('an unknown file type explains what can be read', /export\.zip or export\.xml/.test(msg), msg);
   }).catch(function (e) { check('zip tests ran without throwing', false, e && e.stack || e); });
-})().then(function () {
-  console.log('\n' + passes + ' passed, ' + fails + ' failed');
-  process.exit(fails ? 1 : 0);
-});
+})(); /* the summary is printed once the loop drains (end of file), never from inside one block */
 (function petShopShelves() {
   console.log('pet shop shelves: treats are used up, accessories are worn by one pet at a time');
   var w = fresh(), RW = w.OvuRewards, P = w.OvuPets, S = w.OvuStore;
@@ -801,5 +796,124 @@ function scenes(todayIso) {
   check('swapping a kitten for another kitten still works with two at home', RW.toggle('catblack') === true && !RW.ledger().placed.cat);
 })();
 
-console.log('\n' + passes + ' passed, ' + fails + ' failed');
-process.exit(fails ? 1 : 0);
+(function consentRecordAndAgeGate() {
+  console.log('consent record and the 18+ gate (ovu-consent.js): events, mirrors, import, receipts, headers, binding');
+  var w = fresh();
+  ['ovu-consent.js', 'ovu-auth.js', 'ovu-insight.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  w.crypto = { getRandomValues: w.crypto.getRandomValues.bind(w.crypto), subtle: { digest: function (alg, data) { var h = require('crypto').createHash('sha256').update(Buffer.from(data)).digest(); return Promise.resolve(h.buffer.slice(h.byteOffset, h.byteOffset + h.byteLength)); } } };
+  var C = w.OvuConsent, S = w.OvuStore, O = w.OvuOrb, SY = w.OvuSync, A = w.OvuAuth;
+  var src = function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); };
+  var roomJs = src('room.js'), roomHtml = src('room.html'), storeJs = src('ovu-store.js'), appnav = src('appnav.js'), orbJs = src('ovu-orb.js'), terms = src('terms.html'), priv = src('privacy.html'), luna = src('supabase/functions/luna/index.ts'), insight = src('supabase/functions/insight/index.ts'), mig = src('supabase/migrations/20261019050000_consent_events.sql');
+  check('one notice version, 3, in the store, the module and both page gates, which also require the 18+ attestation', S.NOTICE_V === 3 && C.NOTICE_V === 3 && /c\.v >= window\.OvuStore\.NOTICE_V && a && a\.confirmed === true/.test(storeJs) && /c\.v >= 3 && a && a\.confirmed === true/.test(appnav));
+  check('the teen logic is gone from the room, the orb and the terms, and the room goes through the consent module', !/isMinor|under13|13-16|minorAck: A\.|openMinorNote|openTeenPregnancyCard|BABES|age13|CONSENT_V/.test(roomJs) && !/under13|13-16/.test(orbJs) && /OvuConsent\.require\(next/.test(roomJs) && /at least <strong>18 years old<\/strong>/.test(terms) && !/16 years old/.test(terms));
+  check('the onboarding asks an optional adult age range, never a band with minors', /id: 'agerange'[^\n]*optional: true[^\n]*\['18-24'/.test(roomJs) && !/\['under13'/.test(roomJs) && /ageRange: A\.ageRange \|\| '', ageBand: '', minorAck: ''/.test(roomJs));
+  check('the sheet carries the switches container, the 18+ tick, the under-18 way out and notice version 3', /id="cChoices"/.test(roomHtml) && /id="cAge"[^\n]*I confirm I am 18 or older/.test(roomHtml) && /id="cUnder"/.test(roomHtml) && /Notice version 3, 19 October 2026/.test(roomHtml) && !/13 or older/.test(roomHtml));
+  check('the pages say Singapore for the backup and name the separate choices', !/outside Singapore/.test(priv) && !/outside Singapore/.test(roomHtml) && !/outside Singapore/.test(src('ovu-auth.js')) && /notice v3/.test(priv) && /version 3 \(19 October 2026\)/.test(priv) && /Help improve logging/.test(priv) && /For adults/.test(priv));
+  check('both diary-reading functions gate by consent: the account record when signed in, the phone\'s word otherwise', /consentGate\(req, sb, image \? "food_photo_ai" : "ai_reading"/.test(luna) && /consentGate\(req, sb, "ai_summaries"/.test(insight) && /consent_allows/.test(luna) && /x-rhythme-consent/.test(luna) && /x-rhythme-consent/.test(insight));
+  check('the migration logs events append-only, derives state, exposes allows to the service role only, and guards sync writes', /create table if not exists public\.consent_events/.test(mig) && /consent_record\(/.test(mig) && /consent_allows\(uuid, text\) to service_role/.test(mig) && /revoke all on function public\.consent_allows\(uuid, text\) from public, anon, authenticated/.test(mig) && /entries_consent_guard/.test(mig) && /profiles_consent_guard/.test(mig) && /Rollback:/.test(mig));
+  /* a fresh phone */
+  check('a fresh phone needs the sheet: no attestation, no state, nothing allowed', C.needsSheet() && !C.ageOk() && Object.keys(C.state()).length === 0 && !C.allows('health_tracking') && !C.allows('ai_reading'));
+  var st0 = C.stateFromEvents([{ purpose: 'ai_reading', action: 'grant', at: '2026-10-19T01:00:00Z', notice: 3, method: 'sheet' }, { purpose: 'ai_reading', action: 'withdraw', at: '2026-10-19T02:00:00Z', notice: 3, method: 'you' }, { purpose: 'cloud_sync', action: 'grant', at: '2026-10-19T01:30:00Z', notice: 3, method: 'jit', uid: 'u1' }]);
+  check('state is the latest event per purpose', st0.ai_reading.on === false && st0.ai_reading.method === 'you' && st0.cloud_sync.on === true && st0.cloud_sync.uid === 'u1');
+  /* what today's flags become */
+  var imp = C.importEventsFrom({ consent: { v: 2, at: '2026-10-18T10:00:00Z', luna: true }, cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' }, analysis: { on: true, at: '2026-10-19T00:30:00Z', uid: 'u1' } }, { on: true, insights: false, photos: true });
+  var impP = imp.map(function (e) { return e.purpose; }).sort().join(',');
+  check('the first run turns today\'s flags into import events dated when they were set, at the old notice', impP === 'ai_reading,cloud_sync,food_photo_ai,health_tracking,improve_logging' && imp.every(function (e) { return e.method === 'import' && e.notice === 2 && e.action === 'grant' && !e.sent; }) && imp.filter(function (e) { return e.purpose === 'cloud_sync'; })[0].uid === 'u1' && imp.filter(function (e) { return e.purpose === 'cloud_sync'; })[0].at === '2026-10-19T00:00:00Z');
+  check('a phone that never agreed imports nothing', C.importEventsFrom({}, { on: true }).length === 0 && C.importEventsFrom({ consent: { v: 2 } }, {}).length === 0);
+  /* a returning v2 person on this phone */
+  S.setProfile({ consent: { v: 2, at: '2026-10-18T10:00:00Z', luna: true, improve: false, age13: true }, cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' }, consentEvents: [], consentImportedAt: null });
+  w.localStorage.setItem('ovumind_ai_v1', JSON.stringify({ on: true, insights: false, photos: true }));
+  S.setProfile({ consentEvents: [] }); var p0 = S.profile(); delete p0.consentImportedAt;
+  var imported = C.importLegacy();
+  check('importLegacy writes the events once and marks the profile', imported && S.profile().consentEvents.length === 4 && !!S.profile().consentImportedAt && C.importLegacy() === false);
+  C.apply();
+  check('after import the sheet is still due (old notice, no attestation) and the mirrors agree with the old flags', C.needsSheet() && O.aiConfig().on === true && O.aiConfig().insights === false && O.aiConfig().photos === true && S.profile().cloud.v === 1 && S.profile().cloud.uid === 'u1');
+  /* the sheet: attestation, the required purpose, the switches as shown */
+  C.attestAge('sheet'); C.grant('health_tracking', 'sheet'); C.setMany({ ai_reading: true, food_photo_ai: false, ai_summaries: false, cloud_sync: true }, 'sheet', true);
+  check('after the sheet nothing is due: 18+ attested once, health tracking at notice 3, photos withdrawn, the rest as ticked', !C.needsSheet() && C.ageOk() && S.profile().ageAttest.version === 1 && S.profile().consent.v === 3 && C.allows('ai_reading') && !C.allows('food_photo_ai') && C.allows('cloud_sync') && O.aiConfig().photos === false && O.aiConfig().on === true, JSON.stringify(S.profile().consent));
+  var r = C.receipt();
+  check('the receipt names the notice, the purposes, the attestation and the count', r.noticeVersion === 3 && r.purposes.ai_reading === true && r.purposes.food_photo_ai === false && r.purposes.health_tracking === true && r.ageAttest && r.ageAttest.confirmed === true && r.events >= 9 && r.userId === null, JSON.stringify(r));
+  check('the phone\'s word travels only for an allowed purpose', C.header('ai_reading')['X-Rhythme-Consent'].indexOf('ai_reading;notice=3;device=d') === 0 && !C.header('food_photo_ai')['X-Rhythme-Consent']);
+  /* Luna's switches write events with their method; the mirror follows */
+  var n0 = C.events().length; O.setAiConfig({ on: true, insights: true, photos: true }, 'jit');
+  var last = C.events().slice(n0);
+  check('a first-use allow records only what changed, as jit, and the mirror follows', last.length === 2 && last.every(function (e) { return e.method === 'jit' && e.action === 'grant'; }) && last.map(function (e) { return e.purpose; }).sort().join(',') === 'ai_summaries,food_photo_ai' && JSON.parse(w.localStorage.getItem('ovumind_ai_v1')).photos === true);
+  O.setAiConfig({ on: false, insights: true, photos: true }, 'settings');
+  check('switching Luna off in her settings is a withdrawal, as easy as the grant', C.state().ai_reading.on === false && C.state().ai_reading.method === 'settings' && O.aiConfig().on === false);
+  check('control state never rides in the backup', ['consentEvents', 'ageAttest', 'analysis', 'consent', 'cloud', 'consentImportedAt'].every(function (k) { return SY.CONTROL_KEYS[k] === 1 && !(k in SY.profileForCloud({ consentEvents: [], ageAttest: {}, analysis: {}, consent: {}, cloud: {}, consentImportedAt: 'x', name: 'n' })); }) && 'name' in SY.profileForCloud({ name: 'n', consentEvents: [] }));
+  check('a profile with an old minor band is recognised, so the sheet can say so', (function () { S.setProfile({ ageBand: '13-16' }); var m = C.legacyMinor(); S.setProfile({ ageBand: '' }); return m && !C.legacyMinor(); })());
+  /* binding at sign-in: a choice made before any account belongs to the first account, and reaches the server */
+  var U = 'u-9', sent = [], sentBy = [];
+  w.localStorage.setItem('ovumind_auth_v1', JSON.stringify({ access_token: 't', refresh_token: 'r', expires_at: Math.floor(Date.now() / 1000) + 86400, user: { id: U, email: 'x@y.z' } }));
+  w.fetch = function (url, o) { var b = o && o.body ? JSON.parse(o.body) : null; if (/rpc\/consent_record/.test(url)) { sent.push(b); return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify({ id: sent.length, purpose: b.p_purpose })); } }); } return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve('{}'); } }); };
+  var done = false; C.bindAccount().then(function () { done = true; });
+  setTimeout(function () {
+    var st = C.state(), evs = C.events();
+    check('after sign-in the pre-account choices are bound to this account and every bound event reached the server once', done && st.health_tracking.uid === U && st.ai_summaries.uid === U && st.cloud_sync.uid === U && evs.filter(function (e) { return e.uid === U; }).every(function (e) { return e.sent === true; }) && sent.length === evs.filter(function (e) { return e.uid === U; }).length && sent.every(function (b) { return b.p_notice === 3 && typeof b.p_hash === 'string' && b.p_hash.length === 64 && b.p_method && b.p_client_at; }), JSON.stringify({ sent: sent.length, bound: evs.filter(function (e) { return e.uid === U; }).length }));
+    check('a withdrawn purpose is not bound, and events never bound stay as the record of the phone', !st.ai_reading.uid && evs.filter(function (e) { return !e.uid; }).length > 0);
+    check('every event carries the phone\'s own id, so a resend can never undo a later choice', sent.every(function (b) { return typeof b.p_client_id === 'string' && b.p_client_id.length > 4; }) && C.receipt().recorded === true && C.receipt().pending === 0);
+    var before = sent.length; C.withdraw('ai_summaries', 'you');
+    setTimeout(function () {
+      check('a change made while signed in is recorded on the account at once', sent.length === before + 1 && sent[sent.length - 1].p_purpose === 'ai_summaries' && sent[sent.length - 1].p_action === 'withdraw' && sent[sent.length - 1].p_method === 'you' && C.state().ai_summaries.on === false, JSON.stringify(sent[sent.length - 1]));
+      /* a choice made while a send is in flight is sent too, in order */
+      var gateRes, gate = new Promise(function (res) { gateRes = res; }), order = [];
+      w.fetch = function (url, o) { var b = o && o.body ? JSON.parse(o.body) : null; order.push(b.p_purpose + ':' + b.p_action); var first = order.length === 1; var resp = { ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify({ id: 100 + order.length, purpose: b.p_purpose })); } }; return first ? gate.then(function () { return resp; }) : Promise.resolve(resp); };
+      C.grant('food_photo_ai', 'jit');
+      var p1 = C.flush();
+      C.withdraw('food_photo_ai', 'you');
+      gateRes();
+      p1.then(function () {
+        return new Promise(function (res) { setTimeout(res, 5); });
+      }).then(function () {
+        var mine = C.events().filter(function (e) { return e.purpose === 'food_photo_ai' && e.uid === U; });
+        var tail = mine.slice(-2).map(function (e) { return e.action; }).join(',');
+        check('a withdrawal made during a send is drained after it, in order, and both are on record', order.join(',') === 'food_photo_ai:grant,food_photo_ai:withdraw' && tail === 'grant,withdraw' && mine.every(function (e) { return e.sent; }) && C.state().food_photo_ai.on === false, order.join(',') + ' ' + tail + ' ' + JSON.stringify(mine.map(function (e) { return !!e.sent; })));
+        /* a refused event is marked and skipped; a server outage stops the queue and leaves it unsent for later */
+        var calls = [];
+        w.fetch = function (url, o) { var b = JSON.parse(o.body); calls.push(b.p_purpose + ':' + b.p_action); if (b.p_action === 'grant' && b.p_purpose === 'personalisation') return Promise.resolve({ ok: false, status: 400, text: function () { return Promise.resolve('{"message":"bad purpose"}'); } }); return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve('{"id":7}'); } }); };
+        C.record('personalisation', 'grant', 'you'); C.record('ai_reading', 'grant', 'you');
+        return new Promise(function (res) { setTimeout(res, 10); });
+      }).then(function () {
+        var ev = C.events(), pers = ev.filter(function (e) { return e.purpose === 'personalisation'; }).pop(), air = ev.filter(function (e) { return e.purpose === 'ai_reading' && e.uid === U; }).pop();
+        check('a refused event is marked failed and the next one still goes', pers && pers.failed && !pers.sent && air && air.sent === true && C.receipt().failed === 1, JSON.stringify({ pers: pers && pers.failed, air: air && air.sent }));
+        w.fetch = function () { return Promise.resolve({ ok: false, status: 503, text: function () { return Promise.resolve('{"message":"down"}'); } }); };
+        C.withdraw('ai_reading', 'you');
+        return new Promise(function (res) { setTimeout(res, 10); });
+      }).then(function () {
+        var air = C.events().filter(function (e) { return e.purpose === 'ai_reading' && e.uid === U; }).pop();
+        check('an outage leaves the event unsent and not failed, so the next flush retries it', air && !air.sent && !air.failed && C.receipt().pending === 1 && C.receipt().recorded === false);
+        /* an account switch in the middle of a send: nothing of A goes out under B */
+        sentBy.length = 0;
+        /* the account changes while the first request is in the air: its reply must not be filed, and the rest must not go out under the new token */
+        w.fetch = function (url, o) { var b = JSON.parse(o.body); var tok = (o.headers.Authorization || '').slice(7); sentBy.push(tok + ':' + b.p_purpose); if (sentBy.length === 1) w.localStorage.setItem('ovumind_auth_v1', JSON.stringify({ access_token: 'tB', refresh_token: 'r', expires_at: Math.floor(Date.now() / 1000) + 86400, user: { id: 'u-B', email: 'b@y.z' } })); return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve('{"id":9}'); } }); };
+        var p2 = C.flush(); /* the pending ai_reading withdrawal of A */
+        C.grant('cloud_sync', 'you'); /* a second A event queued while the first is in flight */
+        return p2.then(function () { return new Promise(function (res) { setTimeout(res, 10); }); });
+      }).then(function () {
+        var aEv = C.events().filter(function (e) { return e.uid === U && !e.failed; });
+        check('after a switch to another account mid-send, the reply is not filed, the first account\'s remaining events stay unsent and nothing goes out under the other token', sentBy.length === 1 && sentBy[0].indexOf('t:') === 0 && aEv.filter(function (e) { return !e.sent; }).length >= 2 && !sentBy.some(function (x) { return x.indexOf('tB:') === 0; }), JSON.stringify(sentBy) + ' unsent=' + aEv.filter(function (e) { return !e.sent; }).length);
+        /* compaction keeps the latest event of every purpose */
+        var big = []; for (var i = 0; i < 1600; i++) big.push({ id: 'x' + i, purpose: i === 0 ? 'health_tracking' : (i === 1 ? 'cloud_sync' : 'ai_reading'), action: 'grant', at: '2026-10-19T00:00:00Z', notice: 3, method: 'you' });
+        var c2 = C.compact(big), st2 = C.stateFromEvents(c2);
+        check('compaction past 1500 events keeps the latest event of every purpose and the recent tail', c2.length < 1600 && st2.health_tracking && st2.health_tracking.on && st2.cloud_sync && st2.cloud_sync.on && c2[c2.length - 1].id === 'x1599');
+        /* the doorway gates sync: a session and a cloud mirror are not enough without the attestation at this notice */
+        w.localStorage.setItem('ovumind_auth_v1', JSON.stringify({ access_token: 't', refresh_token: 'r', expires_at: Math.floor(Date.now() / 1000) + 86400, user: { id: U, email: 'x@y.z' } }));
+        S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: U }, ageAttest: null });
+        var closed = !SY.canSync() && SY.consentOk(S.profile()) && !SY.doorOpen();
+        S.setProfile({ ageAttest: { confirmed: true, version: 1, at: '2026-10-19T00:00:00Z' } });
+        check('sync is shut without the 18+ attestation even with a session and the cloud mirror, and opens with it', closed && SY.doorOpen(), JSON.stringify({ closed: closed, open: SY.doorOpen(), cloud: C.allows('cloud_sync') }));
+        /* readings are their own choice, and a withdrawal clears what was written */
+        var I = w.OvuInsight;
+        O.setAiConfig({ on: false, insights: true, photos: false }, 'settings');
+        S.setState({ insights: { daily: { '2026-10-19': { summary: 'x' } }, fourweeks: {} } });
+        var onAlone = I.enabled();
+        C.withdraw('ai_summaries', 'you');
+        check('readings can be on with note-reading off, and withdrawing them clears the cached readings', onAlone && !I.enabled() && Object.keys((S.state().insights || {}).daily || {}).length === 0);
+      });
+    }, 5);
+  }, 10);
+})();
+
+/* the summary waits for every timer and promise the blocks scheduled: the loop drains, then we report, so no async check is ever cut off */
+var summarised = false;
+process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

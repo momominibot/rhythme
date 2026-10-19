@@ -127,7 +127,79 @@ script list for `ovu-consent.js`, so the two merge without overlap whichever lan
    off, returning v2 person, under-18 decline blocks, withdrawal stops sync (route counts), JIT card before the first photo.
 6. Codex read-only review of the diff, then the pull request.
 
-## 6. Decisions only Jamie can make
+## 7. Built (19 October, afternoon), on branch `claude/consent-rebuild`
+
+Jamie confirmed 18+ in the scene session ("18+ only…"), so the plan above was built as written, with these defaults for
+the decisions that had no answer yet (each is one line to change):
+
+- **Adult age range kept, optional, guidance only** (`ageRange`, 18 to 24 ... 50 and over, a skippable onboarding
+  step). Nothing about the gate uses it; `ageBand` and `minorAck` are cleared when a person finishes onboarding.
+- **AI help without an account stays**, with the phone's `X-Rhythme-Consent` header; a signed-in person's relay calls
+  also carry the session token, so the function checks the account's own record first.
+- **AI provider stays where it is** (Jamie: "use current one"); the switches say China plainly.
+- **Turning cloud backup off keeps the copy by default**, with a second button to delete it now (`OvuSync.wipeCloud`).
+- **"Help improve logging" stays its own switch**; its account record is still `analysis_consent_set`, and every change
+  also writes a consent event.
+
+What exists: `ovu-consent.js`; the `#consent` overlay in room.html; `OvuConsent.require` as the room's doorway; the
+teen logic removed from room.js and ovu-orb.js; `ovumind_ai_v1` and `profile.cloud` as mirrors of the log; the relay
+calls in ovu-orb.js and ovu-insight.js carry the header and the token; `consentGate` in the luna and insight functions;
+migration `20261019050000_consent_events.sql` applied to the project on 19 October and verified in a rolled-back
+transaction (a fresh write passes, a write edited before a withdrawal is refused, nothing passes while backup is off,
+`consent_allows` is executable by the service role only, `consent_record` by signed-in people only); terms say 18;
+privacy says Singapore and lists every choice; "Your choices" in You with the receipt. Harness 351, pages 81 clean,
+smoke 73.
+
+Release order (the functions must not go live before the front end, or Luna refuses every phone that still runs the
+old code): merge the pull request, let Pages deploy, then deploy `luna` and `insight`. The migration is inert for
+accounts with no consent events, so applying it first was safe; the first sync after the release writes each account's
+import event, after which the sync guard applies.
+
+### Second cut, after the Codex read-only review (same afternoon)
+
+Codex held the first cut on thirteen points; all were taken, verbatim summary and fix:
+
+- Journal readings skipped the session token (journal.html did not load the account module) and the relay dropped the
+  token near expiry instead of refreshing: journal.html loads ovu-auth.js; the relay and the readings wait for
+  `OvuAuth.token()`.
+- A choice made during a send could stay unsent: `flush` drains until nothing is left and picks up choices made while
+  it ran.
+- Luna's settings recorded method `settings`, which the first migration refused, and a refused event would cork the
+  queue: migration v2 allows `settings`; a 4xx refusal marks the event failed and the queue moves on; an outage leaves
+  it unsent for the next run.
+- An account switch mid-send could file one account's choice under another: the account is pinned for the whole run,
+  the token is refused when the account changed, and a reply after a switch is not filed. Cloud backup is an account
+  record in the sheet (`account: true`), so another account's choice is never shown as on.
+- A resent grant could undo a later withdrawal: every event carries the phone's own id; `consent_record` returns the
+  existing row for a known id and writes nothing.
+- Sync could upload before the account had heard the choice, and the legacy allowance covered new accounts: sync reads
+  `consent_state_mine()` first (a withdrawal on another phone is adopted and stops the run), flushes, and refuses to
+  move a row until the cloud choice is confirmed on the account; the guard allows an event-less account only when it
+  already has a profile row or entries on the server (migration v3), and uses the same (at, id) order as
+  `consent_allows`, with the stale rule on entries only.
+- The age overlay did not stop an existing minor's sync: `canSync` requires the attestation and the current notice;
+  the doorway fails closed when the module is missing; declining writes nothing.
+- Withdrawal left cached readings: readings are their own choice (independent of note reading), a withdrawal clears
+  the cache and drops an answer still in flight.
+- The improve switch could leave the aggregate authorised: a withdrawal always reaches `analysis_consent_set`; the
+  adopted event keeps its own notice version; the aggregate receives `ageRange` or `adult`.
+- The local log was truncated blind: past 1500 events the oldest superseded ones go and the latest per purpose always
+  stays; `profile.consent` follows the log exactly; receipts say pending, failed or recorded, and carry the notice hash.
+- A blocked under-18 person was sent to a page that could not export the diary: export and delete sit on the message.
+- A required health tick sits beside the age tick, as the brief asked; the teen Learn link and the teen guidance stage
+  are gone; the peri branch reads the range; terms no longer say "outside Singapore"; "without your name" became "with
+  no profile name added", "not kept" became "Rhythme keeps none of it", "at once" became "from this phone".
+- The harness had a second exit inside the health-import block that cut every later async check; one reporter now
+  waits for the event loop to drain. Harness 360, pages 81 clean, smoke 74.
+
+Known limits, stated: a person without an account is trusted on their own header (the data is theirs and the relay is
+rate limited); the stale-write rule compares the phone's edit time with the withdrawal time, which a wrong phone clock
+can defeat, and a server-issued consent generation on every row is the stronger design if that ever matters; the
+reading pages about early menstrual years (journey-bloom.html, the Early years section of ovarian-health.html) remain
+reachable from the life-journey page as reading, which is Jamie's call; the under-18 message does not stop someone
+from reloading and ticking the box, which is the limit of self-attestation.
+
+## 6. Decisions only Jamie can make (answered in section 7 where a default was taken)
 
 1. 18+ only (asked by the scene session; nothing starts before this).
 2. Keep an optional adult age range (18 to 24 ... 50 and over, skippable, guidance only) or ask no age beyond the attestation.

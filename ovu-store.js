@@ -402,6 +402,8 @@
   }
 
   root.OvuStore = {
+    /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
+    NOTICE_V: 3,
     KEY: KEY, TYPES: TYPES, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
     load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox,
     putEvent: putEvent, applyRemote: applyRemote,
@@ -414,5 +416,5 @@
   };
 })(window);
 
-/* Rhythme asks for the data notice in the room first: a first-time visitor, or anyone whose consent is older than notice v2 or unreadable, is sent there. Keep the 2 in step with CONSENT_V in room.js. */
-(function () { try { var pg = location.pathname.split('/').pop() || 'index.html'; if (/^(room|privacy|terms|index|404)\.html$/.test(pg)) return; var db = JSON.parse(localStorage.getItem('ovumind_db_v1') || 'null'), c = db && db.profile && db.profile.consent; if (!(c && c.at && c.v >= 2)) location.replace('room.html'); } catch (e) { try { location.replace('room.html'); } catch (e2) { } } })();
+/* Rhythme asks for the data notice in the room first: a first-time visitor, anyone whose consent is older than the current notice (OvuStore.NOTICE_V), anyone who has not confirmed 18+, or an unreadable record, is sent there. appnav.js carries the same check for pages without this file. */
+(function () { try { var pg = location.pathname.split('/').pop() || 'index.html'; if (/^(room|privacy|terms|index|404)\.html$/.test(pg)) return; var db = JSON.parse(localStorage.getItem('ovumind_db_v1') || 'null'), c = db && db.profile && db.profile.consent, a = db && db.profile && db.profile.ageAttest; if (!(c && c.at && c.v >= window.OvuStore.NOTICE_V && a && a.confirmed === true)) location.replace('room.html'); } catch (e) { try { location.replace('room.html'); } catch (e2) { } } })();
