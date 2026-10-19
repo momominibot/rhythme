@@ -112,21 +112,34 @@ async def main():
             stay = await page.evaluate("()=>OvuRoom.pos()")
             check("a tap just after closing a sheet is not undone by the walk home", abs(stay["x"] - 62) < 2 and abs(stay["y"] - 66) < 2, stay)
             pets = await page.evaluate("()=>OvuPetWalk.pets()")
+            # the pets keep still at night and while she sleeps; this check is about walking, so the clock is held at daytime for it
+            await page.evaluate("()=>{window.__dayReal={night: OvuRoom.isNight, asleep: OvuRoom.asleep}; OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}}")
             await page.evaluate("()=>OvuPetWalk.nudge('dog', 0.05)")
+            PET = "()=>{var s=OvuPetWalk.state('dog'); var el=document.querySelector('.prop.owned.pet[data-id=dog]'); var w=OvuWalk.world(OvuRoom.layout(), []); return Object.assign(s, {onFloor: OvuWalk.inZones(w.zones, s.x, s.y) && !OvuWalk.blocked(w.solids, s.x, s.y), sitter: getComputedStyle(el.querySelector('.petbody>img')).visibility, quiet: {night: OvuRoom.isNight(), asleep: OvuRoom.asleep(), busy: OvuRoom.busy(), hidden: document.hidden}})}"
+            # the trip starts on its own timer: wait for it to begin, then follow it to the end (a slow runner takes longer per frame)
+            started = True
+            try: await page.wait_for_function("()=>OvuPetWalk.state('dog').state === 'walk'", timeout=8000)
+            except Exception: started = False
             pf = []
-            for i in range(45):
+            for i in range(120):
+                pf.append(await page.evaluate(PET))
+                if pf[-1]["state"] == "rest" and (len(pf) > 1 or not started): break
                 await page.wait_for_timeout(100)
-                st = await page.evaluate("()=>{var s=OvuPetWalk.state('dog'); var el=document.querySelector('.prop.owned.pet[data-id=dog]'); var w=OvuWalk.world(OvuRoom.layout(), []); return Object.assign(s, {onFloor: OvuWalk.inZones(w.zones, s.x, s.y) && !OvuWalk.blocked(w.solids, s.x, s.y), sitter: getComputedStyle(el.querySelector('.petbody>img')).visibility})}")
-                pf.append(st)
-                if i > 5 and st["state"] == "rest": break
             walked = [f for f in pf if f["walking"]]
-            check("nudged, the corgi steps off the rim and walks the room with her strip (frames change, the sitting sprite hides), stays on the floor and sits again", "dog" in pets and len(walked) >= 3 and len(set(f["frame"] for f in walked if f["cycling"])) >= 3 and all(f["onFloor"] for f in walked[2:]) and any(f["sitter"] == "hidden" for f in walked) and pf[-1]["state"] == "rest" and not pf[-1]["cycling"] and pf[-1]["onFloor"] and (abs(pf[-1]["x"] - pf[0]["x"]) > 2 or abs(pf[-1]["y"] - pf[0]["y"]) > 1), {"n": len(pf), "walked": len(walked), "first": pf[0], "last": pf[-1]})
+            floor = [f["onFloor"] for f in walked]
+            first_on = floor.index(True) if True in floor else None
+            conds = {"started": started, "dog": "dog" in pets, "frames": len(walked) >= 3, "cycle": len(set(f["frame"] for f in walked if f["cycling"])) >= 3,
+                     "reachesFloor": first_on is not None, "staysOnFloor": first_on is not None and all(floor[first_on:]),
+                     "sitterHidden": any(f["sitter"] == "hidden" for f in walked), "restAgain": pf[-1]["state"] == "rest" and not pf[-1]["cycling"] and pf[-1]["onFloor"],
+                     "moved": abs(pf[-1]["x"] - pf[0]["x"]) > 2 or abs(pf[-1]["y"] - pf[0]["y"]) > 1}
+            check("nudged, the corgi steps off the rim and walks the room with her strip (frames change, the sitting sprite hides), reaches the floor and stays on it, and sits again", all(conds.values()), {"conds": conds, "n": len(pf), "walked": len(walked), "first": {k: pf[0].get(k) for k in ("x", "y", "state", "reason", "quiet")}, "last": {k: pf[-1].get(k) for k in ("x", "y", "state", "trips", "reason", "onFloor")}})
             await page.evaluate("()=>OvuPetWalk.nudge('dog', 0.05)"); await page.wait_for_timeout(500)
             await page.evaluate("()=>document.querySelector('.prop.owned.pet[data-id=dog]').click()"); await page.wait_for_timeout(300)
             held = await page.evaluate("()=>({held: OvuPetWalk.state('dog').held, state: OvuPetWalk.state('dog').state, bubble: document.querySelector('#bubble').classList.contains('petbub')})")
             await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
             rel = await page.evaluate("()=>({held: OvuPetWalk.state('dog').held, bubble: document.querySelector('#bubble').classList.contains('on')})")
             check("a tap on the walking corgi stops her and holds her while her care bubble is up; Escape lets her go", held["held"] and held["state"] == "rest" and held["bubble"] and not rel["held"] and not rel["bubble"], {"held": held, "rel": rel})
+            await page.evaluate("()=>{OvuRoom.isNight=window.__dayReal.night; OvuRoom.asleep=window.__dayReal.asleep; delete window.__dayReal}")
             await page.click("#camIn"); await page.wait_for_timeout(450)
             await floor_tap(44, 76)
             await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(120)
