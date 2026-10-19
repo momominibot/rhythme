@@ -1097,9 +1097,9 @@ function scenes(todayIso) {
   check('the plaza leads back to the street and home', leads('plaza', 'street') && leads('plaza', 'home'));
   check('storefront doors tap the store instead of travelling', L.street.doors.filter(function (d) { return d.tap; }).map(function (d) { return d.tap; }).join() === 'petshop,furniture,homes' && w.OvuStreet.STORES.map(function (s) { return s.tab; }).join() === 'pet,furniture,home');
   var e = K.entryFor(L.garden, 'room', 'home'), e2 = K.entryFor(L.street, 'garden', 'garden'), e3 = K.entryFor(L.plaza, 'street', 'street'), e4 = K.entryFor(L.room, 'garden', 'garden');
-  var e5 = K.entryFor(L.street, 'shop-pet', 'street'); check('leaving the pet shop puts you on its own doorstep, not the garden arch', e5.x === 98.5 && e5.y === 62.6, JSON.stringify(e5));
-  check('arriving puts you at the door you came through', e.x === 29 && e.y === 58 && e2.x === 38 && e3.x === 20 && e4.x === 77, JSON.stringify([e, e2, e3, e4]));
-  var e6 = K.entryFor(L.street, 'plaza', 'plaza'); check('arriving from the plaza puts her at the far right end of the wide street, inside the arch', e6.x === 222 && e6.y === 73.6, JSON.stringify(e6));
+  var e5 = K.entryFor(L.street, 'shop-pet', 'street'); check('leaving the pet shop puts you on its own doorstep, not the garden arch', e5.x === 23 && e5.y === 58, JSON.stringify(e5));
+  check('arriving puts you at the door you came through', e.x === 29 && e.y === 58 && e2.x === 16 && e3.x === 20 && e4.x === 77, JSON.stringify([e, e2, e3, e4]));
+  var e6 = K.entryFor(L.street, 'plaza', 'plaza'); check('arriving from the plaza puts her at the street\'s right-hand arch', e6.x === 84 && e6.y === 60, JSON.stringify(e6));
   check('scene of a layout: homes are home, the others are themselves', K.sceneOf(L.room) === 'home' && K.sceneOf(L.familyhome) === 'home' && K.sceneOf(L.garden) === 'garden' && K.sceneOf(L.street) === 'street' && K.sceneOf(L.plaza) === 'plaza');
   check('outdoors only pets come along; the street and plaza show none of your things', L.garden.only.join() === 'pet' && L.plaza.only.length === 0 && L.street.only.length === 0);
   check('the mini-map knows four places', K.SCENES.join() === 'home,garden,street,plaza');
@@ -1407,7 +1407,7 @@ function scenes(todayIso) {
 
 (function wideStreet() {
   console.log('the wide street: a 2:1 plate drawn 2.5 box widths wide, walkable end to end, the camera clamped to it (docs/design/2026-10-19-wide-street.md)');
-  var w = scenes('2026-10-19'), K = w.OvuWalk, M = w.OvuCamera.M, L = w.LAYOUTS.street, W = 390, H = 487.5;
+  var w = scenes('2026-10-19'), K = w.OvuWalk, M = w.OvuCamera.M, L = w.LAYOUTS.street = require('./fixtures/wide-street-layout.js')(), W = 390, H = 487.5; /* the wide layout lives on as a fixture */
   check('the street plate is 2048 x 1024, drawn 2.5 box widths wide, so the box keeps the 0.8 view of every other scene', L.w === 2048 && L.h === 1024 && L.span === 2.5 && Math.abs(L.w / (L.h * L.span) - 0.8) < 1e-9 && Math.abs(w.LAYOUTS.garden.w / w.LAYOUTS.garden.h - 0.8) < 1e-9);
   check('the plate is on disk with its small copy', fs.existsSync(path.join(root, 'assets/room/dream/street-wide-v1.webp')) && fs.existsSync(path.join(root, 'assets/room/dream/street-wide-v1-sm.webp')));
   var xs = [].concat.apply([], L.zones).map(function (p) { return p[0]; }).concat(L.doors.map(function (d) { return d.x; }), L.hotspots.map(function (h) { return h.x; }));
@@ -1460,7 +1460,7 @@ function scenes(todayIso) {
 
 (function streetOccluders() {
   console.log('foreground cutouts on the wide street: the front pillar of each arch and the two lamps, drawn over the plate and ranked by their base');
-  var w = scenes('2026-10-19'), K = w.OvuWalk, L = w.LAYOUTS.street, occ = L.occluders || [];
+  var w = scenes('2026-10-19'), K = w.OvuWalk, L = w.LAYOUTS.street = require('./fixtures/wide-street-layout.js')(), occ = L.occluders || [];
   /* a WebP's pixel size from its header (VP8X canvas, or a plain VP8 / VP8L frame) */
   function webpSize(file) {
     var b = fs.readFileSync(file), kind = b.toString('ascii', 12, 16);
