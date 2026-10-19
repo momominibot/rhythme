@@ -110,7 +110,7 @@ Charts are inline SVG drawn by `admin.js` (no chart library, same as the app). E
 ## 9. Review record
 
 - jevtriage: full depth; jevauto, Gold Drop, Astra 6 selected. jevauto's top candidate ("client-side interaction tracking, consent modal, React/Vue dashboard, WebSockets") was taken as a lead and rejected on two points: the app is vanilla and stays so, and client-side tracking is exactly what the consent notice forbids until notice v3. Its one useful point, realtime push to the dashboard, is kept (Supabase Realtime).
-- Codex (gpt-6-astra) and DeepSeek (Ark) opinions: see the section appended after the reviews.
+- Codex (gpt-6-astra, read-only, with the repo) and DeepSeek (deepseek-v4-pro through Volcengine Ark, design text only): both reviews are in the section below; what they changed is recorded there.
 
 ## Sources
 
@@ -119,3 +119,29 @@ Charts are inline SVG drawn by `admin.js` (no chart library, same as the app). E
 - Supabase, Subscribing to database changes (publication, RLS as the subscribing role): https://supabase.com/docs/guides/realtime/subscribing-to-database-changes and the troubleshooting page https://supabase.com/docs/guides/troubleshooting/realtime-postgres-changes-troubleshooting
 - Amagai et al. 2022, Challenges in Participant Engagement and Retention Using Mobile Health Apps: Literature Review (62 studies 2015 to 2020: feedback, appropriate reminders and in-app support promote retention; lack of support, technical difficulty and low usefulness are the barriers): https://pmc.ncbi.nlm.nih.gov/articles/PMC9092233 . This supports "levers = feedback, reminders, support", not any specific streak or points rule.
 - PDPC guides (Data Protection by Design, children's data, Basic Anonymisation, Key Concepts, transfer limitation): linked in `2026-10-18-verification-and-data-collection.md`.
+
+## 10. What the two reviews changed (19 Oct, before anything was built)
+
+Codex read the repo; DeepSeek read only this page. They agreed on the load-bearing points, independently:
+
+- **Consent is per account and server-recorded, never a notice bump plus a flag.** The cloud notice's "only your signed-in account can read it" stays true for direct row access, and a separate optional choice ("help improve logging", off by default) is what allows aggregate learning. Built: `public.analysis_consent` with `analysis_consent_set()`, recording notice version, hash, age band, history scope, accepted and withdrawn times; the metrics builder reads only accounts with an active consent, an adult age band, and entries inside the accepted scope. The app switch that calls it is not built (parent's files, after Jamie approves the sentences in section 6).
+- **Staff membership by account id, not email.** Built: `staff.admin_accounts(user_id)`, invitations bind a confirmed account found by email, owners and analysts are distinct, the last owner cannot be removed, every call is audited and a denial is audited without raising so the row commits.
+- **A staff function must not be able to read a diary row.** Built: the public RPCs are owned by a NOLOGIN role that can only touch the `staff` schema; the only diary reader is `staff.metrics_build`, owned by postgres, fixed queries, k-floor suppression on value and people together.
+- **No model calls, no autonomous levers, no public nudges, no Realtime, no cron in phase 1.** Built: a deterministic run from the dashboard (`admin_run`), an audited cursor feed polled every 10 s, proposal and action tables ready but empty, policy flags that cannot lower the floor under 20, a provider-block table whose clear is owner-only (the house rule: the first provider failure stops a run and nothing retries by itself).
+- **k = 20 everywhere** (the parent note's floor; Codex kept it, DeepSeek wanted 10 for the owner view and 20 outward). Kept at 20 until a documented risk assessment says otherwise; the dashboard shows "held back under 20 people" rather than a number.
+- **Metrics must say their unit, denominator and freshness, and separate observation dates from interaction dates.** Built: each finding carries unit (accounts), stream, window, people, state (measured, not enabled, insufficient, not collected) and a note; cohorts and activation need the consented event vocabulary (`active_day`, `flow_started`, `flow_saved`, `flow_cancelled`, `nudge_shown`, `nudge_dismissed`), which is phase 2 with notice v3.
+- **The orchestrator's autonomy, when it comes, is "pick an approved content id for an approved non-clinical surface", nothing else**: no care guidance, prediction rules, records, collection, consent, pricing, rewards, notifications or saved preferences; one live revision per surface; expiry with no automatic renewal on weak or negative evidence; a kill switch. Recorded in `agent_policy` and the dashboard's Orchestrator panel; not yet exercised.
+- **The 40-day period question is a clinical rule and leaves the lever list.** Removed.
+- Dropped from phase 1 on both reviews' advice: `live_nudges`, `ovu-nudges.js`, the Realtime client, four model-calling agents, cohort charts.
+
+What Codex wanted that is deferred, with the reason: a dedicated low-privilege owner for every security-definer function (done for the staff RPCs; `metrics_build` and `svc_counts` stay postgres-owned because they must read `auth.users` and the diary tables), MFA for owners (Supabase email code only today; a decision for Jamie), pgtap tests (role behaviour is checked with claim-simulated sessions through the MCP instead: non-staff denied and audited, owner path, floor refusal, unknown invite, last-owner protection), and gating the Supabase GitHub integration (migrations are applied by hand through the MCP and the file committed afterwards; the remote history is the record).
+
+Phase 1 as built: `supabase/migrations/20261019030000_team_dashboard.sql` (applied 19 Oct), `admin.html`, `admin.css`, `admin.js`. First owner seeded: the project's own account. The parent's rules for server-side reading of diary data are in `2026-10-18-verification-and-data-collection.md` and its review `docs/debate/2026-10-18-verification-codex-review.md`; this page follows them.
+
+### The three sentences for Jamie (then the parent session changes the files in one commit with the version bump)
+
+1. Cloud notice, replace "set up so only your signed-in account can read it" with: "Other people cannot read your backup. Rhythme's server handles it only to back up, restore and delete your diary. Learning from your records to improve the app is a separate choice, off unless you turn it on."
+2. The separate choice (new, in the same sheet and in You, unticked): "Help improve logging, optional. Rhythme's automated agents and its staff may compute group counts and averages across at least 20 adults who turned this on, to improve logging, reminders and the app. Nobody sees your diary on its own: not your entries, your notes or your name. You can turn this off at any time and keep your backup."
+3. privacy.html, replace "There are no analytics" with: "There are no analytics unless you turn on 'Help improve logging'; then only group counts and averages across at least 20 adults are produced, as described in the notice."
+
+Decisions only Jamie can make (from both reviews): whether the improvement choice stays separate from backup (recommended yes); whether phase 1 runs in observe mode until there are enough users (recommended yes); whether to build the consent and event vocabulary before more dashboard features (recommended yes); the floor (20 recommended); MFA for owners.

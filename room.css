@@ -1399,12 +1399,20 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 /* ---------- the pets walk (ovu-petwalk.js): a strip box inside the pet's body, shown while it walks; the strip is clipped
  * in its own element so a hat or bow riding on the head anchor can reach past the cell ---------- */
 .petwalk{display:none;position:absolute;left:50%;bottom:0;transform:translateX(-50%);pointer-events:auto}
+.petwalk::before{content:'';position:absolute;left:14%;right:14%;bottom:-2%;height:11%;border-radius:50%;background:radial-gradient(ellipse at center,rgba(60,30,90,.32) 0%,rgba(60,30,90,.14) 45%,rgba(60,30,90,0) 72%);pointer-events:none}
 .petwalk.left{transform:translateX(-50%) scaleX(-1)}
 .petwalk>.petclip{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden}
 .petwalk img.strip{position:absolute;left:0;bottom:0;height:100%;width:auto;max-width:none;display:block;will-change:transform}
 .petwalk>img.worn{position:absolute;transform:translate(-50%,-50%);width:auto;display:block;filter:drop-shadow(0 2px 2px rgba(70,40,100,.25))}
 .prop.owned.pet.walking.cycling .petwalk{display:block}
 .prop.owned.pet.walking.cycling .petbody>img{visibility:hidden}
+/* asleep: the curled-up sprite replaces the sitter (and any worn piece) once it has loaded; without one the sitter stays with z z */
+.prop.owned.pet .petbody>img.petsleep{display:none;position:absolute;left:0;bottom:0;width:100%}
+.prop.owned.pet.sleeping .petbody>img.petsleep{display:block}
+.prop.owned.pet.sleeping .petbody>img:not(.petsleep){visibility:hidden}
+.prop.owned.pet.sleeping .petbody{animation:petbreathe 4.6s ease-in-out infinite}
+@keyframes petbreathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.012,0.985)}}
+@media (prefers-reduced-motion: reduce){.prop.owned.pet.sleeping .petbody{animation:none}}
 .prop.owned.pet.walking .petbody{animation:none}
 .prop.owned.pet.walking .petmood,.prop.owned.pet.walking::after{display:none}
 .prop.owned.pet.walking:not(.cycling) .petbody>img{animation:petstep .4s ease-in-out infinite}

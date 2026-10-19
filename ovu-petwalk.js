@@ -153,9 +153,10 @@
   }
   function trip(pet) {
     if (pets[pet.id] !== pet || !pet.el.isConnected) return;
+    if (pet.sleeping) return;
     if (reduced) return; /* the pets stay put under reduced motion */
     if (!auto && !pet.force) { schedule(pet, 30); return; } pet.force = false; /* the tests switch wandering off and nudge one pet at a time */
-    if (holds[pet.id] || !wanderHere(R.layout()) || quiet()) { schedule(pet, 4); return; }
+    if (holds[pet.id] || !wanderHere(R.layout()) || (quiet() && !pet.bedtime)) { schedule(pet, 4); return; }
     var w = worldFor(pet.id), from = { x: pet.x, y: pet.y }, startOff = !onFloor(W, w, from.x, from.y);
     var res = (pet.trips + 1) % HOME_EVERY === 0 ? (homeTrip(W, w, from, pet.home, startOff) || pickTarget(W, w, from, pet.home, null, 8, startOff)) : pickTarget(W, w, from, pet.home, null, 8, startOff);
     if (!res) { pet.lastReason = 'no route'; schedule(pet); return; }
@@ -163,7 +164,7 @@
     var d0 = pet.route.pts[0]; pet.heading = (d0.x - pet.x) || pet.heading || 1; showCycle(pet, dirFor(d0.x - pet.x, d0.y - pet.y));
     if (!raf) { last = 0; raf = root.requestAnimationFrame(tick); }
   }
-  function stop(pet, why) { if (pet.state !== 'walk') return; pet.route = null; pet.lastReason = why || 'stopped'; hideCycle(pet); place(pet); schedule(pet); }
+  function stop(pet, why) { if (pet.state !== 'walk') return; pet.route = null; pet.bedtime = false; pet.lastReason = why || 'stopped'; hideCycle(pet); place(pet); schedule(pet); }
   /* one frame of one pet along its route at constant speed, an ease-out at the end; every position is checked against
    * the floor as it is now (her live feet, the other pets), and the pet stops short rather than cross anything */
   function stepPet(pet, dt, w) {
@@ -188,9 +189,9 @@
     Object.keys(pets).forEach(function (id) {
       var pet = pets[id]; if (pet.state !== 'walk') return;
       if (!pet.el.isConnected) { pet.state = 'rest'; return; }
-      if (holds[id] || quiet()) { stop(pet, holds[id] ? 'held' : 'quiet'); return; }
+      if (holds[id] || (quiet() && !pet.bedtime)) { stop(pet, holds[id] ? 'held' : 'quiet'); return; } /* a bedtime walk home is the one walk the night allows */
       if (dt) { var moved = stepPet(pet, dt, worldFor(id)); if (moved) { pet.acc = cycleAdvance(pet.acc, moved, pet.id); setFrame(pet, frameOf(pet.acc)); place(pet); movedAny = true; } }
-      if (!pet.route) { hideCycle(pet); place(pet); if (pet.lastReason !== 'blocked') pet.trips++; schedule(pet); } else any = true;
+      if (!pet.route) { hideCycle(pet); place(pet); if (pet.lastReason !== 'blocked') pet.trips++; if (pet.bedtime) { if (!atHome(pet)) { pet.x = pet.home.x; pet.y = pet.home.y; place(pet); } curlUp(pet); } else schedule(pet); } else any = true;
     });
     if (movedAny && W.sortDepth) W.sortDepth();
     if (any) raf = root.requestAnimationFrame(tick); else last = 0;
@@ -208,6 +209,44 @@
     });
     Object.keys(pets).forEach(function (id) { if (!seen[id]) { clearTimeout(pets[id].timer); delete pets[id]; } });
     if (W.sortDepth) W.sortDepth();
+  }
+  /* ---------- sleeping: at night, or while she sleeps, a pet goes home and curls up ---------- */
+  var sleepImgs = {};
+  function nightNow() { return !!(R.isNight() || (R.asleep && R.asleep())); }
+  function sleepSprite(id, cb) {
+    var e = sleepImgs[id]; if (e) { if (e.ok !== undefined) cb(e.ok); else e.cbs.push(cb); return; }
+    e = sleepImgs[id] = { ok: undefined, cbs: [cb] };
+    var im = new Image(); im.onload = function () { e.ok = true; e.cbs.splice(0).forEach(function (f) { f(true); }); }; im.onerror = function () { e.ok = false; e.cbs.splice(0).forEach(function (f) { f(false); }); };
+    im.src = ART + 'pet-sleep-' + id + '.webp';
+  }
+  function atHome(pet) { return Math.abs(pet.x - pet.home.x) < 1.5 && Math.abs(pet.y - pet.home.y) < 1; }
+  function curlUp(pet) {
+    if (pet.sleeping) return; pet.sleeping = true; pet.bedtime = false; clearTimeout(pet.timer); pet.state = 'rest';
+    pet.el.classList.add('napping');
+    sleepSprite(pet.id, function (ok) {
+      if (!ok || !pet.sleeping || pets[pet.id] !== pet) return;
+      var body = pet.el.querySelector('.petbody'); if (!body) return;
+      var img = body.querySelector('img.petsleep');
+      if (!img) { img = doc.createElement('img'); img.className = 'petsleep'; img.alt = ''; body.appendChild(img); }
+      img.src = ART + 'pet-sleep-' + pet.id + '.webp'; pet.el.classList.add('sleeping');
+    });
+  }
+  function wakeUp(pet) { if (!pet.sleeping) return; pet.sleeping = false; pet.el.classList.remove('sleeping', 'napping'); schedule(pet); }
+  function bedtime() {
+    var night = nightNow();
+    Object.keys(pets).forEach(function (id) {
+      var pet = pets[id];
+      if (!night) { if (pet.sleeping) wakeUp(pet); pet.bedtime = false; return; }
+      if (pet.sleeping || holds[id] || arranging) return;
+      if (atHome(pet) && pet.state !== 'walk') { curlUp(pet); return; }
+      if (pet.state === 'walk') { if (!pet.bedtime) { stop(pet, 'bedtime'); } else return; }
+      /* walk home first: a bedtime trip is allowed through the night check; arrival (or no route) curls up */
+      var w = worldFor(id), from = { x: pet.x, y: pet.y }, res = homeTrip(W, w, from, pet.home, !onFloor(W, w, from.x, from.y));
+      if (!res || !res.pts || res.pts.length < 2) { pet.x = pet.home.x; pet.y = pet.home.y; place(pet); if (W.sortDepth) W.sortDepth(); curlUp(pet); return; }
+      clearTimeout(pet.timer); pet.bedtime = true; pet.force = true; pet.route = { pts: res.pts.slice(1), i: 0 }; pet.state = 'walk'; pet.acc = 0; pet.onFloorYet = onFloor(W, w, from.x, from.y); pet.lastReason = '';
+      var d0 = pet.route.pts[0]; pet.heading = (d0.x - pet.x) || pet.heading || 1; showCycle(pet, dirFor(d0.x - pet.x, d0.y - pet.y));
+      if (!raf) { last = 0; raf = root.requestAnimationFrame(tick); }
+    });
   }
   function stopAll(why) { Object.keys(pets).forEach(function (id) { stop(pets[id], why); }); }
   function goHomeAll() { Object.keys(pets).forEach(function (id) { var pet = pets[id]; if (pet.state === 'walk') { pet.route = null; hideCycle(pet); } pet.x = pet.home.x; pet.y = pet.home.y; place(pet); clearTimeout(pet.timer); pet.state = 'rest'; }); if (W.sortDepth) W.sortDepth(); }
@@ -229,15 +268,18 @@
     }
     doc.addEventListener('visibilitychange', function () {
       if (doc.hidden) { stopAll('hidden'); Object.keys(pets).forEach(function (id) { clearTimeout(pets[id].timer); }); }
-      else { last = 0; Object.keys(pets).forEach(function (id) { schedule(pets[id]); }); }
+      else { last = 0; Object.keys(pets).forEach(function (id) { if (!pets[id].sleeping) schedule(pets[id]); }); bedtime(); }
     });
     root.addEventListener('resize', function () { Object.keys(pets).forEach(function (id) { var pet = pets[id]; if (pet.cycle) showCycle(pet, pet.dir); }); });
     sync(R.layout(), true);
+    bedtime(); root.setInterval(function () { if (!doc.hidden) bedtime(); }, 20000);
+    R.on('layout', function () { root.setTimeout(bedtime, 300); });
   }
-  root.OvuPetWalk.nudge = function (id, secs) { var pet = pets[id]; if (!pet) return false; stop(pet, 'nudged'); delete holds[id]; pet.force = true; schedule(pet, secs || 0); return true; };
+  root.OvuPetWalk.bedtime = bedtime;
+  root.OvuPetWalk.nudge = function (id, secs) { var pet = pets[id]; if (!pet) return false; if (pet.sleeping) wakeUp(pet); stop(pet, 'nudged'); delete holds[id]; pet.force = true; schedule(pet, secs || 0); return true; };
   root.OvuPetWalk.auto = function (on) { auto = !!on; };
   root.OvuPetWalk.stop = function (id) { if (pets[id]) stop(pets[id], 'stopped'); };
-  root.OvuPetWalk.state = function (id) { var pet = pets[id]; if (!pet) return null; return { x: pet.x, y: pet.y, home: pet.home, state: pet.state, trips: pet.trips, dir: pet.dir, frame: pet.cycle ? pet.cycle.frame : -1, cycle: !!pet.cycle, walking: pet.el.classList.contains('walking'), cycling: pet.el.classList.contains('cycling'), held: !!holds[id], reason: pet.lastReason, heading: pet.heading }; };
+  root.OvuPetWalk.state = function (id) { var pet = pets[id]; if (!pet) return null; return { x: pet.x, y: pet.y, home: pet.home, state: pet.state, sleeping: !!pet.sleeping, trips: pet.trips, dir: pet.dir, frame: pet.cycle ? pet.cycle.frame : -1, cycle: !!pet.cycle, walking: pet.el.classList.contains('walking'), cycling: pet.el.classList.contains('cycling'), held: !!holds[id], reason: pet.lastReason, heading: pet.heading }; };
   root.OvuPetWalk.pets = function () { return Object.keys(pets); };
   R.on('boot', mount);
 })(window);

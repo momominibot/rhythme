@@ -68,10 +68,11 @@ def main():
     ap.add_argument("--fmt", default="png")
     ap.add_argument("--retries", type=int, default=2)
     ap.add_argument("--stream", action="store_true", help="SSE streaming keeps long renders alive")
+    ap.add_argument("--url", action="store_true", help="ask for a URL instead of inline base64 (a small JSON reply, then a plain download; avoids truncated bodies)")
     ap.add_argument("--rawref", action="store_true")
     ap.add_argument("--model", default=MODEL)
     a = ap.parse_args()
-    body = {"model": a.model, "prompt": a.prompt, "size": a.size, "response_format": "b64_json",
+    body = {"model": a.model, "prompt": a.prompt, "size": a.size, "response_format": "url" if a.url else "b64_json",
             "watermark": False, "seed": a.seed}
     if a.model.startswith("doubao-seedream-5"):
         body["output_format"] = a.fmt
@@ -99,6 +100,9 @@ def main():
                     res = {"data": [img_ev], "usage": usage}
                 else:
                     res = json.loads(r.read())
+                    if a.url and "data" in res and res["data"] and res["data"][0].get("url") and not res["data"][0].get("b64_json"):
+                        with urllib.request.urlopen(res["data"][0]["url"], timeout=120) as ir:
+                            res["data"][0]["b64_json"] = base64.b64encode(ir.read()).decode()
         except urllib.error.HTTPError as e:
             last = e.read().decode(errors="replace")
             print(f"HTTP {e.code}: {last[:400]}", file=sys.stderr)

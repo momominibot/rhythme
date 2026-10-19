@@ -59,3 +59,8 @@ list. Every change walks it before a push; `tools/checkpoints.sh` asks jev the s
 
 Before each push: read this file, mark which pointers the change touches, and for each one say in the hand-over how it
 was verified (which test, which screenshot). A pointer that cannot be verified is reported as not done, not as done.
+
+24. **Pets keep their size and touch the floor.** A walking or sleeping sprite must be sliced to the sitting sprite's height (match height, ratio 0.95), not by a head band, and a ground shadow sits under a walking pet. Jamie: "my pets are all floating not on the ground walking" (19 Oct).
+25. **Pets sleep when she does.** At night or while she sleeps the pets walk home and curl up; the morning wakes them. Jamie: "I need them to learn to sleep too."
+26. **Erin's own scripts replace interim ones clip by clip, by time of day.** A script marked morning or evening wins at that hour; the clip length plus the written pause sets each step. Jamie: "Erin has dropped her mindfulness coach scripts for us to instil into the app."
+27. **No staff read of a diary without that person's separate opt-in.** The dashboard shows counts only across at least 20 consenting adults; membership is by account id; every call is audited. Jamie: "I control this."

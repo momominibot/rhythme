@@ -369,6 +369,23 @@ async def main():
             await page.click("#btapStop"); await page.wait_for_timeout(600)
             tap = await page.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); var e=d.events.filter(x=>x.type==='mindfulness'&&x.data.kind==='breathtap'); return {n:e.length, secs:e.length?e[e.length-1].data.seconds:0, taps:e.length?e[e.length-1].data.taps:0, done:!document.querySelector('#btapDone').hidden, text:document.querySelector('#btapDone').innerText}}")
             check("Moon Tap ripples the water on taps and saves practice time on Stop", petals >= 3 and tap["n"] == 1 and tap["secs"] >= 5 and tap["taps"] == 3 and tap["done"] and "Your pause is saved" in tap["text"], tap)
+            # Erin's own teeth scripts: the hour picks morning or evening, eight steps each inside four minutes, the clips exist
+            teeth = await page.evaluate("()=>{var a=OvuMindful.byId('teeth'); var am=OvuMindful.nextVariation(a, new Date(2026,9,19,8,0)), pm=OvuMindful.nextVariation(a, new Date(2026,9,19,21,0)); return {am:am.when, pm:pm.when, amSteps:am.steps.length, pmSteps:pm.steps.length, amSecs:OvuMindful.totalSecs(am), pmSecs:OvuMindful.totalSecs(pm), author:am.author, firstLine:am.steps[0].text.slice(0,12)}}")
+            r0 = await page.request.get(BASE + "assets/audio/guide-interim/teeth-0-0.mp3"); r7 = await page.request.get(BASE + "assets/audio/guide-interim/teeth-1-7.mp3")
+            check("Erin's own teeth scripts: morning before 3 pm, evening after, eight steps each inside four minutes, clips present", teeth["am"] == "morning" and teeth["pm"] == "evening" and teeth["amSteps"] == 8 and teeth["pmSteps"] == 8 and 180 <= teeth["amSecs"] <= 240 and 180 <= teeth["pmSecs"] <= 240 and teeth["author"] == "erin" and teeth["firstLine"] == "Good morning" and r0.status == 200 and r7.status == 200, teeth)
+            # the pets sleep: at night a pet walks home (or is already there) and curls up with z z; the morning wakes it
+            await page.evaluate("()=>{OvuPetWalk.auto(false); window.__night=true; window.__dayReal2={night: OvuRoom.isNight, asleep: OvuRoom.asleep}; OvuRoom.isNight=function(){return window.__night}; OvuRoom.asleep=function(){return false}; OvuPetWalk.bedtime();}")
+            try: await page.wait_for_function("()=>{var s=OvuPetWalk.state('dog'); return s && s.sleeping && s.state==='rest'}", timeout=15000)
+            except Exception: pass
+            asleep = await page.evaluate("()=>{var s=OvuPetWalk.state('dog'); var el=document.querySelector('.prop.owned.pet[data-id=dog]'); return {sleeping:s.sleeping, state:s.state, home:Math.abs(s.x-s.home.x)<1.5&&Math.abs(s.y-s.home.y)<1, napping:el.classList.contains('napping')}}")
+            await page.evaluate("()=>{window.__night=false; OvuPetWalk.bedtime();}"); await page.wait_for_timeout(300)
+            awake = await page.evaluate("()=>{var s=OvuPetWalk.state('dog'); var el=document.querySelector('.prop.owned.pet[data-id=dog]'); return {sleeping:s.sleeping, napping:el.classList.contains('napping')}}")
+            await page.evaluate("()=>{OvuRoom.isNight=window.__dayReal2.night; OvuRoom.asleep=window.__dayReal2.asleep; delete window.__dayReal2;}")
+            check("at night the corgi goes home and curls up with z z; the morning wakes her", asleep["sleeping"] and asleep["state"] == "rest" and asleep["home"] and asleep["napping"] and not awake["sleeping"] and not awake["napping"], {"asleep": asleep, "awake": awake})
+            # the staff page: signed out it shows the sign-in gate only, no dashboard, no data call
+            await page.goto(BASE + "admin.html", wait_until="networkidle"); await page.wait_for_timeout(500)
+            ag = await page.evaluate("()=>({h2: (document.querySelector('h2')||{}).textContent, email: !!document.querySelector('#gEmail'), send: !!document.querySelector('#gSend'), nav: !!document.querySelector('nav.tabs')})")
+            check("the staff page signed out shows only the sign-in gate (no dashboard, no data request)", ag["h2"] == "Rhythme staff" and ag["email"] and ag["send"] and not ag["nav"], ag)
             check("no Supabase auth or data request was made anywhere in the signed-out run", not [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1" in u)], relay_calls[:3])
             check("nothing was requested from any third party during the run", not external, external[:3])
 
