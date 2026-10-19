@@ -592,9 +592,9 @@ function scenes(todayIso) {
   console.log("Luna's look (ovu-mascot.js): one pastel crescent moon");
   var w = fresh(), M = w.OvuMascot;
   check('one look only, the moon', M.LIST.length === 1 && M.LIST[0].id === 'moon');
-  check('its sprite and head badge are on disk', fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].img)) && fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].head)));
+  check('its crescent sprite is on disk and no round badge is used', fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].img)) && !M.LIST[0].head);
   check('the moon is the default and an unknown look is ignored', M.current().id === 'moon' && M.set('rabbit').id === 'moon');
-  check('the small button uses the head badge, the welcome the full sprite', /orb-moon-head\.webp$/.test(M.src(null, true)) && /orb-moon\.webp$/.test(M.src(null, false)));
+  check('the small Luna button shows the crescent on its own, like the welcome (no round badge)', /orb-moon\.webp$/.test(M.src(null, true)) && /orb-moon\.webp$/.test(M.src(null, false)));
 })();
 
 (function healthImportParsers() {
