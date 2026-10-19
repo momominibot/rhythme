@@ -622,14 +622,21 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var rc8 = S8.cycleStats('2026-10-19');
   check('when remembered dates set the estimate the basis says so, not "1 logged cycle"', rc8.lengths.join() === '37' && rc8.fromRecall && rc8.averageLength === 28 && rc8.basis === 'remembered period dates' && rc8.predictedFrom === '2026-11-11' && rc8.predictedTo === '2026-11-19' && rc8.gapLeftOut && rc8.gapLeftOut.cyclesBefore === 0, JSON.stringify({ l: rc8.lengths, r: rc8.fromRecall, a: rc8.averageLength, b: rc8.basis, f: rc8.predictedFrom, t: rc8.predictedTo }));
 
-  /* a reading written from the old numbers asks to be updated; it is not hidden and no call is made */
+  /* readings written from the old numbers: four-week ones (they go to clinicians) are withheld, daily ones ask to be
+   * updated; nothing calls the relay by itself */
   ['ovu-consent.js', 'ovu-auth.js', 'ovu-insight.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
   var I = w.OvuInsight, es = S.list(null, { from: '2026-09-22', to: '2026-10-19' });
   var oldSig = es.length + ':' + es.map(function (e) { return (e.updatedAt || e.createdAt || '').slice(0, 19); }).sort().slice(-1)[0];
-  S.setState({ insights: { daily: {}, fourweeks: { '2026-10-19': { end: '2026-10-19', sig: oldSig, clinician: { cycle: 'A 501-day cycle.' } } } } });
-  check('a four-week reading cached under the old rules is stale but still readable', I.stale('fourweeks', '2026-10-19') === true && I.cachedFourWeeks('2026-10-19').clinician.cycle === 'A 501-day cycle.');
-  var curSig = (function () { var st = S.state().insights; st.fourweeks['2026-10-19'].sig = 'r2|' + oldSig; S.setState({ insights: st }); return I.stale('fourweeks', '2026-10-19'); })();
-  check('a reading cached under the current rules is not stale', curSig === false);
+  S.setState({ insights: { daily: { '2026-10-19': { date: '2026-10-19', sig: oldSig, summary: 'Day 2.' } }, fourweeks: { '2026-10-19': { end: '2026-10-19', sig: oldSig, clinician: { cycle: 'A 501-day cycle.' } } } } });
+  check('a four-week reading from the old rules is withheld from the journal, shares and PDFs, and asks to be written again', I.cachedFourWeeks('2026-10-19') === null && I.stale('fourweeks', '2026-10-19') === true && A.fourWeekSummary('2026-10-19').cycle.cycleLengths.length === 0);
+  check('a daily reading from the old rules stays readable and asks to be updated', I.cachedDaily('2026-10-19').summary === 'Day 2.' && I.stale('daily', '2026-10-19') === true);
+  var st = S.state().insights; st.fourweeks['2026-10-19'].sig = 'r2|' + oldSig; st.fourweeks['2026-10-19'].rules = 'r2'; S.setState({ insights: st });
+  check('a four-week reading written under the current rules is shown and is not stale', I.cachedFourWeeks('2026-10-19').clinician.cycle === 'A 501-day cycle.' && I.stale('fourweeks', '2026-10-19') === false);
+  var pageSrc = ['journal.html', 'doctor.html', 'ovu-agents.js', 'room.js'].map(function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); }).join('\n');
+  check('pages reach four-week readings only through cachedFourWeeks, which applies the rules check', !/insights\.fourweeks|\.fourweeks\[/.test(pageSrc) && /I\.cachedFourWeeks\(end\)\|\|null/.test(pageSrc));
+  var sum6 = S2.cycleStats('2026-09-25'); periods(S2, ['2026-05-04', '2026-04-06']);
+  var cs8 = S2.cycleStats('2026-09-25'), sm8 = A2.fourWeekSummary('2026-09-25');
+  check('the clinician summary lists exactly the cycles the average used', cs8.lengths.length === 6 && sm8.cycle.cycleLengths.join() === cs8.lengths.join() && sm8.cycle.averageLength === cs8.averageLength && sm8.cycle.basis === '6 logged cycles' && sum6.lengths.length === 4, JSON.stringify({ l: cs8.lengths, s: sm8.cycle.cycleLengths, b: sm8.cycle.basis }));
 })();
 
 (function pdfWriter() {

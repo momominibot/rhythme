@@ -48,7 +48,8 @@
     return out;
   }
   /* RULES joins the entry signature so a reading written before the rule agents changed what they compute asks to be
-   * updated (20 Oct 2026: gaps of over 60 days between periods stopped counting as cycles). It makes no call itself. */
+   * updated (20 Oct 2026: gaps of over 60 days between periods stopped counting as cycles). It makes no call itself.
+   * A four-week reading from older rules is also withheld (it goes to clinicians in shares and PDFs); daily ones stay. */
   var RULES = 'r2';
   function sigFor(from, to) { var es = S.list(null, { from: from, to: to }); return RULES + '|' + es.length + ':' + es.map(function (e) { return (e.updatedAt || e.createdAt || '').slice(0, 19); }).sort().slice(-1)[0]; }
 
@@ -82,16 +83,16 @@
   /* Four-Week Summary Agent: explicit, cached per range end */
   function fourweeks(end, force) {
     end = end || S.today();
-    var cached = store().fourweeks[end], sig = sigFor(S.addDays(end, -27), end);
+    var cached = cachedFourWeeks(end), sig = sigFor(S.addDays(end, -27), end);
     if (!enabled()) return Promise.reject(new Error('Luna’s readings are off. Turn them on in Luna’s settings for a written summary.'));
     if (cached && (!force || cached.sig === sig)) return Promise.resolve(cached);
     return call('fourweeks', fourWeekInput(end)).then(function (d) {
       var r = d.result || {}, c = r.clinician || {}, u = r.user || {};
-      return put('fourweeks', end, { end: end, sig: sig, generatedAt: d.generatedAt, agent: 'FourWeekSummaryAgent v2', clinician: { overview: c.overview || '', cycle: c.cycle || '', bleeding: c.bleeding || '', symptoms_pain: c.symptoms_pain || '', sleep: c.sleep || '', nutrition: c.nutrition || '', mood_calm: c.mood_calm || '', patterns: Array.isArray(c.patterns) ? c.patterns.slice(0, 5) : [], questions: Array.isArray(c.questions) ? c.questions.slice(0, 6) : [], limits: c.limits || '' }, user: { summary: u.summary || '', wins: Array.isArray(u.wins) ? u.wins.slice(0, 3) : [], watch: Array.isArray(u.watch) ? u.watch.slice(0, 3) : [] } });
+      return put('fourweeks', end, { end: end, sig: sig, rules: RULES, generatedAt: d.generatedAt, agent: 'FourWeekSummaryAgent v2', clinician: { overview: c.overview || '', cycle: c.cycle || '', bleeding: c.bleeding || '', symptoms_pain: c.symptoms_pain || '', sleep: c.sleep || '', nutrition: c.nutrition || '', mood_calm: c.mood_calm || '', patterns: Array.isArray(c.patterns) ? c.patterns.slice(0, 5) : [], questions: Array.isArray(c.questions) ? c.questions.slice(0, 6) : [], limits: c.limits || '' }, user: { summary: u.summary || '', wins: Array.isArray(u.wins) ? u.wins.slice(0, 3) : [], watch: Array.isArray(u.watch) ? u.watch.slice(0, 3) : [] } });
     });
   }
   function cachedDaily(date) { return store().daily[date || S.today()] || null; }
-  function cachedFourWeeks(end) { return store().fourweeks[end || S.today()] || null; }
+  function cachedFourWeeks(end) { var c = store().fourweeks[end || S.today()]; return c && c.rules === RULES ? c : null; }
   /* supervisor: what should run now, without spending calls the user did not ask for */
   function plan(where) {
     var today = S.today(), out = [];

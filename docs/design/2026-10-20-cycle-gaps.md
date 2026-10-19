@@ -52,10 +52,19 @@ gap also reached the cycle agent as "Cycle of 501 days" and the clinician summar
 
 ## Luna's written readings
 
-A reading written before this change may describe the old numbers. `ovu-insight.js` now puts a rules version in the
-signature it compares, so such a reading shows "Update" and regenerates when she asks. It is not hidden (that would
-also drop two weeks of unaffected daily readings) and nothing calls the relay by itself. Four-week readings are kept
-per day, so an old one is only ever today's.
+A reading written before this change may describe the old numbers. `ovu-insight.js` puts a rules version (`RULES`)
+in the signature it compares, so every older reading shows "Update" and regenerates when she asks; nothing calls the
+relay by itself. Four-week readings also carry `rules` and `cachedFourWeeks` withholds any from older rules, because
+they travel to clinicians in the share bundle, the PDF, the copied text and the doctor view (Codex round two
+reproduced the old "501 days" prose in all four). Daily readings stay readable: they are the person's own two-week
+history and never leave the phone in a share. Bump `RULES` whenever the rule agents change what they compute.
+
+## Clinician outputs
+
+The journal tile, the PDF line and the doctor view now say where an average came from when it is not from logged
+cycles ("28 days, estimated from remembered period dates; logged cycle 37 days"), instead of "average of 1 logged
+cycle (37 days)". The summary's `cycleLengths` lists the last six counted cycles, the same ones the average uses
+(it listed four).
 
 ## Checks
 
@@ -64,4 +73,6 @@ gap; normal consecutive cycles give the same numbers as before; cycles after a b
 a profile length still predicts after a break; a 45-day cycle is still a cycle and still flagged long; the agent
 says "gap" not "cycle" for the break; wide and suspended modes still behave; the 60-day cycle keeps its long-cycle note;
 the gap note names the latest of several breaks and goes once six cycles follow it; remembered dates name themselves
-in the basis; an old reading is stale but still readable.
+in the basis; an old four-week reading is withheld and an old daily one is stale but readable; pages reach four-week
+readings only through `cachedFourWeeks`; the summary lists exactly the cycles the average used. A Playwright drive
+checks the journal tile, the PDF bytes and the doctor view for one logged cycle plus remembered dates.

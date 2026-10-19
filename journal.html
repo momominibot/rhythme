@@ -147,7 +147,7 @@
     $('#shareKpis').innerHTML=
       kpi('coverage','Logged',cov+'<em>/28</em>','days with entries')+
       kpi('period','Period',String(sum.cycle.periodDays),eps?'bleeding day'+(sum.cycle.periodDays===1?'':'s')+' in '+eps+' period'+(eps===1?'':'s'):'bleeding days')+
-      kpi('cycle','Cycle',sum.cycle.averageLength?sum.cycle.averageLength+'<em>d</em>':'—',cl?'average of '+cl+' cycle'+(cl===1?'':'s'):'no full cycle yet')+
+      kpi('cycle','Cycle',sum.cycle.averageLength?sum.cycle.averageLength+'<em>d</em>':'—',sum.cycle.averageLength&&!/logged cycle/.test(sum.cycle.basis||'')?'from '+sum.cycle.basis:(cl?'average of '+cl+' cycle'+(cl===1?'':'s'):'no full cycle yet'))+
       kpi('sleep','Sleep',sum.sleep.average?sum.sleep.average+'<em>h</em>':'—',sum.sleep.nights+' night'+(sum.sleep.nights===1?'':'s')+(sum.sleep.under6?', '+sum.sleep.under6+' under 6h':''))+
       kpi('symptoms','Symptoms',String(sum.symptoms.daysLogged),sum.symptoms.painMax!==null?'pain up to '+sum.symptoms.painMax+'/10':'days logged')+
       kpi('calm','Calm',sum.mindfulness.minutes+'<em> min</em>',sum.mindfulness.sessions+' session'+(sum.mindfulness.sessions===1?'':'s'))+
@@ -236,7 +236,9 @@
     var eps=sum.cycle.episodes.length,cl=sum.cycle.cycleLengths.length;
     B.push({t:'kv',label:'Logged',text:sum.coverage.daysWithEntries+' of 28 days with entries'+(sum.coverage.daysWithEntries<14?' (sparse: patterns need more days)':'')});
     B.push({t:'kv',label:'Period',text:sum.cycle.periodDays+' bleeding day'+(sum.cycle.periodDays===1?'':'s')+(eps?' in '+eps+' period'+(eps===1?'':'s')+' ('+sum.cycle.episodes.map(function(ep){return pretty(ep.start,{day:'numeric',month:'short'})+(ep.length>1?' to '+pretty(ep.end,{day:'numeric',month:'short'}):'')+(ep.heavyDays?', '+ep.heavyDays+' heavy':'');}).join('; ')+')':'')});
-    B.push({t:'kv',label:'Cycle',text:sum.cycle.averageLength?sum.cycle.averageLength+' days average of '+cl+' logged cycle'+(cl===1?'':'s')+(cl?' ('+sum.cycle.cycleLengths.join(', ')+' days)':'')+(sum.cycle.basis==='your profile setting'?' (stated at set-up, not yet logged)':''):'no full cycle logged yet'+(sum.cycle.basis==='remembered period dates'?' (remembered dates give a day count only)':'')});
+    /* the average says where it came from: logged cycles, remembered dates or the set-up answer; logged lengths are listed apart */
+    var lens=cl?sum.cycle.cycleLengths.join(', ')+' days':'',viaLogs=/logged cycle/.test(sum.cycle.basis||'');
+    B.push({t:'kv',label:'Cycle',text:sum.cycle.averageLength?(viaLogs?sum.cycle.averageLength+' days average of '+cl+' logged cycle'+(cl===1?'':'s')+' ('+lens+')':sum.cycle.averageLength+' days, '+(sum.cycle.basis==='your profile setting'?'stated at set-up, not yet logged':'estimated from remembered period dates')+(cl?'; logged cycle'+(cl===1?'':'s')+' '+lens:'')):'no full cycle logged yet'+(sum.cycle.basis==='remembered period dates'?' (remembered dates give a day count only)':'')});
     B.push({t:'kv',label:'Sleep',text:sum.sleep.average?sum.sleep.average+' h average over '+sum.sleep.nights+' night'+(sum.sleep.nights===1?'':'s')+', '+sum.sleep.under6+' under 6 h':'no nights logged'});
     B.push({t:'kv',label:'Symptoms',text:sum.symptoms.daysLogged?sum.symptoms.daysLogged+' day'+(sum.symptoms.daysLogged===1?'':'s')+' logged'+(sum.symptoms.top.length?'; most often '+sum.symptoms.top.map(function(x){return x.name+' ('+x.days+')';}).join(', '):'')+(sum.symptoms.painMax!==null?'; pain average '+sum.symptoms.painAvg+'/10, up to '+sum.symptoms.painMax+'/10':''):'none logged'});
     var moods=Object.keys(sum.symptoms.moods||{});if(moods.length)B.push({t:'kv',label:'Mood',text:moods.map(function(k){return k+' ('+sum.symptoms.moods[k]+')';}).join(', ')});
