@@ -49,7 +49,7 @@
    * it settles. Check-in and leave name the visit, so a late or repeated request can only touch its own visit. Every
    * request, token included, has one deadline (P.TIMEOUT), so nothing can leave the loop waiting. */
   var want = null, have = null, servers = null, offline = false, inflight = false, beating = false, pageGone = false;
-  var tickT = 0, listT = 0, listGen = 0, pill = null, lastToken = null;
+  var tickT = 0, listT = 0, listGen = 0, pill = null, lastToken = null, watchers = [];
 
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s); }
   function inPlaza() { var L = R.layout && R.layout(); return !!(L && L.id === 'plaza'); }
@@ -180,6 +180,7 @@
     var t = pillText(state()); pill.querySelector('.pt').textContent = t; pill.setAttribute('aria-label', t);
     pill.classList.toggle('in', !!have);
     fillSheet();
+    watchers.forEach(function (f) { try { f(); } catch (e) { } }); /* Plaza friends follows her visit (ovu-friends.js) */
   }
   function openSheet() {
     if (!uid()) {
@@ -192,12 +193,13 @@
     }
     R.openSheet('plaza', 'Plaza groups', 'Choose a topic you want to connect around', 'groups',
       '<div class="plazalist" id="plazaList"><p class="help">Looking around…</p></div>' +
-      '<p class="help">Joining stores that your account is in this group, with the time you joined and last checked in, so you can be counted. The groups are about health, so joining one tells Rhythme something about you while you are in it. Anyone can join any group, and nothing in your profile chooses one for you. This phone remembers the group you chose and rejoins it when you come back to the plaza; tap Leave the group to forget it. Other people and Rhythme staff see only the number, never who. Leaving the plaza, putting Rhythme away, going to sleep or signing out takes you out; if that message does not get through, you stop being counted after 75 seconds and the record is deleted the next time anyone uses the groups. Each group also keeps daily counts of joins and its busiest moment, with no account attached, for a year. There is no chat yet.</p>' +
+      '<p class="help">Joining stores that your account is in this group, with the time you joined and last checked in, so you can be counted. The groups are about health, so joining one tells Rhythme something about you while you are in it. Anyone can join any group, and nothing in your profile chooses one for you. This phone remembers the group you chose and rejoins it when you come back to the plaza; tap Leave the group to forget it. Unless you turn on Plaza friends, other people see only the number, never who; Rhythme staff see only the number. Leaving the plaza, putting Rhythme away, going to sleep or signing out takes you out; if that message does not get through, you stop being counted after 75 seconds and the record is deleted the next time anyone uses the groups. Each group also keeps daily counts of joins and its busiest moment, with no account attached, for a year. There is no open chat; friends can send each other kind notes from a set list.</p>' +
+      '<div id="plazaFriendsRow" class="frplaza"></div>' +
       '<div class="row" id="plazaLeaveRow" hidden><button type="button" class="btn soft" id="plazaLeave"><span class="ms">logout</span>Leave the group</button></div>');
     var list = doc.getElementById('plazaList');
     list.addEventListener('click', function (e) { var b = e.target.closest('[data-join]'); if (!b || b.disabled) return; choose(b.dataset.join); });
     doc.getElementById('plazaLeave').addEventListener('click', function () { leaveForGood(); R.toast('You left the group. You can still walk around the plaza; you are just not counted.', 'logout'); });
-    fillSheet(); refresh();
+    render(); refresh(); /* render also lets Plaza friends fill its row */
   }
   /* rows are built once and updated in place, so a focused button is not replaced under a keyboard or screen reader */
   function fillSheet() {
@@ -247,5 +249,6 @@
   }
   R.on('boot', mount);
   P.state = function () { return { signedIn: !!uid(), joined: have ? Object.assign({}, have) : null, want: want, servers: servers ? servers.slice() : null, offline: offline, beating: !!tickT, inflight: inflight }; };
+  P.onChange = function (f) { watchers.push(f); };
   P.open = openSheet; P.join = choose; P.leave = leaveForGood; P.refresh = refresh; P.tick = tick; /* tick is exported for the smoke suite, which cannot wait 25 s */
 })(typeof window !== 'undefined' ? window : this);
