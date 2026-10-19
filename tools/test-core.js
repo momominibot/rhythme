@@ -175,6 +175,68 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('without the HPB table every dish is an estimate', O2.foodItemsFrom(food).every(function (it) { return it.source.kind === 'estimate'; }));
 })();
 
+(function localNameMatching() {
+  console.log('photo items match on the relay local_name first, then the item name, then the meal name');
+  var w = fresh(), O = w.OvuOrb, FD = w.OvuFood;
+  FD.sgUse(JSON.parse(fs.readFileSync(path.join(root, 'assets', 'data', 'nutrients-sg-hpb.json'), 'utf8')));
+  function kinds(items) { return JSON.stringify(items.map(function (it) { return [it.name, it.source.kind, it.hpb && it.hpb.crId, it.hpb && it.hpb.via, it.hpb && it.hpb.localName]; })); }
+  var noodles = { name: 'flat yellow noodles tossed in chilli vinegar with minced pork, liver and meatballs', portion: 'bowl', grams: 450, kcal: 560, protein_g: 28, carb_g: 64, fat_g: 20, fiber_g: 3, confidence: 'medium' };
+  var soup = { name: 'clear savoury soup', portion: 'bowl', grams: 250, kcal: 45, protein_g: 3, carb_g: 3, fat_g: 2, fiber_g: 0, confidence: 'medium' };
+  check('the descriptive noodle name alone matches no HPB row', FD.sgMatch(noodles.name) === null, JSON.stringify(FD.sgMatch(noodles.name)));
+  /* the same photo twice: once with local_name on each item, once without */
+  var withLocal = O.foodItemsFrom({ is_food: true, meal_name: 'Bak chor mee dry with soup', items: [Object.assign({}, noodles, { local_name: 'bak chor mee (dry)' }), Object.assign({}, soup, { local_name: '' })] });
+  check('with local_name: the noodles are HPB bak chor mee (dry) via the local name at the model’s 450 g, the soup stays an estimate', withLocal[0].source.kind === 'hpb' && withLocal[0].hpb.crId === 'F05060002' && withLocal[0].hpb.via === 'local name' && withLocal[0].hpb.localName === 'bak chor mee (dry)' && withLocal[0].grams === 450 && withLocal[1].source.kind === 'estimate' && !withLocal[1].hpb, kinds(withLocal));
+  var withoutLocal = O.foodItemsFrom({ is_food: true, meal_name: 'Bak chor mee dry with soup', items: [noodles, soup] });
+  check('without local_name: the same noodles still land on bak chor mee (dry), but only through the meal-name fallback', withoutLocal[0].source.kind === 'hpb' && withoutLocal[0].hpb.crId === 'F05060002' && withoutLocal[0].hpb.via === 'meal name' && !withoutLocal[0].hpb.localName && withoutLocal[1].source.kind === 'estimate', kinds(withoutLocal));
+  var generic = { is_food: true, meal_name: 'Noodles with soup', items: [Object.assign({}, noodles, { local_name: 'bak chor mee (dry)' }), soup] };
+  check('a generic meal name: the local name still matches the noodles, without it both items stay estimates', O.foodItemsFrom(generic)[0].hpb.via === 'local name' && O.foodItemsFrom({ is_food: true, meal_name: 'Noodles with soup', items: [noodles, soup] }).every(function (it) { return it.source.kind === 'estimate'; }), kinds(O.foodItemsFrom(generic)));
+  var ck = O.foodItemsFrom({ is_food: true, meal_name: 'Breakfast', items: [{ name: 'steamed rice cakes with preserved radish', local_name: 'chwee kueh', portion: 'serving', grams: 200, kcal: 300, protein_g: 5, carb_g: 50, fat_g: 9, fiber_g: 1, confidence: 'medium' }] });
+  check('the local name decides when the description would read as another dish (chwee kueh, not plain rice)', ck[0].hpb && ck[0].hpb.crId === 'F11090005' && ck[0].hpb.via === 'local name', kinds(ck) + ' name-only: ' + JSON.stringify((FD.sgMatch('steamed rice cakes with preserved radish') || { food: {} }).food.name));
+  var hanzi = O.foodItemsFrom({ is_food: true, meal_name: '', items: [{ name: 'Dry minced meat noodles (bak chor mee)', local_name: '肉脞面', portion: 'bowl', grams: 400, kcal: 510, protein_g: 24, carb_g: 62, fat_g: 19, fiber_g: 3, confidence: 'medium' }] });
+  check('a local name with no HPB row falls back to the item name and is still recorded', hanzi[0].hpb && hanzi[0].hpb.crId === 'F05060002' && hanzi[0].hpb.via === 'item name' && hanzi[0].hpb.localName === '肉脞面', kinds(hanzi));
+  var odd = O.foodItemsFrom({ is_food: true, meal_name: '', items: [
+    { name: 'Dry minced meat noodles (bak chor mee)', local_name: 42, grams: 400, kcal: 510 },
+    { name: 'hot drink', local_name: '  kopi \n  c ', portion: 'cup', grams: 250, kcal: 120 },
+    { name: 'Steamed chicken rice', local_name: null, grams: 400, kcal: 600 }] });
+  check('a non-string local name is ignored, whitespace is collapsed (kopi c), a null local name falls back to the item name', odd[0].hpb.via === 'item name' && !odd[0].hpb.localName && odd[1].hpb && odd[1].hpb.crId === 'D09010036' && odd[1].hpb.via === 'local name' && odd[1].hpb.localName === 'kopi c' && odd[2].hpb.crId === 'F05100133' && odd[2].hpb.via === 'item name', kinds(odd));
+  var lv = O.foodItemsFrom({ is_food: true, meal_name: 'Bak chor mee dry with soup', items: [{ name: 'dry flat noodles with minced pork, mushrooms, pork slices, cabbage and dark sauce', portion: 'bowl', grams: 550, kcal: 640 }] });
+  check('an item name match is labelled item name', lv[0].hpb.via === 'item name', kinds(lv));
+  var w2 = fresh(), O2 = w2.OvuOrb;
+  check('without the HPB table a local name changes nothing (estimates only)', O2.foodItemsFrom({ is_food: true, items: [Object.assign({}, noodles, { local_name: 'bak chor mee (dry)' })] })[0].source.kind === 'estimate');
+})();
+
+(function relayCleanerLocalName() {
+  console.log('the luna relay asks for local_name, passes it through clamped, and keeps the item schema otherwise unchanged');
+  var src = fs.readFileSync(path.join(root, 'supabase', 'functions', 'luna', 'index.ts'), 'utf8');
+  var prompt = (src.match(/const FOOD_SYSTEM = ([\s\S]*?");\n/) || [])[1] || '';
+  var itemSpec = (prompt.match(/\\"items\\":\[\{([\s\S]*?)\}\]/) || [])[1] || '';
+  var promptKeys = (itemSpec.match(/\\"(\w+)\\":/g) || []).map(function (k) { return k.replace(/[\\":]/g, ''); });
+  var expected = ['name', 'local_name', 'portion', 'grams', 'kcal', 'protein_g', 'carb_g', 'fat_g', 'fiber_g', 'confidence'];
+  check('the photo prompt’s item keys are the old ones plus local_name, and it asks for one per item', JSON.stringify(promptKeys) === JSON.stringify(expected) && /own local_name/.test(prompt) && /never make one up/.test(prompt), JSON.stringify(promptKeys));
+  check('the photo prompt has no em dashes', prompt.indexOf('—') === -1);
+  var mod = require('module');
+  if (typeof mod.stripTypeScriptTypes !== 'function') { console.log('  skip cleaner run: this Node has no module.stripTypeScriptTypes'); return; }
+  function fnSrc(name) { var i = src.indexOf('function ' + name + '('), j = src.indexOf('{', i), d = 0; if (i < 0) return ''; for (var k = j; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}' && --d === 0) return src.slice(i, k + 1); } return ''; }
+  var code = mod.stripTypeScriptTypes(['num', 'str', 'cleanFood'].map(fnSrc).join('\n') + '\nresult = cleanFood(JSON.parse(raw));');
+  var raw = JSON.stringify({ is_food: true, meal_name: 'Bak chor mee dry with soup', note: 'Noodles and soup.', items: [
+    { name: 'dry flat noodles with minced pork', local_name: '  bak chor mee\n (dry) ', portion: 'bowl', grams: 550, kcal: 640, protein_g: 34, carb_g: 72, fat_g: 24, fiber_g: 4, confidence: 'medium', extra: 'dropped' },
+    { name: 'clear savoury soup', local_name: null, portion: 'bowl', grams: 250, kcal: 45, protein_g: 3, carb_g: 3, fat_g: 2, fiber_g: 0, confidence: 'medium' },
+    { name: 'a drink', local_name: new Array(101).join('x'), grams: 300, kcal: 100 },
+    { name: 'tea', local_name: 7, grams: 250, kcal: 80 },
+    { name: 'kopi', grams: 250, kcal: 120 }] });
+  var ctx = vm.createContext({ raw: raw, result: null });
+  vm.runInContext(code, ctx, { filename: 'luna-cleanFood' });
+  var out = JSON.parse(JSON.stringify(ctx.result)), it = out.items;
+  check('the cleaner keeps exactly the prompt’s item keys (extra fields dropped)', it.every(function (x) { return JSON.stringify(Object.keys(x)) === JSON.stringify(expected); }), JSON.stringify(Object.keys(it[0])));
+  check('local_name is passed through with whitespace collapsed (bak chor mee (dry))', it[0].local_name === 'bak chor mee (dry)', JSON.stringify(it[0].local_name));
+  check('a null, non-string or missing local_name becomes empty, a long one is cut to 60 characters', it[1].local_name === '' && it[3].local_name === '' && it[4].local_name === '' && it[2].local_name.length === 60, JSON.stringify(it.map(function (x) { return x.local_name.length; })));
+  check('the rest of the item is unchanged (name, grams, kcal, confidence)', it[0].name === 'dry flat noodles with minced pork' && it[0].grams === 550 && it[0].kcal === 640 && it[0].confidence === 'medium' && it[2].confidence === 'low' && out.meal_name === 'Bak chor mee dry with soup', JSON.stringify(it[0]));
+  var w = fresh(), O = w.OvuOrb, FD = w.OvuFood;
+  FD.sgUse(JSON.parse(fs.readFileSync(path.join(root, 'assets', 'data', 'nutrients-sg-hpb.json'), 'utf8')));
+  var items = O.foodItemsFrom(out);
+  check('the cleaned relay output flows into foodItemsFrom: noodles via local name, soup an estimate', items[0].hpb && items[0].hpb.via === 'local name' && items[0].hpb.crId === 'F05060002' && items[1].source.kind === 'estimate', JSON.stringify(items.map(function (x) { return [x.source.kind, x.hpb && x.hpb.via]; })));
+})();
+
 (function sunTimes() {
   console.log('the window follows Singapore sunrise and sunset');
   var w = { Intl: Intl, Date: Date, Math: Math, Object: Object, String: String, Promise: Promise }; w.window = w;

@@ -159,14 +159,23 @@
   /* Turns the relay's estimate into diary items in the same shape as hand-logged foods. A dish whose
    * name matches an HPB SG FoodID row (when the table is loaded) uses HPB's per-100 g values and is
    * labelled 'hpb'; anything else stays the model's estimate. Nutrients are kept per item and also per
-   * 100 g so changing the grams rescales them. */
+   * 100 g so changing the grams rescales them. Each item is matched on the relay's local_name first
+   * ("bak chor mee (dry)", "kopi c"), then on its descriptive name; hpb.via records which one matched. */
   function foodItemsFrom(food, model) {
     if (!food || food.is_food !== true || !Array.isArray(food.items)) return [];
     var items = food.items.slice(0, 8).map(function (it) {
       var name = String((it && it.name) || '').trim().slice(0, 80); if (!name) return null;
+      var local = typeof (it && it.local_name) === 'string' ? it.local_name.replace(/\s+/g, ' ').trim().slice(0, 60) : '';
       var est = estimateItem(it, name, clampNum(it.grams, 2000) || null, model);
-      var m = FD && FD.sgMatch ? FD.sgMatch(name) : null;
-      return m ? hpbItem(m, est) : est;
+      var m = null, via = '';
+      if (FD && FD.sgMatch) {
+        if (local) { m = FD.sgMatch(local); via = 'local name'; }
+        if (!m) { m = FD.sgMatch(name); via = 'item name'; }
+      }
+      if (!m) return est;
+      var out = hpbItem(m, est); out.hpb.via = via;
+      if (local) out.hpb.localName = local;
+      return out;
     }).filter(Boolean);
     /* The model often names the dish only in meal_name ("Bak chor mee dry with soup") and describes the
      * items ("dry flat noodles with minced pork ..."). When nothing matched by item name, the meal name
