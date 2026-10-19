@@ -131,7 +131,7 @@
   var FOLDERS = [
     { id: 'cycle', name: 'Cycle basics', color: '#f6c9d6', items: [['page', 'room.html#cycle', 'bloodtype', 'Your cycle', 'Phases, length and what is typical'], ['page', 'hormones.html', 'show_chart', 'Hormones 101', 'What rises and falls each cycle'], ['video', 'normal', 'A normal cycle', 'What typical looks like'], ['video', 'hormones', 'Hormones', 'Oestrogen & progesterone'], ['page', 'period-start.html', 'water_drop', 'Period start', 'Logging the first day']] },
     { id: 'fertility', name: 'Fertility', color: '#bfe3d4', items: [['page', 'fertility.html', 'spa', 'Fertile window', 'Ovulation signs, explained'], ['video', 'fertile', 'Fertile window', 'Your most fertile days'], ['page', 'journey-grow.html', 'eco', 'Trying to conceive', 'Timing, tests and support'], ['page', 'ovarian-health.html', 'menu_book', 'Understand your records', 'What your entries can and cannot show']] },
-    { id: 'chapters', name: 'Life chapters', color: '#c9b6e6', items: [['page', 'life-journey.html', 'auto_stories', 'Your life journey', 'Five chapters, one body'], ['page', 'journey-bloom.html', 'local_florist', 'First cycles', 'Teens and the first years'], ['video', 'menarche', 'First period', 'Menarche explained'], ['page', 'journey-nurture.html', 'favorite', 'After pregnancy', 'Recovery and cycles returning'], ['page', 'journey-peri.html', 'dark_mode', 'Perimenopause', 'Hot flushes, sleep and mood'], ['video', 'peri', 'Perimenopause', 'The transition years'], ['page', 'journey-post.html', 'wb_sunny', 'After menopause', 'Bone, heart and bleeding rules'], ['video', 'menopause', 'Menopause', 'Life after periods']] },
+    { id: 'chapters', name: 'Life chapters', color: '#c9b6e6', items: [['page', 'life-journey.html', 'auto_stories', 'Your life journey', 'Five chapters, one body'], ['video', 'menarche', 'First period', 'Menarche explained'], ['page', 'journey-nurture.html', 'favorite', 'After pregnancy', 'Recovery and cycles returning'], ['page', 'journey-peri.html', 'dark_mode', 'Perimenopause', 'Hot flushes, sleep and mood'], ['video', 'peri', 'Perimenopause', 'The transition years'], ['page', 'journey-post.html', 'wb_sunny', 'After menopause', 'Bone, heart and bleeding rules'], ['video', 'menopause', 'Menopause', 'Life after periods']] },
     { id: 'nutrition', name: 'Nutrition', color: '#f3d49b', items: [['page', 'foods.html', 'restaurant', 'Foods by phase', 'TCM and Western notes'], ['page', 'nutrients.html', 'medication', 'Micronutrients', 'Iron, folate, magnesium'], ['page', 'medas14.html', 'nutrition', 'Mediterranean score', 'A 14-point check'], ['page', 'hydration.html', 'water_full', 'Hydration', 'Fluids through the cycle'], ['action', 'diary', 'menu_book', 'Open the food diary', 'Snap, scan or search']] },
     { id: 'mind', name: 'Mind & mood', color: '#b8cde0', items: [['page', 'room.html#mind', 'self_improvement', 'Mindfulness hub', 'Erin Lee’s pauses and podcasts'], ['link', 'https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change', 'article', 'The Quiet Work of Change', 'An essay by Erin'], ['page', 'mental-health.html', 'psychology', 'Mood & calm', 'When to reach for support'], ['page', 'breathe.html', 'air', 'Breathing', 'Guided breath'], ['action', 'mat', 'self_improvement', 'Sit on the mat', 'A session with Erin']] },
     { id: 'body', name: 'Body & relief', color: '#f5c6b8', items: [['action', 'acu', 'spa', 'Acupressure on your avatar', 'Points for cramps, with evidence'], ['page', 'sleep.html', 'bedtime', 'Sleep & your cycle', 'Why some weeks feel lighter'], ['page', 'face-ppg.html', 'monitor_heart', 'Calm check (beta)', 'Pulse from your face camera'], ['page', 'ppg.html', 'fingerprint', 'Finger pulse', 'Camera and flash'], ['page', 'stress.html', 'self_improvement', 'Stress check-in', 'PSS-10 questionnaire']] },
@@ -203,7 +203,7 @@
     },
     luna: {
       icon: 'dark_mode', title: 'How Luna reads your notes',
-      body: '<p>Luna first tries simple rules on this phone (sleep times, period words, the symptom list, pain out of 10, mood words, meal words, minutes of practice). If the rules cannot read a note, the note alone, without your name or history, goes to Rhythme’s own service; Luna’s answer is shown to you to confirm, and nothing is kept on the way. Food photos work the same way: Luna estimates the dishes, portions and nutrients, matches Singapore dishes to HPB data where she can, and you check and change everything before it is saved. Only a small thumbnail stays on this phone. Photo estimates are rough, especially for oil, sauces and portion size. You can switch any of this off in Luna’s settings and keep the rules only. Luna never diagnoses.</p>'
+      body: '<p>Luna tries her own simple rules on this phone first: sleep times, period words, the symptom list, pain out of 10, mood, meals and minutes of practice. When they cannot read a note, and you have said yes, her AI help reads that note alone, never with your name. Food photos work the same way: she suggests the dishes and nutrients, using Singapore’s HPB data where she can, and you check and change everything before it is saved. Photo estimates are rough, especially for oil, sauces and portions. You can switch any of this off here or under Your choices in You.</p>'
     }
   };
   function infoBtn(topic) { return '<button type="button" class="ibtn" data-guide="' + topic + '" aria-label="Evidence and guidance">i</button>'; }
@@ -938,8 +938,8 @@
         }).catch(function (e) { busy = false; wrap.classList.remove('busy'); if (document.body.contains(m)) message(m, e.message, false); });
       };
       if (ORB.photosAllowed()) { go(); return; }
-      m.className = 'msg on'; m.innerHTML = '<b>Let Luna read the label?</b> The photo goes once through Rhythme’s server to a third-party AI service in China; Rhythme does not keep it. <button type="button" class="btn soft" id="lsAllow-' + id + '">Allow food photos</button>';
-      $('#lsAllow-' + id).addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c); go(); });
+      m.className = 'msg on'; m.innerHTML = '<b>Let Luna read the label?</b> She reads the photo once and does not keep it. <button type="button" class="btn soft" id="lsAllow-' + id + '">Allow food photos</button>';
+      $('#lsAllow-' + id).addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c, 'jit'); go(); });
     });
   }
   var customIngredients = null;
@@ -1042,8 +1042,8 @@
             return FD.detectInImage(rs[0].image).then(function (code) {
               if (code) { toast('Barcode found: ' + code, 'qr_code_2'); lookup(code); return; }
               if (ORB.photosAllowed()) { recognise(rs[1].dataUrl); return; }
-              st.innerHTML = '<div class="fdstate ask"><span class="ms">photo_camera</span><div><b>Let Luna recognise the food?</b><span>The photo goes once through Rhythme’s server to a third-party AI service in China so Luna can recognise the food. Rhythme does not keep it, and only a small thumbnail stays on this phone.</span><div class="row"><button type="button" class="btn primary" id="fdAllow">Allow food photos</button><button type="button" class="btn ghost" id="fdPick">I’ll pick myself</button></div></div></div>';
-              $('#fdAllow').addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c); recognise(rs[1].dataUrl); });
+              st.innerHTML = '<div class="fdstate ask"><span class="ms">photo_camera</span><div><b>Let Luna recognise the food?</b><span>She looks at the photo once and does not keep it. A small thumbnail stays on this phone.</span><div class="row"><button type="button" class="btn primary" id="fdAllow">Allow food photos</button><button type="button" class="btn ghost" id="fdPick">I’ll pick myself</button></div></div></div>';
+              $('#fdAllow').addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c, 'jit'); recognise(rs[1].dataUrl); });
               $('#fdPick').addEventListener('click', function () { st.innerHTML = ''; inp2.focus(); });
             });
           }).catch(function (e) { toast(e.message, 'error'); });
@@ -1275,6 +1275,11 @@
   $$('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); chime('tap'); requireConsent(function () { goTab(a.dataset.tab || 'home'); }); }); });
 
   /* ---------- You: name, outfit, hearts, settings and your data, all in the room ---------- */
+  function openChoices() {
+    if (!window.OvuConsent) return;
+    openSheet('choices', 'Your choices', 'Each use of your data, separately', 'fact_check', OvuConsent.choicesHTML());
+    OvuConsent.wireChoices(body, { toast: toast, chime: chime, rerender: openChoices });
+  }
   function openYou(confirmDelete) {
     var P = S.profile(), l = RW.ledger(), dates = {};
     S.TYPES.forEach(function (t) { S.list(t).forEach(function (e) { dates[e.date] = 1; }); });
@@ -1286,7 +1291,7 @@
       '<div id="youAccount"></div>' +
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
-      '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('move_to_inbox', 'Import from Apple Health or Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S) + ' entries brought in so far' : 'Sleep, weight and period days you already have', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Import from Apple Health or Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S) + ' entries brought in so far' : 'Sleep, weight and period days you already have', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is not a medical device and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
@@ -1302,6 +1307,7 @@
       if (act === 'mascot') return openMascot();
       if (act === 'clock') return openClock();
       if (act === 'plus') return openPlus();
+      if (act === 'choices') return openChoices();
       if (act === 'luna') { openLuna(); var ab = $('#aibox'); if (ab) { ab.open = true; setTimeout(function () { ab.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); } return; }
       if (act === 'import') return openImport();
       if (act === 'export') {
@@ -1546,10 +1552,9 @@
       '<div class="quick" id="quick">' + ['Slept 11pm to 7am, quality 4', 'Period started today, medium', 'Cramps and bloating, pain 5, mood ok', 'Had oats and a latte for breakfast', 'Meditated 10 min'].map(function (q) { return '<span class="qchip"><button type="button" class="qsend" data-q="' + esc(q) + '">' + esc(q) + '</button><button type="button" class="qpen" data-q="' + esc(q) + '" aria-label="Edit this shortcut before sending"><span class="ms">edit</span></button></span>'; }).join('') + '</div>' +
       '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><textarea class="input" id="lunaIn" rows="3" maxlength="400" enterkeyhint="send" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice">' + esc(prefill || '') + '</textarea><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
       '<details class="aibox" id="aibox"><summary><span class="ms">auto_awesome</span>' + (cfg.on ? 'Luna’s reading is on' : 'Luna’s reading is off · rules only') + infoBtn('luna') + '</summary>' + guideHTML('luna') +
-      '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Write journal readings</b><span>A summary of your last 7 or 28 days, without your name, goes to the same AI service in China so Luna can write a reading. Off means no readings.</span></div></label>' +
-      '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Recognise food photos</b><span>Each photo goes once through Rhythme’s server to the AI service in China so Luna can recognise the food; Rhythme does not keep it. Only a small thumbnail stays in your diary on this phone.</span></div></label>' +
-      '<label class=\"perm\"><input type=\"checkbox\" id=\"aiImprove\"' + (S.profile().consent && S.profile().consent.improve === true ? ' checked' : '') + '><span class=\"ms\">volunteer_activism</span><div><b>Help make Rhythme better</b><span>When we add this, de-identified patterns, never your name, notes, photos or diary text, would help improve predictions. Nothing is shared today.</span></div></label>' +
-      '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn Luna’s reading off (rules only)' : 'Turn Luna’s reading on') + '</button></div><p>Rules on this phone always run first. When they cannot read a note, the note goes through Rhythme’s server to a third-party AI service in China, without your name; Rhythme does not keep it. Whatever Luna understands is shown to you before it is saved.</p></details>');
+      '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Write journal readings</b><span>Luna writes a short reading of your last 7 or 28 days.</span></div></label>' +
+      '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Recognise food photos</b><span>Luna names the food in your photo. Only a small thumbnail is kept, on this phone.</span></div></label>' +
+      '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn Luna’s reading off (rules only)' : 'Turn Luna’s reading on') + '</button></div><p>You always see what Luna understood before it is saved. These choices are also under Your choices in You.</p></details>');
     var chat = $('#chat');
     function bubble(kind, html) { var d = document.createElement('div'); d.className = 'bub ' + (kind === 'luna' ? 'from-luna' : kind); d.innerHTML = html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d; }
     if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took, or send a photo of your meal with the camera button. I will show you what I understood before saving.');
@@ -1577,7 +1582,6 @@
           : '<p>Any bleeding after menopause should be checked by a clinician promptly. Book a GP or gynaecologist visit this week; it is usually not serious, but it needs a check.</p>') +
         '<div class="row">' + (emergency ? '<a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><a class="btn soft" href="https://www.kkh.com.sg/our-specialties/urgent-og-centre" target="_blank" rel="noopener"><span class="ms">local_hospital</span>KKH Urgent O&amp;G (24h)</a>' : '') + '<a class="btn ghost" href="journal.html"><span class="ms">medical_information</span>Show my chart</a></div>' +
         '<small>Rhythme cannot assess your condition or diagnose. This alert follows published guidance (KKH, SCDF, NHS). No clinician receives this alert.</small>';
-      if (u.level === 'safeguard') html = '<b>' + esc(u.title) + '</b><p>If you might be pregnant, please talk to someone today. ' + BABES + ' A doctor can confirm a pregnancy and check that you are well, and a trusted adult or school counsellor can come with you.</p><p class="esc">Strong tummy pain, heavy bleeding or feeling faint: go to the 24-hour Urgent O&amp;G Centre at KK Women’s and Children’s Hospital, or call 995.</p><div class="row"><a class="btn primary" href="tel:62066641"><span class="ms">call</span>Call Babes</a><a class="btn soft" href="https://wa.me/6581113535" target="_blank" rel="noopener"><span class="ms">chat</span>WhatsApp Babes</a></div><small>Rhythme cannot give pregnancy advice. Nothing you type here is sent to anyone.</small>';
       var card = bubble('urgent' + (emergency ? ' emergency' : ''), html); remember('urgent' + (emergency ? ' emergency' : ''), html);
       try { chime('alert', true); } catch (err) { }
       return card;
@@ -1607,11 +1611,10 @@
       if (aiOk) { bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "period started, heavy", "cramps 6/10", "had chicken rice for lunch" or "meditated 10 min".'); return; }
       /* AI help is off: offer it just in time, saying where the note would go, and only send after a tap. */
       var ask = bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "cramps 6/10" or "had chicken rice for lunch".' +
-        '<span class="jit">Or I can read it with my AI help: this note would go through Rhythme’s server to a third-party AI service in China, without your name. Rhythme does not keep it.</span>' +
+        '<span class="jit">Or I can read it with my AI help. Your name is never added, and nothing is kept.</span>' +
         '<div class="row"><button type="button" class="btn primary" data-aion="1"><span class="ms">auto_awesome</span>Turn on and read it</button><button type="button" class="btn ghost" data-aino="1">Not now</button></div>');
       ask.querySelector('[data-aion]').addEventListener('click', function () {
-        var c = ORB.aiConfig(); c.on = true; ORB.setAiConfig(c);
-        var cs = S.profile().consent; if (cs) S.setProfile({ consent: Object.assign({}, cs, { luna: true, lunaAt: new Date().toISOString() }) });
+        var c = ORB.aiConfig(); c.on = true; ORB.setAiConfig(c, 'jit'); /* recorded as a first-use grant of ai_reading */
         ask.remove(); send(text, true);
       });
       ask.querySelector('[data-aino]').addEventListener('click', function () { ask.querySelector('.row').remove(); });
@@ -1627,9 +1630,9 @@
     chat.addEventListener('click', function (e) { if (e.target.closest('[data-byhand]')) openDiary(); });
     $('#lunaPhoto').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; if (f) photoFlow(f); });
     function askPhotos(f) {
-      var ask = bubble('luna', '<b>Luna</b>To recognise the food I need to send this photo once, through Rhythme’s server, to a third-party AI service in China. Rhythme does not keep it, and only a small thumbnail stays in your diary on this phone.' +
+      var ask = bubble('luna', '<b>Luna</b>To recognise the food I read this photo once with my AI help. Nothing is kept except a small thumbnail on this phone.' +
         '<div class="row"><button type="button" class="btn primary" data-allow="1"><span class="ms">photo_camera</span>Allow food photos</button><button type="button" class="btn ghost" data-byhand="1">Log it by hand</button></div>');
-      ask.querySelector('[data-allow]').addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c); ask.remove(); photoFlow(f); });
+      ask.querySelector('[data-allow]').addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c, 'jit'); ask.remove(); photoFlow(f); });
     }
     function photoFlow(f) {
       if (!ORB.photosAllowed()) { askPhotos(f); return; }
@@ -1699,8 +1702,8 @@
       if (pen) { var inp = $('#lunaIn'); inp.value = pen.dataset.q; fitIn(); inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (err) { } toast('Edit the numbers, then send.', 'edit'); return; }
       if (go) send(go.dataset.q);
     });
-    $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.insights = $('#aiInsights').checked; c.photos = $('#aiPhotos').checked; ORB.setAiConfig(c); S.setProfile({ consent: Object.assign({}, S.profile().consent || {}, { improve: $('#aiImprove').checked }) }); chime('save'); toast('Luna’s settings saved.', 'check_circle'); openLuna($('#lunaIn').value); });
-    $('#aiToggle').addEventListener('click', function () { var c = ORB.aiConfig(); c.on = !c.on; ORB.setAiConfig(c); openLuna($('#lunaIn').value); });
+    $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.insights = $('#aiInsights').checked; c.photos = $('#aiPhotos').checked; ORB.setAiConfig(c, 'settings'); chime('save'); toast('Luna’s settings saved.', 'check_circle'); openLuna($('#lunaIn').value); });
+    $('#aiToggle').addEventListener('click', function () { var c = ORB.aiConfig(); c.on = !c.on; ORB.setAiConfig(c, 'settings'); openLuna($('#lunaIn').value); });
     if (prefill && !draft) send(prefill);
   }
   $('#lunaBtn').addEventListener('click', function () { chime('tap'); $('#lunaBtn').classList.remove('hinting'); openLuna(); });
@@ -2104,9 +2107,9 @@
 
   /* ---------- Rhythme welcome + getting to know you (in the room, so the theme never changes) ---------- */
   var ONB = [
-    { id: 'age', icon: 'cake', pose: 'coffee', title: 'How old are you?', sub: 'Age shapes what is typical for cycles, so the notes stay honest.', type: 'chips', key: 'ageBand', options: [['under13', 'Under 13'], ['13-16', '13–16'], ['17', '17'], ['18-24', '18–24'], ['25-29', '25–29'], ['30-34', '30–34'], ['35-39', '35–39'], ['40-44', '40–44'], ['45-49', '45–49'], ['50+', '50+']], note: function (A) { return A.ageBand === 'under13' ? 'Please set Rhythme up together with a parent or guardian. There is a short note for you next.' : (A.ageBand === '13-16' ? 'Rhythme is made for adults, so there is a short note for you next.' : (A.ageBand === '17' ? 'Welcome. Your answers stay private on this phone; a trusted adult can help if anything here feels confusing.' : '')); } },
+    { id: 'agerange', icon: 'cake', pose: 'coffee', title: 'Your age range (optional)', sub: 'Only so the notes stay honest about what is typical at different ages. Skip if you prefer; Rhythme is for adults and never asks your date of birth.', type: 'chips', key: 'ageRange', optional: true, options: [['18-24', '18–24'], ['25-29', '25–29'], ['30-34', '30–34'], ['35-39', '35–39'], ['40-44', '40–44'], ['45-49', '45–49'], ['50+', '50 and over']] },
     { id: 'regular', icon: 'calendar_month', pose: 'stretch', title: 'Your periods', sub: 'Pick what fits best. If you are pregnant or past menopause, choose the closest; you can change it later.', type: 'rows', rows: [{ key: 'regularity', label: 'How regular', options: [['regular', 'Fairly regular'], ['irregular', 'Irregular'], ['rare', 'Rare, with gaps of 3 months or more'], ['none12', 'No period for 12 months or more'], ['notyet', 'My periods haven’t started yet'], ['unsure', 'Not sure']] }, { key: 'menarche', label: 'Age at your first period (optional)', options: [['lt10', 'Under 10'], ['10-12', '10–12'], ['13-15', '13–15'], ['16+', '16 or older'], ['unknown', 'Don’t remember']], showIf: function (A) { return !!A.regularity && A.regularity !== 'notyet'; } }] },
-    { id: 'preg', icon: 'pregnant_woman', pose: 'plants', title: 'Pregnancy and plans', sub: 'These change how dates should be read.', type: 'rows', rows: [{ key: 'pregState', label: 'Right now', options: [['none', 'None of these'], ['maybe', 'I could be pregnant'], ['pregnant', 'Pregnant'], ['postpartum', 'Gave birth in the last year'], ['loss', 'Recent pregnancy loss']] }, { key: 'breastfeeding', label: 'Breastfeeding', options: [['yes', 'Yes'], ['no', 'No']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'periodsBack', label: 'Have periods returned?', options: [['yes', 'Yes'], ['no', 'Not yet']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'plans', label: 'Plans', showIf: function (A) { return !isMinor(A); }, options: [['ttc', 'Trying to conceive now'], ['later', 'Maybe later'], ['no', 'Not planning']] }, { key: 'ttcMonths', label: 'Months trying', showIf: function (A) { return !isMinor(A) && A.plans === 'ttc'; }, options: [['0-5', '0–5'], ['6-11', '6–11'], ['12+', '12 or more']], showIf: function (A) { return A.plans === 'ttc'; } }, { key: 'fertilityTx', label: 'Fertility treatment before?', options: [['no', 'No'], ['yes', 'Yes']], showIf: function (A) { return A.plans === 'ttc'; } }] },
+    { id: 'preg', icon: 'pregnant_woman', pose: 'plants', title: 'Pregnancy and plans', sub: 'These change how dates should be read.', type: 'rows', rows: [{ key: 'pregState', label: 'Right now', options: [['none', 'None of these'], ['maybe', 'I could be pregnant'], ['pregnant', 'Pregnant'], ['postpartum', 'Gave birth in the last year'], ['loss', 'Recent pregnancy loss']] }, { key: 'breastfeeding', label: 'Breastfeeding', options: [['yes', 'Yes'], ['no', 'No']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'periodsBack', label: 'Have periods returned?', options: [['yes', 'Yes'], ['no', 'Not yet']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'plans', label: 'Plans', options: [['ttc', 'Trying to conceive now'], ['later', 'Maybe later'], ['no', 'Not planning']] }, { key: 'ttcMonths', label: 'Months trying', showIf: function (A) { return A.plans === 'ttc'; }, options: [['0-5', '0–5'], ['6-11', '6–11'], ['12+', '12 or more']], showIf: function (A) { return A.plans === 'ttc'; } }, { key: 'fertilityTx', label: 'Fertility treatment before?', options: [['no', 'No'], ['yes', 'Yes']], showIf: function (A) { return A.plans === 'ttc'; } }] },
     { id: 'hormones', icon: 'medication', pose: 'outfit', title: 'Hormones and medicines', sub: 'Tick what you use now. These change what cycle dates mean.', type: 'multi', key: 'hormones', options: [['pill', 'Combined pill'], ['pop', 'Progestogen-only pill'], ['iud_h', 'Hormonal IUD'], ['iud_cu', 'Copper IUD'], ['implant', 'Implant or injection'], ['hrt', 'HRT (MHT)'], ['fertility', 'Fertility medicines'], ['ec', 'Emergency contraception this month'], ['other', 'Other relevant medicine'], ['none', 'None']], exclusive: ['none'] },
     { id: 'recall', icon: 'calendar_month', pose: 'bed', title: 'Which periods do you remember?', sub: 'Tap the first day of each period you remember. A few is enough.', type: 'recall', optional: true, showIf: function (A) { return periodsMayCome(A); } },
     { id: 'bleedlen', icon: 'water_drop', pose: 'stretch', title: 'How long does bleeding usually last?', sub: 'Count the days of real bleeding, not spotting.', type: 'rows', optional: true, showIf: function (A) { return periodsMayCome(A) && !(A.periodRecall && A.periodRecall.status === 'no-periods'); }, rows: [{ key: 'periodLength', label: 'Usually', options: [['3', '1 to 3 days'], ['5', '4 to 5 days'], ['7', '6 to 8 days'], ['9', 'More than 8 days'], ['weeks', 'Weeks or months'], ['unknown', 'Not sure']] }] },
@@ -2121,8 +2124,6 @@
     { id: 'final', icon: 'waving_hand', pose: 'outfit', title: 'Lastly, what should I call you?', sub: 'A first name or a nickname, or leave it blank.', type: 'final' }
   ];
   var onb = null;
-  /* Under-16 safeguarding: '13-17' is an older band kept for existing profiles and treated as possibly under 16. */
-  function isMinor(A) { return ['under13', '13-16', '13-17'].indexOf((A && A.ageBand) || '') > -1; }
   function periodsMayCome(A) { return A.regularity !== 'notyet' && A.regularity !== 'none12' && A.pregState !== 'pregnant' && !(A.pregState === 'postpartum' && A.periodsBack === 'no'); }
   function onbVisible(A) { return ONB.filter(function (s) { return !s.showIf || s.showIf(A); }); }
   function chipRow(key, options, val, multi) { return '<div class="chips" data-key="' + key + '"' + (multi ? ' data-multi="1"' : '') + '>' + options.map(function (o) { var v = o[0], lab = o[1], on = multi ? (val || []).indexOf(v) > -1 : val === v; return '<button type="button" class="chipbtn' + (on ? ' on' : '') + '" data-v="' + esc(v) + '">' + esc(lab) + '</button>'; }).join('') + '</div>'; }
@@ -2222,27 +2223,9 @@
       if (e.target.closest('#onbNext')) {
         collect();
         if (st.id === 'urgent' && (A.urgent || []).some(function (x) { return x !== 'none'; })) { openUrgentCard(function () { openOnboarding(onb.i + 1); }); return; }
-        if (st.id === 'age' && isMinor(A)) { openMinorNote(function () { A.minorAck = new Date().toISOString(); openOnboarding(onb.i + 1); }); return; }
-        if (st.id === 'preg' && isMinor(A) && (A.pregState === 'pregnant' || A.pregState === 'maybe')) { openTeenPregnancyCard(function () { openOnboarding(onb.i + 1); }); return; }
         if (last) finishOnboarding(A); else openOnboarding(onb.i + 1);
       }
     });
-  }
-  var BABES = '<b>Babes Pregnancy Crisis Support</b> helps young people for free, any time: call <a href="tel:62066641">6206 6641</a> or WhatsApp <a href="https://wa.me/6581113535" target="_blank" rel="noopener">8111 3535</a>.';
-  function openMinorNote(next) {
-    openSheet('minor', 'A note before we go on', 'For anyone 16 or under', 'family_restroom',
-      '<div class="flag info"><span class="ms">favorite</span><div><b>Rhythme is made for adults</b><span>If you are 16 or under, please use it together with a parent, guardian or school counsellor. It can help you notice your own patterns, but it cannot give advice about sex, contraception or pregnancy, and it never replaces a doctor.</span></div></div>' +
-      '<div class="flag info"><span class="ms">support_agent</span><div><b>If something is worrying you</b><span>Talk to a trusted adult or your school counsellor. If you think you might be pregnant, ' + BABES + ' At primary school or under 13: Tinkle Friend, <a href="tel:18002744788">1800 274 4788</a> (weekday afternoons). In an emergency, call 995.</span></div></div>' +
-      '<div class="row"><button type="button" class="btn primary" id="minorOk"><span class="ms">check</span>I understand</button></div>');
-    $('#minorOk').addEventListener('click', next);
-  }
-  function openTeenPregnancyCard(next) {
-    openSheet('teenpreg', 'You don’t have to handle this alone', 'Free, private help in Singapore, any time', 'favorite',
-      '<div class="flag high"><span class="ms">support_agent</span><div><b>Please talk to someone today</b><span>' + BABES + ' A doctor can confirm a pregnancy and check that you are well. A trusted adult or your school counsellor can come with you.</span></div></div>' +
-      '<div class="flag high"><span class="ms">emergency_home</span><div><b>Get care now if</b><span>you have strong pain in your tummy, heavy bleeding, or feel faint: go to the 24-hour Urgent O&amp;G Centre at KK Women’s and Children’s Hospital, or call 995.</span></div></div>' +
-      '<p class="help">Rhythme pauses period predictions and cannot give pregnancy advice. Your answers stay on this phone.</p>' +
-      '<div class="row"><a class="btn primary" href="tel:62066641"><span class="ms">call</span>Call Babes</a><a class="btn soft" href="https://wa.me/6581113535" target="_blank" rel="noopener"><span class="ms">chat</span>WhatsApp Babes</a><button type="button" class="btn ghost" id="teenNext">Continue</button></div>');
-    $('#teenNext').addEventListener('click', next);
   }
   function openUrgentCard(next) {
     openSheet('urgent', 'Please get care today', 'This is not something to track; it needs a clinician now', 'emergency_home',
@@ -2253,8 +2236,8 @@
   }
   function predictionModeFor(A) {
     var h = A.hormones || [], c = A.conditions || [];
-    if (isMinor(A) || h.some(function (x) { return ['pill', 'pop', 'iud_h', 'implant', 'hrt', 'fertility'].indexOf(x) > -1; }) || A.pregState === 'pregnant' || A.pregState === 'maybe' || A.regularity === 'notyet' || A.periodsStarted === 'no' || A.regularity === 'none12' || A.lastPeriodStatus === 'none' || c.indexOf('hysterectomy') > -1) return 'suspended';
-    if (A.regularity === 'rare' || A.regularity === 'irregular' || A.pregState === 'postpartum' || A.pregState === 'loss' || A.ageBand === '17' || h.indexOf('ec') > -1 || A.periodLength === 'weeks' || (A.signals || []).indexOf('flushes') > -1) return 'wide';
+    if (h.some(function (x) { return ['pill', 'pop', 'iud_h', 'implant', 'hrt', 'fertility'].indexOf(x) > -1; }) || A.pregState === 'pregnant' || A.pregState === 'maybe' || A.regularity === 'notyet' || A.periodsStarted === 'no' || A.regularity === 'none12' || A.lastPeriodStatus === 'none' || c.indexOf('hysterectomy') > -1) return 'suspended';
+    if (A.regularity === 'rare' || A.regularity === 'irregular' || A.pregState === 'postpartum' || A.pregState === 'loss' || h.indexOf('ec') > -1 || A.periodLength === 'weeks' || (A.signals || []).indexOf('flushes') > -1) return 'wide';
     return 'normal';
   }
   function intakeNotes(A) {
@@ -2263,9 +2246,9 @@
     if (bs.indexOf('between') > -1) n.push({ level: 'watch', title: 'Bleeding between periods or after sex', detail: 'Worth a clinician’s review, especially if new or recurring.' });
     if (bs.indexOf('postmeno') > -1) n.push({ level: 'high', title: 'Bleeding after 12 months without periods', detail: 'Postmenopausal bleeding should always be assessed by a clinician.' });
     if (bs.indexOf('painlife') > -1) n.push({ level: 'watch', title: 'Period pain that disrupts your days', detail: 'Pain that stops school, work or sleep deserves assessment rather than endurance.' });
-    if ((A.regularity === 'notyet' || A.periodsStarted === 'no') && A.ageBand && A.ageBand !== 'under13') n.push({ level: 'watch', title: 'Periods not yet started', detail: 'Guidance suggests an assessment if periods have not started by 15.' });
+    if (A.regularity === 'notyet' || A.periodsStarted === 'no') n.push({ level: 'watch', title: 'Periods not yet started', detail: 'Periods that have not started by 15 are worth an assessment, so please discuss this with a clinician.' });
     if (A.regularity === 'rare') n.push({ level: 'watch', title: 'Long gaps between periods', detail: 'Gaps of three months or more are worth discussing with a clinician.' });
-    if (A.plans === 'ttc' && (A.ttcMonths === '12+' || (A.ttcMonths === '6-11' && ['35-39', '40-44', '45-49', '50+'].indexOf(A.ageBand) > -1))) n.push({ level: 'watch', title: 'Time to consider a fertility check', detail: 'ASRM suggests an evaluation after 12 months of trying under 35, or 6 months at 35 and over.' });
+    if (A.plans === 'ttc' && (A.ttcMonths === '12+' || (A.ttcMonths === '6-11' && ['35-39', '40-44', '45-49', '50+'].indexOf(A.ageRange) > -1))) n.push({ level: 'watch', title: 'Time to consider a fertility check', detail: 'ASRM suggests an evaluation after 12 months of trying under 35, or 6 months at 35 and over.' });
     if (sg.indexOf('bloating') > -1 || sg.indexOf('pelvic') > -1) n.push({ level: 'watch', title: 'New persistent bloating, fullness, pelvic pain or urinary frequency', detail: 'The NHS advises a GP review when these are new, frequent and persistent.' });
     if (sg.indexOf('hair') > -1 || sg.indexOf('discharge') > -1) n.push({ level: 'watch', title: 'New body signals', detail: 'New facial or body hair, or nipple discharge outside breastfeeding, are worth a review.' });
     if (fam.indexOf('meno40') > -1) n.push({ level: 'watch', title: 'Family history of menopause before 40', detail: 'Worth mentioning when you discuss fertility or ovarian health.' });
@@ -2273,7 +2256,7 @@
     if (ur.some(function (x) { return x !== 'none'; })) n.push({ level: 'high', title: 'Urgent symptoms reported at set-up', detail: 'You were shown urgent-care guidance. Please follow it today.' });
     /* remembered periods: only gaps the person confirmed as consecutive say anything */
     if (A.periodRecall) {
-      var rr = S.rhythmFromRecall(A.periodRecall, S.today()), teen = ['under13', '13-16', '13-17', '17'].indexOf(A.ageBand) > -1, shortCut = teen ? 21 : 24;
+      var rr = S.rhythmFromRecall(A.periodRecall, S.today()), shortCut = 24; /* the adult cut-off; Rhythme is 18+ */
       var shortGap = rr.adjacent.filter(function (x) { return x.gap < shortCut && (x.gap >= 15 || (A.periodRecall.clusters || {})[x.from + '|' + x.to] === 'separate'); })[0];
       if (shortGap) n.push({ level: 'watch', title: 'Periods starting close together', detail: 'You remember starts ' + shortGap.gap + ' days apart. Check these dates; periods that start less than ' + shortCut + ' days apart are worth discussing.' });
       var longGap = rr.adjacent.filter(function (x) { return x.gap > 90; })[0];
@@ -2284,7 +2267,7 @@
   }
   function finishOnboarding(A) {
     var num = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : null; };
-    var patch = { name: A.name || S.profile().name || '', ageBand: A.ageBand || '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', minorAck: A.minorAck || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: (function () { var r = A.periodRecall, d = r ? recallDays(recallState(A)) : []; return r && r.latest === 'yes' && d.length ? d[d.length - 1] : ''; })(), cycleLength: null, periodLength: num(A.periodLength), periodLengthAnswer: A.periodLength || '', periodRecall: A.periodRecall ? Object.assign({}, A.periodRecall, { capturedAt: new Date().toISOString() }) : null, cycleVaries: false, bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' && ['40-44', '45-49', '50+'].indexOf(A.ageBand) > -1 && A.pregState !== 'pregnant' && A.pregState !== 'postpartum' && !(A.hormones || []).some(function (x) { return x !== 'none' && x !== 'other' && x !== 'iud_cu'; }) ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (A.ageBand && ['40-44', '45-49', '50+'].indexOf(A.ageBand) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), onboarded: true, onboardedAt: new Date().toISOString() };
+    var patch = { name: A.name || S.profile().name || '', ageRange: A.ageRange || '', ageBand: '', minorAck: '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: (function () { var r = A.periodRecall, d = r ? recallDays(recallState(A)) : []; return r && r.latest === 'yes' && d.length ? d[d.length - 1] : ''; })(), cycleLength: null, periodLength: num(A.periodLength), periodLengthAnswer: A.periodLength || '', periodRecall: A.periodRecall ? Object.assign({}, A.periodRecall, { capturedAt: new Date().toISOString() }) : null, cycleVaries: false, bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' && ['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && A.pregState !== 'pregnant' && A.pregState !== 'postpartum' && !(A.hormones || []).some(function (x) { return x !== 'none' && x !== 'other' && x !== 'iud_cu'; }) ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), onboarded: true, onboardedAt: new Date().toISOString() };
     S.setProfile(patch);
     try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, patch))); } catch (e) { }
     RW.grant(20, 'welcome');
@@ -2292,28 +2275,9 @@
     onb = null; closeSheet(); updateGreeting(); renderDeck(); renderProps();
     toast('Welcome home' + (patch.name ? ', ' + patch.name : '') + '. ' + (gotScale ? 'Your scale is by the rug, and 15 hearts are left for your nest.' : '20 hearts to start your nest.'), 'favorite');
   }
-  /* ---------- data notice: one friendly read and a required OK before the room opens ---------- */
-  /* v2 (18 Oct 2026, reviewed by Codex, DeepSeek and Doubao): optional choices start unticked, Luna's AI help
-   * is a separate choice that names where it is processed, and an age confirmation is required. */
-  var CONSENT_V = 2;
-  function hasConsent() { var c = S.profile().consent; return !!(c && c.v >= CONSENT_V && c.at); }
-  function requireConsent(next) {
-    if (hasConsent()) { if (next) next(); return; }
-    var c = $('#consent'); if (!c) return;
-    c.hidden = false; try { c.querySelector('.c-scroll').scrollTop = 0; } catch (e) { }
-    var age = $('#cAge'), agree = $('#cAgree');
-    age.onchange = function () { agree.disabled = !age.checked; };
-    agree.disabled = !age.checked;
-    agree.onclick = function () {
-      if (!age.checked) return;
-      chime('tap');
-      var luna = !!$('#cLuna').checked;
-      S.setProfile({ consent: { v: CONSENT_V, at: new Date().toISOString(), luna: luna, improve: !!$('#cImprove').checked, age13: true } });
-      /* Luna's AI help (notes, readings, food photos) is on only if it was ticked; it can be changed in her settings. */
-      var ai = ORB.aiConfig(); ai.on = luna; ai.insights = luna; ai.photos = luna; ORB.setAiConfig(ai);
-      c.hidden = true; if (next) next();
-    };
-  }
+  /* ---------- data notice and the 18+ gate: ovu-consent.js owns the record and the sheet; this is the room's doorway ---------- */
+  function hasConsent() { return !!(window.OvuConsent && !OvuConsent.needsSheet()); }
+  function requireConsent(next) { if (!window.OvuConsent) { toast('Rhythme could not load its consent record. Please reload.', 'error'); return; } OvuConsent.require(next, { chime: chime, toast: toast }); }
   function showWelcome() {
     var w = $('#welcome'); if (!w) return; w.hidden = false;
     $('#wBegin').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); }); });

@@ -21,7 +21,8 @@ NOW = datetime.datetime.now().isoformat()
 # a consenting, onboarded person with three entries; Luna's AI help off (the default)
 DB = {"version": 1, "createdAt": NOW, "updatedAt": NOW,
       "profile": {"name": "Smoke", "outfit": "base", "lifeStage": "", "cycleLength": None, "periodLength": None, "onboarded": True,
-                  "consent": {"v": 2, "at": NOW, "luna": False, "improve": False, "age13": True}},
+                  "consent": {"v": 3, "at": NOW, "luna": False, "improve": False}, "ageAttest": {"confirmed": True, "version": 1, "at": NOW},
+                  "consentEvents": [{"id": "ce1", "purpose": "age_18", "action": "grant", "at": NOW, "notice": 3, "method": "sheet", "uid": None, "sent": False}, {"id": "ce2", "purpose": "health_tracking", "action": "grant", "at": NOW, "notice": 3, "method": "sheet", "uid": None, "sent": False}], "consentImportedAt": NOW},
       "events": [{"id": "s1", "type": "period", "date": Y1, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"flow": "medium"}},
                  {"id": "s2", "type": "sleep", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"bedTime": "23:00", "wakeTime": "07:00", "quality": 4}},
                  {"id": "s3", "type": "food", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"meal": "lunch", "foods": "chicken rice", "items": [], "tags": ["home-cooked"]}}],
@@ -366,6 +367,16 @@ async def main():
             acct = await page.evaluate("()=>{var a=document.querySelector('#youAccount');return {label:a&&a.querySelector('.lbl')?a.querySelector('.lbl').textContent:null, email: !!(a&&a.querySelector('[data-ya=\"email-start\"]')), intro: ((a&&a.querySelector('.ya-intro')?a.querySelector('.ya-intro').textContent:'')||'').toLowerCase().indexOf('cloud backup')>=0};}")
             check("You tab shows the Your account row with email sign-in and the backup line", acct["label"] == "Your account" and acct["email"] and acct["intro"], acct)
             check("no sign-in or data request leaves the page for a signed-out person", not [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1" in u)], relay_calls[:3])
+            # Your choices: every use of the data as a switch, the required one locked on, a receipt; a change is recorded with where it was made
+            await page.evaluate("()=>document.querySelector('[data-yact=choices]').click()"); await page.wait_for_selector("#y_health_tracking", timeout=8000); await page.wait_for_timeout(300)
+            ch = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, n: document.querySelectorAll('.c-choice input').length, req: document.querySelector('#y_health_tracking').checked && document.querySelector('#y_health_tracking').disabled, anyOn: Array.from(document.querySelectorAll('.c-choice input:not(#y_health_tracking)')).some(i=>i.checked), receipt: (document.body.textContent||'').indexOf('Your consent receipt')>-1 && (document.body.textContent||'').indexOf('Notice version 3')>-1})")
+            check("Your choices lists six switches with health tracking locked on, the rest off, and the receipt at notice 3", ch["title"].startswith("Your choices") and ch["n"] == 6 and ch["req"] and not ch["anyOn"] and ch["receipt"], ch)
+            await page.check("#y_ai_reading"); await page.wait_for_timeout(400)
+            c1 = await page.evaluate("()=>{var ev=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.consentEvents; var e=ev[ev.length-1]; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {p:e.purpose, a:e.action, m:e.method, aiOn:!!ai.on, on: document.querySelector('#y_ai_reading').checked};}")
+            await page.uncheck("#y_ai_reading"); await page.wait_for_timeout(400)
+            c2 = await page.evaluate("()=>{var ev=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.consentEvents; var e=ev[ev.length-1]; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {p:e.purpose, a:e.action, m:e.method, aiOn:!!ai.on};}")
+            check("a switch in You records a grant and then a withdrawal, each marked as made in You, and Luna's mirror follows", c1 == {"p": "ai_reading", "a": "grant", "m": "you", "aiOn": True, "on": True} and c2 == {"p": "ai_reading", "a": "withdraw", "m": "you", "aiOn": False}, {"c1": c1, "c2": c2})
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(300)
 
             # 5. journal: icon tiles, structured summary, the PDF downloads and is a PDF
             await page.goto(BASE + "journal.html", wait_until="networkidle"); await page.wait_for_timeout(900)
@@ -428,11 +439,12 @@ async def main():
             # the real consent controls: nothing optional pre-ticked, the button locked until the age tick
             await p2.goto(BASE + "room.html", wait_until="networkidle"); await p2.wait_for_timeout(700)
             await p2.click("#welcome .btn.primary"); await p2.wait_for_timeout(400)
-            before = await p2.evaluate("()=>({shown: !document.querySelector('#consent').hidden, luna: document.querySelector('#cLuna').checked, improve: document.querySelector('#cImprove').checked, locked: document.querySelector('#cAgree').disabled})")
-            check("consent notice opens with every optional choice unticked and the button locked", before["shown"] and not before["luna"] and not before["improve"] and before["locked"], before)
-            await p2.check("#cAge"); await p2.click("#cAgree"); await p2.wait_for_timeout(500)
-            after = await p2.evaluate("()=>{var c=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.consent; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {v:c&&c.v, luna:c&&c.luna, improve:c&&c.improve, age13:c&&c.age13, aiOn:!!ai.on, hidden: document.querySelector('#consent').hidden};}")
-            check("agreeing stores consent v2 with Luna's AI help off and closes the notice", after == {"v": 2, "luna": False, "improve": False, "age13": True, "aiOn": False, "hidden": True}, after)
+            before = await p2.evaluate("()=>({shown: !document.querySelector('#consent').hidden, n: document.querySelectorAll('#cChoices input[type=checkbox]').length, anyOn: Array.from(document.querySelectorAll('#cChoices input')).some(i=>i.checked), age: document.querySelector('#cAge').checked, health: document.querySelector('#cHealth').checked, locked: document.querySelector('#cAgree').disabled, under: !!document.querySelector('#cUnder')})")
+            check("the notice opens with five separate choices all off, the required health and 18+ ticks unticked, the button locked and an under-18 way out", before["shown"] and before["n"] == 5 and not before["anyOn"] and not before["age"] and not before["health"] and before["locked"] and before["under"], before)
+            await p2.check("#cAge"); lockedStill = await p2.evaluate("()=>document.querySelector('#cAgree').disabled"); await p2.check("#cHealth"); await p2.click("#cAgree"); await p2.wait_for_timeout(600)
+            check("the age tick alone does not unlock the button; the health tick is required too", lockedStill)
+            after = await p2.evaluate("()=>{var p=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {v:p.consent&&p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed===true?p.ageAttest.version:null, purposes:(p.consentEvents||[]).map(e=>e.purpose+':'+e.action+':'+e.method).sort(), aiOn:!!ai.on, cloud:p.cloud&&p.cloud.v, hidden: document.querySelector('#consent').hidden};}")
+            check("agreeing records the 18+ attestation and health tracking at notice 3, nothing else, and closes the notice", after["v"] == 3 and after["age"] == 1 and after["purposes"] == ["age_18:grant:sheet", "health_tracking:grant:sheet"] and not after["aiOn"] and not after["cloud"] and after["hidden"], after)
             await ctx2.close()
             # a person whose consent predates notice v2 is sent back to the room from any other page
             ctx3 = await browser.new_context(viewport={"width": 390, "height": 844})
@@ -442,6 +454,31 @@ async def main():
             await p3.goto(BASE + "hormones.html", wait_until="load"); await p3.wait_for_timeout(700)
             check("a v1 consent is sent back to the room to be asked again", p3.url.endswith("room.html"), p3.url)
             await ctx3.close()
+            # a person who agreed to notice v2 reads v3: the switches show today's settings, 18+ is asked afresh, the diary is kept
+            ctx4 = await browser.new_context(viewport={"width": 390, "height": 844})
+            v2 = json.loads(json.dumps(DB)); v2["profile"]["consent"] = {"v": 2, "at": NOW, "luna": True, "improve": False, "age13": True}
+            for k in ("ageAttest", "consentEvents", "consentImportedAt"): v2["profile"].pop(k, None)
+            await ctx4.add_init_script("if(!localStorage.getItem('ovumind_db_v1')){ localStorage.setItem('ovumind_db_v1', %s); localStorage.setItem('ovumind_ai_v1', JSON.stringify({on:false, insights:false, photos:true})); }" % json.dumps(json.dumps(v2)))
+            p4 = await ctx4.new_page(); await p4.route("**/*", gate)
+            p4.on("pageerror", lambda e: errors.append("v2 pageerror: " + str(e)))
+            await p4.goto(BASE + "room.html", wait_until="networkidle"); await p4.wait_for_timeout(900)
+            rc = await p4.evaluate("()=>({shown: !document.querySelector('#consent').hidden, title: document.querySelector('#cTitle').textContent, photos: document.querySelector('#c_food_photo_ai').checked, reading: document.querySelector('#c_ai_reading').checked, cloud: document.querySelector('#c_cloud_sync').checked, age: document.querySelector('#cAge').checked, locked: document.querySelector('#cAgree').disabled, fine: document.querySelector('#cFine').textContent, welcome: !!document.querySelector('#welcome:not([hidden])')})")
+            check("a v2 consent reads the changed notice: the photo switch mirrors her setting, the rest are off, 18+ is asked afresh", rc["shown"] and rc["title"] == "Our data notice has changed" and rc["photos"] and not rc["reading"] and not rc["cloud"] and not rc["age"] and rc["locked"] and rc["fine"] == "Your diary on this phone is kept as it is." and not rc["welcome"], rc)
+            await p4.check("#c_ai_reading"); await p4.check("#cAge"); await p4.check("#cHealth"); await p4.click("#cAgree"); await p4.wait_for_timeout(700)
+            rd = await p4.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); var p=db.profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); var ev=p.consentEvents||[]; return {v:p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed, imports: ev.filter(e=>e.method==='import').map(e=>e.purpose).sort(), sheet: ev.filter(e=>e.method==='sheet').map(e=>e.purpose+':'+e.action).sort(), aiOn: ai.on, aiPhotos: ai.photos, events: db.events.length, hidden: document.querySelector('#consent').hidden};}")
+            check("agreeing again keeps the earlier choices as imports, records the sheet's choices at notice 3 and keeps every entry", rd["v"] == 3 and rd["age"] is True and rd["imports"] == ["food_photo_ai", "health_tracking"] and rd["sheet"] == ["age_18:grant", "ai_reading:grant", "food_photo_ai:grant", "health_tracking:grant"] and rd["aiOn"] is True and rd["aiPhotos"] is True and rd["events"] == 3 and rd["hidden"], rd)
+            await ctx4.close()
+            # under 18: the room does not open, nothing is saved, and the notice is back on the next visit
+            ctx5 = await browser.new_context(viewport={"width": 390, "height": 844})
+            p5 = await ctx5.new_page(); await p5.route("**/*", gate)
+            await p5.goto(BASE + "room.html", wait_until="networkidle"); await p5.wait_for_timeout(700)
+            await p5.click("#welcome .btn.primary"); await p5.wait_for_timeout(400)
+            await p5.click("#cUnder"); await p5.wait_for_timeout(400)
+            u1 = await p5.evaluate("()=>({msg: (document.querySelector('#consent h2')||{}).textContent, agree: !!document.querySelector('#cAgree'), open: !document.querySelector('#consent').hidden, exportLink: !!document.querySelector('#cExport') && !!document.querySelector('#cWipe'), db: localStorage.getItem('ovumind_db_v1')})")
+            await p5.reload(wait_until="networkidle"); await p5.wait_for_timeout(700)
+            u2 = await p5.evaluate("()=>({welcome: !!document.querySelector('#welcome:not([hidden])'), consent: !document.querySelector('#consent').hidden, db: localStorage.getItem('ovumind_db_v1')})")
+            check("under 18: a plain message, export and delete right there, no agree button, nothing written at all, and the doorway is back on reload", "18 and over" in (u1["msg"] or "") and not u1["agree"] and u1["open"] and u1["exportLink"] and '"consent":{' not in (u1["db"] or "") and 'under18' not in (u1["db"] or "") and (u2["welcome"] or u2["consent"]) and '"ageAttest"' not in (u2["db"] or ""), {"u1": {k: u1[k] for k in ("msg", "agree", "open", "exportLink")}, "u2": {k: u2[k] for k in ("welcome", "consent")}})
+            await ctx5.close()
             # Moon Tap: open from the mat sheet, begin, three blooms, stop after the minimum, the entry is saved
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(800)
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindTap", timeout=8000); await page.click("#mindTap"); await page.wait_for_selector("#btapBegin", timeout=8000)

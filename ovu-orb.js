@@ -43,8 +43,6 @@
     if (/\b(?:fainted|passed out|blacked out|collapsed)\b/.test(t) && BLEED_WORDS.test(t)) return { level: 'emergency', code: 'FAINT_BLEED_NOW', title: 'Get emergency care now', trigger: 'fainting with bleeding' };
     if (/\bpregnan\w*\b/.test(t) && !/\bnot pregnant\b/.test(t) && (BLEED_WORDS.test(t) || SEVERE_PAIN.test(t))) return { level: 'emergency', code: 'PREG_BLEED_NOW', title: 'Get emergency care now', trigger: 'bleeding or severe pain in pregnancy' };
     if (SEVERE_PAIN.test(t) || (/\bshoulder[- ]tip\b/.test(t) && /\bpain\b/.test(t))) return { level: 'emergency', code: 'SEVERE_PAIN_NOW', title: 'Get emergency care now', trigger: 'sudden severe pelvic or abdominal pain' };
-    /* Under-16s who mention a possible pregnancy get support contacts, never logging advice. */
-    if (['under13', '13-16', '13-17'].indexOf((profile && profile.ageBand) || '') > -1 && /\b(pregnan\w*|missed (my )?period|period (is |was )?late|late period|unprotected|condom (broke|tore)|morning after pill|plan b|pregnancy test)\b/.test(t)) return { level: 'safeguard', code: 'MINOR_PREGNANCY', title: 'You don’t have to handle this alone', trigger: 'a possible pregnancy at 16 or under' };
     var stage = (profile && profile.lifeStage) || '';
     if (['post', 'postmenopause', 'postmenopausal'].indexOf(stage) > -1 && BLEED_WORDS.test(t)) return { level: 'prompt', code: 'POSTMENO_BLEED', title: 'Please get this checked this week', trigger: 'bleeding after menopause' };
     return null;
@@ -98,13 +96,31 @@
   /* Switched on when the data notice is accepted at first launch; reading notes, written readings
    * (insights) and food photos can each be switched off in Luna's settings. */
   function defaults() { return { on: false, provider: 'ovumind', insights: false, photos: false }; }
-  function aiConfig() { var c; try { c = JSON.parse(localStorage.getItem(AI_KEY) || 'null'); } catch (e) { c = null; } if (!c) return defaults(); return { on: !!c.on, provider: 'ovumind', insights: c.insights === true, photos: c.photos === true }; }
-  function setAiConfig(cfg) { localStorage.setItem(AI_KEY, JSON.stringify(cfg)); }
+  /* The consent record (ovu-consent.js) is the truth for Luna's three switches; this localStorage copy is its mirror,
+     kept for pages that load without the consent module. A method names where a change was made: 'settings', the
+     'sheet', or 'jit' at the first use of a feature. */
+  function aiConfig() {
+    var C = root.OvuConsent;
+    if (C) return { on: C.allows('ai_reading'), provider: 'ovumind', insights: C.allows('ai_summaries'), photos: C.allows('food_photo_ai') };
+    var c; try { c = JSON.parse(localStorage.getItem(AI_KEY) || 'null'); } catch (e) { c = null; } if (!c) return defaults(); return { on: !!c.on, provider: 'ovumind', insights: c.insights === true, photos: c.photos === true };
+  }
+  function setAiConfig(cfg, method) {
+    var C = root.OvuConsent;
+    if (C) { C.setMany({ ai_reading: !!cfg.on, ai_summaries: cfg.insights === true, food_photo_ai: cfg.photos === true }, method || 'settings'); return; }
+    localStorage.setItem(AI_KEY, JSON.stringify(cfg));
+  }
+  /* the phone's word on the purpose, plus the account's token (refreshed if needed) whenever there is a session, so the
+     server checks the account's own record and a withdrawal made on another phone holds here too */
+  function hdr(p) {
+    var h = Object.assign({ 'Content-Type': 'application/json' }, root.OvuConsent ? root.OvuConsent.header(p) : {});
+    var A = root.OvuAuth; if (!A || !A.session || !A.session()) return Promise.resolve(h);
+    return A.token().then(function (at) { if (at) h.Authorization = 'Bearer ' + at; return h; }, function () { return h; });
+  }
   function okEntry(e) { return e && S.TYPES.indexOf(e.type) > -1 && S.validDate(e.date) && e.date <= S.today() && e.data; }
   function parseAI(text) {
     var cfg = aiConfig();
     if (!cfg.on) return Promise.reject(new Error('AI mode is off.'));
-    return fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text, today: S.today() }) })
+    return hdr('ai_reading').then(function (h) { return fetch(PROXY_URL, { method: 'POST', headers: h, body: JSON.stringify({ text: text, today: S.today() }) }); })
         .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna could not answer just now (' + r.status + '). Try again in a moment.')); return d; }); })
         .then(function (d) { return { entries: (d.entries || []).filter(okEntry), reply: d.reply || '', usage: d.usage || null }; });
   }
@@ -188,7 +204,7 @@
   function parsePhoto(dataUrl) {
     if (!photosAllowed()) return Promise.reject(new Error('Food photos are off. Allow them in Luna’s settings first.'));
     var table = FD && FD.sgLoad ? FD.sgLoad().catch(function () { return null; }) : Promise.resolve(null);
-    var relay = fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl, today: S.today() }) })
+    var relay = hdr('food_photo_ai').then(function (h) { return fetch(PROXY_URL, { method: 'POST', headers: h, body: JSON.stringify({ image: dataUrl, today: S.today() }) }); })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna could not answer just now (' + r.status + '). Try again in a moment.')); return d; }); });
     return Promise.all([table, relay]).then(function (rs) { var d = rs[1], f = d.food || {}; return { isFood: f.is_food === true, mealName: f.meal_name || '', note: f.note || '', items: foodItemsFrom(f), hpb: !!rs[0] }; });
   }
@@ -196,7 +212,7 @@
   /* Ingredients label photo: Luna transcribes the list once (same permission as food photos); the NOVA rule runs on the phone. */
   function parseLabel(dataUrl) {
     if (!photosAllowed()) return Promise.reject(new Error('Food photos are off. Allow them in Luna’s settings first.'));
-    return fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl, mode: 'label', today: S.today() }) })
+    return hdr('food_photo_ai').then(function (h) { return fetch(PROXY_URL, { method: 'POST', headers: h, body: JSON.stringify({ image: dataUrl, mode: 'label', today: S.today() }) }); })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna could not answer just now (' + r.status + '). Try again in a moment.')); return d; }); })
       .then(function (d) { var l = d.label || {}; var str = function (v) { return typeof v === 'string' ? v.trim() : ''; }; return { isLabel: l.is_label === true && !!str(l.ingredients_text), productName: str(l.product_name), quantity: str(l.quantity), ingredientsText: str(l.ingredients_text), complete: l.complete !== false, note: str(l.note) }; });
   }
