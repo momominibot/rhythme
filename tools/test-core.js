@@ -780,29 +780,6 @@ function scenes(todayIso) {
   check('the three stores keep different hours and the hours helper reads a date', ST.hoursFor('pet')[0] === 10 && ST.hoursFor('furniture')[0] === 11 && ST.hoursFor('home')[0] === 9 && !ST.openAt('pet', new Date(2026, 9, 19, 8, 30)) && ST.openAt('pet', new Date(2026, 9, 19, 12, 0)) && !ST.openAt('pet', new Date(2026, 9, 19, 19, 0)) && ST.openAt('home', new Date(2026, 9, 19, 9, 0)) && ST.hoursText('furniture') === '11 am to 9 pm');
 })();
 
-(function ledgerAccounting() {
-  console.log('hearts accounting: a record earns once, Moon Tap caps per day, gifts never repeat, two pets at home');
-  var w = fresh(), RW = w.OvuRewards, S = w.OvuStore, T = w.OvuBreathTap;
-  var ev = S.add('sleep', S.today(), { bedtime: '23:00', wake: '07:00', quality: 4 }, 'room');
-  var r1 = RW.award(ev), r2 = RW.award(ev);
-  check('the same saved record earns only once', r1.points > 0 && r2.points === 0 && r2.again === true, r1.points + '/' + r2.points);
-  var h0 = RW.ledger().hearts;
-  [600, 600, 600].forEach(function (secs) { RW.award(S.add('mindfulness', S.today(), T.entryFor(secs, 'easy', 0, 0), 'room')); });
-  check('three ten-minute Moon Taps in a day earn twenty, not sixty', RW.ledger().hearts - h0 === 20, RW.ledger().hearts - h0);
-  var g0 = RW.ledger().hearts; RW.grant(30, 'intro'); RW.grant(30, 'intro');
-  check('a one-time gift is paid once, remembered outside the log', RW.ledger().hearts - g0 === 30 && RW.ledger().gifts.intro === true);
-  var l = RW.ledger(); l.hearts = 2000; S.setState({ rewards: l });
-  RW.buy('cat'); RW.buy('dog'); var mm = RW.buy('mewmew');
-  check('a third adopted pet waits in the inventory', mm.waiting === true && !RW.ledger().placed.mewmew && RW.ledger().owned.indexOf('mewmew') > -1);
-  var threw = false; try { RW.toggle('mewmew'); } catch (e) { threw = /Two pets/.test(e.message); }
-  check('placing a third pet from the inventory is refused with a plain reason', threw);
-  RW.toggle('dog'); check('after putting one away the third can come home', RW.toggle('mewmew') === true);
-  RW.buy('catblack'); RW.toggle('mewmew'); RW.toggle('cat');
-  check('swapping a kitten for another kitten still works with two at home', RW.toggle('catblack') === true && !RW.ledger().placed.cat);
-})();
-
-
-/* ---------- life-sim slice: the calendar, stamina and the proximity prompt (ovu-gametime.js, ovu-stamina.js, ovu-interact.js) ---------- */
 (function lifeSim() {
   console.log('life-sim: the calendar names the real day, stamina costs and refills, the nearest hotspot prompts');
   var w = fresh('2026-10-19');
@@ -886,6 +863,30 @@ function scenes(todayIso) {
   var sm = F.summary(S, day);
   check('the summary counts planted, ripe, dry and weedy beds', typeof sm.planted === 'number' && typeof sm.weeds === 'number' && sm.seedsLeft === F.seedsLeftToday(S, day));
 })();
+
+(function ledgerAccounting() {
+  console.log('hearts accounting: a record earns once, Moon Tap caps per day, gifts never repeat, two pets at home');
+  var w = fresh(), RW = w.OvuRewards, S = w.OvuStore, T = w.OvuBreathTap;
+  var ev = S.add('sleep', S.today(), { bedtime: '23:00', wake: '07:00', quality: 4 }, 'room');
+  var r1 = RW.award(ev), r2 = RW.award(ev);
+  check('the same saved record earns only once', r1.points > 0 && r2.points === 0 && r2.again === true, r1.points + '/' + r2.points);
+  var h0 = RW.ledger().hearts;
+  [600, 600, 600].forEach(function (secs) { RW.award(S.add('mindfulness', S.today(), T.entryFor(secs, 'easy', 0, 0), 'room')); });
+  check('three ten-minute Moon Taps in a day earn twenty, not sixty', RW.ledger().hearts - h0 === 20, RW.ledger().hearts - h0);
+  var g0 = RW.ledger().hearts; RW.grant(30, 'intro'); RW.grant(30, 'intro');
+  check('a one-time gift is paid once, remembered outside the log', RW.ledger().hearts - g0 === 30 && RW.ledger().gifts.intro === true);
+  var l = RW.ledger(); l.hearts = 2000; S.setState({ rewards: l });
+  RW.buy('cat'); RW.buy('dog'); var mm = RW.buy('mewmew');
+  check('a third adopted pet waits in the inventory', mm.waiting === true && !RW.ledger().placed.mewmew && RW.ledger().owned.indexOf('mewmew') > -1);
+  var threw = false; try { RW.toggle('mewmew'); } catch (e) { threw = /Two pets/.test(e.message); }
+  check('placing a third pet from the inventory is refused with a plain reason', threw);
+  RW.toggle('dog'); check('after putting one away the third can come home', RW.toggle('mewmew') === true);
+  RW.buy('catblack'); RW.toggle('mewmew'); RW.toggle('cat');
+  check('swapping a kitten for another kitten still works with two at home', RW.toggle('catblack') === true && !RW.ledger().placed.cat);
+})();
+
+
+/* ---------- life-sim slice: the calendar, stamina and the proximity prompt (ovu-gametime.js, ovu-stamina.js, ovu-interact.js) ---------- */
 
 console.log('\n' + passes + ' passed, ' + fails + ' failed');
 process.exit(fails ? 1 : 0);
