@@ -44,12 +44,24 @@
   /* a trip: a free floor point within RADIUS of where the pet stands and LEASH of its home, at least MIN_TRIP away, that
    * the walk engine can plan a route to whose every segment is clear; W is the walk engine's pure API; null when nothing
    * suits after a few tries. The endpoint actually returned (the planner may snap it) is what is checked */
+  /* the free floor cells a trip could end on: within RADIUS of where the pet stands, within LEASH of home, at least
+   * MIN_TRIP away; shuffled with the given random source, so a pet on a thin strip of floor still finds its spots */
+  function candidates(W, world, from, home, rand) {
+    var m = W.rasterise(world), out = [];
+    for (var r = 0; r < W.ROWS; r++) for (var c = 0; c < W.COLS; c++) {
+      if (!W.cellFree(m, c, r)) continue;
+      var p = W.centre(c, r), d = isoDist(p, from);
+      if (d < MIN_TRIP || d > RADIUS || isoDist(p, home) > LEASH || p.x < 1 || p.x > 99 || p.y < 1 || p.y > 99) continue;
+      out.push(p);
+    }
+    for (var i = out.length - 1; i > 0; i--) { var j = Math.floor(rand() * (i + 1)), t = out[i]; out[i] = out[j]; out[j] = t; }
+    return out;
+  }
   function pickTarget(W, world, from, home, rand, tries, startOff) {
     rand = rand || Math.random; tries = tries || 8;
-    for (var i = 0; i < tries; i++) {
-      var ang = rand() * Math.PI * 2, r = MIN_TRIP + rand() * (RADIUS - MIN_TRIP);
-      var t = { x: from.x + Math.cos(ang) * r, y: from.y + Math.sin(ang) * r * Y_SCALE };
-      if (t.x < 1 || t.x > 99 || t.y < 1 || t.y > 99 || !onFloor(W, world, t.x, t.y) || isoDist(t, home) > LEASH) continue;
+    var cands = candidates(W, world, from, home, rand);
+    for (var i = 0; i < Math.min(tries, cands.length); i++) {
+      var t = cands[i];
       var res = planFrom(W, world, from, t, 2, startOff); if (!res || res.pts.length < 2) continue;
       var end = res.pts[res.pts.length - 1];
       if (isoDist(end, from) < MIN_TRIP || isoDist(end, from) > RADIUS + 2 || isoDist(end, home) > LEASH) continue;
@@ -71,7 +83,7 @@
     return { x: frameHead.x + (spotPx.x - sitHead.x) * k, y: frameHead.y + (spotPx.y - sitHead.y) * k, w: spotPx.w * k };
   }
   function validMeta(m) { return !!(m && m.frames === FRAMES && isFinite(m.w) && m.w > 0 && isFinite(m.h) && m.h > 0 && isFinite(m.standW) && m.standW > 0 && m.heads && m.heads.length === FRAMES && m.standHead); }
-  var M = { FRAMES: FRAMES, FPS: FPS, SPEED: SPEED, KIND: KIND, RADIUS: RADIUS, LEASH: LEASH, MIN_TRIP: MIN_TRIP, REST: REST, HOME_EVERY: HOME_EVERY, kindOf: kindOf, speedFor: speedFor, strideFor: strideFor, cycleAdvance: cycleAdvance, frameOf: frameOf, restSeconds: restSeconds, isoDist: isoDist, onFloor: onFloor, floorStart: floorStart, planFrom: planFrom, segmentsClear: segmentsClear, pickTarget: pickTarget, homeTrip: homeTrip, wornOn: wornOn, validMeta: validMeta };
+  var M = { FRAMES: FRAMES, FPS: FPS, SPEED: SPEED, KIND: KIND, RADIUS: RADIUS, LEASH: LEASH, MIN_TRIP: MIN_TRIP, REST: REST, HOME_EVERY: HOME_EVERY, kindOf: kindOf, speedFor: speedFor, strideFor: strideFor, cycleAdvance: cycleAdvance, frameOf: frameOf, restSeconds: restSeconds, isoDist: isoDist, onFloor: onFloor, floorStart: floorStart, planFrom: planFrom, candidates: candidates, segmentsClear: segmentsClear, pickTarget: pickTarget, homeTrip: homeTrip, wornOn: wornOn, validMeta: validMeta };
   root.OvuPetWalk = { M: M };
 
   var R = root.OvuRoom, W = root.OvuWalk, P = root.OvuPets, RW = root.OvuRewards;

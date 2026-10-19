@@ -211,7 +211,12 @@
   function wireGuides(root) {
     root.addEventListener('click', function (e) {
       var b = e.target.closest('.ibtn'); if (!b) return;
-      var panel = root.querySelector('.guide[data-guide-panel="' + b.dataset.guide + '"]'); if (!panel) return;
+      var panel = root.querySelector('.guide[data-guide-panel="' + b.dataset.guide + '"]');
+      if (!panel) { /* a sheet that shows the (i) without its panel gets the panel right under the button's row (Jamie: every (i) must work) */
+        var html = guideHTML(b.dataset.guide); if (!html) return;
+        var host = b.closest('.field, .stat, .card, .row, .quick, section, div') || b.parentNode, wrap = document.createElement('div'); wrap.innerHTML = html; panel = wrap.firstChild;
+        if (host && host.parentNode) host.parentNode.insertBefore(panel, host.nextSibling); else b.parentNode.appendChild(panel);
+      }
       var on = !panel.classList.contains('on'); panel.classList.toggle('on', on); b.classList.toggle('on', on);
       if (on) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
@@ -1677,12 +1682,20 @@
   function enterMeditation() { meditating = true; avatar.classList.add('hidden'); setTimeout(function () { meditator.classList.add('on'); $('#aura').classList.add('on'); }, 350); }
   function exitMeditation() { meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); hud.classList.remove('on'); setTimeout(function () { avatar.classList.remove('hidden'); placeAvatar(HOME, false); avatar.classList.add('idle'); }, 300); }
   meditator.addEventListener('click', function () { if (current !== 'mind') openMindfulness(); });
+  /* Erin's lines play on ONE audio element per session, created and first played inside the tap that began it: a fresh
+   * element started from a promise chain is silent on the iPhone, which is why her voice came and went. A guard moves
+   * the chain on if a clip stalls, so "breathe in" is always followed by "breathe out". */
   function playClip(name) {
     return new Promise(function (resolve) {
       if (!session || session.stopped) return resolve();
-      caption(CAPTION[name] || ''); var a = new Audio(ERIN + name + '.mp3'); session.audio = a;
-      a.onended = function () { resolve(); }; a.onerror = function () { resolve(); };
-      a.play().catch(function () { resolve(); });
+      caption(CAPTION[name] || '');
+      var a = session.audio || (session.audio = new Audio()), done = false, guard = 0;
+      var fin = function () { if (done) return; done = true; clearTimeout(guard); a.onended = a.onerror = null; resolve(); };
+      a.onended = fin; a.onerror = fin;
+      a.onloadedmetadata = function () { if (isFinite(a.duration) && a.duration > 0) { clearTimeout(guard); guard = setTimeout(fin, a.duration * 1000 + 1500); } };
+      guard = setTimeout(fin, 12000);
+      try { a.pause(); a.src = ERIN + name + '.mp3'; a.currentTime = 0; } catch (e) { }
+      var pr = a.play(); if (pr && pr.catch) pr.catch(function () { fin(); });
     });
   }
   function wait(ms) { return new Promise(function (resolve) { if (!session || session.stopped) return resolve(); session.timer = setTimeout(resolve, ms); }); }
@@ -1691,14 +1704,14 @@
   function runSession(kind, minutes) {
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (window.OvuPodcast) OvuPodcast.pause();
-    session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: null, timer: null };
+    session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: kind === 'erin' ? new Audio() : null, timer: null };
     hideSheet(); holo.classList.toggle('on', kind === 'erin'); hud.classList.add('on'); $('#hudTitle').textContent = kind === 'erin' ? 'With Erin' : 'Just breathe';
     var total = minutes * 60000, cycleMs = kind === 'erin' ? 11000 : 14000, hour = new Date().getHours();
     var today = S.today(), cramps = S.list('symptom', { from: today, to: today }).some(function (e) { return (e.data.symptoms || []).indexOf('cramps') > -1; }) || S.list('period', { from: today, to: today }).length > 0;
     var guides = ['guide_soften', 'guide_feet', 'guide_wander', 'guide_nothing_to_fix', 'guide_quiet_work'].concat(cramps ? ['guide_cramps'] : []);
     var p = Promise.resolve();
     if (kind === 'erin') {
-      p = p.then(function () { setOrb('hold', 'Hello'); return playClip(hour < 12 ? 'greeting_morning' : 'greeting_evening'); })
+      setOrb('hold', 'Hello'); p = playClip(hour < 12 ? 'greeting_morning' : 'greeting_evening') /* started inside the tap, which unlocks the element for every later line */
         .then(function () { setOrb('hold', 'Settling in'); return playClip('meditation_begin'); });
     }
     p = p.then(function () {
@@ -1970,7 +1983,21 @@
 
   /* ---------- everyday mindfulness: guides for what you are really doing ---------- */
   var MF = window.OvuMindful, practice = null, GUIDE = 'assets/audio/guide-interim/';
-  function playUrl(url) { return new Promise(function (resolve) { if (!practice || practice.stopped) return resolve(); var a = new Audio(url); practice.audio = a; a.onended = function () { resolve(); }; a.onerror = function () { resolve(); }; a.play().catch(function () { resolve(); }); }); }
+  /* one audio element per practice, first played inside the tap that began it (see playClip): later lines reuse it, and a
+   * guard moves the script on if a clip stalls or is missing, so the captions and bells never wait on silence */
+  function playUrl(url) {
+    return new Promise(function (resolve) {
+      if (!practice || practice.stopped) return resolve();
+      var a = practice.audio || (practice.audio = new Audio()), done = false, guard = 0;
+      var fin = function () { if (done) return; done = true; clearTimeout(guard); a.onended = a.onerror = null; resolve(); };
+      a.onended = fin; a.onerror = fin;
+      a.onloadedmetadata = function () { if (isFinite(a.duration) && a.duration > 0) { clearTimeout(guard); guard = setTimeout(fin, Math.max(0, a.duration - a.currentTime) * 1000 + 1500); } };
+      guard = setTimeout(fin, 20000);
+      if (practice.pre === url) { practice.pre = null; if (a.error || a.ended) fin(); else if (isFinite(a.duration) && a.duration > 0) { clearTimeout(guard); guard = setTimeout(fin, Math.max(0, a.duration - a.currentTime) * 1000 + 1500); } return; } /* already playing from the tap */
+      try { a.pause(); a.src = url; a.currentTime = 0; } catch (e) { }
+      var pr = a.play(); if (pr && pr.catch) pr.catch(function () { fin(); });
+    });
+  }
   function pwait(ms) { return new Promise(function (resolve) { if (!practice || practice.stopped) return resolve(); practice.timer = setTimeout(resolve, ms); }); }
   /* Pose and outfit images include their props (a watering can, a pillow, a wardrobe), so each one is
    * scaled by how wide the girl's head is in it: [image width relative to her head, her centre as a
@@ -2007,7 +2034,8 @@
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     var a = MF.byId(id); if (!a || practice) return; var v = a.variations[vi] || a.variations[0]; vi = a.variations.indexOf(v);
     if (window.OvuPodcast) OvuPodcast.pause();
-    practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: null, timer: null, total: MF.totalSecs(v) };
+    practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: new Audio(), timer: null, total: MF.totalSecs(v), pre: null };
+    try { var first = GUIDE + id + '-' + vi + '-0.mp3'; practice.audio.src = first; practice.pre = first; var pr0 = practice.audio.play(); if (pr0 && pr0.catch) pr0.catch(function () { }); } catch (e) { } /* the first line starts inside the tap, which unlocks the element for the rest */
     hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting');
     var chain = Promise.resolve();
     v.steps.forEach(function (s, si) {

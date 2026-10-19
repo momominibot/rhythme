@@ -45,6 +45,11 @@ list. Every change walks it before a push; `tools/checkpoints.sh` asks jev the s
 17. Plaza with servers, capacity, real-people counts, topic channels and round-the-clock hosts with a light Singapore
     voice, one sentence in ten. (Design note written, nothing built.)
 18. Points once a person has logged, so they can spend them in the game.
+19. At most two pets at home at a time.
+20. The points system distributes hearts wisely: encourage daily logging, keep people for at least a month, support a
+    weekly content drop; discussed with Codex before changing the rules (docs/design/2026-10-19-points-economy.md).
+21. Erin's lines in every practice play on one audio element unlocked by the tap, with a guard so a stalled clip never
+    holds the script.
 
 ## Walking the list
 
