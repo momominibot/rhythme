@@ -241,6 +241,11 @@ async def main():
             except Exception: pass
             await page.click("#plotWater"); await page.wait_for_timeout(700)
             hud = await page.evaluate("()=>{var h=document.querySelector('#hud'), st=document.querySelector('#hudStop'), b=document.querySelector('#scene').getBoundingClientRect(), r=st.getBoundingClientRect(); return {on: h.classList.contains('on'), z: OvuCamera.state().z, screenSpace: !document.querySelector('#sceneInner').contains(h), inside: r.width>0 && r.left>=b.left && r.right<=b.right && r.top>=b.top && r.bottom<=b.bottom}}")
+            await page.click("#hudMute"); await page.wait_for_timeout(200)
+            mu = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), pressed: document.querySelector('#hudMute').getAttribute('aria-pressed'), flag: OvuVoice.muted(), saved: localStorage.getItem('rhythme_voice_muted'), probe: (function(){ var a=new Audio('assets/audio/guide-interim/garden-water-0.mp3'); a.play().catch(function(){}); var m=a.muted; a.pause(); return m; })()})")
+            await page.click("#hudMute"); await page.wait_for_timeout(150)
+            unmu = await page.evaluate("()=>({pressed: document.querySelector('#hudMute').getAttribute('aria-pressed'), flag: OvuVoice.muted()})")
+            check("the mute button silences Erin's voice without stopping the watering minute, is remembered, and turns her back on", mu["on"] and mu["pressed"] == "true" and mu["flag"] and mu["saved"] == "1" and mu["probe"] and unmu["pressed"] == "false" and not unmu["flag"], {"mu": mu, "unmu": unmu})
             await page.click("#hudStop"); await page.wait_for_timeout(500)
             stopped = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), toast: document.querySelector('#toast').textContent})")
             check("watering at zoom keeps the HUD and its Stop button on screen (lifted out of the plate), and Stop ends the minute", hud["on"] and hud["z"] > 1.4 and hud["screenSpace"] and hud["inside"] and not stopped["on"] and "Stopped" in stopped["toast"], {"hud": hud, "stopped": stopped})
