@@ -132,6 +132,10 @@
   if (!R || !A || !S || !doc || !doc.createElement) return;
   /* `held`: after any automatic request fails, nothing is asked again on its own (no timer, check-in, render or return
    * to the app) until she does something herself: opens Plaza friends, taps the group pill or walks into the plaza */
+  /* `missing`: the server answered that the Plaza friends functions do not exist (PostgREST PGRST202, its migration not
+   * applied yet). Then the row stays empty, no timer runs and nothing is asked again until the app is opened afresh,
+   * which checks once more, so Plaza friends appears by itself once the server has it. */
+  var missing = false;
   var me = null, inbox = null, people = [], peopleKey = '[]', peopleVisit = null, held = false, lastUid = null, inboxT = 0, peopleT = 0, peopleGen = 0, inboxGen = 0, sheetGen = 0, sheetOwner = null, wordsHash = '';
 
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s); }
@@ -139,7 +143,7 @@
   function inPlaza() { var L = R.layout && R.layout(); return !!(L && L.id === 'plaza'); }
   function img(look, cls) { return '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="' + R.ART + 'avatar-' + lookOf(look) + '.webp" alt="">'; }
   function cue(key) { return '<p class="frcue"><span class="ms" aria-hidden="true">spa</span>' + esc(CUES[key]) + '</p>'; }
-  function noticeV() { return (root.OvuConsent && root.OvuConsent.NOTICE_V) || 2; } /* main's consent notice is version 2 (room.js CONSENT_V) */
+  function noticeV() { return (root.OvuConsent && root.OvuConsent.NOTICE_V) || 3; } /* the consent notice version she agreed to (3 since 19 Oct, ovu-consent.js) */
   function device() { try { return root.OvuConsent && root.OvuConsent.device ? root.OvuConsent.device() : ''; } catch (e) { return ''; } }
   function legacyMinor() {
     if (root.OvuConsent && root.OvuConsent.legacyMinor) return root.OvuConsent.legacyMinor();
@@ -164,7 +168,7 @@
         method: 'POST', signal: ctl ? ctl.signal : undefined,
         headers: { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(args || {})
-      }).then(function (r) { return r.text().then(function (x) { var j = null; try { j = x ? JSON.parse(x) : null; } catch (e) { } if (!r.ok) throw new Error((j && j.message) || ('error ' + r.status)); return j; }); });
+      }).then(function (r) { return r.text().then(function (x) { var j = null; try { j = x ? JSON.parse(x) : null; } catch (e) { } if (!r.ok) { var er = new Error((j && j.message) || ('error ' + r.status)); if (r.status === 404 && j && j.code === 'PGRST202') er.missing = true; throw er; } return j; }); });
     });
     return new Promise(function (resolve, reject) {
       var timer = root.setTimeout(function () { if (ctl) ctl.abort(); reject(new Error('timeout')); }, TIMEOUT);
@@ -174,8 +178,8 @@
   function offline(e) { if (e && e.cancelled) return; R.toast('Could not reach Plaza friends. Check the connection and try again.', 'cloud_off'); }
 
   /* ---------- state from the server ---------- */
-  function hold(e) { if (e && e.cancelled) return; held = true; fillPlazaRow(); }
-  function resume() { held = false; }
+  function hold(e) { if (e && e.cancelled) return; if (e && e.missing) { missing = true; stopTimers(); } held = true; fillPlazaRow(); }
+  function resume() { if (!missing) held = false; }
   function loadMe() {
     var u = uid(); if (!u) { me = null; return Promise.resolve(null); }
     return rpc('social_me', {}).then(function (j) { if (uid() === u) me = j; return me; }, function (e) { hold(e); throw e; });
@@ -235,7 +239,7 @@
 
   function startTimers() {
     stopTimers();
-    if (!uid() || doc.hidden) return;
+    if (!uid() || doc.hidden || missing) return;
     inboxT = root.setInterval(inboxTick, INBOX_MS);
     peopleT = root.setInterval(peopleTick, PEOPLE_MS);
   }
@@ -245,20 +249,20 @@
   /* any change of account, in this tab or another: cancel, forget, close, then start again for whoever is signed in */
   function authChanged() {
     var u = uid(); if (u === lastUid) return; lastUid = u;
-    me = null; inbox = null; peopleGen++; inboxGen++; sheetGen++; held = false; setPeople([]); badge(); stopTimers();
+    me = null; inbox = null; peopleGen++; inboxGen++; sheetGen++; held = missing; setPeople([]); badge(); stopTimers();
     if (doc.getElementById('frSheet') && R.sheetOpen && R.sheetOpen()) R.closeSheet(); /* nothing from the last account stays on screen or can be sent */
     if (u) { startTimers(); refreshAll(); }
   }
   function stopTimers() { if (inboxT) root.clearInterval(inboxT); if (peopleT) root.clearInterval(peopleT); inboxT = peopleT = 0; }
   function refreshAll() {
-    if (!uid()) return Promise.resolve();
+    if (!uid() || missing) return Promise.resolve();
     return loadMe().then(function () { return loadInbox(); }).then(loadPeople, noop);
   }
 
   /* ---------- the plaza sheet's row: people here and the way into Plaza friends ---------- */
   function fillPlazaRow() {
     var row = doc.getElementById('plazaFriendsRow'); if (!row) return;
-    if (!uid()) { row.innerHTML = ''; return; }
+    if (!uid() || missing) { row.innerHTML = ''; return; }
     var n = badgeCount(inbox), open = '<button type="button" class="btn soft" data-frp="open"><span class="ms">diversity_1</span>Plaza friends' + (n ? ' · ' + n + ' new' : '') + '</button>';
     if (held) { row.innerHTML = '<p class="help">Plaza friends could not be reached. Open it to try again.</p><div class="row">' + open + '</div>'; return; }
     if (me && me.paused_until) { row.innerHTML = '<p class="help">Plaza friends is paused on this account for now.</p><div class="row">' + open + '</div>'; return; }
@@ -283,6 +287,7 @@
       el.querySelector('#frSignIn').addEventListener('click', function () { R.hideSheet(); var a = doc.querySelector('nav a[data-tab="you"]'); if (a) a.click(); });
       return;
     }
+    if (missing) { frSheet('friends', 'Plaza friends', 'Friends you meet in the plaza groups', 'diversity_1', '<p class="help">Plaza friends is not open yet. Your plaza group works as usual.</p>'); return; }
     frSheet('friends', 'Plaza friends', 'Friends you meet in the plaza groups', 'diversity_1', '<p class="help">Looking…</p>');
     var g = ++sheetGen;
     loadMe().then(function () { return loadInbox(true); }).then(function () { if (g === sheetGen && doc.getElementById('frSheet')) renderFriends(); }, function () {
@@ -525,7 +530,7 @@
   }
   R.on('boot', mount);
   F.open = open; F.openPerson = openPerson; F.refresh = refreshAll; F.loadPeople = loadPeople;
-  F.state = function () { return { signedIn: !!uid(), me: me, inbox: inbox, people: people.slice(), visit: peopleVisit, held: held, timers: !!inboxT }; };
+  F.state = function () { return { signedIn: !!uid(), me: me, inbox: inbox, people: people.slice(), visit: peopleVisit, held: held, missing: missing, timers: !!inboxT }; };
   F.poll = function () { inboxTick(); peopleTick(); }; /* what the two timers do, for the smoke suite, which cannot wait a minute */
   F.summaryNow = function () { return summary({ signedIn: !!uid(), me: me, inbox: inbox }); };
 })(typeof window !== 'undefined' ? window : this);

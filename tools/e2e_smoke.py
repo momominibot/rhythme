@@ -1086,7 +1086,7 @@ async def main():
             except Exception: pass
             cs = fcall("social_card_save")
             fs = await p6.evaluate("()=>({text: (document.querySelector('#frSheet')||{}).textContent||'', dot: document.querySelector('#plazaPill').classList.contains('frnew')})")
-            check("Make my card sends the name, the look, the two ticked boxes (18+ and Plaza friends), no expected card and the notice version, and the sheet shows her card, Priya's ask with its hello and the note from her", cs and cs[0]["p_name"] == "Fern" and cs[0]["p_look"] == "kebaya-red" and cs[0]["p_adult"] is True and cs[0]["p_opt_in"] is True and cs[0]["p_expect"] is None and cs[0]["p_hidden"] is False and cs[0]["p_notice"] == 2 and "Fern" in fs["text"] and "Hello, nice to see you here." in fs["text"] and "Hope today is gentle with you." in fs["text"] and "Welcome her in." in fs["text"], {"save": cs, "text": fs["text"][:200]})
+            check("Make my card sends the name, the look, the two ticked boxes (18+ and Plaza friends), no expected card and the notice version, and the sheet shows her card, Priya's ask with its hello and the note from her", cs and cs[0]["p_name"] == "Fern" and cs[0]["p_look"] == "kebaya-red" and cs[0]["p_adult"] is True and cs[0]["p_opt_in"] is True and cs[0]["p_expect"] is None and cs[0]["p_hidden"] is False and cs[0]["p_notice"] == 3 and "Fern" in fs["text"] and "Hello, nice to see you here." in fs["text"] and "Hope today is gentle with you." in fs["text"] and "Welcome her in." in fs["text"], {"save": cs, "text": fs["text"][:200]})
             check("opening the sheet marks the note read (the sender is never told), and the pill still shows a dot for the ask", fcall("social_read") and fcall("social_read")[0]["p_upto"] == 7 and fs["dot"], fcall("social_read"))
             await shot("friends-sheet")
             await p6.evaluate("()=>OvuRoom.closeSheet()")
@@ -1212,6 +1212,42 @@ async def main():
             check("every Plaza friends call carried her own sign-in token", fauth and all(a == "Bearer smoke-token" for a in fauth), fauth[:2])
             check("no page errors or console errors in the Plaza friends run", not f_errors, f_errors[:3])
             await ctx6.close()
+
+            # Plaza friends before its server exists (the live database answers 404 PGRST202 until the migration is
+            # applied): one question at start, then no row, no timers and no further calls; the plaza itself still works
+            mcalls, m_errors = [], []
+            async def missing_gate(route):
+                url = route.request.url
+                if url.startswith(BASE): return await route.continue_()
+                if "fonts.googleapis.com" in url or "fonts.gstatic.com" in url: return await route.fulfill(status=200, content_type="text/css", body="")
+                m = re.search(r"/rest/v1/rpc/([a-z_]+)", url); name = m.group(1) if m else ""; body = json.loads(route.request.post_data or "{}")
+                if name.startswith("social_"):
+                    mcalls.append(name)
+                    return await route.fulfill(status=404, content_type="application/json", body=json.dumps({"code": "PGRST202", "message": "Could not find the function public.%s without parameters in the schema cache" % name}))
+                if name == "plaza_list": out = {"servers": [{"id": "pcos", "name": "PCOS", "capacity": 24, "open": True, "people": 3}], "mine": None, "beat_seconds": 25}
+                elif name == "plaza_join": out = {"ok": True, "server": "pcos", "name": "PCOS", "capacity": 24, "people": 4, "visit": "v1", "beat_seconds": 25}
+                elif name == "plaza_beat": out = {"ok": True, "server": "pcos", "visit": body.get("p_visit"), "people": 4}
+                else: out = {"ok": True} if name else {}
+                return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+            ctx7 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx7.add_init_script(seed_signed_in)
+            p7 = await ctx7.new_page(); await p7.route("**/*", missing_gate)
+            p7.on("pageerror", lambda e: m_errors.append("pageerror: " + str(e)))
+            p7.on("console", lambda m: m_errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text and "404" not in m.text else None)  # the expected 404 logs itself
+            await p7.goto(BASE + "room.html", wait_until="networkidle"); await p7.wait_for_selector(".hotspot"); await p7.wait_for_timeout(800)
+            await p7.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+            m0 = await p7.evaluate("()=>OvuFriends.state()")
+            await p7.click('#minimap [data-scene=plaza]')
+            try: await p7.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza'", timeout=12000)
+            except Exception: pass
+            await p7.click('#plazaPill'); await p7.wait_for_selector('#plazaList [data-join=pcos]'); await p7.click('#plazaList [data-join=pcos]')
+            try: await p7.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='pcos'", timeout=8000)
+            except Exception: pass
+            await p7.evaluate("()=>{OvuFriends.poll(); OvuFriends.refresh();}"); await p7.wait_for_timeout(500)
+            m1 = await p7.evaluate("()=>({row: (document.querySelector('#plazaFriendsRow')||{innerHTML:'none'}).innerHTML, joined: !!OvuPlaza.state().joined, st: OvuFriends.state()})")
+            check("before its server exists, Plaza friends asks once, then shows no row, runs no timers and asks nothing more; joining a group still works", mcalls == ["social_me"] and m0["missing"] and not m0["timers"] and m1["row"] == "" and m1["joined"] and m1["st"]["missing"] and not m1["st"]["timers"], {"calls": mcalls, "m0": {k: m0[k] for k in ("missing", "timers", "held")}, "row": m1["row"][:80]})
+            check("no page errors in the Plaza friends before-the-server run", not m_errors, m_errors[:3])
+            await ctx7.close()
 
             # the staff dashboard signed in as an owner (fake session, fake staff calls): the Plazas card shows counts only
             ctx5 = await browser.new_context(viewport={"width": 390, "height": 844})
