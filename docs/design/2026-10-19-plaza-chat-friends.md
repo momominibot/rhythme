@@ -1,0 +1,98 @@
+# Friends and kind notes in the plaza (19 October 2026, design note; phase 1 built on `claude/plaza-friends`)
+
+Jamie: "We can have chat and able to add friends...."
+
+The plaza groups (PR #4, `2026-10-19-plaza-servers-and-hosts.md`) count people and show nobody. Friends and chat are
+the first time one person's choices reach another person's screen, inside groups that are about health (Trying to
+conceive, PCOS, Menopause, and Everyone). So this note settles who can see whom, what can be said, how harm is stopped,
+and what is kept, before anything is built. The game plan's rules apply throughout: 18+ only, no real names, no real
+location, friendship is platonic, hearts come only from logging.
+
+## 1. Decisions
+
+| Question | Decision | Why |
+|---|---|---|
+| Who can be seen | Only people who turned on **Plaza friends** and made a **plaza card** (a name she picks and one of the avatar looks). You see cards in your group only if your own card is on. | Mutual: nobody watches without being seen. Without a card the plaza stays as it is today, counts only. |
+| Where | Only people in **the same group at the same time** (both checked in within 75 s). | Being in PCOS is health information. Showing it only to people who are in PCOS at that moment adds little; showing it to anyone else would add a lot. |
+| What others see | Plaza name, look, and whether you are already friends or have asked. | Nothing else exists to show: no photo, no bio, no account name or email, no diary, no cycle, no group history, no online status. |
+| Friend requests | Tap a person in your group, then **Ask to be friends**, with an optional preset hello. Only while both of you are in the same group. | Requests need a shared moment, so handles cannot be harvested and sent requests later from anywhere. |
+| Answering | Accept or Not now. **Not now is silent**: the sender keeps seeing "asked" until it lapses after 14 days, and cannot ask again for 30 days. If you ask someone who already asked you, you are simply friends. | Saying no should cost nothing. |
+| Unfriend | Either side, at any time, silent. The notes between you are deleted. | |
+| Block | On every card and every note. Silent and two-way: neither sees the other in any group, requests and notes stop, friendship and pending requests end. Blocks stay until you remove them or delete your account, even if you turn Plaza friends off. | Her safety settings must outlive a pause. |
+| Talking, phase 1 | **Kind notes between friends, from a set list of phrases only.** No free text anywhere. Strangers can send only a friend request (with an optional preset hello). | A fixed list cannot carry harassment, contact details, medical advice or a crisis disclosure that nobody is there to answer. |
+| Talking, later | Phase 2: preset speech bubbles in the group (everyone there sees them). Phase 3: short free text between friends, only after the moderation in section 4 is live and reviewed. Group free text comes last, with the hosts. | Free text in health groups brings medical misinformation, self-harm disclosures, harassment and contact sharing; each needs a working answer first. |
+| Report | On every card and every note, with preset reasons and an option to block in the same step. Staff review it. | No free-text reasons in phase 1, so a report cannot carry someone's health story. |
+| Hearts, meters | **None.** No hearts, streaks, counts, read receipts or "seen" for anything social. | Hearts come only from logging (Jamie). Counts invite spam and comparison. |
+| Age | 18+ attested on the account (consent purpose `age_18`) is required by every social call. A phone with a legacy under-18 answer cannot make a card. | Rhythme is 18+ (game plan 4.3). |
+| Consent | A separate, account-level purpose **`social` ("Plaza friends")**, off by default, recorded in `consent_events` together with the card in one step. Turning it off deletes the card, friendships, requests and notes at once. | Others seeing her is a new purpose; it cannot ride on cloud backup or the group sheet. |
+
+## 2. What each person sees
+
+- **Without a card:** the plaza as today (counts, the sample neighbours, the noticeboard). The group sheet offers "Make a plaza card to see people here".
+- **With a card, in a group:** up to eight real people from her group stand on the plaza (friends first), each with a nametag; anyone beyond eight is listed in the group sheet under "People here". The sample neighbours step aside while real people are visible, so a sample is never mistaken for a person. Tapping a person opens her card: name, look, and the buttons that fit (Ask to be friends, Asked, Friends, Send a kind note), plus Block and Report.
+- **Friends sheet** (You, "Plaza friends", and a button in the group sheet): requests to answer, friends (send a note, unfriend, block, report), notes received in the last 30 days (newest first, each with Report), asks you sent, blocked people (Unblock), your card (change name or look, hide from groups, turn Plaza friends off).
+- **Coming back to the room:** if a request or a note arrived, one quiet toast ("Someone asked to be friends" or "A kind note from Mei"), and a small dot on the group pill. No push notifications in phase 1.
+
+## 3. Mindfulness cues
+
+Every social action carries one short line before the button, never a delay the person has to wait out:
+
+| Action | Cue |
+|---|---|
+| Making a card | "Pick a name that feels like you, not your real one. Nothing about your diary travels with it." |
+| Asking to be friends | "A friend here is someone you would share a bench with. Ask kindly, and let her answer in her own time." |
+| Accepting | "Welcome her in. Friendship here goes at its own pace." |
+| Not now | "It is fine to say no. She will not be told." |
+| Sending a note | "Before you send, one slow breath. Picture her reading it." |
+| Receiving a note | "Let it land. You do not have to reply." |
+| Block | "Your peace comes first. She will not be told." |
+| Report | "Thank you for looking after the plaza." |
+| Unfriend | "Letting go is allowed. She will not be told." |
+
+## 4. Moderation
+
+- **No free text in phase 1** except the plaza name. The name is checked on the server (the phone gives the same answer instantly): 2 to 20 letters, digits, spaces, apostrophes, hyphens or dots; no links, emails, handles or digit runs that look like contact details; not Rhythme, staff, admin, moderator, Erin, Luna, host or support; a short word list for slurs and sexual terms. The list lives in the database so staff can extend it without a release.
+- **Rate limits on the server:** 10 friend requests a day and 20 waiting at once; 200 friends; 60 notes a day, 20 a day to one friend, one every 5 seconds; 20 reports a day; 6 card changes a day.
+- **Staff review** through `admin_social_reports` (owners and analysts read) and `admin_social_decide` (owners decide), both audited through `staff.require` like every staff call. Staff see the report number, reason, time, the reported card (name, look, a short form of its handle), the phrase if it was about a note, how many open reports that card has, and the reporter's card. Staff never see account ids, emails, groups, diaries or other notes. Decisions: dismiss, pause Plaza friends for 1 to 365 days (the card disappears from groups and nothing social works), or remove the card (she can make a new one). Each decision closes every open report on that card.
+- **Later, before free text:** the word list on every message, links and phone numbers refused, 200 characters, one message every 3 seconds and 100 an hour, a first-contact safety line, a resource card when a message mentions self-harm ("If you are in danger now, call your local emergency number"), staff alerting for repeated reports.
+
+## 5. Data, retention and deletion
+
+| Data | Who sees it | Kept |
+|---|---|---|
+| Plaza card (name, look, hidden or not, pause date) | Her; people in her group while both are there; her friends | Until she turns Plaza friends off, removes her account, or staff remove the card |
+| Handle (random id on the card) | The phones above; staff in short form | With the card; a new card gets a new handle |
+| Friendship | The two people | Until either ends it, blocks, or turns Plaza friends off |
+| Friend request | The two people | 14 days if unanswered; a "not now" marker 30 days (blocks a repeat ask) |
+| Kind note (phrase id, time, read or not) | The two people | 30 days; deleted when the friendship ends |
+| Block (and the name it had then) | The person who blocked | Until she unblocks or deletes her account |
+| Report (snapshot of the card, phrase, reason) | Staff | Open until decided; one year after the decision; the reporter is removed if her account is deleted |
+| Rate counters (kind, time) | Nobody | Two days |
+| Consent events `social` and `age_18` | Her; the server | As every consent record (account life plus the limitation period, per the game plan 4.4) |
+
+Clean-up of old rows runs inside the social calls and the staff calls, the same way the plaza groups clean up. With no use at all, old rows wait for the next call; a scheduled clean-up can follow when the project adopts one. Account deletion removes everything above through the account's foreign keys (reports keep the snapshot with no account attached).
+
+What never leaves her phone because of this feature: the diary, cycle, symptoms, food, sleep, Luna's readings, the account's own display name and email, which groups she has been in.
+
+## 6. Consent and the notice
+
+New purpose `social`, title **Plaza friends**, off by default, recorded at the moment she makes her card (method `jit`) and withdrawn when she turns it off. Proposed words (Jamie approves before release):
+
+> **Plaza friends.** While you are in a plaza group, people in the same group who also turned this on can see your plaza name and look, and that you are in that group with them. They can ask to be your friend, and friends can send each other kind notes from a set list. Your diary, your cycle, your account name and your email are never shown. Notes are kept for 30 days. You can turn this off at any time; your card, friends, requests and notes are then deleted. People you blocked stay blocked.
+
+The privacy notes gain the same paragraph under a "Plaza" heading, and the group sheet's line "Other people and Rhythme staff see only the number, never who" becomes "Unless you turn on Plaza friends, other people see only the number, never who. Rhythme staff see only the number."
+
+The `consent_events.purpose` check gains `social`. The consent rebuild (PR #3) lists purposes in `ovu-consent.js`; when both are merged, `social` joins its list (shown, off, with the words above) so the You sheet shows it with the others. Until then the friends module records it on the server itself and mirrors the event into the phone's consent log when that log exists.
+
+## 7. Phase 1 as built (19 October 2026)
+
+- **Server** (`supabase/migrations/20261019130000_plaza_friends.sql`, **written and dry-run, not applied**): tables `social_profiles`, `social_requests`, `social_friends`, `social_blocks`, `social_notes`, `social_phrases`, `social_words`, `social_rate`, and `staff.social_reports`, all closed to the app's roles (no table grants; RLS on). Calls for a signed-in person: `social_me`, `social_card_save`, `social_off`, `social_people`, `social_ask`, `social_answer`, `social_unfriend`, `social_block`, `social_unblock`, `social_note`, `social_read`, `social_inbox`, `social_report`. Staff: `admin_social_reports`, `admin_social_decide`, owned by `rhythme_staff_fn`, audited.
+- **Phone** (`ovu-friends.js`): the card sheet, people in the group on the plaza (through the existing `OvuCommunity.neighbours()` seam), a person's card, the friends sheet, preset notes with the cue line, report and block, the inbox check on arrival and every minute while the app is open and the card is on.
+- **Staff** (`admin.js`): a Reports card on the Queue tab.
+
+## 8. Phases
+
+1. Cards, people in your group, friend requests, friends, preset kind notes, block, report, staff review (this branch).
+2. Preset speech bubbles in the group, a friend's "in the plaza now" (her choice, off by default).
+3. Free text between friends behind the section 4 safeguards; reviewed again before it ships.
+4. Group free text with the hosts, after the host design in the plaza note.
