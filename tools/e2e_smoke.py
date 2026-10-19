@@ -994,6 +994,225 @@ async def main():
             check("no page errors or console errors in the signed-in plaza run", not p_errors, p_errors[:3])
             await ctx4.close()
 
+            # Plaza friends, signed in, against a fake friends server (nothing leaves the machine): make a card, see the
+            # people in her group, ask one, accept another, send a kind note, report a note with a block, turn it off
+            FR = {"me": {"card": None, "on": False, "adult": False, "paused_until": None, "phrases": []},
+                  "people": [{"handle": "h-nadia", "name": "Nadia", "look": "kebaya-green", "friend": False, "asked": False, "asks": False},
+                             {"handle": "h-priya", "name": "Priya", "look": "cozy", "friend": False, "asked": False, "asks": True}],
+                  "friends": [], "asks": [{"handle": "h-priya", "name": "Priya", "look": "cozy", "hello": "hello", "at": NOW}], "asked": [],
+                  "notes": [{"id": 7, "handle": "h-priya", "name": "Priya", "look": "cozy", "phrase": "gentle", "at": NOW, "read": False}], "blocked": []}
+            fcalls, fauth, f_errors = [], [], []
+            def fcall(n): return [b for (m, b) in fcalls if m == n]
+            async def friends_gate(route):
+                url = route.request.url
+                if url.startswith(BASE): return await route.continue_()
+                if "fonts.googleapis.com" in url or "fonts.gstatic.com" in url: return await route.fulfill(status=200, content_type="text/css", body="")
+                m = re.search(r"/rest/v1/rpc/([a-z_]+)", url)
+                name = m.group(1) if m else ""; body = json.loads(route.request.post_data or "{}")
+                if name.startswith("social_"): fcalls.append((name, body)); fauth.append(route.request.headers.get("authorization", ""))
+                me = FR["me"]
+                if route.request.headers.get("authorization", "") == "Bearer smoke-token-b":  # another account: no card of her own
+                    out = {"card": None, "on": False, "adult": True, "paused_until": None} if name == "social_me" else {"ok": False, "why": "off", "card": None}
+                    return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+                def inbox(): return {"ok": True, "card": me["card"], "friends": FR["friends"], "asks": FR["asks"], "asked": FR["asked"], "notes": FR["notes"], "blocked": FR["blocked"]} if me["card"] else {"ok": False, "why": "off", "card": None}
+                if name == "plaza_list": out = {"servers": [{"id": "pcos", "name": "PCOS", "capacity": 24, "open": True, "people": 3}, {"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 1}], "mine": None, "beat_seconds": 25}
+                elif name == "plaza_join": out = {"ok": True, "server": body["p_server"], "name": "PCOS" if body["p_server"] == "pcos" else "Everyone", "capacity": 24, "people": 3, "visit": "v1" if body["p_server"] == "pcos" else "v2", "beat_seconds": 25}
+                elif name == "plaza_beat": out = {"ok": True, "server": body["p_server"], "visit": body.get("p_visit"), "people": 3}
+                elif name == "plaza_leave": out = {"ok": True}
+                elif name == "social_me": out = me
+                elif name == "social_people" and FR.get("people_fail"): return await route.fulfill(status=503, content_type="application/json", body='{"message":"unavailable"}')
+                elif name == "social_card_save":
+                    if FR.get("save_delay"): await asyncio.sleep(FR["save_delay"])
+                    me["card"] = {"handle": "h-me", "name": body["p_name"], "look": body["p_look"], "hidden": body["p_hidden"], "paused_until": None}; me["on"] = True; me["adult"] = True
+                    out = {"ok": True, "card": me["card"], "recorded": ["age_18", "social"]}
+                elif name == "social_people":
+                    if FR.get("people_delay"): await asyncio.sleep(FR["people_delay"])
+                    out = {"ok": True, "people": FR["people"] if body.get("p_visit") == "v1" else []} if me["card"] and not me["card"]["hidden"] else {"ok": False, "why": "off"}
+                elif name == "social_inbox": out = inbox()
+                elif name == "social_ask":
+                    for x in FR["people"]:
+                        if x["handle"] == body["p_handle"]: x["asked"] = True; FR["asked"].append({"handle": x["handle"], "name": x["name"], "look": x["look"], "at": NOW})
+                    out = {"ok": True, "status": "asked"}
+                elif name == "social_answer":
+                    FR["asks"] = [a for a in FR["asks"] if a["handle"] != body["p_handle"]]
+                    if body["p_accept"]:
+                        FR["friends"].append({"handle": "h-priya", "name": "Priya", "look": "cozy", "since": NOW})
+                        for x in FR["people"]:
+                            if x["handle"] == body["p_handle"]: x["friend"] = True; x["asks"] = False
+                    out = {"ok": True, "status": "friends" if body["p_accept"] else "declined"}
+                elif name == "social_note": out = {"ok": True, "id": 99}
+                elif name == "social_read":
+                    for n in FR["notes"]:
+                        if n["id"] <= body["p_upto"]: n["read"] = True
+                    out = {"ok": True}
+                elif name == "social_report":
+                    if body.get("p_block"):
+                        FR["people"] = [x for x in FR["people"] if x["handle"] != body["p_handle"]]; FR["friends"] = [x for x in FR["friends"] if x["handle"] != body["p_handle"]]
+                        FR["notes"] = [n for n in FR["notes"] if n["handle"] != body["p_handle"]]; FR["blocked"].append({"id": "b1", "name": "Priya", "look": "cozy", "at": NOW})
+                    out = {"ok": True}
+                elif name == "social_off": me["card"] = None; me["on"] = False; out = {"ok": True}
+                else: out = {}
+                return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+            ctx6 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx6.add_init_script(seed_signed_in)
+            p6 = await ctx6.new_page(); await p6.route("**/*", friends_gate)
+            p6.on("pageerror", lambda e: f_errors.append("pageerror: " + str(e)))
+            p6.on("console", lambda m: f_errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text and not (FR.get("people_fail") and "503" in m.text) else None)  # the deliberate failure below logs its 503
+            shots = os.environ.get("SMOKE_SHOTS")
+            async def shot(name):
+                if shots: await p6.screenshot(path=os.path.join(shots, name + ".png"))
+            await p6.goto(BASE + "room.html", wait_until="networkidle"); await p6.wait_for_selector(".hotspot"); await p6.wait_for_timeout(600)
+            await p6.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return !!OvuStore.state().sleeping}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+            check("signed in, Plaza friends asks the server who she is once, with her own token, and nothing more without a card", fcall("social_me") and not fcall("social_inbox") and not fcall("social_people") and all(a == "Bearer smoke-token" for a in fauth), [c[0] for c in fcalls])
+            await p6.click('#minimap [data-scene=plaza]')
+            try: await p6.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && /online/.test((document.querySelector('#plazaPill')||{}).textContent||'')", timeout=12000)
+            except Exception: pass
+            await p6.click('#plazaPill'); await p6.wait_for_selector('#plazaList [data-join=pcos]'); await p6.click('#plazaList [data-join=pcos]')
+            try: await p6.wait_for_function("()=>OvuPlaza.state().joined && /Make a plaza card/.test((document.querySelector('#plazaFriendsRow')||{}).textContent||'')", timeout=8000)
+            except Exception: pass
+            pr = await p6.evaluate("()=>({row: (document.querySelector('#plazaFriendsRow')||{}).textContent||'', help: (document.querySelector('#sheetBody, .sheet')||document.body).textContent.indexOf('Unless you turn on Plaza friends') > -1, samples: document.querySelectorAll('.nbperson:not(.nbreal)').length, real: document.querySelectorAll('.nbreal').length})")
+            check("in a group without a card: the plaza sheet offers a plaza card, says who sees what, and only the samples stand about", "Make a plaza card" in pr["row"] and pr["help"] and pr["samples"] == 4 and pr["real"] == 0 and not fcall("social_people"), pr)
+            await p6.click('#plazaFriendsRow [data-frp=open]'); await p6.wait_for_selector('#frName')
+            await p6.fill('#frName', 'Staff'); await p6.wait_for_timeout(100)
+            bad = await p6.evaluate("()=>({msg: document.querySelector('#frNameMsg').textContent, dis: document.querySelector('#frSave').disabled, cue: /Pick a name that feels like you/.test(document.querySelector('#frSheet').textContent), words: /Your diary, your cycle, your account name and your email are never shown/.test(document.querySelector('#frSheet').textContent)})")
+            await p6.fill('#frName', 'Fern'); await p6.wait_for_timeout(100)
+            gate18 = await p6.evaluate("()=>document.querySelector('#frSave').disabled")
+            await p6.check('#frAdult'); await p6.check('#frOn'); await p6.click('.frlook[data-look=kebaya-red]')
+            ready = await p6.evaluate("()=>!document.querySelector('#frSave').disabled")
+            check("the card form: the consent words and the cue are shown, a reserved name is refused at once, and Make my card waits for 18+ and Plaza friends to be ticked", bad["msg"].startswith("That name belongs to Rhythme") and bad["dis"] and bad["cue"] and bad["words"] and gate18 and ready, bad)
+            await shot("friends-card-form")
+            await p6.click('#frSave')
+            try: await p6.wait_for_function("()=>/Asked to be friends/.test((document.querySelector('#frSheet')||{}).textContent||'')", timeout=8000)
+            except Exception: pass
+            cs = fcall("social_card_save")
+            fs = await p6.evaluate("()=>({text: (document.querySelector('#frSheet')||{}).textContent||'', dot: document.querySelector('#plazaPill').classList.contains('frnew')})")
+            check("Make my card sends the name, the look, the two ticked boxes (18+ and Plaza friends), no expected card and the notice version, and the sheet shows her card, Priya's ask with its hello and the note from her", cs and cs[0]["p_name"] == "Fern" and cs[0]["p_look"] == "kebaya-red" and cs[0]["p_adult"] is True and cs[0]["p_opt_in"] is True and cs[0]["p_expect"] is None and cs[0]["p_hidden"] is False and cs[0]["p_notice"] == 2 and "Fern" in fs["text"] and "Hello, nice to see you here." in fs["text"] and "Hope today is gentle with you." in fs["text"] and "Welcome her in." in fs["text"], {"save": cs, "text": fs["text"][:200]})
+            check("opening the sheet marks the note read (the sender is never told), and the pill still shows a dot for the ask", fcall("social_read") and fcall("social_read")[0]["p_upto"] == 7 and fs["dot"], fcall("social_read"))
+            await shot("friends-sheet")
+            await p6.evaluate("()=>OvuRoom.closeSheet()")
+            try: await p6.wait_for_function("()=>document.querySelectorAll('.nbreal').length===2", timeout=8000)
+            except Exception: pass
+            on = await p6.evaluate("()=>({real: [...document.querySelectorAll('.nbreal')].map(e=>e.textContent), samples: document.querySelectorAll('.nbperson:not(.nbreal)').length, label: (document.querySelector('.nbreal')||{getAttribute:()=>''}).getAttribute('aria-label')})")
+            pp = fcall("social_people")
+            check("with a card, the two people in PCOS stand on the plaza by name and the samples step aside; the call names her group and visit", on["real"] == ["Nadia", "Priya"] and on["samples"] == 0 and "in your group" in on["label"] and pp and pp[-1] == {"p_server": "pcos", "p_visit": "v1"}, {"on": on, "people": pp[-1:]})
+            await shot("plaza-people")
+            # a failed fetch clears the plate (never yesterday's group) and holds every automatic request until she acts
+            FR["people_fail"] = True
+            await p6.evaluate("()=>OvuFriends.loadPeople()"); await p6.wait_for_timeout(400)
+            fl = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, samples: document.querySelectorAll('.nbperson:not(.nbreal)').length, held: OvuFriends.state().held})")
+            FR["people_fail"] = False
+            n_auto = len([c for c in fcalls if c[0] in ("social_people", "social_inbox", "social_me")])
+            await p6.evaluate("()=>{OvuPlaza.tick(); OvuFriends.poll(); document.dispatchEvent(new Event('visibilitychange'));}"); await p6.wait_for_timeout(900)
+            quiet = len([c for c in fcalls if c[0] in ("social_people", "social_inbox", "social_me")]) - n_auto
+            await p6.click('#plazaPill')
+            try: await p6.wait_for_function("()=>document.querySelectorAll('.nbreal').length===2", timeout=6000)
+            except Exception: pass
+            back2 = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, held: OvuFriends.state().held})")
+            await p6.evaluate("()=>OvuRoom.closeSheet()"); await p6.wait_for_timeout(300)
+            check("a failed people check clears the plate at once; check-ins, timers and returning to the app ask nothing more; tapping the group pill tries again", fl["real"] == 0 and fl["samples"] == 4 and fl["held"] is True and quiet == 0 and back2["real"] == 2 and back2["held"] is False, {"fail": fl, "automatic calls while held": quiet, "after tap": back2})
+            await p6.evaluate("()=>document.querySelector('.nbreal[data-nb=r0]').click()")
+            await p6.wait_for_selector('#frSheet [data-fr=ask]')
+            pc6 = await p6.evaluate("()=>document.querySelector('#frSheet').textContent")
+            await p6.click('#frSheet .frhello[data-hello=wave]'); await p6.click('#frSheet [data-fr=ask]')
+            try: await p6.wait_for_function("()=>/She can answer in her own time/.test((document.querySelector('#frSheet')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            ak = fcall("social_ask")
+            check("tapping Nadia opens her card with the asking cue, Block and Report; Ask sends her handle, the group, the visit and the chosen hello, then shows Asked", "share a bench" in pc6 and "Block" in pc6 and "Report" in pc6 and ak and ak[0] == {"p_handle": "h-nadia", "p_server": "pcos", "p_visit": "v1", "p_hello": "wave"}, {"ask": ak, "text": pc6[:120]})
+            await shot("person-card")
+            await p6.evaluate("()=>{OvuRoom.closeSheet(); document.querySelector('nav a[data-tab=you]').click();}")
+            await p6.wait_for_selector('[data-yact=friends]')
+            yr = await p6.evaluate("()=>document.querySelector('[data-yact=friends]').textContent")
+            await p6.click('[data-yact=friends]'); await p6.wait_for_selector('#frSheet [data-fr=accept]')
+            await p6.click('#frSheet [data-fr=accept]')
+            try: await p6.wait_for_function("()=>!!document.querySelector('#frSheet [data-fr=note][data-h=h-priya]')", timeout=6000)
+            except Exception: pass
+            an = fcall("social_answer")
+            check("You has a Plaza friends row; Accept on Priya's ask makes her a friend with a Send a kind note button", "Plaza friends" in yr and an and an[0] == {"p_handle": "h-priya", "p_accept": True} and await p6.evaluate("()=>!!document.querySelector('#frSheet [data-fr=note][data-h=h-priya]')"), {"you": yr, "answer": an})
+            await p6.click('#frSheet [data-fr=note][data-h=h-priya]'); await p6.wait_for_selector('#frSend')
+            nb = await p6.evaluate("()=>({dis: document.querySelector('#frSend').disabled, cue: /Before you send, one slow breath/.test(document.querySelector('#frSheet').textContent), n: document.querySelectorAll('.frphrase').length})")
+            await p6.click('.frphrase[data-phrase=tea]'); await p6.click('#frSend')
+            try: await p6.wait_for_function("()=>!!document.querySelector('#frSheet [data-fr=off]')", timeout=6000)
+            except Exception: pass
+            nt = fcall("social_note")
+            check("a kind note: the breath cue, twelve set phrases and no text box; Send waits for a pick and sends only the phrase id", nb["cue"] and nb["dis"] and nb["n"] == 12 and nt and nt[0] == {"p_handle": "h-priya", "p_phrase": "tea"} and not await p6.evaluate("()=>!!document.querySelector('#frSheet textarea')"), {"before": nb, "note": nt})
+            await shot("kind-note")
+            await p6.click('#frSheet .frrow [data-fr=report][data-note="7"]'); await p6.wait_for_selector('#frSendReport')
+            await p6.click('.frreason[data-reason=unkind]'); await p6.check('#frAlsoBlock'); await p6.click('#frSendReport')
+            try: await p6.wait_for_function("()=>!!document.querySelector('#frSheet [data-fr=off]')", timeout=6000)
+            except Exception: pass
+            rp = fcall("social_report")
+            bl = await p6.evaluate("()=>({text: document.querySelector('#frSheet').textContent, real: [...document.querySelectorAll('.nbreal')].map(e=>e.textContent)})")
+            check("reporting a note sends her handle, the reason, the note and the block; afterwards she is under Blocked and off the plate", rp and rp[0] == {"p_handle": "h-priya", "p_reason": "unkind", "p_note": 7, "p_block": True} and "Blocked" in bl["text"] and "Unblock" in bl["text"] and "Priya" not in bl["real"], {"report": rp, "real": bl["real"]})
+            await p6.click('#frSheet [data-fr=off]')
+            armed = await p6.evaluate("()=>document.querySelector('#frSheet [data-fr=off]').textContent")
+            n_off = len(fcall("social_off"))
+            await p6.click('#frSheet [data-fr=off]')
+            try: await p6.wait_for_function("()=>!!document.querySelector('#frName')", timeout=6000)
+            except Exception: pass
+            await p6.evaluate("()=>OvuRoom.closeSheet()"); await p6.wait_for_timeout(300)
+            of = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, samples: document.querySelectorAll('.nbperson:not(.nbreal)').length})")
+            check("turning Plaza friends off takes two taps, calls the server once, and the plaza goes back to the samples", n_off == 0 and "Tap again" in armed and len(fcall("social_off")) == 1 and of["real"] == 0 and of["samples"] == 4, {"armed": armed, "plate": of})
+            # a paused account still sees how to turn Plaza friends off
+            FR["me"]["card"] = {"handle": "h-me2", "name": "Fern", "look": "base", "hidden": False, "paused_until": "2030-01-01T00:00:00Z"}; FR["me"]["on"] = True; FR["me"]["paused_until"] = "2030-01-01T00:00:00Z"
+            await p6.evaluate("()=>OvuFriends.open()")
+            try: await p6.wait_for_function("()=>/Paused for now/.test((document.querySelector('#frSheet')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            pz6 = await p6.evaluate("()=>({text: (document.querySelector('#frSheet')||{}).textContent||'', off: !!document.querySelector('#frSheet [data-fr=off]')})")
+            check("a paused account sees the pause and can still turn Plaza friends off", "Paused for now" in pz6["text"] and pz6["off"], pz6["text"][:120])
+            FR["me"]["card"] = None; FR["me"]["on"] = False; FR["me"]["paused_until"] = None
+            await p6.evaluate("()=>OvuRoom.closeSheet()")
+            # a change in the people in her group follows her visit: moving to Everyone clears PCOS's people before any reply
+            FR["me"]["card"] = {"handle": "h-me", "name": "Fern", "look": "kebaya-red", "hidden": False, "paused_until": None}; FR["me"]["on"] = True
+            FR["people"] = [{"handle": "h-nadia", "name": "Nadia", "look": "kebaya-green", "friend": False, "asked": True, "asks": False}]
+            await p6.evaluate("()=>OvuFriends.refresh()")
+            try: await p6.wait_for_function("()=>document.querySelectorAll('.nbreal').length===1", timeout=6000)
+            except Exception: pass
+            FR["people_delay"] = 2
+            await p6.evaluate("()=>OvuPlaza.join('everyone')"); await p6.wait_for_timeout(700)
+            mv = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, joined: (OvuPlaza.state().joined||{}).id})")
+            await p6.wait_for_timeout(2300); FR["people_delay"] = 0
+            mv2 = await p6.evaluate("()=>document.querySelectorAll('.nbreal').length")
+            check("moving to another group clears the last group's people at once, and the new group's answer (nobody) keeps it clear", mv["joined"] == "everyone" and mv["real"] == 0 and mv2 == 0, {"during": mv, "after": mv2})
+            # another tab signs into another account: this tab closes the sheet and forgets the last account at once
+            FR["me"]["card"] = {"handle": "h-me", "name": "Fern", "look": "kebaya-red", "hidden": False, "paused_until": None}; FR["me"]["on"] = True
+            await p6.evaluate("()=>OvuFriends.open()")
+            try: await p6.wait_for_function("()=>/Fern/.test((document.querySelector('#frSheet')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            tab2 = await ctx6.new_page(); await tab2.route("**/*", friends_gate)
+            await tab2.goto(BASE + "privacy.html", wait_until="domcontentloaded")
+            SESS_B2 = {"access_token": "smoke-token-b", "refresh_token": "r-b", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000bb", "email": "b@example.test"}}
+            n_before = len(fcalls)
+            await tab2.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS_B2)); await p6.wait_for_timeout(700)
+            xt = await p6.evaluate("()=>({open: OvuRoom.sheetOpen() && !!document.querySelector('#frSheet'), me: OvuFriends.state().me && OvuFriends.state().me.card ? OvuFriends.state().me.card.name : null})")
+            b_calls = [a for a in fauth[n_before:]]
+            await tab2.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS)); await p6.wait_for_timeout(700)
+            await tab2.close()
+            check("signing into another account in another tab closes the friends sheet here and drops the last account's card at once; what follows asks as the new account", not xt["open"] and xt["me"] is None and b_calls and all(a == "Bearer smoke-token-b" for a in b_calls), {"tab": xt, "calls after": b_calls})
+            fauth[:] = [a for a in fauth if a != "Bearer smoke-token-b"]  # the other account's own calls are not this account's
+            # two accounts on one phone: a form opened by one account never sends for another, and a late reply is dropped
+            FR["me"]["card"] = None; FR["me"]["on"] = False; FR["me"]["adult"] = False
+            await p6.evaluate("()=>OvuFriends.open()"); await p6.wait_for_selector('#frName')
+            await p6.fill('#frName', 'Fern'); await p6.check('#frAdult'); await p6.check('#frOn')
+            SESS_B = {"access_token": "smoke-token-b", "refresh_token": "r-b", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000bb", "email": "b@example.test"}}
+            n_save = len(fcall("social_card_save"))
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS_B))
+            await p6.click('#frSave'); await p6.wait_for_timeout(600)
+            sw1 = {"sent": len(fcall("social_card_save")) - n_save}
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS))
+            await p6.evaluate("()=>{OvuRoom.closeSheet(); OvuFriends.open();}"); await p6.wait_for_selector('#frName')
+            await p6.fill('#frName', 'Fern'); await p6.check('#frAdult'); await p6.check('#frOn')
+            FR["save_delay"] = 1.5
+            await p6.click('#frSave'); await p6.wait_for_timeout(250)
+            await p6.evaluate("()=>OvuAuth.signOut(false)"); await p6.wait_for_timeout(150)
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS_B))
+            await p6.wait_for_timeout(2200); FR["save_delay"] = 0
+            sw2 = await p6.evaluate("()=>({sheet: OvuRoom.sheetOpen() && !!document.querySelector('#frSheet'), me: OvuFriends.state().me, toast: (document.querySelector('#toast')||{}).textContent||''})")
+            check("a form opened by one account sends nothing once another account is signed in, and a reply that lands after a switch shows nothing and is not kept", sw1["sent"] == 0 and not sw2["sheet"] and sw2["me"] is None and "plaza card is ready" not in sw2["toast"], {"first": sw1, "second": sw2})
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS))
+            check("every Plaza friends call carried her own sign-in token", fauth and all(a == "Bearer smoke-token" for a in fauth), fauth[:2])
+            check("no page errors or console errors in the Plaza friends run", not f_errors, f_errors[:3])
+            await ctx6.close()
+
             # the staff dashboard signed in as an owner (fake session, fake staff calls): the Plazas card shows counts only
             ctx5 = await browser.new_context(viewport={"width": 390, "height": 844})
             await ctx5.add_init_script("localStorage.setItem('ovumind_auth_v1', %s);" % json.dumps(json.dumps(SESS)))
@@ -1002,7 +1221,10 @@ async def main():
                      "admin_overview": {"counts": {"accounts": 1, "accounts_with_cloud_copy": 0, "consent_active": 0, "consent_eligible": 0}, "floor": 20, "runs": [], "open_proposals": 0, "blocked": [], "latest": {}},
                      "admin_feed": [],
                      "admin_plaza": {"stale_seconds": 75, "today": sg_today, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "now": [{"id": "pcos", "name": "PCOS", "capacity": 24, "open": True, "people": 3}, {"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 1}, {"id": "menopause", "name": "Menopause", "capacity": 24, "open": True, "people": 0}],
-                                     "days": [{"day": sg_today, "server": "pcos", "joins": 5, "peak": 4}, {"day": sg_today, "server": "everyone", "joins": 1, "peak": 1}]}}
+                                     "days": [{"day": sg_today, "server": "pcos", "joins": 5, "peak": 4}, {"day": sg_today, "server": "everyone", "joins": 1, "peak": 1}]},
+                     "admin_proposals": [],
+                     "admin_social_reports": {"at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "reports": [{"id": 3, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "reason": "unkind", "status": "open", "decided_at": None, "days": None, "card": "1a2b3c4d", "name": "Mei", "look": "base", "phrase": "Sending you a warm cup of tea.", "about_note": True, "from_card": "9f8e7d6c", "from_name": "Priya", "open_on_card": 1, "card_now": "active"}]},
+                     "admin_social_decide": {"ok": True}}
             async def staff_gate(route):
                 url = route.request.url
                 if url.startswith(BASE): return await route.continue_()
@@ -1025,6 +1247,21 @@ async def main():
             except Exception: pass
             st5 = await p5.evaluate("()=>(document.querySelector('#plazaCard')||{}).textContent||''")
             check("when a plaza refresh fails the card says it is not current and keeps the last numbers", "not updated since" in st5 and "Not current" in st5 and "3 of 24" in st5, st5[:160])
+            sdec = []
+            async def staff_gate2(route):
+                m = re.search(r"/rest/v1/rpc/(admin_social_decide)", route.request.url)
+                if m: sdec.append(json.loads(route.request.post_data or "{}")); STAFF["admin_social_reports"]["reports"][0]["status"] = "paused"
+                return await staff_gate(route)
+            await p5.unroute("**/*"); await p5.route("**/*", staff_gate2)
+            await p5.click('nav.tabs button[data-tab=queue]')
+            try: await p5.wait_for_function("()=>/Mei · card 1a2b3c4d/.test((document.querySelector('#reportsCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            rc = await p5.evaluate("()=>{var c=document.querySelector('#reportsCard'); return c ? {text: c.textContent, acts: c.querySelectorAll('[data-sdecide]').length} : null}")
+            check("the staff Queue tab lists Plaza reports by card (name, short card number, reason, phrase, reporter's card), never an email or a group", rc and "Plaza reports" in rc["text"] and "1 open" in rc["text"] and "Unkind or upsetting" in rc["text"] and "Sending you a warm cup of tea." in rc["text"] and "Priya" in rc["text"] and rc["acts"] == 3 and "smoke@example.test" not in rc["text"] and "PCOS" not in rc["text"], rc)
+            await p5.click('#reportsCard [data-sdecide=pause]')
+            try: await p5.wait_for_function("()=>/No open reports/.test((document.querySelector('#reportsCard')||{}).textContent||'') || /paused/.test((document.querySelector('#reportsCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            check("an owner's Pause 7 days sends that report and seven days", sdec == [{"p_id": 3, "p_decision": "pause", "p_days": 7}], sdec)
             await ctx5.close()
 
             # the staff page: signed out it shows the sign-in gate only, no dashboard, no data call

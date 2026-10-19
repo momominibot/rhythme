@@ -1750,6 +1750,46 @@ function scenes(todayIso) {
   check('the module stands down without a room page and sends nothing', typeof P.join === 'undefined' && typeof P.state === 'undefined');
 })();
 
+/* ---------- plaza friends (ovu-friends.js): names, phrases, places and words; the server rules are tested in the database ---------- */
+(function plazaFriends() {
+  console.log('plaza friends: the name rules match the server, the phrase list matches the database, people stand on the floor');
+  var w = fresh('2026-10-19');
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-friends.js'), 'utf8'), w, { filename: 'ovu-friends.js' });
+  var F = w.OvuFriends, sql = fs.readFileSync(path.join(root, 'supabase/migrations/20261019130000_plaza_friends.sql'), 'utf8');
+  var np = F.nameProblem;
+  check('names: the same answers as social.name_problem in the database dry run', np('x') === 'length' && np('Mei@home') === 'chars' && np('Mei 98765') === 'contact' && np('www mei') === 'contact' && np('Staff') === 'reserved' && np('Rhythme Team') === 'reserved' && np('Admin Jo') === 'reserved' && np('Zoë') === null && np('美玲') === null && np("Ana-María O'Neil") === null && np('  Mei   Ling ') === null && F.cleanName('  Mei   Ling ') === 'Mei Ling' && np('Cassandra') === null);
+  check('names: 21 letters is too long, an emoji is not a letter, four digits look like a phone number', np('Abcdefghijklmnopqrstu') === 'length' && np('Mei 🙂') === 'chars' && np('Mei 1234') === 'contact' && np('Mei 123') === null);
+  check('every problem has plain words, and an unknown one falls back to "Try another name."', ['length', 'chars', 'contact', 'reserved', 'word'].every(function (k) { return F.problemText(k).length > 8; }) && F.problemText('nope') === 'Try another name.');
+  var seed = []; sql.replace(/\('([a-z-]+)', '([^']+)', '(note|hello)', \d+\)/g, function (_, id, text, kind) { seed.push([id, text, kind]); });
+  check('the phrase list is the one the database seeds, word for word', seed.length === F.PHRASES.length && seed.every(function (p, i) { return F.PHRASES[i][0] === p[0] && F.PHRASES[i][1] === p[1] && F.PHRASES[i][2] === p[2]; }), JSON.stringify(seed.slice(0, 2)));
+  var reasons = /reason text not null check \(reason in \(([^)]+)\)\)/.exec(sql)[1].replace(/'/g, '').split(', ');
+  check('report reasons are the ones the database accepts', JSON.stringify(F.REASONS.map(function (r) { return r[0]; })) === JSON.stringify(reasons));
+  var words = [].concat(F.PHRASES.map(function (p) { return p[1]; }), Object.keys(F.CUES).map(function (k) { return F.CUES[k]; }), [F.WORDS], F.REASONS.map(function (r) { return r[1]; }));
+  check('no em dashes anywhere in the module, and no vendor or model names in its words', fs.readFileSync(path.join(root, 'ovu-friends.js'), 'utf8').indexOf('—') < 0 && words.every(function (t) { return !/\b(AI|GPT|Claude|Doubao|Supabase|model)\b/.test(t); }));
+  check('the phrases are kind and plain: no health, body or pregnancy words, none longer than 40 characters', F.PHRASES.every(function (p) { return p[1].length <= 40 && !/pregnan|baby|period|cycle|weight|pain|heal|better soon|doctor/i.test(p[1]); }));
+  check('every action has its mindfulness cue', ['card', 'ask', 'accept', 'notnow', 'note', 'receive', 'block', 'report', 'unfriend'].every(function (k) { return F.CUES[k] && F.CUES[k].length > 10; }));
+  var many = []; for (var i = 0; i < 11; i++) many.push({ handle: 'h' + i, name: 'P' + i, look: i === 3 ? 'spacesuit' : 'cozy', friend: i === 0 });
+  var placed = F.placeFor(many);
+  check('eight people stand on the plate in order, the rest are listed; an unknown look wears the cosy knit', placed.length === 8 && placed[0].id === 'r0' && placed[0].friend && placed[7].handle === 'h7' && placed[3].outfit === 'base' && placed.every(function (p, k) { return p.real && p.spot === F.SPOTS[k]; }));
+  var ib = { ok: true, asks: [{ handle: 'a', name: 'Nadia', at: '2026-10-19T01:00:00Z' }], notes: [{ id: 5, name: 'Mei', read: false }, { id: 4, name: 'Mei', read: true }], friends: [{}, {}] };
+  check('the badge counts asks and unread notes only; a refused inbox counts nothing', F.badgeCount(ib) === 2 && F.badgeCount({ ok: false }) === 0 && F.badgeCount(null) === 0);
+  check('new since last look: an ask not seen and a note above the last id', F.freshText(F.freshSince(ib, { asks: [], note: 0 })) === '2 new things in Plaza friends.' && F.freshText(F.freshSince(ib, { asks: ['a|2026-10-19T01:00:00Z'], note: 0 })) === 'A kind note from Mei.' && F.freshText(F.freshSince(ib, { asks: [], note: 5 })) === 'Nadia asked to be friends.' && F.freshText(F.freshSince(ib, { asks: ['a|2026-10-19T01:00:00Z'], note: 5 })) === '');
+  check('a form from before a change elsewhere, Plaza friends turned off elsewhere and a hidden asker each get their own plain words', /another phone/.test(F.whyText({ why: 'stale' })) && /Open Plaza friends again to turn it on/.test(F.whyText({ why: 'consent' })) && /hidden from groups/.test(F.whyText({ why: 'hidden' })));
+  check('refusals in plain words; a block reads the same as someone who left', F.whyText({ why: 'gone' }) === 'She is not here right now.' && F.whyText({ why: 'name', problem: 'contact' }) === 'No contact details in a name, please.' && /^Plaza friends is paused on this account until /.test(F.whyText({ why: 'paused', until: '2026-10-26T00:00:00Z' })) && F.whyText({ why: 'mystery' }) === 'That did not work. Try again in a moment.');
+  check('the You row: sign in, make a card, no friends yet, counts with what is new', F.summary({ signedIn: false }) === 'Sign in to make friends in the plaza' && F.summary({ signedIn: true, me: { card: null } }) === 'Make a plaza card to meet people' && F.summary({ signedIn: true, me: { card: {} }, inbox: { ok: true, friends: [] } }) === 'No friends yet' && F.summary({ signedIn: true, me: { card: {} }, inbox: ib }) === '2 friends · 2 new' && F.summary({ signedIn: true, me: { paused_until: 'x' } }) === 'Paused for now');
+  check('the module stands down without a room page and sends nothing', typeof F.open === 'undefined' && typeof F.state === 'undefined');
+  var sw = scenes('2026-10-19'), L = sw.LAYOUTS.plaza;
+  var clear = F.SPOTS.every(function (p) { return sw.OvuWalk.inZones(L.zones, p.x, p.y) && !L.solids.some(function (o) { return p.x > o.x0 && p.x < o.x1 && p.y > o.y0 && p.y < o.y1; }); });
+  var apart = F.SPOTS.every(function (p, k) { return F.SPOTS.every(function (q, j) { return j === k || Math.hypot(p.x - q.x, p.y - q.y) >= 5; }); });
+  check('the eight places stand on the plaza floor, clear of the furniture and apart from each other', F.SPOTS.length === 8 && clear && apart);
+  var C = sw.OvuCommunity;
+  C.setPeople(function () { return placed.slice(0, 2); });
+  var withReal = C.neighbours();
+  C.setPeople(function () { return []; }); var emptyReal = C.neighbours();
+  C.setPeople(null);
+  check('real people take the samples’ place while any are shown; with none, the samples come back', withReal.length === 2 && withReal[0].real && emptyReal.length === 4 && emptyReal[0].sample && C.neighbours().length === 4);
+})();
+
 (function ledgerAccounting() {
   console.log('hearts accounting: a record earns once, Moon Tap caps per day, gifts never repeat, two pets at home');
   var w = fresh(), RW = w.OvuRewards, S = w.OvuStore, T = w.OvuBreathTap;

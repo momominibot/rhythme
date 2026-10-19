@@ -8,6 +8,8 @@
   var app = doc.getElementById('app');
   var plaza = null, plazaOk = 0, plazaBad = false, plazaBusy = false; /* admin_plaza: people in each group now, and the daily joins and peak (counts only) */
   var me = null, tab = 'today', ov = null, feed = [], feedTop = 0, findings = null, proposals = null, admins = null, audit = null, timers = [];
+  var reports = null, reportsAll = false, reportsBad = false; /* admin_social_reports: Plaza friends reports, cards only (no account ids, emails or groups) */
+  var REASONS = { unkind: 'Unkind or upsetting', spam: 'Spam or selling', pretending: 'Pretending to be someone else', under18: 'Seems to be under 18', worried: 'Worried about her safety', other: 'Something else' };
   var AGENTS = {
     cycle: { name: 'Menstrual', color: 'a-cycle', owns: 'period and symptom days, recorded period starts, intervals between starts, prediction mode availability', excludes: 'spotting and flow none never start a cycle; missing logs are not missing periods; recalled and imported history stay separate' },
     sleep: { name: 'Sleep', color: 'a-sleep', owns: 'nights with a usable record, nights with two records, typed versus imported share, duration and quality availability', excludes: 'rows are not nights; bed-to-wake is not time asleep' },
@@ -156,9 +158,30 @@
   }
 
   /* ---------- Queue (proposals, policy) ---------- */
+  function reportsCard(owner) {
+    var list = reports || [], open = list.filter(function (r) { return r.status === 'open'; }).length;
+    var html = '<div class="card" id="reportsCard"><h2>Plaza reports<span>' + (reports ? open + ' open' : '') + '</span></h2>';
+    if (!reports) html += '<p class="empty">' + (reportsBad ? 'Could not load the reports. Open this tab again to retry.' : 'Loading…') + '</p>';
+    else if (!list.length) html += '<p class="empty">' + (reportsAll ? 'No reports yet.' : 'No open reports.') + '</p>';
+    else html += list.map(function (r) {
+      return '<div class="prop" data-report="' + r.id + '"><div class="h"><b>' + esc(r.name) + ' · card ' + esc(r.card) + '</b><span class="chip ' + (r.status === 'open' ? 'watch' : r.status === 'dismissed' ? '' : 'high') + '">' + esc(r.status) + '</span></div>' +
+        '<div class="why">' + esc(REASONS[r.reason] || r.reason) + (r.about_note ? ' · about the note “' + esc(r.phrase || '') + '”' : ' · about the card') + '</div>' +
+        '<div class="meta">Reported by ' + esc(r.from_name || 'an account since deleted') + (r.from_card ? ' (card ' + esc(r.from_card) + ')' : '') + ' · ' + esc(ago(r.at)) + ' · ' + esc(r.open_on_card) + ' open on this card · card now ' + esc(r.card_now) + (r.days ? ' · paused ' + esc(r.days) + ' days' : '') + '</div>' +
+        (owner && r.status === 'open' ? '<div class="row acts"><button class="btn sm" data-sdecide="dismiss" data-id="' + r.id + '">Dismiss</button><button class="btn sm primary" data-sdecide="pause" data-id="' + r.id + '">Pause 7 days</button><button class="btn sm danger" data-sdecide="remove" data-id="' + r.id + '">Remove the card</button></div>' : '') + '</div>';
+    }).join('');
+    html += '<div class="row"><button class="btn sm" id="reportsAll">' + (reportsAll ? 'Show open only' : 'Show decided too') + '</button></div><p class="msg" id="reportsMsg"></p>' +
+      '<p class="srv">A report carries the two plaza cards (a name each person chose and a short card number) and, for a note, the phrase. Staff never see accounts, emails, groups or diaries. ' + (owner ? 'A pause stops every Plaza friends call for that account; removing the card makes her choose a new one. Each decision closes every open report on that card.' : 'An owner decides.') + '</p></div>';
+    return html;
+  }
+  function loadReports() {
+    return deadline(rpc('admin_social_reports', { p_status: reportsAll ? null : 'open' }), 10000).then(function (j) {
+      if (denied(j) || !j || !Array.isArray(j.reports)) { reportsBad = true; reports = null; return; }
+      reports = j.reports; reportsBad = false;
+    }).catch(function () { reportsBad = true; reports = null; });
+  }
   function renderQueue() {
     var owner = me.role === 'owner', pol = (ov && ov.policy) || {}, blocked = (ov && ov.blocked) || [];
-    var html = '<div class="card"><h2>Proposals<span>' + ((proposals || []).length) + '</span></h2>';
+    var html = reportsCard(owner) + '<div class="card"><h2>Proposals<span>' + ((proposals || []).length) + '</span></h2>';
     if (!proposals) html += '<p class="empty">Loading…</p>';
     else if (!proposals.length) html += '<p class="empty">No proposals. The agents raise one only when a measured finding suggests a lever, and this phase has nothing it may measure yet.</p>';
     else html += proposals.map(function (p) {
@@ -175,6 +198,16 @@
     html += '<div class="card"><h2>Provider blocks</h2>' + (blocked.length ? blocked.map(function (b) { return '<div class="prop"><div class="h"><b>' + esc(b.source) + '</b><span class="chip high">blocked</span></div><div class="why">' + esc(b.error) + '</div><div class="meta">' + esc(when(b.at)) + '</div>' + (owner ? '<div class="row acts"><button class="btn sm" data-clear="' + b.id + '">Clear, allow one try</button></div>' : '') + '</div>'; }).join('') : '<p class="empty">None. A first provider failure stops a run and blocks model runs until an owner clears it here; nothing retries by itself.</p>') + '</div>';
     panel(html);
     app.querySelectorAll('[data-decide]').forEach(function (b) { b.addEventListener('click', function () { var id = Number(b.dataset.id), d = b.dataset.decide; b.disabled = true; rpc('admin_decide', { p_id: id, p_decision: d }).then(function () { return Promise.all([loadProposals(), loadOverview()]); }).then(render); }); });
+    app.querySelectorAll('[data-sdecide]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var m = doc.getElementById('reportsMsg'); app.querySelectorAll('[data-sdecide]').forEach(function (x) { x.disabled = true; });
+        rpc('admin_social_decide', { p_id: Number(b.dataset.id), p_decision: b.dataset.sdecide, p_days: b.dataset.sdecide === 'pause' ? 7 : null }).then(function (j) {
+          if (j && (j.error || j.ok === false)) { m.textContent = j.error || 'Not done.'; m.className = 'msg bad'; }
+          return loadReports();
+        }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; }).then(function () { if (tab === 'queue') renderQueue(); });
+      });
+    });
+    var ra = doc.getElementById('reportsAll'); if (ra) ra.addEventListener('click', function () { reportsAll = !reportsAll; reports = null; renderQueue(); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); });
     app.querySelectorAll('[data-clear]').forEach(function (b) { b.addEventListener('click', function () { b.disabled = true; rpc('admin_block_clear', { p_id: Number(b.dataset.clear) }).then(loadOverview).then(render); }); });
     app.querySelectorAll('[data-pol]').forEach(function (el) {
       el.addEventListener('change', function () {
@@ -225,7 +258,7 @@
     if (tab === 'today') renderToday();
     else if (tab === 'feed') renderFeed();
     else if (tab === 'agents') renderAgents();
-    else if (tab === 'queue') { renderQueue(); if (!proposals) loadProposals().then(renderQueue); }
+    else if (tab === 'queue') { renderQueue(); if (!proposals) loadProposals().then(function () { if (tab === 'queue') renderQueue(); }); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); }
     else if (tab === 'staff') { renderStaff(); loadStaff().then(renderStaff); }
   }
   function stopTimers() { timers.forEach(clearInterval); timers = []; }
