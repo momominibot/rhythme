@@ -1434,3 +1434,9 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .evrefs.evhide{display:none!important}
 .ibtn.evi{display:inline-flex;vertical-align:1px;margin-left:5px}
 .teacare p .evrefs:not(.evhide),.teabody .evrefs:not(.evhide),.acuuse .evrefs:not(.evhide){margin-top:6px}
+
+/* walking together (ovu-petwalk.js): her line in the thought bubble, the pet's hearts, and a borrowed pet saying goodbye */
+.thought.say{font:800 12.5px/1.3 var(--sans);color:var(--rm-plum);width:max-content;max-width:170px;white-space:normal;text-align:center;padding:7px 11px}
+.petheart.palheart{font-size:18px}
+.prop.owned.pet.palclone{transition:opacity .6s}
+.prop.owned.pet.palbye{opacity:0;pointer-events:none}
