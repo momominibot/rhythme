@@ -50,14 +50,20 @@
    * request, token included, has one deadline (P.TIMEOUT), so nothing can leave the loop waiting. */
   var want = null, have = null, servers = null, offline = false, inflight = false, beating = false, pageGone = false;
   var tickT = 0, listT = 0, listGen = 0, pill = null, lastToken = null, watchers = [];
+  /* Group membership is health information, so every wish and every remembered group belongs to the account that made
+   * it (Codex pre-merge review, 20 Oct, blocker 1: another tab signing in a second account must never put that person
+   * in the first person's group). wantUid: who chose `want`; lastUid: the account this tab last acted for;
+   * lastTokenUid: whose token lastToken is. */
+  var wantUid = null, lastUid = null, lastTokenUid = null;
 
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s); }
   function inPlaza() { var L = R.layout && R.layout(); return !!(L && L.id === 'plaza'); }
   function asleep() { return !!(R.asleep && R.asleep()); }
   function uid() { var s = A.session && A.session(); return s && s.user ? s.user.id : null; }
   function eligible() { return !!uid() && inPlaza() && !asleep() && !doc.hidden && !pageGone; }
-  function desired() { return eligible() ? want : null; }
-  function remembered() { var p = S.state().plaza; return p && p.server ? p.server : null; }
+  function desired() { return eligible() && want && wantUid === uid() ? want : null; }
+  /* only the group this same account chose; an older saved choice with no account on it is forgotten */
+  function remembered() { var p = S.state().plaza; return p && p.server && p.uid && p.uid === uid() ? p.server : null; }
   function server(id) { return (servers || []).filter(function (s) { return s.id === id; })[0] || null; }
 
   function noop() { }
@@ -68,7 +74,7 @@
     var send = function (t) {
       if (!t) throw new Error('signed out');
       if (opts.check && !opts.check()) throw new Error('cancelled'); /* her wish changed before this left the phone */
-      used.token = t; lastToken = t;
+      used.token = t; lastToken = t; lastTokenUid = uid();
       used.ctl = !opts.keepalive && root.AbortController ? new root.AbortController() : null;
       return root.fetch(CFG.supabaseUrl + '/rest/v1/rpc/' + name, {
         method: 'POST', keepalive: !!opts.keepalive, signal: used.ctl ? used.ctl.signal : undefined,
@@ -91,7 +97,20 @@
   }
 
   /* ---------- the loop ---------- */
+  /* The account may have changed without this tab hearing it (another tab signed in or out: it shares localStorage
+   * but not this tab's auth notifications). Before anything is sent: forget the old account's wish and remembered
+   * group, and end its visit with its own token. Returns true when it changed. */
+  function reconcileAccount() {
+    var u = uid(); if (u === lastUid) return false;
+    var before = lastUid, oldToken = lastTokenUid === before ? lastToken : null; lastUid = u;
+    want = null; wantUid = null; servers = null; offline = false;
+    var p = S.state().plaza; if (p && p.uid !== u) S.setState({ plaza: null });
+    if (have) { var old = have; have = null; if (oldToken) rpc('plaza_leave', { p_server: old.id, p_visit: old.visit }, { token: oldToken }).catch(noop); }
+    if (lastTokenUid !== u) { lastToken = null; lastTokenUid = null; }
+    return !!before || !!u;
+  }
   function sync() {
+    if (reconcileAccount()) { render(); }
     if (inflight) return; /* the settling request runs the loop again */
     var d = desired(), h = have, u = uid();
     if (d === (h ? h.id : null)) return;
@@ -110,13 +129,13 @@
       }
       if (j && j.ok) {
         have = { id: j.server, name: j.name, people: j.people, capacity: j.capacity, visit: j.visit }; offline = false;
-        if (want === d) S.setState({ plaza: { server: d } });
+        if (want === d) S.setState({ plaza: { server: d, uid: u } });
         if (want === d && desired() === d) { R.chime('tap'); R.toast('You are in ' + j.name + '. ' + countText(j.people, true).replace(/^./, function (c) { return c.toUpperCase(); }) + '.', 'groups'); }
         return;
       }
       /* refused: she stays where she was, and the wish falls back to it */
       R.toast(j && j.why === 'full' ? fullText(j) : 'That group is closed for now.', 'groups');
-      if (want === d) { want = h ? h.id : null; if (!h) S.setState({ plaza: null }); }
+      if (want === d) { want = h ? h.id : null; wantUid = want ? u : null; if (!h) S.setState({ plaza: null }); }
     }, function (e) {
       if (e && e.message === 'cancelled') return;
       failed = true; offline = true;
@@ -129,6 +148,7 @@
     });
   }
   function tick() {
+    if (reconcileAccount()) { stopTimers(); render(); if (inPlaza() && eligible()) arrive(); return; }
     if (desired() !== (have ? have.id : null)) { sync(); return; }
     if (!have || inflight || beating) return;
     var h = have, u = uid(); beating = true;
@@ -136,12 +156,13 @@
       if (have !== h || uid() !== u) return; /* a reply for a visit she no longer has */
       if (j && j.ok) { h.people = j.people; offline = false; return; }
       if (j && j.displaced) { /* the same account joined from another phone: this one steps out and does not take it back */
-        have = null; want = null; R.toast('You joined a group on another device, so this phone stepped out. Walk back into the plaza here to rejoin.', 'groups'); return;
+        have = null; want = null; wantUid = null; R.toast('You joined a group on another device, so this phone stepped out. Walk back into the plaza here to rejoin.', 'groups'); return;
       }
       if (j && j.rejoin) { have = null; sync(); } /* quiet too long: join again, capacity is checked again */
     }, function (e) { if (e && e.message !== 'cancelled' && have === h) offline = true; }).then(function () { beating = false; render(); });
   }
   function refresh() {
+    reconcileAccount();
     var u = uid();
     if (!u || !inPlaza()) return Promise.resolve();
     var g = ++listGen;
@@ -155,12 +176,13 @@
   function startTimers() { stopTimers(); tickT = root.setInterval(tick, BEAT); listT = root.setInterval(function () { if (!doc.hidden) refresh(); }, LIST); }
   function stopTimers() { if (tickT) root.clearInterval(tickT); if (listT) root.clearInterval(listT); tickT = listT = 0; }
 
-  function choose(id) { want = id; sync(); render(); }
-  function leaveForGood() { want = null; S.setState({ plaza: null }); sync(); render(); }
+  function choose(id) { reconcileAccount(); want = id; wantUid = uid(); sync(); render(); }
+  function leaveForGood() { want = null; wantUid = null; S.setState({ plaza: null }); sync(); render(); }
   function arrive() {
+    reconcileAccount();
     render();
     if (!eligible()) { sync(); return; }
-    if (!want) want = remembered();
+    if (!want) { want = remembered(); wantUid = want ? uid() : null; }
     startTimers(); refresh(); sync();
   }
   /* the one way out: whatever the reason, she should no longer be in a group here, and the loop says so */
@@ -226,25 +248,22 @@
   }
 
   function mount() {
+    lastUid = uid(); /* the account this tab starts with */
     build(); render();
     R.on('layout', function () { if (inPlaza()) arrive(); else depart(); });
     if (inPlaza()) arrive();
     /* every departure goes through depart(): hidden (a keepalive leave), the page going away, sleep, sign-out */
-    doc.addEventListener('visibilitychange', function () { if (doc.hidden) depart(); else if (inPlaza()) arrive(); });
+    doc.addEventListener('visibilitychange', function () { if (doc.hidden) depart(); else { reconcileAccount(); if (inPlaza()) arrive(); } });
     root.addEventListener('pagehide', function () { pageGone = true; depart(); });
     root.addEventListener('pageshow', function () { pageGone = false; if (inPlaza() && !doc.hidden) arrive(); });
     var wasAsleep = asleep();
     S.subscribe(function () { var now = asleep(); if (now === wasAsleep) return; wasAsleep = now; if (now) depart(); else if (inPlaza()) arrive(); });
     /* signing out: the session is gone, but the token she last used still lets the loop say she left. Another account
      * signing in: the old account's visit is ended with the old account's token before anything else is sent. */
-    var lastUid = uid();
-    if (A.subscribe) A.subscribe(function () {
-      var u = uid(); if (u === lastUid) return;
-      var before = lastUid, oldToken = lastToken; lastUid = u;
-      if (before) { want = null; S.setState({ plaza: null }); }
-      if (before && u && have) { var old = have; have = null; rpc('plaza_leave', { p_server: old.id, p_visit: old.visit }, { token: oldToken }).catch(noop); }
-      depart(); if (u && inPlaza()) arrive();
-    });
+    var onAccount = function () { if (!reconcileAccount()) return; depart(); if (uid() && inPlaza() && !doc.hidden) arrive(); };
+    if (A.subscribe) A.subscribe(onAccount);
+    /* another tab signing in or out reaches this one only as a storage change */
+    root.addEventListener('storage', function (e) { if (!e || e.key === null || e.key === 'ovumind_auth_v1') onAccount(); });
     if (root.MutationObserver && R.els.hud) new root.MutationObserver(render).observe(R.els.hud, { attributes: true, attributeFilter: ['class'] });
   }
   R.on('boot', mount);

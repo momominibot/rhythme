@@ -882,6 +882,42 @@ async def main():
             await p4.evaluate("()=>OvuAuth.signOut(false)"); await p4.wait_for_timeout(2500); fake["delay"] = 0
             seq2 = [c for c in pcalls if c[0] in ("plaza_join", "plaza_leave")][-2:]
             check("signing out while a join is on its way: the join lands, then a leave for exactly that visit follows with her token, and the server ends with her nowhere", seq2 == [("plaza_join", "everyone"), ("plaza_leave", "everyone")] and pvisits[-1] and pauth[-1] == "Bearer smoke-token" and fake["mine"] is None, {"seq": seq2, "server": fake["mine"], "visit": pvisits[-1:]})
+            # (Codex pre-merge blocker 1) A joins PCOS, puts the tab away, another tab signs in B; coming back must not put B
+            # in PCOS: the old visit is ended with A's token, the remembered group is forgotten, B joins nothing it did not choose
+            fake.update({"mine": None, "visit": None, "delay": 0}); fsrv("pcos")["people"] = 23
+            ctx6 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx6.add_init_script(seed_signed_in)
+            p6 = await ctx6.new_page(); await p6.route("**/*", plaza_gate)
+            p6.on("pageerror", lambda e: p_errors.append("cross-tab pageerror: " + str(e)))
+            await p6.goto(BASE + "room.html", wait_until="networkidle"); await p6.wait_for_selector(".hotspot"); await p6.wait_for_timeout(500)
+            await p6.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return !!OvuStore.state().sleeping}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet(); OvuWalk.travel('plaza');}")
+            try: await p6.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && OvuPlaza.state().servers", timeout=12000)
+            except Exception: pass
+            await p6.evaluate("()=>OvuPlaza.join('pcos')")
+            try: await p6.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='pcos'", timeout=6000)
+            except Exception: pass
+            savedA = await p6.evaluate("()=>OvuStore.state().plaza")
+            await p6.evaluate("()=>{Object.defineProperty(document,'hidden',{value:true,configurable:true}); document.dispatchEvent(new Event('visibilitychange'));}"); await p6.wait_for_timeout(500)
+            n_calls = len(pcalls)
+            B = dict(SESS); B["access_token"] = "smoke-token-b"; B["user"] = {"id": "00000000-0000-4000-8000-0000000000bb", "email": "b@example.test"}
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(B))  # the other tab signs in B; no storage event reaches this hidden tab here
+            await p6.evaluate("()=>{Object.defineProperty(document,'hidden',{value:false,configurable:true}); document.dispatchEvent(new Event('visibilitychange'));}"); await p6.wait_for_timeout(1500)
+            after_b = await p6.evaluate("()=>({st: OvuPlaza.state(), saved: OvuStore.state().plaza})")
+            new_calls = list(zip(pcalls[n_calls:], pauth[n_calls:]))
+            joins_b = [c for c, a in new_calls if c[0] == "plaza_join" and a == "Bearer smoke-token-b"]
+            check("A's chosen group is saved with A's account on it", savedA and savedA.get("server") == "pcos" and savedA.get("uid") == SESS["user"]["id"], savedA)
+            check("another tab signing in B: coming back puts B in no group, forgets A's choice, and nothing goes out for B but the group list", not joins_b and not after_b["st"]["joined"] and not after_b["st"]["want"] and not after_b["saved"] and all(c[0] == "plaza_list" for c, a in new_calls if a == "Bearer smoke-token-b"), {"calls": new_calls, "st": after_b})
+            # the same with a storage event delivered (the usual case for a visible tab): A's open visit ends with A's own token
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS)); await p6.evaluate("()=>window.dispatchEvent(new StorageEvent('storage',{key:'ovumind_auth_v1'}))"); await p6.wait_for_timeout(600)
+            await p6.evaluate("()=>OvuPlaza.join('pcos')")
+            try: await p6.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='pcos'", timeout=6000)
+            except Exception: pass
+            n_calls = len(pcalls)
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(B)); await p6.evaluate("()=>window.dispatchEvent(new StorageEvent('storage',{key:'ovumind_auth_v1'}))"); await p6.wait_for_timeout(1200)
+            new_calls = list(zip(pcalls[n_calls:], pauth[n_calls:]))
+            st_b = await p6.evaluate("()=>OvuPlaza.state()")
+            check("a visible tab hearing the switch ends A's visit with A's own token and puts B nowhere", (("plaza_leave", "pcos"), "Bearer smoke-token") in new_calls and not [c for c, a in new_calls if c[0] == "plaza_join"] and not st_b["joined"] and fake["mine"] is None, {"calls": new_calls, "st": st_b})
+            await ctx6.close()
             check("no page errors or console errors in the signed-in plaza run", not p_errors, p_errors[:3])
             await ctx4.close()
 
