@@ -72,8 +72,9 @@
   function addDays(dateStr, n) { var t = new Date(dateStr + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.getUTCFullYear() + '-' + pad(t.getUTCMonth() + 1) + '-' + pad(t.getUTCDate()); }
 
   /* The last 7 days ending on `end` (rolling, like the mat's week). Light minutes are shown but never count
-     toward WHO's range; strength work counts in MET-minutes, not in aerobic minutes. A strength day needs the
-     person's "all main muscle groups" tick and an effort that is not light (WHO: moderate or greater).
+     toward WHO's range; strength work counts in MET-minutes, not in aerobic minutes. A strength day is the
+     person's own tick "worked all my main muscle groups, at moderate effort or more" (WHO's definition). Aerobic
+     MET intensity never overrides it: muscular effort is a different thing, and NHS lists yoga and Pilates.
      aerobicMetMinutes counts only moderate and vigorous aerobic entries, the activity the US guideline's
      500 to 1,000 MET-minute equivalence describes; metMinutes is everything with a known MET. */
   function week(entries, end) {
@@ -85,7 +86,7 @@
       var d = e.data, m = Math.max(0, Math.round(Number(d.minutes) || 0)); if (!m) return;
       var it = d.intensity || intensityOf(d.met, null), aerobic = d.aerobic !== false && d.activity !== 'strength';
       s.sessions++; s.minutes += m; aDays[e.date] = 1;
-      if (d.strength && it && it !== 'light') sDays[e.date] = 1;
+      if (d.strength) sDays[e.date] = 1; /* the person's own tick, worded as WHO's definition; yoga and Pilates can count (NHS) */
       if (!aerobic) s.strengthMinutes += m;
       else if (it === 'vigorous') s.vigorous += m;
       else if (it === 'moderate') s.moderate += m;
@@ -123,6 +124,7 @@
     week: 'WHO suggests 150 to 300 minutes of moderate activity a week, or 75 to 150 minutes of vigorous activity, or a mix of both, plus muscle-strengthening on 2 or more days. Some movement is better than none: start small and build up.',
     periodTitle: { period: 'Moving on your period', cramps: 'Moving with cramps' },
     period: 'Moving on your period is your choice. If you feel like it, gentle exercise such as walking, swimming, yoga or cycling may help with cramps, and resting is fine too. Listen to your body, and stop if something hurts.',
+    cramps: 'Moving with cramps is your choice. If you feel like it, gentle exercise such as walking, swimming, yoga or cycling may help, and resting is fine too. Listen to your body, and stop if something hurts.',
     periodEvidence: 'Trials suggest regular exercise through the month may ease period pain, but the evidence is low certainty, some trials asked women not to exercise while bleeding, and it is unclear whether the benefit holds after 25.',
     redFlags: 'Ask for an urgent appointment if the pain is severe or worse than usual and painkillers have not helped. See a doctor if your periods become more painful, heavier or irregular, if pain stops your usual day, if you have pain during sex or when peeing or pooing, or if you bleed between periods. If your periods stop while you are training a lot, tell a doctor too: too much exercise is one of the causes.',
     cycle: 'Energy and strength can feel different across your cycle, and that is normal. A large review found that performance might dip very slightly early in the cycle, on average, but the evidence was weak and studies varied a lot, so the researchers suggest going by how you respond rather than a calendar. Rhythme never plans your training by cycle day.',

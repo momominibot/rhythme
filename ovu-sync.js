@@ -112,6 +112,13 @@
     Object.keys(held || {}).forEach(function (id) { if (have[id]) return; var ev = getEvent(id); if (ev) { plan.pushUp.push(ev); have[id] = 1; } });
     return plan;
   }
+  /* the same row can arrive in both pulls; keep the copy the server stamped last */
+  function mergeRows(a, b) {
+    var by = {}, out = [];
+    (a || []).concat(b || []).forEach(function (r) { var k = r.id, cur = by[k]; if (!cur || ts(r.synced_at) > ts(cur.synced_at)) by[k] = r; });
+    Object.keys(by).forEach(function (k) { out.push(by[k]); });
+    return out.sort(function (x, y) { return ts(x.synced_at) - ts(y.synced_at); });
+  }
   function typeRejected(err) { return /violates check constraint/i.test(String((err && err.message) || '')); }
   /* Split a refused batch: the older types go up on their own, the newer ones are held. */
   function splitByType(rows) { var ok = [], held = []; (rows || []).forEach(function (r) { (CLOUD_TYPES_V1[r.type] ? ok : held).push(r); }); return { ok: ok, held: held }; }
@@ -178,9 +185,9 @@
 
   /* Pull every entry whose server arrival is after the cursor, oldest first, in
      pages (PostgREST caps a response, so a full restore needs more than one). */
-  function pullSince(cursor, token) {
+  function pullSince(cursor, token, types) {
     var PAGE = 1000, all = [], offset = 0;
-    var base = '/entries?select=*&order=synced_at.asc,id.asc&limit=' + PAGE + (cursor ? '&synced_at=gt.' + encodeURIComponent(cursor) : '');
+    var base = '/entries?select=*' + (types && types.length ? '&type=in.(' + types.map(encodeURIComponent).join(',') + ')' : '') + '&order=synced_at.asc,id.asc&limit=' + PAGE + (cursor ? '&synced_at=gt.' + encodeURIComponent(cursor) : '');
     function page() {
       return rest('GET', base + '&offset=' + offset, null, null, token).then(function (rows) {
         rows = rows || []; all = all.concat(rows);
@@ -207,10 +214,10 @@
       if (st.userId && st.userId !== uid) { st = { v: 1, userId: uid, shadow: snapshot(), tombstones: st.tombstones || {}, pulledSeq: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: st.lastSyncAt || null }; }
       if (!st.userId) { st.userId = uid; st.shadow = snapshot(); if (S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage) st.profileDirty = true; }
       /* An older app version drops rows of types it does not know, while its pull cursor moves past them. When this
-         version knows types the cursor was built without (Movement added 'exercise'), pull everything once: the
-         merge is last-write-wins, so rows already here are unchanged and skipped rows come back. */
-      var knownTypes = (S.TYPES || []).join(',');
-      if (st.pulledSeq && st.types !== knownTypes) st.pulledSeq = null;
+         version knows types the cursor was built without (Movement added 'exercise'), pull those types once from the
+         start. Only the new types: a full re-pull would bring back older entries someone deliberately cleared. */
+      var knownTypes = (S.TYPES || []).join(','), before = st.types ? st.types.split(',') : Object.keys(CLOUD_TYPES_V1);
+      var newTypes = st.pulledSeq ? (S.TYPES || []).filter(function (t) { return before.indexOf(t) < 0; }) : [];
       saveState(st); /* persist the activation/reset before any network call */
       /* before any row moves: read the account's own record (a withdrawal made on another phone is adopted here and stops
          the sync), then make sure this account has heard this phone's cloud choice (the server refuses writes it has not
@@ -224,7 +231,10 @@
       });
       /* pull every row whose server arrival (synced_at) is after our cursor, in
          order and in pages, so a late-arriving older edit is never skipped */
-      return pre.then(function () { return pullSince(st.pulledSeq, token); }).then(function (remoteRows) {
+      return pre.then(function () { return pullSince(st.pulledSeq, token); }).then(function (rows) {
+        if (!newTypes.length) return rows;
+        return pullSince(null, token, newTypes).then(function (typed) { return mergeRows(rows, typed); });
+      }).then(function (remoteRows) {
         /* consent or sign-in may have changed during the network wait */
         if (!canSync() || a.userId() !== uid) { busy = false; setStatus('idle'); return { ok: false, reason: 'cancelled' }; }
         var pushedAt = loadState().pushedAt || '';
@@ -269,7 +279,10 @@
           /* a held row is released only if the version that went up is still the one on this phone; an edit made
              during the upload keeps it held, so it is sent next time even if the watermark has moved past it */
           pushedRows.forEach(function (r) { var now = S.get(r.id); if (!now || now.updatedAt === r.updated_at) delete held[r.id]; });
-          Object.keys(settled).forEach(function (id) { delete held[id]; });
+          /* release a hold only where the cloud's version actually won; a remote deletion that lost to a newer local
+             edit settles its tombstone but must not drop the hold */
+          plan.applyPut.forEach(function (r) { delete held[r.id]; });
+          plan.applyDel.forEach(function (id) { delete held[id]; });
           heldRows.forEach(function (r) { held[r.id] = r.updated_at; });
           Object.keys(held).forEach(function (id) { if (!S.get(id)) delete held[id]; });
           cur.held = held;
@@ -278,7 +291,7 @@
           return syncProfile(token, uid).then(function () {
             var s2 = loadState(); s2.lastSyncAt = nowIso(); saveState(s2);
             busy = false; setStatus('ok');
-            return { ok: true, pulled: remoteRows.length, pushed: pushedRows.length + plan.pushDel.length, held: heldRows.length };
+            return { ok: true, pulled: remoteRows.length, pushed: pushedRows.length + plan.pushDel.length, held: Object.keys(loadState().held || {}).length }; /* every row still waiting, not only this request's refusals */
           });
         });
       });
@@ -376,6 +389,6 @@
     status: function () { var st = loadState(); return { state: statusNow.state, error: statusNow.error, lastSyncAt: st.lastSyncAt, pending: Object.keys(st.tombstones || {}).length, held: Object.keys(st.held || {}).length }; },
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
     /* pure helpers, exported for the tests */
-    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud, addHeld: addHeld, splitByType: splitByType, typeRejected: typeRejected
+    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud, addHeld: addHeld, splitByType: splitByType, typeRejected: typeRejected, mergeRows: mergeRows
   };
 })(window);

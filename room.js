@@ -1950,7 +1950,7 @@
   }
   function movePeriodHTML(ctx) {
     var C = EX.COPY;
-    return '<div class="flag info mvperiod" id="mvPeriod"><span class="ms">water_drop</span><div><b>' + esc(C.periodTitle[ctx]) + '</b><span>' + esc(C.period) + ' ' + esc(C.periodEvidence) + '</span>' +
+    return '<div class="flag info mvperiod" id="mvPeriod"><span class="ms">water_drop</span><div><b>' + esc(C.periodTitle[ctx]) + '</b><span>' + esc(ctx === 'period' ? C.period : C.cramps) + ' ' + esc(C.periodEvidence) + '</span>' +
       '<p class="mvflags"><b>When to see a doctor.</b> ' + esc(C.redFlags) + '</p>' +
       '<button type="button" class="btn soft" id="mvAcu"><span class="ms">spa</span>Cramp relief points</button></div></div>';
   }
@@ -1983,7 +1983,7 @@
       if (!a) { el.textContent = 'Choose what you did to see its MET value.'; return; }
       if (!v) { el.textContent = 'Choose how it went.'; return; }
       var it = EX.intensityOf(v.met, v.effort), counts = a.aerobic === false ? 'strength work, not aerobic minutes' : it === 'vigorous' ? 'vigorous: each minute counts as two toward WHO’s range' : it === 'moderate' ? 'moderate: counts toward WHO’s range' : 'light: shown, not counted toward WHO’s range';
-      var str = $('#mvStr').checked ? (it === 'light' ? ' Light effort is not a strength day.' : ' Counts as a strength day.') : '';
+      var str = $('#mvStr').checked ? ' Counts as a strength day.' : '';
       el.textContent = (v.met === null ? (mins || '?') + ' min, ' + counts + '. No MET value for this one.' : (mins || '?') + ' min × ' + v.met + ' MET = ' + (mins ? Math.round(mins * v.met) : '?') + ' MET-minutes, ' + counts + '.') + str;
     }
     function renderVars() {

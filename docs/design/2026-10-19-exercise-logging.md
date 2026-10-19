@@ -75,16 +75,19 @@ feature is built. Every claim the app shows is listed at the end with the source
   period context. "Other" has no MET; it counts toward minutes by the effort chosen and is left out of the MET total,
   shown as such, never counted as zero.
 - **Strength work** counts in MET-minutes but not toward the aerobic minutes (US guidelines treat muscle-strengthening as
-  separate). A strength day needs the person's tick "worked all my main muscle groups, at moderate effort or more"
-  (WHO's definition) and an effort that is not light; "Strength or weights" pre-ticks it but never locks it. Another
-  activity ticked as strength (a circuit) counts both as aerobic minutes and as a strength day.
+  separate). A strength day is the person's own tick "worked all my main muscle groups, at moderate effort or more"
+  (WHO's definition). Aerobic MET intensity never overrides it, because muscular effort is a different measure: the NHS
+  lists yoga, Pilates and tai chi as muscle-strengthening (page reviewed 22 May 2024), though their METs are light.
+  "Strength or weights" pre-ticks it but never locks it. Another activity ticked as strength (a circuit) counts both as
+  aerobic minutes and as a strength day.
 - **MET-minutes**: the total covers everything with a known MET; the "about 500 to 1,000" guide is compared with the
   MET-minutes of moderate and vigorous aerobic activity only, which is what the US guideline equivalence describes
   (300 minutes of hatha yoga is 690 MET-minutes but 0 toward WHO's minutes).
 - **Where it lives**: a Movement tile on the mat (Mind tab), `room.html#move`, the old `exercise.html` and
   `exercise-guide.html` stubs now point there, and a Movement folder on the Learn desk. The journal lists the entries.
 - **The period note** shows when today has a logged period day or logged cramps, never from a predicted phase.
-  Spotting is not treated as a period (the store keeps it out of period episodes too).
+  Spotting is not treated as a period (the store keeps it out of period episodes too); with cramps logged, the card
+  speaks about cramps without calling the day a period.
 - **Hearts**: the first exercise log of the day earns 6 (the same as a meal), plus the usual streak bonus when it is the
   day's first log of any kind; later exercise logs that day earn nothing. Hearts
   never depend on minutes, effort or MET, so there is no reason to log more or harder than you did. This follows
@@ -94,9 +97,11 @@ feature is built. Every claim the app shows is listed at the end with the source
   upload. `ovu-sync.js` now holds back rows the server rejects by type, remembers them, uploads everything else, and
   sends the held rows again on later syncs, so nothing is lost and the watermark cannot skip them. A held row edited
   during its upload stays held until the newer version is sent. While rows are held, You says "N Movement entries not
-  backed up yet", the Sync now toast says so, and "Delete everything on this phone" warns they would be lost. A phone
-  whose app learns a new entry type pulls the whole cloud diary once, so rows an older version dropped come back. The
-  migration
+  backed up yet", the Sync now toast counts every row still waiting (not only this request's refusals), and "Delete
+  everything on this phone" warns they would be lost. A hold is released only when that version went up or the cloud's
+  version won the merge; an older remote deletion that loses does not release it. A phone whose app learns a new entry
+  type pulls that type alone once from the start (`type=in.(exercise)`), so rows an older version dropped come back
+  while older entries someone cleared on purpose stay cleared. The migration
   `20261019120000_exercise_entries.sql` widens the check; it is written but not applied (production migrations wait
   for Jamie).
 
