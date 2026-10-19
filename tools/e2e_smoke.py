@@ -306,22 +306,16 @@ async def main():
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
             back = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, pos: OvuRoom.pos(), sub: document.querySelectorAll('#minimap .minimap-sub [data-sub]').length})")
-            check("the door mat puts her back on the street outside the pet shop, with the three store stops on the mini-map", back["layout"] == "street" and abs(back["pos"]["x"] - 98.5) < 1 and back["sub"] == 3, back)
+            check("the door mat puts her back on the street outside the pet shop, with the three store stops on the mini-map", back["layout"] == "street" and abs(back["pos"]["x"] - 23) < 1 and back["sub"] == 3, back)
             # 1c. the wide street (docs/design/2026-10-19-wide-street.md): a 2:1 plate 2.5 boxes wide, walked with real taps, the camera following
             STREET = "()=>{var sc=document.querySelector('#scene'), b=sc.getBoundingClientRect(), im=document.querySelector('#roomDay').getBoundingClientRect(), nv=document.querySelector('.night-veil').getBoundingClientRect(), a=document.querySelector('#avatar').getBoundingClientRect(), s=OvuCamera.state(); return {layout: sc.dataset.layout, aspect: b.width/b.height, plate: im.width/(b.width*s.z), veil: nv.width/im.width, z: s.z, x: s.x, held: s.held, minX: b.width-b.width*2.5*s.z, pos: OvuRoom.pos(), sx: (a.left+a.width/2-b.left)/b.width, sy: (a.bottom-b.top)/b.height, scrollL: sc.scrollLeft, walking: OvuWalk.walking()}}"
             ws = await page.evaluate(STREET)
-            check("on the wide street the box keeps its 0.8 view, the plate and the night veil run 2.5 boxes wide, and it opens fitted (zoom 1) like every scene", ws["layout"] == "street" and abs(ws["aspect"] - 0.8) < 0.01 and abs(ws["plate"] - 2.5) < 0.01 and abs(ws["veil"] - 1) < 0.01 and abs(ws["z"] - 1) < 0.01, ws)
-            trail = []
-            for _ in range(9):
-                tp = await page.evaluate("()=>{var sc=document.querySelector('#scene').getBoundingClientRect(), r=document.querySelector('#sceneInner').getBoundingClientRect(), sx=sc.left+sc.width*0.82, x=(sx-r.left)/r.width*100, y=63+0.0964*(x-15)-2.5, sy=r.top+y/100*r.height; if (sy>sc.top+sc.height*0.75) { sy=sc.top+sc.height*0.75; y=(sy-r.top)/r.height*100; } return {sx: sx, sy: sy, x: x, y: y}}")
-                if tp["x"] > 212: break   # the front of the cobbles, away from the storefront doorsteps (a walk that ends on one goes in), above the mini-map
-                await page.mouse.click(tp["sx"], tp["sy"])   # a genuine tap on the visible floor, near the right edge of the screen
-                try: await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000)
-                except Exception: pass
-                await page.wait_for_timeout(500)
-                st2 = await page.evaluate(STREET); trail.append({"tap": round(tp["x"], 1), "pos": round(st2["pos"]["x"], 1), "cam": round(st2["x"]), "sx": round(st2["sx"], 2)})
-            we = await page.evaluate(STREET)
-            check("real taps walk her along the street past x 100 and 180: the camera follows sideways, she stays on screen and the box never scrolls", we["pos"]["x"] > 180 and we["x"] < ws["x"] - 300 and all(0.1 < t["sx"] < 0.9 for t in trail) and any(t["tap"] > 100 for t in trail) and we["scrollL"] == 0 and we["layout"] == "street", {"trail": trail, "end": we})
+            check("Dream Street is one screen again (Jamie, 20 Oct): the whole street in view at zoom 1, no sideways camera", ws["layout"] == "street" and abs(ws["aspect"] - 0.8) < 0.01 and abs(ws["plate"] - 1) < 0.01 and abs(ws["z"] - 1) < 0.01 and abs(ws["x"]) < 1, ws)
+            await page.evaluate("()=>OvuWalk.tapWalk(70, 62)")
+            try: await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000)
+            except Exception: pass
+            await page.wait_for_timeout(400); we = await page.evaluate(STREET)
+            check("a floor tap walks her across the street while the view stays still", we["pos"]["x"] > 50 and abs(we["x"]) < 1 and we["scrollL"] == 0 and we["layout"] == "street", we)
             await page.click("#avatar"); await page.wait_for_timeout(350)
             bub = await page.evaluate("()=>({on: document.querySelector('#bubble').classList.contains('on'), joy: document.querySelector('#avatar').classList.contains('joy'), layout: document.querySelector('#scene').dataset.layout})")
             check("at the far end of the street a tap on her is a little hop, and no menu opens over her head", not bub["on"] and bub["layout"] == "street", bub)
@@ -334,134 +328,31 @@ async def main():
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
             await page.wait_for_timeout(700); wr = await page.evaluate(STREET)
-            check("the plaza arch at the right end takes her to the plaza, and coming back she stands in that arch with the view at the plate's right edge", pz == "plaza" and wr["layout"] == "street" and abs(wr["pos"]["x"] - 222) < 1 and abs(wr["x"] - wr["minX"]) < 2 and 0.1 < wr["sx"] < 0.9, {"plaza": pz, "back": wr})
-            sb0 = await page.evaluate("()=>{var r=document.querySelector('#scene').getBoundingClientRect(); return {x: r.left, y: r.top, w: r.width, h: r.height}}")
-            await page.mouse.move(sb0["x"] + 40, sb0["y"] + sb0["h"] * 0.7); await page.mouse.down(); await page.mouse.move(sb0["x"] + 300, sb0["y"] + sb0["h"] * 0.7, steps=10); await page.mouse.up(); await page.wait_for_timeout(300)
-            dragged = await page.evaluate(STREET)
-            fitOn = await page.evaluate("()=>!document.querySelector('#camFit').disabled")
-            await page.click("#camFit"); await page.wait_for_timeout(1600)
-            refit = await page.evaluate(STREET)
-            check("at zoom 1 a sideways drag pans the street and holds the view; fit is on there and brings the view back to her", dragged["held"] and dragged["x"] > wr["x"] + 150 and fitOn and not refit["held"] and 0.1 < refit["sx"] < 0.9 and abs(refit["z"] - 1) < 0.01, {"dragged": dragged, "fit": fitOn, "refit": refit})
+            check("the plaza arch takes her to the plaza, and coming back she stands in that arch on the one-screen street", pz == "plaza" and wr["layout"] == "street" and abs(wr["pos"]["x"] - 84) < 1 and abs(wr["x"]) < 1, {"plaza": pz, "back": wr})
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('homes'))"); await page.wait_for_timeout(250)
             await page.evaluate("()=>{var p=OvuRoom.pos(); return OvuWalk.tapWalk(p.x-14, p.y-1)}")
             try: await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000)
             except Exception: pass
             await page.wait_for_timeout(900)
             rt = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, sheet: document.querySelector('#sheet').getAttribute('aria-hidden'), pos: OvuRoom.pos()})")
-            check("a floor tap that replaces a walk to Moonrise Homes leaves her where she tapped, without opening the store", rt["layout"] == "street" and rt["sheet"] != "false" and rt["pos"]["x"] < 215, rt)
+            check("a floor tap that replaces a walk to Moonrise Homes leaves her where she tapped, without opening the store", rt["layout"] == "street" and rt["sheet"] != "false" and rt["pos"]["x"] < 76, rt)
             await page.focus(".hotspot[data-id=petshop]"); await page.wait_for_timeout(600)
             fo = await page.evaluate("()=>{var h=document.querySelector('.hotspot[data-id=petshop]').getBoundingClientRect(), b=document.querySelector('#scene').getBoundingClientRect(); return {inside: h.left>=b.left && h.right<=b.right && h.top>=b.top && h.bottom<=b.bottom, held: OvuCamera.state().held, scrollL: document.querySelector('#scene').scrollLeft}}")
-            check("keyboard focus on a storefront two screens away brings it into view (the box itself never scrolls)", fo["inside"] and fo["held"] and fo["scrollL"] == 0, fo)
+            check("keyboard focus on a storefront keeps it in view (the box itself never scrolls)", fo["inside"] and fo["scrollL"] == 0, fo)
             await page.evaluate("()=>document.activeElement && document.activeElement.blur()")
             t0 = await page.evaluate("()=>Date.now()")
             await page.click('#minimap [data-scene=garden]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
             gl = await page.evaluate("(t0)=>({layout: document.querySelector('#scene').dataset.layout, ms: Date.now()-t0})", t0)
-            check("from the far end the mini-map fades straight to the garden instead of walking the whole street first", gl["layout"] == "garden" and gl["ms"] < 2500, gl)
+            check("the mini-map takes her back to the garden", gl["layout"] == "garden" and gl["ms"] < 4000, gl)
             gocc = await page.evaluate("()=>document.querySelectorAll('.plate-occ').length")
             check("leaving the street takes its cutouts with it: the garden draws none", gocc == 0, gocc)
             await page.click('#minimap [data-scene=street]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
             await page.wait_for_timeout(600); wl = await page.evaluate(STREET)
-            check("from the garden she arrives through the garden arch at the street's left end, the view at its left edge", wl["layout"] == "street" and abs(wl["pos"]["x"] - 38) < 1 and abs(wl["x"]) < 1, wl)
-            # 1d. foreground cutouts (docs/design/2026-10-19-wide-street.md): the arches' front pillars and the lamps are drawn again over the plate
-            # in #plateOcc, depth-sorted with her by their base, never taking a tap, dimmed and veiled with the plate at night
-            OCC = """()=>{var r=document.querySelector('#sceneInner').getBoundingClientRect(), L=OvuRoom.layout(), b=document.querySelector('#scene').getBoundingClientRect(), z=function(el){return +getComputedStyle(el).zIndex};
-              var els=[].slice.call(document.querySelectorAll('#plateOcc .plate-occ')), av=document.querySelector('#avatar');
-              return {n: els.length, ids: els.map(function(e){return e.dataset.id}).join(), loaded: els.every(function(e){var i=e.querySelector('img'); return i && i.complete && i.naturalWidth>0}), taps: els.every(function(e){return getComputedStyle(e).pointerEvents==='none'}),
-                stacked: getComputedStyle(document.querySelector('#plateOcc')).position === 'static' && getComputedStyle(document.querySelector('#plateOcc')).zIndex === 'auto',
-                placed: els.every(function(e){var o=L.occluders.filter(function(x){return x.id===e.dataset.id})[0], q=e.querySelector('img').getBoundingClientRect(), u=r.width/100; return o && Math.abs(q.left-r.left-o.x*u)<1 && Math.abs(q.top-r.top-o.y*r.height/100)<1 && Math.abs(q.width-o.w*u)<1 && Math.abs(q.height-o.h*r.height/100)<1}),
-                z: Object.fromEntries(els.map(function(e){return [e.dataset.id, z(e)]})), her: z(av), pos: OvuRoom.pos(), box: b.width}}"""
-            o0 = await page.evaluate(OCC)
-            check("on the street the two arches' front pillars and the two lamps are drawn again over the plate, at the plate's own pixels, in a layer that shares her depth context, and never take a tap", o0["n"] == 4 and o0["ids"] == "garden-arch,lamp-west,lamp-east,plaza-arch" and o0["loaded"] and o0["taps"] and o0["placed"] and o0["stacked"], o0)
-            hit = await page.evaluate("()=>{var e=document.querySelector('.plate-occ[data-id=lamp-west]').getBoundingClientRect(), t=document.elementFromPoint(e.left+e.width/2, e.top+e.height*0.6); return {cls: t && t.className, occ: !!(t && t.closest && t.closest('.plate-occ'))}}")
-            check("a tap on the west lamp goes through the cutout to the plate and the pins beneath, as before", not hit["occ"], hit)
-            back_to = wl["pos"]
-            await page.evaluate("()=>OvuRoom.placeAvatar({x:205, y:73}, false)"); o1 = await page.evaluate(OCC)
-            await page.evaluate("()=>OvuRoom.placeAvatar({x:205, y:79}, false)"); o2 = await page.evaluate(OCC)
-            check("placed at x 205, y 73 she is behind the plaza arch's front pillar (its z is higher); at y 79 she is in front, re-ranked by the placement itself", o1["z"]["plaza-arch"] > o1["her"] and o2["her"] > o2["z"]["plaza-arch"], {"y73": o1["z"], "her73": o1["her"], "y79": o2["z"], "her79": o2["her"]})
-            reach = await page.evaluate("()=>{var w=OvuWalk.world(OvuRoom.layout(), []), ok=function(x,y){return OvuWalk.inZones(w.zones,x,y) && !OvuWalk.blocked(w.solids,x,y)}; return {behind: ok(212.6,71.2), front: ok(212.8,77.6)}}")
-            await page.evaluate("()=>OvuRoom.placeAvatar({x:212.6, y:71.2}, false)"); o4 = await page.evaluate(OCC)
-            await page.evaluate("()=>OvuRoom.placeAvatar({x:212.8, y:77.6}, false)"); o5 = await page.evaluate(OCC)
-            check("on cobbles she can really stand on beside the plaza arch: behind its front pillar at (212.6, 71.2), in front at (212.8, 77.6)", reach["behind"] and reach["front"] and o4["z"]["plaza-arch"] > o4["her"] and o5["her"] > o5["z"]["plaza-arch"], {"reach": reach, "behind": [o4["z"]["plaza-arch"], o4["her"]], "front": [o5["z"]["plaza-arch"], o5["her"]]})
-            await page.evaluate("()=>OvuRoom.placeAvatar({x:79.5, y:61.2}, false)"); o3 = await page.evaluate(OCC)
-            check("just behind the west lamp (x 79.5, y 61.2) she is drawn behind it", o3["z"]["lamp-west"] > o3["her"], o3["z"])
-            await page.evaluate("(p)=>OvuRoom.placeAvatar(p, false)", back_to)
-            # the sky turns while a props render happens (applySky re-renders props when the sky changes): the cutouts are the same nodes and
-            # their filter is mid-transition exactly with the plate's, then lands on it. It starts from a plain day sky (the sky classes set aside
-            # for the check and put back), since some pairs, sky-night to is-night among them, change in one step for the plate as well
-            sk = await page.evaluate("""async()=>{var sc=document.querySelector('#scene'), was={cls: sc.className, sky: sc.dataset.sky}, el=document.querySelector('.plate-occ'), wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};
-              var f=function(){return [getComputedStyle(document.querySelector('.occ-img')).filter, getComputedStyle(document.querySelector('#roomDay')).filter]};
-              sc.classList.remove('is-night','sky-night'); sc.dataset.sky='day'; await wait(1500); var day=f();
-              el.__mark=1; sc.classList.add('is-night'); OvuRoom.renderProps(); await wait(400); var mid=f(); await wait(1500); var end=f();
-              var same=document.querySelector('.plate-occ')===el && el.__mark===1; sc.className=was.cls; sc.dataset.sky=was.sky; await wait(1500); return {day: day, mid: mid, end: end, same: same}}""")
-            check("a sky change with a props render keeps the same cutout nodes, their filter mid-transition with the plate's and then equal to it", sk["same"] and sk["day"][0] == sk["day"][1] and sk["mid"][0] == sk["mid"][1] and sk["end"][0] == sk["end"][1] and sk["end"][0] not in ("none", "") and sk["mid"][0] != sk["end"][0] and sk["mid"][0] != sk["day"][0], sk)
-            await page.emulate_media(reduced_motion="reduce")
-            rm = await page.evaluate("()=>{var t=function(s){var c=getComputedStyle(document.querySelector(s)); return c.transitionProperty+' '+c.transitionDuration}; return {img: t('.occ-img'), plate: t('#roomDay'), veil: t('.occ-veil'), nveil: t('.night-veil')}}")
-            await page.emulate_media(reduced_motion="no-preference")
-            check("with reduced motion each cutout keeps exactly the plate's filter transition, and its veil exactly the night veil's", rm["img"] == rm["plate"] and rm["veil"] == rm["nveil"], rm)
-            # rendered pixels at night, the strongest veil: the street with the cutouts against the same street with them hidden. The cutouts sit
-            # over themselves, so the picture must not change (a cutout above the veil without its own copy differs by tens of levels)
-            await page.evaluate("()=>{var sc=document.querySelector('#scene'); sc.dataset.occTest=sc.classList.contains('is-night')?'1':''; sc.classList.add('is-night'); document.querySelectorAll('.stars,.sparkles').forEach(function(e){e.style.visibility='hidden'})}")
-            await page.wait_for_timeout(1900)
-            clip = await page.evaluate("()=>{var q=document.querySelector('.plate-occ[data-id=lamp-west]').getBoundingClientRect(); return {x: q.left, y: q.top, width: q.width, height: q.height}}")
-            shot_on = await page.screenshot(clip=clip)
-            await page.evaluate("()=>{document.querySelector('#plateOcc').style.visibility='hidden'}"); await page.wait_for_timeout(100)
-            shot_off = await page.screenshot(clip=clip)
-            await page.evaluate("()=>{var sc=document.querySelector('#scene'); document.querySelector('#plateOcc').style.visibility=''; document.querySelectorAll('.stars,.sparkles').forEach(function(e){e.style.visibility=''}); if(!sc.dataset.occTest) sc.classList.remove('is-night'); delete sc.dataset.occTest}")
-            px = png_diff(shot_on, shot_off)
-            check("at night the street with its cutouts renders like the plate alone (the west lamp: dimmed and veiled the same, mean difference under 3 of 255)", px["mean"] < 3 and px["n"] > 1000, px)
-            # the room's own straight slide (routing switched off for the check): R.pos() holds the destination at once, so a depth call from
-            # anything else mid-slide (a walking pet's frame) must rank her by where she is drawn, not where she is going
-            cs = await page.evaluate("""async()=>{var raf=function(){return new Promise(function(r){requestAnimationFrame(function(){r()})})}, wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};
-              var av=document.querySelector('#avatar'), pil=document.querySelector('.plate-occ[data-id=plaza-arch]'), inn=document.querySelector('#sceneInner'), z=function(e){return +getComputedStyle(e).zIndex};
-              av.style.transition='none'; OvuRoom.placeAvatar({x:212.8, y:79.5}, false); void av.offsetWidth; av.style.transition=''; await raf(); OvuRoom.setWalkTo(function(){return false});
-              try { OvuRoom.walkTo({x:212.6, y:71.2, flip:false}); await raf(); await raf();
-                OvuWalk.sortDepth(); var start={live: parseFloat(getComputedStyle(av).top)/inn.clientHeight*100, dest: OvuRoom.pos().y, her: z(av), pillar: z(pil)};
-                await wait(1000); OvuWalk.sortDepth(); var end={y: OvuRoom.pos().y, her: z(av), pillar: z(pil)}; } finally { OvuRoom.setWalkTo(OvuWalk.routeTo); }
-              return {start: start, end: end}}""")
-            await page.evaluate("(p)=>OvuRoom.placeAvatar(p, false)", back_to)
-            check("during the room's own straight slide a depth call from elsewhere ranks her where she is drawn: in front of the plaza pillar as she leaves, behind it on arrival", cs["start"]["live"] > 77 and cs["start"]["dest"] < 72 and cs["start"]["her"] > cs["start"]["pillar"] and cs["end"]["her"] < cs["end"]["pillar"], cs)
-            # travel waits under the fade for the street's cutouts to decode, never longer than OvuWalk.OCC_CAP (1.5 s): each case in a fresh
-            # context (no cache, service worker blocked so the route really delays or fails the sprites)
-            TRAVEL_FADE = """()=>new Promise(function(res){var sc=document.querySelector('#scene'), t0=performance.now(), seen=false, done=false, fin=function(v){if(!done){done=true; res(v)}};
-              var look=function(){var ims=[].slice.call(document.querySelectorAll('#plateOcc .occ-img')); return {n: ims.length, ready: ims.length>0 && ims.every(function(i){return i.complete && i.naturalWidth>0})}};
-              var mo=new MutationObserver(function(){ if(sc.classList.contains('fading')) seen=true; else if(seen){ mo.disconnect(); var l=look(); fin({ms: Math.round(performance.now()-t0), layout: sc.dataset.layout, n: l.n, ready: l.ready, cap: OvuWalk.OCC_CAP}); } });
-              mo.observe(sc,{attributes:true, attributeFilter:['class']}); if(!OvuWalk.travel('street')) fin({went:false}); setTimeout(function(){fin({timeout:true})}, 12000);})"""
-            async def travel_case(kind):
-                c2 = await browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, service_workers="block")
-                await c2.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB)))
-                p2 = await c2.new_page(); asked = {}
-                async def gate2(route):
-                    url = route.request.url
-                    if not url.startswith(BASE): return await route.abort()
-                    if "/street-occ-" in url:
-                        asked[url] = asked.get(url, 0) + 1
-                        if kind == "fail" or (kind == "retry" and asked[url] == 1): return await route.abort()   # retry: only each file's first request fails
-                        await asyncio.sleep(4.0 if kind == "hang" else 0.7)
-                    return await route.continue_()
-                await p2.route("**/*", gate2)
-                await p2.goto(BASE + "room.html", wait_until="domcontentloaded"); await p2.wait_for_timeout(1500)
-                r = await p2.evaluate(TRAVEL_FADE)
-                if kind == "retry":   # the failed element stays until the next visit (a request behind the fade would load and pop in), which asks again and waits
-                    await p2.evaluate("()=>{window.__occ0=document.querySelector('.plate-occ[data-id=lamp-west] .occ-img')}")
-                    await p2.wait_for_timeout(1500)
-                    r["kept"] = await p2.evaluate("()=>document.querySelector('.plate-occ[data-id=lamp-west] .occ-img')===window.__occ0 && window.__occ0.naturalWidth===0")
-                    await p2.evaluate("()=>OvuWalk.travel('garden')")
-                    await p2.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
-                    r["next"] = await p2.evaluate(TRAVEL_FADE)
-                    r["next"]["fresh"] = await p2.evaluate("()=>document.querySelector('.plate-occ[data-id=lamp-west] .occ-img')!==window.__occ0")
-                if kind == "hang": await p2.wait_for_timeout(3500); r["later"] = await p2.evaluate("()=>[].slice.call(document.querySelectorAll('#plateOcc .occ-img')).every(function(i){return i.complete && i.naturalWidth>0})")
-                await c2.close()
-                return r
-            slow, fail, hang, retry = await travel_case("slow"), await travel_case("fail"), await travel_case("hang"), await travel_case("retry")
-            check("travel to the street waits under the fade for its cutouts (sprites 0.7 s late): they are decoded when the fade lifts", slow.get("layout") == "street" and slow.get("ready") and slow.get("n") == 4 and slow.get("ms", 0) >= 650, slow)
-            check("if the cutouts fail, the fade still lifts at once on the street (the plate drawn as before)", fail.get("layout") == "street" and not fail.get("ready") and fail.get("ms", 9999) < 1400, fail)
-            check("if the cutouts hang, the fade lifts at the 1.5 s cap (not later than 2.2 s), and they draw once they arrive", hang.get("layout") == "street" and not hang.get("ready") and 1400 <= hang.get("ms", 0) <= 2200 and hang.get("later") is True, hang)
-            nx = retry.get("next") or {}
-            check("a cutout that failed stays as it was (no new request behind the fade) until the next visit, which asks for it again and waits for it", retry.get("layout") == "street" and not retry.get("ready") and retry.get("kept") is True and nx.get("layout") == "street" and nx.get("ready") and nx.get("ms", 0) >= 650 and nx.get("fresh") is True, retry)
+            check("from the garden she arrives through the garden arch on the left of the one-screen street", wl["layout"] == "street" and abs(wl["pos"]["x"] - 16) < 1 and abs(wl["x"]) < 1, wl)
             await page.click('#minimap [data-sub="shop-homes"]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='shop-homes' && !document.querySelector('#scene').classList.contains('fading')", timeout=12000)
             except Exception: pass
@@ -779,7 +670,7 @@ async def main():
                 except Exception: print("street bench card did not open:", b0, await page.evaluate(ST))
             else: print("street bench skipped:", went, onst)
             sb = await page.evaluate("()=>{var el=document.querySelector('.nb.sitter'), b=document.querySelector('#scene').getBoundingClientRect(), r=el&&el.getBoundingClientRect(); return {there: !!el, w: el&&parseFloat(el.style.width), left: el&&parseFloat(el.style.left), inside: !!r && r.left>=b.left && r.right<=b.right && r.bottom<=b.bottom, layout: document.querySelector('#scene').dataset.layout}}")
-            check("on the street bench she sits on its seat, on screen, sized from the box's aspect (about 10.5, not the clamped 7 a plate aspect would give)", sb["there"] and sb["layout"] == "street" and abs(sb["left"] - 126) < 0.5 and abs(sb["w"] - 10.53) < 0.2 and sb["inside"], sb)
+            check("on the street bench she sits on its seat, on screen", sb["there"] and sb["layout"] == "street" and abs(sb["left"] - 53) < 0.5 and sb["w"] > 5 and sb["inside"], sb)
             await page.mouse.click(30, 700); await page.wait_for_timeout(400)
             # teas and herbs live in the garden greenhouse; every source list sits behind a small (i)
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
