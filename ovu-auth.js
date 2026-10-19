@@ -20,8 +20,21 @@
   var AUTH_LS = 'ovumind_auth_v1';
   var PKCE_LS = 'ovumind_pkce_v1';
   var CLOUD_V = 1;
+  var NOTICE_V = (root.OvuStore && root.OvuStore.NOTICE_V) || 3; /* the first-visit data notice this build asks for */
   var listeners = [];
   var authEpoch = 0; /* bumped on sign-out or account change, to drop stale async auth results */
+
+  /* "Help improve logging": the one optional choice that lets Rhythme learn from diaries, and only in
+   * group counts and averages across at least 20 consenting adults (docs/design/2026-10-19-data-capture-
+   * dashboard-agents.md, section 10). The words below are the consent text itself: the consent sheet and
+   * You both show them, and a hash of them is recorded with the choice on the account. Change them and the
+   * notice version must move. Off until ticked; a tick made before any account is recorded on the first
+   * sign-in; after that the account's own record is the truth and this phone mirrors it. */
+  var IMPROVE = {
+    title: 'Help improve logging, optional',
+    body: 'Rhythme’s automated agents and its staff may compute group counts and averages across at least 20 adults who turned this on, to improve logging, reminders and the app. Nobody sees your diary on its own: not your entries, your notes or your name. You can turn this off at any time and keep your backup.'
+  };
+  function improveText() { return IMPROVE.title + '. ' + IMPROVE.body; }
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
   function nowIso() { return new Date().toISOString(); }
@@ -56,7 +69,7 @@
     return fetch(CFG.supabaseUrl + path, { method: method, headers: h, body: body != null ? JSON.stringify(body) : undefined }).then(function (r) {
       return r.text().then(function (t) {
         var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { }
-        if (!r.ok) { var e2 = new Error((j && (j.msg || j.error_description || j.error || j.message)) || ('request failed (' + r.status + ')')); e2.status = r.status; throw e2; }
+        if (!r.ok) { var e2 = new Error((j && (j.msg || j.error_description || j.error || j.message)) || ('request failed (' + r.status + ')')); e2.status = r.status; e2.code = (j && (j.code || j.error_code)) || null; throw e2; }
         return j;
       });
     });
@@ -80,6 +93,120 @@
     );
   }
   function fetchUser(at) { return call('GET', '/auth/v1/user', null, at).then(function (u) { return { id: u && u.id, email: u && u.email }; }); }
+  function sha256hex(s) {
+    try {
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s))).then(function (h) { return Array.prototype.map.call(new Uint8Array(h), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }, function () { return ''; });
+    } catch (e) { return Promise.resolve(''); }
+  }
+
+  /* ---------- "Help improve logging" (profile.analysis on this phone, public.analysis_consent on the account) ---------- */
+  function improveLocal() { var p = root.OvuStore ? OvuStore.profile() : {}; var a = p && p.analysis; return a && typeof a === 'object' ? a : { on: false, v: null, at: null, uid: null, syncedAt: null }; }
+  function writeImprove(patch) { if (root.OvuStore) OvuStore.setProfile({ analysis: Object.assign({}, improveLocal(), patch) }); }
+  /* What to do once the account's own row is known. local: what this phone recorded; uid: the signed-in
+     account; server: the account's row (null when it has none, undefined when not read yet).
+     A tick made before any account, under the current notice, is recorded once, and only on an account that
+     has never decided (no row at all): a withdrawn row is a decision and stays withdrawn. Everything else
+     adopts the account's record, so a second phone or a different account never pushes a stale tick.
+     Pure, so the harness can check every branch. */
+  function improvePlan(local, uid, server) {
+    if (!uid || server === undefined) return { action: 'none' };
+    local = local || {};
+    var serverOn = !!(server && server.accepted_at && !server.withdrawn_at);
+    if (local.on === true && !local.uid && local.v === NOTICE_V && server === null) return { action: 'push', on: true };
+    return { action: 'adopt', on: serverOn, since: serverOn ? server.accepted_at : null, notice: server ? server.notice_version : null, scope: serverOn ? (server.history_scope || 'from_now') : null, rev: (server && server.updated_at) || null };
+  }
+  function fromRow(row, uid) { /* the phone's mirror of the account's row, as the server returned it */
+    var active = !!(row && row.accepted_at && !row.withdrawn_at);
+    return { on: active, v: (row && row.notice_version) || NOTICE_V, at: active ? row.accepted_at : nowIso(), uid: uid, syncedAt: nowIso(), scope: active ? (row.history_scope || 'from_now') : null, rev: (row && row.updated_at) || null };
+  }
+  var RPC = '/rest/v1/rpc/analysis_consent_set';
+  function improveFetch() { /* the account's row; null when it has none; rejects when offline */
+    return token().then(function (at) {
+      if (!at) return undefined;
+      return call('GET', '/rest/v1/analysis_consent?select=notice_version,history_scope,accepted_at,withdrawn_at,updated_at&user_id=eq.' + encodeURIComponent(userId()), null, at)
+        .then(function (rows) { return Array.isArray(rows) && rows.length ? rows[0] : null; });
+    });
+  }
+  /* records the choice on the account, with the notice version the choice was made under and a hash of the words; resolves to the row.
+     rev is the row's last change as this phone saw it (updated_at): when given, the server refuses with SQLSTATE 40001 if another
+     phone changed the choice since, and the phone re-reads instead of overwriting. */
+  function improveSend(on, v, rev) {
+    return token().then(function (at) {
+      if (!at) throw new Error('Please sign in again.');
+      var args = { p_on: !!on }; if (rev) args.p_expected_updated_at = rev;
+      if (!on) return call('POST', RPC, args, at);
+      var p = root.OvuStore ? OvuStore.profile() : {};
+      return sha256hex(improveText()).then(function (h) {
+        args.p_notice = v || NOTICE_V; args.p_age_band = String(p.ageRange || 'adult').slice(0, 12); /* every account is an adult after the gate; the optional range only refines */ args.p_scope = 'from_now'; args.p_hash = h || null;
+        return call('POST', RPC, args, at);
+      });
+    });
+  }
+  function isConflict(err) { return !!(err && (err.code === '40001' || /another phone/i.test(err.message || ''))); }
+  var improveRead = {}; /* uid -> true once this session has read the account's row, 'failed' when the read failed (retried when You is opened again) */
+  var improveSeq = 0; /* bumped by every choice, so a read or write that started earlier can never overwrite a newer choice */
+  var improveInflight = {}; /* uid -> the reconcile promise in flight, so a sign-in and an open You panel share one */
+  /* The person's choice, from the consent sheet or the switch in You. Signed out and never bound to an
+     account: kept on this phone for the first sign-in. Signed out but belonging to an account: refused,
+     sign in to change it. Signed in: recorded on the account first and only then shown as changed; if
+     the request fails the switch goes back to what the account holds. */
+  function noteImprove(on, method, extra) { try { if (root.OvuConsent && OvuConsent.allows('improve_logging') !== !!on) OvuConsent.record('improve_logging', on ? 'grant' : 'withdraw', method || 'you', extra); } catch (e) { } }
+  function setImprove(on, method) {
+    on = !!on;
+    var prev = improveLocal(), uid = userId() || null, seq = ++improveSeq;
+    if (!uid) {
+      if (prev.uid) return Promise.resolve({ ok: false, error: 'Sign in to change this.' });
+      writeImprove({ on: on, v: NOTICE_V, at: nowIso(), uid: null, syncedAt: null, scope: null }); noteImprove(on, method);
+      return Promise.resolve({ ok: true, local: true });
+    }
+    /* a withdrawal always reaches the account, whatever this phone's mirror says, so the aggregate and the record never disagree */
+    var rev = prev.uid === uid && prev.syncedAt ? (prev.rev || null) : null; /* the row as this phone last saw it, so a change from another phone is caught */
+    return improveSend(on, NOTICE_V, rev).then(function (row) {
+      if (userId() === uid && improveSeq === seq) { writeImprove(fromRow(row, uid)); noteImprove(on, method); }
+      return { ok: true };
+    }, function (err) {
+      if (improveSeq === seq) writeImprove(prev); /* back to what the account holds */
+      if (isConflict(err) && improveSeq === seq) { delete improveRead[uid]; return syncImprove().then(function () { return { ok: false, conflict: true, error: (err && err.message) || 'This choice was changed on another phone just now.' }; }); }
+      return { ok: false, error: (err && err.message) || 'try again' };
+    });
+  }
+  /* Read the account's record and reconcile (see improvePlan). Called after a sign-in and when the You panel opens signed in. */
+  function syncImprove() {
+    var uid = userId(); if (!uid) return Promise.resolve({ action: 'none' });
+    if (improveInflight[uid]) return improveInflight[uid];
+    var seq = improveSeq;
+    var p = improveFetch().then(function (server) {
+      improveRead[uid] = true;
+      if (userId() !== uid) return { action: 'none' };
+      if (improveSeq !== seq) return { action: 'superseded' }; /* a choice was made while this read was in flight; it wins */
+      var plan = improvePlan(improveLocal(), uid, server);
+      if (plan.action === 'push') {
+        writeImprove({ uid: uid }); /* bound to this account before anything is sent, so no other account can inherit the tick */
+        return improveSend(true, improveLocal().v || NOTICE_V).then(
+          function (row) { if (userId() === uid && improveSeq === seq) writeImprove(fromRow(row, uid)); return plan; },
+          function () { if (improveSeq === seq) writeImprove({ on: false, uid: uid, syncedAt: null, scope: null }); return { action: 'failed' }; }); /* not recorded: shown off, the person can tick again */
+      }
+      var l = improveLocal();
+      if (l.on !== plan.on || l.uid !== uid || !l.syncedAt || (l.scope || null) !== plan.scope || (l.rev || null) !== plan.rev) writeImprove({ on: plan.on, v: plan.notice || l.v || NOTICE_V, at: plan.since || l.at || nowIso(), uid: uid, syncedAt: nowIso(), scope: plan.scope, rev: plan.rev });
+      noteImprove(plan.on, 'import', { sent: true, notice: plan.notice || NOTICE_V });
+      return plan;
+    }, function () { improveRead[uid] = 'failed'; return { action: 'offline' }; });
+    improveInflight[uid] = p.then(function (r) { delete improveInflight[uid]; return r; }, function (e) { delete improveInflight[uid]; throw e; });
+    return improveInflight[uid];
+  }
+  function fmtDay(iso) { try { return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); } catch (e) { return ''; } }
+  function improveHTML(signed) {
+    var l = improveLocal(), uid = userId(), mine = signed && l.uid === uid;
+    var read = signed ? improveRead[uid] : true, pending = signed && !read, failed = signed && read === 'failed';
+    var on = signed ? (mine && l.on === true) : l.on === true;
+    var disabled = pending || failed || (!signed && !!l.uid);
+    var state = pending ? 'Checking your account…'
+      : failed ? 'Could not reach your account just now. Open You again to retry.'
+      : signed ? (on ? ('On for this account' + (l.at ? ' since ' + fmtDay(l.at) : '') + (l.scope === 'all' ? ', including your earlier entries' : '')) : 'Off')
+      : l.uid ? (l.on ? 'On for the account that turned it on. Sign in to change it.' : 'Off for the account that set it. Sign in to change it.')
+      : (l.on ? 'Saved on this phone. It is recorded on your account when you sign in.' : 'Off');
+    return '<label class="perm ya-improve"><input type="checkbox" id="yaImprove"' + (on ? ' checked' : '') + (disabled ? ' disabled' : '') + '><span class="ms">volunteer_activism</span><div><b>' + esc(IMPROVE.title) + '</b><span>' + esc(IMPROVE.body) + '</span><small class="ya-state" aria-live="polite">' + esc(state) + '</small></div></label>';
+  }
 
   /* ---------- email one-time code ---------- */
   function sendCode(addr) { return call('POST', '/auth/v1/otp', { email: String(addr || '').trim(), create_user: true }); }
@@ -153,9 +280,11 @@
      signing in on this phone is asked again before anything syncs. */
   function hasCloud() { var p = root.OvuStore ? OvuStore.profile() : {}; return !!(p.cloud && p.cloud.v >= CLOUD_V && p.cloud.at && p.cloud.uid === userId()); }
   function onSignedIn() {
+    try { if (root.OvuConsent) OvuConsent.bindAccount(); } catch (e) { } /* a choice made before any account belongs to this one now */
     rerenderOpen();
     if (!hasCloud()) promptCloud();
     else if (root.OvuSync) OvuSync.syncNow();
+    syncImprove().then(rerenderOpen);
   }
 
   /* ---------- cloud-backup notice (its own overlay, never #consent) ---------- */
@@ -170,7 +299,7 @@
       '<p>Back up your diary to your account so you can sign in on another phone and carry on where you left off. It is optional, and off until you turn it on here.</p>' +
       '<ul class="ovu-cloud-list">' +
       '<li><span class="ms">inventory_2</span><span><b>What is saved</b><small>Your entries, your getting-to-know-you answers and your cycle settings. Food photo thumbnails are never uploaded.</small></span></li>' +
-      '<li><span class="ms">public</span><span><b>Where it lives</b><small>A secure database hosted outside Singapore, tied to your account and set up so only your signed-in account can read it.</small></span></li>' +
+      '<li><span class="ms">public</span><span><b>Where it lives</b><small>A secure database hosted in Singapore, tied to your account. Other people cannot read your backup. Rhythme’s server handles it only to back up, restore and delete your diary. Learning from your records to improve the app is a separate choice, off unless you turn it on.</small></span></li>' +
       '<li><span class="ms">delete</span><span><b>You can undo it</b><small>Turn backup off, or delete your account and its cloud copy, any time from Your account.</small></span></li>' +
       '<li><span class="ms">dark_mode</span><span><b>Luna is unchanged</b><small>This is only about backing up your diary. Luna’s AI help settings stay exactly as you set them.</small></span></li>' +
       '</ul>' +
@@ -181,7 +310,7 @@
     wrap.addEventListener('click', function (e) { if (e.target === wrap) close(); });
     document.getElementById('ovuCloudNo').addEventListener('click', function () { close(); rerenderOpen(); });
     document.getElementById('ovuCloudYes').addEventListener('click', function () {
-      try { if (root.OvuStore) OvuStore.setProfile({ cloud: { v: CLOUD_V, at: nowIso(), uid: userId() } }); } catch (e) { }
+      try { if (root.OvuConsent) OvuConsent.grant('cloud_sync', 'sheet'); else if (root.OvuStore) OvuStore.setProfile({ cloud: { v: CLOUD_V, at: nowIso(), uid: userId() } }); } catch (e) { }
       close(); rerenderOpen();
       if (root.OvuSync) OvuSync.syncNow();
     });
@@ -203,13 +332,14 @@
       '.ovu-cloud-btns{display:flex;gap:10px;margin-top:18px}.ovu-cloud-btns .btn{flex:1}' +
       '.ya-intro{color:var(--muted,#6b6475);font-size:13px;margin:2px 0 10px;line-height:1.5}' +
       '.ya-btns{display:grid;gap:8px}.ya-who{display:flex;gap:10px;align-items:center;padding:4px 2px 10px}.ya-who .ms{font-size:24px;color:var(--accent,#b57edc)}.ya-who b{display:block;font-size:14px}.ya-who small{display:block;color:var(--muted,#6b6475);font-size:12.5px}' +
-      '.ya-email{margin-top:10px}.ya-code{letter-spacing:.3em;text-align:center;font-size:18px}.ya-danger{color:#b4412f}';
+      '.ya-email{margin-top:10px}.ya-code{letter-spacing:.3em;text-align:center;font-size:18px}.ya-danger{color:#b4412f}' +
+      '.ya-improve{margin-top:12px}.ya-improve span:not(.ms){display:block;font-weight:500;line-height:1.45}.ya-state{display:block;margin-top:5px;font-size:12px;color:var(--muted,#6b6475)}';
     document.head.appendChild(s);
   }
 
   /* ---------- account UI in the You tab ---------- */
   var openCtx = null; /* { el, opts } while the You sheet shows the account */
-  function rerenderOpen() { if (openCtx && document.body.contains(openCtx.el)) renderAccount(openCtx.el, openCtx.opts); }
+  function rerenderOpen() { if (openCtx && document.body.contains(openCtx.el)) renderAccount(openCtx.el, Object.assign({}, openCtx.opts, { _rerender: true })); }
   function toastVia(opts, text, icon) { if (opts && typeof opts.toast === 'function') opts.toast(text, icon); }
 
   function renderAccount(el, opts) {
@@ -230,7 +360,7 @@
         '<div class="field" id="yaCodeWrap" hidden><label for="yaCode">Six-digit code we emailed you</label><input class="input ya-code" id="yaCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="------"></div>' +
         '<div class="row"><button type="submit" class="btn primary" id="yaEmailGo"><span class="ms">send</span>Send me a code</button></div>' +
         '<p class="msg" id="yaMsg" aria-live="polite"></p>' +
-        '</form>';
+        '</form>' + improveHTML(false);
     } else {
       var cloud = hasCloud();
       var st = root.OvuSync ? OvuSync.status() : { lastSyncAt: null, state: 'idle' };
@@ -241,11 +371,13 @@
         (cloud ? '<button type="button" class="btn soft" data-ya="sync"><span class="ms">sync</span>Sync now</button><button type="button" class="btn ghost" data-ya="disable-cloud"><span class="ms">cloud_off</span>Turn off cloud backup</button>' : '<button type="button" class="btn primary" data-ya="enable-cloud"><span class="ms">cloud_upload</span>Turn on cloud backup</button>') +
         '<button type="button" class="btn ghost" data-ya="signout"><span class="ms">logout</span>Sign out</button>' +
         '<button type="button" class="btn ghost ya-danger" data-ya="delete-account"><span class="ms">delete_forever</span>Delete my account</button>' +
-        '</div><p class="help">' + (cloud ? 'Your diary is backed up to your account and kept in step across your phones. Food photos stay on this phone.' : 'Backup is off, so nothing leaves this phone yet. Turn it on to back up your diary.') + '</p>';
+        '</div><p class="help">' + (cloud ? 'Your diary is backed up to your account and kept in step across your phones. Food photos stay on this phone.' : 'Backup is off, so nothing leaves this phone yet. Turn it on to back up your diary.') + '</p>' +
+        improveHTML(true);
     }
     html += '</div>';
     el.innerHTML = html;
     wire(el, opts);
+    if (signed) { var u = userId(), rd = improveRead[u]; if (!rd || (rd === 'failed' && !opts._rerender)) syncImprove().then(rerenderOpen); }
   }
 
   function wire(el, opts) {
@@ -263,6 +395,14 @@
       if (act === 'disable-cloud') { confirmDisableCloud(el, opts); return; }
       if (act === 'signout') { confirmSignOut(el, opts); return; }
       if (act === 'delete-account') { confirmDelete(el, opts); return; }
+    };
+    el.onchange = function (e) {
+      var t = e.target; if (!t || t.id !== 'yaImprove') return;
+      var on = !!t.checked; t.disabled = true;
+      setImprove(on).then(function (r) {
+        toastVia(opts, r.ok ? (on ? 'Thank you. Help improve logging is on.' : 'Help improve logging is off.') : ('Could not save that to your account: ' + r.error), r.ok ? 'check_circle' : 'error');
+        rerenderOpen();
+      });
     };
     if (form) form.onsubmit = function (e) {
       e.preventDefault();
@@ -290,13 +430,21 @@
     var g = el.querySelector('.ygroup'); if (!g) return;
     if (g.querySelector('.ya-confirm')) return;
     var box = document.createElement('div'); box.className = 'flag watch ya-confirm'; box.style.marginTop = '10px';
-    box.innerHTML = '<span class="ms">cloud_off</span><div><b>Turn off cloud backup?</b><span>This phone stops backing up and syncing. Your diary here and the copy already in your account are both kept, and you can turn backup on again any time.</span>' +
-      '<div class="row"><button type="button" class="btn soft" data-dc="yes"><span class="ms">cloud_off</span>Turn off backup</button><button type="button" class="btn ghost" data-dc="no">Keep it on</button></div></div>';
+    box.innerHTML = '<span class="ms">cloud_off</span><div><b>Turn off cloud backup?</b><span>This phone stops backing up and syncing from now on, and the change is kept on your record. Keep the copy already in your account, or delete it now; either way you can turn backup on again any time.</span>' +
+      '<div class="row"><button type="button" class="btn soft" data-dc="keep"><span class="ms">cloud_off</span>Turn off, keep the copy</button><button type="button" class="btn ghost ya-danger" data-dc="wipe"><span class="ms">delete</span>Turn off and delete the copy</button></div>' +
+      '<div class="row"><button type="button" class="btn ghost" data-dc="no">Keep it on</button></div></div>';
     g.appendChild(box); box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    box.onclick = function (e) { var b = e.target.closest('[data-dc]'); if (!b) return;
-      if (b.dataset.dc === 'no') { box.remove(); return; }
-      try { if (root.OvuStore) OvuStore.setProfile({ cloud: { v: 0, at: nowIso() } }); } catch (err) { }
-      toastVia(opts, 'Cloud backup is off. Nothing new leaves this phone.', 'cloud_off'); rerenderOpen();
+    box.onclick = function (e) { var b = e.target.closest('[data-dc]'); if (!b) return; var what = b.dataset.dc;
+      if (what === 'no') { box.remove(); return; }
+      try { if (root.OvuConsent) OvuConsent.withdraw('cloud_sync', 'you'); else if (root.OvuStore) OvuStore.setProfile({ cloud: { v: 0, at: nowIso() } }); } catch (err) { }
+      if (root.OvuSync && OvuSync.resetPosition) OvuSync.resetPosition();
+      if (what === 'wipe' && root.OvuSync && OvuSync.wipeCloud) {
+        b.disabled = true;
+        OvuSync.wipeCloud().then(function () { toastVia(opts, 'Cloud backup is off and the copy in your account is deleted. Your diary is still on this phone.', 'cloud_off'); rerenderOpen(); },
+          function (err) { toastVia(opts, 'Backup is off, but the copy could not be deleted just now: ' + err.message + '. Try again from Your account.', 'error'); rerenderOpen(); });
+        return;
+      }
+      toastVia(opts, 'Cloud backup is off. Nothing new leaves this phone; the copy in your account is kept.', 'cloud_off'); rerenderOpen();
     };
   }
 
@@ -341,6 +489,7 @@
     session: session, userId: userId, email: email, isSignedIn: isSignedIn, token: token,
     sendCode: sendCode, verifyCode: verifyCode, signInWith: signInWith, signOut: signOut,
     promptCloud: promptCloud, hasCloud: hasCloud,
+    NOTICE_V: NOTICE_V, IMPROVE: IMPROVE, improveText: improveText, improvePlan: improvePlan, improveLocal: improveLocal, setImprove: setImprove, syncImprove: syncImprove,
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
   };
 })(window);

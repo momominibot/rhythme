@@ -249,10 +249,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
 (function underSixteenSafeguard() {
   console.log('under-16s who mention a possible pregnancy get support contacts');
   var w = fresh(), O = w.OvuOrb;
-  check('13-16: "I think I might be pregnant" -> support card', (O.urgent('I think I might be pregnant', { ageBand: '13-16' }) || {}).level === 'safeguard');
-  check('older 13-17 profiles are treated the same', (O.urgent('my period is late and the condom broke', { ageBand: '13-17' }) || {}).level === 'safeguard');
-  check('adults get no safeguarding card for the same words', O.urgent('I think I might be pregnant', { ageBand: '25-29' }) === null);
-  check('pregnancy with bleeding is still an emergency first, at any age', (O.urgent('I am pregnant and bleeding', { ageBand: '13-16' }) || {}).level === 'emergency');
+  check('no under-18 safeguarding card remains: Rhythme is 18+, a possible pregnancy is not an emergency on its own', O.urgent('I think I might be pregnant', { ageRange: '25-29' }) === null && O.urgent('my period is late and the condom broke', { ageBand: '13-16' }) === null);
+  check('pregnancy with bleeding is still an emergency first', (O.urgent('I am pregnant and bleeding', {}) || {}).level === 'emergency');
 })();
 
 (function noStressPets() {
@@ -275,7 +273,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var texts = ['cat', 'dog', 'mewmew'].map(function (id) { return P.mood(id, { t: t0 + 200 * H }).text + ' ' + P.mood(id, { night: true, t: t0 }).text; }).join(' ');
   check('moods are kind: no hungry, sad, sick or starving', !/hungry|sad|sick|starv|dying|neglect|lonely/i.test(texts), texts);
   var got = 0; for (var i = 0; i < 12; i++) got += RW.care('mewmew', 'feed').points;
-  check('care hearts cap at 10 a day per pet', got === 10 && RW.care('dog', 'play').points === 2, got);
+  check('pet care earns no hearts: kindness is not play money', got === 0 && RW.care('dog', 'play').points === 0, got);
 })();
 
 (function rememberedPeriods() {
@@ -594,9 +592,9 @@ function scenes(todayIso) {
   console.log("Luna's look (ovu-mascot.js): one pastel crescent moon");
   var w = fresh(), M = w.OvuMascot;
   check('one look only, the moon', M.LIST.length === 1 && M.LIST[0].id === 'moon');
-  check('its sprite and head badge are on disk', fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].img)) && fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].head)));
+  check('its crescent sprite is on disk and no round badge is used', fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].img)) && !M.LIST[0].head);
   check('the moon is the default and an unknown look is ignored', M.current().id === 'moon' && M.set('rabbit').id === 'moon');
-  check('the small button uses the head badge, the welcome the full sprite', /orb-moon-head\.webp$/.test(M.src(null, true)) && /orb-moon\.webp$/.test(M.src(null, false)));
+  check('the small Luna button shows the crescent on its own, like the welcome (no round badge)', /orb-moon\.webp$/.test(M.src(null, true)) && /orb-moon\.webp$/.test(M.src(null, false)));
 })();
 
 (function healthImportParsers() {
@@ -678,10 +676,7 @@ function scenes(todayIso) {
   }).then(function (msg) {
     check('an unknown file type explains what can be read', /export\.zip or export\.xml/.test(msg), msg);
   }).catch(function (e) { check('zip tests ran without throwing', false, e && e.stack || e); });
-})().then(function () {
-  console.log('\n' + passes + ' passed, ' + fails + ' failed');
-  process.exit(fails ? 1 : 0);
-});
+})(); /* the summary is printed once the loop drains (end of file), never from inside one block */
 (function petShopShelves() {
   console.log('pet shop shelves: treats are used up, accessories are worn by one pet at a time');
   var w = fresh(), RW = w.OvuRewards, P = w.OvuPets, S = w.OvuStore;
@@ -722,9 +717,9 @@ function scenes(todayIso) {
   check('a full planned session counts as completed', T.entryFor(179, 'easy', 0, 3).completed === true);
   var l0 = RW.ledger(), before = l0.hearts, day = l0.lastDay;
   var r1 = RW.award(S.add('mindfulness', S.today(), T.entryFor(50, 'easy', 40, 0), 'room'));
-  var r2 = RW.award(S.add('mindfulness', S.today(), T.entryFor(55, 'easy', 0, 0), 'room'));
-  check('fifty seconds earns nothing yet, the next fifty-five complete a minute for two hearts', r1.points === 0 && r2.points === 2 && RW.ledger().hearts === before + 2, r1.points + '/' + r2.points);
-  check('the leftover forty-five seconds carry on', RW.ledger().breathCarry === 45, RW.ledger().breathCarry);
+  var r2 = RW.award(S.add('mindfulness', S.today(), T.entryFor(65, 'easy', 0, 0), 'room'));
+  check('under a minute earns nothing, a full minute earns the flat two', r1.points === 0 && r2.points === 2 && RW.ledger().hearts === before + 2, r1.points + '/' + r2.points);
+  check('seconds are not carried between sessions', !RW.ledger().breathCarry);
   check('Moon Tap never touches the daily streak', RW.ledger().lastDay === day && r2.bonus === 0);
   check('taps change nothing: forty taps and none earned the same', r1.points === 0);
 })();
@@ -897,6 +892,91 @@ function scenes(todayIso) {
   check('on arrival the pet stands behind her: to her left when she faces right, to her right when she faces left', bs[0].x < 50 && bl[0].x > 50 && bs.every(function (p) { return Math.abs(p.x - 50) >= 4 || Math.abs(p.y - 50) >= 3; }));
 })();
 
+/* ---------- life-sim slice: the calendar, stamina and the proximity prompt (ovu-gametime.js, ovu-stamina.js, ovu-interact.js) ---------- */
+(function lifeSim() {
+  console.log('life-sim: the calendar names the real day, stamina costs and refills, the nearest hotspot prompts');
+  var w = fresh('2026-10-19');
+  var speed = 1, RealDate = w.Date;
+  /* the modules read the phone's clock through new Date(): a fake with a settable now keeps this block the same on any day */
+  w.__now = new RealDate(2026, 9, 19, 12, 0).getTime();
+  w.Date = function FakeDate() { var a = arguments; if (!a.length) return new RealDate(w.__now); if (a.length === 1) return new RealDate(a[0]); return new RealDate(a[0], a[1], a[2] || 1, a[3] || 0, a[4] || 0, a[5] || 0, a[6] || 0); };
+  w.Date.now = function () { return w.__now; }; w.Date.parse = RealDate.parse; w.Date.UTC = RealDate.UTC; w.Date.prototype = RealDate.prototype;
+  w.OvuWalk = { walking: function () { return false; }, setSpeedScale: function (k) { speed = k; } };
+  w.OvuRoom = { on: function () { }, els: { scene: { classList: { toggle: function () { }, contains: function () { return false; } } } }, busy: function () { return false; }, layout: function () { return null; }, pos: function () { return { x: 0, y: 0 }; }, visiting: function () { return false; }, toast: function () { } };
+  w.setInterval = function () { return 0; }; w.clearTimeout = function () { }; w.setTimeout = function () { return 0; };
+  ['ovu-gametime.js', 'ovu-stamina.js', 'ovu-interact.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var GT = w.OvuGameTime, ST = w.OvuStamina, IN = w.OvuInteract, S = w.OvuStore;
+  check('dayKey is the local calendar date', GT.dayKey(new w.Date(2026, 9, 19, 23, 30)) === '2026-10-19' && GT.dayKey(new w.Date(2026, 0, 1, 0, 5)) === '2026-01-01');
+  check('seasons follow the month', GT.season(new w.Date(2026, 0, 10)) === 'winter' && GT.season(new w.Date(2026, 3, 10)) === 'spring' && GT.season(new w.Date(2026, 6, 10)) === 'summer' && GT.season(new w.Date(2026, 9, 19)) === 'autumn');
+  check('the hour reads like a watch', GT.hourLabel(new w.Date(2026, 9, 19, 15, 5)) === '3:05 pm' && GT.hourLabel(new w.Date(2026, 9, 19, 0, 0)) === '12 am' && GT.hourLabel(new w.Date(2026, 9, 19, 12, 30)) === '12:30 pm');
+  S.setState({ game: { firstDay: '2026-10-08' } });
+  check('the day count starts at 1 on the first day played and counts real days', GT.day(new w.Date(2026, 9, 8)) === 1 && GT.day(new w.Date(2026, 9, 19)) === 12);
+  var seen = []; GT.onNewDay(function (k, prev) { seen.push([prev, k]); });
+  check('the first open of the app stamps the first day', (function () { S.setState({ game: null }); return !!(GT.day() >= 1 && S.state().game && S.state().game.firstDay); })());
+  S.setState({ stamina: null });
+  check('stamina starts full and a watering costs 6', ST.value() === 100 && ST.spend('water') === true && ST.value() === 94 && ST.can('water'));
+  var ok = true; for (var i = 0; i < 20; i++) ok = ST.spend('water', true) && ok;
+  check('spending stops at the cost line and says no quietly when asked', ST.value() === 4 && ST.spend('water', true) === false && ST.value() === 4 && ST.low() === true && speed === 0.72);
+  ST.refill();
+  check('a refill is full and the walk is back to full speed', ST.value() === 100 && !ST.low() && speed === 1);
+  S.setState({ stamina: { v: 10, max: 100, day: '2026-10-18' } });
+  check('a new day refills on its own', ST.value() === 100);
+  S.setState({ stamina: { v: 30, max: 100, day: GT.dayKey() }, sleeping: null });
+  S.setState({ sleeping: { at: '2026-10-19T22:00:00Z' } });
+  check('going to sleep refills (state.sleeping turning on)', ST.value() === 100);
+  S.setState({ stamina: { v: 30, max: 100, day: '2026-10-21' } });
+  check('a clock set back keeps the energy it had; only a later date refills', ST.value() === 30);
+  S.setState({ game: { firstDay: '2026-10-25' } });
+  check('the day count never shows 0 when the clock is before the first day', GT.day() === 1);
+  S.setState({ game: { firstDay: '2026-10-08' } });
+  GT.check(); var before = seen.length;
+  w.__now = new RealDate(2026, 9, 20, 0, 2).getTime(); GT.check(); GT.check();
+  check('the date turning fires the new-day watchers once, with the old and new keys, and a repeat check is quiet', seen.length === before + 1 && seen[seen.length - 1][0] === '2026-10-19' && seen[seen.length - 1][1] === '2026-10-20', JSON.stringify(seen));
+  w.__now = new RealDate(2026, 9, 23, 9, 0).getTime(); GT.check();
+  check('three skipped days fire one watcher call and the calendar moves three days', seen.length === before + 2 && seen[seen.length - 1][1] === '2026-10-23' && GT.day() === 16, JSON.stringify(seen));
+  w.__now = new RealDate(2026, 9, 19, 12, 0).getTime(); GT.check();
+  var hots = [{ id: 'bed', label: 'Bed · go to sleep', x: 36, y: 60, wp: { x: 40, y: 72 } }, { id: 'desk', label: 'Desk · write in your journal', x: 70, y: 60, wp: { x: 68, y: 74 } }, { id: 'mat', label: 'Yoga mat · breathe', x: 30, y: 85, prompt: 'Tap to breathe a while' }];
+  check('the nearest hotspot within reach is found by its stand point, none when far', IN.nearest({ x: 41, y: 73 }, hots).id === 'bed' && IN.nearest({ x: 66, y: 73 }, hots).id === 'desk' && IN.nearest({ x: 10, y: 20 }, hots) === null);
+  check('the prompt verb comes from the label after the dot, or the hotspot\'s own prompt', IN.verb(hots[0]) === 'Tap to go to sleep' && IN.verb(hots[1]) === 'Tap to write in your journal' && IN.verb(hots[2]) === 'Tap to breathe a while');
+})();
+
+
+/* ---------- the farm (ovu-farm.js): rules, then the plate's floor through the real walk engine ---------- */
+(function farm() {
+  console.log('farm: seeds a day, planting, watering by real days, weeds, harvest; the plate is walkable');
+  var w = scenes('2026-10-19');
+  w.OvuRoom = null; w.OvuZones = null; /* rules only: the scene wiring stands down without a room */
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  var F = w.OvuFarm, S = w.OvuStore, K = w.OvuWalk, day = '2026-10-19', next = '2026-10-20';
+  check('twelve beds sit inside the bed grid and their stand points sit outside it on the slab', F.BEDS.length === 12 && F.BEDS.every(function (b) { return K.inPoly(F.LAYOUT.zones[0], b.wp.x, b.wp.y) && K.blocked(F.LAYOUT.solids, b.wp.x, b.wp.y) === null; }), JSON.stringify(F.BEDS.map(function (b) { return b.wp; })));
+  var bad = K.checkLayout(F.LAYOUT);
+  check('farm: home, hotspot stand points and the gate are on the floor and outside every solid', bad.length === 0, JSON.stringify(bad));
+  var wd = K.world(F.LAYOUT, []);
+  check('every bed can be reached from the gate by the planner', F.BEDS.every(function (b) { return !!K.plan(wd, F.LAYOUT.home, b.wp, 2); }));
+  check('every hotspot stand point (the well behind the beds included) is reachable from the gate by the planner', F.LAYOUT.hotspots.every(function (h) { return !!K.plan(wd, F.LAYOUT.home, h.wp, 2); }), JSON.stringify(F.LAYOUT.hotspots.filter(function (h) { return !K.plan(wd, F.LAYOUT.home, h.wp, 2); }).map(function (h) { return h.id; })));
+  check('beds that share a stand point share one prompt, so no bed is shadowed by its neighbour', F.LAYOUT.prompts.length === F.STANDS.length && F.STANDS.every(function (st) { var hit = w.OvuInteract ? null : null; return st.beds.length >= 1; }) && F.STANDS.reduce(function (n, st) { return n + st.beds.length; }, 0) === 12 && F.STANDS.some(function (st) { return st.beds.length > 1; }));
+  S.setState({ farm: null });
+  check('the shed gives three seeds a day and no more', F.seedsLeftToday(S, day) === 3 && F.takeSeed(S, 'carrot', day).ok && F.takeSeed(S, 'carrot', day).ok && F.takeSeed(S, 'radish', day).ok && F.takeSeed(S, 'tomato', day).ok === false && F.seedsLeftToday(S, day) === 0 && F.seedsLeftToday(S, next) === 3);
+  check('a clock that goes back to a claimed date gives no seeds twice', F.takeSeed(S, 'pumpkin', next).ok && F.seedsLeftToday(S, next) === 2 && F.seedsLeftToday(S, day) === 0 && !F.takeSeed(S, 'pumpkin', day).ok);
+  S.setState({ farm: Object.assign({}, S.state().farm, { seeds: { carrot: 2, radish: 1 }, seedsByDay: {} }) });
+  var weedy = F.BEDS.filter(function (b) { return F.hasWeeds(null, b.id, day); }).map(function (b) { return b.id; });
+  var clean = F.BEDS.filter(function (b) { return !F.hasWeeds(null, b.id, day); })[0].id;
+  check('weeds fall on a couple of beds a day, the same ones on every phone', weedy.length >= 1 && weedy.length <= 5 && JSON.stringify(weedy) === JSON.stringify(F.BEDS.filter(function (b) { return F.hasWeeds(null, b.id, day); }).map(function (b) { return b.id; })), JSON.stringify(weedy));
+  if (weedy.length) check('a weedy bed refuses planting and watering until pulled, and stays clear that day', !F.plant(S, weedy[0], 'carrot', day).ok && F.clearWeeds(S, weedy[0], day).ok && !F.hasWeeds(F.bed(S, weedy[0]), weedy[0], day) && F.plant(S, weedy[0], 'carrot', day).ok);
+  check('planting takes a seed; a second crop in the same bed is refused', F.plant(S, clean, 'carrot', day).ok && !F.plant(S, clean, 'radish', day).ok && (F.farmState(S).seeds.carrot || 0) === 0);
+  /* tending as she would: pull the day's weeds first, then water */
+  function tend(id, d) { if (F.hasWeeds(F.bed(S, id), id, d)) F.clearWeeds(S, id, d); return F.water(S, id, d); }
+  var w1 = tend(clean, day), w2 = F.water(S, clean, day);
+  check('watering counts once a day and a missed day takes nothing away', w1.ok && w1.days === 1 && !w2.ok && F.stage(F.bed(S, clean)) === 1 && tend(clean, '2026-10-22').ok && F.growthDays(F.bed(S, clean)) === 2);
+  check('weeds stop the watering can until they are pulled', F.BEDS.some(function (b) { return b.id !== clean && F.hasWeeds(null, b.id, '2026-10-23'); }) && (function () { var wb = F.BEDS.filter(function (b) { return b.id !== clean && F.hasWeeds(null, b.id, '2026-10-23'); })[0].id; S.setState({ farm: Object.assign({}, S.state().farm, { seeds: { radish: 1 } }) }); F.clearWeeds(S, wb, '2026-10-23'); F.plant(S, wb, 'radish', '2026-10-23'); var st = S.state().farm; st.beds[wb].cleared = undefined; S.setState({ farm: st }); return !F.water(S, wb, '2026-10-23').ok && F.clearWeeds(S, wb, '2026-10-23').ok && F.water(S, wb, '2026-10-23').ok; })());
+  check('watering dated before the planting or before the last watering is refused (the clock went back)', !F.water(S, clean, '2026-10-18').ok && !F.water(S, clean, '2026-10-21').ok && F.growthDays(F.bed(S, clean)) === 2);
+  check('a carrot is ripe after three watered days, not before', !F.ripe(F.bed(S, clean)) && !F.harvest(S, clean).ok && tend(clean, '2026-10-23').ok && F.ripe(F.bed(S, clean)) && F.stage(F.bed(S, clean)) === 3);
+  var before = S.list().length, h = F.harvest(S, clean);
+  check('harvest fills the basket, empties the bed and writes no diary entry', h.ok && h.crop === 'carrot' && h.n === 2 && F.farmState(S).harvest.carrot === 2 && !F.bed(S, clean).crop && S.list().length === before);
+  var sm = F.summary(S, day);
+  check('the summary counts planted, ripe, dry and weedy beds', typeof sm.planted === 'number' && typeof sm.weeds === 'number' && sm.seedsLeft === F.seedsLeftToday(S, day));
+})();
+
 (function ledgerAccounting() {
   console.log('hearts accounting: a record earns once, Moon Tap caps per day, gifts never repeat, two pets at home');
   var w = fresh(), RW = w.OvuRewards, S = w.OvuStore, T = w.OvuBreathTap;
@@ -905,7 +985,7 @@ function scenes(todayIso) {
   check('the same saved record earns only once', r1.points > 0 && r2.points === 0 && r2.again === true, r1.points + '/' + r2.points);
   var h0 = RW.ledger().hearts;
   [600, 600, 600].forEach(function (secs) { RW.award(S.add('mindfulness', S.today(), T.entryFor(secs, 'easy', 0, 0), 'room')); });
-  check('three ten-minute Moon Taps in a day earn twenty, not sixty', RW.ledger().hearts - h0 === 20, RW.ledger().hearts - h0);
+  check('three ten-minute Moon Taps in a day earn six, the practice cap, not sixty', RW.ledger().hearts - h0 === 6, RW.ledger().hearts - h0);
   var g0 = RW.ledger().hearts; RW.grant(30, 'intro'); RW.grant(30, 'intro');
   check('a one-time gift is paid once, remembered outside the log', RW.ledger().hearts - g0 === 30 && RW.ledger().gifts.intro === true);
   var l = RW.ledger(); l.hearts = 2000; S.setState({ rewards: l });
@@ -918,5 +998,124 @@ function scenes(todayIso) {
   check('swapping a kitten for another kitten still works with two at home', RW.toggle('catblack') === true && !RW.ledger().placed.cat);
 })();
 
-console.log('\n' + passes + ' passed, ' + fails + ' failed');
-process.exit(fails ? 1 : 0);
+(function consentRecordAndAgeGate() {
+  console.log('consent record and the 18+ gate (ovu-consent.js): events, mirrors, import, receipts, headers, binding');
+  var w = fresh();
+  ['ovu-consent.js', 'ovu-auth.js', 'ovu-insight.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  w.crypto = { getRandomValues: w.crypto.getRandomValues.bind(w.crypto), subtle: { digest: function (alg, data) { var h = require('crypto').createHash('sha256').update(Buffer.from(data)).digest(); return Promise.resolve(h.buffer.slice(h.byteOffset, h.byteOffset + h.byteLength)); } } };
+  var C = w.OvuConsent, S = w.OvuStore, O = w.OvuOrb, SY = w.OvuSync, A = w.OvuAuth;
+  var src = function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); };
+  var roomJs = src('room.js'), roomHtml = src('room.html'), storeJs = src('ovu-store.js'), appnav = src('appnav.js'), orbJs = src('ovu-orb.js'), terms = src('terms.html'), priv = src('privacy.html'), luna = src('supabase/functions/luna/index.ts'), insight = src('supabase/functions/insight/index.ts'), mig = src('supabase/migrations/20261019050000_consent_events.sql');
+  check('one notice version, 3, in the store, the module and both page gates, which also require the 18+ attestation', S.NOTICE_V === 3 && C.NOTICE_V === 3 && /c\.v >= window\.OvuStore\.NOTICE_V && a && a\.confirmed === true/.test(storeJs) && /c\.v >= 3 && a && a\.confirmed === true/.test(appnav));
+  check('the teen logic is gone from the room, the orb and the terms, and the room goes through the consent module', !/isMinor|under13|13-16|minorAck: A\.|openMinorNote|openTeenPregnancyCard|BABES|age13|CONSENT_V/.test(roomJs) && !/under13|13-16/.test(orbJs) && /OvuConsent\.require\(next/.test(roomJs) && /at least <strong>18 years old<\/strong>/.test(terms) && !/16 years old/.test(terms));
+  check('the onboarding asks an optional adult age range, never a band with minors', /id: 'agerange'[^\n]*optional: true[^\n]*\['18-24'/.test(roomJs) && !/\['under13'/.test(roomJs) && /ageRange: A\.ageRange \|\| '', ageBand: '', minorAck: ''/.test(roomJs));
+  check('the sheet carries the switches container, the 18+ tick, the under-18 way out and notice version 3', /id="cChoices"/.test(roomHtml) && /id="cAge"[^\n]*I confirm I am 18 or older/.test(roomHtml) && /id="cUnder"/.test(roomHtml) && /Notice version 3, 19 October 2026/.test(roomHtml) && !/13 or older/.test(roomHtml));
+  check('the pages say Singapore for the backup and name the separate choices', !/outside Singapore/.test(priv) && !/outside Singapore/.test(roomHtml) && !/outside Singapore/.test(src('ovu-auth.js')) && /notice v3/.test(priv) && /version 3 \(19 October 2026\)/.test(priv) && /Help improve logging/.test(priv) && /For adults/.test(priv));
+  check('both diary-reading functions gate by consent: the account record when signed in, the phone\'s word otherwise', /consentGate\(req, sb, image \? "food_photo_ai" : "ai_reading"/.test(luna) && /consentGate\(req, sb, "ai_summaries"/.test(insight) && /consent_allows/.test(luna) && /x-rhythme-consent/.test(luna) && /x-rhythme-consent/.test(insight));
+  check('the migration logs events append-only, derives state, exposes allows to the service role only, and guards sync writes', /create table if not exists public\.consent_events/.test(mig) && /consent_record\(/.test(mig) && /consent_allows\(uuid, text\) to service_role/.test(mig) && /revoke all on function public\.consent_allows\(uuid, text\) from public, anon, authenticated/.test(mig) && /entries_consent_guard/.test(mig) && /profiles_consent_guard/.test(mig) && /Rollback:/.test(mig));
+  /* a fresh phone */
+  check('a fresh phone needs the sheet: no attestation, no state, nothing allowed', C.needsSheet() && !C.ageOk() && Object.keys(C.state()).length === 0 && !C.allows('health_tracking') && !C.allows('ai_reading'));
+  var st0 = C.stateFromEvents([{ purpose: 'ai_reading', action: 'grant', at: '2026-10-19T01:00:00Z', notice: 3, method: 'sheet' }, { purpose: 'ai_reading', action: 'withdraw', at: '2026-10-19T02:00:00Z', notice: 3, method: 'you' }, { purpose: 'cloud_sync', action: 'grant', at: '2026-10-19T01:30:00Z', notice: 3, method: 'jit', uid: 'u1' }]);
+  check('state is the latest event per purpose', st0.ai_reading.on === false && st0.ai_reading.method === 'you' && st0.cloud_sync.on === true && st0.cloud_sync.uid === 'u1');
+  /* what today's flags become */
+  var imp = C.importEventsFrom({ consent: { v: 2, at: '2026-10-18T10:00:00Z', luna: true }, cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' }, analysis: { on: true, at: '2026-10-19T00:30:00Z', uid: 'u1' } }, { on: true, insights: false, photos: true });
+  var impP = imp.map(function (e) { return e.purpose; }).sort().join(',');
+  check('the first run turns today\'s flags into import events dated when they were set, at the old notice', impP === 'ai_reading,cloud_sync,food_photo_ai,health_tracking,improve_logging' && imp.every(function (e) { return e.method === 'import' && e.notice === 2 && e.action === 'grant' && !e.sent; }) && imp.filter(function (e) { return e.purpose === 'cloud_sync'; })[0].uid === 'u1' && imp.filter(function (e) { return e.purpose === 'cloud_sync'; })[0].at === '2026-10-19T00:00:00Z');
+  check('a phone that never agreed imports nothing', C.importEventsFrom({}, { on: true }).length === 0 && C.importEventsFrom({ consent: { v: 2 } }, {}).length === 0);
+  /* a returning v2 person on this phone */
+  S.setProfile({ consent: { v: 2, at: '2026-10-18T10:00:00Z', luna: true, improve: false, age13: true }, cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' }, consentEvents: [], consentImportedAt: null });
+  w.localStorage.setItem('ovumind_ai_v1', JSON.stringify({ on: true, insights: false, photos: true }));
+  S.setProfile({ consentEvents: [] }); var p0 = S.profile(); delete p0.consentImportedAt;
+  var imported = C.importLegacy();
+  check('importLegacy writes the events once and marks the profile', imported && S.profile().consentEvents.length === 4 && !!S.profile().consentImportedAt && C.importLegacy() === false);
+  C.apply();
+  check('after import the sheet is still due (old notice, no attestation) and the mirrors agree with the old flags', C.needsSheet() && O.aiConfig().on === true && O.aiConfig().insights === false && O.aiConfig().photos === true && S.profile().cloud.v === 1 && S.profile().cloud.uid === 'u1');
+  /* the sheet: attestation, the required purpose, the switches as shown */
+  C.attestAge('sheet'); C.grant('health_tracking', 'sheet'); C.setMany({ ai_reading: true, food_photo_ai: false, ai_summaries: false, cloud_sync: true }, 'sheet', true);
+  check('after the sheet nothing is due: 18+ attested once, health tracking at notice 3, photos withdrawn, the rest as ticked', !C.needsSheet() && C.ageOk() && S.profile().ageAttest.version === 1 && S.profile().consent.v === 3 && C.allows('ai_reading') && !C.allows('food_photo_ai') && C.allows('cloud_sync') && O.aiConfig().photos === false && O.aiConfig().on === true, JSON.stringify(S.profile().consent));
+  var r = C.receipt();
+  check('the receipt names the notice, the purposes, the attestation and the count', r.noticeVersion === 3 && r.purposes.ai_reading === true && r.purposes.food_photo_ai === false && r.purposes.health_tracking === true && r.ageAttest && r.ageAttest.confirmed === true && r.events >= 9 && r.userId === null, JSON.stringify(r));
+  check('the phone\'s word travels only for an allowed purpose', C.header('ai_reading')['X-Rhythme-Consent'].indexOf('ai_reading;notice=3;device=d') === 0 && !C.header('food_photo_ai')['X-Rhythme-Consent']);
+  /* Luna's switches write events with their method; the mirror follows */
+  var n0 = C.events().length; O.setAiConfig({ on: true, insights: true, photos: true }, 'jit');
+  var last = C.events().slice(n0);
+  check('a first-use allow records only what changed, as jit, and the mirror follows', last.length === 2 && last.every(function (e) { return e.method === 'jit' && e.action === 'grant'; }) && last.map(function (e) { return e.purpose; }).sort().join(',') === 'ai_summaries,food_photo_ai' && JSON.parse(w.localStorage.getItem('ovumind_ai_v1')).photos === true);
+  O.setAiConfig({ on: false, insights: true, photos: true }, 'settings');
+  check('switching Luna off in her settings is a withdrawal, as easy as the grant', C.state().ai_reading.on === false && C.state().ai_reading.method === 'settings' && O.aiConfig().on === false);
+  check('control state never rides in the backup', ['consentEvents', 'ageAttest', 'analysis', 'consent', 'cloud', 'consentImportedAt'].every(function (k) { return SY.CONTROL_KEYS[k] === 1 && !(k in SY.profileForCloud({ consentEvents: [], ageAttest: {}, analysis: {}, consent: {}, cloud: {}, consentImportedAt: 'x', name: 'n' })); }) && 'name' in SY.profileForCloud({ name: 'n', consentEvents: [] }));
+  check('a profile with an old minor band is recognised, so the sheet can say so', (function () { S.setProfile({ ageBand: '13-16' }); var m = C.legacyMinor(); S.setProfile({ ageBand: '' }); return m && !C.legacyMinor(); })());
+  /* binding at sign-in: a choice made before any account belongs to the first account, and reaches the server */
+  var U = 'u-9', sent = [], sentBy = [];
+  w.localStorage.setItem('ovumind_auth_v1', JSON.stringify({ access_token: 't', refresh_token: 'r', expires_at: Math.floor(Date.now() / 1000) + 86400, user: { id: U, email: 'x@y.z' } }));
+  w.fetch = function (url, o) { var b = o && o.body ? JSON.parse(o.body) : null; if (/rpc\/consent_record/.test(url)) { sent.push(b); return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify({ id: sent.length, purpose: b.p_purpose })); } }); } return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve('{}'); } }); };
+  var done = false; C.bindAccount().then(function () { done = true; });
+  setTimeout(function () {
+    var st = C.state(), evs = C.events();
+    check('after sign-in the pre-account choices are bound to this account and every bound event reached the server once', done && st.health_tracking.uid === U && st.ai_summaries.uid === U && st.cloud_sync.uid === U && evs.filter(function (e) { return e.uid === U; }).every(function (e) { return e.sent === true; }) && sent.length === evs.filter(function (e) { return e.uid === U; }).length && sent.every(function (b) { return b.p_notice === 3 && typeof b.p_hash === 'string' && b.p_hash.length === 64 && b.p_method && b.p_client_at; }), JSON.stringify({ sent: sent.length, bound: evs.filter(function (e) { return e.uid === U; }).length }));
+    check('a withdrawn purpose is not bound, and events never bound stay as the record of the phone', !st.ai_reading.uid && evs.filter(function (e) { return !e.uid; }).length > 0);
+    check('every event carries the phone\'s own id, so a resend can never undo a later choice', sent.every(function (b) { return typeof b.p_client_id === 'string' && b.p_client_id.length > 4; }) && C.receipt().recorded === true && C.receipt().pending === 0);
+    var before = sent.length; C.withdraw('ai_summaries', 'you');
+    setTimeout(function () {
+      check('a change made while signed in is recorded on the account at once', sent.length === before + 1 && sent[sent.length - 1].p_purpose === 'ai_summaries' && sent[sent.length - 1].p_action === 'withdraw' && sent[sent.length - 1].p_method === 'you' && C.state().ai_summaries.on === false, JSON.stringify(sent[sent.length - 1]));
+      /* a choice made while a send is in flight is sent too, in order */
+      var gateRes, gate = new Promise(function (res) { gateRes = res; }), order = [];
+      w.fetch = function (url, o) { var b = o && o.body ? JSON.parse(o.body) : null; order.push(b.p_purpose + ':' + b.p_action); var first = order.length === 1; var resp = { ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify({ id: 100 + order.length, purpose: b.p_purpose })); } }; return first ? gate.then(function () { return resp; }) : Promise.resolve(resp); };
+      C.grant('food_photo_ai', 'jit');
+      var p1 = C.flush();
+      C.withdraw('food_photo_ai', 'you');
+      gateRes();
+      p1.then(function () {
+        return new Promise(function (res) { setTimeout(res, 5); });
+      }).then(function () {
+        var mine = C.events().filter(function (e) { return e.purpose === 'food_photo_ai' && e.uid === U; });
+        var tail = mine.slice(-2).map(function (e) { return e.action; }).join(',');
+        check('a withdrawal made during a send is drained after it, in order, and both are on record', order.join(',') === 'food_photo_ai:grant,food_photo_ai:withdraw' && tail === 'grant,withdraw' && mine.every(function (e) { return e.sent; }) && C.state().food_photo_ai.on === false, order.join(',') + ' ' + tail + ' ' + JSON.stringify(mine.map(function (e) { return !!e.sent; })));
+        /* a refused event is marked and skipped; a server outage stops the queue and leaves it unsent for later */
+        var calls = [];
+        w.fetch = function (url, o) { var b = JSON.parse(o.body); calls.push(b.p_purpose + ':' + b.p_action); if (b.p_action === 'grant' && b.p_purpose === 'personalisation') return Promise.resolve({ ok: false, status: 400, text: function () { return Promise.resolve('{"message":"bad purpose"}'); } }); return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve('{"id":7}'); } }); };
+        C.record('personalisation', 'grant', 'you'); C.record('ai_reading', 'grant', 'you');
+        return new Promise(function (res) { setTimeout(res, 10); });
+      }).then(function () {
+        var ev = C.events(), pers = ev.filter(function (e) { return e.purpose === 'personalisation'; }).pop(), air = ev.filter(function (e) { return e.purpose === 'ai_reading' && e.uid === U; }).pop();
+        check('a refused event is marked failed and the next one still goes', pers && pers.failed && !pers.sent && air && air.sent === true && C.receipt().failed === 1, JSON.stringify({ pers: pers && pers.failed, air: air && air.sent }));
+        w.fetch = function () { return Promise.resolve({ ok: false, status: 503, text: function () { return Promise.resolve('{"message":"down"}'); } }); };
+        C.withdraw('ai_reading', 'you');
+        return new Promise(function (res) { setTimeout(res, 10); });
+      }).then(function () {
+        var air = C.events().filter(function (e) { return e.purpose === 'ai_reading' && e.uid === U; }).pop();
+        check('an outage leaves the event unsent and not failed, so the next flush retries it', air && !air.sent && !air.failed && C.receipt().pending === 1 && C.receipt().recorded === false);
+        /* an account switch in the middle of a send: nothing of A goes out under B */
+        sentBy.length = 0;
+        /* the account changes while the first request is in the air: its reply must not be filed, and the rest must not go out under the new token */
+        w.fetch = function (url, o) { var b = JSON.parse(o.body); var tok = (o.headers.Authorization || '').slice(7); sentBy.push(tok + ':' + b.p_purpose); if (sentBy.length === 1) w.localStorage.setItem('ovumind_auth_v1', JSON.stringify({ access_token: 'tB', refresh_token: 'r', expires_at: Math.floor(Date.now() / 1000) + 86400, user: { id: 'u-B', email: 'b@y.z' } })); return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve('{"id":9}'); } }); };
+        var p2 = C.flush(); /* the pending ai_reading withdrawal of A */
+        C.grant('cloud_sync', 'you'); /* a second A event queued while the first is in flight */
+        return p2.then(function () { return new Promise(function (res) { setTimeout(res, 10); }); });
+      }).then(function () {
+        var aEv = C.events().filter(function (e) { return e.uid === U && !e.failed; });
+        check('after a switch to another account mid-send, the reply is not filed, the first account\'s remaining events stay unsent and nothing goes out under the other token', sentBy.length === 1 && sentBy[0].indexOf('t:') === 0 && aEv.filter(function (e) { return !e.sent; }).length >= 2 && !sentBy.some(function (x) { return x.indexOf('tB:') === 0; }), JSON.stringify(sentBy) + ' unsent=' + aEv.filter(function (e) { return !e.sent; }).length);
+        /* compaction keeps the latest event of every purpose */
+        var big = []; for (var i = 0; i < 1600; i++) big.push({ id: 'x' + i, purpose: i === 0 ? 'health_tracking' : (i === 1 ? 'cloud_sync' : 'ai_reading'), action: 'grant', at: '2026-10-19T00:00:00Z', notice: 3, method: 'you' });
+        var c2 = C.compact(big), st2 = C.stateFromEvents(c2);
+        check('compaction past 1500 events keeps the latest event of every purpose and the recent tail', c2.length < 1600 && st2.health_tracking && st2.health_tracking.on && st2.cloud_sync && st2.cloud_sync.on && c2[c2.length - 1].id === 'x1599');
+        /* the doorway gates sync: a session and a cloud mirror are not enough without the attestation at this notice */
+        w.localStorage.setItem('ovumind_auth_v1', JSON.stringify({ access_token: 't', refresh_token: 'r', expires_at: Math.floor(Date.now() / 1000) + 86400, user: { id: U, email: 'x@y.z' } }));
+        S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: U }, ageAttest: null });
+        var closed = !SY.canSync() && SY.consentOk(S.profile()) && !SY.doorOpen();
+        S.setProfile({ ageAttest: { confirmed: true, version: 1, at: '2026-10-19T00:00:00Z' } });
+        check('sync is shut without the 18+ attestation even with a session and the cloud mirror, and opens with it', closed && SY.doorOpen(), JSON.stringify({ closed: closed, open: SY.doorOpen(), cloud: C.allows('cloud_sync') }));
+        /* readings are their own choice, and a withdrawal clears what was written */
+        var I = w.OvuInsight;
+        O.setAiConfig({ on: false, insights: true, photos: false }, 'settings');
+        S.setState({ insights: { daily: { '2026-10-19': { summary: 'x' } }, fourweeks: {} } });
+        var onAlone = I.enabled();
+        C.withdraw('ai_summaries', 'you');
+        check('readings can be on with note-reading off, and withdrawing them clears the cached readings', onAlone && !I.enabled() && Object.keys((S.state().insights || {}).daily || {}).length === 0);
+      });
+    }, 5);
+  }, 10);
+})();
+
+/* the summary waits for every timer and promise the blocks scheduled: the loop drains, then we report, so no async check is ever cut off */
+var summarised = false;
+process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

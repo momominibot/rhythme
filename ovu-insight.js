@@ -11,8 +11,16 @@
   var URL = ((root.OVU_CONFIG && root.OVU_CONFIG.functionsBase) || 'https://zodkohwaznqgrfrcfdkf.supabase.co/functions/v1') + '/insight';
   var KEEP_DAILY = 14, KEEP_4W = 3;
 
-  /* Readings need their own permission (insights: true), separate from letting Luna's model read a note. */
-  function enabled() { var c = ORB ? ORB.aiConfig() : { on: false }; return !!(c.on && c.provider === 'ovumind' && c.insights === true); }
+  /* Readings are their own choice (ai_summaries), independent of letting Luna read a note. */
+  function enabled() { var c = ORB ? ORB.aiConfig() : { insights: false }; return !!(c.provider === 'ovumind' && c.insights === true); }
+  /* every withdrawal of the readings choice starts a new generation: answers still in flight are dropped and the cache is cleared */
+  var gen = 0;
+  function onConsentChange(purpose, on) { if (purpose === 'ai_summaries' && !on) { gen++; S.setState({ insights: { daily: {}, fourweeks: {} } }); } }
+  function hdr() {
+    var h = Object.assign({ 'Content-Type': 'application/json' }, root.OvuConsent ? root.OvuConsent.header('ai_summaries') : {});
+    var A = root.OvuAuth; if (!A || !A.session || !A.session()) return Promise.resolve(h);
+    return A.token().then(function (at) { if (at) h.Authorization = 'Bearer ' + at; return h; }, function () { return h; });
+  }
   function store() { return S.state().insights || { daily: {}, fourweeks: {} }; }
   function put(kind, key, value) {
     var st = store(); st[kind] = st[kind] || {}; st[kind][key] = value;
@@ -24,7 +32,7 @@
   function clean(text) { return String(text || '').replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '[email]').replace(/\+?\d[\d\s-]{7,}\d/g, '[number]').replace(/@\w{3,}/g, '[handle]').slice(0, 240); }
   function context() {
     var p = S.profile();
-    return { ageBand: p.ageBand || '', lifeStage: p.lifeStage || '', predictionMode: p.predictionMode || 'normal', regularity: p.regularity || '', selfReportedConditions: p.conditions || [], goals: p.goals || [], hormones: p.hormones || [], pregState: p.pregState || '' };
+    return { ageRange: p.ageRange || '', lifeStage: p.lifeStage || '', predictionMode: p.predictionMode || 'normal', regularity: p.regularity || '', selfReportedConditions: p.conditions || [], goals: p.goals || [], hormones: p.hormones || [], pregState: p.pregState || '' };
   }
   function dayCompact(date) {
     var es = S.byDate(date), out = { date: date }, sleep = es.filter(function (e) { return e.type === 'sleep'; })[0], per = es.filter(function (e) { return e.type === 'period'; })[0], sym = es.filter(function (e) { return e.type === 'symptom'; })[0];
@@ -52,15 +60,17 @@
   }
 
   function call(mode, input) {
-    return fetch(URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: mode, input: input }) })
+    var g = gen;
+    return hdr().then(function (h) { return fetch(URL, { method: 'POST', headers: h, body: JSON.stringify({ mode: mode, input: input }) }); })
+      .then(function (r) { if (g !== gen || !enabled()) throw new Error('Luna’s readings were turned off while this one was being written, so it was not kept.'); return r; })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna could not write a reading just now (' + r.status + '). Try again in a moment.')); return d; }); });
   }
   /* Daily Summary Agent: cached per day; refreshes when the day's entries changed and force is set */
   function daily(date, force) {
     date = date || S.today();
     var cached = store().daily[date], sig = sigFor(S.addDays(date, -7), date);
-    if (cached && (!force || cached.sig === sig)) return Promise.resolve(cached);
     if (!enabled()) return Promise.reject(new Error('Luna’s readings are off. Turn them on in Luna’s settings for written summaries.'));
+    if (cached && (!force || cached.sig === sig)) return Promise.resolve(cached);
     return call('daily', dailyInput(date)).then(function (d) {
       var r = d.result || {};
       return put('daily', date, { date: date, sig: sig, generatedAt: d.generatedAt, agent: 'DailySummaryAgent v2', summary: String(r.summary || ''), patterns: Array.isArray(r.patterns) ? r.patterns.slice(0, 3) : [], suggestion: String(r.suggestion || ''), questions: Array.isArray(r.questions) ? r.questions.slice(0, 2) : [], caution: String(r.caution || '') });
@@ -70,8 +80,8 @@
   function fourweeks(end, force) {
     end = end || S.today();
     var cached = store().fourweeks[end], sig = sigFor(S.addDays(end, -27), end);
-    if (cached && (!force || cached.sig === sig)) return Promise.resolve(cached);
     if (!enabled()) return Promise.reject(new Error('Luna’s readings are off. Turn them on in Luna’s settings for a written summary.'));
+    if (cached && (!force || cached.sig === sig)) return Promise.resolve(cached);
     return call('fourweeks', fourWeekInput(end)).then(function (d) {
       var r = d.result || {}, c = r.clinician || {}, u = r.user || {};
       return put('fourweeks', end, { end: end, sig: sig, generatedAt: d.generatedAt, agent: 'FourWeekSummaryAgent v2', clinician: { overview: c.overview || '', cycle: c.cycle || '', bleeding: c.bleeding || '', symptoms_pain: c.symptoms_pain || '', sleep: c.sleep || '', nutrition: c.nutrition || '', mood_calm: c.mood_calm || '', patterns: Array.isArray(c.patterns) ? c.patterns.slice(0, 5) : [], questions: Array.isArray(c.questions) ? c.questions.slice(0, 6) : [], limits: c.limits || '' }, user: { summary: u.summary || '', wins: Array.isArray(u.wins) ? u.wins.slice(0, 3) : [], watch: Array.isArray(u.watch) ? u.watch.slice(0, 3) : [] } });
@@ -86,5 +96,5 @@
     return out;
   }
   function stale(kind, key) { var c = kind === 'daily' ? cachedDaily(key) : cachedFourWeeks(key); if (!c) return true; var k = key || S.today(); return c.sig !== (kind === 'daily' ? sigFor(S.addDays(k, -7), k) : sigFor(S.addDays(k, -27), k)); }
-  root.OvuInsight = { enabled: enabled, daily: daily, fourweeks: fourweeks, cachedDaily: cachedDaily, cachedFourWeeks: cachedFourWeeks, plan: plan, stale: stale, dailyInput: dailyInput, fourWeekInput: fourWeekInput, URL: URL };
+  root.OvuInsight = { enabled: enabled, onConsentChange: onConsentChange, enabled: enabled, daily: daily, fourweeks: fourweeks, cachedDaily: cachedDaily, cachedFourWeeks: cachedFourWeeks, plan: plan, stale: stale, dailyInput: dailyInput, fourWeekInput: fourWeekInput, URL: URL };
 })(window);
