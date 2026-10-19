@@ -1531,3 +1531,31 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .btap-koi{position:absolute;inset:0;z-index:0;pointer-events:none}
 .btap-koi img{position:absolute;left:0;top:0;width:54px;transform-origin:50% 45%;filter:drop-shadow(0 6px 6px rgba(0,30,40,.35));will-change:transform}
 .btap-ring img[hidden]{display:none}
+/* the food photo choices had no air (Jamie, 20 Oct): icon and words spaced, taller buttons, room above and below */
+.snapbtns{gap:10px;margin:12px 0 4px}
+.snapbtns .btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:12px 10px}
+.snapbtns .btn .ms{font-size:20px;flex:none}
+.snapbtns + .help,.snapbtns ~ p.help{margin-top:12px;line-height:1.5}
+.phasechips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+/* the bed card shows soil, not a blank square */
+.bedcard .bedpic{background:radial-gradient(ellipse 46% 30% at 50% 66%,#7a5034 0 62%,#5e3c27 63% 100%,transparent 101%),#f6eefb}
+
+/* ---------- the game fills the screen; Today and the cards pull up from a drawer (ovu-deck.js, Jamie 20 Oct) ---------- */
+.main{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start;padding-bottom:calc(var(--navh,72px) + 54px);background:linear-gradient(180deg,#d8c8ec 0%,#d3c1ea 55%,#c9b4e2 100%)}
+.main>.scene{-webkit-mask-image:linear-gradient(180deg,#000 0,#000 90%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 90%,transparent 100%)} /* the plate fades into the backdrop below it */
+.main>.scene{flex:none}
+.deck{position:absolute;left:0;right:0;bottom:var(--navh,72px);z-index:34;max-height:74%;display:flex;flex-direction:column;padding:0;gap:0;background:var(--rm-paper);border-radius:22px 22px 0 0;box-shadow:0 -10px 30px rgba(60,40,90,.18);transform:translateY(calc(100% - 54px));transition:transform .32s cubic-bezier(.2,.8,.2,1)}
+.deck.open{transform:none}
+.deckhandle{flex:none;display:flex;align-items:center;gap:10px;width:100%;min-height:54px;padding:12px 16px 8px;border:0;background:none;cursor:pointer;color:var(--rm-ink);text-align:left;position:relative;touch-action:none;font-family:inherit}
+.deckhandle .grab{position:absolute;left:50%;top:6px;width:40px;height:4px;border-radius:99px;background:rgba(120,90,150,.3);transform:translateX(-50%)}
+.deckhandle .dh-text{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px}
+.deckhandle b{font:600 17px var(--serif);color:var(--rm-plum)}
+.deckhandle small{font:600 12.5px var(--sans);color:var(--rm-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.deckhandle .ms{color:var(--rm-mauve);transition:transform .3s}
+.deck.open .deckhandle .ms{transform:rotate(180deg)}
+.deckbody{overflow-y:auto;overscroll-behavior:contain;padding:6px 14px 18px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+.deck .card:first-child h2{display:none} /* the handle already says Today */
+.luna{bottom:calc(var(--navh,72px) + 66px)}
+@media (prefers-reduced-motion: reduce){.deck,.deckhandle .ms{transition:none}}
+.podmini{bottom:calc(var(--navh,64px) + 62px)} /* above the drawer handle */
+.deck.open{z-index:40} /* above the Luna button while open */

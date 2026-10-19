@@ -230,7 +230,9 @@
     fillSheet(c);
     c.hidden = false; try { c.querySelector('.c-scroll').scrollTop = 0; } catch (e) { }
     var age = c.querySelector('#cAge'), health = c.querySelector('#cHealth'), agree = c.querySelector('#cAgree'), under = c.querySelector('#cUnder');
-    if (health) health.checked = false;
+    /* the one required line starts ticked (Jamie, 19 Oct): the diary cannot work without it and tapping I agree is the person's act.
+       The optional choices and the 18+ confirmation still start unticked, because a pre-ticked box is not consent or an attestation. */
+    if (health) health.checked = true;
     var ready = function () { return age.checked && (!health || health.checked); };
     age.onchange = function () { agree.disabled = !ready(); }; if (health) health.onchange = function () { agree.disabled = !ready(); };
     agree.disabled = !ready();
