@@ -192,6 +192,14 @@ Codex held the first cut on thirteen points; all were taken, verbatim summary an
 - The harness had a second exit inside the health-import block that cut every later async check; one reporter now
   waits for the event loop to drain. Harness 360, pages 81 clean, smoke 74.
 
+### Evening: a live break, undone
+
+The bounded guard from migration v3 refused the first backup of any account with no consent event and nothing on the
+server, and the live front end (notice 2) never records consent events, so every new account, including the project's
+only account, could not back up. Migration `20261019140000_consent_guard_until_release` restores the earlier allowance
+for accounts with no events; accounts with events keep every rule. **Release order is now: merge this pull request, let
+Pages deploy, deploy `luna` and `insight`, then re-apply the function from `20261019070000_consent_guard_v3.sql`.**
+
 Known limits, stated: a person without an account is trusted on their own header (the data is theirs and the relay is
 rate limited); the stale-write rule compares the phone's edit time with the withdrawal time, which a wrong phone clock
 can defeat, and a server-issued consent generation on every row is the stronger design if that ever matters; the
