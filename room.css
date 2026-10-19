@@ -1396,6 +1396,17 @@ body.btap-open{overflow:hidden}
 .matlast small{font:600 11px var(--sans);color:var(--rm-ink-3)}
 html[data-sky="night"] .matnow{background:linear-gradient(135deg,#3b2e5a,#4d3252)}
 html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);border-color:rgba(255,255,255,.08)}
-/* ---------- Dream Street after hours: the closed sign on each storefront (ovu-street.js) ---------- */
-.closedsign{position:absolute;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:4px;background:var(--rm-card,#fff);color:var(--rm-plum);font:600 .62rem/1.2 var(--sans,system-ui);padding:4px 9px;border-radius:999px;box-shadow:var(--rm-shadow,0 4px 14px rgba(90,66,116,.18));border:1px solid rgba(255,255,255,.8);white-space:nowrap;pointer-events:none;z-index:8}
-.closedsign .ms{font-size:14px;color:var(--rm-mauve,#8b6fb0)}
+/* ---------- the pets walk (ovu-petwalk.js): a strip box inside the pet's body, shown while it walks; the strip is clipped
+ * in its own element so a hat or bow riding on the head anchor can reach past the cell ---------- */
+.petwalk{display:none;position:absolute;left:50%;bottom:0;transform:translateX(-50%);pointer-events:auto}
+.petwalk.left{transform:translateX(-50%) scaleX(-1)}
+.petwalk>.petclip{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden}
+.petwalk img.strip{position:absolute;left:0;bottom:0;height:100%;width:auto;max-width:none;display:block;will-change:transform}
+.petwalk>img.worn{position:absolute;transform:translate(-50%,-50%);width:auto;display:block;filter:drop-shadow(0 2px 2px rgba(70,40,100,.25))}
+.prop.owned.pet.walking.cycling .petwalk{display:block}
+.prop.owned.pet.walking.cycling .petbody>img{visibility:hidden}
+.prop.owned.pet.walking .petbody{animation:none}
+.prop.owned.pet.walking .petmood,.prop.owned.pet.walking::after{display:none}
+.prop.owned.pet.walking:not(.cycling) .petbody>img{animation:petstep .4s ease-in-out infinite}
+@keyframes petstep{0%,100%{transform:translateY(0)}50%{transform:translateY(-5%)}}
+@media (prefers-reduced-motion: reduce){.prop.owned.pet.walking:not(.cycling) .petbody>img{animation:none}}

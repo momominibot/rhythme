@@ -241,6 +241,8 @@
   /* while she sleeps nothing starts: the room's rule, with its own words (room.js asleep()) */
   function napping() { if (!(R.asleep && R.asleep())) return false; R.toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return true; }
   function shopsOpen() { return !R.shopOpenNow || !!R.shopOpenNow(); }
+  function storeOpen(tab) { var ST = root.OvuStreet; return ST && ST.openNow ? ST.openNow(tab) : shopsOpen(); }
+  function hoursCard(tab) { var ST = root.OvuStreet; if (ST && ST.hoursCard) ST.hoursCard(tab); else R.toast('The shutters are down. Dream Street opens at 9 in the morning and closes at 10 at night.', 'storefront'); }
   function start() {
     if (active) return true;
     if (travelling) return false;
@@ -302,15 +304,32 @@
   /* stop walking and write the position back through the room, with its slide transition suppressed */
   function commit() {
     if (!active) return;
+    var arrived = !route, cb = pendingDone; pendingDone = null; quietDoors = false;
     active = false; route = null; root.cancelAnimationFrame(raf); raf = 0; last = 0;
     avatar.style.transition = 'none'; R.placeAvatar({ x: cur.x, y: cur.y }, flip); avatar.style.transform = '';
     void avatar.offsetWidth; avatar.style.transition = '';
     avatar.classList.remove('walking'); avatar.classList.add('idle'); cycleHide();
     sortDepth(cur.y);
+    if (cb && arrived) cb(); /* the room's walk reached its stand point: open the sheet, land the shelf tap */
   }
   /* someone else (a hotspot walk, a scene change, waking up) moved the avatar: let go without writing back */
-  function yieldWalk() { active = false; route = null; root.cancelAnimationFrame(raf); raf = 0; last = 0; avatar.style.transform = ''; avatar.classList.remove('walking'); cycleHide(); clearInput(); }
+  function yieldWalk() { pendingDone = null; quietDoors = false; active = false; route = null; root.cancelAnimationFrame(raf); raf = 0; last = 0; avatar.style.transform = ''; avatar.classList.remove('walking'); cycleHide(); clearInput(); }
   function face(dx) { if (dx) { flip = dx < 0; avatar.classList.toggle('flip', flip); } }
+  /* the room's own walks (a hotspot, the walk home, a shelf): planned around the furniture, the pets and the pond like a
+   * floor tap, with her walk cycle; the stairs are floor too, so a shelf upstairs is one route. Returns false to hand the
+   * walk back to the room's straight line (busy, travelling, nothing plannable). The callback fires on arrival only. */
+  var pendingDone = null, quietDoors = false;
+  function routeTo(wp, done) {
+    if (travelling || !wp || R.busy()) return false;
+    pendingDone = null; if (active) commit();
+    var from = R.pos(), res = plan(worldNow(), from, { x: wp.x, y: wp.y }, 2);
+    if (!res || res.pts.length < 2) return false;
+    if (!start()) return false;
+    route = { pts: res.pts.slice(1), i: 0, left: res.cost }; quietDoors = true; pendingDone = done || null;
+    var d0 = route.pts[0]; face(d0.x - cur.x);
+    R.emit('walk', 'room');
+    return true;
+  }
   /* one frame along the tapped route: constant speed in iso units, easing out over the last EASE units */
   function followRoute(dt) {
     var w = worldNow();
@@ -346,7 +365,7 @@
         cycleStep(Math.hypot(mdx, mdy / Y_SCALE));
         render();
         var d = doorAt(w.doors, cur.x, cur.y);
-        if (d && !inDoor) { inDoor = true; commit(); clearInput(); if (d.to) travel(d.to); else if (d.tap) R.tap(R.hotspot(d.tap)); return; }
+        if (d && !inDoor && !quietDoors) { inDoor = true; commit(); clearInput(); if (d.to) travel(d.to); else if (d.tap) R.tap(R.hotspot(d.tap)); return; } /* a routed hotspot walk lets the hotspot's own action speak */
         if (!d) inDoor = false;
       }
       if (!route && !v) { commit(); return; }
@@ -393,15 +412,15 @@
     if (R.busy()) { R.toast('Finish what you are doing first.', 'info'); return false; }
     var fromL = R.layout(), from = fromL.id, fromScene = sceneOf(fromL), target = to === 'home' ? R.homeId() : to, T = R.LAYOUTS[target];
     if (!T) return false;
-    if (T.store && !shopsOpen()) { R.toast('The shutters are down. Dream Street opens at 9 in the morning and closes at 10 at night.', 'storefront'); return false; } /* the interiors keep the street's hours */
+    if (T.store && !storeOpen(T.store)) { hoursCard(T.store); return false; } /* each interior keeps its own store's hours */
     travelling = true; clearInput(); if (active) commit();
     scene.classList.add('fading'); R.chime('tap');
     var t0 = Date.now();
     preload(R.ART + T.img).then(function () {
       var left = Math.max(0, (reduced ? 80 : 380) - (Date.now() - t0));
       root.setTimeout(function () {
-        if (napping() || (T.store && !shopsOpen())) { /* she fell asleep or the shutters came down during the fade */
-          if (T.store && !shopsOpen() && !(R.asleep && R.asleep())) R.toast('The shutters are down. Dream Street opens at 9 in the morning and closes at 10 at night.', 'storefront');
+        if (napping() || (T.store && !storeOpen(T.store))) { /* she fell asleep or the store shut during the fade */
+          if (T.store && !storeOpen(T.store) && !(R.asleep && R.asleep())) hoursCard(T.store);
           scene.classList.remove('fading'); travelling = false; return;
         }
         R.applyLayout(target, !!opts.visit);
@@ -449,7 +468,7 @@
     mini = doc.createElement('nav'); mini.className = 'minimap'; mini.id = 'minimap'; mini.setAttribute('aria-label', 'Where you are');
     mini.innerHTML = [['home', 'home', 'Home'], ['garden', 'yard', 'Garden'], ['street', 'storefront', 'Street'], ['plaza', 'groups', 'Plaza']].map(function (s) { return '<button type="button" data-scene="' + s[0] + '" aria-label="' + s[2] + '"><span class="ms">' + s[1] + '</span><i>' + s[2] + '</i></button>'; }).join('');
     var sub = doc.createElement('div'); sub.className = 'minimap-sub'; sub.id = 'minimapSub';
-    sub.innerHTML = [['shop-pet', 'pets', 'Pets'], ['shop-furniture', 'chair', 'Furniture'], ['shop-homes', 'cottage', 'Homes']].map(function (s) { return '<button type="button" data-sub="' + s[0] + '" aria-label="' + s[2] + ' store"><span class="ms">' + s[1] + '</span><i>' + s[2] + '</i></button>'; }).join('');
+    sub.innerHTML = [['shop-pet', 'pets', 'Pets', 'Whisker & Paw'], ['shop-furniture', 'chair', 'Furniture', 'The Cosy Nook'], ['shop-homes', 'cottage', 'Homes', 'Moonrise Homes']].map(function (s) { return '<button type="button" data-sub="' + s[0] + '" aria-label="' + s[3] + '"><span class="ms">' + s[1] + '</span><i>' + s[2] + '</i></button>'; }).join('');
     mini.appendChild(sub);
     scene.appendChild(mini);
     fade = doc.createElement('div'); fade.className = 'scenefade'; fade.setAttribute('aria-hidden', 'true'); scene.appendChild(fade);
@@ -502,7 +521,8 @@
     preloadCycle(); avatar.querySelector('#avatarImg').addEventListener('load', preloadCycle);
     if (root.MutationObserver) new MutationObserver(function () { if (avatar.classList.contains('walking') && !active && !cyc.cssRaf) cyc.cssRaf = root.requestAnimationFrame(function () { cssCycle(); }); }).observe(avatar, { attributes: true, attributeFilter: ['class'] });
     R.setMoving(function () { return active || travelling; }); /* goHome waits while she is walking somewhere of her own choosing */
+    if (R.setWalkTo) R.setWalkTo(routeTo); /* the room's own walks route around furniture */
   }
-  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
+  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(active ? cur.y : undefined); }; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
   R.on('boot', mount);
 })(window);

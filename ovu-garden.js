@@ -65,7 +65,7 @@
     hotspots: [
       { id: 'gate', x: 19, y: 52, label: 'Gate · back home', icon: 'door_open', wp: { x: 29, y: 58, flip: true } },
       { id: 'bench', x: 33, y: 41, label: 'Bench · sit a while', icon: 'chair', wp: { x: 37, y: 53, flip: true } },
-      { id: 'plot', x: 50, y: 60, label: 'Plot · water the plants', icon: 'yard', wp: { x: 53, y: 72, flip: false } },
+      { id: 'plot', x: 50, y: 60, label: 'Plot · water the plants', icon: 'yard', wp: { x: 50, y: 71.5, flip: false } },
       { id: 'pond', x: 70, y: 55, label: 'Pond · a quiet moment', icon: 'water', wp: { x: 66, y: 67, flip: false } },
       { id: 'greenhouse', x: 68, y: 35, label: 'Greenhouse · teas and herbs', icon: 'local_florist', wp: { x: 62, y: 49, flip: false } },
       { id: 'arch', x: 86, y: 45, label: 'Arch · on to Dream Street', icon: 'park', wp: { x: 80, y: 55, flip: false } }
@@ -87,7 +87,9 @@
   var WATER_LINES = ['Pick up the can. Feel its weight before you pour.', 'Let the water fall slowly. Watch the soil darken.', 'Breathe in as you move to the next corner.', 'Nothing to hurry. The plants drink at their own pace.', 'Notice the sound of it, and the smell of wet earth.', 'Set the can down. One ordinary minute, fully lived.'];
   var watering = null, lastWaterAt = 0, VOICE = 'assets/audio/guide-interim/garden-water-';
   /* Erin's cloned voice reads each line (pre-recorded clips, like the everyday practices); a missing clip is just silent */
-  function say(i) { try { if (watering && watering.audio) watering.audio.pause(); var a = new Audio(VOICE + i + '.mp3'); if (watering) watering.audio = a; a.play().catch(function () { }); } catch (e) { } }
+  /* one audio element, created and first played inside the tap that starts the minute, then reused for every later line:
+   * a fresh element started from a timer is silent on the iPhone, which is why only the first line used to be heard */
+  function say(i) { try { if (!watering) return; var a = watering.audio || (watering.audio = new Audio()); a.pause(); a.src = VOICE + i + '.mp3'; a.currentTime = 0; a.play().catch(function () { }); } catch (e) { } }
 
   function esc(s) { return R.esc(s); }
   function placeEl(el, p) { if (!el || !p) return; el.style.left = p.x + '%'; el.style.top = p.y + '%'; if (p.w) el.style.width = p.w + '%'; }
@@ -133,11 +135,11 @@
     if (!completed) { R.toast('Stopped. The plants are glad of the drink anyway.', 'yard'); return; }
     lastWaterAt = Date.now();
     var res = water(S); renderPlot(); R.chime('bell', true);
-    if (res.first) {
-      var ev = null;
-      try { ev = S.add('mindfulness', S.today(), { kind: 'garden', minutes: 1, completed: true, startedAt: new Date(w.startedAt).toISOString(), guide: 'Garden watering, one mindful minute' }); } catch (e) { R.toast('The minute could not be saved: ' + e.message, 'error'); }
-      if (ev) R.afterSave(ev, 'One mindful minute in the garden. ' + (res.stage > stageFor(res.days - 1) ? 'Your plot reached ' + STAGES[res.stage].name.toLowerCase() + '!' : 'Saved to your journal.'));
-    } else R.toast('Lovely. The plants had their drink already today, so no extra hearts.', 'yard');
+    /* every completed minute is a practice like the everyday ones: five hearts, ten more the very first time, and a journal entry */
+    var g = gardenState(S), ever = !!g.firstWaterAt; if (!ever) { g.firstWaterAt = new Date().toISOString(); S.setState({ garden: g }); }
+    var ev = null;
+    try { ev = S.add('mindfulness', S.today(), { kind: 'informal', first: !ever, practice: 'garden', minutes: 1, completed: true, startedAt: new Date(w.startedAt).toISOString(), guide: 'Garden watering, one mindful minute' }); } catch (e) { R.toast('The minute could not be saved: ' + e.message, 'error'); }
+    if (ev) R.afterSave(ev, 'One mindful minute in the garden. ' + (res.first && res.stage > stageFor(res.days - 1) ? 'Your plot reached ' + STAGES[res.stage].name.toLowerCase() + '!' : res.first ? 'Saved to your journal.' : 'The plants had their drink already today; the minute still counts.'));
   }
   /* the bench: breathing with Erin or the orb, seated on the bench itself */
   function sitAt(spot, holoSpot, back) {
@@ -185,7 +187,7 @@
   }
   function openGreenhouse() {
     if (root.OvuWalk.napping()) return;
-    var H = root.OvuHerbs, cs = S.cycleStats(), teas = H ? H.forPhase(cs.mode === 'suspended' ? null : cs.phase).slice(0, 4) : [];
+    var H = root.OvuHerbs, cs = S.cycleStats(), teas = H ? H.forPhase(cs.mode === 'suspended' ? null : cs.phase) : []; /* every tea, the ones for this phase first */
     R.openSheet('greenhouse', 'The greenhouse', 'Teas and herbs, with their evidence', 'local_florist',
       '<p class="help">' + (cs.phase ? 'Picked for your ' + esc(cs.phase) + ' phase first.' : 'Pick what sounds kind today.') + ' Guidance, not a prescription; check with a clinician if you are pregnant, breastfeeding or on medicines.</p>' +
       '<div class="teas">' + teas.map(function (t) { return '<div class="tea">' + (t.img ? '<img class="teaimg" src="' + R.ART + t.img + '" alt="">' : '<span class="ms">' + esc(t.icon || 'local_cafe') + '</span>') + '<div><b>' + esc(t.name) + '</b><span>' + esc(t.why) + '</span><small>' + esc(t.research) + '</small>' + (t.care ? '<em>' + esc(t.care) + '</em>' : '') + '</div></div>'; }).join('') + '</div>' +

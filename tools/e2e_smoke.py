@@ -25,7 +25,7 @@ DB = {"version": 1, "createdAt": NOW, "updatedAt": NOW,
       "events": [{"id": "s1", "type": "period", "date": Y1, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"flow": "medium"}},
                  {"id": "s2", "type": "sleep", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"bedTime": "23:00", "wakeTime": "07:00", "quality": 4}},
                  {"id": "s3", "type": "food", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"meal": "lunch", "foods": "chicken rice", "items": [], "tags": ["home-cooked"]}}],
-      "summaries": [], "state": {"sleeping": None, "visited": {}, "tourDone": True, "tester": {"hearts": True}}}  # tester mode: Dream Street may be visited after hours, so the run does not depend on the clock
+      "summaries": [], "state": {"sleeping": None, "visited": {}, "tourDone": True, "tester": {"hearts": True}, "rewards": {"hearts": 200, "earned": 200, "log": [], "owned": ["dog"], "placed": {"dog": True}, "lastDay": None, "streak": 0}}}  # Peach the corgi lives on the room's rim, so her walks start from the nearest floor cell  # tester mode: Dream Street may be visited after hours, so the run does not depend on the clock
 
 results = []
 def check(name, ok, detail=""):
@@ -68,6 +68,7 @@ async def main():
 
             # 1. the room boots, the consent gate stays closed for a consenting person, hotspots and nav exist
             r = await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_timeout(1200)
+            await page.evaluate("()=>{ if (window.OvuPetWalk && OvuPetWalk.auto) OvuPetWalk.auto(false); }")  # pets wander only when a check nudges them
             check("room.html loads", r and r.status == 200, r and r.status)
             info = await page.evaluate("()=>({consent: document.querySelector('#consent')?.hidden, welcome: !!document.querySelector('#welcome:not([hidden])'), hots: document.querySelectorAll('.hotspot').length, tabs: document.querySelectorAll('nav a[data-tab]').length, hearts: document.querySelector('#heartsVal')?.textContent, width: document.documentElement.scrollWidth})")
             check("consent overlay stays hidden for a consenting person", info["consent"] is True, info)
@@ -98,21 +99,45 @@ async def main():
             bed = await page.evaluate("()=>({pos: OvuRoom.pos(), inBed: OvuWalk.blocked(OvuWalk.HOMES.room.solids, OvuRoom.pos().x, OvuRoom.pos().y) !== null, sheet: document.querySelector('#sheet').getAttribute('aria-hidden')})")
             check("a tap on the bed walks up beside it, never onto it, and opens nothing", not bed["inBed"] and abs(bed["pos"]["x"] - 20) < 10 and abs(bed["pos"]["y"] - 52) < 18 and bed["sheet"] == "true", bed)
             await page.click(".hotspot[data-id=bed]")
+            await page.wait_for_timeout(300); routed = await page.evaluate("()=>({walking: OvuWalk.walking(), route: !!OvuWalk.route(), cyc: OvuWalk.cycle().on})")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] #goodnight', timeout=8000)
             except Exception: pass
             hs = await page.evaluate("()=>({open: document.querySelector('#sheet').getAttribute('aria-hidden')==='false', btn: !!document.querySelector('#goodnight')})")
             check("the bed hotspot still walks her over and opens the bedtime sheet as before", hs["open"] and hs["btn"], hs)
+            check("the bed walk is routed by the walk engine with her walk cycle, not a straight line", routed["walking"] and routed["route"] and routed["cyc"], routed)
             await page.click("#sheetClose"); await page.wait_for_timeout(300)
             # a floor tap right after a sheet closes wins over the 1.4 s walk home, and taps still land while zoomed in
             await floor_tap(62, 66)
             await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(1700)
             stay = await page.evaluate("()=>OvuRoom.pos()")
             check("a tap just after closing a sheet is not undone by the walk home", abs(stay["x"] - 62) < 2 and abs(stay["y"] - 66) < 2, stay)
+            pets = await page.evaluate("()=>OvuPetWalk.pets()")
+            await page.evaluate("()=>OvuPetWalk.nudge('dog', 0.05)")
+            pf = []
+            for i in range(45):
+                await page.wait_for_timeout(100)
+                st = await page.evaluate("()=>{var s=OvuPetWalk.state('dog'); var el=document.querySelector('.prop.owned.pet[data-id=dog]'); var w=OvuWalk.world(OvuRoom.layout(), []); return Object.assign(s, {onFloor: OvuWalk.inZones(w.zones, s.x, s.y) && !OvuWalk.blocked(w.solids, s.x, s.y), sitter: getComputedStyle(el.querySelector('.petbody>img')).visibility})}")
+                pf.append(st)
+                if i > 5 and st["state"] == "rest": break
+            walked = [f for f in pf if f["walking"]]
+            check("nudged, the corgi steps off the rim and walks the room with her strip (frames change, the sitting sprite hides), stays on the floor and sits again", "dog" in pets and len(walked) >= 3 and len(set(f["frame"] for f in walked if f["cycling"])) >= 3 and all(f["onFloor"] for f in walked[2:]) and any(f["sitter"] == "hidden" for f in walked) and pf[-1]["state"] == "rest" and not pf[-1]["cycling"] and pf[-1]["onFloor"] and (abs(pf[-1]["x"] - pf[0]["x"]) > 2 or abs(pf[-1]["y"] - pf[0]["y"]) > 1), {"n": len(pf), "walked": len(walked), "first": pf[0], "last": pf[-1]})
+            await page.evaluate("()=>OvuPetWalk.nudge('dog', 0.05)"); await page.wait_for_timeout(500)
+            await page.evaluate("()=>document.querySelector('.prop.owned.pet[data-id=dog]').click()"); await page.wait_for_timeout(300)
+            held = await page.evaluate("()=>({held: OvuPetWalk.state('dog').held, state: OvuPetWalk.state('dog').state, bubble: document.querySelector('#bubble').classList.contains('petbub')})")
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+            rel = await page.evaluate("()=>({held: OvuPetWalk.state('dog').held, bubble: document.querySelector('#bubble').classList.contains('on')})")
+            check("a tap on the walking corgi stops her and holds her while her care bubble is up; Escape lets her go", held["held"] and held["state"] == "rest" and held["bubble"] and not rel["held"] and not rel["bubble"], {"held": held, "rel": rel})
             await page.click("#camIn"); await page.wait_for_timeout(450)
             await floor_tap(44, 76)
             await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(120)
             zoomed = await page.evaluate("()=>({pos: OvuRoom.pos(), zoomed: document.querySelector('#scene').classList.contains('zoomed')})")
             check("a floor tap while the camera is zoomed in lands on the right spot of the plate", zoomed["zoomed"] and abs(zoomed["pos"]["x"] - 44) < 2 and abs(zoomed["pos"]["y"] - 76) < 2, zoomed)
+            await page.evaluate("()=>OvuTextSize.set('large')"); await page.wait_for_timeout(200)
+            await floor_tap(60, 72)
+            await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(120)
+            big = await page.evaluate("()=>({zoom: document.documentElement.style.zoom, attr: document.documentElement.getAttribute('data-text'), saved: JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.textSize, pos: OvuRoom.pos(), scroll: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1})")
+            await page.evaluate("()=>OvuTextSize.set('default')")
+            check("the text size setting scales the whole page, is saved, keeps the page from scrolling sideways, and a floor tap still lands on the right spot", big["zoom"] == "1.12" and big["attr"] == "large" and big["saved"] == "large" and abs(big["pos"]["x"] - 60) < 2 and abs(big["pos"]["y"] - 72) < 2 and big["scroll"], big)
             await page.click("#camFit"); await page.wait_for_timeout(450)
             nap = await page.evaluate("()=>{var real=OvuRoom.asleep; OvuRoom.asleep=function(){return true}; var went=OvuWalk.travel('garden'); var t=document.querySelector('#toast').textContent; OvuRoom.asleep=real; return {went: went, toast: t, layout: document.querySelector('#scene').dataset.layout}}")
             check("while she sleeps a door refuses in the room's own words", nap["went"] is False and "asleep" in nap["toast"] and nap["layout"] == "room", nap)
@@ -157,8 +182,9 @@ async def main():
             except Exception: pass
             st = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, stores: [...document.querySelectorAll('.hotspot')].map(b=>b.dataset.id).filter(i=>['petshop','furniture','homes'].includes(i)).length, lit: document.querySelector('#minimap .on')?.dataset.scene})")
             check("the mini-map takes her to Dream Street with its three storefronts", st["layout"] == "street" and st["stores"] == 3 and st["lit"] == "street", st)
-            closed = await page.evaluate("()=>{var real=OvuRoom.shopOpenNow; OvuRoom.shopOpenNow=function(){return false}; OvuRoom.emit('props', OvuRoom.layout()); var signs=document.querySelectorAll('#ownedProps .closedsign').length; var went=OvuWalk.travel('shop-pet'); var toast=(document.querySelector('#toast')||{}).textContent||''; OvuRoom.shopOpenNow=real; OvuRoom.emit('props', OvuRoom.layout()); return {signs: signs, went: went, toast: toast, after: document.querySelectorAll('#ownedProps .closedsign').length, layout: document.querySelector('#scene').dataset.layout}}")
-            check("after hours each storefront wears a closed sign and the interiors refuse to open; the signs go when the shutters lift", closed["signs"] == 3 and closed["went"] is False and "shutters" in closed["toast"] and closed["after"] == 0 and closed["layout"] == "street", closed)
+            closed = await page.evaluate("()=>{var real=OvuStreet.openNow; OvuStreet.openNow=function(){return false}; var went=OvuWalk.travel('shop-pet'); var sheet=document.querySelector('#sheet'); var r={went: went, open: sheet && sheet.getAttribute('aria-hidden')==='false', title: (document.querySelector('#sheetTitle')||{}).textContent||'', body: (sheet||{}).textContent||'', hours: [OvuStreet.hoursText('pet'), OvuStreet.hoursText('furniture'), OvuStreet.hoursText('home')], at8: OvuStreet.openAt('pet', new Date(2026,9,19,8,30)), at12: OvuStreet.openAt('pet', new Date(2026,9,19,12,0)), plaques: document.querySelectorAll('#ownedProps .closedsign').length}; OvuStreet.openNow=real; return r}")
+            check("trying a shut store shows that store's own hours card (named, not Dream Street), the three stores keep different hours, and no plaques sit on the street", closed["went"] is False and closed["open"] and "Whisker" in closed["title"] and "10 am to 7 pm" in closed["body"] and len(set(closed["hours"])) == 3 and not closed["at8"] and closed["at12"] and closed["plaques"] == 0, closed)
+            await page.click("#sheetClose"); await page.wait_for_timeout(300)
             await tap_hot("petshop")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='shop-pet' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass

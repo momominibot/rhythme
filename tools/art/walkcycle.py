@@ -2,14 +2,18 @@
 """Slice a chroma-green walk-cycle sheet (one row of frames) into a normalised sprite strip.
 
 Usage: walkcycle.py sheet.png out.webp --stand assets/room/dream/avatar-base.webp [--frames 8] [--contact contact.png]
+       [--match height|head] [--ratio 1.0] [--centre head|box]
 
 - frames are found as runs of non-green columns separated by green gaps (at least 8 px wide);
 - each frame is keyed with the same greenness matte and despill as keyout.py (largest shape kept);
-- the sheet is scaled once (its median frame as tall as the standing sprite's figure), each frame's feet sit on the strip's
-  bottom edge, and its head centre (the alpha centroid of the top 30 percent of the figure) sits on the
-  frame's horizontal centre, so the walk does not slide or bob sideways;
-- the strip is frames x W wide and as tall as the standing sprite; a sidecar .json carries the frame count
-  and size, and --contact writes a labelled contact sheet for a quick visual check.
+- the sheet is scaled once: with --match height (her walks) the median frame is as tall as the standing figure; with
+  --match head (the pets) the median frame's head band is as wide as the sitting sprite's, because a walking cat is lower
+  and longer than a sitting one but keeps its head; --ratio scales that result;
+- each frame's feet sit on the strip's bottom edge; --centre head puts the head centre on the cell's middle (so she does
+  not bob sideways), --centre box centres the frame's box (a walking quadruped keeps its length);
+- the strip is frames x W wide and H tall (H is the stand image's height, or taller if a frame needs it); the sidecar
+  .json carries the frame count, cell size, and a head anchor per frame and for the stand sprite (cell pixels), so a worn
+  piece can ride on a walking pet; --contact writes a labelled contact sheet for a quick visual check.
 No key is used here; nothing leaves the machine."""
 import argparse, json, os, sys
 import numpy as np
@@ -73,17 +77,31 @@ def head_x(rgba, box, frac=0.3):
     w = part.sum(axis=0)
     return float((xs * w).sum() / max(1e-6, w.sum()))
 
+def head_band(rgba, box, frac=0.35, thresh=24):
+    """the head as the box of alpha in the upper band of the figure: centre x, the band's bottom as y, and its width.
+    The same rule on the sitting sprite and on every frame makes the anchors comparable."""
+    a = np.asarray(rgba)[..., 3] > thresh
+    x0, y0, x1, y1 = box; h = max(1, int((y1 - y0) * frac))
+    sub = a[y0:y0 + h, x0:x1]
+    yy, xx = np.where(sub)
+    if not len(yy): return {"x": (x0 + x1) / 2, "y": y0 + h, "w": x1 - x0}
+    return {"x": float(x0 + (xx.min() + xx.max() + 1) / 2), "y": float(y0 + yy.max() + 1), "w": float(xx.max() + 1 - xx.min())}
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sheet"); ap.add_argument("out")
-    ap.add_argument("--stand", required=True, help="the standing sprite the walk must match in height")
+    ap.add_argument("--stand", required=True, help="the standing or sitting sprite the walk must match")
     ap.add_argument("--frames", type=int, default=8)
     ap.add_argument("--contact")
     ap.add_argument("--quality", type=int, default=85)
+    ap.add_argument("--match", choices=["height", "head"], default="height")
+    ap.add_argument("--ratio", type=float, default=1.0, help="scale on top of the match (0.9 makes the walk a little smaller)")
+    ap.add_argument("--centre", choices=["head", "box"], default="head")
     a = ap.parse_args()
     sheet = Image.open(a.sheet).convert("RGB")
     stand = Image.open(a.stand).convert("RGBA")
     sb = bbox(stand); stand_h = sb[3] - sb[1]; stand_w = stand.width; H = stand.height
+    stand_head = head_band(stand, sb)
     runs = columns(sheet)
     g = greenness(np.asarray(sheet.convert("RGB"))); density = (g < 0.25).sum(axis=0)
     while len(runs) < a.frames:  # two frames touching at the feet: split the widest run at its thinnest column
@@ -105,28 +123,38 @@ def main():
         b = bbox(k)
         if not b: sys.exit("empty frame at %d..%d" % (x0, x1))
         frames.append((k, b))
-    # scale every frame so its figure height equals the standing figure height
     heights = [b[3] - b[1] for _, b in frames]
-    s = stand_h / float(sorted(heights)[len(heights) // 2])  # one scale for the whole sheet: the median frame matches the standing figure
+    if a.match == "head":
+        widths = [head_band(k, b)["w"] for k, b in frames]
+        s = stand_head["w"] / float(sorted(widths)[len(widths) // 2])  # the median frame's head as wide as the sitting head
+    else:
+        s = stand_h / float(sorted(heights)[len(heights) // 2])  # one scale for the whole sheet: the median frame matches the standing figure
+    s *= a.ratio
     scaled = []
     for k, b in frames:
         img = k.crop(b).resize((max(1, round((b[2] - b[0]) * s)), max(1, round((b[3] - b[1]) * s))), Image.LANCZOS)
         bb = bbox(img) or (0, 0, img.width, img.height)
-        hx = head_x(img, bb)
-        scaled.append((img, hx))
-    W = int(max(img.width for img, _ in scaled) * 1.12) + 8
+        cx = head_x(img, bb) if a.centre == "head" else (bb[0] + bb[2]) / 2.0
+        scaled.append((img, cx, head_band(img, bb)))
+    W = int(max(img.width for img, _, _ in scaled) * 1.12) + 8
     W += W % 2
+    H = max(H, max(img.height for img, _, _ in scaled) + 2)
     strip = Image.new("RGBA", (W * len(scaled), H), (0, 0, 0, 0))
-    for i, (img, hx) in enumerate(scaled):
-        ox = int(round(i * W + W / 2 - hx)); oy = H - img.height
+    heads = []
+    for i, (img, cx, hb) in enumerate(scaled):
+        ox = int(round(i * W + W / 2 - cx)); oy = H - img.height
         strip.paste(img, (ox, oy), img)
+        heads.append({"x": round(ox - i * W + hb["x"], 1), "y": round(oy + hb["y"], 1), "w": round(hb["w"], 1)})
     strip.save(a.out, "WEBP", quality=a.quality, method=6)
-    meta = {"frames": len(scaled), "w": W, "h": H, "stand": os.path.basename(a.stand), "heights": [int(h) for h in heights], "standW": int(stand_w)}
+    meta = {"frames": len(scaled), "w": W, "h": H, "stand": os.path.basename(a.stand), "heights": [int(h) for h in heights], "standW": int(stand_w), "standH": int(stand.height),
+            "match": a.match, "ratio": a.ratio, "scale": round(s, 4), "heads": heads, "standHead": {k: round(v, 1) for k, v in stand_head.items()}}
     with open(os.path.splitext(a.out)[0] + ".json", "w") as f: json.dump(meta, f)
     if a.contact:
         cs = Image.new("RGB", (W * len(scaled), H + 24), (200, 190, 220)); cs.paste(strip, (0, 0), strip)
         d = ImageDraw.Draw(cs)
-        for i in range(len(scaled)): d.line([(i * W, 0), (i * W, H)], fill=(255, 0, 0)); d.text((i * W + 4, H + 4), str(i), fill=(60, 30, 90))
+        for i in range(len(scaled)):
+            d.line([(i * W, 0), (i * W, H)], fill=(255, 0, 0)); d.text((i * W + 4, H + 4), str(i), fill=(60, 30, 90))
+            hd = heads[i]; d.ellipse([(i * W + hd["x"] - 4, hd["y"] - 4), (i * W + hd["x"] + 4, hd["y"] + 4)], outline=(0, 120, 255), width=2)
         d.line([(0, H - 1), (cs.width, H - 1)], fill=(255, 0, 0))
         cs.save(a.contact)
     print(json.dumps(meta))

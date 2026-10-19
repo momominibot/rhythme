@@ -458,6 +458,7 @@
   function placeAvatar(p, flip) { pos = { x: p.x, y: p.y }; avatar.style.left = p.x + '%'; avatar.style.top = p.y + '%'; avatar.classList.toggle('flip', !!flip); }
   function sameFloor(a, b) { if (!L.stairs) return true; return (a.y < L.upstairsY) === (b.y < L.upstairsY); }
   function walkTo(wp, done) {
+    if (wp && !reduced && hooks.walkTo && hooks.walkTo(wp, function () { avatar.classList.toggle('flip', !!wp.flip); scheduleLife(); done && done(); })) return; /* routed around furniture, with her walk cycle */
     if (wp && !reduced && !sameFloor(pos, wp)) {
       var up = wp.y < L.upstairsY, seq = (up ? L.stairs.slice() : L.stairs.slice().reverse()).concat([wp]), i = 0;
       (function next() { if (i >= seq.length) { done && done(); return; } walkLeg(seq[i++], next); })();
@@ -1266,7 +1267,7 @@
       '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '</span></div></div>' +
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
       '<div id="youAccount"></div>' +
-      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and helping Rhythme', 'luna') + row('move_to_inbox', 'Import from Apple Health or Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S) + ' entries brought in so far' : 'Sleep, weight and period days you already have', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
@@ -1277,6 +1278,7 @@
     body.addEventListener('click', function (e) {
       var b = e.target.closest('[data-yact]'); if (!b) return; var act = b.dataset.yact; chime('tap');
       if (act === 'intro') { var A0 = JSON.parse(JSON.stringify(P)); Object.assign(A0, P.habits || {}); ['cycleLength', 'periodLength'].forEach(function (k) { if (A0[k] !== null && A0[k] !== undefined) A0[k] = String(A0[k]); }); openOnboarding(0, A0); return; }
+      if (act === 'text') return window.OvuTextSize && OvuTextSize.open ? OvuTextSize.open() : undefined;
       if (act === 'wardrobe') return openWardrobe();
       if (act === 'shop') return openShop();
       if (act === 'testeroff') { S.setState({ tester: null }); renderProps(); toast('Tester mode is off. Hearts count again.', 'science'); return; }
@@ -2351,7 +2353,7 @@
   /* ---------- hooks for the scene modules: ovu-walk.js, ovu-garden.js, ovu-community.js ----------
    * They add layouts, doors and hotspot handlers of their own and listen for layout, props and boot;
    * everything else here stays private. */
-  var hooks = { on: {}, hotspotHandlers: {}, fallbackHotspot: null, hudStop: null, moving: null, camFocus: null }, booted = false;
+  var hooks = { on: {}, hotspotHandlers: {}, fallbackHotspot: null, hudStop: null, moving: null, camFocus: null, walkTo: null }, booted = false;
   function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = {
     LAYOUTS: LAYOUTS, ART: ART, hotspotHandlers: hooks.hotspotHandlers,
@@ -2359,6 +2361,7 @@
     setFallbackHotspot: function (f) { hooks.fallbackHotspot = f; }, setHudStop: function (f) { hooks.hudStop = f; }, setMoving: function (f) { hooks.moving = f; }, emit: emit,
     /* the camera, for ovu-camera.js: read it, set it, and say where + and − should zoom about */
     cam: function () { return { x: cam.x, y: cam.y, z: cam.z }; }, camSet: function (x, y, z, anim) { cam.z = z; cam.x = x; cam.y = y; camApply(anim); }, setCamFocus: function (f) { hooks.camFocus = f; },
+    setWalkTo: function (f) { hooks.walkTo = f; }, /* the walk engine routes her own walks around furniture; false hands a walk back to the straight line */
     layout: function () { return L; }, pos: function () { return { x: pos.x, y: pos.y }; }, visiting: function () { return visiting; }, homeId: currentHomeId,
     /* anything that should pause walking and scene changes */
     busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },

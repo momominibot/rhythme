@@ -13,7 +13,7 @@
    * spots: where catalogue items stand, per kind (or per slot for furniture), in order, with spares for new stock; every
    * spot sits on a drawn surface (bed, shelf, platform, pedestal) and its wp is where she stands to look at it. */
   var PET = {
-    id: 'shop-pet', scene: 'street', store: 'pet', name: 'Pet shop', img: 'shop-pet-2f-v1.webp', w: 1248, h: 1560, avatarW: 12, only: [],
+    id: 'shop-pet', scene: 'street', store: 'pet', name: 'Whisker & Paw', img: 'shop-pet-2f-v1.webp', w: 1248, h: 1560, avatarW: 12, only: [],
     hotspots: [{ id: 'mat', x: 46, y: 79, label: 'Door mat · back to the street', icon: 'door_open', wp: { x: 46, y: 76, flip: false } }],
     home: { x: 46, y: 76, flip: false },
     stairs: [{ x: 66, y: 74 }, { x: 58, y: 53 }], upstairsY: 60,
@@ -29,7 +29,7 @@
     props: {}
   };
   var FURNITURE = {
-    id: 'shop-furniture', scene: 'street', store: 'furniture', name: 'Furniture store', img: 'shop-furniture-2f-v1.webp', w: 1248, h: 1560, avatarW: 12, only: [],
+    id: 'shop-furniture', scene: 'street', store: 'furniture', name: 'The Cosy Nook', img: 'shop-furniture-2f-v1.webp', w: 1248, h: 1560, avatarW: 12, only: [],
     hotspots: [{ id: 'mat', x: 49, y: 79, label: 'Door mat · back to the street', icon: 'door_open', wp: { x: 48, y: 76, flip: false } }],
     home: { x: 48, y: 76, flip: false },
     stairs: [{ x: 64, y: 72 }, { x: 60, y: 46 }], upstairsY: 52,
@@ -46,7 +46,7 @@
     props: {}
   };
   var HOMES = {
-    id: 'shop-homes', scene: 'street', store: 'home', name: 'Property showroom', img: 'shop-homes-2f-v1.webp', w: 1248, h: 1560, avatarW: 12, only: [],
+    id: 'shop-homes', scene: 'street', store: 'home', name: 'Moonrise Homes', img: 'shop-homes-2f-v1.webp', w: 1248, h: 1560, avatarW: 12, only: [],
     hotspots: [{ id: 'mat', x: 40, y: 78, label: 'Door mat · back to the street', icon: 'door_open', wp: { x: 35, y: 73, flip: false } }],
     home: { x: 35, y: 73, flip: false },
     stairs: [{ x: 66, y: 72 }, { x: 62, y: 48 }], upstairsY: 52,
