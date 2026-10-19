@@ -251,8 +251,25 @@
   var KEYS = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r', w: 'u', s: 'd', a: 'l', d: 'r', W: 'u', S: 'd', A: 'l', D: 'r' };
   var INTERACTIVE = '.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.nb,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.minimap,.hud,.sleeper,.meditator,.holo,.phase-chip,.greeting,.hint,button,a,input,textarea,select,label';
 
+  /* a foreground cutout (.plate-occ) is ranked by its base, not its top edge, and is never a solid: its object's solid is
+   * already in the layout */
   function sprites() {
-    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot')).map(function (el) { return { el: el, id: el.dataset.id, x: parseFloat(el.style.left), y: parseFloat(el.style.top), w: parseFloat(el.style.width) || 8, solid: !el.classList.contains('plot') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #ownedProps .plate-occ')).map(function (el) { var occ = el.classList.contains('plate-occ'); return { el: el, id: el.dataset.id, x: parseFloat(el.style.left), y: parseFloat(occ ? el.dataset.base : el.style.top), w: parseFloat(el.style.width) || 8, solid: !occ && !el.classList.contains('plot') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+  }
+  /* the layout's foreground cutouts (L.occluders; only the wide street has any) live in #ownedProps with the pets, so the
+   * one depth sort covers them all. A props re-render empties the wrap, so they are put back after every one; when the
+   * wrap already holds this layout's set nothing is touched */
+  function renderOcc() {
+    var wrap = R.els.props, L = R.layout(), want = (L && L.occluders) || []; if (!wrap) return;
+    var have = wrap.querySelectorAll('.plate-occ');
+    if (have.length === want.length && Array.prototype.every.call(have, function (el, i) { return el.dataset.layout === L.id && el.dataset.id === want[i].id; })) return;
+    Array.prototype.forEach.call(have, function (el) { el.remove(); });
+    want.forEach(function (o) {
+      var im = doc.createElement('img'); im.className = 'plate-occ'; im.alt = ''; im.setAttribute('aria-hidden', 'true'); im.draggable = false; im.decoding = 'async';
+      im.dataset.id = o.id; im.dataset.layout = L.id; im.dataset.base = o.base;
+      im.style.left = o.x + '%'; im.style.top = o.y + '%'; im.style.width = o.w + '%'; im.style.height = o.h + '%';
+      im.src = R.ART + o.img; wrap.appendChild(im);
+    });
   }
   function worldNow() { return world(R.layout(), sprites().filter(function (p) { return p.solid; })); }
   /* z order from the bottom of each sprite; the avatar joins the ranking at its live position */
@@ -554,9 +571,9 @@
   }
   function mount() {
     scene = R.els.scene; inner = R.els.inner; avatar = R.els.avatar; hud = R.els.hud;
-    buildControls(); R.buildHotspots(); lightMini(R.layout()); sortDepth();
-    R.on('layout', function (L) { if (active) yieldWalk(); inDoor = false; lightMini(L); sortDepth(); });
-    R.on('props', function () { sortDepth(active ? cur.y : undefined); });
+    buildControls(); R.buildHotspots(); lightMini(R.layout()); renderOcc(); sortDepth();
+    R.on('layout', function (L) { if (active) yieldWalk(); inDoor = false; lightMini(L); renderOcc(); sortDepth(); });
+    R.on('props', function () { renderOcc(); sortDepth(active ? cur.y : undefined); });
     R.on('scene', function (s, L) { lightMini(L); }); /* after a travel's own after() ran, e.g. a neighbour visit began */
     R.on('beforeWalk', function () { if (active) commit(); cyc.cssFrom = R.pos(); }); /* a hotspot walk starts from where she really is */
     preloadCycle(); avatar.querySelector('#avatarImg').addEventListener('load', preloadCycle);

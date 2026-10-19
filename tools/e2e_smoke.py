@@ -287,11 +287,34 @@ async def main():
             except Exception: pass
             gl = await page.evaluate("(t0)=>({layout: document.querySelector('#scene').dataset.layout, ms: Date.now()-t0})", t0)
             check("from the far end the mini-map fades straight to the garden instead of walking the whole street first", gl["layout"] == "garden" and gl["ms"] < 2500, gl)
+            gocc = await page.evaluate("()=>document.querySelectorAll('#ownedProps .plate-occ').length")
+            check("leaving the street takes its cutouts with it: the garden draws none", gocc == 0, gocc)
             await page.click('#minimap [data-scene=street]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
             await page.wait_for_timeout(600); wl = await page.evaluate(STREET)
             check("from the garden she arrives through the garden arch at the street's left end, the view at its left edge", wl["layout"] == "street" and abs(wl["pos"]["x"] - 38) < 1 and abs(wl["x"]) < 1, wl)
+            # 1d. foreground cutouts (docs/design/2026-10-19-wide-street.md): the arches' front pillars and the lamps are drawn again over the plate,
+            # depth-sorted with her by their base, never taking a tap, and dimmed with the plate at night
+            OCC = """()=>{var r=document.querySelector('#sceneInner').getBoundingClientRect(), L=OvuRoom.layout(), b=document.querySelector('#scene').getBoundingClientRect(), z=function(el){return +getComputedStyle(el).zIndex};
+              var els=[].slice.call(document.querySelectorAll('#ownedProps .plate-occ')), av=document.querySelector('#avatar');
+              return {n: els.length, ids: els.map(function(e){return e.dataset.id}).join(), loaded: els.every(function(e){return e.complete && e.naturalWidth>0}), taps: els.every(function(e){return getComputedStyle(e).pointerEvents==='none'}),
+                placed: els.every(function(e){var o=L.occluders.filter(function(x){return x.id===e.dataset.id})[0], q=e.getBoundingClientRect(), u=r.width/100; return o && Math.abs(q.left-r.left-o.x*u)<1 && Math.abs(q.top-r.top-o.y*r.height/100)<1 && Math.abs(q.width-o.w*u)<1 && Math.abs(q.height-o.h*r.height/100)<1}),
+                z: Object.fromEntries(els.map(function(e){return [e.dataset.id, z(e)]})), her: z(av), pos: OvuRoom.pos(), box: b.width}}"""
+            o0 = await page.evaluate(OCC)
+            check("on the street the two arches' front pillars and the two lamps are drawn again over the plate, at the plate's own pixels, and never take a tap", o0["n"] == 4 and o0["ids"] == "garden-arch,lamp-west,lamp-east,plaza-arch" and o0["loaded"] and o0["taps"] and o0["placed"], o0)
+            hit = await page.evaluate("()=>{var e=document.querySelector('.plate-occ[data-id=lamp-west]').getBoundingClientRect(), t=document.elementFromPoint(e.left+e.width/2, e.top+e.height*0.6); return {cls: t && t.className, occ: !!(t && t.classList && t.classList.contains('plate-occ'))}}")
+            check("a tap on the west lamp goes through the cutout to the plate and the pins beneath, as before", not hit["occ"], hit)
+            back_to = wl["pos"]
+            await page.evaluate("()=>{OvuRoom.placeAvatar({x:205, y:73}, false); OvuWalk.sortDepth();}"); o1 = await page.evaluate(OCC)
+            await page.evaluate("()=>{OvuRoom.placeAvatar({x:205, y:79}, false); OvuWalk.sortDepth();}"); o2 = await page.evaluate(OCC)
+            check("standing at x 205, y 73 she is behind the plaza arch's front pillar (its z is higher); at y 79 she is in front", o1["z"]["plaza-arch"] > o1["her"] and o2["her"] > o2["z"]["plaza-arch"], {"y73": o1["z"], "her73": o1["her"], "y79": o2["z"], "her79": o2["her"]})
+            await page.evaluate("()=>{OvuRoom.placeAvatar({x:79.5, y:61.2}, false); OvuWalk.sortDepth();}"); o3 = await page.evaluate(OCC)
+            check("just behind the west lamp (x 79.5, y 61.2) she is drawn behind it", o3["z"]["lamp-west"] > o3["her"], o3["z"])
+            await page.evaluate("(p)=>{OvuRoom.placeAvatar(p, false); OvuWalk.sortDepth();}", back_to)
+            nf = await page.evaluate("""async()=>{var sc=document.querySelector('#scene'), had=sc.classList.contains('is-night'); sc.classList.add('is-night'); await new Promise(function(r){setTimeout(r,1500)});
+              var f=getComputedStyle(document.querySelector('.plate-occ')).filter, p=getComputedStyle(document.querySelector('#roomDay')).filter; if(!had) sc.classList.remove('is-night'); return {occ: f, plate: p}}""")
+            check("at night each cutout takes the plate's own filter, so it never shows as a bright patch on the darkened street", nf["occ"] == nf["plate"] and nf["occ"] not in ("none", ""), nf)
             await page.click('#minimap [data-sub="shop-homes"]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='shop-homes' && !document.querySelector('#scene').classList.contains('fading')", timeout=12000)
             except Exception: pass

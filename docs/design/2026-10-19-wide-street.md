@@ -136,3 +136,47 @@ Also from main while this was built: pets now walk with her into every scene. Th
 ovu-petwalk.js) read the grid without the mask's column count, which clamps at x 99 on the street; it now passes the mask.
 
 Not covered: an iOS Safari device run and a 3x-phone memory profile (Chromium at 390 px, DPR 2 and 3, only).
+
+## Foreground cutouts (19 October, evening)
+
+The plate is flat, so anything drawn in it sits under her. Moving the plaza arch's doorstep inside the arch avoided the
+common case, but walking past either arch or a lamp post still drew her over the pillar she was walking behind. Four
+objects on the street can stand in front of her: the front pillar of each flower arch and the two lamps. (The back
+pillars stand at the very back of the floor, so she is always in front of them; the trees, pots and bench sit where the
+floor polygon keeps her in front or beside them.)
+
+**What it is.** Each of the four is cut from `street-wide-v1.webp` by `tools/art/occluders.py` and saved at the plate's
+own pixels (`street-occ-arch.webp`, `-lamp1`, `-lamp2`, `-arch2`, 51 KB together, WebP q94, mean colour difference
+under 2 of 255 against the plate). `L.occluders` in ovu-street.js records each one's box-percent placement
+(x, y, w, h, with x on the 0 to 250 scale), the solid it belongs to, and its `base`: the centre of the object's footprint
+on the cobbles, read off the plate (garden arch 62, west lamp 61.9, east lamp 68.2, plaza arch 77). Each base lies inside
+its solid.
+
+**How it is cut.** GrabCut inside a hand outline, seeded with a hand core that is certainly the object. Above the
+cobbles a flowered pillar stands against lavender sky, and GrabCut alone drops the cream buds on its edges (the cobbles
+in the same crop teach it that cream is background), so above the floor line anything inside the outline that is not
+lavender (hue 240 to 320 degrees, saturation over 0.05) joins the shape. The largest shape is kept, holes filled, eroded
+2 px so the edge sits just inside the silhouette, and feathered 2 px. Each cut stops above the highest point her head
+can reach behind it: she is 12 wide and 21.7 tall, so at the back of the floor behind the garden arch her head is at
+y 36.3 and the cut starts at 30.9; behind the plaza arch 46.5 against 39.4. `--check dir` writes each cutout over
+magenta, its edge on the plate, and a "she stands behind it" composite (a dark shape under the cutout: anything the cut
+misses shows dark).
+
+**How it draws.** `renderOcc()` in ovu-walk.js puts the layout's cutouts into `#ownedProps` as `img.plate-occ`
+(left, top, width and height in box percent, `pointer-events: none`), after every props render and layout change, and
+leaves them alone when the set is already there. `sprites()` ranks a cutout by `data-base` instead of its top edge and
+never counts it as a solid, so the one `depthRank` that already orders her, the walking pet, neighbours and props now
+orders the cutouts too: her feet above a base, she draws behind it; below, in front. On the street that is six items at
+most (four cutouts, a walking pet, her), so the 2 to 9 ranks never tie. The cutouts join the window patches in the
+plate's own filter rules (`:is(.room-img.day, .win-patch, .plate-occ)`), so at night, sunrise and sunset they dim and
+tint exactly as the plate does (same 1.2 s transition); the rules' values are unchanged. Layouts without `occluders`
+(every home, the garden, the plaza, the stores) render nothing new.
+
+**Tests.** `tools/test-core.js`: four cutouts on disk whose pixel size matches their box placement; each lines up with
+its own solid (middle inside the cutout, base inside the footprint, the cutout reaching down past its base); her head
+never rises above a cutout's top from any floor point behind it; at x 205, y 73 the plaza arch outranks her and at y 79
+she outranks it; a pet passes behind the east lamp just above its base; no ties; no other layout has cutouts; the cut
+script and the layout agree on ids, files, solids and bases. `tools/e2e_smoke.py`: on the street the four cutouts load
+and sit at their box placement within a pixel, a tap on a lamp reaches the plate beneath, she is behind the plaza
+pillar at y 73 and in front at y 79, behind the west lamp at (79.5, 61.2), the cutouts take the plate's filter at night,
+and the garden draws none.
