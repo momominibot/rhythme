@@ -10,6 +10,7 @@
   var VERSION = 1;
   var TYPES = ['sleep', 'period', 'symptom', 'food', 'reflection', 'mindfulness', 'weight'];
   var SINGLE_PER_DAY = { period: true, symptom: true, weight: true };
+  var IMPORTED = { 'apple-health': true, 'google-fit': true };
   var listeners = [];
   var cache = null;
 
@@ -101,7 +102,7 @@
     if (date > today()) throw new Error('Entries cannot be in the future.');
     var db = load();
     var existing = SINGLE_PER_DAY[type] ? db.events.filter(function (e) { return e.type === type && e.date === date; })[0] : null;
-    if (existing) { return update(existing.id, { data: opts && opts.merge ? mergeData(type, existing.data, data) : data }); }
+    if (existing) { return update(existing.id, { data: opts && opts.merge ? mergeData(type, existing.data, data) : data, source: IMPORTED[existing.source] ? (source || 'room') : undefined }); }
     var ev = { id: uid(), type: type, date: date, createdAt: nowIso(), updatedAt: nowIso(), source: source || 'room', data: data };
     db.events.push(ev);
     save('add:' + type);
@@ -113,6 +114,9 @@
     if (!ev) throw new Error('That entry no longer exists.');
     if (patch.date !== undefined) { if (!validDate(patch.date) || patch.date > today()) throw new Error('Choose a real date on or before today.'); ev.date = patch.date; }
     if (patch.data !== undefined) ev.data = patch.data;
+    /* An imported entry (Apple Health, Google) that the person changes by hand becomes hers: a later import
+     * leaves it alone and "Remove imported data" keeps it. Imports refresh their own rows through addMany. */
+    if (patch.source) ev.source = patch.source; else if ((patch.data !== undefined || patch.date !== undefined) && IMPORTED[ev.source]) ev.source = 'room';
     ev.updatedAt = nowIso();
     save('update:' + ev.type);
     mirrorLegacy(ev);

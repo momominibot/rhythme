@@ -1227,6 +1227,33 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .ibar{height:8px;border-radius:4px;background:var(--rm-paper-2);overflow:hidden;margin-top:14px}
 .ibar i{display:block;height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#a98ad0,#7a5c96);transition:width .25s}
 .cal-day.p-unspecified{background:#f3b9cb}
+.imp-how{margin-top:8px;font:700 12px var(--sans);color:var(--rm-plum)}
+.imp-how summary{cursor:pointer;color:var(--rm-mauve)}
+.imp-have .row .btn{flex:1 1 auto;min-width:0;padding:10px 10px;font-size:12px}
+.imp-srcs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.imp-src{font:800 9.5px var(--sans);letter-spacing:.05em;text-transform:uppercase;font-style:normal;color:var(--rm-plum);background:var(--rm-lilac-2);border-radius:99px;padding:3px 8px}
+.imp-line{font:600 12px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:8px}
+.ibars{display:flex;align-items:flex-end;gap:3px;height:46px;margin-top:10px;padding:4px 2px 0;border-bottom:1.5px solid rgba(107,82,142,.14)}
+.ibars i{flex:1;min-width:4px;max-width:22px;border-radius:4px 4px 1px 1px;background:linear-gradient(180deg,#b9a0dc,#8a6cae)}
+.imp-range{margin-top:10px}
+.imp-kinds{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.imp-kind{display:flex;align-items:center;gap:10px;background:var(--rm-paper);border:1.5px solid rgba(150,120,190,.18);border-radius:14px;padding:10px 12px;cursor:pointer}
+.imp-kind input{width:22px;height:22px;accent-color:#7a5c96;flex:none;margin:0}
+.imp-kind>.ms{color:var(--rm-mauve);font-size:20px;flex:none}
+.imp-kind b{display:block;font:800 13px var(--sans);color:var(--rm-plum)}
+.imp-kind small{display:block;font:600 11.5px/1.35 var(--sans);color:var(--rm-ink-3);margin-top:1px}
+.imp-kind small.imp-kept{color:#7a5c96}
+.imp-kind:has(input:checked){border-color:#a98ad0;background:#f6f0fd}
+.imp-kind.off{opacity:.55;cursor:default}
+.imp-later{margin-top:12px;font:600 12px/1.45 var(--sans);color:var(--rm-ink-2)}
+.imp-later summary{cursor:pointer;font-weight:800;color:var(--rm-mauve)}
+.imp-later ul{margin:6px 0 0;padding-left:18px}
+.imp-later li b{color:var(--rm-plum)}
+.btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
+.imp-done{margin-top:10px;padding:10px 12px 12px;border-radius:18px;background:linear-gradient(135deg,#f6f0fd,#fbe9f1)}
+.imp-done .lbl{display:block;font:800 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)}
+.imp-note{display:flex;gap:6px;align-items:center;font:700 11.5px var(--sans);color:#7a5c96;background:#f6f0fd;border-radius:12px;padding:7px 10px;margin:6px 0 2px}
+.imp-note .ms{font-size:16px}
 
 /* ---- 18 Oct: garden, Dream Street, plaza and walking like a game (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---- */
 .minimap{position:absolute;right:10px;bottom:14px;z-index:31;display:flex;gap:2px;background:rgba(255,255,255,.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.9);border-radius:999px;padding:4px;box-shadow:0 6px 18px rgba(90,66,116,.18)}

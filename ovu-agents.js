@@ -12,6 +12,8 @@
   var S = root.OvuStore;
   var SYMPTOMS = ['cramps', 'headache', 'bloating', 'breast tenderness', 'back pain', 'fatigue', 'nausea', 'acne', 'cravings', 'insomnia', 'hot flushes', 'dizziness', 'spotting', 'discharge change', 'low mood', 'anxiety', 'irritability', 'brain fog'];
   var MOODS = ['great', 'good', 'ok', 'low', 'bad'];
+  /* a day of mindful minutes brought in from Apple Health or Google is one entry that may hold several sessions */
+  function sessionCount(list) { return list.reduce(function (n, e) { return n + (e.data && e.data.kind === 'imported' ? Math.max(1, Number(e.data.sessions) || 1) : 1); }, 0); }
   var FOOD_TAGS = ['home-cooked', 'veggies', 'protein', 'iron-rich', 'sweet', 'caffeine', 'alcohol', 'ultra-processed', 'late night'];
 
   function flag(level, code, title, detail, date) { return { level: level, code: code, title: title, detail: detail, date: date || null }; }
@@ -131,7 +133,7 @@
     var notes = S.list('reflection', { from: S.addDays(end, -13), to: end });
     var sessions = S.list('mindfulness', { from: S.addDays(end, -13), to: end });
     var minutes = sessions.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
-    return { agent: 'reflectionAgent', metrics: { count: notes.length, sessions: sessions.length, minutes: Math.round(minutes) }, flags: [] };
+    return { agent: 'reflectionAgent', metrics: { count: notes.length, sessions: sessionCount(sessions), minutes: Math.round(minutes) }, flags: [] };
   }
   var AGENTS = { sleepAgent: sleepAgent, cycleAgent: cycleAgent, symptomAgent: symptomAgent, foodAgent: foodAgent, reflectionAgent: reflectionAgent };
 
@@ -202,7 +204,7 @@
       sleep: { nights: sl.count, average: sl.avg, under6: sl.under6, series: sl.nights.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality }; }) },
       symptoms: { daysLogged: symptoms.length, top: top, painAvg: pain.length ? Math.round(pain.reduce(function (a, b) { return a + b; }, 0) / pain.length * 10) / 10 : null, painMax: pain.length ? Math.max.apply(null, pain) : null, moods: moods },
       food: { meals: meals.length, daysLogged: Object.keys(foodDays).length, tags: tags, nutrients: nutrientDays(meals) },
-      mindfulness: (function () { var ss = S.list('mindfulness', { from: from, to: end }); return { sessions: ss.length, minutes: Math.round(ss.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) }; })(),
+      mindfulness: (function () { var ss = S.list('mindfulness', { from: from, to: end }); return { sessions: sessionCount(ss), minutes: Math.round(ss.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) }; })(),
       flags: flags, questions: questions,
       disclaimer: 'Self-reported entries summarised by deterministic rules in the browser. For clinician review; not a diagnosis.'
     };

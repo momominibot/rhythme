@@ -27,6 +27,43 @@ Known limits of the file route:
 - Google documents neither the Takeout Fit JSON nor the CSV layout, so the reader finds fields by name (`fitnessActivity`, `startTime`, `endTime`, `segment`, `Average weight (kg)`) and ignores what it cannot place. The fixture follows real exports seen in the wild; the first real Takeout from Jamie's phone is the test that matters.
 - Health Connect (Android 14 and later, the successor to Google Fit) has no file export a person can open. Its only built-in route is a scheduled backup zip to a cloud storage provider, meant for restoring onto another phone (Google: "Back up and restore your Health Connect data", support.google.com/android/answer/15323271). Rhythme does not read that file.
 
+## 1b. Choosing what comes in (19 October 2026)
+
+Jamie: "I need to port apple and google health data in and be able to show on the app.. not all - selective."
+
+Reading a file is now a scan, not a write. The flow in You > Apple Health and Google:
+
+1. **Choose a file.** Same two cards as before (export.zip or export.xml; the Takeout zip or its Fit files). The file is read on the phone with the progress bar; nothing is saved.
+2. **Pick.** "Choose what comes in" lists every kind found, each with its count and first and last date, **none ticked**. A date chip narrows all counts (All dates, Last 12 months, Last 3 months). A row says when some of its days were logged by hand and will stay as they are. "Bring in" stays locked until something is ticked. Kinds Rhythme has no place for (steps, heart rate, workouts, night sweats and so on) are listed under a fold with their counts and dates, so she knows what was in the file, and cannot be ticked. Cancel forgets the scan.
+3. **See it.** The sheet then shows "Just brought in" and, every time it opens, "Brought in so far": one card per kind with its count, dates and sources, a small preview (the last 14 nights as bars, the last 20 weigh-ins as bars, flow counts, most frequent symptoms, total mindful minutes), a button into the matching diary view (calendar on that month for period, spotting and symptoms; the journal on its Sleep, Weight or Calm filter for the rest) and Remove for that kind. "Remove everything brought in" stays at the bottom.
+
+Kinds and where they land:
+
+| Kind in the picker | Apple Health | Google Takeout (Fit) | Diary entry |
+|---|---|---|---|
+| Sleep | SleepAnalysis asleep stages (in-bed only nights labelled) | All Sessions sleep | `sleep`, one per morning |
+| Period days | MenstrualFlow 1 to 4 (5 skipped) | none in Fit | `period` with flow |
+| Spotting between periods | IntermenstrualBleeding, only on days without flow | none | `period` with flow `spotting` (never starts a cycle) |
+| Cycle symptoms | AbdominalCramps, Headache, Bloating, BreastPain, LowerBackPain, Fatigue, Nausea, Acne, HotFlashes, Dizziness; NotPresent skipped | none | `symptom`, one per day |
+| Weight | BodyMass, kg or lb | Daily activity metrics weight columns | `weight`, one per day |
+| Mindful minutes | MindfulSession, added up per day | meditation sessions | `mindfulness`, one per day, `kind: 'imported'` |
+
+Only Apple symptom types that match one of Rhythme's own chips are mapped. Mood changes, sleep changes and memory lapse are not "low mood", "insomnia" or "brain fog", so they are listed, not guessed. Identifier names were checked against developer.apple.com/documentation/healthkit/symptom-type-identifiers on 19 October 2026.
+
+Rules kept and added:
+
+- A day logged by hand always wins (per kind and date). Re-importing refreshes the same source's own rows.
+- **An imported entry she edits becomes hers.** `OvuStore.update` (and `add` on an existing single-per-day entry) sets the source to the editor's own when the entry came from an import, so a later import never overwrites her change and Remove never takes it. The calendar day editor says "From Apple Health. Change anything here and the day becomes yours."
+- Imports never earn hearts (checkpoints 18, 22, 33): `addMany` never calls the rewards award, and the mindful card says so.
+- Nothing leaves the phone because of the import. Brought-in entries are ordinary diary entries, so if cloud backup is on they are backed up like the rest, and the sheet says so only when it is on. The cloud backup consent text already covers "your entries"; no consent wording changed.
+- The journal now draws weight entries (it had no branch for them, so imported weigh-ins would have been blank rows), names flow "not recorded" for Apple's unspecified flow, shows an "Apple Health" or "Google" label on brought-in entries, and opens on a filter from `journal.html#sleep`, `#weight` or `#mindfulness`.
+
+Planner and review notes: jevtriage chose full depth with jevauto; its plan (scan on the phone, picker with counts and dates, confirm before writing) matches what shipped; its suggestions to send data back for processing, add JSZip and a UI framework were rejected (nothing leaves the phone; fflate already streams one entry at a time; the app is vanilla JS).
+
+Codex read-only review (gpt-6-astra, 19 October 2026) confirmed that hand-written and hand-edited entries survive re-import and removal, re-imports never duplicate, date cutoffs match between picker and writes, spotting never starts a cycle and no file string reaches the page unescaped. Its six findings were all fixed: an untouched pain slider no longer turns "pain not stated" into 0/10 when she edits a brought-in symptom day; overlapping mindful sessions (two apps recording the same minutes) are merged before minutes are added up; the four-week summary and the 14-day agent count the sessions inside a brought-in day; moving an imported entry to another date makes it hers; every kind found is listed (no cap) and every other numeric column of a Takeout daily CSV is listed with its dates; the picker leaves out future-dated records. A synthetic three-year export (17 MB, 84,000 records) scans in about 0.1 s in Node and writes 1,367 entries in 9 ms.
+
+Not built: a place for steps, heart rate, workouts or basal temperature. Each needs a new entry type, and a new type needs the Supabase `entries` type-check migration and the sync hold that is only on the Movement branch (PR #5), so it waits.
+
 ## 2. The native route: a shell app around the same web app
 
 HealthKit and Health Connect are only reachable from native apps. The smallest honest way to get there is a Capacitor shell (capacitorjs.com): the existing static PWA runs inside a WebView, and two small native plugins hand it sleep, weight and menstrual flow records on request, which it writes through the same `OvuStore.addMany` the file import uses, with sources `apple-health` and `health-connect`. The repo already carries `capacitor.config.json` and an `ios/` folder from an earlier experiment; nothing in them is wired to health data.

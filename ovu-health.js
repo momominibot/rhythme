@@ -8,9 +8,13 @@
  * (assets/vendor, MIT, loaded only when a zip is chosen). Only the three record kinds Rhythme has
  * a place for are kept; everything else is counted and named in the summary.
  *
+ * Reading a file only scans it: kinds() lists every kind found with counts and date ranges, and
+ * nothing is written until the person ticks kinds in the picker (none are ticked by default).
  * Imported entries carry source 'apple-health' or 'google-fit'. A day that already holds an entry
  * written by hand (or by any other source) is left alone; a day already imported from the same
- * source is refreshed in place; "Remove imported data" takes out only these two sources.
+ * source is refreshed in place; removal takes out only these two sources, one kind or all of them.
+ * An imported entry that the person edits becomes theirs (ovu-store.js update), so it is never
+ * overwritten by a later import or removed with the imported data.
  * The pure functions here are unit-tested in tools/test-core.js. */
 (function (root) {
   'use strict';
@@ -67,6 +71,16 @@
     return { nights: nights, naps: naps };
   }
   var FLOW_RANK = { unspecified: 1, light: 2, medium: 3, heavy: 4 };
+  /* mindful sessions per start day as true-time intervals; mindDays() merges overlaps before adding minutes up */
+  function mindAdd(map, s, e) { var d = wallDate(s.wall); (map[d] = map[d] || []).push({ s: s.ms, e: e.ms }); }
+  function mindDays(map) {
+    return Object.keys(map).sort().map(function (d) {
+      var iv = map[d].slice().sort(function (a, b) { return a.s - b.s; }), merged = [];
+      iv.forEach(function (x) { var l = merged[merged.length - 1]; if (l && x.s <= l.e) { if (x.e > l.e) l.e = x.e; } else merged.push({ s: x.s, e: x.e }); });
+      var mins = merged.reduce(function (n, x) { return n + (x.e - x.s) / 60000; }, 0);
+      return { date: d, minutes: Math.max(1, Math.round(mins)), sessions: merged.length };
+    });
+  }
   function strongerFlow(a, b) { if (!a) return b; if (!b) return a; return FLOW_RANK[b] > FLOW_RANK[a] ? b : a; }
 
   /* ---------- Apple Health export.xml ----------
@@ -75,8 +89,15 @@
    * 3 core, 4 deep, 5 REM). Menstrual flow: Unspecified 1, Light 2, Medium 3, Heavy 4, None 5 (skipped).
    * Body mass comes with a unit, usually kg or lb. */
   var SLEEP_T = 'HKCategoryTypeIdentifierSleepAnalysis', MASS_T = 'HKQuantityTypeIdentifierBodyMass', FLOW_T = 'HKCategoryTypeIdentifierMenstrualFlow';
+  var SPOT_T = 'HKCategoryTypeIdentifierIntermenstrualBleeding', MIND_T = 'HKCategoryTypeIdentifierMindfulSession', WORKOUT_T = 'HKWorkout';
+  /* Apple's symptom types (developer.apple.com/documentation/healthkit/symptom-type-identifiers, read 19 Oct 2026)
+   * that match one of Rhythme's own symptom chips (OvuAgents.SYMPTOMS). The rest (mood changes, night sweats,
+   * sleep changes, memory lapse and so on) have no chip and are listed as not in Rhythme yet, never guessed. */
+  var SYMPTOM_T = { HKCategoryTypeIdentifierAbdominalCramps: 'cramps', HKCategoryTypeIdentifierHeadache: 'headache', HKCategoryTypeIdentifierBloating: 'bloating', HKCategoryTypeIdentifierBreastPain: 'breast tenderness', HKCategoryTypeIdentifierLowerBackPain: 'back pain', HKCategoryTypeIdentifierFatigue: 'fatigue', HKCategoryTypeIdentifierNausea: 'nausea', HKCategoryTypeIdentifierAcne: 'acne', HKCategoryTypeIdentifierHotFlashes: 'hot flushes', HKCategoryTypeIdentifierDizziness: 'dizziness' };
+  /* severity and presence values: NotPresent (raw 1) means the symptom was recorded as absent */
+  function symptomPresent(v) { v = String(v || ''); return !(/NotPresent/i.test(v) || v === '1'); }
   var FLOW = { '1': 'unspecified', '2': 'light', '3': 'medium', '4': 'heavy', '5': 'none', HKCategoryValueMenstrualFlowUnspecified: 'unspecified', HKCategoryValueMenstrualFlowLight: 'light', HKCategoryValueMenstrualFlowMedium: 'medium', HKCategoryValueMenstrualFlowHeavy: 'heavy', HKCategoryValueMenstrualFlowNone: 'none' };
-  var FRIENDLY = { HKQuantityTypeIdentifierStepCount: 'steps', HKQuantityTypeIdentifierHeartRate: 'heart rate', HKQuantityTypeIdentifierActiveEnergyBurned: 'active energy', HKQuantityTypeIdentifierBasalEnergyBurned: 'resting energy', HKQuantityTypeIdentifierDistanceWalkingRunning: 'walking distance', HKQuantityTypeIdentifierFlightsClimbed: 'flights climbed', HKQuantityTypeIdentifierRespiratoryRate: 'breathing rate', HKQuantityTypeIdentifierHeartRateVariabilitySDNN: 'heart rate variability', HKQuantityTypeIdentifierOxygenSaturation: 'blood oxygen', HKQuantityTypeIdentifierAppleExerciseTime: 'exercise minutes', HKQuantityTypeIdentifierAppleStandTime: 'stand time', HKCategoryTypeIdentifierAppleStandHour: 'stand hours', HKQuantityTypeIdentifierEnvironmentalAudioExposure: 'noise levels', HKQuantityTypeIdentifierHeadphoneAudioExposure: 'headphone levels', HKQuantityTypeIdentifierWalkingSpeed: 'walking speed', HKQuantityTypeIdentifierBodyMassIndex: 'BMI', HKQuantityTypeIdentifierHeight: 'height', HKQuantityTypeIdentifierBodyTemperature: 'body temperature', HKQuantityTypeIdentifierBasalBodyTemperature: 'basal body temperature', HKQuantityTypeIdentifierAppleSleepingWristTemperature: 'wrist temperature', HKCategoryTypeIdentifierOvulationTestResult: 'ovulation tests', HKCategoryTypeIdentifierCervicalMucusQuality: 'cervical mucus', HKCategoryTypeIdentifierIntermenstrualBleeding: 'spotting between periods', HKCategoryTypeIdentifierSexualActivity: 'sexual activity', HKCategoryTypeIdentifierMindfulSession: 'mindful minutes', HKQuantityTypeIdentifierDietaryWater: 'water', HKQuantityTypeIdentifierDietaryEnergyConsumed: 'calories eaten', HKCategoryTypeIdentifierHeadache: 'headaches', HKCategoryTypeIdentifierAbdominalCramps: 'cramps', HKCategoryTypeIdentifierMoodChanges: 'mood changes', HKCategoryTypeIdentifierBloating: 'bloating', HKCategoryTypeIdentifierFatigue: 'fatigue', HKQuantityTypeIdentifierRestingHeartRate: 'resting heart rate', HKQuantityTypeIdentifierWalkingHeartRateAverage: 'walking heart rate', HKQuantityTypeIdentifierVO2Max: 'VO2 max', HKQuantityTypeIdentifierBloodPressureSystolic: 'blood pressure', HKQuantityTypeIdentifierBloodPressureDiastolic: 'blood pressure', HKQuantityTypeIdentifierBloodGlucose: 'blood glucose' };
+  var FRIENDLY = { HKWorkout: 'workouts', HKCategoryTypeIdentifierNightSweats: 'night sweats', HKCategoryTypeIdentifierSleepChanges: 'sleep changes', HKCategoryTypeIdentifierMemoryLapse: 'memory lapse', HKCategoryTypeIdentifierPelvicPain: 'pelvic pain', HKCategoryTypeIdentifierVaginalDryness: 'vaginal dryness', HKCategoryTypeIdentifierAppetiteChanges: 'appetite changes', HKCategoryTypeIdentifierHandwashingEvent: 'handwashing', HKCategoryTypeIdentifierToothbrushingEvent: 'toothbrushing', HKQuantityTypeIdentifierStepCount: 'steps', HKQuantityTypeIdentifierHeartRate: 'heart rate', HKQuantityTypeIdentifierActiveEnergyBurned: 'active energy', HKQuantityTypeIdentifierBasalEnergyBurned: 'resting energy', HKQuantityTypeIdentifierDistanceWalkingRunning: 'walking distance', HKQuantityTypeIdentifierFlightsClimbed: 'flights climbed', HKQuantityTypeIdentifierRespiratoryRate: 'breathing rate', HKQuantityTypeIdentifierHeartRateVariabilitySDNN: 'heart rate variability', HKQuantityTypeIdentifierOxygenSaturation: 'blood oxygen', HKQuantityTypeIdentifierAppleExerciseTime: 'exercise minutes', HKQuantityTypeIdentifierAppleStandTime: 'stand time', HKCategoryTypeIdentifierAppleStandHour: 'stand hours', HKQuantityTypeIdentifierEnvironmentalAudioExposure: 'noise levels', HKQuantityTypeIdentifierHeadphoneAudioExposure: 'headphone levels', HKQuantityTypeIdentifierWalkingSpeed: 'walking speed', HKQuantityTypeIdentifierBodyMassIndex: 'BMI', HKQuantityTypeIdentifierHeight: 'height', HKQuantityTypeIdentifierBodyTemperature: 'body temperature', HKQuantityTypeIdentifierBasalBodyTemperature: 'basal body temperature', HKQuantityTypeIdentifierAppleSleepingWristTemperature: 'wrist temperature', HKCategoryTypeIdentifierOvulationTestResult: 'ovulation tests', HKCategoryTypeIdentifierCervicalMucusQuality: 'cervical mucus', HKCategoryTypeIdentifierIntermenstrualBleeding: 'spotting between periods', HKCategoryTypeIdentifierSexualActivity: 'sexual activity', HKCategoryTypeIdentifierMindfulSession: 'mindful minutes', HKQuantityTypeIdentifierDietaryWater: 'water', HKQuantityTypeIdentifierDietaryEnergyConsumed: 'calories eaten', HKCategoryTypeIdentifierHeadache: 'headaches', HKCategoryTypeIdentifierAbdominalCramps: 'cramps', HKCategoryTypeIdentifierMoodChanges: 'mood changes', HKCategoryTypeIdentifierBloating: 'bloating', HKCategoryTypeIdentifierFatigue: 'fatigue', HKQuantityTypeIdentifierRestingHeartRate: 'resting heart rate', HKQuantityTypeIdentifierWalkingHeartRateAverage: 'walking heart rate', HKQuantityTypeIdentifierVO2Max: 'VO2 max', HKQuantityTypeIdentifierBloodPressureSystolic: 'blood pressure', HKQuantityTypeIdentifierBloodPressureDiastolic: 'blood pressure', HKQuantityTypeIdentifierBloodGlucose: 'blood glucose' };
   function friendlyType(t) {
     if (FRIENDLY[t]) return FRIENDLY[t];
     var s = String(t || '').replace(/^HK(Quantity|Category|Correlation|Data)TypeIdentifier/, '').replace(/^Apple/, '');
@@ -90,9 +111,16 @@
   function attrs(s) { var o = {}, m, re = /([\w:.-]+)="([^"]*)"/g; while ((m = re.exec(s))) o[m[1]] = m[2]; return o; }
 
   function appleScanner() {
-    var carry = '', asleep = [], inbed = [], weights = {}, flows = {}, skipped = {};
-    var counts = { records: 0, sleepSegments: 0, awake: 0, weighIns: 0, flowRecords: 0, flowNone: 0, unreadable: 0 };
-    var RE = /<Record\s([^>]*)>/g;
+    var carry = '', asleep = [], inbed = [], weights = {}, flows = {}, spots = {}, syms = {}, minds = {}, skipped = {}, skipDates = {};
+    var counts = { records: 0, sleepSegments: 0, awake: 0, weighIns: 0, flowRecords: 0, flowNone: 0, spotRecords: 0, symptomRecords: 0, symptomAbsent: 0, mindfulSessions: 0, workouts: 0, unreadable: 0 };
+    var RE = /<(Record|Workout)\s([^>]*)>/g;
+    /* kinds Rhythme has no place for are counted with their first and last date (the first ten characters of startDate) */
+    function skip(t, body) {
+      skipped[t] = (skipped[t] || 0) + 1;
+      var si = body.indexOf('startDate="'), d = si > -1 ? body.slice(si + 11, si + 21) : '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+      var r = skipDates[t]; if (!r) skipDates[t] = { from: d, to: d }; else { if (d < r.from) r.from = d; if (d > r.to) r.to = d; }
+    }
     function one(a) {
       var t = a.type;
       if (t === SLEEP_T) {
@@ -109,7 +137,21 @@
         if (f === 'none') { counts.flowNone++; return; }
         var fd = wallDate(fs.wall); flows[fd] = strongerFlow(flows[fd], f); counts.flowRecords++; return;
       }
-      skipped[t] = (skipped[t] || 0) + 1;
+      if (t === SPOT_T) {
+        var ss = parseStamp(a.startDate); if (!ss) { counts.unreadable++; return; }
+        spots[wallDate(ss.wall)] = true; counts.spotRecords++; return;
+      }
+      if (t === MIND_T) {
+        var ms = parseStamp(a.startDate), me = parseStamp(a.endDate); if (!ms || !me) { counts.unreadable++; return; }
+        var mins = (me.ms - ms.ms) / 60000; if (!(mins >= 0.5 && mins <= 600)) { counts.unreadable++; return; }
+        mindAdd(minds, ms, me); counts.mindfulSessions++; return;
+      }
+      if (SYMPTOM_T[t]) {
+        if (!symptomPresent(a.value)) { counts.symptomAbsent++; return; }
+        var ys = parseStamp(a.startDate); if (!ys) { counts.unreadable++; return; }
+        var yd = wallDate(ys.wall), list = syms[yd] || (syms[yd] = []); if (list.indexOf(SYMPTOM_T[t]) < 0) list.push(SYMPTOM_T[t]); counts.symptomRecords++; return;
+      }
+      counts.unreadable++;
     }
     function push(text, final) {
       var buf = carry ? carry + text : (text || '');
@@ -118,10 +160,12 @@
       var head = cut === buf.length ? buf : buf.slice(0, cut), m;
       RE.lastIndex = 0;
       while ((m = RE.exec(head))) {
+        var body = m[2];
+        if (m[1] === 'Workout') { counts.workouts++; skip(WORKOUT_T, body); continue; }
         counts.records++;
-        var body = m[1], ti = body.indexOf('type="'); if (ti < 0) { counts.unreadable++; continue; }
+        var ti = body.indexOf('type="'); if (ti < 0) { counts.unreadable++; continue; }
         var t = body.slice(ti + 6, body.indexOf('"', ti + 6));
-        if (t === SLEEP_T || t === MASS_T || t === FLOW_T) one(attrs(body)); else skipped[t] = (skipped[t] || 0) + 1;
+        if (t === SLEEP_T || t === MASS_T || t === FLOW_T || t === SPOT_T || t === MIND_T || SYMPTOM_T[t]) one(attrs(body)); else skip(t, body);
       }
     }
     function result() {
@@ -132,8 +176,12 @@
       nights.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
       var weight = Object.keys(weights).sort().map(function (d) { return { date: d, kg: weights[d].kg }; });
       var period = Object.keys(flows).sort().map(function (d) { return { date: d, flow: flows[d] }; });
+      /* a day with recorded flow is a period day, so spotting on that same day is not listed separately */
+      var spotting = Object.keys(spots).filter(function (d) { return !flows[d]; }).sort().map(function (d) { return { date: d, flow: 'spotting' }; });
+      var symptoms = Object.keys(syms).sort().map(function (d) { return { date: d, symptoms: syms[d].slice() }; });
+      var mindful = mindDays(minds);
       var total = 0; Object.keys(skipped).forEach(function (k) { total += skipped[k]; });
-      return { source: SOURCE.apple, sleep: nights, weight: weight, period: period, naps: sl.naps, inBedNights: ib.nights.filter(function (n) { return n.basis === 'in-bed'; }).length, skipped: skipped, skippedTotal: total, skippedKinds: Object.keys(skipped).length, counts: counts };
+      return { source: SOURCE.apple, sleep: nights, weight: weight, period: period, spotting: spotting, symptoms: symptoms, mindful: mindful, naps: sl.naps, inBedNights: ib.nights.filter(function (n) { return n.basis === 'in-bed'; }).length, skipped: skipped, skipDates: skipDates, skippedTotal: total, skippedKinds: Object.keys(skipped).length, counts: counts };
     }
     return { push: push, result: result };
   }
@@ -192,26 +240,54 @@
     return Object.keys(out).sort().map(function (d) { return { date: d, kg: out[d] }; });
   }
   function googleBuilder() {
-    var segs = [], weights = {}, counts = { files: 0, sleepSessions: 0, otherSessions: 0, csvFiles: 0, weighIns: 0, unreadable: 0 }, otherKinds = {};
+    var segs = [], weights = {}, minds = {}, cols = {}, counts = { files: 0, sleepSessions: 0, mindfulSessions: 0, otherSessions: 0, csvFiles: 0, weighIns: 0, unreadable: 0 }, otherKinds = {}, skipDates = {};
+    function seen(k, d) { if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return; var r = skipDates[k]; if (!r) skipDates[k] = { from: d, to: d }; else { if (d < r.from) r.from = d; if (d > r.to) r.to = d; } }
     return {
       json: function (text, name) {
         counts.files++;
         var obj; try { obj = JSON.parse(text); } catch (e) { counts.unreadable++; return; }
         var s = googleSession(obj, name);
-        if (s) { counts.sleepSessions++; segs = segs.concat(s); }
-        else { counts.otherSessions++; var k = String(obj && (obj.fitnessActivity || obj.activityType || obj.activity) || 'other').toLowerCase().replace(/_/g, ' '); otherKinds[k] = (otherKinds[k] || 0) + 1; }
+        if (s) { counts.sleepSessions++; segs = segs.concat(s); return; }
+        var act = String(obj && (obj.fitnessActivity || obj.activityType || obj.activity) || 'other').toLowerCase().replace(/_/g, ' ');
+        var st = parseStamp(obj && obj.startTime), en = parseStamp(obj && obj.endTime);
+        if (/meditat|mindful/.test(act) && st && en && en.ms > st.ms) {
+          var mins = (en.ms - st.ms) / 60000; if (mins >= 0.5 && mins <= 600) { mindAdd(minds, st, en); counts.mindfulSessions++; return; }
+        }
+        counts.otherSessions++; otherKinds[act] = (otherKinds[act] || 0) + 1; if (st) seen(act, wallDate(st.wall));
       },
       csv: function (text, name) {
         counts.files++; counts.csvFiles++;
         googleDailyCsv(text, name).forEach(function (w) { weights[w.date] = w.kg; counts.weighIns++; });
+        var dc = googleDailyColumns(text, name); Object.keys(dc).forEach(function (n) { var m = cols[n] || (cols[n] = {}); dc[n].forEach(function (d) { m[d] = 1; }); });
       },
       result: function () {
         var sl = nightsFrom(segs); sl.nights.forEach(function (n) { n.basis = 'asleep'; });
         var weight = Object.keys(weights).sort().map(function (d) { return { date: d, kg: weights[d] }; });
+        var mindful = mindDays(minds);
+        Object.keys(cols).forEach(function (name) { var ds = Object.keys(cols[name]).sort(); if (ds.length) { otherKinds[name] = ds.length; skipDates[name] = { from: ds[0], to: ds[ds.length - 1] }; } });
         var total = 0; Object.keys(otherKinds).forEach(function (k) { total += otherKinds[k]; });
-        return { source: SOURCE.google, sleep: sl.nights, weight: weight, period: [], naps: sl.naps, inBedNights: 0, skipped: otherKinds, skippedTotal: total, skippedKinds: Object.keys(otherKinds).length, counts: counts };
+        return { source: SOURCE.google, sleep: sl.nights, weight: weight, period: [], spotting: [], symptoms: [], mindful: mindful, naps: sl.naps, inBedNights: 0, skipped: otherKinds, skipDates: skipDates, skippedTotal: total, skippedKinds: Object.keys(otherKinds).length, counts: counts };
       }
     };
+  }
+  /* Every other numeric column of a Takeout daily CSV (steps, calories, distance, Heart Points, move minutes and so on)
+   * is a kind Rhythme has no place for yet: {name: [dates with a value above zero]}. Weight columns and the date and
+   * time columns are left out. The summary file has a Date column; a per-day file is named by its date. */
+  function googleDailyColumns(text, name) {
+    var rows = parseCsv(text); if (rows.length < 2) return {};
+    var header = rows[0].map(function (h) { return h.trim(); }), di = -1, cs = [];
+    header.forEach(function (h, i) {
+      if (/^date$/i.test(h)) { di = i; return; }
+      if (!h || /weight/i.test(h) || /^(start|end) time$/i.test(h)) return;
+      var nm = h.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+count$/i, '').trim().toLowerCase();
+      cs.push({ i: i, name: nm === 'step' ? 'steps' : nm });
+    });
+    var fileDate = (/(\d{4}-\d{2}-\d{2})\.csv$/i.exec(name || '') || [])[1] || null, out = {};
+    rows.slice(1).forEach(function (r) {
+      var d = di >= 0 ? String(r[di] || '').trim().slice(0, 10) : fileDate; if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return;
+      cs.forEach(function (c) { if (Number(r[c.i]) > 0) (out[c.name] = out[c.name] || {})[d] = 1; });
+    });
+    var res = {}; Object.keys(out).forEach(function (n) { res[n] = Object.keys(out[n]); }); return res;
   }
 
   /* ---------- zip reading: central directory, one entry at a time ---------- */
@@ -369,35 +445,90 @@
     return Promise.reject(new Error('Rhythme can read export.zip or export.xml from Apple Health, or the Takeout zip (or the JSON and CSV files inside its Fit folder) from Google.'));
   }
 
+  /* ---------- what was found: the picker's list ----------
+   * KINDS are the kinds Rhythme has a place for, in the order the picker shows them. Each maps to one entry
+   * type (spotting is a period day with flow 'spotting', mindful minutes are one mindfulness entry per day). */
+  var KINDS = [
+    { id: 'sleep', type: 'sleep', label: 'Sleep', icon: 'bedtime', one: 'night', many: 'nights', note: 'Bedtime, wake time and hours asleep' },
+    { id: 'period', type: 'period', label: 'Period days', icon: 'water_drop', one: 'day', many: 'days', note: 'Flow as recorded' },
+    { id: 'spotting', type: 'period', label: 'Spotting between periods', icon: 'opacity', one: 'day', many: 'days', note: 'Shown as spotting; it never starts a new cycle' },
+    { id: 'symptoms', type: 'symptom', label: 'Cycle symptoms', icon: 'spa', one: 'day', many: 'days', note: 'Only symptoms Rhythme has a chip for' },
+    { id: 'weight', type: 'weight', label: 'Weight', icon: 'monitor_weight', one: 'weigh-in', many: 'weigh-ins', note: 'One per day, in kilograms' },
+    { id: 'mindful', type: 'mindfulness', label: 'Mindful minutes', icon: 'self_improvement', one: 'day', many: 'days', note: 'Minutes added up per day' }
+  ];
+  function kindDef(id) { return KINDS.filter(function (k) { return k.id === id; })[0] || null; }
+  function inRange(d, from) { return !from || d >= from; }
+  /* kinds(result, {from}) -> {ready: [{id, label, icon, count, from, to, ...}], later: [{name, count, from, to}]} */
+  function kinds(result, opts) {
+    var from = (opts && opts.from) || null, to = (opts && opts.to) || null, ready = [], later = {};
+    KINDS.forEach(function (k) {
+      var items = (result[k.id] || []).filter(function (it) { return inRange(it.date, from) && (!to || it.date <= to); });
+      if (!(result[k.id] || []).length) return;
+      ready.push(Object.assign({}, k, { count: items.length, from: items.length ? items[0].date : null, to: items.length ? items[items.length - 1].date : null }));
+    });
+    var sk = result.skipped || {}, sd = result.skipDates || {};
+    Object.keys(sk).forEach(function (t) {
+      var name = result.source === SOURCE.apple ? friendlyType(t) : t, r = sd[t] || {}, cur = later[name] || (later[name] = { name: name, count: 0, from: null, to: null });
+      cur.count += sk[t]; if (r.from && (!cur.from || r.from < cur.from)) cur.from = r.from; if (r.to && (!cur.to || r.to > cur.to)) cur.to = r.to;
+    });
+    return { ready: ready, later: Object.keys(later).map(function (n) { return later[n]; }).sort(function (a, b) { return b.count - a.count; }) };
+  }
+
   /* ---------- writing into the diary ----------
-   * plan() decides, per date and kind: skip when someone wrote that day by hand (or another source did),
-   * refresh when this same source wrote it before, otherwise add. apply() writes the plan in one batch. */
-  function plan(result, store) {
+   * plan(result, store, {kinds, from}) decides, per date and kind: skip when someone wrote that day by hand
+   * (or another source did), refresh when this same source wrote it before, otherwise add. Only the kinds
+   * named in opts.kinds are considered; with no opts every kind is (kept for tests and older callers).
+   * apply() writes the plan in one batch. */
+  function plan(result, store, opts) {
+    opts = opts || {};
+    var want = {}, from = opts.from || null;
+    (opts.kinds || KINDS.map(function (k) { return k.id; })).forEach(function (id) { want[id] = true; });
     var src = result.source, index = {}, items = [], kept = 0, refreshed = 0, future = 0, dates = [], t = store.today();
-    var counts = { sleep: 0, weight: 0, period: 0 };
+    var counts = { sleep: 0, weight: 0, period: 0, spotting: 0, symptoms: 0, mindful: 0 }, keptBy = { sleep: 0, weight: 0, period: 0, spotting: 0, symptoms: 0, mindful: 0 };
     store.list().forEach(function (e) { (index[e.type + '|' + e.date] = index[e.type + '|' + e.date] || []).push(e); });
-    function consider(type, date, data) {
+    function consider(kind, type, date, data) {
+      if (!inRange(date, from)) return;
       if (date > t) { future++; return; }
       var ex = index[type + '|' + date] || [];
-      if (ex.some(function (e) { return e.source !== src; })) { kept++; return; }
+      if (ex.some(function (e) { return e.source !== src; })) { kept++; keptBy[kind]++; return; }
       var mine = ex.filter(function (e) { return e.source === src; })[0];
       if (mine) { items.push({ id: mine.id, data: data }); refreshed++; } else items.push({ type: type, date: date, data: data, source: src });
-      counts[type]++; dates.push(date);
+      counts[kind]++; dates.push(date);
     }
     var label = src === SOURCE.apple ? 'Apple Health' : 'Google Takeout (Fit)';
-    (result.sleep || []).forEach(function (n) { consider('sleep', n.date, { bedTime: n.bedTime, wakeTime: n.wakeTime, hours: n.hours, asleepMin: n.asleepMin, quality: null, notes: 'From ' + label + (n.basis === 'in-bed' ? ' (time in bed; no sleep stages were recorded)' : ''), mode: 'import', basis: n.basis || 'asleep', segments: n.segments }); });
-    (result.weight || []).forEach(function (w) { consider('weight', w.date, { kg: w.kg }); });
-    (result.period || []).forEach(function (p) { consider('period', p.date, { flow: p.flow }); });
+    if (want.sleep) (result.sleep || []).forEach(function (n) { consider('sleep', 'sleep', n.date, { bedTime: n.bedTime, wakeTime: n.wakeTime, hours: n.hours, asleepMin: n.asleepMin, quality: null, notes: 'From ' + label + (n.basis === 'in-bed' ? ' (time in bed; no sleep stages were recorded)' : ''), mode: 'import', basis: n.basis || 'asleep', segments: n.segments }); });
+    if (want.weight) (result.weight || []).forEach(function (w) { consider('weight', 'weight', w.date, { kg: w.kg }); });
+    if (want.period) (result.period || []).forEach(function (p) { consider('period', 'period', p.date, { flow: p.flow }); });
+    if (want.spotting) (result.spotting || []).forEach(function (p) { consider('spotting', 'period', p.date, { flow: 'spotting' }); });
+    if (want.symptoms) (result.symptoms || []).forEach(function (y) { consider('symptoms', 'symptom', y.date, { symptoms: y.symptoms.slice(), pain: null, mood: '', notes: 'From ' + label }); });
+    if (want.mindful) (result.mindful || []).forEach(function (m) { consider('mindful', 'mindfulness', m.date, { kind: 'imported', minutes: m.minutes, sessions: m.sessions, completed: true, guide: 'From ' + label }); });
     dates.sort();
-    return { source: src, items: items, counts: counts, kept: kept, refreshed: refreshed, future: future, from: dates[0] || null, to: dates[dates.length - 1] || null, total: items.length };
+    return { source: src, items: items, counts: counts, kept: kept, keptBy: keptBy, refreshed: refreshed, future: future, from: dates[0] || null, to: dates[dates.length - 1] || null, total: items.length };
   }
-  function apply(result, store) {
-    var p = plan(result, store);
+  function apply(result, store, opts) {
+    var p = plan(result, store, opts);
     var w = store.addMany ? store.addMany(p.items) : { added: 0, updated: 0, skipped: p.items.length };
     p.written = w; return p;
   }
-  function importedCount(store) { return store.list().filter(function (e) { return SOURCES.indexOf(e.source) > -1; }).length; }
-  function removeImported(store) { return store.removeWhere ? store.removeWhere(function (e) { return SOURCES.indexOf(e.source) > -1; }) : 0; }
+  /* which picker kind an entry belongs to (null for kinds the importer never writes) */
+  function kindOf(e) {
+    if (e.type === 'period') return e.data && e.data.flow === 'spotting' ? 'spotting' : 'period';
+    return { sleep: 'sleep', weight: 'weight', symptom: 'symptoms', mindfulness: 'mindful' }[e.type] || null;
+  }
+  function isImported(e) { return SOURCES.indexOf(e.source) > -1; }
+  function importedCount(store, kind) { return store.list().filter(function (e) { return isImported(e) && (!kind || kindOf(e) === kind); }).length; }
+  function removeImported(store, kind) { return store.removeWhere ? store.removeWhere(function (e) { return isImported(e) && (!kind || kindOf(e) === kind); }) : 0; }
+  /* what has been brought in so far, per kind, for the Health data view: newest last */
+  function imported(store) {
+    var out = {};
+    store.list().forEach(function (e) {
+      if (!isImported(e)) return; var k = kindOf(e); if (!k) return;
+      var o = out[k] || (out[k] = Object.assign({}, kindDef(k), { count: 0, from: null, to: null, sources: {}, entries: [] }));
+      o.count++; o.entries.push(e); o.sources[e.source] = (o.sources[e.source] || 0) + 1;
+      if (!o.from || e.date < o.from) o.from = e.date; if (!o.to || e.date > o.to) o.to = e.date;
+    });
+    return KINDS.filter(function (k) { return out[k.id]; }).map(function (k) { return out[k.id]; });
+  }
 
   root.OvuHealth = {
     SOURCE: SOURCE, SOURCES: SOURCES,
@@ -405,6 +536,7 @@
     appleScanner: appleScanner, parseAppleXml: parseAppleXml,
     googleSession: googleSession, googleDailyCsv: googleDailyCsv, googleBuilder: googleBuilder, parseCsv: parseCsv,
     zipIndex: zipIndex, zipEntryStream: zipEntryStream, zipEntryText: zipEntryText, ensureZipLib: ensureZipLib,
-    importFiles: importFiles, plan: plan, apply: apply, importedCount: importedCount, removeImported: removeImported
+    importFiles: importFiles, plan: plan, apply: apply, importedCount: importedCount, removeImported: removeImported,
+    KINDS: KINDS, kinds: kinds, kindOf: kindOf, imported: imported, isImported: isImported, symptomPresent: symptomPresent, googleDailyColumns: googleDailyColumns, mindDays: mindDays
   };
 })(typeof window !== 'undefined' ? window : this);
