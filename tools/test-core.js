@@ -1110,6 +1110,54 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   Promise.all([a, b, c, d, e]).catch(function (err) { check('the shared pull cursor tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
+(function syncGenerationAcrossAccounts() {
+  console.log('cloud sync: a sign-out during an upload can never carry one account into the next (Codex pre-merge blocker 2)');
+  var w = fresh(), S = w.OvuStore, Y = w.OvuSync, uid = 'uA', posts = [], releasePost = null, held = null;
+  w.OvuAuth = { session: function () { return { user: { id: uid } }; }, token: function () { return Promise.resolve('tok-' + uid); }, userId: function () { return uid; } };
+  S.setProfile({ name: 'Ann', lifeStage: 'cycling', cloud: { v: 1, at: '2026-10-20T00:00:00Z', uid: 'uA' } });
+  var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
+  w.fetch = function (url, opt) {
+    var m = (opt && opt.method) || 'GET', tok = ((opt && opt.headers && opt.headers.Authorization) || '').slice(7);
+    if (m === 'GET' && /\/entries/.test(url)) return reply(200, []);
+    if (m === 'GET' && /\/profiles/.test(url)) return reply(200, /user_id=eq\.uB/.test(url) ? [{ user_id: 'uB', display_name: 'Bea', profile: { name: 'Bea', lifeStage: 'peri' }, updated_at: '2026-10-19T08:00:00Z' }] : []);
+    if (m === 'POST' && /\/profiles/.test(url)) {
+      var body = JSON.parse(opt.body); posts.push({ tok: tok, user: body.user_id, name: body.profile && body.profile.name });
+      /* A's first upload: hold it in the air while the person signs out and B signs in and turns on backup */
+      if (body.user_id === 'uA' && !held) { held = new Promise(function (res) { releasePost = res; }); return held.then(function () { return reply(201, null); }); }
+      return reply(201, null);
+    }
+    return reply(201, null);
+  };
+  var g0 = 0, first = Y.syncNow();
+  var waitPost = function (n) { return new Promise(function (res) { (function poll() { if (posts.length >= n && releasePost) return res(); setTimeout(poll, 1); })(); }); };
+  var done = waitPost(1).then(function () {
+    g0 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1')).gen;
+    Y.resetPosition(); /* sign-out */
+    uid = 'uB'; S.setProfile({ cloud: { v: 1, at: '2026-10-20T00:05:00Z', uid: 'uB' } }); /* B signs in and turns on backup */
+    releasePost(); /* A's upload completes now */
+    return first;
+  }).then(function (r1) {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('the overtaken sync ends cancelled and writes nothing into the reset state', r1 && r1.ok === false && r1.reason === 'cancelled' && st.userId === null && st.profilePulledAt === null && st.gen === g0 + 1, JSON.stringify({ r1: r1, st: { userId: st.userId, pulled: st.profilePulledAt, gen: st.gen, g0: g0 } }));
+    return Y.syncNow();
+  }).then(function (r2) {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1')), toB = posts.filter(function (p) { return p.user === 'uB'; });
+    check('B\'s first sync restores B\'s own cloud profile instead of uploading over it', r2 && r2.ok === true && S.profile().name === 'Bea' && S.profile().lifeStage === 'peri' && st.userId === 'uB' && toB.length === 0, JSON.stringify({ r2: r2, name: S.profile().name, toB: toB }));
+    check('nothing of A was ever sent with B\'s token, and A\'s only upload used A\'s own token', posts.every(function (p) { return (p.user === 'uA') === (p.tok === 'tok-uA'); }) && !posts.some(function (p) { return p.user === 'uB' && p.name === 'Ann'; }), JSON.stringify(posts));
+  });
+  /* the lock: when the browser offers Web Locks, every sync runs inside the same named lock */
+  var v = fresh(), lockNames = [];
+  v.navigator.locks = { request: function (name, fn) { lockNames.push(name); return Promise.resolve().then(fn); } };
+  v.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('t'); }, userId: function () { return 'u1'; } };
+  v.OvuStore.setProfile({ cloud: { v: 1, at: '2026-10-20T00:00:00Z', uid: 'u1' } });
+  v.fetch = function (url, opt) { return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve((opt && opt.method && opt.method !== 'GET') ? '' : '[]'); } }); };
+  var locked = v.OvuSync.syncNow().then(function (r) { check('a sync runs inside the browser-wide ovumind-sync lock when Web Locks exist', lockNames.length === 1 && lockNames[0] === 'ovumind-sync' && r && r.ok === true, JSON.stringify({ locks: lockNames, r: r })); });
+  /* every reset moves the generation on */
+  var z = fresh(); z.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, gen: 4, userId: 'u1', shadow: {}, tombstones: {} })); z.OvuSync.resetPosition();
+  check('a reset moves the generation on and clears the account', JSON.parse(z.localStorage.getItem('ovumind_sync_v1')).gen === 5 && JSON.parse(z.localStorage.getItem('ovumind_sync_v1')).userId === null);
+  Promise.all([done, locked]).catch(function (err) { check('the sync generation tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */
 function scenes(todayIso) {
   var w = fresh(todayIso);
