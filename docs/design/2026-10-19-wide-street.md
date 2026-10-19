@@ -229,11 +229,18 @@ fade. Smoke, each in a fresh context with the service worker blocked: sprites 0.
 with all four decoded; sprites failing, it lifts at once; sprites hung for 4 s, it lifts at the cap and they draw when
 they arrive. Without the wait the first and third fail. The real pet settle path is still not driven by a test.
 
-**Round three (the decode wait, read-only): changes needed, finding 5 not fully closed.** Held again at gate 6 for Jamie.
+**Round three (the decode wait, read-only): changes needed, finding 5 not fully closed.** Held again at gate 6.
 Four edge cases, none a deadlock: (1) a sprite that fails during the wait is dropped from the cache, so `renderOcc`
 makes a new request at once and the cutout can pop in after the fade instead of waiting for the next visit; (2) a
 rejected `decode()` with a non-zero `naturalWidth` counts as ready and is not retried; (3) while a request hangs, each
 capped wait adds a load and an error listener that stay until it settles; (4) the smoke cases do not prove decoding
-(only `complete` and size), and their 2600 ms upper bound would accept a 2.5 s cap. Small fixes, not applied: one shared
-readiness promise per image element, decode rejection treated as failure and retried on the next visit, failed files
-kept until then, a 2.2 s upper bound and a fail-then-slow-retry case.
+(only `complete` and size), and their 2600 ms upper bound would accept a 2.5 s cap.
+
+Jamie's decision: do the four small fixes, rerun the gates and push without another review. Done: each image element
+carries one readiness promise made with its own listeners (`occReady` on the element), so waits on a hung request add
+nothing; a decode rejection counts as failure; a failed element stays in the layer, drawing nothing, until the next
+visit's wait asks for the file again, so no request starts behind the fade. Smoke: the hung case's upper bound is
+2.2 s, and a new case fails each file's first request and serves the rest after 0.7 s: the failed element is still the
+one in the layer 1.5 s later, and the next visit makes a fresh request and waits for it (the previous code popped the
+cutout in behind the fade and did not wait on the next visit). Decoding itself is still not observable from the page;
+`complete` and size stand in for it.

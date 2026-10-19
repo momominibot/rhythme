@@ -417,24 +417,35 @@ async def main():
             async def travel_case(kind):
                 c2 = await browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, service_workers="block")
                 await c2.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB)))
-                p2 = await c2.new_page()
+                p2 = await c2.new_page(); asked = {}
                 async def gate2(route):
                     url = route.request.url
                     if not url.startswith(BASE): return await route.abort()
                     if "/street-occ-" in url:
-                        if kind == "fail": return await route.abort()
-                        await asyncio.sleep(0.7 if kind == "slow" else 4.0)
+                        asked[url] = asked.get(url, 0) + 1
+                        if kind == "fail" or (kind == "retry" and asked[url] == 1): return await route.abort()   # retry: only each file's first request fails
+                        await asyncio.sleep(4.0 if kind == "hang" else 0.7)
                     return await route.continue_()
                 await p2.route("**/*", gate2)
                 await p2.goto(BASE + "room.html", wait_until="domcontentloaded"); await p2.wait_for_timeout(1500)
                 r = await p2.evaluate(TRAVEL_FADE)
+                if kind == "retry":   # the failed element stays until the next visit (a request behind the fade would load and pop in), which asks again and waits
+                    await p2.evaluate("()=>{window.__occ0=document.querySelector('.plate-occ[data-id=lamp-west] .occ-img')}")
+                    await p2.wait_for_timeout(1500)
+                    r["kept"] = await p2.evaluate("()=>document.querySelector('.plate-occ[data-id=lamp-west] .occ-img')===window.__occ0 && window.__occ0.naturalWidth===0")
+                    await p2.evaluate("()=>OvuWalk.travel('garden')")
+                    await p2.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+                    r["next"] = await p2.evaluate(TRAVEL_FADE)
+                    r["next"]["fresh"] = await p2.evaluate("()=>document.querySelector('.plate-occ[data-id=lamp-west] .occ-img')!==window.__occ0")
                 if kind == "hang": await p2.wait_for_timeout(3500); r["later"] = await p2.evaluate("()=>[].slice.call(document.querySelectorAll('#plateOcc .occ-img')).every(function(i){return i.complete && i.naturalWidth>0})")
                 await c2.close()
                 return r
-            slow, fail, hang = await travel_case("slow"), await travel_case("fail"), await travel_case("hang")
+            slow, fail, hang, retry = await travel_case("slow"), await travel_case("fail"), await travel_case("hang"), await travel_case("retry")
             check("travel to the street waits under the fade for its cutouts (sprites 0.7 s late): they are decoded when the fade lifts", slow.get("layout") == "street" and slow.get("ready") and slow.get("n") == 4 and slow.get("ms", 0) >= 650, slow)
             check("if the cutouts fail, the fade still lifts at once on the street (the plate drawn as before)", fail.get("layout") == "street" and not fail.get("ready") and fail.get("ms", 9999) < 1400, fail)
-            check("if the cutouts hang, the fade lifts at the 1.5 s cap, and they draw once they arrive", hang.get("layout") == "street" and not hang.get("ready") and 1400 <= hang.get("ms", 0) <= 2600 and hang.get("later") is True, hang)
+            check("if the cutouts hang, the fade lifts at the 1.5 s cap (not later than 2.2 s), and they draw once they arrive", hang.get("layout") == "street" and not hang.get("ready") and 1400 <= hang.get("ms", 0) <= 2200 and hang.get("later") is True, hang)
+            nx = retry.get("next") or {}
+            check("a cutout that failed stays as it was (no new request behind the fade) until the next visit, which asks for it again and waits for it", retry.get("layout") == "street" and not retry.get("ready") and retry.get("kept") is True and nx.get("layout") == "street" and nx.get("ready") and nx.get("ms", 0) >= 650 and nx.get("fresh") is True, retry)
             await page.click('#minimap [data-sub="shop-homes"]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='shop-homes' && !document.querySelector('#scene').classList.contains('fading')", timeout=12000)
             except Exception: pass

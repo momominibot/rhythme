@@ -262,23 +262,23 @@
    * render (a sky change, pet care) leaves them alone and their filter keeps transitioning with the plate's. Each is a
    * wrapper holding the image and a copy of the night veil masked to the image's own alpha, sized and offset so its
    * gradient lines up with the veil across the whole street. Rebuilt only when the layout changes */
-  /* one image element per cutout file, kept between visits, so the bitmap travel waited to decode is the one drawn */
+  /* one image element per cutout file, kept between visits, so the bitmap travel waited to decode is the one drawn. Each
+   * carries one readiness promise, made once with its own listeners, so any number of waits on a hung request add nothing.
+   * It settles true once loaded and decoded, false on a load error or a decode rejection; a failed element is kept (and
+   * simply draws nothing) until the next visit asks for the file again, so no new request starts behind the fade */
   var occImgs = {};
-  function occImg(file) {
-    var im = occImgs[file]; if (im) return im;
-    im = occImgs[file] = doc.createElement('img'); im.className = 'occ-img'; im.alt = ''; im.draggable = false; im.decoding = 'async';
-    im.addEventListener('error', function () { if (occImgs[file] === im) delete occImgs[file]; }); /* a failed file is asked for again next visit */
+  function occImg(file, retry) {
+    var im = occImgs[file]; if (im && !(retry && im.occFailed)) return im;
+    im = occImgs[file] = doc.createElement('img'); im.className = 'occ-img'; im.alt = ''; im.draggable = false; im.decoding = 'async'; im.occFailed = false;
+    im.occReady = new Promise(function (resolve) {
+      function fail() { im.occFailed = true; resolve(false); }
+      im.addEventListener('load', function () { if (im.decode) im.decode().then(function () { resolve(true); }, fail); else resolve(true); }, { once: true });
+      im.addEventListener('error', fail, { once: true });
+    });
     im.src = R.ART + file; return im;
   }
-  /* true once a cutout is loaded and decoded, false if it failed; never rejects */
-  function occReady(file) {
-    var im = occImg(file);
-    return new Promise(function (resolve) {
-      function ok() { if (im.decode) im.decode().then(function () { resolve(true); }, function () { resolve(im.naturalWidth > 0); }); else resolve(true); }
-      if (im.complete) { if (im.naturalWidth > 0) ok(); else resolve(false); return; }
-      im.addEventListener('load', ok, { once: true }); im.addEventListener('error', function () { resolve(false); }, { once: true });
-    });
-  }
+  /* a visit's wait on one cutout: a file that failed last time is asked for again here, and only here */
+  function occReady(file) { return occImg(file, true).occReady; }
   /* travel holds the fade until the destination's cutouts are drawn-ready, at most OCC_CAP ms from the start of the fade:
    * a slow or failed sprite never holds the walk longer, and only leaves the plate as it was until it arrives */
   var OCC_CAP = 1500;
