@@ -1504,3 +1504,11 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .btap-koi{position:absolute;inset:0;z-index:0;pointer-events:none}
 .btap-koi img{position:absolute;left:0;top:0;width:54px;transform-origin:50% 45%;filter:drop-shadow(0 6px 6px rgba(0,30,40,.35));will-change:transform}
 .btap-ring img[hidden]{display:none}
+/* the food photo choices had no air (Jamie, 20 Oct): icon and words spaced, taller buttons, room above and below */
+.snapbtns{gap:10px;margin:12px 0 4px}
+.snapbtns .btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:12px 10px}
+.snapbtns .btn .ms{font-size:20px;flex:none}
+.snapbtns + .help,.snapbtns ~ p.help{margin-top:12px;line-height:1.5}
+.phasechips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+/* the bed card shows soil, not a blank square */
+.bedcard .bedpic{background:radial-gradient(ellipse 46% 30% at 50% 66%,#7a5034 0 62%,#5e3c27 63% 100%,transparent 101%),#f6eefb}
