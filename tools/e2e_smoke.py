@@ -211,6 +211,10 @@ async def main():
             await page.click("#hudStop"); await page.wait_for_timeout(500)
             stopped = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), toast: document.querySelector('#toast').textContent})")
             check("watering at zoom keeps the HUD and its Stop button on screen (lifted out of the plate), and Stop ends the minute", hud["on"] and hud["z"] > 1.4 and hud["screenSpace"] and hud["inside"] and not stopped["on"] and "Stopped" in stopped["toast"], {"hud": hud, "stopped": stopped})
+            # a pose is drawn in what she is wearing; the shower keeps its robe
+            ps = await page.evaluate("()=>({plants: OvuRoom.poseSrc('plants','sundress'), base: OvuRoom.poseSrc('plants','base'), shower: OvuRoom.poseSrc('shower','sundress')})")
+            okfile = await page.evaluate("(u)=>fetch(u).then(r=>r.ok)", ps["plants"])
+            check("watering in the sundress uses the sundress watering sprite (it exists), the base outfit the original, and the shower keeps its robe", ps["plants"].endswith("avatar-act-plants-sundress.webp") and okfile and ps["base"].endswith("avatar-act-plants.webp") and ps["shower"].endswith("avatar-act-shower.webp"), {"ps": ps, "ok": okfile})
             # at night the calendar keeps period days pink (the night card colour once flattened every day)
             calnight = await page.evaluate("""()=>{ var g=document.createElement('div'); g.className='cal-grid'; var d=document.createElement('button'); d.className='cal-day p-heavy'; g.appendChild(d); document.querySelector('#sheet').appendChild(g);
               var root=document.documentElement, was=root.getAttribute('data-sky'); root.setAttribute('data-sky','night'); var night=getComputedStyle(d).backgroundColor; root.setAttribute('data-sky', was || ''); g.remove(); return night; }""")
