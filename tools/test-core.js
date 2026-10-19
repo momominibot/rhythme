@@ -783,7 +783,41 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   var c = u.OvuSync.syncNow().then(function () {
     check('a cursor id with quotes, commas, brackets and a backslash resumes exactly after itself', Object.keys(t3.seen).sort().join('|') === [odd + 'z', 'x1'].join('|'), JSON.stringify(Object.keys(t3.seen)));
   });
-  Promise.all([a, b, c]).catch(function (err) { check('the shared pull cursor tests ran to the end', false, String(err && err.stack || err)); });
+  /* 4. (Codex round one) another tab moves the cursor further while this sync uploads, then the person clears that
+     newer row from the phone. This sync must not wind the cursor back, or the next sync brings the cleared row back. */
+  var R1 = '2026-10-19T11:00:00.000001+00:00', R2 = '2026-10-19T12:00:00.000002+00:00';
+  var srv4 = syncServer(), posted4 = false;
+  srv4.rows.push(syncRow('r1', 'reflection', R1, { text: 'eleven', mood: '' }));
+  var x = syncWorld(srv4, null, null), SX = x.OvuStore, YX = x.OvuSync, xPost = x.fetch;
+  SX.add('reflection', SX.today(), { text: 'written here', mood: '' });
+  x.fetch = function (url, opt) {
+    if (opt && opt.method === 'POST' && /\/entries/.test(url) && !posted4) {
+      posted4 = true;
+      /* the other tab: r2 arrives, it pulls through r2 and saves that cursor; r2 is then cleared from this phone */
+      srv4.rows.push(syncRow('r2', 'reflection', R2, { text: 'twelve, cleared later', mood: '' }));
+      var st = JSON.parse(x.localStorage.getItem('ovumind_sync_v1')); st.pulledSeq = R2; st.pulledId = 'r2'; x.localStorage.setItem('ovumind_sync_v1', JSON.stringify(st));
+    }
+    return xPost(url, opt);
+  };
+  var d = YX.syncNow().then(function () {
+    var st = JSON.parse(x.localStorage.getItem('ovumind_sync_v1'));
+    check('a slower tab never winds the cursor back past where another tab moved it', st.pulledSeq === R2 && st.pulledId === 'r2', JSON.stringify({ seq: st.pulledSeq, id: st.pulledId }));
+    return YX.syncNow();
+  }).then(function () {
+    check('so a row cleared from this phone after the other tab pulled it is not brought back', !SX.get('r2') && !!SX.get('r1'), JSON.stringify({ r1: !!SX.get('r1'), r2: !!SX.get('r2') }));
+  });
+  /* 5. (Codex round one, already there before) signing out or resetting the position during the upload: the
+     finishing sync must not write the old account and cursor back into the cleared position */
+  var srv5 = syncServer(), posted5 = false;
+  srv5.rows.push(syncRow('s1', 'reflection', R1, { text: 'eleven', mood: '' }));
+  var y = syncWorld(srv5, null, null), SY5 = y.OvuStore, YY = y.OvuSync, yPost = y.fetch;
+  SY5.add('reflection', SY5.today(), { text: 'written here', mood: '' });
+  y.fetch = function (url, opt) { if (opt && opt.method === 'POST' && /\/entries/.test(url) && !posted5) { posted5 = true; YY.resetPosition(); } return yPost(url, opt); };
+  var e = YY.syncNow().then(function (r) {
+    var st = JSON.parse(y.localStorage.getItem('ovumind_sync_v1'));
+    check('a reset during the upload stays a reset: no account, no cursor, no push watermark written back', posted5 && st.userId === null && st.pulledSeq === null && !st.pulledId && st.pushedAt === null && r && r.ok === false, JSON.stringify({ r: r, userId: st.userId, seq: st.pulledSeq, pushedAt: st.pushedAt }));
+  });
+  Promise.all([a, b, c, d, e]).catch(function (err) { check('the shared pull cursor tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */

@@ -45,6 +45,11 @@
   /* Compare by instant, not by text: the server returns '...+00:00' while the
      client writes '...Z', so the same moment has two spellings. */
   function ts(x) { var n = Date.parse(x); return isFinite(n) ? n : -1; }
+  /* The same comparison to the microsecond, which the server keeps and Date.parse drops; for ordering pull cursors. */
+  function micros(x) {
+    var m = /^(.+?)(?:\.(\d+))?(Z|[+-]\d\d:?\d\d)$/.exec(String(x || '')), ms = m ? Date.parse(m[1] + m[3]) : NaN;
+    return isFinite(ms) ? ms * 1000 + Number(((m[2] || '') + '000000').slice(0, 6)) : -1;
+  }
   /* The latest instant among the arguments, as a canonical '...Z' string. */
   function maxIso() { var bt = -Infinity; for (var i = 0; i < arguments.length; i++) { var n = ts(arguments[i]); if (n > bt) bt = n; } return bt > -Infinity ? new Date(bt).toISOString() : ''; }
 
@@ -306,10 +311,17 @@
           plan.applyPut.forEach(function (r) { settled[r.id] = 1; }); /* a restored row's old tombstone is resolved */
           remoteRows.forEach(function (r) { if (r.deleted) settled[r.id] = 1; });
           /* read-modify-write so a deletion made while this sync was in flight is kept */
-          var cur = loadState(); cur.userId = uid;
+          var cur = loadState();
+          /* a sign-out, an account switch or a reset of the position during the upload cleared it: leave it cleared,
+             rather than write this account and its progress back into it */
+          if (cur.userId !== uid) { busy = false; setStatus('idle'); return { ok: false, reason: 'cancelled' }; }
           /* the shared cursor moves to the last all-type row this pull saw (never a typed-recovery row), kept exactly as
-             the server wrote it; writing it over a cursor another tab moved further only means pulling a few rows again */
-          if (incRows.length) { cur.pulledSeq = incEnd.at; cur.pulledId = incEnd.id; }
+             the server wrote it, and only forward. If another tab moved it while this sync ran, ours is written only
+             when it is strictly later: a cursor wound back would pull again rows this phone may have cleared since.
+             A tie on the instant keeps the stored one, because comparing ids here could disagree with the server's
+             collation, and pulling a few rows again is safer than skipping any. */
+          var movedMeanwhile = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
+          if (incRows.length && (!movedMeanwhile || (cur.pulledSeq && micros(incEnd.at) > micros(cur.pulledSeq)))) { cur.pulledSeq = incEnd.at; cur.pulledId = incEnd.id; }
           if (typedDone) { cur.types = knownTypes; delete cur.typedAfter; }
           else if (typed && typed.lastId) cur.typedAfter = typed.lastId;
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
