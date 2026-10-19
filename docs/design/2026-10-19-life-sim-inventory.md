@@ -118,3 +118,9 @@ Rules kept: nothing a game does writes a wellness entry (a harvest offers the fo
 10. Phase 2 to 4 after the consent events land (parent) and the decisions above.
 
 Each step: core checks, the smoke suite, a Codex read-only review, a pull request.
+
+## 7. The farm loop, Jamie's 19 October brief
+
+Seeds come from a grocer on Dream Street, each crop has its own watered-day table and stages, a ripe bed goes to seed
+after three days instead of rotting, and the harvest is cooked, brewed, shared, fed to a pet or swapped for seeds.
+Every step carries a mindfulness cue. Full design: `2026-10-19-farm-loop.md`.
