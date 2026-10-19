@@ -1736,6 +1736,20 @@ function scenes(todayIso) {
   check('the summary counts planted, ripe, dry and weedy beds', typeof sm.planted === 'number' && typeof sm.weeds === 'number' && sm.seedsLeft === F.seedsLeftToday(S, day));
 })();
 
+/* ---------- plaza servers (ovu-plaza.js): the words a person sees; the server rules are tested in the database ---------- */
+(function plazaWords() {
+  console.log('plaza servers: counts read like a person would say them; full plazas point to one with room');
+  var w = fresh('2026-10-19');
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-plaza.js'), 'utf8'), w, { filename: 'ovu-plaza.js' });
+  var P = w.OvuPlaza;
+  check('counts: nobody, one person, many; and just you once she is in', P.countText(0) === 'nobody here yet' && P.countText(1) === '1 person here' && P.countText(7) === '7 people here' && P.countText(1, true) === 'just you for now' && P.countText(3, true) === '3 people here');
+  check('a plaza row says how full it is, Full at capacity, Closed when shut', P.roomText({ people: 3, capacity: 24 }) === '3 of 24 here' && P.roomText({ people: 24, capacity: 24 }) === '24 of 24, full' && P.roomText({ people: 0, capacity: 24, open: false }) === 'Closed for now');
+  check('the pill: sign in when signed out, a total when choosing, her plaza and its count once in', P.pillText({ signedIn: false }) === 'Groups · sign in to join' && P.pillText({ signedIn: true, servers: [{ people: 2 }, { people: 3 }] }) === 'Choose a group · 5 online' && P.pillText({ signedIn: true, joined: { name: 'PCOS', people: 1 } }) === 'PCOS · just you for now' && P.pillText({ signedIn: true, joined: { name: 'PCOS', people: 4 }, offline: true }) === 'PCOS · reconnecting');
+  check('a full group points to Everyone when it has room, or says to try later', P.fullText({ name: 'PCOS', suggest: { name: 'Everyone' } }) === 'PCOS is full right now. Everyone has room.' && P.fullText({ name: 'Menopause' }) === 'Menopause is full right now. Try again in a little while.');
+  check('each group has its own quiet icon, and an unknown group the plain one', P.icon('pcos') === 'water_drop' && P.icon('menopause') === 'spa' && P.icon('trying-to-conceive') === 'favorite' && P.icon('everyone') === 'groups' && P.icon('somewhere-new') === 'groups');
+  check('the module stands down without a room page and sends nothing', typeof P.join === 'undefined' && typeof P.state === 'undefined');
+})();
+
 (function ledgerAccounting() {
   console.log('hearts accounting: a record earns once, Moon Tap caps per day, gifts never repeat, two pets at home');
   var w = fresh(), RW = w.OvuRewards, S = w.OvuStore, T = w.OvuBreathTap;

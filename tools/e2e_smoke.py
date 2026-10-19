@@ -5,7 +5,7 @@ Rhythme relay are blocked, so no model call is made and nothing leaves the machi
 
 Usage: python3 tools/e2e_smoke.py            (needs: pip install playwright; playwright install chromium)
 Exit code 0 when every check passes. Used by .github/workflows/deploy.yml before Pages deploys."""
-import asyncio, datetime, json, os, socket, subprocess, sys, time
+import asyncio, datetime, json, os, re, socket, subprocess, sys, time
 from playwright.async_api import async_playwright
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -477,6 +477,11 @@ async def main():
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
             pz = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, nbs: document.querySelectorAll('#ownedProps .nbperson').length, pets: document.querySelectorAll('#ownedProps .nbpet').length, board: !!document.querySelector('.hotspot[data-id=board]'), stall: !!document.querySelector('.hotspot[data-id=stall]')})")
+            po = await page.evaluate("()=>{var p=document.querySelector('#plazaPill'); return {shown: !!p && !p.hidden, text: p ? p.textContent : ''}}")
+            await page.click('#plazaPill'); await page.wait_for_timeout(400)
+            po['signin'] = await page.evaluate("()=>!!document.querySelector('#plazaSignIn') && !document.querySelector('#plazaList')")
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            check("signed out, the pill says Groups · sign in to join and its sheet offers sign-in, with no group list and no request", po["shown"] and "Groups · sign in to join" in po["text"] and po["signin"], po)
             check("the plaza shows four sample neighbours with their pets, a noticeboard and a tea stall", pz["layout"] == "plaza" and pz["nbs"] == 4 and pz["pets"] == 4 and pz["board"] and pz["stall"], pz)
             await tap_hot("board")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] .notice.today', timeout=8000)
@@ -840,6 +845,188 @@ async def main():
             except Exception: pass
             back = await page.evaluate("()=>document.querySelector('#scene').dataset.layout")
             check("the farm gate leads back to the garden", back == "garden", back)
+            # plaza servers, signed in: a fake session and a small fake plaza server answer the four plaza calls here;
+            # nothing leaves the machine. 23 in PCOS, 2 in Everyone, Menopause full.
+            SESS = {"access_token": "smoke-token", "refresh_token": "smoke-refresh", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000aa", "email": "smoke@example.test"}}
+            seed_signed_in = "if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s); localStorage.setItem('ovumind_auth_v1', %s);" % (json.dumps(json.dumps(DB)), json.dumps(json.dumps(SESS)))
+            fake = {"servers": [{"id": "pcos", "name": "PCOS", "blurb": "Living with polycystic ovary syndrome", "capacity": 24, "open": True, "people": 23}, {"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 2}, {"id": "menopause", "name": "Menopause", "capacity": 24, "open": True, "people": 24}], "mine": None, "visit": None, "seq": 0}
+            pcalls, pauth, p_other, p_errors, pvisits = [], [], [], [], []
+            def fsrv(i): return [s for s in fake["servers"] if s["id"] == i][0]
+            async def plaza_gate(route):
+                url = route.request.url
+                if url.startswith(BASE): return await route.continue_()
+                if "fonts.googleapis.com" in url or "fonts.gstatic.com" in url: return await route.fulfill(status=200, content_type="text/css", body="")
+                m = re.search(r"/rest/v1/rpc/(plaza_[a-z]+)", url)
+                if not m:
+                    p_other.append(url); return await route.fulfill(status=200, content_type="application/json", body="{}")
+                name = m.group(1); body = json.loads(route.request.post_data or "{}"); pcalls.append((name, body.get("p_server"))); pauth.append(route.request.headers.get("authorization", ""))
+                if name == "plaza_list": out = {"servers": fake["servers"], "mine": fake["mine"], "beat_seconds": 25}
+                elif name == "plaza_join":
+                    s = fsrv(body["p_server"])
+                    if fake["mine"] == s["id"]: out = {"ok": True, "server": s["id"], "name": s["name"], "capacity": 24, "people": s["people"], "visit": fake["visit"], "beat_seconds": 25}
+                    elif s["people"] >= s["capacity"]: out = {"ok": False, "why": "full", "server": s["id"], "name": s["name"], "capacity": 24, "people": s["people"], "suggest": {"id": "everyone", "name": "Everyone"}}
+                    else:
+                        if fake["mine"]: fsrv(fake["mine"])["people"] -= 1
+                        s["people"] += 1; fake["mine"] = s["id"]; fake["seq"] += 1; fake["visit"] = "v%d" % fake["seq"]
+                        out = {"ok": True, "server": s["id"], "name": s["name"], "capacity": 24, "people": s["people"], "visit": fake["visit"], "beat_seconds": 25}
+                elif name == "plaza_beat":
+                    if fake["mine"] == body.get("p_server") and fake["visit"] == body.get("p_visit"): out = {"ok": True, "server": body["p_server"], "visit": body["p_visit"], "people": fsrv(body["p_server"])["people"]}
+                    elif fake["mine"]: out = {"ok": False, "displaced": True}
+                    else: out = {"ok": False, "rejoin": True}
+                else:
+                    pvisits.append(body.get("p_visit"))
+                    if fake["mine"] and body.get("p_server") in (None, fake["mine"]) and body.get("p_visit") in (None, fake["visit"]):
+                        fsrv(fake["mine"])["people"] -= 1; fake["mine"] = None; fake["visit"] = None
+                    out = {"ok": True}
+                if name == "plaza_join" and fake.get("delay"): await asyncio.sleep(fake["delay"])
+                return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+            ctx4 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx4.add_init_script(seed_signed_in)
+            p4 = await ctx4.new_page(); await p4.route("**/*", plaza_gate)
+            p4.on("pageerror", lambda e: p_errors.append("pageerror: " + str(e)))
+            p4.on("console", lambda m: p_errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text else None)
+            await p4.goto(BASE + "room.html", wait_until="networkidle"); await p4.wait_for_selector(".hotspot"); await p4.wait_for_timeout(600)
+            await p4.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return !!OvuStore.state().sleeping}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+            await p4.click('#minimap [data-scene=plaza]')
+            try: await p4.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && /online/.test((document.querySelector('#plazaPill')||{}).textContent||'')", timeout=12000)
+            except Exception: pass
+            pa = await p4.evaluate("()=>({text: document.querySelector('#plazaPill').textContent, shown: !document.querySelector('#plazaPill').hidden})")
+            check("signed in, the plaza pill counts everyone online across the three plazas", pa["shown"] and "Choose a group · 49 online" in pa["text"] and ("plaza_list", None) in pcalls, {"pill": pa, "calls": pcalls[:4]})
+            await p4.click('#plazaPill')
+            try: await p4.wait_for_selector('#plazaList .plazarow', timeout=6000)
+            except Exception: pass
+            rows = await p4.evaluate("()=>[...document.querySelectorAll('#plazaList .plazarow')].map(r=>({t:r.querySelector('.pn').textContent, b:r.querySelector('button').textContent, d:r.querySelector('button').disabled}))")
+            check("the chooser lists PCOS 23 of 24, Everyone 2 of 24 and Menopause full (its button off)", len(rows) == 3 and "23 of 24" in rows[0]["t"] and not rows[0]["d"] and "2 of 24" in rows[1]["t"] and rows[2]["b"] == "Full" and rows[2]["d"], rows)
+            await p4.click('#plazaList [data-join=pcos]')
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='pcos'", timeout=6000)
+            except Exception: pass
+            jn = await p4.evaluate("()=>({st: OvuPlaza.state(), pill: document.querySelector('#plazaPill').textContent, saved: (OvuStore.state().plaza||{}).server, here: !!document.querySelector('#plazaList .plazarow.here')})")
+            check("joining PCOS counts her (24 now), remembers the choice and starts checking in; the row says she is here", jn["st"]["joined"] and jn["st"]["joined"]["people"] == 24 and jn["st"]["beating"] and "PCOS · 24 people here" in jn["pill"] and jn["saved"] == "pcos" and jn["here"], jn)
+            check("every plaza call carries her own sign-in token, not the shared key alone", pauth and all(a == "Bearer smoke-token" for a in pauth), pauth[:3])
+            await p4.evaluate("()=>OvuRoom.closeSheet()"); await p4.wait_for_timeout(300)
+            await p4.evaluate("()=>OvuPlaza.join('menopause')")
+            try: await p4.wait_for_function("()=>/Menopause is full/.test(document.querySelector('#toast').textContent) && !OvuPlaza.state().inflight", timeout=6000)
+            except Exception: pass
+            full = await p4.evaluate("()=>({toast: document.querySelector('#toast').textContent, st: OvuPlaza.state()})")
+            check("a full plaza refuses kindly, names one with room, and she stays where she was", "Menopause is full right now. Everyone has room." in full["toast"] and full["st"]["joined"]["id"] == "pcos" and full["st"]["want"] == "pcos", full)
+            await p4.evaluate("()=>OvuPlaza.tick()"); await p4.wait_for_timeout(400)
+            check("a check-in reaches the plaza server for PCOS", ("plaza_beat", "pcos") in pcalls, pcalls[-3:])
+            await p4.click('#plazaPill'); await p4.wait_for_selector('#plazaLeave'); await p4.click('#plazaLeave'); await p4.wait_for_timeout(500)
+            lv = await p4.evaluate("()=>({st: OvuPlaza.state(), saved: OvuStore.state().plaza, pill: document.querySelector('#plazaPill').textContent})")
+            check("Leave takes her out of PCOS by name and forgets the choice; she can still walk around", ("plaza_leave", "pcos") in pcalls and not lv["st"]["joined"] and not lv["st"]["want"] and not lv["saved"] and "Choose a group" in lv["pill"], lv)
+            await p4.evaluate("()=>OvuRoom.closeSheet()"); await p4.wait_for_timeout(300)
+            await p4.evaluate("()=>OvuPlaza.join('everyone')")
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='everyone'", timeout=6000)
+            except Exception: pass
+            n_leave = len([c for c in pcalls if c[0] == "plaza_leave"])
+            await p4.click('#minimap [data-scene=home]')
+            try: await p4.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='room'", timeout=10000)
+            except Exception: pass
+            await p4.wait_for_timeout(400)
+            hm = await p4.evaluate("()=>({st: OvuPlaza.state(), saved: (OvuStore.state().plaza||{}).server, pill: document.querySelector('#plazaPill').hidden})")
+            check("walking home takes her out of Everyone (she is not counted) but keeps her choice, and the pill goes away", len([c for c in pcalls if c[0] == "plaza_leave"]) == n_leave + 1 and not hm["st"]["joined"] and hm["saved"] == "everyone" and hm["pill"], hm)
+            n_join = len([c for c in pcalls if c == ("plaza_join", "everyone")])
+            await p4.click('#minimap [data-scene=plaza]')
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='everyone'", timeout=12000)
+            except Exception: pass
+            back = await p4.evaluate("()=>OvuPlaza.state()")
+            check("walking back into the plaza rejoins the plaza she chose", back["joined"] and back["joined"]["id"] == "everyone" and len([c for c in pcalls if c == ("plaza_join", "everyone")]) == n_join + 1, back)
+            await p4.evaluate("()=>OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}})"); await p4.wait_for_timeout(500)
+            sl = await p4.evaluate("()=>({st: OvuPlaza.state(), pill: document.querySelector('#plazaPill').hidden})")
+            check("a logged sleep takes her out of the plaza and hides the pill", not sl["st"]["joined"] and sl["pill"], sl)
+            await p4.evaluate("()=>OvuStore.setState({sleeping:null})")
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='everyone'", timeout=8000)
+            except Exception: pass
+            check("waking up in the plaza brings her back to the plaza she chose", (await p4.evaluate("()=>(OvuPlaza.state().joined||{}).id")) == "everyone", pcalls[-3:])
+            # putting the app away: a keepalive leave for Everyone, and coming back rejoins it
+            n_leave = len([c for c in pcalls if c == ("plaza_leave", "everyone")])
+            await p4.evaluate("()=>{Object.defineProperty(document,'hidden',{value:true,configurable:true}); document.dispatchEvent(new Event('visibilitychange'));}"); await p4.wait_for_timeout(500)
+            hid = await p4.evaluate("()=>OvuPlaza.state()")
+            await p4.evaluate("()=>{Object.defineProperty(document,'hidden',{value:false,configurable:true}); document.dispatchEvent(new Event('visibilitychange'));}")
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='everyone'", timeout=8000)
+            except Exception: pass
+            check("putting the app away takes her out (a leave naming the plaza), and coming back rejoins it", len([c for c in pcalls if c == ("plaza_leave", "everyone")]) == n_leave + 1 and not hid["joined"] and (await p4.evaluate("()=>(OvuPlaza.state().joined||{}).id")) == "everyone", {"hidden": hid, "calls": pcalls[-4:]})
+            # a race: she asks for PCOS and walks out before the reply lands; once it lands the phone leaves PCOS again
+            fake["delay"] = 1.2
+            await p4.evaluate("()=>OvuPlaza.join('pcos')"); await p4.wait_for_timeout(150)
+            await p4.click('#minimap [data-scene=home]')
+            await p4.wait_for_timeout(2600); fake["delay"] = 0
+            race = await p4.evaluate("()=>OvuPlaza.state()")
+            seq = [c for c in pcalls if c[0] in ("plaza_join", "plaza_leave")][-3:]
+            check("walking out while a join is on its way: the join lands, then a leave for that plaza follows, and the server ends with her nowhere", seq[-2:] == [("plaza_join", "pcos"), ("plaza_leave", "pcos")] and not race["joined"] and not race["inflight"] and fake["mine"] is None, {"seq": seq, "st": race, "server": fake["mine"]})
+            # signing out in the plaza: the phone still says she left, with the token she last used
+            await p4.click('#minimap [data-scene=plaza]')
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='pcos'", timeout=12000)
+            except Exception: pass
+            # the same account joins Menopause from another phone: this phone's next check-in is told it was displaced and it
+            # steps out without taking the row back
+            fsrv("pcos")["people"] -= 1; fake["mine"] = "menopause"; fake["seq"] += 1; fake["visit"] = "v%d" % fake["seq"]  # the other phone's join moves the row
+            other_visit = fake["visit"]; n_join = len([c for c in pcalls if c[0] == "plaza_join"])
+            await p4.evaluate("()=>OvuPlaza.tick()"); await p4.wait_for_timeout(500)
+            await p4.evaluate("()=>OvuPlaza.tick()"); await p4.wait_for_timeout(400)
+            dis = await p4.evaluate("()=>({st: OvuPlaza.state(), toast: document.querySelector('#toast').textContent})")
+            check("two phones: the displaced phone steps out, says why, and does not take the account back", not dis["st"]["joined"] and not dis["st"]["want"] and "another device" in dis["toast"] and len([c for c in pcalls if c[0] == "plaza_join"]) == n_join and fake["mine"] == "menopause" and fake["visit"] == other_visit, {"st": dis["st"], "toast": dis["toast"], "server": [fake["mine"], fake["visit"]]})
+            # a stalled request cannot leave the loop waiting: one deadline, then the next tick asks again and gets the same visit
+            fake["mine"] = None; fake["visit"] = None; fsrv("menopause")["people"] -= 1
+            await p4.evaluate("()=>{OvuPlaza.TIMEOUT=400;}"); fake["delay"] = 1.5
+            await p4.evaluate("()=>OvuPlaza.join('everyone')"); await p4.wait_for_timeout(900)
+            stall = await p4.evaluate("()=>OvuPlaza.state()")
+            fake["delay"] = 0; await p4.wait_for_timeout(900)
+            await p4.evaluate("()=>{OvuPlaza.TIMEOUT=10000; OvuPlaza.tick();}")
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='everyone'", timeout=6000)
+            except Exception: pass
+            after = await p4.evaluate("()=>OvuPlaza.state()")
+            check("a stalled join is cut off by the deadline (the loop is free, marked offline), and the next tick joins with the visit the server already gave", not stall["inflight"] and stall["offline"] and after["joined"] and after["joined"]["visit"] == fake["visit"] and fake["mine"] == "everyone", {"stalled": stall, "after": after, "server": [fake["mine"], fake["visit"]]})
+            n_auth = len(pauth)
+            await p4.evaluate("()=>OvuAuth.signOut(false)"); await p4.wait_for_timeout(800)
+            so = await p4.evaluate("()=>({st: OvuPlaza.state(), pill: document.querySelector('#plazaPill').textContent, saved: OvuStore.state().plaza})")
+            check("signing out takes her out of the plaza (a leave for that visit, sent with her last token) and the pill asks her to sign in", pcalls[-1][0] == "plaza_leave" and pvisits[-1] and pauth[-1] == "Bearer smoke-token" and not so["st"]["joined"] and not so["saved"] and "sign in to join" in so["pill"] and fake["mine"] is None, {"st": so, "last": pcalls[-2:]})
+            # signing out while a join is on its way: once it lands, the phone undoes it with the token it went out with
+            await p4.goto(BASE + "room.html", wait_until="networkidle"); await p4.wait_for_selector(".hotspot"); await p4.wait_for_timeout(500)
+            await p4.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return !!OvuStore.state().sleeping}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet(); OvuWalk.travel('plaza');}")
+            try: await p4.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && OvuPlaza.state().servers", timeout=12000)
+            except Exception: pass
+            fake["delay"] = 1.2
+            await p4.evaluate("()=>OvuPlaza.join('everyone')"); await p4.wait_for_timeout(200)
+            await p4.evaluate("()=>OvuAuth.signOut(false)"); await p4.wait_for_timeout(2500); fake["delay"] = 0
+            seq2 = [c for c in pcalls if c[0] in ("plaza_join", "plaza_leave")][-2:]
+            check("signing out while a join is on its way: the join lands, then a leave for exactly that visit follows with her token, and the server ends with her nowhere", seq2 == [("plaza_join", "everyone"), ("plaza_leave", "everyone")] and pvisits[-1] and pauth[-1] == "Bearer smoke-token" and fake["mine"] is None, {"seq": seq2, "server": fake["mine"], "visit": pvisits[-1:]})
+            check("no page errors or console errors in the signed-in plaza run", not p_errors, p_errors[:3])
+            await ctx4.close()
+
+            # the staff dashboard signed in as an owner (fake session, fake staff calls): the Plazas card shows counts only
+            ctx5 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx5.add_init_script("localStorage.setItem('ovumind_auth_v1', %s);" % json.dumps(json.dumps(SESS)))
+            sg_today = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).date().isoformat()
+            STAFF = {"admin_me": {"admin": True, "role": "owner", "uid": SESS["user"]["id"]},
+                     "admin_overview": {"counts": {"accounts": 1, "accounts_with_cloud_copy": 0, "consent_active": 0, "consent_eligible": 0}, "floor": 20, "runs": [], "open_proposals": 0, "blocked": [], "latest": {}},
+                     "admin_feed": [],
+                     "admin_plaza": {"stale_seconds": 75, "today": sg_today, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "now": [{"id": "pcos", "name": "PCOS", "capacity": 24, "open": True, "people": 3}, {"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 1}, {"id": "menopause", "name": "Menopause", "capacity": 24, "open": True, "people": 0}],
+                                     "days": [{"day": sg_today, "server": "pcos", "joins": 5, "peak": 4}, {"day": sg_today, "server": "everyone", "joins": 1, "peak": 1}]}}
+            async def staff_gate(route):
+                url = route.request.url
+                if url.startswith(BASE): return await route.continue_()
+                if "fonts.googleapis.com" in url or "fonts.gstatic.com" in url: return await route.fulfill(status=200, content_type="text/css", body="")
+                m = re.search(r"/rest/v1/rpc/([a-z_]+)", url)
+                if m and m.group(1) in STAFF:
+                    if STAFF[m.group(1)] is None: return await route.fulfill(status=503, content_type="application/json", body='{"message":"unavailable"}')
+                    return await route.fulfill(status=200, content_type="application/json", body=json.dumps(STAFF[m.group(1)]))
+                return await route.fulfill(status=200, content_type="application/json", body="{}")
+            p5 = await ctx5.new_page(); await p5.route("**/*", staff_gate)
+            await p5.goto(BASE + "admin.html", wait_until="networkidle")
+            try: await p5.wait_for_function("()=>/PCOS/.test((document.querySelector('#plazaCard')||{}).textContent||'')", timeout=8000)
+            except Exception: pass
+            pc = await p5.evaluate("()=>{var c=document.querySelector('#plazaCard'); return c ? {text: c.textContent, rows: c.querySelectorAll('#plazaDays tr').length} : null}")
+            check("the staff Today tab shows a Plazas card: 4 online, PCOS 3 of 24 with peak 4 and 5 joins on the server's date, a day row, and no names", pc and "4 online" in pc["text"] and "3 of 24" in pc["text"] and "peak 4 today · 5 joins" in pc["text"] and pc["rows"] == 2 and "smoke@example.test" not in pc["text"], pc)
+            # a refresh that fails is shown as not current, not as live numbers
+            STAFF["admin_plaza"] = None
+            await p5.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))")
+            try: await p5.wait_for_function("()=>/not updated since/.test((document.querySelector('#plazaCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            st5 = await p5.evaluate("()=>(document.querySelector('#plazaCard')||{}).textContent||''")
+            check("when a plaza refresh fails the card says it is not current and keeps the last numbers", "not updated since" in st5 and "Not current" in st5 and "3 of 24" in st5, st5[:160])
+            await ctx5.close()
+
             # the staff page: signed out it shows the sign-in gate only, no dashboard, no data call
             await page.goto(BASE + "admin.html", wait_until="networkidle"); await page.wait_for_timeout(500)
             ag = await page.evaluate("()=>({h2: (document.querySelector('h2')||{}).textContent, email: !!document.querySelector('#gEmail'), send: !!document.querySelector('#gSend'), nav: !!document.querySelector('nav.tabs')})")
