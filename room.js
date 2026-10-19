@@ -238,6 +238,13 @@
     if (cs.predictedFrom === cs.predictedTo) return 'around ' + prettyDate(cs.predictedFrom);
     return 'between ' + prettyDate(cs.predictedFrom) + ' and ' + prettyDate(cs.predictedTo);
   }
+  /* A gap of over 60 days between logged periods is left out of the estimate (ovu-store.js); say so when it changed
+   * the estimate, without guessing what happened in it. */
+  function gapNote(cs) {
+    var g = cs && cs.mode !== 'suspended' && cs.gapLeftOut; if (!g) return '';
+    var opts = { day: 'numeric', month: 'short' }; if (g.to.slice(0, 4) !== S.today().slice(0, 4)) opts.year = 'numeric';
+    return 'The ' + g.days + '-day gap before your period on ' + prettyDate(g.to, opts) + ' is left out of the estimate' + (g.cyclesBefore ? ', along with the cycles logged before it' : '') + '. We can’t tell whether periods in that time went unlogged.';
+  }
   function loadJSON(url) { return fetch(url).then(function (r) { if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); }); }
   var toastTimer;
   function toast(text, icon) {
@@ -781,7 +788,7 @@
       html += '<button type="button" class="' + cls + '" data-date="' + iso + '" aria-label="' + prettyDate(iso) + '">' + dd + (syms[iso] ? '<span class="sdot"></span>' : '') + '</button>';
     }
     $('#calGrid').innerHTML = html;
-    var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + ' (estimate from ' + esc(cs.basis) + ')' + (cs.uncertain ? ', a loose estimate while cycles are changing' : '') + '.' : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Add a cycle length in your intro or log another period to start predictions.')) + '</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>Tap the first day of your last period and ' + periodFillLength() + ' typical days are filled for you to adjust.</span></div></div>';
+    var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + ' (estimate from ' + esc(cs.basis) + ')' + (cs.uncertain ? ', a loose estimate while cycles are changing' : '') + '.' : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Add a cycle length in your intro or log another period to start predictions.')) + (gapNote(cs) ? ' ' + esc(gapNote(cs)) : '') + '</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>Tap the first day of your last period and ' + periodFillLength() + ' typical days are filled for you to adjust.</span></div></div>';
     statHtml += '<div class="row"><button class="btn blush" id="menstruatingNow"><span class="ms">water_drop</span>I’m menstruating now</button>' + (cal.lastFill.length ? '<button class="btn ghost" id="undoFill"><span class="ms">undo</span>Undo ' + cal.lastFill.length + '-day fill</button>' : '') + '</div>';
     $('#cycleStat').innerHTML = statHtml;
     $('#menstruatingNow').addEventListener('click', function () { var ev = S.add('period', S.today(), { flow: 'medium', clots: false, impact: false }); cal.sel = S.today(); cal.lastFill = []; renderCal(); renderEditor(); afterSave(ev, 'Period logged for today.'); });
@@ -2543,7 +2550,7 @@
       : { id: 'bed', icon: 'bedtime', text: 'Go to sleep' };
     openSheet('window', sp.title, d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + (sp.sunrise ? ' · sunrise ' + sp.sunrise + ', sunset ' + sp.sunset : ''), sp.icon,
       '<div class="stat"><span class="ms">bedtime</span><div><b>' + (st.avg ? 'Averaging ' + st.avg + ' h over ' + st.count + ' nights' : 'No sleep logged this week') + '</b><span>Adults generally do best with 7 hours or more.</span></div></div>' +
-      '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + (cs.uncertain ? ' (a loose estimate while cycles are changing).' : '.') : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : (cs.lastStart ? 'Predictions begin once your next period is logged, or add your usual cycle length in Tell me about you.' : 'Log a period on the wall calendar to start predictions.'))) + '</span></div></div>' +
+      '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + (cs.uncertain ? ' (a loose estimate while cycles are changing).' : '.') : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : (cs.lastStart ? 'Predictions begin once your next period is logged, or add your usual cycle length in Tell me about you.' : 'Log a period on the wall calendar to start predictions.'))) + (gapNote(cs) ? ' ' + esc(gapNote(cs)) : '') + '</span></div></div>' +
       '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">' + act.icon + '</span>' + act.text + '</button><button class="btn soft" id="winSound"><span class="ms">' + (S.state().sound ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (S.state().sound ? 'on' : 'off') + '</button></div>' +
       '<div class="row"><a class="btn ghost" href="settings.html"><span class="ms">settings</span>Settings & health connections</a><a class="btn ghost" href="face-ppg.html"><span class="ms">monitor_heart</span>Calm check (beta)</a></div>' +
       '<div class="row"><button type="button" class="btn ghost" id="winIntro"><span class="ms">favorite</span>' + (S.profile().onboarded ? 'Update my intro' : 'Tell me about you') + '</button></div>' +
