@@ -1,11 +1,11 @@
 /* Rhythme plaza servers, phase 1 (docs/design/2026-10-19-plaza-servers-and-hosts.md).
  * Groups in the plaza, by stage of life rather than by place (Rhythme is worldwide): Everyone, Trying to conceive, PCOS
  * and Menopause, room for 24 in each. A signed-in person chooses one while she is in the plaza and is counted there while
- * she stays: her phone checks in every 25 seconds, and walking out of the plaza,
- * putting the app away, going to sleep, signing out or tapping Leave takes her out. Only counts travel back to people
+ * she stays: her phone checks in every 25 seconds, and walking out of the plaza, putting the app away, going to sleep,
+ * signing out or tapping Leave takes her out. Only counts travel back to people
  * and staff: no name, no diary, no chat. Signed out, nothing is sent; the pill says how to join.
- * Server side: supabase/migrations/20261019080000_plaza_presence.sql, 20261019090000_plaza_presence_v2.sql and
- * 20261019100000_plaza_groups.sql. The groups are about health, so the sheet says what joining tells Rhythme, anyone
+ * Server side: supabase/migrations/20261019080000_plaza_presence.sql, 20261019090000_plaza_presence_v2.sql,
+ * 20261019100000_plaza_groups.sql and 20261019110000_plaza_visits.sql. The groups are about health, so the sheet says what joining tells Rhythme, anyone
  * may join any group, and nothing in her profile ever picks one for her. */
 (function (root) {
   'use strict';
@@ -36,80 +36,93 @@
   /* a quiet icon per group; an unknown group gets the plain one */
   var ICONS = { everyone: 'groups', 'trying-to-conceive': 'favorite', pcos: 'water_drop', menopause: 'spa' };
   function icon(id) { return ICONS[id] || 'groups'; }
-  var P = { BEAT: BEAT, LIST: LIST, ICONS: ICONS, icon: icon, countText: countText, roomText: roomText, pillText: pillText, fullText: fullText };
+  var P = { BEAT: BEAT, LIST: LIST, TIMEOUT: TIMEOUT, ICONS: ICONS, icon: icon, countText: countText, roomText: roomText, pillText: pillText, fullText: fullText };
   root.OvuPlaza = P;
 
   /* ---------- the scene ---------- */
   var R = root.OvuRoom, A = root.OvuAuth, S = root.OvuStore, doc = root.document, CFG = root.OVU_CONFIG || {};
   if (!R || !A || !S || !doc || !doc.createElement) return;
 
-  /* Membership is reconciled, never raced. `want` is the plaza she means to be in; `have` is what the server last
-   * confirmed. One join or leave is in flight at a time; anything she does meanwhile only changes `want`, and when the
-   * request settles the loop runs again toward the latest wish (walking out during a join sends a leave for it once it
-   * lands). Every reply is checked against the account and the plaza it was sent for, so a late reply can never move
-   * her back, and a leave names the plaza it leaves. */
-  var want = null, have = null, servers = null, offline = false, inflight = false, beating = false;
+  /* Membership is reconciled, never raced. `want` is the group she means to be in; `have` is the visit the server last
+   * confirmed (group, visit id, count). Every way of leaving (walking out, hiding the app, the page going away, sleep,
+   * sign-out, Leave) only changes what she should be in; one loop sends one join or leave at a time and runs again when
+   * it settles. Check-in and leave name the visit, so a late or repeated request can only touch its own visit. Every
+   * request, token included, has one deadline (P.TIMEOUT), so nothing can leave the loop waiting. */
+  var want = null, have = null, servers = null, offline = false, inflight = false, beating = false, pageGone = false;
   var tickT = 0, listT = 0, listGen = 0, pill = null, lastToken = null;
 
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s); }
   function inPlaza() { var L = R.layout && R.layout(); return !!(L && L.id === 'plaza'); }
   function asleep() { return !!(R.asleep && R.asleep()); }
   function uid() { var s = A.session && A.session(); return s && s.user ? s.user.id : null; }
-  function eligible() { return !!uid() && inPlaza() && !asleep() && !doc.hidden; }
+  function eligible() { return !!uid() && inPlaza() && !asleep() && !doc.hidden && !pageGone; }
   function desired() { return eligible() ? want : null; }
   function remembered() { var p = S.state().plaza; return p && p.server ? p.server : null; }
   function server(id) { return (servers || []).filter(function (s) { return s.id === id; })[0] || null; }
 
+  function noop() { }
+  /* one request: the token, the fetch and the reply share one deadline; `used` says which token it went out with */
   function rpc(name, args, opts) {
     opts = opts || {};
+    var used = { token: null, ctl: null };
     var send = function (t) {
-      if (!t) return Promise.reject(new Error('signed out'));
-      if (opts.check && !opts.check()) return Promise.reject(new Error('cancelled')); /* her wish changed before this left the phone */
-      lastToken = t;
-      var ctl = !opts.keepalive && root.AbortController ? new root.AbortController() : null;
-      var timer = ctl ? root.setTimeout(function () { ctl.abort(); }, TIMEOUT) : 0;
-      var done = function () { if (timer) root.clearTimeout(timer); };
+      if (!t) throw new Error('signed out');
+      if (opts.check && !opts.check()) throw new Error('cancelled'); /* her wish changed before this left the phone */
+      used.token = t; lastToken = t;
+      used.ctl = !opts.keepalive && root.AbortController ? new root.AbortController() : null;
       return root.fetch(CFG.supabaseUrl + '/rest/v1/rpc/' + name, {
-        method: 'POST', keepalive: !!opts.keepalive, signal: ctl ? ctl.signal : undefined,
+        method: 'POST', keepalive: !!opts.keepalive, signal: used.ctl ? used.ctl.signal : undefined,
         headers: { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(args || {})
       }).then(function (r) {
-        return r.text().then(function (x) { done(); var j = null; try { j = x ? JSON.parse(x) : null; } catch (e) { } if (!r.ok) throw new Error((j && j.message) || ('error ' + r.status)); return j; });
-      }, function (e) { done(); throw e; });
+        return r.text().then(function (x) { var j = null; try { j = x ? JSON.parse(x) : null; } catch (e) { } if (!r.ok) throw new Error((j && j.message) || ('error ' + r.status)); return j; });
+      });
     };
-    if (opts.token) return send(opts.token); /* signed out already: the last token still lets her leave */
-    if (opts.keepalive) { var s = A.session(); return send((s && s.access_token) || lastToken); } /* the page may be going away: no time to refresh */
-    return Promise.resolve(A.token()).then(send);
+    var start;
+    if (opts.keepalive || opts.token) { /* the page may be going away, or she is signed out: send now, with the token in hand */
+      try { var s = A.session(); start = Promise.resolve(send(opts.token || (s && s.access_token) || lastToken)); } catch (e) { start = Promise.reject(e); }
+    } else start = Promise.resolve().then(function () { return A.token(); }).then(send);
+    var out = new Promise(function (resolve, reject) {
+      var timer = root.setTimeout(function () { if (used.ctl) used.ctl.abort(); reject(new Error('timeout')); }, P.TIMEOUT);
+      start.then(function (j) { root.clearTimeout(timer); resolve(j); }, function (e) { root.clearTimeout(timer); reject(e); });
+    });
+    out.used = used;
+    return out;
   }
 
   /* ---------- the loop ---------- */
   function sync() {
     if (inflight) return; /* the settling request runs the loop again */
-    var d = desired(), h = have ? have.id : null, u = uid();
-    if (d === h) return;
+    var d = desired(), h = have, u = uid();
+    if (d === (h ? h.id : null)) return;
     var leaving = !d;
     if (!leaving && !u) return;
     inflight = true; render();
     var op = leaving
-      ? rpc('plaza_leave', { p_server: h }, { keepalive: doc.hidden, token: u ? null : lastToken })
+      ? rpc('plaza_leave', { p_server: h.id, p_visit: h.visit }, { keepalive: doc.hidden || pageGone, token: u ? null : lastToken })
       : rpc('plaza_join', { p_server: d }, { check: function () { return uid() === u && desired() === d; } });
     var failed = false;
     op.then(function (j) {
-      if (leaving) { have = null; return; }
-      if (uid() !== u) return; /* the account changed while this was on its way */
+      if (leaving) { if (have === h) have = null; return; }
+      if (uid() !== u) { /* signed out or another account while this was on its way: undo it with the token it used */
+        if (j && j.ok && j.visit && op.used.token) rpc('plaza_leave', { p_server: j.server, p_visit: j.visit }, { token: op.used.token }).catch(noop);
+        return;
+      }
       if (j && j.ok) {
-        have = { id: j.server, name: j.name, people: j.people, capacity: j.capacity }; offline = false;
+        have = { id: j.server, name: j.name, people: j.people, capacity: j.capacity, visit: j.visit }; offline = false;
         if (want === d) S.setState({ plaza: { server: d } });
         if (want === d && desired() === d) { R.chime('tap'); R.toast('You are in ' + j.name + '. ' + countText(j.people, true).replace(/^./, function (c) { return c.toUpperCase(); }) + '.', 'groups'); }
         return;
       }
       /* refused: she stays where she was, and the wish falls back to it */
       R.toast(j && j.why === 'full' ? fullText(j) : 'That group is closed for now.', 'groups');
-      if (want === d) { want = h; if (!h) S.setState({ plaza: null }); }
+      if (want === d) { want = h ? h.id : null; if (!h) S.setState({ plaza: null }); }
     }, function (e) {
       if (e && e.message === 'cancelled') return;
       failed = true; offline = true;
-      if (leaving) have = null; /* the server stops counting her after 75 s by itself */
+      /* a leave that did not get through lapses on the server after 75 s; a join that timed out may have landed, and
+       * the next tick asks again: the same group keeps its visit, so the repeat is harmless */
+      if (leaving && have === h) have = null;
     }).then(function () {
       inflight = false; render();
       if (!failed) sync(); /* converge on the latest wish; after a failure the next tick tries again */
@@ -118,22 +131,26 @@
   function tick() {
     if (desired() !== (have ? have.id : null)) { sync(); return; }
     if (!have || inflight || beating) return;
-    var id = have.id, u = uid(); beating = true;
-    rpc('plaza_beat', { p_server: id }, { check: function () { return !!have && have.id === id && uid() === u; } }).then(function (j) {
-      if (!have || have.id !== id || uid() !== u) return; /* a reply for a membership she no longer has */
-      if (j && j.ok) { have.people = j.people; offline = false; return; }
+    var h = have, u = uid(); beating = true;
+    rpc('plaza_beat', { p_server: h.id, p_visit: h.visit }, { check: function () { return have === h && uid() === u; } }).then(function (j) {
+      if (have !== h || uid() !== u) return; /* a reply for a visit she no longer has */
+      if (j && j.ok) { h.people = j.people; offline = false; return; }
+      if (j && j.displaced) { /* the same account joined from another phone: this one steps out and does not take it back */
+        have = null; want = null; R.toast('You joined a group on another device, so this phone stepped out. Walk back into the plaza here to rejoin.', 'groups'); return;
+      }
       if (j && j.rejoin) { have = null; sync(); } /* quiet too long: join again, capacity is checked again */
-    }, function (e) { if (e && e.message !== 'cancelled' && have && have.id === id) offline = true; }).then(function () { beating = false; render(); });
+    }, function (e) { if (e && e.message !== 'cancelled' && have === h) offline = true; }).then(function () { beating = false; render(); });
   }
   function refresh() {
-    if (!uid() || !inPlaza()) return Promise.resolve();
+    var u = uid();
+    if (!u || !inPlaza()) return Promise.resolve();
     var g = ++listGen;
-    return rpc('plaza_list').then(function (j) {
-      if (g !== listGen) return;
+    return rpc('plaza_list', {}, { check: function () { return uid() === u && g === listGen; } }).then(function (j) {
+      if (g !== listGen || uid() !== u) return;
       servers = (j && j.servers) || []; offline = false;
       if (have) { var s = server(have.id); if (s) have.people = s.people; }
       render();
-    }, function () { if (g === listGen) { offline = true; render(); } });
+    }, function (e) { if (g === listGen && !(e && e.message === 'cancelled')) { offline = true; render(); } });
   }
   function startTimers() { stopTimers(); tickT = root.setInterval(tick, BEAT); listT = root.setInterval(function () { if (!doc.hidden) refresh(); }, LIST); }
   function stopTimers() { if (tickT) root.clearInterval(tickT); if (listT) root.clearInterval(listT); tickT = listT = 0; }
@@ -146,6 +163,7 @@
     if (!want) want = remembered();
     startTimers(); refresh(); sync();
   }
+  /* the one way out: whatever the reason, she should no longer be in a group here, and the loop says so */
   function depart() { stopTimers(); listGen++; servers = null; sync(); render(); }
 
   /* ---------- the pill and the sheet ---------- */
@@ -174,7 +192,7 @@
     }
     R.openSheet('plaza', 'Plaza groups', 'Choose a topic you want to connect around', 'groups',
       '<div class="plazalist" id="plazaList"><p class="help">Looking around…</p></div>' +
-      '<p class="help">Joining stores that your account is in this group, with the time you joined and last checked in, so you can be counted. The groups are about health, so joining one tells Rhythme something about you while you are in it. Anyone can join any group, and nothing in your profile chooses one for you. This phone remembers the group you chose and rejoins it when you come back to the plaza; tap Leave the group to forget it. Other people and Rhythme staff see only the number, never who. Leaving the plaza, putting Rhythme away, going to sleep or signing out takes you out; if that message does not get through, you stop being counted after 75 seconds and the record is deleted the next time anyone uses the groups. Each group also keeps daily counts of joins and its busiest moment, with no account attached. There is no chat yet.</p>' +
+      '<p class="help">Joining stores that your account is in this group, with the time you joined and last checked in, so you can be counted. The groups are about health, so joining one tells Rhythme something about you while you are in it. Anyone can join any group, and nothing in your profile chooses one for you. This phone remembers the group you chose and rejoins it when you come back to the plaza; tap Leave the group to forget it. Other people and Rhythme staff see only the number, never who. Leaving the plaza, putting Rhythme away, going to sleep or signing out takes you out; if that message does not get through, you stop being counted after 75 seconds and the record is deleted the next time anyone uses the groups. Each group also keeps daily counts of joins and its busiest moment, with no account attached, for a year. There is no chat yet.</p>' +
       '<div class="row" id="plazaLeaveRow" hidden><button type="button" class="btn soft" id="plazaLeave"><span class="ms">logout</span>Leave the group</button></div>');
     var list = doc.getElementById('plazaList');
     list.addEventListener('click', function (e) { var b = e.target.closest('[data-join]'); if (!b || b.disabled) return; choose(b.dataset.join); });
@@ -209,20 +227,21 @@
     build(); render();
     R.on('layout', function () { if (inPlaza()) arrive(); else depart(); });
     if (inPlaza()) arrive();
-    doc.addEventListener('visibilitychange', function () { if (doc.hidden) { stopTimers(); sync(); } else if (inPlaza()) arrive(); }); /* hidden: a keepalive leave */
-    root.addEventListener('pagehide', function () { if (have) { rpc('plaza_leave', { p_server: have.id }, { keepalive: true }).catch(function () { }); have = null; } });
-    root.addEventListener('pageshow', function () { if (inPlaza() && !doc.hidden) arrive(); });
-    /* a logged sleep stops the game: out of the plaza, pill down; waking brings her back if she is still there */
+    /* every departure goes through depart(): hidden (a keepalive leave), the page going away, sleep, sign-out */
+    doc.addEventListener('visibilitychange', function () { if (doc.hidden) depart(); else if (inPlaza()) arrive(); });
+    root.addEventListener('pagehide', function () { pageGone = true; depart(); });
+    root.addEventListener('pageshow', function () { pageGone = false; if (inPlaza() && !doc.hidden) arrive(); });
     var wasAsleep = asleep();
-    S.subscribe(function () { var now = asleep(); if (now === wasAsleep) return; wasAsleep = now; if (now) { stopTimers(); sync(); render(); } else if (inPlaza()) arrive(); });
-    /* signing out: the session is gone, but the token she last used still lets the phone say she left */
+    S.subscribe(function () { var now = asleep(); if (now === wasAsleep) return; wasAsleep = now; if (now) depart(); else if (inPlaza()) arrive(); });
+    /* signing out: the session is gone, but the token she last used still lets the loop say she left. Another account
+     * signing in: the old account's visit is ended with the old account's token before anything else is sent. */
     var lastUid = uid();
     if (A.subscribe) A.subscribe(function () {
       var u = uid(); if (u === lastUid) return;
-      var before = lastUid; lastUid = u;
-      if (before) { want = null; S.setState({ plaza: null }); stopTimers(); servers = null; listGen++; }
-      if (u && have) have = null; /* another account now: the old row lapses by itself */
-      sync(); if (u && inPlaza()) arrive(); render();
+      var before = lastUid, oldToken = lastToken; lastUid = u;
+      if (before) { want = null; S.setState({ plaza: null }); }
+      if (before && u && have) { var old = have; have = null; rpc('plaza_leave', { p_server: old.id, p_visit: old.visit }, { token: oldToken }).catch(noop); }
+      depart(); if (u && inPlaza()) arrive();
     });
     if (root.MutationObserver && R.els.hud) new root.MutationObserver(render).observe(R.els.hud, { attributes: true, attributeFilter: ['class'] });
   }

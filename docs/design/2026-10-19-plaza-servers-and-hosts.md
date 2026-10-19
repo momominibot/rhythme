@@ -140,3 +140,48 @@ place; Jamie can drop it.
   Everyone; with Everyone full too, no suggestion) and by a Codex read of the rename (three wording fixes applied).
 - Capacity is still 24 per group; worldwide numbers will need several rooms per group (PCOS 1, PCOS 2) in a later
   phase.
+
+## Third round (19 October 2026, Jamie: "Yes, do one more round on the plaza edge cases")
+
+Migration `20261019110000_plaza_visits.sql` (applied) and the client and dashboard changes:
+
+- **Visits.** Every membership is a visit with its own id. Join returns it (the same group again keeps it), check-in
+  and leave must name it, so a late or repeated request can only touch its own visit, never a newer visit to the same
+  group.
+- **Two phones.** If the same account joins from another phone, this phone's next check-in answers "displaced"; it
+  steps out, says why, and does not take the account back until she walks into the plaza again on that phone.
+- **One departure path.** Walking out, hiding the app, the page going away, sleep, sign-out and Leave all go through
+  one function and the one serialized loop; there is no separate leave any more.
+- **One deadline.** Every request, token refresh and keepalive leave included, is cut off after 10 s; a join that timed
+  out is asked again on the next tick and gets the same visit.
+- **Sign-out mid-join.** A join that lands after she signed out (or after another account signed in) is undone with the
+  token it went out with.
+- **Peaks and retention.** The sweep every call runs records each group's busiest count before removing anyone, so a
+  group that empties after midnight still has its day; daily counts older than a year are deleted, and the sheet and
+  the staff card say "kept for a year".
+- **Staff card.** Its own timer, started at once and not tied to the other panels; one refresh at a time with a 10 s
+  deadline; an older reply never replaces a newer one.
+
+Checked: a rolled-back transaction on the live project (same-group visit kept, displacement, late leaves, re-entry,
+quiet phone, peak by a list call, 400-day row deleted and 300-day row kept); core 331, pages 81/0, smoke 89 (adds two
+phones, a stalled join, sign-out mid-join).
+
+### Review of the third round (Codex, 19 October): stopped here for Jamie
+
+Resolved: settled sign-out leave, the duplicate pagehide leave, cross-group displacement reclaim on check-in, focus,
+stale staff refreshes, the staff card blocking other timers, older staff replies, the initial-failure message, the
+design record, explicit owners, times after the lock. Still open (all bounded: the server stops counting a phone after
+75 s, and a phone that still thinks it is in asks again within 25 s):
+
+1. A join whose token arrives after the deadline is still sent; if she walks out before its reply, the server keeps
+   her for up to 75 s. Fix: an expiry flag checked right before dispatch.
+2. A retried join to the same group gets the same visit id, so a timed-out leave of that visit can remove the renewed
+   membership (two phones in the same group share it too). Fix: a new visit id for every join request (the server
+   keeps the row, renews the id).
+3. `plaza_leave` and `plaza_beat` still accept a missing visit id. Fix: require it (fail closed).
+4. Showing the app again on a displaced phone rejoins the remembered group; it should wait for her to walk back in.
+5. Peaks miss people whose last check-in was just before midnight and who lapse before the next call; label the peak
+   as sampled or carry it over.
+6. Retention runs when the groups are used; with no use at all old daily rows wait for the next call. Say so, or add a
+   scheduled clean-up. The boundary keeps 366 days including today.
+7. The staff card's deadline does not abort the underlying request.

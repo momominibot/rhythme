@@ -6,7 +6,7 @@
   'use strict';
   var CFG = root.OVU_CONFIG || {}, A = root.OvuAuth, doc = root.document;
   var app = doc.getElementById('app');
-  var plaza = null, plazaOk = 0, plazaBad = false; /* admin_plaza: people in each plaza now, and the daily joins and peak (counts only) */
+  var plaza = null, plazaOk = 0, plazaBad = false, plazaBusy = false; /* admin_plaza: people in each group now, and the daily joins and peak (counts only) */
   var me = null, tab = 'today', ov = null, feed = [], feedTop = 0, findings = null, proposals = null, admins = null, audit = null, timers = [];
   var AGENTS = {
     cycle: { name: 'Menstrual', color: 'a-cycle', owns: 'period and symptom days, recorded period starts, intervals between starts, prediction mode availability', excludes: 'spotting and flow none never start a cycle; missing logs are not missing periods; recalled and imported history stay separate' },
@@ -107,10 +107,20 @@
     var stale = plazaBad || (plazaOk && Date.now() - plazaOk > 60000);
     var head = stale ? '<span class="stale">not updated since ' + esc(hm) + '</span>' : '<span>' + esc(total) + ' online · ' + esc(hm) + '</span>';
     return '<div class="card" id="plazaCard"><h2>Plaza groups' + head + '</h2>' + (stale ? '<div class="note"><b>Not current.</b> The last refresh did not come back; the numbers below are from ' + esc(hm) + '. It tries again every 20 seconds.</div>' : '') + '<div class="tiles">' + tiles + '</div>' + table +
-      '<p class="srv">Counts only. A person is counted while her phone checks in (every 25 s). Leaving, closing the app, sleeping or signing out normally takes her out at once; if that message is lost she stops being counted after 75 s. Joins count arrivals, so someone who leaves and comes back counts twice. No names or account ids reach this page.</p></div>';
+      '<p class="srv">Counts only. A person is counted while her phone checks in (every 25 s). Leaving, closing the app, sleeping or signing out normally takes her out at once; if that message is lost she stops being counted after 75 s. Joins count arrivals, so someone who leaves and comes back counts twice. Daily counts are kept for a year. No names or account ids reach this page.</p></div>';
   }
   function redrawPlaza() { if (tab === 'today' && doc.getElementById('plazaCard')) doc.getElementById('plazaCard').outerHTML = plazaCard(); }
-  function loadPlaza() { return rpc('admin_plaza', { p_days: 14 }).then(function (j) { if (denied(j) || !j || !j.now) { plazaBad = true; redrawPlaza(); return; } plaza = j; plazaOk = Date.now(); plazaBad = false; redrawPlaza(); }).catch(function () { plazaBad = true; redrawPlaza(); }); }
+  /* one refresh at a time, with a deadline, on its own timer; a reply older than what is shown is ignored */
+  function deadline(p, ms) { return new Promise(function (res, rej) { var t = setTimeout(function () { rej(new Error('timeout')); }, ms); p.then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); }); }); }
+  function loadPlaza() {
+    if (plazaBusy) return Promise.resolve();
+    plazaBusy = true;
+    return deadline(rpc('admin_plaza', { p_days: 14 }), 10000).then(function (j) {
+      if (denied(j) || !j || !j.now) { plazaBad = true; return; }
+      if (plaza && plaza.at && j.at && Date.parse(j.at) < Date.parse(plaza.at)) return;
+      plaza = j; plazaOk = Date.now(); plazaBad = false;
+    }).catch(function () { plazaBad = true; }).then(function () { plazaBusy = false; redrawPlaza(); });
+  }
   function eligText(n, floor) { n = Number(n || 0); floor = Number(floor || 20); return (n === 0 ? '0' : n < floor ? 'fewer than ' + floor : String(n)) + ' eligible adults'; }
   function tile(l, v, s) { return '<div class="tile"><div class="l">' + esc(l) + '</div><div class="v' + (String(v).length > 9 ? ' small' : '') + '">' + esc(v) + '</div><div class="s">' + esc(s) + '</div></div>'; }
   function runNow() {
@@ -227,10 +237,10 @@
     return rpc('admin_me').then(function (j) {
       if (!j || !j.admin) return staffOnly();
       me = j; shell(); render();
-      return Promise.all([loadOverview(), loadFeed(true), loadPlaza()]).then(function () {
+      loadPlaza(); timers.push(setInterval(function () { if (!doc.hidden) loadPlaza(); }, 20000)); /* the groups card never holds up the rest */
+      return Promise.all([loadOverview(), loadFeed(true)]).then(function () {
         timers.push(setInterval(function () { if (!doc.hidden) loadFeed(false); }, 10000));
         timers.push(setInterval(function () { if (!doc.hidden) loadOverview(); }, 30000));
-        timers.push(setInterval(function () { if (!doc.hidden) loadPlaza(); }, 20000));
       });
     }).catch(function (e) { gate('Could not check your account: ' + e.message, true); });
   }

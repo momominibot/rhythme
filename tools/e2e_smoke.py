@@ -400,8 +400,8 @@ async def main():
             # nothing leaves the machine. 23 in PCOS, 2 in Everyone, Menopause full.
             SESS = {"access_token": "smoke-token", "refresh_token": "smoke-refresh", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000aa", "email": "smoke@example.test"}}
             seed_signed_in = "if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s); localStorage.setItem('ovumind_auth_v1', %s);" % (json.dumps(json.dumps(DB)), json.dumps(json.dumps(SESS)))
-            fake = {"servers": [{"id": "pcos", "name": "PCOS", "blurb": "Living with polycystic ovary syndrome", "capacity": 24, "open": True, "people": 23}, {"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 2}, {"id": "menopause", "name": "Menopause", "capacity": 24, "open": True, "people": 24}], "mine": None}
-            pcalls, pauth, p_other, p_errors = [], [], [], []
+            fake = {"servers": [{"id": "pcos", "name": "PCOS", "blurb": "Living with polycystic ovary syndrome", "capacity": 24, "open": True, "people": 23}, {"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 2}, {"id": "menopause", "name": "Menopause", "capacity": 24, "open": True, "people": 24}], "mine": None, "visit": None, "seq": 0}
+            pcalls, pauth, p_other, p_errors, pvisits = [], [], [], [], []
             def fsrv(i): return [s for s in fake["servers"] if s["id"] == i][0]
             async def plaza_gate(route):
                 url = route.request.url
@@ -414,15 +414,20 @@ async def main():
                 if name == "plaza_list": out = {"servers": fake["servers"], "mine": fake["mine"], "beat_seconds": 25}
                 elif name == "plaza_join":
                     s = fsrv(body["p_server"])
-                    if fake["mine"] == s["id"]: out = {"ok": True, "server": s["id"], "name": s["name"], "capacity": 24, "people": s["people"], "beat_seconds": 25}
+                    if fake["mine"] == s["id"]: out = {"ok": True, "server": s["id"], "name": s["name"], "capacity": 24, "people": s["people"], "visit": fake["visit"], "beat_seconds": 25}
                     elif s["people"] >= s["capacity"]: out = {"ok": False, "why": "full", "server": s["id"], "name": s["name"], "capacity": 24, "people": s["people"], "suggest": {"id": "everyone", "name": "Everyone"}}
                     else:
                         if fake["mine"]: fsrv(fake["mine"])["people"] -= 1
-                        s["people"] += 1; fake["mine"] = s["id"]; out = {"ok": True, "server": s["id"], "name": s["name"], "capacity": 24, "people": s["people"], "beat_seconds": 25}
-                elif name == "plaza_beat": out = {"ok": True, "server": body["p_server"], "people": fsrv(body["p_server"])["people"]} if fake["mine"] == body.get("p_server") else {"ok": False, "rejoin": True}
+                        s["people"] += 1; fake["mine"] = s["id"]; fake["seq"] += 1; fake["visit"] = "v%d" % fake["seq"]
+                        out = {"ok": True, "server": s["id"], "name": s["name"], "capacity": 24, "people": s["people"], "visit": fake["visit"], "beat_seconds": 25}
+                elif name == "plaza_beat":
+                    if fake["mine"] == body.get("p_server") and fake["visit"] == body.get("p_visit"): out = {"ok": True, "server": body["p_server"], "visit": body["p_visit"], "people": fsrv(body["p_server"])["people"]}
+                    elif fake["mine"]: out = {"ok": False, "displaced": True}
+                    else: out = {"ok": False, "rejoin": True}
                 else:
-                    if fake["mine"] and body.get("p_server") in (None, fake["mine"]):
-                        fsrv(fake["mine"])["people"] -= 1; fake["mine"] = None
+                    pvisits.append(body.get("p_visit"))
+                    if fake["mine"] and body.get("p_server") in (None, fake["mine"]) and body.get("p_visit") in (None, fake["visit"]):
+                        fsrv(fake["mine"])["people"] -= 1; fake["mine"] = None; fake["visit"] = None
                     out = {"ok": True}
                 if name == "plaza_join" and fake.get("delay"): await asyncio.sleep(fake["delay"])
                 return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
@@ -504,10 +509,39 @@ async def main():
             await p4.click('#minimap [data-scene=plaza]')
             try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='pcos'", timeout=12000)
             except Exception: pass
+            # the same account joins Menopause from another phone: this phone's next check-in is told it was displaced and it
+            # steps out without taking the row back
+            fsrv("pcos")["people"] -= 1; fake["mine"] = "menopause"; fake["seq"] += 1; fake["visit"] = "v%d" % fake["seq"]  # the other phone's join moves the row
+            other_visit = fake["visit"]; n_join = len([c for c in pcalls if c[0] == "plaza_join"])
+            await p4.evaluate("()=>OvuPlaza.tick()"); await p4.wait_for_timeout(500)
+            await p4.evaluate("()=>OvuPlaza.tick()"); await p4.wait_for_timeout(400)
+            dis = await p4.evaluate("()=>({st: OvuPlaza.state(), toast: document.querySelector('#toast').textContent})")
+            check("two phones: the displaced phone steps out, says why, and does not take the account back", not dis["st"]["joined"] and not dis["st"]["want"] and "another device" in dis["toast"] and len([c for c in pcalls if c[0] == "plaza_join"]) == n_join and fake["mine"] == "menopause" and fake["visit"] == other_visit, {"st": dis["st"], "toast": dis["toast"], "server": [fake["mine"], fake["visit"]]})
+            # a stalled request cannot leave the loop waiting: one deadline, then the next tick asks again and gets the same visit
+            fake["mine"] = None; fake["visit"] = None; fsrv("menopause")["people"] -= 1
+            await p4.evaluate("()=>{OvuPlaza.TIMEOUT=400;}"); fake["delay"] = 1.5
+            await p4.evaluate("()=>OvuPlaza.join('everyone')"); await p4.wait_for_timeout(900)
+            stall = await p4.evaluate("()=>OvuPlaza.state()")
+            fake["delay"] = 0; await p4.wait_for_timeout(900)
+            await p4.evaluate("()=>{OvuPlaza.TIMEOUT=10000; OvuPlaza.tick();}")
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='everyone'", timeout=6000)
+            except Exception: pass
+            after = await p4.evaluate("()=>OvuPlaza.state()")
+            check("a stalled join is cut off by the deadline (the loop is free, marked offline), and the next tick joins with the visit the server already gave", not stall["inflight"] and stall["offline"] and after["joined"] and after["joined"]["visit"] == fake["visit"] and fake["mine"] == "everyone", {"stalled": stall, "after": after, "server": [fake["mine"], fake["visit"]]})
             n_auth = len(pauth)
             await p4.evaluate("()=>OvuAuth.signOut(false)"); await p4.wait_for_timeout(800)
             so = await p4.evaluate("()=>({st: OvuPlaza.state(), pill: document.querySelector('#plazaPill').textContent, saved: OvuStore.state().plaza})")
-            check("signing out takes her out of the plaza (a leave sent with her last token) and the pill asks her to sign in", ("plaza_leave", "pcos") == pcalls[-1] and pauth[-1] == "Bearer smoke-token" and not so["st"]["joined"] and not so["saved"] and "sign in to join" in so["pill"] and fake["mine"] is None, {"st": so, "last": pcalls[-2:]})
+            check("signing out takes her out of the plaza (a leave for that visit, sent with her last token) and the pill asks her to sign in", pcalls[-1][0] == "plaza_leave" and pvisits[-1] and pauth[-1] == "Bearer smoke-token" and not so["st"]["joined"] and not so["saved"] and "sign in to join" in so["pill"] and fake["mine"] is None, {"st": so, "last": pcalls[-2:]})
+            # signing out while a join is on its way: once it lands, the phone undoes it with the token it went out with
+            await p4.goto(BASE + "room.html", wait_until="networkidle"); await p4.wait_for_selector(".hotspot"); await p4.wait_for_timeout(500)
+            await p4.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return !!OvuStore.state().sleeping}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet(); OvuWalk.travel('plaza');}")
+            try: await p4.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && OvuPlaza.state().servers", timeout=12000)
+            except Exception: pass
+            fake["delay"] = 1.2
+            await p4.evaluate("()=>OvuPlaza.join('everyone')"); await p4.wait_for_timeout(200)
+            await p4.evaluate("()=>OvuAuth.signOut(false)"); await p4.wait_for_timeout(2500); fake["delay"] = 0
+            seq2 = [c for c in pcalls if c[0] in ("plaza_join", "plaza_leave")][-2:]
+            check("signing out while a join is on its way: the join lands, then a leave for exactly that visit follows with her token, and the server ends with her nowhere", seq2 == [("plaza_join", "everyone"), ("plaza_leave", "everyone")] and pvisits[-1] and pauth[-1] == "Bearer smoke-token" and fake["mine"] is None, {"seq": seq2, "server": fake["mine"], "visit": pvisits[-1:]})
             check("no page errors or console errors in the signed-in plaza run", not p_errors, p_errors[:3])
             await ctx4.close()
 
