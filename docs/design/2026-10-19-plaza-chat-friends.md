@@ -142,6 +142,17 @@ Resolved: 1, 3, 4, 8, 9, 10, 11. Still open, with the smallest fix proposed and 
 Not covered: the browser's own cross-tab behaviour for other modules (the plaza and sign-in UI do not listen for
 another tab either; that is PR #4's and the account module's), and real network partitions.
 
+**Round three review (20 Oct): REJECT. Stopped here for Jamie: the retry hold (round two #7) failed a third time.**
+Resolved: round two 2, 5, 6, 12, 13, 14, 15 and both design notes. Open, with the smallest fix proposed and **not
+applied**:
+
+| # | Finding (round three) | Proposed fix |
+|---|---|---|
+| 4 (repeat of #7) | After an action (Accept, report, unfriend, block, unblock), a failed inbox refresh goes "back", and going back re-opens Plaza friends, which counts as her own act and clears the hold, so it fetches again on its own; a failed "mark read" is not held | Keep `open()` for her own taps only; going back after an action re-draws the sheet from what is known and, on a failure, shows "could not reach" without asking again; route a failed `social_read` through the hold |
+| 9 (new) | Block then unblock deletes the 30-day ask record, so she can ask again at once after a "not now" | Keep a small cooldown record (who asked whom, until when) that blocking does not delete, kept 30 days, and say so in the data table |
+| 10 (new) | An old or declined ask still lets the person who received it look up the asker's current card by blocking her | `social.visible` follows the inbox: an incoming ask counts only while pending and under 14 days; her own outgoing ask counts for 30 days |
+| 11 (new) | The mutation run counts a race as "gone wrong" when the second session merely did not wait | Check waiting and the outcome separately; count a mutation only when the response or the rows are wrong, then restate the "7 of 8" |
+
 ## 8. Phases
 
 1. Cards, people in your group, friend requests, friends, preset kind notes, block, report, staff review (this branch).
