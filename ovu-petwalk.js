@@ -212,7 +212,7 @@
       if (!pet.el.isConnected) { pet.state = 'rest'; return; }
       if (holds[id] || (quiet() && !pet.bedtime)) { stop(pet, holds[id] ? 'held' : 'quiet'); return; } /* a bedtime walk home is the one walk the night allows */
       if (dt) { var moved = stepPet(pet, dt, worldFor(id)); if (moved) { pet.acc = cycleAdvance(pet.acc, moved, pet.id); setFrame(pet, frameOf(pet.acc)); place(pet); movedAny = true; } }
-      if (!pet.route) { hideCycle(pet); place(pet); if (pet.lastReason !== 'blocked') pet.trips++; if (pet.bedtime) { if (!atHome(pet)) { pet.x = pet.home.x; pet.y = pet.home.y; place(pet); } curlUp(pet); } else schedule(pet); } else any = true;
+      if (!pet.route) { hideCycle(pet); place(pet); if (pet.lastReason !== 'blocked') pet.trips++; if (pet.bedtime) { if (!atHome(pet)) { pet.x = pet.home.x; pet.y = pet.home.y; place(pet); if (W.sortDepth) W.sortDepth(); } curlUp(pet); } else schedule(pet); } else any = true;
     });
     if (movedAny && W.sortDepth) W.sortDepth();
     if (any) raf = root.requestAnimationFrame(tick); else last = 0;
@@ -334,7 +334,7 @@
       pal.still = 0;
     } else {
       pal.still = (pal.still || 0) + dt;
-      if (pal.still > 0.12 && (pet.cycle || pet.el.classList.contains('walking'))) { settleOnFloor(pet, her); hideCycle(pet); place(pet); } /* she stopped: the pet sits, on the floor */
+      if (pal.still > 0.12 && (pet.cycle || pet.el.classList.contains('walking'))) { settleOnFloor(pet, her); hideCycle(pet); place(pet); if (W.sortDepth) W.sortDepth(); } /* she stopped: the pet sits, on the floor, ranked where it sat (it can cross a lamp's base) */
     }
     if (!moved && !herMoved && pal.still > 1) palWait(); else palRaf = root.requestAnimationFrame(palTick);
   }

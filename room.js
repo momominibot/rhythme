@@ -468,7 +468,7 @@
     S.setProfile({ outfit: id });
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
   }
-  function placeAvatar(p, flip) { pos = { x: p.x, y: p.y }; avatar.style.left = p.x + '%'; avatar.style.top = p.y + '%'; avatar.classList.toggle('flip', !!flip); }
+  function placeAvatar(p, flip) { pos = { x: p.x, y: p.y }; avatar.style.left = p.x + '%'; avatar.style.top = p.y + '%'; avatar.classList.toggle('flip', !!flip); emit('placed', pos); } /* the walk engine re-ranks her depth */
   function sameFloor(a, b) { if (!L.stairs) return true; return (a.y < L.upstairsY) === (b.y < L.upstairsY); }
   function walkTo(wp, done) {
     if (wp && !reduced && hooks.walkTo && hooks.walkTo(wp, function () { avatar.classList.toggle('flip', !!wp.flip); scheduleLife(); done && done(); })) return; /* routed around furniture, with her walk cycle */
@@ -2134,7 +2134,17 @@
     avatarImg.style.transformOrigin = (f[1] * 100).toFixed(1) + '% 100%';
   }
   avatarImg.addEventListener('load', fitAvatar); if (avatarImg.complete) fitAvatar();
-  function setPose(pose) { var img = new Image(); img.onload = function () { avatarImg.src = img.src; }; img.src = ART + 'avatar-act-' + pose + '.webp'; }
+  /* a pose is drawn in what she is wearing (Jamie, 19 Oct: "it cannot be changing outfit while watering"); the shower robe and
+   * the stretch's yoga set are that activity's own clothes, so those two keep their one sprite. A missing file falls back to
+   * the original pose */
+  var OUTFIT_POSES = { plants: 1, coffee: 1, teeth: 1, dishes: 1, pets: 1, bed: 1, outfit: 1 };
+  function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && outfit !== 'base' ? '-' + outfit : '') + '.webp'; }
+  function setPose(pose) {
+    var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image();
+    img.onload = function () { avatarImg.src = img.src; };
+    img.onerror = function () { if (img.src.indexOf(plain) < 0) img.src = plain; };
+    img.src = want;
+  }
   function restorePose() { setOutfit(S.profile().outfit || 'base', true); }
   function openEveryday(selId) {
     var ex = MF.explored();
@@ -2488,7 +2498,7 @@
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
     enterMeditation: enterMeditation, exitMeditation: exitMeditation, runSession: runSession, sessionOn: function () { return !!session; },
-    asleep: asleep, stopEverything: stopEverything, shopOpenNow: shopOpenNow,
+    asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
   };
 
