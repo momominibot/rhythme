@@ -5,7 +5,8 @@
  * Nothing moves while a sheet is open, during a session or practice, while arranging (pets go home for that), at night
  * or while she sleeps; a tap, Enter or Space on a pet stops it and holds it while its care bubble is open. A worn piece
  * rides on the frame's head anchor. The sitting sprite stays until a strip has decoded; without a strip a pet steps with
- * a small bob. Design, sources and review outcomes: docs/design/2026-10-19-pets-walk.md. The maths comes first and has
+ * a small bob. "Walk together" in a pet's bubble takes it along: it follows her trail into every scene until Home time.
+ * Design, sources and review outcomes: docs/design/2026-10-19-pets-walk.md. The maths comes first and has
  * no DOM, so tools/test-core.js can load this file and check it. */
 (function (root) {
   'use strict';
@@ -33,7 +34,7 @@
     return true;
   }
   /* the nearest floor cell to a point: where a pet placed on the plate's rim steps onto the floor */
-  function floorStart(W, world, p) { var m = W.rasterise(world), c = W.cellOf(p.x, p.y), n = W.nearestFree(m, c.c, c.r, 8); return n ? W.centre(n.c, n.r) : null; }
+  function floorStart(W, world, p) { var m = W.rasterise(world), c = W.cellOf(p.x, p.y, m), n = W.nearestFree(m, c.c, c.r, 8); return n ? W.centre(n.c, n.r) : null; }
   /* a route from where the pet stands; off the floor it first steps to the nearest floor cell, then the planner takes over */
   function planFrom(W, world, from, to, snap, startOff) {
     if (!startOff) return W.plan(world, from, to, snap);
@@ -82,8 +83,26 @@
     var k = frameHead.w / Math.max(1, sitHead.w);
     return { x: frameHead.x + (spotPx.x - sitHead.x) * k, y: frameHead.y + (spotPx.y - sitHead.y) * k, w: spotPx.w * k };
   }
+  /* walking together: the pet walks her own trail of footsteps a few steps behind, so it goes round whatever she went
+   * round; it speeds up when she runs ahead and eases to a stop when she stops (pure, so tools/test-core.js checks it) */
+  var LAG = 7, LOST = 45, CRUMB = 0.6, MAX_CRUMBS = 400;
+  function pathLen(from, crumbs, her) { var d = 0, a = from; for (var i = 0; i < crumbs.length; i++) { d += isoDist(a, crumbs[i]); a = crumbs[i]; } return d + isoDist(a, her); }
+  function followSpeed(gap) { return Math.max(8, Math.min(32, 12 + gap * 4)); }
+  /* move dist iso units along from, then each crumb, then her; returns the new point and how many crumbs it passed */
+  function along(from, crumbs, her, dist) {
+    var p = { x: from.x, y: from.y }, used = 0;
+    while (dist > 1e-9) {
+      var t = used < crumbs.length ? crumbs[used] : her, d = isoDist(p, t);
+      if (d <= dist) { p = { x: t.x, y: t.y }; dist -= d; if (used < crumbs.length) used++; else break; }
+      else { var f = dist / d; p = { x: p.x + (t.x - p.x) * f, y: p.y + (t.y - p.y) * f }; dist = 0; }
+    }
+    return { x: p.x, y: p.y, used: used };
+  }
+  /* where the pet stands when she arrives somewhere: a little behind her (the side she is not facing), else beside her */
+  function behindSpots(her, left) { var s = left ? 1 : -1; return [{ x: her.x + 5 * s, y: her.y + 1 }, { x: her.x + 4 * s, y: her.y - 1.5 }, { x: her.x + 6 * s, y: her.y + 2.5 }, { x: her.x - 5 * s, y: her.y + 1 }, { x: her.x, y: her.y + 3.5 }, { x: her.x, y: her.y - 3 }]; }
   function validMeta(m) { return !!(m && m.frames === FRAMES && isFinite(m.w) && m.w > 0 && isFinite(m.h) && m.h > 0 && isFinite(m.standW) && m.standW > 0 && m.heads && m.heads.length === FRAMES && m.standHead); }
   var M = { FRAMES: FRAMES, FPS: FPS, SPEED: SPEED, KIND: KIND, RADIUS: RADIUS, LEASH: LEASH, MIN_TRIP: MIN_TRIP, REST: REST, HOME_EVERY: HOME_EVERY, kindOf: kindOf, speedFor: speedFor, strideFor: strideFor, cycleAdvance: cycleAdvance, frameOf: frameOf, restSeconds: restSeconds, isoDist: isoDist, onFloor: onFloor, floorStart: floorStart, planFrom: planFrom, candidates: candidates, segmentsClear: segmentsClear, pickTarget: pickTarget, homeTrip: homeTrip, wornOn: wornOn, validMeta: validMeta };
+  M.LAG = LAG; M.LOST = LOST; M.CRUMB = CRUMB; M.pathLen = pathLen; M.followSpeed = followSpeed; M.along = along; M.behindSpots = behindSpots;
   root.OvuPetWalk = { M: M };
 
   var R = root.OvuRoom, W = root.OvuWalk, P = root.OvuPets, RW = root.OvuRewards;
@@ -148,12 +167,14 @@
   function place(pet) { pet.el.style.left = pet.x.toFixed(2) + '%'; pet.el.style.top = pet.y.toFixed(2) + '%'; }
   /* rest, then a trip; the timer is the pet's own and checks that the pet is still the one it was set for */
   function schedule(pet, secs) {
-    clearTimeout(pet.timer); pet.state = 'rest';
+    clearTimeout(pet.timer);
+    if (isPal(pet) && pets[pet.id] === pet) { pet.state = 'follow'; palGo(); return; } /* the pet out walking with her never wanders off on its own */
+    pet.state = 'rest';
     pet.timer = root.setTimeout(function () { if (pets[pet.id] === pet) trip(pet); }, (secs === undefined ? restSeconds() : secs) * 1000);
   }
   function trip(pet) {
     if (pets[pet.id] !== pet || !pet.el.isConnected) return;
-    if (pet.sleeping) return;
+    if (pet.sleeping || isPal(pet)) return;
     if (reduced) return; /* the pets stay put under reduced motion */
     if (!auto && !pet.force) { schedule(pet, 30); return; } pet.force = false; /* the tests switch wandering off and nudge one pet at a time */
     if (holds[pet.id] || !wanderHere(R.layout()) || (quiet() && !pet.bedtime)) { schedule(pet, 4); return; }
@@ -233,9 +254,11 @@
   }
   function wakeUp(pet) { if (!pet.sleeping) return; pet.sleeping = false; pet.el.classList.remove('sleeping', 'napping'); schedule(pet); }
   function bedtime() {
+    if (pal && R.asleep && R.asleep()) endWalk(true); /* she went to bed: the walk is over and the pet goes home to sleep too */
     var night = nightNow();
     Object.keys(pets).forEach(function (id) {
       var pet = pets[id];
+      if (isPal(pet)) return; /* a walk in the evening keeps the pet awake beside her */
       if (!night) { if (pet.sleeping) wakeUp(pet); pet.bedtime = false; return; }
       if (pet.sleeping || holds[id] || arranging) return;
       if (atHome(pet) && pet.state !== 'walk') { curlUp(pet); return; }
@@ -248,22 +271,154 @@
       if (!raf) { last = 0; raf = root.requestAnimationFrame(tick); }
     });
   }
+  /* ---------- walking together (Jamie, 19 Oct): a tap on a pet offers "Walk together"; she says "Let's go for a walk!
+   * Shall we?", the pet hops with floating hearts, and then follows her everywhere: the garden, Dream Street, the
+   * stores and the plaza. In a scene that does not draw your pets, the walking pet gets its own element. A tap on the
+   * pet offers "Home time". Going to bed ends the walk ---------- */
+  var pal = null, palRaf = 0, palLast = 0;
+  function isPal(pet) { return !!(pal && pet && pal.id === pet.id); }
+  function herNow() { return W.livePos ? W.livePos() : R.pos(); }
+  function herLeft() { return !!(R.els.avatar && R.els.avatar.classList.contains('flip')); }
+  function petName(id) { return (P && P.NAMES && P.NAMES[id]) || 'Your pet'; }
+  function shopItem(id) { return RW && RW.SHOP ? RW.SHOP.filter(function (o) { return o.id === id; })[0] : null; }
+  function ensurePalEl(L) {
+    if (!pal || !props || props.querySelector('.prop.owned.pet[data-id="' + pal.id + '"]')) return;
+    var it = shopItem(pal.id); if (!it) return;
+    var G = root.OvuGarden && root.OvuGarden.LAYOUT, gp = G && G.props && (G.props[it.id] || (it.posAs && G.props[it.posAs])), base = gp || it.pos || { w: 8 };
+    var w = base.w * (it.wk || 1) * ((L && L.avatarW) || 12) / ((G && G.avatarW) || 12);
+    var worn = RW.wearing ? RW.wearing(it.id) : null, file = worn && P && P.wornSprite ? P.wornSprite(it.id, worn.id) : null;
+    var d = doc.createElement('div'); d.className = 'prop owned pet palclone'; d.dataset.id = it.id;
+    var at = pal.at || herNow(); d.style.left = at.x.toFixed(2) + '%'; d.style.top = at.y.toFixed(2) + '%'; d.style.width = w.toFixed(2) + '%';
+    d.setAttribute('role', 'button'); d.setAttribute('tabindex', '0'); d.setAttribute('aria-label', petName(it.id) + ' is out walking with you. Tap for care or home time.');
+    d.innerHTML = '<span class="petbody"><img src="' + ART + (file || it.img) + '" alt=""></span>';
+    props.appendChild(d);
+  }
+  /* she arrived somewhere (a new scene, or the pet fell far behind): the pet stands just behind her */
+  function palArrive() {
+    if (!pal) return; var pet = pets[pal.id]; if (!pet) return;
+    var her = herNow(), w = worldFor(pet.id), spot = null;
+    behindSpots(her, herLeft()).some(function (p) { if (onFloor(W, w, p.x, p.y)) { spot = p; return true; } return false; });
+    if (!spot) spot = floorStart(W, w, her) || { x: her.x, y: her.y + 3 };
+    clearTimeout(pet.timer); hideCycle(pet); pet.route = null; pet.state = 'follow'; pet.sleeping = false; pet.bedtime = false;
+    pet.el.classList.remove('sleeping', 'napping'); pet.x = spot.x; pet.y = spot.y; place(pet);
+    pal.crumbs = []; pal.at = { x: spot.x, y: spot.y }; pal.her = { x: her.x, y: her.y };
+    if (W.sortDepth) W.sortDepth(her.y);
+    palGo();
+  }
+  function palGo() { if (pal && !palRaf) { clearTimeout(pal.poll); palLast = 0; palRaf = root.requestAnimationFrame(palTick); } }
+  function palWait() { if (!pal) return; clearTimeout(pal.poll); pal.poll = root.setTimeout(palGo, 150); }
+  function palTick(t) {
+    palRaf = 0; if (!pal) return;
+    var dt = palLast ? Math.min(0.1, (t - palLast) / 1000) : 0; palLast = t;
+    if (R.asleep && R.asleep()) { endWalk(true); bedtime(); return; }
+    var pet = pets[pal.id]; if (!pet || !pet.el.isConnected) { palWait(); return; }
+    var her = herNow(), herMoved = !pal.her || isoDist(her, pal.her) > 1e-4, last = pal.crumbs.length ? pal.crumbs[pal.crumbs.length - 1] : pal.her;
+    if (!last || isoDist(her, last) >= CRUMB) { pal.crumbs.push({ x: her.x, y: her.y }); if (pal.crumbs.length > MAX_CRUMBS) pal.crumbs.splice(0, pal.crumbs.length - MAX_CRUMBS); }
+    pal.her = { x: her.x, y: her.y };
+    var paused = !pal.ready || holds[pet.id] || doc.hidden || arranging || R.busy();
+    var len = pathLen(pet, pal.crumbs, her), from = { x: pet.x, y: pet.y }, moved = 0;
+    if (len > LOST) { palArrive(); return; }
+    if (!paused && dt && len > LAG + 0.05) {
+      if (reduced) { if (!herMoved && len > LAG + 2) { palArrive(); return; } } /* no gliding under reduced motion: once she stops, the pet is simply beside her */
+      else {
+        var res = along(pet, pal.crumbs, her, Math.min(followSpeed(len - LAG) * dt, len - LAG));
+        if (res.used) pal.crumbs.splice(0, res.used);
+        moved = isoDist(from, res); pet.x = res.x; pet.y = res.y; pal.at = { x: pet.x, y: pet.y };
+      }
+    }
+    if (moved > 1e-4) {
+      var dx = pet.x - from.x, dy = pet.y - from.y, dir = dirFor(dx, dy);
+      if (!pet.cycle || pet.dir !== dir) showCycle(pet, dir); else pet.el.classList.add('walking');
+      face(pet, dx); pet.acc = cycleAdvance(pet.acc, moved, pet.id); setFrame(pet, frameOf(pet.acc)); place(pet);
+      if (W.sortDepth) W.sortDepth(her.y);
+      pal.still = 0;
+    } else {
+      pal.still = (pal.still || 0) + dt;
+      if (pal.still > 0.12 && (pet.cycle || pet.el.classList.contains('walking'))) { settleOnFloor(pet, her); hideCycle(pet); place(pet); } /* she stopped: the pet sits, on the floor */
+    }
+    if (!moved && !herMoved && pal.still > 1) palWait(); else palRaf = root.requestAnimationFrame(palTick);
+  }
+  /* the trail's chords can cut a corner, so a pet may come to rest a fraction inside a piece's footprint (the watering can):
+   * it sits at the nearest floor point instead, never on top of it (checkpoint 3) */
+  function settleOnFloor(pet, her) {
+    var w = worldFor(pet.id); if (onFloor(W, w, pet.x, pet.y)) return;
+    for (var r = 0.5; r <= 4; r += 0.5) for (var a = 0; a < 16; a++) {
+      var x = pet.x + r * Math.cos(a * Math.PI / 8), y = pet.y + r * Math.sin(a * Math.PI / 8) * 0.5;
+      if (onFloor(W, w, x, y) && isoDist({ x: x, y: y }, her) >= 2) { pet.x = x; pet.y = y; if (pal) pal.at = { x: x, y: y }; return; }
+    }
+  }
+  /* her line goes in the thought bubble above her head */
+  function say(text, ms) {
+    var th = doc.getElementById('thought'); if (!th || !R.showThought) return;
+    th.classList.add('say'); R.showThought(text); if (R.joy) R.joy();
+    root.setTimeout(function () { if (th.textContent !== text) return; R.hideThought(); root.setTimeout(function () { if (th.textContent === text && !th.classList.contains('on')) th.classList.remove('say'); }, 350); }, ms || 2600);
+  }
+  /* the pet's answer: little jumps and a float of hearts */
+  function cheer(id) {
+    var pet = pets[id]; if (!pet) return; var el = pet.el, w = parseFloat(el.style.width) || 8;
+    el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); root.setTimeout(function () { el.classList.remove('hop'); }, 1900);
+    for (var i = 0; i < 5; i++) {
+      var h = doc.createElement('span'); h.className = 'petheart palheart ms'; h.textContent = 'favorite'; h.setAttribute('aria-hidden', 'true');
+      h.style.left = (pet.x - w * 0.4 + i * w * 0.2) + '%'; h.style.top = (pet.y - w * (0.9 + (i % 2) * 0.25)) + '%'; h.style.animationDelay = (i * 0.16) + 's';
+      props.appendChild(h); (function (n) { root.setTimeout(function () { n.remove(); }, 2300); })(h);
+    }
+  }
+  function walkWith(id) {
+    var pet = pets[id]; if (!pet) return false;
+    if (R.asleep && R.asleep()) { if (R.toast) R.toast('She is asleep. A walk can wait until morning.', 'bedtime'); return false; }
+    if (pal && pal.id === id) return true;
+    if (pal) endWalk(true);
+    clearTimeout(pet.timer); if (pet.state === 'walk') { pet.route = null; hideCycle(pet); place(pet); }
+    if (pet.sleeping) { pet.sleeping = false; pet.el.classList.remove('sleeping', 'napping'); }
+    pet.bedtime = false; pet.el.classList.remove('napping'); delete holds[id];
+    var her = herNow(); pal = { id: id, crumbs: [], her: { x: her.x, y: her.y }, at: { x: pet.x, y: pet.y }, ready: false, still: 0, poll: 0 };
+    /* her trail starts at her feet, so the pet's first stretch to it is planned round the furniture like any other walk */
+    try { var w0 = worldFor(id), lead = planFrom(W, w0, { x: pet.x, y: pet.y }, her, 3, !onFloor(W, w0, pet.x, pet.y)); if (lead && lead.pts.length > 2) pal.crumbs = lead.pts.slice(1, -1).map(function (p) { return { x: p.x, y: p.y }; }); } catch (e) { }
+    pet.state = 'follow';
+    say('Let\u2019s go for a walk! Shall we?', 2600);
+    root.setTimeout(function () { if (pal && pal.id === id) cheer(id); }, 650);
+    root.setTimeout(function () { if (!pal || pal.id !== id) return; pal.ready = true; if (R.toast) R.toast(petName(id) + ' is coming along. Walk at ' + petName(id) + '\u2019s pace and notice what catches her eye.', 'pets'); palGo(); }, 1900);
+    palGo(); return true;
+  }
+  function endWalk(quietly) {
+    if (!pal) return; var id = pal.id, pet = pets[id]; clearTimeout(pal.poll); pal = null;
+    if (palRaf) { root.cancelAnimationFrame(palRaf); palRaf = 0; }
+    if (!pet) return;
+    hideCycle(pet); place(pet); pet.state = 'rest';
+    var clone = pet.el.classList.contains('palclone');
+    if (clone) { var el = pet.el; clearTimeout(pet.timer); delete pets[id]; el.classList.add('palbye'); root.setTimeout(function () { el.remove(); if (W.sortDepth) W.sortDepth(); }, 650); }
+    else schedule(pet, 2);
+    if (!quietly && R.toast) R.toast((clone ? petName(id) + ' trots home for a nap.' : petName(id) + ' had a lovely walk.') + ' One slow breath for the walk you shared.', 'pets');
+    if (!clone) bedtime();
+  }
+  /* the pet's care bubble gets one more choice: Walk together, or Home time for the pet already out with her */
+  function addWalkButton() {
+    if (!bubble || !bubble.classList.contains('on') || !bubble.classList.contains('petbub')) return;
+    var id = bubble.dataset.pet; if (!id || !pets[id] || bubble.querySelector('[data-petwalk]')) return;
+    var on = !!(pal && pal.id === id), b = doc.createElement('button'); b.type = 'button'; b.dataset.petwalk = on ? 'end' : 'start';
+    b.innerHTML = '<span class="ms">' + (on ? 'home' : 'pets') + '</span>' + (on ? 'Home time' : 'Walk together');
+    bubble.appendChild(b);
+  }
   function stopAll(why) { Object.keys(pets).forEach(function (id) { stop(pets[id], why); }); }
   function goHomeAll() { Object.keys(pets).forEach(function (id) { var pet = pets[id]; if (pet.state === 'walk') { pet.route = null; hideCycle(pet); } pet.x = pet.home.x; pet.y = pet.home.y; place(pet); clearTimeout(pet.timer); pet.state = 'rest'; }); if (W.sortDepth) W.sortDepth(); }
   function hold(id) { var pet = pets[id]; if (!pet) return; holds[id] = true; stop(pet, 'held'); }
   function release() { Object.keys(holds).forEach(function (id) { delete holds[id]; if (pets[id]) schedule(pets[id]); }); }
   function mount() {
     scene = R.els.scene; props = R.els.props; bubble = doc.getElementById('bubble');
-    R.on('layout', function (L) { Object.keys(pets).forEach(function (id) { clearTimeout(pets[id].timer); }); pets = {}; holds = {}; sync(L, true); });
-    R.on('props', function (L) { sync(L || R.layout(), arranging); });
+    R.on('layout', function (L) {
+      Object.keys(pets).forEach(function (id) { clearTimeout(pets[id].timer); }); pets = {}; holds = {}; ensurePalEl(L); sync(L, true);
+      if (pal) { palArrive(); root.setTimeout(function () { if (pal && pal.her && isoDist(herNow(), pal.her) > 2) palArrive(); }, 120); } /* the walk engine may set her at the door just after */
+    });
+    R.on('props', function (L) { ensurePalEl(L || R.layout()); sync(L || R.layout(), arranging); if (pal && pets[pal.id]) pets[pal.id].el.classList.remove('napping', 'sleeping'); });
     /* a tap, Enter or Space on a pet opens its care bubble: the pet stops and stays while the bubble is up */
     var act = function (e) { var el = e.target.closest && e.target.closest('.prop.owned.pet'); if (!el || !pets[el.dataset.id]) return; if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return; hold(el.dataset.id); };
     props.addEventListener('pointerdown', act, true); props.addEventListener('click', act, true); props.addEventListener('keydown', act, true);
+    if (bubble) bubble.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-petwalk]'); if (!b) return; var id = bubble.dataset.pet; if (b.dataset.petwalk === 'end') endWalk(); else walkWith(id); }, true);
     if (root.MutationObserver) {
-      if (bubble) new MutationObserver(function () { if (bubble.classList.contains('on') && bubble.classList.contains('petbub') && bubble.dataset.pet) hold(bubble.dataset.pet); else if (!bubble.classList.contains('on')) release(); }).observe(bubble, { attributes: true, attributeFilter: ['class', 'data-pet'] });
+      if (bubble) new MutationObserver(function () { if (bubble.classList.contains('on') && bubble.classList.contains('petbub') && bubble.dataset.pet) { hold(bubble.dataset.pet); addWalkButton(); } else if (!bubble.classList.contains('on')) release(); }).observe(bubble, { attributes: true, attributeFilter: ['class', 'data-pet'], childList: true });
       new MutationObserver(function () {
         var a = scene.classList.contains('arranging'); if (a === arranging) return; arranging = a;
-        if (arranging) goHomeAll(); else sync(R.layout(), true); /* arranging works on the saved spots; afterwards those are home */
+        if (arranging) { endWalk(true); goHomeAll(); } else sync(R.layout(), true); /* arranging works on the saved spots; afterwards those are home */
       }).observe(scene, { attributes: true, attributeFilter: ['class'] });
     }
     doc.addEventListener('visibilitychange', function () {
@@ -281,5 +436,7 @@
   root.OvuPetWalk.stop = function (id) { if (pets[id]) stop(pets[id], 'stopped'); };
   root.OvuPetWalk.state = function (id) { var pet = pets[id]; if (!pet) return null; return { x: pet.x, y: pet.y, home: pet.home, state: pet.state, sleeping: !!pet.sleeping, trips: pet.trips, dir: pet.dir, frame: pet.cycle ? pet.cycle.frame : -1, cycle: !!pet.cycle, walking: pet.el.classList.contains('walking'), cycling: pet.el.classList.contains('cycling'), held: !!holds[id], reason: pet.lastReason, heading: pet.heading }; };
   root.OvuPetWalk.pets = function () { return Object.keys(pets); };
+  root.OvuPetWalk.walkWith = walkWith; root.OvuPetWalk.endWalk = endWalk;
+  root.OvuPetWalk.pal = function () { if (!pal) return null; var pet = pets[pal.id]; return { id: pal.id, ready: !!pal.ready, x: pet ? pet.x : null, y: pet ? pet.y : null, state: pet ? pet.state : null, clone: !!(pet && pet.el.classList.contains('palclone')), crumbs: pal.crumbs.length }; };
   R.on('boot', mount);
 })(window);

@@ -84,12 +84,14 @@
     var o = oldData || {}, n = newData || {};
     if (type === 'symptom') {
       var syms = (o.symptoms || []).slice(); (n.symptoms || []).forEach(function (s) { if (syms.indexOf(s) < 0) syms.push(s); });
-      return Object.assign({}, o, n, {
+      var merged = Object.assign({}, o, n, {
         symptoms: syms,
         pain: n.pain === null || n.pain === undefined ? (o.pain === undefined ? null : o.pain) : n.pain,
         mood: n.mood ? n.mood : (o.mood || ''),
         notes: [o.notes, n.notes].filter(Boolean).join(' ')
       });
+      if (o.none || n.none) { if (syms.length) delete merged.none; else merged.none = true; } /* "None" for the day stops once a symptom is noted */
+      return merged;
     }
     return Object.assign({}, o, n);
   }

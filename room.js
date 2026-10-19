@@ -273,7 +273,7 @@
   function applyLayout(id, asVisit) {
     if (typeof camFit === 'function' && inner) camFit(false);
     L = LAYOUTS[id] || LAYOUTS.room; HOTSPOTS = L.hotspots; HOME = L.home; visiting = asVisit ? L.id : null;
-    scene.style.aspectRatio = L.w + '/' + L.h; scene.dataset.layout = L.id;
+    scene.style.aspectRatio = L.w + '/' + (L.h * spanOf(L)); scene.style.setProperty('--span', spanOf(L)); scene.dataset.layout = L.id; /* a wide plate (L.span box widths) keeps the box's own view aspect */
     if (dayImg.getAttribute('src') !== ART + L.img) dayImg.src = ART + L.img;
     dayImg.width = L.w; dayImg.height = L.h;
     buildHotspots();
@@ -297,21 +297,29 @@
   /* ---------- camera: zoom and pan any scene. Built for the room and houses now, and for a future
    * city map or a neighbour's home: each is just a layout, and the camera works on whichever is showing. */
   var cam = { z: 1, x: 0, y: 0 }, CAM_MAX = 3, camPointers = new Map(), camGesture = null, camSuppressClick = false;
-  function camClamp() { var W = scene.clientWidth, H = scene.clientHeight; cam.z = Math.max(1, Math.min(CAM_MAX, cam.z)); cam.x = Math.min(0, Math.max(W - W * cam.z, cam.x)); cam.y = Math.min(0, Math.max(H - H * cam.z, cam.y)); }
+  /* a wide plate (docs/design/2026-10-19-wide-street.md) is drawn span box widths wide inside the box-sized inner, with
+   * coordinates in percent of the box, so x runs to 100 * span; the clamp keeps the whole plate covering the box */
+  function spanOf(l) { return l && l.span > 1 ? l.span : 1; }
+  function camClamp() { var W = scene.clientWidth, H = scene.clientHeight, sp = spanOf(L); cam.z = Math.max(1, Math.min(CAM_MAX, cam.z)); cam.x = Math.min(0, Math.max(W - W * sp * cam.z, cam.x)); cam.y = Math.min(0, Math.max(H - H * cam.z, cam.y)); }
   function camApply(anim) {
     camClamp(); inner.style.transformOrigin = '0 0'; inner.style.transition = anim ? 'transform .35s ease' : 'none';
-    inner.style.transform = cam.z > 1.001 ? 'translate(' + cam.x.toFixed(1) + 'px,' + cam.y.toFixed(1) + 'px) scale(' + cam.z.toFixed(3) + ')' : '';
-    scene.classList.toggle('zoomed', cam.z > 1.01); var f = $('#camFit'); if (f) f.disabled = cam.z <= 1.01;
+    inner.style.transform = cam.z > 1.001 || Math.abs(cam.x) > 0.05 || Math.abs(cam.y) > 0.05 ? 'translate(' + cam.x.toFixed(1) + 'px,' + cam.y.toFixed(1) + 'px) scale(' + cam.z.toFixed(3) + ')' : ''; /* a wide plate pans at zoom 1 too */
+    scene.classList.toggle('zoomed', cam.z > 1.01); var f = $('#camFit'); if (f) { var wide = spanOf(L) > 1; f.disabled = cam.z <= 1.01 && !wide; f.setAttribute('aria-label', wide ? 'Zoom out and find her' : 'Show the whole home'); } /* on a wide plate fit also brings the view back to her after a drag */
   }
   function camZoomAt(px, py, z, anim) { var cx = (px - cam.x) / cam.z, cy = (py - cam.y) / cam.z; cam.z = Math.max(1, Math.min(CAM_MAX, z)); cam.x = px - cx * cam.z; cam.y = py - cy * cam.z; camApply(anim); }
-  function camFit(anim) { cam = { z: 1, x: 0, y: 0 }; camApply(anim); }
+  /* fit: the whole plate. A wide plate cannot fit, so the person's fit there zooms to 1 about her (aboutHer) rather than
+   * jumping to its left end; a layout change always starts from the plain reset */
+  function camFit(anim, aboutHer) {
+    if (aboutHer && spanOf(L) > 1) { var f = (hooks.camFocus && hooks.camFocus()) || { x: scene.clientWidth / 2, y: scene.clientHeight / 2 }; camZoomAt(f.x, f.y, 1, anim); return; } /* sitting or meditating she is hidden: keep the part of the street in view */
+    cam = { z: 1, x: 0, y: 0 }; camApply(anim);
+  }
   function camLocal(e) { var r = scene.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   function camInteractive(t) { return t.closest('.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.walkpad,.minimap,.nb,.plot,button,a,input'); }
   scene.addEventListener('pointerdown', function (e) {
     if (arranging || e.pointerType === 'mouse' && e.button !== 0) return;
     camPointers.set(e.pointerId, camLocal(e));
     if (camPointers.size === 2) { var pts = Array.from(camPointers.values()); camGesture = { type: 'pinch', d: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), z: cam.z, mx: (pts[0].x + pts[1].x) / 2, my: (pts[0].y + pts[1].y) / 2, x: cam.x, y: cam.y }; }
-    else if (cam.z > 1.01 && !camInteractive(e.target)) { var p = camLocal(e); camGesture = { type: 'pan', sx: p.x, sy: p.y, x: cam.x, y: cam.y, moved: 0 }; }
+    else if ((cam.z > 1.01 || spanOf(L) > 1) && !camInteractive(e.target)) { var p = camLocal(e); camGesture = { type: 'pan', sx: p.x, sy: p.y, x: cam.x, y: cam.y, moved: 0 }; }
   });
   scene.addEventListener('pointermove', function (e) {
     if (!camPointers.has(e.pointerId)) return; camPointers.set(e.pointerId, camLocal(e));
@@ -322,7 +330,7 @@
       if (!camGesture.told) { camGesture.told = true; emit('cam', 'pinch'); } cam.z = z; cam.x = mx - cx * z; cam.y = my - cy * z; camApply(false); camSuppressClick = true; e.preventDefault();
     } else if (camGesture && camGesture.type === 'pan') {
       var q = camLocal(e), dx = q.x - camGesture.sx, dy = q.y - camGesture.sy; camGesture.moved = Math.max(camGesture.moved, Math.abs(dx) + Math.abs(dy));
-      if (camGesture.moved > 6) { if (!camGesture.told) { camGesture.told = true; emit('cam', 'pan'); } cam.x = camGesture.x + dx; cam.y = camGesture.y + dy; camApply(false); camSuppressClick = true; e.preventDefault(); }
+      if (camGesture.moved > 6 && (camGesture.told || cam.z > 1.01 || Math.abs(dx) > Math.abs(dy))) { if (!camGesture.told) { camGesture.told = true; emit('cam', 'pan'); } /* at zoom 1 a wide plate only pans sideways; an upward or downward drag is the page's */ cam.x = camGesture.x + dx; cam.y = camGesture.y + dy; camApply(false); camSuppressClick = true; e.preventDefault(); }
     }
   }, { passive: false });
   function camEnd(e) { camPointers.delete(e.pointerId); if (camPointers.size < 2 && camGesture && camGesture.type === 'pinch') camGesture = null; if (!camPointers.size) camGesture = null; if (camSuppressClick) setTimeout(function () { camSuppressClick = false; }, 60); }
@@ -331,7 +339,7 @@
   scene.addEventListener('click', function (e) { if (camSuppressClick) { e.stopPropagation(); e.preventDefault(); camSuppressClick = false; } }, true);
   /* trackpad pinch (ctrl + wheel) and double-tap zoom where you point */
   scene.addEventListener('wheel', function (e) { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); var p = camLocal(e); emit('cam', 'wheel'); camZoomAt(p.x, p.y, cam.z * Math.exp(-e.deltaY * 0.01), false); }, { passive: false });
-  scene.addEventListener('dblclick', function (e) { if (camInteractive(e.target)) return; var p = camLocal(e); if (cam.z > 1.2) { emit('cam', 'fit'); camFit(true); } else { emit('cam', 'dbl'); camZoomAt(p.x, p.y, 2, true); } });
+  scene.addEventListener('dblclick', function (e) { if (camInteractive(e.target)) return; var p = camLocal(e); if (cam.z > 1.2) { emit('cam', 'fit'); camFit(true, true); } else { emit('cam', 'dbl'); camZoomAt(p.x, p.y, 2, true); } });
   function camControls() {
     if ($('#camCtl')) return;
     var c = document.createElement('div'); c.className = 'camctl'; c.id = 'camCtl';
@@ -340,7 +348,7 @@
     var mid = function () { var f = hooks.camFocus && hooks.camFocus(); return f || { x: scene.clientWidth / 2, y: scene.clientHeight / 2 }; }; /* the follow camera zooms about her */
     $('#camIn').addEventListener('click', function (e) { e.stopPropagation(); var m = mid(); emit('cam', 'zoom'); camZoomAt(m.x, m.y, cam.z * 1.5, true); });
     $('#camOut').addEventListener('click', function (e) { e.stopPropagation(); var m = mid(); emit('cam', 'zoom'); camZoomAt(m.x, m.y, cam.z / 1.5, true); });
-    $('#camFit').addEventListener('click', function (e) { e.stopPropagation(); emit('cam', 'fit'); camFit(true); });
+    $('#camFit').addEventListener('click', function (e) { e.stopPropagation(); emit('cam', 'fit'); camFit(true, true); });
     window.addEventListener('resize', function () { camApply(false); });
   }
   function buildScene() {
@@ -399,7 +407,7 @@
       '<button type="button" data-pact="feed"><span class="ms">restaurant</span>Feed</button><button type="button" data-pact="play"><span class="ms">sports_baseball</span>Play ball</button><button type="button" data-pact="cuddle"><span class="ms">favorite</span>Cuddle</button>' +
       (treats.length ? '<button type="button" data-pact="treat"><span class="ms">cookie</span>' + esc(treats[0].name) + ' <small>' + treats[0].left + ' left</small></button>' : '') +
       (hasAcc ? '<button type="button" data-pact="dress"><span class="ms">checkroom</span>' + (worn ? 'Wearing ' + esc(worn.name) : 'Dress up') + '</button>' : '');
-    bubble.dataset.pet = id; bubble.classList.add('on', 'petbub');
+    bubble.dataset.pet = id; bubble.classList.add('on', 'petbub'); fitBubble();
   }
   function petFx(id, act) {
     var el = petEl(id); if (!el) return; var wrap = $('#ownedProps');
@@ -794,19 +802,23 @@
     } else {
       var cs = S.list('symptom', { from: date, to: date })[0], sd = cs ? cs.data : { symptoms: [], pain: 0, mood: '', notes: '' };
       ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' +
-        '<div class="field"><span class="lbl">Symptoms</span><div class="chips" id="symChips">' + A.SYMPTOMS.map(function (s) { return '<button type="button" class="chipbtn' + ((sd.symptoms || []).indexOf(s) > -1 ? ' on' : '') + '" data-sym="' + esc(s) + '">' + esc(cap(s)) + '</button>'; }).join('') + '</div></div>' +
+        '<div class="field"><span class="lbl">Symptoms</span><div class="chips" id="symChips">' + '<button type="button" class="chipbtn symnone' + (sd.none ? ' on' : '') + '" data-none="1">None</button>' + A.SYMPTOMS.map(function (s) { return '<button type="button" class="chipbtn' + ((sd.symptoms || []).indexOf(s) > -1 ? ' on' : '') + '" data-sym="' + esc(s) + '">' + esc(cap(s)) + '</button>'; }).join('') + '</div></div>' +
         '<div class="field"><div class="lbl-row"><label for="pain" class="lbl" style="margin:0">Pain · <span id="painVal">' + (sd.pain || 0) + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="pain" min="0" max="10" step="1" value="' + (sd.pain || 0) + '">' + guideHTML('pain') + '</div>' +
         '<div class="field"><span class="lbl">Mood</span><div class="faces" id="moodFaces">' + [['great', 'sentiment_very_satisfied'], ['good', 'sentiment_satisfied'], ['ok', 'sentiment_neutral'], ['low', 'sentiment_dissatisfied'], ['bad', 'sentiment_very_dissatisfied']].map(function (m) { return '<button type="button" data-mood="' + m[0] + '" class="' + (sd.mood === m[0] ? 'on' : '') + '"><span class="ms">' + m[1] + '</span>' + cap(m[0]) + '</button>'; }).join('') + '</div></div>' +
         '<div class="field"><label for="symNotes">Notes</label><textarea class="input" id="symNotes" placeholder="Anything else you noticed...">' + esc(sd.notes || '') + '</textarea></div>' +
         '<div class="row"><button class="btn primary" id="saveSym"><span class="ms">check</span>Save day</button>' + (cs ? '<button class="btn ghost" id="clearSym">Clear</button>' : '') + '<button class="btn soft" id="acuFromSym"><span class="ms">spa</span>Cramp relief points</button></div><div class="msg" id="calMsg"></div>';
-      $('#symChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) b.classList.toggle('on'); });
+      /* None (Jamie, 19 Oct) is its own answer: it clears the symptoms, and ticking a symptom clears it */
+      $('#symChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); if (!b.classList.contains('on')) return; $$('#symChips .on').forEach(function (x) { if (x !== b && (b.dataset.none || x.dataset.none)) x.classList.remove('on'); }); });
       $('#pain').addEventListener('input', function () { $('#painVal').textContent = this.value; });
       $('#moodFaces').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#moodFaces')).forEach(function (x) { x.classList.toggle('on', x === b && !x.classList.contains('on')); }); });
       $('#acuFromSym').addEventListener('click', openAcupressure);
       $('#saveSym').addEventListener('click', function () {
         try {
-          var list = $$('#symChips .on').map(function (b) { return b.dataset.sym; }), mood = ($('#moodFaces .on') || {}).dataset ? $('#moodFaces .on').dataset.mood : '';
-          var ev = S.add('symptom', date, { symptoms: list, pain: Number($('#pain').value), mood: mood, notes: $('#symNotes').value.trim() });
+          var list = $$('#symChips .on').map(function (b) { return b.dataset.sym; }).filter(Boolean), mood = ($('#moodFaces .on') || {}).dataset ? $('#moodFaces .on').dataset.mood : '';
+          var none = !list.length && !!$('#symChips [data-none].on'), data = { symptoms: list, pain: Number($('#pain').value), mood: mood, notes: $('#symNotes').value.trim() };
+          if (none) data.none = true;
+          /* None replaces the day's symptoms rather than joining them; everything else keeps the usual same-day merge */
+          var ev = none && cs ? S.update(cs.id, { data: Object.assign({}, data, { notes: data.notes || '' }) }) : S.add('symptom', date, data);
           message($('#calMsg'), 'Saved for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev);
         } catch (e) { message($('#calMsg'), e.message, false); }
       });
@@ -1538,7 +1550,7 @@
     openSheet('luna', 'Luna', 'Tell me how you are; I’ll write it down', 'dark_mode',
       '<div class="chat" id="chat"></div>' +
       '<div class="quick" id="quick">' + ['Slept 11pm to 7am, quality 4', 'Period started today, medium', 'Cramps and bloating, pain 5, mood ok', 'Had oats and a latte for breakfast', 'Meditated 10 min'].map(function (q) { return '<span class="qchip"><button type="button" class="qsend" data-q="' + esc(q) + '">' + esc(q) + '</button><button type="button" class="qpen" data-q="' + esc(q) + '" aria-label="Edit this shortcut before sending"><span class="ms">edit</span></button></span>'; }).join('') + '</div>' +
-      '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><input class="input" id="lunaIn" maxlength="400" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice" value="' + esc(prefill || '') + '"><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
+      '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><textarea class="input" id="lunaIn" rows="3" maxlength="400" enterkeyhint="send" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice">' + esc(prefill || '') + '</textarea><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
       '<details class="aibox" id="aibox"><summary><span class="ms">auto_awesome</span>' + (cfg.on ? 'Luna’s reading is on' : 'Luna’s reading is off · rules only') + infoBtn('luna') + '</summary>' + guideHTML('luna') +
       '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Write journal readings</b><span>A summary of your last 7 or 28 days, without your name, goes to the same AI service in China so Luna can write a reading. Off means no readings.</span></div></label>' +
       '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Recognise food photos</b><span>Each photo goes once through Rhythme’s server to the AI service in China so Luna can recognise the food; Rhythme does not keep it. Only a small thumbnail stays in your diary on this phone.</span></div></label>' +
@@ -1607,8 +1619,12 @@
       });
       ask.querySelector('[data-aino]').addEventListener('click', function () { ask.querySelector('.row').remove(); });
     }
-    $('#lunaSend').addEventListener('click', function () { send($('#lunaIn').value); });
-    $('#lunaIn').addEventListener('keydown', function (e) { if (e.key === 'Enter') send(this.value); });
+    /* the message box is a roomy textarea (Jamie, 19 Oct): it grows with the text up to six lines; Enter sends, Shift+Enter adds a line, and Enter that finishes an input-method word never sends */
+    function fitIn() { var t = $('#lunaIn'); if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 3, 168) + 'px'; }
+    function sendIn() { send($('#lunaIn').value); setTimeout(fitIn, 0); }
+    $('#lunaSend').addEventListener('click', sendIn);
+    $('#lunaIn').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); sendIn(); } });
+    $('#lunaIn').addEventListener('input', fitIn); fitIn();
     /* ---------- food photos ---------- */
     var byHand = '<div class="row"><button type="button" class="btn ghost" data-byhand="1"><span class="ms">menu_book</span>Log it by hand</button></div>';
     chat.addEventListener('click', function (e) { if (e.target.closest('[data-byhand]')) openDiary(); });
@@ -1683,7 +1699,7 @@
     }
     $('#quick').addEventListener('click', function (e) {
       var pen = e.target.closest('.qpen'), go = e.target.closest('.qsend');
-      if (pen) { var inp = $('#lunaIn'); inp.value = pen.dataset.q; inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (err) { } toast('Edit the numbers, then send.', 'edit'); return; }
+      if (pen) { var inp = $('#lunaIn'); inp.value = pen.dataset.q; fitIn(); inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (err) { } toast('Edit the numbers, then send.', 'edit'); return; }
       if (go) send(go.dataset.q);
     });
     $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.insights = $('#aiInsights').checked; c.photos = $('#aiPhotos').checked; ORB.setAiConfig(c, 'settings'); chime('save'); toast('Luna’s settings saved.', 'check_circle'); openLuna($('#lunaIn').value); });
@@ -2298,12 +2314,14 @@
   /* ---------- avatar bubble ---------- */
   var bubble = $('#bubble');
   function hideBubble() { bubble.classList.remove('on', 'petbub'); }
+  /* the menu sits above her head; when the camera holds her tall on screen there is no room above, so it stays inside the box */
+  function fitBubble() { var minTop = bubble.offsetHeight + 6; if (parseFloat(bubble.style.top) < minTop) bubble.style.top = minTop + 'px'; }
   avatar.addEventListener('click', function (e) {
     e.stopPropagation(); chime('tap'); joy(); hideThought();
     var r = avatar.getBoundingClientRect(), sr = scene.getBoundingClientRect();
     bubble.style.left = Math.min(sr.width - 95, Math.max(95, r.left - sr.left + r.width / 2)) + 'px'; bubble.style.top = (r.top - sr.top - 6) + 'px';
     bubble.innerHTML = '<button data-act="wardrobe"><span class="ms">checkroom</span>Change outfit</button><button data-act="sleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button data-act="mat"><span class="ms">self_improvement</span>Sit with Erin</button><button data-act="acu"><span class="ms">spa</span>Cramp relief points</button><button data-act="luna"><span class="ms">dark_mode</span>Tell Luna</button><button data-act="journal"><span class="ms">auto_stories</span>Open my journal</button><button data-act="everyday"><span class="ms">home</span>Everyday practice</button>' + (S.profile().onboarded ? '' : '<button data-act="intro"><span class="ms">favorite</span>Tell me about you</button>') + '';
-    bubble.classList.add('on');
+    bubble.classList.add('on'); fitBubble();
   });
   bubble.addEventListener('click', function (e) { var pb = e.target.closest('[data-pact]'); if (pb) { var pid = bubble.dataset.pet; hideBubble(); petAction(pid, pb.dataset.pact); return; } var b = e.target.closest('button'); if (!b) return; hideBubble(); var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
   document.addEventListener('click', function (e) { if (!e.target.closest('#bubble') && !e.target.closest('#avatar')) hideBubble(); });
@@ -2340,7 +2358,7 @@
     var ins = window.OvuInsight ? window.OvuInsight.cachedDaily(today) : null;
     /* short bullet points, one per topic; Luna's longer reading stays in the journal so nothing repeats */
     $('#dailyText').innerHTML = daily.items && daily.items.length ? '<ul class="daylist">' + daily.items.map(function (it) { return '<li><span class="ms">' + it.icon + '</span><span>' + esc(it.text.replace(/\.$/, '')) + '</span></li>'; }).join('') + '</ul>' : esc(daily.text);
-    $('#symLine').textContent = sym ? ((sym.data.symptoms || []).length ? 'Today: ' + sym.data.symptoms.join(', ') + (sym.data.mood ? ' · mood ' + sym.data.mood : '') : 'No symptoms ticked today') : 'No symptoms logged today. Tap the calendar to add or backdate.';
+    $('#symLine').textContent = sym ? ((sym.data.symptoms || []).length ? 'Today: ' + sym.data.symptoms.join(', ') + (sym.data.mood ? ' · mood ' + sym.data.mood : '') : sym.data.none ? 'Today: no symptoms' + (sym.data.mood ? ' · mood ' + sym.data.mood : '') : 'No symptoms ticked today') : 'No symptoms logged today. Tap the calendar to add or backdate.';
     var sum = S.load().summaries || [];
     $('#shareSub').textContent = sum.length ? 'Last summary saved ' + prettyDate(sum[sum.length - 1].range.to) : 'Create a 4-week summary for your clinician';
   }
