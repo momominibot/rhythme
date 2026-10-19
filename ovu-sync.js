@@ -10,9 +10,9 @@
  * Deletions are tombstones (deleted = true, deleted_at). The server keeps the
  * client's updatedAt (its touch trigger is dropped), so everything is one clock.
  *
- * Pull is incremental (rows whose updated_at is newer than our high-watermark),
- * so wiping this phone and reloading does not re-download the whole cloud; only
- * a brand-new install (no watermark) restores the full diary. */
+ * Pull is incremental (rows that reached the server after the last one we pulled,
+ * by synced_at then id), so wiping this phone and reloading does not re-download
+ * the whole cloud; only a brand-new install (no cursor) restores the full diary. */
 (function (root) {
   'use strict';
   var S = root.OvuStore;
@@ -34,7 +34,8 @@
   /* ---------- sync position (one object in localStorage) ---------- */
   function loadState() {
     try { var s = JSON.parse(localStorage.getItem(LS) || 'null'); if (s && s.v === 1) { s.shadow = s.shadow || {}; s.tombstones = s.tombstones || {}; return s; } } catch (e) { }
-    /* pulledSeq: server synced_at cursor for the incremental pull (in arrival order).
+    /* pulledSeq, pulledId: the incremental pull's cursor, the last row it saw (synced_at exactly as the server wrote
+       it, and that row's id); pulledSeq without pulledId is an older version's millisecond cursor.
        pushedAt: the newest local updatedAt we have pushed, so unchanged rows are not re-sent. */
     return { v: 1, userId: null, shadow: {}, tombstones: {}, pulledSeq: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null };
   }
@@ -44,6 +45,11 @@
   /* Compare by instant, not by text: the server returns '...+00:00' while the
      client writes '...Z', so the same moment has two spellings. */
   function ts(x) { var n = Date.parse(x); return isFinite(n) ? n : -1; }
+  /* The same comparison to the microsecond, which the server keeps and Date.parse drops; for ordering pull cursors. */
+  function micros(x) {
+    var m = /^(.+?)(?:\.(\d+))?(Z|[+-]\d\d:?\d\d)$/.exec(String(x || '')), ms = m ? Date.parse(m[1] + m[3]) : NaN;
+    return isFinite(ms) ? ms * 1000 + Number(((m[2] || '') + '000000').slice(0, 6)) : -1;
+  }
   /* The latest instant among the arguments, as a canonical '...Z' string. */
   function maxIso() { var bt = -Infinity; for (var i = 0; i < arguments.length; i++) { var n = ts(arguments[i]); if (n > bt) bt = n; } return bt > -Infinity ? new Date(bt).toISOString() : ''; }
 
@@ -183,16 +189,29 @@
     });
   }
 
-  /* Pull every entry whose server arrival is after the cursor, oldest first, in
-     pages (PostgREST caps a response, so a full restore needs more than one). */
-  function pullSince(cursor, token) {
-    var PAGE = 1000, all = [], offset = 0;
-    var base = '/entries?select=*&order=synced_at.asc,id.asc&limit=' + PAGE + (cursor ? '&synced_at=gt.' + encodeURIComponent(cursor) : '');
+  /* A PostgREST filter value in double quotes, so commas, brackets, dots and colons in it are read as text. */
+  function quoted(v) { return '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; }
+  /* Rows after the cursor in (synced_at, id) order. A cursor an older version saved (a millisecond time, no id)
+     resumes from that millisecond inclusive: rows it already had may come again, which is harmless, but none are missed. */
+  function afterCursor(at, id) {
+    if (!at) return '';
+    if (id == null) return '&synced_at=gte.' + encodeURIComponent(at);
+    return '&or=' + encodeURIComponent('(synced_at.gt.' + quoted(at) + ',and(synced_at.eq.' + quoted(at) + ',id.gt.' + quoted(id) + '))');
+  }
+  /* Pull every entry whose server arrival is after the cursor, oldest first, in pages (PostgREST caps a response,
+     so a full restore needs more than one), at most 20,000 rows a sync. The cursor is the last row seen: its
+     synced_at exactly as the server wrote it, and its id. One upload stamps all its rows with one now(), so ids tell
+     those rows apart, and the server's microseconds are never rounded to milliseconds; a page or the 20,000 cap can
+     split such a group without skipping or fetching again any of it. Returns the rows and the new cursor. */
+  function pullSince(at, id, token) {
+    var PAGE = 1000, all = [], cur = { at: at || null, id: at && id != null ? id : null };
+    var base = '/entries?select=*&order=synced_at.asc,id.asc&limit=' + PAGE;
     function page() {
-      return rest('GET', base + '&offset=' + offset, null, null, token).then(function (rows) {
+      return rest('GET', base + afterCursor(cur.at, cur.id), null, null, token).then(function (rows) {
         rows = rows || []; all = all.concat(rows);
-        if (rows.length === PAGE && all.length < 20000) { offset += PAGE; return page(); }
-        return all;
+        if (rows.length) { var last = rows[rows.length - 1]; cur = { at: last.synced_at, id: last.id }; }
+        if (rows.length === PAGE && all.length < 20000) return page();
+        return { rows: all, at: cur.at, id: cur.id };
       });
     }
     return page();
@@ -239,7 +258,7 @@
          so rows of other types that arrive between the two requests are still pulled next time; it resumes across
          syncs when the backlog is larger than one sync's share, and only a scan that reached the end marks the new
          types as known */
-      var incRows = [], typed = null, typedDone = !newTypes.length;
+      var incRows = [], incEnd = null, typed = null, typedDone = !newTypes.length;
       saveState(st); /* persist the activation/reset before any network call */
       /* before any row moves: read the account's own record (a withdrawal made on another phone is adopted here and stops
          the sync), then make sure this account has heard this phone's cloud choice (the server refuses writes it has not
@@ -253,8 +272,8 @@
       });
       /* pull every row whose server arrival (synced_at) is after our cursor, in
          order and in pages, so a late-arriving older edit is never skipped */
-      return pre.then(function () { return pullSince(st.pulledSeq, token); }).then(function (rows) {
-        incRows = rows;
+      return pre.then(function () { return pullSince(st.pulledSeq, st.pulledId, token); }).then(function (got) {
+        var rows = got.rows; incRows = rows; incEnd = got;
         if (!newTypes.length) return rows;
         return pullTypedAfter(st.typedAfter || null, token, newTypes).then(function (t) { typed = t; typedDone = t.done; return mergeRows(rows, t.rows); });
       }).then(function (remoteRows) {
@@ -283,7 +302,6 @@
           step = step.then(function () { return rest('PATCH', '/entries?id=eq.' + encodeURIComponent(d.id) + '&user_id=eq.' + uid, { deleted: true, deleted_at: d.deleted_at, updated_at: d.deleted_at }, 'return=minimal', token); });
         });
         return step.then(function () {
-          var seqMax = incRows.reduce(function (m, r) { return maxIso(m, r.synced_at); }, ''); /* the shared cursor: all-type rows only */
           var upMax = pushedRows.reduce(function (m, r) { return maxIso(m, r.updated_at); }, ''); /* held rows did not go up */
           var delMax = plan.pushDel.reduce(function (m, d) { return maxIso(m, d.deleted_at); }, '');
           var remoteMax = remoteRows.reduce(function (m, r) { return maxIso(m, r.updated_at, r.deleted_at || ''); }, '');
@@ -293,8 +311,17 @@
           plan.applyPut.forEach(function (r) { settled[r.id] = 1; }); /* a restored row's old tombstone is resolved */
           remoteRows.forEach(function (r) { if (r.deleted) settled[r.id] = 1; });
           /* read-modify-write so a deletion made while this sync was in flight is kept */
-          var cur = loadState(); cur.userId = uid;
-          cur.pulledSeq = maxIso(cur.pulledSeq || '', seqMax) || cur.pulledSeq || null;
+          var cur = loadState();
+          /* a sign-out, an account switch or a reset of the position during the upload cleared it: leave it cleared,
+             rather than write this account and its progress back into it */
+          if (cur.userId !== uid) { busy = false; setStatus('idle'); return { ok: false, reason: 'cancelled' }; }
+          /* the shared cursor moves to the last all-type row this pull saw (never a typed-recovery row), kept exactly as
+             the server wrote it, and only forward. If another tab moved it while this sync ran, ours is written only
+             when it is strictly later: a cursor wound back would pull again rows this phone may have cleared since.
+             A tie on the instant keeps the stored one, because comparing ids here could disagree with the server's
+             collation, and pulling a few rows again is safer than skipping any. */
+          var movedMeanwhile = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
+          if (incRows.length && (!movedMeanwhile || (cur.pulledSeq && micros(incEnd.at) > micros(cur.pulledSeq)))) { cur.pulledSeq = incEnd.at; cur.pulledId = incEnd.id; }
           if (typedDone) { cur.types = knownTypes; delete cur.typedAfter; }
           else if (typed && typed.lastId) cur.typedAfter = typed.lastId;
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
