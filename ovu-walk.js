@@ -2,7 +2,8 @@
  * floor, sliding along furniture and stepping through doors into the next scene. The maths
  * (zones, solids, doors, depth) is pure so tools/test-core.js can check it without a DOM;
  * the DOM wiring mounts once room.js announces boot through window.OvuRoom.
- * Every position is a percent of the plate, the same unit the room already uses.
+ * Every position is a percent of the plate, the same unit the room already uses. A wide plate (L.span box widths,
+ * docs/design/2026-10-19-wide-street.md) keeps that unit: x runs to 100 * span, and only the planner grid grows.
  * Reviewed by Codex (docs/design/2026-10-18-garden-community-walk.md): bounded substeps, one
  * owner for movement with a takeover check, busy rechecked every frame, rank-based depth. */
 (function (root) {
@@ -10,6 +11,7 @@
   var Y_SCALE = 0.5;      /* the floor is foreshortened: a stride up the plate covers fewer percent than one across */
   var SPEED = 26;         /* percent of plate width per second at full tilt */
   var SUBSTEP = 0.02;     /* seconds per collision substep, so a long frame can never jump a wall */
+  var FAR = 60;           /* iso units: a mini-map stop whose door is further than this (about 2.5 s of walking) fades straight there */
   var FRAMES = 8, FPS = 10, STRIDE = SPEED / FPS * FRAMES; /* walk cycle: 8 frames, 10 per second at full speed, so one cycle per STRIDE iso units */
 
   /* ---------- geometry ---------- */
@@ -50,6 +52,9 @@
   }
   /* a door triggers inside an ellipse around its stand point (radius in x percent, squashed in y) */
   function doorAt(doors, x, y) { for (var i = 0; i < (doors || []).length; i++) { var d = doors[i]; if (Math.hypot(x - d.x, (y - d.y) / Y_SCALE) <= (d.r || 4)) return d; } return null; }
+  /* a storefront (a door that taps a store) opens only where a walk ends; walking past one along the street goes on by.
+   * Arches and gates (doors that lead somewhere) still take her the moment she steps in. */
+  function passing(d) { return !!(d && d.tap); }
   /* which strip for a movement direction: mostly vertical goes away or towards, otherwise the side strip, mirrored by flip */
   function dirFor(dx, dy) { var iy = dy / Y_SCALE; if (Math.abs(iy) > Math.abs(dx) * 1.25) return iy < 0 ? 'away' : 'towards'; return 'side'; }
   /* the walk cycle's phase: one full cycle (FRAMES frames) per STRIDE iso units of travel */
@@ -64,7 +69,7 @@
     return z;
   }
   /* the world the avatar walks in: the layout's zones, its baked solids plus the props standing in it */
-  function world(L, props) { return { zones: L.zones || [], solids: (L.solids || []).concat((props || []).map(propBox)), doors: L.doors || [] }; }
+  function world(L, props) { return { zones: L.zones || [], solids: (L.solids || []).concat((props || []).map(propBox)), doors: L.doors || [], span: L.span > 1 ? L.span : 1 }; }
 
   /* ---------- floors, furniture and doors of the existing homes (percent of each plate) ---------- */
   var HOMES = {
@@ -123,16 +128,18 @@
   /* ---------- tap to walk: a coarse walkable grid per plate, A* with string pulling (docs/design/2026-10-19-tap-to-walk.md) ----------
    * Cells are CELL percent of plate width wide and CELL * Y_SCALE percent of plate height tall, so one row step costs the
    * same walking time as one column step. The mask is rasterised from the layout's zones, solids and prop boxes at plan
-   * time (about 5,000 cells), which is cheap enough to do on every tap and keeps pets and props current. */
+   * time (about 5,000 cells; 12,500 on the 2.5-wide street), cheap enough to do on every tap and keeps pets and props
+   * current. A mask carries its own column count (m.cols), so a wide plate's grid simply has more columns. */
   var CELL = 2, ROWH = CELL * Y_SCALE, COLS = Math.ceil(100 / CELL), ROWS = Math.ceil(100 / ROWH), SQRT2 = Math.SQRT2;
-  function cellOf(x, y) { return { c: Math.max(0, Math.min(COLS - 1, Math.floor(x / CELL))), r: Math.max(0, Math.min(ROWS - 1, Math.floor(y / ROWH))) }; }
+  function colsOf(m) { return m && m.cols || COLS; }
+  function cellOf(x, y, m) { return { c: Math.max(0, Math.min(colsOf(m) - 1, Math.floor(x / CELL))), r: Math.max(0, Math.min(ROWS - 1, Math.floor(y / ROWH))) }; }
   function centre(c, r) { return { x: c * CELL + CELL / 2, y: r * ROWH + ROWH / 2 }; }
   function rasterise(world) {
-    var m = new Uint8Array(COLS * ROWS);
-    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var p = centre(c, r); m[r * COLS + c] = free(world, p.x, p.y, false) ? 1 : 0; }
+    var cols = Math.ceil(100 * (world.span > 1 ? world.span : 1) / CELL), m = new Uint8Array(cols * ROWS); m.cols = cols; m.rows = ROWS;
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < cols; c++) { var p = centre(c, r); m[r * cols + c] = free(world, p.x, p.y, false) ? 1 : 0; }
     return m;
   }
-  function cellFree(m, c, r) { return c >= 0 && r >= 0 && c < COLS && r < ROWS && m[r * COLS + c] === 1; }
+  function cellFree(m, c, r) { var cols = colsOf(m); return c >= 0 && r >= 0 && c < cols && r < ROWS && m[r * cols + c] === 1; }
   /* the nearest free cell within `radius` cells of (c, r), by ring, else null */
   function nearestFree(m, c, r, radius) { var l = nearestFreeList(m, c, r, radius); return l.length ? l[0] : null; }
   /* free cells within `radius` columns (and twice as many rows, since rows are half as tall), nearest first in iso units */
@@ -145,7 +152,7 @@
   /* a straight line between two percent points stays on free cells (sampled every half cell) */
   function lineFree(m, a, b) {
     var dx = b.x - a.x, dy = (b.y - a.y) / Y_SCALE, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / (CELL / 4)));
-    for (var i = 0; i <= n; i++) { var t = i / n, k = cellOf(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t); if (!cellFree(m, k.c, k.r)) return false; }
+    for (var i = 0; i <= n; i++) { var t = i / n, k = cellOf(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, m); if (!cellFree(m, k.c, k.r)) return false; }
     return true;
   }
   /* a tiny binary heap keyed on f */
@@ -155,7 +162,7 @@
   /* 8-neighbour A* with the octile heuristic; diagonals may not cut a blocked corner; the start cell is allowed even if
    * blocked (a tap walk can end inside furniture). Returns the cell path start..goal, or null. */
   function astar(m, s, g) {
-    var N = COLS * ROWS, gScore = new Float64Array(N).fill(Infinity), from = new Int32Array(N).fill(-1), closed = new Uint8Array(N);
+    var COLS = colsOf(m), N = COLS * ROWS, gScore = new Float64Array(N).fill(Infinity), from = new Int32Array(N).fill(-1), closed = new Uint8Array(N);
     var si = s.r * COLS + s.c, gi = g.r * COLS + g.c, heap = new Heap();
     function h(i) { var dc = Math.abs((i % COLS) - g.c), dr = Math.abs(Math.floor(i / COLS) - g.r); return Math.max(dc, dr) + (SQRT2 - 1) * Math.min(dc, dr); }
     gScore[si] = 0; heap.push({ i: si, f: h(si) });
@@ -174,35 +181,59 @@
     return null;
   }
   /* greedy string pulling: from each corner, jump to the farthest later point still in line of sight */
-  function pull(m, pts) {
+  function pull(m, pts, first) {
     if (pts.length < 3) return pts.slice();
     var out = [pts[0]], i = 0;
-    while (i < pts.length - 1) { var j = pts.length - 1; while (j > i + 1 && !lineFree(m, pts[i], pts[j])) j--; out.push(pts[j]); i = j; }
+    while (i < pts.length - 1) { var j = pts.length - 1; while (j > i + 1 && !(lineFree(m, pts[i], pts[j]) && (i || !first || first(pts[0], pts[j])))) j--; out.push(pts[j]); i = j; }
     return out;
+  }
+  /* a straight segment in true geometry, not the grid: every quarter unit stays on the floor and out of the solids, except
+   * the one piece she may be standing in (box) */
+  function segClear(world, a, b, box) {
+    var n = Math.max(2, Math.ceil(Math.hypot(b.x - a.x, (b.y - a.y) / Y_SCALE) / 0.25));
+    for (var i = 1; i <= n; i++) { var t = i / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t; if (!inZones(world.zones, x, y)) return false; var bl = blocked(world.solids, x, y); if (bl && bl !== box) return false; }
+    return true;
+  }
+  /* where a grid route may start: free cells near her whose centres she reaches in a straight line in true geometry,
+   * nearest first. A key walk can leave her on the floor in a cell whose centre is off it or inside a pot (Codex, 19 Oct);
+   * starting from such a cell either finds no way out or clips the corner it hides */
+  function startCells(m, world, from, box) {
+    var s = cellOf(from.x, from.y, m), out = [];
+    for (var dr = -6; dr <= 6; dr++) for (var dc = -3; dc <= 3; dc++) { var c = s.c + dc, r = s.r + dr; if (!cellFree(m, c, r)) continue; var p = centre(c, r); out.push({ c: c, r: r, d: Math.hypot(p.x - from.x, (p.y - from.y) / Y_SCALE) }); }
+    out.sort(function (a, b) { return a.d - b.d; });
+    var ok = []; for (var i = 0; i < out.length && ok.length < 4; i++) { var q = centre(out[i].c, out[i].r); if (segClear(world, from, q, box)) ok.push(out[i]); }
+    return ok;
   }
   /* Plan a walk from `from` to the tapped `to` (both plate percent). The goal snaps to the nearest free cell within
    * `snap` cells when the tap lands on furniture or a wall. Returns { pts, snapped, cost } with pts starting at `from`,
    * or null when nothing walkable is near the tap or no route exists. cost is in iso units (percent across). */
   function plan(world, from, to, snap) {
-    var m = rasterise(world), s = cellOf(from.x, from.y), g0 = cellOf(to.x, to.y), cands = nearestFreeList(m, g0.c, g0.r, snap === undefined ? 4 : snap);
+    var m = rasterise(world), cols = m.cols, s = cellOf(from.x, from.y, m), g0 = cellOf(to.x, to.y, m), cands = nearestFreeList(m, g0.c, g0.r, snap === undefined ? 4 : snap);
     if (!cands.length) return null;
     /* a blocked start (a hotspot walk can end on furniture): she may cross the piece she stands in, nothing else */
     var box = blocked(world.solids, from.x, from.y);
-    if (box) for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var q = centre(c, r); if (inBox(box, q.x, q.y) && inZones(world.zones, q.x, q.y)) m[r * COLS + c] = 1; }
-    m[s.r * COLS + s.c] = 1;
+    if (box) for (var r = 0; r < ROWS; r++) for (var c = 0; c < cols; c++) { var q = centre(c, r); if (inBox(box, q.x, q.y) && inZones(world.zones, q.x, q.y)) m[r * cols + c] = 1; }
+    /* the route starts at a cell she can step to in a straight line (the first leg is checked in true geometry); with none,
+     * the cell she stands in is forced open as before */
+    var starts = startCells(m, world, from, box), forced = !starts.length;
+    if (forced) { m[s.r * cols + s.c] = 1; starts = [s]; }
+    var first = forced ? null : function (a, b) { return segClear(world, a, b, box); };
     for (var k = 0; k < Math.min(cands.length, 6); k++) {
       var g = cands[k], snapped = g.c !== g0.c || g.r !== g0.r, goal = snapped ? centre(g.c, g.r) : { x: to.x, y: to.y };
       if (g.c === s.c && g.r === s.r) return { pts: [{ x: from.x, y: from.y }, goal], snapped: snapped, cost: Math.hypot(goal.x - from.x, (goal.y - from.y) / Y_SCALE) };
-      var cells = astar(m, s, g); if (!cells) continue; /* an unreachable pocket: try the next nearest */
-      var pts = cells.map(function (x) { return centre(x.c, x.r); }); pts[0] = { x: from.x, y: from.y }; pts[pts.length - 1] = goal;
-      var corners = pull(m, pts), cost = 0;
-      for (var i = 1; i < corners.length; i++) cost += Math.hypot(corners[i].x - corners[i - 1].x, (corners[i].y - corners[i - 1].y) / Y_SCALE);
-      return { pts: corners, snapped: snapped, cost: cost };
+      for (var q = 0; q < starts.length; q++) {
+        var cells = astar(m, starts[q], g); if (!cells) continue; /* an unreachable pocket: try the next start, then the next goal */
+        var pts = cells.map(function (x) { return centre(x.c, x.r); }); pts[pts.length - 1] = goal;
+        if (forced) pts[0] = { x: from.x, y: from.y }; else pts.unshift({ x: from.x, y: from.y });
+        var corners = pull(m, pts, first), cost = 0;
+        for (var i = 1; i < corners.length; i++) cost += Math.hypot(corners[i].x - corners[i - 1].x, (corners[i].y - corners[i - 1].y) / Y_SCALE);
+        return { pts: corners, snapped: snapped, cost: cost };
+      }
     }
     return null;
   }
 
-  var W = { Y_SCALE: Y_SCALE, SPEED: SPEED, SUBSTEP: SUBSTEP, CELL: CELL, ROWH: ROWH, COLS: COLS, ROWS: ROWS, rasterise: rasterise, cellOf: cellOf, centre: centre, cellFree: cellFree, nearestFree: nearestFree, nearestFreeList: nearestFreeList, inBox: inBox, lineFree: lineFree, astar: astar, pull: pull, plan: plan, inPoly: inPoly, inZones: inZones, blocked: blocked, propBox: propBox, step: step, doorAt: doorAt, depthRank: depthRank, world: world, HOMES: HOMES, HOME_ONLY: HOME_ONLY, dressHomes: dressHomes, sceneOf: sceneOf, entryFor: entryFor, checkLayout: checkLayout, SCENES: ['home', 'garden', 'street', 'plaza'], FRAMES: FRAMES, FPS: FPS, STRIDE: STRIDE, cycleAdvance: cycleAdvance, frameOf: frameOf, dirFor: dirFor };
+  var W = { Y_SCALE: Y_SCALE, SPEED: SPEED, FAR: FAR, SUBSTEP: SUBSTEP, CELL: CELL, ROWH: ROWH, COLS: COLS, ROWS: ROWS, rasterise: rasterise, cellOf: cellOf, centre: centre, cellFree: cellFree, nearestFree: nearestFree, nearestFreeList: nearestFreeList, inBox: inBox, lineFree: lineFree, astar: astar, pull: pull, segClear: segClear, startCells: startCells, plan: plan, inPoly: inPoly, inZones: inZones, blocked: blocked, propBox: propBox, step: step, doorAt: doorAt, passing: passing, depthRank: depthRank, world: world, HOMES: HOMES, HOME_ONLY: HOME_ONLY, dressHomes: dressHomes, sceneOf: sceneOf, entryFor: entryFor, checkLayout: checkLayout, SCENES: ['home', 'garden', 'street', 'plaza'], FRAMES: FRAMES, FPS: FPS, STRIDE: STRIDE, cycleAdvance: cycleAdvance, frameOf: frameOf, dirFor: dirFor };
   root.OvuWalk = W;
 
   /* ---------- DOM wiring (only in the room page) ---------- */
@@ -304,7 +335,7 @@
   /* stop walking and write the position back through the room, with its slide transition suppressed */
   function commit() {
     if (!active) return;
-    var arrived = !route, cb = pendingDone; pendingDone = null; quietDoors = false;
+    var arrived = !route && routeEnded, cb = pendingDone; pendingDone = null; quietDoors = false; routeEnded = false;
     active = false; route = null; root.cancelAnimationFrame(raf); raf = 0; last = 0;
     avatar.style.transition = 'none'; R.placeAvatar({ x: cur.x, y: cur.y }, flip); avatar.style.transform = '';
     void avatar.offsetWidth; avatar.style.transition = '';
@@ -318,14 +349,14 @@
   /* the room's own walks (a hotspot, the walk home, a shelf): planned around the furniture, the pets and the pond like a
    * floor tap, with her walk cycle; the stairs are floor too, so a shelf upstairs is one route. Returns false to hand the
    * walk back to the room's straight line (busy, travelling, nothing plannable). The callback fires on arrival only. */
-  var pendingDone = null, quietDoors = false;
+  var pendingDone = null, quietDoors = false, routeEnded = false; /* routeEnded: the route reached its last point (not cut short) */
   function routeTo(wp, done) {
     if (travelling || !wp || R.busy()) return false;
     pendingDone = null; if (active) commit();
     var from = R.pos(), res = plan(worldNow(), from, { x: wp.x, y: wp.y }, 2);
     if (!res || res.pts.length < 2) return false;
     if (!start()) return false;
-    route = { pts: res.pts.slice(1), i: 0, left: res.cost }; quietDoors = true; pendingDone = done || null;
+    route = { pts: res.pts.slice(1), i: 0, left: res.cost }; routeEnded = false; quietDoors = true; pendingDone = done || null;
     var d0 = route.pts[0]; face(d0.x - cur.x);
     R.emit('walk', 'room');
     return true;
@@ -336,14 +367,15 @@
     while (route && dt > 0) {
       var tgt = route.pts[route.i]; if (!tgt) { route = null; break; }
       var dx = tgt.x - cur.x, dy = tgt.y - cur.y, dist = Math.hypot(dx, dy / Y_SCALE);
-      if (dist < 0.05) { route.i++; if (route.i >= route.pts.length) { cur.x = tgt.x; cur.y = tgt.y; route = null; } continue; }
+      if (dist < 0.05) { route.i++; if (route.i >= route.pts.length) { cur.x = tgt.x; cur.y = tgt.y; route = null; routeEnded = true; } continue; }
       var remaining = route.left - 0 + dist, k = route.i === route.pts.length - 1 ? Math.max(MIN_EASE, Math.min(1, dist / EASE)) : 1;
       var adv = Math.min(dist, SPEED * k * dt), f = adv / dist;
       var nx = cur.x + dx * f, ny = cur.y + dy * f;
       if (!free(w, nx, ny, true) && !inZones(w.zones, nx, ny)) { route = null; break; } /* never off the floor, even if the mask changed */
       face(dx); cur.x = nx; cur.y = ny; dt -= adv / (SPEED * k);
-      if (adv >= dist - 1e-6) { route.i++; if (route.i >= route.pts.length) route = null; }
-      if (!inDoor && doorAt(w.doors, cur.x, cur.y)) { route = null; break; } /* a door on the way: the frame handles it */
+      if (adv >= dist - 1e-6) { route.i++; if (route.i >= route.pts.length) { route = null; routeEnded = true; } }
+      var dw = !inDoor && !quietDoors && route ? doorAt(w.doors, cur.x, cur.y) : null;
+      if (dw && !passing(dw)) { route = null; break; } /* an arch or a gate on the way: the frame takes her through. A routed hotspot walk (quietDoors) and a storefront she passes never stop her */
     }
     if (!route) return false;
     return true;
@@ -354,7 +386,7 @@
     var p = R.pos(); if (p.x !== anchor.x || p.y !== anchor.y) { yieldWalk(); return; }
     if (R.busy()) { clearInput(); commit(); return; }
     var v = keyVec(); if (v) route = null; /* keys take over from a tapped route */
-    if (!v && !route) { commit(); return; }
+    if (!v && !route) { if (!stopAtDoor()) commit(); return; }
     if (dt) {
       var before = { x: cur.x, y: cur.y }, w;
       if (route) { followRoute(dt); w = worldNow(); }
@@ -364,14 +396,17 @@
         if (dirNow !== cyc.dir || !cyc.on) cycleShow(dirNow);
         cycleStep(Math.hypot(mdx, mdy / Y_SCALE));
         render();
-        var d = doorAt(w.doors, cur.x, cur.y);
-        if (d && !inDoor && !quietDoors) { inDoor = true; commit(); clearInput(); if (d.to) travel(d.to); else if (d.tap) R.tap(R.hotspot(d.tap)); return; } /* a routed hotspot walk lets the hotspot's own action speak */
+        var d = doorAt(w.doors, cur.x, cur.y), going = !!(route || keyVec());
+        if (d && !inDoor && !quietDoors && !(passing(d) && going)) { enterDoor(d); return; } /* a routed hotspot walk lets the hotspot's own action speak */
         if (!d) inDoor = false;
       }
-      if (!route && !v) { commit(); return; }
+      if (!route && !v) { if (!stopAtDoor()) commit(); return; }
     }
     raf = root.requestAnimationFrame(frame);
   }
+  function enterDoor(d) { inDoor = true; commit(); clearInput(); if (d.tap) R.tap(R.hotspot(d.tap)); else if (d.to) travel(d.to); }
+  /* she stopped walking: on a storefront's doorstep that she walked onto (not one she started on), she goes in */
+  function stopAtDoor() { if (inDoor || quietDoors) return false; var d = doorAt(worldNow().doors, cur.x, cur.y); if (!d || !passing(d)) return false; enterDoor(d); return true; }
   /* the ring at the tapped spot: a div inside the plate so it scales with the camera */
   function showRing(x, y, bad) {
     if (!ring) { ring = doc.createElement('div'); ring.className = 'tapring'; ring.setAttribute('aria-hidden', 'true'); inner.appendChild(ring); }
@@ -387,7 +422,8 @@
     if (!res) { showRing(x, y, true); return false; }
     var goal = res.pts[res.pts.length - 1]; showRing(goal.x, goal.y, false);
     if (!start()) return false;
-    route = { pts: res.pts.slice(1), i: 0, left: res.cost }; inDoor = !!doorAt(worldNow().doors, cur.x, cur.y); R.emit('walk', 'tap'); /* an accepted walk: the camera follows again */
+    pendingDone = null; quietDoors = false; /* a floor tap replaces a hotspot walk under way: its action no longer waits at the end */
+    route = { pts: res.pts.slice(1), i: 0, left: res.cost }; routeEnded = false; inDoor = !!doorAt(worldNow().doors, cur.x, cur.y); R.emit('walk', 'tap'); /* an accepted walk: the camera follows again */
     return true;
   }
   function isInteractive(t) { return !!(t && t.closest && t.closest(INTERACTIVE)); }
@@ -434,22 +470,27 @@
     });
     return true;
   }
-  /* mini-map tap: walk to the door that leads there, then fade; with no direct door, fade straight away */
+  /* the mini-map is a shortcut: a door a short walk away (FAR iso units, about two and a half seconds) is walked to and then
+   * faded through; a far one (the other end of the wide street), an unreachable one, or none at all fades straight away */
+  function walkOrFade(d, to) {
+    var res = d ? plan(worldNow(), R.pos(), { x: d.x, y: d.y }, 2) : null;
+    if (!res || res.cost > FAR) { travel(to); return; }
+    R.chime('tap'); R.cancelIdle(); R.walkTo({ x: d.x, y: d.y, flip: !!d.flip }, function () { if (!R.busy()) travel(to); });
+  }
+  /* mini-map tap: walk to the door that leads there if it is near, then fade */
   function goTo(sceneId) {
     var L = R.layout(); if (travelling || R.busy()) return;
     if (sceneOf(L) === sceneId && !R.visiting()) return;
     if (active) commit();
-    var d = (L.doors || []).filter(function (x) { return x.to === sceneId; })[0];
-    if (d && !R.visiting()) { R.chime('tap'); R.cancelIdle(); R.walkTo({ x: d.x, y: d.y, flip: !!d.flip }, function () { if (!R.busy()) travel(sceneId); }); }
-    else travel(sceneId);
+    var d = R.visiting() ? null : (L.doors || []).filter(function (x) { return x.to === sceneId; })[0];
+    walkOrFade(d, sceneId);
   }
-  /* a store sub-stop on the mini-map: on the street walk to its door first, inside another store fade across */
+  /* a store sub-stop on the mini-map: on the street its door the same way, inside another store fade across */
   function goToStore(layoutId) {
     var L = R.layout(); if (travelling || R.busy() || !R.LAYOUTS[layoutId] || L.id === layoutId) return;
     if (active) commit();
     var d = L.id === 'street' ? (L.doors || []).filter(function (x) { return x.to === layoutId; })[0] : null;
-    if (d) { R.chime('tap'); R.cancelIdle(); R.walkTo({ x: d.x, y: d.y, flip: !!d.flip }, function () { if (!R.busy()) travel(layoutId); }); }
-    else travel(layoutId);
+    walkOrFade(d, layoutId);
   }
   /* the door of every home leads into the garden */
   R.hotspotHandlers.door = function (id, L) { if (sceneOf(L) !== 'home') return false; travel('garden'); return true; };
@@ -480,7 +521,7 @@
       var k = KEYS[e.key]; if (!k || e.metaKey || e.ctrlKey || e.altKey) return;
       var t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       if (R.busy()) return;
-      e.preventDefault(); if (!keys[k]) { keys[k] = true; route = null; start(); }
+      e.preventDefault(); if (!keys[k]) { keys[k] = true; route = null; pendingDone = null; quietDoors = false; start(); } /* keys take over: a hotspot walk's action is dropped */
     });
     doc.addEventListener('keyup', function (e) { var k = KEYS[e.key]; if (k) delete keys[k]; });
     root.addEventListener('blur', function () { keys = {}; });
@@ -502,8 +543,8 @@
   /* opt-in overlay: zones, solids, door triggers, stand points and the walkable cells over the plate (OvuWalk.debug(true)) */
   function debug(on) {
     var old = doc.getElementById('walkDebug'); if (old) old.remove(); if (!on) return;
-    var L = R.layout(), w = worldNow(), m = rasterise(w), s = '<svg id="walkDebug" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;z-index:50;pointer-events:none">';
-    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) if (m[r * COLS + c]) s += '<rect x="' + (c * CELL) + '" y="' + (r * ROWH) + '" width="' + CELL + '" height="' + ROWH + '" fill="rgba(80,200,120,.16)"/>';
+    var L = R.layout(), w = worldNow(), m = rasterise(w), sw = 100 * w.span, s = '<svg id="walkDebug" viewBox="0 0 ' + sw + ' 100" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:' + sw + '%;height:100%;z-index:50;pointer-events:none">';
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < m.cols; c++) if (m[r * m.cols + c]) s += '<rect x="' + (c * CELL) + '" y="' + (r * ROWH) + '" width="' + CELL + '" height="' + ROWH + '" fill="rgba(80,200,120,.16)"/>';
     (w.solids || []).forEach(function (b) { s += '<rect x="' + b.x0 + '" y="' + b.y0 + '" width="' + (b.x1 - b.x0) + '" height="' + (b.y1 - b.y0) + '" fill="rgba(220,60,60,.2)" stroke="#c33" stroke-width=".3"/>'; });
     (w.doors || []).forEach(function (d) { s += '<ellipse cx="' + d.x + '" cy="' + d.y + '" rx="' + (d.r || 4) + '" ry="' + ((d.r || 4) * Y_SCALE) + '" fill="rgba(60,120,240,.25)" stroke="#36c" stroke-width=".3"/>'; });
     (L.hotspots || []).forEach(function (h) { if (h.wp) s += '<circle cx="' + h.wp.x + '" cy="' + h.wp.y + '" r=".8" fill="#fff" stroke="#639" stroke-width=".3"/>'; });

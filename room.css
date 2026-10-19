@@ -46,6 +46,10 @@ button{font-family:inherit;color:inherit}
 /* Scene */
 .scene{position:relative;width:100%;aspect-ratio:1472/1840;overflow:hidden;background:linear-gradient(180deg,#d8c8ec 0%,#cdb9e6 50%,#d9c9ea 100%);transform-style:preserve-3d;perspective:900px}
 .scene-inner{position:absolute;inset:0;transition:transform .5s ease-out;will-change:transform}
+/* a wide plate (L.span box widths, docs/design/2026-10-19-wide-street.md): the plate and the full-cover layers run the whole
+ * width past the box-sized inner; the box itself never scrolls (clip), only the camera moves the view */
+.scene{overflow:clip}
+.scene-inner>:is(.room-img,.night-veil,.stars,.sparkles){width:calc(var(--span,1)*100%);right:auto}
 .room-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none;transition:opacity 1.6s ease,filter 1.6s ease}
 /* the window patches are part of the plate: whatever dims or tints the plate dims or tints them too */
 .scene.is-night :is(.room-img.day,.win-patch){filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg)}
