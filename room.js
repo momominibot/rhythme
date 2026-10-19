@@ -960,15 +960,6 @@
       '<div class="row"><button class="btn primary" id="cfUse"><span class="ms">check</span>Use this food</button><button class="btn ghost" id="cfCancel">Cancel</button></div></div>';
   }
   function num(id) { var v = $(id).value; return v === '' ? null : Number(v); }
-  /* teas and herbs (ovu-herbs.js): comfort, never treatment; sources in the evidence register */
-  function teasHTML(phase) {
-    if (!window.OvuHerbs) return '';
-    var H = window.OvuHerbs, refs = function (ids) { return ids.map(function (id) { var e = window.OvuEvidence && OvuEvidence.get(id); return e ? '<a href="evidence.html#' + id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + id + '</i></a>' : ''; }).join(''); };
-    return '<section class="dsec teas"><h4><span class="ms">emoji_food_beverage</span>Teas and herbs</h4><p class="help" style="margin:2px 0 8px">Familiar comfort drinks, with what research says and who should take care. Comfort, not treatment.</p>' +
-      H.forPhase(phase).map(function (t) { return '<details class="tea"><summary>' + (t.img ? '<img class="teaimg" src="' + ART + t.img + '" alt="">' : '<span class="ms">' + t.icon + '</span>') + '<span><b>' + esc(t.name) + '</b><small>' + esc(t.why) + '</small></span><span class="ms go">expand_more</span></summary><div class="teabody"><p><b>What research says</b>' + esc(t.research) + '</p><p class="care"><b>Take care</b>' + esc(t.care) + '</p><p class="evrefs">' + refs(t.refs) + '</p></div></details>'; }).join('') +
-      '<div class="teacare"><b><span class="ms">health_and_safety</span>Check with a doctor or pharmacist first</b>' + H.TAKE_CARE.map(function (c) { return '<p><b>' + esc(c.name) + '</b>' + esc(c.text) + ' <span class="evrefs">' + refs(c.refs) + '</span></p>'; }).join('') +
-      '<p class="help">Pregnant, breastfeeding, taking medicines (including the pill or blood thinners), or living with kidney, liver or heart disease? Ask before trying any herb. Stop if anything feels wrong.</p></div></section>';
-  }
   function openDiary(pane) {
     diaryDate = S.today(); draft = { items: [], photo: null }; picked = null;
     var cs = S.cycleStats(), phase = cs.phase || 'none', tip = PHASE_TIPS[phase] || PHASE_TIPS.none;
@@ -984,7 +975,7 @@
         '<button class="btn primary" id="saveFood" style="width:100%"><span class="ms">check</span>Save meal</button><div class="msg" id="foodMsg"></div>' +
       '</div>' +
       '<div class="dpane" data-pane="today" hidden>' + guideHTML('nova') + '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' + '</div>' +
-      '<div class="dpane" data-pane="ideas" hidden>' + teasHTML(phase) + '<div class="stat"><span class="ms">local_florist</span><div><b>' + esc(tip.title) + '</b><span>' + esc(tip.text) + '</span></div></div>' + '<div id="picksWrap"></div></div>');
+      '<div class="dpane" data-pane="ideas" hidden>' + '<p class="help" style="margin:2px 0 10px"><span class="ms" style="font-size:16px;vertical-align:-3px">yard</span> Teas and herbs now live in the garden greenhouse, with pictures, research and who should take care.</p>' + '<div class="stat"><span class="ms">local_florist</span><div><b>' + esc(tip.title) + '</b><span>' + esc(tip.text) + '</span></div></div>' + '<div id="picksWrap"></div></div>');
     (ovarian ? Promise.resolve(ovarian) : loadJSON('assets/data/ovarian-foods.json').then(function (d) { ovarian = d; return d; })).then(function () { var w = $('#picksWrap'); if (w) w.innerHTML = picksHTML(phase === 'late' ? 'luteal' : phase); }).catch(function () { });
     function setPane(k) { $$('#dTabs button').forEach(function (b) { var on = b.dataset.dpane === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); }); $$('.dpane', body).forEach(function (pn) { pn.hidden = pn.dataset.pane !== k; }); if (k !== 'add') stopCamera(); body.scrollTop = 0; }
     $('#dTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-dpane]'); if (b) { chime('tap'); setPane(b.dataset.dpane); } });
