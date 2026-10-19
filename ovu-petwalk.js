@@ -334,9 +334,18 @@
       pal.still = 0;
     } else {
       pal.still = (pal.still || 0) + dt;
-      if (pal.still > 0.12 && (pet.cycle || pet.el.classList.contains('walking'))) { hideCycle(pet); place(pet); } /* she stopped: the pet sits */
+      if (pal.still > 0.12 && (pet.cycle || pet.el.classList.contains('walking'))) { settleOnFloor(pet, her); hideCycle(pet); place(pet); } /* she stopped: the pet sits, on the floor */
     }
     if (!moved && !herMoved && pal.still > 1) palWait(); else palRaf = root.requestAnimationFrame(palTick);
+  }
+  /* the trail's chords can cut a corner, so a pet may come to rest a fraction inside a piece's footprint (the watering can):
+   * it sits at the nearest floor point instead, never on top of it (checkpoint 3) */
+  function settleOnFloor(pet, her) {
+    var w = worldFor(pet.id); if (onFloor(W, w, pet.x, pet.y)) return;
+    for (var r = 0.5; r <= 4; r += 0.5) for (var a = 0; a < 16; a++) {
+      var x = pet.x + r * Math.cos(a * Math.PI / 8), y = pet.y + r * Math.sin(a * Math.PI / 8) * 0.5;
+      if (onFloor(W, w, x, y) && isoDist({ x: x, y: y }, her) >= 2) { pet.x = x; pet.y = y; if (pal) pal.at = { x: x, y: y }; return; }
+    }
   }
   /* her line goes in the thought bubble above her head */
   function say(text, ms) {
