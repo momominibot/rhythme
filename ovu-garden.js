@@ -68,12 +68,13 @@
       { id: 'plot', x: 50, y: 60, label: 'Plot · water the plants', icon: 'yard', wp: { x: 50, y: 71.5, flip: false } },
       { id: 'pond', x: 70, y: 55, label: 'Pond · a quiet moment', icon: 'water', wp: { x: 66, y: 67, flip: false } },
       { id: 'greenhouse', x: 68, y: 35, label: 'Greenhouse · teas and herbs', icon: 'local_florist', wp: { x: 62, y: 49, flip: false } },
-      { id: 'arch', x: 86, y: 45, label: 'Arch · on to Dream Street', icon: 'park', wp: { x: 80, y: 55, flip: false } }
+      { id: 'arch', x: 86, y: 45, label: 'Arch · on to Dream Street', icon: 'park', wp: { x: 80, y: 55, flip: false } },
+      { id: 'farmpath', x: 77, y: 63, label: 'Path · down to the farm', icon: 'agriculture', wp: { x: 70, y: 66, flip: false } }
     ],
     home: { x: 29, y: 58, flip: false },
     zones: [[[50, 36], [92, 58], [50, 77], [8, 58]]],
     solids: [{ id: 'bench', x0: 22, x1: 44, y0: 38, y1: 50 }, { id: 'tree', x0: 12, x1: 26, y0: 40, y1: 48 }, { id: 'greenhouse', x0: 56, x1: 82, y0: 30, y1: 46 }, { id: 'pond', x0: 57, x1: 78, y0: 52, y1: 64 }, { id: 'planter', x0: 41, x1: 61, y0: 60, y1: 69 }, { id: 'can', x0: 39, x1: 47, y0: 65, y1: 70 }],
-    doors: [{ id: 'gate', to: 'home', x: 29, y: 58, r: 5, flip: true }, { id: 'arch', to: 'street', x: 80, y: 55, r: 5, flip: false }],
+    doors: [{ id: 'gate', to: 'home', x: 29, y: 58, r: 5, flip: true }, { id: 'arch', to: 'street', x: 80, y: 55, r: 5, flip: false }, { id: 'farmpath', to: 'farm', x: 70, y: 66, r: 4, flip: false }],
     meditator: { x: 33, y: 47, w: 11, seat: { x: 32.5, seatY: 45, groundY: 49.5, face: 'left' } }, aura: { x: 33, y: 45, w: 17 }, holo: { x: 43, y: 45, w: 14 },
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
     props: { cat: { x: 44, y: 57, w: 9 }, dog: { x: 66, y: 66, w: 9.5 }, mewmew: { x: 36, y: 66, w: 12 } }
@@ -265,6 +266,7 @@
   function inGarden(L) { return L && L.id === 'garden'; }
   R.hotspotHandlers.gate = function (id, L) { if (!inGarden(L) && L.id !== 'plaza') return false; root.OvuWalk.travel('home'); return true; };
   R.hotspotHandlers.arch = function (id, L) { if (!inGarden(L)) return false; root.OvuWalk.travel('street'); return true; };
+  R.hotspotHandlers.farmpath = function (id, L) { if (!inGarden(L)) return false; if (!R.LAYOUTS.farm) return false; root.OvuWalk.travel('farm'); return true; };
   R.hotspotHandlers.plot = function (id, L) { if (!inGarden(L)) return false; openPlot(); return true; };
   R.hotspotHandlers.pond = function (id, L) { if (!inGarden(L)) return false; openPond(); return true; };
   R.hotspotHandlers.greenhouse = function (id, L) { if (!inGarden(L)) return false; openGreenhouse(); return true; };

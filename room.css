@@ -1445,3 +1445,48 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .petheart.palheart{font-size:18px}
 .prop.owned.pet.palclone{transition:opacity .6s}
 .prop.owned.pet.palbye{opacity:0;pointer-events:none}
+
+/* ---------- life-sim HUD, zone name, proximity prompt (ovu-hud.js, ovu-interact.js): screen space, outside the plate ---------- */
+.gamehud{position:absolute;left:10px;bottom:16px;z-index:7;pointer-events:none;display:flex;align-items:center;gap:8px;padding:5px 10px 5px 8px;border-radius:99px;background:rgba(255,255,255,.82);backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,.9);box-shadow:0 4px 14px rgba(80,50,110,.14);font:700 11.5px var(--sans);color:var(--rm-ink)}
+.gamehud .ms{font-size:16px;color:var(--rm-mauve,#8a6aa6)}
+.gamehud .gh-day{display:inline-flex;align-items:center;gap:4px}
+.gamehud .gh-day small{font-weight:600;color:#7d6b86;margin-left:2px}
+.gamehud .gh-stam{display:inline-flex;align-items:center;gap:4px}
+.gamehud .gh-stam i{display:inline-block;width:46px;height:7px;border-radius:99px;background:rgba(120,90,150,.18);overflow:hidden}
+.gamehud .gh-stam b{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8fcfb4,#e5c98a);transition:width .4s}
+.gamehud.low .gh-stam b{background:linear-gradient(90deg,#e58fa8,#f3b58e)}
+/* seed packets and crops to plant: two to a row, the name over its days, nothing wraps word by word */
+.seedlist{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.seedlist .btn{justify-content:flex-start;text-align:left;padding:10px 12px}
+.seedlist .btn>span:not(.ms){display:flex;flex-direction:column;gap:1px;min-width:0}
+.seedlist .btn b{font:800 14px var(--sans)}
+.seedlist .btn small{font:600 11px var(--sans);opacity:.75;white-space:nowrap}
+.gamehud.low .gh-stam .ms{color:#d9646f}
+.gamehud.hidden{display:none}
+.zonename{position:absolute;left:50%;top:18%;transform:translate(-50%,0) scale(.96);z-index:7;padding:8px 18px;border-radius:99px;background:rgba(58,42,64,.72);color:#fff;font:800 15px var(--sans);letter-spacing:.02em;opacity:0;pointer-events:none;transition:opacity .4s,transform .4s;backdrop-filter:blur(6px)}
+.zonename.on{opacity:1;transform:translate(-50%,0) scale(1)}
+.nearpill{position:absolute;z-index:8;transform:translate(-50%,-100%);padding:6px 12px;border-radius:99px;border:1.5px solid rgba(255,255,255,.9);background:rgba(255,255,255,.9);color:var(--rm-ink);font:700 12px var(--sans);box-shadow:0 4px 12px rgba(80,50,110,.18);opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap}
+.nearpill.on{opacity:1} /* the pill is a sign, not a target: taps around her head still walk; the action button does the deed */
+.nearpill::after{content:'';position:absolute;left:50%;bottom:-6px;width:10px;height:10px;background:inherit;border-right:1.5px solid rgba(255,255,255,.9);border-bottom:1.5px solid rgba(255,255,255,.9);transform:translateX(-50%) rotate(45deg)}
+.actbtn{position:absolute;right:12px;bottom:84px;z-index:8;width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,.95);background:var(--rm-mauve,#8a6aa6);color:#fff;box-shadow:0 6px 16px rgba(80,50,110,.3);display:none;align-items:center;justify-content:center;cursor:pointer}
+.actbtn .ms{font-size:24px}
+.actbtn.on{display:flex}
+.actbtn[hidden]{display:none}
+.actbtn:active{transform:scale(.94)}
+.scene.tired .scene-inner{filter:saturate(.55) brightness(.96)}
+@media (prefers-reduced-motion: reduce){.zonename,.nearpill,.gamehud .gh-stam b{transition:none}}
+
+/* ---------- the farm (ovu-farm.js): beds drawn on the plate, the bed and shed sheets ---------- */
+.bed{position:absolute;transform:translate(-50%,-62%);background:none;border:0;padding:0;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 3px 4px rgba(70,40,100,.16))}
+.bed svg{width:100%;height:auto;display:block;overflow:visible}
+.bed:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:10px}
+.bedcard{display:flex;gap:12px;align-items:center;background:var(--rm-card,#fff);border-radius:16px;padding:12px;margin-top:4px}
+.bedcard .bedpic{width:84px;flex:none;background:#f6eefb;border-radius:12px;padding:6px}
+.bedcard .bedpic svg{width:100%;height:auto;display:block}
+.bedcard .bedtext{display:flex;flex-direction:column;gap:3px;font-size:13.5px}
+.bedcard .bedtext b{font-size:15px}
+.bedcard .weedy{color:#b26a1f;font-weight:700}
+.basketlist{list-style:none;margin:6px 0 0;padding:0}
+.basketlist li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rm-line,#eadcf0);font-size:14px}
+.basketlist li .dot{width:14px;height:14px;border-radius:50%;flex:none}
+.basketlist li b{margin-left:auto}
