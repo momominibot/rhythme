@@ -639,6 +639,14 @@ async def main():
             check("asleep, You still opens and the bed offers the morning", z4 and "morning" in z4.lower(), z4)
             await ctx9.close()
 
+            # the food diary is for food: its Ideas pane points to the garden greenhouse for teas and herbs and lists none itself
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
+            await page.evaluate("()=>document.querySelector('nav a[data-tab=food]').click()"); await page.wait_for_selector('#dTabs', timeout=8000)
+            await page.evaluate("()=>document.querySelector('#dTabs [data-dpane=ideas]').click()"); await page.wait_for_timeout(300)
+            ti = await page.evaluate("()=>{var p=document.querySelector('.dpane[data-pane=ideas]'); return {teas: p.querySelectorAll('details.tea, .dsec.teas').length, pointer: (p.textContent||'').indexOf('garden greenhouse')>-1};}")
+            check("the food diary's Ideas pane lists no teas and points to the garden greenhouse", ti["teas"] == 0 and ti["pointer"], ti)
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()
     finally:
