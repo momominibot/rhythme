@@ -147,7 +147,7 @@ grant select, insert, update on all tables in schema staff to rhythme_staff_fn;
 grant usage, select on all sequences in schema staff to rhythme_staff_fn;
 
 -- ---------- the separate improvement consent (public, own row) ----------
--- The app's switch (not built yet) calls analysis_consent_set(); the server stamps the times. Withdrawal keeps the
+-- The app's "help improve logging" switch calls analysis_consent_set(); the server stamps the times. Withdrawal keeps the
 -- row with withdrawn_at so the history scope and the notice version stay on record. Account deletion cascades.
 create table if not exists public.analysis_consent (
   user_id uuid primary key references auth.users (id) on delete cascade,

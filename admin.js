@@ -74,11 +74,11 @@
       tile('Pipeline', alive === 'ok' ? 'Alive' : alive === 'running' ? 'Running' : alive === 'failed' ? 'Failed' : 'Not run', last ? (last.kind + ', ' + (last.finished_at ? 'finished ' + ago(last.finished_at) : 'in progress')) : 'Press Run now below') +
       tile('Needs you', String(ov.open_proposals || 0), (ov.open_proposals ? 'proposals waiting' : 'nothing waiting')) +
       tile('Accounts', String(c.accounts == null ? '–' : c.accounts), (c.accounts_with_cloud_copy || 0) + ' with a cloud copy') +
-      tile('Improvement opt-in', String(c.consent_active == null ? '–' : c.consent_active), (c.consent_eligible || 0) + ' eligible adults · switch not built yet') +
+      tile('Improvement opt-in', String(c.consent_active == null ? '–' : c.consent_active), eligText(c.consent_eligible, ov.floor)) +
       '</div>' + (blocked.length ? '<div class="note"><b>Model runs are blocked.</b> ' + esc(blocked[0].error) + ' An owner clears it on the Queue tab; nothing retries by itself.</div>' : '') + '</div>';
     html += '<div class="card"><h2>Diary streams<span>floor ' + esc(ov.floor) + ' people</span></h2>';
-    if (!elig.state || elig.state === 'not_enabled') html += '<div class="note"><b>Not enabled.</b> Nobody has turned on the separate “help improve logging” choice (the app switch is not built yet), so the agents may not read any diary rows. Local-only diaries are never visible here. What exists: ' + esc(c.accounts_with_cloud_copy || 0) + ' account' + ((c.accounts_with_cloud_copy || 0) === 1 ? '' : 's') + ' with a cloud copy, kept private to their owners.</div>';
-    else if (elig.state === 'insufficient') html += '<div class="note"><b>Insufficient contributors.</b> ' + esc(elig.value) + ' eligible adults opted in; values stay held back under the ' + esc(ov.floor) + '-person floor.</div>';
+    if (!elig.state || elig.state === 'not_enabled') html += '<div class="note"><b>Not enabled.</b> Nobody has turned on the separate “help improve logging” choice yet, so the agents may not read any diary rows. Local-only diaries are never visible here. What exists: ' + esc(c.accounts_with_cloud_copy || 0) + ' account' + ((c.accounts_with_cloud_copy || 0) === 1 ? '' : 's') + ' with a cloud copy, kept private to their owners.</div>';
+    else if (elig.state === 'insufficient') html += '<div class="note"><b>Insufficient contributors.</b> Fewer than ' + esc(ov.floor) + ' eligible adults have opted in; values stay held back until the floor is reached.</div>';
     else html += '<div class="note"><b>Measured.</b> ' + esc(elig.value) + ' eligible adults contribute; every number below carries its people count.</div>';
     html += '</div>';
     html += '<div class="card"><h2>Runs</h2>' + (runs.length ? '<table class="tbl"><tr><th>When</th><th>Kind</th><th>Status</th><th>Summary</th></tr>' + runs.map(function (r) { return '<tr><td>' + esc(when(r.started_at)) + '</td><td>' + esc(r.kind) + '</td><td><span class="chip ' + (r.status === 'ok' ? 'ok' : r.status === 'running' ? '' : 'high') + '">' + esc(r.status) + '</span></td><td>' + esc(r.error || (r.summary && r.summary.measured === false ? 'no eligible adults yet' : (r.summary && r.summary.measured ? r.summary.eligible + ' eligible, ' + r.summary.window : ''))) + '</td></tr>'; }).join('') + '</table>' : '<p class="empty">No run yet.</p>') +
@@ -87,6 +87,7 @@
     panel(html);
     var b = doc.getElementById('runNow'); if (b) b.addEventListener('click', runNow);
   }
+  function eligText(n, floor) { n = Number(n || 0); floor = Number(floor || 20); return (n === 0 ? '0' : n < floor ? 'fewer than ' + floor : String(n)) + ' eligible adults'; }
   function tile(l, v, s) { return '<div class="tile"><div class="l">' + esc(l) + '</div><div class="v' + (String(v).length > 9 ? ' small' : '') + '">' + esc(v) + '</div><div class="s">' + esc(s) + '</div></div>'; }
   function runNow() {
     var b = doc.getElementById('runNow'), m = doc.getElementById('runMsg'); if (b) b.disabled = true; if (m) m.textContent = 'Running…';
