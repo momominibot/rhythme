@@ -1,5 +1,5 @@
-/* Moon Tap: a no-fail breath break. A ring opens on the in-breath and closes on the out-breath around your
- * Luna companion floating on a still pond. Tap the water and a ripple spreads and refracts the moonlight;
+/* Koi Pond (was Moon Tap): a no-fail breath break. A ring opens on the in-breath and closes on the out-breath over a
+ * still pond where three koi swim (Jamie, 19 Oct: koi, not the moon). Tap the water and a ripple spreads and the koi turn and glide to it;
  * or only watch. Nothing is scored, tap timing
  * changes nothing, and stopping at any moment saves the practice time. The design and the review that shaped
  * it: docs/design/2026-10-18-breath-tap.md, docs/debate/2026-10-18-breath-tap-codex-review.md. */
@@ -35,11 +35,11 @@
   function build() {
     if (el) return el;
     reduced = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    el = h('<div class="btap" id="btap" role="dialog" aria-label="Moon Tap, a breath break" hidden>' +
+    el = h('<div class="btap" id="btap" role="dialog" aria-label="Koi Pond, a breath break" hidden>' +
       '<div class="w-stars" aria-hidden="true"></div>' +
       '<div class="btap-card" id="btapCard">' +
-        '<h2>Moon Tap</h2>' +
-        '<p>Breathe comfortably. Tap the water if you like, or simply watch. You don’t need to match the ring.</p>' +
+        '<h2>Koi Pond</h2>' +
+        '<p>Breathe comfortably. Tap the water and the koi come to see, or simply watch them. You don’t need to match the ring.</p>' +
         '<div class="btap-chips" id="btapPresets" role="group" aria-label="Pace"></div>' +
         '<div class="btap-chips" id="btapLengths" role="group" aria-label="How long"></div>' +
         '<p class="safe">Breathe gently, without forcing a deeper or longer breath. Stop if you feel dizzy, tingly, short of breath or distressed, and return to your usual breathing.</p>' +
@@ -47,6 +47,7 @@
       '</div>' +
       '<div class="btap-stage" id="btapStage" hidden>' +
         '<canvas class="btap-water" id="btapWater" aria-hidden="true"></canvas>' +
+        '<div class="btap-koi" id="btapKoi" aria-hidden="true"><img src="assets/room/dream/koi-1.webp" alt=""><img src="assets/room/dream/koi-2.webp" alt=""><img src="assets/room/dream/koi-3.webp" alt=""></div>' +
         '<div class="btap-ring" id="btapRing"><img id="btapPet" alt=""></div>' +
         '<div class="btap-word" id="btapWord" aria-live="polite"></div>' +
         '<button type="button" class="btn btap-stop" id="btapStop">Stop</button>' +
@@ -70,7 +71,7 @@
   }
   function open(o) {
     opts = o || {}; build();
-    var pet = $('#btapPet'); pet.src = opts.pet || (root.OvuMascot ? OvuMascot.src(null, false) : 'assets/room/dream/orb-bunny.webp');
+    var pet = $('#btapPet'); pet.hidden = true; pet.removeAttribute('src'); /* no moon: the koi are the company now */
     $('#btapCard').hidden = false; $('#btapStage').hidden = true; $('#btapDone').hidden = true; el.hidden = false;
     document.body.classList.add('btap-open');
   }
@@ -83,6 +84,7 @@
     $('#btapWord').textContent = PRESETS[preset].quiet ? '' : 'in';
     var stage = $('#btapStage'); water = reduced ? null : makeWater($('#btapWater'), stage.clientWidth || root.innerWidth, stage.clientHeight || root.innerHeight);
     if (water) { renderWater(water); drop(water, water.w / 2, water.h * 0.44, 12, 10); }
+    koiStart(stage.clientWidth || root.innerWidth, stage.clientHeight || root.innerHeight);
     tick();
   }
   function tick() {
@@ -92,6 +94,7 @@
     else ring.style.transform = 'translate(-50%,-50%) scale(' + (0.72 + 0.38 * ph.size).toFixed(3) + ')';
     if (ph.phase !== state.lastPhase) { state.lastPhase = ph.phase; if (!PRESETS[state.preset].quiet) word.textContent = ph.phase === 'in' ? 'in' : 'out'; if (water) drop(water, water.w / 2, water.h * 0.44, 14, 9); }
     if (water && water.active > 0) { stepWater(water); renderWater(water); water.active -= 1; }
+    koiStep();
     if (state.plan && t >= state.plan * 60000) { stop(true); return; }
     raf = root.requestAnimationFrame(tick);
   }
@@ -99,6 +102,7 @@
     if (!state) return;
     state.taps += 1;
     var r = el.getBoundingClientRect();
+    koiCall(x - r.left, y - r.top);
     if (water) drop(water, x - r.left, y - r.top, 4, 72);
     else { var p = document.createElement('span'); p.className = 'btap-petal'; p.style.left = (x - r.left) + 'px'; p.style.top = (y - r.top) + 'px'; $('#btapStage').appendChild(p); setTimeout(function () { p.remove(); }, 1500); }
     plink(); haptic();
@@ -131,7 +135,7 @@
     for (var y = 0; y < gh; y++) for (var x = 0; x < gw; x++) {
       var t = y / gh, i = (y * gw + x) * 4, dx = (x - gw / 2) / gw, dy = (y - gh * 0.44) / gh, d2 = dx * dx + dy * dy * 1.7;
       var glow = Math.exp(-d2 * 16) * 118;
-      bg[i] = 30 + 28 * t + glow; bg[i + 1] = 22 + 20 * t + glow * 0.9; bg[i + 2] = 60 + 46 * t + glow * 0.72; bg[i + 3] = 255;
+      glow *= 0.45; bg[i] = 16 + 18 * t + glow * 0.6; bg[i + 1] = 58 + 34 * t + glow; bg[i + 2] = 72 + 30 * t + glow * 0.9; bg[i + 3] = 255; /* a teal pond with a soft light, not moonlight */
     }
     for (var k = 0; k < 46; k++) { var sx = 1 + Math.floor(rnd() * (gw - 2)), sy = 1 + Math.floor(rnd() * (gh - 2)), a = 0.35 + rnd() * 0.65, j = (sy * gw + sx) * 4; bg[j] = Math.min(255, bg[j] + 110 * a); bg[j + 1] = Math.min(255, bg[j + 1] + 110 * a); bg[j + 2] = Math.min(255, bg[j + 2] + 130 * a); }
     return { ctx: ctx, gw: gw, gh: gh, w: w, h: h, cur: new Float32Array(n), prev: new Float32Array(n), bg: bg, img: ctx.createImageData(gw, gh), active: 0 };
@@ -176,5 +180,41 @@
     $('#btapSum').textContent = (ev ? 'Practice time ' + (m ? m + ' min ' : '') + sec + ' s' : 'Stay a little longer next time and it will count as practice time') + (data.taps ? ' · ' + data.taps + (data.taps === 1 ? ' ripple' : ' ripples') : '') + '.';
     return ev;
   }
-  root.OvuBreathTap = { PRESETS: PRESETS, LENGTHS: LENGTHS, MIN_SAVE_S: MIN_SAVE_S, phaseAt: phaseAt, entryFor: entryFor, open: open, close: close, start: start, stop: stop, makeWater: makeWater, drop: drop, stepWater: stepWater };
+
+  /* ---- the koi: three fish wander the pond; a tap calls them to the ripple, faster at first, then they drift on.
+   * Heading 0 points right; the sprites face up, so they turn a quarter more. Reduced motion: they rest in place. */
+  var koi = [], koiLast = 0, KOI_W = 54;
+  function koiStart(w, h) {
+    var imgs = el ? el.querySelectorAll('#btapKoi img') : [];
+    koi = Array.prototype.map.call(imgs, function (im, i) {
+      var a = (i / 3) * Math.PI * 2 + 0.6;
+      return { el: im, x: w * (0.3 + 0.2 * i), y: h * (0.62 + 0.08 * (i % 2)), a: a, v: 22 + 6 * i, tx: null, ty: null, until: 0, ph: i * 2.1, w: w, h: h };
+    });
+    koiLast = 0; koi.forEach(koiDraw);
+  }
+  function koiDraw(f) {
+    var wag = reduced ? 0 : Math.sin(f.ph) * 7;
+    f.el.style.transform = 'translate(' + (f.x - KOI_W / 2).toFixed(1) + 'px,' + (f.y - KOI_W * 0.8).toFixed(1) + 'px) rotate(' + (f.a * 180 / Math.PI + 90 + wag).toFixed(1) + 'deg)';
+  }
+  function turnToward(f, ang, rate) { var d = Math.atan2(Math.sin(ang - f.a), Math.cos(ang - f.a)); f.a += Math.max(-rate, Math.min(rate, d)); }
+  function koiStep() {
+    if (!koi.length || reduced) return;
+    var now = Date.now(), dt = koiLast ? Math.min(0.05, (now - koiLast) / 1000) : 0; koiLast = now; if (!dt) return;
+    koi.forEach(function (f, i) {
+      var chasing = f.tx !== null && now < f.until, speed = chasing ? 70 : f.v, m = 40;
+      if (chasing) { var dx = f.tx - f.x, dy = f.ty - f.y; if (Math.hypot(dx, dy) < 18) { f.tx = null; } else turnToward(f, Math.atan2(dy, dx), 3.2 * dt); }
+      else { f.a += Math.sin(now / 1700 + i * 2) * 0.5 * dt; }
+      /* stay in the pond: turn back toward the middle near an edge */
+      if (f.x < m || f.x > f.w - m || f.y < m * 2 || f.y > f.h - m * 2) turnToward(f, Math.atan2(f.h * 0.55 - f.y, f.w / 2 - f.x), 2.4 * dt);
+      f.x += Math.cos(f.a) * speed * dt; f.y += Math.sin(f.a) * speed * dt;
+      f.ph += dt * (chasing ? 14 : 6);
+      koiDraw(f);
+    });
+  }
+  function koiCall(x, y) {
+    var now = Date.now();
+    koi.forEach(function (f, i) { f.tx = x + (i - 1) * 22; f.ty = y + (i % 2 ? 16 : -12); f.until = now + 2600 + i * 300; });
+    if (reduced) koi.forEach(function (f) { f.x = f.tx; f.y = f.ty; koiDraw(f); });
+  }
+  root.OvuBreathTap = { PRESETS: PRESETS, LENGTHS: LENGTHS, MIN_SAVE_S: MIN_SAVE_S, phaseAt: phaseAt, entryFor: entryFor, open: open, close: close, start: start, stop: stop, makeWater: makeWater, drop: drop, stepWater: stepWater, koi: function () { return koi.map(function (f) { return { x: f.x, y: f.y, chasing: f.tx !== null && Date.now() < f.until }; }); } };
 })(typeof window !== 'undefined' ? window : this);

@@ -99,6 +99,145 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('model is off by default until permission is given', O.aiConfig().on === false && O.aiConfig().insights === false, JSON.stringify(O.aiConfig()));
 })();
 
+/* ---------- persona safety re-check (docs/debate/2026-10-18-persona-safety-recheck.md), the seven release blockers ---------- */
+(function negationIsClauseAware() {
+  console.log('1. a negation removes only what it negates: severe pain and bleeding after menopause still raise their cards');
+  var w = fresh(), O = w.OvuOrb, post = { lifeStage: 'post' };
+  function code(text, p) { var u = O.urgent(text, p || {}); return u ? u.code : null; }
+  check('"No bleeding, but sudden severe pelvic pain." is an emergency', code('No bleeding, but sudden severe pelvic pain.') === 'SEVERE_PAIN_NOW', code('No bleeding, but sudden severe pelvic pain.'));
+  check('"No period, but severe abdominal pain." is an emergency', code('No period, but severe abdominal pain.') === 'SEVERE_PAIN_NOW', code('No period, but severe abdominal pain.'));
+  check('the same without a comma', code('no bleeding but sudden severe pelvic pain') === 'SEVERE_PAIN_NOW');
+  check('"No period for two years, but spotting today" after menopause raises the bleeding prompt', code('No period for two years, but spotting today', post) === 'POSTMENO_BLEED', code('No period for two years, but spotting today', post));
+  check('a curly apostrophe reads like a straight one', code('I haven’t bled in years but there’s spotting today', post) === 'POSTMENO_BLEED');
+  check('negated bleeding alone after menopause raises nothing', code('no bleeding today, slept well', post) === null && code('Not bleeding at all', post) === null && code('My period has not returned.', post) === null && code('I haven’t had a period since 2023', post) === null);
+  check('a negation never hides severe pain', code('Never had pain this severe in my tummy') === 'SEVERE_PAIN_NOW' && code('no severe pelvic pain until tonight, now sudden severe pelvic pain') === 'SEVERE_PAIN_NOW');
+  check('"no pain" on its own is not read as severe pain', code('No pain, severe bloating today') === null);
+  check('soaking still wins over a leading "no pain"', code('No pain but soaking through a pad every hour') === 'HEAVY_BLEED_NOW');
+  check('"no heavy bleeding" with dizziness is not heavy bleeding with dizziness', code('no heavy bleeding, just a bit dizzy') === null);
+  check('pregnancy with negated bleeding and no pain raises nothing', code('8 weeks pregnant, no bleeding, no pain') === null);
+  check('pregnancy with severe pain is still an emergency after a negation', code('pregnant, no bleeding but sudden severe pelvic pain') === 'PREG_BLEED_NOW');
+})();
+
+(function selfHarmCardComesFirst() {
+  console.log('2. thoughts of harming yourself or your baby raise the emergency card before anything is parsed');
+  var w = fresh(), O = w.OvuOrb;
+  var COPY = 'If you have thoughts of harming yourself or your baby, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.';
+  ['I want to hurt myself', 'I feel like killing myself', 'thoughts of hurting my baby', 'I’m scared I might hurt my baby', 'I don’t want to be alive anymore', 'having suicidal thoughts again'].forEach(function (s) {
+    var u = O.urgent(s, {});
+    check('self-harm card for "' + s + '"', u && u.level === 'emergency' && u.code === 'SELF_HARM_NOW' && u.message === COPY, JSON.stringify(u));
+  });
+  var both = O.urgent('soaking through a pad every hour and I want to hurt myself', {});
+  check('the self-harm card comes first, even with heavy bleeding', both && both.code === 'SELF_HARM_NOW', JSON.stringify(both));
+  var u = O.urgent('I want to hurt myself', { lifeStage: 'post' });
+  check('the card carries call links for 995, SOS 1767 and WhatsApp 9151 1767', u && JSON.stringify(u.actions) === JSON.stringify([{ label: 'Call 995', href: 'tel:995' }, { label: 'Call SOS 1767', href: 'tel:1767' }, { label: 'WhatsApp SOS', href: 'https://wa.me/6591511767' }]), JSON.stringify(u && u.actions));
+  check('"I think about hurting myself" and "I’d hurt my baby" raise it too, "I’d never hurt my baby" does not', (O.urgent('Sometimes I think about hurting myself', {}) || {}).code === 'SELF_HARM_NOW' && (O.urgent('I’m so tired I’d hurt my baby', {}) || {}).code === 'SELF_HARM_NOW' && O.urgent('I’d never hurt my baby, just so tired', {}) === null);
+  check('an ordinary hurt is not a self-harm card', O.urgent('I hurt my back carrying the baby', {}) === null && O.urgent('my feet are killing me', {}) === null && O.urgent('am I hurting my baby by drinking coffee?', {}) === null);
+  check('the existing bleeding cards keep their codes and no self-harm copy', (function () { var h = O.urgent('soaking through a pad every hour', {}); return h && h.code === 'HEAVY_BLEED_NOW' && !h.message; })());
+})();
+
+(function noPeriodStatementsAreNotFlow() {
+  console.log('3. "has not returned", "no period", "not bleeding" are no-period observations, never a period entry');
+  var w = fresh(), O = w.OvuOrb, S = w.OvuStore;
+  function periods(s) { return O.parseLocal(s).filter(function (e) { return e.type === 'period'; }); }
+  ['My period has not returned.', 'My period hasn’t come back yet', 'no period this month', 'not bleeding today', 'I haven’t had a period since March', 'I missed my period', 'My period is 5 days late', 'I’m not on my period'].forEach(function (s) {
+    check('no period entry from "' + s + '"', periods(s).length === 0, JSON.stringify(O.parseLocal(s)));
+    check('"' + s + '" is read as a no-period observation', O.noPeriod(s) === true);
+  });
+  check('a real period note is not a no-period observation', O.noPeriod('Period started today, medium') === false && O.noPeriod('heavy bleeding, cramps 6/10') === false);
+  check('a period chip still logs a period', periods('Period started today, medium').length === 1);
+  check('a negation does not hide the bleeding that follows', (function () { var p = periods('no cramps, but heavy bleeding today'); return p.length === 1 && p[0].data.flow === 'heavy'; })());
+  var mood = O.parseLocal('I feel anxious and low before my period.');
+  check('a mood note before a period is not a period day', !mood.some(function (e) { return e.type === 'period'; }) && mood.some(function (e) { return e.type === 'symptom' && e.data.symptoms.indexOf('anxiety') > -1 && e.data.symptoms.indexOf('low mood') > -1; }), JSON.stringify(mood));
+})();
+
+(function symptomNegation() {
+  console.log('4. a negated symptom is not logged');
+  var w = fresh(), O = w.OvuOrb;
+  function syms(s) { var out = []; O.parseLocal(s).forEach(function (e) { if (e.type === 'symptom') out = out.concat(e.data.symptoms); }); return out; }
+  check('"No hot flushes today" logs no hot flushes', syms('No hot flushes today').indexOf('hot flushes') < 0, JSON.stringify(syms('No hot flushes today')));
+  check('"no cramps or bloating" logs neither', syms('no cramps or bloating today').length === 0, JSON.stringify(syms('no cramps or bloating today')));
+  check('"no cramps but a headache" keeps the headache only', (function () { var s = syms('no cramps but a headache'); return s.indexOf('headache') > -1 && s.indexOf('cramps') < 0; })(), JSON.stringify(syms('no cramps but a headache')));
+  check('"didn’t have any cramps" logs no cramps', syms('didn’t have any cramps today').indexOf('cramps') < 0);
+  check('"not anxious" is not anxiety and not a low mood', (function () { var e = O.parseLocal('not anxious or low today, slept fine'); return !e.some(function (x) { return x.type === 'symptom' && (x.data.symptoms.indexOf('anxiety') > -1 || x.data.mood === 'low'); }); })());
+  check('an unnegated symptom is still logged', syms('Hot flushes again today').indexOf('hot flushes') > -1);
+})();
+
+(function symptomWords() {
+  console.log('5. night sweats, irritable, forgetful, flat and tearful map to the symptom list');
+  var w = fresh(), O = w.OvuOrb;
+  function syms(s) { var out = []; O.parseLocal(s).forEach(function (e) { if (e.type === 'symptom') out = out.concat(e.data.symptoms); }); return out; }
+  var ns = O.parseLocal('I had night sweats and woke at 3 am.');
+  check('"I had night sweats and woke at 3 am." is not a dinner', !ns.some(function (e) { return e.type === 'food'; }), JSON.stringify(ns));
+  check('night sweats are logged as hot flushes', syms('I had night sweats and woke at 3 am.').indexOf('hot flushes') > -1);
+  check('irritable and forgetful map to irritability and brain fog', (function () { var s = syms('I am irritable and forgetful.'); return s.indexOf('irritability') > -1 && s.indexOf('brain fog') > -1; })(), JSON.stringify(syms('I am irritable and forgetful.')));
+  check('flat and tearful map to low mood', syms('feeling flat today').indexOf('low mood') > -1 && syms('so tearful this evening').indexOf('low mood') > -1);
+  check('a flat white is a coffee, not a low mood', (function () { var e = O.parseLocal('had a flat white for breakfast'); return e.some(function (x) { return x.type === 'food'; }) && !e.some(function (x) { return x.type === 'symptom'; }); })(), JSON.stringify(O.parseLocal('had a flat white for breakfast')));
+  check('"had cramps after lunch" is a symptom, not a meal', (function () { var e = O.parseLocal('had cramps after lunch'); return !e.some(function (x) { return x.type === 'food'; }) && syms('had cramps after lunch').indexOf('cramps') > -1; })(), JSON.stringify(O.parseLocal('had cramps after lunch')));
+  check('hot flashes, the American spelling, are hot flushes', syms('hot flashes all afternoon').indexOf('hot flushes') > -1);
+})();
+
+(function postmenoSpottingFlagPersists() {
+  console.log('6. spotting after menopause logged as a symptom raises the saved flag, which stays until dismissed');
+  function has(list) { return list.some(function (f) { return f.code === 'POSTMENO_BLEED'; }); }
+  /* the store reads the phone's clock through new Date(): a fake clock lets a later session be 40 days on */
+  function clock(w, iso) { var RealDate = Date; w.__now = new RealDate(iso + 'T12:00:00').getTime(); w.Date = function FakeDate() { var a = arguments; if (!a.length) return new RealDate(w.__now); if (a.length === 1) return new RealDate(a[0]); return new RealDate(a[0], a[1], a[2] || 1, a[3] || 0, a[4] || 0, a[5] || 0, a[6] || 0); }; w.Date.now = function () { return w.__now; }; w.Date.parse = RealDate.parse; w.Date.UTC = RealDate.UTC; w.Date.prototype = RealDate.prototype; }
+  function session(prev, iso) { var n = fresh(); clock(n, iso); n.localStorage.setItem(n.OvuStore.KEY, prev.localStorage.getItem(prev.OvuStore.KEY)); n.OvuStore.load(true); return n; }
+  var day0 = '2026-10-19', day40 = addDays(day0, 40);
+  var w = fresh(); clock(w, day0);
+  var S = w.OvuStore, A = w.OvuAgents, O = w.OvuOrb;
+  S.setProfile({ lifeStage: 'post' });
+  var parsed = O.parseLocal('No period for two years, but spotting today');
+  check('the note is a spotting symptom, not a period day', parsed.some(function (e) { return e.type === 'symptom' && e.data.symptoms.indexOf('spotting') > -1; }) && !parsed.some(function (e) { return e.type === 'period'; }), JSON.stringify(parsed));
+  var saved = O.save(parsed), res = A.analyze(saved[0]);
+  check('saving it raises POSTMENO_BLEED straight away (the toast after saving)', has(res.flags), JSON.stringify(res.flags.map(function (f) { return f.code; })));
+  check('the flag is high and can be dismissed', A.allFlags().some(function (f) { return f.code === 'POSTMENO_BLEED' && f.level === 'high' && f.dismissible === true && f.since === day0; }));
+  var w2 = session(w, day40);
+  check('a new session 40 days later still shows the flag, past the 28-day window', w2.OvuStore.today() === day40 && has(w2.OvuAgents.allFlags()), JSON.stringify(w2.OvuAgents.allFlags().map(function (f) { return f.code; })));
+  check('a flag that is not dismissible cannot be dismissed', w2.OvuAgents.dismissFlag('PAIN_SEVERE') === false);
+  check('dismissing it hides it', w2.OvuAgents.dismissFlag('POSTMENO_BLEED') === true && !has(w2.OvuAgents.allFlags()));
+  var w3 = session(w2, day40);
+  check('the dismissal holds in the next session', !has(w3.OvuAgents.allFlags()));
+  w3.OvuOrb.save(w3.OvuOrb.parseLocal('a bit of spotting today'));
+  check('new spotting after the dismissal raises it again', has(w3.OvuAgents.allFlags()));
+  var w4 = fresh(); clock(w4, day0); var S4 = w4.OvuStore; S4.setProfile({ lifeStage: 'post' });
+  S4.add('period', addDays(day0, -200), { flow: 'medium', clots: false, impact: false });
+  w4.OvuAgents.dailySummary(addDays(day0, -200)); /* the journal reads past days too */
+  check('a period from before menopause raises nothing, even after the journal reads its day', !has(w4.OvuAgents.allFlags()) && !S4.state().postmenoBleed, JSON.stringify(S4.state().postmenoBleed));
+  var w5 = fresh(), S5 = w5.OvuStore; S5.setProfile({ lifeStage: 'post' });
+  S5.add('symptom', S5.today(), { symptoms: ['cramps'], pain: null, mood: '', notes: '' });
+  S5.sandbox({ profile: { lifeStage: 'post' }, events: [{ id: 'x1', type: 'symptom', date: S5.today(), data: { symptoms: ['spotting'] } }] }, function () { w5.OvuAgents.allFlags(); });
+  check('a sandboxed read (the doctor sample) never writes into the real record', !S5.state().postmenoBleed && S5.list('symptom').length === 1, JSON.stringify(S5.state().postmenoBleed));
+})();
+
+(function sleepAssumedAndOneNightPerDate() {
+  console.log('7. assumed sleep times are marked, and several entries on one date count as one night');
+  var w = fresh(), S = w.OvuStore, A = w.OvuAgents, O = w.OvuOrb, today = S.today();
+  var es = O.parseLocal('slept 7h');
+  check('"slept 7h" carries data.assumed = true', es.length === 1 && es[0].type === 'sleep' && es[0].data.assumed === true, JSON.stringify(es));
+  check('"slept 11pm to 7am" is not assumed', O.parseLocal('slept 11pm to 7am')[0].data.assumed !== true);
+  var saved = O.save(es);
+  check('the saved entry keeps assumed', saved.length === 1 && saved[0].data.assumed === true, JSON.stringify(saved[0] && saved[0].data));
+  check('the confirmation line says the wake time was assumed', /assumed/.test(O.describe(es[0])), O.describe(es[0]));
+  var w2 = fresh(), S2 = w2.OvuStore, A2 = w2.OvuAgents, t2 = S2.today();
+  for (var i = 0; i < 5; i++) S2.add('sleep', t2, { bedTime: '02:00', wakeTime: '06:00', quality: 2, notes: '' });
+  var st = S2.sleepStats(7, t2);
+  check('five entries on one date count as one night of 4 h', st.count === 1 && st.nights.length === 1 && st.nights[0].hours === 4 && st.nights[0].blocks === 5, JSON.stringify(st.nights));
+  check('no sleep warning from five entries on one date', !A2.allFlags(t2).some(function (f) { return /^SLEEP_/.test(f.code); }), JSON.stringify(A2.allFlags(t2).map(function (f) { return f.code; })));
+  check('the per-entry list keeps all five entries for deleting', st.entries.length === 5 && st.entries.every(function (e) { return e.id; }));
+  var w3 = fresh(), S3 = w3.OvuStore, t3 = S3.today();
+  S3.add('sleep', t3, { bedTime: '23:00', wakeTime: '02:00', quality: null, notes: '' });
+  S3.add('sleep', t3, { bedTime: '03:00', wakeTime: '07:00', quality: 3, notes: '' });
+  S3.add('sleep', t3, { bedTime: '00:00', wakeTime: '07:00', quality: null, notes: '', assumed: true });
+  var n3 = S3.sleepStats(1, t3).nights[0];
+  check('a broken night joins its blocks: 23:00 to 02:00 plus 00:00 to 07:00 is 8 h, not 14 h', n3 && n3.hours === 8 && n3.blocks === 3, JSON.stringify(n3));
+  check('a night with an assumed block is marked assumed', n3 && n3.assumed === true);
+  var w4 = fresh(), S4 = w4.OvuStore, A4 = w4.OvuAgents, t4 = S4.today();
+  [-6, -3, 0].forEach(function (d) { S4.add('sleep', addDays(t4, d), { bedTime: '02:00', wakeTime: '06:00', quality: null, notes: '' }); });
+  check('three short nights on separate dates are not "in a row"', !A4.allFlags(t4).some(function (f) { return f.code === 'SLEEP_SHORT_RUN'; }));
+  [-2, -1].forEach(function (d) { S4.add('sleep', addDays(t4, d), { bedTime: '02:00', wakeTime: '06:00', quality: null, notes: '' }); });
+  check('three short nights on adjacent dates are "in a row"', A4.allFlags(t4).some(function (f) { return f.code === 'SLEEP_SHORT_RUN'; }));
+})();
+
 (function foodPhotoEstimates() {
   console.log('food photo estimates become diary items, rescale with grams, and stay opt-in');
   var w = fresh(), O = w.OvuOrb, FD = w.OvuFood;
@@ -173,6 +312,68 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('a set split into parts matches each part, never the whole-set row on top (no double count)', split.every(function (it) { return !it.hpb || it.hpb.via !== 'meal name'; }) && split[0].hpb.crId === 'F05100090' && split[1].hpb.crId === 'F11020033' && split[2].hpb.crId === 'F01050005' && split[3].source.kind === 'estimate', JSON.stringify(split.map(function (it) { return [it.name, it.source.kind, it.hpb && it.hpb.crId]; })));
   var w2 = fresh(), O2 = w2.OvuOrb;
   check('without the HPB table every dish is an estimate', O2.foodItemsFrom(food).every(function (it) { return it.source.kind === 'estimate'; }));
+})();
+
+(function localNameMatching() {
+  console.log('photo items match on the relay local_name first, then the item name, then the meal name');
+  var w = fresh(), O = w.OvuOrb, FD = w.OvuFood;
+  FD.sgUse(JSON.parse(fs.readFileSync(path.join(root, 'assets', 'data', 'nutrients-sg-hpb.json'), 'utf8')));
+  function kinds(items) { return JSON.stringify(items.map(function (it) { return [it.name, it.source.kind, it.hpb && it.hpb.crId, it.hpb && it.hpb.via, it.hpb && it.hpb.localName]; })); }
+  var noodles = { name: 'flat yellow noodles tossed in chilli vinegar with minced pork, liver and meatballs', portion: 'bowl', grams: 450, kcal: 560, protein_g: 28, carb_g: 64, fat_g: 20, fiber_g: 3, confidence: 'medium' };
+  var soup = { name: 'clear savoury soup', portion: 'bowl', grams: 250, kcal: 45, protein_g: 3, carb_g: 3, fat_g: 2, fiber_g: 0, confidence: 'medium' };
+  check('the descriptive noodle name alone matches no HPB row', FD.sgMatch(noodles.name) === null, JSON.stringify(FD.sgMatch(noodles.name)));
+  /* the same photo twice: once with local_name on each item, once without */
+  var withLocal = O.foodItemsFrom({ is_food: true, meal_name: 'Bak chor mee dry with soup', items: [Object.assign({}, noodles, { local_name: 'bak chor mee (dry)' }), Object.assign({}, soup, { local_name: '' })] });
+  check('with local_name: the noodles are HPB bak chor mee (dry) via the local name at the model’s 450 g, the soup stays an estimate', withLocal[0].source.kind === 'hpb' && withLocal[0].hpb.crId === 'F05060002' && withLocal[0].hpb.via === 'local name' && withLocal[0].hpb.localName === 'bak chor mee (dry)' && withLocal[0].grams === 450 && withLocal[1].source.kind === 'estimate' && !withLocal[1].hpb, kinds(withLocal));
+  var withoutLocal = O.foodItemsFrom({ is_food: true, meal_name: 'Bak chor mee dry with soup', items: [noodles, soup] });
+  check('without local_name: the same noodles still land on bak chor mee (dry), but only through the meal-name fallback', withoutLocal[0].source.kind === 'hpb' && withoutLocal[0].hpb.crId === 'F05060002' && withoutLocal[0].hpb.via === 'meal name' && !withoutLocal[0].hpb.localName && withoutLocal[1].source.kind === 'estimate', kinds(withoutLocal));
+  var generic = { is_food: true, meal_name: 'Noodles with soup', items: [Object.assign({}, noodles, { local_name: 'bak chor mee (dry)' }), soup] };
+  check('a generic meal name: the local name still matches the noodles, without it both items stay estimates', O.foodItemsFrom(generic)[0].hpb.via === 'local name' && O.foodItemsFrom({ is_food: true, meal_name: 'Noodles with soup', items: [noodles, soup] }).every(function (it) { return it.source.kind === 'estimate'; }), kinds(O.foodItemsFrom(generic)));
+  var ck = O.foodItemsFrom({ is_food: true, meal_name: 'Breakfast', items: [{ name: 'steamed rice cakes with preserved radish', local_name: 'chwee kueh', portion: 'serving', grams: 200, kcal: 300, protein_g: 5, carb_g: 50, fat_g: 9, fiber_g: 1, confidence: 'medium' }] });
+  check('the local name decides when the description would read as another dish (chwee kueh, not plain rice)', ck[0].hpb && ck[0].hpb.crId === 'F11090005' && ck[0].hpb.via === 'local name', kinds(ck) + ' name-only: ' + JSON.stringify((FD.sgMatch('steamed rice cakes with preserved radish') || { food: {} }).food.name));
+  var hanzi = O.foodItemsFrom({ is_food: true, meal_name: '', items: [{ name: 'Dry minced meat noodles (bak chor mee)', local_name: '肉脞面', portion: 'bowl', grams: 400, kcal: 510, protein_g: 24, carb_g: 62, fat_g: 19, fiber_g: 3, confidence: 'medium' }] });
+  check('a local name with no HPB row falls back to the item name and is still recorded', hanzi[0].hpb && hanzi[0].hpb.crId === 'F05060002' && hanzi[0].hpb.via === 'item name' && hanzi[0].hpb.localName === '肉脞面', kinds(hanzi));
+  var odd = O.foodItemsFrom({ is_food: true, meal_name: '', items: [
+    { name: 'Dry minced meat noodles (bak chor mee)', local_name: 42, grams: 400, kcal: 510 },
+    { name: 'hot drink', local_name: '  kopi \n  c ', portion: 'cup', grams: 250, kcal: 120 },
+    { name: 'Steamed chicken rice', local_name: null, grams: 400, kcal: 600 }] });
+  check('a non-string local name is ignored, whitespace is collapsed (kopi c), a null local name falls back to the item name', odd[0].hpb.via === 'item name' && !odd[0].hpb.localName && odd[1].hpb && odd[1].hpb.crId === 'D09010036' && odd[1].hpb.via === 'local name' && odd[1].hpb.localName === 'kopi c' && odd[2].hpb.crId === 'F05100133' && odd[2].hpb.via === 'item name', kinds(odd));
+  var lv = O.foodItemsFrom({ is_food: true, meal_name: 'Bak chor mee dry with soup', items: [{ name: 'dry flat noodles with minced pork, mushrooms, pork slices, cabbage and dark sauce', portion: 'bowl', grams: 550, kcal: 640 }] });
+  check('an item name match is labelled item name', lv[0].hpb.via === 'item name', kinds(lv));
+  var w2 = fresh(), O2 = w2.OvuOrb;
+  check('without the HPB table a local name changes nothing (estimates only)', O2.foodItemsFrom({ is_food: true, items: [Object.assign({}, noodles, { local_name: 'bak chor mee (dry)' })] })[0].source.kind === 'estimate');
+})();
+
+(function relayCleanerLocalName() {
+  console.log('the luna relay asks for local_name, passes it through clamped, and keeps the item schema otherwise unchanged');
+  var src = fs.readFileSync(path.join(root, 'supabase', 'functions', 'luna', 'index.ts'), 'utf8');
+  var prompt = (src.match(/const FOOD_SYSTEM = ([\s\S]*?");\n/) || [])[1] || '';
+  var itemSpec = (prompt.match(/\\"items\\":\[\{([\s\S]*?)\}\]/) || [])[1] || '';
+  var promptKeys = (itemSpec.match(/\\"(\w+)\\":/g) || []).map(function (k) { return k.replace(/[\\":]/g, ''); });
+  var expected = ['name', 'local_name', 'portion', 'grams', 'kcal', 'protein_g', 'carb_g', 'fat_g', 'fiber_g', 'confidence'];
+  check('the photo prompt’s item keys are the old ones plus local_name, and it asks for one per item', JSON.stringify(promptKeys) === JSON.stringify(expected) && /own local_name/.test(prompt) && /never make one up/.test(prompt), JSON.stringify(promptKeys));
+  check('the photo prompt has no em dashes', prompt.indexOf('—') === -1);
+  var mod = require('module');
+  if (typeof mod.stripTypeScriptTypes !== 'function') { console.log('  skip cleaner run: this Node has no module.stripTypeScriptTypes'); return; }
+  function fnSrc(name) { var i = src.indexOf('function ' + name + '('), j = src.indexOf('{', i), d = 0; if (i < 0) return ''; for (var k = j; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}' && --d === 0) return src.slice(i, k + 1); } return ''; }
+  var code = mod.stripTypeScriptTypes(['num', 'str', 'cleanFood'].map(fnSrc).join('\n') + '\nresult = cleanFood(JSON.parse(raw));');
+  var raw = JSON.stringify({ is_food: true, meal_name: 'Bak chor mee dry with soup', note: 'Noodles and soup.', items: [
+    { name: 'dry flat noodles with minced pork', local_name: '  bak chor mee\n (dry) ', portion: 'bowl', grams: 550, kcal: 640, protein_g: 34, carb_g: 72, fat_g: 24, fiber_g: 4, confidence: 'medium', extra: 'dropped' },
+    { name: 'clear savoury soup', local_name: null, portion: 'bowl', grams: 250, kcal: 45, protein_g: 3, carb_g: 3, fat_g: 2, fiber_g: 0, confidence: 'medium' },
+    { name: 'a drink', local_name: new Array(101).join('x'), grams: 300, kcal: 100 },
+    { name: 'tea', local_name: 7, grams: 250, kcal: 80 },
+    { name: 'kopi', grams: 250, kcal: 120 }] });
+  var ctx = vm.createContext({ raw: raw, result: null });
+  vm.runInContext(code, ctx, { filename: 'luna-cleanFood' });
+  var out = JSON.parse(JSON.stringify(ctx.result)), it = out.items;
+  check('the cleaner keeps exactly the prompt’s item keys (extra fields dropped)', it.every(function (x) { return JSON.stringify(Object.keys(x)) === JSON.stringify(expected); }), JSON.stringify(Object.keys(it[0])));
+  check('local_name is passed through with whitespace collapsed (bak chor mee (dry))', it[0].local_name === 'bak chor mee (dry)', JSON.stringify(it[0].local_name));
+  check('a null, non-string or missing local_name becomes empty, a long one is cut to 60 characters', it[1].local_name === '' && it[3].local_name === '' && it[4].local_name === '' && it[2].local_name.length === 60, JSON.stringify(it.map(function (x) { return x.local_name.length; })));
+  check('the rest of the item is unchanged (name, grams, kcal, confidence)', it[0].name === 'dry flat noodles with minced pork' && it[0].grams === 550 && it[0].kcal === 640 && it[0].confidence === 'medium' && it[2].confidence === 'low' && out.meal_name === 'Bak chor mee dry with soup', JSON.stringify(it[0]));
+  var w = fresh(), O = w.OvuOrb, FD = w.OvuFood;
+  FD.sgUse(JSON.parse(fs.readFileSync(path.join(root, 'assets', 'data', 'nutrients-sg-hpb.json'), 'utf8')));
+  var items = O.foodItemsFrom(out);
+  check('the cleaned relay output flows into foodItemsFrom: noodles via local name, soup an estimate', items[0].hpb && items[0].hpb.via === 'local name' && items[0].hpb.crId === 'F05060002' && items[1].source.kind === 'estimate', JSON.stringify(items.map(function (x) { return [x.source.kind, x.hpb && x.hpb.via]; })));
 })();
 
 (function sunTimes() {
@@ -894,7 +1095,7 @@ function scenes(todayIso) {
   check('an old numeric asleep value (1) within one date is a night of its own', r.sleep[1] && r.sleep[1].date === '2025-06-03' && r.sleep[1].bedTime === '00:40' && r.sleep[1].wakeTime === '07:25' && r.sleep[1].hours === 6.8, JSON.stringify(r.sleep[1]));
   check('body mass: pounds convert to kg and the later weigh-in of the day wins', r.weight.length === 1 && r.weight[0].date === '2025-06-02' && r.weight[0].kg === 58.1, JSON.stringify(r.weight));
   check('menstrual flow: a named Medium with a metadata child and a numeric 2 (light) become period days; None is skipped', r.period.length === 2 && r.period[0].flow === 'medium' && r.period[0].date === '2025-06-04' && r.period[1].flow === 'light' && r.counts.flowNone === 1, JSON.stringify(r.period));
-  check('steps and heart rate are skipped and counted by kind', r.skipped.HKQuantityTypeIdentifierStepCount === 5 && r.skipped.HKQuantityTypeIdentifierHeartRate === 3 && r.skippedTotal === 8 && r.skippedKinds === 2, JSON.stringify(r.skipped));
+  check('steps, heart rate, night sweats and a workout are skipped and counted by kind', r.skipped.HKQuantityTypeIdentifierStepCount === 5 && r.skipped.HKQuantityTypeIdentifierHeartRate === 3 && r.skippedTotal === 10 && r.skippedKinds === 4, JSON.stringify(r.skipped));
   check('friendly names for skipped kinds', H.friendlyType('HKQuantityTypeIdentifierStepCount') === 'steps' && H.friendlyType('HKQuantityTypeIdentifierSomethingNew') === 'something new');
   var sc = H.appleScanner(), cut = xml.indexOf('startDate="2025-06-02 02:50');
   sc.push(xml.slice(0, cut - 7), false); sc.push(xml.slice(cut - 7, cut + 40), false); sc.push(xml.slice(cut + 40), true);
@@ -920,14 +1121,14 @@ function scenes(todayIso) {
   S.add('weight', '2025-06-02', { kg: 60 }, 'scale');
   S.add('period', '2025-06-05', { flow: 'heavy' });
   var r = H.parseAppleXml(fs.readFileSync(path.join(root, 'tools/fixtures/apple-export-mini.xml'), 'utf8'));
-  var p = H.apply(r, S);
+  var p = H.apply(r, S, { kinds: ['sleep', 'weight', 'period'] });
   check('three hand-written days are left alone and counted', p.kept === 3 && p.written.added === 2 && p.counts.sleep === 1 && p.counts.weight === 0 && p.counts.period === 1, JSON.stringify({ kept: p.kept, w: p.written, c: p.counts }));
   var mine = S.list('sleep', { from: '2025-06-02', to: '2025-06-02' });
   check('the hand-written night is untouched and no second night was added that day', mine.length === 1 && mine[0].data.notes === 'mine' && S.list('weight', { from: '2025-06-02', to: '2025-06-02' })[0].data.kg === 60 && S.list('period', { from: '2025-06-05', to: '2025-06-05' })[0].data.flow === 'heavy');
   var imp = S.list('sleep', { from: '2025-06-03', to: '2025-06-03' })[0];
   check('an imported night carries source apple-health, the sleep-sheet shape and its asleep minutes', imp && imp.source === 'apple-health' && imp.data.bedTime === '00:40' && imp.data.wakeTime === '07:25' && imp.data.mode === 'import' && S.sleepHours(imp.data) === 6.8, JSON.stringify(imp));
   check('date range covers what was written', p.from === '2025-06-03' && p.to === '2025-06-04', JSON.stringify([p.from, p.to]));
-  var again = H.apply(r, S);
+  var again = H.apply(r, S, { kinds: ['sleep', 'weight', 'period'] });
   check('importing the same file again refreshes in place: nothing added, nothing duplicated', again.written.added === 0 && again.written.updated === 2 && again.refreshed === 2 && S.list('sleep').length === 2 && S.list('period').length === 2, JSON.stringify(again.written));
   check('importedCount sees only imported entries', H.importedCount(S) === 2);
   var gone = H.removeImported(S);
@@ -936,6 +1137,78 @@ function scenes(todayIso) {
   check('future-dated records are skipped, not written', future.future === 1 && future.total === 0);
   var w2 = fresh(), S2 = w2.OvuStore, res = S2.addMany([{ type: 'weight', date: '2025-01-01', data: { kg: 50 }, source: 'google-fit' }, { type: 'weight', date: '2025-01-01', data: { kg: 51 }, source: 'google-fit' }, { type: 'nope', date: '2025-01-01', data: {} }, { type: 'sleep', date: 'bad', data: {} }]);
   check('addMany writes once, keeps single-per-day kinds single and skips invalid items', res.added === 1 && res.skipped === 3 && S2.list('weight').length === 1 && S2.list('weight')[0].data.kg === 50, JSON.stringify(res));
+})();
+
+(function healthImportChoose() {
+  console.log('health import: every kind found is listed with counts and dates; only ticked kinds and dates are written');
+  var w = fresh('2026-10-18'), H = w.OvuHealth, S = w.OvuStore;
+  var r = H.parseAppleXml(fs.readFileSync(path.join(root, 'tools/fixtures/apple-export-mini.xml'), 'utf8'));
+  check('spotting on a day with recorded flow is dropped; spotting on its own day is kept', JSON.stringify(r.spotting) === JSON.stringify([{ date: '2025-06-07', flow: 'spotting' }]), JSON.stringify(r.spotting));
+  check('Apple symptoms map to Rhythme chips, repeats merge, NotPresent is skipped, unmapped ones are not guessed', JSON.stringify(r.symptoms) === JSON.stringify([{ date: '2025-06-04', symptoms: ['cramps', 'headache'] }]) && r.counts.symptomAbsent === 1 && r.skipped.HKCategoryTypeIdentifierNightSweats === 1, JSON.stringify({ s: r.symptoms, c: r.counts }));
+  check('mindful sessions add up per day (10 + 5 minutes, 2 sessions)', JSON.stringify(r.mindful) === JSON.stringify([{ date: '2025-06-02', minutes: 15, sessions: 2 }]), JSON.stringify(r.mindful));
+  check('a Workout element is counted as a kind not in Rhythme yet, its child elements are not Records', r.skipped.HKWorkout === 1 && r.counts.workouts === 1 && r.counts.records === 29, JSON.stringify(r.counts));
+  var k = H.kinds(r);
+  check('the picker lists the six kinds Rhythme has a place for, in order, with counts and date ranges', k.ready.map(function (x) { return x.id + ':' + x.count + ':' + x.from + ':' + x.to; }).join(' ') === 'sleep:2:2025-06-02:2025-06-03 period:2:2025-06-04:2025-06-05 spotting:1:2025-06-07:2025-06-07 symptoms:1:2025-06-04:2025-06-04 weight:1:2025-06-02:2025-06-02 mindful:1:2025-06-02:2025-06-02', JSON.stringify(k.ready));
+  check('kinds with no place yet are listed by friendly name with counts and dates, most first', k.later.map(function (x) { return x.name + ':' + x.count; }).join(',') === 'steps:5,heart rate:3,night sweats:1,workouts:1' && k.later[3].from === '2025-06-03', JSON.stringify(k.later));
+  var kr = H.kinds(r, { from: '2025-06-04' });
+  check('a date range narrows the counts; kinds with nothing in it stay listed with zero', kr.ready.filter(function (x) { return x.id === 'sleep'; })[0].count === 0 && kr.ready.filter(function (x) { return x.id === 'period'; })[0].count === 2 && kr.ready.length === 6);
+  S.add('symptom', '2025-06-04', { symptoms: ['acne'], pain: 2, mood: '', notes: 'mine' });
+  var preview = H.plan(r, S, { kinds: ['symptoms', 'period'] });
+  check('the plan for ticked kinds says which days she logged herself (keptBy)', preview.keptBy.symptoms === 1 && preview.keptBy.period === 0 && preview.counts.symptoms === 0 && preview.counts.period === 2);
+  var none = H.plan(r, S, { kinds: [] });
+  check('nothing ticked plans nothing', none.total === 0 && none.kept === 0);
+  var p = H.apply(r, S, { kinds: ['sleep', 'spotting', 'mindful'], from: '2025-06-03' });
+  var srcs = S.list().filter(function (e) { return H.isImported(e); }).map(function (e) { return e.type + ':' + e.date; }).sort().join(',');
+  check('only ticked kinds inside the date range are written (one night, one spotting day; mindful minutes fall before the range)', srcs === 'period:2025-06-07,sleep:2025-06-03' && p.counts.sleep === 1 && p.counts.spotting === 1 && p.counts.mindful === 0, srcs);
+  check('nothing unticked was written: no weight, no period flow, no symptoms from the file', S.list('weight').length === 0 && S.list('period').filter(function (e) { return e.data.flow !== 'spotting'; }).length === 0 && S.list('symptom').length === 1);
+  var spot = S.list('period', { from: '2025-06-07', to: '2025-06-07' })[0];
+  check('a spotting day never starts a cycle', S.cycleStats('2025-06-10').starts.length === 0 && spot.data.flow === 'spotting', JSON.stringify(S.cycleStats('2025-06-10').starts));
+  H.apply(r, S, { kinds: ['mindful', 'symptoms'] });
+  var mind = S.list('mindfulness')[0];
+  check('mindful minutes become one mindfulness entry for the day, marked as imported', mind && mind.source === 'apple-health' && mind.data.kind === 'imported' && mind.data.minutes === 15 && mind.data.sessions === 2 && mind.data.completed === true, JSON.stringify(mind));
+  var view = H.imported(S);
+  check('the Health data view lists what was brought in per kind, with counts, dates and sources', view.map(function (x) { return x.id + ':' + x.count + ':' + x.sources['apple-health']; }).join(',') === 'sleep:1:1,spotting:1:1,mindful:1:1', JSON.stringify(view.map(function (x) { return [x.id, x.count, x.sources]; })));
+  var gone = H.removeImported(S, 'spotting');
+  check('removing one kind takes only that kind', gone === 1 && H.importedCount(S) === 2 && H.importedCount(S, 'spotting') === 0 && H.importedCount(S, 'sleep') === 1);
+  var night = S.list('sleep')[0];
+  S.update(night.id, { data: Object.assign({}, night.data, { quality: 4 }) });
+  check('an imported night she edits by hand becomes hers', S.get(night.id).source === 'room' && H.importedCount(S, 'sleep') === 0);
+  var again = H.apply(r, S, { kinds: ['sleep'] });
+  check('a later import leaves her edited night alone and does not add a second one', again.keptBy.sleep === 1 && S.list('sleep', { from: '2025-06-03', to: '2025-06-03' }).length === 1 && S.list('sleep', { from: '2025-06-03', to: '2025-06-03' })[0].data.quality === 4);
+  H.apply(r, S, { kinds: ['period'] });
+  var pd = S.list('period', { from: '2025-06-04', to: '2025-06-04' })[0];
+  S.add('period', '2025-06-04', { flow: 'heavy', clots: true, impact: false });
+  check('changing an imported period day on the calendar makes it hers, and Remove keeps it', S.get(pd.id).source === 'room' && H.removeImported(S, 'period') === 1 && S.list('period', { from: '2025-06-04', to: '2025-06-04' })[0].data.flow === 'heavy');
+  check('symptomPresent reads Apple severity and presence values', H.symptomPresent('HKCategoryValueSeverityMild') && H.symptomPresent('HKCategoryValueSeverityUnspecified') && !H.symptomPresent('HKCategoryValueSeverityNotPresent') && !H.symptomPresent('HKCategoryValuePresenceNotPresent') && !H.symptomPresent('1'));
+  var gb = H.googleBuilder();
+  gb.json(JSON.stringify({ fitnessActivity: 'meditation', startTime: '2025-05-11T07:00:00.000+08:00', endTime: '2025-05-11T07:12:00.000+08:00' }), 'x_MEDITATION.json');
+  gb.json(JSON.stringify({ fitnessActivity: 'running', startTime: '2025-05-12T07:00:00.000+08:00', endTime: '2025-05-12T07:30:00.000+08:00' }), 'x_RUNNING.json');
+  gb.csv(fs.readFileSync(path.join(root, 'tools/fixtures/fit-daily-metrics.csv'), 'utf8'), 'Daily activity metrics.csv');
+  var g = gb.result(), gk = H.kinds(g);
+  var ln = {}; gk.later.forEach(function (x) { ln[x.name] = x; });
+  check('Takeout meditation sessions become mindful minutes; running and every other daily column are listed as not in Rhythme yet, weight columns are not', JSON.stringify(g.mindful) === JSON.stringify([{ date: '2025-05-11', minutes: 12, sessions: 1 }]) && ln.steps && ln.steps.count === 3 && ln.steps.from === '2025-05-10' && ln.calories && ln['heart points'] && ln.running && ln.running.count === 1 && !Object.keys(ln).some(function (n) { return /weight|date|time/.test(n); }), JSON.stringify(Object.keys(ln)));
+})();
+
+(function healthImportReviewFixes() {
+  console.log('health import: overlapping mindful sessions, session counts, date edits, future dates (Codex review, 19 Oct)');
+  var w = fresh('2026-10-18'), H = w.OvuHealth, S = w.OvuStore, A = w.OvuAgents;
+  var x = '<HealthData>' +
+    '<Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Breathe" startDate="2025-06-02 08:00:00 +0800" endDate="2025-06-02 08:10:00 +0800" value="HKCategoryValueNotApplicable"/>' +
+    '<Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Calm" startDate="2025-06-02 08:00:00 +0800" endDate="2025-06-02 08:10:00 +0800" value="HKCategoryValueNotApplicable"/>' +
+    '<Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Calm" startDate="2025-06-02 08:05:00 +0800" endDate="2025-06-02 08:15:00 +0800" value="HKCategoryValueNotApplicable"/>' +
+    '<Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Calm" startDate="2025-06-02 21:00:00 +0800" endDate="2025-06-02 21:15:00 +0800" value="HKCategoryValueNotApplicable"/>' +
+    '<Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Calm" startDate="2027-01-02 21:00:00 +0800" endDate="2027-01-02 21:15:00 +0800" value="HKCategoryValueNotApplicable"/>' +
+    '</HealthData>';
+  var r = H.parseAppleXml(x);
+  check('the same minutes recorded by two apps are merged before adding up (08:00 to 08:15 plus 21:00 to 21:15 is 30 minutes, 2 sessions)', r.mindful[0].minutes === 30 && r.mindful[0].sessions === 2, JSON.stringify(r.mindful));
+  check('the picker leaves out future dates when given today as the upper bound', H.kinds(r, { to: '2026-10-18' }).ready[0].count === 1 && H.kinds(r).ready[0].count === 2);
+  H.apply(r, S, { kinds: ['mindful'] });
+  check('the four-week summary counts the sessions inside a brought-in day, not the entry', A.fourWeekSummary('2025-06-10').mindfulness.sessions === 2 && A.fourWeekSummary('2025-06-10').mindfulness.minutes === 30, JSON.stringify(A.fourWeekSummary('2025-06-10').mindfulness));
+  var e = S.list('mindfulness')[0];
+  S.update(e.id, { date: '2025-06-03' });
+  check('moving an imported entry to another date makes it hers, so Remove keeps it', S.get(e.id).source === 'room' && H.removeImported(S) === 0);  var w2 = fresh('2026-10-18'), H2 = w2.OvuHealth, S2 = w2.OvuStore, RW2 = w2.OvuRewards, before = JSON.stringify(RW2.ledger());
+  H2.apply(H2.parseAppleXml(fs.readFileSync(path.join(root, 'tools/fixtures/apple-export-mini.xml'), 'utf8')), S2);
+  check('bringing data in earns no hearts and leaves the hearts ledger untouched (checkpoints 18, 22, 33)', S2.list().length > 0 && JSON.stringify(RW2.ledger()) === before, JSON.stringify({ n: S2.list().length, before: before, after: RW2.ledger() }));
 })();
 
 /* The zip path is asynchronous (slices read through Blob.arrayBuffer), so it runs last and prints the totals. */
@@ -1019,7 +1292,8 @@ function scenes(todayIso) {
 (function followCamera() {
   console.log('follow camera: zoom per layout, dead zone, clamped target, frame-rate independent smoothing (ovu-camera.js)');
   var w = scenes('2026-10-19'), M = w.OvuCamera.M, sceneOf = w.OvuWalk.sceneOf, W = 390, H = 487;
-  check('every scene opens fitted to the screen at zoom 1: the homes, the garden, the street, the plaza and the stores', ['room', 'house', 'bathhouse', 'familyhome', 'garden', 'street', 'plaza', 'shop-pet', 'shop-furniture', 'shop-homes'].every(function (id) { return M.zoomFor(w.LAYOUTS[id], sceneOf) === 1; }));
+  check('every scene opens fitted to the screen at zoom 1: the room, the garden, the street, the plaza and the stores', ['room', 'garden', 'street', 'plaza', 'shop-pet', 'shop-furniture', 'shop-homes'].every(function (id) { return M.zoomFor(w.LAYOUTS[id], sceneOf) === 1; }));
+  check('the bought homes, drawn smaller, open at 1.5 so she is her usual size there too', ['house', 'bathhouse', 'familyhome'].every(function (id) { return M.zoomFor(w.LAYOUTS[id], sceneOf) === 1.5 && w.LAYOUTS[id].avatarW * 1.5 === 12; }));
   check("a layout's own cam.z wins and never drops below 1", M.zoomFor({ scene: 'garden', cam: { z: 2.2 } }, sceneOf) === 2.2 && M.zoomFor({ scene: 'garden', cam: { z: 0.4 } }, sceneOf) === 1 && M.zoomFor(null, sceneOf) === 1);
   var c0 = M.centreOn({ x: 50, y: 50 }, 1.6, W, H), s0 = M.toScreen({ x: 50, y: 50 }, { x: c0.x, y: c0.y, z: 1.6 }, W, H);
   check('centring puts her feet at the screen position, 50% across and 58% down the box', Math.abs(s0.x - W * 0.5) < 1e-6 && Math.abs(s0.y - H * 0.58) < 1e-6, JSON.stringify(s0));
@@ -1093,6 +1367,45 @@ function scenes(todayIso) {
   var cam = M.centreOn(arch, z, W, H, 2.5); cam.z = z; var f = { x: arch.x, y: arch.y }, minS = 1e9, maxS = -1e9, inClamp = true, steps = [1 / 60, 1 / 30, 1 / 120, 0.05];
   for (var i = 0; f.x < arch2.x; i++) { var dt = steps[i % steps.length]; f = { x: Math.min(arch2.x, f.x + K.SPEED * dt), y: arch.y + (arch2.y - arch.y) * (f.x - arch.x) / (arch2.x - arch.x) }; var tg = M.target(f, cam, W, H, 2.5); cam = { x: M.approach(cam.x, tg.x, dt), y: M.approach(cam.y, tg.y, dt), z: z }; var sx = M.toScreen(f, cam, W, H).x; minS = Math.min(minS, sx); maxS = Math.max(maxS, sx); if (cam.x > 1e-9 || cam.x < W - W * 2.5 * z - 1e-9) inClamp = false; }
   check('walking the whole street the camera follows inside the clamp and she never leaves the middle of the screen', inClamp && minS > W * 0.1 && maxS < W * 0.9 && cam.x < W - W * 2.5 * z + W * 0.2, JSON.stringify({ minS: minS, maxS: maxS, cam: cam.x }));
+})();
+
+(function streetOccluders() {
+  console.log('foreground cutouts on the wide street: the front pillar of each arch and the two lamps, drawn over the plate and ranked by their base');
+  var w = scenes('2026-10-19'), K = w.OvuWalk, L = w.LAYOUTS.street, occ = L.occluders || [];
+  /* a WebP's pixel size from its header (VP8X canvas, or a plain VP8 / VP8L frame) */
+  function webpSize(file) {
+    var b = fs.readFileSync(file), kind = b.toString('ascii', 12, 16);
+    if (kind === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };
+    if (kind === 'VP8L') { var v = b.readUInt32LE(21); return { w: 1 + (v & 0x3fff), h: 1 + ((v >> 14) & 0x3fff) }; }
+    return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+  }
+  var PX = L.w / (100 * L.span), PY = L.h / 100; /* plate pixels per box percent */
+  check('four cutouts: both arches and both lamps, each a file on disk at the plate\'s own pixels (box percent times 8.192 across, 10.24 down)', occ.length === 4 && occ.map(function (o) { return o.id; }).join() === 'garden-arch,lamp-west,lamp-east,plaza-arch' && occ.every(function (o) { var f = path.join(root, 'assets/room/dream', o.img); if (!fs.existsSync(f)) return false; var sz = webpSize(f); return Math.abs(sz.w - o.w * PX) < 0.6 && Math.abs(sz.h - o.h * PY) < 0.6; }), JSON.stringify(occ.map(function (o) { var f = path.join(root, 'assets/room/dream', o.img); return fs.existsSync(f) ? [webpSize(f), o.w * PX, o.h * PY] : 'missing ' + o.img; })));
+  /* each cutout sits on its own solid: the solid's middle inside the cutout, the base inside the solid, the cutout reaching down to the base */
+  var match = occ.map(function (o) { return (L.solids || []).filter(function (b) { var cx = (b.x0 + b.x1) / 2; return b.id === o.solid && cx > o.x && cx < o.x + o.w && o.base >= b.y0 && o.base <= b.y1; }); });
+  check('each cutout lines up with its own solid (the arch pillar or lamp footprint): its middle inside the cutout, the base inside the footprint, the cutout reaching down past the base', match.every(function (m) { return m.length === 1; }) && match[0][0] !== match[3][0] && occ.every(function (o) { var bottom = o.y + o.h; return bottom >= o.base && bottom - o.base < 2.5; }), JSON.stringify(match.map(function (m) { return m.map(function (b) { return [b.x0, b.x1, b.y0, b.y1]; }); })));
+  check('the plate pixels are those of the street plate in percent of the box (0 to 250 across)', occ.every(function (o) { return o.x >= 0 && o.x + o.w <= 100 * L.span && o.y >= 0 && o.y + o.h <= 100; }));
+  /* standing anywhere behind a cutout (feet on the floor above its base, her figure overlapping it) her head stays below its top edge,
+   * so the cut never shows a seam across her. Her height from the base sprite: width 12 of the box, 318 x 720 pixels, box 0.8 */
+  var av = webpSize(path.join(root, 'assets/room/dream/avatar-base.webp')), tall = L.avatarW * (av.h / av.w) * (L.w / (L.h * L.span)), wl = K.world(L, []), worst = [];
+  occ.forEach(function (o) {
+    var low = 1e9; for (var x = o.x - L.avatarW / 2; x <= o.x + o.w + L.avatarW / 2; x += 0.25) for (var y = 0; y < o.base; y += 0.25) if (K.inZones(wl.zones, x, y) && !K.blocked(wl.solids, x, y)) { low = Math.min(low, y); break; }
+    worst.push({ id: o.id, feet: low, head: +(low - tall).toFixed(2), top: o.y });
+  });
+  check('standing at the back of the floor behind any cutout her head (21.7 tall) stays below the cutout\'s top edge', worst.every(function (r) { return r.feet < 1e9 && r.head > r.top; }), JSON.stringify(worst));
+  /* the depth: the walk engine ranks the cutouts by their base with her and a walking pet */
+  var plaza = occ.filter(function (o) { return o.id === 'plaza-arch'; })[0], east = occ.filter(function (o) { return o.id === 'lamp-east'; })[0];
+  function zs(herY, petY) { var items = occ.map(function (o) { return { y: o.base }; }).concat([{ y: petY }, { y: herY }]), z = K.depthRank(items); return { occ: z.slice(0, occ.length), pet: z[occ.length], her: z[z.length - 1] }; }
+  var behind = zs(73, 70), front = zs(79, 70), i = occ.indexOf(plaza);
+  check('standing at x 205, y 73 she is behind the plaza arch\'s front pillar (its z is higher); at y 79 she is in front', behind.occ[i] > behind.her && front.her > front.occ[i], JSON.stringify({ behind: behind, front: front }));
+  var pb = zs(60, east.base - 0.6), pf = zs(60, east.base + 0.6), j = occ.indexOf(east);
+  check('a walking pet passes behind the east lamp just above its base and in front just below it', pb.occ[j] > pb.pet && pf.pet > pf.occ[j], JSON.stringify({ behind: pb, front: pf }));
+  /* the most the street ever ranks: the four cutouts, a walking pet, her and a bench sitter (the bench's ground line) */
+  check('seven on the street (four cutouts, a pet, her, a bench sitter) rank without a tie, so she can never share a z with a pillar she is behind', [60, 62, 68.2, 73, 77, 79].every(function (y) { var items = occ.map(function (o) { return { y: o.base }; }).concat([{ y: y + 0.3 }, { y: L.meditator.seat.groundY }, { y: y }]), z = K.depthRank(items); return items.length === 7 && z.filter(function (v, k) { return z.indexOf(v) === k; }).length === z.length; }));
+  check('the cutouts are the street\'s alone: every other layout (the homes, garden, plaza, stores) has none and draws as before', Object.keys(w.LAYOUTS).every(function (id) { return id === 'street' || !w.LAYOUTS[id].occluders; }));
+  /* the cut script and the layout agree, so a re-cut keeps the placement it prints */
+  var py = fs.readFileSync(path.join(root, 'tools/art/occluders.py'), 'utf8');
+  check('tools/art/occluders.py cuts the same four, with the same files, solids and bases as the layout', occ.every(function (o) { return py.indexOf("{'id': '" + o.id + "', 'solid': '" + o.solid + "', 'file': '" + o.img + "', 'base': " + o.base.toFixed(1) + ',') > -1; }));
 })();
 
 (function petsWalk() {

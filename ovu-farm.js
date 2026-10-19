@@ -160,12 +160,17 @@
     var html = '<div class="bedcard"><div class="bedpic">' + bedSVG(b, id, day) + '</div><div class="bedtext">';
     if (crop) {
       html += '<b>' + esc(crop.name) + '</b><span>' + (ripe(b) ? 'Ripe and ready to pick.' : growthDays(b) + ' of ' + crop.days + ' watered days. ' + (wateredToday(b, day) ? 'Watered today.' : 'Not watered yet today.')) + '</span>';
-    } else html += '<b>An empty bed</b><span>' + (f.seeds && Object.keys(f.seeds).some(function (k) { return f.seeds[k] > 0; }) ? 'Plant one of your seeds.' : 'Fetch seeds from the shed first (three a day).') + '</span>';
+    } else {
+      /* an empty bed plants straight from today's shed seeds too (Jamie, 20 Oct: "where is the shed?"): no trip needed */
+      var own = Object.keys(CROPS).some(function (k) { return (f.seeds[k] || 0) > 0; }), left = seedsLeftToday(S, day);
+      html += '<b>An empty bed</b><span>' + (own ? 'Plant one of your seeds.' : left ? 'Pick a seed to plant. The shed gives ' + SEEDS_A_DAY + ' a day; ' + left + ' left today.' : 'No seeds left today. The shed has more tomorrow.') + '</span>';
+    }
     if (weeds) html += '<span class="weedy">Weeds. Pull them before anything else.</span>';
     html += '</div></div><div class="' + (!weeds && !crop ? 'seedlist' : 'row') + '" id="bedActs">';
     if (weeds) html += '<button type="button" class="btn primary" data-bed="clear"><span class="ms">grass</span>Pull the weeds</button>';
     else if (crop && ripe(b)) html += '<button type="button" class="btn primary" data-bed="harvest"><span class="ms">shopping_basket</span>Harvest</button>';
     else if (crop) html += '<button type="button" class="btn primary" data-bed="water"' + (wateredToday(b, day) ? ' disabled' : '') + '><span class="ms">water_drop</span>Water</button>';
+    else if (!Object.keys(CROPS).some(function (k) { return (f.seeds[k] || 0) > 0; }) && seedsLeftToday(S, day) > 0) Object.keys(CROPS).forEach(function (k) { html += '<button type="button" class="btn soft" data-bed="shedplant" data-crop="' + k + '"><span class="ms">spa</span><span><b>' + esc(CROPS[k].name) + '</b><small>' + CROPS[k].days + ' days to ripen</small></span></button>'; });
     else Object.keys(CROPS).forEach(function (k) { if (f.seeds[k] > 0) html += '<button type="button" class="btn soft" data-bed="plant" data-crop="' + k + '"><span class="ms">spa</span><span><b>' + esc(CROPS[k].name) + '</b><small>' + CROPS[k].days + ' days · ' + f.seeds[k] + ' seed' + (f.seeds[k] > 1 ? 's' : '') + '</small></span></button>'; });
     html += '</div><p class="help">Watering costs a little energy; a missed day adds nothing and takes nothing away. Weeds pause a bed until they are pulled.</p>';
     R.openSheet('farmbed', 'Bed ' + (BEDS.indexOf(bb) + 1), 'Your farm', 'yard', html);
@@ -174,15 +179,17 @@
       var btn = e.target.closest('[data-bed]'); if (!btn) return;
       var kind = btn.dataset.bed, res, now = today(); /* the date at the tap, not at the sheet's opening: midnight may have passed */
       if (now !== day) { openBed(id); return; } /* the sheet showed yesterday: redraw it for today before anything is done */
-      if (!canAct(kind)) return;
+      if (!canAct(kind === 'shedplant' ? 'plant' : kind)) return;
       if (kind === 'clear') res = clearWeeds(S, id, now);
       else if (kind === 'water') res = water(S, id, now);
       else if (kind === 'harvest') res = harvest(S, id);
       else if (kind === 'plant') res = plant(S, id, btn.dataset.crop, now);
+      else if (kind === 'shedplant') { var got = takeSeed(S, btn.dataset.crop, now); res = got && got.ok ? plant(S, id, btn.dataset.crop, now) : got; if (res && res.ok) kind = 'plant'; }
       if (!res) return;
       if (!res.ok) { R.toast(res.why, 'info'); return; }
       act(kind); R.chime('save'); renderBeds();
       if (kind === 'harvest') { afterHarvest(res); return; }
+      if (kind === 'plant') R.toast('Planted. Set one small intention for this week as it grows.', 'spa');
       if (kind === 'water') R.toast(res.ripe ? 'Ripe! Tap the bed again to harvest.' : 'Watered. ' + res.days + ' of ' + CROPS[bed(S, id).crop].days + ' days.', 'water_drop');
       openBed(id);
     });
