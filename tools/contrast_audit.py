@@ -100,6 +100,26 @@ async def main():
             except Exception as e: report['room.html#shop'] = [{'sel': 'OPEN FAILED', 'text': str(e)[:60], 'ratio': 0, 'need': 0}]
             try: await page.click("nav a[data-tab=you]"); await page.wait_for_timeout(700); await page.get_by_text("Luna’s look").first.click(timeout=3000); await page.wait_for_timeout(700); await audit('room.html#mascot')
             except Exception: pass
+            # deeper room states (Jamie, 19 Oct: period days, the episode quote and the hand-measure panel were unreadable
+            # at night and none of them was opened above): seed a period, open every sheet below, unfold every <details>
+            async def deep(name, js, wait=900):
+                try:
+                    await page.evaluate("()=>{ if (window.OvuRoom && OvuRoom.closeSheet) OvuRoom.closeSheet(); document.querySelector('#bubble') && document.querySelector('#bubble').classList.remove('on'); }"); await page.wait_for_timeout(500)
+                    await page.evaluate(js); await page.wait_for_timeout(wait)
+                    await page.evaluate("()=>document.querySelectorAll('#sheet details, .sheet details').forEach(d=>d.open=true)"); await page.wait_for_timeout(250)
+                    await audit('room.html#' + name)
+                except Exception as e: report['room.html#' + name] = [{'sel': 'OPEN FAILED', 'text': str(e)[:60], 'ratio': 0, 'need': 0}]
+            await page.evaluate("""()=>{ var S=OvuStore, t=new Date(); function d(n){ var x=new Date(t); x.setDate(x.getDate()-n); return x.toISOString().slice(0,10); }
+              ['heavy','medium','light','spotting'].forEach(function(f,i){ try { S.add('period', d(3-i), {flow:f}); } catch(e){} });
+              try { S.add('symptom', d(1), {symptoms:['cramps'], pain:4, mood:'ok', notes:''}); } catch(e){} }""")
+            await deep('calendar-period', "()=>{document.querySelector('nav a[data-tab=cycle]').click(); setTimeout(()=>{var b=[...document.querySelectorAll('#calGrid .cal-day:not(.empty):not(.future)')]; b[b.length-2] && b[b.length-2].click();}, 500)}", 1400)
+            await deep('calendar-symptom', "()=>{document.querySelector('nav a[data-tab=cycle]').click(); setTimeout(()=>{document.querySelector('#calTabs [data-tab=symptom]').click(); setTimeout(()=>{var b=[...document.querySelectorAll('#calGrid .cal-day:not(.empty):not(.future)')]; b[b.length-2] && b[b.length-2].click();}, 300)}, 500)}", 1600)
+            await deep('acupressure', "()=>{document.querySelector('nav a[data-tab=cycle]').click(); setTimeout(()=>{document.querySelector('#calTabs [data-tab=symptom]').click(); setTimeout(()=>{var b=[...document.querySelectorAll('#calGrid .cal-day:not(.empty):not(.future)')]; b[b.length-1].click(); setTimeout(()=>{var a=document.querySelector('#acuFromSym'); a&&a.click(); setTimeout(()=>{var c=document.querySelector('#sheet .aculist button, #sheet .acucard, #sheet [data-acu]'); c&&c.click();}, 700)}, 300)}, 300)}, 500)}", 2600)
+            await deep('luna', "()=>{ try { OvuOrb && OvuOrb.setAiConfig && OvuOrb.setAiConfig(Object.assign({}, OvuOrb.aiConfig(), {on:true, insights:true, photos:true})); } catch(e){} var b=document.querySelector('[data-act=luna], #lunaOrb, .orb'); b && b.click(); }", 1400)
+            await deep('listen', "()=>{ var b=document.querySelector('[data-pod-open]'); if(!b){ document.querySelector('nav a[data-tab=mind]').click(); } setTimeout(()=>{ var c=document.querySelector('[data-pod-open]'); c&&c.click(); }, 700); }", 2000)
+            await deep('mind', "()=>document.querySelector('nav a[data-tab=mind]').click()", 1000)
+            await deep('garden-greenhouse', "()=>{ OvuWalk.travel('garden'); setTimeout(()=>{ var h=document.querySelector('.hotspot[data-id=greenhouse]'); h&&h.click(); }, 2500); }", 6000)
+            await deep('garden-plot', "()=>{ var h=document.querySelector('.hotspot[data-id=plot]'); h&&h.click(); }", 3500)
             # every other real page
             pages = sorted(f for f in glob.glob(os.path.join(ROOT, '*.html')) if 'ovu-sky.js' in open(f, errors='ignore').read() and os.path.basename(f) != 'room.html')
             for f in pages:

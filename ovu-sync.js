@@ -146,7 +146,9 @@
     });
     return incomingEv;
   }
-  function profileForCloud(p) { var out = {}; Object.keys(p || {}).forEach(function (k) { if (k === 'consent' || k === 'cloud') return; out[k] = p[k]; }); return out; }
+  /* consent, the cloud choice, the improve record, the consent log and the age attestation are this phone's or the account's own control state, never part of the backed-up profile, so a restore can never carry a choice between phones */
+  var CONTROL_KEYS = { consent: 1, cloud: 1, analysis: 1, consentEvents: 1, consentImportedAt: 1, ageAttest: 1 };
+  function profileForCloud(p) { var out = {}; Object.keys(p || {}).forEach(function (k) { if (CONTROL_KEYS[k]) return; out[k] = p[k]; }); return out; }
 
   /* ---------- gate ---------- */
   function consentOk(p) { var c = (p || {}).cloud; return !!(c && c.v >= 1 && c.at); }
@@ -157,7 +159,9 @@
      into a different account, nothing syncs until that account also opts in, so
      one person's diary is never uploaded under another person's account. */
   function consentForUser(p, uid) { var c = (p || {}).cloud; return consentOk(p) && c.uid === uid; }
-  function canSync() { var s = session(); return !!(s && s.user && consentForUser(S.profile(), s.user.id)); }
+  /* nothing moves without a session, the cloud choice for this account, the 18+ attestation and the current notice (ovu-consent.js) */
+  function doorOpen() { var C = root.OvuConsent; return !C || (!C.needsSheet() && C.allows('cloud_sync')); }
+  function canSync() { var s = session(); return !!(s && s.user && consentForUser(S.profile(), s.user.id) && doorOpen()); }
 
   /* ---------- REST ---------- */
   function rest(method, path, body, prefer, token) {
@@ -208,9 +212,19 @@
       var knownTypes = (S.TYPES || []).join(',');
       if (st.pulledSeq && st.types !== knownTypes) st.pulledSeq = null;
       saveState(st); /* persist the activation/reset before any network call */
+      /* before any row moves: read the account's own record (a withdrawal made on another phone is adopted here and stops
+         the sync), then make sure this account has heard this phone's cloud choice (the server refuses writes it has not
+         been told about, and a phone must not upload on a choice the account does not hold) */
+      var C = root.OvuConsent;
+      var pre = !C ? Promise.resolve() : C.pullAccountState().then(function (acc) {
+        if (acc && acc.cloud_sync && acc.cloud_sync.on === false && C.allows('cloud_sync')) { C.record('cloud_sync', 'withdraw', 'server', { sent: true }); throw new Error('Cloud backup was turned off on another phone.'); }
+        return C.flush();
+      }).then(function () {
+        if (a.userId() !== uid || !C.allows('cloud_sync') || !C.recordedOnAccount('cloud_sync')) throw new Error('Your cloud backup choice has not reached your account yet. Try again in a moment.');
+      });
       /* pull every row whose server arrival (synced_at) is after our cursor, in
          order and in pages, so a late-arriving older edit is never skipped */
-      return pullSince(st.pulledSeq, token).then(function (remoteRows) {
+      return pre.then(function () { return pullSince(st.pulledSeq, token); }).then(function (remoteRows) {
         /* consent or sign-in may have changed during the network wait */
         if (!canSync() || a.userId() !== uid) { busy = false; setStatus('idle'); return { ok: false, reason: 'cancelled' }; }
         var pushedAt = loadState().pushedAt || '';
@@ -270,9 +284,23 @@
       });
     }).catch(function (err) {
       busy = false; setStatus('error', (err && err.message) || String(err));
+      /* the account says backup is off (turned off on another phone): this phone adopts it and stops */
+      if (err && /Cloud backup is off for this account/i.test(err.message || '') && root.OvuConsent && OvuConsent.allows('cloud_sync')) { try { OvuConsent.record('cloud_sync', 'withdraw', 'server', { sent: true }); } catch (e2) { } setStatus('idle'); }
       return { ok: false, error: (err && err.message) || String(err) };
     });
     return busyPromise;
+  }
+
+  /* delete the copy in the account (entries, tombstones and profile) and forget the sync position; the account itself stays */
+  function wipeCloud() {
+    var a = auth(); if (!a) return Promise.reject(new Error('not signed in'));
+    return a.token().then(function (token) {
+      if (!token) throw new Error('Please sign in again.');
+      var uid = a.userId();
+      return rest('DELETE', '/entries?user_id=eq.' + encodeURIComponent(uid), null, 'return=minimal', token)
+        .then(function () { return rest('DELETE', '/profiles?user_id=eq.' + encodeURIComponent(uid), null, 'return=minimal', token); })
+        .then(function () { resetPosition(); return { ok: true }; });
+    });
   }
 
   function syncProfile(token, uid) {
@@ -338,6 +366,7 @@
   }
 
   root.OvuSync = {
+    wipeCloud: wipeCloud, CONTROL_KEYS: CONTROL_KEYS, canSync: canSync, doorOpen: doorOpen,
     init: init,
     syncNow: syncNow,
     canSync: canSync,

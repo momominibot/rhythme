@@ -21,7 +21,8 @@ NOW = datetime.datetime.now().isoformat()
 # a consenting, onboarded person with three entries; Luna's AI help off (the default)
 DB = {"version": 1, "createdAt": NOW, "updatedAt": NOW,
       "profile": {"name": "Smoke", "outfit": "base", "lifeStage": "", "cycleLength": None, "periodLength": None, "onboarded": True,
-                  "consent": {"v": 2, "at": NOW, "luna": False, "improve": False, "age13": True}},
+                  "consent": {"v": 3, "at": NOW, "luna": False, "improve": False}, "ageAttest": {"confirmed": True, "version": 1, "at": NOW},
+                  "consentEvents": [{"id": "ce1", "purpose": "age_18", "action": "grant", "at": NOW, "notice": 3, "method": "sheet", "uid": None, "sent": False}, {"id": "ce2", "purpose": "health_tracking", "action": "grant", "at": NOW, "notice": 3, "method": "sheet", "uid": None, "sent": False}], "consentImportedAt": NOW},
       "events": [{"id": "s1", "type": "period", "date": Y1, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"flow": "medium"}},
                  {"id": "s2", "type": "sleep", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"bedTime": "23:00", "wakeTime": "07:00", "quality": 4}},
                  {"id": "s3", "type": "food", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"meal": "lunch", "foods": "chicken rice", "items": [], "tags": ["home-cooked"]}}],
@@ -64,6 +65,8 @@ async def main():
             async def tap_hot(hid):
                 inside = await page.evaluate("(id)=>{var h=document.querySelector('.hotspot[data-id='+id+']'); if(!h) return false; var r=h.getBoundingClientRect(), b=document.querySelector('#scene').getBoundingClientRect(); return r.left>=b.left && r.right<=b.right && r.top>=b.top && r.bottom<=b.bottom}", hid)
                 if not inside: await page.click("#camFit"); await page.wait_for_timeout(450)   # a person would do the same: see the whole scene, then tap
+                inside = await page.evaluate("(id)=>{var h=document.querySelector('.hotspot[data-id='+id+']'); var r=h.getBoundingClientRect(), b=document.querySelector('#scene').getBoundingClientRect(); return r.left>=b.left && r.right<=b.right && r.top>=b.top && r.bottom<=b.bottom}", hid)
+                if not inside: await page.focus(".hotspot[data-id=%s]" % hid); await page.wait_for_timeout(450)   # along the wide street fit is not enough: keyboard focus brings the pin into view
                 await page.click(".hotspot[data-id=%s]" % hid)
 
             # 1. the room boots, the consent gate stays closed for a consenting person, hotspots and nav exist
@@ -78,7 +81,7 @@ async def main():
             # 1b. garden, Dream Street and the plaza: the door walks her out, the joystick and keys move her, the mini-map jumps
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_timeout(1200)
             ctl = await page.evaluate("()=>({api: !!window.OvuRoom && !!window.OvuWalk && !!window.OvuGarden && !!window.OvuCommunity && !!window.OvuStreet, pad: !!document.querySelector('#walkpad'), stops: [...document.querySelectorAll('#minimap [data-scene]')].map(b=>b.dataset.scene).join(','), door: !!document.querySelector('.hotspot[data-id=door]'), lit: document.querySelector('#minimap .on')?.dataset.scene})")
-            check("no joystick, a four-stop mini-map lit on Home, and a door hotspot are in the room", ctl["api"] and not ctl["pad"] and ctl["stops"] == "home,garden,street,plaza" and ctl["door"] and ctl["lit"] == "home", ctl)
+            check("no joystick, a mini-map lit on Home with the farm stop after the garden, and a door hotspot are in the room", ctl["api"] and not ctl["pad"] and ctl["stops"] == "home,garden,farm,street,plaza" and ctl["door"] and ctl["lit"] == "home", ctl)
             # tap to walk: a tap on empty floor plans a route around the furniture and walks there, with a ring at the spot
             async def floor_tap(px, py):
                 r = await page.evaluate("()=>{var b=document.querySelector('#sceneInner').getBoundingClientRect(); return {l:b.left,t:b.top,w:b.width,h:b.height};}")
@@ -111,6 +114,24 @@ async def main():
             await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(1700)
             stay = await page.evaluate("()=>OvuRoom.pos()")
             check("a tap just after closing a sheet is not undone by the walk home", abs(stay["x"] - 62) < 2 and abs(stay["y"] - 66) < 2, stay)
+            # life-sim slice: the day pill, low energy, the prompt near the bed, the action button, and sleep refilling energy
+            await page.evaluate("()=>{OvuStore.setState({stamina: {v: 18, max: 100, day: OvuGameTime.dayKey()}, game: {firstDay: OvuStore.addDays(OvuGameTime.dayKey(), -11)}}); OvuStamina.value(); OvuHud.render();}")
+            hud = await page.evaluate("()=>{var h=document.querySelector('#gameHud'); return {there: !!h, day: OvuGameTime.day(), text: h ? h.textContent : '', title: h ? h.title : '', low: h && h.classList.contains('low'), tired: document.querySelector('#scene').classList.contains('tired'), speed: OvuWalk.speedScale()}}")
+            check("the pill shows the season and the hour with day 12 of play in its title, and low energy slows her and dims the scene", hud["there"] and hud["day"] == 12 and "day 12 of play" in hud["title"] and any(s in hud["text"] for s in ("Spring", "Summer", "Autumn", "Winter")) and "Day" not in hud["text"] and hud["low"] and hud["tired"] and abs(hud["speed"] - 0.72) < 0.01, hud)
+            await page.evaluate("()=>{var h=OvuRoom.hotspot('bed'); OvuRoom.walkTo(h.wp, function(){});}")
+            await page.wait_for_function("()=>!OvuWalk.walking()", timeout=9000); await page.wait_for_timeout(700)
+            near = await page.evaluate("()=>({on: document.querySelector('#interactPrompt').classList.contains('on'), text: document.querySelector('#interactPrompt').textContent, btn: document.querySelector('#actBtn').classList.contains('on'), cur: OvuInteract.current() && OvuInteract.current().id})")
+            await page.click('#actBtn')
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] #goodnight', timeout=8000)
+            except Exception: pass
+            opened = await page.evaluate("()=>document.querySelector('#sheet').getAttribute('aria-hidden')==='false' && !!document.querySelector('#goodnight')")
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            check("standing by the bed raises a 'Tap to go to sleep' prompt and the action button opens the bedtime sheet", near["on"] and near["cur"] == "bed" and "sleep" in near["text"] and near["btn"] and opened, {"near": near, "opened": opened})
+            await page.evaluate("()=>OvuStore.setState({sleeping: {at: new Date().toISOString()}})"); await page.wait_for_timeout(200)
+            rested = await page.evaluate("()=>({v: OvuStamina.value(), tired: document.querySelector('#scene').classList.contains('tired'), speed: OvuWalk.speedScale()})")
+            await page.evaluate("()=>OvuStore.setState({sleeping: null})"); await page.wait_for_timeout(200)
+            check("going to sleep refills energy and lifts the tired look", rested["v"] == 100 and not rested["tired"] and rested["speed"] == 1, rested)
+            await floor_tap(62, 66); await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(1700)  # off the home spot, so the zoomed tap below lands on floor
             pets = await page.evaluate("()=>OvuPetWalk.pets()")
             # the pets keep still at night and while she sleeps; this check is about walking, so the clock is held at daytime for it
             await page.evaluate("()=>{window.__dayReal={night: OvuRoom.isNight, asleep: OvuRoom.asleep}; OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}}")
@@ -168,13 +189,13 @@ async def main():
             after = await page.evaluate("()=>({pos: OvuRoom.pos(), layout: document.querySelector('#scene').dataset.layout, walking: OvuWalk.walking(), tf: document.querySelector('#avatar').style.transform})")
             check("a floor tap in the garden walks her from the gate to the lawn and commits the position", abs(after["pos"]["x"] - 50) < 1.5 and abs(after["pos"]["y"] - 52) < 1.5 and after["layout"] == "garden" and not after["walking"] and after["tf"] == "" and abs(before["x"] - 50) > 4, {"before": before, "after": after})
             cam = await page.evaluate(CAM)
-            check("the room keeps the whole view (zoom 1); the garden opens through a closer window (zoom 1.6) that moved with her and holds her feet near the middle of the box", home_tf == "" and cam["zoomed"] and abs(cam["z"] - 1.6) < 0.01 and cam["tf"] != tf0 and not cam["held"] and 0.3 < cam["sx"] < 0.72 and 0.4 < cam["sy"] < 0.78, {"home_tf": home_tf, "tf0": tf0, "cam": cam})
+            check("every scene keeps the whole view: the room and the garden both stay at zoom 1, fitted to the screen, while she walks", home_tf == "" and not cam["zoomed"] and abs(cam["z"] - 1) < 0.01 and cam["tf"] == "" and tf0 == "", {"home_tf": home_tf, "tf0": tf0, "cam": cam})
             await page.keyboard.down("ArrowLeft"); await page.wait_for_timeout(400); await page.keyboard.up("ArrowLeft"); await page.wait_for_timeout(150)
             key = await page.evaluate("()=>({pos: OvuRoom.pos(), flip: document.querySelector('#avatar').classList.contains('flip')})")
             check("the left arrow key walks her back from the lawn and turns her around", key["pos"]["x"] < after["pos"]["x"] - 1 and key["flip"], key)
-            await page.click("#camFit"); await page.wait_for_timeout(450); fit = await page.evaluate(CAM)
+            fit = await page.evaluate("()=>Object.assign((" + CAM + ")(), {fitOff: document.querySelector('#camFit').disabled})")
             await page.click("#camIn"); await page.wait_for_timeout(900); zin = await page.evaluate(CAM)
-            check("fit shows the whole garden; + brings the window back around her", fit["tf"] == "" and not fit["zoomed"] and zin["zoomed"] and zin["z"] > 1.4 and 0.25 < zin["sx"] < 0.72 and 0.35 < zin["sy"] < 0.8, {"fit": fit, "zin": zin})
+            check("the garden already shows the whole scene (fit has nothing to do); + brings a closer window around her", fit["tf"] == "" and not fit["zoomed"] and fit["fitOff"] and zin["zoomed"] and zin["z"] > 1.4 and 0.25 < zin["sx"] < 0.72 and 0.35 < zin["sy"] < 0.8, {"fit": fit, "zin": zin})
             box = await page.evaluate("()=>{var b=document.querySelector('#scene').getBoundingClientRect(); return {l:b.left,t:b.top,w:b.width,h:b.height}}")
             await page.mouse.move(box["l"] + box["w"] * 0.15, box["t"] + box["h"] * 0.22); await page.mouse.down()
             for k in range(1, 9):
@@ -190,11 +211,34 @@ async def main():
             await page.click("#hudStop"); await page.wait_for_timeout(500)
             stopped = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), toast: document.querySelector('#toast').textContent})")
             check("watering at zoom keeps the HUD and its Stop button on screen (lifted out of the plate), and Stop ends the minute", hud["on"] and hud["z"] > 1.4 and hud["screenSpace"] and hud["inside"] and not stopped["on"] and "Stopped" in stopped["toast"], {"hud": hud, "stopped": stopped})
+            # at night the calendar keeps period days pink (the night card colour once flattened every day)
+            calnight = await page.evaluate("""()=>{ var g=document.createElement('div'); g.className='cal-grid'; var d=document.createElement('button'); d.className='cal-day p-heavy'; g.appendChild(d); document.querySelector('#sheet').appendChild(g);
+              var root=document.documentElement, was=root.getAttribute('data-sky'); root.setAttribute('data-sky','night'); var night=getComputedStyle(d).backgroundColor; root.setAttribute('data-sky', was || ''); g.remove(); return night; }""")
+            check("at night a heavy period day on the calendar is still deep pink, not the dark card colour", calnight == "rgb(176, 67, 110)", calnight)
+            # walking together: a tap on the corgi offers a walk; she says so, the corgi hops with hearts, then follows her
+            await page.evaluate("()=>document.querySelector('.prop.owned.pet[data-id=dog]').click()"); await page.wait_for_timeout(250)
+            offer = await page.evaluate("()=>{var b=document.querySelector('#bubble [data-petwalk]'); return b ? {kind: b.dataset.petwalk, text: b.textContent} : null}")
+            await page.evaluate("()=>document.querySelector('#bubble [data-petwalk]').click()"); await page.wait_for_timeout(900)
+            hi = await page.evaluate("()=>({line: document.querySelector('#thought').textContent, on: document.querySelector('#thought').classList.contains('on'), hop: document.querySelector('.prop.owned.pet[data-id=dog]').classList.contains('hop'), hearts: document.querySelectorAll('.palheart').length, pal: OvuPetWalk.pal(), bubble: document.querySelector('#bubble').classList.contains('on')})")
+            check("the corgi's bubble offers Walk together; she says she would like a walk, the corgi hops with hearts and the bubble closes", offer and offer["kind"] == "start" and "Walk together" in offer["text"] and hi["on"] and "walk" in hi["line"] and hi["hop"] and hi["hearts"] >= 3 and hi["pal"] and hi["pal"]["id"] == "dog" and not hi["bubble"], {"offer": offer, "hi": hi})
+            await page.wait_for_timeout(1300)
+            await floor_tap(32, 74)
+            await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(2600)
+            fol = await page.evaluate("()=>{var p=OvuPetWalk.pal(), h=OvuRoom.pos(), w=OvuWalk.world(OvuRoom.layout(), []); return {pal: p, her: h, d: Math.hypot(p.x-h.x, (p.y-h.y)/0.5), onFloor: OvuWalk.inZones(w.zones, p.x, p.y) && !OvuWalk.blocked(w.solids, p.x, p.y), walking: document.querySelector('.prop.owned.pet[data-id=dog]').classList.contains('walking')}}")
+            check("after she walks across the garden the corgi has followed her trail and sits a few steps behind her, on the lawn", fol["pal"]["ready"] and fol["pal"]["state"] == "follow" and 3 < fol["d"] < 10 and fol["onFloor"] and not fol["walking"], fol)
             await page.click('#minimap [data-scene=street]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
             st = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, stores: [...document.querySelectorAll('.hotspot')].map(b=>b.dataset.id).filter(i=>['petshop','furniture','homes'].includes(i)).length, lit: document.querySelector('#minimap .on')?.dataset.scene})")
             check("the mini-map takes her to Dream Street with its three storefronts", st["layout"] == "street" and st["stores"] == 3 and st["lit"] == "street", st)
+            await page.wait_for_timeout(400)
+            pst = await page.evaluate("()=>{var el=document.querySelector('.prop.owned.pet.palclone[data-id=dog]'), p=OvuPetWalk.pal(), h=OvuRoom.pos(); return {el: !!el, pal: p, d: p ? Math.hypot(p.x-h.x, (p.y-h.y)/0.5) : null}}")
+            check("the corgi comes along to Dream Street, which never draws your pets, and stands just behind her", pst["el"] and pst["pal"] and pst["pal"]["clone"] and pst["d"] is not None and pst["d"] < 9, pst)
+            await page.evaluate("()=>document.querySelector('.prop.owned.pet.palclone[data-id=dog]').click()"); await page.wait_for_timeout(250)
+            home = await page.evaluate("()=>{var b=document.querySelector('#bubble [data-petwalk]'); return b ? {kind: b.dataset.petwalk, text: b.textContent} : null}")
+            await page.evaluate("()=>document.querySelector('#bubble [data-petwalk]').click()"); await page.wait_for_timeout(900)
+            gone = await page.evaluate("()=>({pal: OvuPetWalk.pal(), el: !!document.querySelector('.prop.owned.pet[data-id=dog]'), toast: document.querySelector('#toast').textContent})")
+            check("a tap on the corgi out walking offers Home time, which ends the walk and sends her home from the street", home and home["kind"] == "end" and "Home time" in home["text"] and gone["pal"] is None and not gone["el"] and "breath" in gone["toast"], {"home": home, "gone": gone})
             closed = await page.evaluate("()=>{var real=OvuStreet.openNow; OvuStreet.openNow=function(){return false}; var went=OvuWalk.travel('shop-pet'); var sheet=document.querySelector('#sheet'); var r={went: went, open: sheet && sheet.getAttribute('aria-hidden')==='false', title: (document.querySelector('#sheetTitle')||{}).textContent||'', body: (sheet||{}).textContent||'', hours: [OvuStreet.hoursText('pet'), OvuStreet.hoursText('furniture'), OvuStreet.hoursText('home')], at8: OvuStreet.openAt('pet', new Date(2026,9,19,8,30)), at12: OvuStreet.openAt('pet', new Date(2026,9,19,12,0)), plaques: document.querySelectorAll('#ownedProps .closedsign').length}; OvuStreet.openNow=real; return r}")
             check("trying a shut store shows that store's own hours card (named, not Dream Street), the three stores keep different hours, and no plaques sit on the street", closed["went"] is False and closed["open"] and "Whisker" in closed["title"] and "10 am to 7 pm" in closed["body"] and len(set(closed["hours"])) == 3 and not closed["at8"] and closed["at12"] and closed["plaques"] == 0, closed)
             await page.click("#sheetClose"); await page.wait_for_timeout(300)
@@ -213,7 +257,64 @@ async def main():
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
             back = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, pos: OvuRoom.pos(), sub: document.querySelectorAll('#minimap .minimap-sub [data-sub]').length})")
-            check("the door mat puts her back on the street outside the pet shop, with the three store stops on the mini-map", back["layout"] == "street" and abs(back["pos"]["x"] - 23) < 1 and back["sub"] == 3, back)
+            check("the door mat puts her back on the street outside the pet shop, with the three store stops on the mini-map", back["layout"] == "street" and abs(back["pos"]["x"] - 98.5) < 1 and back["sub"] == 3, back)
+            # 1c. the wide street (docs/design/2026-10-19-wide-street.md): a 2:1 plate 2.5 boxes wide, walked with real taps, the camera following
+            STREET = "()=>{var sc=document.querySelector('#scene'), b=sc.getBoundingClientRect(), im=document.querySelector('#roomDay').getBoundingClientRect(), nv=document.querySelector('.night-veil').getBoundingClientRect(), a=document.querySelector('#avatar').getBoundingClientRect(), s=OvuCamera.state(); return {layout: sc.dataset.layout, aspect: b.width/b.height, plate: im.width/(b.width*s.z), veil: nv.width/im.width, z: s.z, x: s.x, held: s.held, minX: b.width-b.width*2.5*s.z, pos: OvuRoom.pos(), sx: (a.left+a.width/2-b.left)/b.width, sy: (a.bottom-b.top)/b.height, scrollL: sc.scrollLeft, walking: OvuWalk.walking()}}"
+            ws = await page.evaluate(STREET)
+            check("on the wide street the box keeps its 0.8 view, the plate and the night veil run 2.5 boxes wide, and it opens fitted (zoom 1) like every scene", ws["layout"] == "street" and abs(ws["aspect"] - 0.8) < 0.01 and abs(ws["plate"] - 2.5) < 0.01 and abs(ws["veil"] - 1) < 0.01 and abs(ws["z"] - 1) < 0.01, ws)
+            trail = []
+            for _ in range(9):
+                tp = await page.evaluate("()=>{var sc=document.querySelector('#scene').getBoundingClientRect(), r=document.querySelector('#sceneInner').getBoundingClientRect(), sx=sc.left+sc.width*0.82, x=(sx-r.left)/r.width*100, y=63+0.0964*(x-15)-2.5, sy=r.top+y/100*r.height; if (sy>sc.top+sc.height*0.75) { sy=sc.top+sc.height*0.75; y=(sy-r.top)/r.height*100; } return {sx: sx, sy: sy, x: x, y: y}}")
+                if tp["x"] > 212: break   # the front of the cobbles, away from the storefront doorsteps (a walk that ends on one goes in), above the mini-map
+                await page.mouse.click(tp["sx"], tp["sy"])   # a genuine tap on the visible floor, near the right edge of the screen
+                try: await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000)
+                except Exception: pass
+                await page.wait_for_timeout(500)
+                st2 = await page.evaluate(STREET); trail.append({"tap": round(tp["x"], 1), "pos": round(st2["pos"]["x"], 1), "cam": round(st2["x"]), "sx": round(st2["sx"], 2)})
+            we = await page.evaluate(STREET)
+            check("real taps walk her along the street past x 100 and 180: the camera follows sideways, she stays on screen and the box never scrolls", we["pos"]["x"] > 180 and we["x"] < ws["x"] - 300 and all(0.1 < t["sx"] < 0.9 for t in trail) and any(t["tap"] > 100 for t in trail) and we["scrollL"] == 0 and we["layout"] == "street", {"trail": trail, "end": we})
+            await page.click("#avatar"); await page.wait_for_timeout(350)
+            bub = await page.evaluate("()=>{var bb=document.querySelector('#bubble'), r=bb.getBoundingClientRect(), b=document.querySelector('#scene').getBoundingClientRect(); return {on: bb.classList.contains('on'), lifted: !document.querySelector('#sceneInner').contains(bb), inside: r.width>0 && r.left>=b.left-1 && r.right<=b.right+1 && r.top>=b.top-1 && r.bottom<=b.bottom+1, layout: document.querySelector('#scene').dataset.layout}}")
+            check("at the far end, with the view panned two screens, tapping her opens her menu on screen", bub["on"] and bub["lifted"] and bub["inside"] and bub["layout"] == "street", bub)
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+            await tap_hot("arch2")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            pz = await page.evaluate("()=>document.querySelector('#scene').dataset.layout")
+            await page.evaluate("()=>OvuWalk.travel('street')")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            await page.wait_for_timeout(700); wr = await page.evaluate(STREET)
+            check("the plaza arch at the right end takes her to the plaza, and coming back she stands in that arch with the view at the plate's right edge", pz == "plaza" and wr["layout"] == "street" and abs(wr["pos"]["x"] - 222) < 1 and abs(wr["x"] - wr["minX"]) < 2 and 0.1 < wr["sx"] < 0.9, {"plaza": pz, "back": wr})
+            sb0 = await page.evaluate("()=>{var r=document.querySelector('#scene').getBoundingClientRect(); return {x: r.left, y: r.top, w: r.width, h: r.height}}")
+            await page.mouse.move(sb0["x"] + 40, sb0["y"] + sb0["h"] * 0.7); await page.mouse.down(); await page.mouse.move(sb0["x"] + 300, sb0["y"] + sb0["h"] * 0.7, steps=10); await page.mouse.up(); await page.wait_for_timeout(300)
+            dragged = await page.evaluate(STREET)
+            fitOn = await page.evaluate("()=>!document.querySelector('#camFit').disabled")
+            await page.click("#camFit"); await page.wait_for_timeout(1600)
+            refit = await page.evaluate(STREET)
+            check("at zoom 1 a sideways drag pans the street and holds the view; fit is on there and brings the view back to her", dragged["held"] and dragged["x"] > wr["x"] + 150 and fitOn and not refit["held"] and 0.1 < refit["sx"] < 0.9 and abs(refit["z"] - 1) < 0.01, {"dragged": dragged, "fit": fitOn, "refit": refit})
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('homes'))"); await page.wait_for_timeout(250)
+            await page.evaluate("()=>{var p=OvuRoom.pos(); return OvuWalk.tapWalk(p.x-14, p.y-1)}")
+            try: await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000)
+            except Exception: pass
+            await page.wait_for_timeout(900)
+            rt = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, sheet: document.querySelector('#sheet').getAttribute('aria-hidden'), pos: OvuRoom.pos()})")
+            check("a floor tap that replaces a walk to Moonrise Homes leaves her where she tapped, without opening the store", rt["layout"] == "street" and rt["sheet"] != "false" and rt["pos"]["x"] < 215, rt)
+            await page.focus(".hotspot[data-id=petshop]"); await page.wait_for_timeout(600)
+            fo = await page.evaluate("()=>{var h=document.querySelector('.hotspot[data-id=petshop]').getBoundingClientRect(), b=document.querySelector('#scene').getBoundingClientRect(); return {inside: h.left>=b.left && h.right<=b.right && h.top>=b.top && h.bottom<=b.bottom, held: OvuCamera.state().held, scrollL: document.querySelector('#scene').scrollLeft}}")
+            check("keyboard focus on a storefront two screens away brings it into view (the box itself never scrolls)", fo["inside"] and fo["held"] and fo["scrollL"] == 0, fo)
+            await page.evaluate("()=>document.activeElement && document.activeElement.blur()")
+            t0 = await page.evaluate("()=>Date.now()")
+            await page.click('#minimap [data-scene=garden]')
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            gl = await page.evaluate("(t0)=>({layout: document.querySelector('#scene').dataset.layout, ms: Date.now()-t0})", t0)
+            check("from the far end the mini-map fades straight to the garden instead of walking the whole street first", gl["layout"] == "garden" and gl["ms"] < 2500, gl)
+            await page.click('#minimap [data-scene=street]')
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            await page.wait_for_timeout(600); wl = await page.evaluate(STREET)
+            check("from the garden she arrives through the garden arch at the street's left end, the view at its left edge", wl["layout"] == "street" and abs(wl["pos"]["x"] - 38) < 1 and abs(wl["x"]) < 1, wl)
             await page.click('#minimap [data-sub="shop-homes"]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='shop-homes' && !document.querySelector('#scene').classList.contains('fading')", timeout=12000)
             except Exception: pass
@@ -284,6 +385,16 @@ async def main():
             acct = await page.evaluate("()=>{var a=document.querySelector('#youAccount');return {label:a&&a.querySelector('.lbl')?a.querySelector('.lbl').textContent:null, email: !!(a&&a.querySelector('[data-ya=\"email-start\"]')), intro: ((a&&a.querySelector('.ya-intro')?a.querySelector('.ya-intro').textContent:'')||'').toLowerCase().indexOf('cloud backup')>=0};}")
             check("You tab shows the Your account row with email sign-in and the backup line", acct["label"] == "Your account" and acct["email"] and acct["intro"], acct)
             check("no sign-in or data request leaves the page for a signed-out person", not [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1" in u)], relay_calls[:3])
+            # Your choices: every use of the data as a switch, the required one locked on, a receipt; a change is recorded with where it was made
+            await page.evaluate("()=>document.querySelector('[data-yact=choices]').click()"); await page.wait_for_selector("#y_health_tracking", timeout=8000); await page.wait_for_timeout(300)
+            ch = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, n: document.querySelectorAll('.c-choice input').length, req: document.querySelector('#y_health_tracking').checked && document.querySelector('#y_health_tracking').disabled, anyOn: Array.from(document.querySelectorAll('.c-choice input:not(#y_health_tracking)')).some(i=>i.checked), receipt: (document.body.textContent||'').indexOf('Your consent receipt')>-1 && (document.body.textContent||'').indexOf('Notice version 3')>-1})")
+            check("Your choices lists six switches with health tracking locked on, the rest off, and the receipt at notice 3", ch["title"].startswith("Your choices") and ch["n"] == 6 and ch["req"] and not ch["anyOn"] and ch["receipt"], ch)
+            await page.check("#y_ai_reading"); await page.wait_for_timeout(400)
+            c1 = await page.evaluate("()=>{var ev=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.consentEvents; var e=ev[ev.length-1]; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {p:e.purpose, a:e.action, m:e.method, aiOn:!!ai.on, on: document.querySelector('#y_ai_reading').checked};}")
+            await page.uncheck("#y_ai_reading"); await page.wait_for_timeout(400)
+            c2 = await page.evaluate("()=>{var ev=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.consentEvents; var e=ev[ev.length-1]; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {p:e.purpose, a:e.action, m:e.method, aiOn:!!ai.on};}")
+            check("a switch in You records a grant and then a withdrawal, each marked as made in You, and Luna's mirror follows", c1 == {"p": "ai_reading", "a": "grant", "m": "you", "aiOn": True, "on": True} and c2 == {"p": "ai_reading", "a": "withdraw", "m": "you", "aiOn": False}, {"c1": c1, "c2": c2})
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(300)
 
             # 5. journal: icon tiles, structured summary, the PDF downloads and is a PDF
             await page.goto(BASE + "journal.html", wait_until="networkidle"); await page.wait_for_timeout(900)
@@ -374,11 +485,12 @@ async def main():
             # the real consent controls: nothing optional pre-ticked, the button locked until the age tick
             await p2.goto(BASE + "room.html", wait_until="networkidle"); await p2.wait_for_timeout(700)
             await p2.click("#welcome .btn.primary"); await p2.wait_for_timeout(400)
-            before = await p2.evaluate("()=>({shown: !document.querySelector('#consent').hidden, luna: document.querySelector('#cLuna').checked, improve: document.querySelector('#cImprove').checked, locked: document.querySelector('#cAgree').disabled})")
-            check("consent notice opens with every optional choice unticked and the button locked", before["shown"] and not before["luna"] and not before["improve"] and before["locked"], before)
-            await p2.check("#cAge"); await p2.click("#cAgree"); await p2.wait_for_timeout(500)
-            after = await p2.evaluate("()=>{var c=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.consent; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {v:c&&c.v, luna:c&&c.luna, improve:c&&c.improve, age13:c&&c.age13, aiOn:!!ai.on, hidden: document.querySelector('#consent').hidden};}")
-            check("agreeing stores consent v2 with Luna's AI help off and closes the notice", after == {"v": 2, "luna": False, "improve": False, "age13": True, "aiOn": False, "hidden": True}, after)
+            before = await p2.evaluate("()=>({shown: !document.querySelector('#consent').hidden, n: document.querySelectorAll('#cChoices input[type=checkbox]').length, anyOn: Array.from(document.querySelectorAll('#cChoices input')).some(i=>i.checked), age: document.querySelector('#cAge').checked, health: document.querySelector('#cHealth').checked, locked: document.querySelector('#cAgree').disabled, under: !!document.querySelector('#cUnder')})")
+            check("the notice opens with five separate choices all off, the required health and 18+ ticks unticked, the button locked and an under-18 way out", before["shown"] and before["n"] == 5 and not before["anyOn"] and not before["age"] and not before["health"] and before["locked"] and before["under"], before)
+            await p2.check("#cAge"); lockedStill = await p2.evaluate("()=>document.querySelector('#cAgree').disabled"); await p2.check("#cHealth"); await p2.click("#cAgree"); await p2.wait_for_timeout(600)
+            check("the age tick alone does not unlock the button; the health tick is required too", lockedStill)
+            after = await p2.evaluate("()=>{var p=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {v:p.consent&&p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed===true?p.ageAttest.version:null, purposes:(p.consentEvents||[]).map(e=>e.purpose+':'+e.action+':'+e.method).sort(), aiOn:!!ai.on, cloud:p.cloud&&p.cloud.v, hidden: document.querySelector('#consent').hidden};}")
+            check("agreeing records the 18+ attestation and health tracking at notice 3, nothing else, and closes the notice", after["v"] == 3 and after["age"] == 1 and after["purposes"] == ["age_18:grant:sheet", "health_tracking:grant:sheet"] and not after["aiOn"] and not after["cloud"] and after["hidden"], after)
             await ctx2.close()
             # a person whose consent predates notice v2 is sent back to the room from any other page
             ctx3 = await browser.new_context(viewport={"width": 390, "height": 844})
@@ -388,6 +500,31 @@ async def main():
             await p3.goto(BASE + "hormones.html", wait_until="load"); await p3.wait_for_timeout(700)
             check("a v1 consent is sent back to the room to be asked again", p3.url.endswith("room.html"), p3.url)
             await ctx3.close()
+            # a person who agreed to notice v2 reads v3: the switches show today's settings, 18+ is asked afresh, the diary is kept
+            ctx4 = await browser.new_context(viewport={"width": 390, "height": 844})
+            v2 = json.loads(json.dumps(DB)); v2["profile"]["consent"] = {"v": 2, "at": NOW, "luna": True, "improve": False, "age13": True}
+            for k in ("ageAttest", "consentEvents", "consentImportedAt"): v2["profile"].pop(k, None)
+            await ctx4.add_init_script("if(!localStorage.getItem('ovumind_db_v1')){ localStorage.setItem('ovumind_db_v1', %s); localStorage.setItem('ovumind_ai_v1', JSON.stringify({on:false, insights:false, photos:true})); }" % json.dumps(json.dumps(v2)))
+            p4 = await ctx4.new_page(); await p4.route("**/*", gate)
+            p4.on("pageerror", lambda e: errors.append("v2 pageerror: " + str(e)))
+            await p4.goto(BASE + "room.html", wait_until="networkidle"); await p4.wait_for_timeout(900)
+            rc = await p4.evaluate("()=>({shown: !document.querySelector('#consent').hidden, title: document.querySelector('#cTitle').textContent, photos: document.querySelector('#c_food_photo_ai').checked, reading: document.querySelector('#c_ai_reading').checked, cloud: document.querySelector('#c_cloud_sync').checked, age: document.querySelector('#cAge').checked, locked: document.querySelector('#cAgree').disabled, fine: document.querySelector('#cFine').textContent, welcome: !!document.querySelector('#welcome:not([hidden])')})")
+            check("a v2 consent reads the changed notice: the photo switch mirrors her setting, the rest are off, 18+ is asked afresh", rc["shown"] and rc["title"] == "Our data notice has changed" and rc["photos"] and not rc["reading"] and not rc["cloud"] and not rc["age"] and rc["locked"] and rc["fine"] == "Your diary on this phone is kept as it is." and not rc["welcome"], rc)
+            await p4.check("#c_ai_reading"); await p4.check("#cAge"); await p4.check("#cHealth"); await p4.click("#cAgree"); await p4.wait_for_timeout(700)
+            rd = await p4.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); var p=db.profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); var ev=p.consentEvents||[]; return {v:p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed, imports: ev.filter(e=>e.method==='import').map(e=>e.purpose).sort(), sheet: ev.filter(e=>e.method==='sheet').map(e=>e.purpose+':'+e.action).sort(), aiOn: ai.on, aiPhotos: ai.photos, events: db.events.length, hidden: document.querySelector('#consent').hidden};}")
+            check("agreeing again keeps the earlier choices as imports, records the sheet's choices at notice 3 and keeps every entry", rd["v"] == 3 and rd["age"] is True and rd["imports"] == ["food_photo_ai", "health_tracking"] and rd["sheet"] == ["age_18:grant", "ai_reading:grant", "food_photo_ai:grant", "health_tracking:grant"] and rd["aiOn"] is True and rd["aiPhotos"] is True and rd["events"] == 3 and rd["hidden"], rd)
+            await ctx4.close()
+            # under 18: the room does not open, nothing is saved, and the notice is back on the next visit
+            ctx5 = await browser.new_context(viewport={"width": 390, "height": 844})
+            p5 = await ctx5.new_page(); await p5.route("**/*", gate)
+            await p5.goto(BASE + "room.html", wait_until="networkidle"); await p5.wait_for_timeout(700)
+            await p5.click("#welcome .btn.primary"); await p5.wait_for_timeout(400)
+            await p5.click("#cUnder"); await p5.wait_for_timeout(400)
+            u1 = await p5.evaluate("()=>({msg: (document.querySelector('#consent h2')||{}).textContent, agree: !!document.querySelector('#cAgree'), open: !document.querySelector('#consent').hidden, exportLink: !!document.querySelector('#cExport') && !!document.querySelector('#cWipe'), db: localStorage.getItem('ovumind_db_v1')})")
+            await p5.reload(wait_until="networkidle"); await p5.wait_for_timeout(700)
+            u2 = await p5.evaluate("()=>({welcome: !!document.querySelector('#welcome:not([hidden])'), consent: !document.querySelector('#consent').hidden, db: localStorage.getItem('ovumind_db_v1')})")
+            check("under 18: a plain message, export and delete right there, no agree button, nothing written at all, and the doorway is back on reload", "18 and over" in (u1["msg"] or "") and not u1["agree"] and u1["open"] and u1["exportLink"] and '"consent":{' not in (u1["db"] or "") and 'under18' not in (u1["db"] or "") and (u2["welcome"] or u2["consent"]) and '"ageAttest"' not in (u2["db"] or ""), {"u1": {k: u1[k] for k in ("msg", "agree", "open", "exportLink")}, "u2": {k: u2[k] for k in ("welcome", "consent")}})
+            await ctx5.close()
             # Moon Tap: open from the mat sheet, begin, three blooms, stop after the minimum, the entry is saved
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(800)
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindTap", timeout=8000); await page.click("#mindTap"); await page.wait_for_selector("#btapBegin", timeout=8000)
@@ -419,12 +556,112 @@ async def main():
             seat = await page.evaluate("()=>{var el=document.querySelector('.nb.sitter'); var img=el&&el.querySelector('img'); return {there: !!el, src: img&&img.getAttribute('src'), seated: !!(img&&img.classList.contains('seated')), layout: document.querySelector('#scene').dataset.layout}}")
             check("on the garden bench she sits in her own clothes (avatar-sit-base), not in the cross-legged mat pose", seat["there"] and seat["seated"] and seat["src"] == "assets/room/dream/avatar-sit-base.webp" and seat["layout"] == "garden", seat)
             await page.mouse.click(30, 700); await page.wait_for_timeout(400)
+            # the street bench: on the wide plate the seated width comes from the box's aspect, not the plate's
+            went = await page.evaluate("()=>({went: OvuWalk.travel('street'), toast: (document.querySelector('#toast')||{}).textContent, cls: document.querySelector('#scene').className})")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            onst = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, bench: !!document.querySelector('.hotspot[data-id=bench]'), cls: document.querySelector('#scene').className})")
+            ST = "()=>({layout: document.querySelector('#scene').dataset.layout, pos: OvuRoom.pos(), sitting: OvuGarden.sitting(), walking: OvuWalk.walking(), cls: document.querySelector('#scene').className, toast: (document.querySelector('#toast')||{}).textContent})"
+            if onst["layout"] == "street" and onst["bench"]:
+                b0 = await page.evaluate(ST)
+                await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bench'))")
+                try: await page.wait_for_selector('#benchSit', timeout=12000); await page.click('#benchSit'); await page.wait_for_timeout(900)
+                except Exception: print("street bench card did not open:", b0, await page.evaluate(ST))
+            else: print("street bench skipped:", went, onst)
+            sb = await page.evaluate("()=>{var el=document.querySelector('.nb.sitter'), b=document.querySelector('#scene').getBoundingClientRect(), r=el&&el.getBoundingClientRect(); return {there: !!el, w: el&&parseFloat(el.style.width), left: el&&parseFloat(el.style.left), inside: !!r && r.left>=b.left && r.right<=b.right && r.bottom<=b.bottom, layout: document.querySelector('#scene').dataset.layout}}")
+            check("on the street bench she sits on its seat, on screen, sized from the box's aspect (about 10.5, not the clamped 7 a plate aspect would give)", sb["there"] and sb["layout"] == "street" and abs(sb["left"] - 126) < 0.5 and abs(sb["w"] - 10.53) < 0.2 and sb["inside"], sb)
+            await page.mouse.click(30, 700); await page.wait_for_timeout(400)
+            # teas and herbs live in the garden greenhouse; every source list sits behind a small (i)
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
+            await page.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuWalk.travel('garden');}")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('greenhouse'))")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] .teacare .ibtn.evi', timeout=10000)
+            except Exception: pass
+            gh = await page.evaluate("""()=>({teas: document.querySelectorAll('#sheet .tea').length, cautions: document.querySelectorAll('#sheet .teacare p b').length,
+                shownChips: [...document.querySelectorAll('#sheet .evrefs a')].filter(a=>a.offsetParent).length, infos: document.querySelectorAll('#sheet .ibtn.evi').length,
+                label: (document.querySelector('#sheet .teacare .ibtn.evi')||{}).getAttribute && document.querySelector('#sheet .teacare .ibtn.evi').getAttribute('aria-label')})""")
+            await page.click('#sheet .teacare .ibtn.evi')
+            await page.wait_for_timeout(200)
+            op = await page.evaluate("()=>{var b=document.querySelector('#sheet .teacare .ibtn.evi'); var r=document.getElementById(b.getAttribute('aria-controls')); var a=r.querySelector('a'); return {expanded: b.getAttribute('aria-expanded'), shown: !!r.offsetParent, href: a && a.getAttribute('href'), text: a && a.textContent}}")
+            await page.click('#sheet .teacare .ibtn.evi'); await page.wait_for_timeout(150)
+            shut = await page.evaluate("()=>{var b=document.querySelector('#sheet .teacare .ibtn.evi'); return !document.getElementById(b.getAttribute('aria-controls')).offsetParent}")
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            check("the garden greenhouse lists every tea and the doctor-or-pharmacist cautions, with all sources folded behind small (i) buttons", gh["teas"] >= 15 and gh["cautions"] >= 5 and gh["shownChips"] == 0 and gh["infos"] >= 20 and gh["label"] == "Source for St John’s wort", gh)
+            check("an (i) opens its sources (a link into the evidence register) and closes them again", op["expanded"] == "true" and op["shown"] and (op["href"] or "").startswith("evidence.html#E") and shut, op)
+
+            # the farm: the garden path leads there, twelve beds draw on the plate, the shed gives seeds, a bed is planted and
+            # watered, and a harvest offers to log a meal without writing one
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(800)
+            await page.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuStore.setState({farm: null, stamina: null}); OvuWalk.travel('garden');}"); await page.wait_for_timeout(1800)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('farmpath'))")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'farm'", timeout=12000)
+            except Exception: pass
+            await page.wait_for_timeout(900)
+            farm = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, beds: document.querySelectorAll('#ownedProps .bed').length, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), lit: document.querySelector('#minimap .on')?.dataset.scene, stop: document.querySelector('#minimap [data-scene=farm] i')?.textContent, zone: document.querySelector('#zoneName')?.textContent})")
+            check("the garden path walks her onto the farm: twelve beds on the plate, four hotspots, the mini-map lit on Farm", farm["layout"] == "farm" and farm["beds"] == 12 and farm["hots"] == "farmgate,shed,well,basket" and farm["lit"] == "farm" and farm["stop"] == "Farm" and farm["zone"] == "Your farm", farm)
+            foods_before = await page.evaluate("()=>OvuStore.list('food').length")
+            seeds = await page.evaluate("()=>{var d=OvuGameTime.dayKey(); var a=OvuFarm.takeSeed(OvuStore,'radish',d), b=OvuFarm.takeSeed(OvuStore,'radish',d), c=OvuFarm.takeSeed(OvuStore,'carrot',d), x=OvuFarm.takeSeed(OvuStore,'carrot',d); return {a:a.ok,b:b.ok,c:c.ok,x:x.ok,left:OvuFarm.seedsLeftToday(OvuStore,d)}}")
+            check("the shed gives three seeds a day", seeds["a"] and seeds["b"] and seeds["c"] and not seeds["x"] and seeds["left"] == 0, seeds)
+            # a clean bed: tap it, she walks to its stand point and the bed sheet opens with the seeds to plant
+            bed = await page.evaluate("()=>{var d=OvuGameTime.dayKey(); var b=OvuFarm.BEDS.filter(x=>!OvuFarm.hasWeeds(null,x.id,d))[0]; document.querySelector('#ownedProps .bed[data-id='+b.id+']').click(); return b.id}")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] #bedActs', timeout=12000)
+            except Exception: pass
+            planted = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=plant][data-crop=radish]'); if(!b) return {btn:false}; b.click(); return {btn:true, crop: OvuFarm.bed(OvuStore,id) && OvuFarm.bed(OvuStore,id).crop}}", bed)
+            await page.wait_for_timeout(500)
+            watered = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=water]'); if(!b) return {btn:false}; b.click(); var bb=OvuFarm.bed(OvuStore,id); return {btn:true, days: OvuFarm.growthDays(bb), stam: OvuStamina.value(), stage: OvuFarm.stage(bb)}}", bed)
+            check("tapping a bed walks her over and opens it; planting a radish and watering it costs energy and counts one day", planted["btn"] and planted["crop"] == "radish" and watered["btn"] and watered["days"] == 1 and 1 <= watered["stage"] <= 2 and watered["stam"] == 100 - 2 - 6, {"planted": planted, "watered": watered})
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            # ripen it by hand (two watered days) and harvest through the sheet: the basket fills, the meal prompt asks, no entry is written
+            await page.evaluate("(id)=>{var f=OvuStore.state().farm; f.beds[id].watered=[OvuStore.addDays(OvuGameTime.dayKey(),-1), OvuGameTime.dayKey()]; OvuStore.setState({farm:f}); OvuFarm.openBed(id);}", bed)
+            await page.wait_for_timeout(400)
+            harvested = await page.evaluate("()=>{var b=document.querySelector('#bedActs [data-bed=harvest]'); if(!b) return {btn:false}; b.click(); return {btn:true}}")
+            try: await page.wait_for_selector('#harvestLog', timeout=8000)
+            except Exception: pass
+            hv = await page.evaluate("()=>({prompt: !!document.querySelector('#harvestLog'), basket: (OvuStore.state().farm.harvest||{}).radish, foods: OvuStore.list('food').length})")
+            await page.click('#harvestNo'); await page.wait_for_timeout(300)
+            check("harvest fills the basket and asks before any meal is logged; Not now writes nothing", harvested["btn"] and hv["prompt"] and hv["basket"] == 2 and hv["foods"] == foods_before, hv)
+            # a logged sleep stops the game: a bed tap, a hotspot and a journey all answer with the wake-her-first line and nothing opens
+            await page.evaluate("()=>{OvuRoom.asleep=function(){return !!OvuStore.state().sleeping}; OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}});}"); await page.wait_for_timeout(400)
+            slept = await page.evaluate("(id)=>{var out={}; document.querySelector('#ownedProps .bed[data-id='+id+']').click(); out.bedSheet=document.querySelector('#sheet').getAttribute('aria-hidden')==='false'; OvuRoom.tap(OvuRoom.hotspot('shed')); out.shedSheet=document.querySelector('#sheet').getAttribute('aria-hidden')==='false'; out.travel=OvuWalk.travel('garden'); out.walk=OvuWalk.tapWalk(60,60); out.prompt=!document.querySelector('#actBtn').hidden; out.toast=(document.querySelector('#toast')||{}).textContent||''; return out}", bed)
+            await page.wait_for_timeout(300)
+            check("while she sleeps the farm, the shed, a journey and a tap-walk all stop with the wake-her-first line, and no prompt shows", not slept["bedSheet"] and not slept["shedSheet"] and slept["travel"] is False and slept["walk"] is False and not slept["prompt"] and "asleep" in slept["toast"], slept)
+            await page.evaluate("()=>{OvuStore.setState({sleeping:null}); OvuRoom.asleep=function(){return false};}"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('farmgate'))")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'garden'", timeout=12000)
+            except Exception: pass
+            back = await page.evaluate("()=>document.querySelector('#scene').dataset.layout")
+            check("the farm gate leads back to the garden", back == "garden", back)
             # the staff page: signed out it shows the sign-in gate only, no dashboard, no data call
             await page.goto(BASE + "admin.html", wait_until="networkidle"); await page.wait_for_timeout(500)
             ag = await page.evaluate("()=>({h2: (document.querySelector('h2')||{}).textContent, email: !!document.querySelector('#gEmail'), send: !!document.querySelector('#gSend'), nav: !!document.querySelector('nav.tabs')})")
             check("the staff page signed out shows only the sign-in gate (no dashboard, no data request)", ag["h2"] == "Rhythme staff" and ag["email"] and ag["send"] and not ag["nav"], ag)
             check("no Supabase auth or data request was made anywhere in the signed-out run", not [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1" in u)], relay_calls[:3])
             check("nothing was requested from any third party during the run", not external, external[:3])
+
+            # 9. asleep: nothing opens until the bed wakes her (hotspots, the nav sheets, Luna); You and the bed stay open
+            ctx9 = await browser.new_context(viewport={"width": 390, "height": 844})
+            zz = json.loads(json.dumps(DB)); zz["state"]["sleeping"] = {"startedAt": NOW, "bedTime": "23:00", "prevOutfit": "base", "pj": True}
+            await ctx9.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(zz)))
+            p9 = await ctx9.new_page(); await p9.route("**/*", gate)
+            p9.on("pageerror", lambda e: errors.append("asleep pageerror: " + str(e)))
+            await p9.goto(BASE + "room.html", wait_until="networkidle"); await p9.wait_for_selector(".hotspot"); await p9.wait_for_timeout(900)
+            await p9.click(".hotspot[data-id=diary]"); await p9.wait_for_timeout(500)
+            z1 = await p9.evaluate("()=>({toast: document.querySelector('#toast').textContent, sheet: document.querySelector('#sheet').getAttribute('aria-hidden')})")
+            await p9.click(".hotspot[data-id=door]"); await p9.wait_for_timeout(700)
+            z1["door"] = await p9.evaluate("()=>({sheet: document.querySelector('#sheet').getAttribute('aria-hidden'), layout: (document.querySelector('.scene')||{}).dataset ? document.querySelector('.scene').dataset.layout : null})")
+            await p9.click("nav a[data-tab=cycle]"); await p9.wait_for_timeout(500)
+            z2 = await p9.evaluate("()=>({sheet: document.querySelector('#sheet').getAttribute('aria-hidden'), tab: (document.querySelector('nav a.on')||{}).dataset ? document.querySelector('nav a.on').dataset.tab : null})")
+            await p9.evaluate("()=>document.querySelector('#lunaBtn').click()"); await p9.wait_for_timeout(500)  # the orb floats, so a synthetic click
+            z3 = await p9.evaluate("()=>document.querySelector('#sheet').getAttribute('aria-hidden')")
+            check("asleep, a room object, the street door, a nav sheet and Luna all answer with the bed toast and open nothing", "asleep" in z1["toast"] and z1["sheet"] == "true" and z1["door"]["sheet"] == "true" and (z1["door"]["layout"] in (None, "room")) and z2["sheet"] == "true" and z3 == "true", {"z1": z1, "z2": z2, "z3": z3})
+            await p9.evaluate("()=>document.querySelector('nav a[data-tab=you]').click()"); await p9.wait_for_selector('#sheet[aria-hidden="false"] #youAccount', timeout=8000)
+            await p9.keyboard.press("Escape"); await p9.wait_for_timeout(300)
+            await p9.evaluate("()=>document.querySelector('.hotspot[data-id=bed]').click()"); await p9.wait_for_selector('#sheet[aria-hidden="false"]', timeout=8000); await p9.wait_for_timeout(300)
+            z4 = await p9.evaluate("()=>(document.querySelector('#sheet h2')||document.querySelector('#sheet .sh-title')||{}).textContent")
+            check("asleep, You still opens and the bed offers the morning", z4 and "morning" in z4.lower(), z4)
+            await ctx9.close()
 
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()

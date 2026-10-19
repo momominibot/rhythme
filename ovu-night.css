@@ -97,3 +97,32 @@ html[data-sky="night"] .shopitem .cost .ms{color:#f3a7c4}
 html[data-sky="night"] div[style*="--d-cycle"]{background:#5f4596!important}
 html[data-sky="night"] main.scroll > .card > div{color:var(--rm-ink)}
 html[data-sky="night"] .sec-title .ms,html[data-sky="night"] .row .ms{color:#f3c6b9!important}
+/* calendar at night (Jamie, 19 Oct: "I can't see my menstruating days"): the card colour above flattened every day,
+ * so period, expected and fertile days keep their own colours here, strong enough to read on the dark sheet */
+html[data-sky="night"] .cal-grid .cal-day.p-spotting{background:#f6cddb;color:#5a2440}
+html[data-sky="night"] .cal-grid .cal-day.p-light,html[data-sky="night"] .cal-grid .cal-day.p-unspecified{background:#ee9fbb;color:#4a1832}
+html[data-sky="night"] .cal-grid .cal-day.p-medium{background:#e0709a;color:#3d1027}
+html[data-sky="night"] .cal-grid .cal-day.p-heavy{background:#b0436e;color:#fff}
+html[data-sky="night"] .cal-grid .cal-day.predicted{background:repeating-linear-gradient(135deg,#3a2c58 0 4px,#6a3f63 4px 8px);color:#f7c6d8;border-color:rgba(238,159,187,.45)}
+html[data-sky="night"] .cal-grid .cal-day.fertile{background:#2f5546;color:#d6f2e2}
+html[data-sky="night"] .cal-grid .cal-day.future{background:rgba(255,255,255,.03);color:#a99cc9}
+html[data-sky="night"] .cal-grid .cal-day.today{border-color:#d8b4f0}
+html[data-sky="night"] .cal-grid .cal-day.p-light .sdot,html[data-sky="night"] .cal-grid .cal-day.p-spotting .sdot{background:#7a3a5c}
+/* Erin's episode quote at night: dark panel, light text (it kept its pale day panel under light night text) */
+html[data-sky="night"] .podquote{background:rgba(201,182,230,.1);color:var(--rm-ink);border-left-color:#b99be0}
+/* light badges (pink-to-lilac gradient with plum text): at night plum turns light, so the badge turns dark */
+html[data-sky="night"] :is(.c-list .ms,.fingerkey i,.yrow>.ms:first-child,.dsec>h4 i,.tea summary>.ms:first-child,.podep i,.imp-head>.ms){background:linear-gradient(145deg,#5e3a63,#45366e);color:#f6e2ee}
+/* acupressure: the point markers sit on a light figure, so their numbers stay dark; the panels around them go dark */
+html[data-sky="night"] .acufig .pt{color:#3b2a55}
+html[data-sky="night"] .acufig .pt.on{color:#fff}
+html[data-sky="night"] .zoom .ztitle{background:rgba(31,23,51,.9);color:var(--rm-ink)}
+html[data-sky="night"] .acuuse{background:linear-gradient(135deg,#30264f,#3b2849)}
+html[data-sky="night"] .acuuse .evrefs a,html[data-sky="night"] .teabody .evrefs a,html[data-sky="night"] .teacare .evrefs a,html[data-sky="night"] .guide .ev .evrefs a{background:rgba(255,255,255,.07);border-color:rgba(201,182,230,.3);color:var(--rm-ink)}
+html[data-sky="night"] .fingerkey{background:rgba(255,255,255,.05);border-color:rgba(201,182,230,.25)}
+html[data-sky="night"] .podctl .big{background:#7a5c96}
+/* inline-styled legacy pages: settings' section titles and the nutrients page's round icon chips */
+html[data-sky="night"] [style*="--ovuluna-text-primary"]{color:var(--rm-ink)!important}
+html[data-sky="night"] .row>span[style*="border-radius:50%"]{background:rgba(248,201,194,.16)!important;color:#f6d3c8!important}
+html[data-sky="night"] .row>span[style*="border-radius:50%"] .ms{color:#f6d3c8!important}
+/* the account panel's injected state line uses a day-only grey */
+html[data-sky="night"] .ya-state{color:var(--rm-ink-3)}

@@ -6,7 +6,7 @@
   var ART = 'assets/room/dream/';
   /* Jamie, 18 Oct 23:50: one Luna, the pastel crescent moon. The other looks stay on disk but are not offered. */
   var LIST = [
-    { id: 'moon', name: 'Luna the moon', img: 'orb-moon.webp', head: 'orb-moon-head.webp', note: 'The glowing crescent Rhythme began with.' }
+    { id: 'moon', name: 'Luna the moon', img: 'orb-moon.webp', head: null, note: 'The glowing crescent Rhythme began with.' } /* Jamie, 19 Oct: the crescent on its own everywhere, no round badge */
   ];
   function store() { return root.OvuStore || null; }
   function byId(id) { for (var i = 0; i < LIST.length; i++) if (LIST[i].id === id) return LIST[i]; return null; }

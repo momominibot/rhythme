@@ -26,8 +26,9 @@ list. Every change walks it before a push; `tools/checkpoints.sh` asks jev the s
 1. No walk toggle; tap the floor to walk; keys still work on desktop.
 2. She walks normally, a real eight-frame cycle in her own outfit; no hopping. Nothing changes her outfit by itself.
 3. The pets walk normally too (their own cycles) and wander, never through furniture, the pond or the plot.
-4. The screen follows her as she walks; outdoors and in stores the view is closer, like a game. Home shows the whole
-   room so every hotspot stays a tap away (Jamie may change this).
+4. The screen follows her as she walks, like a game. Every scene opens fitted to the screen (zoom 1; Jamie, 19 Oct:
+   "always zoomed out fit to screen"); + zooms in. Dream Street is one wide plate, two and a half screens long, that
+   the view scrolls across as she walks ("bigger space to walk").
 5. Stores: no plaques on the street; an attempt to go in shows that store's own hours; the three stores keep different
    hours and carry their own names (Whisker & Paw, The Cosy Nook, Moonrise Homes), not "Dream Street".
 6. Items in stores stand on surfaces, placed nicely, no price chips; bought things leave the shelf for the inventory.
@@ -65,3 +66,9 @@ was verified (which test, which screenshot). A pointer that cannot be verified i
 26. **Erin's own scripts replace interim ones clip by clip, by time of day.** A script marked morning or evening wins at that hour; the clip length plus the written pause sets each step. Jamie: "Erin has dropped her mindfulness coach scripts for us to instil into the app."
 27. **No staff read of a diary without that person's separate opt-in.** The dashboard shows counts only across at least 20 consenting adults; membership is by account id; every call is audited. Jamie: "I control this."
 28. **Sit on the seat, cross-legged only on the mat.** Benches and chairs show her seated in her own clothes with feet down; the meditation pose belongs to the yoga mat. Jamie: "avatar needs to learn to sit on chair not on the floor, the meditation pose only on the yoga mat."
+29. **The game never writes a health entry on its own.** A harvest, a fish, a rest or any game action may offer the diary ("Log a meal?") but saves only what she chooses in the diary itself; the life-sim engine and the farm hold their state under `state.game`, `state.stamina` and `state.farm`, never in entries. Checked by the core suite (harvest leaves the entry count unchanged) and the smoke suite ("Not now" writes nothing).
+30. **Energy, not punishment.** Low energy slows her walk and fades the scene a little; it never blocks care, logging, Erin's sessions or the diary. Sleep and a new day refill it.
+31. **The farm grows by real days.** Watering counts once a day, a missed day adds nothing and takes nothing away, weeds come on the same beds on every phone (a hash of the day and the bed), and the shed gives three seeds a day. Jamie: "review this carefully and build."
+32. **A logged sleep stops the game.** Once she is put to bed, nothing in the game moves, opens or grows until the bed wakes her: no tap-walk, no journey, no farm, no prompt. The room answers every attempt with "She is asleep. Tap the bed to wake her first." Jamie: "Real sleep logging, all games have to stop. User can't do anything further unless it wakes the avatar up."
+33. **Hearts come from logging, not from play.** Game actions earn nothing; mindfulness earns a small amount. Jamie: "Hearts points only given for logging of data, mindfulness will contribute small amount of heart points."
+34. **Her look is hers to choose**: hair colour, eye colour, skin colour and four hairstyles, rendered so every pose and walk frame matches; nothing changes it by itself.

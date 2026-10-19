@@ -3,9 +3,9 @@
 (function (root) {
   'use strict';
   const KEYS = { context: 'ovuluna_daily_context_v1', routine: 'ovuluna_daily_routine_v1', completions: 'ovuluna_daily_completions_v1' };
-  const STAGES = { teen: 'Early menstrual years', cycling: 'Menstrual cycles', ttc: 'Trying to conceive', pregnant: 'Pregnant', postpartum: 'After pregnancy', peri: 'Perimenopause', post: 'After menopause', unspecified: 'Prefer not to specify' };
+  const STAGES = { cycling: 'Menstrual cycles', ttc: 'Trying to conceive', pregnant: 'Pregnant', postpartum: 'After pregnancy', peri: 'Perimenopause', post: 'After menopause', unspecified: 'Prefer not to specify' };
   const CONTRACEPTION = { none: 'No contraception reported', hormonal: 'Hormonal contraception', nonhormonal: 'Non-hormonal contraception', unsure: 'Not sure', undisclosed: 'Prefer not to specify' };
-  const TASK_IDS = ['check-context', 'stage-teen', 'stage-cycling', 'stage-ttc', 'stage-pregnant', 'stage-postpartum', 'stage-peri', 'stage-post', 'stage-unspecified', 'bleeding-care', 'review-observation', 'comfort', 'connection', 'one-note'];
+  const TASK_IDS = ['check-context', 'stage-cycling', 'stage-ttc', 'stage-pregnant', 'stage-postpartum', 'stage-peri', 'stage-post', 'stage-unspecified', 'bleeding-care', 'review-observation', 'comfort', 'connection', 'one-note'];
   const CONTEXT_DAYS = 30, OBSERVATION_DAYS = 7;
   const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
   const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -87,7 +87,6 @@
     return result;
   }
   const STAGE_CARDS = {
-    teen: ['Keep what affects your day', 'A short note about bleeding, discomfort or time missed from activities can help a conversation with a trusted adult or clinician.', 'life-teen-flow', 'journey-bloom.html'],
     cycling: ['Notice without predicting a phase', 'Keep an observation that matters to you, with its date and context. You do not need to fill every field.', 'cycle-physiology-updated', 'cycle-log.html'],
     ttc: ['Check your pre-pregnancy supplement plan', 'If you are trying to conceive, ask your pharmacist or clinician about a folic acid plan that fits you, including any prescribed medicines. Do not change prescribed care from an app suggestion.', 'daily-preconception', 'journey-grow.html'],
     pregnant: ['Follow your own maternity care plan', 'Keep questions and changes you want to discuss with your maternity team. Do not use this app to change prescribed care or a food restriction.', 'life-postnatal-redflags', 'https://www.cdc.gov/hearher/maternal-warning-signs/index.html'],

@@ -80,13 +80,34 @@ async function sha(s: string) {
   return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
 
+// Consent (19 Oct 2026, docs/design/2026-10-19-consent-rebuild-plan.md): a signed-in caller must hold the purpose in
+// public.consent_events (consent_allows); a caller without an account must send X-Rhythme-Consent naming the purpose,
+// the phone's own record, which is the honest limit for people who keep everything on the phone. A silent call is refused.
+// deno-lint-ignore no-explicit-any
+async function consentGate(req: Request, sb: any, purpose: string, cors: Record<string, string>) {
+  const refused = () => json({ error: "This use of your diary is off in your choices. Turn it on under You, then try again.", code: "no-consent" }, 403, cors);
+  const auth = req.headers.get("authorization") || "";
+  const jwt = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  if (jwt && jwt !== anonKey) {
+    const { data: who, error } = await sb.auth.getUser(jwt);
+    const uid = who?.user?.id;
+    if (error || !uid) return json({ error: "Your session is not valid. Please sign in again.", code: "no-session" }, 401, cors);
+    const { data: ok, error: cerr } = await sb.rpc("consent_allows", { p_uid: uid, p_purpose: purpose });
+    if (cerr) return json({ error: "Luna cannot check your choices right now." }, 503, cors);
+    return ok === true ? null : refused();
+  }
+  const claimed = (req.headers.get("x-rhythme-consent") || "").split(";")[0].trim();
+  return claimed === purpose ? null : refused();
+}
+
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin") || "";
   const allowed = ORIGINS.includes(origin);
   const cors = {
     "Access-Control-Allow-Origin": allowed ? origin : ORIGINS[0],
     "Vary": "Origin",
-    "Access-Control-Allow-Headers": "content-type, x-setup-token",
+    "Access-Control-Allow-Headers": "content-type, x-setup-token, authorization, x-rhythme-consent",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Max-Age": "86400",
   };
@@ -112,6 +133,8 @@ Deno.serve(async (req: Request) => {
   const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || "")) ? String(body.today) : new Date().toISOString().slice(0, 10);
   const image = typeof body.image === "string" ? body.image : "";
   const mode = body.mode === "label" ? "label" : "food";
+  const gate = await consentGate(req, sb, image ? "food_photo_ai" : "ai_reading", cors);
+  if (gate) return gate;
   const ip = (req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "0").split(",")[0].trim();
 
   if (image) {
