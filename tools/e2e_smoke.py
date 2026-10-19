@@ -78,7 +78,7 @@ async def main():
             # 1b. garden, Dream Street and the plaza: the door walks her out, the joystick and keys move her, the mini-map jumps
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_timeout(1200)
             ctl = await page.evaluate("()=>({api: !!window.OvuRoom && !!window.OvuWalk && !!window.OvuGarden && !!window.OvuCommunity && !!window.OvuStreet, pad: !!document.querySelector('#walkpad'), stops: [...document.querySelectorAll('#minimap [data-scene]')].map(b=>b.dataset.scene).join(','), door: !!document.querySelector('.hotspot[data-id=door]'), lit: document.querySelector('#minimap .on')?.dataset.scene})")
-            check("no joystick, a four-stop mini-map lit on Home, and a door hotspot are in the room", ctl["api"] and not ctl["pad"] and ctl["stops"] == "home,garden,street,plaza" and ctl["door"] and ctl["lit"] == "home", ctl)
+            check("no joystick, a mini-map lit on Home with the farm stop after the garden, and a door hotspot are in the room", ctl["api"] and not ctl["pad"] and ctl["stops"] == "home,garden,farm,street,plaza" and ctl["door"] and ctl["lit"] == "home", ctl)
             # tap to walk: a tap on empty floor plans a route around the furniture and walks there, with a ring at the spot
             async def floor_tap(px, py):
                 r = await page.evaluate("()=>{var b=document.querySelector('#sceneInner').getBoundingClientRect(); return {l:b.left,t:b.top,w:b.width,h:b.height};}")
@@ -111,6 +111,24 @@ async def main():
             await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(1700)
             stay = await page.evaluate("()=>OvuRoom.pos()")
             check("a tap just after closing a sheet is not undone by the walk home", abs(stay["x"] - 62) < 2 and abs(stay["y"] - 66) < 2, stay)
+            # life-sim slice: the day pill, low energy, the prompt near the bed, the action button, and sleep refilling energy
+            await page.evaluate("()=>{OvuStore.setState({stamina: {v: 18, max: 100, day: OvuGameTime.dayKey()}, game: {firstDay: OvuStore.addDays(OvuGameTime.dayKey(), -11)}}); OvuStamina.value(); OvuHud.render();}")
+            hud = await page.evaluate("()=>{var h=document.querySelector('#gameHud'); return {there: !!h, day: OvuGameTime.day(), text: h ? h.textContent : '', title: h ? h.title : '', low: h && h.classList.contains('low'), tired: document.querySelector('#scene').classList.contains('tired'), speed: OvuWalk.speedScale()}}")
+            check("the pill shows the season and the hour with day 12 of play in its title, and low energy slows her and dims the scene", hud["there"] and hud["day"] == 12 and "day 12 of play" in hud["title"] and any(s in hud["text"] for s in ("Spring", "Summer", "Autumn", "Winter")) and "Day" not in hud["text"] and hud["low"] and hud["tired"] and abs(hud["speed"] - 0.72) < 0.01, hud)
+            await page.evaluate("()=>{var h=OvuRoom.hotspot('bed'); OvuRoom.walkTo(h.wp, function(){});}")
+            await page.wait_for_function("()=>!OvuWalk.walking()", timeout=9000); await page.wait_for_timeout(700)
+            near = await page.evaluate("()=>({on: document.querySelector('#interactPrompt').classList.contains('on'), text: document.querySelector('#interactPrompt').textContent, btn: document.querySelector('#actBtn').classList.contains('on'), cur: OvuInteract.current() && OvuInteract.current().id})")
+            await page.click('#actBtn')
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] #goodnight', timeout=8000)
+            except Exception: pass
+            opened = await page.evaluate("()=>document.querySelector('#sheet').getAttribute('aria-hidden')==='false' && !!document.querySelector('#goodnight')")
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            check("standing by the bed raises a 'Tap to go to sleep' prompt and the action button opens the bedtime sheet", near["on"] and near["cur"] == "bed" and "sleep" in near["text"] and near["btn"] and opened, {"near": near, "opened": opened})
+            await page.evaluate("()=>OvuStore.setState({sleeping: {at: new Date().toISOString()}})"); await page.wait_for_timeout(200)
+            rested = await page.evaluate("()=>({v: OvuStamina.value(), tired: document.querySelector('#scene').classList.contains('tired'), speed: OvuWalk.speedScale()})")
+            await page.evaluate("()=>OvuStore.setState({sleeping: null})"); await page.wait_for_timeout(200)
+            check("going to sleep refills energy and lifts the tired look", rested["v"] == 100 and not rested["tired"] and rested["speed"] == 1, rested)
+            await floor_tap(62, 66); await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(1700)  # off the home spot, so the zoomed tap below lands on floor
             pets = await page.evaluate("()=>OvuPetWalk.pets()")
             # the pets keep still at night and while she sleeps; this check is about walking, so the clock is held at daytime for it
             await page.evaluate("()=>{window.__dayReal={night: OvuRoom.isNight, asleep: OvuRoom.asleep}; OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}}")
@@ -391,6 +409,42 @@ async def main():
             seat = await page.evaluate("()=>{var el=document.querySelector('.nb.sitter'); var img=el&&el.querySelector('img'); return {there: !!el, src: img&&img.getAttribute('src'), seated: !!(img&&img.classList.contains('seated')), layout: document.querySelector('#scene').dataset.layout}}")
             check("on the garden bench she sits in her own clothes (avatar-sit-base), not in the cross-legged mat pose", seat["there"] and seat["seated"] and seat["src"] == "assets/room/dream/avatar-sit-base.webp" and seat["layout"] == "garden", seat)
             await page.mouse.click(30, 700); await page.wait_for_timeout(400)
+            # the farm: the garden path leads there, twelve beds draw on the plate, the shed gives seeds, a bed is planted and
+            # watered, and a harvest offers to log a meal without writing one
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(800)
+            await page.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuStore.setState({farm: null, stamina: null}); OvuWalk.travel('garden');}"); await page.wait_for_timeout(1800)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('farmpath'))")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'farm'", timeout=12000)
+            except Exception: pass
+            await page.wait_for_timeout(900)
+            farm = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, beds: document.querySelectorAll('#ownedProps .bed').length, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), lit: document.querySelector('#minimap .on')?.dataset.scene, stop: document.querySelector('#minimap [data-scene=farm] i')?.textContent, zone: document.querySelector('#zoneName')?.textContent})")
+            check("the garden path walks her onto the farm: twelve beds on the plate, four hotspots, the mini-map lit on Farm", farm["layout"] == "farm" and farm["beds"] == 12 and farm["hots"] == "farmgate,shed,well,basket" and farm["lit"] == "farm" and farm["stop"] == "Farm" and farm["zone"] == "Your farm", farm)
+            foods_before = await page.evaluate("()=>OvuStore.list('food').length")
+            seeds = await page.evaluate("()=>{var d=OvuGameTime.dayKey(); var a=OvuFarm.takeSeed(OvuStore,'radish',d), b=OvuFarm.takeSeed(OvuStore,'radish',d), c=OvuFarm.takeSeed(OvuStore,'carrot',d), x=OvuFarm.takeSeed(OvuStore,'carrot',d); return {a:a.ok,b:b.ok,c:c.ok,x:x.ok,left:OvuFarm.seedsLeftToday(OvuStore,d)}}")
+            check("the shed gives three seeds a day", seeds["a"] and seeds["b"] and seeds["c"] and not seeds["x"] and seeds["left"] == 0, seeds)
+            # a clean bed: tap it, she walks to its stand point and the bed sheet opens with the seeds to plant
+            bed = await page.evaluate("()=>{var d=OvuGameTime.dayKey(); var b=OvuFarm.BEDS.filter(x=>!OvuFarm.hasWeeds(null,x.id,d))[0]; document.querySelector('#ownedProps .bed[data-id='+b.id+']').click(); return b.id}")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] #bedActs', timeout=12000)
+            except Exception: pass
+            planted = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=plant][data-crop=radish]'); if(!b) return {btn:false}; b.click(); return {btn:true, crop: OvuFarm.bed(OvuStore,id) && OvuFarm.bed(OvuStore,id).crop}}", bed)
+            await page.wait_for_timeout(500)
+            watered = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=water]'); if(!b) return {btn:false}; b.click(); var bb=OvuFarm.bed(OvuStore,id); return {btn:true, days: OvuFarm.growthDays(bb), stam: OvuStamina.value(), stage: OvuFarm.stage(bb)}}", bed)
+            check("tapping a bed walks her over and opens it; planting a radish and watering it costs energy and counts one day", planted["btn"] and planted["crop"] == "radish" and watered["btn"] and watered["days"] == 1 and 1 <= watered["stage"] <= 2 and watered["stam"] == 100 - 2 - 6, {"planted": planted, "watered": watered})
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            # ripen it by hand (two watered days) and harvest through the sheet: the basket fills, the meal prompt asks, no entry is written
+            await page.evaluate("(id)=>{var f=OvuStore.state().farm; f.beds[id].watered=[OvuStore.addDays(OvuGameTime.dayKey(),-1), OvuGameTime.dayKey()]; OvuStore.setState({farm:f}); OvuFarm.openBed(id);}", bed)
+            await page.wait_for_timeout(400)
+            harvested = await page.evaluate("()=>{var b=document.querySelector('#bedActs [data-bed=harvest]'); if(!b) return {btn:false}; b.click(); return {btn:true}}")
+            try: await page.wait_for_selector('#harvestLog', timeout=8000)
+            except Exception: pass
+            hv = await page.evaluate("()=>({prompt: !!document.querySelector('#harvestLog'), basket: (OvuStore.state().farm.harvest||{}).radish, foods: OvuStore.list('food').length})")
+            await page.click('#harvestNo'); await page.wait_for_timeout(300)
+            check("harvest fills the basket and asks before any meal is logged; Not now writes nothing", harvested["btn"] and hv["prompt"] and hv["basket"] == 2 and hv["foods"] == foods_before, hv)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('farmgate'))")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'garden'", timeout=12000)
+            except Exception: pass
+            back = await page.evaluate("()=>document.querySelector('#scene').dataset.layout")
+            check("the farm gate leads back to the garden", back == "garden", back)
             # the staff page: signed out it shows the sign-in gate only, no dashboard, no data call
             await page.goto(BASE + "admin.html", wait_until="networkidle"); await page.wait_for_timeout(500)
             ag = await page.evaluate("()=>({h2: (document.querySelector('h2')||{}).textContent, email: !!document.querySelector('#gEmail'), send: !!document.querySelector('#gSend'), nav: !!document.querySelector('nav.tabs')})")

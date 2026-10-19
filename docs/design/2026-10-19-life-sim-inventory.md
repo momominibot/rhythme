@@ -50,10 +50,37 @@ the code as it is, and the order of work.
 4. Game rest versus real sleep: keep one tap (bed logs sleep and she sleeps) or split them as the prompt says.
 5. Hearts for game actions and the rules in the economy note.
 6. The dashboard's second admin person for break-glass (the feature stays off until a second named person exists).
+7. One clock or two: keep everything on real time (built), or add the prompt's fast game clock for NPC schedules and lighting while crops and stores stay on real days.
+8. Hair colour: render the presets (the recolour test lost; see the avatar-looks note) and which palette.
+
+## 6. Built in the first pull request (19 October, branch `claude/life-sim`)
+
+| Piece | File | Verified by |
+|---|---|---|
+| Calendar | `ovu-gametime.js` | core: day key, seasons, hour label, day count, first-day stamp, new-day watchers |
+| Energy | `ovu-stamina.js` (100 max, low under 25, costs plant 2, water 6, harvest 4, clear 5, fish 3, forage 2, travel 1; refills on sleep and a new day; slow walk and a faded scene when low) | core: spend, low, refill; smoke: low energy slows her and fades the scene, sleep refills |
+| HUD | `ovu-hud.js` (day, season, hour, energy bar; zone name for two seconds on arrival; hidden under any activity HUD) | smoke: pill present, hidden during a session |
+| Prompts | `ovu-interact.js` (nearest hotspot or layout prompt within reach: a pill and one action button; off while walking, sitting, travelling, in a sheet or an activity) | core: nearest, verb; smoke: the bed prompt appears, the button opens the bedtime sheet |
+| Zones | `ovu-zones.js` (register a layout; a mini-map stop appears after a named one) | smoke: mini-map stops read home, garden, farm, street, plaza |
+| Farm | `ovu-farm.js`, plate `assets/room/dream/farm-v1.webp`, garden path and gate | core: 12 beds and stand points on the floor, every bed reachable from the gate, three seeds a day, weeds deterministic per day and bed, planting, watering once a real day, ripe after the crop's watered days, harvest writes no diary entry; smoke: the path leads there, beds draw, a bed is planted and watered through its sheet, a harvest asks before any meal is logged |
+| Walk engine | `ovu-walk.js` speed scale; routed walks consume time at the speed actually walked | Codex instrumented `followRoute` at scale 0.72 and 0.4: distance per 0.1 s matches 26 × scale × dt with no stall (the core suite does not drive `followRoute`) |
+
+Codex read-only review of this slice (gpt-6-astra, 19 October), all required and should items applied before the pull request:
+farm sheets now read the date at the tap, not at opening, and a sheet left open over midnight redraws for the new day;
+a refused action costs no energy (energy is checked before the rule runs and charged only on a yes); the shed remembers
+the dates it gave seeds on, so a clock set back gives nothing twice; watering dated before the planting or before the
+last watering is refused; energy refills only on a later date; the day count never shows 0; the tree's solid is its trunk,
+so the planner reaches the well (the floor check only tested point legality, the suite now plans to every stand point);
+beds that share a stand point share one prompt, which opens a picker, so no bed is shadowed by its neighbour; the farm
+mini-map stop reads "Farm"; bed buttons and the energy pill carry full accessible names; crop plurals and the farm
+hotspot prompts are written out. The planner tool's suggestion to rebuild in a desktop game engine was set aside: the app
+is a vanilla-JS web app with its own walk engine.
+
+Rules kept: nothing a game does writes a wellness entry (a harvest offers the food diary, which saves only what she chooses); no vendor or model names in the app; no toggles; her outfit and look never change on their own; the parent session's files were not touched beyond the agreed script tags in `room.html`.
 
 ## 5. Build order on the feature branch
 
-1. **Dual clock** `ovu-gametime.js`: game clock (1 in-game hour = 30 s, paused in background, drives shop hours, NPC schedules and lighting on top of the real night rule), real clock (server time from the project when signed in, device otherwise; drives crop growth and daily resets). Tests in the core harness.
+1. **Calendar** `ovu-gametime.js`: built on the real clock only. The room's day and night, the stores' hours, the pets' bedtime and Erin's morning and evening scripts all already follow the phone's real time, so the calendar names what the clock is (day count since first play, season of the month, hour) and crops grow by real days. The prompt's faster in-game clock (one game hour every 30 s) would put the stores, the sky and the NPC schedules on a second time; that is decision 7 for Jamie, and this module is where it would live. Tests in the core harness.
 2. **HUD** `ovu-hud.js`: clock, day and season, stamina bar, hearts, held item, zone name on entry; lifted out of the plate by the camera's existing list.
 3. **Stamina** `ovu-stamina.js`: costs per action, refill on game rest, slower walk and desaturation when low; in `state`.
 4. **Interaction layer** `ovu-interact.js`: proximity prompts from the avatar's live position to the nearest hotspot ("Tap to water"), action button on mobile, hotspot taps still work.

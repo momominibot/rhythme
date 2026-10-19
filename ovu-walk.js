@@ -9,6 +9,7 @@
   'use strict';
   var Y_SCALE = 0.5;      /* the floor is foreshortened: a stride up the plate covers fewer percent than one across */
   var SPEED = 26;         /* percent of plate width per second at full tilt */
+  var speedScale = 1;     /* stamina slows her when it is low (ovu-stamina.js) */
   var SUBSTEP = 0.02;     /* seconds per collision substep, so a long frame can never jump a wall */
   var FRAMES = 8, FPS = 10, STRIDE = SPEED / FPS * FRAMES; /* walk cycle: 8 frames, 10 per second at full speed, so one cycle per STRIDE iso units */
 
@@ -38,7 +39,7 @@
   function step(world, pos, dir, dt, speed) {
     var len = Math.hypot(dir.x || 0, dir.y || 0), out = { x: pos.x, y: pos.y, moved: false };
     if (!len || !dt) return out;
-    var k = Math.min(1, len), ux = dir.x / len, uy = dir.y / len, sp = speed || SPEED;
+    var k = Math.min(1, len), ux = dir.x / len, uy = dir.y / len, sp = (speed || SPEED) * speedScale;
     var n = Math.max(1, Math.ceil(dt / SUBSTEP)), h = dt / n;
     for (var s = 0; s < n; s++) {
       var stuck = !!blocked(world.solids, out.x, out.y);
@@ -338,10 +339,10 @@
       var dx = tgt.x - cur.x, dy = tgt.y - cur.y, dist = Math.hypot(dx, dy / Y_SCALE);
       if (dist < 0.05) { route.i++; if (route.i >= route.pts.length) { cur.x = tgt.x; cur.y = tgt.y; route = null; } continue; }
       var remaining = route.left - 0 + dist, k = route.i === route.pts.length - 1 ? Math.max(MIN_EASE, Math.min(1, dist / EASE)) : 1;
-      var adv = Math.min(dist, SPEED * k * dt), f = adv / dist;
+      var adv = Math.min(dist, SPEED * speedScale * k * dt), f = adv / dist;
       var nx = cur.x + dx * f, ny = cur.y + dy * f;
       if (!free(w, nx, ny, true) && !inZones(w.zones, nx, ny)) { route = null; break; } /* never off the floor, even if the mask changed */
-      face(dx); cur.x = nx; cur.y = ny; dt -= adv / (SPEED * k);
+      face(dx); cur.x = nx; cur.y = ny; dt -= adv / (SPEED * speedScale * k); /* consume the time at the speed actually walked, or a slow walk loops the frame */
       if (adv >= dist - 1e-6) { route.i++; if (route.i >= route.pts.length) route = null; }
       if (!inDoor && doorAt(w.doors, cur.x, cur.y)) { route = null; break; } /* a door on the way: the frame handles it */
     }
@@ -523,6 +524,7 @@
     R.setMoving(function () { return active || travelling; }); /* goHome waits while she is walking somewhere of her own choosing */
     if (R.setWalkTo) R.setWalkTo(routeTo); /* the room's own walks route around furniture */
   }
-  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(active ? cur.y : undefined); }; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
+  W.setSpeedScale = function (k) { speedScale = Math.min(1, Math.max(0.4, Number(k) || 1)); }; W.speedScale = function () { return speedScale; };
+  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.travelling = function () { return !!travelling; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(active ? cur.y : undefined); }; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
   R.on('boot', mount);
 })(window);

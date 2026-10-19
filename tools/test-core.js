@@ -801,5 +801,91 @@ function scenes(todayIso) {
   check('swapping a kitten for another kitten still works with two at home', RW.toggle('catblack') === true && !RW.ledger().placed.cat);
 })();
 
+
+/* ---------- life-sim slice: the calendar, stamina and the proximity prompt (ovu-gametime.js, ovu-stamina.js, ovu-interact.js) ---------- */
+(function lifeSim() {
+  console.log('life-sim: the calendar names the real day, stamina costs and refills, the nearest hotspot prompts');
+  var w = fresh('2026-10-19');
+  var speed = 1, RealDate = w.Date;
+  /* the modules read the phone's clock through new Date(): a fake with a settable now keeps this block the same on any day */
+  w.__now = new RealDate(2026, 9, 19, 12, 0).getTime();
+  w.Date = function FakeDate() { var a = arguments; if (!a.length) return new RealDate(w.__now); if (a.length === 1) return new RealDate(a[0]); return new RealDate(a[0], a[1], a[2] || 1, a[3] || 0, a[4] || 0, a[5] || 0, a[6] || 0); };
+  w.Date.now = function () { return w.__now; }; w.Date.parse = RealDate.parse; w.Date.UTC = RealDate.UTC; w.Date.prototype = RealDate.prototype;
+  w.OvuWalk = { walking: function () { return false; }, setSpeedScale: function (k) { speed = k; } };
+  w.OvuRoom = { on: function () { }, els: { scene: { classList: { toggle: function () { }, contains: function () { return false; } } } }, busy: function () { return false; }, layout: function () { return null; }, pos: function () { return { x: 0, y: 0 }; }, visiting: function () { return false; }, toast: function () { } };
+  w.setInterval = function () { return 0; }; w.clearTimeout = function () { }; w.setTimeout = function () { return 0; };
+  ['ovu-gametime.js', 'ovu-stamina.js', 'ovu-interact.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var GT = w.OvuGameTime, ST = w.OvuStamina, IN = w.OvuInteract, S = w.OvuStore;
+  check('dayKey is the local calendar date', GT.dayKey(new w.Date(2026, 9, 19, 23, 30)) === '2026-10-19' && GT.dayKey(new w.Date(2026, 0, 1, 0, 5)) === '2026-01-01');
+  check('seasons follow the month', GT.season(new w.Date(2026, 0, 10)) === 'winter' && GT.season(new w.Date(2026, 3, 10)) === 'spring' && GT.season(new w.Date(2026, 6, 10)) === 'summer' && GT.season(new w.Date(2026, 9, 19)) === 'autumn');
+  check('the hour reads like a watch', GT.hourLabel(new w.Date(2026, 9, 19, 15, 5)) === '3:05 pm' && GT.hourLabel(new w.Date(2026, 9, 19, 0, 0)) === '12 am' && GT.hourLabel(new w.Date(2026, 9, 19, 12, 30)) === '12:30 pm');
+  S.setState({ game: { firstDay: '2026-10-08' } });
+  check('the day count starts at 1 on the first day played and counts real days', GT.day(new w.Date(2026, 9, 8)) === 1 && GT.day(new w.Date(2026, 9, 19)) === 12);
+  var seen = []; GT.onNewDay(function (k, prev) { seen.push([prev, k]); });
+  check('the first open of the app stamps the first day', (function () { S.setState({ game: null }); return !!(GT.day() >= 1 && S.state().game && S.state().game.firstDay); })());
+  S.setState({ stamina: null });
+  check('stamina starts full and a watering costs 6', ST.value() === 100 && ST.spend('water') === true && ST.value() === 94 && ST.can('water'));
+  var ok = true; for (var i = 0; i < 20; i++) ok = ST.spend('water', true) && ok;
+  check('spending stops at the cost line and says no quietly when asked', ST.value() === 4 && ST.spend('water', true) === false && ST.value() === 4 && ST.low() === true && speed === 0.72);
+  ST.refill();
+  check('a refill is full and the walk is back to full speed', ST.value() === 100 && !ST.low() && speed === 1);
+  S.setState({ stamina: { v: 10, max: 100, day: '2026-10-18' } });
+  check('a new day refills on its own', ST.value() === 100);
+  S.setState({ stamina: { v: 30, max: 100, day: GT.dayKey() }, sleeping: null });
+  S.setState({ sleeping: { at: '2026-10-19T22:00:00Z' } });
+  check('going to sleep refills (state.sleeping turning on)', ST.value() === 100);
+  S.setState({ stamina: { v: 30, max: 100, day: '2026-10-21' } });
+  check('a clock set back keeps the energy it had; only a later date refills', ST.value() === 30);
+  S.setState({ game: { firstDay: '2026-10-25' } });
+  check('the day count never shows 0 when the clock is before the first day', GT.day() === 1);
+  S.setState({ game: { firstDay: '2026-10-08' } });
+  GT.check(); var before = seen.length;
+  w.__now = new RealDate(2026, 9, 20, 0, 2).getTime(); GT.check(); GT.check();
+  check('the date turning fires the new-day watchers once, with the old and new keys, and a repeat check is quiet', seen.length === before + 1 && seen[seen.length - 1][0] === '2026-10-19' && seen[seen.length - 1][1] === '2026-10-20', JSON.stringify(seen));
+  w.__now = new RealDate(2026, 9, 23, 9, 0).getTime(); GT.check();
+  check('three skipped days fire one watcher call and the calendar moves three days', seen.length === before + 2 && seen[seen.length - 1][1] === '2026-10-23' && GT.day() === 16, JSON.stringify(seen));
+  w.__now = new RealDate(2026, 9, 19, 12, 0).getTime(); GT.check();
+  var hots = [{ id: 'bed', label: 'Bed · go to sleep', x: 36, y: 60, wp: { x: 40, y: 72 } }, { id: 'desk', label: 'Desk · write in your journal', x: 70, y: 60, wp: { x: 68, y: 74 } }, { id: 'mat', label: 'Yoga mat · breathe', x: 30, y: 85, prompt: 'Tap to breathe a while' }];
+  check('the nearest hotspot within reach is found by its stand point, none when far', IN.nearest({ x: 41, y: 73 }, hots).id === 'bed' && IN.nearest({ x: 66, y: 73 }, hots).id === 'desk' && IN.nearest({ x: 10, y: 20 }, hots) === null);
+  check('the prompt verb comes from the label after the dot, or the hotspot\'s own prompt', IN.verb(hots[0]) === 'Tap to go to sleep' && IN.verb(hots[1]) === 'Tap to write in your journal' && IN.verb(hots[2]) === 'Tap to breathe a while');
+})();
+
+
+/* ---------- the farm (ovu-farm.js): rules, then the plate's floor through the real walk engine ---------- */
+(function farm() {
+  console.log('farm: seeds a day, planting, watering by real days, weeds, harvest; the plate is walkable');
+  var w = scenes('2026-10-19');
+  w.OvuRoom = null; w.OvuZones = null; /* rules only: the scene wiring stands down without a room */
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  var F = w.OvuFarm, S = w.OvuStore, K = w.OvuWalk, day = '2026-10-19', next = '2026-10-20';
+  check('twelve beds sit inside the bed grid and their stand points sit outside it on the slab', F.BEDS.length === 12 && F.BEDS.every(function (b) { return K.inPoly(F.LAYOUT.zones[0], b.wp.x, b.wp.y) && K.blocked(F.LAYOUT.solids, b.wp.x, b.wp.y) === null; }), JSON.stringify(F.BEDS.map(function (b) { return b.wp; })));
+  var bad = K.checkLayout(F.LAYOUT);
+  check('farm: home, hotspot stand points and the gate are on the floor and outside every solid', bad.length === 0, JSON.stringify(bad));
+  var wd = K.world(F.LAYOUT, []);
+  check('every bed can be reached from the gate by the planner', F.BEDS.every(function (b) { return !!K.plan(wd, F.LAYOUT.home, b.wp, 2); }));
+  check('every hotspot stand point (the well behind the beds included) is reachable from the gate by the planner', F.LAYOUT.hotspots.every(function (h) { return !!K.plan(wd, F.LAYOUT.home, h.wp, 2); }), JSON.stringify(F.LAYOUT.hotspots.filter(function (h) { return !K.plan(wd, F.LAYOUT.home, h.wp, 2); }).map(function (h) { return h.id; })));
+  check('beds that share a stand point share one prompt, so no bed is shadowed by its neighbour', F.LAYOUT.prompts.length === F.STANDS.length && F.STANDS.every(function (st) { var hit = w.OvuInteract ? null : null; return st.beds.length >= 1; }) && F.STANDS.reduce(function (n, st) { return n + st.beds.length; }, 0) === 12 && F.STANDS.some(function (st) { return st.beds.length > 1; }));
+  S.setState({ farm: null });
+  check('the shed gives three seeds a day and no more', F.seedsLeftToday(S, day) === 3 && F.takeSeed(S, 'carrot', day).ok && F.takeSeed(S, 'carrot', day).ok && F.takeSeed(S, 'radish', day).ok && F.takeSeed(S, 'tomato', day).ok === false && F.seedsLeftToday(S, day) === 0 && F.seedsLeftToday(S, next) === 3);
+  check('a clock that goes back to a claimed date gives no seeds twice', F.takeSeed(S, 'pumpkin', next).ok && F.seedsLeftToday(S, next) === 2 && F.seedsLeftToday(S, day) === 0 && !F.takeSeed(S, 'pumpkin', day).ok);
+  S.setState({ farm: Object.assign({}, S.state().farm, { seeds: { carrot: 2, radish: 1 }, seedsByDay: {} }) });
+  var weedy = F.BEDS.filter(function (b) { return F.hasWeeds(null, b.id, day); }).map(function (b) { return b.id; });
+  var clean = F.BEDS.filter(function (b) { return !F.hasWeeds(null, b.id, day); })[0].id;
+  check('weeds fall on a couple of beds a day, the same ones on every phone', weedy.length >= 1 && weedy.length <= 5 && JSON.stringify(weedy) === JSON.stringify(F.BEDS.filter(function (b) { return F.hasWeeds(null, b.id, day); }).map(function (b) { return b.id; })), JSON.stringify(weedy));
+  if (weedy.length) check('a weedy bed refuses planting and watering until pulled, and stays clear that day', !F.plant(S, weedy[0], 'carrot', day).ok && F.clearWeeds(S, weedy[0], day).ok && !F.hasWeeds(F.bed(S, weedy[0]), weedy[0], day) && F.plant(S, weedy[0], 'carrot', day).ok);
+  check('planting takes a seed; a second crop in the same bed is refused', F.plant(S, clean, 'carrot', day).ok && !F.plant(S, clean, 'radish', day).ok && (F.farmState(S).seeds.carrot || 0) === 0);
+  /* tending as she would: pull the day's weeds first, then water */
+  function tend(id, d) { if (F.hasWeeds(F.bed(S, id), id, d)) F.clearWeeds(S, id, d); return F.water(S, id, d); }
+  var w1 = tend(clean, day), w2 = F.water(S, clean, day);
+  check('watering counts once a day and a missed day takes nothing away', w1.ok && w1.days === 1 && !w2.ok && F.stage(F.bed(S, clean)) === 1 && tend(clean, '2026-10-22').ok && F.growthDays(F.bed(S, clean)) === 2);
+  check('weeds stop the watering can until they are pulled', F.BEDS.some(function (b) { return b.id !== clean && F.hasWeeds(null, b.id, '2026-10-23'); }) && (function () { var wb = F.BEDS.filter(function (b) { return b.id !== clean && F.hasWeeds(null, b.id, '2026-10-23'); })[0].id; S.setState({ farm: Object.assign({}, S.state().farm, { seeds: { radish: 1 } }) }); F.clearWeeds(S, wb, '2026-10-23'); F.plant(S, wb, 'radish', '2026-10-23'); var st = S.state().farm; st.beds[wb].cleared = undefined; S.setState({ farm: st }); return !F.water(S, wb, '2026-10-23').ok && F.clearWeeds(S, wb, '2026-10-23').ok && F.water(S, wb, '2026-10-23').ok; })());
+  check('watering dated before the planting or before the last watering is refused (the clock went back)', !F.water(S, clean, '2026-10-18').ok && !F.water(S, clean, '2026-10-21').ok && F.growthDays(F.bed(S, clean)) === 2);
+  check('a carrot is ripe after three watered days, not before', !F.ripe(F.bed(S, clean)) && !F.harvest(S, clean).ok && tend(clean, '2026-10-23').ok && F.ripe(F.bed(S, clean)) && F.stage(F.bed(S, clean)) === 3);
+  var before = S.list().length, h = F.harvest(S, clean);
+  check('harvest fills the basket, empties the bed and writes no diary entry', h.ok && h.crop === 'carrot' && h.n === 2 && F.farmState(S).harvest.carrot === 2 && !F.bed(S, clean).crop && S.list().length === before);
+  var sm = F.summary(S, day);
+  check('the summary counts planted, ripe, dry and weedy beds', typeof sm.planted === 'number' && typeof sm.weeds === 'number' && sm.seedsLeft === F.seedsLeftToday(S, day));
+})();
+
 console.log('\n' + passes + ' passed, ' + fails + ' failed');
 process.exit(fails ? 1 : 0);
