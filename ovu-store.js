@@ -303,12 +303,23 @@
     else { out.ok = true; out.reason = 'ok'; }
     return out;
   }
+  /* A gap of more than 60 days between two logged starts is a break in the record, not a cycle (the same upper
+   * bound as the remembered-period window above). Product rule, not a clinical threshold; see
+   * docs/design/2026-10-20-cycle-gaps.md. Only the cycles since the last break set the estimate, the way a broken
+   * chain restarts the remembered run; gaps of 39 to 60 days stay cycles and the agent flags them as long. */
+  var CYCLE_GAP_MAX = 60;
   function cycleStats(asOf) {
     asOf = asOf || today();
     var eps = periodEpisodes().filter(function (ep) { return ep.start <= asOf; });
     var starts = eps.map(function (ep) { return ep.start; });
-    var lengths = [];
-    for (var i = 1; i < starts.length; i++) lengths.push(diffDays(starts[i - 1], starts[i]));
+    var cycles = [], lengths = [];
+    for (var i = 1; i < starts.length; i++) {
+      var gap = { from: starts[i - 1], to: starts[i], days: diffDays(starts[i - 1], starts[i]) };
+      gap.counted = gap.days <= CYCLE_GAP_MAX;
+      cycles.push(gap);
+      if (gap.counted) lengths.push(gap.days); else lengths = [];
+    }
+    var breaks = cycles.filter(function (c) { return !c.counted; });
     var recent = lengths.slice(-6);
     var p = profile();
     var rr = p.periodRecall ? rhythmFromRecall(p.periodRecall, asOf) : null;
@@ -344,7 +355,13 @@
       else phase = 'luteal';
       if (day > L + 7) phase = 'late';
     }
-    return { mode: mode, uncertain: mode === 'wide', episodes: eps, starts: starts, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, predictedFrom: predictedFrom, predictedTo: predictedTo, recalled: rr, fromRecall: useRecall || anchorRecalled, observedRange: lo !== null ? { lo: lo, hi: hi } : null, basis: recent.length ? recent.length + ' logged cycle' + (recent.length === 1 ? '' : 's') : (useRecall ? 'remembered period dates' : (p.cycleLength ? 'your profile setting' : 'no cycle length yet')), estimate: true };
+    /* the latest break, when it changed this estimate (older cycles would otherwise have been in the last six) */
+    var gapLeftOut = null;
+    if (breaks.length && lengths.length < 6) {
+      var lb = breaks[breaks.length - 1];
+      gapLeftOut = { from: lb.from, to: lb.to, days: lb.days, cyclesBefore: cycles.filter(function (c) { return c.counted && c.to <= lb.from; }).length };
+    }
+    return { mode: mode, uncertain: mode === 'wide', episodes: eps, starts: starts, cycles: cycles, breaks: breaks, gapLeftOut: gapLeftOut, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, predictedFrom: predictedFrom, predictedTo: predictedTo, recalled: rr, fromRecall: useRecall || anchorRecalled, observedRange: lo !== null ? { lo: lo, hi: hi } : null, basis: recent.length >= 2 ? recent.length + ' logged cycles' : (useRecall ? 'remembered period dates' : (recent.length ? '1 logged cycle' : (p.cycleLength ? 'your profile setting' : 'no cycle length yet'))), estimate: true };
   }
 
   /* ---------- legacy mirrors (so older screens keep showing the same data) ---------- */

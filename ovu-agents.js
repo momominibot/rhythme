@@ -73,16 +73,19 @@
   function cycleAgent(end) {
     end = end || S.today();
     var cs = S.cycleStats(end), flags = [], p = S.profile();
-    cs.lengths.slice(-3).forEach(function (L, i) {
-      var startIdx = cs.lengths.length - 3 + i; if (startIdx < 0) startIdx = i;
-      if (L < 24 || L > 38) flags.push(flag('watch', L < 24 ? 'CYCLE_SHORT' : 'CYCLE_LONG', 'Cycle of ' + L + ' days', 'Outside the typical 24 to 38 day range (FIGO 2018). Cycles of 21 to 45 days can still be typical in the first years after a first period.', cs.starts[startIdx + 1] || null));
+    /* the last three gaps between logged starts: a cycle outside 24 to 38 days is flagged; a gap of over 60 days
+     * is a break in the record (not a cycle), so it is named as a gap and left out of the averages */
+    cs.cycles.slice(-3).forEach(function (c) {
+      var L = c.days;
+      if (!c.counted) flags.push(flag('info', 'GAP_LONG', 'A gap of ' + L + ' days between logged periods', 'Left out of your cycle averages. If no period came in that time, a gap this long is worth mentioning to a clinician; if periods came but were not logged, you can ignore this.', c.to));
+      else if (L < 24 || L > 38) flags.push(flag('watch', L < 24 ? 'CYCLE_SHORT' : 'CYCLE_LONG', 'Cycle of ' + L + ' days', 'Outside the typical 24 to 38 day range (FIGO 2018). Cycles of 21 to 45 days can still be typical in the first years after a first period.', c.to));
     });
     cs.episodes.slice(-3).forEach(function (ep) {
       if (ep.length > 8) flags.push(flag('watch', 'BLEED_LONG', 'Bleeding lasted ' + ep.length + ' days', 'Longer than the typical up to 8 days. Worth mentioning to a clinician.', ep.start));
       var impact = ep.days.filter(function (d) { return (d.data.flow === 'heavy' && (d.data.clots || d.data.largeClots || d.data.flooding || d.data.impact)) || d.data.flooding || d.data.largeClots; }).length;
       if (impact >= 2) flags.push(flag('watch', 'BLEED_HEAVY_IMPACT', 'Heavy bleeding that affected your day', impact + ' heavy days with clots or disruption in one period. Heavy bleeding that interferes with daily life is a reason to ask for a review.', ep.start));
     });
-    if (cs.lastStart && cs.lengths.length >= 1 && S.diffDays(cs.lastStart, end) > 45) flags.push(flag('info', 'PERIOD_LATE', 'No period logged for ' + S.diffDays(cs.lastStart, end) + ' days', 'If a period is overdue and pregnancy is possible, a test is a sensible first step. Persistent gaps are worth a clinician visit.', end));
+    if (cs.lastStart && cs.cycles.length >= 1 && S.diffDays(cs.lastStart, end) > 45) flags.push(flag('info', 'PERIOD_LATE', 'No period logged for ' + S.diffDays(cs.lastStart, end) + ' days', 'If a period is overdue and pregnancy is possible, a test is a sensible first step. Persistent gaps are worth a clinician visit.', end));
     var spotting = S.list('symptom', { from: S.addDays(end, -27), to: end }).filter(function (e) { return (e.data.symptoms || []).indexOf('spotting') > -1 && !cs.episodes.some(function (ep) { return e.date >= S.addDays(ep.start, -1) && e.date <= S.addDays(ep.end, 1); }); });
     if (spotting.length >= 2) flags.push(flag('watch', 'SPOTTING_BETWEEN', 'Spotting between periods', spotting.length + ' days of spotting outside a period in the last 4 weeks.', spotting[spotting.length - 1].date));
     var pmb = postmenoBleed(end, p);
@@ -196,13 +199,13 @@
     var flags = allFlags(end).filter(function (f) { return !f.date || f.date >= from; });
     var questions = [];
     flags.forEach(function (f) {
-      var q = ({ CYCLE_SHORT: 'My cycles have been shorter than 24 days. Is that something to look into?', CYCLE_LONG: 'My cycles have been longer than 38 days. Should we check hormones or thyroid?', BLEED_LONG: 'My period lasted more than 8 days. What could cause that?', BLEED_HEAVY_IMPACT: 'Heavy bleeding is affecting my day. Could I be low in iron, and what are my options?', SLEEP_SHORT_AVG: 'I am averaging under 6 hours of sleep. Could my cycle or stress be part of it?', SLEEP_SHORT_RUN: 'I had several nights under 5 hours. What should I try first?', PAIN_SEVERE: 'My pain reached 8/10. Could this be more than typical cramps?', MOOD_LOW: 'My mood has been low on most days. What support is available?', SPOTTING_BETWEEN: 'I have had spotting between periods. Should this be checked?', PERIOD_LATE: 'My period is overdue. What should I rule out?', POSTMENO_BLEED: 'I had bleeding after menopause and understand this needs checking.', HEAVY_DIZZY: 'I felt dizzy during heavy bleeding. Should I be checked for anaemia?' })[f.code];
+      var q = ({ CYCLE_SHORT: 'My cycles have been shorter than 24 days. Is that something to look into?', CYCLE_LONG: 'My cycles have been longer than 38 days. Should we check hormones or thyroid?', BLEED_LONG: 'My period lasted more than 8 days. What could cause that?', BLEED_HEAVY_IMPACT: 'Heavy bleeding is affecting my day. Could I be low in iron, and what are my options?', SLEEP_SHORT_AVG: 'I am averaging under 6 hours of sleep. Could my cycle or stress be part of it?', SLEEP_SHORT_RUN: 'I had several nights under 5 hours. What should I try first?', PAIN_SEVERE: 'My pain reached 8/10. Could this be more than typical cramps?', MOOD_LOW: 'My mood has been low on most days. What support is available?', SPOTTING_BETWEEN: 'I have had spotting between periods. Should this be checked?', PERIOD_LATE: 'My period is overdue. What should I rule out?', GAP_LONG: 'There was a gap of more than 60 days between my logged periods. If no period came in that time, what should we check?', POSTMENO_BLEED: 'I had bleeding after menopause and understand this needs checking.', HEAVY_DIZZY: 'I felt dizzy during heavy bleeding. Should I be checked for anaemia?' })[f.code];
       if (q && questions.indexOf(q) < 0) questions.push(q);
     });
     return {
       agent: 'FourWeekSummaryAgent v1 (rule-based)', generatedAt: new Date().toISOString(), range: { from: from, to: end },
       coverage: { daysWithEntries: Object.keys(daysWithEntries).length, totalDays: 28 },
-      cycle: { periodDays: periodDays.length, episodes: cs.episodes.filter(function (ep) { return ep.end >= from; }).map(function (ep) { return { start: ep.start, end: ep.end, length: ep.length, heavyDays: ep.heavyDays }; }), cycleLengths: cs.lengths.slice(-4), averageLength: cs.averageLength, lastStart: cs.lastStart, predictedNext: cs.predictedNext, cycleDay: cs.cycleDay, phase: cs.phase, basis: cs.basis },
+      cycle: { periodDays: periodDays.length, episodes: cs.episodes.filter(function (ep) { return ep.end >= from; }).map(function (ep) { return { start: ep.start, end: ep.end, length: ep.length, heavyDays: ep.heavyDays }; }), cycleLengths: cs.lengths.slice(-6), averageLength: cs.averageLength, lastStart: cs.lastStart, predictedNext: cs.predictedNext, cycleDay: cs.cycleDay, phase: cs.phase, basis: cs.basis },
       sleep: { nights: sl.count, average: sl.avg, under6: sl.under6, series: sl.nights.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality }; }) },
       symptoms: { daysLogged: symptoms.length, top: top, painAvg: pain.length ? Math.round(pain.reduce(function (a, b) { return a + b; }, 0) / pain.length * 10) / 10 : null, painMax: pain.length ? Math.max.apply(null, pain) : null, moods: moods },
       food: { meals: meals.length, daysLogged: Object.keys(foodDays).length, tags: tags, nutrients: nutrientDays(meals) },

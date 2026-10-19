@@ -550,6 +550,95 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('a stated length is named as the profile setting', S.cycleStats('2026-10-18').basis === 'your profile setting');
 })();
 
+(function cycleGapsAreBreaks() {
+  console.log('cycle gaps: a gap of over 60 days between logged periods is a break, not a cycle');
+  function periods(S, starts, source) { starts.forEach(function (st) { for (var i = 0; i < 4; i++) S.add('period', addDays(st, i), { flow: 'medium' }, source || 'test'); }); }
+  /* the reproduced case (19 Oct 2026): one imported day in June 2025, a period logged yesterday */
+  var w = fresh('2026-10-19'), S = w.OvuStore, A = w.OvuAgents;
+  S.add('period', '2025-06-04', { flow: 'medium' }, 'apple-health');
+  S.add('period', '2026-10-18', { flow: 'medium' }, 'room');
+  var cs = S.cycleStats('2026-10-19');
+  check('an old imported period plus a recent one gives no 500-day prediction', cs.predictedFrom === null && cs.predictedTo === null && cs.predictedNext === null && cs.averageLength === null && cs.lengths.length === 0, JSON.stringify({ f: cs.predictedFrom, t: cs.predictedTo, a: cs.averageLength, l: cs.lengths }));
+  check('the 501-day gap is kept as a break and named for the calendar', cs.breaks.length === 1 && cs.breaks[0].days === 501 && cs.gapLeftOut && cs.gapLeftOut.to === '2026-10-18' && cs.cycles.length === 1 && cs.cycles[0].counted === false, JSON.stringify({ b: cs.breaks, g: cs.gapLeftOut }));
+  check('the day count still runs from the recent period and the phase stays unknown', cs.lastStart === '2026-10-18' && cs.cycleDay === 2 && cs.phase === null && cs.basis === 'no cycle length yet', JSON.stringify({ s: cs.lastStart, d: cs.cycleDay, p: cs.phase, b: cs.basis }));
+  var fl = A.allFlags('2026-10-19'), codes = fl.map(function (f) { return f.code; }), gapFlag = fl.filter(function (f) { return f.code === 'GAP_LONG'; })[0];
+  check('the agent names a gap, not a 501-day cycle, as an info note', gapFlag && gapFlag.level === 'info' && /gap of 501 days/.test(gapFlag.title) && gapFlag.date === '2026-10-18' && codes.indexOf('CYCLE_LONG') < 0, JSON.stringify(fl));
+  var sum = A.fourWeekSummary('2026-10-19');
+  check('the clinician summary lists no 501-day cycle length and asks about the gap', sum.cycle.cycleLengths.length === 0 && sum.cycle.averageLength === null && sum.questions.some(function (q) { return /more than 60 days/.test(q); }), JSON.stringify({ l: sum.cycle.cycleLengths, q: sum.questions }));
+  S.setProfile({ cycleLength: 30 });
+  var cp = S.cycleStats('2026-10-19');
+  check('after a break a stated profile length still predicts from the recent period', cp.basis === 'your profile setting' && cp.predictedFrom === '2026-11-15' && cp.predictedTo === '2026-11-19' && cp.gapLeftOut && cp.gapLeftOut.days === 501, JSON.stringify({ b: cp.basis, f: cp.predictedFrom, t: cp.predictedTo }));
+
+  /* normal consecutive cycles give the same numbers as before */
+  var w2 = fresh('2026-09-25'), S2 = w2.OvuStore, A2 = w2.OvuAgents; /* entry dates stay on or before the real clock: add() refuses the future */
+  periods(S2, ['2026-06-01', '2026-06-29', '2026-07-28', '2026-08-25', '2026-09-22']);
+  var n = S2.cycleStats('2026-09-25');
+  check('consecutive cycles are unchanged: lengths, average, window, phase', n.lengths.join() === '28,29,28,28' && n.averageLength === 28 && n.predictedFrom === '2026-10-19' && n.predictedTo === '2026-10-22' && n.predictedNext === '2026-10-20' && n.phase === 'menstrual' && n.basis === '4 logged cycles', JSON.stringify({ l: n.lengths, a: n.averageLength, f: n.predictedFrom, t: n.predictedTo, x: n.predictedNext, p: n.phase, b: n.basis }));
+  check('consecutive cycles have no break and no gap note', n.breaks.length === 0 && n.gapLeftOut === null && n.cycles.every(function (c) { return c.counted; }));
+  check('consecutive typical cycles raise no cycle note', A2.allFlags('2026-09-25').filter(function (f) { return /^(CYCLE_|GAP_)/.test(f.code); }).length === 0);
+
+  /* cycles since a break set the estimate; the ones before it do not */
+  var w3 = fresh('2026-10-05'), S3 = w3.OvuStore;
+  periods(S3, ['2025-01-01', '2025-01-23', '2025-02-14', '2026-08-01', '2026-08-31', '2026-09-30']);
+  var b = S3.cycleStats('2026-10-05');
+  check('only the cycles since the break count', b.lengths.join() === '30,30' && b.averageLength === 30 && b.basis === '2 logged cycles' && b.cycles.length === 5 && b.breaks.length === 1, JSON.stringify({ l: b.lengths, a: b.averageLength, c: b.cycles }));
+  check('the window comes from the cycles since the break', b.predictedFrom === '2026-10-29' && b.predictedTo === '2026-10-31' && b.gapLeftOut && b.gapLeftOut.to === '2026-08-01', JSON.stringify({ f: b.predictedFrom, t: b.predictedTo, g: b.gapLeftOut }));
+  S3.setProfile({ predictionMode: 'wide' });
+  var bw = S3.cycleStats('2026-10-05');
+  check('wide mode still widens after a break', bw.predictedFrom === '2026-10-26' && bw.predictedTo === '2026-11-03', JSON.stringify([bw.predictedFrom, bw.predictedTo]));
+  S3.setProfile({ predictionMode: 'suspended' });
+  var bs = S3.cycleStats('2026-10-05');
+  check('suspended mode still predicts nothing after a break', bs.predictedFrom === null && bs.phase === null);
+
+  /* the boundary: 60 days is a cycle, 61 is a break; 45 is still a long cycle */
+  var w4 = fresh('2026-05-10'), S4 = w4.OvuStore;
+  periods(S4, ['2026-01-01', '2026-03-02', '2026-05-02']);
+  var e = S4.cycleStats('2026-05-10');
+  check('a 60-day gap is a cycle and a 61-day gap is a break', e.cycles.map(function (c) { return c.days + (c.counted ? 'c' : 'b'); }).join() === '60c,61b' && e.lengths.length === 0, JSON.stringify(e.cycles));
+  var w5 = fresh('2026-09-20'), S5 = w5.OvuStore, A5 = w5.OvuAgents;
+  periods(S5, ['2026-07-01', '2026-08-15', '2026-09-12']);
+  var lc = S5.cycleStats('2026-09-20'), lf = A5.allFlags('2026-09-20');
+  check('a 45-day cycle still counts and is still flagged long', lc.lengths.join() === '45,28' && lc.breaks.length === 0 && lf.some(function (f) { return f.code === 'CYCLE_LONG' && f.date === '2026-08-15' && f.level === 'watch'; }) && !lf.some(function (f) { return f.code === 'GAP_LONG'; }), JSON.stringify({ l: lc.lengths, f: lf.map(function (f) { return f.code + '@' + f.date; }) }));
+  var w6 = fresh('2026-08-01'), S6 = w6.OvuStore, A6 = w6.OvuAgents;
+  periods(S6, ['2026-01-01', '2026-06-01']);
+  check('an open gap of over 45 days after a break is still noted as late', A6.allFlags('2026-08-01').some(function (f) { return f.code === 'PERIOD_LATE'; }));
+  var e60 = w4.OvuAgents.allFlags('2026-05-10');
+  check('the 60-day cycle is flagged long on its own date and the 61-day gap is a gap', e60.some(function (f) { return f.code === 'CYCLE_LONG' && f.date === '2026-03-02' && /60 days/.test(f.title); }) && e60.some(function (f) { return f.code === 'GAP_LONG' && f.date === '2026-05-02'; }), JSON.stringify(e60.map(function (f) { return f.code + '@' + f.date; })));
+
+  /* three breaks, then five and six cycles: the note names the latest break and goes once six cycles follow it */
+  var w7 = fresh('2026-10-19'), S7 = w7.OvuStore;
+  var five = ['2026-05-01', '2026-05-29', '2026-06-26', '2026-07-24', '2026-08-21', '2026-09-18'];
+  periods(S7, ['2024-01-01', '2024-01-29', '2024-08-01', '2025-03-01'].concat(five));
+  var t5 = S7.cycleStats('2026-09-20');
+  check('three breaks then five cycles: the note names the latest break and every gap stays in cycles', t5.breaks.length === 3 && t5.cycles.length === 9 && t5.lengths.length === 5 && t5.gapLeftOut && t5.gapLeftOut.to === '2026-05-01' && t5.gapLeftOut.cyclesBefore === 1, JSON.stringify({ b: t5.breaks.length, c: t5.cycles.length, l: t5.lengths, g: t5.gapLeftOut }));
+  periods(S7, ['2026-10-16']);
+  var t6 = S7.cycleStats('2026-10-19');
+  check('six cycles after the latest break: no note, the estimate is what it always was', t6.lengths.length === 6 && t6.gapLeftOut === null && t6.basis === '6 logged cycles' && t6.averageLength === 28, JSON.stringify({ l: t6.lengths, g: t6.gapLeftOut, b: t6.basis }));
+
+  /* one logged cycle plus valid remembered dates: the window and the words both come from the remembered dates */
+  var w8 = fresh('2026-10-19'), S8 = w8.OvuStore;
+  S8.add('period', '2025-06-04', { flow: 'medium' }, 'apple-health'); S8.add('period', '2026-09-11', { flow: 'medium' }, 'room'); S8.add('period', '2026-10-18', { flow: 'medium' }, 'room');
+  S8.setProfile({ predictionMode: 'normal', periodRecall: { starts: ['2026-07-07', '2026-08-04', '2026-09-01'].map(function (d) { return { precision: 'day', date: d }; }), latest: 'yes', complete: 'yes' } });
+  var rc8 = S8.cycleStats('2026-10-19');
+  check('when remembered dates set the estimate the basis says so, not "1 logged cycle"', rc8.lengths.join() === '37' && rc8.fromRecall && rc8.averageLength === 28 && rc8.basis === 'remembered period dates' && rc8.predictedFrom === '2026-11-11' && rc8.predictedTo === '2026-11-19' && rc8.gapLeftOut && rc8.gapLeftOut.cyclesBefore === 0, JSON.stringify({ l: rc8.lengths, r: rc8.fromRecall, a: rc8.averageLength, b: rc8.basis, f: rc8.predictedFrom, t: rc8.predictedTo }));
+
+  /* readings written from the old numbers: four-week ones (they go to clinicians) are withheld, daily ones ask to be
+   * updated; nothing calls the relay by itself */
+  ['ovu-consent.js', 'ovu-auth.js', 'ovu-insight.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var I = w.OvuInsight, es = S.list(null, { from: '2026-09-22', to: '2026-10-19' });
+  var oldSig = es.length + ':' + es.map(function (e) { return (e.updatedAt || e.createdAt || '').slice(0, 19); }).sort().slice(-1)[0];
+  S.setState({ insights: { daily: { '2026-10-19': { date: '2026-10-19', sig: oldSig, summary: 'Day 2.' } }, fourweeks: { '2026-10-19': { end: '2026-10-19', sig: oldSig, clinician: { cycle: 'A 501-day cycle.' } } } } });
+  check('a four-week reading from the old rules is withheld from the journal, shares and PDFs, and asks to be written again', I.cachedFourWeeks('2026-10-19') === null && I.stale('fourweeks', '2026-10-19') === true && A.fourWeekSummary('2026-10-19').cycle.cycleLengths.length === 0);
+  check('a daily reading from the old rules stays readable and asks to be updated', I.cachedDaily('2026-10-19').summary === 'Day 2.' && I.stale('daily', '2026-10-19') === true);
+  var st = S.state().insights; st.fourweeks['2026-10-19'].sig = 'r2|' + oldSig; st.fourweeks['2026-10-19'].rules = 'r2'; S.setState({ insights: st });
+  check('a four-week reading written under the current rules is shown and is not stale', I.cachedFourWeeks('2026-10-19').clinician.cycle === 'A 501-day cycle.' && I.stale('fourweeks', '2026-10-19') === false);
+  var pageSrc = ['journal.html', 'doctor.html', 'ovu-agents.js', 'room.js'].map(function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); }).join('\n');
+  check('pages reach four-week readings only through cachedFourWeeks, which applies the rules check', !/insights\.fourweeks|\.fourweeks\[/.test(pageSrc) && /I\.cachedFourWeeks\(end\)\|\|null/.test(pageSrc));
+  var sum6 = S2.cycleStats('2026-09-25'); periods(S2, ['2026-05-04', '2026-04-06']);
+  var cs8 = S2.cycleStats('2026-09-25'), sm8 = A2.fourWeekSummary('2026-09-25');
+  check('the clinician summary lists exactly the cycles the average used', cs8.lengths.length === 6 && sm8.cycle.cycleLengths.join() === cs8.lengths.join() && sm8.cycle.averageLength === cs8.averageLength && sm8.cycle.basis === '6 logged cycles' && sum6.lengths.length === 4, JSON.stringify({ l: cs8.lengths, s: sm8.cycle.cycleLengths, b: sm8.cycle.basis }));
+})();
+
 (function pdfWriter() {
   console.log('PDF writer: valid structure, page breaks, WinAnsi text, no dependency');
   var w = fresh(), P = w.OvuPdf, blocks = [{ t: 'h1', text: 'Rhythme summary for your clinician' }, { t: 'kv', label: 'Logged', text: '2 of 28 days' }, { t: 'li', text: 'A question with (parentheses) and a back\\slash' }];
