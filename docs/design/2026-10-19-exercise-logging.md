@@ -101,9 +101,11 @@ feature is built. Every claim the app shows is listed at the end with the source
   everything on this phone" warns they would be lost. A hold is released only when that version went up or the cloud's
   version won the merge; an older remote deletion that loses does not release it. A phone whose app learns a new entry
   type pulls that type alone once from the start (`type=in.(exercise)`), so rows an older version dropped come back
-  while older entries someone cleared on purpose stay cleared. That pull has its own cursor (`typedSeq`) and never
-  moves the shared one, so rows of other types arriving meanwhile are still pulled; a backlog over the 20,000-row cap
-  resumes on the next sync, and only a pull that reached the end marks the type as known. The migration
+  while older entries someone cleared on purpose stay cleared. That pull walks the type's rows in id order (`order=id.asc`,
+  resuming after the last id, kept as `typedAfter`) and never moves the shared cursor, so rows of other types arriving
+  meanwhile are still pulled. Ids are unique, so rows sharing one `synced_at` (the server stamps one `now()` per upload)
+  cannot be skipped or fetched forever. A backlog over 20,000 rows resumes on the next sync, and only a scan that
+  reached the end marks the type as known. The migration
   `20261019120000_exercise_entries.sql` widens the check; it is written but not applied (production migrations wait
   for Jamie).
 

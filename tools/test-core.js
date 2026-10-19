@@ -646,16 +646,17 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
 })();
 
 (function exerciseTypedRecoveryCursor() {
-  console.log('cloud sync: the one-time typed pull never moves the shared cursor, and resumes past the 20,000-row cap');
+  console.log('cloud sync: the one-time typed pull never moves the shared cursor, and walks ids past the 20,000-row cap');
   /* a small pretend server: rows ordered by synced_at, honouring the cursor, the type filter, limit and offset */
   function server() {
     var rows = [];
     return {
       rows: rows,
       get: function (url) {
-        var q = decodeURIComponent(url), cur = /synced_at=gt\.([^&]+)/.exec(q), ty = /type=in\.\(([^)]*)\)/.exec(q), lim = Number((/limit=(\d+)/.exec(q) || [])[1] || 1000), off = Number((/offset=(\d+)/.exec(q) || [])[1] || 0);
-        var out = rows.filter(function (r) { return (!cur || Date.parse(r.synced_at) > Date.parse(cur[1])) && (!ty || ty[1].split(',').indexOf(r.type) > -1); });
-        out.sort(function (a, b) { return Date.parse(a.synced_at) - Date.parse(b.synced_at) || (a.id < b.id ? -1 : 1); });
+        var q = decodeURIComponent(url), cur = /synced_at=gt\.([^&]+)/.exec(q), ty = /type=in\.\(([^)]*)\)/.exec(q), idgt = /[?&]id=gt\.([^&]+)/.exec(q), byId = /order=id\.asc/.test(q), lim = Number((/limit=(\d+)/.exec(q) || [])[1] || 1000), off = Number((/offset=(\d+)/.exec(q) || [])[1] || 0);
+        /* synced_at compared as text so microseconds count, as Postgres does; ids compared as text too */
+        var out = rows.filter(function (r) { return (!cur || r.synced_at > cur[1]) && (!ty || ty[1].split(',').indexOf(r.type) > -1) && (!idgt || r.id > idgt[1]); });
+        out.sort(function (a, b) { return byId ? (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) : (a.synced_at < b.synced_at ? -1 : a.synced_at > b.synced_at ? 1 : (a.id < b.id ? -1 : 1)); });
         return out.slice(off, off + lim);
       }
     };
@@ -686,17 +687,24 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   }).then(function () {
     check('so the reflection that arrived between the two requests is pulled on the next sync', S.list('reflection').length === 1, JSON.stringify(S.list('reflection')));
   });
-  /* 2. more historical exercise rows than one pull takes: recovery resumes and only then counts as done */
-  var big = server(), gets = [];
-  for (var i = 0; i < 20001; i++) big.rows.push(row('h' + i, 'exercise', new Date(Date.parse('2026-01-01T00:00:00Z') + i * 60000).toISOString(), { activity: 'stretch', label: 'Stretching', variant: 'mild', code: '02101', met: 2.3, minutes: 5, intensity: 'light', strength: false, aerobic: true, note: '' }));
+  /* 2. more historical exercise rows than one sync takes, all uploaded together (one shared synced_at, with
+     microseconds), and the last one by id is a deletion of an entry this phone still has */
+  var big = server(), gets = [], TIE = '2026-01-01T00:00:00.123456+00:00', pad = function (n) { return ('00000' + n).slice(-5); };
+  for (var i = 0; i < 20000; i++) big.rows.push(row('h' + pad(i), 'exercise', TIE, { activity: 'stretch', label: 'Stretching', variant: 'mild', code: '02101', met: 2.3, minutes: 5, intensity: 'light', strength: false, aerobic: true, note: '' }));
+  var tomb = row('h' + pad(20000), 'exercise', TIE, {}); tomb.deleted = true; tomb.deleted_at = '2026-01-02T00:00:00Z'; tomb.updated_at = '2026-01-02T00:00:00Z'; big.rows.push(tomb);
   var v = world(big, function (url) { gets.push(url); }), SV = v.OvuStore, YV = v.OvuSync;
+  SV.putEvent({ id: 'h' + pad(20000), type: 'exercise', date: '2025-12-31', data: { activity: 'walk', label: 'Walking', variant: 'brisk', code: '17200', met: 4.8, minutes: 30, intensity: 'moderate', strength: false, aerobic: true, note: '' }, createdAt: '2025-12-31T09:00:00Z', updatedAt: '2025-12-31T09:00:00Z', source: 'cloud' });
   var b = YV.syncNow().then(function () {
     var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
-    check('a typed backlog over 20,000 rows is not marked recovered after the first pull', SV.list('exercise').length === 20000 && !st.types && !!st.typedSeq, JSON.stringify({ n: SV.list('exercise').length, types: st.types, typed: st.typedSeq }));
+    check('20,001 rows sharing one timestamp: the first sync takes 20,000 by id and is not marked recovered', SV.list('exercise').length === 20001 && !st.types && st.typedAfter === 'h19999', JSON.stringify({ n: SV.list('exercise').length, types: st.types, after: st.typedAfter }));
     return YV.syncNow();
   }).then(function () {
-    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
-    check('the next sync resumes from where it stopped, gets the last row, then marks the type known', SV.list('exercise').length === 20001 && st.types === SV.TYPES.join(',') && !st.typedSeq, JSON.stringify({ n: SV.list('exercise').length, types: st.types, typed: st.typedSeq }));
+    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1')), typedGets = gets.filter(function (u) { return /type=in/.test(u); });
+    check('the next sync resumes after the last id, applies the final deletion, then marks the type known', !SV.get('h' + pad(20000)) && SV.list('exercise').length === 20000 && st.types === SV.TYPES.join(',') && !st.typedAfter && /id=gt\.h19999/.test(typedGets[typedGets.length - 1]), JSON.stringify({ n: SV.list('exercise').length, types: st.types, after: st.typedAfter, last: typedGets[typedGets.length - 1] }));
+    return YV.syncNow();
+  }).then(function () {
+    var typedGets = gets.filter(function (u) { return /type=in/.test(u); });
+    check('once recovered, later syncs make no typed requests (20 pages, then 1, then none)', typedGets.length === 21, 'typed requests: ' + typedGets.length);
   });
   Promise.all([a, b]).catch(function (err) { check('the typed recovery tests ran to the end', false, String(err && err.stack || err)); });
 })();

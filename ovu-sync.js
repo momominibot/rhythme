@@ -185,15 +185,31 @@
 
   /* Pull every entry whose server arrival is after the cursor, oldest first, in
      pages (PostgREST caps a response, so a full restore needs more than one). */
-  function pullSince(cursor, token, types) {
+  function pullSince(cursor, token) {
     var PAGE = 1000, all = [], offset = 0;
-    var base = '/entries?select=*' + (types && types.length ? '&type=in.(' + types.map(encodeURIComponent).join(',') + ')' : '') + '&order=synced_at.asc,id.asc&limit=' + PAGE + (cursor ? '&synced_at=gt.' + encodeURIComponent(cursor) : '');
+    var base = '/entries?select=*&order=synced_at.asc,id.asc&limit=' + PAGE + (cursor ? '&synced_at=gt.' + encodeURIComponent(cursor) : '');
     function page() {
       return rest('GET', base + '&offset=' + offset, null, null, token).then(function (rows) {
         rows = rows || []; all = all.concat(rows);
         if (rows.length === PAGE && all.length < 20000) { offset += PAGE; return page(); }
-        all.truncated = rows.length === PAGE; /* stopped at the cap: more rows wait after the last one returned */
         return all;
+      });
+    }
+    return page();
+  }
+  /* The one-time recovery of newly known types walks every row of those types in id order, resuming after the last id
+     it saw (keyset paging). Ids are unique, so rows that share a synced_at (one upload is stamped with one now()) can
+     neither be skipped nor fetched forever, and no timestamp rounding is involved. At most 20,000 rows a sync;
+     `done` is true only when a page came back short, meaning the scan reached the end. */
+  function pullTypedAfter(afterId, token, types) {
+    var PAGE = 1000, all = [], last = afterId || null;
+    var base = '/entries?select=*&type=in.(' + types.map(encodeURIComponent).join(',') + ')&order=id.asc&limit=' + PAGE;
+    function page() {
+      return rest('GET', base + (last ? '&id=gt.' + encodeURIComponent(last) : ''), null, null, token).then(function (rows) {
+        rows = rows || []; all = all.concat(rows);
+        if (rows.length) last = rows[rows.length - 1].id;
+        if (rows.length === PAGE && all.length < 20000) return page();
+        return { rows: all, lastId: last, done: rows.length < PAGE };
       });
     }
     return page();
@@ -219,10 +235,11 @@
          start. Only the new types: a full re-pull would bring back older entries someone deliberately cleared. */
       var knownTypes = (S.TYPES || []).join(','), before = st.types ? st.types.split(',') : Object.keys(CLOUD_TYPES_V1);
       var newTypes = st.pulledSeq ? (S.TYPES || []).filter(function (t) { return before.indexOf(t) < 0; }) : [];
-      /* the typed recovery keeps its own cursor (typedSeq) and never moves the shared one, so rows of other types
-         that arrive between the two requests are still pulled next time; it is resumable across syncs when the
-         backlog is larger than one pull, and only a pull that reached the end marks the new types as known */
-      var incRows = [], typedRows = [], typedDone = !newTypes.length;
+      /* the typed recovery keeps its own position (typedAfter, the last id it saw) and never moves the shared cursor,
+         so rows of other types that arrive between the two requests are still pulled next time; it resumes across
+         syncs when the backlog is larger than one sync's share, and only a scan that reached the end marks the new
+         types as known */
+      var incRows = [], typed = null, typedDone = !newTypes.length;
       saveState(st); /* persist the activation/reset before any network call */
       /* before any row moves: read the account's own record (a withdrawal made on another phone is adopted here and stops
          the sync), then make sure this account has heard this phone's cloud choice (the server refuses writes it has not
@@ -239,7 +256,7 @@
       return pre.then(function () { return pullSince(st.pulledSeq, token); }).then(function (rows) {
         incRows = rows;
         if (!newTypes.length) return rows;
-        return pullSince(st.typedSeq || null, token, newTypes).then(function (typed) { typedRows = typed; typedDone = !typed.truncated; return mergeRows(rows, typed); });
+        return pullTypedAfter(st.typedAfter || null, token, newTypes).then(function (t) { typed = t; typedDone = t.done; return mergeRows(rows, t.rows); });
       }).then(function (remoteRows) {
         /* consent or sign-in may have changed during the network wait */
         if (!canSync() || a.userId() !== uid) { busy = false; setStatus('idle'); return { ok: false, reason: 'cancelled' }; }
@@ -278,8 +295,8 @@
           /* read-modify-write so a deletion made while this sync was in flight is kept */
           var cur = loadState(); cur.userId = uid;
           cur.pulledSeq = maxIso(cur.pulledSeq || '', seqMax) || cur.pulledSeq || null;
-          if (typedDone) { cur.types = knownTypes; delete cur.typedSeq; }
-          else cur.typedSeq = maxIso(cur.typedSeq || '', typedRows.reduce(function (m, r) { return maxIso(m, r.synced_at); }, '')) || cur.typedSeq || null;
+          if (typedDone) { cur.types = knownTypes; delete cur.typedAfter; }
+          else if (typed && typed.lastId) cur.typedAfter = typed.lastId;
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
           Object.keys(settled).forEach(function (id) { delete cur.tombstones[id]; });
           var held = cur.held || {};
