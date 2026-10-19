@@ -1537,7 +1537,7 @@
     openSheet('luna', 'Luna', 'Tell me how you are; I’ll write it down', 'dark_mode',
       '<div class="chat" id="chat"></div>' +
       '<div class="quick" id="quick">' + ['Slept 11pm to 7am, quality 4', 'Period started today, medium', 'Cramps and bloating, pain 5, mood ok', 'Had oats and a latte for breakfast', 'Meditated 10 min'].map(function (q) { return '<span class="qchip"><button type="button" class="qsend" data-q="' + esc(q) + '">' + esc(q) + '</button><button type="button" class="qpen" data-q="' + esc(q) + '" aria-label="Edit this shortcut before sending"><span class="ms">edit</span></button></span>'; }).join('') + '</div>' +
-      '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><input class="input" id="lunaIn" maxlength="400" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice" value="' + esc(prefill || '') + '"><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
+      '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><textarea class="input" id="lunaIn" rows="3" maxlength="400" enterkeyhint="send" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice">' + esc(prefill || '') + '</textarea><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
       '<details class="aibox" id="aibox"><summary><span class="ms">auto_awesome</span>' + (cfg.on ? 'Luna’s reading is on' : 'Luna’s reading is off · rules only') + infoBtn('luna') + '</summary>' + guideHTML('luna') +
       '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Write journal readings</b><span>A summary of your last 7 or 28 days, without your name, goes to the same AI service in China so Luna can write a reading. Off means no readings.</span></div></label>' +
       '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Recognise food photos</b><span>Each photo goes once through Rhythme’s server to the AI service in China so Luna can recognise the food; Rhythme does not keep it. Only a small thumbnail stays in your diary on this phone.</span></div></label>' +
@@ -1609,8 +1609,12 @@
       });
       ask.querySelector('[data-aino]').addEventListener('click', function () { ask.querySelector('.row').remove(); });
     }
-    $('#lunaSend').addEventListener('click', function () { send($('#lunaIn').value); });
-    $('#lunaIn').addEventListener('keydown', function (e) { if (e.key === 'Enter') send(this.value); });
+    /* the message box is a roomy textarea (Jamie, 19 Oct): it grows with the text up to six lines; Enter sends, Shift+Enter adds a line, and Enter that finishes an input-method word never sends */
+    function fitIn() { var t = $('#lunaIn'); if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 3, 168) + 'px'; }
+    function sendIn() { send($('#lunaIn').value); setTimeout(fitIn, 0); }
+    $('#lunaSend').addEventListener('click', sendIn);
+    $('#lunaIn').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); sendIn(); } });
+    $('#lunaIn').addEventListener('input', fitIn); fitIn();
     /* ---------- food photos ---------- */
     var byHand = '<div class="row"><button type="button" class="btn ghost" data-byhand="1"><span class="ms">menu_book</span>Log it by hand</button></div>';
     chat.addEventListener('click', function (e) { if (e.target.closest('[data-byhand]')) openDiary(); });
@@ -1685,7 +1689,7 @@
     }
     $('#quick').addEventListener('click', function (e) {
       var pen = e.target.closest('.qpen'), go = e.target.closest('.qsend');
-      if (pen) { var inp = $('#lunaIn'); inp.value = pen.dataset.q; inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (err) { } toast('Edit the numbers, then send.', 'edit'); return; }
+      if (pen) { var inp = $('#lunaIn'); inp.value = pen.dataset.q; fitIn(); inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (err) { } toast('Edit the numbers, then send.', 'edit'); return; }
       if (go) send(go.dataset.q);
     });
     $('#aiSave').addEventListener('click', function () { var c = ORB.aiConfig(); c.insights = $('#aiInsights').checked; c.photos = $('#aiPhotos').checked; ORB.setAiConfig(c); S.setProfile({ consent: Object.assign({}, S.profile().consent || {}, { improve: $('#aiImprove').checked }) }); chime('save'); toast('Luna’s settings saved.', 'check_circle'); openLuna($('#lunaIn').value); });

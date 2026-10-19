@@ -566,6 +566,11 @@ function scenes(todayIso) {
   var saved = S.state().garden;
   check('credited and watered days are persisted in state for export', saved && saved.credited.length === 3 && saved.watered.join() === '2026-10-18', JSON.stringify(saved));
   check('plant art is an inline svg at every stage, bigger as it grows', [0, 1, 2, 3, 4, 5].every(function (s) { return /^<svg/.test(G.plantSVG(s)); }) && G.plantSVG(5).length > G.plantSVG(1).length);
+  var WK = w.OvuWalk, GL = G.LAYOUT, free = function (x, y) { return WK.inZones(GL.zones, x, y) && !WK.blocked(GL.solids, x, y); };
+  check('every side of the plot she can water from stands on the lawn, clear of the planter', G.PLOT_SIDES.every(function (p) { return free(p.x, p.y); }), JSON.stringify(G.PLOT_SIDES.filter(function (p) { return !free(p.x, p.y); })));
+  var beside = G.plotStand({ x: 38.5, y: 64.5 }, free), far = G.plotStand({ x: 30, y: 62 }, free), back = G.plotStand({ x: 50, y: 55 }, free), front = G.plotStand({ x: 50, y: 80 }, free);
+  check('already beside the plot she waters from where she stands; from further off she walks to the nearest side, not the front', beside.x === 38.5 && beside.y === 64.5 && far.x === 38.5 && back.y === 58 && front.x === 50 && front.y === 71.5, JSON.stringify([beside, far, back, front]));
+  check('she faces the plot from either side', G.plotStand({ x: 38.5, y: 64.5 }, free).flip !== G.plotStand({ x: 63.5, y: 65.5 }, free).flip);
   var ev = S.add('mindfulness', '2026-10-18', { kind: 'garden', minutes: 1, completed: true });
   var rw = w.OvuRewards.award(ev);
   check('a watering minute is worth 2 hearts as a one-minute calm entry (plus the usual streak rule)', rw.points === 2, JSON.stringify(rw));
@@ -729,7 +734,7 @@ function scenes(todayIso) {
 (function followCamera() {
   console.log('follow camera: zoom per layout, dead zone, clamped target, frame-rate independent smoothing (ovu-camera.js)');
   var w = scenes('2026-10-19'), M = w.OvuCamera.M, sceneOf = w.OvuWalk.sceneOf, W = 390, H = 487;
-  check('home layouts open at zoom 1; the garden, the plaza and the stores at 1.6; the wide street at its own 1.25', ['room', 'house', 'bathhouse', 'familyhome'].every(function (id) { return M.zoomFor(w.LAYOUTS[id], sceneOf) === 1; }) && ['garden', 'plaza', 'shop-pet', 'shop-furniture', 'shop-homes'].every(function (id) { return M.zoomFor(w.LAYOUTS[id], sceneOf) === 1.6; }) && M.zoomFor(w.LAYOUTS.street, sceneOf) === 1.25);
+  check('every scene opens fitted to the screen at zoom 1: the homes, the garden, the street, the plaza and the stores', ['room', 'house', 'bathhouse', 'familyhome', 'garden', 'street', 'plaza', 'shop-pet', 'shop-furniture', 'shop-homes'].every(function (id) { return M.zoomFor(w.LAYOUTS[id], sceneOf) === 1; }));
   check("a layout's own cam.z wins and never drops below 1", M.zoomFor({ scene: 'garden', cam: { z: 2.2 } }, sceneOf) === 2.2 && M.zoomFor({ scene: 'garden', cam: { z: 0.4 } }, sceneOf) === 1 && M.zoomFor(null, sceneOf) === 1);
   var c0 = M.centreOn({ x: 50, y: 50 }, 1.6, W, H), s0 = M.toScreen({ x: 50, y: 50 }, { x: c0.x, y: c0.y, z: 1.6 }, W, H);
   check('centring puts her feet at the screen position, 50% across and 58% down the box', Math.abs(s0.x - W * 0.5) < 1e-6 && Math.abs(s0.y - H * 0.58) < 1e-6, JSON.stringify(s0));
@@ -825,6 +830,20 @@ function scenes(todayIso) {
   check('all eighteen pet strips are on disk with valid sidecars', strips === 18, strips);
   var ST = w.OvuStreet;
   check('the three stores keep different hours and the hours helper reads a date', ST.hoursFor('pet')[0] === 10 && ST.hoursFor('furniture')[0] === 11 && ST.hoursFor('home')[0] === 9 && !ST.openAt('pet', new Date(2026, 9, 19, 8, 30)) && ST.openAt('pet', new Date(2026, 9, 19, 12, 0)) && !ST.openAt('pet', new Date(2026, 9, 19, 19, 0)) && ST.openAt('home', new Date(2026, 9, 19, 9, 0)) && ST.hoursText('furniture') === '11 am to 9 pm');
+  /* walking together: the pet keeps a few steps behind on her own trail, catches up, and stops when she stops */
+  var her = { x: 70, y: 50 }, crumbs = [{ x: 52, y: 50 }, { x: 52, y: 60 }, { x: 70, y: 60 }], start = { x: 45, y: 50 };
+  var L0 = M.pathLen(start, crumbs, her);
+  check('the trail length runs from the pet through each footstep to her', Math.abs(L0 - (7 + 20 + 18 + 20)) < 1e-9, L0);
+  var a1 = M.along(start, crumbs, her, 10);
+  check('moving along the trail passes the footsteps in order and turns the corner (no shortcut through what she walked round)', a1.used === 1 && Math.abs(a1.x - 52) < 1e-9 && Math.abs(a1.y - 51.5) < 1e-9, JSON.stringify(a1));
+  var a2 = M.along(start, crumbs, her, 1000);
+  check('it never runs past her', a2.x === her.x && a2.y === her.y && a2.used === crumbs.length, JSON.stringify(a2));
+  check('it catches up faster the further behind it is, gently near the end, never faster than a trot', M.followSpeed(0) === 12 && M.followSpeed(3.5) === 26 && M.followSpeed(50) === 32 && M.followSpeed(-5) === 8);
+  var sim = { x: 45, y: 50 }, trail = crumbs.slice(), t = 0;
+  for (var i = 0; i < 600; i++) { var len = M.pathLen(sim, trail, her); if (len <= M.LAG + 0.05) break; var r = M.along(sim, trail, her, Math.min(M.followSpeed(len - M.LAG) / 60, len - M.LAG)); trail.splice(0, r.used); sim = { x: r.x, y: r.y }; t += 1 / 60; }
+  check('when she stands still the pet walks up to a few steps behind her and stops there', Math.abs(M.pathLen(sim, trail, her) - M.LAG) < 0.1 && t < 4, JSON.stringify({ sim: sim, t: t }));
+  var bs = M.behindSpots({ x: 50, y: 50 }, false), bl = M.behindSpots({ x: 50, y: 50 }, true);
+  check('on arrival the pet stands behind her: to her left when she faces right, to her right when she faces left', bs[0].x < 50 && bl[0].x > 50 && bs.every(function (p) { return Math.abs(p.x - 50) >= 4 || Math.abs(p.y - 50) >= 3; }));
 })();
 
 (function ledgerAccounting() {
