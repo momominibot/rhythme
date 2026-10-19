@@ -126,3 +126,6 @@ html[data-sky="night"] .row>span[style*="border-radius:50%"]{background:rgba(248
 html[data-sky="night"] .row>span[style*="border-radius:50%"] .ms{color:#f6d3c8!important}
 /* the account panel's injected state line uses a day-only grey */
 html[data-sky="night"] .ya-state{color:var(--rm-ink-3)}
+/* the chosen session (bench, mat, everyday) shows at night too: the catch-all card colour above out-ranked .session.on */
+html[data-sky="night"] .sessions .session{border:1.5px solid transparent}
+html[data-sky="night"] .sessions .session.on{background:#4a3a72;border-color:#c9b6e6;box-shadow:0 0 0 3px rgba(201,182,230,.18)}

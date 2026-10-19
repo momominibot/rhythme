@@ -1435,7 +1435,15 @@
       openSheet('shop', closedName, asleep() ? 'The shops can wait until morning' : 'Closed right now', 'storefront',
         '<div class="closedcard"><span class="ms">' + (asleep() ? 'nights_stay' : 'schedule') + '</span><b>' + (asleep() ? 'She is asleep.' : closedName + ' is closed right now.') + '</b><p>' + (asleep() ? 'Tap the bed to wake her, then come back.' : hoursLine + '. Your things are still yours; arranging the home works any time.') + '</p>' +
         (!asleep() && RW.ledger().owned.some(function (id) { var it = RW.item(id); return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div>' : '') + '</div>');
-      body.addEventListener('click', function (e) { if (e.target.closest('#arrangeBtn')) enterArrange(); });
+      /* your things stay yours when the shops are shut (Jamie, 20 Oct): the inventory shows with its place, wear and visit buttons; only buying waits */
+      var lc = RW.ledger(), mine = RW.SHOP.filter(function (it) { return lc.owned.indexOf(it.id) > -1; });
+      if (!asleep() && mine.length) body.insertAdjacentHTML('beforeend', '<p class="shelf"><span class="ms">inventory_2</span>Your things</p>' + shopList(mine, lc, currentHomeId()) + '<div class="msg" id="shopMsg"></div>');
+      body.addEventListener('click', function (e) {
+        if (e.target.closest('#arrangeBtn')) { enterArrange(); return; }
+        var t = e.target.closest('[data-toggle]'), v = e.target.closest('[data-visit]'), hm = e.target.closest('[data-home]');
+        try { if (t) shopAct('toggle', t.dataset.toggle, { sheet: true }); if (v) shopAct('visit', v.dataset.visit, { sheet: true }); if (hm) shopAct('home', hm.dataset.home, { sheet: true }); }
+        catch (err) { var m = $('#shopMsg'); if (m) message(m, err.message, false); }
+      });
       return;
     }
     var l = RW.ledger(), home = currentHomeId(), st = STORES[shopTab], street = shopTab === 'street';
@@ -1752,7 +1760,7 @@
     var guides = ['guide_soften', 'guide_feet', 'guide_wander', 'guide_nothing_to_fix', 'guide_quiet_work'].concat(cramps ? ['guide_cramps'] : []);
     var p = Promise.resolve();
     if (kind === 'erin') {
-      setOrb('hold', 'Hello'); p = playClip(hour < 12 ? 'greeting_morning' : 'greeting_evening') /* started inside the tap, which unlocks the element for every later line */
+      setOrb('hold', 'Hello'); p = playClip(hour >= 5 && hour < 12 ? 'greeting_morning' : hour >= 12 && hour < 17 ? 'greeting_welcome' : 'greeting_evening') /* never good morning after midnight (Jamie, 20 Oct) */ /* started inside the tap, which unlocks the element for every later line */
         .then(function () { setOrb('hold', 'Settling in'); return playClip('meditation_begin'); });
     }
     p = p.then(function () {
@@ -1906,7 +1914,7 @@
       : !mins ? { t: 'This week: a first pause', s: 'Erin guides three minutes. Nothing to get right.', kind: 'erin', min: 3, icon: 'self_improvement' }
       : { t: 'This afternoon: a reset', s: 'Five silent minutes, follow the orb.', kind: 'breathe', min: 5, icon: 'light_mode' };
     var last = S.list('mindfulness', { from: S.addDays(today, -30), to: today }).slice(-3).reverse();
-    function label(e) { var k = e.data.kind; return k === 'erin' ? 'With Erin' : k === 'breathe' ? 'Just breathe' : k === 'breathtap' ? 'Moon Tap' : k === 'garden' ? 'Garden watering' : k === 'informal' ? 'Everyday practice' : 'Practice'; }
+    function label(e) { var k = e.data.kind; return k === 'erin' ? 'With Erin' : k === 'breathe' ? 'Just breathe' : k === 'breathtap' ? 'Koi Pond' : k === 'garden' ? 'Garden watering' : k === 'informal' ? 'Everyday practice' : 'Practice'; }
     openSheet('mind', 'Your mat', 'Erin appears beside you while you practise', 'self_improvement',
       '<div class="podshelf" id="podShelf"></div>' +
       '<div class="matnow"><span class="ms">' + sug.icon + '</span><div><b>' + esc(sug.t) + '</b><small>' + esc(sug.s) + '</small></div><button type="button" class="btn primary" data-kind="' + sug.kind + '" data-min="' + sug.min + '">Start</button></div>' +
@@ -1915,7 +1923,7 @@
         '<button type="button" class="mattile" data-kind="erin" data-min="6"><span class="ms">record_voice_over</span><b>With Erin</b><small>6 min, longer settle</small></button>' +
         '<button type="button" class="mattile" data-kind="breathe" data-min="2"><span class="ms">blur_circular</span><b>Just breathe</b><small>2 min, 4-4-6 with a bell</small></button>' +
         '<button type="button" class="mattile" data-kind="breathe" data-min="5"><span class="ms">blur_circular</span><b>Just breathe</b><small>5 min, silent</small></button>' +
-        '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Moon Tap</b><small>Tap the water, 3 to 5 min</small></button>' +
+        '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Koi Pond</b><small>Tap the water, the koi come, 3 to 5 min</small></button>' +
         '<button type="button" class="mattile" id="mindEveryday"><span class="ms">home</span><b>Everyday practice</b><small>Teeth, tea, dishes, plants</small></button>' +
         '<button type="button" class="mattile" id="mindAcu"><span class="ms">spa</span><b>Cramp relief points</b><small>Pressure points on your body</small></button>' +
       '</div>' +
@@ -2336,13 +2344,8 @@
   function hideBubble() { bubble.classList.remove('on', 'petbub'); }
   /* the menu sits above her head; when the camera holds her tall on screen there is no room above, so it stays inside the box */
   function fitBubble() { var minTop = bubble.offsetHeight + 6; if (parseFloat(bubble.style.top) < minTop) bubble.style.top = minTop + 'px'; }
-  avatar.addEventListener('click', function (e) {
-    e.stopPropagation(); chime('tap'); joy(); hideThought();
-    var r = avatar.getBoundingClientRect(), sr = scene.getBoundingClientRect();
-    bubble.style.left = Math.min(sr.width - 95, Math.max(95, r.left - sr.left + r.width / 2)) + 'px'; bubble.style.top = (r.top - sr.top - 6) + 'px';
-    bubble.innerHTML = '<button data-act="wardrobe"><span class="ms">checkroom</span>Change outfit</button><button data-act="sleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button data-act="mat"><span class="ms">self_improvement</span>Sit with Erin</button><button data-act="acu"><span class="ms">spa</span>Cramp relief points</button><button data-act="luna"><span class="ms">dark_mode</span>Tell Luna</button><button data-act="journal"><span class="ms">auto_stories</span>Open my journal</button><button data-act="everyday"><span class="ms">home</span>Everyday practice</button>' + (S.profile().onboarded ? '' : '<button data-act="intro"><span class="ms">favorite</span>Tell me about you</button>') + '';
-    bubble.classList.add('on'); fitBubble();
-  });
+  /* a tap on her is a little hop and nothing more (Jamie, 19 Oct: the menu over her head is gone; every choice it held has its own place) */
+  avatar.addEventListener('click', function (e) { e.stopPropagation(); chime('tap'); joy(); hideThought(); hideBubble(); });
   bubble.addEventListener('click', function (e) { var pb = e.target.closest('[data-pact]'); if (pb) { var pid = bubble.dataset.pet; hideBubble(); petAction(pid, pb.dataset.pact); return; } var b = e.target.closest('button'); if (!b) return; hideBubble(); if (b.dataset.act !== 'sleep' && !awake(b.dataset.act)) return; var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
   document.addEventListener('click', function (e) { if (!e.target.closest('#bubble') && !e.target.closest('#avatar')) hideBubble(); });
 
