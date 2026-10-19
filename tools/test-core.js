@@ -839,14 +839,15 @@ function scenes(todayIso) {
     worst.push({ id: o.id, feet: low, head: +(low - tall).toFixed(2), top: o.y });
   });
   check('standing at the back of the floor behind any cutout her head (21.7 tall) stays below the cutout\'s top edge', worst.every(function (r) { return r.feet < 1e9 && r.head > r.top; }), JSON.stringify(worst));
-  /* the depth: the walk engine ranks the cutouts by their base with her and a walking pet; four cutouts, a pet and her are six, so ranks never tie */
+  /* the depth: the walk engine ranks the cutouts by their base with her and a walking pet */
   var plaza = occ.filter(function (o) { return o.id === 'plaza-arch'; })[0], east = occ.filter(function (o) { return o.id === 'lamp-east'; })[0];
   function zs(herY, petY) { var items = occ.map(function (o) { return { y: o.base }; }).concat([{ y: petY }, { y: herY }]), z = K.depthRank(items); return { occ: z.slice(0, occ.length), pet: z[occ.length], her: z[z.length - 1] }; }
   var behind = zs(73, 70), front = zs(79, 70), i = occ.indexOf(plaza);
   check('standing at x 205, y 73 she is behind the plaza arch\'s front pillar (its z is higher); at y 79 she is in front', behind.occ[i] > behind.her && front.her > front.occ[i], JSON.stringify({ behind: behind, front: front }));
   var pb = zs(60, east.base - 0.6), pf = zs(60, east.base + 0.6), j = occ.indexOf(east);
   check('a walking pet passes behind the east lamp just above its base and in front just below it', pb.occ[j] > pb.pet && pf.pet > pf.occ[j], JSON.stringify({ behind: pb, front: pf }));
-  check('six on the street rank without a tie, so she can never share a z with a pillar she is behind', [60, 62, 68.2, 73, 77, 79].every(function (y) { var z = zs(y, y + 0.3), all = z.occ.concat([z.pet, z.her]); return all.filter(function (v, k) { return all.indexOf(v) === k; }).length === all.length; }));
+  /* the most the street ever ranks: the four cutouts, a walking pet, her and a bench sitter (the bench's ground line) */
+  check('seven on the street (four cutouts, a pet, her, a bench sitter) rank without a tie, so she can never share a z with a pillar she is behind', [60, 62, 68.2, 73, 77, 79].every(function (y) { var items = occ.map(function (o) { return { y: o.base }; }).concat([{ y: y + 0.3 }, { y: L.meditator.seat.groundY }, { y: y }]), z = K.depthRank(items); return items.length === 7 && z.filter(function (v, k) { return z.indexOf(v) === k; }).length === z.length; }));
   check('the cutouts are the street\'s alone: every other layout (the homes, garden, plaza, stores) has none and draws as before', Object.keys(w.LAYOUTS).every(function (id) { return id === 'street' || !w.LAYOUTS[id].occluders; }));
   /* the cut script and the layout agree, so a re-cut keeps the placement it prints */
   var py = fs.readFileSync(path.join(root, 'tools/art/occluders.py'), 'utf8');

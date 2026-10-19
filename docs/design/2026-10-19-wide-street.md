@@ -162,21 +162,65 @@ y 36.3 and the cut starts at 30.9; behind the plaza arch 46.5 against 39.4. `--c
 magenta, its edge on the plate, and a "she stands behind it" composite (a dark shape under the cutout: anything the cut
 misses shows dark).
 
-**How it draws.** `renderOcc()` in ovu-walk.js puts the layout's cutouts into `#ownedProps` as `img.plate-occ`
-(left, top, width and height in box percent, `pointer-events: none`), after every props render and layout change, and
-leaves them alone when the set is already there. `sprites()` ranks a cutout by `data-base` instead of its top edge and
-never counts it as a solid, so the one `depthRank` that already orders her, the walking pet, neighbours and props now
-orders the cutouts too: her feet above a base, she draws behind it; below, in front. On the street that is six items at
-most (four cutouts, a walking pet, her), so the 2 to 9 ranks never tie. The cutouts join the window patches in the
-plate's own filter rules (`:is(.room-img.day, .win-patch, .plate-occ)`), so at night, sunrise and sunset they dim and
-tint exactly as the plate does (same 1.2 s transition); the rules' values are unchanged. Layouts without `occluders`
-(every home, the garden, the plaza, the stores) render nothing new.
+**How it draws.** `renderOcc()` in ovu-walk.js builds the layout's cutouts in `#plateOcc`, a layer of its own placed
+just before `#ownedProps` with no position and no z-index, so it makes no stacking context and its children are ranked in
+the same context as her and the pets. It is rebuilt only when the layout changes; a props render (pet care, a sky change)
+leaves it alone. Each cutout is a `div.plate-occ` (left, top, width and height in box percent, `pointer-events: none`)
+holding `img.occ-img` and `i.occ-veil`. `sprites()` ranks a cutout by `data-base` instead of its top edge and never counts
+it as a solid, so the one `depthRank` that already orders her, the walking pet, neighbours and props orders the cutouts
+too: her feet above a base, she draws behind it; below, in front. On the street that is seven items at most (four
+cutouts, a walking pet, her, a bench sitter), so the 2 to 9 ranks never tie.
+
+Lighting: the image joins the window patches in the plate's own filter lists (`:is(.room-img.day, .win-patch,
+.occ-img)`) and the plate's transition rule (`:is(.room-img.day, .occ-img)`), so it dims and tints exactly as the plate
+does, with or without reduced motion. The night veil paints under anything with a z, so a cutout needs its own copy:
+`.occ-veil` shares the veil's rules (`:is(.night-veil, .occ-veil)` for its gradient, opacity and timing), is masked by the
+sprite's own alpha, and carries a background size and offset that line its gradient up with the veil across the whole
+street. No value in any night or sky rule changed. Layouts without `occluders` (every home, the garden, the plaza, the
+stores) render nothing new.
+
+Depth after the room's own moves: the walk engine re-ranks every frame of its own walks, but the room can also move her
+itself (a reduced-motion step, the straight-line fallback, a door, a seat). `placeAvatar` now emits `placed`, the engine
+re-ranks on it, and during the room's CSS slide it ranks her by her live computed `top` each frame. A pet re-ranks after
+settling on the floor and after its bedtime hop home. Travel preloads the destination's cutouts with its plate; a missing
+cutout only leaves the plate as it was.
 
 **Tests.** `tools/test-core.js`: four cutouts on disk whose pixel size matches their box placement; each lines up with
 its own solid (middle inside the cutout, base inside the footprint, the cutout reaching down past its base); her head
 never rises above a cutout's top from any floor point behind it; at x 205, y 73 the plaza arch outranks her and at y 79
 she outranks it; a pet passes behind the east lamp just above its base; no ties; no other layout has cutouts; the cut
-script and the layout agree on ids, files, solids and bases. `tools/e2e_smoke.py`: on the street the four cutouts load
-and sit at their box placement within a pixel, a tap on a lamp reaches the plate beneath, she is behind the plaza
-pillar at y 73 and in front at y 79, behind the west lamp at (79.5, 61.2), the cutouts take the plate's filter at night,
-and the garden draws none.
+script and the layout agree on ids, files, solids and bases. `tools/e2e_smoke.py`: on the street the four cutouts load, sit at their box placement within a pixel in an unstacked
+layer, and a tap on a lamp reaches the plate beneath; placed at (205, 73) she is behind the plaza pillar and at (205, 79)
+in front, re-ranked by the placement alone; the same on cobbles she can really stand on, (212.6, 71.2) and (212.8, 77.6);
+behind the west lamp at (79.5, 61.2); a sky change with a props render keeps the same nodes, their filter mid-transition
+with the plate's; with reduced motion their transitions equal the plate's and the veil's; at night a screenshot of the
+west lamp with the cutouts equals one with them hidden (mean difference under 3 of 255, decoded with a stdlib PNG
+reader); the garden draws none.
+
+## Codex review (the cutouts, read-only, gpt-6-astra)
+
+Verdict: ship with fixes. All taken:
+
+| # | Finding | Outcome |
+|---|---|---|
+| 1 | a pet settling on the floor can cross a lamp's base without a re-sort | `W.sortDepth()` after the settle and after the bedtime hop home |
+| 2 | the night veil paints under positive-z cutouts, so matching filters still leaves them unveiled at night | each cutout carries the veil masked to its own alpha, aligned to the street-wide veil; smoke compares rendered pixels at night |
+| 3 | a sky change re-renders props, which recreated the cutouts at the destination filter while the plate transitioned | the cutouts moved to `#plateOcc`, rebuilt only on a layout change; smoke samples the filter mid-transition |
+| 4 | under reduced motion the plate's more specific `.room-img.day` transition survives while the cutouts snapped | the image shares that rule instead of a reduced-motion override; smoke compares the transitions with reduced motion |
+| 5 | travel preloads only the plate, so the street could appear before its cutouts | travel preloads the cutouts with the plate (each resolves on error or after 2.5 s); **still open after round two, see below** |
+| 6 | (205, 73) and (205, 79) lie inside the pillar's solid; tests feed `depthRank` synthetic values | the task's two points stay, and smoke adds two reachable spots; the pet settle path itself is not driven by a test yet |
+
+Also found here: moves the room makes itself (reduced motion, the CSS fallback) never re-ranked her; fixed with the
+`placed` event and live ranking during the CSS slide.
+
+Round two (the fix diff): findings 1 to 4 closed (pet settle re-ranks, the masked veil lines up with the street veil and
+the unmaskable fallback keeps an unveiled cutout rather than a dark box, `#plateOcc` survives props renders, both
+transitions match under reduced motion). New: `W.sortDepth()` from a pet's frame during the room's CSS slide ranked her
+by her destination; fixed by `herY()` (the engine's position while it walks, her live computed top during a CSS slide,
+else where she stands), with a smoke check that fails without it. **Held at AGENTS gate 6** (the same finding open after
+two reviews): finding 5, travel can reveal the street before a cutout has decoded, or with one that failed. Where it
+shows: she arrives at a doorstep or arch, and only the garden arch's stand point (38, 60.2) overlaps a cutout, by a
+sliver of its right-hand flowers, for the moment a cold cache takes to decode a 16 KB sprite; a sprite that fails to load
+leaves the street exactly as it was before this change. Options for Jamie: ship as is, or await `decode()` on the
+cutouts before the fade lifts (a few lines, then a third review). Test coverage for delayed or failed sprites on travel
+and for the real pet settle path is still missing.

@@ -254,31 +254,43 @@
   /* a foreground cutout (.plate-occ) is ranked by its base, not its top edge, and is never a solid: its object's solid is
    * already in the layout */
   function sprites() {
-    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #ownedProps .plate-occ')).map(function (el) { var occ = el.classList.contains('plate-occ'); return { el: el, id: el.dataset.id, x: parseFloat(el.style.left), y: parseFloat(occ ? el.dataset.base : el.style.top), w: parseFloat(el.style.width) || 8, solid: !occ && !el.classList.contains('plot') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #plateOcc .plate-occ')).map(function (el) { var occ = el.classList.contains('plate-occ'); return { el: el, id: el.dataset.id, x: parseFloat(el.style.left), y: parseFloat(occ ? el.dataset.base : el.style.top), w: parseFloat(el.style.width) || 8, solid: !occ && !el.classList.contains('plot') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
   }
-  /* the layout's foreground cutouts (L.occluders; only the wide street has any) live in #ownedProps with the pets, so the
-   * one depth sort covers them all. A props re-render empties the wrap, so they are put back after every one; when the
-   * wrap already holds this layout's set nothing is touched */
+  /* the layout's foreground cutouts (L.occluders; only the wide street has any). They live in #plateOcc, a layer of their own
+   * beside #ownedProps with no stacking context, so the one depth sort covers them with her and the pets, while a props
+   * render (a sky change, pet care) leaves them alone and their filter keeps transitioning with the plate's. Each is a
+   * wrapper holding the image and a copy of the night veil masked to the image's own alpha, sized and offset so its
+   * gradient lines up with the veil across the whole street. Rebuilt only when the layout changes */
+  var occLayer = null, canMask = !!(root.CSS && root.CSS.supports && (root.CSS.supports('mask-image', 'url("a.webp")') || root.CSS.supports('-webkit-mask-image', 'url("a.webp")')));
   function renderOcc() {
-    var wrap = R.els.props, L = R.layout(), want = (L && L.occluders) || []; if (!wrap) return;
-    var have = wrap.querySelectorAll('.plate-occ');
-    if (have.length === want.length && Array.prototype.every.call(have, function (el, i) { return el.dataset.layout === L.id && el.dataset.id === want[i].id; })) return;
-    Array.prototype.forEach.call(have, function (el) { el.remove(); });
-    want.forEach(function (o) {
-      var im = doc.createElement('img'); im.className = 'plate-occ'; im.alt = ''; im.setAttribute('aria-hidden', 'true'); im.draggable = false; im.decoding = 'async';
-      im.dataset.id = o.id; im.dataset.layout = L.id; im.dataset.base = o.base;
-      im.style.left = o.x + '%'; im.style.top = o.y + '%'; im.style.width = o.w + '%'; im.style.height = o.h + '%';
-      im.src = R.ART + o.img; wrap.appendChild(im);
+    var L = R.layout(); if (!L || !R.els.props) return;
+    if (!occLayer) { occLayer = doc.createElement('div'); occLayer.id = 'plateOcc'; occLayer.setAttribute('aria-hidden', 'true'); R.els.props.parentNode.insertBefore(occLayer, R.els.props); }
+    if (occLayer.dataset.layout === L.id) return;
+    occLayer.dataset.layout = L.id; occLayer.innerHTML = '';
+    var S = 100 * (L.span > 1 ? L.span : 1);
+    (L.occluders || []).forEach(function (o) {
+      var d = doc.createElement('div'), im = doc.createElement('img'), v = doc.createElement('i'), url = 'url("' + R.ART + o.img + '")';
+      d.className = 'plate-occ'; d.dataset.id = o.id; d.dataset.base = o.base;
+      d.style.left = o.x + '%'; d.style.top = o.y + '%'; d.style.width = o.w + '%'; d.style.height = o.h + '%';
+      im.className = 'occ-img'; im.alt = ''; im.draggable = false; im.decoding = 'async'; im.src = R.ART + o.img;
+      v.className = 'occ-veil'; v.style.webkitMaskImage = url; v.style.maskImage = url;
+      v.style.backgroundSize = (S / o.w * 100) + '% ' + (100 / o.h * 100) + '%';
+      v.style.backgroundPosition = (o.x / (S - o.w) * 100) + '% ' + (o.y / (100 - o.h) * 100) + '%';
+      d.appendChild(im); if (canMask) d.appendChild(v); occLayer.appendChild(d); /* unmasked, the veil copy would be a dark box at night: better an unveiled cutout */
     });
   }
   function worldNow() { return world(R.layout(), sprites().filter(function (p) { return p.solid; })); }
   /* z order from the bottom of each sprite; the avatar joins the ranking at its live position */
+  /* where her feet are for the depth sort when a caller does not say: the engine's live position while it walks her, her
+   * live computed top while the room's own CSS slide moves her (R.pos() already holds the destination then), else where
+   * she stands. Every caller without a y (props renders, the pets' frames, travel) goes through here */
+  function herY() { if (active && cur) return cur.y; if (cyc.cssRaf && avatar.classList.contains('walking')) return liveY(); return R.pos().y; }
   function sortDepth(avatarY) {
-    var list = sprites(), ay = typeof avatarY === 'number' ? avatarY : R.pos().y;
+    var list = sprites(), ay = typeof avatarY === 'number' ? avatarY : herY();
     var items = list.map(function (p) { return { y: p.y }; }).concat([{ y: ay }]);
     var z = depthRank(items);
     list.forEach(function (p, i) { if (p.el.style.zIndex !== String(z[i])) p.el.style.zIndex = z[i]; });
-    avatar.style.zIndex = z[z.length - 1];
+    if (avatar.style.zIndex !== String(z[z.length - 1])) avatar.style.zIndex = z[z.length - 1];
   }
   function keyVec() {
     var kx = (keys.r ? 1 : 0) - (keys.l ? 1 : 0), ky = (keys.d ? 1 : 0) - (keys.u ? 1 : 0);
@@ -341,13 +353,15 @@
   }
   /* the room's own CSS walks (hotspot taps) play the cycle too: beforeWalk notes where she stands, the walking
    * class tells us the leg has started, and R.pos() the next frame says where it goes */
+  /* her feet's y while the room's own CSS walk slides her (the transition is on top), so she passes behind a cutout mid-walk */
+  function liveY() { var t = parseFloat(root.getComputedStyle(avatar).top), h = inner.clientHeight; return isFinite(t) && h ? t / h * 100 : R.pos().y; }
   function cssCycle() {
     if (active || !avatar.classList.contains('walking')) { cycleHide(); cyc.cssRaf = 0; return; }
     var from = cyc.cssFrom || R.pos(), to = R.pos(), dx = to.x - from.x, dy = to.y - from.y, t0 = performance.now();
     var total = Math.hypot(dx, dy / Y_SCALE), ms = parseFloat(avatar.style.transitionDuration) || Math.min(1100, Math.max(350, Math.hypot(dx, dy) * 22));
     if (dx || dy) { var dir = dirFor(dx, dy); cycleShow(dir); if (dir === 'side') avatar.classList.toggle('flip', dx < 0); }
     var last = t0;
-    (function tick(t) { if (active || !avatar.classList.contains('walking')) { cycleHide(); cyc.cssRaf = 0; return; } cycleStep(total * Math.min(0.1, (t - last) / 1000) * 1000 / ms); last = t; cyc.cssRaf = root.requestAnimationFrame(tick); })(t0);
+    (function tick(t) { if (active || !avatar.classList.contains('walking')) { cycleHide(); cyc.cssRaf = 0; if (!active) sortDepth(); return; } cycleStep(total * Math.min(0.1, (t - last) / 1000) * 1000 / ms); last = t; sortDepth(liveY()); cyc.cssRaf = root.requestAnimationFrame(tick); })(t0);
   }
   /* stop walking and write the position back through the room, with its slide transition suppressed */
   function commit() {
@@ -469,7 +483,7 @@
     travelling = true; clearInput(); if (active) commit();
     scene.classList.add('fading'); R.chime('tap');
     var t0 = Date.now();
-    preload(R.ART + T.img).then(function () {
+    Promise.all([preload(R.ART + T.img)].concat((T.occluders || []).map(function (o) { return preload(R.ART + o.img); }))).then(function () { /* the plate and its cutouts; a missing cutout only leaves the plate as it was */
       var left = Math.max(0, (reduced ? 80 : 380) - (Date.now() - t0));
       root.setTimeout(function () {
         if (napping() || (T.store && !storeOpen(T.store))) { /* she fell asleep or the store shut during the fade */
@@ -573,7 +587,8 @@
     scene = R.els.scene; inner = R.els.inner; avatar = R.els.avatar; hud = R.els.hud;
     buildControls(); R.buildHotspots(); lightMini(R.layout()); renderOcc(); sortDepth();
     R.on('layout', function (L) { if (active) yieldWalk(); inDoor = false; lightMini(L); renderOcc(); sortDepth(); });
-    R.on('props', function () { renderOcc(); sortDepth(active ? cur.y : undefined); });
+    R.on('props', function () { sortDepth(); });
+    R.on('placed', function () { if (!active && !cyc.cssRaf) sortDepth(); }); /* the room put her somewhere itself (a reduced-motion step, a door, a seat): rank her there */
     R.on('scene', function (s, L) { lightMini(L); }); /* after a travel's own after() ran, e.g. a neighbour visit began */
     R.on('beforeWalk', function () { if (active) commit(); cyc.cssFrom = R.pos(); }); /* a hotspot walk starts from where she really is */
     preloadCycle(); avatar.querySelector('#avatarImg').addEventListener('load', preloadCycle);
@@ -581,6 +596,6 @@
     R.setMoving(function () { return active || travelling; }); /* goHome waits while she is walking somewhere of her own choosing */
     if (R.setWalkTo) R.setWalkTo(routeTo); /* the room's own walks route around furniture */
   }
-  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(active ? cur.y : undefined); }; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
+  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(); }; W.routeTo = routeTo; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
   R.on('boot', mount);
 })(window);

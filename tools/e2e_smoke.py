@@ -27,6 +27,39 @@ DB = {"version": 1, "createdAt": NOW, "updatedAt": NOW,
                  {"id": "s3", "type": "food", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"meal": "lunch", "foods": "chicken rice", "items": [], "tags": ["home-cooked"]}}],
       "summaries": [], "state": {"sleeping": None, "visited": {}, "tourDone": True, "tester": {"hearts": True}, "rewards": {"hearts": 200, "earned": 200, "log": [], "owned": ["dog"], "placed": {"dog": True}, "lastDay": None, "streak": 0}}}  # Peach the corgi lives on the room's rim, so her walks start from the nearest floor cell  # tester mode: Dream Street may be visited after hours, so the run does not depend on the clock
 
+def png_rows(data):
+    """RGB(A) rows of an 8-bit non-interlaced PNG (Playwright screenshots), with only the standard library."""
+    import struct, zlib
+    pos, idat, w, h, ct = 8, b"", 0, 0, 2
+    while pos < len(data):
+        ln = struct.unpack(">I", data[pos:pos + 4])[0]; tp = data[pos + 4:pos + 8]; body = data[pos + 8:pos + 8 + ln]; pos += 12 + ln
+        if tp == b"IHDR": w, h, _, ct = struct.unpack(">IIBB", body[:10])
+        elif tp == b"IDAT": idat += body
+        elif tp == b"IEND": break
+    bpp = 4 if ct == 6 else 3; raw = zlib.decompress(idat); stride = w * bpp; prev = bytearray(stride); rows = []; i = 0
+    for _ in range(h):
+        f = raw[i]; i += 1; line = bytearray(raw[i:i + stride]); i += stride
+        for x in range(stride):
+            a = line[x - bpp] if x >= bpp else 0; b = prev[x]; c = prev[x - bpp] if x >= bpp else 0
+            if f == 1: line[x] = (line[x] + a) & 255
+            elif f == 2: line[x] = (line[x] + b) & 255
+            elif f == 3: line[x] = (line[x] + ((a + b) >> 1)) & 255
+            elif f == 4:
+                pp = a + b - c; pa, pb, pc = abs(pp - a), abs(pp - b), abs(pp - c)
+                line[x] = (line[x] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 255
+        rows.append(line); prev = line
+    return w, h, bpp, rows
+
+def png_diff(a, b):
+    wa, ha, ba, ra = png_rows(a); wb, hb, bb, rb = png_rows(b)
+    if (wa, ha) != (wb, hb): return {"mean": 999, "n": 0, "size": [wa, ha, wb, hb]}
+    tot, n, worst = 0, 0, 0
+    for y in range(ha):
+        for x in range(wa):
+            d = sum(abs(ra[y][x * ba + k] - rb[y][x * bb + k]) for k in range(3)) / 3.0
+            tot += d; n += 1; worst = max(worst, d)
+    return {"mean": round(tot / max(1, n), 2), "max": round(worst, 1), "n": n}
+
 results = []
 def check(name, ok, detail=""):
     results.append((name, bool(ok), detail))
@@ -287,34 +320,71 @@ async def main():
             except Exception: pass
             gl = await page.evaluate("(t0)=>({layout: document.querySelector('#scene').dataset.layout, ms: Date.now()-t0})", t0)
             check("from the far end the mini-map fades straight to the garden instead of walking the whole street first", gl["layout"] == "garden" and gl["ms"] < 2500, gl)
-            gocc = await page.evaluate("()=>document.querySelectorAll('#ownedProps .plate-occ').length")
+            gocc = await page.evaluate("()=>document.querySelectorAll('.plate-occ').length")
             check("leaving the street takes its cutouts with it: the garden draws none", gocc == 0, gocc)
             await page.click('#minimap [data-scene=street]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
             await page.wait_for_timeout(600); wl = await page.evaluate(STREET)
             check("from the garden she arrives through the garden arch at the street's left end, the view at its left edge", wl["layout"] == "street" and abs(wl["pos"]["x"] - 38) < 1 and abs(wl["x"]) < 1, wl)
-            # 1d. foreground cutouts (docs/design/2026-10-19-wide-street.md): the arches' front pillars and the lamps are drawn again over the plate,
-            # depth-sorted with her by their base, never taking a tap, and dimmed with the plate at night
+            # 1d. foreground cutouts (docs/design/2026-10-19-wide-street.md): the arches' front pillars and the lamps are drawn again over the plate
+            # in #plateOcc, depth-sorted with her by their base, never taking a tap, dimmed and veiled with the plate at night
             OCC = """()=>{var r=document.querySelector('#sceneInner').getBoundingClientRect(), L=OvuRoom.layout(), b=document.querySelector('#scene').getBoundingClientRect(), z=function(el){return +getComputedStyle(el).zIndex};
-              var els=[].slice.call(document.querySelectorAll('#ownedProps .plate-occ')), av=document.querySelector('#avatar');
-              return {n: els.length, ids: els.map(function(e){return e.dataset.id}).join(), loaded: els.every(function(e){return e.complete && e.naturalWidth>0}), taps: els.every(function(e){return getComputedStyle(e).pointerEvents==='none'}),
-                placed: els.every(function(e){var o=L.occluders.filter(function(x){return x.id===e.dataset.id})[0], q=e.getBoundingClientRect(), u=r.width/100; return o && Math.abs(q.left-r.left-o.x*u)<1 && Math.abs(q.top-r.top-o.y*r.height/100)<1 && Math.abs(q.width-o.w*u)<1 && Math.abs(q.height-o.h*r.height/100)<1}),
+              var els=[].slice.call(document.querySelectorAll('#plateOcc .plate-occ')), av=document.querySelector('#avatar');
+              return {n: els.length, ids: els.map(function(e){return e.dataset.id}).join(), loaded: els.every(function(e){var i=e.querySelector('img'); return i && i.complete && i.naturalWidth>0}), taps: els.every(function(e){return getComputedStyle(e).pointerEvents==='none'}),
+                stacked: getComputedStyle(document.querySelector('#plateOcc')).position === 'static' && getComputedStyle(document.querySelector('#plateOcc')).zIndex === 'auto',
+                placed: els.every(function(e){var o=L.occluders.filter(function(x){return x.id===e.dataset.id})[0], q=e.querySelector('img').getBoundingClientRect(), u=r.width/100; return o && Math.abs(q.left-r.left-o.x*u)<1 && Math.abs(q.top-r.top-o.y*r.height/100)<1 && Math.abs(q.width-o.w*u)<1 && Math.abs(q.height-o.h*r.height/100)<1}),
                 z: Object.fromEntries(els.map(function(e){return [e.dataset.id, z(e)]})), her: z(av), pos: OvuRoom.pos(), box: b.width}}"""
             o0 = await page.evaluate(OCC)
-            check("on the street the two arches' front pillars and the two lamps are drawn again over the plate, at the plate's own pixels, and never take a tap", o0["n"] == 4 and o0["ids"] == "garden-arch,lamp-west,lamp-east,plaza-arch" and o0["loaded"] and o0["taps"] and o0["placed"], o0)
-            hit = await page.evaluate("()=>{var e=document.querySelector('.plate-occ[data-id=lamp-west]').getBoundingClientRect(), t=document.elementFromPoint(e.left+e.width/2, e.top+e.height*0.6); return {cls: t && t.className, occ: !!(t && t.classList && t.classList.contains('plate-occ'))}}")
+            check("on the street the two arches' front pillars and the two lamps are drawn again over the plate, at the plate's own pixels, in a layer that shares her depth context, and never take a tap", o0["n"] == 4 and o0["ids"] == "garden-arch,lamp-west,lamp-east,plaza-arch" and o0["loaded"] and o0["taps"] and o0["placed"] and o0["stacked"], o0)
+            hit = await page.evaluate("()=>{var e=document.querySelector('.plate-occ[data-id=lamp-west]').getBoundingClientRect(), t=document.elementFromPoint(e.left+e.width/2, e.top+e.height*0.6); return {cls: t && t.className, occ: !!(t && t.closest && t.closest('.plate-occ'))}}")
             check("a tap on the west lamp goes through the cutout to the plate and the pins beneath, as before", not hit["occ"], hit)
             back_to = wl["pos"]
-            await page.evaluate("()=>{OvuRoom.placeAvatar({x:205, y:73}, false); OvuWalk.sortDepth();}"); o1 = await page.evaluate(OCC)
-            await page.evaluate("()=>{OvuRoom.placeAvatar({x:205, y:79}, false); OvuWalk.sortDepth();}"); o2 = await page.evaluate(OCC)
-            check("standing at x 205, y 73 she is behind the plaza arch's front pillar (its z is higher); at y 79 she is in front", o1["z"]["plaza-arch"] > o1["her"] and o2["her"] > o2["z"]["plaza-arch"], {"y73": o1["z"], "her73": o1["her"], "y79": o2["z"], "her79": o2["her"]})
-            await page.evaluate("()=>{OvuRoom.placeAvatar({x:79.5, y:61.2}, false); OvuWalk.sortDepth();}"); o3 = await page.evaluate(OCC)
+            await page.evaluate("()=>OvuRoom.placeAvatar({x:205, y:73}, false)"); o1 = await page.evaluate(OCC)
+            await page.evaluate("()=>OvuRoom.placeAvatar({x:205, y:79}, false)"); o2 = await page.evaluate(OCC)
+            check("placed at x 205, y 73 she is behind the plaza arch's front pillar (its z is higher); at y 79 she is in front, re-ranked by the placement itself", o1["z"]["plaza-arch"] > o1["her"] and o2["her"] > o2["z"]["plaza-arch"], {"y73": o1["z"], "her73": o1["her"], "y79": o2["z"], "her79": o2["her"]})
+            reach = await page.evaluate("()=>{var w=OvuWalk.world(OvuRoom.layout(), []), ok=function(x,y){return OvuWalk.inZones(w.zones,x,y) && !OvuWalk.blocked(w.solids,x,y)}; return {behind: ok(212.6,71.2), front: ok(212.8,77.6)}}")
+            await page.evaluate("()=>OvuRoom.placeAvatar({x:212.6, y:71.2}, false)"); o4 = await page.evaluate(OCC)
+            await page.evaluate("()=>OvuRoom.placeAvatar({x:212.8, y:77.6}, false)"); o5 = await page.evaluate(OCC)
+            check("on cobbles she can really stand on beside the plaza arch: behind its front pillar at (212.6, 71.2), in front at (212.8, 77.6)", reach["behind"] and reach["front"] and o4["z"]["plaza-arch"] > o4["her"] and o5["her"] > o5["z"]["plaza-arch"], {"reach": reach, "behind": [o4["z"]["plaza-arch"], o4["her"]], "front": [o5["z"]["plaza-arch"], o5["her"]]})
+            await page.evaluate("()=>OvuRoom.placeAvatar({x:79.5, y:61.2}, false)"); o3 = await page.evaluate(OCC)
             check("just behind the west lamp (x 79.5, y 61.2) she is drawn behind it", o3["z"]["lamp-west"] > o3["her"], o3["z"])
-            await page.evaluate("(p)=>{OvuRoom.placeAvatar(p, false); OvuWalk.sortDepth();}", back_to)
-            nf = await page.evaluate("""async()=>{var sc=document.querySelector('#scene'), had=sc.classList.contains('is-night'); sc.classList.add('is-night'); await new Promise(function(r){setTimeout(r,1500)});
-              var f=getComputedStyle(document.querySelector('.plate-occ')).filter, p=getComputedStyle(document.querySelector('#roomDay')).filter; if(!had) sc.classList.remove('is-night'); return {occ: f, plate: p}}""")
-            check("at night each cutout takes the plate's own filter, so it never shows as a bright patch on the darkened street", nf["occ"] == nf["plate"] and nf["occ"] not in ("none", ""), nf)
+            await page.evaluate("(p)=>OvuRoom.placeAvatar(p, false)", back_to)
+            # the sky turns while a props render happens (applySky re-renders props when the sky changes): the cutouts are the same nodes and
+            # their filter is mid-transition exactly with the plate's, then lands on it. It starts from a plain day sky (the sky classes set aside
+            # for the check and put back), since some pairs, sky-night to is-night among them, change in one step for the plate as well
+            sk = await page.evaluate("""async()=>{var sc=document.querySelector('#scene'), was={cls: sc.className, sky: sc.dataset.sky}, el=document.querySelector('.plate-occ'), wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};
+              var f=function(){return [getComputedStyle(document.querySelector('.occ-img')).filter, getComputedStyle(document.querySelector('#roomDay')).filter]};
+              sc.classList.remove('is-night','sky-night'); sc.dataset.sky='day'; await wait(1500); var day=f();
+              el.__mark=1; sc.classList.add('is-night'); OvuRoom.renderProps(); await wait(400); var mid=f(); await wait(1500); var end=f();
+              var same=document.querySelector('.plate-occ')===el && el.__mark===1; sc.className=was.cls; sc.dataset.sky=was.sky; await wait(1500); return {day: day, mid: mid, end: end, same: same}}""")
+            check("a sky change with a props render keeps the same cutout nodes, their filter mid-transition with the plate's and then equal to it", sk["same"] and sk["day"][0] == sk["day"][1] and sk["mid"][0] == sk["mid"][1] and sk["end"][0] == sk["end"][1] and sk["end"][0] not in ("none", "") and sk["mid"][0] != sk["end"][0] and sk["mid"][0] != sk["day"][0], sk)
+            await page.emulate_media(reduced_motion="reduce")
+            rm = await page.evaluate("()=>{var t=function(s){var c=getComputedStyle(document.querySelector(s)); return c.transitionProperty+' '+c.transitionDuration}; return {img: t('.occ-img'), plate: t('#roomDay'), veil: t('.occ-veil'), nveil: t('.night-veil')}}")
+            await page.emulate_media(reduced_motion="no-preference")
+            check("with reduced motion each cutout keeps exactly the plate's filter transition, and its veil exactly the night veil's", rm["img"] == rm["plate"] and rm["veil"] == rm["nveil"], rm)
+            # rendered pixels at night, the strongest veil: the street with the cutouts against the same street with them hidden. The cutouts sit
+            # over themselves, so the picture must not change (a cutout above the veil without its own copy differs by tens of levels)
+            await page.evaluate("()=>{var sc=document.querySelector('#scene'); sc.dataset.occTest=sc.classList.contains('is-night')?'1':''; sc.classList.add('is-night'); document.querySelectorAll('.stars,.sparkles').forEach(function(e){e.style.visibility='hidden'})}")
+            await page.wait_for_timeout(1900)
+            clip = await page.evaluate("()=>{var q=document.querySelector('.plate-occ[data-id=lamp-west]').getBoundingClientRect(); return {x: q.left, y: q.top, width: q.width, height: q.height}}")
+            shot_on = await page.screenshot(clip=clip)
+            await page.evaluate("()=>{document.querySelector('#plateOcc').style.visibility='hidden'}"); await page.wait_for_timeout(100)
+            shot_off = await page.screenshot(clip=clip)
+            await page.evaluate("()=>{var sc=document.querySelector('#scene'); document.querySelector('#plateOcc').style.visibility=''; document.querySelectorAll('.stars,.sparkles').forEach(function(e){e.style.visibility=''}); if(!sc.dataset.occTest) sc.classList.remove('is-night'); delete sc.dataset.occTest}")
+            px = png_diff(shot_on, shot_off)
+            check("at night the street with its cutouts renders like the plate alone (the west lamp: dimmed and veiled the same, mean difference under 3 of 255)", px["mean"] < 3 and px["n"] > 1000, px)
+            # the room's own straight slide (routing switched off for the check): R.pos() holds the destination at once, so a depth call from
+            # anything else mid-slide (a walking pet's frame) must rank her by where she is drawn, not where she is going
+            cs = await page.evaluate("""async()=>{var raf=function(){return new Promise(function(r){requestAnimationFrame(function(){r()})})}, wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};
+              var av=document.querySelector('#avatar'), pil=document.querySelector('.plate-occ[data-id=plaza-arch]'), inn=document.querySelector('#sceneInner'), z=function(e){return +getComputedStyle(e).zIndex};
+              av.style.transition='none'; OvuRoom.placeAvatar({x:212.8, y:79.5}, false); void av.offsetWidth; av.style.transition=''; await raf(); OvuRoom.setWalkTo(function(){return false});
+              try { OvuRoom.walkTo({x:212.6, y:71.2, flip:false}); await raf(); await raf();
+                OvuWalk.sortDepth(); var start={live: parseFloat(getComputedStyle(av).top)/inn.clientHeight*100, dest: OvuRoom.pos().y, her: z(av), pillar: z(pil)};
+                await wait(1000); OvuWalk.sortDepth(); var end={y: OvuRoom.pos().y, her: z(av), pillar: z(pil)}; } finally { OvuRoom.setWalkTo(OvuWalk.routeTo); }
+              return {start: start, end: end}}""")
+            await page.evaluate("(p)=>OvuRoom.placeAvatar(p, false)", back_to)
+            check("during the room's own straight slide a depth call from elsewhere ranks her where she is drawn: in front of the plaza pillar as she leaves, behind it on arrival", cs["start"]["live"] > 77 and cs["start"]["dest"] < 72 and cs["start"]["her"] > cs["start"]["pillar"] and cs["end"]["her"] < cs["end"]["pillar"], cs)
             await page.click('#minimap [data-sub="shop-homes"]')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='shop-homes' && !document.querySelector('#scene').classList.contains('fading')", timeout=12000)
             except Exception: pass

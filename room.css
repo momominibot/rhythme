@@ -51,16 +51,21 @@ button{font-family:inherit;color:inherit}
 .scene{overflow:clip}
 .scene-inner>:is(.room-img,.night-veil,.stars,.sparkles){width:calc(var(--span,1)*100%);right:auto}
 .room-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none;transition:opacity 1.6s ease,filter 1.6s ease}
-/* a foreground cutout (ovu-walk.js renderOcc, L.occluders): a piece of the plate drawn again exactly over itself, depth-sorted
- * with her and the pets in #ownedProps; it never takes a tap, so the floor and the pins under it work as before */
-.plate-occ{position:absolute;display:block;max-width:none;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:7;transition:filter 1.2s ease}
+/* a foreground cutout (ovu-walk.js renderOcc, L.occluders): a piece of the plate drawn again exactly over itself in #plateOcc,
+ * an unstacked layer beside #ownedProps, so it is depth-sorted with her and the pets. It never takes a tap, so the floor
+ * and the pins under it work as before. Its image takes the plate's filters and transition (the lists below and the
+ * sky section's .room-img.day rule), and its .occ-veil is the night veil masked to its own shape: the veil paints
+ * under anything with a z, so without its own copy a cutout would stay bright at night */
+.plate-occ{position:absolute;pointer-events:none;z-index:7}
+.occ-img{position:absolute;inset:0;width:100%;height:100%;display:block;max-width:none;user-select:none;-webkit-user-drag:none}
+.occ-veil{-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
 /* the window patches and the street's foreground cutouts are part of the plate: whatever dims or tints the plate dims or tints them too */
-.scene.is-night :is(.room-img.day,.win-patch,.plate-occ){filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg)}
-.scene.sky-night:not(.is-night) :is(.room-img.day,.win-patch,.plate-occ){filter:brightness(.9) saturate(1.02) hue-rotate(-3deg)}
-.night-veil{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.6s ease;
+.scene.is-night :is(.room-img.day,.win-patch,.occ-img){filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg)}
+.scene.sky-night:not(.is-night) :is(.room-img.day,.win-patch,.occ-img){filter:brightness(.9) saturate(1.02) hue-rotate(-3deg)}
+:is(.night-veil,.occ-veil){position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.6s ease;
   background:radial-gradient(28% 22% at 13% 50%,rgba(255,214,160,.45),transparent 70%),radial-gradient(18% 16% at 44% 29%,rgba(214,200,255,.55),transparent 70%),linear-gradient(180deg,rgba(40,24,80,.35),rgba(30,18,60,.45))}
-.scene.is-night .night-veil{opacity:1}
-.scene.sky-night:not(.is-night) .night-veil{opacity:.28}
+.scene.is-night :is(.night-veil,.occ-veil){opacity:1}
+.scene.sky-night:not(.is-night) :is(.night-veil,.occ-veil){opacity:.28}
 .stars{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.2s}
 .scene:is(.is-night,.sky-night) .stars{opacity:1}
 .star{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff;box-shadow:0 0 8px 2px rgba(255,255,255,.7);animation:twinkle 2.6s ease-in-out infinite}
@@ -306,7 +311,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .loading p{font-family:var(--serif);font-size:16px;color:rgba(245,237,250,.8)}
 
 @media(prefers-reduced-motion:reduce){
-  .avatar,.sheet,.room-img,.night-veil,.plate-occ{transition:none}
+  .avatar,.sheet,.room-img,.night-veil,.occ-veil{transition:none}
   .sparkle,.star,.hotspot .pulse,.avatar img,.sleeper img,.loading-orb{animation:none!important}
   .avatar.walking img{animation:none}
 }
@@ -835,15 +840,15 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 /* the sky follows the sun (ovu-sun.js sets data-sky): the plate shows a day sky; sunrise, sunset and night tint the window and the room */
 .win-night .sun{position:absolute;left:50%;top:78%;width:36%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,#fff7dc 0 34%,#ffd58f 52%,rgba(255,196,128,0) 72%);opacity:0;transition:opacity 1s ease}
 .win-night .moon,.win-night i.s{transition:opacity 1s ease}
-.room-img.day{transition:filter 1.2s ease}
+:is(.room-img.day,.occ-img){transition:filter 1.2s ease}
 .scene[data-sky="sunrise"] .win-night{opacity:.9;background:linear-gradient(180deg,#a9bde9 0%,#f6c8d2 50%,#ffd8a6 78%,#ffeacc 100%)}
 .scene[data-sky="sunset"] .win-night{opacity:.92;background:linear-gradient(180deg,#6f5cab 0%,#d98aab 44%,#f5a46d 72%,#ffd08b 100%)}
 .scene[data-sky="sunrise"] .win-night .sun,.scene[data-sky="sunset"] .win-night .sun{opacity:1}
 .scene[data-sky="sunset"] .win-night .sun{top:84%}
 .scene[data-sky="sunrise"] .win-night .moon,.scene[data-sky="sunset"] .win-night .moon,.scene[data-sky="sunrise"] .win-night i.s,.scene[data-sky="sunset"] .win-night i.s{opacity:0}
 .scene[data-sky="night"] .win-night{opacity:.97}
-.scene[data-sky="sunrise"]:not(.is-night) :is(.room-img.day,.win-patch,.plate-occ){filter:sepia(.06) saturate(1.05) hue-rotate(-4deg) brightness(.98)}
-.scene[data-sky="sunset"]:not(.is-night) :is(.room-img.day,.win-patch,.plate-occ){filter:sepia(.16) saturate(1.12) hue-rotate(-8deg) brightness(.95)}
+.scene[data-sky="sunrise"]:not(.is-night) :is(.room-img.day,.win-patch,.occ-img){filter:sepia(.06) saturate(1.05) hue-rotate(-4deg) brightness(.98)}
+.scene[data-sky="sunset"]:not(.is-night) :is(.room-img.day,.win-patch,.occ-img){filter:sepia(.16) saturate(1.12) hue-rotate(-8deg) brightness(.95)}
 /* asleep, or after sunset, the window shows the night sky whatever the hour */
 .scene:is(.is-night,.sky-night) .win-night{background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%)}
 .scene:is(.is-night,.sky-night) .win-night .sun{opacity:0}
