@@ -184,7 +184,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var at = function (hh, mm) { return Sun.phase(new Date(2026, 9, 18, hh, mm)); };
   check('3:28 pm is afternoon, not tonight', at(15, 28).key === 'afternoon' && at(15, 28).title === 'This afternoon', at(15, 28).title);
   check('6:30 am is sunrise, 9 am is morning', at(6, 30).key === 'sunrise' && at(9, 0).key === 'morning');
-  check('6:30 pm is sunset, 8 pm is tonight', at(18, 30).key === 'sunset' && at(20, 0).key === 'night' && at(20, 0).title === 'Tonight');
+  check('5:30 pm is sunset; from 6 pm it is night (Jamie: dark from 6 pm), and 8 pm is tonight', at(17, 30).key === 'sunset' && at(18, 0).key === 'night' && at(18, 30).key === 'night' && at(20, 0).key === 'night' && at(20, 0).title === 'Tonight');
   check('2 am greets "Still up"', at(2, 0).greeting === 'Still up');
 })();
 
@@ -570,6 +570,11 @@ function scenes(todayIso) {
   var beside = G.plotStand({ x: 38.5, y: 64.5 }, free), far = G.plotStand({ x: 30, y: 62 }, free), back = G.plotStand({ x: 50, y: 55 }, free), front = G.plotStand({ x: 50, y: 80 }, free);
   check('already beside the plot she waters from where she stands; from further off she walks to the nearest side, not the front', beside.x === 38.5 && beside.y === 64.5 && far.x === 38.5 && back.y === 58 && front.x === 50 && front.y === 71.5, JSON.stringify([beside, far, back, front]));
   check('she faces the plot from either side', G.plotStand({ x: 38.5, y: 64.5 }, free).flip !== G.plotStand({ x: 63.5, y: 65.5 }, free).flip);
+  var n0 = S.add('symptom', '2026-10-17', { symptoms: [], none: true, pain: 0, mood: '', notes: '' });
+  check('a day logged as None keeps none: true with no symptoms', n0.data.none === true && n0.data.symptoms.length === 0, JSON.stringify(n0.data));
+  var n1 = S.add('symptom', '2026-10-17', { symptoms: ['cramps'], pain: 4 });
+  check('noting a symptom later the same day drops None and keeps the symptom', n1.data.none === undefined && n1.data.symptoms.join() === 'cramps' && n1.data.pain === 4, JSON.stringify(n1.data));
+  S.remove(n1.id);
   var ev = S.add('mindfulness', '2026-10-18', { kind: 'garden', minutes: 1, completed: true });
   var rw = w.OvuRewards.award(ev);
   check('a watering minute is worth 2 hearts as a one-minute calm entry (plus the usual streak rule)', rw.points === 2, JSON.stringify(rw));

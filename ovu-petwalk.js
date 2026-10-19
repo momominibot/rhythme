@@ -363,6 +363,8 @@
     if (pet.sleeping) { pet.sleeping = false; pet.el.classList.remove('sleeping', 'napping'); }
     pet.bedtime = false; pet.el.classList.remove('napping'); delete holds[id];
     var her = herNow(); pal = { id: id, crumbs: [], her: { x: her.x, y: her.y }, at: { x: pet.x, y: pet.y }, ready: false, still: 0, poll: 0 };
+    /* her trail starts at her feet, so the pet's first stretch to it is planned round the furniture like any other walk */
+    try { var w0 = worldFor(id), lead = planFrom(W, w0, { x: pet.x, y: pet.y }, her, 3, !onFloor(W, w0, pet.x, pet.y)); if (lead && lead.pts.length > 2) pal.crumbs = lead.pts.slice(1, -1).map(function (p) { return { x: p.x, y: p.y }; }); } catch (e) { }
     pet.state = 'follow';
     say('Let\u2019s go for a walk! Shall we?', 2600);
     root.setTimeout(function () { if (pal && pal.id === id) cheer(id); }, 650);

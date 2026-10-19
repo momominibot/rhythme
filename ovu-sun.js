@@ -52,7 +52,9 @@
   function phase(now) {
     now = now || new Date();
     var p = place(), t = times(now, p.lat, p.lon), m = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
-    var key = m < t.sunrise - 40 ? 'night' : m < t.sunrise + 40 ? 'sunrise' : m < 720 ? 'morning' : m < t.sunset - 60 ? 'afternoon' : m < t.sunset + 30 ? 'sunset' : 'night';
+    /* Jamie, 19 Oct: light in the day, dark from 6 pm. Night starts at 6 pm, or earlier where the sun has already set */
+    var dusk = Math.min(t.sunset + 30, 1080);
+    var key = m < t.sunrise - 40 ? 'night' : m < t.sunrise + 40 ? 'sunrise' : m < 720 ? 'morning' : m < Math.min(t.sunset - 60, dusk - 60) ? 'afternoon' : m < dusk ? 'sunset' : 'night';
     var out = Object.assign({ key: key, sunriseMin: t.sunrise, sunsetMin: t.sunset, sunrise: hm(t.sunrise), sunset: hm(t.sunset), place: p }, PHASES[key]);
     if (key === 'night' && now.getHours() < 5) out.greeting = 'Still up';
     return out;

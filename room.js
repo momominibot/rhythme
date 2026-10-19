@@ -794,19 +794,23 @@
     } else {
       var cs = S.list('symptom', { from: date, to: date })[0], sd = cs ? cs.data : { symptoms: [], pain: 0, mood: '', notes: '' };
       ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' +
-        '<div class="field"><span class="lbl">Symptoms</span><div class="chips" id="symChips">' + A.SYMPTOMS.map(function (s) { return '<button type="button" class="chipbtn' + ((sd.symptoms || []).indexOf(s) > -1 ? ' on' : '') + '" data-sym="' + esc(s) + '">' + esc(cap(s)) + '</button>'; }).join('') + '</div></div>' +
+        '<div class="field"><span class="lbl">Symptoms</span><div class="chips" id="symChips">' + '<button type="button" class="chipbtn symnone' + (sd.none ? ' on' : '') + '" data-none="1">None</button>' + A.SYMPTOMS.map(function (s) { return '<button type="button" class="chipbtn' + ((sd.symptoms || []).indexOf(s) > -1 ? ' on' : '') + '" data-sym="' + esc(s) + '">' + esc(cap(s)) + '</button>'; }).join('') + '</div></div>' +
         '<div class="field"><div class="lbl-row"><label for="pain" class="lbl" style="margin:0">Pain · <span id="painVal">' + (sd.pain || 0) + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="pain" min="0" max="10" step="1" value="' + (sd.pain || 0) + '">' + guideHTML('pain') + '</div>' +
         '<div class="field"><span class="lbl">Mood</span><div class="faces" id="moodFaces">' + [['great', 'sentiment_very_satisfied'], ['good', 'sentiment_satisfied'], ['ok', 'sentiment_neutral'], ['low', 'sentiment_dissatisfied'], ['bad', 'sentiment_very_dissatisfied']].map(function (m) { return '<button type="button" data-mood="' + m[0] + '" class="' + (sd.mood === m[0] ? 'on' : '') + '"><span class="ms">' + m[1] + '</span>' + cap(m[0]) + '</button>'; }).join('') + '</div></div>' +
         '<div class="field"><label for="symNotes">Notes</label><textarea class="input" id="symNotes" placeholder="Anything else you noticed...">' + esc(sd.notes || '') + '</textarea></div>' +
         '<div class="row"><button class="btn primary" id="saveSym"><span class="ms">check</span>Save day</button>' + (cs ? '<button class="btn ghost" id="clearSym">Clear</button>' : '') + '<button class="btn soft" id="acuFromSym"><span class="ms">spa</span>Cramp relief points</button></div><div class="msg" id="calMsg"></div>';
-      $('#symChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) b.classList.toggle('on'); });
+      /* None (Jamie, 19 Oct) is its own answer: it clears the symptoms, and ticking a symptom clears it */
+      $('#symChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); if (!b.classList.contains('on')) return; $$('#symChips .on').forEach(function (x) { if (x !== b && (b.dataset.none || x.dataset.none)) x.classList.remove('on'); }); });
       $('#pain').addEventListener('input', function () { $('#painVal').textContent = this.value; });
       $('#moodFaces').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#moodFaces')).forEach(function (x) { x.classList.toggle('on', x === b && !x.classList.contains('on')); }); });
       $('#acuFromSym').addEventListener('click', openAcupressure);
       $('#saveSym').addEventListener('click', function () {
         try {
-          var list = $$('#symChips .on').map(function (b) { return b.dataset.sym; }), mood = ($('#moodFaces .on') || {}).dataset ? $('#moodFaces .on').dataset.mood : '';
-          var ev = S.add('symptom', date, { symptoms: list, pain: Number($('#pain').value), mood: mood, notes: $('#symNotes').value.trim() });
+          var list = $$('#symChips .on').map(function (b) { return b.dataset.sym; }).filter(Boolean), mood = ($('#moodFaces .on') || {}).dataset ? $('#moodFaces .on').dataset.mood : '';
+          var none = !list.length && !!$('#symChips [data-none].on'), data = { symptoms: list, pain: Number($('#pain').value), mood: mood, notes: $('#symNotes').value.trim() };
+          if (none) data.none = true;
+          /* None replaces the day's symptoms rather than joining them; everything else keeps the usual same-day merge */
+          var ev = none && cs ? S.update(cs.id, { data: Object.assign({}, data, { notes: data.notes || '' }) }) : S.add('symptom', date, data);
           message($('#calMsg'), 'Saved for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev);
         } catch (e) { message($('#calMsg'), e.message, false); }
       });
@@ -2380,7 +2384,7 @@
     var ins = window.OvuInsight ? window.OvuInsight.cachedDaily(today) : null;
     /* short bullet points, one per topic; Luna's longer reading stays in the journal so nothing repeats */
     $('#dailyText').innerHTML = daily.items && daily.items.length ? '<ul class="daylist">' + daily.items.map(function (it) { return '<li><span class="ms">' + it.icon + '</span><span>' + esc(it.text.replace(/\.$/, '')) + '</span></li>'; }).join('') + '</ul>' : esc(daily.text);
-    $('#symLine').textContent = sym ? ((sym.data.symptoms || []).length ? 'Today: ' + sym.data.symptoms.join(', ') + (sym.data.mood ? ' · mood ' + sym.data.mood : '') : 'No symptoms ticked today') : 'No symptoms logged today. Tap the calendar to add or backdate.';
+    $('#symLine').textContent = sym ? ((sym.data.symptoms || []).length ? 'Today: ' + sym.data.symptoms.join(', ') + (sym.data.mood ? ' · mood ' + sym.data.mood : '') : sym.data.none ? 'Today: no symptoms' + (sym.data.mood ? ' · mood ' + sym.data.mood : '') : 'No symptoms ticked today') : 'No symptoms logged today. Tap the calendar to add or backdate.';
     var sum = S.load().summaries || [];
     $('#shareSub').textContent = sum.length ? 'Last summary saved ' + prettyDate(sum[sum.length - 1].range.to) : 'Create a 4-week summary for your clinician';
   }
