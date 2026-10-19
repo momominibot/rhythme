@@ -122,3 +122,21 @@ The proposed fix for the next round: a visit id issued by `plaza_join` and requi
 late or duplicate request can only touch its own visit and a displaced phone stops instead of reclaiming; one
 departure path for hide, pagehide, sleep and sign-out; one deadline around token, request and keepalive; the staff
 card on its own timer with ordered replies; daily counts kept for a year and said so.
+
+## Groups instead of places (19 October 2026, evening)
+
+Jamie: "I don't want location because I'm rolling out to worldwide so maybe menopausal or trying to get pregnant or
+PCOS group." Migration `20261019100000_plaza_groups.sql` (applied; nobody had joined the old places) replaced Orchard,
+Tiong Bahru and Punggol with four groups, 24 each: **Everyone** ("Any stage, any cycle"), **Trying to conceive**
+("Planning or trying for a baby"), **PCOS** ("Living with polycystic ovary syndrome") and **Menopause**
+("Perimenopause, menopause and after"). Assumption: an Everyone group so a person outside the three topics still has a
+place; Jamie can drop it.
+
+- Groups are about health, so membership is sensitive: the sheet says joining tells Rhythme something about her while
+  she is in it, anyone can join any group, nothing in her profile picks one, and the phone remembers her own choice
+  until she taps Leave the group.
+- A full topic group suggests only Everyone, never another health topic; if Everyone is full too it suggests nothing.
+- Staff see counts per group, never who. Checked in a rolled-back transaction (24 fill PCOS, the 25th is pointed to
+  Everyone; with Everyone full too, no suggestion) and by a Codex read of the rename (three wording fixes applied).
+- Capacity is still 24 per group; worldwide numbers will need several rooms per group (PCOS 1, PCOS 2) in a later
+  phase.

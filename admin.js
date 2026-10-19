@@ -92,7 +92,7 @@
   /* ---------- Plazas: who is online where, by count; no names, no account ids ---------- */
   function sgDay(d) { try { return (d || new Date()).toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' }); } catch (e) { return new Date().toISOString().slice(0, 10); } }
   function plazaCard() {
-    if (!plaza) return '<div class="card" id="plazaCard"><h2>Plazas<span>people online now</span></h2><p class="empty">Loading…</p></div>';
+    if (!plaza) return '<div class="card" id="plazaCard"><h2>Plaza groups<span>people online now</span></h2><p class="empty">' + (plazaBad ? 'Could not load the groups; trying again every 20 seconds.' : 'Loading…') + '</p></div>';
     var now = plaza.now || [], days = plaza.days || [], today = plaza.today || sgDay(); /* the database's own Singapore date */
     var total = now.reduce(function (a, s) { return a + (Number(s.people) || 0); }, 0);
     var tiles = now.map(function (s) {
@@ -102,11 +102,11 @@
     var byDay = {}; days.forEach(function (x) { var b = byDay[x.day] || (byDay[x.day] = { joins: 0, peak: 0, top: '' }); b.joins += Number(x.joins) || 0; if ((Number(x.peak) || 0) > b.peak) { b.peak = Number(x.peak) || 0; b.top = x.server; } });
     var names = {}; now.forEach(function (s) { names[s.id] = s.name; });
     var rows = Object.keys(byDay).sort().reverse().slice(0, 14);
-    var table = rows.length ? '<table class="tbl" id="plazaDays"><tr><th>Day</th><th>Joins</th><th>Busiest</th></tr>' + rows.map(function (k) { var b = byDay[k]; return '<tr><td>' + esc(k) + '</td><td>' + esc(b.joins) + '</td><td>' + esc((names[b.top] || b.top) + ' · ' + b.peak) + '</td></tr>'; }).join('') + '</table>' : '<p class="empty">Nobody has joined a plaza yet.</p>';
+    var table = rows.length ? '<table class="tbl" id="plazaDays"><tr><th>Day</th><th>Joins</th><th>Busiest</th></tr>' + rows.map(function (k) { var b = byDay[k]; return '<tr><td>' + esc(k) + '</td><td>' + esc(b.joins) + '</td><td>' + esc((names[b.top] || b.top) + ' · ' + b.peak) + '</td></tr>'; }).join('') + '</table>' : '<p class="empty">Nobody has joined a group yet.</p>';
     var at = plaza.at ? new Date(plaza.at) : null, hm = at ? at.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Singapore' }) : '';
     var stale = plazaBad || (plazaOk && Date.now() - plazaOk > 60000);
     var head = stale ? '<span class="stale">not updated since ' + esc(hm) + '</span>' : '<span>' + esc(total) + ' online · ' + esc(hm) + '</span>';
-    return '<div class="card" id="plazaCard"><h2>Plazas' + head + '</h2>' + (stale ? '<div class="note"><b>Not current.</b> The last refresh did not come back; the numbers below are from ' + esc(hm) + '. It tries again every 20 seconds.</div>' : '') + '<div class="tiles">' + tiles + '</div>' + table +
+    return '<div class="card" id="plazaCard"><h2>Plaza groups' + head + '</h2>' + (stale ? '<div class="note"><b>Not current.</b> The last refresh did not come back; the numbers below are from ' + esc(hm) + '. It tries again every 20 seconds.</div>' : '') + '<div class="tiles">' + tiles + '</div>' + table +
       '<p class="srv">Counts only. A person is counted while her phone checks in (every 25 s). Leaving, closing the app, sleeping or signing out normally takes her out at once; if that message is lost she stops being counted after 75 s. Joins count arrivals, so someone who leaves and comes back counts twice. No names or account ids reach this page.</p></div>';
   }
   function redrawPlaza() { if (tab === 'today' && doc.getElementById('plazaCard')) doc.getElementById('plazaCard').outerHTML = plazaCard(); }
