@@ -562,6 +562,9 @@ async def main():
                 name = m.group(1) if m else ""; body = json.loads(route.request.post_data or "{}")
                 if name.startswith("social_"): fcalls.append((name, body)); fauth.append(route.request.headers.get("authorization", ""))
                 me = FR["me"]
+                if route.request.headers.get("authorization", "") == "Bearer smoke-token-b":  # another account: no card of her own
+                    out = {"card": None, "on": False, "adult": True, "paused_until": None} if name == "social_me" else {"ok": False, "why": "off", "card": None}
+                    return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
                 def inbox(): return {"ok": True, "card": me["card"], "friends": FR["friends"], "asks": FR["asks"], "asked": FR["asked"], "notes": FR["notes"], "blocked": FR["blocked"]} if me["card"] else {"ok": False, "why": "off", "card": None}
                 if name == "plaza_list": out = {"servers": [{"id": "pcos", "name": "PCOS", "capacity": 24, "open": True, "people": 3}, {"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 1}], "mine": None, "beat_seconds": 25}
                 elif name == "plaza_join": out = {"ok": True, "server": body["p_server"], "name": "PCOS" if body["p_server"] == "pcos" else "Everyone", "capacity": 24, "people": 3, "visit": "v1" if body["p_server"] == "pcos" else "v2", "beat_seconds": 25}
@@ -644,16 +647,20 @@ async def main():
             pp = fcall("social_people")
             check("with a card, the two people in PCOS stand on the plaza by name and the samples step aside; the call names her group and visit", on["real"] == ["Nadia", "Priya"] and on["samples"] == 0 and "in your group" in on["label"] and pp and pp[-1] == {"p_server": "pcos", "p_visit": "v1"}, {"on": on, "people": pp[-1:]})
             await shot("plaza-people")
-            # a failed fetch clears the plate (never yesterday's group), and the next try waits for the plaza to confirm the visit
+            # a failed fetch clears the plate (never yesterday's group) and holds every automatic request until she acts
             FR["people_fail"] = True
             await p6.evaluate("()=>OvuFriends.loadPeople()"); await p6.wait_for_timeout(400)
-            fl = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, samples: document.querySelectorAll('.nbperson:not(.nbreal)').length, failed: OvuFriends.state().failed})")
+            fl = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, samples: document.querySelectorAll('.nbperson:not(.nbreal)').length, held: OvuFriends.state().held})")
             FR["people_fail"] = False
-            await p6.evaluate("()=>OvuPlaza.tick()")
+            n_auto = len([c for c in fcalls if c[0] in ("social_people", "social_inbox", "social_me")])
+            await p6.evaluate("()=>{OvuPlaza.tick(); OvuFriends.poll(); document.dispatchEvent(new Event('visibilitychange'));}"); await p6.wait_for_timeout(900)
+            quiet = len([c for c in fcalls if c[0] in ("social_people", "social_inbox", "social_me")]) - n_auto
+            await p6.click('#plazaPill')
             try: await p6.wait_for_function("()=>document.querySelectorAll('.nbreal').length===2", timeout=6000)
             except Exception: pass
-            back2 = await p6.evaluate("()=>document.querySelectorAll('.nbreal').length")
-            check("when the people check fails the plate goes back to the samples at once, and the people return after the plaza confirms her visit", fl["real"] == 0 and fl["samples"] == 4 and fl["failed"] == "v1" and back2 == 2, {"fail": fl, "after": back2})
+            back2 = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, held: OvuFriends.state().held})")
+            await p6.evaluate("()=>OvuRoom.closeSheet()"); await p6.wait_for_timeout(300)
+            check("a failed people check clears the plate at once; check-ins, timers and returning to the app ask nothing more; tapping the group pill tries again", fl["real"] == 0 and fl["samples"] == 4 and fl["held"] is True and quiet == 0 and back2["real"] == 2 and back2["held"] is False, {"fail": fl, "automatic calls while held": quiet, "after tap": back2})
             await p6.evaluate("()=>document.querySelector('.nbreal[data-nb=r0]').click()")
             await p6.wait_for_selector('#frSheet [data-fr=ask]')
             pc6 = await p6.evaluate("()=>document.querySelector('#frSheet').textContent")
@@ -717,6 +724,22 @@ async def main():
             await p6.wait_for_timeout(2300); FR["people_delay"] = 0
             mv2 = await p6.evaluate("()=>document.querySelectorAll('.nbreal').length")
             check("moving to another group clears the last group's people at once, and the new group's answer (nobody) keeps it clear", mv["joined"] == "everyone" and mv["real"] == 0 and mv2 == 0, {"during": mv, "after": mv2})
+            # another tab signs into another account: this tab closes the sheet and forgets the last account at once
+            FR["me"]["card"] = {"handle": "h-me", "name": "Fern", "look": "kebaya-red", "hidden": False, "paused_until": None}; FR["me"]["on"] = True
+            await p6.evaluate("()=>OvuFriends.open()")
+            try: await p6.wait_for_function("()=>/Fern/.test((document.querySelector('#frSheet')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            tab2 = await ctx6.new_page(); await tab2.route("**/*", friends_gate)
+            await tab2.goto(BASE + "privacy.html", wait_until="domcontentloaded")
+            SESS_B2 = {"access_token": "smoke-token-b", "refresh_token": "r-b", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000bb", "email": "b@example.test"}}
+            n_before = len(fcalls)
+            await tab2.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS_B2)); await p6.wait_for_timeout(700)
+            xt = await p6.evaluate("()=>({open: OvuRoom.sheetOpen() && !!document.querySelector('#frSheet'), me: OvuFriends.state().me && OvuFriends.state().me.card ? OvuFriends.state().me.card.name : null})")
+            b_calls = [a for a in fauth[n_before:]]
+            await tab2.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS)); await p6.wait_for_timeout(700)
+            await tab2.close()
+            check("signing into another account in another tab closes the friends sheet here and drops the last account's card at once; what follows asks as the new account", not xt["open"] and xt["me"] is None and b_calls and all(a == "Bearer smoke-token-b" for a in b_calls), {"tab": xt, "calls after": b_calls})
+            fauth[:] = [a for a in fauth if a != "Bearer smoke-token-b"]  # the other account's own calls are not this account's
             # two accounts on one phone: a form opened by one account never sends for another, and a late reply is dropped
             FR["me"]["card"] = None; FR["me"]["on"] = False; FR["me"]["adult"] = False
             await p6.evaluate("()=>OvuFriends.open()"); await p6.wait_for_selector('#frName')

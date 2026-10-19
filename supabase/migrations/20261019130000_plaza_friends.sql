@@ -18,6 +18,10 @@
 -- Second cut, after the first Codex review (19 Oct): explicit opt-in and stale-edit refusal on the card, account locks,
 --   hidden callers cannot ask, the 14-day answer window for reciprocal asks, declines keep their quota slot, blocks
 --   copy a card only when it was visible, inbox notes only from unblocked friends, the daily clean-up.
+-- Third cut, after the second review (Jamie approved a third round): a block copies a card only when both accounts are
+--   eligible, neither has blocked the other and, in a group, both cards are shown; withdrawing 18+ is handled like
+--   withdrawing Plaza friends (locked, everything deleted); staff decisions lock the account and the report row and
+--   recheck it; marking notes read needs Plaza friends on.
 -- Undo: at the bottom.
 
 -- ---------- the consent purpose ----------
@@ -268,15 +272,17 @@ begin
   delete from staff.social_reports where status <> 'open' and decided_at < now() - interval '365 days';
 end $$;
 
--- could p_viewer see p_other's card right now: friends, a request between them in the last 30 days, or both in the same
--- group with p_other shown
+-- could p_viewer see p_other's card right now: both eligible, no block either way, and friends, a request between them
+-- in the last 30 days, or both in the same group with both cards shown (the same rule as social_people)
 create or replace function social.visible(p_viewer uuid, p_other uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
-  select social.friends(p_viewer, p_other)
+  select social.ok(p_viewer) and social.ok(p_other) and not social.blocked(p_viewer, p_other)
+     and (social.friends(p_viewer, p_other)
       or exists (select 1 from public.social_requests r where ((r.from_user = p_viewer and r.to_user = p_other) or (r.from_user = p_other and r.to_user = p_viewer)) and r.at > now() - interval '30 days')
       or exists (select 1 from public.plaza_presence a join public.plaza_presence b on b.server = a.server
-                   join public.social_profiles s on s.user_id = b.user_id and not s.hidden
-                 where a.user_id = p_viewer and b.user_id = p_other and a.seen_at > clock_timestamp() - interval '75 seconds' and b.seen_at > clock_timestamp() - interval '75 seconds')
+                   join public.social_profiles sa on sa.user_id = a.user_id and not sa.hidden
+                   join public.social_profiles sb on sb.user_id = b.user_id and not sb.hidden
+                 where a.user_id = p_viewer and b.user_id = p_other and a.seen_at > clock_timestamp() - interval '75 seconds' and b.seen_at > clock_timestamp() - interval '75 seconds'))
 $$;
 
 -- block: end everything between the two, quietly. The Blocked list keeps her card as it was only if the blocker could see
@@ -301,11 +307,11 @@ language sql stable security definer set search_path = '' as $$
   from public.social_profiles s where s.user_id = p_uid
 $$;
 
--- withdrawing Plaza friends, by any route, deletes what it allowed; blocks stay
+-- withdrawing Plaza friends or 18+, by any route, deletes what Plaza friends allowed; blocks stay
 create or replace function social.on_consent() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-  if new.purpose = 'social' and new.action = 'withdraw' then
+  if new.purpose in ('social', 'age_18') and new.action = 'withdraw' then
     perform social.lock(new.user_id); -- waits for any call in flight for her account, so nothing it writes survives
     delete from public.social_notes where from_user = new.user_id or to_user = new.user_id;
     delete from public.social_requests where from_user = new.user_id or to_user = new.user_id;
@@ -536,6 +542,8 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  perform social.lock(uid);
+  if not social.ok(uid) then return jsonb_build_object('ok', false, 'why', 'off'); end if;
   update public.social_notes set read_at = now() where to_user = uid and id <= p_upto and read_at is null;
   return jsonb_build_object('ok', true);
 end $$;
@@ -610,28 +618,31 @@ begin
     from staff.social_reports r where (p_status is null or r.status = p_status) order by r.at desc limit 200) x), '[]'::jsonb));
 end $$;
 
+-- one decision at a time per account and per report: the account lock, then the report row, then a fresh look at it
 create or replace function staff.social_decide(p_id bigint, p_decision text, p_days integer, p_actor uuid) returns jsonb
 language plpgsql security definer set search_path = '' as $$
-declare r staff.social_reports%rowtype; d integer;
+declare r staff.social_reports%rowtype; d integer; t uuid; n integer;
 begin
-  select * into r from staff.social_reports where id = p_id;
+  if p_decision is null or p_decision not in ('dismiss', 'pause', 'remove') then return jsonb_build_object('ok', false, 'error', 'Unknown decision.'); end if;
+  select target into t from staff.social_reports where id = p_id;
+  if not found then return jsonb_build_object('ok', false, 'error', 'No such report.'); end if;
+  if t is not null then perform social.lock(t); end if;
+  select * into r from staff.social_reports where id = p_id for update;
   if not found then return jsonb_build_object('ok', false, 'error', 'No such report.'); end if;
   if r.status <> 'open' then return jsonb_build_object('ok', false, 'error', 'That report is already decided.'); end if;
   if p_decision = 'dismiss' then
-    update staff.social_reports set status = 'dismissed', decided_at = now(), decided_by = p_actor where id = p_id;
+    update staff.social_reports set status = 'dismissed', decided_at = now(), decided_by = p_actor where id = p_id and status = 'open';
+    get diagnostics n = row_count;
+    if n = 0 then return jsonb_build_object('ok', false, 'error', 'That report is already decided.'); end if;
   elsif p_decision = 'pause' then
     if r.target is null then return jsonb_build_object('ok', false, 'error', 'That account no longer exists; dismiss the report.'); end if;
-    perform social.lock(r.target);
     d := least(greatest(coalesce(p_days, 7), 1), 365);
     insert into public.social_holds (user_id, until) values (r.target, now() + make_interval(days => d))
       on conflict (user_id) do update set until = greatest(public.social_holds.until, excluded.until), at = now();
     update staff.social_reports set status = 'paused', decided_at = now(), decided_by = p_actor, days = d where status = 'open' and (target = r.target or target_handle = r.target_handle);
-  elsif p_decision = 'remove' then
-    if r.target is not null then perform social.lock(r.target); end if;
+  else
     delete from public.social_profiles where user_id = r.target and handle = r.target_handle;
     update staff.social_reports set status = 'removed', decided_at = now(), decided_by = p_actor where status = 'open' and target_handle = r.target_handle;
-  else
-    return jsonb_build_object('ok', false, 'error', 'Unknown decision.');
   end if;
   return jsonb_build_object('ok', true);
 end $$;

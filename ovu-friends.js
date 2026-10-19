@@ -35,7 +35,7 @@
     unfriend: 'Letting go is allowed. She will not be told.'
   };
   /* the consent words for the purpose `social` (design note section 6); a hash of them travels with the event */
-  var WORDS = 'While you are in a plaza group, people in the same group who also turned this on can see your plaza name and look, and that you are in that group with them. They can ask to be your friend, and friends can send each other kind notes from a set list. Your diary, your cycle, your account name and your email are never shown. Notes are kept for 30 days. You can turn this off at any time; your card, friends, requests and notes are then deleted. People you blocked stay blocked.';
+  var WORDS = 'While you are in a plaza group, people in the same group who also turned this on can see your plaza name and look, and that you are in that group with them. They can ask to be your friend, and friends can send each other kind notes from a set list. Your diary, your cycle, your account name and your email are never shown. Notes are deleted after 30 days, at the next daily clean-up. You can turn this off at any time; your card, friends, requests and notes are then deleted. People you blocked stay blocked.';
   /* where real people stand on the plaza plate (percent of the plate): on the floor, clear of the furniture */
   var SPOTS = [{ x: 42, y: 60 }, { x: 54, y: 56, flip: true }, { x: 26, y: 59, flip: true }, { x: 70, y: 57, flip: true },
     { x: 47, y: 68 }, { x: 36, y: 61, flip: true }, { x: 60, y: 61 }, { x: 32, y: 64 }];
@@ -130,7 +130,9 @@
   /* ---------- the room ---------- */
   var R = root.OvuRoom, A = root.OvuAuth, S = root.OvuStore, doc = root.document, CFG = root.OVU_CONFIG || {};
   if (!R || !A || !S || !doc || !doc.createElement) return;
-  var me = null, inbox = null, people = [], peopleKey = '[]', peopleVisit = null, failedVisit = null, inboxT = 0, peopleT = 0, peopleGen = 0, inboxGen = 0, sheetGen = 0, sheetOwner = null, wordsHash = '';
+  /* `held`: after any automatic request fails, nothing is asked again on its own (no timer, check-in, render or return
+   * to the app) until she does something herself: opens Plaza friends, taps the group pill or walks into the plaza */
+  var me = null, inbox = null, people = [], peopleKey = '[]', peopleVisit = null, held = false, lastUid = null, inboxT = 0, peopleT = 0, peopleGen = 0, inboxGen = 0, sheetGen = 0, sheetOwner = null, wordsHash = '';
 
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s); }
   function uid() { var s = A.session && A.session(); return s && s.user ? s.user.id : null; }
@@ -172,9 +174,11 @@
   function offline(e) { if (e && e.cancelled) return; R.toast('Could not reach Plaza friends. Check the connection and try again.', 'cloud_off'); }
 
   /* ---------- state from the server ---------- */
+  function hold(e) { if (e && e.cancelled) return; held = true; fillPlazaRow(); }
+  function resume() { held = false; }
   function loadMe() {
     var u = uid(); if (!u) { me = null; return Promise.resolve(null); }
-    return rpc('social_me', {}).then(function (j) { if (uid() === u) me = j; return me; });
+    return rpc('social_me', {}).then(function (j) { if (uid() === u) me = j; return me; }, function (e) { hold(e); throw e; });
   }
   function loadInbox(quiet) {
     var u = uid(); if (!u || !me || !me.card) { inbox = null; badge(); return Promise.resolve(null); }
@@ -184,7 +188,7 @@
       inbox = j; if (j && j.card !== undefined) { me.card = j.card; if (j.why === 'paused') me.paused_until = j.paused_until; }
       badge(); if (!quiet) tellFresh();
       return inbox;
-    });
+    }, function (e) { hold(e); throw e; });
   }
   function seen() { var s = S.state().friendsSeen; return s && s.uid === uid() ? s : { uid: uid(), asks: [], note: 0 }; }
   function markSeen() {
@@ -213,7 +217,7 @@
     fillPlazaRow();
   }
   /* the people shown always belong to the visit they were fetched for: a new group clears them at once, and a failed
-   * fetch clears them too. After a failure the timer waits until the plaza has confirmed the visit again. */
+   * fetch clears them too and holds every automatic request until she acts */
   function loadPeople() {
     var v = visit(), u = uid(), g = ++peopleGen;
     if (!v || !u || !me || !me.card || me.card.hidden || me.paused_until || !inPlaza() || R.asleep()) { setPeople([]); return Promise.resolve(); }
@@ -221,11 +225,10 @@
     return rpc('social_people', { p_server: v.server, p_visit: v.visit }, u).then(function (j) {
       var now = visit();
       if (g !== peopleGen || !now || now.visit !== v.visit) return;
-      failedVisit = null;
       setPeople(j && j.ok ? j.people || [] : [], v.visit);
     }, function (e) {
       if (g !== peopleGen || (e && e.cancelled)) return;
-      failedVisit = v.visit; setPeople([]);
+      setPeople([]); hold(e);
     });
   }
   function person(handle) { return people.filter(function (p) { return p.handle === handle; })[0] || null; }
@@ -233,13 +236,23 @@
   function startTimers() {
     stopTimers();
     if (!uid() || doc.hidden) return;
-    inboxT = root.setInterval(function () { if (!doc.hidden && me && me.card) loadInbox().catch(noop); }, INBOX_MS);
-    peopleT = root.setInterval(function () { var v = visit(); if (!doc.hidden && !(v && failedVisit === v.visit)) loadPeople(); }, PEOPLE_MS);
+    inboxT = root.setInterval(inboxTick, INBOX_MS);
+    peopleT = root.setInterval(peopleTick, PEOPLE_MS);
+  }
+  /* each tick first checks that the account is still the one it started with (another tab may have signed in) */
+  function inboxTick() { if (uid() !== lastUid) { authChanged(); return; } if (!held && !doc.hidden && me && me.card) loadInbox().catch(noop); }
+  function peopleTick() { if (uid() !== lastUid) { authChanged(); return; } if (!held && !doc.hidden) loadPeople(); }
+  /* any change of account, in this tab or another: cancel, forget, close, then start again for whoever is signed in */
+  function authChanged() {
+    var u = uid(); if (u === lastUid) return; lastUid = u;
+    me = null; inbox = null; peopleGen++; inboxGen++; sheetGen++; held = false; setPeople([]); badge(); stopTimers();
+    if (doc.getElementById('frSheet') && R.sheetOpen && R.sheetOpen()) R.closeSheet(); /* nothing from the last account stays on screen or can be sent */
+    if (u) { startTimers(); refreshAll(); }
   }
   function stopTimers() { if (inboxT) root.clearInterval(inboxT); if (peopleT) root.clearInterval(peopleT); inboxT = peopleT = 0; }
   function refreshAll() {
     if (!uid()) return Promise.resolve();
-    return loadMe().then(function () { return loadInbox(); }).then(loadPeople, function () { });
+    return loadMe().then(function () { return loadInbox(); }).then(loadPeople, noop);
   }
 
   /* ---------- the plaza sheet's row: people here and the way into Plaza friends ---------- */
@@ -247,6 +260,7 @@
     var row = doc.getElementById('plazaFriendsRow'); if (!row) return;
     if (!uid()) { row.innerHTML = ''; return; }
     var n = badgeCount(inbox), open = '<button type="button" class="btn soft" data-frp="open"><span class="ms">diversity_1</span>Plaza friends' + (n ? ' · ' + n + ' new' : '') + '</button>';
+    if (held) { row.innerHTML = '<p class="help">Plaza friends could not be reached. Open it to try again.</p><div class="row">' + open + '</div>'; return; }
     if (me && me.paused_until) { row.innerHTML = '<p class="help">Plaza friends is paused on this account for now.</p><div class="row">' + open + '</div>'; return; }
     if (!me || !me.card) { row.innerHTML = '<p class="help">Make a plaza card to see the other people here who have one, and to make friends.</p><div class="row">' + open.replace('Plaza friends', 'Make a plaza card') + '</div>'; return; }
     if (me.card.hidden) { row.innerHTML = '<p class="help">You are hidden from groups, so you see nobody here either.</p><div class="row">' + open + '</div>'; return; }
@@ -261,6 +275,8 @@
     return doc.getElementById('frSheet');
   }
   function open() {
+    if (uid() !== lastUid) authChanged();
+    resume();
     if (!uid()) {
       var el = frSheet('friends', 'Plaza friends', 'Friends you meet in the plaza groups', 'diversity_1',
         '<p>Plaza friends lets you make a plaza card, see the other people in your plaza group who have one, and send friends kind notes from a set list. It needs an account.</p><div class="row"><button type="button" class="btn primary" id="frSignIn"><span class="ms">person</span>Sign in from You</button></div>');
@@ -296,7 +312,7 @@
       return row(f, '<div class="fracts"><button type="button" class="btn sm primary" data-fr="note" data-h="' + esc(f.handle) + '" data-n="' + esc(f.name) + '"><span class="ms">favorite</span>Send a kind note</button><button type="button" class="btn sm soft" data-fr="more" aria-expanded="false">More</button></div>' +
         '<div class="frmore" hidden><button type="button" class="frlink" data-fr="unfriend" data-h="' + esc(f.handle) + '">Unfriend</button><button type="button" class="frlink" data-fr="block" data-h="' + esc(f.handle) + '">Block</button><button type="button" class="frlink" data-fr="report" data-h="' + esc(f.handle) + '" data-n="' + esc(f.name) + '">Report</button></div>');
     }).join('') : '<p class="help">No friends yet. Walk into the plaza, join a group and tap someone to say hello.</p>') + '</div>';
-    if (ib.asked.length) html += '<div class="frsec"><span class="lbl">Waiting for an answer</span><div class="frchips">' + ib.asked.map(function (a) { return '<span class="frchip">' + img(a.look) + '<span>' + esc(a.name) + '</span></span>'; }).join('') + '</div><p class="help">An ask stays here for 30 days, answered or not.</p></div>';
+    if (ib.asked.length) html += '<div class="frsec"><span class="lbl">Asked</span><div class="frchips">' + ib.asked.map(function (a) { return '<span class="frchip">' + img(a.look) + '<span>' + esc(a.name) + '</span></span>'; }).join('') + '</div><p class="help">An ask shows here for 30 days, whatever her answer. You are not told which.</p></div>';
     if (ib.blocked.length) html += '<div class="frsec"><span class="lbl">Blocked</span>' + ib.blocked.map(function (b) {
       return row({ name: b.name || 'Someone', look: b.look }, '<span>Since ' + esc(dayText(b.at)) + '</span><div class="fracts"><button type="button" class="frlink" data-fr="unblock" data-id="' + esc(b.id) + '">Unblock</button></div>');
     }).join('') + '</div>';
@@ -475,29 +491,41 @@
       e.preventDefault(); R.chime('tap');
       if (q.dataset.frp === 'open') open(); else openPerson(q.dataset.h);
     });
+    /* tapping the group pill is her own act: if Plaza friends was holding after a failure, try again now (capture
+     * phase, because the pill stops its click from bubbling) */
+    doc.addEventListener('click', function (e) {
+      if (!e.target.closest || !e.target.closest('#plazaPill') || !held || !uid()) return;
+      resume(); refreshAll();
+    }, true);
     if (root.OvuCommunity && root.OvuCommunity.setPeople) root.OvuCommunity.setPeople(function () { return people.length ? placeFor(people) : null; }, openPerson);
     if (root.OvuPlaza && root.OvuPlaza.onChange) {
       var lastVisit = null;
       root.OvuPlaza.onChange(function () {
-        var v = visit(), key = v ? v.visit : null, st = root.OvuPlaza.state();
-        if (key !== lastVisit) { lastVisit = key; failedVisit = null; setPeople([]); loadPeople(); }
-        else if (key && failedVisit === key && st && !st.offline) { failedVisit = null; loadPeople(); } /* the plaza just confirmed her visit: try once more */
+        var v = visit(), key = v ? v.visit : null;
+        if (key !== lastVisit) { lastVisit = key; setPeople([]); if (!held) loadPeople(); }
         fillPlazaRow(); badge();
       });
     }
-    R.on('layout', function () { if (!inPlaza()) setPeople([]); });
-    doc.addEventListener('visibilitychange', function () { if (doc.hidden) stopTimers(); else if (uid()) { startTimers(); if (me && me.card) loadInbox().then(loadPeople, function () { }); } });
-    var lastUid = uid();
-    if (A.subscribe) A.subscribe(function () {
-      var u = uid(); if (u === lastUid) return; lastUid = u;
-      me = null; inbox = null; peopleGen++; inboxGen++; sheetGen++; failedVisit = null; setPeople([]); badge(); stopTimers();
-      if (doc.getElementById('frSheet') && R.sheetOpen && R.sheetOpen()) R.closeSheet(); /* nothing from the last account stays on screen or can be sent */
-      if (u) { startTimers(); refreshAll(); }
+    var wasPlaza = inPlaza();
+    R.on('layout', function () {
+      var now = inPlaza();
+      if (!now) setPeople([]);
+      else if (!wasPlaza && held) { resume(); refreshAll(); } /* walking into the plaza is her own act */
+      wasPlaza = now;
     });
+    doc.addEventListener('visibilitychange', function () {
+      if (doc.hidden) { stopTimers(); return; }
+      if (uid() !== lastUid) { authChanged(); return; }
+      if (uid()) { startTimers(); if (!held && me && me.card) loadInbox().then(loadPeople, noop); }
+    });
+    lastUid = uid();
+    if (A.subscribe) A.subscribe(authChanged);
+    root.addEventListener('storage', function (e) { if (e.key === null || e.key === 'ovumind_auth_v1') authChanged(); }); /* another tab signed in or out */
     if (uid()) { startTimers(); refreshAll(); }
   }
   R.on('boot', mount);
   F.open = open; F.openPerson = openPerson; F.refresh = refreshAll; F.loadPeople = loadPeople;
-  F.state = function () { return { signedIn: !!uid(), me: me, inbox: inbox, people: people.slice(), visit: peopleVisit, failed: failedVisit, timers: !!inboxT }; };
+  F.state = function () { return { signedIn: !!uid(), me: me, inbox: inbox, people: people.slice(), visit: peopleVisit, held: held, timers: !!inboxT }; };
+  F.poll = function () { inboxTick(); peopleTick(); }; /* what the two timers do, for the smoke suite, which cannot wait a minute */
   F.summaryNow = function () { return summary({ signedIn: !!uid(), me: me, inbox: inbox }); };
 })(typeof window !== 'undefined' ? window : this);

@@ -63,8 +63,8 @@ Every social action carries one short line before the button, never a delay the 
 | Plaza card (name, look, hidden or not, pause date) | Her; people in her group while both are there; her friends | Until she turns Plaza friends off, removes her account, or staff remove the card |
 | Handle (random id on the card) | The phones above; staff in short form | With the card; a new card gets a new handle |
 | Friendship | The two people | Until either ends it, blocks, or turns Plaza friends off |
-| Friend request | The two people | 14 days if unanswered; a "not now" marker 30 days (blocks a repeat ask) |
-| Kind note (phrase id, time, read or not) | The two people | 30 days; deleted when the friendship ends |
+| Friend request | The two people | Shown to her for 14 days; kept 30 days from sending whatever the answer, so the sender sees "asked" and cannot ask again in that time |
+| Kind note (phrase id, time, read or not) | The two people | 30 days (deleted at the next daily clean-up, so within a day after); deleted when the friendship ends |
 | Block (and the name it had then) | The person who blocked | Until she unblocks or deletes her account |
 | Report (snapshot of the card, phrase, reason) | Staff | Open until decided; one year after the decision; the reporter is removed if her account is deleted |
 | Rate counters (kind, time) | Nobody | Two days |
@@ -78,7 +78,7 @@ What never leaves her phone because of this feature: the diary, cycle, symptoms,
 
 New purpose `social`, title **Plaza friends**, off by default, recorded at the moment she makes her card (method `jit`) and withdrawn when she turns it off. Proposed words (Jamie approves before release):
 
-> **Plaza friends.** While you are in a plaza group, people in the same group who also turned this on can see your plaza name and look, and that you are in that group with them. They can ask to be your friend, and friends can send each other kind notes from a set list. Your diary, your cycle, your account name and your email are never shown. Notes are kept for 30 days. You can turn this off at any time; your card, friends, requests and notes are then deleted. People you blocked stay blocked.
+> **Plaza friends.** While you are in a plaza group, people in the same group who also turned this on can see your plaza name and look, and that you are in that group with them. They can ask to be your friend, and friends can send each other kind notes from a set list. Your diary, your cycle, your account name and your email are never shown. Notes are deleted after 30 days, at the next daily clean-up. You can turn this off at any time; your card, friends, requests and notes are then deleted. People you blocked stay blocked.
 
 The privacy notes gain the same paragraph under a "Plaza" heading, and the group sheet's line "Other people and Rhythme staff see only the number, never who" becomes "Unless you turn on Plaza friends, other people see only the number, never who. Rhythme staff see only the number."
 
@@ -125,6 +125,22 @@ Resolved: 1, 3, 4, 8, 9, 10, 11. Still open, with the smallest fix proposed and 
 | 14 (new) | Two staff decisions at once can dismiss a report while the other pauses | Lock the report row (`for update`) and the account first, recheck `open`, and guard the final update |
 | 15 (new) | `social_read` works while paused or after 18+ is withdrawn | Lock and require `social.ok` |
 | design | Daily clean-up means deletion up to a day after 30 days; an unanswered ask leaves her list after 14 days but the sender sees "asked" for 30 | Say "within a day after 30 days"; keep the two windows as designed and word them that way (section 1 says so) |
+
+**Round three (20 Oct, Jamie: "Yes, apply the round-three fixes ... and get a third Codex review").** Applied:
+
+| Round two # | Fix | Proof |
+|---|---|---|
+| 2 | Account changes from another tab arrive through the `storage` event, and every timer tick checks the account; both run the same reset (cancel, forget, close the sheet) | smoke: another tab signs in, this tab's sheet closes and the card is gone at once; what follows asks as the new account |
+| 5, 6 | A block copies a card only when both accounts are eligible, neither has blocked the other and, in a group, both cards are shown | dry run `block_snapshot_not_if_blocked`, `block_snapshot_not_if_hidden` |
+| 7 | One hold: after any automatic request fails, nothing is asked again on its own (no timer, check-in, render or return to the app) until she opens Plaza friends, taps the group pill or walks into the plaza | smoke: after a failure, a check-in, both timers and a return to the app send nothing; a tap tries again |
+| 12 | Two-session races on a local Postgres, each confirmed waiting on a lock; with the lock removed 7 of 8 go wrong | `tools/db/race_test.py --mutate` |
+| 13 | Withdrawing 18+ takes the account lock and ends Plaza friends like withdrawing it | dry run `age_withdraw_deletes`; race `age withdraw vs accept` |
+| 14 | Staff decisions take the account lock, then the report row (`for update`), recheck it, and guard the final update | dry run `decide_rechecks`; race `staff decisions` |
+| 15 | `social_read` takes the lock and needs Plaza friends on | dry run `read_needs_ok` |
+| design | Notes "are deleted after 30 days, at the next daily clean-up"; an ask shows to her for 14 days and stays "asked" for the sender for 30 | section 1, section 5, the consent words, the privacy paragraph, the friends sheet |
+
+Not covered: the browser's own cross-tab behaviour for other modules (the plaza and sign-in UI do not listen for
+another tab either; that is PR #4's and the account module's), and real network partitions.
 
 ## 8. Phases
 

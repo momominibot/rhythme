@@ -1,4 +1,4 @@
--- Rolled-back check of supabase/migrations/20261019130000_plaza_friends.sql (19 Oct 2026, second cut).
+-- Rolled-back check of supabase/migrations/20261019130000_plaza_friends.sql (19-20 Oct 2026, third cut).
 -- Run as ONE batch: the migration text, then this file. The last statement raises 'RESULT {...}', so the implicit
 -- transaction rolls back (tables, functions, rows, consent events, the cron job: nothing is kept) and the message carries
 -- the checks. Every expected check must be present and true; a missing or null one fails the run.
@@ -49,6 +49,7 @@ declare
   a uuid := gen_random_uuid(); b uuid := gen_random_uuid(); c uuid := gen_random_uuid(); d uuid := gen_random_uuid();
   e uuid := gen_random_uuid(); n uuid := gen_random_uuid(); m uuid := gen_random_uuid(); x uuid := gen_random_uuid();
   y uuid := gen_random_uuid(); z uuid := gen_random_uuid(); w uuid := gen_random_uuid(); v uuid := gen_random_uuid(); q uuid := gen_random_uuid();
+  ku uuid := gen_random_uuid(); ju uuid := gen_random_uuid(); hw uuid; hk uuid;
   owner uuid; va uuid; vb uuid; vc uuid; vd uuid; ve uuid; vn uuid; vy uuid; vw uuid; ha uuid; hb uuid; hc uuid; hd uuid; he uuid; hy uuid; hz uuid; hv uuid;
   r jsonb; r2 jsonb; out jsonb := '{}'; i integer; note_id bigint; rep_id bigint; blk uuid; ok boolean; pre boolean;
   expected text[] := array['names', 'anon_refused', 'no_sub_refused', 'tables_closed', 'minor_refused', 'bad_name_refused', 'no_opt_in_refused', 'card_a',
@@ -58,7 +59,8 @@ declare
     'report_not_her_note', 'report', 'reports_staff_only', 'reports_owner_view', 'decide_owner_only', 'pause', 'pause_survives_off_on',
     'new_card_new_handle', 'stale_edit_after_withdraw', 'block', 'unblock', 'unfriend', 'withdraw_any_route', 'rate_limits', 'retention',
     'locks_pair', 'locks_withdrawal', 'reciprocal_needs_14_days', 'declines_keep_quota', 'block_snapshot_only_if_visible', 'inbox_only_friends_notes',
-    'daily_cleanup_scheduled', 'account_delete'];
+    'daily_cleanup_scheduled', 'account_delete', 'block_snapshot_not_if_blocked', 'block_snapshot_not_if_hidden', 'age_withdraw_deletes',
+    'read_needs_ok', 'decide_rechecks'];
 begin
   insert into auth.users (id, email, aud, role) select u, 'dryrun-' || u || '@example.invalid', 'authenticated', 'authenticated' from unnest(array[a, b, c, d, e, n, m, x]) u;
   -- B, C, D, E, N attested 18+ earlier (as the consent sheet does); A ticks it on her card; M never does
@@ -188,6 +190,10 @@ begin
     r := pg_temp.call(a, $q$select public.social_card_save(p_name => 'Mei', p_look => 'base', p_opt_in => true)$q$);
     out := out || jsonb_build_object('new_card_new_handle', r->>'ok' = 'true' and (r->'card'->>'handle')::uuid <> ha);
     ha := (r->'card'->>'handle')::uuid;
+    r := pg_temp.call(owner, format('select public.admin_social_decide(%s, %L, null)', rep_id, 'dismiss'));
+    r2 := pg_temp.call(owner, format('select public.admin_social_decide(%s, %L, null)', rep_id, 'ban'));
+    out := out || jsonb_build_object('decide_rechecks', r->>'error' = 'That report is already decided.' and r2->>'error' = 'Unknown decision.'
+      and (select status from staff.social_reports where id = rep_id) = 'paused');
   else
     out := out || jsonb_build_object('owner_missing', true);
   end if;
@@ -246,7 +252,7 @@ begin
   out := out || jsonb_build_object('locks_withdrawal', not pre and pg_temp.locked(q));
 
   -- quota: twenty asks in the last fortnight, all answered "not now", and the next one waits
-  perform pg_temp.person(w, 'Wren', 'pcos'); vw := (select visit from public.plaza_presence where user_id = w);
+  hw := pg_temp.person(w, 'Wren', 'pcos'); vw := (select visit from public.plaza_presence where user_id = w);
   insert into auth.users (id, email, aud, role) select g, 'dryrun-' || g || '@example.invalid', 'authenticated', 'authenticated' from (select gen_random_uuid() g from generate_series(1, 20)) s;
   insert into public.social_requests (from_user, to_user, status, at, decided_at)
     select w, u.id, 'declined', now() - interval '1 day', now()
@@ -260,6 +266,26 @@ begin
   perform pg_temp.call(a, format('select public.social_block(%L)', hy));
   out := out || jsonb_build_object('block_snapshot_only_if_visible',
     (select name from public.social_blocks where blocker = a and blocked = v) is null and (select name from public.social_blocks where blocker = a and blocked = y) = 'Yuna');
+
+  -- someone who blocked you cannot be looked up by blocking her back, and a hidden person cannot look anyone up that way
+  perform pg_temp.call(z, format('select public.social_block(%L)', hw));
+  perform pg_temp.call(w, format('select public.social_block(%L)', hz));
+  hk := pg_temp.person(ku, 'Kai', 'pcos'); update public.social_profiles set hidden = true where user_id = ku;
+  perform pg_temp.call(ku, format('select public.social_block(%L)', hy));
+  out := out || jsonb_build_object('block_snapshot_not_if_blocked', (select name from public.social_blocks where blocker = z and blocked = w) = 'Wren'
+      and (select name from public.social_blocks where blocker = w and blocked = z) is null,
+    'block_snapshot_not_if_hidden', exists (select 1 from public.social_blocks where blocker = ku and blocked = y) and (select name from public.social_blocks where blocker = ku and blocked = y) is null);
+
+  -- withdrawing 18+ by any route ends Plaza friends the same way
+  perform pg_temp.person(ju, 'Jo', 'pcos');
+  perform pg_temp.call(ju, $q$select public.consent_record('age_18', 'withdraw', 3)$q$);
+  out := out || jsonb_build_object('age_withdraw_deletes', not exists (select 1 from public.social_profiles where user_id = ju) and pg_temp.locked(ju));
+
+  -- marking notes read needs Plaza friends on (a paused account cannot)
+  insert into public.social_holds (user_id, until) values (y, now() + interval '1 day');
+  r := pg_temp.call(y, 'select public.social_read(1000)');
+  delete from public.social_holds where user_id = y;
+  out := out || jsonb_build_object('read_needs_ok', r->>'why' = 'off');
 
   -- the inbox shows notes only from friends she has not blocked, whatever a race left behind
   insert into public.social_notes (from_user, to_user, phrase) values (v, a, 'hug'), (z, a, 'rest');
