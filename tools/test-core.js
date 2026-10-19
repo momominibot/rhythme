@@ -645,6 +645,62 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   Promise.all([t1, t2]).catch(function (err) { check('the sync edge-case tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
+(function exerciseTypedRecoveryCursor() {
+  console.log('cloud sync: the one-time typed pull never moves the shared cursor, and resumes past the 20,000-row cap');
+  /* a small pretend server: rows ordered by synced_at, honouring the cursor, the type filter, limit and offset */
+  function server() {
+    var rows = [];
+    return {
+      rows: rows,
+      get: function (url) {
+        var q = decodeURIComponent(url), cur = /synced_at=gt\.([^&]+)/.exec(q), ty = /type=in\.\(([^)]*)\)/.exec(q), lim = Number((/limit=(\d+)/.exec(q) || [])[1] || 1000), off = Number((/offset=(\d+)/.exec(q) || [])[1] || 0);
+        var out = rows.filter(function (r) { return (!cur || Date.parse(r.synced_at) > Date.parse(cur[1])) && (!ty || ty[1].split(',').indexOf(r.type) > -1); });
+        out.sort(function (a, b) { return Date.parse(a.synced_at) - Date.parse(b.synced_at) || (a.id < b.id ? -1 : 1); });
+        return out.slice(off, off + lim);
+      }
+    };
+  }
+  function world(srv, onGet) {
+    var w = fresh(), S = w.OvuStore;
+    w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
+    S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+    var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
+    w.fetch = function (url, opt) {
+      var m = (opt && opt.method) || 'GET';
+      if (m === 'GET' && /\/entries/.test(url)) { var res = srv.get(url); if (onGet) onGet(url); return reply(200, res); }
+      if (m === 'GET') return reply(200, []);
+      return reply(201, null);
+    };
+    w.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-19T10:00:00Z', pushedAt: '2026-10-19T10:00:00Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }));
+    return w;
+  }
+  var row = function (id, type, at, data) { return { id: id, user_id: 'u1', type: type, date: '2026-10-19', data: data, source: 'room', created_at: at, updated_at: at, synced_at: at, deleted: false, deleted_at: null }; };
+  /* 1. another phone uploads a reflection, then exercise, between this phone's two requests */
+  var srv = server(), calls = 0;
+  var w = world(srv, function (url) { calls++; if (calls === 1) { srv.rows.push(row('r101', 'reflection', '2026-10-19T10:01:00Z', { text: 'between the requests', mood: '' })); srv.rows.push(row('x102', 'exercise', '2026-10-19T10:02:00Z', { activity: 'walk', label: 'Walking', variant: 'brisk', code: '17200', met: 4.8, minutes: 20, intensity: 'moderate', strength: false, aerobic: true, note: '' })); } });
+  var S = w.OvuStore, Y = w.OvuSync;
+  var a = Y.syncNow().then(function () {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('the typed pull brings the exercise row but leaves the shared cursor where it was', S.list('exercise').length === 1 && Date.parse(st.pulledSeq) === Date.parse('2026-10-19T10:00:00Z'), JSON.stringify({ seq: st.pulledSeq, n: S.list('exercise').length }));
+    return Y.syncNow();
+  }).then(function () {
+    check('so the reflection that arrived between the two requests is pulled on the next sync', S.list('reflection').length === 1, JSON.stringify(S.list('reflection')));
+  });
+  /* 2. more historical exercise rows than one pull takes: recovery resumes and only then counts as done */
+  var big = server(), gets = [];
+  for (var i = 0; i < 20001; i++) big.rows.push(row('h' + i, 'exercise', new Date(Date.parse('2026-01-01T00:00:00Z') + i * 60000).toISOString(), { activity: 'stretch', label: 'Stretching', variant: 'mild', code: '02101', met: 2.3, minutes: 5, intensity: 'light', strength: false, aerobic: true, note: '' }));
+  var v = world(big, function (url) { gets.push(url); }), SV = v.OvuStore, YV = v.OvuSync;
+  var b = YV.syncNow().then(function () {
+    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
+    check('a typed backlog over 20,000 rows is not marked recovered after the first pull', SV.list('exercise').length === 20000 && !st.types && !!st.typedSeq, JSON.stringify({ n: SV.list('exercise').length, types: st.types, typed: st.typedSeq }));
+    return YV.syncNow();
+  }).then(function () {
+    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
+    check('the next sync resumes from where it stopped, gets the last row, then marks the type known', SV.list('exercise').length === 20001 && st.types === SV.TYPES.join(',') && !st.typedSeq, JSON.stringify({ n: SV.list('exercise').length, types: st.types, typed: st.typedSeq }));
+  });
+  Promise.all([a, b]).catch(function (err) { check('the typed recovery tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */
 function scenes(todayIso) {
   var w = fresh(todayIso);

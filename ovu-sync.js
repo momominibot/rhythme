@@ -192,6 +192,7 @@
       return rest('GET', base + '&offset=' + offset, null, null, token).then(function (rows) {
         rows = rows || []; all = all.concat(rows);
         if (rows.length === PAGE && all.length < 20000) { offset += PAGE; return page(); }
+        all.truncated = rows.length === PAGE; /* stopped at the cap: more rows wait after the last one returned */
         return all;
       });
     }
@@ -218,6 +219,10 @@
          start. Only the new types: a full re-pull would bring back older entries someone deliberately cleared. */
       var knownTypes = (S.TYPES || []).join(','), before = st.types ? st.types.split(',') : Object.keys(CLOUD_TYPES_V1);
       var newTypes = st.pulledSeq ? (S.TYPES || []).filter(function (t) { return before.indexOf(t) < 0; }) : [];
+      /* the typed recovery keeps its own cursor (typedSeq) and never moves the shared one, so rows of other types
+         that arrive between the two requests are still pulled next time; it is resumable across syncs when the
+         backlog is larger than one pull, and only a pull that reached the end marks the new types as known */
+      var incRows = [], typedRows = [], typedDone = !newTypes.length;
       saveState(st); /* persist the activation/reset before any network call */
       /* before any row moves: read the account's own record (a withdrawal made on another phone is adopted here and stops
          the sync), then make sure this account has heard this phone's cloud choice (the server refuses writes it has not
@@ -232,8 +237,9 @@
       /* pull every row whose server arrival (synced_at) is after our cursor, in
          order and in pages, so a late-arriving older edit is never skipped */
       return pre.then(function () { return pullSince(st.pulledSeq, token); }).then(function (rows) {
+        incRows = rows;
         if (!newTypes.length) return rows;
-        return pullSince(null, token, newTypes).then(function (typed) { return mergeRows(rows, typed); });
+        return pullSince(st.typedSeq || null, token, newTypes).then(function (typed) { typedRows = typed; typedDone = !typed.truncated; return mergeRows(rows, typed); });
       }).then(function (remoteRows) {
         /* consent or sign-in may have changed during the network wait */
         if (!canSync() || a.userId() !== uid) { busy = false; setStatus('idle'); return { ok: false, reason: 'cancelled' }; }
@@ -260,7 +266,7 @@
           step = step.then(function () { return rest('PATCH', '/entries?id=eq.' + encodeURIComponent(d.id) + '&user_id=eq.' + uid, { deleted: true, deleted_at: d.deleted_at, updated_at: d.deleted_at }, 'return=minimal', token); });
         });
         return step.then(function () {
-          var seqMax = remoteRows.reduce(function (m, r) { return maxIso(m, r.synced_at); }, '');
+          var seqMax = incRows.reduce(function (m, r) { return maxIso(m, r.synced_at); }, ''); /* the shared cursor: all-type rows only */
           var upMax = pushedRows.reduce(function (m, r) { return maxIso(m, r.updated_at); }, ''); /* held rows did not go up */
           var delMax = plan.pushDel.reduce(function (m, d) { return maxIso(m, d.deleted_at); }, '');
           var remoteMax = remoteRows.reduce(function (m, r) { return maxIso(m, r.updated_at, r.deleted_at || ''); }, '');
@@ -272,7 +278,8 @@
           /* read-modify-write so a deletion made while this sync was in flight is kept */
           var cur = loadState(); cur.userId = uid;
           cur.pulledSeq = maxIso(cur.pulledSeq || '', seqMax) || cur.pulledSeq || null;
-          cur.types = knownTypes;
+          if (typedDone) { cur.types = knownTypes; delete cur.typedSeq; }
+          else cur.typedSeq = maxIso(cur.typedSeq || '', typedRows.reduce(function (m, r) { return maxIso(m, r.synced_at); }, '')) || cur.typedSeq || null;
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
           Object.keys(settled).forEach(function (id) { delete cur.tombstones[id]; });
           var held = cur.held || {};
