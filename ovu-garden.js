@@ -74,12 +74,34 @@
     zones: [[[50, 36], [92, 58], [50, 77], [8, 58]]],
     solids: [{ id: 'bench', x0: 22, x1: 44, y0: 38, y1: 50 }, { id: 'tree', x0: 12, x1: 26, y0: 40, y1: 48 }, { id: 'greenhouse', x0: 56, x1: 82, y0: 30, y1: 46 }, { id: 'pond', x0: 57, x1: 78, y0: 52, y1: 64 }, { id: 'planter', x0: 41, x1: 61, y0: 60, y1: 69 }, { id: 'can', x0: 39, x1: 47, y0: 65, y1: 70 }],
     doors: [{ id: 'gate', to: 'home', x: 29, y: 58, r: 5, flip: true }, { id: 'arch', to: 'street', x: 80, y: 55, r: 5, flip: false }],
-    meditator: { x: 33, y: 47, w: 11, seat: { x: 32.5, seatY: 45, groundY: 49.5, face: 'right' } }, aura: { x: 33, y: 45, w: 17 }, holo: { x: 43, y: 45, w: 14 },
+    meditator: { x: 33, y: 47, w: 11, seat: { x: 32.5, seatY: 45, groundY: 49.5, face: 'left' } }, aura: { x: 33, y: 45, w: 17 }, holo: { x: 43, y: 45, w: 14 },
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
     props: { cat: { x: 44, y: 57, w: 9 }, dog: { x: 66, y: 66, w: 9.5 }, mewmew: { x: 36, y: 66, w: 12 } }
   };
   var PLOT = { x: 51, y: 61, w: 15 };
-  G.LAYOUT = GARDEN; G.PLOT = PLOT;
+  /* watering from wherever is nearest (Jamie, 19 Oct: "my avatar dont have to come to the front of the plot to water,
+   * nearest surrounding will do wherever she stands"): the plot's stand point is worked out when it is tapped, as the
+   * walkable spot around the planter nearest to her, or where she already is if she is beside it, facing the plot */
+  var PLANTER = { x0: 41, x1: 61, y0: 60, y1: 69 }, PLOT_FRONT = { x: 50, y: 71.5, flip: false };
+  var PLOT_SIDES = [{ x: 50, y: 71.5 }, { x: 44, y: 71 }, { x: 57, y: 71 }, { x: 38.5, y: 64.5 }, { x: 63.5, y: 65.5 }, { x: 46, y: 58 }, { x: 52, y: 58 }];
+  function iso(a, b) { return Math.hypot(a.x - b.x, (a.y - b.y) / 0.5); }
+  function boxGap(p) { var dx = Math.max(PLANTER.x0 - p.x, 0, p.x - PLANTER.x1), dy = Math.max(PLANTER.y0 - p.y, 0, p.y - PLANTER.y1); return Math.hypot(dx, dy / 0.5); }
+  function faceFor(p) { return { x: p.x, y: p.y, flip: p.x > (PLANTER.x0 + PLANTER.x1) / 2 }; } /* flip: facing left, towards the plot */
+  function plotStand(pos, free) {
+    if (!pos) return PLOT_FRONT;
+    if (boxGap(pos) <= 5 && (!free || free(pos.x, pos.y))) return faceFor(pos); /* already beside it: water from here */
+    var best = null;
+    PLOT_SIDES.forEach(function (p) { if (free && !free(p.x, p.y)) return; if (!best || iso(pos, p) < iso(pos, best)) best = p; });
+    return best ? faceFor(best) : PLOT_FRONT;
+  }
+  var plotHot = GARDEN.hotspots.filter(function (h) { return h.id === 'plot'; })[0];
+  Object.defineProperty(plotHot, 'wp', { enumerable: true, configurable: true, get: function () {
+    var W = root.OvuWalk, R0 = root.OvuRoom;
+    if (!W || !R0 || !R0.layout || !R0.layout() || R0.layout().id !== 'garden') return PLOT_FRONT;
+    var pos = W.livePos ? W.livePos() : R0.pos();
+    return plotStand(pos, function (x, y) { return W.inZones(GARDEN.zones, x, y) && !W.blocked(GARDEN.solids, x, y); });
+  } });
+  G.LAYOUT = GARDEN; G.PLOT = PLOT; G.plotStand = plotStand; G.PLOT_SIDES = PLOT_SIDES;
   /* ---------- the scene ---------- */
   var R = root.OvuRoom; if (!R || !root.document || !root.document.createElement) return;
   var S = root.OvuStore, doc = root.document, ART = R.ART;
@@ -220,13 +242,24 @@
     R.showThought('🌸'); root.setTimeout(R.hideThought, 2600); R.toast(line, 'water');
     var wrap = R.els.props, rip = doc.createElement('div'); rip.className = 'ripple'; rip.setAttribute('aria-hidden', 'true'); rip.style.left = '68%'; rip.style.top = '58%'; rip.style.width = '14%'; wrap.appendChild(rip); root.setTimeout(function () { rip.remove(); }, 2200);
   }
+  /* the greenhouse holds the teas and herbs (Jamie, 19 Oct: "herbs and tea can be placed at the garden. Food diary
+   * mainly food"): every tea with what research says and who should take care, the ones for her phase first, and the
+   * herbs to check with a doctor or pharmacist about. Sources sit behind a small (i) (ovu-evinfo.js). */
   function openGreenhouse() {
     if (root.OvuWalk.napping()) return;
-    var H = root.OvuHerbs, cs = S.cycleStats(), teas = H ? H.forPhase(cs.mode === 'suspended' ? null : cs.phase) : []; /* every tea, the ones for this phase first */
-    R.openSheet('greenhouse', 'The greenhouse', 'Teas and herbs, with their evidence', 'local_florist',
-      '<p class="help">' + (cs.phase ? 'Picked for your ' + esc(cs.phase) + ' phase first.' : 'Pick what sounds kind today.') + ' Guidance, not a prescription; check with a clinician if you are pregnant, breastfeeding or on medicines.</p>' +
-      '<div class="teas">' + teas.map(function (t) { return '<div class="tea">' + (t.img ? '<img class="teaimg" src="' + R.ART + t.img + '" alt="">' : '<span class="ms">' + esc(t.icon || 'local_cafe') + '</span>') + '<div><b>' + esc(t.name) + '</b><span>' + esc(t.why) + '</span><small>' + esc(t.research) + '</small>' + (t.care ? '<em>' + esc(t.care) + '</em>' : '') + '</div></div>'; }).join('') + '</div>' +
-      (H && H.TAKE_CARE ? '<p class="help">' + esc(typeof H.TAKE_CARE === 'string' ? H.TAKE_CARE : '') + '</p>' : ''));
+    var H = root.OvuHerbs, E = root.OvuEvidence, cs = S.cycleStats(), phase = cs.mode === 'suspended' ? null : cs.phase;
+    var teas = H ? H.forPhase(phase) : [], care = H && Array.isArray(H.TAKE_CARE) ? H.TAKE_CARE : [];
+    var refs = function (ids) { return (ids || []).map(function (id) { var e = E && E.get(id); return e ? '<a href="evidence.html#' + id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + esc(id) + '</i></a>' : ''; }).join(''); };
+    R.openSheet('greenhouse', 'The greenhouse', 'Teas and herbs, with what research says', 'local_florist',
+      '<section class="dsec teas"><p class="help" style="margin:2px 0 8px">' + (phase ? 'The ones for your ' + esc(phase) + ' phase come first. ' : '') + 'Familiar comfort drinks, with what research says and who should take care. Comfort, not treatment.</p>' +
+      teas.map(function (t) {
+        return '<details class="tea"><summary>' + (t.img ? '<img class="teaimg" src="' + R.ART + t.img + '" alt="">' : '<span class="ms">' + esc(t.icon || 'local_cafe') + '</span>') +
+          '<span><b>' + esc(t.name) + '</b><small>' + esc(t.why) + '</small></span><span class="ms go">expand_more</span></summary>' +
+          '<div class="teabody"><p><b>What research says</b>' + esc(t.research) + '</p><p class="care"><b>Take care</b>' + esc(t.care) + '</p><p class="evrefs">' + refs(t.refs) + '</p></div></details>';
+      }).join('') +
+      (care.length ? '<div class="teacare"><b><span class="ms">health_and_safety</span>Check with a doctor or pharmacist first</b>' + care.map(function (c) { return '<p><b>' + esc(c.name) + '</b>' + esc(c.text) + ' <span class="evrefs">' + refs(c.refs) + '</span></p>'; }).join('') +
+        '<p class="help">Pregnant, breastfeeding, taking medicines (including the pill or blood thinners), or living with kidney, liver or heart disease? Ask before trying any herb. Stop if anything feels wrong.</p></div>' : '') +
+      '</section>');
   }
   /* hotspot handlers are consulted first by the room; each checks it is in the garden */
   function inGarden(L) { return L && L.id === 'garden'; }

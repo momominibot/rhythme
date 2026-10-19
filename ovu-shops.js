@@ -37,10 +37,10 @@
     solids: [{ id: 'platform', x0: 14, x1: 45, y0: 56, y1: 66 }, { id: 'block', x0: 40, x1: 56, y0: 54, y1: 62 }, { id: 'counter', x0: 22, x1: 38, y0: 66, y1: 78 }, { id: 'upleft', x0: 18, x1: 40, y0: 31, y1: 40 }, { id: 'upright', x0: 56, x1: 80, y0: 29, y1: 41 }],
     doors: [{ id: 'mat', to: 'street', x: 48, y: 76, r: 4, flip: false }],
     spots: { furniture: {
-      corner: [{ x: 18, y: 61, wp: { x: 40, y: 68, flip: true } }, { x: 26, y: 58.5, wp: { x: 40, y: 68, flip: true } }, { x: 34, y: 56.3, wp: { x: 40, y: 68, flip: true } }],
-      seat: [{ x: 45, y: 58.5, wp: { x: 48, y: 66, flip: true } }, { x: 51, y: 57, wp: { x: 48, y: 66, flip: false } }],
-      lamp: [{ x: 22, y: 38, wp: { x: 30, y: 41, flip: true } }, { x: 29, y: 35.6, wp: { x: 30, y: 41, flip: true } }, { x: 36, y: 33.2, wp: { x: 30, y: 41, flip: false } }],
-      other: [{ x: 60, y: 38.5, wp: { x: 68, y: 42, flip: true } }, { x: 68, y: 36, wp: { x: 68, y: 42, flip: false } }, { x: 76, y: 33.5, wp: { x: 68, y: 42, flip: false } }]
+      corner: [{ x: 21, y: 63.5, wp: { x: 40, y: 68, flip: true } }, { x: 29, y: 61.5, wp: { x: 40, y: 68, flip: true } }, { x: 36.5, y: 59.6, wp: { x: 40, y: 68, flip: true } }],
+      seat: [{ x: 51.5, y: 59, wp: { x: 48, y: 66, flip: true } }, { x: 58.5, y: 61.5, wp: { x: 48, y: 66, flip: false } }],
+      lamp: [{ x: 23.5, y: 40.2, wp: { x: 30, y: 41, flip: true } }, { x: 31, y: 38.8, wp: { x: 30, y: 41, flip: true } }, { x: 38.5, y: 37.3, wp: { x: 30, y: 41, flip: false } }],
+      other: [{ x: 66, y: 39.6, wp: { x: 68, y: 42, flip: true } }, { x: 73.5, y: 41.4, wp: { x: 68, y: 42, flip: false } }, { x: 80.5, y: 43.2, wp: { x: 68, y: 42, flip: false } }]
     } },
     meditator: { x: 48, y: 72, w: 11 }, aura: { x: 48, y: 70, w: 17 }, holo: { x: 58, y: 70, w: 14 }, sleeper: NOSLEEP, zzz: OFF, window: NOWIN,
     props: {}

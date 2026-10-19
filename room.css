@@ -480,10 +480,11 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .quick .qpen{border:none;border-left:1px solid rgba(107,82,142,.12);background:var(--rm-paper-2);color:var(--rm-mauve);width:30px;align-self:stretch;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .quick .qpen .ms{font-size:15px}
 .quick .qpen:hover{background:var(--rm-lilac-2)}
-.composer{display:flex;gap:8px;margin-top:8px}
+.composer{display:flex;gap:8px;margin-top:8px;align-items:flex-end}
 .composer .input{flex:1}
-.composer button{flex:0 0 auto;width:46px;border-radius:14px}
-.composer .lphoto{flex:0 0 auto;width:46px;min-width:0;padding:0;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.composer textarea.input{min-height:84px;max-height:168px;resize:none;overflow-y:auto;font-size:16px;line-height:1.45;padding:12px 14px}
+.composer button{flex:0 0 auto;width:46px;height:46px;border-radius:14px}
+.composer .lphoto{flex:0 0 auto;width:46px;height:46px;min-width:0;padding:0;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .bub.me.photo{padding:4px;background:var(--rm-mauve)}
 .lphoto-img{display:block;width:150px;max-width:100%;border-radius:12px}
 .bub.foodlog{max-width:100%}
@@ -1339,6 +1340,7 @@ body.btap-open{overflow:hidden}
 .teaimg{width:64px;height:64px;object-fit:contain;flex:none;filter:drop-shadow(0 4px 6px rgba(90,66,116,.18))}
 .tea summary>.teaimg{width:40px;height:40px}
 .teas .tea{display:flex;gap:12px;align-items:flex-start}
+.teas details.tea{display:block}                          /* a foldable tea card stacks its summary over its body; the flex row is for the plain tea rows */
 
 /* Jamie, 18 Oct 23:35: the joystick is gone (tap-to-walk replaces it); until the walk cycle lands, walking is a gentle step bob, not a hop */
 .walkpad{display:none!important}
@@ -1427,3 +1429,8 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .street .store .hours{color:var(--rm-ok)}
 .street .store.closed .hours{color:var(--rm-ink-3)}
 .street .store.closed img{filter:grayscale(.4) opacity(.8)}
+
+/* evidence behind a small (i) (ovu-evinfo.js): the chips stay folded until the (i) is tapped */
+.evrefs.evhide{display:none!important}
+.ibtn.evi{display:inline-flex;vertical-align:1px;margin-left:5px}
+.teacare p .evrefs:not(.evhide),.teabody .evrefs:not(.evhide),.acuuse .evrefs:not(.evhide){margin-top:6px}

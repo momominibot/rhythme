@@ -1,7 +1,6 @@
 /* ovu-camera.js: the camera follows her. The scene box is a window onto the plate; as she walks, the window keeps her
  * near its middle, with a dead zone so a small move leaves the view still and exponential smoothing so the view never
- * jumps. The home layouts open with the whole room in view (zoom 1, every hotspot a tap away); the garden, the street,
- * the plaza and the store interiors open closer (zoom 1.6). A drag, a pinch or a double tap takes the camera over until
+ * jumps. Every scene opens with the whole plate in view (zoom 1, every hotspot a tap away; Jamie, 19 Oct). A drag, a pinch or a double tap takes the camera over until
  * her next walk; + and − zoom about her; fit shows the whole scene. It only drives the transform room.js already keeps
  * on #sceneInner, so taps, hotspots and props never need to know the camera moved. The HUD, the visit bar, the top bar,
  * the greeting, the phase chip and the hint are lifted out of the plate into the box at mount, so the window never crops them.
@@ -9,7 +8,7 @@
  * DOM, so tools/test-core.js can load this file and check it. */
 (function (root) {
   'use strict';
-  var ZOOM_OUT = 1.6, ZOOM_HOME = 1;              /* default zoom by scene; a layout may carry its own cam: { z } */
+  var ZOOM_OUT = 1, ZOOM_HOME = 1;                /* every scene opens fitted to the screen (Jamie, 19 Oct: "always zoomed out fit to screen"); + still zooms in; a layout may carry its own cam: { z } */
   var SCREEN = { x: 0.5, y: 0.58 };               /* where on the box her feet are held: centred, a little below the middle */
   var DEAD = { x: 0.06, y: 0.05 };                /* dead zone, a fraction of the box each side of that point */
   var TAU = 0.16, REST = 600, EPS = 0.3;          /* smoothing time constant (s), idle time before the loop sleeps (ms), settle tolerance (px) */

@@ -168,13 +168,13 @@ async def main():
             after = await page.evaluate("()=>({pos: OvuRoom.pos(), layout: document.querySelector('#scene').dataset.layout, walking: OvuWalk.walking(), tf: document.querySelector('#avatar').style.transform})")
             check("a floor tap in the garden walks her from the gate to the lawn and commits the position", abs(after["pos"]["x"] - 50) < 1.5 and abs(after["pos"]["y"] - 52) < 1.5 and after["layout"] == "garden" and not after["walking"] and after["tf"] == "" and abs(before["x"] - 50) > 4, {"before": before, "after": after})
             cam = await page.evaluate(CAM)
-            check("the room keeps the whole view (zoom 1); the garden opens through a closer window (zoom 1.6) that moved with her and holds her feet near the middle of the box", home_tf == "" and cam["zoomed"] and abs(cam["z"] - 1.6) < 0.01 and cam["tf"] != tf0 and not cam["held"] and 0.3 < cam["sx"] < 0.72 and 0.4 < cam["sy"] < 0.78, {"home_tf": home_tf, "tf0": tf0, "cam": cam})
+            check("every scene keeps the whole view: the room and the garden both stay at zoom 1, fitted to the screen, while she walks", home_tf == "" and not cam["zoomed"] and abs(cam["z"] - 1) < 0.01 and cam["tf"] == "" and tf0 == "", {"home_tf": home_tf, "tf0": tf0, "cam": cam})
             await page.keyboard.down("ArrowLeft"); await page.wait_for_timeout(400); await page.keyboard.up("ArrowLeft"); await page.wait_for_timeout(150)
             key = await page.evaluate("()=>({pos: OvuRoom.pos(), flip: document.querySelector('#avatar').classList.contains('flip')})")
             check("the left arrow key walks her back from the lawn and turns her around", key["pos"]["x"] < after["pos"]["x"] - 1 and key["flip"], key)
-            await page.click("#camFit"); await page.wait_for_timeout(450); fit = await page.evaluate(CAM)
+            fit = await page.evaluate("()=>Object.assign((" + CAM + ")(), {fitOff: document.querySelector('#camFit').disabled})")
             await page.click("#camIn"); await page.wait_for_timeout(900); zin = await page.evaluate(CAM)
-            check("fit shows the whole garden; + brings the window back around her", fit["tf"] == "" and not fit["zoomed"] and zin["zoomed"] and zin["z"] > 1.4 and 0.25 < zin["sx"] < 0.72 and 0.35 < zin["sy"] < 0.8, {"fit": fit, "zin": zin})
+            check("the garden already shows the whole scene (fit has nothing to do); + brings a closer window around her", fit["tf"] == "" and not fit["zoomed"] and fit["fitOff"] and zin["zoomed"] and zin["z"] > 1.4 and 0.25 < zin["sx"] < 0.72 and 0.35 < zin["sy"] < 0.8, {"fit": fit, "zin": zin})
             box = await page.evaluate("()=>{var b=document.querySelector('#scene').getBoundingClientRect(); return {l:b.left,t:b.top,w:b.width,h:b.height}}")
             await page.mouse.move(box["l"] + box["w"] * 0.15, box["t"] + box["h"] * 0.22); await page.mouse.down()
             for k in range(1, 9):
@@ -391,6 +391,26 @@ async def main():
             seat = await page.evaluate("()=>{var el=document.querySelector('.nb.sitter'); var img=el&&el.querySelector('img'); return {there: !!el, src: img&&img.getAttribute('src'), seated: !!(img&&img.classList.contains('seated')), layout: document.querySelector('#scene').dataset.layout}}")
             check("on the garden bench she sits in her own clothes (avatar-sit-base), not in the cross-legged mat pose", seat["there"] and seat["seated"] and seat["src"] == "assets/room/dream/avatar-sit-base.webp" and seat["layout"] == "garden", seat)
             await page.mouse.click(30, 700); await page.wait_for_timeout(400)
+            # teas and herbs live in the garden greenhouse; every source list sits behind a small (i)
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
+            await page.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuWalk.travel('garden');}")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
+            except Exception: pass
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('greenhouse'))")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] .teacare .ibtn.evi', timeout=10000)
+            except Exception: pass
+            gh = await page.evaluate("""()=>({teas: document.querySelectorAll('#sheet .tea').length, cautions: document.querySelectorAll('#sheet .teacare p b').length,
+                shownChips: [...document.querySelectorAll('#sheet .evrefs a')].filter(a=>a.offsetParent).length, infos: document.querySelectorAll('#sheet .ibtn.evi').length,
+                label: (document.querySelector('#sheet .teacare .ibtn.evi')||{}).getAttribute && document.querySelector('#sheet .teacare .ibtn.evi').getAttribute('aria-label')})""")
+            await page.click('#sheet .teacare .ibtn.evi')
+            await page.wait_for_timeout(200)
+            op = await page.evaluate("()=>{var b=document.querySelector('#sheet .teacare .ibtn.evi'); var r=document.getElementById(b.getAttribute('aria-controls')); var a=r.querySelector('a'); return {expanded: b.getAttribute('aria-expanded'), shown: !!r.offsetParent, href: a && a.getAttribute('href'), text: a && a.textContent}}")
+            await page.click('#sheet .teacare .ibtn.evi'); await page.wait_for_timeout(150)
+            shut = await page.evaluate("()=>{var b=document.querySelector('#sheet .teacare .ibtn.evi'); return !document.getElementById(b.getAttribute('aria-controls')).offsetParent}")
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            check("the garden greenhouse lists every tea and the doctor-or-pharmacist cautions, with all sources folded behind small (i) buttons", gh["teas"] >= 15 and gh["cautions"] >= 5 and gh["shownChips"] == 0 and gh["infos"] >= 20 and gh["label"] == "Source for St John’s wort", gh)
+            check("an (i) opens its sources (a link into the evidence register) and closes them again", op["expanded"] == "true" and op["shown"] and (op["href"] or "").startswith("evidence.html#E") and shut, op)
+
             # the staff page: signed out it shows the sign-in gate only, no dashboard, no data call
             await page.goto(BASE + "admin.html", wait_until="networkidle"); await page.wait_for_timeout(500)
             ag = await page.evaluate("()=>({h2: (document.querySelector('h2')||{}).textContent, email: !!document.querySelector('#gEmail'), send: !!document.querySelector('#gSend'), nav: !!document.querySelector('nav.tabs')})")

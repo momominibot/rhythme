@@ -63,7 +63,7 @@
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
     props: {}
   };
-  var BENCH2 = { sit: { x: 72, y: 59, w: 11, seat: { x: 71.5, seatY: 60, groundY: 63.5, face: 'right' } }, holo: { x: 82, y: 58, w: 14 }, back: { x: 62, y: 62, flip: false } };
+  var BENCH2 = { sit: { x: 72, y: 59, w: 11, seat: { x: 71.5, seatY: 60, groundY: 63.5, face: 'left' } }, holo: { x: 82, y: 58, w: 14 }, back: { x: 62, y: 62, flip: false } };
   C.LAYOUT = PLAZA; C.BENCH2 = BENCH2;
   /* ---------- the scene ---------- */
   var R = root.OvuRoom; if (!R || !root.document || !root.document.createElement) return;
