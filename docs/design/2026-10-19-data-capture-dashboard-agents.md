@@ -149,3 +149,25 @@ Decisions only Jamie can make (from both reviews): whether the improvement choic
 ### Follow-up the same day (migration `20261019040000_team_dashboard_floor`, applied 19 Oct)
 
 The parent session built the "help improve logging" switch on its branch (unpushed until Jamie approves the sentences). Its review raised three points, all applied: the readiness finding and the feed never print an exact count of eligible adults between 1 and 19 (it reads "fewer than 20"; value and people are both null and the run summary carries `under_floor`), the copy no longer says the switch is not built, and `analysis_consent_set` takes an optional `p_expected_updated_at` so a phone holding an older row cannot overwrite a newer choice from another phone (refused with SQLSTATE 40001). Verified in a rolled-back session as the owner's account: opt-in, stale precondition refused, run reads "fewer than 20 eligible adults", withdrawal with a matching precondition. `history_scope` is only ever set by the app ('from_now'); no staff function changes it.
+
+## 11. End-to-end check of the diary path (19 October, evening)
+
+Run on the live project inside one transaction that rolled itself back (nothing kept): 22 synthetic adult accounts
+each recorded a cloud-backup choice (`consent_record('cloud_sync', 'grant', ...)`, as the parent's new front end does)
+and backed up 12 entries under their own account through the same row rules as the app's sync (264 rows); 21 of them
+turned on "help improve logging" (`consent_record('improve_logging', ...)` and `analysis_consent_set`). Results:
+
+| Check | Result |
+|---|---|
+| A person reads her own rows only | person 1 sees 12 rows |
+| A person asking for the staff overview | refused: "This page is for Rhythme staff." |
+| Owner's run: eligible adults | 21, measured (floor 20) |
+| Period days, nights, meals, practice minutes | 63, 105, 63, 105 (21 people each); the 22nd person's rows excluded |
+| Symptom days (none recorded) | held back as insufficient |
+| Overview counts | 22 accounts with a cloud copy, 21 opted in |
+| `consent_allows(uid, 'improve_logging')` | true for an opted-in person, false for the 22nd |
+
+**Found on the way:** the consent guard live on the project (`20261019070000_consent_guard_v3`, the parent's) refuses
+the first backup of any account with no cloud-backup choice on record and no earlier backup. The front end on main
+does not record that choice yet, so a new account turning on backup on the live site fails until the parent's consent
+front end ships. Reported to the parent session; it is their call.

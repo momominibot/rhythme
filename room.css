@@ -1427,3 +1427,20 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .street .store .hours{color:var(--rm-ok)}
 .street .store.closed .hours{color:var(--rm-ink-3)}
 .street .store.closed img{filter:grayscale(.4) opacity(.8)}
+
+/* plaza servers (ovu-plaza.js): a pill in screen space while she is in the plaza, and the chooser sheet */
+.plazapill{position:absolute;left:10px;top:12px;z-index:7;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 120px);padding:7px 12px 7px 9px;border:1.5px solid rgba(255,255,255,.9);border-radius:99px;background:rgba(255,255,255,.86);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(80,50,110,.14);font:800 12px var(--sans);color:var(--rm-ink);cursor:pointer}
+.plazapill[hidden]{display:none}
+.plazapill .ms{font-size:17px;color:var(--rm-mauve,#8a6aa6)}
+.plazapill .pt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plazapill.in{background:rgba(236,226,250,.94)}
+.plazalist{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.plazarow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:var(--rm-lilac-2,#efe7fa)}
+.plazarow.here{outline:2px solid var(--rm-mauve,#8a6aa6)}
+.plazarow>.ms{font-size:20px;color:var(--rm-plum,#5b3f7a)}
+.plazarow .pn{flex:1;display:flex;flex-direction:column;min-width:0}
+.plazarow .pn b{font:800 14px var(--sans)}
+.plazarow .pn small{font:600 12px var(--sans);opacity:.75}
+.plazarow .btn{flex:0 0 auto;padding:9px 14px}
+.plazarow .btn[disabled]{background:transparent;color:var(--rm-plum,#5b3f7a);box-shadow:none;cursor:default}
+#plazaLeaveRow[hidden]{display:none}

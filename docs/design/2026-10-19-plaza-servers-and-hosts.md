@@ -73,3 +73,52 @@ moderation and the law, and the room so far keeps everything on the phone.
 
 Phase one is a few days; the full set is two to three weeks of evenings. The host voice needs a model call each
 reply; the choice of model and its monthly cap is Jamie's.
+
+## Phase 1 built (19 October 2026, branch `claude/plaza-servers`)
+
+Jamie: "I want to make sure the channel server works and data can flows to our login dashboard."
+
+- **Server** (`supabase/migrations/20261019080000_plaza_presence.sql` and `20261019090000_plaza_presence_v2.sql`, both applied the same day): three
+  plazas (Orchard, Tiong Bahru, Punggol, room for 24 each) in `plaza_servers`; one row per signed-in account in
+  `plaza_presence` while she is in a plaza; `staff.plaza_daily` keeps joins and the peak per Singapore day with no
+  account ids. Calls: `plaza_list`, `plaza_join` (since v2 every call first takes one global advisory lock and sweeps
+  quiet rows, so capacity holds and two joins cannot deadlock; a full plaza answers with one that has room), `plaza_beat` (every 25 s; after 75 s of quiet she is no longer
+  counted and must join again, which checks capacity again), `plaza_leave(p_server)` (removes only the named plaza). All four need a signed-in account; the
+  tables are closed to the app's roles. Staff read counts through `admin_plaza`, audited like every other staff call.
+- **Phone** (`ovu-plaza.js`): a pill in the plaza ("Choose a plaza · 34 online", then "Orchard · 8 people here"), a
+  chooser sheet with each plaza's count and Join, Full or You're here, and a Leave button. Walking out of the plaza,
+  putting the app away, going to sleep or signing out takes her out; her choice is remembered and she rejoins when
+  she walks back in. Signed out, nothing is sent; the pill says "Plazas · sign in to join".
+- **Dashboard** (`admin.js`): a Plazas card on Today with people in each plaza now, the peak and joins today, and a
+  14-day table, refreshed every 20 seconds.
+- **Hosts and chat** are phases 2 and 3; nothing here talks or pretends to be a person. The sample neighbours stay
+  labelled as samples.
+
+Verified: a rolled-back transaction on the live database with 26 synthetic accounts (24 fill Orchard, the 25th is
+refused and pointed to Tiong Bahru, a move frees a seat, a quiet phone is asked to rejoin, Leave removes the row,
+signed-out callers are refused on every call and on the table, a non-staff caller of the staff call is refused and
+audited, the owner sees counts only); live calls with the publishable key alone are refused (401); the core suite
+(plaza words) and the smoke suite (signed-out pill; a signed-in run against a fake plaza server: count, chooser,
+join, full refusal, check-in, Leave, walking out and back, sleep; the staff card) pass.
+
+### Review record (Codex, two rounds, 19 October)
+
+Round one asked for changes; the second cut (migration v2, the reconciling client, the disclosure, the stale staff
+card) resolved the deadlock, cleanup, named leave, sign-out leave for a settled membership, focus, staff staleness and
+ownership. Round two still found, and this is where the work stops for Jamie's decision (AGENTS gate 6, a second
+failed review on the same lifecycle finding):
+
+- signing out while a join is on its way leaves her counted until the 75 s lapse;
+- the same account on two phones in different plazas keeps moving itself between them every check-in;
+- a pagehide leave can, after a back/forward-cache restore, remove a newer visit to the same plaza (self-heals on the
+  next check-in);
+- a stalled token refresh or keepalive leave can leave the phone's loop waiting with no deadline (a reload clears it);
+- the day's peak is sampled by joins and check-ins, so people who all leave just after midnight are missed;
+- the staff card's first request blocks the other dashboard timers until it settles, and an older reply can overwrite
+  a newer one;
+- the notice does not say how long the daily join and peak counts (no account attached) are kept.
+
+The proposed fix for the next round: a visit id issued by `plaza_join` and required by beat and leave (a lease), so a
+late or duplicate request can only touch its own visit and a displaced phone stops instead of reclaiming; one
+departure path for hide, pagehide, sleep and sign-out; one deadline around token, request and keepalive; the staff
+card on its own timer with ordered replies; daily counts kept for a year and said so.

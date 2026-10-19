@@ -6,6 +6,7 @@
   'use strict';
   var CFG = root.OVU_CONFIG || {}, A = root.OvuAuth, doc = root.document;
   var app = doc.getElementById('app');
+  var plaza = null, plazaOk = 0, plazaBad = false; /* admin_plaza: people in each plaza now, and the daily joins and peak (counts only) */
   var me = null, tab = 'today', ov = null, feed = [], feedTop = 0, findings = null, proposals = null, admins = null, audit = null, timers = [];
   var AGENTS = {
     cycle: { name: 'Menstrual', color: 'a-cycle', owns: 'period and symptom days, recorded period starts, intervals between starts, prediction mode availability', excludes: 'spotting and flow none never start a cycle; missing logs are not missing periods; recalled and imported history stay separate' },
@@ -76,6 +77,7 @@
       tile('Accounts', String(c.accounts == null ? '–' : c.accounts), (c.accounts_with_cloud_copy || 0) + ' with a cloud copy') +
       tile('Improvement opt-in', String(c.consent_active == null ? '–' : c.consent_active), eligText(c.consent_eligible, ov.floor)) +
       '</div>' + (blocked.length ? '<div class="note"><b>Model runs are blocked.</b> ' + esc(blocked[0].error) + ' An owner clears it on the Queue tab; nothing retries by itself.</div>' : '') + '</div>';
+    html += plazaCard();
     html += '<div class="card"><h2>Diary streams<span>floor ' + esc(ov.floor) + ' people</span></h2>';
     if (!elig.state || elig.state === 'not_enabled') html += '<div class="note"><b>Not enabled.</b> Nobody has turned on the separate “help improve logging” choice yet, so the agents may not read any diary rows. Local-only diaries are never visible here. What exists: ' + esc(c.accounts_with_cloud_copy || 0) + ' account' + ((c.accounts_with_cloud_copy || 0) === 1 ? '' : 's') + ' with a cloud copy, kept private to their owners.</div>';
     else if (elig.state === 'insufficient') html += '<div class="note"><b>Insufficient contributors.</b> Fewer than ' + esc(ov.floor) + ' eligible adults have opted in; values stay held back until the floor is reached.</div>';
@@ -87,6 +89,28 @@
     panel(html);
     var b = doc.getElementById('runNow'); if (b) b.addEventListener('click', runNow);
   }
+  /* ---------- Plazas: who is online where, by count; no names, no account ids ---------- */
+  function sgDay(d) { try { return (d || new Date()).toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' }); } catch (e) { return new Date().toISOString().slice(0, 10); } }
+  function plazaCard() {
+    if (!plaza) return '<div class="card" id="plazaCard"><h2>Plazas<span>people online now</span></h2><p class="empty">Loading…</p></div>';
+    var now = plaza.now || [], days = plaza.days || [], today = plaza.today || sgDay(); /* the database's own Singapore date */
+    var total = now.reduce(function (a, s) { return a + (Number(s.people) || 0); }, 0);
+    var tiles = now.map(function (s) {
+      var d = days.filter(function (x) { return x.day === today && x.server === s.id; })[0] || {};
+      return tile(s.name, (s.open === false ? 'Closed' : s.people + ' of ' + s.capacity), 'peak ' + (d.peak || 0) + ' today · ' + (d.joins || 0) + ' ' + ((d.joins || 0) === 1 ? 'join' : 'joins'));
+    }).join('');
+    var byDay = {}; days.forEach(function (x) { var b = byDay[x.day] || (byDay[x.day] = { joins: 0, peak: 0, top: '' }); b.joins += Number(x.joins) || 0; if ((Number(x.peak) || 0) > b.peak) { b.peak = Number(x.peak) || 0; b.top = x.server; } });
+    var names = {}; now.forEach(function (s) { names[s.id] = s.name; });
+    var rows = Object.keys(byDay).sort().reverse().slice(0, 14);
+    var table = rows.length ? '<table class="tbl" id="plazaDays"><tr><th>Day</th><th>Joins</th><th>Busiest</th></tr>' + rows.map(function (k) { var b = byDay[k]; return '<tr><td>' + esc(k) + '</td><td>' + esc(b.joins) + '</td><td>' + esc((names[b.top] || b.top) + ' · ' + b.peak) + '</td></tr>'; }).join('') + '</table>' : '<p class="empty">Nobody has joined a plaza yet.</p>';
+    var at = plaza.at ? new Date(plaza.at) : null, hm = at ? at.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Singapore' }) : '';
+    var stale = plazaBad || (plazaOk && Date.now() - plazaOk > 60000);
+    var head = stale ? '<span class="stale">not updated since ' + esc(hm) + '</span>' : '<span>' + esc(total) + ' online · ' + esc(hm) + '</span>';
+    return '<div class="card" id="plazaCard"><h2>Plazas' + head + '</h2>' + (stale ? '<div class="note"><b>Not current.</b> The last refresh did not come back; the numbers below are from ' + esc(hm) + '. It tries again every 20 seconds.</div>' : '') + '<div class="tiles">' + tiles + '</div>' + table +
+      '<p class="srv">Counts only. A person is counted while her phone checks in (every 25 s). Leaving, closing the app, sleeping or signing out normally takes her out at once; if that message is lost she stops being counted after 75 s. Joins count arrivals, so someone who leaves and comes back counts twice. No names or account ids reach this page.</p></div>';
+  }
+  function redrawPlaza() { if (tab === 'today' && doc.getElementById('plazaCard')) doc.getElementById('plazaCard').outerHTML = plazaCard(); }
+  function loadPlaza() { return rpc('admin_plaza', { p_days: 14 }).then(function (j) { if (denied(j) || !j || !j.now) { plazaBad = true; redrawPlaza(); return; } plaza = j; plazaOk = Date.now(); plazaBad = false; redrawPlaza(); }).catch(function () { plazaBad = true; redrawPlaza(); }); }
   function eligText(n, floor) { n = Number(n || 0); floor = Number(floor || 20); return (n === 0 ? '0' : n < floor ? 'fewer than ' + floor : String(n)) + ' eligible adults'; }
   function tile(l, v, s) { return '<div class="tile"><div class="l">' + esc(l) + '</div><div class="v' + (String(v).length > 9 ? ' small' : '') + '">' + esc(v) + '</div><div class="s">' + esc(s) + '</div></div>'; }
   function runNow() {
@@ -203,12 +227,13 @@
     return rpc('admin_me').then(function (j) {
       if (!j || !j.admin) return staffOnly();
       me = j; shell(); render();
-      return Promise.all([loadOverview(), loadFeed(true)]).then(function () {
+      return Promise.all([loadOverview(), loadFeed(true), loadPlaza()]).then(function () {
         timers.push(setInterval(function () { if (!doc.hidden) loadFeed(false); }, 10000));
         timers.push(setInterval(function () { if (!doc.hidden) loadOverview(); }, 30000));
+        timers.push(setInterval(function () { if (!doc.hidden) loadPlaza(); }, 20000));
       });
     }).catch(function (e) { gate('Could not check your account: ' + e.message, true); });
   }
-  doc.addEventListener('visibilitychange', function () { if (!doc.hidden && me) { loadFeed(false); loadOverview(); } });
+  doc.addEventListener('visibilitychange', function () { if (!doc.hidden && me) { loadFeed(false); loadOverview(); loadPlaza(); } });
   boot();
 })(window);

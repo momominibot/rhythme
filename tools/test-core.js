@@ -780,6 +780,19 @@ function scenes(todayIso) {
   check('the three stores keep different hours and the hours helper reads a date', ST.hoursFor('pet')[0] === 10 && ST.hoursFor('furniture')[0] === 11 && ST.hoursFor('home')[0] === 9 && !ST.openAt('pet', new Date(2026, 9, 19, 8, 30)) && ST.openAt('pet', new Date(2026, 9, 19, 12, 0)) && !ST.openAt('pet', new Date(2026, 9, 19, 19, 0)) && ST.openAt('home', new Date(2026, 9, 19, 9, 0)) && ST.hoursText('furniture') === '11 am to 9 pm');
 })();
 
+/* ---------- plaza servers (ovu-plaza.js): the words a person sees; the server rules are tested in the database ---------- */
+(function plazaWords() {
+  console.log('plaza servers: counts read like a person would say them; full plazas point to one with room');
+  var w = fresh('2026-10-19');
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-plaza.js'), 'utf8'), w, { filename: 'ovu-plaza.js' });
+  var P = w.OvuPlaza;
+  check('counts: nobody, one person, many; and just you once she is in', P.countText(0) === 'nobody here yet' && P.countText(1) === '1 person here' && P.countText(7) === '7 people here' && P.countText(1, true) === 'just you for now' && P.countText(3, true) === '3 people here');
+  check('a plaza row says how full it is, Full at capacity, Closed when shut', P.roomText({ people: 3, capacity: 24 }) === '3 of 24 here' && P.roomText({ people: 24, capacity: 24 }) === '24 of 24, full' && P.roomText({ people: 0, capacity: 24, open: false }) === 'Closed for now');
+  check('the pill: sign in when signed out, a total when choosing, her plaza and its count once in', P.pillText({ signedIn: false }) === 'Plazas · sign in to join' && P.pillText({ signedIn: true, servers: [{ people: 2 }, { people: 3 }] }) === 'Choose a plaza · 5 online' && P.pillText({ signedIn: true, joined: { name: 'Orchard', people: 1 } }) === 'Orchard · just you for now' && P.pillText({ signedIn: true, joined: { name: 'Orchard', people: 4 }, offline: true }) === 'Orchard · reconnecting');
+  check('a full plaza names one with room, or says to try later', P.fullText({ name: 'Orchard', suggest: { name: 'Punggol' } }) === 'Orchard is full right now. Punggol has room.' && P.fullText({ name: 'Orchard' }) === 'Orchard is full right now. Try again in a little while.');
+  check('the module stands down without a room page and sends nothing', typeof P.join === 'undefined' && typeof P.state === 'undefined');
+})();
+
 (function ledgerAccounting() {
   console.log('hearts accounting: a record earns once, Moon Tap caps per day, gifts never repeat, two pets at home');
   var w = fresh(), RW = w.OvuRewards, S = w.OvuStore, T = w.OvuBreathTap;
