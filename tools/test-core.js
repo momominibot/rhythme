@@ -720,7 +720,9 @@ function scenes(todayIso) {
   check('the four-week summary counts the sessions inside a brought-in day, not the entry', A.fourWeekSummary('2025-06-10').mindfulness.sessions === 2 && A.fourWeekSummary('2025-06-10').mindfulness.minutes === 30, JSON.stringify(A.fourWeekSummary('2025-06-10').mindfulness));
   var e = S.list('mindfulness')[0];
   S.update(e.id, { date: '2025-06-03' });
-  check('moving an imported entry to another date makes it hers, so Remove keeps it', S.get(e.id).source === 'room' && H.removeImported(S) === 0);
+  check('moving an imported entry to another date makes it hers, so Remove keeps it', S.get(e.id).source === 'room' && H.removeImported(S) === 0);  var w2 = fresh('2026-10-18'), H2 = w2.OvuHealth, S2 = w2.OvuStore, RW2 = w2.OvuRewards, before = JSON.stringify(RW2.ledger());
+  H2.apply(H2.parseAppleXml(fs.readFileSync(path.join(root, 'tools/fixtures/apple-export-mini.xml'), 'utf8')), S2);
+  check('bringing data in earns no hearts and leaves the hearts ledger untouched (checkpoints 18, 22, 33)', S2.list().length > 0 && JSON.stringify(RW2.ledger()) === before, JSON.stringify({ n: S2.list().length, before: before, after: RW2.ledger() }));
 })();
 
 /* The zip path is asynchronous (slices read through Blob.arrayBuffer), so it runs last and prints the totals. */
