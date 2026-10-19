@@ -645,37 +645,66 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   Promise.all([t1, t2]).catch(function (err) { check('the sync edge-case tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
+/* A small pretend PostgREST /entries endpoint for the sync tests. It reads only the query forms the app sends (the
+   synced_at cursor as gt or gte, the (synced_at, id) keyset `or` with quoted values, the type filter, id=gt, the two
+   orders, limit and offset) and throws on anything else, so a new query shape cannot slip past it unread. synced_at
+   is compared as an instant to the microsecond, as Postgres does, whatever its spelling ('...Z' or '+00:00'); ids
+   compare as text, the same order the server uses for both the sort and the id.gt filter. */
+function syncServer() {
+  var rows = [], memo = {};
+  function micros(s) {
+    if (memo[s] !== undefined) return memo[s];
+    var m = /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,6}))?(Z|[+-]\d\d:\d\d)$/.exec(String(s));
+    if (!m) throw new Error('pretend server: not a timestamp: ' + s);
+    return (memo[s] = Date.parse(m[1] + m[3]) * 1000 + Number(((m[2] || '') + '000000').slice(0, 6)));
+  }
+  var V = '("(?:[^"\\\\]|\\\\.)*"|[^,()"]*)';
+  var KEYSET = new RegExp('^\\(synced_at\\.gt\\.' + V + ',and\\(synced_at\\.eq\\.' + V + ',id\\.gt\\.' + V + '\\)\\)$');
+  function unq(v) { return v.charAt(0) === '"' ? v.slice(1, -1).replace(/\\(.)/g, '$1') : v; }
+  function byId(a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; }
+  return {
+    rows: rows,
+    get: function (url) {
+      var keep = [], order = null, lim = 1000, off = 0;
+      new URLSearchParams(url.split('?')[1] || '').forEach(function (v, k) {
+        var m;
+        if (k === 'select') return;
+        if (k === 'limit') { lim = Number(v); return; }
+        if (k === 'offset') { off = Number(v); return; }
+        if (k === 'order' && (v === 'id.asc' || v === 'synced_at.asc,id.asc')) { order = v; return; }
+        if (k === 'synced_at' && (m = /^(gt|gte)\.(.+)$/.exec(v))) { var t = micros(m[2]), gte = m[1] === 'gte'; keep.push(function (r) { var x = micros(r.synced_at); return gte ? x >= t : x > t; }); return; }
+        if (k === 'or' && (m = KEYSET.exec(v))) { var a = micros(unq(m[1])), b = micros(unq(m[2])), last = unq(m[3]); keep.push(function (r) { var x = micros(r.synced_at); return x > a || (x === b && r.id > last); }); return; }
+        if (k === 'type' && (m = /^in\.\(([^)]*)\)$/.exec(v))) { var types = m[1].split(','); keep.push(function (r) { return types.indexOf(r.type) > -1; }); return; }
+        if (k === 'id' && (m = /^gt\.(.+)$/.exec(v))) { var g = m[1]; keep.push(function (r) { return r.id > g; }); return; }
+        throw new Error('pretend server: unknown query ' + k + '=' + v);
+      });
+      var out = rows.filter(function (r) { return keep.every(function (f) { return f(r); }); });
+      out.sort(order === 'id.asc' ? byId : function (a, b) { return micros(a.synced_at) - micros(b.synced_at) || byId(a, b); });
+      return out.slice(off, off + lim);
+    }
+  };
+}
+/* a signed-in phone with cloud backup on, talking to `srv`; `state` is its saved sync position (null: a new phone,
+   undefined: an older version's millisecond cursor at 10:00 on 19 Oct) */
+function syncWorld(srv, onGet, state) {
+  var w = fresh(), S = w.OvuStore;
+  w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
+  S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+  var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
+  w.fetch = function (url, opt) {
+    var m = (opt && opt.method) || 'GET';
+    if (m === 'GET' && /\/entries/.test(url)) { var res = srv.get(url); if (onGet) onGet(url, res); return reply(200, res); }
+    if (m === 'GET') return reply(200, []);
+    return reply(201, null);
+  };
+  if (state !== null) w.localStorage.setItem('ovumind_sync_v1', JSON.stringify(state || { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-19T10:00:00Z', pushedAt: '2026-10-19T10:00:00Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }));
+  return w;
+}
+function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: type, date: '2026-10-19', data: data, source: 'room', created_at: at, updated_at: at, synced_at: at, deleted: false, deleted_at: null }; }
+
 (function exerciseTypedRecoveryCursor() {
   console.log('cloud sync: the one-time typed pull never moves the shared cursor, and walks ids past the 20,000-row cap');
-  /* a small pretend server: rows ordered by synced_at, honouring the cursor, the type filter, limit and offset */
-  function server() {
-    var rows = [];
-    return {
-      rows: rows,
-      get: function (url) {
-        var q = decodeURIComponent(url), cur = /synced_at=gt\.([^&]+)/.exec(q), ty = /type=in\.\(([^)]*)\)/.exec(q), idgt = /[?&]id=gt\.([^&]+)/.exec(q), byId = /order=id\.asc/.test(q), lim = Number((/limit=(\d+)/.exec(q) || [])[1] || 1000), off = Number((/offset=(\d+)/.exec(q) || [])[1] || 0);
-        /* synced_at compared as text so microseconds count, as Postgres does; ids compared as text too */
-        var out = rows.filter(function (r) { return (!cur || r.synced_at > cur[1]) && (!ty || ty[1].split(',').indexOf(r.type) > -1) && (!idgt || r.id > idgt[1]); });
-        out.sort(function (a, b) { return byId ? (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) : (a.synced_at < b.synced_at ? -1 : a.synced_at > b.synced_at ? 1 : (a.id < b.id ? -1 : 1)); });
-        return out.slice(off, off + lim);
-      }
-    };
-  }
-  function world(srv, onGet) {
-    var w = fresh(), S = w.OvuStore;
-    w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
-    S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
-    var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
-    w.fetch = function (url, opt) {
-      var m = (opt && opt.method) || 'GET';
-      if (m === 'GET' && /\/entries/.test(url)) { var res = srv.get(url); if (onGet) onGet(url); return reply(200, res); }
-      if (m === 'GET') return reply(200, []);
-      return reply(201, null);
-    };
-    w.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-19T10:00:00Z', pushedAt: '2026-10-19T10:00:00Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }));
-    return w;
-  }
-  var row = function (id, type, at, data) { return { id: id, user_id: 'u1', type: type, date: '2026-10-19', data: data, source: 'room', created_at: at, updated_at: at, synced_at: at, deleted: false, deleted_at: null }; };
+  var server = syncServer, world = syncWorld, row = syncRow;
   /* 1. another phone uploads a reflection, then exercise, between this phone's two requests */
   var srv = server(), calls = 0;
   var w = world(srv, function (url) { calls++; if (calls === 1) { srv.rows.push(row('r101', 'reflection', '2026-10-19T10:01:00Z', { text: 'between the requests', mood: '' })); srv.rows.push(row('x102', 'exercise', '2026-10-19T10:02:00Z', { activity: 'walk', label: 'Walking', variant: 'brisk', code: '17200', met: 4.8, minutes: 20, intensity: 'moderate', strength: false, aerobic: true, note: '' })); } });
@@ -707,6 +736,54 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
     check('once recovered, later syncs make no typed requests (20 pages, then 1, then none)', typedGets.length === 21, 'typed requests: ' + typedGets.length);
   });
   Promise.all([a, b]).catch(function (err) { check('the typed recovery tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
+(function sharedPullKeysetCursor() {
+  console.log('cloud sync: the shared pull resumes after the last (synced_at, id) it saw, so an upload larger than one sync arrives whole');
+  /* One upload of 25,000 rows (a large Apple Health import, say) is stamped with one now(), microseconds and all. Three
+     more rows land later in the same millisecond, so a cursor rounded to milliseconds cannot tell them apart either. */
+  var TIE = '2026-10-19T12:00:00.123456+00:00', SAME_MS = '2026-10-19T12:00:00.123999+00:00', pad = function (n) { return ('0000' + n).slice(-5); };
+  function load(srv) {
+    for (var i = 0; i < 25000; i++) srv.rows.push(syncRow('n' + pad(i), 'reflection', TIE, { text: 'note ' + i, mood: '' }));
+    ['a0', 'a1', 'a2'].forEach(function (id) { srv.rows.push(syncRow(id, 'reflection', SAME_MS, { text: 'note ' + id, mood: '' })); });
+  }
+  /* counts what each sync's shared pull delivers (the typed recovery's own requests are left out) */
+  function tally() {
+    var t = { seen: {}, per: [], sync: 0 };
+    t.onGet = function (url, res) { if (/type=in/.test(url)) return; t.per[t.sync] = (t.per[t.sync] || 0) + res.length; res.forEach(function (r) { t.seen[r.id] = (t.seen[r.id] || 0) + 1; }); };
+    t.twice = function () { return Object.keys(t.seen).filter(function (k) { return t.seen[k] > 1; }).length; };
+    return t;
+  }
+  /* 1. a new phone restores the backup (no cursor yet); another phone uploads one more row between its first two syncs */
+  var srv = syncServer(), t = tally();
+  load(srv);
+  var w = syncWorld(srv, t.onGet, null), S = w.OvuStore, Y = w.OvuSync;
+  var a = Y.syncNow().then(function () {
+    srv.rows.push(syncRow('late1', 'reflection', '2026-10-19T13:00:00.000001+00:00', { text: 'from the other phone', mood: '' }));
+    t.sync = 1; return Y.syncNow();
+  }).then(function () { t.sync = 2; return Y.syncNow(); }).then(function () {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('a restore larger than one sync: 20,000 rows, then the rest of the same upload and the late row, then nothing', t.per.join() === '20000,5004,0', 'per sync: ' + t.per.join());
+    check('every row arrives exactly once, none skipped at the cut and none fetched again', Object.keys(t.seen).length === 25004 && t.twice() === 0 && S.list('reflection').length === 25004, JSON.stringify({ distinct: Object.keys(t.seen).length, twice: t.twice(), local: S.list('reflection').length }));
+    check('the cursor keeps the server\'s own timestamp, microseconds included, and the last id', st.pulledSeq === '2026-10-19T13:00:00.000001+00:00' && st.pulledId === 'late1', JSON.stringify({ seq: st.pulledSeq, id: st.pulledId }));
+  });
+  /* 2. a phone that an older version left on a millisecond cursor inside the same upload (what it saved after taking
+     its first 20,000 rows) catches up within two syncs and then stops pulling them */
+  var srv2 = syncServer(), t2 = tally();
+  load(srv2);
+  var v = syncWorld(srv2, t2.onGet, { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-19T12:00:00.123Z', pushedAt: '2026-10-19T12:00:00.123Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }), SV = v.OvuStore, YV = v.OvuSync;
+  var b = YV.syncNow().then(function () { t2.sync = 1; return YV.syncNow(); }).then(function () { t2.sync = 2; return YV.syncNow(); }).then(function () {
+    check('an older millisecond cursor resumes from that millisecond: everything arrives within two syncs, then nothing', t2.per.join() === '20000,5003,0' && Object.keys(t2.seen).length === 25003 && SV.list('reflection').length === 25003, JSON.stringify({ per: t2.per.join(), distinct: Object.keys(t2.seen).length, local: SV.list('reflection').length }));
+  });
+  /* 3. ids are free text (a restored backup keeps its own), so the cursor id is quoted: one with a quote, a comma,
+     brackets and a backslash still resumes exactly after itself */
+  var odd = 'we"ird,(id)\\', srv3 = syncServer(), t3 = tally();
+  [odd, odd + 'z', 'wa', 'x1'].forEach(function (id) { srv3.rows.push(syncRow(id, 'reflection', TIE, { text: id, mood: '' })); });
+  var u = syncWorld(srv3, t3.onGet, { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: TIE, pulledId: odd, pushedAt: TIE, profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null });
+  var c = u.OvuSync.syncNow().then(function () {
+    check('a cursor id with quotes, commas, brackets and a backslash resumes exactly after itself', Object.keys(t3.seen).sort().join('|') === [odd + 'z', 'x1'].join('|'), JSON.stringify(Object.keys(t3.seen)));
+  });
+  Promise.all([a, b, c]).catch(function (err) { check('the shared pull cursor tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */
