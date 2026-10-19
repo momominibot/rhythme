@@ -440,6 +440,12 @@ async def main():
             hv = await page.evaluate("()=>({prompt: !!document.querySelector('#harvestLog'), basket: (OvuStore.state().farm.harvest||{}).radish, foods: OvuStore.list('food').length})")
             await page.click('#harvestNo'); await page.wait_for_timeout(300)
             check("harvest fills the basket and asks before any meal is logged; Not now writes nothing", harvested["btn"] and hv["prompt"] and hv["basket"] == 2 and hv["foods"] == foods_before, hv)
+            # a logged sleep stops the game: a bed tap, a hotspot and a journey all answer with the wake-her-first line and nothing opens
+            await page.evaluate("()=>{OvuRoom.asleep=function(){return !!OvuStore.state().sleeping}; OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}});}"); await page.wait_for_timeout(400)
+            slept = await page.evaluate("(id)=>{var out={}; document.querySelector('#ownedProps .bed[data-id='+id+']').click(); out.bedSheet=document.querySelector('#sheet').getAttribute('aria-hidden')==='false'; OvuRoom.tap(OvuRoom.hotspot('shed')); out.shedSheet=document.querySelector('#sheet').getAttribute('aria-hidden')==='false'; out.travel=OvuWalk.travel('garden'); out.walk=OvuWalk.tapWalk(60,60); out.prompt=!document.querySelector('#actBtn').hidden; out.toast=(document.querySelector('#toast')||{}).textContent||''; return out}", bed)
+            await page.wait_for_timeout(300)
+            check("while she sleeps the farm, the shed, a journey and a tap-walk all stop with the wake-her-first line, and no prompt shows", not slept["bedSheet"] and not slept["shedSheet"] and slept["travel"] is False and slept["walk"] is False and not slept["prompt"] and "asleep" in slept["toast"], slept)
+            await page.evaluate("()=>{OvuStore.setState({sleeping:null}); OvuRoom.asleep=function(){return false};}"); await page.wait_for_timeout(300)
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('farmgate'))")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'garden'", timeout=12000)
             except Exception: pass

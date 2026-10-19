@@ -95,3 +95,31 @@ the bottom) now sit on the garden, street and plaza benches and under a bench br
 is only the mat's. `ovu-garden.js` probes the seated file and falls back to the standing sprite, never the cross-legged
 one; the CSS drops the sprite from the bench spot so the hip line meets the seat (74% for the sitter, 36% for the
 meditator on a seat).
+
+## Jamie's decision and the production plan (19 October, afternoon)
+
+Jamie: "Hair color, eye color, skin color and 4 hair styles." All four, offered to everyone, nothing automatic.
+
+**The arithmetic.** One look is about 57 renders today (10 standing outfits, 9 everyday poses, meditate, sleeping, 9
+seated, 27 walk strips). Hair colour is rendered (the recolour lost), skin tone will be rendered (a recolour across face,
+ears, neck, hands, arms and legs in every frame is untested and risky), eye colour stays a recolour candidate (tiny flat
+iris). Full catalogue, four styles by six hair colours by four skin tones, is 96 looks, about 5,500 renders, about 60
+hours of generation at 40 seconds each, roughly US$250 at the third-party-reported Seedream price of about US$0.045 per
+image under 2.4 megapixels (the official Ark price in yuan was not found on an official page; treat the dollar figure as
+an estimate). Too slow to do in one go, and most combinations would never be chosen.
+
+**The plan: render on choice, share the result.**
+1. A look is a key: `<style>-<hair>-<skin>` (eyes applied at runtime). Sprites live in object storage under that key,
+   shared by everyone who picks the same combination.
+2. When someone picks a look that is not yet rendered, the app shows her in the current look with a small "your look
+   is being drawn, about an hour" note, and queues the key. A worker on Jamie's Mac (the fleet's queue, `gen.py`,
+   `keyout.py`, `walkcycle.py`, head-width scaling, contact sheet) renders the 57 sprites, checks them, uploads them,
+   and the app switches over on its next open. Under the batch policy the worker stops on the first provider failure
+   and never retries by itself.
+3. Pre-render the likely first picks before launch: the current style in four skin tones and two hair colours
+   (8 looks, about 450 renders, about five hours, about US$20), so most people see their look at once.
+4. The picker shows every combination; the queue makes the rest.
+5. Eye colour: one evening's recolour test on the iris before it ships; if it fails, eyes join the render key.
+
+**Spend.** Step 3 is about US$20 of renders and five hours of generation; the on-demand worker spends about US$2.60
+per new combination. This waits on Jamie's go before any render runs.

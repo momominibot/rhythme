@@ -144,8 +144,9 @@
       wrap.appendChild(el);
     });
   }
+  /* a logged sleep stops the farm with the room's own words (napping toasts); any other busy state stays quiet */
   function goTend(bb) {
-    if (R.busy() || (W.napping && W.napping())) return;
+    if ((W.napping && W.napping()) || R.busy()) return;
     R.walkTo(bb.wp, function () { openBed(bb.id); });
   }
   /* energy: checked before the rule runs, charged only when the rule says yes, so a refused action costs nothing */
@@ -227,9 +228,9 @@
     pick.addEventListener('click', function (e) { var btn = e.target.closest('[data-pick]'); if (!btn) return; openBed(btn.dataset.pick); });
   }
   R.hotspotHandlers.farmgate = function (id, L) { if (!inFarm(L)) return false; W.travel('garden'); return true; };
-  R.hotspotHandlers.shed = function (id, L) { if (!inFarm(L)) return false; if (R.busy()) return true; openShed(); return true; };
-  R.hotspotHandlers.well = function (id, L) { if (!inFarm(L)) return false; openWell(); return true; };
-  R.hotspotHandlers.basket = function (id, L) { if (!inFarm(L)) return false; if (R.busy()) return true; openBasket(); return true; };
+  R.hotspotHandlers.shed = function (id, L) { if (!inFarm(L)) return false; if ((W.napping && W.napping()) || R.busy()) return true; openShed(); return true; };
+  R.hotspotHandlers.well = function (id, L) { if (!inFarm(L)) return false; if ((W.napping && W.napping()) || R.busy()) return true; openWell(); return true; };
+  R.hotspotHandlers.basket = function (id, L) { if (!inFarm(L)) return false; if ((W.napping && W.napping()) || R.busy()) return true; openBasket(); return true; };
   /* the proximity prompt offers the nearest bed by its stand point; "Tap to tend the bed" opens that bed */
   if (root.OvuInteract && root.OvuInteract.setActor) root.OvuInteract.setActor('farm', function (p) { var ids = p.beds || [p.id]; if (ids.length === 1) openBed(ids[0]); else openPicker(ids); });
   R.on('boot', function () {

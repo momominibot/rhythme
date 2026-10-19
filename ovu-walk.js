@@ -382,6 +382,7 @@
   }
   /* walk to a tapped plate point: plan around furniture and pets from the live position */
   function tapWalk(x, y) {
+    if (napping()) return false; /* a logged sleep stops the game: she says so, and nothing moves until the bed wakes her */
     if (travelling || R.busy()) return false;
     if (avatar.classList.contains('walking') && !active) return false;
     var from = livePos(), res = plan(worldNow(), from, { x: x, y: y }, SNAP);

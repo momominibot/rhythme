@@ -53,6 +53,32 @@ the code as it is, and the order of work.
 7. One clock or two: keep everything on real time (built), or add the prompt's fast game clock for NPC schedules and lighting while crops and stores stay on real days.
 8. Hair colour: render the presets (the recolour test lost; see the avatar-looks note) and which palette.
 
+## 4a. Jamie's answers (19 October, afternoon)
+
+1. **18+ only.** Confirmed. The parent session builds the age gate and removes the teen flows.
+2. **Tap to walk.** Confirmed; no joystick.
+3. **AI provider for health text.** Keep the current one, unless the Codex subscription can be used instead. Checked
+   the same day on OpenAI's developer pages: Jamie's own Codex sign-in covers the Codex tool, not an app; a ChatGPT
+   subscription cannot be shared with an app's users through it. OpenAI does run a separate "Sign in with ChatGPT"
+   programme where an app's users bring their own ChatGPT plan for model calls (Responses API with `store: false`, a
+   usage-limit error when the person's plan runs out). It is "currently offered to a select group of commercial
+   partners" with a waitlist form, eligible plans are not stated, and it says nothing about training, retention or
+   health data. So: the current provider stays with its disclosure; the waitlist is worth a form if Jamie wants the
+   option; it would only ever cover people who hold a ChatGPT plan. Sources: developers.openai.com/siwc,
+   /siwc/website, /siwc/request-client-id, /siwc/token-sharing-open-source/models-and-inference and
+   /siwc/token-sharing-open-source/preview-limitations (read 19 October 2026).
+4. **Real sleep stops the game.** When a sleep is logged, nothing in the game runs: no walking, no journey, no farm, no
+   prompt, until the bed wakes her. Built on this branch (tap-walks and the farm answer with the room's own line,
+   "She is asleep. Tap the bed to wake her first."); the room's sheets while asleep are the parent's file.
+5. **Hearts only for logging.** Game actions earn nothing (the farm awards none). Mindfulness earns a small amount. The
+   rules live in the parent's `ovu-rewards.js` (today an everyday practice pays 5, +10 the first time, a session up
+   to 20); the parent trims mindfulness to a small figure. Recorded in the economy note.
+6. **Break-glass second person.** Explained to Jamie; the feature stays off. Nothing to decide until he wants
+   emergency reads of one person's diary.
+7. **One real clock.** Confirmed; NPC schedules run on it.
+8. **Her look.** Hair colour, eye colour, skin colour and four hairstyles, all offered. Plan and render budget in
+   `2026-10-19-avatar-looks.md`; spend waits on Jamie's go.
+
 ## 6. Built in the first pull request (19 October, branch `claude/life-sim`)
 
 | Piece | File | Verified by |

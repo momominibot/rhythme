@@ -43,6 +43,13 @@ to give points once they have logged so that they can spend on the game."
   not dwarf a normal one.
 - **Transparency.** A "How hearts work" card in You, in plain words, with today's earning and what is left to earn.
 
+## Jamie's decision (19 October, afternoon)
+
+Hearts are given only for logging data. Mindfulness contributes a small amount. Game actions (farm, fishing, foraging,
+walking, NPC chats) earn no hearts; they are what hearts are spent on, not where they come from. The daily and weekly
+numbers above stay a proposal until the parent session updates `ovu-rewards.js` (mindfulness is to be trimmed from
+today's 5 to 20 per practice to a small figure).
+
 ## Questions for the review
 
 - Does the daily bundle risk making people log "nothing today" just for hearts, and is that bad for the data?
