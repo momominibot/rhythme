@@ -810,6 +810,45 @@ function scenes(todayIso) {
   check('walking the whole street the camera follows inside the clamp and she never leaves the middle of the screen', inClamp && minS > W * 0.1 && maxS < W * 0.9 && cam.x < W - W * 2.5 * z + W * 0.2, JSON.stringify({ minS: minS, maxS: maxS, cam: cam.x }));
 })();
 
+(function streetOccluders() {
+  console.log('foreground cutouts on the wide street: the front pillar of each arch and the two lamps, drawn over the plate and ranked by their base');
+  var w = scenes('2026-10-19'), K = w.OvuWalk, L = w.LAYOUTS.street, occ = L.occluders || [];
+  /* a WebP's pixel size from its header (VP8X canvas, or a plain VP8 / VP8L frame) */
+  function webpSize(file) {
+    var b = fs.readFileSync(file), kind = b.toString('ascii', 12, 16);
+    if (kind === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };
+    if (kind === 'VP8L') { var v = b.readUInt32LE(21); return { w: 1 + (v & 0x3fff), h: 1 + ((v >> 14) & 0x3fff) }; }
+    return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+  }
+  var PX = L.w / (100 * L.span), PY = L.h / 100; /* plate pixels per box percent */
+  check('four cutouts: both arches and both lamps, each a file on disk at the plate\'s own pixels (box percent times 8.192 across, 10.24 down)', occ.length === 4 && occ.map(function (o) { return o.id; }).join() === 'garden-arch,lamp-west,lamp-east,plaza-arch' && occ.every(function (o) { var f = path.join(root, 'assets/room/dream', o.img); if (!fs.existsSync(f)) return false; var sz = webpSize(f); return Math.abs(sz.w - o.w * PX) < 0.6 && Math.abs(sz.h - o.h * PY) < 0.6; }), JSON.stringify(occ.map(function (o) { var f = path.join(root, 'assets/room/dream', o.img); return fs.existsSync(f) ? [webpSize(f), o.w * PX, o.h * PY] : 'missing ' + o.img; })));
+  /* each cutout sits on its own solid: the solid's middle inside the cutout, the base inside the solid, the cutout reaching down to the base */
+  var match = occ.map(function (o) { return (L.solids || []).filter(function (b) { var cx = (b.x0 + b.x1) / 2; return b.id === o.solid && cx > o.x && cx < o.x + o.w && o.base >= b.y0 && o.base <= b.y1; }); });
+  check('each cutout lines up with its own solid (the arch pillar or lamp footprint): its middle inside the cutout, the base inside the footprint, the cutout reaching down past the base', match.every(function (m) { return m.length === 1; }) && match[0][0] !== match[3][0] && occ.every(function (o) { var bottom = o.y + o.h; return bottom >= o.base && bottom - o.base < 2.5; }), JSON.stringify(match.map(function (m) { return m.map(function (b) { return [b.x0, b.x1, b.y0, b.y1]; }); })));
+  check('the plate pixels are those of the street plate in percent of the box (0 to 250 across)', occ.every(function (o) { return o.x >= 0 && o.x + o.w <= 100 * L.span && o.y >= 0 && o.y + o.h <= 100; }));
+  /* standing anywhere behind a cutout (feet on the floor above its base, her figure overlapping it) her head stays below its top edge,
+   * so the cut never shows a seam across her. Her height from the base sprite: width 12 of the box, 318 x 720 pixels, box 0.8 */
+  var av = webpSize(path.join(root, 'assets/room/dream/avatar-base.webp')), tall = L.avatarW * (av.h / av.w) * (L.w / (L.h * L.span)), wl = K.world(L, []), worst = [];
+  occ.forEach(function (o) {
+    var low = 1e9; for (var x = o.x - L.avatarW / 2; x <= o.x + o.w + L.avatarW / 2; x += 0.25) for (var y = 0; y < o.base; y += 0.25) if (K.inZones(wl.zones, x, y) && !K.blocked(wl.solids, x, y)) { low = Math.min(low, y); break; }
+    worst.push({ id: o.id, feet: low, head: +(low - tall).toFixed(2), top: o.y });
+  });
+  check('standing at the back of the floor behind any cutout her head (21.7 tall) stays below the cutout\'s top edge', worst.every(function (r) { return r.feet < 1e9 && r.head > r.top; }), JSON.stringify(worst));
+  /* the depth: the walk engine ranks the cutouts by their base with her and a walking pet */
+  var plaza = occ.filter(function (o) { return o.id === 'plaza-arch'; })[0], east = occ.filter(function (o) { return o.id === 'lamp-east'; })[0];
+  function zs(herY, petY) { var items = occ.map(function (o) { return { y: o.base }; }).concat([{ y: petY }, { y: herY }]), z = K.depthRank(items); return { occ: z.slice(0, occ.length), pet: z[occ.length], her: z[z.length - 1] }; }
+  var behind = zs(73, 70), front = zs(79, 70), i = occ.indexOf(plaza);
+  check('standing at x 205, y 73 she is behind the plaza arch\'s front pillar (its z is higher); at y 79 she is in front', behind.occ[i] > behind.her && front.her > front.occ[i], JSON.stringify({ behind: behind, front: front }));
+  var pb = zs(60, east.base - 0.6), pf = zs(60, east.base + 0.6), j = occ.indexOf(east);
+  check('a walking pet passes behind the east lamp just above its base and in front just below it', pb.occ[j] > pb.pet && pf.pet > pf.occ[j], JSON.stringify({ behind: pb, front: pf }));
+  /* the most the street ever ranks: the four cutouts, a walking pet, her and a bench sitter (the bench's ground line) */
+  check('seven on the street (four cutouts, a pet, her, a bench sitter) rank without a tie, so she can never share a z with a pillar she is behind', [60, 62, 68.2, 73, 77, 79].every(function (y) { var items = occ.map(function (o) { return { y: o.base }; }).concat([{ y: y + 0.3 }, { y: L.meditator.seat.groundY }, { y: y }]), z = K.depthRank(items); return items.length === 7 && z.filter(function (v, k) { return z.indexOf(v) === k; }).length === z.length; }));
+  check('the cutouts are the street\'s alone: every other layout (the homes, garden, plaza, stores) has none and draws as before', Object.keys(w.LAYOUTS).every(function (id) { return id === 'street' || !w.LAYOUTS[id].occluders; }));
+  /* the cut script and the layout agree, so a re-cut keeps the placement it prints */
+  var py = fs.readFileSync(path.join(root, 'tools/art/occluders.py'), 'utf8');
+  check('tools/art/occluders.py cuts the same four, with the same files, solids and bases as the layout', occ.every(function (o) { return py.indexOf("{'id': '" + o.id + "', 'solid': '" + o.solid + "', 'file': '" + o.img + "', 'base': " + o.base.toFixed(1) + ',') > -1; }));
+})();
+
 (function petsWalk() {
   console.log('the pets walk: strides, bounded trips on the floor, no pet boxed in, worn pieces riding the head (ovu-petwalk.js)');
   var w = scenes('2026-10-19'), M = w.OvuPetWalk.M, WK = w.OvuWalk;

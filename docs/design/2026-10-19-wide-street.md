@@ -136,3 +136,111 @@ Also from main while this was built: pets now walk with her into every scene. Th
 ovu-petwalk.js) read the grid without the mask's column count, which clamps at x 99 on the street; it now passes the mask.
 
 Not covered: an iOS Safari device run and a 3x-phone memory profile (Chromium at 390 px, DPR 2 and 3, only).
+
+## Foreground cutouts (19 October, evening)
+
+The plate is flat, so anything drawn in it sits under her. Moving the plaza arch's doorstep inside the arch avoided the
+common case, but walking past either arch or a lamp post still drew her over the pillar she was walking behind. Four
+objects on the street can stand in front of her: the front pillar of each flower arch and the two lamps. (The back
+pillars stand at the very back of the floor, so she is always in front of them; the trees, pots and bench sit where the
+floor polygon keeps her in front or beside them.)
+
+**What it is.** Each of the four is cut from `street-wide-v1.webp` by `tools/art/occluders.py` and saved at the plate's
+own pixels (`street-occ-arch.webp`, `-lamp1`, `-lamp2`, `-arch2`, 51 KB together, WebP q94, mean colour difference
+under 2 of 255 against the plate). `L.occluders` in ovu-street.js records each one's box-percent placement
+(x, y, w, h, with x on the 0 to 250 scale), the solid it belongs to, and its `base`: the centre of the object's footprint
+on the cobbles, read off the plate (garden arch 62, west lamp 61.9, east lamp 68.2, plaza arch 77). Each base lies inside
+its solid.
+
+**How it is cut.** GrabCut inside a hand outline, seeded with a hand core that is certainly the object. Above the
+cobbles a flowered pillar stands against lavender sky, and GrabCut alone drops the cream buds on its edges (the cobbles
+in the same crop teach it that cream is background), so above the floor line anything inside the outline that is not
+lavender (hue 240 to 320 degrees, saturation over 0.05) joins the shape. The largest shape is kept, holes filled, eroded
+2 px so the edge sits just inside the silhouette, and feathered 2 px. Each cut stops above the highest point her head
+can reach behind it: she is 12 wide and 21.7 tall, so at the back of the floor behind the garden arch her head is at
+y 36.3 and the cut starts at 30.9; behind the plaza arch 46.5 against 39.4. `--check dir` writes each cutout over
+magenta, its edge on the plate, and a "she stands behind it" composite (a dark shape under the cutout: anything the cut
+misses shows dark).
+
+**How it draws.** `renderOcc()` in ovu-walk.js builds the layout's cutouts in `#plateOcc`, a layer of its own placed
+just before `#ownedProps` with no position and no z-index, so it makes no stacking context and its children are ranked in
+the same context as her and the pets. It is rebuilt only when the layout changes; a props render (pet care, a sky change)
+leaves it alone. Each cutout is a `div.plate-occ` (left, top, width and height in box percent, `pointer-events: none`)
+holding `img.occ-img` and `i.occ-veil`. `sprites()` ranks a cutout by `data-base` instead of its top edge and never counts
+it as a solid, so the one `depthRank` that already orders her, the walking pet, neighbours and props orders the cutouts
+too: her feet above a base, she draws behind it; below, in front. On the street that is seven items at most (four
+cutouts, a walking pet, her, a bench sitter), so the 2 to 9 ranks never tie.
+
+Lighting: the image joins the window patches in the plate's own filter lists (`:is(.room-img.day, .win-patch,
+.occ-img)`) and the plate's transition rule (`:is(.room-img.day, .occ-img)`), so it dims and tints exactly as the plate
+does, with or without reduced motion. The night veil paints under anything with a z, so a cutout needs its own copy:
+`.occ-veil` shares the veil's rules (`:is(.night-veil, .occ-veil)` for its gradient, opacity and timing), is masked by the
+sprite's own alpha, and carries a background size and offset that line its gradient up with the veil across the whole
+street. No value in any night or sky rule changed. Layouts without `occluders` (every home, the garden, the plaza, the
+stores) render nothing new.
+
+Depth after the room's own moves: the walk engine re-ranks every frame of its own walks, but the room can also move her
+itself (a reduced-motion step, the straight-line fallback, a door, a seat). `placeAvatar` now emits `placed`, the engine
+re-ranks on it, and during the room's CSS slide it ranks her by her live computed `top` each frame. A pet re-ranks after
+settling on the floor and after its bedtime hop home. Travel preloads the destination's cutouts with its plate; a missing
+cutout only leaves the plate as it was.
+
+**Tests.** `tools/test-core.js`: four cutouts on disk whose pixel size matches their box placement; each lines up with
+its own solid (middle inside the cutout, base inside the footprint, the cutout reaching down past its base); her head
+never rises above a cutout's top from any floor point behind it; at x 205, y 73 the plaza arch outranks her and at y 79
+she outranks it; a pet passes behind the east lamp just above its base; no ties; no other layout has cutouts; the cut
+script and the layout agree on ids, files, solids and bases. `tools/e2e_smoke.py`: on the street the four cutouts load, sit at their box placement within a pixel in an unstacked
+layer, and a tap on a lamp reaches the plate beneath; placed at (205, 73) she is behind the plaza pillar and at (205, 79)
+in front, re-ranked by the placement alone; the same on cobbles she can really stand on, (212.6, 71.2) and (212.8, 77.6);
+behind the west lamp at (79.5, 61.2); a sky change with a props render keeps the same nodes, their filter mid-transition
+with the plate's; with reduced motion their transitions equal the plate's and the veil's; at night a screenshot of the
+west lamp with the cutouts equals one with them hidden (mean difference under 3 of 255, decoded with a stdlib PNG
+reader); the garden draws none.
+
+## Codex review (the cutouts, read-only, gpt-6-astra)
+
+Verdict: ship with fixes. All taken:
+
+| # | Finding | Outcome |
+|---|---|---|
+| 1 | a pet settling on the floor can cross a lamp's base without a re-sort | `W.sortDepth()` after the settle and after the bedtime hop home |
+| 2 | the night veil paints under positive-z cutouts, so matching filters still leaves them unveiled at night | each cutout carries the veil masked to its own alpha, aligned to the street-wide veil; smoke compares rendered pixels at night |
+| 3 | a sky change re-renders props, which recreated the cutouts at the destination filter while the plate transitioned | the cutouts moved to `#plateOcc`, rebuilt only on a layout change; smoke samples the filter mid-transition |
+| 4 | under reduced motion the plate's more specific `.room-img.day` transition survives while the cutouts snapped | the image shares that rule instead of a reduced-motion override; smoke compares the transitions with reduced motion |
+| 5 | travel preloads only the plate, so the street could appear before its cutouts | round one preloaded them (resolving on error or a timeout, never decoding); open after round two, then fixed as decided below |
+| 6 | (205, 73) and (205, 79) lie inside the pillar's solid; tests feed `depthRank` synthetic values | the task's two points stay, and smoke adds two reachable spots; the pet settle path itself is not driven by a test yet |
+
+Also found here: moves the room makes itself (reduced motion, the CSS fallback) never re-ranked her; fixed with the
+`placed` event and live ranking during the CSS slide.
+
+Round two (the fix diff): findings 1 to 4 closed (pet settle re-ranks, the masked veil lines up with the street veil and
+the unmaskable fallback keeps an unveiled cutout rather than a dark box, `#plateOcc` survives props renders, both
+transitions match under reduced motion). New: `W.sortDepth()` from a pet's frame during the room's CSS slide ranked her
+by her destination; fixed by `herY()` (the engine's position while it walks, her live computed top during a CSS slide,
+else where she stands), with a smoke check that fails without it.
+
+**Gate 6 and the decision.** Finding 5 was still open after round two (travel could reveal the street before a cutout
+had decoded), which is AGENTS gate 6. The decision, relayed by the session that leads this family (not by Jamie
+directly): wait for the cutouts under the existing fade, capped at about 1.5 s. Done: one kept image element per cutout
+file (`occImg`, so the bitmap travel waited for is the one drawn; a failed file is dropped and asked for again next
+visit), `occReady` resolves true once loaded and decoded and false on failure, and `travel()` waits for
+`Promise.all([plate, occWait(T)])`, where `occWait` races the cutouts against `OCC_CAP` (1500 ms) from the start of the
+fade. Smoke, each in a fresh context with the service worker blocked: sprites 0.7 s late, the fade lifts after them
+with all four decoded; sprites failing, it lifts at once; sprites hung for 4 s, it lifts at the cap and they draw when
+they arrive. Without the wait the first and third fail. The real pet settle path is still not driven by a test.
+
+**Round three (the decode wait, read-only): changes needed, finding 5 not fully closed.** Held again at gate 6.
+Four edge cases, none a deadlock: (1) a sprite that fails during the wait is dropped from the cache, so `renderOcc`
+makes a new request at once and the cutout can pop in after the fade instead of waiting for the next visit; (2) a
+rejected `decode()` with a non-zero `naturalWidth` counts as ready and is not retried; (3) while a request hangs, each
+capped wait adds a load and an error listener that stay until it settles; (4) the smoke cases do not prove decoding
+(only `complete` and size), and their 2600 ms upper bound would accept a 2.5 s cap.
+
+Jamie's decision: do the four small fixes, rerun the gates and push without another review. Done: each image element
+carries one readiness promise made with its own listeners (`occReady` on the element), so waits on a hung request add
+nothing; a decode rejection counts as failure; a failed element stays in the layer, drawing nothing, until the next
+visit's wait asks for the file again, so no request starts behind the fade. Smoke: the hung case's upper bound is
+2.2 s, and a new case fails each file's first request and serves the rest after 0.7 s: the failed element is still the
+one in the layer 1.5 s later, and the next visit makes a fresh request and waits for it (the previous code popped the
+cutout in behind the fade and did not wait on the next visit). Decoding itself is still not observable from the page;
+`complete` and size stand in for it.
