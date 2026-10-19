@@ -134,6 +134,7 @@
     { id: 'chapters', name: 'Life chapters', color: '#c9b6e6', items: [['page', 'life-journey.html', 'auto_stories', 'Your life journey', 'Five chapters, one body'], ['page', 'journey-bloom.html', 'local_florist', 'First cycles', 'Teens and the first years'], ['video', 'menarche', 'First period', 'Menarche explained'], ['page', 'journey-nurture.html', 'favorite', 'After pregnancy', 'Recovery and cycles returning'], ['page', 'journey-peri.html', 'dark_mode', 'Perimenopause', 'Hot flushes, sleep and mood'], ['video', 'peri', 'Perimenopause', 'The transition years'], ['page', 'journey-post.html', 'wb_sunny', 'After menopause', 'Bone, heart and bleeding rules'], ['video', 'menopause', 'Menopause', 'Life after periods']] },
     { id: 'nutrition', name: 'Nutrition', color: '#f3d49b', items: [['page', 'foods.html', 'restaurant', 'Foods by phase', 'TCM and Western notes'], ['page', 'nutrients.html', 'medication', 'Micronutrients', 'Iron, folate, magnesium'], ['page', 'medas14.html', 'nutrition', 'Mediterranean score', 'A 14-point check'], ['page', 'hydration.html', 'water_full', 'Hydration', 'Fluids through the cycle'], ['action', 'diary', 'menu_book', 'Open the food diary', 'Snap, scan or search']] },
     { id: 'mind', name: 'Mind & mood', color: '#b8cde0', items: [['page', 'room.html#mind', 'self_improvement', 'Mindfulness hub', 'Erin Lee’s pauses and podcasts'], ['link', 'https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change', 'article', 'The Quiet Work of Change', 'An essay by Erin'], ['page', 'mental-health.html', 'psychology', 'Mood & calm', 'When to reach for support'], ['page', 'breathe.html', 'air', 'Breathing', 'Guided breath'], ['action', 'mat', 'self_improvement', 'Sit on the mat', 'A session with Erin']] },
+    { id: 'move', name: 'Movement', color: '#cfe6c4', items: [['action', 'move', 'directions_run', 'Log movement', 'Minutes, MET-minutes and your week'], ['action', 'moveguide', 'menu_book', 'Movement and your cycle', 'What the research says, with sources']] },
     { id: 'body', name: 'Body & relief', color: '#f5c6b8', items: [['action', 'acu', 'spa', 'Acupressure on your avatar', 'Points for cramps, with evidence'], ['page', 'sleep.html', 'bedtime', 'Sleep & your cycle', 'Why some weeks feel lighter'], ['page', 'face-ppg.html', 'monitor_heart', 'Calm check (beta)', 'Pulse from your face camera'], ['page', 'ppg.html', 'fingerprint', 'Finger pulse', 'Camera and flash'], ['page', 'stress.html', 'self_improvement', 'Stress check-in', 'PSS-10 questionnaire']] },
     { id: 'videos', name: 'All videos', color: '#e7dcf5', items: VIDEOS.map(function (v) { return ['video', v[0], v[2], v[3]]; }) },
     { id: 'doctor', name: 'Share with doctor', color: '#ffffff', items: [['page', 'journal.html#share', 'medical_services', 'Dr shares card', 'Your 4-week summary'], ['page', 'doctor.html', 'stethoscope', 'Doctor view', 'How your clinician opens it']] }
@@ -200,6 +201,10 @@
     reminders: {
       icon: 'alarm', title: 'Why these four nudges',
       body: '<p>Regular sleep and wake times, water through the day, short movement breaks and a couple of minutes of slow breathing are the everyday habits with the broadest support for sleep, energy and mood. The clock reminds you; it does not track whether you did it. Notifications depend on your phone: they fire while Rhythme is open or installed to the Home Screen, and the calendar file gives you alarms that always ring.</p>'
+    },
+    move: {
+      icon: 'directions_run', title: 'How Movement counts',
+      body: window.OvuExercise ? '<p>' + esc(window.OvuExercise.COPY.week) + '</p><p>' + esc(window.OvuExercise.COPY.counting) + '</p>' : ''
     },
     luna: {
       icon: 'dark_mode', title: 'How Luna reads your notes',
@@ -1199,7 +1204,7 @@
       var dk = e.target.closest('[data-dock]'); if (dk) { var k = dk.dataset.dock; chime('tap'); if (k === 'videos' || k === 'mind' || k === 'doctor') openFolder(k); if (k === 'acu') openAcupressure(); if (k === 'luna') openLuna(); return; }
       if (e.target.closest('.finder .x')) { $('#finder').classList.remove('on'); return; }
       var v = e.target.closest('[data-video]'); if (v) { var meta = VIDEOS.filter(function (x) { return x[0] === v.dataset.video; })[0]; stopVideo(); var pl = $('#player'); pl.innerHTML = '<video controls playsinline poster="assets/eduvid/' + meta[0] + '.jpg" src="assets/eduvid/' + meta[1] + '"></video>'; pl.classList.add('on'); player = pl.querySelector('video'); player.play().catch(function () { }); pl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
-      var act = e.target.closest('[data-action]'); if (act) { var a = act.dataset.action; if (a === 'diary') openDiary(); if (a === 'mat') tap(hotspot('mat')); if (a === 'acu') openAcupressure(); }
+      var act = e.target.closest('[data-action]'); if (act) { var a = act.dataset.action; if (a === 'diary') openDiary(); if (a === 'mat') tap(hotspot('mat')); if (a === 'acu') openAcupressure(); if (a === 'move') openExercise(); if (a === 'moveguide') openMoveGuide(); }
     });
   }
 
@@ -1889,6 +1894,7 @@
         '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Moon Tap</b><small>Tap the water, 3 to 5 min</small></button>' +
         '<button type="button" class="mattile" id="mindEveryday"><span class="ms">home</span><b>Everyday practice</b><small>Teeth, tea, dishes, plants</small></button>' +
         '<button type="button" class="mattile" id="mindAcu"><span class="ms">spa</span><b>Cramp relief points</b><small>Pressure points on your body</small></button>' +
+        '<button type="button" class="mattile" id="mindMove"><span class="ms">directions_run</span><b>Movement</b><small>Log exercise, see your week</small></button>' +
       '</div>' +
       '<div class="matweek"><span><b>' + Math.round(mins) + '</b> min this week</span><span><b>' + sessions + '</b> ' + (sessions === 1 ? 'session' : 'sessions') + '</span><span><b>' + Object.keys(days).length + '</b> ' + (Object.keys(days).length === 1 ? 'day' : 'days') + '</span></div>' +
       (last.length ? '<ul class="matlast">' + last.map(function (e) { return '<li><span>' + esc(label(e)) + '</span><small>' + esc(e.date === today ? 'Today' : S.fmtDate ? S.fmtDate(e.date) : e.date) + ' · ' + (Math.round((Number(e.data.minutes) || 0) * 10) / 10) + ' min</small></li>'; }).join('') + '</ul>' : '') +
@@ -1896,8 +1902,108 @@
       '<p class="help">Sessions of a minute or more are saved to your journal.</p>');
     body.addEventListener('click', function (e) { var b = e.target.closest('[data-kind][data-min]'); if (!b || session) return; chime('tap'); runSession(b.dataset.kind, Number(b.dataset.min)); });
     $('#mindAcu').addEventListener('click', openAcupressure);
+    $('#mindMove').addEventListener('click', function () { if (session) return; chime('tap'); openExercise(); });
     $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
     $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { afterSave(ev); }, onClose: function () { renderDeck(); } }); });
+  }
+
+  /* ---------- Movement: exercise as minutes and MET-minutes, the week against WHO (ovu-exercise.js) ----------
+   * Nothing is saved until Save is pressed; MET values are the 2024 Adult Compendium's, copied into each entry.
+   * The period card appears only when today has a logged period day or logged cramps, never from a prediction.
+   * Design note and sources: docs/design/2026-10-19-exercise-logging.md */
+  var EX = window.OvuExercise || null;
+  function moveWeekHTML(wk) {
+    var W = EX.WHO, top = W.moderateMax * 1.2, pct = function (n) { return Math.round(Math.max(0, Math.min(100, n / top * 100)) * 10) / 10; };
+    var extra = (wk.light ? ' Plus ' + wk.light + ' min of light movement.' : '') + (wk.strengthMinutes ? ' Plus ' + wk.strengthMinutes + ' min of strength work.' : '') + (wk.metUnknown ? ' ' + wk.metUnknown + (wk.metUnknown === 1 ? ' entry has no MET value, so it is' : ' entries have no MET value, so they are') + ' left out of MET-minutes.' : '');
+    return '<div class="mvweek" id="mvWeek"><div class="mvhead"><b>' + wk.moderateEquivalent + '</b><span>moderate minutes in the last 7 days</span>' + infoBtn('move') + '</div>' +
+      '<div class="mvbar" role="img" aria-label="' + wk.moderateEquivalent + ' minutes; WHO suggests 150 to 300 a week"><i class="range" style="left:' + pct(W.moderateMin) + '%;width:' + (pct(W.moderateMax) - pct(W.moderateMin)) + '%"></i><i class="fill" style="width:' + pct(wk.moderateEquivalent) + '%"></i></div>' +
+      '<div class="mvscale" aria-hidden="true"><span style="left:0">0</span><span style="left:' + pct(W.moderateMin) + '%">150</span><span style="left:' + pct(W.moderateMax) + '%">300</span></div>' +
+      '<p class="mvline">' + esc(EX.weekLine(wk)) + '</p>' +
+      '<div class="matweek"><span><b>' + wk.metMinutes + '</b>MET-min</span><span><b>' + wk.strengthDays + '</b>of 2 strength days</span><span><b>' + wk.sessions + '</b>' + (wk.sessions === 1 ? 'session' : 'sessions') + '</span></div>' +
+      '<p class="help">A vigorous minute counts as two. About 500 to 1,000 MET-minutes a week matches WHO’s range.' + extra + '</p></div>' + guideHTML('move');
+  }
+  function movePeriodHTML(ctx) {
+    var C = EX.COPY;
+    return '<div class="flag info mvperiod" id="mvPeriod"><span class="ms">water_drop</span><div><b>' + esc(C.periodTitle[ctx]) + '</b><span>' + esc(C.period) + ' ' + esc(C.periodEvidence) + '</span>' +
+      '<details><summary>When to see a doctor</summary><span>' + esc(C.redFlags) + '</span></details>' +
+      '<button type="button" class="btn soft" id="mvAcu"><span class="ms">spa</span>Cramp relief points</button></div></div>';
+  }
+  function moveRowHTML(e) {
+    var d = e.data || {}, mm = EX.metMinutes(d), today = S.today();
+    return '<li data-id="' + esc(e.id) + '"><span><b>' + esc(d.label || 'Movement') + '</b><small>' + esc(d.detail || '') + '</small></span><small>' + esc(e.date === today ? 'Today' : prettyDate(e.date)) + ' · ' + (Number(d.minutes) || 0) + ' min' + (mm !== null ? ' · ' + Math.round(mm) + ' MET-min' : '') + '</small><button type="button" class="mvdel" data-mdel="' + esc(e.id) + '" aria-label="Remove this entry"><span class="ms">close</span></button></li>';
+  }
+  function openExercise() {
+    if (!EX) return;
+    if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
+    if (meditating && !session) exitMeditation();
+    var today = S.today(), from = EX.addDays(today, -6), wk = EX.week(S.list('exercise', { from: from, to: today }), today);
+    var ctx = EX.periodContext(S.byDate(today)), recent = S.list('exercise', { from: from, to: today }).reverse().slice(0, 10);
+    var st = { act: null, variant: null };
+    openSheet('move', 'Movement', 'Log what you did and see your week', 'directions_run',
+      (ctx ? movePeriodHTML(ctx) : '') + moveWeekHTML(wk) +
+      '<div class="field"><span class="lbl">What did you do?</span><div class="mvacts" id="mvActs">' + EX.ACTIVITIES.map(function (a) { return '<button type="button" class="mvact" data-mact="' + a.id + '" aria-pressed="false"><span class="ms">' + a.icon + '</span><span>' + esc(a.label) + '</span></button>'; }).join('') + '</div></div>' +
+      '<div class="field" id="mvVarField" hidden><span class="lbl">How did it go?</span><div class="mvvars" id="mvVars"></div></div>' +
+      '<div class="field"><label for="mvMin">Minutes</label><input class="input" id="mvMin" type="number" inputmode="numeric" min="1" max="' + EX.MAX_MINUTES + '" step="1" value="30"><div class="chips mvquick" id="mvQuick">' + [10, 20, 30, 45, 60, 90].map(function (n) { return '<button type="button" class="chipbtn' + (n === 30 ? ' on' : '') + '" data-min="' + n + '">' + n + ' min</button>'; }).join('') + '</div></div>' +
+      '<label class="mvcheck"><input type="checkbox" id="mvStr"><span>Worked my main muscles (counts as a strength day)</span></label>' +
+      '<div class="field"><label for="mvDate">Day</label><input class="input" id="mvDate" type="date" max="' + today + '" value="' + today + '"></div>' +
+      '<div class="field"><label for="mvNote">Note (optional)</label><input class="input" id="mvNote" maxlength="280" placeholder="How it felt, where you went"></div>' +
+      '<p class="mvpreview" id="mvPreview">Choose what you did to see its MET value.</p>' +
+      '<div class="row"><button type="button" class="btn primary" id="mvSave"><span class="ms">check</span>Save</button></div><div class="msg" id="mvMsg"></div>' +
+      (recent.length ? '<div class="field"><span class="lbl">Last 7 days</span><ul class="matlast mvlist" id="mvList">' + recent.map(moveRowHTML).join('') + '</ul></div>' : '') +
+      '<div class="row"><button type="button" class="btn soft" id="mvGuide"><span class="ms">menu_book</span>Movement and your cycle</button></div>' +
+      '<p class="help">Only log what you really did. Logging movement earns hearts once a day, never more for longer or harder sessions.</p>');
+    function preview() {
+      var a = EX.activity(st.act), v = a && EX.variant(st.act, st.variant), mins = Math.round(Number($('#mvMin').value) || 0), el = $('#mvPreview');
+      if (!a) { el.textContent = 'Choose what you did to see its MET value.'; return; }
+      if (!v) { el.textContent = 'Choose how it went.'; return; }
+      var it = EX.intensityOf(v.met, v.effort), counts = a.aerobic === false ? 'strength work: a strength day, not aerobic minutes' : it === 'vigorous' ? 'vigorous: each minute counts as two toward WHO’s range' : it === 'moderate' ? 'moderate: counts toward WHO’s range' : 'light: shown, not counted toward WHO’s range';
+      el.textContent = v.met === null ? (mins || '?') + ' min, ' + counts + '. No MET value for this one.' : (mins || '?') + ' min × ' + v.met + ' MET = ' + (mins ? Math.round(mins * v.met) : '?') + ' MET-minutes, ' + counts + '.';
+    }
+    function renderVars() {
+      var a = EX.activity(st.act), f = $('#mvVarField'), box = $('#mvVars'), str = $('#mvStr');
+      if (!a) { f.hidden = true; return; }
+      if (!EX.variant(a.id, st.variant)) st.variant = a.variants.length === 1 ? a.variants[0].id : null;
+      box.innerHTML = a.variants.map(function (v) { var it = EX.intensityOf(v.met, v.effort); return '<button type="button" class="mvvar' + (v.id === st.variant ? ' on' : '') + '" data-mvar="' + v.id + '" aria-pressed="' + (v.id === st.variant) + '"><b>' + esc(v.label) + '</b><small>' + (v.met === null ? 'No MET value' : v.met + ' MET') + ' · ' + EX.WORD[it] + '</small></button>'; }).join('');
+      f.hidden = false; str.checked = !!a.strength || (str.checked && !str.disabled); str.disabled = !!a.strength;
+      preview();
+    }
+    var actsBox = $('#mvActs');
+    actsBox.addEventListener('click', function (e) { var b = e.target.closest('[data-mact]'); if (!b) return; chime('tap'); st.act = b.dataset.mact; st.variant = null; $$('.mvact', actsBox).forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); }); renderVars(); });
+    $('#mvVars').addEventListener('click', function (e) { var b = e.target.closest('[data-mvar]'); if (!b) return; chime('tap'); st.variant = b.dataset.mvar; $$('.mvvar', this).forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); }); preview(); });
+    $('#mvQuick').addEventListener('click', function (e) { var b = e.target.closest('[data-min]'); if (!b) return; $('#mvMin').value = b.dataset.min; $$('.chipbtn', this).forEach(function (x) { x.classList.toggle('on', x === b); }); preview(); });
+    $('#mvMin').addEventListener('input', function () { var v = this.value; $$('#mvQuick .chipbtn').forEach(function (x) { x.classList.toggle('on', x.dataset.min === v); }); preview(); });
+    $('#mvSave').addEventListener('click', function () {
+      try {
+        var data = EX.makeEntry({ activity: st.act, variant: st.variant, minutes: $('#mvMin').value, strength: $('#mvStr').checked, note: $('#mvNote').value });
+        var ev = S.add('exercise', $('#mvDate').value || today, data, 'room');
+        chime('save'); openExercise(); afterSave(ev, 'Movement saved: ' + data.minutes + ' min of ' + data.label.toLowerCase() + '.');
+      } catch (err) { message($('#mvMsg'), err.message, false); }
+    });
+    var list = $('#mvList');
+    if (list) list.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-mdel]'); if (!b) return;
+      if (!b.classList.contains('confirm')) { b.classList.add('confirm'); b.innerHTML = 'Remove?'; b.setAttribute('aria-label', 'Tap again to remove'); return; }
+      S.remove(b.dataset.mdel); chime('tap'); toast('Entry removed.', 'delete'); openExercise(); renderDeck();
+    });
+    var acu = $('#mvAcu'); if (acu) acu.addEventListener('click', function () { chime('tap'); openAcupressure(); });
+    $('#mvGuide').addEventListener('click', function () { chime('tap'); openMoveGuide(); });
+  }
+  function openMoveGuide() {
+    if (!EX) return;
+    if (meditating && !session) exitMeditation();
+    var C = EX.COPY, refs = window.OvuEvidence ? OvuEvidence.forTopic('move') : [];
+    var sec = function (icon, title, text) { return '<div class="guide on mvsec"><h4><span class="ms">' + icon + '</span>' + esc(title) + '</h4><p>' + esc(text) + '</p></div>'; };
+    openSheet('moveguide', 'Movement and your cycle', 'What the research says, with sources', 'menu_book',
+      sec('directions_run', 'Your week', C.week) +
+      sec('water_drop', 'On your period', C.period + ' ' + C.periodEvidence) +
+      sec('autorenew', 'Across your cycle', C.cycle) +
+      sec('pregnant_woman', 'Pregnancy and after birth', C.pregnancy) +
+      sec('elderly_woman', 'Later in life', C.later) +
+      sec('medical_services', 'When to see a doctor', C.redFlags) +
+      sec('calculate', 'How Rhythme counts', C.counting) +
+      '<div class="guide on mvsec"><div class="ev"><b>Sources</b><p class="evrefs">' + refs.map(function (e) { return '<a href="evidence.html#' + e.id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + e.id + '</i></a>'; }).join('') + '</p><span>Guidance, not a diagnosis. Bring questions to a clinician you trust, and look up any number on the <a href="evidence.html" target="_blank" rel="noopener">Evidence page</a>.</span></div></div>' +
+      '<div class="row"><button type="button" class="btn primary" id="mgLog"><span class="ms">add</span>Log movement</button></div>');
+    $('#mgLog').addEventListener('click', function () { chime('tap'); openExercise(); });
   }
 
   /* ---------- acupressure: numbered points on your avatar, then a zoomed locator ---------- */
@@ -2442,7 +2548,7 @@
     var hk = (location.hash || '').slice(1);
     if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
     else if (!S.profile().onboarded && !S.state().welcomeSeen) showWelcome();
-    else setTimeout(function () { requireConsent(function () { if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (TABS[hk]) goTab(hk); }); }, hk ? 600 : 0);
+    else setTimeout(function () { requireConsent(function () { if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk); }); }, hk ? 600 : 0);
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
     setTimeout(function () { $('#loading').classList.add('hidden'); joy(); }, 500);
     scheduleLife();

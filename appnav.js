@@ -41,7 +41,7 @@
   });
 
   // ---- home domain names/legend → domain detail screens ----
-  var DOMAP={medical:'reports.html',cycle:'room.html#cycle',stress:'stress.html',exercise:'room.html#mind',diet:'room.html#food',sleep:'sleep.html',mind:'room.html#mind',mindfulness:'room.html#mind'};
+  var DOMAP={medical:'reports.html',cycle:'room.html#cycle',stress:'stress.html',exercise:'room.html#move',diet:'room.html#food',sleep:'sleep.html',mind:'room.html#mind',mindfulness:'room.html#mind'};
   document.querySelectorAll('.scroll span, .metric').forEach(function(el){
     // Text inside a real control belongs to that control. Binding a second
     // route to its label can hijack check-in dialogs when the label is tapped.

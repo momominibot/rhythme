@@ -140,6 +140,8 @@
     }
     var mind = entries.filter(function (e) { return e.type === 'mindfulness'; });
     if (mind.length) { var mins = mind.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0); bullets.push('self_improvement'); parts.push(Math.round(mins) + ' min of mindfulness' + (mind.some(function (e) { return e.data.kind === 'erin'; }) ? ' with Erin' : '') + '.'); highlights.push({ icon: 'self_improvement', text: Math.round(mins) + ' min calm' }); }
+    var moves = entries.filter(function (e) { return e.type === 'exercise'; });
+    if (moves.length) { var mvMin = moves.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0), mvNames = []; moves.forEach(function (e) { var n = String(e.data.label || 'movement').toLowerCase(); if (mvNames.indexOf(n) < 0) mvNames.push(n); }); bullets.push('directions_run'); parts.push(Math.round(mvMin) + ' min of movement (' + mvNames.join(', ') + ').'); highlights.push({ icon: 'directions_run', text: Math.round(mvMin) + ' min moving' }); }
     if (refl.length) { bullets.push('edit_note'); parts.push(refl.length + ' reflection' + (refl.length > 1 ? 's' : '') + '.'); }
     var flags = allFlags(date).filter(function (f) { return f.date === date; });
     return { date: date, text: parts.length ? parts.join(' ') : 'Nothing logged this day.', items: parts.map(function (t, k) { return { icon: bullets[k] || 'circle', text: t }; }), highlights: highlights, flags: flags, count: entries.length, agent: 'DailySummaryAgent v1 (rule-based)' };
@@ -172,6 +174,8 @@
       symptoms: { daysLogged: symptoms.length, top: top, painAvg: pain.length ? Math.round(pain.reduce(function (a, b) { return a + b; }, 0) / pain.length * 10) / 10 : null, painMax: pain.length ? Math.max.apply(null, pain) : null, moods: moods },
       food: { meals: meals.length, daysLogged: Object.keys(foodDays).length, tags: tags, nutrients: nutrientDays(meals) },
       mindfulness: (function () { var ss = S.list('mindfulness', { from: from, to: end }); return { sessions: ss.length, minutes: Math.round(ss.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) }; })(),
+      /* self-reported movement over the 28 days: totals only, no score (ovu-exercise.js has the weekly WHO view) */
+      movement: (function () { var ex = S.list('exercise', { from: from, to: end }), days = {}, sdays = {}, met = 0; ex.forEach(function (e) { days[e.date] = 1; if (e.data.strength) sdays[e.date] = 1; if (typeof e.data.met === 'number' && e.data.met > 0) met += e.data.met * (Number(e.data.minutes) || 0); }); return { sessions: ex.length, minutes: Math.round(ex.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)), activeDays: Object.keys(days).length, strengthDays: Object.keys(sdays).length, metMinutes: Math.round(met) }; })(),
       flags: flags, questions: questions,
       disclaimer: 'Self-reported entries summarised by deterministic rules in the browser. For clinician review; not a diagnosis.'
     };

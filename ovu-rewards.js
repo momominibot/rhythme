@@ -3,7 +3,7 @@
 (function (root) {
   'use strict';
   var S = root.OvuStore;
-  var RULES = { sleep: 10, period: 10, symptom: 8, food: 6, reflection: 5, mindfulness: 0 };
+  var RULES = { sleep: 10, period: 10, symptom: 8, food: 6, reflection: 5, mindfulness: 0, exercise: 6 };
   var SHOP = [
     /* pets in a slot are options: one kitten and one puppy show at a time, the rest wait in your inventory.
      * posAs borrows the layout spot of the original pet; wk keeps each sprite the same height as the original. */
@@ -36,6 +36,15 @@
   ];
   /* items taken out of the shop: anyone who bought one gets the hearts back once */
   var RETIRED = { catgrey: 150 };
+  /* Movement is logged data, so it earns like a meal, but once a day: the first exercise log of the day pays RULES.exercise,
+     later ones that day pay nothing. Hearts never depend on minutes, effort or MET, so nothing rewards doing more or harder
+     than you did (economy review, 19 Oct: one award per domain per day, nothing for health outcomes). */
+  function exercisePoints(l) {
+    var day = S.today();
+    if (!l.moveDay || l.moveDay.day !== day) l.moveDay = { day: day, pts: 0 };
+    var add = Math.max(0, Math.min(RULES.exercise, RULES.exercise - l.moveDay.pts));
+    l.moveDay.pts += add; return add;
+  }
   function ledger() {
     var st = S.state(), l = st.rewards || { hearts: 0, earned: 0, log: [], owned: [], placed: {}, lastDay: null, streak: 0 };
     var gone = (l.owned || []).filter(function (id) { return RETIRED[id]; });
@@ -63,6 +72,7 @@
       write(lb); return { points: bp, bonus: 0, hearts: lb.hearts, streak: lb.streak };
     }
     var l = ledger(), pts = RULES[ev.type] || 0;
+    if (ev.type === 'exercise') pts = exercisePoints(l);
     if (ev.type === 'food') pts += Math.min(6, ((ev.data.items || []).length) * 2);
     if (ev.type === 'mindfulness') pts = ev.data.kind === 'informal' ? 5 + (ev.data.first ? 10 : 0) : Math.min(20, Math.round(Number(ev.data.minutes) || 0) * 2); /* everyday practice: 5, +10 the first time (jev 0.58 / 0.72) */
     var today = S.today(), bonus = 0;

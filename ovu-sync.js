@@ -22,6 +22,11 @@
   /* keys whose values are, or may hold, a photo; never uploaded */
   var PHOTO_KEYS = { photo: 1, photos: 1, thumb: 1, thumbs: 1, thumbnail: 1, thumbnails: 1, image: 1, images: 1, img: 1, dataurl: 1, picture: 1, preview: 1, src: 1, base64: 1, b64: 1 };
 
+  /* Entry types the cloud table accepted before Movement (20261019000000_accounts_sync_tombstones.sql). A newer type
+     is sent too; if the server refuses it by its type check, those rows are held on this phone and sent again on the
+     next sync, while every other row still uploads. 20261019120000_exercise_entries.sql lets 'exercise' through. */
+  var CLOUD_TYPES_V1 = { sleep: 1, period: 1, symptom: 1, food: 1, reflection: 1, mindfulness: 1, weight: 1 };
+
   var listeners = [];
   var statusNow = { state: 'idle', at: null, error: null };
   var busy = false, busyPromise = null, debounceTimer = null;
@@ -94,6 +99,22 @@
     });
     return { applyPut: applyPut, applyDel: applyDel, pushUp: pushUp, pushDel: pushDel };
   }
+
+  /* ---------- held rows (pure, exported for tools/test-core.js) ----------
+   * Rows held back by an earlier sync go up again with this one, unless this sync already sends them or a newer
+   * cloud copy has just replaced or deleted them. The global push watermark can move past a held row's edit time,
+   * so without this the row would never be sent once the server accepts its type. */
+  function addHeld(plan, held, getEvent) {
+    var have = {};
+    plan.pushUp.forEach(function (e) { have[e.id] = 1; });
+    plan.applyPut.forEach(function (r) { have[r.id] = 1; });
+    plan.applyDel.forEach(function (id) { have[id] = 1; });
+    Object.keys(held || {}).forEach(function (id) { if (have[id]) return; var ev = getEvent(id); if (ev) { plan.pushUp.push(ev); have[id] = 1; } });
+    return plan;
+  }
+  function typeRejected(err) { return /violates check constraint/i.test(String((err && err.message) || '')); }
+  /* Split a refused batch: the older types go up on their own, the newer ones are held. */
+  function splitByType(rows) { var ok = [], held = []; (rows || []).forEach(function (r) { (CLOUD_TYPES_V1[r.type] ? ok : held).push(r); }); return { ok: ok, held: held }; }
 
   /* ---------- row <-> event, with thumbnails stripped on the way up ---------- */
   function stripThumbs(v) {
@@ -188,22 +209,30 @@
         /* consent or sign-in may have changed during the network wait */
         if (!canSync() || a.userId() !== uid) { busy = false; setStatus('idle'); return { ok: false, reason: 'cancelled' }; }
         var pushedAt = loadState().pushedAt || '';
-        var plan = merge(S.list(null), loadState().tombstones || {}, remoteRows, pushedAt);
+        var plan = addHeld(merge(S.list(null), loadState().tombstones || {}, remoteRows, pushedAt), loadState().held, S.get);
         /* serialise what we push NOW: an edit made to the same event during the
            upload must not move the watermark to an unsent time (pushUp holds live
            event references), or that edit would never be backed up. */
         var upRows = plan.pushUp.map(function (ev) { return evToRow(ev, uid); });
         if (plan.applyPut.length || plan.applyDel.length) S.applyRemote(plan.applyPut.map(function (r) { return keepLocalPhotos(rowToEvent(r)); }), plan.applyDel);
-        var step = Promise.resolve();
+        var step = Promise.resolve(), pushedRows = upRows, heldRows = [];
+        function post(rows) { return rest('POST', '/entries?on_conflict=user_id,id', rows, 'resolution=merge-duplicates,return=minimal', token); }
         if (upRows.length) {
-          step = step.then(function () { return rest('POST', '/entries?on_conflict=user_id,id', upRows, 'resolution=merge-duplicates,return=minimal', token); });
+          step = step.then(function () {
+            return post(upRows).catch(function (err) {
+              if (!typeRejected(err)) throw err;
+              var sp = splitByType(upRows); if (!sp.held.length) throw err;
+              pushedRows = sp.ok; heldRows = sp.held;
+              return sp.ok.length ? post(sp.ok) : null;
+            });
+          });
         }
         plan.pushDel.forEach(function (d) {
           step = step.then(function () { return rest('PATCH', '/entries?id=eq.' + encodeURIComponent(d.id) + '&user_id=eq.' + uid, { deleted: true, deleted_at: d.deleted_at, updated_at: d.deleted_at }, 'return=minimal', token); });
         });
         return step.then(function () {
           var seqMax = remoteRows.reduce(function (m, r) { return maxIso(m, r.synced_at); }, '');
-          var upMax = upRows.reduce(function (m, r) { return maxIso(m, r.updated_at); }, '');
+          var upMax = pushedRows.reduce(function (m, r) { return maxIso(m, r.updated_at); }, ''); /* held rows did not go up */
           var delMax = plan.pushDel.reduce(function (m, d) { return maxIso(m, d.deleted_at); }, '');
           var remoteMax = remoteRows.reduce(function (m, r) { return maxIso(m, r.updated_at, r.deleted_at || ''); }, '');
           var settled = {};
@@ -216,12 +245,18 @@
           cur.pulledSeq = maxIso(cur.pulledSeq || '', seqMax) || cur.pulledSeq || null;
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
           Object.keys(settled).forEach(function (id) { delete cur.tombstones[id]; });
+          var held = cur.held || {};
+          pushedRows.forEach(function (r) { delete held[r.id]; });
+          Object.keys(settled).forEach(function (id) { delete held[id]; });
+          heldRows.forEach(function (r) { held[r.id] = r.updated_at; });
+          Object.keys(held).forEach(function (id) { if (!S.get(id)) delete held[id]; });
+          cur.held = held;
           cur.shadow = snapshot();
           saveState(cur);
           return syncProfile(token, uid).then(function () {
             var s2 = loadState(); s2.lastSyncAt = nowIso(); saveState(s2);
             busy = false; setStatus('ok');
-            return { ok: true, pulled: remoteRows.length, pushed: plan.pushUp.length + plan.pushDel.length };
+            return { ok: true, pulled: remoteRows.length, pushed: pushedRows.length + plan.pushDel.length, held: heldRows.length };
           });
         });
       });
@@ -301,9 +336,9 @@
     consentOk: consentOk,
     deleteAccount: deleteAccount,
     resetPosition: resetPosition,
-    status: function () { var st = loadState(); return { state: statusNow.state, error: statusNow.error, lastSyncAt: st.lastSyncAt, pending: Object.keys(st.tombstones || {}).length }; },
+    status: function () { var st = loadState(); return { state: statusNow.state, error: statusNow.error, lastSyncAt: st.lastSyncAt, pending: Object.keys(st.tombstones || {}).length, held: Object.keys(st.held || {}).length }; },
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
     /* pure helpers, exported for the tests */
-    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud
+    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud, addHeld: addHeld, splitByType: splitByType, typeRejected: typeRejected
   };
 })(window);
