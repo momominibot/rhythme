@@ -21,7 +21,7 @@
     zones: [[[14, 54], [86, 54], [92, 60], [50, 79], [7, 63]]],
     solids: [{ id: 'lamp', x0: 26, x1: 30, y0: 56, y1: 62 }, { id: 'bench', x0: 46, x1: 58, y0: 64, y1: 72 }, { id: 'tree', x0: 64, x1: 70, y0: 57, y1: 65 }, { id: 'pot', x0: 28, x1: 38, y0: 62, y1: 70 }, { id: 'pot', x0: 59, x1: 65, y0: 68, y1: 72 }, { id: 'bush', x0: 18, x1: 26, y0: 61, y1: 66 }, { id: 'arch', x0: 6, x1: 14, y0: 46, y1: 62 }, { id: 'arch', x0: 86, x1: 92, y0: 46, y1: 62 }],
     doors: [{ id: 'arch', to: 'garden', x: 16, y: 60, r: 4.5, flip: true }, { id: 'arch2', to: 'plaza', x: 84, y: 60, r: 4.5, flip: false }].concat(STORES.map(function (s) { return { id: s.id, to: s.layout, tap: s.id, x: s.wp.x, y: s.wp.y, r: 3.5, flip: !!s.wp.flip }; })),
-    meditator: { x: 53, y: 65, w: 11 }, aura: { x: 53, y: 63, w: 17 }, holo: { x: 63, y: 63, w: 14 },
+    meditator: { x: 53, y: 65, w: 11, seat: { x: 53, seatY: 65.5, groundY: 69, face: 'left' } }, aura: { x: 53, y: 63, w: 17 }, holo: { x: 63, y: 63, w: 14 },
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
     props: {}
   };

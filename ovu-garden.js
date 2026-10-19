@@ -74,7 +74,7 @@
     zones: [[[50, 36], [92, 58], [50, 77], [8, 58]]],
     solids: [{ id: 'bench', x0: 22, x1: 44, y0: 38, y1: 50 }, { id: 'tree', x0: 12, x1: 26, y0: 40, y1: 48 }, { id: 'greenhouse', x0: 56, x1: 82, y0: 30, y1: 46 }, { id: 'pond', x0: 57, x1: 78, y0: 52, y1: 64 }, { id: 'planter', x0: 41, x1: 61, y0: 60, y1: 69 }, { id: 'can', x0: 39, x1: 47, y0: 65, y1: 70 }],
     doors: [{ id: 'gate', to: 'home', x: 29, y: 58, r: 5, flip: true }, { id: 'arch', to: 'street', x: 80, y: 55, r: 5, flip: false }],
-    meditator: { x: 33, y: 47, w: 11 }, aura: { x: 33, y: 45, w: 17 }, holo: { x: 43, y: 45, w: 14 },
+    meditator: { x: 33, y: 47, w: 11, seat: { x: 32.5, seatY: 45, groundY: 49.5, face: 'right' } }, aura: { x: 33, y: 45, w: 17 }, holo: { x: 43, y: 45, w: 14 },
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
     props: { cat: { x: 44, y: 57, w: 9 }, dog: { x: 66, y: 66, w: 9.5 }, mewmew: { x: 36, y: 66, w: 12 } }
   };
@@ -146,7 +146,18 @@
   /* a seat is a bench or a chair: she sits on it in her own clothes (assets/room/dream/avatar-sit-<outfit>.webp, hips at
    * seat height, feet down); the cross-legged pose stays for the yoga mat. A missing seated sprite falls back to the
    * standing one, never to the cross-legged one */
-  function seatedSrc() { return ART + 'avatar-sit-' + ((S.profile().outfit) || 'base') + '.webp'; }
+  /* lap line (where the body meets the seat) and height/width of each seated sprite, measured from the files */
+  var SIT = { base: { hip: 0.695, aspect: 2.063 }, sundress: { hip: 0.766, aspect: 2.031 }, pajamas: { hip: 0.765, aspect: 2.019 }, cozy: { hip: 0.705, aspect: 2.035 }, yoga: { hip: 0.762, aspect: 2.013 }, party: { hip: 0.761, aspect: 1.902 }, 'kebaya-blue': { hip: 0.747, aspect: 1.672 }, 'kebaya-green': { hip: 0.746, aspect: 2.031 }, 'kebaya-red': { hip: 0.733, aspect: 1.674 } };
+  function outfitId() { var o = S.profile().outfit; return SIT[o] ? o : 'base'; }
+  function seatedSrc() { return ART + 'avatar-sit-' + outfitId() + '.webp'; }
+  /* place a seated sprite on a seat: feet on the ground line, lap on the seat, facing the way the bench faces.
+   * seat = { x, seatY, groundY, face } in plate percent; the width follows from the seat height so her legs reach */
+  function seatPlace(el, seat) {
+    var L = R.layout(), m = SIT[outfitId()], drop = Math.max(1.5, seat.groundY - seat.seatY);
+    var w = drop / ((1 - m.hip) * (L.w / L.h) * m.aspect);
+    el.style.left = seat.x + '%'; el.style.top = seat.groundY + '%'; el.style.width = Math.min(14, Math.max(7, w)).toFixed(2) + '%';
+    el.classList.toggle('faceright', seat.face === 'right');
+  }
   function seatedImg(img, fallback) {
     var want = seatedSrc(), probe = new Image();
     probe.onload = function () { img.src = want; img.classList.add('seated'); };
@@ -161,9 +172,10 @@
     var img = R.els.meditator && R.els.meditator.querySelector('img');
     if (img) {
       seatedImg(img, ART + 'avatar-meditate.webp'); R.els.meditator.classList.add('onseat');
+      if (spot.seat) seatPlace(R.els.meditator, spot.seat); else R.els.meditator.classList.remove('faceright');
       if (!meditatorWatch && root.MutationObserver) {
         /* when the session ends the mat gets its own pose back, so the next mat session is cross-legged again */
-        meditatorWatch = new MutationObserver(function () { if (!R.els.meditator.classList.contains('on') && R.els.meditator.classList.contains('onseat')) { R.els.meditator.classList.remove('onseat'); img.classList.remove('seated'); img.src = ART + 'avatar-meditate.webp'; } });
+        meditatorWatch = new MutationObserver(function () { if (!R.els.meditator.classList.contains('on') && R.els.meditator.classList.contains('onseat')) { R.els.meditator.classList.remove('onseat', 'faceright'); img.classList.remove('seated'); img.src = ART + 'avatar-meditate.webp'; } });
         meditatorWatch.observe(R.els.meditator, { attributes: true, attributeFilter: ['class'] });
       }
     }
@@ -174,7 +186,8 @@
     standUp(); var wrap = R.els.props, el = doc.createElement('div');
     el.className = 'nb sitter'; el.dataset.id = 'sitter'; el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', 'You are sitting on the bench. Tap to get up.');
     el.style.left = spot.x + '%'; el.style.top = spot.y + '%'; el.style.width = spot.w + '%';
-    el.innerHTML = '<img src="' + ART + (S.profile().outfit && S.profile().outfit !== 'base' ? 'avatar-' + S.profile().outfit : 'avatar-base') + '.webp" alt="">'; wrap.appendChild(el); seatedImg(el.querySelector('img'), el.querySelector('img').src);
+    if (spot.seat) seatPlace(el, spot.seat);
+    el.innerHTML = '<img src="' + ART + 'avatar-' + outfitId() + '.webp" alt="">'; wrap.appendChild(el); seatedImg(el.querySelector('img'), el.querySelector('img').src);
     sitting = { spot: spot, back: back, el: el }; R.els.scene.classList.add('sitting'); R.chime('tap');
     R.toast('Sitting a while. Tap anywhere to get up.', 'chair');
   }

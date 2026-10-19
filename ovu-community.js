@@ -59,11 +59,11 @@
     zones: [[[50, 44], [90, 58], [50, 76], [10, 58]]],
     solids: [{ id: 'board', x0: 22, x1: 38, y0: 38, y1: 52 }, { id: 'fountain', x0: 38, x1: 60, y0: 40, y1: 52 }, { id: 'stall', x0: 56, x1: 76, y0: 44, y1: 56 }, { id: 'tree', x0: 76, x1: 94, y0: 46, y1: 60 }, { id: 'bench', x0: 64, x1: 82, y0: 58, y1: 65 }, { id: 'bench', x0: 30, x1: 46, y0: 66, y1: 74 }, { id: 'gate', x0: 58, x1: 68, y0: 64, y1: 72 }, { id: 'pot', x0: 20, x1: 30, y0: 62, y1: 70 }, { id: 'pot', x0: 46, x1: 56, y0: 70, y1: 78 }, { id: 'pot', x0: 64, x1: 70, y0: 67, y1: 72 }, { id: 'arch', x0: 6, x1: 19, y0: 46, y1: 62 }],
     doors: [{ id: 'arch', to: 'street', x: 20, y: 58, r: 5, flip: true }, { id: 'gate', to: 'home', x: 54, y: 64, r: 4.5, flip: false }],
-    meditator: { x: 37, y: 66, w: 11 }, aura: { x: 37, y: 64, w: 17 }, holo: { x: 47, y: 64, w: 14 },
+    meditator: { x: 37, y: 66, w: 11, seat: { x: 36.5, seatY: 66, groundY: 70, face: 'left' } }, aura: { x: 37, y: 64, w: 17 }, holo: { x: 47, y: 64, w: 14 },
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
     props: {}
   };
-  var BENCH2 = { sit: { x: 72, y: 59, w: 11 }, holo: { x: 82, y: 58, w: 14 }, back: { x: 62, y: 62, flip: false } };
+  var BENCH2 = { sit: { x: 72, y: 59, w: 11, seat: { x: 71.5, seatY: 60, groundY: 63.5, face: 'right' } }, holo: { x: 82, y: 58, w: 14 }, back: { x: 62, y: 62, flip: false } };
   C.LAYOUT = PLAZA; C.BENCH2 = BENCH2;
   /* ---------- the scene ---------- */
   var R = root.OvuRoom; if (!R || !root.document || !root.document.createElement) return;
