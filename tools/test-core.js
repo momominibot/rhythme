@@ -602,6 +602,34 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var w6 = fresh('2026-08-01'), S6 = w6.OvuStore, A6 = w6.OvuAgents;
   periods(S6, ['2026-01-01', '2026-06-01']);
   check('an open gap of over 45 days after a break is still noted as late', A6.allFlags('2026-08-01').some(function (f) { return f.code === 'PERIOD_LATE'; }));
+  var e60 = w4.OvuAgents.allFlags('2026-05-10');
+  check('the 60-day cycle is flagged long on its own date and the 61-day gap is a gap', e60.some(function (f) { return f.code === 'CYCLE_LONG' && f.date === '2026-03-02' && /60 days/.test(f.title); }) && e60.some(function (f) { return f.code === 'GAP_LONG' && f.date === '2026-05-02'; }), JSON.stringify(e60.map(function (f) { return f.code + '@' + f.date; })));
+
+  /* three breaks, then five and six cycles: the note names the latest break and goes once six cycles follow it */
+  var w7 = fresh('2026-10-19'), S7 = w7.OvuStore;
+  var five = ['2026-05-01', '2026-05-29', '2026-06-26', '2026-07-24', '2026-08-21', '2026-09-18'];
+  periods(S7, ['2024-01-01', '2024-01-29', '2024-08-01', '2025-03-01'].concat(five));
+  var t5 = S7.cycleStats('2026-09-20');
+  check('three breaks then five cycles: the note names the latest break and every gap stays in cycles', t5.breaks.length === 3 && t5.cycles.length === 9 && t5.lengths.length === 5 && t5.gapLeftOut && t5.gapLeftOut.to === '2026-05-01' && t5.gapLeftOut.cyclesBefore === 1, JSON.stringify({ b: t5.breaks.length, c: t5.cycles.length, l: t5.lengths, g: t5.gapLeftOut }));
+  periods(S7, ['2026-10-16']);
+  var t6 = S7.cycleStats('2026-10-19');
+  check('six cycles after the latest break: no note, the estimate is what it always was', t6.lengths.length === 6 && t6.gapLeftOut === null && t6.basis === '6 logged cycles' && t6.averageLength === 28, JSON.stringify({ l: t6.lengths, g: t6.gapLeftOut, b: t6.basis }));
+
+  /* one logged cycle plus valid remembered dates: the window and the words both come from the remembered dates */
+  var w8 = fresh('2026-10-19'), S8 = w8.OvuStore;
+  S8.add('period', '2025-06-04', { flow: 'medium' }, 'apple-health'); S8.add('period', '2026-09-11', { flow: 'medium' }, 'room'); S8.add('period', '2026-10-18', { flow: 'medium' }, 'room');
+  S8.setProfile({ predictionMode: 'normal', periodRecall: { starts: ['2026-07-07', '2026-08-04', '2026-09-01'].map(function (d) { return { precision: 'day', date: d }; }), latest: 'yes', complete: 'yes' } });
+  var rc8 = S8.cycleStats('2026-10-19');
+  check('when remembered dates set the estimate the basis says so, not "1 logged cycle"', rc8.lengths.join() === '37' && rc8.fromRecall && rc8.averageLength === 28 && rc8.basis === 'remembered period dates' && rc8.predictedFrom === '2026-11-11' && rc8.predictedTo === '2026-11-19' && rc8.gapLeftOut && rc8.gapLeftOut.cyclesBefore === 0, JSON.stringify({ l: rc8.lengths, r: rc8.fromRecall, a: rc8.averageLength, b: rc8.basis, f: rc8.predictedFrom, t: rc8.predictedTo }));
+
+  /* a reading written from the old numbers asks to be updated; it is not hidden and no call is made */
+  ['ovu-consent.js', 'ovu-auth.js', 'ovu-insight.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var I = w.OvuInsight, es = S.list(null, { from: '2026-09-22', to: '2026-10-19' });
+  var oldSig = es.length + ':' + es.map(function (e) { return (e.updatedAt || e.createdAt || '').slice(0, 19); }).sort().slice(-1)[0];
+  S.setState({ insights: { daily: {}, fourweeks: { '2026-10-19': { end: '2026-10-19', sig: oldSig, clinician: { cycle: 'A 501-day cycle.' } } } } });
+  check('a four-week reading cached under the old rules is stale but still readable', I.stale('fourweeks', '2026-10-19') === true && I.cachedFourWeeks('2026-10-19').clinician.cycle === 'A 501-day cycle.');
+  var curSig = (function () { var st = S.state().insights; st.fourweeks['2026-10-19'].sig = 'r2|' + oldSig; S.setState({ insights: st }); return I.stale('fourweeks', '2026-10-19'); })();
+  check('a reading cached under the current rules is not stale', curSig === false);
 })();
 
 (function pdfWriter() {

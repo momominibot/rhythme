@@ -352,8 +352,12 @@
       if (day > L + 7) phase = 'late';
     }
     /* the latest break, when it changed this estimate (older cycles would otherwise have been in the last six) */
-    var gapLeftOut = breaks.length && lengths.length < 6 ? breaks[breaks.length - 1] : null;
-    return { mode: mode, uncertain: mode === 'wide', episodes: eps, starts: starts, cycles: cycles, breaks: breaks, gapLeftOut: gapLeftOut, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, predictedFrom: predictedFrom, predictedTo: predictedTo, recalled: rr, fromRecall: useRecall || anchorRecalled, observedRange: lo !== null ? { lo: lo, hi: hi } : null, basis: recent.length ? recent.length + ' logged cycle' + (recent.length === 1 ? '' : 's') : (useRecall ? 'remembered period dates' : (p.cycleLength ? 'your profile setting' : 'no cycle length yet')), estimate: true };
+    var gapLeftOut = null;
+    if (breaks.length && lengths.length < 6) {
+      var lb = breaks[breaks.length - 1];
+      gapLeftOut = { from: lb.from, to: lb.to, days: lb.days, cyclesBefore: cycles.filter(function (c) { return c.counted && c.to <= lb.from; }).length };
+    }
+    return { mode: mode, uncertain: mode === 'wide', episodes: eps, starts: starts, cycles: cycles, breaks: breaks, gapLeftOut: gapLeftOut, lengths: lengths, averageLength: avg, periodLength: periodLen, lastStart: last, cycleDay: day, phase: phase, predictedNext: predictedNext, predictedFrom: predictedFrom, predictedTo: predictedTo, recalled: rr, fromRecall: useRecall || anchorRecalled, observedRange: lo !== null ? { lo: lo, hi: hi } : null, basis: recent.length >= 2 ? recent.length + ' logged cycles' : (useRecall ? 'remembered period dates' : (recent.length ? '1 logged cycle' : (p.cycleLength ? 'your profile setting' : 'no cycle length yet'))), estimate: true };
   }
 
   /* ---------- legacy mirrors (so older screens keep showing the same data) ---------- */

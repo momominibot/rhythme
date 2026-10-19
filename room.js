@@ -233,11 +233,12 @@
     if (cs.predictedFrom === cs.predictedTo) return 'around ' + prettyDate(cs.predictedFrom);
     return 'between ' + prettyDate(cs.predictedFrom) + ' and ' + prettyDate(cs.predictedTo);
   }
-  /* A gap of over 60 days between logged periods is a break, not a cycle (ovu-store.js); say so when it changed the estimate. */
+  /* A gap of over 60 days between logged periods is left out of the estimate (ovu-store.js); say so when it changed
+   * the estimate, without guessing what happened in it. */
   function gapNote(cs) {
     var g = cs && cs.mode !== 'suspended' && cs.gapLeftOut; if (!g) return '';
     var opts = { day: 'numeric', month: 'short' }; if (g.to.slice(0, 4) !== S.today().slice(0, 4)) opts.year = 'numeric';
-    return 'The ' + g.days + '-day gap before your period on ' + prettyDate(g.to, opts) + ' is left out as a break, not a cycle, so only cycles since then count.';
+    return 'The ' + g.days + '-day gap before your period on ' + prettyDate(g.to, opts) + ' is left out of the estimate' + (g.cyclesBefore ? ', along with the cycles logged before it' : '') + '. We can’t tell whether periods in that time went unlogged.';
   }
   function loadJSON(url) { return fetch(url).then(function (r) { if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); }); }
   var toastTimer;

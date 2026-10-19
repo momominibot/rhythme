@@ -47,7 +47,10 @@
     if (refl.length) out.reflections = refl.map(function (r) { return { mood: r.data.mood || '', text: clean(r.data.text) }; });
     return out;
   }
-  function sigFor(from, to) { var es = S.list(null, { from: from, to: to }); return es.length + ':' + es.map(function (e) { return (e.updatedAt || e.createdAt || '').slice(0, 19); }).sort().slice(-1)[0]; }
+  /* RULES joins the entry signature so a reading written before the rule agents changed what they compute asks to be
+   * updated (20 Oct 2026: gaps of over 60 days between periods stopped counting as cycles). It makes no call itself. */
+  var RULES = 'r2';
+  function sigFor(from, to) { var es = S.list(null, { from: from, to: to }); return RULES + '|' + es.length + ':' + es.map(function (e) { return (e.updatedAt || e.createdAt || '').slice(0, 19); }).sort().slice(-1)[0]; }
 
   function dailyInput(date) {
     var days = []; for (var i = 7; i >= 0; i--) { var d = S.addDays(date, -i); var c = dayCompact(d); if (Object.keys(c).length > 1) days.push(c); }

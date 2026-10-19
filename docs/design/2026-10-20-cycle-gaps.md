@@ -26,9 +26,12 @@ gap also reached the cycle agent as "Cycle of 501 days" and the clinician summar
    flagging these as long cycles against the FIGO 2018 range of 24 to 38 days, as it does today.
 4. **Short gaps are unchanged.** Episodes still merge across up to two dry days, and a gap under 24 days still counts
    and is flagged as a short cycle; that is logged bleeding and the agent's job, not this fix.
-5. **Say so.** When the latest break changed the estimate (fewer than six cycles since it), the calendar adds:
-   "A 501-day gap before your period on 18 Oct is left out as a break, not a cycle, so only cycles since then
-   count."
+5. **Say so, without guessing.** When the latest break changed the estimate (fewer than six cycles since it), the
+   calendar and the window card add: "The 501-day gap before your period on 18 Oct is left out of the estimate. We
+   can't tell whether periods in that time went unlogged." When cycles were logged before the gap, the first sentence
+   adds "along with the cycles logged before it". It does not say what the estimate came from instead; the basis
+   in brackets already does (Codex review: "only cycles since then count" was wrong when remembered dates supply
+   the window).
 6. **Keep the signal.** A break among the last three gaps raises an info note, `GAP_LONG`, in place of the old
    "Cycle of N days": "A gap of N days between logged periods. Left out of your cycle averages. If no period came in
    that time, a gap this long is worth mentioning to a clinician; if periods came but were not logged, you can
@@ -41,12 +44,24 @@ gap also reached the cycle agent as "Cycle of 501 days" and the clinician summar
 - `breaks`: the gaps over 60 days.
 - `lengths`: counted cycle lengths since the last break (what the average, the window, the clinician summary's
   cycle lengths and the "N logged cycles" basis all use, so they agree with each other).
-- `gapLeftOut`: the latest break when it changed this estimate, else null.
-- `basis` keeps its existing words; no new internal labels reach the summary prose.
+- `gapLeftOut`: the latest break (`from`, `to`, `days`, `cyclesBefore`) when it changed this estimate, else null.
+- `basis` keeps its existing words, now in the same order as the average: two or more logged cycles, then
+  remembered dates, then one logged cycle, then the profile setting. Before, one logged cycle plus valid remembered
+  dates was averaged from the remembered dates but named "1 logged cycle" (found in review; older than this change,
+  made more likely by it).
+
+## Luna's written readings
+
+A reading written before this change may describe the old numbers. `ovu-insight.js` now puts a rules version in the
+signature it compares, so such a reading shows "Update" and regenerates when she asks. It is not hidden (that would
+also drop two weeks of unaffected daily readings) and nothing calls the relay by itself. Four-week readings are kept
+per day, so an old one is only ever today's.
 
 ## Checks
 
 `tools/test-core.js`, block `cycleGapsAreBreaks`: the reproduced case gives no 500-day prediction and names the
 gap; normal consecutive cycles give the same numbers as before; cycles after a break predict from those cycles only;
 a profile length still predicts after a break; a 45-day cycle is still a cycle and still flagged long; the agent
-says "gap" not "cycle" for the break; wide and suspended modes still behave.
+says "gap" not "cycle" for the break; wide and suspended modes still behave; the 60-day cycle keeps its long-cycle note;
+the gap note names the latest of several breaks and goes once six cycles follow it; remembered dates name themselves
+in the basis; an old reading is stale but still readable.
