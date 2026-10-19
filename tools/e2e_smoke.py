@@ -509,6 +509,15 @@ async def main():
             await page.reload(wait_until="networkidle"); await page.wait_for_timeout(600)
             saved = await page.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1'));return db.events.filter(e=>e.date==='%s').map(e=>e.type).sort().join(',');}" % TODAY)
             check("saved entries survive a reload (sleep and symptom for today)", saved == "sleep,symptom", saved)
+            # 3b. the safety rules read before anything is parsed (docs/debate/2026-10-18-persona-safety-recheck.md)
+            await page.goto(BASE + "room.html#luna", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector("#lunaIn", timeout=10000)
+            await page.fill("#lunaIn", "I want to hurt myself"); await page.click("#lunaSend"); await page.wait_for_timeout(400)
+            sh = await page.evaluate("()=>{var c=[...document.querySelectorAll('.bub.urgent.emergency')].pop(); return c ? {text: c.textContent, hrefs: [...c.querySelectorAll('a')].map(a=>a.getAttribute('href'))} : null}")
+            check("a self-harm note shows the 995 and SOS card with its own call links", bool(sh) and "If you have thoughts of harming yourself or your baby, you need help now." in sh["text"] and "SOS is available 24 hours on 1767, or WhatsApp 9151 1767." in sh["text"] and sh["hrefs"] == ["tel:995", "tel:1767", "https://wa.me/6591511767"], sh)
+            await page.fill("#lunaIn", "My period has not returned."); await page.click("#lunaSend"); await page.wait_for_timeout(400)
+            np = await page.evaluate("()=>{var b=[...document.querySelectorAll('.bub.from-luna')].pop(); var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); return {text: b ? b.textContent : '', periodsToday: db.events.filter(e=>e.type==='period'&&e.date==='%s').length, confirm: document.querySelectorAll('.bub.confirm').length}}" % TODAY)
+            check("'My period has not returned.' is acknowledged as no bleeding and adds no period day", "no bleeding" in np["text"] and np["periodsToday"] == 0 and np["confirm"] == 0, np)
+            check("still no relay call after the safety notes", not relay_calls, relay_calls[:2])
 
             # 4. the food diary opens with its tabs
             await page.goto(BASE + "room.html#food", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector(".foodmodes button", timeout=10000)
@@ -632,6 +641,22 @@ async def main():
             u2 = await p5.evaluate("()=>({welcome: !!document.querySelector('#welcome:not([hidden])'), consent: !document.querySelector('#consent').hidden, db: localStorage.getItem('ovumind_db_v1')})")
             check("under 18: a plain message, export and delete right there, no agree button, nothing written at all, and the doorway is back on reload", "18 and over" in (u1["msg"] or "") and not u1["agree"] and u1["open"] and u1["exportLink"] and '"consent":{' not in (u1["db"] or "") and 'under18' not in (u1["db"] or "") and (u2["welcome"] or u2["consent"]) and '"ageAttest"' not in (u2["db"] or ""), {"u1": {k: u1[k] for k in ("msg", "agree", "open", "exportLink")}, "u2": {k: u2[k] for k in ("welcome", "consent")}})
             await ctx5.close()
+            # bleeding after menopause: the journal note stays until she hides it, and hiding it holds after a reload
+            ctx6 = await browser.new_context(viewport={"width": 390, "height": 844})
+            pm = json.loads(json.dumps(DB)); pm["profile"]["lifeStage"] = "post"
+            pm["events"].append({"id": "pm1", "type": "symptom", "date": TODAY, "createdAt": NOW, "updatedAt": NOW, "source": "luna", "data": {"symptoms": ["spotting"], "pain": None, "mood": "", "notes": ""}})
+            await ctx6.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(pm)))
+            p6 = await ctx6.new_page(); await p6.route("**/*", gate)
+            p6.on("pageerror", lambda e: errors.append("postmeno pageerror: " + str(e)))
+            p6.on("dialog", lambda d: asyncio.ensure_future(d.accept()))
+            await p6.goto(BASE + "journal.html", wait_until="networkidle"); await p6.wait_for_timeout(700)
+            f1 = await p6.evaluate("()=>({text: document.querySelector('#flags').textContent, btn: !!document.querySelector('#flags [data-dismiss=POSTMENO_BLEED]')})")
+            check("spotting logged as a symptom after menopause shows the bleeding note in the journal with a hide button", "Bleeding after menopause" in f1["text"] and f1["btn"], f1)
+            await p6.click("#flags [data-dismiss=POSTMENO_BLEED]"); await p6.wait_for_timeout(400)
+            await p6.reload(wait_until="networkidle"); await p6.wait_for_timeout(600)
+            f2 = await p6.evaluate("()=>({text: document.querySelector('#flags').textContent, st: JSON.parse(localStorage.getItem('ovumind_db_v1')).state.postmenoBleed})")
+            check("hiding the note holds after a reload and is remembered with the bleed date", "Bleeding after menopause" not in f2["text"] and (f2["st"] or {}).get("dismissedThrough") == TODAY, f2)
+            await ctx6.close()
             # Moon Tap: open from the mat sheet, begin, three blooms, stop after the minimum, the entry is saved
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(800)
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindTap", timeout=8000); await page.click("#mindTap"); await page.wait_for_selector("#btapBegin", timeout=8000)

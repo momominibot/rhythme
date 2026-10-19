@@ -99,6 +99,145 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('model is off by default until permission is given', O.aiConfig().on === false && O.aiConfig().insights === false, JSON.stringify(O.aiConfig()));
 })();
 
+/* ---------- persona safety re-check (docs/debate/2026-10-18-persona-safety-recheck.md), the seven release blockers ---------- */
+(function negationIsClauseAware() {
+  console.log('1. a negation removes only what it negates: severe pain and bleeding after menopause still raise their cards');
+  var w = fresh(), O = w.OvuOrb, post = { lifeStage: 'post' };
+  function code(text, p) { var u = O.urgent(text, p || {}); return u ? u.code : null; }
+  check('"No bleeding, but sudden severe pelvic pain." is an emergency', code('No bleeding, but sudden severe pelvic pain.') === 'SEVERE_PAIN_NOW', code('No bleeding, but sudden severe pelvic pain.'));
+  check('"No period, but severe abdominal pain." is an emergency', code('No period, but severe abdominal pain.') === 'SEVERE_PAIN_NOW', code('No period, but severe abdominal pain.'));
+  check('the same without a comma', code('no bleeding but sudden severe pelvic pain') === 'SEVERE_PAIN_NOW');
+  check('"No period for two years, but spotting today" after menopause raises the bleeding prompt', code('No period for two years, but spotting today', post) === 'POSTMENO_BLEED', code('No period for two years, but spotting today', post));
+  check('a curly apostrophe reads like a straight one', code('I haven’t bled in years but there’s spotting today', post) === 'POSTMENO_BLEED');
+  check('negated bleeding alone after menopause raises nothing', code('no bleeding today, slept well', post) === null && code('Not bleeding at all', post) === null && code('My period has not returned.', post) === null && code('I haven’t had a period since 2023', post) === null);
+  check('a negation never hides severe pain', code('Never had pain this severe in my tummy') === 'SEVERE_PAIN_NOW' && code('no severe pelvic pain until tonight, now sudden severe pelvic pain') === 'SEVERE_PAIN_NOW');
+  check('"no pain" on its own is not read as severe pain', code('No pain, severe bloating today') === null);
+  check('soaking still wins over a leading "no pain"', code('No pain but soaking through a pad every hour') === 'HEAVY_BLEED_NOW');
+  check('"no heavy bleeding" with dizziness is not heavy bleeding with dizziness', code('no heavy bleeding, just a bit dizzy') === null);
+  check('pregnancy with negated bleeding and no pain raises nothing', code('8 weeks pregnant, no bleeding, no pain') === null);
+  check('pregnancy with severe pain is still an emergency after a negation', code('pregnant, no bleeding but sudden severe pelvic pain') === 'PREG_BLEED_NOW');
+})();
+
+(function selfHarmCardComesFirst() {
+  console.log('2. thoughts of harming yourself or your baby raise the emergency card before anything is parsed');
+  var w = fresh(), O = w.OvuOrb;
+  var COPY = 'If you have thoughts of harming yourself or your baby, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.';
+  ['I want to hurt myself', 'I feel like killing myself', 'thoughts of hurting my baby', 'I’m scared I might hurt my baby', 'I don’t want to be alive anymore', 'having suicidal thoughts again'].forEach(function (s) {
+    var u = O.urgent(s, {});
+    check('self-harm card for "' + s + '"', u && u.level === 'emergency' && u.code === 'SELF_HARM_NOW' && u.message === COPY, JSON.stringify(u));
+  });
+  var both = O.urgent('soaking through a pad every hour and I want to hurt myself', {});
+  check('the self-harm card comes first, even with heavy bleeding', both && both.code === 'SELF_HARM_NOW', JSON.stringify(both));
+  var u = O.urgent('I want to hurt myself', { lifeStage: 'post' });
+  check('the card carries call links for 995, SOS 1767 and WhatsApp 9151 1767', u && JSON.stringify(u.actions) === JSON.stringify([{ label: 'Call 995', href: 'tel:995' }, { label: 'Call SOS 1767', href: 'tel:1767' }, { label: 'WhatsApp SOS', href: 'https://wa.me/6591511767' }]), JSON.stringify(u && u.actions));
+  check('"I think about hurting myself" and "I’d hurt my baby" raise it too, "I’d never hurt my baby" does not', (O.urgent('Sometimes I think about hurting myself', {}) || {}).code === 'SELF_HARM_NOW' && (O.urgent('I’m so tired I’d hurt my baby', {}) || {}).code === 'SELF_HARM_NOW' && O.urgent('I’d never hurt my baby, just so tired', {}) === null);
+  check('an ordinary hurt is not a self-harm card', O.urgent('I hurt my back carrying the baby', {}) === null && O.urgent('my feet are killing me', {}) === null && O.urgent('am I hurting my baby by drinking coffee?', {}) === null);
+  check('the existing bleeding cards keep their codes and no self-harm copy', (function () { var h = O.urgent('soaking through a pad every hour', {}); return h && h.code === 'HEAVY_BLEED_NOW' && !h.message; })());
+})();
+
+(function noPeriodStatementsAreNotFlow() {
+  console.log('3. "has not returned", "no period", "not bleeding" are no-period observations, never a period entry');
+  var w = fresh(), O = w.OvuOrb, S = w.OvuStore;
+  function periods(s) { return O.parseLocal(s).filter(function (e) { return e.type === 'period'; }); }
+  ['My period has not returned.', 'My period hasn’t come back yet', 'no period this month', 'not bleeding today', 'I haven’t had a period since March', 'I missed my period', 'My period is 5 days late', 'I’m not on my period'].forEach(function (s) {
+    check('no period entry from "' + s + '"', periods(s).length === 0, JSON.stringify(O.parseLocal(s)));
+    check('"' + s + '" is read as a no-period observation', O.noPeriod(s) === true);
+  });
+  check('a real period note is not a no-period observation', O.noPeriod('Period started today, medium') === false && O.noPeriod('heavy bleeding, cramps 6/10') === false);
+  check('a period chip still logs a period', periods('Period started today, medium').length === 1);
+  check('a negation does not hide the bleeding that follows', (function () { var p = periods('no cramps, but heavy bleeding today'); return p.length === 1 && p[0].data.flow === 'heavy'; })());
+  var mood = O.parseLocal('I feel anxious and low before my period.');
+  check('a mood note before a period is not a period day', !mood.some(function (e) { return e.type === 'period'; }) && mood.some(function (e) { return e.type === 'symptom' && e.data.symptoms.indexOf('anxiety') > -1 && e.data.symptoms.indexOf('low mood') > -1; }), JSON.stringify(mood));
+})();
+
+(function symptomNegation() {
+  console.log('4. a negated symptom is not logged');
+  var w = fresh(), O = w.OvuOrb;
+  function syms(s) { var out = []; O.parseLocal(s).forEach(function (e) { if (e.type === 'symptom') out = out.concat(e.data.symptoms); }); return out; }
+  check('"No hot flushes today" logs no hot flushes', syms('No hot flushes today').indexOf('hot flushes') < 0, JSON.stringify(syms('No hot flushes today')));
+  check('"no cramps or bloating" logs neither', syms('no cramps or bloating today').length === 0, JSON.stringify(syms('no cramps or bloating today')));
+  check('"no cramps but a headache" keeps the headache only', (function () { var s = syms('no cramps but a headache'); return s.indexOf('headache') > -1 && s.indexOf('cramps') < 0; })(), JSON.stringify(syms('no cramps but a headache')));
+  check('"didn’t have any cramps" logs no cramps', syms('didn’t have any cramps today').indexOf('cramps') < 0);
+  check('"not anxious" is not anxiety and not a low mood', (function () { var e = O.parseLocal('not anxious or low today, slept fine'); return !e.some(function (x) { return x.type === 'symptom' && (x.data.symptoms.indexOf('anxiety') > -1 || x.data.mood === 'low'); }); })());
+  check('an unnegated symptom is still logged', syms('Hot flushes again today').indexOf('hot flushes') > -1);
+})();
+
+(function symptomWords() {
+  console.log('5. night sweats, irritable, forgetful, flat and tearful map to the symptom list');
+  var w = fresh(), O = w.OvuOrb;
+  function syms(s) { var out = []; O.parseLocal(s).forEach(function (e) { if (e.type === 'symptom') out = out.concat(e.data.symptoms); }); return out; }
+  var ns = O.parseLocal('I had night sweats and woke at 3 am.');
+  check('"I had night sweats and woke at 3 am." is not a dinner', !ns.some(function (e) { return e.type === 'food'; }), JSON.stringify(ns));
+  check('night sweats are logged as hot flushes', syms('I had night sweats and woke at 3 am.').indexOf('hot flushes') > -1);
+  check('irritable and forgetful map to irritability and brain fog', (function () { var s = syms('I am irritable and forgetful.'); return s.indexOf('irritability') > -1 && s.indexOf('brain fog') > -1; })(), JSON.stringify(syms('I am irritable and forgetful.')));
+  check('flat and tearful map to low mood', syms('feeling flat today').indexOf('low mood') > -1 && syms('so tearful this evening').indexOf('low mood') > -1);
+  check('a flat white is a coffee, not a low mood', (function () { var e = O.parseLocal('had a flat white for breakfast'); return e.some(function (x) { return x.type === 'food'; }) && !e.some(function (x) { return x.type === 'symptom'; }); })(), JSON.stringify(O.parseLocal('had a flat white for breakfast')));
+  check('"had cramps after lunch" is a symptom, not a meal', (function () { var e = O.parseLocal('had cramps after lunch'); return !e.some(function (x) { return x.type === 'food'; }) && syms('had cramps after lunch').indexOf('cramps') > -1; })(), JSON.stringify(O.parseLocal('had cramps after lunch')));
+  check('hot flashes, the American spelling, are hot flushes', syms('hot flashes all afternoon').indexOf('hot flushes') > -1);
+})();
+
+(function postmenoSpottingFlagPersists() {
+  console.log('6. spotting after menopause logged as a symptom raises the saved flag, which stays until dismissed');
+  function has(list) { return list.some(function (f) { return f.code === 'POSTMENO_BLEED'; }); }
+  /* the store reads the phone's clock through new Date(): a fake clock lets a later session be 40 days on */
+  function clock(w, iso) { var RealDate = Date; w.__now = new RealDate(iso + 'T12:00:00').getTime(); w.Date = function FakeDate() { var a = arguments; if (!a.length) return new RealDate(w.__now); if (a.length === 1) return new RealDate(a[0]); return new RealDate(a[0], a[1], a[2] || 1, a[3] || 0, a[4] || 0, a[5] || 0, a[6] || 0); }; w.Date.now = function () { return w.__now; }; w.Date.parse = RealDate.parse; w.Date.UTC = RealDate.UTC; w.Date.prototype = RealDate.prototype; }
+  function session(prev, iso) { var n = fresh(); clock(n, iso); n.localStorage.setItem(n.OvuStore.KEY, prev.localStorage.getItem(prev.OvuStore.KEY)); n.OvuStore.load(true); return n; }
+  var day0 = '2026-10-19', day40 = addDays(day0, 40);
+  var w = fresh(); clock(w, day0);
+  var S = w.OvuStore, A = w.OvuAgents, O = w.OvuOrb;
+  S.setProfile({ lifeStage: 'post' });
+  var parsed = O.parseLocal('No period for two years, but spotting today');
+  check('the note is a spotting symptom, not a period day', parsed.some(function (e) { return e.type === 'symptom' && e.data.symptoms.indexOf('spotting') > -1; }) && !parsed.some(function (e) { return e.type === 'period'; }), JSON.stringify(parsed));
+  var saved = O.save(parsed), res = A.analyze(saved[0]);
+  check('saving it raises POSTMENO_BLEED straight away (the toast after saving)', has(res.flags), JSON.stringify(res.flags.map(function (f) { return f.code; })));
+  check('the flag is high and can be dismissed', A.allFlags().some(function (f) { return f.code === 'POSTMENO_BLEED' && f.level === 'high' && f.dismissible === true && f.since === day0; }));
+  var w2 = session(w, day40);
+  check('a new session 40 days later still shows the flag, past the 28-day window', w2.OvuStore.today() === day40 && has(w2.OvuAgents.allFlags()), JSON.stringify(w2.OvuAgents.allFlags().map(function (f) { return f.code; })));
+  check('a flag that is not dismissible cannot be dismissed', w2.OvuAgents.dismissFlag('PAIN_SEVERE') === false);
+  check('dismissing it hides it', w2.OvuAgents.dismissFlag('POSTMENO_BLEED') === true && !has(w2.OvuAgents.allFlags()));
+  var w3 = session(w2, day40);
+  check('the dismissal holds in the next session', !has(w3.OvuAgents.allFlags()));
+  w3.OvuOrb.save(w3.OvuOrb.parseLocal('a bit of spotting today'));
+  check('new spotting after the dismissal raises it again', has(w3.OvuAgents.allFlags()));
+  var w4 = fresh(); clock(w4, day0); var S4 = w4.OvuStore; S4.setProfile({ lifeStage: 'post' });
+  S4.add('period', addDays(day0, -200), { flow: 'medium', clots: false, impact: false });
+  w4.OvuAgents.dailySummary(addDays(day0, -200)); /* the journal reads past days too */
+  check('a period from before menopause raises nothing, even after the journal reads its day', !has(w4.OvuAgents.allFlags()) && !S4.state().postmenoBleed, JSON.stringify(S4.state().postmenoBleed));
+  var w5 = fresh(), S5 = w5.OvuStore; S5.setProfile({ lifeStage: 'post' });
+  S5.add('symptom', S5.today(), { symptoms: ['cramps'], pain: null, mood: '', notes: '' });
+  S5.sandbox({ profile: { lifeStage: 'post' }, events: [{ id: 'x1', type: 'symptom', date: S5.today(), data: { symptoms: ['spotting'] } }] }, function () { w5.OvuAgents.allFlags(); });
+  check('a sandboxed read (the doctor sample) never writes into the real record', !S5.state().postmenoBleed && S5.list('symptom').length === 1, JSON.stringify(S5.state().postmenoBleed));
+})();
+
+(function sleepAssumedAndOneNightPerDate() {
+  console.log('7. assumed sleep times are marked, and several entries on one date count as one night');
+  var w = fresh(), S = w.OvuStore, A = w.OvuAgents, O = w.OvuOrb, today = S.today();
+  var es = O.parseLocal('slept 7h');
+  check('"slept 7h" carries data.assumed = true', es.length === 1 && es[0].type === 'sleep' && es[0].data.assumed === true, JSON.stringify(es));
+  check('"slept 11pm to 7am" is not assumed', O.parseLocal('slept 11pm to 7am')[0].data.assumed !== true);
+  var saved = O.save(es);
+  check('the saved entry keeps assumed', saved.length === 1 && saved[0].data.assumed === true, JSON.stringify(saved[0] && saved[0].data));
+  check('the confirmation line says the wake time was assumed', /assumed/.test(O.describe(es[0])), O.describe(es[0]));
+  var w2 = fresh(), S2 = w2.OvuStore, A2 = w2.OvuAgents, t2 = S2.today();
+  for (var i = 0; i < 5; i++) S2.add('sleep', t2, { bedTime: '02:00', wakeTime: '06:00', quality: 2, notes: '' });
+  var st = S2.sleepStats(7, t2);
+  check('five entries on one date count as one night of 4 h', st.count === 1 && st.nights.length === 1 && st.nights[0].hours === 4 && st.nights[0].blocks === 5, JSON.stringify(st.nights));
+  check('no sleep warning from five entries on one date', !A2.allFlags(t2).some(function (f) { return /^SLEEP_/.test(f.code); }), JSON.stringify(A2.allFlags(t2).map(function (f) { return f.code; })));
+  check('the per-entry list keeps all five entries for deleting', st.entries.length === 5 && st.entries.every(function (e) { return e.id; }));
+  var w3 = fresh(), S3 = w3.OvuStore, t3 = S3.today();
+  S3.add('sleep', t3, { bedTime: '23:00', wakeTime: '02:00', quality: null, notes: '' });
+  S3.add('sleep', t3, { bedTime: '03:00', wakeTime: '07:00', quality: 3, notes: '' });
+  S3.add('sleep', t3, { bedTime: '00:00', wakeTime: '07:00', quality: null, notes: '', assumed: true });
+  var n3 = S3.sleepStats(1, t3).nights[0];
+  check('a broken night joins its blocks: 23:00 to 02:00 plus 00:00 to 07:00 is 8 h, not 14 h', n3 && n3.hours === 8 && n3.blocks === 3, JSON.stringify(n3));
+  check('a night with an assumed block is marked assumed', n3 && n3.assumed === true);
+  var w4 = fresh(), S4 = w4.OvuStore, A4 = w4.OvuAgents, t4 = S4.today();
+  [-6, -3, 0].forEach(function (d) { S4.add('sleep', addDays(t4, d), { bedTime: '02:00', wakeTime: '06:00', quality: null, notes: '' }); });
+  check('three short nights on separate dates are not "in a row"', !A4.allFlags(t4).some(function (f) { return f.code === 'SLEEP_SHORT_RUN'; }));
+  [-2, -1].forEach(function (d) { S4.add('sleep', addDays(t4, d), { bedTime: '02:00', wakeTime: '06:00', quality: null, notes: '' }); });
+  check('three short nights on adjacent dates are "in a row"', A4.allFlags(t4).some(function (f) { return f.code === 'SLEEP_SHORT_RUN'; }));
+})();
+
 (function foodPhotoEstimates() {
   console.log('food photo estimates become diary items, rescale with grams, and stay opt-in');
   var w = fresh(), O = w.OvuOrb, FD = w.OvuFood;

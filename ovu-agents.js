@@ -33,10 +33,40 @@
   function sleepAgent(end) {
     var st = S.sleepStats(7, end), flags = [];
     if (st.count >= 5 && st.avg !== null && st.avg < 6) flags.push(flag('watch', 'SLEEP_SHORT_AVG', 'Short sleep this week', 'Average ' + st.avg + ' h over ' + st.count + ' nights, below the 7+ hours recommended for adults.', end));
-    var run = 0, worst = 0;
-    st.nights.forEach(function (n) { run = n.hours < 5 ? run + 1 : 0; worst = Math.max(worst, run); });
+    /* nights are one per date (ovu-store.js sleepStats); "in a row" needs adjacent dates, so a gap restarts the run */
+    var run = 0, worst = 0, prev = null;
+    st.nights.forEach(function (n) { run = n.hours < 5 ? (run && prev && S.diffDays(prev, n.date) === 1 ? run + 1 : 1) : 0; prev = n.date; worst = Math.max(worst, run); });
     if (worst >= 3) flags.push(flag('watch', 'SLEEP_SHORT_RUN', 'Three or more very short nights in a row', 'Several consecutive nights under 5 hours. Worth mentioning if this continues.', end));
     return { agent: 'sleepAgent', metrics: st, flags: flags };
+  }
+  /* Bleeding after menopause, from any entry type: a period day of any flow, or spotting ticked as a symptom
+   * ("No period for two years, but spotting today" is saved as a spotting symptom). It is found in the last 28 days,
+   * then remembered in state.postmenoBleed so the note stays across sessions and past the 28 days until the person
+   * dismisses it (dismissFlag); a newer bleed raises it again. Entries older than the window never raise it, so
+   * periods imported from before menopause stay quiet. Returns the date of the latest bleed, or null. The memory is
+   * written once per new bleed, never inside a sandbox (the doctor sample), which would save the sample over the record. */
+  function postmenoBleed(end, p) {
+    if (!isPostmenopausal(p)) return null;
+    var from = S.addDays(end, -27), recent = null;
+    S.list('period', { from: from, to: end }).forEach(function (e) { if (e.data.flow && e.data.flow !== 'none' && (!recent || e.date > recent)) recent = e.date; });
+    S.list('symptom', { from: from, to: end }).forEach(function (e) { if ((e.data.symptoms || []).indexOf('spotting') > -1 && (!recent || e.date > recent)) recent = e.date; });
+    var st = S.state().postmenoBleed || {}, seen = st.last && st.last <= end ? st.last : null;
+    /* only a bleed in the 28 days before the real today is remembered: the journal also reads past days, and an old
+     * period seen from one of those must not become a standing note */
+    if (recent && recent >= S.addDays(S.today(), -27) && (!st.last || recent > st.last) && !(S.isSandbox && S.isSandbox())) { try { S.setState({ postmenoBleed: { last: recent, dismissedThrough: st.dismissedThrough || null } }); } catch (err) { /* a full or blocked storage never hides the note */ } }
+    var last = recent && (!seen || recent > seen) ? recent : seen;
+    if (!last || (st.dismissedThrough && st.dismissedThrough >= last)) return null;
+    return last;
+  }
+  /* The person hides a note they have acted on. Only notes marked dismissible can be hidden: today that is the
+   * bleeding-after-menopause note, which comes back with any newer bleed or spotting. */
+  function dismissFlag(code, end) {
+    if (code !== 'POSTMENO_BLEED') return false;
+    end = end || S.today();
+    var last = postmenoBleed(end, S.profile()); if (!last) return false;
+    var st = S.state().postmenoBleed || {};
+    S.setState({ postmenoBleed: { last: st.last && st.last > last ? st.last : last, dismissedThrough: last, dismissedAt: new Date().toISOString() } });
+    return true;
   }
   function cycleAgent(end) {
     end = end || S.today();
@@ -53,7 +83,8 @@
     if (cs.lastStart && cs.lengths.length >= 1 && S.diffDays(cs.lastStart, end) > 45) flags.push(flag('info', 'PERIOD_LATE', 'No period logged for ' + S.diffDays(cs.lastStart, end) + ' days', 'If a period is overdue and pregnancy is possible, a test is a sensible first step. Persistent gaps are worth a clinician visit.', end));
     var spotting = S.list('symptom', { from: S.addDays(end, -27), to: end }).filter(function (e) { return (e.data.symptoms || []).indexOf('spotting') > -1 && !cs.episodes.some(function (ep) { return e.date >= S.addDays(ep.start, -1) && e.date <= S.addDays(ep.end, 1); }); });
     if (spotting.length >= 2) flags.push(flag('watch', 'SPOTTING_BETWEEN', 'Spotting between periods', spotting.length + ' days of spotting outside a period in the last 4 weeks.', spotting[spotting.length - 1].date));
-    if (isPostmenopausal(p) && S.list('period', { from: S.addDays(end, -27), to: end }).some(function (e) { return e.data.flow && e.data.flow !== 'none'; })) flags.push(flag('high', 'POSTMENO_BLEED', 'Bleeding after menopause', 'Any bleeding after menopause should be checked by a clinician promptly.', end));
+    var pmb = postmenoBleed(end, p);
+    if (pmb) { var pf = flag('high', 'POSTMENO_BLEED', 'Bleeding after menopause', 'Bleeding or spotting was logged on ' + pmb + ' after menopause. Any bleeding after menopause should be checked by a clinician promptly.', end); pf.dismissible = true; pf.since = pmb; flags.push(pf); }
     return { agent: 'cycleAgent', metrics: cs, flags: flags };
   }
   function symptomAgent(end) {
@@ -185,5 +216,5 @@
     return sum;
   }
 
-  root.OvuAgents = { SYMPTOMS: SYMPTOMS, MOODS: MOODS, FOOD_TAGS: FOOD_TAGS, supervisor: supervisor, analyze: analyze, allFlags: allFlags, dailySummary: dailySummary, fourWeekSummary: fourWeekSummary, saveMonthlySummary: saveMonthlySummary, agents: AGENTS, fmtHours: fmtHours };
+  root.OvuAgents = { SYMPTOMS: SYMPTOMS, MOODS: MOODS, FOOD_TAGS: FOOD_TAGS, supervisor: supervisor, analyze: analyze, allFlags: allFlags, dailySummary: dailySummary, fourWeekSummary: fourWeekSummary, dismissFlag: dismissFlag, saveMonthlySummary: saveMonthlySummary, agents: AGENTS, fmtHours: fmtHours };
 })(window);

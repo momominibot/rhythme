@@ -136,8 +136,10 @@
   function renderFlags(){
     var flags=A.allFlags();
     $('#flagCard').style.display=flags.length?'':'none';
-    $('#flags').innerHTML=flags.map(function(f){return '<div class="flag '+f.level+'"><span class="ms">'+(f.level==='high'?'emergency_home':f.level==='watch'?'flag':'info')+'</span><div><b>'+esc(f.title)+'</b><span>'+esc(f.detail)+'</span>'+(f.date?'<em>'+esc(pretty(f.date))+' · '+esc(f.code)+'</em>':'')+'</div></div>';}).join('');
+    $('#flags').innerHTML=flags.map(function(f){return '<div class="flag '+f.level+'"><span class="ms">'+(f.level==='high'?'emergency_home':f.level==='watch'?'flag':'info')+'</span><div><b>'+esc(f.title)+'</b><span>'+esc(f.detail)+'</span>'+(f.date?'<em>'+esc(pretty(f.date))+' · '+esc(f.code)+'</em>':'')+(f.dismissible?'<button type="button" class="btn ghost" data-dismiss="'+esc(f.code)+'" style="margin-top:6px"><span class="ms">done</span>I have this in hand, hide it</button>':'')+'</div></div>';}).join('');
   }
+  /* a note that stays until the person hides it (bleeding after menopause); it comes back with any newer bleeding or spotting */
+  $('#flags').addEventListener('click',function(e){var b=e.target.closest('[data-dismiss]');if(!b)return;if(!confirm('Hide this note? It comes back if you log bleeding or spotting again. Please still get the check.'))return;A.dismissFlag(b.dataset.dismiss);renderAll();});
   var KICON={coverage:'event_available',period:'water_drop',cycle:'calendar_month',sleep:'bedtime',symptoms:'healing',calm:'self_improvement'};
   function kpi(key,label,val,sub){return '<div class="kpi"><small><span class="ms">'+KICON[key]+'</span>'+label+'</small><b>'+val+'</b><span>'+esc(sub)+'</span></div>';}
   function renderShare(){

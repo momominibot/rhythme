@@ -559,7 +559,7 @@
   function sleepListHTML() {
     var st = S.sleepStats(7);
     if (!st.nights.length) return '<div class="empty">No nights recorded yet. Your first entry starts the pattern.</div>';
-    return '<div class="entries">' + st.nights.slice().reverse().map(function (n) { return '<div class="entry"><span class="ms">bedtime</span><div class="body"><b>' + esc(prettyDate(n.date)) + ' · ' + esc(A.fmtHours(n.hours)) + '</b><span>' + (n.quality ? 'Quality ' + n.quality + '/5' : 'Quality not rated') + '</span></div><button class="del" data-del="' + esc(n.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>'; }).join('') + '</div>';
+    return '<div class="entries">' + (st.entries || st.nights).slice().reverse().map(function (n) { /* one row per entry, so each can be deleted; the agents count one night per date */ return '<div class="entry"><span class="ms">bedtime</span><div class="body"><b>' + esc(prettyDate(n.date)) + ' · ' + esc(A.fmtHours(n.hours)) + '</b><span>' + (n.quality ? 'Quality ' + n.quality + '/5' : 'Quality not rated') + '</span></div><button class="del" data-del="' + esc(n.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>'; }).join('') + '</div>';
   }
   function openBedtime() {
     openSheet('bedtime', 'Ready for bed?', 'Your room will dim while you sleep', 'bedtime',
@@ -1574,6 +1574,14 @@
      * the entries still go through the confirm card below it. */
     function urgentCard(u) {
       var emergency = u.level === 'emergency';
+      /* a card that brings its own words and call links (thoughts of harming yourself or your baby: 995, SOS 1767, WhatsApp 9151 1767) */
+      if (u.message) {
+        var own = '<b>' + esc(u.title) + '</b><p>' + esc(u.message) + '</p><div class="row">' + (u.actions || []).map(function (a, i) { var web = /^https:/.test(a.href); return '<a class="btn ' + (i ? 'soft' : 'primary') + '" href="' + esc(a.href) + '"' + (web ? ' target="_blank" rel="noopener"' : '') + '><span class="ms">' + (web ? 'chat' : 'call') + '</span>' + esc(a.label) + '</a>'; }).join('') + '</div>' +
+          '<small>Rhythme cannot assess how you are or diagnose. No clinician or helpline receives this alert.</small>';
+        var ownCard = bubble('urgent emergency', own); remember('urgent emergency', own);
+        try { chime('alert', true); } catch (err) { }
+        return ownCard;
+      }
       var html = '<b>' + esc(u.title) + '</b>' +
         (emergency
           ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 now if the bleeding is excessive or will not stop, you faint, have trouble breathing, or have chest pain.</p>'
@@ -1591,10 +1599,13 @@
       var local = ORB.parseLocal(text), cfg2 = ORB.aiConfig(), aiOk = cfg2.on;
       /* Short canonical notes (the shortcut chips) are read by the rules instantly; longer or
        * unmatched notes go to the model first, and the rules stay as the offline fallback. */
-      if (aiOk && (!local.length || text.length > 36)) {
+      /* a note that only says there is no period is an observation the rules have read: it is not sent to the model */
+      if (aiOk && (!local.length || text.length > 36) && !(!local.length && ORB.noPeriod && ORB.noPeriod(text))) {
         var thinking = bubble('luna', '<b>Luna</b>Reading your note…');
         ORB.parseAI(text).then(function (res) {
           thinking.remove();
+          /* the rules have the last word on a note that says there is no bleeding: a period day the model read into it is dropped */
+          if (ORB.noPeriod && ORB.noPeriod(text)) res.entries = res.entries.filter(function (e) { return e.type !== 'period'; });
           if (res.entries.length) { if (res.reply) bubble('luna', '<b>Luna</b>' + esc(res.reply)); confirmCard(res.entries); }
           else if (local.length) confirmCard(local);
           else bubble('luna', '<b>Luna</b>' + esc(res.reply || 'I could not find anything to log in that. Try naming the sleep, period, symptom, meal or minutes.'));
@@ -1606,6 +1617,7 @@
         return;
       }
       if (local.length) { confirmCard(local); return; }
+      if (ORB.noPeriod && ORB.noPeriod(text)) { var np = '<b>Luna</b>Noted: no bleeding. Nothing was added to your period days.'; bubble('luna', np); remember('luna', np); return; }
       if (aiOk) { bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "period started, heavy", "cramps 6/10", "had chicken rice for lunch" or "meditated 10 min".'); return; }
       /* AI help is off: offer it just in time, saying where the note would go, and only send after a tap. */
       var ask = bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "cramps 6/10" or "had chicken rice for lunch".' +
