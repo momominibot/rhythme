@@ -115,6 +115,7 @@
     var room = R(); if (room.asleep() || run) return;
     if ((room.sessionOn && room.sessionOn()) || (room.practiceOn && room.practiceOn())) { room.toast('Finish or stop the practice that is running first.', 'self_improvement'); return; }
     if (root.OvuPodcast) { try { root.OvuPodcast.pause(); } catch (e) { } }
+    if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     room.hideSheet(); hideInvite();
     run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: version === 'erin' ? new Audio() : null, done: false };
     if (room.endMoment) room.endMoment();
@@ -150,7 +151,7 @@
     if (s.audio && !run.quiet) { if (run.paused) run.pending = s.audio; else playAudio(s.audio); }
   }
   function arm() { clearTimeout(run.timer); run.t0 = Date.now(); run.timer = setTimeout(function () { next(false); }, run.left); }
-  function playAudio(url) { try { var a = run.audio || (run.audio = new Audio()); a.src = url; a.currentTime = 0; var p = a.play(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
+  function playAudio(url) { run.audioKey = step() && step().key; try { var a = run.audio || (run.audio = new Audio()); a.src = url; a.currentTime = 0; var p = a.play(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
   function stopAudio() { if (run && run.audio) { try { run.audio.pause(); } catch (e) { } } }
   function pauseToggle() {
     if (!run) return; var s = step(); if (!s || s.gate) return;
@@ -162,13 +163,13 @@
       run.paused = false; run.clock.run();
       if (s.secs) arm();
       if (run.pending) { playAudio(run.pending); run.pending = null; }
-      else if (s.audio && !run.quiet && run.audio && run.audio.src) { try { var p = run.audio.play(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
+      else if (s.audio && !run.quiet && run.audio && run.audioKey === s.key) { /* only this step's own clip resumes; a muted or older clip never does */ try { var p = run.audio.play(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
     }
     paint();
   }
   function quietToggle() {
     if (!run) return; run.quiet = !run.quiet;
-    if (run.quiet) { stopAudio(); run.pending = null; } /* on again: Erin speaks from the next line, so no line is cut short */
+    if (run.quiet) { stopAudio(); run.pending = null; run.audioKey = null; } /* on again: Erin speaks from the next line, so no line is cut short */
     paint();
   }
   function ready() { if (!run) return; run.paused = false; next(false); }
@@ -231,7 +232,7 @@
     START_HOUR: START_HOUR, END_HOUR: END_HOUR, MIN_SAVE_S: MIN_SAVE_S, STEPS: STEPS, VERSIONS: VERSIONS,
     inWindow: inWindow, plan: plan, erinSteps: erinSteps, offered: offered, makeClock: makeClock, entryData: entryData,
     open: open, begin: begin, active: active, cancel: cancel, renderInvite: renderInvite,
-    state: function () { return run ? { version: run.version, i: run.i, key: step() && step().key, paused: run.paused, left: run.left, quiet: run.quiet, seconds: run.clock.seconds(), skipped: run.skipped.slice(), brushed: run.brushed } : null; }
+    state: function () { return run ? { version: run.version, i: run.i, key: step() && step().key, paused: run.paused, left: run.left, audioKey: run.audioKey || null, pending: run.pending || null, quiet: run.quiet, seconds: run.clock.seconds(), skipped: run.skipped.slice(), brushed: run.brushed } : null; }
   };
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('DOMContentLoaded', function () { setInterval(function () { if (!run) renderInvite(); }, 60000); });

@@ -51,6 +51,12 @@ Not adopted now (listed as follow-ups): an "I'm awake, don't record sleep" choic
 8. Two small labels failed contrast: darker text token.
 9. 29.5 seconds rounded up to 30: eligibility uses exact milliseconds.
 
+A Codex re-check confirmed five fixes and reopened four plus one regression, all fixed with checks in tools/e2e_smoke.py:
+- Mind, a breathing session or an everyday practice cannot start on top of Morning start.
+- Pause, Next, voice off and on, then Resume never plays an older Erin line under a newer caption; a muted clip never resumes.
+- A walk already under way stops when Morning start begins, and its pending sheet never opens over it.
+- The bed still works during Morning start (it opens without walking her), so Good night ends the routine with no save prompt.
+
 ## Not available this round
 
 Volcengine Ark (DeepSeek and Doubao) was blocked by an overdue account balance from about 12:20 SGT on 20 October, so no Ark perspective was asked; Codex and primary sources only. New Erin clips (also Volcengine) cannot be made until then, which is why the first two steps are captions only.
