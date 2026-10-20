@@ -412,7 +412,7 @@
       s.disabled = true;
       rpc('social_note', { p_handle: handle, p_phrase: pick }, owner).then(function (j) {
         if (!j || !j.ok) { el.querySelector('#frMsg').textContent = whyText(j); s.disabled = false; return; }
-        R.chime('save'); R.toast('Sent. One kind thing, done.', 'favorite'); back();
+        R.chime('save'); R.toast('Sent. One kind thing, done.', 'favorite', R.moment ? R.moment('friend', { quiet: true }) : ''); back();
       }, function (e) { if (e && e.cancelled) return; el.querySelector('#frMsg').textContent = 'Could not reach Plaza friends. Try again in a moment.'; s.disabled = false; });
     });
     draw();
@@ -461,7 +461,7 @@
     b.disabled = true;
     var done = function (j, okText, icon) {
       if (!j || !j.ok) { R.toast(whyText(j), 'diversity_1'); b.disabled = false; return; }
-      if (okText) R.toast(okText, icon || 'diversity_1');
+      if (okText) R.toast(okText, icon || 'diversity_1', R.moment ? R.moment('friend', { quiet: true }) : '');
     };
     var call;
     if (what === 'ask') {

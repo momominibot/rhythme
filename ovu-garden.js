@@ -248,11 +248,18 @@
    * herbs to check with a doctor or pharmacist about. Sources sit behind a small (i) (ovu-evinfo.js). */
   function openGreenhouse() {
     if (root.OvuWalk.napping()) return;
-    var H = root.OvuHerbs, E = root.OvuEvidence, cs = S.cycleStats(), phase = cs.mode === 'suspended' ? null : cs.phase;
+    var H = root.OvuHerbs, E = root.OvuEvidence, cs = S.cycleStats(), pf = S.profile() || {};
+    /* trying to conceive, possibly or actually pregnant, or after a birth: the cautions come first and nothing is ranked by
+     * phase (four-persona review, 20 Oct: Wei Ling's and Nadia's cautions sat below every card) */
+    var careful = pf.plans === 'ttc' || pf.lifeStage === 'ttc' || pf.pregState === 'pregnant' || pf.pregState === 'maybe' || pf.pregState === 'postpartum' || pf.breastfeeding === 'yes';
+    var phase = cs.mode === 'suspended' || careful ? null : cs.phase;
+    var line = R.moment ? R.moment('greenhouse', { quiet: true }) : '';
     var teas = H ? H.forPhase(phase) : [], care = H && Array.isArray(H.TAKE_CARE) ? H.TAKE_CARE : [];
     var refs = function (ids) { return (ids || []).map(function (id) { var e = E && E.get(id); return e ? '<a href="evidence.html#' + id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + esc(id) + '</i></a>' : ''; }).join(''); };
     R.openSheet('greenhouse', 'The greenhouse', 'Teas and herbs, with what research says', 'local_florist',
-      '<section class="dsec teas"><p class="help" style="margin:2px 0 8px">' + (phase ? 'The ones for your ' + esc(phase) + ' phase come first. ' : '') + 'Familiar comfort drinks, with what research says and who should take care. Comfort, not treatment.</p>' +
+      '<section class="dsec teas">' + (line ? '<p class="mindline"><span class="ms">local_cafe</span>' + esc(line) + '</p>' : '') +
+      (careful ? '<div class="teacare first"><b><span class="ms">health_and_safety</span>Before any herb</b><p>' + (pf.pregState === 'pregnant' || pf.pregState === 'maybe' ? 'While you are or could be pregnant' : pf.pregState === 'postpartum' || pf.breastfeeding === 'yes' ? 'While you are breastfeeding or recovering from a birth' : 'While you are trying to conceive') + ', read each tea’s Take care note and ask a doctor or pharmacist before trying a herb. These are comfort drinks, not fertility or milk-supply treatments.</p></div>' : '') +
+      '<p class="help" style="margin:2px 0 8px">' + (phase ? 'The ones for your ' + esc(phase) + ' phase come first. ' : '') + 'Familiar comfort drinks, with what research says and who should take care. Comfort, not treatment.</p>' +
       teas.map(function (t) {
         return '<details class="tea"><summary>' + (t.img ? '<img class="teaimg" src="' + R.ART + t.img + '" alt="">' : '<span class="ms">' + esc(t.icon || 'local_cafe') + '</span>') +
           '<span><b>' + esc(t.name) + '</b><small>' + esc(t.why) + '</small></span><span class="ms go">expand_more</span></summary>' +

@@ -130,7 +130,7 @@
       if (j && j.ok) {
         have = { id: j.server, name: j.name, people: j.people, capacity: j.capacity, visit: j.visit }; offline = false;
         if (want === d) S.setState({ plaza: { server: d, uid: u } });
-        if (want === d && desired() === d) { R.chime('tap'); R.toast('You are in ' + j.name + '. ' + countText(j.people, true).replace(/^./, function (c) { return c.toUpperCase(); }) + '.', 'groups'); }
+        if (want === d && desired() === d) { R.chime('tap'); R.toast('You are in ' + j.name + '. ' + countText(j.people, true).replace(/^./, function (c) { return c.toUpperCase(); }) + '.', 'groups', R.moment ? R.moment('plaza', { quiet: true }) : ''); }
         return;
       }
       /* refused: she stays where she was, and the wish falls back to it */

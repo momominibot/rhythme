@@ -101,7 +101,7 @@
       '<p class="help">Neighbours are samples for now. Nothing here is sent anywhere, and visiting changes nothing of theirs or yours.</p>');
     doc.getElementById('nbHello').addEventListener('click', function () {
       var c = S.state().community || {}; c.hellos = c.hellos || {}; c.hellos[id] = S.today(); S.setState({ community: c });
-      R.closeSheet(); R.chime('save'); R.toast(n.name + ' waves back. ' + ['A good day to you too.', 'Nice to see you.', 'See you at the fountain.'][Math.floor(Math.random() * 3)], 'waving_hand');
+      R.closeSheet(); R.chime('save'); R.toast(n.name + ' waves back. ' + ['A good day to you too.', 'Nice to see you.', 'See you at the fountain.'][Math.floor(Math.random() * 3)], 'waving_hand', R.moment ? R.moment('hello', { quiet: true }) : '');
       var el = doc.querySelector('.nbperson[data-nb="' + id + '"]'); if (el) { el.classList.remove('wave'); void el.offsetWidth; el.classList.add('wave'); }
     });
     doc.getElementById('nbVisit').addEventListener('click', function () { R.closeSheet(); root.setTimeout(function () { visitNeighbour(id); }, 60); });
@@ -148,7 +148,7 @@
       '<p class="help">' + (cs.phase ? 'Day ' + cs.cycleDay + ', ' + esc(cs.phase) + ' phase: these come first.' : 'No phase yet, so a few gentle favourites.') + ' Food notes, not medicine. If you are pregnant, breastfeeding or on medicines, ask first.</p>' +
       '<div class="teas">' + teas.map(function (t) { return '<div class="tea"><span class="ms">' + esc(t.icon || 'local_cafe') + '</span><div><b>' + esc(t.name) + '</b><span>' + esc(t.why) + '</span><small>' + esc(t.research) + '</small>' + (t.care ? '<em>' + esc(t.care) + '</em>' : '') + '</div></div>'; }).join('') + '</div>' +
       '<div class="row"><button type="button" class="btn soft" id="stallSip"><span class="ms">emoji_food_beverage</span>Sip one slowly</button></div>');
-    doc.getElementById('stallSip').addEventListener('click', function () { R.closeSheet(); R.showThought('🍵'); root.setTimeout(R.hideThought, 2800); R.toast('Both hands on the cup. Notice the warmth before the taste.', 'emoji_food_beverage'); });
+    doc.getElementById('stallSip').addEventListener('click', function () { R.closeSheet(); if (R.moment) R.moment('tea', { line: 'Both hands on the cup. Notice the warmth before the taste.' }); R.toast('A cup of tea at the stall.', 'emoji_food_beverage'); });
   }
   var WISHES = ['A petal drifts. A wish for a gentle day.', 'The water keeps moving. So can you, slowly.', 'A coin would be nice, but a breath is free.', 'Wish made. Now one soft breath out.'];
   function openFountain() {

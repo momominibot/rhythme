@@ -135,7 +135,7 @@
     { id: 'nutrition', name: 'Nutrition', color: '#f3d49b', items: [['page', 'foods.html', 'restaurant', 'Foods by phase', 'TCM and Western notes'], ['page', 'nutrients.html', 'medication', 'Micronutrients', 'Iron, folate, magnesium'], ['page', 'medas14.html', 'nutrition', 'Mediterranean score', 'A 14-point check'], ['page', 'hydration.html', 'water_full', 'Hydration', 'Fluids through the cycle'], ['action', 'diary', 'menu_book', 'Open the food diary', 'Snap, scan or search']] },
     { id: 'mind', name: 'Mind & mood', color: '#b8cde0', items: [['page', 'room.html#mind', 'self_improvement', 'Mindfulness hub', 'Erin Lee’s pauses and podcasts'], ['link', 'https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change', 'article', 'The Quiet Work of Change', 'An essay by Erin'], ['page', 'mental-health.html', 'psychology', 'Mood & calm', 'When to reach for support'], ['page', 'breathe.html', 'air', 'Breathing', 'Guided breath'], ['action', 'mat', 'self_improvement', 'Sit on the mat', 'A session with Erin']] },
     { id: 'move', name: 'Movement', color: '#cfe6c4', items: [['action', 'move', 'directions_run', 'Log movement', 'Minutes, MET-minutes and your week'], ['action', 'moveguide', 'menu_book', 'Movement and your cycle', 'What the research says, with sources']] },
-    { id: 'body', name: 'Body & relief', color: '#f5c6b8', items: [['action', 'acu', 'spa', 'Acupressure on your avatar', 'Points for cramps, with evidence'], ['page', 'sleep.html', 'bedtime', 'Sleep & your cycle', 'Why some weeks feel lighter'], ['page', 'face-ppg.html', 'monitor_heart', 'Calm check (beta)', 'Pulse from your face camera'], ['page', 'ppg.html', 'fingerprint', 'Finger pulse', 'Camera and flash'], ['page', 'stress.html', 'self_improvement', 'Stress check-in', 'PSS-10 questionnaire']] },
+    { id: 'body', name: 'Body & relief', color: '#f5c6b8', items: [['action', 'acu', 'spa', 'Acupressure on your avatar', 'Points for cramps, with evidence'], ['page', 'sleep.html', 'bedtime', 'Sleep & your cycle', 'Why some weeks feel lighter'], ['page', 'face-ppg.html', 'monitor_heart', 'Calm check (experimental)', 'Face camera, not a medical test'], ['page', 'ppg.html', 'fingerprint', 'Finger pulse (experimental)', 'Camera and flash, not a medical test'], ['page', 'stress.html', 'self_improvement', 'Stress scan (experimental)', 'Face camera, not a questionnaire']] },
     { id: 'videos', name: 'All videos', color: '#e7dcf5', items: VIDEOS.map(function (v) { return ['video', v[0], v[2], v[3]]; }) },
     { id: 'doctor', name: 'Share with doctor', color: '#ffffff', items: [['page', 'journal.html#share', 'medical_services', 'Dr shares card', 'Your 4-week summary'], ['page', 'doctor.html', 'stethoscope', 'Doctor view', 'How your clinician opens it']] }
   ];
@@ -250,9 +250,11 @@
   }
   function loadJSON(url) { return fetch(url).then(function (r) { if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); }); }
   var toastTimer;
-  function toast(text, icon) {
-    var t = $('#toast'); t.innerHTML = '<span class="ms">' + esc(icon || 'auto_awesome') + '</span><span>' + esc(text) + '</span>';
-    t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('on'); }, 3200);
+  /* sub: the mindful line under the message, so it is seen even when a sheet covers her */
+  function toast(text, icon, sub) {
+    var t = $('#toast'); t.innerHTML = '<span class="ms">' + esc(icon || 'auto_awesome') + '</span><span>' + esc(text) + (sub ? '<small class="toastsub">' + esc(sub) + '</small>' : '') + '</span>';
+    t.classList.toggle('two', !!sub);
+    t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('on'); }, sub ? 5200 : 3200);
   }
   var audioCtx = null;
   function chime(kind, force) {
@@ -443,25 +445,25 @@
     var res = PETS.clean(id, poopId); if (!res.ok) { renderProps(); return; }
     var rw = RW.care(id, 'clean');
     if (btn) { btn.classList.add('poof'); btn.disabled = true; }
-    chime('tap'); toast('All tidy. ' + (PETS.NAMES[id] || 'Your pet') + ' thanks you.' + (rw.points ? ' +' + rw.points + ' ♥' : ''), 'cleaning_services');
+    chime('tap'); toast('All tidy. ' + (PETS.NAMES[id] || 'Your pet') + ' thanks you.' + (rw.points ? ' +' + rw.points + ' ♥' : ''), 'cleaning_services', moment('pettidy', { quiet: true }));
     setTimeout(renderProps, 650);
   }
   function petAction(id, act) {
     var name = PETS.NAMES[id] || 'Your pet';
     if (act === 'tidy') { PETS.current(id).poops.forEach(function (pp) { cleanPoop(id, pp.id, document.querySelector('.poop[data-poop="' + pp.id + '"]')); }); return; }
-    if (act === 'dress') { var piece = RW.nextWear(id); chime('save'); renderProps(); toast(piece ? name + ' is wearing the ' + piece.name.toLowerCase() + '.' : name + ' is back to her natural look.', 'checkroom'); bubble.classList.remove('on', 'petbub'); return; }
+    if (act === 'dress') { var piece = RW.nextWear(id); chime('save'); renderProps(); toast(piece ? name + ' is wearing the ' + piece.name.toLowerCase() + '.' : name + ' is back to her natural look.', 'checkroom', moment('petdress', { quiet: true })); bubble.classList.remove('on', 'petbub'); return; }
     if (act === 'treat') {
       var tl = RW.treatsFor(id); if (!tl.length) { toast('The treat cupboard is empty. Dream Street has more.', 'cookie'); return; }
       var tr = PETS.treat(id); if (!tr.ok) { toast(name + ' is full right now. Save the treat for later.', 'favorite'); return; }
       var used = RW.useTreat(id, tl[0].id); petFx(id, 'feed'); chime('save');
-      toast(name + ' loved the ' + used.item.name.toLowerCase() + '.' + (used.left ? ' ' + used.left + ' left.' : ' That was the last one.'), 'cookie');
+      toast(name + ' loved the ' + used.item.name.toLowerCase() + '.' + (used.left ? ' ' + used.left + ' left.' : ' That was the last one.'), 'cookie', moment('petfeed', { quiet: true }));
       bubble.classList.remove('on', 'petbub'); setTimeout(renderProps, 2400); return;
     }
     var r = act === 'feed' ? PETS.feed(id) : act === 'play' ? PETS.play(id) : PETS.cuddle(id);
     if (!r.ok) { toast(act === 'feed' ? name + ' is already full. Maybe a cuddle instead?' : name + ' is happily tired. Maybe a cuddle instead?', 'favorite'); return; }
     var rw = RW.care(id, act);
     petFx(id, act); chime('save');
-    toast((act === 'feed' ? name + ' munched happily.' : act === 'play' ? name + ' loved chasing the ball.' : name + ' snuggled in.') + (rw.points ? ' +' + rw.points + ' ♥' : ''), act === 'feed' ? 'restaurant' : act === 'play' ? 'sports_baseball' : 'favorite');
+    toast((act === 'feed' ? name + ' munched happily.' : act === 'play' ? name + ' loved chasing the ball.' : name + ' snuggled in.') + (rw.points ? ' +' + rw.points + ' ♥' : ''), act === 'feed' ? 'restaurant' : act === 'play' ? 'sports_baseball' : 'favorite', moment(act === 'feed' ? 'petfeed' : act === 'play' ? 'petplay' : 'petcuddle', { quiet: true }));
     setTimeout(renderProps, act === 'cuddle' ? 1500 : 2400);
   }
   $('#ownedProps').addEventListener('click', function (e) {
@@ -478,7 +480,7 @@
   function setOutfit(id, silent) {
     if (!OUTFITS.some(function (o) { return o.id === id; })) id = 'base';
     var img = new Image();
-    img.onload = function () { avatarImg.src = img.src; if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); }, 700); } };
+    img.onload = function () { avatarImg.src = img.src; if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); } };
     img.src = ART + 'avatar-' + id + '.webp';
     S.setProfile({ outfit: id });
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
@@ -658,7 +660,7 @@
         var dy = e.target.closest('[data-day]'); if (dy) { var d = Number(dy.dataset.day); days = days.indexOf(d) > -1 ? days.filter(function (x) { return x !== d; }) : days.concat([d]); dy.classList.toggle('on', days.indexOf(d) > -1); return; }
         var rm = e.target.closest('.tm button'); if (rm) { var t = rm.parentNode.dataset.t; times = times.filter(function (x) { return x !== t; }); rm.parentNode.remove(); return; }
         if (e.target.closest('#remAddTime')) { var nt = $('#remNewTime').value; if (RM.valid(nt) && times.indexOf(nt) < 0) { times.push(nt); times.sort(); $('#remTimes').innerHTML = timeChips(times); } return; }
-        if (e.target.closest('#remSave')) { try { RM.upsert({ id: it.id, kind: it.kind, label: $('#remLabel').value, icon: icon, times: times, days: days, note: $('#remNote').value, on: it.on !== false }); chime('save'); toast('Reminder saved.', 'alarm'); openClock(); } catch (err) { message($('#remMsg'), err.message, false); } return; }
+        if (e.target.closest('#remSave')) { try { RM.upsert({ id: it.id, kind: it.kind, label: $('#remLabel').value, icon: icon, times: times, days: days, note: $('#remNote').value, on: it.on !== false }); chime('save'); toast('Reminder saved.', 'alarm', moment('reminder', { quiet: true })); openClock(); } catch (err) { message($('#remMsg'), err.message, false); } return; }
         if (e.target.closest('#remDelete')) { RM.remove(it.id); toast('Reminder removed.', 'alarm'); openClock(); return; }
         if (e.target.closest('#remCancel')) { ed.classList.remove('on'); ed.innerHTML = ''; }
       });
@@ -1029,6 +1031,7 @@
       } else if (mode === 'scan') {
         area.innerHTML = '<div class="camwrap on" id="camwrap"><video id="bcVideo" playsinline muted></video><div class="reticle"></div><div class="camhint">Point the camera at the barcode</div></div><div class="row" style="margin-top:8px"><input class="input" id="bcManual" placeholder="Barcode digits or a product name, e.g. Milo" autocomplete="off" enterkeyhint="search"><button type="button" class="btn soft" id="bcLookup" style="flex:0 0 auto">Search</button></div><div class="msg" id="bcMsg"></div><div id="bcResults"></div>';
         if (FD.warmDecoder) FD.warmDecoder();
+        moment('scan', { quiet: true });
         stopScan = FD.scanLive($('#bcVideo'), function (code) { stopCamera(); $('#bcManual').value = code; lookup(code); }, function (err) { message($('#bcMsg'), err.message, false); }, function () { var h = $('.camhint'); if (h) h.textContent = 'Hold the pack steady and closer so the barcode fills the box, or type the digits below.'; });
         FD.load();
         var bcTimer = null, bcSeq = 0;
@@ -1157,7 +1160,7 @@
     });
   }
   function openLearn() {
-    var p = deskPrefs();
+    var p = deskPrefs(); moment('learn');
     openSheet('learn', 'Your desk', 'Drag the folders around; make it yours', 'computer',
       '<div class="desk"><div class="menubar"><span class="brandy">RHYTHME</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
       '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f, i) { var q = p.pos[f.id] || [2 + (i % 4) * 25, 4 + Math.floor(i / 4) * 46]; return '<button type="button" class="dicon" data-folder="' + f.id + '" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
@@ -1291,7 +1294,7 @@
     $('#wSave').addEventListener('click', function () {
       var kg = sliderVal('wKg'); if (!kg) { message($('#wMsg'), 'Slide to your weight first.', false); return; }
       kg = Math.round(kg * 10) / 10;
-      try { S.add('weight', S.today(), { kg: kg }, 'scale'); S.setProfile({ weightKg: kg }); chime('save'); toast('Noted: ' + kg + ' kg. One number among many.', 'monitor_weight'); renderDeck(); openWeigh(); } catch (err) { message($('#wMsg'), err.message, false); }
+      try { S.add('weight', S.today(), { kg: kg }, 'scale'); S.setProfile({ weightKg: kg }); chime('save'); toast('Noted: ' + kg + ' kg.', 'monitor_weight', moment('weight', { quiet: true })); renderDeck(); openWeigh(); } catch (err) { message($('#wMsg'), err.message, false); }
     });
     $('#wCmSave').addEventListener('click', function () { var cm = sliderVal('wCm'); if (!cm) return; S.setProfile({ heightCm: cm }); chime('save'); toast('Height saved: ' + cm + ' cm.', 'height'); });
   }
@@ -1480,7 +1483,7 @@
         var kinds = H.kinds(imp.scan, { from: impFrom(), to: S.today() }).ready.filter(function (k) { return imp.pick[k.id] && k.count; }).map(function (k) { return k.id; }); if (!kinds.length) return;
         try { var p = H.apply(imp.scan, S, { kinds: kinds, from: impFrom() }); imp.last = { res: imp.scan, p: p, kinds: kinds, all: ready.map(function (k) { return k.id; }) }; }
         catch (err) { toast('That did not save: ' + err.message, 'error'); return; }
-        imp.scan = null; imp.pick = {}; imp.confirm = null; importRuns++; chime('save'); renderDeck(); renderProps();
+        imp.scan = null; imp.pick = {}; imp.confirm = null; importRuns++; chime('save'); renderDeck(); renderProps(); moment('import');
         var c = imp.last.p.counts, n = kinds.reduce(function (s2, id) { return s2 + (c[id] || 0); }, 0);
         toast(n ? 'Brought in ' + impPlural(n, 'entry', 'entries') + ' you chose.' : 'Nothing new to add from what you chose.', 'move_to_inbox');
         renderImportHome(H);
@@ -1615,11 +1618,13 @@
       if (asleep()) throw new Error('She is asleep. Tap the bed to wake her first.');
       var sit = RW.item(id); if (!shopOpenNow(storeTab(sit))) throw new Error(storeName(storeTab(sit)) + ' is closed now. Open ' + storeHours(storeTab(sit)) + '.');
       var it = RW.buy(id); chime('save', true);
+      /* she holds the bag up, or welcomes a new pet; the line rides on the toast (ovu-moments.js) */
+      var ml = it.kind === 'home' ? '' : moment(it.kind === 'pet' ? 'adopt' : 'shop', { quiet: true });
       if (it.kind === 'home') { S.setState({ home: it.id }); closeSheet(); go(it.id, false); toast('Welcome home. ' + it.name + ' is yours!', 'cottage'); }
-      else if (it.kind === 'treat') { toast(it.name + ' are in the cupboard. Tap a pet to give one.', 'cookie'); again(); }
-      else if (it.kind === 'accessory') { toast(it.name + ' is in the drawer. Tap a pet, then Dress up.', 'checkroom'); again(); }
-      else if (it.waiting) { toast(it.name + ' is yours and waits in the inventory: two pets at home at a time.', 'pets'); again(); }
-      else { renderProps(); toast(it.name + ' is now in your home!' + (it.swapped && it.swapped.length ? ' ' + it.swapped.join(' and ') + ' went into storage; swap back any time.' : ''), 'favorite'); again(); }
+      else if (it.kind === 'treat') { toast(it.name + ' are in the cupboard. Tap a pet to give one.', 'cookie', ml); again(); }
+      else if (it.kind === 'accessory') { toast(it.name + ' is in the drawer. Tap a pet, then Dress up.', 'checkroom', ml); again(); }
+      else if (it.waiting) { toast(it.name + ' is yours and waits in the inventory: two pets at home at a time.', 'pets', ml); again(); }
+      else { renderProps(); toast(it.name + ' is now in your home!' + (it.swapped && it.swapped.length ? ' ' + it.swapped.join(' and ') + ' went into storage; swap back any time.' : ''), 'favorite', ml); again(); }
       return it;
     }
     if (action === 'toggle') { var on = RW.toggle(id); renderProps(); again(); return on; }
@@ -2004,7 +2009,10 @@
     $('#podMiniTitle').textContent = st.ep.title; $('#podMiniSub').textContent = POD.fmt(st.time) + ' / ' + POD.fmt(st.duration) + ' · Erin Lee';
     $('#podMiniPlay').innerHTML = '<span class="ms">' + (st.playing ? 'pause' : 'play_arrow') + '</span>'; $('#podMiniPlay').setAttribute('aria-label', st.playing ? 'Pause' : 'Play');
   }
+  var podMoment = 0;
   if (POD) POD.on(function (type, st) {
+    /* she puts her headphones on when an episode starts, at most once in ten minutes (ovu-moments.js) */
+    if (type === 'play' && Date.now() - podMoment > 600000) { podMoment = Date.now(); moment('podcast'); }
     if (current === 'erin-listen') {
       if (type === 'time') { var sk = $('#podSeek'); if (sk && document.activeElement !== sk && st.duration) { sk.value = Math.round(st.time / st.duration * 1000); sk.style.setProperty('--fill', (st.time / st.duration * 100).toFixed(1) + '%'); } var t1 = $('#podT'), t2 = $('#podD'); if (t1) t1.textContent = POD.fmt(st.time); if (t2) t2.textContent = '-' + POD.fmt(Math.max(0, st.duration - st.time)); }
       else renderPodPlayer();
@@ -2062,7 +2070,7 @@
     $('#mindAcu').addEventListener('click', openAcupressure);
     $('#mindMove').addEventListener('click', function () { if (session) return; chime('tap'); openExercise(); });
     $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
-    $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { afterSave(ev); }, onClose: function () { renderDeck(); } }); });
+    $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { tapSaved = true; afterSave(ev); }, onClose: function () { renderDeck(); if (!tapSaved) moment('moontap'); tapSaved = false; } }); });
   }
 
   /* ---------- Movement: exercise as minutes and MET-minutes, the week against WHO (ovu-exercise.js) ----------
@@ -2218,6 +2226,7 @@
   function regionOf(id) { var r = null; Object.keys(ACU_REGIONS).forEach(function (k) { if (ACU_REGIONS[k].pts[id]) r = k; }); return r; }
   function openAcupressure() {
     if (current !== 'mind' && meditating && !session) exitMeditation();
+    setTimeout(function () { moment('acupressure'); }, 450); /* after the mat has let her go */
     (acuData ? Promise.resolve(acuData) : loadJSON('assets/data/acupoints.json').then(function (d) { acuData = d; return d; })).then(function (d) {
       var byId = {}; d.points.forEach(function (p) { byId[p.id] = p; });
       var order = []; ACU_ORDER.forEach(function (rk) { Object.keys(ACU_REGIONS[rk].pts).forEach(function (id) { if (byId[id] && order.indexOf(id) < 0) order.push(id); }); });
@@ -2262,7 +2271,31 @@
   function hideThought() { var el = $('#thought'); if (el) el.classList.remove('on'); }
   function joy() { avatar.classList.remove('joy'); void avatar.offsetWidth; avatar.classList.add('joy'); setTimeout(function () { avatar.classList.remove('joy'); }, 560); }
 
+  /* ---------- mindful moments (ovu-moments.js): she does the thing, in her own clothes, and one line of noticing ---------- */
+  var MO = window.OvuMoments || null, momentTimer = null, momentOn = null;
+  function endMoment() {
+    clearTimeout(momentTimer); if (!momentOn) return;
+    momentOn = null; avatar.classList.remove('moment');
+    if (!practice && !session && !asleep()) restorePose();
+    var th = $('#thought'); hideThought(); setTimeout(function () { if (th && !th.classList.contains('on')) th.classList.remove('say'); }, 400);
+  }
+  /* returns the line, so a caller can also show it in its own sheet; the pose is skipped while she sleeps, meditates,
+   * practises, walks or the room is being arranged, and the line still shows */
+  function moment(key, opt) {
+    if (!MO || !MO.MOMENTS[key]) return '';
+    opt = opt || {};
+    var text = opt.line || MO.line(key), pose = opt.pose === undefined ? MO.pose(key) : opt.pose;
+    if (asleep() || meditating || practice || session || arranging) return text;
+    if (avatar.classList.contains('walking') && !opt.retried) { setTimeout(function () { moment(key, { line: text, pose: pose, retried: true, quiet: opt.quiet }); }, 900); return text; }
+    clearTimeout(momentTimer); momentOn = key;
+    if (pose) { avatar.classList.add('moment'); setPose(pose); } else joy();
+    var th = $('#thought'); if (th && text && !opt.quiet) { th.classList.add('say'); th.textContent = text; th.classList.add('on'); }
+    momentTimer = setTimeout(endMoment, reduced ? 6000 : 4800);
+    return text;
+  }
+
   /* ---------- everyday mindfulness: guides for what you are really doing ---------- */
+  var tapSaved = false;
   var MF = window.OvuMindful, practice = null, GUIDE = 'assets/audio/guide-interim/';
   /* one audio element per practice, first played inside the tap that began it (see playClip): later lines reuse it, and a
    * guard moves the script on if a clip stalls or is missing, so the captions and bells never wait on silence */
@@ -2557,6 +2590,7 @@
     updateGreeting();
   }
   function openWindow() {
+    moment('window');
     var cs = S.cycleStats(), st = S.sleepStats(7), d = new Date(), sp = sunNow(), sleeping = S.state().sleeping;
     var loggedToday = S.byDate(S.today()).some(function (e) { return e.type === 'sleep'; });
     var act = sleeping ? { id: 'bed', icon: 'wb_sunny', text: 'Wake up' }
@@ -2567,7 +2601,7 @@
       '<div class="stat"><span class="ms">bedtime</span><div><b>' + (st.avg ? 'Averaging ' + st.avg + ' h over ' + st.count + ' nights' : 'No sleep logged this week') + '</b><span>Adults generally do best with 7 hours or more.</span></div></div>' +
       '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + (cs.uncertain ? ' (a loose estimate while cycles are changing).' : '.') : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : (cs.lastStart ? 'Predictions begin once your next period is logged, or add your usual cycle length in Tell me about you.' : 'Log a period on the wall calendar to start predictions.'))) + (gapNote(cs) ? ' ' + esc(gapNote(cs)) : '') + '</span></div></div>' +
       '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">' + act.icon + '</span>' + act.text + '</button><button class="btn soft" id="winSound"><span class="ms">' + (S.state().sound ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (S.state().sound ? 'on' : 'off') + '</button></div>' +
-      '<div class="row"><a class="btn ghost" href="settings.html"><span class="ms">settings</span>Settings & health connections</a><a class="btn ghost" href="face-ppg.html"><span class="ms">monitor_heart</span>Calm check (beta)</a></div>' +
+      '<div class="row"><a class="btn ghost" href="settings.html"><span class="ms">settings</span>Settings & health connections</a><a class="btn ghost" href="face-ppg.html"><span class="ms">monitor_heart</span>Calm check (experimental)</a></div>' +
       '<div class="row"><button type="button" class="btn ghost" id="winIntro"><span class="ms">favorite</span>' + (S.profile().onboarded ? 'Update my intro' : 'Tell me about you') + '</button></div>' +
       '<p class="help">Sounds are tiny chimes plus Erin’s good-night and good-morning lines; they stay off unless you turn them on. Guided sessions always play when you start one.</p>');
     $('#winSleep').addEventListener('click', function () { if (act.id === 'log') { openSleepRecord(); return; } closeSheet(); tap(hotspot(act.id)); });
@@ -2581,7 +2615,7 @@
   /* the menu sits above her head; when the camera holds her tall on screen there is no room above, so it stays inside the box */
   function fitBubble() { var minTop = bubble.offsetHeight + 6; if (parseFloat(bubble.style.top) < minTop) bubble.style.top = minTop + 'px'; }
   /* a tap on her is a little hop and nothing more (Jamie, 19 Oct: the menu over her head is gone; every choice it held has its own place) */
-  avatar.addEventListener('click', function (e) { e.stopPropagation(); chime('tap'); joy(); hideThought(); hideBubble(); });
+  avatar.addEventListener('click', function (e) { e.stopPropagation(); chime('tap'); if (momentOn) endMoment(); joy(); hideThought(); hideBubble(); });
   bubble.addEventListener('click', function (e) { var pb = e.target.closest('[data-pact]'); if (pb) { var pid = bubble.dataset.pet; hideBubble(); petAction(pid, pb.dataset.pact); return; } var b = e.target.closest('button'); if (!b) return; hideBubble(); if (b.dataset.act !== 'sleep' && !awake(b.dataset.act)) return; var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
   document.addEventListener('click', function (e) { if (!e.target.closest('#bubble') && !e.target.closest('#avatar')) hideBubble(); });
 
@@ -2614,10 +2648,12 @@
     var heartsText = rw.points ? ' +' + (rw.points + rw.bonus) + ' ♥' : '';
     /* a red flag in what was just saved is shown at once, never left for the journal (four-persona review, 20 Oct) */
     var care = ORB && ORB.entryUrgent ? ORB.entryUrgent(ev, S.profile()) : null;
+    /* a care card comes alone: no pose and no cheerful line over it */
+    var mk = care ? null : viaLuna ? 'luna' : (MO ? MO.forEntry(ev, A.isPostmenopausal(S.profile())) : null), line = mk ? moment(mk, { quiet: true }) : '';
     if (care && !viaLuna) { careSheet(care); toast('Saved.' + heartsText, 'check_circle'); }
     else if (hi) toast(hi.title + '. Please see the note in your journal.', 'emergency_home');
-    else if (w) toast('Saved. Pattern note added: ' + w.title + '.' + heartsText, 'flag');
-    else toast((text || 'Saved to your journal.') + heartsText, 'check_circle');
+    else if (w) toast('Saved. Pattern note added: ' + w.title + '.' + heartsText, 'flag', line);
+    else toast((text || 'Saved to your journal.') + heartsText, 'check_circle', line);
     var chip = $('#heartsChip'); chip.classList.remove('pop'); void chip.offsetWidth; chip.classList.add('pop');
     renderProps(); renderDeck();
   }
@@ -2678,7 +2714,7 @@
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
-    enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; },
+    moment: moment, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
   };

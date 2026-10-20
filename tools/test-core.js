@@ -13,7 +13,7 @@ function fresh(todayIso) {
   w.window = w; w.self = w; w.globalThis = w;
   var ctx = vm.createContext(w);
   w.Uint8Array = Uint8Array; w.ArrayBuffer = ArrayBuffer; w.isFinite = isFinite; w.isNaN = isNaN; w.Blob = Blob; w.File = File;
-  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-breathtap.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
+  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-breathtap.js', 'ovu-moments.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sync.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
   return w;
@@ -196,6 +196,23 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   S3.setProfile({ pregState: 'postpartum' });
   [0, 2, 4].forEach(function (k) { S3.add('symptom', S3.addDays(t3, -k), { symptoms: [], pain: null, mood: 'low', notes: '' }); });
   check('after a birth, three low days in two weeks raise the support note', A3.allFlags().some(function (f) { return f.code === 'MOOD_LOW' && /1771/.test(f.detail); }));
+})();
+
+(function mindfulMoments() {
+  console.log('2d. every activity has a mindful line and an action (Jamie, 20 Oct): lines are short, kind and free of scores');
+  var w = fresh(), M = w.OvuMoments;
+  check('the moments module loads', !!(M && M.MOMENTS));
+  var keys = Object.keys(M.MOMENTS), bad = [];
+  keys.forEach(function (k) { M.MOMENTS[k].lines.forEach(function (l) { var words = l.trim().split(/\s+/).length; if (words > 18 || /\u2014|\u2013| - /.test(l) || /\b(?:streak|score|points?|goal|target|should|must|failing|failed)\b/i.test(l) || !/[.!?]$/.test(l)) bad.push(k + ': ' + l); }); if (!M.MOMENTS[k].lines.length) bad.push(k + ': no lines'); });
+  check('every line is at most 18 words, ends cleanly, and has no em dash, score, streak or "should"', bad.length === 0, bad.join(' | '));
+  var need = ['period', 'symptom', 'sleep', 'food', 'weight', 'exercise', 'session', 'practice', 'moontap', 'luna', 'import', 'acupressure', 'podcast', 'learn', 'greenhouse', 'plant', 'weed', 'farmwater', 'harvest', 'shop', 'adopt', 'petfeed', 'petplay', 'petcuddle', 'pettidy', 'petdress', 'wardrobe', 'reminder', 'plaza', 'friend', 'hello', 'tea', 'scan'];
+  check('every activity the review walked has a moment', need.every(function (k) { return !!M.MOMENTS[k]; }), need.filter(function (k) { return !M.MOMENTS[k]; }).join(','));
+  check('saved entries map to their moment', M.forEntry({ type: 'period', data: {} }) === 'period' && M.forEntry({ type: 'period', data: {} }, true) === 'bleed_post' && M.forEntry({ type: 'mindfulness', data: { kind: 'breathtap' } }) === 'moontap' && M.forEntry({ type: 'mindfulness', data: { kind: 'informal' } }) === 'practice' && M.forEntry({ type: 'mindfulness', data: { kind: 'erin' } }) === 'session' && M.forEntry({ type: 'food', data: {} }) === 'food' && M.forEntry({ type: 'weight', data: {} }) === 'weight');
+  var seen = {}; for (var i = 0; i < 6; i++) seen[M.line('symptom')] = 1;
+  check('lines take turns rather than repeating', Object.keys(seen).length === M.MOMENTS.symptom.lines.length);
+  var fs = require('fs'), path = require('path'), missing = [];
+  keys.forEach(function (k) { var p = M.MOMENTS[k].pose; if (p && !fs.existsSync(path.join(root, 'assets/room/dream/avatar-act-' + p + '.webp'))) missing.push(p); });
+  check('every pose has its sprite', missing.length === 0, missing.join(','));
 })();
 
 (function noPeriodStatementsAreNotFlow() {

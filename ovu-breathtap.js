@@ -176,8 +176,9 @@
     if (silent) return ev;
     $('#btapStage').hidden = true; $('#btapDone').hidden = false;
     water = null; var m = Math.floor(data.seconds / 60), sec = data.seconds % 60;
-    $('#btapDone b').textContent = ev ? 'Your pause is saved.' : 'That was a short one.';
-    $('#btapSum').textContent = (ev ? 'Practice time ' + (m ? m + ' min ' : '') + sec + ' s' : 'Stay a little longer next time and it will count as practice time') + (data.taps ? ' · ' + data.taps + (data.taps === 1 ? ' ripple' : ' ripples') : '') + '.';
+    /* a short pause is still a pause (four-persona review, 20 Oct: "stay a little longer next time" read as a target) */
+    $('#btapDone b').textContent = ev ? 'Your pause is saved.' : 'A brief pause still belongs to you.';
+    $('#btapSum').textContent = (ev ? 'Practice time ' + (m ? m + ' min ' : '') + sec + ' s' : 'Short pauses are not saved as practice time, and they still count for you') + (data.taps ? ' · ' + data.taps + (data.taps === 1 ? ' ripple' : ' ripples') : '') + '.';
     return ev;
   }
 
