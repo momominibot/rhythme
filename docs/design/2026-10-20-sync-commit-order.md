@@ -4,11 +4,12 @@
 `supabase/migrations/20261020120000_sync_pull_commit_order.sql` is a file only: applying it to the live project is
 Jamie's call (AGENTS gate 3).
 
-**Status: held at AGENTS gate 6 again.** Codex round two held the branch on the compatibility path (premortem 5). Jamie
-chose option A (the server certifies the time cursor, `time_safe`, below); round three found that a single time cursor
-cannot be both skip-free and replay-free once the transaction-ordered pull has delivered rows out of time order, and
-reproduced both. The transaction-ordered pull, the fence and the hand-over passed all three rounds. Options A2
-(recommended) and D are in `docs/debate/2026-10-20-sync-commit-order-codex-round3.md`, not applied.
+**Status: option A2 applied, in Codex round four.** Rounds two and three held the branch at AGENTS gate 6 on the
+compatibility path (premortem 5). Jamie chose option A (the server certifies the time cursor, `time_safe`, below);
+round three proved that a single time cursor cannot be both skip-free and replay-free once the transaction-ordered pull
+has delivered rows out of time order. Jamie then chose A2 (20 Oct): a phone that pulls by transaction id never pulls by
+time again, `time_safe` stays only for tabs still running an older version, and a newer version taking over a page
+stops that page syncing. The transaction-ordered pull, the fence and the hand-over passed all three rounds.
 
 ## The gap
 
@@ -122,29 +123,36 @@ Premortem, assuming B failed:
 
 1. *A stuck writing transaction stalls every pull.* Nothing is lost; rows arrive when it ends. To find it:
    `select pid, backend_xid, xact_start, state, left(query, 80) from pg_stat_activity where backend_xid is not null order by xact_start limit 5;`
-2. *PostgREST's schema cache has not seen the new function yet.* PostgREST answers 404 `PGRST202` [9]; the app pulls by
-   time for that page load, as it does today. Checked on the live project on 20 Oct: an anonymous call to
-   `/rest/v1/rpc/entries_pull` returns exactly that.
+2. *PostgREST's schema cache has not seen the new function yet.* PostgREST answers 404 `PGRST202` [9]. A phone that
+   has never pulled by transaction id pulls by time, as it does today. Checked on the live project on 20 Oct: an
+   anonymous call to `/rest/v1/rpc/entries_pull` returns exactly that. A phone that already holds a transaction cursor
+   stops instead (premortem 5).
 3. *The migration is applied before the app ships.* Older versions keep paging by `synced_at`, which is still stamped
    as before. Nothing changes for them.
 4. *The app ships before the migration.* Same fallback as 2.
-5. *The migration is rolled back after phones moved over, or a tab still on an older version pulls by time.* The
-   transaction-ordered pull keeps the time cursor moving too (only forward, to the latest row it delivered by
-   `synced_at`), so either resumes from near where the newer pull got to rather than from a stale point or the start
-   (Codex round one, finding 1). Round two showed that following the client's own view of it was not enough: a tie on
-   the instant left the time cursor's id behind, so rows sharing that instant could come back after a clear, and the
-   cursor could move past committed rows the 20,000 cap had not delivered, which a lasting fallback then never pulled.
-   Now the server certifies it (`time_safe`, below): compared in its own collation, bounded by the earliest visible
-   row still to come, never back past the cursor the phone sent. **Still not enough (Codex round three, reproduced):**
-   when a row delivered earlier in time order sits after one held back (d at 10:00 delivered, early at 09:00 behind
-   the fence), no time cursor can keep early and exclude d, so a pull by time either sends d again after a clear or,
-   with the cursor kept from an earlier sync, skips early. Proposed (A2): no time-ordered pull once a phone has moved
-   over; `time_safe` only for tabs still on an older version, with that weaker guarantee written down.
+5. *The migration is rolled back after phones moved over, or a tab still on an older version pulls by time.* Three
+   review rounds went here. Following the time cursor from the client's own view (round one) left a tie's id behind and
+   could pass rows the 20,000 cap had not reached (round two). A server-certified `time_safe` (round three) fixed ties,
+   but no time cursor can keep `early` (09:00, held behind the fence) and exclude `d` (10:00, already delivered), so a
+   pull by time either sends `d` again after a clear or, with a cursor kept from an earlier sync, skips `early`.
+   **A2 (Jamie, 20 Oct):** once a phone holds a transaction cursor it never pulls by time. If `entries_pull` goes
+   missing, the sync stops with "Cloud backup is paused until the cloud is updated again. Everything stays safe on this
+   phone." and nothing moves; when `entries_pull` is back it carries on from its cursor. `time_safe` is kept only for a
+   tab still running an older version, which can only pull by time. Such a tab has a weaker guarantee, written down and
+   tested: it can skip rows that were still open, or held behind the fence, when an earlier `time_safe` was certified,
+   and after a clear it can receive again rows above a held-back row. Older tabs are transitional: see 8.
 6. *A page asked for `entries_pull` before the migration and was told it is missing.* It asks again as soon as any tab
    holds a transaction-ordered cursor, instead of pulling by its own time cursor for the rest of its life (Codex round
    one, finding 1).
 7. *Some other entries_pull failure* (a timeout, a malformed reply) fails the sync and moves nothing. It never falls
    back silently to the pull with the gap.
+8. *A tab keeps running older code after a newer version ships.* `sw.js` already skips waiting and claims every open
+   page, but nothing reloaded a page that was open. Now `OvuSync.watchUpdates()` (called from `room.js` next to the
+   registration) listens for `controllerchange`: the first install claiming the page is not an update, but every later
+   takeover stops this page syncing at once (`retire()`: a sync in flight is cancelled at its next check, `syncNow()`
+   answers `{ok: false, reason: 'update'}`) and reloads the page as soon as it is out of sight, so nothing being typed
+   is lost. A short note says the new version opens next time she comes back. This cannot reach code already in the
+   field before this change; it shortens every hand-over after it.
 
 ## The hand-over from the time cursor
 
@@ -199,8 +207,9 @@ can sit earlier in time than rows already delivered. Every page of `entries_pull
 4. never back past `p_time_at`/`p_time_id`, the time cursor this sync started from (a `(T, no id)` millisecond cursor
    counts as "rows before T").
 
-The phone writes it as its time cursor. If another tab or an older version moved that cursor meanwhile, ours is written
-only when it is later by instant. A tie between two writers on one instant keeps the stored one, which can at most send
+Since A2 this phone never reads that cursor back for a pull of its own: it is kept for a tab still on an older version
+during the transition, with the weaker guarantee in premortem 5. The phone writes it as its time cursor. If another tab
+or an older version moved that cursor meanwhile, ours is written only when it is later by instant. A tie between two writers on one instant keeps the stored one, which can at most send
 again rows of that one instant to a phone that is cleared and then falls back while two tabs synced at once. The
 function is plpgsql and STABLE, so all four steps use the calling statement's snapshot [10]. Cost on a local
 PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 ms each.
@@ -213,14 +222,16 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
   ONLY [5]), security invoker so the "own entries" policy applies, `search_path = ''`, execute for `authenticated`
   only. It returns `{fence, snapshot, rows, time_safe}` with transaction ids as text, at most 1,000 rows a page. It
   also takes `p_time_at`/`p_time_id` (above), and drops the two earlier draft signatures in case one was ever applied.
-- `ovu-sync.js`: `pullShared` tries `entries_pull` and falls back to the time-ordered `pullSince` only on `PGRST202`;
-  a page that was told it is missing asks again once any tab holds a transaction-ordered cursor. `pullCommitted` pages
+- `ovu-sync.js`: `pullShared` tries `entries_pull`. On `PGRST202` a phone with no transaction cursor yet falls back to
+  the time-ordered `pullSince`; a phone that holds one throws `PULL_PAUSED` and the sync stops (A2). A page that was
+  told it is missing asks again once any tab holds a transaction-ordered cursor. `pullCommitted` pages
   by `(sync_xid, id)`; when a page comes back short it moves the cursor up to the fence, with no id ("from this
   transaction id on"), so an empty pull is cheap. The cursor lives in `pulledXid`/`pulledXidId`, a hand-over in
   progress in `pullSince` (`{at, id, snap}`); the cursor keeps the forward-only rule across tabs (`xidLater`), and every
   reset and account switch clears all three. The time cursor (`pulledSeq`/`pulledId`) follows the server's
-  `time_safe`, for a fallback or a tab still on an older version. The returned snapshot text is checked only when a
-  hand-over begins. The typed recovery now also starts for a phone whose only
+  `time_safe`, only for a tab still on an older version. The returned snapshot text is checked only when a hand-over
+  begins. `watchUpdates()` and `retire()` stop a page that a newer service worker has taken over (premortem 8);
+  `canSync()` is false once retired. The typed recovery now also starts for a phone whose only
   cursor is the new one. Any other `entries_pull` failure fails the sync without falling back.
 
 ## Verification
@@ -238,9 +249,11 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
   index conditions; with `time_safe`, a full 60,000-row restore took 61 pages at a median 35 ms (worst 48 ms).
 - `tools/test-core.js`, `sharedPullCommitOrder`, on the shared `syncServer`/`syncWorld`/`syncRow` helpers (the pretend
   server now has open transactions, PostgreSQL's snapshot rules with BigInt transaction ids, and an `entries_pull` that
-  matches the SQL including `time_safe`, arguments checked against the migration file): 28 checks. Against main's
-  `ovu-sync.js` 17 of them fail (a new phone ends with 3 of 1,503 rows); against the round-two code (7822e3c) the five
-  round-two reproductions fail; on this branch all pass, with every earlier sync test unchanged (867 in all).
+  matches the SQL including `time_safe`, arguments checked against the migration file): 36 checks, including both
+  round-three counterexamples (cases 10 and 11), the older-tab view of the time cursor, and a newer version taking
+  over a page (case 12). Against main's `ovu-sync.js` 26 of them fail (a new phone ends with 3 of 1,503 rows); against
+  the round-three code (525062b) the 7 A2 checks fail; on this branch all pass, with every earlier sync test unchanged
+  (945 in all, on main as of 3c99e14).
 - `tools/check.py` and `tools/e2e_smoke.py` pass.
 
 ## Review record
@@ -264,6 +277,9 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
   findings 1 and 3 FIXED, 2 PARTLY FIXED: two counterexamples (replay above a held-back row after a clear; a cursor kept
   from an earlier sync skipping a row that became visible behind the fence), both reproduced independently, and a
   proof that a single time cursor cannot avoid both. Third failure on the same path: held at AGENTS gate 6.
+- Jamie, 20 Oct: option A2. Applied: `PULL_PAUSED` instead of a time-ordered pull once a phone holds a transaction
+  cursor, `time_safe` kept only for older-version tabs with their weaker guarantee tested as such (cases 10 and 11),
+  `watchUpdates()`/`retire()` with a reload when out of sight (case 12), and the note in `room.js`.
 
 ## Sources
 

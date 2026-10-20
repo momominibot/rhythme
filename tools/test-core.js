@@ -1889,7 +1889,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   u12.navigator.serviceWorker = { controller: null, addEventListener: function (t, f) { if (t === 'controllerchange') swL.push(f); } };
   u12.document = { hidden: false, addEventListener: function (t, f) { if (t === 'visibilitychange') docL.push(f); }, querySelector: function () { return null; } };
   u12.location = { reload: function () { reloads++; } };
-  var watching = Y12.watchUpdates(function () { notes12++; });
+  var watching = typeof Y12.watchUpdates === 'function' && Y12.watchUpdates(function () { notes12++; });
   swL.forEach(function (f) { f(); }); /* the first install claims the page */
   var before12 = Y12.canSync();
   swL.forEach(function (f) { f(); }); /* a newer version takes over */
