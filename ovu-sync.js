@@ -31,40 +31,52 @@
   var statusNow = { state: 'idle', at: null, error: null };
   var busy = false, busyPromise = null, debounceTimer = null;
 
-  /* ---------- sync position (one object in localStorage) ---------- */
+  /* ---------- sync state ----------
+   * Three keys, kept apart so that nothing written late in one tab can carry another's progress back (Codex sync
+   * reviews, rounds one to five, 20 Oct):
+   * - the outbox, ovumind_sync_v1: shadow (the diary as last seen), tombstones (deletions still to send) and
+   *   profileDirty. onStoreChange writes it whole after every diary change, in whichever tab made it.
+   * - the position, ovumind_sync_pos_v1: the account this phone syncs with (uid), how far it has pushed (pushedAt),
+   *   rows the server held back (held), when the profile was last restored (profilePulledAt), the last sync (lastSyncAt),
+   *   where the pull resumes (pulledSeq and pulledId: the last row the incremental pull saw, its synced_at exactly as the
+   *   server wrote it; pulledSeq without pulledId is an older version's millisecond cursor) and the typed recovery
+   *   (types, typedAfter). Only a sync holding the lock writes it, and each write carries the reset token that sync
+   *   started under.
+   * - the reset token, ovumind_sync_reset_v1: a random value that only a reset writes. A position stamped with any
+   *   other token reads as empty, so a reset needs no other write, and whatever a sync it overtook writes afterwards
+   *   is void. Two resets never share a token.
+   * Older versions kept the position inside ovumind_sync_v1; the first sync copies it across, holding the lock,
+   * before its first request. */
   function loadState() {
     try { var s = JSON.parse(localStorage.getItem(LS) || 'null'); if (s && s.v === 1) { s.shadow = s.shadow || {}; s.tombstones = s.tombstones || {}; return s; } } catch (e) { }
-    /* pushedAt: the newest local updatedAt we have pushed, so unchanged rows are not re-sent. */
-    return { v: 1, userId: null, shadow: {}, tombstones: {}, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null };
+    return { v: 1, shadow: {}, tombstones: {}, profileDirty: false };
   }
   function saveState(s) { try { localStorage.setItem(LS, JSON.stringify(s)); } catch (e) { } }
-  /* The main state above is written whole, by a sync and by every diary change (onStoreChange), in any tab. Two things
-     must never be carried back by a late whole write from another tab, so each has its own key:
-     - the reset generation (ovumind_sync_gen_v1), raised by every reset and account switch and written by nothing
-       else. A sync reads it when it is asked for, before it waits for the lock, and checks it, with the account,
-       before every request and every write; once a reset has moved it on, the sync stops and writes nothing more.
-     - where the pull resumes (ovumind_sync_pull_v1): pulledSeq and pulledId, the last row the incremental pull saw
-       (synced_at exactly as the server wrote it, and that row's id; pulledSeq without pulledId is an older version's
-       millisecond cursor), and the typed recovery's types and typedAfter. Only a sync's commit and a reset write it.
-     Older versions kept both inside the main state (gen, pulledSeq, ...); they are read from there until these keys
-     are first written. (Codex sync reviews, rounds two to four, 20 Oct.) */
-  var LS_GEN = 'ovumind_sync_gen_v1', LS_PULL = 'ovumind_sync_pull_v1';
+  var LS_POS = 'ovumind_sync_pos_v1', LS_RESET = 'ovumind_sync_reset_v1';
   function readKey(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function readGen() { var g = readKey(LS_GEN); return g != null ? (Number(g) || 0) : (Number(loadState().gen) || 0); }
-  function bumpGen() { var g = readGen() + 1; try { localStorage.setItem(LS_GEN, String(g)); } catch (e) { } return g; }
-  function loadPull() {
-    try { var p = JSON.parse(readKey(LS_PULL) || 'null'); if (p && p.v === 1) return p; } catch (e) { }
-    var s = loadState();
-    return { v: 1, pulledSeq: s.pulledSeq || null, pulledId: s.pulledSeq && s.pulledId != null ? s.pulledId : null, types: s.types || null, typedAfter: s.typedAfter || null };
+  function resetToken() { return readKey(LS_RESET) || ''; }
+  function newToken() {
+    try { var b = new Uint8Array(16); root.crypto.getRandomValues(b); return Array.prototype.map.call(b, function (x) { return (x + 256).toString(16).slice(1); }).join(''); }
+    catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); }
   }
-  function savePull(p) { try { localStorage.setItem(LS_PULL, JSON.stringify({ v: 1, pulledSeq: p.pulledSeq || null, pulledId: p.pulledSeq && p.pulledId != null ? p.pulledId : null, types: p.types || null, typedAfter: p.typedAfter || null })); } catch (e) { } }
-  /* An empty position, for `uid` (an account switch, which keeps lastSyncAt) or for nobody (a reset). The diary, its
-     shadow and the deletions outbox stay, so deletions still reach the cloud later. */
-  function clearPosition(uid) {
-    var st = loadState();
-    savePull({});
-    saveState({ v: 1, userId: uid || null, shadow: snapshot(), tombstones: st.tombstones || {}, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: uid ? (st.lastSyncAt || null) : null });
+  function emptyPos() { return { v: 1, uid: null, pushedAt: null, held: {}, profilePulledAt: null, lastSyncAt: null, pulledSeq: null, pulledId: null, types: null, typedAfter: null }; }
+  function storedPos() { try { var p = JSON.parse(readKey(LS_POS) || 'null'); return p && p.v === 1 ? p : null; } catch (e) { return null; } }
+  /* an older version's position, from the main object, for a phone that has never had a position key or a reset */
+  function legacyPos() {
+    var s = loadState(), p = emptyPos();
+    p.uid = s.userId || null; p.pushedAt = s.pushedAt || null; p.held = s.held || {}; p.profilePulledAt = s.profilePulledAt || null; p.lastSyncAt = s.lastSyncAt || null;
+    p.pulledSeq = s.pulledSeq || null; p.pulledId = s.pulledSeq && s.pulledId != null ? s.pulledId : null; p.types = s.types || null; p.typedAfter = s.typedAfter || null;
+    return p;
   }
+  /* the position as it stands under the current reset token */
+  function loadPos() {
+    var p = storedPos();
+    if (!p) return readKey(LS_RESET) == null ? legacyPos() : emptyPos();
+    if ((p.token || '') !== resetToken()) return emptyPos();
+    p.held = p.held || {};
+    return p;
+  }
+  function savePos(p, token) { var out = Object.assign({}, p, { v: 1, token: token }); try { localStorage.setItem(LS_POS, JSON.stringify(out)); } catch (e) { } }
   function snapshot() { var m = {}; S.list(null).forEach(function (e) { m[e.id] = e.updatedAt; }); return m; }
   function nowIso() { return new Date().toISOString(); }
   /* Compare by instant, not by text: the server returns '...+00:00' while the
@@ -192,7 +204,6 @@
   function consentOk(p) { var c = (p || {}).cloud; return !!(c && c.v >= 1 && c.at); }
   function auth() { return root.OvuAuth || null; }
   function session() { var a = auth(); return a && a.session ? a.session() : null; }
-  function liveUid() { var s = session(); return s && s.user ? s.user.id : null; }
   /* Cloud consent is tied to the account that gave it: after signing out and
      into a different account, nothing syncs until that account also opts in, so
      one person's diary is never uploaded under another person's account. */
@@ -275,7 +286,7 @@
 
   /* ---------- the sync ---------- */
   function notify() { listeners.slice().forEach(function (fn) { try { fn(statusNow); } catch (e) { } }); }
-  function setStatus(state, error) { statusNow = { state: state, at: loadState().lastSyncAt, error: error || null }; notify(); }
+  function setStatus(state, error) { statusNow = { state: state, at: loadPos().lastSyncAt, error: error || null }; notify(); }
 
   /* one sync at a time across every tab of this browser (Web Locks: Safari 15.4+, Chrome 69+). Where the browser has
      none, or the page may not use it, the work runs unlocked, and this tab's busy flag and the generation checks below
@@ -291,33 +302,35 @@
     if (busy) return busyPromise;
     if (!canSync()) { setStatus('idle'); return Promise.resolve({ ok: false, reason: 'not-enabled' }); }
     busy = true; setStatus('syncing');
-    /* the generation is read now, before waiting for the lock: a reset while this sync waits ends it */
-    var a = auth(), gen0 = readGen();
-    busyPromise = withLock(function () { return runSync(a, gen0); }).then(function (r) { busy = false; return r; }, function (err) { busy = false; throw err; });
+    /* the reset token is read now, before waiting for the lock: a reset while this sync waits ends it */
+    var a = auth(), tok0 = resetToken();
+    busyPromise = withLock(function () { return runSync(a, tok0); }).then(function (r) { busy = false; return r; }, function (err) { busy = false; throw err; });
     return busyPromise;
   }
-  function runSync(a, gen0) {
-    /* another tab may have changed things while this one waited for the lock */
-    if (readGen() !== gen0) { setStatus('idle'); return Promise.resolve({ ok: false, reason: 'cancelled' }); }
+  function runSync(a, tok0) {
+    /* another tab may have reset things while this one waited for the lock */
+    if (resetToken() !== tok0) { setStatus('idle'); return Promise.resolve({ ok: false, reason: 'cancelled' }); }
     if (!canSync()) { setStatus('idle'); return Promise.resolve({ ok: false, reason: 'not-enabled' }); }
+    /* an older version's position moves to its own key now, holding the lock and before any wait */
+    if (!storedPos()) savePos(loadPos(), tok0);
+    /* the account this sync is for, and whether nothing has reset or switched since; the error handler below reads both */
+    var uid = null, alive = function () { return false; };
     return timed(a.token()).then(function (token) {
       if (!token) throw new Error('no session');
-      var uid = a.userId();
-      if (readGen() !== gen0 || !canSync()) throw CANCELLED; /* a reset while the token was on its way */
-      var st = loadState();
-      /* a switch to another account: a new generation, and every position field starts clean */
-      if (st.userId && st.userId !== uid) { gen0 = bumpGen(); clearPosition(uid); st = loadState(); }
-      if (!st.userId) {
-        /* the first sync after a reset, or ever: start clean */
-        st.userId = uid; st.shadow = snapshot(); st.pushedAt = null; st.profilePulledAt = null; delete st.held;
-        st.profileDirty = !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage);
-        savePull({});
-      } else if (readKey(LS_PULL) == null) {
-        savePull(loadPull()); /* an older version's position moves to its own key now, before any network wait */
+      uid = a.userId();
+      if (resetToken() !== tok0 || !canSync()) throw CANCELLED; /* a reset while the token was on its way */
+      var pull = loadPos(), st = loadState();
+      if (pull.uid !== uid) {
+        /* another account, or the first sync after a reset or ever: the position starts clean for this account. A
+           switch keeps the last sync time; a first sync marks the profile for upload if this phone has anything. */
+        var last = pull.uid ? pull.lastSyncAt : null, first = !pull.uid;
+        pull = emptyPos(); pull.uid = uid; pull.lastSyncAt = last;
+        st.shadow = snapshot();
+        st.profileDirty = first ? !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage) : false;
+        savePos(pull, tok0); saveState(st);
       }
-      var pull = loadPull();
-      /* still the same generation and account, signed in as it, and allowed to sync */
-      function alive() { var c = loadState(); return readGen() === gen0 && c.userId === uid && a.userId() === uid && canSync(); }
+      /* the same reset token and account, signed in as it, and allowed to sync */
+      alive = function () { return resetToken() === tok0 && loadPos().uid === uid && a.userId() === uid && canSync(); };
       function stillAlive() { if (!alive()) throw CANCELLED; }
       /* An older app version drops rows of types it does not know, while its pull cursor moves past them. When this
          version knows types the cursor was built without (Movement added 'exercise'), pull those types once from the
@@ -329,15 +342,18 @@
          syncs when the backlog is larger than one sync's share, and only a scan that reached the end marks the new
          types as known */
       var incRows = [], incEnd = null, typed = null, typedDone = !newTypes.length;
-      saveState(st); /* persist the activation/reset before any network call */
       /* before any row moves: read the account's own record (a withdrawal made on another phone is adopted here and stops
          the sync), then make sure this account has heard this phone's cloud choice (the server refuses writes it has not
          been told about, and a phone must not upload on a choice the account does not hold) */
       var C = root.OvuConsent;
       var pre = !C ? Promise.resolve() : timed(C.pullAccountState()).then(function (acc) {
-        if (acc && acc.cloud_sync && acc.cloud_sync.on === false && C.allows('cloud_sync')) { C.record('cloud_sync', 'withdraw', 'server', { sent: true }); throw new Error('Cloud backup was turned off on another phone.'); }
+        /* the answer is about the account it was asked for: after a sign-out or a switch it must never be applied to
+           whoever is signed in now */
+        stillAlive();
+        if (acc && acc.cloud_sync && acc.cloud_sync.on === false && C.allows('cloud_sync')) { C.record('cloud_sync', 'withdraw', 'server', { sent: true, uid: uid }); throw new Error('Cloud backup was turned off on another phone.'); }
         return timed(C.flush());
       }).then(function () {
+        stillAlive();
         if (a.userId() !== uid || !C.allows('cloud_sync') || !C.recordedOnAccount('cloud_sync')) throw new Error('Your cloud backup choice has not reached your account yet. Try again in a moment.');
       });
       /* pull every row whose server arrival (synced_at) is after our cursor, in
@@ -350,8 +366,8 @@
       }).then(function (remoteRows) {
         /* consent, sign-in or a reset may have changed during the network wait */
         stillAlive();
-        var pushedAt = loadState().pushedAt || '';
-        var plan = addHeld(merge(S.list(null), loadState().tombstones || {}, remoteRows, pushedAt), loadState().held, S.get);
+        var pushedAt = loadPos().pushedAt || '';
+        var plan = addHeld(merge(S.list(null), loadState().tombstones || {}, remoteRows, pushedAt), loadPos().held, S.get);
         /* serialise what we push NOW: an edit made to the same event during the
            upload must not move the watermark to an unsent time (pushUp holds live
            event references), or that edit would never be backed up. */
@@ -381,12 +397,11 @@
           plan.applyDel.forEach(function (id) { settled[id] = 1; });
           plan.applyPut.forEach(function (r) { settled[r.id] = 1; }); /* a restored row's old tombstone is resolved */
           remoteRows.forEach(function (r) { if (r.deleted) settled[r.id] = 1; });
-          /* read-modify-write so a deletion made while this sync was in flight is kept */
-          /* a sign-out, an account switch or a reset of the position during the upload cleared it: leave it cleared,
-             rather than write this account and its progress back into it. (A reset in another tab that lands after this
-             check is finished again inside the lock once this sync lets go: see resetPosition.) */
+          /* a sign-out, an account switch or a reset during the upload: write nothing back. (A reset that lands after this
+             check makes the position written below void: it carries this sync's token, no longer the current one.) */
           stillAlive();
-          var cur = loadState(), pos = loadPull();
+          /* read-modify-write so a deletion made while this sync was in flight is kept */
+          var cur = loadState(), pos = loadPos();
           /* the shared cursor moves to the last all-type row this pull saw (never a typed-recovery row), kept exactly as
              the server wrote it, and only forward. If it moved while this sync ran (another tab, where the browser has
              no Web Locks), ours is written only when it is strictly later: a cursor wound back would pull again rows
@@ -396,10 +411,9 @@
           if (incRows.length && (!movedMeanwhile || (pos.pulledSeq && micros(incEnd.at) > micros(pos.pulledSeq)))) { pos.pulledSeq = incEnd.at; pos.pulledId = incEnd.id; }
           if (typedDone) { pos.types = knownTypes; pos.typedAfter = null; }
           else if (typed && typed.lastId) pos.typedAfter = typed.lastId;
-          savePull(pos);
-          cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
+          pos.pushedAt = maxIso(pos.pushedAt || '', upMax, delMax, remoteMax) || pos.pushedAt || null;
           Object.keys(settled).forEach(function (id) { delete cur.tombstones[id]; });
-          var held = cur.held || {};
+          var held = pos.held || {};
           /* a held row is released only if the version that went up is still the one on this phone; an edit made
              during the upload keeps it held, so it is sent next time even if the watermark has moved past it */
           pushedRows.forEach(function (r) { var now = S.get(r.id); if (!now || now.updatedAt === r.updated_at) delete held[r.id]; });
@@ -409,22 +423,24 @@
           plan.applyDel.forEach(function (id) { delete held[id]; });
           heldRows.forEach(function (r) { held[r.id] = r.updated_at; });
           Object.keys(held).forEach(function (id) { if (!S.get(id)) delete held[id]; });
-          cur.held = held;
+          pos.held = held;
+          savePos(pos, tok0);
           cur.shadow = snapshot();
           saveState(cur);
-          return syncProfile(token, uid, alive).then(function () {
+          return syncProfile(token, uid, alive, tok0).then(function () {
             stillAlive();
-            var s2 = loadState(); s2.lastSyncAt = nowIso(); saveState(s2);
+            var p2 = loadPos(); p2.lastSyncAt = nowIso(); savePos(p2, tok0);
             setStatus('ok');
-            return { ok: true, pulled: remoteRows.length, pushed: pushedRows.length + plan.pushDel.length, held: Object.keys(loadState().held || {}).length }; /* every row still waiting, not only this request's refusals */
+            return { ok: true, pulled: remoteRows.length, pushed: pushedRows.length + plan.pushDel.length, held: Object.keys(loadPos().held || {}).length }; /* every row still waiting, not only this request's refusals */
           });
         });
       });
     }).catch(function (err) {
       if (err === CANCELLED) { setStatus('idle'); return { ok: false, reason: 'cancelled' }; }
       setStatus('error', (err && err.message) || String(err));
-      /* the account says backup is off (turned off on another phone): this phone adopts it and stops */
-      if (err && /Cloud backup is off for this account/i.test(err.message || '') && root.OvuConsent && OvuConsent.allows('cloud_sync')) { try { OvuConsent.record('cloud_sync', 'withdraw', 'server', { sent: true }); } catch (e2) { } setStatus('idle'); }
+      /* the account says backup is off (turned off on another phone): this phone adopts it and stops, but only while the
+         account and position this sync was for are still the current ones */
+      if (err && /Cloud backup is off for this account/i.test(err.message || '') && root.OvuConsent && OvuConsent.allows('cloud_sync') && uid && alive()) { try { OvuConsent.record('cloud_sync', 'withdraw', 'server', { sent: true, uid: uid }); } catch (e2) { } setStatus('idle'); }
       return { ok: false, error: (err && err.message) || String(err) };
     });
   }
@@ -441,10 +457,10 @@
     });
   }
 
-  function syncProfile(token, uid, alive) {
-    alive = alive || function () { return canSync() && liveUid() === uid; };
+  /* `alive` says the position and account are still this sync's; `tok` is the reset token its writes carry */
+  function syncProfile(token, uid, alive, tok) {
     if (!alive()) return Promise.resolve();
-    var first = loadState().profilePulledAt == null;
+    var first = loadPos().profilePulledAt == null;
     return rest('GET', '/profiles?select=*&user_id=eq.' + uid, null, null, token).then(function (rows) {
       if (!alive()) return; /* consent, sign-in or a reset changed during the GET */
       var st = loadState(); /* re-read: a profile edit may have happened during the GET */
@@ -454,22 +470,24 @@
          must not overwrite real history with this phone's empty defaults.
          After that, a genuine local edit (dirty) is pushed; otherwise a newer
          remote is pulled. */
-      if (remote && (first || (!st.profileDirty && ts(remote.updated_at) > ts(st.profilePulledAt)))) {
+      if (remote && (first || (!st.profileDirty && ts(remote.updated_at) > ts(loadPos().profilePulledAt)))) {
         var incoming = profileForCloud(remote.profile || {});
         if (!alive()) return;
         if (Object.keys(incoming).length) S.setProfile(incoming); /* keeps local consent + cloud */
-        var sp = loadState(); sp.profilePulledAt = maxIso(remote.updated_at); sp.profileDirty = false; saveState(sp);
+        var pp = loadPos(); pp.profilePulledAt = maxIso(remote.updated_at); savePos(pp, tok);
+        var sp = loadState(); sp.profileDirty = false; saveState(sp);
         return;
       }
       if (st.profileDirty || (first && !remote)) {
         var sent = nowIso(), snapSent = JSON.stringify(profileForCloud(S.profile()));
+        if (!alive()) return;
         return rest('POST', '/profiles?on_conflict=user_id', { user_id: uid, display_name: (S.profile().name || '').slice(0, 80) || null, profile: JSON.parse(snapSent), updated_at: sent }, 'resolution=merge-duplicates,return=minimal', token).then(function () {
           /* a reset or a switch during the upload: its completion must not mark the new state as already restored, or
              the next account would skip its own first restore and upload this profile over its cloud copy */
           if (!alive()) return;
-          var s = loadState(); s.profilePulledAt = sent;
+          var pp = loadPos(); pp.profilePulledAt = sent; savePos(pp, tok);
           /* keep dirty if the profile was edited again during the upload, so that edit is still backed up */
-          s.profileDirty = JSON.stringify(profileForCloud(S.profile())) !== snapSent;
+          var s = loadState(); s.profileDirty = JSON.stringify(profileForCloud(S.profile())) !== snapSent;
           saveState(s);
         });
       }
@@ -497,14 +515,13 @@
   /* Forget this device's sync position (on sign-out or account switch); the
      local diary stays, deletions outbox is kept so they still propagate later. */
   function resetPosition() {
-    var gen = bumpGen(); /* first, so a sync already running stops at its next check */
-    clearPosition(null);
+    /* a fresh token is the whole reset: every position written under the old one reads as empty from now on, and a
+       sync that started before it stops at its next check */
+    var tok = newToken();
+    try { localStorage.setItem(LS_RESET, tok); } catch (e) { }
     setStatus('idle');
-    /* A sync in another tab can pass its last check just before this reset and still write. A sync writes only inside
-       the lock, so the reset is finished there too, once that sync lets go: a sync asked for after this reset waits
-       behind it in the lock's queue, and one asked for before it read an older generation and stops. A newer reset
-       finishes itself. */
-    var p = withLock(function () { if (readGen() === gen) clearPosition(null); });
+    /* tidy the old account's position out of storage once no sync holds the lock (nothing depends on this) */
+    var p = withLock(function () { if (resetToken() === tok) savePos(emptyPos(), tok); });
     if (p && typeof p.catch === 'function') p.catch(function () { });
   }
 
@@ -523,7 +540,7 @@
     consentOk: consentOk,
     deleteAccount: deleteAccount,
     resetPosition: resetPosition,
-    status: function () { var st = loadState(); return { state: statusNow.state, error: statusNow.error, lastSyncAt: st.lastSyncAt, pending: Object.keys(st.tombstones || {}).length, held: Object.keys(st.held || {}).length }; },
+    status: function () { var st = loadState(), p = loadPos(); return { state: statusNow.state, error: statusNow.error, lastSyncAt: p.lastSyncAt, pending: Object.keys(st.tombstones || {}).length, held: Object.keys(p.held || {}).length }; },
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
     /* pure helpers, exported for the tests */
     merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud, addHeld: addHeld, splitByType: splitByType, typeRejected: typeRejected, mergeRows: mergeRows
