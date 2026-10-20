@@ -24,7 +24,7 @@
         f.portions = [{ label: '100 g', g: 100 }].concat(ps);
         f.source = { kind: 'usda', ref: 'FDC ' + f.fdc, date: 'SR Legacy, April 2018', detail: f.sr, label: 'USDA FoodData Central' };
       });
-      table = t; return t;
+      table = t; try { sgLoad().catch(function () { }); } catch (e) { } return t;
     });
     return loading;
   }
@@ -33,11 +33,23 @@
     Object.keys(ALIASES).sort(function (a, b) { return b.length - a.length; }).forEach(function (a) { if (q.indexOf(a) > -1) q = q.replace(a, ALIASES[a]); });
     return q;
   }
+  /* Singapore dishes from the HPB table join the search (Jamie, 20 Oct: "couldn't search laksa"), wrapped in the same shape as
+   * a table food so picking one fills the diary the same way; they rank above the USDA rows they match equally */
+  function sgFood(f) { if (!f._food) f._food = { id: f.id, name: f.name, cat: 'sg dish', sr: f.desc || '', n: f.per100Edible, basis: f.basis, portions: f.portions, source: f.source }; return f._food; }
   function search(q, limit) {
     if (!table) return [];
     var nq = normaliseQuery(q), tokens = nq.split(/[^a-z0-9%]+/).filter(Boolean);
     if (!tokens.length) return table.foods.slice(0, limit || 12);
     var scored = [];
+    if (sgTable) {
+      var st = sgNorm(q).split(' ').filter(Boolean);
+      sgTable.foods.forEach(function (f) {
+        if (!f.per100Edible || !st.length) return; var sc = 0;
+        for (var i = 0; i < st.length; i++) { var t = st[i]; if (f._keys.some(function (k) { return k.indexOf(t) === 0; })) sc += 6; else if (f._text.indexOf(' ' + t) > -1) sc += 5; else { sc = -1; break; } } /* whole words only: apple is not pineapple */
+        if (sc > 0 && f._text.indexOf(' ' + st.join(' ') + ' ') > -1) sc += 10; /* the whole phrase, in order: chicken rice before chicken porridge */
+        if (sc > 0) scored.push([sc + 2 - f.name.length / 100, sgFood(f)]);
+      });
+    }
     table.foods.forEach(function (f) {
       var score = 0, name = f.name.toLowerCase();
       for (var i = 0; i < tokens.length; i++) {
@@ -49,7 +61,10 @@
     scored.sort(function (a, b) { return b[0] - a[0]; });
     return scored.slice(0, limit || 12).map(function (x) { return x[1]; });
   }
-  function byId(id) { return table ? table.foods.filter(function (f) { return f.id === id; })[0] || null : null; }
+  function byId(id) {
+    if (sgTable && /^hpb:/.test(id)) { var h = sgTable.foods.filter(function (f) { return f.id === id; })[0]; if (h) return sgFood(h); }
+    return table ? table.foods.filter(function (f) { return f.id === id; })[0] || null : null;
+  }
 
   /* ---------- nutrient maths ---------- */
   function scale(per100, grams) {

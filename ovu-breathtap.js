@@ -1,5 +1,5 @@
 /* Koi Pond (was Moon Tap): a no-fail breath break. A ring opens on the in-breath and closes on the out-breath over a
- * still pond where three koi swim (Jamie, 19 Oct: koi, not the moon). Tap the water and a ripple spreads and the koi turn and glide to it;
+ * still pond where three koi swim (Jamie, 19 Oct: koi, not the moon). Tap the water and a ripple spreads and the koi nearby dart away, then glide on;
  * or only watch. Nothing is scored, tap timing
  * changes nothing, and stopping at any moment saves the practice time. The design and the review that shaped
  * it: docs/design/2026-10-18-breath-tap.md, docs/debate/2026-10-18-breath-tap-codex-review.md. */
@@ -39,7 +39,7 @@
       '<div class="w-stars" aria-hidden="true"></div>' +
       '<div class="btap-card" id="btapCard">' +
         '<h2>Koi Pond</h2>' +
-        '<p>Breathe comfortably. Tap the water and the koi come to see, or simply watch them. You don’t need to match the ring.</p>' +
+        '<p>Breathe comfortably. Watch the koi glide; tap the water and they slip away. You don’t need to match the ring.</p>' +
         '<div class="btap-chips" id="btapPresets" role="group" aria-label="Pace"></div>' +
         '<div class="btap-chips" id="btapLengths" role="group" aria-label="How long"></div>' +
         '<p class="safe">Breathe gently, without forcing a deeper or longer breath. Stop if you feel dizzy, tingly, short of breath or distressed, and return to your usual breathing.</p>' +
@@ -47,7 +47,7 @@
       '</div>' +
       '<div class="btap-stage" id="btapStage" hidden>' +
         '<canvas class="btap-water" id="btapWater" aria-hidden="true"></canvas>' +
-        '<div class="btap-koi" id="btapKoi" aria-hidden="true"><img src="assets/room/dream/koi-1.webp" alt=""><img src="assets/room/dream/koi-2.webp" alt=""><img src="assets/room/dream/koi-3.webp" alt=""></div>' +
+        '<canvas class="btap-koi" id="btapKoi" aria-hidden="true"></canvas>' +
         '<div class="btap-ring" id="btapRing"><img id="btapPet" alt=""></div>' +
         '<div class="btap-word" id="btapWord" aria-live="polite"></div>' +
         '<button type="button" class="btn btap-stop" id="btapStop">Stop</button>' +
@@ -182,40 +182,63 @@
     return ev;
   }
 
-  /* ---- the koi: three fish wander the pond; a tap calls them to the ripple, faster at first, then they drift on.
-   * Heading 0 points right; the sprites face up, so they turn a quarter more. Reduced motion: they rest in place. */
-  var koi = [], koiLast = 0, KOI_W = 54;
+  /* ---- the koi (Jamie, 20 Oct: big, beautiful, swimming elegantly, and shy of a tap). Three koi about 150 px long glide on
+   * slowly curving paths. Each is drawn on one canvas in thin slices from head to tail, every slice shifted sideways along a
+   * travelling wave that grows toward the tail, so the body bends the way a fish swims. A tap startles the nearby koi: they
+   * turn away and dart, then ease back to a glide. Reduced motion: they rest in place, unbent. */
+  var koi = [], koiLast = 0, koiCv = null, koiCtx = null, koiImgs = [], KOI_LEN = 150, SLICES = 22;
   function koiStart(w, h) {
-    var imgs = el ? el.querySelectorAll('#btapKoi img') : [];
-    koi = Array.prototype.map.call(imgs, function (im, i) {
-      var a = (i / 3) * Math.PI * 2 + 0.6;
-      return { el: im, x: w * (0.3 + 0.2 * i), y: h * (0.62 + 0.08 * (i % 2)), a: a, v: 22 + 6 * i, tx: null, ty: null, until: 0, ph: i * 2.1, w: w, h: h };
+    koiCv = el ? el.querySelector('#btapKoi') : null; if (!koiCv) return;
+    var dpr = Math.min(2, root.devicePixelRatio || 1); koiCv.width = Math.round(w * dpr); koiCv.height = Math.round(h * dpr); koiCv.style.width = w + 'px'; koiCv.style.height = h + 'px';
+    koiCtx = koiCv.getContext('2d'); koiCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!koiImgs.length) koiImgs = [1, 2, 3].map(function (n) { var im = new Image(); im.src = 'assets/room/dream/koi-' + n + '.webp'; return im; });
+    koi = koiImgs.map(function (im, i) {
+      return { im: im, x: w * (0.25 + 0.25 * i), y: h * (0.3 + 0.22 * i), a: [0.4, 2.6, -1.9][i], turn: 0, base: 20 + 4 * i, v: 20 + 4 * i, ph: i * 2.3, flee: 0, w: w, h: h, len: KOI_LEN * (1 - 0.08 * i) };
     });
-    koiLast = 0; koi.forEach(koiDraw);
+    koiLast = 0; koiDraw();
   }
-  function koiDraw(f) {
-    var wag = reduced ? 0 : Math.sin(f.ph) * 7;
-    f.el.style.transform = 'translate(' + (f.x - KOI_W / 2).toFixed(1) + 'px,' + (f.y - KOI_W * 0.8).toFixed(1) + 'px) rotate(' + (f.a * 180 / Math.PI + 90 + wag).toFixed(1) + 'deg)';
+  function koiDraw() {
+    if (!koiCtx) return; var c = koiCtx; c.clearRect(0, 0, koiCv.width, koiCv.height);
+    koi.forEach(function (f) {
+      var im = f.im; if (!im.complete || !im.naturalWidth) return;
+      var L = f.len, W = L * im.naturalWidth / im.naturalHeight, amp = reduced ? 0 : L * (0.05 + 0.04 * Math.min(1, f.flee));
+      c.save(); c.translate(f.x, f.y); c.rotate(f.a + Math.PI / 2); /* the sprite's head points up the canvas: heading 0 is to the right */
+      c.globalAlpha = 0.22; c.fillStyle = '#062431'; c.beginPath(); c.ellipse(6, 10, W * 0.32, L * 0.42, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; /* a soft shadow on the pond floor */
+      for (var k = 0; k < SLICES; k++) {
+        var t0 = k / SLICES, t1 = (k + 1) / SLICES, sy = im.naturalHeight * t0, sh = im.naturalHeight / SLICES + 0.5;
+        var off = amp * Math.pow(t0, 1.6) * Math.sin(f.ph - t0 * 5.2);
+        c.drawImage(im, 0, sy, im.naturalWidth, sh, -W / 2 + off, -L / 2 + L * t0, W, L / SLICES + 0.6);
+      }
+      c.restore();
+    });
   }
   function turnToward(f, ang, rate) { var d = Math.atan2(Math.sin(ang - f.a), Math.cos(ang - f.a)); f.a += Math.max(-rate, Math.min(rate, d)); }
   function koiStep() {
-    if (!koi.length || reduced) return;
-    var now = Date.now(), dt = koiLast ? Math.min(0.05, (now - koiLast) / 1000) : 0; koiLast = now; if (!dt) return;
+    if (!koi.length) return;
+    if (reduced) { koiDraw(); return; }
+    var now = Date.now(), dt = koiLast ? Math.min(0.05, (now - koiLast) / 1000) : 0; koiLast = now; if (!dt) { koiDraw(); return; }
     koi.forEach(function (f, i) {
-      var chasing = f.tx !== null && now < f.until, speed = chasing ? 70 : f.v, m = 40;
-      if (chasing) { var dx = f.tx - f.x, dy = f.ty - f.y; if (Math.hypot(dx, dy) < 18) { f.tx = null; } else turnToward(f, Math.atan2(dy, dx), 3.2 * dt); }
-      else { f.a += Math.sin(now / 1700 + i * 2) * 0.5 * dt; }
-      /* stay in the pond: turn back toward the middle near an edge */
-      if (f.x < m || f.x > f.w - m || f.y < m * 2 || f.y > f.h - m * 2) turnToward(f, Math.atan2(f.h * 0.55 - f.y, f.w / 2 - f.x), 2.4 * dt);
-      f.x += Math.cos(f.a) * speed * dt; f.y += Math.sin(f.a) * speed * dt;
-      f.ph += dt * (chasing ? 14 : 6);
-      koiDraw(f);
+      /* a lazy curve: the turn rate drifts slowly, so paths are long arcs, never zigzags */
+      f.turn += (Math.sin(now / 2300 + i * 1.7) * 0.35 - f.turn) * 0.6 * dt;
+      f.a += f.turn * dt * (f.flee > 0 ? 0.3 : 1);
+      var m = f.len * 0.5;
+      if (f.x < m || f.x > f.w - m || f.y < m || f.y > f.h - m) turnToward(f, Math.atan2(f.h * 0.5 - f.y, f.w / 2 - f.x), 1.6 * dt);
+      /* koi do not touch each other: a gentle turn away from a close neighbour */
+      koi.forEach(function (g) { if (g === f) return; var dx = f.x - g.x, dy = f.y - g.y, d = Math.hypot(dx, dy); if (d < f.len * 0.7) turnToward(f, Math.atan2(dy, dx), 0.9 * dt); });
+      f.flee = Math.max(0, f.flee - dt * 0.9);
+      var target = f.base + 120 * f.flee; f.v += (target - f.v) * Math.min(1, 3 * dt);
+      f.x += Math.cos(f.a) * f.v * dt; f.y += Math.sin(f.a) * f.v * dt;
+      f.ph += dt * (2.2 + f.v * 0.09); /* the tail beats faster when it hurries */
+    });
+    koiDraw();
+  }
+  /* a tap startles: koi within reach turn away from it and dart; the nearest goes fastest */
+  function koiCall(x, y) {
+    koi.forEach(function (f) {
+      var dx = f.x - x, dy = f.y - y, d = Math.hypot(dx, dy), reach = f.len * 1.4; if (d > reach) return;
+      var away = Math.atan2(dy, dx); f.a = f.a + Math.atan2(Math.sin(away - f.a), Math.cos(away - f.a)) * (reduced ? 0 : 0.85);
+      f.flee = Math.max(f.flee, 1 - d / reach * 0.5); f.turn = 0;
     });
   }
-  function koiCall(x, y) {
-    var now = Date.now();
-    koi.forEach(function (f, i) { f.tx = x + (i - 1) * 22; f.ty = y + (i % 2 ? 16 : -12); f.until = now + 2600 + i * 300; });
-    if (reduced) koi.forEach(function (f) { f.x = f.tx; f.y = f.ty; koiDraw(f); });
-  }
-  root.OvuBreathTap = { PRESETS: PRESETS, LENGTHS: LENGTHS, MIN_SAVE_S: MIN_SAVE_S, phaseAt: phaseAt, entryFor: entryFor, open: open, close: close, start: start, stop: stop, makeWater: makeWater, drop: drop, stepWater: stepWater, koi: function () { return koi.map(function (f) { return { x: f.x, y: f.y, chasing: f.tx !== null && Date.now() < f.until }; }); } };
+  root.OvuBreathTap = { PRESETS: PRESETS, LENGTHS: LENGTHS, MIN_SAVE_S: MIN_SAVE_S, phaseAt: phaseAt, entryFor: entryFor, open: open, close: close, start: start, stop: stop, makeWater: makeWater, drop: drop, stepWater: stepWater, koi: function () { return koi.map(function (f) { return { x: f.x, y: f.y, fleeing: f.flee > 0.05, len: f.len }; }); } };
 })(typeof window !== 'undefined' ? window : this);

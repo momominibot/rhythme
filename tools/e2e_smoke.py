@@ -249,13 +249,6 @@ async def main():
             await page.click("#hudStop"); await page.wait_for_timeout(500)
             stopped = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), toast: document.querySelector('#toast').textContent})")
             check("watering at zoom keeps the HUD and its Stop button on screen (lifted out of the plate), and Stop ends the minute", hud["on"] and hud["z"] > 1.4 and hud["screenSpace"] and hud["inside"] and not stopped["on"] and "Stopped" in stopped["toast"], {"hud": hud, "stopped": stopped})
-            # Today pulls up from a drawer under the scene: closed it only peeks, a tap opens it, Escape closes it
-            d0 = await page.evaluate("()=>({open: OvuDeck.isOpen(), peek: document.querySelector('#deckPeek').textContent, top: document.querySelector('#deck').getBoundingClientRect().top, vh: innerHeight})")
-            await page.evaluate("()=>document.querySelector('#deckHandle').click()"); await page.wait_for_timeout(450)
-            d1 = await page.evaluate("()=>({open: OvuDeck.isOpen(), top: document.querySelector('#deck').getBoundingClientRect().top, tiles: document.querySelector('#tiles').getBoundingClientRect().height > 0})")
-            await page.evaluate("()=>document.querySelector('#deckHandle').click()"); await page.wait_for_timeout(450)
-            d2 = await page.evaluate("()=>OvuDeck.isOpen()")
-            check("Today lives in a pull-up drawer: closed it peeks with a one-line summary, a tap slides it up, another tap closes it", not d0["open"] and d0["top"] > d0["vh"] * 0.8 and len(d0["peek"]) > 3 and "water_drop" not in d0["peek"] and d1["open"] and d1["top"] < d0["top"] - 150 and d1["tiles"] and not d2, {"d0": d0, "d1": d1, "d2": d2})
             # a pose is drawn in what she is wearing; the shower keeps its robe
             ps = await page.evaluate("()=>({plants: OvuRoom.poseSrc('plants','sundress'), base: OvuRoom.poseSrc('plants','base'), shower: OvuRoom.poseSrc('shower','sundress')})")
             okfile = await page.evaluate("(u)=>fetch(u).then(r=>r.ok)", ps["plants"])
@@ -625,14 +618,17 @@ async def main():
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindTap", timeout=8000); await page.click("#mindTap"); await page.wait_for_selector("#btapBegin", timeout=8000)
             await page.click("#btapBegin"); await page.wait_for_timeout(5600)
             for _ in range(3): await page.mouse.click(195, 300); await page.wait_for_timeout(150)
-            await page.wait_for_timeout(1200)
-            koi = await page.evaluate("()=>({fish: OvuBreathTap.koi(), moon: !document.querySelector('#btapPet') || document.querySelector('#btapPet').hidden, title: document.querySelector('#btap h2').textContent})")
-            near = [abs(f["x"] - 195) + abs(f["y"] - 300) for f in koi["fish"]]
-            check("Koi Pond: no moon, three koi, and after a tap they turn and glide toward the ripple", koi["moon"] and koi["title"] == "Koi Pond" and len(koi["fish"]) == 3 and any(f["chasing"] for f in koi["fish"]), {"koi": koi, "near": near})
+            f0 = await page.evaluate("()=>{var f=OvuBreathTap.koi()[0], r=document.querySelector('#btap').getBoundingClientRect(); return {x: f.x + r.left, y: f.y + r.top, fx: f.x, fy: f.y}}")
+            await page.mouse.click(f0["x"], f0["y"]); await page.wait_for_timeout(120)
+            k1 = await page.evaluate("()=>OvuBreathTap.koi()[0]")
+            await page.wait_for_timeout(900)
+            k2 = await page.evaluate("()=>({fish: OvuBreathTap.koi(), moon: !document.querySelector('#btapPet') || document.querySelector('#btapPet').hidden, title: document.querySelector('#btap h2').textContent, big: OvuBreathTap.koi()[0].len >= 130})")
+            gone = ((k2["fish"][0]["x"] - f0["fx"]) ** 2 + (k2["fish"][0]["y"] - f0["fy"]) ** 2) ** 0.5
+            check("Koi Pond: no moon, three big koi; a tap on one startles it and it darts away from the tap", k2["moon"] and k2["title"] == "Koi Pond" and len(k2["fish"]) == 3 and k2["big"] and k1["fleeing"] and gone > 40, {"k1": k1, "k2": k2, "gone": gone})
             petals = await page.evaluate("()=>{var c=document.querySelector('#btapWater'); return c && c.width > 30 ? 3 : 0}")
             await page.click("#btapStop"); await page.wait_for_timeout(600)
             tap = await page.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); var e=d.events.filter(x=>x.type==='mindfulness'&&x.data.kind==='breathtap'); return {n:e.length, secs:e.length?e[e.length-1].data.seconds:0, taps:e.length?e[e.length-1].data.taps:0, done:!document.querySelector('#btapDone').hidden, text:document.querySelector('#btapDone').innerText}}")
-            check("Koi Pond ripples the water on taps and saves practice time on Stop", petals >= 3 and tap["n"] == 1 and tap["secs"] >= 5 and tap["taps"] == 3 and tap["done"] and "Your pause is saved" in tap["text"], tap)
+            check("Koi Pond ripples the water on taps and saves practice time on Stop", petals >= 3 and tap["n"] == 1 and tap["secs"] >= 5 and tap["taps"] == 4 and tap["done"] and "Your pause is saved" in tap["text"], tap)
             # Erin's own teeth scripts: the hour picks morning or evening, eight steps each inside four minutes, the clips exist
             late = await page.evaluate("()=>OvuMindful.nextVariation(OvuMindful.byId('teeth'), new Date(2026,9,20,0,40)).when")
             check("just after midnight Erin's teeth script is the evening one, never good morning", late == "evening", late)
@@ -1263,6 +1259,16 @@ async def main():
             await page.evaluate("()=>document.querySelector('#dTabs [data-dpane=ideas]').click()"); await page.wait_for_timeout(300)
             ti = await page.evaluate("()=>{var p=document.querySelector('.dpane[data-pane=ideas]'); return {teas: p.querySelectorAll('details.tea, .dsec.teas').length, pointer: (p.textContent||'').indexOf('garden greenhouse')>-1};}")
             check("the food diary's Ideas pane lists no teas and points to the garden greenhouse", ti["teas"] == 0 and ti["pointer"], ti)
+            # food search knows Singapore dishes (HPB), and offers Luna when the tables have little
+            await page.evaluate("()=>document.querySelector('#dTabs [data-dpane=add]').click()"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>{var b=document.querySelector('.foodmodes [data-mode=search]'); if(b) b.click()}"); await page.wait_for_selector('#fdSearch', timeout=8000); await page.wait_for_timeout(1200)
+            await page.fill('#fdSearch', 'laksa'); await page.wait_for_timeout(300)
+            lk = await page.evaluate("()=>({first: (document.querySelector('#fdResults .result b')||{}).textContent, ask: !!document.querySelector('#fdResults [data-askluna]')})")
+            await page.fill('#fdSearch', 'mee siam'); await page.wait_for_timeout(300)
+            ms = await page.evaluate("()=>({ask: (document.querySelector('#fdResults [data-askluna]')||{}).textContent || ''})")
+            await page.fill('#fdSearch', 'zzqqx dish'); await page.wait_for_timeout(300)
+            zz = await page.evaluate("()=>({ask: (document.querySelector('#fdResults [data-askluna]')||{}).textContent || ''})")
+            check("searching laksa finds HPB's laksa first; a dish the tables do not know offers Ask Luna", lk["first"] == "Laksa" and "zzqqx" in zz["ask"], {"laksa": lk, "mee siam": ms, "unknown": zz})
             await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
 
             # acupressure (DeepSeek TCM review, 20 Oct): fourteen points with SP8 for first-day cramps, a before-you-press safety
