@@ -21,8 +21,8 @@ NOW = datetime.datetime.now().isoformat()
 # a consenting, onboarded person with three entries; Luna's AI help off (the default)
 DB = {"version": 1, "createdAt": NOW, "updatedAt": NOW,
       "profile": {"name": "Smoke", "outfit": "base", "lifeStage": "", "cycleLength": None, "periodLength": None, "onboarded": True,
-                  "consent": {"v": 3, "at": NOW, "luna": False, "improve": False}, "ageAttest": {"confirmed": True, "version": 1, "at": NOW},
-                  "consentEvents": [{"id": "ce1", "purpose": "age_18", "action": "grant", "at": NOW, "notice": 3, "method": "sheet", "uid": None, "sent": False}, {"id": "ce2", "purpose": "health_tracking", "action": "grant", "at": NOW, "notice": 3, "method": "sheet", "uid": None, "sent": False}], "consentImportedAt": NOW},
+                  "consent": {"v": 4, "at": NOW, "luna": False, "improve": False}, "ageAttest": {"confirmed": True, "version": 1, "at": NOW},
+                  "consentEvents": [{"id": "ce1", "purpose": "age_18", "action": "grant", "at": NOW, "notice": 4, "method": "sheet", "uid": None, "sent": False}, {"id": "ce2", "purpose": "health_tracking", "action": "grant", "at": NOW, "notice": 4, "method": "sheet", "uid": None, "sent": False}], "consentImportedAt": NOW},
       "events": [{"id": "s1", "type": "period", "date": Y1, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"flow": "medium"}},
                  {"id": "s2", "type": "sleep", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"bedTime": "23:00", "wakeTime": "07:00", "quality": 4}},
                  {"id": "s3", "type": "food", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"meal": "lunch", "foods": "chicken rice", "items": [], "tags": ["home-cooked"]}}],
@@ -445,6 +445,14 @@ async def main():
             check("Cycle tab opens the calendar sheet with visible days", cyc["sheet"] and cyc["title"] == "Your calendar" and cyc["days"] >= 28 and cyc["visible"], cyc)
             ib = await page.evaluate("()=>{var b=document.querySelector('#sheet .ibtn'); if(!b) return null; b.click(); var p=document.querySelector('#sheet .guide[data-guide-panel='+b.dataset.guide+']'); return {topic: b.dataset.guide, on: !!(p && p.classList.contains('on'))}}")
             check("an (i) button in the calendar sheet opens its guide panel, made on the spot if the sheet forgot it", ib is None or ib["on"], ib)
+            await page.evaluate("()=>{var b=document.querySelector('#calTabs [data-tab=symptom]'); if(b) b.click();}"); await page.wait_for_timeout(400)
+            mc0 = await page.evaluate("()=>{var m=document.querySelector('#moodCare'); return m?getComputedStyle(m).display:'missing'}")
+            await page.evaluate("()=>{var b=document.querySelector('#moodFaces [data-mood=good]'); if(b) b.click();}"); await page.wait_for_timeout(150)
+            mc1 = await page.evaluate("()=>getComputedStyle(document.querySelector('#moodCare')).display")
+            await page.evaluate("()=>{var b=document.querySelector('#moodFaces [data-mood=low]'); if(b) b.click();}"); await page.wait_for_timeout(150)
+            mc2 = await page.evaluate("()=>getComputedStyle(document.querySelector('#moodCare')).display")
+            await page.evaluate("()=>{var b=document.querySelector('#calTabs [data-tab=period]'); if(b) b.click();}"); await page.wait_for_timeout(200)
+            check("the low-mood support note stays hidden with no mood or a good mood and shows when she picks Low", mc0 == "none" and mc1 == "none" and mc2 == "flex", {"none": mc0, "good": mc1, "low": mc2})
 
             # 3. Luna's on-phone rules read a note without any relay call (AI help is off)
             await page.goto(BASE + "room.html#luna", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector("#lunaIn", timeout=10000)
@@ -480,7 +488,7 @@ async def main():
             # Your choices: every use of the data as a switch, the required one locked on, a receipt; a change is recorded with where it was made
             await page.evaluate("()=>document.querySelector('[data-yact=choices]').click()"); await page.wait_for_selector("#y_health_tracking", timeout=8000); await page.wait_for_timeout(300)
             ch = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, n: document.querySelectorAll('.c-choice input').length, req: document.querySelector('#y_health_tracking').checked && document.querySelector('#y_health_tracking').disabled, anyOn: Array.from(document.querySelectorAll('.c-choice input:not(#y_health_tracking)')).some(i=>i.checked), receipt: (document.body.textContent||'').indexOf('Your consent receipt')>-1 && (document.body.textContent||'').indexOf('Notice version 3')>-1})")
-            check("Your choices lists six switches with health tracking locked on, the rest off, and the receipt at notice 3", ch["title"].startswith("Your choices") and ch["n"] == 6 and ch["req"] and not ch["anyOn"] and ch["receipt"], ch)
+            check("Your choices lists six switches with health tracking locked on, the rest off, and the receipt at notice 4", ch["title"].startswith("Your choices") and ch["n"] == 6 and ch["req"] and not ch["anyOn"] and ch["receipt"], ch)
             await page.check("#y_ai_reading"); await page.wait_for_timeout(400)
             c1 = await page.evaluate("()=>{var ev=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.consentEvents; var e=ev[ev.length-1]; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {p:e.purpose, a:e.action, m:e.method, aiOn:!!ai.on, on: document.querySelector('#y_ai_reading').checked};}")
             await page.uncheck("#y_ai_reading"); await page.wait_for_timeout(400)
@@ -637,8 +645,19 @@ async def main():
             await p2.uncheck("#cHealth"); await p2.check("#cAge"); lockedStill = await p2.evaluate("()=>document.querySelector('#cAgree').disabled"); await p2.check("#cHealth"); await p2.click("#cAgree"); await p2.wait_for_timeout(600)
             check("the health line is still required: with it unticked, the age tick alone does not unlock the button", lockedStill)
             after = await p2.evaluate("()=>{var p=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {v:p.consent&&p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed===true?p.ageAttest.version:null, purposes:(p.consentEvents||[]).map(e=>e.purpose+':'+e.action+':'+e.method).sort(), aiOn:!!ai.on, cloud:p.cloud&&p.cloud.v, hidden: document.querySelector('#consent').hidden};}")
-            check("agreeing records the 18+ attestation and health tracking at notice 3, nothing else, and closes the notice", after["v"] == 3 and after["age"] == 1 and after["purposes"] == ["age_18:grant:sheet", "health_tracking:grant:sheet"] and not after["aiOn"] and not after["cloud"] and after["hidden"], after)
+            check("agreeing records the 18+ attestation and health tracking at notice 4, nothing else, and closes the notice", after["v"] == 4 and after["age"] == 1 and after["purposes"] == ["age_18:grant:sheet", "health_tracking:grant:sheet"] and not after["aiOn"] and not after["cloud"] and after["hidden"], after)
             await ctx2.close()
+            # the notice itself: no under-18 note for an ordinary visitor; a withdrawal that does not reach the account keeps the sheet
+            ctxw = await browser.new_context(viewport={"width": 390, "height": 844}); pw = await ctxw.new_page(); await pw.route("**/*", gate)
+            await pw.goto(BASE + "room.html", wait_until="networkidle"); await pw.wait_for_timeout(700); await pw.click("#welcome .btn.primary"); await pw.wait_for_timeout(400)
+            minor = await pw.evaluate("()=>getComputedStyle(document.querySelector('#cMinor')).display")
+            await pw.evaluate("()=>{OvuStore.setProfile({analysis:{on:true}}); window.OvuAuth.setImprove=function(){return Promise.resolve({ok:false,error:'offline'})};}")
+            await pw.check("#cAge"); await pw.click("#cAgree"); await pw.wait_for_timeout(500)
+            wd = await pw.evaluate("()=>({open: !document.querySelector('#consent').hidden, err: (document.querySelector('#cImproveErr')||{}).textContent||'', agree: !document.querySelector('#cAgree').disabled, saved: !!(OvuStore.profile().consent && OvuStore.profile().consent.v >= 4)})")
+            await pw.reload(wait_until="networkidle"); await pw.wait_for_timeout(900)
+            wd["afterReload"] = await pw.evaluate("()=>!document.querySelector('#consent').hidden || !document.querySelector('#welcome').hidden")
+            await ctxw.close()
+            check("an ordinary visitor's notice has no under-18 note, and a withdrawal of Help improve logging that does not reach the account saves nothing, keeps the notice open, says so, and the notice is still due after a reload", minor == "none" and wd["open"] and "still on" in wd["err"] and wd["agree"] and not wd["saved"] and wd["afterReload"], {"minor": minor, "wd": wd})
             # a person whose consent predates notice v2 is sent back to the room from any other page
             ctx3 = await browser.new_context(viewport={"width": 390, "height": 844})
             old = json.loads(json.dumps(DB)); old["profile"]["consent"] = {"v": 1, "at": NOW, "improve": True}
@@ -659,7 +678,7 @@ async def main():
             check("a v2 consent reads the changed notice: the photo switch mirrors her setting, the rest are off, 18+ is asked afresh", rc["shown"] and rc["title"] == "Our data notice has changed" and rc["photos"] and not rc["reading"] and not rc["cloud"] and not rc["age"] and rc["locked"] and rc["fine"] == "Your diary on this phone is kept as it is." and not rc["welcome"], rc)
             await p4.check("#c_ai_reading"); await p4.check("#cAge"); await p4.check("#cHealth"); await p4.click("#cAgree"); await p4.wait_for_timeout(700)
             rd = await p4.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); var p=db.profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); var ev=p.consentEvents||[]; return {v:p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed, imports: ev.filter(e=>e.method==='import').map(e=>e.purpose).sort(), sheet: ev.filter(e=>e.method==='sheet').map(e=>e.purpose+':'+e.action).sort(), aiOn: ai.on, aiPhotos: ai.photos, events: db.events.length, hidden: document.querySelector('#consent').hidden};}")
-            check("agreeing again keeps the earlier choices as imports, records the sheet's choices at notice 3 and keeps every entry", rd["v"] == 3 and rd["age"] is True and rd["imports"] == ["food_photo_ai", "health_tracking"] and rd["sheet"] == ["age_18:grant", "ai_reading:grant", "food_photo_ai:grant", "health_tracking:grant"] and rd["aiOn"] is True and rd["aiPhotos"] is True and rd["events"] == 3 and rd["hidden"], rd)
+            check("agreeing again keeps the earlier choices as imports, records the sheet's choices at notice 4 and keeps every entry", rd["v"] == 4 and rd["age"] is True and rd["imports"] == ["food_photo_ai", "health_tracking"] and rd["sheet"] == ["age_18:grant", "ai_reading:grant", "food_photo_ai:grant", "health_tracking:grant"] and rd["aiOn"] is True and rd["aiPhotos"] is True and rd["events"] == 3 and rd["hidden"], rd)
             await ctx4.close()
             # under 18: the room does not open, nothing is saved, and the notice is back on the next visit
             ctx5 = await browser.new_context(viewport={"width": 390, "height": 844})
@@ -1482,7 +1501,7 @@ async def main():
             except Exception: pass
             cs = fcall("social_card_save")
             fs = await p6.evaluate("()=>({text: (document.querySelector('#frSheet')||{}).textContent||'', dot: document.querySelector('#plazaPill').classList.contains('frnew')})")
-            check("Make my card sends the name, the look, the two ticked boxes (18+ and Plaza friends), no expected card and the notice version, and the sheet shows her card, Priya's ask with its hello and the note from her", cs and cs[0]["p_name"] == "Fern" and cs[0]["p_look"] == "kebaya-red" and cs[0]["p_adult"] is True and cs[0]["p_opt_in"] is True and cs[0]["p_expect"] is None and cs[0]["p_hidden"] is False and cs[0]["p_notice"] == 3 and "Fern" in fs["text"] and "Hello, nice to see you here." in fs["text"] and "Hope today is gentle with you." in fs["text"] and "Welcome her in." in fs["text"], {"save": cs, "text": fs["text"][:200]})
+            check("Make my card sends the name, the look, the two ticked boxes (18+ and Plaza friends), no expected card and the notice version, and the sheet shows her card, Priya's ask with its hello and the note from her", cs and cs[0]["p_name"] == "Fern" and cs[0]["p_look"] == "kebaya-red" and cs[0]["p_adult"] is True and cs[0]["p_opt_in"] is True and cs[0]["p_expect"] is None and cs[0]["p_hidden"] is False and cs[0]["p_notice"] == 4 and "Fern" in fs["text"] and "Hello, nice to see you here." in fs["text"] and "Hope today is gentle with you." in fs["text"] and "Welcome her in." in fs["text"], {"save": cs, "text": fs["text"][:200]})
             check("opening the sheet marks the note read (the sender is never told), and the pill still shows a dot for the ask", fcall("social_read") and fcall("social_read")[0]["p_upto"] == 7 and fs["dot"], fcall("social_read"))
             await shot("friends-sheet")
             await p6.evaluate("()=>OvuRoom.closeSheet()")
