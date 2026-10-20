@@ -102,6 +102,16 @@ A sixth Codex check found one: a log saved during brushing (Cycle, Save day) pla
 
 A seventh found two: Morning start could begin during garden watering (now it waits, as for the greenhouse minute), and picking another outfit mid-brush dropped the brushing pose (she now brushes in the new outfit).
 
+An eighth, asked to sweep every feature reachable during the routine in one pass, found eight; all fixed with browser checks:
+- A save prompt waiting behind another sheet could be lost when she began again, or pop up over a session: it is now pending until answered, comes first if she begins again, and waits for any session, practice, plant minute, watering or walk.
+- Time with the app in the background counted as practice: leaving the app pauses Morning start, and she resumes on return.
+- Confirming after midnight filed the practice under the new day and marked that day done: the day is fixed when she stops.
+- The podcast mini-player could play over the voice: while Morning start runs, other audio is refused at play() (the hook the voice mute already uses) with a toast.
+- A sheet opened during the routine covered Pause and Stop while it ran on: any sheet now pauses it within a second.
+- From a garden bench, the brushing pose stayed hidden behind the seated picture: she stands up first.
+- Mid-doorway, the scene could still change after it began: it waits until she arrives.
+- Quiet was the default when the sound setting had never been touched, though the app treats that as on: it uses the app's own sound rule.
+
 Not taken, and why:
 - Hearts without saving (Doubao): the honesty confirm before any hearts is Jamie's rule, and separating them needs a second reward ledger. The entry stays on her phone unless she has turned on sync, which has its own consent.
 - A confirmation on Stop (Doubao): Stop after 30 s already opens a sheet with "Not this time"; under 30 s nothing is lost but the moment.

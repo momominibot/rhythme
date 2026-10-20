@@ -91,19 +91,20 @@
   }
 
   /* ---------- the panel and the flow (browser only) ---------- */
-  var run = null, ticker = null, doneWait = null;
+  var run = null, ticker = null, doneWait = null, pendingAsk = null;
   function $(s) { return document.querySelector(s); }
   function R() { return root.OvuRoom; }
   function S() { return root.OvuStore; }
   function active() { return !!run; }
   function voiceMuted() { return !!(root.OvuVoice && root.OvuVoice.muted()); }
   /* quiet unless app sound is on and she has not muted Erin's voice (the remembered mute shared with practices) */
-  function quietDefault() { return !(S().state() || {}).sound || voiceMuted(); }
+  function soundOn() { return root.OvuSound ? root.OvuSound.enabled() : !!(S().state() || {}).sound; } /* the app's own rule: never chosen is on */
+  function quietDefault() { return !soundOn() || voiceMuted(); }
   /* she chose to hear the voice here: lift the shared mute, so Voice on is never a silent clip */
   function hearVoice() { if (voiceMuted()) root.OvuVoice.set(false); }
   /* putting her outfit back writes her profile; if storage fails, the routine and its save prompt still go on */
   function settle(room) { try { if (room.restorePose) room.restorePose(); } catch (e) { } }
-  function markToday(patch) { var st = S().state(), m = st.morningStart && st.morningStart.date === S().today() ? st.morningStart : { date: S().today() }; for (var k in patch) m[k] = patch[k]; S().setState({ morningStart: m }); }
+  function markToday(patch, day) { day = day || S().today(); var st = S().state(), m = st.morningStart && st.morningStart.date === day ? st.morningStart : { date: day }; for (var k in patch) m[k] = patch[k]; S().setState({ morningStart: m }); }
 
   function renderInvite() {
     var el = $('#morningInvite'); if (!el || !S()) return;
@@ -139,10 +140,9 @@
 
   function begin(version, quiet) {
     var room = R(); if (room.asleep() || run) return;
-    if ((room.sessionOn && room.sessionOn()) || (room.practiceOn && room.practiceOn())) { room.toast('Finish or stop the practice that is running first.', 'self_improvement'); return; }
-    /* the greenhouse minute and garden watering own the HUD, her pose and their own saved entry: let them finish first */
-    if (root.OvuGreenhouse && root.OvuGreenhouse.caring && root.OvuGreenhouse.caring()) { room.toast('Finish the minute with the plant first.', 'potted_plant'); return; }
-    if (root.OvuGarden && root.OvuGarden.watering && root.OvuGarden.watering()) { room.toast('Finish watering the garden first.', 'water_drop'); return; }
+    if (pendingAsk) { room.hideSheet(); pendingAsk(); return; } /* the last one is still waiting to be saved or let go: ask that first */
+    var other = otherOwner(room); if (other) { room.toast(other[0], other[1]); return; }
+    if (root.OvuGarden && root.OvuGarden.sitting && root.OvuGarden.sitting()) { try { root.OvuGarden.standUp(); } catch (e) { } } /* off the bench, where she is, so the brushing pose shows */
     if (root.OvuPodcast) { try { root.OvuPodcast.pause(); } catch (e) { } }
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
@@ -156,11 +156,22 @@
     if (!run.quiet) hearVoice();
     showPanel(); next(); if (run && run.quiet) unlock(); /* a quiet start still readies the voice, inside this tap */
     var pnl = $('#mpanel'); if (pnl) { pnl.setAttribute('tabindex', '-1'); pnl.focus(); } /* focus leaves the closed sheet for the panel */
-    clearInterval(ticker); ticker = setInterval(function () { if (run && room.asleep()) cancel(); }, 1000);
+    clearInterval(ticker); ticker = setInterval(function () {
+      if (run && room.asleep()) { cancel(); return; }
+      if (run && room.sheetOpen() && !run.paused && step() && !step().gate) { pauseToggle(); room.toast('Morning start is paused while this is open. Tap Resume when you are back.', 'pause'); } /* a sheet covers her controls */
+    }, 1000);
+  }
+  /* anything else that owns her, the HUD or the sound right now (Codex sweeps, 20 Oct): Morning start waits for it */
+  function otherOwner(room) {
+    if ((room.sessionOn && room.sessionOn()) || (room.practiceOn && room.practiceOn())) return ['Finish or stop the practice that is running first.', 'self_improvement'];
+    if (root.OvuGreenhouse && root.OvuGreenhouse.caring && root.OvuGreenhouse.caring()) return ['Finish the minute with the plant first.', 'potted_plant'];
+    if (root.OvuGarden && root.OvuGarden.watering && root.OvuGarden.watering()) return ['Finish watering the garden first.', 'water_drop'];
+    if (root.OvuWalk && root.OvuWalk.travelling && root.OvuWalk.travelling()) return ['One moment, she is on her way.', 'directions_walk'];
+    return null;
   }
   function showPanel() { var p = $('#mpanel'); if (p) p.hidden = false; }
   function hidePanel() { var p = $('#mpanel'); if (p) p.hidden = true; }
-  function bell() { if (run && !run.quiet && (S().state() || {}).sound) R().chime('bell'); }
+  function bell() { if (run && !run.quiet && soundOn()) R().chime('bell'); }
   function step() { return run && run.steps[run.i]; }
 
   function next(skippedNow) {
@@ -253,21 +264,23 @@
     if (R().asleep()) { cancel(); return; } /* asleep: nothing to confirm */
     leaveStep();
     clearTimeout(r.timer); stopAudio(); r.clock.hold(); clearInterval(ticker);
-    var exact = r.clock.ms() / 1000, secs = Math.round(exact), room = R();
+    var exact = r.clock.ms() / 1000, secs = Math.round(exact), room = R(), day = S().today(); /* the day she practised, even if she confirms after midnight */
     run = null; hidePanel(); settle(room);
     if (exact < MIN_SAVE_S) { room.toast('Stopped. Pauses under 30 seconds are not saved.', 'wb_twilight'); renderInvite(); return; }
     var did = [];
     if ((r.spent.arrive || 0) >= 5000) did.push('arrived'); if ((r.spent.notice || 0) >= 5000) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed'); /* only what she spent time on */
     var saved = false;
     /* another sheet is open (a symptoms form, the bed): never replace it; ask once it closes, unless she falls asleep */
-    clearInterval(doneWait);
+    clearInterval(doneWait); pendingAsk = null;
     if (room.sheetOpen()) {
       room.toast('Morning start finished. It will ask about saving when you close this.', 'wb_twilight');
-      doneWait = setInterval(function () { if (room.asleep() || run) { clearInterval(doneWait); return; } if (!room.sheetOpen()) { clearInterval(doneWait); ask(); } }, 400);
+      pendingAsk = ask;
+      doneWait = setInterval(function () { if (room.asleep()) { clearInterval(doneWait); pendingAsk = null; return; } if (!room.sheetOpen() && !otherOwner(room)) { clearInterval(doneWait); ask(); } }, 400);
       return;
     }
     ask();
     function ask() {
+    clearInterval(doneWait); pendingAsk = null;
     room.openSheet('morningDone', finished ? 'Morning start' : 'Stopping early', 'About ' + Math.max(1, Math.round(secs / 60)) + ' minute' + (secs >= 90 ? 's' : '') + ' of practice', 'wb_twilight',
       '<p class="mintro">' + (did.length ? 'You ' + (did.length > 1 ? did.slice(0, -1).join(', ') + ' and ' + did[did.length - 1] : did[0]) + '.' : 'You paused for a moment.') + ' Save this pause to your journal?</p>' +
       '<div class="row"><button type="button" class="btn primary" id="mdYes"><span class="ms" aria-hidden="true">check</span>Yes, I did it</button><button type="button" class="btn ghost" id="mdNo">Not this time</button></div>' +
@@ -278,9 +291,9 @@
       var data = entryData({ seconds: exact, confirmed: true, version: r.version, skipped: r.skipped, brushed: r.brushed, finished: finished });
       if (!data) { room.closeSheet(); return; }
       var ev;
-      try { ev = S().add('mindfulness', S().today(), data); } catch (e) { room.toast('This pause could not be saved: ' + e.message + ' Try again, or tap Not this time.', 'error'); return; } /* the sheet stays for a retry */
+      try { ev = S().add('mindfulness', day, data); } catch (e) { room.toast('This pause could not be saved: ' + e.message + ' Try again, or tap Not this time.', 'error'); return; } /* the sheet stays for a retry */
       saved = true; room.closeSheet();
-      try { markToday({ done: true }); } catch (e) { } /* the entry is saved; only the invitation's note for today failed */
+      try { markToday({ done: true }, day); } catch (e) { } /* the entry is saved; only the invitation's note for today failed */
       hideInvite();
       room.afterSave(ev, 'Saved to your journal.');
     });
@@ -318,5 +331,22 @@
   };
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('DOMContentLoaded', function () { setInterval(function () { if (!run) renderInvite(); }, 60000); });
+    /* away from the app (another app, the lock screen): pause, so time away is never counted; she resumes on return */
+    document.addEventListener('visibilitychange', function () {
+      if (!run) return;
+      if (document.hidden) { var s = step(); if (s && !s.gate && !run.paused) { pauseToggle(); run.away = true; } }
+      else if (run.away) { run.away = false; R().toast('Paused while you were away. Tap Resume when you are ready.', 'pause'); }
+    });
+    /* one voice at a time: while Morning start runs, other audio (the podcast mini-player, whose element is not in the page)
+     * is refused at play(), the same place the shared voice mute hooks in; the podcast treats it as an aborted start */
+    var MP = root.HTMLMediaElement && root.HTMLMediaElement.prototype, mplay = MP && MP.play;
+    if (mplay) MP.play = function () {
+      if (run && this !== run.audio) {
+        try { R().toast('Morning start is running. Other audio waits until it ends.', 'headphones'); } catch (x) { }
+        var err; try { err = new DOMException('Morning start is running', 'AbortError'); } catch (x) { err = new Error('Morning start is running'); err.name = 'AbortError'; }
+        return Promise.reject(err);
+      }
+      return mplay.apply(this, arguments);
+    };
   }
 })(typeof window !== 'undefined' ? window : this);
