@@ -278,9 +278,14 @@
     R.openSheet(id, title, sub, icon, '<div class="fr" id="frSheet">' + html + '</div>');
     return doc.getElementById('frSheet');
   }
-  function open() {
+  /* an explicit open (a tap on the plaza row or the pill) may retry after a failure; internal navigation after an action
+     keeps a failure hold, so a refresh that failed is not retried in a loop (Codex pre-merge review, 20 Oct, item 5) */
+  function open() { show(true); }
+  function reshow() { show(false); }
+  function show(retry) {
     if (uid() !== lastUid) authChanged();
-    resume();
+    if (retry) resume();
+    else if (held) { var hEl = frSheet('friends', 'Plaza friends', 'Friends you meet in the plaza groups', 'diversity_1', '<p class="help">Could not reach Plaza friends just now. Close this and open it again to try once more.</p>'); return hEl; }
     if (!uid()) {
       var el = frSheet('friends', 'Plaza friends', 'Friends you meet in the plaza groups', 'diversity_1',
         '<p>Plaza friends lets you make a plaza card, see the other people in your plaza group who have one, and send friends kind notes from a set list. It needs an account.</p><div class="row"><button type="button" class="btn primary" id="frSignIn"><span class="ms">person</span>Sign in from You</button></div>');
@@ -326,7 +331,7 @@
     el.innerHTML = html;
     if (ib.notes.some(function (n) { return !n.read; })) {
       var top = ib.notes.reduce(function (m, n) { return Math.max(m, Number(n.id) || 0); }, 0);
-      rpc('social_read', { p_upto: top }).then(function () { ib.notes.forEach(function (n) { n.read = true; }); badge(); }, function () { });
+      rpc('social_read', { p_upto: top }).then(function () { ib.notes.forEach(function (n) { n.read = true; }); badge(); }, function (e) { hold(e); });
     }
     markSeen(); badge();
   }
@@ -440,7 +445,7 @@
   function act(b) {
     var what = b.dataset.fr, h = b.dataset.h, inFriends = !doc.querySelector('#frSheet[data-person]'), owner = sheetOwner;
     if (!owner || uid() !== owner) { R.closeSheet(); return; } /* a sheet left open from another account does nothing */
-    var back = function () { if (inFriends) open(); else if (person(h)) openPerson(h); else R.closeSheet(); };
+    var back = function () { if (inFriends) reshow(); else if (person(h)) openPerson(h); else R.closeSheet(); };
     var p = person(h);
     if (what === 'edit') { renderFriends(true); return; }
     if (what === 'back') { renderFriends(); return; }
@@ -477,13 +482,13 @@
     } else if (what === 'block') {
       call = rpc('social_block', { p_handle: h }, owner).then(function (j) { done(j, 'Blocked. ' + CUES.block, 'block'); if (j && j.ok) { setPeople(people.filter(function (x) { return x.handle !== h; }), peopleVisit); var after = function () { if (inFriends) open(); else R.closeSheet(); }; loadInbox(true).then(after, after); } });
     } else if (what === 'unblock') {
-      call = rpc('social_unblock', { p_id: b.dataset.id }, owner).then(function (j) { done(j, 'Unblocked.'); if (j && j.ok) loadInbox(true).then(open, open); });
+      call = rpc('social_unblock', { p_id: b.dataset.id }, owner).then(function (j) { done(j, 'Unblocked.'); if (j && j.ok) loadInbox(true).then(reshow, reshow); });
     } else if (what === 'off') {
       call = rpc('social_off', { p_notice: noticeV(), p_device: device() || null }, owner).then(function (j) {
         done(j, 'Plaza friends is off. Your card, friends, requests and notes are deleted.', 'toggle_off');
         if (!j || !j.ok) return;
         try { if (root.OvuConsent && root.OvuConsent.withdraw) root.OvuConsent.withdraw('social', 'you', { sent: true }); } catch (e) { }
-        me.card = null; me.on = false; inbox = null; setPeople([]); badge(); open();
+        me.card = null; me.on = false; inbox = null; setPeople([]); badge(); reshow();
       });
     }
     if (call) call.catch(function (e) { if (e && e.cancelled) return; offline(e); b.disabled = false; });

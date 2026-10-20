@@ -96,6 +96,18 @@ create table if not exists public.social_requests (
   check (from_user <> to_user)
 );
 create index if not exists social_requests_to on public.social_requests (to_user, at desc);
+-- the last time each person asked each other person: kept apart from the request itself, so a block and an unblock (which
+-- delete the request) can never reset the 30-day wait or the 20-in-14-days limit (Codex pre-merge review, 20 Oct, item 6).
+-- Only becoming friends clears it; the sweep drops rows older than 30 days.
+create table if not exists public.social_ask_log (
+  from_user uuid not null references auth.users (id) on delete cascade,
+  to_user uuid not null references auth.users (id) on delete cascade,
+  last_at timestamptz not null default now(),
+  primary key (from_user, to_user)
+);
+create index if not exists social_ask_log_from on public.social_ask_log (from_user, last_at desc);
+alter table public.social_ask_log enable row level security;
+revoke all on table public.social_ask_log from anon, authenticated, public;
 create index if not exists social_requests_at on public.social_requests (at);
 
 create table if not exists public.social_friends (
@@ -268,6 +280,7 @@ language plpgsql security definer set search_path = '' as $$
 begin
   delete from public.social_notes where at < now() - interval '30 days';
   delete from public.social_requests where at < now() - interval '30 days';
+  delete from public.social_ask_log where last_at < now() - interval '30 days';
   delete from public.social_rate where at < now() - interval '2 days';
   delete from staff.social_reports where status <> 'open' and decided_at < now() - interval '365 days';
 end $$;
@@ -278,7 +291,10 @@ create or replace function social.visible(p_viewer uuid, p_other uuid) returns b
 language sql stable security definer set search_path = '' as $$
   select social.ok(p_viewer) and social.ok(p_other) and not social.blocked(p_viewer, p_other)
      and (social.friends(p_viewer, p_other)
-      or exists (select 1 from public.social_requests r where ((r.from_user = p_viewer and r.to_user = p_other) or (r.from_user = p_other and r.to_user = p_viewer)) and r.at > now() - interval '30 days')
+      -- the same direction rules as the inbox (Codex pre-merge review, 20 Oct, item 7): her own ask for 30 days, or an ask to
+      -- her that is still pending and answerable (14 days); a declined or lapsed ask to her shows nothing
+      or exists (select 1 from public.social_requests r where r.from_user = p_viewer and r.to_user = p_other and r.at > now() - interval '30 days')
+      or exists (select 1 from public.social_requests r where r.from_user = p_other and r.to_user = p_viewer and r.status = 'pending' and r.at > now() - interval '14 days')
       or exists (select 1 from public.plaza_presence a join public.plaza_presence b on b.server = a.server
                    join public.social_profiles sa on sa.user_id = a.user_id and not sa.hidden
                    join public.social_profiles sb on sb.user_id = b.user_id and not sb.hidden
@@ -437,21 +453,24 @@ begin
     if social.friend_count(uid) >= 200 or social.friend_count(other) >= 200 then return jsonb_build_object('ok', false, 'why', 'full'); end if;
     insert into public.social_friends (a, b) values (least(uid, other), greatest(uid, other)) on conflict do nothing;
     delete from public.social_requests where (from_user = uid and to_user = other) or (from_user = other and to_user = uid);
+    delete from public.social_ask_log where (from_user = uid and to_user = other) or (from_user = other and to_user = uid);
     return jsonb_build_object('ok', true, 'status', 'friends');
   end if;
-  if exists (select 1 from public.social_requests r where r.from_user = uid and r.to_user = other and r.at > now() - interval '30 days') then
+  if exists (select 1 from public.social_requests r where r.from_user = uid and r.to_user = other and r.at > now() - interval '30 days')
+     or exists (select 1 from public.social_ask_log l where l.from_user = uid and l.to_user = other and l.last_at > now() - interval '30 days') then
     return jsonb_build_object('ok', true, 'status', 'asked'); -- the same answer whether she said not now or has not answered
   end if;
   if p_hello is not null and not exists (select 1 from public.social_phrases p where p.id = p_hello and p.kind = 'hello' and p.active) then
     return jsonb_build_object('ok', false, 'why', 'phrase');
   end if;
   -- 20 asks in the last 14 days, answered "not now" or not: a decline keeps its slot, so the limit never reveals one
-  if (select count(*) from public.social_requests r where r.from_user = uid and r.at > now() - interval '14 days') >= 20 then
+  if (select count(*) from public.social_ask_log l where l.from_user = uid and l.last_at > now() - interval '14 days') >= 20 then
     return jsonb_build_object('ok', false, 'why', 'many');
   end if;
   if not social.hit(uid, 'ask', 10, interval '1 day') then return jsonb_build_object('ok', false, 'why', 'today'); end if;
   delete from public.social_requests where from_user = uid and to_user = other; -- a lapsed one the sweep has not reached
   insert into public.social_requests (from_user, to_user, hello) values (uid, other, p_hello);
+  insert into public.social_ask_log (from_user, to_user, last_at) values (uid, other, now()) on conflict (from_user, to_user) do update set last_at = excluded.last_at;
   return jsonb_build_object('ok', true, 'status', 'asked');
 end $$;
 
@@ -476,6 +495,7 @@ begin
   if social.friend_count(uid) >= 200 or social.friend_count(other) >= 200 then return jsonb_build_object('ok', false, 'why', 'full'); end if;
   insert into public.social_friends (a, b) values (least(uid, other), greatest(uid, other)) on conflict do nothing;
   delete from public.social_requests where (from_user = uid and to_user = other) or (from_user = other and to_user = uid);
+  delete from public.social_ask_log where (from_user = uid and to_user = other) or (from_user = other and to_user = uid);
   return jsonb_build_object('ok', true, 'status', 'friends');
 end $$;
 

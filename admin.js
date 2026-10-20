@@ -8,7 +8,7 @@
   var app = doc.getElementById('app');
   var plaza = null, plazaOk = 0, plazaBad = false, plazaBusy = false; /* admin_plaza: people in each group now, and the daily joins and peak (counts only) */
   var me = null, tab = 'today', ov = null, feed = [], feedTop = 0, findings = null, proposals = null, admins = null, audit = null, timers = [];
-  var reports = null, reportsAll = false, reportsBad = false; /* admin_social_reports: Plaza friends reports, cards only (no account ids, emails or groups) */
+  var reports = null, reportsAll = false, reportsBad = false, reportsMissing = false; /* admin_social_reports: Plaza friends reports, cards only (no account ids, emails or groups) */
   var REASONS = { unkind: 'Unkind or upsetting', spam: 'Spam or selling', pretending: 'Pretending to be someone else', under18: 'Seems to be under 18', worried: 'Worried about her safety', other: 'Something else' };
   var AGENTS = {
     cycle: { name: 'Menstrual', color: 'a-cycle', owns: 'period and symptom days, recorded period starts, intervals between starts, prediction mode availability', excludes: 'spotting and flow none never start a cycle; missing logs are not missing periods; recalled and imported history stay separate' },
@@ -161,7 +161,8 @@
   function reportsCard(owner) {
     var list = reports || [], open = list.filter(function (r) { return r.status === 'open'; }).length;
     var html = '<div class="card" id="reportsCard"><h2>Plaza reports<span>' + (reports ? open + ' open' : '') + '</span></h2>';
-    if (!reports) html += '<p class="empty">' + (reportsBad ? 'Could not load the reports. Open this tab again to retry.' : 'Loading…') + '</p>';
+    if (reportsMissing) html += '<p class="empty">Plaza friends is not switched on yet, so there are no reports to show.</p>';
+    else if (!reports) html += '<p class="empty">' + (reportsBad ? 'Could not load the reports. Open this tab again to retry.' : 'Loading…') + '</p>';
     else if (!list.length) html += '<p class="empty">' + (reportsAll ? 'No reports yet.' : 'No open reports.') + '</p>';
     else html += list.map(function (r) {
       return '<div class="prop" data-report="' + r.id + '"><div class="h"><b>' + esc(r.name) + ' · card ' + esc(r.card) + '</b><span class="chip ' + (r.status === 'open' ? 'watch' : r.status === 'dismissed' ? '' : 'high') + '">' + esc(r.status) + '</span></div>' +
@@ -173,11 +174,17 @@
       '<p class="srv">A report carries the two plaza cards (a name each person chose and a short card number) and, for a note, the phrase. Staff never see accounts, emails, groups or diaries. ' + (owner ? 'A pause stops every Plaza friends call for that account; removing the card makes her choose a new one. Each decision closes every open report on that card.' : 'An owner decides.') + '</p></div>';
     return html;
   }
+  /* the reports function arrives with the Plaza friends migration; until then the card says so and nothing is retried
+     (Codex pre-merge review, 20 Oct, item 4) */
   function loadReports() {
+    if (reportsMissing) return Promise.resolve();
     return deadline(rpc('admin_social_reports', { p_status: reportsAll ? null : 'open' }), 10000).then(function (j) {
       if (denied(j) || !j || !Array.isArray(j.reports)) { reportsBad = true; reports = null; return; }
       reports = j.reports; reportsBad = false;
-    }).catch(function () { reportsBad = true; reports = null; });
+    }).catch(function (e) {
+      if (/PGRST202|Could not find the function|\b404\b/i.test(String((e && e.message) || ''))) { reportsMissing = true; reportsBad = false; reports = null; return; }
+      reportsBad = true; reports = null;
+    });
   }
   function renderQueue() {
     var owner = me.role === 'owner', pol = (ov && ov.policy) || {}, blocked = (ov && ov.blocked) || [];

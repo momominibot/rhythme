@@ -121,20 +121,20 @@ def scenarios(c, expect_safe=True):
     A = person(c, 'Ann', 'pcos'); B = person(c, 'Bea', 'pcos', friends_with=A)
     r1, r2, w = race((B['id'], 'select public.social_block(%s)', [A['handle']]), (A['id'], 'select public.social_note(%s, %s)', [B['handle'], 'tea']))
     note = one(c, 'select count(*) from public.social_notes where from_user = %s and to_user = %s', [A['id'], B['id']])
-    seen['block_vs_note'] = (w and r2.get('why') == 'gone' and note == 0, {'block': r1, 'note': r2, 'waited': w, 'notes': note})
+    seen['block_vs_note'] = (r2.get('why') == 'gone' and note == 0, {'block': r1, 'note': r2, 'waited': w, 'notes': note}, w)
 
     # 2. a note against Plaza friends turned off by the recipient (any route: the general consent call)
     A = person(c, 'Ada', 'pcos'); B = person(c, 'Bo', 'pcos', friends_with=A)
     r1, r2, w = race((B['id'], "select public.consent_record('social', 'withdraw', 3)", []), (A['id'], 'select public.social_note(%s, %s)', [B['handle'], 'tea']))
     note = one(c, 'select count(*) from public.social_notes where to_user = %s', [B['id']])
-    seen['withdraw_vs_note'] = (w and r2.get('why') == 'gone' and note == 0, {'note': r2, 'waited': w, 'notes': note})
+    seen['withdraw_vs_note'] = (r2.get('why') == 'gone' and note == 0, {'note': r2, 'waited': w, 'notes': note}, w)
 
     # 3. accepting an ask against the asker withdrawing 18+
     A = person(c, 'Aya', 'pcos'); B = person(c, 'Bel', 'pcos')
     c.execute("insert into public.social_requests (from_user, to_user) values (%s, %s)", [B['id'], A['id']])
     r1, r2, w = race((B['id'], "select public.consent_record('age_18', 'withdraw', 3)", []), (A['id'], 'select public.social_answer(%s, true)', [B['handle']]))
     fr = one(c, 'select count(*) from public.social_friends where a = least(%s::uuid, %s::uuid) and b = greatest(%s::uuid, %s::uuid)', [A['id'], B['id'], A['id'], B['id']])
-    seen['age_withdraw_vs_accept'] = (w and r2.get('why') == 'gone' and fr == 0, {'answer': r2, 'waited': w, 'friends': fr})
+    seen['age_withdraw_vs_accept'] = (r2.get('why') == 'gone' and fr == 0, {'answer': r2, 'waited': w, 'friends': fr}, w)
 
     # 4. one account accepting two asks from two phones at 199 friends: the second waits and finds 200
     X = person(c, 'Xia', 'pcos')
@@ -144,7 +144,7 @@ def scenarios(c, expect_safe=True):
     c.execute("insert into public.social_requests (from_user, to_user) values (%s, %s), (%s, %s)", [P1['id'], X['id'], P2['id'], X['id']])
     r1, r2, w = race((X['id'], 'select public.social_answer(%s, true)', [P1['handle']]), (X['id'], 'select public.social_answer(%s, true)', [P2['handle']]))
     n = one(c, 'select count(*) from public.social_friends where a = %s or b = %s', [X['id'], X['id']])
-    seen['capacity_two_phones'] = (w and r1.get('status') == 'friends' and r2.get('why') == 'full' and n == 200, {'first': r1, 'second': r2, 'waited': w, 'friends': n})
+    seen['capacity_two_phones'] = (r1.get('status') == 'friends' and r2.get('why') == 'full' and n == 200, {'first': r1, 'second': r2, 'waited': w, 'friends': n}, w)
 
     # 5. two staff decisions on one report: the second waits, then finds it decided; the pause stands
     O = person(c, 'Own'); T = person(c, 'Tam', 'pcos'); Rr = person(c, 'Rae', 'pcos')
@@ -152,41 +152,74 @@ def scenarios(c, expect_safe=True):
     rid = one(c, "insert into staff.social_reports (reporter, target, target_handle, target_name, reason) values (%s, %s, %s, 'Tam', 'unkind') returning id", [Rr['id'], T['id'], T['handle']])
     r1, r2, w = race((O['id'], 'select public.admin_social_decide(%s, %s, 3)', [rid, 'pause']), (O['id'], 'select public.admin_social_decide(%s, %s, null)', [rid, 'dismiss']))
     st = one(c, 'select status from staff.social_reports where id = %s', [rid]); held = one(c, 'select count(*) from public.social_holds where user_id = %s', [T['id']])
-    seen['staff_decisions'] = (w and r1.get('ok') is True and r2.get('ok') is False and st == 'paused' and held == 1, {'first': r1, 'second': r2, 'waited': w, 'status': st, 'hold': held})
+    seen['staff_decisions'] = (r1.get('ok') is True and r2.get('ok') is False and st == 'paused' and held == 1, {'first': r1, 'second': r2, 'waited': w, 'status': st, 'hold': held}, w)
 
     # 6. two people asking each other at once: friends once, no ask left over
     A = person(c, 'Amy', 'pcos'); B = person(c, 'Bex', 'pcos')
     r1, r2, w = race((A['id'], 'select public.social_ask(%s, %s, %s, null)', [B['handle'], 'pcos', A['visit']]), (B['id'], 'select public.social_ask(%s, %s, %s, null)', [A['handle'], 'pcos', B['visit']]))
     fr = one(c, 'select count(*) from public.social_friends where a = least(%s::uuid, %s::uuid) and b = greatest(%s::uuid, %s::uuid)', [A['id'], B['id'], A['id'], B['id']])
     left = one(c, 'select count(*) from public.social_requests where from_user in (%s, %s)', [A['id'], B['id']])
-    seen['mutual_asks'] = (w and r1.get('status') == 'asked' and r2.get('status') == 'friends' and fr == 1 and left == 0, {'first': r1, 'second': r2, 'waited': w, 'friends': fr, 'left': left})
+    seen['mutual_asks'] = (r1.get('status') == 'asked' and r2.get('status') == 'friends' and fr == 1 and left == 0, {'first': r1, 'second': r2, 'waited': w, 'friends': fr, 'left': left}, w)
 
     # 7. a note against an unfriend
     A = person(c, 'Ari', 'pcos'); B = person(c, 'Bay', 'pcos', friends_with=A)
     r1, r2, w = race((B['id'], 'select public.social_unfriend(%s)', [A['handle']]), (A['id'], 'select public.social_note(%s, %s)', [B['handle'], 'hug']))
     note = one(c, 'select count(*) from public.social_notes where from_user = %s', [A['id']])
-    seen['unfriend_vs_note'] = (w and r2.get('why') == 'gone' and note == 0, {'note': r2, 'waited': w, 'notes': note})
+    seen['unfriend_vs_note'] = (r2.get('why') == 'gone' and note == 0, {'note': r2, 'waited': w, 'notes': note}, w)
 
     # 8. an ask against the other person turning Plaza friends off
     A = person(c, 'Abi', 'pcos'); B = person(c, 'Bia', 'pcos')
     r1, r2, w = race((B['id'], 'select public.social_off(3)', []), (A['id'], 'select public.social_ask(%s, %s, %s, null)', [B['handle'], 'pcos', A['visit']]))
     req = one(c, 'select count(*) from public.social_requests where from_user = %s', [A['id']])
-    seen['off_vs_ask'] = (w and r2.get('why') == 'gone' and req == 0, {'ask': r2, 'waited': w, 'requests': req})
+    seen['off_vs_ask'] = (r2.get('why') == 'gone' and req == 0, {'ask': r2, 'waited': w, 'requests': req}, w)
     return seen
+
+
+def rules(c):
+    """Two rules from the Codex pre-merge review (20 Oct), items 6 and 7, outside any race."""
+    out = {}
+    s = Session()
+    def do(who, sql, params=()):
+        r = s.call(who, sql, params); s.c.commit(); return r
+    # 6. a block and an unblock never reset the 30-day wait before asking the same person again
+    A = person(c, 'Ada', 'pcos'); B = person(c, 'Bo', 'pcos')
+    r1 = do(A['id'], 'select public.social_ask(%s, %s, %s, null)', [B['handle'], 'pcos', A['visit']])
+    do(A['id'], 'select public.social_block(%s)', [B['handle']])
+    bid = one(c, 'select id from public.social_blocks where blocker = %s and blocked = %s', [A['id'], B['id']])
+    do(A['id'], 'select public.social_unblock(%s)', [bid])
+    before = one(c, 'select count(*) from public.social_requests where from_user = %s and to_user = %s', [A['id'], B['id']])
+    r2 = do(A['id'], 'select public.social_ask(%s, %s, %s, null)', [B['handle'], 'pcos', A['visit']])
+    after = one(c, 'select count(*) from public.social_requests where from_user = %s and to_user = %s', [A['id'], B['id']])
+    out['block_unblock_keeps_the_ask_wait'] = (r1.get('status') == 'asked' and before == 0 and r2.get('status') == 'asked' and after == 0, {'first': r1, 'again': r2, 'requests_before': before, 'requests_after': after})
+    # 7. a declined ask to her does not let her look up the asker's current card
+    C = person(c, 'Cy', 'pcos'); D = person(c, 'Di', 'pcos')
+    do(C['id'], 'select public.social_ask(%s, %s, %s, null)', [D['handle'], 'pcos', C['visit']])
+    do(D['id'], 'select public.social_answer(%s, false)', [C['handle']])
+    c.execute('delete from public.plaza_presence where user_id in (%s, %s)', [C['id'], D['id']]); c.commit()  # both left the group
+    vis_declined = one(c, 'select social.visible(%s, %s)', [D['id'], C['id']])
+    vis_own = one(c, 'select social.visible(%s, %s)', [C['id'], D['id']])
+    out['declined_ask_shows_no_card'] = (vis_declined is False and vis_own is True, {'declined_to_her_visible': vis_declined, 'own_ask_visible': vis_own})
+    s.c.close()
+    return out
 
 
 def main():
     mutate, dry = '--mutate' in sys.argv, '--dryrun' in sys.argv
     print('Plaza friends races on a local copy (two real sessions each)')
     c = fresh()
-    for name, (ok, detail) in scenarios(c).items():
+    # the saved outcome and the lock wait are separate assertions (Codex pre-merge review, 20 Oct, item 8): a run where the
+    # scheduler let the second session through before the harness saw it waiting still has its data checked on its own
+    for name, (ok, detail, waited) in scenarios(c).items():
         check('race: ' + name.replace('_', ' '), ok, detail)
+        check('race: ' + name.replace('_', ' ') + ', the second session waited on the account lock', waited, detail)
+    for name, (ok, detail) in rules(c).items():
+        check('rule: ' + name.replace('_', ' '), ok, detail)
     c.close()
     if mutate:
         print('the same races with social.lock() made a no-op: they should go wrong, which shows the tests see the bug')
         c = fresh(mutate=True)
         seen = scenarios(c, expect_safe=False)
-        wrong = [k for k, (ok, _) in seen.items() if not ok]
+        wrong = [k for k, (ok, _, _w) in seen.items() if not ok]
         check('without the account lock, the races that write after a check go wrong (%d of %d: %s)' % (len(wrong), len(seen), ', '.join(wrong)),
               {'block_vs_note', 'withdraw_vs_note', 'age_withdraw_vs_accept', 'capacity_two_phones', 'unfriend_vs_note'} <= set(wrong), seen)
         c.close()
