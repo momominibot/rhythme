@@ -1370,65 +1370,72 @@ function withoutCommitPull(fetchFn) {
    orders, limit and offset) and throws on anything else, so a new query shape cannot slip past it unread. synced_at
    is compared as an instant to the microsecond, as Postgres does, whatever its spelling ('...Z' or '+00:00'); ids
    compare as text, the same order the server uses for both the sort and the id.gt filter.
-   With { commit: true } it is a server with the migration applied: rpc() answers entries_pull as the SQL function does
-   (rows below the fence, in (sync_xid, id) order, the since filter only for rows with sync_xid 0), and begin(at) opens a
+   With { commit: true } (or .commit = true later) it is a server with the migration applied: rpc() answers entries_pull
+   as the SQL function does (rows below the fence, in (sync_xid, id) order; the since filter only on rows whose
+   transaction had ended in the hand-over snapshot; a snapshot built as PostgreSQL builds one: xmax one past the highest
+   ended id, xip the running ids below it, xmin the lowest of those or xmax), with transaction ids as BigInt inside and
+   decimal text outside, as xid8 is; and begin(at[, xid]) opens a
    transaction whose rows stay invisible to every read until commit(), stamped as the trigger stamps them: synced_at is
    the transaction's start, sync_xid its id (and a row made with no time gets that start as its edit time). A row pushed without a sync_xid counts as written by a transaction of its
    own, numbered by its synced_at, so one upload (one timestamp) is one transaction. Without it, entries_pull is
    missing, as on the live server today. */
 function syncServer(opts) {
   opts = opts || {};
-  var rows = [], memo = {}, open = {}, issued = 0;
+  var rows = [], memo = {}, open = {}, ended = 0n;
   function micros(s) {
     if (memo[s] !== undefined) return memo[s];
     var m = /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,6}))?(Z|[+-]\d\d:\d\d)$/.exec(String(s));
     if (!m) throw new Error('pretend server: not a timestamp: ' + s);
     return (memo[s] = Date.parse(m[1] + m[3]) * 1000 + Number(((m[2] || '') + '000000').slice(0, 6)));
   }
-  function xidOf(r) { return r.sync_xid != null ? Number(r.sync_xid) : micros(r.synced_at); }
+  function xidOf(r) { return r.sync_xid != null ? BigInt(r.sync_xid) : BigInt(micros(r.synced_at)); }
+  function cmpX(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
   var V = '("(?:[^"\\\\]|\\\\.)*"|[^,()"]*)';
   var KEYSET = new RegExp('^\\(synced_at\\.gt\\.' + V + ',and\\(synced_at\\.eq\\.' + V + ',id\\.gt\\.' + V + '\\)\\)$');
   function unq(v) { return v.charAt(0) === '"' ? v.slice(1, -1).replace(/\\(.)/g, '$1') : v; }
   function byId(a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; }
-  /* the lowest transaction id still running, or one past the highest ever handed out: pg_snapshot_xmin(pg_current_snapshot()) */
-  function fence() {
-    var low = Infinity;
-    Object.keys(open).forEach(function (k) { low = Math.min(low, Number(k)); });
-    if (low < Infinity) return low;
-    var hi = issued;
-    rows.forEach(function (r) { hi = Math.max(hi, xidOf(r)); });
-    return hi + 1;
+  /* pg_current_snapshot(): xmax is one past the highest transaction id that has ended, xip the running ids below it,
+     xmin the lowest running id below xmax (or xmax). Its xmin is the pull's fence. */
+  function snapshot() {
+    var hi = ended;
+    rows.forEach(function (r) { var x = xidOf(r); if (x > hi) hi = x; });
+    var xmax = hi + 1n, xip = Object.keys(open).map(function (k) { return BigInt(k); }).filter(function (x) { return x < xmax; }).sort(cmpX);
+    return { xmin: xip.length ? xip[0] : xmax, xmax: xmax, xip: xip };
   }
-  var PULL_ARGS = ['p_after_xid', 'p_after_id', 'p_since', 'p_since_id', 'p_limit'];
-  return {
+  function snapText(h) { return String(h.xmin) + ':' + String(h.xmax) + ':' + h.xip.map(String).join(','); }
+  function snapParse(t) { var m = /^(\d+):(\d+):([\d,]*)$/.exec(String(t)); if (!m) throw new Error('pretend server: invalid input syntax for type pg_snapshot: ' + t); return { xmin: BigInt(m[1]), xmax: BigInt(m[2]), xip: m[3] ? m[3].split(',').map(function (x) { return BigInt(x); }) : [] }; }
+  /* pg_visible_in_snapshot: had this transaction ended when the snapshot was taken? */
+  function visibleIn(x, h) { return x < h.xmin || (x < h.xmax && !h.xip.some(function (y) { return y === x; })); }
+  var PULL_ARGS = ['p_after_xid', 'p_after_id', 'p_since', 'p_since_id', 'p_handover', 'p_limit'];
+  var api = {
     rows: rows,
     PULL_ARGS: PULL_ARGS,
     commit: !!opts.commit,
     begin: function (at, xid) {
-      var n = xid != null ? xid : micros(at), mine = [];
-      issued = Math.max(issued, n); open[n] = true;
+      var n = xid != null ? BigInt(xid) : BigInt(micros(at)), mine = [];
+      open[String(n)] = true;
       return {
         xid: String(n),
         add: function (r) { r.synced_at = at; r.sync_xid = String(n); if (r.updated_at == null) r.created_at = r.updated_at = at; mine.push(r); return r; },
-        commit: function () { delete open[n]; mine.forEach(function (r) { for (var i = 0; i < rows.length; i++) if (rows[i].id === r.id) { rows.splice(i, 1); break; } rows.push(r); }); }
+        commit: function () { delete open[String(n)]; if (n > ended) ended = n; mine.forEach(function (r) { for (var i = 0; i < rows.length; i++) if (rows[i].id === r.id) { rows.splice(i, 1); break; } rows.push(r); }); }
       };
     },
     rpc: function (body) {
-      if (!opts.commit) return { status: 404, body: { code: 'PGRST202', message: 'Could not find the function public.entries_pull in the schema cache' } };
+      if (!api.commit) return { status: 404, body: { code: 'PGRST202', message: 'Could not find the function public.entries_pull in the schema cache' } };
       Object.keys(body).forEach(function (k) { if (PULL_ARGS.indexOf(k) < 0) throw new Error('pretend server: unknown entries_pull argument ' + k); });
-      var f = fence(), ax = body.p_after_xid, aid = body.p_after_id, lim = Math.max(1, Math.min(body.p_limit || 1000, 1000));
+      var now = snapshot(), f = now.xmin, ax = body.p_after_xid, aid = body.p_after_id, lim = Math.max(1, Math.min(body.p_limit || 1000, 1000));
+      var hand = body.p_handover != null ? snapParse(body.p_handover) : now;
       if (ax != null && !/^(0|[1-9][0-9]*)$/.test(ax)) return { status: 400, body: { code: '22P02', message: 'invalid input syntax for type xid8' } };
-      var axn = ax == null ? null : Number(ax), since = body.p_since == null ? null : micros(body.p_since), sid = body.p_since_id;
+      var axn = ax == null ? null : BigInt(ax), since = body.p_since == null ? null : micros(body.p_since), sid = body.p_since_id;
       var out = rows.filter(function (r) {
         var x = xidOf(r);
         if (!(x < f)) return false;
         if (axn != null && !(aid == null ? x >= axn : (x > axn || (x === axn && r.id > aid)))) return false;
-        if (since != null && x !== 0) return true;
-        if (since != null) { var t = micros(r.synced_at); return sid == null ? t >= since : (t > since || (t === since && r.id > sid)); }
+        if (since != null && visibleIn(x, hand)) { var t = micros(r.synced_at); return sid == null ? t >= since : (t > since || (t === since && r.id > sid)); }
         return true;
       });
-      out.sort(function (a, b) { return xidOf(a) - xidOf(b) || byId(a, b); });
-      return { status: 200, body: { fence: String(f), rows: out.slice(0, lim).map(function (r) { return Object.assign({}, r, { sync_xid: String(xidOf(r)) }); }) } };
+      out.sort(function (a, b) { return cmpX(xidOf(a), xidOf(b)) || byId(a, b); });
+      return { status: 200, body: { fence: String(f), snapshot: snapText(now), rows: out.slice(0, lim).map(function (r) { return Object.assign({}, r, { sync_xid: String(xidOf(r)) }); }) } };
     },
     get: function (url) {
       var keep = [], order = null, lim = 1000, off = 0;
@@ -1449,6 +1456,7 @@ function syncServer(opts) {
       return out.slice(off, off + lim);
     }
   };
+  return api;
 }
 /* a signed-in phone with cloud backup on, talking to `srv`; `state` is its saved sync position (null: a new phone,
    undefined: an older version's millisecond cursor at 10:00 on 19 Oct). onGet sees every pull reply's rows. */
@@ -1588,7 +1596,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
 })();
 
 (function sharedPullCommitOrder() {
-  console.log('cloud sync: the pull follows commits, so a long upload that commits behind the cursor still arrives (20261020120000)');
+  console.log('cloud sync: the pull waits for open writes, so a long upload that commits behind the cursor still arrives (20261020120000)');
   var Y0 = fresh().OvuSync;
   /* the tests compare cursors with their own copy of the rule, so they read the same against any version of the app */
   var xc = function (p, q) { p = String(p); q = String(q); return p.length - q.length || (p < q ? -1 : p > q ? 1 : 0); };
@@ -1626,23 +1634,83 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
     check('while the long upload is still open, the pull holds back the short one that started after it instead of moving past it', (t.per[1] || 0) === 0 && afterOpen.pulledXid === big.xid && afterOpen.pulledXidId == null, JSON.stringify({ per1: t.per[1], cursor: [afterOpen.pulledXid, afterOpen.pulledXidId], open: big.xid }));
     check('a long upload that started first and committed last arrives in full on the next sync, with the short one', (t.per[2] || 0) === 1501 && S.list('reflection').length === 1503, JSON.stringify({ per: t.per, local: S.list('reflection').length }));
     check('every row arrives exactly once, and then nothing is pulled again', t.twice() === 0 && Object.keys(t.seen).length === 1503 && (t.per[3] || 0) === 0, JSON.stringify({ twice: t.twice(), distinct: Object.keys(t.seen).length, per3: t.per[3] }));
-    check('the cursor ends at the fence, past both uploads, and the time cursor is not used', !!st.pulledXid && xc(st.pulledXid, big.xid) > 0 && st.pulledXidId == null && st.pulledSeq == null, JSON.stringify({ xid: st.pulledXid, id: st.pulledXidId, seq: st.pulledSeq }));
+    check('the cursor ends at the fence, past both uploads; the time cursor follows to the latest row by time', !!st.pulledXid && xc(st.pulledXid, big.xid) > 0 && st.pulledXidId == null && st.pulledSeq === '2026-10-20T09:00:02.000200+00:00' && st.pulledId === 'small', JSON.stringify({ xid: st.pulledXid, id: st.pulledXidId, seq: st.pulledSeq, sid: st.pulledId }));
+    /* (Codex round one, finding 1) the server loses entries_pull again (or a tab on an older version pulls by time):
+       the time-ordered pull resumes from the followed cursor instead of handing the whole diary back */
+    srv.commit = false; t.sync = 4;
+    return Y.syncNow().then(function (r) {
+      check('a fall back to the time-ordered pull resumes from where the other pull got to, not from the start', r.ok && (t.per[4] || 0) === 0 && t.twice() === 0, JSON.stringify({ r: r, per4: t.per[4], twice: t.twice() }));
+    });
   });
 
-  /* 2. A phone moving over from the time-ordered cursor. Its older version pulled o1..o3 (written before the migration,
-     sync_xid 0) and p0 (after it), and missed g: g's transaction started at 09:00:04, before p0's, and was still open
-     during that pull. The time cursor sits on p0. */
+  /* 2. A phone moving over from the time-ordered cursor (Codex round one, finding 2). Its older version, running against
+     the migrated server, pulled o1..o3 (written before the migration, sync_xid 0) and p0 (after it); its cursor sits on
+     p0, and the person then cleared this phone. g was lost to the gap before the hand-over: its transaction started at
+     09:00:04, before p0's, and committed after that pull. h started at 09:00:03 and is still open during the hand-over. */
   var srv2 = syncServer({ commit: true }), t2 = tally();
   ['o1', 'o2', 'o3'].forEach(function (id, i) { var r = syncRow(id, 'reflection', '2026-10-20T08:00:0' + (i + 1) + '.000001+00:00', note(id)); r.sync_xid = '0'; srv2.rows.push(r); });
+  var h = srv2.begin('2026-10-20T09:00:03.000003+00:00'); h.add(syncRow('h', 'reflection', null, note('h')));
   var g = srv2.begin('2026-10-20T09:00:04.000004+00:00'); g.add(syncRow('g', 'reflection', null, note('g')));
   var p0 = srv2.begin('2026-10-20T09:00:05.000005+00:00'); p0.add(syncRow('p0', 'reflection', null, note('p0'))); p0.commit();
   g.commit();
-  var v = syncWorld(srv2, t2.onGet, { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-20T09:00:05.000005+00:00', pulledId: 'p0', pushedAt: '2026-10-20T09:00:05.000005+00:00', profilePulledAt: '2026-10-20T08:00:00Z', profileDirty: false, lastSyncAt: null }), YV = v.OvuSync;
+  var p1 = srv2.begin('2026-10-20T09:00:06.000006+00:00'); p1.add(syncRow('p1', 'reflection', null, note('p1'))); p1.commit();
+  var v = syncWorld(srv2, t2.onGet, { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-20T09:00:05.000005+00:00', pulledId: 'p0', pushedAt: '2026-10-20T09:00:05.000005+00:00', profilePulledAt: '2026-10-20T08:00:00Z', profileDirty: false, lastSyncAt: null }), YV = v.OvuSync, afterHand = null;
   var b = YV.syncNow().then(function () {
+    afterHand = stateOf(v);
+    h.commit(); t2.sync = 1;
+    return YV.syncNow();
+  }).then(function () {
     var st = stateOf(v);
-    check('a phone moving over from the time cursor is not handed its older rows again', !t2.seen.o1 && !t2.seen.o2 && !t2.seen.o3, JSON.stringify(t2.seen));
-    check('and every row written since the migration reaches it once, including one the time-ordered pull had missed', t2.seen.g === 1 && t2.seen.p0 === 1 && !!v.OvuStore.get('g'), JSON.stringify(t2.seen));
-    check('it now keeps a commit-ordered cursor and leaves the time cursor where the older version put it', st.pulledXid && xc(st.pulledXid, g.xid) > 0 && st.pulledXidId == null && st.pulledSeq === '2026-10-20T09:00:05.000005+00:00' && st.pulledId === 'p0', JSON.stringify({ xid: st.pulledXid, seq: st.pulledSeq, id: st.pulledId }));
+    check('the hand-over sends nothing the older version already pulled, from before or after the migration', !t2.seen.o1 && !t2.seen.o2 && !t2.seen.o3 && !t2.seen.p0 && !v.OvuStore.get('p0'), JSON.stringify(t2.seen));
+    check('it sends what came after the older cursor; while h is open the hand-over (cursor and snapshot) is kept', t2.seen.p1 === 1 && afterHand.pulledXid === h.xid && afterHand.pulledXidId == null && afterHand.pullSince && afterHand.pullSince.id === 'p0' && afterHand.pullSince.snap.split(':')[2] === h.xid, JSON.stringify({ seen: t2.seen, st: afterHand }));
+    check('and once the cursor passes the snapshot\'s xmax the hand-over ends', !st.pullSince && !!afterHand.pullSince && xc(st.pulledXid, afterHand.pullSince.snap.split(':')[1]) >= 0, JSON.stringify({ xid: st.pulledXid, hand: st.pullSince }));
+    check('a write still open during the hand-over, stamped before the older cursor, arrives once it commits', t2.seen.h === 1 && !!v.OvuStore.get('h') && xc(st.pulledXid, h.xid) > 0, JSON.stringify({ seen: t2.seen, xid: st.pulledXid }));
+    check('(the documented limit) a row the older version had already lost to the gap before the hand-over stays lost', !t2.seen.g, JSON.stringify(t2.seen));
+  });
+
+  /* 2b. A hand-over larger than one sync keeps the older cursor until it reaches the end. R is the row the older cursor
+     sits on (pulled, then cleared from the phone); X began at 09:00:02, after R's transaction began, but wrote first, so
+     its 20,500 rows have the lower transaction id and are still open when the older version pulls R. */
+  var srv2b = syncServer({ commit: true }), t2b = tally();
+  var X = srv2b.begin('2026-10-20T09:00:02.000002+00:00', '5000');
+  for (var k = 0; k < 20500; k++) X.add(syncRow('x' + pad(k), 'reflection', null, note(k)));
+  var R = srv2b.begin('2026-10-20T09:00:01.000001+00:00', '5001'); R.add(syncRow('R', 'reflection', null, note('R'))); R.commit();
+  X.commit();
+  var v2 = syncWorld(srv2b, t2b.onGet, { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-20T09:00:01.000001+00:00', pulledId: 'R', pushedAt: '2026-10-20T09:00:01.000001+00:00', profilePulledAt: '2026-10-20T08:00:00Z', profileDirty: false, lastSyncAt: null }), mid = null;
+  var b2 = v2.OvuSync.syncNow().then(function () { mid = stateOf(v2); t2b.sync = 1; return v2.OvuSync.syncNow(); }).then(function () {
+    var st = stateOf(v2);
+    check('a hand-over cut by the 20,000 cap keeps the older cursor for the rest, so the row it sits on is never sent again', t2b.per.join() === '20000,500' && !t2b.seen.R && mid.pullSince && mid.pullSince.id === 'R' && !st.pullSince, JSON.stringify({ per: t2b.per.join(), R: t2b.seen.R, mid: mid.pullSince, end: st.pullSince }));
+  });
+
+  /* 2c. This page asked for entries_pull before the migration and was told it is missing; then the migration lands and
+     another tab pulls by transaction id. This page must ask again rather than pull by its own stale time cursor. */
+  var srv2c = syncServer(), asked2c = 0;
+  srv2c.rows.push(syncRow('c1', 'reflection', '2026-10-20T08:00:00.000001+00:00', note('c1')));
+  var v3 = syncWorld(srv2c, null, null), v3Fetch = v3.fetch;
+  v3.fetch = function (url, opt) { if (/rpc\/entries_pull/.test(url)) asked2c++; return v3Fetch(url, opt); };
+  var b3 = v3.OvuSync.syncNow().then(function () {
+    srv2c.commit = true;
+    var st = stateOf(v3); st.pulledXid = '1792486799000002'; st.pulledXidId = null; v3.localStorage.setItem('ovumind_sync_v1', JSON.stringify(st)); /* the other tab */
+    return v3.OvuSync.syncNow();
+  }).then(function (r) {
+    var st = stateOf(v3);
+    check('a page that found no entries_pull asks again once another tab pulls by transaction id, and uses it', r.ok && asked2c === 2 && st.pulledXid && xc(st.pulledXid, '1792486799000002') >= 0, JSON.stringify({ r: r, asked: asked2c, xid: st.pulledXid }));
+  });
+
+  /* 2d. Transaction ids past what a JavaScript number holds: adjacent ids near 2^64 page and resume exactly */
+  var srv2d = syncServer({ commit: true }), t2d = tally();
+  var L1 = srv2d.begin('2026-10-20T09:10:00.000001+00:00', '18446744073709550000');
+  for (var q = 0; q < 1500; q++) L1.add(syncRow('l' + pad(q), 'reflection', null, note(q)));
+  L1.commit();
+  var L2 = srv2d.begin('2026-10-20T09:10:01.000001+00:00', '18446744073709550001'); L2.add(syncRow('m', 'reflection', null, note('m'))); L2.commit();
+  var v4 = syncWorld(srv2d, t2d.onGet, null);
+  var b4 = v4.OvuSync.syncNow().then(function () {
+    var st = stateOf(v4);
+    var L3 = srv2d.begin('2026-10-20T09:10:02.000001+00:00', '18446744073709550002'); L3.add(syncRow('n', 'reflection', null, note('n'))); L3.commit();
+    t2d.sync = 1;
+    return v4.OvuSync.syncNow().then(function () { return st; });
+  }).then(function (st1) {
+    check('ids near 2^64: 1,501 rows over two pages, the cursor at the fence as exact text, then the next id once', t2d.per.join() === '1501,1' && t2d.twice() === 0 && st1.pulledXid === '18446744073709550002' && st1.pulledXidId == null && t2d.seen.n === 1, JSON.stringify({ per: t2d.per.join(), xid: st1.pulledXid }));
   });
 
   /* 3. One upload of 25,000 rows is one transaction id: a restore larger than one sync resumes after the last id */
@@ -1681,7 +1749,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
     check('a failed entries_pull fails the sync and moves nothing (no quiet fall back to the pull with the gap)', r && r.ok === false && /statement timeout/.test(r.error || '') && ygets === 0 && st.pulledXid === '700', JSON.stringify({ r: r, gets: ygets, xid: st.pulledXid }));
   });
 
-  /* 6. Another tab moves the commit-ordered cursor further while this sync uploads, and the person then clears that
+  /* 6. Another tab moves the transaction-ordered cursor further while this sync uploads, and the person then clears that
      newer row from the phone: this sync must not wind the cursor back, or the next sync brings the cleared row back */
   var srv6 = syncServer({ commit: true });
   srv6.rows.push(syncRow('q1', 'reflection', '2026-10-20T08:00:00.000001+00:00', note('q1')));
@@ -1697,17 +1765,17 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   };
   var f = z.OvuSync.syncNow().then(function () {
     var st = stateOf(z);
-    check('a slower tab never winds the commit-ordered cursor back past where another tab moved it', posted6 && st.pulledXid === theirs && st.pulledXidId == null, JSON.stringify({ xid: st.pulledXid, theirs: theirs }));
+    check('a slower tab never winds the transaction-ordered cursor back past where another tab moved it', posted6 && st.pulledXid === theirs && st.pulledXidId == null, JSON.stringify({ xid: st.pulledXid, theirs: theirs }));
     return z.OvuSync.syncNow();
   }).then(function () {
     check('so a row the other tab pulled, then cleared from this phone, is not brought back', !SZ.get('q2') && !!SZ.get('q1'), JSON.stringify({ q1: !!SZ.get('q1'), q2: !!SZ.get('q2') }));
   });
 
-  /* 7. a sign-out or reset forgets the commit-ordered cursor too */
+  /* 7. a sign-out or reset forgets the transaction-ordered cursor too */
   var r7 = fresh(); r7.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, gen: 2, userId: 'u1', shadow: {}, tombstones: {}, pulledXid: '900', pulledXidId: 'x', pulledSeq: '2026-10-20T08:00:00Z' })); r7.OvuSync.resetPosition();
   var s7 = JSON.parse(r7.localStorage.getItem('ovumind_sync_v1'));
-  check('a reset clears the commit-ordered cursor with the time cursor', s7.pulledXid === null && s7.pulledXidId === null && s7.pulledSeq === null && s7.gen === 3, JSON.stringify(s7));
-  Promise.all([a, b, c, d, e, f]).catch(function (err) { check('the commit-order pull tests ran to the end', false, String(err && err.stack || err)); });
+  check('a reset clears the transaction-ordered cursor with the time cursor', s7.pulledXid === null && s7.pulledXidId === null && s7.pulledSeq === null && s7.gen === 3, JSON.stringify(s7));
+  Promise.all([a, b, b2, b3, b4, c, d, e, f]).catch(function (err) { check('the transaction-ordered pull tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 (function syncGenerationAcrossAccounts() {

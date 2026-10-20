@@ -13,11 +13,11 @@
  *
  * Pull is incremental (rows that reached the server after the last one we pulled),
  * so wiping this phone and reloading does not re-download the whole cloud; only a
- * brand-new install (no cursor) restores the full diary. Rows come in the order
- * their writes became final (sync_xid, id), cut at the oldest write still open, so
- * a long upload that commits late can never land behind the cursor. A server
- * without that (20261020120000_sync_pull_commit_order.sql not applied) is pulled
- * by synced_at then id, as before. */
+ * brand-new install (no cursor) restores the full diary. Rows come by the id of
+ * the transaction that wrote them (sync_xid, id), and only once every lower one has
+ * ended, so a long upload that commits late can never land behind the cursor. A
+ * server without that (20261020120000_sync_pull_commit_order.sql not applied) is
+ * pulled by synced_at then id, as before. */
 (function (root) {
   'use strict';
   var S = root.OvuStore;
@@ -39,10 +39,11 @@
   /* ---------- sync position (one object in localStorage) ---------- */
   function loadState() {
     try { var s = JSON.parse(localStorage.getItem(LS) || 'null'); if (s && s.v === 1) { s.shadow = s.shadow || {}; s.tombstones = s.tombstones || {}; return s; } } catch (e) { }
-    /* pulledXid, pulledXidId: the commit-ordered pull's cursor, the last row it saw (its transaction id as text, and its
-       id), or the fence with no id once a page came back short.
+    /* pulledXid, pulledXidId: the transaction-ordered pull's cursor, the last row it saw (its transaction id as text, and
+       its id), or the fence with no id once a page came back short. pullSince: { at, id, snap }, a hand-over in progress
+       from the older time cursor, with the snapshot it began with.
        pulledSeq, pulledId: the time-ordered pull's cursor (synced_at exactly as the server wrote it, and that row's id),
-       used where the server has no entries_pull, and as the older cursor a phone carries into the commit-ordered pull;
+       used where the server has no entries_pull, and kept moving by the other pull too, for a tab on an older version;
        pulledSeq without pulledId is an older version's millisecond cursor.
        pushedAt: the newest local updatedAt we have pushed, so unchanged rows are not re-sent. */
     return { v: 1, gen: 0, userId: null, shadow: {}, tombstones: {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null };
@@ -234,47 +235,64 @@
      then digit by digit, because it can be larger than a JavaScript number holds exactly. */
   function isXid(v) { return typeof v === 'string' && /^(0|[1-9][0-9]{0,19})$/.test(v); }
   function xidCmp(a, b) { return a.length - b.length || (a < b ? -1 : a > b ? 1 : 0); }
+  /* A snapshot as the server writes it ('xmin:xmax:xip_list', transaction ids in text); returns its xmax, or null. */
+  function snapXmax(v) { var m = typeof v === 'string' && v.length < 65536 ? /^(0|[1-9][0-9]{0,19}):(0|[1-9][0-9]{0,19}):((0|[1-9][0-9]{0,19})(,(0|[1-9][0-9]{0,19}))*)?$/.exec(v) : null; return m ? m[2] : null; }
   /* the server has no entries_pull (20261020120000_sync_pull_commit_order.sql not applied): PostgREST answers PGRST202 */
   function rpcMissing(err) { return !!err && err.status === 404 && err.code === 'PGRST202'; }
-  var commitPull = null; /* null: not tried on this page yet; false: this server has no entries_pull, so pull by time */
-  /* The commit-ordered pull. Rows come in (sync_xid, id) order, and only from transactions that had all ended: the
-     server cuts every page at a fence, the lowest transaction id still running, and any later write gets a higher id.
-     So a long upload that started before a short one and commits after it can never land behind the cursor; its rows
-     wait for the next page or the next sync instead. When a page comes back short, everything below the fence has
+  var commitPull = null; /* null: not tried on this page yet; false: this server had no entries_pull when asked */
+  /* The transaction-ordered pull. Rows come in (sync_xid, id) order, and only from transactions that have all ended:
+     the server cuts every page at a fence, the lowest transaction id still running, and any later write gets a higher
+     id. So a long upload that started before a short one and commits after it can never land behind the cursor; its
+     rows wait for the next page or the next sync instead. (This is transaction id order, not commit order: a lower id
+     that commits later still comes first, once final.) When a page comes back short, everything below the fence has
      been seen, and the cursor moves up to the fence itself (id null: from that transaction id on). One upload is one
      transaction id, so ids tell its rows apart and a page or the 20,000 cap can split it without skipping or fetching
-     again any of it. `since` is the older time-ordered cursor; the server applies it only to rows written before the
-     migration (sync_xid 0), so a phone moving over is not handed its whole diary again. */
-  function pullCommitted(xid, id, since, token) {
+     again any of it.
+     `hand` is the hand-over from an older version's time cursor: { at, id, snap }. The server applies that cursor only
+     to rows whose transaction had ended when the hand-over began (the snapshot `snap`, which the first page returns),
+     so nothing the older version pulled comes again (rows cleared from this phone on purpose stay cleared), and a write
+     still open at that moment arrives once it ends. It is kept until the cursor reaches the snapshot's xmax, beyond
+     which no row can be one the older version saw.
+     Also returns, as `timeLast`, the row that came last by synced_at (the last one the server sent among those with the
+     latest instant), so the time cursor can follow along for a tab still on an older version or a server that loses
+     entries_pull again: either then resumes from here instead of pulling the diary again. */
+  function pullCommitted(xid, id, hand, token) {
     var PAGE = 1000, all = [], cur = { xid: xid || null, id: xid && id != null ? id : null };
     function page() {
-      return rest('POST', '/rpc/entries_pull', { p_after_xid: cur.xid, p_after_id: cur.id, p_since: since ? since.at : null, p_since_id: since && since.id != null ? since.id : null, p_limit: PAGE }, null, token).then(function (res) {
+      return rest('POST', '/rpc/entries_pull', { p_after_xid: cur.xid, p_after_id: cur.id, p_since: hand ? hand.at : null, p_since_id: hand && hand.id != null ? hand.id : null, p_handover: hand ? hand.snap || null : null, p_limit: PAGE }, null, token).then(function (res) {
         var rows = res && res.rows;
-        if (!Array.isArray(rows) || !isXid(res.fence) || !rows.every(function (r) { return r && isXid(r.sync_xid) && xidCmp(r.sync_xid, res.fence) < 0; })) throw new Error('The cloud sent a pull reply this version does not understand.');
+        if (!Array.isArray(rows) || !isXid(res.fence) || !snapXmax(res.snapshot) || !rows.every(function (r) { return r && isXid(r.sync_xid) && xidCmp(r.sync_xid, res.fence) < 0; })) throw new Error('The cloud sent a pull reply this version does not understand.');
+        if (hand && !hand.snap) hand = { at: hand.at, id: hand.id, snap: res.snapshot }; /* the hand-over begins with this page's view */
         all = all.concat(rows);
         if (rows.length) { var last = rows[rows.length - 1]; cur = { xid: last.sync_xid, id: last.id }; }
         if (rows.length === PAGE && all.length < 20000) return page();
         if (rows.length < PAGE && (!cur.xid || xidCmp(res.fence, cur.xid) > 0)) cur = { xid: res.fence, id: null };
-        return { rows: all, xid: cur.xid, id: cur.id };
+        if (hand && cur.xid && xidCmp(cur.xid, snapXmax(hand.snap)) >= 0) hand = null; /* past every row the older version could have seen */
+        var timeLast = null, tm = -1;
+        all.forEach(function (r) { var m = micros(r.synced_at); if (m >= 0 && m >= tm) { tm = m; timeLast = { at: r.synced_at, id: r.id }; } });
+        return { rows: all, xid: cur.xid, id: cur.id, hand: hand, timeLast: timeLast };
       });
     }
     return page();
   }
-  /* Is commit-ordered cursor `a` strictly later than the stored one? (x, no id) means "from transaction x on", so it sits
-     before any (x, id). Two different ids under one transaction id are a tie, which keeps the stored one: the server's
-     collation orders ids, not this phone. */
+  /* Is transaction-ordered cursor `a` strictly later than the stored one? (x, no id) means "from transaction x on", so it
+     sits before any (x, id). Two different ids under one transaction id are a tie, which keeps the stored one: the
+     server's collation orders ids, not this phone. */
   function xidLater(a, c) {
     if (!c.pulledXid) return true;
     var k = xidCmp(a.xid, c.pulledXid);
     return k > 0 || (k === 0 && a.id != null && c.pulledXidId == null);
   }
-  /* The shared pull: commit-ordered where the server has entries_pull, by time where it does not yet. */
+  /* The shared pull: by transaction id where the server has entries_pull, by time where it does not. */
   function pullShared(st, token) {
     function byTime() { return pullSince(st.pulledSeq, st.pulledId, token).then(function (got) { got.mode = 'time'; return got; }); }
-    if (commitPull === false) return byTime();
-    /* no commit-ordered cursor yet, or one still inside the rows from before the migration: the time cursor comes along */
-    var x = isXid(st.pulledXid) ? st.pulledXid : null, since = (!x || x === '0') && st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null } : null;
-    return pullCommitted(x, x ? st.pulledXidId : null, since, token).then(function (got) { commitPull = true; got.mode = 'commit'; return got; }, function (err) {
+    var x = isXid(st.pulledXid) ? st.pulledXid : null;
+    /* this page found no entries_pull earlier; ask again once any tab has pulled by transaction id (the server has it now) */
+    if (commitPull === false && !x) return byTime();
+    /* a phone with only the older time cursor hands over from it; a hand-over in progress (pullSince) carries on */
+    var ps = st.pullSince, hand = !x ? (st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null, snap: null } : null)
+      : (ps && ps.at && snapXmax(ps.snap) ? { at: ps.at, id: ps.id != null ? ps.id : null, snap: ps.snap } : null);
+    return pullCommitted(x, x ? st.pulledXidId : null, hand, token).then(function (got) { commitPull = true; got.mode = 'commit'; return got; }, function (err) {
       if (!rpcMissing(err)) throw err;
       commitPull = false;
       return byTime();
@@ -327,7 +345,7 @@
       /* a switch to another account, or the first sync after a reset: every position field starts clean and the
          generation moves on, so nothing still in flight from before can land in it */
       if (st.userId && st.userId !== uid) { st = { v: 1, gen: genOf(st) + 1, userId: uid, shadow: snapshot(), tombstones: st.tombstones || {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: st.lastSyncAt || null }; }
-      if (!st.userId) { st.gen = genOf(st) + 1; st.userId = uid; st.shadow = snapshot(); st.pulledXid = null; st.pulledXidId = null; st.pulledSeq = null; st.pulledId = null; st.pushedAt = null; st.profilePulledAt = null; delete st.typedAfter; delete st.types; delete st.held; st.profileDirty = !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage); }
+      if (!st.userId) { st.gen = genOf(st) + 1; st.userId = uid; st.shadow = snapshot(); st.pulledXid = null; st.pulledXidId = null; delete st.pullSince; st.pulledSeq = null; st.pulledId = null; st.pushedAt = null; st.profilePulledAt = null; delete st.typedAfter; delete st.types; delete st.held; st.profileDirty = !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage); }
       var gen0 = genOf(st);
       /* still the same account, the same generation, signed in as it, and allowed to sync */
       function alive() { var c = loadState(); return genOf(c) === gen0 && c.userId === uid && a.userId() === uid && canSync(); }
@@ -405,10 +423,17 @@
              A tie on the instant keeps the stored one, because comparing ids here could disagree with the server's
              collation, and pulling a few rows again is safer than skipping any. */
           if (incEnd.mode === 'commit') {
-            /* the same rule for the commit-ordered cursor, which can move with no rows (up to the fence); the time cursor
-               is left as it is, for a server that loses entries_pull again or a tab still on an older version */
+            /* the same rule for the transaction-ordered cursor, which can move with no rows (up to the fence); a
+               hand-over still in progress travels with it (Codex round one, finding 2) */
             var movedX = (cur.pulledXid || null) !== (st.pulledXid || null) || (cur.pulledXidId || null) !== (st.pulledXidId || null);
-            if (incEnd.xid && (!movedX || xidLater(incEnd, cur))) { cur.pulledXid = incEnd.xid; cur.pulledXidId = incEnd.id; }
+            if (incEnd.xid && (!movedX || xidLater(incEnd, cur))) {
+              cur.pulledXid = incEnd.xid; cur.pulledXidId = incEnd.id;
+              if (incEnd.hand) cur.pullSince = incEnd.hand; else delete cur.pullSince;
+            }
+            /* the time cursor follows, only forward by instant (a tie keeps the stored one), so a tab still on an older
+               version, or this page if the server loses entries_pull, resumes from here instead of the start (Codex
+               round one, finding 1) */
+            if (incEnd.timeLast && (!cur.pulledSeq || micros(incEnd.timeLast.at) > micros(cur.pulledSeq))) { cur.pulledSeq = incEnd.timeLast.at; cur.pulledId = incEnd.timeLast.id; }
           } else {
             var movedMeanwhile = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
             if (incRows.length && (!movedMeanwhile || (cur.pulledSeq && micros(incEnd.at) > micros(cur.pulledSeq)))) { cur.pulledSeq = incEnd.at; cur.pulledId = incEnd.id; }
@@ -538,6 +563,6 @@
     status: function () { var st = loadState(); return { state: statusNow.state, error: statusNow.error, lastSyncAt: st.lastSyncAt, pending: Object.keys(st.tombstones || {}).length, held: Object.keys(st.held || {}).length }; },
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
     /* pure helpers, exported for the tests */
-    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud, addHeld: addHeld, splitByType: splitByType, typeRejected: typeRejected, mergeRows: mergeRows, xidCmp: xidCmp, isXid: isXid
+    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud, addHeld: addHeld, splitByType: splitByType, typeRejected: typeRejected, mergeRows: mergeRows, xidCmp: xidCmp, isXid: isXid, snapXmax: snapXmax
   };
 })(window);

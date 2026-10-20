@@ -83,9 +83,9 @@ def legacy_pull(phone, cur):
     return [r[0] for r in rows], ((rows[-1][1], rows[-1][0]) if rows else cur)
 
 
-def new_pull(phone, cur, since=None, limit=1000):
+def new_pull(phone, cur, since=None, limit=1000, handover=None):
     """One entries_pull page, and the cursor the app keeps after it: the last row, or the fence when the page is short."""
-    res = phone.run('select public.entries_pull(%s, %s, %s, %s, %s)', [cur[0] if cur else None, cur[1] if cur else None, since[0] if since else None, since[1] if since else None, limit])[0][0]
+    res = phone.run('select public.entries_pull(%s, %s, %s, %s, %s, %s)', [cur[0] if cur else None, cur[1] if cur else None, since[0] if since else None, since[1] if since else None, handover, limit])[0][0]
     rows = res['rows']
     if len(rows) == limit:
         cur = (rows[-1]['sync_xid'], rows[-1]['id'])
@@ -95,9 +95,12 @@ def new_pull(phone, cur, since=None, limit=1000):
 
 
 def new_pull_all(phone, cur, since=None, limit=1000):
-    got = []
+    """Pages until a short page, carrying the hand-over snapshot from the first page as the app does."""
+    got, hand = [], None
     while True:
-        rows, cur, _ = new_pull(phone, cur, since, limit)
+        rows, cur, res = new_pull(phone, cur, since, limit, hand)
+        if since and hand is None:
+            hand = res['snapshot']
         got += rows
         if len(rows) < limit:
             return got, cur
@@ -124,7 +127,7 @@ def person(c):
 def apply_new(c, mutate=False):
     sql = open(os.path.join(MIG, NEW)).read()
     if mutate:
-        fence = '      and e.sync_xid < f.xmin\n'
+        fence = '      and e.sync_xid < pg_snapshot_xmin(s.now)\n'
         assert sql.count(fence) == 1
         sql = sql.replace(fence, '')
     c.execute(sql)
@@ -152,7 +155,7 @@ def main():
     got, _ = new_pull_all(A0, None)
     check('the fence and each sync_xid come back as text, a new row with its own transaction id', all(isinstance(r['sync_xid'], str) for r in got) and [r['id'] for r in got] == ['o1', 'o2', 'o3', 'o4', 'p1'] and got[-1]['sync_xid'] != '0', [(r['id'], r['sync_xid']) for r in got])
     got, _ = new_pull_all(A0, None, since=(old_cursor[0], old_cursor[1]))
-    check('an older phone\'s (synced_at, id) cursor: older rows after it, then every newer row, nothing it already had', [r['id'] for r in got] == ['o3', 'o4', 'p1'], [r['id'] for r in got])
+    check('an older phone\'s (synced_at, id) cursor: the rows after it, nothing it already had', [r['id'] for r in got] == ['o3', 'o4', 'p1'], [r['id'] for r in got])
     got, _ = new_pull_all(A0, None, since=(old_cursor[0], None))
     check('an older millisecond cursor (no id) takes that instant inclusively', [r['id'] for r in got] == ['o2', 'o3', 'o4', 'p1'], [r['id'] for r in got])
 
@@ -196,6 +199,49 @@ def main():
     if not mutate:
         check('entries_pull delivers both, in the order their writes became final', [r['id'] for r in new_rows] == ['quick'] and [r['id'] for r in new_rows2] == ['late'], {'first': [r['id'] for r in new_rows], 'then': [r['id'] for r in new_rows2]})
 
+    # ---- race 3: the hand-over from an older phone's time cursor, with a write still open ----
+    print('race 3: the hand-over from the time cursor')
+    open_w = Phone(ann)
+    open_w.run('select 1', keep=True)                                 # starts now (its synced_at), writes later
+    time.sleep(0.01)
+    seen1 = Phone(ann); seen1.upload(['seen1'])                        # the older version pulls this one
+    time.sleep(0.01)
+    seen2 = Phone(ann); seen2.upload(['seen2'])                        # and this one: its cursor sits here
+    open_w.upload(['inflight'], keep=True)                              # stamped before seen1, still open
+    c_old = c.execute("select synced_at, id from public.entries where id = 'seen2'").fetchone()
+    rows, cur, res = new_pull(R, None, since=c_old)                    # the hand-over's first page
+    hand = res['snapshot']
+    first = [r['id'] for r in rows]
+    open_w.commit()
+    more = []
+    while True:
+        rows, cur, _ = new_pull(R, cur, since=c_old, handover=hand)
+        more += [r['id'] for r in rows]
+        if len(rows) < 1000:
+            break
+    xmax = int(hand.split(':')[1])
+    check('the hand-over sends nothing the older cursor covers, then the write that was still open, once it commits', 'seen1' not in first + more and 'seen2' not in first + more and more.count('inflight') == 1 and 'inflight' not in first, {'first': first, 'more': more})
+    check('the phone can drop the older cursor once its cursor passes the hand-over snapshot\'s xmax', int(cur[0]) >= xmax, {'cursor': cur, 'hand': hand})
+    # the same race again, but each page uses its own snapshot instead of the hand-over's: the open write is lost,
+    # which shows the carried snapshot is what keeps it
+    open_w2 = Phone(ann)
+    open_w2.run('select 1', keep=True)
+    time.sleep(0.01)
+    seen3 = Phone(ann); seen3.upload(['seen3'])
+    open_w2.upload(['inflight2'], keep=True)
+    c3 = c.execute("select synced_at, id from public.entries where id = 'seen3'").fetchone()
+    rows, cur2, _ = new_pull(R, None, since=c3)
+    open_w2.commit()
+    lost = [r['id'] for r in rows]
+    while True:
+        rows, cur2, _ = new_pull(R, cur2, since=c3)                   # no handover: the page's own snapshot
+        lost += [r['id'] for r in rows]
+        if len(rows) < 1000:
+            break
+    check('without the hand-over snapshot (each page using its own) that open write would be dropped', 'inflight2' not in lost, lost)
+    for p in (open_w, seen1, seen2, open_w2, seen3):
+        p.close()
+
     if not mutate:
         # ---- paging inside one transaction, other people's rows, read only, the order guard ----
         print('paging, privacy and the order guard')
@@ -214,7 +260,7 @@ def main():
         ro.execute('set transaction read only')
         ro.execute("select set_config('request.jwt.claims', %s, true)", [json.dumps({'sub': str(bea), 'role': 'authenticated'})])
         ro.execute('set local role authenticated')
-        n = len(ro.execute('select public.entries_pull(null, null, null, null, 10)').fetchone()[0]['rows'])
+        n = len(ro.execute('select public.entries_pull(null, null, null, null, null, 10)').fetchone()[0]['rows'])
         ro.rollback(); ro.close()
         check('it runs in a READ ONLY transaction, as PostgREST runs a STABLE function', n == 10, n)
         try:

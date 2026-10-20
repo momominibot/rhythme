@@ -1,4 +1,4 @@
-# Sync: pull in the order writes become final
+# Sync: pull only final writes, in transaction id order
 
 20 Oct 2026. Follows the shared-pull keyset cursor (PR #11, merged into main through #13). Migration
 `supabase/migrations/20261020120000_sync_pull_commit_order.sql` is a file only: applying it to the live project is
@@ -68,7 +68,9 @@ Each write records the id of its transaction, `sync_xid = pg_current_xact_id()`.
   - inside a subtransaction `pg_current_xact_id()` returns the top-level id, and snapshots list only top-level ids [2];
   - `pg_current_snapshot()` reads the statement's active snapshot (`GetActiveSnapshot()` in `xid8funcs.c` [8]), so in
     one SQL statement the fence and the rows come from the same view of the table.
-  So a row below the fence is final, and no row can ever appear below a cursor that stays below the fence.
+  So a row below the fence is final, and no row can ever appear below a cursor that stays below the fence. This is
+  transaction id order, not the order of commits: a transaction with a lower id that commits later is still delivered
+  before one with a higher id, once both are final. What it guarantees is that nothing lands behind the cursor.
 - Latency: rows wait only while an older writing transaction is still open, normally milliseconds. The outbox
   write-up says the same: queries "may be a bit delayed if our transactions last long" [7]. The worst case is a
   long-running writing transaction anywhere in the cluster (a migration, a dashboard session left open in a
@@ -120,63 +122,101 @@ Premortem, assuming B failed:
 3. *The migration is applied before the app ships.* Older versions keep paging by `synced_at`, which is still stamped
    as before. Nothing changes for them.
 4. *The app ships before the migration.* Same fallback as 2.
-5. *The migration is rolled back after phones moved over.* They fall back to the time cursor they kept, and receive
-   again the rows since then (harmless: last write wins, and a deleted row arrives as a tombstone). A phone that started
-   fresh after the migration has no time cursor and restores in full.
-6. *Some other entries_pull failure* (a timeout, a malformed reply) fails the sync and moves nothing. It never falls
+5. *The migration is rolled back after phones moved over, or a tab still on an older version pulls by time.* The
+   transaction-ordered pull keeps the time cursor moving too (only forward, to the latest row it delivered by
+   `synced_at`), so either resumes from where the newer pull got to, not from a stale point or the start, and nothing
+   someone cleared comes back. That time-ordered pull has the old gap for writes still open at that moment, until
+   `entries_pull` is back (Codex round one, finding 1).
+6. *A page asked for `entries_pull` before the migration and was told it is missing.* It asks again as soon as any tab
+   holds a transaction-ordered cursor, instead of pulling by its own time cursor for the rest of its life (Codex round
+   one, finding 1).
+7. *Some other entries_pull failure* (a timeout, a malformed reply) fails the sync and moves nothing. It never falls
    back silently to the pull with the gap.
 
 ## The hand-over from the time cursor
 
-Rows written before the migration get `sync_xid = 0`; no real transaction has id 0 (`InvalidTransactionId`). Their
-order is already final: the `ALTER TABLE` takes an ACCESS EXCLUSIVE lock, so it waits for every transaction writing
-`entries` to finish and blocks new ones until the migration commits. A constant default is stored in the catalog only,
-so the table is not rewritten, the trigger does not fire, and no row's `synced_at` changes (checked in the local test).
+Rows written before the migration get `sync_xid = 0`; no real transaction has id 0 (`InvalidTransactionId`). The
+`ALTER TABLE` takes an ACCESS EXCLUSIVE lock, so it waits for every transaction writing `entries` to finish and blocks
+new ones until the migration commits. A constant default is stored in the catalog only, so the table is not rewritten,
+the trigger does not fire, and no row's `synced_at` changes (checked in the local test).
 
-A phone that still holds a `(synced_at, id)` cursor sends it as `p_since`/`p_since_id`. The server applies it to the
-`sync_xid = 0` rows only:
+A phone that still holds a `(synced_at, id)` cursor hands over from it. The older version may have pulled any row
+written before, and any written after the migration while it still ran; the person may since have cleared those from
+the phone on purpose ("Delete every Rhythme room entry on this device" keeps the cloud copy and the cursor), and they
+must not come back. Codex round one found that the first version of this hand-over sent every post-migration row again,
+which would restore such cleared rows. The rule now:
 
-- rows from before the migration that the phone already pulled are not sent again;
-- every row written after the migration is sent once, including any that an older app version missed through this very
-  gap while it was still running against the migrated server. Some of those the phone already has; receiving them
-  again is harmless.
-- What it cannot recover: rows from before the migration that an older version already lost to the gap. They sit
-  behind the old cursor, mixed with rows the phone has, and only a full re-pull could find them. A full re-pull would
-  also bring back rows someone cleared from the phone on purpose, so it is not done.
+- The phone sends its time cursor as `p_since`/`p_since_id`. On the first page the server also returns its own snapshot
+  (`pg_current_snapshot()`, text `xmin:xmax:xip_list` [2]); the phone keeps it (`pullSince.snap`) and sends it back as
+  `p_handover` on every later page and sync of the hand-over.
+- The server applies the time cursor only to rows whose transaction had ended when that snapshot was taken,
+  `pg_visible_in_snapshot(sync_xid, handover)`, "was it completed before the snapshot was taken?" [2]. Those are the
+  only rows the older version could have pulled. They are sent only if they come after its cursor.
+- A row from a transaction still open at the hand-over (in the snapshot's `xip_list`, or at or above its `xmax`) could
+  not have been pulled by the older version, so it is sent once it ends, whatever its `synced_at`. The local test shows
+  that this snapshot is what keeps it: with each page using its own snapshot instead, that row is dropped.
+- The phone stops sending the hand-over once its cursor reaches the snapshot's `xmax`. Every later transaction id was
+  still to come at the hand-over, so no later row can be one the older version saw. Until then the hand-over stays
+  saved, also across the 20,000-row cap and while an open transaction holds the fence back.
 
-Once the cursor's transaction id is above 0 the filter has nothing left to apply to, and the phone stops sending it.
+What it cannot recover: rows the older version had already lost to the gap before the hand-over. They sit behind its
+cursor, from transactions that had ended, exactly like rows it pulled; only a full re-pull could find them, and that
+would also bring back what someone cleared. So they stay lost, as they are today, and from the hand-over on nothing is
+lost. Shipping the app before applying the migration keeps this window short: phones that load the new version first
+hand over at once, and the older version never runs against the migrated server.
+
+One case this does not cover: a tab still on the older version, open at the same time as a newer one, pulling rows after
+the hand-over began, which the person then clears. The newer pull may send those again. It needs two versions open
+side by side and a clear in between.
 
 ## The implementation
 
 - `supabase/migrations/20261020120000_sync_pull_commit_order.sql`: `sync_xid xid8` (constant default 0 for existing
   rows, then `pg_current_xact_id()`), the `(user_id, sync_xid, id)` index, the trigger stamping it, and
-  `entries_pull(p_after_xid, p_after_id, p_since, p_since_id, p_limit)`: STABLE (PostgREST runs it READ ONLY [5]),
-  security invoker so the "own entries" policy applies, `search_path = ''`, execute for `authenticated` only. It
-  returns `{fence, rows}` with ids as text, at most 1,000 rows a page.
-- `ovu-sync.js`: `pullShared` tries `entries_pull` and falls back to the time-ordered `pullSince` only on `PGRST202`,
-  once per page load. `pullCommitted` pages by `(sync_xid, id)`; when a page comes back short it moves the cursor up to
-  the fence, with no id ("from this transaction id on"), so an empty pull is cheap and the hand-over ends cleanly. The
-  new cursor lives in `pulledXid`/`pulledXidId`, keeps the forward-only rule across tabs (`xidLater`), and is cleared by
-  every reset and account switch. The time cursor is left as it is, for a fallback or a tab still on an older version.
-  The typed recovery now also starts for a phone whose only cursor is the new one.
+  `entries_pull(p_after_xid, p_after_id, p_since, p_since_id, p_handover, p_limit)`: STABLE (PostgREST runs it READ
+  ONLY [5]), security invoker so the "own entries" policy applies, `search_path = ''`, execute for `authenticated`
+  only. It returns `{fence, snapshot, rows}` with transaction ids as text, at most 1,000 rows a page.
+- `ovu-sync.js`: `pullShared` tries `entries_pull` and falls back to the time-ordered `pullSince` only on `PGRST202`;
+  a page that was told it is missing asks again once any tab holds a transaction-ordered cursor. `pullCommitted` pages
+  by `(sync_xid, id)`; when a page comes back short it moves the cursor up to the fence, with no id ("from this
+  transaction id on"), so an empty pull is cheap. The cursor lives in `pulledXid`/`pulledXidId`, a hand-over in
+  progress in `pullSince` (`{at, id, snap}`); the cursor keeps the forward-only rule across tabs (`xidLater`), and every
+  reset and account switch clears all three. The time cursor (`pulledSeq`/`pulledId`) follows along, only forward by
+  instant, for a fallback or a tab still on an older version. The typed recovery now also starts for a phone whose only
+  cursor is the new one. Any other `entries_pull` failure fails the sync without falling back.
 
 ## Verification
 
-- `tools/db/pull_order_test.py` (local PostgreSQL 17, two real sessions, never the live project): 18 checks pass. Today's
-  query loses the long upload and the read-first-write-last row; `entries_pull` delivers both, pages 2,500 rows of one
-  transaction as 1,000/1,000/500, runs READ ONLY, refuses anonymous callers, never crosses people, and the stale-write
-  guard keeps `sync_xid`. With `--mutate` (the fence removed) `entries_pull` loses the long upload again, so the tests
-  see the bug the fence guards against.
+- `tools/db/pull_order_test.py` (local PostgreSQL 17, real concurrent sessions, never the live project): 21 checks pass.
+  Today's query loses the long upload and the read-first-write-last row; `entries_pull` delivers both. The hand-over
+  sends nothing the older cursor covers and still delivers a write that was open when it began, and the same race with
+  each page using its own snapshot drops that write. `entries_pull` pages 2,500 rows of one transaction as
+  1,000/1,000/500, runs READ ONLY, refuses anonymous callers, never crosses people, and the stale-write guard keeps
+  `sync_xid`. With `--mutate` (the fence removed) `entries_pull` loses the long upload again, so the tests see the bug
+  the fence guards against. At 60,000 rows the planner uses `entries_user_sync_xid` with the fence and the cursor as
+  index conditions; a 1,000-row page took 10 to 21 ms.
 - `tools/test-core.js`, `sharedPullCommitOrder`, on the shared `syncServer`/`syncWorld`/`syncRow` helpers (the pretend
-  server now has open transactions and an `entries_pull` that matches the SQL): 16 checks. Against main's
-  `ovu-sync.js`, 12 of them fail (a new phone ends with 3 of 1,503 rows); on this branch all pass, with every earlier
-  sync test unchanged.
+  server now has open transactions, PostgreSQL's snapshot rules with BigInt transaction ids, and an `entries_pull` that
+  matches the SQL, arguments checked against the migration file): 23 checks. Against main's `ovu-sync.js`, 15 of them
+  fail (a new phone ends with 3 of 1,503 rows); on this branch all pass, with every earlier sync test unchanged.
+- `tools/check.py` and `tools/e2e_smoke.py` pass.
+
+## Review record
+
+- Codex read-only, round one (`docs/debate/2026-10-20-sync-commit-order-codex-round1.md`): NOT READY, two should-fix
+  findings and two nits. The fence reasoning, locking, defaults, grants, RLS, the consent trigger and the stale-write
+  path were found sound. Fixed: (1) a page that cached "no entries_pull", and tabs on an older version, used a stale
+  time cursor after another tab moved over, restoring cleared rows: the time cursor now follows along and the page asks
+  again; (2) the hand-over sent every post-migration row again, restoring cleared rows: it now uses the hand-over
+  snapshot as above; (3) the pretend server lost precision past 2^53: BigInt, with a test near 2^64; (4) "commit order"
+  overstated the guarantee: it is transaction id order once final.
 
 ## Sources
 
 1. PostgreSQL 18 docs, 9.9.5 Current Date/Time: https://www.postgresql.org/docs/current/functions-datetime.html
-2. PostgreSQL 18 docs, System Information Functions (pg_current_xact_id, pg_current_snapshot, Table 9.85 Snapshot
-   Components): https://www.postgresql.org/docs/current/functions-info.html
+2. PostgreSQL 18 docs, System Information Functions (pg_current_xact_id, pg_current_snapshot, pg_visible_in_snapshot,
+   the `xmin:xmax:xip_list` text form, Table 9.85 Snapshot Components):
+   https://www.postgresql.org/docs/current/functions-info.html
 3. PostgreSQL 18 docs, 67.1 Transactions and Identifiers: https://www.postgresql.org/docs/current/transaction-id.html
 4. PostgreSQL 18 docs, Client Connection Defaults (statement_timeout, transaction_timeout,
    idle_in_transaction_session_timeout): https://www.postgresql.org/docs/current/runtime-config-client.html
