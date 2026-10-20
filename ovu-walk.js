@@ -371,7 +371,11 @@
   }
   function cycleHide() { if (cyc.on) { avatar.classList.remove('cycling'); cyc.on = false; } cyc.acc = 0; }
   /* advance the cycle by distance walked (iso units), never by time, so blocked pushes and the ease-out read on the feet */
+  /* a soft footstep every half stride, on the ground she is on (ovu-sound.js) */
+  var stepAcc = 0;
+  function footstep(distIso) { stepAcc += distIso; if (stepAcc < STRIDE / 2) return; stepAcc = 0; if (root.OvuSound) root.OvuSound.play('step', { surface: root.OvuSound.surfaceFor(R.layout()) }); }
   function cycleStep(distIso) {
+    if (distIso > 0) footstep(distIso);
     if (!cyc.on || !(distIso > 0)) return; cyc.acc = cycleAdvance(cyc.acc, distIso);
     var f = frameOf(cyc.acc); if (f !== cyc.frame) { cyc.frame = f; cyc.img.style.transform = 'translate3d(-' + (f * 100 / FRAMES).toFixed(3) + '%,0,0)'; }
   }
@@ -506,7 +510,7 @@
     if (!T) return false;
     if (T.store && !storeOpen(T.store)) { hoursCard(T.store); return false; } /* each interior keeps its own store's hours */
     travelling = true; clearInput(); if (active) commit();
-    scene.classList.add('fading'); R.chime('tap');
+    scene.classList.add('fading'); if (root.OvuSound) root.OvuSound.play('door'); else R.chime('tap');
     var t0 = Date.now();
     Promise.all([preload(R.ART + T.img), occWait(T)]).then(function () { /* the plate, and its cutouts decoded or the cap reached */
       var left = Math.max(0, (reduced ? 80 : 380) - (Date.now() - t0));

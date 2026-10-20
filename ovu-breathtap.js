@@ -31,7 +31,7 @@
   function h(html) { var d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; }
   function $(s) { return el ? el.querySelector(s) : null; }
   function store() { return root.OvuStore || null; }
-  function soundOn() { try { var s = store(); return !s || !!s.state().sound; } catch (e) { return true; } }
+  function soundOn() { if (root.OvuSound) return root.OvuSound.enabled(); try { var s = store(); return !s || !!s.state().sound; } catch (e) { return true; } }
   function build() {
     if (el) return el;
     reduced = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -109,6 +109,7 @@
   }
   /* a water drop: a quick falling sine, then a quieter higher drip a moment later, like a drop meeting a still pond */
   function plink() {
+    if (root.OvuSound) { root.OvuSound.play('drop'); return; } /* the shared kit: one switch, one volume, no stacking */
     if (!soundOn()) return;
     try {
       audio = audio || new (root.AudioContext || root.webkitAudioContext)();

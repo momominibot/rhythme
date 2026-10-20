@@ -20,6 +20,7 @@
     exercise: { pose: 'stretch', lines: ['Notice how your body feels after moving.', 'Movement that felt kind is enough. Rest counts too.'] },
     session: { pose: null, lines: ['Carry one breath of this into the next thing you do.', 'Nothing to fix. That pause was yours.'] },
     practice: { pose: null, lines: ['Two ordinary minutes, fully lived. Carry that softness with you.'] },
+    lightflower: { pose: 'listen', lines: ['Notice one quiet detail around you. You can carry it into what comes next.', 'The last note has faded. Listen to what is here now.'] },
     moontap: { pose: null, lines: ['A brief pause still belongs to you.', 'Watch one ripple fade. You can leave whenever you like.'] },
     reflection: { pose: 'note', lines: ['A few words, or none, are enough.', 'These notes do not measure your worth.'] },
     luna: { pose: 'note', lines: ['Thank you for telling Luna. Be soft with yourself today.', 'You can say how today really feels. Luna is listening.'] },
@@ -65,7 +66,7 @@
     if (!ev) return null;
     var d = ev.data || {};
     if (ev.type === 'period') return post ? 'bleed_post' : 'period';
-    if (ev.type === 'mindfulness') return d.kind === 'breathtap' ? 'moontap' : d.kind === 'informal' ? (d.practice === 'greenhouse' ? 'plantcare' : 'practice') : 'session';
+    if (ev.type === 'mindfulness') return d.kind === 'breathtap' ? 'moontap' : d.kind === 'lightflower' ? 'lightflower' : d.kind === 'informal' ? (d.practice === 'greenhouse' ? 'plantcare' : 'practice') : 'session';
     return { symptom: 'symptom', sleep: 'sleep', food: 'food', exercise: 'exercise', reflection: 'reflection', weight: 'weight' }[ev.type] || null;
   }
   root.OvuMoments = { MOMENTS: MOMENTS, NEW_POSES: NEW_POSES, line: line, pose: pose, forEntry: forEntry };
