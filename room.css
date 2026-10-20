@@ -1571,7 +1571,6 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .hud-mute[aria-pressed="true"]{background:var(--rm-plum,#6b528e);color:#fff}
 /* Koi Pond (ovu-breathtap.js): three koi swim under the breathing ring; the moon is gone */
 .btap-koi{position:absolute;inset:0;z-index:0;pointer-events:none}
-.btap-koi img{position:absolute;left:0;top:0;width:54px;transform-origin:50% 45%;filter:drop-shadow(0 6px 6px rgba(0,30,40,.35));will-change:transform}
 .btap-ring img[hidden]{display:none}
 /* the food photo choices had no air (Jamie, 20 Oct): icon and words spaced, taller buttons, room above and below */
 .snapbtns{gap:10px;margin:12px 0 4px}

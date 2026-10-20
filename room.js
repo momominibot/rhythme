@@ -2041,7 +2041,7 @@
         '<button type="button" class="mattile" data-kind="erin" data-min="6"><span class="ms">record_voice_over</span><b>With Erin</b><small>6 min, longer settle</small></button>' +
         '<button type="button" class="mattile" data-kind="breathe" data-min="2"><span class="ms">blur_circular</span><b>Just breathe</b><small>2 min, 4-4-6 with a bell</small></button>' +
         '<button type="button" class="mattile" data-kind="breathe" data-min="5"><span class="ms">blur_circular</span><b>Just breathe</b><small>5 min, silent</small></button>' +
-        '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Koi Pond</b><small>Tap the water, the koi come, 3 to 5 min</small></button>' +
+        '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Koi Pond</b><small>Watch the koi glide, 3 to 5 min</small></button>' +
         '<button type="button" class="mattile" id="mindEveryday"><span class="ms">home</span><b>Everyday practice</b><small>Teeth, tea, dishes, plants</small></button>' +
         '<button type="button" class="mattile" id="mindAcu"><span class="ms">spa</span><b>Cramp relief points</b><small>Pressure points on your body</small></button>' +
         '<button type="button" class="mattile" id="mindMove"><span class="ms">directions_run</span><b>Movement</b><small>Log exercise, see your week</small></button>' +
