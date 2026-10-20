@@ -4,9 +4,11 @@
 `supabase/migrations/20261020120000_sync_pull_commit_order.sql` is a file only: applying it to the live project is
 Jamie's call (AGENTS gate 3).
 
-**Status.** Codex round two held the branch at AGENTS gate 6: the compatibility path (premortem 5) failed review a
-second time. On 20 Oct Jamie chose option A from the round-two record: the server certifies the time cursor
-(`time_safe`, below). Round three reviews that.
+**Status: held at AGENTS gate 6 again.** Codex round two held the branch on the compatibility path (premortem 5). Jamie
+chose option A (the server certifies the time cursor, `time_safe`, below); round three found that a single time cursor
+cannot be both skip-free and replay-free once the transaction-ordered pull has delivered rows out of time order, and
+reproduced both. The transaction-ordered pull, the fence and the hand-over passed all three rounds. Options A2
+(recommended) and D are in `docs/debate/2026-10-20-sync-commit-order-codex-round3.md`, not applied.
 
 ## The gap
 
@@ -133,8 +135,11 @@ Premortem, assuming B failed:
    the instant left the time cursor's id behind, so rows sharing that instant could come back after a clear, and the
    cursor could move past committed rows the 20,000 cap had not delivered, which a lasting fallback then never pulled.
    Now the server certifies it (`time_safe`, below): compared in its own collation, bounded by the earliest visible
-   row still to come, never back past the cursor the phone sent. A pull by time from it is never worse than today's
-   pull, whose only gap is writes still open.
+   row still to come, never back past the cursor the phone sent. **Still not enough (Codex round three, reproduced):**
+   when a row delivered earlier in time order sits after one held back (d at 10:00 delivered, early at 09:00 behind
+   the fence), no time cursor can keep early and exclude d, so a pull by time either sends d again after a clear or,
+   with the cursor kept from an earlier sync, skips early. Proposed (A2): no time-ordered pull once a phone has moved
+   over; `time_safe` only for tabs still on an older version, with that weaker guarantee written down.
 6. *A page asked for `entries_pull` before the migration and was told it is missing.* It asks again as soon as any tab
    holds a transaction-ordered cursor, instead of pulling by its own time cursor for the rest of its life (Codex round
    one, finding 1).
@@ -255,6 +260,10 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
   and 9), race 3 tightened (the open writer takes its id before the later writes, its id is checked in the snapshot's
   `xip_list`, and the helper keeps or drops the hand-over by the client's own rule), race 4 for ties, backlog and
   "never backwards" on real PostgreSQL, and the snapshot checked only when a hand-over begins.
+- Codex read-only, round three (`docs/debate/2026-10-20-sync-commit-order-codex-round3.md`): NOT READY. Round-two
+  findings 1 and 3 FIXED, 2 PARTLY FIXED: two counterexamples (replay above a held-back row after a clear; a cursor kept
+  from an earlier sync skipping a row that became visible behind the fence), both reproduced independently, and a
+  proof that a single time cursor cannot avoid both. Third failure on the same path: held at AGENTS gate 6.
 
 ## Sources
 
