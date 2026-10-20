@@ -220,18 +220,22 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
 
 ## Verification
 
-- `tools/db/pull_order_test.py` (local PostgreSQL 17, real concurrent sessions, never the live project): 21 checks pass.
+- `tools/db/pull_order_test.py` (local PostgreSQL 17, real concurrent sessions, never the live project): 27 checks pass.
   Today's query loses the long upload and the read-first-write-last row; `entries_pull` delivers both. The hand-over
   sends nothing the older cursor covers and still delivers a write that was open when it began, and the same race with
   each page using its own snapshot drops that write. `entries_pull` pages 2,500 rows of one transaction as
   1,000/1,000/500, runs READ ONLY, refuses anonymous callers, never crosses people, and the stale-write guard keeps
-  `sync_xid`. With `--mutate` (the fence removed) `entries_pull` loses the long upload again, so the tests see the bug
+  `sync_xid`. Race 3 checks the open writer's id in the hand-over snapshot's `xip_list` and keeps or drops the
+  hand-over by the client's own rule (and shows that ending it at the first short page sends pulled rows again);
+  race 4 checks `time_safe` for three rows on one instant, for backlog past a cap (a pull by time from it still brings
+  the earlier row), and that it never goes back past the cursor sent. With `--mutate` (the fence removed) `entries_pull` loses the long upload again, so the tests see the bug
   the fence guards against. At 60,000 rows the planner uses `entries_user_sync_xid` with the fence and the cursor as
-  index conditions; a 1,000-row page took 10 to 21 ms.
+  index conditions; with `time_safe`, a full 60,000-row restore took 61 pages at a median 35 ms (worst 48 ms).
 - `tools/test-core.js`, `sharedPullCommitOrder`, on the shared `syncServer`/`syncWorld`/`syncRow` helpers (the pretend
   server now has open transactions, PostgreSQL's snapshot rules with BigInt transaction ids, and an `entries_pull` that
-  matches the SQL, arguments checked against the migration file): 23 checks. Against main's `ovu-sync.js`, 15 of them
-  fail (a new phone ends with 3 of 1,503 rows); on this branch all pass, with every earlier sync test unchanged.
+  matches the SQL including `time_safe`, arguments checked against the migration file): 28 checks. Against main's
+  `ovu-sync.js` 17 of them fail (a new phone ends with 3 of 1,503 rows); against the round-two code (7822e3c) the five
+  round-two reproductions fail; on this branch all pass, with every earlier sync test unchanged (867 in all).
 - `tools/check.py` and `tools/e2e_smoke.py` pass.
 
 ## Review record
