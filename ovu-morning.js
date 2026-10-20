@@ -16,6 +16,8 @@
   'use strict';
   var GUIDE = 'assets/audio/guide-interim/';
   var START_HOUR = 4, END_HOUR = 12, MIN_SAVE_S = 30;
+  /* 10 ms of silence, used only to ready the voice inside a tap: not an app voice file, so the shared voice mute leaves it alone */
+  var SILENT = 'data:audio/wav;base64,UklGRsQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
   var STEPS = {
     /* the greeting comes from GREETINGS by the clock; clips are 23 s (Good morning) and 27 s (Hello), so 35 s leaves a quiet moment */
     arrive: { key: 'arrive', part: 1, title: 'Arrive', secs: 35,
@@ -40,8 +42,11 @@
     var MF = root.OvuMindful, a = MF && MF.byId('teeth'); if (!a) return [];
     var vi = -1; a.variations.forEach(function (v, i) { if (vi < 0 && v.when === 'morning' && v.author === 'erin') vi = i; });
     if (vi < 0) return [];
-    return a.variations[vi].steps.map(function (s, si) {
-      return { key: 'erin' + si, part: 3, title: 'Brushing with Erin', secs: s.secs, text: s.text, pose: 'teeth', audio: GUIDE + 'teeth-' + vi + '-' + si + '.mp3', erin: true };
+    /* brushing starts after her line "When you're ready, beginning to brush"; the lines before it only pick up the brush */
+    var st = a.variations[vi].steps, from = -1; st.forEach(function (s, si) { if (from < 0 && /begin(ning)? to brush/i.test(s.text)) from = si + 1; });
+    if (from < 0) from = 1;
+    return st.map(function (s, si) {
+      return { key: 'erin' + si, part: 3, title: 'Brushing with Erin', secs: s.secs, text: s.text, pose: 'teeth', audio: GUIDE + 'teeth-' + vi + '-' + si + '.mp3', erin: true, brushing: si >= from };
     });
   }
   /* Arrive says Good morning only inside the morning window (she can open it from Everyday at any hour), with the matching
@@ -91,7 +96,11 @@
   function R() { return root.OvuRoom; }
   function S() { return root.OvuStore; }
   function active() { return !!run; }
-  function quietDefault() { return !(S().state() || {}).sound; }
+  function voiceMuted() { return !!(root.OvuVoice && root.OvuVoice.muted()); }
+  /* quiet unless app sound is on and she has not muted Erin's voice (the remembered mute shared with practices) */
+  function quietDefault() { return !(S().state() || {}).sound || voiceMuted(); }
+  /* she chose to hear the voice here: lift the shared mute, so Voice on is never a silent clip */
+  function hearVoice() { if (voiceMuted()) root.OvuVoice.set(false); }
   function markToday(patch) { var st = S().state(), m = st.morningStart && st.morningStart.date === S().today() ? st.morningStart : { date: S().today() }; for (var k in patch) m[k] = patch[k]; S().setState({ morningStart: m }); }
 
   function renderInvite() {
@@ -140,6 +149,7 @@
     if (room.els && room.els.meditator && room.els.meditator.classList.contains('on') && !(room.sessionOn && room.sessionOn())) room.exitMeditation();
     if (room.restorePose) room.restorePose();
     if (room.els && room.els.avatar) room.els.avatar.classList.remove('acting');
+    if (!run.quiet) hearVoice();
     showPanel(); next(); if (run && run.quiet) unlock(); /* a quiet start still readies the voice, inside this tap */
     var pnl = $('#mpanel'); if (pnl) { pnl.setAttribute('tabindex', '-1'); pnl.focus(); } /* focus leaves the closed sheet for the panel */
     clearInterval(ticker); ticker = setInterval(function () { if (run && room.asleep()) cancel(); }, 1000);
@@ -162,7 +172,7 @@
     if (s.pose) room.setPose(s.pose); else if (room.restorePose) room.restorePose();
     if (room.els && room.els.avatar) room.els.avatar.classList.remove('acting'); /* no pulse: it would read as a breathing pace */
     if (s.gate) { run.paused = false; run.clock.hold(); } else if (!run.paused) run.clock.run(); /* the sink has no Pause, so it is never left paused */
-    if (s.key === 'yourway' || s.erin) run.brushed = s.erin ? 'erin' : 'yourway';
+    if (s.brushing) run.brushed = 'erin'; /* her own way counts as brushed only when she taps Done */
     paint();
     run.left = s.secs ? s.secs * 1000 : 0; run.pending = null;
     if (s.secs && !run.paused) arm(); /* a paused routine keeps the new step's full time for Resume */
@@ -182,10 +192,10 @@
    * only allow sound that a tap started; it never sounds, and a real line that starts meanwhile is left alone */
   function unlock() {
     if (!run || !run.audio || run.unlocked) return;
-    var a = run.audio, s = step(), src = (s && s.audio) || (run.steps.filter(function (x) { return x.audio; })[0] || {}).audio; if (!src) return;
+    var a = run.audio;
     run.unlocked = true;
     try {
-      a.muted = true; a.src = src; var p = a.play(), r = run;
+      a.muted = true; a.src = SILENT; var p = a.play(), r = run;
       var undo = function () { if (run === r && !run.audioKey) { try { a.pause(); } catch (e) { } } a.muted = false; };
       if (p && p.then) p.then(undo, function () { a.muted = false; if (run === r) run.unlocked = false; }); else undo();
     } catch (e) { a.muted = false; }
@@ -208,7 +218,7 @@
   function quietToggle() {
     if (!run) return; run.quiet = !run.quiet;
     if (run.quiet) { stopAudio(); run.pending = null; run.audioKey = null; } /* on again: the voice speaks from the next line, so no line is cut short */
-    else unlock(); /* this tap readies the voice for that next line */
+    else { hearVoice(); unlock(); } /* this tap lifts a remembered mute and readies the voice for that next line */
     paint();
   }
   function ready() { if (!run) return; run.paused = false; next(false); }
@@ -261,7 +271,7 @@
     var row = $('#mpBtns'), pnl = $('#mpanel'), ae = document.activeElement, focusId = ae && ae.id, inPanel = !!(ae && pnl && (pnl.contains(ae) || ae === document.body));
     row.innerHTML = b;
     var bind = function (id, f) { var el = document.getElementById(id); if (el) el.addEventListener('click', f); };
-    bind('mpReady', ready); bind('mpSkipBrush', skipBrushing); bind('mpDone', function () { finish(true); }); bind('mpPause', pauseToggle); bind('mpNext', function () { next(true); }); bind('mpQuiet', quietToggle); bind('mpStop', stop);
+    bind('mpReady', ready); bind('mpSkipBrush', skipBrushing); bind('mpDone', function () { if (run) run.brushed = 'yourway'; finish(true); }); bind('mpPause', pauseToggle); bind('mpNext', function () { next(true); }); bind('mpQuiet', quietToggle); bind('mpStop', stop);
     var keep = focusId && document.getElementById(focusId);
     if (keep && row.contains(keep)) keep.focus(); /* keyboard focus stays where she was */
     else if (inPanel && focusId !== 'mpanel') { var first = row.querySelector('button'); if (first) first.focus(); } /* or moves to the first control, never lost */

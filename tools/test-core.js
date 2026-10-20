@@ -323,6 +323,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('any sink, and time for prayer or anything else before brushing', /wherever you brush/.test(M.STEPS.ready.text) && /prayer or anything else/.test(M.STEPS.ready.text) && !/the sink/.test(M.STEPS.ready.text));
   var am = M.plan('yourway', at(8))[0], pm = M.plan('yourway', at(19))[0], gm = M.arriveFor(at(4)), hi = M.arriveFor(at(12));
   check('Good morning only inside the morning window, Hello at any other hour, each with its own clip', am.text.indexOf('Good morning. Sit') === 0 && /mstart-arrive-0\.mp3$/.test(am.audio) && pm.text.indexOf('Hello. Sit') === 0 && /mstart-arrive-1\.mp3$/.test(pm.audio) && gm.text.indexOf('Good morning') === 0 && hi.text.indexOf('Hello') === 0 && M.STEPS.arrive.text.indexOf('Good') < 0, am.text.slice(0, 20) + ' | ' + pm.text.slice(0, 20));
+  var brushAt = er.slice(3).map(function (x) { return x.brushing ? 1 : 0; }).join('');
+  check('with Erin, brushing counts only from the line after "beginning to brush", not while she picks up the brush', brushAt === '00011111' && /beginning to brush/.test(er[3 + 2].text), brushAt);
   var e8 = M.plan('erin', at(8))[0], e19 = M.plan('erin', at(19))[0];
   check('with Erin, Arrive has no greeting at any hour: Erin greets her at the sink in her own words, never after Hello or twice', e8.text.indexOf('Sit, lie down') === 0 && e19.text === e8.text && /mstart-arrive-2\.mp3$/.test(e8.audio) && e19.audio === e8.audio, e8.text.slice(0, 20));
   var voiced = [am, pm, e8, M.STEPS.notice, M.STEPS.ready, M.STEPS.yourway];
