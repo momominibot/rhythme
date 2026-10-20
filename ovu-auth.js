@@ -210,6 +210,15 @@
 
   /* ---------- email one-time code ---------- */
   function sendCode(addr) { return call('POST', '/auth/v1/otp', { email: String(addr || '').trim(), create_user: true }); }
+  /* Why a code could not be sent, in plain words. Supabase's own email service sends at most 2 sign-in emails an hour for
+   * the whole project, and one per minute to the same address (supabase.com/docs/guides/auth/rate-limits, 20 Oct 2026).
+   * limited: a code that already arrived can still be typed in, so the code box opens. */
+  function sendError(err) {
+    var t = String((err && err.message) || ''), wait = /after (\d+) seconds?/i.exec(t);
+    if (wait) return { limited: true, text: 'Please wait ' + wait[1] + ' seconds before asking for another code. If a code already arrived, type it below.' };
+    if ((err && err.status === 429) || /rate limit|over_email_send_rate_limit/i.test(t + ' ' + ((err && err.code) || ''))) return { limited: true, text: 'Too many sign-in emails went out in the last hour (the email service sends 2 an hour for now). If a code already arrived, type it below. Otherwise try again in about an hour.' };
+    return { limited: false, text: t ? 'Could not send the code: ' + t : 'Could not send the code. Try again.' };
+  }
   function verifyCode(addr, code) {
     return call('POST', '/auth/v1/verify', { type: 'email', email: String(addr || '').trim(), token: String(code || '').trim() }).then(function (j) {
       setSession(j); onSignedIn(); return j;
@@ -417,7 +426,10 @@
           go.innerHTML = '<span class="ms">login</span>Verify and sign in';
           msg('We emailed a six-digit code to ' + addr + '. Enter it here. If a sign-in link arrives instead, open it on this phone.', true);
           if (codeEl) codeEl.focus();
-        }, function (err) { go.disabled = false; msg(err.message || 'Could not send the code. Try again.'); });
+        }, function (err) {
+          var se = sendError(err); go.disabled = false; msg(se.text);
+          if (se.limited) { stage = 'code'; codeWrap.hidden = false; emailEl.readOnly = true; go.innerHTML = '<span class="ms">login</span>Verify and sign in'; if (codeEl) codeEl.focus(); } /* a code already in the inbox still works */
+        });
       } else {
         var code = (codeEl.value || '').replace(/\s/g, '');
         if (!/^\d{6}$/.test(code)) { msg('Enter the six-digit code from the email.'); return; }
@@ -488,7 +500,7 @@
   root.OvuAuth = {
     init: init, renderAccount: renderAccount,
     session: session, userId: userId, email: email, isSignedIn: isSignedIn, token: token,
-    sendCode: sendCode, verifyCode: verifyCode, signInWith: signInWith, signOut: signOut,
+    sendCode: sendCode, sendError: sendError, verifyCode: verifyCode, signInWith: signInWith, signOut: signOut,
     promptCloud: promptCloud, hasCloud: hasCloud,
     NOTICE_V: NOTICE_V, IMPROVE: IMPROVE, improveText: improveText, improvePlan: improvePlan, improveLocal: improveLocal, setImprove: setImprove, syncImprove: syncImprove,
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
