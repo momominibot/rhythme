@@ -126,3 +126,13 @@ html[data-sky="night"] .row>span[style*="border-radius:50%"]{background:rgba(248
 html[data-sky="night"] .row>span[style*="border-radius:50%"] .ms{color:#f6d3c8!important}
 /* the account panel's injected state line uses a day-only grey */
 html[data-sky="night"] .ya-state{color:var(--rm-ink-3)}
+/* health data sheet (room.js openImport): the ticked row, the just-brought-in panel and the calendar note follow the night palette */
+html[data-sky="night"] .imp-kind:has(input:checked){background:#3a2d5a;border-color:#8f74b8}
+html[data-sky="night"] .imp-kind small.imp-kept,html[data-sky="night"] .imp-note{color:var(--rm-mauve)}
+html[data-sky="night"] .imp-done{background:linear-gradient(135deg,#2f2550,#3a2547)}
+html[data-sky="night"] .imp-note{background:#2f2550}
+html[data-sky="night"] .ibars{border-bottom-color:rgba(255,255,255,.14)}
+html[data-sky="night"] .imp-range .chipbtn.on{background:#5b477f;border-color:#8f74b8;color:#fff}
+/* the chosen session (bench, mat, everyday) shows at night too: the catch-all card colour above out-ranked .session.on */
+html[data-sky="night"] .sessions .session{border:1.5px solid transparent}
+html[data-sky="night"] .sessions .session.on{background:#4a3a72;border-color:#c9b6e6;box-shadow:0 0 0 3px rgba(201,182,230,.18)}

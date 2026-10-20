@@ -25,8 +25,8 @@ const IMG_PER_IP_PER_DAY = 30;
 const IMG_ALL_PER_DAY = 1500;
 const MAX_IMAGE_CHARS = 700000;
 const FOOD_SYSTEM = "You identify food in one photo for a women's health food journal in Singapore. Know local hawker and home dishes by their real names (for example bak chor mee, chicken rice, laksa, nasi lemak, roti prata, kaya toast, kopi, teh). " +
-  "Output only JSON: {\"is_food\":true|false,\"meal_name\":\"short dish name\",\"items\":[{\"name\":\"plain English, local name in brackets if any\",\"portion\":\"bowl|plate|cup|glass|piece|slice|serving\",\"grams\":number,\"kcal\":number,\"protein_g\":number,\"carb_g\":number,\"fat_g\":number,\"fiber_g\":number,\"confidence\":\"high|medium|low\"}],\"note\":\"one short neutral sentence describing what you see\"}. " +
-  "One item per separate dish or drink, at most 8. Estimate typical Singapore portions and count visible oil, lard, gravy and sauces. If the photo is not food or drink, return is_food false and an empty items list. " +
+  "Output only JSON: {\"is_food\":true|false,\"meal_name\":\"short dish name\",\"items\":[{\"name\":\"plain English description of the dish or drink\",\"local_name\":\"the name this dish or drink goes by at a Singapore hawker stall or kopitiam, romanised as on the menu, with its style in brackets when it matters (for example bak chor mee (dry), kopi c, mee rebus, nasi lemak), or empty when it has none\",\"portion\":\"bowl|plate|cup|glass|piece|slice|serving\",\"grams\":number,\"kcal\":number,\"protein_g\":number,\"carb_g\":number,\"fat_g\":number,\"fiber_g\":number,\"confidence\":\"high|medium|low\"}],\"note\":\"one short neutral sentence describing what you see\"}. " +
+  "One item per separate dish or drink, at most 8. Give every item its own local_name; do not put the local name only in meal_name. Leave local_name empty for foods with no local name (for example an apple or a plain side soup) and never make one up. Estimate typical Singapore portions and count visible oil, lard, gravy and sauces. If the photo is not food or drink, return is_food false and an empty items list. " +
   "Never judge the meal, the person, weight or diet. Never guess allergens, medical effects or what is hidden inside.";
 const LABEL_SYSTEM = "You transcribe the ingredients panel of a packaged food from one photo, for a women's health food journal. " +
   "Output only JSON: {\"is_label\":true|false,\"product_name\":\"the product name as printed, or empty\",\"quantity\":\"net weight or volume as printed, or empty\",\"ingredients_text\":\"the complete ingredients list exactly as printed, in reading order, keeping percentages, E numbers, sub-ingredients in brackets and allergen words\",\"complete\":true|false,\"note\":\"short, only when part of the list is cut off, hidden or unreadable\"}. " +
@@ -40,6 +40,7 @@ function num(v: unknown, max: number): number | null {
 function cleanFood(o: Record<string, unknown> | null) {
   const items = (Array.isArray(o?.items) ? o!.items as Record<string, unknown>[] : []).slice(0, 8).map((it) => ({
     name: String(it?.name || "").trim().slice(0, 80),
+    local_name: str(it?.local_name, 60),
     portion: String(it?.portion || "serving").trim().slice(0, 20),
     grams: num(it?.grams, 2000),
     kcal: num(it?.kcal, 3000),

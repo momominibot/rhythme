@@ -36,7 +36,7 @@
       props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 87, y: 66, w: 10 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 40, y: 73.5, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
     },
     house: {
-      id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8,
+      id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8, cam: { z: 1.5 }, /* drawn at a smaller scale: zoomed 1.5x she is her usual size (Jamie, 19 Oct); fit shows the whole house */
       winPatches: [{ x: 27.539, y: 10.859, w: 42.480, base: 'house-v1-sky2-house-' }],
       stairs: [{ x: 46, y: 78 }, { x: 55, y: 57 }], upstairsY: 55,
       hotspots: [
@@ -58,7 +58,7 @@
     },
     /* rendered 18 Oct 2026 (Seedream 5.0 pro, seed 7201): bedroom and bubble bath upstairs, sofa, study and wardrobe below */
     bathhouse: {
-      id: 'bathhouse', name: 'Your bath house', img: 'house-bath-v1.webp', w: 1024, h: 1280, avatarW: 8,
+      id: 'bathhouse', name: 'Your bath house', img: 'house-bath-v1.webp', w: 1024, h: 1280, avatarW: 8, cam: { z: 1.5 }, /* drawn at a smaller scale: zoomed 1.5x she is her usual size (Jamie, 19 Oct); fit shows the whole house */
       winPatches: [{ x: 26.465, y: 13.438, w: 36.230, base: 'house-bath-v1-sky2-bathhouse-' }],
       stairs: [{ x: 42, y: 75 }, { x: 52, y: 51 }], upstairsY: 55,
       hotspots: [
@@ -82,7 +82,7 @@
     },
     /* rendered 18 Oct 2026 (seed 7202): kitchen and comfy living room below, bedroom, wardrobe and bubble bath upstairs */
     familyhome: {
-      id: 'familyhome', name: 'Your family home', img: 'house-family-v1.webp', w: 896, h: 1120, avatarW: 8,
+      id: 'familyhome', name: 'Your family home', img: 'house-family-v1.webp', w: 896, h: 1120, avatarW: 8, cam: { z: 1.5 }, /* drawn at a smaller scale: zoomed 1.5x she is her usual size (Jamie, 19 Oct); fit shows the whole house */
       winPatches: [{ x: 15.513, y: 14.107, w: 35.491, base: 'house-family-v1-sky2-familyhome-' }, { x: 61.496, y: 50.000, w: 32.478, base: 'house-family-v1-sky2-familyhome2-' }],
       stairs: [{ x: 45, y: 78 }, { x: 58, y: 52 }], upstairsY: 55,
       hotspots: [
@@ -473,7 +473,7 @@
     S.setProfile({ outfit: id });
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
   }
-  function placeAvatar(p, flip) { pos = { x: p.x, y: p.y }; avatar.style.left = p.x + '%'; avatar.style.top = p.y + '%'; avatar.classList.toggle('flip', !!flip); }
+  function placeAvatar(p, flip) { pos = { x: p.x, y: p.y }; avatar.style.left = p.x + '%'; avatar.style.top = p.y + '%'; avatar.classList.toggle('flip', !!flip); emit('placed', pos); } /* the walk engine re-ranks her depth */
   function sameFloor(a, b) { if (!L.stairs) return true; return (a.y < L.upstairsY) === (b.y < L.upstairsY); }
   function walkTo(wp, done) {
     if (wp && !reduced && hooks.walkTo && hooks.walkTo(wp, function () { avatar.classList.toggle('flip', !!wp.flip); scheduleLife(); done && done(); })) return; /* routed around furniture, with her walk cycle */
@@ -564,7 +564,7 @@
   function sleepListHTML() {
     var st = S.sleepStats(7);
     if (!st.nights.length) return '<div class="empty">No nights recorded yet. Your first entry starts the pattern.</div>';
-    return '<div class="entries">' + st.nights.slice().reverse().map(function (n) { return '<div class="entry"><span class="ms">bedtime</span><div class="body"><b>' + esc(prettyDate(n.date)) + ' · ' + esc(A.fmtHours(n.hours)) + '</b><span>' + (n.quality ? 'Quality ' + n.quality + '/5' : 'Quality not rated') + '</span></div><button class="del" data-del="' + esc(n.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>'; }).join('') + '</div>';
+    return '<div class="entries">' + (st.entries || st.nights).slice().reverse().map(function (n) { /* one row per entry, so each can be deleted; the agents count one night per date */ return '<div class="entry"><span class="ms">bedtime</span><div class="body"><b>' + esc(prettyDate(n.date)) + ' · ' + esc(A.fmtHours(n.hours)) + '</b><span>' + (n.quality ? 'Quality ' + n.quality + '/5' : 'Quality not rated') + '</span></div><button class="del" data-del="' + esc(n.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>'; }).join('') + '</div>';
   }
   function openBedtime() {
     openSheet('bedtime', 'Ready for bed?', 'Your room will dim while you sleep', 'bedtime',
@@ -715,7 +715,7 @@
   /* ---------- calendar: period (5-day fill) + symptoms with backdating ---------- */
   var cal = { y: 0, m: 0, tab: 'period', sel: S.today(), lastFill: [] };
   function openCalendar(tab, date) {
-    var d = new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab || 'period'; cal.sel = date || S.today(); cal.lastFill = [];
+    var d = date ? new Date(date + 'T12:00:00') : new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab || 'period'; cal.sel = date || S.today(); cal.lastFill = [];
     openSheet('calendar', 'Your calendar', 'Tap a past day to log or backdate', 'calendar_month',
       '<div class="tabs" id="calTabs"><button data-tab="period" class="' + (cal.tab === 'period' ? 'on' : '') + '">Period</button><button data-tab="symptom" class="' + (cal.tab === 'symptom' ? 'on' : '') + '">Symptoms</button></div>' +
       '<div class="cal-head"><button class="cal-nav" id="calPrev" aria-label="Previous month"><span class="ms">chevron_left</span></button><b id="calTitle"></b><button class="cal-nav" id="calNext" aria-label="Next month"><span class="ms">chevron_right</span></button></div>' +
@@ -787,32 +787,35 @@
     $('#menstruatingNow').addEventListener('click', function () { var ev = S.add('period', S.today(), { flow: 'medium', clots: false, impact: false }); cal.sel = S.today(); cal.lastFill = []; renderCal(); renderEditor(); afterSave(ev, 'Period logged for today.'); });
     var undo = $('#undoFill'); if (undo) undo.addEventListener('click', function () { cal.lastFill.forEach(function (id) { S.remove(id); }); cal.lastFill = []; renderCal(); renderEditor(); renderDeck(); toast('Fill removed.', 'undo'); });
   }
+  /* a day brought in from Apple Health or Google says so; saving a change makes it hers (ovu-store.js) */
+  function importedNote(ev) { return ev && window.OvuHealth && OvuHealth.isImported(ev) ? '<p class="imp-note"><span class="ms">move_to_inbox</span>From ' + (ev.source === 'google-fit' ? 'Google' : 'Apple Health') + '. Change anything here and the day becomes yours.</p>' : ''; }
   function renderEditor() {
     var ed = $('#dayEditor'), date = cal.sel;
     if (cal.tab === 'period') {
       var cur = S.list('period', { from: date, to: date })[0], data = cur ? cur.data : { flow: 'none', clots: false, largeClots: false, flooding: false, impact: false };
       var symToday = S.list('symptom', { from: date, to: date })[0], painToday = symToday && typeof symToday.data.pain === 'number' ? symToday.data.pain : 0;
-      ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' +
+      ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' + importedNote(cur) +
         '<div class="field"><div class="lbl-row"><span class="lbl">Bleeding</span>' + infoBtn('bleeding') + '</div><div class="chips" id="flowChips">' + ['none', 'spotting', 'light', 'medium', 'heavy'].map(function (f) { return '<button type="button" class="chipbtn flow-' + f + (data.flow === f ? ' on' : '') + '" data-flow="' + f + '">' + cap(f) + '</button>'; }).join('') + '</div>' + guideHTML('bleeding') + '</div>' +
         '<div class="field"><span class="lbl">Details</span><div class="chips"><button type="button" class="chipbtn' + (data.clots ? ' on' : '') + '" id="clots"><span class="ms">bubble_chart</span>Clots</button><button type="button" class="chipbtn' + (data.largeClots ? ' on' : '') + '" id="largeClots"><span class="ms">circle</span>Clots over 2.5 cm</button><button type="button" class="chipbtn' + (data.flooding ? ' on' : '') + '" id="flooding"><span class="ms">water_damage</span>Soaked through or changed every 1 to 2 h</button><button type="button" class="chipbtn' + (data.impact ? ' on' : '') + '" id="impact"><span class="ms">event_busy</span>Affected my day</button></div>' +
         '<div class="field"><div class="lbl-row"><label for="ppain" class="lbl" style="margin:0">Pain today · <span id="ppainVal">' + painToday + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="ppain" min="0" max="10" step="1" value="' + painToday + '">' + '</div></div>' +
         '<div class="row"><button class="btn primary" id="savePeriod"><span class="ms">check</span>Save day</button>' + (cur ? '<button class="btn ghost" id="clearPeriod"><span class="ms">remove_done</span>Untick this day</button>' : '') + '</div><div class="msg" id="calMsg"></div>';
       $('#flowChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#flowChips')).forEach(function (x) { x.classList.toggle('on', x === b); }); });
       ['clots', 'largeClots', 'flooding', 'impact'].forEach(function (k) { $('#' + k).addEventListener('click', function () { this.classList.toggle('on'); if (k === 'largeClots' && this.classList.contains('on')) $('#clots').classList.add('on'); }); });
-      $('#ppain').addEventListener('input', function () { $('#ppainVal').textContent = this.value; });
+      var ppTouched = false; /* an untouched slider never turns "pain not stated" (imported, or from Luna) into 0/10 */
+      $('#ppain').addEventListener('input', function () { ppTouched = true; $('#ppainVal').textContent = this.value; });
       $('#savePeriod').addEventListener('click', function () {
         try {
           var flow = ($('#flowChips .on') || {}).dataset ? $('#flowChips .on').dataset.flow : 'none';
           if (flow === 'none') { if (cur) S.remove(cur.id); message($('#calMsg'), 'Marked as no bleeding.', true); renderCal(); renderEditor(); renderDeck(); return; }
           var ev = S.add('period', date, { flow: flow, clots: $('#clots').classList.contains('on'), largeClots: $('#largeClots').classList.contains('on'), flooding: $('#flooding').classList.contains('on'), impact: $('#impact').classList.contains('on') });
-          var pn = Number($('#ppain').value); if (pn > 0 || symToday) S.add('symptom', date, { pain: pn }, 'room', { merge: true });
+          var pn = Number($('#ppain').value); if (pn > 0 || (symToday && (ppTouched || typeof symToday.data.pain === 'number'))) S.add('symptom', date, { pain: pn }, 'room', { merge: true });
           message($('#calMsg'), 'Saved ' + flow + ' flow for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev);
         } catch (e) { message($('#calMsg'), e.message, false); }
       });
       if (cur) $('#clearPeriod').addEventListener('click', function () { S.remove(cur.id); cal.lastFill = cal.lastFill.filter(function (id) { return id !== cur.id; }); chime('tap'); renderCal(); renderEditor(); renderDeck(); });
     } else {
       var cs = S.list('symptom', { from: date, to: date })[0], sd = cs ? cs.data : { symptoms: [], pain: 0, mood: '', notes: '' };
-      ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' +
+      ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' + importedNote(cs) +
         '<div class="field"><span class="lbl">Symptoms</span><div class="chips" id="symChips">' + '<button type="button" class="chipbtn symnone' + (sd.none ? ' on' : '') + '" data-none="1">None</button>' + A.SYMPTOMS.map(function (s) { return '<button type="button" class="chipbtn' + ((sd.symptoms || []).indexOf(s) > -1 ? ' on' : '') + '" data-sym="' + esc(s) + '">' + esc(cap(s)) + '</button>'; }).join('') + '</div></div>' +
         '<div class="field"><div class="lbl-row"><label for="pain" class="lbl" style="margin:0">Pain · <span id="painVal">' + (sd.pain || 0) + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="pain" min="0" max="10" step="1" value="' + (sd.pain || 0) + '">' + guideHTML('pain') + '</div>' +
         '<div class="field"><span class="lbl">Mood</span><div class="faces" id="moodFaces">' + [['great', 'sentiment_very_satisfied'], ['good', 'sentiment_satisfied'], ['ok', 'sentiment_neutral'], ['low', 'sentiment_dissatisfied'], ['bad', 'sentiment_very_dissatisfied']].map(function (m) { return '<button type="button" data-mood="' + m[0] + '" class="' + (sd.mood === m[0] ? 'on' : '') + '"><span class="ms">' + m[1] + '</span>' + cap(m[0]) + '</button>'; }).join('') + '</div></div>' +
@@ -820,13 +823,14 @@
         '<div class="row"><button class="btn primary" id="saveSym"><span class="ms">check</span>Save day</button>' + (cs ? '<button class="btn ghost" id="clearSym">Clear</button>' : '') + '<button class="btn soft" id="acuFromSym"><span class="ms">spa</span>Cramp relief points</button></div><div class="msg" id="calMsg"></div>';
       /* None (Jamie, 19 Oct) is its own answer: it clears the symptoms, and ticking a symptom clears it */
       $('#symChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); if (!b.classList.contains('on')) return; $$('#symChips .on').forEach(function (x) { if (x !== b && (b.dataset.none || x.dataset.none)) x.classList.remove('on'); }); });
-      $('#pain').addEventListener('input', function () { $('#painVal').textContent = this.value; });
+      var painTouched = false;
+      $('#pain').addEventListener('input', function () { painTouched = true; $('#painVal').textContent = this.value; });
       $('#moodFaces').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#moodFaces')).forEach(function (x) { x.classList.toggle('on', x === b && !x.classList.contains('on')); }); });
       $('#acuFromSym').addEventListener('click', openAcupressure);
       $('#saveSym').addEventListener('click', function () {
         try {
           var list = $$('#symChips .on').map(function (b) { return b.dataset.sym; }).filter(Boolean), mood = ($('#moodFaces .on') || {}).dataset ? $('#moodFaces .on').dataset.mood : '';
-          var none = !list.length && !!$('#symChips [data-none].on'), data = { symptoms: list, pain: Number($('#pain').value), mood: mood, notes: $('#symNotes').value.trim() };
+          var none = !list.length && !!$('#symChips [data-none].on'), data = { symptoms: list, pain: painTouched || typeof sd.pain === 'number' ? Number($('#pain').value) : null, mood: mood, notes: $('#symNotes').value.trim() };
           if (none) data.none = true;
           /* None replaces the day's symptoms rather than joining them; everything else keeps the usual same-day merge */
           var ev = none && cs ? S.update(cs.id, { data: Object.assign({}, data, { notes: data.notes || '' }) }) : S.add('symptom', date, data);
@@ -879,7 +883,7 @@
     if (!ovarian) return '';
     var ph = ovarian.phases[phase] || null, list = ovarian.foods.filter(function (f) { return (f.phase || []).indexOf(phase) > -1; }).slice(0, 10);
     if (!list.length) return '';
-    return '<div class="field"><span class="lbl">Ovarian-friendly picks for this phase</span>' + (ph ? '<p class="help" style="margin:0 0 6px">' + esc(ph.text) + '</p>' : '') + '<div class="picks">' + list.map(function (f) { return '<button type="button" class="pick" data-usda="' + esc(f.usda || '') + '" data-name="' + esc(f.name) + '"><b>' + esc(f.emoji + ' ' + f.name) + '</b><small>' + esc(f.tags) + '</small><em>' + esc(f.usda ? 'Tap to add with USDA values' : f.tcm) + '</em></button>'; }).join('') + '</div></div>';
+    return '<div class="field"><span class="lbl">Foods to try in this phase</span>' + (ph ? '<p class="help" style="margin:0 0 6px">' + esc(ph.text) + '</p>' : '') + '<div class="picks">' + list.map(function (f) { return '<button type="button" class="pick" data-usda="' + esc(f.usda || '') + '" data-name="' + esc(f.name) + '"><b>' + esc(f.emoji + ' ' + f.name) + '</b><small>' + esc(f.tags) + '</small><em>' + esc(f.usda ? 'Tap to add with USDA values' : f.tcm) + '</em></button>'; }).join('') + '</div></div>';
   }
   function showPicker(food) {
     picked = { food: food, portion: food.portions[1] || food.portions[0], grams: (food.portions[1] || food.portions[0]).g };
@@ -965,15 +969,6 @@
       '<div class="row"><button class="btn primary" id="cfUse"><span class="ms">check</span>Use this food</button><button class="btn ghost" id="cfCancel">Cancel</button></div></div>';
   }
   function num(id) { var v = $(id).value; return v === '' ? null : Number(v); }
-  /* teas and herbs (ovu-herbs.js): comfort, never treatment; sources in the evidence register */
-  function teasHTML(phase) {
-    if (!window.OvuHerbs) return '';
-    var H = window.OvuHerbs, refs = function (ids) { return ids.map(function (id) { var e = window.OvuEvidence && OvuEvidence.get(id); return e ? '<a href="evidence.html#' + id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + id + '</i></a>' : ''; }).join(''); };
-    return '<section class="dsec teas"><h4><span class="ms">emoji_food_beverage</span>Teas and herbs</h4><p class="help" style="margin:2px 0 8px">Familiar comfort drinks, with what research says and who should take care. Comfort, not treatment.</p>' +
-      H.forPhase(phase).map(function (t) { return '<details class="tea"><summary>' + (t.img ? '<img class="teaimg" src="' + ART + t.img + '" alt="">' : '<span class="ms">' + t.icon + '</span>') + '<span><b>' + esc(t.name) + '</b><small>' + esc(t.why) + '</small></span><span class="ms go">expand_more</span></summary><div class="teabody"><p><b>What research says</b>' + esc(t.research) + '</p><p class="care"><b>Take care</b>' + esc(t.care) + '</p><p class="evrefs">' + refs(t.refs) + '</p></div></details>'; }).join('') +
-      '<div class="teacare"><b><span class="ms">health_and_safety</span>Check with a doctor or pharmacist first</b>' + H.TAKE_CARE.map(function (c) { return '<p><b>' + esc(c.name) + '</b>' + esc(c.text) + ' <span class="evrefs">' + refs(c.refs) + '</span></p>'; }).join('') +
-      '<p class="help">Pregnant, breastfeeding, taking medicines (including the pill or blood thinners), or living with kidney, liver or heart disease? Ask before trying any herb. Stop if anything feels wrong.</p></div></section>';
-  }
   function openDiary(pane) {
     diaryDate = S.today(); draft = { items: [], photo: null }; picked = null;
     var cs = S.cycleStats(), phase = cs.phase || 'none', tip = PHASE_TIPS[phase] || PHASE_TIPS.none;
@@ -989,8 +984,19 @@
         '<button class="btn primary" id="saveFood" style="width:100%"><span class="ms">check</span>Save meal</button><div class="msg" id="foodMsg"></div>' +
       '</div>' +
       '<div class="dpane" data-pane="today" hidden>' + guideHTML('nova') + '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' + '</div>' +
-      '<div class="dpane" data-pane="ideas" hidden>' + teasHTML(phase) + '<div class="stat"><span class="ms">local_florist</span><div><b>' + esc(tip.title) + '</b><span>' + esc(tip.text) + '</span></div></div>' + '<div id="picksWrap"></div></div>');
-    (ovarian ? Promise.resolve(ovarian) : loadJSON('assets/data/ovarian-foods.json').then(function (d) { ovarian = d; return d; })).then(function () { var w = $('#picksWrap'); if (w) w.innerHTML = picksHTML(phase === 'late' ? 'luteal' : phase); }).catch(function () { });
+      '<div class="dpane" data-pane="ideas" hidden>' + '<p class="help" style="margin:2px 0 10px"><span class="ms" style="font-size:16px;vertical-align:-3px">yard</span> Teas and herbs now live in the garden greenhouse, with pictures, research and who should take care.</p>' + '<div class="phasechips chips" id="ideaPhases" role="group" aria-label="Food ideas for each phase">' + [['menstrual', 'Period'], ['follicular', 'Follicular'], ['ovulatory', 'Ovulation'], ['luteal', 'Luteal']].map(function (q) { return '<button type="button" class="chipbtn" data-iphase="' + q[0] + '">' + q[1] + '</button>'; }).join('') + '</div>' +
+      '<div id="ideaTip"></div><div id="picksWrap"></div><p class="help">General food ideas for each part of the cycle, not a diet or a treatment.</p></div>');
+    /* food ideas for every phase (Jamie, 20 Oct): your phase is chosen when the app knows it, otherwise the period; tap any other */
+    var ideaPhase = phase === 'late' ? 'luteal' : (PHASE_TIPS[phase] && phase !== 'none' ? phase : 'menstrual');
+    function showIdeas(k) {
+      ideaPhase = k; $$('#ideaPhases [data-iphase]').forEach(function (b) { var on = b.dataset.iphase === k; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+      var t = PHASE_TIPS[k], cur = k === (phase === 'late' ? 'luteal' : phase);
+      $('#ideaTip').innerHTML = '<div class="stat"><span class="ms">local_florist</span><div><b>' + esc(t.title) + (cur ? ' · now' : '') + '</b><span>' + esc(t.text) + '</span></div></div>';
+      var w = $('#picksWrap'); if (w) w.innerHTML = picksHTML(k);
+    }
+    $('#ideaPhases').addEventListener('click', function (e) { var b = e.target.closest('[data-iphase]'); if (b) { chime('tap'); showIdeas(b.dataset.iphase); } });
+    showIdeas(ideaPhase);
+    (ovarian ? Promise.resolve(ovarian) : loadJSON('assets/data/ovarian-foods.json').then(function (d) { ovarian = d; return d; })).then(function () { showIdeas(ideaPhase); }).catch(function () { });
     function setPane(k) { $$('#dTabs button').forEach(function (b) { var on = b.dataset.dpane === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); }); $$('.dpane', body).forEach(function (pn) { pn.hidden = pn.dataset.pane !== k; }); if (k !== 'add') stopCamera(); body.scrollTop = 0; }
     $('#dTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-dpane]'); if (b) { chime('tap'); setPane(b.dataset.dpane); } });
     if (pane) setPane(pane);
@@ -1303,7 +1309,7 @@
       '<div id="youAccount"></div>' +
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
-      '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Import from Apple Health or Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S) + ' entries brought in so far' : 'Sleep, weight and period days you already have', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see them or bring in more' : 'Choose what comes in: sleep, cycle, weight and more', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.' + (function () { var h = window.OvuSync && OvuSync.status ? OvuSync.status().held || 0 : 0; return h ? ' ' + h + ' Movement ' + (h === 1 ? 'entry is' : 'entries are') + ' not in your cloud backup yet, so ' + (h === 1 ? 'it' : 'they') + ' would be lost.' : ''; })() + '</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is not a medical device and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
@@ -1332,68 +1338,159 @@
     });
   }
 
-  /* ---------- import from Apple Health or Google Takeout (ovu-health.js): read on this phone, never uploaded ---------- */
-  var importing = false, importRuns = 0;
-  function openImport(view) {
-    var H = window.OvuHealth, n = H ? H.importedCount(S) : 0;
-    openSheet('import', 'Bring in your health data', 'Read on this phone, never uploaded', 'move_to_inbox',
-      '<p class="help" style="margin-top:6px">Sleep, weight and period days you already have can join your diary. Rhythme reads the file right here on your phone and sends nothing anywhere.</p>' +
-      '<div class="imp-card"><div class="imp-head"><span class="ms">ios</span><div><b>Apple Health</b><small>From an iPhone</small></div></div>' +
-        '<ol class="imp-steps"><li>Open the Health app and tap your picture or initials at the top right.</li><li>Scroll down, tap <b>Export All Health Data</b>, then <b>Export</b>. It takes a minute or two.</li><li>Save <b>export.zip</b> to Files, then choose it here. Big files are fine; only sleep, weight and period days are kept.</li></ol>' +
-        '<label class="btn primary imp-pick"><span class="ms">folder_open</span>Choose export.zip<input type="file" id="impApple" accept=".zip,.xml,application/zip,text/xml,application/xml" hidden></label></div>' +
-      '<div class="imp-card"><div class="imp-head"><span class="ms">android</span><div><b>Google</b><small>Fit data through Google Takeout</small></div></div>' +
-        '<ol class="imp-steps"><li>Go to <b>takeout.google.com</b>, tap <b>Deselect all</b>, then tick <b>Fit</b> only.</li><li>Tap <b>Next step</b>, keep <b>Export once</b> and the zip format, then <b>Create export</b>.</li><li>Download the zip when Google emails you, then choose it here, or pick the files from its Fit folder.</li></ol>' +
-        '<p class="help">Health Connect has no file export yet; it can only back up to cloud storage for moving to another phone. Period days are not in Takeout’s Fit folder, so those stay with the calendar.</p>' +
-        '<label class="btn primary imp-pick"><span class="ms">folder_open</span>Choose Takeout zip or Fit files<input type="file" id="impGoogle" accept=".zip,.json,.csv,application/zip,application/json,text/csv" multiple hidden></label></div>' +
+  /* ---------- Apple Health and Google (ovu-health.js): read on this phone, chosen kind by kind ----------
+   * Three views in one sheet: home (what has been brought in, per kind, with a preview, a way into the matching
+   * diary view and a remove; then the two sources), reading (a progress bar), and the picker (every kind found in
+   * the file with its count and dates, nothing ticked, an optional date range). Nothing is written before
+   * "Bring in". imp holds the scan between renders; the sheet body is rebuilt on every render. */
+  var importing = false, importRuns = 0, imp = { scan: null, file: '', pick: {}, range: 'all', last: null, confirm: null };
+  var IMP_RANGES = [{ id: 'all', label: 'All dates', days: 0 }, { id: 'year', label: 'Last 12 months', days: 365 }, { id: 'quarter', label: 'Last 3 months', days: 91 }];
+  function impFrom() { var r = IMP_RANGES.filter(function (x) { return x.id === imp.range; })[0]; return r && r.days ? S.addDays(S.today(), -r.days + 1) : null; }
+  function impPlural(n, one, many) { return n.toLocaleString() + ' ' + (n === 1 ? one : many); }
+  function impDates(a, b) { var o = { day: 'numeric', month: 'short', year: 'numeric' }; return !a ? '' : (a === b ? prettyDate(a, o) : prettyDate(a, o) + ' to ' + prettyDate(b, o)); }
+  function impSourceName(src) { return src === 'google-fit' ? 'Google' : 'Apple Health'; }
+  function openImport() {
+    var H = window.OvuHealth; imp.last = null; imp.confirm = null;
+    if (!H) { openSheet('import', 'Your health data', 'Apple Health and Google', 'move_to_inbox', '<div class="flag watch"><span class="ms">info</span><div><b>The import helper did not load</b><span>Reload the room once and try again.</span></div></div>'); return; }
+    if (imp.scan) return renderImportPicker(H);
+    renderImportHome(H);
+  }
+  function renderImportHome(H) {
+    var have = H.imported(S), total = have.reduce(function (n, k) { return n + k.count; }, 0);
+    var steps = function (which) {
+      return which === 'apple'
+        ? '<ol class="imp-steps"><li>Open the Health app and tap your picture or initials at the top right.</li><li>Scroll down, tap <b>Export All Health Data</b>, then <b>Export</b>. It takes a minute or two.</li><li>Save <b>export.zip</b> to Files, then choose it here. Big files are fine.</li></ol>'
+        : '<ol class="imp-steps"><li>Go to <b>takeout.google.com</b>, tap <b>Deselect all</b>, then tick <b>Fit</b> only.</li><li>Tap <b>Next step</b>, keep <b>Export once</b> and the zip format, then <b>Create export</b>.</li><li>Download the zip when Google emails you, then choose it here, or pick the files from its Fit folder.</li></ol><p class="help">Health Connect has no file export yet; it only backs up to cloud storage for moving to another phone.</p>';
+    };
+    var source = function (which) {
+      var apple = which === 'apple';
+      return '<div class="imp-card"><div class="imp-head"><span class="ms">' + (apple ? 'ios' : 'android') + '</span><div><b>' + (apple ? 'Apple Health' : 'Google') + '</b><small>' + (apple ? 'From an iPhone' : 'Fit data through Google Takeout') + '</small></div></div>' +
+        (total ? '<details class="imp-how"><summary>How to export</summary>' + steps(which) + '</details>' : steps(which)) +
+        '<label class="btn ' + (total ? 'soft' : 'primary') + ' imp-pick"><span class="ms">folder_open</span>' + (apple ? 'Choose export.zip' : 'Choose Takeout zip or Fit files') + '<input type="file" id="' + (apple ? 'impApple' : 'impGoogle') + '" accept="' + (apple ? '.zip,.xml,application/zip,text/xml,application/xml' : '.zip,.json,.csv,application/zip,application/json,text/csv') + '"' + (apple ? '' : ' multiple') + ' hidden></label></div>';
+    };
+    var html = (imp.last ? importSummaryHTML(H, imp.last) : '') +
+      (have.length ? '<div class="ygroup"><span class="lbl">Brought in so far</span>' + have.map(function (k) { return importedCardHTML(H, k); }).join('') + '</div>'
+        : '<p class="help" style="margin-top:6px">Bring in the sleep, cycle, weight and mindful minutes you already have. Rhythme reads the file here on your phone, shows you what is in it, and you choose what comes in. Nothing is ticked until you tick it.</p>') +
+      '<div class="ygroup"><span class="lbl">' + (have.length ? 'Bring in more' : 'Choose a file') + '</span>' + source('apple') + source('google') + '</div>' +
       '<div id="impProgress"' + (importing ? '' : ' hidden') + '><div class="ibar"><i id="impBar" style="width:' + (importing ? '30%' : '0') + '"></i></div><p class="help" id="impStatus" role="status" aria-live="polite">' + (importing ? 'Still reading your file…' : '') + '</p></div>' +
-      '<div id="impSummary" data-run="' + importRuns + '"></div>' +
-      '<div id="impRemoveWrap">' + (n ? '<div class="row"><button type="button" class="btn ghost" id="impRemove"><span class="ms">delete_sweep</span>Remove imported data (' + n + ')</button></div>' : '') + '</div>' +
-      (view === 'confirm-remove' && n ? '<div class="flag high" id="impDel"><span class="ms">warning</span><div><b>Remove ' + n + ' imported entr' + (n === 1 ? 'y' : 'ies') + '?</b><span>Only entries brought in from Apple Health or Google go. Everything you logged yourself stays exactly as it is.</span><div class="row"><button type="button" class="btn danger" id="impDelYes"><span class="ms">delete_sweep</span>Remove imported</button><button type="button" class="btn ghost" id="impDelNo">Keep them</button></div></div></div>' : '') +
-      '<p class="help">A day you logged yourself always wins: an imported entry never replaces one you wrote by hand. Imported entries are marked, so one tap removes only them.</p>');
-    if (!H) { $('#impSummary').innerHTML = '<div class="flag watch"><span class="ms">info</span><div><b>The import helper did not load</b><span>Reload the room once and try again.</span></div></div>'; return; }
+      '<div id="impError"></div>' +
+      (total ? (imp.confirm === 'all' ? impConfirmHTML('all', 'Remove everything brought in (' + total.toLocaleString() + ')?', 'Only entries from Apple Health or Google go. Everything you logged yourself, or changed by hand, stays as it is.') : '<div class="row"><button type="button" class="btn ghost" data-impact="remove" data-kind="all"><span class="ms">delete_sweep</span>Remove everything brought in (' + total.toLocaleString() + ')</button></div>') : '') +
+      '<p class="help">A day you logged yourself always wins, and an imported day you change by hand becomes yours. Brought-in entries join your diary on this phone' + (S.profile().cloud && S.profile().cloud.v >= 1 ? ' and are backed up with it, since cloud backup is on' : '') + '; the file itself is never uploaded.</p>';
+    openSheet('import', 'Your health data', 'Apple Health and Google, read on this phone', 'move_to_inbox', html);
+    if (imp.confirm) { var cf = $('#impConfirm'); if (cf) setTimeout(function () { cf.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 60); }
     ['impApple', 'impGoogle'].forEach(function (id) {
       var inp = $('#' + id); if (!inp) return;
       inp.addEventListener('change', function () { var files = Array.prototype.slice.call(inp.files || []); inp.value = ''; if (files.length) runImport(files); });
     });
-    var rm = $('#impRemove'); if (rm) rm.addEventListener('click', function () { chime('tap'); openImport('confirm-remove'); var d = $('#impDel'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
-    var yes = $('#impDelYes'); if (yes) yes.addEventListener('click', function () { var gone = H.removeImported(S); chime('save'); renderDeck(); renderProps(); toast('Removed ' + gone + ' imported entr' + (gone === 1 ? 'y' : 'ies') + '. Your own entries are untouched.', 'delete_sweep'); openImport(); });
-    var no = $('#impDelNo'); if (no) no.addEventListener('click', function () { chime('tap'); openImport(); });
+    body.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-impact]'); if (!b) return; var act = b.dataset.impact, kind = b.dataset.kind; chime('tap');
+      if (act === 'remove') { imp.confirm = kind; imp.last = null; return renderImportHome(H); }
+      if (act === 'keep') { imp.confirm = null; return renderImportHome(H); }
+      if (act === 'remove-yes') {
+        var gone = H.removeImported(S, kind === 'all' ? null : kind); imp.confirm = null; imp.last = null; chime('save'); renderDeck(); renderProps();
+        toast('Removed ' + impPlural(gone, 'imported entry', 'imported entries') + '. Your own entries are untouched.', 'delete_sweep'); return renderImportHome(H);
+      }
+      if (act === 'calendar') { var dt = b.dataset.date; openCalendar(kind === 'symptoms' ? 'symptom' : 'period', dt); return; }
+      if (act === 'journal') { location.href = 'journal.html#' + (b.dataset.type || ''); }
+    });
   }
-  /* The sheet body is rebuilt on every open, so progress writes look the elements up fresh and simply miss when another sheet is showing. */
+  function impConfirmHTML(kind, title, text) {
+    return '<div class="flag high" id="impConfirm"><span class="ms">warning</span><div><b>' + esc(title) + '</b><span>' + esc(text) + '</span><div class="row"><button type="button" class="btn danger" data-impact="remove-yes" data-kind="' + esc(kind) + '"><span class="ms">delete_sweep</span>Remove</button><button type="button" class="btn ghost" data-impact="keep">Keep them</button></div></div></div>';
+  }
+  /* one card per kind brought in: count, dates, sources, a small preview, a way into the matching diary view, and remove */
+  function importedCardHTML(H, k) {
+    var es = k.entries, last = es[es.length - 1], prev = '', go = '';
+    if (k.id === 'sleep') {
+      var nights = es.slice(-14), hrs = nights.map(function (e) { return S.sleepHours(e.data) || 0; }), avg = hrs.length ? hrs.reduce(function (a, b) { return a + b; }, 0) / hrs.length : 0;
+      prev = (nights.length >= 3 ? impBars(hrs, 0, 12, nights.map(function (e) { return prettyDate(e.date) + ', ' + A.fmtHours(S.sleepHours(e.data)); })) : '') + '<p class="imp-line">' + (nights.length === 1 ? 'Asleep ' + A.fmtHours(hrs[0]) + ' that night.' : 'Averaging ' + A.fmtHours(Math.round(avg * 10) / 10) + ' asleep over the last ' + impPlural(nights.length, 'night', 'nights') + ' brought in.') + '</p>';
+      go = '<button type="button" class="btn ghost" data-impact="journal" data-type="sleep"><span class="ms">auto_stories</span>In my journal</button>';
+    } else if (k.id === 'weight') {
+      var ws = es.slice(-20), kgs = ws.map(function (e) { return Number(e.data.kg) || 0; }), lo = Math.min.apply(null, kgs), hi = Math.max.apply(null, kgs);
+      prev = (kgs.length < 3 ? '' : impBars(kgs, lo - 1, hi + 1, ws.map(function (e) { return prettyDate(e.date) + ', ' + e.data.kg + ' kg'; }))) + '<p class="imp-line">Latest ' + esc(last.data.kg) + ' kg on ' + prettyDate(last.date) + (es.length > 1 ? '; between ' + Math.min.apply(null, es.map(function (e) { return Number(e.data.kg) || 0; })) + ' and ' + Math.max.apply(null, es.map(function (e) { return Number(e.data.kg) || 0; })) + ' kg in all.' : '.') + '</p>';
+      go = '<button type="button" class="btn ghost" data-impact="journal" data-type="weight"><span class="ms">auto_stories</span>In my journal</button>';
+    } else if (k.id === 'period' || k.id === 'spotting') {
+      var flows = {}; es.forEach(function (e) { flows[e.data.flow] = (flows[e.data.flow] || 0) + 1; });
+      prev = '<p class="imp-line">' + (k.id === 'period' ? 'Flow: ' + Object.keys(flows).map(function (f) { return esc(f === 'unspecified' ? 'not recorded' : f) + ' on ' + impPlural(flows[f], 'day', 'days'); }).join(', ') + '. ' : '') + 'Latest on ' + prettyDate(last.date) + '. They show on your calendar like days you tap in.</p>';
+      go = '<button type="button" class="btn ghost" data-impact="calendar" data-kind="' + k.id + '" data-date="' + esc(last.date) + '"><span class="ms">calendar_month</span>On my calendar</button>';
+    } else if (k.id === 'symptoms') {
+      var tally = {}; es.forEach(function (e) { (e.data.symptoms || []).forEach(function (s) { tally[s] = (tally[s] || 0) + 1; }); });
+      var top = Object.keys(tally).sort(function (a, b) { return tally[b] - tally[a]; }).slice(0, 4);
+      prev = '<p class="imp-line">Most often: ' + top.map(function (s) { return esc(s) + ' (' + tally[s] + ')'; }).join(', ') + '.</p>';
+      go = '<button type="button" class="btn ghost" data-impact="calendar" data-kind="symptoms" data-date="' + esc(last.date) + '"><span class="ms">calendar_month</span>On my calendar</button>';
+    } else if (k.id === 'mindful') {
+      var mins = es.reduce(function (n, e) { return n + (Number(e.data.minutes) || 0); }, 0);
+      prev = '<p class="imp-line">' + impPlural(mins, 'minute', 'minutes') + ' in all; latest ' + (Number(last.data.minutes) || 0) + ' min on ' + prettyDate(last.date) + '. These earn no hearts; hearts are for logging here.</p>';
+      go = '<button type="button" class="btn ghost" data-impact="journal" data-type="mindfulness"><span class="ms">auto_stories</span>In my journal</button>';
+    }
+    var src = Object.keys(k.sources).map(function (s) { return '<em class="imp-src">' + impSourceName(s) + (Object.keys(k.sources).length > 1 ? ' ' + k.sources[s] : '') + '</em>'; }).join('');
+    return '<div class="imp-card imp-have" data-kind="' + k.id + '"><div class="imp-head"><span class="ms">' + k.icon + '</span><div><b>' + esc(k.label) + ' · ' + impPlural(k.count, k.one, k.many) + '</b><small>' + esc(impDates(k.from, k.to)) + '</small></div></div>' +
+      '<div class="imp-srcs">' + src + '</div>' + prev +
+      (imp.confirm === k.id ? impConfirmHTML(k.id, 'Remove ' + impPlural(k.count, k.one, k.many) + ' of ' + k.label.toLowerCase() + '?', 'Only what came from Apple Health or Google goes. Days you logged or changed yourself stay.')
+        : '<div class="row">' + go + '<button type="button" class="btn ghost imp-rm" data-impact="remove" data-kind="' + k.id + '"><span class="ms">delete</span>Remove</button></div>') + '</div>';
+  }
+  /* a row of small bars scaled between lo and hi; each bar carries its own label for screen readers */
+  function impBars(vals, lo, hi, labels) {
+    var span = Math.max(0.0001, hi - lo);
+    return '<div class="ibars" role="img" aria-label="' + esc(labels.join('; ')) + '">' + vals.map(function (v, i) { var h = Math.max(6, Math.min(100, Math.round((v - lo) / span * 100))); return '<i style="height:' + h + '%" title="' + esc(labels[i]) + '"></i>'; }).join('') + '</div>';
+  }
+  /* the picker: every kind found, nothing ticked; kinds with nothing in the chosen dates are shown but cannot be ticked */
+  function renderImportPicker(H) {
+    var from = impFrom(), found = H.kinds(imp.scan, { from: from, to: S.today() }), ready = found.ready;
+    var preview = H.plan(imp.scan, S, { kinds: ready.map(function (k) { return k.id; }), from: from });
+    var ticked = ready.filter(function (k) { return imp.pick[k.id] && k.count; });
+    var google = imp.scan.source === H.SOURCE.google;
+    var rows = ready.map(function (k) {
+      var off = !k.count, kept = preview.keptBy[k.id] || 0;
+      return '<label class="imp-kind' + (off ? ' off' : '') + '"><input type="checkbox" data-kind="' + k.id + '"' + (imp.pick[k.id] && !off ? ' checked' : '') + (off ? ' disabled' : '') + '><span class="ms">' + k.icon + '</span><span><b>' + esc(k.label) + '</b><small>' +
+        (off ? 'None in these dates' : esc(impPlural(k.count, k.one, k.many) + ' · ' + impDates(k.from, k.to))) + '</small>' +
+        (kept && !off ? '<small class="imp-kept">' + (kept === 1 ? '1 day you logged yourself stays as it is' : kept.toLocaleString() + ' days you logged yourself stay as they are') + '</small>' : '') + '</span></label>';
+    }).join('');
+    var later = found.later, laterHTML = later.length ? '<details class="imp-later"><summary>' + impPlural(later.length, 'other kind', 'other kinds') + ' Rhythme has no place for yet</summary><ul>' + later.map(function (l) { return '<li><b>' + esc(l.name) + '</b> · ' + l.count.toLocaleString() + (l.from ? ' · ' + esc(impDates(l.from, l.to)) : '') + '</li>'; }).join('') + '</ul><p class="help">These stay in your Health app. They are listed so you know what was in the file.</p></details>' : '';
+    var html = '<div class="imp-card"><div class="imp-head"><span class="ms">' + (google ? 'android' : 'ios') + '</span><div><b>Found in your ' + (google ? 'Google Takeout' : 'Apple Health export') + '</b><small>' + esc(imp.file) + '</small></div></div>' +
+      '<p class="help" style="margin-top:8px">Tick what you want in your diary. Nothing is saved until you tap Bring in.</p>' +
+      '<div class="chips imp-range" role="radiogroup" aria-label="Which dates">' + IMP_RANGES.map(function (r) { return '<button type="button" class="chipbtn' + (imp.range === r.id ? ' on' : '') + '" role="radio" aria-checked="' + (imp.range === r.id) + '" data-range="' + r.id + '">' + r.label + '</button>'; }).join('') + '</div>' +
+      (ready.length ? '<div class="imp-kinds">' + rows + '</div>' : '<div class="flag watch"><span class="ms">info</span><div><b>Nothing Rhythme can use</b><span>This file has no sleep, cycle, weight or mindful minutes in it.</span></div></div>') +
+      laterHTML + '</div>' +
+      '<div class="row"><button type="button" class="btn primary" id="impGo"' + (ticked.length ? '' : ' disabled') + '><span class="ms">move_to_inbox</span>' + (ticked.length ? 'Bring in ' + impPlural(ticked.length, 'kind', 'kinds') : 'Tick what to bring in') + '</button><button type="button" class="btn ghost" id="impCancel" style="flex:0 0 auto">Cancel</button></div>' +
+      '<p class="help">The file was read on this phone and never uploaded. Cancel forgets it.</p>';
+    openSheet('import', 'Choose what comes in', 'Nothing is ticked until you tick it', 'checklist', html);
+    body.addEventListener('change', function (e) { var c = e.target.closest('input[data-kind]'); if (!c) return; imp.pick[c.dataset.kind] = c.checked; var keep = body.scrollTop; renderImportPicker(H); body.scrollTop = keep; });
+    body.addEventListener('click', function (e) {
+      var r = e.target.closest('[data-range]'); if (r) { chime('tap'); imp.range = r.dataset.range; var keep = body.scrollTop; renderImportPicker(H); body.scrollTop = keep; return; }
+      if (e.target.closest('#impCancel')) { chime('tap'); imp.scan = null; imp.pick = {}; renderImportHome(H); return; }
+      if (e.target.closest('#impGo')) {
+        var kinds = H.kinds(imp.scan, { from: impFrom(), to: S.today() }).ready.filter(function (k) { return imp.pick[k.id] && k.count; }).map(function (k) { return k.id; }); if (!kinds.length) return;
+        try { var p = H.apply(imp.scan, S, { kinds: kinds, from: impFrom() }); imp.last = { res: imp.scan, p: p, kinds: kinds, all: ready.map(function (k) { return k.id; }) }; }
+        catch (err) { toast('That did not save: ' + err.message, 'error'); return; }
+        imp.scan = null; imp.pick = {}; imp.confirm = null; importRuns++; chime('save'); renderDeck(); renderProps();
+        var c = imp.last.p.counts, n = kinds.reduce(function (s2, id) { return s2 + (c[id] || 0); }, 0);
+        toast(n ? 'Brought in ' + impPlural(n, 'entry', 'entries') + ' you chose.' : 'Nothing new to add from what you chose.', 'move_to_inbox');
+        renderImportHome(H);
+      }
+    });
+  }
+  function importSummaryHTML(H, last) {
+    var p = last.p, notes = [], left = last.all.filter(function (id) { return last.kinds.indexOf(id) < 0; });
+    var rows = last.kinds.map(function (id) { var k = H.KINDS.filter(function (x) { return x.id === id; })[0]; return '<div class="stat"><span class="ms">' + k.icon + '</span><div><b>' + esc(impPlural(p.counts[id] || 0, k.one, k.many)) + '</b><span>' + esc(k.label) + (p.keptBy[id] ? '; ' + impPlural(p.keptBy[id], 'day', 'days') + ' left alone because you logged ' + (p.keptBy[id] === 1 ? 'it' : 'them') + ' yourself' : '') + '</span></div></div>'; }).join('');
+    if (p.from) notes.push('From ' + impDates(p.from, p.to) + '.');
+    if (p.refreshed) notes.push(impPlural(p.refreshed, 'entry', 'entries') + ' from an earlier import refreshed.');
+    if (p.future) notes.push(impPlural(p.future, 'future-dated entry', 'future-dated entries') + ' skipped.');
+    if (left.length) notes.push('Left out by your choice: ' + left.map(function (id) { return H.KINDS.filter(function (x) { return x.id === id; })[0].label.toLowerCase(); }).join(', ') + '.');
+    if (!p.total && !p.kept) notes.push('Nothing here was new for your diary.');
+    notes.push('The file was read on your phone and never left it.');
+    return '<div class="imp-done" id="impSummary" data-run="' + importRuns + '"><span class="lbl">Just brought in</span>' + rows + '<p class="help">' + esc(notes.join(' ')) + '</p></div>';
+  }
+  /* The sheet body is rebuilt on every render, so progress writes look the elements up fresh and simply miss when another sheet is showing. */
   function runImport(files) {
-    var H = window.OvuHealth; if (!H || importing) return; importing = true;
+    var H = window.OvuHealth; if (!H || importing) return; importing = true; imp.last = null; imp.confirm = null;
     var ui = function (id) { return current === 'import' ? $('#' + id) : null; }, last = 0;
     var show = function (frac, label) { var p = ui('impProgress'), b = ui('impBar'), st = ui('impStatus'); if (p) p.hidden = false; if (b) b.style.width = Math.max(2, Math.min(100, Math.round(frac * 100))) + '%'; if (st) st.textContent = label; };
     var busy = function (on) { $$('.imp-pick').forEach(function (l) { l.classList.toggle('busy', on); }); };
-    busy(true); var sm = ui('impSummary'); if (sm) sm.innerHTML = ''; show(0.02, 'Opening ' + files[0].name + '…');
+    busy(true); var er = ui('impError'); if (er) er.innerHTML = ''; show(0.02, 'Opening ' + files[0].name + '…');
     H.importFiles(files, { onProgress: function (f, label) { var now = Date.now(); if (f < 1 && now - last < 120) return; last = now; show(f, label + ' · ' + Math.round(f * 100) + '%'); } })
-      .then(function (res) { show(1, 'Adding to your diary…'); return new Promise(function (r) { setTimeout(r, 40); }).then(function () { var p = H.apply(res, S); showImportSummary(res, p); }); })
-      .catch(function (err) { show(0, ''); var p = ui('impProgress'); if (p) p.hidden = true; var s2 = ui('impSummary'); if (s2) s2.innerHTML = '<div class="flag watch"><span class="ms">info</span><div><b>That file did not go through</b><span>' + esc(err && err.message ? err.message : String(err)) + '</span></div></div>'; })
-      .then(function () { importing = false; busy(false); });
-  }
-  function showImportSummary(res, p) {
-    var H = window.OvuHealth, c = p.counts, plural = function (n, one, many) { return n + ' ' + (n === 1 ? one : many); };
-    var long = { day: 'numeric', month: 'short', year: 'numeric' };
-    var stat = function (icon, big, small) { return '<div class="stat"><span class="ms">' + icon + '</span><div><b>' + esc(big) + '</b><span>' + esc(small) + '</span></div></div>'; };
-    var google = res.source === H.SOURCE.google;
-    var html = stat('bedtime', plural(c.sleep, 'night', 'nights'), c.sleep ? 'Bedtime, wake time and hours asleep' + (res.inBedNights ? ', ' + res.inBedNights + ' from time in bed only' : '') + (res.naps ? ' · ' + plural(res.naps, 'nap', 'naps') + ' left out' : '') : 'No sleep records in this file') +
-      stat('monitor_weight', plural(c.weight, 'weigh-in', 'weigh-ins'), c.weight ? 'One per day, in kilograms' : 'No weight records in this file') +
-      stat('water_drop', plural(c.period, 'period day', 'period days'), google ? 'Takeout’s Fit folder carries no period data' : (c.period ? 'Flow as recorded' + (res.counts.flowNone ? '; days marked no bleeding were skipped' : '') : 'No period records in this file'));
-    var notes = [];
-    if (p.from) notes.push('From ' + prettyDate(p.from, long) + ' to ' + prettyDate(p.to, long) + '.');
-    if (p.refreshed) notes.push(plural(p.refreshed, 'entry', 'entries') + ' from an earlier import refreshed.');
-    if (p.kept) notes.push(plural(p.kept, 'day', 'days') + ' you logged yourself left as they were.');
-    if (p.future) notes.push(plural(p.future, 'future-dated entry', 'future-dated entries') + ' skipped.');
-    if (res.skippedTotal) { var kinds = Object.keys(res.skipped).sort(function (a, b) { return res.skipped[b] - res.skipped[a]; }).slice(0, 3).map(H.friendlyType); notes.push('Skipped ' + res.skippedTotal.toLocaleString() + ' records of ' + plural(res.skippedKinds, 'other kind', 'other kinds') + ' Rhythme has no place for yet (' + kinds.join(', ') + (res.skippedKinds > 3 ? ' and more' : '') + ').'); }
-    if (!p.total && !p.kept) notes.push('Nothing here was new for your diary.');
-    notes.push('This file was read on your phone and never left it.');
-    html += '<p class="help">' + esc(notes.join(' ')) + '</p>';
-    importRuns++;
-    var sm = $('#impSummary'); if (current === 'import' && sm) { sm.innerHTML = html; sm.dataset.run = String(importRuns); var st = $('#impStatus'); if (st) st.textContent = 'Done.'; }
-    var n = H.importedCount(S), wrap = current === 'import' ? $('#impRemoveWrap') : null;
-    if (wrap) { wrap.innerHTML = n ? '<div class="row"><button type="button" class="btn ghost" id="impRemove"><span class="ms">delete_sweep</span>Remove imported data (' + n + ')</button></div>' : ''; var rm = $('#impRemove'); if (rm) rm.addEventListener('click', function () { chime('tap'); openImport('confirm-remove'); }); }
-    chime('save'); renderDeck(); renderProps();
-    toast(p.total ? 'Brought in ' + plural(c.sleep, 'night', 'nights') + ', ' + plural(c.weight, 'weigh-in', 'weigh-ins') + ' and ' + plural(c.period, 'period day', 'period days') + '.' : 'Nothing new to add from that file.', 'move_to_inbox');
+      .then(function (res) { importing = false; imp.scan = res; imp.file = files.length > 1 ? impPlural(files.length, 'file', 'files') : files[0].name; imp.pick = {}; imp.range = 'all'; if (current === 'import') renderImportPicker(H); else toast('Your file is read. Open You, then Apple Health and Google, to choose what comes in.', 'move_to_inbox'); })
+      .catch(function (err) { importing = false; show(0, ''); var p = ui('impProgress'); if (p) p.hidden = true; var e2 = ui('impError'); if (e2) e2.innerHTML = '<div class="flag watch"><span class="ms">info</span><div><b>That file did not go through</b><span>' + esc(err && err.message ? err.message : String(err)) + '</span></div></div>'; })
+      .then(function () { busy(false); });
   }
 
   /* ---------- Luna's look: pick the friend who sits in the corner ---------- */
@@ -1449,7 +1546,15 @@
       openSheet('shop', closedName, asleep() ? 'The shops can wait until morning' : 'Closed right now', 'storefront',
         '<div class="closedcard"><span class="ms">' + (asleep() ? 'nights_stay' : 'schedule') + '</span><b>' + (asleep() ? 'She is asleep.' : closedName + ' is closed right now.') + '</b><p>' + (asleep() ? 'Tap the bed to wake her, then come back.' : hoursLine + '. Your things are still yours; arranging the home works any time.') + '</p>' +
         (!asleep() && RW.ledger().owned.some(function (id) { var it = RW.item(id); return it && it.kind !== 'home'; }) ? '<div class="row"><button type="button" class="btn soft" id="arrangeBtn"><span class="ms">open_with</span>Arrange my home</button></div>' : '') + '</div>');
-      body.addEventListener('click', function (e) { if (e.target.closest('#arrangeBtn')) enterArrange(); });
+      /* your things stay yours when the shops are shut (Jamie, 20 Oct): the inventory shows with its place, wear and visit buttons; only buying waits */
+      var lc = RW.ledger(), mine = RW.SHOP.filter(function (it) { return lc.owned.indexOf(it.id) > -1; });
+      if (!asleep() && mine.length) body.insertAdjacentHTML('beforeend', '<p class="shelf"><span class="ms">inventory_2</span>Your things</p>' + shopList(mine, lc, currentHomeId()) + '<div class="msg" id="shopMsg"></div>');
+      body.addEventListener('click', function (e) {
+        if (e.target.closest('#arrangeBtn')) { enterArrange(); return; }
+        var t = e.target.closest('[data-toggle]'), v = e.target.closest('[data-visit]'), hm = e.target.closest('[data-home]');
+        try { if (t) shopAct('toggle', t.dataset.toggle, { sheet: true }); if (v) shopAct('visit', v.dataset.visit, { sheet: true }); if (hm) shopAct('home', hm.dataset.home, { sheet: true }); }
+        catch (err) { var m = $('#shopMsg'); if (m) message(m, err.message, false); }
+      });
       return;
     }
     var l = RW.ledger(), home = currentHomeId(), st = STORES[shopTab], street = shopTab === 'street';
@@ -1588,6 +1693,14 @@
      * the entries still go through the confirm card below it. */
     function urgentCard(u) {
       var emergency = u.level === 'emergency';
+      /* a card that brings its own words and call links (thoughts of harming yourself or your baby: 995, SOS 1767, WhatsApp 9151 1767) */
+      if (u.message) {
+        var own = '<b>' + esc(u.title) + '</b><p>' + esc(u.message) + '</p><div class="row">' + (u.actions || []).map(function (a, i) { var web = /^https:/.test(a.href); return '<a class="btn ' + (i ? 'soft' : 'primary') + '" href="' + esc(a.href) + '"' + (web ? ' target="_blank" rel="noopener"' : '') + '><span class="ms">' + (web ? 'chat' : 'call') + '</span>' + esc(a.label) + '</a>'; }).join('') + '</div>' +
+          '<small>Rhythme cannot assess how you are or diagnose. No clinician or helpline receives this alert.</small>';
+        var ownCard = bubble('urgent emergency', own); remember('urgent emergency', own);
+        try { chime('alert', true); } catch (err) { }
+        return ownCard;
+      }
       var html = '<b>' + esc(u.title) + '</b>' +
         (emergency
           ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 now if the bleeding is excessive or will not stop, you faint, have trouble breathing, or have chest pain.</p>'
@@ -1605,10 +1718,13 @@
       var local = ORB.parseLocal(text), cfg2 = ORB.aiConfig(), aiOk = cfg2.on;
       /* Short canonical notes (the shortcut chips) are read by the rules instantly; longer or
        * unmatched notes go to the model first, and the rules stay as the offline fallback. */
-      if (aiOk && (!local.length || text.length > 36)) {
+      /* a note that only says there is no period is an observation the rules have read: it is not sent to the model */
+      if (aiOk && (!local.length || text.length > 36) && !(!local.length && ORB.noPeriod && ORB.noPeriod(text))) {
         var thinking = bubble('luna', '<b>Luna</b>Reading your note…');
         ORB.parseAI(text).then(function (res) {
           thinking.remove();
+          /* the rules have the last word on a note that says there is no bleeding: a period day the model read into it is dropped */
+          if (ORB.noPeriod && ORB.noPeriod(text)) res.entries = res.entries.filter(function (e) { return e.type !== 'period'; });
           if (res.entries.length) { if (res.reply) bubble('luna', '<b>Luna</b>' + esc(res.reply)); confirmCard(res.entries); }
           else if (local.length) confirmCard(local);
           else bubble('luna', '<b>Luna</b>' + esc(res.reply || 'I could not find anything to log in that. Try naming the sleep, period, symptom, meal or minutes.'));
@@ -1620,6 +1736,7 @@
         return;
       }
       if (local.length) { confirmCard(local); return; }
+      if (ORB.noPeriod && ORB.noPeriod(text)) { var np = '<b>Luna</b>Noted: no bleeding. Nothing was added to your period days.'; bubble('luna', np); remember('luna', np); return; }
       if (aiOk) { bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "period started, heavy", "cramps 6/10", "had chicken rice for lunch" or "meditated 10 min".'); return; }
       /* AI help is off: offer it just in time, saying where the note would go, and only send after a tap. */
       var ask = bubble('luna', '<b>Luna</b>I did not catch a sleep time, period, symptom, meal or practice in that. Try "slept 11pm to 7am", "cramps 6/10" or "had chicken rice for lunch".' +
@@ -1754,7 +1871,7 @@
     var guides = ['guide_soften', 'guide_feet', 'guide_wander', 'guide_nothing_to_fix', 'guide_quiet_work'].concat(cramps ? ['guide_cramps'] : []);
     var p = Promise.resolve();
     if (kind === 'erin') {
-      setOrb('hold', 'Hello'); p = playClip(hour < 12 ? 'greeting_morning' : 'greeting_evening') /* started inside the tap, which unlocks the element for every later line */
+      setOrb('hold', 'Hello'); p = playClip(hour >= 5 && hour < 12 ? 'greeting_morning' : hour >= 12 && hour < 17 ? 'greeting_welcome' : 'greeting_evening') /* never good morning after midnight (Jamie, 20 Oct) */ /* started inside the tap, which unlocks the element for every later line */
         .then(function () { setOrb('hold', 'Settling in'); return playClip('meditation_begin'); });
     }
     p = p.then(function () {
@@ -1908,7 +2025,7 @@
       : !mins ? { t: 'This week: a first pause', s: 'Erin guides three minutes. Nothing to get right.', kind: 'erin', min: 3, icon: 'self_improvement' }
       : { t: 'This afternoon: a reset', s: 'Five silent minutes, follow the orb.', kind: 'breathe', min: 5, icon: 'light_mode' };
     var last = S.list('mindfulness', { from: S.addDays(today, -30), to: today }).slice(-3).reverse();
-    function label(e) { var k = e.data.kind; return k === 'erin' ? 'With Erin' : k === 'breathe' ? 'Just breathe' : k === 'breathtap' ? 'Moon Tap' : k === 'garden' ? 'Garden watering' : k === 'informal' ? 'Everyday practice' : 'Practice'; }
+    function label(e) { var k = e.data.kind; return k === 'erin' ? 'With Erin' : k === 'breathe' ? 'Just breathe' : k === 'breathtap' ? 'Koi Pond' : k === 'garden' ? 'Garden watering' : k === 'informal' ? 'Everyday practice' : 'Practice'; }
     openSheet('mind', 'Your mat', 'Erin appears beside you while you practise', 'self_improvement',
       '<div class="podshelf" id="podShelf"></div>' +
       '<div class="matnow"><span class="ms">' + sug.icon + '</span><div><b>' + esc(sug.t) + '</b><small>' + esc(sug.s) + '</small></div><button type="button" class="btn primary" data-kind="' + sug.kind + '" data-min="' + sug.min + '">Start</button></div>' +
@@ -1917,7 +2034,7 @@
         '<button type="button" class="mattile" data-kind="erin" data-min="6"><span class="ms">record_voice_over</span><b>With Erin</b><small>6 min, longer settle</small></button>' +
         '<button type="button" class="mattile" data-kind="breathe" data-min="2"><span class="ms">blur_circular</span><b>Just breathe</b><small>2 min, 4-4-6 with a bell</small></button>' +
         '<button type="button" class="mattile" data-kind="breathe" data-min="5"><span class="ms">blur_circular</span><b>Just breathe</b><small>5 min, silent</small></button>' +
-        '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Moon Tap</b><small>Tap the water, 3 to 5 min</small></button>' +
+        '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Koi Pond</b><small>Tap the water, the koi come, 3 to 5 min</small></button>' +
         '<button type="button" class="mattile" id="mindEveryday"><span class="ms">home</span><b>Everyday practice</b><small>Teeth, tea, dishes, plants</small></button>' +
         '<button type="button" class="mattile" id="mindAcu"><span class="ms">spa</span><b>Cramp relief points</b><small>Pressure points on your body</small></button>' +
         '<button type="button" class="mattile" id="mindMove"><span class="ms">directions_run</span><b>Movement</b><small>Log exercise, see your week</small></button>' +
@@ -2156,7 +2273,17 @@
     avatarImg.style.transformOrigin = (f[1] * 100).toFixed(1) + '% 100%';
   }
   avatarImg.addEventListener('load', fitAvatar); if (avatarImg.complete) fitAvatar();
-  function setPose(pose) { var img = new Image(); img.onload = function () { avatarImg.src = img.src; }; img.src = ART + 'avatar-act-' + pose + '.webp'; }
+  /* a pose is drawn in what she is wearing (Jamie, 19 Oct: "it cannot be changing outfit while watering"); the shower robe and
+   * the stretch's yoga set are that activity's own clothes, so those two keep their one sprite. A missing file falls back to
+   * the original pose */
+  var OUTFIT_POSES = { plants: 1, coffee: 1, teeth: 1, dishes: 1, pets: 1, bed: 1, outfit: 1 };
+  function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && outfit !== 'base' ? '-' + outfit : '') + '.webp'; }
+  function setPose(pose) {
+    var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image();
+    img.onload = function () { avatarImg.src = img.src; };
+    img.onerror = function () { if (img.src.indexOf(plain) < 0) img.src = plain; };
+    img.src = want;
+  }
   function restorePose() { setOutfit(S.profile().outfit || 'base', true); }
   function openEveryday(selId) {
     var ex = MF.explored();
@@ -2431,13 +2558,8 @@
   function hideBubble() { bubble.classList.remove('on', 'petbub'); }
   /* the menu sits above her head; when the camera holds her tall on screen there is no room above, so it stays inside the box */
   function fitBubble() { var minTop = bubble.offsetHeight + 6; if (parseFloat(bubble.style.top) < minTop) bubble.style.top = minTop + 'px'; }
-  avatar.addEventListener('click', function (e) {
-    e.stopPropagation(); chime('tap'); joy(); hideThought();
-    var r = avatar.getBoundingClientRect(), sr = scene.getBoundingClientRect();
-    bubble.style.left = Math.min(sr.width - 95, Math.max(95, r.left - sr.left + r.width / 2)) + 'px'; bubble.style.top = (r.top - sr.top - 6) + 'px';
-    bubble.innerHTML = '<button data-act="wardrobe"><span class="ms">checkroom</span>Change outfit</button><button data-act="sleep"><span class="ms">bedtime</span>' + (S.state().sleeping ? 'Wake up' : 'Go to sleep') + '</button><button data-act="mat"><span class="ms">self_improvement</span>Sit with Erin</button><button data-act="acu"><span class="ms">spa</span>Cramp relief points</button><button data-act="luna"><span class="ms">dark_mode</span>Tell Luna</button><button data-act="journal"><span class="ms">auto_stories</span>Open my journal</button><button data-act="everyday"><span class="ms">home</span>Everyday practice</button>' + (S.profile().onboarded ? '' : '<button data-act="intro"><span class="ms">favorite</span>Tell me about you</button>') + '';
-    bubble.classList.add('on'); fitBubble();
-  });
+  /* a tap on her is a little hop and nothing more (Jamie, 19 Oct: the menu over her head is gone; every choice it held has its own place) */
+  avatar.addEventListener('click', function (e) { e.stopPropagation(); chime('tap'); joy(); hideThought(); hideBubble(); });
   bubble.addEventListener('click', function (e) { var pb = e.target.closest('[data-pact]'); if (pb) { var pid = bubble.dataset.pet; hideBubble(); petAction(pid, pb.dataset.pact); return; } var b = e.target.closest('button'); if (!b) return; hideBubble(); if (b.dataset.act !== 'sleep' && !awake(b.dataset.act)) return; var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
   document.addEventListener('click', function (e) { if (!e.target.closest('#bubble') && !e.target.closest('#avatar')) hideBubble(); });
 
@@ -2510,7 +2632,7 @@
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
     enterMeditation: enterMeditation, exitMeditation: exitMeditation, runSession: runSession, sessionOn: function () { return !!session; },
-    asleep: asleep, stopEverything: stopEverything, shopOpenNow: shopOpenNow,
+    asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
   };
 

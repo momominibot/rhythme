@@ -34,7 +34,17 @@
     doors: [{ id: 'arch', to: 'garden', x: 38, y: 60.2, r: 4.5, flip: true }, { id: 'arch2', to: 'plaza', x: 222, y: 73.6, r: 4, flip: false }].concat(STORES.map(function (s) { return { id: s.id, to: s.layout, tap: s.id, x: s.wp.x, y: s.wp.y, r: 3, flip: !!s.wp.flip }; })),
     meditator: { x: 126, y: 63, w: 11, seat: { x: 126, seatY: 60, groundY: 65.3, face: 'left' } }, aura: { x: 128, y: 61, w: 17 }, holo: { x: 142, y: 64, w: 13 },
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
-    props: {}
+    props: {},
+    /* foreground cutouts (docs/design/2026-10-19-wide-street.md, "Foreground cutouts"): the plate is flat, so the front
+     * pillar of each arch and the two lamps are cut from it (tools/art/occluders.py) and drawn again exactly over themselves.
+     * The walk engine ranks each by `base`, the centre of its footprint on the cobbles, inside the solid named by `solid`:
+     * with her feet (or a pet's) above the base she passes behind it, below it in front. Box percent, like everything here */
+    occluders: [
+      { id: 'garden-arch', solid: 'arch', img: 'street-occ-arch.webp', x: 21.118, y: 30.859, w: 14.893, h: 32.129, base: 62 },
+      { id: 'lamp-west', solid: 'lamp', img: 'street-occ-lamp1.webp', x: 70.068, y: 29.297, w: 7.69, h: 33.496, base: 61.9 },
+      { id: 'lamp-east', solid: 'lamp', img: 'street-occ-lamp2.webp', x: 145.874, y: 34.082, w: 8.179, h: 35.156, base: 68.2 },
+      { id: 'plaza-arch', solid: 'arch', img: 'street-occ-arch2.webp', x: 197.021, y: 39.355, w: 17.7, h: 39.844, base: 77 }
+    ]
   };
   /* each store keeps its own hours (tester mode may visit any time, as the room allows); an attempt to go in outside them
    * shows the store's hours instead. Pure, so the tests can pass a date */
