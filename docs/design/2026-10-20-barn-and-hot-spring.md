@@ -56,13 +56,15 @@ Status: design, revised after a Codex design review (REVISE, 20 Oct). Nothing is
   "Open food diary". Nothing is prefilled; nothing is logged unless she does it herself.
 - Warm milk is cut.
 
-## 5. Finding the cave
+## 5. Finding the cave (Jamie, 20 Oct: "on the map it's secret")
 
-- The steam between the rocks is visible from the first visit, with a normal labelled hotspot: "Warm air from the
-  rocks". The first tap walks her over, shows "There is a narrow path between the stones.", saves `places.cave` (other
-  `places` keys kept), and only then adds the door "The hidden spring".
-- Until then the map shows the place as "Unexplored warm passage" with no art, no route and no name, and its door does
-  not exist. Found once, remembered on this device. No hearts, days or chores.
+- Behind the barn, a thin crack of starlight glints between the rocks from the first visit, with a normal labelled
+  hotspot: "A crack of starlight". The first tap walks her over, shows "There is a narrow path between the stones.",
+  saves `places.cave` (other `places` keys kept), and only then adds the door "The hidden spring".
+- **Secret on the map:** until it is found the cave is not on the map at all: no node, label, pin, art or route, and
+  its door does not exist. Once found it appears with a small sparkle so she can return.
+- A gentle hint is allowed and never required: the glint itself, and once, on a later barn visit, a soft line from
+  Luna ("I saw starlight between the rocks behind the barn."). No hearts, days or chores.
 
 ## 6. Code shape (from the review)
 
@@ -78,8 +80,10 @@ Status: design, revised after a Codex design review (REVISE, 20 Oct). Nothing is
 - **Walking**: `checkLayout` and `OvuWalk.plan` from every entrance to every stand point and every exit, with the animals
   and the seated spot occupied; a route that fails does not fall back to a straight walk.
 - **Camera**: both scenes open fitted (zoom 1), manual zoom kept.
-- **Lighting**: the barn takes the night veil, animal sprites included; the cave has its own lantern lighting in every
-  sky phase while the app's night theme still applies to sheets and labels.
+- **Lighting**: the barn takes the night veil, animal sprites included. The cave is the same starry dark in every sky
+  phase (no day tint, no night veil). Because it is so dark, everything on top of it gets its own contrast: the HUD,
+  labels, prompts and the can gauge sit on light pills, the walk path is a pale glowing trail in the art, and the
+  contrast audit runs on the cave in both themes.
 - **Reduced motion**: steam, ripples, animal idle and progress bars stand still, read live.
 
 ## 7. Art (one guarded batch, four images, decided now)
@@ -91,7 +95,7 @@ Jamie's word again.
 | # | Image | Size | Notes |
 |---|---|---|---|
 | 1 | Barn plate | 1024x1280 (4:5, the scene's own ratio) | soft pink barn with an open stall, a hen house with two empty nest boxes, fence behind the animals' spots, a clear dry path, rocks at the back with a gap and faint steam, no animals |
-| 2 | Cave plate | 1024x1280 | lantern-lit pool, steam, a hanging rope basket, one flat seat stone with clear ground, a dry path from the exit at the bottom |
+| 2 | Cave plate | 1024x1280 | a mystical cave like the universe: pitch black, full of stars, glowing crystals, a softly glowing steaming hot spring in the middle, a hanging rope basket, one flat seat stone, a dry pale path from the exit at the bottom; soft and dreamy, never horror |
 | 3 | Clover the cow | 1024x1024, magenta key | whole body, three-quarter view, uncropped |
 | 4 | Hen | 1024x1024, magenta key | one hen, mirrored and feather-tinted for the second |
 
