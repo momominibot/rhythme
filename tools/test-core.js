@@ -2057,6 +2057,7 @@ function scenes(todayIso) {
   var hots = [{ id: 'bed', label: 'Bed · go to sleep', x: 36, y: 60, wp: { x: 40, y: 72 } }, { id: 'desk', label: 'Desk · write in your journal', x: 70, y: 60, wp: { x: 68, y: 74 } }, { id: 'mat', label: 'Yoga mat · breathe', x: 30, y: 85, prompt: 'Tap to breathe a while' }];
   check('the nearest hotspot within reach is found by its stand point, none when far', IN.nearest({ x: 41, y: 73 }, hots).id === 'bed' && IN.nearest({ x: 66, y: 73 }, hots).id === 'desk' && IN.nearest({ x: 10, y: 20 }, hots) === null);
   check('the prompt verb comes from the label after the dot, or the hotspot\'s own prompt', IN.verb(hots[0]) === 'Tap to go to sleep' && IN.verb(hots[1]) === 'Tap to write in your journal' && IN.verb(hots[2]) === 'Tap to breathe a while');
+  check('a way-back label reads as a sentence: "Tap to go back to the street", "Tap to go back home"', IN.verb({ label: 'Door mat · back to the street' }) === 'Tap to go back to the street' && IN.verb({ label: 'Gate · back home' }) === 'Tap to go back home' && IN.verb({ label: 'Arch · Back to the garden' }) === 'Tap to go back to the garden');
 })();
 
 
