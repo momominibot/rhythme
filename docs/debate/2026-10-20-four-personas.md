@@ -23,7 +23,7 @@ Jamie asked for every model to walk the app as four different users, and for eve
 | "Did you really do it, with attention?" judges | all four | "Save this pause to your journal?" with an honest-but-kind note |
 | Help for low mood waited for seven logged days | Nadia | mindline 1771 shows as soon as a low mood is picked; after a birth three low days raise the note |
 | The mat put her in the yoga set, the bed in pyjamas, the stretch in yoga clothes | all four | outfit-matched sprites for meditate, sleep and stretch; a practice from the Mind hub no longer plays to an empty room |
-| No tudung | Nadia (all three models) | a baju kurung and tudung outfit, checked by Doubao's vision model for respect and fit, with its own meditate, sleep, bench and every action sprite (second render run, 20 Oct); it is in the wardrobe and the friend-card looks |
+| No tudung | Nadia (all three models) | a baju kurung and tudung outfit, checked by Doubao's vision model for respect and fit, with its own meditate, sleep, bench and every action sprite (second render run, 20 Oct; Doubao's review of the full set in `2026-10-20-personas/doubao-tudung-review.md`); it is in the wardrobe and the friend-card looks |
 | Predictions after a birth with periods not back | Nadia | paused until a period is logged after set-up |
 | After menopause, any bleeding is not a period | Mrs Tan | the calendar says Bleeding, fills nothing, and a saved day opens the prompt card ("This is not a period") |
 | Menopause on HRT was not recorded | Mrs Tan | HRT no longer blocks the after-menopause stage |
