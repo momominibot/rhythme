@@ -34,16 +34,37 @@
   /* ---------- sync position (one object in localStorage) ---------- */
   function loadState() {
     try { var s = JSON.parse(localStorage.getItem(LS) || 'null'); if (s && s.v === 1) { s.shadow = s.shadow || {}; s.tombstones = s.tombstones || {}; return s; } } catch (e) { }
-    /* pulledSeq, pulledId: the incremental pull's cursor, the last row it saw (synced_at exactly as the server wrote
-       it, and that row's id); pulledSeq without pulledId is an older version's millisecond cursor.
-       pushedAt: the newest local updatedAt we have pushed, so unchanged rows are not re-sent. */
-    return { v: 1, gen: 0, userId: null, shadow: {}, tombstones: {}, pulledSeq: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null };
+    /* pushedAt: the newest local updatedAt we have pushed, so unchanged rows are not re-sent. */
+    return { v: 1, userId: null, shadow: {}, tombstones: {}, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null };
   }
-  /* gen: bumped by every reset and every account switch. A sync captures it when it starts and checks it, with the
-     account, before each request and before every write, so a sync that a sign-out or a switch overtook can never
-     write its account's progress into the new state (Codex pre-merge review, 20 Oct, blocker 2). */
-  function genOf(s) { return Number(s && s.gen) || 0; }
   function saveState(s) { try { localStorage.setItem(LS, JSON.stringify(s)); } catch (e) { } }
+  /* The main state above is written whole, by a sync and by every diary change (onStoreChange), in any tab. Two things
+     must never be carried back by a late whole write from another tab, so each has its own key:
+     - the reset generation (ovumind_sync_gen_v1), raised by every reset and account switch and written by nothing
+       else. A sync reads it when it is asked for, before it waits for the lock, and checks it, with the account,
+       before every request and every write; once a reset has moved it on, the sync stops and writes nothing more.
+     - where the pull resumes (ovumind_sync_pull_v1): pulledSeq and pulledId, the last row the incremental pull saw
+       (synced_at exactly as the server wrote it, and that row's id; pulledSeq without pulledId is an older version's
+       millisecond cursor), and the typed recovery's types and typedAfter. Only a sync's commit and a reset write it.
+     Older versions kept both inside the main state (gen, pulledSeq, ...); they are read from there until these keys
+     are first written. (Codex sync reviews, rounds two to four, 20 Oct.) */
+  var LS_GEN = 'ovumind_sync_gen_v1', LS_PULL = 'ovumind_sync_pull_v1';
+  function readKey(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function readGen() { var g = readKey(LS_GEN); return g != null ? (Number(g) || 0) : (Number(loadState().gen) || 0); }
+  function bumpGen() { var g = readGen() + 1; try { localStorage.setItem(LS_GEN, String(g)); } catch (e) { } return g; }
+  function loadPull() {
+    try { var p = JSON.parse(readKey(LS_PULL) || 'null'); if (p && p.v === 1) return p; } catch (e) { }
+    var s = loadState();
+    return { v: 1, pulledSeq: s.pulledSeq || null, pulledId: s.pulledSeq && s.pulledId != null ? s.pulledId : null, types: s.types || null, typedAfter: s.typedAfter || null };
+  }
+  function savePull(p) { try { localStorage.setItem(LS_PULL, JSON.stringify({ v: 1, pulledSeq: p.pulledSeq || null, pulledId: p.pulledSeq && p.pulledId != null ? p.pulledId : null, types: p.types || null, typedAfter: p.typedAfter || null })); } catch (e) { } }
+  /* An empty position, for `uid` (an account switch, which keeps lastSyncAt) or for nobody (a reset). The diary, its
+     shadow and the deletions outbox stay, so deletions still reach the cloud later. */
+  function clearPosition(uid) {
+    var st = loadState();
+    savePull({});
+    saveState({ v: 1, userId: uid || null, shadow: snapshot(), tombstones: st.tombstones || {}, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: uid ? (st.lastSyncAt || null) : null });
+  }
   function snapshot() { var m = {}; S.list(null).forEach(function (e) { m[e.id] = e.updatedAt; }); return m; }
   function nowIso() { return new Date().toISOString(); }
   /* Compare by instant, not by text: the server returns '...+00:00' while the
@@ -181,16 +202,28 @@
   function canSync() { var s = session(); return !!(s && s.user && consentForUser(S.profile(), s.user.id) && doorOpen()); }
 
   /* ---------- REST ---------- */
+  /* How long one request may take (OVU_CONFIG.syncRequestMs, 30 seconds unless set). A sync holds the lock every tab
+     shares, so a request that never answers must not hold it for ever: past the limit the sync stops, the lock is
+     free again, and the late answer, if it ever comes, is ignored. */
+  function limitMs() { var c = root.OVU_CONFIG; return (c && c.syncRequestMs) || 30000; }
+  var SLOW = 'Cloud backup took too long to answer. Your diary is safe on this phone, and backup will try again.';
+  function timed(p, ctl) {
+    return new Promise(function (res, rej) {
+      var t = setTimeout(function () { if (ctl) { try { ctl.abort(); } catch (e) { } } rej(new Error(SLOW)); }, limitMs());
+      Promise.resolve(p).then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); });
+    });
+  }
   function rest(method, path, body, prefer, token) {
     var h = { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
     if (prefer) h.Prefer = prefer;
-    return fetch(CFG.supabaseUrl + '/rest/v1' + path, { method: method, headers: h, body: body != null ? JSON.stringify(body) : undefined }).then(function (r) {
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null; /* abort stops the request and its body */
+    return timed(fetch(CFG.supabaseUrl + '/rest/v1' + path, { method: method, headers: h, body: body != null ? JSON.stringify(body) : undefined, signal: ctl ? ctl.signal : undefined }).then(function (r) {
       return r.text().then(function (t) {
         var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { }
         if (!r.ok) throw new Error('rest ' + r.status + (j && j.message ? ' ' + j.message : ''));
         return j;
       });
-    });
+    }), ctl);
   }
 
   /* A PostgREST filter value in double quotes, so commas, brackets, dots and colons in it are read as text. */
@@ -207,10 +240,11 @@
      synced_at exactly as the server wrote it, and its id. One upload stamps all its rows with one now(), so ids tell
      those rows apart, and the server's microseconds are never rounded to milliseconds; a page or the 20,000 cap can
      split such a group without skipping or fetching again any of it. Returns the rows and the new cursor. */
-  function pullSince(at, id, token) {
+  function pullSince(at, id, token, guard) {
     var PAGE = 1000, all = [], cur = { at: at || null, id: at && id != null ? id : null };
     var base = '/entries?select=*&order=synced_at.asc,id.asc&limit=' + PAGE;
     function page() {
+      if (guard) guard();
       return rest('GET', base + afterCursor(cur.at, cur.id), null, null, token).then(function (rows) {
         rows = rows || []; all = all.concat(rows);
         if (rows.length) { var last = rows[rows.length - 1]; cur = { at: last.synced_at, id: last.id }; }
@@ -224,10 +258,11 @@
      it saw (keyset paging). Ids are unique, so rows that share a synced_at (one upload is stamped with one now()) can
      neither be skipped nor fetched forever, and no timestamp rounding is involved. At most 20,000 rows a sync;
      `done` is true only when a page came back short, meaning the scan reached the end. */
-  function pullTypedAfter(afterId, token, types) {
+  function pullTypedAfter(afterId, token, types, guard) {
     var PAGE = 1000, all = [], last = afterId || null;
     var base = '/entries?select=*&type=in.(' + types.map(encodeURIComponent).join(',') + ')&order=id.asc&limit=' + PAGE;
     function page() {
+      if (guard) guard();
       return rest('GET', base + (last ? '&id=gt.' + encodeURIComponent(last) : ''), null, null, token).then(function (rows) {
         rows = rows || []; all = all.concat(rows);
         if (rows.length) last = rows[rows.length - 1].id;
@@ -242,40 +277,53 @@
   function notify() { listeners.slice().forEach(function (fn) { try { fn(statusNow); } catch (e) { } }); }
   function setStatus(state, error) { statusNow = { state: state, at: loadState().lastSyncAt, error: error || null }; notify(); }
 
-  /* one sync at a time across every tab of this browser (Web Locks); where the browser has none, this tab's own busy flag
-     and the generation checks below still keep a stale sync from writing (Codex pre-merge review, 20 Oct, item 3) */
+  /* one sync at a time across every tab of this browser (Web Locks: Safari 15.4+, Chrome 69+). Where the browser has
+     none, or the page may not use it, the work runs unlocked, and this tab's busy flag and the generation checks below
+     are what keep a stale sync from writing. */
   function withLock(fn) {
-    try { if (root.navigator && root.navigator.locks && typeof root.navigator.locks.request === 'function') return root.navigator.locks.request('ovumind-sync', function () { return fn(); }); } catch (e) { }
-    return fn();
+    var L = root.navigator && root.navigator.locks, ran = false, p;
+    if (!L || typeof L.request !== 'function') return fn();
+    try { p = L.request('ovumind-sync', function () { ran = true; return fn(); }); } catch (e) { return fn(); }
+    return Promise.resolve(p).catch(function (err) { if (ran) throw err; return fn(); });
   }
   var CANCELLED = { cancelled: true };
   function syncNow() {
     if (busy) return busyPromise;
     if (!canSync()) { setStatus('idle'); return Promise.resolve({ ok: false, reason: 'not-enabled' }); }
     busy = true; setStatus('syncing');
-    var a = auth();
-    busyPromise = withLock(function () { return runSync(a); }).then(function (r) { busy = false; return r; }, function (err) { busy = false; throw err; });
+    /* the generation is read now, before waiting for the lock: a reset while this sync waits ends it */
+    var a = auth(), gen0 = readGen();
+    busyPromise = withLock(function () { return runSync(a, gen0); }).then(function (r) { busy = false; return r; }, function (err) { busy = false; throw err; });
     return busyPromise;
   }
-  function runSync(a) {
-    if (!canSync()) { setStatus('idle'); return Promise.resolve({ ok: false, reason: 'not-enabled' }); } /* another tab may have changed things while this one waited for the lock */
-    return a.token().then(function (token) {
+  function runSync(a, gen0) {
+    /* another tab may have changed things while this one waited for the lock */
+    if (readGen() !== gen0) { setStatus('idle'); return Promise.resolve({ ok: false, reason: 'cancelled' }); }
+    if (!canSync()) { setStatus('idle'); return Promise.resolve({ ok: false, reason: 'not-enabled' }); }
+    return timed(a.token()).then(function (token) {
       if (!token) throw new Error('no session');
       var uid = a.userId();
+      if (readGen() !== gen0 || !canSync()) throw CANCELLED; /* a reset while the token was on its way */
       var st = loadState();
-      /* a switch to another account, or the first sync after a reset: every position field starts clean and the
-         generation moves on, so nothing still in flight from before can land in it */
-      if (st.userId && st.userId !== uid) { st = { v: 1, gen: genOf(st) + 1, userId: uid, shadow: snapshot(), tombstones: st.tombstones || {}, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: st.lastSyncAt || null }; }
-      if (!st.userId) { st.gen = genOf(st) + 1; st.userId = uid; st.shadow = snapshot(); st.pulledSeq = null; st.pulledId = null; st.pushedAt = null; st.profilePulledAt = null; delete st.typedAfter; delete st.types; delete st.held; st.profileDirty = !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage); }
-      var gen0 = genOf(st);
-      /* still the same account, the same generation, signed in as it, and allowed to sync */
-      function alive() { var c = loadState(); return genOf(c) === gen0 && c.userId === uid && a.userId() === uid && canSync(); }
+      /* a switch to another account: a new generation, and every position field starts clean */
+      if (st.userId && st.userId !== uid) { gen0 = bumpGen(); clearPosition(uid); st = loadState(); }
+      if (!st.userId) {
+        /* the first sync after a reset, or ever: start clean */
+        st.userId = uid; st.shadow = snapshot(); st.pushedAt = null; st.profilePulledAt = null; delete st.held;
+        st.profileDirty = !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage);
+        savePull({});
+      } else if (readKey(LS_PULL) == null) {
+        savePull(loadPull()); /* an older version's position moves to its own key now, before any network wait */
+      }
+      var pull = loadPull();
+      /* still the same generation and account, signed in as it, and allowed to sync */
+      function alive() { var c = loadState(); return readGen() === gen0 && c.userId === uid && a.userId() === uid && canSync(); }
       function stillAlive() { if (!alive()) throw CANCELLED; }
       /* An older app version drops rows of types it does not know, while its pull cursor moves past them. When this
          version knows types the cursor was built without (Movement added 'exercise'), pull those types once from the
          start. Only the new types: a full re-pull would bring back older entries someone deliberately cleared. */
-      var knownTypes = (S.TYPES || []).join(','), before = st.types ? st.types.split(',') : Object.keys(CLOUD_TYPES_V1);
-      var newTypes = st.pulledSeq ? (S.TYPES || []).filter(function (t) { return before.indexOf(t) < 0; }) : [];
+      var knownTypes = (S.TYPES || []).join(','), before = pull.types ? pull.types.split(',') : Object.keys(CLOUD_TYPES_V1);
+      var newTypes = pull.pulledSeq ? (S.TYPES || []).filter(function (t) { return before.indexOf(t) < 0; }) : [];
       /* the typed recovery keeps its own position (typedAfter, the last id it saw) and never moves the shared cursor,
          so rows of other types that arrive between the two requests are still pulled next time; it resumes across
          syncs when the backlog is larger than one sync's share, and only a scan that reached the end marks the new
@@ -286,19 +334,19 @@
          the sync), then make sure this account has heard this phone's cloud choice (the server refuses writes it has not
          been told about, and a phone must not upload on a choice the account does not hold) */
       var C = root.OvuConsent;
-      var pre = !C ? Promise.resolve() : C.pullAccountState().then(function (acc) {
+      var pre = !C ? Promise.resolve() : timed(C.pullAccountState()).then(function (acc) {
         if (acc && acc.cloud_sync && acc.cloud_sync.on === false && C.allows('cloud_sync')) { C.record('cloud_sync', 'withdraw', 'server', { sent: true }); throw new Error('Cloud backup was turned off on another phone.'); }
-        return C.flush();
+        return timed(C.flush());
       }).then(function () {
         if (a.userId() !== uid || !C.allows('cloud_sync') || !C.recordedOnAccount('cloud_sync')) throw new Error('Your cloud backup choice has not reached your account yet. Try again in a moment.');
       });
       /* pull every row whose server arrival (synced_at) is after our cursor, in
          order and in pages, so a late-arriving older edit is never skipped */
-      return pre.then(function () { stillAlive(); return pullSince(st.pulledSeq, st.pulledId, token); }).then(function (got) {
+      return pre.then(function () { stillAlive(); return pullSince(pull.pulledSeq, pull.pulledId, token, stillAlive); }).then(function (got) {
         stillAlive();
         var rows = got.rows; incRows = rows; incEnd = got;
         if (!newTypes.length) return rows;
-        return pullTypedAfter(st.typedAfter || null, token, newTypes).then(function (t) { typed = t; typedDone = t.done; return mergeRows(rows, t.rows); });
+        return pullTypedAfter(pull.typedAfter || null, token, newTypes, stillAlive).then(function (t) { typed = t; typedDone = t.done; return mergeRows(rows, t.rows); });
       }).then(function (remoteRows) {
         /* consent, sign-in or a reset may have changed during the network wait */
         stillAlive();
@@ -334,19 +382,21 @@
           plan.applyPut.forEach(function (r) { settled[r.id] = 1; }); /* a restored row's old tombstone is resolved */
           remoteRows.forEach(function (r) { if (r.deleted) settled[r.id] = 1; });
           /* read-modify-write so a deletion made while this sync was in flight is kept */
-          var cur = loadState();
           /* a sign-out, an account switch or a reset of the position during the upload cleared it: leave it cleared,
-             rather than write this account and its progress back into it */
-          if (cur.userId !== uid || genOf(cur) !== gen0 || a.userId() !== uid) throw CANCELLED;
+             rather than write this account and its progress back into it. (A reset in another tab that lands after this
+             check is finished again inside the lock once this sync lets go: see resetPosition.) */
+          stillAlive();
+          var cur = loadState(), pos = loadPull();
           /* the shared cursor moves to the last all-type row this pull saw (never a typed-recovery row), kept exactly as
-             the server wrote it, and only forward. If another tab moved it while this sync ran, ours is written only
-             when it is strictly later: a cursor wound back would pull again rows this phone may have cleared since.
-             A tie on the instant keeps the stored one, because comparing ids here could disagree with the server's
-             collation, and pulling a few rows again is safer than skipping any. */
-          var movedMeanwhile = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
-          if (incRows.length && (!movedMeanwhile || (cur.pulledSeq && micros(incEnd.at) > micros(cur.pulledSeq)))) { cur.pulledSeq = incEnd.at; cur.pulledId = incEnd.id; }
-          if (typedDone) { cur.types = knownTypes; delete cur.typedAfter; }
-          else if (typed && typed.lastId) cur.typedAfter = typed.lastId;
+             the server wrote it, and only forward. If it moved while this sync ran (another tab, where the browser has
+             no Web Locks), ours is written only when it is strictly later: a cursor wound back would pull again rows
+             this phone may have cleared since. A tie on the instant keeps the stored one, because comparing ids here
+             could disagree with the server's collation, and pulling a few rows again is safer than skipping any. */
+          var movedMeanwhile = (pos.pulledSeq || null) !== (pull.pulledSeq || null) || (pos.pulledId || null) !== (pull.pulledId || null);
+          if (incRows.length && (!movedMeanwhile || (pos.pulledSeq && micros(incEnd.at) > micros(pos.pulledSeq)))) { pos.pulledSeq = incEnd.at; pos.pulledId = incEnd.id; }
+          if (typedDone) { pos.types = knownTypes; pos.typedAfter = null; }
+          else if (typed && typed.lastId) pos.typedAfter = typed.lastId;
+          savePull(pos);
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
           Object.keys(settled).forEach(function (id) { delete cur.tombstones[id]; });
           var held = cur.held || {};
@@ -447,9 +497,15 @@
   /* Forget this device's sync position (on sign-out or account switch); the
      local diary stays, deletions outbox is kept so they still propagate later. */
   function resetPosition() {
-    var st = loadState();
-    saveState({ v: 1, gen: genOf(st) + 1, userId: null, shadow: snapshot(), tombstones: st.tombstones || {}, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null });
+    var gen = bumpGen(); /* first, so a sync already running stops at its next check */
+    clearPosition(null);
     setStatus('idle');
+    /* A sync in another tab can pass its last check just before this reset and still write. A sync writes only inside
+       the lock, so the reset is finished there too, once that sync lets go: a sync asked for after this reset waits
+       behind it in the lock's queue, and one asked for before it read an older generation and stops. A newer reset
+       finishes itself. */
+    var p = withLock(function () { if (readGen() === gen) clearPosition(null); });
+    if (p && typeof p.catch === 'function') p.catch(function () { });
   }
 
   function init() {

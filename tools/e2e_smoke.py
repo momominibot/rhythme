@@ -1350,6 +1350,44 @@ async def main():
             ft = await page.evaluate("()=>({t: document.body.innerText, est: (document.querySelector('#myEstimate')||{}).innerText||''})")
             check("the fertility page shows no invented result and her own estimate is labelled", "85%" not in ft["t"] and "surge detected" not in ft["t"].lower() and len(ft["est"]) > 10 and "Reading your calendar" not in ft["est"], ft["est"][:140])
 
+            # round four of the sync review (20 Oct): real Web Locks and real fetch, two tabs of one phone. The first tab's
+            # pull never answers; within its time limit the sync gives up, aborts the request and lets go of the lock, so
+            # the second tab's sync, queued behind it, then runs. Only ovu-store.js and ovu-sync.js load, on a page with
+            # no scripts of its own, against a host that cannot resolve: every request is answered or held here.
+            ctx8 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx8.add_init_script("window.OVU_CONFIG={supabaseUrl:'https://sync-test.invalid',supabaseKey:'k',functionsBase:'https://sync-test.invalid/functions/v1',syncRequestMs:400};")
+            hold, held_urls, failed_urls = asyncio.Event(), [], []
+            async def sync_gate(route):
+                url, m = route.request.url, route.request.method
+                if url.startswith(BASE): return await route.continue_()
+                if "sync-test.invalid/rest/v1/entries" in url and m == "GET" and not held_urls:
+                    held_urls.append(url); await hold.wait()
+                    try: await route.abort()
+                    except Exception: pass
+                    return
+                if "sync-test.invalid/rest/v1/" in url:
+                    return await route.fulfill(status=200 if m == "GET" else 201, content_type="application/json", body="[]" if m == "GET" else "")
+                await route.abort()
+            await ctx8.route("**/*", sync_gate)
+            ctx8.on("requestfailed", lambda r: failed_urls.append(r.url))
+            stub = "()=>{window.OvuAuth={session:()=>({user:{id:'u1'}}),token:()=>Promise.resolve('t'),userId:()=>'u1'}; OvuStore.setProfile({cloud:{v:1,at:'2026-10-20T00:00:00Z',uid:'u1'}}); return true;}"
+            tabs8 = []
+            for _ in range(2):
+                t = await ctx8.new_page(); await t.goto(BASE + "404.html")
+                await t.add_script_tag(url=BASE + "ovu-store.js"); await t.add_script_tag(url=BASE + "ovu-sync.js"); await t.evaluate(stub)
+                tabs8.append(t)
+            await tabs8[0].evaluate("()=>{window.__s=OvuSync.syncNow(); return true;}")
+            await tabs8[0].wait_for_timeout(50)
+            try: second = await asyncio.wait_for(tabs8[1].evaluate("()=>{var t0=performance.now(); return OvuSync.syncNow().then(r=>({r:r, ms:Math.round(performance.now()-t0)}));}"), 10)
+            except asyncio.TimeoutError: second = {"r": {}, "ms": -1, "stuck": True}
+            try: first = await asyncio.wait_for(tabs8[0].evaluate("()=>window.__s"), 10)
+            except asyncio.TimeoutError: first = {"stuck": True}
+            locks = await tabs8[0].evaluate("()=>navigator.locks.query().then(q=>({held:q.held.length, pending:q.pending.length}))")
+            hold.set(); await tabs8[0].wait_for_timeout(100)
+            check("real Web Locks: a pull that never answers ends the first tab's sync within its limit, and the second tab's sync then runs", bool(held_urls) and first.get("ok") is False and "too long" in (first.get("error") or "") and second["r"].get("ok") is True and second["ms"] >= 250 and locks == {"held": 0, "pending": 0}, {"first": first, "second": second, "locks": locks, "held": len(held_urls)})
+            check("and the stalled request was aborted, not left open", any("rest/v1/entries" in u for u in failed_urls), failed_urls[:2])
+            await ctx8.close()
+
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()
     finally:
