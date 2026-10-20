@@ -53,14 +53,15 @@
     return {
       run: function () { if (since === null) since = now(); },
       hold: function () { if (since !== null) { ms += now() - since; since = null; } },
+      ms: function () { return ms + (since === null ? 0 : now() - since); },
       seconds: function () { return Math.round((ms + (since === null ? 0 : now() - since)) / 1000); },
       running: function () { return since !== null; }
     };
   }
   /* the one entry a confirmed morning start saves, or null under 30 seconds */
   function entryData(o) {
-    var secs = Math.max(0, Math.round(Number(o.seconds) || 0));
-    if (secs < MIN_SAVE_S || !o.confirmed) return null;
+    var raw = Math.max(0, Number(o.seconds) || 0), secs = Math.round(raw);
+    if (raw < MIN_SAVE_S || !o.confirmed) return null; /* eligibility on the unrounded time: 29.5 s is not 30 */
     return {
       kind: 'informal', activity: 'morning', activityName: 'Morning start', version: o.version === 'erin' ? 'erin' : 'yourway',
       seconds: secs, minutes: Math.round(secs / 6) / 10, skipped: (o.skipped || []).slice(), brushed: o.brushed || 'no',
@@ -81,7 +82,7 @@
   function renderInvite() {
     var el = $('#morningInvite'); if (!el || !S()) return;
     var show = offered(S().state(), S().today(), new Date()) && !run;
-    el.hidden = !show; if (!show) { el.innerHTML = ''; return; }
+    el.hidden = !show; if (!show) { el.innerHTML = ''; el.dataset.on = ''; return; }
     if (el.dataset.on === '1') return;
     el.dataset.on = '1';
     el.innerHTML = '<span class="ms" aria-hidden="true">wb_twilight</span><div><b>Morning start</b><small>A short pause, then brushing your way. Sitting or lying is fine.</small></div>' +
@@ -112,6 +113,8 @@
 
   function begin(version, quiet) {
     var room = R(); if (room.asleep() || run) return;
+    if ((room.sessionOn && room.sessionOn()) || (room.practiceOn && room.practiceOn())) { room.toast('Finish or stop the practice that is running first.', 'self_improvement'); return; }
+    if (root.OvuPodcast) { try { root.OvuPodcast.pause(); } catch (e) { } }
     room.hideSheet(); hideInvite();
     run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: version === 'erin' ? new Audio() : null, done: false };
     if (room.endMoment) room.endMoment();
@@ -120,6 +123,7 @@
     if (room.restorePose) room.restorePose();
     if (room.els && room.els.avatar) room.els.avatar.classList.remove('acting');
     showPanel(); next();
+    var pnl = $('#mpanel'); if (pnl) { pnl.setAttribute('tabindex', '-1'); pnl.focus(); } /* focus leaves the closed sheet for the panel */
     clearInterval(ticker); ticker = setInterval(function () { if (run && room.asleep()) cancel(); }, 1000);
   }
   function showPanel() { var p = $('#mpanel'); if (p) p.hidden = false; }
@@ -129,6 +133,7 @@
 
   function next(skippedNow) {
     if (!run) return;
+    if (R().asleep()) { cancel(); return; }
     var cur = step(); if (cur && skippedNow && run.skipped.indexOf(cur.key) < 0 && !cur.erin) run.skipped.push(cur.key);
     clearTimeout(run.timer); stopAudio();
     run.i++;
@@ -140,8 +145,9 @@
     if (s.gate) run.clock.hold(); else if (!run.paused) run.clock.run();
     if (s.key === 'yourway' || s.erin) run.brushed = s.erin ? 'erin' : 'yourway';
     paint();
-    if (s.secs && !run.paused) { run.left = s.secs * 1000; arm(); }
-    if (s.audio && !run.quiet && !run.paused) playAudio(s.audio);
+    run.left = s.secs ? s.secs * 1000 : 0; run.pending = null;
+    if (s.secs && !run.paused) arm(); /* a paused routine keeps the new step's full time for Resume */
+    if (s.audio && !run.quiet) { if (run.paused) run.pending = s.audio; else playAudio(s.audio); }
   }
   function arm() { clearTimeout(run.timer); run.t0 = Date.now(); run.timer = setTimeout(function () { next(false); }, run.left); }
   function playAudio(url) { try { var a = run.audio || (run.audio = new Audio()); a.src = url; a.currentTime = 0; var p = a.play(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
@@ -155,13 +161,14 @@
     } else {
       run.paused = false; run.clock.run();
       if (s.secs) arm();
-      if (s.audio && !run.quiet && run.audio) { try { var p = run.audio.play(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
+      if (run.pending) { playAudio(run.pending); run.pending = null; }
+      else if (s.audio && !run.quiet && run.audio && run.audio.src) { try { var p = run.audio.play(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
     }
     paint();
   }
   function quietToggle() {
     if (!run) return; run.quiet = !run.quiet;
-    var s = step(); if (run.quiet) stopAudio(); else if (s && s.audio && !run.paused) playAudio(s.audio);
+    if (run.quiet) { stopAudio(); run.pending = null; } /* on again: Erin speaks from the next line, so no line is cut short */
     paint();
   }
   function ready() { if (!run) return; run.paused = false; next(false); }
@@ -174,10 +181,11 @@
   }
   function finish(finished) {
     var r = run; if (!r) return;
+    if (R().asleep()) { cancel(); return; } /* asleep: nothing to confirm */
     clearTimeout(r.timer); stopAudio(); r.clock.hold(); clearInterval(ticker);
-    var secs = r.clock.seconds(), room = R();
+    var exact = r.clock.ms() / 1000, secs = Math.round(exact), room = R();
     run = null; hidePanel(); if (room.restorePose) room.restorePose();
-    if (secs < MIN_SAVE_S) { room.toast('Stopped. Nothing under 30 seconds is saved.', 'wb_twilight'); renderInvite(); return; }
+    if (exact < MIN_SAVE_S) { room.toast('Stopped. Nothing under 30 seconds is saved.', 'wb_twilight'); renderInvite(); return; }
     var did = [];
     if (r.skipped.indexOf('arrive') < 0) did.push('arrived'); if (r.skipped.indexOf('notice') < 0) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed');
     var saved = false;
@@ -187,7 +195,8 @@
       '<p class="help">Save it if you really did it. A mind that wandered and came back still counts.</p>');
     $('#mdYes').addEventListener('click', function () {
       if (saved) return; saved = true;
-      var data = entryData({ seconds: secs, confirmed: true, version: r.version, skipped: r.skipped, brushed: r.brushed, finished: finished });
+      if (room.asleep()) { room.closeSheet(); return; }
+      var data = entryData({ seconds: exact, confirmed: true, version: r.version, skipped: r.skipped, brushed: r.brushed, finished: finished });
       room.closeSheet();
       if (!data) return;
       var ev = S().add('mindfulness', S().today(), data);
@@ -209,18 +218,20 @@
     else b = '<button type="button" class="btn ghost" id="mpPause">' + (run.paused ? 'Resume' : 'Pause') + '</button><button type="button" class="btn ghost" id="mpNext">Next</button>';
     if (s.erin) b += '<button type="button" class="btn ghost" id="mpQuiet" aria-pressed="' + (run.quiet ? 'true' : 'false') + '">' + (run.quiet ? 'Voice off' : 'Voice on') + '</button>';
     b += '<button type="button" class="btn ghost" id="mpStop">Stop</button>';
-    var row = $('#mpBtns'), focusId = document.activeElement && document.activeElement.id;
+    var row = $('#mpBtns'), pnl = $('#mpanel'), ae = document.activeElement, focusId = ae && ae.id, inPanel = !!(ae && pnl && (pnl.contains(ae) || ae === document.body));
     row.innerHTML = b;
     var bind = function (id, f) { var el = document.getElementById(id); if (el) el.addEventListener('click', f); };
     bind('mpReady', ready); bind('mpSkipBrush', skipBrushing); bind('mpDone', function () { finish(true); }); bind('mpPause', pauseToggle); bind('mpNext', function () { next(true); }); bind('mpQuiet', quietToggle); bind('mpStop', stop);
-    if (focusId && document.getElementById(focusId)) document.getElementById(focusId).focus(); /* keyboard focus stays where she was */
+    var keep = focusId && document.getElementById(focusId);
+    if (keep && row.contains(keep)) keep.focus(); /* keyboard focus stays where she was */
+    else if (inPanel && focusId !== 'mpanel') { var first = row.querySelector('button'); if (first) first.focus(); } /* or moves to the first control, never lost */
   }
 
   root.OvuMorning = {
     START_HOUR: START_HOUR, END_HOUR: END_HOUR, MIN_SAVE_S: MIN_SAVE_S, STEPS: STEPS, VERSIONS: VERSIONS,
     inWindow: inWindow, plan: plan, erinSteps: erinSteps, offered: offered, makeClock: makeClock, entryData: entryData,
     open: open, begin: begin, active: active, cancel: cancel, renderInvite: renderInvite,
-    state: function () { return run ? { version: run.version, i: run.i, key: step() && step().key, paused: run.paused, quiet: run.quiet, seconds: run.clock.seconds(), skipped: run.skipped.slice(), brushed: run.brushed } : null; }
+    state: function () { return run ? { version: run.version, i: run.i, key: step() && step().key, paused: run.paused, left: run.left, quiet: run.quiet, seconds: run.clock.seconds(), skipped: run.skipped.slice(), brushed: run.brushed } : null; }
   };
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('DOMContentLoaded', function () { setInterval(function () { if (!run) renderInvite(); }, 60000); });

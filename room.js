@@ -498,6 +498,7 @@
   function placeAvatar(p, flip) { pos = { x: p.x, y: p.y }; avatar.style.left = p.x + '%'; avatar.style.top = p.y + '%'; avatar.classList.toggle('flip', !!flip); emit('placed', pos); } /* the walk engine re-ranks her depth */
   function sameFloor(a, b) { if (!L.stairs) return true; return (a.y < L.upstairsY) === (b.y < L.upstairsY); }
   function walkTo(wp, done) {
+    if (window.OvuMorning && OvuMorning.active()) return; /* Morning start: she stays where she is (Codex review) */
     if (wp && !reduced && hooks.walkTo && hooks.walkTo(wp, function () { avatar.classList.toggle('flip', !!wp.flip); scheduleLife(); done && done(); })) return; /* routed around furniture, with her walk cycle */
     if (wp && !reduced && !sameFloor(pos, wp)) {
       var up = wp.y < L.upstairsY, seq = (up ? L.stairs.slice() : L.stairs.slice().reverse()).concat([wp]), i = 0;
@@ -522,7 +523,7 @@
       scheduleLife(); done && done();
     }, ms + 30);
   }
-  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
+  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
@@ -553,6 +554,7 @@
   /* ---------- tap routing ---------- */
   function tap(h) {
     if (!h) return;
+    if (window.OvuMorning && OvuMorning.active()) { toast('Morning start is running. Stop it first, or carry on.', 'wb_twilight'); return; }
     var btn = $('.hotspot[data-id="' + h.id + '"]'); if (btn) { btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump'); }
     chime('tap'); hideBubble(); clearTimeout(idleTimer); /* a pending walk home must not cancel this walk */
     var visited = S.state().visited || {}; visited[h.id] = true; S.setState({ visited: visited });
@@ -712,6 +714,7 @@
     try { if (session) finishSession(false); } catch (e) { }
     try { if (window.OvuBreathTap) OvuBreathTap.close(); } catch (e) { }
     try { if (window.OvuLightFlower) OvuLightFlower.close(); } catch (e) { }
+    try { if (window.OvuMorning) OvuMorning.cancel(); } catch (e) { } /* Morning start ends at once, with no save prompt */
     try { if (hooks.hudStop) hooks.hudStop(); } catch (e) { }
     hud.classList.remove('on'); avatar.classList.remove('acting');
   }
@@ -2787,7 +2790,7 @@
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
-    moment: moment, endMoment: endMoment, restorePose: restorePose, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; },
+    moment: moment, endMoment: endMoment, restorePose: restorePose, practiceOn: function () { return !!practice; }, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
   };

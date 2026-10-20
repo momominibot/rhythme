@@ -323,7 +323,9 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var now = 0, c = M.makeClock(function () { return now; });
   c.run(); now = 10000; c.hold(); now = 25000; c.run(); now = 55000;
   check('practice time counts only while a step runs, not while paused or walking to the sink', c.seconds() === 40 && c.running(), c.seconds());
-  check('nothing under 30 seconds, nothing unconfirmed', M.entryData({ seconds: 29, confirmed: true }) === null && M.entryData({ seconds: 300, confirmed: false }) === null);
+  check('nothing under 30 seconds, nothing unconfirmed; 29.6 seconds does not round up to 30', M.entryData({ seconds: 29, confirmed: true }) === null && M.entryData({ seconds: 29.6, confirmed: true }) === null && M.entryData({ seconds: 300, confirmed: false }) === null && M.entryData({ seconds: 30.4, confirmed: true }).seconds === 30);
+  var c2 = M.makeClock(function () { return now; }); now = 0; c2.run(); now = 29600; c2.hold();
+  check('the clock keeps exact milliseconds for the 30-second rule', c2.ms() === 29600 && c2.seconds() === 30);
   var d = M.entryData({ seconds: 30, confirmed: true, version: 'yourway', skipped: ['notice'], brushed: 'yourway', finished: true });
   check('one honest entry: informal, morning, real seconds, what was skipped, whether it finished', d && d.kind === 'informal' && d.activity === 'morning' && d.seconds === 30 && d.minutes === 0.5 && d.skipped.join() === 'notice' && d.finished && d.completed && d.confirmedReal && d.brushed === 'yourway', JSON.stringify(d));
   var e2 = M.entryData({ seconds: 95, confirmed: true, version: 'erin', brushed: 'no', finished: false });
