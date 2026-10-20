@@ -126,9 +126,9 @@ form.addEventListener('submit',e=>{
 d.getElementById('checkin-export').addEventListener('click',()=>{
  try{const data=read(root.localStorage);const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=d.createElement('a');a.href=url;a.download='ovuluna-checkins-'+day()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){message.textContent=e.message||'Export unavailable.';}
 });
-const personas=['bloom','grow','nurture','wisdom'];
+const personas=['grow','nurture','peri','wisdom'];
 function persona(value){if(!personas.includes(value))return;d.documentElement.dataset.persona=value;d.querySelectorAll('[data-p]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.p===value));b.classList.toggle('on',b.dataset.p===value);});}
-function storedPersona(){try{const saved=root.localStorage.getItem('ovuluna_persona');persona(personas.includes(saved)?saved:'bloom');}catch(_){persona('bloom');}}
+function storedPersona(){try{const saved=root.localStorage.getItem('ovuluna_persona');persona(personas.includes(saved)?saved:'grow');}catch(_){persona('grow');}}
 storedPersona();
 d.querySelectorAll('#personaBar [data-p]').forEach(b=>b.addEventListener('click',()=>{persona(b.dataset.p);try{root.localStorage.setItem('ovuluna_persona',b.dataset.p);}catch(_){message.textContent='Appearance changed for this visit. Browser storage is unavailable.';}}));
 let rolloverTimer;

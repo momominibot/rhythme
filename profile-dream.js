@@ -4,8 +4,8 @@
  'use strict';
  function nickname(){var node=document.getElementById('profile-nickname');if(!node)return;try{var raw=localStorage.getItem('ovuluna_preferences_v1');if(raw===null){node.textContent='';return;}var record=JSON.parse(raw);if(!record||typeof record!=='object'||Array.isArray(record)||(record.version!==undefined&&record.version!==1)||(record.nickname!==undefined&&(typeof record.nickname!=='string'||record.nickname.length>40||/[\u0000-\u001f\u007f]/.test(record.nickname))))throw Error('format');node.textContent=record.nickname?'Hello, '+record.nickname+'.':'';}catch(_){node.textContent='Saved nickname unavailable. Review local preferences.';}}
  nickname();window.addEventListener('pageshow',nickname);window.addEventListener('storage',function(e){if(e.key===null||e.key==='ovuluna_preferences_v1')nickname();});
- var picker=document.getElementById('personaPicker'),note=document.getElementById('persona-status'),current='bloom';
- var valid=['bloom','grow','nurture','wisdom'];
+ var picker=document.getElementById('personaPicker'),note=document.getElementById('persona-status'),current='grow';
+ var valid=['grow','nurture','peri','wisdom'];
  try {var saved=localStorage.getItem('ovuluna_persona');if(valid.includes(saved))current=saved;}catch(_){}
  function show(value){document.documentElement.dataset.persona=value;picker.querySelectorAll('button').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.persona===value));});}
  show(current);
