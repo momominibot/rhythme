@@ -45,7 +45,7 @@
     doc.getElementById('gSend').addEventListener('click', function () {
       var e = email.value.trim(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { m.textContent = 'That is not an email address.'; m.className = 'msg bad'; return; }
       this.disabled = true; m.className = 'msg'; m.textContent = 'Sending…';
-      A.sendCode(e).then(function () { m.textContent = 'Code sent. Check the email and type it in.'; doc.getElementById('gCodeWrap').classList.remove('hidden'); doc.getElementById('gVerify').classList.remove('hidden'); code.focus(); }, function (err) { m.textContent = 'Could not send: ' + err.message; m.className = 'msg bad'; }).then(function () { doc.getElementById('gSend').disabled = false; });
+      A.sendCode(e).then(function () { m.textContent = 'Code sent. Check the email and type it in.'; doc.getElementById('gCodeWrap').classList.remove('hidden'); doc.getElementById('gVerify').classList.remove('hidden'); code.focus(); }, function (err) { var se = A.sendError ? A.sendError(err) : { text: 'Could not send: ' + err.message }; m.textContent = se.text; m.className = 'msg bad'; if (se.limited) { doc.getElementById('gCodeWrap').classList.remove('hidden'); doc.getElementById('gVerify').classList.remove('hidden'); code.focus(); } /* a code already in the inbox still works */ }).then(function () { doc.getElementById('gSend').disabled = false; });
     });
     doc.getElementById('gVerify').addEventListener('click', function () {
       var btn = this; btn.disabled = true; m.className = 'msg'; m.textContent = 'Checking…';
