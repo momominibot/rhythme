@@ -1401,6 +1401,19 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 @keyframes btapbloom{0%{transform:scale(.4);opacity:0}20%{opacity:1}100%{transform:scale(4.2);opacity:0}}
 .btap-done b{display:block;font-family:var(--serif);font-weight:600;font-size:22px;color:#fff}
 body.btap-open{overflow:hidden}
+/* Light Flower (ovu-lightflower.js): the same card and stop button as the koi pond, on a near-black night */
+.lflower{background:radial-gradient(120% 90% at 50% 30%,#1d1636 0%,#0f0c20 55%,#07060f 100%)}
+.lf-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0}
+.lf-flower{position:absolute;z-index:1;border:0;border-radius:50%;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.lf-flower:focus-visible{outline:2px solid rgba(255,236,214,.7);outline-offset:4px}
+.lf-word{top:auto;bottom:calc(96px + env(safe-area-inset-bottom,0px));font-size:19px;letter-spacing:.02em;text-align:center;width:min(86vw,360px);color:#efe6ff;text-shadow:0 0 18px rgba(214,196,255,.5)}
+.lf-air{display:flex;align-items:center;justify-content:center;gap:8px;font:700 12.5px var(--sans);color:#d9cdef}
+.lf-air[hidden]{display:none}
+.lf-air input{width:18px;height:18px;accent-color:#c9b6e6}
+/* the sound volume, under the switch in the window card */
+.volrow{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--rm-ink-3)}
+.volrow input{flex:1;min-width:0;accent-color:var(--rm-mauve)}
+.volrow .ms{font-size:18px}
 @media(prefers-reduced-motion:reduce){.btap-ring{transition:opacity .6s}.btap-ring img{animation:none}.btap-petal{animation-duration:.8s}}
 
 /* herb and tea pictures (pastel clay icons) on the greenhouse cards and the diary's tea list */

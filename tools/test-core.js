@@ -13,7 +13,7 @@ function fresh(todayIso) {
   w.window = w; w.self = w; w.globalThis = w;
   var ctx = vm.createContext(w);
   w.Uint8Array = Uint8Array; w.ArrayBuffer = ArrayBuffer; w.isFinite = isFinite; w.isNaN = isNaN; w.Blob = Blob; w.File = File;
-  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-breathtap.js', 'ovu-moments.js', 'ovu-mindful.js', 'ovu-morning.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
+  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sound.js', 'ovu-breathtap.js', 'ovu-lightflower.js', 'ovu-moments.js', 'ovu-mindful.js', 'ovu-morning.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sync.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
   return w;
@@ -332,6 +332,32 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the same small thank-you as any practice, inside the shared 6 a day cap, never a streak', pts.join() === '2,2,2,0' && (RW.ledger().streak || 0) === 0, pts.join());
   var ev = S.list('mindfulness').slice(-1)[0];
   check('the moment after it: "That pause was yours", not a claim about minutes', MO.forEntry(ev) === 'morning' && MO.MOMENTS.morning.lines.indexOf('That pause was yours.') >= 0 && MO.MOMENTS.morning.pose === null);
+})();
+
+(function soundKitAndLightFlower() {
+  console.log('2i. the sound kit: one switch (never chosen is on), quiet volume, no stacking; Light Flower lights without flashing and saves only time');
+  var w = fresh(), S = w.OvuStore, SD = w.OvuSound, LF = w.OvuLightFlower, RW = w.OvuRewards, MO = w.OvuMoments;
+  check('never choosing counts as sound on; switching off is off; the default volume is a quarter, at the reviewed loudness', SD.enabled() === true && (S.setState({ sound: false }), SD.enabled() === false) && (S.setState({ sound: true }), SD.enabled() === true) && SD.volume() === 0.25 && SD.gainFor(0.25) === 1);
+  check('the volume is kept between silent and full', SD.setVolume(2) === 1 && SD.volume() === 1 && SD.setVolume(-1) === 0 && (SD.setVolume(0.25), SD.volume() === 0.25));
+  check('fast taps never stack: a flower note at most every 1.2 s, a tap click every 120 ms', SD.allowed('petal', 1000, 0) && !SD.allowed('petal', 2100, 1000) && SD.allowed('petal', 2300, 1000) && SD.allowed('tap', 1130, 1000) && !SD.allowed('tap', 1100, 1000) && !SD.allowed('nosuch', 5, 0));
+  var walk = true; for (var i = 0; i < SD.SCALE.length; i++) [0.1, 0.9].forEach(function (r) { var n = SD.nextPetal(i, r); if (n < 0 || n >= SD.SCALE.length || Math.abs(n - i) !== 1) walk = false; });
+  check('the flower notes walk to a neighbouring note of a pentatonic scale, never a leap', walk && SD.SCALE.length === 7);
+  check('with no audio device nothing breaks: play and the air simply do nothing', SD.play('petal') === false && SD.ambience(true) === false);
+  check('a petal rises over 300 ms and settles over four seconds; nothing faster', LF.glowAt(0) === 0 && Math.abs(LF.glowAt(300) - 1) < 1e-9 && LF.glowAt(150) > 0.4 && LF.glowAt(150) < 0.6 && LF.glowAt(2300) > 0 && LF.glowAt(4300) === 0 && LF.glowAt(1000) > LF.glowAt(2000));
+  var held = [500, 1500, 3000].every(function (t) { return Math.abs(LF.glowAt(LF.holdFrom(t)) - LF.glowAt(t)) < 1e-6; });
+  check('tapping a glowing petal holds its brightness (no jump, no flash) and a dark one rises from dark', held && LF.holdFrom(5000) === 0 && LF.holdFrom(100) === 100);
+  check('at most one new petal every 400 ms, so nothing can flash three times a second', LF.MIN_GAP_MS >= 334);
+  var r = 100, rot = 0.14, up = LF.petalFor(Math.cos(rot - Math.PI / 2) * 60, Math.sin(rot - Math.PI / 2) * 60, r, 3, rot), right = LF.petalFor(Math.cos(rot + Math.PI / 6) * 60, Math.sin(rot + Math.PI / 6) * 60, r, 3, rot);
+  check('a tap on a petal lights that petal; a tap off the flower lights the next one round', up === 0 && right === 2 && LF.petalFor(500, 500, r, 3, rot) === 4 && LF.petalFor(500, 500, r, 5, rot) === 0);
+  var e = LF.entryFor(125.4, 2, 'a', 'b');
+  check('the saved entry is practice time and the plan, nothing about taps', e.kind === 'lightflower' && e.seconds === 125 && e.minutes === 2.1 && e.planned === 2 && e.completed === true && !('taps' in e) && LF.entryFor(30, 0).completed === false);
+  var w2 = fresh(), S2 = w2.OvuStore, R2 = w2.OvuRewards;
+  var short = R2.award(S2.add('mindfulness', S2.today(), LF.entryFor(40, 0), 'room')), full = R2.award(S2.add('mindfulness', S2.today(), LF.entryFor(75, 0), 'room'));
+  check('hearts: nothing under a full minute, then the small flat practice thank-you', short.points === 0 && full.points === 2);
+  check('cute activity sounds: nom nom for food, a dig for planting, a sprinkle for watering, a coin at the shop; logging stays quiet', SD.forMoment('food') === 'munch' && SD.forMoment('plant') === 'dig' && SD.forMoment('farmwater') === 'water' && SD.forMoment('harvest') === 'pop' && SD.forMoment('shop') === 'coin' && SD.forMoment('period') === null && SD.forMoment('symptom') === null && ['munch', 'dig', 'water', 'pop', 'coin', 'pet', 'page', 'swish', 'boop', 'hup', 'sit', 'step', 'door'].every(function (k) { return !!SD.KIT[k] && SD.KIT[k].peak <= 0.05; }));
+  check('footsteps follow the ground: wood indoors and in shops, grass in the garden and farm, stone on the street and plaza', SD.surfaceFor({ id: 'room' }) === 'wood' && SD.surfaceFor({ id: 'shop-pet', scene: 'street', store: 'pet' }) === 'wood' && SD.surfaceFor({ id: 'garden', scene: 'garden' }) === 'grass' && SD.surfaceFor({ id: 'farm', scene: 'farm' }) === 'grass' && SD.surfaceFor({ id: 'street', scene: 'street' }) === 'stone' && SD.surfaceFor({ id: 'plaza', scene: 'plaza' }) === 'stone');
+  check('footsteps never pile up: at most one every 150 ms', !SD.allowed('step', 1100, 1000) && SD.allowed('step', 1160, 1000));
+  check('after Light Flower she listens, with a line about noticing', MO.forEntry({ type: 'mindfulness', data: { kind: 'lightflower' } }) === 'lightflower' && MO.pose('lightflower') === 'listen');
 })();
 
 (function noPeriodStatementsAreNotFlow() {

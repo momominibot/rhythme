@@ -261,8 +261,11 @@
     t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('on'); }, sub ? 5200 : 3200);
   }
   var audioCtx = null;
-  function chime(kind, force) {
-    if (!S.state().sound && !force) return;
+  /* every sound goes through the sound kit (ovu-sound.js): soft, quiet, one switch, no exceptions to it (Codex, 20 Oct) */
+  function soundOn() { return window.OvuSound ? OvuSound.enabled() : !!S.state().sound; }
+  function chime(kind) {
+    if (window.OvuSound) { OvuSound.play(kind === 'save' || kind === 'sleep' || kind === 'bell' || kind === 'alert' ? kind : 'tap'); return; }
+    if (!S.state().sound) return;
     try {
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
       var o = audioCtx.createOscillator(), g = audioCtx.createGain();
@@ -599,7 +602,7 @@
       var bt = $('#bedTimeNow').value; if (!S.validTime(bt)) return message($('#sleepMsg'), 'Enter a bedtime.', false);
       var prev = S.profile().outfit;
       S.setState({ sleeping: { startedAt: new Date().toISOString(), bedTime: bt, prevOutfit: prev, pj: $('#pjToggle').classList.contains('on') } });
-      enterNight(true); closeSheet(); chime('sleep'); if (S.state().sound) new Audio(ERIN + 'night_sweet_dreams.mp3').play().catch(function () { });
+      enterNight(true); closeSheet(); chime('sleep'); if (soundOn()) new Audio(ERIN + 'night_sweet_dreams.mp3').play().catch(function () { });
       toast('Sweet dreams. Tap the bed when you wake up.', 'dark_mode');
     });
   }
@@ -613,7 +616,7 @@
       '<div class="row"><button class="btn primary" id="saveWake"><span class="ms">wb_sunny</span>Save my sleep</button><button class="btn ghost" id="cancelSleep">I did not sleep</button></div>' +
       '<div class="msg" id="sleepMsg"></div>');
     wireMoons(body);
-    if (S.state().sound) new Audio(ERIN + 'morning_how.mp3').play().catch(function () { });
+    if (soundOn()) new Audio(ERIN + 'morning_how.mp3').play().catch(function () { });
     $('#cancelSleep').addEventListener('click', function () { exitNight(); S.setState({ sleeping: null }); closeSheet(); toast('No worries. Nothing was recorded.', 'wb_sunny'); });
     $('#saveWake').addEventListener('click', function () {
       try {
@@ -708,6 +711,7 @@
     try { if (practice) stopPractice(); } catch (e) { }
     try { if (session) finishSession(false); } catch (e) { }
     try { if (window.OvuBreathTap) OvuBreathTap.close(); } catch (e) { }
+    try { if (window.OvuLightFlower) OvuLightFlower.close(); } catch (e) { }
     try { if (hooks.hudStop) hooks.hudStop(); } catch (e) { }
     hud.classList.remove('on'); avatar.classList.remove('acting');
   }
@@ -1892,7 +1896,7 @@
   function sleepSrc(o) { return ART + (o === 'pajamas' ? 'avatar-sleeping.webp' : 'avatar-sleeping-' + o + '.webp'); }
   function wearImg(img, src, plain) { if (!img) return; img.onerror = function () { img.onerror = null; img.src = plain; }; if (img.getAttribute('src') !== src) img.src = src; }
   function enterMeditation() {
-    endMoment(); meditating = true; avatar.classList.add('hidden');
+    endMoment(); meditating = true; avatar.classList.add('hidden'); if (window.OvuSound) OvuSound.play('sit');
     if (!meditator.classList.contains('onseat')) wearImg(meditator.querySelector('img'), meditateSrc(wornOutfit()), ART + 'avatar-meditate.webp'); /* a bench keeps her seated sprite */
     setTimeout(function () { meditator.classList.add('on'); $('#aura').classList.add('on'); }, 350);
   }
@@ -2095,6 +2099,7 @@
         '<button type="button" class="mattile" data-kind="breathe" data-min="2"><span class="ms">blur_circular</span><b>Just breathe</b><small>2 min, 4-4-6 with a bell</small></button>' +
         '<button type="button" class="mattile" data-kind="breathe" data-min="5"><span class="ms">blur_circular</span><b>Just breathe</b><small>5 min, silent</small></button>' +
         '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Koi Pond</b><small>Watch the koi glide, 3 to 5 min</small></button>' +
+        '<button type="button" class="mattile" id="mindFlower"><span class="ms">local_florist</span><b>Light Flower</b><small>Notice light and sound, 2 to 5 min</small></button>' +
         '<button type="button" class="mattile" id="mindEveryday"><span class="ms">home</span><b>Everyday practice</b><small>Teeth, tea, dishes, plants</small></button>' +
         '<button type="button" class="mattile" id="mindAcu"><span class="ms">spa</span><b>Cramp relief points</b><small>Pressure points on your body</small></button>' +
         '<button type="button" class="mattile" id="mindMove"><span class="ms">directions_run</span><b>Movement</b><small>Log exercise, see your week</small></button>' +
@@ -2108,6 +2113,8 @@
     $('#mindMove').addEventListener('click', function () { if (session) return; chime('tap'); openExercise(); });
     $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
     if ($('#matMorning')) $('#matMorning').addEventListener('click', function () { chime('tap'); OvuMorning.open(); });
+    var flowerSaved = false;
+    $('#mindFlower').addEventListener('click', function () { if (!window.OvuLightFlower) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuLightFlower.open({ onSaved: function (ev) { flowerSaved = true; afterSave(ev); }, onClose: function () { renderDeck(); if (!flowerSaved) moment('lightflower'); flowerSaved = false; } }); });
     $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { tapSaved = true; afterSave(ev); }, onClose: function () { renderDeck(); if (!tapSaved) moment('moontap'); tapSaved = false; } }); });
   }
 
@@ -2332,6 +2339,7 @@
       return text;
     }
     clearTimeout(momentTimer); momentOn = key;
+    if (window.OvuSound) { var sfx = OvuSound.forMoment(key); if (sfx) OvuSound.play(sfx); } /* a small sound for what she is doing */
     if (pose) { if (!reduced) avatar.classList.add('moment'); setPose(pose); } else if (!reduced) joy();
     var th = $('#thought'); if (th && text && !opt.quiet) { th.classList.add('say'); th.textContent = text; th.classList.add('on'); scene.classList.add('saying'); } /* the room's dots fade so they never sit on her words */
     momentTimer = setTimeout(endMoment, reduced ? 6000 : 4800);
@@ -2649,12 +2657,14 @@
     openSheet('window', sp.title, d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + (sp.sunrise ? ' · sunrise ' + sp.sunrise + ', sunset ' + sp.sunset : ''), sp.icon,
       '<div class="stat"><span class="ms">bedtime</span><div><b>' + (st.avg ? 'Averaging ' + st.avg + ' h over ' + st.count + ' nights' : 'No sleep logged this week') + '</b><span>Adults generally do best with 7 hours or more.</span></div></div>' +
       '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + (cs.uncertain ? ' (a loose estimate while cycles are changing).' : '.') : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : (cs.lastStart ? 'Predictions begin once your next period is logged, or add your usual cycle length in Tell me about you.' : 'Log a period on the wall calendar to start predictions.'))) + (gapNote(cs) ? ' ' + esc(gapNote(cs)) : '') + '</span></div></div>' +
-      '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">' + act.icon + '</span>' + act.text + '</button><button class="btn soft" id="winSound"><span class="ms">' + (S.state().sound ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (S.state().sound ? 'on' : 'off') + '</button></div>' +
+      '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">' + act.icon + '</span>' + act.text + '</button><button class="btn soft" id="winSound"><span class="ms">' + (soundOn() ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (soundOn() ? 'on' : 'off') + '</button></div>' +
+        (soundOn() && window.OvuSound ? '<label class="volrow"><span class="ms">volume_down</span><input type="range" id="winVol" min="0" max="100" step="5" value="' + Math.round(OvuSound.volume() * 100) + '" aria-label="Sound volume"><span class="ms">volume_up</span></label>' : '') +
       '<div class="row"><a class="btn ghost" href="settings.html"><span class="ms">settings</span>Settings & health connections</a><a class="btn ghost" href="face-ppg.html"><span class="ms">monitor_heart</span>Calm check (experimental)</a></div>' +
       '<div class="row"><button type="button" class="btn ghost" id="winIntro"><span class="ms">favorite</span>' + (S.profile().onboarded ? 'Update my intro' : 'Tell me about you') + '</button></div>' +
       '<p class="help">Sounds are tiny chimes plus Erin’s good-night and good-morning lines; they stay off unless you turn them on. Guided sessions always play when you start one.</p>');
     $('#winSleep').addEventListener('click', function () { if (act.id === 'log') { openSleepRecord(); return; } closeSheet(); tap(hotspot(act.id)); });
-    $('#winSound').addEventListener('click', function () { S.setState({ sound: !S.state().sound }); chime('tap'); openWindow(); });
+    $('#winSound').addEventListener('click', function () { S.setState({ sound: !soundOn() }); if (window.OvuSound) OvuSound.sync(); chime('tap'); openWindow(); });
+    var vol = $('#winVol'); if (vol) { vol.addEventListener('input', function () { OvuSound.setVolume(vol.value / 100); }); vol.addEventListener('change', function () { chime('tap'); }); }
     $('#winIntro').addEventListener('click', function () { openOnboarding(0, {}); });
   }
 
