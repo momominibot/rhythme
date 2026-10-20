@@ -518,12 +518,21 @@
     avatar.classList.remove('idle'); avatar.classList.add('walking');
     avatar.classList.toggle('flip', dx < 0);
     clearTimeout(walkTimer);
-    requestAnimationFrame(function () { placeAvatar(wp, dx < 0); });
+    requestAnimationFrame(function () { if (window.OvuMorning && OvuMorning.active()) return; placeAvatar(wp, dx < 0); });
     walkTimer = setTimeout(function () {
       avatar.classList.remove('walking'); avatar.classList.add('landing'); avatar.classList.toggle('flip', !!wp.flip);
       setTimeout(function () { avatar.classList.remove('landing'); avatar.classList.add('idle'); }, 420);
       scheduleLife(); done && done();
     }, ms + 30);
+  }
+  /* Morning start: a room walk already under way stops where she is now, mid-step (Codex re-check) */
+  function freezeWalk() {
+    clearTimeout(walkTimer);
+    if (!avatar.classList.contains('walking')) return;
+    var par = avatar.offsetParent || avatar.parentNode, cs = getComputedStyle(avatar), x = parseFloat(cs.left) / par.clientWidth * 100, y = parseFloat(cs.top) / par.clientHeight * 100;
+    avatar.style.transitionDuration = '0ms';
+    if (isFinite(x) && isFinite(y)) placeAvatar({ x: x, y: y }, avatar.classList.contains('flip'));
+    avatar.classList.remove('walking', 'landing'); avatar.classList.add('idle');
   }
   function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
@@ -1349,6 +1358,7 @@
     hideBubble();
     if (k === 'home' || !TABS[k]) { if (current) closeSheet(); setTab('home'); return; }
     if (!awake(k)) { setTab(current ? current : 'home'); return; }
+    if (k === 'mind' && window.OvuMorning && OvuMorning.active()) { openMindfulness(); return; } /* refused with a toast; Mind is not selected */
     TABS[k](); setTab(k);
   }
   function measureNav() { var n = $('.nav'), f = $('#frame'); if (n && f) f.style.setProperty('--navh', n.offsetHeight + 'px'); }
@@ -2798,7 +2808,7 @@
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
-    moment: moment, endMoment: endMoment, restorePose: restorePose, practiceOn: function () { return !!practice; }, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; },
+    moment: moment, endMoment: endMoment, restorePose: restorePose, practiceOn: function () { return !!practice; }, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
   };

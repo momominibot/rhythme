@@ -116,6 +116,7 @@
     if ((room.sessionOn && room.sessionOn()) || (room.practiceOn && room.practiceOn())) { room.toast('Finish or stop the practice that is running first.', 'self_improvement'); return; }
     if (root.OvuPodcast) { try { root.OvuPodcast.pause(); } catch (e) { } }
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
+    if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
     room.hideSheet(); hideInvite();
     run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: version === 'erin' ? new Audio() : null, done: false };
     if (room.endMoment) room.endMoment();

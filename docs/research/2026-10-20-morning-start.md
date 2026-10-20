@@ -56,6 +56,7 @@ A Codex re-check confirmed five fixes and reopened four plus one regression, all
 - Pause, Next, voice off and on, then Resume never plays an older Erin line under a newer caption; a muted clip never resumes.
 - A walk already under way stops when Morning start begins, and its pending sheet never opens over it.
 - The bed still works during Morning start (it opens without walking her), so Good night ends the routine with no save prompt.
+- A third check found the room's own fallback walk could still glide her for a moment: it now freezes where she is mid-step; and the refused Mind tab is no longer left highlighted.
 
 ## Not available this round
 
