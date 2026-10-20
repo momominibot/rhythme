@@ -42,10 +42,16 @@
      or movement log of the real day earns that kind's hearts. Another of the same kind that day, an edit, a deleted and
      re-made entry, a backfilled day or an import earns nothing more, and no amount, length or number earns extra.
      Days only move forward: with the clock set back nothing earns until the real date passes the last day that earned. */
+  /* the last day anything earned: a watermark that only moves forward. Ledgers from before it existed take the latest day
+     they already know (practice, movement, the old last-logged day) so a clock set back cannot reopen those days either */
+  function watermark(l) {
+    if (!l.dailyLast) { var known = [l.mindDay && l.mindDay.day, l.moveDay && l.moveDay.day, l.lastDay, l.daily && l.daily.day].filter(Boolean).sort(); if (known.length) l.dailyLast = known[known.length - 1]; }
+    return l.dailyLast || null;
+  }
   function dailyPoints(l, kind) {
     var pts = RULES[kind] || 0; if (!pts) return 0;
-    var day = S.today();
-    if (l.dailyLast && day < l.dailyLast) return 0;
+    var day = S.today(), last = watermark(l);
+    if (last && day < last) return 0;
     if (!l.daily || l.daily.day !== day) {
       l.daily = { day: day, kinds: {} };
       if (l.moveDay && l.moveDay.day === day && l.moveDay.pts > 0) l.daily.kinds.exercise = 1; /* movement already paid today under the old rule */
@@ -75,7 +81,7 @@
   function practicePoints(l, ev) {
     var d = ev.data || {}, day = S.today();
     if ((d.kind === 'breathtap' || d.kind === 'lightflower') && (Number(d.seconds) || 0) < 60) return 0; /* the tap games count once a session reaches a full minute */
-    if (l.dailyLast && day < l.dailyLast) return 0; /* a clock set back to an earlier day cannot reopen that day's cap (Codex review, 20 Oct) */
+    var last = watermark(l); if (last && day < last) return 0; /* a clock set back to an earlier day cannot reopen that day's cap (Codex review, 20 Oct) */
     if (!l.mindDay || l.mindDay.day !== day) l.mindDay = { day: day, pts: 0 };
     var add = Math.max(0, Math.min(PRACTICE.points, PRACTICE.cap - l.mindDay.pts));
     l.mindDay.pts += add; if (add) l.dailyLast = day; return add;

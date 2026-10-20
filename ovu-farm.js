@@ -141,11 +141,12 @@
     var f = copy(farmState(S)); if (!f.tools.bigcan) return { ok: false, why: 'The big watering can is in the shed, for hearts.' };
     var ids = dryBeds(S, day); if (!ids.length) return { ok: false, why: 'Every bed has had its water today.' };
     ids.forEach(function (id) { var b = f.beds[id]; b.watered = (b.watered || []).concat([day]); });
+    var charged = false;
     try {
-      if (ST && ST.spendWith) { if (!ST.spendWith('water', { farm: f })) return { ok: false, why: 'Too tired for that. A rest first.' }; }
-      else if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f });
+      if (ST && ST.spendWith) { if (!ST.spendWith('water', { farm: f })) return { ok: false, why: 'Too tired for that. A rest first.' }; charged = true; }
+      else if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f }); /* an older energy module: the caller charges the watering itself */
     } catch (e) { return { ok: false, why: e.message }; }
-    return { ok: true, n: ids.length, charged: !!ST };
+    return { ok: true, n: ids.length, charged: charged };
   }
   function summary(S, day) {
     var f = farmState(S), out = { planted: 0, ripe: 0, weeds: 0, dry: 0, harvest: f.harvest, seeds: f.seeds, seedsLeft: seedsLeftToday(S, day) };

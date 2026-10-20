@@ -472,7 +472,7 @@
     load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
     putEvent: putEvent, applyRemote: applyRemote,
     addMany: addMany, removeWhere: removeWhere,
-    profile: profile, setProfile: setProfile, state: state, setState: setState, commit: commit,
+    profile: profile, setProfile: setProfile, state: state, setState: setState, commit: commit, reload: function () { load(true); return state(); },
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
     sleepHours: sleepHours, sleepStats: sleepStats, periodEpisodes: periodEpisodes, cycleStats: cycleStats, rhythmFromRecall: rhythmFromRecall,
     exportJSON: exportJSON, importJSON: importJSON, clearAll: clearAll,

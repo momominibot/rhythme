@@ -620,7 +620,7 @@
     $('#cancelSleep').addEventListener('click', function () { exitNight(); S.setState({ sleeping: null }); closeSheet(); toast('No worries. Nothing was recorded.', 'wb_sunny'); });
     $('#saveWake').addEventListener('click', function () {
       /* the night is the one still open now: another tab may have saved it already (Codex review, 20 Oct) */
-      var cur = S.state().sleeping; if (!cur || (cur.startedAt || cur.at) !== (sl.startedAt || sl.at)) { closeSheet(); toast('This night was already saved.', 'wb_sunny'); return; }
+      var cur = (S.reload ? S.reload() : S.state()).sleeping; if (!cur || (cur.startedAt || cur.at) !== (sl.startedAt || sl.at)) { closeSheet(); toast('This night was already saved.', 'wb_sunny'); return; }
       try {
         var q = Number($('.moons', body).dataset.value || 0) || null;
         var ev = S.add('sleep', $('#wakeDate').value, { bedTime: sl.bedTime, wakeTime: $('#wakeTime').value, quality: q, notes: $('#wakeNotes').value.trim(), mode: 'room' });

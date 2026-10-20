@@ -42,7 +42,7 @@
   if (S && S.subscribe) S.subscribe(function (reason) {
     if (reason !== 'state' && reason !== 'external' && String(reason).indexOf('sync') !== 0) return;
     var sl = S.state().sleeping, asleep = !!sl;
-    if (asleep && wasAsleep === false && monoNow() !== null) bedMono = { at: sl.startedAt || sl.at, t: monoNow() }; /* she went to bed in this open app */
+    if (asleep && wasAsleep === false && reason === 'state' && monoNow() !== null) bedMono = { at: sl.startedAt || sl.at, t: monoNow() }; /* she went to bed in this open app: another tab's bedtime arrives late, so it never starts the timer */
     if (!asleep) bedMono = bedMono && wasAsleep ? bedMono : null;
     wasAsleep = asleep;
     apply(); /* a state change from elsewhere (another tab, a sync, a test) must show the same tiredness */

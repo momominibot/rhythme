@@ -400,7 +400,11 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var now = 1e12, at = new Date(now - 4 * 3600000).toISOString();
   check('rest: the phone clock says four hours, but the open app’s own timer saw twenty minutes, so no refill', ST.restedEnough(at, now) && !ST.restedEnough(at, now, { at: at, t: 0, now: 20 * 60000 }) && ST.restedEnough(at, now, { at: at, t: 0, now: 4 * 3600000 }) && ST.restedEnough(at, now, { at: 'another night', t: 0, now: 60000 }));
   var room = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
-  check('a wake sheet left open in another tab cannot save the same night twice', room.indexOf("This night was already saved.") > -1 && room.indexOf("var cur = S.state().sleeping; if (!cur") > -1);
+  check('a wake sheet left open in another tab re-reads storage and cannot save the same night twice', room.indexOf("This night was already saved.") > -1 && room.indexOf("var cur = (S.reload ? S.reload() : S.state()).sleeping; if (!cur") > -1 && typeof S3.reload === 'function');
+  var w4 = fresh(), S4 = w4.OvuStore, R4 = w4.OvuRewards, l4 = R4.ledger(); l4.mindDay = { day: S4.addDays(S4.today(), 2), pts: 6 }; delete l4.dailyLast; S4.setState({ rewards: l4 });
+  check('an older ledger without the watermark still blocks a clock set back (it takes the latest day it knows)', R4.award(S4.add('mindfulness', S4.today(), { kind: 'informal', minutes: 2, completed: true }, 'room')).points === 0 && R4.award(S4.add('food', S4.today(), { meal: 'lunch', foods: 'rice' }, 'room')).points === 0);
+  var st5 = { spendWith: undefined }, wc = F.waterAll(S, S.addDays(t, 1), st5);
+  check('with an older energy module the big can reports it did not charge, so the caller charges the watering', wc.ok === true && wc.charged === false);
 })();
 
 (function noPeriodStatementsAreNotFlow() {
