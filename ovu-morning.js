@@ -27,7 +27,7 @@
     yourway: { key: 'yourway', part: 3, title: 'Brush your way', open: true, pose: 'teeth', audio: GUIDE + 'mstart-yourway.mp3',
       text: 'Brush as you usually do. If you like, notice one sensation, a taste or a sound. Tap Done when you finish.' }
   };
-  var GREETINGS = ['Good morning.', 'Hello.']; /* clip mstart-arrive-0 says the first, mstart-arrive-1 the second */
+  var GREETINGS = ['Good morning.', 'Hello.']; /* clip mstart-arrive-0 says the first, mstart-arrive-1 the second, mstart-arrive-2 neither */
   var VERSIONS = {
     yourway: { id: 'yourway', name: 'A short pause, then brush your way', sub: '90 seconds of gentle noticing, then brushing at your own pace' },
     erin: { id: 'erin', name: 'With Erin’s brushing guide', sub: 'About 5 minutes, with Erin’s own morning script in her voice' }
@@ -44,14 +44,16 @@
       return { key: 'erin' + si, part: 3, title: 'Brushing with Erin', secs: s.secs, text: s.text, pose: 'teeth', audio: GUIDE + 'teeth-' + vi + '-' + si + '.mp3', erin: true };
     });
   }
-  /* Arrive says Good morning only inside the morning window (she can open it from Everyday at any hour), with the matching clip */
-  function arriveFor(d) {
-    var win = root.OvuMorning && root.OvuMorning.inWindow || inWindow, g = win(d || new Date()) ? 0 : 1, a = {};
+  /* Arrive says Good morning only inside the morning window (she can open it from Everyday at any hour), with the matching
+   * clip, decided once when she begins. With Erin's guide it has no greeting: Erin greets her at the sink in her own words,
+   * so she never hears Hello and then Good morning, or Good morning twice (Codex follow-up check, 20 Oct). */
+  function arriveFor(d, version) {
+    var win = root.OvuMorning && root.OvuMorning.inWindow || inWindow, g = version === 'erin' ? 2 : win(d || new Date()) ? 0 : 1, a = {};
     for (var k in STEPS.arrive) a[k] = STEPS.arrive[k];
-    a.text = GREETINGS[g] + ' ' + STEPS.arrive.text; a.audio = GUIDE + 'mstart-arrive-' + g + '.mp3';
+    a.text = (g < 2 ? GREETINGS[g] + ' ' : '') + STEPS.arrive.text; a.audio = GUIDE + 'mstart-arrive-' + g + '.mp3';
     return a;
   }
-  function plan(version, d) { return [arriveFor(d), STEPS.notice, STEPS.ready].concat(version === 'erin' ? erinSteps() : [STEPS.yourway]); }
+  function plan(version, d) { return [arriveFor(d, version), STEPS.notice, STEPS.ready].concat(version === 'erin' ? erinSteps() : [STEPS.yourway]); }
   /* is the invitation in Today for this moment? never while asleep, only in the window, not once done or put away today */
   function offered(state, today, d) {
     state = state || {};
@@ -132,13 +134,13 @@
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
     room.hideSheet(); hideInvite();
-    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
+    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, reached: {}, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
     if (room.endMoment) room.endMoment();
     /* from the mat she sits there hidden: bring her back first, or the routine plays to an empty room */
     if (room.els && room.els.meditator && room.els.meditator.classList.contains('on') && !(room.sessionOn && room.sessionOn())) room.exitMeditation();
     if (room.restorePose) room.restorePose();
     if (room.els && room.els.avatar) room.els.avatar.classList.remove('acting');
-    showPanel(); next();
+    showPanel(); next(); if (run && run.quiet) unlock(); /* a quiet start still readies the voice, inside this tap */
     var pnl = $('#mpanel'); if (pnl) { pnl.setAttribute('tabindex', '-1'); pnl.focus(); } /* focus leaves the closed sheet for the panel */
     clearInterval(ticker); ticker = setInterval(function () { if (run && room.asleep()) cancel(); }, 1000);
   }
@@ -154,6 +156,7 @@
     clearTimeout(run.timer); stopAudio();
     run.i++;
     var s = step(); if (!s) { finish(true); return; }
+    run.reached[s.key] = true; /* what she actually reached, for the honest summary at the end */
     if (run.i > 0) bell();
     var room = R();
     if (s.pose) room.setPose(s.pose); else if (room.restorePose) room.restorePose();
@@ -166,7 +169,27 @@
     if (s.audio && !run.quiet) { if (run.paused) run.pending = s.audio; else playAudio(s.audio); }
   }
   function arm() { clearTimeout(run.timer); run.t0 = Date.now(); run.timer = setTimeout(function () { next(false); }, run.left); }
-  function playAudio(url) { run.audioKey = step() && step().key; try { var a = run.audio || (run.audio = new Audio()); a.src = url; a.currentTime = 0; var p = a.play(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
+  function playAudio(url) {
+    run.audioKey = step() && step().key; var r = run;
+    try {
+      var a = run.audio || (run.audio = new Audio()); a.muted = false; a.src = url; a.currentTime = 0; var p = a.play();
+      if (p && p.catch) p.catch(function (e) { if (e && e.name === 'NotAllowedError') held(r); });
+    } catch (e) { }
+  }
+  /* the phone refused to play: say so and show Voice off, rather than a silent Voice on; tapping Voice on readies it */
+  function held(r) { if (!run || run !== r || run.quiet) return; run.quiet = true; run.audioKey = null; run.pending = null; run.unlocked = false; paint(); R().toast('Your phone held the voice back. Tap Voice on to hear it from the next line.', 'volume_off'); }
+  /* inside a tap (Begin while quiet, or Voice on): play a clip muted for a moment so later lines may play on phones that
+   * only allow sound that a tap started; it never sounds, and a real line that starts meanwhile is left alone */
+  function unlock() {
+    if (!run || !run.audio || run.unlocked) return;
+    var a = run.audio, s = step(), src = (s && s.audio) || (run.steps.filter(function (x) { return x.audio; })[0] || {}).audio; if (!src) return;
+    run.unlocked = true;
+    try {
+      a.muted = true; a.src = src; var p = a.play(), r = run;
+      var undo = function () { if (run === r && !run.audioKey) { try { a.pause(); } catch (e) { } } a.muted = false; };
+      if (p && p.then) p.then(undo, function () { a.muted = false; if (run === r) run.unlocked = false; }); else undo();
+    } catch (e) { a.muted = false; }
+  }
   function stopAudio() { if (run && run.audio) { try { run.audio.pause(); } catch (e) { } } }
   function pauseToggle() {
     if (!run) return; var s = step(); if (!s || s.gate) return;
@@ -178,13 +201,14 @@
       run.paused = false; run.clock.run();
       if (s.secs) arm();
       if (run.pending) { playAudio(run.pending); run.pending = null; }
-      else if (s.audio && !run.quiet && run.audio && run.audioKey === s.key) { /* only this step's own clip resumes; a muted or older clip never does */ try { var p = run.audio.play(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
+      else if (s.audio && !run.quiet && run.audio && run.audioKey === s.key && !run.audio.ended) { /* a finished line is not said again */ /* only this step's own clip resumes; a muted or older clip never does */ try { var p = run.audio.play(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
     }
     paint();
   }
   function quietToggle() {
     if (!run) return; run.quiet = !run.quiet;
     if (run.quiet) { stopAudio(); run.pending = null; run.audioKey = null; } /* on again: the voice speaks from the next line, so no line is cut short */
+    else unlock(); /* this tap readies the voice for that next line */
     paint();
   }
   function ready() { if (!run) return; run.paused = false; next(false); }
@@ -203,7 +227,7 @@
     run = null; hidePanel(); if (room.restorePose) room.restorePose();
     if (exact < MIN_SAVE_S) { room.toast('Stopped. Pauses under 30 seconds are not saved.', 'wb_twilight'); renderInvite(); return; }
     var did = [];
-    if (r.skipped.indexOf('arrive') < 0) did.push('arrived'); if (r.skipped.indexOf('notice') < 0) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed');
+    if (r.reached.arrive && r.skipped.indexOf('arrive') < 0) did.push('arrived'); if (r.reached.notice && r.skipped.indexOf('notice') < 0) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed'); /* only steps she reached */
     var saved = false;
     room.openSheet('morningDone', finished ? 'Morning start' : 'Stopping early', 'About ' + Math.max(1, Math.round(secs / 60)) + ' minute' + (secs >= 90 ? 's' : '') + ' of practice', 'wb_twilight',
       '<p class="mintro">' + (did.length ? 'You ' + (did.length > 1 ? did.slice(0, -1).join(', ') + ' and ' + did[did.length - 1] : did[0]) + '.' : 'You paused for a moment.') + ' Save this pause to your journal?</p>' +

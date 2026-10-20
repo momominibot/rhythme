@@ -8,12 +8,14 @@ This is the first concrete piece from the mindfulness Gold Drop (PR #19, `docs/r
 
 1. **An invitation in Today**, from 04:00 to 11:59 by the real clock, never while she is asleep: "Morning start. A short pause, then brushing your way. Sitting or lying is fine." with **Begin** and **Not today** (puts it away until tomorrow). It is also always on the Everyday list and is the mat's morning suggestion while she is awake. Saving a night never starts it.
 2. **A choice sheet**: "A short pause, then brush your way" (default) or "With Erin's brushing guide" (about 5 minutes), and **Quiet** (captions only, no voice, no bells; on by default when app sound is off).
-3. **Arrive, 30 seconds** (captions): any position, eyes open welcome, notice breathing as it is, or a sound or a colour.
-4. **Notice, 60 seconds** (captions): where the body is supported; nothing to fix; another anchor or stop at any time.
-5. **Brushing**, only after she taps **Ready to brush** (or **Skip brushing**), so getting to the sink is not timed. Either her own way until **Done**, or Erin's own morning brushing script, whole and in her voice.
+3. **Arrive, 35 seconds**: "Good morning" in the morning window, "Hello" at other hours, and no greeting with Erin's guide (Erin greets her at the sink); any position, stay sitting or lying if dizzy, eyes open or closed, no need to change the breath, notice it as it is or a sound, a colour or something to touch.
+4. **Notice, 55 seconds**: no need to move; where the body is resting; nothing to change; a sound or a colour instead, or stop at any time.
+5. **Brushing**, only after she taps **Ready to brush** (or **Skip brushing**) at wherever she brushes, with time for prayer or anything else first, so getting there is not timed. Either her own way until **Done**, or Erin's own morning brushing script, whole.
+
+Every step is read in Erin's voice (Rhythme's lines in her consented voice model, as the app's other interim lines are; the brushing guide in her own words), with the caption matching the clip word for word. Each spoken line is 12 to 27 seconds, followed by quiet; brushing still starts after 90 seconds. Quiet keeps it captions only.
 6. **An honest save**: "Save this pause to your journal?" One entry (kind informal, activity morning), only if she says yes and practised 30 seconds or more; the same 2-heart thank-you as any practice inside the shared 6-a-day cap; no streak; the moment line "That pause was yours."
 
-Throughout: she stays where she is in her own outfit (standing for the first two steps, the brushing pose for the third), a panel above the nav holds the full caption in a polite live region with labelled 44 px controls (Pause, Next, Stop, and Voice during Erin's guide) outside it, and falling asleep stops everything at once with no save prompt.
+Throughout: she stays where she is in her own outfit (standing for the first two steps, the brushing pose for the third), a panel above the nav holds the full caption in a polite live region with labelled 44 px controls (Pause, Next, Stop, and Voice on every step with a clip) outside it, and falling asleep stops everything at once with no save prompt.
 
 ## What Codex changed in the plan (before building)
 
@@ -75,8 +77,14 @@ Taken:
 
 Checked and already right: the end sheet already says only what she did ("You arrived and noticed", without "brushed" when she skipped it), and "1 minute" is already singular.
 
+A Codex check of these changes failed it on four points, all fixed with checks in tools/e2e_smoke.py:
+1. Resume after a line had finished said it again: a finished clip is not replayed.
+2. With Quiet at the start, turning the voice on could be silently refused by a phone's autoplay rule: Begin (when quiet) and Voice on now ready the voice inside the tap with a muted moment, and a refused line switches to Voice off with a toast instead of a silent Voice on.
+3. The longer Arrive made "Stop" during Arrive say "You arrived and noticed": the summary now counts only steps she reached.
+4. Erin's guide outside the morning went "Hello" then Erin's "Good morning": with Erin's guide, Arrive has no greeting (a sixth clip).
+
 Not taken, and why:
-- Hearts without saving (Doubao): the honesty confirm before any hearts is Jamie's rule and the journal entry is local; separating them needs a second reward ledger.
+- Hearts without saving (Doubao): the honesty confirm before any hearts is Jamie's rule, and separating them needs a second reward ledger. The entry stays on her phone unless she has turned on sync, which has its own consent.
 - A confirmation on Stop (Doubao): Stop after 30 s already opens a sheet with "Not this time"; under 30 s nothing is lost but the moment.
 - Quiet on by default (Doubao): it already follows her own sound setting.
 - "I'll brush later" and doing the steps in any order (Doubao): Skip brushing and Stop cover it without a second flow.
