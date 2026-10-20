@@ -120,6 +120,10 @@ Deno.serve(async (req: Request) => {
     "Access-Control-Max-Age": "86400",
   };
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  /* Luna's AI help is paused (launch sweep, 20 Oct 2026): the AI service's terms license use only in mainland China.
+     The app does not call this while paused; this refuses any call that still arrives. Set RHYTHME_AI_ENABLED=true
+     in the function's secrets only once a service licensed for Singapore users is in place. */
+  if (Deno.env.get("RHYTHME_AI_ENABLED") !== "true") return new Response(JSON.stringify({ error: "Luna’s AI help is paused for now." }), { status: 503, headers: { ...cors, "Content-Type": "application/json" } });
   if (req.method !== "POST") return json({ error: "POST only" }, 405, cors);
 
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
