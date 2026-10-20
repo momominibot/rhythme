@@ -89,6 +89,11 @@ A second Codex check failed it on two more, both fixed with checks that keep the
 
 A third Codex check found that pausing on Erin's opening and tapping Next three times still recorded brushing: Erin's guide now counts as brushing only after 5 seconds of running (not paused) time on her brushing lines, with checks both ways.
 
+A fourth Codex check passed that and found three more, all fixed with checks:
+- Pause then Next could still claim "You noticed" for an untouched step: the summary now counts only steps with at least 5 seconds of practice time.
+- A clip that started late could be cut off when its step's time ran out: the step now waits for its line, a second at a time and at most eight, with Pause, Next and Stop still working.
+- A save that failed (storage full) closed the sheet and left an unsaved entry in memory: OvuStore.add now takes the entry back out of memory when the write fails (true for every save in the app), and the sheet stays open with a message so she can try again.
+
 Not taken, and why:
 - Hearts without saving (Doubao): the honesty confirm before any hearts is Jamie's rule, and separating them needs a second reward ledger. The entry stays on her phone unless she has turned on sync, which has its own consent.
 - A confirmation on Stop (Doubao): Stop after 30 s already opens a sheet with "Not this time"; under 30 s nothing is lost but the moment.

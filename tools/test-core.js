@@ -341,6 +341,13 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('a stopped routine is saved as not finished and says brushing did not happen; the credit says whose words and whose voice', e2 && !e2.finished && !e2.completed && e2.brushed === 'no' && /Erin Lee/.test(e2.guide) && /Rhythme in Erin’s voice/.test(e2.guide) && /read in Erin’s voice/.test(d.guide));
   var pts = [1, 2, 3, 4].map(function () { return RW.award(S.add('mindfulness', S.today(), M.entryData({ seconds: 120, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true }))).points; });
   check('the same small thank-you as any practice, inside the shared 6 a day cap, never a streak', pts.join() === '2,2,2,0' && (RW.ledger().streak || 0) === 0, pts.join());
+  var n0 = S.list('mindfulness').length, ls = w.localStorage, realSet = ls.setItem, threw = false;
+  ls.setItem = function () { throw new Error('storage full'); };
+  try { S.add('mindfulness', S.today(), M.entryData({ seconds: 60, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true })); } catch (e) { threw = true; }
+  ls.setItem = realSet;
+  var n1 = S.list('mindfulness').length, again = S.add('mindfulness', S.today(), M.entryData({ seconds: 60, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true }));
+  check('a save that fails (storage full) throws and leaves memory as it was, so a retry saves exactly one', threw && n1 === n0 && again && S.list('mindfulness').length === n0 + 1 && S.list('mindfulness').filter(function (e) { return e.id === again.id; }).length === 1, n0 + ',' + n1);
+  S.remove(again.id);
   var ev = S.list('mindfulness').slice(-1)[0];
   check('the moment after it: "That pause was yours", not a claim about minutes', MO.forEntry(ev) === 'morning' && MO.MOMENTS.morning.lines.indexOf('That pause was yours.') >= 0 && MO.MOMENTS.morning.pose === null);
 })();

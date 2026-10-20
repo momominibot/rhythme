@@ -143,7 +143,7 @@
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
     room.hideSheet(); hideInvite();
-    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, reached: {}, brushMs: 0, stepMs: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
+    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, spent: {}, brushMs: 0, stepMs: 0, waits: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
     if (room.endMoment) room.endMoment();
     /* from the mat she sits there hidden: bring her back first, or the routine plays to an empty room */
     if (room.els && room.els.meditator && room.els.meditator.classList.contains('on') && !(room.sessionOn && room.sessionOn())) room.exitMeditation();
@@ -166,7 +166,6 @@
     clearTimeout(run.timer); stopAudio(); leaveStep();
     run.i++;
     var s = step(); if (!s) { finish(true); return; }
-    run.reached[s.key] = true; /* what she actually reached, for the honest summary at the end */
     if (run.i > 0) bell();
     var room = R();
     if (s.pose) room.setPose(s.pose); else if (room.restorePose) room.restorePose();
@@ -174,17 +173,27 @@
     if (s.gate) { run.paused = false; run.clock.hold(); } else if (!run.paused) run.clock.run(); /* the sink has no Pause, so it is never left paused */
     run.stepMs = run.clock.ms(); /* her own way counts as brushed only when she taps Done; Erin's on time spent brushing (leaveStep) */
     paint();
-    run.left = s.secs ? s.secs * 1000 : 0; run.pending = null;
+    run.left = s.secs ? s.secs * 1000 : 0; run.pending = null; run.waits = 0;
     if (s.secs && !run.paused) arm(); /* a paused routine keeps the new step's full time for Resume */
     if (s.audio && !run.quiet) { if (run.paused) run.pending = s.audio; else playAudio(s.audio); }
   }
-  /* leaving a step: time actually spent on Erin's brushing lines (not paused, not skipped past) is the evidence of brushing */
+  /* leaving a step: the practice time actually spent on it (the clock never runs while paused or at the sink) is what the
+   * end summary may claim: arrived, noticed, and with Erin, brushing on her brushing lines */
   function leaveStep() {
-    var cur = step(); if (!run || !cur || !cur.brushing) return;
-    run.brushMs += Math.max(0, run.clock.ms() - run.stepMs); run.stepMs = run.clock.ms();
-    if (run.brushMs >= BRUSH_MIN_MS) run.brushed = 'erin';
+    var cur = step(); if (!run || !cur) return;
+    var d = Math.max(0, run.clock.ms() - run.stepMs); run.stepMs = run.clock.ms();
+    run.spent[cur.key] = (run.spent[cur.key] || 0) + d;
+    if (cur.brushing) { run.brushMs += d; if (run.brushMs >= BRUSH_MIN_MS) run.brushed = 'erin'; }
   }
-  function arm() { clearTimeout(run.timer); run.t0 = Date.now(); run.timer = setTimeout(function () { next(false); }, run.left); }
+  /* a step's time is up: if its line is still being said (a clip that started late), wait a second at a time, at most
+   * eight, so no line is cut off; Pause, Next and Stop keep working while it waits */
+  function due() {
+    if (!run) return;
+    var s = step(), a = run.audio;
+    if (s && s.audio && !run.quiet && a && run.audioKey === s.key && !a.paused && !a.ended && run.waits < 8) { run.waits++; run.left = 1000; arm(); return; }
+    next(false);
+  }
+  function arm() { clearTimeout(run.timer); run.t0 = Date.now(); run.timer = setTimeout(due, run.left); }
   function playAudio(url) {
     run.audioKey = step() && step().key; var r = run;
     try {
@@ -244,20 +253,22 @@
     run = null; hidePanel(); if (room.restorePose) room.restorePose();
     if (exact < MIN_SAVE_S) { room.toast('Stopped. Pauses under 30 seconds are not saved.', 'wb_twilight'); renderInvite(); return; }
     var did = [];
-    if (r.reached.arrive && r.skipped.indexOf('arrive') < 0) did.push('arrived'); if (r.reached.notice && r.skipped.indexOf('notice') < 0) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed'); /* only steps she reached */
+    if ((r.spent.arrive || 0) >= 5000) did.push('arrived'); if ((r.spent.notice || 0) >= 5000) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed'); /* only what she spent time on */
     var saved = false;
     room.openSheet('morningDone', finished ? 'Morning start' : 'Stopping early', 'About ' + Math.max(1, Math.round(secs / 60)) + ' minute' + (secs >= 90 ? 's' : '') + ' of practice', 'wb_twilight',
       '<p class="mintro">' + (did.length ? 'You ' + (did.length > 1 ? did.slice(0, -1).join(', ') + ' and ' + did[did.length - 1] : did[0]) + '.' : 'You paused for a moment.') + ' Save this pause to your journal?</p>' +
       '<div class="row"><button type="button" class="btn primary" id="mdYes"><span class="ms" aria-hidden="true">check</span>Yes, I did it</button><button type="button" class="btn ghost" id="mdNo">Not this time</button></div>' +
       '<p class="help">Save it if you really did it. A mind that wandered and came back still counts.</p>');
     $('#mdYes').addEventListener('click', function () {
-      if (saved) return; saved = true;
+      if (saved) return;
       if (room.asleep()) { room.closeSheet(); return; }
       var data = entryData({ seconds: exact, confirmed: true, version: r.version, skipped: r.skipped, brushed: r.brushed, finished: finished });
-      room.closeSheet();
-      if (!data) return;
-      var ev = S().add('mindfulness', S().today(), data);
-      markToday({ done: true }); hideInvite();
+      if (!data) { room.closeSheet(); return; }
+      var ev;
+      try { ev = S().add('mindfulness', S().today(), data); } catch (e) { room.toast('This pause could not be saved: ' + e.message + ' Try again, or tap Not this time.', 'error'); return; } /* the sheet stays for a retry */
+      saved = true; room.closeSheet();
+      try { markToday({ done: true }); } catch (e) { } /* the entry is saved; only the invitation's note for today failed */
+      hideInvite();
       room.afterSave(ev, 'Saved to your journal.');
     });
     $('#mdNo').addEventListener('click', function () { room.closeSheet(); room.toast('No worries. Morning start is there whenever you like.', 'wb_twilight'); renderInvite(); });
@@ -287,7 +298,7 @@
   root.OvuMorning = {
     START_HOUR: START_HOUR, END_HOUR: END_HOUR, MIN_SAVE_S: MIN_SAVE_S, STEPS: STEPS, VERSIONS: VERSIONS,
     inWindow: inWindow, GREETINGS: GREETINGS, arriveFor: arriveFor, plan: plan, erinSteps: erinSteps, offered: offered, makeClock: makeClock, entryData: entryData,
-    open: open, begin: begin, active: active, cancel: cancel, renderInvite: renderInvite,
+    open: open, begin: begin, active: active, cancel: cancel, renderInvite: renderInvite, _due: function () { if (run) { clearTimeout(run.timer); due(); } }, /* tests only: a step's time is up now */
     state: function () { return run ? { version: run.version, i: run.i, key: step() && step().key, paused: run.paused, left: run.left, audioKey: run.audioKey || null, pending: run.pending || null, quiet: run.quiet, seconds: run.clock.seconds(), skipped: run.skipped.slice(), brushed: run.brushed } : null; }
   };
   if (typeof document !== 'undefined' && document.addEventListener) {
