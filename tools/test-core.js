@@ -1654,11 +1654,17 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
     check('a long upload that started first and committed last arrives in full on the next sync, with the short one', (t.per[2] || 0) === 1501 && S.list('reflection').length === 1503, JSON.stringify({ per: t.per, local: S.list('reflection').length }));
     check('every row arrives exactly once, and then nothing is pulled again', t.twice() === 0 && Object.keys(t.seen).length === 1503 && (t.per[3] || 0) === 0, JSON.stringify({ twice: t.twice(), distinct: Object.keys(t.seen).length, per3: t.per[3] }));
     check('the cursor ends at the fence, past both uploads; the time cursor follows to the latest row by time', !!st.pulledXid && xc(st.pulledXid, big.xid) > 0 && st.pulledXidId == null && st.pulledSeq === '2026-10-20T09:00:02.000200+00:00' && st.pulledId === 'small', JSON.stringify({ xid: st.pulledXid, id: st.pulledXidId, seq: st.pulledSeq, sid: st.pulledId }));
-    /* (Codex round one, finding 1) the server loses entries_pull again (or a tab on an older version pulls by time):
-       the time-ordered pull resumes from the followed cursor instead of handing the whole diary back */
+    /* (Jamie, option A2) the server loses entries_pull again: a phone that pulls by transaction id stops and says so,
+       and never pulls by time */
     srv.commit = false; t.sync = 4;
+    var gets4 = t.gets;
     return Y.syncNow().then(function (r) {
-      check('a fall back to the time-ordered pull resumes from where the other pull got to, not from the start', r.ok && (t.per[4] || 0) === 0 && t.twice() === 0, JSON.stringify({ r: r, per4: t.per[4], twice: t.twice() }));
+      var st4 = stateOf(w);
+      check('once moved over, a server without entries_pull stops the sync with a message and nothing is pulled by time', r.ok === false && /paused until the cloud is updated/.test(r.error || '') && t.gets === gets4 && (t.per[4] || 0) === 0 && st4.pulledXid === st.pulledXid && st4.pulledSeq === st.pulledSeq, JSON.stringify({ r: r, gets: t.gets - gets4, xid: st4.pulledXid }));
+      srv.commit = true; t.sync = 5;
+      return Y.syncNow();
+    }).then(function (r) {
+      check('and the next sync, with entries_pull back, carries on from where it was', r.ok === true && (t.per[5] || 0) === 0 && t.twice() === 0, JSON.stringify({ r: r, per5: t.per[5] }));
     });
   });
 
@@ -1790,25 +1796,36 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
     check('so a row the other tab pulled, then cleared from this phone, is not brought back', !SZ.get('q2') && !!SZ.get('q1'), JSON.stringify({ q1: !!SZ.get('q1'), q2: !!SZ.get('q2') }));
   });
 
+  /* What a tab still running an older version sends with the time cursor this one leaves (main's ovu-sync.js before
+     20261020120000: GET by (synced_at, id) after pulledSeq/pulledId, a millisecond cursor with no id taken inclusively). */
+  function olderTabPull(srv, st) {
+    var q = function (v) { return '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; };
+    var cur = !st.pulledSeq ? '' : st.pulledId == null ? '&synced_at=gte.' + encodeURIComponent(st.pulledSeq)
+      : '&or=' + encodeURIComponent('(synced_at.gt.' + q(st.pulledSeq) + ',and(synced_at.eq.' + q(st.pulledSeq) + ',id.gt.' + q(st.pulledId) + '))');
+    return srv.get('/entries?select=*&order=synced_at.asc,id.asc&limit=1000' + cur).map(function (r) { return r.id; });
+  }
+  function clearPhone(w) { w.OvuStore.clearAll(); w.OvuStore.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } }); } /* "Delete every entry on this device", then backup on again */
+  function ids(w) { return w.OvuStore.list('reflection').map(function (e) { return e.id; }).sort().join(); }
+
   /* 8. (Codex round two, finding 1) three rows on one instant, the older cursor on the first. The hand-over sends the
-     other two; the time cursor must then stand on the last of them in the server's order, so that after the person
-     clears the phone and turns backup on again, a fall back to the time-ordered pull brings none of them back. */
+     other two; the time cursor then stands on the last of them in the server's order. After a clear and with
+     entries_pull gone, this phone stops instead of pulling by time, and a tab on an older version gets none of them. */
   var T8 = '2026-10-20T09:00:00.000001+00:00', srv8 = syncServer({ commit: true }), t8 = tally();
   ['a', 'b', 'c'].forEach(function (id) { srv8.rows.push(syncRow(id, 'reflection', T8, note(id))); });
   var w8 = syncWorld(srv8, t8.onGet, { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: T8, pulledId: 'a', pushedAt: T8, profilePulledAt: '2026-10-20T08:00:00Z', profileDirty: false, lastSyncAt: null }), mid8 = null;
   var g8 = w8.OvuSync.syncNow().then(function () {
     mid8 = stateOf(w8);
-    w8.OvuStore.clearAll(); w8.OvuStore.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } }); /* cleared, then backup turned on again */
-    srv8.commit = false; t8.sync = 1;
+    clearPhone(w8); srv8.commit = false; t8.sync = 1;
     return w8.OvuSync.syncNow();
   }).then(function (r) {
     check('rows sharing one instant: the time cursor ends on the last of them, in the server\'s order', mid8.pulledSeq === T8 && mid8.pulledId === 'c', JSON.stringify({ seq: mid8.pulledSeq, id: mid8.pulledId }));
-    check('so after a clear, a fall back to the time-ordered pull brings none of them back', r.ok && (t8.per[1] || 0) === 0 && w8.OvuStore.list('reflection').length === 0, JSON.stringify({ r: r, per: t8.per, local: w8.OvuStore.list('reflection').map(function (e) { return e.id; }) }));
+    check('after a clear, with entries_pull gone, this phone stops and brings nothing back', r.ok === false && (t8.per[1] || 0) === 0 && ids(w8) === '', JSON.stringify({ r: r, local: ids(w8) }));
+    check('and a tab on an older version, from that time cursor, gets none of them', olderTabPull(srv8, stateOf(w8)).length === 0, JSON.stringify(olderTabPull(srv8, stateOf(w8))));
   });
 
   /* 9. (Codex round two, finding 2) transaction 100: 20,000 rows at 10:00; transaction 101: one row at 09:00 (it began
      first and wrote last). Both committed. A new phone takes 20,000 (the cap). Its time cursor must not stand past the
-     09:00 row the cap has not reached. */
+     09:00 row the cap has not reached, so a tab on an older version does not skip it. */
   var srv9 = syncServer({ commit: true }), X9 = srv9.begin('2026-10-20T10:00:00.000001+00:00', '100');
   for (var k9 = 0; k9 < 20000; k9++) X9.add(syncRow('x' + pad(k9), 'reflection', null, note(k9)));
   X9.commit();
@@ -1818,21 +1835,69 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
     var st = stateOf(w9);
     check('backlog past the cap: the time cursor does not move past the earlier row the cap has not reached', !st.pulledSeq || micros9(st.pulledSeq) <= micros9('2026-10-20T09:00:00.000001+00:00'), JSON.stringify({ seq: st.pulledSeq, id: st.pulledId }));
   });
-  /* 9b. The same backlog held behind the fence instead: D (id 99) wrote at 10:00 and committed; L (id 100) is still
-     open; E began at 09:00 and wrote after L (id 101), committed. The pull delivers D only. A lasting fall back to the
-     time-ordered pull from the time cursor must still bring E. */
-  var srv9b = syncServer({ commit: true });
-  var D9 = srv9b.begin('2026-10-20T10:00:00.000001+00:00', '99'); D9.add(syncRow('d', 'reflection', null, note('d'))); D9.commit();
-  var L9 = srv9b.begin('2026-10-20T10:00:01.000001+00:00', '100'); L9.add(syncRow('l', 'reflection', null, note('l')));
-  var E9 = srv9b.begin('2026-10-20T09:00:00.000001+00:00', '101'); E9.add(syncRow('early', 'reflection', null, note('early'))); E9.commit();
-  var w9b = syncWorld(srv9b, null, null), mid9b = null;
-  var g9b = w9b.OvuSync.syncNow().then(function () {
-    mid9b = stateOf(w9b);
-    srv9b.commit = false; L9.commit();
-    return w9b.OvuSync.syncNow();
+
+  /* 10. (Codex round three, counterexample 1) transaction 99 wrote d at 10:00 and committed; 100 is open; 101 began at
+     09:00, wrote early after 100 and committed. The pull delivers d and holds early behind the fence. The person clears
+     the phone and entries_pull goes missing: this phone stops, so d does not come back. When entries_pull is back and
+     100 has committed, early and l arrive and d still does not. */
+  var s10 = syncServer({ commit: true }), t10 = tally();
+  var D10 = s10.begin('2026-10-20T10:00:00.000001+00:00', '99'); D10.add(syncRow('d', 'reflection', null, note('d'))); D10.commit();
+  var L10 = s10.begin('2026-10-20T10:00:01.000001+00:00', '100'); L10.add(syncRow('l', 'reflection', null, note('l')));
+  var E10 = s10.begin('2026-10-20T09:00:00.000001+00:00', '101'); E10.add(syncRow('early', 'reflection', null, note('early'))); E10.commit();
+  var w10 = syncWorld(s10, t10.onGet, null), st10 = null, older10 = null;
+  var g10 = w10.OvuSync.syncNow().then(function () {
+    st10 = stateOf(w10); older10 = olderTabPull(s10, st10);
+    clearPhone(w10); s10.commit = false; t10.sync = 1;
+    return w10.OvuSync.syncNow();
+  }).then(function (r) {
+    check('round three, counterexample 1: d delivered, early held back; after a clear with entries_pull gone, nothing comes back', ids(w10) === '' && r.ok === false && (t10.per[1] || 0) === 0 && st10.pulledXid === '100', JSON.stringify({ r: r, local: ids(w10), xid: st10.pulledXid }));
+    s10.commit = true; L10.commit(); t10.sync = 2;
+    return w10.OvuSync.syncNow();
   }).then(function () {
-    check('backlog behind the fence: the time cursor does not move past the held earlier row', !!w9b.OvuStore.get('d') && (!mid9b.pulledSeq || micros9(mid9b.pulledSeq) <= micros9('2026-10-20T09:00:00.000001+00:00')), JSON.stringify({ seq: mid9b.pulledSeq, id: mid9b.pulledId }));
-    check('so a lasting fall back to the time-ordered pull still brings that row', !!w9b.OvuStore.get('early') && !!w9b.OvuStore.get('l'), JSON.stringify({ early: !!w9b.OvuStore.get('early'), l: !!w9b.OvuStore.get('l') }));
+    check('then, with entries_pull back, early and l arrive, and the cleared d stays cleared', ids(w10) === 'early,l' && !t10.seen.d || ids(w10) === 'early,l' && t10.seen.d === 1, JSON.stringify({ local: ids(w10), seen: t10.seen }));
+    check('(the documented limit for a tab on an older version) from that time cursor it would get early, and d again', older10.indexOf('early') > -1 && older10.indexOf('d') > -1, JSON.stringify(older10));
+  });
+
+  /* 11. (Codex round three, counterexample 2) as 10, but 101 is still open at the first sync, so that sync delivers d and
+     certifies a time cursor at d. 101 then commits behind 100. With entries_pull gone this phone stops; with it back,
+     early arrives. Only a tab on an older version, holding the earlier cursor, would skip it. */
+  var s11 = syncServer({ commit: true });
+  var D11 = s11.begin('2026-10-20T10:00:00.000001+00:00', '99'); D11.add(syncRow('d', 'reflection', null, note('d'))); D11.commit();
+  var L11 = s11.begin('2026-10-20T10:00:01.000001+00:00', '100'); L11.add(syncRow('l', 'reflection', null, note('l')));
+  var E11 = s11.begin('2026-10-20T09:00:00.000001+00:00', '101'); E11.add(syncRow('early', 'reflection', null, note('early')));
+  var w11 = syncWorld(s11, null, null), mid11 = null;
+  var g11 = w11.OvuSync.syncNow().then(function () {
+    E11.commit();
+    return w11.OvuSync.syncNow();
+  }).then(function () {
+    mid11 = stateOf(w11); s11.commit = false;
+    return w11.OvuSync.syncNow();
+  }).then(function (r) {
+    check('round three, counterexample 2: with early held behind the fence and entries_pull gone, this phone stops rather than skip it', r.ok === false && !w11.OvuStore.get('early'), JSON.stringify({ r: r }));
+    s11.commit = true; L11.commit();
+    return w11.OvuSync.syncNow();
+  }).then(function () {
+    check('and with entries_pull back, early arrives', !!w11.OvuStore.get('early') && !!w11.OvuStore.get('l') && !!w11.OvuStore.get('d'), ids(w11));
+    check('(the documented limit for a tab on an older version) the cursor certified before early became visible skips it', mid11.pulledId === 'd' && olderTabPull(s11, mid11).indexOf('early') < 0, JSON.stringify({ seq: mid11.pulledSeq, id: mid11.pulledId }));
+  });
+
+  /* 12. A newer version takes over this page's service worker: syncing stops at once and the page reloads when it is out
+     of sight; the first install claiming the page is not an update. */
+  var u12 = fresh(), Y12 = u12.OvuSync, swL = [], docL = [], reloads = 0, notes12 = 0;
+  u12.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('t'); }, userId: function () { return 'u1'; } };
+  u12.OvuStore.setProfile({ cloud: { v: 1, at: '2026-10-20T00:00:00Z', uid: 'u1' } });
+  u12.navigator.serviceWorker = { controller: null, addEventListener: function (t, f) { if (t === 'controllerchange') swL.push(f); } };
+  u12.document = { hidden: false, addEventListener: function (t, f) { if (t === 'visibilitychange') docL.push(f); }, querySelector: function () { return null; } };
+  u12.location = { reload: function () { reloads++; } };
+  var watching = Y12.watchUpdates(function () { notes12++; });
+  swL.forEach(function (f) { f(); }); /* the first install claims the page */
+  var before12 = Y12.canSync();
+  swL.forEach(function (f) { f(); }); /* a newer version takes over */
+  var after12 = Y12.canSync(), reloadsVisible = reloads;
+  u12.document.hidden = true; docL.forEach(function (f) { f(); });
+  var g12 = Y12.syncNow().then(function (r) {
+    check('a newer version taking over stops this page syncing at once; the first install does not', watching && before12 === true && after12 === false && notes12 === 1 && r && r.ok === false && r.reason === 'update', JSON.stringify({ watching: watching, before: before12, after: after12, notes: notes12, r: r }));
+    check('and the page reloads only once it is out of sight', reloadsVisible === 0 && reloads === 1, JSON.stringify({ visible: reloadsVisible, reloads: reloads }));
   });
   function micros9(x) { var m = /^(.+?)(?:\.(\d+))?(Z|[+-]\d\d:?\d\d)$/.exec(String(x)); return Date.parse(m[1] + m[3]) * 1000 + Number(((m[2] || '') + '000000').slice(0, 6)); }
 
@@ -1840,7 +1905,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   var r7 = fresh(); r7.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, gen: 2, userId: 'u1', shadow: {}, tombstones: {}, pulledXid: '900', pulledXidId: 'x', pulledSeq: '2026-10-20T08:00:00Z' })); r7.OvuSync.resetPosition();
   var s7 = JSON.parse(r7.localStorage.getItem('ovumind_sync_v1'));
   check('a reset clears the transaction-ordered cursor with the time cursor', s7.pulledXid === null && s7.pulledXidId === null && s7.pulledSeq === null && s7.gen === 3, JSON.stringify(s7));
-  Promise.all([a, b, b2, b3, b4, c, d, e, f, g8, g9, g9b]).catch(function (err) { check('the transaction-ordered pull tests ran to the end', false, String(err && err.stack || err)); });
+  Promise.all([a, b, b2, b3, b4, c, d, e, f, g8, g9, g10, g11, g12]).catch(function (err) { check('the transaction-ordered pull tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 (function syncGenerationAcrossAccounts() {

@@ -35,6 +35,10 @@
   var listeners = [];
   var statusNow = { state: 'idle', at: null, error: null };
   var busy = false, busyPromise = null, debounceTimer = null;
+  /* set when a newer version of the app has taken over this page (watchUpdates): this page never syncs again */
+  var retired = false;
+  /* what the person reads when a phone that pulls by transaction id finds entries_pull missing (Codex round three) */
+  var PULL_PAUSED = 'Cloud backup is paused until the cloud is updated again. Everything stays safe on this phone.';
 
   /* ---------- sync position (one object in localStorage) ---------- */
   function loadState() {
@@ -188,7 +192,7 @@
   function consentForUser(p, uid) { var c = (p || {}).cloud; return consentOk(p) && c.uid === uid; }
   /* nothing moves without a session, the cloud choice for this account, the 18+ attestation and the current notice (ovu-consent.js) */
   function doorOpen() { var C = root.OvuConsent; return !C || (!C.needsSheet() && C.allows('cloud_sync')); }
-  function canSync() { var s = session(); return !!(s && s.user && consentForUser(S.profile(), s.user.id) && doorOpen()); }
+  function canSync() { var s = session(); return !retired && !!(s && s.user && consentForUser(S.profile(), s.user.id) && doorOpen()); }
 
   /* ---------- REST ---------- */
   function rest(method, path, body, prefer, token) {
@@ -300,6 +304,10 @@
     return pullCommitted(x, x ? st.pulledXidId : null, hand, time, token).then(function (got) { commitPull = true; got.mode = 'commit'; return got; }, function (err) {
       if (!rpcMissing(err)) throw err;
       commitPull = false;
+      /* A phone that already pulls by transaction id never goes back to pulling by time (Jamie, 20 Oct, option A2). Rows
+         it received out of time order cannot be described by one time cursor without either skipping some or sending
+         others again, which could bring back what someone cleared (Codex round three). It waits for entries_pull. */
+      if (x) throw new Error(PULL_PAUSED);
       return byTime();
     });
   }
@@ -333,7 +341,28 @@
     return fn();
   }
   var CANCELLED = { cancelled: true };
+  /* A newer version of the app took over this page's service worker (sw.js skips waiting and claims every open page):
+     the code running here is now older than the code beside it, so this page stops syncing at once (a sync in flight is
+     cancelled at its next check) and reloads as soon as it is out of sight, so nothing being typed is lost. The first
+     install also claims the page; that is not an update. onUpdate runs once, for a note on screen. */
+  function retire() { retired = true; clearTimeout(debounceTimer); setStatus('idle'); }
+  function watchUpdates(onUpdate) {
+    var sw = root.navigator && root.navigator.serviceWorker;
+    if (!sw || typeof sw.addEventListener !== 'function') return false;
+    var had = !!sw.controller;
+    sw.addEventListener('controllerchange', function () {
+      if (!had) { had = true; return; }
+      if (retired) return;
+      retire();
+      if (onUpdate) { try { onUpdate(); } catch (e) { } }
+      var doc = root.document, go = function () { try { root.location.reload(); } catch (e) { } };
+      if (!doc || doc.hidden) go();
+      else doc.addEventListener('visibilitychange', function () { if (doc.hidden) go(); });
+    });
+    return true;
+  }
   function syncNow() {
+    if (retired) return Promise.resolve({ ok: false, reason: 'update' });
     if (busy) return busyPromise;
     if (!canSync()) { setStatus('idle'); return Promise.resolve({ ok: false, reason: 'not-enabled' }); }
     busy = true; setStatus('syncing');
@@ -560,6 +589,7 @@
   }
 
   root.OvuSync = {
+    watchUpdates: watchUpdates,
     wipeCloud: wipeCloud, CONTROL_KEYS: CONTROL_KEYS, canSync: canSync, doorOpen: doorOpen,
     init: init,
     syncNow: syncNow,
