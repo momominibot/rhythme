@@ -7,7 +7,8 @@
  * food photo thumbnails.
  *
  * Conflict rule: last write wins per event id, by the event's own updatedAt.
- * Deletions are tombstones (deleted = true, deleted_at). The server keeps the
+ * Deletions are tombstones (deleted = true, deleted_at, and the entry's data emptied, so a deleted note leaves nothing
+ * readable on the server; launch sweep, 20 Oct 2026). The server keeps the
  * client's updatedAt (its touch trigger is dropped), so everything is one clock.
  *
  * Pull is incremental (rows that reached the server after the last one we pulled,
@@ -322,7 +323,7 @@
           });
         }
         plan.pushDel.forEach(function (d) {
-          step = step.then(function () { stillAlive(); return rest('PATCH', '/entries?id=eq.' + encodeURIComponent(d.id) + '&user_id=eq.' + uid, { deleted: true, deleted_at: d.deleted_at, updated_at: d.deleted_at }, 'return=minimal', token); });
+          step = step.then(function () { stillAlive(); return rest('PATCH', '/entries?id=eq.' + encodeURIComponent(d.id) + '&user_id=eq.' + uid, { deleted: true, deleted_at: d.deleted_at, updated_at: d.deleted_at, data: {} }, 'return=minimal', token); });
         });
         return step.then(function () {
           var upMax = pushedRows.reduce(function (m, r) { return maxIso(m, r.updated_at); }, ''); /* held rows did not go up */

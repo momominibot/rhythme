@@ -305,15 +305,24 @@
   }
   /* the phone's word on the purpose, plus the account's token (refreshed if needed) whenever there is a session, so the
      server checks the account's own record and a withdrawal made on another phone holds here too */
+  function aiPaused() { return !(root.OVU_CONFIG && root.OVU_CONFIG.aiPaused === false); } /* paused unless explicitly turned off */
   function hdr(p) {
+    if (aiPaused()) return Promise.reject(new Error('Luna’s AI help is paused for now. Your diary and Luna’s own rules work as usual.'));
     var h = Object.assign({ 'Content-Type': 'application/json' }, root.OvuConsent ? root.OvuConsent.header(p) : {});
-    var A = root.OvuAuth; if (!A || !A.session || !A.session()) return Promise.resolve(h);
-    return A.token().then(function (at) { if (at) h.Authorization = 'Bearer ' + at; return h; }, function () { return h; });
+    var A = root.OvuAuth; if (!A || !A.session || !A.session()) {
+      /* a choice recorded on an account is not sent anonymously after the session ended (Codex recheck, 20 Oct) */
+      if (root.OvuConsent && root.OvuConsent.boundTo && root.OvuConsent.boundTo(p)) return Promise.reject(new Error('Please sign in again to use Luna’s AI help.'));
+      return Promise.resolve(h);
+    }
+    /* signed in: the account's own consent record must be checked, so a token that cannot be refreshed stops the request
+       instead of sending it without the account (Codex launch review, 20 Oct) */
+    var again = function () { throw new Error('Please sign in again to use Luna’s AI help.'); };
+    return A.token().then(function (at) { if (!at) again(); h.Authorization = 'Bearer ' + at; return h; }, again);
   }
   function okEntry(e) { return e && S.TYPES.indexOf(e.type) > -1 && S.validDate(e.date) && e.date <= S.today() && e.data; }
   function parseAI(text) {
     var cfg = aiConfig();
-    if (!cfg.on) return Promise.reject(new Error('AI mode is off.'));
+    if (!cfg.on) return Promise.reject(new Error(aiPaused() ? 'Luna’s AI help is paused for now. Your diary and Luna’s own rules work as usual.' : 'AI mode is off.'));
     return hdr('ai_reading').then(function (h) { return fetch(PROXY_URL, { method: 'POST', headers: h, body: JSON.stringify({ text: text, today: S.today() }) }); })
         .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna could not answer just now (' + r.status + '). Try again in a moment.')); return d; }); })
         .then(function (d) { return { entries: (d.entries || []).filter(okEntry), reply: d.reply || '', usage: d.usage || null }; });
@@ -405,7 +414,7 @@
     return out;
   }
   function parsePhoto(dataUrl) {
-    if (!photosAllowed()) return Promise.reject(new Error('Food photos are off. Allow them in Luna’s settings first.'));
+    if (!photosAllowed()) return Promise.reject(new Error(aiPaused() ? 'Food photo recognition is paused for now.' : 'Food photos are off. Allow them in Luna’s settings first.'));
     var table = FD && FD.sgLoad ? FD.sgLoad().catch(function () { return null; }) : Promise.resolve(null);
     var relay = hdr('food_photo_ai').then(function (h) { return fetch(PROXY_URL, { method: 'POST', headers: h, body: JSON.stringify({ image: dataUrl, today: S.today() }) }); })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna could not answer just now (' + r.status + '). Try again in a moment.')); return d; }); });
@@ -421,7 +430,7 @@
   }
   /* Ingredients label photo: Luna transcribes the list once (same permission as food photos); the NOVA rule runs on the phone. */
   function parseLabel(dataUrl) {
-    if (!photosAllowed()) return Promise.reject(new Error('Food photos are off. Allow them in Luna’s settings first.'));
+    if (!photosAllowed()) return Promise.reject(new Error(aiPaused() ? 'Food photo recognition is paused for now.' : 'Food photos are off. Allow them in Luna’s settings first.'));
     return hdr('food_photo_ai').then(function (h) { return fetch(PROXY_URL, { method: 'POST', headers: h, body: JSON.stringify({ image: dataUrl, mode: 'label', today: S.today() }) }); })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna could not answer just now (' + r.status + '). Try again in a moment.')); return d; }); })
       .then(function (d) { var l = d.label || {}; var str = function (v) { return typeof v === 'string' ? v.trim() : ''; }; return { isLabel: l.is_label === true && !!str(l.ingredients_text), productName: str(l.product_name), quantity: str(l.quantity), ingredientsText: str(l.ingredients_text), complete: l.complete !== false, note: str(l.note) }; });
@@ -477,5 +486,5 @@
     return null;
   }
 
-  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, entryUrgent: entryUrgent, noPeriod: noPeriod, parsePhoto: parsePhoto, parseDish: parseDish, parseLabel: parseLabel, foodItemsFrom: foodItemsFrom, regram: regram, rename: rename, photosAllowed: photosAllowed, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
+  root.OvuOrb = { aiPaused: aiPaused, parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, entryUrgent: entryUrgent, noPeriod: noPeriod, parsePhoto: parsePhoto, parseDish: parseDish, parseLabel: parseLabel, foodItemsFrom: foodItemsFrom, regram: regram, rename: rename, photosAllowed: photosAllowed, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
 })(window);

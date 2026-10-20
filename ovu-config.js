@@ -17,6 +17,11 @@
     /* Social sign-in buttons stay hidden until the provider is configured in
      * Supabase (Authentication > Providers) and switched on here. Email works
      * without any of this. See STATUS.md for the exact Google and Apple steps. */
-    oauth: { google: false, apple: false }
+    oauth: { google: false, apple: false },
+    /* Luna's AI help is paused (launch sweep, 20 Oct 2026): the AI service's terms (Volcengine Ark platform terms 3.1,
+     * Doubao model agreement 1.2) license use only in mainland China, so it stays off until a service licensed for
+     * Singapore users is in place. While paused, the three Luna AI choices cannot be turned on and no AI request is made.
+     * The browser tests set window.OVU_AI_PAUSE_OVERRIDE = false to keep exercising the AI paths. */
+    aiPaused: root.OVU_AI_PAUSE_OVERRIDE === false ? false : true
   };
 })(window);
