@@ -836,7 +836,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
     return v.reply(201, null);
   };
   var t2 = YV.syncNow().then(function (r) {
-    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncPull(v);
     check('after learning the exercise type, a one-time pull of that type alone brings back the row the old version skipped', gets.length === 2 && /synced_at=gt/.test(gets[0]) && /type=in\.\(exercise\)/.test(gets[1]) && !/synced_at=gt/.test(gets[1]) && SV.list('exercise').length === 1 && st.types === SV.TYPES.join(','), JSON.stringify({ r: r, gets: gets, n: SV.list('exercise').length, types: st.types }));
     check('an older entry cleared from this phone on purpose is not brought back', SV.list('reflection').length === 0);
     return YV.syncNow();
@@ -885,6 +885,23 @@ function syncServer() {
     }
   };
 }
+/* where the pull resumes (shared cursor, typed recovery, reset generation): its own key since round three of PR 11,
+   inside the main sync state before that, so the same checks read either layout */
+function syncPull(w) { var p = JSON.parse(w.localStorage.getItem('ovumind_sync_pull_v1') || 'null'); return p || JSON.parse(w.localStorage.getItem('ovumind_sync_v1') || '{}'); }
+/* a pretend Web Locks manager shared by pretend tabs: exclusive, granted in request order, callback run asynchronously */
+function lockManager() {
+  var held = {}, queue = {};
+  return {
+    held: function (name) { return !!held[name]; },
+    request: function (name, cb) {
+      return new Promise(function (res, rej) {
+        var done = function () { var q = queue[name]; if (q && q.length) q.shift()(); else held[name] = false; };
+        var go = function () { Promise.resolve().then(function () { return cb({ name: name, mode: 'exclusive' }); }).then(function (v) { done(); res(v); }, function (e) { done(); rej(e); }); };
+        if (held[name]) (queue[name] = queue[name] || []).push(go); else { held[name] = true; go(); }
+      });
+    }
+  };
+}
 /* a signed-in phone with cloud backup on, talking to `srv`; `state` is its saved sync position (null: a new phone,
    undefined: an older version's millisecond cursor at 10:00 on 19 Oct) */
 function syncWorld(srv, onGet, state) {
@@ -911,7 +928,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   var w = world(srv, function (url) { calls++; if (calls === 1) { srv.rows.push(row('r101', 'reflection', '2026-10-19T10:01:00Z', { text: 'between the requests', mood: '' })); srv.rows.push(row('x102', 'exercise', '2026-10-19T10:02:00Z', { activity: 'walk', label: 'Walking', variant: 'brisk', code: '17200', met: 4.8, minutes: 20, intensity: 'moderate', strength: false, aerobic: true, note: '' })); } });
   var S = w.OvuStore, Y = w.OvuSync;
   var a = Y.syncNow().then(function () {
-    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncPull(w);
     check('the typed pull brings the exercise row but leaves the shared cursor where it was', S.list('exercise').length === 1 && Date.parse(st.pulledSeq) === Date.parse('2026-10-19T10:00:00Z'), JSON.stringify({ seq: st.pulledSeq, n: S.list('exercise').length }));
     return Y.syncNow();
   }).then(function () {
@@ -925,11 +942,11 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   var v = world(big, function (url) { gets.push(url); }), SV = v.OvuStore, YV = v.OvuSync;
   SV.putEvent({ id: 'h' + pad(20000), type: 'exercise', date: '2025-12-31', data: { activity: 'walk', label: 'Walking', variant: 'brisk', code: '17200', met: 4.8, minutes: 30, intensity: 'moderate', strength: false, aerobic: true, note: '' }, createdAt: '2025-12-31T09:00:00Z', updatedAt: '2025-12-31T09:00:00Z', source: 'cloud' });
   var b = YV.syncNow().then(function () {
-    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncPull(v);
     check('20,001 rows sharing one timestamp: the first sync takes 20,000 by id and is not marked recovered', SV.list('exercise').length === 20001 && !st.types && st.typedAfter === 'h19999', JSON.stringify({ n: SV.list('exercise').length, types: st.types, after: st.typedAfter }));
     return YV.syncNow();
   }).then(function () {
-    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1')), typedGets = gets.filter(function (u) { return /type=in/.test(u); });
+    var st = syncPull(v), typedGets = gets.filter(function (u) { return /type=in/.test(u); });
     check('the next sync resumes after the last id, applies the final deletion, then marks the type known', !SV.get('h' + pad(20000)) && SV.list('exercise').length === 20000 && st.types === SV.TYPES.join(',') && !st.typedAfter && /id=gt\.h19999/.test(typedGets[typedGets.length - 1]), JSON.stringify({ n: SV.list('exercise').length, types: st.types, after: st.typedAfter, last: typedGets[typedGets.length - 1] }));
     return YV.syncNow();
   }).then(function () {
@@ -963,7 +980,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
     srv.rows.push(syncRow('late1', 'reflection', '2026-10-19T13:00:00.000001+00:00', { text: 'from the other phone', mood: '' }));
     t.sync = 1; return Y.syncNow();
   }).then(function () { t.sync = 2; return Y.syncNow(); }).then(function () {
-    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncPull(w);
     check('a restore larger than one sync: 20,000 rows, then the rest of the same upload and the late row, then nothing', t.per.join() === '20000,5004,0', 'per sync: ' + t.per.join());
     check('every row arrives exactly once, none skipped at the cut and none fetched again', Object.keys(t.seen).length === 25004 && t.twice() === 0 && S.list('reflection').length === 25004, JSON.stringify({ distinct: Object.keys(t.seen).length, twice: t.twice(), local: S.list('reflection').length }));
     check('the cursor keeps the server\'s own timestamp, microseconds included, and the last id', st.pulledSeq === '2026-10-19T13:00:00.000001+00:00' && st.pulledId === 'late1', JSON.stringify({ seq: st.pulledSeq, id: st.pulledId }));
@@ -984,24 +1001,25 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   var c = u.OvuSync.syncNow().then(function () {
     check('a cursor id with quotes, commas, brackets and a backslash resumes exactly after itself', Object.keys(t3.seen).sort().join('|') === [odd + 'z', 'x1'].join('|'), JSON.stringify(Object.keys(t3.seen)));
   });
-  /* 4. (Codex round one) another tab moves the cursor further while this sync uploads, then the person clears that
-     newer row from the phone. This sync must not wind the cursor back, or the next sync brings the cleared row back. */
+  /* 4. (Codex round one) a second tab of the same phone, in a browser without Web Locks, syncs to the end while this
+     sync's upload is in flight, so it moves the cursor further (to r2), and r2 never reaches this tab's diary (as if
+     cleared). This sync must not wind the cursor back, or the next sync brings r2 back. */
   var R1 = '2026-10-19T11:00:00.000001+00:00', R2 = '2026-10-19T12:00:00.000002+00:00';
   var srv4 = syncServer(), posted4 = false;
   srv4.rows.push(syncRow('r1', 'reflection', R1, { text: 'eleven', mood: '' }));
   var x = syncWorld(srv4, null, null), SX = x.OvuStore, YX = x.OvuSync, xPost = x.fetch;
+  var x2 = syncWorld(srv4, null, null); x2.localStorage = x.localStorage;
   SX.add('reflection', SX.today(), { text: 'written here', mood: '' });
   x.fetch = function (url, opt) {
     if (opt && opt.method === 'POST' && /\/entries/.test(url) && !posted4) {
       posted4 = true;
-      /* the other tab: r2 arrives, it pulls through r2 and saves that cursor; r2 is then cleared from this phone */
       srv4.rows.push(syncRow('r2', 'reflection', R2, { text: 'twelve, cleared later', mood: '' }));
-      var st = JSON.parse(x.localStorage.getItem('ovumind_sync_v1')); st.pulledSeq = R2; st.pulledId = 'r2'; x.localStorage.setItem('ovumind_sync_v1', JSON.stringify(st));
+      return x2.OvuSync.syncNow().then(function () { return xPost(url, opt); });
     }
     return xPost(url, opt);
   };
   var d = YX.syncNow().then(function () {
-    var st = JSON.parse(x.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncPull(x);
     check('a slower tab never winds the cursor back past where another tab moved it', st.pulledSeq === R2 && st.pulledId === 'r2', JSON.stringify({ seq: st.pulledSeq, id: st.pulledId }));
     return YX.syncNow();
   }).then(function () {
@@ -1015,10 +1033,75 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   SY5.add('reflection', SY5.today(), { text: 'written here', mood: '' });
   y.fetch = function (url, opt) { if (opt && opt.method === 'POST' && /\/entries/.test(url) && !posted5) { posted5 = true; YY.resetPosition(); } return yPost(url, opt); };
   var e = YY.syncNow().then(function (r) {
-    var st = JSON.parse(y.localStorage.getItem('ovumind_sync_v1'));
-    check('a reset during the upload stays a reset: no account, no cursor, no push watermark written back', posted5 && st.userId === null && st.pulledSeq === null && !st.pulledId && st.pushedAt === null && r && r.ok === false, JSON.stringify({ r: r, userId: st.userId, seq: st.pulledSeq, pushedAt: st.pushedAt }));
+    var st = JSON.parse(y.localStorage.getItem('ovumind_sync_v1')), pos = syncPull(y);
+    check('a reset during the upload stays a reset: no account, no cursor, no push watermark written back', posted5 && st.userId === null && !st.pulledSeq && !pos.pulledSeq && !pos.pulledId && st.pushedAt === null && r && r.ok === false, JSON.stringify({ r: r, userId: st.userId, seq: pos.pulledSeq, pushedAt: st.pushedAt }));
   });
   Promise.all([a, b, c, d, e]).catch(function (err) { check('the shared pull cursor tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
+(function syncAcrossTabsAndResets() {
+  console.log('cloud sync: tabs take turns through Web Locks, the pull position has its own key, and a reset stays a reset');
+  var T1 = '2026-10-19T11:00:00.000001+00:00', note = function (t) { return { text: t, mood: '' }; };
+  /* 1. two tabs of one phone (one storage, one lock manager): the second tab's sync waits for the first to finish,
+     then resumes where the first stopped */
+  var srvA = syncServer(), mgr = lockManager(), order = [], bFirst = null;
+  srvA.rows.push(syncRow('q1', 'reflection', T1, note('q1')));
+  var A = syncWorld(srvA, function () { order.push('A:get'); }, null), B = syncWorld(srvA, function (url) { order.push('B:get'); if (!bFirst) bFirst = url; }, null);
+  B.localStorage = A.localStorage; A.navigator.locks = mgr; B.navigator.locks = mgr;
+  A.OvuStore.add('reflection', A.OvuStore.today(), note('written in tab A'));
+  var release, gate = new Promise(function (r) { release = r; }), posted, postSeen = new Promise(function (r) { posted = r; }), aFetch = A.fetch;
+  A.fetch = function (url, opt) { if (opt && opt.method === 'POST' && /\/entries/.test(url)) { posted(); return gate.then(function () { return aFetch(url, opt); }); } return aFetch(url, opt); };
+  var pA = A.OvuSync.syncNow(), pB = null;
+  var one = postSeen.then(function () { pB = B.OvuSync.syncNow(); return new Promise(function (r) { setTimeout(r, 30); }); }).then(function () {
+    var early = order.filter(function (o) { return o === 'B:get'; }).length;
+    order.push('A:released'); release();
+    return Promise.all([pA, pB]).then(function (rs) {
+      check('a sync in a second tab waits for the first to finish before it pulls anything', early === 0 && order.indexOf('B:get') > order.indexOf('A:released') && rs[0].ok === true && rs[1].ok === true, JSON.stringify({ early: early, order: order.slice(0, 6), rs: rs }));
+      check('and then resumes where the first tab stopped', /%22q1%22/.test(bFirst || ''), bFirst);
+    });
+  });
+  /* 2. another tab's whole-state write (read before this sync finished, saved after it: an edit there, say) lands
+     late; the person then starts fresh on this phone and turns backup on again. The pull position must survive the
+     late write, or the next sync refills the diary she just cleared. */
+  var srvB = syncServer(), stale = null;
+  srvB.rows.push(syncRow('p1', 'reflection', T1, note('p1')));
+  var W = syncWorld(srvB, null, null), SW = W.OvuStore, wFetch = W.fetch;
+  SW.add('reflection', SW.today(), note('written here'));
+  W.fetch = function (url, opt) { if (!stale && opt && opt.method === 'POST' && /\/entries/.test(url)) stale = W.localStorage.getItem('ovumind_sync_v1'); return wFetch(url, opt); };
+  var two = W.OvuSync.syncNow().then(function () {
+    W.localStorage.setItem('ovumind_sync_v1', stale);
+    SW.clearAll(); SW.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+    return W.OvuSync.syncNow();
+  }).then(function () {
+    check('the pull position survives another tab\'s late whole-state write, so a cleared diary is not refilled', !!stale && !SW.get('p1') && SW.list('reflection').length === 0, JSON.stringify({ stale: !!stale, p1: !!SW.get('p1'), n: SW.list('reflection').length }));
+  });
+  /* 3. (Codex round two) a reset during the profile upload, after the entries were committed */
+  var srvC = syncServer(), resetC = false, Cw = syncWorld(srvC, null, null), cFetch = Cw.fetch;
+  Cw.fetch = function (url, opt) { if (!resetC && opt && opt.method === 'POST' && /\/profiles/.test(url)) { resetC = true; Cw.OvuSync.resetPosition(); } return cFetch(url, opt); };
+  var three = Cw.OvuSync.syncNow().then(function (r) {
+    var st = JSON.parse(Cw.localStorage.getItem('ovumind_sync_v1'));
+    check('a reset during the profile upload stays a reset: no profile position or last-sync time written back', resetC && st.userId === null && st.profilePulledAt === null && st.lastSyncAt === null && r && r.ok === false, JSON.stringify({ r: r, userId: st.userId, profile: st.profilePulledAt, last: st.lastSyncAt }));
+  });
+  /* 4. (Codex round two) a reset during the upload, then another tab signs the same account back in and its sync
+     re-activates the position: the old sync must still write nothing back */
+  var srvD = syncServer(), hitD = false, getsD = [];
+  srvD.rows.push(syncRow('d1', 'reflection', T1, note('d1')));
+  var Dw = syncWorld(srvD, function (url) { getsD.push(url); }, null), dFetch = Dw.fetch;
+  Dw.OvuStore.add('reflection', Dw.OvuStore.today(), note('written here'));
+  Dw.fetch = function (url, opt) {
+    if (!hitD && opt && opt.method === 'POST' && /\/entries/.test(url)) {
+      hitD = true; Dw.OvuSync.resetPosition();
+      var s = JSON.parse(Dw.localStorage.getItem('ovumind_sync_v1')); s.userId = 'u1'; Dw.localStorage.setItem('ovumind_sync_v1', JSON.stringify(s));
+    }
+    return dFetch(url, opt);
+  };
+  var four = Dw.OvuSync.syncNow().then(function (r) {
+    var st = JSON.parse(Dw.localStorage.getItem('ovumind_sync_v1'));
+    check('a reset then the same account turning sync back on elsewhere: the old sync writes no watermark back', hitD && st.pushedAt === null && r && r.ok === false, JSON.stringify({ r: r, pushedAt: st.pushedAt }));
+    var before = getsD.length;
+    return Dw.OvuSync.syncNow().then(function () { check('and the next sync pulls from the beginning, as the reset asked', getsD.length > before && !/[?&](or|synced_at)=/.test(getsD[before]), String(getsD[before])); });
+  });
+  Promise.all([one, two, three, four]).catch(function (err) { check('the cross-tab and reset tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */
