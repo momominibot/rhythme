@@ -270,6 +270,41 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('every friend card look is an outfit with a standing sprite', looks.length >= 9 && looks.every(function (l) { return ids.indexOf(l) >= 0; }), looks.join(','));
 })();
 
+(function mapWithoutShortcuts() {
+  console.log('2h. no place shortcuts: the map finds every place by its doors, routes one-way doors, and lays the places out apart');
+  var ctx = vm.createContext({ window: { document: null } }); ctx.window.window = ctx.window;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-map.js'), 'utf8'), ctx, { filename: 'ovu-map.js' });
+  var M = ctx.window.OvuMap, hs = function (id, label) { return { id: id, label: label }; };
+  var LAY = {
+    room: { id: 'room', name: 'Your room', img: 'room.webp', doors: [{ id: 'door', to: 'garden', x: 50, y: 80 }], hotspots: [hs('door', 'Door · out to the garden')] },
+    house: { id: 'house', name: 'Your dream house', img: 'house.webp', doors: [{ id: 'door', to: 'garden', x: 50, y: 80 }], hotspots: [] },
+    garden: { id: 'garden', name: 'Your garden', img: 'g.webp', doors: [{ id: 'gate', to: 'home', x: 29, y: 58 }, { id: 'arch', to: 'street', x: 80, y: 55 }, { id: 'farmpath', to: 'farm', x: 70, y: 66 }, { id: 'ghdoor', to: 'greenhouse', x: 62, y: 49 }],
+      hotspots: [hs('gate', 'Gate · back home'), hs('arch', 'Arch · on to Dream Street'), hs('farmpath', 'Path · down to the farm'), hs('ghdoor', 'Door · into the greenhouse')] },
+    greenhouse: { id: 'greenhouse', name: 'The greenhouse', img: 'gh.webp', doors: [{ id: 'ghout', to: 'garden', x: 50, y: 80 }], hotspots: [hs('ghout', 'Door · back to the garden')] },
+    farm: { id: 'farm', name: 'Your farm', img: 'f.webp', doors: [{ id: 'farmgate', to: 'garden', x: 15, y: 57 }], hotspots: [hs('farmgate', 'Gate · back to the garden')] },
+    street: { id: 'street', name: 'Dream Street', img: 's.webp', doors: [{ id: 'arch', to: 'garden', x: 16, y: 60 }, { id: 'arch2', to: 'plaza', x: 84, y: 60 }, { id: 'petshop', tap: 'petshop', to: 'shop-pet', x: 23, y: 62 }, { id: 'furniture', tap: 'furniture', to: 'shop-furniture', x: 50, y: 62 }, { id: 'homes', tap: 'homes', to: 'shop-homes', x: 74, y: 62 }],
+      hotspots: [hs('arch', 'Arch · back to the garden'), hs('arch2', 'Arch · on to the plaza'), hs('petshop', 'Whisker & Paw · pets'), hs('furniture', 'The Cosy Nook · furniture'), hs('homes', 'Moonrise Homes · houses')] },
+    plaza: { id: 'plaza', name: 'The plaza', img: 'p.webp', doors: [{ id: 'arch', to: 'street', x: 20, y: 58 }, { id: 'gate', to: 'home', x: 54, y: 64 }], hotspots: [hs('arch', 'Arch · back to the street'), hs('gate', 'Gate · home')] },
+    'shop-pet': { id: 'shop-pet', store: 'pet', name: 'Whisker & Paw', img: 'sp.webp', doors: [{ id: 'mat', to: 'street', x: 46, y: 76 }], hotspots: [hs('mat', 'Door mat · back to the street')] },
+    'shop-furniture': { id: 'shop-furniture', store: 'furniture', name: 'The Cosy Nook', img: 'sf.webp', doors: [{ id: 'mat', to: 'street', x: 48, y: 76 }], hotspots: [hs('mat', 'Door mat · back to the street')] },
+    'shop-homes': { id: 'shop-homes', store: 'home', name: 'Moonrise Homes', img: 'sh.webp', doors: [{ id: 'mat', to: 'street', x: 35, y: 73 }], hotspots: [hs('mat', 'Door mat · back to the street')] }
+  };
+  var g = M.graph(LAY, 'room'), ids = Object.keys(g.nodes).sort();
+  check('every door-connected place is found from home, a new zone included, and a neighbour visit is not', ids.join(',') === 'farm,garden,greenhouse,home,plaza,shop-furniture,shop-homes,shop-pet,street', ids.join(','));
+  var doors = function (r) { return r ? r.map(function (e) { return e.door; }).join('>') : 'none'; };
+  check('home to the plaza is the door, the garden arch and the street arch', doors(M.route(g, 'home', 'plaza')) === 'door>arch>arch2', doors(M.route(g, 'home', 'plaza')));
+  check('the plaza gate is a one-way way home', doors(M.route(g, 'plaza', 'home')) === 'gate', doors(M.route(g, 'plaza', 'home')));
+  check('from the pet shop home: door mat, the street arch, the garden gate', doors(M.route(g, 'shop-pet', 'home')) === 'mat>arch>gate', doors(M.route(g, 'shop-pet', 'home')));
+  check('directions use the labels she sees on each door', M.route(g, 'farm', 'home').map(function (e) { return M.stepText(g, e).door; }).join(' / ') === 'Gate · back to the garden / Gate · back home');
+  check('names read naturally: Garden, Plaza, a shop keeps its own name', g.nodes.garden.name === 'Garden' && g.nodes.plaza.name === 'Plaza' && g.nodes['shop-furniture'].name === 'The Cosy Nook' && g.nodes.home.name === 'Home' && M.at(g, 'street') === 'on Dream Street');
+  var P = M.place(g), keys = Object.keys(P), apart = true, inside = true;
+  keys.forEach(function (a) { var p = P[a]; if (p[0] < 5 || p[0] > 95 || p[1] < 5 || p[1] > 75) inside = false; keys.forEach(function (b) { if (a < b && Math.hypot(P[a][0] - P[b][0], P[a][1] - P[b][1]) < 12) apart = false; }); });
+  check('every place gets a spot on the map, inside it and apart from the others (the new greenhouse too)', keys.length === 9 && apart && inside && !!P.greenhouse, JSON.stringify(P));
+  var bent = M.lines(g, P).filter(function (l) { return l.curve; }).length;
+  check('the plaza gate home bends round the garden instead of crossing it', bent >= 1, bent);
+  check('there is no route to a place that is not on the map', M.route(g, 'home', 'house') === null);
+})();
+
 (function noPeriodStatementsAreNotFlow() {
   console.log('3. "has not returned", "no period", "not bleeding" are no-period observations, never a period entry');
   var w = fresh(), O = w.OvuOrb, S = w.OvuStore;

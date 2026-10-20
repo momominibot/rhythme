@@ -1274,6 +1274,37 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .minimap button i{font:800 8px var(--sans);font-style:normal;letter-spacing:.04em;text-transform:uppercase}
 .minimap button.on{background:var(--rm-lilac-2);color:var(--rm-plum)}
 .minimap.hidden{display:none}
+/* the where-you-are pill (Jamie, 20 Oct: no place shortcuts, a map instead) */
+.minimap #mapBtn{flex-direction:row;gap:5px;padding:5px 12px 5px 8px;min-width:0;color:var(--rm-plum)}
+.minimap #mapBtn i{font:800 10px var(--sans);letter-spacing:.06em;max-width:44vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the map sheet */
+.mapnow{display:flex;gap:10px;align-items:flex-start;margin:2px 0 10px}
+.mapnow>.ms{font-size:22px;color:var(--rm-mauve);margin-top:1px}
+.mapnow b{display:block;font:800 15px var(--sans);color:var(--rm-plum)}
+.mapnow small{display:block;font:600 12px var(--sans);color:var(--rm-ink-2);line-height:1.4;margin-top:2px}
+.mapplate{position:relative;width:100%;max-width:100%;border-radius:18px;overflow:hidden;background:var(--rm-paper-2);border:1px solid rgba(150,120,190,.18);margin-bottom:12px}
+.mapplate img{display:block;width:100%;height:100%;object-fit:cover}
+.mapme{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#e2557e;border:3px solid #fff;box-shadow:0 0 0 0 rgba(226,85,126,.55),0 2px 6px rgba(60,30,80,.35);animation:mapping 1.8s ease-out infinite}
+@keyframes mapping{0%{box-shadow:0 0 0 0 rgba(226,85,126,.55),0 2px 6px rgba(60,30,80,.35)}100%{box-shadow:0 0 0 16px rgba(226,85,126,0),0 2px 6px rgba(60,30,80,.35)}}
+.mapexit{position:absolute;transform:translate(-50%,-115%);display:flex;align-items:center;gap:3px;white-space:nowrap;background:rgba(255,255,255,.92);color:var(--rm-plum);font:800 10px var(--sans);padding:3px 7px 3px 4px;border-radius:999px;box-shadow:0 2px 8px rgba(90,66,116,.22)}
+.mapexit .ms{font-size:13px}
+.worldmap{position:relative;width:100%;max-width:100%;background:linear-gradient(160deg,#f6effb,#eef6f1);border:1px solid rgba(150,120,190,.18);border-radius:18px;margin-bottom:10px}
+.worldlines{position:absolute;inset:0;width:100%;height:100%}
+.worldlines path{fill:none;stroke:#c9b6e6;stroke-width:1.6;stroke-dasharray:2.4 2;vector-effect:non-scaling-stroke}
+.mapnode{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;width:64px;border:0;background:none;padding:0;cursor:pointer;color:var(--rm-plum)}
+.mapnode>.ms{width:34px;height:34px;line-height:34px;font-size:19px;text-align:center;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(90,66,116,.2);border:2px solid #fff}
+.mapnode b{font:800 9.5px/1.15 var(--sans);text-align:center}
+.mapnode em{font:800 8px var(--sans);font-style:normal;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:#e2557e;border-radius:999px;padding:1px 6px}
+.mapnode.here>.ms{border-color:#e2557e;color:#e2557e}
+.mapnode.picked>.ms{border-color:var(--rm-mauve);background:var(--rm-lilac-2)}
+.mapnode.shut>.ms{opacity:.55}
+.maproute{background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:16px;padding:10px 12px;font:600 13px/1.45 var(--sans);color:var(--rm-ink)}
+.maproute b{display:block;color:var(--rm-plum);font-weight:800}
+.maproute small{display:block;color:var(--rm-ink-2);font-weight:600}
+.maproute ol{margin:6px 0 0;padding-left:20px}
+.maproute li{margin:3px 0}
+.maproute li span{display:block;font:800 10px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--rm-ink-3)}
+@media (prefers-reduced-motion:reduce){.mapme{animation:none}}
 .scene:is(.quiet,.is-night,.arranging,.hudon) .minimap{opacity:0;pointer-events:none}
 /* the hint and the visit bar share the bottom edge with the mini-map on the right: keep them clear of it */
 .hint{left:12px;transform:none;max-width:58%}
@@ -1340,10 +1371,6 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 @media (prefers-reduced-motion: reduce){.nbperson img,.nbpet img,.plot svg,.drops i,.wish i{animation:none!important}.scenefade{transition:none}}
 /* ---- 18 Oct, later: walkable store interiors (ovu-shops.js) and the mini-map's store sub-stops ---- */
 /* the store row sits in its own pill above the main one, so the walk pad on the left keeps its room */
-.minimap-sub{display:none;position:absolute;right:0;bottom:calc(100% + 6px);gap:2px;background:rgba(255,255,255,.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.9);border-radius:999px;padding:3px;box-shadow:0 6px 18px rgba(90,66,116,.18)}
-.minimap.sub-on .minimap-sub{display:flex}
-.minimap-sub button{min-width:44px;padding:3px 6px}
-.minimap-sub button .ms{font-size:15px;width:18px;height:18px;line-height:18px}
 .shopprop{pointer-events:auto;cursor:pointer}
 .shopprop:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
 .shopprop img{transition:transform .2s}
