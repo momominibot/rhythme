@@ -11,9 +11,13 @@
  * readable on the server; launch sweep, 20 Oct 2026). The server keeps the
  * client's updatedAt (its touch trigger is dropped), so everything is one clock.
  *
- * Pull is incremental (rows that reached the server after the last one we pulled,
- * by synced_at then id), so wiping this phone and reloading does not re-download
- * the whole cloud; only a brand-new install (no cursor) restores the full diary. */
+ * Pull is incremental (rows that reached the server after the last one we pulled),
+ * so wiping this phone and reloading does not re-download the whole cloud; only a
+ * brand-new install (no cursor) restores the full diary. Rows come in the order
+ * their writes became final (sync_xid, id), cut at the oldest write still open, so
+ * a long upload that commits late can never land behind the cursor. A server
+ * without that (20261020120000_sync_pull_commit_order.sql not applied) is pulled
+ * by synced_at then id, as before. */
 (function (root) {
   'use strict';
   var S = root.OvuStore;
@@ -35,10 +39,13 @@
   /* ---------- sync position (one object in localStorage) ---------- */
   function loadState() {
     try { var s = JSON.parse(localStorage.getItem(LS) || 'null'); if (s && s.v === 1) { s.shadow = s.shadow || {}; s.tombstones = s.tombstones || {}; return s; } } catch (e) { }
-    /* pulledSeq, pulledId: the incremental pull's cursor, the last row it saw (synced_at exactly as the server wrote
-       it, and that row's id); pulledSeq without pulledId is an older version's millisecond cursor.
+    /* pulledXid, pulledXidId: the commit-ordered pull's cursor, the last row it saw (its transaction id as text, and its
+       id), or the fence with no id once a page came back short.
+       pulledSeq, pulledId: the time-ordered pull's cursor (synced_at exactly as the server wrote it, and that row's id),
+       used where the server has no entries_pull, and as the older cursor a phone carries into the commit-ordered pull;
+       pulledSeq without pulledId is an older version's millisecond cursor.
        pushedAt: the newest local updatedAt we have pushed, so unchanged rows are not re-sent. */
-    return { v: 1, gen: 0, userId: null, shadow: {}, tombstones: {}, pulledSeq: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null };
+    return { v: 1, gen: 0, userId: null, shadow: {}, tombstones: {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null };
   }
   /* gen: bumped by every reset and every account switch. A sync captures it when it starts and checks it, with the
      account, before each request and before every write, so a sync that a sign-out or a switch overtook can never
@@ -188,7 +195,7 @@
     return fetch(CFG.supabaseUrl + '/rest/v1' + path, { method: method, headers: h, body: body != null ? JSON.stringify(body) : undefined }).then(function (r) {
       return r.text().then(function (t) {
         var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { }
-        if (!r.ok) throw new Error('rest ' + r.status + (j && j.message ? ' ' + j.message : ''));
+        if (!r.ok) { var err = new Error('rest ' + r.status + (j && j.message ? ' ' + j.message : '')); err.status = r.status; err.code = (j && j.code) || null; throw err; }
         return j;
       });
     });
@@ -203,11 +210,13 @@
     if (id == null) return '&synced_at=gte.' + encodeURIComponent(at);
     return '&or=' + encodeURIComponent('(synced_at.gt.' + quoted(at) + ',and(synced_at.eq.' + quoted(at) + ',id.gt.' + quoted(id) + '))');
   }
-  /* Pull every entry whose server arrival is after the cursor, oldest first, in pages (PostgREST caps a response,
-     so a full restore needs more than one), at most 20,000 rows a sync. The cursor is the last row seen: its
-     synced_at exactly as the server wrote it, and its id. One upload stamps all its rows with one now(), so ids tell
-     those rows apart, and the server's microseconds are never rounded to milliseconds; a page or the 20,000 cap can
-     split such a group without skipping or fetching again any of it. Returns the rows and the new cursor. */
+  /* The time-ordered pull, for a server without entries_pull. Pull every entry whose server arrival is after the
+     cursor, oldest first, in pages (PostgREST caps a response, so a full restore needs more than one), at most 20,000
+     rows a sync. The cursor is the last row seen: its synced_at exactly as the server wrote it, and its id. One upload
+     stamps all its rows with one now(), so ids tell those rows apart, and the server's microseconds are never rounded
+     to milliseconds; a page or the 20,000 cap can split such a group without skipping or fetching again any of it.
+     Returns the rows and the new cursor. Its gap: now() is when the writing transaction STARTED, so a long upload that
+     commits after a later, shorter one lands behind a cursor that already moved past the short one, and is missed. */
   function pullSince(at, id, token) {
     var PAGE = 1000, all = [], cur = { at: at || null, id: at && id != null ? id : null };
     var base = '/entries?select=*&order=synced_at.asc,id.asc&limit=' + PAGE;
@@ -221,6 +230,57 @@
     }
     return page();
   }
+  /* A transaction id (xid8) as the server writes it: decimal, no leading zeros. Kept as text and compared by length,
+     then digit by digit, because it can be larger than a JavaScript number holds exactly. */
+  function isXid(v) { return typeof v === 'string' && /^(0|[1-9][0-9]{0,19})$/.test(v); }
+  function xidCmp(a, b) { return a.length - b.length || (a < b ? -1 : a > b ? 1 : 0); }
+  /* the server has no entries_pull (20261020120000_sync_pull_commit_order.sql not applied): PostgREST answers PGRST202 */
+  function rpcMissing(err) { return !!err && err.status === 404 && err.code === 'PGRST202'; }
+  var commitPull = null; /* null: not tried on this page yet; false: this server has no entries_pull, so pull by time */
+  /* The commit-ordered pull. Rows come in (sync_xid, id) order, and only from transactions that had all ended: the
+     server cuts every page at a fence, the lowest transaction id still running, and any later write gets a higher id.
+     So a long upload that started before a short one and commits after it can never land behind the cursor; its rows
+     wait for the next page or the next sync instead. When a page comes back short, everything below the fence has
+     been seen, and the cursor moves up to the fence itself (id null: from that transaction id on). One upload is one
+     transaction id, so ids tell its rows apart and a page or the 20,000 cap can split it without skipping or fetching
+     again any of it. `since` is the older time-ordered cursor; the server applies it only to rows written before the
+     migration (sync_xid 0), so a phone moving over is not handed its whole diary again. */
+  function pullCommitted(xid, id, since, token) {
+    var PAGE = 1000, all = [], cur = { xid: xid || null, id: xid && id != null ? id : null };
+    function page() {
+      return rest('POST', '/rpc/entries_pull', { p_after_xid: cur.xid, p_after_id: cur.id, p_since: since ? since.at : null, p_since_id: since && since.id != null ? since.id : null, p_limit: PAGE }, null, token).then(function (res) {
+        var rows = res && res.rows;
+        if (!Array.isArray(rows) || !isXid(res.fence) || !rows.every(function (r) { return r && isXid(r.sync_xid) && xidCmp(r.sync_xid, res.fence) < 0; })) throw new Error('The cloud sent a pull reply this version does not understand.');
+        all = all.concat(rows);
+        if (rows.length) { var last = rows[rows.length - 1]; cur = { xid: last.sync_xid, id: last.id }; }
+        if (rows.length === PAGE && all.length < 20000) return page();
+        if (rows.length < PAGE && (!cur.xid || xidCmp(res.fence, cur.xid) > 0)) cur = { xid: res.fence, id: null };
+        return { rows: all, xid: cur.xid, id: cur.id };
+      });
+    }
+    return page();
+  }
+  /* Is commit-ordered cursor `a` strictly later than the stored one? (x, no id) means "from transaction x on", so it sits
+     before any (x, id). Two different ids under one transaction id are a tie, which keeps the stored one: the server's
+     collation orders ids, not this phone. */
+  function xidLater(a, c) {
+    if (!c.pulledXid) return true;
+    var k = xidCmp(a.xid, c.pulledXid);
+    return k > 0 || (k === 0 && a.id != null && c.pulledXidId == null);
+  }
+  /* The shared pull: commit-ordered where the server has entries_pull, by time where it does not yet. */
+  function pullShared(st, token) {
+    function byTime() { return pullSince(st.pulledSeq, st.pulledId, token).then(function (got) { got.mode = 'time'; return got; }); }
+    if (commitPull === false) return byTime();
+    /* no commit-ordered cursor yet, or one still inside the rows from before the migration: the time cursor comes along */
+    var x = isXid(st.pulledXid) ? st.pulledXid : null, since = (!x || x === '0') && st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null } : null;
+    return pullCommitted(x, x ? st.pulledXidId : null, since, token).then(function (got) { commitPull = true; got.mode = 'commit'; return got; }, function (err) {
+      if (!rpcMissing(err)) throw err;
+      commitPull = false;
+      return byTime();
+    });
+  }
+
   /* The one-time recovery of newly known types walks every row of those types in id order, resuming after the last id
      it saw (keyset paging). Ids are unique, so rows that share a synced_at (one upload is stamped with one now()) can
      neither be skipped nor fetched forever, and no timestamp rounding is involved. At most 20,000 rows a sync;
@@ -266,8 +326,8 @@
       var st = loadState();
       /* a switch to another account, or the first sync after a reset: every position field starts clean and the
          generation moves on, so nothing still in flight from before can land in it */
-      if (st.userId && st.userId !== uid) { st = { v: 1, gen: genOf(st) + 1, userId: uid, shadow: snapshot(), tombstones: st.tombstones || {}, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: st.lastSyncAt || null }; }
-      if (!st.userId) { st.gen = genOf(st) + 1; st.userId = uid; st.shadow = snapshot(); st.pulledSeq = null; st.pulledId = null; st.pushedAt = null; st.profilePulledAt = null; delete st.typedAfter; delete st.types; delete st.held; st.profileDirty = !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage); }
+      if (st.userId && st.userId !== uid) { st = { v: 1, gen: genOf(st) + 1, userId: uid, shadow: snapshot(), tombstones: st.tombstones || {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: st.lastSyncAt || null }; }
+      if (!st.userId) { st.gen = genOf(st) + 1; st.userId = uid; st.shadow = snapshot(); st.pulledXid = null; st.pulledXidId = null; st.pulledSeq = null; st.pulledId = null; st.pushedAt = null; st.profilePulledAt = null; delete st.typedAfter; delete st.types; delete st.held; st.profileDirty = !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage); }
       var gen0 = genOf(st);
       /* still the same account, the same generation, signed in as it, and allowed to sync */
       function alive() { var c = loadState(); return genOf(c) === gen0 && c.userId === uid && a.userId() === uid && canSync(); }
@@ -276,7 +336,7 @@
          version knows types the cursor was built without (Movement added 'exercise'), pull those types once from the
          start. Only the new types: a full re-pull would bring back older entries someone deliberately cleared. */
       var knownTypes = (S.TYPES || []).join(','), before = st.types ? st.types.split(',') : Object.keys(CLOUD_TYPES_V1);
-      var newTypes = st.pulledSeq ? (S.TYPES || []).filter(function (t) { return before.indexOf(t) < 0; }) : [];
+      var newTypes = st.pulledSeq || st.pulledXid ? (S.TYPES || []).filter(function (t) { return before.indexOf(t) < 0; }) : [];
       /* the typed recovery keeps its own position (typedAfter, the last id it saw) and never moves the shared cursor,
          so rows of other types that arrive between the two requests are still pulled next time; it resumes across
          syncs when the backlog is larger than one sync's share, and only a scan that reached the end marks the new
@@ -293,9 +353,9 @@
       }).then(function () {
         if (a.userId() !== uid || !C.allows('cloud_sync') || !C.recordedOnAccount('cloud_sync')) throw new Error('Your cloud backup choice has not reached your account yet. Try again in a moment.');
       });
-      /* pull every row whose server arrival (synced_at) is after our cursor, in
-         order and in pages, so a late-arriving older edit is never skipped */
-      return pre.then(function () { stillAlive(); return pullSince(st.pulledSeq, st.pulledId, token); }).then(function (got) {
+      /* pull every row that reached the server after our cursor, in order and in pages, so a late-arriving older edit
+         is never skipped */
+      return pre.then(function () { stillAlive(); return pullShared(st, token); }).then(function (got) {
         stillAlive();
         var rows = got.rows; incRows = rows; incEnd = got;
         if (!newTypes.length) return rows;
@@ -344,8 +404,15 @@
              when it is strictly later: a cursor wound back would pull again rows this phone may have cleared since.
              A tie on the instant keeps the stored one, because comparing ids here could disagree with the server's
              collation, and pulling a few rows again is safer than skipping any. */
-          var movedMeanwhile = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
-          if (incRows.length && (!movedMeanwhile || (cur.pulledSeq && micros(incEnd.at) > micros(cur.pulledSeq)))) { cur.pulledSeq = incEnd.at; cur.pulledId = incEnd.id; }
+          if (incEnd.mode === 'commit') {
+            /* the same rule for the commit-ordered cursor, which can move with no rows (up to the fence); the time cursor
+               is left as it is, for a server that loses entries_pull again or a tab still on an older version */
+            var movedX = (cur.pulledXid || null) !== (st.pulledXid || null) || (cur.pulledXidId || null) !== (st.pulledXidId || null);
+            if (incEnd.xid && (!movedX || xidLater(incEnd, cur))) { cur.pulledXid = incEnd.xid; cur.pulledXidId = incEnd.id; }
+          } else {
+            var movedMeanwhile = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
+            if (incRows.length && (!movedMeanwhile || (cur.pulledSeq && micros(incEnd.at) > micros(cur.pulledSeq)))) { cur.pulledSeq = incEnd.at; cur.pulledId = incEnd.id; }
+          }
           if (typedDone) { cur.types = knownTypes; delete cur.typedAfter; }
           else if (typed && typed.lastId) cur.typedAfter = typed.lastId;
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
@@ -449,7 +516,7 @@
      local diary stays, deletions outbox is kept so they still propagate later. */
   function resetPosition() {
     var st = loadState();
-    saveState({ v: 1, gen: genOf(st) + 1, userId: null, shadow: snapshot(), tombstones: st.tombstones || {}, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null });
+    saveState({ v: 1, gen: genOf(st) + 1, userId: null, shadow: snapshot(), tombstones: st.tombstones || {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null });
     setStatus('idle');
   }
 
@@ -471,6 +538,6 @@
     status: function () { var st = loadState(); return { state: statusNow.state, error: statusNow.error, lastSyncAt: st.lastSyncAt, pending: Object.keys(st.tombstones || {}).length, held: Object.keys(st.held || {}).length }; },
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
     /* pure helpers, exported for the tests */
-    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud, addHeld: addHeld, splitByType: splitByType, typeRejected: typeRejected, mergeRows: mergeRows
+    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud, addHeld: addHeld, splitByType: splitByType, typeRejected: typeRejected, mergeRows: mergeRows, xidCmp: xidCmp, isXid: isXid
   };
 })(window);

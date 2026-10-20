@@ -1269,7 +1269,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
   S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
   var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
-  w.fetch = function (url, opt) {
+  w.fetch = withoutCommitPull(function (url, opt) {
     var m = (opt && opt.method) || 'GET';
     if (m === 'GET') return reply(200, []);
     if (m === 'POST' && /\/entries/.test(url)) {
@@ -1278,7 +1278,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
       posts.push(rows.map(function (r) { return r.type + ':' + r.id; })); return reply(201, null);
     }
     return reply(201, null);
-  };
+  });
   var t = S.today(), sl = S.add('sleep', t, { bedTime: '23:00', wakeTime: '07:00', quality: 3, notes: '' }), ex = S.add('exercise', t, EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 30 }));
   return Y.syncNow().then(function (r1) {
     var st1 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
@@ -1309,7 +1309,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var ex = S.add('exercise', S.today(), EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 10 }));
   /* another phone whose clock runs an hour ahead pushes the watermark past any edit made here (Codex's case) */
   var tombGiven = false, ahead = new Date(Date.now() + 3600000).toISOString(), aheadRow = { id: 'ahead1', user_id: 'u1', type: 'reflection', date: S.today(), data: { text: 'from the other phone', mood: '' }, source: 'room', created_at: ahead, updated_at: ahead, synced_at: ahead, deleted: false, deleted_at: null }, gave = false;
-  w.fetch = function (url, opt) {
+  w.fetch = withoutCommitPull(function (url, opt) {
     var m = (opt && opt.method) || 'GET';
     if (m === 'GET' && /\/entries/.test(url) && !gave) { gave = true; return w.reply(200, [aheadRow]); }
     /* second sync: an old deletion of the same row from another phone (it loses to the newer local entry) */
@@ -1323,7 +1323,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
       return w.reply(201, null);
     }
     return w.reply(201, null);
-  };
+  });
   var t1 = Y.syncNow().then(function () { refuse = false; return Y.syncNow(); }).then(function (r2) {
     var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
     check('a held row edited during its upload stays held, even when an older deletion of it arrives in the same sync', tombGiven && !!(st.held && st.held[ex.id]), JSON.stringify({ held: st.held, sent: sent, tomb: tombGiven }));
@@ -1339,12 +1339,12 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var cloudRow = { id: 'cloudex1', user_id: 'u1', type: 'exercise', date: SV.today(), data: { activity: 'swim', label: 'Swimming', variant: 'laps', code: '18240', met: 5.8, minutes: 30, intensity: 'moderate', strength: false, aerobic: true, note: '' }, source: 'room', created_at: '2026-10-19T09:00:00Z', updated_at: '2026-10-19T09:00:00Z', synced_at: '2026-10-19T09:30:00Z', deleted: false, deleted_at: null };
   /* a reflection that was backed up and then cleared from this phone on purpose: an untyped pull from the start would bring it back */
   var clearedRow = { id: 'oldrefl', user_id: 'u1', type: 'reflection', date: SV.today(), data: { text: 'cleared on purpose', mood: '' }, source: 'room', created_at: '2026-10-01T09:00:00Z', updated_at: '2026-10-01T09:00:00Z', synced_at: '2026-10-01T09:30:00Z', deleted: false, deleted_at: null };
-  v.fetch = function (url, opt) {
+  v.fetch = withoutCommitPull(function (url, opt) {
     var m = (opt && opt.method) || 'GET';
     if (m === 'GET' && /\/entries/.test(url)) { gets.push(url); if (/synced_at=gt/.test(url)) return v.reply(200, []); return v.reply(200, /type=in\.\(exercise\)/.test(url) ? [cloudRow] : [cloudRow, clearedRow]); }
     if (m === 'GET') return v.reply(200, []);
     return v.reply(201, null);
-  };
+  });
   var t2 = YV.syncNow().then(function (r) {
     var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
     check('after learning the exercise type, a one-time pull of that type alone brings back the row the old version skipped', gets.length === 2 && /synced_at=gt/.test(gets[0]) && /type=in\.\(exercise\)/.test(gets[1]) && !/synced_at=gt/.test(gets[1]) && SV.list('exercise').length === 1 && st.types === SV.TYPES.join(','), JSON.stringify({ r: r, gets: gets, n: SV.list('exercise').length, types: st.types }));
@@ -1356,25 +1356,80 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   Promise.all([t1, t2]).catch(function (err) { check('the sync edge-case tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
+/* Today's live server has no entries_pull (20261020120000_sync_pull_commit_order.sql is not applied): PostgREST answers
+   404 PGRST202, exactly as the live project did on 20 Oct, and the app pulls by time. Wraps a pretend fetch that models
+   that server. */
+function withoutCommitPull(fetchFn) {
+  return function (url, opt) {
+    if (/\/rpc\/entries_pull/.test(url)) return Promise.resolve({ ok: false, status: 404, text: function () { return Promise.resolve(JSON.stringify({ code: 'PGRST202', details: null, hint: null, message: 'Could not find the function public.entries_pull(p_after_id, p_after_xid, p_limit, p_since, p_since_id) in the schema cache' })); } });
+    return fetchFn(url, opt);
+  };
+}
 /* A small pretend PostgREST /entries endpoint for the sync tests. It reads only the query forms the app sends (the
    synced_at cursor as gt or gte, the (synced_at, id) keyset `or` with quoted values, the type filter, id=gt, the two
    orders, limit and offset) and throws on anything else, so a new query shape cannot slip past it unread. synced_at
    is compared as an instant to the microsecond, as Postgres does, whatever its spelling ('...Z' or '+00:00'); ids
-   compare as text, the same order the server uses for both the sort and the id.gt filter. */
-function syncServer() {
-  var rows = [], memo = {};
+   compare as text, the same order the server uses for both the sort and the id.gt filter.
+   With { commit: true } it is a server with the migration applied: rpc() answers entries_pull as the SQL function does
+   (rows below the fence, in (sync_xid, id) order, the since filter only for rows with sync_xid 0), and begin(at) opens a
+   transaction whose rows stay invisible to every read until commit(), stamped as the trigger stamps them: synced_at is
+   the transaction's start, sync_xid its id (and a row made with no time gets that start as its edit time). A row pushed without a sync_xid counts as written by a transaction of its
+   own, numbered by its synced_at, so one upload (one timestamp) is one transaction. Without it, entries_pull is
+   missing, as on the live server today. */
+function syncServer(opts) {
+  opts = opts || {};
+  var rows = [], memo = {}, open = {}, issued = 0;
   function micros(s) {
     if (memo[s] !== undefined) return memo[s];
     var m = /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,6}))?(Z|[+-]\d\d:\d\d)$/.exec(String(s));
     if (!m) throw new Error('pretend server: not a timestamp: ' + s);
     return (memo[s] = Date.parse(m[1] + m[3]) * 1000 + Number(((m[2] || '') + '000000').slice(0, 6)));
   }
+  function xidOf(r) { return r.sync_xid != null ? Number(r.sync_xid) : micros(r.synced_at); }
   var V = '("(?:[^"\\\\]|\\\\.)*"|[^,()"]*)';
   var KEYSET = new RegExp('^\\(synced_at\\.gt\\.' + V + ',and\\(synced_at\\.eq\\.' + V + ',id\\.gt\\.' + V + '\\)\\)$');
   function unq(v) { return v.charAt(0) === '"' ? v.slice(1, -1).replace(/\\(.)/g, '$1') : v; }
   function byId(a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; }
+  /* the lowest transaction id still running, or one past the highest ever handed out: pg_snapshot_xmin(pg_current_snapshot()) */
+  function fence() {
+    var low = Infinity;
+    Object.keys(open).forEach(function (k) { low = Math.min(low, Number(k)); });
+    if (low < Infinity) return low;
+    var hi = issued;
+    rows.forEach(function (r) { hi = Math.max(hi, xidOf(r)); });
+    return hi + 1;
+  }
+  var PULL_ARGS = ['p_after_xid', 'p_after_id', 'p_since', 'p_since_id', 'p_limit'];
   return {
     rows: rows,
+    PULL_ARGS: PULL_ARGS,
+    commit: !!opts.commit,
+    begin: function (at, xid) {
+      var n = xid != null ? xid : micros(at), mine = [];
+      issued = Math.max(issued, n); open[n] = true;
+      return {
+        xid: String(n),
+        add: function (r) { r.synced_at = at; r.sync_xid = String(n); if (r.updated_at == null) r.created_at = r.updated_at = at; mine.push(r); return r; },
+        commit: function () { delete open[n]; mine.forEach(function (r) { for (var i = 0; i < rows.length; i++) if (rows[i].id === r.id) { rows.splice(i, 1); break; } rows.push(r); }); }
+      };
+    },
+    rpc: function (body) {
+      if (!opts.commit) return { status: 404, body: { code: 'PGRST202', message: 'Could not find the function public.entries_pull in the schema cache' } };
+      Object.keys(body).forEach(function (k) { if (PULL_ARGS.indexOf(k) < 0) throw new Error('pretend server: unknown entries_pull argument ' + k); });
+      var f = fence(), ax = body.p_after_xid, aid = body.p_after_id, lim = Math.max(1, Math.min(body.p_limit || 1000, 1000));
+      if (ax != null && !/^(0|[1-9][0-9]*)$/.test(ax)) return { status: 400, body: { code: '22P02', message: 'invalid input syntax for type xid8' } };
+      var axn = ax == null ? null : Number(ax), since = body.p_since == null ? null : micros(body.p_since), sid = body.p_since_id;
+      var out = rows.filter(function (r) {
+        var x = xidOf(r);
+        if (!(x < f)) return false;
+        if (axn != null && !(aid == null ? x >= axn : (x > axn || (x === axn && r.id > aid)))) return false;
+        if (since != null && x !== 0) return true;
+        if (since != null) { var t = micros(r.synced_at); return sid == null ? t >= since : (t > since || (t === since && r.id > sid)); }
+        return true;
+      });
+      out.sort(function (a, b) { return xidOf(a) - xidOf(b) || byId(a, b); });
+      return { status: 200, body: { fence: String(f), rows: out.slice(0, lim).map(function (r) { return Object.assign({}, r, { sync_xid: String(xidOf(r)) }); }) } };
+    },
     get: function (url) {
       var keep = [], order = null, lim = 1000, off = 0;
       new URLSearchParams(url.split('?')[1] || '').forEach(function (v, k) {
@@ -1396,7 +1451,7 @@ function syncServer() {
   };
 }
 /* a signed-in phone with cloud backup on, talking to `srv`; `state` is its saved sync position (null: a new phone,
-   undefined: an older version's millisecond cursor at 10:00 on 19 Oct) */
+   undefined: an older version's millisecond cursor at 10:00 on 19 Oct). onGet sees every pull reply's rows. */
 function syncWorld(srv, onGet, state) {
   var w = fresh(), S = w.OvuStore;
   w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
@@ -1404,6 +1459,7 @@ function syncWorld(srv, onGet, state) {
   var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
   w.fetch = function (url, opt) {
     var m = (opt && opt.method) || 'GET';
+    if (m === 'POST' && /\/rpc\/entries_pull/.test(url)) { var out = srv.rpc(JSON.parse(opt.body)); if (out.status === 200 && onGet) onGet(url, out.body.rows); return reply(out.status, out.body); }
     if (m === 'GET' && /\/entries/.test(url)) { var res = srv.get(url); if (onGet) onGet(url, res); return reply(200, res); }
     if (m === 'GET') return reply(200, []);
     return reply(201, null);
@@ -1502,7 +1558,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   var x = syncWorld(srv4, null, null), SX = x.OvuStore, YX = x.OvuSync, xPost = x.fetch;
   SX.add('reflection', SX.today(), { text: 'written here', mood: '' });
   x.fetch = function (url, opt) {
-    if (opt && opt.method === 'POST' && /\/entries/.test(url) && !posted4) {
+    if (opt && opt.method === 'POST' && /\/entries\?on_conflict/.test(url) && !posted4) {
       posted4 = true;
       /* the other tab: r2 arrives, it pulls through r2 and saves that cursor; r2 is then cleared from this phone */
       srv4.rows.push(syncRow('r2', 'reflection', R2, { text: 'twelve, cleared later', mood: '' }));
@@ -1523,12 +1579,135 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   srv5.rows.push(syncRow('s1', 'reflection', R1, { text: 'eleven', mood: '' }));
   var y = syncWorld(srv5, null, null), SY5 = y.OvuStore, YY = y.OvuSync, yPost = y.fetch;
   SY5.add('reflection', SY5.today(), { text: 'written here', mood: '' });
-  y.fetch = function (url, opt) { if (opt && opt.method === 'POST' && /\/entries/.test(url) && !posted5) { posted5 = true; YY.resetPosition(); } return yPost(url, opt); };
+  y.fetch = function (url, opt) { if (opt && opt.method === 'POST' && /\/entries\?on_conflict/.test(url) && !posted5) { posted5 = true; YY.resetPosition(); } return yPost(url, opt); };
   var e = YY.syncNow().then(function (r) {
     var st = JSON.parse(y.localStorage.getItem('ovumind_sync_v1'));
     check('a reset during the upload stays a reset: no account, no cursor, no push watermark written back', posted5 && st.userId === null && st.pulledSeq === null && !st.pulledId && st.pushedAt === null && r && r.ok === false, JSON.stringify({ r: r, userId: st.userId, seq: st.pulledSeq, pushedAt: st.pushedAt }));
   });
   Promise.all([a, b, c, d, e]).catch(function (err) { check('the shared pull cursor tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
+(function sharedPullCommitOrder() {
+  console.log('cloud sync: the pull follows commits, so a long upload that commits behind the cursor still arrives (20261020120000)');
+  var Y0 = fresh().OvuSync;
+  /* the tests compare cursors with their own copy of the rule, so they read the same against any version of the app */
+  var xc = function (p, q) { p = String(p); q = String(q); return p.length - q.length || (p < q ? -1 : p > q ? 1 : 0); };
+  check('transaction ids compare as text by length, then digits, past what a JavaScript number holds', typeof Y0.xidCmp === 'function' && typeof Y0.isXid === 'function' && Y0.xidCmp('9', '10') < 0 && Y0.xidCmp('18446744073709551615', '18446744073709551614') > 0 && Y0.xidCmp('42', '42') === 0 && Y0.isXid('0') && Y0.isXid('18446744073709551615') && !Y0.isXid('007') && !Y0.isXid('1e5') && !Y0.isXid(12) && !Y0.isXid(''));
+  /* the pretend server takes exactly the arguments the SQL function declares */
+  var sig = /create or replace function public\.entries_pull\(([\s\S]*?)\) returns jsonb/.exec(fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261020120000_sync_pull_commit_order.sql'), 'utf8'));
+  var declared = sig ? sig[1].split(',').map(function (a) { return a.trim().split(/\s+/)[0]; }) : [];
+  check('the app and the pretend server use the arguments entries_pull declares, in its order', declared.join() === syncServer().PULL_ARGS.join(), declared.join());
+  function tally() {
+    var t = { seen: {}, per: [], sync: 0, rpc: 0, gets: 0 };
+    t.onGet = function (url, res) { if (/rpc\/entries_pull/.test(url)) t.rpc++; else t.gets++; if (/type=in/.test(url)) return; t.per[t.sync] = (t.per[t.sync] || 0) + res.length; res.forEach(function (r) { t.seen[r.id] = (t.seen[r.id] || 0) + 1; }); };
+    t.twice = function () { return Object.keys(t.seen).filter(function (k) { return t.seen[k] > 1; }).length; };
+    return t;
+  }
+  var note = function (i) { return { text: 'note ' + i, mood: '' }; }, pad = function (n) { return ('0000' + n).slice(-5); };
+  function stateOf(w) { return JSON.parse(w.localStorage.getItem('ovumind_sync_v1')); }
+
+  /* 1. The gap. Another phone starts a large upload (an Apple Health import, 1,500 rows) at 09:00:00; a third phone
+     uploads one note at 09:00:02 and commits at once; this phone syncs; only then does the large upload commit. Its rows
+     carry synced_at 09:00:00, behind a time cursor that already moved to 09:00:02. */
+  var srv = syncServer({ commit: true }), t = tally();
+  srv.rows.push(syncRow('r1', 'reflection', '2026-10-20T08:00:00.000001+00:00', note('r1')), syncRow('r2', 'reflection', '2026-10-20T08:30:00.000002+00:00', note('r2')));
+  var w = syncWorld(srv, t.onGet, null), S = w.OvuStore, Y = w.OvuSync, big = null, afterOpen = null;
+  var a = Y.syncNow().then(function () {
+    big = srv.begin('2026-10-20T09:00:00.000100+00:00');
+    for (var i = 0; i < 1500; i++) big.add(syncRow('big' + pad(i), 'reflection', null, note(i)));
+    var small = srv.begin('2026-10-20T09:00:02.000200+00:00'); small.add(syncRow('small', 'reflection', null, note('small'))); small.commit();
+    t.sync = 1; return Y.syncNow();
+  }).then(function () {
+    afterOpen = stateOf(w);
+    big.commit();
+    t.sync = 2; return Y.syncNow();
+  }).then(function () { t.sync = 3; return Y.syncNow(); }).then(function () {
+    var st = stateOf(w);
+    check('while the long upload is still open, the pull holds back the short one that started after it instead of moving past it', (t.per[1] || 0) === 0 && afterOpen.pulledXid === big.xid && afterOpen.pulledXidId == null, JSON.stringify({ per1: t.per[1], cursor: [afterOpen.pulledXid, afterOpen.pulledXidId], open: big.xid }));
+    check('a long upload that started first and committed last arrives in full on the next sync, with the short one', (t.per[2] || 0) === 1501 && S.list('reflection').length === 1503, JSON.stringify({ per: t.per, local: S.list('reflection').length }));
+    check('every row arrives exactly once, and then nothing is pulled again', t.twice() === 0 && Object.keys(t.seen).length === 1503 && (t.per[3] || 0) === 0, JSON.stringify({ twice: t.twice(), distinct: Object.keys(t.seen).length, per3: t.per[3] }));
+    check('the cursor ends at the fence, past both uploads, and the time cursor is not used', !!st.pulledXid && xc(st.pulledXid, big.xid) > 0 && st.pulledXidId == null && st.pulledSeq == null, JSON.stringify({ xid: st.pulledXid, id: st.pulledXidId, seq: st.pulledSeq }));
+  });
+
+  /* 2. A phone moving over from the time-ordered cursor. Its older version pulled o1..o3 (written before the migration,
+     sync_xid 0) and p0 (after it), and missed g: g's transaction started at 09:00:04, before p0's, and was still open
+     during that pull. The time cursor sits on p0. */
+  var srv2 = syncServer({ commit: true }), t2 = tally();
+  ['o1', 'o2', 'o3'].forEach(function (id, i) { var r = syncRow(id, 'reflection', '2026-10-20T08:00:0' + (i + 1) + '.000001+00:00', note(id)); r.sync_xid = '0'; srv2.rows.push(r); });
+  var g = srv2.begin('2026-10-20T09:00:04.000004+00:00'); g.add(syncRow('g', 'reflection', null, note('g')));
+  var p0 = srv2.begin('2026-10-20T09:00:05.000005+00:00'); p0.add(syncRow('p0', 'reflection', null, note('p0'))); p0.commit();
+  g.commit();
+  var v = syncWorld(srv2, t2.onGet, { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-20T09:00:05.000005+00:00', pulledId: 'p0', pushedAt: '2026-10-20T09:00:05.000005+00:00', profilePulledAt: '2026-10-20T08:00:00Z', profileDirty: false, lastSyncAt: null }), YV = v.OvuSync;
+  var b = YV.syncNow().then(function () {
+    var st = stateOf(v);
+    check('a phone moving over from the time cursor is not handed its older rows again', !t2.seen.o1 && !t2.seen.o2 && !t2.seen.o3, JSON.stringify(t2.seen));
+    check('and every row written since the migration reaches it once, including one the time-ordered pull had missed', t2.seen.g === 1 && t2.seen.p0 === 1 && !!v.OvuStore.get('g'), JSON.stringify(t2.seen));
+    check('it now keeps a commit-ordered cursor and leaves the time cursor where the older version put it', st.pulledXid && xc(st.pulledXid, g.xid) > 0 && st.pulledXidId == null && st.pulledSeq === '2026-10-20T09:00:05.000005+00:00' && st.pulledId === 'p0', JSON.stringify({ xid: st.pulledXid, seq: st.pulledSeq, id: st.pulledId }));
+  });
+
+  /* 3. One upload of 25,000 rows is one transaction id: a restore larger than one sync resumes after the last id */
+  var srv3 = syncServer({ commit: true }), t3 = tally(), tx3 = srv3.begin('2026-10-20T07:00:00.123456+00:00');
+  for (var i = 0; i < 25000; i++) tx3.add(syncRow('n' + pad(i), 'reflection', null, note(i)));
+  tx3.commit();
+  var u = syncWorld(srv3, t3.onGet, null), afterFirst = null;
+  var c = u.OvuSync.syncNow().then(function () { afterFirst = stateOf(u); t3.sync = 1; return u.OvuSync.syncNow(); }).then(function () { t3.sync = 2; return u.OvuSync.syncNow(); }).then(function () {
+    var st = stateOf(u);
+    check('25,000 rows from one transaction: 20,000, then 5,000, then none, each exactly once', t3.per.join() === '20000,5000,0' && t3.twice() === 0 && u.OvuStore.list('reflection').length === 25000, JSON.stringify({ per: t3.per.join(), twice: t3.twice() }));
+    check('the cap leaves the cursor on the last row (its transaction id and id), the end moves it to the fence', afterFirst.pulledXid === tx3.xid && afterFirst.pulledXidId === 'n19999' && xc(st.pulledXid, tx3.xid) > 0 && st.pulledXidId == null, JSON.stringify({ first: [afterFirst.pulledXid, afterFirst.pulledXidId], end: [st.pulledXid, st.pulledXidId] }));
+  });
+
+  /* 4. A server without the migration (today's live project): PGRST202, then the time-ordered pull, asked once a page */
+  var srv4 = syncServer(), t4 = tally(), rpcAsked = 0;
+  srv4.rows.push(syncRow('t1', 'reflection', '2026-10-20T08:00:00.000001+00:00', note('t1')));
+  var x = syncWorld(srv4, t4.onGet, null), xFetch = x.fetch;
+  x.fetch = function (url, opt) { if (/rpc\/entries_pull/.test(url)) rpcAsked++; return xFetch(url, opt); };
+  var d = x.OvuSync.syncNow().then(function (r) { return x.OvuSync.syncNow().then(function (r2) { return [r, r2]; }); }).then(function (rs) {
+    var st = stateOf(x);
+    check('without entries_pull the sync still works, by time, and asks for it only once on this page', rs[0].ok && rs[1].ok && rpcAsked === 1 && t4.gets >= 1 && !!x.OvuStore.get('t1') && st.pulledSeq === '2026-10-20T08:00:00.000001+00:00' && !st.pulledXid, JSON.stringify({ rs: rs, rpcAsked: rpcAsked, gets: t4.gets, seq: st.pulledSeq, xid: st.pulledXid }));
+  });
+
+  /* 5. Any other failure of entries_pull is an error, not a reason to fall back: no time-ordered pull, nothing moves */
+  var y = fresh(), ygets = 0;
+  y.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
+  y.OvuStore.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+  y.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledXid: '700', pulledXidId: null, pulledSeq: null, pushedAt: null, profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }));
+  y.fetch = function (url, opt) {
+    if (/rpc\/entries_pull/.test(url)) return Promise.resolve({ ok: false, status: 500, text: function () { return Promise.resolve('{"code":"57014","message":"canceling statement due to statement timeout"}'); } });
+    if (((opt && opt.method) || 'GET') === 'GET' && /\/entries/.test(url)) ygets++;
+    return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve('[]'); } });
+  };
+  var e = y.OvuSync.syncNow().then(function (r) {
+    var st = stateOf(y);
+    check('a failed entries_pull fails the sync and moves nothing (no quiet fall back to the pull with the gap)', r && r.ok === false && /statement timeout/.test(r.error || '') && ygets === 0 && st.pulledXid === '700', JSON.stringify({ r: r, gets: ygets, xid: st.pulledXid }));
+  });
+
+  /* 6. Another tab moves the commit-ordered cursor further while this sync uploads, and the person then clears that
+     newer row from the phone: this sync must not wind the cursor back, or the next sync brings the cleared row back */
+  var srv6 = syncServer({ commit: true });
+  srv6.rows.push(syncRow('q1', 'reflection', '2026-10-20T08:00:00.000001+00:00', note('q1')));
+  var z = syncWorld(srv6, null, null), SZ = z.OvuStore, zFetch = z.fetch, posted6 = false, theirs = null;
+  SZ.add('reflection', SZ.today(), { text: 'written here', mood: '' });
+  z.fetch = function (url, opt) {
+    if (opt && opt.method === 'POST' && /\/entries\?on_conflict/.test(url) && !posted6) {
+      posted6 = true;
+      var q2 = srv6.begin('2026-10-20T08:10:00.000002+00:00'); q2.add(syncRow('q2', 'reflection', null, note('q2'))); q2.commit();
+      var st = stateOf(z); theirs = String(Number(q2.xid) + 1); st.pulledXid = theirs; st.pulledXidId = null; z.localStorage.setItem('ovumind_sync_v1', JSON.stringify(st));
+    }
+    return zFetch(url, opt);
+  };
+  var f = z.OvuSync.syncNow().then(function () {
+    var st = stateOf(z);
+    check('a slower tab never winds the commit-ordered cursor back past where another tab moved it', posted6 && st.pulledXid === theirs && st.pulledXidId == null, JSON.stringify({ xid: st.pulledXid, theirs: theirs }));
+    return z.OvuSync.syncNow();
+  }).then(function () {
+    check('so a row the other tab pulled, then cleared from this phone, is not brought back', !SZ.get('q2') && !!SZ.get('q1'), JSON.stringify({ q1: !!SZ.get('q1'), q2: !!SZ.get('q2') }));
+  });
+
+  /* 7. a sign-out or reset forgets the commit-ordered cursor too */
+  var r7 = fresh(); r7.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, gen: 2, userId: 'u1', shadow: {}, tombstones: {}, pulledXid: '900', pulledXidId: 'x', pulledSeq: '2026-10-20T08:00:00Z' })); r7.OvuSync.resetPosition();
+  var s7 = JSON.parse(r7.localStorage.getItem('ovumind_sync_v1'));
+  check('a reset clears the commit-ordered cursor with the time cursor', s7.pulledXid === null && s7.pulledXidId === null && s7.pulledSeq === null && s7.gen === 3, JSON.stringify(s7));
+  Promise.all([a, b, c, d, e, f]).catch(function (err) { check('the commit-order pull tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 (function syncGenerationAcrossAccounts() {
@@ -1537,7 +1716,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   w.OvuAuth = { session: function () { return { user: { id: uid } }; }, token: function () { return Promise.resolve('tok-' + uid); }, userId: function () { return uid; } };
   S.setProfile({ name: 'Ann', lifeStage: 'cycling', cloud: { v: 1, at: '2026-10-20T00:00:00Z', uid: 'uA' } });
   var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
-  w.fetch = function (url, opt) {
+  w.fetch = withoutCommitPull(function (url, opt) {
     var m = (opt && opt.method) || 'GET', tok = ((opt && opt.headers && opt.headers.Authorization) || '').slice(7);
     if (m === 'GET' && /\/entries/.test(url)) return reply(200, []);
     if (m === 'GET' && /\/profiles/.test(url)) return reply(200, /user_id=eq\.uB/.test(url) ? [{ user_id: 'uB', display_name: 'Bea', profile: { name: 'Bea', lifeStage: 'peri' }, updated_at: '2026-10-19T08:00:00Z' }] : []);
@@ -1548,7 +1727,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
       return reply(201, null);
     }
     return reply(201, null);
-  };
+  });
   var g0 = 0, first = Y.syncNow();
   var waitPost = function (n) { return new Promise(function (res) { (function poll() { if (posts.length >= n && releasePost) return res(); setTimeout(poll, 1); })(); }); };
   var done = waitPost(1).then(function () {
@@ -1571,7 +1750,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   v.navigator.locks = { request: function (name, fn) { lockNames.push(name); return Promise.resolve().then(fn); } };
   v.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('t'); }, userId: function () { return 'u1'; } };
   v.OvuStore.setProfile({ cloud: { v: 1, at: '2026-10-20T00:00:00Z', uid: 'u1' } });
-  v.fetch = function (url, opt) { return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve((opt && opt.method && opt.method !== 'GET') ? '' : '[]'); } }); };
+  v.fetch = withoutCommitPull(function (url, opt) { return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve((opt && opt.method && opt.method !== 'GET') ? '' : '[]'); } }); });
   var locked = v.OvuSync.syncNow().then(function (r) { check('a sync runs inside the browser-wide ovumind-sync lock when Web Locks exist', lockNames.length === 1 && lockNames[0] === 'ovumind-sync' && r && r.ok === true, JSON.stringify({ locks: lockNames, r: r })); });
   /* every reset moves the generation on */
   var z = fresh(); z.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, gen: 4, userId: 'u1', shadow: {}, tombstones: {} })); z.OvuSync.resetPosition();
