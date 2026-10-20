@@ -17,15 +17,29 @@
     hotspots: [{ id: 'mat', x: 46, y: 79, label: 'Door mat · back to the street', icon: 'door_open', wp: { x: 46, y: 76, flip: false } }],
     home: { x: 46, y: 76, flip: false },
     stairs: [{ x: 66, y: 74 }, { x: 58, y: 53 }], upstairsY: 60,
-    zones: [[[47, 62], [82, 70], [47, 80], [12, 70]], [[20, 46], [50, 36], [50, 43], [20, 53]], [[50, 36], [85, 50], [85, 62], [50, 48]], [[56, 50], [66, 50], [70, 76], [58, 76]]],
-    solids: [{ id: 'beds', x0: 17, x1: 50, y0: 58, y1: 70 }, { id: 'counter', x0: 18, x1: 40, y0: 70, y1: 78 }, { id: 'awning', x0: 52, x1: 65, y0: 38, y1: 49 }, { id: 'shelf', x0: 67, x1: 83, y0: 36, y1: 55 }],
+    /* upstairs is one strip of floor (re-read 20 Oct on a 1% grid): the V-shaped balcony behind its railing on the left,
+     * then the landing in front of the awning cubbies up to the bookcase. Its front edge runs along the railing top and
+     * the landing's cream lip, so whoever stands up there keeps her feet on the drawn floor, never on the railing. */
+    zones: [[[47, 62], [82, 70], [47, 80], [12, 70]],
+      [[28.5, 40.3], [35, 38.9], [40, 37.8], [45, 36.7], [50, 35.8], [66, 41.4], [66, 46], [57.5, 44.7], [53, 43.6], [51.4, 39.5], [48, 40.7], [42, 42.7], [36.5, 43.3], [30, 42.6]],
+      [[55, 43.4], [61, 44.6], [63.5, 50], [70, 76], [58, 76], [56, 50]]],
+    solids: [{ id: 'beds', x0: 17, x1: 50, y0: 58, y1: 70 }, { id: 'counter', x0: 18, x1: 40, y0: 70, y1: 78 }, { id: 'shelf', x0: 66, x1: 84, y0: 36, y1: 49 }],
     doors: [{ id: 'mat', to: 'street', x: 46, y: 76, r: 4, flip: false }],
+    /* every spot sits on a drawn surface. A spot with `item` is kept for that one piece (the cubbies under the awning
+     * are only three units tall, so only the small bow and charm fit there); the rest take stock in catalogue order. */
     spots: {
-      pet: [{ x: 27, y: 65, wp: { x: 42, y: 73, flip: true } }, { x: 35, y: 62, wp: { x: 42, y: 73, flip: true } }, { x: 44, y: 59.5, wp: { x: 52, y: 69, flip: true } }, { x: 28, y: 47.5, wp: { x: 26, y: 49.5, flip: false } }, { x: 36, y: 45, wp: { x: 32, y: 48, flip: false } }, { x: 44, y: 42.3, wp: { x: 40, y: 45.5, flip: false } }, { x: 76, y: 70, wp: { x: 70, y: 68, flip: false } }],
-      /* treats stand along the shop counter by the door (Jamie, 20 Oct: on the shelves and counters, never on the floor) */
-      treat: [{ x: 28, y: 67.3, w: 4.4, wp: { x: 42, y: 73, flip: true } }, { x: 33, y: 68.0, w: 4.4, wp: { x: 42, y: 73, flip: true } }, { x: 38.5, y: 68.7, w: 4.4, wp: { x: 42, y: 73, flip: true } }, { x: 30.5, y: 67.6, w: 4.4, wp: { x: 42, y: 73, flip: true } }, { x: 35.8, y: 68.4, w: 4.4, wp: { x: 42, y: 73, flip: true } }],
-      /* accessories on the bookcase's three boards, inside its frame: bow and charm on the top board, hat and bandana on the middle, spares below */
-      accessory: [{ x: 70.5, y: 35.0, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 74.5, y: 40.3, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 70.5, y: 39.5, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 74.5, y: 35.7, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 70.5, y: 44.0, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 74.5, y: 44.7, w: 4, wp: { x: 74, y: 56, flip: false } }]
+      /* three kittens on the round beds; two dogs on the balcony floor inside the V railing, feet a step above the
+       * railing's top so they sit behind it; one on the landing in front of the cubbies; a spare by the window */
+      pet: [{ x: 27, y: 65, wp: { x: 42, y: 73, flip: true } }, { x: 35, y: 62, wp: { x: 42, y: 73, flip: true } }, { x: 44, y: 59.5, wp: { x: 52, y: 69, flip: true } },
+        { x: 33, y: 42.6, wp: { x: 57.5, y: 44, flip: true } }, { x: 42, y: 41.9, wp: { x: 57.5, y: 44, flip: true } }, { x: 62.3, y: 44.3, wp: { x: 55, y: 43.2, flip: false } }, { x: 76, y: 70, wp: { x: 70, y: 68, flip: false } }],
+      /* fish biscuits on the bookcase's bottom board; bone crunchies and the pupcake on the counter by the door, with a spare */
+      treat: [{ item: 'treat-fish', x: 72.6, y: 44.4, w: 4, wp: { x: 57.5, y: 44, flip: false } },
+        { x: 30.5, y: 67.6, w: 4.4, wp: { x: 42, y: 73, flip: true } }, { x: 35.8, y: 68.4, w: 4.4, wp: { x: 42, y: 73, flip: true } }, { x: 25.5, y: 67.0, w: 4.4, wp: { x: 42, y: 73, flip: true } }],
+      /* the bow on the upper cubby, the moon charm on the lower one; the party hat on the bookcase's top board (its
+       * tallest gap) and the bandana on the middle one; spares beside them */
+      accessory: [{ item: 'acc-bow', x: 56.8, y: 33.45, w: 3.4, wp: { x: 57.5, y: 44, flip: false } }, { item: 'acc-charm', x: 55.6, y: 35.95, w: 3.4, wp: { x: 57.5, y: 44, flip: false } },
+        { item: 'acc-hat', x: 72.4, y: 35.5, w: 3.6, wp: { x: 57.5, y: 44, flip: false } }, { item: 'acc-bandana', x: 72.6, y: 39.9, w: 4, wp: { x: 57.5, y: 44, flip: false } },
+        { x: 70.5, y: 39.5, w: 4, wp: { x: 57.5, y: 44, flip: false } }, { x: 74.5, y: 35.7, w: 3.6, wp: { x: 57.5, y: 44, flip: false } }]
     },
     meditator: { x: 46, y: 72, w: 11 }, aura: { x: 46, y: 70, w: 17 }, holo: { x: 56, y: 70, w: 14 }, sleeper: NOSLEEP, zzz: OFF, window: NOWIN,
     props: {}
@@ -81,8 +95,11 @@
         if (it.kind !== kind) return;
         if (it.kind !== 'treat' && owned.indexOf(it.id) > -1) return; /* sold: off the shelf, into the inventory */
         var list = Array.isArray(spots) ? spots : (spots[it.slot] || spots.other || []), key = Array.isArray(spots) ? '' : (spots[it.slot] ? it.slot : 'other');
-        var n = used[key] || 0; if (!list[n]) return; used[key] = n + 1;
-        out.push({ item: it, spot: list[n], kind: kind, group: key, w: widthFor(it, list[n], roomProps) });
+        var spot = list.filter(function (s) { return s.item === it.id; })[0];
+        if (!spot) { /* the next spot not kept for a named piece */
+          var free = list.filter(function (s) { return !s.item; }), n = used[key] || 0; spot = free[n]; if (!spot) return; used[key] = n + 1;
+        }
+        out.push({ item: it, spot: spot, kind: kind, group: key, w: widthFor(it, spot, roomProps) });
       });
     });
     return out;
