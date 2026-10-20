@@ -106,7 +106,8 @@
       if (m[0] === '') { g.lastIndex++; continue; }
       /* the words leading up to the explanation, but never the sign's own words (the can't of "can't breathe") */
       var lead = m.index >= to ? text.slice(to, m.index) : text.slice(Math.max(0, m.index - 16), Math.min(m.index, from >= 0 ? from : m.index));
-      if (!DENY.test(lead.slice(-16).split(/[.;!?,]/).pop())) return true;
+      var last2 = lead.split(/[.;!?,]/).pop().trim().split(/\s+/).slice(-2).join(' ');
+      if (!DENY.test(' ' + last2 + ' ')) return true; /* "but no pins and needles" denies it; "with no pain from sleeping on it" does not */
     }
     return false;
   }
@@ -117,7 +118,7 @@
       var before = t.slice(Math.max(0, m.index - 40), m.index).replace(NOT_DENIAL, ' ').split(CLAUSE_END).pop();
       var inside = m[0].replace(/\b(?:can'?t|cannot|could\s*n'?t|couldn'?t|unable)\b/g, ' ').replace(/\b(?:aren'?t|are not|isn'?t|is not|weren'?t|were not|not)\s+(?:really\s+)?there\b/g, ' ').replace(/\b(?:no ?one|nobody)\s+else\b/g, ' ').replace(NOT_DENIAL, ' ');
       var after = t.slice(m.index + m[0].length, m.index + m[0].length + 16);
-      if (DENY.test(before) || DENY.test(inside) || /^\s*[:?=-]?\s*(?:none|nil|nope|n\/a)\b|^\s*[:?=-]\s*no\b|^\s*,?\s*no\s*(?:[.;,!?]|$)/.test(after)) continue; /* "chest pain: none", "chest pain? no." but never "chest pain no fever" */
+      if (DENY.test(before) || DENY.test(inside) || /^\s*[:?=-]?\s*(?:none|nil|nope|n\/a)\b|^\s*[:?=-]\s*(?:no|not really)\b|^\s*,?\s*(?:no|not really)\s*(?:[.;,!?]|$)/.test(after)) continue; /* "chest pain: none", "chest pain? no." but never "chest pain no fever" */
       if (opts && opts.unless) {
         /* the clause around the sign: back to the last boundary before it, on to the next one after it; opts.sentence widens
          * that to the sentence (punctuation only), for explanations that are joined by "and" ("numb with pins and needles") */
@@ -138,7 +139,7 @@
   var PSYCHOSIS = /\bhallucinat\w*\b|\bvoices?\s+in\s+my\s+head\b|\bvoices?\b[^.;]{0,25}?\b(?:no ?one|nobody)\s+else\b|\bseeing\s+(?:things|people)\b[^.;]{0,25}?\b(?:aren'?t|are not|isn'?t|weren'?t|not)\s+(?:really\s+)?there\b/;
   var PSY_HEARD = /\bhearing\s+(?:voices|things)\b|\bhear\s+voices\b|\bvoices\b[^.;]{0,20}?\btell(?:ing)?\s+me\b|\b(?:people|everyone|they|someone)\s+(?:are|is)\s+(?:watching|following|plotting against|out to get)\s+me\b/;
   var PSY_ORDINARY = /\b(?:tv|television|radio|zoom|teams|video|call|meeting|neighbou?rs?|next door|outside|upstairs|downstairs|podcast|youtube|phone|stream|livestream|cctv|camera|baby monitor|kitchen|living room|the street|my (?:friends?|family|husband|partner|kids?|children|mum|mom|mother|sister|brother))\b|\bfrom\s+(?:my|the|our)\b/;
-  var VISION_SIGN = "(?:(?:blurr\\w*|double|blurry|dim|patchy)\\s+vision|vision\\s+(?:is\\s+|went\\s+|goes\\s+|getting\\s+|has\\s+gone\\s+)?(?:blurr\\w*|funny|strange|dark|dim|spotty|patchy|double)|seeing\\s+(?:spots|stars|flash\\w*)|flash\\w*\\s+lights?|spots\\s+(?:in|before)\\s+my\\s+eyes|vision\\s+changes?|lost\\s+(?:my\\s+)?vision)";
+  var VISION_SIGN = "(?:(?:blurr\\w*|double|dim|patchy)\\s+vision|vision\\s+(?:is\\s+|went\\s+|goes\\s+|getting\\s+|has\\s+gone\\s+|keeps\\s+going\\s+)?(?:very\\s+|really\\s+|so\\s+|a\\s+bit\\s+|quite\\s+|all\\s+)?(?:blurr\\w*|funny|strange|dark|dim|spotty|patchy|double|weird)|(?:everything|things)\\s+(?:looks?|looking|is|are|went|seems?)\\s+(?:very\\s+|really\\s+|so\\s+|a\\s+bit\\s+)?(?:blurr\\w*|double|dark|dim)|blurr\\w*|seeing\\s+(?:spots|stars|flash\\w*|double)|flash\\w*\\s+lights?|spots\\s+(?:in|before)\\s+my\\s+eyes|vision\\s+changes?|lost\\s+(?:my\\s+)?vision|can'?t\\s+see\\s+(?:properly|clearly|well))";
   var HEAD_VISION = new RegExp("\\b(?:severe|bad|worst|terrible|pounding|sudden|excruciating|splitting)\\b[^.;]{0,20}?\\bheadache\\b[^.;]{0,40}?\\b" + VISION_SIGN + "|\\b" + VISION_SIGN + "\\b[^.;]{0,40}?\\b(?:severe|bad|worst|terrible|pounding|splitting)\\b[^.;]{0,15}?\\bheadache\\b|\\bworst headache\\b|\\bthunderclap\\b");
   var SADDLE = /\bnumb\w*\b[^.;]{0,25}?\b(?:groin|bottom|buttocks|between my legs|saddle)\b|\b(?:groin|saddle)\b[^.;]{0,15}?\bnumb\w*/;
   /* pregnant now, or possibly: "trying to get pregnant", "not pregnant" and "pregnancy test was negative" are not (an earlier rule raised
@@ -148,10 +149,12 @@
     /* a positive test is a pregnancy test unless another test is named in it or right after it ("positive covid test",
      * "positive test for covid"); words further away ("and blood in my discharge", "but not pregnant") do not count */
     var OTHER = '(?:covid|art|antigen|pcr|flu|dengue|ovulation|opk|lh|strep|uti|drug|swab|blood|hiv|std|sti)';
-    var g = /\bpositive\b[^.;]{0,20}?\b(?:test|line)\b/g, m2, positiveTest = /\b(?:pregnancy|preg|hpt)\s+tests?\b[^.;]{0,20}?\b(?:positive|came back positive)\b/.test(t) && !/\bnot\s+positive\b/.test(t);
+    var rev = t.match(/\b(?:pregnancy|preg|hpt)\s+tests?\b([^.;]{0,24}?)\bpositive\b/), positiveTest = !!(rev && !DENY.test(' ' + rev[1] + ' ') && !/\b(?:never|didn'?t|did not|wasn'?t|was not)\b/.test(rev[1]));
+    var g = /\bpositive\b[^.;]{0,20}?\b(?:test|line)\b/g, m2, OTHER_RE = new RegExp('\\b' + OTHER + '\\b');
     while ((m2 = g.exec(t))) {
-      var right = t.slice(m2.index + m2[0].length, m2.index + m2[0].length + 24);
-      if (/\bpregnan|\bhcg\b|\bhpt\b/.test(m2[0]) || !(new RegExp('\\b' + OTHER + '\\b').test(m2[0]) || new RegExp('^\\s+for\\s+(?:a\\s+|the\\s+)?' + OTHER + '\\b').test(right))) positiveTest = true;
+      var right = t.slice(m2.index + m2[0].length, m2.index + m2[0].length + 24), left = t.slice(Math.max(0, m2.index - 28), m2.index).split(/[.;!?,]|\bbut\b|\band\b/).pop();
+      var preg = /\bpregnan|\bhcg\b|\bhpt\b/.test(left + m2[0]), other = OTHER_RE.test(m2[0]) || OTHER_RE.test(left) || new RegExp('^\\s+for\\s+(?:a\\s+|the\\s+)?' + OTHER + '\\b').test(right);
+      if ((preg || !other) && !/\b(?:no|not|never|negative)\b/.test(left.slice(-12))) positiveTest = true;
     }
     return /\bpregnan\w*\b/.test(s) || /\bfaint (?:second )?line\b|\bbfp\b/.test(t) || positiveTest;
   }

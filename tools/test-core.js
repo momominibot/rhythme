@@ -143,6 +143,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var w = fresh(), O = w.OvuOrb;
   var cases = [
  // [text, profile, expectedCode or null]
+ ['Severe headache and my vision is very blurry',{},'HEADACHE_VISION_NOW'],['worst headache and everything looks blurry',{},'HEADACHE_VISION_NOW'],['My arm went numb with no pain from sleeping on it',{},null],['Chest pain: not really',{},null],
+ ['My COVID test shows a positive line and my period started today',{},null],['My pregnancy test never turned positive, period started today',{},null],['my pregnancy test turned positive and I am spotting',{},'PREG_BLEED_NOW'],
  ['Chest pain no fever',{},'CHEST_BREATH_NOW'],['Chest pain no relief after resting',{},'CHEST_BREATH_NOW'],['My arm is weak but no pins and needles',{},'STROKE_NOW'],['I hear voices no one else can hear while in the kitchen',{},'PSYCHOSIS_NOW'],
  ['I hear voices on the radio telling me the weather',{},null],['I have a bad headache but my vision is not blurry',{},null],['severe headache, my vision is blurry',{},'HEADACHE_VISION_NOW'],['I have a positive test and blood in my discharge',{},'PREG_BLEED_NOW'],
  ['Positive covid test but not pregnant and my period started today',{},null],['pregnancy test came back positive and I am bleeding',{},'PREG_BLEED_NOW'],['positive ovulation test today',{lifeStage:'ttc'},null],
