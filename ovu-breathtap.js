@@ -65,6 +65,7 @@
     $('#btapClose').addEventListener('click', close);
     $('#btapDoneClose').addEventListener('click', close);
     $('#btapStop').addEventListener('click', function () { stop(false); });
+    document.addEventListener('visibilitychange', function () { if (document.hidden && state) stop(false); }); /* leaving the app ends and saves the pause, as Light Flower does (Codex, 20 Oct) */
     $('#btapStage').addEventListener('pointerdown', function (e) { if (e.target.closest('#btapStop')) return; bloom(e.clientX, e.clientY); });
     document.addEventListener('keydown', function (e) { if (!state || el.hidden) return; if (e.key === ' ' || e.key === 'Enter') { if (e.target && /BUTTON|INPUT|TEXTAREA/.test(e.target.tagName)) return; e.preventDefault(); var r = $('#btapRing').getBoundingClientRect(); bloom(r.left + r.width / 2, r.top + r.height / 2); } if (e.key === 'Escape') stop(false); });
     return el;

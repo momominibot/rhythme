@@ -619,9 +619,12 @@
     if (soundOn()) new Audio(ERIN + 'morning_how.mp3').play().catch(function () { });
     $('#cancelSleep').addEventListener('click', function () { exitNight(); S.setState({ sleeping: null }); closeSheet(); toast('No worries. Nothing was recorded.', 'wb_sunny'); });
     $('#saveWake').addEventListener('click', function () {
+      /* the night is the one still open now: another tab may have saved it already (Codex review, 20 Oct) */
+      var cur = (S.reload ? S.reload() : S.state()).sleeping; if (!cur || (cur.startedAt || cur.at) !== (sl.startedAt || sl.at)) { closeSheet(); toast('This night was already saved.', 'wb_sunny'); return; }
       try {
         var q = Number($('.moons', body).dataset.value || 0) || null;
         var ev = S.add('sleep', $('#wakeDate').value, { bedTime: sl.bedTime, wakeTime: $('#wakeTime').value, quality: q, notes: $('#wakeNotes').value.trim(), mode: 'room' });
+        if (window.OvuStamina && OvuStamina.rested) OvuStamina.rested(sl.startedAt); /* a saved night of real rest refills her energy; going to bed does not */
         exitNight(); S.setState({ sleeping: null }); closeSheet(); chime('save');
         afterSave(ev, 'Slept ' + A.fmtHours(S.sleepHours(ev.data)) + '. Saved to your journal.');
       } catch (e) { message($('#sleepMsg'), e.message, false); }
@@ -1624,7 +1627,7 @@
         }).join('') + '</div>'
       : '<div class="streetnav"><button type="button" class="back" data-tab="street"><span class="ms">arrow_back</span>Dream Street</button><span class="heartsmini"><span class="ms fill">favorite</span>' + (testing ? '∞' : l.hearts) + '</span></div><p class="help">' + st.sub + '</p>';
     openSheet('shop', street ? 'Dream Street' : storeName(shopTab), street ? 'Three little shops. Hearts from logging pay for everything.' : st.tag + ' · ' + storeHours(shopTab), street ? 'storefront' : st.icon,
-      (street ? '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + (testing ? '∞' : l.hearts) + '</div><p>' + l.earned + ' earned in total. A night’s sleep or a period day 10, symptoms 8, a meal 6, movement 6 once a day, a reflection 5. A finished practice, a session, a watering or a full minute of Moon Tap is a small thank-you of 2, up to 6 a day. Weight never earns hearts, and there are no streaks to keep.</p></div>' : '') +
+      (street ? '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + (testing ? '∞' : l.hearts) + '</div><p>' + l.earned + ' earned in total. Each kind of log earns once a day: a night’s sleep or a period day 10, symptoms 8, a meal 6, movement 6, a reflection 5. Logging the same kind again that day, editing or redoing an entry earns nothing more, so log what is true, not more. A finished practice is a small thank-you of 2, up to 6 a day. Weight never earns hearts, and there are no streaks to keep. Hearts buy things for your room and seeds and tools for the farm.</p></div>' : '') +
       nav +
       (street ? '' : shopList(items, l, home) +
         (shopTab === 'pet' ? Object.keys(SHELVES).map(function (k) { var li = RW.SHOP.filter(function (it) { return it.kind === k; }); return li.length ? '<p class="shelf"><span class="ms">' + (k === 'treat' ? 'cookie' : 'checkroom') + '</span>' + SHELVES[k] + '</p>' + shopList(li, l, home) : ''; }).join('') : '')) +
@@ -1927,7 +1930,7 @@
     session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: kind === 'erin' ? new Audio() : null, timer: null };
     emit('activity', 'session', kind); /* anything else using the HUD (a greenhouse minute) hands it over before this claims it */
     hideSheet(); holo.classList.toggle('on', kind === 'erin'); hud.classList.add('on'); $('#hudTitle').textContent = kind === 'erin' ? 'With Erin' : 'Just breathe';
-    var total = minutes * 60000, cycleMs = kind === 'erin' ? 11000 : 14000, hour = new Date().getHours();
+    var total = minutes * 60000, cycleMs = kind === 'erin' ? 8500 : 10000, hour = new Date().getHours(); /* in and a longer out, no hold */
     var today = S.today(), cramps = S.list('symptom', { from: today, to: today }).some(function (e) { return (e.data.symptoms || []).indexOf('cramps') > -1; }) || S.list('period', { from: today, to: today }).length > 0;
     var guides = ['guide_soften', 'guide_feet', 'guide_wander', 'guide_nothing_to_fix', 'guide_quiet_work'].concat(cramps ? ['guide_cramps'] : []);
     var p = Promise.resolve();
@@ -1939,9 +1942,10 @@
       var fixed = kind === 'erin' ? 52000 : 0, cycles = Math.max(3, Math.round((total - fixed) / cycleMs)), chain = Promise.resolve(), gi = 0;
       for (var i = 0; i < cycles; i++) {
         (function (idx) {
-          chain = chain.then(function () { if (session.stopped) return; setOrb('in', 'Breathe in'); if (kind === 'erin') return playClip('breathing_in').then(function () { return wait(2000); }); chime('bell', true); return wait(4000); })
-            .then(function () { if (session.stopped) return; setOrb('hold', 'Hold'); return wait(kind === 'erin' ? 3000 : 4000); })
-            .then(function () { if (session.stopped) return; setOrb('out', 'Breathe out'); if (kind === 'erin') return playClip('breathing_out').then(function () { return wait(3000); }); return wait(6000); })
+          /* no holds: breathe in gently, then out a little longer, at a pace that feels comfortable (Codex, 20 Oct, and the
+           * reviewed breath rules in docs/design/2026-10-18-breath-tap.md: holds are never asked for) */
+          chain = chain.then(function () { if (session.stopped) return; setOrb('in', 'Breathe in gently'); if (kind === 'erin') return playClip('breathing_in').then(function () { return wait(1500); }); chime('bell', true); return wait(4000); })
+            .then(function () { if (session.stopped) return; setOrb('out', 'Breathe out slowly'); if (kind === 'erin') return playClip('breathing_out').then(function () { return wait(2500); }); return wait(6000); })
             .then(function () { if (session.stopped || kind !== 'erin') return; if (idx % 2 === 1 && gi < guides.length) { setOrb('hold', ''); return playClip(guides[gi++]).then(function () { return wait(1500); }); } });
         })(i);
       }
