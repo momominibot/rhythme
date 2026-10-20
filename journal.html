@@ -88,12 +88,12 @@
 
     <section class="card">
       <h2><span class="ms">shield</span>Your data</h2>
-      <p class="sub">Everything lives in this browser's storage. Back it up, move it, or delete it whenever you like.</p>
+      <p class="sub">Your diary lives in this browser's storage. Back it up, move it, or delete it whenever you like. Deleting here clears this phone's diary and settings; your sign-in, backup bookkeeping and Plus access stay, and so does anything in your account or with our services. Delete the cloud copy or your account from Your account in You.</p>
       <div class="row">
         <button class="btn soft" id="exportBtn"><span class="ms">download</span>Export backup</button>
         <label class="btn soft" style="cursor:pointer"><span class="ms">upload</span>Import backup<input type="file" id="importFile" accept="application/json,.json,.ovumind" hidden></label>
       </div>
-      <div class="row"><button class="btn danger" id="deleteAll"><span class="ms">delete_forever</span>Delete everything on this device</button></div>
+      <div class="row"><button class="btn danger" id="deleteAll"><span class="ms">delete_forever</span>Delete this phone’s diary</button></div>
       <div class="msg" id="dataMsg"></div>
     </section>
   </div>
@@ -347,7 +347,7 @@
   $('#timeline').addEventListener('click',function(e){var d=e.target.closest('[data-del]');if(d&&confirm('Delete this entry?')){S.remove(d.dataset.del);renderAll();}});
   $('#exportBtn').addEventListener('click',function(){var blob=new Blob([S.exportJSON()],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Rhythme-backup-'+S.today()+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);message($('#dataMsg'),'Backup downloaded (unencrypted, keep it private).','ok');});
   $('#importFile').addEventListener('change',function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var n=S.importJSON(r.result,'merge');message($('#dataMsg'),'Imported. '+n+' entries now on this device.','ok');renderAll();}catch(e){message($('#dataMsg'),'Could not import: '+e.message,'err');}};r.readAsText(f);this.value='';});
-  $('#deleteAll').addEventListener('click',function(){if(confirm('Delete every Rhythme room entry on this device? Exports you already downloaded are not affected.')&&confirm('This cannot be undone. Delete now?')){S.clearAll();message($('#dataMsg'),'Deleted. Your room is empty again.','ok');renderAll();}});
+  $('#deleteAll').addEventListener('click',function(){if(confirm('Delete this phone’s Rhythme diary and settings? Your sign-in, backup bookkeeping, Plus access, your cloud copy and files you already downloaded are not affected.')&&confirm('This cannot be undone. Delete now?')){S.clearAll();message($('#dataMsg'),'Deleted from this phone. To delete the cloud copy or your account, go to Your account in You.','ok');renderAll();}});
   $('#refreshBtn').addEventListener('click',renderAll);
   /* cycles over time and the month calendars (Jamie, 20 Oct: "sharing 4 weeks ... is not enough, we need to see trend of it") */
   var histMonths=6;

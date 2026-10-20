@@ -28,7 +28,7 @@
     { id: 'health_tracking', required: true, title: 'Health tracking on this phone', icon: 'edit_note',
       body: 'Periods, symptoms, pain, mood, sleep, meals and food photo thumbnails, weight, calm minutes and your getting-to-know-you answers stay in this browser on this phone. This is what the diary is, so it is the one choice Rhythme needs.' },
     { id: 'cloud_sync', title: 'Cloud backup', icon: 'cloud_sync', account: true,
-      body: 'A copy of your entries, your getting-to-know-you answers and your cycle settings is kept in your account, in a secure database hosted in ' + REGION_CLOUD + '. Other people cannot read your backup. Rhythme’s server handles it only to back up, restore and delete your diary. Backup needs an account and starts after you sign in from You.' },
+      body: 'A copy of your entries, your getting-to-know-you answers and your cycle settings is kept in your account, in a secure database hosted in ' + REGION_CLOUD + '. Other Rhythme users cannot see your backup. Rhythme’s server uses it to back up, restore and delete your diary; authorised Rhythme administrators and the companies that run the database can reach records only when needed to run, secure or support the service. Backup needs an account and starts after you sign in from You.' },
     { id: 'ai_reading', title: 'Luna reads notes she cannot work out', icon: 'auto_awesome',
       body: 'When Luna’s own rules cannot read a note, her AI help reads it. Your name is never added, and Rhythme keeps none of it.' },
     { id: 'food_photo_ai', title: 'Luna recognises food photos', icon: 'photo_camera',
@@ -36,7 +36,7 @@
     { id: 'ai_summaries', title: 'Luna writes journal readings', icon: 'menu_book',
       body: 'Luna’s AI help writes a reading of your last 7 or 28 days. Your name is never added, and Rhythme keeps none of it.' },
     { id: 'improve_logging', title: 'Help improve logging', icon: 'volunteer_activism', account: true,
-      body: 'Rhythme’s automated agents and its staff may compute group counts and averages across at least 20 adults who turned this on, to improve logging, reminders and the app. Nobody sees your diary on its own: not your entries, your notes or your name. You can turn this off at any time and keep your backup.' },
+      body: 'Rhythme’s server may use the backed-up entries of adults who turned this on to compute group counts and averages, to improve logging, reminders and the app. Staff are shown only group results across at least 20 adults, never your entries, notes or name. You can turn this off at any time and keep your backup.' },
     { id: 'personalisation', hidden: true, title: 'Personalised suggestions', icon: 'tune', body: 'Not offered yet.' },
     { id: 'research', hidden: true, title: 'Research', icon: 'science', body: 'Not offered yet.' }
   ];
@@ -251,22 +251,37 @@
     agree.onclick = function () {
       if (!ready()) return;
       if (ui.chime) ui.chime('tap');
-      attestAge('sheet');
-      grant('health_tracking', 'sheet');
       var map = {}; PURPOSES.filter(function (p) { return !p.required && !p.hidden; }).forEach(function (p) { var i = c.querySelector('#c_' + p.id); map[p.id] = !!(i && i.checked); });
       var improve = !!map.improve_logging; delete map.improve_logging;
-      setMany(map, 'sheet', true);
-      /* the improve choice is an account record (ovu-auth.js), which writes its own consent event with this method */
-      if (root.OvuAuth && root.OvuAuth.setImprove) { if (improve || allows('improve_logging') || (S.profile().analysis && S.profile().analysis.on)) root.OvuAuth.setImprove(improve, 'sheet'); }
-      else if (improve) grant('improve_logging', 'sheet');
-      c.hidden = true; if (next) next();
+      var hasAuth = !!(root.OvuAuth && root.OvuAuth.setImprove), wasOn = allows('improve_logging') || !!(S.profile().analysis && S.profile().analysis.on);
+      function record() { attestAge('sheet'); grant('health_tracking', 'sheet'); setMany(map, 'sheet', true); if (!hasAuth && improve) grant('improve_logging', 'sheet'); }
+      function open() { c.hidden = true; if (next) next(); }
+      var em = c.querySelector('#cImproveErr'); if (em) em.hidden = true;
+      if (!hasAuth || (!improve && !wasOn)) { record(); open(); return; }
+      agree.disabled = true;
+      /* a withdrawal has to reach the account before anything on this notice is recorded: if it does not, nothing is saved,
+         the notice stays (and comes back after a reload) and says so (Codex legal reviews, 20 Oct: a failed withdrawal was
+         accepted, then the saved notice let the room open with the permission still on). A grant records the notice first,
+         as the account needs the 18+ attestation on record. */
+      if (improve) record();
+      root.OvuAuth.setImprove(improve, 'sheet').then(function (r) { return r; }, function (e) { return { ok: false, error: e && e.message }; }).then(function (r) {
+        agree.disabled = !ready();
+        if (r && r.ok) { if (!improve) record(); open(); return; }
+        if (!improve) {
+          if (!em) { em = document.createElement('p'); em.id = 'cImproveErr'; em.className = 'c-err'; em.setAttribute('role', 'alert'); agree.parentNode.insertBefore(em, agree); }
+          em.textContent = 'Your change has not reached your account, so Help improve logging is still on. Check your connection and tap the button again, or write to hello@ranklore.ai.'; em.hidden = false; return;
+        }
+        /* neutral on purpose: another phone may have changed it meanwhile, and the account's setting is the one that counts (Codex legal review 3) */
+        if (ui.toast) ui.toast('Help improve logging could not be changed just now. Check its current setting in You, and try again there if you want to.', 'info');
+        open();
+      });
     };
   }
   function download(name, text) { try { var b = new Blob([text], { type: 'application/json' }), u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(u); a.remove(); }, 1500); } catch (e) { } }
   /* nothing is written: the room stays shut, the diary already on this phone can be taken away or removed right here */
   function blockUnder18(c) {
     var scroll = c.querySelector('.c-scroll'); if (!scroll) return;
-    scroll.innerHTML = '<div class="c-head"><div class="c-moon" aria-hidden="true"><img src="assets/room/dream/orb-moon.webp" alt="" data-mascot="full"></div><div><div class="w-brand">RHYTHME</div><h2>Rhythme is designed for adults 18 and over</h2><p>We are not able to create an account for you yet. Nothing you may have logged leaves this phone, and you can take a copy or remove it below.</p></div></div>' +
+    scroll.innerHTML = '<div class="c-head"><div class="c-moon" aria-hidden="true"><img src="assets/room/dream/orb-moon.webp" alt="" data-mascot="full"></div><div><div class="w-brand">RHYTHME</div><h2>Rhythme is designed for adults 18 and over</h2><p>We are not able to open Rhythme for you yet. The diary on this phone stays here, and you can take a copy or remove it below. If you already made an account, write to hello@ranklore.ai and we will close it and delete its cloud copy.</p></div></div>' +
       '<div class="c-choices"><button type="button" class="btn soft" id="cExport"><span class="ms">download</span>Export my diary as a file</button><button type="button" class="btn ghost" id="cWipe"><span class="ms">delete</span>Delete everything on this phone</button></div>' +
       '<p class="c-small">If you are 18 or older, reload Rhythme and confirm it on the notice.</p>';
     var ex = scroll.querySelector('#cExport'), wipe = scroll.querySelector('#cWipe');
@@ -308,7 +323,7 @@
       }
       if (p === 'cloud_sync') {
         if (on) { if (root.OvuAuth && root.OvuAuth.isSignedIn && root.OvuAuth.isSignedIn()) root.OvuAuth.promptCloud(); else { grant('cloud_sync', 'you'); if (ui.toast) ui.toast('Cloud backup is chosen. Sign in from Your account to start it.', 'cloud_sync'); } }
-        else { withdraw('cloud_sync', 'you'); if (root.OvuSync && root.OvuSync.resetPosition) root.OvuSync.resetPosition(); if (ui.toast) ui.toast('Cloud backup is off. Nothing new leaves this phone; the copy in your account is kept until you delete it from Your account.', 'cloud_off'); }
+        else { withdraw('cloud_sync', 'you'); if (root.OvuSync && root.OvuSync.resetPosition) root.OvuSync.resetPosition(); if (ui.toast) ui.toast('Cloud backup is off. New entries stay on this phone; the copy in your account is kept until you delete it from Your account.', 'cloud_off'); }
         if (ui.rerender) ui.rerender();
         return;
       }
