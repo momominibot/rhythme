@@ -186,7 +186,7 @@
   function seatedImg(img, fallback) {
     var want = seatedSrc(), probe = new Image();
     if (!want) { img.src = fallback; img.classList.remove('seated'); return; }
-    probe.onload = function () { img.src = want; img.classList.add('seated'); };
+    probe.onload = function () { img.src = want; img.classList.add('seated'); if (root.OvuSound) root.OvuSound.play('sit'); };
     probe.onerror = function () { img.src = fallback; img.classList.remove('seated'); };
     probe.src = want;
   }
