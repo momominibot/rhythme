@@ -4,6 +4,10 @@
 `supabase/migrations/20261020120000_sync_pull_commit_order.sql` is a file only: applying it to the live project is
 Jamie's call (AGENTS gate 3).
 
+**Status: held at AGENTS gate 6.** Codex round two found the compatibility path (premortem 5) still faulty: the
+round-one fix for it failed review a second time. The transaction-ordered pull, the fence and the hand-over passed.
+The round-three options are in `docs/debate/2026-10-20-sync-commit-order-codex-round2.md` and are not applied.
+
 ## The gap
 
 `entries_sync_guard` (20261019010000) stamps `synced_at = now()`. In PostgreSQL `now()` is the start time of the
@@ -124,9 +128,11 @@ Premortem, assuming B failed:
 4. *The app ships before the migration.* Same fallback as 2.
 5. *The migration is rolled back after phones moved over, or a tab still on an older version pulls by time.* The
    transaction-ordered pull keeps the time cursor moving too (only forward, to the latest row it delivered by
-   `synced_at`), so either resumes from where the newer pull got to, not from a stale point or the start, and nothing
-   someone cleared comes back. That time-ordered pull has the old gap for writes still open at that moment, until
-   `entries_pull` is back (Codex round one, finding 1).
+   `synced_at`), so either resumes from near where the newer pull got to rather than from a stale point or the start
+   (Codex round one, finding 1). **Not yet right (Codex round two, reproduced):** a tie on the instant leaves the time
+   cursor's id behind, so rows sharing that instant can come back after a clear; and the cursor can move past committed
+   rows the 20,000 cap has not delivered yet, which a lasting fallback then never pulls. Proposed fix: a time prefix the
+   server certifies (round two, option A).
 6. *A page asked for `entries_pull` before the migration and was told it is missing.* It asks again as soon as any tab
    holds a transaction-ordered cursor, instead of pulling by its own time cursor for the rest of its life (Codex round
    one, finding 1).
@@ -210,6 +216,10 @@ side by side and a clear in between.
   again; (2) the hand-over sent every post-migration row again, restoring cleared rows: it now uses the hand-over
   snapshot as above; (3) the pretend server lost precision past 2^53: BigInt, with a test near 2^64; (4) "commit order"
   overstated the guarantee: it is transaction id order once final.
+- Codex read-only, round two (`docs/debate/2026-10-20-sync-commit-order-codex-round2.md`): NOT READY. Findings 2, 3 and 4
+  of round one FIXED; the hand-over release rule and the pretend server's snapshot model confirmed. Finding 1 PARTLY
+  FIXED, with two should-fix defects in the followed time cursor (equal timestamps; backlog past the cap) and one nit in
+  the local Postgres race 3. Both defects reproduced independently. Same finding twice: held at AGENTS gate 6.
 
 ## Sources
 
