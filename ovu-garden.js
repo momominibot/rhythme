@@ -198,7 +198,7 @@
       if (spot.seat) seatPlace(R.els.meditator, spot.seat); else R.els.meditator.classList.remove('faceright');
       if (!meditatorWatch && root.MutationObserver) {
         /* when the session ends the mat gets its own pose back, so the next mat session is cross-legged again */
-        meditatorWatch = new MutationObserver(function () { if (!R.els.meditator.classList.contains('on') && R.els.meditator.classList.contains('onseat')) { R.els.meditator.classList.remove('onseat', 'faceright'); img.classList.remove('seated'); img.src = ART + 'avatar-meditate.webp'; } });
+        meditatorWatch = new MutationObserver(function () { if (!R.els.meditator.classList.contains('on') && R.els.meditator.classList.contains('onseat')) { R.els.meditator.classList.remove('onseat', 'faceright'); img.classList.remove('seated'); img.src = R.meditateSrc ? R.meditateSrc() : ART + 'avatar-meditate.webp'; } });
         meditatorWatch.observe(R.els.meditator, { attributes: true, attributeFilter: ['class'] });
       }
     }

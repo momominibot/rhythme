@@ -10,7 +10,7 @@
 (function (root) {
   'use strict';
   var S = root.OvuStore;
-  var SYMPTOMS = ['cramps', 'headache', 'bloating', 'breast tenderness', 'back pain', 'fatigue', 'nausea', 'acne', 'cravings', 'insomnia', 'hot flushes', 'dizziness', 'spotting', 'discharge change', 'low mood', 'anxiety', 'irritability', 'brain fog'];
+  var SYMPTOMS = ['cramps', 'headache', 'bloating', 'breast tenderness', 'back pain', 'fatigue', 'nausea', 'acne', 'cravings', 'insomnia', 'hot flushes', 'dizziness', 'spotting', 'discharge change', 'low mood', 'anxiety', 'irritability', 'brain fog', 'vaginal dryness', 'urinary discomfort', 'pain during sex']; /* the last three from the four-persona review, 20 Oct */
   var MOODS = ['great', 'good', 'ok', 'low', 'bad'];
   /* a day of mindful minutes brought in from Apple Health or Google is one entry that may hold several sessions */
   function sessionCount(list) { return list.reduce(function (n, e) { return n + (e.data && e.data.kind === 'imported' ? Math.max(1, Number(e.data.sessions) || 1) : 1); }, 0); }
@@ -107,6 +107,9 @@
       return heavy && (e.data.symptoms || []).indexOf('dizziness') > -1;
     });
     if (dizzyHeavy.length) flags.push(flag('high', 'HEAVY_DIZZY', 'Heavy bleeding with dizziness', 'Heavy bleeding together with dizziness or faintness should be checked soon, today if it is happening now.', dizzyHeavy[dizzyHeavy.length - 1].date));
+    /* pain during sex is worth a review at any age (RCOG, ACOG); it is named once, never counted as a score */
+    var sexPain = S.list('symptom', { from: S.addDays(end, -27), to: end }).filter(function (e) { return (e.data.symptoms || []).indexOf('pain during sex') > -1; });
+    if (sexPain.length) flags.push(flag('watch', 'SEX_PAIN', 'Pain during sex', 'Logged on ' + sexPain.length + ' day' + (sexPain.length > 1 ? 's' : '') + ' in the last 4 weeks. Pain during or after sex is worth raising with your GP or polyclinic; there are often simple things that help.', sexPain[sexPain.length - 1].date));
     var counts = {};
     recent.forEach(function (e) { (e.data.symptoms || []).forEach(function (s) { counts[s] = (counts[s] || 0) + 1; }); });
     return { agent: 'symptomAgent', metrics: { days: recent.length, counts: counts }, flags: flags };
@@ -229,5 +232,5 @@
     return sum;
   }
 
-  root.OvuAgents = { SYMPTOMS: SYMPTOMS, MOODS: MOODS, FOOD_TAGS: FOOD_TAGS, supervisor: supervisor, analyze: analyze, allFlags: allFlags, dailySummary: dailySummary, fourWeekSummary: fourWeekSummary, dismissFlag: dismissFlag, saveMonthlySummary: saveMonthlySummary, agents: AGENTS, fmtHours: fmtHours };
+  root.OvuAgents = { isPostmenopausal: isPostmenopausal, SYMPTOMS: SYMPTOMS, MOODS: MOODS, FOOD_TAGS: FOOD_TAGS, supervisor: supervisor, analyze: analyze, allFlags: allFlags, dailySummary: dailySummary, fourWeekSummary: fourWeekSummary, dismissFlag: dismissFlag, saveMonthlySummary: saveMonthlySummary, agents: AGENTS, fmtHours: fmtHours };
 })(window);

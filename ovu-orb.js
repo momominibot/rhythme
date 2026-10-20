@@ -165,7 +165,10 @@
     'cramps': /\bcramp/, 'anxiety': /\banxious\b/, 'fatigue': /\b(?:tired|exhausted)\b/, 'headache': /\bmigraine\b/,
     'hot flushes': /\bhot (?:flush|flash)(?:es)?\b|\bnight sweats?\b/, 'irritability': /\birritab(?:le|ility)\b/,
     'brain fog': /\bforgetful(?:ness)?\b|\bfoggy\b/, 'discharge change': /\bdischarge\b/,
-    'low mood': new RegExp('\\b(?:sad|down|low|tearful|' + FLAT_MOOD + ')\\b')
+    'low mood': new RegExp('\\b(?:sad|down|low|tearful|' + FLAT_MOOD + ')\\b'),
+    'vaginal dryness': /\bvaginal(?:ly)? dry\w*|\bdry(?:ness)? down there\b|\bvaginal dryness\b/,
+    'urinary discomfort': /\b(?:burn\w*|sting\w*|pain\w*|hurts?)\b[^.;]{0,15}\b(?:when (?:i )?|while )?(?:pee|peeing|wee|weeing|urinat\w*)\b|\bpee(?:ing)? (?:all the time|so often|more often)\b|\burinary\b/,
+    'pain during sex': /\b(?:pain|painful|hurts?|hurt|sore)\b[^.;]{0,15}\b(?:during|with|after|in)\s+(?:sex|intercourse)\b|\bpainful (?:sex|intercourse)\b|\bsex (?:is|was) painful\b|\bdyspareunia\b/
   };
   /* "had" is a meal only when what follows is food: "had night sweats", "had cramps after lunch", "had a bad night" are not */
   var NOT_FOOD = new RegExp("^(?:(?:a|an|some|my|the|bad|terrible|awful|really|very|mild|slight|little|bit of|lot of|lots of|such|more|another|no)\\s+)*(?:" + SYM_TERMS + "|" + BLEED_TERMS + "|fever|temperature|nightmares?|(?:bad|good|rough|long|hard|restless|great|terrible|awful|late|early|lazy|busy|tough) (?:night|day|sleep|morning|evening|week)|naps?|sleep|trouble|difficulty|sex|scan|test|appointment|shower|bath|dreams?|baby|contractions?|chills|cold|flu|cough|sore throat|diarrh?o?ea|constipation)\\b");
