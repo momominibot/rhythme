@@ -98,7 +98,10 @@
     var severe = recent.filter(function (e) { return typeof e.data.pain === 'number' && e.data.pain >= 8; });
     if (severe.length) flags.push(flag('watch', 'PAIN_SEVERE', 'Severe pain logged', severe.length + ' day(s) with pain 8/10 or more in the last two weeks. Pain that stops normal activities deserves a proper review.', severe[severe.length - 1].date));
     var low = recent.filter(function (e) { return e.data.mood === 'low' || e.data.mood === 'bad'; });
-    if (recent.length >= 7 && low.length >= 5) flags.push(flag('watch', 'MOOD_LOW', 'Low mood on most logged days', low.length + ' of the last ' + recent.length + ' logged days were low. You deserve support; this is worth talking about.', low[low.length - 1].date));
+    /* after a birth, three low days in two weeks are enough to say so (four-persona review, 20 Oct: help must not wait for seven
+     * records); otherwise most of at least a week of logged days */
+    var pp = (S.profile() || {}).pregState === 'postpartum';
+    if ((pp && low.length >= 3) || (recent.length >= 7 && low.length >= 5)) flags.push(flag('watch', 'MOOD_LOW', 'Low mood on ' + (pp ? 'several' : 'most') + ' logged days', low.length + ' of the last ' + recent.length + ' logged days were low. You deserve support, and you do not have to wait: mindline 1771 is open 24 hours, and your GP, polyclinic' + (pp ? ' or KKH' : '') + ' can help.', low[low.length - 1].date));
     var dizzyHeavy = recent.filter(function (e) {
       var heavy = S.byDate(e.date).some(function (x) { return x.type === 'period' && x.data.flow === 'heavy'; });
       return heavy && (e.data.symptoms || []).indexOf('dizziness') > -1;

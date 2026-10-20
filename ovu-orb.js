@@ -49,8 +49,11 @@
   var NO_PERIOD_AFTER = /\b(?:my |the |a )?(?:periods?|menses|bleeding) (?:still )?(?:(?:has|have|had|is|was|are|were|does|did|do) ?(?:not|n't)|never|(?:is|are) yet to) (?:yet |still |ever )?(?:come back|came back|returned|return|started|start|come|came|arrived|arrive|resumed|resume|begun|begin|began|back|shown up|showed up|show up|here)\b/g;
   var NO_PERIOD_LATE = /\b(?:my |the )?periods? (?:is|are|was|seems|feels) (?:\w+ ){0,2}?(?:late|overdue|due)\b|\b(?:missed|skipped|skip|miss|missing) (?:a |my |the |this month's )?periods?\b|\bperiods? (?:late|overdue|missed|missing|due)\b|\b(?:before|until|till|ahead of|leading up to|expecting|waiting for|waiting on) (?:my |the |next |a )?periods?\b/g;
   var BLEED_RE = new RegExp('\\b(?:' + BLEED_TERMS + ')\\b');
+  /* worry about a period, or one that is coming, is a feeling or a wait, never flow (four-persona review, 20 Oct: Wei Ling's
+   * "worried my period is coming" was offered as a medium period day). The feeling itself is still read as a symptom. */
+  var PERIOD_WORRY = /\b(?:worried|worry|worrying|worries|anxious|nervous|scared|afraid|dread(?:ing|ed)?|hop(?:e|ing|ed)|praying|wondering|thinking|stress(?:ed|ing)?|obsessing)\b(?: so much)?(?: about| that| if| whether| over)?(?: my| the| this| next| another)? periods?\b|\bperiods? (?:is |are )?(?:coming|will come|might come|may come|could come|going to come|gonna come|about to (?:start|come)|on (?:its|the) way|will (?:start|arrive)|might (?:start|arrive))\b|\bwhen (?:will|does|is|do) (?:my |the |a )?periods?\b/g;
   /* the note with negated words and no-period statements blanked out (a ';' keeps the neighbours apart) */
-  function positive(t) { return t.replace(NEG_SPAN, ' ; ').replace(NO_PERIOD_AFTER, ' ; ').replace(NO_PERIOD_LATE, ' ; '); }
+  function positive(t) { return t.replace(NEG_SPAN, ' ; ').replace(NO_PERIOD_AFTER, ' ; ').replace(NO_PERIOD_LATE, ' ; ').replace(PERIOD_WORRY, function (m) { return m.replace(/\bperiods?\b/g, ' ; '); }); }
   /* True when the note says there is no period or no bleeding, and nothing left in it names bleeding. Such a note is
    * an observation: it is acknowledged, and it never creates a period day (the calendar's "None" removes a day too). */
   function noPeriod(text) {
@@ -76,23 +79,82 @@
   var HARM_INTENT = "(?:want(?:ed|s|ing)? to|wanna|feel(?:ing|s)? like|felt like|thoughts? (?:of|about)|think(?:s|ing)? (?:of|about)|thought about|urges? to|tempted to|going to|gonna|plan(?:ning|ned)? to|might|could|would|will|'ll|'d|keep|kept|(?:scared|afraid|worried|terrified) (?:that )?i(?:'ll| will| might| could| would)?|imagin(?:e|ing))";
   var SELF_HARM = new RegExp("\\b" + HARM_INTENT + " (?:i )?(?:" + SELF_ACT + "|" + BABY_ACT + ")\\b|\\bsuicid\\w*|\\bself[- ]?harm\\w*|\\bkill(?:ing)? myself\\b|\\btak(?:e|ing) my (?:own )?life\\b|\\bend(?:ing)? (?:it all|my life)\\b|\\b(?:want(?:ed|s)? to|wanting to|wanna|wish i could) die\\b|\\bwish (?:i )?(?:was|were) dead\\b|\\b(?:don't|do not|no longer) want to (?:live|be alive|be here|exist|wake up)\\b|\\bbetter off (?:dead|without me)\\b");
   var SELF_HARM_COPY = 'If you have thoughts of harming yourself or your baby, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.'; /* SOS contacts checked 18 October 2026 against the SOS services overview */
+  /* the baby is named only when the note or the profile has one (four-persona review, 20 Oct: Mrs Tan at 54 was told about "your baby") */
+  var SELF_HARM_COPY_SELF = 'If you have thoughts of harming yourself, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.';
+  var SOS_ACTIONS = [{ label: 'Call 995', href: 'tel:995' }, { label: 'Call SOS 1767', href: 'tel:1767' }, { label: 'WhatsApp SOS', href: 'https://wa.me/6591511767' }];
+  var CALL_995 = [{ label: 'Call 995', href: 'tel:995' }];
+
+  /* ---------- emergencies beyond the period (four-persona review, 20 Oct 2026, docs/debate/2026-10-20-four-personas.md) ----------
+   * Rules only, never a model. A symptom counts when it is said, not when it is denied: "no chest pain" or "I don't have
+   * a fever" never raise a card, "no fever but chest pain" does. The emergency signs follow SCDF's list for calling 995
+   * and the NHS/RCOG/KKH pages cited in the debate file; the same-day signs follow the CDC's maternal warning signs,
+   * RCOG on ectopic pregnancy and pelvic infection, and the NHS on blood clots. */
+  function said(re, t) {
+    var g = new RegExp(re.source, 'g'), m;
+    while ((m = g.exec(t))) {
+      var clause = t.slice(Math.max(0, m.index - 40), m.index).split(/[.;!?,]|\bbut\b|\bthen\b|\bnow\b|\bthough\b/).pop();
+      if (!/\b(?:no|not|without|never|nor|zero|denies?)\b|n't\b/.test(clause)) return true;
+      if (m[0] === '') g.lastIndex++;
+    }
+    return false;
+  }
+  var CHEST = /\bchest\s+(?:pains?|tight\w*|pressure|hurts?|hurting|aches?|aching)\b|\bpains?\s+in\s+(?:my\s+)?chest\b|\btight\s+chest\b|\bcrushing\b[^.;]{0,15}\bchest\b|\bchest\b[^.;]{0,12}\b(?:feels?|is|was|felt|getting)\s+(?:so\s+|very\s+|really\s+)?(?:tight|heavy|crushed|painful)\b/;
+  var BREATH = /\b(?:can'?t|cannot|could\s*n'?t|struggling to|struggle to|hard to|unable to)\s+(?:catch\s+my\s+)?breath\w*\b|\b(?:trouble|difficulty|difficult|problems?)\s+breathing\b|\bgasping\b|\bshort(?:ness)?\s+of\s+breath\b[^.;]{0,25}\b(?:rest|sitting|lying|sudden\w*|worse|worsening)\b|\bsudden\w*\s+(?:breathless|short of breath)\w*\b/;
+  var STROKE = /\b(?:face|mouth)\s+(?:is\s+|has\s+|went\s+)?(?:droop\w*|lopsided|fallen)\b|\bdroop\w*\s+(?:face|mouth|on one side)\b|\bslurr\w*\s+(?:speech|words|my words|talking)\b|\b(?:speech|words)\s+(?:is\s+|are\s+)?slurr\w*\b|\b(?:arm|face)\s+(?:went|is|feels?|felt|going|has gone)\s+(?:weak|numb|dead|limp)\b|\bsudden\w*\b[^.;]{0,15}\b(?:arm|leg|face|one side)\b[^.;]{0,15}\b(?:weak|numb|limp)\w*\b|\bone side\b[^.;]{0,20}\b(?:weak|numb)\w*\b|\bsudden\w*\s+(?:loss of|lost)\s+(?:vision|sight|my sight)\b|\bsudden\w*\s+(?:can'?t|cannot)\s+(?:see|speak|talk|move)\b|\bcan'?t\s+(?:speak|talk|find my words)\s+properly\b/;
+  var STROKE_NOT = /\b(?:sleeping on|slept on|lying on|lay on|sitting on|sat on|crossed my legs|cross-legged|pins and needles)\b/;
+  var ALLERGY = /\b(?:swollen|swelling|swelled)\b[^.;]{0,15}\b(?:face|lips?|tongue|throat|mouth)\b|\b(?:face|lips?|tongue|throat|mouth)\b[^.;]{0,12}\b(?:swollen|swelling|swelled)\b|\b(?:puffy|puffed up)\s+(?:lips?|tongue|throat)\b|\bthroat\s+(?:is\s+|feels?\s+)?(?:closing|tight\w*)\b|\banaphyla\w*\b/;
+  var PSYCHOSIS = /\bhearing\s+(?:voices|things)\b|\bhear\s+voices\b|\bvoices\b[^.;]{0,20}\btell(?:ing)?\s+me\b|\bseeing\s+(?:things|people)\b[^.;]{0,25}\b(?:aren'?t|are not|isn'?t|weren'?t|not)\s+(?:really\s+)?there\b|\bhallucinat\w*\b|\b(?:people|everyone|they|someone)\s+(?:are|is)\s+(?:watching|following|plotting against|out to get)\s+me\b/;
+  var HEAD_VISION = /\b(?:severe|bad|worst|terrible|pounding|sudden|excruciating|splitting)\b[^.;]{0,20}\bheadache\b[^.;]{0,40}\b(?:vision|blurr\w*|seeing (?:spots|stars|flash\w*)|flash\w* lights?|spots (?:in|before) my eyes)\b|\b(?:vision|blurr\w*|flash\w* lights?|seeing spots)\b[^.;]{0,40}\b(?:severe|bad|worst|terrible|pounding|splitting)\b[^.;]{0,15}\bheadache\b|\bworst headache\b|\bthunderclap\b/;
+  var SADDLE = /\bnumb\w*\b[^.;]{0,25}\b(?:groin|bottom|buttocks|between my legs|saddle)\b|\b(?:groin|saddle)\b[^.;]{0,15}\bnumb\w*/;
+  /* pregnant now, or possibly: "trying to get pregnant", "not pregnant" and "pregnancy test was negative" are not (an earlier rule raised
+   * the pregnancy-bleeding emergency for "trying to get pregnant, period came today") */
+  function pregnantNow(t) {
+    var s = t.replace(/\b(?:get|getting|got|become|becoming|trying (?:to|for)|try (?:to|for)|tried (?:to|for)|chances? of|want(?:ed|ing|s)? to|hop(?:e|ed|ing) to|not|never been|wasn'?t|isn'?t|am not|i'm not|planning to|plan to)\s+(?:get\s+|be\s+|been\s+|a\s+|getting\s+)?pregnan\w*/g, ' ; ').replace(/\bpregnancy tests?\b[^.;]{0,25}\bnegative\b|\bnegative\b[^.;]{0,15}\bpregnancy tests?\b/g, ' ; ').replace(/\bpregnancy tests?\b/g, ' test ');
+    return /\bpregnan\w*\b/.test(s) || /\bpositive\b[^.;]{0,20}\b(?:test|line)\b|\bfaint line\b/.test(t);
+  }
+  var ONE_SIDE = /\b(?:one[- ]sided|on one side|(?:left|right)[- ]sided)\b[^.;]{0,25}\b(?:pain|ache|cramp\w*|hurts?)\b|\b(?:pain|ache|cramp\w*|hurts?|hurting)\b[^.;]{0,25}\b(?:on one side|on (?:the|my) (?:left|right)|(?:left|right) side)\b|\b(?:left|right) side\b[^.;]{0,15}\b(?:pain|ache|hurts?|hurting|cramp\w*)\b|\bshoulder[- ]tip\b/;
+  var FEVER = /\bfevers?\b|\bfeverish\b|\bhigh temp(?:erature)?\b|\btemp(?:erature)? (?:of )?3[89]\b|\b3[89](?:\.\d)?\s*(?:°|deg|degrees|c)\b|\bchills\b|\bshivering\b|\brigors?\b/;
+  var INFECT_WITH = /\bpelvi\w*\b|\blower (?:tummy|belly|abdomen|stomach)\b|\b(?:tummy|belly|abdominal|stomach|womb) (?:pain|ache|cramps?)\b|\b(?:smelly|foul|fishy|green|yellow|unusual|strange|bad[- ]smelling)\b[^.;]{0,15}\bdischarge\b|\bdischarge\b[^.;]{0,15}\b(?:smells|smelly|foul|fishy|green|yellow)\b|\bbreasts?\b[^.;]{0,20}\b(?:hot|red|painful|sore|hard|lump\w*|swollen)\b|\b(?:hot|red|painful|sore|hard|swollen)\b[^.;]{0,12}\bbreasts?\b|\bmastitis\b|\b(?:wound|stitches|scar|incision)\b|\b(?:burn\w*|sting\w*|pain\w*|hurts?)\b[^.;]{0,15}\b(?:pee|peeing|wee|weeing|urinat\w*)\b|\b(?:back|flank|kidney) pain\b/;
+  var URINE_BLOOD = /\bblood\b[^.;]{0,15}\b(?:urine|pee|wee)\b|\b(?:urine|pee|wee)\b[^.;]{0,15}\b(?:bloody|red|pink|blood)\b/;
+  var LEG_CLOT = /\b(?:one|my|left|right|a)\s+(?:calf|leg|thigh)\b(?!s)[^.;]{0,25}\b(?:swollen|swelling|painful|hot|red|tender|hard|throbbing)\b|\b(?:swollen|painful|hot|red|tender|throbbing)\s+(?:calf|leg)\b(?!s)/;
+  var LEG_EXERCISE = /\b(?:after|from)\s+(?:the\s+)?(?:gym|run\w*|exercis\w*|workout|training|hik\w*|walk\w*|yoga|class)\b|\bcramp\w*\b/;
+  var FALL = /\b(?:fell|fallen|slipped|tripped|had a fall)\b[^.;]{0,40}\b(?:can'?t (?:stand|walk|move|get up|put weight)|severe pain|very painful|hip|wrist|broke|broken|fractur\w*|hit my head|banged my head)\b/;
+  var PMB_EXTRA = /\b(?:pink|brown|red|blood[- ]?stained|bloody)\s+(?:discharge|spots?|staining|mucus|smear)\b|\bstaining\b/;
+  function card(level, code, title, trigger, message, actions) { return { level: level, code: code, title: title, trigger: trigger, message: message, actions: actions }; }
+  function hasBaby(t, profile) { var p = profile || {}; return p.pregState === 'postpartum' || p.pregState === 'pregnant' || p.lifeStage === 'pregnant' || /\b(?:baby|babies|newborn|infant|little one|gave birth|postpartum|postnatal|pregnan\w*)\b/.test(t); }
   /* Returns an urgent card to show before parsing, or null. Emergency cards need care now (995 or an
    * emergency department); the postmenopausal card is prompt care, not an emergency. Rules only, never a model.
    * A card with its own `message` and `actions` (self-harm) is shown with those words; the others keep the
    * KKH Urgent O&G Centre and 995 copy in the room. */
   function urgent(text, profile) {
     var t = norm(text);
-    if (SELF_HARM.test(t)) return { level: 'emergency', code: 'SELF_HARM_NOW', title: 'Please get help now', trigger: 'thoughts of harming yourself or your baby', message: SELF_HARM_COPY, actions: [{ label: 'Call 995', href: 'tel:995' }, { label: 'Call SOS 1767', href: 'tel:1767' }, { label: 'WhatsApp SOS', href: 'https://wa.me/6591511767' }] };
+    if (SELF_HARM.test(t)) { var baby = hasBaby(t, profile); return { level: 'emergency', code: 'SELF_HARM_NOW', title: 'Please get help now', trigger: baby ? 'thoughts of harming yourself or your baby' : 'thoughts of harming yourself', message: baby ? SELF_HARM_COPY : SELF_HARM_COPY_SELF, actions: SOS_ACTIONS.slice() }; }
     var pos = positive(t), painText = t.replace(/\b(?:no|without|not in) (?:any )?pain\b/g, ' ; '); /* only a bare "no pain" is set aside for the pain rule */
     var bleeding = BLEED_WORDS.test(pos), soak = SOAK.test(t), dizzy = DIZZY.test(t), severe = SEVERE_PAIN.test(painText);
     var heavy = soak || (/\bheavy\b/.test(pos) && bleeding);
     if (soak && !/\b(?:yesterday|last (?:week|month|cycle)|used to|before)\b/.test(t)) return { level: 'emergency', code: 'HEAVY_BLEED_NOW', title: 'Get emergency care now', trigger: 'bleeding that soaks through protection every hour' + (dizzy ? ' with dizziness' : '') };
     if (heavy && dizzy) return { level: 'emergency', code: 'HEAVY_DIZZY_NOW', title: 'Get emergency care now', trigger: 'heavy bleeding with dizziness or faintness' };
     if (/\b(?:fainted|passed out|blacked out|collapsed)\b/.test(t) && bleeding) return { level: 'emergency', code: 'FAINT_BLEED_NOW', title: 'Get emergency care now', trigger: 'fainting with bleeding' };
-    if (/\bpregnan\w*\b/.test(t) && !/\bnot pregnant\b/.test(t) && (bleeding || severe)) return { level: 'emergency', code: 'PREG_BLEED_NOW', title: 'Get emergency care now', trigger: 'bleeding or severe pain in pregnancy' };
+    /* signs any adult should call 995 for, whatever the cycle says */
+    if (said(CHEST, t) || (said(BREATH, t) && !/\b(?:through my nose|blocked nose|stuffy|stuffed up|runny nose)\b/.test(t))) return card('emergency', 'CHEST_BREATH_NOW', 'Call 995 now', 'chest pain or trouble breathing', 'Chest pain, chest tightness or trouble breathing needs emergency help. Call 995 now. Do not wait to finish logging, and do not drive yourself.', CALL_995.slice());
+    if (said(STROKE, t) && !STROKE_NOT.test(t)) return card('emergency', 'STROKE_NOW', 'Call 995 now', 'possible stroke signs', 'A drooping face, weakness or numbness on one side, slurred speech or sudden loss of vision can be a stroke. Call 995 now and note the time it started.', CALL_995.slice());
+    if (said(ALLERGY, t)) return card('emergency', 'ALLERGY_NOW', 'Call 995 now', 'swelling of the face, lips, tongue or throat', 'Swelling of your face, lips, tongue or throat can be a serious allergic reaction. Call 995 now. If you have an adrenaline pen, use it.', CALL_995.slice());
+    if (said(SADDLE, t)) return card('emergency', 'SADDLE_NUMB_NOW', 'Get emergency care now', 'numbness around the groin or bottom', 'New numbness around your groin or bottom, or new trouble controlling your bladder or bowels, needs emergency care now. Go to A&E or call 995.', CALL_995.slice());
+    if (said(HEAD_VISION, t)) return card('emergency', 'HEADACHE_VISION_NOW', 'Get emergency care now', 'a severe headache with vision changes', 'A severe headache with blurred vision or flashing lights, or the worst headache of your life, needs emergency care now. Call 995 or go to A&E.' + (hasBaby(t, profile) ? ' Tell them if you are pregnant or had a baby in the last year.' : ''), CALL_995.slice());
+    if (said(PSYCHOSIS, t)) return card('emergency', 'PSYCHOSIS_NOW', 'Please get help now', 'hearing or seeing things others do not', 'Hearing voices, seeing things that others cannot, or feeling sure people are against you needs urgent medical help today. Ask someone you trust to stay with you' + (hasBaby(t, profile) ? ' and your baby' : '') + ', and go to A&E or call 995. This can be treated.', SOS_ACTIONS.slice());
+    if (pregnantNow(t) && (bleeding || severe)) return { level: 'emergency', code: 'PREG_BLEED_NOW', title: 'Get emergency care now', trigger: 'bleeding or severe pain in pregnancy' };
+    /* a late or missed period, a positive test or a possible pregnancy, with one-sided pain: RCOG lists one-sided tummy pain
+     * and shoulder-tip pain among the signs of an ectopic pregnancy, and a negative test does not rule it out early on */
+    var maybePreg = pregnantNow(t) || (t.match(NO_PERIOD_LATE) || []).some(function (m) { return !/\b(?:before|until|till|ahead of|leading up to|expecting|waiting)\b/.test(m); }); NO_PERIOD_LATE.lastIndex = 0;
+    if (maybePreg && said(ONE_SIDE, painText)) return card('emergency', 'ECTOPIC_NOW', 'Get urgent care now', 'one-sided pain when pregnancy is possible', 'One-sided tummy pain or shoulder-tip pain when your period is late or you could be pregnant needs urgent assessment now, even if a test was negative or you have not done one. Go to KKH’s 24-hour Urgent O&G Centre or an A&E. Call 995 if you feel faint or collapse.', [{ label: 'Call 995', href: 'tel:995' }, { label: 'KKH Urgent O&G (24h)', href: 'https://www.kkh.com.sg/our-specialties/urgent-og-centre' }]);
     if (severe || (/\bshoulder[- ]tip\b/.test(t) && /\bpain\b/.test(painText))) return { level: 'emergency', code: 'SEVERE_PAIN_NOW', title: 'Get emergency care now', trigger: 'sudden severe pelvic or abdominal pain' };
+    /* the same day: a doctor today, A&E if very unwell */
+    if (said(FEVER, t) && said(INFECT_WITH, t)) return card('today', 'FEVER_INFECTION_TODAY', 'Please see a doctor today', 'a fever with pain, an unusual discharge, a sore breast or wound, or painful peeing', 'A fever together with pelvic or tummy pain, an unusual discharge, a hot painful breast, a sore wound or painful peeing needs a doctor today. See your GP or polyclinic today. Go to A&E, or KKH’s 24-hour Urgent O&G Centre, if you feel very unwell, faint or confused.', [{ label: 'KKH Urgent O&G (24h)', href: 'https://www.kkh.com.sg/our-specialties/urgent-og-centre' }, { label: 'Call 995', href: 'tel:995' }]);
+    if (said(LEG_CLOT, t) && !LEG_EXERCISE.test(t)) return card('today', 'LEG_CLOT_TODAY', 'Please get this checked today', 'one swollen, painful or red leg', 'One swollen, painful, hot or red leg should be checked today, as it can be a blood clot. Go to your GP, a polyclinic or A&E today. If you also have chest pain or trouble breathing, call 995.', CALL_995.slice());
+    if (said(FALL, t)) return card('today', 'FALL_TODAY', 'Please get this checked today', 'severe pain after a fall', 'After a fall, severe pain, a hip or wrist that hurts to move, not being able to stand or a knock to the head needs checking today. Call 995 if you cannot get up, or feel faint or confused.', CALL_995.slice());
+    if (said(URINE_BLOOD, t)) return card('prompt', 'URINE_BLOOD', 'Please get this checked soon', 'blood in your urine', 'Blood in your urine should be checked by a doctor. Please book your GP or polyclinic this week, sooner if you have a fever, back pain or feel unwell.', []);
     var stage = (profile && profile.lifeStage) || '';
-    if (['post', 'postmenopause', 'postmenopausal'].indexOf(stage) > -1 && bleeding) return { level: 'prompt', code: 'POSTMENO_BLEED', title: 'Please get this checked this week', trigger: 'bleeding after menopause' };
+    if (['post', 'postmenopause', 'postmenopausal'].indexOf(stage) > -1 && (bleeding || said(PMB_EXTRA, t))) return { level: 'prompt', code: 'POSTMENO_BLEED', title: 'Please get this checked this week', trigger: 'bleeding after menopause' };
     return null;
   }
 
@@ -317,5 +379,27 @@
   var REPLIES = ['Noted, gently.', 'Written down. Thank you for telling me.', 'Got it. One small step logged.', 'Saved. Be soft with yourself today.'];
   function reply() { return REPLIES[Math.floor(Math.random() * REPLIES.length)]; }
 
-  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, noPeriod: noPeriod, parsePhoto: parsePhoto, parseLabel: parseLabel, foodItemsFrom: foodItemsFrom, regram: regram, rename: rename, photosAllowed: photosAllowed, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
+  /* The same reading for entries saved by hand (the calendar, the symptom editor, sleep and meal notes, an import), so a red
+   * flag never waits in the journal (four-persona review, 20 Oct: Siti's flooding with dizziness and Mrs Tan's spotting only
+   * showed a toast). Notes are read with urgent(); the structured parts add three cards: heavy bleeding with dizziness on the
+   * same day, any bleeding or spotting after menopause, and pain of 9 or 10 today. Cards that say "now" or "today" are
+   * raised only for today or yesterday; a backdated day from last week is history, and its patterns stay in the journal.
+   * Imported days are never read here: a year of Apple Health must not open a card. */
+  function entryUrgent(ev, profile) {
+    if (!ev || !ev.data || ev.source === 'apple-health' || ev.source === 'google-fit') return null;
+    var p = profile || {}, d = ev.data, today = S.today(), recent = ev.date >= S.addDays(today, -1) && ev.date <= today;
+    var post = ['post', 'postmenopause', 'postmenopausal'].indexOf(p.lifeStage || '') > -1;
+    var notes = [d.notes, d.note, d.reflection].filter(function (x) { return typeof x === 'string' && x.trim(); }).join('. ');
+    var u = notes ? urgent(notes, p) : null;
+    if (u && (u.level === 'prompt' || recent)) return u;
+    var day = S.byDate(ev.date), heavy = day.some(function (x) { return x.type === 'period' && (x.data.flow === 'heavy' || x.data.flooding); });
+    var dizzy = day.some(function (x) { return x.type === 'symptom' && (x.data.symptoms || []).indexOf('dizziness') > -1; });
+    if (recent && heavy && dizzy && (ev.type === 'period' || ev.type === 'symptom')) return { level: 'emergency', code: 'HEAVY_DIZZY_NOW', title: 'Get emergency care now', trigger: 'heavy bleeding with dizziness or faintness' };
+    if (post && ev.date >= S.addDays(today, -27) && ((ev.type === 'period' && d.flow && d.flow !== 'none') || (ev.type === 'symptom' && (d.symptoms || []).indexOf('spotting') > -1))) return { level: 'prompt', code: 'POSTMENO_BLEED', title: 'Please get this checked this week', trigger: 'bleeding after menopause' };
+    var pain = typeof d.pain === 'number' ? d.pain : null;
+    if (ev.type === 'symptom' && ev.date === today && pain !== null && pain >= 9) return card('today', 'PAIN_SEVERE_TODAY', 'Pain this strong deserves care today', 'pain of ' + pain + ' out of 10', 'Pain of ' + pain + ' out of 10 deserves a doctor today. If it came on suddenly, is on one side, or you could be pregnant, get emergency care now at KKH’s 24-hour Urgent O&G Centre or an A&E, and call 995 if you feel faint.', [{ label: 'KKH Urgent O&G (24h)', href: 'https://www.kkh.com.sg/our-specialties/urgent-og-centre' }, { label: 'Call 995', href: 'tel:995' }]);
+    return null;
+  }
+
+  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, entryUrgent: entryUrgent, noPeriod: noPeriod, parsePhoto: parsePhoto, parseLabel: parseLabel, foodItemsFrom: foodItemsFrom, regram: regram, rename: rename, photosAllowed: photosAllowed, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
 })(window);

@@ -122,10 +122,13 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   console.log('2. thoughts of harming yourself or your baby raise the emergency card before anything is parsed');
   var w = fresh(), O = w.OvuOrb;
   var COPY = 'If you have thoughts of harming yourself or your baby, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.';
-  ['I want to hurt myself', 'I feel like killing myself', 'thoughts of hurting my baby', 'I’m scared I might hurt my baby', 'I don’t want to be alive anymore', 'having suicidal thoughts again'].forEach(function (s) {
-    var u = O.urgent(s, {});
-    check('self-harm card for "' + s + '"', u && u.level === 'emergency' && u.code === 'SELF_HARM_NOW' && u.message === COPY, JSON.stringify(u));
+  var COPY_SELF = 'If you have thoughts of harming yourself, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.';
+  /* the baby is named only when the note or the profile has one (four-persona review, 20 Oct) */
+  [['I want to hurt myself', COPY_SELF], ['I feel like killing myself', COPY_SELF], ['thoughts of hurting my baby', COPY], ['I’m scared I might hurt my baby', COPY], ['I don’t want to be alive anymore', COPY_SELF], ['having suicidal thoughts again', COPY_SELF]].forEach(function (c) {
+    var u = O.urgent(c[0], {});
+    check('self-harm card for "' + c[0] + '"', u && u.level === 'emergency' && u.code === 'SELF_HARM_NOW' && u.message === c[1], JSON.stringify(u));
   });
+  check('after a birth the card names the baby even when the note does not', (O.urgent('I want to hurt myself', { pregState: 'postpartum' }) || {}).message === COPY);
   var both = O.urgent('soaking through a pad every hour and I want to hurt myself', {});
   check('the self-harm card comes first, even with heavy bleeding', both && both.code === 'SELF_HARM_NOW', JSON.stringify(both));
   var u = O.urgent('I want to hurt myself', { lifeStage: 'post' });
@@ -133,6 +136,66 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('"I think about hurting myself" and "I’d hurt my baby" raise it too, "I’d never hurt my baby" does not', (O.urgent('Sometimes I think about hurting myself', {}) || {}).code === 'SELF_HARM_NOW' && (O.urgent('I’m so tired I’d hurt my baby', {}) || {}).code === 'SELF_HARM_NOW' && O.urgent('I’d never hurt my baby, just so tired', {}) === null);
   check('an ordinary hurt is not a self-harm card', O.urgent('I hurt my back carrying the baby', {}) === null && O.urgent('my feet are killing me', {}) === null && O.urgent('am I hurting my baby by drinking coffee?', {}) === null);
   check('the existing bleeding cards keep their codes and no self-harm copy', (function () { var h = O.urgent('soaking through a pad every hour', {}); return h && h.code === 'HEAVY_BLEED_NOW' && !h.message; })());
+})();
+
+(function emergenciesBeyondThePeriod() {
+  console.log('2b. four-persona review (20 Oct): chest pain, stroke signs, allergy, ectopic pain, infection, a clot, a fall and psychosis raise cards; everyday phrases do not');
+  var w = fresh(), O = w.OvuOrb;
+  var cases = [
+ // [text, profile, expectedCode or null]
+ ['chest pain since this morning',{},'CHEST_BREATH_NOW'],['no chest pain, just tired',{},null],['I don\'t have chest pain',{},null],['no fever but my chest feels tight',{},'CHEST_BREATH_NOW'],
+ ['struggling to breathe',{},'CHEST_BREATH_NOW'],['can\'t breathe through my nose, blocked nose',{},null],['short of breath at rest',{},'CHEST_BREATH_NOW'],['bit short of breath after running',{},null],
+ ['my face is drooping on one side',{},'STROKE_NOW'],['slurred speech and my arm went weak',{},'STROKE_NOW'],['my leg went numb from sitting cross-legged',{},null],['my arm went numb sleeping on it',{},null],['suddenly weak and tired after period',{},null],
+ ['lips swollen after eating prawns',{},'ALLERGY_NOW'],['puffy eyes this morning',{},null],['puffy face after crying',{},null],
+ ['numbness around my groin and bottom',{},'SADDLE_NUMB_NOW'],
+ ['severe headache and blurred vision',{pregState:'postpartum'},'HEADACHE_VISION_NOW'],['worst headache of my life',{},'HEADACHE_VISION_NOW'],['headache 4/10',{},null],
+ ['I keep hearing voices telling me things',{pregState:'postpartum'},'PSYCHOSIS_NOW'],['I\'m paranoid my period is late',{},null],['seeing things that aren\'t there',{},'PSYCHOSIS_NOW'],
+ ['period is 10 days late and sharp pain on my left side',{},'ECTOPIC_NOW'],['positive test yesterday, pain on the right side',{},'ECTOPIC_NOW'],['could be pregnant, shoulder tip pain',{},'ECTOPIC_NOW'],
+ ['trying to get pregnant, period came today, so sad',{lifeStage:'ttc'},null],['negative pregnancy test and my period started',{},null],['pregnancy test negative, period started, cramps 5/10',{},null],['ovulation pain on my left side, trying to conceive',{lifeStage:'ttc'},null],
+ ['I am 8 weeks pregnant and bleeding',{},'PREG_BLEED_NOW'],['pregnant, no bleeding but sudden severe pelvic pain',{},'PREG_BLEED_NOW'],['8 weeks pregnant, no bleeding, no pain',{},null],
+ ['fever and pelvic pain',{},'FEVER_INFECTION_TODAY'],['fever 38.5 and my breast is red and hot',{pregState:'postpartum',breastfeeding:'yes'},'FEVER_INFECTION_TODAY'],['no fever, smelly discharge',{},null],['fever and a cough',{},null],['burning when I pee and chills',{},'FEVER_INFECTION_TODAY'],
+ ['my left calf is swollen and painful',{},'LEG_CLOT_TODAY'],['legs ache after the gym',{},null],['leg cramp at night',{},null],['my leg is sore after my walk',{},null],
+ ['slipped in the bathroom and my hip hurts, can\'t stand',{lifeStage:'post'},'FALL_TODAY'],
+ ['blood in my urine',{},'URINE_BLOOD'],['blood in my pee',{lifeStage:'post'},'URINE_BLOOD'],
+ ['pink discharge today',{lifeStage:'post'},'POSTMENO_BLEED'],['brown spots on my underwear',{lifeStage:'post'},'POSTMENO_BLEED'],['dryness and itching',{lifeStage:'post'},null],
+ ['hot flushes 6 times last night',{lifeStage:'peri'},null],['heavy period, soaking a pad every hour',{},'HEAVY_BLEED_NOW'],['period started today, medium, cramps 4/10',{},null],
+ ['worried my period is coming',{},null],['I want to hurt myself',{},'SELF_HARM_NOW'],['I\'m scared I might hurt my baby',{pregState:'postpartum'},'SELF_HARM_NOW'],
+ ['face and tongue swelling after my new pill',{},'ALLERGY_NOW'],['my wound from the c-section is red and I have a fever',{pregState:'postpartum'},'FEVER_INFECTION_TODAY'],
+ ['tired, low, didn\'t sleep',{},null],['ate chicken rice for lunch',{},null],['chest of drawers arrived',{},null],
+];
+  cases.forEach(function (c) { var u = O.urgent(c[0], c[1]); check('"' + c[0] + '" -> ' + c[2], (u ? u.code : null) === c[2], u ? u.code : 'null'); });
+  check('every new card brings its own words and a 995 link where it is an emergency', ['chest pain', 'my face is drooping on one side', 'lips swollen', 'hearing voices', 'period is late and pain on my left side'].every(function (t) { var u = O.urgent(t, {}); return u && u.message && (u.level !== 'emergency' || (u.actions || []).some(function (a) { return a.href === 'tel:995'; })); }));
+  var w2 = fresh(), O2 = w2.OvuOrb;
+  check('Luna reads worry about a period as a feeling, never a period day', ['worried my period is coming', 'dreading my period', 'when will my period come', 'my period is coming soon I think'].every(function (t) { return !O2.parseLocal(t).some(function (e) { return e.type === 'period'; }); }) && O2.parseLocal('anxious about my period this month').some(function (e) { return e.type === 'symptom' && e.data.symptoms.indexOf('anxiety') > -1; }) && O2.parseLocal('worried, period started heavy today').some(function (e) { return e.type === 'period' && e.data.flow === 'heavy'; }));
+})();
+
+(function handSavedRedFlags() {
+  console.log('2c. a red flag saved by hand opens its card at once (four-persona review, 20 Oct)');
+  var w = fresh(), S = w.OvuStore, O = w.OvuOrb, today = S.today();
+  var p1 = S.add('period', today, { flow: 'heavy', clots: false, impact: false, flooding: true });
+  check('heavy flooding alone opens no emergency card', O.entryUrgent(p1, {}) === null);
+  var s1 = S.add('symptom', today, { symptoms: ['dizziness'], pain: null, mood: '', notes: '' });
+  check('dizziness on a heavy day opens the heavy-with-dizziness card', (O.entryUrgent(s1, {}) || {}).code === 'HEAVY_DIZZY_NOW');
+  var w2 = fresh(), S2 = w2.OvuStore, O2 = w2.OvuOrb, t2 = S2.today(), post = { lifeStage: 'post' };
+  var sp = S2.add('symptom', t2, { symptoms: ['spotting'], pain: null, mood: '', notes: '' });
+  check('spotting after menopause opens the prompt card', (O2.entryUrgent(sp, post) || {}).code === 'POSTMENO_BLEED');
+  var pd = S2.add('period', S2.addDays(t2, -6), { flow: 'light', clots: false, impact: false });
+  check('a light day after menopause last week still opens it', (O2.entryUrgent(pd, post) || {}).code === 'POSTMENO_BLEED');
+  check('the same day before menopause opens nothing', O2.entryUrgent(pd, {}) === null);
+  var n1 = S2.add('symptom', t2, { symptoms: [], pain: null, mood: 'low', notes: 'chest feels tight since lunch' });
+  check('a note saved by hand is read like a note to Luna', (O2.entryUrgent(n1, {}) || {}).code === 'CHEST_BREATH_NOW');
+  var old = S2.add('sleep', S2.addDays(t2, -9), { bedTime: '23:00', wakeTime: '06:00', quality: 3, notes: 'chest pain last week' });
+  check('a backdated note from last week opens no "now" card', O2.entryUrgent(old, {}) === null);
+  check('chest pain in the day\'s note still wins when pain is added to that day', (O2.entryUrgent(S2.add('symptom', t2, { pain: 9 }, 'room', { merge: true }), {}) || {}).code === 'CHEST_BREATH_NOW');
+  var w4 = fresh(), S4 = w4.OvuStore, O4 = w4.OvuOrb;
+  check('pain of 9 today opens the same-day card', (O4.entryUrgent(S4.add('symptom', S4.today(), { symptoms: ['cramps'], pain: 9, mood: '', notes: '' }), {}) || {}).code === 'PAIN_SEVERE_TODAY');
+  check('pain of 9 last week opens nothing', O4.entryUrgent(S4.add('symptom', S4.addDays(S4.today(), -7), { symptoms: ['cramps'], pain: 9, mood: '', notes: '' }), {}) === null);
+  var imp = { type: 'period', date: t2, data: { flow: 'medium' }, source: 'apple-health' };
+  check('an imported day never opens a card', O2.entryUrgent(imp, post) === null);
+  var w3 = fresh(), S3 = w3.OvuStore, A3 = w3.OvuAgents, t3 = S3.today();
+  S3.setProfile({ pregState: 'postpartum' });
+  [0, 2, 4].forEach(function (k) { S3.add('symptom', S3.addDays(t3, -k), { symptoms: [], pain: null, mood: 'low', notes: '' }); });
+  check('after a birth, three low days in two weeks raise the support note', A3.allFlags().some(function (f) { return f.code === 'MOOD_LOW' && /1771/.test(f.detail); }));
 })();
 
 (function noPeriodStatementsAreNotFlow() {

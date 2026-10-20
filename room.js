@@ -829,13 +829,14 @@
         '<div class="field"><span class="lbl">Symptoms</span><div class="chips" id="symChips">' + '<button type="button" class="chipbtn symnone' + (sd.none ? ' on' : '') + '" data-none="1">None</button>' + A.SYMPTOMS.map(function (s) { return '<button type="button" class="chipbtn' + ((sd.symptoms || []).indexOf(s) > -1 ? ' on' : '') + '" data-sym="' + esc(s) + '">' + esc(cap(s)) + '</button>'; }).join('') + '</div></div>' +
         '<div class="field"><div class="lbl-row"><label for="pain" class="lbl" style="margin:0">Pain · <span id="painVal">' + (sd.pain || 0) + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="pain" min="0" max="10" step="1" value="' + (sd.pain || 0) + '">' + guideHTML('pain') + '</div>' +
         '<div class="field"><span class="lbl">Mood</span><div class="faces" id="moodFaces">' + [['great', 'sentiment_very_satisfied'], ['good', 'sentiment_satisfied'], ['ok', 'sentiment_neutral'], ['low', 'sentiment_dissatisfied'], ['bad', 'sentiment_very_dissatisfied']].map(function (m) { return '<button type="button" data-mood="' + m[0] + '" class="' + (sd.mood === m[0] ? 'on' : '') + '"><span class="ms">' + m[1] + '</span>' + cap(m[0]) + '</button>'; }).join('') + '</div></div>' +
+        '<p class="moodcare" id="moodCare"' + (sd.mood === 'low' || sd.mood === 'bad' ? '' : ' hidden') + '><span class="ms">favorite</span><span>If a low mood is weighing on you, you deserve support now, not after more logging. mindline 1771 is open 24 hours, or talk to your GP or polyclinic.</span></p>' +
         '<div class="field"><label for="symNotes">Notes</label><textarea class="input" id="symNotes" placeholder="Anything else you noticed...">' + esc(sd.notes || '') + '</textarea></div>' +
         '<div class="row"><button class="btn primary" id="saveSym"><span class="ms">check</span>Save day</button>' + (cs ? '<button class="btn ghost" id="clearSym">Clear</button>' : '') + '<button class="btn soft" id="acuFromSym"><span class="ms">spa</span>Cramp relief points</button></div><div class="msg" id="calMsg"></div>';
       /* None (Jamie, 19 Oct) is its own answer: it clears the symptoms, and ticking a symptom clears it */
       $('#symChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); if (!b.classList.contains('on')) return; $$('#symChips .on').forEach(function (x) { if (x !== b && (b.dataset.none || x.dataset.none)) x.classList.remove('on'); }); });
       var painTouched = false;
       $('#pain').addEventListener('input', function () { painTouched = true; $('#painVal').textContent = this.value; });
-      $('#moodFaces').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#moodFaces')).forEach(function (x) { x.classList.toggle('on', x === b && !x.classList.contains('on')); }); });
+      $('#moodFaces').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#moodFaces')).forEach(function (x) { x.classList.toggle('on', x === b && !x.classList.contains('on')); }); var on = $('#moodFaces .on'); $('#moodCare').hidden = !(on && (on.dataset.mood === 'low' || on.dataset.mood === 'bad')); });
       $('#acuFromSym').addEventListener('click', openAcupressure);
       $('#saveSym').addEventListener('click', function () {
         try {
@@ -1697,30 +1698,16 @@
         var saved = ORB.save(picked); card.remove();
         var r = ORB.reply(), line = '<b>Luna</b>' + esc(r) + ' Saved ' + saved.length + ' entr' + (saved.length === 1 ? 'y' : 'ies') + '.';
         bubble('luna', line); remember('luna', line);
-        saved.forEach(function (ev) { afterSave(ev, 'Saved through Luna.'); });
+        saved.forEach(function (ev) { afterSave(ev, 'Saved through Luna.', true); }); /* Luna has shown its card in the chat already */
       });
     }
     /* Red flags are read on the device before any parsing or saving. The card is guidance, not a save:
      * the entries still go through the confirm card below it. */
     function urgentCard(u) {
-      var emergency = u.level === 'emergency';
-      /* a card that brings its own words and call links (thoughts of harming yourself or your baby: 995, SOS 1767, WhatsApp 9151 1767) */
-      if (u.message) {
-        var own = '<b>' + esc(u.title) + '</b><p>' + esc(u.message) + '</p><div class="row">' + (u.actions || []).map(function (a, i) { var web = /^https:/.test(a.href); return '<a class="btn ' + (i ? 'soft' : 'primary') + '" href="' + esc(a.href) + '"' + (web ? ' target="_blank" rel="noopener"' : '') + '><span class="ms">' + (web ? 'chat' : 'call') + '</span>' + esc(a.label) + '</a>'; }).join('') + '</div>' +
-          '<small>Rhythme cannot assess how you are or diagnose. No clinician or helpline receives this alert.</small>';
-        var ownCard = bubble('urgent emergency', own); remember('urgent emergency', own);
-        try { chime('alert', true); } catch (err) { }
-        return ownCard;
-      }
-      var html = '<b>' + esc(u.title) + '</b>' +
-        (emergency
-          ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 now if the bleeding is excessive or will not stop, you faint, have trouble breathing, or have chest pain.</p>'
-          : '<p>Any bleeding after menopause should be checked by a clinician promptly. Book a GP or gynaecologist visit this week; it is usually not serious, but it needs a check.</p>') +
-        '<div class="row">' + (emergency ? '<a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><a class="btn soft" href="https://www.kkh.com.sg/our-specialties/urgent-og-centre" target="_blank" rel="noopener"><span class="ms">local_hospital</span>KKH Urgent O&amp;G (24h)</a>' : '') + '<a class="btn ghost" href="journal.html"><span class="ms">medical_information</span>Show my chart</a></div>' +
-        '<small>Rhythme cannot assess your condition or diagnose. This alert follows published guidance (KKH, SCDF, NHS). No clinician receives this alert.</small>';
-      var card = bubble('urgent' + (emergency ? ' emergency' : ''), html); remember('urgent' + (emergency ? ' emergency' : ''), html);
+      var kind = 'urgent' + (u.level === 'emergency' ? ' emergency' : ''), html = careHTML(u);
+      var c = bubble(kind, html); remember(kind, html);
       try { chime('alert', true); } catch (err) { }
-      return card;
+      return c;
     }
     function send(text, again) {
       text = (text || '').trim(); if (!text) return;
@@ -2577,12 +2564,37 @@
   bubble.addEventListener('click', function (e) { var pb = e.target.closest('[data-pact]'); if (pb) { var pid = bubble.dataset.pet; hideBubble(); petAction(pid, pb.dataset.pact); return; } var b = e.target.closest('button'); if (!b) return; hideBubble(); if (b.dataset.act !== 'sleep' && !awake(b.dataset.act)) return; var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
   document.addEventListener('click', function (e) { if (!e.target.closest('#bubble') && !e.target.closest('#avatar')) hideBubble(); });
 
+  /* ---------- care cards: the same words in Luna's chat and after a hand-saved entry ---------- */
+  function careHTML(u) {
+    var emergency = u.level === 'emergency';
+    function link(a, i) { var tel = /^tel:/.test(a.href), web = /^https:/.test(a.href); return '<a class="btn ' + (i ? 'soft' : 'primary') + '" href="' + esc(a.href) + '"' + (web ? ' target="_blank" rel="noopener"' : '') + '><span class="ms">' + (tel ? 'call' : /wa\.me/.test(a.href) ? 'chat' : web ? 'local_hospital' : 'medical_information') + '</span>' + esc(a.label) + '</a>'; }
+    /* a card that brings its own words and links (self-harm, chest pain, stroke signs, a fever with pain, a clot, ...) */
+    if (u.message) return '<b>' + esc(u.title) + '</b><p>' + esc(u.message) + '</p>' + ((u.actions || []).length ? '<div class="row">' + u.actions.map(link).join('') + '</div>' : '') +
+      '<small>Rhythme cannot assess how you are or diagnose. No clinician or helpline receives this alert.</small>';
+    return '<b>' + esc(u.title) + '</b>' +
+      (emergency
+        ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 now if the bleeding is excessive or will not stop, you faint, have trouble breathing, or have chest pain.</p>'
+        : '<p>Any bleeding after menopause, even a small spot or a pink or brown discharge, should be checked by a clinician promptly, even if it stops. Book your GP, a polyclinic or a gynaecologist this week. It is usually not serious, but it needs a check.</p>') +
+      '<div class="row">' + (emergency ? '<a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><a class="btn soft" href="https://www.kkh.com.sg/our-specialties/urgent-og-centre" target="_blank" rel="noopener"><span class="ms">local_hospital</span>KKH Urgent O&amp;G (24h)</a>' : '') + '<a class="btn ghost" href="journal.html"><span class="ms">medical_information</span>Show my chart</a></div>' +
+      '<small>Rhythme cannot assess your condition or diagnose. This alert follows published guidance (KKH, SCDF, NHS). No clinician receives this alert.</small>';
+  }
+  /* after a hand-saved entry the card is the whole sheet: the entry is already saved, so nothing is lost by covering the form */
+  function careSheet(u) {
+    openSheet('care', u.level === 'emergency' ? 'Please read this first' : 'A note about what you logged', 'Your entry is saved', u.level === 'emergency' ? 'emergency_home' : 'medical_information',
+      '<div class="bub urgent' + (u.level === 'emergency' ? ' emergency' : '') + ' carecard">' + careHTML(u) + '</div><div class="row"><button type="button" class="btn ghost" id="careDone"><span class="ms">close</span>Back to the room</button></div>');
+    $('#careDone').addEventListener('click', hideSheet);
+    try { chime('alert', true); } catch (err) { }
+  }
+
   /* ---------- after save: agents + hearts ---------- */
-  function afterSave(ev, text) {
+  function afterSave(ev, text, viaLuna) {
     var res = A.analyze(ev), rw = RW.award(ev);
     var hi = res.flags.filter(function (f) { return f.level === 'high'; })[0], w = res.flags.filter(function (f) { return f.level === 'watch'; })[0];
     var heartsText = rw.points ? ' +' + (rw.points + rw.bonus) + ' ♥' : '';
-    if (hi) toast(hi.title + '. Please see the note in your journal.', 'emergency_home');
+    /* a red flag in what was just saved is shown at once, never left for the journal (four-persona review, 20 Oct) */
+    var care = ORB && ORB.entryUrgent ? ORB.entryUrgent(ev, S.profile()) : null;
+    if (care && !viaLuna) { careSheet(care); toast('Saved.' + heartsText, 'check_circle'); }
+    else if (hi) toast(hi.title + '. Please see the note in your journal.', 'emergency_home');
     else if (w) toast('Saved. Pattern note added: ' + w.title + '.' + heartsText, 'flag');
     else toast((text || 'Saved to your journal.') + heartsText, 'check_circle');
     var chip = $('#heartsChip'); chip.classList.remove('pop'); void chip.offsetWidth; chip.classList.add('pop');
