@@ -1298,10 +1298,10 @@ function syncServer() {
    against older sync code still mean something. */
 function syncView(w) {
   var ls = w.localStorage, pos = JSON.parse(ls.getItem('ovumind_sync_pos_v1') || 'null'), main = JSON.parse(ls.getItem('ovumind_sync_v1') || '{}');
-  if (pos) {
-    /* round five: one position, valid only under the current reset token */
+  if (pos || ls.getItem('ovumind_sync_reset_v1') != null) {
+    /* round five: one position, valid only under the current reset token (after a reset with none stored yet: empty) */
     var tok = ls.getItem('ovumind_sync_reset_v1') || '';
-    if (pos.token !== tok) return { userId: null, pushedAt: null, held: {}, profilePulledAt: null, lastSyncAt: null, pulledSeq: null, pulledId: null, types: null, typedAfter: null };
+    if (!pos || pos.token !== tok) return { userId: null, pushedAt: null, held: {}, profilePulledAt: null, lastSyncAt: null, pulledSeq: null, pulledId: null, types: null, typedAfter: null };
     return { userId: pos.uid || null, pushedAt: pos.pushedAt || null, held: pos.held || {}, profilePulledAt: pos.profilePulledAt || null, lastSyncAt: pos.lastSyncAt || null, pulledSeq: pos.pulledSeq || null, pulledId: pos.pulledId != null ? pos.pulledId : null, types: pos.types || null, typedAfter: pos.typedAfter || null };
   }
   var pull = JSON.parse(ls.getItem('ovumind_sync_pull_v1') || 'null'), out = Object.assign({}, main);
@@ -1730,7 +1730,21 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
     var toB = cw2.c.records.filter(function (e) { return e.uid === 'uB'; });
     check('an old account\'s "backup is off" answer arriving after a switch never turns off the new account\'s backup', !!deliver && r && r.ok === false && toB.length === 0 && cw2.c.on.uB === true, JSON.stringify({ r: r, records: cw2.c.records, onB: cw2.c.on.uB }));
   });
-  Promise.all([one, two, three, four, five, fiveB]).catch(function (err) { check('the round-five sync tests ran to the end', false, String(err && err.stack || err)); });
+  /* 6. (Codex round five) one tab resets; another tab's sync, asked for right after, gets the lock first and finishes
+     under the new token. Nothing the reset does afterwards may erase that sync's valid position. */
+  var srv6 = syncServer(), tabs6 = syncTabs(srv6), store6 = tabs6.A.localStorage, set6 = store6.setItem, pB6 = null;
+  srv6.rows.push(syncRow('v1', 'reflection', T1, note('v1')));
+  store6.setItem = function (k, v) {
+    var out = set6.call(store6, k, v);
+    if (!pB6 && (k === 'ovumind_sync_reset_v1' || k === 'ovumind_sync_gen_v1')) pB6 = tabs6.B.OvuSync.syncNow(); /* right after the reset is published */
+    return out;
+  };
+  tabs6.A.OvuSync.resetPosition();
+  var six = Promise.resolve().then(function () { return pB6; }).then(function (rB) { return tabs6.mgr.idle().then(function () { return rB; }); }).then(function (rB) {
+    var v = syncView(tabs6.A);
+    check('a sync that finishes after a reset keeps its position: the reset never erases later progress', !!pB6 && rB && rB.ok === true && v.userId === 'u1' && v.pulledSeq === T1, JSON.stringify({ rB: rB, view: v }));
+  });
+  Promise.all([one, two, three, four, five, fiveB, six]).catch(function (err) { check('the round-five sync tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */

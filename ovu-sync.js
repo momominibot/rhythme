@@ -520,9 +520,9 @@
     var tok = newToken();
     try { localStorage.setItem(LS_RESET, tok); } catch (e) { }
     setStatus('idle');
-    /* tidy the old account's position out of storage once no sync holds the lock (nothing depends on this) */
-    var p = withLock(function () { if (resetToken() === tok) savePos(emptyPos(), tok); });
-    if (p && typeof p.catch === 'function') p.catch(function () { });
+    /* Nothing else is written: the old position stays in storage, unreadable under the new token, until the next sync
+       for an account replaces it. (A tidy-up here could run after a sync that started under the new token and erase
+       that sync's valid position: Codex round five, finding 1.) */
   }
 
   function init() {
