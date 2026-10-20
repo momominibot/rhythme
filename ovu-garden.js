@@ -171,18 +171,20 @@
    * standing one, never to the cross-legged one */
   /* lap line (where the body meets the seat) and height/width of each seated sprite, measured from the files */
   var SIT = { base: { hip: 0.695, aspect: 2.063 }, sundress: { hip: 0.766, aspect: 2.031 }, pajamas: { hip: 0.765, aspect: 2.019 }, cozy: { hip: 0.705, aspect: 2.035 }, yoga: { hip: 0.762, aspect: 2.013 }, party: { hip: 0.761, aspect: 1.902 }, 'kebaya-blue': { hip: 0.747, aspect: 1.672 }, 'kebaya-green': { hip: 0.746, aspect: 2.031 }, 'kebaya-red': { hip: 0.733, aspect: 1.674 } };
-  function outfitId() { var o = S.profile().outfit; return SIT[o] ? o : 'base'; }
-  function seatedSrc() { return ART + 'avatar-sit-' + outfitId() + '.webp'; }
+  /* her own outfit always: an outfit with no seated sprite stands beside the seat in its own clothes, never sits in the knit */
+  function outfitId() { return S.profile().outfit || 'base'; }
+  function seatedSrc() { return SIT[outfitId()] ? ART + 'avatar-sit-' + outfitId() + '.webp' : ''; }
   /* place a seated sprite on a seat: feet on the ground line, lap on the seat, facing the way the bench faces.
    * seat = { x, seatY, groundY, face } in plate percent; the width follows from the seat height so her legs reach */
   function seatPlace(el, seat) {
-    var L = R.layout(), m = SIT[outfitId()], drop = Math.max(1.5, seat.groundY - seat.seatY);
+    var L = R.layout(), m = SIT[outfitId()] || SIT.base, drop = Math.max(1.5, seat.groundY - seat.seatY);
     var w = drop / ((1 - m.hip) * (L.w / (L.h * (L.span > 1 ? L.span : 1))) * m.aspect); /* the box's aspect, which on a wide plate is not the plate's */
     el.style.left = seat.x + '%'; el.style.top = seat.groundY + '%'; el.style.width = Math.min(14, Math.max(7, w)).toFixed(2) + '%';
     el.classList.toggle('faceright', seat.face === 'right');
   }
   function seatedImg(img, fallback) {
     var want = seatedSrc(), probe = new Image();
+    if (!want) { img.src = fallback; img.classList.remove('seated'); return; }
     probe.onload = function () { img.src = want; img.classList.add('seated'); };
     probe.onerror = function () { img.src = fallback; img.classList.remove('seated'); };
     probe.src = want;
@@ -194,7 +196,7 @@
     if (back) { L.home.x = back.x; L.home.y = back.y; L.home.flip = !!back.flip; } /* she comes back beside the bench, not to the gate */
     var img = R.els.meditator && R.els.meditator.querySelector('img');
     if (img) {
-      seatedImg(img, ART + 'avatar-meditate.webp'); R.els.meditator.classList.add('onseat');
+      seatedImg(img, R.meditateSrc ? R.meditateSrc() : ART + 'avatar-meditate.webp'); R.els.meditator.classList.add('onseat');
       if (spot.seat) seatPlace(R.els.meditator, spot.seat); else R.els.meditator.classList.remove('faceright');
       if (!meditatorWatch && root.MutationObserver) {
         /* when the session ends the mat gets its own pose back, so the next mat session is cross-legged again */

@@ -254,6 +254,22 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('all ' + fx.length + ' notes read as expected', wrong.length === 0, wrong.join(' | '));
 })();
 
+(function everyOutfitHasItsOwnSprites() {
+  console.log('2g. every outfit she can pick has its own standing, meditating, sleeping and seated sprite, so no fallback changes her clothes');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), garden = fs.readFileSync(path.join(root, 'ovu-garden.js'), 'utf8'), friends = fs.readFileSync(path.join(root, 'ovu-friends.js'), 'utf8');
+  var list = src.slice(src.indexOf('var OUTFITS = ['), src.indexOf('];', src.indexOf('var OUTFITS = ['))).replace(/\/\*[\s\S]*?\*\//g, '');
+  var ids = (list.match(/\{ id: '([a-z0-9-]+)'/g) || []).map(function (m) { return /'([a-z0-9-]+)'/.exec(m)[1]; });
+  var sit = /var SIT = (\{[^\n]*\});/.exec(garden)[1], art = path.join(root, 'assets/room/dream'), missing = [];
+  ids.forEach(function (o) {
+    ['avatar-' + o, o === 'yoga' ? 'avatar-meditate' : 'avatar-meditate-' + o, o === 'pajamas' ? 'avatar-sleeping' : 'avatar-sleeping-' + o, 'avatar-sit-' + o].forEach(function (f) { if (!fs.existsSync(path.join(art, f + '.webp'))) missing.push(f); });
+    if (sit.indexOf(o === 'base' ? 'base:' : (/-/.test(o) ? "'" + o + "'" : o + ':')) < 0) missing.push('SIT.' + o);
+  });
+  check(ids.length + ' outfits, each with all four sprites and a seat measurement', ids.length >= 9 && missing.length === 0, missing.join(', '));
+  check('the tudung outfit waits until its sprites are drawn', ids.indexOf('tudung') < 0 || missing.length === 0);
+  var looks = (friends.slice(friends.indexOf('var LOOKS = ['), friends.indexOf(']];', friends.indexOf('var LOOKS = [')) + 2).match(/\['([a-z0-9-]+)', '[^']+'\]/g) || []).map(function (m) { return /'([a-z0-9-]+)'/.exec(m)[1]; });
+  check('every friend card look is an outfit with a standing sprite', looks.length >= 9 && looks.every(function (l) { return ids.indexOf(l) >= 0; }), looks.join(','));
+})();
+
 (function noPeriodStatementsAreNotFlow() {
   console.log('3. "has not returned", "no period", "not bleeding" are no-period observations, never a period entry');
   var w = fresh(), O = w.OvuOrb, S = w.OvuStore;

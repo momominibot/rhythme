@@ -117,9 +117,11 @@
     /* Singapore Girl sarong kebaya (Balmain batik); rank colours: cobalt blue flight stewardess, green leading, red chief */
     { id: 'kebaya-blue', name: 'Blue kebaya', note: 'Flight stewardess' },
     { id: 'kebaya-green', name: 'Green kebaya', note: 'Leading stewardess' },
-    { id: 'kebaya-red', name: 'Red kebaya', note: 'Chief stewardess' },
-    /* four-persona review, 20 Oct: Nadia wears a tudung, and Codex, DeepSeek and Doubao all said her avatar should be able to */
-    { id: 'tudung', name: 'Baju kurung & tudung', note: 'Dusty rose, lilac tudung' }
+    { id: 'kebaya-red', name: 'Red kebaya', note: 'Chief stewardess' }
+    /* four-persona review, 20 Oct: Nadia wears a tudung, and Codex, DeepSeek and Doubao all said her avatar should be able to.
+     * { id: 'tudung', name: 'Baju kurung & tudung', note: 'Dusty rose, lilac tudung' } joins this list only when its
+     * meditate, sleep, bench and action sprites exist: every missing one would fall back to a sprite with her hair
+     * showing, which takes her tudung off. The renders stopped on a dropped connection on 20 Oct. */
   ];
   var VIDEOS = [
     ['normal', 'normal-v4.mp4', 'A normal cycle', 'What typical looks like'],

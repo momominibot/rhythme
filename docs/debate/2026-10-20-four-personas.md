@@ -23,7 +23,7 @@ Jamie asked for every model to walk the app as four different users, and for eve
 | "Did you really do it, with attention?" judges | all four | "Save this pause to your journal?" with an honest-but-kind note |
 | Help for low mood waited for seven logged days | Nadia | mindline 1771 shows as soon as a low mood is picked; after a birth three low days raise the note |
 | The mat put her in the yoga set, the bed in pyjamas, the stretch in yoga clothes | all four | outfit-matched sprites for meditate, sleep and stretch; a practice from the Mind hub no longer plays to an empty room |
-| No tudung | Nadia (all three models) | a baju kurung and tudung outfit, checked by Doubao's vision model for respect and fit |
+| No tudung | Nadia (all three models) | a baju kurung and tudung outfit was drawn and checked by Doubao's vision model for respect and fit; it is held back until its other sprites exist (see below) |
 | Predictions after a birth with periods not back | Nadia | paused until a period is logged after set-up |
 | After menopause, any bleeding is not a period | Mrs Tan | the calendar says Bleeding, fills nothing, and a saved day opens the prompt card ("This is not a period") |
 | Menopause on HRT was not recorded | Mrs Tan | HRT no longer blocks the after-menopause stage |
@@ -40,7 +40,7 @@ Jamie asked for every model to walk the app as four different users, and for eve
 
 ## The mindful moment
 
-`ovu-moments.js` gives each activity a pose and a few lines (18 words at most, no score, streak, "should" or em dash; checked in the harness). After a save she writes in her notebook, eats, steps on the scale or stretches; at the farm she kneels to plant and gathers the harvest; she wears headphones for the podcast, reads at the desk, presses her wrist for acupressure, holds a shopping bag, waves in the plaza and tends her pets. The line also rides on the toast, so it is seen under a sheet. A care card always comes alone. Eleven new poses were drawn with Seedream 5.0 pro from her own sprite, then in every outfit with the outfit as the second reference.
+`ovu-moments.js` gives each activity a pose and a few lines (18 words at most, no score, streak, "should" or em dash; checked in the harness). After a save she writes in her notebook, eats, steps on the scale or stretches; at the farm she kneels to plant and gathers the harvest; she wears headphones for the podcast, reads at the desk, presses her wrist for acupressure, holds a shopping bag, waves in the plaza and tends her pets. The line also rides on the toast, so it is seen under a sheet. A care card always comes alone. Eleven new poses were drawn with Seedream 5.0 pro from her own sprite, then in every outfit with the outfit as the second reference. The render batch stopped itself on a second dropped connection at 10:09, so pressing her wrist, the phone, the shopping bag and the scale are not drawn in the three kebayas; in those she stays standing in her kebaya, never in other clothes.
 
 ## Where the models disagreed, and what was chosen
 
@@ -55,7 +55,23 @@ Jamie asked for every model to walk the app as four different users, and for eve
 - **DeepSeek and Doubao as Singapore clinicians, every new sentence** (`deepseek-wording-review.md`, `doubao-wording-review.md`): adopted are KKH now for a fever with these signs in pregnancy or after a birth, emergency help now for hearing voices, adrenaline pen first and then 995, when to call 995 for ectopic pain or heavy bleeding and when to go with someone to KKH, head-injury signs after a fall, and same-day care for heavy bleeding after menopause. Rejected: DeepSeek's NICE NG201 citation, because NG201 is antenatal care; NG257 is the fertility guideline (confirmed by search).
 - **Plaza friends migration**: dry-run on the live project in one transaction that raised its result and rolled back. All 58 checks passed, and the 32 function fingerprints it reported match the file. The dry run was updated first, because the asking quota now lives in its own log.
 
+## Third round: notes written the way women in Singapore type
+
+The rules were then tried on notes nobody in this project wrote. DeepSeek and Doubao each wrote 40 notes as women in Singapore type them, half that need a care card and half that must not raise one (Singlish, short forms, "pengsan", "giddy", "preggy", "confinement", "damn tight"). Codex then wrote 60 more and ran them against the real scripts (`2026-10-20-personas/codex-singapore-notes.md`): 7 missed cards and 8 false alarms, and it would have blocked release over "chest damn tight" and "arm no strength".
+
+| Missed, now read | False alarm, now quiet |
+|---|---|
+| pads full every 20 minutes, a pad soaked hourly | soaked laundry; a stated "no thoughts of self-harm" |
+| "chest damn tight" (a word between the sign and tight) | chest pain years ago, or cleared by a doctor |
+| an arm with no strength, "cannot talk properly" | a line said by a drama character |
+| voices that say to hurt the baby | "no severe pelvic pain, just mild cramps" |
+| the TV sending special messages after a birth | "heavy as usual, no dizziness or weakness" |
+
+Two of the earlier additions had silently not applied, because an edit dropped a rule line's closing semicolon; every rule line now ends cleanly and the harness checks the fifteen Codex notes with the other eighty. `tools/fixtures/urgent-notes-sg-2026-10-20.json` holds all 95, and every one now gets the card it should (or none). A synthetic sample shows the rules can fail, not how often they fail for real users, so the rules stay a safety net under the 995 line on every care card, never a diagnosis.
+
 ## Left for later
+
+- **The tudung outfit.** Its standing sprite is drawn, but the meditate, sleep, bench and action sprites were not, because the batch stopped. Every missing one would fall back to a sprite with her hair showing, which would take her tudung off, so the outfit and the matching friend-card look stay out of the lists until the set exists. The harness now fails if any pickable outfit lacks its standing, meditating, sleeping or seated sprite.
 
 - Shops' opening hours exclude night-shift users (Siti). The one real clock is Jamie's rule; a later change would need her call.
 - Postpartum sleep in several pieces (Nadia, Doubao). One night per record stays for now; the form says an honest estimate is enough.
