@@ -2703,11 +2703,12 @@
     if (care) endMoment(); /* a care card always comes alone */
     /* a care card comes alone: no pose and no cheerful line over it */
     var mk = care ? null : viaLuna ? 'luna' : (MO ? MO.forEntry(ev, A.isPostmenopausal(S.profile())) : null), line = mk ? moment(mk, { quiet: true }) : '';
-    if (care && !viaLuna) { careSheet(care); toast('Saved.' + heartsText, 'check_circle'); }
+    /* the hearts are still earned, but no reward toast or heart pop sits beside "Call 995 now" */
+    if (care && !viaLuna) { careSheet(care); toast('Saved.', 'check_circle'); }
     else if (hi) toast(hi.title + '. Please see the note in your journal.', 'emergency_home');
     else if (w) toast('Saved. Pattern note added: ' + w.title + '.' + heartsText, 'flag', line);
     else toast((text || 'Saved to your journal.') + heartsText, 'check_circle', line);
-    var chip = $('#heartsChip'); chip.classList.remove('pop'); void chip.offsetWidth; chip.classList.add('pop');
+    var chip = $('#heartsChip'); chip.classList.remove('pop'); if (!care) { void chip.offsetWidth; chip.classList.add('pop'); }
     renderProps(); renderDeck();
   }
 
