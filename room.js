@@ -522,6 +522,7 @@
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
   function openSheet(id, title, sub, icon, html) {
+    careOn = false; /* a new sheet replaces Luna's chat and any card in it; Luna sets it again when she shows one */
     if (current === 'diary') stopCamera();
     current = id; $('#sheetTitle').innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');
     $('#sheetIcon').innerHTML = '<span class="ms">' + esc(icon) + '</span>';
@@ -805,7 +806,11 @@
     $('#calGrid').innerHTML = html;
     var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + ' (estimate from ' + esc(cs.basis) + ')' + (cs.uncertain ? ', a loose estimate while cycles are changing' : '') + '.' : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Add a cycle length in your intro or log another period to start predictions.')) + (gapNote(cs) ? ' ' + esc(gapNote(cs)) : '') + '</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>Tap the first day of your last period and ' + periodFillLength() + ' typical days are filled for you to adjust.</span></div></div>';
     statHtml += '<div class="row"><button class="btn blush" id="menstruatingNow"><span class="ms">water_drop</span>' + (A.isPostmenopausal(S.profile()) ? 'I’m bleeding today' : 'I’m menstruating now') + '</button>' + (cal.lastFill.length ? '<button class="btn ghost" id="undoFill"><span class="ms">undo</span>Undo ' + cal.lastFill.length + '-day fill</button>' : '') + '</div>';
+    var pq = S.profile();
+    if (pq.pregState === 'postpartum' && pq.periodsBack === 'no' && S.list('period').some(function (e) { return e.data.flow && e.data.flow !== 'none' && e.data.flow !== 'spotting' && (!pq.onboardedAt || e.date >= String(pq.onboardedAt).slice(0, 10)); }))
+      statHtml += '<div class="row ppq"><span class="help" style="margin:0">Is your period back since the birth?</span><button type="button" class="btn soft" id="ppBack2"><span class="ms">water_drop</span>Yes, my period is back</button></div>';
     $('#cycleStat').innerHTML = statHtml;
+    var pb2 = $('#ppBack2'); if (pb2) pb2.addEventListener('click', function () { var np = Object.assign({}, S.profile(), { periodsBack: 'yes' }), nm = predictionModeFor(np); S.setProfile({ periodsBack: 'yes', predictionMode: nm }); toast(nm === 'suspended' ? 'Noted. Predictions stay paused for another reason you told Rhythme; your entries still count.' : 'Noted. Predictions start again, as a wide estimate while cycles settle.', 'water_drop'); renderCal(); renderDeck(); });
     $('#menstruatingNow').addEventListener('click', function () { var ev = S.add('period', S.today(), { flow: 'medium', clots: false, impact: false }); cal.sel = S.today(); cal.lastFill = []; renderCal(); renderEditor(); afterSave(ev, 'Period logged for today.'); });
     var undo = $('#undoFill'); if (undo) undo.addEventListener('click', function () { cal.lastFill.forEach(function (id) { S.remove(id); }); cal.lastFill = []; renderCal(); renderEditor(); renderDeck(); toast('Fill removed.', 'undo'); });
   }
@@ -834,7 +839,7 @@
           var pn = Number($('#ppain').value), sev = null; if (pn > 0 || (symToday && (ppTouched || typeof symToday.data.pain === 'number'))) sev = S.add('symptom', date, { pain: pn }, 'room', { merge: true });
           message($('#calMsg'), 'Saved ' + flow + ' flow for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev, undefined, false, sev ? [sev] : []);
           /* after a birth with predictions paused: she decides whether this is her period back, nothing decides it for her */
-          var pp = S.profile(), cm = $('#calMsg'); if (cm && current === 'calendar' && pp.pregState === 'postpartum' && pp.periodsBack === 'no' && flow !== 'spotting') { cm.insertAdjacentHTML('beforeend', '<div class="row" style="margin-top:6px"><button type="button" class="btn soft" id="ppBack"><span class="ms">water_drop</span>This is my period back</button></div>'); $('#ppBack').addEventListener('click', function () { var np = Object.assign({}, S.profile(), { periodsBack: 'yes' }); S.setProfile({ periodsBack: 'yes', predictionMode: predictionModeFor(np) }); this.disabled = true; /* other reasons to pause (the pill, a hysterectomy, ...) still hold */ toast('Noted. Predictions start again, as a wide estimate while cycles settle.', 'water_drop'); renderCal(); }); }
+          var pp = S.profile(), cm = $('#calMsg'); if (cm && current === 'calendar' && pp.pregState === 'postpartum' && pp.periodsBack === 'no' && flow !== 'spotting') { cm.insertAdjacentHTML('beforeend', '<div class="row" style="margin-top:6px"><button type="button" class="btn soft" id="ppBack"><span class="ms">water_drop</span>This is my period back</button></div>'); $('#ppBack').addEventListener('click', function () { var np = Object.assign({}, S.profile(), { periodsBack: 'yes' }); var nm = predictionModeFor(np); S.setProfile({ periodsBack: 'yes', predictionMode: nm }); this.disabled = true; /* other reasons to pause (the pill, a hysterectomy, ...) still hold */ toast(nm === 'suspended' ? 'Noted. Predictions stay paused for another reason you told Rhythme; your entries still count.' : 'Noted. Predictions start again, as a wide estimate while cycles settle.', 'water_drop'); renderCal(); }); }
         } catch (e) { message($('#calMsg'), e.message, false); }
       });
       if (cur) $('#clearPeriod').addEventListener('click', function () { S.remove(cur.id); cal.lastFill = cal.lastFill.filter(function (id) { return id !== cur.id; }); chime('tap'); renderCal(); renderEditor(); renderDeck(); });
@@ -1723,6 +1728,7 @@
     function bubble(kind, html) { var d = document.createElement('div'); d.className = 'bub ' + (kind === 'luna' ? 'from-luna' : kind); d.innerHTML = html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d; }
     if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took, or send a photo of your meal with the camera button. I will show you what I understood before saving.');
     lunaLog.forEach(function (m) { bubble(m.kind, m.html); });
+    if (lunaLog.some(function (m) { return /^urgent/.test(m.kind); })) { careOn = true; endMoment(); } /* a care card back on screen holds moments again */
     function remember(kind, html) { lunaLog.push({ kind: kind, html: html }); lunaLog = lunaLog.slice(-12); }
     function confirmCard(entries) {
       var card = bubble('confirm', '<h4>Here is what I understood</h4>' + entries.map(function (e, i) { return '<label><input type="checkbox" checked data-i="' + i + '"><span>' + esc(ORB.describe(e)) + ' <em style="color:var(--rm-ink-3);font-style:normal">· ' + esc(prettyDate(e.date)) + '</em></span></label>'; }).join('') + '<div class="row"><button type="button" class="btn primary" id="lunaSave"><span class="ms">check</span>Save ticked</button><button type="button" class="btn ghost" id="lunaDiscard">Discard</button></div>');

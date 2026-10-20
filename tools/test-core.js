@@ -143,6 +143,9 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var w = fresh(), O = w.OvuOrb;
   var cases = [
  // [text, profile, expectedCode or null]
+ ['Chest pain no fever',{},'CHEST_BREATH_NOW'],['Chest pain no relief after resting',{},'CHEST_BREATH_NOW'],['My arm is weak but no pins and needles',{},'STROKE_NOW'],['I hear voices no one else can hear while in the kitchen',{},'PSYCHOSIS_NOW'],
+ ['I hear voices on the radio telling me the weather',{},null],['I have a bad headache but my vision is not blurry',{},null],['severe headache, my vision is blurry',{},'HEADACHE_VISION_NOW'],['I have a positive test and blood in my discharge',{},'PREG_BLEED_NOW'],
+ ['Positive covid test but not pregnant and my period started today',{},null],['pregnancy test came back positive and I am bleeding',{},'PREG_BLEED_NOW'],['positive ovulation test today',{lifeStage:'ttc'},null],
  ['Chest pain: none',{},null],['chest pain? no',{},null],['I have left calf swelling with period cramps',{},'LEG_CLOT_TODAY'],['Positive test for covid and my period started today',{},null],['I am hearing voices from my friends in the kitchen',{},null],
  ['I have pain on my left side and a positive urine pregnancy test',{},'ECTOPIC_NOW'],['My leg is swollen and not painful',{},'LEG_CLOT_TODAY'],['I am hallucinating while on a call to my doctor',{},'PSYCHOSIS_NOW'],['I have fever and painful peeing but I am not pregnant',{},'FEVER_INFECTION_TODAY'],
  ['My arm is numb with pins and needles from sleeping on it',{},null],['took a pregnancy test, it was negative, period started',{},null],['voices in my head telling me things',{},'PSYCHOSIS_NOW'],
