@@ -11,7 +11,13 @@
   function level(id) { return LEVELS.filter(function (l) { return l.id === id; })[0] || LEVELS[0]; }
   function apply(id) {
     var l = level(id), de = root.document && root.document.documentElement; if (!de) return l;
-    if (l.zoom === 1) { de.style.zoom = ''; de.removeAttribute('data-text'); } else { de.style.zoom = String(l.zoom); de.setAttribute('data-text', l.id); }
+    /* In the room the plate, the avatar and every tap on them stay at true size, and the cards, sheets, bars and buttons
+       around them grow (room.css, --tz). iOS Safari measures elements inside a zoomed root before the zoom while taps
+       arrive after it, so a zoomed root walked her to the wrong spot and she seemed to float (Jamie, 20 Oct). */
+    var room = !!(root.document.getElementById && root.document.getElementById('scene'));
+    if (l.zoom === 1) { de.style.zoom = ''; de.style.removeProperty('--tz'); de.removeAttribute('data-text'); }
+    else if (room) { de.style.zoom = ''; de.style.setProperty('--tz', String(l.zoom)); de.setAttribute('data-text', l.id); }
+    else { de.style.zoom = String(l.zoom); de.setAttribute('data-text', l.id); }
     return l;
   }
   var S = root.OvuStore, cur = 'default';
@@ -25,7 +31,7 @@
   root.OvuTextSize.open = function () {
     R.openSheet('text', 'Text size', 'Bigger words, bigger buttons', 'format_size',
       '<div class="sessions" id="textLevels">' + LEVELS.map(function (l) { return '<button type="button" class="session' + (l.id === cur ? ' on' : '') + '" data-text="' + l.id + '"><b>' + l.name + '</b><small>' + l.note + '</small></button>'; }).join('') + '</div>' +
-      '<p class="help">The whole page scales, so nothing is cut off. The choice stays on this phone and applies to every page.</p>');
+      '<p class="help">Words, buttons and cards grow together, so nothing is cut off; your room itself keeps its size. The choice stays on this phone and applies to every page.</p>');
     var box = root.document.getElementById('textLevels');
     box.addEventListener('click', function (e) {
       var b = e.target.closest('[data-text]'); if (!b) return;
