@@ -1595,6 +1595,10 @@ function scenes(todayIso) {
   check('pet shop: three pets upstairs, each on the upstairs floor zone (balcony or landing), none on the railing', up.length === 3 && up.every(function (p) { return K.inZones([L['shop-pet'].zones[1]], p.spot.x, p.spot.y); }), JSON.stringify(up.map(function (p) { return [p.item.id, p.spot.x, p.spot.y]; })));
   var pw = K.world(L['shop-pet'], []), toLanding = K.plan(pw, L['shop-pet'].home, { x: 57.5, y: 44 }), toBalcony = K.plan(pw, L['shop-pet'].home, { x: 40, y: 40.5 });
   check('pet shop: a free walk from the door mat climbs the stairs to the landing and on to the balcony', !!toLanding && !!toBalcony, JSON.stringify([!!toLanding, !!toBalcony]));
+  /* every leg of a planned route stays on the drawn floor in true geometry, so the walk arrives and the card opens */
+  var legsOK = function (wld, a, b) { var r = K.plan(wld, a, b); if (!r) return 'no route'; for (var i = 1; i < r.pts.length; i++) if (!K.segClear(wld, r.pts[i - 1], r.pts[i], null)) return 'leg ' + i + ' leaves the floor ' + JSON.stringify([r.pts[i - 1], r.pts[i]]); return ''; };
+  var petLegs = [[{ x: 46, y: 40 }, { x: 57.5, y: 44 }], [{ x: 57.5, y: 44 }, { x: 36, y: 41.5 }], [{ x: 30, y: 41.5 }, { x: 62, y: 44.5 }], [L['shop-pet'].home, { x: 55, y: 43.2 }], [{ x: 57.5, y: 44 }, L['shop-pet'].home]].map(function (q) { return legsOK(pw, q[0], q[1]); }).filter(Boolean);
+  check('pet shop: walks between the balcony, the landing and the door mat keep every leg on the floor (none stops short behind the stair post)', petLegs.length === 0, petLegs.join('; '));
   var sold = SH.placements('shop-pet', RW.SHOP, { owned: ['cat', 'acc-bow', 'treat-fish'] }, w.LAYOUTS.room.props);
   check('bought pets and accessories leave the shelf; treats restock; shelf widths follow the room props', !sold.some(function (p) { return p.item.id === 'cat' || p.item.id === 'acc-bow'; }) && sold.some(function (p) { return p.item.id === 'treat-fish'; }) && sold.filter(function (p) { return p.item.id === 'dog'; })[0].w === w.LAYOUTS.room.props.dog.w * 1.02, JSON.stringify(sold.map(function (p) { return p.item.id + ':' + p.w; })));
 })();

@@ -21,7 +21,7 @@
      * then the landing in front of the awning cubbies up to the bookcase. Its front edge runs along the railing top and
      * the landing's cream lip, so whoever stands up there keeps her feet on the drawn floor, never on the railing. */
     zones: [[[47, 62], [82, 70], [47, 80], [12, 70]],
-      [[28.5, 40.3], [35, 38.9], [40, 37.8], [45, 36.7], [50, 35.8], [66, 41.4], [66, 46], [57.5, 44.7], [53, 43.6], [51.4, 39.5], [48, 40.7], [42, 42.7], [36.5, 43.3], [30, 42.6]],
+      [[28.5, 40.3], [35, 38.9], [40, 37.8], [45, 36.7], [50, 35.8], [66, 41.4], [66, 46], [57.5, 44.7], [53.5, 43.7], [52.6, 41.1], [51.2, 40], [48, 40.8], [42, 42.7], [36.5, 43.3], [30, 42.6]],
       [[55, 43.4], [61, 44.6], [63.5, 50], [70, 76], [58, 76], [56, 50]]],
     solids: [{ id: 'beds', x0: 17, x1: 50, y0: 58, y1: 70 }, { id: 'counter', x0: 18, x1: 40, y0: 70, y1: 78 }, { id: 'shelf', x0: 66, x1: 84, y0: 36, y1: 49 }],
     doors: [{ id: 'mat', to: 'street', x: 46, y: 76, r: 4, flip: false }],
