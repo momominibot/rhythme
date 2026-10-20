@@ -140,7 +140,9 @@
   function begin(version, quiet) {
     var room = R(); if (room.asleep() || run) return;
     if ((room.sessionOn && room.sessionOn()) || (room.practiceOn && room.practiceOn())) { room.toast('Finish or stop the practice that is running first.', 'self_improvement'); return; }
-    if (root.OvuGreenhouse && root.OvuGreenhouse.caring && root.OvuGreenhouse.caring()) { room.toast('Finish the minute with the plant first.', 'potted_plant'); return; } /* the greenhouse minute owns the HUD and saves its own entry */
+    /* the greenhouse minute and garden watering own the HUD, her pose and their own saved entry: let them finish first */
+    if (root.OvuGreenhouse && root.OvuGreenhouse.caring && root.OvuGreenhouse.caring()) { room.toast('Finish the minute with the plant first.', 'potted_plant'); return; }
+    if (root.OvuGarden && root.OvuGarden.watering && root.OvuGarden.watering()) { room.toast('Finish watering the garden first.', 'water_drop'); return; }
     if (root.OvuPodcast) { try { root.OvuPodcast.pause(); } catch (e) { } }
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
@@ -310,7 +312,8 @@
   root.OvuMorning = {
     START_HOUR: START_HOUR, END_HOUR: END_HOUR, MIN_SAVE_S: MIN_SAVE_S, STEPS: STEPS, VERSIONS: VERSIONS,
     inWindow: inWindow, GREETINGS: GREETINGS, arriveFor: arriveFor, plan: plan, erinSteps: erinSteps, offered: offered, makeClock: makeClock, entryData: entryData,
-    open: open, begin: begin, active: active, cancel: cancel, renderInvite: renderInvite, _due: function () { if (run) { clearTimeout(run.timer); due(); } }, /* tests only: a step's time is up now */
+    open: open, begin: begin, active: active, cancel: cancel, renderInvite: renderInvite,
+    repose: function () { var s = step(); if (s && s.pose) { try { R().setPose(s.pose); } catch (e) { } } }, /* after she picks another outfit mid-step */ _due: function () { if (run) { clearTimeout(run.timer); due(); } }, /* tests only: a step's time is up now */
     state: function () { return run ? { version: run.version, i: run.i, key: step() && step().key, paused: run.paused, left: run.left, audioKey: run.audioKey || null, pending: run.pending || null, quiet: run.quiet, seconds: run.clock.seconds(), skipped: run.skipped.slice(), brushed: run.brushed } : null; }
   };
   if (typeof document !== 'undefined' && document.addEventListener) {

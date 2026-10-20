@@ -490,7 +490,7 @@
   function setOutfit(id, silent) {
     if (!OUTFITS.some(function (o) { return o.id === id; })) id = 'base';
     var img = new Image(), gen = ++imgGen;
-    img.onload = function () { if (gen !== imgGen) return; avatarImg.src = img.src; if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); } };
+    img.onload = function () { if (gen !== imgGen) return; avatarImg.src = img.src; if (!silent && window.OvuMorning && OvuMorning.active()) OvuMorning.repose(); /* brushing in the new outfit */ if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); } };
     img.src = ART + 'avatar-' + id + '.webp';
     S.setProfile({ outfit: id });
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
