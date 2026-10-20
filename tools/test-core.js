@@ -13,7 +13,7 @@ function fresh(todayIso) {
   w.window = w; w.self = w; w.globalThis = w;
   var ctx = vm.createContext(w);
   w.Uint8Array = Uint8Array; w.ArrayBuffer = ArrayBuffer; w.isFinite = isFinite; w.isNaN = isNaN; w.Blob = Blob; w.File = File;
-  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-breathtap.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
+  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-breathtap.js', 'ovu-moments.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sync.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
   return w;
@@ -122,10 +122,13 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   console.log('2. thoughts of harming yourself or your baby raise the emergency card before anything is parsed');
   var w = fresh(), O = w.OvuOrb;
   var COPY = 'If you have thoughts of harming yourself or your baby, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.';
-  ['I want to hurt myself', 'I feel like killing myself', 'thoughts of hurting my baby', 'I’m scared I might hurt my baby', 'I don’t want to be alive anymore', 'having suicidal thoughts again'].forEach(function (s) {
-    var u = O.urgent(s, {});
-    check('self-harm card for "' + s + '"', u && u.level === 'emergency' && u.code === 'SELF_HARM_NOW' && u.message === COPY, JSON.stringify(u));
+  var COPY_SELF = 'If you have thoughts of harming yourself, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.';
+  /* the baby is named only when the note or the profile has one (four-persona review, 20 Oct) */
+  [['I want to hurt myself', COPY_SELF], ['I feel like killing myself', COPY_SELF], ['thoughts of hurting my baby', COPY], ['I’m scared I might hurt my baby', COPY], ['I don’t want to be alive anymore', COPY_SELF], ['having suicidal thoughts again', COPY_SELF]].forEach(function (c) {
+    var u = O.urgent(c[0], {});
+    check('self-harm card for "' + c[0] + '"', u && u.level === 'emergency' && u.code === 'SELF_HARM_NOW' && u.message === c[1], JSON.stringify(u));
   });
+  check('after a birth the card names the baby even when the note does not', (O.urgent('I want to hurt myself', { pregState: 'postpartum' }) || {}).message === COPY);
   var both = O.urgent('soaking through a pad every hour and I want to hurt myself', {});
   check('the self-harm card comes first, even with heavy bleeding', both && both.code === 'SELF_HARM_NOW', JSON.stringify(both));
   var u = O.urgent('I want to hurt myself', { lifeStage: 'post' });
@@ -133,6 +136,138 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('"I think about hurting myself" and "I’d hurt my baby" raise it too, "I’d never hurt my baby" does not', (O.urgent('Sometimes I think about hurting myself', {}) || {}).code === 'SELF_HARM_NOW' && (O.urgent('I’m so tired I’d hurt my baby', {}) || {}).code === 'SELF_HARM_NOW' && O.urgent('I’d never hurt my baby, just so tired', {}) === null);
   check('an ordinary hurt is not a self-harm card', O.urgent('I hurt my back carrying the baby', {}) === null && O.urgent('my feet are killing me', {}) === null && O.urgent('am I hurting my baby by drinking coffee?', {}) === null);
   check('the existing bleeding cards keep their codes and no self-harm copy', (function () { var h = O.urgent('soaking through a pad every hour', {}); return h && h.code === 'HEAVY_BLEED_NOW' && !h.message; })());
+})();
+
+(function emergenciesBeyondThePeriod() {
+  console.log('2b. four-persona review (20 Oct): chest pain, stroke signs, allergy, ectopic pain, infection, a clot, a fall and psychosis raise cards; everyday phrases do not');
+  var w = fresh(), O = w.OvuOrb;
+  var cases = [
+ // [text, profile, expectedCode or null]
+ ['My arm went numb but not due to sleeping on it',{},'STROKE_NOW'],['Chest pain: not really improving',{},'CHEST_BREATH_NOW'],['I have a bad headache after editing blurry photos',{},null],
+ ['Pregnancy test was never positive before. Pregnancy test is positive today and I am bleeding',{},'PREG_BLEED_NOW'],['No pain + positive pregnancy test + spotting',{},'PREG_BLEED_NOW'],['severe headache and my eyes are blurry',{},'HEADACHE_VISION_NOW'],
+ ['Severe headache and my vision is very blurry',{},'HEADACHE_VISION_NOW'],['worst headache and everything looks blurry',{},'HEADACHE_VISION_NOW'],['My arm went numb with no pain from sleeping on it',{},null],['Chest pain: not really',{},null],
+ ['My COVID test shows a positive line and my period started today',{},null],['My pregnancy test never turned positive, period started today',{},null],['my pregnancy test turned positive and I am spotting',{},'PREG_BLEED_NOW'],
+ ['Chest pain no fever',{},'CHEST_BREATH_NOW'],['Chest pain no relief after resting',{},'CHEST_BREATH_NOW'],['My arm is weak but no pins and needles',{},'STROKE_NOW'],['I hear voices no one else can hear while in the kitchen',{},'PSYCHOSIS_NOW'],
+ ['I hear voices on the radio telling me the weather',{},null],['I have a bad headache but my vision is not blurry',{},null],['severe headache, my vision is blurry',{},'HEADACHE_VISION_NOW'],['I have a positive test and blood in my discharge',{},'PREG_BLEED_NOW'],
+ ['Positive covid test but not pregnant and my period started today',{},null],['pregnancy test came back positive and I am bleeding',{},'PREG_BLEED_NOW'],['positive ovulation test today',{lifeStage:'ttc'},null],
+ ['Chest pain: none',{},null],['chest pain? no',{},null],['I have left calf swelling with period cramps',{},'LEG_CLOT_TODAY'],['Positive test for covid and my period started today',{},null],['I am hearing voices from my friends in the kitchen',{},null],
+ ['I have pain on my left side and a positive urine pregnancy test',{},'ECTOPIC_NOW'],['My leg is swollen and not painful',{},'LEG_CLOT_TODAY'],['I am hallucinating while on a call to my doctor',{},'PSYCHOSIS_NOW'],['I have fever and painful peeing but I am not pregnant',{},'FEVER_INFECTION_TODAY'],
+ ['My arm is numb with pins and needles from sleeping on it',{},null],['took a pregnancy test, it was negative, period started',{},null],['voices in my head telling me things',{},'PSYCHOSIS_NOW'],
+ ['No improvement in chest pain',{},'CHEST_BREATH_NOW'],['No fever and my chest is tight',{},'CHEST_BREATH_NOW'],['My face is not swollen',{},null],['my leg is not swollen',{},null],['chest pain won\'t stop',{},'CHEST_BREATH_NOW'],
+ ['My face is drooping and I have pins and needles in one arm',{},'STROKE_NOW'],['My left calf is swollen and painful, also period cramps',{},'LEG_CLOT_TODAY'],['I am breathless even at rest',{},'CHEST_BREATH_NOW'],['so breathless I can barely talk',{},'CHEST_BREATH_NOW'],['breathless after climbing the stairs',{},null],
+ ['Positive covid test yesterday, period started today',{},null],['My period is due tomorrow and pain on my left side',{},null],['positive ovulation test and pain on my left side',{lifeStage:'ttc'},null],['positive pregnancy test and pain on my left side',{},'ECTOPIC_NOW'],
+ ['I am hearing voices from the TV',{},null],['People are watching me on Zoom',{},null],['I keep hearing voices nobody else hears',{pregState:'postpartum'},'PSYCHOSIS_NOW'],
+ ['chest pain since this morning',{},'CHEST_BREATH_NOW'],['no chest pain, just tired',{},null],['I don\'t have chest pain',{},null],['no fever but my chest feels tight',{},'CHEST_BREATH_NOW'],
+ ['struggling to breathe',{},'CHEST_BREATH_NOW'],['can\'t breathe through my nose, blocked nose',{},null],['short of breath at rest',{},'CHEST_BREATH_NOW'],['bit short of breath after running',{},null],
+ ['my face is drooping on one side',{},'STROKE_NOW'],['slurred speech and my arm went weak',{},'STROKE_NOW'],['my leg went numb from sitting cross-legged',{},null],['my arm went numb sleeping on it',{},null],['suddenly weak and tired after period',{},null],
+ ['lips swollen after eating prawns',{},'ALLERGY_NOW'],['puffy eyes this morning',{},null],['puffy face after crying',{},null],
+ ['numbness around my groin and bottom',{},'SADDLE_NUMB_NOW'],
+ ['severe headache and blurred vision',{pregState:'postpartum'},'HEADACHE_VISION_NOW'],['worst headache of my life',{},'HEADACHE_VISION_NOW'],['headache 4/10',{},null],
+ ['I keep hearing voices telling me things',{pregState:'postpartum'},'PSYCHOSIS_NOW'],['I\'m paranoid my period is late',{},null],['seeing things that aren\'t there',{},'PSYCHOSIS_NOW'],
+ ['period is 10 days late and sharp pain on my left side',{},'ECTOPIC_NOW'],['positive test yesterday, pain on the right side',{},'ECTOPIC_NOW'],['could be pregnant, shoulder tip pain',{},'ECTOPIC_NOW'],
+ ['trying to get pregnant, period came today, so sad',{lifeStage:'ttc'},null],['negative pregnancy test and my period started',{},null],['pregnancy test negative, period started, cramps 5/10',{},null],['ovulation pain on my left side, trying to conceive',{lifeStage:'ttc'},null],
+ ['I am 8 weeks pregnant and bleeding',{},'PREG_BLEED_NOW'],['pregnant, no bleeding but sudden severe pelvic pain',{},'PREG_BLEED_NOW'],['8 weeks pregnant, no bleeding, no pain',{},null],
+ ['fever and pelvic pain',{},'FEVER_INFECTION_TODAY'],['fever 38.5 and my breast is red and hot',{pregState:'postpartum',breastfeeding:'yes'},'FEVER_INFECTION_NOW'],['no fever, smelly discharge',{},null],['fever and a cough',{},null],['burning when I pee and chills',{},'FEVER_INFECTION_TODAY'],
+ ['my left calf is swollen and painful',{},'LEG_CLOT_TODAY'],['legs ache after the gym',{},null],['leg cramp at night',{},null],['my leg is sore after my walk',{},null],
+ ['slipped in the bathroom and my hip hurts, can\'t stand',{lifeStage:'post'},'FALL_TODAY'],
+ ['blood in my urine',{},'URINE_BLOOD'],['blood in my pee',{lifeStage:'post'},'URINE_BLOOD'],
+ ['pink discharge today',{lifeStage:'post'},'POSTMENO_BLEED'],['brown spots on my underwear',{lifeStage:'post'},'POSTMENO_BLEED'],['dryness and itching',{lifeStage:'post'},null],
+ ['hot flushes 6 times last night',{lifeStage:'peri'},null],['heavy period, soaking a pad every hour',{},'HEAVY_BLEED_NOW'],['period started today, medium, cramps 4/10',{},null],
+ ['worried my period is coming',{},null],['I want to hurt myself',{},'SELF_HARM_NOW'],['I\'m scared I might hurt my baby',{pregState:'postpartum'},'SELF_HARM_NOW'],
+ ['face and tongue swelling after my new pill',{},'ALLERGY_NOW'],['my wound from the c-section is red and I have a fever',{pregState:'postpartum'},'FEVER_INFECTION_NOW'],
+ ['tired, low, didn\'t sleep',{},null],['ate chicken rice for lunch',{},null],['chest of drawers arrived',{},null],
+];
+  cases.forEach(function (c) { var u = O.urgent(c[0], c[1]); check('"' + c[0] + '" -> ' + c[2], (u ? u.code : null) === c[2], u ? u.code : 'null'); });
+  check('every new card brings its own words and a 995 link where it is an emergency', ['chest pain', 'my face is drooping on one side', 'lips swollen', 'hearing voices', 'period is late and pain on my left side'].every(function (t) { var u = O.urgent(t, {}); return u && u.message && (u.level !== 'emergency' || (u.actions || []).some(function (a) { return a.href === 'tel:995'; })); }));
+  var w2 = fresh(), O2 = w2.OvuOrb;
+  check('Luna reads worry about a period as a feeling, never a period day', ['worried my period is coming', 'dreading my period', 'when will my period come', 'my period is coming soon I think'].every(function (t) { return !O2.parseLocal(t).some(function (e) { return e.type === 'period'; }); }) && O2.parseLocal('anxious about my period this month').some(function (e) { return e.type === 'symptom' && e.data.symptoms.indexOf('anxiety') > -1; }) && O2.parseLocal('worried, period started heavy today').some(function (e) { return e.type === 'period' && e.data.flow === 'heavy'; }));
+})();
+
+(function handSavedRedFlags() {
+  console.log('2c. a red flag saved by hand opens its card at once (four-persona review, 20 Oct)');
+  var w = fresh(), S = w.OvuStore, O = w.OvuOrb, today = S.today();
+  var p1 = S.add('period', today, { flow: 'heavy', clots: false, impact: false, flooding: true });
+  check('heavy flooding alone opens no emergency card', O.entryUrgent(p1, {}) === null);
+  var s1 = S.add('symptom', today, { symptoms: ['dizziness'], pain: null, mood: '', notes: '' });
+  check('dizziness on a heavy day opens the heavy-with-dizziness card', (O.entryUrgent(s1, {}) || {}).code === 'HEAVY_DIZZY_NOW');
+  var w2 = fresh(), S2 = w2.OvuStore, O2 = w2.OvuOrb, t2 = S2.today(), post = { lifeStage: 'post' };
+  var sp = S2.add('symptom', t2, { symptoms: ['spotting'], pain: null, mood: '', notes: '' });
+  check('spotting after menopause opens the prompt card', (O2.entryUrgent(sp, post) || {}).code === 'POSTMENO_BLEED');
+  var pd = S2.add('period', S2.addDays(t2, -6), { flow: 'light', clots: false, impact: false });
+  check('a light day after menopause last week still opens it', (O2.entryUrgent(pd, post) || {}).code === 'POSTMENO_BLEED');
+  check('the same day before menopause opens nothing', O2.entryUrgent(pd, {}) === null);
+  var n1 = S2.add('symptom', t2, { symptoms: [], pain: null, mood: 'low', notes: 'chest feels tight since lunch' });
+  check('a note saved by hand is read like a note to Luna', (O2.entryUrgent(n1, {}) || {}).code === 'CHEST_BREATH_NOW');
+  var old = S2.add('sleep', S2.addDays(t2, -9), { bedTime: '23:00', wakeTime: '06:00', quality: 3, notes: 'chest pain last week' });
+  check('a backdated note from last week opens no "now" card', O2.entryUrgent(old, {}) === null);
+  check('chest pain in the day\'s note still wins when pain is added to that day', (O2.entryUrgent(S2.add('symptom', t2, { pain: 9 }, 'room', { merge: true }), {}) || {}).code === 'CHEST_BREATH_NOW');
+  var w4 = fresh(), S4 = w4.OvuStore, O4 = w4.OvuOrb;
+  check('pain of 9 today opens the same-day card', (O4.entryUrgent(S4.add('symptom', S4.today(), { symptoms: ['cramps'], pain: 9, mood: '', notes: '' }), {}) || {}).code === 'PAIN_SEVERE_TODAY');
+  check('pain of 9 last week opens nothing', O4.entryUrgent(S4.add('symptom', S4.addDays(S4.today(), -7), { symptoms: ['cramps'], pain: 9, mood: '', notes: '' }), {}) === null);
+  var imp = { type: 'period', date: t2, data: { flow: 'medium' }, source: 'apple-health' };
+  check('an imported day never opens a card', O2.entryUrgent(imp, post) === null);
+  var w3 = fresh(), S3 = w3.OvuStore, A3 = w3.OvuAgents, t3 = S3.today();
+  S3.setProfile({ pregState: 'postpartum' });
+  [0, 2, 4].forEach(function (k) { S3.add('symptom', S3.addDays(t3, -k), { symptoms: [], pain: null, mood: 'low', notes: '' }); });
+  check('after a birth, three low days in two weeks raise the support note', A3.allFlags().some(function (f) { return f.code === 'MOOD_LOW' && /1771/.test(f.detail); }));
+})();
+
+(function mindfulMoments() {
+  console.log('2d. every activity has a mindful line and an action (Jamie, 20 Oct): lines are short, kind and free of scores');
+  var w = fresh(), M = w.OvuMoments;
+  check('the moments module loads', !!(M && M.MOMENTS));
+  var keys = Object.keys(M.MOMENTS), bad = [];
+  keys.forEach(function (k) { M.MOMENTS[k].lines.forEach(function (l) { var words = l.trim().split(/\s+/).length; if (words > 18 || /\u2014|\u2013| - /.test(l) || /\b(?:streak|score|points?|goal|target|should|must|failing|failed)\b/i.test(l) || !/[.!?]$/.test(l)) bad.push(k + ': ' + l); }); if (!M.MOMENTS[k].lines.length) bad.push(k + ': no lines'); });
+  check('every line is at most 18 words, ends cleanly, and has no em dash, score, streak or "should"', bad.length === 0, bad.join(' | '));
+  var need = ['period', 'symptom', 'sleep', 'food', 'weight', 'exercise', 'session', 'practice', 'moontap', 'luna', 'import', 'acupressure', 'podcast', 'learn', 'greenhouse', 'plant', 'weed', 'farmwater', 'harvest', 'shop', 'adopt', 'petfeed', 'petplay', 'petcuddle', 'pettidy', 'petdress', 'wardrobe', 'reminder', 'plaza', 'friend', 'hello', 'tea', 'scan'];
+  check('every activity the review walked has a moment', need.every(function (k) { return !!M.MOMENTS[k]; }), need.filter(function (k) { return !M.MOMENTS[k]; }).join(','));
+  check('saved entries map to their moment', M.forEntry({ type: 'period', data: {} }) === 'period' && M.forEntry({ type: 'period', data: {} }, true) === 'bleed_post' && M.forEntry({ type: 'mindfulness', data: { kind: 'breathtap' } }) === 'moontap' && M.forEntry({ type: 'mindfulness', data: { kind: 'informal' } }) === 'practice' && M.forEntry({ type: 'mindfulness', data: { kind: 'erin' } }) === 'session' && M.forEntry({ type: 'food', data: {} }) === 'food' && M.forEntry({ type: 'weight', data: {} }) === 'weight');
+  var seen = {}; for (var i = 0; i < 6; i++) seen[M.line('symptom')] = 1;
+  check('lines take turns rather than repeating', Object.keys(seen).length === M.MOMENTS.symptom.lines.length);
+  var fs = require('fs'), path = require('path'), missing = [];
+  keys.forEach(function (k) { var p = M.MOMENTS[k].pose; if (p && !fs.existsSync(path.join(root, 'assets/room/dream/avatar-act-' + p + '.webp'))) missing.push(p); });
+  check('every pose has its sprite', missing.length === 0, missing.join(','));
+})();
+
+(function codexBranchReview() {
+  console.log('2e. Codex branch review (20 Oct): note dates, the postpartum pause and no streak');
+  var w = fresh(), S = w.OvuStore, O = w.OvuOrb, RW = w.OvuRewards, t = S.today(), post = { lifeStage: 'post' };
+  var old = S.add('symptom', S.addDays(t, -365), { symptoms: [], pain: null, mood: '', notes: 'pink discharge today' });
+  check('a note from a year ago opens no prompt card', O.entryUrgent(old, post) === null);
+  var wk = S.add('symptom', S.addDays(t, -6), { symptoms: [], pain: null, mood: '', notes: 'pink discharge today' });
+  check('the same note last week still opens it', (O.entryUrgent(wk, post) || {}).code === 'POSTMENO_BLEED');
+  var w2 = fresh(), S2 = w2.OvuStore;
+  S2.setProfile({ pregState: 'postpartum', periodsBack: 'no', predictionMode: 'wide', onboardedAt: '2026-07-01T00:00:00Z' });
+  [-60, -32, -4].forEach(function (k) { for (var i = 0; i < 4; i++) S2.add('period', S2.addDays(S2.today(), k + i), { flow: 'medium' }); });
+  check('after a birth with periods not back, nothing is predicted whatever the set-up date', S2.cycleStats().mode === 'suspended' && !S2.cycleStats().predictedNext);
+  S2.setProfile({ periodsBack: 'yes' });
+  check('once she says periods are back, predictions start again', S2.cycleStats().mode !== 'suspended');
+  var w3 = fresh(), S3 = w3.OvuStore, RW3 = w3.OvuRewards;
+  RW3.award(S3.add('sleep', S3.today(), { bedTime: '23:00', wakeTime: '07:00', quality: 3 }));
+  check('logging never counts a streak', (RW3.ledger().streak || 0) === 0);
+})();
+
+(function singaporeNotes() {
+  console.log('2f. notes written by DeepSeek, Doubao and Codex the way women in Singapore type: every urgent one raises a card, no ordinary one does');
+  var w = fresh(), O = w.OvuOrb, fx = JSON.parse(fs.readFileSync(path.join(root, 'tools/fixtures/urgent-notes-sg-2026-10-20.json'), 'utf8')).notes, wrong = [];
+  fx.forEach(function (x) { var u = O.urgent(x.note, {}); if ((x.expect === 'urgent') !== !!u) wrong.push('[' + x.expect + '] ' + x.note + ' -> ' + (u ? u.code : 'none')); });
+  check('all ' + fx.length + ' notes read as expected', wrong.length === 0, wrong.join(' | '));
+})();
+
+(function everyOutfitHasItsOwnSprites() {
+  console.log('2g. every outfit she can pick has its own standing, meditating, sleeping and seated sprite, so no fallback changes her clothes');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), garden = fs.readFileSync(path.join(root, 'ovu-garden.js'), 'utf8'), friends = fs.readFileSync(path.join(root, 'ovu-friends.js'), 'utf8');
+  var list = src.slice(src.indexOf('var OUTFITS = ['), src.indexOf('];', src.indexOf('var OUTFITS = ['))).replace(/\/\*[\s\S]*?\*\//g, '');
+  var ids = (list.match(/\{ id: '([a-z0-9-]+)'/g) || []).map(function (m) { return /'([a-z0-9-]+)'/.exec(m)[1]; });
+  var sit = /var SIT = (\{[^\n]*\});/.exec(garden)[1], art = path.join(root, 'assets/room/dream'), missing = [];
+  ids.forEach(function (o) {
+    ['avatar-' + o, o === 'yoga' ? 'avatar-meditate' : 'avatar-meditate-' + o, o === 'pajamas' ? 'avatar-sleeping' : 'avatar-sleeping-' + o, 'avatar-sit-' + o].forEach(function (f) { if (!fs.existsSync(path.join(art, f + '.webp'))) missing.push(f); });
+    if (sit.indexOf(o === 'base' ? 'base:' : (/-/.test(o) ? "'" + o + "'" : o + ':')) < 0) missing.push('SIT.' + o);
+  });
+  check(ids.length + ' outfits, each with all four sprites and a seat measurement', ids.length >= 9 && missing.length === 0, missing.join(', '));
+  check('the tudung outfit waits until its sprites are drawn', ids.indexOf('tudung') < 0 || missing.length === 0);
+  var looks = (friends.slice(friends.indexOf('var LOOKS = ['), friends.indexOf(']];', friends.indexOf('var LOOKS = [')) + 2).match(/\['([a-z0-9-]+)', '[^']+'\]/g) || []).map(function (m) { return /'([a-z0-9-]+)'/.exec(m)[1]; });
+  check('every friend card look is an outfit with a standing sprite', looks.length >= 9 && looks.every(function (l) { return ids.indexOf(l) >= 0; }), looks.join(','));
 })();
 
 (function noPeriodStatementsAreNotFlow() {
@@ -935,37 +1070,66 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   Promise.all([t1, t2]).catch(function (err) { check('the sync edge-case tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
+/* A small pretend PostgREST /entries endpoint for the sync tests. It reads only the query forms the app sends (the
+   synced_at cursor as gt or gte, the (synced_at, id) keyset `or` with quoted values, the type filter, id=gt, the two
+   orders, limit and offset) and throws on anything else, so a new query shape cannot slip past it unread. synced_at
+   is compared as an instant to the microsecond, as Postgres does, whatever its spelling ('...Z' or '+00:00'); ids
+   compare as text, the same order the server uses for both the sort and the id.gt filter. */
+function syncServer() {
+  var rows = [], memo = {};
+  function micros(s) {
+    if (memo[s] !== undefined) return memo[s];
+    var m = /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,6}))?(Z|[+-]\d\d:\d\d)$/.exec(String(s));
+    if (!m) throw new Error('pretend server: not a timestamp: ' + s);
+    return (memo[s] = Date.parse(m[1] + m[3]) * 1000 + Number(((m[2] || '') + '000000').slice(0, 6)));
+  }
+  var V = '("(?:[^"\\\\]|\\\\.)*"|[^,()"]*)';
+  var KEYSET = new RegExp('^\\(synced_at\\.gt\\.' + V + ',and\\(synced_at\\.eq\\.' + V + ',id\\.gt\\.' + V + '\\)\\)$');
+  function unq(v) { return v.charAt(0) === '"' ? v.slice(1, -1).replace(/\\(.)/g, '$1') : v; }
+  function byId(a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; }
+  return {
+    rows: rows,
+    get: function (url) {
+      var keep = [], order = null, lim = 1000, off = 0;
+      new URLSearchParams(url.split('?')[1] || '').forEach(function (v, k) {
+        var m;
+        if (k === 'select') return;
+        if (k === 'limit') { lim = Number(v); return; }
+        if (k === 'offset') { off = Number(v); return; }
+        if (k === 'order' && (v === 'id.asc' || v === 'synced_at.asc,id.asc')) { order = v; return; }
+        if (k === 'synced_at' && (m = /^(gt|gte)\.(.+)$/.exec(v))) { var t = micros(m[2]), gte = m[1] === 'gte'; keep.push(function (r) { var x = micros(r.synced_at); return gte ? x >= t : x > t; }); return; }
+        if (k === 'or' && (m = KEYSET.exec(v))) { var a = micros(unq(m[1])), b = micros(unq(m[2])), last = unq(m[3]); keep.push(function (r) { var x = micros(r.synced_at); return x > a || (x === b && r.id > last); }); return; }
+        if (k === 'type' && (m = /^in\.\(([^)]*)\)$/.exec(v))) { var types = m[1].split(','); keep.push(function (r) { return types.indexOf(r.type) > -1; }); return; }
+        if (k === 'id' && (m = /^gt\.(.+)$/.exec(v))) { var g = m[1]; keep.push(function (r) { return r.id > g; }); return; }
+        throw new Error('pretend server: unknown query ' + k + '=' + v);
+      });
+      var out = rows.filter(function (r) { return keep.every(function (f) { return f(r); }); });
+      out.sort(order === 'id.asc' ? byId : function (a, b) { return micros(a.synced_at) - micros(b.synced_at) || byId(a, b); });
+      return out.slice(off, off + lim);
+    }
+  };
+}
+/* a signed-in phone with cloud backup on, talking to `srv`; `state` is its saved sync position (null: a new phone,
+   undefined: an older version's millisecond cursor at 10:00 on 19 Oct) */
+function syncWorld(srv, onGet, state) {
+  var w = fresh(), S = w.OvuStore;
+  w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
+  S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+  var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
+  w.fetch = function (url, opt) {
+    var m = (opt && opt.method) || 'GET';
+    if (m === 'GET' && /\/entries/.test(url)) { var res = srv.get(url); if (onGet) onGet(url, res); return reply(200, res); }
+    if (m === 'GET') return reply(200, []);
+    return reply(201, null);
+  };
+  if (state !== null) w.localStorage.setItem('ovumind_sync_v1', JSON.stringify(state || { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-19T10:00:00Z', pushedAt: '2026-10-19T10:00:00Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }));
+  return w;
+}
+function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: type, date: '2026-10-19', data: data, source: 'room', created_at: at, updated_at: at, synced_at: at, deleted: false, deleted_at: null }; }
+
 (function exerciseTypedRecoveryCursor() {
   console.log('cloud sync: the one-time typed pull never moves the shared cursor, and walks ids past the 20,000-row cap');
-  /* a small pretend server: rows ordered by synced_at, honouring the cursor, the type filter, limit and offset */
-  function server() {
-    var rows = [];
-    return {
-      rows: rows,
-      get: function (url) {
-        var q = decodeURIComponent(url), cur = /synced_at=gt\.([^&]+)/.exec(q), ty = /type=in\.\(([^)]*)\)/.exec(q), idgt = /[?&]id=gt\.([^&]+)/.exec(q), byId = /order=id\.asc/.test(q), lim = Number((/limit=(\d+)/.exec(q) || [])[1] || 1000), off = Number((/offset=(\d+)/.exec(q) || [])[1] || 0);
-        /* synced_at compared as text so microseconds count, as Postgres does; ids compared as text too */
-        var out = rows.filter(function (r) { return (!cur || r.synced_at > cur[1]) && (!ty || ty[1].split(',').indexOf(r.type) > -1) && (!idgt || r.id > idgt[1]); });
-        out.sort(function (a, b) { return byId ? (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) : (a.synced_at < b.synced_at ? -1 : a.synced_at > b.synced_at ? 1 : (a.id < b.id ? -1 : 1)); });
-        return out.slice(off, off + lim);
-      }
-    };
-  }
-  function world(srv, onGet) {
-    var w = fresh(), S = w.OvuStore;
-    w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
-    S.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
-    var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
-    w.fetch = function (url, opt) {
-      var m = (opt && opt.method) || 'GET';
-      if (m === 'GET' && /\/entries/.test(url)) { var res = srv.get(url); if (onGet) onGet(url); return reply(200, res); }
-      if (m === 'GET') return reply(200, []);
-      return reply(201, null);
-    };
-    w.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-19T10:00:00Z', pushedAt: '2026-10-19T10:00:00Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }));
-    return w;
-  }
-  var row = function (id, type, at, data) { return { id: id, user_id: 'u1', type: type, date: '2026-10-19', data: data, source: 'room', created_at: at, updated_at: at, synced_at: at, deleted: false, deleted_at: null }; };
+  var server = syncServer, world = syncWorld, row = syncRow;
   /* 1. another phone uploads a reflection, then exercise, between this phone's two requests */
   var srv = server(), calls = 0;
   var w = world(srv, function (url) { calls++; if (calls === 1) { srv.rows.push(row('r101', 'reflection', '2026-10-19T10:01:00Z', { text: 'between the requests', mood: '' })); srv.rows.push(row('x102', 'exercise', '2026-10-19T10:02:00Z', { activity: 'walk', label: 'Walking', variant: 'brisk', code: '17200', met: 4.8, minutes: 20, intensity: 'moderate', strength: false, aerobic: true, note: '' })); } });
@@ -997,6 +1161,136 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
     check('once recovered, later syncs make no typed requests (20 pages, then 1, then none)', typedGets.length === 21, 'typed requests: ' + typedGets.length);
   });
   Promise.all([a, b]).catch(function (err) { check('the typed recovery tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
+(function sharedPullKeysetCursor() {
+  console.log('cloud sync: the shared pull resumes after the last (synced_at, id) it saw, so an upload larger than one sync arrives whole');
+  /* One upload of 25,000 rows (a large Apple Health import, say) is stamped with one now(), microseconds and all. Three
+     more rows land later in the same millisecond, so a cursor rounded to milliseconds cannot tell them apart either. */
+  var TIE = '2026-10-19T12:00:00.123456+00:00', SAME_MS = '2026-10-19T12:00:00.123999+00:00', pad = function (n) { return ('0000' + n).slice(-5); };
+  function load(srv) {
+    for (var i = 0; i < 25000; i++) srv.rows.push(syncRow('n' + pad(i), 'reflection', TIE, { text: 'note ' + i, mood: '' }));
+    ['a0', 'a1', 'a2'].forEach(function (id) { srv.rows.push(syncRow(id, 'reflection', SAME_MS, { text: 'note ' + id, mood: '' })); });
+  }
+  /* counts what each sync's shared pull delivers (the typed recovery's own requests are left out) */
+  function tally() {
+    var t = { seen: {}, per: [], sync: 0 };
+    t.onGet = function (url, res) { if (/type=in/.test(url)) return; t.per[t.sync] = (t.per[t.sync] || 0) + res.length; res.forEach(function (r) { t.seen[r.id] = (t.seen[r.id] || 0) + 1; }); };
+    t.twice = function () { return Object.keys(t.seen).filter(function (k) { return t.seen[k] > 1; }).length; };
+    return t;
+  }
+  /* 1. a new phone restores the backup (no cursor yet); another phone uploads one more row between its first two syncs */
+  var srv = syncServer(), t = tally();
+  load(srv);
+  var w = syncWorld(srv, t.onGet, null), S = w.OvuStore, Y = w.OvuSync;
+  var a = Y.syncNow().then(function () {
+    srv.rows.push(syncRow('late1', 'reflection', '2026-10-19T13:00:00.000001+00:00', { text: 'from the other phone', mood: '' }));
+    t.sync = 1; return Y.syncNow();
+  }).then(function () { t.sync = 2; return Y.syncNow(); }).then(function () {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('a restore larger than one sync: 20,000 rows, then the rest of the same upload and the late row, then nothing', t.per.join() === '20000,5004,0', 'per sync: ' + t.per.join());
+    check('every row arrives exactly once, none skipped at the cut and none fetched again', Object.keys(t.seen).length === 25004 && t.twice() === 0 && S.list('reflection').length === 25004, JSON.stringify({ distinct: Object.keys(t.seen).length, twice: t.twice(), local: S.list('reflection').length }));
+    check('the cursor keeps the server\'s own timestamp, microseconds included, and the last id', st.pulledSeq === '2026-10-19T13:00:00.000001+00:00' && st.pulledId === 'late1', JSON.stringify({ seq: st.pulledSeq, id: st.pulledId }));
+  });
+  /* 2. a phone that an older version left on a millisecond cursor inside the same upload (what it saved after taking
+     its first 20,000 rows) catches up within two syncs and then stops pulling them */
+  var srv2 = syncServer(), t2 = tally();
+  load(srv2);
+  var v = syncWorld(srv2, t2.onGet, { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-19T12:00:00.123Z', pushedAt: '2026-10-19T12:00:00.123Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }), SV = v.OvuStore, YV = v.OvuSync;
+  var b = YV.syncNow().then(function () { t2.sync = 1; return YV.syncNow(); }).then(function () { t2.sync = 2; return YV.syncNow(); }).then(function () {
+    check('an older millisecond cursor resumes from that millisecond: everything arrives within two syncs, then nothing', t2.per.join() === '20000,5003,0' && Object.keys(t2.seen).length === 25003 && SV.list('reflection').length === 25003, JSON.stringify({ per: t2.per.join(), distinct: Object.keys(t2.seen).length, local: SV.list('reflection').length }));
+  });
+  /* 3. ids are free text (a restored backup keeps its own), so the cursor id is quoted: one with a quote, a comma,
+     brackets and a backslash still resumes exactly after itself */
+  var odd = 'we"ird,(id)\\', srv3 = syncServer(), t3 = tally();
+  [odd, odd + 'z', 'wa', 'x1'].forEach(function (id) { srv3.rows.push(syncRow(id, 'reflection', TIE, { text: id, mood: '' })); });
+  var u = syncWorld(srv3, t3.onGet, { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: TIE, pulledId: odd, pushedAt: TIE, profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null });
+  var c = u.OvuSync.syncNow().then(function () {
+    check('a cursor id with quotes, commas, brackets and a backslash resumes exactly after itself', Object.keys(t3.seen).sort().join('|') === [odd + 'z', 'x1'].join('|'), JSON.stringify(Object.keys(t3.seen)));
+  });
+  /* 4. (Codex round one) another tab moves the cursor further while this sync uploads, then the person clears that
+     newer row from the phone. This sync must not wind the cursor back, or the next sync brings the cleared row back. */
+  var R1 = '2026-10-19T11:00:00.000001+00:00', R2 = '2026-10-19T12:00:00.000002+00:00';
+  var srv4 = syncServer(), posted4 = false;
+  srv4.rows.push(syncRow('r1', 'reflection', R1, { text: 'eleven', mood: '' }));
+  var x = syncWorld(srv4, null, null), SX = x.OvuStore, YX = x.OvuSync, xPost = x.fetch;
+  SX.add('reflection', SX.today(), { text: 'written here', mood: '' });
+  x.fetch = function (url, opt) {
+    if (opt && opt.method === 'POST' && /\/entries/.test(url) && !posted4) {
+      posted4 = true;
+      /* the other tab: r2 arrives, it pulls through r2 and saves that cursor; r2 is then cleared from this phone */
+      srv4.rows.push(syncRow('r2', 'reflection', R2, { text: 'twelve, cleared later', mood: '' }));
+      var st = JSON.parse(x.localStorage.getItem('ovumind_sync_v1')); st.pulledSeq = R2; st.pulledId = 'r2'; x.localStorage.setItem('ovumind_sync_v1', JSON.stringify(st));
+    }
+    return xPost(url, opt);
+  };
+  var d = YX.syncNow().then(function () {
+    var st = JSON.parse(x.localStorage.getItem('ovumind_sync_v1'));
+    check('a slower tab never winds the cursor back past where another tab moved it', st.pulledSeq === R2 && st.pulledId === 'r2', JSON.stringify({ seq: st.pulledSeq, id: st.pulledId }));
+    return YX.syncNow();
+  }).then(function () {
+    check('so a row cleared from this phone after the other tab pulled it is not brought back', !SX.get('r2') && !!SX.get('r1'), JSON.stringify({ r1: !!SX.get('r1'), r2: !!SX.get('r2') }));
+  });
+  /* 5. (Codex round one, already there before) signing out or resetting the position during the upload: the
+     finishing sync must not write the old account and cursor back into the cleared position */
+  var srv5 = syncServer(), posted5 = false;
+  srv5.rows.push(syncRow('s1', 'reflection', R1, { text: 'eleven', mood: '' }));
+  var y = syncWorld(srv5, null, null), SY5 = y.OvuStore, YY = y.OvuSync, yPost = y.fetch;
+  SY5.add('reflection', SY5.today(), { text: 'written here', mood: '' });
+  y.fetch = function (url, opt) { if (opt && opt.method === 'POST' && /\/entries/.test(url) && !posted5) { posted5 = true; YY.resetPosition(); } return yPost(url, opt); };
+  var e = YY.syncNow().then(function (r) {
+    var st = JSON.parse(y.localStorage.getItem('ovumind_sync_v1'));
+    check('a reset during the upload stays a reset: no account, no cursor, no push watermark written back', posted5 && st.userId === null && st.pulledSeq === null && !st.pulledId && st.pushedAt === null && r && r.ok === false, JSON.stringify({ r: r, userId: st.userId, seq: st.pulledSeq, pushedAt: st.pushedAt }));
+  });
+  Promise.all([a, b, c, d, e]).catch(function (err) { check('the shared pull cursor tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
+(function syncGenerationAcrossAccounts() {
+  console.log('cloud sync: a sign-out during an upload can never carry one account into the next (Codex pre-merge blocker 2)');
+  var w = fresh(), S = w.OvuStore, Y = w.OvuSync, uid = 'uA', posts = [], releasePost = null, held = null;
+  w.OvuAuth = { session: function () { return { user: { id: uid } }; }, token: function () { return Promise.resolve('tok-' + uid); }, userId: function () { return uid; } };
+  S.setProfile({ name: 'Ann', lifeStage: 'cycling', cloud: { v: 1, at: '2026-10-20T00:00:00Z', uid: 'uA' } });
+  var reply = function (status, body) { return Promise.resolve({ ok: status < 300, status: status, text: function () { return Promise.resolve(body == null ? '' : JSON.stringify(body)); } }); };
+  w.fetch = function (url, opt) {
+    var m = (opt && opt.method) || 'GET', tok = ((opt && opt.headers && opt.headers.Authorization) || '').slice(7);
+    if (m === 'GET' && /\/entries/.test(url)) return reply(200, []);
+    if (m === 'GET' && /\/profiles/.test(url)) return reply(200, /user_id=eq\.uB/.test(url) ? [{ user_id: 'uB', display_name: 'Bea', profile: { name: 'Bea', lifeStage: 'peri' }, updated_at: '2026-10-19T08:00:00Z' }] : []);
+    if (m === 'POST' && /\/profiles/.test(url)) {
+      var body = JSON.parse(opt.body); posts.push({ tok: tok, user: body.user_id, name: body.profile && body.profile.name });
+      /* A's first upload: hold it in the air while the person signs out and B signs in and turns on backup */
+      if (body.user_id === 'uA' && !held) { held = new Promise(function (res) { releasePost = res; }); return held.then(function () { return reply(201, null); }); }
+      return reply(201, null);
+    }
+    return reply(201, null);
+  };
+  var g0 = 0, first = Y.syncNow();
+  var waitPost = function (n) { return new Promise(function (res) { (function poll() { if (posts.length >= n && releasePost) return res(); setTimeout(poll, 1); })(); }); };
+  var done = waitPost(1).then(function () {
+    g0 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1')).gen;
+    Y.resetPosition(); /* sign-out */
+    uid = 'uB'; S.setProfile({ cloud: { v: 1, at: '2026-10-20T00:05:00Z', uid: 'uB' } }); /* B signs in and turns on backup */
+    releasePost(); /* A's upload completes now */
+    return first;
+  }).then(function (r1) {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    check('the overtaken sync ends cancelled and writes nothing into the reset state', r1 && r1.ok === false && r1.reason === 'cancelled' && st.userId === null && st.profilePulledAt === null && st.gen === g0 + 1, JSON.stringify({ r1: r1, st: { userId: st.userId, pulled: st.profilePulledAt, gen: st.gen, g0: g0 } }));
+    return Y.syncNow();
+  }).then(function (r2) {
+    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1')), toB = posts.filter(function (p) { return p.user === 'uB'; });
+    check('B\'s first sync restores B\'s own cloud profile instead of uploading over it', r2 && r2.ok === true && S.profile().name === 'Bea' && S.profile().lifeStage === 'peri' && st.userId === 'uB' && toB.length === 0, JSON.stringify({ r2: r2, name: S.profile().name, toB: toB }));
+    check('nothing of A was ever sent with B\'s token, and A\'s only upload used A\'s own token', posts.every(function (p) { return (p.user === 'uA') === (p.tok === 'tok-uA'); }) && !posts.some(function (p) { return p.user === 'uB' && p.name === 'Ann'; }), JSON.stringify(posts));
+  });
+  /* the lock: when the browser offers Web Locks, every sync runs inside the same named lock */
+  var v = fresh(), lockNames = [];
+  v.navigator.locks = { request: function (name, fn) { lockNames.push(name); return Promise.resolve().then(fn); } };
+  v.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('t'); }, userId: function () { return 'u1'; } };
+  v.OvuStore.setProfile({ cloud: { v: 1, at: '2026-10-20T00:00:00Z', uid: 'u1' } });
+  v.fetch = function (url, opt) { return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve((opt && opt.method && opt.method !== 'GET') ? '' : '[]'); } }); };
+  var locked = v.OvuSync.syncNow().then(function (r) { check('a sync runs inside the browser-wide ovumind-sync lock when Web Locks exist', lockNames.length === 1 && lockNames[0] === 'ovumind-sync' && r && r.ok === true, JSON.stringify({ locks: lockNames, r: r })); });
+  /* every reset moves the generation on */
+  var z = fresh(); z.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, gen: 4, userId: 'u1', shadow: {}, tombstones: {} })); z.OvuSync.resetPosition();
+  check('a reset moves the generation on and clears the account', JSON.parse(z.localStorage.getItem('ovumind_sync_v1')).gen === 5 && JSON.parse(z.localStorage.getItem('ovumind_sync_v1')).userId === null);
+  Promise.all([done, locked]).catch(function (err) { check('the sync generation tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */
@@ -1623,6 +1917,60 @@ function scenes(todayIso) {
   check('harvest fills the basket, empties the bed and writes no diary entry', h.ok && h.crop === 'carrot' && h.n === 2 && F.farmState(S).harvest.carrot === 2 && !F.bed(S, clean).crop && S.list().length === before);
   var sm = F.summary(S, day);
   check('the summary counts planted, ripe, dry and weedy beds', typeof sm.planted === 'number' && typeof sm.weeds === 'number' && sm.seedsLeft === F.seedsLeftToday(S, day));
+})();
+
+/* ---------- plaza servers (ovu-plaza.js): the words a person sees; the server rules are tested in the database ---------- */
+(function plazaWords() {
+  console.log('plaza servers: counts read like a person would say them; full plazas point to one with room');
+  var w = fresh('2026-10-19');
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-plaza.js'), 'utf8'), w, { filename: 'ovu-plaza.js' });
+  var P = w.OvuPlaza;
+  check('counts: nobody, one person, many; and just you once she is in', P.countText(0) === 'nobody here yet' && P.countText(1) === '1 person here' && P.countText(7) === '7 people here' && P.countText(1, true) === 'just you for now' && P.countText(3, true) === '3 people here');
+  check('a plaza row says how full it is, Full at capacity, Closed when shut', P.roomText({ people: 3, capacity: 24 }) === '3 of 24 here' && P.roomText({ people: 24, capacity: 24 }) === '24 of 24, full' && P.roomText({ people: 0, capacity: 24, open: false }) === 'Closed for now');
+  check('the pill: sign in when signed out, a total when choosing, her plaza and its count once in', P.pillText({ signedIn: false }) === 'Groups · sign in to join' && P.pillText({ signedIn: true, servers: [{ people: 2 }, { people: 3 }] }) === 'Choose a group · 5 online' && P.pillText({ signedIn: true, joined: { name: 'PCOS', people: 1 } }) === 'PCOS · just you for now' && P.pillText({ signedIn: true, joined: { name: 'PCOS', people: 4 }, offline: true }) === 'PCOS · reconnecting');
+  check('a full group points to Everyone when it has room, or says to try later', P.fullText({ name: 'PCOS', suggest: { name: 'Everyone' } }) === 'PCOS is full right now. Everyone has room.' && P.fullText({ name: 'Menopause' }) === 'Menopause is full right now. Try again in a little while.');
+  check('each group has its own quiet icon, and an unknown group the plain one', P.icon('pcos') === 'water_drop' && P.icon('menopause') === 'spa' && P.icon('trying-to-conceive') === 'favorite' && P.icon('everyone') === 'groups' && P.icon('somewhere-new') === 'groups');
+  check('the module stands down without a room page and sends nothing', typeof P.join === 'undefined' && typeof P.state === 'undefined');
+})();
+
+/* ---------- plaza friends (ovu-friends.js): names, phrases, places and words; the server rules are tested in the database ---------- */
+(function plazaFriends() {
+  console.log('plaza friends: the name rules match the server, the phrase list matches the database, people stand on the floor');
+  var w = fresh('2026-10-19');
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-friends.js'), 'utf8'), w, { filename: 'ovu-friends.js' });
+  var F = w.OvuFriends, sql = fs.readFileSync(path.join(root, 'supabase/migrations/20261019130000_plaza_friends.sql'), 'utf8');
+  var np = F.nameProblem;
+  check('names: the same answers as social.name_problem in the database dry run', np('x') === 'length' && np('Mei@home') === 'chars' && np('Mei 98765') === 'contact' && np('www mei') === 'contact' && np('Staff') === 'reserved' && np('Rhythme Team') === 'reserved' && np('Admin Jo') === 'reserved' && np('Zoë') === null && np('美玲') === null && np("Ana-María O'Neil") === null && np('  Mei   Ling ') === null && F.cleanName('  Mei   Ling ') === 'Mei Ling' && np('Cassandra') === null);
+  check('names: 21 letters is too long, an emoji is not a letter, four digits look like a phone number', np('Abcdefghijklmnopqrstu') === 'length' && np('Mei 🙂') === 'chars' && np('Mei 1234') === 'contact' && np('Mei 123') === null);
+  check('every problem has plain words, and an unknown one falls back to "Try another name."', ['length', 'chars', 'contact', 'reserved', 'word'].every(function (k) { return F.problemText(k).length > 8; }) && F.problemText('nope') === 'Try another name.');
+  var seed = []; sql.replace(/\('([a-z-]+)', '([^']+)', '(note|hello)', \d+\)/g, function (_, id, text, kind) { seed.push([id, text, kind]); });
+  check('the phrase list is the one the database seeds, word for word', seed.length === F.PHRASES.length && seed.every(function (p, i) { return F.PHRASES[i][0] === p[0] && F.PHRASES[i][1] === p[1] && F.PHRASES[i][2] === p[2]; }), JSON.stringify(seed.slice(0, 2)));
+  var reasons = /reason text not null check \(reason in \(([^)]+)\)\)/.exec(sql)[1].replace(/'/g, '').split(', ');
+  check('report reasons are the ones the database accepts', JSON.stringify(F.REASONS.map(function (r) { return r[0]; })) === JSON.stringify(reasons));
+  var words = [].concat(F.PHRASES.map(function (p) { return p[1]; }), Object.keys(F.CUES).map(function (k) { return F.CUES[k]; }), [F.WORDS], F.REASONS.map(function (r) { return r[1]; }));
+  check('no em dashes anywhere in the module, and no vendor or model names in its words', fs.readFileSync(path.join(root, 'ovu-friends.js'), 'utf8').indexOf('—') < 0 && words.every(function (t) { return !/\b(AI|GPT|Claude|Doubao|Supabase|model)\b/.test(t); }));
+  check('the phrases are kind and plain: no health, body or pregnancy words, none longer than 40 characters', F.PHRASES.every(function (p) { return p[1].length <= 40 && !/pregnan|baby|period|cycle|weight|pain|heal|better soon|doctor/i.test(p[1]); }));
+  check('every action has its mindfulness cue', ['card', 'ask', 'accept', 'notnow', 'note', 'receive', 'block', 'report', 'unfriend'].every(function (k) { return F.CUES[k] && F.CUES[k].length > 10; }));
+  var many = []; for (var i = 0; i < 11; i++) many.push({ handle: 'h' + i, name: 'P' + i, look: i === 3 ? 'spacesuit' : 'cozy', friend: i === 0 });
+  var placed = F.placeFor(many);
+  check('eight people stand on the plate in order, the rest are listed; an unknown look wears the cosy knit', placed.length === 8 && placed[0].id === 'r0' && placed[0].friend && placed[7].handle === 'h7' && placed[3].outfit === 'base' && placed.every(function (p, k) { return p.real && p.spot === F.SPOTS[k]; }));
+  var ib = { ok: true, asks: [{ handle: 'a', name: 'Nadia', at: '2026-10-19T01:00:00Z' }], notes: [{ id: 5, name: 'Mei', read: false }, { id: 4, name: 'Mei', read: true }], friends: [{}, {}] };
+  check('the badge counts asks and unread notes only; a refused inbox counts nothing', F.badgeCount(ib) === 2 && F.badgeCount({ ok: false }) === 0 && F.badgeCount(null) === 0);
+  check('new since last look: an ask not seen and a note above the last id', F.freshText(F.freshSince(ib, { asks: [], note: 0 })) === '2 new things in Plaza friends.' && F.freshText(F.freshSince(ib, { asks: ['a|2026-10-19T01:00:00Z'], note: 0 })) === 'A kind note from Mei.' && F.freshText(F.freshSince(ib, { asks: [], note: 5 })) === 'Nadia asked to be friends.' && F.freshText(F.freshSince(ib, { asks: ['a|2026-10-19T01:00:00Z'], note: 5 })) === '');
+  check('a form from before a change elsewhere, Plaza friends turned off elsewhere and a hidden asker each get their own plain words', /another phone/.test(F.whyText({ why: 'stale' })) && /Open Plaza friends again to turn it on/.test(F.whyText({ why: 'consent' })) && /hidden from groups/.test(F.whyText({ why: 'hidden' })));
+  check('refusals in plain words; a block reads the same as someone who left', F.whyText({ why: 'gone' }) === 'She is not here right now.' && F.whyText({ why: 'name', problem: 'contact' }) === 'No contact details in a name, please.' && /^Plaza friends is paused on this account until /.test(F.whyText({ why: 'paused', until: '2026-10-26T00:00:00Z' })) && F.whyText({ why: 'mystery' }) === 'That did not work. Try again in a moment.');
+  check('the You row: sign in, make a card, no friends yet, counts with what is new', F.summary({ signedIn: false }) === 'Sign in to make friends in the plaza' && F.summary({ signedIn: true, me: { card: null } }) === 'Make a plaza card to meet people' && F.summary({ signedIn: true, me: { card: {} }, inbox: { ok: true, friends: [] } }) === 'No friends yet' && F.summary({ signedIn: true, me: { card: {} }, inbox: ib }) === '2 friends · 2 new' && F.summary({ signedIn: true, me: { paused_until: 'x' } }) === 'Paused for now');
+  check('the module stands down without a room page and sends nothing', typeof F.open === 'undefined' && typeof F.state === 'undefined');
+  var sw = scenes('2026-10-19'), L = sw.LAYOUTS.plaza;
+  var clear = F.SPOTS.every(function (p) { return sw.OvuWalk.inZones(L.zones, p.x, p.y) && !L.solids.some(function (o) { return p.x > o.x0 && p.x < o.x1 && p.y > o.y0 && p.y < o.y1; }); });
+  var apart = F.SPOTS.every(function (p, k) { return F.SPOTS.every(function (q, j) { return j === k || Math.hypot(p.x - q.x, p.y - q.y) >= 5; }); });
+  check('the eight places stand on the plaza floor, clear of the furniture and apart from each other', F.SPOTS.length === 8 && clear && apart);
+  var C = sw.OvuCommunity;
+  C.setPeople(function () { return placed.slice(0, 2); });
+  var withReal = C.neighbours();
+  C.setPeople(function () { return []; }); var emptyReal = C.neighbours();
+  C.setPeople(null);
+  check('real people take the samples’ place while any are shown; with none, the samples come back', withReal.length === 2 && withReal[0].real && emptyReal.length === 4 && emptyReal[0].sample && C.neighbours().length === 4);
 })();
 
 (function ledgerAccounting() {

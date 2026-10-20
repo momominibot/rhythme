@@ -10,7 +10,7 @@
 (function (root) {
   'use strict';
   var S = root.OvuStore;
-  var SYMPTOMS = ['cramps', 'headache', 'bloating', 'breast tenderness', 'back pain', 'fatigue', 'nausea', 'acne', 'cravings', 'insomnia', 'hot flushes', 'dizziness', 'spotting', 'discharge change', 'low mood', 'anxiety', 'irritability', 'brain fog'];
+  var SYMPTOMS = ['cramps', 'headache', 'bloating', 'breast tenderness', 'back pain', 'fatigue', 'nausea', 'acne', 'cravings', 'insomnia', 'hot flushes', 'dizziness', 'spotting', 'discharge change', 'low mood', 'anxiety', 'irritability', 'brain fog', 'vaginal dryness', 'urinary discomfort', 'pain during sex']; /* the last three from the four-persona review, 20 Oct */
   var MOODS = ['great', 'good', 'ok', 'low', 'bad'];
   /* a day of mindful minutes brought in from Apple Health or Google is one entry that may hold several sessions */
   function sessionCount(list) { return list.reduce(function (n, e) { return n + (e.data && e.data.kind === 'imported' ? Math.max(1, Number(e.data.sessions) || 1) : 1); }, 0); }
@@ -98,12 +98,18 @@
     var severe = recent.filter(function (e) { return typeof e.data.pain === 'number' && e.data.pain >= 8; });
     if (severe.length) flags.push(flag('watch', 'PAIN_SEVERE', 'Severe pain logged', severe.length + ' day(s) with pain 8/10 or more in the last two weeks. Pain that stops normal activities deserves a proper review.', severe[severe.length - 1].date));
     var low = recent.filter(function (e) { return e.data.mood === 'low' || e.data.mood === 'bad'; });
-    if (recent.length >= 7 && low.length >= 5) flags.push(flag('watch', 'MOOD_LOW', 'Low mood on most logged days', low.length + ' of the last ' + recent.length + ' logged days were low. You deserve support; this is worth talking about.', low[low.length - 1].date));
+    /* after a birth, three low days in two weeks are enough to say so (four-persona review, 20 Oct: help must not wait for seven
+     * records); otherwise most of at least a week of logged days */
+    var pp = (S.profile() || {}).pregState === 'postpartum';
+    if ((pp && low.length >= 3) || (recent.length >= 7 && low.length >= 5)) flags.push(flag('watch', 'MOOD_LOW', 'Low mood on ' + (pp ? 'several' : 'most') + ' logged days', low.length + ' of the last ' + recent.length + ' logged days were low. You deserve support, and you do not have to wait: mindline 1771 is open 24 hours, and your GP, polyclinic' + (pp ? ' or KKH' : '') + ' can help.', low[low.length - 1].date));
     var dizzyHeavy = recent.filter(function (e) {
       var heavy = S.byDate(e.date).some(function (x) { return x.type === 'period' && x.data.flow === 'heavy'; });
       return heavy && (e.data.symptoms || []).indexOf('dizziness') > -1;
     });
     if (dizzyHeavy.length) flags.push(flag('high', 'HEAVY_DIZZY', 'Heavy bleeding with dizziness', 'Heavy bleeding together with dizziness or faintness should be checked soon, today if it is happening now.', dizzyHeavy[dizzyHeavy.length - 1].date));
+    /* pain during sex is worth a review at any age (RCOG, ACOG); it is named once, never counted as a score */
+    var sexPain = S.list('symptom', { from: S.addDays(end, -27), to: end }).filter(function (e) { return (e.data.symptoms || []).indexOf('pain during sex') > -1; });
+    if (sexPain.length) flags.push(flag('watch', 'SEX_PAIN', 'Pain during sex', 'Logged on ' + sexPain.length + ' day' + (sexPain.length > 1 ? 's' : '') + ' in the last 4 weeks. Pain during or after sex is worth raising with your GP or polyclinic; there are often simple things that help.', sexPain[sexPain.length - 1].date));
     var counts = {};
     recent.forEach(function (e) { (e.data.symptoms || []).forEach(function (s) { counts[s] = (counts[s] || 0) + 1; }); });
     return { agent: 'symptomAgent', metrics: { days: recent.length, counts: counts }, flags: flags };
@@ -184,6 +190,24 @@
   }
 
   /* ---------- 4-Week Summary agent ---------- */
+  /* what the clinician should know before reading the numbers, all self-reported (four-persona review, 20 Oct: Nadia's export
+   * left out the birth, breastfeeding and paused predictions; Siti's left out her medicines) */
+  var HORMONE_NAMES = { pill: 'combined pill', pop: 'progestogen-only pill', iud_h: 'hormonal IUD', iud_cu: 'copper IUD', implant: 'implant or injection', hrt: 'HRT (MHT)', fertility: 'fertility medicines', ec: 'emergency contraception recently', other: 'another relevant medicine' };
+  function contextLines(p) {
+    p = p || {}; var out = [];
+    if (isPostmenopausal(p)) out.push('After menopause: 12 months or more without a period');
+    else if (p.lifeStage === 'peri') out.push('Perimenopause signs reported (hot flushes or night sweats)');
+    if (p.pregState === 'pregnant') out.push('Pregnant');
+    if (p.pregState === 'maybe') out.push('Could be pregnant');
+    if (p.pregState === 'postpartum') out.push('Gave birth in the last year' + (p.breastfeeding === 'yes' ? ', breastfeeding' : p.breastfeeding === 'no' ? ', not breastfeeding' : '') + (p.periodsBack === 'no' ? ', periods not back yet' : p.periodsBack === 'yes' ? ', periods back' : ''));
+    if (p.pregState === 'loss') out.push('Recent pregnancy loss');
+    if (p.plans === 'ttc') out.push('Trying to conceive' + (p.ttcMonths ? ' (' + p.ttcMonths + ' months)' : '') + (p.fertilityTx === 'yes' ? ', had fertility treatment before' : ''));
+    var hs = (p.hormones || []).filter(function (h) { return HORMONE_NAMES[h]; }).map(function (h) { return HORMONE_NAMES[h]; });
+    if (hs.length) out.push('Uses: ' + hs.join(', '));
+    var mode = (function () { try { return S.cycleStats().mode; } catch (e) { return p.predictionMode; } })();
+    if (mode === 'suspended') out.push('Cycle predictions are paused for this situation');
+    return out;
+  }
   function fourWeekSummary(end) {
     end = end || S.today();
     var from = S.addDays(end, -27);
@@ -192,7 +216,9 @@
     var cs = S.cycleStats(end), sl = S.sleepStats(28, end);
     var periodDays = S.list('period', { from: from, to: end }).filter(function (e) { return e.data.flow && e.data.flow !== 'none'; });
     var symptoms = S.list('symptom', { from: from, to: end }), counts = {}, pain = [], moods = {};
-    symptoms.forEach(function (e) { (e.data.symptoms || []).forEach(function (s) { counts[s] = (counts[s] || 0) + 1; }); if (typeof e.data.pain === 'number') pain.push(e.data.pain); if (e.data.mood) moods[e.data.mood] = (moods[e.data.mood] || 0) + 1; });
+    var flush = { days: 0, counted: 0, total: 0, nightsWoken: 0 };
+    symptoms.forEach(function (e) { (e.data.symptoms || []).forEach(function (s) { counts[s] = (counts[s] || 0) + 1; }); if (typeof e.data.pain === 'number') pain.push(e.data.pain); if (e.data.mood) moods[e.data.mood] = (moods[e.data.mood] || 0) + 1;
+      if ((e.data.symptoms || []).indexOf('hot flushes') > -1) { flush.days++; if (typeof e.data.flushes === 'number') { flush.counted++; flush.total += e.data.flushes; } if (e.data.flushNight) flush.nightsWoken++; } });
     var top = Object.keys(counts).map(function (k) { return { name: k, days: counts[k] }; }).sort(function (a, b) { return b.days - a.days; }).slice(0, 6);
     var meals = S.list('food', { from: from, to: end }), tags = {}, foodDays = {};
     meals.forEach(function (m) { foodDays[m.date] = true; (m.data.tags || []).forEach(function (t) { tags[t] = (tags[t] || 0) + 1; }); });
@@ -205,9 +231,10 @@
     return {
       agent: 'FourWeekSummaryAgent v1 (rule-based)', generatedAt: new Date().toISOString(), range: { from: from, to: end },
       coverage: { daysWithEntries: Object.keys(daysWithEntries).length, totalDays: 28 },
-      cycle: { periodDays: periodDays.length, episodes: cs.episodes.filter(function (ep) { return ep.end >= from; }).map(function (ep) { return { start: ep.start, end: ep.end, length: ep.length, heavyDays: ep.heavyDays }; }), cycleLengths: cs.lengths.slice(-6), averageLength: cs.averageLength, lastStart: cs.lastStart, predictedNext: cs.predictedNext, cycleDay: cs.cycleDay, phase: cs.phase, basis: cs.basis },
+      cycle: { filledDays: periodDays.filter(function (e) { return e.data.autofill; }).length, periodDays: periodDays.length, episodes: cs.episodes.filter(function (ep) { return ep.end >= from; }).map(function (ep) { return { start: ep.start, end: ep.end, length: ep.length, heavyDays: ep.heavyDays }; }), cycleLengths: cs.lengths.slice(-6), averageLength: cs.averageLength, lastStart: cs.lastStart, predictedNext: cs.predictedNext, cycleDay: cs.cycleDay, phase: cs.phase, basis: cs.basis },
       sleep: { nights: sl.count, average: sl.avg, under6: sl.under6, series: sl.nights.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality }; }) },
-      symptoms: { daysLogged: symptoms.length, top: top, painAvg: pain.length ? Math.round(pain.reduce(function (a, b) { return a + b; }, 0) / pain.length * 10) / 10 : null, painMax: pain.length ? Math.max.apply(null, pain) : null, moods: moods },
+      context: contextLines(S.profile()),
+      symptoms: { flushes: flush, daysLogged: symptoms.length, top: top, painAvg: pain.length ? Math.round(pain.reduce(function (a, b) { return a + b; }, 0) / pain.length * 10) / 10 : null, painMax: pain.length ? Math.max.apply(null, pain) : null, moods: moods },
       food: { meals: meals.length, daysLogged: Object.keys(foodDays).length, tags: tags, nutrients: nutrientDays(meals) },
       mindfulness: (function () { var ss = S.list('mindfulness', { from: from, to: end }); return { sessions: sessionCount(ss), minutes: Math.round(ss.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) }; })(),
       /* self-reported movement over the 28 days: totals only, no score (ovu-exercise.js has the weekly WHO view) */
@@ -226,5 +253,5 @@
     return sum;
   }
 
-  root.OvuAgents = { SYMPTOMS: SYMPTOMS, MOODS: MOODS, FOOD_TAGS: FOOD_TAGS, supervisor: supervisor, analyze: analyze, allFlags: allFlags, dailySummary: dailySummary, fourWeekSummary: fourWeekSummary, dismissFlag: dismissFlag, saveMonthlySummary: saveMonthlySummary, agents: AGENTS, fmtHours: fmtHours };
+  root.OvuAgents = { isPostmenopausal: isPostmenopausal, SYMPTOMS: SYMPTOMS, MOODS: MOODS, FOOD_TAGS: FOOD_TAGS, supervisor: supervisor, analyze: analyze, allFlags: allFlags, dailySummary: dailySummary, fourWeekSummary: fourWeekSummary, dismissFlag: dismissFlag, saveMonthlySummary: saveMonthlySummary, agents: AGENTS, fmtHours: fmtHours };
 })(window);

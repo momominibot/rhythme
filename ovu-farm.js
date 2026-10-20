@@ -189,8 +189,11 @@
       if (!res.ok) { R.toast(res.why, 'info'); return; }
       act(kind); R.chime('save'); renderBeds();
       if (kind === 'harvest') { afterHarvest(res); return; }
-      if (kind === 'plant') R.toast('Planted. Set one small intention for this week as it grows.', 'spa');
-      if (kind === 'water') R.toast(res.ripe ? 'Ripe! Tap the bed again to harvest.' : 'Watered. ' + res.days + ' of ' + CROPS[bed(S, id).crop].days + ' days.', 'water_drop');
+      /* each care step is a small mindful moment: she kneels to plant or pull weeds, waters, gathers (ovu-moments.js) */
+      var mo = function (k) { return R.moment ? R.moment(k, { quiet: true }) : ''; };
+      if (kind === 'plant') R.toast('Planted.', 'spa', mo('plant'));
+      if (kind === 'clear') R.toast('Weeds pulled. The bed can grow again.', 'grass', mo('weed'));
+      if (kind === 'water') R.toast(res.ripe ? 'Ripe! Tap the bed again to harvest.' : 'Watered. ' + res.days + ' of ' + CROPS[bed(S, id).crop].days + ' days.', 'water_drop', mo('farmwater'));
       openBed(id);
     });
   }
@@ -198,12 +201,13 @@
   function afterHarvest(res) {
     var crop = CROPS[res.crop];
     var what = res.n + ' ' + (res.n > 1 ? crop.plural : crop.name.toLowerCase());
+    var line = R.moment ? R.moment('harvest', { quiet: true }) : '';
     R.openSheet('farmharvest', 'Harvested!', what + ' into the basket', 'shopping_basket',
-      '<p>' + esc(what) + ' picked. You have ' + esc(res.total) + ' in the basket now.</p>' +
+      '<p>' + esc(what) + ' picked. You have ' + esc(res.total) + ' in the basket now.</p>' + (line ? '<p class="mindline"><span class="ms">spa</span>' + esc(line) + '</p>' : '') +
       '<p class="help">If you are about to cook or eat something real, you can log the meal; the farm never logs anything for you.</p>' +
       '<div class="row"><button type="button" class="btn primary" id="harvestLog"><span class="ms">restaurant</span>Log a meal</button><button type="button" class="btn soft" id="harvestNo">Not now</button></div>');
     var lg = doc.getElementById('harvestLog'), no = doc.getElementById('harvestNo');
-    if (lg) lg.addEventListener('click', function () { R.hideSheet(); var a = doc.querySelector('nav a[data-tab="food"]'); if (a) a.click(); });
+    if (lg) lg.addEventListener('click', function () { R.hideSheet(); var a = doc.querySelector('nav a[data-tab="food"]'); if (a) a.click(); if (R.moment) setTimeout(function () { R.toast('Only what you really ate.', 'restaurant', R.moment('farmmeal', { quiet: true })); }, 400); });
     if (no) no.addEventListener('click', function () { R.hideSheet(); });
   }
   function openShed() {
@@ -221,7 +225,7 @@
       (rows.length ? '<ul class="basketlist">' + rows.map(function (k) { return '<li><span class="dot" style="background:' + CROPS[k].colour + '"></span>' + esc(CROPS[k].name) + ' <b>×' + esc(f.harvest[k]) + '</b></li>'; }).join('') + '</ul>' : '<p>Plant, water and pick, and the basket fills.</p>') +
       '<p class="help">Selling and gifting come with the market. For now the basket is yours to admire.</p>');
   }
-  function openWell() { R.toast('The can is full. Tap a bed to water it.', 'water_drop'); }
+  function openWell() { R.toast('The can is full. Tap a bed to water it.', 'water_drop', 'Listen to the water for a moment.'); }
   /* several beds share this spot: ask which one */
   function openPicker(ids) {
     var day = today(), f = farmState(S);

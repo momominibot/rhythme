@@ -40,6 +40,10 @@
     { id: 'personalisation', hidden: true, title: 'Personalised suggestions', icon: 'tune', body: 'Not offered yet.' },
     { id: 'research', hidden: true, title: 'Research', icon: 'science', body: 'Not offered yet.' }
   ];
+  /* where Luna's AI help runs, shown beside the three AI switches (four-persona review, 20 Oct: the switches did not say;
+     privacy.html did). Kept outside the hashed purpose bodies, so it informs every choice without changing a recorded notice. */
+  var AI_WHERE = 'Where the AI help runs: when any of the three Luna switches below is on, that note, photo or summary goes through Rhythme’s server in ' + REGION_CLOUD + ' to a third-party AI service in ' + REGION_AI + ', and the answer comes back to you. No name is attached, but what you write can still say a lot about your health.';
+  var AI_WHERE_HTML = '<p class="c-where" role="note">' + AI_WHERE.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</p>';
   function purpose(id) { return PURPOSES.filter(function (p) { return p.id === id; })[0] || null; }
   function nowIso() { return new Date().toISOString(); }
   function uid() { return root.OvuAuth && root.OvuAuth.userId ? (root.OvuAuth.userId() || null) : null; }
@@ -218,7 +222,7 @@
     if (minorNote) { minorNote.hidden = !minor; minorNote.style.display = minor ? '' : 'none'; } /* the flag's own display rule would beat the hidden attribute */
     if (box) box.innerHTML = PURPOSES.filter(function (p) { return !p.required && !p.hidden; }).map(function (p) {
       var on = !!(st[p.id] && st[p.id].on && (!p.account || !st[p.id].uid || st[p.id].uid === u));
-      return toggleHTML(p, on, '');
+      return toggleHTML(p, on, '') + (p.id === 'ai_reading' ? AI_WHERE_HTML : '');
     }).join('');
     if (age) age.checked = false;
   }
@@ -310,7 +314,7 @@
   try { if (S) { importLegacy(); apply(); } } catch (e) { }
 
   root.OvuConsent = {
-    NOTICE_V: NOTICE_V, AGE_V: AGE_V, PURPOSES: PURPOSES, REGION_AI: REGION_AI, REGION_CLOUD: REGION_CLOUD,
+    NOTICE_V: NOTICE_V, AGE_V: AGE_V, PURPOSES: PURPOSES, REGION_AI: REGION_AI, REGION_CLOUD: REGION_CLOUD, AI_WHERE: AI_WHERE, AI_WHERE_HTML: AI_WHERE_HTML,
     purpose: purpose, events: events, state: state, stateFromEvents: stateFromEvents, allows: allows,
     noticeText: noticeText, noticeHash: noticeHash,
     record: record, grant: grant, withdraw: withdraw, setMany: setMany, apply: apply,

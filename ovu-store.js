@@ -332,6 +332,11 @@
     /* no silent 28-day assumption: predictions need a logged or stated length, and pause while pregnant, after a hysterectomy or past menopause */
     var mode = p.predictionMode || 'normal';
     if (useRecall && mode === 'normal') mode = 'wide'; /* remembered dates only ever give a wide window */
+    /* after a birth with periods not back, nothing is predicted until a period is logged after set-up (four-persona review, 20 Oct:
+     * Nadia at four months, breastfeeding, had imported cycles from before pregnancy reviving predictions) */
+    /* paused for as long as she says so; she says periods are back from the calendar or her intro (Codex branch review, 20 Oct:
+     * a set-up timestamp is rewritten by every intro edit, so it cannot decide this) */
+    if (p.pregState === 'postpartum' && p.periodsBack === 'no') mode = 'suspended';
     var predictedNext = last && avg && mode !== 'suspended' ? addDays(last, avg) : null;
     /* An observed window, not a point: the shortest to longest of the last six logged cycles (at least
      * plus or minus a day), plus or minus two days around a single length or a stated profile length.

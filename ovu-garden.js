@@ -171,18 +171,20 @@
    * standing one, never to the cross-legged one */
   /* lap line (where the body meets the seat) and height/width of each seated sprite, measured from the files */
   var SIT = { base: { hip: 0.695, aspect: 2.063 }, sundress: { hip: 0.766, aspect: 2.031 }, pajamas: { hip: 0.765, aspect: 2.019 }, cozy: { hip: 0.705, aspect: 2.035 }, yoga: { hip: 0.762, aspect: 2.013 }, party: { hip: 0.761, aspect: 1.902 }, 'kebaya-blue': { hip: 0.747, aspect: 1.672 }, 'kebaya-green': { hip: 0.746, aspect: 2.031 }, 'kebaya-red': { hip: 0.733, aspect: 1.674 } };
-  function outfitId() { var o = S.profile().outfit; return SIT[o] ? o : 'base'; }
-  function seatedSrc() { return ART + 'avatar-sit-' + outfitId() + '.webp'; }
+  /* her own outfit always: an outfit with no seated sprite stands beside the seat in its own clothes, never sits in the knit */
+  function outfitId() { return S.profile().outfit || 'base'; }
+  function seatedSrc() { return SIT[outfitId()] ? ART + 'avatar-sit-' + outfitId() + '.webp' : ''; }
   /* place a seated sprite on a seat: feet on the ground line, lap on the seat, facing the way the bench faces.
    * seat = { x, seatY, groundY, face } in plate percent; the width follows from the seat height so her legs reach */
   function seatPlace(el, seat) {
-    var L = R.layout(), m = SIT[outfitId()], drop = Math.max(1.5, seat.groundY - seat.seatY);
+    var L = R.layout(), m = SIT[outfitId()] || SIT.base, drop = Math.max(1.5, seat.groundY - seat.seatY);
     var w = drop / ((1 - m.hip) * (L.w / (L.h * (L.span > 1 ? L.span : 1))) * m.aspect); /* the box's aspect, which on a wide plate is not the plate's */
     el.style.left = seat.x + '%'; el.style.top = seat.groundY + '%'; el.style.width = Math.min(14, Math.max(7, w)).toFixed(2) + '%';
     el.classList.toggle('faceright', seat.face === 'right');
   }
   function seatedImg(img, fallback) {
     var want = seatedSrc(), probe = new Image();
+    if (!want) { img.src = fallback; img.classList.remove('seated'); return; }
     probe.onload = function () { img.src = want; img.classList.add('seated'); };
     probe.onerror = function () { img.src = fallback; img.classList.remove('seated'); };
     probe.src = want;
@@ -194,11 +196,11 @@
     if (back) { L.home.x = back.x; L.home.y = back.y; L.home.flip = !!back.flip; } /* she comes back beside the bench, not to the gate */
     var img = R.els.meditator && R.els.meditator.querySelector('img');
     if (img) {
-      seatedImg(img, ART + 'avatar-meditate.webp'); R.els.meditator.classList.add('onseat');
+      seatedImg(img, R.meditateSrc ? R.meditateSrc() : ART + 'avatar-meditate.webp'); R.els.meditator.classList.add('onseat');
       if (spot.seat) seatPlace(R.els.meditator, spot.seat); else R.els.meditator.classList.remove('faceright');
       if (!meditatorWatch && root.MutationObserver) {
         /* when the session ends the mat gets its own pose back, so the next mat session is cross-legged again */
-        meditatorWatch = new MutationObserver(function () { if (!R.els.meditator.classList.contains('on') && R.els.meditator.classList.contains('onseat')) { R.els.meditator.classList.remove('onseat', 'faceright'); img.classList.remove('seated'); img.src = ART + 'avatar-meditate.webp'; } });
+        meditatorWatch = new MutationObserver(function () { if (!R.els.meditator.classList.contains('on') && R.els.meditator.classList.contains('onseat')) { R.els.meditator.classList.remove('onseat', 'faceright'); img.classList.remove('seated'); img.src = R.meditateSrc ? R.meditateSrc() : ART + 'avatar-meditate.webp'; } });
         meditatorWatch.observe(R.els.meditator, { attributes: true, attributeFilter: ['class'] });
       }
     }
@@ -248,11 +250,18 @@
    * herbs to check with a doctor or pharmacist about. Sources sit behind a small (i) (ovu-evinfo.js). */
   function openGreenhouse() {
     if (root.OvuWalk.napping()) return;
-    var H = root.OvuHerbs, E = root.OvuEvidence, cs = S.cycleStats(), phase = cs.mode === 'suspended' ? null : cs.phase;
+    var H = root.OvuHerbs, E = root.OvuEvidence, cs = S.cycleStats(), pf = S.profile() || {};
+    /* trying to conceive, possibly or actually pregnant, or after a birth: the cautions come first and nothing is ranked by
+     * phase (four-persona review, 20 Oct: Wei Ling's and Nadia's cautions sat below every card) */
+    var careful = pf.plans === 'ttc' || pf.lifeStage === 'ttc' || pf.pregState === 'pregnant' || pf.pregState === 'maybe' || pf.pregState === 'postpartum' || pf.breastfeeding === 'yes';
+    var phase = cs.mode === 'suspended' || careful ? null : cs.phase;
+    var line = R.moment ? R.moment('greenhouse', { quiet: true }) : '';
     var teas = H ? H.forPhase(phase) : [], care = H && Array.isArray(H.TAKE_CARE) ? H.TAKE_CARE : [];
     var refs = function (ids) { return (ids || []).map(function (id) { var e = E && E.get(id); return e ? '<a href="evidence.html#' + id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + esc(id) + '</i></a>' : ''; }).join(''); };
     R.openSheet('greenhouse', 'The greenhouse', 'Teas and herbs, with what research says', 'local_florist',
-      '<section class="dsec teas"><p class="help" style="margin:2px 0 8px">' + (phase ? 'The ones for your ' + esc(phase) + ' phase come first. ' : '') + 'Familiar comfort drinks, with what research says and who should take care. Comfort, not treatment.</p>' +
+      '<section class="dsec teas">' + (line ? '<p class="mindline"><span class="ms">local_cafe</span>' + esc(line) + '</p>' : '') +
+      (careful ? '<div class="teacare first"><b><span class="ms">health_and_safety</span>Before any herb</b><p>' + (pf.pregState === 'pregnant' || pf.pregState === 'maybe' ? 'While you are or could be pregnant' : pf.pregState === 'postpartum' || pf.breastfeeding === 'yes' ? 'While you are breastfeeding or recovering from a birth' : 'While you are trying to conceive') + ', read each tea’s Take care note and ask a doctor or pharmacist before trying a herb. These are comfort drinks, not fertility or milk-supply treatments.</p></div>' : '') +
+      '<p class="help" style="margin:2px 0 8px">' + (phase ? 'The ones for your ' + esc(phase) + ' phase come first. ' : '') + 'Familiar comfort drinks, with what research says and who should take care. Comfort, not treatment.</p>' +
       teas.map(function (t) {
         return '<details class="tea"><summary>' + (t.img ? '<img class="teaimg" src="' + R.ART + t.img + '" alt="">' : '<span class="ms">' + esc(t.icon || 'local_cafe') + '</span>') +
           '<span><b>' + esc(t.name) + '</b><small>' + esc(t.why) + '</small></span><span class="ms go">expand_more</span></summary>' +

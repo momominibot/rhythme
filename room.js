@@ -118,6 +118,10 @@
     { id: 'kebaya-blue', name: 'Blue kebaya', note: 'Flight stewardess' },
     { id: 'kebaya-green', name: 'Green kebaya', note: 'Leading stewardess' },
     { id: 'kebaya-red', name: 'Red kebaya', note: 'Chief stewardess' }
+    /* four-persona review, 20 Oct: Nadia wears a tudung, and Codex, DeepSeek and Doubao all said her avatar should be able to.
+     * { id: 'tudung', name: 'Baju kurung & tudung', note: 'Dusty rose, lilac tudung' } joins this list only when its
+     * meditate, sleep, bench and action sprites exist: every missing one would fall back to a sprite with her hair
+     * showing, which takes her tudung off. The renders stopped on a dropped connection on 20 Oct. */
   ];
   var VIDEOS = [
     ['normal', 'normal-v4.mp4', 'A normal cycle', 'What typical looks like'],
@@ -135,7 +139,7 @@
     { id: 'nutrition', name: 'Nutrition', color: '#f3d49b', items: [['page', 'foods.html', 'restaurant', 'Foods by phase', 'TCM and Western notes'], ['page', 'nutrients.html', 'medication', 'Micronutrients', 'Iron, folate, magnesium'], ['page', 'medas14.html', 'nutrition', 'Mediterranean score', 'A 14-point check'], ['page', 'hydration.html', 'water_full', 'Hydration', 'Fluids through the cycle'], ['action', 'diary', 'menu_book', 'Open the food diary', 'Snap, scan or search']] },
     { id: 'mind', name: 'Mind & mood', color: '#b8cde0', items: [['page', 'room.html#mind', 'self_improvement', 'Mindfulness hub', 'Erin Lee’s pauses and podcasts'], ['link', 'https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change', 'article', 'The Quiet Work of Change', 'An essay by Erin'], ['page', 'mental-health.html', 'psychology', 'Mood & calm', 'When to reach for support'], ['page', 'breathe.html', 'air', 'Breathing', 'Guided breath'], ['action', 'mat', 'self_improvement', 'Sit on the mat', 'A session with Erin']] },
     { id: 'move', name: 'Movement', color: '#cfe6c4', items: [['action', 'move', 'directions_run', 'Log movement', 'Minutes, MET-minutes and your week'], ['action', 'moveguide', 'menu_book', 'Movement and your cycle', 'What the research says, with sources']] },
-    { id: 'body', name: 'Body & relief', color: '#f5c6b8', items: [['action', 'acu', 'spa', 'Acupressure on your avatar', 'Points for cramps, with evidence'], ['page', 'sleep.html', 'bedtime', 'Sleep & your cycle', 'Why some weeks feel lighter'], ['page', 'face-ppg.html', 'monitor_heart', 'Calm check (beta)', 'Pulse from your face camera'], ['page', 'ppg.html', 'fingerprint', 'Finger pulse', 'Camera and flash'], ['page', 'stress.html', 'self_improvement', 'Stress check-in', 'PSS-10 questionnaire']] },
+    { id: 'body', name: 'Body & relief', color: '#f5c6b8', items: [['action', 'acu', 'spa', 'Acupressure on your avatar', 'Points for cramps, with evidence'], ['page', 'sleep.html', 'bedtime', 'Sleep & your cycle', 'Why some weeks feel lighter'], ['page', 'face-ppg.html', 'monitor_heart', 'Calm check (experimental)', 'Face camera, not a medical test'], ['page', 'ppg.html', 'fingerprint', 'Finger pulse (experimental)', 'Camera and flash, not a medical test'], ['page', 'stress.html', 'self_improvement', 'Stress scan (experimental)', 'Face camera, not a questionnaire']] },
     { id: 'videos', name: 'All videos', color: '#e7dcf5', items: VIDEOS.map(function (v) { return ['video', v[0], v[2], v[3]]; }) },
     { id: 'doctor', name: 'Share with doctor', color: '#ffffff', items: [['page', 'journal.html#share', 'medical_services', 'Dr shares card', 'Your 4-week summary'], ['page', 'doctor.html', 'stethoscope', 'Doctor view', 'How your clinician opens it']] }
   ];
@@ -151,10 +155,13 @@
   var ERIN = 'assets/audio/erin-tts/';
   var CAPTION = { greeting_morning: 'Erin says good morning', greeting_evening: 'Erin says good evening', greeting_welcome: 'Welcome', meditation_begin: 'Settling in', breathing_in: 'Breathe in', breathing_out: 'Breathe out', meditation_end: 'Coming back', closing_steady: 'Steady, and done', closing_patience: 'Patience, and done', guide_soften: 'Let your shoulders soften, and notice the breath moving on its own.', guide_nothing_to_fix: 'There is nothing to fix right now. Just this one breath.', guide_quiet_work: 'Change is quiet work. One small, kind choice at a time.', guide_wander: 'When your mind wanders, that is not a mistake. Gently come back.', guide_feet: 'Feel your feet, your seat, and the weight of your hands.', guide_thanks: 'Before you go, thank yourself for pausing today.', guide_cramps: 'If there is cramping, breathe into your belly and let it be soft.' };
   /* acupoint markers on the standing avatar sprite (percent of the image) */
-  var ACU_XY = { cv6: [50, 66], cv4: [50, 70.5], cv3: [50, 75], st29: [57, 75], sp10: [54, 82.5], st36: [41, 87.5], sp6: [48, 94], ki3: [50, 96.5], lr3: [44, 98.5], li4: [70, 74.5], pc6: [69, 69.5] };
+  var ACU_XY = { cv6: [50, 66], cv4: [50, 70.5], cv3: [50, 75], st29: [57, 75], sp10: [54, 82.5], st36: [41, 87.5], sp6: [48, 94], sp8: [48.5, 89], ki3: [50, 96.5], lr3: [44, 98.5], li4: [70, 74.5], pc6: [69, 69.5] };
   var ACU_PREG = 'Pregnant or might be? Check with your maternity team before using this point. Traditional caution is not proof that touching it causes harm.';
   var ACU_PREG_BELLY = 'Pregnant or might be? Check with your maternity team first, and avoid firm pressure on the belly. Traditional caution is not proof that touching it causes harm.';
-  var ACU_CAUTION = { sp6: ACU_PREG, li4: ACU_PREG, cv3: ACU_PREG_BELLY, cv4: ACU_PREG_BELLY, cv6: ACU_PREG_BELLY, st29: ACU_PREG_BELLY };
+  /* SP8 and LR3: some TCM sources caution them in pregnancy (a conservative addition, DeepSeek and Doubao review 20 Oct); the
+     lower-back points: strong pressure is traditionally cautioned in pregnancy */
+  var ACU_PREG_BACK = 'Pregnant or might be? Use only light pressure on the lower back, and check with your maternity team first. Traditional caution is not proof that touching it causes harm.';
+  var ACU_CAUTION = { sp6: ACU_PREG, sp8: ACU_PREG, lr3: ACU_PREG, li4: ACU_PREG, cv3: ACU_PREG_BELLY, cv4: ACU_PREG_BELLY, cv6: ACU_PREG_BELLY, st29: ACU_PREG_BELLY, bl23: ACU_PREG_BACK, gv4: ACU_PREG_BACK };
 
   /* ---------- evidence guides behind every (i) ---------- */
   function padSVG(level) {
@@ -247,9 +254,11 @@
   }
   function loadJSON(url) { return fetch(url).then(function (r) { if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); }); }
   var toastTimer;
-  function toast(text, icon) {
-    var t = $('#toast'); t.innerHTML = '<span class="ms">' + esc(icon || 'auto_awesome') + '</span><span>' + esc(text) + '</span>';
-    t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('on'); }, 3200);
+  /* sub: the mindful line under the message, so it is seen even when a sheet covers her */
+  function toast(text, icon, sub) {
+    var t = $('#toast'); t.innerHTML = '<span class="ms">' + esc(icon || 'auto_awesome') + '</span><span>' + esc(text) + (sub ? '<small class="toastsub">' + esc(sub) + '</small>' : '') + '</span>';
+    t.classList.toggle('two', !!sub);
+    t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('on'); }, sub ? 5200 : 3200);
   }
   var audioCtx = null;
   function chime(kind, force) {
@@ -440,25 +449,25 @@
     var res = PETS.clean(id, poopId); if (!res.ok) { renderProps(); return; }
     var rw = RW.care(id, 'clean');
     if (btn) { btn.classList.add('poof'); btn.disabled = true; }
-    chime('tap'); toast('All tidy. ' + (PETS.NAMES[id] || 'Your pet') + ' thanks you.' + (rw.points ? ' +' + rw.points + ' ♥' : ''), 'cleaning_services');
+    chime('tap'); toast('All tidy. ' + (PETS.NAMES[id] || 'Your pet') + ' thanks you.' + (rw.points ? ' +' + rw.points + ' ♥' : ''), 'cleaning_services', moment('pettidy', { quiet: true }));
     setTimeout(renderProps, 650);
   }
   function petAction(id, act) {
     var name = PETS.NAMES[id] || 'Your pet';
     if (act === 'tidy') { PETS.current(id).poops.forEach(function (pp) { cleanPoop(id, pp.id, document.querySelector('.poop[data-poop="' + pp.id + '"]')); }); return; }
-    if (act === 'dress') { var piece = RW.nextWear(id); chime('save'); renderProps(); toast(piece ? name + ' is wearing the ' + piece.name.toLowerCase() + '.' : name + ' is back to her natural look.', 'checkroom'); bubble.classList.remove('on', 'petbub'); return; }
+    if (act === 'dress') { var piece = RW.nextWear(id); chime('save'); renderProps(); toast(piece ? name + ' is wearing the ' + piece.name.toLowerCase() + '.' : name + ' is back to her natural look.', 'checkroom', moment('petdress', { quiet: true })); bubble.classList.remove('on', 'petbub'); return; }
     if (act === 'treat') {
       var tl = RW.treatsFor(id); if (!tl.length) { toast('The treat cupboard is empty. Dream Street has more.', 'cookie'); return; }
       var tr = PETS.treat(id); if (!tr.ok) { toast(name + ' is full right now. Save the treat for later.', 'favorite'); return; }
       var used = RW.useTreat(id, tl[0].id); petFx(id, 'feed'); chime('save');
-      toast(name + ' loved the ' + used.item.name.toLowerCase() + '.' + (used.left ? ' ' + used.left + ' left.' : ' That was the last one.'), 'cookie');
+      toast(name + ' loved the ' + used.item.name.toLowerCase() + '.' + (used.left ? ' ' + used.left + ' left.' : ' That was the last one.'), 'cookie', moment('petfeed', { quiet: true }));
       bubble.classList.remove('on', 'petbub'); setTimeout(renderProps, 2400); return;
     }
     var r = act === 'feed' ? PETS.feed(id) : act === 'play' ? PETS.play(id) : PETS.cuddle(id);
     if (!r.ok) { toast(act === 'feed' ? name + ' is already full. Maybe a cuddle instead?' : name + ' is happily tired. Maybe a cuddle instead?', 'favorite'); return; }
     var rw = RW.care(id, act);
     petFx(id, act); chime('save');
-    toast((act === 'feed' ? name + ' munched happily.' : act === 'play' ? name + ' loved chasing the ball.' : name + ' snuggled in.') + (rw.points ? ' +' + rw.points + ' ♥' : ''), act === 'feed' ? 'restaurant' : act === 'play' ? 'sports_baseball' : 'favorite');
+    toast((act === 'feed' ? name + ' munched happily.' : act === 'play' ? name + ' loved chasing the ball.' : name + ' snuggled in.') + (rw.points ? ' +' + rw.points + ' ♥' : ''), act === 'feed' ? 'restaurant' : act === 'play' ? 'sports_baseball' : 'favorite', moment(act === 'feed' ? 'petfeed' : act === 'play' ? 'petplay' : 'petcuddle', { quiet: true }));
     setTimeout(renderProps, act === 'cuddle' ? 1500 : 2400);
   }
   $('#ownedProps').addEventListener('click', function (e) {
@@ -472,10 +481,13 @@
 
   /* ---------- avatar ---------- */
   var pos = { x: HOME.x, y: HOME.y }, walkTimer = null, idleTimer = null;
+  /* one counter for every image swap of her sprite (an outfit or a pose): a slow load that has been overtaken never lands
+   * (Codex branch review, 20 Oct: a late reading pose stayed after the moment ended) */
+  var imgGen = 0;
   function setOutfit(id, silent) {
     if (!OUTFITS.some(function (o) { return o.id === id; })) id = 'base';
-    var img = new Image();
-    img.onload = function () { avatarImg.src = img.src; if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); }, 700); } };
+    var img = new Image(), gen = ++imgGen;
+    img.onload = function () { if (gen !== imgGen) return; avatarImg.src = img.src; if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); } };
     img.src = ART + 'avatar-' + id + '.webp';
     S.setProfile({ outfit: id });
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
@@ -512,6 +524,7 @@
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
   function openSheet(id, title, sub, icon, html) {
+    careOn = false; /* a new sheet replaces Luna's chat and any card in it; Luna sets it again when she shows one */
     if (current === 'diary') stopCamera();
     current = id; $('#sheetTitle').innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');
     $('#sheetIcon').innerHTML = '<span class="ms">' + esc(icon) + '</span>';
@@ -522,7 +535,7 @@
     sheet.setAttribute('aria-hidden', 'false');
     var first = body.querySelector('input,button,select,textarea,a'); if (first && window.matchMedia('(hover:hover)').matches) try { first.focus({ preventScroll: true }); } catch (e) { }
   }
-  function hideSheet() { current = null; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
+  function hideSheet() { current = null; careOn = false; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
   function closeSheet() {
     if (current === 'diary') stopCamera();
     if (current === 'mind' && session) stopSession(true);
@@ -638,7 +651,7 @@
       '<div class="field"><span class="lbl">Add one</span><div class="chips">' + RM.TEMPLATES.map(function (t) { return '<button type="button" class="chipbtn" data-tpl="' + t.kind + '"><span class="ms">' + t.icon + '</span>' + esc({ sleep: 'Sleep', water: 'Water', move: 'Move', breathe: 'Breathe' }[t.kind] || t.label) + '</button>'; }).join('') + '<button type="button" class="chipbtn" data-tpl="custom"><span class="ms">add</span>Custom</button></div></div>' +
       '<div class="remedit" id="remEdit"></div>' +
       '<div class="row"><button type="button" class="btn soft" id="remIcs"><span class="ms">event</span>Add to my calendar</button><button type="button" class="btn ghost" id="remTest"><span class="ms">notifications</span>Send a test</button></div>' +
-      '<p class="help">Reminders live on this device. Notifications fire while Rhythme is open or installed to your Home Screen; the calendar file carries the same reminders, with alarms, into your phone’s own calendar.</p>');
+      '<p class="help">Reminders live on this device and only fire while Rhythme is open; when it is closed they may not arrive at all. For reminders you can count on, add the calendar file: it puts the same times, with alarms, into your phone’s own calendar.</p>');
     wireClockTabs();
     function editor(it) {
       var old = $('#remEdit'), ed = old.cloneNode(false); old.parentNode.replaceChild(ed, old);
@@ -655,7 +668,7 @@
         var dy = e.target.closest('[data-day]'); if (dy) { var d = Number(dy.dataset.day); days = days.indexOf(d) > -1 ? days.filter(function (x) { return x !== d; }) : days.concat([d]); dy.classList.toggle('on', days.indexOf(d) > -1); return; }
         var rm = e.target.closest('.tm button'); if (rm) { var t = rm.parentNode.dataset.t; times = times.filter(function (x) { return x !== t; }); rm.parentNode.remove(); return; }
         if (e.target.closest('#remAddTime')) { var nt = $('#remNewTime').value; if (RM.valid(nt) && times.indexOf(nt) < 0) { times.push(nt); times.sort(); $('#remTimes').innerHTML = timeChips(times); } return; }
-        if (e.target.closest('#remSave')) { try { RM.upsert({ id: it.id, kind: it.kind, label: $('#remLabel').value, icon: icon, times: times, days: days, note: $('#remNote').value, on: it.on !== false }); chime('save'); toast('Reminder saved.', 'alarm'); openClock(); } catch (err) { message($('#remMsg'), err.message, false); } return; }
+        if (e.target.closest('#remSave')) { try { RM.upsert({ id: it.id, kind: it.kind, label: $('#remLabel').value, icon: icon, times: times, days: days, note: $('#remNote').value, on: it.on !== false }); chime('save'); toast('Reminder saved.', 'alarm', moment('reminder', { quiet: true })); openClock(); } catch (err) { message($('#remMsg'), err.message, false); } return; }
         if (e.target.closest('#remDelete')) { RM.remove(it.id); toast('Reminder removed.', 'alarm'); openClock(); return; }
         if (e.target.closest('#remCancel')) { ed.classList.remove('on'); ed.innerHTML = ''; }
       });
@@ -672,9 +685,10 @@
   }
   function openSleepRecord() {
     openSheet('sleep', 'Bedside clock', 'Record any night, any date', 'alarm',
-      clockTabs('sleep') + '<div class="grid2"><div class="field"><label for="slDate">Morning of</label><input class="input" id="slDate" type="date" value="' + S.today() + '" max="' + S.today() + '"></div><div class="field"><label for="slBed">Bedtime</label><input class="input" id="slBed" type="time" value="23:00"></div></div>' +
-      '<div class="grid2"><div class="field"><label for="slWake">Wake time</label><input class="input" id="slWake" type="time" value="07:00"></div><div class="field"><div class="lbl-row"><span class="lbl">Quality</span>' + infoBtn('sleep') + '</div>' + moonsHTML('q', 0) + '</div></div>' + guideHTML('sleep') +
-      '<div class="field"><label for="slNotes">Notes (optional)</label><textarea class="input" id="slNotes" placeholder="Night sweats, cramps, late coffee..."></textarea></div>' +
+      clockTabs('sleep') + '<div class="grid2"><div class="field"><label for="slDate">Morning of</label><input class="input" id="slDate" type="date" value="' + S.today() + '" max="' + S.today() + '"></div><div class="field"><label for="slBed">Bedtime</label><input class="input" id="slBed" type="time" value=""></div></div>' +
+      '<div class="grid2"><div class="field"><label for="slWake">Wake time</label><input class="input" id="slWake" type="time" value=""></div><div class="field"><div class="lbl-row"><span class="lbl">Quality</span>' + infoBtn('sleep') + '</div>' + moonsHTML('q', 0) + '</div></div>' + guideHTML('sleep') +
+      '<p class="help">Your best guess is enough. Nothing is filled in for you, so an unknown night is never recorded as eight hours.</p>' +
+      '<div class="field"><label for="slNotes">Notes (optional)</label><textarea class="input" id="slNotes" placeholder="Night feeds, night sweats, cramps, late coffee..."></textarea></div>' +
       '<button class="btn primary" id="saveSleep" style="width:100%"><span class="ms">check</span>Save night</button><div class="msg" id="sleepMsg"></div>' +
       '<div class="field"><span class="lbl">Last 7 nights</span><div id="sleepList">' + sleepListHTML() + '</div></div>');
     wireMoons(body); wireClockTabs();
@@ -706,6 +720,7 @@
     stopEverything();
     scene.classList.add('is-night'); avatar.classList.add('hidden');
     var sl = S.state().sleeping; if (withPj && sl && sl.pj) setOutfit('pajamas', true);
+    wearImg(sleeper.querySelector('img'), sleepSrc(wornOutfit()), ART + 'avatar-sleeping.webp');
     setTimeout(function () { sleeper.classList.add('on'); }, 500);
     $('#phaseChip').classList.add('hidden');
     updateGreeting();
@@ -724,7 +739,7 @@
   function openCalendar(tab, date) {
     var d = date ? new Date(date + 'T12:00:00') : new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab || 'period'; cal.sel = date || S.today(); cal.lastFill = [];
     openSheet('calendar', 'Your calendar', 'Tap a past day to log or backdate', 'calendar_month',
-      '<div class="tabs" id="calTabs"><button data-tab="period" class="' + (cal.tab === 'period' ? 'on' : '') + '">Period</button><button data-tab="symptom" class="' + (cal.tab === 'symptom' ? 'on' : '') + '">Symptoms</button></div>' +
+      '<div class="tabs" id="calTabs"><button data-tab="period" class="' + (cal.tab === 'period' ? 'on' : '') + '">' + (A.isPostmenopausal(S.profile()) ? 'Bleeding' : 'Period') + '</button><button data-tab="symptom" class="' + (cal.tab === 'symptom' ? 'on' : '') + '">Symptoms</button></div>' +
       '<div class="cal-head"><button class="cal-nav" id="calPrev" aria-label="Previous month"><span class="ms">chevron_left</span></button><b id="calTitle"></b><button class="cal-nav" id="calNext" aria-label="Next month"><span class="ms">chevron_right</span></button></div>' +
       '<div class="cal-grid" id="calGrid" role="grid"></div>' +
       '<div class="legend"><span><i style="background:#e58aa8"></i>Period</span><span><i style="background:repeating-linear-gradient(135deg,#fff 0 3px,#f6e3ea 3px 6px);border:1px solid #f0cfdb"></i>Expected</span><span><i style="background:#eaf5ee;border:1px solid #cfe6d8"></i>Est. fertile</span><span><i style="background:#7a5c96;border-radius:50%"></i>Symptoms</span>' + infoBtn('cycle') + '</div>' + guideHTML('cycle') +
@@ -743,7 +758,9 @@
         if (have && wasSel) { S.remove(have.id); cal.lastFill = cal.lastFill.filter(function (id) { return id !== have.id; }); chime('tap'); toast('Unticked ' + prettyDate(day) + '.', 'remove_done'); renderDeck(); }
         else if (!have) {
           var near = S.list('period', { from: S.addDays(day, -1), to: S.addDays(day, 1) }).filter(function (x) { return x.data.flow && x.data.flow !== 'none'; }).length;
-          if (near) { var ev1 = S.add('period', day, { flow: 'light', clots: false, impact: false }); cal.lastFill = []; chime('save'); toast('Added ' + prettyDate(day) + '. Tap it again to untick.', 'water_drop'); renderDeck(); }
+          /* after menopause nothing is filled or guessed: the day opens below to say how much, and saving it shows the care card */
+          if (A.isPostmenopausal(S.profile())) { cal.lastFill = []; toast('Choose how much bleeding below, then save. Any bleeding after menopause needs a check.', 'medical_information'); }
+          else if (near) { var ev1 = S.add('period', day, { flow: 'light', clots: false, impact: false }); cal.lastFill = []; chime('save'); toast('Added ' + prettyDate(day) + '. Tap it again to untick.', 'water_drop'); renderDeck(); }
           else autoFillPeriod(day);
         }
       }
@@ -765,9 +782,10 @@
       if (S.list('period', { from: d, to: d }).length) break;
       var ev = S.add('period', d, { flow: i < 3 ? 'medium' : 'light', clots: false, impact: false, autofill: true }); ids.push(ev.id); days++;
     }
-    cal.lastFill = ids; chime('save');
-    toast('Marked ' + days + ' day' + (days === 1 ? '' : 's') + ' from ' + prettyDate(start) + '. Tap a pink day twice to untick it.', 'water_drop');
-    renderDeck();
+    cal.lastFill = ids;
+    /* the fill is one log: hearts and the avatar's moment once, never once per guessed day */
+    if (ids.length) afterSave(S.list('period', { from: start, to: start })[0], 'Marked ' + days + ' typical day' + (days === 1 ? '' : 's') + ' from ' + prettyDate(start) + '. Set the real flow on any day you remember; tap a pink day twice to untick it.');
+    else { chime('save'); renderDeck(); }
   }
   function renderCal() {
     var first = new Date(cal.y, cal.m, 1), days = new Date(cal.y, cal.m + 1, 0).getDate(), startDow = (first.getDay() + 6) % 7;
@@ -789,8 +807,12 @@
     }
     $('#calGrid').innerHTML = html;
     var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + ' (estimate from ' + esc(cs.basis) + ')' + (cs.uncertain ? ', a loose estimate while cycles are changing' : '') + '.' : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Add a cycle length in your intro or log another period to start predictions.')) + (gapNote(cs) ? ' ' + esc(gapNote(cs)) : '') + '</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>Tap the first day of your last period and ' + periodFillLength() + ' typical days are filled for you to adjust.</span></div></div>';
-    statHtml += '<div class="row"><button class="btn blush" id="menstruatingNow"><span class="ms">water_drop</span>I’m menstruating now</button>' + (cal.lastFill.length ? '<button class="btn ghost" id="undoFill"><span class="ms">undo</span>Undo ' + cal.lastFill.length + '-day fill</button>' : '') + '</div>';
+    statHtml += '<div class="row"><button class="btn blush" id="menstruatingNow"><span class="ms">water_drop</span>' + (A.isPostmenopausal(S.profile()) ? 'I’m bleeding today' : 'I’m menstruating now') + '</button>' + (cal.lastFill.length ? '<button class="btn ghost" id="undoFill"><span class="ms">undo</span>Undo ' + cal.lastFill.length + '-day fill</button>' : '') + '</div>';
+    var pq = S.profile();
+    if (pq.pregState === 'postpartum' && pq.periodsBack === 'no' && S.list('period').some(function (e) { return e.data.flow && e.data.flow !== 'none' && e.data.flow !== 'spotting' && (!pq.onboardedAt || e.date >= String(pq.onboardedAt).slice(0, 10)); }))
+      statHtml += '<div class="row ppq"><span class="help" style="margin:0">Is your period back since the birth?</span><button type="button" class="btn soft" id="ppBack2"><span class="ms">water_drop</span>Yes, my period is back</button></div>';
     $('#cycleStat').innerHTML = statHtml;
+    var pb2 = $('#ppBack2'); if (pb2) pb2.addEventListener('click', function () { var np = Object.assign({}, S.profile(), { periodsBack: 'yes' }), nm = predictionModeFor(np); S.setProfile({ periodsBack: 'yes', predictionMode: nm }); toast(nm === 'suspended' ? 'Noted. Predictions stay paused for another reason you told Rhythme; your entries still count.' : 'Noted. Predictions start again, as a wide estimate while cycles settle.', 'water_drop'); renderCal(); renderDeck(); });
     $('#menstruatingNow').addEventListener('click', function () { var ev = S.add('period', S.today(), { flow: 'medium', clots: false, impact: false }); cal.sel = S.today(); cal.lastFill = []; renderCal(); renderEditor(); afterSave(ev, 'Period logged for today.'); });
     var undo = $('#undoFill'); if (undo) undo.addEventListener('click', function () { cal.lastFill.forEach(function (id) { S.remove(id); }); cal.lastFill = []; renderCal(); renderEditor(); renderDeck(); toast('Fill removed.', 'undo'); });
   }
@@ -802,6 +824,7 @@
       var cur = S.list('period', { from: date, to: date })[0], data = cur ? cur.data : { flow: 'none', clots: false, largeClots: false, flooding: false, impact: false };
       var symToday = S.list('symptom', { from: date, to: date })[0], painToday = symToday && typeof symToday.data.pain === 'number' ? symToday.data.pain : 0;
       ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' + importedNote(cur) +
+        (cur && cur.data.autofill ? '<p class="imp-note"><span class="ms">auto_awesome</span>Filled in as a typical day. Change the flow if you remember it; saving makes it yours.</p>' : '') +
         '<div class="field"><div class="lbl-row"><span class="lbl">Bleeding</span>' + infoBtn('bleeding') + '</div><div class="chips" id="flowChips">' + ['none', 'spotting', 'light', 'medium', 'heavy'].map(function (f) { return '<button type="button" class="chipbtn flow-' + f + (data.flow === f ? ' on' : '') + '" data-flow="' + f + '">' + cap(f) + '</button>'; }).join('') + '</div>' + guideHTML('bleeding') + '</div>' +
         '<div class="field"><span class="lbl">Details</span><div class="chips"><button type="button" class="chipbtn' + (data.clots ? ' on' : '') + '" id="clots"><span class="ms">bubble_chart</span>Clots</button><button type="button" class="chipbtn' + (data.largeClots ? ' on' : '') + '" id="largeClots"><span class="ms">circle</span>Clots over 2.5 cm</button><button type="button" class="chipbtn' + (data.flooding ? ' on' : '') + '" id="flooding"><span class="ms">water_damage</span>Soaked through or changed every 1 to 2 h</button><button type="button" class="chipbtn' + (data.impact ? ' on' : '') + '" id="impact"><span class="ms">event_busy</span>Affected my day</button></div>' +
         '<div class="field"><div class="lbl-row"><label for="ppain" class="lbl" style="margin:0">Pain today · <span id="ppainVal">' + painToday + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="ppain" min="0" max="10" step="1" value="' + painToday + '">' + '</div></div>' +
@@ -815,8 +838,10 @@
           var flow = ($('#flowChips .on') || {}).dataset ? $('#flowChips .on').dataset.flow : 'none';
           if (flow === 'none') { if (cur) S.remove(cur.id); message($('#calMsg'), 'Marked as no bleeding.', true); renderCal(); renderEditor(); renderDeck(); return; }
           var ev = S.add('period', date, { flow: flow, clots: $('#clots').classList.contains('on'), largeClots: $('#largeClots').classList.contains('on'), flooding: $('#flooding').classList.contains('on'), impact: $('#impact').classList.contains('on') });
-          var pn = Number($('#ppain').value); if (pn > 0 || (symToday && (ppTouched || typeof symToday.data.pain === 'number'))) S.add('symptom', date, { pain: pn }, 'room', { merge: true });
-          message($('#calMsg'), 'Saved ' + flow + ' flow for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev);
+          var pn = Number($('#ppain').value), sev = null; if (pn > 0 || (symToday && (ppTouched || typeof symToday.data.pain === 'number'))) sev = S.add('symptom', date, { pain: pn }, 'room', { merge: true });
+          message($('#calMsg'), 'Saved ' + flow + ' flow for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev, undefined, false, sev ? [sev] : []);
+          /* after a birth with predictions paused: she decides whether this is her period back, nothing decides it for her */
+          var pp = S.profile(), cm = $('#calMsg'); if (cm && current === 'calendar' && pp.pregState === 'postpartum' && pp.periodsBack === 'no' && flow !== 'spotting') { cm.insertAdjacentHTML('beforeend', '<div class="row" style="margin-top:6px"><button type="button" class="btn soft" id="ppBack"><span class="ms">water_drop</span>This is my period back</button></div>'); $('#ppBack').addEventListener('click', function () { var np = Object.assign({}, S.profile(), { periodsBack: 'yes' }); var nm = predictionModeFor(np); S.setProfile({ periodsBack: 'yes', predictionMode: nm }); this.disabled = true; /* other reasons to pause (the pill, a hysterectomy, ...) still hold */ toast(nm === 'suspended' ? 'Noted. Predictions stay paused for another reason you told Rhythme; your entries still count.' : 'Noted. Predictions start again, as a wide estimate while cycles settle.', 'water_drop'); renderCal(); }); }
         } catch (e) { message($('#calMsg'), e.message, false); }
       });
       if (cur) $('#clearPeriod').addEventListener('click', function () { S.remove(cur.id); cal.lastFill = cal.lastFill.filter(function (id) { return id !== cur.id; }); chime('tap'); renderCal(); renderEditor(); renderDeck(); });
@@ -824,21 +849,26 @@
       var cs = S.list('symptom', { from: date, to: date })[0], sd = cs ? cs.data : { symptoms: [], pain: 0, mood: '', notes: '' };
       ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' + importedNote(cs) +
         '<div class="field"><span class="lbl">Symptoms</span><div class="chips" id="symChips">' + '<button type="button" class="chipbtn symnone' + (sd.none ? ' on' : '') + '" data-none="1">None</button>' + A.SYMPTOMS.map(function (s) { return '<button type="button" class="chipbtn' + ((sd.symptoms || []).indexOf(s) > -1 ? ' on' : '') + '" data-sym="' + esc(s) + '">' + esc(cap(s)) + '</button>'; }).join('') + '</div></div>' +
+        /* hot flushes: how many, and whether they woke her (four-persona review, 20 Oct: Siti and Mrs Tan wanted to show their doctor) */
+        '<div class="field flushrow" id="flushRow"' + ((sd.symptoms || []).indexOf('hot flushes') > -1 ? '' : ' hidden') + '><span class="lbl">Hot flushes</span><div class="chips"><label class="flushn">How many today <input class="input" id="flushN" type="number" min="0" max="60" inputmode="numeric" placeholder="optional" value="' + (typeof sd.flushes === 'number' ? sd.flushes : '') + '"></label><button type="button" class="chipbtn' + (sd.flushNight ? ' on' : '') + '" id="flushNight"><span class="ms">bedtime</span>Woke me at night</button></div></div>' +
         '<div class="field"><div class="lbl-row"><label for="pain" class="lbl" style="margin:0">Pain · <span id="painVal">' + (sd.pain || 0) + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="pain" min="0" max="10" step="1" value="' + (sd.pain || 0) + '">' + guideHTML('pain') + '</div>' +
         '<div class="field"><span class="lbl">Mood</span><div class="faces" id="moodFaces">' + [['great', 'sentiment_very_satisfied'], ['good', 'sentiment_satisfied'], ['ok', 'sentiment_neutral'], ['low', 'sentiment_dissatisfied'], ['bad', 'sentiment_very_dissatisfied']].map(function (m) { return '<button type="button" data-mood="' + m[0] + '" class="' + (sd.mood === m[0] ? 'on' : '') + '"><span class="ms">' + m[1] + '</span>' + cap(m[0]) + '</button>'; }).join('') + '</div></div>' +
+        '<p class="moodcare" id="moodCare"' + (sd.mood === 'low' || sd.mood === 'bad' ? '' : ' hidden') + '><span class="ms">favorite</span><span>If a low mood is weighing on you, you deserve support now, not after more logging. mindline 1771 is open 24 hours, or talk to your GP or polyclinic.</span></p>' +
         '<div class="field"><label for="symNotes">Notes</label><textarea class="input" id="symNotes" placeholder="Anything else you noticed...">' + esc(sd.notes || '') + '</textarea></div>' +
         '<div class="row"><button class="btn primary" id="saveSym"><span class="ms">check</span>Save day</button>' + (cs ? '<button class="btn ghost" id="clearSym">Clear</button>' : '') + '<button class="btn soft" id="acuFromSym"><span class="ms">spa</span>Cramp relief points</button></div><div class="msg" id="calMsg"></div>';
       /* None (Jamie, 19 Oct) is its own answer: it clears the symptoms, and ticking a symptom clears it */
-      $('#symChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); if (!b.classList.contains('on')) return; $$('#symChips .on').forEach(function (x) { if (x !== b && (b.dataset.none || x.dataset.none)) x.classList.remove('on'); }); });
+      $('#symChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); if (b.classList.contains('on')) $$('#symChips .on').forEach(function (x) { if (x !== b && (b.dataset.none || x.dataset.none)) x.classList.remove('on'); }); $('#flushRow').hidden = !$('#symChips [data-sym="hot flushes"].on'); });
+      $('#flushNight').addEventListener('click', function () { this.classList.toggle('on'); });
       var painTouched = false;
       $('#pain').addEventListener('input', function () { painTouched = true; $('#painVal').textContent = this.value; });
-      $('#moodFaces').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#moodFaces')).forEach(function (x) { x.classList.toggle('on', x === b && !x.classList.contains('on')); }); });
+      $('#moodFaces').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#moodFaces')).forEach(function (x) { x.classList.toggle('on', x === b && !x.classList.contains('on')); }); var on = $('#moodFaces .on'); $('#moodCare').hidden = !(on && (on.dataset.mood === 'low' || on.dataset.mood === 'bad')); });
       $('#acuFromSym').addEventListener('click', openAcupressure);
       $('#saveSym').addEventListener('click', function () {
         try {
           var list = $$('#symChips .on').map(function (b) { return b.dataset.sym; }).filter(Boolean), mood = ($('#moodFaces .on') || {}).dataset ? $('#moodFaces .on').dataset.mood : '';
           var none = !list.length && !!$('#symChips [data-none].on'), data = { symptoms: list, pain: painTouched || typeof sd.pain === 'number' ? Number($('#pain').value) : null, mood: mood, notes: $('#symNotes').value.trim() };
           if (none) data.none = true;
+          if (list.indexOf('hot flushes') > -1) { var fn = $('#flushN').value.trim(); if (fn !== '' && isFinite(Number(fn))) data.flushes = Math.max(0, Math.min(60, Math.round(Number(fn)))); if ($('#flushNight').classList.contains('on')) data.flushNight = true; }
           /* None replaces the day's symptoms rather than joining them; everything else keeps the usual same-day merge */
           var ev = none && cs ? S.update(cs.id, { data: Object.assign({}, data, { notes: data.notes || '' }) }) : S.add('symptom', date, data);
           message($('#calMsg'), 'Saved for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev);
@@ -992,12 +1022,13 @@
       '</div>' +
       '<div class="dpane" data-pane="today" hidden>' + guideHTML('nova') + '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' + '</div>' +
       '<div class="dpane" data-pane="ideas" hidden>' + '<p class="help" style="margin:2px 0 10px"><span class="ms" style="font-size:16px;vertical-align:-3px">yard</span> Teas and herbs now live in the garden greenhouse, with pictures, research and who should take care.</p>' + '<div class="phasechips chips" id="ideaPhases" role="group" aria-label="Food ideas for each phase">' + [['menstrual', 'Period'], ['follicular', 'Follicular'], ['ovulatory', 'Ovulation'], ['luteal', 'Luteal']].map(function (q) { return '<button type="button" class="chipbtn" data-iphase="' + q[0] + '">' + q[1] + '</button>'; }).join('') + '</div>' +
+      (cs.mode === 'suspended' ? '<p class="mindline"><span class="ms">info</span>Cycle phases are paused for you right now, so none of these is meant for you today. They are general ideas to browse; nothing here is needed.</p>' : '') +
       '<div id="ideaTip"></div><div id="picksWrap"></div><p class="help">General food ideas for each part of the cycle, not a diet or a treatment.</p></div>');
     /* food ideas for every phase (Jamie, 20 Oct): your phase is chosen when the app knows it, otherwise the period; tap any other */
     var ideaPhase = phase === 'late' ? 'luteal' : (PHASE_TIPS[phase] && phase !== 'none' ? phase : 'menstrual');
     function showIdeas(k) {
       ideaPhase = k; $$('#ideaPhases [data-iphase]').forEach(function (b) { var on = b.dataset.iphase === k; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
-      var t = PHASE_TIPS[k], cur = k === (phase === 'late' ? 'luteal' : phase);
+      var t = PHASE_TIPS[k], cur = cs.mode !== 'suspended' && k === (phase === 'late' ? 'luteal' : phase);
       $('#ideaTip').innerHTML = '<div class="stat"><span class="ms">local_florist</span><div><b>' + esc(t.title) + (cur ? ' · now' : '') + '</b><span>' + esc(t.text) + '</span></div></div>';
       var w = $('#picksWrap'); if (w) w.innerHTML = picksHTML(k);
     }
@@ -1019,17 +1050,19 @@
         inp.addEventListener('input', function () { var list = FD.search(inp.value, 12); $('#fdResults').innerHTML = resultsHTML(list) + askLuna(inp.value, list); });
         $('#fdResults').addEventListener('click', function (e) {
           var b = e.target.closest('[data-askluna]'); if (!b) return; e.stopPropagation();
-          var q = b.dataset.askluna; b.disabled = true; b.innerHTML = '<span class="ms">hourglass_top</span>Luna is thinking about ' + esc(q) + '…';
+          var q = b.dataset.askluna, forDraft = draft; b.disabled = true; b.innerHTML = '<span class="ms">hourglass_top</span>Luna is thinking about ' + esc(q) + '…';
           ORB.parseDish(q).then(function (res) {
+            if (draft !== forDraft || !document.body.contains(b)) return; /* the diary was closed or a new meal started (Codex re-review, 20 Oct) */
             if (!res.isFood || !res.items.length) { b.outerHTML = '<div class="empty">Luna did not recognise “' + esc(q) + '” as a food. Try another name, or add a custom food.</div>'; return; }
             res.items.forEach(function (it) { draft.items.push(it); }); renderItems();
             b.outerHTML = '<div class="fdstate ok"><span class="ms">check_circle</span>Added ' + esc(res.items.map(function (it) { return it.name; }).join(', ')) + '. Luna estimated it, so check the grams below before you save.</div>';
-          }).catch(function (err) { b.outerHTML = '<div class="fdstate"><span class="ms">error</span>' + esc(err.message) + (/off|choices/i.test(err.message) ? ' Turn on Luna reading notes under Your choices.' : '') + '</div>'; });
+          }).catch(function (err) { if (draft !== forDraft || !document.body.contains(b)) return; b.outerHTML = '<div class="fdstate"><span class="ms">error</span>' + esc(err.message) + (/off|choices/i.test(err.message) ? ' Turn on Luna reading notes under Your choices.' : '') + '</div>'; });
         });
         $('#customBtn').addEventListener('click', function () { $('#customWrap').innerHTML = customFoodForm(); wireCustom(); });
       } else if (mode === 'scan') {
         area.innerHTML = '<div class="camwrap on" id="camwrap"><video id="bcVideo" playsinline muted></video><div class="reticle"></div><div class="camhint">Point the camera at the barcode</div></div><div class="row" style="margin-top:8px"><input class="input" id="bcManual" placeholder="Barcode digits or a product name, e.g. Milo" autocomplete="off" enterkeyhint="search"><button type="button" class="btn soft" id="bcLookup" style="flex:0 0 auto">Search</button></div><div class="msg" id="bcMsg"></div><div id="bcResults"></div>';
         if (FD.warmDecoder) FD.warmDecoder();
+        moment('scan', { quiet: true });
         stopScan = FD.scanLive($('#bcVideo'), function (code) { stopCamera(); $('#bcManual').value = code; lookup(code); }, function (err) { message($('#bcMsg'), err.message, false); }, function () { var h = $('.camhint'); if (h) h.textContent = 'Hold the pack steady and closer so the barcode fills the box, or type the digits below.'; });
         FD.load();
         var bcTimer = null, bcSeq = 0;
@@ -1158,7 +1191,7 @@
     });
   }
   function openLearn() {
-    var p = deskPrefs();
+    var p = deskPrefs(); moment('learn');
     openSheet('learn', 'Your desk', 'Drag the folders around; make it yours', 'computer',
       '<div class="desk"><div class="menubar"><span class="brandy">RHYTHME</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
       '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f, i) { var q = p.pos[f.id] || [2 + (i % 4) * 25, 4 + Math.floor(i / 4) * 46]; return '<button type="button" class="dicon" data-folder="' + f.id + '" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
@@ -1292,7 +1325,7 @@
     $('#wSave').addEventListener('click', function () {
       var kg = sliderVal('wKg'); if (!kg) { message($('#wMsg'), 'Slide to your weight first.', false); return; }
       kg = Math.round(kg * 10) / 10;
-      try { S.add('weight', S.today(), { kg: kg }, 'scale'); S.setProfile({ weightKg: kg }); chime('save'); toast('Noted: ' + kg + ' kg. One number among many.', 'monitor_weight'); renderDeck(); openWeigh(); } catch (err) { message($('#wMsg'), err.message, false); }
+      try { S.add('weight', S.today(), { kg: kg }, 'scale'); S.setProfile({ weightKg: kg }); chime('save'); toast('Noted: ' + kg + ' kg.', 'monitor_weight', moment('weight', { quiet: true })); renderDeck(); openWeigh(); } catch (err) { message($('#wMsg'), err.message, false); }
     });
     $('#wCmSave').addEventListener('click', function () { var cm = sliderVal('wCm'); if (!cm) return; S.setProfile({ heightCm: cm }); chime('save'); toast('Height saved: ' + cm + ' cm.', 'height'); });
   }
@@ -1322,10 +1355,10 @@
     var days = Object.keys(dates).length;
     var row = function (icon, title, sub, act, href) { return (href ? '<a class="yrow" href="' + href + '"' : '<button type="button" class="yrow" data-yact="' + act + '"') + '><span class="ms">' + icon + '</span><span><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span><span class="ms go">chevron_right</span>' + (href ? '</a>' : '</button>'); };
     openSheet('you', P.name ? P.name : 'You', 'Your room, your answers, your data', 'person',
-      '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '</span></div></div>' +
+      '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + '</span></div></div>' +
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
       '<div id="youAccount"></div>' +
-      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see them or bring in more' : 'Choose what comes in: sleep, cycle, weight and more', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Export a copy first if you want to keep it.' + (function () { var h = window.OvuSync && OvuSync.status ? OvuSync.status().held || 0 : 0; return h ? ' ' + h + ' Movement ' + (h === 1 ? 'entry is' : 'entries are') + ' not in your cloud backup yet, so ' + (h === 1 ? 'it' : 'they') + ' would be lost.' : ''; })() + '</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
@@ -1339,6 +1372,7 @@
       if (act === 'text') return window.OvuTextSize && OvuTextSize.open ? OvuTextSize.open() : undefined;
       if (act === 'wardrobe') return openWardrobe();
       if (act === 'shop') return openShop();
+      if (act === 'friends') return window.OvuFriends && OvuFriends.open ? OvuFriends.open() : undefined;
       if (act === 'testeroff') { S.setState({ tester: null }); renderProps(); toast('Tester mode is off. Hearts count again.', 'science'); return; }
       if (act === 'mascot') return openMascot();
       if (act === 'clock') return openClock();
@@ -1480,7 +1514,7 @@
         var kinds = H.kinds(imp.scan, { from: impFrom(), to: S.today() }).ready.filter(function (k) { return imp.pick[k.id] && k.count; }).map(function (k) { return k.id; }); if (!kinds.length) return;
         try { var p = H.apply(imp.scan, S, { kinds: kinds, from: impFrom() }); imp.last = { res: imp.scan, p: p, kinds: kinds, all: ready.map(function (k) { return k.id; }) }; }
         catch (err) { toast('That did not save: ' + err.message, 'error'); return; }
-        imp.scan = null; imp.pick = {}; imp.confirm = null; importRuns++; chime('save'); renderDeck(); renderProps();
+        imp.scan = null; imp.pick = {}; imp.confirm = null; importRuns++; chime('save'); renderDeck(); renderProps(); moment('import');
         var c = imp.last.p.counts, n = kinds.reduce(function (s2, id) { return s2 + (c[id] || 0); }, 0);
         toast(n ? 'Brought in ' + impPlural(n, 'entry', 'entries') + ' you chose.' : 'Nothing new to add from what you chose.', 'move_to_inbox');
         renderImportHome(H);
@@ -1586,7 +1620,7 @@
         }).join('') + '</div>'
       : '<div class="streetnav"><button type="button" class="back" data-tab="street"><span class="ms">arrow_back</span>Dream Street</button><span class="heartsmini"><span class="ms fill">favorite</span>' + (testing ? '∞' : l.hearts) + '</span></div><p class="help">' + st.sub + '</p>';
     openSheet('shop', street ? 'Dream Street' : storeName(shopTab), street ? 'Three little shops. Hearts from logging pay for everything.' : st.tag + ' · ' + storeHours(shopTab), street ? 'storefront' : st.icon,
-      (street ? '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + (testing ? '∞' : l.hearts) + '</div><p>' + l.earned + ' earned in total' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '. Sleep 10, period 10, symptoms 8, meals 6 (+2 per confirmed item), reflections 5, calm 2 per minute, everyday practice 5 (+10 the first time), +5 from day three of a streak.</p></div>' : '') +
+      (street ? '<div class="heartbar"><div class="big"><span class="ms fill">favorite</span>' + (testing ? '∞' : l.hearts) + '</div><p>' + l.earned + ' earned in total. A night’s sleep or a period day 10, symptoms 8, a meal 6, movement 6 once a day, a reflection 5. A finished practice, a session, a watering or a full minute of Moon Tap is a small thank-you of 2, up to 6 a day. Weight never earns hearts, and there are no streaks to keep.</p></div>' : '') +
       nav +
       (street ? '' : shopList(items, l, home) +
         (shopTab === 'pet' ? Object.keys(SHELVES).map(function (k) { var li = RW.SHOP.filter(function (it) { return it.kind === k; }); return li.length ? '<p class="shelf"><span class="ms">' + (k === 'treat' ? 'cookie' : 'checkroom') + '</span>' + SHELVES[k] + '</p>' + shopList(li, l, home) : ''; }).join('') : '')) +
@@ -1615,11 +1649,13 @@
       if (asleep()) throw new Error('She is asleep. Tap the bed to wake her first.');
       var sit = RW.item(id); if (!shopOpenNow(storeTab(sit))) throw new Error(storeName(storeTab(sit)) + ' is closed now. Open ' + storeHours(storeTab(sit)) + '.');
       var it = RW.buy(id); chime('save', true);
+      /* she holds the bag up, or welcomes a new pet; the line rides on the toast (ovu-moments.js) */
+      var ml = it.kind === 'home' ? '' : moment(it.kind === 'pet' ? 'adopt' : 'shop', { quiet: true });
       if (it.kind === 'home') { S.setState({ home: it.id }); closeSheet(); go(it.id, false); toast('Welcome home. ' + it.name + ' is yours!', 'cottage'); }
-      else if (it.kind === 'treat') { toast(it.name + ' are in the cupboard. Tap a pet to give one.', 'cookie'); again(); }
-      else if (it.kind === 'accessory') { toast(it.name + ' is in the drawer. Tap a pet, then Dress up.', 'checkroom'); again(); }
-      else if (it.waiting) { toast(it.name + ' is yours and waits in the inventory: two pets at home at a time.', 'pets'); again(); }
-      else { renderProps(); toast(it.name + ' is now in your home!' + (it.swapped && it.swapped.length ? ' ' + it.swapped.join(' and ') + ' went into storage; swap back any time.' : ''), 'favorite'); again(); }
+      else if (it.kind === 'treat') { toast(it.name + ' are in the cupboard. Tap a pet to give one.', 'cookie', ml); again(); }
+      else if (it.kind === 'accessory') { toast(it.name + ' is in the drawer. Tap a pet, then Dress up.', 'checkroom', ml); again(); }
+      else if (it.waiting) { toast(it.name + ' is yours and waits in the inventory: two pets at home at a time.', 'pets', ml); again(); }
+      else { renderProps(); toast(it.name + ' is now in your home!' + (it.swapped && it.swapped.length ? ' ' + it.swapped.join(' and ') + ' went into storage; swap back any time.' : ''), 'favorite', ml); again(); }
       return it;
     }
     if (action === 'toggle') { var on = RW.toggle(id); renderProps(); again(); return on; }
@@ -1690,10 +1726,11 @@
       '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Write journal readings</b><span>Luna writes a short reading of your last 7 or 28 days.</span></div></label>' +
       '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Recognise food photos</b><span>Luna names the food in your photo. Only a small thumbnail is kept, on this phone.</span></div></label>' +
       '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn Luna’s reading off (rules only)' : 'Turn Luna’s reading on') + '</button></div><p>You always see what Luna understood before it is saved. These choices are also under Your choices in You.</p></details>');
-    var chat = $('#chat');
+    var chat = $('#chat'), shownCare = {};
     function bubble(kind, html) { var d = document.createElement('div'); d.className = 'bub ' + (kind === 'luna' ? 'from-luna' : kind); d.innerHTML = html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d; }
     if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took, or send a photo of your meal with the camera button. I will show you what I understood before saving.');
     lunaLog.forEach(function (m) { bubble(m.kind, m.html); });
+    if (lunaLog.some(function (m) { return /^urgent/.test(m.kind); })) { careOn = true; endMoment(); } /* a care card back on screen holds moments again */
     function remember(kind, html) { lunaLog.push({ kind: kind, html: html }); lunaLog = lunaLog.slice(-12); }
     function confirmCard(entries) {
       var card = bubble('confirm', '<h4>Here is what I understood</h4>' + entries.map(function (e, i) { return '<label><input type="checkbox" checked data-i="' + i + '"><span>' + esc(ORB.describe(e)) + ' <em style="color:var(--rm-ink-3);font-style:normal">· ' + esc(prettyDate(e.date)) + '</em></span></label>'; }).join('') + '<div class="row"><button type="button" class="btn primary" id="lunaSave"><span class="ms">check</span>Save ticked</button><button type="button" class="btn ghost" id="lunaDiscard">Discard</button></div>');
@@ -1704,30 +1741,20 @@
         var saved = ORB.save(picked); card.remove();
         var r = ORB.reply(), line = '<b>Luna</b>' + esc(r) + ' Saved ' + saved.length + ' entr' + (saved.length === 1 ? 'y' : 'ies') + '.';
         bubble('luna', line); remember('luna', line);
-        saved.forEach(function (ev) { afterSave(ev, 'Saved through Luna.'); });
+        /* a card the saved entries raise that the note alone did not (heavy flow logged earlier, then "dizzy today") is shown here
+         * in the chat; one Luna has already shown is not repeated (Codex branch review, 20 Oct) */
+        var later = topCare(saved); if (later && !shownCare[later.code]) urgentCard(later);
+        saved.forEach(function (ev) { afterSave(ev, 'Saved through Luna.', true); });
       });
     }
     /* Red flags are read on the device before any parsing or saving. The card is guidance, not a save:
      * the entries still go through the confirm card below it. */
     function urgentCard(u) {
-      var emergency = u.level === 'emergency';
-      /* a card that brings its own words and call links (thoughts of harming yourself or your baby: 995, SOS 1767, WhatsApp 9151 1767) */
-      if (u.message) {
-        var own = '<b>' + esc(u.title) + '</b><p>' + esc(u.message) + '</p><div class="row">' + (u.actions || []).map(function (a, i) { var web = /^https:/.test(a.href); return '<a class="btn ' + (i ? 'soft' : 'primary') + '" href="' + esc(a.href) + '"' + (web ? ' target="_blank" rel="noopener"' : '') + '><span class="ms">' + (web ? 'chat' : 'call') + '</span>' + esc(a.label) + '</a>'; }).join('') + '</div>' +
-          '<small>Rhythme cannot assess how you are or diagnose. No clinician or helpline receives this alert.</small>';
-        var ownCard = bubble('urgent emergency', own); remember('urgent emergency', own);
-        try { chime('alert', true); } catch (err) { }
-        return ownCard;
-      }
-      var html = '<b>' + esc(u.title) + '</b>' +
-        (emergency
-          ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 now if the bleeding is excessive or will not stop, you faint, have trouble breathing, or have chest pain.</p>'
-          : '<p>Any bleeding after menopause should be checked by a clinician promptly. Book a GP or gynaecologist visit this week; it is usually not serious, but it needs a check.</p>') +
-        '<div class="row">' + (emergency ? '<a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><a class="btn soft" href="https://www.kkh.com.sg/our-specialties/urgent-og-centre" target="_blank" rel="noopener"><span class="ms">local_hospital</span>KKH Urgent O&amp;G (24h)</a>' : '') + '<a class="btn ghost" href="journal.html"><span class="ms">medical_information</span>Show my chart</a></div>' +
-        '<small>Rhythme cannot assess your condition or diagnose. This alert follows published guidance (KKH, SCDF, NHS). No clinician receives this alert.</small>';
-      var card = bubble('urgent' + (emergency ? ' emergency' : ''), html); remember('urgent' + (emergency ? ' emergency' : ''), html);
+      shownCare[u.code] = 1; endMoment(); careOn = true;
+      var kind = 'urgent' + (u.level === 'emergency' ? ' emergency' : ''), html = careHTML(u);
+      var c = bubble(kind, html); remember(kind, html);
       try { chime('alert', true); } catch (err) { }
-      return card;
+      return c;
     }
     function send(text, again) {
       text = (text || '').trim(); if (!text) return;
@@ -1857,7 +1884,18 @@
 
   /* ---------- yoga mat: mindfulness with Erin projected beside you ---------- */
   var meditating = false, session = null;
-  function enterMeditation() { meditating = true; avatar.classList.add('hidden'); setTimeout(function () { meditator.classList.add('on'); $('#aura').classList.add('on'); }, 350); }
+  /* meditating and sleeping are drawn in what she is wearing (four-persona review, 20 Oct: the mat put everyone in the yoga set and
+   * the bed in pyjamas); the yoga set is the original meditation sprite and the pyjamas the original sleeper. A missing file
+   * falls back to the original. */
+  function wornOutfit() { return S.profile().outfit || 'base'; }
+  function meditateSrc(o) { return ART + (o === 'yoga' ? 'avatar-meditate.webp' : 'avatar-meditate-' + o + '.webp'); }
+  function sleepSrc(o) { return ART + (o === 'pajamas' ? 'avatar-sleeping.webp' : 'avatar-sleeping-' + o + '.webp'); }
+  function wearImg(img, src, plain) { if (!img) return; img.onerror = function () { img.onerror = null; img.src = plain; }; if (img.getAttribute('src') !== src) img.src = src; }
+  function enterMeditation() {
+    endMoment(); meditating = true; avatar.classList.add('hidden');
+    if (!meditator.classList.contains('onseat')) wearImg(meditator.querySelector('img'), meditateSrc(wornOutfit()), ART + 'avatar-meditate.webp'); /* a bench keeps her seated sprite */
+    setTimeout(function () { meditator.classList.add('on'); $('#aura').classList.add('on'); }, 350);
+  }
   function exitMeditation() { meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); hud.classList.remove('on'); setTimeout(function () { avatar.classList.remove('hidden'); placeAvatar(HOME, false); avatar.classList.add('idle'); }, 300); }
   meditator.addEventListener('click', function () { if (current !== 'mind') openMindfulness(); });
   /* Erin's lines play on ONE audio element per session, created and first played inside the tap that began it: a fresh
@@ -2007,7 +2045,10 @@
     $('#podMiniTitle').textContent = st.ep.title; $('#podMiniSub').textContent = POD.fmt(st.time) + ' / ' + POD.fmt(st.duration) + ' · Erin Lee';
     $('#podMiniPlay').innerHTML = '<span class="ms">' + (st.playing ? 'pause' : 'play_arrow') + '</span>'; $('#podMiniPlay').setAttribute('aria-label', st.playing ? 'Pause' : 'Play');
   }
+  var podMoment = 0;
   if (POD) POD.on(function (type, st) {
+    /* she puts her headphones on when an episode starts, at most once in ten minutes (ovu-moments.js) */
+    if (type === 'play' && Date.now() - podMoment > 600000) { podMoment = Date.now(); moment('podcast'); }
     if (current === 'erin-listen') {
       if (type === 'time') { var sk = $('#podSeek'); if (sk && document.activeElement !== sk && st.duration) { sk.value = Math.round(st.time / st.duration * 1000); sk.style.setProperty('--fill', (st.time / st.duration * 100).toFixed(1) + '%'); } var t1 = $('#podT'), t2 = $('#podD'); if (t1) t1.textContent = POD.fmt(st.time); if (t2) t2.textContent = '-' + POD.fmt(Math.max(0, st.duration - st.time)); }
       else renderPodPlayer();
@@ -2065,7 +2106,7 @@
     $('#mindAcu').addEventListener('click', openAcupressure);
     $('#mindMove').addEventListener('click', function () { if (session) return; chime('tap'); openExercise(); });
     $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
-    $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { afterSave(ev); }, onClose: function () { renderDeck(); } }); });
+    $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { tapSaved = true; afterSave(ev); }, onClose: function () { renderDeck(); if (!tapSaved) moment('moontap'); tapSaved = false; } }); });
   }
 
   /* ---------- Movement: exercise as minutes and MET-minutes, the week against WHO (ovu-exercise.js) ----------
@@ -2174,7 +2215,7 @@
   /* region illustrations (Seedream, 18 Oct) and where each point sits on them, percent of the image */
   var ACU_REGIONS = {
     belly: { img: 'belly', title: 'Lower belly', pts: { cv6: [[50.5, 64]], cv4: [[50.5, 76]], cv3: [[50.5, 84]], st29: [[36, 84], [65, 84]] } },
-    innerleg: { img: 'innerleg', title: 'Inner lower leg', pts: { sp6: [[54, 61]], ki3: [[59.5, 74.5]], sp10: [] } },
+    innerleg: { img: 'innerleg', title: 'Inner lower leg', pts: { sp8: [[52, 38.5]], sp6: [[54, 61]], ki3: [[59.5, 74.5]], sp10: [] } },
     outerleg: { img: 'outerleg', title: 'Outer lower leg', pts: { st36: [[47, 42]] } },
     foot: { img: 'foot', title: 'Top of the foot', pts: { lr3: [[45.5, 45]] } },
     hand: { img: 'hand', title: 'Back of the hand', pts: { li4: [[42, 61]] } },
@@ -2186,6 +2227,7 @@
   var ACU_BADGE = { belly: [50, 70], innerleg: [51, 93], outerleg: [39, 87], foot: [44, 99], hand: [71, 75], forearm: [69, 68.5] };
   var ACU_FIND = {
     sp6: 'Find the bump of your inner ankle. Lay four fingers flat above it; the point is level with your top finger, just behind the shin bone.',
+    sp8: 'Slide your thumb up the inner edge of your shin bone until it stops in a dip just below the knee. From there, lay four fingers flat downward; the point is level with your bottom finger, just behind the shin bone. It is often tender during a period.',
     cv6: 'Two finger-widths straight below your navel, on the midline.',
     cv4: 'Four finger-widths below your navel, on the midline.',
     cv3: 'On the midline, one thumb-width above the top edge of the pubic bone (about four finger-widths plus a thumb below the navel).',
@@ -2202,6 +2244,7 @@
   /* What each point is for, kept apart: what tradition says and what research has shown (Codex source review, 18 Oct 2026). */
   var ACU_USE = {
     sp6: ['Period cramps', 'Small studies suggest pressing or needling it may ease period pain; the evidence is limited.', ['E25', 'E19']],
+    sp8: ['Period cramps, especially on the first day', 'Named in international TCM guidelines for period pain, where it is used with needles; evidence on pressing it yourself is limited.', ['E27']],
     cv6: ['Lower-belly comfort during periods', 'Often chosen in needle and heat-therapy trials; a benefit from pressing it yourself is not established.', ['E26', 'E27']],
     cv4: ['Lower-belly comfort during periods', 'Often chosen in needle and heat-therapy trials; a benefit from pressing it yourself is not established.', ['E26', 'E27']],
     cv3: ['Lower-belly discomfort around periods', 'Traditional use only; there is little direct research.', ['E27']],
@@ -2219,12 +2262,14 @@
   function regionOf(id) { var r = null; Object.keys(ACU_REGIONS).forEach(function (k) { if (ACU_REGIONS[k].pts[id]) r = k; }); return r; }
   function openAcupressure() {
     if (current !== 'mind' && meditating && !session) exitMeditation();
+    setTimeout(function () { moment('acupressure'); }, 450); /* after the mat has let her go */
     (acuData ? Promise.resolve(acuData) : loadJSON('assets/data/acupoints.json').then(function (d) { acuData = d; return d; })).then(function (d) {
       var byId = {}; d.points.forEach(function (p) { byId[p.id] = p; });
       var order = []; ACU_ORDER.forEach(function (rk) { Object.keys(ACU_REGIONS[rk].pts).forEach(function (id) { if (byId[id] && order.indexOf(id) < 0) order.push(id); }); });
       var num = {}; order.forEach(function (id, k) { num[id] = k + 1; });
       openSheet('acu', 'Cramp relief points', 'Numbered on you, then zoomed in so you can find them', 'spa',
-        '<p class="help">Tap a number. Use a thumb or fingertip, press gently for one to two minutes on each side, breathe slowly, and stop if anything hurts. An educational atlas, not a treatment plan. ' + infoBtn('acu') + '</p>' + guideHTML('acu') +
+        '<p class="help">Tap a number. Use a thumb or fingertip, press gently for one to two minutes on each side, breathe slowly, and stop if anything hurts. An educational atlas, not a treatment plan. ' + infoBtn('acu') + '</p>' +
+        '<details class="acusafe"><summary><span class="ms">health_and_safety</span>Before you press</summary><ul><li>Skip any spot with broken, red, hot, swollen or bruised skin, varicose veins, a lump, a recent injury, or a calf that is painful or swollen (a possible clot needs a doctor, not pressure).</li><li>On blood thinners, or bruise or bleed easily? Use only very light pressure.</li><li>Stop at once for sharp pain, numbness, tingling or dizziness.</li><li>Period pain that is severe, sudden, new or keeps you from your day deserves a doctor\u2019s check.</li></ul></details>' + guideHTML('acu') +
         '<div class="acuwrap"><div class="acufig"><img src="' + ART + 'avatar-base.webp" alt="Your avatar, standing">' + ACU_ORDER.filter(function (rk) { return ACU_BADGE[rk]; }).map(function (rk) { var ids = Object.keys(ACU_REGIONS[rk].pts).filter(function (id) { return byId[id]; }); if (!ids.length) return ''; var ns = ids.map(function (id) { return num[id]; }); var lab = ns.length > 1 ? ns[0] + '–' + ns[ns.length - 1] : String(ns[0]); return '<button type="button" class="pt range" data-region="' + rk + '" data-pt="' + ids[0] + '" style="left:' + ACU_BADGE[rk][0] + '%;top:' + ACU_BADGE[rk][1] + '%" aria-label="' + esc(ACU_REGIONS[rk].title + ', points ' + lab) + '">' + lab + '</button>'; }).join('') + '</div>' +
         '<div class="aculist" id="aculist">' + ACU_ORDER.map(function (rk) { var ids = Object.keys(ACU_REGIONS[rk].pts).filter(function (id) { return byId[id]; }); if (!ids.length) return ''; return '<h5>' + esc(ACU_REGIONS[rk].title) + '</h5>' + ids.map(function (id) { return '<button type="button" data-pt="' + id + '"><i>' + num[id] + '</i><span><b>' + esc(byId[id].code) + ' · ' + esc(byId[id].name) + '</b><small>' + esc(byId[id].kind === 'abdomen' ? 'below the navel' : byId[id].kind) + (ACU_CAUTION[id] ? ' · ask first if pregnant' : '') + '</small>' + (ACU_USE[id] ? '<em>For: ' + esc(ACU_USE[id][0]) + '</em>' : '') + '</span></button>'; }).join(''); }).join('') + '</div></div>' +
         '<div class="locator" id="locator"></div>');
@@ -2236,7 +2281,7 @@
           '<div class="find"><span class="ms">touch_app</span><span>' + esc(ACU_FIND[id] || p.location) + (p.bilateral ? ' Both sides.' : '') + '</span></div>' +
           (ACU_USE[id] ? '<div class="acuuse"><div><span class="ms">favorite</span><span><b>Traditionally used for</b>' + esc(ACU_USE[id][0]) + '</span></div><div><span class="ms">science</span><span><b>What research says</b>' + esc(ACU_USE[id][1]) + '</span></div><p class="evrefs">' + acuRefs(ACU_USE[id][2]) + '</p></div>' : '') +
           '<div class="how"><div><span class="ms">touch_app</span>Thumb or fingertip</div><div><span class="ms">timer</span>1 to 2 minutes</div><div><span class="ms">air</span>Slow breaths</div></div>' + (ACU_CAUTION[id] ? '<div class="warn">' + esc(ACU_CAUTION[id]) + '</div>' : '') +
-          '<div class="fingerkey"><b>Measure with your own hand</b><div><span><i>1</i>thumb-width</span><span><i>2</i>finger-widths</span><span><i>3</i>finger-widths</span><span><i>4</i>finger-widths</span></div><small>Your own fingers fit your own body, so the distances work for any size. The pink dot shows the area; press around it until you find a slightly tender spot. Location checked against the WHO standard (2008), p. ' + p.whoPage + '.</small></div></div>';
+          '<div class="fingerkey"><b>Measure with your own hand</b><div><span><i>1</i>thumb-width</span><span><i>2</i>finger-widths</span><span><i>3</i>finger-widths</span><span><i>4</i>finger-widths</span></div><small>Your own fingers fit your own body, so the distances work for any size. The pink dot shows the area; press around it until you find a slightly tender spot. ' + (p.whoPage ? 'Location checked against the WHO standard (2008), p. ' + p.whoPage + '.' : 'Location follows the WHO standard (2008) wording as published in TCM guidelines; its page has not been checked here.') + '</small></div></div>';
         $('#locator').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
       body.addEventListener('click', function (e) { var b = e.target.closest('[data-pt]'); if (b) { chime('tap'); show(b.dataset.pt); } });
@@ -2258,11 +2303,41 @@
     avatar.classList.add('moment'); setPose(pose); showThought(thought);
     setTimeout(function () { avatar.classList.remove('moment'); if (!practice) restorePose(); hideThought(); lifeBusy = false; scheduleLife(); }, 3200 + Math.random() * 1400);
   }
-  function showThought(t) { var el = $('#thought'); if (!el) return; el.textContent = t; el.classList.add('on'); }
+  /* say: a line of words (a moment, a pet's walk); without it the bubble is an emoji thought (Codex branch review, 20 Oct) */
+  function showThought(t, say) { var el = $('#thought'); if (!el) return; el.classList.toggle('say', !!say); el.textContent = t; el.classList.add('on'); }
   function hideThought() { var el = $('#thought'); if (el) el.classList.remove('on'); }
   function joy() { avatar.classList.remove('joy'); void avatar.offsetWidth; avatar.classList.add('joy'); setTimeout(function () { avatar.classList.remove('joy'); }, 560); }
 
+  /* ---------- mindful moments (ovu-moments.js): she does the thing, in her own clothes, and one line of noticing ---------- */
+  var MO = window.OvuMoments || null, momentTimer = null, momentOn = null, momentRetry = null, careOn = false; /* careOn: a care card is showing in Luna's chat */
+  function endMoment() {
+    clearTimeout(momentTimer); clearTimeout(momentRetry); momentRetry = null; if (!momentOn) return;
+    momentOn = null; avatar.classList.remove('moment'); imgGen++; /* a pose still loading never lands after its moment (Codex re-review) */
+    if (!practice && !asleep()) restorePose();
+    var th = $('#thought'); hideThought(); scene.classList.remove('saying'); setTimeout(function () { if (th && !th.classList.contains('on')) th.classList.remove('say'); }, 400);
+  }
+  /* returns the line, so a caller can also show it in its own sheet; the pose is skipped while she sleeps, meditates,
+   * practises, walks or the room is being arranged, and the line still shows */
+  function moment(key, opt) {
+    if (!MO || !MO.MOMENTS[key]) return '';
+    opt = opt || {};
+    var text = opt.line || MO.line(key), pose = opt.pose === undefined ? MO.pose(key) : opt.pose;
+    if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn) return text;
+    /* while she walks the pose waits, a few times at most, and never starts over a walk (Codex branch review, 20 Oct) */
+    if (avatar.classList.contains('walking') || (hooks.moving && hooks.moving())) {
+      var tries = (opt.tries || 0) + 1; clearTimeout(momentRetry);
+      if (tries <= 4) momentRetry = setTimeout(function () { moment(key, { line: text, pose: pose, tries: tries, quiet: opt.quiet }); }, 900);
+      return text;
+    }
+    clearTimeout(momentTimer); momentOn = key;
+    if (pose) { if (!reduced) avatar.classList.add('moment'); setPose(pose); } else if (!reduced) joy();
+    var th = $('#thought'); if (th && text && !opt.quiet) { th.classList.add('say'); th.textContent = text; th.classList.add('on'); scene.classList.add('saying'); } /* the room's dots fade so they never sit on her words */
+    momentTimer = setTimeout(endMoment, reduced ? 6000 : 4800);
+    return text;
+  }
+
   /* ---------- everyday mindfulness: guides for what you are really doing ---------- */
+  var tapSaved = false;
   var MF = window.OvuMindful, practice = null, GUIDE = 'assets/audio/guide-interim/';
   /* one audio element per practice, first played inside the tap that began it (see playClip): later lines reuse it, and a
    * guard moves the script on if a clip stalls or is missing, so the captions and bells never wait on silence */
@@ -2283,9 +2358,10 @@
   /* Pose and outfit images include their props (a watering can, a pillow, a wardrobe), so each one is
    * scaled by how wide the girl's head is in it: [image width relative to her head, her centre as a
    * fraction of the image]. Her head, and so her size, stays the same in every pose. */
-  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513]};
+  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513]};
   function fitAvatar() {
-    var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatarImg.src || ''), f = m && AVATAR_FIT[m[1]]; if (!f) f = [1, 0.5];
+    /* an outfit's copy of a pose is fitted on the pose's own canvas (tools/art: fit.py), so it shares the pose's numbers */
+    var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatarImg.src || ''), f = m && (AVATAR_FIT[m[1]] || AVATAR_FIT[m[1].replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung)$/, '')]); if (!f) f = [1, 0.5];
     avatarImg.style.width = (f[0] * 100).toFixed(2) + '%'; avatarImg.style.maxWidth = 'none';
     avatarImg.style.marginLeft = ((0.5 - f[1] * f[0]) * 100).toFixed(2) + '%';
     avatarImg.style.transformOrigin = (f[1] * 100).toFixed(1) + '% 100%';
@@ -2294,12 +2370,13 @@
   /* a pose is drawn in what she is wearing (Jamie, 19 Oct: "it cannot be changing outfit while watering"); the shower robe and
    * the stretch's yoga set are that activity's own clothes, so those two keep their one sprite. A missing file falls back to
    * the original pose */
-  var OUTFIT_POSES = { plants: 1, coffee: 1, teeth: 1, dishes: 1, pets: 1, bed: 1, outfit: 1 };
+  var OUTFIT_POSES = { plants: 1, coffee: 1, teeth: 1, dishes: 1, pets: 1, bed: 1, outfit: 1, stretch: 1, note: 1, eat: 1, listen: 1, read: 1, tend: 1, harvest: 1, wave: 1, press: 1, phone: 1, shop: 1, scale: 1 }; /* stretch and the eleven moment poses joined on 20 Oct (ovu-moments.js); the shower keeps its robe */
   function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && outfit !== 'base' ? '-' + outfit : '') + '.webp'; }
   function setPose(pose) {
-    var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image();
-    img.onload = function () { avatarImg.src = img.src; };
-    img.onerror = function () { if (img.src.indexOf(plain) < 0) img.src = plain; };
+    var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image(), gen = ++imgGen;
+    img.onload = function () { if (gen === imgGen) avatarImg.src = img.src; };
+    /* a missing outfit copy never borrows the default clothes: she keeps standing in her own (Jamie's rule; Codex review) */
+    img.onerror = function () { if (gen !== imgGen) return; if (want === plain) { if (img.src.indexOf(plain) < 0) img.src = plain; } else setOutfit(S.profile().outfit || 'base', true); };
     img.src = want;
   }
   function restorePose() { setOutfit(S.profile().outfit || 'base', true); }
@@ -2307,13 +2384,13 @@
     var ex = MF.explored();
     openSheet('everyday', 'Everyday mindfulness', 'Guides for things you are really doing', 'self_improvement',
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Informal practice, with Erin</b><small>Pick what you are about to do for real, press Begin as you start, and let the guide walk alongside you. The guides are spoken in Erin’s voice from interim scripts; her own written scripts will replace them one by one.</small></div></div>' +
-      '<div class="acts" id="acts">' + MF.ACTIVITIES.map(function (a) { var n = ex[a.id] || 0; return '<button type="button" class="act' + (selId === a.id ? ' on' : '') + '" data-act="' + a.id + '"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><span><b>' + esc(a.name) + '</b><small>' + esc(a.when) + ' · ' + a.minutes + ' min</small></span><em>' + (n ? '<span class="ms">check_circle</span>' + n : '<span class="ms fill">favorite</span>15') + '</em></button>'; }).join('') + '</div>' +
+      '<div class="acts" id="acts">' + MF.ACTIVITIES.map(function (a) { var n = ex[a.id] || 0; return '<button type="button" class="act' + (selId === a.id ? ' on' : '') + '" data-act="' + a.id + '"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><span><b>' + esc(a.name) + '</b><small>' + esc(a.when) + ' · ' + a.minutes + ' min</small></span><em>' + (n ? '<span class="ms">check_circle</span>' + n : '<span class="ms fill">favorite</span>2') + '</em></button>'; }).join('') + '</div>' +
       '<div class="actdetail" id="actDetail"></div>' +
       '<p class="help">Each completed practice earns 2 hearts, up to 6 a day. The point is not the points: it is two ordinary minutes, fully lived. Please only confirm practices you really did.</p>');
     function detail(id) {
       var a = MF.byId(id), v = MF.nextVariation(a), vi = a.variations.indexOf(v), n = MF.timesDone(id);
       $$('.act', body).forEach(function (b) { b.classList.toggle('on', b.dataset.act === id); });
-      $('#actDetail').innerHTML = '<div class="actcard"><div class="acthead"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><div><h3>' + esc(a.name) + '</h3><p>' + esc(a.intro) + '</p><small>Script ' + (vi + 1) + ' of ' + a.variations.length + ' · “' + esc(v.title) + '” · about ' + Math.max(1, Math.round(MF.totalSecs(v) / 60)) + ' min' + (n ? ' · done ' + n + ' time' + (n > 1 ? 's' : '') : ' · first time: +10 ♥') + '</small></div></div>' +
+      $('#actDetail').innerHTML = '<div class="actcard"><div class="acthead"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><div><h3>' + esc(a.name) + '</h3><p>' + esc(a.intro) + '</p>' + (a.care ? '<p class="actcare"><span class="ms">health_and_safety</span>' + esc(a.care) + '</p>' : '') + '<small>Script ' + (vi + 1) + ' of ' + a.variations.length + ' · “' + esc(v.title) + '” · about ' + Math.max(1, Math.round(MF.totalSecs(v) / 60)) + ' min' + (n ? ' · done ' + n + ' time' + (n > 1 ? 's' : '') : ' · new to you') + '</small></div></div>' +
         '<ol class="steps">' + v.steps.map(function (s) { return '<li>' + esc(s.text) + '</li>'; }).join('') + '</ol>' +
         '<div class="row"><button type="button" class="btn primary" id="actStart" data-act="' + id + '" data-v="' + vi + '"><span class="ms">play_arrow</span>Begin as you begin</button></div></div>';
       $('#actDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2327,6 +2404,10 @@
     if (window.OvuPodcast) OvuPodcast.pause();
     practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: new Audio(), timer: null, total: MF.totalSecs(v), pre: null };
     try { var first = GUIDE + id + '-' + vi + '-0.mp3'; practice.audio.src = first; practice.pre = first; var pr0 = practice.audio.play(); if (pr0 && pr0.catch) pr0.catch(function () { }); } catch (e) { } /* the first line starts inside the tap, which unlocks the element for the rest */
+    /* from the Mind hub she was on the mat, hidden: bring her back before the pose, or the practice plays to an empty room
+     * (four-persona review, 20 Oct, all four Codex walkthroughs) */
+    endMoment();
+    if (meditating && !session) { meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); avatar.classList.remove('hidden'); }
     hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting');
     var chain = Promise.resolve();
     v.steps.forEach(function (s, si) {
@@ -2345,9 +2426,9 @@
     var secs = Math.round((Date.now() - p.startedAt) / 1000);
     chime('bell', true); caption(finished ? 'That is the practice.' : 'Paused');
     openSheet('practiceDone', finished ? 'How was that?' : 'Stopping early', p.a.name, 'self_improvement',
-      '<div class="orbwrap"><div class="orb out"></div><div class="orbtext">' + (finished ? 'Did you really do it, with attention?' : 'You did about ' + Math.max(1, Math.round(secs / 60)) + ' minute' + (secs >= 90 ? 's' : '') + '. Count it?') + '</div></div>' +
-      '<div class="row"><button type="button" class="btn primary" id="pdYes"><span class="ms">check</span>Yes, I did</button><button type="button" class="btn ghost" id="pdNo">Not really</button></div>' +
-      '<p class="help">Only real practice counts. This stays between you and your room.</p>');
+      '<div class="orbwrap"><div class="orb out"></div><div class="orbtext">' + (finished ? 'Save this pause to your journal?' : 'You did about ' + Math.max(1, Math.round(secs / 60)) + ' minute' + (secs >= 90 ? 's' : '') + '. Save it?') + '</div></div>' +
+      '<div class="row"><button type="button" class="btn primary" id="pdYes"><span class="ms">check</span>Yes, I did it</button><button type="button" class="btn ghost" id="pdNo">Not this time</button></div>' +
+      '<p class="help">Save it if you really did it. A mind that wandered and came back still counts: noticing is the practice. This stays between you and your room.</p>');
     function end(confirmed) {
       hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null; closeSheet();
       if (confirmed && secs >= 30) { var r = MF.complete(p.a.id, p.vi, secs, true); afterSave(r.event, (r.first ? 'First ' + p.a.name.toLowerCase() + ' practice! ' : '') + 'Saved to your journal.'); }
@@ -2496,7 +2577,7 @@
   }
   function predictionModeFor(A) {
     var h = A.hormones || [], c = A.conditions || [];
-    if (h.some(function (x) { return ['pill', 'pop', 'iud_h', 'implant', 'hrt', 'fertility'].indexOf(x) > -1; }) || A.pregState === 'pregnant' || A.pregState === 'maybe' || A.regularity === 'notyet' || A.periodsStarted === 'no' || A.regularity === 'none12' || A.lastPeriodStatus === 'none' || c.indexOf('hysterectomy') > -1) return 'suspended';
+    if (h.some(function (x) { return ['pill', 'pop', 'iud_h', 'implant', 'hrt', 'fertility'].indexOf(x) > -1; }) || A.pregState === 'pregnant' || A.pregState === 'maybe' || A.regularity === 'notyet' || A.periodsStarted === 'no' || A.regularity === 'none12' || A.lastPeriodStatus === 'none' || c.indexOf('hysterectomy') > -1 || (A.pregState === 'postpartum' && A.periodsBack === 'no')) return 'suspended';
     if (A.regularity === 'rare' || A.regularity === 'irregular' || A.pregState === 'postpartum' || A.pregState === 'loss' || h.indexOf('ec') > -1 || A.periodLength === 'weeks' || (A.signals || []).indexOf('flushes') > -1) return 'wide';
     return 'normal';
   }
@@ -2527,7 +2608,7 @@
   }
   function finishOnboarding(A) {
     var num = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : null; };
-    var patch = { name: A.name || S.profile().name || '', ageRange: A.ageRange || '', ageBand: '', minorAck: '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: (function () { var r = A.periodRecall, d = r ? recallDays(recallState(A)) : []; return r && r.latest === 'yes' && d.length ? d[d.length - 1] : ''; })(), cycleLength: null, periodLength: num(A.periodLength), periodLengthAnswer: A.periodLength || '', periodRecall: A.periodRecall ? Object.assign({}, A.periodRecall, { capturedAt: new Date().toISOString() }) : null, cycleVaries: false, bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' && ['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && A.pregState !== 'pregnant' && A.pregState !== 'postpartum' && !(A.hormones || []).some(function (x) { return x !== 'none' && x !== 'other' && x !== 'iud_cu'; }) ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), onboarded: true, onboardedAt: new Date().toISOString() };
+    var patch = { name: A.name || S.profile().name || '', ageRange: A.ageRange || '', ageBand: '', minorAck: '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: (function () { var r = A.periodRecall, d = r ? recallDays(recallState(A)) : []; return r && r.latest === 'yes' && d.length ? d[d.length - 1] : ''; })(), cycleLength: null, periodLength: num(A.periodLength), periodLengthAnswer: A.periodLength || '', periodRecall: A.periodRecall ? Object.assign({}, A.periodRecall, { capturedAt: new Date().toISOString() }) : null, cycleVaries: false, bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' && ['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && A.pregState !== 'pregnant' && A.pregState !== 'postpartum' && !(A.hormones || []).some(function (x) { return x !== 'none' && x !== 'other' && x !== 'iud_cu' && x !== 'hrt'; }) ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), onboarded: true, onboardedAt: new Date().toISOString() };
     S.setProfile(patch);
     try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, patch))); } catch (e) { }
     RW.grant(20, 'welcome');
@@ -2553,6 +2634,7 @@
     updateGreeting();
   }
   function openWindow() {
+    moment('window');
     var cs = S.cycleStats(), st = S.sleepStats(7), d = new Date(), sp = sunNow(), sleeping = S.state().sleeping;
     var loggedToday = S.byDate(S.today()).some(function (e) { return e.type === 'sleep'; });
     var act = sleeping ? { id: 'bed', icon: 'wb_sunny', text: 'Wake up' }
@@ -2563,7 +2645,7 @@
       '<div class="stat"><span class="ms">bedtime</span><div><b>' + (st.avg ? 'Averaging ' + st.avg + ' h over ' + st.count + ' nights' : 'No sleep logged this week') + '</b><span>Adults generally do best with 7 hours or more.</span></div></div>' +
       '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + (cs.uncertain ? ' (a loose estimate while cycles are changing).' : '.') : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : (cs.lastStart ? 'Predictions begin once your next period is logged, or add your usual cycle length in Tell me about you.' : 'Log a period on the wall calendar to start predictions.'))) + (gapNote(cs) ? ' ' + esc(gapNote(cs)) : '') + '</span></div></div>' +
       '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">' + act.icon + '</span>' + act.text + '</button><button class="btn soft" id="winSound"><span class="ms">' + (S.state().sound ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (S.state().sound ? 'on' : 'off') + '</button></div>' +
-      '<div class="row"><a class="btn ghost" href="settings.html"><span class="ms">settings</span>Settings & health connections</a><a class="btn ghost" href="face-ppg.html"><span class="ms">monitor_heart</span>Calm check (beta)</a></div>' +
+      '<div class="row"><a class="btn ghost" href="settings.html"><span class="ms">settings</span>Settings & health connections</a><a class="btn ghost" href="face-ppg.html"><span class="ms">monitor_heart</span>Calm check (experimental)</a></div>' +
       '<div class="row"><button type="button" class="btn ghost" id="winIntro"><span class="ms">favorite</span>' + (S.profile().onboarded ? 'Update my intro' : 'Tell me about you') + '</button></div>' +
       '<p class="help">Sounds are tiny chimes plus Erin’s good-night and good-morning lines; they stay off unless you turn them on. Guided sessions always play when you start one.</p>');
     $('#winSleep').addEventListener('click', function () { if (act.id === 'log') { openSleepRecord(); return; } closeSheet(); tap(hotspot(act.id)); });
@@ -2577,18 +2659,54 @@
   /* the menu sits above her head; when the camera holds her tall on screen there is no room above, so it stays inside the box */
   function fitBubble() { var minTop = bubble.offsetHeight + 6; if (parseFloat(bubble.style.top) < minTop) bubble.style.top = minTop + 'px'; }
   /* a tap on her is a little hop and nothing more (Jamie, 19 Oct: the menu over her head is gone; every choice it held has its own place) */
-  avatar.addEventListener('click', function (e) { e.stopPropagation(); chime('tap'); joy(); hideThought(); hideBubble(); });
+  avatar.addEventListener('click', function (e) { e.stopPropagation(); chime('tap'); if (momentOn) endMoment(); joy(); hideThought(); hideBubble(); });
   bubble.addEventListener('click', function (e) { var pb = e.target.closest('[data-pact]'); if (pb) { var pid = bubble.dataset.pet; hideBubble(); petAction(pid, pb.dataset.pact); return; } var b = e.target.closest('button'); if (!b) return; hideBubble(); if (b.dataset.act !== 'sleep' && !awake(b.dataset.act)) return; var id = { wardrobe: 'wardrobe', sleep: 'bed', mat: 'mat' }[b.dataset.act]; if (id) tap(hotspot(id)); if (b.dataset.act === 'journal') location.href = 'journal.html'; if (b.dataset.act === 'acu') openAcupressure(); if (b.dataset.act === 'luna') openLuna(); if (b.dataset.act === 'everyday') openEveryday(); if (b.dataset.act === 'intro') openOnboarding(0, {}); });
   document.addEventListener('click', function (e) { if (!e.target.closest('#bubble') && !e.target.closest('#avatar')) hideBubble(); });
 
+  /* ---------- care cards: the same words in Luna's chat and after a hand-saved entry ---------- */
+  function careHTML(u) {
+    var emergency = u.level === 'emergency';
+    function link(a, i) { var tel = /^tel:/.test(a.href), web = /^https:/.test(a.href); return '<a class="btn ' + (i ? 'soft' : 'primary') + '" href="' + esc(a.href) + '"' + (web ? ' target="_blank" rel="noopener"' : '') + '><span class="ms">' + (tel ? 'call' : /wa\.me/.test(a.href) ? 'chat' : web ? 'local_hospital' : 'medical_information') + '</span>' + esc(a.label) + '</a>'; }
+    /* a card that brings its own words and links (self-harm, chest pain, stroke signs, a fever with pain, a clot, ...) */
+    if (u.message) return '<b>' + esc(u.title) + '</b><p>' + esc(u.message) + '</p>' + ((u.actions || []).length ? '<div class="row">' + u.actions.map(link).join('') + '</div>' : '') +
+      '<small>Rhythme cannot assess how you are or diagnose. No clinician or helpline receives this alert.</small>';
+    return '<b>' + esc(u.title) + '</b>' +
+      (emergency
+        ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 if you faint or feel very weak or dizzy, cannot travel safely, have trouble breathing, or have chest pain.</p>'
+        : '<p>This is not a period. Any bleeding after menopause, even a small spot or a pink or brown discharge, should be checked by a clinician promptly, even if it stops. Book your GP, a polyclinic or a gynaecologist this week. Get same-day care if the bleeding is heavy, you have severe pain, or you feel dizzy. It is usually not serious, but it needs a check.</p><p class="esc">Call 995 if the bleeding is heavy and you feel faint, or you have chest pain or trouble breathing.</p>') +
+      '<div class="row">' + (emergency ? '<a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><a class="btn soft" href="https://www.kkh.com.sg/our-specialties/urgent-og-centre" target="_blank" rel="noopener"><span class="ms">local_hospital</span>KKH Urgent O&amp;G (24h)</a>' : '') + '<a class="btn ghost" href="journal.html"><span class="ms">medical_information</span>Show my chart</a></div>' +
+      '<small>Rhythme cannot assess your condition or diagnose. This alert follows published guidance (KKH, SCDF, NHS). No clinician receives this alert.</small>';
+  }
+  /* after a hand-saved entry the card is the whole sheet: the entry is already saved, so nothing is lost by covering the form */
+  function careSheet(u) {
+    endMoment();
+    openSheet('care', u.level === 'emergency' ? 'Please read this first' : 'A note about what you logged', 'Your entry is saved', u.level === 'emergency' ? 'emergency_home' : 'medical_information',
+      '<div class="bub urgent' + (u.level === 'emergency' ? ' emergency' : '') + ' carecard">' + careHTML(u) + '</div><div class="row"><button type="button" class="btn ghost" id="careDone"><span class="ms">close</span>Back to the room</button></div>');
+    $('#careDone').addEventListener('click', hideSheet);
+    try { chime('alert', true); } catch (err) { }
+  }
+
   /* ---------- after save: agents + hearts ---------- */
-  function afterSave(ev, text) {
+  /* the most urgent card among the entries one action saved (Codex branch review, 20 Oct: pain 10/10 on the period form was
+   * saved as a second entry the card never saw) */
+  var CARE_RANK = { emergency: 3, today: 2, prompt: 1 };
+  function topCare(evs) {
+    var best = null; (evs || []).forEach(function (e) { var u = e && ORB && ORB.entryUrgent ? ORB.entryUrgent(e, S.profile()) : null; if (u && (!best || CARE_RANK[u.level] > CARE_RANK[best.level])) best = u; });
+    return best;
+  }
+  function afterSave(ev, text, viaLuna, alsoSaved) {
     var res = A.analyze(ev), rw = RW.award(ev);
     var hi = res.flags.filter(function (f) { return f.level === 'high'; })[0], w = res.flags.filter(function (f) { return f.level === 'watch'; })[0];
     var heartsText = rw.points ? ' +' + (rw.points + rw.bonus) + ' ♥' : '';
-    if (hi) toast(hi.title + '. Please see the note in your journal.', 'emergency_home');
-    else if (w) toast('Saved. Pattern note added: ' + w.title + '.' + heartsText, 'flag');
-    else toast((text || 'Saved to your journal.') + heartsText, 'check_circle');
+    /* a red flag in what was just saved is shown at once, never left for the journal (four-persona review, 20 Oct) */
+    var care = topCare([ev].concat(alsoSaved || []));
+    if (care) endMoment(); /* a care card always comes alone */
+    /* a care card comes alone: no pose and no cheerful line over it */
+    var mk = care ? null : viaLuna ? 'luna' : (MO ? MO.forEntry(ev, A.isPostmenopausal(S.profile())) : null), line = mk ? moment(mk, { quiet: true }) : '';
+    if (care && !viaLuna) { careSheet(care); toast('Saved.' + heartsText, 'check_circle'); }
+    else if (hi) toast(hi.title + '. Please see the note in your journal.', 'emergency_home');
+    else if (w) toast('Saved. Pattern note added: ' + w.title + '.' + heartsText, 'flag', line);
+    else toast((text || 'Saved to your journal.') + heartsText, 'check_circle', line);
     var chip = $('#heartsChip'); chip.classList.remove('pop'); void chip.offsetWidth; chip.classList.add('pop');
     renderProps(); renderDeck();
   }
@@ -2634,6 +2752,9 @@
    * They add layouts, doors and hotspot handlers of their own and listen for layout, props and boot;
    * everything else here stays private. */
   var hooks = { on: {}, hotspotHandlers: {}, fallbackHotspot: null, hudStop: null, moving: null, camFocus: null, walkTo: null }, booted = false;
+  /* a walk ends a mindful moment at once: she never slides in a pose (Codex branch review, 20 Oct) */
+  hooks.on.beforeWalk = [function () { endMoment(); }];
+  hooks.on.walk = [function () { endMoment(); }];
   function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = {
     LAYOUTS: LAYOUTS, ART: ART, hotspotHandlers: hooks.hotspotHandlers,
@@ -2649,7 +2770,7 @@
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
-    enterMeditation: enterMeditation, exitMeditation: exitMeditation, runSession: runSession, sessionOn: function () { return !!session; },
+    moment: moment, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
   };

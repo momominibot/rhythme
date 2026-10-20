@@ -1,0 +1,12 @@
+You are reviewing Rhythme today, 20 October 2026: a Singapore women's cycle and wellbeing web app for adults 18+ (local-first PWA). It is now also a cosy life-sim: a dream room, a garden with a greenhouse, a farm, Dream Street with three shops, a community plaza with health-topic groups, pets, a follow camera, and an avatar who walks and acts. You cannot read the code. Below the persona is an INVENTORY that another reviewer built from the source code: every activity, what the person does, the mindful element present today (quoted), what the avatar does, whether her outfit is kept, and the gap. Treat the inventory as the factual tour of the app. Cite its rows (by activity name) for any claim about what the app does; do not invent features.
+
+Play ONE persona end to end (below) and walk EVERY activity in the inventory.
+
+The owner's requirement for this review: EVERY activity should instil mindfulness (a brief, non-preachy moment of noticing, breath or kindness that fits the activity) and show an ACTION FROM THE AVATAR (she visibly does or reacts to the activity, in her own outfit). Do not propose streaks, guilt, pressure or anything that makes logging a chore. Hearts are earned for logging data only; practice earns a small flat amount.
+
+Write these sections:
+1. For each activity, one row: what is wrong, unsafe, misleading or missing for YOU at your life stage; a proposed mindful line, written exactly as it should appear (at most 18 words, warm, plain English, no em dashes, no medical claims); a proposed avatar action (one of the existing poses bed, coffee, dishes, outfit, pets, plants, shower, stretch, teeth, meditate, walking, sleeping, sitting, or a NEW pose you name and describe in one line for an illustrator).
+2. Safety: every red flag at your life stage the app must escalate, and the exact wording you would want shown. Singapore context: 995, polyclinics, KKH, NUH, SOS 1767, mindline 1771.
+3. Your top ten concrete fixes, ranked, each with the exact change in behaviour or wording.
+4. Anything in the inventory that you believe is clinically wrong, culturally off for Singapore, or would make you stop using the app.
+Rules: cite primary sources with URLs for any clinical statement (NICE, RCOG, ACOG, NAMS/The Menopause Society, WHO, Cochrane, Singapore MOH/HPB/HealthHub, KKH, NUH, peer-reviewed); label anything unverified; plain English; no em dashes; at most 2000 words; markdown.

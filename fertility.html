@@ -27,115 +27,52 @@
     <a class="t-icon ms" href="cycle-trends.html">calendar_today</a>
   </div>
   <div class="scroll">
-
-    <!-- Hero: peak ovulation window -->
-    <div class="card tint-blush" style="padding:22px 18px;display:flex;flex-direction:column;align-items:center;text-align:center">
-      <div class="badge ok" style="margin-bottom:12px"><span class="ms breathe" style="font-size:14px">spa</span> High Fertility</div>
-      <svg width="168" height="168" viewBox="0 0 168 168" role="img" aria-label="Peak ovulation window, cycle day 14">
-        <circle cx="84" cy="84" r="74" fill="none" stroke="rgba(110,70,84,.08)" stroke-width="4"/>
-        <circle cx="84" cy="84" r="64" fill="none" stroke="rgba(110,70,84,.12)" stroke-width="4"/>
-        <circle cx="84" cy="84" r="54" fill="none" stroke="rgba(217,131,164,.14)" stroke-width="9"/>
-        <circle cx="84" cy="84" r="54" fill="none" stroke="var(--d-cycle)" stroke-width="9" stroke-linecap="round"
-                stroke-dasharray="238 339" transform="rotate(-90 84 84)"/>
-        <text x="84" y="78" text-anchor="middle" style="font:600 11px Manrope;letter-spacing:.1em;fill:var(--taupe)">DAY</text>
-        <text x="84" y="108" text-anchor="middle" style="font:500 40px Newsreader;fill:var(--mauve)">14</text>
-      </svg>
-      <div style="font-family:var(--serif);font-weight:500;font-size:23px;color:var(--mauve);margin-top:14px">Peak Ovulation Window</div>
-      <div class="sub" style="font-size:12.5px;line-height:1.5;margin-top:6px;max-width:32ch">Your biological markers indicate optimal conditions for conception over the next 48 hours. Luteinizing hormone surge detected.</div>
-      <div class="sub" style="font-size:11.5px;font-weight:800;color:var(--terracotta);margin-top:8px;letter-spacing:.03em">Predicted ovulation: Tomorrow</div>
+    <!-- Rewritten 20 Oct 2026 after the four-persona review: the old page showed a made-up 85% chance, a "detected" LH surge and
+         sample temperatures as if they were yours. Nothing here is a result. Your own estimate below comes from the periods you logged. -->
+    <div class="card tint-blush" style="padding:20px 18px">
+      <div class="badge info" style="margin-bottom:10px"><span class="ms" style="font-size:14px">spa</span> Ovulation signs, explained</div>
+      <div style="font-family:var(--serif);font-weight:500;font-size:23px;color:var(--mauve)">Your fertile window</div>
+      <p class="sub" style="font-size:13px;line-height:1.55;margin-top:6px">Pregnancy can start from sex in the six days that end on the day of ovulation: the five days before it and the day itself. The chance is highest in the last two or three of those days.</p>
+      <p class="sub" style="font-size:11.5px;margin-top:6px">Wilcox, Weinberg and Baird, New England Journal of Medicine, 1995, 221 women. <a href="https://pubmed.ncbi.nlm.nih.gov/7477165/" target="_blank" rel="noopener">PubMed</a></p>
     </div>
 
-    <!-- Conception probability -->
-    <div class="card" style="padding:18px;background:var(--mauve);color:#F6EDF0">
-      <div class="row" style="justify-content:space-between;align-items:flex-start">
-        <div>
-          <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);border-radius:99px;padding:4px 9px;font-size:10.5px;font-weight:800;color:#EDB8C9">
-            <span class="ms" style="font-size:13px">check_circle</span> AI Insight</div>
-          <div style="font-family:var(--serif);font-weight:500;font-size:18px;margin-top:10px">Conception Probability</div>
-          <div style="font-size:12px;opacity:.82;margin-top:2px">Based on combined BBT, LH and past-cycle data.</div>
-        </div>
-      </div>
-      <div class="row" style="justify-content:space-between;align-items:flex-end;margin-top:14px">
-        <div>
-          <span style="font-family:var(--serif);font-weight:500;font-size:46px;line-height:1">85<span style="font-size:22px">%</span></span>
-          <div style="font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#EDB8C9;margin-top:2px">High likelihood</div>
-        </div>
-      </div>
+    <h2 class="sec">Your own estimate</h2>
+    <div class="card" style="padding:16px" id="myEstimate">
+      <div class="sub" style="font-size:12.5px">Reading your calendar…</div>
     </div>
 
-    <!-- Fertile-window calendar strip -->
-    <h2 class="sec">Fertile window · October</h2>
+    <h2 class="sec">Why a calendar can only estimate</h2>
     <div class="card" style="padding:16px">
-      <div style="display:flex;gap:6px;justify-content:space-between">
-        <div style="flex:1;text-align:center"><div class="sub" style="font-size:10px">FRI</div><div style="font-size:14px;color:var(--faded);margin-top:4px">12</div></div>
-        <div style="flex:1;text-align:center;background:rgba(217,131,164,.14);border-radius:99px 0 0 99px"><div class="sub" style="font-size:10px">SAT</div><div style="font-size:14px;font-weight:700;color:var(--mauve);margin-top:4px">13</div></div>
-        <div style="flex:1;text-align:center;background:rgba(217,131,164,.28);position:relative"><div class="sub" style="font-size:10px;color:var(--mauve)">SUN</div><div style="font-size:15px;font-weight:800;color:var(--cocoa);margin-top:4px;border:2px solid var(--d-cycle);border-radius:50%">14</div></div>
-        <div style="flex:1;text-align:center;background:var(--d-cycle);border-radius:0 99px 99px 0;color:#fff"><div style="font-size:10px;opacity:.85">MON</div><div style="font-size:15px;font-weight:800;margin-top:4px">15 ★</div></div>
-        <div style="flex:1;text-align:center"><div class="sub" style="font-size:10px">TUE</div><div style="font-size:14px;margin-top:4px">16</div></div>
-        <div style="flex:1;text-align:center"><div class="sub" style="font-size:10px">WED</div><div style="font-size:14px;margin-top:4px">17</div></div>
-      </div>
-      <div class="sub" style="font-size:11.5px;margin-top:12px;display:flex;gap:14px;flex-wrap:wrap">
-        <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:50%;background:rgba(217,131,164,.28);display:inline-block"></i>Fertile window</span>
-        <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:50%;background:var(--d-cycle);display:inline-block"></i>Predicted ovulation</span>
-      </div>
+      <p style="font-size:13px;line-height:1.55;margin:0">Ovulation often comes about two weeks before the next period, but it moves. In a study of 221 women, the textbook days 10 to 17 held the whole fertile window for only about 3 in 10 women, and timing could be hard to predict even when cycles were usually regular.</p>
+      <p class="sub" style="font-size:11.5px;margin-top:6px">Wilcox, Dunson and Baird, BMJ, 2000. <a href="https://pubmed.ncbi.nlm.nih.gov/11082086/" target="_blank" rel="noopener">PubMed</a></p>
     </div>
 
-    <!-- Biomarker logging entry points -->
-    <h2 class="sec">Log today's biomarkers</h2>
-
-    <!-- BBT -->
-    <a class="card" href="cycle-log.html" style="padding:16px;text-decoration:none;display:block">
-      <div class="row" style="justify-content:space-between;align-items:flex-start">
-        <div class="row" style="gap:9px">
-          <span class="ms" style="color:var(--mauve)">device_thermostat</span>
-          <div><b style="font-size:14px;color:var(--cocoa)">Basal Body Temp</b><div class="sub" style="font-size:11.5px">Morning resting temperature</div></div>
-        </div>
-        <span class="badge info" style="font-size:10px">+0.4°C shift</span>
-      </div>
-      <div style="display:flex;gap:4px;align-items:flex-end;height:44px;margin-top:12px">
-        <div style="flex:1;background:var(--sunken);border-radius:4px 4px 2px 2px;height:40%"></div>
-        <div style="flex:1;background:var(--sunken);border-radius:4px 4px 2px 2px;height:42%"></div>
-        <div style="flex:1;background:var(--sunken);border-radius:4px 4px 2px 2px;height:39%"></div>
-        <div style="flex:1;background:var(--sunken);border-radius:4px 4px 2px 2px;height:45%"></div>
-        <div style="flex:1;background:var(--sunken);border-radius:4px 4px 2px 2px;height:41%"></div>
-        <div style="flex:1;background:rgba(110,70,84,.45);border-radius:4px 4px 2px 2px;height:80%"></div>
-        <div style="flex:1;background:var(--mauve);border-radius:4px 4px 2px 2px;height:95%"></div>
-      </div>
-      <div class="sub" style="font-size:11px;margin-top:8px">Last reading 36.85 °C · take it immediately upon waking.</div>
-    </a>
-
-    <!-- LH -->
-    <a class="card" href="cycle-log.html" style="padding:16px;text-decoration:none;display:block">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <div class="row" style="gap:9px">
-          <span class="ms" style="color:var(--d-diet)">science</span>
-          <div><b style="font-size:14px;color:var(--cocoa)">LH Test</b><div class="sub" style="font-size:11.5px">Luteinizing hormone strip</div></div>
-        </div>
-        <span class="badge ok" style="font-size:10px">Peak</span>
-      </div>
-      <div class="sub" style="font-size:11.5px;color:var(--terracotta);margin-top:10px;font-weight:700">Surge detected yesterday · scan a strip or log Low / Peak</div>
-    </a>
-
-    <!-- Cervical mucus -->
-    <a class="card" href="cycle-log.html" style="padding:16px;text-decoration:none;display:block">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <div class="row" style="gap:9px">
-          <span class="ms" style="color:var(--d-cycle)">water_drop</span>
-          <div><b style="font-size:14px;color:var(--cocoa)">Cervical Mucus</b><div class="sub" style="font-size:11.5px">Discharge quality</div></div>
-        </div>
-        <span class="badge info" style="font-size:10px">Egg-white</span>
-      </div>
-      <div class="sub" style="font-size:11.5px;margin-top:10px">Dry · Sticky · Creamy · Egg-white (fertile)</div>
-    </a>
-
-    <!-- Educational tip -->
-    <div class="insight" style="background:linear-gradient(140deg, rgba(229,180,92,.2), rgba(255,255,255,.78))">
-      <span class="i-ic ms" style="color:var(--warn)">lightbulb</span>
-      <p><b>Biological Markers</b><br/>Consistent tracking of your BBT shift and LH peak pinpoints the exact window of ovulation rather than estimating from calendar days alone — and reflects your ovarian reserve over time.</p>
+    <h2 class="sec">Signs you can notice</h2>
+    <div class="card" style="padding:16px;display:grid;gap:12px">
+      <div class="row" style="gap:10px;align-items:flex-start"><span class="ms" style="color:var(--d-cycle)">water_drop</span><div><b style="font-size:13.5px;color:var(--cocoa)">Cervical mucus</b><div class="sub" style="font-size:12px;line-height:1.5">In the days before ovulation it often turns clear, wet and stretchy, like raw egg white. It is a sign that the window may be open, not a guarantee.</div></div></div>
+      <div class="row" style="gap:10px;align-items:flex-start"><span class="ms" style="color:var(--d-diet)">science</span><div><b style="font-size:13.5px;color:var(--cocoa)">Urine LH tests</b><div class="sub" style="font-size:12px;line-height:1.5">A positive strip shows a hormone surge that usually comes a day or so before ovulation. Follow the kit’s instructions; a positive test does not prove that ovulation happened.</div></div></div>
+      <div class="row" style="gap:10px;align-items:flex-start"><span class="ms" style="color:var(--mauve)">device_thermostat</span><div><b style="font-size:13.5px;color:var(--cocoa)">Waking temperature</b><div class="sub" style="font-size:12px;line-height:1.5">It rises a little after ovulation, so it tells you afterwards rather than ahead. Late nights, shifts, illness and alcohol can all move it.</div></div></div>
     </div>
 
-    <a class="btn" href="cycle-log.html" style="margin-top:6px"><span class="ms">edit_note</span> Log today's signs</a>
+    <h2 class="sec">What helps, and when to ask</h2>
+    <div class="card" style="padding:16px">
+      <p style="font-size:13px;line-height:1.55;margin:0">You do not have to hit exact days. NICE advises that sex every 2 to 3 days through the cycle gives a good chance of pregnancy, and many people find that easier than timing.</p>
+      <p class="sub" style="font-size:11.5px;margin-top:6px">NICE guideline NG257, initial advice. <a href="https://www.nice.org.uk/guidance/NG257/chapter/initial-advice-to-people-concerned-about-delays-in-conception" target="_blank" rel="noopener">NICE</a></p>
+      <p style="font-size:13px;line-height:1.55;margin:10px 0 0">Ask a doctor after 12 months of trying if you are under 35, or after 6 months from 35. Ask sooner if your periods are irregular or absent, very painful, you have a known condition, or you simply want to talk it through. A polyclinic or GP can start tests and refer you to KKH or NUH.</p>
+      <p class="sub" style="font-size:11.5px;margin-top:6px">ASRM committee opinion, 2021. <a href="https://www.asrm.org/practice-guidance/practice-committee-documents/fertility-evaluation-of-infertile-women-a-committee-opinion-2021/" target="_blank" rel="noopener">ASRM</a></p>
+    </div>
 
+    <div class="insight" style="background:linear-gradient(140deg, rgba(217,131,164,.16), rgba(255,255,255,.8))">
+      <span class="i-ic ms" style="color:var(--mauve)">favorite</span>
+      <p><b>However many months it has been</b><br/>This is not a test you are passing or failing. If waiting feels heavy, mindline 1771 is open 24 hours.</p>
+    </div>
+
+    <div class="insight" style="background:linear-gradient(140deg, rgba(229,120,100,.16), rgba(255,255,255,.8))">
+      <span class="i-ic ms" style="color:#b0473f">emergency_home</span>
+      <p><b>Get care now</b><br/>One-sided tummy pain, shoulder-tip pain, fainting or heavy bleeding when your period is late or you could be pregnant needs urgent assessment, even with a negative test. Call 995 now if the pain is severe, you feel faint or weak, or the bleeding is heavy. Otherwise go with someone to KKH’s 24-hour Urgent O&amp;G Centre or an A&amp;E.</p>
+    </div>
+
+    <a class="btn" href="room.html#cycle" style="margin-top:6px"><span class="ms">calendar_month</span> Open my calendar</a>
   </div>
 </div>
 <nav class="nav">
@@ -143,6 +80,20 @@
   <a href="foods.html"><span class="n-ic">restaurant</span>Foods</a>
   <a href="room.html#you"><span class="n-ic">person</span>Profile</a>
 </nav>
+<script src="ovu-store.js"></script>
+<script>
+/* her own window, from her own logged periods (ovu-store.js cycleStats, the same numbers as the room calendar) */
+(function () {
+  var el = document.getElementById('myEstimate'), S = window.OvuStore; if (!el || !S) return;
+  function fmt(d) { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }); }
+  var cs; try { cs = S.cycleStats(); } catch (e) { cs = null; }
+  var html;
+  if (cs && cs.mode === 'suspended') html = '<b style="font-size:14px;color:var(--cocoa)">Estimates are paused for you</b><div class="sub" style="font-size:12.5px;line-height:1.5;margin-top:4px">What you told Rhythme means calendar dates would not be reliable right now, so none are shown. Your entries still count.</div>';
+  else if (cs && cs.predictedNext) { var ov = S.addDays(cs.predictedNext, -14); html = '<b style="font-size:14px;color:var(--cocoa)">Around ' + fmt(S.addDays(ov, -5)) + ' to ' + fmt(S.addDays(ov, 1)) + '</b><div class="sub" style="font-size:12.5px;line-height:1.5;margin-top:4px">A calendar estimate from the periods you logged' + (cs.uncertain || cs.mode === 'wide' ? ', and a loose one while your cycles are changing' : '') + '. Your real window can come earlier or later. Signs like those below can add to it.</div>'; }
+  else html = '<b style="font-size:14px;color:var(--cocoa)">No estimate yet</b><div class="sub" style="font-size:12.5px;line-height:1.5;margin-top:4px">Log a period in your calendar and a rough window appears here. It will always be an estimate.</div>';
+  el.innerHTML = html;
+})();
+</script>
 <script src="appnav.js" defer></script>
 
 

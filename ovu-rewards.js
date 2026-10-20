@@ -81,10 +81,12 @@
     }
     var l = ledger(), pts = RULES[ev.type] || 0;
     if (ev.type === 'exercise') pts = exercisePoints(l);
-    if (ev.type === 'food') pts += Math.min(6, ((ev.data.items || []).length) * 2);
     if (ev.type === 'mindfulness') pts = practicePoints(l, ev); /* a flat small thank-you, capped per day */
+    /* no streak bonus and no per-item meal bonus (four-persona review, 20 Oct, every persona and every model: a run of days and
+     * a longer meal list are pressure, and hearts are for logging, not for logging more). The days-logged count stays as a
+     * plain record; it never changes what anything earns. */
     var today = S.today(), bonus = 0;
-    if (l.lastDay !== today) { l.streak = l.lastDay === S.addDays(today, -1) ? l.streak + 1 : 1; l.lastDay = today; if (l.streak >= 3) bonus = 5; }
+    if (l.lastDay !== today) { l.lastDay = today; l.streak = 0; } /* no streak is counted any more (Codex branch review, 20 Oct) */
     var total = pts + bonus;
     if (total <= 0) return { points: 0, bonus: 0, hearts: l.hearts };
     l.hearts += total; l.earned += total; l.log.unshift({ at: new Date().toISOString(), type: ev.type, points: pts, bonus: bonus }); l.log = l.log.slice(0, 200);

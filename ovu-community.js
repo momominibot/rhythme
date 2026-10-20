@@ -13,9 +13,13 @@
     { id: 'priya', name: 'Priya', outfit: 'cozy', pet: { id: 'shiba', img: 'prop-shiba.webp', name: 'Momo', w: 8.5 }, home: 'familyhome', spot: { x: 24, y: 60, flip: true }, petSpot: { x: 16, y: 60 }, line: 'Tea first, then everything else.', sample: true },
     { id: 'sofia', name: 'Sofia', outfit: 'party', pet: { id: 'cat', img: 'prop-cat.webp', name: 'Pudding', w: 8 }, home: 'house', spot: { x: 80, y: 62, flip: true }, petSpot: { x: 74, y: 63 }, line: 'Three slow breaths on the bench. That is my whole plan.', sample: true }
   ];
-  /* the one seam for real friends: return [{id, name, outfit, pet, home, spot, petSpot, line, sample}] */
-  function neighbours() { return NEIGHBOURS.slice(); }
-  function neighbour(id) { return NEIGHBOURS.filter(function (n) { return n.id === id; })[0] || null; }
+  /* the one seam for real people: ovu-friends.js hands over the plaza-card holders in her group,
+   * [{id, real, handle, name, outfit, friend, spot}]; while any are shown the samples step aside, so a sample is never
+   * mistaken for a person */
+  var people = null, openPerson = null;
+  function neighbours() { var real = people ? people() : null; return real && real.length ? real : NEIGHBOURS.slice(); }
+  function neighbour(id) { return neighbours().filter(function (n) { return n.id === id; })[0] || null; }
+  function setPeople(fn, open) { people = typeof fn === 'function' ? fn : null; openPerson = typeof open === 'function' ? open : null; }
   /* gentle prompts for the noticeboard, one per day, chosen by the date so everyone sees the same one */
   var PROMPTS = [
     'Notice three sounds on the way home today.',
@@ -35,12 +39,12 @@
   ];
   var NOTES = [
     { by: 'Mei', text: 'The bench under the blossom tree gets the evening light. Try it around six.', sample: true },
-    { by: 'Nadia', text: 'Ginger tea at the stall helped my cramps this week. Not a cure, just kind.', sample: true },
+    { by: 'Nadia', text: 'Sat by the fountain for two minutes and just listened. The water sounds like rain.', sample: true }, /* no sample note claims a remedy worked (four-persona review, 20 Oct) */
     { by: 'Priya', text: 'Day 12 of watering. The plot has leaves! No pressure, it waits for you.', sample: true }
   ];
   function dayIndex(iso) { var t = Date.parse((iso || '1970-01-01') + 'T00:00:00Z'); return Math.floor(t / 86400000); }
   function promptFor(iso) { var i = dayIndex(iso) % PROMPTS.length; return PROMPTS[(i + PROMPTS.length) % PROMPTS.length]; }
-  var C = { NEIGHBOURS: NEIGHBOURS, PROMPTS: PROMPTS, NOTES: NOTES, neighbours: neighbours, neighbour: neighbour, promptFor: promptFor, dayIndex: dayIndex };
+  var C = { NEIGHBOURS: NEIGHBOURS, PROMPTS: PROMPTS, NOTES: NOTES, neighbours: neighbours, neighbour: neighbour, setPeople: setPeople, promptFor: promptFor, dayIndex: dayIndex };
   root.OvuCommunity = C;
 
   /* rendered 18 Oct 2026 (Seedream 5.0 pro, seed 7302, 1472x1840): positions read off a 5% grid */
@@ -83,8 +87,9 @@
     var wrap = R.els.props;
     Array.prototype.slice.call(wrap.querySelectorAll('.nb')).forEach(function (el) { el.remove(); }); /* props re-render clears the wrap, a layout change does not */
     neighbours().forEach(function (n) {
-      var el = nbNode(n, n.spot, 'nbperson'); el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', n.name + (n.sample ? ', a sample neighbour' : '') + '. Tap to say hello or visit.');
-      el.innerHTML = '<img src="' + ART + 'avatar-' + n.outfit + '.webp" alt=""><span class="nbtag">' + esc(n.name) + '</span>'; wrap.appendChild(el);
+      var el = nbNode(n, n.spot, 'nbperson' + (n.real ? ' nbreal' + (n.friend ? ' nbfriend' : '') : '')); el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0');
+      el.setAttribute('aria-label', n.real ? n.name + (n.friend ? ', your friend' : '') + ', in your group. Tap to see her card.' : n.name + (n.sample ? ', a sample neighbour' : '') + '. Tap to say hello or visit.');
+      el.innerHTML = '<img src="' + ART + 'avatar-' + n.outfit + '.webp" alt=""><span class="nbtag">' + (n.friend ? '<span class="ms" aria-hidden="true">favorite</span>' : '') + esc(n.name) + '</span>'; wrap.appendChild(el);
       if (n.pet) { var p = nbNode(n, { x: n.petSpot.x, y: n.petSpot.y, w: n.pet.w }, 'nbpet'); p.innerHTML = '<img src="' + ART + n.pet.img + '" alt="">'; wrap.appendChild(p); }
     });
   }
@@ -96,7 +101,7 @@
       '<p class="help">Neighbours are samples for now. Nothing here is sent anywhere, and visiting changes nothing of theirs or yours.</p>');
     doc.getElementById('nbHello').addEventListener('click', function () {
       var c = S.state().community || {}; c.hellos = c.hellos || {}; c.hellos[id] = S.today(); S.setState({ community: c });
-      R.closeSheet(); R.chime('save'); R.toast(n.name + ' waves back. ' + ['A good day to you too.', 'Nice to see you.', 'See you at the fountain.'][Math.floor(Math.random() * 3)], 'waving_hand');
+      R.closeSheet(); R.chime('save'); R.toast(n.name + ' waves back. ' + ['A good day to you too.', 'Nice to see you.', 'See you at the fountain.'][Math.floor(Math.random() * 3)], 'waving_hand', R.moment ? R.moment('hello', { quiet: true }) : '');
       var el = doc.querySelector('.nbperson[data-nb="' + id + '"]'); if (el) { el.classList.remove('wave'); void el.offsetWidth; el.classList.add('wave'); }
     });
     doc.getElementById('nbVisit').addEventListener('click', function () { R.closeSheet(); root.setTimeout(function () { visitNeighbour(id); }, 60); });
@@ -143,7 +148,7 @@
       '<p class="help">' + (cs.phase ? 'Day ' + cs.cycleDay + ', ' + esc(cs.phase) + ' phase: these come first.' : 'No phase yet, so a few gentle favourites.') + ' Food notes, not medicine. If you are pregnant, breastfeeding or on medicines, ask first.</p>' +
       '<div class="teas">' + teas.map(function (t) { return '<div class="tea"><span class="ms">' + esc(t.icon || 'local_cafe') + '</span><div><b>' + esc(t.name) + '</b><span>' + esc(t.why) + '</span><small>' + esc(t.research) + '</small>' + (t.care ? '<em>' + esc(t.care) + '</em>' : '') + '</div></div>'; }).join('') + '</div>' +
       '<div class="row"><button type="button" class="btn soft" id="stallSip"><span class="ms">emoji_food_beverage</span>Sip one slowly</button></div>');
-    doc.getElementById('stallSip').addEventListener('click', function () { R.closeSheet(); R.showThought('🍵'); root.setTimeout(R.hideThought, 2800); R.toast('Both hands on the cup. Notice the warmth before the taste.', 'emoji_food_beverage'); });
+    doc.getElementById('stallSip').addEventListener('click', function () { R.closeSheet(); if (R.moment) R.moment('tea', { line: 'Both hands on the cup. Notice the warmth before the taste.' }); R.toast('A cup of tea at the stall.', 'emoji_food_beverage'); });
   }
   var WISHES = ['A petal drifts. A wish for a gentle day.', 'The water keeps moving. So can you, slowly.', 'A coin would be nice, but a breath is free.', 'Wish made. Now one soft breath out.'];
   function openFountain() {
@@ -161,11 +166,13 @@
   R.hotspotHandlers.bench = function (id, L) { if (inPlaza(L)) { root.OvuGarden.openBench(PLAZA.meditator, PLAZA.holo, { x: 34, y: 64, flip: true }); return true; } return prevBench ? prevBench(id, L) : false; };
   R.hotspotHandlers.arch = function (id, L) { if (inPlaza(L)) { root.OvuWalk.travel('street'); return true; } return prevArch ? prevArch(id, L) : false; };
   C.visiting = function () { return visit; }; C.visitNeighbour = visitNeighbour; C.openNeighbour = openNeighbour; C.LAYOUT = PLAZA; C.openBoard = openBoard;
+  C.redraw = function () { if (!visit && inPlaza(R.layout())) renderNeighbours(); };
+  function tapPerson(id) { var n = neighbour(id); if (n && n.real) { if (openPerson) openPerson(n.handle); } else openNeighbour(id); }
   R.on('boot', function () {
     R.on('props', function (L) { if (visit) renderVisit(); else if (inPlaza(L)) renderNeighbours(); });
     R.on('layout', function (L) { if (visit && (L.id !== visit.home || !R.visiting())) endVisit(); if (inPlaza(L)) renderNeighbours(); });
-    R.els.props.addEventListener('click', function (e) { var n = e.target.closest('.nbperson'); if (n && !visit) { e.stopPropagation(); R.chime('tap'); openNeighbour(n.dataset.nb); } });
-    R.els.props.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var n = e.target.closest('.nbperson'); if (n && !visit) { e.preventDefault(); openNeighbour(n.dataset.nb); } });
+    R.els.props.addEventListener('click', function (e) { var n = e.target.closest('.nbperson'); if (n && !visit) { e.stopPropagation(); R.chime('tap'); tapPerson(n.dataset.nb); } });
+    R.els.props.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var n = e.target.closest('.nbperson'); if (n && !visit) { e.preventDefault(); tapPerson(n.dataset.nb); } });
     doc.addEventListener('click', function (e) { if (e.target.closest('#nbBack')) { R.chime('tap'); root.OvuWalk.travel('plaza', { entry: { x: 54, y: 64, flip: false } }); } });
   });
 })(window);

@@ -6,7 +6,10 @@
   'use strict';
   var CFG = root.OVU_CONFIG || {}, A = root.OvuAuth, doc = root.document;
   var app = doc.getElementById('app');
+  var plaza = null, plazaOk = 0, plazaBad = false, plazaBusy = false; /* admin_plaza: people in each group now, and the daily joins and peak (counts only) */
   var me = null, tab = 'today', ov = null, feed = [], feedTop = 0, findings = null, proposals = null, admins = null, audit = null, timers = [];
+  var reports = null, reportsAll = false, reportsBad = false, reportsMissing = false; /* admin_social_reports: Plaza friends reports, cards only (no account ids, emails or groups) */
+  var REASONS = { unkind: 'Unkind or upsetting', spam: 'Spam or selling', pretending: 'Pretending to be someone else', under18: 'Seems to be under 18', worried: 'Worried about her safety', other: 'Something else' };
   var AGENTS = {
     cycle: { name: 'Menstrual', color: 'a-cycle', owns: 'period and symptom days, recorded period starts, intervals between starts, prediction mode availability', excludes: 'spotting and flow none never start a cycle; missing logs are not missing periods; recalled and imported history stay separate' },
     sleep: { name: 'Sleep', color: 'a-sleep', owns: 'nights with a usable record, nights with two records, typed versus imported share, duration and quality availability', excludes: 'rows are not nights; bed-to-wake is not time asleep' },
@@ -76,6 +79,7 @@
       tile('Accounts', String(c.accounts == null ? '–' : c.accounts), (c.accounts_with_cloud_copy || 0) + ' with a cloud copy') +
       tile('Improvement opt-in', String(c.consent_active == null ? '–' : c.consent_active), eligText(c.consent_eligible, ov.floor)) +
       '</div>' + (blocked.length ? '<div class="note"><b>Model runs are blocked.</b> ' + esc(blocked[0].error) + ' An owner clears it on the Queue tab; nothing retries by itself.</div>' : '') + '</div>';
+    html += plazaCard();
     html += '<div class="card"><h2>Diary streams<span>floor ' + esc(ov.floor) + ' people</span></h2>';
     if (!elig.state || elig.state === 'not_enabled') html += '<div class="note"><b>Not enabled.</b> Nobody has turned on the separate “help improve logging” choice yet, so the agents may not read any diary rows. Local-only diaries are never visible here. What exists: ' + esc(c.accounts_with_cloud_copy || 0) + ' account' + ((c.accounts_with_cloud_copy || 0) === 1 ? '' : 's') + ' with a cloud copy, kept private to their owners.</div>';
     else if (elig.state === 'insufficient') html += '<div class="note"><b>Insufficient contributors.</b> Fewer than ' + esc(ov.floor) + ' eligible adults have opted in; values stay held back until the floor is reached.</div>';
@@ -86,6 +90,38 @@
     html += '<div class="card"><h2>Service<span>no diary content</span></h2><div class="tiles">' + tile('Relay calls today', String(c.relay_calls_today == null ? '–' : c.relay_calls_today), 'Luna and insight, resets daily') + tile('Withdrawn opt-ins', String(c.consent_withdrawn == null ? '–' : c.consent_withdrawn), 'kept on record, excluded from reads') + '</div></div>';
     panel(html);
     var b = doc.getElementById('runNow'); if (b) b.addEventListener('click', runNow);
+  }
+  /* ---------- Plazas: who is online where, by count; no names, no account ids ---------- */
+  function sgDay(d) { try { return (d || new Date()).toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' }); } catch (e) { return new Date().toISOString().slice(0, 10); } }
+  function plazaCard() {
+    if (!plaza) return '<div class="card" id="plazaCard"><h2>Plaza groups<span>people online now</span></h2><p class="empty">' + (plazaBad ? 'Could not load the groups; trying again every 20 seconds.' : 'Loading…') + '</p></div>';
+    var now = plaza.now || [], days = plaza.days || [], today = plaza.today || sgDay(); /* the database's own Singapore date */
+    var total = now.reduce(function (a, s) { return a + (Number(s.people) || 0); }, 0);
+    var tiles = now.map(function (s) {
+      var d = days.filter(function (x) { return x.day === today && x.server === s.id; })[0] || {};
+      return tile(s.name, (s.open === false ? 'Closed' : s.people + ' of ' + s.capacity), 'peak ' + (d.peak || 0) + ' today · ' + (d.joins || 0) + ' ' + ((d.joins || 0) === 1 ? 'join' : 'joins'));
+    }).join('');
+    var byDay = {}; days.forEach(function (x) { var b = byDay[x.day] || (byDay[x.day] = { joins: 0, peak: 0, top: '' }); b.joins += Number(x.joins) || 0; if ((Number(x.peak) || 0) > b.peak) { b.peak = Number(x.peak) || 0; b.top = x.server; } });
+    var names = {}; now.forEach(function (s) { names[s.id] = s.name; });
+    var rows = Object.keys(byDay).sort().reverse().slice(0, 14);
+    var table = rows.length ? '<table class="tbl" id="plazaDays"><tr><th>Day</th><th>Joins</th><th>Busiest</th></tr>' + rows.map(function (k) { var b = byDay[k]; return '<tr><td>' + esc(k) + '</td><td>' + esc(b.joins) + '</td><td>' + esc((names[b.top] || b.top) + ' · ' + b.peak) + '</td></tr>'; }).join('') + '</table>' : '<p class="empty">Nobody has joined a group yet.</p>';
+    var at = plaza.at ? new Date(plaza.at) : null, hm = at ? at.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Singapore' }) : '';
+    var stale = plazaBad || (plazaOk && Date.now() - plazaOk > 60000);
+    var head = stale ? '<span class="stale">not updated since ' + esc(hm) + '</span>' : '<span>' + esc(total) + ' online · ' + esc(hm) + '</span>';
+    return '<div class="card" id="plazaCard"><h2>Plaza groups' + head + '</h2>' + (stale ? '<div class="note"><b>Not current.</b> The last refresh did not come back; the numbers below are from ' + esc(hm) + '. It tries again every 20 seconds.</div>' : '') + '<div class="tiles">' + tiles + '</div>' + table +
+      '<p class="srv">Counts only. A person is counted while her phone checks in (every 25 s). Leaving, closing the app, sleeping or signing out normally takes her out at once; if that message is lost she stops being counted after 75 s. Joins count arrivals, so someone who leaves and comes back counts twice. Daily counts are kept for a year. No names or account ids reach this page.</p></div>';
+  }
+  function redrawPlaza() { if (tab === 'today' && doc.getElementById('plazaCard')) doc.getElementById('plazaCard').outerHTML = plazaCard(); }
+  /* one refresh at a time, with a deadline, on its own timer; a reply older than what is shown is ignored */
+  function deadline(p, ms) { return new Promise(function (res, rej) { var t = setTimeout(function () { rej(new Error('timeout')); }, ms); p.then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); }); }); }
+  function loadPlaza() {
+    if (plazaBusy) return Promise.resolve();
+    plazaBusy = true;
+    return deadline(rpc('admin_plaza', { p_days: 14 }), 10000).then(function (j) {
+      if (denied(j) || !j || !j.now) { plazaBad = true; return; }
+      if (plaza && plaza.at && j.at && Date.parse(j.at) < Date.parse(plaza.at)) return;
+      plaza = j; plazaOk = Date.now(); plazaBad = false;
+    }).catch(function () { plazaBad = true; }).then(function () { plazaBusy = false; redrawPlaza(); });
   }
   function eligText(n, floor) { n = Number(n || 0); floor = Number(floor || 20); return (n === 0 ? '0' : n < floor ? 'fewer than ' + floor : String(n)) + ' eligible adults'; }
   function tile(l, v, s) { return '<div class="tile"><div class="l">' + esc(l) + '</div><div class="v' + (String(v).length > 9 ? ' small' : '') + '">' + esc(v) + '</div><div class="s">' + esc(s) + '</div></div>'; }
@@ -122,9 +158,37 @@
   }
 
   /* ---------- Queue (proposals, policy) ---------- */
+  function reportsCard(owner) {
+    var list = reports || [], open = list.filter(function (r) { return r.status === 'open'; }).length;
+    var html = '<div class="card" id="reportsCard"><h2>Plaza reports<span>' + (reports ? open + ' open' : '') + '</span></h2>';
+    if (reportsMissing) html += '<p class="empty">Plaza friends is not switched on yet, so there are no reports to show.</p>';
+    else if (!reports) html += '<p class="empty">' + (reportsBad ? 'Could not load the reports. Open this tab again to retry.' : 'Loading…') + '</p>';
+    else if (!list.length) html += '<p class="empty">' + (reportsAll ? 'No reports yet.' : 'No open reports.') + '</p>';
+    else html += list.map(function (r) {
+      return '<div class="prop" data-report="' + r.id + '"><div class="h"><b>' + esc(r.name) + ' · card ' + esc(r.card) + '</b><span class="chip ' + (r.status === 'open' ? 'watch' : r.status === 'dismissed' ? '' : 'high') + '">' + esc(r.status) + '</span></div>' +
+        '<div class="why">' + esc(REASONS[r.reason] || r.reason) + (r.about_note ? ' · about the note “' + esc(r.phrase || '') + '”' : ' · about the card') + '</div>' +
+        '<div class="meta">Reported by ' + esc(r.from_name || 'an account since deleted') + (r.from_card ? ' (card ' + esc(r.from_card) + ')' : '') + ' · ' + esc(ago(r.at)) + ' · ' + esc(r.open_on_card) + ' open on this card · card now ' + esc(r.card_now) + (r.days ? ' · paused ' + esc(r.days) + ' days' : '') + '</div>' +
+        (owner && r.status === 'open' ? '<div class="row acts"><button class="btn sm" data-sdecide="dismiss" data-id="' + r.id + '">Dismiss</button><button class="btn sm primary" data-sdecide="pause" data-id="' + r.id + '">Pause 7 days</button><button class="btn sm danger" data-sdecide="remove" data-id="' + r.id + '">Remove the card</button></div>' : '') + '</div>';
+    }).join('');
+    html += '<div class="row"><button class="btn sm" id="reportsAll">' + (reportsAll ? 'Show open only' : 'Show decided too') + '</button></div><p class="msg" id="reportsMsg"></p>' +
+      '<p class="srv">A report carries the two plaza cards (a name each person chose and a short card number) and, for a note, the phrase. Staff never see accounts, emails, groups or diaries. ' + (owner ? 'A pause stops every Plaza friends call for that account; removing the card makes her choose a new one. Each decision closes every open report on that card.' : 'An owner decides.') + '</p></div>';
+    return html;
+  }
+  /* the reports function arrives with the Plaza friends migration; until then the card says so and nothing is retried
+     (Codex pre-merge review, 20 Oct, item 4) */
+  function loadReports() {
+    if (reportsMissing) return Promise.resolve();
+    return deadline(rpc('admin_social_reports', { p_status: reportsAll ? null : 'open' }), 10000).then(function (j) {
+      if (denied(j) || !j || !Array.isArray(j.reports)) { reportsBad = true; reports = null; return; }
+      reports = j.reports; reportsBad = false;
+    }).catch(function (e) {
+      if (/PGRST202|Could not find the function|\b404\b/i.test(String((e && e.message) || ''))) { reportsMissing = true; reportsBad = false; reports = null; return; }
+      reportsBad = true; reports = null;
+    });
+  }
   function renderQueue() {
     var owner = me.role === 'owner', pol = (ov && ov.policy) || {}, blocked = (ov && ov.blocked) || [];
-    var html = '<div class="card"><h2>Proposals<span>' + ((proposals || []).length) + '</span></h2>';
+    var html = reportsCard(owner) + '<div class="card"><h2>Proposals<span>' + ((proposals || []).length) + '</span></h2>';
     if (!proposals) html += '<p class="empty">Loading…</p>';
     else if (!proposals.length) html += '<p class="empty">No proposals. The agents raise one only when a measured finding suggests a lever, and this phase has nothing it may measure yet.</p>';
     else html += proposals.map(function (p) {
@@ -141,6 +205,16 @@
     html += '<div class="card"><h2>Provider blocks</h2>' + (blocked.length ? blocked.map(function (b) { return '<div class="prop"><div class="h"><b>' + esc(b.source) + '</b><span class="chip high">blocked</span></div><div class="why">' + esc(b.error) + '</div><div class="meta">' + esc(when(b.at)) + '</div>' + (owner ? '<div class="row acts"><button class="btn sm" data-clear="' + b.id + '">Clear, allow one try</button></div>' : '') + '</div>'; }).join('') : '<p class="empty">None. A first provider failure stops a run and blocks model runs until an owner clears it here; nothing retries by itself.</p>') + '</div>';
     panel(html);
     app.querySelectorAll('[data-decide]').forEach(function (b) { b.addEventListener('click', function () { var id = Number(b.dataset.id), d = b.dataset.decide; b.disabled = true; rpc('admin_decide', { p_id: id, p_decision: d }).then(function () { return Promise.all([loadProposals(), loadOverview()]); }).then(render); }); });
+    app.querySelectorAll('[data-sdecide]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var m = doc.getElementById('reportsMsg'); app.querySelectorAll('[data-sdecide]').forEach(function (x) { x.disabled = true; });
+        rpc('admin_social_decide', { p_id: Number(b.dataset.id), p_decision: b.dataset.sdecide, p_days: b.dataset.sdecide === 'pause' ? 7 : null }).then(function (j) {
+          if (j && (j.error || j.ok === false)) { m.textContent = j.error || 'Not done.'; m.className = 'msg bad'; }
+          return loadReports();
+        }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; }).then(function () { if (tab === 'queue') renderQueue(); });
+      });
+    });
+    var ra = doc.getElementById('reportsAll'); if (ra) ra.addEventListener('click', function () { reportsAll = !reportsAll; reports = null; renderQueue(); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); });
     app.querySelectorAll('[data-clear]').forEach(function (b) { b.addEventListener('click', function () { b.disabled = true; rpc('admin_block_clear', { p_id: Number(b.dataset.clear) }).then(loadOverview).then(render); }); });
     app.querySelectorAll('[data-pol]').forEach(function (el) {
       el.addEventListener('change', function () {
@@ -191,7 +265,7 @@
     if (tab === 'today') renderToday();
     else if (tab === 'feed') renderFeed();
     else if (tab === 'agents') renderAgents();
-    else if (tab === 'queue') { renderQueue(); if (!proposals) loadProposals().then(renderQueue); }
+    else if (tab === 'queue') { renderQueue(); if (!proposals) loadProposals().then(function () { if (tab === 'queue') renderQueue(); }); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); }
     else if (tab === 'staff') { renderStaff(); loadStaff().then(renderStaff); }
   }
   function stopTimers() { timers.forEach(clearInterval); timers = []; }
@@ -203,12 +277,13 @@
     return rpc('admin_me').then(function (j) {
       if (!j || !j.admin) return staffOnly();
       me = j; shell(); render();
+      loadPlaza(); timers.push(setInterval(function () { if (!doc.hidden) loadPlaza(); }, 20000)); /* the groups card never holds up the rest */
       return Promise.all([loadOverview(), loadFeed(true)]).then(function () {
         timers.push(setInterval(function () { if (!doc.hidden) loadFeed(false); }, 10000));
         timers.push(setInterval(function () { if (!doc.hidden) loadOverview(); }, 30000));
       });
     }).catch(function (e) { gate('Could not check your account: ' + e.message, true); });
   }
-  doc.addEventListener('visibilitychange', function () { if (!doc.hidden && me) { loadFeed(false); loadOverview(); } });
+  doc.addEventListener('visibilitychange', function () { if (!doc.hidden && me) { loadFeed(false); loadOverview(); loadPlaza(); } });
   boot();
 })(window);

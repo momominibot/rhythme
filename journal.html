@@ -18,6 +18,7 @@
   <header class="top">
     <a class="back" href="room.html" aria-label="Back to your room"><span class="ms">arrow_back</span></a>
     <h1>My journal<small>Daily logs and summaries, stored on this device</small></h1>
+    <p class="jmind" style="margin:6px 2px 0;font:600 12.5px/1.45 var(--sans,system-ui);color:#7a5c96">These notes are yours. They do not measure your worth.</p>
     <button class="act" id="refreshBtn" aria-label="Refresh"><span class="ms">refresh</span></button>
   </header>
 
@@ -32,6 +33,7 @@
     <section class="card hero" id="share">
       <h2><span class="ms">medical_services</span>Four-week summary</h2>
       <p class="sub">Built from your own entries by the summary agent. Luna can write it up for you and for your clinician. For review, not a diagnosis.</p>
+      <p class="sub" style="color:#7a5c96;font-weight:700">Your questions deserve space. Bring them with you, and a gap in the record is fine.</p>
       <div class="kpis" id="shareKpis"></div>
       <div id="shareBody"></div>
       <div id="aiShare"></div>
@@ -240,13 +242,15 @@
     var who=S.profile().name?S.profile().name+' · ':'',gen=new Date().toLocaleString(undefined,{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'});
     var B=[{t:'h1',text:'Rhythme summary for your clinician'},{t:'small',text:who+'self-reported entries, '+pretty(sum.range.from,{day:'numeric',month:'short'})+' to '+pretty(sum.range.to,{day:'numeric',month:'short',year:'numeric'})+' · made on the phone '+gen+' · not a diagnosis'},{t:'rule'},{t:'h2',text:'At a glance (last 28 days)'}];
     var eps=sum.cycle.episodes.length,cl=sum.cycle.cycleLengths.length;
-    B.push({t:'kv',label:'Logged',text:sum.coverage.daysWithEntries+' of 28 days with entries'+(sum.coverage.daysWithEntries<14?' (sparse: patterns need more days)':'')});
+    if((sum.context||[]).length)B.push({t:'kv',label:'Context',text:sum.context.join('; ')+' (self-reported)'});
+    B.push({t:'kv',label:'Logged',text:sum.coverage.daysWithEntries+' of 28 days with entries'+(sum.coverage.daysWithEntries<14?' (sparse: patterns need more days)':'')+(sum.cycle.filledDays?'; '+sum.cycle.filledDays+' bleeding day'+(sum.cycle.filledDays===1?' was':'s were')+' filled in as typical days, not confirmed':'')});
     B.push({t:'kv',label:'Period',text:sum.cycle.periodDays+' bleeding day'+(sum.cycle.periodDays===1?'':'s')+(eps?' in '+eps+' period'+(eps===1?'':'s')+' ('+sum.cycle.episodes.map(function(ep){return pretty(ep.start,{day:'numeric',month:'short'})+(ep.length>1?' to '+pretty(ep.end,{day:'numeric',month:'short'}):'')+(ep.heavyDays?', '+ep.heavyDays+' heavy':'');}).join('; ')+')':'')});
     /* the average says where it came from: logged cycles, remembered dates or the set-up answer; logged lengths are listed apart */
     var lens=cl?sum.cycle.cycleLengths.join(', ')+' days':'',viaLogs=/logged cycle/.test(sum.cycle.basis||'');
     B.push({t:'kv',label:'Cycle',text:sum.cycle.averageLength?(viaLogs?sum.cycle.averageLength+' days average of '+cl+' logged cycle'+(cl===1?'':'s')+' ('+lens+')':sum.cycle.averageLength+' days, '+(sum.cycle.basis==='your profile setting'?'stated at set-up, not yet logged':'estimated from remembered period dates')+(cl?'; logged cycle'+(cl===1?'':'s')+' '+lens:'')):'no full cycle logged yet'+(sum.cycle.basis==='remembered period dates'?' (remembered dates give a day count only)':'')});
     B.push({t:'kv',label:'Sleep',text:sum.sleep.average?sum.sleep.average+' h average over '+sum.sleep.nights+' night'+(sum.sleep.nights===1?'':'s')+', '+sum.sleep.under6+' under 6 h':'no nights logged'});
     B.push({t:'kv',label:'Symptoms',text:sum.symptoms.daysLogged?sum.symptoms.daysLogged+' day'+(sum.symptoms.daysLogged===1?'':'s')+' logged'+(sum.symptoms.top.length?'; most often '+sum.symptoms.top.map(function(x){return x.name+' ('+x.days+')';}).join(', '):'')+(sum.symptoms.painMax!==null?'; pain average '+sum.symptoms.painAvg+'/10, up to '+sum.symptoms.painMax+'/10':''):'none logged'});
+    var fl=sum.symptoms.flushes||{};if(fl.days)B.push({t:'kv',label:'Hot flushes',text:fl.days+' day'+(fl.days===1?'':'s')+(fl.counted?', '+Math.round(fl.total/fl.counted*10)/10+' a day on average on the '+fl.counted+' day'+(fl.counted===1?'':'s')+' counted':'')+(fl.nightsWoken?', woke her on '+fl.nightsWoken+' night'+(fl.nightsWoken===1?'':'s'):'')});
     var moods=Object.keys(sum.symptoms.moods||{});if(moods.length)B.push({t:'kv',label:'Mood',text:moods.map(function(k){return k+' ('+sum.symptoms.moods[k]+')';}).join(', ')});
     B.push({t:'kv',label:'Food',text:sum.food.meals+' meal'+(sum.food.meals===1?'':'s')+' over '+sum.food.daysLogged+' day'+(sum.food.daysLogged===1?'':'s')+(Object.keys(sum.food.tags||{}).length?'; tags: '+Object.keys(sum.food.tags).map(function(k){return k+' ('+sum.food.tags[k]+')';}).join(', '):'')});
     B.push({t:'kv',label:'Calm',text:sum.mindfulness.sessions+' session'+(sum.mindfulness.sessions===1?'':'s')+', '+sum.mindfulness.minutes+' min'});

@@ -5,7 +5,7 @@ Rhythme relay are blocked, so no model call is made and nothing leaves the machi
 
 Usage: python3 tools/e2e_smoke.py            (needs: pip install playwright; playwright install chromium)
 Exit code 0 when every check passes. Used by .github/workflows/deploy.yml before Pages deploys."""
-import asyncio, datetime, json, os, socket, subprocess, sys, time
+import asyncio, datetime, json, os, re, socket, subprocess, sys, time
 from playwright.async_api import async_playwright
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -361,6 +361,11 @@ async def main():
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
             pz = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, nbs: document.querySelectorAll('#ownedProps .nbperson').length, pets: document.querySelectorAll('#ownedProps .nbpet').length, board: !!document.querySelector('.hotspot[data-id=board]'), stall: !!document.querySelector('.hotspot[data-id=stall]')})")
+            po = await page.evaluate("()=>{var p=document.querySelector('#plazaPill'); return {shown: !!p && !p.hidden, text: p ? p.textContent : ''}}")
+            await page.click('#plazaPill'); await page.wait_for_timeout(400)
+            po['signin'] = await page.evaluate("()=>!!document.querySelector('#plazaSignIn') && !document.querySelector('#plazaList')")
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            check("signed out, the pill says Groups · sign in to join and its sheet offers sign-in, with no group list and no request", po["shown"] and "Groups · sign in to join" in po["text"] and po["signin"], po)
             check("the plaza shows four sample neighbours with their pets, a noticeboard and a tea stall", pz["layout"] == "plaza" and pz["nbs"] == 4 and pz["pets"] == 4 and pz["board"] and pz["stall"], pz)
             await tap_hot("board")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] .notice.today', timeout=8000)
@@ -409,7 +414,7 @@ async def main():
             await page.goto(BASE + "room.html#luna", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector("#lunaIn", timeout=10000)
             await page.fill("#lunaIn", "I want to hurt myself"); await page.click("#lunaSend"); await page.wait_for_timeout(400)
             sh = await page.evaluate("()=>{var c=[...document.querySelectorAll('.bub.urgent.emergency')].pop(); return c ? {text: c.textContent, hrefs: [...c.querySelectorAll('a')].map(a=>a.getAttribute('href'))} : null}")
-            check("a self-harm note shows the 995 and SOS card with its own call links", bool(sh) and "If you have thoughts of harming yourself or your baby, you need help now." in sh["text"] and "SOS is available 24 hours on 1767, or WhatsApp 9151 1767." in sh["text"] and sh["hrefs"] == ["tel:995", "tel:1767", "https://wa.me/6591511767"], sh)
+            check("a self-harm note shows the 995 and SOS card with its own call links", bool(sh) and "If you have thoughts of harming yourself, you need help now." in sh["text"] and "your baby" not in sh["text"] and "SOS is available 24 hours on 1767, or WhatsApp 9151 1767." in sh["text"] and sh["hrefs"] == ["tel:995", "tel:1767", "https://wa.me/6591511767"], sh)
             await page.fill("#lunaIn", "My period has not returned."); await page.click("#lunaSend"); await page.wait_for_timeout(400)
             np = await page.evaluate("()=>{var b=[...document.querySelectorAll('.bub.from-luna')].pop(); var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); return {text: b ? b.textContent : '', periodsToday: db.events.filter(e=>e.type==='period'&&e.date==='%s').length, confirm: document.querySelectorAll('.bub.confirm').length}}" % TODAY)
             check("'My period has not returned.' is acknowledged as no bleeding and adds no period day", "no bleeding" in np["text"] and np["periodsToday"] == 0 and np["confirm"] == 0, np)
@@ -727,6 +732,497 @@ async def main():
             except Exception: pass
             back = await page.evaluate("()=>document.querySelector('#scene').dataset.layout")
             check("the farm gate leads back to the garden", back == "garden", back)
+            # plaza servers, signed in: a fake session and a small fake plaza server answer the four plaza calls here;
+            # nothing leaves the machine. 23 in PCOS, 2 in Everyone, Menopause full.
+            SESS = {"access_token": "smoke-token", "refresh_token": "smoke-refresh", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000aa", "email": "smoke@example.test"}}
+            seed_signed_in = "if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s); localStorage.setItem('ovumind_auth_v1', %s);" % (json.dumps(json.dumps(DB)), json.dumps(json.dumps(SESS)))
+            fake = {"servers": [{"id": "pcos", "name": "PCOS", "blurb": "Living with polycystic ovary syndrome", "capacity": 24, "open": True, "people": 23}, {"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 2}, {"id": "menopause", "name": "Menopause", "capacity": 24, "open": True, "people": 24}], "mine": None, "visit": None, "seq": 0}
+            pcalls, pauth, p_other, p_errors, pvisits = [], [], [], [], []
+            def fsrv(i): return [s for s in fake["servers"] if s["id"] == i][0]
+            async def plaza_gate(route):
+                url = route.request.url
+                if url.startswith(BASE): return await route.continue_()
+                if "fonts.googleapis.com" in url or "fonts.gstatic.com" in url: return await route.fulfill(status=200, content_type="text/css", body="")
+                m = re.search(r"/rest/v1/rpc/(plaza_[a-z]+)", url)
+                if not m:
+                    p_other.append(url); return await route.fulfill(status=200, content_type="application/json", body="{}")
+                name = m.group(1); body = json.loads(route.request.post_data or "{}"); pcalls.append((name, body.get("p_server"))); pauth.append(route.request.headers.get("authorization", ""))
+                if name == "plaza_list": out = {"servers": fake["servers"], "mine": fake["mine"], "beat_seconds": 25}
+                elif name == "plaza_join":
+                    s = fsrv(body["p_server"])
+                    if fake["mine"] == s["id"]: out = {"ok": True, "server": s["id"], "name": s["name"], "capacity": 24, "people": s["people"], "visit": fake["visit"], "beat_seconds": 25}
+                    elif s["people"] >= s["capacity"]: out = {"ok": False, "why": "full", "server": s["id"], "name": s["name"], "capacity": 24, "people": s["people"], "suggest": {"id": "everyone", "name": "Everyone"}}
+                    else:
+                        if fake["mine"]: fsrv(fake["mine"])["people"] -= 1
+                        s["people"] += 1; fake["mine"] = s["id"]; fake["seq"] += 1; fake["visit"] = "v%d" % fake["seq"]
+                        out = {"ok": True, "server": s["id"], "name": s["name"], "capacity": 24, "people": s["people"], "visit": fake["visit"], "beat_seconds": 25}
+                elif name == "plaza_beat":
+                    if fake["mine"] == body.get("p_server") and fake["visit"] == body.get("p_visit"): out = {"ok": True, "server": body["p_server"], "visit": body["p_visit"], "people": fsrv(body["p_server"])["people"]}
+                    elif fake["mine"]: out = {"ok": False, "displaced": True}
+                    else: out = {"ok": False, "rejoin": True}
+                else:
+                    pvisits.append(body.get("p_visit"))
+                    if fake["mine"] and body.get("p_server") in (None, fake["mine"]) and body.get("p_visit") in (None, fake["visit"]):
+                        fsrv(fake["mine"])["people"] -= 1; fake["mine"] = None; fake["visit"] = None
+                    out = {"ok": True}
+                if name == "plaza_join" and fake.get("delay"): await asyncio.sleep(fake["delay"])
+                return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+            ctx4 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx4.add_init_script(seed_signed_in)
+            p4 = await ctx4.new_page(); await p4.route("**/*", plaza_gate)
+            p4.on("pageerror", lambda e: p_errors.append("pageerror: " + str(e)))
+            p4.on("console", lambda m: p_errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text else None)
+            await p4.goto(BASE + "room.html", wait_until="networkidle"); await p4.wait_for_selector(".hotspot"); await p4.wait_for_timeout(600)
+            await p4.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return !!OvuStore.state().sleeping}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+            await p4.click('#minimap [data-scene=plaza]')
+            try: await p4.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && /online/.test((document.querySelector('#plazaPill')||{}).textContent||'')", timeout=12000)
+            except Exception: pass
+            pa = await p4.evaluate("()=>({text: document.querySelector('#plazaPill').textContent, shown: !document.querySelector('#plazaPill').hidden})")
+            check("signed in, the plaza pill counts everyone online across the three plazas", pa["shown"] and "Choose a group · 49 online" in pa["text"] and ("plaza_list", None) in pcalls, {"pill": pa, "calls": pcalls[:4]})
+            await p4.click('#plazaPill')
+            try: await p4.wait_for_selector('#plazaList .plazarow', timeout=6000)
+            except Exception: pass
+            rows = await p4.evaluate("()=>[...document.querySelectorAll('#plazaList .plazarow')].map(r=>({t:r.querySelector('.pn').textContent, b:r.querySelector('button').textContent, d:r.querySelector('button').disabled}))")
+            check("the chooser lists PCOS 23 of 24, Everyone 2 of 24 and Menopause full (its button off)", len(rows) == 3 and "23 of 24" in rows[0]["t"] and not rows[0]["d"] and "2 of 24" in rows[1]["t"] and rows[2]["b"] == "Full" and rows[2]["d"], rows)
+            await p4.click('#plazaList [data-join=pcos]')
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='pcos'", timeout=6000)
+            except Exception: pass
+            jn = await p4.evaluate("()=>({st: OvuPlaza.state(), pill: document.querySelector('#plazaPill').textContent, saved: (OvuStore.state().plaza||{}).server, here: !!document.querySelector('#plazaList .plazarow.here')})")
+            check("joining PCOS counts her (24 now), remembers the choice and starts checking in; the row says she is here", jn["st"]["joined"] and jn["st"]["joined"]["people"] == 24 and jn["st"]["beating"] and "PCOS · 24 people here" in jn["pill"] and jn["saved"] == "pcos" and jn["here"], jn)
+            check("every plaza call carries her own sign-in token, not the shared key alone", pauth and all(a == "Bearer smoke-token" for a in pauth), pauth[:3])
+            await p4.evaluate("()=>OvuRoom.closeSheet()"); await p4.wait_for_timeout(300)
+            await p4.evaluate("()=>OvuPlaza.join('menopause')")
+            try: await p4.wait_for_function("()=>/Menopause is full/.test(document.querySelector('#toast').textContent) && !OvuPlaza.state().inflight", timeout=6000)
+            except Exception: pass
+            full = await p4.evaluate("()=>({toast: document.querySelector('#toast').textContent, st: OvuPlaza.state()})")
+            check("a full plaza refuses kindly, names one with room, and she stays where she was", "Menopause is full right now. Everyone has room." in full["toast"] and full["st"]["joined"]["id"] == "pcos" and full["st"]["want"] == "pcos", full)
+            await p4.evaluate("()=>OvuPlaza.tick()"); await p4.wait_for_timeout(400)
+            check("a check-in reaches the plaza server for PCOS", ("plaza_beat", "pcos") in pcalls, pcalls[-3:])
+            await p4.click('#plazaPill'); await p4.wait_for_selector('#plazaLeave'); await p4.click('#plazaLeave'); await p4.wait_for_timeout(500)
+            lv = await p4.evaluate("()=>({st: OvuPlaza.state(), saved: OvuStore.state().plaza, pill: document.querySelector('#plazaPill').textContent})")
+            check("Leave takes her out of PCOS by name and forgets the choice; she can still walk around", ("plaza_leave", "pcos") in pcalls and not lv["st"]["joined"] and not lv["st"]["want"] and not lv["saved"] and "Choose a group" in lv["pill"], lv)
+            await p4.evaluate("()=>OvuRoom.closeSheet()"); await p4.wait_for_timeout(300)
+            await p4.evaluate("()=>OvuPlaza.join('everyone')")
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='everyone'", timeout=6000)
+            except Exception: pass
+            n_leave = len([c for c in pcalls if c[0] == "plaza_leave"])
+            await p4.click('#minimap [data-scene=home]')
+            try: await p4.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='room'", timeout=10000)
+            except Exception: pass
+            await p4.wait_for_timeout(400)
+            hm = await p4.evaluate("()=>({st: OvuPlaza.state(), saved: (OvuStore.state().plaza||{}).server, pill: document.querySelector('#plazaPill').hidden})")
+            check("walking home takes her out of Everyone (she is not counted) but keeps her choice, and the pill goes away", len([c for c in pcalls if c[0] == "plaza_leave"]) == n_leave + 1 and not hm["st"]["joined"] and hm["saved"] == "everyone" and hm["pill"], hm)
+            n_join = len([c for c in pcalls if c == ("plaza_join", "everyone")])
+            await p4.click('#minimap [data-scene=plaza]')
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='everyone'", timeout=12000)
+            except Exception: pass
+            back = await p4.evaluate("()=>OvuPlaza.state()")
+            check("walking back into the plaza rejoins the plaza she chose", back["joined"] and back["joined"]["id"] == "everyone" and len([c for c in pcalls if c == ("plaza_join", "everyone")]) == n_join + 1, back)
+            await p4.evaluate("()=>OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}})"); await p4.wait_for_timeout(500)
+            sl = await p4.evaluate("()=>({st: OvuPlaza.state(), pill: document.querySelector('#plazaPill').hidden})")
+            check("a logged sleep takes her out of the plaza and hides the pill", not sl["st"]["joined"] and sl["pill"], sl)
+            await p4.evaluate("()=>OvuStore.setState({sleeping:null})")
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='everyone'", timeout=8000)
+            except Exception: pass
+            check("waking up in the plaza brings her back to the plaza she chose", (await p4.evaluate("()=>(OvuPlaza.state().joined||{}).id")) == "everyone", pcalls[-3:])
+            # putting the app away: a keepalive leave for Everyone, and coming back rejoins it
+            n_leave = len([c for c in pcalls if c == ("plaza_leave", "everyone")])
+            await p4.evaluate("()=>{Object.defineProperty(document,'hidden',{value:true,configurable:true}); document.dispatchEvent(new Event('visibilitychange'));}"); await p4.wait_for_timeout(500)
+            hid = await p4.evaluate("()=>OvuPlaza.state()")
+            await p4.evaluate("()=>{Object.defineProperty(document,'hidden',{value:false,configurable:true}); document.dispatchEvent(new Event('visibilitychange'));}")
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='everyone'", timeout=8000)
+            except Exception: pass
+            check("putting the app away takes her out (a leave naming the plaza), and coming back rejoins it", len([c for c in pcalls if c == ("plaza_leave", "everyone")]) == n_leave + 1 and not hid["joined"] and (await p4.evaluate("()=>(OvuPlaza.state().joined||{}).id")) == "everyone", {"hidden": hid, "calls": pcalls[-4:]})
+            # a race: she asks for PCOS and walks out before the reply lands; once it lands the phone leaves PCOS again
+            fake["delay"] = 1.2
+            await p4.evaluate("()=>OvuPlaza.join('pcos')"); await p4.wait_for_timeout(150)
+            await p4.click('#minimap [data-scene=home]')
+            await p4.wait_for_timeout(2600); fake["delay"] = 0
+            race = await p4.evaluate("()=>OvuPlaza.state()")
+            seq = [c for c in pcalls if c[0] in ("plaza_join", "plaza_leave")][-3:]
+            check("walking out while a join is on its way: the join lands, then a leave for that plaza follows, and the server ends with her nowhere", seq[-2:] == [("plaza_join", "pcos"), ("plaza_leave", "pcos")] and not race["joined"] and not race["inflight"] and fake["mine"] is None, {"seq": seq, "st": race, "server": fake["mine"]})
+            # signing out in the plaza: the phone still says she left, with the token she last used
+            await p4.click('#minimap [data-scene=plaza]')
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='pcos'", timeout=12000)
+            except Exception: pass
+            # the same account joins Menopause from another phone: this phone's next check-in is told it was displaced and it
+            # steps out without taking the row back
+            fsrv("pcos")["people"] -= 1; fake["mine"] = "menopause"; fake["seq"] += 1; fake["visit"] = "v%d" % fake["seq"]  # the other phone's join moves the row
+            other_visit = fake["visit"]; n_join = len([c for c in pcalls if c[0] == "plaza_join"])
+            await p4.evaluate("()=>OvuPlaza.tick()"); await p4.wait_for_timeout(500)
+            await p4.evaluate("()=>OvuPlaza.tick()"); await p4.wait_for_timeout(400)
+            dis = await p4.evaluate("()=>({st: OvuPlaza.state(), toast: document.querySelector('#toast').textContent})")
+            check("two phones: the displaced phone steps out, says why, and does not take the account back", not dis["st"]["joined"] and not dis["st"]["want"] and "another device" in dis["toast"] and len([c for c in pcalls if c[0] == "plaza_join"]) == n_join and fake["mine"] == "menopause" and fake["visit"] == other_visit, {"st": dis["st"], "toast": dis["toast"], "server": [fake["mine"], fake["visit"]]})
+            # a stalled request cannot leave the loop waiting: one deadline, then the next tick asks again and gets the same visit
+            fake["mine"] = None; fake["visit"] = None; fsrv("menopause")["people"] -= 1
+            await p4.evaluate("()=>{OvuPlaza.TIMEOUT=400;}"); fake["delay"] = 1.5
+            await p4.evaluate("()=>OvuPlaza.join('everyone')"); await p4.wait_for_timeout(900)
+            stall = await p4.evaluate("()=>OvuPlaza.state()")
+            fake["delay"] = 0; await p4.wait_for_timeout(900)
+            await p4.evaluate("()=>{OvuPlaza.TIMEOUT=10000; OvuPlaza.tick();}")
+            try: await p4.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='everyone'", timeout=6000)
+            except Exception: pass
+            after = await p4.evaluate("()=>OvuPlaza.state()")
+            check("a stalled join is cut off by the deadline (the loop is free, marked offline), and the next tick joins with the visit the server already gave", not stall["inflight"] and stall["offline"] and after["joined"] and after["joined"]["visit"] == fake["visit"] and fake["mine"] == "everyone", {"stalled": stall, "after": after, "server": [fake["mine"], fake["visit"]]})
+            n_auth = len(pauth)
+            await p4.evaluate("()=>OvuAuth.signOut(false)"); await p4.wait_for_timeout(800)
+            so = await p4.evaluate("()=>({st: OvuPlaza.state(), pill: document.querySelector('#plazaPill').textContent, saved: OvuStore.state().plaza})")
+            check("signing out takes her out of the plaza (a leave for that visit, sent with her last token) and the pill asks her to sign in", pcalls[-1][0] == "plaza_leave" and pvisits[-1] and pauth[-1] == "Bearer smoke-token" and not so["st"]["joined"] and not so["saved"] and "sign in to join" in so["pill"] and fake["mine"] is None, {"st": so, "last": pcalls[-2:]})
+            # signing out while a join is on its way: once it lands, the phone undoes it with the token it went out with
+            await p4.goto(BASE + "room.html", wait_until="networkidle"); await p4.wait_for_selector(".hotspot"); await p4.wait_for_timeout(500)
+            await p4.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return !!OvuStore.state().sleeping}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet(); OvuWalk.travel('plaza');}")
+            try: await p4.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && OvuPlaza.state().servers", timeout=12000)
+            except Exception: pass
+            fake["delay"] = 1.2
+            await p4.evaluate("()=>OvuPlaza.join('everyone')"); await p4.wait_for_timeout(200)
+            await p4.evaluate("()=>OvuAuth.signOut(false)"); await p4.wait_for_timeout(2500); fake["delay"] = 0
+            seq2 = [c for c in pcalls if c[0] in ("plaza_join", "plaza_leave")][-2:]
+            check("signing out while a join is on its way: the join lands, then a leave for exactly that visit follows with her token, and the server ends with her nowhere", seq2 == [("plaza_join", "everyone"), ("plaza_leave", "everyone")] and pvisits[-1] and pauth[-1] == "Bearer smoke-token" and fake["mine"] is None, {"seq": seq2, "server": fake["mine"], "visit": pvisits[-1:]})
+            # (Codex pre-merge blocker 1) A joins PCOS, puts the tab away, another tab signs in B; coming back must not put B
+            # in PCOS: the old visit is ended with A's token, the remembered group is forgotten, B joins nothing it did not choose
+            fake.update({"mine": None, "visit": None, "delay": 0}); fsrv("pcos")["people"] = 23
+            ctx6 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx6.add_init_script(seed_signed_in)
+            p6 = await ctx6.new_page(); await p6.route("**/*", plaza_gate)
+            p6.on("pageerror", lambda e: p_errors.append("cross-tab pageerror: " + str(e)))
+            await p6.goto(BASE + "room.html", wait_until="networkidle"); await p6.wait_for_selector(".hotspot"); await p6.wait_for_timeout(500)
+            await p6.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return !!OvuStore.state().sleeping}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet(); OvuWalk.travel('plaza');}")
+            try: await p6.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && OvuPlaza.state().servers", timeout=12000)
+            except Exception: pass
+            await p6.evaluate("()=>OvuPlaza.join('pcos')")
+            try: await p6.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='pcos'", timeout=6000)
+            except Exception: pass
+            savedA = await p6.evaluate("()=>OvuStore.state().plaza")
+            await p6.evaluate("()=>{Object.defineProperty(document,'hidden',{value:true,configurable:true}); document.dispatchEvent(new Event('visibilitychange'));}"); await p6.wait_for_timeout(500)
+            n_calls = len(pcalls)
+            B = dict(SESS); B["access_token"] = "smoke-token-b"; B["user"] = {"id": "00000000-0000-4000-8000-0000000000bb", "email": "b@example.test"}
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(B))  # the other tab signs in B; no storage event reaches this hidden tab here
+            await p6.evaluate("()=>{Object.defineProperty(document,'hidden',{value:false,configurable:true}); document.dispatchEvent(new Event('visibilitychange'));}"); await p6.wait_for_timeout(1500)
+            after_b = await p6.evaluate("()=>({st: OvuPlaza.state(), saved: OvuStore.state().plaza})")
+            new_calls = list(zip(pcalls[n_calls:], pauth[n_calls:]))
+            joins_b = [c for c, a in new_calls if c[0] == "plaza_join" and a == "Bearer smoke-token-b"]
+            check("A's chosen group is saved with A's account on it", savedA and savedA.get("server") == "pcos" and savedA.get("uid") == SESS["user"]["id"], savedA)
+            check("another tab signing in B: coming back puts B in no group, forgets A's choice, and nothing goes out for B but the group list", not joins_b and not after_b["st"]["joined"] and not after_b["st"]["want"] and not after_b["saved"] and all(c[0] == "plaza_list" for c, a in new_calls if a == "Bearer smoke-token-b"), {"calls": new_calls, "st": after_b})
+            # the same with a storage event delivered (the usual case for a visible tab): A's open visit ends with A's own token
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS)); await p6.evaluate("()=>window.dispatchEvent(new StorageEvent('storage',{key:'ovumind_auth_v1'}))"); await p6.wait_for_timeout(600)
+            await p6.evaluate("()=>OvuPlaza.join('pcos')")
+            try: await p6.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='pcos'", timeout=6000)
+            except Exception: pass
+            n_calls = len(pcalls)
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(B)); await p6.evaluate("()=>window.dispatchEvent(new StorageEvent('storage',{key:'ovumind_auth_v1'}))"); await p6.wait_for_timeout(1200)
+            new_calls = list(zip(pcalls[n_calls:], pauth[n_calls:]))
+            st_b = await p6.evaluate("()=>OvuPlaza.state()")
+            check("a visible tab hearing the switch ends A's visit with A's own token and puts B nowhere", (("plaza_leave", "pcos"), "Bearer smoke-token") in new_calls and not [c for c, a in new_calls if c[0] == "plaza_join"] and not st_b["joined"] and fake["mine"] is None, {"calls": new_calls, "st": st_b})
+            await ctx6.close()
+            check("no page errors or console errors in the signed-in plaza run", not p_errors, p_errors[:3])
+            await ctx4.close()
+
+            # Plaza friends, signed in, against a fake friends server (nothing leaves the machine): make a card, see the
+            # people in her group, ask one, accept another, send a kind note, report a note with a block, turn it off
+            FR = {"me": {"card": None, "on": False, "adult": False, "paused_until": None, "phrases": []},
+                  "people": [{"handle": "h-nadia", "name": "Nadia", "look": "kebaya-green", "friend": False, "asked": False, "asks": False},
+                             {"handle": "h-priya", "name": "Priya", "look": "cozy", "friend": False, "asked": False, "asks": True}],
+                  "friends": [], "asks": [{"handle": "h-priya", "name": "Priya", "look": "cozy", "hello": "hello", "at": NOW}], "asked": [],
+                  "notes": [{"id": 7, "handle": "h-priya", "name": "Priya", "look": "cozy", "phrase": "gentle", "at": NOW, "read": False}], "blocked": []}
+            fcalls, fauth, f_errors = [], [], []
+            def fcall(n): return [b for (m, b) in fcalls if m == n]
+            async def friends_gate(route):
+                url = route.request.url
+                if url.startswith(BASE): return await route.continue_()
+                if "fonts.googleapis.com" in url or "fonts.gstatic.com" in url: return await route.fulfill(status=200, content_type="text/css", body="")
+                m = re.search(r"/rest/v1/rpc/([a-z_]+)", url)
+                name = m.group(1) if m else ""; body = json.loads(route.request.post_data or "{}")
+                if name.startswith("social_"): fcalls.append((name, body)); fauth.append(route.request.headers.get("authorization", ""))
+                me = FR["me"]
+                if route.request.headers.get("authorization", "") == "Bearer smoke-token-b":  # another account: no card of her own
+                    out = {"card": None, "on": False, "adult": True, "paused_until": None} if name == "social_me" else {"ok": False, "why": "off", "card": None}
+                    return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+                def inbox(): return {"ok": True, "card": me["card"], "friends": FR["friends"], "asks": FR["asks"], "asked": FR["asked"], "notes": FR["notes"], "blocked": FR["blocked"]} if me["card"] else {"ok": False, "why": "off", "card": None}
+                if name == "plaza_list": out = {"servers": [{"id": "pcos", "name": "PCOS", "capacity": 24, "open": True, "people": 3}, {"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 1}], "mine": None, "beat_seconds": 25}
+                elif name == "plaza_join": out = {"ok": True, "server": body["p_server"], "name": "PCOS" if body["p_server"] == "pcos" else "Everyone", "capacity": 24, "people": 3, "visit": "v1" if body["p_server"] == "pcos" else "v2", "beat_seconds": 25}
+                elif name == "plaza_beat": out = {"ok": True, "server": body["p_server"], "visit": body.get("p_visit"), "people": 3}
+                elif name == "plaza_leave": out = {"ok": True}
+                elif name == "social_me": out = me
+                elif name == "social_people" and FR.get("people_fail"): return await route.fulfill(status=503, content_type="application/json", body='{"message":"unavailable"}')
+                elif name == "social_card_save":
+                    if FR.get("save_delay"): await asyncio.sleep(FR["save_delay"])
+                    me["card"] = {"handle": "h-me", "name": body["p_name"], "look": body["p_look"], "hidden": body["p_hidden"], "paused_until": None}; me["on"] = True; me["adult"] = True
+                    out = {"ok": True, "card": me["card"], "recorded": ["age_18", "social"]}
+                elif name == "social_people":
+                    if FR.get("people_delay"): await asyncio.sleep(FR["people_delay"])
+                    out = {"ok": True, "people": FR["people"] if body.get("p_visit") == "v1" else []} if me["card"] and not me["card"]["hidden"] else {"ok": False, "why": "off"}
+                elif name == "social_inbox": out = inbox()
+                elif name == "social_ask":
+                    for x in FR["people"]:
+                        if x["handle"] == body["p_handle"]: x["asked"] = True; FR["asked"].append({"handle": x["handle"], "name": x["name"], "look": x["look"], "at": NOW})
+                    out = {"ok": True, "status": "asked"}
+                elif name == "social_answer":
+                    FR["asks"] = [a for a in FR["asks"] if a["handle"] != body["p_handle"]]
+                    if body["p_accept"]:
+                        FR["friends"].append({"handle": "h-priya", "name": "Priya", "look": "cozy", "since": NOW})
+                        for x in FR["people"]:
+                            if x["handle"] == body["p_handle"]: x["friend"] = True; x["asks"] = False
+                    out = {"ok": True, "status": "friends" if body["p_accept"] else "declined"}
+                elif name == "social_note": out = {"ok": True, "id": 99}
+                elif name == "social_read":
+                    for n in FR["notes"]:
+                        if n["id"] <= body["p_upto"]: n["read"] = True
+                    out = {"ok": True}
+                elif name == "social_report":
+                    if body.get("p_block"):
+                        FR["people"] = [x for x in FR["people"] if x["handle"] != body["p_handle"]]; FR["friends"] = [x for x in FR["friends"] if x["handle"] != body["p_handle"]]
+                        FR["notes"] = [n for n in FR["notes"] if n["handle"] != body["p_handle"]]; FR["blocked"].append({"id": "b1", "name": "Priya", "look": "cozy", "at": NOW})
+                    out = {"ok": True}
+                elif name == "social_off": me["card"] = None; me["on"] = False; out = {"ok": True}
+                else: out = {}
+                return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+            ctx6 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx6.add_init_script(seed_signed_in)
+            p6 = await ctx6.new_page(); await p6.route("**/*", friends_gate)
+            p6.on("pageerror", lambda e: f_errors.append("pageerror: " + str(e)))
+            p6.on("console", lambda m: f_errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text and not (FR.get("people_fail") and "503" in m.text) else None)  # the deliberate failure below logs its 503
+            shots = os.environ.get("SMOKE_SHOTS")
+            async def shot(name):
+                if shots: await p6.screenshot(path=os.path.join(shots, name + ".png"))
+            await p6.goto(BASE + "room.html", wait_until="networkidle"); await p6.wait_for_selector(".hotspot"); await p6.wait_for_timeout(600)
+            await p6.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return !!OvuStore.state().sleeping}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+            check("signed in, Plaza friends asks the server who she is once, with her own token, and nothing more without a card", fcall("social_me") and not fcall("social_inbox") and not fcall("social_people") and all(a == "Bearer smoke-token" for a in fauth), [c[0] for c in fcalls])
+            await p6.click('#minimap [data-scene=plaza]')
+            try: await p6.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && /online/.test((document.querySelector('#plazaPill')||{}).textContent||'')", timeout=12000)
+            except Exception: pass
+            await p6.click('#plazaPill'); await p6.wait_for_selector('#plazaList [data-join=pcos]'); await p6.click('#plazaList [data-join=pcos]')
+            try: await p6.wait_for_function("()=>OvuPlaza.state().joined && /Make a plaza card/.test((document.querySelector('#plazaFriendsRow')||{}).textContent||'')", timeout=8000)
+            except Exception: pass
+            pr = await p6.evaluate("()=>({row: (document.querySelector('#plazaFriendsRow')||{}).textContent||'', help: (document.querySelector('#sheetBody, .sheet')||document.body).textContent.indexOf('Unless you turn on Plaza friends') > -1, samples: document.querySelectorAll('.nbperson:not(.nbreal)').length, real: document.querySelectorAll('.nbreal').length})")
+            check("in a group without a card: the plaza sheet offers a plaza card, says who sees what, and only the samples stand about", "Make a plaza card" in pr["row"] and pr["help"] and pr["samples"] == 4 and pr["real"] == 0 and not fcall("social_people"), pr)
+            await p6.click('#plazaFriendsRow [data-frp=open]'); await p6.wait_for_selector('#frName')
+            await p6.fill('#frName', 'Staff'); await p6.wait_for_timeout(100)
+            bad = await p6.evaluate("()=>({msg: document.querySelector('#frNameMsg').textContent, dis: document.querySelector('#frSave').disabled, cue: /Pick a name that feels like you/.test(document.querySelector('#frSheet').textContent), words: /Your diary, your cycle, your account name and your email are never shown/.test(document.querySelector('#frSheet').textContent)})")
+            await p6.fill('#frName', 'Fern'); await p6.wait_for_timeout(100)
+            gate18 = await p6.evaluate("()=>document.querySelector('#frSave').disabled")
+            await p6.check('#frAdult'); await p6.check('#frOn'); await p6.click('.frlook[data-look=kebaya-red]')
+            ready = await p6.evaluate("()=>!document.querySelector('#frSave').disabled")
+            check("the card form: the consent words and the cue are shown, a reserved name is refused at once, and Make my card waits for 18+ and Plaza friends to be ticked", bad["msg"].startswith("That name belongs to Rhythme") and bad["dis"] and bad["cue"] and bad["words"] and gate18 and ready, bad)
+            await shot("friends-card-form")
+            await p6.click('#frSave')
+            try: await p6.wait_for_function("()=>/Asked to be friends/.test((document.querySelector('#frSheet')||{}).textContent||'')", timeout=8000)
+            except Exception: pass
+            cs = fcall("social_card_save")
+            fs = await p6.evaluate("()=>({text: (document.querySelector('#frSheet')||{}).textContent||'', dot: document.querySelector('#plazaPill').classList.contains('frnew')})")
+            check("Make my card sends the name, the look, the two ticked boxes (18+ and Plaza friends), no expected card and the notice version, and the sheet shows her card, Priya's ask with its hello and the note from her", cs and cs[0]["p_name"] == "Fern" and cs[0]["p_look"] == "kebaya-red" and cs[0]["p_adult"] is True and cs[0]["p_opt_in"] is True and cs[0]["p_expect"] is None and cs[0]["p_hidden"] is False and cs[0]["p_notice"] == 3 and "Fern" in fs["text"] and "Hello, nice to see you here." in fs["text"] and "Hope today is gentle with you." in fs["text"] and "Welcome her in." in fs["text"], {"save": cs, "text": fs["text"][:200]})
+            check("opening the sheet marks the note read (the sender is never told), and the pill still shows a dot for the ask", fcall("social_read") and fcall("social_read")[0]["p_upto"] == 7 and fs["dot"], fcall("social_read"))
+            await shot("friends-sheet")
+            await p6.evaluate("()=>OvuRoom.closeSheet()")
+            try: await p6.wait_for_function("()=>document.querySelectorAll('.nbreal').length===2", timeout=8000)
+            except Exception: pass
+            on = await p6.evaluate("()=>({real: [...document.querySelectorAll('.nbreal')].map(e=>e.textContent), samples: document.querySelectorAll('.nbperson:not(.nbreal)').length, label: (document.querySelector('.nbreal')||{getAttribute:()=>''}).getAttribute('aria-label')})")
+            pp = fcall("social_people")
+            check("with a card, the two people in PCOS stand on the plaza by name and the samples step aside; the call names her group and visit", on["real"] == ["Nadia", "Priya"] and on["samples"] == 0 and "in your group" in on["label"] and pp and pp[-1] == {"p_server": "pcos", "p_visit": "v1"}, {"on": on, "people": pp[-1:]})
+            await shot("plaza-people")
+            # a failed fetch clears the plate (never yesterday's group) and holds every automatic request until she acts
+            FR["people_fail"] = True
+            await p6.evaluate("()=>OvuFriends.loadPeople()"); await p6.wait_for_timeout(400)
+            fl = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, samples: document.querySelectorAll('.nbperson:not(.nbreal)').length, held: OvuFriends.state().held})")
+            FR["people_fail"] = False
+            n_auto = len([c for c in fcalls if c[0] in ("social_people", "social_inbox", "social_me")])
+            await p6.evaluate("()=>{OvuPlaza.tick(); OvuFriends.poll(); document.dispatchEvent(new Event('visibilitychange'));}"); await p6.wait_for_timeout(900)
+            quiet = len([c for c in fcalls if c[0] in ("social_people", "social_inbox", "social_me")]) - n_auto
+            await p6.click('#plazaPill')
+            try: await p6.wait_for_function("()=>document.querySelectorAll('.nbreal').length===2", timeout=6000)
+            except Exception: pass
+            back2 = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, held: OvuFriends.state().held})")
+            await p6.evaluate("()=>OvuRoom.closeSheet()"); await p6.wait_for_timeout(300)
+            check("a failed people check clears the plate at once; check-ins, timers and returning to the app ask nothing more; tapping the group pill tries again", fl["real"] == 0 and fl["samples"] == 4 and fl["held"] is True and quiet == 0 and back2["real"] == 2 and back2["held"] is False, {"fail": fl, "automatic calls while held": quiet, "after tap": back2})
+            await p6.evaluate("()=>document.querySelector('.nbreal[data-nb=r0]').click()")
+            await p6.wait_for_selector('#frSheet [data-fr=ask]')
+            pc6 = await p6.evaluate("()=>document.querySelector('#frSheet').textContent")
+            await p6.click('#frSheet .frhello[data-hello=wave]'); await p6.click('#frSheet [data-fr=ask]')
+            try: await p6.wait_for_function("()=>/She can answer in her own time/.test((document.querySelector('#frSheet')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            ak = fcall("social_ask")
+            check("tapping Nadia opens her card with the asking cue, Block and Report; Ask sends her handle, the group, the visit and the chosen hello, then shows Asked", "share a bench" in pc6 and "Block" in pc6 and "Report" in pc6 and ak and ak[0] == {"p_handle": "h-nadia", "p_server": "pcos", "p_visit": "v1", "p_hello": "wave"}, {"ask": ak, "text": pc6[:120]})
+            await shot("person-card")
+            await p6.evaluate("()=>{OvuRoom.closeSheet(); document.querySelector('nav a[data-tab=you]').click();}")
+            await p6.wait_for_selector('[data-yact=friends]')
+            yr = await p6.evaluate("()=>document.querySelector('[data-yact=friends]').textContent")
+            await p6.click('[data-yact=friends]'); await p6.wait_for_selector('#frSheet [data-fr=accept]')
+            await p6.click('#frSheet [data-fr=accept]')
+            try: await p6.wait_for_function("()=>!!document.querySelector('#frSheet [data-fr=note][data-h=h-priya]')", timeout=6000)
+            except Exception: pass
+            an = fcall("social_answer")
+            check("You has a Plaza friends row; Accept on Priya's ask makes her a friend with a Send a kind note button", "Plaza friends" in yr and an and an[0] == {"p_handle": "h-priya", "p_accept": True} and await p6.evaluate("()=>!!document.querySelector('#frSheet [data-fr=note][data-h=h-priya]')"), {"you": yr, "answer": an})
+            await p6.click('#frSheet [data-fr=note][data-h=h-priya]'); await p6.wait_for_selector('#frSend')
+            nb = await p6.evaluate("()=>({dis: document.querySelector('#frSend').disabled, cue: /Before you send, one slow breath/.test(document.querySelector('#frSheet').textContent), n: document.querySelectorAll('.frphrase').length})")
+            await p6.click('.frphrase[data-phrase=tea]'); await p6.click('#frSend')
+            try: await p6.wait_for_function("()=>!!document.querySelector('#frSheet [data-fr=off]')", timeout=6000)
+            except Exception: pass
+            nt = fcall("social_note")
+            check("a kind note: the breath cue, twelve set phrases and no text box; Send waits for a pick and sends only the phrase id", nb["cue"] and nb["dis"] and nb["n"] == 12 and nt and nt[0] == {"p_handle": "h-priya", "p_phrase": "tea"} and not await p6.evaluate("()=>!!document.querySelector('#frSheet textarea')"), {"before": nb, "note": nt})
+            await shot("kind-note")
+            await p6.click('#frSheet .frrow [data-fr=report][data-note="7"]'); await p6.wait_for_selector('#frSendReport')
+            await p6.click('.frreason[data-reason=unkind]'); await p6.check('#frAlsoBlock'); await p6.click('#frSendReport')
+            try: await p6.wait_for_function("()=>!!document.querySelector('#frSheet [data-fr=off]')", timeout=6000)
+            except Exception: pass
+            rp = fcall("social_report")
+            bl = await p6.evaluate("()=>({text: document.querySelector('#frSheet').textContent, real: [...document.querySelectorAll('.nbreal')].map(e=>e.textContent)})")
+            check("reporting a note sends her handle, the reason, the note and the block; afterwards she is under Blocked and off the plate", rp and rp[0] == {"p_handle": "h-priya", "p_reason": "unkind", "p_note": 7, "p_block": True} and "Blocked" in bl["text"] and "Unblock" in bl["text"] and "Priya" not in bl["real"], {"report": rp, "real": bl["real"]})
+            await p6.click('#frSheet [data-fr=off]')
+            armed = await p6.evaluate("()=>document.querySelector('#frSheet [data-fr=off]').textContent")
+            n_off = len(fcall("social_off"))
+            await p6.click('#frSheet [data-fr=off]')
+            try: await p6.wait_for_function("()=>!!document.querySelector('#frName')", timeout=6000)
+            except Exception: pass
+            await p6.evaluate("()=>OvuRoom.closeSheet()"); await p6.wait_for_timeout(300)
+            of = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, samples: document.querySelectorAll('.nbperson:not(.nbreal)').length})")
+            check("turning Plaza friends off takes two taps, calls the server once, and the plaza goes back to the samples", n_off == 0 and "Tap again" in armed and len(fcall("social_off")) == 1 and of["real"] == 0 and of["samples"] == 4, {"armed": armed, "plate": of})
+            # a paused account still sees how to turn Plaza friends off
+            FR["me"]["card"] = {"handle": "h-me2", "name": "Fern", "look": "base", "hidden": False, "paused_until": "2030-01-01T00:00:00Z"}; FR["me"]["on"] = True; FR["me"]["paused_until"] = "2030-01-01T00:00:00Z"
+            await p6.evaluate("()=>OvuFriends.open()")
+            try: await p6.wait_for_function("()=>/Paused for now/.test((document.querySelector('#frSheet')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            pz6 = await p6.evaluate("()=>({text: (document.querySelector('#frSheet')||{}).textContent||'', off: !!document.querySelector('#frSheet [data-fr=off]')})")
+            check("a paused account sees the pause and can still turn Plaza friends off", "Paused for now" in pz6["text"] and pz6["off"], pz6["text"][:120])
+            FR["me"]["card"] = None; FR["me"]["on"] = False; FR["me"]["paused_until"] = None
+            await p6.evaluate("()=>OvuRoom.closeSheet()")
+            # a change in the people in her group follows her visit: moving to Everyone clears PCOS's people before any reply
+            FR["me"]["card"] = {"handle": "h-me", "name": "Fern", "look": "kebaya-red", "hidden": False, "paused_until": None}; FR["me"]["on"] = True
+            FR["people"] = [{"handle": "h-nadia", "name": "Nadia", "look": "kebaya-green", "friend": False, "asked": True, "asks": False}]
+            await p6.evaluate("()=>OvuFriends.refresh()")
+            try: await p6.wait_for_function("()=>document.querySelectorAll('.nbreal').length===1", timeout=6000)
+            except Exception: pass
+            FR["people_delay"] = 2
+            await p6.evaluate("()=>OvuPlaza.join('everyone')"); await p6.wait_for_timeout(700)
+            mv = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, joined: (OvuPlaza.state().joined||{}).id})")
+            await p6.wait_for_timeout(2300); FR["people_delay"] = 0
+            mv2 = await p6.evaluate("()=>document.querySelectorAll('.nbreal').length")
+            check("moving to another group clears the last group's people at once, and the new group's answer (nobody) keeps it clear", mv["joined"] == "everyone" and mv["real"] == 0 and mv2 == 0, {"during": mv, "after": mv2})
+            # another tab signs into another account: this tab closes the sheet and forgets the last account at once
+            FR["me"]["card"] = {"handle": "h-me", "name": "Fern", "look": "kebaya-red", "hidden": False, "paused_until": None}; FR["me"]["on"] = True
+            await p6.evaluate("()=>OvuFriends.open()")
+            try: await p6.wait_for_function("()=>/Fern/.test((document.querySelector('#frSheet')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            tab2 = await ctx6.new_page(); await tab2.route("**/*", friends_gate)
+            await tab2.goto(BASE + "privacy.html", wait_until="domcontentloaded")
+            SESS_B2 = {"access_token": "smoke-token-b", "refresh_token": "r-b", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000bb", "email": "b@example.test"}}
+            n_before = len(fcalls)
+            await tab2.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS_B2)); await p6.wait_for_timeout(700)
+            xt = await p6.evaluate("()=>({open: OvuRoom.sheetOpen() && !!document.querySelector('#frSheet'), me: OvuFriends.state().me && OvuFriends.state().me.card ? OvuFriends.state().me.card.name : null})")
+            b_calls = [a for a in fauth[n_before:]]
+            await tab2.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS)); await p6.wait_for_timeout(700)
+            await tab2.close()
+            check("signing into another account in another tab closes the friends sheet here and drops the last account's card at once; what follows asks as the new account", not xt["open"] and xt["me"] is None and b_calls and all(a == "Bearer smoke-token-b" for a in b_calls), {"tab": xt, "calls after": b_calls})
+            fauth[:] = [a for a in fauth if a != "Bearer smoke-token-b"]  # the other account's own calls are not this account's
+            # two accounts on one phone: a form opened by one account never sends for another, and a late reply is dropped
+            FR["me"]["card"] = None; FR["me"]["on"] = False; FR["me"]["adult"] = False
+            await p6.evaluate("()=>OvuFriends.open()"); await p6.wait_for_selector('#frName')
+            await p6.fill('#frName', 'Fern'); await p6.check('#frAdult'); await p6.check('#frOn')
+            SESS_B = {"access_token": "smoke-token-b", "refresh_token": "r-b", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000bb", "email": "b@example.test"}}
+            n_save = len(fcall("social_card_save"))
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS_B))
+            await p6.click('#frSave'); await p6.wait_for_timeout(600)
+            sw1 = {"sent": len(fcall("social_card_save")) - n_save}
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS))
+            await p6.evaluate("()=>{OvuRoom.closeSheet(); OvuFriends.open();}"); await p6.wait_for_selector('#frName')
+            await p6.fill('#frName', 'Fern'); await p6.check('#frAdult'); await p6.check('#frOn')
+            FR["save_delay"] = 1.5
+            await p6.click('#frSave'); await p6.wait_for_timeout(250)
+            await p6.evaluate("()=>OvuAuth.signOut(false)"); await p6.wait_for_timeout(150)
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS_B))
+            await p6.wait_for_timeout(2200); FR["save_delay"] = 0
+            sw2 = await p6.evaluate("()=>({sheet: OvuRoom.sheetOpen() && !!document.querySelector('#frSheet'), me: OvuFriends.state().me, toast: (document.querySelector('#toast')||{}).textContent||''})")
+            check("a form opened by one account sends nothing once another account is signed in, and a reply that lands after a switch shows nothing and is not kept", sw1["sent"] == 0 and not sw2["sheet"] and sw2["me"] is None and "plaza card is ready" not in sw2["toast"], {"first": sw1, "second": sw2})
+            await p6.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS))
+            check("every Plaza friends call carried her own sign-in token", fauth and all(a == "Bearer smoke-token" for a in fauth), fauth[:2])
+            check("no page errors or console errors in the Plaza friends run", not f_errors, f_errors[:3])
+            await ctx6.close()
+
+            # Plaza friends before its server exists (the live database answers 404 PGRST202 until the migration is
+            # applied): one question at start, then no row, no timers and no further calls; the plaza itself still works
+            mcalls, m_errors = [], []
+            async def missing_gate(route):
+                url = route.request.url
+                if url.startswith(BASE): return await route.continue_()
+                if "fonts.googleapis.com" in url or "fonts.gstatic.com" in url: return await route.fulfill(status=200, content_type="text/css", body="")
+                m = re.search(r"/rest/v1/rpc/([a-z_]+)", url); name = m.group(1) if m else ""; body = json.loads(route.request.post_data or "{}")
+                if name.startswith("social_"):
+                    mcalls.append(name)
+                    return await route.fulfill(status=404, content_type="application/json", body=json.dumps({"code": "PGRST202", "message": "Could not find the function public.%s without parameters in the schema cache" % name}))
+                if name == "plaza_list": out = {"servers": [{"id": "pcos", "name": "PCOS", "capacity": 24, "open": True, "people": 3}], "mine": None, "beat_seconds": 25}
+                elif name == "plaza_join": out = {"ok": True, "server": "pcos", "name": "PCOS", "capacity": 24, "people": 4, "visit": "v1", "beat_seconds": 25}
+                elif name == "plaza_beat": out = {"ok": True, "server": "pcos", "visit": body.get("p_visit"), "people": 4}
+                else: out = {"ok": True} if name else {}
+                return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+            ctx7 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx7.add_init_script(seed_signed_in)
+            p7 = await ctx7.new_page(); await p7.route("**/*", missing_gate)
+            p7.on("pageerror", lambda e: m_errors.append("pageerror: " + str(e)))
+            p7.on("console", lambda m: m_errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text and "404" not in m.text else None)  # the expected 404 logs itself
+            await p7.goto(BASE + "room.html", wait_until="networkidle"); await p7.wait_for_selector(".hotspot"); await p7.wait_for_timeout(800)
+            await p7.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+            m0 = await p7.evaluate("()=>OvuFriends.state()")
+            await p7.click('#minimap [data-scene=plaza]')
+            try: await p7.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza'", timeout=12000)
+            except Exception: pass
+            await p7.click('#plazaPill'); await p7.wait_for_selector('#plazaList [data-join=pcos]'); await p7.click('#plazaList [data-join=pcos]')
+            try: await p7.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.id==='pcos'", timeout=8000)
+            except Exception: pass
+            await p7.evaluate("()=>{OvuFriends.poll(); OvuFriends.refresh();}"); await p7.wait_for_timeout(500)
+            m1 = await p7.evaluate("()=>({row: (document.querySelector('#plazaFriendsRow')||{innerHTML:'none'}).innerHTML, joined: !!OvuPlaza.state().joined, st: OvuFriends.state()})")
+            check("before its server exists, Plaza friends asks once, then shows no row, runs no timers and asks nothing more; joining a group still works", mcalls == ["social_me"] and m0["missing"] and not m0["timers"] and m1["row"] == "" and m1["joined"] and m1["st"]["missing"] and not m1["st"]["timers"], {"calls": mcalls, "m0": {k: m0[k] for k in ("missing", "timers", "held")}, "row": m1["row"][:80]})
+            check("no page errors in the Plaza friends before-the-server run", not m_errors, m_errors[:3])
+            await ctx7.close()
+
+            # the staff dashboard signed in as an owner (fake session, fake staff calls): the Plazas card shows counts only
+            ctx5 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx5.add_init_script("localStorage.setItem('ovumind_auth_v1', %s);" % json.dumps(json.dumps(SESS)))
+            sg_today = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).date().isoformat()
+            STAFF = {"admin_me": {"admin": True, "role": "owner", "uid": SESS["user"]["id"]},
+                     "admin_overview": {"counts": {"accounts": 1, "accounts_with_cloud_copy": 0, "consent_active": 0, "consent_eligible": 0}, "floor": 20, "runs": [], "open_proposals": 0, "blocked": [], "latest": {}},
+                     "admin_feed": [],
+                     "admin_plaza": {"stale_seconds": 75, "today": sg_today, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "now": [{"id": "pcos", "name": "PCOS", "capacity": 24, "open": True, "people": 3}, {"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 1}, {"id": "menopause", "name": "Menopause", "capacity": 24, "open": True, "people": 0}],
+                                     "days": [{"day": sg_today, "server": "pcos", "joins": 5, "peak": 4}, {"day": sg_today, "server": "everyone", "joins": 1, "peak": 1}]},
+                     "admin_proposals": [],
+                     "admin_social_reports": {"at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "reports": [{"id": 3, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "reason": "unkind", "status": "open", "decided_at": None, "days": None, "card": "1a2b3c4d", "name": "Mei", "look": "base", "phrase": "Sending you a warm cup of tea.", "about_note": True, "from_card": "9f8e7d6c", "from_name": "Priya", "open_on_card": 1, "card_now": "active"}]},
+                     "admin_social_decide": {"ok": True}}
+            async def staff_gate(route):
+                url = route.request.url
+                if url.startswith(BASE): return await route.continue_()
+                if "fonts.googleapis.com" in url or "fonts.gstatic.com" in url: return await route.fulfill(status=200, content_type="text/css", body="")
+                m = re.search(r"/rest/v1/rpc/([a-z_]+)", url)
+                if m and m.group(1) in STAFF:
+                    if STAFF[m.group(1)] is None: return await route.fulfill(status=503, content_type="application/json", body='{"message":"unavailable"}')
+                    return await route.fulfill(status=200, content_type="application/json", body=json.dumps(STAFF[m.group(1)]))
+                return await route.fulfill(status=200, content_type="application/json", body="{}")
+            p5 = await ctx5.new_page(); await p5.route("**/*", staff_gate)
+            await p5.goto(BASE + "admin.html", wait_until="networkidle")
+            try: await p5.wait_for_function("()=>/PCOS/.test((document.querySelector('#plazaCard')||{}).textContent||'')", timeout=8000)
+            except Exception: pass
+            pc = await p5.evaluate("()=>{var c=document.querySelector('#plazaCard'); return c ? {text: c.textContent, rows: c.querySelectorAll('#plazaDays tr').length} : null}")
+            check("the staff Today tab shows a Plazas card: 4 online, PCOS 3 of 24 with peak 4 and 5 joins on the server's date, a day row, and no names", pc and "4 online" in pc["text"] and "3 of 24" in pc["text"] and "peak 4 today · 5 joins" in pc["text"] and pc["rows"] == 2 and "smoke@example.test" not in pc["text"], pc)
+            # a refresh that fails is shown as not current, not as live numbers
+            STAFF["admin_plaza"] = None
+            await p5.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))")
+            try: await p5.wait_for_function("()=>/not updated since/.test((document.querySelector('#plazaCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            st5 = await p5.evaluate("()=>(document.querySelector('#plazaCard')||{}).textContent||''")
+            check("when a plaza refresh fails the card says it is not current and keeps the last numbers", "not updated since" in st5 and "Not current" in st5 and "3 of 24" in st5, st5[:160])
+            sdec = []
+            async def staff_gate2(route):
+                m = re.search(r"/rest/v1/rpc/(admin_social_decide)", route.request.url)
+                if m: sdec.append(json.loads(route.request.post_data or "{}")); STAFF["admin_social_reports"]["reports"][0]["status"] = "paused"
+                return await staff_gate(route)
+            await p5.unroute("**/*"); await p5.route("**/*", staff_gate2)
+            await p5.click('nav.tabs button[data-tab=queue]')
+            try: await p5.wait_for_function("()=>/Mei · card 1a2b3c4d/.test((document.querySelector('#reportsCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            rc = await p5.evaluate("()=>{var c=document.querySelector('#reportsCard'); return c ? {text: c.textContent, acts: c.querySelectorAll('[data-sdecide]').length} : null}")
+            check("the staff Queue tab lists Plaza reports by card (name, short card number, reason, phrase, reporter's card), never an email or a group", rc and "Plaza reports" in rc["text"] and "1 open" in rc["text"] and "Unkind or upsetting" in rc["text"] and "Sending you a warm cup of tea." in rc["text"] and "Priya" in rc["text"] and rc["acts"] == 3 and "smoke@example.test" not in rc["text"] and "PCOS" not in rc["text"], rc)
+            await p5.click('#reportsCard [data-sdecide=pause]')
+            try: await p5.wait_for_function("()=>/No open reports/.test((document.querySelector('#reportsCard')||{}).textContent||'') || /paused/.test((document.querySelector('#reportsCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            check("an owner's Pause 7 days sends that report and seven days", sdec == [{"p_id": 3, "p_decision": "pause", "p_days": 7}], sdec)
+            await ctx5.close()
+
             # the staff page: signed out it shows the sign-in gate only, no dashboard, no data call
             await page.goto(BASE + "admin.html", wait_until="networkidle"); await page.wait_for_timeout(500)
             ag = await page.evaluate("()=>({h2: (document.querySelector('h2')||{}).textContent, email: !!document.querySelector('#gEmail'), send: !!document.querySelector('#gSend'), nav: !!document.querySelector('nav.tabs')})")
@@ -774,6 +1270,61 @@ async def main():
             zz = await page.evaluate("()=>({ask: (document.querySelector('#fdResults [data-askluna]')||{}).textContent || ''})")
             check("searching laksa finds HPB's laksa first; a dish the tables do not know offers Ask Luna", lk["first"] == "Laksa" and "zzqqx" in zz["ask"], {"laksa": lk, "mee siam": ms, "unknown": zz})
             await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+
+            # acupressure (DeepSeek TCM review, 20 Oct): fourteen points with SP8 for first-day cramps, a before-you-press safety
+            # list, and pregnancy cautions on SP6, SP8, LR3, LI4, the belly points and the lower back
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
+            await page.evaluate("()=>{var b=document.querySelector('nav a[data-tab=mind]'); b.click();}"); await page.wait_for_selector("#mindAcu", timeout=8000)
+            await page.evaluate("()=>document.querySelector('#mindAcu').click()"); await page.wait_for_selector(".acusafe", timeout=8000); await page.wait_for_timeout(400)
+            nums = await page.evaluate("()=>Array.from(new Set(Array.from(document.querySelectorAll('[data-pt]')).map(b=>b.dataset.pt).filter(Boolean)))")
+            await page.evaluate("()=>{var b=document.querySelector('[data-pt=sp8]'); if(b) b.click();}"); await page.wait_for_timeout(400)
+            sp8 = await page.evaluate("()=>{var t=document.querySelector('#sheetBody, .sheet-body, #sheet').textContent; return {find: /four fingers flat downward/.test(t), use: /especially on the first day/.test(t), caution: /maternity team/.test(t), page: /page has not been checked/.test(t)};}")
+            safe = await page.evaluate("()=>{var t=(document.querySelector('.acusafe')||{}).textContent||''; return {skin: /broken, red, hot, swollen/.test(t), thinners: /blood thinners/.test(t), stop: /numbness, tingling or dizziness/.test(t)};}")
+            check("the acupressure sheet lists fourteen points with SP8, and the before-you-press list covers skin, blood thinners and when to stop", len(nums) >= 14 and "sp8" in nums and all(safe.values()), {"points": nums, "safe": safe})
+            check("SP8 says how to find it with four fingers, what it is for, the pregnancy caution, and that its WHO page is not yet checked", all(sp8.values()), sp8)
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+
+            # four-persona review (20 Oct): a saved symptom shows its mindful line and her notebook pose; a chest-pain note saved by
+            # hand opens the care card; the mat draws her in her own clothes; after menopause the calendar says Bleeding, fills
+            # nothing and a saved day opens the prompt card; the fertility page shows no invented result
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
+            await page.evaluate("()=>document.querySelector('nav a[data-tab=cycle]').click()"); await page.wait_for_selector('#calTabs', timeout=8000)
+            await page.evaluate("()=>document.querySelector('#calTabs [data-tab=symptom]').click()"); await page.wait_for_selector('#saveSym', timeout=8000)
+            await page.evaluate("()=>{document.querySelector('#symChips [data-sym=headache]').click(); document.querySelector('#saveSym').click();}"); await page.wait_for_timeout(600)
+            mo = await page.evaluate("()=>({sub: (document.querySelector('#toast .toastsub')||{}).textContent||'', img: document.querySelector('#avatarImg').getAttribute('src')})")
+            check("a saved symptom shows a mindful line under the toast and her notebook pose", len(mo["sub"]) > 10 and "act-note" in mo["img"], mo)
+            await page.evaluate("()=>{document.querySelector('#symNotes').value='my chest feels tight since lunch'; document.querySelector('#saveSym').click();}"); await page.wait_for_timeout(600)
+            cc = await page.evaluate("()=>({care: !!document.querySelector('#careDone'), text: (document.querySelector('.carecard')||{}).textContent||''})")
+            check("a chest-pain note saved by hand opens the care card with Call 995", cc["care"] and "Call 995" in cc["text"], cc)
+            await page.evaluate("()=>{var b=document.querySelector('#careDone'); if(b) b.click();}"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>{OvuStore.setProfile({outfit:'party'}); document.querySelector('nav a[data-tab=mind]').click();}"); await page.wait_for_timeout(800)
+            md = await page.evaluate("()=>document.querySelector('#meditator img').getAttribute('src')")
+            check("the mat draws her meditating in what she wears", "avatar-meditate-party" in (md or ""), md)
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>{OvuStore.setProfile({outfit:'base', lifeStage:'post'}); document.querySelector('nav a[data-tab=cycle]').click();}"); await page.wait_for_selector('#calTabs', timeout=8000)
+            pm1 = await page.evaluate("()=>{var tab=document.querySelector('#calTabs [data-tab=period]').textContent; var days=[...document.querySelectorAll('.cal-day[data-date]:not(.future)')].filter(b=>!/p-/.test(b.className)); var d=days[days.length-3]; var before=OvuStore.list('period').length; d.click(); return {tab:tab, added: OvuStore.list('period').length-before, date: d.dataset.date};}"); await page.wait_for_timeout(400)
+            await page.evaluate("()=>{document.querySelector('#flowChips [data-flow=light]').click(); document.querySelector('#savePeriod').click();}"); await page.wait_for_timeout(600)
+            pm2 = await page.evaluate("()=>({care: !!document.querySelector('#careDone'), text: (document.querySelector('.carecard')||{}).textContent||''})")
+            check("after menopause the calendar says Bleeding, fills nothing, and a saved day opens the prompt card", pm1["tab"] == "Bleeding" and pm1["added"] == 0 and pm2["care"] and "This is not a period" in pm2["text"], [pm1, pm2["text"][:80]])
+            await page.evaluate("()=>{var b=document.querySelector('#careDone'); if(b) b.click(); OvuStore.setProfile({lifeStage:''});}"); await page.wait_for_timeout(300)
+            # Codex branch review (20 Oct): pain 10 entered on the period form opens the same-day card; a red flag found only after a
+            # Luna save (heavy flow logged earlier, then "dizzy today") is shown in the chat
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
+            await page.evaluate("()=>{var t=OvuStore.today(); OvuStore.byDate(t).forEach(function(e){ OvuStore.remove(e.id); }); OvuStore.setProfile({lifeStage:''});}") # a clean today: earlier checks saved a chest-pain note
+            await page.evaluate("()=>document.querySelector('nav a[data-tab=cycle]').click()"); await page.wait_for_selector('#savePeriod', timeout=8000)
+            await page.evaluate("()=>{document.querySelector('#flowChips [data-flow=heavy]').click(); var r=document.querySelector('#ppain'); r.value='10'; r.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('#savePeriod').click();}"); await page.wait_for_timeout(600)
+            pc = await page.evaluate("()=>({care: !!document.querySelector('#careDone'), text: (document.querySelector('.carecard')||{}).textContent||''})")
+            check("pain 10 on the period form opens the same-day care card", pc["care"] and "10 out of 10" in pc["text"], pc["text"][:80])
+            await page.evaluate("()=>{var b=document.querySelector('#careDone'); if(b) b.click();}"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>document.querySelector('nav a[data-tab=luna], #lunaBtn, .luna') && (document.querySelector('#lunaBtn')||document.querySelector('.luna')).click()"); await page.wait_for_selector('#lunaIn', timeout=8000)
+            await page.fill("#lunaIn", "dizzy today"); await page.click("#lunaSend"); await page.wait_for_selector("#lunaSave", timeout=8000)
+            await page.click("#lunaSave"); await page.wait_for_timeout(600)
+            lc = await page.evaluate("()=>[...document.querySelectorAll('#chat .bub.urgent')].map(b=>b.textContent).join(' | ')")
+            check("a red flag found only after a Luna save is shown in the chat", "dizziness" in lc.lower() or "heavy bleeding" in lc.lower(), lc[:120])
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(300)
+            await page.goto(BASE + "fertility.html", wait_until="networkidle"); await page.wait_for_timeout(600)
+            ft = await page.evaluate("()=>({t: document.body.innerText, est: (document.querySelector('#myEstimate')||{}).innerText||''})")
+            check("the fertility page shows no invented result and her own estimate is labelled", "85%" not in ft["t"] and "surge detected" not in ft["t"].lower() and len(ft["est"]) > 10 and "Reading your calendar" not in ft["est"], ft["est"][:140])
 
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()

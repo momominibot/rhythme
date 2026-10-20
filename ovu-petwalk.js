@@ -350,7 +350,7 @@
   /* her line goes in the thought bubble above her head */
   function say(text, ms) {
     var th = doc.getElementById('thought'); if (!th || !R.showThought) return;
-    th.classList.add('say'); R.showThought(text); if (R.joy) R.joy();
+    R.showThought(text, true); if (R.joy) R.joy();
     root.setTimeout(function () { if (th.textContent !== text) return; R.hideThought(); root.setTimeout(function () { if (th.textContent === text && !th.classList.contains('on')) th.classList.remove('say'); }, 350); }, ms || 2600);
   }
   /* the pet's answer: little jumps and a float of hearts */

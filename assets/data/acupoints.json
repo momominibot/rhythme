@@ -17,6 +17,21 @@
 "evidence": "atlas-period-pain"
 },
 {
+"id": "sp8",
+"code": "SP8",
+"name": "Diji",
+"cn": "地机",
+"channel": "Spleen channel",
+"region": "leg",
+"whoPage": null,
+"kind": "shin",
+"side": "front",
+"bilateral": false,
+"location": "Inner leg: 3 B-cun below SP9 (the hollow under the inner knee), just behind the tibia’s medial border.",
+"research": "SP8 is named in international TCM guidelines for period pain, where it is used with needles; evidence on pressing it yourself is limited.",
+"evidence": null
+},
+{
 "id": "cv4",
 "code": "CV4",
 "name": "Guanyuan",
