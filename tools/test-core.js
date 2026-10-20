@@ -13,7 +13,7 @@ function fresh(todayIso) {
   w.window = w; w.self = w; w.globalThis = w;
   var ctx = vm.createContext(w);
   w.Uint8Array = Uint8Array; w.ArrayBuffer = ArrayBuffer; w.isFinite = isFinite; w.isNaN = isNaN; w.Blob = Blob; w.File = File;
-  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-breathtap.js', 'ovu-moments.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
+  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-breathtap.js', 'ovu-moments.js', 'ovu-mindful.js', 'ovu-morning.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sync.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
   return w;
@@ -303,6 +303,35 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var bent = M.lines(g, P).filter(function (l) { return l.curve; }).length;
   check('the plaza gate home bends round the garden instead of crossing it', bent >= 1, bent);
   check('there is no route to a place that is not on the map', M.route(g, 'home', 'house') === null);
+})();
+
+(function morningStart() {
+  console.log('2i. Morning start (Jamie, 20 Oct): offered 04:00 to 11:59 by the real clock, never asleep, put away for the day; Erin\'s brushing script whole; no breath counts; 30 seconds; the shared heart cap');
+  var w = fresh('2026-10-20'), M = w.OvuMorning, MF = w.OvuMindful, S = w.OvuStore, RW = w.OvuRewards, MO = w.OvuMoments;
+  var at = function (h, m, sec) { return new Date(2026, 9, 20, h, m || 0, sec || 0); };
+  check('the window opens at 04:00 and closes at noon', !M.inWindow(at(3, 59, 59)) && M.inWindow(at(4)) && M.inWindow(at(11, 59, 59)) && !M.inWindow(at(12)) && !M.inWindow(at(0, 30)) && !M.inWindow(at(21)));
+  check('the invitation: never while asleep, not once done or put away today, back the next morning', M.offered({}, '2026-10-20', at(8)) && !M.offered({ sleeping: { startedAt: 'x' } }, '2026-10-20', at(8)) &&
+    !M.offered({ morningStart: { date: '2026-10-20', dismissed: true } }, '2026-10-20', at(8)) && !M.offered({ morningStart: { date: '2026-10-20', done: true } }, '2026-10-20', at(9)) &&
+    M.offered({ morningStart: { date: '2026-10-19', done: true } }, '2026-10-20', at(7)) && !M.offered({}, '2026-10-20', at(13)));
+  var yw = M.plan('yourway').map(function (x) { return x.key; }), er = M.plan('erin'), teeth = MF.byId('teeth'), mv = teeth.variations.filter(function (v) { return v.when === 'morning' && v.author === 'erin'; })[0];
+  check('your way: arrive, notice, then brushing only after she says she is ready', yw.join() === 'arrive,notice,ready,yourway' && M.STEPS.ready.gate && M.STEPS.yourway.open && !M.STEPS.yourway.secs, yw.join());
+  check('with Erin: her whole morning script, in her words and order, with her clips, in the brushing pose', er.length === 3 + mv.steps.length && er.slice(3).every(function (x, i) { return x.text === mv.steps[i].text && x.secs === mv.steps[i].secs && x.audio === 'assets/audio/guide-interim/teeth-' + teeth.variations.indexOf(mv) + '-' + i + '.mp3' && x.pose === 'teeth' && x.erin; }), er.length);
+  check('about 90 seconds before brushing; about five minutes in all with Erin', M.STEPS.arrive.secs + M.STEPS.notice.secs === 90 && Math.abs(er.reduce(function (t, x) { return t + (x.secs || 0); }, 0) - 296) <= 10);
+  var copy = [M.STEPS.arrive, M.STEPS.notice, M.STEPS.ready, M.STEPS.yourway].map(function (x) { return x.title + ' ' + x.text; }).concat(Object.keys(M.VERSIONS).map(function (k) { return M.VERSIONS[k].name + ' ' + M.VERSIONS[k].sub; }));
+  check('no breath counts, pacing or promises in the copy, no "should", no em dash', copy.every(function (t) { return !/\b(count|inhale for|exhale for|hold for|4-7-8|box breath|breathe in for|per minute|should|cure|heal|reduce)\b/i.test(t) && t.indexOf('—') < 0; }) && !/\d/.test(M.STEPS.arrive.text + M.STEPS.notice.text), copy.filter(function (t) { return /\d|—/.test(t); }).join(' | '));
+  check('the first steps invite any position, eyes open, other anchors and stopping', /sitting, lying or standing/.test(M.STEPS.arrive.text) && /Eyes open/.test(M.STEPS.arrive.text) && /another anchor/.test(M.STEPS.notice.text) && /stop at any time/.test(M.STEPS.notice.text));
+  var now = 0, c = M.makeClock(function () { return now; });
+  c.run(); now = 10000; c.hold(); now = 25000; c.run(); now = 55000;
+  check('practice time counts only while a step runs, not while paused or walking to the sink', c.seconds() === 40 && c.running(), c.seconds());
+  check('nothing under 30 seconds, nothing unconfirmed', M.entryData({ seconds: 29, confirmed: true }) === null && M.entryData({ seconds: 300, confirmed: false }) === null);
+  var d = M.entryData({ seconds: 30, confirmed: true, version: 'yourway', skipped: ['notice'], brushed: 'yourway', finished: true });
+  check('one honest entry: informal, morning, real seconds, what was skipped, whether it finished', d && d.kind === 'informal' && d.activity === 'morning' && d.seconds === 30 && d.minutes === 0.5 && d.skipped.join() === 'notice' && d.finished && d.completed && d.confirmedReal && d.brushed === 'yourway', JSON.stringify(d));
+  var e2 = M.entryData({ seconds: 95, confirmed: true, version: 'erin', brushed: 'no', finished: false });
+  check('a stopped routine is saved as not finished and says brushing did not happen', e2 && !e2.finished && !e2.completed && e2.brushed === 'no' && /Erin Lee/.test(e2.guide));
+  var pts = [1, 2, 3, 4].map(function () { return RW.award(S.add('mindfulness', S.today(), M.entryData({ seconds: 120, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true }))).points; });
+  check('the same small thank-you as any practice, inside the shared 6 a day cap, never a streak', pts.join() === '2,2,2,0' && (RW.ledger().streak || 0) === 0, pts.join());
+  var ev = S.list('mindfulness').slice(-1)[0];
+  check('the moment after it: "That pause was yours", not a claim about minutes', MO.forEntry(ev) === 'morning' && MO.MOMENTS.morning.lines.indexOf('That pause was yours.') >= 0 && MO.MOMENTS.morning.pose === null);
 })();
 
 (function noPeriodStatementsAreNotFlow() {
