@@ -1,13 +1,14 @@
 # Learn videos for the desktop: what to make, and how (Gold Drop, 21 October 2026)
 
-Jamie asked for a Gold Drop plan, discussed with Codex, for the short educational films in Rhythme's Learn desk, regenerated to fit a computer screen and stream well, with every clinical claim checked against current evidence. This is research and a plan only. No video, image or voice was generated, no credits were spent, and the app is unchanged. Production needs Jamie's approval.
+Jamie asked for a Gold Drop plan, discussed with Codex, for the short educational films in Rhythme's Learn desk, regenerated to fit a computer screen and stream well, with every clinical claim checked against current evidence. This is research and a plan only. No video, image or voice was generated, no credits were spent, and the app is unchanged. Production needs Jamie's approval. Updated the same night after Jamie chose Seedance for the visuals.
 
 ## The answer in brief
 
 - **Retire all six current films.** They are square phone clips of 18 to 28 seconds, carry the old OVARIA brand, and five of them say something we should not repeat: the fertile-window film says the app "pinpoints your unique window" (and spells the brand "Overia" on screen), the hormones film says oestrogen lifts "energy, mood and skin", the menopause film gives age 51 when Singapore's 2026 guideline says 49, the cycle film uses 21 to 35 days and 2 to 7 days where FIGO uses 24 to 38 and up to 8, and the perimenopause film promises women will "thrive" and gives a fixed 4 to 8 years. The first-period film no longer fits an 18+ app.
 - **Make 27 short films (60 to 120 s) in three waves**, landscape 16:9 at 1080p, with WebVTT captions and a transcript with sources. Wave 1 (7 films) covers the launch: when to get care now, a typical adult cycle, heavy periods, period pain and endometriosis, the fertile window, perimenopause, and what the app can and cannot tell you.
 - **Every clinical film ends with a red-flag line and a see-a-doctor line**, naming the symptoms and the action, with Singapore numbers (995, SOS 1767, mindline 1771) and, for early pregnancy, after-birth and gynaecological emergencies, KKH's 24-hour urgent care centre.
-- **Decisions before production:** E2 (food) conflicts with the app's own "Foods to try in this phase"; the wave 1 scripts, D3, C1 and C4 need a qualified clinician's review, which Codex cannot replace; voice provider and hosting need Jamie's approval.
+- **Visuals with Seedance (Jamie's choice):** Seedance 2.0 at 1080p 16:9 draws mood and place from watercolour keyframes; every word, number and diagram is drawn in code so it matches the reviewed script. At list prices that is about US$0.37 (2.48 yuan) a second: about US$25 for the A1 pilot, US$170 for wave 1 and US$640 for all 27 films, with spare for retakes. The Volcengine account's terms grant use only in mainland China and need written permission for commercial use, so the same models on BytePlus ModelArk (ByteDance's international platform, available in Singapore) are recommended.
+- **Decisions before production:** which Seedance account, and the pilot spend; E2 (food) conflicts with the app's own "Foods to try in this phase"; the wave 1 scripts, D3, C1 and C4 need a qualified clinician's review, which Codex cannot replace; voice provider and hosting need Jamie's approval.
 - **Things changed since the last clips were made, and the films must say so:** PCOS was renamed polyendocrine metabolic ovarian syndrome (PMOS) in The Lancet in May 2026; Singapore published its first menopause guideline in February 2026 (median age of menopause 49; for most women with symptoms who are under 60 or within 10 years of their last period, the benefits of starting hormone therapy typically outweigh the risks); NICE replaced its fertility guideline (NG257, March 2026). NICE's heavy bleeding, miscarriage and ectopic, postnatal and menopause pages also show 2026 update dates; the recommendations used here were read on those pages, but an update date alone does not mean the advice we use changed (review).
 - **Streaming:** progressive MP4 is the starting point; HLS is not needed for clips this short, subject to startup and stall tests before release. Two renditions: 720p by default, 1080p only when a film is played large. On a Mac the app is a 430 px column, so films need a "Watch large" theatre view to really fill the computer. The service worker must stop intercepting video. Wave 1 fits in the repo; all 27 films in two renditions (about 0.9 to 1.35 GB) will not fit in a GitHub Pages site, so hosting for later waves is chosen after measuring the first film, most likely object storage behind a CDN, which is Jamie's call because it costs money.
 
@@ -352,29 +353,53 @@ Codex named topics a gynaecologist, perinatal psychiatrist or menopause speciali
 
 ## Production plan (needs Jamie's approval; nothing has been made)
 
-### Look
-Keep the soft watercolour look of the current clips, but move to **designed motion graphics** for anything that carries information: timelines, cycle wheels, symptom lists and red-flag cards are drawn as code (HyperFrames or Remotion, already available here) so every word and number on screen is exactly the reviewed text. Generated imagery (Higgsfield or Seedream) is used only for decorative backgrounds and transitions, never for anatomy, and every generated frame is checked by eye before use. The OVARIA watermark goes; a small Rhythme mark sits top right.
+### Look: Seedance for moving pictures, code for every word (Jamie's choice, 20 Oct 2026)
+Jamie asked for the films to be made with Volcengine's Seedance model. The plan splits each film into two layers so the model never carries a clinical claim:
+
+- **Seedance draws mood and place.** About half of each film's runtime is Seedance footage: 4 to 8 shots of 5 to 10 s in Rhythme's soft watercolour look, such as a bedroom at dawn, a desk with a calendar, tea on a windowsill, a walk in a garden, a clinic entrance seen from a distance. Each shot starts from a keyframe made with Seedream 5.0 pro in the app's style (the illustrated avatar can be the reference; she is not a real face, which matters because Seedance 2.0 refuses real human faces as reference input, V4).
+- **Code draws every word and diagram.** Titles, key messages, cycle wheels and timelines, the red-flag and see-a-doctor cards, the sources card and the caption line are built in HyperFrames (or Remotion) over the footage or a still keyframe, so each word on screen is exactly the reviewed script.
+- **Never in a Seedance prompt:** anatomy, procedures, blood beyond soft abstract colour, pregnancy loss imagery, text, numbers, logos, real people, hospital brands. Every accepted shot is checked frame by frame for stray text, warped hands and faces, and anything that reads as medical advice.
+- **Settings:** `ratio "16:9"`, `resolution "1080p"`, `duration` 5 to 10, `generate_audio false` (narration and music are added separately, and the default is true), `watermark false`, `camera_fixed true` for still moods where the 2.0 series accepts it (the API lists it; the 2.0 tutorial does not), `seed` recorded per shot so a take can be redone. Output is 24 fps (V1, V2), so the films are mastered at 24 fps rather than 30, and the encode settings use `-g 48` for 2-second keyframes.
+
+**Which Seedance.** Seedance 2.0 (`doubao-seedance-2-0-260128`) for final shots: 16:9, 1080p, 4 to 15 s, image-to-video from a first frame, and the cheapest 1080p option. Seedance 2.5 (`doubao-seedance-2-5-260628`, 4 to 30 s, a 480p draft mode before the full render) only if 2.0 fails the pilot's look. The fast and mini versions stop at 720p, so they are not used for finals (V2).
+
+**Cost at list prices** (opened 20 Oct 2026; tokens = seconds x width x height x fps / 1024, so 1080p at 24 fps is 48,600 tokens a second; failed generations are not billed; no promotion applies to 2.0 standard on that date) (V3, V5). Estimates assume half of each film is Seedance footage and 50% spare for rejected takes; Seedream keyframes add about 0.30 yuan (US$0.045) each:
+
+| | per second | A1 pilot (about 68 s rendered) | Wave 1 (about 460 s) | All 27 films (about 1,710 s) |
+|---|---|---|---|---|
+| Seedance 2.0, 1080p, Volcengine | 2.48 yuan | about 170 yuan | about 1,130 yuan | about 4,240 yuan |
+| Seedance 2.0, 1080p, BytePlus | US$0.37 | about US$25 | about US$170 | about US$640 |
+| Seedance 2.5, 1080p, Volcengine | 3.74 yuan | about 250 yuan | about 1,710 yuan | about 6,400 yuan |
+| Seedance 2.5, 1080p, BytePlus | US$0.57 | about US$38 | about US$260 | about US$970 |
+
+Volcengine also requires an account balance over 200 yuan (or a Seedance resource pack or savings plan) before Seedance 2.0 can be switched on (V2).
+
+**Which account (Jamie's decision).** The Volcengine Ark platform terms the launch sweep found also cover Seedance. Clause 3.1 grants use "仅在中国大陆地区" (only in mainland China) and says commercial use needs Volcengine's prior written permission (V6). Rhythme is a Singapore product, so making its films on the existing cn-beijing account carries the same problem that paused Luna's AI. ByteDance's international platform, **BytePlus ModelArk**, sells the same Seedance 2.0 and 2.5 models (`dreamina-seedance-2-0-260128`, `dreamina-seedance-2-5-260628`) in US dollars, lists Singapore as an available country, and costs about the same (V5, V7). Recommendation: run Seedance on a BytePlus ModelArk account. It needs Jamie to sign up and create an API key; the scripts are the same apart from the base URL and model IDs. This is a terms reading, not legal advice.
+
+**Pilot first.** Make A1's footage only: about 8 shots of Seedance 2.0 at 1080p from Seedream keyframes, plus 2 of the same shots in Seedance 2.5 to compare, in one guarded run. Visuals carry no clinical claims, so the pilot can run before the clinician review; the finished film cannot. Jamie then judges the look, and the measured file sizes settle the hosting question.
 
 ### Voice
-Use one warm, neutral narrator for all clinical films. Options, each to be checked for licence before any run:
+Use one warm, neutral narrator for all clinical films. Seedance's own audio is switched off, because the narration must be the reviewed script word for word. Options, each to be checked for licence before any run:
 - Higgsfield text-to-speech with an existing brand voice (Jamie's standing default for voiceovers);
-- Erin, recorded or her cloned voice, only for E4 (mindfulness), so her voice stays tied to practice; her clone runs on Volcengine speech, and the launch sweep (PR #32) found that Volcengine Ark and Doubao terms licence use only in mainland China, so the speech service terms must be checked before using it outside China;
+- Erin, recorded or her cloned voice, only for E4 (mindfulness), so her voice stays tied to practice; her clone runs on Volcengine speech, whose terms need the same check as Seedance (V6);
 - a local model (for example Kokoro) as a no-cost fallback.
 MiniMax is not an option.
 
 ### Order of work, once approved
 1. Retire the menarche clip and the fertile-window clip (old brand and the "pinpoint" claim) from the Learn desk now (a small app change, separate PR).
-2. Write the wave 1 scripts (F1, A1, A3, A4, B1, D1, F2) from these cards; review; Jamie approves the words.
-3. Build one film end to end (A1) to check the look, the voice and file sizes against the spec; Jamie approves.
-4. Render the rest of wave 1 in one guarded batch: a single job lock, already-finished films skipped, no automatic retries, stdout and stderr checked for usage, rate or credit errors even when the exit code is 0, and the whole batch stops on the first provider failure.
-5. Ship wave 1 with the player changes and the service worker fix; choose hosting for waves 2 and 3 from the pilot's measured sizes.
+2. Seedance pilot for A1's footage (above), on the account Jamie picks; Jamie approves the look.
+3. Write the wave 1 scripts (F1, A1, A3, A4, B1, D1, F2) from these cards; Codex check; qualified clinician review; Jamie approves the words.
+4. Assemble A1 end to end (footage, code-drawn cards, narration, WebVTT) and check it against the spec and file-size budget; Jamie approves.
+5. Render the rest of wave 1 in one guarded batch: a single job lock, already-finished shots skipped, no automatic retries, stdout and stderr checked for usage, rate, credit and moderation errors even when the exit code is 0, the whole batch stopped and the block saved on the first provider failure, and approval used up after one run.
+6. Ship wave 1 with the player changes and the service worker fix; choose hosting for waves 2 and 3 from the pilot's measured sizes.
 
 ### What Jamie approves
 - the film list and waves (this document);
+- the Seedance account (BytePlus recommended) and each paid run, starting with the A1 pilot (about US$25 or 170 yuan);
 - the voice provider (after its licence check) and any spend on Higgsfield credits;
 - hosting for waves 2 and 3, if it costs money;
 - what to do with the app's phase food suggestions before E2;
-- each wave's scripts, and the A1 pilot film before the batch.
+- each wave's scripts, and the assembled A1 film before the batch.
 
 ## Desktop streaming spec
 
@@ -390,7 +415,7 @@ On a Mac, the whole app is one column: `.frame` has `max-width:430px` (`room.css
 ### Files per film
 | File | Spec |
 |---|---|
-| `<id>-v1-1080.mp4` | 1920 x 1080, 16:9, square pixels, 30 fps, H.264 High profile level 4.1, yuv420p, Rec. 709 SDR, keyframe every 2 s (`-g 60 -keyint_min 60 -sc_threshold 0`), capped VBR (`-crf 22 -maxrate 4.5M -bufsize 9M`, a 9 Mbit VBV buffer) (review), `-movflags +faststart`; AAC-LC 48 kHz, 128 kbit/s stereo |
+| `<id>-v1-1080.mp4` | 1920 x 1080, 16:9, square pixels, 24 fps (Seedance renders at 24, V1), H.264 High profile level 4.1, yuv420p, Rec. 709 SDR, keyframe every 2 s (`-g 48 -keyint_min 48 -sc_threshold 0`), capped VBR (`-crf 22 -maxrate 4.5M -bufsize 9M`, a 9 Mbit VBV buffer) (review), `-movflags +faststart`; AAC-LC 48 kHz, 128 kbit/s stereo |
 | `<id>-v1-720.mp4` | 1280 x 720, same settings, `-maxrate 2.5M -bufsize 5M` |
 | `<id>-v1.en.vtt` | WebVTT captions, at most 2 lines and about 42 characters a line, cues 1 to 7 s, sound labels in brackets only when needed; the source for both the native track and the app's caption line |
 | `<id>-v1.jpg` | poster, 1920 x 1080 JPEG about 150 KB, the title card (not a mid-sentence frame) |
