@@ -732,7 +732,7 @@
     try { if (window.OvuLightFlower) OvuLightFlower.close(); } catch (e) { }
     try { if (window.OvuMorning) OvuMorning.cancel(); } catch (e) { } /* Morning start ends at once, with no save prompt */
     try { if (hooks.hudStop) hooks.hudStop(); } catch (e) { }
-    hud.classList.remove('on'); avatar.classList.remove('acting');
+    hud.classList.remove('on'); avatar.classList.remove('acting'); hudClockStop();
   }
   function asleep() { return !!S.state().sleeping; }
   /* Jamie, 19 Oct: once she is asleep nothing else happens until the bed wakes her. The bed and the window (its sheet
@@ -859,7 +859,8 @@
       $('#savePeriod').addEventListener('click', function () {
         try {
           var flow = ($('#flowChips .on') || {}).dataset ? $('#flowChips .on').dataset.flow : 'none';
-          if (flow === 'none') { if (cur) S.remove(cur.id); message($('#calMsg'), 'Marked as no bleeding.', true); renderCal(); renderEditor(); renderDeck(); return; }
+          if (flow === 'none') { if (cur) S.remove(cur.id); S.setCheckinAnswer(date, 'bleeding', 'none'); message($('#calMsg'), 'Marked as no bleeding.', true); renderCal(); renderEditor(); renderDeck(); return; }
+          if (S.checkinAnswers(date).bleeding) S.setCheckinAnswer(date, 'bleeding', null); /* a logged flow replaces an earlier "none" or "not sure" */
           var ev = S.add('period', date, { flow: flow, clots: $('#clots').classList.contains('on'), largeClots: $('#largeClots').classList.contains('on'), flooding: $('#flooding').classList.contains('on'), impact: $('#impact').classList.contains('on') });
           var pn = Number($('#ppain').value), sev = null; if (pn > 0 || (symToday && (ppTouched || typeof symToday.data.pain === 'number'))) sev = S.add('symptom', date, { pain: pn }, 'room', { merge: true });
           message($('#calMsg'), 'Saved ' + flow + ' flow for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev, undefined, false, sev ? [sev] : []);
@@ -1926,7 +1927,7 @@
     clearTimeout(medTimer); medTimer = setTimeout(function () { if (meditating) { meditator.classList.add('on'); $('#aura').classList.add('on'); } }, 350);
   }
   var medTimer = 0; /* the mat's entrance: a quick exit (Morning start begun within 350 ms) cancels it (Codex sweep, 20 Oct) */
-  function exitMeditation() { clearTimeout(medTimer); meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); hud.classList.remove('on'); setTimeout(function () { avatar.classList.remove('hidden'); placeAvatar(HOME, false); avatar.classList.add('idle'); }, 300); }
+  function exitMeditation() { clearTimeout(medTimer); if (!session && !practice) hudClockStop(); meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); hud.classList.remove('on'); setTimeout(function () { avatar.classList.remove('hidden'); placeAvatar(HOME, false); avatar.classList.add('idle'); }, 300); }
   meditator.addEventListener('click', function () { if (current !== 'mind') openMindfulness(); });
   /* Erin's lines play on ONE audio element per session, created and first played inside the tap that began it: a fresh
    * element started from a promise chain is silent on the iPhone, which is why her voice came and went. A guard moves
@@ -1947,13 +1948,27 @@
   function wait(ms) { return new Promise(function (resolve) { if (!session || session.stopped) return resolve(); session.timer = setTimeout(resolve, ms); }); }
   function setOrb(phase, text) { var o = $('#orb'), t = $('#orbText'); if (o) { o.className = 'orb ' + phase; if (text) t.textContent = text; } var ho = $('#hudOrb'); ho.className = 'hud-orb ' + phase; if (text) $('#hudLine').textContent = text; }
   function caption(text) { if (!text) return; $('#hudLine').textContent = text; var t = $('#orbText'); if (t) t.textContent = text; }
+  /* a running clock on the session bar (Jamie, 20 Oct: "the mindfulness can be a bit slow so we should put a timer for user
+   * to note that it's still on going"). It starts when the bar shows, starts again when a new activity takes the bar, counts
+   * up (never down, so nothing to beat), adds "of N min" while a planned length is known, and sits outside the spoken
+   * status so a screen reader is not read a number every second. */
+  var hudClock = { t0: 0, id: null, total: 0, wasOn: false };
+  function clockText(ms) { var sec = Math.max(0, Math.floor(ms / 1000)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+  function hudTick() { var el = $('#hudTime'); if (!el) return; var ms = Date.now() - hudClock.t0, tot = hudClock.total; el.textContent = clockText(ms) + (tot && ms < tot ? ' of ' + Math.max(1, Math.round(tot / 60000)) + ' min' : ''); }
+  /* every activity that begins calls start (a new activity always starts from 0:00, whatever its title), every stop calls
+   * stop at once, before any save prompt or fade, and hudOn(true, title) from the garden or greenhouse starts it too; a plain
+   * re-show of a running session leaves it counting (Codex clock reviews, 20 Oct: an observer guessed wrong on hide/show) */
+  function hudClockStart(totalMs) { clearInterval(hudClock.id); hudClock.t0 = Date.now(); hudClock.total = Number(totalMs) || 0; hudClock.id = setInterval(hudTick, 1000); hudTick(); }
+  function hudClockStop() { clearInterval(hudClock.id); hudClock.id = null; hudClock.total = 0; var el = $('#hudTime'); if (el) el.textContent = ''; }
+  var fadeTimer = null; /* the fade after a saved session; a new activity cancels it so it can never hide the new one */
   function runSession(kind, minutes) {
     if (window.OvuMorning && OvuMorning.active()) { toast('Morning start is running. Stop it first.', 'wb_twilight'); return; }
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (window.OvuPodcast) OvuPodcast.pause();
     session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: kind === 'erin' ? new Audio() : null, timer: null };
     emit('activity', 'session', kind); /* anything else using the HUD (a greenhouse minute) hands it over before this claims it */
-    hideSheet(); holo.classList.toggle('on', kind === 'erin'); hud.classList.add('on'); $('#hudTitle').textContent = kind === 'erin' ? 'With Erin' : 'Just breathe';
+    clearTimeout(fadeTimer); fadeTimer = null;
+    hideSheet(); holo.classList.toggle('on', kind === 'erin'); hud.classList.add('on'); $('#hudTitle').textContent = kind === 'erin' ? 'With Erin' : 'Just breathe'; hudClockStart(minutes * 60000);
     var total = minutes * 60000, cycleMs = kind === 'erin' ? 8500 : 10000, hour = new Date().getHours(); /* in and a longer out, no hold */
     var today = S.today(), cramps = S.list('symptom', { from: today, to: today }).some(function (e) { return (e.data.symptoms || []).indexOf('cramps') > -1; }) || S.list('period', { from: today, to: today }).length > 0;
     var guides = ['guide_soften', 'guide_feet', 'guide_wander', 'guide_nothing_to_fix', 'guide_quiet_work'].concat(cramps ? ['guide_cramps'] : []);
@@ -1982,14 +1997,14 @@
     if (!session) return;
     var mins = Math.max(0.5, Math.round((Date.now() - session.startedAt) / 6000) / 10);
     var ev = S.add('mindfulness', S.today(), { kind: session.kind, minutes: completed ? session.minutes : mins, completed: completed, startedAt: new Date(session.startedAt).toISOString(), guide: session.kind === 'erin' ? 'Erin Lee, Take A Pause (cloned voice clips)' : 'Breathing orb' });
-    session.stopped = true; session = null;
+    session.stopped = true; session = null; hudClockStop();
     setOrb('out', completed ? 'Well done' : 'Paused'); chime('bell', true);
-    setTimeout(exitMeditation, 2500); afterSave(ev, (completed ? 'Session complete. ' : 'Session saved. ') + (ev.data.minutes) + ' min of calm added to your journal.');
+    clearTimeout(fadeTimer); fadeTimer = setTimeout(function () { fadeTimer = null; if (!session && !practice) exitMeditation(); }, 2500); afterSave(ev, (completed ? 'Session complete. ' : 'Session saved. ') + (ev.data.minutes) + ' min of calm added to your journal.');
   }
   function stopSession(fromClose) {
     if (!session) { if (meditating) exitMeditation(); return; }
     var elapsedMin = (Date.now() - session.startedAt) / 60000;
-    session.stopped = true; clearTimeout(session.timer); if (session.audio) { try { session.audio.pause(); } catch (e) { } }
+    session.stopped = true; clearTimeout(session.timer); if (session.audio) { try { session.audio.pause(); } catch (e) { } } hudClockStop();
     if (elapsedMin >= 1) finishSession(false); else { session = null; exitMeditation(); if (!fromClose) toast('Stopped. Nothing under a minute is recorded.', 'self_improvement'); }
   }
   $('#hudStop').addEventListener('click', function () { if (practice) stopPractice(); else if (hooks.hudStop && hooks.hudStop()) return; else stopSession(false); });
@@ -2453,7 +2468,8 @@
     endMoment();
     if (meditating && !session) { meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); avatar.classList.remove('hidden'); }
     emit('activity', 'practice', id); /* as for a session: the HUD is handed over first */
-    hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting');
+    clearTimeout(fadeTimer); fadeTimer = null;
+    hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting'); hudClockStart((practice.total || 0) * 1000);
     var chain = Promise.resolve();
     v.steps.forEach(function (s, si) {
       chain = chain.then(function () {
@@ -2467,7 +2483,7 @@
   }
   function askPracticeDone(finished) {
     var p = practice; if (!p) return;
-    p.stopped = true; clearTimeout(p.timer); if (p.audio) { try { p.audio.pause(); } catch (e) { } }
+    p.stopped = true; clearTimeout(p.timer); if (p.audio) { try { p.audio.pause(); } catch (e) { } } hudClockStop();
     var secs = Math.round((Date.now() - p.startedAt) / 1000);
     chime('bell', true); caption(finished ? 'That is the practice.' : 'Paused');
     openSheet('practiceDone', finished ? 'How was that?' : 'Stopping early', p.a.name, 'self_improvement',
@@ -2487,7 +2503,7 @@
     if (!practice) return;
     var elapsed = (Date.now() - practice.startedAt) / 1000;
     if (elapsed >= Math.min(60, practice.total * 0.5)) { askPracticeDone(false); return; }
-    practice.stopped = true; clearTimeout(practice.timer); if (practice.audio) { try { practice.audio.pause(); } catch (e) { } }
+    practice.stopped = true; clearTimeout(practice.timer); if (practice.audio) { try { practice.audio.pause(); } catch (e) { } } hudClockStop();
     hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null;
     toast('Stopped. Nothing under a minute is recorded.', 'self_improvement');
   }
@@ -2669,6 +2685,8 @@
     var w = $('#welcome'); if (!w) return; w.hidden = false;
     $('#wBegin').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); }); });
     $('#wSkip').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); toast('Welcome back. Your intro is under the window whenever you want it.', 'favorite'); }); });
+    /* sign in from the first screen (Jamie, 20 Oct: "the email should login on first page"): consent first, then the email form in You */
+    var si = $('#wSignIn'); if (si) si.addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openYou(); setTimeout(function () { var ya = $('#youAccount'), b = ya && ya.querySelector('[data-ya="email-start"]'); if (b) { b.click(); ya.scrollIntoView({ block: 'center', behavior: 'smooth' }); } else if (ya) ya.scrollIntoView({ block: 'center' }); }, 300); }); });
   }
 
   /* ---------- window: follows the sun (ovu-sun.js) ---------- */
@@ -2768,10 +2786,7 @@
     var items = []; foodToday.forEach(function (f) { items = items.concat(f.data.items || []); });
     var sm = items.length ? FD.sum(items) : null;
     var sym = S.list('symptom', { from: today, to: today })[0];
-    $('#tiles').innerHTML =
-      '<button class="tile" data-go="calendar"><span class="ms">water_drop</span><b>' + (cs.cycleDay ? 'Day ' + cs.cycleDay : '—') + '</b><small>' + (cs.phase ? cap(cs.phase) : 'Log a period') + '</small></button>' +
-      '<button class="tile" data-go="clock"><span class="ms">bedtime</span><b>' + (lastNight ? A.fmtHours(S.sleepHours(lastNight.data)) : '—') + '</b><small>' + (lastNight ? (lastNight.date === today ? 'Last night' : prettyDate(lastNight.date)) : 'No sleep yet') + '</small></button>' +
-      '<button class="tile" data-go="diary"><span class="ms">restaurant</span><b>' + (sm && sm.totals.kcal !== null ? Math.round(sm.totals.kcal) : meals) + '</b><small>' + (sm && sm.totals.kcal !== null ? 'kcal · ' + FD.fmt('protein', sm.totals.protein) + ' g protein' : (meals === 1 ? 'meal today' : 'meals today')) + '</small></button>';
+    renderCheckIn();
     var flags = A.allFlags().concat((S.profile().intakeNotes || []).map(function (n) { return { level: n.level || 'watch', title: n.title, detail: n.detail }; }));
     $('#flagCard').style.display = flags.length ? '' : 'none';
     $('#flags').innerHTML = flags.slice(0, 3).map(function (f) { return '<div class="flag ' + f.level + '"><span class="ms">' + (f.level === 'high' ? 'emergency_home' : f.level === 'watch' ? 'flag' : 'info') + '</span><div><b>' + esc(f.title) + '</b><span>' + esc(f.detail) + '</span></div></div>'; }).join('');
@@ -2785,7 +2800,70 @@
     $('#shareSub').textContent = sum.length ? 'Last summary saved ' + prettyDate(sum[sum.length - 1].range.to) : 'Create a 4-week summary for your clinician';
     if (window.OvuMorning) OvuMorning.renderInvite(); /* Morning start: 04:00 to 11:59 by the real clock, until done or put away today */
   }
-  $('#tiles').addEventListener('click', function (e) { var t = e.target.closest('[data-go]'); if (!t) return; tap(hotspot(t.dataset.go)); });
+  /* ---------- Today's check-in (Jamie, 20 Oct: "once they do up, we will have a green tick"; Codex design review) ----------
+   * Six tiles open their editors straight away. The tick means the key check-ins she chose were answered today; "none",
+   * "not sure" and "nothing to log" count. No red, no streak, no nagging, no hearts for the tick. */
+  var ciChoosing = false;
+  function ciChoice() { return S.state().checkinChoice || null; }
+  function renderCheckIn() {
+    var ci = A.todayCheckIn(S.today(), ciChoice());
+    $('#tiles').innerHTML = ci.tiles.map(function (t) {
+      var mark = t.state === 'done' ? '<span class="cimark ok" aria-hidden="true"><span class="ms">check</span></span>' : t.state === 'unsure' ? '<span class="cimark uns" aria-hidden="true">?</span>' : t.state === 'partial' ? '<span class="cimark part" aria-hidden="true"><span class="ms">more_horiz</span></span>' : '';
+      var label = t.label + ': ' + (t.state === 'add' ? 'not recorded yet' : t.state === 'optional' ? 'optional, not recorded' : t.value + (t.sub ? ', ' + t.sub : '')) + (t.key ? '' : ', does not count toward the tick');
+      if (ciChoosing) return '<button type="button" class="tile citile choose' + (t.key ? ' on' : '') + '" data-ci-key="' + t.id + '" aria-pressed="' + (t.key ? 'true' : 'false') + '"><span class="ms">' + t.icon + '</span><b>' + esc(t.label) + '</b><small>' + (t.key ? 'Counts' : 'Does not count') + '</small></button>';
+      return '<button type="button" class="tile citile s-' + t.state + (t.key ? ' key' : '') + '" data-ci="' + t.id + '" aria-label="' + esc(label) + '">' + mark + '<span class="ms">' + t.icon + '</span><span class="cil">' + esc(t.label) + '</span><b>' + esc(t.value) + '</b><small>' + esc(t.sub || (t.key ? 'tap to add' : '')) + '</small></button>';
+    }).join('');
+    var st = $('#ciStatus');
+    if (ciChoosing) { st.className = 'cistatus'; st.textContent = 'Tap a tile to choose whether it counts toward today’s tick. Every tile stays there to use.'; }
+    else if (!ci.keyCount) { st.className = 'cistatus'; st.textContent = 'Nothing counts toward the tick right now. Choose what counts.'; }
+    else if (ci.complete) { st.className = 'cistatus done'; st.innerHTML = '<span class="ms">check_circle</span>Today’s check-ins are recorded. Thank you.'; }
+    else { st.className = 'cistatus'; st.textContent = ci.keyDone + ' of ' + ci.keyCount + ' check-ins recorded today'; }
+    $('#ciChoose').textContent = ciChoosing ? 'Done' : 'Choose what counts'; $('#ciChoose').setAttribute('aria-pressed', ciChoosing ? 'true' : 'false');
+    /* quick answers for what is still open, and a way back from an answer */
+    var q = [], by = {}; ci.tiles.forEach(function (t) { by[t.id] = t; });
+    if (!ciChoosing) {
+      if (by.bleeding.state === 'add') q.push(['bleeding', 'none', 'No bleeding today'], ['bleeding', 'unsure', 'Not sure about bleeding']);
+      if (by.sleep.state === 'add') q.push(['sleep', 'unsure', 'Not sure about last night']);
+      if (by.symptoms.state === 'partial' && by.symptoms.value === 'Mood?') q.push(['mood', 'unsure', 'Mood: not sure']);
+      if (by.food.state === 'add') q.push(['food', 'skip', 'Nothing to log for food today']);
+      ci.tiles.forEach(function (t) { if (t.answer) q.push([t.id === 'symptoms' ? 'mood' : t.id, null, 'Change my answer: ' + t.label.toLowerCase()]); });
+    }
+    $('#ciQuick').innerHTML = q.length ? q.map(function (x) { return '<button type="button" class="qchip' + (x[1] === null ? ' undo' : '') + '" data-qa="' + x[0] + '" data-qv="' + (x[1] === null ? '' : x[1]) + '">' + esc(x[2]) + '</button>'; }).join('') : '';
+  }
+  function ciOpen(id) {
+    if (window.OvuMorning && OvuMorning.active() && id !== 'sleep') { toast('Morning start is running. Stop it first, or carry on.', 'wb_twilight'); return; }
+    chime('tap');
+    if (id === 'bleeding') openCalendar('period', S.today());
+    else if (id === 'sleep') openSleepRecord();
+    else if (id === 'symptoms') openCalendar('symptom', S.today());
+    else if (id === 'food') openDiary();
+    else if (id === 'movement') openExercise();
+    else if (id === 'calm') tap(hotspot('mat'));
+  }
+  $('#tiles').addEventListener('click', function (e) {
+    var k = e.target.closest('[data-ci-key]');
+    /* only what she changed is saved; untouched tiles keep following her situation (a pregnancy turns bleeding off by
+       itself even after she changed food) (Codex diff review, 20 Oct) */
+    if (k) { var id = k.dataset.ciKey, ci = A.todayCheckIn(S.today(), ciChoice()), was = ci.tiles.filter(function (t) { return t.id === id; })[0].key, ch = Object.assign({}, ciChoice() || {});
+      if (!was === ci.defaults[id]) delete ch[id]; else ch[id] = !was;
+      try { S.commit({ checkinChoice: Object.keys(ch).length ? ch : null }); chime('tap'); } catch (err) { toast('Could not save that choice on this device.', 'error'); } renderCheckIn(); return; }
+    var t = e.target.closest('[data-ci]'); if (t) ciOpen(t.dataset.ci);
+  });
+  $('#ciChoose').addEventListener('click', function () { ciChoosing = !ciChoosing; chime('tap'); renderCheckIn(); });
+  /* a new day starts a new check-in: redraw at midnight and when she comes back to the app, so yesterday's tick and
+     yesterday's quick answers never stay on screen (Codex diff review, 20 Oct) */
+  var ciDay = S.today();
+  function ciRollover() { var d = S.today(); if (d !== ciDay) { ciDay = d; ciChoosing = false; renderDeck(); } }
+  setInterval(ciRollover, 30000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) ciRollover(); });
+  window.addEventListener('pageshow', ciRollover);
+  $('#ciQuick').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-qa]'); if (!b) return;
+    if (S.today() !== ciDay) { ciRollover(); return; } /* drawn yesterday: redraw for today instead of answering for a day that has passed */
+    try { S.setCheckinAnswer(S.today(), b.dataset.qa, b.dataset.qv || null); chime(b.dataset.qv ? 'save' : 'tap'); }
+    catch (err) { toast('Could not save that answer on this device, so nothing is ticked.', 'error'); }
+    renderDeck();
+  });
 
   /* ---------- greeting ---------- */
   function updateGreeting() {
@@ -2822,7 +2900,7 @@
     openSheet: openSheet, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
     moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
-    setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
+    setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on && title) { clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }
   };
 
   /* ---------- boot ---------- */
