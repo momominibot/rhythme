@@ -955,7 +955,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var st = S.state().insights; st.fourweeks['2026-10-19'].sig = 'r2|' + oldSig; st.fourweeks['2026-10-19'].rules = 'r2'; S.setState({ insights: st });
   check('a four-week reading written under the current rules is shown and is not stale', I.cachedFourWeeks('2026-10-19').clinician.cycle === 'A 501-day cycle.' && I.stale('fourweeks', '2026-10-19') === false);
   var pageSrc = ['journal.html', 'doctor.html', 'ovu-agents.js', 'room.js'].map(function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); }).join('\n');
-  check('pages reach four-week readings only through cachedFourWeeks, which applies the rules check', !/insights\.fourweeks|\.fourweeks\[/.test(pageSrc) && /I\.cachedFourWeeks\(end\)\|\|null/.test(pageSrc));
+  check('pages reach four-week readings only through cachedFourWeeks, which applies the rules check, and shares and PDFs also drop a stale one', !/insights\.fourweeks|\.fourweeks\[/.test(pageSrc) && /var ins=I\.cachedFourWeeks\(end\);return ins&&!\(I\.stale&&I\.stale\('fourweeks',end\)\)\?ins:null;/.test(pageSrc) && /insight:freshFourWeeks\(end\)/.test(pageSrc) && /ins=freshFourWeeks\(end\)/.test(pageSrc));
   var sum6 = S2.cycleStats('2026-09-25'); periods(S2, ['2026-05-04', '2026-04-06']);
   var cs8 = S2.cycleStats('2026-09-25'), sm8 = A2.fourWeekSummary('2026-09-25');
   check('the clinician summary lists exactly the cycles the average used', cs8.lengths.length === 6 && sm8.cycle.cycleLengths.join() === cs8.lengths.join() && sm8.cycle.averageLength === cs8.averageLength && sm8.cycle.basis === '6 logged cycles' && sum6.lengths.length === 4, JSON.stringify({ l: cs8.lengths, s: sm8.cycle.cycleLengths, b: sm8.cycle.basis }));
@@ -2511,6 +2511,74 @@ var summarised = false;
   var imp = RW.award(S.add('sleep', '2026-10-20', { bedTime: '23:00', wakeTime: '07:00' }, 'apple-health'));
   var now = RW.award(S.add('food', '2026-10-20', { meal: 'lunch', foods: 'rice', items: [], tags: [] }, 'room'));
   check('a backfilled meal and an imported night earn nothing; today\'s meal still earns 6', old.points === 0 && imp.points === 0 && now.points === 6 && RW.ledger().hearts === 6, JSON.stringify([old, imp, now]));
+})();
+
+(function codexDiffReviewFixes() {
+  console.log('Codex diff review fixes: boundaries, exact median, unconfirmed days, failed edits, live defaults, marks, months');
+  var w = fresh('2026-10-20'), S = w.OvuStore, A = w.OvuAgents, t = '2026-10-20';
+  S.add('period', '2026-09-29', { flow: 'medium' }, 'test'); S.add('period', '2026-10-01', { flow: 'light' }, 'test');
+  var h = A.cycleHistory('2026-10-01', t);
+  check('a period still open when the range starts keeps its row (started before the range, next start not recorded)', h.rows.length === 1 && h.rows[0].start === '2026-09-29' && h.rows[0].beforeRange && h.rows[0].current && h.rows[0].sinceStart === 22, JSON.stringify(h.rows));
+  var w2 = fresh(t), S2 = w2.OvuStore, A2 = w2.OvuAgents;
+  ['2026-08-24', '2026-09-21', '2026-10-20'].forEach(function (d) { S2.add('period', d, { flow: 'medium' }, 'test'); });
+  var st = A2.cycleHistory('2026-08-01', t).stats;
+  check('the median is exact: intervals of 28 and 29 days give 28.5', st.intervals === 2 && st.median === 28.5, JSON.stringify(st));
+  var w3 = fresh(t), S3 = w3.OvuStore, A3 = w3.OvuAgents; S3.setProfile({ periodsStarted: 'yes' });
+  S3.add('period', t, { flow: 'medium', autofill: true }, 'room');
+  S3.add('sleep', t, { bedTime: '23:00', wakeTime: '07:00' }, 'apple-health');
+  var c3 = A3.todayCheckIn(t);
+  check('a bleeding day filled in as typical is not a recorded answer until she checks it', c3.tiles[0].state === 'partial' && !c3.tiles[0].recorded && c3.tiles[0].value === 'Filled in', JSON.stringify(c3.tiles[0]));
+  check('an imported night counts and says where it came from', c3.tiles[1].recorded && c3.tiles[1].sub === 'from Apple Health', JSON.stringify(c3.tiles[1]));
+  /* a failed edit leaves the entry exactly as it was */
+  var w4 = fresh(t), S4 = w4.OvuStore, A4 = w4.OvuAgents; S4.setProfile({ periodsStarted: 'yes' });
+  var ev = S4.add('symptom', t, { symptoms: [], none: true, pain: null, mood: '' }, 'room');
+  var real = w4.localStorage.setItem; w4.localStorage.setItem = function () { throw new Error('QuotaExceededError'); };
+  var threw = false; try { S4.update(ev.id, { data: { symptoms: [], none: true, pain: null, mood: 'good' } }); } catch (e) { threw = true; }
+  w4.localStorage.setItem = real;
+  check('a mood edit that fails to save is rolled back in memory, so it cannot complete the check-in', threw && S4.get(ev.id).data.mood === '' && A4.todayCheckIn(t).tiles[2].state === 'partial', JSON.stringify(S4.get(ev.id).data));
+  var w5 = fresh(t), S5 = w5.OvuStore, A5 = w5.OvuAgents; S5.setProfile({ periodsStarted: 'yes' });
+  var keyB = function () { return A5.todayCheckIn(t, { food: false }).tiles[0].key; }, before = keyB();
+  S5.setProfile({ pregState: 'pregnant' });
+  check('a choice about food leaves bleeding following her situation: it stops counting once she is pregnant', before === true && keyB() === false && A5.todayCheckIn(t, { food: false }).tiles[3].key === false);
+  /* calendar marks */
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-patterns.js'), 'utf8'), w5);
+  S5.add('symptom', '2026-10-19', { symptoms: [], none: true, pain: null, mood: '' }, 'room');
+  S5.add('period', '2026-10-18', { flow: 'unspecified' }, 'room');
+  S5.setCheckinAnswer('2026-10-19', 'sleep', 'unsure'); S5.setCheckinAnswer('2026-10-19', 'mood', 'unsure');
+  var pd = A5.patternDays('2026-10-17', '2026-10-19'), html = w5.OvuPatterns.calendarHTML(pd, { today: '2026-10-19' });
+  var cell = function (d) { var m = html.match(new RegExp('data-pday="' + d + '"[^>]*>([\\s\\S]*?)</button>')); return m ? m[1] : ''; };
+  check('"None" for symptoms draws nothing on the pain line, and "not sure" about sleep has its own sign', !/tr pn ans/.test(cell('2026-10-19')) && /tr sl uns/.test(cell('2026-10-19')) && pd[2].sleepAnswer === 'unsure' && pd[2].moodAnswer === 'unsure', cell('2026-10-19'));
+  check('flow not noted has its own broken mark, never the light-flow mark', /tr bl unk/.test(cell('2026-10-18')) && !/tr bl b2/.test(cell('2026-10-18')), cell('2026-10-18'));
+  check('the day details say "not sure" rather than "not recorded"', /Not sure about sleep/.test(w5.OvuPatterns.detailHTML(pd[2])) && /Mood: not sure/.test(w5.OvuPatterns.detailHTML(pd[2])));
+  /* calendar months */
+  check('ranges are calendar months: 6 months to 20 Oct starts 21 Apr, 12 months starts 21 Oct last year, 1 month to 31 Mar starts 1 Mar, 12 months to 29 Feb 2028 starts 1 Mar 2027',
+    A.monthsBack('2026-10-20', 6) === '2026-04-21' && A.monthsBack('2026-10-20', 12) === '2025-10-21' && A.monthsBack('2026-03-31', 1) === '2026-03-01' && A.monthsBack('2028-02-29', 12) === '2027-03-01' && A.monthsBack('2026-10-20', 3) === '2026-07-21',
+    [A.monthsBack('2026-10-20', 6), A.monthsBack('2026-10-20', 12), A.monthsBack('2026-03-31', 1), A.monthsBack('2028-02-29', 12)].join());
+  var w6 = fresh(t), S6 = w6.OvuStore, A6 = w6.OvuAgents;
+  S6.add('food', '2026-06-10', { meal: 'lunch', foods: 'laksa', items: [], tags: [] }, 'room'); S6.add('exercise', '2026-06-11', { label: 'Walking', minutes: 30 }, 'room');
+  S6.add('mindfulness', '2026-06-12', { kind: 'orb', minutes: 5, completed: true }, 'room');
+  var mt = A6.monthlyTotals('2026-04-21', t), june = mt.filter(function (m) { return m.month === '2026-06'; })[0];
+  check('month-by-month totals keep older meals, movement and calm, with April counted from the 21st', mt.length === 7 && mt[0].month === '2026-04' && mt[0].days === 10 && june.meals === 1 && june.foodDays === 1 && june.movementSessions === 1 && june.movementMinutes === 30 && june.calmSessions === 1 && june.daysWithEntries === 3, JSON.stringify(june));
+})();
+
+(function shareDataIsCleanedBeforeDrawing() {
+  console.log('Doctor view: a share is outside data, cleaned to strict types before drawing');
+  var w = fresh('2026-10-20'), S = w.OvuStore, A = w.OvuAgents;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-patterns.js'), 'utf8'), w);
+  var P = w.OvuPatterns, bad = '"><img src=x onerror=alert(1)>';
+  var crafted = { months: [{ month: '2026-10', meals: bad, days: 20, bleedingDays: '<b>3</b>' }, { month: bad }],
+    patterns: [{ date: '2026-10-20', flow: bad, painBand: bad, pain: bad, mood: bad, symptoms: [bad], sleep: bad, sleepBand: 9 }, { date: bad }],
+    history: { range: { from: '2026-04-21', to: '2026-10-20' }, rows: [{ start: '2026-10-01', end: '2026-10-04', interval: bad, sinceStart: bad, current: true, bleedDays: bad, painMax: 99 }], stats: { median: bad, intervals: bad }, reference: bad, limits: 'x' } };
+  var c = P.cleanShare(crafted);
+  check('crafted month counts become numbers and a crafted month is dropped', c.months.length === 1 && c.months[0].meals === 0 && c.months[0].bleedingDays === 0 && c.months[0].days === 20, JSON.stringify(c.months));
+  check('crafted calendar fields are dropped: unknown flow, band, mood and sleep become empty', c.patterns.length === 1 && c.patterns[0].flow === null && c.patterns[0].painBand === null && c.patterns[0].mood === null && c.patterns[0].sleep === null && c.patterns[0].sleepBand === 3, JSON.stringify(c.patterns[0]));
+  var html = P.calendarHTML(c.patterns, { today: '2026-10-20' }) + P.historyHTML(c.history);
+  check('nothing crafted reaches the HTML: no tag, no handler, the symptom text escaped', !/<img|onerror=alert/.test(html.replace(/&lt;img|onerror=alert\(1\)&gt;/g, '')) && html.indexOf('<img') < 0 && c.history.rows[0].interval === null && c.history.rows[0].painMax === 10, html.slice(0, 200));
+  /* monthly totals: filled-in days apart, imported calm sessions counted */
+  S.add('period', '2026-10-01', { flow: 'medium' }, 'room'); S.add('period', '2026-10-02', { flow: 'medium', autofill: true }, 'room'); S.add('period', '2026-10-03', { flow: 'light', autofill: true }, 'room');
+  S.add('mindfulness', '2026-10-05', { kind: 'imported', minutes: 30, sessions: 3 }, 'apple-health');
+  var oct = A.monthlyTotals('2026-10-01', '2026-10-20')[0];
+  check('month totals keep filled-in days apart from recorded bleeding, and count imported calm sessions', oct.bleedingDays === 1 && oct.filledDays === 2 && oct.calmSessions === 3 && oct.calmMinutes === 30, JSON.stringify(oct));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

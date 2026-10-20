@@ -47,7 +47,7 @@
         <img class="prop mat" id="matProp" src="assets/room/dream/prop-yogamat.webp" alt="" aria-hidden="true">
         <div id="ownedProps"></div>
         <div class="holo" id="holo" aria-hidden="true"><div class="holo-cone"></div><div class="holo-disc"><img src="assets/avatars/erin/erin-chibi-face.webp" alt=""><i class="scan"></i></div><div class="holo-base"></div></div>
-        <div class="hud" id="hud" role="status" aria-live="polite"><div class="hud-orb" id="hudOrb"></div><div class="hud-text"><b id="hudTitle">With Erin</b><span id="hudLine">Settling in</span></div><button class="hud-stop hud-mute" id="hudMute" type="button" aria-pressed="false" aria-label="Mute Erin’s voice"><span class="ms" aria-hidden="true">volume_up</span></button><button class="hud-stop" id="hudStop" type="button" aria-label="Stop session"><span class="ms">stop_circle</span></button></div>
+        <div class="hud" id="hud" role="status" aria-live="polite"><div class="hud-orb" id="hudOrb"></div><div class="hud-text"><div class="hud-row"><b id="hudTitle">With Erin</b><em class="hud-time" id="hudTime" aria-hidden="true"></em></div><span id="hudLine">Settling in</span></div><button class="hud-stop hud-mute" id="hudMute" type="button" aria-pressed="false" aria-label="Mute Erin’s voice"><span class="ms" aria-hidden="true">volume_up</span></button><button class="hud-stop" id="hudStop" type="button" aria-label="Stop session"><span class="ms">stop_circle</span></button></div>
         <div class="meditator" id="meditator" role="button" aria-label="You are meditating. Tap to finish"><img src="assets/room/dream/avatar-meditate.webp" alt=""></div>
         <div class="sleeper" id="sleeper" role="button" aria-label="You are asleep. Tap to wake up"><img src="assets/room/dream/avatar-sleeping.webp" alt=""></div>
         <div class="zzz" aria-hidden="true"><span>z</span><span>z</span><span>z</span></div>
@@ -113,6 +113,7 @@
     <p class="w-note">A dreamy room where you log sleep, cycle, symptoms, meals and calm by tapping the things around you.</p>
     <button class="btn primary" id="wBegin" type="button"><span class="ms">favorite</span>Let’s begin</button>
     <button class="btn ghost" id="wSkip" type="button">I’ve been here before</button>
+    <button class="btn ghost" id="wSignIn" type="button"><span class="ms">mail</span>Sign in with email</button>
   </div>
   <div class="welcome consent" id="consent" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
     <div class="w-stars" aria-hidden="true"></div>

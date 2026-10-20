@@ -112,13 +112,16 @@
   function update(id, patch) {
     var db = load(), ev = get(id);
     if (!ev) throw new Error('That entry no longer exists.');
+    /* a failed write puts the entry back exactly as it was, as add() does: an edit that did not save must never show
+       as saved (Codex diff review, 20 Oct: a mood edit that failed to save still completed the day's check-in) */
+    var before = { date: ev.date, data: ev.data, source: ev.source, updatedAt: ev.updatedAt };
     if (patch.date !== undefined) { if (!validDate(patch.date) || patch.date > today()) throw new Error('Choose a real date on or before today.'); ev.date = patch.date; }
     if (patch.data !== undefined) ev.data = patch.data;
     /* An imported entry (Apple Health, Google) that the person changes by hand becomes hers: a later import
      * leaves it alone and "Remove imported data" keeps it. Imports refresh their own rows through addMany. */
     if (patch.source) ev.source = patch.source; else if ((patch.data !== undefined || patch.date !== undefined) && IMPORTED[ev.source]) ev.source = 'room';
     ev.updatedAt = nowIso();
-    save('update:' + ev.type);
+    try { save('update:' + ev.type); } catch (e) { ev.date = before.date; ev.data = before.data; ev.source = before.source; ev.updatedAt = before.updatedAt; throw e; }
     mirrorLegacy(ev);
     return ev;
   }

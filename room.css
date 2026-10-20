@@ -455,6 +455,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .hud-orb.in,.hud-orb.hold{transform:scale(1.15)}
 .hud-orb.out{transform:scale(.8)}
 .hud-text{flex:1;min-width:0}
+.hud-row{display:flex;align-items:baseline;gap:8px;min-width:0}
+.hud-time{display:inline-flex;align-items:center;gap:5px;font:700 11px var(--sans);font-style:normal;color:var(--rm-mauve);font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
+.hud-time:empty{display:none}
+.hud-time::before{content:'';width:6px;height:6px;border-radius:50%;background:#2f8a5f;animation:hudlive 2s ease-in-out infinite}
+@keyframes hudlive{0%,100%{opacity:1}50%{opacity:.3}}
+@media (prefers-reduced-motion: reduce){.hud-time::before{animation:none}}
 .hud-text b{display:block;font:800 11px var(--sans);color:var(--rm-ink-3);letter-spacing:.06em;text-transform:uppercase}
 .hud-text span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;font-family:var(--serif);font-size:14px;color:var(--rm-plum);line-height:1.25;overflow:hidden;text-wrap:pretty}
 .hud-stop{width:36px;height:36px;border-radius:50%;border:none;background:var(--rm-lilac-2);color:var(--rm-plum);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -793,6 +799,8 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .welcome .btn{min-width:210px;justify-content:center;flex:0 0 auto}
 .welcome .btn.primary{box-shadow:0 10px 26px rgba(117,86,196,.42),0 0 28px rgba(226,210,255,.75)}
 .welcome .btn.ghost{background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+/* the welcome keeps its light look after sunset: the night ghost button (light text, no fill) vanished on it */
+html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);color:#5a4274;border-color:rgba(122,92,150,.28)}
 .welcome .btn+.btn{margin-top:8px}
 .onb{display:flex;flex-direction:column}
 .onb-head{display:flex;gap:12px;align-items:flex-end;margin-top:4px}
@@ -1802,7 +1810,8 @@ span.frchip{cursor:default}
 html[data-text="larger"] .tiles.ci{grid-template-columns:minmax(0,1fr)}
 .citile{position:relative;text-align:left;padding:10px 12px;min-height:76px;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:8px;align-items:center;border:1.5px solid transparent}
 .citile>.ms{grid-row:1/4;font-size:24px}
-.citile .cil{font:800 10px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--rm-ink-3);padding-right:22px}
+.citile .cil{font:800 10px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--rm-ink-2);padding-right:22px}
+.citile small{color:var(--rm-ink-2)}
 .citile b{margin-top:0;font-size:15px;overflow-wrap:anywhere}
 .citile small{margin-top:0}
 .citile.s-add.key{border-style:dashed;border-color:var(--rm-lilac)}
