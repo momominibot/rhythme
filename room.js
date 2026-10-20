@@ -554,7 +554,7 @@
   function closeSheet() {
     if (current === 'diary') stopCamera();
     if (current === 'mind' && session) stopSession(true);
-    if (current === 'mind' && !session && meditating) exitMeditation();
+    if ((current === 'mind' || current === 'morning') && !session && meditating) exitMeditation(); /* Morning start's choice, opened from the mat and closed without Begin, also lets her up */
     hideSheet(); stopVideo(); goHome();
   }
   veil.addEventListener('click', closeSheet); $('#sheetClose').addEventListener('click', closeSheet);

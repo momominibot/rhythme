@@ -122,6 +122,8 @@ A ninth sweep found eight more, all fixed with browser checks:
 - Saving yesterday's practice after midnight overwrote today's Not today: a newer day's choice is kept.
 - A clip that could not load (offline, not cached) left a silent Voice on: it switches to captions only and says so.
 
+A tenth and last round (agreed with the parent session) found two ordinary-use defects, both fixed with browser checks: closing Morning start's choice sheet opened from the mat left her stuck on the mat with walking locked (closing it now lets her up), and the journal showed a saved Morning start as "Breathing orb" (it now names Morning start, your way or with Erin's guide, and whether she brushed; other everyday practices, Light Flower and Moon Tap get their own names too). Three rarer cases are left as follow-ups below.
+
 Not taken, and why:
 - Hearts without saving (Doubao): the honesty confirm before any hearts is Jamie's rule, and separating them needs a second reward ledger. The entry stays on her phone unless she has turned on sync, which has its own consent.
 - A confirmation on Stop (Doubao): Stop after 30 s already opens a sheet with "Not this time"; under 30 s nothing is lost but the moment.
@@ -132,6 +134,10 @@ Not taken, and why:
 - Doubao's claim that brushing may break wudu was not used: unverified, and the copy does not need it.
 
 ## Follow-ups found on the way (not changed here)
+
+- Waiting at the sink across midnight files the earlier 90 seconds under the new day (the day is fixed at Stop, not when the practice ran).
+- A clip that fails after it has started, or on Resume, stops without the captions-only notice (failures at the start are handled).
+- Beginning from the mat and going to bed within 300 ms can show her standing for a moment (the mat's delayed exit is not cancelled by bedtime).
 
 - The base-outfit `stretch` pose resolves to the yoga-clothes image although a base file exists (room.js OUTFIT_POSES).
 - The reward helper accepts unconfirmed informal entries; everyday practices still drop stops under 60 seconds and round minutes up to 1.
