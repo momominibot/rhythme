@@ -204,7 +204,8 @@
     if (p.plans === 'ttc') out.push('Trying to conceive' + (p.ttcMonths ? ' (' + p.ttcMonths + ' months)' : '') + (p.fertilityTx === 'yes' ? ', had fertility treatment before' : ''));
     var hs = (p.hormones || []).filter(function (h) { return HORMONE_NAMES[h]; }).map(function (h) { return HORMONE_NAMES[h]; });
     if (hs.length) out.push('Uses: ' + hs.join(', '));
-    if (p.predictionMode === 'suspended') out.push('Cycle predictions are paused for this situation');
+    var mode = (function () { try { return S.cycleStats().mode; } catch (e) { return p.predictionMode; } })();
+    if (mode === 'suspended') out.push('Cycle predictions are paused for this situation');
     return out;
   }
   function fourWeekSummary(end) {

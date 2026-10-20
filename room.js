@@ -479,10 +479,13 @@
 
   /* ---------- avatar ---------- */
   var pos = { x: HOME.x, y: HOME.y }, walkTimer = null, idleTimer = null;
+  /* one counter for every image swap of her sprite (an outfit or a pose): a slow load that has been overtaken never lands
+   * (Codex branch review, 20 Oct: a late reading pose stayed after the moment ended) */
+  var imgGen = 0;
   function setOutfit(id, silent) {
     if (!OUTFITS.some(function (o) { return o.id === id; })) id = 'base';
-    var img = new Image();
-    img.onload = function () { avatarImg.src = img.src; if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); } };
+    var img = new Image(), gen = ++imgGen;
+    img.onload = function () { if (gen !== imgGen) return; avatarImg.src = img.src; if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); } };
     img.src = ART + 'avatar-' + id + '.webp';
     S.setProfile({ outfit: id });
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
@@ -828,8 +831,10 @@
           var flow = ($('#flowChips .on') || {}).dataset ? $('#flowChips .on').dataset.flow : 'none';
           if (flow === 'none') { if (cur) S.remove(cur.id); message($('#calMsg'), 'Marked as no bleeding.', true); renderCal(); renderEditor(); renderDeck(); return; }
           var ev = S.add('period', date, { flow: flow, clots: $('#clots').classList.contains('on'), largeClots: $('#largeClots').classList.contains('on'), flooding: $('#flooding').classList.contains('on'), impact: $('#impact').classList.contains('on') });
-          var pn = Number($('#ppain').value); if (pn > 0 || (symToday && (ppTouched || typeof symToday.data.pain === 'number'))) S.add('symptom', date, { pain: pn }, 'room', { merge: true });
-          message($('#calMsg'), 'Saved ' + flow + ' flow for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev);
+          var pn = Number($('#ppain').value), sev = null; if (pn > 0 || (symToday && (ppTouched || typeof symToday.data.pain === 'number'))) sev = S.add('symptom', date, { pain: pn }, 'room', { merge: true });
+          message($('#calMsg'), 'Saved ' + flow + ' flow for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev, undefined, false, sev ? [sev] : []);
+          /* after a birth with predictions paused: she decides whether this is her period back, nothing decides it for her */
+          var pp = S.profile(); if (pp.pregState === 'postpartum' && pp.periodsBack === 'no' && flow !== 'spotting') { var cm = $('#calMsg'); cm.insertAdjacentHTML('beforeend', '<div class="row" style="margin-top:6px"><button type="button" class="btn soft" id="ppBack"><span class="ms">water_drop</span>This is my period back</button></div>'); $('#ppBack').addEventListener('click', function () { S.setProfile({ periodsBack: 'yes', predictionMode: 'wide' }); this.disabled = true; toast('Noted. Predictions start again, as a wide estimate while cycles settle.', 'water_drop'); renderCal(); }); }
         } catch (e) { message($('#calMsg'), e.message, false); }
       });
       if (cur) $('#clearPeriod').addEventListener('click', function () { S.remove(cur.id); cal.lastFill = cal.lastFill.filter(function (id) { return id !== cur.id; }); chime('tap'); renderCal(); renderEditor(); renderDeck(); });
@@ -1331,7 +1336,7 @@
     var days = Object.keys(dates).length;
     var row = function (icon, title, sub, act, href) { return (href ? '<a class="yrow" href="' + href + '"' : '<button type="button" class="yrow" data-yact="' + act + '"') + '><span class="ms">' + icon + '</span><span><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span><span class="ms go">chevron_right</span>' + (href ? '</a>' : '</button>'); };
     openSheet('you', P.name ? P.name : 'You', 'Your room, your answers, your data', 'person',
-      '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + (l.streak ? ' · ' + l.streak + '-day streak' : '') + '</span></div></div>' +
+      '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + '</span></div></div>' +
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
       '<div id="youAccount"></div>' +
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
@@ -1702,7 +1707,7 @@
       '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Write journal readings</b><span>Luna writes a short reading of your last 7 or 28 days.</span></div></label>' +
       '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Recognise food photos</b><span>Luna names the food in your photo. Only a small thumbnail is kept, on this phone.</span></div></label>' +
       '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn Luna’s reading off (rules only)' : 'Turn Luna’s reading on') + '</button></div><p>You always see what Luna understood before it is saved. These choices are also under Your choices in You.</p></details>');
-    var chat = $('#chat');
+    var chat = $('#chat'), shownCare = {};
     function bubble(kind, html) { var d = document.createElement('div'); d.className = 'bub ' + (kind === 'luna' ? 'from-luna' : kind); d.innerHTML = html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d; }
     if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took, or send a photo of your meal with the camera button. I will show you what I understood before saving.');
     lunaLog.forEach(function (m) { bubble(m.kind, m.html); });
@@ -1716,12 +1721,16 @@
         var saved = ORB.save(picked); card.remove();
         var r = ORB.reply(), line = '<b>Luna</b>' + esc(r) + ' Saved ' + saved.length + ' entr' + (saved.length === 1 ? 'y' : 'ies') + '.';
         bubble('luna', line); remember('luna', line);
-        saved.forEach(function (ev) { afterSave(ev, 'Saved through Luna.', true); }); /* Luna has shown its card in the chat already */
+        /* a card the saved entries raise that the note alone did not (heavy flow logged earlier, then "dizzy today") is shown here
+         * in the chat; one Luna has already shown is not repeated (Codex branch review, 20 Oct) */
+        var later = topCare(saved); if (later && !shownCare[later.code]) urgentCard(later);
+        saved.forEach(function (ev) { afterSave(ev, 'Saved through Luna.', true); });
       });
     }
     /* Red flags are read on the device before any parsing or saving. The card is guidance, not a save:
      * the entries still go through the confirm card below it. */
     function urgentCard(u) {
+      shownCare[u.code] = 1;
       var kind = 'urgent' + (u.level === 'emergency' ? ' emergency' : ''), html = careHTML(u);
       var c = bubble(kind, html); remember(kind, html);
       try { chime('alert', true); } catch (err) { }
@@ -2274,17 +2283,18 @@
     avatar.classList.add('moment'); setPose(pose); showThought(thought);
     setTimeout(function () { avatar.classList.remove('moment'); if (!practice) restorePose(); hideThought(); lifeBusy = false; scheduleLife(); }, 3200 + Math.random() * 1400);
   }
-  function showThought(t) { var el = $('#thought'); if (!el) return; el.textContent = t; el.classList.add('on'); }
+  /* say: a line of words (a moment, a pet's walk); without it the bubble is an emoji thought (Codex branch review, 20 Oct) */
+  function showThought(t, say) { var el = $('#thought'); if (!el) return; el.classList.toggle('say', !!say); el.textContent = t; el.classList.add('on'); }
   function hideThought() { var el = $('#thought'); if (el) el.classList.remove('on'); }
   function joy() { avatar.classList.remove('joy'); void avatar.offsetWidth; avatar.classList.add('joy'); setTimeout(function () { avatar.classList.remove('joy'); }, 560); }
 
   /* ---------- mindful moments (ovu-moments.js): she does the thing, in her own clothes, and one line of noticing ---------- */
-  var MO = window.OvuMoments || null, momentTimer = null, momentOn = null;
+  var MO = window.OvuMoments || null, momentTimer = null, momentOn = null, momentRetry = null;
   function endMoment() {
-    clearTimeout(momentTimer); if (!momentOn) return;
+    clearTimeout(momentTimer); clearTimeout(momentRetry); momentRetry = null; if (!momentOn) return;
     momentOn = null; avatar.classList.remove('moment');
     if (!practice && !session && !asleep()) restorePose();
-    var th = $('#thought'); hideThought(); setTimeout(function () { if (th && !th.classList.contains('on')) th.classList.remove('say'); }, 400);
+    var th = $('#thought'); hideThought(); scene.classList.remove('saying'); setTimeout(function () { if (th && !th.classList.contains('on')) th.classList.remove('say'); }, 400);
   }
   /* returns the line, so a caller can also show it in its own sheet; the pose is skipped while she sleeps, meditates,
    * practises, walks or the room is being arranged, and the line still shows */
@@ -2292,11 +2302,16 @@
     if (!MO || !MO.MOMENTS[key]) return '';
     opt = opt || {};
     var text = opt.line || MO.line(key), pose = opt.pose === undefined ? MO.pose(key) : opt.pose;
-    if (asleep() || meditating || practice || session || arranging) return text;
-    if (avatar.classList.contains('walking') && !opt.retried) { setTimeout(function () { moment(key, { line: text, pose: pose, retried: true, quiet: opt.quiet }); }, 900); return text; }
+    if (asleep() || meditating || practice || session || arranging || current === 'care') return text;
+    /* while she walks the pose waits, a few times at most, and never starts over a walk (Codex branch review, 20 Oct) */
+    if (avatar.classList.contains('walking') || (hooks.moving && hooks.moving())) {
+      var tries = (opt.tries || 0) + 1; clearTimeout(momentRetry);
+      if (tries <= 4) momentRetry = setTimeout(function () { moment(key, { line: text, pose: pose, tries: tries, quiet: opt.quiet }); }, 900);
+      return text;
+    }
     clearTimeout(momentTimer); momentOn = key;
-    if (pose) { avatar.classList.add('moment'); setPose(pose); } else joy();
-    var th = $('#thought'); if (th && text && !opt.quiet) { th.classList.add('say'); th.textContent = text; th.classList.add('on'); }
+    if (pose) { if (!reduced) avatar.classList.add('moment'); setPose(pose); } else if (!reduced) joy();
+    var th = $('#thought'); if (th && text && !opt.quiet) { th.classList.add('say'); th.textContent = text; th.classList.add('on'); scene.classList.add('saying'); } /* the room's dots fade so they never sit on her words */
     momentTimer = setTimeout(endMoment, reduced ? 6000 : 4800);
     return text;
   }
@@ -2338,9 +2353,10 @@
   var OUTFIT_POSES = { plants: 1, coffee: 1, teeth: 1, dishes: 1, pets: 1, bed: 1, outfit: 1, stretch: 1, note: 1, eat: 1, listen: 1, read: 1, tend: 1, harvest: 1, wave: 1, press: 1, phone: 1, shop: 1, scale: 1 }; /* stretch and the eleven moment poses joined on 20 Oct (ovu-moments.js); the shower keeps its robe */
   function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && outfit !== 'base' ? '-' + outfit : '') + '.webp'; }
   function setPose(pose) {
-    var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image();
-    img.onload = function () { avatarImg.src = img.src; };
-    img.onerror = function () { if (img.src.indexOf(plain) < 0) img.src = plain; };
+    var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image(), gen = ++imgGen;
+    img.onload = function () { if (gen === imgGen) avatarImg.src = img.src; };
+    /* a missing outfit copy never borrows the default clothes: she keeps standing in her own (Jamie's rule; Codex review) */
+    img.onerror = function () { if (gen === imgGen && want === plain && img.src.indexOf(plain) < 0) img.src = plain; };
     img.src = want;
   }
   function restorePose() { setOutfit(S.profile().outfit || 'base', true); }
@@ -2635,13 +2651,14 @@
       '<small>Rhythme cannot assess how you are or diagnose. No clinician or helpline receives this alert.</small>';
     return '<b>' + esc(u.title) + '</b>' +
       (emergency
-        ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 now if the bleeding is excessive or will not stop, you faint, have trouble breathing, or have chest pain.</p>'
-        : '<p>This is not a period. Any bleeding after menopause, even a small spot or a pink or brown discharge, should be checked by a clinician promptly, even if it stops. Book your GP, a polyclinic or a gynaecologist this week, sooner if it is heavy or painful. It is usually not serious, but it needs a check.</p><p class="esc">Call 995 if the bleeding is heavy and you feel faint, or you have chest pain or trouble breathing.</p>') +
+        ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 if you faint or feel very weak or dizzy, cannot travel safely, have trouble breathing, or have chest pain.</p>'
+        : '<p>This is not a period. Any bleeding after menopause, even a small spot or a pink or brown discharge, should be checked by a clinician promptly, even if it stops. Book your GP, a polyclinic or a gynaecologist this week. Get same-day care if the bleeding is heavy, you have severe pain, or you feel dizzy. It is usually not serious, but it needs a check.</p><p class="esc">Call 995 if the bleeding is heavy and you feel faint, or you have chest pain or trouble breathing.</p>') +
       '<div class="row">' + (emergency ? '<a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><a class="btn soft" href="https://www.kkh.com.sg/our-specialties/urgent-og-centre" target="_blank" rel="noopener"><span class="ms">local_hospital</span>KKH Urgent O&amp;G (24h)</a>' : '') + '<a class="btn ghost" href="journal.html"><span class="ms">medical_information</span>Show my chart</a></div>' +
       '<small>Rhythme cannot assess your condition or diagnose. This alert follows published guidance (KKH, SCDF, NHS). No clinician receives this alert.</small>';
   }
   /* after a hand-saved entry the card is the whole sheet: the entry is already saved, so nothing is lost by covering the form */
   function careSheet(u) {
+    endMoment();
     openSheet('care', u.level === 'emergency' ? 'Please read this first' : 'A note about what you logged', 'Your entry is saved', u.level === 'emergency' ? 'emergency_home' : 'medical_information',
       '<div class="bub urgent' + (u.level === 'emergency' ? ' emergency' : '') + ' carecard">' + careHTML(u) + '</div><div class="row"><button type="button" class="btn ghost" id="careDone"><span class="ms">close</span>Back to the room</button></div>');
     $('#careDone').addEventListener('click', hideSheet);
@@ -2649,12 +2666,20 @@
   }
 
   /* ---------- after save: agents + hearts ---------- */
-  function afterSave(ev, text, viaLuna) {
+  /* the most urgent card among the entries one action saved (Codex branch review, 20 Oct: pain 10/10 on the period form was
+   * saved as a second entry the card never saw) */
+  var CARE_RANK = { emergency: 3, today: 2, prompt: 1 };
+  function topCare(evs) {
+    var best = null; (evs || []).forEach(function (e) { var u = e && ORB && ORB.entryUrgent ? ORB.entryUrgent(e, S.profile()) : null; if (u && (!best || CARE_RANK[u.level] > CARE_RANK[best.level])) best = u; });
+    return best;
+  }
+  function afterSave(ev, text, viaLuna, alsoSaved) {
     var res = A.analyze(ev), rw = RW.award(ev);
     var hi = res.flags.filter(function (f) { return f.level === 'high'; })[0], w = res.flags.filter(function (f) { return f.level === 'watch'; })[0];
     var heartsText = rw.points ? ' +' + (rw.points + rw.bonus) + ' ♥' : '';
     /* a red flag in what was just saved is shown at once, never left for the journal (four-persona review, 20 Oct) */
-    var care = ORB && ORB.entryUrgent ? ORB.entryUrgent(ev, S.profile()) : null;
+    var care = topCare([ev].concat(alsoSaved || []));
+    if (care) endMoment(); /* a care card always comes alone */
     /* a care card comes alone: no pose and no cheerful line over it */
     var mk = care ? null : viaLuna ? 'luna' : (MO ? MO.forEntry(ev, A.isPostmenopausal(S.profile())) : null), line = mk ? moment(mk, { quiet: true }) : '';
     if (care && !viaLuna) { careSheet(care); toast('Saved.' + heartsText, 'check_circle'); }
@@ -2706,6 +2731,9 @@
    * They add layouts, doors and hotspot handlers of their own and listen for layout, props and boot;
    * everything else here stays private. */
   var hooks = { on: {}, hotspotHandlers: {}, fallbackHotspot: null, hudStop: null, moving: null, camFocus: null, walkTo: null }, booted = false;
+  /* a walk ends a mindful moment at once: she never slides in a pose (Codex branch review, 20 Oct) */
+  hooks.on.beforeWalk = [function () { endMoment(); }];
+  hooks.on.walk = [function () { endMoment(); }];
   function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = {
     LAYOUTS: LAYOUTS, ART: ART, hotspotHandlers: hooks.hotspotHandlers,

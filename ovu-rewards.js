@@ -86,7 +86,7 @@
      * a longer meal list are pressure, and hearts are for logging, not for logging more). The days-logged count stays as a
      * plain record; it never changes what anything earns. */
     var today = S.today(), bonus = 0;
-    if (l.lastDay !== today) { l.streak = l.lastDay === S.addDays(today, -1) ? l.streak + 1 : 1; l.lastDay = today; }
+    if (l.lastDay !== today) { l.lastDay = today; l.streak = 0; } /* no streak is counted any more (Codex branch review, 20 Oct) */
     var total = pts + bonus;
     if (total <= 0) return { points: 0, bonus: 0, hearts: l.hearts };
     l.hearts += total; l.earned += total; l.log.unshift({ at: new Date().toISOString(), type: ev.type, points: pts, bonus: bonus }); l.log = l.log.slice(0, 200);

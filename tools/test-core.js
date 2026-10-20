@@ -143,6 +143,10 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var w = fresh(), O = w.OvuOrb;
   var cases = [
  // [text, profile, expectedCode or null]
+ ['No improvement in chest pain',{},'CHEST_BREATH_NOW'],['No fever and my chest is tight',{},'CHEST_BREATH_NOW'],['My face is not swollen',{},null],['my leg is not swollen',{},null],['chest pain won\'t stop',{},'CHEST_BREATH_NOW'],
+ ['My face is drooping and I have pins and needles in one arm',{},'STROKE_NOW'],['My left calf is swollen and painful, also period cramps',{},'LEG_CLOT_TODAY'],['I am breathless even at rest',{},'CHEST_BREATH_NOW'],['so breathless I can barely talk',{},'CHEST_BREATH_NOW'],['breathless after climbing the stairs',{},null],
+ ['Positive covid test yesterday, period started today',{},null],['My period is due tomorrow and pain on my left side',{},null],['positive ovulation test and pain on my left side',{lifeStage:'ttc'},null],['positive pregnancy test and pain on my left side',{},'ECTOPIC_NOW'],
+ ['I am hearing voices from the TV',{},null],['People are watching me on Zoom',{},null],['I keep hearing voices nobody else hears',{pregState:'postpartum'},'PSYCHOSIS_NOW'],
  ['chest pain since this morning',{},'CHEST_BREATH_NOW'],['no chest pain, just tired',{},null],['I don\'t have chest pain',{},null],['no fever but my chest feels tight',{},'CHEST_BREATH_NOW'],
  ['struggling to breathe',{},'CHEST_BREATH_NOW'],['can\'t breathe through my nose, blocked nose',{},null],['short of breath at rest',{},'CHEST_BREATH_NOW'],['bit short of breath after running',{},null],
  ['my face is drooping on one side',{},'STROKE_NOW'],['slurred speech and my arm went weak',{},'STROKE_NOW'],['my leg went numb from sitting cross-legged',{},null],['my arm went numb sleeping on it',{},null],['suddenly weak and tired after period',{},null],
@@ -153,14 +157,14 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
  ['period is 10 days late and sharp pain on my left side',{},'ECTOPIC_NOW'],['positive test yesterday, pain on the right side',{},'ECTOPIC_NOW'],['could be pregnant, shoulder tip pain',{},'ECTOPIC_NOW'],
  ['trying to get pregnant, period came today, so sad',{lifeStage:'ttc'},null],['negative pregnancy test and my period started',{},null],['pregnancy test negative, period started, cramps 5/10',{},null],['ovulation pain on my left side, trying to conceive',{lifeStage:'ttc'},null],
  ['I am 8 weeks pregnant and bleeding',{},'PREG_BLEED_NOW'],['pregnant, no bleeding but sudden severe pelvic pain',{},'PREG_BLEED_NOW'],['8 weeks pregnant, no bleeding, no pain',{},null],
- ['fever and pelvic pain',{},'FEVER_INFECTION_TODAY'],['fever 38.5 and my breast is red and hot',{pregState:'postpartum',breastfeeding:'yes'},'FEVER_INFECTION_TODAY'],['no fever, smelly discharge',{},null],['fever and a cough',{},null],['burning when I pee and chills',{},'FEVER_INFECTION_TODAY'],
+ ['fever and pelvic pain',{},'FEVER_INFECTION_TODAY'],['fever 38.5 and my breast is red and hot',{pregState:'postpartum',breastfeeding:'yes'},'FEVER_INFECTION_NOW'],['no fever, smelly discharge',{},null],['fever and a cough',{},null],['burning when I pee and chills',{},'FEVER_INFECTION_TODAY'],
  ['my left calf is swollen and painful',{},'LEG_CLOT_TODAY'],['legs ache after the gym',{},null],['leg cramp at night',{},null],['my leg is sore after my walk',{},null],
  ['slipped in the bathroom and my hip hurts, can\'t stand',{lifeStage:'post'},'FALL_TODAY'],
  ['blood in my urine',{},'URINE_BLOOD'],['blood in my pee',{lifeStage:'post'},'URINE_BLOOD'],
  ['pink discharge today',{lifeStage:'post'},'POSTMENO_BLEED'],['brown spots on my underwear',{lifeStage:'post'},'POSTMENO_BLEED'],['dryness and itching',{lifeStage:'post'},null],
  ['hot flushes 6 times last night',{lifeStage:'peri'},null],['heavy period, soaking a pad every hour',{},'HEAVY_BLEED_NOW'],['period started today, medium, cramps 4/10',{},null],
  ['worried my period is coming',{},null],['I want to hurt myself',{},'SELF_HARM_NOW'],['I\'m scared I might hurt my baby',{pregState:'postpartum'},'SELF_HARM_NOW'],
- ['face and tongue swelling after my new pill',{},'ALLERGY_NOW'],['my wound from the c-section is red and I have a fever',{pregState:'postpartum'},'FEVER_INFECTION_TODAY'],
+ ['face and tongue swelling after my new pill',{},'ALLERGY_NOW'],['my wound from the c-section is red and I have a fever',{pregState:'postpartum'},'FEVER_INFECTION_NOW'],
  ['tired, low, didn\'t sleep',{},null],['ate chicken rice for lunch',{},null],['chest of drawers arrived',{},null],
 ];
   cases.forEach(function (c) { var u = O.urgent(c[0], c[1]); check('"' + c[0] + '" -> ' + c[2], (u ? u.code : null) === c[2], u ? u.code : 'null'); });
@@ -213,6 +217,24 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var fs = require('fs'), path = require('path'), missing = [];
   keys.forEach(function (k) { var p = M.MOMENTS[k].pose; if (p && !fs.existsSync(path.join(root, 'assets/room/dream/avatar-act-' + p + '.webp'))) missing.push(p); });
   check('every pose has its sprite', missing.length === 0, missing.join(','));
+})();
+
+(function codexBranchReview() {
+  console.log('2e. Codex branch review (20 Oct): note dates, the postpartum pause and no streak');
+  var w = fresh(), S = w.OvuStore, O = w.OvuOrb, RW = w.OvuRewards, t = S.today(), post = { lifeStage: 'post' };
+  var old = S.add('symptom', S.addDays(t, -365), { symptoms: [], pain: null, mood: '', notes: 'pink discharge today' });
+  check('a note from a year ago opens no prompt card', O.entryUrgent(old, post) === null);
+  var wk = S.add('symptom', S.addDays(t, -6), { symptoms: [], pain: null, mood: '', notes: 'pink discharge today' });
+  check('the same note last week still opens it', (O.entryUrgent(wk, post) || {}).code === 'POSTMENO_BLEED');
+  var w2 = fresh(), S2 = w2.OvuStore;
+  S2.setProfile({ pregState: 'postpartum', periodsBack: 'no', predictionMode: 'wide', onboardedAt: '2026-07-01T00:00:00Z' });
+  [-60, -32, -4].forEach(function (k) { for (var i = 0; i < 4; i++) S2.add('period', S2.addDays(S2.today(), k + i), { flow: 'medium' }); });
+  check('after a birth with periods not back, nothing is predicted whatever the set-up date', S2.cycleStats().mode === 'suspended' && !S2.cycleStats().predictedNext);
+  S2.setProfile({ periodsBack: 'yes' });
+  check('once she says periods are back, predictions start again', S2.cycleStats().mode !== 'suspended');
+  var w3 = fresh(), S3 = w3.OvuStore, RW3 = w3.OvuRewards;
+  RW3.award(S3.add('sleep', S3.today(), { bedTime: '23:00', wakeTime: '07:00', quality: 3 }));
+  check('logging never counts a streak', (RW3.ledger().streak || 0) === 0);
 })();
 
 (function noPeriodStatementsAreNotFlow() {
