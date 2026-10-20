@@ -58,9 +58,31 @@ A Codex re-check confirmed five fixes and reopened four plus one regression, all
 - The bed still works during Morning start (it opens without walking her), so Good night ends the routine with no save prompt.
 - A third check found the room's own fallback walk could still glide her for a moment: it now freezes where she is mid-step; and the refused Mind tab is no longer left highlighted.
 
-## Not available this round
+## DeepSeek and Doubao review, once Ark was back (20 October, after Jamie topped up)
 
-Volcengine Ark (DeepSeek and Doubao) was blocked by an overdue account balance from about 12:20 SGT on 20 October, so no Ark perspective was asked; Codex and primary sources only. New Erin clips (also Volcengine) cannot be made until then, which is why the first two steps are captions only.
+Both were given the built design and copy (DeepSeek deepseek-v4-pro in English, Doubao seed 2.1 pro in Chinese) and asked for concrete problems only. Both said ship with changes. Each finding was checked against the code before acting; the prompt had wrongly said Erin's guide was a "recorded" voice, when all of her clips are her consented voice model, which is the app's existing practice (ovu-mindful.js header).
+
+Taken:
+- Good morning played whenever it was opened, even from Everyday at night (Codex had asked for this before the build and it was missed): Arrive now says Good morning only in the 04:00 to 11:59 window and Hello otherwise, each with its own clip. (DeepSeek)
+- Arrive as spoken audio: dizziness on waking ("If you feel dizzy, stay sitting or lying"), "There is no need to change your breathing" so the breath line can never read as pacing, eyes open or closed, and touch as an anchor for low vision. (both)
+- Notice: "You don't need to move", "nothing you need to change" instead of "nothing to fix" (which can sound dismissive with chronic pain), and a named alternative ("a sound or a colour instead"). (both)
+- The sink step assumed a private bathroom sink: now "wherever you brush", and "Take any time you need first, for prayer or anything else" for Subuh and wudu, shared bathrooms and kitchen sinks. (both)
+- "Nothing under 30 seconds is saved" read as a penalty: "Pauses under 30 seconds are not saved." (both)
+- "on the mat" could be read as a prayer mat: "the meditation mat". (Doubao)
+- The credit is shown before Begin, not only in the journal: "Read in Erin's voice: the opening words are Rhythme's, the brushing guide is Erin's own"; the saved entry says the same. (both)
+- Every Rhythme step (Arrive, Notice, the sink, brush your way) is now voiced in Erin's voice, so the default path is not silent with the voice on; captions match the clips word for word; Quiet keeps it captions only. Arrive is 35 s and Notice 55 s so each 21 to 27 s line is followed by quiet, and brushing still starts after 90 s.
+- Found while merging main: Morning start could begin during a greenhouse plant minute; it now waits for that minute.
+
+Checked and already right: the end sheet already says only what she did ("You arrived and noticed", without "brushed" when she skipped it), and "1 minute" is already singular.
+
+Not taken, and why:
+- Hearts without saving (Doubao): the honesty confirm before any hearts is Jamie's rule and the journal entry is local; separating them needs a second reward ledger.
+- A confirmation on Stop (Doubao): Stop after 30 s already opens a sheet with "Not this time"; under 30 s nothing is lost but the moment.
+- Quiet on by default (Doubao): it already follows her own sound setting.
+- "I'll brush later" and doing the steps in any order (Doubao): Skip brushing and Stop cover it without a second flow.
+- A written approval from Erin for these lines (both): the app already reads Rhythme's interim lines in Erin's voice with her consent; flagged to Jamie rather than blocking.
+- Translations into Chinese, Malay and Tamil (Doubao): app wide, not this change.
+- Doubao's claim that brushing may break wudu was not used: unverified, and the copy does not need it.
 
 ## Follow-ups found on the way (not changed here)
 
