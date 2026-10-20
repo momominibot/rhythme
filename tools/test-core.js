@@ -419,6 +419,57 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the big watering can waters every dry bed once, and only once a day', cn.ok && wa.ok && wa.n === 3 && dry.every(function (id) { return F.wateredToday(F.bed(S, id), t); }) && !F.waterAll(S, t).ok);
 })();
 
+(function farmWateringCan() {
+  console.log('2k2. the watering can: drawn at the well, one pour a bed, charged in the same save (Jamie, 20 Oct: "I cant fill the watering can")');
+  var w = fresh(), S = w.OvuStore, t = S.today();
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  var F = w.OvuFarm, ls = w.localStorage, realSet = ls.setItem;
+  function full(on) { ls.setItem = on ? function () { throw new Error('QuotaExceededError'); } : realSet; }
+  var clean = F.BEDS.filter(function (b) { return !F.hasWeeds(null, b.id, t); }).map(function (b) { return b.id; });
+  S.setState({ farm: { seeds: { radish: 5 } } }); clean.slice(0, 5).forEach(function (id) { F.plant(S, id, 'radish', t); });
+  var e0 = F.pour(S, clean[0], t);
+  check('an empty can pours nothing and says where the water is', !e0.ok && e0.empty && /well/.test(e0.why) && !F.wateredToday(F.bed(S, clean[0]), t));
+  var f1 = F.fillCan(S);
+  check('the well fills the can to three pours, and a full can is not filled again', f1.ok && f1.n === 3 && F.canLevel(S) === 3 && !F.fillCan(S).ok);
+  var p1 = F.pour(S, clean[0], t);
+  check('a pour waters one bed for the day and leaves two pours', p1.ok && p1.days === 1 && p1.left === 2 && F.canLevel(S) === 2 && F.wateredToday(F.bed(S, clean[0]), t));
+  var p2 = F.pour(S, clean[0], t);
+  check('a bed already watered today takes no water from the can', !p2.ok && F.canLevel(S) === 2);
+  full(true); var p3 = F.pour(S, clean[1], t); full(false);
+  check('a pour that cannot be saved waters nothing and keeps the water', !p3.ok && !F.wateredToday(F.bed(S, clean[1]), t) && F.canLevel(S) === 2);
+  var stub = { n: 0, spendWith: function (a, patch) { this.n++; this.a = a; S.commit(Object.assign({ stamina: { v: 40, max: 100, day: t } }, patch)); return true; } };
+  var p4 = F.pour(S, clean[1], t, stub);
+  check('with the energy module a pour charges one watering in the same save as the bed and the can', p4.ok && p4.charged && stub.n === 1 && stub.a === 'water' && S.state().stamina.v === 40 && F.canLevel(S) === 1);
+  var tired = { spendWith: function () { return false; } }, p5 = F.pour(S, clean[2], t, tired);
+  check('too tired: nothing is watered and the water stays in the can', !p5.ok && !F.wateredToday(F.bed(S, clean[2]), t) && F.canLevel(S) === 1);
+  var odd = S.state().farm; odd.can = 99; S.setState({ farm: odd });
+  check('a can level from elsewhere is never more than the can holds', F.canLevel(S) === 3);
+  odd.can = 'x'; S.setState({ farm: odd });
+  check('a level that is not a number reads as empty', F.canLevel(S) === 0);
+  var l = w.OvuRewards.ledger(); l.hearts = 500; S.setState({ rewards: l }); F.buyTool(S, w.OvuRewards, 'bigcan');
+  check('the big can holds twelve pours, one for every bed', F.canCap(F.farmState(S)) === 12 && F.BEDS.length === 12 && F.fillCan(S).n === 12);
+  odd = S.state().farm; odd.can = 2; S.setState({ farm: odd });
+  var dry = F.dryBeds(S, t).length, wa = F.waterAll(S, t, null, { can: true });
+  check('the big can waters as many dry beds as its water reaches, one pour each', dry >= 3 && wa.ok && wa.n === 2 && F.canLevel(S) === 0 && F.dryBeds(S, t).length === dry - 2);
+  var we = F.waterAll(S, t, null, { can: true });
+  check('with the big can empty, watering all is refused and nothing changes', !we.ok && we.empty && F.dryBeds(S, t).length === dry - 2);
+  var ws = F.BEDS.filter(function (b) { return F.hasWeeds(null, b.id, t); }).map(function (b) { return b.id; })[0];
+  var sd0 = F.seedsLeftToday(S, t), occ = clean[0], ps = F.plantFromShed(S, occ, 'radish', t);
+  check('a free seed planted into a bed that is taken is refused and uses up no seed of the day', !ps.ok && F.seedsLeftToday(S, t) === sd0);
+  var empty = F.BEDS.filter(function (b) { return !F.hasWeeds(null, b.id, t) && !F.bed(S, b.id); })[0].id, pk = F.plantFromShed(S, empty, 'carrot', t);
+  check('a free seed planted into an empty bed takes one seed of the day and plants it, in one save', pk.ok && F.bed(S, empty).crop === 'carrot' && F.seedsLeftToday(S, t) === sd0 - 1);
+  odd = S.state().farm; odd.can = 12; S.setState({ farm: odd });
+  var d2 = F.dryBeds(S, t), last = d2[d2.length - 1], tg = F.bulkTargets(S, t, last, 2);
+  check('the big can starts with the bed she is looking at, then the rest in order', d2.length >= 2 && tg[0] === last && tg.length === 2 && tg[1] === d2[0]);
+  var moved = F.waterAll(S, t, null, { can: true, ids: tg.concat(['bed99']) });
+  check('if the shown beds changed, watering all refuses and changes nothing', !moved.ok && moved.changed && F.canLevel(S) === 12 && F.dryBeds(S, t).length === d2.length);
+  var shown = F.waterAll(S, t, null, { can: true, ids: tg });
+  check('watering all waters exactly the beds she was shown', shown.ok && shown.n === 2 && !F.wateredToday(F.bed(S, d2[1]), t) === (d2.length > 2 && d2[1] !== tg[1]) && F.wateredToday(F.bed(S, last), t) && F.canLevel(S) === 10);
+  var src = fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8');
+  check('the bed sheet waters from the can, with the well one tap away when it is empty', src.indexOf("res = pour(S, id, t, ST)") > -1 && src.indexOf('data-bed="well"') > -1 && src.indexOf('Fill the can at the well') > -1 && src.indexOf("res = water(S, id, now)") < 0);
+  check('care steps are slow and stoppable, and save only when the bar is full and the sheet still open', /function slowStep[\s\S]*?!box\.isConnected \|\| !R\.sheetOpen\(\)[\s\S]*?asleepNow\(\)/.test(src) && src.indexOf('function liveSlow') > -1 && src.indexOf('data-slow="stop"') > -1);
+})();
+
 (function phase1ReviewFixes() {
   console.log('2k. Codex review of Phase 1: a full disk never half-buys, update day never pays twice, clocks cannot reopen caps');
   var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, t = S.today();

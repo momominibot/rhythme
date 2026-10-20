@@ -1043,6 +1043,13 @@ async def main():
             await page.wait_for_timeout(900)
             farm = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, beds: document.querySelectorAll('#ownedProps .bed').length, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), here: document.querySelector('#mapHere')?.textContent, zone: document.querySelector('#zoneName')?.textContent})")
             check("the garden path walks her onto the farm: twelve beds on the plate, four hotspots, the pill saying Farm", farm["layout"] == "farm" and farm["beds"] == 12 and farm["hots"] == "farmgate,shed,well,basket" and farm["here"] == "Farm" and farm["zone"] == "Your farm", farm)
+            # the first visit explains the four steps once (Jamie, 20 Oct: "it's confusing")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] .farmsteps', timeout=6000)
+            except Exception: pass
+            guide = await page.evaluate("()=>({steps: document.querySelectorAll('#sheet[aria-hidden=\"false\"] .farmsteps li').length, can: !!document.querySelector('#farmCan'), seen: !!(OvuStore.state().farm||{}).guided})")
+            check("the first farm visit shows the four steps once, and the can sits on screen", guide["steps"] == 4 and guide["can"] and guide["seen"], guide)
+            await page.click('#guideGo'); await page.wait_for_timeout(300)
+            await page.evaluate("()=>{OvuFarm.slowMs = 0}")
             foods_before = await page.evaluate("()=>OvuStore.list('food').length")
             # the shed's hearts shelf (Phase 1, 20 Oct): seed packs, local crops and tools for hearts; the free seeds stay
             sh = await page.evaluate("()=>{OvuFarm.openShed(); var b=document.querySelector('#shedBuy'); var snap=JSON.stringify(OvuStore.state().farm||null), rw=JSON.stringify(OvuStore.state().rewards||null); var f=OvuFarm.farmState(OvuStore); var before=f.seeds.radish||0; var p=b && b.querySelector('[data-pack=radish]'); if (p) p.click(); var after=(OvuFarm.farmState(OvuStore).seeds.radish||0); OvuStore.setState({farm: JSON.parse(snap), rewards: JSON.parse(rw)}); return {shelf: !!b, packs: b ? b.querySelectorAll('[data-pack]').length : 0, unlocks: b ? b.querySelectorAll('[data-unlock]').length : 0, tools: b ? b.querySelectorAll('[data-tool]').length : 0, free: document.querySelectorAll('#shedActs [data-seed]').length, gained: after - before}}")
@@ -1058,8 +1065,25 @@ async def main():
             except Exception: pass
             planted = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=plant][data-crop=radish]'); if(!b) return {btn:false}; b.click(); return {btn:true, crop: OvuFarm.bed(OvuStore,id) && OvuFarm.bed(OvuStore,id).crop}}", bed)
             await page.wait_for_timeout(500)
-            watered = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=water]'); if(!b) return {btn:false}; b.click(); var bb=OvuFarm.bed(OvuStore,id); return {btn:true, days: OvuFarm.growthDays(bb), stam: OvuStamina.value(), stage: OvuFarm.stage(bb)}}", bed)
-            check("tapping a bed walks her over and opens it; planting a radish and watering it costs energy and counts one day", planted["btn"] and planted["crop"] == "radish" and watered["btn"] and watered["days"] == 1 and 1 <= watered["stage"] <= 2 and watered["stam"] == 100 - 2 - 6, {"planted": planted, "watered": watered})
+            # the can starts empty: the bed sends her to the well, the well fills the can, and Back returns her to the bed
+            empty = await page.evaluate("()=>({water: !!document.querySelector('#bedActs [data-bed=water]'), well: !!document.querySelector('#bedActs [data-bed=well]')})")
+            await page.click('#bedActs [data-bed=well]')
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] #wellActs [data-well=draw]', timeout=12000)
+            except Exception: pass
+            await page.click('#wellActs [data-well=draw]'); await page.wait_for_timeout(200)
+            filled = await page.evaluate("()=>({can: OvuFarm.canLevel(OvuStore), back: !!document.querySelector('#wellActs [data-well=back]'), gauge: document.querySelectorAll('#farmCan .cdots i.on').length})")
+            check("an empty can sends her from the bed to the well; drawing water fills three pours and offers the way back", not empty["water"] and empty["well"] and filled["can"] == 3 and filled["back"] and filled["gauge"] == 3, {"empty": empty, "filled": filled})
+            await page.click('#wellActs [data-well=back]')
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] #bedActs [data-bed=water]', timeout=12000)
+            except Exception: pass
+            # a slow pour stopped halfway changes nothing
+            stopped = await page.evaluate("async (id)=>{OvuFarm.slowMs = 1500; document.querySelector('#bedActs [data-bed=water]').click(); await new Promise(r=>setTimeout(r,300)); var bar=!!document.querySelector('#bedActs .slowbar'); document.querySelector('#bedActs [data-slow=stop]').click(); await new Promise(r=>setTimeout(r,1600)); OvuFarm.slowMs = 0; return {bar: bar, days: OvuFarm.growthDays(OvuFarm.bed(OvuStore,id)), can: OvuFarm.canLevel(OvuStore), stam: OvuStamina.value(), again: !!document.querySelector('#bedActs [data-bed=water]')}}", bed)
+            check("a slow pour shows its bar, and Stop waters nothing, keeps the water and costs no energy", stopped["bar"] and stopped["days"] == 0 and stopped["can"] == 3 and stopped["stam"] == 100 - 2 and stopped["again"], stopped)
+            # closing the sheet mid-step frees the farm at once; sleep starting mid-step saves nothing
+            freed = await page.evaluate("async (id)=>{OvuFarm.slowMs = 1500; document.querySelector('#bedActs [data-bed=water]').click(); await new Promise(r=>setTimeout(r,200)); OvuRoom.hideSheet(); await new Promise(r=>setTimeout(r,100)); OvuFarm.openBed(id); var ok=!!document.querySelector('#bedActs [data-bed=water]'); await new Promise(r=>setTimeout(r,1600)); var days=OvuFarm.growthDays(OvuFarm.bed(OvuStore,id)); document.querySelector('#bedActs [data-bed=water]').click(); await new Promise(r=>setTimeout(r,200)); OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}}); await new Promise(r=>setTimeout(r,1600)); var slept={days: OvuFarm.growthDays(OvuFarm.bed(OvuStore,id)), can: OvuFarm.canLevel(OvuStore), stam: OvuStamina.value()}; OvuStore.setState({sleeping:null}); OvuFarm.slowMs = 0; OvuFarm.openBed(id); return {reopened: ok, days: days, slept: slept}}", bed)
+            check("closing a bed mid-pour frees the farm at once and saves nothing; sleep starting mid-pour saves nothing either", freed["reopened"] and freed["days"] == 0 and freed["slept"]["days"] == 0 and freed["slept"]["can"] == 3 and freed["slept"]["stam"] == 100 - 2, freed)
+            watered = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=water]'); if(!b) return {btn:false}; b.click(); var bb=OvuFarm.bed(OvuStore,id); return {btn:true, days: OvuFarm.growthDays(bb), stam: OvuStamina.value(), stage: OvuFarm.stage(bb), can: OvuFarm.canLevel(OvuStore)}}", bed)
+            check("tapping a bed walks her over and opens it; planting a radish and watering it costs energy and counts one day", planted["btn"] and planted["crop"] == "radish" and watered["btn"] and watered["days"] == 1 and 1 <= watered["stage"] <= 2 and watered["stam"] == 100 - 2 - 6 and watered["can"] == 2, {"planted": planted, "watered": watered})
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
             # ripen it by hand (two watered days) and harvest through the sheet: the basket fills, the meal prompt asks, no entry is written
             await page.evaluate("(id)=>{var f=OvuStore.state().farm; f.beds[id].watered=[OvuStore.addDays(OvuGameTime.dayKey(),-1), OvuGameTime.dayKey()]; OvuStore.setState({farm:f}); OvuFarm.openBed(id);}", bed)

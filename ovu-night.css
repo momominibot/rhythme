@@ -146,3 +146,15 @@ html[data-sky] .sheet .worldmap .mapnode.picked b{background:#6b4f96!important;c
 html[data-sky="night"] .sheet .maproute,html[data-sky="sunset"] .sheet .maproute{background:#2c2142!important;border-color:rgba(214,196,255,.22)!important;color:#efe6fb!important}
 html[data-sky="night"] .sheet .maproute b,html[data-sky="sunset"] .sheet .maproute b{color:#fbf6ff!important}
 html[data-sky="night"] .sheet .maproute small,html[data-sky="night"] .sheet .maproute li,html[data-sky="sunset"] .sheet .maproute small,html[data-sky="sunset"] .sheet .maproute li{color:#d9cdec!important}
+/* farm can gauge and care steps keep dark ink on their light cards at night */
+html[data-sky] .farmcan{background:rgba(255,255,255,.9)!important;color:#3d2f55!important}
+html[data-sky] .farmcan b{color:#3d2f55!important}
+html[data-sky="night"] .sheet .farmsteps li{background:#2c2142!important}
+html[data-sky="night"] .sheet .farmsteps b{color:#fbf6ff!important}
+html[data-sky="night"] .sheet .farmsteps small{color:#d9cdec!important}
+html[data-sky="night"] .sheet .bedcard .canline{color:#a9d6f5!important}
+html[data-sky="night"] .sheet .slowverb{color:#efe6fb!important}
+
+/* mindful lines in sheets at night: a dark surface under the light words */
+html[data-sky="night"] .sheet .mindline{background:#2c2142!important;color:#efe6fb!important}
+html[data-sky="night"] .sheet .mindline .ms{color:#c9b2ee!important}
