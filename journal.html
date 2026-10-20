@@ -18,9 +18,9 @@
   <header class="top">
     <a class="back" href="room.html" aria-label="Back to your room"><span class="ms">arrow_back</span></a>
     <h1>My journal<small>Daily logs and summaries, stored on this device</small></h1>
-    <p class="jmind" style="margin:6px 2px 0;font:600 12.5px/1.45 var(--sans,system-ui);color:#7a5c96">These notes are yours. They do not measure your worth.</p>
     <button class="act" id="refreshBtn" aria-label="Refresh"><span class="ms">refresh</span></button>
   </header>
+  <p class="jmind" style="margin:4px 2px 12px;font:600 12.5px/1.45 var(--sans,system-ui);color:#7a5c96">These notes are yours. They do not measure your worth.</p>
 
   <div class="stack">
     <section class="card" id="insightCard">
@@ -278,15 +278,21 @@
   });
   $('#makeShare').addEventListener('click',function(){
     var pass=S.crypto.generatePassphrase();
-    $('#shareForm').innerHTML='<div class="field"><label for="passInput">Passphrase (share it separately, by voice or another channel)</label><input class="input" id="passInput" value="'+esc(pass)+'"></div><div class="grid2"><div class="field"><label for="weeksSel">Range</label><select class="input" id="weeksSel"><option value="4">Last 4 weeks</option><option value="8">Last 8 weeks</option><option value="12">Last 12 weeks</option></select></div><div class="field"><label>&nbsp;</label><button class="btn primary" id="doShare" style="width:100%"><span class="ms">download</span>Encrypt & download</button></div></div><div class="msg" id="shareMsg"></div><div id="codeWrap"></div>';
+    $('#shareForm').innerHTML='<div class="field"><label for="passInput">Passphrase (share it separately, by voice or another channel)</label><input class="input" id="passInput" value="'+esc(pass)+'"></div><div class="grid2"><div class="field"><label for="weeksSel">Range</label><select class="input" id="weeksSel"><option value="4">Last 4 weeks</option><option value="8">Last 8 weeks</option><option value="12">Last 12 weeks</option></select></div><div class="field"><label>&nbsp;</label><button class="btn primary" id="doShare" style="width:100%"><span class="ms">download</span>Encrypt</button></div></div><div class="msg" id="shareMsg"></div><div id="codeWrap"></div>';
     $('#doShare').addEventListener('click',function(){
       var pass=$('#passInput').value,weeks=Number($('#weeksSel').value);
       S.crypto.encrypt(buildBundle(weeks),pass).then(function(bundle){
-        var text=JSON.stringify(bundle),blob=new Blob([text],{type:'application/json'}),a=document.createElement('a');
-        a.href=URL.createObjectURL(blob);a.download='Rhythme-share-'+S.today()+'.ovushare';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
+        /* the file goes out through the phone's own share sheet when it can (WhatsApp, Mail, AirDrop, Files), so nobody
+           meets Safari's bare download prompt; the share is a second tap because a share sheet must open from a tap */
+        var text=JSON.stringify(bundle),name='Rhythme-share-'+S.today()+'.json',file=null;
+        try{file=new File([text],name,{type:'application/json'});}catch(e){file=null;}
+        var canSend=!!(file&&navigator.canShare&&navigator.canShare({files:[file]}));
+        var viewer=location.origin+location.pathname.replace(/[^/]*$/,'')+'doctor.html';
         var code=S.crypto.toCode(bundle);
-        message($('#shareMsg'),'Encrypted share saved. Give your clinician the file and tell them the passphrase separately.','ok');
-        $('#codeWrap').innerHTML='<div class="row"><button class="btn soft" id="copyCode"><span class="ms">content_copy</span>Copy as a share code ('+Math.round(code.length/1024)+' KB)</button></div><p class="note">Only if a file is awkward: the code is the whole encrypted bundle as text, for pasting into the Doctor view.</p>';
+        message($('#shareMsg'),'Encrypted and ready. Send the file to your clinician, then tell them the passphrase another way (in person or by phone). They open it at '+viewer+'.','ok');
+        $('#codeWrap').innerHTML='<div class="row">'+(canSend?'<button class="btn primary" id="sendShare"><span class="ms">ios_share</span>Send the file</button>':'')+'<button class="btn soft" id="saveShare"><span class="ms">download</span>Save the file</button></div><div class="row"><button class="btn soft" id="copyCode"><span class="ms">content_copy</span>Copy as a share code ('+Math.round(code.length/1024)+' KB)</button></div><p class="note">The file is encrypted; without the passphrase nobody can read it. The share code is the same bundle as text, for pasting into the Doctor view.</p>';
+        if($('#sendShare'))$('#sendShare').addEventListener('click',function(){navigator.share({files:[file],title:'Rhythme summary (encrypted)',text:'My Rhythme summary for our appointment. Open it at '+viewer+' and I will tell you the passphrase.'}).then(function(){message($('#shareMsg'),'Sent. Tell your clinician the passphrase another way.','ok');},function(e){if(e&&e.name!=='AbortError')message($('#shareMsg'),'Could not open the share sheet; use Save the file instead.','info');});});
+        $('#saveShare').addEventListener('click',function(){download(new Blob([text],{type:'application/json'}),name);message($('#shareMsg'),'Saved to your downloads (on iPhone: tap Download, then find it in Files). Send it to your clinician and tell them the passphrase another way.','ok');});
         $('#copyCode').addEventListener('click',function(){navigator.clipboard.writeText(code).then(function(){message($('#shareMsg'),'Share code copied.','ok');},function(){message($('#shareMsg'),'Copying is blocked here; use the file instead.','info');});});
       }).catch(function(e){message($('#shareMsg'),e.message,'err');});
     });
