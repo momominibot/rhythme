@@ -1706,6 +1706,19 @@ function scenes(todayIso) {
   for (var i = 0; i < 200; i++) { var p = C.generatePassphrase(); seen[p] = 1; if (!/^([A-Z2-9]{4}-){6}[A-Z2-9]{4}$/.test(p) || /[IO01]/.test(p)) ok = false; }
   check('a share passphrase is 28 characters from 32 distinct easy letters and digits (140 random bits), never repeating in 200 draws', a.length === 32 && new Set(a.split('')).size === 32 && ok && Object.keys(seen).length === 200, a);
 })();
+(function launchAiAfterSessionEnds() {
+  var w = fresh('2026-10-20'), sent = [];
+  w.OVU_CONFIG = { aiPaused: false };
+  w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-consent.js'), 'utf8'), w, { filename: 'ovu-consent.js' });
+  w.fetch = function (u) { sent.push(String(u)); return Promise.resolve({ ok: true, status: 200, json: function () { return Promise.resolve({ entries: [], reply: 'ok' }); } }); };
+  w.OvuConsent.setMany({ ai_reading: true }, 'settings'); /* recorded while signed in, so bound to the account */
+  var bound = w.OvuConsent.boundTo('ai_reading');
+  w.OvuAuth = { session: function () { return null; }, token: function () { return Promise.resolve(null); }, userId: function () { return null; } }; /* the session has since ended */
+  w.OvuOrb.parseAI('slept badly').then(function () { return 'sent'; }, function (e) { return e.message; }).then(function (m) {
+    check('after the session ends, an AI choice recorded on the account asks to sign in again and sends nothing anonymously', bound && /sign in again/i.test(m) && sent.length === 0, JSON.stringify({ bound: bound, m: m, sent: sent }));
+  });
+})();
 (function plotGrowth() {
   console.log('the plot grows a stage per credited day and never shrinks');
   var w = scenes('2026-10-18'), S = w.OvuStore, G = w.OvuGarden;
