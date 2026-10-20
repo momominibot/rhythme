@@ -49,6 +49,12 @@ Jamie asked for every model to walk the app as four different users, and for eve
 - **Sleeping in a baju kurung.** Doubao found it not offensive but less believable. Jamie's rule is that nothing changes her outfit by itself; bedtime already offers pyjamas.
 - **Walk cycles for the tudung outfit.** Not drawn: a missing walk strip falls back to a step bob without changing her clothes, the same as the kebaya outfits.
 
+## Second round: reviews of the finished branch
+
+- **Codex, the whole diff** (`2026-10-20-personas/codex-branch-review.md`): 16 defects, all fixed with harness tests. The serious ones: negation hid and invented emergencies ("no improvement in chest pain" gave no card, "my face is not swollen" gave one); a benign phrase anywhere in a note vetoed a stroke sign; pain of 10 on the period form and a red flag found only after a Luna save missed their card; a positive covid or ovulation test counted as a pregnancy; a late image load could leave her stuck in a pose; the streak was still shown. The matcher now reads a sign in its own clause, a benign explanation clears only its own clause, and every image swap carries one generation counter.
+- **DeepSeek and Doubao as Singapore clinicians, every new sentence** (`deepseek-wording-review.md`, `doubao-wording-review.md`): adopted are KKH now for a fever with these signs in pregnancy or after a birth, emergency help now for hearing voices, adrenaline pen first and then 995, when to call 995 for ectopic pain or heavy bleeding and when to go with someone to KKH, head-injury signs after a fall, and same-day care for heavy bleeding after menopause. Rejected: DeepSeek's NICE NG201 citation, because NG201 is antenatal care; NG257 is the fertility guideline (confirmed by search).
+- **Plaza friends migration**: dry-run on the live project in one transaction that raised its result and rolled back. All 58 checks passed, and the 32 function fingerprints it reported match the file. The dry run was updated first, because the asking quota now lives in its own log.
+
 ## Left for later
 
 - Shops' opening hours exclude night-shift users (Siti). The one real clock is Jamie's rule; a later change would need her call.

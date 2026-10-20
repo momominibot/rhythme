@@ -257,6 +257,8 @@ begin
   insert into public.social_requests (from_user, to_user, status, at, decided_at)
     select w, u.id, 'declined', now() - interval '1 day', now()
     from (select id from auth.users where email like 'dryrun-%@example.invalid' and id not in (a, b, c, d, e, n, m, x, y, z, w, q) limit 20) u;
+  -- the quota is counted from the ask log, which a block and an unblock cannot reset (Codex pre-merge review, 20 Oct, item 6)
+  insert into public.social_ask_log (from_user, to_user, last_at) select from_user, to_user, at from public.social_requests where from_user = w;
   r := pg_temp.call(w, format('select public.social_ask(%L, %L, %L, null)', hy, 'pcos', vw));
   out := out || jsonb_build_object('declines_keep_quota', r->>'why' = 'many' and (select count(*) from public.social_requests where from_user = w and status = 'declined') = 20);
 
