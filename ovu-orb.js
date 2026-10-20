@@ -282,6 +282,13 @@
     return Promise.all([table, relay]).then(function (rs) { var d = rs[1], f = d.food || {}; return { isFood: f.is_food === true, mealName: f.meal_name || '', note: f.note || '', items: foodItemsFrom(f), hpb: !!rs[0] }; });
   }
 
+  /* A dish name neither table knows: Luna estimates it from the name (her note-reading permission), the phone matches HPB rows */
+  function parseDish(name) {
+    var table = FD && FD.sgLoad ? FD.sgLoad().catch(function () { return null; }) : Promise.resolve(null);
+    var relay = hdr('ai_reading').then(function (h) { return fetch(PROXY_URL, { method: 'POST', headers: h, body: JSON.stringify({ dish: String(name || '').slice(0, 80), today: S.today() }) }); })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('Luna could not answer just now (' + r.status + '). Try again in a moment.')); return d; }); });
+    return Promise.all([table, relay]).then(function (rs) { var f = rs[1].food || {}; return { isFood: f.is_food === true, mealName: f.meal_name || '', note: f.note || '', items: foodItemsFrom(f) }; });
+  }
   /* Ingredients label photo: Luna transcribes the list once (same permission as food photos); the NOVA rule runs on the phone. */
   function parseLabel(dataUrl) {
     if (!photosAllowed()) return Promise.reject(new Error('Food photos are off. Allow them in Luna’s settings first.'));
@@ -317,5 +324,5 @@
   var REPLIES = ['Noted, gently.', 'Written down. Thank you for telling me.', 'Got it. One small step logged.', 'Saved. Be soft with yourself today.'];
   function reply() { return REPLIES[Math.floor(Math.random() * REPLIES.length)]; }
 
-  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, noPeriod: noPeriod, parsePhoto: parsePhoto, parseLabel: parseLabel, foodItemsFrom: foodItemsFrom, regram: regram, rename: rename, photosAllowed: photosAllowed, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
+  root.OvuOrb = { parseLocal: parseLocal, parseAI: parseAI, urgent: urgent, noPeriod: noPeriod, parsePhoto: parsePhoto, parseDish: parseDish, parseLabel: parseLabel, foodItemsFrom: foodItemsFrom, regram: regram, rename: rename, photosAllowed: photosAllowed, describe: describe, save: save, aiConfig: aiConfig, setAiConfig: setAiConfig, reply: reply, PROXY_URL: PROXY_URL, dateFrom: dateFrom };
 })(window);

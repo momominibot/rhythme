@@ -763,6 +763,16 @@ async def main():
             await page.evaluate("()=>document.querySelector('#dTabs [data-dpane=ideas]').click()"); await page.wait_for_timeout(300)
             ti = await page.evaluate("()=>{var p=document.querySelector('.dpane[data-pane=ideas]'); return {teas: p.querySelectorAll('details.tea, .dsec.teas').length, pointer: (p.textContent||'').indexOf('garden greenhouse')>-1};}")
             check("the food diary's Ideas pane lists no teas and points to the garden greenhouse", ti["teas"] == 0 and ti["pointer"], ti)
+            # food search knows Singapore dishes (HPB), and offers Luna when the tables have little
+            await page.evaluate("()=>document.querySelector('#dTabs [data-dpane=add]').click()"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>{var b=document.querySelector('.foodmodes [data-mode=search]'); if(b) b.click()}"); await page.wait_for_selector('#fdSearch', timeout=8000); await page.wait_for_timeout(1200)
+            await page.fill('#fdSearch', 'laksa'); await page.wait_for_timeout(300)
+            lk = await page.evaluate("()=>({first: (document.querySelector('#fdResults .result b')||{}).textContent, ask: !!document.querySelector('#fdResults [data-askluna]')})")
+            await page.fill('#fdSearch', 'mee siam'); await page.wait_for_timeout(300)
+            ms = await page.evaluate("()=>({ask: (document.querySelector('#fdResults [data-askluna]')||{}).textContent || ''})")
+            await page.fill('#fdSearch', 'zzqqx dish'); await page.wait_for_timeout(300)
+            zz = await page.evaluate("()=>({ask: (document.querySelector('#fdResults [data-askluna]')||{}).textContent || ''})")
+            check("searching laksa finds HPB's laksa first; a dish the tables do not know offers Ask Luna", lk["first"] == "Laksa" and "zzqqx" in zz["ask"], {"laksa": lk, "mee siam": ms, "unknown": zz})
             await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
 
             check("no page errors or console errors across the run", not errors, errors[:3])

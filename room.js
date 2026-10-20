@@ -1014,7 +1014,18 @@
         area.innerHTML = '<input class="input" id="fdSearch" placeholder="Type a food: oats, salmon, tofu, bee hoon…" autocomplete="off"><div class="results" id="fdResults"></div><div class="row"><button type="button" class="btn ghost" id="customBtn"><span class="ms">edit</span>Add a custom food</button></div>';
         var inp = $('#fdSearch');
         FD.load().then(function () { $('#fdResults').innerHTML = resultsHTML(['rice-white', 'egg-boiled', 'chicken-breast', 'oats-cooked', 'salmon', 'tofu-firm', 'banana', 'yogurt-greek'].map(FD.byId).filter(Boolean)); }).catch(function (e) { $('#fdResults').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
-        inp.addEventListener('input', function () { $('#fdResults').innerHTML = resultsHTML(FD.search(inp.value, 12)); });
+        /* when the tables have little for what she typed, Luna can estimate it (Jamie, 20 Oct); every number stays editable */
+        var askLuna = function (q, list) { q = String(q || '').trim(); return q.length >= 3 && list.length < 3 ? '<button type="button" class="btn soft askluna" data-askluna="' + esc(q) + '"><span class="ms">auto_awesome</span>Ask Luna about “' + esc(q) + '”</button>' : ''; };
+        inp.addEventListener('input', function () { var list = FD.search(inp.value, 12); $('#fdResults').innerHTML = resultsHTML(list) + askLuna(inp.value, list); });
+        $('#fdResults').addEventListener('click', function (e) {
+          var b = e.target.closest('[data-askluna]'); if (!b) return; e.stopPropagation();
+          var q = b.dataset.askluna; b.disabled = true; b.innerHTML = '<span class="ms">hourglass_top</span>Luna is thinking about ' + esc(q) + '…';
+          ORB.parseDish(q).then(function (res) {
+            if (!res.isFood || !res.items.length) { b.outerHTML = '<div class="empty">Luna did not recognise “' + esc(q) + '” as a food. Try another name, or add a custom food.</div>'; return; }
+            res.items.forEach(function (it) { draft.items.push(it); }); renderItems();
+            b.outerHTML = '<div class="fdstate ok"><span class="ms">check_circle</span>Added ' + esc(res.items.map(function (it) { return it.name; }).join(', ')) + '. Luna estimated it, so check the grams below before you save.</div>';
+          }).catch(function (err) { b.outerHTML = '<div class="fdstate"><span class="ms">error</span>' + esc(err.message) + (/off|choices/i.test(err.message) ? ' Turn on Luna reading notes under Your choices.' : '') + '</div>'; });
+        });
         $('#customBtn').addEventListener('click', function () { $('#customWrap').innerHTML = customFoodForm(); wireCustom(); });
       } else if (mode === 'scan') {
         area.innerHTML = '<div class="camwrap on" id="camwrap"><video id="bcVideo" playsinline muted></video><div class="reticle"></div><div class="camhint">Point the camera at the barcode</div></div><div class="row" style="margin-top:8px"><input class="input" id="bcManual" placeholder="Barcode digits or a product name, e.g. Milo" autocomplete="off" enterkeyhint="search"><button type="button" class="btn soft" id="bcLookup" style="flex:0 0 auto">Search</button></div><div class="msg" id="bcMsg"></div><div id="bcResults"></div>';
