@@ -112,6 +112,16 @@ An eighth, asked to sweep every feature reachable during the routine in one pass
 - Mid-doorway, the scene could still change after it began: it waits until she arrives.
 - Quiet was the default when the sound setting had never been touched, though the app treats that as on: it uses the app's own sound rule.
 
+A ninth sweep found eight more, all fixed with browser checks:
+- The audio guard also refused the barcode scanner's muted camera preview: only competing sound is refused now.
+- A waiting save prompt could open over another activity when she pressed Begin: the ownership check now comes first.
+- Beginning during the mat's 350 ms entrance left her hidden: the room's own meditating state is used and the entrance is cancelled.
+- A waiting prompt could open under Light Flower or Moon Tap: their overlays count as busy.
+- At the sink, the line kept playing in the background or under a sheet: it stops there (its caption stays).
+- The wake sheet's greeting could play under the opening line: Begin stops any app voice still playing.
+- Saving yesterday's practice after midnight overwrote today's Not today: a newer day's choice is kept.
+- A clip that could not load (offline, not cached) left a silent Voice on: it switches to captions only and says so.
+
 Not taken, and why:
 - Hearts without saving (Doubao): the honesty confirm before any hearts is Jamie's rule, and separating them needs a second reward ledger. The entry stays on her phone unless she has turned on sync, which has its own consent.
 - A confirmation on Stop (Doubao): Stop after 30 s already opens a sheet with "Not this time"; under 30 s nothing is lost but the moment.

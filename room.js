@@ -1919,9 +1919,10 @@
   function enterMeditation() {
     endMoment(); meditating = true; avatar.classList.add('hidden'); if (window.OvuSound) OvuSound.play('sit');
     if (!meditator.classList.contains('onseat')) wearImg(meditator.querySelector('img'), meditateSrc(wornOutfit()), ART + 'avatar-meditate.webp'); /* a bench keeps her seated sprite */
-    setTimeout(function () { meditator.classList.add('on'); $('#aura').classList.add('on'); }, 350);
+    clearTimeout(medTimer); medTimer = setTimeout(function () { if (meditating) { meditator.classList.add('on'); $('#aura').classList.add('on'); } }, 350);
   }
-  function exitMeditation() { meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); hud.classList.remove('on'); setTimeout(function () { avatar.classList.remove('hidden'); placeAvatar(HOME, false); avatar.classList.add('idle'); }, 300); }
+  var medTimer = 0; /* the mat's entrance: a quick exit (Morning start begun within 350 ms) cancels it (Codex sweep, 20 Oct) */
+  function exitMeditation() { clearTimeout(medTimer); meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); hud.classList.remove('on'); setTimeout(function () { avatar.classList.remove('hidden'); placeAvatar(HOME, false); avatar.classList.add('idle'); }, 300); }
   meditator.addEventListener('click', function () { if (current !== 'mind') openMindfulness(); });
   /* Erin's lines play on ONE audio element per session, created and first played inside the tap that began it: a fresh
    * element started from a promise chain is silent on the iPhone, which is why her voice came and went. A guard moves
@@ -2814,7 +2815,7 @@
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
-    moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
+    moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
   };

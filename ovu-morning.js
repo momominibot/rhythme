@@ -91,7 +91,7 @@
   }
 
   /* ---------- the panel and the flow (browser only) ---------- */
-  var run = null, ticker = null, doneWait = null, pendingAsk = null;
+  var run = null, ticker = null, doneWait = null, pendingAsk = null, heard = [];
   function $(s) { return document.querySelector(s); }
   function R() { return root.OvuRoom; }
   function S() { return root.OvuStore; }
@@ -104,7 +104,7 @@
   function hearVoice() { if (voiceMuted()) root.OvuVoice.set(false); }
   /* putting her outfit back writes her profile; if storage fails, the routine and its save prompt still go on */
   function settle(room) { try { if (room.restorePose) room.restorePose(); } catch (e) { } }
-  function markToday(patch, day) { day = day || S().today(); var st = S().state(), m = st.morningStart && st.morningStart.date === day ? st.morningStart : { date: day }; for (var k in patch) m[k] = patch[k]; S().setState({ morningStart: m }); }
+  function markToday(patch, day) { day = day || S().today(); var st = S().state(); if (st.morningStart && st.morningStart.date > day) return; /* today's Not today or done stands */ var m = st.morningStart && st.morningStart.date === day ? st.morningStart : { date: day }; for (var k in patch) m[k] = patch[k]; S().setState({ morningStart: m }); }
 
   function renderInvite() {
     var el = $('#morningInvite'); if (!el || !S()) return;
@@ -140,17 +140,19 @@
 
   function begin(version, quiet) {
     var room = R(); if (room.asleep() || run) return;
+    var other = otherOwner(room); if (other) { room.toast(other[0], other[1]); return; } /* nothing, not even a waiting prompt, goes over another activity */
     if (pendingAsk) { room.hideSheet(); pendingAsk(); return; } /* the last one is still waiting to be saved or let go: ask that first */
-    var other = otherOwner(room); if (other) { room.toast(other[0], other[1]); return; }
     if (root.OvuGarden && root.OvuGarden.sitting && root.OvuGarden.sitting()) { try { root.OvuGarden.standUp(); } catch (e) { } } /* off the bench, where she is, so the brushing pose shows */
     if (root.OvuPodcast) { try { root.OvuPodcast.pause(); } catch (e) { } }
+    heard.forEach(function (el) { try { if (!el.paused) el.pause(); } catch (e) { } }); heard = []; /* a greeting still playing (the wake sheet's) stops: one voice at a time */
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
     room.hideSheet(); hideInvite();
     run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, spent: {}, brushMs: 0, stepMs: 0, waits: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
     if (room.endMoment) room.endMoment();
     /* from the mat she sits there hidden: bring her back first, or the routine plays to an empty room */
-    if (room.els && room.els.meditator && room.els.meditator.classList.contains('on') && !(room.sessionOn && room.sessionOn())) room.exitMeditation();
+    var onMat = room.meditating ? room.meditating() : !!(room.els && room.els.meditator && room.els.meditator.classList.contains('on'));
+    if (onMat && !(room.sessionOn && room.sessionOn())) room.exitMeditation(); /* by the room's own state, so a start during the mat's entrance also stands her up */
     settle(room);
     if (room.els && room.els.avatar) room.els.avatar.classList.remove('acting');
     if (!run.quiet) hearVoice();
@@ -158,6 +160,7 @@
     var pnl = $('#mpanel'); if (pnl) { pnl.setAttribute('tabindex', '-1'); pnl.focus(); } /* focus leaves the closed sheet for the panel */
     clearInterval(ticker); ticker = setInterval(function () {
       if (run && room.asleep()) { cancel(); return; }
+      if (run && room.sheetOpen() && step() && step().gate && run.audioKey === step().key && run.audio && !run.audio.paused) { stopAudio(); run.audioKey = null; } /* the sink line stops under a sheet */
       if (run && room.sheetOpen() && !run.paused && step() && !step().gate) { pauseToggle(); room.toast('Morning start is paused while this is open. Tap Resume when you are back.', 'pause'); } /* a sheet covers her controls */
     }, 1000);
   }
@@ -167,6 +170,7 @@
     if (root.OvuGreenhouse && root.OvuGreenhouse.caring && root.OvuGreenhouse.caring()) return ['Finish the minute with the plant first.', 'potted_plant'];
     if (root.OvuGarden && root.OvuGarden.watering && root.OvuGarden.watering()) return ['Finish watering the garden first.', 'water_drop'];
     if (root.OvuWalk && root.OvuWalk.travelling && root.OvuWalk.travelling()) return ['One moment, she is on her way.', 'directions_walk'];
+    if (root.document && root.document.body && root.document.body.classList.contains('btap-open')) return ['Close Light Flower or Moon Tap first.', 'spa']; /* their overlays, setup screens too */
     return null;
   }
   function showPanel() { var p = $('#mpanel'); if (p) p.hidden = false; }
@@ -213,11 +217,13 @@
     run.audioKey = step() && step().key; var r = run;
     try {
       var a = run.audio || (run.audio = new Audio()); a.muted = false; a.src = url; a.currentTime = 0; var p = a.play();
-      if (p && p.catch) p.catch(function (e) { if (e && e.name === 'NotAllowedError') held(r); });
+      if (p && p.catch) p.catch(function (e) { if (!e || e.name === 'AbortError') return; if (e.name === 'NotAllowedError') held(r); else unavailable(r); }); /* AbortError: a newer line replaced it */
     } catch (e) { }
   }
   /* the phone refused to play: say so and show Voice off, rather than a silent Voice on; tapping Voice on readies it */
   function held(r) { if (!run || run !== r || run.quiet) return; run.quiet = true; run.audioKey = null; run.pending = null; run.unlocked = false; paint(); R().toast('Your phone held the voice back. Tap Voice on to hear it from the next line.', 'volume_off'); }
+  /* the clip could not load or play here (offline and not cached, say): captions only, said plainly */
+  function unavailable(r) { if (!run || run !== r || run.quiet) return; run.quiet = true; run.audioKey = null; run.pending = null; paint(); R().toast('The voice could not play here, so this is captions only. Tap Voice on to try again from the next line.', 'volume_off'); }
   /* inside a tap (Begin while quiet, or Voice on): play a clip muted for a moment so later lines may play on phones that
    * only allow sound that a tap started; it never sounds, and a real line that starts meanwhile is left alone */
   function unlock() {
@@ -334,18 +340,20 @@
     /* away from the app (another app, the lock screen): pause, so time away is never counted; she resumes on return */
     document.addEventListener('visibilitychange', function () {
       if (!run) return;
-      if (document.hidden) { var s = step(); if (s && !s.gate && !run.paused) { pauseToggle(); run.away = true; } }
+      if (document.hidden) { var s = step(); if (s && s.gate) { stopAudio(); run.audioKey = null; } else if (s && !run.paused) { pauseToggle(); run.away = true; } } /* at the sink there is no clock to pause: the line just stops, its caption stays */
       else if (run.away) { run.away = false; R().toast('Paused while you were away. Tap Resume when you are ready.', 'pause'); }
     });
     /* one voice at a time: while Morning start runs, other audio (the podcast mini-player, whose element is not in the page)
      * is refused at play(), the same place the shared voice mute hooks in; the podcast treats it as an aborted start */
     var MP = root.HTMLMediaElement && root.HTMLMediaElement.prototype, mplay = MP && MP.play;
     if (mplay) MP.play = function () {
-      if (run && this !== run.audio) {
+      var sounds = this.tagName === 'AUDIO' || (!this.muted && !this.srcObject); /* a muted camera preview (barcode scanning) is not competing sound */
+      if (run && this !== run.audio && sounds) {
         try { R().toast('Morning start is running. Other audio waits until it ends.', 'headphones'); } catch (x) { }
         var err; try { err = new DOMException('Morning start is running', 'AbortError'); } catch (x) { err = new Error('Morning start is running'); err.name = 'AbortError'; }
         return Promise.reject(err);
       }
+      if (this.tagName === 'AUDIO' && heard.indexOf(this) < 0) { heard.push(this); if (heard.length > 8) heard.shift(); } /* so a later Begin can quiet it */
       return mplay.apply(this, arguments);
     };
   }
