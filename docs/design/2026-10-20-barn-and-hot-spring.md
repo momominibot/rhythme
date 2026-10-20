@@ -3,7 +3,12 @@
 Jamie, 20 Oct 2026: "where is my farm house for cow and chicken where I get milk and eggs.. I want a secret space - a cave
 with hot spring where I can cook my egg".
 
-Status: design, revised after a Codex design review (REVISE, 20 Oct). Nothing is built and no art is made yet.
+Status: built on 21 Oct 2026 (branch claude/farm-barn-cave). Changes Jamie asked for while it was built:
+- "build bigger": the yard was re-rendered as a larger island (barn-v2), and the barn and the hen house can be entered
+  ("we can enter barn and chicken house"): Clover lives in her stall inside the barn, Mochi and Kaya inside the hen house.
+- "cow can be cuter with contrast color": Clover was re-rendered cream with bold cocoa patches, big eyes and a flower.
+Art used: eight images in three guarded runs, each started on Jamie's word (barn, cave, cow, hen; bigger barn, new cow;
+barn and hen house interiors).
 
 ## 1. Where it is
 

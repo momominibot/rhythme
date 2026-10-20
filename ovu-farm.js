@@ -48,13 +48,14 @@
       { id: 'farmgate', x: 13, y: 60, label: 'Gate · back to the garden', prompt: 'Tap to go back to the garden', icon: 'door_open', wp: { x: 19, y: 56, flip: true } },
       { id: 'shed', x: 18, y: 41, label: 'Shed · seeds and tools', prompt: 'Tap to open the shed', icon: 'home_repair_service', wp: { x: 25, y: 50, flip: true } },
       { id: 'well', x: 70, y: 38, label: 'Well · water for the can', prompt: 'Tap to draw water', icon: 'water_drop', wp: { x: 66, y: 48, flip: false } },
-      { id: 'basket', x: 49, y: 69, label: 'Basket · your harvest', prompt: 'Tap to look in the basket', icon: 'shopping_basket', wp: { x: 41, y: 66, flip: false } }
+      { id: 'basket', x: 49, y: 69, label: 'Basket · your harvest', prompt: 'Tap to look in the basket', icon: 'shopping_basket', wp: { x: 41, y: 66, flip: false } },
+      { id: 'barnpath', x: 83, y: 65, label: 'Path · to the barn', prompt: 'Tap to walk to the barn', icon: 'cottage', wp: { x: 79, y: 62, flip: false } } /* the barn (ovu-barn.js), 21 Oct */
     ],
     home: { x: 19, y: 56, flip: false },
     zones: [[[48, 30], [95, 52], [86, 61], [68, 70], [50, 74], [6, 56]]], /* the island; its lower-right shore bows out past the bed frame's path */
     solids: [{ id: 'shed', x0: 8, x1: 30, y0: 33, y1: 46 }, { id: 'well', x0: 62, x1: 76, y0: 33, y1: 46 }, { id: 'scarecrow', x0: 45, x1: 57, y0: 25, y1: 36 }, { id: 'tree', x0: 84, x1: 95, y0: 44, y1: 52 } /* the trunk; she may walk under the canopy, and the path to the well runs between the beds and the trunk */, { id: 'basket', x0: 42, x1: 56, y0: 65, y1: 72 },
       { id: 'beds1', x0: 30, x1: 50, y0: 48, y1: 58 }, { id: 'beds2', x0: 44, x1: 64, y0: 44, y1: 62 }, { id: 'beds3', x0: 60, x1: 78, y0: 50, y1: 58 }],
-    doors: [{ id: 'farmgate', to: 'garden', x: 15, y: 57, r: 5, flip: true }],
+    doors: [{ id: 'farmgate', to: 'garden', x: 15, y: 57, r: 5, flip: true }, { id: 'barnpath', to: 'barn', x: 79, y: 62, r: 4, flip: false }],
     /* the beds are not hotspots (twelve orbs would smother the plate): they are drawn by this module and offered as prompts */
     prompts: STANDS.map(function (s) { return { id: s.id, wp: s.wp, beds: s.beds, prompt: s.beds.length > 1 ? 'Tap to tend the beds' : 'Tap to tend the bed', bed: true }; }),
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 }, props: {}
@@ -62,7 +63,16 @@
 
   /* ---------- rules (no DOM) ---------- */
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
-  function farmState(S) { var f = S.state().farm || {}; return { beds: f.beds || {}, harvest: f.harvest || {}, seeds: f.seeds || {}, seedsByDay: f.seedsByDay || {}, unlocked: f.unlocked || {}, tools: f.tools || {}, can: f.can || 0, guided: !!f.guided }; }
+  /* one canonical farm: fields this file does not know about (the barn's pantry, animals and places) are kept, and the
+   * shared ones are validated, so an old action such as filling the can never drops the barn's things (Codex, 21 Oct) */
+  var PANTRY = ['egg', 'milk', 'onsenegg'], ANIMALS = ['mochi', 'kaya', 'clover'], PLACES = ['cave'], PANTRY_CAP = 99;
+  function counts(o, keys) { var out = {}; keys.forEach(function (k) { var n = Math.floor(Number(o && o[k])); out[k] = isFinite(n) && n > 0 ? Math.min(PANTRY_CAP, n) : 0; }); return out; }
+  function dates(o, keys) { var out = {}; keys.forEach(function (k) { var d = o && o[k]; if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) out[k] = d; }); return out; }
+  function farmState(S) {
+    var f = S.state().farm || {};
+    return Object.assign({}, f, { beds: f.beds || {}, harvest: f.harvest || {}, seeds: f.seeds || {}, seedsByDay: f.seedsByDay || {}, unlocked: f.unlocked || {}, tools: f.tools || {}, can: f.can || 0, guided: !!f.guided,
+      pantry: counts(f.pantry, PANTRY), animals: dates(f.animals, ANIMALS), found: dates(f.found, PLACES) });
+  }
   function canGrow(f, crop) { return !!CROPS[crop] && (STARTER.indexOf(crop) > -1 || !!(f.unlocked && f.unlocked[crop])); }
   function growable(f) { return Object.keys(CROPS).filter(function (k) { return canGrow(f, k); }); }
   function seedsADay(f) { return SEEDS_A_DAY + (f.tools && f.tools.shelf ? 2 : 0); }
@@ -194,7 +204,7 @@
     return out;
   }
 
-  var F = { CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, dryBeds: dryBeds, waterAll: waterAll, CAN: CAN, BIG_CAN: BIG_CAN, canCap: canCap, canLevel: canLevel, fillCan: fillCan, pour: pour, plantFromShed: plantFromShed, bulkTargets: bulkTargets, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
+  var F = { PANTRY: PANTRY, ANIMALS: ANIMALS, PANTRY_CAP: PANTRY_CAP, CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, dryBeds: dryBeds, waterAll: waterAll, CAN: CAN, BIG_CAN: BIG_CAN, canCap: canCap, canLevel: canLevel, fillCan: fillCan, pour: pour, plantFromShed: plantFromShed, bulkTargets: bulkTargets, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
   root.OvuFarm = F;
 
   /* ---------- scene wiring ---------- */
@@ -243,31 +253,12 @@
    * Each care step is done slowly, on purpose: a line to notice, a soft bar that fills once (it never pulses, so it is
    * not a breathing pacer), and Stop, which changes nothing. The step is saved only when the bar is full and the sheet is
    * still open; closing the sheet halfway saves nothing and costs nothing. F.slowMs = 0 runs steps at once (tests). */
-  var slow = null;
-  function reducedMo() { return !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches); } /* read each time: the setting can change */
-  /* a pending step whose sheet was closed, replaced or left behind is dropped at once, so it never locks the farm */
-  function liveSlow() { if (slow && !(slow.box.isConnected && R.sheetOpen() && inFarm(R.layout()))) cancelSlow(); return slow; }
-  function cancelSlow() { if (!slow) return; root.clearTimeout(slow.t); slow = null; }
-  function asleepNow() { return !!((W.napping && W.napping()) || S.state().sleeping); }
+  /* the care step itself lives in ovu-care.js (shared with the barn and the spring); the farm's steps belong to the farm */
+  function liveSlow() { return root.OvuCare && root.OvuCare.live ? root.OvuCare.live() : null; }
+  function cancelSlow() { if (root.OvuCare && root.OvuCare.cancel) root.OvuCare.cancel(); }
   function slowStep(box, o, done) {
-    if (liveSlow() || !box) return;
-    var ms = F.slowMs == null ? o.ms : F.slowMs, line = R.moment ? R.moment(o.moment, { quiet: true }) : ''; /* her pose and a small sound */
-    if (!ms) { done(); return; }
-    var still = reducedMo(), tok = slow = { box: box };
-    box.className = 'slowbox';
-    box.innerHTML = '<div class="slowstep">' + (line ? '<p class="mindline"><span class="ms">spa</span><span>' + esc(line) + '</span></p>' : '') +
-      '<div class="slowbar' + (still ? ' still' : '') + '" aria-hidden="true"><i></i></div><p class="slowverb" role="status">' + esc(o.verb) + '</p>' +
-      '<button type="button" class="btn ghost" data-slow="stop">Stop</button></div>';
-    var bar = box.querySelector('.slowbar i');
-    if (o.start && !still) o.start(ms);
-    if (!still) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { bar.style.transition = 'width ' + ms + 'ms linear'; bar.style.width = '100%'; }); });
-    tok.t = root.setTimeout(function () {
-      if (slow !== tok) return; slow = null;
-      if (!box.isConnected || !R.sheetOpen() || !inFarm(R.layout())) return; /* closed or left: nothing is saved */
-      if (asleepNow()) { R.hideSheet(); return; } /* sleep began meanwhile: nothing is saved */
-      done();
-    }, ms);
-    box.querySelector('[data-slow=stop]').addEventListener('click', function (e) { e.stopPropagation(); if (slow !== tok) return; cancelSlow(); if (R.endMoment) R.endMoment(); if (o.cancel) o.cancel(); });
+    if (!root.OvuCare || !root.OvuCare.step) { done(); return; }
+    root.OvuCare.step(box, Object.assign({}, o, { scene: 'farm', ms: F.slowMs == null ? o.ms : F.slowMs }), done);
   }
   /* the can, drawn with its water: a little lilac can whose water rises with the pours left */
   function canSVG(level, cap) {
@@ -468,6 +459,7 @@
     var f = farmState(S), rows = Object.keys(f.harvest).filter(function (k) { return f.harvest[k] > 0; });
     R.openSheet('farmbasket', 'Your harvest', rows.length ? 'In the basket' : 'Nothing picked yet', 'shopping_basket',
       (rows.length ? '<ul class="basketlist">' + rows.map(function (k) { return '<li><span class="dot" style="background:' + CROPS[k].colour + '"></span>' + esc(CROPS[k].name) + ' <b>×' + esc(f.harvest[k]) + '</b></li>'; }).join('') + '</ul>' : '<p>Plant, water and pick, and the basket fills.</p>') +
+      (function () { var p = farmState(S).pantry, bits = []; if (p.egg) bits.push(p.egg + ' egg' + (p.egg > 1 ? 's' : '')); if (p.milk) bits.push(p.milk + ' milk'); if (p.onsenegg) bits.push(p.onsenegg + ' onsen egg' + (p.onsenegg > 1 ? 's' : '')); return bits.length ? '<p class="help pantryline"><span class="ms">kitchen</span>From the barn: ' + esc(bits.join(', ')) + '.</p>' : ''; })() +
       '<p class="help">Selling and gifting come with the market. For now the basket is yours to admire.</p>');
   }
   /* several beds share this spot: ask which one */

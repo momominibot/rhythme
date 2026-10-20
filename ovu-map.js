@@ -8,11 +8,11 @@
   var doc = root.document;
 
   /* where each known place sits on the world map (x 0-100, y 0-80); a new place is set beside a neighbour */
-  var POS = { home: [10, 34], garden: [34, 34], farm: [34, 58], street: [66, 34], plaza: [88, 58], 'shop-pet': [50, 10], 'shop-furniture': [66, 10], 'shop-homes': [82, 10], greenhouse: [20, 12] }; /* the greenhouse up beside the garden, away from the row of shops */
-  var ICON = { home: 'home', garden: 'yard', farm: 'agriculture', street: 'storefront', plaza: 'groups', 'shop-pet': 'pets', 'shop-furniture': 'chair', 'shop-homes': 'cottage' };
+  var POS = { home: [10, 34], garden: [34, 34], farm: [34, 58], street: [66, 34], plaza: [88, 58], 'shop-pet': [50, 10], 'shop-furniture': [66, 10], 'shop-homes': [82, 10], greenhouse: [20, 12], barn: [58, 64], barninside: [46, 74], heninside: [72, 74], cave: [86, 72] }; /* the barn below the street, the hidden spring beside it once found */ /* the greenhouse up beside the garden, away from the row of shops */
+  var ICON = { barn: 'cottage', barninside: 'cottage', heninside: 'egg', cave: 'auto_awesome', home: 'home', garden: 'yard', farm: 'agriculture', street: 'storefront', plaza: 'groups', 'shop-pet': 'pets', 'shop-furniture': 'chair', 'shop-homes': 'cottage' };
   var H = 80; /* the world map's height in its own units */
   /* a little clay drawing for each known place on the painted map (Jamie, 20 Oct: "a damn cute map"); a new place keeps its icon */
-  var ART_FOR = { home: 'map-home.webp', garden: 'map-garden.webp', greenhouse: 'map-greenhouse.webp', farm: 'map-farm.webp', street: 'map-street.webp', plaza: 'map-plaza.webp', 'shop-pet': 'map-shop-pet.webp', 'shop-furniture': 'map-shop-furniture.webp', 'shop-homes': 'map-shop-homes.webp' };
+  var ART_FOR = { barn: 'map-barn.webp', cave: 'map-cave.webp', home: 'map-home.webp', garden: 'map-garden.webp', greenhouse: 'map-greenhouse.webp', farm: 'map-farm.webp', street: 'map-street.webp', plaza: 'map-plaza.webp', 'shop-pet': 'map-shop-pet.webp', 'shop-furniture': 'map-shop-furniture.webp', 'shop-homes': 'map-shop-homes.webp' };
 
   /* ---------- pure parts (tested in tools/test-core.js) ---------- */
   function nodeOf(id, homeId) { return id === 'home' || id === homeId ? 'home' : id; }
