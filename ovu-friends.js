@@ -11,7 +11,7 @@
   /* ---------- words and rules (pure, tested in tools/test-core.js) ---------- */
   /* the avatar looks a card can wear (room.js OUTFITS); anything else shows as the cosy knit */
   var LOOKS = [['base', 'Cosy knit'], ['sundress', 'Blush sundress'], ['cozy', 'Cloud hoodie'], ['yoga', 'Mint yoga set'], ['party', 'Lilac tulle'],
-    ['kebaya-blue', 'Blue kebaya'], ['kebaya-green', 'Green kebaya'], ['kebaya-red', 'Red kebaya'], ['pajamas', 'Starry pyjamas']]; /* the tudung look joins with its outfit in room.js */
+    ['kebaya-blue', 'Blue kebaya'], ['kebaya-green', 'Green kebaya'], ['kebaya-red', 'Red kebaya'], ['pajamas', 'Starry pyjamas'], ['tudung', 'Baju kurung & tudung']];
   /* the same list the server keeps in public.social_phrases (the core suite checks they match) */
   var PHRASES = [
     ['tea', 'Sending you a warm cup of tea.', 'note'], ['gentle', 'Hope today is gentle with you.', 'note'], ['thinking', 'Thinking of you today.', 'note'],

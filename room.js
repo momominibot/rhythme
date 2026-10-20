@@ -117,11 +117,11 @@
     /* Singapore Girl sarong kebaya (Balmain batik); rank colours: cobalt blue flight stewardess, green leading, red chief */
     { id: 'kebaya-blue', name: 'Blue kebaya', note: 'Flight stewardess' },
     { id: 'kebaya-green', name: 'Green kebaya', note: 'Leading stewardess' },
-    { id: 'kebaya-red', name: 'Red kebaya', note: 'Chief stewardess' }
+    { id: 'kebaya-red', name: 'Red kebaya', note: 'Chief stewardess' },
     /* four-persona review, 20 Oct: Nadia wears a tudung, and Codex, DeepSeek and Doubao all said her avatar should be able to.
-     * { id: 'tudung', name: 'Baju kurung & tudung', note: 'Dusty rose, lilac tudung' } joins this list only when its
-     * meditate, sleep, bench and action sprites exist: every missing one would fall back to a sprite with her hair
-     * showing, which takes her tudung off. The renders stopped on a dropped connection on 20 Oct. */
+     * It joined once its meditate, sleep, bench and every action sprite existed (a missing one would fall back to a sprite
+     * with her hair showing, which takes her tudung off; tools/test-core.js 2g holds that line) */
+    { id: 'tudung', name: 'Baju kurung & tudung', note: 'Dusty rose, lilac tudung' }
   ];
   var VIDEOS = [
     ['normal', 'normal-v4.mp4', 'A normal cycle', 'What typical looks like'],
@@ -2357,8 +2357,10 @@
   function pwait(ms) { return new Promise(function (resolve) { if (!practice || practice.stopped) return resolve(); practice.timer = setTimeout(resolve, ms); }); }
   /* Pose and outfit images include their props (a watering can, a pillow, a wardrobe), so each one is
    * scaled by how wide the girl's head is in it: [image width relative to her head, her centre as a
-   * fraction of the image]. Her head, and so her size, stays the same in every pose. */
-  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513]};
+   * fraction of the image]. Her head, and so her size, stays the same in every pose. The tudung covers less width than
+   * her hair (the silhouette measures 1.16), so it keeps the knit's scale, matched by figure height like its pose copies,
+   * and only its head centre is its own. */
+  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513],'tudung':[1.0,0.544]};
   function fitAvatar() {
     /* an outfit's copy of a pose is fitted on the pose's own canvas (tools/art: fit.py), so it shares the pose's numbers */
     var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatarImg.src || ''), f = m && (AVATAR_FIT[m[1]] || AVATAR_FIT[m[1].replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung)$/, '')]); if (!f) f = [1, 0.5];
