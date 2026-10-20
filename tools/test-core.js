@@ -248,7 +248,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
 })();
 
 (function singaporeNotes() {
-  console.log('2f. eighty notes written by DeepSeek and Doubao the way women in Singapore type: every urgent one raises a card, no ordinary one does');
+  console.log('2f. notes written by DeepSeek, Doubao and Codex the way women in Singapore type: every urgent one raises a card, no ordinary one does');
   var w = fresh(), O = w.OvuOrb, fx = JSON.parse(fs.readFileSync(path.join(root, 'tools/fixtures/urgent-notes-sg-2026-10-20.json'), 'utf8')).notes, wrong = [];
   fx.forEach(function (x) { var u = O.urgent(x.note, {}); if ((x.expect === 'urgent') !== !!u) wrong.push('[' + x.expect + '] ' + x.note + ' -> ' + (u ? u.code : 'none')); });
   check('all ' + fx.length + ' notes read as expected', wrong.length === 0, wrong.join(' | '));
