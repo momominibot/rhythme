@@ -2355,6 +2355,32 @@ function scenes(todayIso) {
   }, 10);
 })();
 
+(function recipesAndMedas() {
+  console.log('recipes and the Mediterranean check: sourced links, honest notes, MEDAS without its wine point');
+  var w = fresh();
+  ['ovu-evidence.js', 'ovu-recipes.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var R = w.OvuRecipes, E = w.OvuEvidence, ids = {};
+  var HOSTS = ['www.jeanhailes.org.au', 'www.bonehealthandosteoporosis.org', 'www.healthhub.sg'];
+  var allCards = R.RECIPES.concat(R.LOCAL);
+  check('every recipe and guide links over https to Jean Hailes, the Bone Health & Osteoporosis Foundation or HealthHub', allCards.every(function (r) { var u = new URL(r.url); return u.protocol === 'https:' && HOSTS.indexOf(u.host) > -1; }), JSON.stringify(allCards.filter(function (r) { return HOSTS.indexOf(new URL(r.url).host) < 0; }).map(function (r) { return r.url; })));
+  check('ids are unique, and every card has a title, a source, an icon and a line of its own', allCards.every(function (r) { var ok = !ids[r.id] && r.title && r.src && r.icon && r.why && r.why.length < 170; ids[r.id] = 1; return ok; }));
+  check('each group (PCOS, menopause, everyday) has at least five recipes', R.GROUPS.every(function (g) { return R.forGroup(g.id).length >= 5; }), R.GROUPS.map(function (g) { return g.id + ':' + R.forGroup(g.id).length; }).join());
+  var words = R.GROUPS.map(function (g) { return g.note; }).concat(allCards.map(function (r) { return r.why; }), [R.MEDAS_COPY.intro, R.MEDAS_COPY.wine, R.MEDAS_COPY.drinks], R.MEDAS.map(function (m) { return m.q + ' ' + (m.hint || ''); })).join(' \n ');
+  check('no promises: no boost, cure, detox, balancing hormones, ovarian-friendly or fertility diet, and no em dashes', !/boost|\bcure|detox|balanc\w* (your )?hormone|ovarian[- ]friendly|fertility diet|superfood|—/i.test(words), (words.match(/boost|\bcure|detox|balanc\w* (your )?hormone|ovarian[- ]friendly|fertility diet|superfood|—/i) || [''])[0]);
+  check('the notes say plainly what food cannot do', /No one diet has been shown to be best/.test(R.GROUPS[0].note) && /does not stop hot flushes/.test(R.GROUPS[1].note) && /no food has been proven to protect the ovaries/.test(R.GROUPS[2].note) && /not a treatment for hot flushes/.test(R.byId('soy-bread').why));
+  check('the Mediterranean check has the 13 MEDAS items and no wine item, and says why wine is left out', R.MEDAS.length === 13 && !R.MEDAS.some(function (m) { return /wine|alcohol/i.test(m.q); }) && /14th question/.test(R.MEDAS_COPY.wine) && /none when you are trying to get pregnant/.test(R.MEDAS_COPY.wine));
+  check('item 13 is the real MEDAS question (chicken or turkey over red and processed meat), not the old page\'s whole-grain bread', /chicken or turkey over beef, pork, burgers or sausages/.test(R.MEDAS[11].q) && !R.MEDAS.some(function (m) { return /whole-?grain bread/i.test(m.q); }));
+  check('every idea on the checklist is a real recipe', R.MEDAS.every(function (m) { return m.ideas.every(function (id) { return !!R.byId(id); }); }));
+  var sc = R.score({ oil: true, veg: false, fish: false, nuts: 'yes', wine: true });
+  check('the score counts only true answers to the 13 items; anything else is unanswered', sc.yes === 1 && sc.answered === 3 && sc.of === 13 && sc.missing.join() === 'veg,fish', JSON.stringify(sc));
+  var ideas = R.ideasFor({ veg: false, fish: false, legumes: false });
+  check('ideas follow the habits marked not yet, each recipe once', ideas.length === 11 && ideas[0].recipe.id === 'chicken-greens' && ideas[10].recipe.id === 'kebabs' && ideas.filter(function (x) { return x.recipe.id === 'cod'; }).length === 1, ideas.map(function (x) { return x.recipe.id; }).join());
+  var roomSrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), cited = [];
+  (roomSrc.match(/recSources\(([^;]*?)\)\)?;?\n/g) || []).join(' ').replace(/'(E\d+)'/g, function (m, id) { cited.push(id); });
+  check('the sheets cite only sources in the register, all under the recipes topic', cited.length >= 8 && cited.every(function (id) { var e = E.get(id); return e && e.topics.indexOf('recipes') > -1; }), cited.join());
+  check('the old Mediterranean page sends people to the check in the room, and the room opens it from that link', /location\.replace\('room\.html#medas'\)/.test(fs.readFileSync(path.join(root, 'medas14.html'), 'utf8')) && /hk === 'medas'\) openMedas\(\)/.test(roomSrc) && /\['action', 'medas', 'checklist'/.test(roomSrc) && !/'medas14\.html'/.test(roomSrc));
+})();
+
 /* the summary waits for every timer and promise the blocks scheduled: the loop drains, then we report, so no async check is ever cut off */
 var summarised = false;
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

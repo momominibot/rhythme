@@ -136,7 +136,8 @@
     { id: 'cycle', name: 'Cycle basics', color: '#f6c9d6', items: [['page', 'room.html#cycle', 'bloodtype', 'Your cycle', 'Phases, length and what is typical'], ['page', 'hormones.html', 'show_chart', 'Hormones 101', 'What rises and falls each cycle'], ['video', 'normal', 'A normal cycle', 'What typical looks like'], ['video', 'hormones', 'Hormones', 'Oestrogen & progesterone'], ['page', 'period-start.html', 'water_drop', 'Period start', 'Logging the first day']] },
     { id: 'fertility', name: 'Fertility', color: '#bfe3d4', items: [['page', 'fertility.html', 'spa', 'Fertile window', 'Ovulation signs, explained'], ['video', 'fertile', 'Fertile window', 'Your most fertile days'], ['page', 'journey-grow.html', 'eco', 'Trying to conceive', 'Timing, tests and support'], ['page', 'ovarian-health.html', 'menu_book', 'Understand your records', 'What your entries can and cannot show']] },
     { id: 'chapters', name: 'Life chapters', color: '#c9b6e6', items: [['page', 'life-journey.html', 'auto_stories', 'Your life journey', 'Five chapters, one body'], ['video', 'menarche', 'First period', 'Menarche explained'], ['page', 'journey-nurture.html', 'favorite', 'After pregnancy', 'Recovery and cycles returning'], ['page', 'journey-peri.html', 'dark_mode', 'Perimenopause', 'Hot flushes, sleep and mood'], ['video', 'peri', 'Perimenopause', 'The transition years'], ['page', 'journey-post.html', 'wb_sunny', 'After menopause', 'Bone, heart and bleeding rules'], ['video', 'menopause', 'Menopause', 'Life after periods']] },
-    { id: 'nutrition', name: 'Nutrition', color: '#f3d49b', items: [['page', 'foods.html', 'restaurant', 'Foods by phase', 'TCM and Western notes'], ['page', 'nutrients.html', 'medication', 'Micronutrients', 'Iron, folate, magnesium'], ['page', 'medas14.html', 'nutrition', 'Mediterranean score', 'A 14-point check'], ['page', 'hydration.html', 'water_full', 'Hydration', 'Fluids through the cycle'], ['action', 'diary', 'menu_book', 'Open the food diary', 'Snap, scan or search']] },
+    { id: 'nutrition', name: 'Nutrition', color: '#f3d49b', items: [['page', 'foods.html', 'restaurant', 'Foods by phase', 'TCM and Western notes'], ['page', 'nutrients.html', 'medication', 'Micronutrients', 'Iron, folate, magnesium'], ['action', 'recipes:every', 'restaurant_menu', 'Recipes', 'PCOS, menopause and everyday'], ['action', 'medas', 'checklist', 'Mediterranean check', '13 everyday habits'], ['page', 'hydration.html', 'water_full', 'Hydration', 'Fluids through the cycle'], ['action', 'diary', 'menu_book', 'Open the food diary', 'Snap, scan or search']] },
+    { id: 'recipes', name: 'Recipes', color: '#f7c3a6', items: [['action', 'recipes:pcos', 'restaurant_menu', 'For PCOS (PMOS)', 'From Jean Hailes, reviewed 2026'], ['action', 'recipes:meno', 'spa', 'Through menopause', 'Calcium, protein, heart'], ['action', 'recipes:every', 'soup_kitchen', 'Everyday', 'Mediterranean-style, and eating out'], ['action', 'medas', 'checklist', 'Mediterranean check', '13 everyday habits']] },
     { id: 'mind', name: 'Mind & mood', color: '#b8cde0', items: [['page', 'room.html#mind', 'self_improvement', 'Mindfulness hub', 'Erin Lee’s pauses and podcasts'], ['link', 'https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change', 'article', 'The Quiet Work of Change', 'An essay by Erin'], ['page', 'mental-health.html', 'psychology', 'Mood & calm', 'When to reach for support'], ['page', 'breathe.html', 'air', 'Breathing', 'Guided breath'], ['action', 'mat', 'self_improvement', 'Sit on the mat', 'A session with Erin']] },
     { id: 'move', name: 'Movement', color: '#cfe6c4', items: [['action', 'move', 'directions_run', 'Log movement', 'Minutes, MET-minutes and your week'], ['action', 'moveguide', 'menu_book', 'Movement and your cycle', 'What the research says, with sources']] },
     { id: 'body', name: 'Body & relief', color: '#f5c6b8', items: [['action', 'acu', 'spa', 'Acupressure on your avatar', 'Points for cramps, with evidence'], ['page', 'sleep.html', 'bedtime', 'Sleep & your cycle', 'Why some weeks feel lighter'], ['page', 'face-ppg.html', 'monitor_heart', 'Calm check (experimental)', 'Face camera, not a medical test'], ['page', 'ppg.html', 'fingerprint', 'Finger pulse (experimental)', 'Camera and flash, not a medical test'], ['page', 'stress.html', 'self_improvement', 'Stress scan (experimental)', 'Face camera, not a questionnaire']] },
@@ -1214,11 +1215,25 @@
       img.src = url;
     });
   }
+  /* Where each folder sits: where she put it, or else the first free spot of a 4 by 3 grid that fits the wallpaper. The
+     old default stacked a third row at 96%, below the wallpaper's edge, so a ninth folder (and any new one) was hidden. */
+  function deskSpots(pos) {
+    var cells = [], out = {}, taken = [];
+    for (var r = 0; r < 3; r++) for (var c = 0; c < 4; c++) cells.push([2 + c * 25, 4 + r * 31]);
+    var near = function (a, b) { return Math.abs(a[0] - b[0]) < 18 && Math.abs(a[1] - b[1]) < 24; };
+    FOLDERS.forEach(function (f) { if (pos[f.id]) { out[f.id] = pos[f.id]; taken.push(pos[f.id]); } });
+    FOLDERS.forEach(function (f) {
+      if (out[f.id]) return;
+      var free = cells.filter(function (q) { return !taken.some(function (t) { return near(q, t); }); })[0] || cells[taken.length % cells.length];
+      out[f.id] = free; taken.push(free);
+    });
+    return out;
+  }
   function openLearn() {
-    var p = deskPrefs(); moment('learn');
+    var p = deskPrefs(), spots = deskSpots(p.pos || {}); moment('learn');
     openSheet('learn', 'Your desk', 'Drag the folders around; make it yours', 'computer',
       '<div class="desk"><div class="menubar"><span class="brandy">RHYTHME</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
-      '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f, i) { var q = p.pos[f.id] || [2 + (i % 4) * 25, 4 + Math.floor(i / 4) * 46]; return '<button type="button" class="dicon" data-folder="' + f.id + '" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
+      '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f) { var q = spots[f.id]; return '<button type="button" class="dicon" data-folder="' + f.id + '" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="dock"><button type="button" data-dock="videos" aria-label="Videos"><span class="ms">play_circle</span></button><button type="button" data-dock="mind" aria-label="Erin"><span class="ms">self_improvement</span></button><button type="button" data-dock="acu" aria-label="Acupressure"><span class="ms">spa</span></button><button type="button" data-dock="luna" aria-label="Luna"><span class="ms">dark_mode</span></button><button type="button" data-dock="doctor" aria-label="Share with doctor"><span class="ms">medical_services</span></button></div></div>' +
       '<div class="wallpanel" id="wallpanel"><b>Wallpaper</b><div class="wadjust" id="wallAdjust" hidden><p><span class="ms">open_with</span>Drag your photo on the screen above to move it, and use the slider to zoom.</p><div class="field"><label for="wallZoom">Zoom</label><input type="range" id="wallZoom" min="100" max="300" step="5" value="100"></div><div class="row"><button type="button" class="btn primary" id="wallDone"><span class="ms">check</span>Done</button><button type="button" class="btn ghost" id="wallReset">Reset</button></div></div><div class="walls">' + WALLS.map(function (w) { return '<button type="button" class="wall' + (p.wall === w.id ? ' on' : '') + '" data-wall="' + w.id + '" style="' + (w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY) + '"><span>' + esc(w.name) + '</span></button>'; }).join('') + '<button type="button" class="wall upload' + (p.wall === 'custom' ? ' on' : '') + '" data-wall="custom" style="' + (p.custom ? customWallCss(p).replace(/background-size:[^;]+/, 'background-size:cover') : '') + '"><span class="ms">add_photo_alternate</span><span>' + (p.custom ? 'My photo' : 'Upload a photo') + '</span></button></div><input type="file" id="wallFile" accept="image/*" hidden><div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="deskTidy"><span class="ms">grid_view</span>Tidy the icons</button>' + (p.custom ? '<button type="button" class="btn ghost" id="wallAdjustBtn"><span class="ms">open_with</span>Adjust my photo</button><button type="button" class="btn ghost" id="wallForget"><span class="ms">delete</span>Forget my photo</button>' : '') + '</div><p class="help">Your photo is stored only on this device.</p></div>' +
       '<div class="finder" id="finder"></div><div class="player" id="player"></div>' +
@@ -1303,7 +1318,7 @@
       var dk = e.target.closest('[data-dock]'); if (dk) { var k = dk.dataset.dock; chime('tap'); if (k === 'videos' || k === 'mind' || k === 'doctor') openFolder(k); if (k === 'acu') openAcupressure(); if (k === 'luna') openLuna(); return; }
       if (e.target.closest('.finder .x')) { $('#finder').classList.remove('on'); return; }
       var v = e.target.closest('[data-video]'); if (v) { var meta = VIDEOS.filter(function (x) { return x[0] === v.dataset.video; })[0]; stopVideo(); var pl = $('#player'); pl.innerHTML = '<video controls playsinline poster="assets/eduvid/' + meta[0] + '.jpg" src="assets/eduvid/' + meta[1] + '"></video>'; pl.classList.add('on'); player = pl.querySelector('video'); player.play().catch(function () { }); pl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
-      var act = e.target.closest('[data-action]'); if (act) { var a = act.dataset.action; if (a === 'diary') openDiary(); if (a === 'mat') tap(hotspot('mat')); if (a === 'acu') openAcupressure(); if (a === 'move') openExercise(); if (a === 'moveguide') openMoveGuide(); }
+      var act = e.target.closest('[data-action]'); if (act) { var a = act.dataset.action; if (a === 'diary') openDiary(); if (a === 'mat') tap(hotspot('mat')); if (a === 'acu') openAcupressure(); if (a === 'move') openExercise(); if (a === 'moveguide') openMoveGuide(); if (a === 'medas') openMedas(); if (a.indexOf('recipes') === 0) openRecipes(a.split(':')[1]); }
     });
   }
 
@@ -2245,6 +2260,69 @@
     $('#mgLog').addEventListener('click', function () { chime('tap'); openExercise(); });
   }
 
+  /* ---------- recipes and the Mediterranean check (ovu-recipes.js) ---------- */
+  function recSources(ids) {
+    var refs = window.OvuEvidence ? OvuEvidence.forTopic('recipes').filter(function (e) { return !ids || ids.indexOf(e.id) > -1; }) : [];
+    return '<div class="guide on mvsec"><div class="ev"><b>Sources</b><p class="evrefs">' + refs.map(function (e) { return '<a href="evidence.html#' + e.id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + e.id + '</i></a>'; }).join('') + '</p><span>Guidance, not a diagnosis. Bring questions to a clinician you trust, and look up any number on the <a href="evidence.html" target="_blank" rel="noopener">Evidence page</a>.</span></div></div>';
+  }
+  /* a recipe opens its source's own page in a new tab; we only add a line on what is in it */
+  function recCard(r) {
+    return '<a class="rcard" href="' + esc(r.url) + '" target="_blank" rel="noopener"><span class="ms ric">' + esc(r.icon) + '</span><span class="rtx"><b>' + esc(r.title) + '</b><small>' + esc(r.why) + '</small><i>' + esc(r.src) + '<span class="ms">open_in_new</span></i></span></a>';
+  }
+  function openRecipes(group) {
+    var R = window.OvuRecipes; if (!R) return;
+    if (meditating && !session) exitMeditation();
+    var g = R.GROUPS.filter(function (x) { return x.id === group; })[0] || R.GROUPS[0];
+    openSheet('recipes', 'Recipes', 'From women\'s health and bone health charities', 'restaurant_menu',
+      '<div class="tabs" id="recTabs" role="tablist">' + R.GROUPS.map(function (x) { return '<button type="button" role="tab" aria-selected="' + (x.id === g.id) + '" data-rg="' + x.id + '" class="' + (x.id === g.id ? 'on' : '') + '">' + esc(x.name) + '</button>'; }).join('') + '</div>' +
+      '<p class="rnote">' + esc(g.note) + '</p>' +
+      '<div class="rlist">' + R.forGroup(g.id).map(recCard).join('') + '</div>' +
+      '<h4 class="rsub"><span class="ms">location_on</span>Eating in Singapore</h4><div class="rlist">' + R.LOCAL.map(recCard).join('') + '</div>' +
+      '<div class="row"><button type="button" class="btn primary" id="recMedas"><span class="ms">checklist</span>Mediterranean check</button></div>' +
+      recSources(g.id === 'pcos' ? ['E73', 'E74', 'E75', 'E82'] : g.id === 'meno' ? ['E76', 'E82'] : ['E79', 'E80', 'E81', 'E82']));
+    $('#recTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-rg]'); if (!b || b.dataset.rg === g.id) return; chime('tap'); openRecipes(b.dataset.rg); });
+    $('#recMedas').addEventListener('click', function () { chime('tap'); openMedas(); });
+  }
+  /* The checklist answers itself as she taps: each answer is kept on this phone (state.medas) and nothing is graded. */
+  function openMedas() {
+    var R = window.OvuRecipes; if (!R) return;
+    if (meditating && !session) exitMeditation();
+    var C = R.MEDAS_COPY, saved = S.state().medas || {}, ans = {};
+    R.MEDAS.forEach(function (it) { var v = saved.answers && saved.answers[it.id]; if (v === true || v === false) ans[it.id] = v; });
+    openSheet('medas', 'Mediterranean check', '13 everyday habits, no grades', 'checklist',
+      '<p class="rnote">' + esc(C.intro) + '</p>' +
+      '<div class="mcount" aria-live="polite"><b id="mdYes"></b><span id="mdOf"></span></div>' +
+      '<div class="mqs">' + R.MEDAS.map(function (it, i) {
+        return '<div class="mq" data-mq="' + it.id + '"><p><b>' + (i + 1) + '.</b> ' + esc(it.q) + (it.hint ? '<small>' + esc(it.hint) + '</small>' : '') + '</p>' +
+          '<div class="yn" role="group" aria-label="' + esc(it.q) + '"><button type="button" data-yn="1" aria-pressed="false">Yes</button><button type="button" data-yn="0" aria-pressed="false">Not yet</button></div></div>';
+      }).join('') + '</div>' +
+      '<div id="mdIdeas"></div>' +
+      '<p class="help">' + esc(C.wine) + '</p>' +
+      '<div class="row"><button type="button" class="btn" id="mdClear"><span class="ms">restart_alt</span>Clear my answers</button><button type="button" class="btn primary" id="mdRecipes"><span class="ms">restaurant_menu</span>All recipes</button></div>' +
+      recSources(['E77', 'E78', 'E80']));
+    function paint() {
+      var sc = R.score(ans);
+      $('#mdYes').textContent = sc.answered ? sc.yes + ' of ' + sc.of : 'Tap Yes or Not yet';
+      $('#mdOf').textContent = sc.answered ? (sc.answered < sc.of ? sc.answered + ' of ' + sc.of + ' answered' : 'habits already in your week') : 'for each habit, as your week usually goes';
+      body.querySelectorAll('.mq').forEach(function (row) {
+        var v = ans[row.dataset.mq];
+        row.querySelectorAll('[data-yn]').forEach(function (b) { var on = (b.dataset.yn === '1') === v && v !== undefined; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+      });
+      var ideas = R.ideasFor(ans).slice(0, 6), drinks = sc.missing.indexOf('drinks') > -1;
+      $('#mdIdeas').innerHTML = ideas.length || drinks ? '<h4 class="rsub"><span class="ms">lightbulb</span>Ideas for your “not yet”</h4>' + (drinks ? '<p class="rnote">' + esc(C.drinks) + '</p>' : '') + '<div class="rlist">' + ideas.map(function (x) { return recCard(x.recipe); }).join('') + '</div>' : '';
+    }
+    function keep() { S.setState({ medas: { v: 1, at: new Date().toISOString(), answers: ans } }); }
+    body.querySelector('.mqs').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-yn]'); if (!b) return;
+      var id = b.closest('.mq').dataset.mq, v = b.dataset.yn === '1';
+      if (ans[id] === v) delete ans[id]; else ans[id] = v; /* a second tap on the same answer takes it back */
+      chime('tap'); keep(); paint();
+    });
+    $('#mdClear').addEventListener('click', function () { ans = {}; S.setState({ medas: null }); chime('tap'); paint(); });
+    $('#mdRecipes').addEventListener('click', function () { chime('tap'); openRecipes('every'); });
+    paint();
+  }
+
   /* ---------- acupressure: numbered points on your avatar, then a zoomed locator ---------- */
   var acuData = null;
   /* region illustrations (Seedream, 18 Oct) and where each point sits on them, percent of the image */
@@ -2846,7 +2924,7 @@
     var hk = (location.hash || '').slice(1);
     if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
     else if (!S.profile().onboarded && !S.state().welcomeSeen) showWelcome();
-    else setTimeout(function () { requireConsent(function () { if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk); }); }, hk ? 600 : 0);
+    else setTimeout(function () { requireConsent(function () { if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'medas') openMedas(); else if (hk === 'recipes') openRecipes(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk); }); }, hk ? 600 : 0);
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
     setTimeout(function () { $('#loading').classList.add('hidden'); joy(); }, 500);
     scheduleLife();
