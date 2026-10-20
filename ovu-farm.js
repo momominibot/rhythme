@@ -135,10 +135,17 @@
   }
   /* the big watering can: every planted, weed-free bed not yet watered today gets its day, for the energy of one watering */
   function dryBeds(S, day) { var f = farmState(S); return BEDS.filter(function (bb) { var b = f.beds[bb.id]; return b && b.crop && !ripe(b) && !hasWeeds(b, bb.id, day) && !wateredToday(b, day) && !(b.planted && day < b.planted) && !((b.watered || []).slice(-1)[0] >= day); }).map(function (bb) { return bb.id; }); }
-  function waterAll(S, day) {
-    var f = farmState(S); if (!f.tools.bigcan) return { ok: false, why: 'The big watering can is in the shed, for hearts.' };
+  /* every dry bed gets its day on a copy, and the copy is written once: with ST (OvuStamina) the energy of one watering is
+   * charged in the same save, so a failed save waters nothing and charges nothing (Codex review, 20 Oct) */
+  function waterAll(S, day, ST) {
+    var f = copy(farmState(S)); if (!f.tools.bigcan) return { ok: false, why: 'The big watering can is in the shed, for hearts.' };
     var ids = dryBeds(S, day); if (!ids.length) return { ok: false, why: 'Every bed has had its water today.' };
-    var n = 0; ids.forEach(function (id) { if (water(S, id, day).ok) n++; }); return { ok: n > 0, n: n };
+    ids.forEach(function (id) { var b = f.beds[id]; b.watered = (b.watered || []).concat([day]); });
+    try {
+      if (ST && ST.spendWith) { if (!ST.spendWith('water', { farm: f })) return { ok: false, why: 'Too tired for that. A rest first.' }; }
+      else if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f });
+    } catch (e) { return { ok: false, why: e.message }; }
+    return { ok: true, n: ids.length, charged: !!ST };
   }
   function summary(S, day) {
     var f = farmState(S), out = { planted: 0, ripe: 0, weeds: 0, dry: 0, harvest: f.harvest, seeds: f.seeds, seedsLeft: seedsLeftToday(S, day) };
@@ -230,12 +237,12 @@
       if (kind === 'clear') res = clearWeeds(S, id, now);
       else if (kind === 'water') res = water(S, id, now);
       else if (kind === 'harvest') res = harvest(S, id);
-      else if (kind === 'waterall') { res = waterAll(S, now); if (res.ok) kind = 'water'; if (res.ok) res.all = res.n; }
+      else if (kind === 'waterall') { res = waterAll(S, now, ST); if (res.ok) { kind = 'water'; res.all = res.n; } }
       else if (kind === 'plant') res = plant(S, id, btn.dataset.crop, now);
       else if (kind === 'shedplant') { var got = takeSeed(S, btn.dataset.crop, now); res = got && got.ok ? plant(S, id, btn.dataset.crop, now) : got; if (res && res.ok) kind = 'plant'; }
       if (!res) return;
       if (!res.ok) { R.toast(res.why, 'info'); return; }
-      act(kind); R.chime('save'); renderBeds();
+      if (!res.charged) act(kind); R.chime('save'); renderBeds(); /* the big can already paid its energy in the same save */
       if (kind === 'harvest') { afterHarvest(res); return; }
       /* each care step is a small mindful moment: she kneels to plant or pull weeds, waters, gathers (ovu-moments.js) */
       var mo = function (k) { return R.moment ? R.moment(k, { quiet: true }) : ''; };

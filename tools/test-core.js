@@ -370,6 +370,39 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the big watering can waters every dry bed once, and only once a day', cn.ok && wa.ok && wa.n === 3 && dry.every(function (id) { return F.wateredToday(F.bed(S, id), t); }) && !F.waterAll(S, t).ok);
 })();
 
+(function phase1ReviewFixes() {
+  console.log('2k. Codex review of Phase 1: a full disk never half-buys, update day never pays twice, clocks cannot reopen caps');
+  var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, t = S.today();
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  var F = w.OvuFarm, ls = w.localStorage, realSet = ls.setItem;
+  function full(on) { ls.setItem = on ? function () { throw new Error('QuotaExceededError'); } : realSet; }
+  var l = RW.ledger(); l.hearts = 100; S.setState({ rewards: l });
+  full(true); var r = F.buyPack(S, RW, 'radish'); full(false);
+  check('a seed pack bought while storage is full fails and leaves hearts and seeds exactly as they were, in memory too', !r.ok && RW.ledger().hearts === 100 && (F.farmState(S).seeds.radish || 0) === 0, JSON.stringify(r));
+  check('after the disk frees up, one purchase takes one price', F.buyPack(S, RW, 'radish').ok && RW.ledger().hearts === 90 && F.farmState(S).seeds.radish === 3);
+  l = RW.ledger(); l.hearts = 500; S.setState({ rewards: l }); F.buyTool(S, RW, 'bigcan');
+  var ids = F.BEDS.filter(function (b) { return !F.hasWeeds(null, b.id, t); }).slice(0, 2).map(function (b) { return b.id; });
+  ids.forEach(function (id) { F.plant(S, id, 'radish', t); });
+  full(true); var wa = F.waterAll(S, t); full(false);
+  check('the big can with storage full waters nothing (no half-watered farm)', !wa.ok && ids.every(function (id) { return !F.wateredToday(F.bed(S, id), t); }));
+  var stub = { spends: 0, spendWith: function (a, patch) { this.spends++; S.commit(Object.assign({ stamina: { v: 50, max: 100, day: t } }, patch)); return true; } };
+  var wb = F.waterAll(S, t, stub);
+  check('the big can charges one watering in the same save as the beds', wb.ok && wb.charged && stub.spends === 1 && ids.every(function (id) { return F.wateredToday(F.bed(S, id), t); }) && S.state().stamina.v === 50);
+  /* an install updated mid-day: the old rule paid a meal this morning */
+  var w2 = fresh(), S2 = w2.OvuStore, R2 = w2.OvuRewards, l2 = R2.ledger();
+  l2.log = [{ at: new Date().toISOString(), type: 'food', points: 6 }]; l2.hearts = 6; l2.earned = 6; delete l2.daily; S2.setState({ rewards: l2 });
+  check('on update day a meal the old rule already paid today does not pay again', R2.award(S2.add('food', S2.today(), { meal: 'dinner', foods: 'soup' }, 'room')).points === 0 && R2.award(S2.add('sleep', S2.today(), { bedTime: '23:00', wakeTime: '07:00', quality: 3 }, 'room')).points === 10);
+  /* practice: earn the day's cap, a later day, then the clock goes back */
+  var w3 = fresh(), S3 = w3.OvuStore, R3 = w3.OvuRewards, l3 = R3.ledger(); l3.dailyLast = S3.addDays(S3.today(), 1); S3.setState({ rewards: l3 });
+  var pr = R3.award(S3.add('mindfulness', S3.today(), { kind: 'informal', minutes: 2, completed: true }, 'room'));
+  check('a clock set back cannot reopen an earlier day’s practice cap', pr.points === 0);
+  var ST = { restedEnough: null }; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-stamina.js'), 'utf8'), w3, { filename: 'ovu-stamina.js' }); ST = w3.OvuStamina;
+  var now = 1e12, at = new Date(now - 4 * 3600000).toISOString();
+  check('rest: the phone clock says four hours, but the open app’s own timer saw twenty minutes, so no refill', ST.restedEnough(at, now) && !ST.restedEnough(at, now, { at: at, t: 0, now: 20 * 60000 }) && ST.restedEnough(at, now, { at: at, t: 0, now: 4 * 3600000 }) && ST.restedEnough(at, now, { at: 'another night', t: 0, now: 60000 }));
+  var room = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('a wake sheet left open in another tab cannot save the same night twice', room.indexOf("This night was already saved.") > -1 && room.indexOf("var cur = S.state().sleeping; if (!cur") > -1);
+})();
+
 (function noPeriodStatementsAreNotFlow() {
   console.log('3. "has not returned", "no period", "not bleeding" are no-period observations, never a period entry');
   var w = fresh(), O = w.OvuOrb, S = w.OvuStore;

@@ -195,6 +195,16 @@
   function setProfile(patch) { Object.assign(load().profile, patch); save('profile'); return profile(); }
   function state() { return load().state; }
   function setState(patch) { Object.assign(load().state, patch); save('state'); return state(); }
+  /* a write that lands whole or leaves memory exactly as it was: a purchase must never take hearts without the item, or give
+   * the item without the hearts, when storage is full (Codex review, 20 Oct). Patch values must be new objects, not edited
+   * live ones, so the old ones are still there to put back. */
+  function commit(patch) {
+    var st = load().state, had = {}, prev = {};
+    Object.keys(patch).forEach(function (k) { had[k] = Object.prototype.hasOwnProperty.call(st, k); prev[k] = st[k]; });
+    Object.assign(st, patch);
+    try { save('state'); } catch (e) { Object.keys(prev).forEach(function (k) { if (had[k]) st[k] = prev[k]; else delete st[k]; }); throw e; }
+    return state();
+  }
 
   /* ---------- derived: sleep ---------- */
   function sleepHours(d) {
@@ -462,7 +472,7 @@
     load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
     putEvent: putEvent, applyRemote: applyRemote,
     addMany: addMany, removeWhere: removeWhere,
-    profile: profile, setProfile: setProfile, state: state, setState: setState,
+    profile: profile, setProfile: setProfile, state: state, setState: setState, commit: commit,
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
     sleepHours: sleepHours, sleepStats: sleepStats, periodEpisodes: periodEpisodes, cycleStats: cycleStats, rhythmFromRecall: rhythmFromRecall,
     exportJSON: exportJSON, importJSON: importJSON, clearAll: clearAll,

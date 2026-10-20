@@ -49,6 +49,8 @@
     if (!l.daily || l.daily.day !== day) {
       l.daily = { day: day, kinds: {} };
       if (l.moveDay && l.moveDay.day === day && l.moveDay.pts > 0) l.daily.kinds.exercise = 1; /* movement already paid today under the old rule */
+      /* kinds the old rule already paid today (an install updated mid-day): read today's history so nothing earns twice */
+      (l.log || []).forEach(function (x) { if (x && x.at && RULES[x.type] > 0 && (x.points || 0) > 0 && S.today(new Date(x.at)) === day) l.daily.kinds[x.type] = 1; });
     }
     if (l.daily.kinds[kind]) return 0;
     l.daily.kinds[kind] = 1; l.dailyLast = day; return pts;
@@ -73,9 +75,10 @@
   function practicePoints(l, ev) {
     var d = ev.data || {}, day = S.today();
     if ((d.kind === 'breathtap' || d.kind === 'lightflower') && (Number(d.seconds) || 0) < 60) return 0; /* the tap games count once a session reaches a full minute */
+    if (l.dailyLast && day < l.dailyLast) return 0; /* a clock set back to an earlier day cannot reopen that day's cap (Codex review, 20 Oct) */
     if (!l.mindDay || l.mindDay.day !== day) l.mindDay = { day: day, pts: 0 };
     var add = Math.max(0, Math.min(PRACTICE.points, PRACTICE.cap - l.mindDay.pts));
-    l.mindDay.pts += add; return add;
+    l.mindDay.pts += add; if (add) l.dailyLast = day; return add;
   }
   /* Award for a saved entry; a first log on a new day also grows the streak. */
   /* a saved record earns once: editing it again returns the same receipt and no hearts */
@@ -103,12 +106,13 @@
   /* pay hearts for something that lives elsewhere (farm seeds and unlocks): the hearts and the thing bought are written in
      one save, so a failed write never takes hearts without giving the seeds */
   function spend(cost, what, patch) {
-    var l = ledger(); cost = Math.max(0, Math.round(Number(cost) || 0));
+    var l = JSON.parse(JSON.stringify(ledger())); cost = Math.max(0, Math.round(Number(cost) || 0)); /* a copy: the live ledger is untouched until the save lands */
     if (!cost) throw new Error('Nothing to pay.');
     if (l.hearts < cost && !tester()) throw new Error('You need ' + (cost - l.hearts) + ' more hearts.');
     if (!tester()) l.hearts -= cost;
     l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'spend', what: String(what || ''), points: -cost }); l.log = l.log.slice(0, 200);
-    var p = { rewards: l }; Object.keys(patch || {}).forEach(function (k) { p[k] = patch[k]; }); S.setState(p); return l;
+    var p = { rewards: l }; Object.keys(patch || {}).forEach(function (k) { p[k] = patch[k]; });
+    if (S.commit) S.commit(p); else S.setState(p); return l;
   }
   function buy(id) {
     var l = ledger(), item = SHOP.filter(function (s) { return s.id === id; })[0];
