@@ -526,28 +526,7 @@
     });
     return true;
   }
-  /* the mini-map is a shortcut: a door a short walk away (FAR iso units, about two and a half seconds) is walked to and then
-   * faded through; a far one (the other end of the wide street), an unreachable one, or none at all fades straight away */
-  function walkOrFade(d, to) {
-    var res = d ? plan(worldNow(), R.pos(), { x: d.x, y: d.y }, 2) : null;
-    if (!res || res.cost > FAR) { travel(to); return; }
-    R.chime('tap'); R.cancelIdle(); R.walkTo({ x: d.x, y: d.y, flip: !!d.flip }, function () { if (!R.busy()) travel(to); });
-  }
-  /* mini-map tap: walk to the door that leads there if it is near, then fade */
-  function goTo(sceneId) {
-    var L = R.layout(); if (travelling || R.busy()) return;
-    if (sceneOf(L) === sceneId && !R.visiting()) return;
-    if (active) commit();
-    var d = R.visiting() ? null : (L.doors || []).filter(function (x) { return x.to === sceneId; })[0];
-    walkOrFade(d, sceneId);
-  }
-  /* a store sub-stop on the mini-map: on the street its door the same way, inside another store fade across */
-  function goToStore(layoutId) {
-    var L = R.layout(); if (travelling || R.busy() || !R.LAYOUTS[layoutId] || L.id === layoutId) return;
-    if (active) commit();
-    var d = L.id === 'street' ? (L.doors || []).filter(function (x) { return x.to === layoutId; })[0] : null;
-    walkOrFade(d, layoutId);
-  }
+  /* there are no place shortcuts (Jamie, 20 Oct): she walks through doors, and the map (ovu-map.js) shows the way */
   /* the door of every home leads into the garden */
   R.hotspotHandlers.door = function (id, L) { if (sceneOf(L) !== 'home') return false; travel('garden'); return true; };
   /* bed, wardrobe, mat and the rest are at home: from anywhere else, go home first and tap there */
@@ -560,16 +539,14 @@
     };
   });
 
-  /* ---------- controls: the mini-map, keys for desktop, and floor taps ---------- */
+  /* ---------- controls: the where-you-are pill, keys for desktop, and floor taps ---------- */
   function buildControls() {
+    /* one pill names the place she is in and opens the map; it never moves her */
     mini = doc.createElement('nav'); mini.className = 'minimap'; mini.id = 'minimap'; mini.setAttribute('aria-label', 'Where you are');
-    mini.innerHTML = [['home', 'home', 'Home'], ['garden', 'yard', 'Garden'], ['street', 'storefront', 'Street'], ['plaza', 'groups', 'Plaza']].map(function (s) { return '<button type="button" data-scene="' + s[0] + '" aria-label="' + s[2] + '"><span class="ms">' + s[1] + '</span><i>' + s[2] + '</i></button>'; }).join('');
-    var sub = doc.createElement('div'); sub.className = 'minimap-sub'; sub.id = 'minimapSub';
-    sub.innerHTML = [['shop-pet', 'pets', 'Pets', 'Whisker & Paw'], ['shop-furniture', 'chair', 'Furniture', 'The Cosy Nook'], ['shop-homes', 'cottage', 'Homes', 'Moonrise Homes']].map(function (s) { return '<button type="button" data-sub="' + s[0] + '" aria-label="' + s[3] + '"><span class="ms">' + s[1] + '</span><i>' + s[2] + '</i></button>'; }).join('');
-    mini.appendChild(sub);
+    mini.innerHTML = '<button type="button" id="mapBtn" aria-label="Map"><span class="ms">location_on</span><i id="mapHere">Home</i></button>';
     scene.appendChild(mini);
     fade = doc.createElement('div'); fade.className = 'scenefade'; fade.setAttribute('aria-hidden', 'true'); scene.appendChild(fade);
-    mini.addEventListener('click', function (e) { var sb = e.target.closest('[data-sub]'); if (sb) { e.stopPropagation(); goToStore(sb.dataset.sub); return; } var b = e.target.closest('[data-scene]'); if (b) { e.stopPropagation(); goTo(b.dataset.scene); } });
+    mini.addEventListener('click', function (e) { if (!e.target.closest('#mapBtn')) return; e.stopPropagation(); if (travelling || R.busy()) return; if (root.OvuMap && root.OvuMap.open) { R.chime('tap'); root.OvuMap.open(); } });
     mini.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
     /* a tap on the floor (the scene swallows the click that follows a pan or a pinch, so only real taps arrive) */
     inner.addEventListener('click', onFloorTap);
@@ -591,9 +568,8 @@
   function lightMini(L) {
     if (!mini) return; var s = sceneOf(L), visit = !!R.visiting();
     mini.classList.toggle('hidden', visit && s === 'home' && !!(root.OvuCommunity && root.OvuCommunity.visiting()));
-    Array.prototype.slice.call(mini.querySelectorAll('[data-scene]')).forEach(function (b) { b.classList.toggle('on', b.dataset.scene === s); b.setAttribute('aria-current', b.dataset.scene === s ? 'location' : 'false'); });
-    mini.classList.toggle('sub-on', s === 'street');
-    Array.prototype.slice.call(mini.querySelectorAll('[data-sub]')).forEach(function (b) { b.classList.toggle('on', b.dataset.sub === L.id); });
+    var name = root.OvuMap && root.OvuMap.hereName ? root.OvuMap.hereName() : s === 'home' ? 'Home' : String((L && L.name) || '').replace(/^(?:your|the)\s+/i, ''), t = doc.getElementById('mapHere'), b = doc.getElementById('mapBtn');
+    if (t) t.textContent = name; if (b) b.setAttribute('aria-label', 'Map. You are ' + (name === 'Home' ? 'at home' : 'in ' + name) + '.');
     scene.classList.toggle('outdoors', s !== 'home'); scene.classList.toggle('visiting', visit);
   }
   /* opt-in overlay: zones, solids, door triggers, stand points and the walkable cells over the plate (OvuWalk.debug(true)) */
@@ -622,6 +598,6 @@
     if (R.setWalkTo) R.setWalkTo(routeTo); /* the room's own walks route around furniture */
   }
   W.setSpeedScale = function (k) { speedScale = Math.min(1, Math.max(0.4, Number(k) || 1)); }; W.speedScale = function () { return speedScale; };
-  W.travel = travel; W.goTo = goTo; W.goToStore = goToStore; W.mount = mount; W.walking = function () { return active; }; W.travelling = function () { return !!travelling; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(); }; W.routeTo = routeTo; W.OCC_CAP = OCC_CAP; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
+  W.travel = travel; W.mount = mount; W.walking = function () { return active; }; W.travelling = function () { return !!travelling; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(); }; W.routeTo = routeTo; W.OCC_CAP = OCC_CAP; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
   R.on('boot', mount);
 })(window);
