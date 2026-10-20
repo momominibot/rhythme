@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
   try {
     r = await fetch("https://search.openfoodfacts.org/search?q=" + encodeURIComponent(q) + "&page_size=40&fields=" + FIELDS, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "Rhythme/1.0 (https://momominibot.github.io/ovumind.github.io/)" },
+      headers: { "User-Agent": "Rhythme/1.0 (https://momominibot.github.io/rhythme/)" },
     });
   } catch {
     clearTimeout(timer);
