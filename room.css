@@ -1862,3 +1862,6 @@ html[data-sky="night"] .cimark.uns{background:#2f5a45;color:#c8f0da}
 .farmsteps small{display:block;font-size:12.5px;line-height:1.45;color:#5d4f6c}
 /* the consent notice keeps its light look: a withdrawal that did not reach the account is said plainly above the button */
 .consent .c-err{margin:8px 0 10px;padding:9px 12px;border-radius:12px;background:#fdecef;color:#8a2140;font:700 12.5px/1.45 var(--sans)}
+
+/* large text in the room (ovu-textsize.js): everything around the plate grows; the plate, the avatar and taps on them stay true */
+html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud){zoom:var(--tz,1)}
