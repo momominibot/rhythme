@@ -709,12 +709,14 @@ async def main():
             # Erin's practice started mid-minute (from the Mind tab, say): the minute steps aside and her practice keeps the HUD;
             # a minute cannot start over a practice (Codex review, 20 Oct)
             await page.evaluate("()=>{OvuGreenhouse.setPace(1500); OvuGreenhouse.startCare('hoya');}"); await page.wait_for_timeout(300)
-            await page.evaluate("()=>OvuRoom.openEveryday('coffee')"); await page.wait_for_selector('#actStart', timeout=10000); await page.click('#actStart'); await page.wait_for_timeout(2600)
+            await page.evaluate("()=>OvuRoom.openEveryday('coffee')"); await page.wait_for_selector('#actStart', timeout=10000); await page.click('#actStart'); await page.wait_for_timeout(700)
             ov = await page.evaluate("()=>({care: OvuGreenhouse.caring(), practice: OvuRoom.practiceOn(), hud: document.querySelector('#hud').classList.contains('on'), title: document.querySelector('#hudTitle').textContent})")
             await page.evaluate("()=>OvuGreenhouse.startCare('monstera')"); await page.wait_for_timeout(200)
             ov["refused"] = await page.evaluate("()=>OvuGreenhouse.caring()===null")
             await page.evaluate("()=>{OvuRoom.stopEverything && OvuRoom.stopEverything(); OvuRoom.closeSheet && OvuRoom.closeSheet();}"); await page.wait_for_timeout(500)
-            check("Erin's practice started mid-minute takes over: the minute steps aside, her HUD stays, and no minute starts over it", ov["care"] is None and ov["practice"] and ov["hud"] and ov["title"] == "Morning coffee or tea" and ov["refused"], ov)
+            await page.wait_for_timeout(6500) # past the hoya minute's own end at the test pace: nothing may save
+            ov["savedAfter"] = await page.evaluate("()=>OvuStore.list('mindfulness').filter(function(e){return e.data && e.data.practice==='greenhouse'}).length")
+            check("Erin's practice started mid-minute takes over at once: the minute steps aside, her HUD stays, nothing saves later, and no minute starts over it", ov["care"] is None and ov["practice"] and ov["hud"] and ov["title"] == "Morning coffee or tea" and ov["refused"] and ov["savedAfter"] == 1, ov)
             await page.evaluate("()=>{OvuGreenhouse.setPace(0); OvuStore.setProfile({outfit:'base'}); OvuRoom.restorePose();}")
             check("a mindful minute with the monstera: she mists it in her own outfit with the HUD guiding, it ends by itself and saves one minute", cr["caring"] == "monstera" and "act-plants-sundress" in (cr["img"] or "") and cr["hud"] and cr["ours"] and after["caring"] is None and not after["hud"], [cr, after])
             check("a stopped minute saves nothing and finishing twice saves once", stopped["caring"] is None and not stopped["hud"] and len(saved) == 1 and saved[0]["plant"] == "monstera" and saved[0]["minutes"] == 1, [stopped, saved])
