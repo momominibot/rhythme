@@ -98,6 +98,8 @@ A fifth Codex check passed those and found two more, both fixed with checks:
 - With storage failing, putting her outfit back threw before the save prompt opened: that step can no longer stop the prompt.
 - If Erin's guide ended while another form was open (a symptoms note, say), the save prompt replaced it and lost the typing: the prompt now waits until that form is closed, with a toast saying so.
 
+A sixth Codex check found one: a log saved during brushing (Cycle, Save day) played its own moment and left her standing. Moments now leave her pose alone while Morning start runs.
+
 Not taken, and why:
 - Hearts without saving (Doubao): the honesty confirm before any hearts is Jamie's rule, and separating them needs a second reward ledger. The entry stays on her phone unless she has turned on sync, which has its own consent.
 - A confirmation on Stop (Doubao): Stop after 30 s already opens a sheet with "Not this time"; under 30 s nothing is lost but the moment.

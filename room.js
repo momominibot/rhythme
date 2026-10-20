@@ -2356,7 +2356,7 @@
     if (!MO || !MO.MOMENTS[key]) return '';
     opt = opt || {};
     var text = opt.line || MO.line(key), pose = opt.pose === undefined ? MO.pose(key) : opt.pose;
-    if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn) return text;
+    if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn || (window.OvuMorning && OvuMorning.active())) return text; /* Morning start keeps its own pose */
     /* while she walks the pose waits, a few times at most, and never starts over a walk (Codex branch review, 20 Oct) */
     if (avatar.classList.contains('walking') || (hooks.moving && hooks.moving())) {
       var tries = (opt.tries || 0) + 1; clearTimeout(momentRetry);
