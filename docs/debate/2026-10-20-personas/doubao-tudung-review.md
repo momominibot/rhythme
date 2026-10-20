@@ -9,4 +9,6 @@ It was asked to judge as a Malay Muslim woman in Singapore would, plainly, and t
 - **Outfit problems:** act-outfit-tudung: The dress on the hanger is a sleeveless pinafore-style dress, not a baju kurung and not modest if worn alone; the avatar herself is dressed properly.
 - **Other concerns:** none
 
-What was done with the one note: the wardrobe pose (`act-outfit`) holds the same sleeveless dress on a hanger in every outfit, because it is drawn from one pose image. She is not wearing it, and Doubao found her own clothes proper. A version with a baju kurung on the hanger needs a new render go-ahead, so it is left for Jamie to decide.
+What was done with the one note: the wardrobe pose (`act-outfit`) holds the same sleeveless dress on a hanger in every outfit, because it is drawn from one pose image. She is not wearing it, and Doubao found her own clothes proper. A version with a baju kurung on the hanger needs a new render go-ahead, so it was left for Jamie to decide.
+
+Jamie chose the redraw (20 Oct). One single-reference render (Seedream 5.0 pro, seed 77, 31.6 s, no failure) edited only the hanger: the tudung wardrobe pose now holds a lilac baju kurung, a long-sleeved knee-length tunic over an ankle-length skirt with a small floral trim. Her own figure, size and pose are unchanged. The other outfits keep the dress on the hanger.
