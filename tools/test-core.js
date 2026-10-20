@@ -362,6 +362,82 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('after Light Flower she listens, with a line about noticing', MO.forEntry({ type: 'mindfulness', data: { kind: 'lightflower' } }) === 'lightflower' && MO.pose('lightflower') === 'listen');
 })();
 
+(function heartsLoopAndFarmShop() {
+  console.log('2j. hearts: each kind of log earns once a day, nothing twice; hearts buy seed packs, local crops and farm tools, saved in one write');
+  var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, t = S.today();
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  var F = w.OvuFarm;
+  var food = [1, 2, 3].map(function () { return RW.award(S.add('food', t, { meal: 'lunch', foods: 'chicken rice' }, 'room')).points; });
+  check('three identical lunches earn once (6, 0, 0)', food.join(',') === '6,0,0', food.join(','));
+  var sy = S.add('symptom', t, { symptoms: ['cramps'] }, 'room'), a1 = RW.award(sy).points; S.remove(sy.id); var a2 = RW.award(S.add('symptom', t, { symptoms: ['cramps'] }, 'room')).points;
+  check('deleting and re-making a symptom earns nothing the second time', a1 === 8 && a2 === 0, a1 + ',' + a2);
+  check('each kind still earns once: a night of sleep and a period day are 10 each', RW.award(S.add('sleep', t, { bedTime: '23:00', wakeTime: '07:00', quality: 3 }, 'room')).points === 10 && RW.award(S.add('period', t, { flow: 'medium' }, 'room')).points === 10);
+  var back = S.add('food', S.addDays(t, -6), { meal: 'dinner', foods: 'soup' }, 'room');
+  check('a backfilled day earns nothing extra: the award is for the day she logs, not the day logged', RW.award(back).points === 0);
+  check('editing a saved entry earns nothing again, and weight never earns', RW.award(sy).points === 0 && RW.award(S.add('weight', t, { kg: 55 }, 'scale')).points === 0);
+  var left = RW.todayLeft();
+  check('the hearts card can say what is left to earn today', left.indexOf('food') < 0 && left.indexOf('sleep') < 0 && left.indexOf('reflection') > -1 && left.indexOf('exercise') > -1);
+  var l = RW.ledger(); l.dailyLast = S.addDays(t, 30); S.setState({ rewards: l });
+  check('a clock set back earns nothing until the real date passes the last day that earned', RW.award(S.add('reflection', t, { text: 'calm' }, 'room')).points === 0);
+  l = RW.ledger(); l.dailyLast = t; l.hearts = 5; S.setState({ rewards: l });
+  var f0 = JSON.stringify(S.state().farm || null), h0 = RW.ledger().hearts, threw = false;
+  try { RW.spend(40, 'test', { farm: { seeds: { radish: 9 } } }); } catch (e) { threw = /more hearts/.test(e.message); }
+  check('spending more hearts than she has is refused and changes nothing', threw && RW.ledger().hearts === h0 && JSON.stringify(S.state().farm || null) === f0);
+  check('the first five crops are free to grow; local crops wait for hearts', F.STARTER.every(function (k) { return F.canGrow(F.farmState(S), k); }) && !F.canGrow(F.farmState(S), 'kangkong') && !F.takeSeed(S, 'kangkong', t).ok && !F.buyPack(S, RW, 'kangkong').ok);
+  var before = JSON.stringify(S.state().farm || null), u0 = F.unlockCrop(S, RW, 'kangkong');
+  check('unlocking with too few hearts says so and leaves the farm exactly as it was', !u0.ok && /more hearts/.test(u0.why) && JSON.stringify(S.state().farm || null) === before && RW.ledger().hearts === 5);
+  l = RW.ledger(); l.hearts = 400; S.setState({ rewards: l });
+  var u1 = F.unlockCrop(S, RW, 'kangkong');
+  check('kangkong unlocked for 40 hearts, with one seed to start, and then grows from the free shed too', u1.ok && RW.ledger().hearts === 360 && (F.farmState(S).seeds.kangkong || 0) === 1 && F.canGrow(F.farmState(S), 'kangkong') && F.takeSeed(S, 'kangkong', t).ok && !F.unlockCrop(S, RW, 'kangkong').ok);
+  var pk = F.buyPack(S, RW, 'radish');
+  check('a seed pack is 3 seeds for 10 hearts, hearts and seeds in one save', pk.ok && pk.n === 3 && RW.ledger().hearts === 350 && (F.farmState(S).seeds.radish || 0) >= 3 && RW.ledger().log[0].what === 'seeds:radish');
+  var sh = F.buyTool(S, RW, 'shelf');
+  check('the seed shelf gives five free seeds a day instead of three', sh.ok && F.seedsADay(F.farmState(S)) === 5 && RW.ledger().hearts === 200 && !F.buyTool(S, RW, 'shelf').ok);
+  var cn = F.buyTool(S, RW, 'bigcan'), dry = F.BEDS.filter(function (b) { return !F.hasWeeds(null, b.id, t); }).slice(0, 3).map(function (b) { return b.id; });
+  dry.forEach(function (id) { var f = F.farmState(S); f.seeds.radish = (f.seeds.radish || 0) + 1; S.setState({ farm: f }); F.plant(S, id, 'radish', t); });
+  var wa = F.waterAll(S, t);
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('the breathing session never asks for a hold: in gently, out slowly (Codex, 20 Oct)', rs.indexOf("setOrb('hold', 'Hold')") < 0 && rs.indexOf('Breathe out slowly') > -1 && rs.indexOf('Breathe in gently') > -1);
+  check('the big watering can waters every dry bed once, and only once a day', cn.ok && wa.ok && wa.n === 3 && dry.every(function (id) { return F.wateredToday(F.bed(S, id), t); }) && !F.waterAll(S, t).ok);
+})();
+
+(function phase1ReviewFixes() {
+  console.log('2k. Codex review of Phase 1: a full disk never half-buys, update day never pays twice, clocks cannot reopen caps');
+  var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, t = S.today();
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  var F = w.OvuFarm, ls = w.localStorage, realSet = ls.setItem;
+  function full(on) { ls.setItem = on ? function () { throw new Error('QuotaExceededError'); } : realSet; }
+  var l = RW.ledger(); l.hearts = 100; S.setState({ rewards: l });
+  full(true); var r = F.buyPack(S, RW, 'radish'); full(false);
+  check('a seed pack bought while storage is full fails and leaves hearts and seeds exactly as they were, in memory too', !r.ok && RW.ledger().hearts === 100 && (F.farmState(S).seeds.radish || 0) === 0, JSON.stringify(r));
+  check('after the disk frees up, one purchase takes one price', F.buyPack(S, RW, 'radish').ok && RW.ledger().hearts === 90 && F.farmState(S).seeds.radish === 3);
+  l = RW.ledger(); l.hearts = 500; S.setState({ rewards: l }); F.buyTool(S, RW, 'bigcan');
+  var ids = F.BEDS.filter(function (b) { return !F.hasWeeds(null, b.id, t); }).slice(0, 2).map(function (b) { return b.id; });
+  ids.forEach(function (id) { F.plant(S, id, 'radish', t); });
+  full(true); var wa = F.waterAll(S, t); full(false);
+  check('the big can with storage full waters nothing (no half-watered farm)', !wa.ok && ids.every(function (id) { return !F.wateredToday(F.bed(S, id), t); }));
+  var stub = { spends: 0, spendWith: function (a, patch) { this.spends++; S.commit(Object.assign({ stamina: { v: 50, max: 100, day: t } }, patch)); return true; } };
+  var wb = F.waterAll(S, t, stub);
+  check('the big can charges one watering in the same save as the beds', wb.ok && wb.charged && stub.spends === 1 && ids.every(function (id) { return F.wateredToday(F.bed(S, id), t); }) && S.state().stamina.v === 50);
+  /* an install updated mid-day: the old rule paid a meal this morning */
+  var w2 = fresh(), S2 = w2.OvuStore, R2 = w2.OvuRewards, l2 = R2.ledger();
+  l2.log = [{ at: new Date().toISOString(), type: 'food', points: 6 }]; l2.hearts = 6; l2.earned = 6; delete l2.daily; S2.setState({ rewards: l2 });
+  check('on update day a meal the old rule already paid today does not pay again', R2.award(S2.add('food', S2.today(), { meal: 'dinner', foods: 'soup' }, 'room')).points === 0 && R2.award(S2.add('sleep', S2.today(), { bedTime: '23:00', wakeTime: '07:00', quality: 3 }, 'room')).points === 10);
+  /* practice: earn the day's cap, a later day, then the clock goes back */
+  var w3 = fresh(), S3 = w3.OvuStore, R3 = w3.OvuRewards, l3 = R3.ledger(); l3.dailyLast = S3.addDays(S3.today(), 1); S3.setState({ rewards: l3 });
+  var pr = R3.award(S3.add('mindfulness', S3.today(), { kind: 'informal', minutes: 2, completed: true }, 'room'));
+  check('a clock set back cannot reopen an earlier day’s practice cap', pr.points === 0);
+  var ST = { restedEnough: null }; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-stamina.js'), 'utf8'), w3, { filename: 'ovu-stamina.js' }); ST = w3.OvuStamina;
+  var now = 1e12, at = new Date(now - 4 * 3600000).toISOString();
+  check('rest: the phone clock says four hours, but the open app’s own timer saw twenty minutes, so no refill', ST.restedEnough(at, now) && !ST.restedEnough(at, now, { at: at, t: 0, now: 20 * 60000 }) && ST.restedEnough(at, now, { at: at, t: 0, now: 4 * 3600000 }) && ST.restedEnough(at, now, { at: 'another night', t: 0, now: 60000 }));
+  var room = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('a wake sheet left open in another tab re-reads storage and cannot save the same night twice', room.indexOf("This night was already saved.") > -1 && room.indexOf("var cur = (S.reload ? S.reload() : S.state()).sleeping; if (!cur") > -1 && typeof S3.reload === 'function');
+  var w4 = fresh(), S4 = w4.OvuStore, R4 = w4.OvuRewards, l4 = R4.ledger(); l4.mindDay = { day: S4.addDays(S4.today(), 2), pts: 6 }; delete l4.dailyLast; S4.setState({ rewards: l4 });
+  check('an older ledger without the watermark still blocks a clock set back (it takes the latest day it knows)', R4.award(S4.add('mindfulness', S4.today(), { kind: 'informal', minutes: 2, completed: true }, 'room')).points === 0 && R4.award(S4.add('food', S4.today(), { meal: 'lunch', foods: 'rice' }, 'room')).points === 0);
+  var st5 = { spendWith: undefined }, wc = F.waterAll(S, S.addDays(t, 1), st5);
+  check('with an older energy module the big can reports it did not charge, so the caller charges the watering', wc.ok === true && wc.charged === false);
+})();
+
 (function noPeriodStatementsAreNotFlow() {
   console.log('3. "has not returned", "no period", "not bleeding" are no-period observations, never a period entry');
   var w = fresh(), O = w.OvuOrb, S = w.OvuStore;
@@ -1957,7 +2033,11 @@ function scenes(todayIso) {
   check('a new day refills on its own', ST.value() === 100);
   S.setState({ stamina: { v: 30, max: 100, day: GT.dayKey() }, sleeping: null });
   S.setState({ sleeping: { at: '2026-10-19T22:00:00Z' } });
-  check('going to sleep refills (state.sleeping turning on)', ST.value() === 100);
+  check('getting into bed alone refills nothing (Codex, 20 Oct: it used to refill before "I did not sleep")', ST.value() === 30);
+  S.setState({ sleeping: null });
+  var nowMs = w.Date.now(); /* the window's clock (fixed for this block), not the real one */
+  check('a saved night refills only after three real hours in bed', ST.restedEnough(new Date(nowMs - 3.1 * 3600000).toISOString(), nowMs) && !ST.restedEnough(new Date(nowMs - 20 * 60000).toISOString(), nowMs) && !ST.restedEnough('not a date', nowMs) && ST.rested(new Date(nowMs - 20 * 60000).toISOString()) === false && ST.value() === 30 && ST.rested(new Date(nowMs - 7 * 3600000).toISOString()) === true && ST.value() === 100);
+  S.setState({ stamina: { v: 30, max: 100, day: GT.dayKey() } });
   S.setState({ stamina: { v: 30, max: 100, day: '2026-10-21' } });
   check('a clock set back keeps the energy it had; only a later date refills', ST.value() === 30);
   S.setState({ game: { firstDay: '2026-10-25' } });
