@@ -1217,14 +1217,19 @@
   }
   /* Where each folder sits: where she put it, or else the first free spot of a 4 by 3 grid that fits the wallpaper. The
      old default stacked a third row at 96%, below the wallpaper's edge, so a ninth folder (and any new one) was hidden. */
-  function deskSpots(pos) {
-    var cells = [], out = {}, taken = [];
+  function deskSpots(pos, folders) {
+    folders = folders || FOLDERS;
+    var cells = [], fine = [], out = {}, taken = [];
     for (var r = 0; r < 3; r++) for (var c = 0; c < 4; c++) cells.push([2 + c * 25, 4 + r * 31]);
-    var near = function (a, b) { return Math.abs(a[0] - b[0]) < 18 && Math.abs(a[1] - b[1]) < 24; };
-    FOLDERS.forEach(function (f) { if (pos[f.id]) { out[f.id] = pos[f.id]; taken.push(pos[f.id]); } });
-    FOLDERS.forEach(function (f) {
+    for (var y = 4; y <= 66; y += 2) for (var x = 2; x <= 77; x += 3) fine.push([x, y]);
+    /* a folder icon is about 18% of the desk wide and 24% tall */
+    var clash = function (a, b) { return Math.abs(a[0] - b[0]) < 18 && Math.abs(a[1] - b[1]) < 24; };
+    var room = function (q) { return taken.reduce(function (m, t) { return Math.min(m, Math.max(Math.abs(q[0] - t[0]) / 18, Math.abs(q[1] - t[1]) / 24)); }, Infinity); };
+    folders.forEach(function (f) { var q = pos[f.id]; if (q && isFinite(q[0]) && isFinite(q[1])) { out[f.id] = q; taken.push(q); } });
+    folders.forEach(function (f) {
       if (out[f.id]) return;
-      var free = cells.filter(function (q) { return !taken.some(function (t) { return near(q, t); }); })[0] || cells[taken.length % cells.length];
+      var free = cells.concat(fine).filter(function (q) { return !taken.some(function (t) { return clash(q, t); }); })[0];
+      if (!free) free = fine.reduce(function (best, q) { return room(q) > room(best) ? q : best; }, fine[0]); /* no free place: the least crowded one */
       out[f.id] = free; taken.push(free);
     });
     return out;
@@ -2269,21 +2274,24 @@
   function recCard(r) {
     return '<a class="rcard" href="' + esc(r.url) + '" target="_blank" rel="noopener"><span class="ms ric">' + esc(r.icon) + '</span><span class="rtx"><b>' + esc(r.title) + '</b><small>' + esc(r.why) + '</small><i>' + esc(r.src) + '<span class="ms">open_in_new</span></i></span></a>';
   }
-  function openRecipes(group) {
+  function openRecipes(group, refocus) {
     var R = window.OvuRecipes; if (!R) return;
     if (meditating && !session) exitMeditation();
     var g = R.GROUPS.filter(function (x) { return x.id === group; })[0] || R.GROUPS[0];
     openSheet('recipes', 'Recipes', 'From women\'s health and bone health charities', 'restaurant_menu',
-      '<div class="tabs" id="recTabs" role="tablist">' + R.GROUPS.map(function (x) { return '<button type="button" role="tab" aria-selected="' + (x.id === g.id) + '" data-rg="' + x.id + '" class="' + (x.id === g.id ? 'on' : '') + '">' + esc(x.name) + '</button>'; }).join('') + '</div>' +
+      '<div class="tabs" id="recTabs" role="group" aria-label="Recipes for">' + R.GROUPS.map(function (x) { return '<button type="button" aria-pressed="' + (x.id === g.id) + '" data-rg="' + x.id + '" class="' + (x.id === g.id ? 'on' : '') + '">' + esc(x.name) + '</button>'; }).join('') + '</div>' +
       '<p class="rnote">' + esc(g.note) + '</p>' +
       '<div class="rlist">' + R.forGroup(g.id).map(recCard).join('') + '</div>' +
       '<h4 class="rsub"><span class="ms">location_on</span>Eating in Singapore</h4><div class="rlist">' + R.LOCAL.map(recCard).join('') + '</div>' +
+      '<p class="rnote rsafe"><span class="ms">pregnant_woman</span>' + esc(R.MEDAS_COPY.pregnancy) + '</p>' +
+      '<p class="help">' + esc(R.MEDAS_COPY.care) + '</p>' +
       '<div class="row"><button type="button" class="btn primary" id="recMedas"><span class="ms">checklist</span>Mediterranean check</button></div>' +
-      recSources(g.id === 'pcos' ? ['E73', 'E74', 'E75', 'E82'] : g.id === 'meno' ? ['E76', 'E82'] : ['E79', 'E80', 'E81', 'E82']));
-    $('#recTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-rg]'); if (!b || b.dataset.rg === g.id) return; chime('tap'); openRecipes(b.dataset.rg); });
+      recSources(g.id === 'pcos' ? ['E73', 'E74', 'E75', 'E83', 'E82', 'E84'] : g.id === 'meno' ? ['E76', 'E82', 'E84'] : ['E79', 'E80', 'E81', 'E82', 'E84']));
+    $('#recTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-rg]'); if (!b || b.dataset.rg === g.id) return; chime('tap'); openRecipes(b.dataset.rg, true); });
+    if (refocus) { var on = $('#recTabs [data-rg="' + g.id + '"]'); if (on) try { on.focus({ preventScroll: true }); } catch (e) { } }
     $('#recMedas').addEventListener('click', function () { chime('tap'); openMedas(); });
   }
-  /* The checklist answers itself as she taps: each answer is kept on this phone (state.medas) and nothing is graded. */
+  /* The checklist answers itself as she taps (Yes or Not usually): each answer is kept on this phone (state.medas) and nothing is graded. */
   function openMedas() {
     var R = window.OvuRecipes; if (!R) return;
     if (meditating && !session) exitMeditation();
@@ -2294,31 +2302,36 @@
       '<div class="mcount" aria-live="polite"><b id="mdYes"></b><span id="mdOf"></span></div>' +
       '<div class="mqs">' + R.MEDAS.map(function (it, i) {
         return '<div class="mq" data-mq="' + it.id + '"><p><b>' + (i + 1) + '.</b> ' + esc(it.q) + (it.hint ? '<small>' + esc(it.hint) + '</small>' : '') + '</p>' +
-          '<div class="yn" role="group" aria-label="' + esc(it.q) + '"><button type="button" data-yn="1" aria-pressed="false">Yes</button><button type="button" data-yn="0" aria-pressed="false">Not yet</button></div></div>';
+          '<div class="yn" role="group" aria-label="' + esc(it.q) + '"><button type="button" data-yn="1" aria-pressed="false">Yes</button><button type="button" data-yn="0" aria-pressed="false">Not usually</button></div></div>';
       }).join('') + '</div>' +
       '<div id="mdIdeas"></div>' +
       '<p class="help">' + esc(C.wine) + '</p>' +
       '<div class="row"><button type="button" class="btn" id="mdClear"><span class="ms">restart_alt</span>Clear my answers</button><button type="button" class="btn primary" id="mdRecipes"><span class="ms">restaurant_menu</span>All recipes</button></div>' +
-      recSources(['E77', 'E78', 'E80']));
+      recSources(['E77', 'E78', 'E80', 'E84']));
     function paint() {
       var sc = R.score(ans);
-      $('#mdYes').textContent = sc.answered ? sc.yes + ' of ' + sc.of : 'Tap Yes or Not yet';
+      $('#mdYes').textContent = sc.answered ? sc.yes + ' of ' + sc.of : 'Tap Yes or Not usually';
       $('#mdOf').textContent = sc.answered ? (sc.answered < sc.of ? sc.answered + ' of ' + sc.of + ' answered' : 'habits already in your week') : 'for each habit, as your week usually goes';
       body.querySelectorAll('.mq').forEach(function (row) {
         var v = ans[row.dataset.mq];
         row.querySelectorAll('[data-yn]').forEach(function (b) { var on = (b.dataset.yn === '1') === v && v !== undefined; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
       });
       var ideas = R.ideasFor(ans).slice(0, 6), drinks = sc.missing.indexOf('drinks') > -1;
-      $('#mdIdeas').innerHTML = ideas.length || drinks ? '<h4 class="rsub"><span class="ms">lightbulb</span>Ideas for your “not yet”</h4>' + (drinks ? '<p class="rnote">' + esc(C.drinks) + '</p>' : '') + '<div class="rlist">' + ideas.map(function (x) { return recCard(x.recipe); }).join('') + '</div>' : '';
+      $('#mdIdeas').innerHTML = ideas.length || drinks ? '<h4 class="rsub"><span class="ms">lightbulb</span>Ideas, if you would like them</h4>' + (drinks ? '<p class="rnote">' + esc(C.drinks) + '</p>' : '') + '<div class="rlist">' + ideas.map(function (x) { return recCard(x.recipe); }).join('') + '</div>' + (ideas.length ? '<p class="rnote rsafe"><span class="ms">pregnant_woman</span>' + esc(C.pregnancy) + '</p>' : '') : '';
     }
-    function keep() { S.setState({ medas: { v: 1, at: new Date().toISOString(), answers: ans } }); }
+    /* every change is saved as a fresh copy through S.commit, which puts the store back if the phone refuses the save; the
+       screen then shows what is really kept */
+    function keep(next) {
+      try { S.commit({ medas: Object.keys(next).length ? { v: 1, at: new Date().toISOString(), answers: Object.assign({}, next) } : null }); ans = next; return true; }
+      catch (err) { toast('This phone could not save that. Its storage may be full.', 'error'); return false; }
+    }
     body.querySelector('.mqs').addEventListener('click', function (e) {
       var b = e.target.closest('[data-yn]'); if (!b) return;
-      var id = b.closest('.mq').dataset.mq, v = b.dataset.yn === '1';
-      if (ans[id] === v) delete ans[id]; else ans[id] = v; /* a second tap on the same answer takes it back */
-      chime('tap'); keep(); paint();
+      var id = b.closest('.mq').dataset.mq, v = b.dataset.yn === '1', next = Object.assign({}, ans);
+      if (next[id] === v) delete next[id]; else next[id] = v; /* a second tap on the same answer takes it back */
+      chime('tap'); keep(next); paint();
     });
-    $('#mdClear').addEventListener('click', function () { ans = {}; S.setState({ medas: null }); chime('tap'); paint(); });
+    $('#mdClear').addEventListener('click', function () { chime('tap'); keep({}); paint(); });
     $('#mdRecipes').addEventListener('click', function () { chime('tap'); openRecipes('every'); });
     paint();
   }
@@ -2735,14 +2748,21 @@
     var gotScale = false; if (A.wantScale === 'yes') { try { RW.buy('scale'); gotScale = true; } catch (e) { gotScale = RW.ledger().owned.indexOf('scale') > -1; } }
     onb = null; closeSheet(); updateGreeting(); renderDeck(); renderProps();
     toast('Welcome home' + (patch.name ? ', ' + patch.name : '') + '. ' + (gotScale ? 'Your scale is by the rug, and 15 hearts are left for your nest.' : '20 hearts to start your nest.'), 'favorite');
+    takePending();
   }
   /* ---------- data notice and the 18+ gate: ovu-consent.js owns the record and the sheet; this is the room's doorway ---------- */
   function hasConsent() { return !!(window.OvuConsent && !OvuConsent.needsSheet()); }
   function requireConsent(next) { if (!window.OvuConsent) { toast('Rhythme could not load its consent record. Please reload.', 'error'); return; } OvuConsent.require(next, { chime: chime, toast: toast }); }
+  /* where a link into the room asked to go (room.html#medas and so on); a first visit keeps it until the welcome is done */
+  var pendingRoute = '';
+  function openRoute(hk) {
+    if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'medas') openMedas(); else if (hk === 'recipes') openRecipes(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk);
+  }
+  function takePending() { var r = pendingRoute; pendingRoute = ''; if (r && r !== 'onboarding') setTimeout(function () { openRoute(r); }, 700); }
   function showWelcome() {
     var w = $('#welcome'); if (!w) return; w.hidden = false;
     $('#wBegin').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); }); });
-    $('#wSkip').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); toast('Welcome back. Your intro is under the window whenever you want it.', 'favorite'); }); });
+    $('#wSkip').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); toast('Welcome back. Your intro is under the window whenever you want it.', 'favorite'); takePending(); }); });
   }
 
   /* ---------- window: follows the sun (ovu-sun.js) ---------- */
@@ -2923,8 +2943,8 @@
     document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } if (e.target.closest('#arrDone')) exitArrange(false); if (e.target.closest('#arrReset')) exitArrange(true); });
     var hk = (location.hash || '').slice(1);
     if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
-    else if (!S.profile().onboarded && !S.state().welcomeSeen) showWelcome();
-    else setTimeout(function () { requireConsent(function () { if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'medas') openMedas(); else if (hk === 'recipes') openRecipes(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk); }); }, hk ? 600 : 0);
+    else if (!S.profile().onboarded && !S.state().welcomeSeen) { pendingRoute = hk; showWelcome(); }
+    else setTimeout(function () { requireConsent(function () { openRoute(hk); }); }, hk ? 600 : 0);
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
     setTimeout(function () { $('#loading').classList.add('hidden'); joy(); }, 500);
     scheduleLife();

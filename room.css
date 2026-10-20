@@ -1815,6 +1815,8 @@ span.frchip{cursor:default}
 .mq small{display:block;font:600 11px/1.4 var(--sans);color:var(--rm-ink-3);margin-top:2px}
 .yn{display:flex;gap:6px;margin-top:8px}
 .yn button{flex:1;border:1.5px solid rgba(107,82,142,.16);background:var(--rm-paper);border-radius:99px;padding:7px 10px;font:800 12px var(--sans);color:var(--rm-ink-2);cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease}
-.yn button[data-yn="1"].on{background:var(--rm-ok);border-color:var(--rm-ok);color:#fff}
+.yn button[data-yn="1"].on{background:#3a7559;border-color:#3a7559;color:#fff} /* white on it is 5.4:1 */
 .yn button[data-yn="0"].on{background:var(--rm-lilac);border-color:var(--rm-lilac);color:var(--rm-plum)}
 .yn button:focus-visible{outline:2px solid var(--rm-mauve);outline-offset:2px}
+.rsafe{display:flex;gap:8px;align-items:flex-start;background:var(--rm-paper-2);border-radius:14px;padding:10px 12px;margin-top:12px}
+.rsafe .ms{font-size:18px;color:var(--rm-mauve);flex-shrink:0;margin-top:1px}
