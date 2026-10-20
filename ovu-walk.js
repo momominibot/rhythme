@@ -181,11 +181,13 @@
     }
     return null;
   }
-  /* greedy string pulling: from each corner, jump to the farthest later point still in line of sight */
-  function pull(m, pts, first) {
+  /* greedy string pulling: from each corner, jump to the farthest later point still in line of sight. `first` checks the
+   * first leg and `legal` every later one in true geometry: the grid alone lets a shortcut clip a thin notch whose cell
+   * centres sit on the floor, and the walk then stops where the line leaves it (Codex, 20 Oct, pet shop landing) */
+  function pull(m, pts, first, legal) {
     if (pts.length < 3) return pts.slice();
     var out = [pts[0]], i = 0;
-    while (i < pts.length - 1) { var j = pts.length - 1; while (j > i + 1 && !(lineFree(m, pts[i], pts[j]) && (i || !first || first(pts[0], pts[j])))) j--; out.push(pts[j]); i = j; }
+    while (i < pts.length - 1) { var j = pts.length - 1; while (j > i + 1 && !(lineFree(m, pts[i], pts[j]) && (i ? !legal || legal(pts[i], pts[j]) : !first || first(pts[0], pts[j])))) j--; out.push(pts[j]); i = j; }
     return out;
   }
   /* a straight segment in true geometry, not the grid: every quarter unit stays on the floor and out of the solids, except
@@ -226,7 +228,7 @@
         var cells = astar(m, starts[q], g); if (!cells) continue; /* an unreachable pocket: try the next start, then the next goal */
         var pts = cells.map(function (x) { return centre(x.c, x.r); }); pts[pts.length - 1] = goal;
         if (forced) pts[0] = { x: from.x, y: from.y }; else pts.unshift({ x: from.x, y: from.y });
-        var corners = pull(m, pts, first), cost = 0;
+        var corners = pull(m, pts, first, function (a, b) { return segClear(world, a, b, box); }), cost = 0;
         for (var i = 1; i < corners.length; i++) cost += Math.hypot(corners[i].x - corners[i - 1].x, (corners[i].y - corners[i - 1].y) / Y_SCALE);
         return { pts: corners, snapped: snapped, cost: cost };
       }

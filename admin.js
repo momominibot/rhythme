@@ -16,8 +16,10 @@
     food: { name: 'Food', color: 'a-food', owns: 'meal days, meals saved, tag completeness, source mix, HPB match and NOVA coverage', excludes: 'missing nutrients are not zero; a saved meal is not a whole day of eating' },
     mind: { name: 'Mindfulness and stress', color: 'a-mind', owns: 'practice days, minutes by kind, completed share, repeat practice on another day, reflection days', excludes: 'reflection text is never read; there is no validated stress measure here' }
   };
-  var TABS = [['today', 'Today', 'M3 12l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'], ['feed', 'Feed', 'M4 6h16M4 12h10M4 18h7'], ['agents', 'Agents', 'M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM4 21a8 8 0 0 1 16 0'], ['queue', 'Queue', 'M9 11l3 3 8-8M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9'], ['staff', 'Staff', 'M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0zM3 21a9 9 0 0 1 18 0']];
+  var TABS = [['today', 'Today', 'home'], ['feed', 'Feed', 'dynamic_feed'], ['agents', 'Agents', 'groups'], ['queue', 'Queue', 'task_alt'], ['staff', 'Staff', 'admin_panel_settings']]; /* Material Symbols, as the room's bar */
 
+  var LUNA = '<img class="luna" src="assets/onboarding/luna.png" alt="">';
+  function greeting() { var h = Number(new Date().toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Singapore' })); return h >= 5 && h < 12 ? 'Good morning' : h >= 12 && h < 18 ? 'Good afternoon' : 'Good evening'; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function ago(iso) { if (!iso) return ''; var ms = Date.now() - Date.parse(iso); if (!isFinite(ms)) return ''; var m = Math.round(ms / 60000); if (m < 1) return 'just now'; if (m < 60) return m + ' min ago'; var h = Math.round(m / 60); if (h < 36) return h + ' h ago'; return Math.round(h / 24) + ' days ago'; }
   function when(iso) { try { var d = new Date(iso); return d.toLocaleString('en-SG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso || ''; } }
@@ -35,7 +37,7 @@
 
   /* ---------- views ---------- */
   function gate(msg, bad) {
-    app.innerHTML = '<div class="gate"><div class="card"><h2>Rhythme staff</h2><p class="note">This page is for Rhythme staff. Sign in with the email that was invited; a code is sent to it.</p>' +
+    app.innerHTML = '<div class="gate">' + LUNA + '<div class="card"><h2>Rhythme staff</h2><p class="note">This page is for Rhythme staff. Sign in with the email that was invited; a code is sent to it.</p>' +
       '<div class="field"><label for="gEmail">Email</label><input type="email" id="gEmail" autocomplete="email" inputmode="email" placeholder="you@example.com"></div>' +
       '<div class="field hidden" id="gCodeWrap"><label for="gCode">Code from the email</label><input type="text" id="gCode" inputmode="numeric" autocomplete="one-time-code" placeholder="123456"></div>' +
       '<div class="row"><button class="btn primary" id="gSend">Send code</button><button class="btn ghost hidden" id="gVerify">Sign in</button></div><p class="msg' + (bad ? ' bad' : '') + '" id="gMsg">' + esc(msg || '') + '</p></div></div>';
@@ -43,7 +45,7 @@
     doc.getElementById('gSend').addEventListener('click', function () {
       var e = email.value.trim(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { m.textContent = 'That is not an email address.'; m.className = 'msg bad'; return; }
       this.disabled = true; m.className = 'msg'; m.textContent = 'Sending…';
-      A.sendCode(e).then(function () { m.textContent = 'Code sent. Check the email and type it in.'; doc.getElementById('gCodeWrap').classList.remove('hidden'); doc.getElementById('gVerify').classList.remove('hidden'); code.focus(); }, function (err) { m.textContent = 'Could not send: ' + err.message; m.className = 'msg bad'; }).then(function () { doc.getElementById('gSend').disabled = false; });
+      A.sendCode(e).then(function () { m.textContent = 'Code sent. Check the email and type it in.'; doc.getElementById('gCodeWrap').classList.remove('hidden'); doc.getElementById('gVerify').classList.remove('hidden'); code.focus(); }, function (err) { var se = A.sendError ? A.sendError(err) : { text: 'Could not send: ' + err.message }; m.textContent = se.text; m.className = 'msg bad'; if (se.limited) { doc.getElementById('gCodeWrap').classList.remove('hidden'); doc.getElementById('gVerify').classList.remove('hidden'); code.focus(); } /* a code already in the inbox still works */ }).then(function () { doc.getElementById('gSend').disabled = false; });
     });
     doc.getElementById('gVerify').addEventListener('click', function () {
       var btn = this; btn.disabled = true; m.className = 'msg'; m.textContent = 'Checking…';
@@ -54,14 +56,16 @@
     });
   }
   function staffOnly() {
-    app.innerHTML = '<div class="gate"><div class="card"><h2>Rhythme staff</h2><p class="note">This page is for Rhythme staff. The account <b>' + esc(A.email() || '') + '</b> is signed in but is not on the staff list, so nothing here is shown to it. Your own diary is untouched.</p><div class="row"><button class="btn" id="soOut">Sign out</button><a class="btn ghost" href="room.html">Back to the room</a></div></div></div>';
+    app.innerHTML = '<div class="gate">' + LUNA + '<div class="card"><h2>Rhythme staff</h2><p class="note">This page is for Rhythme staff. The account <b>' + esc(A.email() || '') + '</b> is signed in but is not on the staff list, so nothing here is shown to it. Your own diary is untouched.</p><div class="row"><button class="btn" id="soOut">Sign out</button><a class="btn ghost" href="room.html">Back to the room</a></div></div></div>';
     doc.getElementById('soOut').addEventListener('click', function () { A.signOut().then(boot, boot); });
   }
   function shell() {
-    app.innerHTML = '<header class="top"><h1>Rhythme staff<small>' + esc(A.email() || '') + ' · ' + esc(me.role) + '</small></h1><span class="pill" id="livePill"><span class="dot"></span><span id="liveTxt">checking</span></span></header>' +
+    app.innerHTML = '<header class="top"><div><a class="brand" href="room.html">RHYTHME<em>STAFF</em></a><h1>' + esc(greeting()) + '<small>' + esc(A.email() || '') + ' · ' + esc(me.role) + '</small></h1></div><span class="pill" id="livePill"><span class="dot"></span><span id="liveTxt">checking</span></span></header>' +
+      '<div class="hero"><img src="assets/room/dream/room-v3-sm.webp" alt=""><p>Here is Rhythme today<small>Counts and agent runs only. No diary is shown here.</small></p></div>' +
       '<section id="panel"></section>' +
-      '<nav class="tabs" aria-label="Sections">' + TABS.map(function (t) { return '<button type="button" data-tab="' + t[0] + '" class="' + (t[0] === tab ? 'on' : '') + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + t[2] + '"/></svg>' + t[1] + '</button>'; }).join('') + '</nav>';
-    app.querySelector('nav.tabs').addEventListener('click', function (e) { var b = e.target.closest('button[data-tab]'); if (!b) return; tab = b.dataset.tab; app.querySelectorAll('nav.tabs button').forEach(function (x) { x.classList.toggle('on', x === b); }); render(); });
+      '<nav class="tabs" aria-label="Sections">' + TABS.map(function (t) { return '<button type="button" data-tab="' + t[0] + '" class="' + (t[0] === tab ? 'on' : '') + '"' + (t[0] === tab ? ' aria-current="page"' : '') + '><span class="ms" aria-hidden="true">' + t[2] + '</span>' + t[1] + '</button>'; }).join('') + '</nav>';
+    app.dataset.tab = tab;
+    app.querySelector('nav.tabs').addEventListener('click', function (e) { var b = e.target.closest('button[data-tab]'); if (!b) return; tab = b.dataset.tab; app.querySelectorAll('nav.tabs button').forEach(function (x) { x.classList.toggle('on', x === b); if (x === b) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current'); }); app.dataset.tab = tab; render(); });
   }
   function pill(state, txt) { var p = doc.getElementById('livePill'); if (!p) return; p.className = 'pill ' + state; doc.getElementById('liveTxt').textContent = txt; }
   function panel(html) { var p = doc.getElementById('panel'); if (p) p.innerHTML = html; }
@@ -272,7 +276,7 @@
   function bootStaffOnly() { stopTimers(); me = null; staffOnly(); }
   function boot() {
     stopTimers();
-    if (!A || !CFG.supabaseUrl) { app.innerHTML = '<div class="gate"><div class="card"><h2>Rhythme staff</h2><p class="msg bad">The sign-in module did not load.</p></div></div>'; return; }
+    if (!A || !CFG.supabaseUrl) { app.innerHTML = '<div class="gate">' + LUNA + '<div class="card"><h2>Rhythme staff</h2><p class="msg bad">The sign-in module did not load.</p></div></div>'; return; }
     if (!A.session()) return gate('');
     return rpc('admin_me').then(function (j) {
       if (!j || !j.admin) return staffOnly();

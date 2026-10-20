@@ -3,8 +3,10 @@
  * away), weeds appear on a couple of beds each morning and pause growth until pulled, and a ripe bed is harvested into
  * the basket. Watering, pulling and harvesting cost energy (ovu-stamina.js). Nothing here writes a diary entry: a
  * harvest offers "Log a meal?" and only a tap on that opens the food diary, which saves what she chooses to save.
- * Hearts are not awarded here (the ledger is ovu-rewards.js's); that lever waits for its helper. Pure rules first
- * (testable in node), then the scene wiring. */
+ * Hearts are not awarded here (the ledger is ovu-rewards.js's), but they are spent here (Jamie, 20 Oct: logging earns
+ * the points that let her play): seed packs, local crops to grow for good, a seed shelf and a big watering can. The five
+ * first crops and three seeds a day stay free, and tending what she has never costs hearts. Pure rules first (testable
+ * in node), then the scene wiring. */
 (function (root) {
   'use strict';
   var CROPS = {
@@ -12,9 +14,21 @@
     carrot: { name: 'Carrot', plural: 'carrots', days: 3, yield: 2, colour: '#f3a56e', top: '#7fb894' },
     strawberry: { name: 'Strawberry', plural: 'strawberries', days: 4, yield: 3, colour: '#e35d7a', top: '#6ba88a' },
     tomato: { name: 'Tomato', plural: 'tomatoes', days: 5, yield: 3, colour: '#e0624e', top: '#5f9c7a' },
-    pumpkin: { name: 'Pumpkin', plural: 'pumpkins', days: 7, yield: 1, colour: '#f0a04b', top: '#6ba88a' }
+    pumpkin: { name: 'Pumpkin', plural: 'pumpkins', days: 7, yield: 1, colour: '#f0a04b', top: '#6ba88a' },
+    /* local crops, unlocked with hearts and then grown for good (Codex, 20 Oct: locally familiar crops for Singapore) */
+    kangkong: { name: 'Kangkong', plural: 'bunches of kangkong', days: 2, yield: 3, colour: '#8fcf86', top: '#4f9a62', cost: 40 },
+    pakchoy: { name: 'Pak choy', plural: 'pak choy', days: 3, yield: 3, colour: '#b5e0a0', top: '#5f9c6a', cost: 40 },
+    lemongrass: { name: 'Lemongrass', plural: 'stalks of lemongrass', days: 4, yield: 3, colour: '#dfe6a0', top: '#8fbf6a', cost: 60 },
+    chilli: { name: 'Chilli padi', plural: 'chilli padi', days: 5, yield: 4, colour: '#e2483d', top: '#5f9c6a', cost: 70 },
+    sweetpotato: { name: 'Sweet potato', plural: 'sweet potatoes', days: 6, yield: 2, colour: '#b0607e', top: '#7fb894', cost: 80 }
   };
+  var STARTER = ['radish', 'carrot', 'strawberry', 'tomato', 'pumpkin']; /* everyone has grown these from the start: never locked */
   var SEEDS_A_DAY = 3;
+  var PACK = { seeds: 3, cost: 10 }; /* a seed pack: three seeds of a crop she can grow */
+  var TOOLS = {
+    shelf: { name: 'Seed shelf', note: 'The shed gives five seeds a day instead of three.', cost: 150, icon: 'shelves' },
+    bigcan: { name: 'Big watering can', note: 'Water every dry bed in one go, for the energy of one.', cost: 120, icon: 'water_drop' }
+  };
   /* the bed grid on the plate: corner A (left), B (top), C (right); four beds along AB, three along BC */
   var A = { x: 24, y: 53 }, B = { x: 51, y: 41 }, C = { x: 81, y: 54 };
   function bedAt(i, j) { var u = (i + 0.5) / 4, v = (j + 0.5) / 3; return { x: round(A.x + u * (B.x - A.x) + v * (C.x - B.x)), y: round(A.y + u * (B.y - A.y) + v * (C.y - B.y)) }; }
@@ -48,7 +62,10 @@
 
   /* ---------- rules (no DOM) ---------- */
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
-  function farmState(S) { var f = S.state().farm || {}; return { beds: f.beds || {}, harvest: f.harvest || {}, seeds: f.seeds || {}, seedsByDay: f.seedsByDay || {} }; }
+  function farmState(S) { var f = S.state().farm || {}; return { beds: f.beds || {}, harvest: f.harvest || {}, seeds: f.seeds || {}, seedsByDay: f.seedsByDay || {}, unlocked: f.unlocked || {}, tools: f.tools || {} }; }
+  function canGrow(f, crop) { return !!CROPS[crop] && (STARTER.indexOf(crop) > -1 || !!(f.unlocked && f.unlocked[crop])); }
+  function growable(f) { return Object.keys(CROPS).filter(function (k) { return canGrow(f, k); }); }
+  function seedsADay(f) { return SEEDS_A_DAY + (f.tools && f.tools.shelf ? 2 : 0); }
   function bed(S, id) { return farmState(S).beds[id] || null; }
   function growthDays(b) { return b && b.crop ? (b.watered || []).length : 0; }
   function ripe(b) { return !!(b && b.crop && CROPS[b.crop] && growthDays(b) >= CROPS[b.crop].days); }
@@ -57,22 +74,23 @@
   function hasWeeds(b, id, day) { if (b && b.cleared === day) return false; return hash(day + ':' + id) % 6 === 0; }
   function wateredToday(b, day) { return !!(b && (b.watered || []).indexOf(day) > -1); }
   /* the shed remembers each date it gave seeds on, so a clock that goes back to a claimed date gives nothing twice */
-  function seedsLeftToday(S, day) { var f = farmState(S); return Math.max(0, SEEDS_A_DAY - (f.seedsByDay[day] || 0)); }
+  function seedsLeftToday(S, day) { var f = farmState(S); return Math.max(0, seedsADay(f) - (f.seedsByDay[day] || 0)); }
   function write(S, f) { S.setState({ farm: f }); }
   function takeSeed(S, crop, day) {
     if (!CROPS[crop]) return { ok: false, why: 'unknown crop' };
     var f = farmState(S), taken = f.seedsByDay[day] || 0;
-    if (taken >= SEEDS_A_DAY) return { ok: false, why: 'The shed has given out its seeds for today. More tomorrow.' };
+    if (!canGrow(f, crop)) return { ok: false, why: CROPS[crop].name + ' is not in the shed yet. Unlock it with hearts first.' };
+    if (taken >= seedsADay(f)) return { ok: false, why: 'The shed has given out its seeds for today. More tomorrow.' };
     f.seedsByDay[day] = taken + 1; f.seeds[crop] = (f.seeds[crop] || 0) + 1;
     Object.keys(f.seedsByDay).forEach(function (k) { if (k < S.addDays(day, -30)) delete f.seedsByDay[k]; }); /* a month of dates is plenty */
-    write(S, f); return { ok: true, left: SEEDS_A_DAY - f.seedsByDay[day] };
+    write(S, f); return { ok: true, left: seedsADay(f) - f.seedsByDay[day] };
   }
   function plant(S, id, crop, day) {
     var f = farmState(S), b = f.beds[id];
     if (!CROPS[crop]) return { ok: false, why: 'unknown crop' };
     if (b && b.crop) return { ok: false, why: 'This bed already has ' + CROPS[b.crop].name.toLowerCase() + ' in it.' };
     if (hasWeeds(b, id, day)) return { ok: false, why: 'Pull the weeds first.' };
-    if (!(f.seeds[crop] > 0)) return { ok: false, why: 'No ' + CROPS[crop].name.toLowerCase() + ' seeds left. The shed gives three a day.' };
+    if (!(f.seeds[crop] > 0)) return { ok: false, why: 'No ' + CROPS[crop].name.toLowerCase() + ' seeds left. The shed gives ' + seedsADay(f) + ' a day, and seed packs cost hearts.' };
     f.seeds[crop] -= 1; f.beds[id] = { crop: crop, planted: day, watered: [], cleared: b && b.cleared === day ? day : undefined }; write(S, f); return { ok: true };
   }
   function water(S, id, day) {
@@ -94,13 +112,49 @@
     var crop = b.crop, n = CROPS[crop].yield;
     f.harvest[crop] = (f.harvest[crop] || 0) + n; f.beds[id] = { cleared: b.cleared }; write(S, f); return { ok: true, crop: crop, n: n, total: f.harvest[crop] };
   }
+  /* ---------- spending hearts (RW is OvuRewards): the farm and the hearts are written in one save ---------- */
+  function copy(f) { return JSON.parse(JSON.stringify(f)); }
+  function pay(RW, cost, what, f) { try { RW.spend(cost, what, { farm: f }); return { ok: true }; } catch (e) { return { ok: false, why: e.message }; } }
+  function buyPack(S, RW, crop) {
+    var f = copy(farmState(S)); if (!canGrow(f, crop)) return { ok: false, why: CROPS[crop] ? 'Unlock ' + CROPS[crop].name.toLowerCase() + ' first.' : 'unknown crop' };
+    f.seeds[crop] = (f.seeds[crop] || 0) + PACK.seeds;
+    var r = pay(RW, PACK.cost, 'seeds:' + crop, f); if (!r.ok) return r; return { ok: true, n: PACK.seeds, have: f.seeds[crop] };
+  }
+  function unlockCrop(S, RW, crop) {
+    var c = CROPS[crop], f = copy(farmState(S));
+    if (!c || STARTER.indexOf(crop) > -1) return { ok: false, why: 'That one is free already.' };
+    if (f.unlocked[crop]) return { ok: false, why: 'Already growing in your shed.' };
+    f.unlocked[crop] = true; f.seeds[crop] = (f.seeds[crop] || 0) + 1; /* one seed to start */
+    var r = pay(RW, c.cost, 'crop:' + crop, f); if (!r.ok) return r; return { ok: true, crop: crop };
+  }
+  function buyTool(S, RW, id) {
+    var t = TOOLS[id], f = copy(farmState(S));
+    if (!t) return { ok: false, why: 'unknown tool' };
+    if (f.tools[id]) return { ok: false, why: 'Already yours.' };
+    f.tools[id] = true; var r = pay(RW, t.cost, 'tool:' + id, f); if (!r.ok) return r; return { ok: true, tool: id };
+  }
+  /* the big watering can: every planted, weed-free bed not yet watered today gets its day, for the energy of one watering */
+  function dryBeds(S, day) { var f = farmState(S); return BEDS.filter(function (bb) { var b = f.beds[bb.id]; return b && b.crop && !ripe(b) && !hasWeeds(b, bb.id, day) && !wateredToday(b, day) && !(b.planted && day < b.planted) && !((b.watered || []).slice(-1)[0] >= day); }).map(function (bb) { return bb.id; }); }
+  /* every dry bed gets its day on a copy, and the copy is written once: with ST (OvuStamina) the energy of one watering is
+   * charged in the same save, so a failed save waters nothing and charges nothing (Codex review, 20 Oct) */
+  function waterAll(S, day, ST) {
+    var f = copy(farmState(S)); if (!f.tools.bigcan) return { ok: false, why: 'The big watering can is in the shed, for hearts.' };
+    var ids = dryBeds(S, day); if (!ids.length) return { ok: false, why: 'Every bed has had its water today.' };
+    ids.forEach(function (id) { var b = f.beds[id]; b.watered = (b.watered || []).concat([day]); });
+    var charged = false;
+    try {
+      if (ST && ST.spendWith) { if (!ST.spendWith('water', { farm: f })) return { ok: false, why: 'Too tired for that. A rest first.' }; charged = true; }
+      else if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f }); /* an older energy module: the caller charges the watering itself */
+    } catch (e) { return { ok: false, why: e.message }; }
+    return { ok: true, n: ids.length, charged: charged };
+  }
   function summary(S, day) {
     var f = farmState(S), out = { planted: 0, ripe: 0, weeds: 0, dry: 0, harvest: f.harvest, seeds: f.seeds, seedsLeft: seedsLeftToday(S, day) };
     BEDS.forEach(function (bb) { var b = f.beds[bb.id]; if (hasWeeds(b, bb.id, day)) out.weeds++; if (b && b.crop) { out.planted++; if (ripe(b)) out.ripe++; else if (!wateredToday(b, day)) out.dry++; } });
     return out;
   }
 
-  var F = { CROPS: CROPS, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
+  var F = { CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, dryBeds: dryBeds, waterAll: waterAll, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
   root.OvuFarm = F;
 
   /* ---------- scene wiring ---------- */
@@ -163,14 +217,15 @@
     } else {
       /* an empty bed plants straight from today's shed seeds too (Jamie, 20 Oct: "where is the shed?"): no trip needed */
       var own = Object.keys(CROPS).some(function (k) { return (f.seeds[k] || 0) > 0; }), left = seedsLeftToday(S, day);
-      html += '<b>An empty bed</b><span>' + (own ? 'Plant one of your seeds.' : left ? 'Pick a seed to plant. The shed gives ' + SEEDS_A_DAY + ' a day; ' + left + ' left today.' : 'No seeds left today. The shed has more tomorrow.') + '</span>';
+      html += '<b>An empty bed</b><span>' + (own ? 'Plant one of your seeds.' : left ? 'Pick a seed to plant. The shed gives ' + seedsADay(f) + ' a day; ' + left + ' left today.' : 'No free seeds left today. The shed has more tomorrow, and seed packs cost hearts.') + '</span>';
     }
     if (weeds) html += '<span class="weedy">Weeds. Pull them before anything else.</span>';
     html += '</div></div><div class="' + (!weeds && !crop ? 'seedlist' : 'row') + '" id="bedActs">';
     if (weeds) html += '<button type="button" class="btn primary" data-bed="clear"><span class="ms">grass</span>Pull the weeds</button>';
     else if (crop && ripe(b)) html += '<button type="button" class="btn primary" data-bed="harvest"><span class="ms">shopping_basket</span>Harvest</button>';
-    else if (crop) html += '<button type="button" class="btn primary" data-bed="water"' + (wateredToday(b, day) ? ' disabled' : '') + '><span class="ms">water_drop</span>Water</button>';
-    else if (!Object.keys(CROPS).some(function (k) { return (f.seeds[k] || 0) > 0; }) && seedsLeftToday(S, day) > 0) Object.keys(CROPS).forEach(function (k) { html += '<button type="button" class="btn soft" data-bed="shedplant" data-crop="' + k + '"><span class="ms">spa</span><span><b>' + esc(CROPS[k].name) + '</b><small>' + CROPS[k].days + ' days to ripen</small></span></button>'; });
+    else if (crop) html += '<button type="button" class="btn primary" data-bed="water"' + (wateredToday(b, day) ? ' disabled' : '') + '><span class="ms">water_drop</span>Water</button>' +
+      (f.tools.bigcan && dryBeds(S, day).length > 1 ? '<button type="button" class="btn soft" data-bed="waterall"><span class="ms">water_drop</span>Water all ' + dryBeds(S, day).length + ' dry beds</button>' : '');
+    else if (!Object.keys(CROPS).some(function (k) { return (f.seeds[k] || 0) > 0; }) && seedsLeftToday(S, day) > 0) growable(f).forEach(function (k) { html += '<button type="button" class="btn soft" data-bed="shedplant" data-crop="' + k + '"><span class="ms">spa</span><span><b>' + esc(CROPS[k].name) + '</b><small>' + CROPS[k].days + ' days to ripen</small></span></button>'; });
     else Object.keys(CROPS).forEach(function (k) { if (f.seeds[k] > 0) html += '<button type="button" class="btn soft" data-bed="plant" data-crop="' + k + '"><span class="ms">spa</span><span><b>' + esc(CROPS[k].name) + '</b><small>' + CROPS[k].days + ' days · ' + f.seeds[k] + ' seed' + (f.seeds[k] > 1 ? 's' : '') + '</small></span></button>'; });
     html += '</div><p class="help">Watering costs a little energy; a missed day adds nothing and takes nothing away. Weeds pause a bed until they are pulled.</p>';
     R.openSheet('farmbed', 'Bed ' + (BEDS.indexOf(bb) + 1), 'Your farm', 'yard', html);
@@ -179,21 +234,22 @@
       var btn = e.target.closest('[data-bed]'); if (!btn) return;
       var kind = btn.dataset.bed, res, now = today(); /* the date at the tap, not at the sheet's opening: midnight may have passed */
       if (now !== day) { openBed(id); return; } /* the sheet showed yesterday: redraw it for today before anything is done */
-      if (!canAct(kind === 'shedplant' ? 'plant' : kind)) return;
+      if (!canAct(kind === 'shedplant' ? 'plant' : kind === 'waterall' ? 'water' : kind)) return;
       if (kind === 'clear') res = clearWeeds(S, id, now);
       else if (kind === 'water') res = water(S, id, now);
       else if (kind === 'harvest') res = harvest(S, id);
+      else if (kind === 'waterall') { res = waterAll(S, now, ST); if (res.ok) { kind = 'water'; res.all = res.n; } }
       else if (kind === 'plant') res = plant(S, id, btn.dataset.crop, now);
       else if (kind === 'shedplant') { var got = takeSeed(S, btn.dataset.crop, now); res = got && got.ok ? plant(S, id, btn.dataset.crop, now) : got; if (res && res.ok) kind = 'plant'; }
       if (!res) return;
       if (!res.ok) { R.toast(res.why, 'info'); return; }
-      act(kind); R.chime('save'); renderBeds();
+      if (!res.charged) act(kind); R.chime('save'); renderBeds(); /* the big can already paid its energy in the same save */
       if (kind === 'harvest') { afterHarvest(res); return; }
       /* each care step is a small mindful moment: she kneels to plant or pull weeds, waters, gathers (ovu-moments.js) */
       var mo = function (k) { return R.moment ? R.moment(k, { quiet: true }) : ''; };
       if (kind === 'plant') R.toast('Planted.', 'spa', mo('plant'));
       if (kind === 'clear') R.toast('Weeds pulled. The bed can grow again.', 'grass', mo('weed'));
-      if (kind === 'water') R.toast(res.ripe ? 'Ripe! Tap the bed again to harvest.' : 'Watered. ' + res.days + ' of ' + CROPS[bed(S, id).crop].days + ' days.', 'water_drop', mo('farmwater'));
+      if (kind === 'water') R.toast(res.all ? res.all + ' beds watered with the big can.' : res.ripe ? 'Ripe! Tap the bed again to harvest.' : 'Watered. ' + res.days + ' of ' + CROPS[bed(S, id).crop].days + ' days.', 'water_drop', mo('farmwater'));
       openBed(id);
     });
   }
@@ -211,13 +267,32 @@
     if (no) no.addEventListener('click', function () { R.hideSheet(); });
   }
   function openShed() {
-    var day = today(), left = seedsLeftToday(S, day), f = farmState(S);
-    var html = '<p>The shed keeps the tools and gives out three seed packets a day. ' + (left ? left + ' left today.' : 'All given out for today; more tomorrow.') + '</p><div class="seedlist" id="shedActs">' +
-      Object.keys(CROPS).map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-seed="' + k + '"' + (left ? '' : ' disabled') + '><span class="ms">spa</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + (f.seeds[k] || 0) + '</small></span></button>'; }).join('') +
-      '</div><p class="help">A crop grows by the days it was watered. Pumpkins take a week; radishes two days.</p>';
+    var day = today(), left = seedsLeftToday(S, day), f = farmState(S), RW = root.OvuRewards, hearts = RW ? (RW.tester() ? Infinity : RW.ledger().hearts) : 0;
+    var heartTxt = function (n) { return n + ' \u2665'; };
+    var html = '<p>The shed keeps the tools and gives out ' + seedsADay(f) + ' seed packets a day, free. ' + (left ? left + ' left today.' : 'All given out for today; more tomorrow.') + '</p><div class="seedlist" id="shedActs">' +
+      growable(f).map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-seed="' + k + '"' + (left ? '' : ' disabled') + '><span class="ms">spa</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + (f.seeds[k] || 0) + '</small></span></button>'; }).join('') +
+      '</div>';
+    if (RW) {
+      var locked = Object.keys(CROPS).filter(function (k) { return !canGrow(f, k); }), tools = Object.keys(TOOLS);
+      html += '<h4 class="shedh"><span class="ms fill">favorite</span>With hearts <small>' + (hearts === Infinity ? 'tester' : heartTxt(hearts)) + '</small></h4>' +
+        '<p class="help" style="margin-top:0">Hearts come from logging. Tending what you already grow is always free.</p>' +
+        '<div class="seedlist" id="shedBuy">' +
+        growable(f).map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-pack="' + k + '"' + (hearts >= PACK.cost ? '' : ' disabled') + '><span class="ms">redeem</span><span><b>' + esc(c.name) + ' seed pack</b><small>' + PACK.seeds + ' seeds · ' + heartTxt(PACK.cost) + '</small></span></button>'; }).join('') +
+        locked.map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-unlock="' + k + '"' + (hearts >= c.cost ? '' : ' disabled') + '><span class="ms">lock_open</span><span><b>Grow ' + esc(c.name.toLowerCase()) + '</b><small>' + c.days + ' days · for good, one seed to start · ' + heartTxt(c.cost) + '</small></span></button>'; }).join('') +
+        tools.map(function (id) { var t = TOOLS[id], have = !!f.tools[id]; return '<button type="button" class="btn soft" data-tool="' + id + '"' + (have || hearts < t.cost ? ' disabled' : '') + '><span class="ms">' + t.icon + '</span><span><b>' + esc(t.name) + (have ? ' · yours' : '') + '</b><small>' + esc(t.note) + (have ? '' : ' · ' + heartTxt(t.cost)) + '</small></span></button>'; }).join('') +
+        '</div>';
+    }
+    html += '<p class="help">A crop grows by the days it was watered. Kangkong and radishes take two days; pumpkins a week.</p>';
     R.openSheet('farmshed', 'The shed', 'Seeds and tools', 'home_repair_service', html);
-    var acts = doc.getElementById('shedActs'); if (!acts) return;
-    acts.addEventListener('click', function (e) { var btn = e.target.closest('[data-seed]'); if (!btn) return; var res = takeSeed(S, btn.dataset.seed, today()); if (!res.ok) { R.toast(res.why, 'info'); return; } R.chime('tap'); openShed(); });
+    var acts = doc.getElementById('shedActs'); if (acts) acts.addEventListener('click', function (e) { var btn = e.target.closest('[data-seed]'); if (!btn) return; var res = takeSeed(S, btn.dataset.seed, today()); if (!res.ok) { R.toast(res.why, 'info'); return; } R.chime('tap'); openShed(); });
+    var buy = doc.getElementById('shedBuy'); if (buy) buy.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-pack],[data-unlock],[data-tool]'); if (!btn || btn.disabled) return;
+      var res = btn.dataset.pack ? buyPack(S, RW, btn.dataset.pack) : btn.dataset.unlock ? unlockCrop(S, RW, btn.dataset.unlock) : buyTool(S, RW, btn.dataset.tool);
+      if (!res.ok) { R.toast(res.why, 'info'); return; }
+      R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
+      R.toast(btn.dataset.pack ? res.n + ' ' + CROPS[btn.dataset.pack].name.toLowerCase() + ' seeds in the shed.' : btn.dataset.unlock ? CROPS[res.crop].name + ' grows on your farm now.' : TOOLS[res.tool].name + ' is yours.', 'redeem', line);
+      if (R.renderDeck) R.renderDeck(); openShed();
+    });
   }
   function openBasket() {
     var f = farmState(S), rows = Object.keys(f.harvest).filter(function (k) { return f.harvest[k] > 0; });

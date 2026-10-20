@@ -62,6 +62,7 @@
       <div class="card">
         <h2>Today</h2>
         <div class="sub" id="dailyText">Nothing logged yet.</div>
+        <div class="minvite" id="morningInvite" hidden></div>
         <div class="tiles" id="tiles"></div>
         <p class="note" id="symLine"></p>
       </div>
@@ -83,6 +84,11 @@
   <button class="luna" id="lunaBtn" type="button" aria-label="Luna, tell me how you are"><img src="assets/room/dream/orb-moon.webp" alt="" data-mascot="head"><span class="luna-hint" id="lunaHint">Tell Luna</span></button>
 
   <div class="podmini" id="podMini" hidden><button type="button" class="podmini-open" id="podMiniOpen"><img src="assets/avatars/erin/erin-chibi-face.webp" alt=""><span><b id="podMiniTitle"></b><small id="podMiniSub"></small></span></button><button type="button" class="podmini-btn" id="podMiniPlay" aria-label="Play"><span class="ms">play_arrow</span></button><button type="button" class="podmini-btn" id="podMiniClose" aria-label="Stop and hide"><span class="ms">close</span></button></div>
+  <section class="mpanel" id="mpanel" hidden aria-labelledby="mpTitle">
+    <p class="mp-count" id="mpCount"></p>
+    <div class="mp-say" aria-live="polite" aria-atomic="true"><h3 id="mpTitle"></h3><p id="mpText"></p></div>
+    <div class="mp-btns" id="mpBtns"></div>
+  </section>
   <nav class="nav" aria-label="Main">
     <a href="room.html" data-tab="home" class="on" aria-current="page"><span class="ms">home</span>Home</a>
     <a href="room.html#cycle" data-tab="cycle"><span class="ms">water_drop</span>Cycle</a>
@@ -147,6 +153,7 @@
 <script src="ovu-remind.js"></script>
 <script src="ovu-mindful.js"></script>
 <script src="ovu-moments.js"></script>
+<script src="ovu-morning.js"></script>
 <script src="ovu-exercise.js"></script>
 <script src="ovu-pets.js"></script>
 <script src="ovu-mascot.js"></script>
@@ -166,6 +173,7 @@
 <script src="ovu-garden.js"></script>
 <script src="ovu-street.js"></script>
 <script src="ovu-shops.js"></script>
+<script src="ovu-greenhouse.js"></script>
 <script src="ovu-community.js"></script>
 <script src="ovu-camera.js"></script>
 <script src="ovu-petwalk.js"></script>

@@ -20,6 +20,8 @@
     exercise: { pose: 'stretch', lines: ['Notice how your body feels after moving.', 'Movement that felt kind is enough. Rest counts too.'] },
     session: { pose: null, lines: ['Carry one breath of this into the next thing you do.', 'Nothing to fix. That pause was yours.'] },
     practice: { pose: null, lines: ['Two ordinary minutes, fully lived. Carry that softness with you.'] },
+    /* Morning start: no claim about how long it was or what it did (Codex review of the routine, 20 Oct) */
+    morning: { pose: null, lines: ['That pause was yours.', 'Carry this gentle start into the next thing you do.'] },
     lightflower: { pose: 'listen', lines: ['Notice one quiet detail around you. You can carry it into what comes next.', 'The last note has faded. Listen to what is here now.'] },
     moontap: { pose: null, lines: ['A brief pause still belongs to you.', 'Watch one ripple fade. You can leave whenever you like.'] },
     reflection: { pose: 'note', lines: ['A few words, or none, are enough.', 'These notes do not measure your worth.'] },
@@ -34,6 +36,7 @@
     plant: { pose: 'tend', lines: ['Press the soil gently. Nothing else is needed.', 'A little seed is enough. Let it grow at its own pace.'] },
     weed: { pose: 'tend', lines: ['One small patch can be enough today.'] },
     farmwater: { pose: 'plants', lines: ['Watch one drop settle into the soil.', 'Notice the soil darken as it drinks.'] },
+    plantcare: { pose: 'plants', lines: ['One minute with one plant is enough.', 'Notice how it looks now, cared for.'] },
     harvest: { pose: 'harvest', lines: ['Notice what grew in its own time.', 'Feel the weight of what you picked. Enjoy it.'] },
     shop: { pose: 'shop', lines: ['Enjoy it. Nothing more needs buying.', 'Notice what made you smile about it.'] },
     adopt: { pose: 'pets', lines: ['Welcome home, little one. Notice how she looks at you.'] },
@@ -65,7 +68,7 @@
     if (!ev) return null;
     var d = ev.data || {};
     if (ev.type === 'period') return post ? 'bleed_post' : 'period';
-    if (ev.type === 'mindfulness') return d.kind === 'breathtap' ? 'moontap' : d.kind === 'lightflower' ? 'lightflower' : d.kind === 'informal' ? 'practice' : 'session';
+    if (ev.type === 'mindfulness') return d.kind === 'breathtap' ? 'moontap' : d.kind === 'lightflower' ? 'lightflower' : d.kind === 'informal' ? (d.activity === 'morning' ? 'morning' : d.practice === 'greenhouse' ? 'plantcare' : 'practice') : 'session';
     return { symptom: 'symptom', sleep: 'sleep', food: 'food', exercise: 'exercise', reflection: 'reflection', weight: 'weight' }[ev.type] || null;
   }
   root.OvuMoments = { MOMENTS: MOMENTS, NEW_POSES: NEW_POSES, line: line, pose: pose, forEntry: forEntry };

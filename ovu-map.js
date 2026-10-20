@@ -8,7 +8,7 @@
   var doc = root.document;
 
   /* where each known place sits on the world map (x 0-100, y 0-80); a new place is set beside a neighbour */
-  var POS = { home: [10, 34], garden: [34, 34], farm: [34, 58], street: [66, 34], plaza: [88, 58], 'shop-pet': [50, 10], 'shop-furniture': [66, 10], 'shop-homes': [82, 10] };
+  var POS = { home: [10, 34], garden: [34, 34], farm: [34, 58], street: [66, 34], plaza: [88, 58], 'shop-pet': [50, 10], 'shop-furniture': [66, 10], 'shop-homes': [82, 10], greenhouse: [20, 12] }; /* the greenhouse up beside the garden, away from the row of shops */
   var ICON = { home: 'home', garden: 'yard', farm: 'agriculture', street: 'storefront', plaza: 'groups', 'shop-pet': 'pets', 'shop-furniture': 'chair', 'shop-homes': 'cottage' };
   var H = 80; /* the world map's height in its own units */
 

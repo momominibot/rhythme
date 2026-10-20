@@ -13,7 +13,7 @@ function fresh(todayIso) {
   w.window = w; w.self = w; w.globalThis = w;
   var ctx = vm.createContext(w);
   w.Uint8Array = Uint8Array; w.ArrayBuffer = ArrayBuffer; w.isFinite = isFinite; w.isNaN = isNaN; w.Blob = Blob; w.File = File;
-  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sound.js', 'ovu-breathtap.js', 'ovu-lightflower.js', 'ovu-moments.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
+  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sound.js', 'ovu-breathtap.js', 'ovu-lightflower.js', 'ovu-moments.js', 'ovu-mindful.js', 'ovu-morning.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sync.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
   return w;
@@ -305,6 +305,53 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('there is no route to a place that is not on the map', M.route(g, 'home', 'house') === null);
 })();
 
+(function morningStart() {
+  console.log('2i. Morning start (Jamie, 20 Oct): offered 04:00 to 11:59 by the real clock, never asleep, put away for the day; Erin\'s brushing script whole; no breath counts; 30 seconds; the shared heart cap');
+  var w = fresh('2026-10-20'), M = w.OvuMorning, MF = w.OvuMindful, S = w.OvuStore, RW = w.OvuRewards, MO = w.OvuMoments;
+  var at = function (h, m, sec) { return new Date(2026, 9, 20, h, m || 0, sec || 0); };
+  check('the window opens at 04:00 and closes at noon', !M.inWindow(at(3, 59, 59)) && M.inWindow(at(4)) && M.inWindow(at(11, 59, 59)) && !M.inWindow(at(12)) && !M.inWindow(at(0, 30)) && !M.inWindow(at(21)));
+  check('the invitation: never while asleep, not once done or put away today, back the next morning', M.offered({}, '2026-10-20', at(8)) && !M.offered({ sleeping: { startedAt: 'x' } }, '2026-10-20', at(8)) &&
+    !M.offered({ morningStart: { date: '2026-10-20', dismissed: true } }, '2026-10-20', at(8)) && !M.offered({ morningStart: { date: '2026-10-20', done: true } }, '2026-10-20', at(9)) &&
+    M.offered({ morningStart: { date: '2026-10-19', done: true } }, '2026-10-20', at(7)) && !M.offered({}, '2026-10-20', at(13)));
+  var yw = M.plan('yourway').map(function (x) { return x.key; }), er = M.plan('erin'), teeth = MF.byId('teeth'), mv = teeth.variations.filter(function (v) { return v.when === 'morning' && v.author === 'erin'; })[0];
+  check('your way: arrive, notice, then brushing only after she says she is ready', yw.join() === 'arrive,notice,ready,yourway' && M.STEPS.ready.gate && M.STEPS.yourway.open && !M.STEPS.yourway.secs, yw.join());
+  check('with Erin: her whole morning script, in her words and order, with her clips, in the brushing pose', er.length === 3 + mv.steps.length && er.slice(3).every(function (x, i) { return x.text === mv.steps[i].text && x.secs === mv.steps[i].secs && x.audio === 'assets/audio/guide-interim/teeth-' + teeth.variations.indexOf(mv) + '-' + i + '.mp3' && x.pose === 'teeth' && x.erin; }), er.length);
+  check('about 90 seconds before brushing; about five minutes in all with Erin', M.STEPS.arrive.secs + M.STEPS.notice.secs === 90 && Math.abs(er.reduce(function (t, x) { return t + (x.secs || 0); }, 0) - 296) <= 10);
+  var copy = [M.STEPS.arrive, M.STEPS.notice, M.STEPS.ready, M.STEPS.yourway].map(function (x) { return x.title + ' ' + x.text; }).concat(Object.keys(M.VERSIONS).map(function (k) { return M.VERSIONS[k].name + ' ' + M.VERSIONS[k].sub; }));
+  check('no breath counts, pacing or promises in the copy, no "should", no em dash', copy.every(function (t) { return !/\b(count|inhale for|exhale for|hold for|4-7-8|box breath|breathe in for|per minute|should|cure|heal|reduce)\b/i.test(t) && t.indexOf('—') < 0; }) && !/\d/.test(M.STEPS.arrive.text + M.STEPS.notice.text), copy.filter(function (t) { return /\d|—/.test(t); }).join(' | '));
+  check('the first steps invite any position, care for dizziness, leave the breath alone, offer touch, sound and colour, and stopping', /Sit, lie down or stand/.test(M.STEPS.arrive.text) && /dizzy, stay sitting or lying/.test(M.STEPS.arrive.text) && /eyes can be open or closed/.test(M.STEPS.arrive.text) && /no need to change your breathing/.test(M.STEPS.arrive.text) && /something you can touch/.test(M.STEPS.arrive.text) && /don’t need to move/.test(M.STEPS.notice.text) && /a sound or a colour instead/.test(M.STEPS.notice.text) && /stop at any time/.test(M.STEPS.notice.text));
+  check('any sink, and time for prayer or anything else before brushing', /wherever you brush/.test(M.STEPS.ready.text) && /prayer or anything else/.test(M.STEPS.ready.text) && !/the sink/.test(M.STEPS.ready.text));
+  var am = M.plan('yourway', at(8))[0], pm = M.plan('yourway', at(19))[0], gm = M.arriveFor(at(4)), hi = M.arriveFor(at(12));
+  check('Good morning only inside the morning window, Hello at any other hour, each with its own clip', am.text.indexOf('Good morning. Sit') === 0 && /mstart-arrive-0\.mp3$/.test(am.audio) && pm.text.indexOf('Hello. Sit') === 0 && /mstart-arrive-1\.mp3$/.test(pm.audio) && gm.text.indexOf('Good morning') === 0 && hi.text.indexOf('Hello') === 0 && M.STEPS.arrive.text.indexOf('Good') < 0, am.text.slice(0, 20) + ' | ' + pm.text.slice(0, 20));
+  var brushAt = er.slice(3).map(function (x) { return x.brushing ? 1 : 0; }).join('');
+  check('with Erin, brushing counts only from the line after "beginning to brush", not while she picks up the brush', brushAt === '00011111' && /beginning to brush/.test(er[3 + 2].text), brushAt);
+  var e8 = M.plan('erin', at(8))[0], e19 = M.plan('erin', at(19))[0];
+  check('with Erin, Arrive has no greeting at any hour: Erin greets her at the sink in her own words, never after Hello or twice', e8.text.indexOf('Sit, lie down') === 0 && e19.text === e8.text && /mstart-arrive-2\.mp3$/.test(e8.audio) && e19.audio === e8.audio, e8.text.slice(0, 20));
+  var voiced = [am, pm, e8, M.STEPS.notice, M.STEPS.ready, M.STEPS.yourway];
+  check('every Rhythme step has its own clip on disk, read in Erin\'s voice; Quiet keeps it captions only', voiced.every(function (x) { return x.audio && fs.existsSync(path.join(root, x.audio)) && fs.statSync(path.join(root, x.audio)).size > 20000; }), voiced.map(function (x) { return x.audio; }).join());
+  var now = 0, c = M.makeClock(function () { return now; });
+  c.run(); now = 10000; c.hold(); now = 25000; c.run(); now = 55000;
+  check('practice time counts only while a step runs, not while paused or walking to the sink', c.seconds() === 40 && c.running(), c.seconds());
+  check('nothing under 30 seconds, nothing unconfirmed; 29.6 seconds does not round up to 30', M.entryData({ seconds: 29, confirmed: true }) === null && M.entryData({ seconds: 29.6, confirmed: true }) === null && M.entryData({ seconds: 300, confirmed: false }) === null && M.entryData({ seconds: 30.4, confirmed: true }).seconds === 30);
+  var c2 = M.makeClock(function () { return now; }); now = 0; c2.run(); now = 29600; c2.hold();
+  check('the clock keeps exact milliseconds for the 30-second rule', c2.ms() === 29600 && c2.seconds() === 30);
+  var d = M.entryData({ seconds: 30, confirmed: true, version: 'yourway', skipped: ['notice'], brushed: 'yourway', finished: true });
+  check('one honest entry: informal, morning, real seconds, what was skipped, whether it finished', d && d.kind === 'informal' && d.activity === 'morning' && d.seconds === 30 && d.minutes === 0.5 && d.skipped.join() === 'notice' && d.finished && d.completed && d.confirmedReal && d.brushed === 'yourway', JSON.stringify(d));
+  var e2 = M.entryData({ seconds: 95, confirmed: true, version: 'erin', brushed: 'no', finished: false });
+  check('a stopped routine is saved as not finished and says brushing did not happen; the credit says whose words and whose voice', e2 && !e2.finished && !e2.completed && e2.brushed === 'no' && /Erin Lee/.test(e2.guide) && /Rhythme in Erin’s voice/.test(e2.guide) && /read in Erin’s voice/.test(d.guide));
+  var pts = [1, 2, 3, 4].map(function () { return RW.award(S.add('mindfulness', S.today(), M.entryData({ seconds: 120, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true }))).points; });
+  check('the same small thank-you as any practice, inside the shared 6 a day cap, never a streak', pts.join() === '2,2,2,0' && (RW.ledger().streak || 0) === 0, pts.join());
+  var n0 = S.list('mindfulness').length, ls = w.localStorage, realSet = ls.setItem, threw = false;
+  ls.setItem = function () { throw new Error('storage full'); };
+  try { S.add('mindfulness', S.today(), M.entryData({ seconds: 60, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true })); } catch (e) { threw = true; }
+  ls.setItem = realSet;
+  var n1 = S.list('mindfulness').length, again = S.add('mindfulness', S.today(), M.entryData({ seconds: 60, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true }));
+  check('a save that fails (storage full) throws and leaves memory as it was, so a retry saves exactly one', threw && n1 === n0 && again && S.list('mindfulness').length === n0 + 1 && S.list('mindfulness').filter(function (e) { return e.id === again.id; }).length === 1, n0 + ',' + n1);
+  S.remove(again.id);
+  var ev = S.list('mindfulness').slice(-1)[0];
+  check('the moment after it: "That pause was yours", not a claim about minutes', MO.forEntry(ev) === 'morning' && MO.MOMENTS.morning.lines.indexOf('That pause was yours.') >= 0 && MO.MOMENTS.morning.pose === null);
+})();
+
 (function soundKitAndLightFlower() {
   console.log('2i. the sound kit: one switch (never chosen is on), quiet volume, no stacking; Light Flower lights without flashing and saves only time');
   var w = fresh(), S = w.OvuStore, SD = w.OvuSound, LF = w.OvuLightFlower, RW = w.OvuRewards, MO = w.OvuMoments;
@@ -329,6 +376,82 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('footsteps follow the ground: wood indoors and in shops, grass in the garden and farm, stone on the street and plaza', SD.surfaceFor({ id: 'room' }) === 'wood' && SD.surfaceFor({ id: 'shop-pet', scene: 'street', store: 'pet' }) === 'wood' && SD.surfaceFor({ id: 'garden', scene: 'garden' }) === 'grass' && SD.surfaceFor({ id: 'farm', scene: 'farm' }) === 'grass' && SD.surfaceFor({ id: 'street', scene: 'street' }) === 'stone' && SD.surfaceFor({ id: 'plaza', scene: 'plaza' }) === 'stone');
   check('footsteps never pile up: at most one every 150 ms', !SD.allowed('step', 1100, 1000) && SD.allowed('step', 1160, 1000));
   check('after Light Flower she listens, with a line about noticing', MO.forEntry({ type: 'mindfulness', data: { kind: 'lightflower' } }) === 'lightflower' && MO.pose('lightflower') === 'listen');
+})();
+
+(function heartsLoopAndFarmShop() {
+  console.log('2j. hearts: each kind of log earns once a day, nothing twice; hearts buy seed packs, local crops and farm tools, saved in one write');
+  var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, t = S.today();
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  var F = w.OvuFarm;
+  var food = [1, 2, 3].map(function () { return RW.award(S.add('food', t, { meal: 'lunch', foods: 'chicken rice' }, 'room')).points; });
+  check('three identical lunches earn once (6, 0, 0)', food.join(',') === '6,0,0', food.join(','));
+  var sy = S.add('symptom', t, { symptoms: ['cramps'] }, 'room'), a1 = RW.award(sy).points; S.remove(sy.id); var a2 = RW.award(S.add('symptom', t, { symptoms: ['cramps'] }, 'room')).points;
+  check('deleting and re-making a symptom earns nothing the second time', a1 === 8 && a2 === 0, a1 + ',' + a2);
+  check('each kind still earns once: a night of sleep and a period day are 10 each', RW.award(S.add('sleep', t, { bedTime: '23:00', wakeTime: '07:00', quality: 3 }, 'room')).points === 10 && RW.award(S.add('period', t, { flow: 'medium' }, 'room')).points === 10);
+  var back = S.add('food', S.addDays(t, -6), { meal: 'dinner', foods: 'soup' }, 'room');
+  check('a backfilled day earns nothing extra: the award is for the day she logs, not the day logged', RW.award(back).points === 0);
+  check('editing a saved entry earns nothing again, and weight never earns', RW.award(sy).points === 0 && RW.award(S.add('weight', t, { kg: 55 }, 'scale')).points === 0);
+  var left = RW.todayLeft();
+  check('the hearts card can say what is left to earn today', left.indexOf('food') < 0 && left.indexOf('sleep') < 0 && left.indexOf('reflection') > -1 && left.indexOf('exercise') > -1);
+  var l = RW.ledger(); l.dailyLast = S.addDays(t, 30); S.setState({ rewards: l });
+  check('a clock set back earns nothing until the real date passes the last day that earned', RW.award(S.add('reflection', t, { text: 'calm' }, 'room')).points === 0);
+  l = RW.ledger(); l.dailyLast = t; l.hearts = 5; S.setState({ rewards: l });
+  var f0 = JSON.stringify(S.state().farm || null), h0 = RW.ledger().hearts, threw = false;
+  try { RW.spend(40, 'test', { farm: { seeds: { radish: 9 } } }); } catch (e) { threw = /more hearts/.test(e.message); }
+  check('spending more hearts than she has is refused and changes nothing', threw && RW.ledger().hearts === h0 && JSON.stringify(S.state().farm || null) === f0);
+  check('the first five crops are free to grow; local crops wait for hearts', F.STARTER.every(function (k) { return F.canGrow(F.farmState(S), k); }) && !F.canGrow(F.farmState(S), 'kangkong') && !F.takeSeed(S, 'kangkong', t).ok && !F.buyPack(S, RW, 'kangkong').ok);
+  var before = JSON.stringify(S.state().farm || null), u0 = F.unlockCrop(S, RW, 'kangkong');
+  check('unlocking with too few hearts says so and leaves the farm exactly as it was', !u0.ok && /more hearts/.test(u0.why) && JSON.stringify(S.state().farm || null) === before && RW.ledger().hearts === 5);
+  l = RW.ledger(); l.hearts = 400; S.setState({ rewards: l });
+  var u1 = F.unlockCrop(S, RW, 'kangkong');
+  check('kangkong unlocked for 40 hearts, with one seed to start, and then grows from the free shed too', u1.ok && RW.ledger().hearts === 360 && (F.farmState(S).seeds.kangkong || 0) === 1 && F.canGrow(F.farmState(S), 'kangkong') && F.takeSeed(S, 'kangkong', t).ok && !F.unlockCrop(S, RW, 'kangkong').ok);
+  var pk = F.buyPack(S, RW, 'radish');
+  check('a seed pack is 3 seeds for 10 hearts, hearts and seeds in one save', pk.ok && pk.n === 3 && RW.ledger().hearts === 350 && (F.farmState(S).seeds.radish || 0) >= 3 && RW.ledger().log[0].what === 'seeds:radish');
+  var sh = F.buyTool(S, RW, 'shelf');
+  check('the seed shelf gives five free seeds a day instead of three', sh.ok && F.seedsADay(F.farmState(S)) === 5 && RW.ledger().hearts === 200 && !F.buyTool(S, RW, 'shelf').ok);
+  var cn = F.buyTool(S, RW, 'bigcan'), dry = F.BEDS.filter(function (b) { return !F.hasWeeds(null, b.id, t); }).slice(0, 3).map(function (b) { return b.id; });
+  dry.forEach(function (id) { var f = F.farmState(S); f.seeds.radish = (f.seeds.radish || 0) + 1; S.setState({ farm: f }); F.plant(S, id, 'radish', t); });
+  var wa = F.waterAll(S, t);
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('the breathing session never asks for a hold: in gently, out slowly (Codex, 20 Oct)', rs.indexOf("setOrb('hold', 'Hold')") < 0 && rs.indexOf('Breathe out slowly') > -1 && rs.indexOf('Breathe in gently') > -1);
+  check('the big watering can waters every dry bed once, and only once a day', cn.ok && wa.ok && wa.n === 3 && dry.every(function (id) { return F.wateredToday(F.bed(S, id), t); }) && !F.waterAll(S, t).ok);
+})();
+
+(function phase1ReviewFixes() {
+  console.log('2k. Codex review of Phase 1: a full disk never half-buys, update day never pays twice, clocks cannot reopen caps');
+  var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, t = S.today();
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  var F = w.OvuFarm, ls = w.localStorage, realSet = ls.setItem;
+  function full(on) { ls.setItem = on ? function () { throw new Error('QuotaExceededError'); } : realSet; }
+  var l = RW.ledger(); l.hearts = 100; S.setState({ rewards: l });
+  full(true); var r = F.buyPack(S, RW, 'radish'); full(false);
+  check('a seed pack bought while storage is full fails and leaves hearts and seeds exactly as they were, in memory too', !r.ok && RW.ledger().hearts === 100 && (F.farmState(S).seeds.radish || 0) === 0, JSON.stringify(r));
+  check('after the disk frees up, one purchase takes one price', F.buyPack(S, RW, 'radish').ok && RW.ledger().hearts === 90 && F.farmState(S).seeds.radish === 3);
+  l = RW.ledger(); l.hearts = 500; S.setState({ rewards: l }); F.buyTool(S, RW, 'bigcan');
+  var ids = F.BEDS.filter(function (b) { return !F.hasWeeds(null, b.id, t); }).slice(0, 2).map(function (b) { return b.id; });
+  ids.forEach(function (id) { F.plant(S, id, 'radish', t); });
+  full(true); var wa = F.waterAll(S, t); full(false);
+  check('the big can with storage full waters nothing (no half-watered farm)', !wa.ok && ids.every(function (id) { return !F.wateredToday(F.bed(S, id), t); }));
+  var stub = { spends: 0, spendWith: function (a, patch) { this.spends++; S.commit(Object.assign({ stamina: { v: 50, max: 100, day: t } }, patch)); return true; } };
+  var wb = F.waterAll(S, t, stub);
+  check('the big can charges one watering in the same save as the beds', wb.ok && wb.charged && stub.spends === 1 && ids.every(function (id) { return F.wateredToday(F.bed(S, id), t); }) && S.state().stamina.v === 50);
+  /* an install updated mid-day: the old rule paid a meal this morning */
+  var w2 = fresh(), S2 = w2.OvuStore, R2 = w2.OvuRewards, l2 = R2.ledger();
+  l2.log = [{ at: new Date().toISOString(), type: 'food', points: 6 }]; l2.hearts = 6; l2.earned = 6; delete l2.daily; S2.setState({ rewards: l2 });
+  check('on update day a meal the old rule already paid today does not pay again', R2.award(S2.add('food', S2.today(), { meal: 'dinner', foods: 'soup' }, 'room')).points === 0 && R2.award(S2.add('sleep', S2.today(), { bedTime: '23:00', wakeTime: '07:00', quality: 3 }, 'room')).points === 10);
+  /* practice: earn the day's cap, a later day, then the clock goes back */
+  var w3 = fresh(), S3 = w3.OvuStore, R3 = w3.OvuRewards, l3 = R3.ledger(); l3.dailyLast = S3.addDays(S3.today(), 1); S3.setState({ rewards: l3 });
+  var pr = R3.award(S3.add('mindfulness', S3.today(), { kind: 'informal', minutes: 2, completed: true }, 'room'));
+  check('a clock set back cannot reopen an earlier day’s practice cap', pr.points === 0);
+  var ST = { restedEnough: null }; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-stamina.js'), 'utf8'), w3, { filename: 'ovu-stamina.js' }); ST = w3.OvuStamina;
+  var now = 1e12, at = new Date(now - 4 * 3600000).toISOString();
+  check('rest: the phone clock says four hours, but the open app’s own timer saw twenty minutes, so no refill', ST.restedEnough(at, now) && !ST.restedEnough(at, now, { at: at, t: 0, now: 20 * 60000 }) && ST.restedEnough(at, now, { at: at, t: 0, now: 4 * 3600000 }) && ST.restedEnough(at, now, { at: 'another night', t: 0, now: 60000 }));
+  var room = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('a wake sheet left open in another tab re-reads storage and cannot save the same night twice', room.indexOf("This night was already saved.") > -1 && room.indexOf("var cur = (S.reload ? S.reload() : S.state()).sleeping; if (!cur") > -1 && typeof S3.reload === 'function');
+  var w4 = fresh(), S4 = w4.OvuStore, R4 = w4.OvuRewards, l4 = R4.ledger(); l4.mindDay = { day: S4.addDays(S4.today(), 2), pts: 6 }; delete l4.dailyLast; S4.setState({ rewards: l4 });
+  check('an older ledger without the watermark still blocks a clock set back (it takes the latest day it knows)', R4.award(S4.add('mindfulness', S4.today(), { kind: 'informal', minutes: 2, completed: true }, 'room')).points === 0 && R4.award(S4.add('food', S4.today(), { meal: 'lunch', foods: 'rice' }, 'room')).points === 0);
+  var st5 = { spendWith: undefined }, wc = F.waterAll(S, S.addDays(t, 1), st5);
+  check('with an older energy module the big can reports it did not charge, so the caller charges the watering', wc.ok === true && wc.charged === false);
 })();
 
 (function noPeriodStatementsAreNotFlow() {
@@ -712,10 +835,10 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   console.log('weighing scale: 5 hearts, one note a day, never rewarded');
   var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, today = S.today();
   RW.grant(20, 'welcome'); RW.buy('scale');
-  check('the scale costs 5 hearts', RW.ledger().hearts === 15 && RW.ledger().owned.indexOf('scale') > -1);
+  check('the scale is free: weigh-ins are a health feature (Codex review, 20 Oct)', RW.ledger().hearts === 20 && RW.ledger().owned.indexOf('scale') > -1);
   var ev = S.add('weight', today, { kg: 54.3 }, 'scale'); var aw = RW.award(ev);
   S.add('weight', today, { kg: 54.1 }, 'scale');
-  check('a weigh-in earns no hearts and no streak bonus', aw.points === 0 && RW.ledger().hearts === 15);
+  check('a weigh-in earns no hearts and no streak bonus', aw.points === 0 && RW.ledger().hearts === 20);
   check('one weight note per day, the latest wins', S.list('weight').length === 1 && S.list('weight')[0].data.kg === 54.1);
 })();
 
@@ -1498,13 +1621,14 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */
 function scenes(todayIso) {
   var w = fresh(todayIso);
-  ['ovu-walk.js', 'ovu-garden.js', 'ovu-street.js', 'ovu-community.js', 'ovu-shops.js', 'ovu-camera.js', 'ovu-petwalk.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), vm.createContext ? w : w, { filename: f }); });
+  ['ovu-walk.js', 'ovu-garden.js', 'ovu-street.js', 'ovu-community.js', 'ovu-shops.js', 'ovu-greenhouse.js', 'ovu-camera.js', 'ovu-petwalk.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), vm.createContext ? w : w, { filename: f }); });
   /* the home layouts live inside room.js, which needs a DOM: lift the LAYOUTS literal out of the source instead */
   var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), m = /var LAYOUTS = (\{[\s\S]*?\n  \});\n  var L = LAYOUTS\.room/.exec(src);
   w.LAYOUTS = vm.runInContext('(' + m[1] + ')', w);
   w.OvuWalk.dressHomes(w.LAYOUTS);
   w.LAYOUTS.garden = w.OvuGarden.LAYOUT; w.LAYOUTS.street = w.OvuStreet.LAYOUT; w.LAYOUTS.plaza = w.OvuCommunity.LAYOUT;
   Object.keys(w.OvuShops.LAYOUTS).forEach(function (id) { w.LAYOUTS[id] = w.OvuShops.LAYOUTS[id]; });
+  w.LAYOUTS.greenhouse = w.OvuGreenhouse.LAYOUT;
   return w;
 }
 (function walkGeometry() {
@@ -1577,6 +1701,41 @@ function scenes(todayIso) {
   var src = fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8');
   check('the walk engine never sets her outfit or writes the profile', !/setOutfit\(|setProfile\(|outfit:\s*'/.test(src));
 })();
+(function bigGreenhouse() {
+  console.log('the greenhouse: a room through the garden door, every tea growing in it, every plant reachable, pet safety sourced');
+  var w = scenes(), K = w.OvuWalk, GH = w.OvuGreenhouse, L = GH.LAYOUT, Gd = w.LAYOUTS.garden;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-herbs.js'), 'utf8'), w, { filename: 'ovu-herbs.js' }); var H = w.OvuHerbs;
+  var teaIds = H.TEAS.map(function (t) { return t.id; }).sort().join(), planted = GH.PLANTS.filter(function (p) { return p.kind === 'tea'; }).map(function (p) { return p.id; }).sort().join();
+  check('every tea in the tea list grows in the greenhouse, and nothing else is called a tea', teaIds === planted, teaIds + ' | ' + planted);
+  var asks = GH.PLANTS.filter(function (p) { return p.kind === 'ask'; });
+  check('each herb to ask about first matches a doctor-or-pharmacist caution by name', asks.length === 4 && asks.every(function (p) { return !!GH.info(p, H) && !!GH.info(p, H).ask; }), asks.map(function (p) { return p.id; }).join());
+  var houses = GH.PLANTS.filter(function (p) { return p.kind === 'house'; });
+  check('the houseplants include a variegated monstera and a pink princess philodendron', houses.some(function (p) { return /monstera/i.test(GH.HOUSE[p.id].name); }) && houses.some(function (p) { return /pink princess/i.test(GH.HOUSE[p.id].name); }));
+  check('every houseplant names a pet-safety verdict and a linked source', houses.every(function (p) { var h = GH.HOUSE[p.id]; return /^(toxic|safe)$/.test(h.pets) && /^https:\/\//.test(h.url) && h.src && h.petText; }));
+  check('every plant has its sprite on disk', GH.PLANTS.every(function (p) { return fs.existsSync(path.join(root, 'assets/room/dream', GH.sprite(p))); }), GH.PLANTS.filter(function (p) { return !fs.existsSync(path.join(root, 'assets/room/dream', GH.sprite(p))); }).map(function (p) { return p.id; }).join());
+  check('the greenhouse plate is on disk', fs.existsSync(path.join(root, 'assets/room/dream', L.img)));
+  var wl = K.world(L, []), unreachable = [];
+  GH.PLANTS.forEach(function (p) { if (!p.wp) return; if (!K.inZones(L.zones, p.wp.x, p.wp.y) || K.blocked(L.solids, p.wp.x, p.wp.y)) unreachable.push(p.id + ' stand point'); else if (!K.plan(wl, L.home, p.wp)) unreachable.push(p.id + ' no route'); });
+  check('every plant with a card has a stand point on the floor that she can walk to from the door', unreachable.length === 0, unreachable.join('; '));
+  check('only tools have no card', GH.PLANTS.every(function (p) { return (p.kind === 'tool') === !GH.info(p, H); }));
+  var bad = [];
+  GH.PLANTS.forEach(function (p) { if (p.kind !== 'tool') GH.careLines(p).forEach(function (l) { if (l.split(/\s+/).length > 18 || /—|should|streak/i.test(l)) bad.push(p.id + ': ' + l); }); });
+  check('the mindful minute: four lines a quarter-minute apart, each short, kind and free of em dashes', GH.CARE_SECONDS === 60 && GH.CARE_STEP * 4 === GH.CARE_SECONDS && bad.length === 0, bad.join(' | '));
+  var gd = (Gd.doors || []).filter(function (d) { return d.to === 'greenhouse'; })[0], back = (L.doors || []).filter(function (d) { return d.to === 'garden'; })[0];
+  check('the garden greenhouse is a door that opens where a walk ends, and the greenhouse has a door back', !!gd && gd.tap === 'greenhouse' && !!back);
+  var inG = K.entryFor(L, 'garden', 'garden'), outG = K.entryFor(Gd, 'greenhouse', 'garden');
+  check('arriving inside she stands on the doormat; leaving she stands at the greenhouse door in the garden', Math.abs(inG.x - back.x) < 0.01 && Math.abs(inG.y - back.y) < 0.01 && Math.abs(outG.x - gd.x) < 0.01 && Math.abs(outG.y - gd.y) < 0.01, JSON.stringify([inG, outG]));
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-map.js'), 'utf8'), w, { filename: 'ovu-map.js' });
+  var Mp = w.OvuMap, g = Mp.graph(w.LAYOUTS, 'room'), outR = Mp.route(g, 'greenhouse', 'home'), inR = Mp.route(g, 'home', 'greenhouse');
+  check('the map finds the greenhouse through the garden door, by its own name and icon, with no shortcut', !!g.nodes.greenhouse && g.nodes.greenhouse.name === 'Greenhouse' && g.nodes.greenhouse.icon === 'local_florist' && K.sceneOf(L) === 'garden', JSON.stringify(g.nodes.greenhouse));
+  check('the way home from the greenhouse is its door, then the garden gate; the way in ends at the greenhouse door', outR && outR.length === 2 && outR[0].door === 'ghdoor' && outR[0].to === 'garden' && inR && inR[inR.length - 1].door === 'greenhouse', JSON.stringify([outR, inR]));
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-sound.js'), 'utf8'), w, { filename: 'ovu-sound.js' });
+  check('the greenhouse sounds like stone tiles underfoot, and a plant minute ends with the watering sound', w.OvuSound.surfaceFor(L) === 'stone' && w.OvuSound.surfaceFor(Gd) === 'grass' && w.OvuSound.forMoment('plantcare') === 'water');
+  check('string of pearls is never misted (RHS: a succulent that dislikes humidity); the other houseplants are', !GH.careLines(GH.plant('pearls')).some(function (l) { return /mist/i.test(l); }) && /mist/i.test(GH.careLines(GH.plant('monstera'))[0]));
+  var MO = w.OvuMoments;
+  check('a greenhouse minute ends with its own plant-care moment, not the two-minute practice line', MO.forEntry({ type: 'mindfulness', data: { kind: 'informal', practice: 'greenhouse' } }) === 'plantcare' && MO.pose('plantcare') === 'plants' && MO.forEntry({ type: 'mindfulness', data: { kind: 'informal', practice: 'teeth' } }) === 'practice');
+})();
+
 (function layoutsAreWalkable() {
   console.log('every stand point the engine uses is on a floor and clear of furniture, in every home and outdoors');
   var w = scenes(), K = w.OvuWalk;
@@ -1616,6 +1775,18 @@ function scenes(todayIso) {
   Object.keys(SH.LAYOUTS).forEach(function (id) { var cap = SH.capacity(id), counts = {}; RW.SHOP.forEach(function (it) { if (SH.KINDS[id].indexOf(it.kind) > -1) counts[it.kind] = (counts[it.kind] || 0) + 1; }); check(id + ': every kind keeps spare spots for new stock', Object.keys(counts).every(function (k) { return cap[k] > counts[k]; }), JSON.stringify({ cap: cap, counts: counts })); });
   check('the furniture store groups by slot: lamps together, seats together, corner pieces together', (function () { var pl = SH.placements('shop-furniture', RW.SHOP), g = {}; pl.forEach(function (p) { g[p.item.slot || 'other'] = g[p.item.slot || 'other'] || []; g[p.item.slot || 'other'].push(p.group); }); return Object.keys(g).every(function (k) { return g[k].every(function (x) { return x === k; }); }) && g.lamp.length === 3 && g.seat.length === 2 && g.corner.length === 2; })());
   check('house models have a keyed sprite on disk', Object.keys(SH.MODELS).every(function (id) { return fs.existsSync(path.join(root, 'assets/room/dream', SH.MODELS[id])); }));
+  /* the cubbies under the pet shop awning are three units tall: they are kept for the bow and the charm, so selling one never drops the party hat in */
+  var cub = function (pl) { return pl.filter(function (p) { return p.spot.y < 38 && p.spot.x < 62; }).map(function (p) { return p.item.id; }).sort().join(); };
+  check('pet shop: the awning cubbies hold the bow and the moon charm, and only those, before and after a sale', cub(SH.placements('shop-pet', RW.SHOP)) === 'acc-bow,acc-charm' && cub(SH.placements('shop-pet', RW.SHOP, { owned: ['acc-bow'] })) === 'acc-charm' && SH.placements('shop-pet', RW.SHOP, { owned: ['acc-bow'] }).filter(function (p) { return p.item.id === 'acc-hat'; })[0].spot.item === 'acc-hat');
+  /* upstairs pets sit on the floor drawn behind the balcony railing or on the landing, never on the railing (its top runs at about y 41 to 44) */
+  var up = SH.placements('shop-pet', RW.SHOP).filter(function (p) { return p.kind === 'pet' && p.spot.y < 50; });
+  check('pet shop: three pets upstairs, each on the upstairs floor zone (balcony or landing), none on the railing', up.length === 3 && up.every(function (p) { return K.inZones([L['shop-pet'].zones[1]], p.spot.x, p.spot.y); }), JSON.stringify(up.map(function (p) { return [p.item.id, p.spot.x, p.spot.y]; })));
+  var pw = K.world(L['shop-pet'], []), toLanding = K.plan(pw, L['shop-pet'].home, { x: 57.5, y: 44 }), toBalcony = K.plan(pw, L['shop-pet'].home, { x: 40, y: 40.5 });
+  check('pet shop: a free walk from the door mat climbs the stairs to the landing and on to the balcony', !!toLanding && !!toBalcony, JSON.stringify([!!toLanding, !!toBalcony]));
+  /* every leg of a planned route stays on the drawn floor in true geometry, so the walk arrives and the card opens */
+  var legsOK = function (wld, a, b) { var r = K.plan(wld, a, b); if (!r) return 'no route'; for (var i = 1; i < r.pts.length; i++) if (!K.segClear(wld, r.pts[i - 1], r.pts[i], null)) return 'leg ' + i + ' leaves the floor ' + JSON.stringify([r.pts[i - 1], r.pts[i]]); return ''; };
+  var petLegs = [[{ x: 46, y: 40 }, { x: 57.5, y: 44 }], [{ x: 57.5, y: 44 }, { x: 36, y: 41.5 }], [{ x: 30, y: 41.5 }, { x: 62, y: 44.5 }], [L['shop-pet'].home, { x: 55, y: 43.2 }], [{ x: 57.5, y: 44 }, L['shop-pet'].home]].map(function (q) { return legsOK(pw, q[0], q[1]); }).filter(Boolean);
+  check('pet shop: walks between the balcony, the landing and the door mat keep every leg on the floor (none stops short behind the stair post)', petLegs.length === 0, petLegs.join('; '));
   var sold = SH.placements('shop-pet', RW.SHOP, { owned: ['cat', 'acc-bow', 'treat-fish'] }, w.LAYOUTS.room.props);
   check('bought pets and accessories leave the shelf; treats restock; shelf widths follow the room props', !sold.some(function (p) { return p.item.id === 'cat' || p.item.id === 'acc-bow'; }) && sold.some(function (p) { return p.item.id === 'treat-fish'; }) && sold.filter(function (p) { return p.item.id === 'dog'; })[0].w === w.LAYOUTS.room.props.dog.w * 1.02, JSON.stringify(sold.map(function (p) { return p.item.id + ':' + p.w; })));
 })();
@@ -2067,7 +2238,11 @@ function scenes(todayIso) {
   check('a new day refills on its own', ST.value() === 100);
   S.setState({ stamina: { v: 30, max: 100, day: GT.dayKey() }, sleeping: null });
   S.setState({ sleeping: { at: '2026-10-19T22:00:00Z' } });
-  check('going to sleep refills (state.sleeping turning on)', ST.value() === 100);
+  check('getting into bed alone refills nothing (Codex, 20 Oct: it used to refill before "I did not sleep")', ST.value() === 30);
+  S.setState({ sleeping: null });
+  var nowMs = w.Date.now(); /* the window's clock (fixed for this block), not the real one */
+  check('a saved night refills only after three real hours in bed', ST.restedEnough(new Date(nowMs - 3.1 * 3600000).toISOString(), nowMs) && !ST.restedEnough(new Date(nowMs - 20 * 60000).toISOString(), nowMs) && !ST.restedEnough('not a date', nowMs) && ST.rested(new Date(nowMs - 20 * 60000).toISOString()) === false && ST.value() === 30 && ST.rested(new Date(nowMs - 7 * 3600000).toISOString()) === true && ST.value() === 100);
+  S.setState({ stamina: { v: 30, max: 100, day: GT.dayKey() } });
   S.setState({ stamina: { v: 30, max: 100, day: '2026-10-21' } });
   check('a clock set back keeps the energy it had; only a later date refills', ST.value() === 30);
   S.setState({ game: { firstDay: '2026-10-25' } });
@@ -2082,6 +2257,7 @@ function scenes(todayIso) {
   var hots = [{ id: 'bed', label: 'Bed · go to sleep', x: 36, y: 60, wp: { x: 40, y: 72 } }, { id: 'desk', label: 'Desk · write in your journal', x: 70, y: 60, wp: { x: 68, y: 74 } }, { id: 'mat', label: 'Yoga mat · breathe', x: 30, y: 85, prompt: 'Tap to breathe a while' }];
   check('the nearest hotspot within reach is found by its stand point, none when far', IN.nearest({ x: 41, y: 73 }, hots).id === 'bed' && IN.nearest({ x: 66, y: 73 }, hots).id === 'desk' && IN.nearest({ x: 10, y: 20 }, hots) === null);
   check('the prompt verb comes from the label after the dot, or the hotspot\'s own prompt', IN.verb(hots[0]) === 'Tap to go to sleep' && IN.verb(hots[1]) === 'Tap to write in your journal' && IN.verb(hots[2]) === 'Tap to breathe a while');
+  check('a way-back label reads as a sentence: "Tap to go back to the street", "Tap to go back home"', IN.verb({ label: 'Door mat · back to the street' }) === 'Tap to go back to the street' && IN.verb({ label: 'Gate · back home' }) === 'Tap to go back home' && IN.verb({ label: 'Arch · Back to the garden' }) === 'Tap to go back to the garden');
 })();
 
 
@@ -2208,6 +2384,10 @@ function scenes(todayIso) {
   check('the teen logic is gone from the room, the orb and the terms, and the room goes through the consent module', !/isMinor|under13|13-16|minorAck: A\.|openMinorNote|openTeenPregnancyCard|BABES|age13|CONSENT_V/.test(roomJs) && !/under13|13-16/.test(orbJs) && /OvuConsent\.require\(next/.test(roomJs) && /at least <strong>18 years old<\/strong>/.test(terms) && !/16 years old/.test(terms));
   check('the onboarding asks an optional adult age range, never a band with minors', /id: 'agerange'[^\n]*optional: true[^\n]*\['18-24'/.test(roomJs) && !/\['under13'/.test(roomJs) && /ageRange: A\.ageRange \|\| '', ageBand: '', minorAck: ''/.test(roomJs));
   check('the sheet carries the switches container, the 18+ tick, the under-18 way out and notice version 3', /id="cChoices"/.test(roomHtml) && /id="cAge"[^\n]*I confirm I am 18 or older/.test(roomHtml) && /id="cUnder"/.test(roomHtml) && /Notice version 3, 19 October 2026/.test(roomHtml) && !/13 or older/.test(roomHtml));
+  (function () {
+    var AU = w.OvuAuth, cap = AU.sendError(Object.assign(new Error('email rate limit exceeded'), { status: 429, code: 'over_email_send_rate_limit' })), wait = AU.sendError(Object.assign(new Error('For security purposes, you can only request this after 47 seconds.'), { status: 429 })), other = AU.sendError(new Error('Signups not allowed for otp'));
+    check('a refused sign-in email reads in plain words: the hourly cap and the one-minute wait open the code box for a code already sent; other errors do not', cap.limited && /2 an hour/.test(cap.text) && /already arrived/.test(cap.text) && wait.limited && /wait 47 seconds/.test(wait.text) && !other.limited && /Could not send the code: Signups not allowed/.test(other.text), JSON.stringify([cap, wait, other]));
+  })();
   check('the pages say Singapore for the backup and name the separate choices', !/outside Singapore/.test(priv) && !/outside Singapore/.test(roomHtml) && !/outside Singapore/.test(src('ovu-auth.js')) && /notice v3/.test(priv) && /version 3 \(19 October 2026\)/.test(priv) && /Help improve logging/.test(priv) && /For adults/.test(priv));
   check('both diary-reading functions gate by consent: the account record when signed in, the phone\'s word otherwise', /consentGate\(req, sb, image \? "food_photo_ai" : "ai_reading"/.test(luna) && /consentGate\(req, sb, "ai_summaries"/.test(insight) && /consent_allows/.test(luna) && /x-rhythme-consent/.test(luna) && /x-rhythme-consent/.test(insight));
   check('the migration logs events append-only, derives state, exposes allows to the service role only, and guards sync writes', /create table if not exists public\.consent_events/.test(mig) && /consent_record\(/.test(mig) && /consent_allows\(uuid, text\) to service_role/.test(mig) && /revoke all on function public\.consent_allows\(uuid, text\) from public, anon, authenticated/.test(mig) && /entries_consent_guard/.test(mig) && /profiles_consent_guard/.test(mig) && /Rollback:/.test(mig));
