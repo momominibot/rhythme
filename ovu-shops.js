@@ -22,8 +22,10 @@
     doors: [{ id: 'mat', to: 'street', x: 46, y: 76, r: 4, flip: false }],
     spots: {
       pet: [{ x: 27, y: 65, wp: { x: 42, y: 73, flip: true } }, { x: 35, y: 62, wp: { x: 42, y: 73, flip: true } }, { x: 44, y: 59.5, wp: { x: 52, y: 69, flip: true } }, { x: 28, y: 47.5, wp: { x: 26, y: 49.5, flip: false } }, { x: 36, y: 45, wp: { x: 32, y: 48, flip: false } }, { x: 44, y: 42.3, wp: { x: 40, y: 45.5, flip: false } }, { x: 76, y: 70, wp: { x: 70, y: 68, flip: false } }],
-      treat: [{ x: 55, y: 40.5, w: 4.4, wp: { x: 58, y: 50, flip: false } }, { x: 59, y: 41.8, w: 4.4, wp: { x: 58, y: 50, flip: false } }, { x: 63, y: 43, w: 4.4, wp: { x: 58, y: 50, flip: false } }, { x: 55, y: 46.5, w: 4.4, wp: { x: 58, y: 50, flip: false } }, { x: 59, y: 47.8, w: 4.4, wp: { x: 58, y: 50, flip: false } }, { x: 63, y: 49, w: 4.4, wp: { x: 58, y: 50, flip: false } }],
-      accessory: [{ x: 71, y: 38.5, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 77, y: 40.3, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 71, y: 45.5, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 77, y: 47.3, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 71, y: 52.5, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 77, y: 54.3, w: 4, wp: { x: 74, y: 56, flip: false } }]
+      /* treats stand along the shop counter by the door (Jamie, 20 Oct: on the shelves and counters, never on the floor) */
+      treat: [{ x: 28, y: 67.3, w: 4.4, wp: { x: 42, y: 73, flip: true } }, { x: 33, y: 68.0, w: 4.4, wp: { x: 42, y: 73, flip: true } }, { x: 38.5, y: 68.7, w: 4.4, wp: { x: 42, y: 73, flip: true } }, { x: 30.5, y: 67.6, w: 4.4, wp: { x: 42, y: 73, flip: true } }, { x: 35.8, y: 68.4, w: 4.4, wp: { x: 42, y: 73, flip: true } }],
+      /* accessories on the bookcase's three boards, inside its frame: bow and charm on the top board, hat and bandana on the middle, spares below */
+      accessory: [{ x: 70.5, y: 35.0, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 74.5, y: 40.3, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 70.5, y: 39.5, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 74.5, y: 35.7, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 70.5, y: 44.0, w: 4, wp: { x: 74, y: 56, flip: false } }, { x: 74.5, y: 44.7, w: 4, wp: { x: 74, y: 56, flip: false } }]
     },
     meditator: { x: 46, y: 72, w: 11 }, aura: { x: 46, y: 70, w: 17 }, holo: { x: 56, y: 70, w: 14 }, sleeper: NOSLEEP, zzz: OFF, window: NOWIN,
     props: {}
@@ -40,7 +42,7 @@
       corner: [{ x: 21, y: 63.5, wp: { x: 40, y: 68, flip: true } }, { x: 29, y: 61.5, wp: { x: 40, y: 68, flip: true } }, { x: 36.5, y: 59.6, wp: { x: 40, y: 68, flip: true } }],
       seat: [{ x: 51.5, y: 59, wp: { x: 48, y: 66, flip: true } }, { x: 58.5, y: 61.5, wp: { x: 48, y: 66, flip: false } }],
       lamp: [{ x: 23.5, y: 40.2, wp: { x: 30, y: 41, flip: true } }, { x: 31, y: 38.8, wp: { x: 30, y: 41, flip: true } }, { x: 38.5, y: 37.3, wp: { x: 30, y: 41, flip: false } }],
-      other: [{ x: 66, y: 39.6, wp: { x: 68, y: 42, flip: true } }, { x: 73.5, y: 41.4, wp: { x: 68, y: 42, flip: false } }, { x: 80.5, y: 43.2, wp: { x: 68, y: 42, flip: false } }]
+      other: [{ x: 66, y: 40.9, wp: { x: 68, y: 42, flip: true } }, { x: 73.5, y: 42.8, wp: { x: 68, y: 42, flip: false } }, { x: 80.5, y: 44.6, wp: { x: 68, y: 42, flip: false } }] /* at the bench's front edge, so a flat piece like the scale lies on the top, not against the wall */
     } },
     meditator: { x: 48, y: 72, w: 11 }, aura: { x: 48, y: 70, w: 17 }, holo: { x: 58, y: 70, w: 14 }, sleeper: NOSLEEP, zzz: OFF, window: NOWIN,
     props: {}
@@ -53,7 +55,8 @@
     zones: [[[47, 55], [82, 66], [47, 78], [12, 66]], [[22, 40], [47, 30], [47, 37], [22, 47]], [[47, 30], [80, 42], [80, 49], [47, 37]], [[59, 46], [70, 46], [73, 75], [61, 75]]],
     solids: [{ id: 'bench', x0: 12, x1: 36, y0: 56, y1: 68 }, { id: 'stand', x0: 38, x1: 48, y0: 55, y1: 63 }, { id: 'stand', x0: 48, x1: 58, y0: 52, y1: 60 }, { id: 'stand', x0: 47, x1: 57, y0: 61, y1: 69 }, { id: 'stand', x0: 31, x1: 41, y0: 36, y1: 43 }, { id: 'stand', x0: 42, x1: 51, y0: 33, y1: 40 }, { id: 'desk', x0: 48, x1: 60, y0: 29, y1: 36 }],
     doors: [{ id: 'mat', to: 'street', x: 35, y: 73, r: 4, flip: false }],
-    spots: { home: [{ x: 44.5, y: 60, w: 9, wp: { x: 38, y: 70, flip: true } }, { x: 53, y: 57, w: 9, wp: { x: 50, y: 74, flip: false } }, { x: 52, y: 66, w: 9, wp: { x: 50, y: 74, flip: false } }, { x: 36, y: 40, w: 8, wp: { x: 28, y: 42, flip: false } }, { x: 46.5, y: 37, w: 8, wp: { x: 52, y: 37.5, flip: true } }] },
+    /* each model's own round base sits on its pedestal's top (the spot is the top's front edge, not its centre) */
+    spots: { home: [{ x: 43.5, y: 61.6, w: 9, wp: { x: 38, y: 70, flip: true } }, { x: 53.2, y: 58.6, w: 9, wp: { x: 50, y: 74, flip: false } }, { x: 53.8, y: 65.5, w: 9, wp: { x: 50, y: 74, flip: false } }, { x: 36, y: 40, w: 8, wp: { x: 28, y: 42, flip: false } }, { x: 46.5, y: 37, w: 8, wp: { x: 52, y: 37.5, flip: true } }] },
     meditator: { x: 24, y: 61, w: 11 }, aura: { x: 24, y: 59, w: 17 }, holo: { x: 34, y: 59, w: 14 }, sleeper: NOSLEEP, zzz: OFF, window: NOWIN,
     props: {}
   };
@@ -104,7 +107,7 @@
     if (it.kind === 'accessory') { var by = Object.keys(l.wear || {}).filter(function (p) { return l.wear[p] === it.id; })[0]; return { tag: owned ? (by ? 'Worn' : 'Yours') : it.cost + ' ♥', owned: owned, by: by }; }
     if (it.kind === 'home') return { tag: owned ? (home === it.id ? 'Your home' : 'Yours') : it.cost + ' ♥', owned: owned, current: home === it.id };
     if (it.kind === 'pet') return { tag: owned ? (placed ? 'At home' : 'Yours') : it.cost + ' ♥', owned: owned, placed: placed };
-    return { tag: owned ? (placed ? 'Placed' : 'Yours') : it.cost + ' ♥', owned: owned, placed: placed };
+    return { tag: owned ? (placed ? 'Placed' : 'Yours') : it.cost ? it.cost + ' ♥' : 'Free', owned: owned, placed: placed };
   }
   /* props on the shelves: display-only nodes (class .nb keeps them out of the room's pet handling), tappable */
   function renderStore(L) {
@@ -133,7 +136,7 @@
     else if (it.kind === 'treat') { btns = '<button type="button" class="btn primary" data-act="buy"' + (can ? '' : ' disabled') + '><span class="ms">cookie</span>Buy a pack · ' + it.cost + ' ♥</button>'; note = (st.have ? st.have + ' in your cupboard. ' : '') + 'A pack holds ' + (it.qty || 1) + '. Give one from a pet’s care bubble at home.'; }
     else if (it.kind === 'accessory') { btns = st.owned ? '<span class="ownchip">' + (st.by ? 'Worn by ' + esc((root.OvuPets && root.OvuPets.NAMES[st.by]) || st.by) : 'In your drawer') + '</span>' : '<button type="button" class="btn primary" data-act="buy"' + (can ? '' : ' disabled') + '><span class="ms">checkroom</span>Buy · ' + it.cost + ' ♥</button>'; note = 'Dress a pet from its care bubble at home. One pet wears it at a time.'; }
     else if (it.kind === 'home') btns = st.owned ? (st.current ? '<button type="button" class="btn soft" data-act="home" data-to="room">Back to my room</button>' : '<button type="button" class="btn primary" data-act="home" data-to="' + it.id + '"><span class="ms">home</span>Move in</button>') : '<button type="button" class="btn primary" data-act="buy"' + (can ? '' : ' disabled') + '><span class="ms">cottage</span>Move in · ' + it.cost + ' ♥</button><button type="button" class="btn ghost" data-act="visit"><span class="ms">visibility</span>Visit first</button>';
-    else { var slotBusy = it.slot && !st.placed && RW.SHOP.some(function (o) { return o.slot === it.slot && o.id !== it.id && l.placed[o.id]; }); btns = st.owned ? '<button type="button" class="btn soft" data-act="toggle"><span class="ms">' + (st.placed ? 'inventory_2' : 'chair') + '</span>' + (st.placed ? 'Put away' : (slotBusy ? 'Swap in' : 'Place at home')) + '</button>' : '<button type="button" class="btn primary" data-act="buy"' + (can ? '' : ' disabled') + '><span class="ms">favorite</span>Buy · ' + it.cost + ' ♥</button>'; if (it.slot && RW.SLOTS) note = RW.SLOTS[it.slot] + '. Pieces that share a spot swap with each other.'; }
+    else { var slotBusy = it.slot && !st.placed && RW.SHOP.some(function (o) { return o.slot === it.slot && o.id !== it.id && l.placed[o.id]; }); btns = st.owned ? '<button type="button" class="btn soft" data-act="toggle"><span class="ms">' + (st.placed ? 'inventory_2' : 'chair') + '</span>' + (st.placed ? 'Put away' : (slotBusy ? 'Swap in' : 'Place at home')) + '</button>' : '<button type="button" class="btn primary" data-act="buy"' + (can ? '' : ' disabled') + '><span class="ms">favorite</span>' + (it.cost ? 'Buy · ' + it.cost + ' ♥' : 'Take it home · free') + '</button>'; if (it.slot && RW.SLOTS) note = RW.SLOTS[it.slot] + '. Pieces that share a spot swap with each other.'; }
     if (!can && !st.owned && it.kind !== 'accessory') note = (note ? note + ' ' : '') + 'You need ' + (it.cost - l.hearts) + ' more hearts; logging earns them.';
     if (it.kind === 'pet' && petFull) note = (note ? note + ' ' : '') + (st.owned ? 'Two pets at home is the limit for now; put one away first.' : 'Two pets live at home at a time; adopting is fine, she waits in your inventory until there is room.');
     R.openSheet('shopcard', it.name, { pet: 'Pet shop', treat: 'Treats shelf', accessory: 'Accessories shelf', home: 'Property showroom', furniture: 'Furniture store' }[it.kind] || 'Dream Street', { pet: 'pets', treat: 'cookie', accessory: 'checkroom', home: 'cottage' }[it.kind] || 'chair',

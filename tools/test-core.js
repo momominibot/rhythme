@@ -788,10 +788,10 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   console.log('weighing scale: 5 hearts, one note a day, never rewarded');
   var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, today = S.today();
   RW.grant(20, 'welcome'); RW.buy('scale');
-  check('the scale costs 5 hearts', RW.ledger().hearts === 15 && RW.ledger().owned.indexOf('scale') > -1);
+  check('the scale is free: weigh-ins are a health feature (Codex review, 20 Oct)', RW.ledger().hearts === 20 && RW.ledger().owned.indexOf('scale') > -1);
   var ev = S.add('weight', today, { kg: 54.3 }, 'scale'); var aw = RW.award(ev);
   S.add('weight', today, { kg: 54.1 }, 'scale');
-  check('a weigh-in earns no hearts and no streak bonus', aw.points === 0 && RW.ledger().hearts === 15);
+  check('a weigh-in earns no hearts and no streak bonus', aw.points === 0 && RW.ledger().hearts === 20);
   check('one weight note per day, the latest wins', S.list('weight').length === 1 && S.list('weight')[0].data.kg === 54.1);
 })();
 
