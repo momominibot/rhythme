@@ -1265,6 +1265,19 @@ async def main():
             check("the food diary's Ideas pane lists no teas and points to the garden greenhouse", ti["teas"] == 0 and ti["pointer"], ti)
             await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
 
+            # acupressure (DeepSeek TCM review, 20 Oct): fourteen points with SP8 for first-day cramps, a before-you-press safety
+            # list, and pregnancy cautions on SP6, SP8, LR3, LI4, the belly points and the lower back
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
+            await page.evaluate("()=>{var b=document.querySelector('nav a[data-tab=mind]'); b.click();}"); await page.wait_for_selector("#mindAcu", timeout=8000)
+            await page.evaluate("()=>document.querySelector('#mindAcu').click()"); await page.wait_for_selector(".acusafe", timeout=8000); await page.wait_for_timeout(400)
+            nums = await page.evaluate("()=>Array.from(new Set(Array.from(document.querySelectorAll('[data-pt]')).map(b=>b.dataset.pt).filter(Boolean)))")
+            await page.evaluate("()=>{var b=document.querySelector('[data-pt=sp8]'); if(b) b.click();}"); await page.wait_for_timeout(400)
+            sp8 = await page.evaluate("()=>{var t=document.querySelector('#sheetBody, .sheet-body, #sheet').textContent; return {find: /four fingers flat downward/.test(t), use: /especially on the first day/.test(t), caution: /maternity team/.test(t), page: /page has not been checked/.test(t)};}")
+            safe = await page.evaluate("()=>{var t=(document.querySelector('.acusafe')||{}).textContent||''; return {skin: /broken, red, hot, swollen/.test(t), thinners: /blood thinners/.test(t), stop: /numbness, tingling or dizziness/.test(t)};}")
+            check("the acupressure sheet lists fourteen points with SP8, and the before-you-press list covers skin, blood thinners and when to stop", len(nums) >= 14 and "sp8" in nums and all(safe.values()), {"points": nums, "safe": safe})
+            check("SP8 says how to find it with four fingers, what it is for, the pregnancy caution, and that its WHO page is not yet checked", all(sp8.values()), sp8)
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()
     finally:

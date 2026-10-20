@@ -151,10 +151,13 @@
   var ERIN = 'assets/audio/erin-tts/';
   var CAPTION = { greeting_morning: 'Erin says good morning', greeting_evening: 'Erin says good evening', greeting_welcome: 'Welcome', meditation_begin: 'Settling in', breathing_in: 'Breathe in', breathing_out: 'Breathe out', meditation_end: 'Coming back', closing_steady: 'Steady, and done', closing_patience: 'Patience, and done', guide_soften: 'Let your shoulders soften, and notice the breath moving on its own.', guide_nothing_to_fix: 'There is nothing to fix right now. Just this one breath.', guide_quiet_work: 'Change is quiet work. One small, kind choice at a time.', guide_wander: 'When your mind wanders, that is not a mistake. Gently come back.', guide_feet: 'Feel your feet, your seat, and the weight of your hands.', guide_thanks: 'Before you go, thank yourself for pausing today.', guide_cramps: 'If there is cramping, breathe into your belly and let it be soft.' };
   /* acupoint markers on the standing avatar sprite (percent of the image) */
-  var ACU_XY = { cv6: [50, 66], cv4: [50, 70.5], cv3: [50, 75], st29: [57, 75], sp10: [54, 82.5], st36: [41, 87.5], sp6: [48, 94], ki3: [50, 96.5], lr3: [44, 98.5], li4: [70, 74.5], pc6: [69, 69.5] };
+  var ACU_XY = { cv6: [50, 66], cv4: [50, 70.5], cv3: [50, 75], st29: [57, 75], sp10: [54, 82.5], st36: [41, 87.5], sp6: [48, 94], sp8: [48.5, 89], ki3: [50, 96.5], lr3: [44, 98.5], li4: [70, 74.5], pc6: [69, 69.5] };
   var ACU_PREG = 'Pregnant or might be? Check with your maternity team before using this point. Traditional caution is not proof that touching it causes harm.';
   var ACU_PREG_BELLY = 'Pregnant or might be? Check with your maternity team first, and avoid firm pressure on the belly. Traditional caution is not proof that touching it causes harm.';
-  var ACU_CAUTION = { sp6: ACU_PREG, li4: ACU_PREG, cv3: ACU_PREG_BELLY, cv4: ACU_PREG_BELLY, cv6: ACU_PREG_BELLY, st29: ACU_PREG_BELLY };
+  /* SP8 and LR3: some TCM sources caution them in pregnancy (a conservative addition, DeepSeek and Doubao review 20 Oct); the
+     lower-back points: strong pressure is traditionally cautioned in pregnancy */
+  var ACU_PREG_BACK = 'Pregnant or might be? Use only light pressure on the lower back, and check with your maternity team first. Traditional caution is not proof that touching it causes harm.';
+  var ACU_CAUTION = { sp6: ACU_PREG, sp8: ACU_PREG, lr3: ACU_PREG, li4: ACU_PREG, cv3: ACU_PREG_BELLY, cv4: ACU_PREG_BELLY, cv6: ACU_PREG_BELLY, st29: ACU_PREG_BELLY, bl23: ACU_PREG_BACK, gv4: ACU_PREG_BACK };
 
   /* ---------- evidence guides behind every (i) ---------- */
   function padSVG(level) {
@@ -2164,7 +2167,7 @@
   /* region illustrations (Seedream, 18 Oct) and where each point sits on them, percent of the image */
   var ACU_REGIONS = {
     belly: { img: 'belly', title: 'Lower belly', pts: { cv6: [[50.5, 64]], cv4: [[50.5, 76]], cv3: [[50.5, 84]], st29: [[36, 84], [65, 84]] } },
-    innerleg: { img: 'innerleg', title: 'Inner lower leg', pts: { sp6: [[54, 61]], ki3: [[59.5, 74.5]], sp10: [] } },
+    innerleg: { img: 'innerleg', title: 'Inner lower leg', pts: { sp8: [[52, 38.5]], sp6: [[54, 61]], ki3: [[59.5, 74.5]], sp10: [] } },
     outerleg: { img: 'outerleg', title: 'Outer lower leg', pts: { st36: [[47, 42]] } },
     foot: { img: 'foot', title: 'Top of the foot', pts: { lr3: [[45.5, 45]] } },
     hand: { img: 'hand', title: 'Back of the hand', pts: { li4: [[42, 61]] } },
@@ -2176,6 +2179,7 @@
   var ACU_BADGE = { belly: [50, 70], innerleg: [51, 93], outerleg: [39, 87], foot: [44, 99], hand: [71, 75], forearm: [69, 68.5] };
   var ACU_FIND = {
     sp6: 'Find the bump of your inner ankle. Lay four fingers flat above it; the point is level with your top finger, just behind the shin bone.',
+    sp8: 'Slide your thumb up the inner edge of your shin bone until it stops in a dip just below the knee. From there, lay four fingers flat downward; the point is level with your bottom finger, just behind the shin bone. It is often tender during a period.',
     cv6: 'Two finger-widths straight below your navel, on the midline.',
     cv4: 'Four finger-widths below your navel, on the midline.',
     cv3: 'On the midline, one thumb-width above the top edge of the pubic bone (about four finger-widths plus a thumb below the navel).',
@@ -2192,6 +2196,7 @@
   /* What each point is for, kept apart: what tradition says and what research has shown (Codex source review, 18 Oct 2026). */
   var ACU_USE = {
     sp6: ['Period cramps', 'Small studies suggest pressing or needling it may ease period pain; the evidence is limited.', ['E25', 'E19']],
+    sp8: ['Period cramps, especially on the first day', 'Named in international TCM guidelines for period pain, where it is used with needles; evidence on pressing it yourself is limited.', ['E27']],
     cv6: ['Lower-belly comfort during periods', 'Often chosen in needle and heat-therapy trials; a benefit from pressing it yourself is not established.', ['E26', 'E27']],
     cv4: ['Lower-belly comfort during periods', 'Often chosen in needle and heat-therapy trials; a benefit from pressing it yourself is not established.', ['E26', 'E27']],
     cv3: ['Lower-belly discomfort around periods', 'Traditional use only; there is little direct research.', ['E27']],
@@ -2214,7 +2219,8 @@
       var order = []; ACU_ORDER.forEach(function (rk) { Object.keys(ACU_REGIONS[rk].pts).forEach(function (id) { if (byId[id] && order.indexOf(id) < 0) order.push(id); }); });
       var num = {}; order.forEach(function (id, k) { num[id] = k + 1; });
       openSheet('acu', 'Cramp relief points', 'Numbered on you, then zoomed in so you can find them', 'spa',
-        '<p class="help">Tap a number. Use a thumb or fingertip, press gently for one to two minutes on each side, breathe slowly, and stop if anything hurts. An educational atlas, not a treatment plan. ' + infoBtn('acu') + '</p>' + guideHTML('acu') +
+        '<p class="help">Tap a number. Use a thumb or fingertip, press gently for one to two minutes on each side, breathe slowly, and stop if anything hurts. An educational atlas, not a treatment plan. ' + infoBtn('acu') + '</p>' +
+        '<details class="acusafe"><summary><span class="ms">health_and_safety</span>Before you press</summary><ul><li>Skip any spot with broken, red, hot, swollen or bruised skin, varicose veins, a lump, a recent injury, or a calf that is painful or swollen (a possible clot needs a doctor, not pressure).</li><li>On blood thinners, or bruise or bleed easily? Use only very light pressure.</li><li>Stop at once for sharp pain, numbness, tingling or dizziness.</li><li>Period pain that is severe, sudden, new or keeps you from your day deserves a doctor\u2019s check.</li></ul></details>' + guideHTML('acu') +
         '<div class="acuwrap"><div class="acufig"><img src="' + ART + 'avatar-base.webp" alt="Your avatar, standing">' + ACU_ORDER.filter(function (rk) { return ACU_BADGE[rk]; }).map(function (rk) { var ids = Object.keys(ACU_REGIONS[rk].pts).filter(function (id) { return byId[id]; }); if (!ids.length) return ''; var ns = ids.map(function (id) { return num[id]; }); var lab = ns.length > 1 ? ns[0] + '–' + ns[ns.length - 1] : String(ns[0]); return '<button type="button" class="pt range" data-region="' + rk + '" data-pt="' + ids[0] + '" style="left:' + ACU_BADGE[rk][0] + '%;top:' + ACU_BADGE[rk][1] + '%" aria-label="' + esc(ACU_REGIONS[rk].title + ', points ' + lab) + '">' + lab + '</button>'; }).join('') + '</div>' +
         '<div class="aculist" id="aculist">' + ACU_ORDER.map(function (rk) { var ids = Object.keys(ACU_REGIONS[rk].pts).filter(function (id) { return byId[id]; }); if (!ids.length) return ''; return '<h5>' + esc(ACU_REGIONS[rk].title) + '</h5>' + ids.map(function (id) { return '<button type="button" data-pt="' + id + '"><i>' + num[id] + '</i><span><b>' + esc(byId[id].code) + ' · ' + esc(byId[id].name) + '</b><small>' + esc(byId[id].kind === 'abdomen' ? 'below the navel' : byId[id].kind) + (ACU_CAUTION[id] ? ' · ask first if pregnant' : '') + '</small>' + (ACU_USE[id] ? '<em>For: ' + esc(ACU_USE[id][0]) + '</em>' : '') + '</span></button>'; }).join(''); }).join('') + '</div></div>' +
         '<div class="locator" id="locator"></div>');
@@ -2226,7 +2232,7 @@
           '<div class="find"><span class="ms">touch_app</span><span>' + esc(ACU_FIND[id] || p.location) + (p.bilateral ? ' Both sides.' : '') + '</span></div>' +
           (ACU_USE[id] ? '<div class="acuuse"><div><span class="ms">favorite</span><span><b>Traditionally used for</b>' + esc(ACU_USE[id][0]) + '</span></div><div><span class="ms">science</span><span><b>What research says</b>' + esc(ACU_USE[id][1]) + '</span></div><p class="evrefs">' + acuRefs(ACU_USE[id][2]) + '</p></div>' : '') +
           '<div class="how"><div><span class="ms">touch_app</span>Thumb or fingertip</div><div><span class="ms">timer</span>1 to 2 minutes</div><div><span class="ms">air</span>Slow breaths</div></div>' + (ACU_CAUTION[id] ? '<div class="warn">' + esc(ACU_CAUTION[id]) + '</div>' : '') +
-          '<div class="fingerkey"><b>Measure with your own hand</b><div><span><i>1</i>thumb-width</span><span><i>2</i>finger-widths</span><span><i>3</i>finger-widths</span><span><i>4</i>finger-widths</span></div><small>Your own fingers fit your own body, so the distances work for any size. The pink dot shows the area; press around it until you find a slightly tender spot. Location checked against the WHO standard (2008), p. ' + p.whoPage + '.</small></div></div>';
+          '<div class="fingerkey"><b>Measure with your own hand</b><div><span><i>1</i>thumb-width</span><span><i>2</i>finger-widths</span><span><i>3</i>finger-widths</span><span><i>4</i>finger-widths</span></div><small>Your own fingers fit your own body, so the distances work for any size. The pink dot shows the area; press around it until you find a slightly tender spot. ' + (p.whoPage ? 'Location checked against the WHO standard (2008), p. ' + p.whoPage + '.' : 'Location follows the WHO standard (2008) wording as published in TCM guidelines; its page has not been checked here.') + '</small></div></div>';
         $('#locator').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
       body.addEventListener('click', function (e) { var b = e.target.closest('[data-pt]'); if (b) { chime('tap'); show(b.dataset.pt); } });

@@ -1659,3 +1659,11 @@ span.frchip{cursor:default}
 .plazapill.frnew::after{content:'';width:8px;height:8px;border-radius:50%;background:#e0567f;flex-shrink:0}
 .nbreal .nbtag{background:rgba(255,255,255,.96);box-shadow:0 0 0 1.5px var(--rm-lilac),0 3px 10px rgba(90,66,116,.18)}
 .nbtag .ms{font-size:11px;vertical-align:-1px;margin-right:2px;color:#d0577f}
+
+/* acupressure: the before-you-press safety list (DeepSeek TCM review, 20 Oct) */
+.acusafe{margin:6px 0 12px;background:var(--rm-card,#fff);border-radius:14px;padding:8px 12px;box-shadow:var(--rm-shadow)}
+.acusafe summary{cursor:pointer;font:700 13px var(--sans);color:var(--rm-ink);display:flex;gap:6px;align-items:center;list-style:none}
+.acusafe summary::-webkit-details-marker{display:none}
+.acusafe summary .ms{color:var(--rm-plum);font-size:18px}
+.acusafe ul{margin:8px 0 2px;padding-left:18px;display:grid;gap:5px}
+.acusafe li{font:500 12.5px/1.45 var(--sans);color:var(--rm-ink)}
