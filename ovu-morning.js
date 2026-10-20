@@ -91,7 +91,7 @@
   }
 
   /* ---------- the panel and the flow (browser only) ---------- */
-  var run = null, ticker = null;
+  var run = null, ticker = null, doneWait = null;
   function $(s) { return document.querySelector(s); }
   function R() { return root.OvuRoom; }
   function S() { return root.OvuStore; }
@@ -101,6 +101,8 @@
   function quietDefault() { return !(S().state() || {}).sound || voiceMuted(); }
   /* she chose to hear the voice here: lift the shared mute, so Voice on is never a silent clip */
   function hearVoice() { if (voiceMuted()) root.OvuVoice.set(false); }
+  /* putting her outfit back writes her profile; if storage fails, the routine and its save prompt still go on */
+  function settle(room) { try { if (room.restorePose) room.restorePose(); } catch (e) { } }
   function markToday(patch) { var st = S().state(), m = st.morningStart && st.morningStart.date === S().today() ? st.morningStart : { date: S().today() }; for (var k in patch) m[k] = patch[k]; S().setState({ morningStart: m }); }
 
   function renderInvite() {
@@ -147,7 +149,7 @@
     if (room.endMoment) room.endMoment();
     /* from the mat she sits there hidden: bring her back first, or the routine plays to an empty room */
     if (room.els && room.els.meditator && room.els.meditator.classList.contains('on') && !(room.sessionOn && room.sessionOn())) room.exitMeditation();
-    if (room.restorePose) room.restorePose();
+    settle(room);
     if (room.els && room.els.avatar) room.els.avatar.classList.remove('acting');
     if (!run.quiet) hearVoice();
     showPanel(); next(); if (run && run.quiet) unlock(); /* a quiet start still readies the voice, inside this tap */
@@ -168,7 +170,7 @@
     var s = step(); if (!s) { finish(true); return; }
     if (run.i > 0) bell();
     var room = R();
-    if (s.pose) room.setPose(s.pose); else if (room.restorePose) room.restorePose();
+    if (s.pose) { try { room.setPose(s.pose); } catch (e) { } } else settle(room);
     if (room.els && room.els.avatar) room.els.avatar.classList.remove('acting'); /* no pulse: it would read as a breathing pace */
     if (s.gate) { run.paused = false; run.clock.hold(); } else if (!run.paused) run.clock.run(); /* the sink has no Pause, so it is never left paused */
     run.stepMs = run.clock.ms(); /* her own way counts as brushed only when she taps Done; Erin's on time spent brushing (leaveStep) */
@@ -242,7 +244,7 @@
   /* sleep, or anything that ends the room's day: everything stops at once and nothing is offered */
   function cancel() {
     if (!run) return; clearTimeout(run.timer); stopAudio(); clearInterval(ticker);
-    run = null; hidePanel(); var room = R(); if (room.restorePose && !room.asleep()) room.restorePose();
+    run = null; hidePanel(); clearInterval(doneWait); var room = R(); if (!room.asleep()) settle(room);
   }
   function finish(finished) {
     var r = run; if (!r) return;
@@ -250,11 +252,20 @@
     leaveStep();
     clearTimeout(r.timer); stopAudio(); r.clock.hold(); clearInterval(ticker);
     var exact = r.clock.ms() / 1000, secs = Math.round(exact), room = R();
-    run = null; hidePanel(); if (room.restorePose) room.restorePose();
+    run = null; hidePanel(); settle(room);
     if (exact < MIN_SAVE_S) { room.toast('Stopped. Pauses under 30 seconds are not saved.', 'wb_twilight'); renderInvite(); return; }
     var did = [];
     if ((r.spent.arrive || 0) >= 5000) did.push('arrived'); if ((r.spent.notice || 0) >= 5000) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed'); /* only what she spent time on */
     var saved = false;
+    /* another sheet is open (a symptoms form, the bed): never replace it; ask once it closes, unless she falls asleep */
+    clearInterval(doneWait);
+    if (room.sheetOpen()) {
+      room.toast('Morning start finished. It will ask about saving when you close this.', 'wb_twilight');
+      doneWait = setInterval(function () { if (room.asleep() || run) { clearInterval(doneWait); return; } if (!room.sheetOpen()) { clearInterval(doneWait); ask(); } }, 400);
+      return;
+    }
+    ask();
+    function ask() {
     room.openSheet('morningDone', finished ? 'Morning start' : 'Stopping early', 'About ' + Math.max(1, Math.round(secs / 60)) + ' minute' + (secs >= 90 ? 's' : '') + ' of practice', 'wb_twilight',
       '<p class="mintro">' + (did.length ? 'You ' + (did.length > 1 ? did.slice(0, -1).join(', ') + ' and ' + did[did.length - 1] : did[0]) + '.' : 'You paused for a moment.') + ' Save this pause to your journal?</p>' +
       '<div class="row"><button type="button" class="btn primary" id="mdYes"><span class="ms" aria-hidden="true">check</span>Yes, I did it</button><button type="button" class="btn ghost" id="mdNo">Not this time</button></div>' +
@@ -272,6 +283,7 @@
       room.afterSave(ev, 'Saved to your journal.');
     });
     $('#mdNo').addEventListener('click', function () { room.closeSheet(); room.toast('No worries. Morning start is there whenever you like.', 'wb_twilight'); renderInvite(); });
+    }
   }
 
   function paint() {

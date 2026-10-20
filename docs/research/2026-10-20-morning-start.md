@@ -94,6 +94,10 @@ A fourth Codex check passed that and found three more, all fixed with checks:
 - A clip that started late could be cut off when its step's time ran out: the step now waits for its line, a second at a time and at most eight, with Pause, Next and Stop still working.
 - A save that failed (storage full) closed the sheet and left an unsaved entry in memory: OvuStore.add now takes the entry back out of memory when the write fails (true for every save in the app), and the sheet stays open with a message so she can try again.
 
+A fifth Codex check passed those and found two more, both fixed with checks:
+- With storage failing, putting her outfit back threw before the save prompt opened: that step can no longer stop the prompt.
+- If Erin's guide ended while another form was open (a symptoms note, say), the save prompt replaced it and lost the typing: the prompt now waits until that form is closed, with a toast saying so.
+
 Not taken, and why:
 - Hearts without saving (Doubao): the honesty confirm before any hearts is Jamie's rule, and separating them needs a second reward ledger. The entry stays on her phone unless she has turned on sync, which has its own consent.
 - A confirmation on Stop (Doubao): Stop after 30 s already opens a sheet with "Not this time"; under 30 s nothing is lost but the moment.
