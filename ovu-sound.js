@@ -36,7 +36,7 @@
     door: { gap: 800, peak: 0.02 }
   };
   /* which small sound goes with which moment (ovu-moments.js); logging moments stay quiet, the save already sparkled */
-  var FOR_MOMENT = { food: 'munch', farmmeal: 'munch', tea: 'munch', petfeed: 'munch', plant: 'dig', weed: 'dig', farmwater: 'water', greenhouse: 'water', plantcare: 'water', harvest: 'pop', shop: 'coin', adopt: 'pet', petplay: 'pet', petcuddle: 'pet', pettidy: 'swish', petdress: 'swish', wardrobe: 'swish', learn: 'page', journal: 'page', reflection: 'page', hello: 'boop', friend: 'boop', plaza: 'boop', exercise: 'hup', wake: 'hup' };
+  var FOR_MOMENT = { food: 'munch', farmmeal: 'munch', tea: 'munch', petfeed: 'munch', plant: 'dig', weed: 'dig', farmwater: 'water', well: 'water', greenhouse: 'water', plantcare: 'water', harvest: 'pop', shop: 'coin', adopt: 'pet', petplay: 'pet', petcuddle: 'pet', pettidy: 'swish', petdress: 'swish', wardrobe: 'swish', learn: 'page', journal: 'page', reflection: 'page', hello: 'boop', friend: 'boop', plaza: 'boop', exercise: 'hup', wake: 'hup' };
   function forMoment(key) { return FOR_MOMENT[key] || null; }
   /* the ground under her feet: wood at home and in shops, grass outdoors, stone on the street and in the plaza */
   function surfaceFor(L) { var sc = L && L.scene; if (L && L.surface) return L.surface; /* a layout may name its own floor (the greenhouse's stone tiles) */ if (L && L.store) return 'wood'; if (sc === 'street' || sc === 'plaza') return 'stone'; if (sc === 'garden' || sc === 'farm' || (L && /garden|farm|greenhouse/.test(L.id || ''))) return 'grass'; return 'wood'; }
