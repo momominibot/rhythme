@@ -136,3 +136,25 @@ html[data-sky="night"] .imp-range .chipbtn.on{background:#5b477f;border-color:#8
 /* the chosen session (bench, mat, everyday) shows at night too: the catch-all card colour above out-ranked .session.on */
 html[data-sky="night"] .sessions .session{border:1.5px solid transparent}
 html[data-sky="night"] .sessions .session.on{background:#4a3a72;border-color:#c9b6e6;box-shadow:0 0 0 3px rgba(201,182,230,.18)}
+/* the greeting and the wordmark sit on the scene: at dusk and night they turn light so they read on the darker plate (Jamie, 20 Oct) */
+html[data-sky="night"] .greeting h1,html[data-sky="night"] .greeting p,html[data-sky="sunset"] .greeting h1,html[data-sky="sunset"] .greeting p,
+html[data-sky="night"] .scene .brand,html[data-sky="sunset"] .scene .brand{color:#fbf6ff!important;text-shadow:0 1px 2px rgba(30,15,55,.55),0 0 14px rgba(30,15,55,.45)!important}
+html[data-sky="night"] .greeting p,html[data-sky="sunset"] .greeting p{color:#ece1fa!important}
+/* the map keeps its daylight paper at night, so its labels keep dark ink */
+html[data-sky] .sheet .mapexit,html[data-sky] .sheet .worldmap .mapnode b{background:rgba(255,255,255,.95)!important;color:#4a3466!important}
+html[data-sky] .sheet .worldmap .mapnode.picked b{background:#6b4f96!important;color:#fff!important}
+html[data-sky="night"] .sheet .maproute,html[data-sky="sunset"] .sheet .maproute{background:#2c2142!important;border-color:rgba(214,196,255,.22)!important;color:#efe6fb!important}
+html[data-sky="night"] .sheet .maproute b,html[data-sky="sunset"] .sheet .maproute b{color:#fbf6ff!important}
+html[data-sky="night"] .sheet .maproute small,html[data-sky="night"] .sheet .maproute li,html[data-sky="sunset"] .sheet .maproute small,html[data-sky="sunset"] .sheet .maproute li{color:#d9cdec!important}
+/* farm can gauge and care steps keep dark ink on their light cards at night */
+html[data-sky] .farmcan{background:rgba(255,255,255,.9)!important;color:#3d2f55!important}
+html[data-sky] .farmcan b{color:#3d2f55!important}
+html[data-sky="night"] .sheet .farmsteps li{background:#2c2142!important}
+html[data-sky="night"] .sheet .farmsteps b{color:#fbf6ff!important}
+html[data-sky="night"] .sheet .farmsteps small{color:#d9cdec!important}
+html[data-sky="night"] .sheet .bedcard .canline{color:#a9d6f5!important}
+html[data-sky="night"] .sheet .slowverb{color:#efe6fb!important}
+
+/* mindful lines in sheets at night: a dark surface under the light words */
+html[data-sky="night"] .sheet .mindline{background:#2c2142!important;color:#efe6fb!important}
+html[data-sky="night"] .sheet .mindline .ms{color:#c9b2ee!important}

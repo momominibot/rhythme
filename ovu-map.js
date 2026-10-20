@@ -11,6 +11,8 @@
   var POS = { home: [10, 34], garden: [34, 34], farm: [34, 58], street: [66, 34], plaza: [88, 58], 'shop-pet': [50, 10], 'shop-furniture': [66, 10], 'shop-homes': [82, 10], greenhouse: [20, 12] }; /* the greenhouse up beside the garden, away from the row of shops */
   var ICON = { home: 'home', garden: 'yard', farm: 'agriculture', street: 'storefront', plaza: 'groups', 'shop-pet': 'pets', 'shop-furniture': 'chair', 'shop-homes': 'cottage' };
   var H = 80; /* the world map's height in its own units */
+  /* a little clay drawing for each known place on the painted map (Jamie, 20 Oct: "a damn cute map"); a new place keeps its icon */
+  var ART_FOR = { home: 'map-home.webp', garden: 'map-garden.webp', greenhouse: 'map-greenhouse.webp', farm: 'map-farm.webp', street: 'map-street.webp', plaza: 'map-plaza.webp', 'shop-pet': 'map-shop-pet.webp', 'shop-furniture': 'map-shop-furniture.webp', 'shop-homes': 'map-shop-homes.webp' };
 
   /* ---------- pure parts (tested in tools/test-core.js) ---------- */
   function nodeOf(id, homeId) { return id === 'home' || id === homeId ? 'home' : id; }
@@ -119,7 +121,7 @@
     var nodes = Object.keys(g.nodes).map(function (id) {
       var n = g.nodes[id], q = P[id];
       return '<button type="button" class="mapnode' + (id === here ? ' here' : '') + (storeShut(n) ? ' shut' : '') + '" data-node="' + esc(id) + '" style="left:' + q[0] + '%;top:' + (q[1] / H * 100).toFixed(2) + '%" aria-label="' + esc(n.name) + (id === here ? ', you are here' : ', show the way there') + '">' +
-        '<span class="ms">' + esc(n.icon) + '</span><b>' + esc(n.name) + '</b>' + (id === here ? '<em>You are here</em>' : '') + '</button>';
+        (ART_FOR[id] ? '<img class="mapart" src="' + esc(R.ART + ART_FOR[id]) + '" alt="">' : '<span class="ms">' + esc(n.icon) + '</span>') + '<b>' + esc(n.name) + '</b>' + (id === here ? '<em>You are here</em>' : '') + '</button>';
     }).join('');
     var first = here === 'home' || !here ? here : 'home';
     var head = here ? 'You are ' + at(g, here) : 'You are visiting a neighbour';

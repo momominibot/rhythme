@@ -77,6 +77,7 @@
   /* Practice is a small, flat thank-you (Jamie, 19 Oct: hearts are for logging data; mindfulness contributes a small
      amount): 2 hearts for a completed practice, session or watering, at most 6 a day across all practice, nothing for
      length, taps or first times. Moon Tap counts once a session reaches a full minute; seconds are not carried. */
+  var IMPORTED_SRC = { 'apple-health': 1, 'google-fit': 1, import: 1, imported: 1 };
   var PRACTICE = { points: 2, cap: 6 };
   function practicePoints(l, ev) {
     var d = ev.data || {}, day = S.today();
@@ -91,6 +92,9 @@
   function receipted(l, ev) { l.receipts = l.receipts || {}; if (!ev || !ev.id) return false; if (l.receipts[ev.id]) return true; l.receipts[ev.id] = 1; var ks = Object.keys(l.receipts); if (ks.length > 3000) ks.slice(0, ks.length - 3000).forEach(function (k) { delete l.receipts[k]; }); return false; }
   function award(ev) {
     if (ev.type === 'weight') return { points: 0, bonus: 0, hearts: ledger().hearts }; /* numbers are never rewarded */
+    /* only today's own log earns: a backfilled day or an entry brought in from another app earns nothing, as the rule above
+       says (Codex design review, 20 Oct: an old date or an import still paid six food hearts on an empty ledger) */
+    if ((ev.date && ev.date !== S.today()) || IMPORTED_SRC[ev.source]) return { points: 0, bonus: 0, hearts: ledger().hearts, backfill: true };
     var l0 = ledger(); if (receipted(l0, ev)) { write(l0); return { points: 0, bonus: 0, hearts: l0.hearts, streak: l0.streak, again: true }; } write(l0);
     if (ev.type === 'mindfulness' && ev.data && ev.data.kind === 'breathtap') {
       /* Moon Tap: the flat practice thank-you once a session reaches a full minute; never touches the streak, nothing for taps */

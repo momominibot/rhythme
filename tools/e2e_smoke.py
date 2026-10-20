@@ -21,8 +21,8 @@ NOW = datetime.datetime.now().isoformat()
 # a consenting, onboarded person with three entries; Luna's AI help off (the default)
 DB = {"version": 1, "createdAt": NOW, "updatedAt": NOW,
       "profile": {"name": "Smoke", "outfit": "base", "lifeStage": "", "cycleLength": None, "periodLength": None, "onboarded": True,
-                  "consent": {"v": 3, "at": NOW, "luna": False, "improve": False}, "ageAttest": {"confirmed": True, "version": 1, "at": NOW},
-                  "consentEvents": [{"id": "ce1", "purpose": "age_18", "action": "grant", "at": NOW, "notice": 3, "method": "sheet", "uid": None, "sent": False}, {"id": "ce2", "purpose": "health_tracking", "action": "grant", "at": NOW, "notice": 3, "method": "sheet", "uid": None, "sent": False}], "consentImportedAt": NOW},
+                  "consent": {"v": 4, "at": NOW, "luna": False, "improve": False}, "ageAttest": {"confirmed": True, "version": 1, "at": NOW},
+                  "consentEvents": [{"id": "ce1", "purpose": "age_18", "action": "grant", "at": NOW, "notice": 4, "method": "sheet", "uid": None, "sent": False}, {"id": "ce2", "purpose": "health_tracking", "action": "grant", "at": NOW, "notice": 4, "method": "sheet", "uid": None, "sent": False}], "consentImportedAt": NOW},
       "events": [{"id": "s1", "type": "period", "date": Y1, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"flow": "medium"}},
                  {"id": "s2", "type": "sleep", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"bedTime": "23:00", "wakeTime": "07:00", "quality": 4}},
                  {"id": "s3", "type": "food", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"meal": "lunch", "foods": "chicken rice", "items": [], "tags": ["home-cooked"]}}],
@@ -79,6 +79,14 @@ async def main():
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
+            # Luna's AI help ships paused (ovu-config.js aiPaused); these runs unpause it so the AI paths stay tested.
+            # One context below is opened with the real launch setting (paused) and checks the pause itself.
+            _new_context = browser.new_context
+            async def new_context_unpaused(*a, paused=False, **k):
+                c = await _new_context(*a, **k)
+                if not paused: await c.add_init_script("window.OVU_AI_PAUSE_OVERRIDE = false;")
+                return c
+            browser.new_context = new_context_unpaused
             ctx = await browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, accept_downloads=True)
             await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB)))
             page = await ctx.new_page()
@@ -108,7 +116,7 @@ async def main():
             check("room.html loads", r and r.status == 200, r and r.status)
             info = await page.evaluate("()=>({consent: document.querySelector('#consent')?.hidden, welcome: !!document.querySelector('#welcome:not([hidden])'), hots: document.querySelectorAll('.hotspot').length, tabs: document.querySelectorAll('nav a[data-tab]').length, hearts: document.querySelector('#heartsVal')?.textContent, width: document.documentElement.scrollWidth})")
             check("consent overlay stays hidden for a consenting person", info["consent"] is True, info)
-            check("eight or more hotspots and the five tabs render", info["hots"] >= 8 and info["tabs"] == 5, info)
+            check("eight or more hotspots and the four tabs render (the calendar has its own way in, so no Cycle tab: Jamie, 21 Oct)", info["hots"] >= 8 and info["tabs"] == 4, info)
             check("no sideways scroll at phone width", info["width"] <= 390, info["width"])
 
             # 1b. garden, Dream Street and the plaza: the door walks her out, the joystick and keys move her, the mini-map jumps
@@ -201,12 +209,13 @@ async def main():
             await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(120)
             zoomed = await page.evaluate("()=>({pos: OvuRoom.pos(), zoomed: document.querySelector('#scene').classList.contains('zoomed')})")
             check("a floor tap while the camera is zoomed in lands on the right spot of the plate", zoomed["zoomed"] and abs(zoomed["pos"]["x"] - 44) < 2 and abs(zoomed["pos"]["y"] - 76) < 2, zoomed)
+            w0 = await page.evaluate("()=>({scene: document.querySelector('#scene').getBoundingClientRect().width, deck: document.querySelector('.deck h2').getBoundingClientRect().height})")
             await page.evaluate("()=>OvuTextSize.set('large')"); await page.wait_for_timeout(200)
             await floor_tap(52, 82)
             await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(120)
-            big = await page.evaluate("()=>({zoom: document.documentElement.style.zoom, attr: document.documentElement.getAttribute('data-text'), saved: JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.textSize, pos: OvuRoom.pos(), scroll: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1})")
+            big = await page.evaluate("()=>({zoom: document.documentElement.style.zoom, tz: document.documentElement.style.getPropertyValue('--tz'), attr: document.documentElement.getAttribute('data-text'), saved: JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.textSize, pos: OvuRoom.pos(), scene: document.querySelector('#scene').getBoundingClientRect().width, deck: document.querySelector('.deck h2').getBoundingClientRect().height, scroll: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1})")
             await page.evaluate("()=>OvuTextSize.set('default')")
-            check("the text size setting scales the whole page, is saved, keeps the page from scrolling sideways, and a floor tap still lands on the right spot", big["zoom"] == "1.12" and big["attr"] == "large" and big["saved"] == "large" and abs(big["pos"]["x"] - 52) < 2 and abs(big["pos"]["y"] - 82) < 2 and big["scroll"], big)
+            check("in the room the text size grows the cards and bars but never the plate (iOS put taps in the wrong place under a zoomed page), is saved, keeps the page from scrolling sideways, and a floor tap still lands on the right spot", big["zoom"] == "" and big["tz"] == "1.12" and big["attr"] == "large" and big["saved"] == "large" and abs(big["scene"] - w0["scene"]) < 1 and big["deck"] > w0["deck"] * 1.05 and abs(big["pos"]["x"] - 52) < 2 and abs(big["pos"]["y"] - 82) < 2 and big["scroll"], {"big": big, "before": w0})
             await page.click("#camFit"); await page.wait_for_timeout(450)
             nap = await page.evaluate("()=>{var real=OvuRoom.asleep; OvuRoom.asleep=function(){return true}; var went=OvuWalk.travel('garden'); var t=document.querySelector('#toast').textContent; OvuRoom.asleep=real; return {went: went, toast: t, layout: document.querySelector('#scene').dataset.layout}}")
             check("while she sleeps a door refuses in the room's own words", nap["went"] is False and "asleep" in nap["toast"] and nap["layout"] == "room", nap)
@@ -252,13 +261,17 @@ async def main():
             except Exception: pass
             await page.click("#plotWater"); await page.wait_for_timeout(700)
             hud = await page.evaluate("()=>{var h=document.querySelector('#hud'), st=document.querySelector('#hudStop'), b=document.querySelector('#scene').getBoundingClientRect(), r=st.getBoundingClientRect(); return {on: h.classList.contains('on'), z: OvuCamera.state().z, screenSpace: !document.querySelector('#sceneInner').contains(h), inside: r.width>0 && r.left>=b.left && r.right<=b.right && r.top>=b.top && r.bottom<=b.bottom}}")
+            t1 = await page.evaluate("()=>document.querySelector('#hudTime').textContent"); await page.wait_for_timeout(1300)
+            t2 = await page.evaluate("()=>({t: document.querySelector('#hudTime').textContent, hidden: document.querySelector('#hudTime').getAttribute('aria-hidden'), shown: getComputedStyle(document.querySelector('#hudTime')).display !== 'none'})")
+            check("the session bar shows a running clock that counts up while the minute goes on, kept out of the spoken status", bool(re.match(r"^0:0[0-9]$", t1)) and bool(re.match(r"^0:0[0-9]$", t2["t"])) and t2["t"] > t1 and t2["hidden"] == "true" and t2["shown"], {"t1": t1, "t2": t2})
             await page.click("#hudMute"); await page.wait_for_timeout(200)
             mu = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), pressed: document.querySelector('#hudMute').getAttribute('aria-pressed'), flag: OvuVoice.muted(), saved: localStorage.getItem('rhythme_voice_muted'), probe: (function(){ var a=new Audio('assets/audio/guide-interim/garden-water-0.mp3'); a.play().catch(function(){}); var m=a.muted; a.pause(); return m; })()})")
             await page.click("#hudMute"); await page.wait_for_timeout(150)
             unmu = await page.evaluate("()=>({pressed: document.querySelector('#hudMute').getAttribute('aria-pressed'), flag: OvuVoice.muted()})")
             check("the mute button silences Erin's voice without stopping the watering minute, is remembered, and turns her back on", mu["on"] and mu["pressed"] == "true" and mu["flag"] and mu["saved"] == "1" and mu["probe"] and unmu["pressed"] == "false" and not unmu["flag"], {"mu": mu, "unmu": unmu})
             await page.click("#hudStop"); await page.wait_for_timeout(500)
-            stopped = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), toast: document.querySelector('#toast').textContent})")
+            stopped = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), toast: document.querySelector('#toast').textContent, clock: document.querySelector('#hudTime').textContent})")
+            check("Stop clears the session clock", stopped["clock"] == "", stopped)
             check("watering at zoom keeps the HUD and its Stop button on screen (lifted out of the plate), and Stop ends the minute", hud["on"] and hud["z"] > 1.4 and hud["screenSpace"] and hud["inside"] and not stopped["on"] and "Stopped" in stopped["toast"], {"hud": hud, "stopped": stopped})
             # a pose is drawn in what she is wearing; the shower keeps its robe
             ps = await page.evaluate("()=>({plants: OvuRoom.poseSrc('plants','sundress'), base: OvuRoom.poseSrc('plants','base'), shower: OvuRoom.poseSrc('shower','sundress')})")
@@ -403,12 +416,44 @@ async def main():
             hm = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: document.querySelectorAll('.hotspot').length, garden: JSON.parse(localStorage.getItem('ovumind_db_v1')).state.garden})")
             check("home again with the room's hotspots; the plot already credits the seeded diary days", hm["layout"] == "room" and hm["hots"] >= 9 and hm["garden"] and len(hm["garden"]["credited"]) >= 2, hm)
 
+            # 1d. today's check-in: six tiles, a calm count, quick answers that tick and untick, tiles that open their editor
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_timeout(900)
+            ci = await page.evaluate("()=>({tiles: document.querySelectorAll('#tiles .citile').length, status: document.querySelector('#ciStatus').innerText, bleed: document.querySelector('#tiles [data-ci=bleeding] b').textContent, chip: !!document.querySelector('#ciQuick [data-qa=bleeding][data-qv=none]'), red: getComputedStyle(document.querySelector('#ciStatus')).color})")
+            check("today's check-in shows six tiles and a plain count of the four that count, with a No bleeding quick answer", ci["tiles"] == 6 and "of 4 check-ins recorded today" in ci["status"] and ci["bleed"] == "Add" and ci["chip"], ci)
+            await page.click("#ciQuick [data-qa=bleeding][data-qv=none]"); await page.wait_for_timeout(200)
+            ci2 = await page.evaluate("()=>({bleed: document.querySelector('#tiles [data-ci=bleeding] b').textContent, done: document.querySelector('#tiles [data-ci=bleeding]').classList.contains('s-done'), undo: !!document.querySelector('#ciQuick .undo[data-qa=bleeding]'), events: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(e=>e.type==='period'&&e.date===OvuStore.today()).length})")
+            check("No bleeding today ticks the bleeding tile without making a period entry, and can be taken back", ci2["bleed"] == "None" and ci2["done"] and ci2["undo"] and ci2["events"] == 0, ci2)
+            await page.click("#ciQuick .undo[data-qa=bleeding]"); await page.wait_for_timeout(200)
+            check("taking the answer back reopens the tile", await page.evaluate("()=>document.querySelector('#tiles [data-ci=bleeding] b').textContent") == "Add")
+            await page.click("#ciChoose"); await page.click("#tiles [data-ci-key=food]"); await page.click("#ciChoose"); await page.wait_for_timeout(150)
+            ch = await page.evaluate("()=>({status: document.querySelector('#ciStatus').innerText, food: document.querySelector('#tiles [data-ci=food]').classList.contains('key'), saved: OvuStore.state().checkinChoice})")
+            await page.reload(wait_until="networkidle"); await page.wait_for_timeout(700)
+            ch2 = await page.evaluate("()=>({status: document.querySelector('#ciStatus').innerText, food: document.querySelector('#tiles [data-ci=food]').classList.contains('key')})")
+            check("choosing what counts takes food out of the tick, saves only that change, and is still so after a reload", "of 3 check-ins" in ch["status"] and not ch["food"] and ch["saved"] == {"food": False} and "of 3 check-ins" in ch2["status"] and not ch2["food"], {"before": ch, "after": ch2})
+            # a new day: yesterday's tick and answers do not stay on screen
+            await page.click("#ciQuick [data-qa=bleeding][data-qv=none]"); await page.wait_for_timeout(200)
+            nd = await page.evaluate("()=>{var real=OvuStore.today, t=OvuStore.addDays(real(),1); OvuStore.today=function(){return t}; document.dispatchEvent(new Event('visibilitychange')); var r={bleed: document.querySelector('#tiles [data-ci=bleeding] b').textContent, chip: !!document.querySelector('#ciQuick [data-qa=bleeding][data-qv=none]')}; OvuStore.today=real; document.dispatchEvent(new Event('visibilitychange')); r.back=document.querySelector('#tiles [data-ci=bleeding] b').textContent; return r}")
+            check("when the day changes the check-in redraws for the new day, and back again", nd["bleed"] == "Add" and nd["chip"] and nd["back"] == "None", nd)
+            await page.evaluate("()=>OvuStore.setCheckinAnswer(OvuStore.today(),'bleeding',null)")
+            await page.evaluate("()=>OvuStore.commit({checkinChoice: null})")
+            await page.click("#tiles [data-ci=sleep]"); await page.wait_for_selector('#sheet[aria-hidden="false"] #slDate', timeout=8000)
+            check("the Sleep tile opens the night record straight away", await page.evaluate("()=>document.querySelector('#sheetTitle').textContent.indexOf('Bedside clock')===0"))
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+
             # 2. the Cycle tab opens a sheet with the calendar
             await page.goto(BASE + "room.html#cycle", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] [data-date], #sheet[aria-hidden="false"] .rday', timeout=10000)
             cyc = await page.evaluate("()=>{var cells=document.querySelectorAll('#sheet [data-date], #sheet .rday'); return {sheet: document.querySelector('#sheet')?.getAttribute('aria-hidden') === 'false', title: document.querySelector('#sheetTitle')?.textContent.slice(0,13), days: cells.length, visible: (cells[0]?.getBoundingClientRect().height || 0) > 0};}")
-            check("Cycle tab opens the calendar sheet with visible days", cyc["sheet"] and cyc["title"] == "Your calendar" and cyc["days"] >= 28 and cyc["visible"], cyc)
+            check("room.html#cycle (old links and the Cycle hash) still opens the calendar sheet with visible days", cyc["sheet"] and cyc["title"] == "Your calendar" and cyc["days"] >= 28 and cyc["visible"], cyc)
             ib = await page.evaluate("()=>{var b=document.querySelector('#sheet .ibtn'); if(!b) return null; b.click(); var p=document.querySelector('#sheet .guide[data-guide-panel='+b.dataset.guide+']'); return {topic: b.dataset.guide, on: !!(p && p.classList.contains('on'))}}")
             check("an (i) button in the calendar sheet opens its guide panel, made on the spot if the sheet forgot it", ib is None or ib["on"], ib)
+            await page.evaluate("()=>{var b=document.querySelector('#calTabs [data-tab=symptom]'); if(b) b.click();}"); await page.wait_for_timeout(400)
+            mc0 = await page.evaluate("()=>{var m=document.querySelector('#moodCare'); return m?getComputedStyle(m).display:'missing'}")
+            await page.evaluate("()=>{var b=document.querySelector('#moodFaces [data-mood=good]'); if(b) b.click();}"); await page.wait_for_timeout(150)
+            mc1 = await page.evaluate("()=>getComputedStyle(document.querySelector('#moodCare')).display")
+            await page.evaluate("()=>{var b=document.querySelector('#moodFaces [data-mood=low]'); if(b) b.click();}"); await page.wait_for_timeout(150)
+            mc2 = await page.evaluate("()=>getComputedStyle(document.querySelector('#moodCare')).display")
+            await page.evaluate("()=>{var b=document.querySelector('#calTabs [data-tab=period]'); if(b) b.click();}"); await page.wait_for_timeout(200)
+            check("the low-mood support note stays hidden with no mood or a good mood and shows when she picks Low", mc0 == "none" and mc1 == "none" and mc2 == "flex", {"none": mc0, "good": mc1, "low": mc2})
 
             # 3. Luna's on-phone rules read a note without any relay call (AI help is off)
             await page.goto(BASE + "room.html#luna", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector("#lunaIn", timeout=10000)
@@ -444,7 +489,7 @@ async def main():
             # Your choices: every use of the data as a switch, the required one locked on, a receipt; a change is recorded with where it was made
             await page.evaluate("()=>document.querySelector('[data-yact=choices]').click()"); await page.wait_for_selector("#y_health_tracking", timeout=8000); await page.wait_for_timeout(300)
             ch = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, n: document.querySelectorAll('.c-choice input').length, req: document.querySelector('#y_health_tracking').checked && document.querySelector('#y_health_tracking').disabled, anyOn: Array.from(document.querySelectorAll('.c-choice input:not(#y_health_tracking)')).some(i=>i.checked), receipt: (document.body.textContent||'').indexOf('Your consent receipt')>-1 && (document.body.textContent||'').indexOf('Notice version 3')>-1})")
-            check("Your choices lists six switches with health tracking locked on, the rest off, and the receipt at notice 3", ch["title"].startswith("Your choices") and ch["n"] == 6 and ch["req"] and not ch["anyOn"] and ch["receipt"], ch)
+            check("Your choices lists six switches with health tracking locked on, the rest off, and the receipt at notice 4", ch["title"].startswith("Your choices") and ch["n"] == 6 and ch["req"] and not ch["anyOn"] and ch["receipt"], ch)
             await page.check("#y_ai_reading"); await page.wait_for_timeout(400)
             c1 = await page.evaluate("()=>{var ev=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.consentEvents; var e=ev[ev.length-1]; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {p:e.purpose, a:e.action, m:e.method, aiOn:!!ai.on, on: document.querySelector('#y_ai_reading').checked};}")
             await page.uncheck("#y_ai_reading"); await page.wait_for_timeout(400)
@@ -463,13 +508,39 @@ async def main():
             check("PDF export is a complete document with the clinician heading and the entries page", raw.startswith(b"%PDF-1.4") and raw.rstrip().endswith(b"%%EOF") and b"(Rhythme summary for your clinician)" in raw and b"/Count 2" in raw and size > 1500, (raw[:8], size))
             check("download is branded Rhythme-summary-<date>.pdf", d.suggested_filename == "Rhythme-summary-%s.pdf" % TODAY, d.suggested_filename)
 
+            # 5b. cycles over time and the month calendars; the encrypted share carries them, and no meal photos
+            hp = await page.evaluate("()=>({rows: document.querySelectorAll('#historyBody .prows li').length, chips: Array.from(document.querySelectorAll('#histRange button')).map(b=>b.textContent+':'+b.getAttribute('aria-pressed')).join(','), months: document.querySelectorAll('#patternBody .pmonth').length, open: document.querySelectorAll('#patternBody .pmonth[open]').length, verdict: /irregular|abnormal/i.test(document.querySelector('#historyCard').innerText), sw: document.documentElement.scrollWidth})")
+            check("journal shows cycles over time (6 months picked, no normal or irregular verdict) and four month calendars with the newest open, no sideways scroll", hp["rows"] == 1 and "6 months:true" in hp["chips"] and hp["months"] == 4 and hp["open"] == 1 and not hp["verdict"] and hp["sw"] <= 390, hp)
+            await page.click("#histRange [data-months='12']"); await page.wait_for_timeout(150)
+            await page.evaluate("(d)=>{var b=document.querySelector('#patternBody .pday[data-pday=\"'+d+'\"]'); b.closest('details').open=true;}", Y1)
+            await page.click("#patternBody .pday[data-pday='%s']" % Y1); await page.wait_for_timeout(150)
+            dd = await page.evaluate("(d)=>{var b=document.querySelector('#patternBody .pday[data-pday=\"'+d+'\"]'), det=b.closest('details').querySelector('.pdetail'); return {pressed: b.getAttribute('aria-pressed'), label: b.getAttribute('aria-label'), shown: !det.hidden, text: det.innerText, twelve: document.querySelector('#histRange [data-months=\"12\"]').getAttribute('aria-pressed')}}", Y1)
+            check("a day in the calendar speaks its marks and opens its details; the 12-month range can be picked", dd["pressed"] == "true" and "Medium bleeding" in dd["text"] and "medium bleeding" in dd["label"] and dd["shown"] and dd["twelve"] == "true", dd)
+            await page.evaluate("()=>OvuStore.add('food', OvuStore.today(), {meal:'dinner', foods:'laksa', items:[], tags:[], photo:'data:image/jpeg;base64,AAAA'}, 'room')")
+            await page.click("#makeShare"); await page.select_option("#weeksSel", "m12"); await page.click("#doShare")
+            await page.wait_for_selector("#saveShare", timeout=15000)
+            async with page.expect_download() as dl2:
+                await page.click("#saveShare")
+            d2 = await dl2.value; spath = os.path.join(ROOT, "tools", ".smoke-share.json"); await d2.save_as(spath)
+            stext = open(spath, encoding="utf-8").read(); spass = await page.evaluate("()=>document.querySelector('#passInput').value")
+            sb = await page.evaluate("async (t)=>{var b=await OvuStore.crypto.decrypt(JSON.parse(t), document.querySelector('#passInput').value); var food=b.events.filter(e=>e.type==='food'); return {kind:b.kind, hist: !!(b.history&&b.history.rows), rows: b.history.rows.length, pats: (b.patterns||[]).length, exp: OvuStore.diffDays(OvuAgents.monthsBack(OvuStore.today(),12), OvuStore.today())+1, months: (b.months||[]).length, inc: b.included, photo: JSON.stringify(b).indexOf('data:image')>-1, had: food.some(f=>f.data.hadPhoto), msg: document.querySelector('#shareHolds').innerText}}", stext)
+            await page.evaluate("()=>OvuStore.list('food').filter(e=>e.data.foods==='laksa').forEach(e=>OvuStore.remove(e.id))")
+            check("a 12-month encrypted share holds cycles over time and a year of month marks, says what it holds, and leaves meal photos on the phone", sb["kind"] == "ovumind-share" and sb["hist"] and sb["rows"] == 1 and sb["pats"] == sb["exp"] and sb["months"] in (12, 13) and sb["inc"]["olderEntries"] and not sb["photo"] and sb["had"] and "Meal photos stay on this phone" in sb["msg"], {k: sb[k] for k in ("photo", "had", "msg", "rows", "pats", "exp", "months")})
+            # the same file opens in the Doctor view: cycles over time, month by month and the month calendars
+            await page.goto(BASE + "doctor.html", wait_until="networkidle")
+            await page.set_input_files("#shareFile", spath); await page.fill("#passInput", spass); await page.wait_for_timeout(300); await page.click("#openBtn")
+            await page.wait_for_selector("#dash", state="visible", timeout=10000); await page.wait_for_timeout(300)
+            dv = await page.evaluate("()=>({hist: getComputedStyle(document.querySelector('#histCard')).display!=='none', rows: document.querySelectorAll('#histBody .prows li').length, months: document.querySelectorAll('#monthTable tr').length-1, cal: document.querySelectorAll('#patBody .pmonth').length, open: document.querySelectorAll('#patBody .pmonth[open]').length, sw: document.documentElement.scrollWidth})")
+            os.remove(spath)
+            check("the 12-month share opens in the Doctor view with cycles over time, every month in the table and every month's calendar (the newest open)", dv["hist"] and dv["rows"] == 1 and dv["months"] == sb["months"] and dv["cal"] == sb["months"] and dv["open"] == 1 and dv["sw"] <= 390, dv)
+
             # 6. evidence page and a Learn page with the room header; old screens redirect into the room
             r = await page.goto(BASE + "evidence.html", wait_until="networkidle")
             ev = await page.evaluate("()=>document.body.innerText.includes('E49')")
             check("evidence page lists E49", r.status == 200 and ev)
             await page.goto(BASE + "hormones.html", wait_until="networkidle"); await page.wait_for_timeout(400)
             hd = await page.evaluate("()=>({brand: document.querySelector('.rh-brand')?.textContent, tabs: document.querySelectorAll('nav.nav a').length, fab: !!document.querySelector('.mapfab')})")
-            check("Learn page carries the Rhythme header and tabs, no old launcher", hd["brand"] == "RHYTHME" and hd["tabs"] == 5 and not hd["fab"], hd)
+            check("Learn page carries the Rhythme header and tabs, no old launcher", hd["brand"] == "RHYTHME" and hd["tabs"] == 4 and not hd["fab"], hd)
             dests = {}
             for old_page, want_tab in [("home.html", "home"), ("cycle-log.html", "cycle"), ("diet.html", "food"), ("breathwork.html", "mind")]:
                 await page.goto(BASE + old_page, wait_until="load")
@@ -478,8 +549,8 @@ async def main():
                 if want_tab != "home":
                     try: await page.wait_for_selector('#sheet[aria-hidden="false"]', timeout=10000)
                     except Exception: pass
-                dests[old_page] = await page.evaluate("()=>(location.pathname.endsWith('room.html') ? (document.querySelector('nav a.on')?.dataset.tab || 'home') : location.pathname)")
-            check("old screens redirect into the room and open the right tab", all(dests[k] == v for k, v in [("home.html", "home"), ("cycle-log.html", "cycle"), ("diet.html", "food"), ("breathwork.html", "mind")]), dests)
+                dests[old_page] = await page.evaluate("()=>(location.pathname.endsWith('room.html') ? (document.querySelector('#sheet[aria-hidden=false]') && /calendar/i.test(document.querySelector('#sheetTitle').textContent) ? 'calendar' : (document.querySelector('nav a.on')?.dataset.tab || 'home')) : location.pathname)")
+            check("old screens redirect into the room and open the right place (the old cycle pages open the calendar now that there is no Cycle tab)", all(dests[k] == v for k, v in [("home.html", "home"), ("cycle-log.html", "calendar"), ("diet.html", "food"), ("breathwork.html", "mind")]), dests)
 
             # 6b. health data: a tiny Apple Health export.xml and a Takeout Fit zip are read on the phone, every kind found is listed
             # with nothing ticked, only the ticked kinds come in, the journal marks them, and one kind (then all) can be removed
@@ -561,8 +632,10 @@ async def main():
             p2.on("pageerror", lambda e: errors.append("fresh pageerror: " + str(e)))
             p2.on("console", lambda m: errors.append("fresh console: " + m.text) if m.type == "error" and "favicon" not in m.text else None)
             await p2.goto(BASE + "room.html", wait_until="networkidle"); await p2.wait_for_timeout(900)
-            fresh = await p2.evaluate("()=>({welcome: !!document.querySelector('#welcome:not([hidden])'), db: localStorage.getItem('ovumind_db_v1')})")
-            check("fresh visitor sees the welcome and nothing is saved yet", fresh["welcome"] and (fresh["db"] is None or '"consent"' not in fresh["db"]), fresh)
+            fresh = await p2.evaluate("()=>({welcome: !!document.querySelector('#welcome:not([hidden])'), signin: (document.querySelector('#welcome #wSignIn')||{}).textContent||'', db: localStorage.getItem('ovumind_db_v1')})")
+            check("fresh visitor sees the welcome, with Sign in with email on it, and nothing is saved yet", fresh["welcome"] and "Sign in with email" in fresh["signin"] and (fresh["db"] is None or '"consent"' not in fresh["db"]), fresh)
+            wn = await p2.evaluate("()=>{var h=document.documentElement,was=h.getAttribute('data-sky');h.setAttribute('data-sky','night');var c=getComputedStyle(document.querySelector('#wSignIn')).color;if(was===null)h.removeAttribute('data-sky');else h.setAttribute('data-sky',was);return c}")
+            check("after sunset the welcome's lighter buttons keep dark plum text on the light welcome", wn == "rgb(90, 66, 116)", wn)
             await p2.goto(BASE + "journal.html", wait_until="load"); await p2.wait_for_timeout(600)
             check("fresh visitor on another page is sent to the room first", p2.url.endswith("room.html"), p2.url)
             # the real consent controls: nothing optional pre-ticked, the button locked until the age tick
@@ -573,8 +646,19 @@ async def main():
             await p2.uncheck("#cHealth"); await p2.check("#cAge"); lockedStill = await p2.evaluate("()=>document.querySelector('#cAgree').disabled"); await p2.check("#cHealth"); await p2.click("#cAgree"); await p2.wait_for_timeout(600)
             check("the health line is still required: with it unticked, the age tick alone does not unlock the button", lockedStill)
             after = await p2.evaluate("()=>{var p=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {v:p.consent&&p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed===true?p.ageAttest.version:null, purposes:(p.consentEvents||[]).map(e=>e.purpose+':'+e.action+':'+e.method).sort(), aiOn:!!ai.on, cloud:p.cloud&&p.cloud.v, hidden: document.querySelector('#consent').hidden};}")
-            check("agreeing records the 18+ attestation and health tracking at notice 3, nothing else, and closes the notice", after["v"] == 3 and after["age"] == 1 and after["purposes"] == ["age_18:grant:sheet", "health_tracking:grant:sheet"] and not after["aiOn"] and not after["cloud"] and after["hidden"], after)
+            check("agreeing records the 18+ attestation and health tracking at notice 4, nothing else, and closes the notice", after["v"] == 4 and after["age"] == 1 and after["purposes"] == ["age_18:grant:sheet", "health_tracking:grant:sheet"] and not after["aiOn"] and not after["cloud"] and after["hidden"], after)
             await ctx2.close()
+            # the notice itself: no under-18 note for an ordinary visitor; a withdrawal that does not reach the account keeps the sheet
+            ctxw = await browser.new_context(viewport={"width": 390, "height": 844}); pw = await ctxw.new_page(); await pw.route("**/*", gate)
+            await pw.goto(BASE + "room.html", wait_until="networkidle"); await pw.wait_for_timeout(700); await pw.click("#welcome .btn.primary"); await pw.wait_for_timeout(400)
+            minor = await pw.evaluate("()=>getComputedStyle(document.querySelector('#cMinor')).display")
+            await pw.evaluate("()=>{OvuStore.setProfile({analysis:{on:true}}); window.OvuAuth.setImprove=function(){return Promise.resolve({ok:false,error:'offline'})};}")
+            await pw.check("#cAge"); await pw.click("#cAgree"); await pw.wait_for_timeout(500)
+            wd = await pw.evaluate("()=>({open: !document.querySelector('#consent').hidden, err: (document.querySelector('#cImproveErr')||{}).textContent||'', agree: !document.querySelector('#cAgree').disabled, saved: !!(OvuStore.profile().consent && OvuStore.profile().consent.v >= 4)})")
+            await pw.reload(wait_until="networkidle"); await pw.wait_for_timeout(900)
+            wd["afterReload"] = await pw.evaluate("()=>!document.querySelector('#consent').hidden || !document.querySelector('#welcome').hidden")
+            await ctxw.close()
+            check("an ordinary visitor's notice has no under-18 note, and a withdrawal of Help improve logging that does not reach the account saves nothing, keeps the notice open, says so, and the notice is still due after a reload", minor == "none" and wd["open"] and "still on" in wd["err"] and wd["agree"] and not wd["saved"] and wd["afterReload"], {"minor": minor, "wd": wd})
             # a person whose consent predates notice v2 is sent back to the room from any other page
             ctx3 = await browser.new_context(viewport={"width": 390, "height": 844})
             old = json.loads(json.dumps(DB)); old["profile"]["consent"] = {"v": 1, "at": NOW, "improve": True}
@@ -595,7 +679,7 @@ async def main():
             check("a v2 consent reads the changed notice: the photo switch mirrors her setting, the rest are off, 18+ is asked afresh", rc["shown"] and rc["title"] == "Our data notice has changed" and rc["photos"] and not rc["reading"] and not rc["cloud"] and not rc["age"] and rc["locked"] and rc["fine"] == "Your diary on this phone is kept as it is." and not rc["welcome"], rc)
             await p4.check("#c_ai_reading"); await p4.check("#cAge"); await p4.check("#cHealth"); await p4.click("#cAgree"); await p4.wait_for_timeout(700)
             rd = await p4.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); var p=db.profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); var ev=p.consentEvents||[]; return {v:p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed, imports: ev.filter(e=>e.method==='import').map(e=>e.purpose).sort(), sheet: ev.filter(e=>e.method==='sheet').map(e=>e.purpose+':'+e.action).sort(), aiOn: ai.on, aiPhotos: ai.photos, events: db.events.length, hidden: document.querySelector('#consent').hidden};}")
-            check("agreeing again keeps the earlier choices as imports, records the sheet's choices at notice 3 and keeps every entry", rd["v"] == 3 and rd["age"] is True and rd["imports"] == ["food_photo_ai", "health_tracking"] and rd["sheet"] == ["age_18:grant", "ai_reading:grant", "food_photo_ai:grant", "health_tracking:grant"] and rd["aiOn"] is True and rd["aiPhotos"] is True and rd["events"] == 3 and rd["hidden"], rd)
+            check("agreeing again keeps the earlier choices as imports, records the sheet's choices at notice 4 and keeps every entry", rd["v"] == 4 and rd["age"] is True and rd["imports"] == ["food_photo_ai", "health_tracking"] and rd["sheet"] == ["age_18:grant", "ai_reading:grant", "food_photo_ai:grant", "health_tracking:grant"] and rd["aiOn"] is True and rd["aiPhotos"] is True and rd["events"] == 3 and rd["hidden"], rd)
             await ctx4.close()
             # under 18: the room does not open, nothing is saved, and the notice is back on the next visit
             ctx5 = await browser.new_context(viewport={"width": 390, "height": 844})
@@ -943,7 +1027,7 @@ async def main():
             except Exception: pass
             seat = await page.evaluate("()=>{var el=document.querySelector('.nb.sitter'); var img=el&&el.querySelector('img'); return {there: !!el, src: img&&img.getAttribute('src'), seated: !!(img&&img.classList.contains('seated')), layout: document.querySelector('#scene').dataset.layout}}")
             check("on the garden bench she sits in her own clothes (avatar-sit-base), not in the cross-legged mat pose", seat["there"] and seat["seated"] and seat["src"] == "assets/room/dream/avatar-sit-base.webp" and seat["layout"] == "garden", seat)
-            await page.mouse.click(30, 700); await page.wait_for_timeout(400)
+            await page.click('.cihead h2'); await page.wait_for_timeout(400)  # a plain tap outside the scene (it used to land on empty deck space; a check-in tile sits there now)
             # the street bench: on the wide plate the seated width comes from the box's aspect, not the plate's
             went = await page.evaluate("()=>({went: OvuWalk.travel('street'), toast: (document.querySelector('#toast')||{}).textContent, cls: document.querySelector('#scene').className})")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
@@ -958,7 +1042,7 @@ async def main():
             else: print("street bench skipped:", went, onst)
             sb = await page.evaluate("()=>{var el=document.querySelector('.nb.sitter'), b=document.querySelector('#scene').getBoundingClientRect(), r=el&&el.getBoundingClientRect(); return {there: !!el, w: el&&parseFloat(el.style.width), left: el&&parseFloat(el.style.left), inside: !!r && r.left>=b.left && r.right<=b.right && r.bottom<=b.bottom, layout: document.querySelector('#scene').dataset.layout}}")
             check("on the street bench she sits on its seat, on screen", sb["there"] and sb["layout"] == "street" and abs(sb["left"] - 53) < 0.5 and sb["w"] > 5 and sb["inside"], sb)
-            await page.mouse.click(30, 700); await page.wait_for_timeout(400)
+            await page.click('.cihead h2'); await page.wait_for_timeout(400)  # a plain tap outside the scene (it used to land on empty deck space; a check-in tile sits there now)
             # teas and herbs live in the garden greenhouse; every source list sits behind a small (i)
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
             await page.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuWalk.travel('garden');}")
@@ -1007,6 +1091,42 @@ async def main():
             await page.evaluate("()=>{OvuRoom.stopEverything && OvuRoom.stopEverything(); OvuRoom.closeSheet && OvuRoom.closeSheet();}"); await page.wait_for_timeout(6500)
             se["saved"] = await page.evaluate("()=>OvuStore.list('mindfulness').filter(function(e){return e.data && e.data.practice==='greenhouse'}).length")
             check("a session started mid-minute takes the HUD at once, Stop stops the session, and the minute never saves", se["care"] is None and se["session"] and se["hud"] and not se["after"]["session"] and se["after"]["care"] is None and se["saved"] == 1, se)
+            # the session clock: counts up, stops the moment Stop is tapped (even with the save prompt open), and a new activity starts at 0:00
+            await page.evaluate("()=>{OvuRoom.stopEverything && OvuRoom.stopEverything(); OvuRoom.closeSheet && OvuRoom.closeSheet();}"); await page.wait_for_timeout(400)
+            await page.evaluate("()=>OvuRoom.openEveryday('coffee')"); await page.wait_for_selector('#actStart', timeout=10000)
+            await page.click('#actStart'); await page.wait_for_timeout(1300)
+            c1 = await page.evaluate("()=>document.querySelector('#hudTime').textContent")
+            await page.evaluate("()=>{window.__realNow=Date.now; var off=65000; Date.now=function(){return window.__realNow()+off;};}")
+            await page.wait_for_timeout(1100); c2 = await page.evaluate("()=>document.querySelector('#hudTime').textContent")
+            await page.click('#hudStop'); await page.wait_for_timeout(150)
+            c3 = await page.evaluate("()=>({clock: document.querySelector('#hudTime').textContent, prompt: !!document.querySelector('#pdNo')})")
+            await page.wait_for_timeout(1200); c3["later"] = await page.evaluate("()=>document.querySelector('#hudTime').textContent")
+            await page.evaluate("()=>{Date.now=window.__realNow; var b=document.querySelector('#pdNo'); if(b) b.click();}"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuRoom.runSession('breathe', 1)"); await page.wait_for_timeout(1200)
+            await page.click('#hudStop'); await page.wait_for_timeout(100)
+            await page.evaluate("()=>OvuRoom.runSession('breathe', 1)"); await page.wait_for_timeout(300)
+            c4 = await page.evaluate("()=>document.querySelector('#hudTime').textContent")
+            await page.click('#hudStop'); await page.wait_for_timeout(300)
+            # a session saved after a minute fades for 2.5 s; one started inside that fade must stay on screen and keep its clock
+            await page.evaluate("()=>OvuRoom.runSession('breathe', 1)"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>{window.__realNow=Date.now; var off=65000; Date.now=function(){return window.__realNow()+off;};}")
+            await page.click('#hudStop'); await page.wait_for_timeout(100)
+            await page.evaluate("()=>{Date.now=window.__realNow; OvuRoom.runSession('breathe', 1);}"); await page.wait_for_timeout(3000)
+            c5 = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), session: OvuRoom.sessionOn(), clock: document.querySelector('#hudTime').textContent})")
+            await page.click('#hudStop'); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuStore.list('mindfulness').filter(function(e){return e.data && e.data.kind==='breathe' && !e.data.completed}).forEach(function(e){OvuStore.remove(e.id)})")
+            check("a session started while the last one fades stays on screen with its own clock running", c5["on"] and c5["session"] and bool(re.match(r"^0:0[2-4] of 1 min$", c5["clock"])), c5)
+            # the same for an activity from another module (a watering minute) started inside the fade
+            await page.evaluate("()=>OvuRoom.runSession('breathe', 1)"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>{window.__realNow=Date.now; var off=65000; Date.now=function(){return window.__realNow()+off;};}")
+            await page.click('#hudStop'); await page.wait_for_timeout(100)
+            await page.evaluate("()=>{Date.now=window.__realNow; OvuRoom.hudOn(true, 'Watering');}"); await page.wait_for_timeout(3000)
+            c6 = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), clock: document.querySelector('#hudTime').textContent})")
+            await page.evaluate("()=>OvuRoom.hudOn(false)"); await page.wait_for_timeout(200)
+            c6["after"] = await page.evaluate("()=>document.querySelector('#hudTime').textContent")
+            await page.evaluate("()=>OvuStore.list('mindfulness').filter(function(e){return e.data && e.data.kind==='breathe' && !e.data.completed}).forEach(function(e){OvuStore.remove(e.id)})")
+            check("a watering minute started while a saved session fades keeps the bar and its clock, and the clock clears when it ends", c6["on"] and bool(re.match(r"^0:0[2-4]$", c6["clock"])) and c6["after"] == "", c6)
+            check("the clock shows the planned length, keeps counting, stops the moment Stop is tapped with the save prompt open, and a new session starts again from 0:00", bool(re.match(r"^0:0[0-9] of [0-9]+ min$", c1)) and c2.startswith("1:0") and c3["clock"] == "" and c3["prompt"] and c3["later"] == "" and bool(re.match(r"^0:00 of 1 min$", c4)), {"c1": c1, "c2": c2, "c3": c3, "c4": c4})
             await page.evaluate("()=>{OvuGreenhouse.setPace(0); OvuStore.setProfile({outfit:'base'}); OvuRoom.restorePose();}")
             check("a mindful minute with the monstera: she mists it in her own outfit with the HUD guiding, it ends by itself and saves one minute", cr["caring"] == "monstera" and "act-plants-sundress" in (cr["img"] or "") and cr["hud"] and cr["ours"] and after["caring"] is None and not after["hud"], [cr, after])
             check("a stopped minute saves nothing and finishing twice saves once", stopped["caring"] is None and not stopped["hud"] and len(saved) == 1 and saved[0]["plant"] == "monstera" and saved[0]["minutes"] == 1, [stopped, saved])
@@ -1043,6 +1163,13 @@ async def main():
             await page.wait_for_timeout(900)
             farm = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, beds: document.querySelectorAll('#ownedProps .bed').length, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), here: document.querySelector('#mapHere')?.textContent, zone: document.querySelector('#zoneName')?.textContent})")
             check("the garden path walks her onto the farm: twelve beds on the plate, four hotspots, the pill saying Farm", farm["layout"] == "farm" and farm["beds"] == 12 and farm["hots"] == "farmgate,shed,well,basket" and farm["here"] == "Farm" and farm["zone"] == "Your farm", farm)
+            # the first visit explains the four steps once (Jamie, 20 Oct: "it's confusing")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] .farmsteps', timeout=6000)
+            except Exception: pass
+            guide = await page.evaluate("()=>({steps: document.querySelectorAll('#sheet[aria-hidden=\"false\"] .farmsteps li').length, can: !!document.querySelector('#farmCan'), seen: !!(OvuStore.state().farm||{}).guided})")
+            check("the first farm visit shows the four steps once, and the can sits on screen", guide["steps"] == 4 and guide["can"] and guide["seen"], guide)
+            await page.click('#guideGo'); await page.wait_for_timeout(300)
+            await page.evaluate("()=>{OvuFarm.slowMs = 0}")
             foods_before = await page.evaluate("()=>OvuStore.list('food').length")
             # the shed's hearts shelf (Phase 1, 20 Oct): seed packs, local crops and tools for hearts; the free seeds stay
             sh = await page.evaluate("()=>{OvuFarm.openShed(); var b=document.querySelector('#shedBuy'); var snap=JSON.stringify(OvuStore.state().farm||null), rw=JSON.stringify(OvuStore.state().rewards||null); var f=OvuFarm.farmState(OvuStore); var before=f.seeds.radish||0; var p=b && b.querySelector('[data-pack=radish]'); if (p) p.click(); var after=(OvuFarm.farmState(OvuStore).seeds.radish||0); OvuStore.setState({farm: JSON.parse(snap), rewards: JSON.parse(rw)}); return {shelf: !!b, packs: b ? b.querySelectorAll('[data-pack]').length : 0, unlocks: b ? b.querySelectorAll('[data-unlock]').length : 0, tools: b ? b.querySelectorAll('[data-tool]').length : 0, free: document.querySelectorAll('#shedActs [data-seed]').length, gained: after - before}}")
@@ -1058,8 +1185,25 @@ async def main():
             except Exception: pass
             planted = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=plant][data-crop=radish]'); if(!b) return {btn:false}; b.click(); return {btn:true, crop: OvuFarm.bed(OvuStore,id) && OvuFarm.bed(OvuStore,id).crop}}", bed)
             await page.wait_for_timeout(500)
-            watered = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=water]'); if(!b) return {btn:false}; b.click(); var bb=OvuFarm.bed(OvuStore,id); return {btn:true, days: OvuFarm.growthDays(bb), stam: OvuStamina.value(), stage: OvuFarm.stage(bb)}}", bed)
-            check("tapping a bed walks her over and opens it; planting a radish and watering it costs energy and counts one day", planted["btn"] and planted["crop"] == "radish" and watered["btn"] and watered["days"] == 1 and 1 <= watered["stage"] <= 2 and watered["stam"] == 100 - 2 - 6, {"planted": planted, "watered": watered})
+            # the can starts empty: the bed sends her to the well, the well fills the can, and Back returns her to the bed
+            empty = await page.evaluate("()=>({water: !!document.querySelector('#bedActs [data-bed=water]'), well: !!document.querySelector('#bedActs [data-bed=well]')})")
+            await page.click('#bedActs [data-bed=well]')
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] #wellActs [data-well=draw]', timeout=12000)
+            except Exception: pass
+            await page.click('#wellActs [data-well=draw]'); await page.wait_for_timeout(200)
+            filled = await page.evaluate("()=>({can: OvuFarm.canLevel(OvuStore), back: !!document.querySelector('#wellActs [data-well=back]'), gauge: document.querySelectorAll('#farmCan .cdots i.on').length})")
+            check("an empty can sends her from the bed to the well; drawing water fills three pours and offers the way back", not empty["water"] and empty["well"] and filled["can"] == 3 and filled["back"] and filled["gauge"] == 3, {"empty": empty, "filled": filled})
+            await page.click('#wellActs [data-well=back]')
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] #bedActs [data-bed=water]', timeout=12000)
+            except Exception: pass
+            # a slow pour stopped halfway changes nothing
+            stopped = await page.evaluate("async (id)=>{OvuFarm.slowMs = 1500; document.querySelector('#bedActs [data-bed=water]').click(); await new Promise(r=>setTimeout(r,300)); var bar=!!document.querySelector('#bedActs .slowbar'); document.querySelector('#bedActs [data-slow=stop]').click(); await new Promise(r=>setTimeout(r,1600)); OvuFarm.slowMs = 0; return {bar: bar, days: OvuFarm.growthDays(OvuFarm.bed(OvuStore,id)), can: OvuFarm.canLevel(OvuStore), stam: OvuStamina.value(), again: !!document.querySelector('#bedActs [data-bed=water]')}}", bed)
+            check("a slow pour shows its bar, and Stop waters nothing, keeps the water and costs no energy", stopped["bar"] and stopped["days"] == 0 and stopped["can"] == 3 and stopped["stam"] == 100 - 2 and stopped["again"], stopped)
+            # closing the sheet mid-step frees the farm at once; sleep starting mid-step saves nothing
+            freed = await page.evaluate("async (id)=>{OvuFarm.slowMs = 1500; document.querySelector('#bedActs [data-bed=water]').click(); await new Promise(r=>setTimeout(r,200)); OvuRoom.hideSheet(); await new Promise(r=>setTimeout(r,100)); OvuFarm.openBed(id); var ok=!!document.querySelector('#bedActs [data-bed=water]'); await new Promise(r=>setTimeout(r,1600)); var days=OvuFarm.growthDays(OvuFarm.bed(OvuStore,id)); document.querySelector('#bedActs [data-bed=water]').click(); await new Promise(r=>setTimeout(r,200)); OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}}); await new Promise(r=>setTimeout(r,1600)); var slept={days: OvuFarm.growthDays(OvuFarm.bed(OvuStore,id)), can: OvuFarm.canLevel(OvuStore), stam: OvuStamina.value()}; OvuStore.setState({sleeping:null}); OvuFarm.slowMs = 0; OvuFarm.openBed(id); return {reopened: ok, days: days, slept: slept}}", bed)
+            check("closing a bed mid-pour frees the farm at once and saves nothing; sleep starting mid-pour saves nothing either", freed["reopened"] and freed["days"] == 0 and freed["slept"]["days"] == 0 and freed["slept"]["can"] == 3 and freed["slept"]["stam"] == 100 - 2, freed)
+            watered = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=water]'); if(!b) return {btn:false}; b.click(); var bb=OvuFarm.bed(OvuStore,id); return {btn:true, days: OvuFarm.growthDays(bb), stam: OvuStamina.value(), stage: OvuFarm.stage(bb), can: OvuFarm.canLevel(OvuStore)}}", bed)
+            check("tapping a bed walks her over and opens it; planting a radish and watering it costs energy and counts one day", planted["btn"] and planted["crop"] == "radish" and watered["btn"] and watered["days"] == 1 and 1 <= watered["stage"] <= 2 and watered["stam"] == 100 - 2 - 6 and watered["can"] == 2, {"planted": planted, "watered": watered})
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
             # ripen it by hand (two watered days) and harvest through the sheet: the basket fills, the meal prompt asks, no entry is written
             await page.evaluate("(id)=>{var f=OvuStore.state().farm; f.beds[id].watered=[OvuStore.addDays(OvuGameTime.dayKey(),-1), OvuGameTime.dayKey()]; OvuStore.setState({farm:f}); OvuFarm.openBed(id);}", bed)
@@ -1358,7 +1502,7 @@ async def main():
             except Exception: pass
             cs = fcall("social_card_save")
             fs = await p6.evaluate("()=>({text: (document.querySelector('#frSheet')||{}).textContent||'', dot: document.querySelector('#plazaPill').classList.contains('frnew')})")
-            check("Make my card sends the name, the look, the two ticked boxes (18+ and Plaza friends), no expected card and the notice version, and the sheet shows her card, Priya's ask with its hello and the note from her", cs and cs[0]["p_name"] == "Fern" and cs[0]["p_look"] == "kebaya-red" and cs[0]["p_adult"] is True and cs[0]["p_opt_in"] is True and cs[0]["p_expect"] is None and cs[0]["p_hidden"] is False and cs[0]["p_notice"] == 3 and "Fern" in fs["text"] and "Hello, nice to see you here." in fs["text"] and "Hope today is gentle with you." in fs["text"] and "Welcome her in." in fs["text"], {"save": cs, "text": fs["text"][:200]})
+            check("Make my card sends the name, the look, the two ticked boxes (18+ and Plaza friends), no expected card and the notice version, and the sheet shows her card, Priya's ask with its hello and the note from her", cs and cs[0]["p_name"] == "Fern" and cs[0]["p_look"] == "kebaya-red" and cs[0]["p_adult"] is True and cs[0]["p_opt_in"] is True and cs[0]["p_expect"] is None and cs[0]["p_hidden"] is False and cs[0]["p_notice"] == 4 and "Fern" in fs["text"] and "Hello, nice to see you here." in fs["text"] and "Hope today is gentle with you." in fs["text"] and "Welcome her in." in fs["text"], {"save": cs, "text": fs["text"][:200]})
             check("opening the sheet marks the note read (the sender is never told), and the pill still shows a dot for the ask", fcall("social_read") and fcall("social_read")[0]["p_upto"] == 7 and fs["dot"], fcall("social_read"))
             await shot("friends-sheet")
             await p6.evaluate("()=>OvuRoom.closeSheet()")
@@ -1571,6 +1715,29 @@ async def main():
             except Exception: pass
             check("an owner's Pause 7 days sends that report and seven days", sdec == [{"p_id": 3, "p_decision": "pause", "p_days": 7}], sdec)
             await ctx5.close()
+
+            # the launch setting: Luna's AI help is paused. The three AI choices cannot be turned on, Luna says so, and no AI request goes out
+            ctxP = await browser.new_context(viewport={"width": 390, "height": 844}, paused=True)
+            await ctxP.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB)))
+            pP = await ctxP.new_page(); ai_calls = []
+            async def p_gate(route):
+                u = route.request.url
+                if "/functions/v1/luna" in u or "/functions/v1/insight" in u: ai_calls.append(u); return await route.abort()
+                if u.startswith(BASE): return await route.continue_()
+                if "fonts.g" in u: return await route.fulfill(status=200, content_type="text/css", body="")
+                return await route.abort()
+            await pP.route("**/*", p_gate)
+            await pP.goto(BASE + "room.html"); await pP.wait_for_timeout(1500)
+            pz = await pP.evaluate("""async () => {
+              const C = OvuConsent, O = OvuOrb;
+              C.setMany({ ai_reading: true, food_photo_ai: true, ai_summaries: true }, 'settings');
+              const allowed = ['ai_reading', 'food_photo_ai', 'ai_summaries'].some(p => C.allows(p));
+              let err = ''; try { await O.parseAI('slept badly and my left knee hurts'); } catch (e) { err = e.message; }
+              let perr = ''; try { await O.parsePhoto('data:image/jpeg;base64,AAAA'); } catch (e) { perr = e.message; }
+              return { paused: O.aiPaused(), allowed, err, perr };
+            }""")
+            check("the launch build pauses Luna's AI help: no AI choice can be turned on, an AI read or photo says paused, and nothing is sent", pz["paused"] and not pz["allowed"] and "paused" in pz["err"] and "paused" in pz["perr"] and ai_calls == [], {"pz": pz, "calls": ai_calls})
+            await ctxP.close()
 
             # the staff page: signed out it shows the sign-in gate only, no dashboard, no data call
             await page.goto(BASE + "admin.html", wait_until="networkidle"); await page.wait_for_timeout(500)

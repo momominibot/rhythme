@@ -85,7 +85,7 @@ async def main():
             await page.goto(base + 'room.html', wait_until='networkidle'); await page.wait_for_selector('.hotspot'); await page.wait_for_timeout(1500)
             await page.evaluate("()=>{var s=document.querySelector('.scene'); if(s){ s.classList.toggle('sky-night', %s); }}" % ('true' if SKY == 'night' else 'false'))
             await audit('room.html')
-            steps = [('you', "nav a[data-tab=you]"), ('cycle', "nav a[data-tab=cycle]"), ('food', "nav a[data-tab=food]"), ('mind', "nav a[data-tab=mind]")]
+            steps = [('you', "nav a[data-tab=you]"), ('food', "nav a[data-tab=food]"), ('mind', "nav a[data-tab=mind]")]
             for name, sel in steps:
                 try: await page.click(sel); await page.wait_for_timeout(900); await audit('room.html#' + name)
                 except Exception as e: report['room.html#' + name] = [{'sel': 'OPEN FAILED', 'text': str(e)[:60], 'ratio': 0, 'need': 0}]
@@ -112,9 +112,9 @@ async def main():
             await page.evaluate("""()=>{ var S=OvuStore, t=new Date(); function d(n){ var x=new Date(t); x.setDate(x.getDate()-n); return x.toISOString().slice(0,10); }
               ['heavy','medium','light','spotting'].forEach(function(f,i){ try { S.add('period', d(3-i), {flow:f}); } catch(e){} });
               try { S.add('symptom', d(1), {symptoms:['cramps'], pain:4, mood:'ok', notes:''}); } catch(e){} }""")
-            await deep('calendar-period', "()=>{document.querySelector('nav a[data-tab=cycle]').click(); setTimeout(()=>{var b=[...document.querySelectorAll('#calGrid .cal-day:not(.empty):not(.future)')]; b[b.length-2] && b[b.length-2].click();}, 500)}", 1400)
-            await deep('calendar-symptom', "()=>{document.querySelector('nav a[data-tab=cycle]').click(); setTimeout(()=>{document.querySelector('#calTabs [data-tab=symptom]').click(); setTimeout(()=>{var b=[...document.querySelectorAll('#calGrid .cal-day:not(.empty):not(.future)')]; b[b.length-2] && b[b.length-2].click();}, 300)}, 500)}", 1600)
-            await deep('acupressure', "()=>{document.querySelector('nav a[data-tab=cycle]').click(); setTimeout(()=>{document.querySelector('#calTabs [data-tab=symptom]').click(); setTimeout(()=>{var b=[...document.querySelectorAll('#calGrid .cal-day:not(.empty):not(.future)')]; b[b.length-1].click(); setTimeout(()=>{var a=document.querySelector('#acuFromSym'); a&&a.click(); setTimeout(()=>{var c=document.querySelector('#sheet .aculist button, #sheet .acucard, #sheet [data-acu]'); c&&c.click();}, 700)}, 300)}, 300)}, 500)}", 2600)
+            await deep('calendar-period', "()=>{document.querySelector('.hotspot[data-id=calendar]').click(); setTimeout(()=>{var b=[...document.querySelectorAll('#calGrid .cal-day:not(.empty):not(.future)')]; b[b.length-2] && b[b.length-2].click();}, 500)}", 1400)
+            await deep('calendar-symptom', "()=>{document.querySelector('.hotspot[data-id=calendar]').click(); setTimeout(()=>{document.querySelector('#calTabs [data-tab=symptom]').click(); setTimeout(()=>{var b=[...document.querySelectorAll('#calGrid .cal-day:not(.empty):not(.future)')]; b[b.length-2] && b[b.length-2].click();}, 300)}, 500)}", 1600)
+            await deep('acupressure', "()=>{document.querySelector('.hotspot[data-id=calendar]').click(); setTimeout(()=>{document.querySelector('#calTabs [data-tab=symptom]').click(); setTimeout(()=>{var b=[...document.querySelectorAll('#calGrid .cal-day:not(.empty):not(.future)')]; b[b.length-1].click(); setTimeout(()=>{var a=document.querySelector('#acuFromSym'); a&&a.click(); setTimeout(()=>{var c=document.querySelector('#sheet .aculist button, #sheet .acucard, #sheet [data-acu]'); c&&c.click();}, 700)}, 300)}, 300)}, 500)}", 2600)
             await deep('luna', "()=>{ try { OvuOrb && OvuOrb.setAiConfig && OvuOrb.setAiConfig(Object.assign({}, OvuOrb.aiConfig(), {on:true, insights:true, photos:true})); } catch(e){} var b=document.querySelector('[data-act=luna], #lunaOrb, .orb'); b && b.click(); }", 1400)
             await deep('listen', "()=>{ var b=document.querySelector('[data-pod-open]'); if(!b){ document.querySelector('nav a[data-tab=mind]').click(); } setTimeout(()=>{ var c=document.querySelector('[data-pod-open]'); c&&c.click(); }, 700); }", 2000)
             await deep('mind', "()=>document.querySelector('nav a[data-tab=mind]').click()", 1000)

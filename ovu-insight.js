@@ -17,9 +17,11 @@
   var gen = 0;
   function onConsentChange(purpose, on) { if (purpose === 'ai_summaries' && !on) { gen++; S.setState({ insights: { daily: {}, fourweeks: {} } }); } }
   function hdr() {
+    if (!(root.OVU_CONFIG && root.OVU_CONFIG.aiPaused === false)) return Promise.reject(new Error('Luna’s readings are paused for now.')); /* paused unless explicitly turned off */
     var h = Object.assign({ 'Content-Type': 'application/json' }, root.OvuConsent ? root.OvuConsent.header('ai_summaries') : {});
-    var A = root.OvuAuth; if (!A || !A.session || !A.session()) return Promise.resolve(h);
-    return A.token().then(function (at) { if (at) h.Authorization = 'Bearer ' + at; return h; }, function () { return h; });
+    var A = root.OvuAuth; if (!A || !A.session || !A.session()) { if (root.OvuConsent && root.OvuConsent.boundTo && root.OvuConsent.boundTo('ai_summaries')) return Promise.reject(new Error('Please sign in again to get Luna’s readings.')); return Promise.resolve(h); }
+    var again = function () { throw new Error('Please sign in again to get Luna’s readings.'); }; /* never sent without the account once signed in */
+    return A.token().then(function (at) { if (!at) again(); h.Authorization = 'Bearer ' + at; return h; }, again);
   }
   function store() { return S.state().insights || { daily: {}, fourweeks: {} }; }
   function put(kind, key, value) {

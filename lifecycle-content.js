@@ -1,57 +1,6 @@
 /* Voluntary life-stage education, not diagnoses or a fixed journey. */
 window.OVULUNA_CHAPTERS = [
   {
-    "id": "bloom",
-    "title": "Bloom",
-    "subtitle": "First periods and growing confidence",
-    "icon": "assets/icons/persona-bloom.png",
-    "intro": "You deserve clear answers and room to learn your own pattern. A cycle does not have to look like a perfect 28-day circle to be worth listening to.",
-    "sections": [
-      {
-        "title": "Learn your rhythm",
-        "text": "Note when bleeding begins, how long it lasts and what changes for you. Cycles often vary in the first years after your first period. Your record is an observation, not an ovulation test.",
-        "key": "life-teen-pattern"
-      },
-      {
-        "title": "Flow and daily life matter",
-        "text": "Record flooding, frequent product changes, dizziness and time missed from school or activities. Heavy bleeding deserves support; it is not something you need to quietly push through.",
-        "key": "life-teen-flow"
-      },
-      {
-        "title": "Make room for comfort",
-        "text": "Try gentle movement or a wrapped warm pack for cramps if it feels helpful. Ask a pharmacist or clinician about suitable pain relief. Pain that keeps interrupting your day should be reviewed.",
-        "key": "life-teen-comfort"
-      },
-      {
-        "title": "Ask early, without embarrassment",
-        "text": "Speak with a trusted adult or clinician if periods have not started by 15, if there is a gap of about three months, or if your pattern changes unexpectedly. Several causes are possible; a tracker cannot diagnose them.",
-        "key": "life-teen-support"
-      }
-    ],
-    "care": {
-      "text": "Seek urgent medical help for severe pain or heavy bleeding, especially if you feel faint or seriously unwell. Use local emergency services when needed; do not wait for an app score.",
-      "key": "life-teen-urgent"
-    },
-    "links": [
-      {
-        "label": "Record a period",
-        "href": "cycle-log.html"
-      },
-      {
-        "label": "Learn about cycle phases",
-        "href": "cycle-home.html"
-      },
-      {
-        "label": "Your privacy choices",
-        "href": "settings.html"
-      },
-      {
-        "label": "Find support in your country",
-        "href": "https://findahelpline.com/"
-      }
-    ]
-  },
-  {
     "id": "grow",
     "title": "Grow",
     "subtitle": "Preparing for pregnancy, at your pace",

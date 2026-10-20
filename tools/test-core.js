@@ -361,8 +361,10 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var walk = true; for (var i = 0; i < SD.SCALE.length; i++) [0.1, 0.9].forEach(function (r) { var n = SD.nextPetal(i, r); if (n < 0 || n >= SD.SCALE.length || Math.abs(n - i) !== 1) walk = false; });
   check('the flower notes walk to a neighbouring note of a pentatonic scale, never a leap', walk && SD.SCALE.length === 7);
   check('with no audio device nothing breaks: play and the air simply do nothing', SD.play('petal') === false && SD.ambience(true) === false);
-  check('a petal rises over 300 ms and settles over four seconds; nothing faster', LF.glowAt(0) === 0 && Math.abs(LF.glowAt(300) - 1) < 1e-9 && LF.glowAt(150) > 0.4 && LF.glowAt(150) < 0.6 && LF.glowAt(2300) > 0 && LF.glowAt(4300) === 0 && LF.glowAt(1000) > LF.glowAt(2000));
-  var held = [500, 1500, 3000].every(function (t) { return Math.abs(LF.glowAt(LF.holdFrom(t)) - LF.glowAt(t)) < 1e-6; });
+  check('a petal rises over 180 ms and settles over three seconds; nothing faster', LF.glowAt(0) === 0 && Math.abs(LF.glowAt(180) - 1) < 1e-9 && LF.glowAt(90) > 0.4 && LF.glowAt(90) < 0.6 && LF.glowAt(2000) > 0 && LF.glowAt(3180) === 0 && LF.glowAt(800) > LF.glowAt(1600));
+  var h0 = LF.headAt(0), h3 = LF.headAt(LF.BREATH_S / 4), hs = LF.headAt(30, true), breathOk = true; for (var q = 0; q < 60; q += 0.37) { var hh = LF.headAt(q); if (Math.abs(hh.s - 1) > 0.025) breathOk = false; }
+  check('the flower turns slowly (a quarter turn in half a minute) and breathes within a few percent; reduced motion keeps it still', h0.s === 1 && h3.s > 1.02 && breathOk && Math.abs(LF.headAt(30).rot - h0.rot - Math.PI / 2) < 1e-9 && hs.s === 1 && hs.rot === h0.rot);
+  var held = [500, 1500, 2500].every(function (t) { return Math.abs(LF.glowAt(LF.holdFrom(t)) - LF.glowAt(t)) < 1e-6; });
   check('tapping a glowing petal holds its brightness (no jump, no flash) and a dark one rises from dark', held && LF.holdFrom(5000) === 0 && LF.holdFrom(100) === 100);
   check('at most one new petal every 400 ms, so nothing can flash three times a second', LF.MIN_GAP_MS >= 334);
   var r = 100, rot = 0.14, up = LF.petalFor(Math.cos(rot - Math.PI / 2) * 60, Math.sin(rot - Math.PI / 2) * 60, r, 3, rot), right = LF.petalFor(Math.cos(rot + Math.PI / 6) * 60, Math.sin(rot + Math.PI / 6) * 60, r, 3, rot);
@@ -415,6 +417,57 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
   check('the breathing session never asks for a hold: in gently, out slowly (Codex, 20 Oct)', rs.indexOf("setOrb('hold', 'Hold')") < 0 && rs.indexOf('Breathe out slowly') > -1 && rs.indexOf('Breathe in gently') > -1);
   check('the big watering can waters every dry bed once, and only once a day', cn.ok && wa.ok && wa.n === 3 && dry.every(function (id) { return F.wateredToday(F.bed(S, id), t); }) && !F.waterAll(S, t).ok);
+})();
+
+(function farmWateringCan() {
+  console.log('2k2. the watering can: drawn at the well, one pour a bed, charged in the same save (Jamie, 20 Oct: "I cant fill the watering can")');
+  var w = fresh(), S = w.OvuStore, t = S.today();
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  var F = w.OvuFarm, ls = w.localStorage, realSet = ls.setItem;
+  function full(on) { ls.setItem = on ? function () { throw new Error('QuotaExceededError'); } : realSet; }
+  var clean = F.BEDS.filter(function (b) { return !F.hasWeeds(null, b.id, t); }).map(function (b) { return b.id; });
+  S.setState({ farm: { seeds: { radish: 5 } } }); clean.slice(0, 5).forEach(function (id) { F.plant(S, id, 'radish', t); });
+  var e0 = F.pour(S, clean[0], t);
+  check('an empty can pours nothing and says where the water is', !e0.ok && e0.empty && /well/.test(e0.why) && !F.wateredToday(F.bed(S, clean[0]), t));
+  var f1 = F.fillCan(S);
+  check('the well fills the can to three pours, and a full can is not filled again', f1.ok && f1.n === 3 && F.canLevel(S) === 3 && !F.fillCan(S).ok);
+  var p1 = F.pour(S, clean[0], t);
+  check('a pour waters one bed for the day and leaves two pours', p1.ok && p1.days === 1 && p1.left === 2 && F.canLevel(S) === 2 && F.wateredToday(F.bed(S, clean[0]), t));
+  var p2 = F.pour(S, clean[0], t);
+  check('a bed already watered today takes no water from the can', !p2.ok && F.canLevel(S) === 2);
+  full(true); var p3 = F.pour(S, clean[1], t); full(false);
+  check('a pour that cannot be saved waters nothing and keeps the water', !p3.ok && !F.wateredToday(F.bed(S, clean[1]), t) && F.canLevel(S) === 2);
+  var stub = { n: 0, spendWith: function (a, patch) { this.n++; this.a = a; S.commit(Object.assign({ stamina: { v: 40, max: 100, day: t } }, patch)); return true; } };
+  var p4 = F.pour(S, clean[1], t, stub);
+  check('with the energy module a pour charges one watering in the same save as the bed and the can', p4.ok && p4.charged && stub.n === 1 && stub.a === 'water' && S.state().stamina.v === 40 && F.canLevel(S) === 1);
+  var tired = { spendWith: function () { return false; } }, p5 = F.pour(S, clean[2], t, tired);
+  check('too tired: nothing is watered and the water stays in the can', !p5.ok && !F.wateredToday(F.bed(S, clean[2]), t) && F.canLevel(S) === 1);
+  var odd = S.state().farm; odd.can = 99; S.setState({ farm: odd });
+  check('a can level from elsewhere is never more than the can holds', F.canLevel(S) === 3);
+  odd.can = 'x'; S.setState({ farm: odd });
+  check('a level that is not a number reads as empty', F.canLevel(S) === 0);
+  var l = w.OvuRewards.ledger(); l.hearts = 500; S.setState({ rewards: l }); F.buyTool(S, w.OvuRewards, 'bigcan');
+  check('the big can holds twelve pours, one for every bed', F.canCap(F.farmState(S)) === 12 && F.BEDS.length === 12 && F.fillCan(S).n === 12);
+  odd = S.state().farm; odd.can = 2; S.setState({ farm: odd });
+  var dry = F.dryBeds(S, t).length, wa = F.waterAll(S, t, null, { can: true });
+  check('the big can waters as many dry beds as its water reaches, one pour each', dry >= 3 && wa.ok && wa.n === 2 && F.canLevel(S) === 0 && F.dryBeds(S, t).length === dry - 2);
+  var we = F.waterAll(S, t, null, { can: true });
+  check('with the big can empty, watering all is refused and nothing changes', !we.ok && we.empty && F.dryBeds(S, t).length === dry - 2);
+  var ws = F.BEDS.filter(function (b) { return F.hasWeeds(null, b.id, t); }).map(function (b) { return b.id; })[0];
+  var sd0 = F.seedsLeftToday(S, t), occ = clean[0], ps = F.plantFromShed(S, occ, 'radish', t);
+  check('a free seed planted into a bed that is taken is refused and uses up no seed of the day', !ps.ok && F.seedsLeftToday(S, t) === sd0);
+  var empty = F.BEDS.filter(function (b) { return !F.hasWeeds(null, b.id, t) && !F.bed(S, b.id); })[0].id, pk = F.plantFromShed(S, empty, 'carrot', t);
+  check('a free seed planted into an empty bed takes one seed of the day and plants it, in one save', pk.ok && F.bed(S, empty).crop === 'carrot' && F.seedsLeftToday(S, t) === sd0 - 1);
+  odd = S.state().farm; odd.can = 12; S.setState({ farm: odd });
+  var d2 = F.dryBeds(S, t), last = d2[d2.length - 1], tg = F.bulkTargets(S, t, last, 2);
+  check('the big can starts with the bed she is looking at, then the rest in order', d2.length >= 2 && tg[0] === last && tg.length === 2 && tg[1] === d2[0]);
+  var moved = F.waterAll(S, t, null, { can: true, ids: tg.concat(['bed99']) });
+  check('if the shown beds changed, watering all refuses and changes nothing', !moved.ok && moved.changed && F.canLevel(S) === 12 && F.dryBeds(S, t).length === d2.length);
+  var shown = F.waterAll(S, t, null, { can: true, ids: tg });
+  check('watering all waters exactly the beds she was shown', shown.ok && shown.n === 2 && !F.wateredToday(F.bed(S, d2[1]), t) === (d2.length > 2 && d2[1] !== tg[1]) && F.wateredToday(F.bed(S, last), t) && F.canLevel(S) === 10);
+  var src = fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8');
+  check('the bed sheet waters from the can, with the well one tap away when it is empty', src.indexOf("res = pour(S, id, t, ST)") > -1 && src.indexOf('data-bed="well"') > -1 && src.indexOf('Fill the can at the well') > -1 && src.indexOf("res = water(S, id, now)") < 0);
+  check('care steps are slow and stoppable, and save only when the bar is full and the sheet still open', /function slowStep[\s\S]*?!box\.isConnected \|\| !R\.sheetOpen\(\)[\s\S]*?asleepNow\(\)/.test(src) && src.indexOf('function liveSlow') > -1 && src.indexOf('data-slow="stop"') > -1);
 })();
 
 (function phase1ReviewFixes() {
@@ -943,6 +996,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
 
   /* readings written from the old numbers: four-week ones (they go to clinicians) are withheld, daily ones ask to be
    * updated; nothing calls the relay by itself */
+  w.OVU_CONFIG = Object.assign({}, w.OVU_CONFIG, { aiPaused: false }); /* these exercise the AI choices; the launch pause has its own checks */
   ['ovu-consent.js', 'ovu-auth.js', 'ovu-insight.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
   var I = w.OvuInsight, es = S.list(null, { from: '2026-09-22', to: '2026-10-19' });
   var oldSig = es.length + ':' + es.map(function (e) { return (e.updatedAt || e.createdAt || '').slice(0, 19); }).sort().slice(-1)[0];
@@ -952,7 +1006,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var st = S.state().insights; st.fourweeks['2026-10-19'].sig = 'r2|' + oldSig; st.fourweeks['2026-10-19'].rules = 'r2'; S.setState({ insights: st });
   check('a four-week reading written under the current rules is shown and is not stale', I.cachedFourWeeks('2026-10-19').clinician.cycle === 'A 501-day cycle.' && I.stale('fourweeks', '2026-10-19') === false);
   var pageSrc = ['journal.html', 'doctor.html', 'ovu-agents.js', 'room.js'].map(function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); }).join('\n');
-  check('pages reach four-week readings only through cachedFourWeeks, which applies the rules check', !/insights\.fourweeks|\.fourweeks\[/.test(pageSrc) && /I\.cachedFourWeeks\(end\)\|\|null/.test(pageSrc));
+  check('pages reach four-week readings only through cachedFourWeeks, which applies the rules check, and shares and PDFs also drop a stale one', !/insights\.fourweeks|\.fourweeks\[/.test(pageSrc) && /var ins=I\.cachedFourWeeks\(end\);return ins&&!\(I\.stale&&I\.stale\('fourweeks',end\)\)\?ins:null;/.test(pageSrc) && /insight:freshFourWeeks\(end\)/.test(pageSrc) && /ins=freshFourWeeks\(end\)/.test(pageSrc));
   var sum6 = S2.cycleStats('2026-09-25'); periods(S2, ['2026-05-04', '2026-04-06']);
   var cs8 = S2.cycleStats('2026-09-25'), sm8 = A2.fourWeekSummary('2026-09-25');
   check('the clinician summary lists exactly the cycles the average used', cs8.lengths.length === 6 && sm8.cycle.cycleLengths.join() === cs8.lengths.join() && sm8.cycle.averageLength === cs8.averageLength && sm8.cycle.basis === '6 logged cycles' && sum6.lengths.length === 4, JSON.stringify({ l: cs8.lengths, s: sm8.cycle.cycleLengths, b: sm8.cycle.basis }));
@@ -1919,6 +1973,75 @@ function scenes(todayIso) {
   var sold = SH.placements('shop-pet', RW.SHOP, { owned: ['cat', 'acc-bow', 'treat-fish'] }, w.LAYOUTS.room.props);
   check('bought pets and accessories leave the shelf; treats restock; shelf widths follow the room props', !sold.some(function (p) { return p.item.id === 'cat' || p.item.id === 'acc-bow'; }) && sold.some(function (p) { return p.item.id === 'treat-fish'; }) && sold.filter(function (p) { return p.item.id === 'dog'; })[0].w === w.LAYOUTS.room.props.dog.w * 1.02, JSON.stringify(sold.map(function (p) { return p.item.id + ':' + p.w; })));
 })();
+(function launchDeleteSweep() {
+  console.log('launch sweep (20 Oct): Delete everything leaves no older copy behind; a cloud deletion empties the entry on the server');
+  var w = fresh('2026-10-20'), S = w.OvuStore, L = w.localStorage;
+  S.add('food', '2026-10-20', { meal: 'lunch', foods: 'laksa', items: [] });
+  S.add('sleep', '2026-10-20', { bedTime: '23:00', wakeTime: '07:00', quality: 4 });
+  S.add('period', '2026-10-18', { flow: 'medium' });
+  ['ovuluna_daily_log_2026-10-01', 'ovuluna_medas14', 'ovuluna_ovarian_age', 'ov_hydro', 'ovumind_room', 'rhythme_podcast_v1'].forEach(function (k) { L.setItem(k, '{"x":1}'); });
+  L.setItem('ovumind_auth_v1', '{"s":1}'); L.setItem('ovumind_sync_v1', '{"v":1}'); L.setItem('rhythme_plus_v1', '{"t":1}'); L.setItem('other_site_key', 'keep'); L.setItem('ov_unrelated_site', 'keep');
+  var mine = function () { return Object.keys(L._m).filter(function (k) { return /^(ovumind_|ovuluna_|ov_|rhythme_)/.test(k); }).sort(); }, before = mine();
+  S.clearAll();
+  var left = mine();
+  check('Delete everything removes the diary and every older copy by an explicit list (meal and sleep mirrors, cycle mirror, earlier pages\' logs and scores, podcast listening), keeping the sign-in, backup bookkeeping and Plus access, and never another project\'s key on the shared origin', before.indexOf('ovumind_food_journal') > -1 && before.indexOf('ovuluna_sleep_logs') > -1 && left.join() === 'ov_unrelated_site,ovumind_auth_v1,ovumind_db_v1,ovumind_sync_v1,rhythme_plus_v1' && S.list(null).length === 0 && L.getItem('other_site_key') === 'keep', JSON.stringify({ before: before, left: left }));
+  var w3 = fresh('2026-10-20'), S3 = w3.OvuStore, L3 = w3.localStorage;
+  var pe = S3.add('period', '2026-10-18', { flow: 'medium' }); var hadCycle = !!L3.getItem('ovumind_cycle'); S3.remove(pe.id);
+  S3.add('food', '2026-10-20', { meal: 'lunch', foods: 'laksa', items: [] }); S3.add('sleep', '2026-10-20', { bedTime: '23:00', wakeTime: '07:00', quality: 4 });
+  S3.removeWhere(function (e) { return e.type === 'food' || e.type === 'sleep'; });
+  var fj = JSON.parse(L3.getItem('ovumind_food_journal') || '{}'), meals = Object.keys(fj).reduce(function (n, d) { return n + ['breakfast', 'lunch', 'dinner', 'snack'].reduce(function (m, k) { return m + ((fj[d][k] || []).length); }, 0); }, 0), sl = JSON.parse(L3.getItem('ovuluna_sleep_logs') || '[]');
+  check('deleting the last period removes its cycle copy; deleting meals and nights together removes their older copies too', hadCycle && !L3.getItem('ovumind_cycle') && meals === 0 && sl.length === 0, JSON.stringify({ hadCycle: hadCycle, cycle: L3.getItem('ovumind_cycle'), meals: meals, sleep: sl.length }));
+  var w4 = fresh('2026-10-20'), S4 = w4.OvuStore, L4 = w4.localStorage, fe = S4.add('food', '2026-10-20', { meal: 'lunch', foods: 'laksa', items: [] });
+  S4.update(fe.id, { date: '2026-10-18' }); S4.remove(fe.id);
+  var fj4 = JSON.parse(L4.getItem('ovumind_food_journal') || '{}'), left4 = JSON.stringify(fj4).indexOf(fe.id) > -1;
+  var plSrc = fs.readFileSync(path.join(root, 'privacy-local.js'), 'utf8'), plRe = /\['((?:ov|rhythme)[a-z_0-9]*)', ['"]/g, plM, plKeys = []; while ((plM = plRe.exec(plSrc))) plKeys.push(plM[1]); var own = S4.OWN_KEYS.concat(S4.KEEP_ON_CLEAR, ['ovumind_db_v1', 'ovumind_sync_v1']);
+  var missing = plKeys.filter(function (k) { return own.indexOf(k) < 0; });
+  check('a meal moved to another date and then deleted leaves no copy on either date; every store the privacy page lists is one Delete everything knows, and the sign-in is never listed for export', !left4 && missing.length === 0 && plKeys.indexOf('ovumind_auth_v1') < 0, JSON.stringify({ left4: left4, missing: missing }));
+  var srv = syncServer(); srv.rows.push(syncRow('del1', 'reflection', '2026-10-19T09:00:00.000000+00:00', { text: 'a private note', mood: 'low' }));
+  var w2 = syncWorld(srv, null, null), S2 = w2.OvuStore, Y2 = w2.OvuSync, patches = [], f0 = w2.fetch;
+  w2.fetch = function (url, opt) { if (opt && opt.method === 'PATCH') patches.push(JSON.parse(opt.body)); return f0(url, opt); };
+  Y2.init(); /* listens for single-entry deletes, as the app does at start */
+  Y2.syncNow().then(function () { S2.remove('del1'); return Y2.syncNow(); }).then(function () {
+    check('a deletion sent to the cloud copy marks it deleted and empties its data, so nothing readable is left on the server', patches.length >= 1 && patches.every(function (p) { return p.deleted === true && JSON.stringify(p.data) === '{}'; }), JSON.stringify(patches));
+  }).catch(function (e) { check('a deletion sent to the cloud copy marks it deleted and empties its data', false, String(e && e.stack || e)); });
+})();
+(function launchAiGuards() {
+  console.log('launch sweep (20 Oct): Luna\'s AI help is paused, and a signed-in request never goes out without the account');
+  var w = fresh('2026-10-20'), O = w.OvuOrb, sent = [];
+  w.localStorage.setItem('ovumind_ai_v1', JSON.stringify({ on: true, provider: 'ovumind', insights: true, photos: true }));
+  w.fetch = function (u) { sent.push(String(u)); return Promise.resolve({ ok: true, status: 200, json: function () { return Promise.resolve({ entries: [], reply: 'ok' }); } }); };
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-insight.js'), 'utf8'), w, { filename: 'ovu-insight.js' });
+  var I = w.OvuInsight;
+  w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve(null); }, userId: function () { return 'u1'; } };
+  w.OVU_CONFIG = { aiPaused: false };
+  var r1 = O.parseAI('slept badly').then(function () { return 'sent'; }, function (e) { return e.message; });
+  var r2 = I.daily ? I.daily('2026-10-20', true).then(function () { return 'sent'; }, function (e) { return e.message; }) : Promise.resolve('no daily');
+  Promise.all([r1, r2]).then(function (rs) {
+    check('signed in with a token that cannot be refreshed: the note and the reading stop with "sign in again" and nothing is sent without the account', /sign in again/i.test(rs[0]) && (/sign in again/i.test(rs[1]) || rs[1] === 'no daily') && sent.length === 0, JSON.stringify({ rs: rs, sent: sent }));
+    w.OVU_CONFIG = { aiPaused: true }; w.OvuAuth = null;
+    return O.parseAI('slept badly').then(function () { return 'sent'; }, function (e) { return e.message; }).then(function (m) {
+      check('with the launch setting (aiPaused) a note is not sent to the AI service, even when the AI choice was on before', /paused/.test(m) && sent.length === 0, JSON.stringify({ m: m, sent: sent }));
+    });
+  }).catch(function (e) { check('launch AI guards', false, String(e && e.stack || e)); });
+})();
+(function launchPassphrase() {
+  var w = fresh(), C = w.OvuStore.crypto, a = C.PASS_ALPHABET, seen = {}, ok = true;
+  for (var i = 0; i < 200; i++) { var p = C.generatePassphrase(); seen[p] = 1; if (!/^([A-Z2-9]{4}-){6}[A-Z2-9]{4}$/.test(p) || /[IO01]/.test(p)) ok = false; }
+  check('a share passphrase is 28 characters from 32 distinct easy letters and digits (140 random bits), never repeating in 200 draws', a.length === 32 && new Set(a.split('')).size === 32 && ok && Object.keys(seen).length === 200, a);
+})();
+(function launchAiAfterSessionEnds() {
+  var w = fresh('2026-10-20'), sent = [];
+  w.OVU_CONFIG = { aiPaused: false };
+  w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; } };
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-consent.js'), 'utf8'), w, { filename: 'ovu-consent.js' });
+  w.fetch = function (u) { sent.push(String(u)); return Promise.resolve({ ok: true, status: 200, json: function () { return Promise.resolve({ entries: [], reply: 'ok' }); } }); };
+  w.OvuConsent.setMany({ ai_reading: true }, 'settings'); /* recorded while signed in, so bound to the account */
+  var bound = w.OvuConsent.boundTo('ai_reading');
+  w.OvuAuth = { session: function () { return null; }, token: function () { return Promise.resolve(null); }, userId: function () { return null; } }; /* the session has since ended */
+  w.OvuOrb.parseAI('slept badly').then(function () { return 'sent'; }, function (e) { return e.message; }).then(function (m) {
+    check('after the session ends, an AI choice recorded on the account asks to sign in again and sends nothing anonymously', bound && /sign in again/i.test(m) && sent.length === 0, JSON.stringify({ bound: bound, m: m, sent: sent }));
+  });
+})();
 (function plotGrowth() {
   console.log('the plot grows a stage per credited day and never shrinks');
   var w = scenes('2026-10-18'), S = w.OvuStore, G = w.OvuGarden;
@@ -2504,12 +2627,13 @@ function scenes(todayIso) {
 (function consentRecordAndAgeGate() {
   console.log('consent record and the 18+ gate (ovu-consent.js): events, mirrors, import, receipts, headers, binding');
   var w = fresh();
+  w.OVU_CONFIG = Object.assign({}, w.OVU_CONFIG, { aiPaused: false }); /* these exercise the AI choices; the launch pause has its own checks */
   ['ovu-consent.js', 'ovu-auth.js', 'ovu-insight.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
   w.crypto = { getRandomValues: w.crypto.getRandomValues.bind(w.crypto), subtle: { digest: function (alg, data) { var h = require('crypto').createHash('sha256').update(Buffer.from(data)).digest(); return Promise.resolve(h.buffer.slice(h.byteOffset, h.byteOffset + h.byteLength)); } } };
   var C = w.OvuConsent, S = w.OvuStore, O = w.OvuOrb, SY = w.OvuSync, A = w.OvuAuth;
   var src = function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); };
   var roomJs = src('room.js'), roomHtml = src('room.html'), storeJs = src('ovu-store.js'), appnav = src('appnav.js'), orbJs = src('ovu-orb.js'), terms = src('terms.html'), priv = src('privacy.html'), luna = src('supabase/functions/luna/index.ts'), insight = src('supabase/functions/insight/index.ts'), mig = src('supabase/migrations/20261019050000_consent_events.sql');
-  check('one notice version, 3, in the store, the module and both page gates, which also require the 18+ attestation', S.NOTICE_V === 3 && C.NOTICE_V === 3 && /c\.v >= window\.OvuStore\.NOTICE_V && a && a\.confirmed === true/.test(storeJs) && /c\.v >= 3 && a && a\.confirmed === true/.test(appnav));
+  check('one notice version, 4, in the store, the module and both page gates, which also require the 18+ attestation', S.NOTICE_V === 4 && C.NOTICE_V === 4 && /c\.v >= window\.OvuStore\.NOTICE_V && a && a\.confirmed === true/.test(storeJs) && /c\.v >= 4 && a && a\.confirmed === true/.test(appnav));
   check('the teen logic is gone from the room, the orb and the terms, and the room goes through the consent module', !/isMinor|under13|13-16|minorAck: A\.|openMinorNote|openTeenPregnancyCard|BABES|age13|CONSENT_V/.test(roomJs) && !/under13|13-16/.test(orbJs) && /OvuConsent\.require\(next/.test(roomJs) && /at least <strong>18 years old<\/strong>/.test(terms) && !/16 years old/.test(terms));
   check('the onboarding asks an optional adult age range, never a band with minors', /id: 'agerange'[^\n]*optional: true[^\n]*\['18-24'/.test(roomJs) && !/\['under13'/.test(roomJs) && /ageRange: A\.ageRange \|\| '', ageBand: '', minorAck: ''/.test(roomJs));
   check('the sheet carries the switches container, the 18+ tick, the under-18 way out and notice version 3', /id="cChoices"/.test(roomHtml) && /id="cAge"[^\n]*I confirm I am 18 or older/.test(roomHtml) && /id="cUnder"/.test(roomHtml) && /Notice version 3, 19 October 2026/.test(roomHtml) && !/13 or older/.test(roomHtml));
@@ -2517,7 +2641,7 @@ function scenes(todayIso) {
     var AU = w.OvuAuth, cap = AU.sendError(Object.assign(new Error('email rate limit exceeded'), { status: 429, code: 'over_email_send_rate_limit' })), wait = AU.sendError(Object.assign(new Error('For security purposes, you can only request this after 47 seconds.'), { status: 429 })), other = AU.sendError(new Error('Signups not allowed for otp'));
     check('a refused sign-in email reads in plain words: the hourly cap and the one-minute wait open the code box for a code already sent; other errors do not', cap.limited && /2 an hour/.test(cap.text) && /already arrived/.test(cap.text) && wait.limited && /wait 47 seconds/.test(wait.text) && !other.limited && /Could not send the code: Signups not allowed/.test(other.text), JSON.stringify([cap, wait, other]));
   })();
-  check('the pages say Singapore for the backup and name the separate choices', !/outside Singapore/.test(priv) && !/outside Singapore/.test(roomHtml) && !/outside Singapore/.test(src('ovu-auth.js')) && /notice v3/.test(priv) && /version 3 \(19 October 2026\)/.test(priv) && /Help improve logging/.test(priv) && /For adults/.test(priv));
+  check('the pages say Singapore for the backup and name the separate choices', !/outside Singapore/.test(priv) && !/outside Singapore/.test(roomHtml) && !/outside Singapore/.test(src('ovu-auth.js')) && /notice v4/.test(priv) && /version 4 \(20 October 2026\)/.test(priv) && /Help improve logging/.test(priv) && /For adults/.test(priv));
   check('both diary-reading functions gate by consent: the account record when signed in, the phone\'s word otherwise', /consentGate\(req, sb, image \? "food_photo_ai" : "ai_reading"/.test(luna) && /consentGate\(req, sb, "ai_summaries"/.test(insight) && /consent_allows/.test(luna) && /x-rhythme-consent/.test(luna) && /x-rhythme-consent/.test(insight));
   check('the migration logs events append-only, derives state, exposes allows to the service role only, and guards sync writes', /create table if not exists public\.consent_events/.test(mig) && /consent_record\(/.test(mig) && /consent_allows\(uuid, text\) to service_role/.test(mig) && /revoke all on function public\.consent_allows\(uuid, text\) from public, anon, authenticated/.test(mig) && /entries_consent_guard/.test(mig) && /profiles_consent_guard/.test(mig) && /Rollback:/.test(mig));
   /* a fresh phone */
@@ -2539,10 +2663,10 @@ function scenes(todayIso) {
   check('after import the sheet is still due (old notice, no attestation) and the mirrors agree with the old flags', C.needsSheet() && O.aiConfig().on === true && O.aiConfig().insights === false && O.aiConfig().photos === true && S.profile().cloud.v === 1 && S.profile().cloud.uid === 'u1');
   /* the sheet: attestation, the required purpose, the switches as shown */
   C.attestAge('sheet'); C.grant('health_tracking', 'sheet'); C.setMany({ ai_reading: true, food_photo_ai: false, ai_summaries: false, cloud_sync: true }, 'sheet', true);
-  check('after the sheet nothing is due: 18+ attested once, health tracking at notice 3, photos withdrawn, the rest as ticked', !C.needsSheet() && C.ageOk() && S.profile().ageAttest.version === 1 && S.profile().consent.v === 3 && C.allows('ai_reading') && !C.allows('food_photo_ai') && C.allows('cloud_sync') && O.aiConfig().photos === false && O.aiConfig().on === true, JSON.stringify(S.profile().consent));
+  check('after the sheet nothing is due: 18+ attested once, health tracking at notice 4, photos withdrawn, the rest as ticked', !C.needsSheet() && C.ageOk() && S.profile().ageAttest.version === 1 && S.profile().consent.v === 4 && C.allows('ai_reading') && !C.allows('food_photo_ai') && C.allows('cloud_sync') && O.aiConfig().photos === false && O.aiConfig().on === true, JSON.stringify(S.profile().consent));
   var r = C.receipt();
-  check('the receipt names the notice, the purposes, the attestation and the count', r.noticeVersion === 3 && r.purposes.ai_reading === true && r.purposes.food_photo_ai === false && r.purposes.health_tracking === true && r.ageAttest && r.ageAttest.confirmed === true && r.events >= 9 && r.userId === null, JSON.stringify(r));
-  check('the phone\'s word travels only for an allowed purpose', C.header('ai_reading')['X-Rhythme-Consent'].indexOf('ai_reading;notice=3;device=d') === 0 && !C.header('food_photo_ai')['X-Rhythme-Consent']);
+  check('the receipt names the notice, the purposes, the attestation and the count', r.noticeVersion === 4 && r.purposes.ai_reading === true && r.purposes.food_photo_ai === false && r.purposes.health_tracking === true && r.ageAttest && r.ageAttest.confirmed === true && r.events >= 9 && r.userId === null, JSON.stringify(r));
+  check('the phone\'s word travels only for an allowed purpose', C.header('ai_reading')['X-Rhythme-Consent'].indexOf('ai_reading;notice=4;device=d') === 0 && !C.header('food_photo_ai')['X-Rhythme-Consent']);
   /* Luna's switches write events with their method; the mirror follows */
   var n0 = C.events().length; O.setAiConfig({ on: true, insights: true, photos: true }, 'jit');
   var last = C.events().slice(n0);
@@ -2558,7 +2682,7 @@ function scenes(todayIso) {
   var done = false; C.bindAccount().then(function () { done = true; });
   setTimeout(function () {
     var st = C.state(), evs = C.events();
-    check('after sign-in the pre-account choices are bound to this account and every bound event reached the server once', done && st.health_tracking.uid === U && st.ai_summaries.uid === U && st.cloud_sync.uid === U && evs.filter(function (e) { return e.uid === U; }).every(function (e) { return e.sent === true; }) && sent.length === evs.filter(function (e) { return e.uid === U; }).length && sent.every(function (b) { return b.p_notice === 3 && typeof b.p_hash === 'string' && b.p_hash.length === 64 && b.p_method && b.p_client_at; }), JSON.stringify({ sent: sent.length, bound: evs.filter(function (e) { return e.uid === U; }).length }));
+    check('after sign-in the pre-account choices are bound to this account and every bound event reached the server once', done && st.health_tracking.uid === U && st.ai_summaries.uid === U && st.cloud_sync.uid === U && evs.filter(function (e) { return e.uid === U; }).every(function (e) { return e.sent === true; }) && sent.length === evs.filter(function (e) { return e.uid === U; }).length && sent.every(function (b) { return b.p_notice === 4 && typeof b.p_hash === 'string' && b.p_hash.length === 64 && b.p_method && b.p_client_at; }), JSON.stringify({ sent: sent.length, bound: evs.filter(function (e) { return e.uid === U; }).length }));
     check('a withdrawn purpose is not bound, and events never bound stay as the record of the phone', !st.ai_reading.uid && evs.filter(function (e) { return !e.uid; }).length > 0);
     check('every event carries the phone\'s own id, so a resend can never undo a later choice', sent.every(function (b) { return typeof b.p_client_id === 'string' && b.p_client_id.length > 4; }) && C.receipt().recorded === true && C.receipt().pending === 0);
     var before = sent.length; C.withdraw('ai_summaries', 'you');
@@ -2625,4 +2749,157 @@ function scenes(todayIso) {
 
 /* the summary waits for every timer and promise the blocks scheduled: the loop drains, then we report, so no async check is ever cut off */
 var summarised = false;
+(function cycleHistoryOverMonths() {
+  console.log('cycle history: every interval kept, breaks named, recorded days apart from the span');
+  var w = fresh('2026-10-20'), S = w.OvuStore, A = w.OvuAgents;
+  function period(st, n) { for (var k = 0; k < n; k++) S.add('period', addDays(st, k), { flow: k === 1 ? 'heavy' : 'medium' }, 'test'); }
+  ['2026-04-01', '2026-04-30', '2026-05-31', '2026-08-15', '2026-09-14'].forEach(function (st) { period(st, 4); });
+  S.add('period', '2026-10-12', { flow: 'medium' }, 'test'); S.add('period', '2026-10-13', { flow: 'heavy', largeClots: true }, 'test'); S.add('period', '2026-10-15', { flow: 'light' }, 'test');
+  S.add('period', '2026-07-01', { flow: 'spotting' }, 'test');
+  S.add('symptom', '2026-10-13', { symptoms: ['cramps'], pain: 6, mood: 'low' }, 'test');
+  var h = A.cycleHistory('2026-04-22', '2026-10-20'), r = h.rows;
+  check('six rows: the interval that runs into the range is kept and marked, spotting starts nothing', r.length === 6 && r[0].start === '2026-04-01' && r[0].beforeRange && r[0].interval === 29 && r.every(function (x) { return x.start !== '2026-07-01'; }), JSON.stringify(r.map(function (x) { return [x.start, x.interval, x.beforeRange]; })));
+  check('the 76-day gap stays as a dated row with its reason and is left out of the numbers', r[2].start === '2026-05-31' && r[2].interval === 76 && !r[2].counted && /break in the record/.test(r[2].excluded) && h.stats.excluded === 1, JSON.stringify(r[2]));
+  check('stats use the three counted intervals inside the range: 31, 30, 28', h.stats.intervals === 3 && h.stats.median === 30 && h.stats.shortest === 28 && h.stats.longest === 31 && h.stats.variation === 3 && h.stats.starts === 5, JSON.stringify(h.stats));
+  var cur = r[5];
+  check('the latest period has no interval yet and counts days since it started', cur.current && cur.interval === null && cur.nextStart === null && cur.sinceStart === 9, JSON.stringify(cur));
+  check('a bridged day is missing, not bleeding: 3 recorded days over a 4-day span', cur.bleedDays === 3 && cur.span === 4 && cur.missingDays === 1 && cur.heavyDays === 1 && cur.largeClots && !cur.flooding, JSON.stringify(cur));
+  check('pain is the highest recorded on the period days, and null where none was recorded', cur.painMax === 6 && r[3].painMax === null, JSON.stringify([cur.painMax, r[3].painMax]));
+  var clip = A.cycleHistory('2026-10-01', '2026-10-13').rows;
+  check('days after the end of the range are clipped off, and the September interval into the range is kept', clip.length === 2 && clip[0].beforeRange && clip[0].interval === 28 && clip[1].bleedDays === 2 && clip[1].end === '2026-10-13' && clip[1].sinceStart === 2, JSON.stringify(clip));
+  check('no normal or irregular verdict anywhere, FIGO only as a reference', !/irregular|abnormal|normal cycle/i.test(JSON.stringify(h.rows) + JSON.stringify(h.stats)) && /FIGO 2018/.test(h.reference), h.reference);
+  var none = fresh('2026-10-20').OvuAgents.cycleHistory('2026-04-22', '2026-10-20');
+  check('with nothing logged the history is empty and every number is null', none.rows.length === 0 && none.stats.median === null && none.stats.variation === null && none.stats.longestBleed === null, JSON.stringify(none.stats));
+})();
+
+(function patternDaysForCalendars() {
+  console.log('pattern days: display bins only, missing stays missing');
+  var w = fresh('2026-10-20'), S = w.OvuStore, A = w.OvuAgents;
+  S.add('period', '2026-10-18', { flow: 'heavy' }, 'test');
+  S.add('symptom', '2026-10-18', { symptoms: ['cramps'], pain: 6, mood: 'low' }, 'test');
+  S.add('symptom', '2026-10-19', { symptoms: [], none: true, mood: 'good' }, 'test');
+  S.add('sleep', '2026-10-19', { bedTime: '23:30', wakeTime: '05:00', quality: 2 }, 'test');
+  S.add('sleep', '2026-10-20', { bedTime: '22:00', wakeTime: '07:30', quality: 4 }, 'test');
+  var d = A.patternDays('2026-10-17', '2026-10-20');
+  check('one entry per day in order', d.length === 4 && d[0].date === '2026-10-17' && d[3].date === '2026-10-20');
+  check('a heavy day with pain 6 shows heavy and pain band 2 (4 to 6)', d[1].flow === 'heavy' && d[1].pain === 6 && d[1].painBand === 2, JSON.stringify(d[1]));
+  check('"no symptoms" is an answer but makes no pain zero', d[2].none && d[2].pain === null && d[2].painBand === null && d[2].mood === 'good', JSON.stringify(d[2]));
+  check('sleep bands: 5.5 h under 6, 9.5 h over 9 (never a failure colour, just a band)', d[2].sleepBand === 0 && d[3].sleepBand === 3 && d[3].sleep === 9.5, JSON.stringify([d[2].sleep, d[3].sleep]));
+  check('a day with nothing logged has no marks at all', d[0].flow === null && d[0].pain === null && d[0].sleep === null && d[0].entries === 0, JSON.stringify(d[0]));
+})();
+
+(function todayCheckInTicks() {
+  console.log("today's check-in: answers count, nothing is invented, the tick pays nothing");
+  var w = fresh('2026-10-20'), S = w.OvuStore, A = w.OvuAgents, RW = w.OvuRewards, t = '2026-10-20';
+  S.setProfile({ periodsStarted: 'yes', regularity: 'regular' });
+  var c0 = A.todayCheckIn(t);
+  check('periods expected: bleeding, sleep, symptoms and mood, food count; movement and calm are optional', c0.keyCount === 4 && c0.keyDone === 0 && !c0.complete && c0.tiles.filter(function (x) { return x.key; }).map(function (x) { return x.id; }).join() === 'bleeding,sleep,symptoms,food' && c0.tiles[4].state === 'optional', JSON.stringify(c0.tiles.map(function (x) { return [x.id, x.key, x.state]; })));
+  S.add('sleep', t, { bedTime: '23:00', wakeTime: '06:30', quality: 3 }, 'room');
+  S.add('symptom', t, { symptoms: [], none: true, pain: null, mood: '' }, 'room');
+  S.add('food', t, { meal: 'lunch', foods: 'chicken rice', items: [], tags: [] }, 'room');
+  var c1 = A.todayCheckIn(t), sym = c1.tiles[2];
+  check('"None" for symptoms without a mood is only partly answered', sym.state === 'partial' && sym.value === 'Mood?' && c1.keyDone === 2, JSON.stringify(sym));
+  var hearts = RW.ledger().hearts, events = S.list().length;
+  S.setCheckinAnswer(t, 'mood', 'unsure'); S.setCheckinAnswer(t, 'bleeding', 'none');
+  var c2 = A.todayCheckIn(t);
+  check('"not sure" about mood and "no bleeding" complete the check-in', c2.complete && c2.keyDone === 4 && c2.tiles[0].value === 'None' && c2.tiles[0].answer && c2.tiles[2].state === 'done' && c2.tiles[2].answer, JSON.stringify(c2.tiles.map(function (x) { return [x.id, x.state, x.value]; })));
+  check('answers create no entries, no period episode and no hearts', S.list().length === events && S.periodEpisodes().length === 0 && RW.ledger().hearts === hearts, JSON.stringify([S.list().length, events, RW.ledger().hearts, hearts]));
+  check('the month calendar shows "no bleeding" as an answer, not as a flow', A.patternDays(t, t)[0].bleedAnswer === 'none' && A.patternDays(t, t)[0].flow === null);
+  S.add('period', t, { flow: 'light' }, 'room');
+  check('a logged flow wins over an earlier "no bleeding"', A.todayCheckIn(t).tiles[0].value === 'Light' && !A.todayCheckIn(t).tiles[0].answer);
+  S.setCheckinAnswer(t, 'mood', null);
+  check('taking an answer back reopens that check-in', !A.todayCheckIn(t).complete && A.todayCheckIn(t).tiles[2].state === 'partial');
+  var bad = false; try { S.setCheckinAnswer(t, 'bleeding', 'heavy'); } catch (e) { bad = true; }
+  var bad2 = false; try { S.setCheckinAnswer('20-10-2026', 'food', 'skip'); } catch (e) { bad2 = true; }
+  check('only the listed answers and real dates are accepted', bad && bad2);
+  check('choosing what counts changes the tick, not the tiles', A.todayCheckIn(t, { food: false, bleeding: false }).keyCount === 2 && A.todayCheckIn(t, { food: false, bleeding: false }).tiles.length === 6);
+  /* storage full: the answer must not land, so no tick */
+  var w2 = fresh('2026-10-20'), S2 = w2.OvuStore, A2 = w2.OvuAgents; S2.setProfile({ periodsStarted: 'yes' });
+  var real = w2.localStorage.setItem; w2.localStorage.setItem = function () { throw new Error('QuotaExceededError'); };
+  var threw = false; try { S2.setCheckinAnswer(t, 'food', 'skip'); } catch (e) { threw = true; }
+  w2.localStorage.setItem = real;
+  check('a failed save throws and leaves no answer and no tick behind', threw && !S2.checkinAnswers(t).food && A2.todayCheckIn(t).tiles[3].state === 'add', JSON.stringify(S2.checkinAnswers(t)));
+  function keysFor(profile) { var x = fresh('2026-10-20'); x.OvuStore.setProfile(profile); return x.OvuAgents.todayCheckIn(t).tiles[0].key; }
+  check('bleeding does not count after menopause, in pregnancy, after a birth before periods are back, or with predictions paused',
+    !keysFor({ lifeStage: 'post' }) && !keysFor({ periodsStarted: 'yes', pregState: 'pregnant' }) && !keysFor({ periodsStarted: 'yes', pregState: 'maybe' }) && !keysFor({ periodsStarted: 'yes', pregState: 'postpartum', periodsBack: 'no' }) && !keysFor({ periodsStarted: 'yes', predictionMode: 'suspended' }) && !keysFor({}));
+  check('after a birth with periods back, bleeding counts again', keysFor({ periodsStarted: 'yes', pregState: 'postpartum', periodsBack: 'yes' }));
+})();
+
+(function backfillAndImportsEarnNothing() {
+  console.log('hearts: only today\'s own log earns');
+  var w = fresh('2026-10-20'), S = w.OvuStore, RW = w.OvuRewards;
+  var old = RW.award(S.add('food', '2026-10-18', { meal: 'lunch', foods: 'rice', items: [], tags: [] }, 'room'));
+  var imp = RW.award(S.add('sleep', '2026-10-20', { bedTime: '23:00', wakeTime: '07:00' }, 'apple-health'));
+  var now = RW.award(S.add('food', '2026-10-20', { meal: 'lunch', foods: 'rice', items: [], tags: [] }, 'room'));
+  check('a backfilled meal and an imported night earn nothing; today\'s meal still earns 6', old.points === 0 && imp.points === 0 && now.points === 6 && RW.ledger().hearts === 6, JSON.stringify([old, imp, now]));
+})();
+
+(function codexDiffReviewFixes() {
+  console.log('Codex diff review fixes: boundaries, exact median, unconfirmed days, failed edits, live defaults, marks, months');
+  var w = fresh('2026-10-20'), S = w.OvuStore, A = w.OvuAgents, t = '2026-10-20';
+  S.add('period', '2026-09-29', { flow: 'medium' }, 'test'); S.add('period', '2026-10-01', { flow: 'light' }, 'test');
+  var h = A.cycleHistory('2026-10-01', t);
+  check('a period still open when the range starts keeps its row (started before the range, next start not recorded)', h.rows.length === 1 && h.rows[0].start === '2026-09-29' && h.rows[0].beforeRange && h.rows[0].current && h.rows[0].sinceStart === 22, JSON.stringify(h.rows));
+  var w2 = fresh(t), S2 = w2.OvuStore, A2 = w2.OvuAgents;
+  ['2026-08-24', '2026-09-21', '2026-10-20'].forEach(function (d) { S2.add('period', d, { flow: 'medium' }, 'test'); });
+  var st = A2.cycleHistory('2026-08-01', t).stats;
+  check('the median is exact: intervals of 28 and 29 days give 28.5', st.intervals === 2 && st.median === 28.5, JSON.stringify(st));
+  var w3 = fresh(t), S3 = w3.OvuStore, A3 = w3.OvuAgents; S3.setProfile({ periodsStarted: 'yes' });
+  S3.add('period', t, { flow: 'medium', autofill: true }, 'room');
+  S3.add('sleep', t, { bedTime: '23:00', wakeTime: '07:00' }, 'apple-health');
+  var c3 = A3.todayCheckIn(t);
+  check('a bleeding day filled in as typical is not a recorded answer until she checks it', c3.tiles[0].state === 'partial' && !c3.tiles[0].recorded && c3.tiles[0].value === 'Filled in', JSON.stringify(c3.tiles[0]));
+  check('an imported night counts and says where it came from', c3.tiles[1].recorded && c3.tiles[1].sub === 'from Apple Health', JSON.stringify(c3.tiles[1]));
+  /* a failed edit leaves the entry exactly as it was */
+  var w4 = fresh(t), S4 = w4.OvuStore, A4 = w4.OvuAgents; S4.setProfile({ periodsStarted: 'yes' });
+  var ev = S4.add('symptom', t, { symptoms: [], none: true, pain: null, mood: '' }, 'room');
+  var real = w4.localStorage.setItem; w4.localStorage.setItem = function () { throw new Error('QuotaExceededError'); };
+  var threw = false; try { S4.update(ev.id, { data: { symptoms: [], none: true, pain: null, mood: 'good' } }); } catch (e) { threw = true; }
+  w4.localStorage.setItem = real;
+  check('a mood edit that fails to save is rolled back in memory, so it cannot complete the check-in', threw && S4.get(ev.id).data.mood === '' && A4.todayCheckIn(t).tiles[2].state === 'partial', JSON.stringify(S4.get(ev.id).data));
+  var w5 = fresh(t), S5 = w5.OvuStore, A5 = w5.OvuAgents; S5.setProfile({ periodsStarted: 'yes' });
+  var keyB = function () { return A5.todayCheckIn(t, { food: false }).tiles[0].key; }, before = keyB();
+  S5.setProfile({ pregState: 'pregnant' });
+  check('a choice about food leaves bleeding following her situation: it stops counting once she is pregnant', before === true && keyB() === false && A5.todayCheckIn(t, { food: false }).tiles[3].key === false);
+  /* calendar marks */
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-patterns.js'), 'utf8'), w5);
+  S5.add('symptom', '2026-10-19', { symptoms: [], none: true, pain: null, mood: '' }, 'room');
+  S5.add('period', '2026-10-18', { flow: 'unspecified' }, 'room');
+  S5.setCheckinAnswer('2026-10-19', 'sleep', 'unsure'); S5.setCheckinAnswer('2026-10-19', 'mood', 'unsure');
+  var pd = A5.patternDays('2026-10-17', '2026-10-19'), html = w5.OvuPatterns.calendarHTML(pd, { today: '2026-10-19' });
+  var cell = function (d) { var m = html.match(new RegExp('data-pday="' + d + '"[^>]*>([\\s\\S]*?)</button>')); return m ? m[1] : ''; };
+  check('"None" for symptoms draws nothing on the pain line, and "not sure" about sleep has its own sign', !/tr pn ans/.test(cell('2026-10-19')) && /tr sl uns/.test(cell('2026-10-19')) && pd[2].sleepAnswer === 'unsure' && pd[2].moodAnswer === 'unsure', cell('2026-10-19'));
+  check('flow not noted has its own broken mark, never the light-flow mark', /tr bl unk/.test(cell('2026-10-18')) && !/tr bl b2/.test(cell('2026-10-18')), cell('2026-10-18'));
+  check('the day details say "not sure" rather than "not recorded"', /Not sure about sleep/.test(w5.OvuPatterns.detailHTML(pd[2])) && /Mood: not sure/.test(w5.OvuPatterns.detailHTML(pd[2])));
+  /* calendar months */
+  check('ranges are calendar months: 6 months to 20 Oct starts 21 Apr, 12 months starts 21 Oct last year, 1 month to 31 Mar starts 1 Mar, 12 months to 29 Feb 2028 starts 1 Mar 2027',
+    A.monthsBack('2026-10-20', 6) === '2026-04-21' && A.monthsBack('2026-10-20', 12) === '2025-10-21' && A.monthsBack('2026-03-31', 1) === '2026-03-01' && A.monthsBack('2028-02-29', 12) === '2027-03-01' && A.monthsBack('2026-10-20', 3) === '2026-07-21',
+    [A.monthsBack('2026-10-20', 6), A.monthsBack('2026-10-20', 12), A.monthsBack('2026-03-31', 1), A.monthsBack('2028-02-29', 12)].join());
+  var w6 = fresh(t), S6 = w6.OvuStore, A6 = w6.OvuAgents;
+  S6.add('food', '2026-06-10', { meal: 'lunch', foods: 'laksa', items: [], tags: [] }, 'room'); S6.add('exercise', '2026-06-11', { label: 'Walking', minutes: 30 }, 'room');
+  S6.add('mindfulness', '2026-06-12', { kind: 'orb', minutes: 5, completed: true }, 'room');
+  var mt = A6.monthlyTotals('2026-04-21', t), june = mt.filter(function (m) { return m.month === '2026-06'; })[0];
+  check('month-by-month totals keep older meals, movement and calm, with April counted from the 21st', mt.length === 7 && mt[0].month === '2026-04' && mt[0].days === 10 && june.meals === 1 && june.foodDays === 1 && june.movementSessions === 1 && june.movementMinutes === 30 && june.calmSessions === 1 && june.daysWithEntries === 3, JSON.stringify(june));
+})();
+
+(function shareDataIsCleanedBeforeDrawing() {
+  console.log('Doctor view: a share is outside data, cleaned to strict types before drawing');
+  var w = fresh('2026-10-20'), S = w.OvuStore, A = w.OvuAgents;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-patterns.js'), 'utf8'), w);
+  var P = w.OvuPatterns, bad = '"><img src=x onerror=alert(1)>';
+  var crafted = { months: [{ month: '2026-10', meals: bad, days: 20, bleedingDays: '<b>3</b>' }, { month: bad }],
+    patterns: [{ date: '2026-10-20', flow: bad, painBand: bad, pain: bad, mood: bad, symptoms: [bad], sleep: bad, sleepBand: 9 }, { date: bad }],
+    history: { range: { from: '2026-04-21', to: '2026-10-20' }, rows: [{ start: '2026-10-01', end: '2026-10-04', interval: bad, sinceStart: bad, current: true, bleedDays: bad, painMax: 99 }], stats: { median: bad, intervals: bad }, reference: bad, limits: 'x' } };
+  var c = P.cleanShare(crafted);
+  check('crafted month counts become numbers and a crafted month is dropped', c.months.length === 1 && c.months[0].meals === 0 && c.months[0].bleedingDays === 0 && c.months[0].days === 20, JSON.stringify(c.months));
+  check('crafted calendar fields are dropped: unknown flow, band, mood and sleep become empty', c.patterns.length === 1 && c.patterns[0].flow === null && c.patterns[0].painBand === null && c.patterns[0].mood === null && c.patterns[0].sleep === null && c.patterns[0].sleepBand === 3, JSON.stringify(c.patterns[0]));
+  var html = P.calendarHTML(c.patterns, { today: '2026-10-20' }) + P.historyHTML(c.history);
+  check('nothing crafted reaches the HTML: no tag, no handler, the symptom text escaped', !/<img|onerror=alert/.test(html.replace(/&lt;img|onerror=alert\(1\)&gt;/g, '')) && html.indexOf('<img') < 0 && c.history.rows[0].interval === null && c.history.rows[0].painMax === 10, html.slice(0, 200));
+  /* monthly totals: filled-in days apart, imported calm sessions counted */
+  S.add('period', '2026-10-01', { flow: 'medium' }, 'room'); S.add('period', '2026-10-02', { flow: 'medium', autofill: true }, 'room'); S.add('period', '2026-10-03', { flow: 'light', autofill: true }, 'room');
+  S.add('mindfulness', '2026-10-05', { kind: 'imported', minutes: 30, sessions: 3 }, 'apple-health');
+  var oct = A.monthlyTotals('2026-10-01', '2026-10-20')[0];
+  check('month totals keep filled-in days apart from recorded bleeding, and count imported calm sessions', oct.bleedingDays === 1 && oct.filledDays === 2 && oct.calmSessions === 3 && oct.calmMinutes === 30, JSON.stringify(oct));
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

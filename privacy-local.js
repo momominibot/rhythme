@@ -4,6 +4,23 @@
 (function (root) {
   'use strict';
   const STORES = [
+    /* the room's own stores (launch sweep, 20 Oct 2026: the list used to start at the earlier pages and missed the diary) */
+    ['ovumind_db_v1', 'Your Rhythme diary: entries, answers, choices and room', 'current'],
+    ['ovumind_food_journal', 'Older copy of your meals', 'current'],
+    ['ovumind_cycle', 'Older copy of your cycle summary', 'current'],
+    ['ovumind_ai_v1', "Luna's AI settings", 'preferences'],
+    ['ovumind_reminders_v1', 'Reminder settings', 'preferences'],
+    ['ovumind_nova_words', 'Food processing word view', 'preferences'],
+    ['ovumind_room', 'Older room settings', 'legacy'],
+    ['ovumind_room_skipped', 'Skipped room welcome', 'preferences'],
+    ['ovumind_device_v1', 'This phone\'s Rhythme device code', 'preferences'],
+    ['rhythme_podcast_v1', "Erin's podcast listening on this phone", 'additional'],
+    ['rhythme_voice_muted', 'Voice on or off', 'preferences'],
+    ['ovumind_sync_v1', 'Cloud backup bookkeeping (no entries)', 'preferences'],
+    ['ovumind_desk_v1', 'Desk layout', 'preferences'],
+    ['rhythme_plus_v1', 'Rhythme Plus access on this phone', 'preferences'],
+    ['rhythme_plus_v1_pending', 'A Rhythme Plus code being checked', 'preferences'],
+    /* never listed: ovumind_auth_v1 holds sign-in tokens, so it is not exported; sign out from Your account instead */
     ['ovuluna_observations_v1', 'Cycle observations, treatment and device notes', 'current'],
     ['ovuluna_lab_records_v1', 'Lab records', 'current'],
     ['ovuluna_wellness_journal_v1', 'Wellness journal', 'current'],

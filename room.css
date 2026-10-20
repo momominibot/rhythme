@@ -455,6 +455,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .hud-orb.in,.hud-orb.hold{transform:scale(1.15)}
 .hud-orb.out{transform:scale(.8)}
 .hud-text{flex:1;min-width:0}
+.hud-row{display:flex;align-items:baseline;gap:8px;min-width:0}
+.hud-time{display:inline-flex;align-items:center;gap:5px;font:700 11px var(--sans);font-style:normal;color:var(--rm-mauve);font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
+.hud-time:empty{display:none}
+.hud-time::before{content:'';width:6px;height:6px;border-radius:50%;background:#2f8a5f;animation:hudlive 2s ease-in-out infinite}
+@keyframes hudlive{0%,100%{opacity:1}50%{opacity:.3}}
+@media (prefers-reduced-motion: reduce){.hud-time::before{animation:none}}
 .hud-text b{display:block;font:800 11px var(--sans);color:var(--rm-ink-3);letter-spacing:.06em;text-transform:uppercase}
 .hud-text span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;font-family:var(--serif);font-size:14px;color:var(--rm-plum);line-height:1.25;overflow:hidden;text-wrap:pretty}
 .hud-stop{width:36px;height:36px;border-radius:50%;border:none;background:var(--rm-lilac-2);color:var(--rm-plum);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -793,6 +799,8 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .welcome .btn{min-width:210px;justify-content:center;flex:0 0 auto}
 .welcome .btn.primary{box-shadow:0 10px 26px rgba(117,86,196,.42),0 0 28px rgba(226,210,255,.75)}
 .welcome .btn.ghost{background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+/* the welcome keeps its light look after sunset: the night ghost button (light text, no fill) vanished on it */
+html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);color:#5a4274;border-color:rgba(122,92,150,.28)}
 .welcome .btn+.btn{margin-top:8px}
 .onb{display:flex;flex-direction:column}
 .onb-head{display:flex;gap:12px;align-items:flex-end;margin-top:4px}
@@ -1708,6 +1716,11 @@ span.frchip{cursor:default}
 .carecard{display:block;margin:2px 0 12px}
 .moodcare{display:flex;gap:8px;align-items:flex-start;margin:-2px 0 10px;padding:9px 11px;border-radius:12px;background:#f7f0fb;color:var(--rm-ink);font:500 12.5px/1.45 var(--sans)}
 .moodcare .ms{color:#a5668f;font-size:18px;flex:none}
+/* display:flex on these beat the hidden attribute: the low-mood note showed under every mood, and the consent sheet told everyone
+   their earlier answers said they were under 18 (Jamie's screenshot, 20 Oct) */
+.flag[hidden],.moodcare[hidden]{display:none}
+html[data-sky="night"] .moodcare{background:#3b2e5a;color:#f1e9fb}
+html[data-sky="night"] .moodcare .ms{color:#f6c9d6}
 /* the mindful line under a toast's message (ovu-moments.js) */
 .toast.two{border-radius:18px;align-items:flex-start;text-align:left;padding:10px 14px}
 .toast .toastsub{display:block;margin-top:3px;font:600 12px/1.35 var(--sans);color:#f3e6ff;opacity:.92}
@@ -1778,3 +1791,77 @@ span.frchip{cursor:default}
 /* lifted in arrange mode: the shadow stays on the floor, smaller and fainter */
 .prop.owned.lift::before{opacity:.35;width:calc(var(--cs,.7) * 80%)}
 @media (prefers-reduced-motion:reduce){.nb::before,.prop.owned::before,.avatar::before{transition:none}}
+/* the storybook map: a painted meadow, a clay drawing at every place, labels on white pills so they read on the painting */
+.worldmap{background:#e9f1ea url(assets/room/dream/map-bg.webp) center/cover no-repeat;border:0;box-shadow:inset 0 0 0 1px rgba(150,120,190,.18),0 6px 18px rgba(90,66,116,.12);overflow:hidden}
+.worldlines path{stroke:#fff;stroke-width:3.2;stroke-dasharray:1.2 3.2;stroke-linecap:round;filter:drop-shadow(0 1px 1px rgba(90,66,116,.35))}
+.mapnode{width:76px;gap:0}
+.mapnode .mapart{width:58px;height:58px;object-fit:contain;filter:drop-shadow(0 4px 5px rgba(60,40,90,.28));transition:transform .15s}
+.mapnode:active .mapart{transform:scale(.94)}
+.mapnode b{margin-top:-4px;background:rgba(255,255,255,.94);color:#4a3466;border-radius:999px;padding:2px 7px;font:800 9.5px/1.2 var(--sans);box-shadow:0 1px 4px rgba(60,40,90,.18);white-space:nowrap}
+.mapnode.here .mapart{filter:drop-shadow(0 0 0 #fff) drop-shadow(0 0 6px #ff8fb1) drop-shadow(0 4px 5px rgba(60,40,90,.3))}
+.mapnode.picked b{background:#6b4f96;color:#fff}
+.mapnode.shut .mapart{filter:grayscale(.5) brightness(.95) drop-shadow(0 4px 5px rgba(60,40,90,.2))}
+.mapnode em{margin-top:2px}
+/* shop names sit side by side on the map: let each wrap under its own shop rather than run into the next */
+.mapnode b{white-space:normal;max-width:66px;line-height:1.15}
+
+/* Today's check-in: six tiles, a calm status line, quick answers; a tick only for what she chose to count */
+.cihead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cichoose{border:none;background:none;font:800 11.5px var(--sans);color:var(--rm-mauve);cursor:pointer;padding:10px 4px;min-height:44px}
+.cistatus{display:flex;align-items:center;gap:6px;font:700 12.5px var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.cistatus.done{color:var(--rm-ink)}
+.cistatus.done .ms{font-size:20px;color:#2f8a5f;font-variation-settings:'FILL' 1}
+.tiles.ci{grid-template-columns:repeat(2,minmax(0,1fr))}
+html[data-text="larger"] .tiles.ci{grid-template-columns:minmax(0,1fr)}
+.citile{position:relative;text-align:left;padding:10px 12px;min-height:76px;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:8px;align-items:center;border:1.5px solid transparent}
+.citile>.ms{grid-row:1/4;font-size:24px}
+.citile .cil{font:800 10px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--rm-ink-2);padding-right:22px}
+.citile small{color:var(--rm-ink-2)}
+.citile b{margin-top:0;font-size:15px;overflow-wrap:anywhere}
+.citile small{margin-top:0}
+.citile.s-add.key{border-style:dashed;border-color:var(--rm-lilac)}
+.citile.s-add.key b{color:var(--rm-mauve)}
+.citile.s-optional b{color:var(--rm-ink-3);font-weight:700}
+/* a recorded tile looks like any tile; the green tick alone says it is done (Jamie, 20 Oct) */
+.citile.s-partial{border-color:var(--rm-lilac)}
+.cimark{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:800 12px var(--sans)}
+.cimark .ms{font-size:15px!important;color:inherit!important}
+.cimark.ok{background:#2f8a5f;color:#fff}
+.cimark.uns{background:#dfeee5;color:#2f7a55}
+.cimark.part{background:var(--rm-lilac-2);color:var(--rm-mauve)}
+.citile.choose{background:var(--rm-paper-2);border:1.5px dashed var(--rm-lilac)}
+.citile.choose.on{border-style:solid;border-color:var(--rm-mauve);background:var(--rm-lilac-2)}
+.ciquick{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ciquick:empty{display:none}
+.ciquick .qchip{border:1.5px solid var(--rm-lilac);background:var(--rm-card,#fff);color:var(--rm-plum);border-radius:99px;padding:8px 12px;min-height:40px;font:700 11.5px var(--sans);cursor:pointer}
+.ciquick .qchip.undo{border-style:dashed;color:var(--rm-ink-2)}
+html[data-sky="night"] .cistatus.done .ms{color:#86c7a6}
+html[data-sky="night"] .cimark.uns{background:#2f5a45;color:#c8f0da}
+/* farm: the watering can and mindful care steps (Jamie, 20 Oct) */
+.bedcard .bedpic.canpic{background:#eef4fb}
+.bedcard .canline{display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#3f6f96}
+.bedcard .canline .ms{font-size:16px}
+.farmcan{position:absolute;left:10px;bottom:56px;z-index:7;display:inline-flex;align-items:center;gap:6px;padding:6px 11px 6px 8px;border:1.5px solid rgba(255,255,255,.9);border-radius:99px;background:rgba(255,255,255,.88);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(80,50,110,.14);font:800 12px var(--sans);color:#3d2f55;cursor:pointer}
+.farmcan .ms{font-size:17px;color:#4a8fc4}
+.farmcan .cdots{display:inline-flex;gap:3px;font-weight:700;color:#3f6f96}
+.farmcan .cdots i{width:9px;height:9px;border-radius:50%;border:1.5px solid #6fa8d6;background:transparent}
+.farmcan .cdots i.on{background:#6fb3e6;border-color:#4a8fc4}
+.farmcan.empty{box-shadow:0 0 0 2px #f2b4c8,0 4px 14px rgba(80,50,110,.14)}
+.slowbox{display:block}
+.slowstep{display:flex;flex-direction:column;gap:8px;padding:2px 0 4px}
+.slowstep .mindline{margin:0}
+.slowbar{height:8px;border-radius:99px;background:rgba(120,90,150,.14);overflow:hidden}
+.slowbar i{display:block;width:0;height:100%;border-radius:99px;background:linear-gradient(90deg,#b9dcf3,#8fc6ea)}
+.slowbar.still{display:none}
+.slowverb{margin:0;font:700 13px var(--sans);color:var(--rm-plum)}
+.slowstep .btn{align-self:flex-start}
+.farmsteps{list-style:none;margin:4px 0 12px;padding:0;display:flex;flex-direction:column;gap:10px}
+.farmsteps li{display:flex;gap:10px;align-items:flex-start;background:var(--rm-card,#fff);border-radius:14px;padding:10px 12px}
+.farmsteps li>.ms{flex:none;width:32px;height:32px;line-height:32px;text-align:center;border-radius:50%;background:#f1eafb;color:#7c5aa8;font-size:18px}
+.farmsteps b{display:block;font-size:14px;color:#3d2f55}
+.farmsteps small{display:block;font-size:12.5px;line-height:1.45;color:#5d4f6c}
+/* the consent notice keeps its light look: a withdrawal that did not reach the account is said plainly above the button */
+.consent .c-err{margin:8px 0 10px;padding:9px 12px;border-radius:12px;background:#fdecef;color:#8a2140;font:700 12.5px/1.45 var(--sans)}
+
+/* large text in the room (ovu-textsize.js): everything around the plate grows; the plate, the avatar and taps on them stay true */
+html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud){zoom:var(--tz,1)}
