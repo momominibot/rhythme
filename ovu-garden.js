@@ -67,14 +67,14 @@
       { id: 'bench', x: 33, y: 41, label: 'Bench · sit a while', icon: 'chair', wp: { x: 37, y: 53, flip: true } },
       { id: 'plot', x: 50, y: 60, label: 'Plot · water the plants', icon: 'yard', wp: { x: 50, y: 71.5, flip: false } },
       { id: 'pond', x: 70, y: 55, label: 'Pond · a quiet moment', icon: 'water', wp: { x: 66, y: 67, flip: false } },
-      { id: 'greenhouse', x: 68, y: 35, label: 'Greenhouse · teas and herbs', icon: 'local_florist', wp: { x: 62, y: 49, flip: false } },
+      { id: 'greenhouse', x: 68, y: 35, label: 'Greenhouse · step inside', icon: 'local_florist', wp: { x: 62, y: 49, flip: false } },
       { id: 'arch', x: 86, y: 45, label: 'Arch · on to Dream Street', icon: 'park', wp: { x: 80, y: 55, flip: false } },
       { id: 'farmpath', x: 77, y: 63, label: 'Path · down to the farm', icon: 'agriculture', wp: { x: 70, y: 66, flip: false } }
     ],
     home: { x: 29, y: 58, flip: false },
     zones: [[[50, 36], [92, 58], [50, 77], [8, 58]]],
     solids: [{ id: 'bench', x0: 22, x1: 44, y0: 38, y1: 50 }, { id: 'tree', x0: 12, x1: 26, y0: 40, y1: 48 }, { id: 'greenhouse', x0: 56, x1: 82, y0: 30, y1: 46 }, { id: 'pond', x0: 57, x1: 78, y0: 52, y1: 64 }, { id: 'planter', x0: 41, x1: 61, y0: 60, y1: 69 }, { id: 'can', x0: 39, x1: 47, y0: 65, y1: 70 }],
-    doors: [{ id: 'gate', to: 'home', x: 29, y: 58, r: 5, flip: true }, { id: 'arch', to: 'street', x: 80, y: 55, r: 5, flip: false }, { id: 'farmpath', to: 'farm', x: 70, y: 66, r: 4, flip: false }],
+    doors: [{ id: 'gate', to: 'home', x: 29, y: 58, r: 5, flip: true }, { id: 'arch', to: 'street', x: 80, y: 55, r: 5, flip: false }, { id: 'farmpath', to: 'farm', x: 70, y: 66, r: 4, flip: false }, { id: 'greenhouse', to: 'greenhouse', tap: 'greenhouse', x: 62, y: 49, r: 3.5, flip: false }], /* the greenhouse door opens where a walk ends, like a storefront */
     meditator: { x: 33, y: 47, w: 11, seat: { x: 32.5, seatY: 45, groundY: 49.5, face: 'left' } }, aura: { x: 33, y: 45, w: 17 }, holo: { x: 43, y: 45, w: 14 },
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
     props: { cat: { x: 44, y: 57, w: 9 }, dog: { x: 66, y: 66, w: 9.5 }, mewmew: { x: 36, y: 66, w: 12 } }
@@ -248,29 +248,39 @@
   }
   /* the greenhouse holds the teas and herbs (Jamie, 19 Oct: "herbs and tea can be placed at the garden. Food diary
    * mainly food"): every tea with what research says and who should take care, the ones for her phase first, and the
-   * herbs to check with a doctor or pharmacist about. Sources sit behind a small (i) (ovu-evinfo.js). */
+   * herbs to check with a doctor or pharmacist about. Sources sit behind a small (i) (ovu-evinfo.js). Since 20 Oct the
+   * greenhouse is a room she walks into (ovu-greenhouse.js); this sheet opens from its tea table, and the card pieces below
+   * are shared with the herbs on its benches so both say exactly the same thing. */
+  /* trying to conceive, possibly or actually pregnant, or after a birth: the cautions come first and nothing is ranked by
+   * phase (four-persona review, 20 Oct: Wei Ling's and Nadia's cautions sat below every card) */
+  function herbCareful(pf) { pf = pf || {}; return pf.plans === 'ttc' || pf.lifeStage === 'ttc' || pf.pregState === 'pregnant' || pf.pregState === 'maybe' || pf.pregState === 'postpartum' || pf.breastfeeding === 'yes'; }
+  function carefulHTML(pf) {
+    return '<div class="teacare first"><b><span class="ms">health_and_safety</span>Before any herb</b><p>' + (pf.pregState === 'pregnant' || pf.pregState === 'maybe' ? 'While you are or could be pregnant' : pf.pregState === 'postpartum' || pf.breastfeeding === 'yes' ? 'While you are breastfeeding or recovering from a birth' : 'While you are trying to conceive') + ', read each tea’s Take care note and ask a doctor or pharmacist before trying a herb. These are comfort drinks, not fertility or milk-supply treatments.</p></div>';
+  }
+  function refsHTML(ids) { var E = root.OvuEvidence; return (ids || []).map(function (id) { var e = E && E.get(id); return e ? '<a href="evidence.html#' + id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + esc(id) + '</i></a>' : ''; }).join(''); }
+  function teaHTML(t, open) {
+    return '<details class="tea"' + (open ? ' open' : '') + '><summary>' + (t.img ? '<img class="teaimg" src="' + R.ART + t.img + '" alt="">' : '<span class="ms">' + esc(t.icon || 'local_cafe') + '</span>') +
+      '<span><b>' + esc(t.name) + '</b><small>' + esc(t.why) + '</small></span><span class="ms go">expand_more</span></summary>' +
+      '<div class="teabody"><p><b>What research says</b>' + esc(t.research) + '</p><p class="care"><b>Take care</b>' + esc(t.care) + '</p><p class="evrefs">' + refsHTML(t.refs) + '</p></div></details>';
+  }
+  var ASK_FIRST = 'Pregnant, breastfeeding, taking medicines (including the pill or blood thinners), or living with kidney, liver or heart disease? Ask before trying any herb. Stop if anything feels wrong.';
   function openGreenhouse() {
     if (root.OvuWalk.napping()) return;
-    var H = root.OvuHerbs, E = root.OvuEvidence, cs = S.cycleStats(), pf = S.profile() || {};
-    /* trying to conceive, possibly or actually pregnant, or after a birth: the cautions come first and nothing is ranked by
-     * phase (four-persona review, 20 Oct: Wei Ling's and Nadia's cautions sat below every card) */
-    var careful = pf.plans === 'ttc' || pf.lifeStage === 'ttc' || pf.pregState === 'pregnant' || pf.pregState === 'maybe' || pf.pregState === 'postpartum' || pf.breastfeeding === 'yes';
+    var H = root.OvuHerbs, cs = S.cycleStats(), pf = S.profile() || {};
+    var careful = herbCareful(pf);
     var phase = cs.mode === 'suspended' || careful ? null : cs.phase;
     var line = R.moment ? R.moment('greenhouse', { quiet: true }) : '';
     var teas = H ? H.forPhase(phase) : [], care = H && Array.isArray(H.TAKE_CARE) ? H.TAKE_CARE : [];
-    var refs = function (ids) { return (ids || []).map(function (id) { var e = E && E.get(id); return e ? '<a href="evidence.html#' + id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + esc(id) + '</i></a>' : ''; }).join(''); };
     R.openSheet('greenhouse', 'The greenhouse', 'Teas and herbs, with what research says', 'local_florist',
       '<section class="dsec teas">' + (line ? '<p class="mindline"><span class="ms">local_cafe</span>' + esc(line) + '</p>' : '') +
-      (careful ? '<div class="teacare first"><b><span class="ms">health_and_safety</span>Before any herb</b><p>' + (pf.pregState === 'pregnant' || pf.pregState === 'maybe' ? 'While you are or could be pregnant' : pf.pregState === 'postpartum' || pf.breastfeeding === 'yes' ? 'While you are breastfeeding or recovering from a birth' : 'While you are trying to conceive') + ', read each tea’s Take care note and ask a doctor or pharmacist before trying a herb. These are comfort drinks, not fertility or milk-supply treatments.</p></div>' : '') +
+      (careful ? carefulHTML(pf) : '') +
       '<p class="help" style="margin:2px 0 8px">' + (phase ? 'The ones for your ' + esc(phase) + ' phase come first. ' : '') + 'Familiar comfort drinks, with what research says and who should take care. Comfort, not treatment.</p>' +
-      teas.map(function (t) {
-        return '<details class="tea"><summary>' + (t.img ? '<img class="teaimg" src="' + R.ART + t.img + '" alt="">' : '<span class="ms">' + esc(t.icon || 'local_cafe') + '</span>') +
-          '<span><b>' + esc(t.name) + '</b><small>' + esc(t.why) + '</small></span><span class="ms go">expand_more</span></summary>' +
-          '<div class="teabody"><p><b>What research says</b>' + esc(t.research) + '</p><p class="care"><b>Take care</b>' + esc(t.care) + '</p><p class="evrefs">' + refs(t.refs) + '</p></div></details>';
-      }).join('') +
-      (care.length ? '<div class="teacare"><b><span class="ms">health_and_safety</span>Check with a doctor or pharmacist first</b>' + care.map(function (c) { return '<p><b>' + esc(c.name) + '</b>' + esc(c.text) + ' <span class="evrefs">' + refs(c.refs) + '</span></p>'; }).join('') +
-        '<p class="help">Pregnant, breastfeeding, taking medicines (including the pill or blood thinners), or living with kidney, liver or heart disease? Ask before trying any herb. Stop if anything feels wrong.</p></div>' : '') +
+      (R.openEveryday ? '<div class="row"><button type="button" class="btn soft" id="ghCup"><span class="ms">local_cafe</span>A mindful cup with Erin</button></div>' : '') +
+      teas.map(function (t) { return teaHTML(t); }).join('') +
+      (care.length ? '<div class="teacare"><b><span class="ms">health_and_safety</span>Check with a doctor or pharmacist first</b>' + care.map(function (c) { return '<p><b>' + esc(c.name) + '</b>' + esc(c.text) + ' <span class="evrefs">' + refsHTML(c.refs) + '</span></p>'; }).join('') +
+        '<p class="help">' + ASK_FIRST + '</p></div>' : '') +
       '</section>');
+    var cup = doc.getElementById('ghCup'); if (cup) cup.addEventListener('click', function () { R.openEveryday('coffee'); });
   }
   /* hotspot handlers are consulted first by the room; each checks it is in the garden */
   function inGarden(L) { return L && L.id === 'garden'; }
@@ -279,9 +289,9 @@
   R.hotspotHandlers.farmpath = function (id, L) { if (!inGarden(L)) return false; if (!R.LAYOUTS.farm) return false; root.OvuWalk.travel('farm'); return true; };
   R.hotspotHandlers.plot = function (id, L) { if (!inGarden(L)) return false; openPlot(); return true; };
   R.hotspotHandlers.pond = function (id, L) { if (!inGarden(L)) return false; openPond(); return true; };
-  R.hotspotHandlers.greenhouse = function (id, L) { if (!inGarden(L)) return false; openGreenhouse(); return true; };
+  R.hotspotHandlers.greenhouse = function (id, L) { if (!inGarden(L)) return false; if (R.LAYOUTS.greenhouse) root.OvuWalk.travel('greenhouse'); else openGreenhouse(); return true; }; /* a room to walk into (ovu-greenhouse.js), the sheet if that is missing */
   R.hotspotHandlers.bench = function (id, L) { if (!inGarden(L)) return false; openBench(GARDEN.meditator, GARDEN.holo, { x: 37, y: 53, flip: true }); return true; };
-  G.openBench = openBench; G.sitAt = sitAt; G.sitDown = sitDown; G.standUp = standUp; G.sitting = function () { return !!sitting; }; G.renderPlot = renderPlot; G.openPlot = openPlot; G.watering = function () { return !!watering; };
+  G.openGreenhouse = openGreenhouse; G.herb = { careful: herbCareful, carefulHTML: carefulHTML, refsHTML: refsHTML, teaHTML: teaHTML, ASK_FIRST: ASK_FIRST }; G.openBench = openBench; G.sitAt = sitAt; G.sitDown = sitDown; G.standUp = standUp; G.sitting = function () { return !!sitting; }; G.renderPlot = renderPlot; G.openPlot = openPlot; G.watering = function () { return !!watering; };
   R.on('boot', function () {
     R.on('props', function (L) { renderPlot(L); if (sitting && !R.els.props.contains(sitting.el)) R.els.props.appendChild(sitting.el); }); /* a props re-render keeps her seated */
     R.on('layout', function (L) { if (watering) finishWatering(false); if (sitting) { sitting.el.remove(); sitting = null; R.els.scene.classList.remove('sitting'); } if (inGarden(L)) renderPlot(); });

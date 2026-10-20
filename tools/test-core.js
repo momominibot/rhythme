@@ -1433,13 +1433,14 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */
 function scenes(todayIso) {
   var w = fresh(todayIso);
-  ['ovu-walk.js', 'ovu-garden.js', 'ovu-street.js', 'ovu-community.js', 'ovu-shops.js', 'ovu-camera.js', 'ovu-petwalk.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), vm.createContext ? w : w, { filename: f }); });
+  ['ovu-walk.js', 'ovu-garden.js', 'ovu-street.js', 'ovu-community.js', 'ovu-shops.js', 'ovu-greenhouse.js', 'ovu-camera.js', 'ovu-petwalk.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), vm.createContext ? w : w, { filename: f }); });
   /* the home layouts live inside room.js, which needs a DOM: lift the LAYOUTS literal out of the source instead */
   var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), m = /var LAYOUTS = (\{[\s\S]*?\n  \});\n  var L = LAYOUTS\.room/.exec(src);
   w.LAYOUTS = vm.runInContext('(' + m[1] + ')', w);
   w.OvuWalk.dressHomes(w.LAYOUTS);
   w.LAYOUTS.garden = w.OvuGarden.LAYOUT; w.LAYOUTS.street = w.OvuStreet.LAYOUT; w.LAYOUTS.plaza = w.OvuCommunity.LAYOUT;
   Object.keys(w.OvuShops.LAYOUTS).forEach(function (id) { w.LAYOUTS[id] = w.OvuShops.LAYOUTS[id]; });
+  w.LAYOUTS.greenhouse = w.OvuGreenhouse.LAYOUT;
   return w;
 }
 (function walkGeometry() {
@@ -1512,6 +1513,41 @@ function scenes(todayIso) {
   var src = fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8');
   check('the walk engine never sets her outfit or writes the profile', !/setOutfit\(|setProfile\(|outfit:\s*'/.test(src));
 })();
+(function bigGreenhouse() {
+  console.log('the greenhouse: a room through the garden door, every tea growing in it, every plant reachable, pet safety sourced');
+  var w = scenes(), K = w.OvuWalk, GH = w.OvuGreenhouse, L = GH.LAYOUT, Gd = w.LAYOUTS.garden;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-herbs.js'), 'utf8'), w, { filename: 'ovu-herbs.js' }); var H = w.OvuHerbs;
+  var teaIds = H.TEAS.map(function (t) { return t.id; }).sort().join(), planted = GH.PLANTS.filter(function (p) { return p.kind === 'tea'; }).map(function (p) { return p.id; }).sort().join();
+  check('every tea in the tea list grows in the greenhouse, and nothing else is called a tea', teaIds === planted, teaIds + ' | ' + planted);
+  var asks = GH.PLANTS.filter(function (p) { return p.kind === 'ask'; });
+  check('each herb to ask about first matches a doctor-or-pharmacist caution by name', asks.length === 4 && asks.every(function (p) { return !!GH.info(p, H) && !!GH.info(p, H).ask; }), asks.map(function (p) { return p.id; }).join());
+  var houses = GH.PLANTS.filter(function (p) { return p.kind === 'house'; });
+  check('the houseplants include a variegated monstera and a pink princess philodendron', houses.some(function (p) { return /monstera/i.test(GH.HOUSE[p.id].name); }) && houses.some(function (p) { return /pink princess/i.test(GH.HOUSE[p.id].name); }));
+  check('every houseplant names a pet-safety verdict and a linked source', houses.every(function (p) { var h = GH.HOUSE[p.id]; return /^(toxic|safe)$/.test(h.pets) && /^https:\/\//.test(h.url) && h.src && h.petText; }));
+  check('every plant has its sprite on disk', GH.PLANTS.every(function (p) { return fs.existsSync(path.join(root, 'assets/room/dream', GH.sprite(p))); }), GH.PLANTS.filter(function (p) { return !fs.existsSync(path.join(root, 'assets/room/dream', GH.sprite(p))); }).map(function (p) { return p.id; }).join());
+  check('the greenhouse plate is on disk', fs.existsSync(path.join(root, 'assets/room/dream', L.img)));
+  var wl = K.world(L, []), unreachable = [];
+  GH.PLANTS.forEach(function (p) { if (!p.wp) return; if (!K.inZones(L.zones, p.wp.x, p.wp.y) || K.blocked(L.solids, p.wp.x, p.wp.y)) unreachable.push(p.id + ' stand point'); else if (!K.plan(wl, L.home, p.wp)) unreachable.push(p.id + ' no route'); });
+  check('every plant with a card has a stand point on the floor that she can walk to from the door', unreachable.length === 0, unreachable.join('; '));
+  check('only tools have no card', GH.PLANTS.every(function (p) { return (p.kind === 'tool') === !GH.info(p, H); }));
+  var bad = [];
+  GH.PLANTS.forEach(function (p) { if (p.kind !== 'tool') GH.careLines(p).forEach(function (l) { if (l.split(/\s+/).length > 18 || /—|should|streak/i.test(l)) bad.push(p.id + ': ' + l); }); });
+  check('the mindful minute: four lines a quarter-minute apart, each short, kind and free of em dashes', GH.CARE_SECONDS === 60 && GH.CARE_STEP * 4 === GH.CARE_SECONDS && bad.length === 0, bad.join(' | '));
+  var gd = (Gd.doors || []).filter(function (d) { return d.to === 'greenhouse'; })[0], back = (L.doors || []).filter(function (d) { return d.to === 'garden'; })[0];
+  check('the garden greenhouse is a door that opens where a walk ends, and the greenhouse has a door back', !!gd && gd.tap === 'greenhouse' && !!back);
+  var inG = K.entryFor(L, 'garden', 'garden'), outG = K.entryFor(Gd, 'greenhouse', 'garden');
+  check('arriving inside she stands on the doormat; leaving she stands at the greenhouse door in the garden', Math.abs(inG.x - back.x) < 0.01 && Math.abs(inG.y - back.y) < 0.01 && Math.abs(outG.x - gd.x) < 0.01 && Math.abs(outG.y - gd.y) < 0.01, JSON.stringify([inG, outG]));
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-map.js'), 'utf8'), w, { filename: 'ovu-map.js' });
+  var Mp = w.OvuMap, g = Mp.graph(w.LAYOUTS, 'room'), outR = Mp.route(g, 'greenhouse', 'home'), inR = Mp.route(g, 'home', 'greenhouse');
+  check('the map finds the greenhouse through the garden door, by its own name and icon, with no shortcut', !!g.nodes.greenhouse && g.nodes.greenhouse.name === 'Greenhouse' && g.nodes.greenhouse.icon === 'local_florist' && K.sceneOf(L) === 'garden', JSON.stringify(g.nodes.greenhouse));
+  check('the way home from the greenhouse is its door, then the garden gate; the way in ends at the greenhouse door', outR && outR.length === 2 && outR[0].door === 'ghdoor' && outR[0].to === 'garden' && inR && inR[inR.length - 1].door === 'greenhouse', JSON.stringify([outR, inR]));
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-sound.js'), 'utf8'), w, { filename: 'ovu-sound.js' });
+  check('the greenhouse sounds like stone tiles underfoot, and a plant minute ends with the watering sound', w.OvuSound.surfaceFor(L) === 'stone' && w.OvuSound.surfaceFor(Gd) === 'grass' && w.OvuSound.forMoment('plantcare') === 'water');
+  check('string of pearls is never misted (RHS: a succulent that dislikes humidity); the other houseplants are', !GH.careLines(GH.plant('pearls')).some(function (l) { return /mist/i.test(l); }) && /mist/i.test(GH.careLines(GH.plant('monstera'))[0]));
+  var MO = w.OvuMoments;
+  check('a greenhouse minute ends with its own plant-care moment, not the two-minute practice line', MO.forEntry({ type: 'mindfulness', data: { kind: 'informal', practice: 'greenhouse' } }) === 'plantcare' && MO.pose('plantcare') === 'plants' && MO.forEntry({ type: 'mindfulness', data: { kind: 'informal', practice: 'teeth' } }) === 'practice');
+})();
+
 (function layoutsAreWalkable() {
   console.log('every stand point the engine uses is on a floor and clear of furniture, in every home and outdoors');
   var w = scenes(), K = w.OvuWalk;

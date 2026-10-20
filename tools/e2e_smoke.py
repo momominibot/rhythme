@@ -698,8 +698,55 @@ async def main():
             await page.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuWalk.travel('garden');}")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
+            # since 20 Oct the greenhouse is a room: the garden door walks her in, every tea grows inside, the tea table opens the list
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('greenhouse'))")
-            try: await page.wait_for_selector('#sheet[aria-hidden="false"] .teacare .ibtn.evi', timeout=10000)
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='greenhouse' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await page.wait_for_timeout(500)
+            gin = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, plants: document.querySelectorAll('.ghplant').length, taps: document.querySelectorAll('.ghplant.tappable').length, pos: OvuRoom.pos(), map: (document.querySelector('#mapHere')||{}).textContent})")
+            check("the garden greenhouse door walks her into a glass greenhouse: every tea and houseplant on the bench, table and shelf, the map pill names it", gin["layout"] == "greenhouse" and gin["plants"] >= 27 and gin["taps"] >= 25 and abs(gin["pos"]["x"] - 49.5) < 1 and gin["map"] == "Greenhouse", gin)
+            await page.evaluate("()=>document.querySelector('.ghplant[data-plant=monstera]').click()")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] .petsafe', timeout=15000)
+            except Exception: pass
+            mc = await page.evaluate("()=>({title: (document.querySelector('#sheetTitle')||{}).textContent, pets: (document.querySelector('#sheet .petsafe')||{}).className, link: (document.querySelector('#sheet .petsafe a')||{}).href, care: !!document.querySelector('#sheetBody [data-act=care]'), pos: OvuRoom.pos()})")
+            check("tapping the variegated monstera walks her to it and opens its card with a sourced pet warning and a mindful minute", "monstera" in (mc["title"] or "").lower() and "warn" in (mc["pets"] or "") and (mc["link"] or "").startswith("https://www.aspca.org/") and mc["care"] and abs(mc["pos"]["x"] - 42) < 1.5, mc)
+            # the minute runs on its own timers (a test pace of 0.25 s a line): in her own outfit, it finishes by itself, saves once,
+            # a stopped one saves nothing, and finishing again adds nothing
+            await page.evaluate("()=>{OvuStore.setProfile({outfit:'sundress'}); OvuRoom.restorePose(); OvuGreenhouse.setPace(250);}"); await page.wait_for_timeout(300)
+            await page.click('#sheetBody [data-act=care]'); await page.wait_for_timeout(350)
+            cr = await page.evaluate("()=>({caring: OvuGreenhouse.caring(), img: document.querySelector('#avatarImg').getAttribute('src'), hud: document.querySelector('#hud').classList.contains('on'), line: document.querySelector('#hudLine').textContent, ours: OvuGreenhouse.careLines(OvuGreenhouse.plant('monstera')).indexOf(document.querySelector('#hudLine').textContent) > -1})")
+            await page.wait_for_timeout(1400)
+            after = await page.evaluate("()=>({caring: OvuGreenhouse.caring(), hud: document.querySelector('#hud').classList.contains('on'), img: document.querySelector('#avatarImg').getAttribute('src')})")
+            await page.evaluate("()=>OvuGreenhouse.finishCare(true)")
+            await page.evaluate("()=>{OvuRoom.closeSheet && OvuRoom.closeSheet(); OvuGreenhouse.startCare('hoya');}"); await page.wait_for_timeout(200)
+            await page.click('#hudStop'); await page.wait_for_timeout(300)
+            stopped = await page.evaluate("()=>({caring: OvuGreenhouse.caring(), hud: document.querySelector('#hud').classList.contains('on')})")
+            saved = await page.evaluate("()=>OvuStore.list('mindfulness').filter(function(e){return e.data && e.data.practice==='greenhouse'}).map(function(e){return {plant: e.data.plant, minutes: e.data.minutes}})")
+            # Erin's practice started mid-minute (from the Mind tab, say): the minute steps aside and her practice keeps the HUD;
+            # a minute cannot start over a practice (Codex review, 20 Oct)
+            await page.evaluate("()=>{OvuGreenhouse.setPace(1500); OvuGreenhouse.startCare('hoya');}"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuRoom.openEveryday('coffee')"); await page.wait_for_selector('#actStart', timeout=10000)
+            ov = await page.evaluate("()=>{document.querySelector('#actStart').click(); return {care: OvuGreenhouse.caring(), practice: OvuRoom.practiceOn(), hud: document.querySelector('#hud').classList.contains('on'), title: document.querySelector('#hudTitle').textContent}}")
+            await page.evaluate("()=>OvuGreenhouse.startCare('monstera')"); await page.wait_for_timeout(200)
+            ov["refused"] = await page.evaluate("()=>OvuGreenhouse.caring()===null")
+            await page.evaluate("()=>{OvuRoom.stopEverything && OvuRoom.stopEverything(); OvuRoom.closeSheet && OvuRoom.closeSheet();}"); await page.wait_for_timeout(500)
+            await page.wait_for_timeout(6500) # past the hoya minute's own end at the test pace: nothing may save
+            ov["savedAfter"] = await page.evaluate("()=>OvuStore.list('mindfulness').filter(function(e){return e.data && e.data.practice==='greenhouse'}).length")
+            check("Erin's practice started mid-minute takes over at once: the minute steps aside, her HUD stays, nothing saves later, and no minute starts over it", ov["care"] is None and ov["practice"] and ov["hud"] and ov["title"] == "Morning coffee or tea" and ov["refused"] and ov["savedAfter"] == 1, ov)
+            # a breathing session started mid-minute: the hand-over is synchronous, and Stop then stops the session, not the minute
+            await page.evaluate("()=>{OvuRoom.closeSheet && OvuRoom.closeSheet(); OvuGreenhouse.setPace(1500); OvuGreenhouse.startCare('calathea');}"); await page.wait_for_timeout(200)
+            se = await page.evaluate("()=>{OvuRoom.runSession('breathe', 1); return {care: OvuGreenhouse.caring(), session: OvuRoom.sessionOn(), hud: document.querySelector('#hud').classList.contains('on')}}")
+            await page.click('#hudStop'); await page.wait_for_timeout(400)
+            se["after"] = await page.evaluate("()=>({session: OvuRoom.sessionOn(), care: OvuGreenhouse.caring()})")
+            await page.evaluate("()=>{OvuRoom.stopEverything && OvuRoom.stopEverything(); OvuRoom.closeSheet && OvuRoom.closeSheet();}"); await page.wait_for_timeout(6500)
+            se["saved"] = await page.evaluate("()=>OvuStore.list('mindfulness').filter(function(e){return e.data && e.data.practice==='greenhouse'}).length")
+            check("a session started mid-minute takes the HUD at once, Stop stops the session, and the minute never saves", se["care"] is None and se["session"] and se["hud"] and not se["after"]["session"] and se["after"]["care"] is None and se["saved"] == 1, se)
+            await page.evaluate("()=>{OvuGreenhouse.setPace(0); OvuStore.setProfile({outfit:'base'}); OvuRoom.restorePose();}")
+            check("a mindful minute with the monstera: she mists it in her own outfit with the HUD guiding, it ends by itself and saves one minute", cr["caring"] == "monstera" and "act-plants-sundress" in (cr["img"] or "") and cr["hud"] and cr["ours"] and after["caring"] is None and not after["hud"], [cr, after])
+            check("a stopped minute saves nothing and finishing twice saves once", stopped["caring"] is None and not stopped["hud"] and len(saved) == 1 and saved[0]["plant"] == "monstera" and saved[0]["minutes"] == 1, [stopped, saved])
+            await page.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()"); await page.wait_for_timeout(400)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('teatable'))")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] .teacare .ibtn.evi', timeout=12000)
             except Exception: pass
             gh = await page.evaluate("""()=>({teas: document.querySelectorAll('#sheet .tea').length, cautions: document.querySelectorAll('#sheet .teacare p b').length,
                 shownChips: [...document.querySelectorAll('#sheet .evrefs a')].filter(a=>a.offsetParent).length, infos: document.querySelectorAll('#sheet .ibtn.evi').length,
@@ -709,7 +756,14 @@ async def main():
             op = await page.evaluate("()=>{var b=document.querySelector('#sheet .teacare .ibtn.evi'); var r=document.getElementById(b.getAttribute('aria-controls')); var a=r.querySelector('a'); return {expanded: b.getAttribute('aria-expanded'), shown: !!r.offsetParent, href: a && a.getAttribute('href'), text: a && a.textContent}}")
             await page.click('#sheet .teacare .ibtn.evi'); await page.wait_for_timeout(150)
             shut = await page.evaluate("()=>{var b=document.querySelector('#sheet .teacare .ibtn.evi'); return !document.getElementById(b.getAttribute('aria-controls')).offsetParent}")
+            cup = await page.evaluate("()=>!!document.getElementById('ghCup')")
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('ghdoor'))")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await page.wait_for_timeout(400)
+            back = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, pos: OvuRoom.pos()})")
+            check("the tea table offers a mindful cup with Erin, and the door takes her back out to stand by the greenhouse in the garden", cup and back["layout"] == "garden" and abs(back["pos"]["x"] - 62) < 1.5 and abs(back["pos"]["y"] - 49) < 1.5, [cup, back])
             check("the garden greenhouse lists every tea and the doctor-or-pharmacist cautions, with all sources folded behind small (i) buttons", gh["teas"] >= 15 and gh["cautions"] >= 5 and gh["shownChips"] == 0 and gh["infos"] >= 20 and gh["label"] == "Source for St John’s wort", gh)
             check("an (i) opens its sources (a link into the evidence register) and closes them again", op["expanded"] == "true" and op["shown"] and (op["href"] or "").startswith("evidence.html#E") and shut, op)
 
