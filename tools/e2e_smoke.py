@@ -1307,6 +1307,21 @@ async def main():
             pm2 = await page.evaluate("()=>({care: !!document.querySelector('#careDone'), text: (document.querySelector('.carecard')||{}).textContent||''})")
             check("after menopause the calendar says Bleeding, fills nothing, and a saved day opens the prompt card", pm1["tab"] == "Bleeding" and pm1["added"] == 0 and pm2["care"] and "This is not a period" in pm2["text"], [pm1, pm2["text"][:80]])
             await page.evaluate("()=>{var b=document.querySelector('#careDone'); if(b) b.click(); OvuStore.setProfile({lifeStage:''});}"); await page.wait_for_timeout(300)
+            # Codex branch review (20 Oct): pain 10 entered on the period form opens the same-day card; a red flag found only after a
+            # Luna save (heavy flow logged earlier, then "dizzy today") is shown in the chat
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
+            await page.evaluate("()=>{var t=OvuStore.today(); OvuStore.byDate(t).forEach(function(e){ OvuStore.remove(e.id); }); OvuStore.setProfile({lifeStage:''});}") # a clean today: earlier checks saved a chest-pain note
+            await page.evaluate("()=>document.querySelector('nav a[data-tab=cycle]').click()"); await page.wait_for_selector('#savePeriod', timeout=8000)
+            await page.evaluate("()=>{document.querySelector('#flowChips [data-flow=heavy]').click(); var r=document.querySelector('#ppain'); r.value='10'; r.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('#savePeriod').click();}"); await page.wait_for_timeout(600)
+            pc = await page.evaluate("()=>({care: !!document.querySelector('#careDone'), text: (document.querySelector('.carecard')||{}).textContent||''})")
+            check("pain 10 on the period form opens the same-day care card", pc["care"] and "10 out of 10" in pc["text"], pc["text"][:80])
+            await page.evaluate("()=>{var b=document.querySelector('#careDone'); if(b) b.click();}"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>document.querySelector('nav a[data-tab=luna], #lunaBtn, .luna') && (document.querySelector('#lunaBtn')||document.querySelector('.luna')).click()"); await page.wait_for_selector('#lunaIn', timeout=8000)
+            await page.fill("#lunaIn", "dizzy today"); await page.click("#lunaSend"); await page.wait_for_selector("#lunaSave", timeout=8000)
+            await page.click("#lunaSave"); await page.wait_for_timeout(600)
+            lc = await page.evaluate("()=>[...document.querySelectorAll('#chat .bub.urgent')].map(b=>b.textContent).join(' | ')")
+            check("a red flag found only after a Luna save is shown in the chat", "dizziness" in lc.lower() or "heavy bleeding" in lc.lower(), lc[:120])
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(300)
             await page.goto(BASE + "fertility.html", wait_until="networkidle"); await page.wait_for_timeout(600)
             ft = await page.evaluate("()=>({t: document.body.innerText, est: (document.querySelector('#myEstimate')||{}).innerText||''})")
             check("the fertility page shows no invented result and her own estimate is labelled", "85%" not in ft["t"] and "surge detected" not in ft["t"].lower() and len(ft["est"]) > 10 and "Reading your calendar" not in ft["est"], ft["est"][:140])

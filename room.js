@@ -532,7 +532,7 @@
     sheet.setAttribute('aria-hidden', 'false');
     var first = body.querySelector('input,button,select,textarea,a'); if (first && window.matchMedia('(hover:hover)').matches) try { first.focus({ preventScroll: true }); } catch (e) { }
   }
-  function hideSheet() { current = null; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
+  function hideSheet() { current = null; careOn = false; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
   function closeSheet() {
     if (current === 'diary') stopCamera();
     if (current === 'mind' && session) stopSession(true);
@@ -834,7 +834,7 @@
           var pn = Number($('#ppain').value), sev = null; if (pn > 0 || (symToday && (ppTouched || typeof symToday.data.pain === 'number'))) sev = S.add('symptom', date, { pain: pn }, 'room', { merge: true });
           message($('#calMsg'), 'Saved ' + flow + ' flow for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev, undefined, false, sev ? [sev] : []);
           /* after a birth with predictions paused: she decides whether this is her period back, nothing decides it for her */
-          var pp = S.profile(); if (pp.pregState === 'postpartum' && pp.periodsBack === 'no' && flow !== 'spotting') { var cm = $('#calMsg'); cm.insertAdjacentHTML('beforeend', '<div class="row" style="margin-top:6px"><button type="button" class="btn soft" id="ppBack"><span class="ms">water_drop</span>This is my period back</button></div>'); $('#ppBack').addEventListener('click', function () { S.setProfile({ periodsBack: 'yes', predictionMode: 'wide' }); this.disabled = true; toast('Noted. Predictions start again, as a wide estimate while cycles settle.', 'water_drop'); renderCal(); }); }
+          var pp = S.profile(), cm = $('#calMsg'); if (cm && current === 'calendar' && pp.pregState === 'postpartum' && pp.periodsBack === 'no' && flow !== 'spotting') { cm.insertAdjacentHTML('beforeend', '<div class="row" style="margin-top:6px"><button type="button" class="btn soft" id="ppBack"><span class="ms">water_drop</span>This is my period back</button></div>'); $('#ppBack').addEventListener('click', function () { var np = Object.assign({}, S.profile(), { periodsBack: 'yes' }); S.setProfile({ periodsBack: 'yes', predictionMode: predictionModeFor(np) }); this.disabled = true; /* other reasons to pause (the pill, a hysterectomy, ...) still hold */ toast('Noted. Predictions start again, as a wide estimate while cycles settle.', 'water_drop'); renderCal(); }); }
         } catch (e) { message($('#calMsg'), e.message, false); }
       });
       if (cur) $('#clearPeriod').addEventListener('click', function () { S.remove(cur.id); cal.lastFill = cal.lastFill.filter(function (id) { return id !== cur.id; }); chime('tap'); renderCal(); renderEditor(); renderDeck(); });
@@ -1043,12 +1043,13 @@
         inp.addEventListener('input', function () { var list = FD.search(inp.value, 12); $('#fdResults').innerHTML = resultsHTML(list) + askLuna(inp.value, list); });
         $('#fdResults').addEventListener('click', function (e) {
           var b = e.target.closest('[data-askluna]'); if (!b) return; e.stopPropagation();
-          var q = b.dataset.askluna; b.disabled = true; b.innerHTML = '<span class="ms">hourglass_top</span>Luna is thinking about ' + esc(q) + '…';
+          var q = b.dataset.askluna, forDraft = draft; b.disabled = true; b.innerHTML = '<span class="ms">hourglass_top</span>Luna is thinking about ' + esc(q) + '…';
           ORB.parseDish(q).then(function (res) {
+            if (draft !== forDraft || !document.body.contains(b)) return; /* the diary was closed or a new meal started (Codex re-review, 20 Oct) */
             if (!res.isFood || !res.items.length) { b.outerHTML = '<div class="empty">Luna did not recognise “' + esc(q) + '” as a food. Try another name, or add a custom food.</div>'; return; }
             res.items.forEach(function (it) { draft.items.push(it); }); renderItems();
             b.outerHTML = '<div class="fdstate ok"><span class="ms">check_circle</span>Added ' + esc(res.items.map(function (it) { return it.name; }).join(', ')) + '. Luna estimated it, so check the grams below before you save.</div>';
-          }).catch(function (err) { b.outerHTML = '<div class="fdstate"><span class="ms">error</span>' + esc(err.message) + (/off|choices/i.test(err.message) ? ' Turn on Luna reading notes under Your choices.' : '') + '</div>'; });
+          }).catch(function (err) { if (draft !== forDraft || !document.body.contains(b)) return; b.outerHTML = '<div class="fdstate"><span class="ms">error</span>' + esc(err.message) + (/off|choices/i.test(err.message) ? ' Turn on Luna reading notes under Your choices.' : '') + '</div>'; });
         });
         $('#customBtn').addEventListener('click', function () { $('#customWrap').innerHTML = customFoodForm(); wireCustom(); });
       } else if (mode === 'scan') {
@@ -1741,7 +1742,7 @@
     /* Red flags are read on the device before any parsing or saving. The card is guidance, not a save:
      * the entries still go through the confirm card below it. */
     function urgentCard(u) {
-      shownCare[u.code] = 1;
+      shownCare[u.code] = 1; endMoment(); careOn = true;
       var kind = 'urgent' + (u.level === 'emergency' ? ' emergency' : ''), html = careHTML(u);
       var c = bubble(kind, html); remember(kind, html);
       try { chime('alert', true); } catch (err) { }
@@ -1883,7 +1884,7 @@
   function sleepSrc(o) { return ART + (o === 'pajamas' ? 'avatar-sleeping.webp' : 'avatar-sleeping-' + o + '.webp'); }
   function wearImg(img, src, plain) { if (!img) return; img.onerror = function () { img.onerror = null; img.src = plain; }; if (img.getAttribute('src') !== src) img.src = src; }
   function enterMeditation() {
-    meditating = true; avatar.classList.add('hidden');
+    endMoment(); meditating = true; avatar.classList.add('hidden');
     if (!meditator.classList.contains('onseat')) wearImg(meditator.querySelector('img'), meditateSrc(wornOutfit()), ART + 'avatar-meditate.webp'); /* a bench keeps her seated sprite */
     setTimeout(function () { meditator.classList.add('on'); $('#aura').classList.add('on'); }, 350);
   }
@@ -2300,11 +2301,11 @@
   function joy() { avatar.classList.remove('joy'); void avatar.offsetWidth; avatar.classList.add('joy'); setTimeout(function () { avatar.classList.remove('joy'); }, 560); }
 
   /* ---------- mindful moments (ovu-moments.js): she does the thing, in her own clothes, and one line of noticing ---------- */
-  var MO = window.OvuMoments || null, momentTimer = null, momentOn = null, momentRetry = null;
+  var MO = window.OvuMoments || null, momentTimer = null, momentOn = null, momentRetry = null, careOn = false; /* careOn: a care card is showing in Luna's chat */
   function endMoment() {
     clearTimeout(momentTimer); clearTimeout(momentRetry); momentRetry = null; if (!momentOn) return;
-    momentOn = null; avatar.classList.remove('moment');
-    if (!practice && !session && !asleep()) restorePose();
+    momentOn = null; avatar.classList.remove('moment'); imgGen++; /* a pose still loading never lands after its moment (Codex re-review) */
+    if (!practice && !asleep()) restorePose();
     var th = $('#thought'); hideThought(); scene.classList.remove('saying'); setTimeout(function () { if (th && !th.classList.contains('on')) th.classList.remove('say'); }, 400);
   }
   /* returns the line, so a caller can also show it in its own sheet; the pose is skipped while she sleeps, meditates,
@@ -2313,7 +2314,7 @@
     if (!MO || !MO.MOMENTS[key]) return '';
     opt = opt || {};
     var text = opt.line || MO.line(key), pose = opt.pose === undefined ? MO.pose(key) : opt.pose;
-    if (asleep() || meditating || practice || session || arranging || current === 'care') return text;
+    if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn) return text;
     /* while she walks the pose waits, a few times at most, and never starts over a walk (Codex branch review, 20 Oct) */
     if (avatar.classList.contains('walking') || (hooks.moving && hooks.moving())) {
       var tries = (opt.tries || 0) + 1; clearTimeout(momentRetry);
@@ -2367,7 +2368,7 @@
     var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image(), gen = ++imgGen;
     img.onload = function () { if (gen === imgGen) avatarImg.src = img.src; };
     /* a missing outfit copy never borrows the default clothes: she keeps standing in her own (Jamie's rule; Codex review) */
-    img.onerror = function () { if (gen === imgGen && want === plain && img.src.indexOf(plain) < 0) img.src = plain; };
+    img.onerror = function () { if (gen !== imgGen) return; if (want === plain) { if (img.src.indexOf(plain) < 0) img.src = plain; } else setOutfit(S.profile().outfit || 'base', true); };
     img.src = want;
   }
   function restorePose() { setOutfit(S.profile().outfit || 'base', true); }
@@ -2397,6 +2398,7 @@
     try { var first = GUIDE + id + '-' + vi + '-0.mp3'; practice.audio.src = first; practice.pre = first; var pr0 = practice.audio.play(); if (pr0 && pr0.catch) pr0.catch(function () { }); } catch (e) { } /* the first line starts inside the tap, which unlocks the element for the rest */
     /* from the Mind hub she was on the mat, hidden: bring her back before the pose, or the practice plays to an empty room
      * (four-persona review, 20 Oct, all four Codex walkthroughs) */
+    endMoment();
     if (meditating && !session) { meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); avatar.classList.remove('hidden'); }
     hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting');
     var chain = Promise.resolve();

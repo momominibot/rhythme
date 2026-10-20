@@ -143,6 +143,9 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var w = fresh(), O = w.OvuOrb;
   var cases = [
  // [text, profile, expectedCode or null]
+ ['Chest pain: none',{},null],['chest pain? no',{},null],['I have left calf swelling with period cramps',{},'LEG_CLOT_TODAY'],['Positive test for covid and my period started today',{},null],['I am hearing voices from my friends in the kitchen',{},null],
+ ['I have pain on my left side and a positive urine pregnancy test',{},'ECTOPIC_NOW'],['My leg is swollen and not painful',{},'LEG_CLOT_TODAY'],['I am hallucinating while on a call to my doctor',{},'PSYCHOSIS_NOW'],['I have fever and painful peeing but I am not pregnant',{},'FEVER_INFECTION_TODAY'],
+ ['My arm is numb with pins and needles from sleeping on it',{},null],['took a pregnancy test, it was negative, period started',{},null],['voices in my head telling me things',{},'PSYCHOSIS_NOW'],
  ['No improvement in chest pain',{},'CHEST_BREATH_NOW'],['No fever and my chest is tight',{},'CHEST_BREATH_NOW'],['My face is not swollen',{},null],['my leg is not swollen',{},null],['chest pain won\'t stop',{},'CHEST_BREATH_NOW'],
  ['My face is drooping and I have pins and needles in one arm',{},'STROKE_NOW'],['My left calf is swollen and painful, also period cramps',{},'LEG_CLOT_TODAY'],['I am breathless even at rest',{},'CHEST_BREATH_NOW'],['so breathless I can barely talk',{},'CHEST_BREATH_NOW'],['breathless after climbing the stairs',{},null],
  ['Positive covid test yesterday, period started today',{},null],['My period is due tomorrow and pain on my left side',{},null],['positive ovulation test and pain on my left side',{lifeStage:'ttc'},null],['positive pregnancy test and pain on my left side',{},'ECTOPIC_NOW'],
