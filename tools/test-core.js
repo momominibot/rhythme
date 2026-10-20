@@ -361,8 +361,10 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var walk = true; for (var i = 0; i < SD.SCALE.length; i++) [0.1, 0.9].forEach(function (r) { var n = SD.nextPetal(i, r); if (n < 0 || n >= SD.SCALE.length || Math.abs(n - i) !== 1) walk = false; });
   check('the flower notes walk to a neighbouring note of a pentatonic scale, never a leap', walk && SD.SCALE.length === 7);
   check('with no audio device nothing breaks: play and the air simply do nothing', SD.play('petal') === false && SD.ambience(true) === false);
-  check('a petal rises over 300 ms and settles over four seconds; nothing faster', LF.glowAt(0) === 0 && Math.abs(LF.glowAt(300) - 1) < 1e-9 && LF.glowAt(150) > 0.4 && LF.glowAt(150) < 0.6 && LF.glowAt(2300) > 0 && LF.glowAt(4300) === 0 && LF.glowAt(1000) > LF.glowAt(2000));
-  var held = [500, 1500, 3000].every(function (t) { return Math.abs(LF.glowAt(LF.holdFrom(t)) - LF.glowAt(t)) < 1e-6; });
+  check('a petal rises over 180 ms and settles over three seconds; nothing faster', LF.glowAt(0) === 0 && Math.abs(LF.glowAt(180) - 1) < 1e-9 && LF.glowAt(90) > 0.4 && LF.glowAt(90) < 0.6 && LF.glowAt(2000) > 0 && LF.glowAt(3180) === 0 && LF.glowAt(800) > LF.glowAt(1600));
+  var h0 = LF.headAt(0), h3 = LF.headAt(LF.BREATH_S / 4), hs = LF.headAt(30, true), breathOk = true; for (var q = 0; q < 60; q += 0.37) { var hh = LF.headAt(q); if (Math.abs(hh.s - 1) > 0.025) breathOk = false; }
+  check('the flower turns slowly (a quarter turn in half a minute) and breathes within a few percent; reduced motion keeps it still', h0.s === 1 && h3.s > 1.02 && breathOk && Math.abs(LF.headAt(30).rot - h0.rot - Math.PI / 2) < 1e-9 && hs.s === 1 && hs.rot === h0.rot);
+  var held = [500, 1500, 2500].every(function (t) { return Math.abs(LF.glowAt(LF.holdFrom(t)) - LF.glowAt(t)) < 1e-6; });
   check('tapping a glowing petal holds its brightness (no jump, no flash) and a dark one rises from dark', held && LF.holdFrom(5000) === 0 && LF.holdFrom(100) === 100);
   check('at most one new petal every 400 ms, so nothing can flash three times a second', LF.MIN_GAP_MS >= 334);
   var r = 100, rot = 0.14, up = LF.petalFor(Math.cos(rot - Math.PI / 2) * 60, Math.sin(rot - Math.PI / 2) * 60, r, 3, rot), right = LF.petalFor(Math.cos(rot + Math.PI / 6) * 60, Math.sin(rot + Math.PI / 6) * 60, r, 3, rot);

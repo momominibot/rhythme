@@ -2,12 +2,16 @@
  * designed with Codex, docs/design/2026-10-20-light-flower.md). One luminous flower, drawn here from points of light.
  * A tap lights one petal and sounds one soft glass note that fades; she notices it fading and, when her mind wanders,
  * gently comes back. Nothing fills, grows or scores: the flower is whole from the start, fast taps never stack light or
- * sound, and stopping at any moment saves the practice time. No fast flashing: a petal brightens over 300 ms and settles
- * over four seconds, and a new petal can light at most every 400 ms. Reduced motion: a still flower, no drifting light. */
+ * sound, and stopping at any moment saves the practice time. No fast flashing: a petal brightens over 180 ms and settles
+ * over three seconds, and a new petal can light at most every 400 ms. The flower turns slowly and breathes (one breath
+ * every six seconds), a soft light walks round its petals, and a tap sends out one quiet ripple (Jamie, 20 Oct: "more
+ * swiftly, more therapeutic, more dreamy"). Reduced motion: a still flower, no drifting light, no ripple. */
 (function (root) {
   'use strict';
   var LENGTHS = [{ min: 0, name: 'Open' }, { min: 2, name: '2 min' }, { min: 5, name: '5 min' }];
-  var PETALS = 6, RISE_MS = 300, SETTLE_MS = 4000, MIN_GAP_MS = 400;
+  var PETALS = 6, RISE_MS = 180, SETTLE_MS = 3000, MIN_GAP_MS = 400, BASE_ROT = 0.14, TURN_S = 120, BREATH_S = 6;
+  /* the flower's slow turn and breath t seconds in (pure, tested): one turn in two minutes, scale within 2.2 percent */
+  function headAt(t, still) { if (still) return { rot: BASE_ROT, s: 1 }; return { rot: BASE_ROT + t * 2 * Math.PI / TURN_S, s: 1 + 0.022 * Math.sin(t * 2 * Math.PI / BREATH_S) }; }
   /* how bright a petal is t ms after it was lit: up over RISE_MS, then a slow settle (pure, tested) */
   function glowAt(t) {
     if (t < 0) return 0;
@@ -95,7 +99,7 @@
   function start() {
     if (asleep()) { close(); return; } /* a real sleep stops every game until she wakes */
     var plan = Number(($('#lfLengths .on') || { dataset: { min: 0 } }).dataset.min) || 0;
-    st = { plan: plan, t0: root.performance.now(), startedAt: new Date().toISOString(), lit: new Array(PETALS).fill(-1e9), lastLit: -1e9, prev: PETALS - 1, sparks: [], hinted: false };
+    st = { plan: plan, t0: root.performance.now(), startedAt: new Date().toISOString(), lit: new Array(PETALS).fill(-1e9), lastLit: -1e9, prev: PETALS - 1, sparks: [], ripples: [], hinted: false };
     $('#lfCard').hidden = true; $('#lfDone').hidden = true; $('#lfStage').hidden = false;
     size(); paintBase();
     var s = sound(); if (s && $('#lfAir').checked) s.ambience(true);
@@ -111,7 +115,7 @@
     st.lit[k] = now - holdFrom(now - st.lit[k]); /* a petal still glowing keeps its brightness and settles again from there: never re-flashed */
     st.lastLit = now; st.prev = k;
     var s = sound(); if (s) s.play('petal');
-    if (!reduced) spark(k);
+    if (!reduced) { spark(k); st.ripples.push(now); if (st.ripples.length > 4) st.ripples.shift(); }
     try { if (root.navigator && root.navigator.vibrate) root.navigator.vibrate(8); } catch (e) { }
     if (!st.hinted) { st.hinted = true; $('#lfWord').textContent = ''; root.setTimeout(function () { if (st) $('#lfWord').textContent = 'Notice the note fading.'; }, 600); root.setTimeout(function () { if (st) $('#lfWord').textContent = ''; }, 6000); }
   }
@@ -149,18 +153,19 @@
   }
 
   /* ---- drawing: everything is points of light on a near-black night, composed once, then lit per petal ---- */
-  var cv = null, ctx = null, base = null, petalCv = [], bokeh = [], W = 0, H = 0, dpr = 1;
+  var cv = null, ctx = null, base = null, head = null, headD = 0, petalCv = [], bokeh = [], motes = [], W = 0, H = 0, dpr = 1;
   function rnd(seed) { var s = seed; return function () { s = (s * 16807) % 2147483647; return s / 2147483647; }; }
   function size() {
     cv = $('#lfCanvas'); var r = $('#lfStage').getBoundingClientRect();
     W = Math.max(280, r.width || root.innerWidth); H = Math.max(400, r.height || root.innerHeight); dpr = Math.min(2, root.devicePixelRatio || 1);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + 'px'; cv.style.height = H + 'px';
     ctx = cv.getContext('2d');
-    var R = Math.min(W * 0.36, H * 0.25), geo = { cx: W / 2, cy: H * 0.4, R: R, rot: 0.14 };
+    var R = Math.min(W * 0.36, H * 0.25), geo = { cx: W / 2, cy: H * 0.4, R: R, rot: BASE_ROT };
     if (st) st.geo = geo; else return;
     var fl = $('#lfFlower'); fl.style.left = (geo.cx - R * 1.15) + 'px'; fl.style.top = (geo.cy - R * 1.15) + 'px'; fl.style.width = fl.style.height = (R * 2.3) + 'px';
     var g = rnd(11); bokeh = [];
-    for (var i = 0; i < 20; i++) bokeh.push({ x: g() * W, y: g() * H, r: 5 + g() * 22, a: 0.06 + g() * 0.16, hue: g(), vx: (g() - 0.5) * 3, vy: -1 - g() * 3 });
+    for (var i = 0; i < 34; i++) bokeh.push({ x: g() * W, y: g() * H, r: 4 + g() * 24, a: 0.05 + g() * 0.15, hue: g(), vx: (g() - 0.5) * 6, vy: -(4 + g() * 9), ph: g() * 6.28 });
+    motes = []; for (var m = 0; m < 70; m++) motes.push({ x: g() * W, y: g() * H, r: 0.5 + g() * 0.9, ph: g() * 6.28, sp: 1400 + g() * 2600 });
   }
   function petalPath(c, L, Wd) {
     /* a petal pointing along +x from the centre: wide in the middle, a soft rounded tip with a little ruffle */
@@ -194,10 +199,13 @@
     var lx = geo.cx + geo.R * 0.2, ly = geo.cy + geo.R * 1.45, ll = geo.R * 0.9;
     for (var u = 0; u <= 1; u += 0.02) { var hw = geo.R * 0.2 * Math.sin(Math.PI * u), ax = lx + u * ll * 0.8, ay = ly - u * ll * 0.45; dot(c, ax - hw * 0.45, ay - hw * 0.8, 0.7 + g() * 0.6, 'rgba(190,210,255,0.55)'); dot(c, ax + hw * 0.45, ay + hw * 0.8, 0.7 + g() * 0.6, 'rgba(210,200,255,0.5)'); if (g() < 0.5) dot(c, ax, ay, 0.5, 'rgba(230,220,255,0.35)'); }
     petalCv = []; for (var k = 0; k < PETALS; k++) petalCv.push(makePetal(k, geo));
-    drawPetals(c, geo, null);
+    /* the flower head (petals, golden heart, stamens) on its own canvas, so it can turn and breathe in one draw */
+    headD = Math.ceil(2 * (geo.R * 1.06 + 22)); head = document.createElement('canvas'); head.width = Math.round(headD * dpr); head.height = Math.round(headD * dpr);
+    var hc = head.getContext('2d'), hg = { cx: headD / 2, cy: headD / 2, R: geo.R, rot: 0 }; hc.setTransform(dpr, 0, 0, dpr, 0, 0); hc.globalCompositeOperation = 'lighter';
+    drawPetals(hc, hg, null);
     /* the golden heart and its stamens */
-    var cg = c.createRadialGradient(geo.cx, geo.cy, 0, geo.cx, geo.cy, geo.R * 0.42); cg.addColorStop(0, 'rgba(255,236,190,0.9)'); cg.addColorStop(0.3, 'rgba(255,200,140,0.45)'); cg.addColorStop(1, 'rgba(255,170,120,0)'); c.fillStyle = cg; c.beginPath(); c.arc(geo.cx, geo.cy, geo.R * 0.42, 0, Math.PI * 2); c.fill();
-    for (var s = 0; s < 18; s++) { var a = (s / 18) * Math.PI * 2 + g() * 0.2, len = geo.R * (0.22 + g() * 0.18); for (var f = 0.15; f < 1; f += 0.12) dot(c, geo.cx + Math.cos(a) * len * f, geo.cy + Math.sin(a) * len * f, 0.45, 'rgba(255,226,170,0.55)'); dot(c, geo.cx + Math.cos(a) * len, geo.cy + Math.sin(a) * len, 1.4 + g() * 0.8, 'rgba(255,232,180,0.95)'); }
+    var cg = hc.createRadialGradient(hg.cx, hg.cy, 0, hg.cx, hg.cy, hg.R * 0.42); cg.addColorStop(0, 'rgba(255,236,190,0.9)'); cg.addColorStop(0.3, 'rgba(255,200,140,0.45)'); cg.addColorStop(1, 'rgba(255,170,120,0)'); hc.fillStyle = cg; hc.beginPath(); hc.arc(hg.cx, hg.cy, hg.R * 0.42, 0, Math.PI * 2); hc.fill();
+    for (var s = 0; s < 18; s++) { var a = (s / 18) * Math.PI * 2 + g() * 0.2, len = hg.R * (0.22 + g() * 0.18); for (var f = 0.15; f < 1; f += 0.12) dot(hc, hg.cx + Math.cos(a) * len * f, hg.cy + Math.sin(a) * len * f, 0.45, 'rgba(255,226,170,0.55)'); dot(hc, hg.cx + Math.cos(a) * len, hg.cy + Math.sin(a) * len, 1.4 + g() * 0.8, 'rgba(255,232,180,0.95)'); }
   }
   function drawPetals(c, geo, only, alpha) {
     for (var k = 0; k < PETALS; k++) {
@@ -209,37 +217,56 @@
   }
   function spark(k) {
     var geo = st.geo, a = geo.rot + (k / PETALS) * Math.PI * 2 - Math.PI / 2, g = Math.random;
-    for (var i = 0; i < 12; i++) { var d = geo.R * (0.3 + g() * 0.7); st.sparks.push({ x: geo.cx + Math.cos(a) * d + (g() - 0.5) * 14, y: geo.cy + Math.sin(a) * d + (g() - 0.5) * 14, vy: -(6 + g() * 10), vx: (g() - 0.5) * 6, born: root.performance.now(), life: 2200 + g() * 900, r: 0.8 + g() * 1.1 }); }
-    if (st.sparks.length > 90) st.sparks.splice(0, st.sparks.length - 90);
+    for (var i = 0; i < 18; i++) { var d = geo.R * (0.3 + g() * 0.7), out = 10 + g() * 18; st.sparks.push({ x: geo.cx + Math.cos(a) * d + (g() - 0.5) * 14, y: geo.cy + Math.sin(a) * d + (g() - 0.5) * 14, vy: Math.sin(a) * out - (10 + g() * 14), vx: Math.cos(a) * out + (g() - 0.5) * 8, born: root.performance.now(), life: 2200 + g() * 900, r: 0.8 + g() * 1.1 }); }
+    if (st.sparks.length > 140) st.sparks.splice(0, st.sparks.length - 140);
   }
   function draw(now) {
-    if (!ctx || !base) return;
-    var geo = st.geo; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.drawImage(base, 0, 0);
+    if (!ctx || !base || !head) return;
+    var geo = st.geo, t = (now - st.t0) / 1000, hd = headAt(t, reduced), breath = reduced ? 0 : Math.sin(t * 2 * Math.PI / BREATH_S);
+    geo.rot = hd.rot; /* taps follow the turning petals */
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.drawImage(base, 0, 0);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalCompositeOperation = 'lighter';
-    /* soft bokeh drifting upward, slower than a breath */
-    bokeh.forEach(function (b, i) {
-      if (!reduced) { b.x += b.vx / 60; b.y += b.vy / 60; if (b.y < -30) { b.y = H + 30; b.x = Math.random() * W; } if (b.x < -30) b.x = W + 30; if (b.x > W + 30) b.x = -30; }
+    /* a field of tiny stars, each twinkling on its own slow clock */
+    motes.forEach(function (m) { var a = reduced ? 0.35 : 0.22 + 0.22 * Math.sin(now / m.sp + m.ph); if (a > 0.03) { ctx.fillStyle = 'rgba(236,228,255,' + a + ')'; ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); ctx.fill(); } });
+    /* soft bokeh floating upward and swaying */
+    bokeh.forEach(function (b) {
+      if (!reduced) { b.x += b.vx / 60 + Math.sin(now / 2600 + b.ph) * 0.12; b.y += b.vy / 60; if (b.y < -30) { b.y = H + 30; b.x = Math.random() * W; } if (b.x < -30) b.x = W + 30; if (b.x > W + 30) b.x = -30; }
       var col = b.hue < 0.4 ? '255,190,160' : b.hue < 0.75 ? '190,170,255' : '150,200,255', gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
       gr.addColorStop(0, 'rgba(' + col + ',' + b.a + ')'); gr.addColorStop(0.7, 'rgba(' + col + ',' + (b.a * 0.6) + ')'); gr.addColorStop(1, 'rgba(' + col + ',0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
     });
+    /* a breathing aura behind the flower: it swells as the flower breathes in */
+    var aura = ctx.createRadialGradient(geo.cx, geo.cy, 0, geo.cx, geo.cy, geo.R * 1.6), aa = 0.07 + 0.05 * (breath + 1) / 2;
+    aura.addColorStop(0, 'rgba(255,214,190,' + aa + ')'); aura.addColorStop(0.45, 'rgba(190,170,255,' + (aa * 0.7) + ')'); aura.addColorStop(1, 'rgba(120,110,220,0)');
+    ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(geo.cx, geo.cy, geo.R * 1.6, 0, Math.PI * 2); ctx.fill();
+    /* ripples: one quiet ring from each tap, widening and fading over 1.8 seconds */
+    st.ripples = st.ripples.filter(function (r0) {
+      var u = (now - r0) / 1800; if (u >= 1) return false; var e = 1 - Math.pow(1 - u, 3);
+      ctx.strokeStyle = 'rgba(226,212,255,' + (0.26 * (1 - u) * (1 - u)) + ')'; ctx.lineWidth = 1.4 + 2 * (1 - u); ctx.beginPath(); ctx.arc(geo.cx, geo.cy, geo.R * (0.35 + 1.25 * e), 0, Math.PI * 2); ctx.stroke(); return true;
+    });
+    /* the flower head, turning and breathing */
+    ctx.save(); ctx.translate(geo.cx, geo.cy); ctx.scale(hd.s, hd.s); ctx.rotate(hd.rot); ctx.drawImage(head, -headD / 2, -headD / 2, headD, headD); ctx.restore();
+    ctx.save(); ctx.translate(geo.cx, geo.cy); ctx.scale(hd.s, hd.s); ctx.translate(-geo.cx, -geo.cy);
+    /* a soft light walks round the petals, one every 1.6 s, never brighter than a fifth of a lit petal */
+    if (!reduced) { var w = t / 1.6, wk = Math.floor(w) % PETALS, wa = 0.2 * Math.sin(Math.PI * (w - Math.floor(w))); if (wa > 0.01) drawPetals(ctx, geo, wk, wa); }
     /* the lit petals: one extra draw each, at most as bright as one light */
     for (var k = 0; k < PETALS; k++) {
       var gl = glowAt(now - st.lit[k]); if (gl <= 0.01) continue;
-      var pa = geo.rot + (k / PETALS) * Math.PI * 2 - Math.PI / 2, px = geo.cx + Math.cos(pa) * geo.R * 0.55, py = geo.cy + Math.sin(pa) * geo.R * 0.55, halo = ctx.createRadialGradient(px, py, 0, px, py, geo.R * 0.62);
-      halo.addColorStop(0, 'rgba(255,226,190,' + (0.22 * gl) + ')'); halo.addColorStop(0.45, 'rgba(214,196,255,' + (0.16 * gl) + ')'); halo.addColorStop(1, 'rgba(160,150,255,0)');
-      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(px, py, geo.R * 0.62, 0, Math.PI * 2); ctx.fill(); /* a soft glow round the petal */
+      var pa = geo.rot + (k / PETALS) * Math.PI * 2 - Math.PI / 2, px = geo.cx + Math.cos(pa) * geo.R * 0.55, py = geo.cy + Math.sin(pa) * geo.R * 0.55, halo = ctx.createRadialGradient(px, py, 0, px, py, geo.R * 0.7);
+      halo.addColorStop(0, 'rgba(255,226,190,' + (0.26 * gl) + ')'); halo.addColorStop(0.45, 'rgba(214,196,255,' + (0.18 * gl) + ')'); halo.addColorStop(1, 'rgba(160,150,255,0)');
+      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(px, py, geo.R * 0.7, 0, Math.PI * 2); ctx.fill(); /* a soft glow round the petal */
       drawPetals(ctx, geo, k, Math.min(1, gl));
     }
-    /* star glints at a few petal tips, twinkling slowly (a full cycle takes about four seconds) */
+    /* star glints at a few petal tips, twinkling slowly */
     for (var s = 0; s < PETALS; s += 2) {
       var a = geo.rot + (s / PETALS) * Math.PI * 2 - Math.PI / 2, x = geo.cx + Math.cos(a) * geo.R * 0.93, y = geo.cy + Math.sin(a) * geo.R * 0.93, tw = reduced ? 0.6 : 0.45 + 0.35 * Math.sin(now / 650 + s), len = 6 + 4 * tw;
       ctx.strokeStyle = 'rgba(255,240,220,' + (0.55 * tw) + ')'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - len, y); ctx.lineTo(x + len, y); ctx.moveTo(x, y - len); ctx.lineTo(x, y + len); ctx.stroke();
     }
-    /* light rising gently from a lit petal */
+    ctx.restore();
+    /* light drifting up and away from a lit petal, slowing as it goes */
     st.sparks = st.sparks.filter(function (p) {
-      var t = now - p.born; if (t > p.life) return false; var f = 1 - t / p.life;
-      var x = p.x + p.vx * t / 1000, y = p.y + p.vy * t / 1000; dot(ctx, x, y, p.r, 'rgba(255,238,214,' + (0.7 * f) + ')'); return true;
+      var tt = now - p.born; if (tt > p.life) return false; var f = 1 - tt / p.life, q = tt / 1000, slow = 1 - Math.exp(-q * 1.2);
+      var x = p.x + p.vx * slow / 1.2 + Math.sin(q * 2 + p.r * 9) * 4, y = p.y + p.vy * slow / 1.2 - q * 6; dot(ctx, x, y, p.r, 'rgba(255,238,214,' + (0.75 * f * f) + ')'); return true;
     });
   }
-  root.OvuLightFlower = { LENGTHS: LENGTHS, PETALS: PETALS, RISE_MS: RISE_MS, SETTLE_MS: SETTLE_MS, MIN_GAP_MS: MIN_GAP_MS, glowAt: glowAt, holdFrom: holdFrom, petalFor: petalFor, entryFor: entryFor, open: open, close: close, start: start, stop: stop, running: function () { return !!st; } };
+  root.OvuLightFlower = { LENGTHS: LENGTHS, PETALS: PETALS, headAt: headAt, BREATH_S: BREATH_S, RISE_MS: RISE_MS, SETTLE_MS: SETTLE_MS, MIN_GAP_MS: MIN_GAP_MS, glowAt: glowAt, holdFrom: holdFrom, petalFor: petalFor, entryFor: entryFor, open: open, close: close, start: start, stop: stop, running: function () { return !!st; } };
 })(typeof window !== 'undefined' ? window : this);

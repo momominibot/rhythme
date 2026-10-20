@@ -550,7 +550,7 @@
     sheet.setAttribute('aria-hidden', 'false');
     var first = body.querySelector('input,button,select,textarea,a'); if (first && window.matchMedia('(hover:hover)').matches) try { first.focus({ preventScroll: true }); } catch (e) { }
   }
-  function hideSheet() { current = null; careOn = false; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
+  function hideSheet() { var was = current; current = null; if (was === 'practiceDone' && practice && practice.endFn) { var fin = practice.endFn; setTimeout(function () { fin(false); }, 0); } /* closing "How was that?" any way ends the practice and puts her back (Jamie, 20 Oct) */ careOn = false; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
   function closeSheet() {
     if (current === 'diary') stopCamera();
     if (current === 'mind' && session) stopSession(true);
@@ -2480,6 +2480,7 @@
       if (confirmed && secs >= 30) { var r = MF.complete(p.a.id, p.vi, secs, true); afterSave(r.event, (r.first ? 'First ' + p.a.name.toLowerCase() + ' practice! ' : '') + 'Saved to your journal.'); }
       else toast('No worries. The practice is there whenever you are.', 'self_improvement');
     }
+    p.endFn = function (c) { if (practice === p) end(c); };
     $('#pdYes').addEventListener('click', function () { end(true); });
     $('#pdNo').addEventListener('click', function () { end(false); });
   }
