@@ -116,7 +116,7 @@ async def main():
             check("room.html loads", r and r.status == 200, r and r.status)
             info = await page.evaluate("()=>({consent: document.querySelector('#consent')?.hidden, welcome: !!document.querySelector('#welcome:not([hidden])'), hots: document.querySelectorAll('.hotspot').length, tabs: document.querySelectorAll('nav a[data-tab]').length, hearts: document.querySelector('#heartsVal')?.textContent, width: document.documentElement.scrollWidth})")
             check("consent overlay stays hidden for a consenting person", info["consent"] is True, info)
-            check("eight or more hotspots and the five tabs render", info["hots"] >= 8 and info["tabs"] == 5, info)
+            check("eight or more hotspots and the four tabs render (the calendar has its own way in, so no Cycle tab: Jamie, 21 Oct)", info["hots"] >= 8 and info["tabs"] == 4, info)
             check("no sideways scroll at phone width", info["width"] <= 390, info["width"])
 
             # 1b. garden, Dream Street and the plaza: the door walks her out, the joystick and keys move her, the mini-map jumps
@@ -443,7 +443,7 @@ async def main():
             # 2. the Cycle tab opens a sheet with the calendar
             await page.goto(BASE + "room.html#cycle", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] [data-date], #sheet[aria-hidden="false"] .rday', timeout=10000)
             cyc = await page.evaluate("()=>{var cells=document.querySelectorAll('#sheet [data-date], #sheet .rday'); return {sheet: document.querySelector('#sheet')?.getAttribute('aria-hidden') === 'false', title: document.querySelector('#sheetTitle')?.textContent.slice(0,13), days: cells.length, visible: (cells[0]?.getBoundingClientRect().height || 0) > 0};}")
-            check("Cycle tab opens the calendar sheet with visible days", cyc["sheet"] and cyc["title"] == "Your calendar" and cyc["days"] >= 28 and cyc["visible"], cyc)
+            check("room.html#cycle (old links and the Cycle hash) still opens the calendar sheet with visible days", cyc["sheet"] and cyc["title"] == "Your calendar" and cyc["days"] >= 28 and cyc["visible"], cyc)
             ib = await page.evaluate("()=>{var b=document.querySelector('#sheet .ibtn'); if(!b) return null; b.click(); var p=document.querySelector('#sheet .guide[data-guide-panel='+b.dataset.guide+']'); return {topic: b.dataset.guide, on: !!(p && p.classList.contains('on'))}}")
             check("an (i) button in the calendar sheet opens its guide panel, made on the spot if the sheet forgot it", ib is None or ib["on"], ib)
             await page.evaluate("()=>{var b=document.querySelector('#calTabs [data-tab=symptom]'); if(b) b.click();}"); await page.wait_for_timeout(400)
@@ -540,7 +540,7 @@ async def main():
             check("evidence page lists E49", r.status == 200 and ev)
             await page.goto(BASE + "hormones.html", wait_until="networkidle"); await page.wait_for_timeout(400)
             hd = await page.evaluate("()=>({brand: document.querySelector('.rh-brand')?.textContent, tabs: document.querySelectorAll('nav.nav a').length, fab: !!document.querySelector('.mapfab')})")
-            check("Learn page carries the Rhythme header and tabs, no old launcher", hd["brand"] == "RHYTHME" and hd["tabs"] == 5 and not hd["fab"], hd)
+            check("Learn page carries the Rhythme header and tabs, no old launcher", hd["brand"] == "RHYTHME" and hd["tabs"] == 4 and not hd["fab"], hd)
             dests = {}
             for old_page, want_tab in [("home.html", "home"), ("cycle-log.html", "cycle"), ("diet.html", "food"), ("breathwork.html", "mind")]:
                 await page.goto(BASE + old_page, wait_until="load")
@@ -549,8 +549,8 @@ async def main():
                 if want_tab != "home":
                     try: await page.wait_for_selector('#sheet[aria-hidden="false"]', timeout=10000)
                     except Exception: pass
-                dests[old_page] = await page.evaluate("()=>(location.pathname.endsWith('room.html') ? (document.querySelector('nav a.on')?.dataset.tab || 'home') : location.pathname)")
-            check("old screens redirect into the room and open the right tab", all(dests[k] == v for k, v in [("home.html", "home"), ("cycle-log.html", "cycle"), ("diet.html", "food"), ("breathwork.html", "mind")]), dests)
+                dests[old_page] = await page.evaluate("()=>(location.pathname.endsWith('room.html') ? (document.querySelector('#sheet[aria-hidden=false]') && /calendar/i.test(document.querySelector('#sheetTitle').textContent) ? 'calendar' : (document.querySelector('nav a.on')?.dataset.tab || 'home')) : location.pathname)")
+            check("old screens redirect into the room and open the right place (the old cycle pages open the calendar now that there is no Cycle tab)", all(dests[k] == v for k, v in [("home.html", "home"), ("cycle-log.html", "calendar"), ("diet.html", "food"), ("breathwork.html", "mind")]), dests)
 
             # 6b. health data: a tiny Apple Health export.xml and a Takeout Fit zip are read on the phone, every kind found is listed
             # with nothing ticked, only the ticked kinds come in, the journal marks them, and one kind (then all) can be removed
