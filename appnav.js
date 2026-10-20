@@ -21,7 +21,7 @@
         var nav=document.querySelector('nav.nav, nav.bottom-nav');
         if(nav && !nav.dataset.rhythme){
           nav.setAttribute('data-dream-skip',''); nav.dataset.rhythme='1'; nav.className='nav'; nav.setAttribute('aria-label','Main');
-          nav.innerHTML=[['room.html','home','Home'],['room.html#cycle','water_drop','Cycle'],['room.html#food','restaurant','Food'],['room.html#mind','self_improvement','Mind'],['room.html#you','person','You']].map(function(t,i){ return '<a href="'+t[0]+'"'+(i===0?' class="on" aria-current="true"':'')+'><span class="ms">'+t[1]+'</span>'+t[2]+'</a>'; }).join('');
+          nav.innerHTML=[['room.html','home','Home'],['room.html#food','restaurant','Food'],['room.html#mind','self_improvement','Mind'],['room.html#you','person','You']].map(function(t,i){ return '<a href="'+t[0]+'"'+(i===0?' class="on" aria-current="true"':'')+'><span class="ms">'+t[1]+'</span>'+t[2]+'</a>'; }).join('');
         }
         document.querySelectorAll('a.learning-back').forEach(function(a){ var h=a.getAttribute('href')||''; if(h==='home.html'||/Knowledge Hub/.test(a.textContent)){ a.setAttribute('href','room.html#learn'); a.textContent='← Back to your desk'; } });
       } catch(e){}
