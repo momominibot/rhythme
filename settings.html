@@ -1,4 +1,4 @@
-<!doctype html><html lang="en" data-persona="bloom"><head>
+<!doctype html><html lang="en" data-persona="grow"><head>
 <meta charset="utf-8"/>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
@@ -68,12 +68,6 @@
       <div style="font-weight:700;font-size:13px;color:var(--ovuluna-text-primary);margin-bottom:10px">Life Stage Persona</div>
       <div class="sub" style="font-size:12px;margin-bottom:12px">Choose a life-stage appearance. This preference does not measure your cycle or change a clinical assessment.</div>
       <div class="persona-picker" id="personaPicker">
-        <button type="button" class="persona-opt" aria-pressed="false" data-persona="bloom">
-          <span class="p-check ms">check</span>
-          <span class="p-emoji">🌸</span>
-          <span class="p-name">Bloom</span>
-          <span class="p-age">First cycles</span>
-        </button>
         <button type="button" class="persona-opt" aria-pressed="false" data-persona="grow">
           <span class="p-check ms">check</span>
           <span class="p-emoji">🌱</span>
@@ -85,6 +79,12 @@
           <span class="p-emoji">🌿</span>
           <span class="p-name">Nurture</span>
           <span class="p-age">Post-pregnancy</span>
+        </button>
+        <button type="button" class="persona-opt" aria-pressed="false" data-persona="peri">
+          <span class="p-check ms">check</span>
+          <span class="p-emoji">🍂</span>
+          <span class="p-name">Seasons</span>
+          <span class="p-age">Perimenopause</span>
         </button>
         <button type="button" class="persona-opt" aria-pressed="false" data-persona="wisdom">
           <span class="p-check ms">check</span>
@@ -133,8 +133,8 @@
   var picker = document.getElementById('personaPicker');
   var status = document.getElementById('settings-preference-status');
   if (!picker) return;
-  var allowed = ['bloom', 'grow', 'nurture', 'wisdom'];
-  var saved = 'bloom';
+  var allowed = ['grow', 'nurture', 'peri', 'wisdom'];
+  var saved = 'grow';
   try { var stored = localStorage.getItem('ovuluna_persona'); if (allowed.includes(stored)) saved = stored; }
   catch (_) { status.textContent = 'Local storage is unavailable. Appearance changes will apply to this page only.'; }
   function display(persona) {
