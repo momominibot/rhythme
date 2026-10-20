@@ -127,6 +127,7 @@
   function begin(version, quiet) {
     var room = R(); if (room.asleep() || run) return;
     if ((room.sessionOn && room.sessionOn()) || (room.practiceOn && room.practiceOn())) { room.toast('Finish or stop the practice that is running first.', 'self_improvement'); return; }
+    if (root.OvuGreenhouse && root.OvuGreenhouse.caring && root.OvuGreenhouse.caring()) { room.toast('Finish the minute with the plant first.', 'potted_plant'); return; } /* the greenhouse minute owns the HUD and saves its own entry */
     if (root.OvuPodcast) { try { root.OvuPodcast.pause(); } catch (e) { } }
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */

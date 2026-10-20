@@ -36,6 +36,7 @@
     plant: { pose: 'tend', lines: ['Press the soil gently. Nothing else is needed.', 'A little seed is enough. Let it grow at its own pace.'] },
     weed: { pose: 'tend', lines: ['One small patch can be enough today.'] },
     farmwater: { pose: 'plants', lines: ['Watch one drop settle into the soil.', 'Notice the soil darken as it drinks.'] },
+    plantcare: { pose: 'plants', lines: ['One minute with one plant is enough.', 'Notice how it looks now, cared for.'] },
     harvest: { pose: 'harvest', lines: ['Notice what grew in its own time.', 'Feel the weight of what you picked. Enjoy it.'] },
     shop: { pose: 'shop', lines: ['Enjoy it. Nothing more needs buying.', 'Notice what made you smile about it.'] },
     adopt: { pose: 'pets', lines: ['Welcome home, little one. Notice how she looks at you.'] },
@@ -67,7 +68,7 @@
     if (!ev) return null;
     var d = ev.data || {};
     if (ev.type === 'period') return post ? 'bleed_post' : 'period';
-    if (ev.type === 'mindfulness') return d.kind === 'breathtap' ? 'moontap' : d.kind === 'lightflower' ? 'lightflower' : d.kind === 'informal' ? (d.activity === 'morning' ? 'morning' : 'practice') : 'session';
+    if (ev.type === 'mindfulness') return d.kind === 'breathtap' ? 'moontap' : d.kind === 'lightflower' ? 'lightflower' : d.kind === 'informal' ? (d.activity === 'morning' ? 'morning' : d.practice === 'greenhouse' ? 'plantcare' : 'practice') : 'session';
     return { symptom: 'symptom', sleep: 'sleep', food: 'food', exercise: 'exercise', reflection: 'reflection', weight: 'weight' }[ev.type] || null;
   }
   root.OvuMoments = { MOMENTS: MOMENTS, NEW_POSES: NEW_POSES, line: line, pose: pose, forEntry: forEntry };

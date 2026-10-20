@@ -102,7 +102,7 @@ button{font-family:inherit;color:inherit}
 .hotspot:hover .glow{opacity:1}
 
 /* Avatar */
-.avatar{position:absolute;left:50.1%;top:79%;width:11.1%;transform:translate(-50%,-100%);z-index:9;cursor:pointer;transition:left .9s cubic-bezier(.45,.05,.3,1),top .9s cubic-bezier(.45,.05,.3,1),opacity .6s;background:none;border:none;padding:0;filter:drop-shadow(0 10px 8px rgba(70,40,100,.28))}
+.avatar{position:absolute;left:50.1%;top:79%;width:11.1%;transform:translate(-50%,-100%);z-index:9;cursor:pointer;transition:left .9s cubic-bezier(.45,.05,.3,1),top .9s cubic-bezier(.45,.05,.3,1),opacity .6s;background:none;border:none;padding:0;filter:drop-shadow(0 1px 2px rgba(70,40,100,.2))}
 .avatar img{width:100%;height:auto;display:block;transform-origin:50% 100%;transition:transform .25s}
 .avatar.flip img{transform:scaleX(-1)}
 .avatar.walking img{animation:hop .36s ease-in-out infinite}
@@ -432,7 +432,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .luna:active{transform:scale(.92)}
 @keyframes lunafloat{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-8px) rotate(4deg)}}
 @media(min-width:520px){.luna{bottom:92px}}
-.prop.owned{position:absolute;transform:translate(-50%,-100%);z-index:7;pointer-events:none;filter:drop-shadow(0 6px 6px rgba(70,40,100,.22));animation:propin .6s ease-out}
+.prop.owned{position:absolute;transform:translate(-50%,-98.5%);z-index:7;pointer-events:none;filter:drop-shadow(0 1px 1.5px rgba(60,30,80,.22));animation:propin .6s ease-out}
 .prop.owned .petbody{display:block;position:relative}
 .prop.owned.pet .petbody{animation:petbob 3.4s ease-in-out infinite;transform-origin:50% 100%}
 .prop.owned .worn{position:absolute;transform:translate(-50%,-50%);width:46%;pointer-events:none;filter:drop-shadow(0 2px 2px rgba(70,40,100,.25))}
@@ -1119,6 +1119,18 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .teabody .evrefs,.teacare .evrefs{display:flex;flex-wrap:wrap;gap:5px}
 .teabody .evrefs a,.teacare .evrefs a{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid rgba(150,120,190,.22);border-radius:999px;padding:3px 4px 3px 9px;font:700 11px/1.2 var(--sans);color:var(--rm-plum);text-decoration:none}
 .teabody .evrefs a i,.teacare .evrefs a i{font-style:normal;font:800 9.5px var(--sans);background:var(--rm-lilac-2,#e7dcf5);color:var(--rm-mauve);border-radius:999px;padding:3px 6px}
+/* greenhouse plants (ovu-greenhouse.js): tappable pots on the bench, table and shelf, and the pet-safety note on a houseplant card */
+.ghplant.tappable{pointer-events:auto;cursor:pointer}
+.ghplant.tappable:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
+.ghplant img{transition:transform .2s;transform-origin:50% 100%}
+.ghplant.tappable:hover img,.ghplant.tappable:active img{transform:scale(1.06)}
+.petsafe{margin-top:10px;border-radius:14px;padding:10px 12px;background:#eef7f0;border:1px solid #cfe6d5}
+.petsafe.warn{background:#fdf0f4;border-color:#f3d3df}
+.petsafe>b{display:flex;align-items:center;gap:6px;font:800 12.5px var(--sans);color:#2f6b45;margin-bottom:4px}
+.petsafe.warn>b{color:#8a3b56}
+.petsafe>b .ms{font-size:17px}
+.petsafe p{font:600 12px/1.45 var(--sans);color:var(--rm-ink-2);margin:6px 0 0}
+.petsafe a{color:inherit;text-decoration:underline}
 .teacare{margin-top:10px;background:#fdf0f4;border:1px solid #f3d3df;border-radius:14px;padding:10px 12px}
 .teacare>b{display:flex;align-items:center;gap:6px;font:800 12.5px var(--sans);color:#8a3b56;margin-bottom:4px}
 .teacare>b .ms{font-size:17px}
@@ -1301,7 +1313,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .scene.fading .scenefade{opacity:1;pointer-events:auto}
 .scene.arranging .prop.owned.lift{z-index:12!important}
 /* neighbours, the garden plot and little effects, all percent-positioned inside #ownedProps */
-.nb{position:absolute;transform:translate(-50%,-100%);pointer-events:none;filter:drop-shadow(0 6px 6px rgba(70,40,100,.22))}
+.nb{position:absolute;transform:translate(-50%,-98.5%);pointer-events:none;filter:drop-shadow(0 1px 1.5px rgba(60,30,80,.22))}
 /* seated on a bench (ovu-garden.js seatPlace): feet on the ground line, lap on the seat, width from the seat height, facing the bench's way */
 .nb.sitter{transform:translate(-50%,-100%)}
 .nb.sitter.faceright img.seated{transform:scaleX(-1)}
@@ -1740,3 +1752,29 @@ span.frchip{cursor:default}
 .mp-btns .btn.ghost{background:var(--rm-lilac-2);color:var(--rm-plum)}
 .mp-btns .btn:focus-visible,.minvite .btn:focus-visible{outline:3px solid var(--rm-mauve);outline-offset:2px}
 
+/* ---------- grounding: nothing floats (Jamie, 20 Oct: "I cannot accept floating objects") ----------
+ * The old drop shadows sat 6 to 10 px below each object, which reads as hovering. Games ground a sprite with a soft
+ * contact shadow at its true base, sized to its footprint, with the pivot at that base: so every placed object (her,
+ * room furniture and pets, shop stock, greenhouse plants, neighbours) gets a dark ellipse right where it meets the
+ * surface, a hair of overlap into it, and only a tight 1 px edge shadow. --cs is the footprint as a share of the width. */
+.nb,.prop.owned,.avatar{isolation:isolate}
+.nb::before,.prop.owned::before,.avatar::before{content:'';position:absolute;left:50%;bottom:0;width:calc(var(--cs,.7) * 100%);aspect-ratio:4/1;transform:translate(-50%,48%);border-radius:50%;
+  background:radial-gradient(closest-side,rgba(52,26,72,.46),rgba(52,26,72,.2) 58%,rgba(52,26,72,0));z-index:-1;pointer-events:none;opacity:var(--co,1)}
+.avatar::before{--cs:.62}
+.avatar.hidden::before,.avatar.walking.cycling::before{opacity:.85}
+/* footprints: narrow bases get small shadows, flat or wide pieces get wide thin ones */
+[data-id=lamp],[data-item=lamp]{--cs:.36}
+[data-id=mushlamp],[data-item=mushlamp]{--cs:.44}
+[data-id=starlamp],[data-item=starlamp]{--cs:.32}
+[data-id=plant],[data-item=plant]{--cs:.52}
+[data-id=bookshelf],[data-item=bookshelf]{--cs:.92}
+[data-id=beanbag],[data-item=beanbag],[data-id=armchair],[data-item=armchair]{--cs:.86}
+[data-id=scale],[data-item=scale]{--cs:.98;--co:.8}
+.shopprop.kind-pet,.prop.owned.pet{--cs:.6}
+.shopprop.kind-treat,.shopprop.kind-accessory{--cs:.82;--co:.85}
+.shopprop.kind-home{--cs:.84;--co:.7}
+.ghplant{--cs:.62}
+.nb.nbperson,.nb.sitter{--cs:.6}
+/* lifted in arrange mode: the shadow stays on the floor, smaller and fainter */
+.prop.owned.lift::before{opacity:.35;width:calc(var(--cs,.7) * 80%)}
+@media (prefers-reduced-motion:reduce){.nb::before,.prop.owned::before,.avatar::before{transition:none}}

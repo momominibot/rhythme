@@ -13,7 +13,9 @@
     var parts = String(h.label || '').split(' · ');
     var v = parts[1] ? parts[1].trim() : parts[0].trim();
     v = v.replace(/^(open|tap|see)\s+/i, '');
-    return 'Tap to ' + v.charAt(0).toLowerCase() + v.slice(1);
+    v = v.charAt(0).toLowerCase() + v.slice(1);
+    if (/^back\b/.test(v)) v = 'go ' + v; /* "back to the street" reads as "Tap to go back to the street" */
+    return 'Tap to ' + v;
   }
   /* the nearest hotspot of a layout to a point, by its stand point when it has one; null when none is within reach */
   function nearest(pos, hotspots, near) {

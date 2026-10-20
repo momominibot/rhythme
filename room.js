@@ -33,7 +33,7 @@
       meditator: { x: 28, y: 77, w: 11.5 }, aura: { x: 28, y: 75, w: 18 }, holo: { x: 39, y: 75, w: 15 },
       window: { x: 37.3, y: 31.5, rx: 7, ry: 9.6 },
       winPatch: { x: 14.470, y: 11.522, w: 44.701, base: 'room-v3-sky2-room-' },
-      props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 78, y: 77, w: 9 }, bookshelf: { x: 87, y: 66, w: 10 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 40, y: 73.5, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } }
+      props: { cat: { x: 50, y: 88, w: 9 }, dog: { x: 12, y: 74, w: 9.5 }, plant: { x: 20, y: 71.5, w: 8.5 }, bookshelf: { x: 87, y: 66, w: 10 }, lamp: { x: 84, y: 76, w: 7 }, mushlamp: { x: 84, y: 76, w: 7.5 }, starlamp: { x: 84, y: 76, w: 6.2 }, beanbag: { x: 54.5, y: 69.5, w: 10 }, armchair: { x: 54.5, y: 70, w: 11 }, scale: { x: 49, y: 79, w: 7 }, mewmew: { x: 62, y: 88, w: 12 } } /* plant: on the floor beside the nightstand, not on the coffee table's edge; scale: open floor, not against the bed (Jamie, 20 Oct: nothing floats) */
     },
     house: {
       id: 'house', name: 'Your dream house', img: 'house-v1.webp', w: 1024, h: 1280, avatarW: 8, cam: { z: 1.5 }, /* drawn at a smaller scale: zoomed 1.5x she is her usual size (Jamie, 19 Oct); fit shows the whole house */
@@ -54,7 +54,7 @@
       sleeper: { x: 34, y: 44, w: 20, rot: 14 }, zzz: { x: 36, y: 30 },
       meditator: { x: 49, y: 82, w: 8 }, aura: { x: 49, y: 80, w: 13 }, holo: { x: 62, y: 80, w: 10 },
       window: { x: 48, y: 27, rx: 6.8, ry: 5.4 },
-      props: { cat: { x: 27, y: 80, w: 7 }, dog: { x: 53, y: 51, w: 7 }, plant: { x: 76, y: 80, w: 7 }, bookshelf: { x: 76, y: 80, w: 7 }, lamp: { x: 76, y: 50, w: 5.5 }, mushlamp: { x: 76, y: 50, w: 5.8 }, starlamp: { x: 76, y: 50, w: 4.8 }, beanbag: { x: 18, y: 82, w: 7.5 }, armchair: { x: 18, y: 82, w: 8 }, scale: { x: 64, y: 51, w: 5.5 }, mewmew: { x: 62, y: 86, w: 8.5 } }
+      props: { cat: { x: 36.5, y: 81.8, w: 7 }, dog: { x: 53, y: 51, w: 7 }, plant: { x: 76, y: 80, w: 7 }, bookshelf: { x: 76, y: 80, w: 7 }, lamp: { x: 76, y: 50, w: 5.5 }, mushlamp: { x: 76, y: 50, w: 5.8 }, starlamp: { x: 76, y: 50, w: 4.8 }, beanbag: { x: 24.5, y: 80.4, w: 7.5 }, armchair: { x: 24.5, y: 80.4, w: 8 } /* on the floor in front of the sofa, not on the hedge */, scale: { x: 64, y: 51, w: 5.5 }, mewmew: { x: 62, y: 86, w: 8.5 } }
     },
     /* rendered 18 Oct 2026 (Seedream 5.0 pro, seed 7201): bedroom and bubble bath upstairs, sofa, study and wardrobe below */
     bathhouse: {
@@ -1947,6 +1947,7 @@
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (window.OvuPodcast) OvuPodcast.pause();
     session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: kind === 'erin' ? new Audio() : null, timer: null };
+    emit('activity', 'session', kind); /* anything else using the HUD (a greenhouse minute) hands it over before this claims it */
     hideSheet(); holo.classList.toggle('on', kind === 'erin'); hud.classList.add('on'); $('#hudTitle').textContent = kind === 'erin' ? 'With Erin' : 'Just breathe';
     var total = minutes * 60000, cycleMs = kind === 'erin' ? 8500 : 10000, hour = new Date().getHours(); /* in and a longer out, no hold */
     var today = S.today(), cramps = S.list('symptom', { from: today, to: today }).some(function (e) { return (e.data.symptoms || []).indexOf('cramps') > -1; }) || S.list('period', { from: today, to: today }).length > 0;
@@ -2446,6 +2447,7 @@
      * (four-persona review, 20 Oct, all four Codex walkthroughs) */
     endMoment();
     if (meditating && !session) { meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); avatar.classList.remove('hidden'); }
+    emit('activity', 'practice', id); /* as for a session: the HUD is handed over first */
     hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting');
     var chain = Promise.resolve();
     v.steps.forEach(function (s, si) {
@@ -2811,8 +2813,8 @@
     sheetOpen: function () { return !!current; }, cancelIdle: function () { clearTimeout(idleTimer); },
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
-    openSheet: openSheet, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
-    moment: moment, endMoment: endMoment, restorePose: restorePose, practiceOn: function () { return !!practice; }, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; },
+    openSheet: openSheet, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
+    moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
   };
