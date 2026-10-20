@@ -146,6 +146,7 @@
     if (!gone.length) return 0;
     db.events = db.events.filter(function (e) { return !pred(e); });
     save('remove:bulk');
+    gone.forEach(function (e) { if (e.type === 'food' || e.type === 'sleep') mirrorLegacy(e, true); }); /* the meal and sleep copies go with them */
     if (gone.some(function (e) { return e.type === 'period'; })) mirrorLegacy({ type: 'period' });
     return before - db.events.length;
   }
@@ -384,9 +385,9 @@
     try {
       if (ev.type === 'food') {
         var j = JSON.parse(localStorage.getItem('ovumind_food_journal') || '{}');
+        Object.keys(j).forEach(function (d) { var r = j[d]; if (!r || typeof r !== 'object') return; ['breakfast', 'lunch', 'dinner', 'snack'].forEach(function (m) { if (Array.isArray(r[m])) r[m] = r[m].filter(function (it) { return !it || it.ovuId !== ev.id; }); }); }); /* every date: a meal moved to another day leaves no copy behind */
         var dayRec = j[ev.date] || (j[ev.date] = { breakfast: [], lunch: [], dinner: [], snack: [] });
         var meal = ['breakfast', 'lunch', 'dinner', 'snack'].indexOf(ev.data.meal) > -1 ? ev.data.meal : 'snack';
-        ['breakfast', 'lunch', 'dinner', 'snack'].forEach(function (m) { dayRec[m] = (dayRec[m] || []).filter(function (it) { return it.ovuId !== ev.id; }); });
         if (!removed) dayRec[meal].push({ ovuId: ev.id, emoji: ({ breakfast: '🥣', lunch: '🥗', dinner: '🍲', snack: '🍓' })[meal], name: ev.data.foods || 'Meal', tags: (ev.data.tags || []).join(' · ') || 'Logged in your room' });
         localStorage.setItem('ovumind_food_journal', JSON.stringify(j));
       }
@@ -403,6 +404,7 @@
       if (ev.type === 'period') {
         var cs = cycleStats();
         if (cs.lastStart) localStorage.setItem('ovumind_cycle', JSON.stringify({ lastPeriod: cs.lastStart, currentPhase: cs.phase, cycleLength: cs.averageLength, periodLength: cs.periodLength, estimate: true, source: 'ovumind_db_v1' }));
+        else localStorage.removeItem('ovumind_cycle'); /* the last period deleted: no copy of it stays behind */
       }
     } catch (e) { /* legacy mirrors are best effort */ }
   }
@@ -421,7 +423,28 @@
     save('import');
     return load().events.length;
   }
-  function clearAll() { cache = empty(); save('clear'); ['ovumind_cycle'].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) { } }); }
+  /* Delete everything on this phone: the diary and every older copy of it, by an explicit list of Rhythme's own keys
+   * (the momominibot.github.io origin is shared with other projects, so nothing is matched by prefix). The meal, sleep
+   * and cycle copies, the earlier Ovuluna pages' logs, scores and choices, and Erin's podcast listening all go (launch
+   * sweep, 20 Oct 2026: they used to stay). Kept, and named on the Delete screen: the sign-in, the backup bookkeeping
+   * and Rhythme Plus access, which are not diary data; the privacy page can remove them one by one. */
+  var OWN_KEYS = ['ovumind_food_journal', 'ovumind_cycle', 'ovumind_ai_v1', 'ovumind_reminders_v1', 'ovumind_nova_words', 'ovumind_room', 'ovumind_room_skipped', 'ovumind_device_v1', 'ovumind_desk_v1',
+    'rhythme_podcast_v1', 'rhythme_voice_muted',
+    'ovuluna_observations_v1', 'ovuluna_lab_records_v1', 'ovuluna_wellness_journal_v1', 'ovuluna_daily_checkins_v1', 'ovuluna_daily_context_v1', 'ovuluna_daily_routine_v1', 'ovuluna_daily_completions_v1',
+    'ovuluna_ovarian_assessments_v2', 'ovuluna_phenoage_records_v1', 'ovuluna_profile', 'ovuluna_label_scans', 'ovuluna_medas14', 'ovuluna_pss10', 'ovuluna_sleep_logs', 'ovuluna_cycle', 'ovuluna_cycles',
+    'ovuluna_footsoak_reminder', 'ovuluna_luna', 'ovuluna_luna_seen', 'ovuluna_ovarian_age', 'ovuluna_labs', 'ovuluna_wellness_data', 'ovuluna_cycle_data', 'ovuluna_onboarding', 'ovuluna_language', 'ovuluna_units',
+    'ovuluna_auth', 'ovuluna_preferences_v1', 'ovuluna_persona', 'ovuluna_theme', 'ovuluna_fontsize', 'ovuluna_font_size', 'ovuluna_hormone_view',
+    'ov_hydro', 'ov_acupoint_routine', 'ov_result', 'ov_mascot_hide'];
+  var KEEP_ON_CLEAR = ['ovumind_auth_v1', 'ovumind_sync_v1', 'rhythme_plus_v1', 'rhythme_plus_v1_pending'];
+  var DAILY_LOG = /^ovuluna_daily_log_\d{4}-\d{2}-\d{2}$/;
+  function clearAll() {
+    try { if (root.OvuPodcast && root.OvuPodcast.forget) root.OvuPodcast.forget(); } catch (e) { } /* its page-close save would write the listening back */
+    cache = empty(); save('clear');
+    try {
+      var keys = []; for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+      keys.forEach(function (k) { if (k && (OWN_KEYS.indexOf(k) > -1 || DAILY_LOG.test(k))) { try { localStorage.removeItem(k); } catch (e) { } } });
+    } catch (e) { }
+  }
 
   /* ---------- crypto share ---------- */
   function b64(buf) { var s = ''; new Uint8Array(buf).forEach(function (b) { s += String.fromCharCode(b); }); return btoa(s); }
@@ -447,10 +470,14 @@
       return crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(unb64(bundle.iv)) }, key, unb64(bundle.ct));
     }).then(function (pt) { return JSON.parse(new TextDecoder().decode(pt)); }, function () { throw new Error('Could not decrypt. Check the passphrase.'); });
   }
+  /* 28 characters from 32 easy-to-read letters and digits (no 0, O, 1 or I), in seven groups: 140 random bits, so a
+   * shared file cannot be opened by guessing (the four-word version had about 24 bits; Codex launch review, 20 Oct).
+   * 32 divides 256, so taking each random byte modulo 32 is unbiased. */
+  var PASS_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   function generatePassphrase() {
-    var words = ['moon', 'lilac', 'cloud', 'star', 'rose', 'dawn', 'fern', 'pearl', 'honey', 'river', 'petal', 'willow', 'amber', 'dove', 'maple', 'coral', 'sage', 'violet', 'cocoa', 'snow'];
-    var arr = crypto.getRandomValues(new Uint32Array(4));
-    return Array.prototype.map.call(arr, function (n) { return words[n % words.length]; }).join('-') + '-' + (crypto.getRandomValues(new Uint32Array(1))[0] % 90 + 10);
+    var bytes = crypto.getRandomValues(new Uint8Array(28)), out = '';
+    for (var i = 0; i < 28; i++) { out += PASS_ALPHABET[bytes[i] & 31]; if (i % 4 === 3 && i < 27) out += '-'; }
+    return out;
   }
   function toCode(bundle) { return btoa(JSON.stringify(bundle)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
   function fromCode(code) { var s = code.trim().replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return JSON.parse(atob(s)); }
@@ -476,7 +503,7 @@
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
     sleepHours: sleepHours, sleepStats: sleepStats, periodEpisodes: periodEpisodes, cycleStats: cycleStats, rhythmFromRecall: rhythmFromRecall,
     exportJSON: exportJSON, importJSON: importJSON, clearAll: clearAll,
-    crypto: { encrypt: encrypt, decrypt: decrypt, generatePassphrase: generatePassphrase, toCode: toCode, fromCode: fromCode }
+    OWN_KEYS: OWN_KEYS, KEEP_ON_CLEAR: KEEP_ON_CLEAR, crypto: { PASS_ALPHABET: PASS_ALPHABET, encrypt: encrypt, decrypt: decrypt, generatePassphrase: generatePassphrase, toCode: toCode, fromCode: fromCode }
   };
 })(window);
 

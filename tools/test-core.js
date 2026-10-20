@@ -943,6 +943,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
 
   /* readings written from the old numbers: four-week ones (they go to clinicians) are withheld, daily ones ask to be
    * updated; nothing calls the relay by itself */
+  w.OVU_CONFIG = Object.assign({}, w.OVU_CONFIG, { aiPaused: false }); /* these exercise the AI choices; the launch pause has its own checks */
   ['ovu-consent.js', 'ovu-auth.js', 'ovu-insight.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
   var I = w.OvuInsight, es = S.list(null, { from: '2026-09-22', to: '2026-10-19' });
   var oldSig = es.length + ':' + es.map(function (e) { return (e.updatedAt || e.createdAt || '').slice(0, 19); }).sort().slice(-1)[0];
@@ -1649,6 +1650,62 @@ function scenes(todayIso) {
   var sold = SH.placements('shop-pet', RW.SHOP, { owned: ['cat', 'acc-bow', 'treat-fish'] }, w.LAYOUTS.room.props);
   check('bought pets and accessories leave the shelf; treats restock; shelf widths follow the room props', !sold.some(function (p) { return p.item.id === 'cat' || p.item.id === 'acc-bow'; }) && sold.some(function (p) { return p.item.id === 'treat-fish'; }) && sold.filter(function (p) { return p.item.id === 'dog'; })[0].w === w.LAYOUTS.room.props.dog.w * 1.02, JSON.stringify(sold.map(function (p) { return p.item.id + ':' + p.w; })));
 })();
+(function launchDeleteSweep() {
+  console.log('launch sweep (20 Oct): Delete everything leaves no older copy behind; a cloud deletion empties the entry on the server');
+  var w = fresh('2026-10-20'), S = w.OvuStore, L = w.localStorage;
+  S.add('food', '2026-10-20', { meal: 'lunch', foods: 'laksa', items: [] });
+  S.add('sleep', '2026-10-20', { bedTime: '23:00', wakeTime: '07:00', quality: 4 });
+  S.add('period', '2026-10-18', { flow: 'medium' });
+  ['ovuluna_daily_log_2026-10-01', 'ovuluna_medas14', 'ovuluna_ovarian_age', 'ov_hydro', 'ovumind_room', 'rhythme_podcast_v1'].forEach(function (k) { L.setItem(k, '{"x":1}'); });
+  L.setItem('ovumind_auth_v1', '{"s":1}'); L.setItem('ovumind_sync_v1', '{"v":1}'); L.setItem('rhythme_plus_v1', '{"t":1}'); L.setItem('other_site_key', 'keep'); L.setItem('ov_unrelated_site', 'keep');
+  var mine = function () { return Object.keys(L._m).filter(function (k) { return /^(ovumind_|ovuluna_|ov_|rhythme_)/.test(k); }).sort(); }, before = mine();
+  S.clearAll();
+  var left = mine();
+  check('Delete everything removes the diary and every older copy by an explicit list (meal and sleep mirrors, cycle mirror, earlier pages\' logs and scores, podcast listening), keeping the sign-in, backup bookkeeping and Plus access, and never another project\'s key on the shared origin', before.indexOf('ovumind_food_journal') > -1 && before.indexOf('ovuluna_sleep_logs') > -1 && left.join() === 'ov_unrelated_site,ovumind_auth_v1,ovumind_db_v1,ovumind_sync_v1,rhythme_plus_v1' && S.list(null).length === 0 && L.getItem('other_site_key') === 'keep', JSON.stringify({ before: before, left: left }));
+  var w3 = fresh('2026-10-20'), S3 = w3.OvuStore, L3 = w3.localStorage;
+  var pe = S3.add('period', '2026-10-18', { flow: 'medium' }); var hadCycle = !!L3.getItem('ovumind_cycle'); S3.remove(pe.id);
+  S3.add('food', '2026-10-20', { meal: 'lunch', foods: 'laksa', items: [] }); S3.add('sleep', '2026-10-20', { bedTime: '23:00', wakeTime: '07:00', quality: 4 });
+  S3.removeWhere(function (e) { return e.type === 'food' || e.type === 'sleep'; });
+  var fj = JSON.parse(L3.getItem('ovumind_food_journal') || '{}'), meals = Object.keys(fj).reduce(function (n, d) { return n + ['breakfast', 'lunch', 'dinner', 'snack'].reduce(function (m, k) { return m + ((fj[d][k] || []).length); }, 0); }, 0), sl = JSON.parse(L3.getItem('ovuluna_sleep_logs') || '[]');
+  check('deleting the last period removes its cycle copy; deleting meals and nights together removes their older copies too', hadCycle && !L3.getItem('ovumind_cycle') && meals === 0 && sl.length === 0, JSON.stringify({ hadCycle: hadCycle, cycle: L3.getItem('ovumind_cycle'), meals: meals, sleep: sl.length }));
+  var w4 = fresh('2026-10-20'), S4 = w4.OvuStore, L4 = w4.localStorage, fe = S4.add('food', '2026-10-20', { meal: 'lunch', foods: 'laksa', items: [] });
+  S4.update(fe.id, { date: '2026-10-18' }); S4.remove(fe.id);
+  var fj4 = JSON.parse(L4.getItem('ovumind_food_journal') || '{}'), left4 = JSON.stringify(fj4).indexOf(fe.id) > -1;
+  var plSrc = fs.readFileSync(path.join(root, 'privacy-local.js'), 'utf8'), plRe = /\['((?:ov|rhythme)[a-z_0-9]*)', ['"]/g, plM, plKeys = []; while ((plM = plRe.exec(plSrc))) plKeys.push(plM[1]); var own = S4.OWN_KEYS.concat(S4.KEEP_ON_CLEAR, ['ovumind_db_v1', 'ovumind_sync_v1']);
+  var missing = plKeys.filter(function (k) { return own.indexOf(k) < 0; });
+  check('a meal moved to another date and then deleted leaves no copy on either date; every store the privacy page lists is one Delete everything knows, and the sign-in is never listed for export', !left4 && missing.length === 0 && plKeys.indexOf('ovumind_auth_v1') < 0, JSON.stringify({ left4: left4, missing: missing }));
+  var srv = syncServer(); srv.rows.push(syncRow('del1', 'reflection', '2026-10-19T09:00:00.000000+00:00', { text: 'a private note', mood: 'low' }));
+  var w2 = syncWorld(srv, null, null), S2 = w2.OvuStore, Y2 = w2.OvuSync, patches = [], f0 = w2.fetch;
+  w2.fetch = function (url, opt) { if (opt && opt.method === 'PATCH') patches.push(JSON.parse(opt.body)); return f0(url, opt); };
+  Y2.init(); /* listens for single-entry deletes, as the app does at start */
+  Y2.syncNow().then(function () { S2.remove('del1'); return Y2.syncNow(); }).then(function () {
+    check('a deletion sent to the cloud copy marks it deleted and empties its data, so nothing readable is left on the server', patches.length >= 1 && patches.every(function (p) { return p.deleted === true && JSON.stringify(p.data) === '{}'; }), JSON.stringify(patches));
+  }).catch(function (e) { check('a deletion sent to the cloud copy marks it deleted and empties its data', false, String(e && e.stack || e)); });
+})();
+(function launchAiGuards() {
+  console.log('launch sweep (20 Oct): Luna\'s AI help is paused, and a signed-in request never goes out without the account');
+  var w = fresh('2026-10-20'), O = w.OvuOrb, sent = [];
+  w.localStorage.setItem('ovumind_ai_v1', JSON.stringify({ on: true, provider: 'ovumind', insights: true, photos: true }));
+  w.fetch = function (u) { sent.push(String(u)); return Promise.resolve({ ok: true, status: 200, json: function () { return Promise.resolve({ entries: [], reply: 'ok' }); } }); };
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-insight.js'), 'utf8'), w, { filename: 'ovu-insight.js' });
+  var I = w.OvuInsight;
+  w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve(null); }, userId: function () { return 'u1'; } };
+  w.OVU_CONFIG = { aiPaused: false };
+  var r1 = O.parseAI('slept badly').then(function () { return 'sent'; }, function (e) { return e.message; });
+  var r2 = I.daily ? I.daily('2026-10-20', true).then(function () { return 'sent'; }, function (e) { return e.message; }) : Promise.resolve('no daily');
+  Promise.all([r1, r2]).then(function (rs) {
+    check('signed in with a token that cannot be refreshed: the note and the reading stop with "sign in again" and nothing is sent without the account', /sign in again/i.test(rs[0]) && (/sign in again/i.test(rs[1]) || rs[1] === 'no daily') && sent.length === 0, JSON.stringify({ rs: rs, sent: sent }));
+    w.OVU_CONFIG = { aiPaused: true }; w.OvuAuth = null;
+    return O.parseAI('slept badly').then(function () { return 'sent'; }, function (e) { return e.message; }).then(function (m) {
+      check('with the launch setting (aiPaused) a note is not sent to the AI service, even when the AI choice was on before', /paused/.test(m) && sent.length === 0, JSON.stringify({ m: m, sent: sent }));
+    });
+  }).catch(function (e) { check('launch AI guards', false, String(e && e.stack || e)); });
+})();
+(function launchPassphrase() {
+  var w = fresh(), C = w.OvuStore.crypto, a = C.PASS_ALPHABET, seen = {}, ok = true;
+  for (var i = 0; i < 200; i++) { var p = C.generatePassphrase(); seen[p] = 1; if (!/^([A-Z2-9]{4}-){6}[A-Z2-9]{4}$/.test(p) || /[IO01]/.test(p)) ok = false; }
+  check('a share passphrase is 28 characters from 32 distinct easy letters and digits (140 random bits), never repeating in 200 draws', a.length === 32 && new Set(a.split('')).size === 32 && ok && Object.keys(seen).length === 200, a);
+})();
 (function plotGrowth() {
   console.log('the plot grows a stage per credited day and never shrinks');
   var w = scenes('2026-10-18'), S = w.OvuStore, G = w.OvuGarden;
@@ -2234,6 +2291,7 @@ function scenes(todayIso) {
 (function consentRecordAndAgeGate() {
   console.log('consent record and the 18+ gate (ovu-consent.js): events, mirrors, import, receipts, headers, binding');
   var w = fresh();
+  w.OVU_CONFIG = Object.assign({}, w.OVU_CONFIG, { aiPaused: false }); /* these exercise the AI choices; the launch pause has its own checks */
   ['ovu-consent.js', 'ovu-auth.js', 'ovu-insight.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
   w.crypto = { getRandomValues: w.crypto.getRandomValues.bind(w.crypto), subtle: { digest: function (alg, data) { var h = require('crypto').createHash('sha256').update(Buffer.from(data)).digest(); return Promise.resolve(h.buffer.slice(h.byteOffset, h.byteOffset + h.byteLength)); } } };
   var C = w.OvuConsent, S = w.OvuStore, O = w.OvuOrb, SY = w.OvuSync, A = w.OvuAuth;

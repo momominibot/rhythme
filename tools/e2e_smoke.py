@@ -79,6 +79,14 @@ async def main():
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
+            # Luna's AI help ships paused (ovu-config.js aiPaused); these runs unpause it so the AI paths stay tested.
+            # One context below is opened with the real launch setting (paused) and checks the pause itself.
+            _new_context = browser.new_context
+            async def new_context_unpaused(*a, paused=False, **k):
+                c = await _new_context(*a, **k)
+                if not paused: await c.add_init_script("window.OVU_AI_PAUSE_OVERRIDE = false;")
+                return c
+            browser.new_context = new_context_unpaused
             ctx = await browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, accept_downloads=True)
             await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB)))
             page = await ctx.new_page()
@@ -1571,6 +1579,29 @@ async def main():
             except Exception: pass
             check("an owner's Pause 7 days sends that report and seven days", sdec == [{"p_id": 3, "p_decision": "pause", "p_days": 7}], sdec)
             await ctx5.close()
+
+            # the launch setting: Luna's AI help is paused. The three AI choices cannot be turned on, Luna says so, and no AI request goes out
+            ctxP = await browser.new_context(viewport={"width": 390, "height": 844}, paused=True)
+            await ctxP.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB)))
+            pP = await ctxP.new_page(); ai_calls = []
+            async def p_gate(route):
+                u = route.request.url
+                if "/functions/v1/luna" in u or "/functions/v1/insight" in u: ai_calls.append(u); return await route.abort()
+                if u.startswith(BASE): return await route.continue_()
+                if "fonts.g" in u: return await route.fulfill(status=200, content_type="text/css", body="")
+                return await route.abort()
+            await pP.route("**/*", p_gate)
+            await pP.goto(BASE + "room.html"); await pP.wait_for_timeout(1500)
+            pz = await pP.evaluate("""async () => {
+              const C = OvuConsent, O = OvuOrb;
+              C.setMany({ ai_reading: true, food_photo_ai: true, ai_summaries: true }, 'settings');
+              const allowed = ['ai_reading', 'food_photo_ai', 'ai_summaries'].some(p => C.allows(p));
+              let err = ''; try { await O.parseAI('slept badly and my left knee hurts'); } catch (e) { err = e.message; }
+              let perr = ''; try { await O.parsePhoto('data:image/jpeg;base64,AAAA'); } catch (e) { perr = e.message; }
+              return { paused: O.aiPaused(), allowed, err, perr };
+            }""")
+            check("the launch build pauses Luna's AI help: no AI choice can be turned on, an AI read or photo says paused, and nothing is sent", pz["paused"] and not pz["allowed"] and "paused" in pz["err"] and "paused" in pz["perr"] and ai_calls == [], {"pz": pz, "calls": ai_calls})
+            await ctxP.close()
 
             # the staff page: signed out it shows the sign-in gate only, no dashboard, no data call
             await page.goto(BASE + "admin.html", wait_until="networkidle"); await page.wait_for_timeout(500)

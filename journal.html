@@ -180,7 +180,7 @@
   }
   function renderInsight(){
     var ins=I.cachedDaily(S.today()),btn=$('#insightBtn');
-    if(!I.enabled()){$('#insightBody').innerHTML='<div class="empty">Luna’s readings are off. Turn them on in Luna’s settings (the moon in your room) to get written readings.</div>';btn.style.display='none';return;}
+    if(!I.enabled()){$('#insightBody').innerHTML='<div class="empty">'+(!(window.OVU_CONFIG&&OVU_CONFIG.aiPaused===false)?'Luna’s written readings are paused for now. Your entries, patterns and doctor summary below work as usual.':'Luna’s readings are off. Turn them on in Luna’s settings (the moon in your room) to get written readings.')+'</div>';btn.style.display='none';return;}
     btn.style.display='';btn.innerHTML='<span class="ms">auto_awesome</span>'+(ins?(I.stale('daily')?'Update today’s reading':'Read today again'):'Write today’s reading');
     $('#insightBody').innerHTML=ins?insightHTML(ins,false):'<div class="empty">'+(S.byDate(S.today()).length?'Tap the button and Luna will read today’s entries.':'Log something today first, then Luna can read it.')+'</div>';
   }

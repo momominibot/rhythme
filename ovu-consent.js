@@ -60,7 +60,12 @@
     return st;
   }
   function state() { return stateFromEvents(events()); }
-  function allows(p) { var s = state()[p]; return !!(s && s.on); }
+  /* Luna's three AI choices, and the pause that holds them off (ovu-config.js aiPaused) */
+  var AI_IDS = { ai_reading: 1, food_photo_ai: 1, ai_summaries: 1 };
+  function aiPaused() { return !(root.OVU_CONFIG && root.OVU_CONFIG.aiPaused === false); } /* off unless the config says so explicitly: a missing or older config keeps it paused */
+  function boundTo(p) { var s = state()[p]; return !!(s && s.uid); } /* the choice was recorded on an account */
+  var PAUSED_LINE = 'Paused for now, while we move Luna’s AI help to a service licensed for Singapore. Your diary and Luna’s own rules work as usual.';
+  function allows(p) { if (AI_IDS[p] && aiPaused()) return false; var s = state()[p]; return !!(s && s.on); }
   function noticeText() { return PURPOSES.map(function (p) { return p.title + '. ' + p.body; }).join('\n'); }
   function sha256hex(s) {
     try { return crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s))).then(function (h) { return Array.prototype.map.call(new Uint8Array(h), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }, function () { return ''; }); } catch (e) { return Promise.resolve(''); }
@@ -104,6 +109,7 @@
     var st = state(), out = [];
     Object.keys(map).forEach(function (p) {
       var want = !!map[p], has = !!(st[p] && st[p].on);
+      if (want && AI_IDS[p] && aiPaused()) return; /* paused: an AI choice cannot be turned on */
       if (want && (force || !has)) out.push(grant(p, method));
       else if (!want && has) out.push(withdraw(p, method));
     });
@@ -210,7 +216,8 @@
 
   /* ---------- the sheet (#consent in room.html) ---------- */
   function toggleHTML(p, on, note) {
-    return '<label class="c-opt" data-purpose="' + p.id + '"><input type="checkbox" id="c_' + p.id + '"' + (on ? ' checked' : '') + '><span><b>' + esc(p.title) + '</b><small>' + esc(p.body) + (note ? ' ' + esc(note) : '') + '</small></span></label>';
+    var paused = AI_IDS[p.id] && aiPaused();
+    return '<label class="c-opt' + (paused ? ' c-paused' : '') + '" data-purpose="' + p.id + '"><input type="checkbox" id="c_' + p.id + '"' + (on && !paused ? ' checked' : '') + (paused ? ' disabled' : '') + '><span><b>' + esc(p.title) + '</b><small>' + esc(paused ? PAUSED_LINE : p.body) + (note ? ' ' + esc(note) : '') + '</small></span></label>';
   }
   function fillSheet(c) {
     var st = state(), returning = !!(S.profile().consent && S.profile().consent.at), minor = legacyMinor(), u = uid();
@@ -222,7 +229,7 @@
     if (minorNote) { minorNote.hidden = !minor; minorNote.style.display = minor ? '' : 'none'; } /* the flag's own display rule would beat the hidden attribute */
     if (box) box.innerHTML = PURPOSES.filter(function (p) { return !p.required && !p.hidden; }).map(function (p) {
       var on = !!(st[p.id] && st[p.id].on && (!p.account || !st[p.id].uid || st[p.id].uid === u));
-      return toggleHTML(p, on, '') + (p.id === 'ai_reading' ? AI_WHERE_HTML : '');
+      return toggleHTML(p, on, '') + (p.id === 'ai_reading' && !aiPaused() ? AI_WHERE_HTML : '');
     }).join('');
     if (age) age.checked = false;
   }
@@ -279,9 +286,10 @@
       var s = st[p.id], on = !!(s && s.on && (!p.account || !s.uid || s.uid === u));
       var when = s && s.at ? new Date(s.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
       var line = p.required ? 'Required for the diary. To stop, delete everything on this phone below.' : (on ? ('On since ' + when + (s.method === 'jit' ? ', turned on when you first used it' : s.method === 'import' ? ', carried over from your earlier choice' : '')) : 'Off');
+      if (AI_IDS[p.id] && aiPaused()) { on = false; line = PAUSED_LINE; }
       if (p.id === 'cloud_sync' && on && !u) line = 'Chosen, starts after you sign in from Your account.';
       if (p.id === 'improve_logging' && !u) line = on ? 'Saved on this phone. It is recorded on your account when you sign in.' : 'Off';
-      return '<label class="perm c-choice" data-purpose="' + p.id + '"><input type="checkbox" id="y_' + p.id + '"' + (on ? ' checked' : '') + (p.required ? ' checked disabled' : '') + '><span class="ms">' + p.icon + '</span><div><b>' + esc(p.title) + '</b><span>' + esc(p.body) + '</span><small class="ya-state">' + esc(line) + '</small></div></label>';
+      return '<label class="perm c-choice" data-purpose="' + p.id + '"><input type="checkbox" id="y_' + p.id + '"' + (on ? ' checked' : '') + (p.required ? ' checked disabled' : '') + (AI_IDS[p.id] && aiPaused() ? ' disabled' : '') + '><span class="ms">' + p.icon + '</span><div><b>' + esc(p.title) + '</b><span>' + esc(p.body) + '</span><small class="ya-state">' + esc(line) + '</small></div></label>';
     }).join('');
     var where = !r.userId ? 'kept on this phone' : r.recorded ? 'recorded on your account' : (r.pending ? r.pending + ' change' + (r.pending === 1 ? '' : 's') + ' still to reach your account' : r.failed + ' change' + (r.failed === 1 ? '' : 's') + ' your account refused');
     var rec = '<div class="stat"><span class="ms">receipt_long</span><div><b>Your consent receipt</b><span>Notice version ' + r.noticeVersion + (r.noticeHash ? ' (' + r.noticeHash.slice(0, 8) + ')' : '') + (r.at ? ' · last change ' + new Date(r.at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '') + ' · ' + where + ' · ' + r.events + ' choice' + (r.events === 1 ? '' : 's') + ' on record' + (r.ageAttest ? ' · 18+ confirmed ' + new Date(r.ageAttest.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '') + '</span></div></div>';
@@ -314,6 +322,7 @@
   try { if (S) { importLegacy(); apply(); } } catch (e) { }
 
   root.OvuConsent = {
+    aiPaused: aiPaused, boundTo: boundTo, AI_IDS: AI_IDS, PAUSED_LINE: PAUSED_LINE,
     NOTICE_V: NOTICE_V, AGE_V: AGE_V, PURPOSES: PURPOSES, REGION_AI: REGION_AI, REGION_CLOUD: REGION_CLOUD, AI_WHERE: AI_WHERE, AI_WHERE_HTML: AI_WHERE_HTML,
     purpose: purpose, events: events, state: state, stateFromEvents: stateFromEvents, allows: allows,
     noticeText: noticeText, noticeHash: noticeHash,
