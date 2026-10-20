@@ -26,15 +26,19 @@
     if (scene) scene.classList.toggle('tired', isLow);
     if (W && W.setSpeedScale) W.setSpeedScale(isLow ? 0.72 : 1);
   }
-  /* sleep refills: the bed sets state.sleeping; when it turns on, the night does its work */
+  /* rest refills (Codex, 20 Oct: going to bed used to refill at once, even before "I did not sleep"). A saved night refills
+   * when at least REST_H real hours passed since she went to bed; the turn of the day refills too. Getting into bed alone,
+   * or "I did not sleep", changes nothing. */
+  var REST_H = 3;
+  function restedEnough(startedAt, now) { var t = Date.parse(startedAt); return isFinite(t) && (now - t) >= REST_H * 3600000; }
+  function rested(startedAt) { if (!restedEnough(startedAt, Date.now())) return false; refill(); return true; }
   if (S && S.subscribe) S.subscribe(function (reason) {
     if (reason !== 'state' && reason !== 'external' && String(reason).indexOf('sync') !== 0) return;
-    var asleep = !!S.state().sleeping, justSlept = wasAsleep === false && asleep;
-    wasAsleep = asleep; /* latch first: refill() writes state and re-enters this subscriber */
-    if (justSlept) refill(); else apply(); /* a state change from elsewhere (another tab, a sync, a test) must show the same tiredness */
+    wasAsleep = !!S.state().sleeping;
+    apply(); /* a state change from elsewhere (another tab, a sync, a test) must show the same tiredness */
   });
   if (S) wasAsleep = !!S.state().sleeping;
   if (GT) GT.onNewDay(function () { value(); });
   if (R && R.on) R.on('boot', apply);
-  root.OvuStamina = { MAX: MAX, LOW: LOW, COSTS: COSTS, value: value, can: can, spend: spend, refill: refill, low: low, onChange: function (f) { fns.push(f); } };
+  root.OvuStamina = { MAX: MAX, LOW: LOW, COSTS: COSTS, REST_H: REST_H, restedEnough: restedEnough, rested: rested, value: value, can: can, spend: spend, refill: refill, low: low, onChange: function (f) { fns.push(f); } };
 })(typeof window !== 'undefined' ? window : this);

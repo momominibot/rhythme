@@ -1,5 +1,6 @@
 /* Hearts: a small reward ledger that encourages logging. Points never affect
- * health logic; they only unlock cosmetic props placed in the room. */
+ * health logic; they buy cosmetic props for the room and seeds and unlocks for the farm (Jamie, 20 Oct: logging earns
+ * the points that let her play). Care, insights, export and urgent help never cost hearts. */
 (function (root) {
   'use strict';
   var S = root.OvuStore;
@@ -36,15 +37,24 @@
   ];
   /* items taken out of the shop: anyone who bought one gets the hearts back once */
   var RETIRED = { catgrey: 150 };
-  /* Movement is logged data, so it earns like a meal, but once a day: the first exercise log of the day pays RULES.exercise,
-     later ones that day pay nothing. Hearts never depend on minutes, effort or MET, so nothing rewards doing more or harder
-     than you did (economy review, 19 Oct: one award per domain per day, nothing for health outcomes). */
-  function exercisePoints(l) {
+  /* Logging earns once per kind a day (Jamie, 20 Oct: "one daily logging award, no double earning"; the 19 Oct economy
+     review: one award per domain per day, nothing for health outcomes). The first sleep, period, symptom, meal, reflection
+     or movement log of the real day earns that kind's hearts. Another of the same kind that day, an edit, a deleted and
+     re-made entry, a backfilled day or an import earns nothing more, and no amount, length or number earns extra.
+     Days only move forward: with the clock set back nothing earns until the real date passes the last day that earned. */
+  function dailyPoints(l, kind) {
+    var pts = RULES[kind] || 0; if (!pts) return 0;
     var day = S.today();
-    if (!l.moveDay || l.moveDay.day !== day) l.moveDay = { day: day, pts: 0 };
-    var add = Math.max(0, Math.min(RULES.exercise, RULES.exercise - l.moveDay.pts));
-    l.moveDay.pts += add; return add;
+    if (l.dailyLast && day < l.dailyLast) return 0;
+    if (!l.daily || l.daily.day !== day) {
+      l.daily = { day: day, kinds: {} };
+      if (l.moveDay && l.moveDay.day === day && l.moveDay.pts > 0) l.daily.kinds.exercise = 1; /* movement already paid today under the old rule */
+    }
+    if (l.daily.kinds[kind]) return 0;
+    l.daily.kinds[kind] = 1; l.dailyLast = day; return pts;
   }
+  /* what is still to earn today, for the hearts card: the kinds not yet logged today */
+  function todayLeft() { var l = ledger(), day = S.today(), done = l.daily && l.daily.day === day ? l.daily.kinds : {}; return Object.keys(RULES).filter(function (k) { return RULES[k] > 0 && !done[k]; }); }
   function ledger() {
     var st = S.state(), l = st.rewards || { hearts: 0, earned: 0, log: [], owned: [], placed: {}, lastDay: null, streak: 0 };
     var gone = (l.owned || []).filter(function (id) { return RETIRED[id]; });
@@ -79,9 +89,7 @@
       if (bp) { lb.hearts += bp; lb.earned += bp; lb.log = lb.log || []; lb.log.unshift({ at: new Date().toISOString(), type: 'breathtap', points: bp }); lb.log = lb.log.slice(0, 200); }
       write(lb); return { points: bp, bonus: 0, hearts: lb.hearts, streak: lb.streak };
     }
-    var l = ledger(), pts = RULES[ev.type] || 0;
-    if (ev.type === 'exercise') pts = exercisePoints(l);
-    if (ev.type === 'mindfulness') pts = practicePoints(l, ev); /* a flat small thank-you, capped per day */
+    var l = ledger(), pts = ev.type === 'mindfulness' ? practicePoints(l, ev) /* a flat small thank-you, capped per day */ : dailyPoints(l, ev.type);
     /* no streak bonus and no per-item meal bonus (four-persona review, 20 Oct, every persona and every model: a run of days and
      * a longer meal list are pressure, and hearts are for logging, not for logging more). The days-logged count stays as a
      * plain record; it never changes what anything earns. */
@@ -91,6 +99,16 @@
     if (total <= 0) return { points: 0, bonus: 0, hearts: l.hearts };
     l.hearts += total; l.earned += total; l.log.unshift({ at: new Date().toISOString(), type: ev.type, points: pts, bonus: bonus }); l.log = l.log.slice(0, 200);
     write(l); return { points: pts, bonus: bonus, hearts: l.hearts, streak: l.streak };
+  }
+  /* pay hearts for something that lives elsewhere (farm seeds and unlocks): the hearts and the thing bought are written in
+     one save, so a failed write never takes hearts without giving the seeds */
+  function spend(cost, what, patch) {
+    var l = ledger(); cost = Math.max(0, Math.round(Number(cost) || 0));
+    if (!cost) throw new Error('Nothing to pay.');
+    if (l.hearts < cost && !tester()) throw new Error('You need ' + (cost - l.hearts) + ' more hearts.');
+    if (!tester()) l.hearts -= cost;
+    l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'spend', what: String(what || ''), points: -cost }); l.log = l.log.slice(0, 200);
+    var p = { rewards: l }; Object.keys(patch || {}).forEach(function (k) { p[k] = patch[k]; }); S.setState(p); return l;
   }
   function buy(id) {
     var l = ledger(), item = SHOP.filter(function (s) { return s.id === id; })[0];
@@ -150,5 +168,5 @@
     if (add) { l.hearts += add; l.earned += add; l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'petcare', pet: pet, action: action, points: add }); l.log = l.log.slice(0, 200); }
     write(l); return { points: add, hearts: l.hearts, capped: add < pts };
   }
-  root.OvuRewards = { SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, PRACTICE: PRACTICE, ledger: ledger, award: award, buy: buy, tester: tester, toggle: toggle, grant: grant, care: care, item: item, treatsFor: treatsFor, useTreat: useTreat, wearing: wearing, wear: wear, nextWear: nextWear, CARE: CARE, CARE_CAP: CARE_CAP };
+  root.OvuRewards = { SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, PRACTICE: PRACTICE, ledger: ledger, award: award, buy: buy, spend: spend, todayLeft: todayLeft, tester: tester, toggle: toggle, grant: grant, care: care, item: item, treatsFor: treatsFor, useTreat: useTreat, wearing: wearing, wear: wear, nextWear: nextWear, CARE: CARE, CARE_CAP: CARE_CAP };
 })(window);
