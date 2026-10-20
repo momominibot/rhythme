@@ -62,7 +62,7 @@
   var PRACTICE = { points: 2, cap: 6 };
   function practicePoints(l, ev) {
     var d = ev.data || {}, day = S.today();
-    if (d.kind === 'breathtap' && (Number(d.seconds) || 0) < 60) return 0;
+    if ((d.kind === 'breathtap' || d.kind === 'lightflower') && (Number(d.seconds) || 0) < 60) return 0; /* the tap games count once a session reaches a full minute */
     if (!l.mindDay || l.mindDay.day !== day) l.mindDay = { day: day, pts: 0 };
     var add = Math.max(0, Math.min(PRACTICE.points, PRACTICE.cap - l.mindDay.pts));
     l.mindDay.pts += add; return add;
