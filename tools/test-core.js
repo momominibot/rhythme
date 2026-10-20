@@ -1435,7 +1435,11 @@ function scenes(todayIso) {
   check('the garden greenhouse is a door that opens where a walk ends, and the greenhouse has a door back', !!gd && gd.tap === 'greenhouse' && !!back);
   var inG = K.entryFor(L, 'garden', 'garden'), outG = K.entryFor(Gd, 'greenhouse', 'garden');
   check('arriving inside she stands on the doormat; leaving she stands at the greenhouse door in the garden', Math.abs(inG.x - back.x) < 0.01 && Math.abs(inG.y - back.y) < 0.01 && Math.abs(outG.x - gd.x) < 0.01 && Math.abs(outG.y - gd.y) < 0.01, JSON.stringify([inG, outG]));
-  check('inside the greenhouse the map still says garden, and the place is described for a map', K.sceneOf(L) === 'garden' && GH.PLACE.within === 'garden' && GH.PLACE.door === 'greenhouse');
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-map.js'), 'utf8'), w, { filename: 'ovu-map.js' });
+  var Mp = w.OvuMap, g = Mp.graph(w.LAYOUTS, 'room'), outR = Mp.route(g, 'greenhouse', 'home'), inR = Mp.route(g, 'home', 'greenhouse');
+  check('the map finds the greenhouse through the garden door, by its own name and icon, with no shortcut', !!g.nodes.greenhouse && g.nodes.greenhouse.name === 'Greenhouse' && g.nodes.greenhouse.icon === 'local_florist' && K.sceneOf(L) === 'garden', JSON.stringify(g.nodes.greenhouse));
+  check('the way home from the greenhouse is its door, then the garden gate; the way in ends at the greenhouse door', outR && outR.length === 2 && outR[0].door === 'ghdoor' && outR[0].to === 'garden' && inR && inR[inR.length - 1].door === 'greenhouse', JSON.stringify([outR, inR]));
+  check('string of pearls is never misted (RHS: a succulent that dislikes humidity); the other houseplants are', !GH.careLines(GH.plant('pearls')).some(function (l) { return /mist/i.test(l); }) && /mist/i.test(GH.careLines(GH.plant('monstera'))[0]));
   var MO = w.OvuMoments;
   check('a greenhouse minute ends with its own plant-care moment, not the two-minute practice line', MO.forEntry({ type: 'mindfulness', data: { kind: 'informal', practice: 'greenhouse' } }) === 'plantcare' && MO.pose('plantcare') === 'plants' && MO.forEntry({ type: 'mindfulness', data: { kind: 'informal', practice: 'teeth' } }) === 'practice');
 })();

@@ -16,7 +16,7 @@
   /* rendered 20 Oct 2026 (Seedream 5.0 pro, seed 7401, 1248x1560, text only): bench, table, shelf and tea table drawn empty
    * on purpose; positions read off 5% and 2.5% grids. The plants are keyed sprites from three 3x3 sheets (gh-*.webp). */
   var LAYOUT = {
-    id: 'greenhouse', scene: 'garden', name: 'The greenhouse', img: 'greenhouse-v1.webp', w: 1248, h: 1560, avatarW: 12, only: [],
+    id: 'greenhouse', scene: 'garden', name: 'The greenhouse', mapIcon: 'local_florist', img: 'greenhouse-v1.webp', w: 1248, h: 1560, avatarW: 12, only: [],
     hotspots: [
       { id: 'ghdoor', x: 49.5, y: 77, label: 'Door · back to the garden', prompt: 'Tap to go back to the garden', icon: 'door_open', wp: { x: 49.5, y: 74.5, flip: false } },
       { id: 'teatable', x: 64.5, y: 61, label: 'Tea table · a mindful cup', prompt: 'Tap for the teas and a mindful cup', icon: 'local_cafe', wp: { x: 49, y: 66, flip: false } }
@@ -62,11 +62,13 @@
   var HOUSE = {
     monstera: { name: 'Variegated monstera', about: 'Each leaf is marbled differently, so no two look the same.', notice: 'Find the leaf with the most white. Trace one of its splits with your eyes.',
       pets: 'toxic', petText: 'Toxic to cats and dogs if chewed: it can irritate the mouth and cause drooling and vomiting.', src: 'ASPCA, Cutleaf philodendron (Monstera deliciosa)', url: ASPCA + 'cutleaf-philodendron' },
-    pinkprincess: { name: 'Pink princess philodendron', about: 'Every new leaf unfurls with its own splash of pink.', notice: 'Look for the newest leaf. Notice where the pink begins and ends.',
+    pinkprincess: { name: 'Pink princess philodendron', about: 'Its pink splashes differ from leaf to leaf; some new leaves come out almost all green.', notice: 'Look for the newest leaf. Notice where the pink begins and ends.',
       pets: 'toxic', petText: 'The ASPCA lists philodendrons as toxic to cats and dogs if chewed: mouth irritation, drooling and vomiting. This one is not listed by name; its close relative is.', src: 'ASPCA, Red Princess philodendron', url: ASPCA2 + 'red-princess' },
     calathea: { name: 'Calathea', about: 'Its leaves lift a little in the evening and lower again by morning.', notice: 'Follow the stripes on one leaf, from the middle out to the edge.',
       pets: 'safe', petText: 'Listed as non-toxic to cats and dogs. Any plant can still upset a tummy if eaten.', src: 'ASPCA, Calathea lancifolia', url: ASPCA2 + 'calathea-lancifolia-2' },
+    /* a succulent that dislikes humidity: never misted (RHS, "never mist them"), so its minute is soil, a strand and the pearls */
     pearls: { name: 'String of pearls', about: 'Each round leaf stores water, so it likes its soil to dry out between drinks.', notice: 'Count five pearls along one strand, slowly, one by one.',
+      steps: 'Touch the soil, lift a strand, notice one thing.', lines: ['Touch the soil with one finger. It likes to dry out between drinks.', 'Lift one strand gently. Feel how light it is.', 'Count five pearls along one strand, slowly, one by one.', 'Step back and take in the whole plant. Nothing to fix.'],
       pets: 'toxic', petText: 'Poisonous to pets if eaten, usually mildly: vomiting and diarrhoea. The sap can irritate skin.', src: 'NC State Extension, Senecio rowleyanus', url: 'https://plants.ces.ncsu.edu/plants/senecio-rowleyanus/' },
     anthurium: { name: 'Pink anthurium', about: 'The glossy pink heart is a leaf-like spathe; the true flowers are tiny, on the spike.', notice: 'Notice the shine on the pink heart, and the little spike inside it.',
       pets: 'toxic', petText: 'Toxic to cats and dogs if chewed: mouth pain and swelling, and drooling.', src: 'ASPCA, Flamingo flower (Anthurium)', url: ASPCA + 'flamingo-flower' },
@@ -76,6 +78,7 @@
   /* one mindful minute with a plant: four lines, fifteen seconds apart (at most 18 words each, no em dashes, no claims) */
   var CARE_SECONDS = 60, CARE_STEP = 15;
   function careLines(p) {
+    if (p.kind === 'house' && HOUSE[p.id].lines) return HOUSE[p.id].lines.slice();
     if (p.kind === 'house') return ['Mist the leaves slowly. Watch the drops gather and run.', 'Wipe one leaf with a soft cloth. Feel how cool and smooth it is.', HOUSE[p.id].notice, 'Step back and take in the whole plant. Nothing to fix.'];
     return ['Water the soil slowly. Watch it darken.', 'Touch one leaf lightly, then notice any scent on your fingers.', 'Notice its colours: the greens, the stems, any flower or fruit.', 'Step back and take in the whole plant. Nothing to fix.'];
   }
@@ -128,11 +131,11 @@
     R.openSheet('ghcard', it.name, { tea: 'On the potting bench', ask: 'Ask first, before any herb', house: 'A houseplant' }[p.kind] || 'The greenhouse', p.kind === 'house' ? 'potted_plant' : 'local_florist',
       body + '<div class="row"><button type="button" class="btn primary" data-act="care"><span class="ms">' + (p.kind === 'house' ? 'water_drop' : 'yard') + '</span>One mindful minute with it</button>' +
       (p.kind === 'tea' && R.openEveryday ? '<button type="button" class="btn soft" data-act="cup"><span class="ms">local_cafe</span>A mindful cup with Erin</button>' : '') + '</div>' +
-      '<p class="help">' + (p.kind === 'house' ? 'Mist, wipe a leaf, notice one thing.' : 'Water, touch a leaf, notice one thing.') + ' Saved to your journal as one minute of calm.</p>');
+      '<p class="help">' + (p.kind === 'house' ? (it.house.steps || 'Mist, wipe a leaf, notice one thing.') : 'Water, touch a leaf, notice one thing.') + ' Saved to your journal as one minute of calm.</p>');
     doc.getElementById('sheetBody').addEventListener('click', function (e) {
       var b = e.target.closest('[data-act]'); if (!b) return;
       if (b.dataset.act === 'care') startCare(id);
-      if (b.dataset.act === 'cup') R.openEveryday('coffee');
+      if (b.dataset.act === 'cup') { if (caring) return busyToast(); R.openEveryday('coffee'); }
     });
   }
   /* tap a plant: walk over (around the furniture), then the card; she stays by it afterwards */
@@ -142,18 +145,28 @@
     LAYOUT.home.x = p.wp.x; LAYOUT.home.y = p.wp.y; LAYOUT.home.flip = !!p.wp.flip;
     R.walkTo(p.wp, function () { if (!R.busy()) openCard(p.id); });
   }
-  /* the minute: like the garden watering, one completion path, one saved entry, however it ends */
-  var caring = null;
+  /* the minute: like the garden watering, one completion path, one saved entry, however it ends. It never runs alongside
+   * one of Erin's practices or a session: it will not start over one, and if one starts while it runs (from the Mind tab, say)
+   * it steps aside at its next line, quietly, leaving the HUD, her pose and the stop button to the practice (Codex review,
+   * 20 Oct). Walking away ends it. */
+  var caring = null, stepMs = CARE_STEP * 1000;
+  function other() { return !!(R.sessionOn() || (R.practiceOn && R.practiceOn())); }
+  function busyToast() { R.toast('Finish the minute with the plant first.', 'potted_plant'); }
   function startCare(id) {
-    var p = plant(id); if (!p || caring || R.sessionOn() || napping()) return;
+    var p = plant(id); if (!p || caring || napping()) return;
+    R.hideSheet();
+    if (other() || R.busy()) { R.toast('Finish what you are doing first.', 'info'); return; }
     var lines = careLines(p), it = info(p, root.OvuHerbs);
     caring = { id: id, name: it ? it.name : 'a plant', startedAt: Date.now(), timers: [], done: false };
-    R.hideSheet(); R.hudOn(true, it ? it.name : 'A plant'); R.caption(lines[0]);
+    R.hudOn(true, it ? it.name : 'A plant'); R.caption(lines[0]);
     R.setPose('plants'); R.els.avatar.classList.add('acting');
-    lines.forEach(function (line, i) { if (i) caring.timers.push(root.setTimeout(function () { if (caring && !caring.done) { R.caption(line); R.chime('bell', true); } }, i * CARE_STEP * 1000)); });
-    caring.timers.push(root.setTimeout(function () { finishCare(true); }, CARE_SECONDS * 1000));
+    lines.forEach(function (line, i) { if (i) caring.timers.push(root.setTimeout(function () { if (!caring || caring.done) return; if (other()) return stepAside(); R.caption(line); R.chime('bell', true); }, i * stepMs)); });
+    caring.timers.push(root.setTimeout(function () { if (!caring || caring.done) return; if (other()) return stepAside(); finishCare(true); }, lines.length * stepMs));
     R.setHudStop(function () { if (!caring) return false; finishCare(false); return true; });
   }
+  function stepAside() { var c = caring; if (!c) return; c.done = true; c.timers.forEach(root.clearTimeout); caring = null; R.setHudStop(null); }
+  /* leaving, walking off, or anything else that cuts it short: if a practice or session now owns the HUD, just step aside */
+  function cutShort() { if (!caring) return; if (other()) stepAside(); else finishCare(false); }
   function finishCare(completed) {
     var c = caring; if (!c || c.done) return; c.done = true;
     c.timers.forEach(root.clearTimeout); caring = null; R.setHudStop(null);
@@ -164,12 +177,14 @@
     if (ev) R.afterSave(ev, 'One mindful minute in the greenhouse.');
   }
   R.hotspotHandlers.ghdoor = function (id, L) { if (!inside(L)) return false; root.OvuWalk.travel('garden'); return true; };
-  R.hotspotHandlers.teatable = function (id, L) { if (!inside(L)) return false; if (root.OvuGarden && root.OvuGarden.openGreenhouse) root.OvuGarden.openGreenhouse(); return true; };
+  R.hotspotHandlers.teatable = function (id, L) { if (!inside(L)) return false; if (caring) { busyToast(); return true; } if (root.OvuGarden && root.OvuGarden.openGreenhouse) root.OvuGarden.openGreenhouse(); return true; };
   R.on('boot', function () {
     R.on('props', function (L) { render(L); });
-    R.on('layout', function (L) { if (caring) finishCare(false); render(L); });
+    R.on('layout', function (L) { cutShort(); render(L); });
+    R.on('beforeWalk', cutShort); /* walking away ends the minute (a practice that moves her takes over instead) */
     R.els.props.addEventListener('click', function (e) { var p = e.target.closest('.ghplant.tappable'); if (p) { e.stopPropagation(); tapPlant(p); } });
     R.els.props.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var p = e.target.closest('.ghplant.tappable'); if (p) { e.preventDefault(); tapPlant(p); } });
   });
   GH.render = render; GH.openCard = openCard; GH.startCare = startCare; GH.finishCare = finishCare; GH.caring = function () { return caring ? caring.id : null; };
+  GH.setPace = function (ms) { stepMs = ms > 0 ? ms : CARE_STEP * 1000; }; /* tests only: the same four lines, faster */
 })(window);
