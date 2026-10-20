@@ -117,7 +117,9 @@
     /* Singapore Girl sarong kebaya (Balmain batik); rank colours: cobalt blue flight stewardess, green leading, red chief */
     { id: 'kebaya-blue', name: 'Blue kebaya', note: 'Flight stewardess' },
     { id: 'kebaya-green', name: 'Green kebaya', note: 'Leading stewardess' },
-    { id: 'kebaya-red', name: 'Red kebaya', note: 'Chief stewardess' }
+    { id: 'kebaya-red', name: 'Red kebaya', note: 'Chief stewardess' },
+    /* four-persona review, 20 Oct: Nadia wears a tudung, and Codex, DeepSeek and Doubao all said her avatar should be able to */
+    { id: 'tudung', name: 'Baju kurung & tudung', note: 'Dusty rose, lilac tudung' }
   ];
   var VIDEOS = [
     ['normal', 'normal-v4.mp4', 'A normal cycle', 'What typical looks like'],
@@ -643,7 +645,7 @@
       '<div class="field"><span class="lbl">Add one</span><div class="chips">' + RM.TEMPLATES.map(function (t) { return '<button type="button" class="chipbtn" data-tpl="' + t.kind + '"><span class="ms">' + t.icon + '</span>' + esc({ sleep: 'Sleep', water: 'Water', move: 'Move', breathe: 'Breathe' }[t.kind] || t.label) + '</button>'; }).join('') + '<button type="button" class="chipbtn" data-tpl="custom"><span class="ms">add</span>Custom</button></div></div>' +
       '<div class="remedit" id="remEdit"></div>' +
       '<div class="row"><button type="button" class="btn soft" id="remIcs"><span class="ms">event</span>Add to my calendar</button><button type="button" class="btn ghost" id="remTest"><span class="ms">notifications</span>Send a test</button></div>' +
-      '<p class="help">Reminders live on this device. Notifications fire while Rhythme is open or installed to your Home Screen; the calendar file carries the same reminders, with alarms, into your phone’s own calendar.</p>');
+      '<p class="help">Reminders live on this device and only fire while Rhythme is open; when it is closed they may not arrive at all. For reminders you can count on, add the calendar file: it puts the same times, with alarms, into your phone’s own calendar.</p>');
     wireClockTabs();
     function editor(it) {
       var old = $('#remEdit'), ed = old.cloneNode(false); old.parentNode.replaceChild(ed, old);
@@ -835,13 +837,16 @@
       var cs = S.list('symptom', { from: date, to: date })[0], sd = cs ? cs.data : { symptoms: [], pain: 0, mood: '', notes: '' };
       ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' + importedNote(cs) +
         '<div class="field"><span class="lbl">Symptoms</span><div class="chips" id="symChips">' + '<button type="button" class="chipbtn symnone' + (sd.none ? ' on' : '') + '" data-none="1">None</button>' + A.SYMPTOMS.map(function (s) { return '<button type="button" class="chipbtn' + ((sd.symptoms || []).indexOf(s) > -1 ? ' on' : '') + '" data-sym="' + esc(s) + '">' + esc(cap(s)) + '</button>'; }).join('') + '</div></div>' +
+        /* hot flushes: how many, and whether they woke her (four-persona review, 20 Oct: Siti and Mrs Tan wanted to show their doctor) */
+        '<div class="field flushrow" id="flushRow"' + ((sd.symptoms || []).indexOf('hot flushes') > -1 ? '' : ' hidden') + '><span class="lbl">Hot flushes</span><div class="chips"><label class="flushn">How many today <input class="input" id="flushN" type="number" min="0" max="60" inputmode="numeric" placeholder="optional" value="' + (typeof sd.flushes === 'number' ? sd.flushes : '') + '"></label><button type="button" class="chipbtn' + (sd.flushNight ? ' on' : '') + '" id="flushNight"><span class="ms">bedtime</span>Woke me at night</button></div></div>' +
         '<div class="field"><div class="lbl-row"><label for="pain" class="lbl" style="margin:0">Pain · <span id="painVal">' + (sd.pain || 0) + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="pain" min="0" max="10" step="1" value="' + (sd.pain || 0) + '">' + guideHTML('pain') + '</div>' +
         '<div class="field"><span class="lbl">Mood</span><div class="faces" id="moodFaces">' + [['great', 'sentiment_very_satisfied'], ['good', 'sentiment_satisfied'], ['ok', 'sentiment_neutral'], ['low', 'sentiment_dissatisfied'], ['bad', 'sentiment_very_dissatisfied']].map(function (m) { return '<button type="button" data-mood="' + m[0] + '" class="' + (sd.mood === m[0] ? 'on' : '') + '"><span class="ms">' + m[1] + '</span>' + cap(m[0]) + '</button>'; }).join('') + '</div></div>' +
         '<p class="moodcare" id="moodCare"' + (sd.mood === 'low' || sd.mood === 'bad' ? '' : ' hidden') + '><span class="ms">favorite</span><span>If a low mood is weighing on you, you deserve support now, not after more logging. mindline 1771 is open 24 hours, or talk to your GP or polyclinic.</span></p>' +
         '<div class="field"><label for="symNotes">Notes</label><textarea class="input" id="symNotes" placeholder="Anything else you noticed...">' + esc(sd.notes || '') + '</textarea></div>' +
         '<div class="row"><button class="btn primary" id="saveSym"><span class="ms">check</span>Save day</button>' + (cs ? '<button class="btn ghost" id="clearSym">Clear</button>' : '') + '<button class="btn soft" id="acuFromSym"><span class="ms">spa</span>Cramp relief points</button></div><div class="msg" id="calMsg"></div>';
       /* None (Jamie, 19 Oct) is its own answer: it clears the symptoms, and ticking a symptom clears it */
-      $('#symChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); if (!b.classList.contains('on')) return; $$('#symChips .on').forEach(function (x) { if (x !== b && (b.dataset.none || x.dataset.none)) x.classList.remove('on'); }); });
+      $('#symChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); if (b.classList.contains('on')) $$('#symChips .on').forEach(function (x) { if (x !== b && (b.dataset.none || x.dataset.none)) x.classList.remove('on'); }); $('#flushRow').hidden = !$('#symChips [data-sym="hot flushes"].on'); });
+      $('#flushNight').addEventListener('click', function () { this.classList.toggle('on'); });
       var painTouched = false;
       $('#pain').addEventListener('input', function () { painTouched = true; $('#painVal').textContent = this.value; });
       $('#moodFaces').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#moodFaces')).forEach(function (x) { x.classList.toggle('on', x === b && !x.classList.contains('on')); }); var on = $('#moodFaces .on'); $('#moodCare').hidden = !(on && (on.dataset.mood === 'low' || on.dataset.mood === 'bad')); });
@@ -851,6 +856,7 @@
           var list = $$('#symChips .on').map(function (b) { return b.dataset.sym; }).filter(Boolean), mood = ($('#moodFaces .on') || {}).dataset ? $('#moodFaces .on').dataset.mood : '';
           var none = !list.length && !!$('#symChips [data-none].on'), data = { symptoms: list, pain: painTouched || typeof sd.pain === 'number' ? Number($('#pain').value) : null, mood: mood, notes: $('#symNotes').value.trim() };
           if (none) data.none = true;
+          if (list.indexOf('hot flushes') > -1) { var fn = $('#flushN').value.trim(); if (fn !== '' && isFinite(Number(fn))) data.flushes = Math.max(0, Math.min(60, Math.round(Number(fn)))); if ($('#flushNight').classList.contains('on')) data.flushNight = true; }
           /* None replaces the day's symptoms rather than joining them; everything else keeps the usual same-day merge */
           var ev = none && cs ? S.update(cs.id, { data: Object.assign({}, data, { notes: data.notes || '' }) }) : S.add('symptom', date, data);
           message($('#calMsg'), 'Saved for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev);
@@ -1004,12 +1010,13 @@
       '</div>' +
       '<div class="dpane" data-pane="today" hidden>' + guideHTML('nova') + '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' + '</div>' +
       '<div class="dpane" data-pane="ideas" hidden>' + '<p class="help" style="margin:2px 0 10px"><span class="ms" style="font-size:16px;vertical-align:-3px">yard</span> Teas and herbs now live in the garden greenhouse, with pictures, research and who should take care.</p>' + '<div class="phasechips chips" id="ideaPhases" role="group" aria-label="Food ideas for each phase">' + [['menstrual', 'Period'], ['follicular', 'Follicular'], ['ovulatory', 'Ovulation'], ['luteal', 'Luteal']].map(function (q) { return '<button type="button" class="chipbtn" data-iphase="' + q[0] + '">' + q[1] + '</button>'; }).join('') + '</div>' +
+      (cs.mode === 'suspended' ? '<p class="mindline"><span class="ms">info</span>Cycle phases are paused for you right now, so none of these is meant for you today. They are general ideas to browse; nothing here is needed.</p>' : '') +
       '<div id="ideaTip"></div><div id="picksWrap"></div><p class="help">General food ideas for each part of the cycle, not a diet or a treatment.</p></div>');
     /* food ideas for every phase (Jamie, 20 Oct): your phase is chosen when the app knows it, otherwise the period; tap any other */
     var ideaPhase = phase === 'late' ? 'luteal' : (PHASE_TIPS[phase] && phase !== 'none' ? phase : 'menstrual');
     function showIdeas(k) {
       ideaPhase = k; $$('#ideaPhases [data-iphase]').forEach(function (b) { var on = b.dataset.iphase === k; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
-      var t = PHASE_TIPS[k], cur = k === (phase === 'late' ? 'luteal' : phase);
+      var t = PHASE_TIPS[k], cur = cs.mode !== 'suspended' && k === (phase === 'late' ? 'luteal' : phase);
       $('#ideaTip').innerHTML = '<div class="stat"><span class="ms">local_florist</span><div><b>' + esc(t.title) + (cur ? ' · now' : '') + '</b><span>' + esc(t.text) + '</span></div></div>';
       var w = $('#picksWrap'); if (w) w.innerHTML = picksHTML(k);
     }
@@ -2316,10 +2323,10 @@
   /* Pose and outfit images include their props (a watering can, a pillow, a wardrobe), so each one is
    * scaled by how wide the girl's head is in it: [image width relative to her head, her centre as a
    * fraction of the image]. Her head, and so her size, stays the same in every pose. */
-  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513]};
+  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513]};
   function fitAvatar() {
     /* an outfit's copy of a pose is fitted on the pose's own canvas (tools/art: fit.py), so it shares the pose's numbers */
-    var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatarImg.src || ''), f = m && (AVATAR_FIT[m[1]] || AVATAR_FIT[m[1].replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga)$/, '')]); if (!f) f = [1, 0.5];
+    var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatarImg.src || ''), f = m && (AVATAR_FIT[m[1]] || AVATAR_FIT[m[1].replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung)$/, '')]); if (!f) f = [1, 0.5];
     avatarImg.style.width = (f[0] * 100).toFixed(2) + '%'; avatarImg.style.maxWidth = 'none';
     avatarImg.style.marginLeft = ((0.5 - f[1] * f[0]) * 100).toFixed(2) + '%';
     avatarImg.style.transformOrigin = (f[1] * 100).toFixed(1) + '% 100%';
@@ -2328,7 +2335,7 @@
   /* a pose is drawn in what she is wearing (Jamie, 19 Oct: "it cannot be changing outfit while watering"); the shower robe and
    * the stretch's yoga set are that activity's own clothes, so those two keep their one sprite. A missing file falls back to
    * the original pose */
-  var OUTFIT_POSES = { plants: 1, coffee: 1, teeth: 1, dishes: 1, pets: 1, bed: 1, outfit: 1, stretch: 1 }; /* stretch joined on 20 Oct; the shower keeps its robe */
+  var OUTFIT_POSES = { plants: 1, coffee: 1, teeth: 1, dishes: 1, pets: 1, bed: 1, outfit: 1, stretch: 1, note: 1, eat: 1, listen: 1, read: 1, tend: 1, harvest: 1, wave: 1, press: 1, phone: 1, shop: 1, scale: 1 }; /* stretch and the eleven moment poses joined on 20 Oct (ovu-moments.js); the shower keeps its robe */
   function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && outfit !== 'base' ? '-' + outfit : '') + '.webp'; }
   function setPose(pose) {
     var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image();
@@ -2347,7 +2354,7 @@
     function detail(id) {
       var a = MF.byId(id), v = MF.nextVariation(a), vi = a.variations.indexOf(v), n = MF.timesDone(id);
       $$('.act', body).forEach(function (b) { b.classList.toggle('on', b.dataset.act === id); });
-      $('#actDetail').innerHTML = '<div class="actcard"><div class="acthead"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><div><h3>' + esc(a.name) + '</h3><p>' + esc(a.intro) + '</p><small>Script ' + (vi + 1) + ' of ' + a.variations.length + ' · “' + esc(v.title) + '” · about ' + Math.max(1, Math.round(MF.totalSecs(v) / 60)) + ' min' + (n ? ' · done ' + n + ' time' + (n > 1 ? 's' : '') : ' · new to you') + '</small></div></div>' +
+      $('#actDetail').innerHTML = '<div class="actcard"><div class="acthead"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><div><h3>' + esc(a.name) + '</h3><p>' + esc(a.intro) + '</p>' + (a.care ? '<p class="actcare"><span class="ms">health_and_safety</span>' + esc(a.care) + '</p>' : '') + '<small>Script ' + (vi + 1) + ' of ' + a.variations.length + ' · “' + esc(v.title) + '” · about ' + Math.max(1, Math.round(MF.totalSecs(v) / 60)) + ' min' + (n ? ' · done ' + n + ' time' + (n > 1 ? 's' : '') : ' · new to you') + '</small></div></div>' +
         '<ol class="steps">' + v.steps.map(function (s) { return '<li>' + esc(s.text) + '</li>'; }).join('') + '</ol>' +
         '<div class="row"><button type="button" class="btn primary" id="actStart" data-act="' + id + '" data-v="' + vi + '"><span class="ms">play_arrow</span>Begin as you begin</button></div></div>';
       $('#actDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2629,7 +2636,7 @@
     return '<b>' + esc(u.title) + '</b>' +
       (emergency
         ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 now if the bleeding is excessive or will not stop, you faint, have trouble breathing, or have chest pain.</p>'
-        : '<p>Any bleeding after menopause, even a small spot or a pink or brown discharge, should be checked by a clinician promptly, even if it stops. Book your GP, a polyclinic or a gynaecologist this week. It is usually not serious, but it needs a check.</p>') +
+        : '<p>This is not a period. Any bleeding after menopause, even a small spot or a pink or brown discharge, should be checked by a clinician promptly, even if it stops. Book your GP, a polyclinic or a gynaecologist this week, sooner if it is heavy or painful. It is usually not serious, but it needs a check.</p><p class="esc">Call 995 if the bleeding is heavy and you feel faint, or you have chest pain or trouble breathing.</p>') +
       '<div class="row">' + (emergency ? '<a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><a class="btn soft" href="https://www.kkh.com.sg/our-specialties/urgent-og-centre" target="_blank" rel="noopener"><span class="ms">local_hospital</span>KKH Urgent O&amp;G (24h)</a>' : '') + '<a class="btn ghost" href="journal.html"><span class="ms">medical_information</span>Show my chart</a></div>' +
       '<small>Rhythme cannot assess your condition or diagnose. This alert follows published guidance (KKH, SCDF, NHS). No clinician receives this alert.</small>';
   }

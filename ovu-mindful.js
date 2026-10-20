@@ -146,6 +146,7 @@
         ] }
       ] },
     { id: 'stretch', name: 'Morning or evening stretch', icon: 'self_improvement', minutes: 4, pose: 'stretch', when: 'Standing, anywhere with arm room', intro: 'A gentle reach and release, nothing athletic.',
+      care: 'Move only as far as feels comfortable. With osteoporosis, a sore back or after recent surgery, keep any forward bend small or stay upright with your hands on your thighs.',
       variations: [
         { title: 'Reach and release', steps: [
           { text: 'Stand with feet hip-width apart. Breathe in and float both arms up overhead.', secs: 30 },

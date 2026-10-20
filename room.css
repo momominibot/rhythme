@@ -1681,3 +1681,5 @@ span.frchip{cursor:default}
 .teacare.first{margin:0 0 10px}
 /* where Luna's AI help runs, beside the AI switches (ovu-consent.js AI_WHERE) */
 .c-where{margin:2px 0 10px;padding:9px 11px;border-radius:12px;background:#fff6ec;border:1px solid #f2d6bd;color:#5b3a2e;font:600 12px/1.45 var(--sans,system-ui)}
+.actcare{display:flex;gap:6px;align-items:flex-start;margin:6px 0;font:600 12px/1.45 var(--sans);color:#7a4a3a}.actcare .ms{font-size:16px;flex:none;color:#c0785a}
+.flushrow .chips{align-items:center}.flushn{display:flex;align-items:center;gap:6px;font:600 12.5px var(--sans);color:var(--rm-ink-2)}.flushn .input{width:84px;padding:6px 8px}

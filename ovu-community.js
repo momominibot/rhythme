@@ -39,7 +39,7 @@
   ];
   var NOTES = [
     { by: 'Mei', text: 'The bench under the blossom tree gets the evening light. Try it around six.', sample: true },
-    { by: 'Nadia', text: 'Ginger tea at the stall helped my cramps this week. Not a cure, just kind.', sample: true },
+    { by: 'Nadia', text: 'Sat by the fountain for two minutes and just listened. The water sounds like rain.', sample: true }, /* no sample note claims a remedy worked (four-persona review, 20 Oct) */
     { by: 'Priya', text: 'Day 12 of watering. The plot has leaves! No pressure, it waits for you.', sample: true }
   ];
   function dayIndex(iso) { var t = Date.parse((iso || '1970-01-01') + 'T00:00:00Z'); return Math.floor(t / 86400000); }
