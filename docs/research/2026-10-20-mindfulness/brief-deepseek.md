@@ -1,0 +1,11 @@
+You are a researcher of mindfulness interventions in Chinese-speaking populations (mainland China, Hong Kong, Taiwan, Singapore Chinese). Answer in English, giving Chinese names in characters too.
+
+Context: Rhythme is a free women's health web app for adults 18+ in Singapore (English UI today). Users track periods, symptoms, sleep and food, and a chibi avatar lives in a cosy room, garden and plaza. Four user groups: women trying to conceive; women after a birth who may be breastfeeding (some wear a tudung); women in perimenopause (hot flushes, poor sleep, heavy bleeding, shift work); women after menopause (dryness, poor sleep, osteopenia). Mindfulness already in the app: 3 and 6 minute guided sessions recorded by a certified MBSR teacher; 2 and 5 minute paced breathing; a breathing game with koi; nine everyday practices (brushing teeth, shower, tea, dishes, making the bed, watering plants, feeding a pet, changing clothes, stretching); one-line noticing prompts after each log; a small flat reward of 2 hearts per practice (max 6 a day), no streaks. The owner wants to promote mindfulness further.
+
+Tasks:
+1. List 10 or more Chinese-language or Chinese-population mindfulness experts or research teams (for example at Peking University, CUHK, HKU, Taiwan, NUS/Duke-NUS). For each: affiliation, their main claim about mindfulness, and one or two of their key studies with year, journal and design. Only list studies you are confident exist; mark any you are unsure of with [UNSURE]. Do not invent DOIs.
+2. What do Chinese-speaking users (including Singapore Chinese women) find off-putting or appealing in mindfulness apps? (religious associations, 冥想 vs 正念 wording, TCM framing, family and face, time pressure.)
+3. Which mindfulness practices or app features have Chinese trials found effective for women in pregnancy, postpartum, infertility, perimenopause or menopause? Give study details and mark uncertainty.
+4. Name the strongest evidence AGAINST adding more mindfulness features to such an app, and any harms.
+5. What would you add to this app, and what would you avoid? Rank your top five with reasons tied to evidence.
+Be concrete and short. Separate verified knowledge from your opinion.
