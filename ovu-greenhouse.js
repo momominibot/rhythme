@@ -147,8 +147,9 @@
   }
   /* the minute: like the garden watering, one completion path, one saved entry, however it ends. It never runs alongside
    * one of Erin's practices or a session: it will not start over one, and if one starts while it runs (from the Mind tab, say)
-   * it steps aside within a third of a second, quietly, leaving the HUD, her pose and the stop button to the practice (Codex
-   * reviews, 20 Oct: waiting for the next line let a practice start and stop unseen, and the hidden minute still saved).
+   * it steps aside at that very moment (the room's 'activity' event fires before a practice or session claims the HUD), quietly,
+   * leaving the HUD, her pose and the stop button to it (Codex reviews, 20 Oct: waiting for a timer let a practice start and
+   * stop unseen, the hidden minute still saved, and a Stop tap in that window reached the minute instead of the session).
    * Walking away ends it. */
   var caring = null, stepMs = CARE_STEP * 1000;
   function other() { return !!(R.sessionOn() || (R.practiceOn && R.practiceOn())); }
@@ -159,19 +160,18 @@
     if (other() || R.busy()) { R.toast('Finish what you are doing first.', 'info'); return; }
     var lines = careLines(p), it = info(p, root.OvuHerbs);
     caring = { id: id, name: it ? it.name : 'a plant', startedAt: Date.now(), timers: [], done: false };
-    caring.watch = root.setInterval(function () { if (caring && !caring.done && other()) stepAside(); }, 300);
     R.hudOn(true, it ? it.name : 'A plant'); R.caption(lines[0]);
     R.setPose('plants'); R.els.avatar.classList.add('acting');
     lines.forEach(function (line, i) { if (i) caring.timers.push(root.setTimeout(function () { if (!caring || caring.done) return; if (other()) return stepAside(); R.caption(line); R.chime('bell', true); }, i * stepMs)); });
     caring.timers.push(root.setTimeout(function () { if (!caring || caring.done) return; if (other()) return stepAside(); finishCare(true); }, lines.length * stepMs));
     R.setHudStop(function () { if (!caring) return false; finishCare(false); return true; });
   }
-  function stepAside() { var c = caring; if (!c) return; c.done = true; c.timers.forEach(root.clearTimeout); root.clearInterval(c.watch); caring = null; R.setHudStop(null); }
+  function stepAside() { var c = caring; if (!c) return; c.done = true; c.timers.forEach(root.clearTimeout); caring = null; R.setHudStop(null); }
   /* leaving, walking off, or anything else that cuts it short: if a practice or session now owns the HUD, just step aside */
   function cutShort() { if (!caring) return; if (other()) stepAside(); else finishCare(false); }
   function finishCare(completed) {
     var c = caring; if (!c || c.done) return; c.done = true;
-    c.timers.forEach(root.clearTimeout); root.clearInterval(c.watch); caring = null; R.setHudStop(null);
+    c.timers.forEach(root.clearTimeout); caring = null; R.setHudStop(null);
     R.hudOn(false); R.els.avatar.classList.remove('acting'); R.restorePose();
     if (!completed) { R.toast('Stopped. Thank you for the moment you gave it.', 'potted_plant'); return; }
     var ever = S.list('mindfulness').some(function (e) { return e.data && e.data.practice === 'greenhouse'; }), ev = null;
@@ -184,6 +184,7 @@
     R.on('props', function (L) { render(L); });
     R.on('layout', function (L) { cutShort(); render(L); });
     R.on('beforeWalk', cutShort); /* walking away ends the minute (a practice that moves her takes over instead) */
+    R.on('activity', function () { stepAside(); }); /* a practice or session is starting: hand the HUD over now */
     R.els.props.addEventListener('click', function (e) { var p = e.target.closest('.ghplant.tappable'); if (p) { e.stopPropagation(); tapPlant(p); } });
     R.els.props.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var p = e.target.closest('.ghplant.tappable'); if (p) { e.preventDefault(); tapPlant(p); } });
   });

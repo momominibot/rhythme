@@ -1925,6 +1925,7 @@
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (window.OvuPodcast) OvuPodcast.pause();
     session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: kind === 'erin' ? new Audio() : null, timer: null };
+    emit('activity', 'session', kind); /* anything else using the HUD (a greenhouse minute) hands it over before this claims it */
     hideSheet(); holo.classList.toggle('on', kind === 'erin'); hud.classList.add('on'); $('#hudTitle').textContent = kind === 'erin' ? 'With Erin' : 'Just breathe';
     var total = minutes * 60000, cycleMs = kind === 'erin' ? 11000 : 14000, hour = new Date().getHours();
     var today = S.today(), cramps = S.list('symptom', { from: today, to: today }).some(function (e) { return (e.data.symptoms || []).indexOf('cramps') > -1; }) || S.list('period', { from: today, to: today }).length > 0;
@@ -2418,6 +2419,7 @@
      * (four-persona review, 20 Oct, all four Codex walkthroughs) */
     endMoment();
     if (meditating && !session) { meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); avatar.classList.remove('hidden'); }
+    emit('activity', 'practice', id); /* as for a session: the HUD is handed over first */
     hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting');
     var chain = Promise.resolve();
     v.steps.forEach(function (s, si) {
