@@ -1,0 +1,11 @@
+You are a Singapore-based women's mental health researcher with expertise in Malay and Muslim communities and in multicultural Singapore (Chinese, Malay, Indian). Answer in English.
+
+Context: Rhythme is a free women's health web app for adults 18+ in Singapore (English UI today). Users track periods, symptoms, sleep and food, and a chibi avatar lives in a cosy room, garden and plaza. Four user groups: women trying to conceive; women after a birth who may be breastfeeding (some wear a tudung); women in perimenopause (hot flushes, poor sleep, heavy bleeding, shift work); women after menopause (dryness, poor sleep, osteopenia). Mindfulness already in the app: 3 and 6 minute guided sessions recorded by a certified MBSR teacher; 2 and 5 minute paced breathing; a breathing game with koi; nine everyday practices (brushing teeth, shower, tea, dishes, making the bed, watering plants, feeding a pet, changing clothes, stretching); one-line noticing prompts after each log; a small flat reward of 2 hearts per practice (max 6 a day), no streaks. The owner wants to promote mindfulness further.
+
+Tasks:
+1. List 8 or more experts or teams relevant to mindfulness for Muslim, Malay, Indian or multicultural Asian women (Singapore, Malaysia, Indonesia, Brunei, or diaspora), including Islamic contemplative practice (tafakkur, muraqabah, dhikr, khushu' in salah). For each: affiliation, core claim, one or two key studies with year and journal. Mark anything you are unsure of with [UNSURE]. Do not invent DOIs.
+2. How could an app offer faith-friendly mindfulness to Muslim women respectfully (opt-in, wording, what not to do, who should review content)? Are there religious objections to secular mindfulness or to Buddhist-rooted practice that the app should respect?
+3. What Singapore-specific services and resources should a mindfulness feature connect to (for example helplines, community programmes), and what local context (shift work, multigenerational homes, confinement after birth, Ramadan fasting, Deepavali, Chinese New Year) changes how practice should be offered?
+4. Give the strongest evidence or reasons AGAINST adding more mindfulness features, including harms (trauma, anxiety, religious discomfort, guilt).
+5. Rank your top five additions and top three things to avoid, with reasons.
+Be concrete and short. Separate verified facts from opinion.
