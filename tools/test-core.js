@@ -1541,6 +1541,8 @@ function scenes(todayIso) {
   var Mp = w.OvuMap, g = Mp.graph(w.LAYOUTS, 'room'), outR = Mp.route(g, 'greenhouse', 'home'), inR = Mp.route(g, 'home', 'greenhouse');
   check('the map finds the greenhouse through the garden door, by its own name and icon, with no shortcut', !!g.nodes.greenhouse && g.nodes.greenhouse.name === 'Greenhouse' && g.nodes.greenhouse.icon === 'local_florist' && K.sceneOf(L) === 'garden', JSON.stringify(g.nodes.greenhouse));
   check('the way home from the greenhouse is its door, then the garden gate; the way in ends at the greenhouse door', outR && outR.length === 2 && outR[0].door === 'ghdoor' && outR[0].to === 'garden' && inR && inR[inR.length - 1].door === 'greenhouse', JSON.stringify([outR, inR]));
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-sound.js'), 'utf8'), w, { filename: 'ovu-sound.js' });
+  check('the greenhouse sounds like stone tiles underfoot, and a plant minute ends with the watering sound', w.OvuSound.surfaceFor(L) === 'stone' && w.OvuSound.surfaceFor(Gd) === 'grass' && w.OvuSound.forMoment('plantcare') === 'water');
   check('string of pearls is never misted (RHS: a succulent that dislikes humidity); the other houseplants are', !GH.careLines(GH.plant('pearls')).some(function (l) { return /mist/i.test(l); }) && /mist/i.test(GH.careLines(GH.plant('monstera'))[0]));
   var MO = w.OvuMoments;
   check('a greenhouse minute ends with its own plant-care moment, not the two-minute practice line', MO.forEntry({ type: 'mindfulness', data: { kind: 'informal', practice: 'greenhouse' } }) === 'plantcare' && MO.pose('plantcare') === 'plants' && MO.forEntry({ type: 'mindfulness', data: { kind: 'informal', practice: 'teeth' } }) === 'practice');

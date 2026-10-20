@@ -16,7 +16,7 @@
   /* rendered 20 Oct 2026 (Seedream 5.0 pro, seed 7401, 1248x1560, text only): bench, table, shelf and tea table drawn empty
    * on purpose; positions read off 5% and 2.5% grids. The plants are keyed sprites from three 3x3 sheets (gh-*.webp). */
   var LAYOUT = {
-    id: 'greenhouse', scene: 'garden', name: 'The greenhouse', mapIcon: 'local_florist', img: 'greenhouse-v1.webp', w: 1248, h: 1560, avatarW: 12, only: [],
+    id: 'greenhouse', scene: 'garden', name: 'The greenhouse', mapIcon: 'local_florist', surface: 'stone', img: 'greenhouse-v1.webp', w: 1248, h: 1560, avatarW: 12, only: [],
     hotspots: [
       { id: 'ghdoor', x: 49.5, y: 77, label: 'Door · back to the garden', prompt: 'Tap to go back to the garden', icon: 'door_open', wp: { x: 49.5, y: 74.5, flip: false } },
       { id: 'teatable', x: 64.5, y: 61, label: 'Tea table · a mindful cup', prompt: 'Tap for the teas and a mindful cup', icon: 'local_cafe', wp: { x: 49, y: 66, flip: false } }
