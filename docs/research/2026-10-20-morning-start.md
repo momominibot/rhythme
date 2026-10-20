@@ -87,6 +87,8 @@ A second Codex check failed it on two more, both fixed with checks that keep the
 5. The warm-up was not silent: the shared "mute Erin's voice" wrapper (ovu-voicemute.js) sets `muted` inside every play of an app voice file, so it overrode the warm-up's mute. The warm-up now plays 10 ms of silence that is not an app voice file. And a remembered mute could leave real lines silent under "Voice on": a remembered mute now makes Quiet the default, and choosing the voice in Morning start lifts it.
 6. Erin's first lines (picking up the brush) counted as brushing: brushing now counts from the line after her "beginning to brush", and in her own way only when she taps Done.
 
+A third Codex check found that pausing on Erin's opening and tapping Next three times still recorded brushing: Erin's guide now counts as brushing only after 5 seconds of running (not paused) time on her brushing lines, with checks both ways.
+
 Not taken, and why:
 - Hearts without saving (Doubao): the honesty confirm before any hearts is Jamie's rule, and separating them needs a second reward ledger. The entry stays on her phone unless she has turned on sync, which has its own consent.
 - A confirmation on Stop (Doubao): Stop after 30 s already opens a sheet with "Not this time"; under 30 s nothing is lost but the moment.

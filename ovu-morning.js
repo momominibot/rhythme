@@ -15,7 +15,7 @@
 (function (root) {
   'use strict';
   var GUIDE = 'assets/audio/guide-interim/';
-  var START_HOUR = 4, END_HOUR = 12, MIN_SAVE_S = 30;
+  var START_HOUR = 4, END_HOUR = 12, MIN_SAVE_S = 30, BRUSH_MIN_MS = 5000;
   /* 10 ms of silence, used only to ready the voice inside a tap: not an app voice file, so the shared voice mute leaves it alone */
   var SILENT = 'data:audio/wav;base64,UklGRsQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
   var STEPS = {
@@ -143,7 +143,7 @@
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
     room.hideSheet(); hideInvite();
-    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, reached: {}, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
+    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, reached: {}, brushMs: 0, stepMs: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
     if (room.endMoment) room.endMoment();
     /* from the mat she sits there hidden: bring her back first, or the routine plays to an empty room */
     if (room.els && room.els.meditator && room.els.meditator.classList.contains('on') && !(room.sessionOn && room.sessionOn())) room.exitMeditation();
@@ -163,7 +163,7 @@
     if (!run) return;
     if (R().asleep()) { cancel(); return; }
     var cur = step(); if (cur && skippedNow && run.skipped.indexOf(cur.key) < 0 && !cur.erin) run.skipped.push(cur.key);
-    clearTimeout(run.timer); stopAudio();
+    clearTimeout(run.timer); stopAudio(); leaveStep();
     run.i++;
     var s = step(); if (!s) { finish(true); return; }
     run.reached[s.key] = true; /* what she actually reached, for the honest summary at the end */
@@ -172,11 +172,17 @@
     if (s.pose) room.setPose(s.pose); else if (room.restorePose) room.restorePose();
     if (room.els && room.els.avatar) room.els.avatar.classList.remove('acting'); /* no pulse: it would read as a breathing pace */
     if (s.gate) { run.paused = false; run.clock.hold(); } else if (!run.paused) run.clock.run(); /* the sink has no Pause, so it is never left paused */
-    if (s.brushing) run.brushed = 'erin'; /* her own way counts as brushed only when she taps Done */
+    run.stepMs = run.clock.ms(); /* her own way counts as brushed only when she taps Done; Erin's on time spent brushing (leaveStep) */
     paint();
     run.left = s.secs ? s.secs * 1000 : 0; run.pending = null;
     if (s.secs && !run.paused) arm(); /* a paused routine keeps the new step's full time for Resume */
     if (s.audio && !run.quiet) { if (run.paused) run.pending = s.audio; else playAudio(s.audio); }
+  }
+  /* leaving a step: time actually spent on Erin's brushing lines (not paused, not skipped past) is the evidence of brushing */
+  function leaveStep() {
+    var cur = step(); if (!run || !cur || !cur.brushing) return;
+    run.brushMs += Math.max(0, run.clock.ms() - run.stepMs); run.stepMs = run.clock.ms();
+    if (run.brushMs >= BRUSH_MIN_MS) run.brushed = 'erin';
   }
   function arm() { clearTimeout(run.timer); run.t0 = Date.now(); run.timer = setTimeout(function () { next(false); }, run.left); }
   function playAudio(url) {
@@ -232,6 +238,7 @@
   function finish(finished) {
     var r = run; if (!r) return;
     if (R().asleep()) { cancel(); return; } /* asleep: nothing to confirm */
+    leaveStep();
     clearTimeout(r.timer); stopAudio(); r.clock.hold(); clearInterval(ticker);
     var exact = r.clock.ms() / 1000, secs = Math.round(exact), room = R();
     run = null; hidePanel(); if (room.restorePose) room.restorePose();
