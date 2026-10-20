@@ -143,6 +143,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var w = fresh(), O = w.OvuOrb;
   var cases = [
  // [text, profile, expectedCode or null]
+ ['My arm went numb but not due to sleeping on it',{},'STROKE_NOW'],['Chest pain: not really improving',{},'CHEST_BREATH_NOW'],['I have a bad headache after editing blurry photos',{},null],
+ ['Pregnancy test was never positive before. Pregnancy test is positive today and I am bleeding',{},'PREG_BLEED_NOW'],['No pain + positive pregnancy test + spotting',{},'PREG_BLEED_NOW'],['severe headache and my eyes are blurry',{},'HEADACHE_VISION_NOW'],
  ['Severe headache and my vision is very blurry',{},'HEADACHE_VISION_NOW'],['worst headache and everything looks blurry',{},'HEADACHE_VISION_NOW'],['My arm went numb with no pain from sleeping on it',{},null],['Chest pain: not really',{},null],
  ['My COVID test shows a positive line and my period started today',{},null],['My pregnancy test never turned positive, period started today',{},null],['my pregnancy test turned positive and I am spotting',{},'PREG_BLEED_NOW'],
  ['Chest pain no fever',{},'CHEST_BREATH_NOW'],['Chest pain no relief after resting',{},'CHEST_BREATH_NOW'],['My arm is weak but no pins and needles',{},'STROKE_NOW'],['I hear voices no one else can hear while in the kitchen',{},'PSYCHOSIS_NOW'],
