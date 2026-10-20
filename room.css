@@ -1791,3 +1791,26 @@ span.frchip{cursor:default}
 .mapnode em{margin-top:2px}
 /* shop names sit side by side on the map: let each wrap under its own shop rather than run into the next */
 .mapnode b{white-space:normal;max-width:66px;line-height:1.15}
+/* farm: the watering can and mindful care steps (Jamie, 20 Oct) */
+.bedcard .bedpic.canpic{background:#eef4fb}
+.bedcard .canline{display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#3f6f96}
+.bedcard .canline .ms{font-size:16px}
+.farmcan{position:absolute;left:10px;bottom:56px;z-index:7;display:inline-flex;align-items:center;gap:6px;padding:6px 11px 6px 8px;border:1.5px solid rgba(255,255,255,.9);border-radius:99px;background:rgba(255,255,255,.88);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(80,50,110,.14);font:800 12px var(--sans);color:#3d2f55;cursor:pointer}
+.farmcan .ms{font-size:17px;color:#4a8fc4}
+.farmcan .cdots{display:inline-flex;gap:3px;font-weight:700;color:#3f6f96}
+.farmcan .cdots i{width:9px;height:9px;border-radius:50%;border:1.5px solid #6fa8d6;background:transparent}
+.farmcan .cdots i.on{background:#6fb3e6;border-color:#4a8fc4}
+.farmcan.empty{box-shadow:0 0 0 2px #f2b4c8,0 4px 14px rgba(80,50,110,.14)}
+.slowbox{display:block}
+.slowstep{display:flex;flex-direction:column;gap:8px;padding:2px 0 4px}
+.slowstep .mindline{margin:0}
+.slowbar{height:8px;border-radius:99px;background:rgba(120,90,150,.14);overflow:hidden}
+.slowbar i{display:block;width:0;height:100%;border-radius:99px;background:linear-gradient(90deg,#b9dcf3,#8fc6ea)}
+.slowbar.still{display:none}
+.slowverb{margin:0;font:700 13px var(--sans);color:var(--rm-plum)}
+.slowstep .btn{align-self:flex-start}
+.farmsteps{list-style:none;margin:4px 0 12px;padding:0;display:flex;flex-direction:column;gap:10px}
+.farmsteps li{display:flex;gap:10px;align-items:flex-start;background:var(--rm-card,#fff);border-radius:14px;padding:10px 12px}
+.farmsteps li>.ms{flex:none;width:32px;height:32px;line-height:32px;text-align:center;border-radius:50%;background:#f1eafb;color:#7c5aa8;font-size:18px}
+.farmsteps b{display:block;font-size:14px;color:#3d2f55}
+.farmsteps small{display:block;font-size:12.5px;line-height:1.45;color:#5d4f6c}
