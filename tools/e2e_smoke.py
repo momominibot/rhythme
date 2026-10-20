@@ -1383,9 +1383,10 @@ async def main():
             try: first = await asyncio.wait_for(tabs8[0].evaluate("()=>window.__s"), 10)
             except asyncio.TimeoutError: first = {"stuck": True}
             locks = await tabs8[0].evaluate("()=>navigator.locks.query().then(q=>({held:q.held.length, pending:q.pending.length}))")
+            await tabs8[0].wait_for_timeout(100); aborted_by_page = list(failed_urls) # before this harness lets go of the held request
             hold.set(); await tabs8[0].wait_for_timeout(100)
             check("real Web Locks: a pull that never answers ends the first tab's sync within its limit, and the second tab's sync then runs", bool(held_urls) and first.get("ok") is False and "too long" in (first.get("error") or "") and second["r"].get("ok") is True and second["ms"] >= 250 and locks == {"held": 0, "pending": 0}, {"first": first, "second": second, "locks": locks, "held": len(held_urls)})
-            check("and the stalled request was aborted, not left open", any("rest/v1/entries" in u for u in failed_urls), failed_urls[:2])
+            check("and the page aborted the stalled request itself, not left open", any("rest/v1/entries" in u for u in aborted_by_page), aborted_by_page[:2])
             await ctx8.close()
 
             check("no page errors or console errors across the run", not errors, errors[:3])
