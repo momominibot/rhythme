@@ -24,13 +24,13 @@
   <div class="stack">
     <section class="card no-print" id="openCard">
       <h2><span class="ms">lock_open</span>Open a share</h2>
-      <p class="sub">Load the <b>Rhythme-share .ovushare</b> file the patient gave you, or paste their share code, then enter the passphrase they told you separately.</p>
+      <p class="sub">Load the <b>Rhythme-share</b> file the patient gave you (.json, or .ovushare from older versions), or paste their share code, then enter the passphrase they told you separately.</p>
       <div class="row">
-        <label class="btn soft" style="cursor:pointer"><span class="ms">upload_file</span><span id="fileLabel">Choose .ovushare file</span><input type="file" id="shareFile" accept=".ovushare,application/json,.json" hidden></label>
+        <label class="btn soft" style="cursor:pointer"><span class="ms">upload_file</span><span id="fileLabel">Choose the share file</span><input type="file" id="shareFile" accept=".ovushare,application/json,.json" hidden></label>
         <button class="btn ghost" id="pasteToggle"><span class="ms">content_paste</span>Paste a code instead</button>
       </div>
       <div class="field" id="codeField" style="display:none"><label for="codeInput">Share code</label><textarea class="input" id="codeInput" placeholder="Paste the long code here"></textarea></div>
-      <div class="field"><label for="passInput">Passphrase</label><input class="input" id="passInput" type="password" autocomplete="off" placeholder="e.g. lilac-moon-fern-47"></div>
+      <div class="field"><label for="passInput">Passphrase</label><input class="input" id="passInput" type="password" autocomplete="off" placeholder="e.g. HLDK-A44N-THCY-…"></div>
       <div class="row"><button class="btn primary" id="openBtn"><span class="ms">key</span>Decrypt and open</button><button class="btn ghost" id="demoBtn"><span class="ms">science</span>Preview with sample data</button></div>
       <div class="msg" id="openMsg"></div>
       <p class="note">Decryption uses WebCrypto AES-GCM with a PBKDF2-derived key. The share stays in memory and is gone when you close this tab. Pattern notes are rule-based and labelled for clinician review; they are not diagnoses.</p>
