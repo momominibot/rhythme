@@ -23,7 +23,7 @@ Jamie asked for every model to walk the app as four different users, and for eve
 | "Did you really do it, with attention?" judges | all four | "Save this pause to your journal?" with an honest-but-kind note |
 | Help for low mood waited for seven logged days | Nadia | mindline 1771 shows as soon as a low mood is picked; after a birth three low days raise the note |
 | The mat put her in the yoga set, the bed in pyjamas, the stretch in yoga clothes | all four | outfit-matched sprites for meditate, sleep and stretch; a practice from the Mind hub no longer plays to an empty room |
-| No tudung | Nadia (all three models) | a baju kurung and tudung outfit was drawn and checked by Doubao's vision model for respect and fit; it is held back until its other sprites exist (see below) |
+| No tudung | Nadia (all three models) | a baju kurung and tudung outfit, checked by Doubao's vision model for respect and fit, with its own meditate, sleep, bench and every action sprite (second render run, 20 Oct; Doubao's review of the full set in `2026-10-20-personas/doubao-tudung-review.md`); it is in the wardrobe and the friend-card looks |
 | Predictions after a birth with periods not back | Nadia | paused until a period is logged after set-up |
 | After menopause, any bleeding is not a period | Mrs Tan | the calendar says Bleeding, fills nothing, and a saved day opens the prompt card ("This is not a period") |
 | Menopause on HRT was not recorded | Mrs Tan | HRT no longer blocks the after-menopause stage |
@@ -70,8 +70,6 @@ The rules were then tried on notes nobody in this project wrote. DeepSeek and Do
 Two of the earlier additions had silently not applied, because an edit dropped a rule line's closing semicolon; every rule line now ends cleanly and the harness checks the fifteen Codex notes with the other eighty. `tools/fixtures/urgent-notes-sg-2026-10-20.json` holds all 95, and every one now gets the card it should (or none). A synthetic sample shows the rules can fail, not how often they fail for real users, so the rules stay a safety net under the 995 line on every care card, never a diagnosis.
 
 ## Left for later
-
-- **The tudung outfit.** Its standing sprite is drawn, but the meditate, sleep, bench and action sprites were not, because the batch stopped. Every missing one would fall back to a sprite with her hair showing, which would take her tudung off, so the outfit and the matching friend-card look stay out of the lists until the set exists. The harness now fails if any pickable outfit lacks its standing, meditating, sleeping or seated sprite.
 
 - Shops' opening hours exclude night-shift users (Siti). The one real clock is Jamie's rule; a later change would need her call.
 - Postpartum sleep in several pieces (Nadia, Doubao). One night per record stays for now; the form says an honest estimate is enough.

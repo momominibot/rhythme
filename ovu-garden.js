@@ -169,8 +169,9 @@
   /* a seat is a bench or a chair: she sits on it in her own clothes (assets/room/dream/avatar-sit-<outfit>.webp, hips at
    * seat height, feet down); the cross-legged pose stays for the yoga mat. A missing seated sprite falls back to the
    * standing one, never to the cross-legged one */
-  /* lap line (where the body meets the seat) and height/width of each seated sprite, measured from the files */
-  var SIT = { base: { hip: 0.695, aspect: 2.063 }, sundress: { hip: 0.766, aspect: 2.031 }, pajamas: { hip: 0.765, aspect: 2.019 }, cozy: { hip: 0.705, aspect: 2.035 }, yoga: { hip: 0.762, aspect: 2.013 }, party: { hip: 0.761, aspect: 1.902 }, 'kebaya-blue': { hip: 0.747, aspect: 1.672 }, 'kebaya-green': { hip: 0.746, aspect: 2.031 }, 'kebaya-red': { hip: 0.733, aspect: 1.674 } };
+  /* lap line (where the body meets the seat) and height/width of each seated sprite, measured from the files (the widest
+   * row below her middle; the tudung's by eye under her hands, because its tunic hem is wider than its lap) */
+  var SIT = { base: { hip: 0.695, aspect: 2.063 }, sundress: { hip: 0.766, aspect: 2.031 }, pajamas: { hip: 0.765, aspect: 2.019 }, cozy: { hip: 0.705, aspect: 2.035 }, yoga: { hip: 0.762, aspect: 2.013 }, party: { hip: 0.761, aspect: 1.902 }, 'kebaya-blue': { hip: 0.747, aspect: 1.672 }, 'kebaya-green': { hip: 0.746, aspect: 2.031 }, 'kebaya-red': { hip: 0.733, aspect: 1.674 }, tudung: { hip: 0.73, aspect: 2.063 } };
   /* her own outfit always: an outfit with no seated sprite stands beside the seat in its own clothes, never sits in the knit */
   function outfitId() { return S.profile().outfit || 'base'; }
   function seatedSrc() { return SIT[outfitId()] ? ART + 'avatar-sit-' + outfitId() + '.webp' : ''; }
