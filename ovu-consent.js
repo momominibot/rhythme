@@ -95,6 +95,11 @@
     return evs.filter(function (e, i) { return i >= cut || keep[e.purpose] === e.id; });
   }
   function record(purposeId, action, method, extra) {
+    /* An event that names an account other than the one signed in here now (a sync's late answer from before a sign-out
+       or a switch) changes nothing on this phone: that account's own record, which gave the answer, already holds it,
+       and the next sync for that account reconciles it here. Recording it would make it the latest choice and switch
+       off whoever is signed in now (Codex sync review, round five, finding 2). */
+    if (extra && Object.prototype.hasOwnProperty.call(extra, 'uid') && extra.uid !== uid()) return null;
     var ev = Object.assign({ id: newId(), purpose: purposeId, action: action === 'withdraw' ? 'withdraw' : 'grant', at: nowIso(), notice: NOTICE_V, method: method || 'you', uid: uid(), sent: false }, extra || {});
     S.setProfile({ consentEvents: compact(events().concat([ev])) });
     apply();

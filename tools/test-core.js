@@ -1801,6 +1801,51 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   Promise.all([one, two, three, four, five, fiveB, six]).catch(function (err) { check('the round-five sync tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
+(function consentLateAnswer() {
+  console.log('consent: an answer about one account, arriving after another signed in here, changes nothing on this phone (real ovu-consent.js)');
+  function world() {
+    var w = syncWorld(syncServer(), null, null), c = { who: 'uA' };
+    w.OvuAuth = { session: function () { return c.who ? { user: { id: c.who } } : null; }, token: function () { return Promise.resolve('tok-' + c.who); }, userId: function () { return c.who; } };
+    vm.runInContext(fs.readFileSync(path.join(root, 'ovu-consent.js'), 'utf8'), w, { filename: 'ovu-consent.js' });
+    var C = w.OvuConsent;
+    C.attestAge('sheet'); C.grant('health_tracking', 'sheet');
+    c.signIn = function (u) { c.who = u; C.bindAccount(); C.grant('cloud_sync', 'you'); };
+    return { w: w, C: C, c: c };
+  }
+  function cloudOf(t) { var p = t.w.OvuStore.profile().cloud || {}; return { v: p.v, uid: p.uid || null, allows: t.C.allows('cloud_sync') }; }
+  /* 1. A turned backup on; B signed in and turned it on too; then A's account record arrives saying A's backup is off */
+  var t1 = world(); t1.c.signIn('uA'); t1.c.signIn('uB');
+  var before1 = t1.C.events().length;
+  t1.C.record('cloud_sync', 'withdraw', 'server', { sent: true, uid: 'uA' });
+  var c1 = cloudOf(t1);
+  check('a withdrawal for account A, arriving while B is signed in, leaves B\'s backup on and the log unchanged', c1.v === 1 && c1.uid === 'uB' && c1.allows === true && t1.C.events().length === before1, JSON.stringify({ cloud: c1, events: t1.C.events().length - before1 }));
+  /* 2. the same answer for the account that is signed in still counts */
+  var t2 = world(); t2.c.signIn('uA');
+  t2.C.record('cloud_sync', 'withdraw', 'server', { sent: true, uid: 'uA' });
+  var c2 = cloudOf(t2);
+  check('a withdrawal for the account that is signed in still turns its backup off', c2.v === 0 && c2.allows === false, JSON.stringify(c2));
+  /* 3. nobody signed in any more: an answer for A changes nothing either */
+  var t3 = world(); t3.c.signIn('uA'); t3.c.who = null;
+  var before3 = t3.C.events().length;
+  t3.C.record('cloud_sync', 'withdraw', 'server', { sent: true, uid: 'uA' });
+  check('a withdrawal for account A, arriving after a sign-out, changes nothing on this phone', t3.C.events().length === before3 && (t3.w.OvuStore.profile().cloud || {}).uid === 'uA', JSON.stringify({ events: t3.C.events().length - before3, cloud: t3.w.OvuStore.profile().cloud }));
+  /* 4. end to end (Codex round five, finding 2): A's sync asks A's account about backup; the answer says off; another tab
+     signs B in and turns B's backup on in the instant between the sync's last check and its recording of that answer */
+  var t4 = world(); t4.c.signIn('uA');
+  var answer = null, C4 = t4.C, realRecord = C4.record, switched = false;
+  C4.pullAccountState = function () { return new Promise(function (r) { answer = r; }); };
+  C4.record = function (p, action, method, extra) {
+    if (!switched && p === 'cloud_sync' && action === 'withdraw' && method === 'server') { switched = true; t4.w.OvuSync.resetPosition(); t4.c.signIn('uB'); }
+    return realRecord.apply(this, arguments);
+  };
+  var p4 = t4.w.OvuSync.syncNow();
+  var four = ticks(5).then(function () { answer({ cloud_sync: { on: false } }); return p4; }).then(function (r) {
+    var c4 = cloudOf(t4);
+    check('A\'s "backup is off" answer recorded just after B signed in elsewhere never turns off B\'s backup', switched && r && r.ok === false && c4.v === 1 && c4.uid === 'uB' && c4.allows === true, JSON.stringify({ switched: switched, r: r, cloud: c4 }));
+  });
+  four.catch(function (err) { check('the consent late-answer tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */
 function scenes(todayIso) {
   var w = fresh(todayIso);
