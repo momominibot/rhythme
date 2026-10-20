@@ -2428,4 +2428,89 @@ function scenes(todayIso) {
 
 /* the summary waits for every timer and promise the blocks scheduled: the loop drains, then we report, so no async check is ever cut off */
 var summarised = false;
+(function cycleHistoryOverMonths() {
+  console.log('cycle history: every interval kept, breaks named, recorded days apart from the span');
+  var w = fresh('2026-10-20'), S = w.OvuStore, A = w.OvuAgents;
+  function period(st, n) { for (var k = 0; k < n; k++) S.add('period', addDays(st, k), { flow: k === 1 ? 'heavy' : 'medium' }, 'test'); }
+  ['2026-04-01', '2026-04-30', '2026-05-31', '2026-08-15', '2026-09-14'].forEach(function (st) { period(st, 4); });
+  S.add('period', '2026-10-12', { flow: 'medium' }, 'test'); S.add('period', '2026-10-13', { flow: 'heavy', largeClots: true }, 'test'); S.add('period', '2026-10-15', { flow: 'light' }, 'test');
+  S.add('period', '2026-07-01', { flow: 'spotting' }, 'test');
+  S.add('symptom', '2026-10-13', { symptoms: ['cramps'], pain: 6, mood: 'low' }, 'test');
+  var h = A.cycleHistory('2026-04-22', '2026-10-20'), r = h.rows;
+  check('six rows: the interval that runs into the range is kept and marked, spotting starts nothing', r.length === 6 && r[0].start === '2026-04-01' && r[0].beforeRange && r[0].interval === 29 && r.every(function (x) { return x.start !== '2026-07-01'; }), JSON.stringify(r.map(function (x) { return [x.start, x.interval, x.beforeRange]; })));
+  check('the 76-day gap stays as a dated row with its reason and is left out of the numbers', r[2].start === '2026-05-31' && r[2].interval === 76 && !r[2].counted && /break in the record/.test(r[2].excluded) && h.stats.excluded === 1, JSON.stringify(r[2]));
+  check('stats use the three counted intervals inside the range: 31, 30, 28', h.stats.intervals === 3 && h.stats.median === 30 && h.stats.shortest === 28 && h.stats.longest === 31 && h.stats.variation === 3 && h.stats.starts === 5, JSON.stringify(h.stats));
+  var cur = r[5];
+  check('the latest period has no interval yet and counts days since it started', cur.current && cur.interval === null && cur.nextStart === null && cur.sinceStart === 9, JSON.stringify(cur));
+  check('a bridged day is missing, not bleeding: 3 recorded days over a 4-day span', cur.bleedDays === 3 && cur.span === 4 && cur.missingDays === 1 && cur.heavyDays === 1 && cur.largeClots && !cur.flooding, JSON.stringify(cur));
+  check('pain is the highest recorded on the period days, and null where none was recorded', cur.painMax === 6 && r[3].painMax === null, JSON.stringify([cur.painMax, r[3].painMax]));
+  var clip = A.cycleHistory('2026-10-01', '2026-10-13').rows;
+  check('days after the end of the range are clipped off, and the September interval into the range is kept', clip.length === 2 && clip[0].beforeRange && clip[0].interval === 28 && clip[1].bleedDays === 2 && clip[1].end === '2026-10-13' && clip[1].sinceStart === 2, JSON.stringify(clip));
+  check('no normal or irregular verdict anywhere, FIGO only as a reference', !/irregular|abnormal|normal cycle/i.test(JSON.stringify(h.rows) + JSON.stringify(h.stats)) && /FIGO 2018/.test(h.reference), h.reference);
+  var none = fresh('2026-10-20').OvuAgents.cycleHistory('2026-04-22', '2026-10-20');
+  check('with nothing logged the history is empty and every number is null', none.rows.length === 0 && none.stats.median === null && none.stats.variation === null && none.stats.longestBleed === null, JSON.stringify(none.stats));
+})();
+
+(function patternDaysForCalendars() {
+  console.log('pattern days: display bins only, missing stays missing');
+  var w = fresh('2026-10-20'), S = w.OvuStore, A = w.OvuAgents;
+  S.add('period', '2026-10-18', { flow: 'heavy' }, 'test');
+  S.add('symptom', '2026-10-18', { symptoms: ['cramps'], pain: 6, mood: 'low' }, 'test');
+  S.add('symptom', '2026-10-19', { symptoms: [], none: true, mood: 'good' }, 'test');
+  S.add('sleep', '2026-10-19', { bedTime: '23:30', wakeTime: '05:00', quality: 2 }, 'test');
+  S.add('sleep', '2026-10-20', { bedTime: '22:00', wakeTime: '07:30', quality: 4 }, 'test');
+  var d = A.patternDays('2026-10-17', '2026-10-20');
+  check('one entry per day in order', d.length === 4 && d[0].date === '2026-10-17' && d[3].date === '2026-10-20');
+  check('a heavy day with pain 6 shows heavy and pain band 2 (4 to 6)', d[1].flow === 'heavy' && d[1].pain === 6 && d[1].painBand === 2, JSON.stringify(d[1]));
+  check('"no symptoms" is an answer but makes no pain zero', d[2].none && d[2].pain === null && d[2].painBand === null && d[2].mood === 'good', JSON.stringify(d[2]));
+  check('sleep bands: 5.5 h under 6, 9.5 h over 9 (never a failure colour, just a band)', d[2].sleepBand === 0 && d[3].sleepBand === 3 && d[3].sleep === 9.5, JSON.stringify([d[2].sleep, d[3].sleep]));
+  check('a day with nothing logged has no marks at all', d[0].flow === null && d[0].pain === null && d[0].sleep === null && d[0].entries === 0, JSON.stringify(d[0]));
+})();
+
+(function todayCheckInTicks() {
+  console.log("today's check-in: answers count, nothing is invented, the tick pays nothing");
+  var w = fresh('2026-10-20'), S = w.OvuStore, A = w.OvuAgents, RW = w.OvuRewards, t = '2026-10-20';
+  S.setProfile({ periodsStarted: 'yes', regularity: 'regular' });
+  var c0 = A.todayCheckIn(t);
+  check('periods expected: bleeding, sleep, symptoms and mood, food count; movement and calm are optional', c0.keyCount === 4 && c0.keyDone === 0 && !c0.complete && c0.tiles.filter(function (x) { return x.key; }).map(function (x) { return x.id; }).join() === 'bleeding,sleep,symptoms,food' && c0.tiles[4].state === 'optional', JSON.stringify(c0.tiles.map(function (x) { return [x.id, x.key, x.state]; })));
+  S.add('sleep', t, { bedTime: '23:00', wakeTime: '06:30', quality: 3 }, 'room');
+  S.add('symptom', t, { symptoms: [], none: true, pain: null, mood: '' }, 'room');
+  S.add('food', t, { meal: 'lunch', foods: 'chicken rice', items: [], tags: [] }, 'room');
+  var c1 = A.todayCheckIn(t), sym = c1.tiles[2];
+  check('"None" for symptoms without a mood is only partly answered', sym.state === 'partial' && sym.value === 'Mood?' && c1.keyDone === 2, JSON.stringify(sym));
+  var hearts = RW.ledger().hearts, events = S.list().length;
+  S.setCheckinAnswer(t, 'mood', 'unsure'); S.setCheckinAnswer(t, 'bleeding', 'none');
+  var c2 = A.todayCheckIn(t);
+  check('"not sure" about mood and "no bleeding" complete the check-in', c2.complete && c2.keyDone === 4 && c2.tiles[0].value === 'None' && c2.tiles[0].answer && c2.tiles[2].state === 'done' && c2.tiles[2].answer, JSON.stringify(c2.tiles.map(function (x) { return [x.id, x.state, x.value]; })));
+  check('answers create no entries, no period episode and no hearts', S.list().length === events && S.periodEpisodes().length === 0 && RW.ledger().hearts === hearts, JSON.stringify([S.list().length, events, RW.ledger().hearts, hearts]));
+  check('the month calendar shows "no bleeding" as an answer, not as a flow', A.patternDays(t, t)[0].bleedAnswer === 'none' && A.patternDays(t, t)[0].flow === null);
+  S.add('period', t, { flow: 'light' }, 'room');
+  check('a logged flow wins over an earlier "no bleeding"', A.todayCheckIn(t).tiles[0].value === 'Light' && !A.todayCheckIn(t).tiles[0].answer);
+  S.setCheckinAnswer(t, 'mood', null);
+  check('taking an answer back reopens that check-in', !A.todayCheckIn(t).complete && A.todayCheckIn(t).tiles[2].state === 'partial');
+  var bad = false; try { S.setCheckinAnswer(t, 'bleeding', 'heavy'); } catch (e) { bad = true; }
+  var bad2 = false; try { S.setCheckinAnswer('20-10-2026', 'food', 'skip'); } catch (e) { bad2 = true; }
+  check('only the listed answers and real dates are accepted', bad && bad2);
+  check('choosing what counts changes the tick, not the tiles', A.todayCheckIn(t, { food: false, bleeding: false }).keyCount === 2 && A.todayCheckIn(t, { food: false, bleeding: false }).tiles.length === 6);
+  /* storage full: the answer must not land, so no tick */
+  var w2 = fresh('2026-10-20'), S2 = w2.OvuStore, A2 = w2.OvuAgents; S2.setProfile({ periodsStarted: 'yes' });
+  var real = w2.localStorage.setItem; w2.localStorage.setItem = function () { throw new Error('QuotaExceededError'); };
+  var threw = false; try { S2.setCheckinAnswer(t, 'food', 'skip'); } catch (e) { threw = true; }
+  w2.localStorage.setItem = real;
+  check('a failed save throws and leaves no answer and no tick behind', threw && !S2.checkinAnswers(t).food && A2.todayCheckIn(t).tiles[3].state === 'add', JSON.stringify(S2.checkinAnswers(t)));
+  function keysFor(profile) { var x = fresh('2026-10-20'); x.OvuStore.setProfile(profile); return x.OvuAgents.todayCheckIn(t).tiles[0].key; }
+  check('bleeding does not count after menopause, in pregnancy, after a birth before periods are back, or with predictions paused',
+    !keysFor({ lifeStage: 'post' }) && !keysFor({ periodsStarted: 'yes', pregState: 'pregnant' }) && !keysFor({ periodsStarted: 'yes', pregState: 'maybe' }) && !keysFor({ periodsStarted: 'yes', pregState: 'postpartum', periodsBack: 'no' }) && !keysFor({ periodsStarted: 'yes', predictionMode: 'suspended' }) && !keysFor({}));
+  check('after a birth with periods back, bleeding counts again', keysFor({ periodsStarted: 'yes', pregState: 'postpartum', periodsBack: 'yes' }));
+})();
+
+(function backfillAndImportsEarnNothing() {
+  console.log('hearts: only today\'s own log earns');
+  var w = fresh('2026-10-20'), S = w.OvuStore, RW = w.OvuRewards;
+  var old = RW.award(S.add('food', '2026-10-18', { meal: 'lunch', foods: 'rice', items: [], tags: [] }, 'room'));
+  var imp = RW.award(S.add('sleep', '2026-10-20', { bedTime: '23:00', wakeTime: '07:00' }, 'apple-health'));
+  var now = RW.award(S.add('food', '2026-10-20', { meal: 'lunch', foods: 'rice', items: [], tags: [] }, 'room'));
+  check('a backfilled meal and an imported night earn nothing; today\'s meal still earns 6', old.points === 0 && imp.points === 0 && now.points === 6 && RW.ledger().hearts === 6, JSON.stringify([old, imp, now]));
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

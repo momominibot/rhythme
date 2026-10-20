@@ -31,9 +31,10 @@
       <div class="msg" id="insightMsg"></div>
     </section>
     <section class="card hero" id="share">
-      <h2><span class="ms">medical_services</span>Four-week summary</h2>
-      <p class="sub">Built from your own entries by the summary agent. Luna can write it up for you and for your clinician. For review, not a diagnosis.</p>
+      <h2><span class="ms">medical_services</span>For your clinician</h2>
+      <p class="sub">The recent 28 days at a glance, built from your own entries. The PDF and the encrypted share also carry your cycles over time (below). For review, not a diagnosis.</p>
       <p class="sub" style="color:#7a5c96;font-weight:700">Your questions deserve space. Bring them with you, and a gap in the record is fine.</p>
+      <div class="ct" style="margin-top:10px;font:800 10px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)">Recent 28 days</div>
       <div class="kpis" id="shareKpis"></div>
       <div id="shareBody"></div>
       <div id="aiShare"></div>
@@ -46,6 +47,19 @@
       <div class="msg" id="shareMsg2"></div>
       <div id="shareForm"></div>
       <p class="note">The PDF is made on this phone and is yours to print, save or send. The encrypted share is for clinicians who use the <a href="doctor.html" style="color:var(--rm-mauve)">Doctor view</a>; nothing is uploaded anywhere.</p>
+    </section>
+
+    <section class="card" id="historyCard">
+      <h2><span class="ms">timeline</span>Cycles over time</h2>
+      <p class="sub">Days from each first day of bleeding to the next, with how much bleeding and pain you recorded. The PDF uses the range you pick here.</p>
+      <div class="rangechips" id="histRange" role="group" aria-label="Range"><button type="button" data-days="91" aria-pressed="false">3 months</button><button type="button" data-days="182" aria-pressed="true">6 months</button><button type="button" data-days="364" aria-pressed="false">12 months</button></div>
+      <div id="historyBody"></div>
+    </section>
+
+    <section class="card" id="patternCard">
+      <h2><span class="ms">calendar_view_month</span>Your patterns</h2>
+      <p class="sub">This month and the three before it. Each day has three lines: bleeding, pain and sleep. Tap a day to read it.</p>
+      <div id="patternBody"></div>
     </section>
 
     <section class="card" id="flagCard">
@@ -103,6 +117,7 @@
 <script src="ovu-orb.js"></script>
 <script src="ovu-insight.js"></script>
 <script src="ovu-pdf.js"></script>
+<script src="ovu-patterns.js"></script>
 <script>
 (function(){
   'use strict';
@@ -219,11 +234,18 @@
   $('#insightBtn').addEventListener('click',function(){message($('#insightMsg'),'Luna is reading today’s entries…','info');I.daily(S.today(),true).then(function(){$('#insightMsg').className='msg';renderInsight();renderTimeline();}).catch(function(e){message($('#insightMsg'),e.message,'err');});});
   $('#aiShare').addEventListener('click',function(e){if(!e.target.closest('#copyClin'))return;var ins=I.cachedFourWeeks(S.today());if(!ins)return;navigator.clipboard.writeText(clinicianText(ins)).then(function(){message($('#shareMsg2'),'Clinician summary copied as plain text.','ok');},function(){message($('#shareMsg2'),'Copying is blocked here; use the encrypted share instead.','info');});});
   $('#aiShareBtn').addEventListener('click',function(){message($('#shareMsg2'),'Writing the 4-week summary, about half a minute…','info');I.fourweeks(S.today(),true).then(function(){message($('#shareMsg2'),'Written. It is included in your next encrypted share.','ok');renderAiShare();}).catch(function(e){message($('#shareMsg2'),e.message,'err');});});
+  /* The share carries the recent 28-day summary, cycles over time and the month marks for the whole range, and every
+     entry for the last 12 weeks. Beyond 12 weeks only bleeding, symptom and sleep entries go along (a year of meals would
+     make the file huge and adds little for a visit); the bundle says exactly what it holds. Meal photos never leave the phone. */
+  var DETAIL_DAYS=84,KEEP_LONG={period:1,symptom:1,sleep:1};
   function buildBundle(weeks){
-    var end=S.today(),from=S.addDays(end,-(weeks*7-1));
-    var events=S.list(null,{from:from,to:end});
-    var dates={};events.forEach(function(e){dates[e.date]=true;});
-    return {kind:'ovumind-share',v:1,created:new Date().toISOString(),alias:S.profile().name||'Rhythme user',lifeStage:S.profile().lifeStage||'',range:{from:from,to:end},summary:A.fourWeekSummary(end),insight:I.cachedFourWeeks(end)||null,dailies:Object.keys(dates).sort().map(function(d){var s=A.dailySummary(d);return {date:d,text:s.text,flags:s.flags};}),events:events};
+    var end=S.today(),from=S.addDays(end,-(weeks*7-1)),detailFrom=weeks*7>DETAIL_DAYS?S.addDays(end,-(DETAIL_DAYS-1)):from;
+    var events=S.list(null,{from:from,to:end}).filter(function(e){return e.date>=detailFrom||KEEP_LONG[e.type];}).map(function(e){if(e.type!=='food'||!e.data||!e.data.photo)return e;var c=JSON.parse(JSON.stringify(e));delete c.data.photo;c.data.hadPhoto=true;return c;});
+    var dates={};events.forEach(function(e){if(e.date>=detailFrom)dates[e.date]=true;});
+    return {kind:'ovumind-share',v:1,created:new Date().toISOString(),alias:S.profile().name||'Rhythme user',lifeStage:S.profile().lifeStage||'',range:{from:from,to:end},
+      included:{from:from,to:end,allEntriesFrom:detailFrom,olderEntries:detailFrom>from?'bleeding, symptoms and sleep only':'',photos:'not included'},
+      history:A.cycleHistory(from,end),patterns:A.patternDays(from,end).map(function(d){return {date:d.date,flow:d.flow,autofill:d.autofill||undefined,pain:d.pain,painBand:d.painBand,symptoms:d.symptoms,none:d.none||undefined,mood:d.mood,sleep:d.sleep,sleepBand:d.sleepBand,entries:d.entries};}),
+      summary:A.fourWeekSummary(end),insight:I.cachedFourWeeks(end)||null,dailies:Object.keys(dates).sort().map(function(d){var s=A.dailySummary(d);return {date:d,text:s.text,flags:s.flags};}),events:events};
   }
   function entryText(e){
     var d=e.data;
@@ -254,6 +276,21 @@
     var moods=Object.keys(sum.symptoms.moods||{});if(moods.length)B.push({t:'kv',label:'Mood',text:moods.map(function(k){return k+' ('+sum.symptoms.moods[k]+')';}).join(', ')});
     B.push({t:'kv',label:'Food',text:sum.food.meals+' meal'+(sum.food.meals===1?'':'s')+' over '+sum.food.daysLogged+' day'+(sum.food.daysLogged===1?'':'s')+(Object.keys(sum.food.tags||{}).length?'; tags: '+Object.keys(sum.food.tags).map(function(k){return k+' ('+sum.food.tags[k]+')';}).join(', '):'')});
     B.push({t:'kv',label:'Calm',text:sum.mindfulness.sessions+' session'+(sum.mindfulness.sessions===1?'':'s')+', '+sum.mindfulness.minutes+' min'});
+    /* cycles over time: the range picked on the journal card (6 months unless she chose another) */
+    var hf=S.addDays(end,-(histDays-1)),h=A.cycleHistory(hf,end),hs=h.stats;
+    B.push({t:'h2',text:'Cycles over time ('+pretty(hf,{day:'numeric',month:'short',year:'numeric'})+' to '+pretty(end,{day:'numeric',month:'short'})+')'});
+    if(!h.rows.length)B.push({t:'p',text:'No period logged in this range.'});
+    else{
+      B.push({t:'kv',label:'Intervals',text:hs.intervals?hs.intervals+' counted, start to next start: median '+hs.median+' days, shortest '+hs.shortest+', longest '+hs.longest+(hs.variation!==null?', variation '+hs.variation+' days':''):'none complete yet (needs two logged starts)'});
+      if(hs.excluded)B.push({t:'kv',label:'Gaps',text:hs.excluded+' gap'+(hs.excluded===1?'':'s')+' over 60 days listed below, left out of the numbers'});
+      B.push({t:'kv',label:'Coverage',text:'entries on '+h.coverage.daysWithEntries+' of '+h.coverage.days+' days'});
+      h.rows.slice().reverse().forEach(function(r){
+        var iv=r.current?'next start not recorded (day '+r.sinceStart+' now)':r.counted?r.interval+' days to the next start'+(r.beforeRange?' (started before this range)':''):r.interval+' days, a gap in the record, not counted';
+        var bl=r.bleedDays+(r.span>r.bleedDays?' of '+r.span:'')+' bleeding day'+(r.bleedDays===1?'':'s')+' recorded'+(r.heavyDays?', '+r.heavyDays+' heavy':'')+(r.largeClots?', clots over 2.5 cm':'')+(r.flooding?', flooding':'')+(r.autofilled?', '+r.autofilled+' filled in as typical':'');
+        B.push({t:'li',text:pretty(r.start,{day:'numeric',month:'short',year:'numeric'})+': '+iv+'; '+bl+'; highest pain '+(r.painMax===null?'not recorded':r.painMax+'/10')});
+      });
+      B.push({t:'small',text:h.reference+' '+h.limits});
+    }
     if(c){
       B.push({t:'h2',text:'Summary'},{t:'p',text:c.overview||''});
       SEC.forEach(function(sc){if(c[sc[0]])B.push({t:'kv',label:sc[1],text:c[sc[0]]});});
@@ -278,10 +315,11 @@
   });
   $('#makeShare').addEventListener('click',function(){
     var pass=S.crypto.generatePassphrase();
-    $('#shareForm').innerHTML='<div class="field"><label for="passInput">Passphrase (share it separately, by voice or another channel)</label><input class="input" id="passInput" value="'+esc(pass)+'"></div><div class="grid2"><div class="field"><label for="weeksSel">Range</label><select class="input" id="weeksSel"><option value="4">Last 4 weeks</option><option value="8">Last 8 weeks</option><option value="12">Last 12 weeks</option></select></div><div class="field"><label>&nbsp;</label><button class="btn primary" id="doShare" style="width:100%"><span class="ms">download</span>Encrypt</button></div></div><div class="msg" id="shareMsg"></div><div id="codeWrap"></div>';
+    $('#shareForm').innerHTML='<div class="field"><label for="passInput">Passphrase (share it separately, by voice or another channel)</label><input class="input" id="passInput" value="'+esc(pass)+'"></div><div class="grid2"><div class="field"><label for="weeksSel">Range</label><select class="input" id="weeksSel"><option value="4">Last 4 weeks</option><option value="13">Last 3 months</option><option value="26" selected>Last 6 months</option><option value="52">Last 12 months</option></select></div><div class="field"><label>&nbsp;</label><button class="btn primary" id="doShare" style="width:100%"><span class="ms">download</span>Encrypt</button></div></div><div class="msg" id="shareMsg"></div><div id="codeWrap"></div>';
     $('#doShare').addEventListener('click',function(){
       var pass=$('#passInput').value,weeks=Number($('#weeksSel').value);
-      S.crypto.encrypt(buildBundle(weeks),pass).then(function(bundle){
+      var plain=buildBundle(weeks),inc=plain.included,holds='It covers '+pretty(inc.from,{day:'numeric',month:'short',year:'numeric'})+' to '+pretty(inc.to,{day:'numeric',month:'short'})+': your cycles over time and the month marks for the whole range'+(inc.olderEntries?', every entry from '+pretty(inc.allEntriesFrom,{day:'numeric',month:'short'})+' and only bleeding, symptoms and sleep before that':', and every entry')+'. Meal photos stay on this phone.';
+      S.crypto.encrypt(plain,pass).then(function(bundle){
         /* the file goes out through the phone's own share sheet when it can (WhatsApp, Mail, AirDrop, Files), so nobody
            meets Safari's bare download prompt; the share is a second tap because a share sheet must open from a tap */
         var text=JSON.stringify(bundle),name='Rhythme-share-'+S.today()+'.json',file=null;
@@ -290,7 +328,7 @@
         var viewer=location.origin+location.pathname.replace(/[^/]*$/,'')+'doctor.html';
         var code=S.crypto.toCode(bundle);
         message($('#shareMsg'),'Encrypted and ready. Send the file to your clinician, then tell them the passphrase another way (in person or by phone). They open it at '+viewer+'.','ok');
-        $('#codeWrap').innerHTML='<div class="row">'+(canSend?'<button class="btn primary" id="sendShare"><span class="ms">ios_share</span>Send the file</button>':'')+'<button class="btn soft" id="saveShare"><span class="ms">download</span>Save the file</button></div><div class="row"><button class="btn soft" id="copyCode"><span class="ms">content_copy</span>Copy as a share code ('+Math.round(code.length/1024)+' KB)</button></div><p class="note">The file is encrypted; without the passphrase nobody can read it. The share code is the same bundle as text, for pasting into the Doctor view.</p>';
+        $('#codeWrap').innerHTML='<div class="row">'+(canSend?'<button class="btn primary" id="sendShare"><span class="ms">ios_share</span>Send the file</button>':'')+'<button class="btn soft" id="saveShare"><span class="ms">download</span>Save the file</button></div><div class="row"><button class="btn soft" id="copyCode"><span class="ms">content_copy</span>Copy as a share code ('+Math.round(code.length/1024)+' KB)</button></div><p class="note" id="shareHolds">'+esc(holds)+'</p><p class="note">The file is encrypted; without the passphrase nobody can read it. The share code is the same bundle as text, for pasting into the Doctor view.</p>';
         if($('#sendShare'))$('#sendShare').addEventListener('click',function(){navigator.share({files:[file],title:'Rhythme summary (encrypted)',text:'My Rhythme summary for our appointment. Open it at '+viewer+' and I will tell you the passphrase.'}).then(function(){message($('#shareMsg'),'Sent. Tell your clinician the passphrase another way.','ok');},function(e){if(e&&e.name!=='AbortError')message($('#shareMsg'),'Could not open the share sheet; use Save the file instead.','info');});});
         $('#saveShare').addEventListener('click',function(){download(new Blob([text],{type:'application/json'}),name);message($('#shareMsg'),'Saved to your downloads (on iPhone: tap Download, then find it in Files). Send it to your clinician and tell them the passphrase another way.','ok');});
         $('#copyCode').addEventListener('click',function(){navigator.clipboard.writeText(code).then(function(){message($('#shareMsg'),'Share code copied.','ok');},function(){message($('#shareMsg'),'Copying is blocked here; use the file instead.','info');});});
@@ -306,7 +344,15 @@
   $('#importFile').addEventListener('change',function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var n=S.importJSON(r.result,'merge');message($('#dataMsg'),'Imported. '+n+' entries now on this device.','ok');renderAll();}catch(e){message($('#dataMsg'),'Could not import: '+e.message,'err');}};r.readAsText(f);this.value='';});
   $('#deleteAll').addEventListener('click',function(){if(confirm('Delete every Rhythme room entry on this device? Exports you already downloaded are not affected.')&&confirm('This cannot be undone. Delete now?')){S.clearAll();message($('#dataMsg'),'Deleted. Your room is empty again.','ok');renderAll();}});
   $('#refreshBtn').addEventListener('click',renderAll);
-  function renderAll(){renderShare();renderAiShare();renderInsight();renderFlags();renderTimeline();}
+  /* cycles over time and the month calendars (Jamie, 20 Oct: "sharing 4 weeks ... is not enough, we need to see trend of it") */
+  var histDays=182;
+  function renderHistory(){$('#historyBody').innerHTML=window.OvuPatterns.historyHTML(A.cycleHistory(S.addDays(S.today(),-(histDays-1)),S.today()));}
+  $('#histRange').addEventListener('click',function(e){var b=e.target.closest('[data-days]');if(!b)return;histDays=Number(b.dataset.days);$$('#histRange button').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});renderHistory();});
+  function patternFrom(){var t=S.today(),d=new Date(t.slice(0,7)+'-01T12:00:00');d.setMonth(d.getMonth()-3);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';}
+  var patternDays=[];
+  function renderPatterns(){patternDays=A.patternDays(patternFrom(),S.today());$('#patternBody').innerHTML=window.OvuPatterns.calendarHTML(patternDays,{today:S.today()});}
+  window.OvuPatterns.wire($('#patternBody'),function(){return patternDays;});
+  function renderAll(){renderShare();renderAiShare();renderInsight();renderHistory();renderPatterns();renderFlags();renderTimeline();}
   S.subscribe(function(r){if(r==='external')renderAll();});
   renderAll();
   if(I.plan('journal').indexOf('daily')>-1){message($('#insightMsg'),'Luna is reading today’s entries…','info');I.daily(S.today()).then(function(){$('#insightMsg').className='msg';renderInsight();renderTimeline();}).catch(function(e){message($('#insightMsg'),e.message,'err');});}

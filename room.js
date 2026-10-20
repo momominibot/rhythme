@@ -860,7 +860,8 @@
       $('#savePeriod').addEventListener('click', function () {
         try {
           var flow = ($('#flowChips .on') || {}).dataset ? $('#flowChips .on').dataset.flow : 'none';
-          if (flow === 'none') { if (cur) S.remove(cur.id); message($('#calMsg'), 'Marked as no bleeding.', true); renderCal(); renderEditor(); renderDeck(); return; }
+          if (flow === 'none') { if (cur) S.remove(cur.id); S.setCheckinAnswer(date, 'bleeding', 'none'); message($('#calMsg'), 'Marked as no bleeding.', true); renderCal(); renderEditor(); renderDeck(); return; }
+          if (S.checkinAnswers(date).bleeding) S.setCheckinAnswer(date, 'bleeding', null); /* a logged flow replaces an earlier "none" or "not sure" */
           var ev = S.add('period', date, { flow: flow, clots: $('#clots').classList.contains('on'), largeClots: $('#largeClots').classList.contains('on'), flooding: $('#flooding').classList.contains('on'), impact: $('#impact').classList.contains('on') });
           var pn = Number($('#ppain').value), sev = null; if (pn > 0 || (symToday && (ppTouched || typeof symToday.data.pain === 'number'))) sev = S.add('symptom', date, { pain: pn }, 'room', { merge: true });
           message($('#calMsg'), 'Saved ' + flow + ' flow for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev, undefined, false, sev ? [sev] : []);
@@ -2769,10 +2770,7 @@
     var items = []; foodToday.forEach(function (f) { items = items.concat(f.data.items || []); });
     var sm = items.length ? FD.sum(items) : null;
     var sym = S.list('symptom', { from: today, to: today })[0];
-    $('#tiles').innerHTML =
-      '<button class="tile" data-go="calendar"><span class="ms">water_drop</span><b>' + (cs.cycleDay ? 'Day ' + cs.cycleDay : '—') + '</b><small>' + (cs.phase ? cap(cs.phase) : 'Log a period') + '</small></button>' +
-      '<button class="tile" data-go="clock"><span class="ms">bedtime</span><b>' + (lastNight ? A.fmtHours(S.sleepHours(lastNight.data)) : '—') + '</b><small>' + (lastNight ? (lastNight.date === today ? 'Last night' : prettyDate(lastNight.date)) : 'No sleep yet') + '</small></button>' +
-      '<button class="tile" data-go="diary"><span class="ms">restaurant</span><b>' + (sm && sm.totals.kcal !== null ? Math.round(sm.totals.kcal) : meals) + '</b><small>' + (sm && sm.totals.kcal !== null ? 'kcal · ' + FD.fmt('protein', sm.totals.protein) + ' g protein' : (meals === 1 ? 'meal today' : 'meals today')) + '</small></button>';
+    renderCheckIn();
     var flags = A.allFlags().concat((S.profile().intakeNotes || []).map(function (n) { return { level: n.level || 'watch', title: n.title, detail: n.detail }; }));
     $('#flagCard').style.display = flags.length ? '' : 'none';
     $('#flags').innerHTML = flags.slice(0, 3).map(function (f) { return '<div class="flag ' + f.level + '"><span class="ms">' + (f.level === 'high' ? 'emergency_home' : f.level === 'watch' ? 'flag' : 'info') + '</span><div><b>' + esc(f.title) + '</b><span>' + esc(f.detail) + '</span></div></div>'; }).join('');
@@ -2786,7 +2784,59 @@
     $('#shareSub').textContent = sum.length ? 'Last summary saved ' + prettyDate(sum[sum.length - 1].range.to) : 'Create a 4-week summary for your clinician';
     if (window.OvuMorning) OvuMorning.renderInvite(); /* Morning start: 04:00 to 11:59 by the real clock, until done or put away today */
   }
-  $('#tiles').addEventListener('click', function (e) { var t = e.target.closest('[data-go]'); if (!t) return; tap(hotspot(t.dataset.go)); });
+  /* ---------- Today's check-in (Jamie, 20 Oct: "once they do up, we will have a green tick"; Codex design review) ----------
+   * Six tiles open their editors straight away. The tick means the key check-ins she chose were answered today; "none",
+   * "not sure" and "nothing to log" count. No red, no streak, no nagging, no hearts for the tick. */
+  var ciChoosing = false;
+  function ciChoice() { return S.state().checkinChoice || null; }
+  function renderCheckIn() {
+    var ci = A.todayCheckIn(S.today(), ciChoice());
+    $('#tiles').innerHTML = ci.tiles.map(function (t) {
+      var mark = t.state === 'done' ? '<span class="cimark ok" aria-hidden="true"><span class="ms">check</span></span>' : t.state === 'unsure' ? '<span class="cimark uns" aria-hidden="true">?</span>' : t.state === 'partial' ? '<span class="cimark part" aria-hidden="true"><span class="ms">more_horiz</span></span>' : '';
+      var label = t.label + ': ' + (t.state === 'add' ? 'not recorded yet' : t.state === 'optional' ? 'optional, not recorded' : t.value + (t.sub ? ', ' + t.sub : '')) + (t.key ? '' : ', does not count toward the tick');
+      if (ciChoosing) return '<button type="button" class="tile citile choose' + (t.key ? ' on' : '') + '" data-ci-key="' + t.id + '" aria-pressed="' + (t.key ? 'true' : 'false') + '"><span class="ms">' + t.icon + '</span><b>' + esc(t.label) + '</b><small>' + (t.key ? 'Counts' : 'Does not count') + '</small></button>';
+      return '<button type="button" class="tile citile s-' + t.state + (t.key ? ' key' : '') + '" data-ci="' + t.id + '" aria-label="' + esc(label) + '">' + mark + '<span class="ms">' + t.icon + '</span><span class="cil">' + esc(t.label) + '</span><b>' + esc(t.value) + '</b><small>' + esc(t.sub || (t.key ? 'tap to add' : '')) + '</small></button>';
+    }).join('');
+    var st = $('#ciStatus');
+    if (ciChoosing) { st.className = 'cistatus'; st.textContent = 'Tap a tile to choose whether it counts toward today’s tick. Every tile stays there to use.'; }
+    else if (!ci.keyCount) { st.className = 'cistatus'; st.textContent = 'Nothing counts toward the tick right now. Choose what counts.'; }
+    else if (ci.complete) { st.className = 'cistatus done'; st.innerHTML = '<span class="ms">check_circle</span>Today’s check-ins are recorded. Thank you.'; }
+    else { st.className = 'cistatus'; st.textContent = ci.keyDone + ' of ' + ci.keyCount + ' check-ins recorded today'; }
+    $('#ciChoose').textContent = ciChoosing ? 'Done' : 'Choose what counts'; $('#ciChoose').setAttribute('aria-pressed', ciChoosing ? 'true' : 'false');
+    /* quick answers for what is still open, and a way back from an answer */
+    var q = [], by = {}; ci.tiles.forEach(function (t) { by[t.id] = t; });
+    if (!ciChoosing) {
+      if (by.bleeding.state === 'add') q.push(['bleeding', 'none', 'No bleeding today'], ['bleeding', 'unsure', 'Not sure about bleeding']);
+      if (by.sleep.state === 'add') q.push(['sleep', 'unsure', 'Not sure about last night']);
+      if (by.symptoms.state === 'partial' && by.symptoms.value === 'Mood?') q.push(['mood', 'unsure', 'Mood: not sure']);
+      if (by.food.state === 'add') q.push(['food', 'skip', 'Nothing to log for food today']);
+      ci.tiles.forEach(function (t) { if (t.answer) q.push([t.id === 'symptoms' ? 'mood' : t.id, null, 'Change my answer: ' + t.label.toLowerCase()]); });
+    }
+    $('#ciQuick').innerHTML = q.length ? q.map(function (x) { return '<button type="button" class="qchip' + (x[1] === null ? ' undo' : '') + '" data-qa="' + x[0] + '" data-qv="' + (x[1] === null ? '' : x[1]) + '">' + esc(x[2]) + '</button>'; }).join('') : '';
+  }
+  function ciOpen(id) {
+    if (window.OvuMorning && OvuMorning.active() && id !== 'sleep') { toast('Morning start is running. Stop it first, or carry on.', 'wb_twilight'); return; }
+    chime('tap');
+    if (id === 'bleeding') openCalendar('period', S.today());
+    else if (id === 'sleep') openSleepRecord();
+    else if (id === 'symptoms') openCalendar('symptom', S.today());
+    else if (id === 'food') openDiary();
+    else if (id === 'movement') openExercise();
+    else if (id === 'calm') tap(hotspot('mat'));
+  }
+  $('#tiles').addEventListener('click', function (e) {
+    var k = e.target.closest('[data-ci-key]');
+    if (k) { var ci = A.todayCheckIn(S.today(), ciChoice()), ch = {}; ci.tiles.forEach(function (t) { ch[t.id] = t.key; }); ch[k.dataset.ciKey] = !ch[k.dataset.ciKey];
+      try { S.commit({ checkinChoice: ch }); chime('tap'); } catch (err) { toast('Could not save that choice on this device.', 'error'); } renderCheckIn(); return; }
+    var t = e.target.closest('[data-ci]'); if (t) ciOpen(t.dataset.ci);
+  });
+  $('#ciChoose').addEventListener('click', function () { ciChoosing = !ciChoosing; chime('tap'); renderCheckIn(); });
+  $('#ciQuick').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-qa]'); if (!b) return;
+    try { S.setCheckinAnswer(S.today(), b.dataset.qa, b.dataset.qv || null); chime(b.dataset.qv ? 'save' : 'tap'); }
+    catch (err) { toast('Could not save that answer on this device, so nothing is ticked.', 'error'); }
+    renderDeck();
+  });
 
   /* ---------- greeting ---------- */
   function updateGreeting() {

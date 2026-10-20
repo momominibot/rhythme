@@ -60,10 +60,12 @@
 
     <section class="deck">
       <div class="card">
-        <h2>Today</h2>
-        <div class="sub" id="dailyText">Nothing logged yet.</div>
+        <div class="cihead"><h2>Today’s check-in</h2><button type="button" class="cichoose" id="ciChoose" aria-pressed="false">Choose what counts</button></div>
+        <p class="cistatus" id="ciStatus" role="status"></p>
         <div class="minvite" id="morningInvite" hidden></div>
-        <div class="tiles" id="tiles"></div>
+        <div class="tiles ci" id="tiles"></div>
+        <div class="ciquick" id="ciQuick"></div>
+        <div class="sub" id="dailyText">Nothing logged yet.</div>
         <p class="note" id="symLine"></p>
       </div>
       <div class="card" id="flagCard" style="display:none">

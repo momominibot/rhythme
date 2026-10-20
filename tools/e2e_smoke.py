@@ -411,6 +411,23 @@ async def main():
             hm = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: document.querySelectorAll('.hotspot').length, garden: JSON.parse(localStorage.getItem('ovumind_db_v1')).state.garden})")
             check("home again with the room's hotspots; the plot already credits the seeded diary days", hm["layout"] == "room" and hm["hots"] >= 9 and hm["garden"] and len(hm["garden"]["credited"]) >= 2, hm)
 
+            # 1d. today's check-in: six tiles, a calm count, quick answers that tick and untick, tiles that open their editor
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_timeout(900)
+            ci = await page.evaluate("()=>({tiles: document.querySelectorAll('#tiles .citile').length, status: document.querySelector('#ciStatus').innerText, bleed: document.querySelector('#tiles [data-ci=bleeding] b').textContent, chip: !!document.querySelector('#ciQuick [data-qa=bleeding][data-qv=none]'), red: getComputedStyle(document.querySelector('#ciStatus')).color})")
+            check("today's check-in shows six tiles and a plain count of the four that count, with a No bleeding quick answer", ci["tiles"] == 6 and "of 4 check-ins recorded today" in ci["status"] and ci["bleed"] == "Add" and ci["chip"], ci)
+            await page.click("#ciQuick [data-qa=bleeding][data-qv=none]"); await page.wait_for_timeout(200)
+            ci2 = await page.evaluate("()=>({bleed: document.querySelector('#tiles [data-ci=bleeding] b').textContent, done: document.querySelector('#tiles [data-ci=bleeding]').classList.contains('s-done'), undo: !!document.querySelector('#ciQuick .undo[data-qa=bleeding]'), events: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(e=>e.type==='period'&&e.date===OvuStore.today()).length})")
+            check("No bleeding today ticks the bleeding tile without making a period entry, and can be taken back", ci2["bleed"] == "None" and ci2["done"] and ci2["undo"] and ci2["events"] == 0, ci2)
+            await page.click("#ciQuick .undo[data-qa=bleeding]"); await page.wait_for_timeout(200)
+            check("taking the answer back reopens the tile", await page.evaluate("()=>document.querySelector('#tiles [data-ci=bleeding] b').textContent") == "Add")
+            await page.click("#ciChoose"); await page.click("#tiles [data-ci-key=food]"); await page.click("#ciChoose"); await page.wait_for_timeout(150)
+            ch = await page.evaluate("()=>({status: document.querySelector('#ciStatus').innerText, food: document.querySelector('#tiles [data-ci=food]').classList.contains('key'), saved: OvuStore.state().checkinChoice})")
+            check("choosing what counts takes food out of the tick and is remembered", "of 3 check-ins" in ch["status"] and not ch["food"] and ch["saved"]["food"] is False, ch)
+            await page.evaluate("()=>OvuStore.commit({checkinChoice: null})")
+            await page.click("#tiles [data-ci=sleep]"); await page.wait_for_selector('#sheet[aria-hidden="false"] #slDate', timeout=8000)
+            check("the Sleep tile opens the night record straight away", await page.evaluate("()=>document.querySelector('#sheetTitle').textContent.indexOf('Bedside clock')===0"))
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+
             # 2. the Cycle tab opens a sheet with the calendar
             await page.goto(BASE + "room.html#cycle", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] [data-date], #sheet[aria-hidden="false"] .rday', timeout=10000)
             cyc = await page.evaluate("()=>{var cells=document.querySelectorAll('#sheet [data-date], #sheet .rday'); return {sheet: document.querySelector('#sheet')?.getAttribute('aria-hidden') === 'false', title: document.querySelector('#sheetTitle')?.textContent.slice(0,13), days: cells.length, visible: (cells[0]?.getBoundingClientRect().height || 0) > 0};}")
@@ -470,6 +487,25 @@ async def main():
             raw = open(path, "rb").read(); size = len(raw); os.remove(path)
             check("PDF export is a complete document with the clinician heading and the entries page", raw.startswith(b"%PDF-1.4") and raw.rstrip().endswith(b"%%EOF") and b"(Rhythme summary for your clinician)" in raw and b"/Count 2" in raw and size > 1500, (raw[:8], size))
             check("download is branded Rhythme-summary-<date>.pdf", d.suggested_filename == "Rhythme-summary-%s.pdf" % TODAY, d.suggested_filename)
+
+            # 5b. cycles over time and the month calendars; the encrypted share carries them, and no meal photos
+            hp = await page.evaluate("()=>({rows: document.querySelectorAll('#historyBody .prows li').length, chips: Array.from(document.querySelectorAll('#histRange button')).map(b=>b.textContent+':'+b.getAttribute('aria-pressed')).join(','), months: document.querySelectorAll('#patternBody .pmonth').length, open: document.querySelectorAll('#patternBody .pmonth[open]').length, verdict: /irregular|abnormal/i.test(document.querySelector('#historyCard').innerText), sw: document.documentElement.scrollWidth})")
+            check("journal shows cycles over time (6 months picked, no normal or irregular verdict) and four month calendars with the newest open, no sideways scroll", hp["rows"] == 1 and "6 months:true" in hp["chips"] and hp["months"] == 4 and hp["open"] == 1 and not hp["verdict"] and hp["sw"] <= 390, hp)
+            await page.click("#histRange [data-days='364']"); await page.wait_for_timeout(150)
+            await page.evaluate("(d)=>{var b=document.querySelector('#patternBody .pday[data-pday=\"'+d+'\"]'); b.closest('details').open=true;}", Y1)
+            await page.click("#patternBody .pday[data-pday='%s']" % Y1); await page.wait_for_timeout(150)
+            dd = await page.evaluate("(d)=>{var b=document.querySelector('#patternBody .pday[data-pday=\"'+d+'\"]'), det=b.closest('details').querySelector('.pdetail'); return {pressed: b.getAttribute('aria-pressed'), label: b.getAttribute('aria-label'), shown: !det.hidden, text: det.innerText, twelve: document.querySelector('#histRange [data-days=\"364\"]').getAttribute('aria-pressed')}}", Y1)
+            check("a day in the calendar speaks its marks and opens its details; the 12-month range can be picked", dd["pressed"] == "true" and "Medium bleeding" in dd["text"] and "medium bleeding" in dd["label"] and dd["shown"] and dd["twelve"] == "true", dd)
+            await page.evaluate("()=>OvuStore.add('food', OvuStore.today(), {meal:'dinner', foods:'laksa', items:[], tags:[], photo:'data:image/jpeg;base64,AAAA'}, 'room')")
+            await page.click("#makeShare"); await page.select_option("#weeksSel", "52"); await page.click("#doShare")
+            await page.wait_for_selector("#saveShare", timeout=15000)
+            async with page.expect_download() as dl2:
+                await page.click("#saveShare")
+            d2 = await dl2.value; spath = os.path.join(ROOT, "tools", ".smoke-share.json"); await d2.save_as(spath)
+            stext = open(spath, encoding="utf-8").read(); os.remove(spath)
+            sb = await page.evaluate("async (t)=>{var b=await OvuStore.crypto.decrypt(JSON.parse(t), document.querySelector('#passInput').value); var food=b.events.filter(e=>e.type==='food'); return {kind:b.kind, hist: !!(b.history&&b.history.rows), rows: b.history.rows.length, pats: (b.patterns||[]).length, inc: b.included, photo: JSON.stringify(b).indexOf('data:image')>-1, had: food.some(f=>f.data.hadPhoto), msg: document.querySelector('#shareHolds').innerText}}", stext)
+            await page.evaluate("()=>OvuStore.list('food').filter(e=>e.data.foods==='laksa').forEach(e=>OvuStore.remove(e.id))")
+            check("a 12-month encrypted share holds cycles over time and a year of month marks, says what it holds, and leaves meal photos on the phone", sb["kind"] == "ovumind-share" and sb["hist"] and sb["rows"] == 1 and sb["pats"] == 364 and sb["inc"]["olderEntries"] and not sb["photo"] and sb["had"] and "Meal photos stay on this phone" in sb["msg"], {k: sb[k] for k in ("photo", "had", "msg", "rows", "pats")})
 
             # 6. evidence page and a Learn page with the room header; old screens redirect into the room
             r = await page.goto(BASE + "evidence.html", wait_until="networkidle")

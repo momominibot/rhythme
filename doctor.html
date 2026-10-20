@@ -53,9 +53,12 @@
       <section class="card" id="aiCard" style="display:none"><h2><span class="ms">auto_awesome</span>Written summary</h2><p class="sub">Written by Luna from the same self-reported entries. The deterministic flags above are the source of truth; verify against the raw entries below.</p><div id="aiBody"></div></section>
 
       <div class="cols">
-        <section class="card"><h2><span class="ms">water_drop</span>Cycle</h2><div class="kpis" id="cycleKpis"></div><div class="chart"><div class="ct">Last 28 days · bleeding and symptom days</div><div class="strip" id="strip"></div><p class="note">Pink shades: spotting → heavy. Purple underline: symptoms logged. Outline: last day of range.</p></div></section>
+        <section class="card"><h2><span class="ms">water_drop</span>Cycle, recent 28 days</h2><div class="kpis" id="cycleKpis"></div><div class="chart"><div class="ct">Last 28 days · bleeding and symptom days</div><div class="strip" id="strip"></div><p class="note">Pink shades: spotting → heavy. Purple underline: symptoms logged. Outline: last day of range.</p></div></section>
         <section class="card"><h2><span class="ms">bedtime</span>Sleep</h2><div class="kpis" id="sleepKpis"></div><div class="chart"><div class="ct">Hours per night</div><div id="sleepChart"></div></div></section>
       </div>
+
+      <section class="card" id="histCard" style="display:none"><h2><span class="ms">timeline</span>Cycles over time</h2><p class="sub" id="histSub"></p><div id="histBody"></div></section>
+      <section class="card" id="patCard" style="display:none"><h2><span class="ms">calendar_view_month</span>Patterns by month</h2><p class="sub">Three lines per day: bleeding, pain and sleep. Tap a day for its details. Empty means not recorded.</p><div id="patBody"></div></section>
 
       <div class="cols">
         <section class="card"><h2><span class="ms">spa</span>Symptoms and mood</h2><div class="kpis" id="symKpis"></div><div class="bars" id="symBars"></div><div class="bars" id="moodBars" style="margin-top:12px"></div></section>
@@ -73,6 +76,7 @@
 <script src="ovu-textsize.js"></script>
 <script src="ovu-food.js"></script>
 <script src="ovu-agents.js"></script>
+<script src="ovu-patterns.js"></script>
 <script>
 (function(){
   'use strict';
@@ -98,8 +102,8 @@
   function sampleShare(){
     var today=S.today(),events=[],id=0,rnd=function(a,b){return a+Math.random()*(b-a);};
     function ev(type,date,data){events.push({id:'demo'+(id++),type:type,date:date,createdAt:date+'T20:00:00.000Z',updatedAt:date+'T20:00:00.000Z',source:'demo',data:data});}
-    var start1=S.addDays(today,-50),start2=S.addDays(today,-22);
-    [start1,start2].forEach(function(st,i){var len=i?7:6;for(var d=0;d<len;d++){var flow=d<2?'heavy':d<4?'medium':d<len-1?'light':'spotting';ev('period',S.addDays(st,d),{flow:flow,clots:d<2,impact:d===1});}});
+    var starts=[-166,-138,-107,-78,-50,-22].map(function(k){return S.addDays(today,k);});
+    starts.forEach(function(st,i){var len=i%2?7:6;for(var d=0;d<len;d++){var flow=d<2?'heavy':d<4?'medium':d<len-1?'light':'spotting';ev('period',S.addDays(st,d),{flow:flow,clots:d<2,impact:d===1});}});
     for(var k=0;k<56;k++){var date=S.addDays(today,-k);if(Math.random()<0.8){var bt=Math.floor(rnd(22,25))%24,hrs=rnd(5.2,8.4);var bedH=String(bt).padStart(2,'0')+':'+(Math.random()<.5?'00':'30');var wakeMin=((bt*60)+Math.round(hrs*60))%1440;ev('sleep',date,{bedTime:bedH,wakeTime:String(Math.floor(wakeMin/60)).padStart(2,'0')+':'+String(wakeMin%60).padStart(2,'0'),quality:Math.round(rnd(2,5)),notes:''});}
       var nearPeriod=(k>=20&&k<=27)||(k>=48&&k<=54);
       if(Math.random()<(nearPeriod?0.9:0.35)){var syms=[];if(nearPeriod){syms.push('cramps');if(Math.random()<.6)syms.push('fatigue');if(Math.random()<.4)syms.push('back pain');}else{if(Math.random()<.4)syms.push('bloating');if(Math.random()<.3)syms.push('headache');}
@@ -108,10 +112,12 @@
     }
     return S.sandbox({profile:{name:'Sample patient',lifeStage:'reproductive'},events:events},function(){
       var from=S.addDays(today,-27),dates={};S.list(null,{from:from,to:today}).forEach(function(e){dates[e.date]=true;});
-      return {kind:'ovumind-share',v:1,created:new Date().toISOString(),alias:'Sample patient (fictional)',lifeStage:'reproductive',range:{from:from,to:today},summary:A.fourWeekSummary(today),dailies:Object.keys(dates).sort().map(function(d){var s=A.dailySummary(d);return {date:d,text:s.text,flags:s.flags};}),events:S.list(null,{from:S.addDays(today,-55),to:today})};
+      var hFrom=S.addDays(today,-181);
+      return {kind:'ovumind-share',v:1,created:new Date().toISOString(),alias:'Sample patient (fictional)',lifeStage:'reproductive',range:{from:hFrom,to:today},included:{from:hFrom,to:today,allEntriesFrom:S.addDays(today,-55),olderEntries:'bleeding only in this sample',photos:'not included'},history:A.cycleHistory(hFrom,today),patterns:A.patternDays(hFrom,today),summary:A.fourWeekSummary(today),dailies:Object.keys(dates).sort().map(function(d){var s=A.dailySummary(d);return {date:d,text:s.text,flags:s.flags};}),events:S.list(null,{from:S.addDays(today,-55),to:today})};
     });
   }
   $('#demoBtn').addEventListener('click',function(){render(sampleShare(),true);});
+  var patDays=[];if(window.OvuPatterns)window.OvuPatterns.wire($('#patBody'),function(){return patDays;});
 
   function kpi(l,v,s){return '<div class="kpi"><small>'+esc(l)+'</small><b>'+esc(v)+'</b><span>'+esc(s||'')+'</span></div>';}
   function bars(el,obj,unit){var keys=Object.keys(obj).sort(function(a,b){return obj[b]-obj[a];}).slice(0,8),max=keys.length?obj[keys[0]]:1;el.innerHTML=keys.length?keys.map(function(k){return '<div class="bar"><span class="lbl">'+esc(cap(k))+'</span><span class="trk"><span class="fil" style="width:'+Math.round(obj[k]/max*100)+'%"></span></span><span class="val">'+obj[k]+(unit||'')+'</span></div>';}).join(''):'<p class="note">Nothing logged.</p>';}
@@ -127,6 +133,10 @@
     var byDate={};(share.events||[]).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
     var strip='';for(var i=27;i>=0;i--){var d=S.addDays(sum.range.to,-i),list=byDate[d]||[],p=list.filter(function(e){return e.type==='period'&&e.data.flow&&e.data.flow!=='none';})[0],s=list.some(function(e){return e.type==='symptom'&&(e.data.symptoms||[]).length;});strip+='<i class="'+(p?p.data.flow:'')+(s?' sym':'')+(i===0?' today':'')+'" title="'+esc(pretty(d))+(p?' · '+p.data.flow:'')+'"></i>';}
     $('#strip').innerHTML=strip;
+    /* cycles over time and the month marks: only in shares made since 20 Oct 2026; older shares simply skip them */
+    var P=window.OvuPatterns,inc=share.included;
+    if(share.history&&P){$('#histCard').style.display='';$('#histSub').textContent='Days from each logged first day of bleeding to the next, '+pretty(share.history.range.from,{day:'numeric',month:'short',year:'numeric'})+' to '+pretty(share.history.range.to,{day:'numeric',month:'short',year:'numeric'})+(inc&&inc.olderEntries?'. Every entry from '+pretty(inc.allEntriesFrom,{day:'numeric',month:'short'})+'; before that the share holds '+inc.olderEntries+'.':'.');$('#histBody').innerHTML=P.historyHTML(share.history);}else $('#histCard').style.display='none';
+    if(share.patterns&&share.patterns.length&&P){var lastD=share.patterns[share.patterns.length-1].date,fm=new Date(lastD.slice(0,7)+'-01T12:00:00');fm.setMonth(fm.getMonth()-3);var fromM=fm.getFullYear()+'-'+String(fm.getMonth()+1).padStart(2,'0')+'-01',pd=share.patterns.filter(function(d){return d.date>=fromM;});$('#patCard').style.display='';$('#patBody').innerHTML=P.calendarHTML(pd,{today:share.patterns[share.patterns.length-1].date});patDays=pd;}else $('#patCard').style.display='none';
     $('#sleepKpis').innerHTML=kpi('Average',sl.average?sl.average+' h':'—',sl.nights+' nights logged')+kpi('Under 6 h',sl.under6||0,'nights')+kpi('Longest',(sl.series||[]).length?Math.max.apply(null,sl.series.map(function(n){return n.hours;}))+' h':'—','');
     var series=sl.series||[];
     if(series.length){var W=280,H=110,bw=W/Math.max(series.length,1);var svg='<svg viewBox="0 0 '+W+' '+(H+18)+'" role="img" aria-label="Sleep hours per night">';[6,7,8].forEach(function(h){var y=H-h/10*H;svg+='<line x1="0" x2="'+W+'" y1="'+y+'" y2="'+y+'" stroke="rgba(107,82,142,.18)" stroke-dasharray="3 3"/><text x="'+W+'" y="'+(y-2)+'" font-size="8" text-anchor="end" fill="#9a8cb3" font-family="Manrope">'+h+'h</text>';});
@@ -141,7 +151,7 @@
     var ai=share.insight,aic=$('#aiCard');
     if(ai&&ai.clinician){var ac=ai.clinician;var secs=[['Cycle',ac.cycle],['Bleeding',ac.bleeding],['Symptoms and pain',ac.symptoms_pain],['Sleep',ac.sleep],['Nutrition',ac.nutrition],['Mood and calm',ac.mood_calm]].filter(function(s){return s[1];});aic.style.display='';$('#aiBody').innerHTML='<div class="summary ins"><div class="lead">'+esc(ac.overview||'')+'</div><div class="secs">'+secs.map(function(s){return '<div class="sec"><b>'+esc(s[0])+'</b>'+esc(s[1])+'</div>';}).join('')+'</div>'+(ac.patterns||[]).map(function(p){return '<div class="pat"><b>'+esc(p.title)+'</b>'+esc(p.detail)+(p.basis?'<small>Based on: '+esc(p.basis)+'</small>':'')+'</div>';}).join('')+((ac.questions||[]).length?'<div class="pat"><b>Questions the agent suggests</b>'+ac.questions.map(esc).join('<br>')+'</div>':'')+(ac.limits?'<div class="pat"><b>Limits</b>'+esc(ac.limits)+'</div>':'')+'<div class="meta">'+esc(ai.agent||'')+' · '+esc(ai.model||'')+' · generated '+esc(ai.generatedAt||'')+'</div></div>';}else aic.style.display='none';
     var rows=(share.events||[]).slice().sort(function(a,b){return a.date<b.date?1:-1;});$('#rawCount').textContent=rows.length;
-    $('#rawTable').innerHTML='<tr><th>Date</th><th>Type</th><th>Details</th></tr>'+rows.map(function(e){return '<tr><td>'+esc(e.date)+'</td><td>'+esc(e.type)+'</td><td>'+esc(JSON.stringify(e.data).replace(/[{}"]/g,'').replace(/,/g,', ').replace(/:/g,': '))+'</td></tr>';}).join('');
+    $('#rawTable').innerHTML='<tr><th>Date</th><th>Type</th><th>Details</th></tr>'+rows.map(function(e){return '<tr><td>'+esc(e.date)+'</td><td>'+esc(e.type)+'</td><td>'+esc(JSON.stringify(e.data,function(k,v){return k==='photo'?undefined:v;}).replace(/[{}"]/g,'').replace(/,/g,', ').replace(/:/g,': '))+'</td></tr>';}).join('');
     $('#disclaimer').textContent=sum.disclaimer||'Self-reported entries summarised by deterministic rules. For clinician review; not a diagnosis.';
     window.scrollTo(0,0);
   }

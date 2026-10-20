@@ -250,6 +250,22 @@
     return { from: from, to: end, nights: nights, entries: entries.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality, id: n.id, assumed: n.assumed }; }), count: nights.length, avg: nights.length ? Math.round(total / nights.length * 10) / 10 : null, under6: nights.filter(function (n) { return n.hours < 6; }).length };
   }
 
+  /* ---------- today's check-in answers ----------
+   * Answers that are not measurements: "no bleeding today", "not sure", "nothing to log". They only mark a check-in as
+   * answered on this device: never an entry, a flow, coverage, a cycle or hearts, and anything logged later wins.
+   * The write lands whole or not at all (commit), so a full storage never shows a tick (Codex design review, 20 Oct). */
+  var CHECKIN = { bleeding: ['none', 'unsure'], sleep: ['unsure'], mood: ['unsure'], food: ['skip'] };
+  function checkinAnswers(date) { var c = load().state.checkin || {}; return Object.assign({}, c[date] || {}); }
+  function setCheckinAnswer(date, domain, status) {
+    if (!validDate(date) || !CHECKIN[domain] || (status !== null && CHECKIN[domain].indexOf(status) < 0)) throw new Error('That is not a check-in answer.');
+    var all = JSON.parse(JSON.stringify(load().state.checkin || {})), day = all[date] || {};
+    if (status === null) delete day[domain]; else day[domain] = status;
+    if (Object.keys(day).length) all[date] = day; else delete all[date];
+    var keys = Object.keys(all).sort(); if (keys.length > 400) keys.slice(0, keys.length - 400).forEach(function (k) { delete all[k]; });
+    commit({ checkin: all });
+    return checkinAnswers(date);
+  }
+
   /* ---------- derived: cycle ---------- */
   /* Spotting is an observation, never the start of a cycle: episodes are built from bleeding days only
    * (light, medium, heavy). A spotting day stays in the log and the agents read it separately. */
@@ -495,7 +511,7 @@
   root.OvuStore = {
     /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
     NOTICE_V: 3,
-    KEY: KEY, TYPES: TYPES, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
+    KEY: KEY, TYPES: TYPES, checkinAnswers: checkinAnswers, setCheckinAnswer: setCheckinAnswer, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
     load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
     putEvent: putEvent, applyRemote: applyRemote,
     addMany: addMany, removeWhere: removeWhere,
