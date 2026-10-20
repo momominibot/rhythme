@@ -2,8 +2,12 @@
  * awareness + brushing teeth"). How it is offered and shown was agreed with a Codex review (docs/research/2026-10-20-morning-start.md):
  * - offered, never started for her: one invitation in Today from 04:00 to 11:59 by the real clock, which she can put away
  *   for the day, and always from Everyday and the mat while she is awake. Saving a night never starts it.
- * - two quiet captioned steps (arrive, notice) with no breath counts, no pacing and no breathing animation, then brushing
+ * - two short captioned steps (arrive, notice) with no breath counts, no pacing and no breathing animation, then brushing
  *   once she says she is at the sink, either her own way or with Erin's own morning brushing guide, kept whole.
+ * - DeepSeek and Doubao reviewed the copy once Ark was back (20 Oct, same doc): the greeting follows the clock (Good morning
+ *   only in the morning window), dizziness on waking, no need to change the breath, touch as an anchor for low vision,
+ *   any sink and time for prayer first. Rhythme's lines are read in Erin's voice (as her other interim lines are, with her
+ *   consent) and the captions match the clips word for word; Quiet keeps it captions only.
  * - she stays where she is, in her own outfit; Pause, Next, Stop and Quiet are always there; sleep cancels it at once.
  * - one honest entry, saved only if she says she did it and practised 30 seconds or more, earning the same small
  *   practice thank-you as anything else on the mat.
@@ -13,17 +17,19 @@
   var GUIDE = 'assets/audio/guide-interim/';
   var START_HOUR = 4, END_HOUR = 12, MIN_SAVE_S = 30;
   var STEPS = {
-    arrive: { key: 'arrive', part: 1, title: 'Arrive', secs: 30,
-      text: 'Good morning. Stay in any position that works for you, sitting, lying or standing. Eyes open is welcome. Notice your breathing as it is, or a sound or a colour nearby.' },
-    notice: { key: 'notice', part: 2, title: 'Notice', secs: 60,
-      text: 'If it feels comfortable, notice where your body is supported, by the bed, the floor or a chair. There is nothing to fix. You can choose another anchor, or stop at any time.' },
-    ready: { key: 'ready', part: 3, title: 'Brushing', gate: true,
-      text: 'Go to the sink whenever you are ready. Getting there is not part of the practice.' },
-    yourway: { key: 'yourway', part: 3, title: 'Brush your way', open: true, pose: 'teeth',
+    /* the greeting comes from GREETINGS by the clock; clips are 23 s (Good morning) and 27 s (Hello), so 35 s leaves a quiet moment */
+    arrive: { key: 'arrive', part: 1, title: 'Arrive', secs: 35,
+      text: 'Sit, lie down or stand, whatever is easiest. If you feel dizzy, stay sitting or lying. Your eyes can be open or closed. There is no need to change your breathing. If you like, notice it as it is, or a sound, a colour, or something you can touch.' },
+    notice: { key: 'notice', part: 2, title: 'Notice', secs: 55, audio: GUIDE + 'mstart-notice.mp3', /* a 21 s clip, then quiet */
+      text: 'You don’t need to move. If you like, notice where your body is resting, on the bed, the floor or a chair. There is nothing you need to change. If this doesn’t feel right, choose a sound or a colour instead, or stop at any time.' },
+    ready: { key: 'ready', part: 3, title: 'Brushing', gate: true, audio: GUIDE + 'mstart-ready.mp3',
+      text: 'Go to wherever you brush, whenever you are ready. Take any time you need first, for prayer or anything else. Getting there is not part of the practice.' },
+    yourway: { key: 'yourway', part: 3, title: 'Brush your way', open: true, pose: 'teeth', audio: GUIDE + 'mstart-yourway.mp3',
       text: 'Brush as you usually do. If you like, notice one sensation, a taste or a sound. Tap Done when you finish.' }
   };
+  var GREETINGS = ['Good morning.', 'Hello.']; /* clip mstart-arrive-0 says the first, mstart-arrive-1 the second */
   var VERSIONS = {
-    yourway: { id: 'yourway', name: 'A short pause, then brush your way', sub: '90 seconds of quiet noticing, then brushing at your own pace' },
+    yourway: { id: 'yourway', name: 'A short pause, then brush your way', sub: '90 seconds of gentle noticing, then brushing at your own pace' },
     erin: { id: 'erin', name: 'With Erin’s brushing guide', sub: 'About 5 minutes, with Erin’s own morning script in her voice' }
   };
 
@@ -38,7 +44,14 @@
       return { key: 'erin' + si, part: 3, title: 'Brushing with Erin', secs: s.secs, text: s.text, pose: 'teeth', audio: GUIDE + 'teeth-' + vi + '-' + si + '.mp3', erin: true };
     });
   }
-  function plan(version) { return [STEPS.arrive, STEPS.notice, STEPS.ready].concat(version === 'erin' ? erinSteps() : [STEPS.yourway]); }
+  /* Arrive says Good morning only inside the morning window (she can open it from Everyday at any hour), with the matching clip */
+  function arriveFor(d) {
+    var win = root.OvuMorning && root.OvuMorning.inWindow || inWindow, g = win(d || new Date()) ? 0 : 1, a = {};
+    for (var k in STEPS.arrive) a[k] = STEPS.arrive[k];
+    a.text = GREETINGS[g] + ' ' + STEPS.arrive.text; a.audio = GUIDE + 'mstart-arrive-' + g + '.mp3';
+    return a;
+  }
+  function plan(version, d) { return [arriveFor(d), STEPS.notice, STEPS.ready].concat(version === 'erin' ? erinSteps() : [STEPS.yourway]); }
   /* is the invitation in Today for this moment? never while asleep, only in the window, not once done or put away today */
   function offered(state, today, d) {
     state = state || {};
@@ -66,7 +79,7 @@
       kind: 'informal', activity: 'morning', activityName: 'Morning start', version: o.version === 'erin' ? 'erin' : 'yourway',
       seconds: secs, minutes: Math.round(secs / 6) / 10, skipped: (o.skipped || []).slice(), brushed: o.brushed || 'no',
       finished: !!o.finished, completed: !!o.finished, confirmedReal: true,
-      guide: o.version === 'erin' ? 'Captions by Rhythme; brushing guide in Erin Lee’s own words' : 'Captions by Rhythme'
+      guide: o.version === 'erin' ? 'Opening words by Rhythme in Erin’s voice; brushing guide in Erin Lee’s own words' : 'Words by Rhythme, read in Erin’s voice'
     };
   }
 
@@ -88,7 +101,7 @@
     el.innerHTML = '<span class="ms" aria-hidden="true">wb_twilight</span><div><b>Morning start</b><small>A short pause, then brushing your way. Sitting or lying is fine.</small></div>' +
       '<div class="minvite-btns"><button type="button" class="btn primary" id="miBegin">Begin</button><button type="button" class="btn ghost" id="miLater">Not today</button></div>';
     $('#miBegin').addEventListener('click', function () { open(); });
-    $('#miLater').addEventListener('click', function () { markToday({ dismissed: true }); el.dataset.on = ''; renderInvite(); R().toast('Put away for today. Morning start is always in Everyday on the mat.', 'wb_twilight'); });
+    $('#miLater').addEventListener('click', function () { markToday({ dismissed: true }); el.dataset.on = ''; renderInvite(); R().toast('Put away for today. Morning start is always in Everyday, and on the meditation mat.', 'wb_twilight'); });
   }
   function hideInvite() { var el = $('#morningInvite'); if (el) { el.hidden = true; el.dataset.on = ''; el.innerHTML = ''; } }
 
@@ -98,13 +111,13 @@
     if (run) { showPanel(); return; }
     var quiet = quietDefault(), esc = room.esc;
     room.openSheet('morning', 'Morning start', 'A gentle way into the day', 'wb_twilight',
-      '<p class="mintro">About 90 seconds of quiet noticing, then brushing your teeth. Sitting or lying is fine, eyes open is fine, and you can stop at any time.</p>' +
+      '<p class="mintro">About 90 seconds of gentle noticing, then brushing your teeth. Any position is fine, eyes open or closed, and you can stop at any time.</p>' +
       '<fieldset class="mchoice"><legend>How would you like it?</legend>' +
       ['yourway', 'erin'].map(function (k, i) { var v = VERSIONS[k]; return '<label class="mopt"><input type="radio" name="mver" value="' + k + '"' + (i === 0 ? ' checked' : '') + '><span><b>' + esc(v.name) + '</b><small>' + esc(v.sub) + '</small></span></label>'; }).join('') +
       '</fieldset>' +
       '<label class="mquiet"><input type="checkbox" id="mQuiet"' + (quiet ? ' checked' : '') + '><span>Quiet: captions only, no voice and no bells</span></label>' +
       '<div class="row"><button type="button" class="btn primary" id="mBegin"><span class="ms" aria-hidden="true">play_arrow</span>Begin</button></div>' +
-      '<p class="help">Saved only if you say you did it. It earns the same small thank-you as any practice, never a streak.</p>');
+      '<p class="help">Read in Erin’s voice: the opening words are Rhythme’s, the brushing guide is Erin’s own. Saved only if you say you did it, with the same small thank-you as any practice, never a streak.</p>');
     $('#mBegin').addEventListener('click', function () {
       var ver = (document.querySelector('input[name=mver]:checked') || {}).value || 'yourway';
       begin(ver, $('#mQuiet').checked);
@@ -118,7 +131,7 @@
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
     room.hideSheet(); hideInvite();
-    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: version === 'erin' ? new Audio() : null, done: false };
+    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
     if (room.endMoment) room.endMoment();
     /* from the mat she sits there hidden: bring her back first, or the routine plays to an empty room */
     if (room.els && room.els.meditator && room.els.meditator.classList.contains('on') && !(room.sessionOn && room.sessionOn())) room.exitMeditation();
@@ -144,7 +157,7 @@
     var room = R();
     if (s.pose) room.setPose(s.pose); else if (room.restorePose) room.restorePose();
     if (room.els && room.els.avatar) room.els.avatar.classList.remove('acting'); /* no pulse: it would read as a breathing pace */
-    if (s.gate) run.clock.hold(); else if (!run.paused) run.clock.run();
+    if (s.gate) { run.paused = false; run.clock.hold(); } else if (!run.paused) run.clock.run(); /* the sink has no Pause, so it is never left paused */
     if (s.key === 'yourway' || s.erin) run.brushed = s.erin ? 'erin' : 'yourway';
     paint();
     run.left = s.secs ? s.secs * 1000 : 0; run.pending = null;
@@ -170,7 +183,7 @@
   }
   function quietToggle() {
     if (!run) return; run.quiet = !run.quiet;
-    if (run.quiet) { stopAudio(); run.pending = null; run.audioKey = null; } /* on again: Erin speaks from the next line, so no line is cut short */
+    if (run.quiet) { stopAudio(); run.pending = null; run.audioKey = null; } /* on again: the voice speaks from the next line, so no line is cut short */
     paint();
   }
   function ready() { if (!run) return; run.paused = false; next(false); }
@@ -187,7 +200,7 @@
     clearTimeout(r.timer); stopAudio(); r.clock.hold(); clearInterval(ticker);
     var exact = r.clock.ms() / 1000, secs = Math.round(exact), room = R();
     run = null; hidePanel(); if (room.restorePose) room.restorePose();
-    if (exact < MIN_SAVE_S) { room.toast('Stopped. Nothing under 30 seconds is saved.', 'wb_twilight'); renderInvite(); return; }
+    if (exact < MIN_SAVE_S) { room.toast('Stopped. Pauses under 30 seconds are not saved.', 'wb_twilight'); renderInvite(); return; }
     var did = [];
     if (r.skipped.indexOf('arrive') < 0) did.push('arrived'); if (r.skipped.indexOf('notice') < 0) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed');
     var saved = false;
@@ -218,7 +231,7 @@
     if (s.gate) b = '<button type="button" class="btn primary" id="mpReady">Ready to brush</button><button type="button" class="btn ghost" id="mpSkipBrush">Skip brushing</button>';
     else if (s.open) b = '<button type="button" class="btn primary" id="mpDone">Done</button><button type="button" class="btn ghost" id="mpPause">' + (run.paused ? 'Resume' : 'Pause') + '</button>';
     else b = '<button type="button" class="btn ghost" id="mpPause">' + (run.paused ? 'Resume' : 'Pause') + '</button><button type="button" class="btn ghost" id="mpNext">Next</button>';
-    if (s.erin) b += '<button type="button" class="btn ghost" id="mpQuiet" aria-pressed="' + (run.quiet ? 'true' : 'false') + '">' + (run.quiet ? 'Voice off' : 'Voice on') + '</button>';
+    if (s.audio) b += '<button type="button" class="btn ghost" id="mpQuiet" aria-pressed="' + (run.quiet ? 'true' : 'false') + '">' + (run.quiet ? 'Voice off' : 'Voice on') + '</button>';
     b += '<button type="button" class="btn ghost" id="mpStop">Stop</button>';
     var row = $('#mpBtns'), pnl = $('#mpanel'), ae = document.activeElement, focusId = ae && ae.id, inPanel = !!(ae && pnl && (pnl.contains(ae) || ae === document.body));
     row.innerHTML = b;
@@ -231,7 +244,7 @@
 
   root.OvuMorning = {
     START_HOUR: START_HOUR, END_HOUR: END_HOUR, MIN_SAVE_S: MIN_SAVE_S, STEPS: STEPS, VERSIONS: VERSIONS,
-    inWindow: inWindow, plan: plan, erinSteps: erinSteps, offered: offered, makeClock: makeClock, entryData: entryData,
+    inWindow: inWindow, GREETINGS: GREETINGS, arriveFor: arriveFor, plan: plan, erinSteps: erinSteps, offered: offered, makeClock: makeClock, entryData: entryData,
     open: open, begin: begin, active: active, cancel: cancel, renderInvite: renderInvite,
     state: function () { return run ? { version: run.version, i: run.i, key: step() && step().key, paused: run.paused, left: run.left, audioKey: run.audioKey || null, pending: run.pending || null, quiet: run.quiet, seconds: run.clock.seconds(), skipped: run.skipped.slice(), brushed: run.brushed } : null; }
   };
