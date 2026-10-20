@@ -572,6 +572,7 @@ async def main():
                 elif name == "plaza_leave": out = {"ok": True}
                 elif name == "social_me": out = me
                 elif name == "social_people" and FR.get("people_fail"): return await route.fulfill(status=503, content_type="application/json", body='{"message":"unavailable"}')
+                elif (name == "social_inbox" and FR.get("inbox_fail")) or (name == "social_read" and FR.get("read_fail")): return await route.fulfill(status=503, content_type="application/json", body='{"message":"unavailable"}')
                 elif name == "social_card_save":
                     if FR.get("save_delay"): await asyncio.sleep(FR["save_delay"])
                     me["card"] = {"handle": "h-me", "name": body["p_name"], "look": body["p_look"], "hidden": body["p_hidden"], "paused_until": None}; me["on"] = True; me["adult"] = True
@@ -608,7 +609,7 @@ async def main():
             await ctx6.add_init_script(seed_signed_in)
             p6 = await ctx6.new_page(); await p6.route("**/*", friends_gate)
             p6.on("pageerror", lambda e: f_errors.append("pageerror: " + str(e)))
-            p6.on("console", lambda m: f_errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text and not (FR.get("people_fail") and "503" in m.text) else None)  # the deliberate failure below logs its 503
+            p6.on("console", lambda m: f_errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text and not ((FR.get("people_fail") or FR.get("inbox_fail") or FR.get("read_fail")) and "503" in m.text) else None)  # the deliberate failure below logs its 503
             shots = os.environ.get("SMOKE_SHOTS")
             async def shot(name):
                 if shots: await p6.screenshot(path=os.path.join(shots, name + ".png"))
@@ -711,6 +712,35 @@ async def main():
             pz6 = await p6.evaluate("()=>({text: (document.querySelector('#frSheet')||{}).textContent||'', off: !!document.querySelector('#frSheet [data-fr=off]')})")
             check("a paused account sees the pause and can still turn Plaza friends off", "Paused for now" in pz6["text"] and pz6["off"], pz6["text"][:120])
             FR["me"]["card"] = None; FR["me"]["on"] = False; FR["me"]["paused_until"] = None
+            await p6.evaluate("()=>OvuRoom.closeSheet()")
+            # the hold survives the sheet's own redraws: a failed "mark read" holds; Accept followed by a failed refresh
+            # redraws from what is known and asks nothing more; only Try again asks again
+            FR["me"]["card"] = {"handle": "h-me", "name": "Fern", "look": "kebaya-red", "hidden": False, "paused_until": None}; FR["me"]["on"] = True
+            FR["asks"] = [{"handle": "h-nadia", "name": "Nadia", "look": "kebaya-green", "hello": None, "at": NOW}]
+            FR["notes"] = [{"id": 12, "handle": "h-zoe", "name": "Zoe", "look": "yoga", "phrase": "rest", "at": NOW, "read": False}]
+            FR["read_fail"] = True
+            await p6.evaluate("()=>OvuFriends.open()")
+            try: await p6.wait_for_function("()=>OvuFriends.state().held===true && !!document.querySelector('#frSheet .frheld')", timeout=6000)
+            except Exception: pass
+            rf = await p6.evaluate("()=>({held: OvuFriends.state().held, banner: !!document.querySelector('#frSheet .frheld'), retry: !!document.querySelector('#frSheet [data-fr=retry]')})")
+            n_reads = len(fcall("social_read")); await p6.wait_for_timeout(600)
+            check("a failed 'mark read' holds Plaza friends, says it could not reach it and offers Try again, and is not sent again on its own", rf["held"] is True and rf["banner"] and rf["retry"] and len(fcall("social_read")) == n_reads, rf)
+            FR["read_fail"] = False
+            await p6.click('#frSheet [data-fr=retry]')
+            try: await p6.wait_for_function("()=>OvuFriends.state().held===false && !!document.querySelector('#frSheet [data-fr=accept]')", timeout=6000)
+            except Exception: pass
+            FR["inbox_fail"] = True
+            n_in, n_me = len(fcall("social_inbox")), len(fcall("social_me"))
+            await p6.click('#frSheet [data-fr=accept]'); await p6.wait_for_timeout(1500)
+            ac = await p6.evaluate("()=>({held: OvuFriends.state().held, banner: !!document.querySelector('#frSheet .frheld'), open: OvuRoom.sheetOpen()})")
+            after_in, after_me = len(fcall("social_inbox")) - n_in, len(fcall("social_me")) - n_me
+            await p6.evaluate("()=>{OvuFriends.poll(); document.dispatchEvent(new Event('visibilitychange'));}"); await p6.wait_for_timeout(700)
+            quiet2 = len(fcall("social_inbox")) - n_in - after_in + len(fcall("social_me")) - n_me - after_me
+            FR["inbox_fail"] = False
+            await p6.click('#frSheet [data-fr=retry]'); await p6.wait_for_timeout(900)
+            rt = await p6.evaluate("()=>OvuFriends.state().held")
+            check("after Accept, a failed refresh redraws from what is known and asks nothing more (no second refresh, no re-opening, no timer); Try again asks", ac["held"] is True and ac["banner"] and ac["open"] and after_in == 1 and after_me == 0 and quiet2 == 0 and rt is False and len(fcall("social_inbox")) > n_in + 1, {"after accept": ac, "inbox calls": after_in, "me calls": after_me, "while held": quiet2, "held after try": rt})
+            FR["notes"] = []; FR["asks"] = []
             await p6.evaluate("()=>OvuRoom.closeSheet()")
             # a change in the people in her group follows her visit: moving to Everyone clears PCOS's people before any reply
             FR["me"]["card"] = {"handle": "h-me", "name": "Fern", "look": "kebaya-red", "hidden": False, "paused_until": None}; FR["me"]["on"] = True

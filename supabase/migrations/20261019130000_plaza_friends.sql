@@ -22,6 +22,10 @@
 --   eligible, neither has blocked the other and, in a group, both cards are shown; withdrawing 18+ is handled like
 --   withdrawing Plaza friends (locked, everything deleted); staff decisions lock the account and the report row and
 --   recheck it; marking notes read needs Plaza friends on.
+-- Fourth cut, after the third review (Jamie approved a fourth round): who asked whom is also kept in a small cooldown
+--   record that blocking does not delete, so block-then-unblock cannot reset the 30-day ask rule or the 20-ask quota;
+--   a card is visible through an ask only on the inbox's own terms (an incoming ask while pending and under 14 days,
+--   her own ask for 30 days).
 -- Undo: at the bottom.
 
 -- ---------- the consent purpose ----------
@@ -98,6 +102,19 @@ create table if not exists public.social_requests (
 create index if not exists social_requests_to on public.social_requests (to_user, at desc);
 create index if not exists social_requests_at on public.social_requests (at);
 
+-- who asked whom, and until when that ask stands: the 30-day "asked" rule and the 20-ask quota read this, and a block
+-- does not delete it, so blocking and unblocking cannot reset either. Kept 30 days; turning Plaza friends off deletes it.
+create table if not exists public.social_cooldowns (
+  from_user uuid not null references auth.users (id) on delete cascade,
+  to_user uuid not null references auth.users (id) on delete cascade,
+  at timestamptz not null default now(),
+  until timestamptz not null,
+  primary key (from_user, to_user),
+  check (from_user <> to_user)
+);
+create index if not exists social_cooldowns_from on public.social_cooldowns (from_user, at desc);
+create index if not exists social_cooldowns_until on public.social_cooldowns (until);
+
 create table if not exists public.social_friends (
   a uuid not null references auth.users (id) on delete cascade,
   b uuid not null references auth.users (id) on delete cascade,
@@ -167,12 +184,13 @@ alter table public.social_words enable row level security;
 alter table public.social_profiles enable row level security;
 alter table public.social_holds enable row level security;
 alter table public.social_requests enable row level security;
+alter table public.social_cooldowns enable row level security;
 alter table public.social_friends enable row level security;
 alter table public.social_blocks enable row level security;
 alter table public.social_notes enable row level security;
 alter table public.social_rate enable row level security;
 alter table staff.social_reports enable row level security;
-revoke all on table public.social_phrases, public.social_words, public.social_profiles, public.social_holds, public.social_requests, public.social_friends,
+revoke all on table public.social_phrases, public.social_words, public.social_profiles, public.social_holds, public.social_requests, public.social_cooldowns, public.social_friends,
   public.social_blocks, public.social_notes, public.social_rate from public, anon, authenticated;
 revoke all on sequence public.social_notes_id_seq from public, anon, authenticated;
 revoke all on table staff.social_reports from public, anon, authenticated;
@@ -269,16 +287,19 @@ begin
   delete from public.social_notes where at < now() - interval '30 days';
   delete from public.social_requests where at < now() - interval '30 days';
   delete from public.social_rate where at < now() - interval '2 days';
+  delete from public.social_cooldowns where until < now();
   delete from staff.social_reports where status <> 'open' and decided_at < now() - interval '365 days';
 end $$;
 
--- could p_viewer see p_other's card right now: both eligible, no block either way, and friends, a request between them
--- in the last 30 days, or both in the same group with both cards shown (the same rule as social_people)
+-- could p_viewer see p_other's card right now: both eligible, no block either way, and friends, an ask on the inbox's
+-- own terms (hers to p_other for 30 days; p_other's to her while pending and under 14 days), or both in the same group
+-- with both cards shown (the same rule as social_people)
 create or replace function social.visible(p_viewer uuid, p_other uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select social.ok(p_viewer) and social.ok(p_other) and not social.blocked(p_viewer, p_other)
      and (social.friends(p_viewer, p_other)
-      or exists (select 1 from public.social_requests r where ((r.from_user = p_viewer and r.to_user = p_other) or (r.from_user = p_other and r.to_user = p_viewer)) and r.at > now() - interval '30 days')
+      or exists (select 1 from public.social_requests r where r.from_user = p_viewer and r.to_user = p_other and r.at > now() - interval '30 days')
+      or exists (select 1 from public.social_requests r where r.from_user = p_other and r.to_user = p_viewer and r.status = 'pending' and r.at > now() - interval '14 days')
       or exists (select 1 from public.plaza_presence a join public.plaza_presence b on b.server = a.server
                    join public.social_profiles sa on sa.user_id = a.user_id and not sa.hidden
                    join public.social_profiles sb on sb.user_id = b.user_id and not sb.hidden
@@ -315,6 +336,7 @@ begin
     perform social.lock(new.user_id); -- waits for any call in flight for her account, so nothing it writes survives
     delete from public.social_notes where from_user = new.user_id or to_user = new.user_id;
     delete from public.social_requests where from_user = new.user_id or to_user = new.user_id;
+    delete from public.social_cooldowns where from_user = new.user_id or to_user = new.user_id;
     delete from public.social_friends where a = new.user_id or b = new.user_id;
     delete from public.social_profiles where user_id = new.user_id;
   end if;
@@ -406,7 +428,8 @@ begin
     select jsonb_agg(x.j order by x.friend desc, x.joined_at) from (
       select jsonb_build_object('handle', s.handle, 'name', s.name, 'look', s.look,
                'friend', social.friends(uid, p.user_id),
-               'asked', exists (select 1 from public.social_requests r where r.from_user = uid and r.to_user = p.user_id and r.at > now() - interval '30 days'),
+               'asked', exists (select 1 from public.social_requests r where r.from_user = uid and r.to_user = p.user_id and r.at > now() - interval '30 days')
+                     or exists (select 1 from public.social_cooldowns k where k.from_user = uid and k.to_user = p.user_id and k.until > now()),
                'asks', exists (select 1 from public.social_requests r where r.from_user = p.user_id and r.to_user = uid and r.status = 'pending' and r.at > now() - interval '14 days')) as j,
              social.friends(uid, p.user_id) as friend, p.joined_at
       from public.plaza_presence p join public.social_profiles s on s.user_id = p.user_id
@@ -437,21 +460,26 @@ begin
     if social.friend_count(uid) >= 200 or social.friend_count(other) >= 200 then return jsonb_build_object('ok', false, 'why', 'full'); end if;
     insert into public.social_friends (a, b) values (least(uid, other), greatest(uid, other)) on conflict do nothing;
     delete from public.social_requests where (from_user = uid and to_user = other) or (from_user = other and to_user = uid);
+    delete from public.social_cooldowns where (from_user = uid and to_user = other) or (from_user = other and to_user = uid);
     return jsonb_build_object('ok', true, 'status', 'friends');
   end if;
-  if exists (select 1 from public.social_requests r where r.from_user = uid and r.to_user = other and r.at > now() - interval '30 days') then
+  if exists (select 1 from public.social_requests r where r.from_user = uid and r.to_user = other and r.at > now() - interval '30 days')
+     or exists (select 1 from public.social_cooldowns k where k.from_user = uid and k.to_user = other and k.until > now()) then
     return jsonb_build_object('ok', true, 'status', 'asked'); -- the same answer whether she said not now or has not answered
   end if;
   if p_hello is not null and not exists (select 1 from public.social_phrases p where p.id = p_hello and p.kind = 'hello' and p.active) then
     return jsonb_build_object('ok', false, 'why', 'phrase');
   end if;
-  -- 20 asks in the last 14 days, answered "not now" or not: a decline keeps its slot, so the limit never reveals one
-  if (select count(*) from public.social_requests r where r.from_user = uid and r.at > now() - interval '14 days') >= 20 then
+  -- 20 asks in the last 14 days, answered "not now" or not, blocked since or not: counted from the cooldown record, so
+  -- neither a decline nor a block frees a slot
+  if (select count(*) from public.social_cooldowns k where k.from_user = uid and k.at > now() - interval '14 days') >= 20 then
     return jsonb_build_object('ok', false, 'why', 'many');
   end if;
   if not social.hit(uid, 'ask', 10, interval '1 day') then return jsonb_build_object('ok', false, 'why', 'today'); end if;
   delete from public.social_requests where from_user = uid and to_user = other; -- a lapsed one the sweep has not reached
   insert into public.social_requests (from_user, to_user, hello) values (uid, other, p_hello);
+  insert into public.social_cooldowns (from_user, to_user, at, until) values (uid, other, now(), now() + interval '30 days')
+    on conflict (from_user, to_user) do update set at = excluded.at, until = excluded.until;
   return jsonb_build_object('ok', true, 'status', 'asked');
 end $$;
 
@@ -476,6 +504,7 @@ begin
   if social.friend_count(uid) >= 200 or social.friend_count(other) >= 200 then return jsonb_build_object('ok', false, 'why', 'full'); end if;
   insert into public.social_friends (a, b) values (least(uid, other), greatest(uid, other)) on conflict do nothing;
   delete from public.social_requests where (from_user = uid and to_user = other) or (from_user = other and to_user = uid);
+  delete from public.social_cooldowns where (from_user = uid and to_user = other) or (from_user = other and to_user = uid);
   return jsonb_build_object('ok', true, 'status', 'friends');
 end $$;
 
@@ -725,7 +754,7 @@ select cron.schedule('rhythme-social-sweep', '17 19 * * *', 'select social.sweep
 --     public.social_card_save(text, text, boolean, boolean, integer, text, text, boolean, uuid), public.social_me(),
 --     staff.social_decide(bigint, text, integer, uuid), staff.social_reports_list(text);
 --   drop schema if exists social cascade;
---   drop table if exists staff.social_reports, public.social_rate, public.social_notes, public.social_blocks, public.social_friends,
+--   drop table if exists staff.social_reports, public.social_rate, public.social_notes, public.social_blocks, public.social_friends, public.social_cooldowns,
 --     public.social_requests, public.social_holds, public.social_profiles, public.social_words, public.social_phrases;
 --   (consent events with purpose 'social' must be deleted or kept with the old check restored NOT VALID)
 --   alter table public.consent_events drop constraint consent_events_purpose_check;

@@ -6,6 +6,19 @@ bodies removed. The batch raises its own `RESULT`, so the transaction rolls back
 no `social` or `cron` schema, no pg_cron extension, no `social_*` tables, no trigger, no dry-run accounts, no `social`
 consent events and the old purpose check: nothing was kept.
 
+## Fourth cut (after the third Codex review): 61 of 61, superseded by main
+
+Locally: 61 of 61, races 8 of 8 safe, and with the lock removed 7 of 8 end with wrong answers or rows (counted on the
+outcome only; the staff race stays right on its row lock). New checks: cooldown_survives_block, quota_survives_block,
+visible_follows_inbox.
+
+Live (20 Oct, about 10:45): `all: true`, `count: 61`, `expected: 61`, `missing: null`, all 32 body hashes equal the file.
+This run was not on an empty project: main's own version of this migration had been applied at 01:39 UTC
+(`20261020013954 plaza_friends`, with `social_ask_log`), so the batch's `create ... if not exists` statements found
+main's tables and the functions were replaced inside the transaction. Afterwards the project held main's version
+unchanged (no `social_cooldowns`, no dry-run accounts, main's function bodies), so the rollback held. The empty-project
+path for this cut was covered by the local run only.
+
 ## Third cut (after the second Codex review): 58 of 58 live, plus two-session races locally
 
 Live: `all: true`, `count: 58`, `expected: 58`, `missing: null`; all 32 function body hashes equal the file; nothing kept

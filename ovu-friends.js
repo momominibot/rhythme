@@ -274,6 +274,7 @@
     R.openSheet(id, title, sub, icon, '<div class="fr" id="frSheet">' + html + '</div>');
     return doc.getElementById('frSheet');
   }
+  /* her own way in (a tap): the only path, with the group pill and walking into the plaza, that lifts the hold */
   function open() {
     if (uid() !== lastUid) authChanged();
     resume();
@@ -289,6 +290,12 @@
       if (g !== sheetGen) return; var el = doc.getElementById('frSheet'); if (el) el.innerHTML = '<p class="help">Could not reach Plaza friends. Check the connection; open this again to try once more.</p>';
     });
   }
+  /* a redraw after something she did: from what is already known, never a request of its own */
+  function show() {
+    if (!uid() || !me) { R.closeSheet(); return; }
+    frSheet('friends', 'Plaza friends', 'Friends you meet in the plaza groups', 'diversity_1', '');
+    renderFriends();
+  }
   function renderFriends(editing) {
     var el = doc.getElementById('frSheet'); if (!el || !me) return;
     if (me.paused_until) {
@@ -300,7 +307,8 @@
     if (!me.card || editing) { renderCardForm(el, !!me.card); return; }
     var ib = inbox && inbox.ok ? inbox : { friends: [], asks: [], asked: [], notes: [], blocked: [] }, c = me.card;
     var row = function (p, inner, cls) { return '<div class="frrow' + (cls ? ' ' + cls : '') + '">' + img(p.look) + '<div class="frwho"><b>' + esc(p.name) + '</b>' + inner + '</div></div>'; };
-    var html = '<div class="frcard">' + img(c.look) + '<div><b>' + esc(c.name) + '</b><span>' + (c.hidden ? 'Hidden from groups for now' : 'Shown to people in your group who have a card') + '</span></div><button type="button" class="btn sm soft" data-fr="edit">Edit</button></div>';
+    var html = (held ? '<div class="flag info frheld"><span class="ms">cloud_off</span><div><b>Could not reach Plaza friends</b><span>What you see may be out of date. Nothing is asked again until you try.</span></div></div><div class="row"><button type="button" class="btn soft" data-fr="retry"><span class="ms">refresh</span>Try again</button></div>' : '') +
+      '<div class="frcard">' + img(c.look) + '<div><b>' + esc(c.name) + '</b><span>' + (c.hidden ? 'Hidden from groups for now' : 'Shown to people in your group who have a card') + '</span></div><button type="button" class="btn sm soft" data-fr="edit">Edit</button></div>';
     if (ib.asks.length) html += '<div class="frsec"><span class="lbl">Asked to be friends</span>' + cue('accept') + ib.asks.map(function (a) {
       return row(a, (a.hello ? '<span>“' + esc(phraseText(a.hello)) + '”</span>' : '<span>' + esc(ago(a.at)) + '</span>') +
         '<div class="fracts"><button type="button" class="btn sm primary" data-fr="accept" data-h="' + esc(a.handle) + '">Accept</button><button type="button" class="btn sm soft" data-fr="notnow" data-h="' + esc(a.handle) + '">Not now</button><button type="button" class="frlink" data-fr="report" data-h="' + esc(a.handle) + '" data-n="' + esc(a.name) + '">Report</button></div>');
@@ -321,7 +329,7 @@
     el.innerHTML = html;
     if (ib.notes.some(function (n) { return !n.read; })) {
       var top = ib.notes.reduce(function (m, n) { return Math.max(m, Number(n.id) || 0); }, 0);
-      rpc('social_read', { p_upto: top }).then(function () { ib.notes.forEach(function (n) { n.read = true; }); badge(); }, function () { });
+      if (!held) rpc('social_read', { p_upto: top }).then(function () { ib.notes.forEach(function (n) { n.read = true; }); badge(); }, function (e) { hold(e); var el2 = doc.getElementById('frSheet'); if (el2 && !el2.querySelector('.frheld')) renderFriends(); });
     }
     markSeen(); badge();
   }
@@ -352,7 +360,7 @@
     });
     save.addEventListener('click', function () {
       var look = (el.querySelector('.frlook.on') || {}).dataset, hid = el.querySelector('#frHidden'), msg = el.querySelector('#frMsg');
-      save.disabled = true; msg.textContent = 'Saving…';
+      save.disabled = true; msg.textContent = 'Saving…'; resume();
       /* 18+ and Plaza friends are sent only as the boxes she ticked on this form, never from what the phone remembers */
       var adult = el.querySelector('#frAdult'), optIn = el.querySelector('#frOn');
       rpc('social_card_save', { p_name: cleanName(name.value), p_look: look ? look.look : 'base', p_hidden: !!(hid && hid.checked), p_adult: !!(adult && adult.checked),
@@ -399,7 +407,7 @@
       var p = e.target.closest('[data-phrase]'); if (p) { pick = p.dataset.phrase; draw(); return; }
       if (e.target.closest('#frBack')) { back(); return; }
       var s = e.target.closest('#frSend'); if (!s || !pick) return;
-      s.disabled = true;
+      s.disabled = true; resume();
       rpc('social_note', { p_handle: handle, p_phrase: pick }, owner).then(function (j) {
         if (!j || !j.ok) { el.querySelector('#frMsg').textContent = whyText(j); s.disabled = false; return; }
         R.chime('save'); R.toast('Sent. One kind thing, done.', 'favorite'); back();
@@ -420,7 +428,7 @@
       var r = e.target.closest('[data-reason]'); if (r) { why = r.dataset.reason; draw(); return; }
       if (e.target.closest('#frBack')) { back(); return; }
       var s = e.target.closest('#frSendReport'); if (!s || !why) return;
-      var block = el.dataset.block === '1'; s.disabled = true;
+      var block = el.dataset.block === '1'; s.disabled = true; resume();
       rpc('social_report', { p_handle: handle, p_reason: why, p_note: noteId ? Number(noteId) : null, p_block: block }, owner).then(function (j) {
         if (!j || !j.ok) { el.querySelector('#frMsg').textContent = whyText(j); s.disabled = false; return; }
         if (block) setPeople(people.filter(function (p) { return p.handle !== handle; }), peopleVisit);
@@ -435,8 +443,9 @@
   function act(b) {
     var what = b.dataset.fr, h = b.dataset.h, inFriends = !doc.querySelector('#frSheet[data-person]'), owner = sheetOwner;
     if (!owner || uid() !== owner) { R.closeSheet(); return; } /* a sheet left open from another account does nothing */
-    var back = function () { if (inFriends) open(); else if (person(h)) openPerson(h); else R.closeSheet(); };
+    var back = function () { if (inFriends) show(); else if (person(h)) openPerson(h); else R.closeSheet(); };
     var p = person(h);
+    if (what === 'retry') { open(); return; }
     if (what === 'edit') { renderFriends(true); return; }
     if (what === 'back') { renderFriends(); return; }
     if (what === 'more') { var m = b.closest('.frrow').querySelector('.frmore'); m.hidden = !m.hidden; b.setAttribute('aria-expanded', String(!m.hidden)); return; }
@@ -448,7 +457,7 @@
       b.innerHTML = what === 'off' ? 'Tap again: turn off and delete my card, friends and notes' : what === 'block' ? 'Tap again to block. ' + esc(CUES.block) : 'Tap again to unfriend. ' + esc(CUES.unfriend);
       return;
     }
-    b.disabled = true;
+    b.disabled = true; resume(); /* a tap that sends something is her own act; what follows from it may fail and hold again */
     var done = function (j, okText, icon) {
       if (!j || !j.ok) { R.toast(whyText(j), 'diversity_1'); b.disabled = false; return; }
       if (okText) R.toast(okText, icon || 'diversity_1');
@@ -470,15 +479,15 @@
     } else if (what === 'unfriend') {
       call = rpc('social_unfriend', { p_handle: h }, owner).then(function (j) { done(j, 'Unfriended. She will not be told.'); if (j && j.ok) { if (p) { p.friend = false; peopleKey = ''; setPeople(people.slice(), peopleVisit); } loadInbox(true).then(back, back); } });
     } else if (what === 'block') {
-      call = rpc('social_block', { p_handle: h }, owner).then(function (j) { done(j, 'Blocked. ' + CUES.block, 'block'); if (j && j.ok) { setPeople(people.filter(function (x) { return x.handle !== h; }), peopleVisit); var after = function () { if (inFriends) open(); else R.closeSheet(); }; loadInbox(true).then(after, after); } });
+      call = rpc('social_block', { p_handle: h }, owner).then(function (j) { done(j, 'Blocked. ' + CUES.block, 'block'); if (j && j.ok) { setPeople(people.filter(function (x) { return x.handle !== h; }), peopleVisit); var after = function () { if (inFriends) show(); else R.closeSheet(); }; loadInbox(true).then(after, after); } });
     } else if (what === 'unblock') {
-      call = rpc('social_unblock', { p_id: b.dataset.id }, owner).then(function (j) { done(j, 'Unblocked.'); if (j && j.ok) loadInbox(true).then(open, open); });
+      call = rpc('social_unblock', { p_id: b.dataset.id }, owner).then(function (j) { done(j, 'Unblocked.'); if (j && j.ok) loadInbox(true).then(show, show); });
     } else if (what === 'off') {
       call = rpc('social_off', { p_notice: noticeV(), p_device: device() || null }, owner).then(function (j) {
         done(j, 'Plaza friends is off. Your card, friends, requests and notes are deleted.', 'toggle_off');
         if (!j || !j.ok) return;
         try { if (root.OvuConsent && root.OvuConsent.withdraw) root.OvuConsent.withdraw('social', 'you', { sent: true }); } catch (e) { }
-        me.card = null; me.on = false; inbox = null; setPeople([]); badge(); open();
+        me.card = null; me.on = false; inbox = null; setPeople([]); badge(); show();
       });
     }
     if (call) call.catch(function (e) { if (e && e.cancelled) return; offline(e); b.disabled = false; });

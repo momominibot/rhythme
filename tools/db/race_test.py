@@ -112,29 +112,30 @@ def one(c, sql, params=()):
     return c.execute(sql, params).fetchone()[0]
 
 
-def scenarios(c, expect_safe=True):
-    """Each scenario reports whether the outcome was the safe one. With expect_safe False (social.lock removed) the
-    same scenarios are expected to go wrong."""
+def scenarios(c):
+    """Each scenario returns (outcome safe, second session waited on a lock, detail). The outcome is judged on the
+    answers and the rows alone; waiting is reported separately, so a run with the lock removed counts a race as gone
+    wrong only when an answer or a row is wrong, never merely because nothing waited."""
     seen = {}
 
     # 1. a note against a block: the block holds both accounts; the note waits, then finds the block
     A = person(c, 'Ann', 'pcos'); B = person(c, 'Bea', 'pcos', friends_with=A)
     r1, r2, w = race((B['id'], 'select public.social_block(%s)', [A['handle']]), (A['id'], 'select public.social_note(%s, %s)', [B['handle'], 'tea']))
     note = one(c, 'select count(*) from public.social_notes where from_user = %s and to_user = %s', [A['id'], B['id']])
-    seen['block_vs_note'] = (w and r2.get('why') == 'gone' and note == 0, {'block': r1, 'note': r2, 'waited': w, 'notes': note})
+    seen['block_vs_note'] = (r2.get('why') == 'gone' and note == 0, w, {'block': r1, 'note': r2, 'waited': w, 'notes': note})
 
     # 2. a note against Plaza friends turned off by the recipient (any route: the general consent call)
     A = person(c, 'Ada', 'pcos'); B = person(c, 'Bo', 'pcos', friends_with=A)
     r1, r2, w = race((B['id'], "select public.consent_record('social', 'withdraw', 3)", []), (A['id'], 'select public.social_note(%s, %s)', [B['handle'], 'tea']))
     note = one(c, 'select count(*) from public.social_notes where to_user = %s', [B['id']])
-    seen['withdraw_vs_note'] = (w and r2.get('why') == 'gone' and note == 0, {'note': r2, 'waited': w, 'notes': note})
+    seen['withdraw_vs_note'] = (r2.get('why') == 'gone' and note == 0, w, {'note': r2, 'waited': w, 'notes': note})
 
     # 3. accepting an ask against the asker withdrawing 18+
     A = person(c, 'Aya', 'pcos'); B = person(c, 'Bel', 'pcos')
     c.execute("insert into public.social_requests (from_user, to_user) values (%s, %s)", [B['id'], A['id']])
     r1, r2, w = race((B['id'], "select public.consent_record('age_18', 'withdraw', 3)", []), (A['id'], 'select public.social_answer(%s, true)', [B['handle']]))
     fr = one(c, 'select count(*) from public.social_friends where a = least(%s::uuid, %s::uuid) and b = greatest(%s::uuid, %s::uuid)', [A['id'], B['id'], A['id'], B['id']])
-    seen['age_withdraw_vs_accept'] = (w and r2.get('why') == 'gone' and fr == 0, {'answer': r2, 'waited': w, 'friends': fr})
+    seen['age_withdraw_vs_accept'] = (r2.get('why') == 'gone' and fr == 0, w, {'answer': r2, 'waited': w, 'friends': fr})
 
     # 4. one account accepting two asks from two phones at 199 friends: the second waits and finds 200
     X = person(c, 'Xia', 'pcos')
@@ -144,7 +145,7 @@ def scenarios(c, expect_safe=True):
     c.execute("insert into public.social_requests (from_user, to_user) values (%s, %s), (%s, %s)", [P1['id'], X['id'], P2['id'], X['id']])
     r1, r2, w = race((X['id'], 'select public.social_answer(%s, true)', [P1['handle']]), (X['id'], 'select public.social_answer(%s, true)', [P2['handle']]))
     n = one(c, 'select count(*) from public.social_friends where a = %s or b = %s', [X['id'], X['id']])
-    seen['capacity_two_phones'] = (w and r1.get('status') == 'friends' and r2.get('why') == 'full' and n == 200, {'first': r1, 'second': r2, 'waited': w, 'friends': n})
+    seen['capacity_two_phones'] = (r1.get('status') == 'friends' and r2.get('why') == 'full' and n == 200, w, {'first': r1, 'second': r2, 'waited': w, 'friends': n})
 
     # 5. two staff decisions on one report: the second waits, then finds it decided; the pause stands
     O = person(c, 'Own'); T = person(c, 'Tam', 'pcos'); Rr = person(c, 'Rae', 'pcos')
@@ -152,26 +153,26 @@ def scenarios(c, expect_safe=True):
     rid = one(c, "insert into staff.social_reports (reporter, target, target_handle, target_name, reason) values (%s, %s, %s, 'Tam', 'unkind') returning id", [Rr['id'], T['id'], T['handle']])
     r1, r2, w = race((O['id'], 'select public.admin_social_decide(%s, %s, 3)', [rid, 'pause']), (O['id'], 'select public.admin_social_decide(%s, %s, null)', [rid, 'dismiss']))
     st = one(c, 'select status from staff.social_reports where id = %s', [rid]); held = one(c, 'select count(*) from public.social_holds where user_id = %s', [T['id']])
-    seen['staff_decisions'] = (w and r1.get('ok') is True and r2.get('ok') is False and st == 'paused' and held == 1, {'first': r1, 'second': r2, 'waited': w, 'status': st, 'hold': held})
+    seen['staff_decisions'] = (r1.get('ok') is True and r2.get('ok') is False and st == 'paused' and held == 1, w, {'first': r1, 'second': r2, 'waited': w, 'status': st, 'hold': held})
 
     # 6. two people asking each other at once: friends once, no ask left over
     A = person(c, 'Amy', 'pcos'); B = person(c, 'Bex', 'pcos')
     r1, r2, w = race((A['id'], 'select public.social_ask(%s, %s, %s, null)', [B['handle'], 'pcos', A['visit']]), (B['id'], 'select public.social_ask(%s, %s, %s, null)', [A['handle'], 'pcos', B['visit']]))
     fr = one(c, 'select count(*) from public.social_friends where a = least(%s::uuid, %s::uuid) and b = greatest(%s::uuid, %s::uuid)', [A['id'], B['id'], A['id'], B['id']])
     left = one(c, 'select count(*) from public.social_requests where from_user in (%s, %s)', [A['id'], B['id']])
-    seen['mutual_asks'] = (w and r1.get('status') == 'asked' and r2.get('status') == 'friends' and fr == 1 and left == 0, {'first': r1, 'second': r2, 'waited': w, 'friends': fr, 'left': left})
+    seen['mutual_asks'] = (r1.get('status') == 'asked' and r2.get('status') == 'friends' and fr == 1 and left == 0, w, {'first': r1, 'second': r2, 'waited': w, 'friends': fr, 'left': left})
 
     # 7. a note against an unfriend
     A = person(c, 'Ari', 'pcos'); B = person(c, 'Bay', 'pcos', friends_with=A)
     r1, r2, w = race((B['id'], 'select public.social_unfriend(%s)', [A['handle']]), (A['id'], 'select public.social_note(%s, %s)', [B['handle'], 'hug']))
     note = one(c, 'select count(*) from public.social_notes where from_user = %s', [A['id']])
-    seen['unfriend_vs_note'] = (w and r2.get('why') == 'gone' and note == 0, {'note': r2, 'waited': w, 'notes': note})
+    seen['unfriend_vs_note'] = (r2.get('why') == 'gone' and note == 0, w, {'note': r2, 'waited': w, 'notes': note})
 
     # 8. an ask against the other person turning Plaza friends off
     A = person(c, 'Abi', 'pcos'); B = person(c, 'Bia', 'pcos')
     r1, r2, w = race((B['id'], 'select public.social_off(3)', []), (A['id'], 'select public.social_ask(%s, %s, %s, null)', [B['handle'], 'pcos', A['visit']]))
     req = one(c, 'select count(*) from public.social_requests where from_user = %s', [A['id']])
-    seen['off_vs_ask'] = (w and r2.get('why') == 'gone' and req == 0, {'ask': r2, 'waited': w, 'requests': req})
+    seen['off_vs_ask'] = (r2.get('why') == 'gone' and req == 0, w, {'ask': r2, 'waited': w, 'requests': req})
     return seen
 
 
@@ -179,16 +180,17 @@ def main():
     mutate, dry = '--mutate' in sys.argv, '--dryrun' in sys.argv
     print('Plaza friends races on a local copy (two real sessions each)')
     c = fresh()
-    for name, (ok, detail) in scenarios(c).items():
-        check('race: ' + name.replace('_', ' '), ok, detail)
+    for name, (ok, w, detail) in scenarios(c).items():
+        check('race: ' + name.replace('_', ' ') + ' (the second session waited on the lock, and the answers and rows are right)', ok and w, detail)
     c.close()
     if mutate:
         print('the same races with social.lock() made a no-op: they should go wrong, which shows the tests see the bug')
         c = fresh(mutate=True)
-        seen = scenarios(c, expect_safe=False)
-        wrong = [k for k, (ok, _) in seen.items() if not ok]
-        check('without the account lock, the races that write after a check go wrong (%d of %d: %s)' % (len(wrong), len(seen), ', '.join(wrong)),
-              {'block_vs_note', 'withdraw_vs_note', 'age_withdraw_vs_accept', 'capacity_two_phones', 'unfriend_vs_note'} <= set(wrong), seen)
+        seen = scenarios(c)
+        wrong = [k for k, (ok, _, _) in seen.items() if not ok]  # a wrong answer or wrong rows; waiting is not counted
+        expect = {'block_vs_note', 'withdraw_vs_note', 'age_withdraw_vs_accept', 'capacity_two_phones', 'mutual_asks', 'unfriend_vs_note', 'off_vs_ask'}
+        check('without the account lock, %d of %d races end with a wrong answer or wrong rows (%s); the staff race stays right on its row lock' % (len(wrong), len(seen), ', '.join(wrong)),
+              expect <= set(wrong) and 'staff_decisions' not in wrong, {k: (v[0], v[2]) for k, v in seen.items()})
         c.close()
     if dry:
         print('the rolled-back dry run, against the local copy')

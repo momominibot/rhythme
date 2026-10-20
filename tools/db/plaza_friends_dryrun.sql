@@ -1,4 +1,4 @@
--- Rolled-back check of supabase/migrations/20261019130000_plaza_friends.sql (19-20 Oct 2026, third cut).
+-- Rolled-back check of supabase/migrations/20261019130000_plaza_friends.sql (19-20 Oct 2026, fourth cut).
 -- Run as ONE batch: the migration text, then this file. The last statement raises 'RESULT {...}', so the implicit
 -- transaction rolls back (tables, functions, rows, consent events, the cron job: nothing is kept) and the message carries
 -- the checks. Every expected check must be present and true; a missing or null one fails the run.
@@ -50,6 +50,8 @@ declare
   e uuid := gen_random_uuid(); n uuid := gen_random_uuid(); m uuid := gen_random_uuid(); x uuid := gen_random_uuid();
   y uuid := gen_random_uuid(); z uuid := gen_random_uuid(); w uuid := gen_random_uuid(); v uuid := gen_random_uuid(); q uuid := gen_random_uuid();
   ku uuid := gen_random_uuid(); ju uuid := gen_random_uuid(); hw uuid; hk uuid;
+  s1 uuid := gen_random_uuid(); s2 uuid := gen_random_uuid(); s3 uuid := gen_random_uuid(); s4 uuid := gen_random_uuid(); s5 uuid := gen_random_uuid();
+  t1 uuid := gen_random_uuid(); t2 uuid := gen_random_uuid(); h1 uuid; h2 uuid; h3 uuid; h4 uuid; h5 uuid; ht1 uuid; ht2 uuid; vt1 uuid; vt2 uuid;
   owner uuid; va uuid; vb uuid; vc uuid; vd uuid; ve uuid; vn uuid; vy uuid; vw uuid; ha uuid; hb uuid; hc uuid; hd uuid; he uuid; hy uuid; hz uuid; hv uuid;
   r jsonb; r2 jsonb; out jsonb := '{}'; i integer; note_id bigint; rep_id bigint; blk uuid; ok boolean; pre boolean;
   expected text[] := array['names', 'anon_refused', 'no_sub_refused', 'tables_closed', 'minor_refused', 'bad_name_refused', 'no_opt_in_refused', 'card_a',
@@ -60,7 +62,7 @@ declare
     'new_card_new_handle', 'stale_edit_after_withdraw', 'block', 'unblock', 'unfriend', 'withdraw_any_route', 'rate_limits', 'retention',
     'locks_pair', 'locks_withdrawal', 'reciprocal_needs_14_days', 'declines_keep_quota', 'block_snapshot_only_if_visible', 'inbox_only_friends_notes',
     'daily_cleanup_scheduled', 'account_delete', 'block_snapshot_not_if_blocked', 'block_snapshot_not_if_hidden', 'age_withdraw_deletes',
-    'read_needs_ok', 'decide_rechecks'];
+    'read_needs_ok', 'decide_rechecks', 'cooldown_survives_block', 'quota_survives_block', 'visible_follows_inbox'];
 begin
   insert into auth.users (id, email, aud, role) select u, 'dryrun-' || u || '@example.invalid', 'authenticated', 'authenticated' from unnest(array[a, b, c, d, e, n, m, x]) u;
   -- B, C, D, E, N attested 18+ earlier (as the consent sheet does); A ticks it on her card; M never does
@@ -257,8 +259,12 @@ begin
   insert into public.social_requests (from_user, to_user, status, at, decided_at)
     select w, u.id, 'declined', now() - interval '1 day', now()
     from (select id from auth.users where email like 'dryrun-%@example.invalid' and id not in (a, b, c, d, e, n, m, x, y, z, w, q) limit 20) u;
+  insert into public.social_cooldowns (from_user, to_user, at, until) select from_user, to_user, at, at + interval '30 days' from public.social_requests where from_user = w;
   r := pg_temp.call(w, format('select public.social_ask(%L, %L, %L, null)', hy, 'pcos', vw));
   out := out || jsonb_build_object('declines_keep_quota', r->>'why' = 'many' and (select count(*) from public.social_requests where from_user = w and status = 'declined') = 20);
+  delete from public.social_requests where from_user = w; -- as a block would: the asks are gone, the cooldown record is not
+  r := pg_temp.call(w, format('select public.social_ask(%L, %L, %L, null)', hy, 'pcos', vw));
+  out := out || jsonb_build_object('quota_survives_block', r->>'why' = 'many' and not exists (select 1 from public.social_requests where from_user = w));
 
   -- a block copies her card only if it was visible: Yuna is in A's group, Vera (no group, no ties) is not
   hv := pg_temp.person(v, 'Vera', null);
@@ -288,6 +294,32 @@ begin
   out := out || jsonb_build_object('read_needs_ok', r->>'why' = 'off');
 
   -- the inbox shows notes only from friends she has not blocked, whatever a race left behind
+  -- "not now", then block and unblock: the cooldown record stands, so asking again sends nothing and still reads "asked"
+  ht1 := pg_temp.person(t1, 'Tess', 'pcos'); ht2 := pg_temp.person(t2, 'Tia', 'pcos');
+  vt1 := (select visit from public.plaza_presence where user_id = t1); vt2 := (select visit from public.plaza_presence where user_id = t2);
+  perform pg_temp.call(t1, format('select public.social_ask(%L, %L, %L, null)', ht2, 'pcos', vt1));
+  perform pg_temp.call(t2, format('select public.social_answer(%L, false)', ht1));
+  perform pg_temp.call(t1, format('select public.social_block(%L)', ht2));
+  perform pg_temp.call(t1, format('select public.social_unblock(%L)', (select id from public.social_blocks where blocker = t1 and blocked = t2)));
+  r := pg_temp.call(t1, format('select public.social_ask(%L, %L, %L, null)', ht2, 'pcos', vt1));
+  r2 := pg_temp.call(t1, format('select public.social_people(%L, %L)', 'pcos', vt1));
+  out := out || jsonb_build_object('cooldown_survives_block', r->>'status' = 'asked' and not exists (select 1 from public.social_requests where from_user = t1 and to_user = t2)
+    and exists (select 1 from public.social_cooldowns where from_user = t1 and to_user = t2 and until > now())
+    and (r2->'people') @> jsonb_build_array(jsonb_build_object('name', 'Tia', 'asked', true))
+    and jsonb_array_length(pg_temp.call(t2, 'select public.social_inbox()')->'asks') = 0);
+
+  -- a card is visible through an ask only on the inbox's terms: an incoming ask while pending and under 14 days, her own ask for 30
+  h1 := pg_temp.person(s1, 'Sia', null); h2 := pg_temp.person(s2, 'Sam', null); h3 := pg_temp.person(s3, 'Sol', null);
+  h4 := pg_temp.person(s4, 'Sue', null); h5 := pg_temp.person(s5, 'Sky', null);
+  insert into public.social_requests (from_user, to_user, status, at, decided_at) values (s1, s2, 'declined', now() - interval '1 day', now());
+  insert into public.social_requests (from_user, to_user, status, at) values (s3, s2, 'pending', now() - interval '15 days'), (s4, s5, 'pending', now() - interval '20 days');
+  perform pg_temp.call(s2, format('select public.social_block(%L)', h1));
+  perform pg_temp.call(s2, format('select public.social_block(%L)', h3));
+  perform pg_temp.call(s4, format('select public.social_block(%L)', h5));
+  out := out || jsonb_build_object('visible_follows_inbox', (select name from public.social_blocks where blocker = s2 and blocked = s1) is null
+    and (select name from public.social_blocks where blocker = s2 and blocked = s3) is null
+    and (select name from public.social_blocks where blocker = s4 and blocked = s5) = 'Sky');
+
   insert into public.social_notes (from_user, to_user, phrase) values (v, a, 'hug'), (z, a, 'rest');
   r := pg_temp.call(a, 'select public.social_inbox()');
   out := out || jsonb_build_object('inbox_only_friends_notes', r->>'ok' = 'true' and jsonb_array_length(r->'notes') = 0);

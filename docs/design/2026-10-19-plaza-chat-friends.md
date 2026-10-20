@@ -64,6 +64,7 @@ Every social action carries one short line before the button, never a delay the 
 | Handle (random id on the card) | The phones above; staff in short form | With the card; a new card gets a new handle |
 | Friendship | The two people | Until either ends it, blocks, or turns Plaza friends off |
 | Friend request | The two people | Shown to her for 14 days; kept 30 days from sending whatever the answer, so the sender sees "asked" and cannot ask again in that time |
+| Ask cooldown (who asked whom, when, until when) | Nobody; the server reads it for the 30-day "asked" rule and the 20-ask quota | 30 days from the ask; a block does not delete it; turning Plaza friends off does |
 | Kind note (phrase id, time, read or not) | The two people | 30 days (deleted at the next daily clean-up, so within a day after); deleted when the friendship ends |
 | Block (and the name it had then) | The person who blocked | Until she unblocks or deletes her account |
 | Report (snapshot of the card, phrase, reason) | Staff | Open until decided; one year after the decision; the reporter is removed if her account is deleted |
@@ -152,6 +153,25 @@ applied**:
 | 9 (new) | Block then unblock deletes the 30-day ask record, so she can ask again at once after a "not now" | Keep a small cooldown record (who asked whom, until when) that blocking does not delete, kept 30 days, and say so in the data table |
 | 10 (new) | An old or declined ask still lets the person who received it look up the asker's current card by blocking her | `social.visible` follows the inbox: an incoming ask counts only while pending and under 14 days; her own outgoing ask counts for 30 days |
 | 11 (new) | The mutation run counts a race as "gone wrong" when the second session merely did not wait | Check waiting and the outcome separately; count a mutation only when the response or the rows are wrong, then restate the "7 of 8" |
+
+**Round four (20 Oct, Jamie: "Yes, apply the four round-four fixes ... and get a fourth Codex review").** Applied:
+
+| Round three # | Fix | Proof |
+|---|---|---|
+| 4 (the hold) | Two ways into the friends sheet: `open()` is her own tap (the only one, with the group pill and walking into the plaza, that lifts the hold) and fetches; `show()` redraws after something she did from what is known and never fetches. Every "back" uses `show()`. A tap that sends something lifts the hold for that one request; whatever follows may fail and hold again. A failed "mark read" holds, and nothing marks read while held. The sheet says "Could not reach Plaza friends" with Try again | smoke: a failed mark-read holds and is not resent; Accept then a failed refresh redraws, with no second refresh, no `social_me`, nothing from a timer or a return to the app; Try again asks |
+| 9 | `social_cooldowns` (who asked whom, until when) is written with every ask, read by the 30-day rule and the 20-ask quota, deleted by friendship or turning off, never by a block; a daily sweep drops expired rows | dry run `cooldown_survives_block` (not now, block, unblock, ask: nothing sent, still "asked"), `quota_survives_block` |
+| 10 | `social.visible` follows the inbox: her own ask for 30 days; an ask to her only while pending and under 14 days | dry run `visible_follows_inbox` (declined and expired incoming asks give "Someone", her own ask gives the card) |
+| 11 | Each race returns its outcome (answers and rows) and whether the second session waited, separately; the mutation run counts only wrong outcomes | `race_test.py --mutate`: 7 of 8 end with wrong answers or rows without the lock; the staff race stays right on its row lock |
+
+**Superseded (20 Oct, 11:00).** While round four was being checked, the same four findings were fixed on another branch
+(an ask log in place of the cooldown record), reviewed, dry-run, applied live as migration `20261020013954 plaza_friends`
+and merged to main in momominibot/ovumind.github.io#13, which closed #10. This round is kept on `claude/plaza-friends`
+for the record and was not sent for a fourth review. Checked against main's migration on a local Postgres: block then
+unblock no longer resets the ask wait (fixed on main). Two differences remain on main: turning Plaza friends off keeps
+her ask log rows for up to 30 days while the privacy page and the card's words say her card, friends, requests and
+notes are deleted (keeping them is what stops off-and-on from re-asking someone who said not now, which this round's
+cooldown record did not stop, so the words should say so rather than the rows go); and the people list reads "asked"
+from requests only, so after a block and unblock it offers Ask again, which then answers "asked" and sends nothing.
 
 ## 8. Phases
 
