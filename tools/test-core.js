@@ -13,7 +13,7 @@ function fresh(todayIso) {
   w.window = w; w.self = w; w.globalThis = w;
   var ctx = vm.createContext(w);
   w.Uint8Array = Uint8Array; w.ArrayBuffer = ArrayBuffer; w.isFinite = isFinite; w.isNaN = isNaN; w.Blob = Blob; w.File = File;
-  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sound.js', 'ovu-breathtap.js', 'ovu-lightflower.js', 'ovu-moments.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
+  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sound.js', 'ovu-breathtap.js', 'ovu-lightflower.js', 'ovu-moments.js', 'ovu-mindful.js', 'ovu-morning.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sync.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
   return w;
@@ -303,6 +303,53 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var bent = M.lines(g, P).filter(function (l) { return l.curve; }).length;
   check('the plaza gate home bends round the garden instead of crossing it', bent >= 1, bent);
   check('there is no route to a place that is not on the map', M.route(g, 'home', 'house') === null);
+})();
+
+(function morningStart() {
+  console.log('2i. Morning start (Jamie, 20 Oct): offered 04:00 to 11:59 by the real clock, never asleep, put away for the day; Erin\'s brushing script whole; no breath counts; 30 seconds; the shared heart cap');
+  var w = fresh('2026-10-20'), M = w.OvuMorning, MF = w.OvuMindful, S = w.OvuStore, RW = w.OvuRewards, MO = w.OvuMoments;
+  var at = function (h, m, sec) { return new Date(2026, 9, 20, h, m || 0, sec || 0); };
+  check('the window opens at 04:00 and closes at noon', !M.inWindow(at(3, 59, 59)) && M.inWindow(at(4)) && M.inWindow(at(11, 59, 59)) && !M.inWindow(at(12)) && !M.inWindow(at(0, 30)) && !M.inWindow(at(21)));
+  check('the invitation: never while asleep, not once done or put away today, back the next morning', M.offered({}, '2026-10-20', at(8)) && !M.offered({ sleeping: { startedAt: 'x' } }, '2026-10-20', at(8)) &&
+    !M.offered({ morningStart: { date: '2026-10-20', dismissed: true } }, '2026-10-20', at(8)) && !M.offered({ morningStart: { date: '2026-10-20', done: true } }, '2026-10-20', at(9)) &&
+    M.offered({ morningStart: { date: '2026-10-19', done: true } }, '2026-10-20', at(7)) && !M.offered({}, '2026-10-20', at(13)));
+  var yw = M.plan('yourway').map(function (x) { return x.key; }), er = M.plan('erin'), teeth = MF.byId('teeth'), mv = teeth.variations.filter(function (v) { return v.when === 'morning' && v.author === 'erin'; })[0];
+  check('your way: arrive, notice, then brushing only after she says she is ready', yw.join() === 'arrive,notice,ready,yourway' && M.STEPS.ready.gate && M.STEPS.yourway.open && !M.STEPS.yourway.secs, yw.join());
+  check('with Erin: her whole morning script, in her words and order, with her clips, in the brushing pose', er.length === 3 + mv.steps.length && er.slice(3).every(function (x, i) { return x.text === mv.steps[i].text && x.secs === mv.steps[i].secs && x.audio === 'assets/audio/guide-interim/teeth-' + teeth.variations.indexOf(mv) + '-' + i + '.mp3' && x.pose === 'teeth' && x.erin; }), er.length);
+  check('about 90 seconds before brushing; about five minutes in all with Erin', M.STEPS.arrive.secs + M.STEPS.notice.secs === 90 && Math.abs(er.reduce(function (t, x) { return t + (x.secs || 0); }, 0) - 296) <= 10);
+  var copy = [M.STEPS.arrive, M.STEPS.notice, M.STEPS.ready, M.STEPS.yourway].map(function (x) { return x.title + ' ' + x.text; }).concat(Object.keys(M.VERSIONS).map(function (k) { return M.VERSIONS[k].name + ' ' + M.VERSIONS[k].sub; }));
+  check('no breath counts, pacing or promises in the copy, no "should", no em dash', copy.every(function (t) { return !/\b(count|inhale for|exhale for|hold for|4-7-8|box breath|breathe in for|per minute|should|cure|heal|reduce)\b/i.test(t) && t.indexOf('—') < 0; }) && !/\d/.test(M.STEPS.arrive.text + M.STEPS.notice.text), copy.filter(function (t) { return /\d|—/.test(t); }).join(' | '));
+  check('the first steps invite any position, care for dizziness, leave the breath alone, offer touch, sound and colour, and stopping', /Sit, lie down or stand/.test(M.STEPS.arrive.text) && /dizzy, stay sitting or lying/.test(M.STEPS.arrive.text) && /eyes can be open or closed/.test(M.STEPS.arrive.text) && /no need to change your breathing/.test(M.STEPS.arrive.text) && /something you can touch/.test(M.STEPS.arrive.text) && /don’t need to move/.test(M.STEPS.notice.text) && /a sound or a colour instead/.test(M.STEPS.notice.text) && /stop at any time/.test(M.STEPS.notice.text));
+  check('any sink, and time for prayer or anything else before brushing', /wherever you brush/.test(M.STEPS.ready.text) && /prayer or anything else/.test(M.STEPS.ready.text) && !/the sink/.test(M.STEPS.ready.text));
+  var am = M.plan('yourway', at(8))[0], pm = M.plan('yourway', at(19))[0], gm = M.arriveFor(at(4)), hi = M.arriveFor(at(12));
+  check('Good morning only inside the morning window, Hello at any other hour, each with its own clip', am.text.indexOf('Good morning. Sit') === 0 && /mstart-arrive-0\.mp3$/.test(am.audio) && pm.text.indexOf('Hello. Sit') === 0 && /mstart-arrive-1\.mp3$/.test(pm.audio) && gm.text.indexOf('Good morning') === 0 && hi.text.indexOf('Hello') === 0 && M.STEPS.arrive.text.indexOf('Good') < 0, am.text.slice(0, 20) + ' | ' + pm.text.slice(0, 20));
+  var brushAt = er.slice(3).map(function (x) { return x.brushing ? 1 : 0; }).join('');
+  check('with Erin, brushing counts only from the line after "beginning to brush", not while she picks up the brush', brushAt === '00011111' && /beginning to brush/.test(er[3 + 2].text), brushAt);
+  var e8 = M.plan('erin', at(8))[0], e19 = M.plan('erin', at(19))[0];
+  check('with Erin, Arrive has no greeting at any hour: Erin greets her at the sink in her own words, never after Hello or twice', e8.text.indexOf('Sit, lie down') === 0 && e19.text === e8.text && /mstart-arrive-2\.mp3$/.test(e8.audio) && e19.audio === e8.audio, e8.text.slice(0, 20));
+  var voiced = [am, pm, e8, M.STEPS.notice, M.STEPS.ready, M.STEPS.yourway];
+  check('every Rhythme step has its own clip on disk, read in Erin\'s voice; Quiet keeps it captions only', voiced.every(function (x) { return x.audio && fs.existsSync(path.join(root, x.audio)) && fs.statSync(path.join(root, x.audio)).size > 20000; }), voiced.map(function (x) { return x.audio; }).join());
+  var now = 0, c = M.makeClock(function () { return now; });
+  c.run(); now = 10000; c.hold(); now = 25000; c.run(); now = 55000;
+  check('practice time counts only while a step runs, not while paused or walking to the sink', c.seconds() === 40 && c.running(), c.seconds());
+  check('nothing under 30 seconds, nothing unconfirmed; 29.6 seconds does not round up to 30', M.entryData({ seconds: 29, confirmed: true }) === null && M.entryData({ seconds: 29.6, confirmed: true }) === null && M.entryData({ seconds: 300, confirmed: false }) === null && M.entryData({ seconds: 30.4, confirmed: true }).seconds === 30);
+  var c2 = M.makeClock(function () { return now; }); now = 0; c2.run(); now = 29600; c2.hold();
+  check('the clock keeps exact milliseconds for the 30-second rule', c2.ms() === 29600 && c2.seconds() === 30);
+  var d = M.entryData({ seconds: 30, confirmed: true, version: 'yourway', skipped: ['notice'], brushed: 'yourway', finished: true });
+  check('one honest entry: informal, morning, real seconds, what was skipped, whether it finished', d && d.kind === 'informal' && d.activity === 'morning' && d.seconds === 30 && d.minutes === 0.5 && d.skipped.join() === 'notice' && d.finished && d.completed && d.confirmedReal && d.brushed === 'yourway', JSON.stringify(d));
+  var e2 = M.entryData({ seconds: 95, confirmed: true, version: 'erin', brushed: 'no', finished: false });
+  check('a stopped routine is saved as not finished and says brushing did not happen; the credit says whose words and whose voice', e2 && !e2.finished && !e2.completed && e2.brushed === 'no' && /Erin Lee/.test(e2.guide) && /Rhythme in Erin’s voice/.test(e2.guide) && /read in Erin’s voice/.test(d.guide));
+  var pts = [1, 2, 3, 4].map(function () { return RW.award(S.add('mindfulness', S.today(), M.entryData({ seconds: 120, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true }))).points; });
+  check('the same small thank-you as any practice, inside the shared 6 a day cap, never a streak', pts.join() === '2,2,2,0' && (RW.ledger().streak || 0) === 0, pts.join());
+  var n0 = S.list('mindfulness').length, ls = w.localStorage, realSet = ls.setItem, threw = false;
+  ls.setItem = function () { throw new Error('storage full'); };
+  try { S.add('mindfulness', S.today(), M.entryData({ seconds: 60, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true })); } catch (e) { threw = true; }
+  ls.setItem = realSet;
+  var n1 = S.list('mindfulness').length, again = S.add('mindfulness', S.today(), M.entryData({ seconds: 60, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true }));
+  check('a save that fails (storage full) throws and leaves memory as it was, so a retry saves exactly one', threw && n1 === n0 && again && S.list('mindfulness').length === n0 + 1 && S.list('mindfulness').filter(function (e) { return e.id === again.id; }).length === 1, n0 + ',' + n1);
+  S.remove(again.id);
+  var ev = S.list('mindfulness').slice(-1)[0];
+  check('the moment after it: "That pause was yours", not a claim about minutes', MO.forEntry(ev) === 'morning' && MO.MOMENTS.morning.lines.indexOf('That pause was yours.') >= 0 && MO.MOMENTS.morning.pose === null);
 })();
 
 (function soundKitAndLightFlower() {

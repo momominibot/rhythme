@@ -1722,6 +1722,36 @@ span.frchip{cursor:default}
 #scene .hotspot{transition:transform .2s,opacity .3s}#scene.saying .hotspot{opacity:.15}
 @media (prefers-reduced-motion: reduce){.avatar.moment img,.avatar.flip.moment img{animation:none!important}}
 
+/* Morning start (ovu-morning.js): an invitation in Today, a choice sheet, and a panel above the nav with full captions and
+   labelled 44 px controls; nothing in it moves, so there is nothing to pace a breath by */
+.minvite{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px;padding:12px;border-radius:16px;background:var(--rm-cream);color:var(--rm-ink)}
+.minvite[hidden]{display:none}
+.minvite>.ms{font-size:26px;color:var(--rm-mauve)}
+.minvite>div:first-of-type{flex:1;min-width:10rem}
+.minvite b{display:block;font:800 14px var(--sans);color:var(--rm-plum)}
+.minvite small{display:block;font-size:13px;color:var(--rm-ink-2);line-height:1.35}
+.minvite-btns{display:flex;gap:8px;width:100%}
+.minvite-btns .btn{min-height:44px}
+.mintro{margin:0 0 12px;font-size:15px;line-height:1.5;color:var(--rm-ink)}
+.mchoice{border:none;margin:0 0 10px;padding:0;display:grid;gap:8px}
+.mchoice legend{font:800 12px var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--rm-ink-2);margin-bottom:6px}
+.mopt{display:flex;gap:10px;align-items:flex-start;padding:12px;border-radius:14px;background:var(--rm-paper-2);cursor:pointer;min-height:44px}
+.mopt input{margin-top:3px;width:20px;height:20px;accent-color:var(--rm-mauve);flex-shrink:0}
+.mopt b{display:block;font:800 14px var(--sans);color:var(--rm-plum)}
+.mopt small{display:block;font-size:13px;color:var(--rm-ink-2);line-height:1.35}
+.mquiet{display:flex;gap:10px;align-items:center;min-height:44px;font-size:14px;color:var(--rm-ink);margin-bottom:10px;cursor:pointer}
+.mquiet input{width:20px;height:20px;accent-color:var(--rm-mauve)}
+.mpanel:focus{outline:none}
+.mpanel{position:absolute;left:10px;right:10px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:36;display:grid;gap:8px;padding:14px;border-radius:20px;background:var(--rm-card);color:var(--rm-ink);box-shadow:0 10px 30px rgba(90,66,116,.25);max-height:60%;overflow:auto}
+.mpanel[hidden]{display:none}
+.mp-count{margin:0;font:800 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-2)}
+.mp-say h3{margin:0 0 4px;font:700 18px var(--serif);color:var(--rm-plum)}
+.mp-say p{margin:0;font-size:16px;line-height:1.5;color:var(--rm-ink);overflow-wrap:anywhere}
+.mp-btns{display:flex;flex-wrap:wrap;gap:8px}
+.mp-btns .btn{flex:1 1 7rem;min-height:44px;font-size:14px}
+.mp-btns .btn.ghost{background:var(--rm-lilac-2);color:var(--rm-plum)}
+.mp-btns .btn:focus-visible,.minvite .btn:focus-visible{outline:3px solid var(--rm-mauve);outline-offset:2px}
+
 /* ---------- grounding: nothing floats (Jamie, 20 Oct: "I cannot accept floating objects") ----------
  * The old drop shadows sat 6 to 10 px below each object, which reads as hovering. Games ground a sprite with a soft
  * contact shadow at its true base, sized to its footprint, with the pivot at that base: so every placed object (her,

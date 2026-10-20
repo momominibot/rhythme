@@ -105,7 +105,7 @@
     if (existing) { return update(existing.id, { data: opts && opts.merge ? mergeData(type, existing.data, data) : data, source: IMPORTED[existing.source] ? (source || 'room') : undefined }); }
     var ev = { id: uid(), type: type, date: date, createdAt: nowIso(), updatedAt: nowIso(), source: source || 'room', data: data };
     db.events.push(ev);
-    save('add:' + type);
+    try { save('add:' + type); } catch (e) { var at = db.events.indexOf(ev); if (at > -1) db.events.splice(at, 1); throw e; } /* a failed write leaves memory as it was, so a retry is clean */
     mirrorLegacy(ev);
     return ev;
   }

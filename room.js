@@ -490,7 +490,7 @@
   function setOutfit(id, silent) {
     if (!OUTFITS.some(function (o) { return o.id === id; })) id = 'base';
     var img = new Image(), gen = ++imgGen;
-    img.onload = function () { if (gen !== imgGen) return; avatarImg.src = img.src; if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); } };
+    img.onload = function () { if (gen !== imgGen) return; avatarImg.src = img.src; if (!silent && window.OvuMorning && OvuMorning.active()) OvuMorning.repose(); /* brushing in the new outfit */ if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); } };
     img.src = ART + 'avatar-' + id + '.webp';
     S.setProfile({ outfit: id });
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
@@ -498,6 +498,8 @@
   function placeAvatar(p, flip) { pos = { x: p.x, y: p.y }; avatar.style.left = p.x + '%'; avatar.style.top = p.y + '%'; avatar.classList.toggle('flip', !!flip); emit('placed', pos); } /* the walk engine re-ranks her depth */
   function sameFloor(a, b) { if (!L.stairs) return true; return (a.y < L.upstairsY) === (b.y < L.upstairsY); }
   function walkTo(wp, done) {
+    if (window.OvuMorning && OvuMorning.active()) return; /* Morning start: she stays where she is (Codex review) */
+    if (done) { var d0 = done; done = function () { if (window.OvuMorning && OvuMorning.active()) return; d0(); }; } /* a walk begun before Morning start never opens a sheet over it */
     if (wp && !reduced && hooks.walkTo && hooks.walkTo(wp, function () { avatar.classList.toggle('flip', !!wp.flip); scheduleLife(); done && done(); })) return; /* routed around furniture, with her walk cycle */
     if (wp && !reduced && !sameFloor(pos, wp)) {
       var up = wp.y < L.upstairsY, seq = (up ? L.stairs.slice() : L.stairs.slice().reverse()).concat([wp]), i = 0;
@@ -507,6 +509,7 @@
     walkLeg(wp, done);
   }
   function walkLeg(wp, done) {
+    if (window.OvuMorning && OvuMorning.active()) return; /* the rest of a multi-leg walk stops when Morning start begins */
     emit('beforeWalk'); /* a floor walk in progress commits its live position first, so this leg starts from there */
     if (!wp || reduced) { if (wp) placeAvatar(wp, wp.flip); done && done(); return; }
     var dx = wp.x - pos.x, dy = wp.y - pos.y, dist = Math.sqrt(dx * dx + dy * dy);
@@ -515,14 +518,23 @@
     avatar.classList.remove('idle'); avatar.classList.add('walking');
     avatar.classList.toggle('flip', dx < 0);
     clearTimeout(walkTimer);
-    requestAnimationFrame(function () { placeAvatar(wp, dx < 0); });
+    requestAnimationFrame(function () { if (window.OvuMorning && OvuMorning.active()) return; placeAvatar(wp, dx < 0); });
     walkTimer = setTimeout(function () {
       avatar.classList.remove('walking'); avatar.classList.add('landing'); avatar.classList.toggle('flip', !!wp.flip);
       setTimeout(function () { avatar.classList.remove('landing'); avatar.classList.add('idle'); }, 420);
       scheduleLife(); done && done();
     }, ms + 30);
   }
-  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
+  /* Morning start: a room walk already under way stops where she is now, mid-step (Codex re-check) */
+  function freezeWalk() {
+    clearTimeout(walkTimer);
+    if (!avatar.classList.contains('walking')) return;
+    var par = avatar.offsetParent || avatar.parentNode, cs = getComputedStyle(avatar), x = parseFloat(cs.left) / par.clientWidth * 100, y = parseFloat(cs.top) / par.clientHeight * 100;
+    avatar.style.transitionDuration = '0ms';
+    if (isFinite(x) && isFinite(y)) placeAvatar({ x: x, y: y }, avatar.classList.contains('flip'));
+    avatar.classList.remove('walking', 'landing'); avatar.classList.add('idle');
+  }
+  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
@@ -542,7 +554,7 @@
   function closeSheet() {
     if (current === 'diary') stopCamera();
     if (current === 'mind' && session) stopSession(true);
-    if (current === 'mind' && !session && meditating) exitMeditation();
+    if ((current === 'mind' || current === 'morning') && !session && meditating) exitMeditation(); /* Morning start's choice, opened from the mat and closed without Begin, also lets her up */
     hideSheet(); stopVideo(); goHome();
   }
   veil.addEventListener('click', closeSheet); $('#sheetClose').addEventListener('click', closeSheet);
@@ -553,6 +565,10 @@
   /* ---------- tap routing ---------- */
   function tap(h) {
     if (!h) return;
+    if (window.OvuMorning && OvuMorning.active()) { /* Morning start: she stays put; the bed still opens, so going to sleep ends it (Codex re-check) */
+      if (h.id === 'bed') { openSheetFor('bed'); return; }
+      toast('Morning start is running. Stop it first, or carry on.', 'wb_twilight'); return;
+    }
     var btn = $('.hotspot[data-id="' + h.id + '"]'); if (btn) { btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump'); }
     chime('tap'); hideBubble(); clearTimeout(idleTimer); /* a pending walk home must not cancel this walk */
     var visited = S.state().visited || {}; visited[h.id] = true; S.setState({ visited: visited });
@@ -715,6 +731,7 @@
     try { if (session) finishSession(false); } catch (e) { }
     try { if (window.OvuBreathTap) OvuBreathTap.close(); } catch (e) { }
     try { if (window.OvuLightFlower) OvuLightFlower.close(); } catch (e) { }
+    try { if (window.OvuMorning) OvuMorning.cancel(); } catch (e) { } /* Morning start ends at once, with no save prompt */
     try { if (hooks.hudStop) hooks.hudStop(); } catch (e) { }
     hud.classList.remove('on'); avatar.classList.remove('acting');
   }
@@ -1344,6 +1361,7 @@
     hideBubble();
     if (k === 'home' || !TABS[k]) { if (current) closeSheet(); setTab('home'); return; }
     if (!awake(k)) { setTab(current ? current : 'home'); return; }
+    if (k === 'mind' && window.OvuMorning && OvuMorning.active()) { openMindfulness(); return; } /* refused with a toast; Mind is not selected */
     TABS[k](); setTab(k);
   }
   function measureNav() { var n = $('.nav'), f = $('#frame'); if (n && f) f.style.setProperty('--navh', n.offsetHeight + 'px'); }
@@ -1901,9 +1919,10 @@
   function enterMeditation() {
     endMoment(); meditating = true; avatar.classList.add('hidden'); if (window.OvuSound) OvuSound.play('sit');
     if (!meditator.classList.contains('onseat')) wearImg(meditator.querySelector('img'), meditateSrc(wornOutfit()), ART + 'avatar-meditate.webp'); /* a bench keeps her seated sprite */
-    setTimeout(function () { meditator.classList.add('on'); $('#aura').classList.add('on'); }, 350);
+    clearTimeout(medTimer); medTimer = setTimeout(function () { if (meditating) { meditator.classList.add('on'); $('#aura').classList.add('on'); } }, 350);
   }
-  function exitMeditation() { meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); hud.classList.remove('on'); setTimeout(function () { avatar.classList.remove('hidden'); placeAvatar(HOME, false); avatar.classList.add('idle'); }, 300); }
+  var medTimer = 0; /* the mat's entrance: a quick exit (Morning start begun within 350 ms) cancels it (Codex sweep, 20 Oct) */
+  function exitMeditation() { clearTimeout(medTimer); meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); hud.classList.remove('on'); setTimeout(function () { avatar.classList.remove('hidden'); placeAvatar(HOME, false); avatar.classList.add('idle'); }, 300); }
   meditator.addEventListener('click', function () { if (current !== 'mind') openMindfulness(); });
   /* Erin's lines play on ONE audio element per session, created and first played inside the tap that began it: a fresh
    * element started from a promise chain is silent on the iPhone, which is why her voice came and went. A guard moves
@@ -1925,6 +1944,7 @@
   function setOrb(phase, text) { var o = $('#orb'), t = $('#orbText'); if (o) { o.className = 'orb ' + phase; if (text) t.textContent = text; } var ho = $('#hudOrb'); ho.className = 'hud-orb ' + phase; if (text) $('#hudLine').textContent = text; }
   function caption(text) { if (!text) return; $('#hudLine').textContent = text; var t = $('#orbText'); if (t) t.textContent = text; }
   function runSession(kind, minutes) {
+    if (window.OvuMorning && OvuMorning.active()) { toast('Morning start is running. Stop it first.', 'wb_twilight'); return; }
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (window.OvuPodcast) OvuPodcast.pause();
     session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: kind === 'erin' ? new Audio() : null, timer: null };
@@ -2079,6 +2099,7 @@
   })();
 
   function openMindfulness() {
+    if (window.OvuMorning && OvuMorning.active()) { toast('Morning start is running. Stop it first.', 'wb_twilight'); return; }
     if (session) { hud.classList.add('on'); return; }
     var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
     enterMeditation();
@@ -2089,6 +2110,7 @@
     var sessions = recent.length, days = {}; recent.forEach(function (e) { days[e.date] = 1; });
     var sug = hr >= 20 || hr < 5 ? { t: 'Tonight: wind down', s: 'Two quiet minutes with the orb, then bed.', kind: 'breathe', min: 2, icon: 'bedtime' }
       : crampy ? { t: 'Today: ease the cramps', s: 'Three minutes with Erin, then the pressure points.', kind: 'erin', min: 3, icon: 'spa' }
+      : window.OvuMorning && OvuMorning.offered(S.state(), today, new Date()) ? { t: 'This morning: Morning start', s: 'A short pause, then brushing your way. Sitting or lying is fine.', kind: 'morning', min: 0, icon: 'wb_twilight' }
       : hr < 11 ? { t: 'This morning: start slow', s: 'Three guided minutes before the day picks up.', kind: 'erin', min: 3, icon: 'wb_twilight' }
       : !mins ? { t: 'This week: a first pause', s: 'Erin guides three minutes. Nothing to get right.', kind: 'erin', min: 3, icon: 'self_improvement' }
       : { t: 'This afternoon: a reset', s: 'Five silent minutes, follow the orb.', kind: 'breathe', min: 5, icon: 'light_mode' };
@@ -2096,7 +2118,7 @@
     function label(e) { var k = e.data.kind; return k === 'erin' ? 'With Erin' : k === 'breathe' ? 'Just breathe' : k === 'breathtap' ? 'Koi Pond' : k === 'garden' ? 'Garden watering' : k === 'informal' ? 'Everyday practice' : 'Practice'; }
     openSheet('mind', 'Your mat', 'Erin appears beside you while you practise', 'self_improvement',
       '<div class="podshelf" id="podShelf"></div>' +
-      '<div class="matnow"><span class="ms">' + sug.icon + '</span><div><b>' + esc(sug.t) + '</b><small>' + esc(sug.s) + '</small></div><button type="button" class="btn primary" data-kind="' + sug.kind + '" data-min="' + sug.min + '">Start</button></div>' +
+      '<div class="matnow"><span class="ms">' + sug.icon + '</span><div><b>' + esc(sug.t) + '</b><small>' + esc(sug.s) + '</small></div>' + (sug.kind === 'morning' ? '<button type="button" class="btn primary" id="matMorning">Start</button>' : '<button type="button" class="btn primary" data-kind="' + sug.kind + '" data-min="' + sug.min + '">Start</button>') + '</div>' +
       '<div class="mattiles">' +
         '<button type="button" class="mattile" data-kind="erin" data-min="3"><span class="ms">record_voice_over</span><b>With Erin</b><small>3 min, guided</small></button>' +
         '<button type="button" class="mattile" data-kind="erin" data-min="6"><span class="ms">record_voice_over</span><b>With Erin</b><small>6 min, longer settle</small></button>' +
@@ -2116,6 +2138,7 @@
     $('#mindAcu').addEventListener('click', openAcupressure);
     $('#mindMove').addEventListener('click', function () { if (session) return; chime('tap'); openExercise(); });
     $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
+    if ($('#matMorning')) $('#matMorning').addEventListener('click', function () { chime('tap'); OvuMorning.open(); });
     var flowerSaved = false;
     $('#mindFlower').addEventListener('click', function () { if (!window.OvuLightFlower) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuLightFlower.open({ onSaved: function (ev) { flowerSaved = true; afterSave(ev); }, onClose: function () { renderDeck(); if (!flowerSaved) moment('lightflower'); flowerSaved = false; } }); });
     $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { tapSaved = true; afterSave(ev); }, onClose: function () { renderDeck(); if (!tapSaved) moment('moontap'); tapSaved = false; } }); });
@@ -2334,7 +2357,7 @@
     if (!MO || !MO.MOMENTS[key]) return '';
     opt = opt || {};
     var text = opt.line || MO.line(key), pose = opt.pose === undefined ? MO.pose(key) : opt.pose;
-    if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn) return text;
+    if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn || (window.OvuMorning && OvuMorning.active())) return text; /* Morning start keeps its own pose */
     /* while she walks the pose waits, a few times at most, and never starts over a walk (Codex branch review, 20 Oct) */
     if (avatar.classList.contains('walking') || (hooks.moving && hooks.moving())) {
       var tries = (opt.tries || 0) + 1; clearTimeout(momentRetry);
@@ -2399,6 +2422,7 @@
     var ex = MF.explored();
     openSheet('everyday', 'Everyday mindfulness', 'Guides for things you are really doing', 'self_improvement',
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Informal practice, with Erin</b><small>Pick what you are about to do for real, press Begin as you start, and let the guide walk alongside you. The guides are spoken in Erin’s voice from interim scripts; her own written scripts will replace them one by one.</small></div></div>' +
+      (window.OvuMorning ? '<button type="button" class="act morningact" id="evMorning"><img src="' + ART + 'avatar-act-teeth.webp" alt=""><span><b>Morning start</b><small>Just after you wake · a short pause, then brushing</small></span><em><span class="ms">wb_twilight</span></em></button>' : '') +
       '<div class="acts" id="acts">' + MF.ACTIVITIES.map(function (a) { var n = ex[a.id] || 0; return '<button type="button" class="act' + (selId === a.id ? ' on' : '') + '" data-act="' + a.id + '"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><span><b>' + esc(a.name) + '</b><small>' + esc(a.when) + ' · ' + a.minutes + ' min</small></span><em>' + (n ? '<span class="ms">check_circle</span>' + n : '<span class="ms fill">favorite</span>2') + '</em></button>'; }).join('') + '</div>' +
       '<div class="actdetail" id="actDetail"></div>' +
       '<p class="help">Each completed practice earns 2 hearts, up to 6 a day. The point is not the points: it is two ordinary minutes, fully lived. Please only confirm practices you really did.</p>');
@@ -2410,10 +2434,11 @@
         '<div class="row"><button type="button" class="btn primary" id="actStart" data-act="' + id + '" data-v="' + vi + '"><span class="ms">play_arrow</span>Begin as you begin</button></div></div>';
       $('#actDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-    body.addEventListener('click', function (e) { var st = e.target.closest('#actStart'); if (st) { runPractice(st.dataset.act, Number(st.dataset.v)); return; } var b = e.target.closest('[data-act]'); if (b) { chime('tap'); detail(b.dataset.act); } });
+    body.addEventListener('click', function (e) { if (e.target.closest('#evMorning')) { chime('tap'); OvuMorning.open(); return; } var st = e.target.closest('#actStart'); if (st) { runPractice(st.dataset.act, Number(st.dataset.v)); return; } var b = e.target.closest('[data-act]'); if (b) { chime('tap'); detail(b.dataset.act); } });
     if (selId) detail(selId);
   }
   function runPractice(id, vi) {
+    if (window.OvuMorning && OvuMorning.active()) { toast('Morning start is running. Stop it first.', 'wb_twilight'); return; }
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     var a = MF.byId(id); if (!a || practice) return; var v = a.variations[vi] || a.variations[0]; vi = a.variations.indexOf(v);
     if (window.OvuPodcast) OvuPodcast.pause();
@@ -2753,6 +2778,7 @@
     $('#symLine').textContent = sym ? ((sym.data.symptoms || []).length ? 'Today: ' + sym.data.symptoms.join(', ') + (sym.data.mood ? ' · mood ' + sym.data.mood : '') : sym.data.none ? 'Today: no symptoms' + (sym.data.mood ? ' · mood ' + sym.data.mood : '') : 'No symptoms ticked today') : 'No symptoms logged today. Tap the calendar to add or backdate.';
     var sum = S.load().summaries || [];
     $('#shareSub').textContent = sum.length ? 'Last summary saved ' + prettyDate(sum[sum.length - 1].range.to) : 'Create a 4-week summary for your clinician';
+    if (window.OvuMorning) OvuMorning.renderInvite(); /* Morning start: 04:00 to 11:59 by the real clock, until done or put away today */
   }
   $('#tiles').addEventListener('click', function (e) { var t = e.target.closest('[data-go]'); if (!t) return; tap(hotspot(t.dataset.go)); });
 
@@ -2784,12 +2810,12 @@
     setWalkTo: function (f) { hooks.walkTo = f; }, /* the walk engine routes her own walks around furniture; false hands a walk back to the straight line */
     layout: function () { return L; }, pos: function () { return { x: pos.x, y: pos.y }; }, visiting: function () { return visiting; }, homeId: currentHomeId,
     /* anything that should pause walking and scene changes */
-    busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },
+    busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || (window.OvuMorning && OvuMorning.active()) || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },
     sheetOpen: function () { return !!current; }, cancelIdle: function () { clearTimeout(idleTimer); },
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
-    moment: moment, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
+    moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; }
   };
