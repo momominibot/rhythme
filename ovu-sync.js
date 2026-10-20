@@ -43,7 +43,8 @@
        its id), or the fence with no id once a page came back short. pullSince: { at, id, snap }, a hand-over in progress
        from the older time cursor, with the snapshot it began with.
        pulledSeq, pulledId: the time-ordered pull's cursor (synced_at exactly as the server wrote it, and that row's id),
-       used where the server has no entries_pull, and kept moving by the other pull too, for a tab on an older version;
+       used where the server has no entries_pull; the other pull moves it to the server-certified time_safe, for a tab
+       on an older version;
        pulledSeq without pulledId is an older version's millisecond cursor.
        pushedAt: the newest local updatedAt we have pushed, so unchanged rows are not re-sent. */
     return { v: 1, gen: 0, userId: null, shadow: {}, tombstones: {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null };
@@ -253,24 +254,27 @@
      so nothing the older version pulled comes again (rows cleared from this phone on purpose stay cleared), and a write
      still open at that moment arrives once it ends. It is kept until the cursor reaches the snapshot's xmax, beyond
      which no row can be one the older version saw.
-     Also returns, as `timeLast`, the row that came last by synced_at (the last one the server sent among those with the
-     latest instant), so the time cursor can follow along for a tab still on an older version or a server that loses
-     entries_pull again: either then resumes from here instead of pulling the diary again. */
-  function pullCommitted(xid, id, hand, token) {
-    var PAGE = 1000, all = [], cur = { xid: xid || null, id: xid && id != null ? id : null };
+     Every page also returns `time_safe`, the (synced_at, id) the server certifies as a safe time cursor for the position
+     this page leaves: every visible row before it has reached this phone or was covered by the hand-over, compared in
+     the server's own collation (ties on one instant), and bounded by the earliest row still to come (backlog past the
+     cap, rows held behind the fence). It never goes back past `time`, the time cursor this sync started from. The time
+     cursor follows it, for a tab still on an older version or a server that loses entries_pull again: either then
+     resumes from there, never worse than today's pull (Codex round two). */
+  function pullCommitted(xid, id, hand, time, token) {
+    var PAGE = 1000, all = [], cur = { xid: xid || null, id: xid && id != null ? id : null }, timeSafe = null;
     function page() {
-      return rest('POST', '/rpc/entries_pull', { p_after_xid: cur.xid, p_after_id: cur.id, p_since: hand ? hand.at : null, p_since_id: hand && hand.id != null ? hand.id : null, p_handover: hand ? hand.snap || null : null, p_limit: PAGE }, null, token).then(function (res) {
-        var rows = res && res.rows;
-        if (!Array.isArray(rows) || !isXid(res.fence) || !snapXmax(res.snapshot) || !rows.every(function (r) { return r && isXid(r.sync_xid) && xidCmp(r.sync_xid, res.fence) < 0; })) throw new Error('The cloud sent a pull reply this version does not understand.');
+      return rest('POST', '/rpc/entries_pull', { p_after_xid: cur.xid, p_after_id: cur.id, p_since: hand ? hand.at : null, p_since_id: hand && hand.id != null ? hand.id : null, p_handover: hand ? hand.snap || null : null, p_time_at: time ? time.at : null, p_time_id: time && time.id != null ? time.id : null, p_limit: PAGE }, null, token).then(function (res) {
+        var rows = res && res.rows, ts = res ? res.time_safe : undefined;
+        if (!Array.isArray(rows) || !isXid(res.fence) || !rows.every(function (r) { return r && isXid(r.sync_xid) && xidCmp(r.sync_xid, res.fence) < 0; })
+          || !(ts === null || (ts && micros(ts.at) >= 0 && (ts.id === null || typeof ts.id === 'string')))
+          || (hand && !hand.snap && !snapXmax(res.snapshot))) throw new Error('The cloud sent a pull reply this version does not understand.');
         if (hand && !hand.snap) hand = { at: hand.at, id: hand.id, snap: res.snapshot }; /* the hand-over begins with this page's view */
-        all = all.concat(rows);
+        all = all.concat(rows); timeSafe = ts;
         if (rows.length) { var last = rows[rows.length - 1]; cur = { xid: last.sync_xid, id: last.id }; }
         if (rows.length === PAGE && all.length < 20000) return page();
         if (rows.length < PAGE && (!cur.xid || xidCmp(res.fence, cur.xid) > 0)) cur = { xid: res.fence, id: null };
         if (hand && cur.xid && xidCmp(cur.xid, snapXmax(hand.snap)) >= 0) hand = null; /* past every row the older version could have seen */
-        var timeLast = null, tm = -1;
-        all.forEach(function (r) { var m = micros(r.synced_at); if (m >= 0 && m >= tm) { tm = m; timeLast = { at: r.synced_at, id: r.id }; } });
-        return { rows: all, xid: cur.xid, id: cur.id, hand: hand, timeLast: timeLast };
+        return { rows: all, xid: cur.xid, id: cur.id, hand: hand, timeSafe: timeSafe };
       });
     }
     return page();
@@ -292,7 +296,8 @@
     /* a phone with only the older time cursor hands over from it; a hand-over in progress (pullSince) carries on */
     var ps = st.pullSince, hand = !x ? (st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null, snap: null } : null)
       : (ps && ps.at && snapXmax(ps.snap) ? { at: ps.at, id: ps.id != null ? ps.id : null, snap: ps.snap } : null);
-    return pullCommitted(x, x ? st.pulledXidId : null, hand, token).then(function (got) { commitPull = true; got.mode = 'commit'; return got; }, function (err) {
+    var time = st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null } : null;
+    return pullCommitted(x, x ? st.pulledXidId : null, hand, time, token).then(function (got) { commitPull = true; got.mode = 'commit'; return got; }, function (err) {
       if (!rpcMissing(err)) throw err;
       commitPull = false;
       return byTime();
@@ -430,10 +435,12 @@
               cur.pulledXid = incEnd.xid; cur.pulledXidId = incEnd.id;
               if (incEnd.hand) cur.pullSince = incEnd.hand; else delete cur.pullSince;
             }
-            /* the time cursor follows, only forward by instant (a tie keeps the stored one), so a tab still on an older
-               version, or this page if the server loses entries_pull, resumes from here instead of the start (Codex
-               round one, finding 1) */
-            if (incEnd.timeLast && (!cur.pulledSeq || micros(incEnd.timeLast.at) > micros(cur.pulledSeq))) { cur.pulledSeq = incEnd.timeLast.at; cur.pulledId = incEnd.timeLast.id; }
+            /* the time cursor follows what the server certified (Codex rounds one and two, finding 1). The server already
+               kept it from going back past the one this sync started from; if another tab or an older version moved it
+               meanwhile, ours is written only when it is later by instant (a tie keeps the stored one: ids are ordered
+               by the server's collation, not this phone's) */
+            var ts = incEnd.timeSafe, movedT = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
+            if (ts && (!movedT || !cur.pulledSeq || micros(ts.at) > micros(cur.pulledSeq))) { cur.pulledSeq = ts.at; cur.pulledId = ts.id; }
           } else {
             var movedMeanwhile = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
             if (incRows.length && (!movedMeanwhile || (cur.pulledSeq && micros(incEnd.at) > micros(cur.pulledSeq)))) { cur.pulledSeq = incEnd.at; cur.pulledId = incEnd.id; }

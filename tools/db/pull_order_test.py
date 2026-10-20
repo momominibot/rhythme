@@ -14,6 +14,7 @@ Setup (once):  brew install postgresql@17; initdb -D DIR -U postgres --auth=trus
 Usage:         python3 tools/db/pull_order_test.py [--mutate]      (RACE_DSN overrides host/port/user)
 """
 import json, os, sys, time, uuid
+from datetime import datetime, timedelta
 import psycopg
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -83,27 +84,42 @@ def legacy_pull(phone, cur):
     return [r[0] for r in rows], ((rows[-1][1], rows[-1][0]) if rows else cur)
 
 
-def new_pull(phone, cur, since=None, limit=1000, handover=None):
-    """One entries_pull page, and the cursor the app keeps after it: the last row, or the fence when the page is short."""
-    res = phone.run('select public.entries_pull(%s, %s, %s, %s, %s, %s)', [cur[0] if cur else None, cur[1] if cur else None, since[0] if since else None, since[1] if since else None, handover, limit])[0][0]
+def new_pull(phone, cur, since=None, limit=1000, handover=None, tcur=None):
+    """One entries_pull page, and the cursor ovu-sync.js keeps after it: the last row of a full page; otherwise the fence,
+    unless the cursor is already there."""
+    res = phone.run('select public.entries_pull(%s, %s, %s, %s, %s, %s, %s, %s)', [cur[0] if cur else None, cur[1] if cur else None, since[0] if since else None, since[1] if since else None, handover, tcur[0] if tcur else None, tcur[1] if tcur else None, limit])[0][0]
     rows = res['rows']
+    last = (rows[-1]['sync_xid'], rows[-1]['id']) if rows else cur
     if len(rows) == limit:
-        cur = (rows[-1]['sync_xid'], rows[-1]['id'])
-    else:
+        cur = last
+    elif not last or int(res['fence']) > int(last[0]):
         cur = (res['fence'], None)
+    else:
+        cur = last
     return rows, cur, res
 
 
-def new_pull_all(phone, cur, since=None, limit=1000):
-    """Pages until a short page, carrying the hand-over snapshot from the first page as the app does."""
-    got, hand = [], None
+def sync_pull(phone, cur, since=None, hand=None, tcur=None, limit=1000, cap=20000):
+    """One sync the way ovu-sync.js runs it: pages until one comes back short or the cap is reached, starting a hand-over
+    with the first page's snapshot when an older time cursor is given, and dropping the hand-over once the cursor reaches
+    that snapshot's xmax. Returns (rows, cursor, (since, snapshot) or None, the last page's time_safe)."""
+    got = []
     while True:
-        rows, cur, res = new_pull(phone, cur, since, limit, hand)
+        rows, cur, res = new_pull(phone, cur, since, limit, hand, tcur)
         if since and hand is None:
             hand = res['snapshot']
         got += rows
-        if len(rows) < limit:
-            return got, cur
+        if len(rows) < limit or len(got) >= cap:
+            break
+    if hand and int(cur[0]) >= int(hand.split(':')[1]):
+        since, hand = None, None
+    ts = res['time_safe']
+    return got, cur, ((since, hand) if since else None), ((datetime.fromisoformat(ts['at']), ts['id']) if ts else None)
+
+
+def new_pull_all(phone, cur, since=None, limit=1000):
+    got, cur, _, _ = sync_pull(phone, cur, since, limit=limit)
+    return got, cur
 
 
 def fresh(mutate=False):
@@ -127,7 +143,7 @@ def person(c):
 def apply_new(c, mutate=False):
     sql = open(os.path.join(MIG, NEW)).read()
     if mutate:
-        fence = '      and e.sync_xid < pg_snapshot_xmin(s.now)\n'
+        fence = '      and e.sync_xid < fence\n'
         assert sql.count(fence) == 1
         sql = sql.replace(fence, '')
     c.execute(sql)
@@ -199,48 +215,67 @@ def main():
     if not mutate:
         check('entries_pull delivers both, in the order their writes became final', [r['id'] for r in new_rows] == ['quick'] and [r['id'] for r in new_rows2] == ['late'], {'first': [r['id'] for r in new_rows], 'then': [r['id'] for r in new_rows2]})
 
-    # ---- race 3: the hand-over from an older phone's time cursor, with a write still open ----
-    print('race 3: the hand-over from the time cursor')
-    open_w = Phone(ann)
-    open_w.run('select 1', keep=True)                                 # starts now (its synced_at), writes later
-    time.sleep(0.01)
-    seen1 = Phone(ann); seen1.upload(['seen1'])                        # the older version pulls this one
-    time.sleep(0.01)
-    seen2 = Phone(ann); seen2.upload(['seen2'])                        # and this one: its cursor sits here
-    open_w.upload(['inflight'], keep=True)                              # stamped before seen1, still open
-    c_old = c.execute("select synced_at, id from public.entries where id = 'seen2'").fetchone()
-    rows, cur, res = new_pull(R, None, since=c_old)                    # the hand-over's first page
-    hand = res['snapshot']
-    first = [r['id'] for r in rows]
-    open_w.commit()
-    more = []
-    while True:
-        rows, cur, _ = new_pull(R, cur, since=c_old, handover=hand)
-        more += [r['id'] for r in rows]
-        if len(rows) < 1000:
-            break
-    xmax = int(hand.split(':')[1])
-    check('the hand-over sends nothing the older cursor covers, then the write that was still open, once it commits', 'seen1' not in first + more and 'seen2' not in first + more and more.count('inflight') == 1 and 'inflight' not in first, {'first': first, 'more': more})
-    check('the phone can drop the older cursor once its cursor passes the hand-over snapshot\'s xmax', int(cur[0]) >= xmax, {'cursor': cur, 'hand': hand})
-    # the same race again, but each page uses its own snapshot instead of the hand-over's: the open write is lost,
-    # which shows the carried snapshot is what keeps it
-    open_w2 = Phone(ann)
-    open_w2.run('select 1', keep=True)
-    time.sleep(0.01)
-    seen3 = Phone(ann); seen3.upload(['seen3'])
-    open_w2.upload(['inflight2'], keep=True)
-    c3 = c.execute("select synced_at, id from public.entries where id = 'seen3'").fetchone()
-    rows, cur2, _ = new_pull(R, None, since=c3)
-    open_w2.commit()
-    lost = [r['id'] for r in rows]
-    while True:
-        rows, cur2, _ = new_pull(R, cur2, since=c3)                   # no handover: the page's own snapshot
-        lost += [r['id'] for r in rows]
-        if len(rows) < 1000:
-            break
-    check('without the hand-over snapshot (each page using its own) that open write would be dropped', 'inflight2' not in lost, lost)
-    for p in (open_w, seen1, seen2, open_w2, seen3):
-        p.close()
+    if not mutate:
+        # ---- race 3: the hand-over from an older phone's time cursor, with a write still open (Codex round two, nit) ----
+        print('race 3: the hand-over from the time cursor, with a write still open below it')
+        cara = person(c)
+
+        def race3(second_since, second_hand):
+            """The open write starts first and writes first (its id below the two later writes), then the older version
+            pulls seen1 and seen2 and its cursor sits on seen2. Returns what each of two syncs delivered, and the state."""
+            ow = Phone(cara); ow.run('select 1', keep=True)
+            time.sleep(0.01)
+            ow.upload(['inflight-%s' % second_hand], keep=True)
+            x_open = ow.run('select pg_current_xact_id()::text', keep=True)[0][0]
+            a1 = Phone(cara); a1.upload(['seen1-%s' % second_hand])
+            a2 = Phone(cara); a2.upload(['seen2-%s' % second_hand])
+            c_old = c.execute("select synced_at, id from public.entries where id = %s", ['seen2-%s' % second_hand]).fetchone()
+            P = Phone(cara)
+            got1, cur, hs, _ = sync_pull(P, None, since=c_old)
+            ow.commit()
+            since2 = {'keep': c_old, 'drop': None}.get(second_since, hs[0] if hs else None)
+            hand2 = (hs[1] if hs else None) if second_hand == 'keep' else None
+            got2, cur2, hs2, _ = sync_pull(P, cur, since=since2, hand=hand2)
+            for ph in (ow, a1, a2, P):
+                ph.close()
+            return [r['id'] for r in got1], [r['id'] for r in got2], x_open, hs, hs2, cur, cur2
+
+        g1, g2, x_open, hs, hs2, cur, cur2 = race3('client', 'keep')
+        xip = hs[1].split(':')[2].split(',') if hs else []
+        check('the open write\'s transaction is in the hand-over snapshot\'s xip, and the first sync keeps the hand-over (cursor below xmax)', hs is not None and x_open in xip and int(cur[0]) < int(hs[1].split(':')[1]), {'hs': hs, 'x_open': x_open, 'cursor': cur})
+        check('the next sync delivers the open write once it commits, never the two rows the older version pulled, then drops the hand-over', g1 == [] and g2 == ['inflight-keep'] and hs2 is None, {'first': g1, 'second': g2, 'hs2': hs2})
+        g1, g2, _, _, _, _, _ = race3('keep', 'own')
+        check('without the carried snapshot (the second sync uses its own) that open write is dropped', 'inflight-own' not in g1 + g2, {'first': g1, 'second': g2})
+        g1, g2, _, _, _, _, _ = race3('drop', 'drop')
+        check('and ending the hand-over at the first short page (the first fix) would send the pulled rows again', 'seen1-drop' in g2 and 'seen2-drop' in g2, {'first': g1, 'second': g2})
+
+        # ---- race 4: the time cursor the server certifies (Codex round two, findings 1 and 2) ----
+        print('race 4: time_safe')
+        dana = person(c)
+        T3 = Phone(dana)
+        T3.upload(['ta', 'tb', 'tc'])                                   # one transaction: one synced_at for all three
+        at = c.execute("select synced_at from public.entries where id = 'ta'").fetchone()[0]
+        D = Phone(dana)
+        got, _, _, ts = sync_pull(D, None, since=(at, 'ta'), tcur=(at, 'ta'))
+        check('three rows on one instant, older cursor on the first: the hand-over sends the other two and certifies the last of them', [r['id'] for r in got] == ['tb', 'tc'] and ts is not None and ts[1] == 'tc', {'got': [r['id'] for r in got], 'time_safe': ts})
+        got, _, _, ts2 = sync_pull(D, None, tcur=(at + timedelta(days=1), 'zz'))
+        check('time_safe never goes back past the time cursor the phone sent', ts2 is not None and ts2[1] == 'zz', ts2)
+        erin = person(c)
+        Y = Phone(erin); Y.run('select 1', keep=True)                    # begins first, writes last
+        time.sleep(0.01)
+        X = Phone(erin); X.upload(['x%04d' % i for i in range(1500)])   # 1,500 rows, committed, lower id
+        Y.upload(['early'])                                             # stamped before X's rows, id after them
+        E = Phone(erin)
+        got, cur, _, ts = sync_pull(E, None, cap=1000)                  # the cap stops after one page
+        early_at = c.execute("select synced_at from public.entries where id = 'early'").fetchone()[0]
+        check('with backlog past the cap, time_safe stays before the undelivered earlier row', len(got) == 1000 and (ts is None or ts[0] < early_at), {'n': len(got), 'time_safe': ts, 'early': str(early_at)})
+        leg, _ = legacy_pull(E, ts)
+        check('so a pull by time from it still brings that row', 'early' in leg, leg[:3])
+        got2, cur, _, ts3 = sync_pull(E, cur, tcur=ts)
+        last = c.execute("select synced_at, id from public.entries where user_id = %s order by synced_at desc, id desc limit 1", [erin]).fetchone()
+        check('once everything is delivered, time_safe is the last row by (synced_at, id)', ts3 == (last[0], last[1]) and 'early' in [r['id'] for r in got2], {'time_safe': ts3, 'last': last})
+        for ph in (T3, D, Y, X, E):
+            ph.close()
 
     if not mutate:
         # ---- paging inside one transaction, other people's rows, read only, the order guard ----
@@ -260,7 +295,7 @@ def main():
         ro.execute('set transaction read only')
         ro.execute("select set_config('request.jwt.claims', %s, true)", [json.dumps({'sub': str(bea), 'role': 'authenticated'})])
         ro.execute('set local role authenticated')
-        n = len(ro.execute('select public.entries_pull(null, null, null, null, null, 10)').fetchone()[0]['rows'])
+        n = len(ro.execute('select public.entries_pull(null, null, null, null, null, null, null, 10)').fetchone()[0]['rows'])
         ro.rollback(); ro.close()
         check('it runs in a READ ONLY transaction, as PostgREST runs a STABLE function', n == 10, n)
         try:

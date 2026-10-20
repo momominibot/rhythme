@@ -25,7 +25,14 @@
 -- began arrives once it ends, whatever its synced_at. Rows the older version had already lost to the gap stay lost,
 -- as before: they look exactly like rows it pulled. From the hand-over on, nothing is lost.
 --
--- Old app versions keep working unchanged: they still page entries by synced_at, which is still stamped as before.
+-- The time cursor. Old app versions keep paging entries by synced_at, which is still stamped as before, and the app
+-- falls back to that pull if this function is missing. So each page also certifies how far a (synced_at, id) cursor
+-- may safely stand: time_safe, the latest (synced_at, id) before which every visible row of the caller has been
+-- delivered to the phone or was covered by the hand-over. It is bounded by the earliest visible row still after the
+-- cursor the phone will hold (rows the 20,000 cap has not reached, rows held behind the fence), compared with the
+-- server's own collation, so ties on one instant and backlog are both handled, and it never moves back past the
+-- time cursor the phone sent. A pull by time from it is never worse than today's pull: its only gap is writes still
+-- open, whose rows are not visible yet.
 
 -- 1. The writing transaction's id. A constant default only records it in the catalog: the table is not rewritten and
 --    the sync trigger does not fire, so no existing row's synced_at changes and no phone pulls anything again. New
@@ -33,8 +40,9 @@
 alter table public.entries add column if not exists sync_xid xid8 not null default '0'::xid8;
 alter table public.entries alter column sync_xid set default pg_current_xact_id();
 
--- 2. The pull walks one person's rows in (sync_xid, id) order.
-create index if not exists entries_user_sync_xid on public.entries (user_id, sync_xid, id);
+-- 2. The pull walks one person's rows in (sync_xid, id) order; synced_at rides along so time_safe can read the rows
+--    still to come from the index alone.
+create index if not exists entries_user_sync_xid on public.entries (user_id, sync_xid, id) include (synced_at);
 
 -- 3. The order guard from 20261019010000, unchanged except that each write also records its transaction id.
 --    pg_current_xact_id() returns the top-level id inside a subtransaction, which is what snapshots list.
@@ -58,42 +66,109 @@ end $$;
 --      version's millisecond cursor, taken inclusively.
 --    p_handover: the snapshot (pg_snapshot text, 'xmin:xmax:xip_list') the hand-over began with, as this function
 --      returned it; null on the hand-over's first page, which uses its own.
---    Returns {"fence": "<xid8>", "snapshot": "<pg_snapshot>", "rows": [...]}, each row with its sync_xid as text.
---    STABLE: PostgREST runs it in a READ ONLY transaction. SECURITY INVOKER (the default), so the "own entries" row
---    level policy applies as well as the explicit user_id test the index needs. pg_current_snapshot() reads the
---    statement's own snapshot, so the fence, the returned snapshot and the rows come from the same view of the table.
---    pg_visible_in_snapshot() is exact here because sync_xid is always a top-level transaction id.
+--    p_time_at, p_time_id: the phone's time cursor as it stood when this sync began; time_safe never goes back past it.
+--    Returns {"fence", "snapshot", "rows", "time_safe": {"at", "id"} or null}, transaction ids as text.
+--    The next cursor below is the one the client keeps after this page (the last row of a full page; otherwise the
+--    fence, unless the cursor sent is already there), so time_safe describes exactly the position the phone will hold.
+--    STABLE: PostgREST runs it in a READ ONLY transaction, and every statement in it uses the snapshot of the calling
+--    query, so the fence, the snapshot, the rows and time_safe all come from one view of the table. SECURITY INVOKER
+--    (the default), so the "own entries" row level policy applies as well as the explicit user_id test the indexes
+--    need. pg_visible_in_snapshot() is exact here because sync_xid is always a top-level transaction id.
+-- An earlier draft of this file declared other signatures; drop them in case one was ever applied (two versions with
+-- the same argument names would make PostgREST refuse the call as ambiguous).
+drop function if exists public.entries_pull(text, text, timestamptz, text, integer);
+drop function if exists public.entries_pull(text, text, timestamptz, text, text, integer);
 create or replace function public.entries_pull(
   p_after_xid text default null,
   p_after_id text default null,
   p_since timestamptz default null,
   p_since_id text default null,
   p_handover text default null,
+  p_time_at timestamptz default null,
+  p_time_id text default null,
   p_limit integer default 1000
-) returns jsonb language sql stable set search_path = '' as $$
-  with snap as (
-    select pg_current_snapshot() as now, coalesce(p_handover::pg_snapshot, pg_current_snapshot()) as handover
-  ), page as (
+) returns jsonb language plpgsql stable set search_path = '' as $$
+declare
+  me uuid := auth.uid();
+  snap pg_snapshot := pg_current_snapshot();
+  fence xid8 := pg_snapshot_xmin(snap);
+  hand pg_snapshot := coalesce(p_handover::pg_snapshot, snap);
+  ax xid8 := p_after_xid::xid8;
+  lim integer := greatest(1, least(coalesce(p_limit, 1000), 1000));
+  page jsonb;
+  n integer;
+  nx xid8;
+  nid text;
+  low_at timestamptz;
+  low_id text;
+  safe_at timestamptz;
+  safe_id text;
+begin
+  -- a row is covered by the hand-over when its transaction had ended at the hand-over (so the older version could have
+  -- pulled it) and it does not come after the older cursor; covered rows are never sent and count as delivered
+  select coalesce(jsonb_agg(to_jsonb(p) || jsonb_build_object('sync_xid', p.sync_xid::text) order by p.sync_xid, p.id), '[]'::jsonb), count(*)
+    into page, n
+  from (
     select e.*
-    from public.entries e, snap s
-    where e.user_id = auth.uid()
-      and e.sync_xid < pg_snapshot_xmin(s.now)
-      and (p_after_xid is null
-           or (p_after_id is null and e.sync_xid >= p_after_xid::xid8)
-           or (p_after_id is not null and (e.sync_xid, e.id) > (p_after_xid::xid8, p_after_id)))
-      and (p_since is null
-           or not pg_visible_in_snapshot(e.sync_xid, s.handover)
-           or (p_since_id is null and e.synced_at >= p_since)
-           or (p_since_id is not null and (e.synced_at, e.id) > (p_since, p_since_id)))
+    from public.entries e
+    where e.user_id = me
+      and e.sync_xid < fence
+      and (ax is null
+           or (p_after_id is null and e.sync_xid >= ax)
+           or (p_after_id is not null and (e.sync_xid, e.id) > (ax, p_after_id)))
+      and not (p_since is not null and pg_visible_in_snapshot(e.sync_xid, hand)
+               and case when p_since_id is null then e.synced_at < p_since else (e.synced_at, e.id) <= (p_since, p_since_id) end)
     order by e.sync_xid, e.id
-    limit greatest(1, least(coalesce(p_limit, 1000), 1000))
-  )
-  select jsonb_build_object(
-    'fence', (select pg_snapshot_xmin(now) from snap)::text,
-    'snapshot', (select now from snap)::text,
-    'rows', coalesce((select jsonb_agg(to_jsonb(p) || jsonb_build_object('sync_xid', p.sync_xid::text) order by p.sync_xid, p.id) from page p), '[]'::jsonb)
-  )
-$$;
+    limit lim
+  ) p;
 
-revoke all on function public.entries_pull(text, text, timestamptz, text, text, integer) from public, anon;
-grant execute on function public.entries_pull(text, text, timestamptz, text, text, integer) to authenticated;
+  -- the cursor the client keeps after this page
+  if n = lim then
+    nx := (page -> (n - 1) ->> 'sync_xid')::xid8;
+    nid := page -> (n - 1) ->> 'id';
+  elsif n > 0 or ax is null or fence > ax then
+    nx := fence;
+    nid := null;
+  else
+    nx := ax;
+    nid := p_after_id;
+  end if;
+
+  -- the earliest (synced_at, id) of a visible row still to come after that cursor, at or above the fence or not
+  with still as materialized (
+    select e.synced_at, e.id
+    from public.entries e
+    where e.user_id = me
+      and ((nid is null and e.sync_xid >= nx) or (nid is not null and (e.sync_xid, e.id) > (nx, nid)))
+      and not (p_since is not null and pg_visible_in_snapshot(e.sync_xid, hand)
+               and case when p_since_id is null then e.synced_at < p_since else (e.synced_at, e.id) <= (p_since, p_since_id) end)
+  )
+  select s.synced_at, s.id into low_at, low_id from still s order by s.synced_at, s.id limit 1;
+
+  -- every visible row before it has been delivered or was covered: the latest of those is a safe time cursor
+  if low_at is null then
+    select e.synced_at, e.id into safe_at, safe_id from public.entries e
+      where e.user_id = me order by e.synced_at desc, e.id desc limit 1;
+  else
+    select e.synced_at, e.id into safe_at, safe_id from public.entries e
+      where e.user_id = me and (e.synced_at, e.id) < (low_at, low_id) order by e.synced_at desc, e.id desc limit 1;
+  end if;
+
+  -- never back past the phone's own time cursor ((T, no id) is an older version's millisecond cursor: rows before T)
+  if p_time_at is not null and (safe_at is null
+      or (p_time_id is null and safe_at < p_time_at)
+      or (p_time_id is not null and (safe_at, safe_id) <= (p_time_at, p_time_id))) then
+    safe_at := p_time_at;
+    safe_id := p_time_id;
+  end if;
+
+  return jsonb_build_object(
+    'fence', fence::text,
+    'snapshot', snap::text,
+    'rows', page,
+    'time_safe', case when safe_at is null then null else jsonb_build_object('at', safe_at, 'id', safe_id) end
+  );
+end $$;
+
+revoke all on function public.entries_pull(text, text, timestamptz, text, text, timestamptz, text, integer) from public, anon;
+grant execute on function public.entries_pull(text, text, timestamptz, text, text, timestamptz, text, integer) to authenticated;

@@ -1388,7 +1388,8 @@ function syncServer(opts) {
     if (!m) throw new Error('pretend server: not a timestamp: ' + s);
     return (memo[s] = Date.parse(m[1] + m[3]) * 1000 + Number(((m[2] || '') + '000000').slice(0, 6)));
   }
-  function xidOf(r) { return r.sync_xid != null ? BigInt(r.sync_xid) : BigInt(micros(r.synced_at)); }
+  var xmemo = {};
+  function xidOf(r) { var k = r.sync_xid != null ? 'x' + r.sync_xid : 't' + r.synced_at; return xmemo[k] !== undefined ? xmemo[k] : (xmemo[k] = r.sync_xid != null ? BigInt(r.sync_xid) : BigInt(micros(r.synced_at))); }
   function cmpX(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
   var V = '("(?:[^"\\\\]|\\\\.)*"|[^,()"]*)';
   var KEYSET = new RegExp('^\\(synced_at\\.gt\\.' + V + ',and\\(synced_at\\.eq\\.' + V + ',id\\.gt\\.' + V + '\\)\\)$');
@@ -1406,7 +1407,9 @@ function syncServer(opts) {
   function snapParse(t) { var m = /^(\d+):(\d+):([\d,]*)$/.exec(String(t)); if (!m) throw new Error('pretend server: invalid input syntax for type pg_snapshot: ' + t); return { xmin: BigInt(m[1]), xmax: BigInt(m[2]), xip: m[3] ? m[3].split(',').map(function (x) { return BigInt(x); }) : [] }; }
   /* pg_visible_in_snapshot: had this transaction ended when the snapshot was taken? */
   function visibleIn(x, h) { return x < h.xmin || (x < h.xmax && !h.xip.some(function (y) { return y === x; })); }
-  var PULL_ARGS = ['p_after_xid', 'p_after_id', 'p_since', 'p_since_id', 'p_handover', 'p_limit'];
+  var PULL_ARGS = ['p_after_xid', 'p_after_id', 'p_since', 'p_since_id', 'p_handover', 'p_time_at', 'p_time_id', 'p_limit'];
+  /* (synced_at, id) order, the instant to the microsecond, then the id as text */
+  function byTime(a, b) { return micros(a.synced_at) - micros(b.synced_at) || byId(a, b); }
   var api = {
     rows: rows,
     PULL_ARGS: PULL_ARGS,
@@ -1417,7 +1420,12 @@ function syncServer(opts) {
       return {
         xid: String(n),
         add: function (r) { r.synced_at = at; r.sync_xid = String(n); if (r.updated_at == null) r.created_at = r.updated_at = at; mine.push(r); return r; },
-        commit: function () { delete open[String(n)]; if (n > ended) ended = n; mine.forEach(function (r) { for (var i = 0; i < rows.length; i++) if (rows[i].id === r.id) { rows.splice(i, 1); break; } rows.push(r); }); }
+        commit: function () {
+          delete open[String(n)]; if (n > ended) ended = n;
+          var ids = {}; mine.forEach(function (r) { ids[r.id] = 1; });
+          for (var i = rows.length - 1; i >= 0; i--) if (ids[rows[i].id]) rows.splice(i, 1); /* an update replaces the stored row */
+          mine.forEach(function (r) { rows.push(r); });
+        }
       };
     },
     rpc: function (body) {
@@ -1427,15 +1435,26 @@ function syncServer(opts) {
       var hand = body.p_handover != null ? snapParse(body.p_handover) : now;
       if (ax != null && !/^(0|[1-9][0-9]*)$/.test(ax)) return { status: 400, body: { code: '22P02', message: 'invalid input syntax for type xid8' } };
       var axn = ax == null ? null : BigInt(ax), since = body.p_since == null ? null : micros(body.p_since), sid = body.p_since_id;
-      var out = rows.filter(function (r) {
-        var x = xidOf(r);
-        if (!(x < f)) return false;
-        if (axn != null && !(aid == null ? x >= axn : (x > axn || (x === axn && r.id > aid)))) return false;
-        if (since != null && visibleIn(x, hand)) { var t = micros(r.synced_at); return sid == null ? t >= since : (t > since || (t === since && r.id > sid)); }
-        return true;
-      });
+      /* covered by the hand-over: its transaction had ended at the hand-over, and it does not come after the older cursor */
+      function covered(r) { if (since == null || !visibleIn(xidOf(r), hand)) return false; var t = micros(r.synced_at); return sid == null ? t < since : (t < since || (t === since && r.id <= sid)); }
+      function after(r, cx, cid) { var x = xidOf(r); return cx == null || (cid == null ? x >= cx : (x > cx || (x === cx && r.id > cid))); }
+      var out = rows.filter(function (r) { return xidOf(r) < f && after(r, axn, aid) && !covered(r); });
       out.sort(function (a, b) { return cmpX(xidOf(a), xidOf(b)) || byId(a, b); });
-      return { status: 200, body: { fence: String(f), snapshot: snapText(now), rows: out.slice(0, lim).map(function (r) { return Object.assign({}, r, { sync_xid: String(xidOf(r)) }); }) } };
+      var page = out.slice(0, lim);
+      /* the cursor the client keeps after this page, then the earliest visible row still to come after it */
+      var nx, nid;
+      if (page.length === lim) { nx = xidOf(page[page.length - 1]); nid = page[page.length - 1].id; }
+      else if (page.length || axn == null || f > axn) { nx = f; nid = null; }
+      else { nx = axn; nid = aid; }
+      var still = null, best = null;
+      rows.forEach(function (r) { if (after(r, nx, nid) && !covered(r) && (!still || byTime(r, still) < 0)) still = r; });
+      rows.forEach(function (r) { if ((!still || byTime(r, still) < 0) && (!best || byTime(r, best) > 0)) best = r; });
+      var safe = best ? { at: best.synced_at, id: best.id } : null;
+      if (body.p_time_at != null) {
+        var tm = micros(body.p_time_at), tid = body.p_time_id;
+        if (!safe || (tid == null ? micros(safe.at) < tm : byTime({ synced_at: safe.at, id: safe.id }, { synced_at: body.p_time_at, id: tid }) <= 0)) safe = { at: body.p_time_at, id: tid == null ? null : tid };
+      }
+      return { status: 200, body: { fence: String(f), snapshot: snapText(now), time_safe: safe, rows: page.map(function (r) { return Object.assign({}, r, { sync_xid: String(xidOf(r)) }); }) } };
     },
     get: function (url) {
       var keep = [], order = null, lim = 1000, off = 0;
@@ -1771,11 +1790,57 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
     check('so a row the other tab pulled, then cleared from this phone, is not brought back', !SZ.get('q2') && !!SZ.get('q1'), JSON.stringify({ q1: !!SZ.get('q1'), q2: !!SZ.get('q2') }));
   });
 
+  /* 8. (Codex round two, finding 1) three rows on one instant, the older cursor on the first. The hand-over sends the
+     other two; the time cursor must then stand on the last of them in the server's order, so that after the person
+     clears the phone and turns backup on again, a fall back to the time-ordered pull brings none of them back. */
+  var T8 = '2026-10-20T09:00:00.000001+00:00', srv8 = syncServer({ commit: true }), t8 = tally();
+  ['a', 'b', 'c'].forEach(function (id) { srv8.rows.push(syncRow(id, 'reflection', T8, note(id))); });
+  var w8 = syncWorld(srv8, t8.onGet, { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: T8, pulledId: 'a', pushedAt: T8, profilePulledAt: '2026-10-20T08:00:00Z', profileDirty: false, lastSyncAt: null }), mid8 = null;
+  var g8 = w8.OvuSync.syncNow().then(function () {
+    mid8 = stateOf(w8);
+    w8.OvuStore.clearAll(); w8.OvuStore.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } }); /* cleared, then backup turned on again */
+    srv8.commit = false; t8.sync = 1;
+    return w8.OvuSync.syncNow();
+  }).then(function (r) {
+    check('rows sharing one instant: the time cursor ends on the last of them, in the server\'s order', mid8.pulledSeq === T8 && mid8.pulledId === 'c', JSON.stringify({ seq: mid8.pulledSeq, id: mid8.pulledId }));
+    check('so after a clear, a fall back to the time-ordered pull brings none of them back', r.ok && (t8.per[1] || 0) === 0 && w8.OvuStore.list('reflection').length === 0, JSON.stringify({ r: r, per: t8.per, local: w8.OvuStore.list('reflection').map(function (e) { return e.id; }) }));
+  });
+
+  /* 9. (Codex round two, finding 2) transaction 100: 20,000 rows at 10:00; transaction 101: one row at 09:00 (it began
+     first and wrote last). Both committed. A new phone takes 20,000 (the cap). Its time cursor must not stand past the
+     09:00 row the cap has not reached. */
+  var srv9 = syncServer({ commit: true }), X9 = srv9.begin('2026-10-20T10:00:00.000001+00:00', '100');
+  for (var k9 = 0; k9 < 20000; k9++) X9.add(syncRow('x' + pad(k9), 'reflection', null, note(k9)));
+  X9.commit();
+  var Y9 = srv9.begin('2026-10-20T09:00:00.000001+00:00', '101'); Y9.add(syncRow('early', 'reflection', null, note('early'))); Y9.commit();
+  var w9 = syncWorld(srv9, null, null);
+  var g9 = w9.OvuSync.syncNow().then(function () {
+    var st = stateOf(w9);
+    check('backlog past the cap: the time cursor does not move past the earlier row the cap has not reached', !st.pulledSeq || micros9(st.pulledSeq) <= micros9('2026-10-20T09:00:00.000001+00:00'), JSON.stringify({ seq: st.pulledSeq, id: st.pulledId }));
+  });
+  /* 9b. The same backlog held behind the fence instead: D (id 99) wrote at 10:00 and committed; L (id 100) is still
+     open; E began at 09:00 and wrote after L (id 101), committed. The pull delivers D only. A lasting fall back to the
+     time-ordered pull from the time cursor must still bring E. */
+  var srv9b = syncServer({ commit: true });
+  var D9 = srv9b.begin('2026-10-20T10:00:00.000001+00:00', '99'); D9.add(syncRow('d', 'reflection', null, note('d'))); D9.commit();
+  var L9 = srv9b.begin('2026-10-20T10:00:01.000001+00:00', '100'); L9.add(syncRow('l', 'reflection', null, note('l')));
+  var E9 = srv9b.begin('2026-10-20T09:00:00.000001+00:00', '101'); E9.add(syncRow('early', 'reflection', null, note('early'))); E9.commit();
+  var w9b = syncWorld(srv9b, null, null), mid9b = null;
+  var g9b = w9b.OvuSync.syncNow().then(function () {
+    mid9b = stateOf(w9b);
+    srv9b.commit = false; L9.commit();
+    return w9b.OvuSync.syncNow();
+  }).then(function () {
+    check('backlog behind the fence: the time cursor does not move past the held earlier row', !!w9b.OvuStore.get('d') && (!mid9b.pulledSeq || micros9(mid9b.pulledSeq) <= micros9('2026-10-20T09:00:00.000001+00:00')), JSON.stringify({ seq: mid9b.pulledSeq, id: mid9b.pulledId }));
+    check('so a lasting fall back to the time-ordered pull still brings that row', !!w9b.OvuStore.get('early') && !!w9b.OvuStore.get('l'), JSON.stringify({ early: !!w9b.OvuStore.get('early'), l: !!w9b.OvuStore.get('l') }));
+  });
+  function micros9(x) { var m = /^(.+?)(?:\.(\d+))?(Z|[+-]\d\d:?\d\d)$/.exec(String(x)); return Date.parse(m[1] + m[3]) * 1000 + Number(((m[2] || '') + '000000').slice(0, 6)); }
+
   /* 7. a sign-out or reset forgets the transaction-ordered cursor too */
   var r7 = fresh(); r7.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, gen: 2, userId: 'u1', shadow: {}, tombstones: {}, pulledXid: '900', pulledXidId: 'x', pulledSeq: '2026-10-20T08:00:00Z' })); r7.OvuSync.resetPosition();
   var s7 = JSON.parse(r7.localStorage.getItem('ovumind_sync_v1'));
   check('a reset clears the transaction-ordered cursor with the time cursor', s7.pulledXid === null && s7.pulledXidId === null && s7.pulledSeq === null && s7.gen === 3, JSON.stringify(s7));
-  Promise.all([a, b, b2, b3, b4, c, d, e, f]).catch(function (err) { check('the transaction-ordered pull tests ran to the end', false, String(err && err.stack || err)); });
+  Promise.all([a, b, b2, b3, b4, c, d, e, f, g8, g9, g9b]).catch(function (err) { check('the transaction-ordered pull tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 (function syncGenerationAcrossAccounts() {

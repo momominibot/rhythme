@@ -4,9 +4,9 @@
 `supabase/migrations/20261020120000_sync_pull_commit_order.sql` is a file only: applying it to the live project is
 Jamie's call (AGENTS gate 3).
 
-**Status: held at AGENTS gate 6.** Codex round two found the compatibility path (premortem 5) still faulty: the
-round-one fix for it failed review a second time. The transaction-ordered pull, the fence and the hand-over passed.
-The round-three options are in `docs/debate/2026-10-20-sync-commit-order-codex-round2.md` and are not applied.
+**Status.** Codex round two held the branch at AGENTS gate 6: the compatibility path (premortem 5) failed review a
+second time. On 20 Oct Jamie chose option A from the round-two record: the server certifies the time cursor
+(`time_safe`, below). Round three reviews that.
 
 ## The gap
 
@@ -129,10 +129,12 @@ Premortem, assuming B failed:
 5. *The migration is rolled back after phones moved over, or a tab still on an older version pulls by time.* The
    transaction-ordered pull keeps the time cursor moving too (only forward, to the latest row it delivered by
    `synced_at`), so either resumes from near where the newer pull got to rather than from a stale point or the start
-   (Codex round one, finding 1). **Not yet right (Codex round two, reproduced):** a tie on the instant leaves the time
-   cursor's id behind, so rows sharing that instant can come back after a clear; and the cursor can move past committed
-   rows the 20,000 cap has not delivered yet, which a lasting fallback then never pulls. Proposed fix: a time prefix the
-   server certifies (round two, option A).
+   (Codex round one, finding 1). Round two showed that following the client's own view of it was not enough: a tie on
+   the instant left the time cursor's id behind, so rows sharing that instant could come back after a clear, and the
+   cursor could move past committed rows the 20,000 cap had not delivered, which a lasting fallback then never pulled.
+   Now the server certifies it (`time_safe`, below): compared in its own collation, bounded by the earliest visible
+   row still to come, never back past the cursor the phone sent. A pull by time from it is never worse than today's
+   pull, whose only gap is writes still open.
 6. *A page asked for `entries_pull` before the migration and was told it is missing.* It asks again as soon as any tab
    holds a transaction-ordered cursor, instead of pulling by its own time cursor for the rest of its life (Codex round
    one, finding 1).
@@ -175,20 +177,45 @@ One case this does not cover: a tab still on the older version, open at the same
 the hand-over began, which the person then clears. The newer pull may send those again. It needs two versions open
 side by side and a clear in between.
 
+## The time cursor the server certifies (`time_safe`)
+
+A `(synced_at, id)` cursor claims a contiguous prefix: every row at or before it has been seen. The transaction-ordered
+pull delivers rows in another order, so the phone cannot tell on its own how far that prefix reaches: ids that share an
+instant are ordered by the server's collation, and rows the 20,000 cap has not reached, or rows held behind the fence,
+can sit earlier in time than rows already delivered. Every page of `entries_pull` therefore computes it:
+
+1. the cursor the phone will hold after this page (the last row of a full page; otherwise the fence, unless the cursor
+   sent is already there), exactly as `ovu-sync.js` moves it;
+2. the earliest `(synced_at, id)` among the caller's visible rows still after that cursor and not covered by the
+   hand-over, at or above the fence or not; a `MATERIALIZED` CTE over the `(user_id, sync_xid, id) include (synced_at)`
+   index reads those rows from the index;
+3. the latest `(synced_at, id)` before that row (or the latest of all, when nothing is still to come): every visible
+   row before it has reached this phone or was covered;
+4. never back past `p_time_at`/`p_time_id`, the time cursor this sync started from (a `(T, no id)` millisecond cursor
+   counts as "rows before T").
+
+The phone writes it as its time cursor. If another tab or an older version moved that cursor meanwhile, ours is written
+only when it is later by instant. A tie between two writers on one instant keeps the stored one, which can at most send
+again rows of that one instant to a phone that is cleared and then falls back while two tabs synced at once. The
+function is plpgsql and STABLE, so all four steps use the calling statement's snapshot [10]. Cost on a local
+PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 ms each.
+
 ## The implementation
 
 - `supabase/migrations/20261020120000_sync_pull_commit_order.sql`: `sync_xid xid8` (constant default 0 for existing
   rows, then `pg_current_xact_id()`), the `(user_id, sync_xid, id)` index, the trigger stamping it, and
   `entries_pull(p_after_xid, p_after_id, p_since, p_since_id, p_handover, p_limit)`: STABLE (PostgREST runs it READ
   ONLY [5]), security invoker so the "own entries" policy applies, `search_path = ''`, execute for `authenticated`
-  only. It returns `{fence, snapshot, rows}` with transaction ids as text, at most 1,000 rows a page.
+  only. It returns `{fence, snapshot, rows, time_safe}` with transaction ids as text, at most 1,000 rows a page. It
+  also takes `p_time_at`/`p_time_id` (above), and drops the two earlier draft signatures in case one was ever applied.
 - `ovu-sync.js`: `pullShared` tries `entries_pull` and falls back to the time-ordered `pullSince` only on `PGRST202`;
   a page that was told it is missing asks again once any tab holds a transaction-ordered cursor. `pullCommitted` pages
   by `(sync_xid, id)`; when a page comes back short it moves the cursor up to the fence, with no id ("from this
   transaction id on"), so an empty pull is cheap. The cursor lives in `pulledXid`/`pulledXidId`, a hand-over in
   progress in `pullSince` (`{at, id, snap}`); the cursor keeps the forward-only rule across tabs (`xidLater`), and every
-  reset and account switch clears all three. The time cursor (`pulledSeq`/`pulledId`) follows along, only forward by
-  instant, for a fallback or a tab still on an older version. The typed recovery now also starts for a phone whose only
+  reset and account switch clears all three. The time cursor (`pulledSeq`/`pulledId`) follows the server's
+  `time_safe`, for a fallback or a tab still on an older version. The returned snapshot text is checked only when a
+  hand-over begins. The typed recovery now also starts for a phone whose only
   cursor is the new one. Any other `entries_pull` failure fails the sync without falling back.
 
 ## Verification
@@ -220,6 +247,10 @@ side by side and a clear in between.
   of round one FIXED; the hand-over release rule and the pretend server's snapshot model confirmed. Finding 1 PARTLY
   FIXED, with two should-fix defects in the followed time cursor (equal timestamps; backlog past the cap) and one nit in
   the local Postgres race 3. Both defects reproduced independently. Same finding twice: held at AGENTS gate 6.
+- Jamie, 20 Oct: option A. Applied: `time_safe` as above, both reproductions as tests (`sharedPullCommitOrder` cases 8
+  and 9), race 3 tightened (the open writer takes its id before the later writes, its id is checked in the snapshot's
+  `xip_list`, and the helper keeps or drops the hand-over by the client's own rule), race 4 for ties, backlog and
+  "never backwards" on real PostgreSQL, and the snapshot checked only when a hand-over begins.
 
 ## Sources
 
@@ -237,6 +268,8 @@ side by side and a clear in between.
 8. PostgreSQL source, `src/backend/utils/adt/xid8funcs.c`, `pg_current_snapshot()`:
    https://doxygen.postgresql.org/xid8funcs_8c_source.html
 9. PostgREST docs, Errors (PGRST202, 404): https://docs.postgrest.org/en/stable/references/errors.html
+10. PostgreSQL 18 docs, Function Volatility Categories (STABLE functions use the calling query's snapshot):
+   https://www.postgresql.org/docs/current/xfunc-volatility.html
 
 The docs pages above are for PostgreSQL 18; the functions and the `xid8` type used here were added in PostgreSQL 13, and
 the live project runs 17.6 (checked 20 Oct with the Supabase project details).
