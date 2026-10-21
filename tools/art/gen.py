@@ -8,7 +8,9 @@ MODEL = "doubao-seedream-5-0-pro-260628"
 URL = "https://ark.cn-beijing.volces.com/api/v3/images/generations"
 
 def key():
-    return open(os.path.expanduser("~/.config/volcengine/api_key")).read().strip()
+    # a cloud session reads ARK_API_KEY from the environment's secrets; a laptop keeps the key in a file
+    k = os.environ.get("ARK_API_KEY", "").strip()
+    return k or open(os.path.expanduser("~/.config/volcengine/api_key")).read().strip()
 
 RAWREF = "--rawref" in __import__("sys").argv
 def ref_to_param(p, max_side=1280):

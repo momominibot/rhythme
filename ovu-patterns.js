@@ -189,7 +189,7 @@
     var A = root.OvuAgents; opts = opts || {};
     if (!sn || !A) return '';
     var rows = A.sleepNotesRows(sn);
-    if (sn.flushNights) rows.push(['Nights woken by a hot flush or night sweat', sn.flushNights + ' of ' + sn.nights + ' recorded night' + (sn.nights === 1 ? '' : 's') + ' (from sleep details or symptom notes; a night without either is not counted as no)']);
+    if (sn.flushNights) rows.push(['Nights woken by a hot flush or night sweat', sn.flushNights + ' of ' + Math.max(sn.nights, sn.flushNights) + ' recorded date' + (Math.max(sn.nights, sn.flushNights) === 1 ? '' : 's') + ' (from sleep details or symptom notes; a night without either is not counted as no)']);
     var checks = (sn.checks || []).filter(function (c) { return c.answers && Object.keys(c.answers).length; });
     if (!rows.length && !checks.length) return '<p class="note">' + esc(opts.empty || 'No sleep details answered in this range.') + '</p>';
     var html = rows.length ? '<dl class="sndl">' + rows.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '';

@@ -1,7 +1,9 @@
 # Art scripts
 
 Room plates, props and sprites are rendered with Seedream through the Volcengine Ark data plane and keyed off
-chroma green. Both scripts read the key from `~/.config/volcengine/ark_api_key`; nothing is embedded here.
+chroma green. `gen.py` reads the key from the `ARK_API_KEY` environment variable (a cloud session's secret) or else
+from `~/.config/volcengine/api_key`; nothing is embedded here. A cloud environment also needs `ark.cn-beijing.volces.com`
+in its allowed hosts.
 
 - `gen.py "prompt" --out file.png [--size 1024x1024|2K|WxH] [--ref image.png ...] [--model id] [--retries 0]`
   Text to image, or a reference-guided edit with `--ref`. Seedream 5.0 pro (`doubao-seedream-5-0-pro-260628`)

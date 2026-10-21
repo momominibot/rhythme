@@ -63,11 +63,12 @@
    * A whole-phone wipe (reason 'clear') or a cloud pull (reason 'sync') never
    * becomes a tombstone, so "start fresh on this phone" does not delete the
    * cloud backup and a pull does not bounce back as a deletion. */
-  function onStoreChange(reason) {
+  function onStoreChange(reason, db, removed) {
     var st = loadState();
     if (reason && reason.indexOf('remove:') === 0) {
       var cur = snapshot();
-      Object.keys(st.shadow).forEach(function (id) { if (!(id in cur)) st.tombstones[id] = nowIso(); });
+      /* the store names the ids this tab deleted; an entry another tab's Delete everything wiped is not one (review, 21 Oct) */
+      (Array.isArray(removed) ? removed : Object.keys(st.shadow).filter(function (id) { return !(id in cur); })).forEach(function (id) { if (st.shadow[id] !== undefined && !(id in cur)) st.tombstones[id] = nowIso(); });
       st.shadow = cur;
     } else {
       if (reason === 'profile') st.profileDirty = true;
@@ -179,7 +180,8 @@
   function consentForUser(p, uid) { var c = (p || {}).cloud; return consentOk(p) && c.uid === uid; }
   /* nothing moves without a session, the cloud choice for this account, the 18+ attestation and the current notice (ovu-consent.js) */
   function doorOpen() { var C = root.OvuConsent; return !C || (!C.needsSheet() && C.allows('cloud_sync')); }
-  function canSync() { var s = session(); return !!(s && s.user && consentForUser(S.profile(), s.user.id) && doorOpen()); }
+  function ownerFits(p, uid) { p = p || {}; var o = typeof p.owner === 'string' ? (p.owner || null) : ((p.cloud && p.cloud.uid) || ((p.consentEvents || []).filter(function (e) { return e && e.uid; })[0] || {}).uid || null); return !o || o === uid; }
+  function canSync() { var s = session(); return !!(s && s.user && ownerFits(S.profile(), s.user.id) && consentForUser(S.profile(), s.user.id) && doorOpen()); } /* a diary never backs up to another account (Codex sweep, 21 Oct) */
 
   /* ---------- REST ---------- */
   function rest(method, path, body, prefer, token) {

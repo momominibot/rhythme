@@ -171,3 +171,21 @@ turned on "help improve logging" (`consent_record('improve_logging', ...)` and `
 the first backup of any account with no cloud-backup choice on record and no earlier backup. The front end on main
 does not record that choice yet, so a new account turning on backup on the live site fails until the parent's consent
 front end ships. Reported to the parent session; it is their call.
+
+## 12. The dreamy dashboard and the team's names (21 October)
+
+Jamie: "I want the same aesthetic but even more dreamy with clouds, I want graphing and illustrations and my agents in
+there, give them cute names to report the data and I will have one agent to orchestrate."
+
+- The page sits in a pastel dawn sky with soft drifting clouds and a few twinkles (CSS only, still under reduced motion,
+  never taking a tap). Cards and tiles keep the room's look.
+- The four stream agents are little clouds drawn inline (no image spend): **Bloom** (menstrual, rose, a flower),
+  **Dozy** (sleep, lilac blue, a nightcap), **Pudding** (food, peach, a cherry) and **Misty** (mindfulness and stress,
+  mint, a leaf). **Nimbus** (cream, a star) is the orchestrator. The server still knows them by their stream.
+- Each cloud reports in its own words from the latest findings, always as of the last finished run, and distinguishes
+  no finished run, nobody opted in, under the floor (results held back) and measured, naming eligible opted-in adults
+  and each metric's own people count. Nothing is invented and nothing reads a diary.
+- Charts are small inline SVGs: the plaza card draws joins across all groups and the busiest single group's peak by
+  calendar day, with gaps broken and integer ticks. Agent metrics stay as rows (units differ), held back as text.
+- Codex gpt-6-astra visual and code review: round one 1 P1 (a backdrop-filter on the page wrapper pinned the fixed
+  bottom bar to the page) and 10 P2, all applied; round two in the PR.

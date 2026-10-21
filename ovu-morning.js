@@ -38,7 +38,7 @@
    * shape agreed with a Codex design review, docs/design/2026-10-21-erin-morning-routine.md): Erin's wake-up script, a gate, her brushing
    * script, a gate, her mindful sip. Each part can be skipped or stopped; each part she really did is saved on its own. */
   var GATES = {
-    brush: { key: 'ready', part: 2, title: 'Brushing', gate: true, group: 'teeth', ready: 'Ready to brush', skip: 'Already brushed', audio: GUIDE + 'mstart-ready.mp3', text: '' },
+    brush: { key: 'ready', part: 2, title: 'Brushing', gate: true, group: 'teeth', ready: 'Ready to brush', skip: 'Skip this part', audio: GUIDE + 'mstart-ready.mp3', text: '' },
     sip: { key: 'sipready', part: 3, title: 'A mindful sip', gate: true, group: 'sip', ready: 'Ready to sip', skip: 'Skip this part',
       text: 'Choose a drink that is comfortable to sip: coffee, tea, water, anything. Take any time you need to make it; making it is not part of the practice. You can skip this part. No drink, fasting, or simply not wanting one are all fine reasons.' }
   };
@@ -180,7 +180,7 @@
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
     room.hideSheet(); hideInvite();
-    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, spent: {}, done: {}, brushMs: 0, stepMs: 0, waits: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
+    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, spent: {}, done: {}, brushMs: 0, stepMs: 0, waits: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null }; /* made inside the Begin tap, so later clips may play on phones */
     if (room.endMoment) room.endMoment();
     /* from the mat she sits there hidden: bring her back first, or the routine plays to an empty room */
     var onMat = room.meditating ? room.meditating() : !!(room.els && room.els.meditator && room.els.meditator.classList.contains('on'));
@@ -199,6 +199,7 @@
   /* anything else that owns her, the HUD or the sound right now (Codex sweeps, 20 Oct): Morning start waits for it */
   function otherOwner(room) {
     if ((room.sessionOn && room.sessionOn()) || (room.practiceOn && room.practiceOn())) return ['Finish or stop the practice that is running first.', 'self_improvement'];
+    if (root.OvuGreenhouse && root.OvuGreenhouse.brewing && root.OvuGreenhouse.brewing()) return ['Finish the cup first.', 'local_cafe'];
     if (root.OvuGreenhouse && root.OvuGreenhouse.caring && root.OvuGreenhouse.caring()) return ['Finish the minute with the plant first.', 'potted_plant'];
     if (root.OvuGarden && root.OvuGarden.watering && root.OvuGarden.watering()) return ['Finish watering the garden first.', 'water_drop'];
     if (root.OvuWalk && root.OvuWalk.travelling && root.OvuWalk.travelling()) return ['One moment, she is on her way.', 'directions_walk'];
@@ -214,7 +215,8 @@
     if (!run) return;
     if (R().asleep()) { cancel(); return; }
     var cur = step(); if (cur && skippedNow && run.skipped.indexOf(cur.key) < 0 && !cur.erin) run.skipped.push(cur.key);
-    if (cur && cur.group && !cur.gate && !run.skipping && run.i === groupEnd(cur.group)) run.done[cur.group] = true; /* the last line of a part, reached: that part was finished */
+    if (cur && cur.group && !cur.gate && skippedNow) { run.nexted = run.nexted || {}; run.nexted[cur.group] = true; } /* Next before a line was over: that part was not finished (Codex sweep, 21 Oct) */
+    if (cur && cur.group && !cur.gate && !run.skipping && run.i === groupEnd(cur.group) && !(run.nexted && run.nexted[cur.group])) run.done[cur.group] = true; /* the last line of a part, reached: that part was finished */
     clearTimeout(run.timer); stopAudio(); leaveStep();
     run.i++;
     var s = step(); if (!s) { finish(true); return; }
@@ -295,18 +297,20 @@
   /* at a gate: the part is left out (Already brushed, Skip this part) and the routine goes on to the next part, or ends when it was the last */
   function skipGate() {
     var s = step(); if (!run || !s || !s.gate) return;
+    leaveStep();
     if (s.group === 'teeth') run.brushed = 'no';
     run.skipped.push(s.group === 'teeth' ? 'brushing' : s.group);
     clearTimeout(run.timer); stopAudio();
     var end = groupEnd(s.group); if (end < 0 || end >= run.steps.length - 1) { finish(true); return; }
-    run.skipping = true; run.i = end; next(false); run.skipping = false;
+    var r0 = run; run.skipping = true; run.i = end; next(false); if (run === r0) run.skipping = false;
   }
   var skipBrushing = skipGate;
   /* in the middle of a part: the rest of it is left out; time already spent on it counts */
   function skipPart() {
     var s = step(); if (!run || !s || s.gate || !s.group) return;
+    leaveStep(); /* her time goes to the line she was on, before the index moves (persona walk, 21 Oct: wake-up listening was booked as brushing) */
     run.skipped.push(s.group); clearTimeout(run.timer); stopAudio();
-    run.skipping = true; run.i = groupEnd(s.group); next(false); run.skipping = false;
+    var r0 = run; run.skipping = true; run.i = groupEnd(s.group); next(false); if (run === r0) run.skipping = false; /* skipping the last part ends the run (Codex sweep, 21 Oct) */
   }
   function stop() { if (!run) return; finish(false); }
   /* sleep, or anything that ends the room's day: everything stops at once and nothing is offered */
@@ -322,11 +326,10 @@
     var exact = r.clock.ms() / 1000, secs = Math.round(exact), room = R(), day = S().today(); /* the day she practised, even if she confirms after midnight */
     run = null; hidePanel(); settle(room);
     var byPart = {}; r.steps.forEach(function (s) { if (s.group && !s.gate) byPart[s.group] = (byPart[s.group] || 0) + (r.spent[s.key] || 0); });
-    if (r.version === 'erin') byPart.teeth = r.brushMs; /* brushing is time on her brushing lines; her opening words at the sink are not brushing */
     var parts = r.version === 'erin' ? Object.keys(PARTS).filter(function (g) { return (byPart[g] || 0) / 1000 >= MIN_SAVE_S; }) : [];
-    if (exact < MIN_SAVE_S) { room.toast('Stopped. Pauses under 30 seconds are not saved.', 'wb_twilight'); renderInvite(); return; }
+    if (r.version === 'erin' ? !parts.length : exact < MIN_SAVE_S) { room.toast(r.version === 'erin' ? 'Stopped. No part reached 30 seconds, so nothing was added to your journal.' : 'Stopped. Pauses under 30 seconds are not saved.', 'wb_twilight'); renderInvite(); return; } /* one entry per part she really did, never a generic one (menopause walk, 21 Oct) */
     var did = [];
-    if (r.version === 'erin') parts.forEach(function (g) { did.push(PARTS[g].did); }); /* the sheet's title already says when she stopped early */
+    if (r.version === 'erin') parts.forEach(function (g) { did.push(g === 'teeth' && r.brushed !== 'erin' ? 'began at the sink with Erin' : PARTS[g].did); }); /* brushed only once she spent time on the brushing lines */
     else { if ((r.spent.arrive || 0) >= 5000) did.push('arrived'); if ((r.spent.notice || 0) >= 5000) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed'); } /* only what she spent time on */
     var saved = false;
     /* another sheet is open (a symptoms form, the bed): never replace it; ask once it closes, unless she falls asleep */
@@ -348,10 +351,10 @@
       if (saved) return;
       if (room.asleep()) { room.closeSheet(); return; }
       /* one entry per part she really did; a morning with no part of 30 seconds (she stopped in Erin's opening words) saves the plain morning entry, as the short pause does */
-      var datas = r.version === 'erin' && parts.length ? parts.map(function (g) { return partEntry(g, { seconds: byPart[g] / 1000, confirmed: true, finished: !!r.done[g] }); }).filter(Boolean) : [entryData({ seconds: exact, confirmed: true, version: r.version, skipped: r.skipped, brushed: r.brushed, finished: finished })].filter(Boolean);
+      var datas = r.version === 'erin' ? parts.map(function (g) { return partEntry(g, { seconds: byPart[g] / 1000, confirmed: true, finished: !!r.done[g] }); }).filter(Boolean) : [entryData({ seconds: exact, confirmed: true, version: r.version, skipped: r.skipped, brushed: r.brushed, finished: finished })].filter(Boolean);
       if (!datas.length) { room.closeSheet(); return; }
-      var evs = [];
-      try { datas.forEach(function (data) { evs.push(S().add('mindfulness', day, data)); }); } catch (e) { room.toast('This pause could not be saved: ' + e.message + ' Try again, or tap Not this time.', 'error'); saved = evs.length > 0; if (!saved) return; } /* the sheet stays for a retry; parts already saved are not saved twice */
+      var evs = r.savedEvs = r.savedEvs || []; r.savedIdx = r.savedIdx || {};
+      try { datas.forEach(function (data, i) { if (r.savedIdx[i]) return; evs.push(S().add('mindfulness', day, data)); r.savedIdx[i] = true; }); } catch (e) { room.toast('Part of this could not be saved: ' + e.message + ' Tap Yes to try the rest again, or Not this time.', 'error'); return; } /* the sheet stays; parts already saved are not saved twice (Codex sweep, 21 Oct) */ /* the sheet stays for a retry; parts already saved are not saved twice */
       saved = true; room.closeSheet();
       try { markToday({ done: true }, day); } catch (e) { } /* the entries are saved; only the invitation's note for today failed */
       hideInvite();

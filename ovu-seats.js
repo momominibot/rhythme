@@ -1,9 +1,9 @@
 /* Rhythme seats (Jamie, 21 Oct 2026: "each of the sitting interface should be different with some animation and different
  * practice with erin, i want it refreshing for each chair... for the sitting in the cave will be different - it's purely
  * frequency sounds"). The shape follows a Codex design review of the same day (docs/design/2026-10-21-seats.md).
- * Every seat keeps "just sit", where nothing is counted. Three benches gain a seated practice of about three minutes in
- * Erin Lee's cloned voice (Rhythme's words, with her permission): the street bench listens, the plaza benches wish well,
- * the harbour bench watches the water. The garden bench keeps Breathe with Erin (ovu-garden.js) and the cave's warm stone
+ * Every seat keeps "just sit", where nothing is counted. Each bench has its own seated practice of about three minutes in
+ * Erin Lee's cloned voice (Rhythme's words, with her permission): the street bench listens, the bench by the board wishes
+ * well, the bench by the tree rests in the shade, the harbour bench watches the water. The garden bench keeps Breathe with Erin (ovu-garden.js) and the cave's warm stone
  * is the crystals' tone with no voice at all (ovu-tones.js). Each seat has its own small animation layer: environmental,
  * never timed to breath, still under reduced motion. Pure parts first (testable in node), then the runner. */
 (function (root) {
@@ -29,6 +29,14 @@
       { text: 'If you would like, let the wish widen to everyone in the square, and out past it, to everyone going about their day. May we all be safe. May we all be at ease.', secs: 34 },
       { text: 'If this feels uncomfortable, stop now, or look around you. Nothing has to change. You can simply sit.', secs: 14 }
     ] },
+    tree: { name: 'In the shade', icon: 'park', about: 'Light, leaves and one small thing you are glad of, every part optional', steps: [
+      { text: 'Settle onto the bench in the shade of the tree, in a position that works for you. Keep your eyes open or half closed. You can skip a step, or stop whenever you need.', secs: 23 },
+      { text: 'Let your eyes rest on the leaves of the tree, or on a patch of light and shadow near you. Notice whether it stays still or moves. There is no need to follow every leaf.', secs: 34 },
+      { text: 'Notice where the air touches your skin. Perhaps it feels cool, perhaps it is still. Notice the seat under you, and your feet on the ground.', secs: 32 },
+      { text: 'If a thought pulls you away, that is all right. Notice where it took you, and come back to the light through the leaves.', secs: 30 },
+      { text: 'If you would like, bring to mind one small thing from today that you are glad of. A warm drink, a kind word, this bit of shade. If nothing comes to mind, that is fine too.', secs: 35 },
+      { text: 'When you are ready, look around you again. You can stay a while longer, or carry on with your day.', secs: 15 }
+    ] },
     harbour: { name: 'Watching the water', icon: 'water', about: 'Eyes on the water, nothing to do', steps: [
       { text: 'Sit back on the bench. Let your eyes rest on the water, or on a still spot nearby. There is nothing to do here but watch. You can stop whenever you need.', secs: 23 },
       { text: 'Follow one ripple from where it starts to where it fades. Then another.', secs: 26 },
@@ -40,13 +48,14 @@
   };
   /* with reduced motion the water does not ripple on the plate, so the second line asks for a colour instead (Codex, 21 Oct) */
   var HARBOUR_RM = { text: 'Notice a colour or a reflection on the water. Let your eyes rest there.', secs: 26, file: 'seat-harbourrm-0-0.mp3' };
-  /* the seats: which scene, which words, which animation, what the plain sit is called. Both plaza benches share the
-   * words and count as two seats, one thank-you a day each */
+  /* the seats: which scene, which words, which animation, what the plain sit is called. Every bench has its own words and
+   * its own animation, and each is its own seat, one thank-you a day each (Codex, 21 Oct: the bench by the tree had shared
+   * the board bench's words; its own clips came from one guarded voice run the same day) */
   var SEATS = {
     street: { id: 'street', scene: 'street', practice: 'street', title: 'The street bench', sub: 'Under the lanterns', fx: 'lanterns', sit: 'Just sit a while' },
     'plaza:bench': { id: 'plaza:bench', scene: 'plaza', practice: 'plaza', title: 'The bench by the board', sub: 'On the square', fx: 'square', sit: 'Just sit a while' },
-    'plaza:bench2': { id: 'plaza:bench2', scene: 'plaza', practice: 'plaza', title: 'The bench by the tree', sub: 'Across the square', fx: 'square', sit: 'Just sit a while' },
-    harbour: { id: 'harbour', scene: 'harbour', practice: 'harbour', title: 'The bench', sub: 'Under the sea-almond tree', fx: 'water', sit: 'Just watch the water' }
+    'plaza:bench2': { id: 'plaza:bench2', scene: 'plaza', practice: 'tree', title: 'The bench by the tree', sub: 'In the shade', fx: 'shade', sit: 'Just sit a while' },
+    harbour: { id: 'harbour', scene: 'harbour', practice: 'harbour', title: 'The bench', sub: 'Under the sea-almond tree', fx: 'water', sit: 'Just watch the water' },
   };
   function steps(practice, reduced) {
     var p = SCRIPTS[practice]; if (!p) return [];
@@ -95,7 +104,9 @@
     if (seatId === 'harbour' && HB && HB.LAYOUT) return { spot: { seat: HB.LAYOUT.seat }, back: null };
     return null;
   }
+  var lastSit = null; /* which bench she is just sitting on, so the plaza's two benches keep their own animation */
   function plainSit(seatId) {
+    lastSit = seatId;
     if (seatId === 'harbour') { if (root.OvuHarbour && root.OvuHarbour.sitDown) root.OvuHarbour.sitDown(); return; }
     var sp = spotFor(seatId); if (sp && sp.spot) G.sitDown(sp.spot, sp.back);
   }
@@ -110,7 +121,7 @@
     R.openSheet('seat-' + seat.practice, seat.title, seat.sub, 'chair',
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>' + esc(p.name) + '</b><small>' + esc(p.about) + '. About ' + mins + ' minutes in Erin’s voice, seated. Pause, skip a step or stop whenever you like.</small></div></div>' +
       '<div class="row"><button type="button" class="btn primary" id="seatBegin"><span class="ms">' + p.icon + '</span>Begin</button><button type="button" class="btn soft" id="seatSit"><span class="ms">chair</span>' + esc(seat.sit) + '</button></div>' +
-      '<p class="help">A practice of a minute or more can be saved to your journal, with the usual small thank-you once a day for this seat' + (doneToday(seatId) ? ' (already said today)' : '') + '. Sitting is just sitting: nothing is counted. ' + esc(CREDIT) + '.</p>');
+      '<p class="help">A practice of a minute or more can be saved to your journal, with the small thank-you once a day for this seat (practices share up to six hearts a day)' + (doneToday(seatId) ? ' (already said today)' : '') + '. Sitting is just sitting: nothing is counted. ' + esc(CREDIT) + '.</p>');
     $('seatSit').addEventListener('click', function () { R.hideSheet(); plainSit(seatId); });
     $('seatBegin').addEventListener('click', function () { begin(seatId); });
   }
@@ -123,12 +134,13 @@
   }
   function begin(seatId) {
     var seat = SEATS[seatId]; if (!seat || run) return;
+    if (root.OvuSound) root.OvuSound.play('boop'); /* a practice begins */
     var L = R.layout(); if (!L || L.id !== seat.scene) return;
     var other = otherOwner(); if (other) { R.toast(other[0], other[1]); return; }
     var sp = spotFor(seatId); if (!sp || !sp.spot || !sp.spot.seat) return;
     var st = steps(seat.practice, reduced()), audio = null;
     try { audio = new Audio(); } catch (e) { }
-    run = { seat: seat, id: seatId, spot: sp.spot, back: sp.back, steps: st, i: -1, paused: false, quiet: false, timer: null, left: 0, t0: 0, waits: 0, clock: makeClock(), startedAt: new Date().toISOString(), audio: audio, pending: null, preloaded: null, el: null };
+    run = { seat: seat, id: seatId, spot: sp.spot, back: sp.back, steps: st, i: -1, paused: false, quiet: !!(root.OvuVoice && root.OvuVoice.muted && root.OvuVoice.muted()), /* a remembered mute starts her quiet (perimenopause walk, 21 Oct) */ timer: null, left: 0, t0: 0, waits: 0, clock: makeClock(), startedAt: new Date().toISOString(), audio: audio, pending: null, preloaded: null, el: null };
     /* the first line starts inside the tap, which unlocks the one audio element for the rest (as the room's practices do) */
     if (audio) { try { audio.src = st[0].audio; run.preloaded = st[0].audio; var pr = audio.play(); if (pr && pr.catch) pr.catch(function () { }); } catch (e) { } }
     R.emit('activity', 'seat', seatId); /* the care steps, a float on the water, the greenhouse minute: everything else steps aside first */
@@ -140,7 +152,7 @@
     mount(); showPanel(); next(false); fxTick();
   }
   function mount() {
-    var el = doc.createElement('div'), outfit = S.profile().outfit || 'base';
+    var el = doc.createElement('div'), outfit = (function (o) { return /^[a-z0-9-]{1,32}$/.test(o || '') ? o : 'base'; })(S.profile().outfit); /* an imported outfit name never becomes markup (Codex sweep, 21 Oct) */
     el.className = 'nb springsitter seatsitter'; el.dataset.id = 'seatsitter'; el.setAttribute('aria-hidden', 'true');
     el.innerHTML = '<img src="' + ART + 'avatar-' + outfit + '.webp" alt="">';
     R.els.props.appendChild(el); G.seatPlace(el, run.spot.seat); G.seatedImg(el.querySelector('img'), el.querySelector('img').src);
@@ -204,6 +216,7 @@
   }
   function quietToggle() {
     if (!run) return; run.quiet = !run.quiet;
+    if (!run.quiet && root.OvuVoice && root.OvuVoice.muted && root.OvuVoice.muted()) root.OvuVoice.set(false); /* Voice on lifts the app's remembered mute, as Morning start does */
     if (run.quiet) { silence(run.audio); run.pending = null; }
     else { var s = step(); if (s && !run.paused) play(s.audio); else if (s) run.pending = s.audio; } /* the voice comes back with the current line from its start */
     paint();
@@ -259,7 +272,7 @@
     var sat = G.sitting && G.sitting();
     if (L.id === 'garden' && (sat || (R.meditating() && R.els.meditator.classList.contains('onseat')))) return 'petals';
     if (L.id === 'street' && sat) return 'lanterns';
-    if (L.id === 'plaza' && sat) return 'square';
+    if (L.id === 'plaza' && sat) return lastSit === 'plaza:bench2' ? 'shade' : 'square';
     if (L.id === 'harbour' && root.OvuHarbour && root.OvuHarbour.sitting && root.OvuHarbour.sitting()) return 'water';
     if (L.id === 'cave' && root.OvuTones && root.OvuTones.sitting && root.OvuTones.sitting()) return 'crystals';
     return null;
@@ -270,6 +283,7 @@
     lanterns: function (add) { for (var i = 0; i < 12; i++) add('i', 'mote', { left: rnd(22, 84), top: rnd(42, 66), w: rnd(0.8, 1.4), d: rnd(6, 11), delay: -rnd(0, 11) }); },
     square: function (add) { for (var i = 0; i < 9; i++) add('i', 'spark', { left: rnd(38, 60), top: rnd(38, 52), w: rnd(0.7, 1.3), d: rnd(2.6, 4.8), delay: -rnd(0, 5) }); for (var j = 0; j < 6; j++) add('i', 'leaf', { left: rnd(58, 90), top: rnd(40, 60), w: rnd(1, 1.6), d: rnd(10, 16), delay: -rnd(0, 16) }); },
     water: function (add) { for (var i = 0; i < 5; i++) add('b', 'ring', { left: rnd(50, 88), top: rnd(50, 70), w: rnd(4, 7), d: rnd(5.5, 9.5), delay: -rnd(0, 9) }); for (var j = 0; j < 6; j++) add('i', 'streak', { left: rnd(48, 92), top: rnd(49, 72), w: rnd(4, 8), d: rnd(5, 8), delay: -rnd(0, 8) }); },
+    shade: function (add) { for (var i = 0; i < 14; i++) add('i', 'fleck', { left: rnd(62, 93), top: rnd(56, 70), w: rnd(2.2, 4.2), d: rnd(7, 13), delay: -rnd(0, 13) }); },
     crystals: function (add) { for (var i = 0; i < 7; i++) add('i', 'glint', { left: rnd(15, 33), top: rnd(31, 48), w: rnd(1.4, 2.4), d: i % 2 ? 11 : 7, delay: -rnd(0, 11) }); }
   };
   function showFx(kind) {

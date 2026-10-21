@@ -4,9 +4,11 @@
  * the basket. Watering, pulling and harvesting cost energy (ovu-stamina.js). Nothing here writes a diary entry: a
  * harvest offers "Log a meal?" and only a tap on that opens the food diary, which saves what she chooses to save.
  * Hearts are not awarded here (the ledger is ovu-rewards.js's), but they are spent here (Jamie, 20 Oct: logging earns
- * the points that let her play): seed packs, local crops to grow for good, a seed shelf and a big watering can. The five
- * first crops and three seeds a day stay free, and tending what she has never costs hearts. Pure rules first (testable
- * in node), then the scene wiring. */
+ * the points that let her play): a seed shelf and a big watering can in the shed; seed packs and local crops to grow for
+ * good are sold at Hay & Harvest on Harbour Lane (ovu-lane.js, 21 Oct; Jamie, 19 Oct: "the avatar needs to go to the
+ * grocery store to purchase seeds"), which also swaps three from the basket for one seed. The five first crops and three
+ * seeds a day stay free, and tending what she has never costs hearts. Pure rules first (testable in node), then the
+ * scene wiring. */
 (function (root) {
   'use strict';
   var CROPS = {
@@ -18,7 +20,7 @@
     /* local crops, unlocked with hearts and then grown for good (Codex, 20 Oct: locally familiar crops for Singapore) */
     kangkong: { name: 'Kangkong', plural: 'bunches of kangkong', days: 2, yield: 3, colour: '#8fcf86', top: '#4f9a62', cost: 40 },
     pakchoy: { name: 'Pak choy', plural: 'pak choy', days: 3, yield: 3, colour: '#b5e0a0', top: '#5f9c6a', cost: 40 },
-    lemongrass: { name: 'Lemongrass', plural: 'stalks of lemongrass', days: 4, yield: 3, colour: '#dfe6a0', top: '#8fbf6a', cost: 60 },
+    lemongrass: { name: 'Lemongrass', plural: 'stalks of lemongrass', days: 4, yield: 3, colour: '#dfe6a0', top: '#8fbf6a', cost: 60, moved: 'greenhouse' }, /* grows in the greenhouse planters since 21 Oct (ovu-greenhouse.js); a farm that unlocked it keeps it */
     chilli: { name: 'Chilli padi', plural: 'chilli padi', days: 5, yield: 4, colour: '#e2483d', top: '#5f9c6a', cost: 70 },
     sweetpotato: { name: 'Sweet potato', plural: 'sweet potatoes', days: 6, yield: 2, colour: '#b0607e', top: '#7fb894', cost: 80 }
   };
@@ -90,7 +92,7 @@
   function takeSeed(S, crop, day) {
     if (!CROPS[crop]) return { ok: false, why: 'unknown crop' };
     var f = farmState(S), taken = f.seedsByDay[day] || 0;
-    if (!canGrow(f, crop)) return { ok: false, why: CROPS[crop].name + ' is not in the shed yet. Unlock it with hearts first.' };
+    if (!canGrow(f, crop)) return { ok: false, why: CROPS[crop].name + ' is not in the shed yet. Hay & Harvest on Harbour Lane sells it.' };
     if (taken >= seedsADay(f)) return { ok: false, why: 'The shed has given out its seeds for today. More tomorrow.' };
     f.seedsByDay[day] = taken + 1; f.seeds[crop] = (f.seeds[crop] || 0) + 1;
     Object.keys(f.seedsByDay).forEach(function (k) { if (k < S.addDays(day, -30)) delete f.seedsByDay[k]; }); /* a month of dates is plenty */
@@ -101,7 +103,7 @@
     if (!CROPS[crop]) return { ok: false, why: 'unknown crop' };
     if (b && b.crop) return { ok: false, why: 'This bed already has ' + CROPS[b.crop].name.toLowerCase() + ' in it.' };
     if (hasWeeds(b, id, day)) return { ok: false, why: 'Pull the weeds first.' };
-    if (!(f.seeds[crop] > 0)) return { ok: false, why: 'No ' + CROPS[crop].name.toLowerCase() + ' seeds left. The shed gives ' + seedsADay(f) + ' a day, and seed packs cost hearts.' };
+    if (!(f.seeds[crop] > 0)) return { ok: false, why: 'No ' + CROPS[crop].name.toLowerCase() + ' seeds left. The shed gives ' + seedsADay(f) + ' a day, and Hay & Harvest by the harbour sells packs.' };
     f.seeds[crop] -= 1; f.beds[id] = { crop: crop, planted: day, watered: [], cleared: b && b.cleared === day ? day : undefined };
     try { var sv = save(S, f, ST, 'plant'); if (!sv.ok) return sv; return { ok: true, charged: sv.charged }; } catch (e) { return { ok: false, why: 'That could not be saved just now.' }; } /* the seed, the bed and the energy land together or not at all (Codex, 21 Oct) */
   }
@@ -132,7 +134,7 @@
   function canCap(f) { return f.tools && f.tools.bigcan ? BIG_CAN : CAN; }
   function canLevel(S) { var f = farmState(S); return Math.max(0, Math.min(canCap(f), Math.floor(Number(f.can) || 0))); }
   function save(S, f, ST, action) {
-    if (ST && ST.spendWith) { if (!ST.spendWith(action, { farm: f })) return { ok: false, why: 'Too tired for that. Energy comes back with a night’s sleep, or with the new day.' }; return { ok: true, charged: true }; }
+    if (ST && ST.spendWith) { if (!ST.spendWith(action, { farm: f })) return { ok: false, why: 'Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.' }; return { ok: true, charged: true }; }
     if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f });
     return { ok: true, charged: false };
   }
@@ -174,8 +176,27 @@
     var c = CROPS[crop], f = copy(farmState(S));
     if (!c || STARTER.indexOf(crop) > -1) return { ok: false, why: 'That one is free already.' };
     if (f.unlocked[crop]) return { ok: false, why: 'Already growing in your shed.' };
+    if (c.moved) return { ok: false, why: c.name + ' grows in the greenhouse now. Hay & Harvest sells it for the planters.' };
     f.unlocked[crop] = true; f.seeds[crop] = (f.seeds[crop] || 0) + 1; /* one seed to start */
     var r = pay(RW, c.cost, 'crop:' + crop, f); if (!r.ok) return r; return { ok: true, crop: crop };
+  }
+  /* the grocer's seed swap (Harbour Lane, 21 Oct; farm-loop design section 1): three from the basket for one seed of a crop
+   * she can grow, a pumpkin counting as three. No hearts change hands either way, so a harvest never turns into hearts and a
+   * quiet logging week never stops the farm. One save: the basket and the seed move together or not at all. */
+  var SWAP = 3;
+  function swapWorth(crop) { return crop === 'pumpkin' ? 3 : 1; }
+  function swapNeed(crop) { return Math.ceil(SWAP / swapWorth(crop)); }
+  function swapGivable(S) { var f = farmState(S); return Object.keys(CROPS).filter(function (k) { return (f.harvest[k] || 0) >= swapNeed(k); }); }
+  function swapSeed(S, give, crop) {
+    var f = copy(farmState(S));
+    if (!CROPS[give] || !CROPS[crop]) return { ok: false, why: 'unknown crop' };
+    if (!canGrow(f, crop)) return { ok: false, why: CROPS[crop].name + ' is not growing on your farm yet.' };
+    var need = swapNeed(give), have = f.harvest[give] || 0;
+    if (have < need) return { ok: false, why: 'The swap takes ' + need + ' ' + (need === 1 ? CROPS[give].name.toLowerCase() : CROPS[give].plural) + '. The basket has ' + have + '.' };
+    f.harvest[give] = have - need; if (!f.harvest[give]) delete f.harvest[give];
+    f.seeds[crop] = (f.seeds[crop] || 0) + 1;
+    try { if (S.commit) S.commit({ farm: f }); else write(S, f); } catch (e) { return { ok: false, why: 'That could not be saved just now.' }; }
+    return { ok: true, give: give, gave: need, crop: crop, have: f.seeds[crop] };
   }
   function buyTool(S, RW, id) {
     var t = TOOLS[id], f = copy(farmState(S));
@@ -197,7 +218,7 @@
     ids.forEach(function (id) { var b = f.beds[id]; b.watered = (b.watered || []).concat([day]); });
     var charged = false;
     try {
-      if (ST && ST.spendWith) { if (!ST.spendWith('water', { farm: f })) return { ok: false, why: 'Too tired for that. Energy comes back with a night’s sleep, or with the new day.' }; charged = true; }
+      if (ST && ST.spendWith) { if (!ST.spendWith('water', { farm: f })) return { ok: false, why: 'Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.' }; charged = true; }
       else if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f }); /* an older energy module: the caller charges the watering itself */
     } catch (e) { return { ok: false, why: e.message }; }
     return { ok: true, n: ids.length, charged: charged };
@@ -208,7 +229,7 @@
     return out;
   }
 
-  var F = { PANTRY: PANTRY, ANIMALS: ANIMALS, PANTRY_CAP: PANTRY_CAP, CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, dryBeds: dryBeds, waterAll: waterAll, CAN: CAN, BIG_CAN: BIG_CAN, canCap: canCap, canLevel: canLevel, fillCan: fillCan, pour: pour, plantFromShed: plantFromShed, bulkTargets: bulkTargets, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
+  var F = { PANTRY: PANTRY, ANIMALS: ANIMALS, PANTRY_CAP: PANTRY_CAP, CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, SWAP: SWAP, swapWorth: swapWorth, swapNeed: swapNeed, swapGivable: swapGivable, swapSeed: swapSeed, dryBeds: dryBeds, waterAll: waterAll, CAN: CAN, BIG_CAN: BIG_CAN, canCap: canCap, canLevel: canLevel, fillCan: fillCan, pour: pour, plantFromShed: plantFromShed, bulkTargets: bulkTargets, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
   root.OvuFarm = F;
 
   /* ---------- scene wiring ---------- */
@@ -347,7 +368,7 @@
     R.walkTo(bb.wp, function () { openBed(bb.id); });
   }
   /* energy: checked before the rule runs, charged only when the rule says yes, so a refused action costs nothing */
-  function canAct(name) { if (!ST || ST.can(name)) return true; R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); return false; }
+  function canAct(name) { if (!ST || ST.can(name)) return true; R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); return false; }
   function act(name) { return !ST || ST.spend(name, true); }
   var lastBed = null;
   function openBed(id) {
@@ -361,7 +382,7 @@
     } else {
       /* an empty bed plants straight from today's shed seeds too (Jamie, 20 Oct: "where is the shed?"): no trip needed */
       var own = Object.keys(CROPS).some(function (k) { return (f.seeds[k] || 0) > 0; }), left = seedsLeftToday(S, day);
-      html += '<b>An empty bed</b><span>' + (own ? 'Plant one of your seeds.' : left ? 'Pick a seed to plant. The shed gives ' + seedsADay(f) + ' a day; ' + left + ' left today.' : 'No free seeds left today. The shed has more tomorrow, and seed packs cost hearts.') + '</span>';
+      html += '<b>An empty bed</b><span>' + (own ? 'Plant one of your seeds.' : left ? 'Pick a seed to plant. The shed gives ' + seedsADay(f) + ' a day; ' + left + ' left today.' : 'No free seeds left today. The shed has more tomorrow, and Hay & Harvest by the harbour sells packs.') + '</span>';
     }
     if (weeds) html += '<span class="weedy">Weeds. Pull them before anything else.</span>';
     html += '</div></div><div class="' + (!weeds && !crop ? 'seedlist' : 'row') + '" id="bedActs">';
@@ -434,37 +455,39 @@
     var day = today(), left = seedsLeftToday(S, day), f = farmState(S), RW = root.OvuRewards, hearts = RW ? (RW.tester() ? Infinity : RW.ledger().hearts) : 0;
     var heartTxt = function (n) { return n + ' \u2665'; };
     var html = '<p>The shed keeps the tools and gives out ' + seedsADay(f) + ' seed packets a day, free. ' + (left ? left + ' left today.' : 'All given out for today; more tomorrow.') + ' What you grow fills your basket: carrots, pumpkins and sweet potatoes are treats for Clover, kangkong, pak choy and strawberries for the hens, and the rest is for your basket to show.</p><div class="seedlist" id="shedActs">' +
-      growable(f).map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-seed="' + k + '"' + (left ? '' : ' disabled') + '><span class="ms">spa</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + (f.seeds[k] || 0) + '</small></span></button>'; }).join('') +
+      growable(f).map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-seed="' + k + '"' + (left ? '' : ' disabled') + '><span class="ms">spa</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + (Math.floor(Number(f.seeds[k])) > 0 ? Math.floor(Number(f.seeds[k])) : 0) + '</small></span></button>'; }).join('') +
       '</div>';
     if (RW) {
-      var locked = Object.keys(CROPS).filter(function (k) { return !canGrow(f, k); }), tools = Object.keys(TOOLS);
+      var tools = Object.keys(TOOLS);
       html += '<h4 class="shedh"><span class="ms fill">favorite</span>With hearts <small>' + (hearts === Infinity ? 'tester' : heartTxt(hearts)) + '</small></h4>' +
         '<p class="help" style="margin-top:0">Hearts come from logging. Tending what you already grow is always free.</p>' +
         '<div class="seedlist" id="shedBuy">' +
-        growable(f).map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-pack="' + k + '"' + (hearts >= PACK.cost ? '' : ' disabled') + '><span class="ms">redeem</span><span><b>' + esc(c.name) + ' seed pack</b><small>' + PACK.seeds + ' seeds · ' + heartTxt(PACK.cost) + '</small></span></button>'; }).join('') +
-        locked.map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-unlock="' + k + '"' + (hearts >= c.cost ? '' : ' disabled') + '><span class="ms">lock_open</span><span><b>Grow ' + esc(c.name.toLowerCase()) + '</b><small>' + c.days + ' days · for good, one seed to start · ' + heartTxt(c.cost) + '</small></span></button>'; }).join('') +
         tools.map(function (id) { var t = TOOLS[id], have = !!f.tools[id]; return '<button type="button" class="btn soft" data-tool="' + id + '"' + (have || hearts < t.cost ? ' disabled' : '') + '><span class="ms">' + t.icon + '</span><span><b>' + esc(t.name) + (have ? ' · yours' : '') + '</b><small>' + esc(t.note) + (have ? '' : ' · ' + heartTxt(t.cost)) + '</small></span></button>'; }).join('') +
-        '</div>';
+        '</div>' +
+        '<p class="help pantryline" id="shedGrocer"><span class="ms">storefront</span>Seed packs and new crops to grow are at Hay & Harvest: down the steps to the harbour, then the signpost to Harbour Lane. It swaps three from your basket for a seed, too.</p>';
     }
     html += '<p class="help">A crop grows by the days it was watered. Kangkong and radishes take two days; pumpkins a week. <button type="button" class="linkbtn" id="farmHow">How the farm works</button></p>';
     R.openSheet('farmshed', 'The shed', 'Seeds and tools', 'home_repair_service', html);
     var how = doc.getElementById('farmHow'); if (how) how.addEventListener('click', openGuide);
     var acts = doc.getElementById('shedActs'); if (acts) acts.addEventListener('click', function (e) { var btn = e.target.closest('[data-seed]'); if (!btn) return; var res = takeSeed(S, btn.dataset.seed, today()); if (!res.ok) { R.toast(res.why, 'info'); return; } R.chime('tap'); openShed(); });
     var buy = doc.getElementById('shedBuy'); if (buy) buy.addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-pack],[data-unlock],[data-tool]'); if (!btn || btn.disabled) return;
-      var res = btn.dataset.pack ? buyPack(S, RW, btn.dataset.pack) : btn.dataset.unlock ? unlockCrop(S, RW, btn.dataset.unlock) : buyTool(S, RW, btn.dataset.tool);
+      var btn = e.target.closest('[data-tool]'); if (!btn || btn.disabled) return;
+      var res = buyTool(S, RW, btn.dataset.tool);
       if (!res.ok) { R.toast(res.why, 'info'); return; }
       R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
-      R.toast(btn.dataset.pack ? res.n + ' ' + CROPS[btn.dataset.pack].name.toLowerCase() + ' seeds in the shed.' : btn.dataset.unlock ? CROPS[res.crop].name + ' grows on your farm now.' : TOOLS[res.tool].name + ' is yours.', 'redeem', line);
+      R.toast(TOOLS[res.tool].name + ' is yours.', 'redeem', line);
       if (R.renderDeck) R.renderDeck(); renderCan(); openShed();
     });
   }
   function openBasket() {
-    var f = farmState(S), rows = Object.keys(f.harvest).filter(function (k) { return f.harvest[k] > 0; });
+    var HB = root.OvuGreenhouse && root.OvuGreenhouse.HERBS, kind = function (k) { return CROPS[k] || (HB && HB[k]) || null; }; /* the greenhouse herbs share the basket */
+    var f = farmState(S), rows = Object.keys(f.harvest).filter(function (k) { return f.harvest[k] > 0 && kind(k); });
     R.openSheet('farmbasket', 'Your harvest', rows.length ? 'In the basket' : 'Nothing picked yet', 'shopping_basket',
-      (rows.length ? '<ul class="basketlist">' + rows.map(function (k) { return '<li><span class="dot" style="background:' + CROPS[k].colour + '"></span>' + esc(CROPS[k].name) + ' <b>×' + esc(f.harvest[k]) + '</b></li>'; }).join('') + '</ul>' : '<p>Plant, water and pick, and the basket fills.</p>') +
+      (rows.length ? '<ul class="basketlist">' + rows.map(function (k) { return '<li><span class="dot" style="background:' + kind(k).colour + '"></span>' + esc(kind(k).name) + ' <b>×' + esc(f.harvest[k]) + '</b></li>'; }).join('') + '</ul>' : '<p>Plant, water and pick, and the basket fills.</p>') +
       (function () { var p = farmState(S).pantry, bits = []; if (p.egg) bits.push(p.egg + ' egg' + (p.egg > 1 ? 's' : '')); if (p.milk) bits.push(p.milk + ' milk'); if (p.onsenegg) bits.push(p.onsenegg + ' onsen egg' + (p.onsenegg > 1 ? 's' : '')); return bits.length ? '<p class="help pantryline"><span class="ms">kitchen</span>From the barn: ' + esc(bits.join(', ')) + '.</p>' : ''; })() +
-      '<p class="help">Carrots, pumpkins and sweet potatoes are treats for Clover at the barn; kangkong, pak choy and strawberries for the hens. The rest is yours to admire.</p>');
+      '<p class="help">Carrots, pumpkins and sweet potatoes are treats for Clover at the barn; kangkong, pak choy and strawberries for the hens. The rest is yours to admire.</p>' +
+      (root.OvuKitchen && root.OvuKitchen.openKitchen ? '<div class="row"><button type="button" class="btn soft" id="basketCook"><span class="ms">skillet</span>Cook a dish</button></div>' : '')); /* the farm kitchen (ovu-kitchen.js) */
+    var ck = doc.getElementById('basketCook'); if (ck) ck.addEventListener('click', function () { R.chime('tap'); root.OvuKitchen.openKitchen(); });
   }
   /* several beds share this spot: ask which one */
   function openPicker(ids) {

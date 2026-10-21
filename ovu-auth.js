@@ -333,7 +333,7 @@
         try { location.replace('room.html'); } catch (e) { }
       }
     };
-    if (s) return call('POST', '/auth/v1/logout', {}, s.access_token).then(done, done);
+    if (s) { try { localStorage.removeItem(AUTH_LS); } catch (e) { } return call('POST', '/auth/v1/logout', {}, s.access_token).then(done, done); } /* the session is gone on this phone at once, not after the network (Codex sweep, 21 Oct) */
     done(); return Promise.resolve();
   }
 
@@ -532,7 +532,7 @@
     box.onclick = function (e) { var b = e.target.closest('[data-da]'); if (!b) return;
       if (b.dataset.da === 'no') { box.remove(); return; }
       b.disabled = true; b.innerHTML = '<span class="ms">hourglass_empty</span>Deleting…';
-      OvuSync.deleteAccount().then(function () { clearSession(); toastVia(opts, 'Your account and its backup are deleted. Your diary is still on this phone.', 'check_circle'); rerenderOpen(); },
+      OvuSync.deleteAccount().then(function () { try { if (root.OvuStore) root.OvuStore.setProfile({ owner: '' }); } catch (e) { } clearSession(); toastVia(opts, 'Your account and its backup are deleted. Your diary is still on this phone.', 'check_circle'); rerenderOpen(); },
         function (err) { b.disabled = false; b.innerHTML = '<span class="ms">delete_forever</span>Delete my account'; toastVia(opts, 'Could not delete the account: ' + err.message, 'error'); });
     };
   }

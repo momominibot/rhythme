@@ -242,5 +242,5 @@
       f.flee = Math.max(f.flee, 1 - d / reach * 0.5); f.turn = 0;
     });
   }
-  root.OvuBreathTap = { PRESETS: PRESETS, LENGTHS: LENGTHS, MIN_SAVE_S: MIN_SAVE_S, phaseAt: phaseAt, entryFor: entryFor, open: open, close: close, start: start, stop: stop, makeWater: makeWater, drop: drop, stepWater: stepWater, koi: function () { return koi.map(function (f) { return { x: f.x, y: f.y, fleeing: f.flee > 0.05, len: f.len }; }); } };
+  root.OvuBreathTap = { running: function () { return !!state; }, PRESETS: PRESETS, LENGTHS: LENGTHS, MIN_SAVE_S: MIN_SAVE_S, phaseAt: phaseAt, entryFor: entryFor, open: open, close: close, start: start, stop: stop, makeWater: makeWater, drop: drop, stepWater: stepWater, koi: function () { return koi.map(function (f) { return { x: f.x, y: f.y, fleeing: f.flee > 0.05, len: f.len }; }); } };
 })(typeof window !== 'undefined' ? window : this);

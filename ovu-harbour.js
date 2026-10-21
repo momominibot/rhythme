@@ -12,17 +12,17 @@
   'use strict';
   var SPECIES = [
     { id: 'grouper', name: 'Orange-spotted grouper', local: 'kerapu', spots: ['rocks', 'jetty'], time: 'any', img: 'fish-grouper.webp',
-      fact: 'Young groupers grow up in estuaries and mangroves; the adults live out on the reefs.', source: 'Wikipedia, orange-spotted grouper' },
+      fact: 'Young groupers grow up in estuaries and mangroves; the adults live out on the reefs.', source: 'Wikipedia, orange-spotted grouper', url: 'https://en.wikipedia.org/wiki/Orange-spotted_grouper' },
     { id: 'snapper', name: 'Mangrove red snapper', local: 'ikan merah', spots: ['rocks'], time: 'any', img: 'fish-snapper.webp',
-      fact: 'At home among mangrove roots when young, it moves out to open water to breed.', source: 'Wikipedia, mangrove red snapper' },
+      fact: 'At home among mangrove roots when young, it moves out to open water to breed.', source: 'Wikipedia, mangrove red snapper', url: 'https://en.wikipedia.org/wiki/Mangrove_red_snapper' },
     { id: 'barramundi', name: 'Barramundi', local: 'siakap', spots: ['jetty'], time: 'any', img: 'fish-barramundi.webp',
-      fact: 'Barramundi start life as males. In one study at a Singapore farm, most had become females by two to three years old.', source: 'Aquaculture Reports, 2021' },
+      fact: 'Barramundi start life as males. In one study at a Singapore farm, most had become females by two to three years old.', source: 'Aquaculture Reports, 2021', url: 'https://doi.org/10.1016/j.aqrep.2021.100712' },
     { id: 'mullet', name: 'Flathead grey mullet', local: 'belanak', spots: ['jetty', 'rocks'], time: 'day', img: 'fish-mullet.webp',
-      fact: 'It feeds by sucking up the top layer of the sea floor, for tiny algae and bits of food.', source: 'FAO species fact sheet' },
+      fact: 'It feeds by sucking up the top layer of the sea floor, for tiny algae and bits of food.', source: 'FAO species fact sheet', url: 'https://www.fao.org/fishery/culturedspecies/mugil_cephalus/en' },
     { id: 'rabbitfish', name: 'White-spotted rabbitfish', local: 'pek tor her', spots: ['rocks'], time: 'day', img: 'fish-rabbitfish.webp',
-      fact: 'A grazer of seaweed and seagrass, with venom in its fin spines, so fishers handle it with care. Teochew families prize it at Chinese New Year.', source: 'Wikipedia, white-spotted rabbitfish' },
+      fact: 'A grazer of seaweed and seagrass, with venom in its fin spines, so fishers handle it with care. Teochew families prize it at Chinese New Year.', source: 'Wikipedia, white-spotted rabbitfish', url: 'https://en.wikipedia.org/wiki/Siganus_canaliculatus' },
     { id: 'squid', name: 'Bigfin reef squid', local: 'sotong', spots: ['jetty'], time: 'night', img: 'fish-squid.webp',
-      fact: 'It changes the colour of its skin to match the sea floor beneath it.', source: 'Scientific Reports, 2022' }
+      fact: 'It changes the colour of its skin to match the sea floor beneath it.', source: 'Scientific Reports, 2022', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC8960755/' }
   ];
   var SPOTS = { jetty: { name: 'The jetty', where: 'out over the deep water', float: { x: 89, y: 60 } }, rocks: { name: 'The rocks', where: 'by the shore', float: { x: 46, y: 68 } } };
   function species(id) { return SPECIES.filter(function (s) { return s.id === id; })[0] || null; }
@@ -46,7 +46,7 @@
     var h = JSON.parse(JSON.stringify(harbourState(S))), e = h.book[id] || { first: null, n: 0 }, first = !e.n;
     e.n = Math.min(CAP, e.n + 1); if (first || !e.first) e.first = day; h.book[id] = e; h.casts = Math.min(CAP, h.casts + 1); /* the first meeting is today when none was counted before */
     try {
-      if (ST && ST.spendWith) { if (!ST.COSTS || ST.COSTS.fish == null) return { ok: false, why: 'unknown action' }; if (!ST.spendWith('fish', { harbour: h })) return { ok: false, why: 'Too tired for that. Energy comes back with a night’s sleep, or with the new day.' }; }
+      if (ST && ST.spendWith) { if (!ST.COSTS || ST.COSTS.fish == null) return { ok: false, why: 'unknown action' }; if (!ST.spendWith('fish', { harbour: h })) return { ok: false, why: 'Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.' }; }
       else if (S.commit) S.commit({ harbour: h }); else S.setState({ harbour: h });
     } catch (err) { return { ok: false, why: 'That could not be saved just now.' }; }
     return { ok: true, first: first, n: e.n, species: sp };
@@ -59,7 +59,9 @@
       { id: 'hbjetty', x: 78, y: 47, label: 'Jetty · cast a line', prompt: 'Tap to fish from the jetty', icon: 'phishing', wp: { x: 77, y: 53, flip: false } },
       { id: 'hbrocks', x: 11, y: 58, label: 'Rocks · cast from the shore', prompt: 'Tap to fish from the rocks', icon: 'phishing', wp: { x: 26, y: 58, flip: true } },
       { id: 'hbbench', x: 40, y: 39, label: 'Bench · watch the water', prompt: 'Tap to sit a while', icon: 'chair', wp: { x: 41, y: 47, flip: false } },
-      { id: 'hbhut', x: 27, y: 43, label: 'Harbour hut · the catch book', prompt: 'Tap to open the catch book', icon: 'menu_book', wp: { x: 31, y: 51, flip: true } }
+      { id: 'hbhut', x: 27, y: 43, label: 'Harbour hut · the catch book', prompt: 'Tap to open the catch book', icon: 'menu_book', wp: { x: 31, y: 51, flip: true } },
+      /* the little post by the hut points up Harbour Lane (ovu-lane.js, 21 Oct): its shops are sheets until the lane's plate is drawn */
+      { id: 'hblane', x: 19, y: 44, label: 'Signpost · Harbour Lane', prompt: 'Tap to read the signpost', icon: 'signpost', wp: { x: 23, y: 51, flip: true } }
     ],
     home: { x: 34, y: 73, flip: false },
     zones: [[[8, 46], [18, 41], [34, 34], [50, 32], [63, 36], [60, 42], [50, 47], [44, 52], [39, 60], [37, 68], [45, 76], [40, 81], [28, 80], [12, 72], [3, 62], [3, 52]],
@@ -87,21 +89,24 @@
   var line = null, enc = 0;
   function spotSheet() { var id = R.sheetId ? R.sheetId() : ''; var m = /^harbour-(jetty|rocks)$/.exec(id || ''); return m ? m[1] : null; }
   function invalidate(reopen) { enc++; clearLine(); var sp = spotSheet(); if (reopen && sp && here() && R.sheetOpen()) openSpot(sp); }
+  /* the float she chose at Bait & Fin (ovu-lane.js); blush is everyone's from the start */
+  function floatOf() { var LN = root.OvuLane; return LN && LN.floatOf ? LN.floatOf(S) : { id: 'blush', top: '#e58aa8' }; }
   function clearLine() { if (line) { if (line.parentNode) line.remove(); line = null; } R.els.scene.classList.remove('fishing', 'bite'); }
   function castLine(spot) {
+    if (root.OvuSound) root.OvuSound.play('cast'); /* the cast whistles out and plops (one owner for this cue) */
     clearLine();
     var f = SPOTS[spot].float, p = R.pos ? R.pos() : null;
     var el = doc.createElement('div'); el.className = 'harbourthing castline'; el.setAttribute('aria-hidden', 'true');
     var x0 = p ? p.x : f.x, y0 = p ? p.y - 9 : f.y;
     el.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M' + x0 + ' ' + y0 + ' Q ' + ((x0 + f.x) / 2) + ' ' + (Math.min(y0, f.y) - 6) + ' ' + f.x + ' ' + f.y + '" fill="none" stroke="rgba(255,255,255,.85)" stroke-width=".35" vector-effect="non-scaling-stroke"/></svg>' +
-      '<span class="float" style="left:' + f.x + '%;top:' + f.y + '%"><i class="ring"></i><i class="ring r2"></i><b></b></span>';
+      '<span class="float' + (floatOf().glow && phaseNow() === 'night' ? ' glow' : '') + '" style="left:' + f.x + '%;top:' + f.y + '%;--floatc:' + floatOf().top + '"><i class="ring"></i><i class="ring r2"></i><b></b></span>';
     R.els.props.appendChild(el); line = el; R.els.scene.classList.add('fishing');
   }
   function waterSVG(stage, sp) {
     var s = '<svg viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="hbw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfc3f3"/><stop offset="1" stop-color="#9a8ad8"/></linearGradient></defs><rect width="100" height="70" fill="url(#hbw)"/>';
     s += '<path d="M0 24 q 10 -4 20 0 t 20 0 t 20 0 t 20 0 t 20 0" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1.6"/><path d="M0 46 q 10 -4 20 0 t 20 0 t 20 0 t 20 0 t 20 0" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.6"/>';
     if (stage === 'bite') s += '<ellipse class="hbshadow" cx="46" cy="44" rx="16" ry="6" fill="rgba(60,40,110,.35)"/>';
-    if (stage !== 'ready') s += '<g class="hbfloat' + (stage === 'bite' ? ' dip' : '') + '"><circle cx="52" cy="30" r="4.5" fill="#fff"/><circle cx="52" cy="28" r="3" fill="#e58aa8"/>' + (stage === 'bite' ? '' : '<circle cx="52" cy="30" r="9" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1" class="hbring"/>') + '</g>';
+    if (stage !== 'ready') s += '<g class="hbfloat' + (stage === 'bite' ? ' dip' : '') + '"><circle cx="52" cy="30" r="4.5" fill="#fff"/><circle cx="52" cy="28" r="3" fill="' + floatOf().top + '"/>' + (stage === 'bite' ? '' : '<circle cx="52" cy="30" r="9" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1" class="hbring"/>') + '</g>';
     return s + '</svg>';
   }
   function spotHot(id) { return HARBOUR.hotspots.filter(function (h) { return h.id === id; })[0]; }
@@ -119,7 +124,7 @@
     acts.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (btn.dataset.act === 'book') { openBook(spot); return; }
-      if (ST && !ST.can('fish')) { R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); return; }
+      if (ST && !ST.can('fish')) { R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); return; }
       if (!here()) { R.hideSheet(); return; }
       var pic = doc.querySelector('#sheet .hbpic'); if (pic) pic.innerHTML = waterSVG('cast');
       castLine(spot);
@@ -130,6 +135,7 @@
     });
   }
   function bite(spot, fish) {
+    if (root.OvuSound) root.OvuSound.play('pop'); /* the float dips */
     var my = ++enc;
     R.els.scene.classList.add('bite');
     var pic = doc.querySelector('#sheet .hbpic'); if (pic) pic.innerHTML = waterSVG('bite');
@@ -142,7 +148,7 @@
       var btn = e.target.closest('[data-bite]'); if (!btn) return; acts.onclick = null;
       if (btn.dataset.bite === 'leave') { clearLine(); R.toast('It swims on. Nothing lost.', 'water'); openSpot(spot); return; }
       if (my !== enc || !here() || S.state().sleeping || (CARE && CARE.asleepNow && CARE.asleepNow())) { clearLine(); R.hideSheet(); return; } /* the moment passed: a reset, another tab, sleep */
-      if (ST && !ST.can('fish')) { R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); clearLine(); openSpot(spot); return; }
+      if (ST && !ST.can('fish')) { R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); clearLine(); openSpot(spot); return; }
       var r = record(S, fish.id, today(), ST);
       clearLine();
       if (!r.ok) { R.toast(r.why, 'info'); openSpot(spot); return; }
@@ -153,7 +159,7 @@
     var sp = r.species, line3 = R.moment ? R.moment('release', { quiet: true }) : '';
     R.openSheet('harbour-fish', sp.name, (r.first ? 'First time! ' : '') + esc(sp.local) + (r.n > 1 ? ' · met ' + r.n + ' times' : ''), 'set_meal',
       '<div class="fishcard"><img src="' + ART + sp.img + '" alt="' + esc(sp.name) + '"><div><b>' + esc(sp.name) + '</b><small>' + esc(sp.local) + '</small></div></div>' +
-      '<p class="fishfact">' + esc(sp.fact) + ' <span class="fishsrc">' + esc(sp.source) + '</span></p>' +
+      '<p class="fishfact">' + esc(sp.fact) + ' <span class="fishsrc">' + esc(sp.source) + (sp.url ? ' <a class="fishlink" href="' + esc(sp.url) + '" target="_blank" rel="noopener">Read the source</a>' : '') + '</span></p>' +
       (line3 ? '<p class="mindline"><span class="ms">spa</span><span>' + esc(line3) + '</span></p>' : '') +
       '<div class="row"><button type="button" class="btn primary" id="fishGo"><span class="ms">water</span>Let it go</button><button type="button" class="btn ghost" id="fishBook"><span class="ms">menu_book</span>Catch book</button></div>' +
       '<p class="help">It is already written in your catch book. Back it goes, the same as every fish here.</p>');
@@ -181,7 +187,7 @@
   }
   function sitDown() {
     if (sitting || !here() || !idle()) return;
-    var G = root.OvuGarden, el = doc.createElement('div'), outfit = S.profile().outfit || 'base';
+    var G = root.OvuGarden, el = doc.createElement('div'), outfit = (function (o) { return /^[a-z0-9-]{1,32}$/.test(o || '') ? o : 'base'; })(S.profile().outfit); /* an imported outfit name never becomes markup (Codex sweep, 21 Oct) */
     el.className = 'nb springsitter benchsitter'; el.dataset.id = 'benchsitter';
     el.innerHTML = '<img src="' + ART + 'avatar-' + outfit + '.webp" alt="">';
     var stop = doc.createElement('button'); stop.type = 'button'; stop.className = 'springstop'; stop.id = 'benchStop'; stop.innerHTML = '<span class="ms">stop_circle</span>Stop watching';
