@@ -79,19 +79,31 @@
      length, taps or first times. Moon Tap counts once a session reaches a full minute; seconds are not carried. */
   var IMPORTED_SRC = { 'apple-health': 1, 'google-fit': 1, import: 1, imported: 1 };
   var PRACTICE = { points: 2, cap: 6 };
+  var CANON_PART = { wake: 'wake', teeth: 'teeth', coffee: 'coffee', morning: 'teeth' }; /* the short-pause morning counts as the brushing slot */
   function practicePoints(l, ev) {
     var d = ev.data || {}, day = S.today();
     if ((d.kind === 'breathtap' || d.kind === 'lightflower') && (Number(d.seconds) || 0) < 60) return 0; /* the tap games count once a session reaches a full minute */
     var last = watermark(l); if (last && day < last) return 0; /* a clock set back to an earlier day cannot reopen that day's cap (Codex review, 20 Oct) */
     if (!l.mindDay || l.mindDay.day !== day) l.mindDay = { day: day, pts: 0 };
+    /* the morning parts pay once a day each, whether done in the routine or on their own: ending early, deleting and repeating never earns more (Codex, 21 Oct) */
+    var slot = d.kind === 'informal' ? CANON_PART[d.activity] : null;
+    if (slot) { if (!l.mindActs || l.mindActs.day !== day) l.mindActs = { day: day, acts: {} }; if (l.mindActs.acts[slot]) return 0; l.mindActs.acts[slot] = 1; }
     var add = Math.max(0, Math.min(PRACTICE.points, PRACTICE.cap - l.mindDay.pts));
     l.mindDay.pts += add; if (add) l.dailyLast = day; return add;
+  }
+  /* a bench practice (ovu-seats.js) says thank you once a day per physical seat: the flat practice points inside the day's
+     cap, and nothing for the same bench again today however the entry got there (Codex design review, 21 Oct) */
+  function seatPoints(l, ev) {
+    var d = ev.data || {}, day = S.today();
+    if (!l.seatDay || l.seatDay.day !== day) l.seatDay = { day: day, seats: {} };
+    if (!d.seat || l.seatDay.seats[d.seat]) return 0;
+    var add = practicePoints(l, ev); if (add) l.seatDay.seats[d.seat] = 1; return add;
   }
   /* Award for a saved entry; a first log on a new day also grows the streak. */
   /* a saved record earns once: editing it again returns the same receipt and no hearts */
   function receipted(l, ev) { l.receipts = l.receipts || {}; if (!ev || !ev.id) return false; if (l.receipts[ev.id]) return true; l.receipts[ev.id] = 1; var ks = Object.keys(l.receipts); if (ks.length > 3000) ks.slice(0, ks.length - 3000).forEach(function (k) { delete l.receipts[k]; }); return false; }
   function award(ev) {
-    if (ev.type === 'weight') return { points: 0, bonus: 0, hearts: ledger().hearts }; /* numbers are never rewarded */
+    if (ev.type === 'weight' || ev.type === 'sleepcheck') return { points: 0, bonus: 0, hearts: ledger().hearts }; /* numbers are never rewarded, and neither is answering the sleep check */
     /* only today's own log earns: a backfilled day or an entry brought in from another app earns nothing, as the rule above
        says (Codex design review, 20 Oct: an old date or an import still paid six food hearts on an empty ledger) */
     if ((ev.date && ev.date !== S.today()) || IMPORTED_SRC[ev.source]) return { points: 0, bonus: 0, hearts: ledger().hearts, backfill: true };
@@ -102,7 +114,7 @@
       if (bp) { lb.hearts += bp; lb.earned += bp; lb.log = lb.log || []; lb.log.unshift({ at: new Date().toISOString(), type: 'breathtap', points: bp }); lb.log = lb.log.slice(0, 200); }
       write(lb); return { points: bp, bonus: 0, hearts: lb.hearts, streak: lb.streak };
     }
-    var l = ledger(), pts = ev.type === 'mindfulness' ? practicePoints(l, ev) /* a flat small thank-you, capped per day */ : dailyPoints(l, ev.type);
+    var l = ledger(), pts = ev.type === 'mindfulness' ? (ev.data && ev.data.seat ? seatPoints(l, ev) : practicePoints(l, ev)) /* a flat small thank-you, capped per day */ : dailyPoints(l, ev.type);
     /* no streak bonus and no per-item meal bonus (four-persona review, 20 Oct, every persona and every model: a run of days and
      * a longer meal list are pressure, and hearts are for logging, not for logging more). The days-logged count stays as a
      * plain record; it never changes what anything earns. */
@@ -123,6 +135,16 @@
     l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'spend', what: String(what || ''), points: -cost }); l.log = l.log.slice(0, 200);
     var p = { rewards: l }; Object.keys(patch || {}).forEach(function (k) { p[k] = patch[k]; });
     if (S.commit) S.commit(p); else S.setState(p); return l;
+  }
+  /* a practice that writes no diary entry (a cup brewed in the greenhouse, 21 Oct): exactly the flat practice thank-you and
+     the day's practice cap, by the same practicePoints as every other practice, written with what the practice used up
+     (patch) in one save. A day already at its cap, or a clock set back, earns nothing, and the patch still lands. */
+  function thank(what, patch) {
+    var l = JSON.parse(JSON.stringify(ledger())), pts = practicePoints(l, { type: 'mindfulness', data: { kind: 'informal', practice: String(what || '') } });
+    if (pts) { l.hearts += pts; l.earned += pts; l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'practice', what: String(what || ''), points: pts }); l.log = l.log.slice(0, 200); }
+    var p = { rewards: l }; Object.keys(patch || {}).forEach(function (k) { p[k] = patch[k]; });
+    if (S.commit) S.commit(p); else S.setState(p);
+    return { points: pts, hearts: l.hearts };
   }
   function buy(id) {
     var l = ledger(), item = SHOP.filter(function (s) { return s.id === id; })[0];
@@ -182,5 +204,5 @@
     if (add) { l.hearts += add; l.earned += add; l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'petcare', pet: pet, action: action, points: add }); l.log = l.log.slice(0, 200); }
     write(l); return { points: add, hearts: l.hearts, capped: add < pts };
   }
-  root.OvuRewards = { SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, PRACTICE: PRACTICE, ledger: ledger, award: award, buy: buy, spend: spend, todayLeft: todayLeft, tester: tester, toggle: toggle, grant: grant, care: care, item: item, treatsFor: treatsFor, useTreat: useTreat, wearing: wearing, wear: wear, nextWear: nextWear, CARE: CARE, CARE_CAP: CARE_CAP };
+  root.OvuRewards = { SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, PRACTICE: PRACTICE, ledger: ledger, award: award, buy: buy, spend: spend, thank: thank, todayLeft: todayLeft, tester: tester, toggle: toggle, grant: grant, care: care, item: item, treatsFor: treatsFor, useTreat: useTreat, wearing: wearing, wear: wear, nextWear: nextWear, CARE: CARE, CARE_CAP: CARE_CAP };
 })(window);
