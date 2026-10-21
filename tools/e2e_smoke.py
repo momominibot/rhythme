@@ -20,7 +20,7 @@ NOW = datetime.datetime.now().isoformat()
 
 # a consenting, onboarded person with three entries; Luna's AI help off (the default)
 SESS = {"access_token": "smoke-token", "refresh_token": "smoke-refresh", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000aa", "email": "smoke@example.test"}}
-SESSION_SEED = "localStorage.setItem('ovumind_auth_v1', %s);" % json.dumps(json.dumps(SESS))
+SESSION_SEED = "if(!localStorage.getItem('smoke_signed_out')) localStorage.setItem('ovumind_auth_v1', %s);" % json.dumps(json.dumps(SESS))  # a context that signed out stays signed out across its own navigations
 DB = {"version": 1, "createdAt": NOW, "updatedAt": NOW,
       "profile": {"name": "Smoke", "outfit": "base", "lifeStage": "", "cycleLength": None, "periodLength": None, "onboarded": True,
                   "consent": {"v": 4, "at": NOW, "luna": False, "improve": False}, "ageAttest": {"confirmed": True, "version": 1, "at": NOW},
@@ -210,6 +210,7 @@ async def main():
             check("a tap on the walking corgi stops her and holds her while her care bubble is up; Escape lets her go", held["held"] and held["state"] == "rest" and held["bubble"] and not rel["held"] and not rel["bubble"], {"held": held, "rel": rel})
             await page.evaluate("()=>{OvuRoom.isNight=window.__dayReal.night; OvuRoom.asleep=window.__dayReal.asleep; delete window.__dayReal}")
             await page.click("#camIn"); await page.wait_for_timeout(450)
+            await page.wait_for_function("()=>{var b=document.querySelector('#sceneInner').getBoundingClientRect(), k=[b.left,b.top,b.width].map(Math.round).join(); var same = window.__zr === k; window.__zr = k; return same && OvuRoom.cam().z > 1.2;}", timeout=6000, polling=120) # the zoom has settled (two reads alike) before the tap is aimed, on a slow machine too
             await floor_tap(44, 76)
             await page.wait_for_function("()=>!OvuWalk.walking()", timeout=8000); await page.wait_for_timeout(120)
             zoomed = await page.evaluate("()=>({pos: OvuRoom.pos(), zoomed: document.querySelector('#scene').classList.contains('zoomed')})")
@@ -1998,7 +1999,7 @@ async def main():
             ctxX = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxX.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxX.add_init_script(SESSION_SEED)
             px = await ctxX.new_page(); await px.route("**/*", gate)
             await px.goto(BASE + "room.html", wait_until="networkidle"); await px.goto(BASE + "room.html#you", wait_until="load"); await px.reload(wait_until="networkidle"); await px.wait_for_selector('#sheet[aria-hidden="false"]', timeout=10000)  # a cold goto to #you boots once and strips the hash; the fragment step after a full load keeps it through the reload
-            await px.evaluate("()=>{localStorage.removeItem('ovumind_auth_v1'); window.dispatchEvent(new StorageEvent('storage', {key:'ovumind_auth_v1'}));}"); await px.wait_for_timeout(600)
+            await px.evaluate("()=>{localStorage.removeItem('ovumind_auth_v1'); localStorage.setItem('smoke_signed_out', '1'); window.dispatchEvent(new StorageEvent('storage', {key:'ovumind_auth_v1'}));}"); await px.wait_for_timeout(600)
             xo = await px.evaluate("()=>({wall: !!document.querySelector('#welcome:not([hidden])'), sheet: document.querySelector('#sheet').getAttribute('aria-hidden'), fresh: !document.querySelector('#wEmail').readOnly && document.querySelector('#wCodeWrap').hidden && document.querySelector('#wEmailForm').hidden && !document.querySelector('#wSignIn').hidden, inert: document.querySelector('#main').inert === true})")
             check("a sign-out in another tab brings the wall back over the open You sheet, closes the sheet, makes the room inert, and leaves the email form fresh", xo["wall"] and xo["sheet"] == "true" and xo["fresh"] and xo["inert"], xo)
             await px.goto(BASE + "face-ppg.html", wait_until="load"); await px.wait_for_timeout(700)
