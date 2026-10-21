@@ -189,11 +189,11 @@
     var A = root.OvuAgents; opts = opts || {};
     if (!sn || !A) return '';
     var rows = A.sleepNotesRows(sn);
-    if (sn.flushNights) rows.push(['Nights woken by a hot flush or night sweat', plural(sn.flushNights, 'night') + ' (sleep details or symptom notes)']);
+    if (sn.flushNights) rows.push(['Nights woken by a hot flush or night sweat', sn.flushNights + ' of ' + sn.nights + ' recorded night' + (sn.nights === 1 ? '' : 's') + ' (from sleep details or symptom notes; a night without either is not counted as no)']);
     var checks = (sn.checks || []).filter(function (c) { return c.answers && Object.keys(c.answers).length; });
     if (!rows.length && !checks.length) return '<p class="note">' + esc(opts.empty || 'No sleep details answered in this range.') + '</p>';
     var html = rows.length ? '<dl class="sndl">' + rows.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '';
-    if (checks.length) html += '<div class="snchecks">' + checks.slice(0, opts.checks || 3).map(function (c) {
+    if (checks.length) html += '<div class="snchecks">' + checks.slice(0, opts.checks || 2).map(function (c) {
       var notes = A.sleepCheckNotes(c.answers).map(function (x) { return x.title.replace(/^Worth raising: /, ''); });
       return '<div class="sncheck"><b>Two-week sleep check, ' + esc(pretty(c.date, { day: 'numeric', month: 'short', year: 'numeric' })) + '</b><span>' + esc(A.sleepCheckText(c.answers)) + '</span>' + (notes.length ? '<span class="snnotes">Notes raised: ' + esc(notes.join('; ').toLowerCase()) + '</span>' : '') + '</div>';
     }).join('') + '</div>';

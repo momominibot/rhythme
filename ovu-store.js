@@ -168,10 +168,11 @@
     var have = {}; db.events.forEach(function (e) { if (SINGLE_PER_DAY[e.type]) have[e.type + '|' + e.date] = true; });
     (items || []).forEach(function (it) {
       if (!it || typeof it !== 'object') { skipped++; return; }
-      if (it.id) { var ev = get(it.id); if (!ev || !it.data || typeof it.data !== 'object') { skipped++; return; } ev.data = it.data; ev.updatedAt = nowIso(); updated++; if (ev.type === 'period') touchedPeriod = true; return; }
+      if (it.id) { var ev = get(it.id); if (!ev || !it.data || typeof it.data !== 'object') { skipped++; return; } try { ev.data = cleanData(ev.type, it.data); } catch (err) { skipped++; return; } ev.updatedAt = nowIso(); updated++; if (ev.type === 'period') touchedPeriod = true; return; }
       if (TYPES.indexOf(it.type) < 0 || !validDate(it.date) || it.date > t || !it.data || typeof it.data !== 'object') { skipped++; return; }
+      var itData; try { itData = cleanData(it.type, it.data); } catch (err) { skipped++; return; } /* the same write boundary as add(): an empty check or stray codes never land (Codex, 21 Oct) */
       if (SINGLE_PER_DAY[it.type]) { if (have[it.type + '|' + it.date]) { skipped++; return; } have[it.type + '|' + it.date] = true; }
-      db.events.push({ id: uid(), type: it.type, date: it.date, createdAt: nowIso(), updatedAt: nowIso(), source: it.source || 'import', data: it.data });
+      db.events.push({ id: uid(), type: it.type, date: it.date, createdAt: nowIso(), updatedAt: nowIso(), source: it.source || 'import', data: itData });
       added++; if (it.type === 'period') touchedPeriod = true;
     });
     if (added || updated) { save('import'); if (touchedPeriod) mirrorLegacy({ type: 'period' }); }
@@ -210,8 +211,8 @@
     var db = load(), changed = [];
     (puts || []).forEach(function (ev) {
       if (!ev || typeof ev !== 'object' || TYPES.indexOf(ev.type) < 0 || !validDate(ev.date) || !ev.data || typeof ev.data !== 'object') return;
-      var id = String(ev.id || uid());
-      var norm = { id: id, type: ev.type, date: ev.date, createdAt: ev.createdAt || nowIso(), updatedAt: ev.updatedAt || ev.createdAt || nowIso(), source: ev.source || 'cloud', data: ev.data };
+      var id = String(ev.id || uid()), evData; try { evData = cleanData(ev.type, ev.data); } catch (err) { return; } /* a cloud row that cleans to nothing is not applied */
+      var norm = { id: id, type: ev.type, date: ev.date, createdAt: ev.createdAt || nowIso(), updatedAt: ev.updatedAt || ev.createdAt || nowIso(), source: ev.source || 'cloud', data: evData };
       var found = false;
       for (var i = 0; i < db.events.length; i++) { if (db.events[i].id === id) { db.events[i] = norm; found = true; break; } }
       if (!found) db.events.push(norm);
@@ -465,6 +466,7 @@
   function exportJSON() { return JSON.stringify(load(), null, 1); }
   function importJSON(text, mode) {
     var incoming = normalise(JSON.parse(text));
+    incoming.events = (incoming.events || []).map(function (e) { try { return Object.assign({}, e, { data: cleanData(e.type, e.data) }); } catch (err) { return null; } }).filter(Boolean); /* a restored file passes the same write boundary */
     var db = load();
     if (mode === 'replace') { cache = incoming; }
     else {
@@ -544,11 +546,14 @@
   /* true while a sandbox runs: a save then would write the sample over the real record, so callers that write lazily check this */
   function isSandbox() { return sandboxDepth > 0; }
 
+  /* same-day duplicates (a sync can bring two checks for one day): the newest edit is the answer; on a tie, the later row (Codex, 21 Oct) */
+  function newestFirst(a, b) { var ta = String(a.updatedAt || a.createdAt || ''), tb = String(b.updatedAt || b.createdAt || ''); return tb > ta ? 1 : tb < ta ? -1 : 0; }
+  function latestOnDate(type, date) { var l = list(type, { from: date, to: date }).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return newestFirst(x.e, y.e) || (y.i - x.i); }); return l.length ? l[0].e : null; }
   root.OvuStore = {
     /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
     NOTICE_V: 4, /* v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
     KEY: KEY, TYPES: TYPES, checkinAnswers: checkinAnswers, setCheckinAnswer: setCheckinAnswer, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
-    load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
+    load: load, list: list, get: get, latestOnDate: latestOnDate, newestFirst: newestFirst, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
     putEvent: putEvent, applyRemote: applyRemote,
     addMany: addMany, removeWhere: removeWhere,
     profile: profile, setProfile: setProfile, state: state, setState: setState, commit: commit, reload: function () { load(true); return state(); },

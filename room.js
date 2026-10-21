@@ -636,17 +636,28 @@
   function sleepDetailsHTML() {
     return '<div class="sqbox"><button type="button" class="btn ghost sqtoggle" aria-expanded="false" aria-controls="sqBody" id="sqToggle"><span class="ms">add</span>Add sleep details (optional)</button>' +
       '<div class="sqbody" id="sqBody" hidden><p class="help">Skip any question. These notes help you see patterns; they are not a sleep test or a score.</p>' +
-      A.DETAIL_ORDER.map(function (k) { return chipGroupHTML(A.SLEEP_LABELS, k, null); }).join('') + '</div></div>';
+      A.DETAIL_ORDER.map(function (k) { return chipGroupHTML(A.SLEEP_LABELS, k, null); }).join('') + '<p class="help sqclearrow"><button type="button" class="linkbtn" id="sqClear">Clear these answers</button></p></div></div>';
   }
   function wireSleepDetails(root) {
     var t = $('#sqToggle', root), bd = $('#sqBody', root); if (!t || !bd) return;
     function awakeShown() { var w = $('.sqf[data-sq="wakeups"] .chipbtn.on', bd); $('.sqf[data-sq="awake"]', bd).hidden = !w || w.dataset.v === '0'; }
-    t.addEventListener('click', function () { var open = bd.hidden; bd.hidden = !open; t.setAttribute('aria-expanded', open ? 'true' : 'false'); t.innerHTML = open ? '<span class="ms">remove</span>Hide sleep details' : '<span class="ms">add</span>Add sleep details (optional)'; });
+    t.addEventListener('click', function () { var open = bd.hidden, n = Object.keys(readChipGroups(bd)).length; bd.hidden = !open; t.setAttribute('aria-expanded', open ? 'true' : 'false'); t.innerHTML = open ? '<span class="ms">remove</span>Hide sleep details' : (n ? '<span class="ms">add</span>Sleep details (' + n + ' answered, kept)' : '<span class="ms">add</span>Add sleep details (optional)'); });
+    var cl = $('#sqClear', bd); if (cl) cl.addEventListener('click', function () { Array.prototype.forEach.call(bd.querySelectorAll('.chipbtn.on'), function (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); }); awakeShown(); });
     wireChipGroups(bd, function (k) { if (k === 'wakeups') awakeShown(); });
     awakeShown();
   }
-  /* the answers count only while the box is open, so closing it saves no details */
-  function readSleepDetails(root) { var bd = $('#sqBody', root); if (!bd || bd.hidden) return null; var d = readChipGroups(bd); return Object.keys(d).length ? d : null; }
+  /* the answers count whether the box is open or folded away (Codex, 21 Oct: folding it used to drop them); Clear these answers is the one way to drop them */
+  function readSleepDetails(root) { var bd = $('#sqBody', root); if (!bd) return null; var d = readChipGroups(bd); return Object.keys(d).length ? d : null; }
+  /* the night form survives a trip to the two-week check and back (Codex, 21 Oct); the quality moons are the one field not kept */
+  var sleepDraft = null;
+  function keepSleepDraft(body) { var bd = $('#sqBody', body); if (!$('#slBed', body)) return; sleepDraft = { date: $('#slDate', body).value, bed: $('#slBed', body).value, wake: $('#slWake', body).value, notes: ($('#slNotes', body) || {}).value || '', open: !!(bd && !bd.hidden), details: bd ? readChipGroups(bd) : {} }; }
+  function restoreSleepDraft(body) {
+    var d = sleepDraft; if (!d) return; sleepDraft = null;
+    if ($('#slDate', body) && d.date) $('#slDate', body).value = d.date; if ($('#slBed', body)) $('#slBed', body).value = d.bed || ''; if ($('#slWake', body)) $('#slWake', body).value = d.wake || ''; if ($('#slNotes', body)) $('#slNotes', body).value = d.notes || '';
+    var bd = $('#sqBody', body), t = $('#sqToggle', body);
+    if (bd) { Object.keys(d.details || {}).forEach(function (k) { [].concat(d.details[k]).forEach(function (v) { var b = bd.querySelector('.sqf[data-sq="' + k + '"] .chipbtn[data-v="' + v + '"]'); if (b) { b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); } }); }); var w = bd.querySelector('.sqf[data-sq="wakeups"] .chipbtn.on'), aw = bd.querySelector('.sqf[data-sq="awake"]'); if (aw) aw.hidden = !w || w.dataset.v === '0'; }
+    if (d.open && t && bd && bd.hidden) t.click();
+  }
   function detailLine(d) {
     if (!d) return '';
     var L = A.SLEEP_LABELS, lab = function (k) { var o = L[k].opts.filter(function (x) { return x[0] === d[k]; })[0]; return o ? o[1] : ''; }, bits = [];
@@ -660,7 +671,7 @@
   function sqNoteHTML(n) { return '<div class="sqnote ' + esc(n.level) + '"><b>' + esc(n.title) + '</b><p>' + esc(n.message) + '</p></div>'; }
   /* the latest check's notes stay on show for two weeks, whatever else was or was not answered */
   function sleepCheckCardHTML() {
-    var last = S.list('sleepcheck').slice(-1)[0], age = last ? S.diffDays(last.date, S.today()) : null, due = !last || age >= 14;
+    var all = S.list('sleepcheck'), lastDay = all.length ? all.map(function (e) { return e.date; }).sort().slice(-1)[0] : null, last = lastDay ? S.latestOnDate('sleepcheck', lastDay) : null, age = last ? S.diffDays(last.date, S.today()) : null, due = !last || age >= 14;
     var notes = last && age < 14 ? A.sleepCheckNotes(last.data) : [];
     return '<div class="stat sqcard"><span class="ms">fact_check</span><div><b>Two-week sleep check</b><span>' + (last ? 'Last done ' + esc(prettyDate(last.date)) + (due ? '. Ready for another.' : '.') : 'Eight short questions about the last two weeks. About a minute.') + '</span></div><button type="button" class="btn soft" id="openSleepCheck" style="flex:0 0 auto">' + (last && !due ? 'Open' : 'Start') + '</button></div>' +
       (notes.length ? '<div class="sqnotes">' + notes.map(sqNoteHTML).join('') + '</div>' : '');
@@ -681,7 +692,8 @@
         $('#sqResult').innerHTML = (notes.length ? notes.map(sqNoteHTML).join('') + '<small class="sqsmall">Rhythme cannot assess your sleep or diagnose. These notes follow published guidance; no clinician receives them.</small>' : '<div class="sqnote info"><b>Nothing to flag from these answers</b><p>If sleep is worrying you, it is always fine to talk to a doctor about it.</p></div>') +
           '<div class="row"><button type="button" class="btn ghost" id="sqBack"><span class="ms">arrow_back</span>Back to sleep</button></div>';
         $('#sqBack').addEventListener('click', openSleepRecord);
-        $('#sqResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (notes.some(function (n) { return n.level !== 'info'; })) { careOn = true; endMoment(); } /* a care note on screen holds the cheerful moments, as a care card does */
+        $('#sqResult').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'nearest' });
         renderDeck();
       } catch (e) { message($('#sqMsg'), e.message, false); }
     });
@@ -732,7 +744,7 @@
   var RM = window.OvuRemind;
   var DAYN = ['S', 'M', 'T', 'W', 'T', 'F', 'S'], DAYF = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   function clockTabs(on) { return '<div class="tabs" id="clockTabs"><button type="button" data-tab="reminders" class="' + (on === 'reminders' ? 'on' : '') + '">Reminders</button><button type="button" data-tab="sleep" class="' + (on === 'sleep' ? 'on' : '') + '">Record a night</button></div>'; }
-  function wireClockTabs() { var t = $('#clockTabs'); if (!t) return; t.addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b) return; chime('tap'); if (b.dataset.tab === 'sleep') openSleepRecord(); else openClock(); }); }
+  function wireClockTabs() { var t = $('#clockTabs'); if (!t) return; t.addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b || b.classList.contains('on')) return; chime('tap'); /* the active tab is a no-op: it must not wipe the form */ if (b.dataset.tab === 'sleep') openSleepRecord(); else openClock(); }); }
   function daysText(days) { if (days.length === 7) return 'Every day'; if (days.join() === '1,2,3,4,5') return 'Weekdays'; if (days.join() === '0,6') return 'Weekends'; return days.map(function (d) { return DAYF[d].slice(0, 3); }).join(', '); }
   function fmtTime(t) { var h = Number(t.slice(0, 2)), m = t.slice(3), ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12; return h + (m === '00' ? '' : ':' + m) + ap; }
   function permBox() {
@@ -797,14 +809,14 @@
       '<button class="btn primary" id="saveSleep" style="width:100%"><span class="ms">check</span>Save night</button><div class="msg" id="sleepMsg"></div>' +
       '<div id="sqCardWrap">' + sleepCheckCardHTML() + '</div>' +
       '<div class="field"><span class="lbl">Last 7 nights</span><div id="sleepList">' + sleepListHTML() + '</div></div>');
-    wireMoons(body); wireClockTabs(); wireSleepDetails(body);
-    $('#openSleepCheck').addEventListener('click', function () { chime('tap'); openSleepCheck(); });
+    wireMoons(body); wireClockTabs(); wireSleepDetails(body); restoreSleepDraft(body);
+    $('#openSleepCheck').addEventListener('click', function () { chime('tap'); keepSleepDraft(body); openSleepCheck(); });
     $('#saveSleep').addEventListener('click', function () {
       try {
         var q = Number($('.moons', body).dataset.value || 0) || null;
         if (!S.validTime($('#slBed').value) || !S.validTime($('#slWake').value)) throw new Error('Enter both bedtime and wake time.');
         var nd = { bedTime: $('#slBed').value, wakeTime: $('#slWake').value, quality: q, notes: $('#slNotes').value.trim(), mode: 'manual' }, det = readSleepDetails(body); if (det) nd.details = det;
-        var ev = S.add('sleep', $('#slDate').value, nd);
+        var ev = S.add('sleep', $('#slDate').value, nd); sleepDraft = null;
         message($('#sleepMsg'), 'Saved: ' + A.fmtHours(S.sleepHours(ev.data)) + ' of sleep.', true); chime('save');
         $('#sleepList').innerHTML = sleepListHTML(); afterSave(ev);
       } catch (e) { message($('#sleepMsg'), e.message, false); }

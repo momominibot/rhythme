@@ -185,6 +185,8 @@
     var moves = entries.filter(function (e) { return e.type === 'exercise'; });
     if (moves.length) { var mvMin = moves.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0), mvNames = []; moves.forEach(function (e) { var n = String(e.data.label || 'movement').toLowerCase(); if (mvNames.indexOf(n) < 0) mvNames.push(n); }); bullets.push('directions_run'); parts.push(Math.round(mvMin) + ' min of movement (' + mvNames.join(', ') + ').'); highlights.push({ icon: 'directions_run', text: Math.round(mvMin) + ' min moving' }); }
     if (refl.length) { bullets.push('edit_note'); parts.push(refl.length + ' reflection' + (refl.length > 1 ? 's' : '') + '.'); }
+    var chk = S.latestOnDate ? S.latestOnDate('sleepcheck', date) : entries.filter(function (e) { return e.type === 'sleepcheck'; }).slice(-1)[0]; /* the newest edit of the day's check, whatever a sync brought */
+    if (chk) { var cn = sleepCheckNotes(chk.data).filter(function (x) { return x.level !== 'info'; }).length; bullets.push('fact_check'); parts.push('Two-week sleep check done' + (cn ? ', ' + cn + ' note' + (cn === 1 ? '' : 's') + ' raised' : '') + '.'); }
     var flags = allFlags(date).filter(function (f) { return f.date === date; });
     return { date: date, text: parts.length ? parts.join(' ') : 'Nothing logged this day.', items: parts.map(function (t, k) { return { icon: bullets[k] || 'circle', text: t }; }), highlights: highlights, flags: flags, count: entries.length, agent: 'DailySummaryAgent v1 (rule-based)' };
   }
@@ -428,8 +430,8 @@
   function optLabel(map, k, v) { var o = (map[k] && map[k].opts || []).filter(function (x) { return x[0] === v; })[0]; return o ? o[1] : ''; }
   /* one night's details: entries on the same date are read newest first, so a later answer wins; reasons for waking add up */
   function nightDetails(date) {
-    var es = S.list('sleep', { from: date, to: date }).filter(function (e) { return e.data && e.data.details; })
-      .sort(function (a, b) { return String(b.updatedAt || b.createdAt || '') < String(a.updatedAt || a.createdAt || '') ? -1 : 1; });
+    var es = S.list('sleep', { from: date, to: date }).filter(function (e) { return e.data && e.data.details; }).map(function (e, i) { return { e: e, i: i }; })
+      .sort(function (a, b) { var ta = String(a.e.updatedAt || a.e.createdAt || ''), tb = String(b.e.updatedAt || b.e.createdAt || ''); return tb > ta ? 1 : tb < ta ? -1 : (b.i - a.i); }).map(function (x) { return x.e; }); /* newest edit first; on a tie the later entry (Codex, 21 Oct) */
     var out = null;
     es.forEach(function (e) {
       var d = S.cleanSleepDetails(e.data.details); if (!d) return; out = out || {};
@@ -449,15 +451,15 @@
     var worst = Math.max(n(a.w1) || 0, n(a.w2) || 0);
     if (worst >= 3 && (a.impact === 'little' || a.impact === 'lot')) out.push({ level: 'prompt', code: 'SLEEP_PERSISTENT', title: 'Worth raising: ongoing sleep trouble', trigger: 'sleep trouble on 3 or more nights a week that affects the day',
       message: a.since === '3m+'
-        ? 'Sleep trouble on 3 or more nights a week that affects your days, for 3 months or more, is worth talking through with a doctor. The first treatment usually offered is a talking therapy for insomnia (CBT-I), not sleeping pills.'
-        : 'Sleep trouble on 3 or more nights a week that affects your days is worth talking through with a doctor or nurse. You do not need to wait for it to last for months.' });
+        ? 'You reported trouble sleeping on ' + worst + ' nights in one of the last two weeks, with an effect on your days, and say it has gone on for 3 months or more. That is worth talking through with a doctor, who can say whether it is chronic insomnia. For chronic insomnia the recommended first treatment is a talking therapy (CBT-I), not sleeping pills.'
+        : 'Trouble sleeping on ' + worst + ' nights in a week, with an effect on your days, is worth talking through with a doctor or nurse. You do not need to wait for it to last for months.' });
     if (a.chance === 'rarely') out.push({ level: 'info', code: 'SLEEP_OPPORTUNITY', title: 'Time and place to sleep', trigger: 'rarely enough time or a suitable place to sleep',
       message: 'You said you rarely have enough time or a suitable place to sleep. Sleep cut short by too little time or a hard place to sleep is a different problem from insomnia, and it is worth telling a clinician about too.' });
     return out;
   }
   function breathingNote() {
     return { level: 'prompt', code: 'SLEEP_BREATHING', title: 'Worth raising: breathing at night', trigger: 'snoring, gasping or pauses in breathing during sleep',
-      message: 'Loud snoring, gasping or choking, or pauses in breathing during sleep can be signs of sleep apnoea. Please book a visit with your GP or a polyclinic to talk about it, even if you do not feel sleepy in the day.' };
+      message: 'Loud snoring, gasping or choking, or pauses in breathing during sleep can be signs of sleep apnoea. Please book a visit with your GP or a polyclinic to talk about it, even if you do not feel sleepy in the day. If you are pregnant, or you drive or work with machinery for a living, say so when you book: the guideline asks for a faster assessment then.' };
   }
   function sleepNotes(from, to) {
     var dates = {}, nights = S.sleepStats(S.diffDays(from, to) + 1, to).nights;
@@ -471,7 +473,8 @@
       (d.woke || []).forEach(function (c) { woke[c] = (woke[c] || 0) + 1; if (c === 'flush') flushDates[date] = 1; });
     });
     S.list('symptom', { from: from, to: to }).forEach(function (e) { if (e.data && e.data.flushNight) flushDates[e.date] = 1; });
-    var checks = S.list('sleepcheck', { from: from, to: to }).slice().reverse().map(function (e) { var a = S.cleanSleepCheck(e.data); return { date: e.date, answers: a, notes: sleepCheckNotes(a) }; });
+    var byDay = {}; S.list('sleepcheck', { from: from, to: to }).forEach(function (e, i) { var cur = byDay[e.date], te = String(e.updatedAt || e.createdAt || ''), tc = cur ? String(cur.e.updatedAt || cur.e.createdAt || '') : ''; if (!cur || te > tc || (te === tc && i > cur.i)) byDay[e.date] = { e: e, i: i }; }); /* one check a day: the newest edit, whatever a sync brought */
+    var checks = Object.keys(byDay).sort().reverse().map(function (d) { var e = byDay[d].e, a = S.cleanSleepCheck(e.data); return { date: e.date, answers: a, notes: sleepCheckNotes(a) }; });
     return { from: from, to: to, nights: Object.keys(dates).length, withDetails: withDetails, fields: fields, woke: woke, flushNights: Object.keys(flushDates).length, checks: checks };
   }
   /* one night's answers as a short line for the journal and the PDF */
@@ -490,7 +493,7 @@
     var rows = [['Sleep details', sn.withDetails + ' of ' + sn.nights + ' recorded night' + (sn.nights === 1 ? '' : 's')]];
     NOTE_ROWS.forEach(function (r) { var f = sn.fields[r[0]]; if (!f || (!f.answered && !f.unsure)) return; rows.push([r[1], f.answered ? f.marked + ' of ' + f.answered + ' answered night' + (f.answered === 1 ? '' : 's') + (f.unsure ? ', ' + f.unsure + ' not sure' : '') : f.unsure + ' not sure']); });
     var wk = Object.keys(sn.woke).sort(function (a, b) { return sn.woke[b] - sn.woke[a]; });
-    if (wk.length) rows.push(['Woken by', wk.map(function (c) { return optLabel(SLEEP_LABELS, 'woke', c).toLowerCase() + ' ' + sn.woke[c]; }).join(', ')]);
+    if (wk.length) rows.push(['Woken by', wk.map(function (c) { return optLabel(SLEEP_LABELS, 'woke', c).toLowerCase() + ' ' + sn.woke[c] + ' of ' + sn.withDetails; }).join(', ') + ' night' + (sn.withDetails === 1 ? '' : 's') + ' with details']);
     return rows;
   }
   function sleepCheckText(a) {

@@ -1214,6 +1214,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('held rows rejoin the push, without duplicates, skipping rows a newer cloud copy just replaced or deleted', plan.pushUp.map(function (e) { return e.id; }).join() === 'a,b', JSON.stringify(plan.pushUp));
   var sp = SY.splitByType([{ id: 1, type: 'sleep' }, { id: 2, type: 'exercise' }, { id: 3, type: 'weight' }]);
   check('a refused batch splits into the older types and the new ones', sp.ok.length === 2 && sp.held.length === 1 && sp.held[0].id === 2);
+  check('a refused batch is retried one newer type at a time, so a type the server already takes is never held behind one it refuses (code path)', /Object\.keys\(byType\)\.forEach/.test(fs.readFileSync(path.join(root, 'ovu-sync.js'), 'utf8')) && /heldRows = heldRows\.concat\(byType\[t\]\)/.test(fs.readFileSync(path.join(root, 'ovu-sync.js'), 'utf8')));
   check('only a check-constraint refusal triggers the split', SY.typeRejected(new Error('rest 400 new row for relation "entries" violates check constraint "entries_type_check"')) && !SY.typeRejected(new Error('rest 401 JWT expired')));
 
   /* end to end, with a pretend server that refuses 'exercise' until the migration is applied */
@@ -2712,6 +2713,30 @@ var summarised = false;
   var html = P.sleepNotesHTML(cl);
   check('the drawn summary carries no markup from the file, names the note raised and says it is not a score', !/<script|onerror/.test(html) && /sleepy at the wheel/i.test(html) && /not a score/.test(html), html.slice(0, 300));
   check('an empty summary says so in plain words', /No sleep details/.test(P.sleepNotesHTML({ from: t, to: t, nights: 0, withDetails: 0, fields: {}, woke: {}, flushNights: 0, checks: [] })));
+  /* Codex review, 21 Oct: ties, ingress cleaning, same-day duplicates from a sync, the wording of two notes, the daily summary */
+  (function () {
+    var d = addDays(today, -5), ts = '2026-10-16T08:00:00.000Z';
+    S.applyRemote([{ id: 'tie1', type: 'sleep', date: d, createdAt: ts, updatedAt: ts, data: { bedTime: '23:00', wakeTime: '07:00', details: { latency: 'gt60' } } }, { id: 'tie2', type: 'sleep', date: d, createdAt: ts, updatedAt: ts, data: { bedTime: '23:00', wakeTime: '07:00', details: { latency: 'le15' } } }], null);
+    check('two edits with the same timestamp: the later row wins, deterministically', A.nightDetails(d).latency === 'le15');
+    var d2 = addDays(today, -6);
+    S.applyRemote([{ id: 'ck2', type: 'sleepcheck', date: d2, createdAt: ts, updatedAt: '2026-10-16T11:00:00.000Z', data: { driving: 'yes' } }, { id: 'ck1', type: 'sleepcheck', date: d2, createdAt: ts, updatedAt: '2026-10-16T10:00:00.000Z', data: { driving: 'no' } }], null);
+    check('two checks for one day from a sync: the newest edit is the one the patterns and the card read', S.latestOnDate('sleepcheck', d2).id === 'ck2' && A.sleepNotes(d2, d2).checks.length === 1 && A.sleepNotes(d2, d2).checks[0].answers.driving === 'yes');
+    var before = S.list('sleepcheck').length, imp = JSON.parse(S.exportJSON());
+    imp.events.push({ id: 'junk', type: 'sleepcheck', date: addDays(today, -7), createdAt: ts, updatedAt: ts, source: 'x', data: { w1: '99', nonsense: 1 } });
+    imp.events.push({ id: 'okay', type: 'sleepcheck', date: addDays(today, -8), createdAt: ts, updatedAt: ts, source: 'x', data: { w1: '2', nonsense: 1 } });
+    S.importJSON(JSON.stringify(imp), 'merge');
+    var okay = S.get('okay');
+    check('a restored file passes the write boundary: an empty check is dropped, a valid one keeps only known answers', !S.get('junk') && S.list('sleepcheck').length === before + 1 && okay && JSON.stringify(okay.data) === '{"w1":"2"}');
+    S.applyRemote([{ id: 'junk2', type: 'sleepcheck', date: addDays(today, -9), createdAt: ts, updatedAt: ts, data: { w2: 'lots' } }], null);
+    check('a cloud row that cleans to nothing is not applied', !S.get('junk2'));
+    var br = A.breathingNote().message, pz = A.sleepCheckNotes({ w1: '7', w2: '0', since: '3m+', impact: 'lot' }).filter(function (x) { return x.code === 'SLEEP_PERSISTENT'; })[0];
+    check('the breathing note asks pregnant women and vocational drivers to say so when booking (NICE NG202 rapid assessment)', /pregnant/.test(br) && /machinery for a living/.test(br));
+    check('the persistent note reports the weeks as answered, leaves chronic insomnia to the doctor, and names CBT-I as the recommended first treatment, never "usually offered"', pz && /7 nights in one of the last two weeks/.test(pz.message) && /who can say whether it is chronic insomnia/.test(pz.message) && /recommended first treatment/.test(pz.message) && !/usually offered/.test(pz.message));
+    var ds = A.dailySummary(d2);
+    check('the daily summary counts a check and its notes, never "Nothing logged"', /Two-week sleep check done, 1 note raised/.test(ds.text) && !/Nothing logged/.test(ds.text));
+    var rows = A.sleepNotesRows(A.sleepNotes(addDays(today, -10), today)), wokeRow = rows.filter(function (r) { return r[0] === 'Woken by'; })[0];
+    check('the Woken by row carries its denominator (of the nights with details)', !!wokeRow && / of \d+ nights? with details$/.test(wokeRow[1]));
+  })();
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

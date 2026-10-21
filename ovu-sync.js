@@ -317,8 +317,12 @@
             return post(upRows).catch(function (err) {
               if (!typeRejected(err)) throw err;
               var sp = splitByType(upRows); if (!sp.held.length) throw err;
-              pushedRows = sp.ok; heldRows = sp.held;
-              return sp.ok.length ? post(sp.ok) : null;
+              /* the older types go up together; each newer type is tried on its own, so a type the server already takes is never held behind one it refuses (Codex, 21 Oct) */
+              pushedRows = sp.ok; heldRows = [];
+              var byType = {}; sp.held.forEach(function (r) { (byType[r.type] = byType[r.type] || []).push(r); });
+              var chain = sp.ok.length ? post(sp.ok) : Promise.resolve(null);
+              Object.keys(byType).forEach(function (t) { chain = chain.then(function () { return post(byType[t]).then(function () { pushedRows = pushedRows.concat(byType[t]); }, function (e2) { if (!typeRejected(e2)) throw e2; heldRows = heldRows.concat(byType[t]); }); }); });
+              return chain;
             });
           });
         }
