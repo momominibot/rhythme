@@ -2091,6 +2091,13 @@ async def main():
             except Exception: pass
             pc = await p5.evaluate("()=>{var c=document.querySelector('#plazaCard'); return c ? {text: c.textContent, rows: c.querySelectorAll('#plazaDays tr').length} : null}")
             check("the staff Today tab shows a Plazas card: 4 online, PCOS 3 of 24 with peak 4 and 5 joins on the server's date, a day row, and no names", pc and "4 online" in pc["text"] and "3 of 24" in pc["text"] and "peak 4 today · 5 joins" in pc["text"] and pc["rows"] == 2 and "smoke@example.test" not in pc["text"], pc)
+            # the team (21 Oct): Nimbus gathers four named clouds on Today, each one says what it can measure, the plaza card draws its days
+            tm = await p5.evaluate("()=>({nimbus: /Nimbus, the orchestrator/.test((document.querySelector('.card.nimbus')||{}).textContent||''), mates: [...document.querySelectorAll('.mate b')].map(b=>b.textContent).join(','), chart: !!document.querySelector('#plazaCard .chart svg'), honest: /No finished run yet|counts only/.test((document.querySelector('.card.nimbus')||{}).textContent||'')})")
+            check("the staff Today tab opens with Nimbus and the four named clouds (Bloom, Dozy, Pudding, Misty), says honestly that there is no run yet, and charts the plaza days", tm["nimbus"] and tm["mates"] == "Bloom,Dozy,Pudding,Misty" and tm["chart"] and tm["honest"], tm)
+            await p5.click('nav.tabs button[data-tab=agents]'); await p5.wait_for_timeout(400)
+            ag5 = await p5.evaluate("()=>({says: document.querySelectorAll('.agent .say').length, clouds: document.querySelectorAll('.agent svg.cloudy').length, text: (document.querySelector('#mate-cycle .say')||{}).textContent||''})")
+            check("the Agents tab shows each cloud with its own report bubble, and Bloom says there is no finished run yet", ag5["says"] == 4 and ag5["clouds"] == 4 and "No finished run has a report from me yet" in ag5["text"], ag5)
+            await p5.click('nav.tabs button[data-tab=today]'); await p5.wait_for_timeout(400)
             # a refresh that fails is shown as not current, not as live numbers
             STAFF["admin_plaza"] = None
             await p5.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))")
