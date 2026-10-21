@@ -2273,6 +2273,7 @@ function scenes(todayIso) {
   check('its crescent sprite is on disk and no round badge is used', fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].img)) && !M.LIST[0].head);
   check('the crescent is the default and an unknown look (an old saved pick too) is ignored', M.current().id === 'luna' && M.set('rabbit').id === 'luna' && M.set('moon').id === 'luna');
   check('the small Luna button shows the crescent on its own, like the welcome (no round badge)', /orb-luna\.webp$/.test(M.src(null, true)) && /orb-luna\.webp$/.test(M.src(null, false)));
+  check('the Luna chat button on pages without the mascot module also shows the crescent, never the old starry moon (Jamie, 22 Oct)', !/orb-moon/.test(fs.readFileSync(path.join(root, 'luna-chat.js'), 'utf8')));
 })();
 
 (function healthImportParsers() {
