@@ -2570,9 +2570,9 @@ function scenes(todayIso) {
   var desk = [], fre = /\{ id: '([a-z]+)', name: '([^']+)'/g, fm, fsrc = ((/var FOLDERS = \[([\s\S]*?)\n  \];/.exec(roomSrc) || [])[1] || '');
   while ((fm = fre.exec(fsrc))) desk.push({ id: fm[1], name: fm[2] });
   var folderIds = desk.map(function (f) { return f.id; });
-  /* measured 21 Oct from 320 to 1280 px: a folder is 22% of the desk wide and at most 26.8% tall, and "Share with doctor"
-     (two lines) at most 32.1%; the boxes below are the measured maximum, not deskSpots' own (29 and 33) */
-  var hgt = function (id) { return id === 'doctor' ? 32.1 : 26.8; };
+  /* measured 21 Oct from 300 to 1280 px with the app's fallback font, Verdana and Courier New: a folder is 22% of the desk
+     wide and at most 30.4% tall (a two-line name at 300 px); the boxes below use that measurement, not deskSpots' own 31 */
+  var hgt = function () { return 30.4; };
   var over = function (spots) { var k = Object.keys(spots), bad = []; k.forEach(function (a, i) { k.slice(i + 1).forEach(function (b) { if (Math.abs(spots[a][0] - spots[b][0]) < 22 && spots[a][1] < spots[b][1] + hgt(b) && spots[b][1] < spots[a][1] + hgt(a)) bad.push(a + '/' + b); }); }); return bad; };
   var inside = function (spots) { return Object.keys(spots).every(function (k) { var q = spots[k]; return q[0] >= 0 && q[0] + 22 <= 100 && q[1] >= 0 && q[1] + hgt(k) <= 100; }); };
   check('the desk has room for every folder on its grid (12 places; a 13th folder needs a new layout)', folderIds.length >= 10 && folderIds.length <= 12, folderIds.join());
@@ -2585,13 +2585,13 @@ function scenes(todayIso) {
   check('when there is room, her folders stay exactly where she put them and new ones take free places, no overlaps', !d2.tidied && Object.keys(roomy).every(function (k) { return d2.spots[k][0] === roomy[k][0] && d2.spots[k][1] === roomy[k][1]; }) && over(d2.spots).length === 0 && inside(d2.spots), JSON.stringify(d2.spots));
   /* Codex round three: "Share with doctor" placed top left once let a new folder in just under it */
   var tallTop = { doctor: [2, 4], fertility: [27, 4], chapters: [52, 4], nutrition: [77, 4], cycle: [2, 66], mind: [27, 35], move: [52, 35], body: [77, 35], videos: [27, 66] }, d4 = deskSpots ? deskSpots(tallTop, desk) : { spots: {} };
-  check('a two-line folder name counts its full height: nothing new is placed just under it', over(d4.spots).length === 0 && inside(d4.spots), JSON.stringify(d4) + ' ' + over(d4.spots).join());
+  check('a folder top left with a two-line name: nothing new is placed under it', over(d4.spots).length === 0 && inside(d4.spots), JSON.stringify(d4) + ' ' + over(d4.spots).join());
   var all = {}; desk.forEach(function (f, i) { all[f.id] = [40, 10 + i]; }); var d3 = deskSpots ? deskSpots(all, desk) : { spots: {} };
   check('a desk she arranged in full is never tidied for her, even if she stacked folders', !d3.tidied && desk.every(function (f) { return d3.spots[f.id][0] === all[f.id][0] && d3.spots[f.id][1] === all[f.id][1]; }));
   check('a drag keeps the whole desk as shown, so only a folder added later needs a place, and a tidy is announced', /pr\.pos = \{\}; icons\.querySelectorAll\('\.dicon'\)\.forEach/.test(roomSrc) && /if \(lay\.tidied\) \{ p\.pos = \{\}; setDeskPrefs\(p\);[^\n]*toast\(/.test(roomSrc));
   check('a folder opens on a click (so Enter and Space work), not on pointer up, and the click that ends a drag is ignored', /icons\.addEventListener\('click', function \(e\) \{\n\s*var b = e\.target\.closest\('\.dicon'\); if \(!b\) return;\n\s*if \(Date\.now\(\) - dragged < 500\) return;\n\s*chime\('tap'\); openFolder\(b\.dataset\.folder\);/.test(roomSrc) && !/else \{ chime\('tap'\); openFolder\(d\.id\); \}/.test(roomSrc) && /if \(d\.moved\) \{ dragged = Date\.now\(\);/.test(roomSrc));
   var css = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
-  check('below 360 px the folder icons shrink so a two-line name stays inside its grid row', /@media \(max-width:359px\)\{\.dicons\.free \.dicon\{[^}]*\}\.dicons\.free \.dicon svg\{width:31px;height:26px\}\.dicons\.free \.dicon span\{font-size:8\.5px/.test(css));
+  check('the folder icon and name scale with the desk (capped at the usual sizes), so a two-line name stays under 31% of its height', /\.dicons\.free\{container-type:inline-size\}\n\.dicons\.free \.dicon svg\{width:min\(40px,10\.1cqw\);height:min\(34px,8\.6cqw\)\}\n\.dicons\.free \.dicon span\{font-size:min\(9\.5px,2\.9cqw\)\}/.test(css) && /var W = 22, H = 31,/.test(roomSrc));
   check('a link into the room opens its page once, straight after Skip or after the intro that Begin started, never on a timer; another intro or signing in drops it', /function takePending\(\) \{ var r = pendingRoute; pendingRoute = ''; if \(r && r !== 'onboarding'\) openRoute\(r\); \}/.test(roomSrc) && /openOnboarding\(0, \{\}\); pendingOnb = onb; \}\); \}\);/.test(roomSrc) && /var fromLink = onb && onb === pendingOnb; pendingOnb = null;/.test(roomSrc) && /if \(fromLink\) takePending\(\); else pendingRoute = '';/.test(roomSrc) && /w\.hidden = true; pendingRoute = ''; requireConsent/.test(roomSrc));
   check('for a returning visitor the link opens only if she has not opened another sheet first', /current = id; sheetSeq\+\+;/.test(roomSrc) && /var seq0 = sheetSeq; setTimeout\(function \(\) \{ requireConsent\(function \(\) \{ if \(hk && \(sheetSeq !== seq0 \|\| current\)\) return;/.test(roomSrc));
   check('the check starts each answer from what is stored now and repaints when another tab saves', /next = stored\(\);/.test(roomSrc) && /if \(medasRefresh\) medasRefresh\(\);/.test(roomSrc));

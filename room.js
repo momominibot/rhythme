@@ -1218,24 +1218,22 @@
     });
   }
   /* Where each folder sits: where she put it, or else the first free place on a 4 by 3 grid that fits the wallpaper (the
-     old default stacked a third row at 96%, below the wallpaper's edge). A folder is 22% of the desk wide and up to 29%
-     tall (measured from 320 to 1280 px; room.css shrinks the icons below 360 px), and "Share with doctor" takes two lines
-     and up to 33%, so a free place keeps that box clear of every other folder. If a new folder cannot get one without
-     covering hers, the whole desk goes back onto the grid and openLearn says so: never a folder on top of another. */
+     old default stacked a third row at 96%, below the wallpaper's edge). A folder is 22% of the desk wide and, because
+     room.css scales its icon and name with the desk, under 31% tall even with a two-line name in any font, so a free
+     place keeps a 22 by 31 box clear of every other folder. If a new folder cannot get one without covering hers, the
+     whole desk goes back onto the grid and openLearn says so: never a folder on top of another. */
   function deskSpots(pos, folders) {
     folders = folders || FOLDERS;
-    var W = 22, cells = [], fine = [], out = {}, taken = [], stuck = false;
-    var tall = function (f) { return f && f.name && f.name.length > 14 ? 33 : 29; }; /* a name longer than about 14 letters wraps */
+    var W = 22, H = 31, cells = [], fine = [], out = {}, taken = [], stuck = false;
     for (var r = 0; r < 3; r++) for (var c = 0; c < 4; c++) cells.push([2 + c * 25, 4 + r * 31]);
     for (var y = 4; y <= 64; y += 2) for (var x = 2; x <= 78; x += 2) fine.push([x, y]);
-    /* boxes [x, y, height]: two clash when they overlap across and their top-to-bottom spans overlap */
-    var clash = function (a, b) { return Math.abs(a[0] - b[0]) < W && a[1] < b[1] + b[2] && b[1] < a[1] + a[2]; };
-    folders.forEach(function (f) { var q = pos && pos[f.id]; if (q && isFinite(q[0]) && isFinite(q[1])) { out[f.id] = [q[0], q[1]]; taken.push([q[0], q[1], tall(f)]); } });
+    var clash = function (a, b) { return Math.abs(a[0] - b[0]) < W && Math.abs(a[1] - b[1]) < H; };
+    folders.forEach(function (f) { var q = pos && pos[f.id]; if (q && isFinite(q[0]) && isFinite(q[1])) { out[f.id] = [q[0], q[1]]; taken.push(q); } });
     folders.forEach(function (f) {
       if (out[f.id] || stuck) return;
-      var h = tall(f), free = cells.concat(fine).filter(function (q) { return !taken.some(function (t) { return clash([q[0], q[1], h], t); }); })[0];
+      var free = cells.concat(fine).filter(function (q) { return !taken.some(function (t) { return clash(q, t); }); })[0];
       if (!free) { stuck = true; return; }
-      out[f.id] = free; taken.push([free[0], free[1], h]);
+      out[f.id] = free; taken.push(free);
     });
     if (!stuck) return { spots: out, tidied: false };
     var grid = {}; folders.forEach(function (f, i) { grid[f.id] = cells[i]; }); /* 12 places; tools/test-core.js keeps FOLDERS within them */
