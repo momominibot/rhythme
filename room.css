@@ -2205,3 +2205,18 @@ html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
 .twirl-fx.burst .tw-b{animation:twburst .8s cubic-bezier(.2,.7,.3,1) forwards}
 @keyframes twburst{0%{opacity:1;transform:rotate(var(--a)) translateX(0) scale(1)}100%{opacity:0;transform:rotate(var(--a)) translateX(46px) scale(.4)}}
 @media (prefers-reduced-motion: reduce){.twirl-fx{display:none}}
+/* ---- 21 Oct: trying on at Petal & Thread (ovu-boutique.js) ---- */
+.trybar{position:absolute;left:10px;right:54px;top:10px;z-index:14;display:none;flex-wrap:wrap;align-items:center;gap:6px 8px;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-radius:14px;padding:8px 10px;font:700 11.5px var(--sans);color:var(--rm-plum);box-shadow:var(--rm-shadow)}
+.trybar.on{display:flex}
+.trybar>.ms{font-size:18px;color:var(--rm-mauve)}
+.trybar .tbname{flex:1 1 auto;min-width:0}
+.trybar button{border:none;background:var(--rm-lilac-2);color:var(--rm-plum);border-radius:99px;padding:6px 10px;font:800 11px var(--sans);display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0}
+.trybar button .ms{font-size:16px}
+.trybar button[data-tb=keep]{background:var(--rm-mauve);color:#fff}
+.trybar .tbplus{background:linear-gradient(135deg,#f3d49b,#e8a3bf);color:#5a3a2a}
+.outfit.plusdrop{position:relative}
+.outfit.plusdrop .pluschip{position:absolute;top:6px;right:6px;margin:0}
+.avatar .acc{position:absolute;display:none;left:var(--acc-l);top:var(--acc-t);width:var(--acc-w);height:auto;transform:translate(-50%,-50%) rotate(var(--acc-r));pointer-events:none;z-index:2}
+.avatar.flip .acc{left:var(--acc-lf);transform:translate(-50%,-50%) scaleX(-1) rotate(var(--acc-r))}
+.avatar .acc.on{display:block}
+.avatar:is(.walking,.cycling,.twirling,.moment,.joy,.landing,.hidden,.acting) .acc{display:none}
