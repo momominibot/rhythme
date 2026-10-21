@@ -2527,7 +2527,8 @@
    * the stretch's yoga set are that activity's own clothes, so those two keep their one sprite. A missing file falls back to
    * the original pose */
   var OUTFIT_POSES = { plants: 1, coffee: 1, teeth: 1, dishes: 1, pets: 1, bed: 1, outfit: 1, stretch: 1, note: 1, eat: 1, listen: 1, read: 1, tend: 1, harvest: 1, wave: 1, press: 1, phone: 1, shop: 1, scale: 1 }; /* stretch and the eleven moment poses joined on 20 Oct (ovu-moments.js); the shower keeps its robe */
-  function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && outfit !== 'base' ? '-' + outfit : '') + '.webp'; }
+  var BASE_SUFFIXED = { stretch: 1 }; /* the unsuffixed stretch file is the yoga set; her own clothes are avatar-act-stretch-base (Codex, 21 Oct) */
+  function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && (outfit !== 'base' || BASE_SUFFIXED[pose]) ? '-' + outfit : '') + '.webp'; }
   function setPose(pose) {
     var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image(), gen = ++imgGen;
     img.onload = function () { if (gen === imgGen) avatarImg.src = img.src; };
@@ -2540,7 +2541,7 @@
     var ex = MF.explored();
     openSheet('everyday', 'Everyday mindfulness', 'Guides for things you are really doing', 'self_improvement',
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Informal practice, with Erin</b><small>Pick what you are about to do for real, press Begin as you start, and let the guide walk alongside you. The guides are spoken in Erin’s voice from interim scripts; her own written scripts will replace them one by one.</small></div></div>' +
-      (window.OvuMorning ? '<button type="button" class="act morningact" id="evMorning"><img src="' + ART + 'avatar-act-teeth.webp" alt=""><span><b>Morning start</b><small>Just after you wake · a short pause, then brushing</small></span><em><span class="ms">wb_twilight</span></em></button>' : '') +
+      (window.OvuMorning ? '<button type="button" class="act morningact" id="evMorning"><img src="' + ART + 'avatar-act-teeth.webp" alt=""><span><b>Morning start</b><small>Just after you wake · wake, brush, sip, in Erin’s voice</small></span><em><span class="ms">wb_twilight</span></em></button>' : '') +
       '<div class="acts" id="acts">' + MF.ACTIVITIES.map(function (a) { var n = ex[a.id] || 0; return '<button type="button" class="act' + (selId === a.id ? ' on' : '') + '" data-act="' + a.id + '"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><span><b>' + esc(a.name) + '</b><small>' + esc(a.when) + ' · ' + a.minutes + ' min</small></span><em>' + (n ? '<span class="ms">check_circle</span>' + n : '<span class="ms fill">favorite</span>2') + '</em></button>'; }).join('') + '</div>' +
       '<div class="actdetail" id="actDetail"></div>' +
       '<p class="help">Each completed practice earns 2 hearts, up to 6 a day. The point is not the points: it is two ordinary minutes, fully lived. Please only confirm practices you really did.</p>');

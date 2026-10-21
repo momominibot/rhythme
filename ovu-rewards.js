@@ -79,11 +79,15 @@
      length, taps or first times. Moon Tap counts once a session reaches a full minute; seconds are not carried. */
   var IMPORTED_SRC = { 'apple-health': 1, 'google-fit': 1, import: 1, imported: 1 };
   var PRACTICE = { points: 2, cap: 6 };
+  var CANON_PART = { wake: 'wake', teeth: 'teeth', coffee: 'coffee', morning: 'teeth' }; /* the short-pause morning counts as the brushing slot */
   function practicePoints(l, ev) {
     var d = ev.data || {}, day = S.today();
     if ((d.kind === 'breathtap' || d.kind === 'lightflower') && (Number(d.seconds) || 0) < 60) return 0; /* the tap games count once a session reaches a full minute */
     var last = watermark(l); if (last && day < last) return 0; /* a clock set back to an earlier day cannot reopen that day's cap (Codex review, 20 Oct) */
     if (!l.mindDay || l.mindDay.day !== day) l.mindDay = { day: day, pts: 0 };
+    /* the morning parts pay once a day each, whether done in the routine or on their own: ending early, deleting and repeating never earns more (Codex, 21 Oct) */
+    var slot = d.kind === 'informal' ? CANON_PART[d.activity] : null;
+    if (slot) { if (!l.mindActs || l.mindActs.day !== day) l.mindActs = { day: day, acts: {} }; if (l.mindActs.acts[slot]) return 0; l.mindActs.acts[slot] = 1; }
     var add = Math.max(0, Math.min(PRACTICE.points, PRACTICE.cap - l.mindDay.pts));
     l.mindDay.pts += add; if (add) l.dailyLast = day; return add;
   }
