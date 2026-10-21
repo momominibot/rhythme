@@ -50,11 +50,11 @@
   function hoursText(id) { var p = place(id); return !p ? '' : !p.hours ? 'Always open' : fmtHour(p.hours[0]) + ' to ' + fmtHour(p.hours[1]); }
 
   /* ---------- state: state.lane = { floats: { id: day bought }, float, letters: [...] }, cleaned on every read ---------- */
-  function validLetter(x) { return !!x && typeof x.id === 'string' && typeof x.text === 'string' && DAY.test(x.written || '') && DAY.test(x.opens || '') && (x.read == null || DAY.test(x.read)); }
+  function validLetter(x) { return !!x && typeof x.id === 'string' && typeof x.text === 'string' && DAY.test(x.written || '') && DAY.test(x.opens || ''); }
   function laneState(S) {
     var l = S.state().lane || {}, floats = {};
     FLOATS.forEach(function (f) { var d = l.floats && l.floats[f.id]; if (f.cost > 0 && typeof d === 'string' && DAY.test(d)) floats[f.id] = d; });
-    var letters = (Array.isArray(l.letters) ? l.letters : []).filter(validLetter).slice(0, LETTER.keep).map(function (x) { var o = { id: x.id, written: x.written, opens: x.opens, text: x.text.slice(0, LETTER.max) }; if (x.read) o.read = x.read; return o; });
+    var letters = (Array.isArray(l.letters) ? l.letters : []).filter(validLetter).slice(0, LETTER.keep).map(function (x) { var o = { id: x.id, written: x.written, opens: x.opens, text: x.text.slice(0, LETTER.max) }; if (typeof x.read === 'string' && DAY.test(x.read)) o.read = x.read; return o; }); /* a bad read mark is dropped, never her words (review, 21 Oct) */
     var use = floatById(l.float), st = { floats: floats, float: 'blush', letters: letters };
     if (use && owns(st, use.id)) st.float = use.id;
     return st;
@@ -94,7 +94,7 @@
     var st = laneState(S), L = st.letters.filter(function (x) { return x.id === id; })[0];
     if (!L) return { ok: false, why: 'That letter is not here any more.' };
     if (L.opens > day) return { ok: false, sealed: true, opens: L.opens, why: 'Sealed until ' + L.opens + '.' };
-    if (!L.read) { L.read = day; var w = write(S, st); if (!w.ok) return w; }
+    if (!L.read) { L.read = day; if (!write(S, st).ok) { delete L.read; return { ok: true, letter: L, unsaved: true }; } } /* a full phone still opens her letter; it stays new */
     return { ok: true, letter: L };
   }
   function deleteLetter(S, id) {
@@ -117,6 +117,7 @@
   function F() { return root.OvuFarm; }
   function hearts() { var rw = RW(); return rw ? (rw.tester && rw.tester() ? Infinity : rw.ledger().hearts) : 0; }
   function heartTxt(n) { return n + ' ♥'; }
+  function num(v) { var x = Math.floor(Number(v)); return isFinite(x) && x > 0 ? x : 0; } /* a restored backup's counts reach the page as numbers only (review, 21 Oct) */
   function dateText(d) { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: d.slice(0, 4) === today().slice(0, 4) ? undefined : 'numeric' }); } catch (e) { return d; } }
   /* the back row: with the hearts she has (a shop), "Free" (the gym) or nothing beside it */
   function nav(mode) { var h = hearts(), side = mode === 'hearts' ? '<span class="heartsmini"><span class="ms fill">favorite</span>' + (h === Infinity ? '∞' : h) + '</span>' : mode === 'free' ? '<span class="heartsmini"><span class="ms">volunteer_activism</span>Free</span>' : ''; return '<div class="streetnav"><button type="button" class="back" data-lane="back"><span class="ms">arrow_back</span>Harbour Lane</button>' + side + '</div>'; }
@@ -156,14 +157,14 @@
     if (swapGive && give.indexOf(swapGive) < 0) swapGive = null;
     var html = nav('hearts') + mind('Choose one thing you would like to grow in yourself this week.') +
       '<h4 class="shedh"><span class="ms">redeem</span>Seed packs <small>' + FM.PACK.seeds + ' seeds · ' + heartTxt(FM.PACK.cost) + '</small></h4>' +
-      '<div class="seedlist" id="grocerBuy">' + grow.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-pack="' + k + '"' + (h >= FM.PACK.cost ? '' : ' disabled') + '><span class="ms">redeem</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + (f.seeds[k] || 0) + '</small></span></button>'; }).join('') +
+      '<div class="seedlist" id="grocerBuy">' + grow.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-pack="' + k + '"' + (h >= FM.PACK.cost ? '' : ' disabled') + '><span class="ms">redeem</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + num(f.seeds[k]) + '</small></span></button>'; }).join('') +
       locked.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-unlock="' + k + '"' + (h >= c.cost ? '' : ' disabled') + '><span class="ms">lock_open</span><span><b>Grow ' + esc(c.name.toLowerCase()) + '</b><small>' + c.days + ' days · for good, one seed to start · ' + heartTxt(c.cost) + '</small></span></button>'; }).join('') + '</div>' +
       '<h4 class="shedh"><span class="ms">swap_horiz</span>Seed swap <small>no hearts</small></h4>' +
       '<p class="help" style="margin-top:0">Three from your basket for one seed of any crop you grow. A pumpkin counts as three.</p>';
     if (!give.length) html += '<p class="help pantryline"><span class="ms">shopping_basket</span>Nothing to swap yet: the basket needs three of one kind, or a pumpkin.</p>';
     else {
-      html += '<div class="chips" id="swapGive">' + give.map(function (k) { var c = FM.CROPS[k], need = FM.swapNeed(k); return '<button type="button" class="chipbtn' + (k === swapGive ? ' on' : '') + '" data-give="' + k + '" aria-pressed="' + (k === swapGive) + '">' + need + ' ' + esc(need === 1 ? c.name.toLowerCase() : c.plural) + ' <small>of ' + f.harvest[k] + '</small></button>'; }).join('') + '</div>' +
-        (swapGive ? '<div class="seedlist" id="swapTake">' + grow.map(function (k) { return '<button type="button" class="btn soft" data-take="' + k + '"><span class="ms">spa</span><span><b>' + esc(FM.CROPS[k].name) + ' seed</b><small>have ' + (f.seeds[k] || 0) + '</small></span></button>'; }).join('') + '</div>' : '<p class="help">Choose what to give, then which seed to take.</p>');
+      html += '<div class="chips" id="swapGive">' + give.map(function (k) { var c = FM.CROPS[k], need = FM.swapNeed(k); return '<button type="button" class="chipbtn' + (k === swapGive ? ' on' : '') + '" data-give="' + k + '" aria-pressed="' + (k === swapGive) + '">' + need + ' ' + esc(need === 1 ? c.name.toLowerCase() : c.plural) + ' <small>of ' + num(f.harvest[k]) + '</small></button>'; }).join('') + '</div>' +
+        (swapGive ? '<div class="seedlist" id="swapTake">' + grow.map(function (k) { return '<button type="button" class="btn soft" data-take="' + k + '"><span class="ms">spa</span><span><b>' + esc(FM.CROPS[k].name) + ' seed</b><small>have ' + num(f.seeds[k]) + '</small></span></button>'; }).join('') + '</div>' : '<p class="help">Choose what to give, then which seed to take.</p>');
     }
     R.openSheet('lane-grocer', 'Hay & Harvest', 'Grocer · ' + hoursText('grocer'), 'storefront', html + '<p class="help">Hearts come from logging. The shed still gives its free seeds each day.</p>');
     wireBack();
@@ -207,7 +208,7 @@
     wireBack();
     var gl = doc.getElementById('gymList'); if (gl) gl.addEventListener('click', function (e) {
       var b = e.target.closest('[data-station]'); if (!b) return; var st = STATIONS.filter(function (x) { return x.id === b.dataset.station; })[0]; if (!st) return;
-      R.chime('tap'); if (R.openExercise) R.openExercise(st.act); if (R.moment) R.moment('gym', { quiet: true });
+      if (R.openExercise) R.openExercise(st.act); if (R.moment) R.moment('gym', { quiet: true }); /* choosing the activity in the movement sheet chimes once */
     });
     var gg = doc.getElementById('gymGuide'); if (gg) gg.addEventListener('click', function () { R.chime('tap'); if (R.openMoveGuide) R.openMoveGuide(); });
   }
@@ -280,6 +281,7 @@
   function readLetter(id) {
     var r = openLetter(S, id, today()); if (!r.ok) { R.toast(r.sealed ? 'Sealed until ' + dateText(r.opens) + '.' : r.why, 'mail_lock'); return; }
     var L = r.letter, line = R.moment ? R.moment('letterread', { quiet: true }) : '';
+    if (r.unsaved) R.toast('The phone is full, so it stays marked new.', 'info');
     R.openSheet('lane-letter', 'A letter from you', 'Written ' + dateText(L.written) + ' · arrived ' + dateText(L.opens), 'drafts',
       '<blockquote class="letterbody">' + esc(L.text).replace(/\n/g, '<br>') + '</blockquote>' + mind(line) +
       '<div class="row"><button type="button" class="btn soft" id="letterBack"><span class="ms">markunread_mailbox</span>Back to the post box</button></div>');

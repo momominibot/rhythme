@@ -98,7 +98,7 @@
     var el = doc.createElement('div'); el.className = 'harbourthing castline'; el.setAttribute('aria-hidden', 'true');
     var x0 = p ? p.x : f.x, y0 = p ? p.y - 9 : f.y;
     el.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M' + x0 + ' ' + y0 + ' Q ' + ((x0 + f.x) / 2) + ' ' + (Math.min(y0, f.y) - 6) + ' ' + f.x + ' ' + f.y + '" fill="none" stroke="rgba(255,255,255,.85)" stroke-width=".35" vector-effect="non-scaling-stroke"/></svg>' +
-      '<span class="float' + (floatOf().glow ? ' glow' : '') + '" style="left:' + f.x + '%;top:' + f.y + '%;--floatc:' + floatOf().top + '"><i class="ring"></i><i class="ring r2"></i><b></b></span>';
+      '<span class="float' + (floatOf().glow && phaseNow() === 'night' ? ' glow' : '') + '" style="left:' + f.x + '%;top:' + f.y + '%;--floatc:' + floatOf().top + '"><i class="ring"></i><i class="ring r2"></i><b></b></span>';
     R.els.props.appendChild(el); line = el; R.els.scene.classList.add('fishing');
   }
   function waterSVG(stage, sp) {

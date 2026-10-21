@@ -454,7 +454,7 @@
     var day = today(), left = seedsLeftToday(S, day), f = farmState(S), RW = root.OvuRewards, hearts = RW ? (RW.tester() ? Infinity : RW.ledger().hearts) : 0;
     var heartTxt = function (n) { return n + ' \u2665'; };
     var html = '<p>The shed keeps the tools and gives out ' + seedsADay(f) + ' seed packets a day, free. ' + (left ? left + ' left today.' : 'All given out for today; more tomorrow.') + ' What you grow fills your basket: carrots, pumpkins and sweet potatoes are treats for Clover, kangkong, pak choy and strawberries for the hens, and the rest is for your basket to show.</p><div class="seedlist" id="shedActs">' +
-      growable(f).map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-seed="' + k + '"' + (left ? '' : ' disabled') + '><span class="ms">spa</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + (f.seeds[k] || 0) + '</small></span></button>'; }).join('') +
+      growable(f).map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-seed="' + k + '"' + (left ? '' : ' disabled') + '><span class="ms">spa</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + (Math.floor(Number(f.seeds[k])) > 0 ? Math.floor(Number(f.seeds[k])) : 0) + '</small></span></button>'; }).join('') +
       '</div>';
     if (RW) {
       var tools = Object.keys(TOOLS);
