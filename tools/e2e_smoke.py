@@ -542,6 +542,144 @@ async def main():
             check("with reduced motion she does not twirl or blink: the outfit simply changes and her eyes stay open", not tr["turned"] and tr["end"]["src"] == "avatar-sundress.webp" and rb == 0, {"tr": tr, "blinks": rb})
             await ctxR.close()
 
+            # 1i. one activity at a time, and a new outfit lands in the picture she is in (Codex sweep, 21 Oct: Everyday brushing and Just
+            # breathe ran together and Stop then hid the breathing's bar; brushing went on with a standing avatar; benches, seated practices
+            # and the sleeper kept the old clothes; a pick while asleep was undone on waking)
+            ctxA1 = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxA1.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxA1.add_init_script(SESSION_SEED)
+            pa = await ctxA1.new_page(); aerr = []; pa.on("pageerror", lambda e: aerr.append(str(e))); await pa.route("**/*", gate)
+            await pa.goto(BASE + "room.html", wait_until="networkidle"); await pa.wait_for_timeout(900)
+            await pa.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); if (window.OvuPetWalk && OvuPetWalk.auto) OvuPetWalk.auto(false); OvuRoom.isNight=function(){return false}; OvuCare.slowMs = null; }")
+            AST = "()=>({practice: OvuRoom.practiceOn(), session: OvuRoom.sessionOn(), morning: OvuMorning.active(), seat: OvuSeats.active(), med: OvuRoom.meditating(), hud: document.querySelector('#hud').classList.contains('on'), title: document.querySelector('#hudTitle').textContent, sheet: OvuRoom.sheetId(), toast: document.querySelector('#toast').textContent, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), hidden: document.querySelector('#avatar').classList.contains('hidden'), tw: document.querySelector('#avatar').classList.contains('twirling')})"
+            async def a_brush(pg):
+                await pg.evaluate("()=>OvuRoom.openEveryday('teeth')"); await pg.wait_for_selector('#sheet[aria-hidden="false"] #actStart', timeout=10000)
+                await pg.click('#actStart'); await pg.wait_for_timeout(800)
+            async def a_pick(pg, oid, via_you=False):
+                if via_you:
+                    await pg.evaluate("()=>document.querySelector('nav a[data-tab=you]').click()"); await pg.wait_for_selector('#sheet[aria-hidden="false"] [data-yact=wardrobe]', timeout=8000)
+                    await pg.click('#sheet [data-yact=wardrobe]')
+                else: await pg.evaluate("()=>OvuRoom.openWardrobe()")
+                await pg.wait_for_selector('#sheet[aria-hidden="false"] .outfit[data-id=%s]' % oid, timeout=8000); await pg.wait_for_timeout(250)
+                await pg.evaluate("()=>{ window.__twSeen = false; var av = document.querySelector('#avatar'); window.__twOb && __twOb.disconnect(); window.__twOb = new MutationObserver(function(){ if (av.classList.contains('twirling')) window.__twSeen = true; }); __twOb.observe(av, {attributes: true, attributeFilter: ['class']}); }")
+                await pg.click('#sheet .outfit[data-id=%s]' % oid); await pg.wait_for_timeout(1300)
+            async def a_reset(pg):  # each part starts from a free room, so one part's failure never hides the next
+                await pg.evaluate("()=>{ try { if (OvuSeats.active()) OvuSeats.cancel(); if (OvuMorning.active()) OvuMorning.cancel(); if (OvuRoom.practiceOn() || OvuRoom.sessionOn()) OvuRoom.stopEverything(); if (OvuRoom.meditating()) OvuRoom.exitMeditation(); if (OvuGarden.sitting()) OvuGarden.standUp(); if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); document.querySelector('#hud').classList.remove('on'); } catch (e) { } }")
+                await pg.wait_for_timeout(700)
+            async def a_stop(pg):
+                await pg.evaluate("()=>document.querySelector('#hudStop').click()"); await pg.wait_for_timeout(700)
+                await pg.evaluate("()=>{ if (OvuRoom.sheetId()==='practiceDone') document.querySelector('#pdNo').click(); }"); await pg.wait_for_timeout(300)
+            # practice first: Mind, Just breathe, Morning start and a care step all wait for it
+            await a_brush(pa); a0 = await pa.evaluate(AST)
+            await pa.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await pa.wait_for_timeout(700); a1 = await pa.evaluate(AST)
+            check("during Everyday brushing, Mind does not open the mat over it: one line names what is running, brushing goes on with its bar and she keeps her brushing pose", a0["practice"] and a1["practice"] and not a1["session"] and not a1["med"] and a1["sheet"] != "mind" and a1["hud"] and "Brushing teeth is running" in a1["toast"] and "act-teeth" in a1["src"] and not a1["hidden"], [a0, a1])
+            await pa.evaluate("()=>{ document.querySelector('#toast').textContent=''; OvuRoom.runSession('breathe', 2); }"); a2 = await pa.evaluate(AST)
+            check("Just breathe asked for during the practice is refused the same way: no session starts and the bar still says Brushing teeth", a2["practice"] and not a2["session"] and a2["title"] == "Brushing teeth" and "Brushing teeth is running" in a2["toast"], a2)
+            mo = await pa.evaluate("()=>{ OvuMorning.open(); var s = OvuRoom.sheetId(); OvuMorning.begin('yourway', true); return {sheet: s, morning: OvuMorning.active(), practice: OvuRoom.practiceOn()}; }")
+            check("Morning start neither opens its choice nor begins over the practice", mo["sheet"] != "morning" and not mo["morning"] and mo["practice"], mo)
+            cs = await pa.evaluate("()=>{ OvuRoom.openSheet('caretest', 'Test', '', 'spa', '<div id=cbox></div>'); var ok = OvuCare.step(document.querySelector('#cbox'), {scene: OvuRoom.layout().id, ms: 5000, verb: 'Watering'}, function(){}); var r = {ok: ok, live: !!OvuCare.live(), toast: document.querySelector('#toast').textContent}; OvuRoom.hideSheet(); return r; }")
+            check("a care step will not begin while a practice runs, and says why", cs["ok"] is False and not cs["live"] and "Brushing teeth is running" in cs["toast"], cs)
+            # the outfit sequence Codex found: Begin brushing, then You, Wardrobe, a new outfit
+            await a_pick(pa, "sundress", via_you=True); c1 = await pa.evaluate(AST); c1["twSeen"] = await pa.evaluate("()=>window.__twSeen")
+            check("Begin brushing, then You, Wardrobe, the sundress: she goes on brushing in the sundress, with no twirl, and the practice and its bar carry on", c1["practice"] and c1["hud"] and c1["src"] == "avatar-act-teeth-sundress.webp" and not c1["twSeen"] and not c1["tw"], c1)
+            await a_stop(pa); a3 = await pa.evaluate(AST)
+            check("Stop ends the brushing and its bar; she stands in the outfit she picked", not a3["practice"] and not a3["session"] and not a3["hud"] and a3["src"] == "avatar-sundress.webp", a3)
+            # session first: brushing, Morning start and the bench practice wait for it; a new outfit is drawn on the mat
+            await a_reset(pa)
+            await pa.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await pa.wait_for_selector('#sheet[aria-hidden="false"] .mattile[data-kind=breathe][data-min="2"]', timeout=8000)
+            await pa.evaluate("()=>document.querySelector('#sheet .mattile[data-kind=breathe][data-min=\"2\"]').click()"); await pa.wait_for_timeout(700); b0 = await pa.evaluate(AST)
+            await pa.evaluate("()=>OvuRoom.openEveryday('teeth')"); await pa.wait_for_selector('#sheet[aria-hidden="false"] #actStart', timeout=10000); await pa.click('#actStart'); await pa.wait_for_timeout(600); b1 = await pa.evaluate(AST)
+            check("during Just breathe, Begin on brushing is refused with one line: the breathing goes on, its bar is back and she stays on the mat", b0["session"] and b1["session"] and not b1["practice"] and b1["hud"] and b1["title"] == "Just breathe" and "Just breathe is running" in b1["toast"] and b1["med"], [b0, b1])
+            await pa.evaluate("()=>OvuRoom.closeSheet()"); await pa.wait_for_timeout(300)
+            await a_pick(pa, "cozy")
+            b2 = await pa.evaluate("()=>({med: (document.querySelector('#meditator img').getAttribute('src')||'').split('/').pop(), session: OvuRoom.sessionOn(), hud: document.querySelector('#hud').classList.contains('on')})")
+            check("a new outfit during the breathing is drawn on the mat: she meditates in it and the session goes on", b2["med"] == "avatar-meditate-cozy.webp" and b2["session"] and b2["hud"], b2)
+            await a_stop(pa); await pa.wait_for_timeout(600)
+            await a_reset(pa)
+            # the garden: watering keeps its pose in the new clothes; on the bench she is redrawn seated, with no twirl behind the sitter
+            await pa.evaluate("()=>OvuWalk.travel('garden')")
+            try: await pa.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=12000)
+            except Exception: pass
+            await pa.wait_for_timeout(700)
+            await pa.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('plot'))")
+            try: await pa.wait_for_selector('#sheet[aria-hidden="false"] #plotWater', timeout=10000); await pa.click('#plotWater'); await pa.wait_for_timeout(700)
+            except Exception: pass
+            await a_pick(pa, "party", via_you=True)
+            gw = await pa.evaluate("()=>({src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), acting: document.querySelector('#avatar').classList.contains('acting'), hud: document.querySelector('#hud').classList.contains('on'), title: document.querySelector('#hudTitle').textContent})"); gw["twSeen"] = await pa.evaluate("()=>window.__twSeen")
+            check("watering the garden, a new outfit keeps her watering, now in it, with no twirl", gw["src"] == "avatar-act-plants-party.webp" and gw["acting"] and gw["hud"] and gw["title"] == "Watering" and not gw["twSeen"], gw)
+            await a_stop(pa); await a_reset(pa)
+            await pa.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bench'))")
+            try: await pa.wait_for_selector('#sheet[aria-hidden="false"] #benchSit', timeout=9000); await pa.click('#benchSit'); await pa.wait_for_timeout(900)
+            except Exception: pass
+            await a_pick(pa, "kebaya-blue")
+            gs = await pa.evaluate("()=>{var el=document.querySelector('.nb.sitter'), img=el&&el.querySelector('img'); return {there: !!el, src: img && (img.getAttribute('src')||'').split('/').pop(), seated: !!(img && img.classList.contains('seated')), sitting: OvuGarden.sitting(), w: el && el.style.width, standing: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop()}}"); gs["twSeen"] = await pa.evaluate("()=>window.__twSeen")
+            check("sitting on the garden bench, a new outfit is drawn on the bench, seated in it, and no twirl plays on the standing avatar hidden behind her", gs["there"] and gs["seated"] and gs["src"] == "avatar-sit-kebaya-blue.webp" and not gs["twSeen"] and gs["standing"] == "avatar-kebaya-blue.webp", gs)
+            # a seated bench practice on the street: Mind, brushing and Morning start wait for it; a new outfit is drawn on the bench
+            await pa.evaluate("()=>{ if (OvuGarden.sitting()) OvuGarden.standUp(); OvuWalk.travel('street'); }")
+            try: await pa.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await pa.wait_for_timeout(700)
+            await pa.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bench'))")
+            try: await pa.wait_for_selector('#sheet[aria-hidden="false"] #seatBegin', timeout=12000); await pa.click('#seatBegin'); await pa.wait_for_timeout(600)
+            except Exception: pass
+            s0 = await pa.evaluate(AST)
+            await pa.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await pa.wait_for_timeout(500); s1 = await pa.evaluate(AST)
+            s2 = await pa.evaluate("()=>{ document.querySelector('#toast').textContent=''; OvuRoom.openEveryday('teeth'); return null; }"); await pa.wait_for_selector('#sheet[aria-hidden="false"] #actStart', timeout=10000); await pa.click('#actStart'); await pa.wait_for_timeout(500); s2 = await pa.evaluate(AST)
+            await pa.evaluate("()=>OvuRoom.closeSheet()"); await pa.wait_for_timeout(200)
+            s3 = await pa.evaluate("()=>{ document.querySelector('#toast').textContent=''; OvuMorning.begin('yourway', true); return {morning: OvuMorning.active(), seat: OvuSeats.active(), toast: document.querySelector('#toast').textContent, panel: !document.querySelector('#spanel').hidden}; }")
+            check("during the street bench practice, Mind, Begin on brushing and Morning start are each refused with one line naming it, and the practice goes on with its panel", s0["seat"] and s1["seat"] and s1["sheet"] != "mind" and not s1["med"] and "Sounds of the street is running" in s1["toast"] and s2["seat"] and not s2["practice"] and "Sounds of the street is running" in s2["toast"] and s3["seat"] and not s3["morning"] and "Sounds of the street is running" in s3["toast"] and s3["panel"], [s0, s1, s2, s3])
+            await a_pick(pa, "gown")
+            ss = await pa.evaluate("()=>{var el=document.querySelector('.seatsitter'), img=el&&el.querySelector('img'); return {src: img && (img.getAttribute('src')||'').split('/').pop(), seated: !!(img && img.classList.contains('seated')), seat: OvuSeats.active(), w: el && el.style.width}}"); ss["twSeen"] = await pa.evaluate("()=>window.__twSeen")
+            check("a new outfit during the bench practice is drawn on the bench, seated in it, and the practice goes on", ss["seat"] and ss["seated"] and ss["src"] == "avatar-sit-gown.webp" and not ss["twSeen"], ss)
+            await pa.evaluate("()=>document.querySelector('#spStop').click()"); await pa.wait_for_timeout(400)
+            # Morning start first: the bench practice and Just breathe wait for it
+            await a_reset(pa)
+            m0 = await pa.evaluate("()=>{ OvuMorning.begin('yourway', true); var a = OvuMorning.active(); document.querySelector('#toast').textContent=''; OvuSeats.begin('street'); var r = {morning: a, seat: OvuSeats.active(), toast: document.querySelector('#toast').textContent}; document.querySelector('#toast').textContent=''; OvuRoom.runSession('breathe', 2); r.session = OvuRoom.sessionOn(); r.toast2 = document.querySelector('#toast').textContent; OvuMorning.cancel(); return r; }")
+            check("during Morning start, the bench practice and Just breathe are refused with its name", m0["morning"] and not m0["seat"] and "Morning start is running" in m0["toast"] and not m0["session"] and "Morning start is running" in m0["toast2"], m0)
+            # sleep: a new outfit is drawn on the sleeper, and waking keeps what she picked
+            await a_reset(pa); await pa.evaluate("()=>OvuWalk.travel('home')")
+            try: await pa.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='room' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await pa.wait_for_timeout(700)
+            async def a_sleep(pg, pj):
+                await pg.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bed'))"); await pg.wait_for_selector('#sheet[aria-hidden="false"] #goodnight', timeout=10000)
+                if not pj: await pg.click('#pjToggle')
+                await pg.click('#goodnight'); await pg.wait_for_timeout(900)
+            async def a_wake(pg):
+                await pg.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bed'))"); await pg.wait_for_selector('#sheet[aria-hidden="false"] #cancelSleep', timeout=10000)
+                await pg.click('#cancelSleep'); await pg.wait_for_timeout(900)
+            await pa.evaluate("()=>{ OvuStore.setProfile({outfit: 'sundress'}); OvuRoom.restorePose(); }"); await pa.wait_for_timeout(300)
+            await a_sleep(pa, True)
+            z0 = await pa.evaluate("()=>({asleep: OvuRoom.asleep(), outfit: OvuStore.profile().outfit, sl: (document.querySelector('#sleeper img').getAttribute('src')||'').split('/').pop()})")
+            await a_pick(pa, "cozy", via_you=True)
+            z1 = await pa.evaluate("()=>({asleep: OvuRoom.asleep(), outfit: OvuStore.profile().outfit, sl: (document.querySelector('#sleeper img').getAttribute('src')||'').split('/').pop(), prev: (OvuStore.state().sleeping||{}).prevOutfit})")
+            await a_wake(pa)
+            z2 = await pa.evaluate("()=>({asleep: OvuRoom.asleep(), outfit: OvuStore.profile().outfit, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop()})")
+            check("asleep in pyjamas, You, Wardrobe, the cosy set: she sleeps on in it, and waking keeps it instead of putting back the clothes she went to bed in", z0["asleep"] and z0["outfit"] == "pajamas" and z0["sl"] == "avatar-sleeping.webp" and z1["sl"] == "avatar-sleeping-cozy.webp" and z1["outfit"] == "cozy" and z1["prev"] is None and not z2["asleep"] and z2["outfit"] == "cozy" and z2["src"] == "avatar-cozy.webp", [z0, z1, z2])
+            await a_sleep(pa, False)
+            await a_pick(pa, "pajamas", via_you=True)
+            z3 = await pa.evaluate("()=>({sl: (document.querySelector('#sleeper img').getAttribute('src')||'').split('/').pop()})")
+            await a_wake(pa)
+            z4 = await pa.evaluate("()=>({outfit: OvuStore.profile().outfit, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop()})")
+            check("asleep without the pyjamas, picking the pyjamas draws her sleeping in them, and waking keeps them", z3["sl"] == "avatar-sleeping.webp" and z4["outfit"] == "pajamas" and z4["src"] == "avatar-pajamas.webp", [z3, z4])
+            # the closed-eye copies (remade 21 Oct with tools/art/make_blink.py): the same size and alpha as her open-eyed sprite, and
+            # nothing outside her face changes, so a blink never moves or recolours anything else
+            BL = ["base", "cozy", "gown", "kebaya-blue", "kebaya-green", "kebaya-red", "pajamas", "party", "sundress", "tudung", "yoga"]
+            bl = await pa.evaluate("""async (ids) => { const out = {};
+              const load = async (u) => { const r = await fetch(u); const bm = await createImageBitmap(await r.blob()); const c = new OffscreenCanvas(bm.width, bm.height); const x = c.getContext('2d'); x.drawImage(bm, 0, 0); return {w: bm.width, h: bm.height, d: x.getImageData(0, 0, bm.width, bm.height).data}; };
+              for (const id of ids) {
+                const a = await load('assets/room/dream/avatar-' + id + '.webp'), b = await load('assets/room/dream/avatar-' + id + '-blink.webp');
+                if (a.w !== b.w || a.h !== b.h) { out[id] = {size: false}; continue; }
+                let alpha = 0, outside = 0, inside = 0;
+                for (let i = 0; i < a.d.length; i += 4) {
+                  if (a.d[i + 3] !== b.d[i + 3]) alpha++;
+                  if (!a.d[i + 3] || (a.d[i] === b.d[i] && a.d[i + 1] === b.d[i + 1] && a.d[i + 2] === b.d[i + 2])) continue;
+                  const y = Math.floor(i / 4 / a.w); if (y < a.h * 0.15 || y > a.h * 0.36) outside++; else inside++;
+                }
+                out[id] = {size: true, alpha: alpha, outside: outside, inside: inside};
+              } return out; }""", BL)
+            check("every closed-eye copy keeps her sprite's size and alpha exactly, changes only her face (her eyes), and does change it", all(bl[k].get("size") and bl[k]["alpha"] == 0 and bl[k]["outside"] == 0 and bl[k]["inside"] > 500 for k in BL), bl)
+            check("no page errors in the one-activity and outfit run", not aerr, aerr[:3])
+            await ctxA1.close()
+
             # 1g. the intro asks her birthday (a month, a day and an optional adult year) just before her name; it stays on the phone, never in the cloud copy
             DBO = json.loads(json.dumps(DB)); DBO["profile"]["urgent"] = ["severepain"]  # an answer about 'today' given on an earlier day
             ctxO = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxO.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DBO))); await ctxO.add_init_script(SESSION_SEED)

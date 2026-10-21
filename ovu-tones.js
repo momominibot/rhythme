@@ -114,6 +114,7 @@
     R.on('layout', function (L) { if (!L || L.id !== 'cave') stop(); });
     R.on('props', function () { if (sitting && !sitting.el.isConnected) R.els.props.appendChild(sitting.el); });
     R.on('activity', function () { stop(); }); R.on('beforeWalk', function () { stop(); }); R.on('walk', function () { stop(); });
+    R.on('outfit', function () { if (sitting && sitting.el && root.OvuGarden && root.OvuGarden.reseat) root.OvuGarden.reseat(sitting.el, CAVE.seat); });
     doc.addEventListener('visibilitychange', function () { if (doc.hidden) stop(); });
     S.subscribe(function (reason) {
       if (reason === 'clear' || reason === 'import' || reason === 'external' || String(reason).indexOf('sync') === 0) stop();

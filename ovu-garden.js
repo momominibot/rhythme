@@ -184,6 +184,17 @@
     el.classList.toggle('faceright', seat.face === 'right');
   }
   G.seatPlace = function (el, seat) { seatPlace(el, seat); }; G.seatedImg = function (img, fallback) { seatedImg(img, fallback); }; /* the hidden spring's warm stone sits her the same way (ovu-barn.js) */
+  /* a new outfit while she sits: the seated picture changes and is placed again for its own lap line, both on the same
+   * frame, with no sit sound; a slower earlier swap never lands over a newer one (Codex sweep, 21 Oct: a bench, a seated
+   * practice and the stones kept the old clothes) */
+  function reseat(el, seat, fallback) {
+    var img = el && el.querySelector('img'); if (!img) return;
+    var o = /^[a-z0-9-]{1,32}$/.test(outfitId() || '') ? outfitId() : 'base', want = seatedSrc(), fb = fallback || ART + 'avatar-' + o + '.webp', tok = (el._dress = (el._dress || 0) + 1);
+    function land(src, seated) { if (el._dress !== tok) return; img.src = src; img.classList.toggle('seated', seated); if (seat) seatPlace(el, seat); }
+    if (!want) { land(fb, false); return; }
+    var probe = new Image(); probe.onload = function () { land(want, true); }; probe.onerror = function () { land(fb, false); }; probe.src = want;
+  }
+  G.reseat = reseat;
   function seatedImg(img, fallback) {
     var want = seatedSrc(), probe = new Image();
     if (!want) { img.src = fallback; img.classList.remove('seated'); return; }
@@ -192,9 +203,9 @@
     probe.src = want;
   }
   /* the bench: breathing with Erin or the orb, seated on the bench itself */
-  var meditatorWatch = null;
+  var meditatorWatch = null, benchSeat = null;
   function sitAt(spot, holoSpot, back) {
-    var L = R.layout(); placeEl(R.els.meditator, spot); placeEl(doc.getElementById('aura'), { x: spot.x, y: spot.y - 2, w: spot.w * 1.55 }); placeEl(R.els.holo, holoSpot || { x: spot.x + 10, y: spot.y - 2, w: spot.w * 1.27 });
+    var L = R.layout(); placeEl(R.els.meditator, spot); benchSeat = spot.seat || null; placeEl(doc.getElementById('aura'), { x: spot.x, y: spot.y - 2, w: spot.w * 1.55 }); placeEl(R.els.holo, holoSpot || { x: spot.x + 10, y: spot.y - 2, w: spot.w * 1.27 });
     if (back) { L.home.x = back.x; L.home.y = back.y; L.home.flip = !!back.flip; } /* she comes back beside the bench, not to the gate */
     var img = R.els.meditator && R.els.meditator.querySelector('img');
     if (img) {
@@ -226,6 +237,7 @@
   function openBench(spot, holoSpot, back) {
     if (root.OvuWalk.napping()) return;
     if (R.sessionOn()) { R.hudOn(true); return; }
+    if (R.refuseBusy && R.refuseBusy()) return; /* one activity at a time (room.js activityNow) */
     var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
     R.openSheet('bench', 'Sit a while', 'The bench is yours for a few minutes', 'chair',
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Breathe with Erin, outdoors</b><small>Pick a length and Erin sits beside you on the bench, speaking in her own voice. Or follow the breathing orb with its soft bell.</small></div></div>' +
@@ -236,7 +248,7 @@
     doc.getElementById('benchSit').addEventListener('click', function () { R.hideSheet(); sitDown(spot, back); });
     doc.getElementById('benchSessions').addEventListener('click', function (e) { var b = e.target.closest('.session'); if (!b) return; Array.prototype.slice.call(doc.querySelectorAll('#benchSessions .session')).forEach(function (x) { x.classList.toggle('on', x === b); }); });
     doc.getElementById('benchStart').addEventListener('click', function () {
-      if (R.sessionOn()) return; var sel = doc.querySelector('#benchSessions .session.on');
+      if (R.sessionOn()) return; if (R.refuseBusy && R.refuseBusy()) return; /* refused before she sits, so nothing is half begun */ var sel = doc.querySelector('#benchSessions .session.on');
       sitAt(spot, holoSpot, back); R.enterMeditation(); R.runSession(sel.dataset.kind, Number(sel.dataset.min));
     });
   }
@@ -294,6 +306,10 @@
   R.hotspotHandlers.bench = function (id, L) { if (!inGarden(L)) return false; openBench(GARDEN.meditator, GARDEN.holo, { x: 37, y: 53, flip: true }); return true; };
   G.openGreenhouse = openGreenhouse; G.herb = { careful: herbCareful, carefulHTML: carefulHTML, refsHTML: refsHTML, teaHTML: teaHTML, ASK_FIRST: ASK_FIRST }; G.openBench = openBench; G.sitAt = sitAt; G.sitDown = sitDown; G.standUp = standUp; G.sitting = function () { return !!sitting; }; G.renderPlot = renderPlot; G.openPlot = openPlot; G.watering = function () { return !!watering; };
   R.on('boot', function () {
+    R.on('outfit', function () {
+      if (sitting && sitting.el) reseat(sitting.el, sitting.spot && sitting.spot.seat);
+      if (R.els.meditator && R.els.meditator.classList.contains('onseat') && R.meditating()) reseat(R.els.meditator, benchSeat, R.meditateSrc ? R.meditateSrc() : ART + 'avatar-meditate.webp'); /* Breathe with Erin on the bench */
+    });
     R.on('props', function (L) { renderPlot(L); if (sitting && !R.els.props.contains(sitting.el)) R.els.props.appendChild(sitting.el); }); /* a props re-render keeps her seated */
     R.on('layout', function (L) { if (watering) finishWatering(false); if (sitting) { sitting.el.remove(); sitting = null; R.els.scene.classList.remove('sitting'); } if (inGarden(L)) renderPlot(); });
     /* seated: the first tap anywhere stands her up, then the tap goes on to do what it does */

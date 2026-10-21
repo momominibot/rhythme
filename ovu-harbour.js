@@ -218,6 +218,7 @@
     R.on('layout', function (L) { if (!L || L.id !== 'harbour') { standUp(); invalidate(false); } });
     R.on('props', function () { if (sitting && !sitting.el.isConnected) R.els.props.appendChild(sitting.el); if (line && !line.isConnected) R.els.props.appendChild(line); });
     R.on('beforeWalk', standUp); R.on('walk', standUp); R.on('activity', function () { standUp(); invalidate(false); });
+    R.on('outfit', function () { if (sitting && sitting.el && root.OvuGarden && root.OvuGarden.reseat) root.OvuGarden.reseat(sitting.el, HARBOUR.seat); });
     R.on('sheetHide', function () { invalidate(false); }); /* the line comes in with the sheet */
     R.on('sheetReplace', function () { invalidate(false); });
     doc.addEventListener('visibilitychange', function () { if (doc.hidden) invalidate(false); else if (spotSheet()) invalidate(true); }); /* away and back: the float is gone, the spot sheet is drawn fresh */

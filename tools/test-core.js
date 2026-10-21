@@ -3694,4 +3694,67 @@ var summarised = false;
   check('after a sleep that outlasts the retries, the 30-second look opens the card once she is up', slept === 0 && beforeLook === 0 && ls.log.join() === 'birthday' && ls.shown() === 2026, [slept, beforeLook, ls.log.join()].join(' '));
 })();
 
+(function oneActivityAndRedress() {
+  console.log('2k23. one activity at a time, and a new outfit is drawn in the picture she is in (Codex sweep, 21 Oct)');
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  function fnBody(src, name) { var i = src.indexOf('function ' + name + '('); if (i < 0) return ''; var d = 0, j = src.indexOf('{', i); for (var k = j; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}') { d--; if (!d) return src.slice(i, k + 1); } } return ''; }
+  /* the rule itself: the room's activityNow, run on stand-ins for each activity in turn */
+  var an = fnBody(rs, 'activityNow'), bl = fnBody(rs, 'busyLine'), rb = fnBody(rs, 'refuseBusy');
+  function room(o) {
+    var c = vm.createContext({ practice: o.practice || null, session: o.session || null, window: {}, toasts: [], hud: { on: false, classList: { add: function (k) { if (k === 'on') c.hud.on = true; } } } });
+    c.window.OvuMorning = { active: function () { return !!o.morning; }, reveal: function () { c.revealed = 'morning'; } };
+    c.window.OvuSeats = { active: function () { return !!o.seat; }, state: function () { return o.seat ? { seat: 'street' } : null; }, SEATS: { street: { practice: 'street' } }, SCRIPTS: { street: { name: 'Sounds of the street' } }, reveal: function () { c.revealed = 'seat'; } };
+    c.OvuMorning = c.window.OvuMorning; c.OvuSeats = c.window.OvuSeats; c.toast = function (t) { c.toasts.push(t); };
+    try { vm.runInContext(an + bl + rb, c); } catch (e) { } return c;
+  }
+  function ev(code, c) { try { return vm.runInContext(code, c); } catch (e) { return '(missing: ' + e.message + ')'; } } /* an old room without the rule fails here instead of stopping the run */
+  var none = room({}), pr = room({ practice: { a: { name: 'Brushing teeth' } } }), se = room({ session: { kind: 'breathe' } }), er = room({ session: { kind: 'erin' } }), mo = room({ morning: true }), st = room({ seat: true });
+  var rp = ev('refuseBusy()', pr), rse = ev('refuseBusy()', se), rmo = ev('refuseBusy()', mo), rst = ev('refuseBusy()', st), rn = ev('refuseBusy()', none);
+  check('activityNow names the one running activity: a practice, Just breathe or breathing with Erin, Morning start, a bench practice by its own name, and nothing in a free room', ev('activityNow()', none) === null && ev('activityNow().name', pr) === 'Brushing teeth' && ev('activityNow().name', se) === 'Just breathe' && ev('activityNow().name', er) === 'Breathing with Erin' && ev('activityNow().kind', mo) === 'morning' && ev('activityNow().name', st) === 'Sounds of the street');
+  check('refuseBusy refuses with one line naming it and brings that activity\'s own controls back; a free room is not refused and hears nothing', rp && pr.toasts[0] === 'Brushing teeth is running. Finish it, or tap Stop first.' && pr.hud.on && rse && se.hud.on && rmo && mo.revealed === 'morning' && rst && st.revealed === 'seat' && st.toasts[0].indexOf('Sounds of the street is running') === 0 && rn === false && !none.toasts.length && !none.hud.on);
+  var starts = ['runPractice', 'runSession', 'openMindfulness'].map(function (n) { return fnBody(rs, n).split('\n').slice(1, 3).join('\n'); });
+  check('a practice, a session and the mat each ask the rule before anything else, so nothing of them is half begun (a running one of their own kind just shows its bar)', starts.every(function (s) { return /if \(refuseBusy\(\)\) return;/.test(s); }) && /if \(practice\) \{ hud\.classList\.add\('on'\); return; \}/.test(starts[0]) && /if \(session\) \{ hud\.classList\.add\('on'\); return; \}/.test(starts[1]) && /if \(session\) \{ hud\.classList\.add\('on'\); return; \}/.test(starts[2]));
+  check('the Mind tab is not selected while something else runs, and a practice ending never hides another activity\'s bar', /if \(k === 'mind' && activityNow\(\)\) \{ openMindfulness\(\); return; \}/.test(rs) && (rs.match(/if \(!session\) hud\.classList\.remove\('on'\); avatar\.classList\.remove\('acting'\); restorePose\(\); practice = null;/g) || []).length === 2 && /activityNow: activityNow, busyLine: busyLine, refuseBusy: refuseBusy/.test(rs));
+  /* Morning start, the seats and the care steps, loaded for real, with a room that says a practice is running */
+  function busyRoom() {
+    var R = { calls: 0, sheets: [], toasts: [], hooks: {}, ART: '', LAYOUTS: {}, els: {},
+      on: function (n, f) { (R.hooks[n] = R.hooks[n] || []).push(f); }, asleep: function () { return false; }, layout: function () { return { id: 'street' }; }, sheetOpen: function () { return false; },
+      activityNow: function () { return { kind: 'practice', name: 'Brushing teeth', icon: 'self_improvement' }; }, busyLine: function (a) { return a.name + ' is running. Finish it, or tap Stop first.'; },
+      refuseBusy: function () { R.calls++; R.toasts.push(R.busyLine(R.activityNow())); return true; }, toast: function (t) { R.toasts.push(t); }, openSheet: function (id) { R.sheets.push(id); }, hideSheet: function () { }, emit: function () { }, moment: function () { return ''; },
+      sessionOn: function () { return false; }, practiceOn: function () { return true; }, meditating: function () { return false; }, hudOn: function () { } };
+    return R;
+  }
+  var wm = { console: console, document: { addEventListener: function () { }, querySelector: function () { return null; }, getElementById: function () { return null; } } }; wm.window = wm; vm.createContext(wm);
+  ['ovu-mindful.js', 'ovu-morning.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), wm, { filename: f }); });
+  var Rm = busyRoom(); wm.OvuRoom = Rm; wm.OvuStore = { state: function () { return {}; }, today: function () { return '2026-10-21'; } };
+  function tryRun(f) { try { f(); } catch (e) { } } /* an older module that goes on past the rule fails the check below instead of stopping the run */
+  tryRun(function () { wm.OvuMorning.open(); }); var openCalls = Rm.calls, openSheets = Rm.sheets.length; tryRun(function () { wm.OvuMorning.begin('yourway', true); });
+  check('Morning start neither opens its choice sheet nor begins over a running practice: each asks the rule, which says what is running', openCalls === 1 && openSheets === 0 && Rm.calls === 2 && !wm.OvuMorning.active() && Rm.toasts[1] === 'Brushing teeth is running. Finish it, or tap Stop first.');
+  var ws = fresh('2026-10-21'), Rs = busyRoom(); ws.OvuRoom = Rs; ws.OvuGarden = { reseat: function () { } }; ws.OvuWalk = { walking: function () { return false; }, napping: function () { return false; } };
+  ws.document = { addEventListener: function () { }, getElementById: function () { return null; }, createElement: function () { throw new Error('nothing is drawn when refused'); } };
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), ws, { filename: 'ovu-seats.js' });
+  var played = 0; ws.OvuSound = { play: function () { played++; } };
+  tryRun(function () { ws.OvuSeats.open('street'); }); var seatOpen = { calls: Rs.calls, sheets: Rs.sheets.length }; tryRun(function () { ws.OvuSeats.begin('street'); });
+  check('a bench practice neither opens its sheet nor begins over a running practice, plays no begin sound, and draws no sitter', seatOpen.calls === 1 && seatOpen.sheets === 0 && Rs.calls === 2 && !ws.OvuSeats.active() && played === 0);
+  var wc = fresh('2026-10-21'), Rc = busyRoom(), ran = 0; Rc.layout = function () { return { id: 'farm' }; }; wc.OvuRoom = Rc;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-care.js'), 'utf8'), wc, { filename: 'ovu-care.js' });
+  wc.OvuCare.slowMs = 0; var box = { isConnected: true, className: 'untouched' };
+  var refused; tryRun(function () { refused = wc.OvuCare.step(box, { scene: 'farm', ms: 4000, verb: 'Watering' }, function () { ran++; }); });
+  Rc.refuseBusy = function () { return false; }; var free = wc.OvuCare.step(box, { scene: 'farm', ms: 4000, verb: 'Watering' }, function () { ran++; });
+  check('a care step refuses to begin while another activity runs (the box untouched, its save never run), and begins as before in a free room', refused === false && Rc.calls === 1 && box.className === 'untouched' && free === true && ran === 1);
+  /* the garden bench is refused before she sits down */
+  var gs = fs.readFileSync(path.join(root, 'ovu-garden.js'), 'utf8');
+  check('the garden bench asks the rule before its sheet and again before she sits, so a refusal never leaves her seated or hidden', /if \(R\.sessionOn\(\)\) \{ R\.hudOn\(true\); return; \}\n    if \(R\.refuseBusy && R\.refuseBusy\(\)\) return;/.test(gs) && /if \(R\.sessionOn\(\)\) return; if \(R\.refuseBusy && R\.refuseBusy\(\)\) return;[^\n]*\n\s*sitAt\(spot, holoSpot, back\)/.test(gs));
+  /* a new outfit: whatever picture she is in is redrawn in it */
+  var so = fnBody(rs, 'setOutfit'), rd = fnBody(rs, 'redress'), tw = fnBody(rs, 'twirlOk');
+  check('a picked outfit (never a silent internal change) is redrawn in the picture she is in: the sleeper, the mat, a practice pose, Morning start\'s step, a held activity pose, and every sitter through the outfit event', /if \(!silent\) redress\(\);/.test(so) && /wearImg\(sleeper\.querySelector\('img'\), sleepSrc\(o\)/.test(rd) && /if \(meditating && !meditator\.classList\.contains\('onseat'\)\) wearImg\(meditator\.querySelector\('img'\), meditateSrc\(o\)/.test(rd) && /if \(practice\) setPose\(practice\.a\.pose\);/.test(rd) && /OvuMorning\.repose\(\)/.test(rd) && /lastPose && avatar\.classList\.contains\('acting'\)\) setPose\(lastPose\)/.test(rd) && /emit\('outfit', o\)/.test(rd) && !/OvuMorning\.repose/.test(so));
+  check('an outfit picked while she sleeps stands when she wakes (the bedtime outfit is not put back over it), and no hop plays on a hidden or seated standing avatar', /if \(sl && sl\.prevOutfit\) S\.setState\(\{ sleeping: Object\.assign\(\{\}, sl, \{ prevOutfit: null \}\) \}\)/.test(rd) && /if \(!silent && !avatar\.classList\.contains\('hidden'\) && !scene\.classList\.contains\('sitting'\)\) \{ avatar\.classList\.add\('poofing'\)/.test(so));
+  check('no twirl over a held activity pose or behind a seated sitter', /!avatar\.classList\.contains\('acting'\) && !scene\.classList\.contains\('sitting'\)/.test(tw) && /var lastPose = null;[\s\S]{0,200}function setPose\(pose\) \{\n    finishTwirl\(\); lastPose = pose;/.test(rs) && /function restorePose\(\) \{ lastPose = null;/.test(rs));
+  var sitters = { 'ovu-seats.js': /R\.on\('outfit', function \(\) \{ if \(run && run\.el && G\.reseat\) G\.reseat\(run\.el, run\.spot\.seat\); \}\)/, 'ovu-barn.js': /R\.on\('outfit'[^\n]*reseat\(sitting\.el, CAVE\.seat\)/, 'ovu-harbour.js': /R\.on\('outfit'[^\n]*reseat\(sitting\.el, HARBOUR\.seat\)/, 'ovu-tones.js': /R\.on\('outfit'[^\n]*reseat\(sitting\.el, CAVE\.seat\)/, 'ovu-garden.js': /R\.on\('outfit', function \(\) \{\n      if \(sitting && sitting\.el\) reseat\(sitting\.el, sitting\.spot && sitting\.spot\.seat\);\n      if \(R\.els\.meditator && R\.els\.meditator\.classList\.contains\('onseat'\) && R\.meditating\(\)\) reseat\(R\.els\.meditator, benchSeat/ };
+  var unwired = Object.keys(sitters).filter(function (f) { return !sitters[f].test(fs.readFileSync(path.join(root, f), 'utf8')); });
+  check('every sitter is redrawn on a new outfit: the garden and plaza benches, Breathe with Erin on the bench, a seated practice, the warm stone, the tones and the harbour bench', unwired.length === 0, unwired.join(', '));
+  var rsBody = fnBody(gs, 'reseat');
+  check('a re-dress keeps her seated: the seated sprite and its lap line land together, with no sit sound, and a slower earlier swap never lands over a newer one', /el\._dress !== tok/.test(rsBody) && /if \(seat\) seatPlace\(el, seat\)/.test(rsBody) && rsBody.indexOf('OvuSound') < 0 && /G\.reseat = reseat;/.test(gs));
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
