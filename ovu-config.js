@@ -22,6 +22,11 @@
      * Doubao model agreement 1.2) license use only in mainland China, so it stays off until a service licensed for
      * Singapore users is in place. While paused, the three Luna AI choices cannot be turned on and no AI request is made.
      * The browser tests set window.OVU_AI_PAUSE_OVERRIDE = false to keep exercising the AI paths. */
-    aiPaused: root.OVU_AI_PAUSE_OVERRIDE === false ? false : true
+    aiPaused: root.OVU_AI_PAUSE_OVERRIDE === false ? false : true,
+    /* Reading Apple Health directly (ovu-healthnative.js) works only inside the iOS app shell, and only once
+     * the HealthKit capability is on the App ID and in ios/App/App/App.entitlements. Off until then; with it
+     * off, or in any browser, the Connect Apple Health row never shows and nothing native is called.
+     * Health Connect on Android is planned, not built (docs/design/2026-10-21-health-connect-native.md). */
+    nativeHealth: { apple: root.OVU_NATIVE_HEALTH_OVERRIDE === true }
   };
 })(window);

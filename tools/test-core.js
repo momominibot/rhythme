@@ -2680,4 +2680,91 @@ var summarised = false;
   check('month totals keep filled-in days apart from recorded bleeding, and count imported calm sessions', oct.bleedingDays === 1 && oct.filledDays === 2 && oct.calmSessions === 3 && oct.calmMinutes === 30, JSON.stringify(oct));
 })();
 
+(function appleHealthDirectRead() {
+  console.log('Apple Health read directly (native shell): flag, bridge detection and mapping into the same import path');
+  var cfgWin = function (override) { var w = { }; w.window = w; if (override !== undefined) w.OVU_NATIVE_HEALTH_OVERRIDE = override; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-config.js'), 'utf8'), vm.createContext(w)); return w.OVU_CONFIG; };
+  check('the switch is off by default in ovu-config.js, and only a strict true turns it on', cfgWin().nativeHealth.apple === false && cfgWin('1').nativeHealth.apple === false && cfgWin(true).nativeHealth.apple === true);
+  function load(flag, cap) {
+    var w = fresh('2026-10-20'); w.OVU_CONFIG = { nativeHealth: { apple: flag } }; if (cap) w.Capacitor = cap;
+    vm.runInContext(fs.readFileSync(path.join(root, 'ovu-healthnative.js'), 'utf8'), w, { filename: 'ovu-healthnative.js' });
+    return w;
+  }
+  /* a fake shell: the native bridge's own surface (isNativePlatform, getPlatform, PluginHeaders, nativePromise) */
+  function fakeShell(samplesByType, opts) {
+    opts = opts || {}; var calls = [];
+    var cap = { isNativePlatform: function () { return opts.native !== false; }, getPlatform: function () { return opts.platform || 'ios'; }, PluginHeaders: opts.noHeader ? [] : [{ name: 'RhythmeHealth', methods: [] }],
+      nativePromise: function (plugin, method, o) {
+        calls.push({ plugin: plugin, method: method, o: JSON.parse(JSON.stringify(o || {})) });
+        if (opts.fail && opts.fail[method]) return Promise.reject(new Error(opts.fail[method]));
+        if (method === 'isAvailable') return Promise.resolve({ available: opts.available !== false });
+        if (method === 'requestAuthorization') return Promise.resolve({ requested: true });
+        if (method === 'readSamples') return Promise.resolve({ samples: (samplesByType[o.type] || []).slice() });
+        return Promise.reject(new Error('unknown method ' + method));
+      } };
+    return { cap: cap, calls: calls };
+  }
+  var off = fakeShell({}), wOff = load(false, off.cap);
+  check('with the switch off, a full iOS shell still shows nothing', wOff.OvuHealthNative.available() === false);
+  check('in a plain browser (no Capacitor) it is unavailable even with the switch on', load(true).OvuHealthNative.available() === false);
+  check('a Capacitor web build, an Android shell and an iOS shell without the plugin are all unavailable',
+    load(true, fakeShell({}, { native: false }).cap).OvuHealthNative.available() === false && load(true, fakeShell({}, { platform: 'android' }).cap).OvuHealthNative.available() === false && load(true, fakeShell({}, { noHeader: true }).cap).OvuHealthNative.available() === false);
+  check('switch on inside the iOS shell with the plugin registered: available', load(true, fakeShell({}).cap).OvuHealthNative.available() === true);
+
+  var HK = { sleep: 'HKCategoryTypeIdentifierSleepAnalysis', flow: 'HKCategoryTypeIdentifierMenstrualFlow', spot: 'HKCategoryTypeIdentifierIntermenstrualBleeding' };
+  var rec = function (type, a, b, v) { return { type: type, startDate: a, endDate: b, value: v }; };
+  var samples = {
+    sleep: [
+      rec(HK.sleep, '2026-10-14T23:10:00+08:00', '2026-10-15T03:00:00+08:00', '3'), rec(HK.sleep, '2026-10-15T03:00:00+08:00', '2026-10-15T04:00:00+08:00', '4'),
+      rec(HK.sleep, '2026-10-15T04:00:00+08:00', '2026-10-15T06:50:00+08:00', '5'), rec(HK.sleep, '2026-10-15T06:50:00+08:00', '2026-10-15T06:55:00+08:00', '2'),
+      rec(HK.sleep, '2026-10-16T22:30:00+08:00', '2026-10-17T06:30:00+08:00', '0')
+    ],
+    menstrualFlow: [
+      rec(HK.flow, '2026-10-01T01:30:00+08:00', '2026-10-01T01:30:00+08:00', '3'), rec(HK.flow, '2026-10-01T09:00:00+08:00', '2026-10-01T09:00:00+08:00', '4'),
+      rec(HK.flow, '2026-10-02T08:00:00+08:00', '2026-10-02T08:00:00+08:00', '2'), rec(HK.flow, '2026-10-03T08:00:00+08:00', '2026-10-03T08:00:00+08:00', '5'),
+      rec(HK.flow, '2026-10-04T08:00:00+08:00', '2026-10-04T08:00:00+08:00', '1')
+    ],
+    intermenstrualBleeding: [rec(HK.spot, '2026-10-12T10:00:00+08:00', '2026-10-12T10:00:00+08:00', '0'), rec(HK.spot, '2026-10-02T10:00:00+08:00', '2026-10-02T10:00:00+08:00', '0')]
+  };
+  var sh = fakeShell(samples), w = load(true, sh.cap), N = w.OvuHealthNative, H = w.OvuHealth, S = w.OvuStore;
+  var NOW = Date.UTC(2026, 9, 20, 4, 0, 0);
+  S.add('period', '2026-10-02', { flow: 'medium' }, 'room');
+  N.connectAndRead({ days: 90, now: NOW }).then(function (res) {
+    var auth = sh.calls.filter(function (c) { return c.method === 'requestAuthorization'; })[0], reads = sh.calls.filter(function (c) { return c.method === 'readSamples'; });
+    check('Apple is asked to read the three types and nothing else, and no write is ever asked', auth && JSON.stringify(auth.o) === JSON.stringify({ types: ['sleep', 'menstrualFlow', 'intermenstrualBleeding'] }) && sh.calls.every(function (c) { return c.plugin === 'RhythmeHealth' && !/save|write|share/i.test(c.method); }), JSON.stringify(sh.calls.map(function (c) { return c.method; })));
+    check('one read per type over exactly the last 90 days', reads.length === 3 && reads.every(function (c) { return c.o.to === NOW && c.o.to - c.o.from === 90 * 86400000; }), JSON.stringify(reads.map(function (c) { return c.o; })));
+    check('the result is an Apple Health result marked as a direct read', res.source === 'apple-health' && res.origin === 'healthkit' && res.window.days === 90 && res.empty === false);
+    var n = res.sleep[0];
+    check('stages add up to one night on the morning it ended, at the phone clock time; awake minutes are left out', res.sleep.length === 2 && n.date === '2026-10-15' && n.bedTime === '23:10' && n.wakeTime === '06:50' && n.asleepMin === 460 && n.basis === 'asleep', JSON.stringify(res.sleep));
+    check('a night with only time in bed is kept and labelled in bed', res.sleep[1].date === '2026-10-17' && res.sleep[1].basis === 'in-bed');
+    check('flow per day: the stronger of two records, None skipped, unspecified kept', JSON.stringify(res.period) === JSON.stringify([{ date: '2026-10-01', flow: 'heavy' }, { date: '2026-10-02', flow: 'light' }, { date: '2026-10-04', flow: 'unspecified' }]), JSON.stringify(res.period));
+    check('spotting on a flow day is not listed apart; spotting on its own day is', JSON.stringify(res.spotting) === JSON.stringify([{ date: '2026-10-12', flow: 'spotting' }]), JSON.stringify(res.spotting));
+    /* parity: the same records as an export.xml give the same nights and days */
+    var xml = '<HealthData>' + [].concat(samples.sleep, samples.menstrualFlow, samples.intermenstrualBleeding).map(function (r) { return '<Record type="' + r.type + '" startDate="' + r.startDate.replace('T', ' ').replace(/([+-]\d\d):(\d\d)$/, ' $1$2') + '" endDate="' + r.endDate.replace('T', ' ').replace(/([+-]\d\d):(\d\d)$/, ' $1$2') + '" value="' + r.value + '"/>'; }).join('') + '</HealthData>';
+    var fx = H.parseAppleXml(xml);
+    check('a direct read and an export of the same records give the same sleep, period and spotting', JSON.stringify(fx.sleep) === JSON.stringify(res.sleep) && JSON.stringify(fx.period) === JSON.stringify(res.period) && JSON.stringify(fx.spotting) === JSON.stringify(res.spotting));
+    var ks = H.kinds(res, { to: '2026-10-20' }).ready.map(function (k) { return k.id + ':' + k.count; });
+    check('the picker lists sleep, period days and spotting with their counts', JSON.stringify(ks) === JSON.stringify(['sleep:2', 'period:3', 'spotting:1']), JSON.stringify(ks));
+    var p = H.apply(res, S, { kinds: ['period'] });
+    var mine = S.list().filter(function (e) { return e.source === 'apple-health'; });
+    check('only the ticked kind comes in, as apple-health entries, and the day logged by hand wins', p.counts.period === 2 && p.keptBy.period === 1 && mine.length === 2 && mine.every(function (e) { return e.type === 'period'; }) && S.list().filter(function (e) { return e.date === '2026-10-02' && e.type === 'period'; })[0].source === 'room', JSON.stringify(p.counts));
+    var p2 = H.apply(res, S, { kinds: ['period'] });
+    check('reading again refreshes the same days instead of adding twice', p2.refreshed === 2 && S.list().filter(function (e) { return e.source === 'apple-health'; }).length === 2);
+    return load(true, fakeShell({}).cap).OvuHealthNative.connectAndRead({ now: NOW });
+  }).then(function (empty) {
+    check('nothing back (no data, or reading not allowed: HealthKit does not say which) is marked empty', empty.empty === true && empty.sleep.length === 0 && empty.period.length === 0);
+    var big = fakeShell({}); return load(true, big.cap).OvuHealthNative.read({ days: 5000, now: NOW }).then(function () { return big.calls; });
+  }).then(function (calls) {
+    check('the window is capped at 366 days', calls.every(function (c) { return c.o.to - c.o.from === 366 * 86400000; }));
+    return load(true, fakeShell({}, { available: false }).cap).OvuHealthNative.connect().then(function () { return 'resolved'; }, function (e) { return e.message; });
+  }).then(function (msg) {
+    check('a device without Health gets a plain reason', /not available on this device/.test(msg), msg);
+    return load(true, fakeShell({}, { fail: { readSamples: 'The user denied something' } }).cap).OvuHealthNative.read({ now: NOW }).then(function () { return 'resolved'; }, function (e) { return e.message; });
+  }).then(function (msg) {
+    check('a failed read is passed on, not swallowed', msg === 'The user denied something', msg);
+    var shell = fakeShell(samples); return load(false, shell.cap).OvuHealthNative.connectAndRead({ now: NOW }).then(function () { return 'resolved'; }, function (e) { return e.message + '|' + shell.calls.length; });
+  }).then(function (msg) {
+    check('with the switch off nothing native is called, even if asked', /not switched on/.test(msg) && /\|0$/.test(msg), msg);
+  });
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

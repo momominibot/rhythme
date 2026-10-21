@@ -183,7 +183,15 @@
       var total = 0; Object.keys(skipped).forEach(function (k) { total += skipped[k]; });
       return { source: SOURCE.apple, sleep: nights, weight: weight, period: period, spotting: spotting, symptoms: symptoms, mindful: mindful, naps: sl.naps, inBedNights: ib.nights.filter(function (n) { return n.basis === 'in-bed'; }).length, skipped: skipped, skipDates: skipDates, skippedTotal: total, skippedKinds: Object.keys(skipped).length, counts: counts };
     }
-    return { push: push, result: result };
+    /* record(a): one HealthKit sample handed over by the native shell, already split into the export's
+     * attributes (type, startDate, endDate, value, unit), so a direct read takes exactly the path a file does */
+    function record(a) {
+      if (!a || typeof a.type !== 'string') { counts.unreadable++; return; }
+      counts.records++; var t = a.type;
+      if (t === SLEEP_T || t === MASS_T || t === FLOW_T || t === SPOT_T || t === MIND_T || SYMPTOM_T[t]) one({ type: t, startDate: String(a.startDate || ''), endDate: String(a.endDate || ''), value: a.value === undefined || a.value === null ? '' : String(a.value), unit: a.unit ? String(a.unit) : '' });
+      else skip(t, 'startDate="' + String(a.startDate || '') + '"');
+    }
+    return { push: push, record: record, result: result };
   }
   function parseAppleXml(text) { var sc = appleScanner(); sc.push(text, true); return sc.result(); }
 
@@ -531,7 +539,7 @@
   }
 
   root.OvuHealth = {
-    SOURCE: SOURCE, SOURCES: SOURCES,
+    SOURCE: SOURCE, SOURCES: SOURCES, HK: { sleep: SLEEP_T, menstrualFlow: FLOW_T, intermenstrualBleeding: SPOT_T, bodyMass: MASS_T, mindful: MIND_T },
     parseStamp: parseStamp, wallDate: wallDate, wallHM: wallHM, toKg: toKg, nightsFrom: nightsFrom, friendlyType: friendlyType,
     appleScanner: appleScanner, parseAppleXml: parseAppleXml,
     googleSession: googleSession, googleDailyCsv: googleDailyCsv, googleBuilder: googleBuilder, parseCsv: parseCsv,
