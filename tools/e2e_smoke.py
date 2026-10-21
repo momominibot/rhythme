@@ -1130,7 +1130,7 @@ async def main():
             if onst["layout"] == "street" and onst["bench"]:
                 b0 = await page.evaluate(ST)
                 await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bench'))")
-                try: await page.wait_for_selector('#benchSit', timeout=12000); await page.click('#benchSit'); await page.wait_for_timeout(900)
+                try: await page.wait_for_selector('#seatSit', timeout=12000); await page.click('#seatSit'); await page.wait_for_timeout(900)  # since 21 Oct the street bench sheet is its own seat (ovu-seats.js): Just sit a while is #seatSit
                 except Exception: print("street bench card did not open:", b0, await page.evaluate(ST))
             else: print("street bench skipped:", went, onst)
             sb = await page.evaluate("()=>{var el=document.querySelector('.nb.sitter'), b=document.querySelector('#scene').getBoundingClientRect(), r=el&&el.getBoundingClientRect(); return {there: !!el, w: el&&parseFloat(el.style.width), left: el&&parseFloat(el.style.left), inside: !!r && r.left>=b.left && r.right<=b.right && r.bottom<=b.bottom, layout: document.querySelector('#scene').dataset.layout}}")
