@@ -178,7 +178,7 @@
      one person's diary is never uploaded under another person's account. */
   function consentForUser(p, uid) { var c = (p || {}).cloud; return consentOk(p) && c.uid === uid; }
   /* nothing moves without a session, the cloud choice for this account, the 18+ attestation and the current notice (ovu-consent.js) */
-  function doorOpen() { var C = root.OvuConsent; return !C || (!C.needsSheet() && C.allows('cloud_sync')); }
+  function doorOpen() { var C = root.OvuConsent; return !!C && !C.needsSheet() && C.allows('cloud_sync'); } /* fail closed: without the consent module nothing moves */
   function canSync() { var s = session(); return !!(s && s.user && consentForUser(S.profile(), s.user.id) && doorOpen()); }
 
   /* ---------- REST ---------- */

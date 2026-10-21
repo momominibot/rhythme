@@ -41,7 +41,7 @@ def load_sql(c, path):
     c.execute(sql)
 
 
-def fresh():
+def fresh(before_last=None):
     with psycopg.connect(DSN + ' dbname=postgres', autocommit=True) as c:
         c.execute('drop database if exists %s with (force)' % DB)
         c.execute('create database %s' % DB)
@@ -51,6 +51,7 @@ def fresh():
     c.execute("alter table auth.users add column if not exists email_confirmed_at timestamptz default now(), add column if not exists created_at timestamptz default now(), add column if not exists raw_user_meta_data jsonb default '{}'::jsonb")
     c.execute("create table if not exists public.luna_usage (bucket text not null, day date not null default current_date, count integer not null default 0, primary key (bucket, day))")
     for f in ORDER:
+        if f == ORDER[-1] and before_last: before_last(c)
         try:
             load_sql(c, os.path.join(MIG, f))
         except Exception as e:
@@ -74,15 +75,19 @@ def person(c, band='30-34', attest=True):
     as_server(c)
     c.execute("insert into auth.users (id, email, aud, role) values (%s, %s, 'authenticated', 'authenticated')", [u, 'pipe-%s@example.invalid' % u])
     if attest:
-        c.execute("insert into public.consent_events (user_id, purpose, action, notice_version, method) values (%s, 'age_18', 'grant', 3, 'sheet'), (%s, 'cloud_sync', 'grant', 3, 'sheet')", [u, u])
+        c.execute("insert into public.consent_events (user_id, purpose, action, notice_version, method) values (%s, 'age_18', 'grant', 4, 'sheet'), (%s, 'cloud_sync', 'grant', 4, 'sheet')", [u, u])
     return {'id': u, 'band': band}
 
 
-def consent(c, p, on=True, notice=3, band=None, scope='from_now'):
+def consent(c, p, on=True, notice=4, band=None, scope='from_now', backdate=100):
+    """the account's choice; ordinary fixtures backdate the acceptance by a fixed 100 days so entries dated in the past qualify
+    under from_now (the observation-date rule); backdate=0 keeps the real acceptance time"""
     as_user(c, p['id'])
     try:
         r = c.execute("select public.analysis_consent_set(%s, %s, %s, %s)", [on, notice, band if band is not None else p['band'], scope]).fetchone()[0]
-        as_server(c); return r
+        as_server(c)
+        if on and backdate: c.execute("update public.analysis_consent set accepted_at = date_trunc('day', now()) - make_interval(days => %s) where user_id = %s", [backdate, p['id']])
+        return r
     except Exception as e:
         as_server(c); return {'error': str(e)}
 
@@ -124,7 +129,10 @@ def d(n):
 
 def main():
     global TODAY
-    c = fresh()
+    planted = {}
+    def plant(c):
+        planted['run'] = c.execute("insert into staff.agent_runs (kind, trigger, status, finished_at, summary) values ('run_now', 'staff', 'ok', now(), '{\"eligible\": 25}'::jsonb) returning id").fetchone()[0]
+    c = fresh(plant)
     TODAY = c.execute("select (now() at time zone 'Asia/Singapore')::date").fetchone()[0]
     owner = staff_owner(c)
     k = c.execute("select staff.k_floor()").fetchone()[0]
@@ -171,6 +179,7 @@ def main():
     entry(c, p20, 'period', d(0), {'flow': 'medium'})     # today: outside the completed-dates window
     entry(c, p20, 'mindfulness', d(7), {'minutes': 900, 'completed': True})     # implausible: missing, not zero
     entry(c, p20, 'mindfulness', d(8), {'minutes': 20})                         # no completed field: out of the completed denominator
+    entry(c, p20, 'mindfulness', d(9), {'minutes': 0.5, 'completed': False})  # a practice stopped at once: the phone floors it at 0.5, which is valid
     r = run(c, owner); ov = overview(c, owner); e = finding(ov, 'cycle', 'eligible_people')
     pdays = finding(ov, 'cycle', 'period_days'); starts = finding(ov, 'cycle', 'people_with_two_starts'); med = finding(ov, 'cycle', 'median_cycle_days')
     mins = finding(ov, 'mind', 'practice_minutes'); miss = finding(ov, 'mind', 'practices_missing_duration'); comp = finding(ov, 'mind', 'completed_share'); sev = finding(ov, 'sleep', 'nights_with_several_records')
@@ -178,19 +187,22 @@ def main():
     check("period days count bleeding account-days inside 28 completed dates (today's entry and spotting excluded): 20 x 2 = 40", pdays['value'] == 40 and pdays['people'] == 20 and pdays['unit'] == 'account-days', pdays)
     check("every account has three episode starts, so people_with_two_starts is 20", starts['value'] == 20 and starts['state'] == 'measured', starts)
     check("the phone's episode rule and the spotting rule: cycles are 30 and 27 days, median of each account's median 28.5 (a start at day 57 would give 27, a start on the spotting day 15)", med['value'] is not None and float(med['value']) == 28.5 and med['unit'] == 'days', med)
-    check('practice minutes count only valid durations; malformed and implausible durations are counted as missing, never as zero', mins['value'] == 20 * 10 + 20 and miss['value'] == 21 and mins['unit'] == 'minutes', {'mins': mins, 'miss': miss})
-    check('completed share leaves practices without the field out of its denominator', comp['value'] == 100.0 and comp['unit'] == 'per cent of practices', comp)
+    check('practice minutes count only valid durations; malformed and implausible durations are counted as missing, never as zero', mins['value'] == 20 * 10 + 20 + 0.5 and miss['value'] == 21 and mins['unit'] == 'minutes', {'mins': mins, 'miss': miss})
+    check('completed share is held back when its complement is one person (p20 stopped a practice early): a share tells on a lone person on either side', comp['suppressed'] and comp['value'] is None and comp['state'] == 'insufficient' and comp['unit'] == 'per cent of practices', comp)
+    miss2 = finding(ov, 'mind', 'practices_missing_duration')
+    check('practices missing a duration is counted over everyone with a practice, so none missing would read as zero, not as no data', miss2['people'] >= 20 and miss2['state'] == 'measured', miss2)
     check('two sleep records on one night are counted as several records, not conflicts', sev['value'] == 20 and sev['state'] == 'measured' and 'naps' in (sev.get('note') or ''), sev)
     check('the latest overview is the valid run and nothing is held', ov['held_runs'] == 0 and ov['latest_run'] == r['run_id'] and ov['scheduled'] is False, {'held': ov['held_runs']})
 
     # 5. history after consent: a record created before consent never qualifies unless scope is all
     late = person(c); entry(c, late, 'period', d(10), {'flow': 'medium'}, created=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=20))
-    consent(c, late)
+    consent(c, late, backdate=0)
+    entry(c, late, 'period', d(20), {'flow': 'heavy'}, source='import')  # an import after the choice: an older observation stamped with a new creation time
     r = run(c, owner); ov = overview(c, owner); pdays = finding(ov, 'cycle', 'period_days')
-    check('an entry recorded before the consent date is left out under from_now (period days stay 40 with 21 eligible)', pdays['value'] == 40 and finding(ov, 'cycle', 'eligible_people')['value'] == 21, pdays)
+    check('under from_now an entry recorded before the choice and an older observation imported after it are both left out (period days stay 40 with 21 eligible)', pdays['value'] == 40 and finding(ov, 'cycle', 'eligible_people')['value'] == 21, pdays)
     consent(c, late, scope='all')
     r = run(c, owner); ov = overview(c, owner); pdays = finding(ov, 'cycle', 'period_days')
-    check('with all history approved that entry counts (41)', pdays['value'] == 41, pdays)
+    check('with all history approved both count (42)', pdays['value'] == 42, pdays)
 
     # 6. withdrawal and deletion hold published runs until the next run
     w = consent(c, people[1], on=False)
@@ -214,6 +226,12 @@ def main():
     check('svc_counts no longer reads public.entries', 'from public.entries' not in src[src.index('create or replace function staff.svc_counts'):src.index('-- ---------- 6. metrics_build v3')])
 
     # 8. the scheduled entry point: a due key runs once, API roles cannot call it, the lock is shared with staff presses
+    rid = c.execute("select staff.run_begin('run_now', 'staff', null)").fetchone()[0]  # a staff run left 'running' (its transaction committed)
+    blocked = c.execute("select staff.run_scheduled(current_date)").fetchone()[0]
+    c.execute("update staff.agent_runs set status = 'failed', error = 'test cleanup', finished_at = now() where id = %s", [rid])
+    check('while a staff run is still running the scheduled attempt is skipped and leaves no row (one worker lock and one running run across both paths)', rid is not None and blocked.get('skipped') is True and c.execute("select count(*) from staff.agent_runs where kind = 'scheduled'").fetchone()[0] == 0, blocked)
+    stale = c.execute("select staff.run_scheduled(current_date - 1)").fetchone()[0]
+    check('a scheduled attempt is for today only', 'today only' in (stale.get('error') or ''), stale)
     r1 = c.execute("select staff.run_scheduled(current_date)").fetchone()[0]
     r2 = c.execute("select staff.run_scheduled(current_date)").fetchone()[0]
     check('a scheduled attempt runs once per due key; the second is skipped, not retried', r1.get('ok') and r2.get('skipped') is True, {'r1': r1, 'r2': r2})
@@ -224,23 +242,48 @@ def main():
         except Exception:
             denied = True
         c.execute("reset role")
-        check('the %s role cannot call the scheduled entry point' % role, denied)
+        priv = c.execute("select has_function_privilege(%s, 'staff.run_scheduled(date)', 'execute')", [role]).fetchone()[0]
+        check('the %s role cannot call the scheduled entry point (no execute privilege, and the call fails)' % role, denied and priv is False, {'priv': priv})
     as_user(c, owner['id']); cron_like = c.execute("select public.admin_run(28)").fetchone()[0]; as_server(c)
     check('a staff press still works after a scheduled run and reports its duration by clock', cron_like.get('ok') and any(x.get('seconds') is not None for x in overview(c, owner)['runs']), cron_like)
-    # a run holds the lock while another path tries to begin
-    rid = c.execute("select staff.run_begin('run_now', 'staff', null)").fetchone()[0]  # a staff run left 'running' (its transaction committed)
-    blocked = c.execute("select staff.run_scheduled(current_date + 1)").fetchone()[0]
-    c.execute("update staff.agent_runs set status = 'failed', error = 'test cleanup', finished_at = now() where id = %s", [rid])
-    check('while a staff run is still running the scheduled attempt is skipped (one worker lock and one running run across both paths)', rid is not None and blocked.get('skipped') is True, blocked)
 
     # 9. one-person numerator and no_data states
     solo = person(c); consent(c, solo); entry(c, solo, 'weight', d(1), {'kg': 60})
     r = run(c, owner); ov = overview(c, owner); wd = finding(ov, 'inventory', 'weight_days'); refl = finding(ov, 'mind', 'reflection_days')
-    check('a metric only one account contributes to is held back; a metric nobody contributes to says no_data', wd['suppressed'] and wd['value'] is None and refl['state'] == 'no_data', {'wd': wd, 'refl': refl})
+    check('a metric only one account contributes to is held back; a metric nobody contributes to says no_data', wd['suppressed'] and wd['value'] is None and refl['state'] == 'no_data' and refl['suppressed'] is False, {'wd': wd, 'refl': refl})
 
     # 10. the minimised projection never carries notes or the whole JSON
     body = src[src.index('create temp table if not exists pg_temp.elig_rows'):src.index('for rec in')]
     check('the staging projection carries only the fields registered metrics need (no data column, no notes)', 'data jsonb' not in body and "'note'" not in body and 'reflection' not in body.split('insert into pg_temp.elig_rows')[1].split('from public.entries')[0])
+
+    # 11. the contract edges: notices, attestation, a first refusal, the phone's mirror, an authenticated write, the upgrade hold
+    old = consent(c, person(c), notice=3); unknown = consent(c, person(c), notice=9)
+    check('a choice made under the superseded notice 3 or an unregistered notice 9 is refused', 'older notice' in str(old.get('error', '')) and 'does not know' in str(unknown.get('error', '')), {'old': old, 'unknown': unknown})
+    plain = person(c); r = consent(c, plain, band='adult')
+    check("the phone's plain 'adult' band is eligible through the age_18 event and the attestation is persisted", r.get('adult_attested_by') == 'age_18 event' and c.execute("select adult_attested_by from public.analysis_consent where user_id = %s", [plain['id']]).fetchone()[0] == 'age_18 event', r)
+    noatt = person(c, attest=False); r = consent(c, noatt, band='adult')
+    check("without the age_18 event a plain 'adult' band is refused", '18 or older' in str(r.get('error', '')), r)
+    first_no = person(c); consent(c, first_no, on=False)
+    check('a refusal before any choice was on is still kept on the record', c.execute("select count(*) from public.consent_events where user_id = %s and purpose = 'improve_logging' and action = 'withdraw'", [first_no['id']]).fetchone()[0] == 1)
+    as_user(c, plain['id']); before = c.execute("select count(*) from public.consent_events where user_id = %s and purpose = 'improve_logging'", [plain['id']]).fetchone()[0]
+    mirror = c.execute("select public.consent_record('improve_logging', 'withdraw', 4, null, 'you', null, now(), 'mirror-1')").fetchone()[0]
+    after = c.execute("select count(*) from public.consent_events where user_id = %s and purpose = 'improve_logging'", [plain['id']]).fetchone()[0]
+    check("the phone's mirror of the improve-logging choice writes no second record and gets the server's own event back", mirror.get('mirror') is True and mirror.get('method') == 'server' and after == before == 1, {'mirror': mirror, 'before': before, 'after': after})
+    ok_write = c.execute("insert into public.entries (id, user_id, type, date, data, source) values ('auth-1', %s, 'weight', %s, '{\"kg\": 61}', 'room') returning id", [plain['id'], d(1)]).fetchone()[0]
+    try:
+        c.execute("insert into public.entries (id, user_id, type, date, data, source) values ('auth-2', %s, 'weight', %s, '{\"kg\": 61}', 'room')", [solo['id'], d(1)]); cross = False
+    except Exception:
+        cross = True
+    as_server(c)
+    check('an authenticated account writes its own entry and cannot write under another account (RLS)', ok_write == 'auth-1' and cross)
+    inv = c.execute("select invalidated_at is not null, invalidation_reason from staff.agent_runs where id = %s", [planted['run']]).fetchone()
+    check('a run published under the previous contract (metric version 2) is held by the upgrade itself, with the reason on it', inv[0] and 'upgraded' in inv[1], inv)
+    share = finding(ov, 'sleep', 'imported_record_share')
+    num, comp = c.execute("select count(distinct e.user_id) filter (where e.source in ('apple-health','google-fit','takeout')), count(distinct e.user_id) filter (where e.source not in ('apple-health','google-fit','takeout')) from public.entries e join public.analysis_consent a on a.user_id = e.user_id and a.withdrawn_at is null where e.type = 'sleep' and not e.deleted and e.date >= %s", [d(28)]).fetchone()
+    expect_held = (1 <= num <= k - 1) or (1 <= comp <= k - 1)
+    check('a share is held back exactly when its numerator or its complement is a small group (imported sleep records: %d imported, %d not)' % (num, comp), bool(share['suppressed']) == expect_held or share['state'] == 'no_data', {'share': share, 'num': num, 'comp': comp})
+    c.execute("delete from public.entries where user_id = %s", [solo['id']])
+    check('deleting the cloud copy removes the backup receipt', c.execute("select count(*) from staff.backup_receipts where user_id = %s", [solo['id']]).fetchone()[0] == 0)
 
     passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
     print('\n%d passed, %d failed' % (passed, failed))

@@ -20,7 +20,15 @@
 --  5. cloud-copy counts come from backup receipts kept by a trigger, so the counting function never reads entries;
 --  6. a run contract: one worker lock shared by staff and scheduled runs, a unique due key per scheduled day, a private
 --     scheduled entry point that no API role can call (the schedule itself is a later, approved migration), durations
---     by clock_timestamp, invalidation status.
+--     by clock_timestamp, invalidation status. Invalidation takes the same worker lock, so a withdrawal or deletion that
+--     lands while a report is being built waits for that report to publish and then holds it: no report can publish a
+--     contribution that was withdrawn during its run.
+--
+-- Decisions recorded for the legal read (docs/design/2026-10-21-data-capture-live-path-and-future-proofing.md):
+--  * "from now" means observations dated on or after the day the choice was made, recorded after it: a later import of
+--    older observations does not qualify unless the person chose "all history";
+--  * the one backfill below reads only user_id and timestamps of public.entries (no content), to seed cloud-copy receipts;
+--  * every published result from before this contract (metric version 2) is held until the next run recomputes it.
 
 -- ---------- 1. registries ----------
 create table if not exists staff.notice_registry (
@@ -31,7 +39,10 @@ create table if not exists staff.notice_registry (
   created_at timestamptz not null default now(),
   primary key (purpose, version)
 );
-insert into staff.notice_registry (purpose, version, note) values ('improve_logging', 3, 'Help improve logging, as worded in ovu-consent.js (notice v3)') on conflict do nothing;
+insert into staff.notice_registry (purpose, version, note) values
+  ('improve_logging', 3, 'notice v3, superseded 20 Oct 2026'),
+  ('improve_logging', 4, 'Help improve logging, as worded in ovu-consent.js under notice v4 (OvuStore.NOTICE_V, 20 Oct 2026: says who can reach records); hash registered when the legal read fixes the words')
+on conflict do nothing;
 create or replace function staff.notice_current(p_purpose text) returns integer language sql stable set search_path = '' as $$
   select max(version) from staff.notice_registry where purpose = p_purpose
 $$;
@@ -59,7 +70,7 @@ insert into staff.metric_registry (metric, agent, unit, denominator, people_rule
   ('meals_saved', 'food', 'meals', 'saved meals', 'accounts with at least one saved meal', '28 completed Singapore dates', 3, null),
   ('tagged_share', 'food', 'per cent of meals', 'saved meals', 'accounts with at least one saved meal', '28 completed Singapore dates', 3, 'a meal with at least one tag'),
   ('practice_days', 'mind', 'account-days', 'account-days with a practice', 'accounts with at least one such day', '28 completed Singapore dates', 3, null),
-  ('practice_minutes', 'mind', 'minutes', 'practices with a valid duration of 1 to 600 minutes', 'accounts with at least one valid duration', '28 completed Singapore dates', 3, 'practices without a valid duration are counted separately as missing, never as zero'),
+  ('practice_minutes', 'mind', 'minutes', 'practices with a valid duration of 0.5 to 600 minutes (the phone floors a stopped practice at 0.5)', 'accounts with at least one valid duration', '28 completed Singapore dates', 3, 'practices without a valid duration are counted separately as missing, never as zero'),
   ('practices_missing_duration', 'mind', 'practices', 'practices with no valid duration', 'accounts with at least one such practice', '28 completed Singapore dates', 3, null),
   ('completed_share', 'mind', 'per cent of practices', 'practices that carry a completed field', 'accounts with at least one such practice', '28 completed Singapore dates', 3, 'practices without the field are left out of the denominator'),
   ('reflection_days', 'mind', 'account-days', 'account-days with a reflection', 'accounts with at least one such day', '28 completed Singapore dates', 3, 'the text is never read'),
@@ -70,6 +81,9 @@ create or replace function staff.metric_version() returns integer language sql s
 $$;
 insert into staff.agent_policy (key, value) values ('metric_version', to_jsonb(3)) on conflict (key) do update set value = to_jsonb(3);
 insert into staff.agent_policy (key, value) values ('report_tz', to_jsonb('Asia/Singapore'::text)) on conflict (key) do nothing;
+-- the phone sends 'adult' when no age range was given (ovu-auth.js improveSend): that label is accepted only with the
+-- server's age_18 event (below), so it is not listed as a band that attests on its own
+update staff.agent_policy set value = value - 'adult' where key = 'adult_bands' and value ? 'adult';
 grant select on staff.notice_registry, staff.metric_registry to rhythme_staff_fn;
 grant execute on function staff.notice_current(text), staff.metric_version() to rhythme_staff_fn;
 
@@ -87,6 +101,7 @@ begin
 end $$;
 drop trigger if exists entries_backup_receipt on public.entries;
 create trigger entries_backup_receipt after insert or update on public.entries for each row execute function staff.note_backup();
+-- seed: user_id and timestamps only, no content column is read (a decision recorded for the legal read, see the header)
 insert into staff.backup_receipts (user_id, first_at, last_at)
   select user_id, min(created_at), max(coalesce(updated_at, created_at)) from public.entries group by user_id
   on conflict (user_id) do nothing;
@@ -108,6 +123,7 @@ alter table staff.agent_findings add constraint agent_findings_state_check check
 create or replace function staff.invalidate_runs(p_reason text) returns integer language plpgsql set search_path = '' as $$
 declare n integer;
 begin
+  perform pg_advisory_xact_lock(hashtext('staff.run_begin')); /* a report being built holds this lock until it publishes: the hold then lands on it too */
   update staff.agent_runs set invalidated_at = now(), invalidation_reason = left(p_reason, 120)
     where status = 'ok' and invalidated_at is null;
   get diagnostics n = row_count;
@@ -123,6 +139,9 @@ begin
   if (tg_op = 'DELETE' or (tg_op = 'UPDATE' and new.deleted and not old.deleted))
      and exists (select 1 from public.analysis_consent c where c.user_id = uid) then
     perform staff.invalidate_runs('an entry of a consenting account was deleted');
+  end if;
+  if tg_op = 'DELETE' and not exists (select 1 from public.entries e where e.user_id = uid) then
+    delete from staff.backup_receipts where user_id = uid; /* the cloud copy is gone: the receipt goes with it */
   end if;
   return coalesce(new, old);
 end $$;
@@ -153,10 +172,16 @@ alter function staff.run_begin(text, text, uuid, text) owner to rhythme_staff_fn
 drop function if exists staff.run_begin(text, text, uuid);
 
 -- ---------- 4. the consent contract ----------
+alter table public.analysis_consent add column if not exists adult_attested_by text check (adult_attested_by in ('age_18 event', 'age band'));
+-- rows made before this contract: say how adulthood was attested, or they are not eligible
+update public.analysis_consent c set adult_attested_by = case
+    when public.consent_allows(c.user_id, 'age_18') then 'age_18 event'
+    when c.age_band = any (array(select jsonb_array_elements_text(staff.policy('adult_bands')))) then 'age band' end
+  where c.adult_attested_by is null;
 drop function if exists public.analysis_consent_set(boolean, integer, text, text, text, timestamptz);
 create or replace function public.analysis_consent_set(p_on boolean, p_notice integer default null, p_age_band text default null, p_scope text default 'from_now', p_hash text default null, p_expected_updated_at timestamptz default null)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare uid uuid := auth.uid(); cur timestamptz; need integer; bands text[]; adult_event boolean; band_ok boolean; row_out public.analysis_consent;
+declare uid uuid := auth.uid(); cur timestamptz; need integer; reg_hash text; bands text[]; adult_event boolean; band_ok boolean; row_out public.analysis_consent;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
   select updated_at into cur from public.analysis_consent where user_id = uid for update;
@@ -166,14 +191,17 @@ begin
   if p_on then
     need := staff.notice_current('improve_logging');
     if p_notice is null or p_notice < coalesce(need, 1) then raise exception 'This phone shows an older notice. Update the app and read the current one first.' using errcode = '22023'; end if;
+    select r.hash into reg_hash from staff.notice_registry r where r.purpose = 'improve_logging' and r.version = p_notice;
+    if not found then raise exception 'This phone shows a notice the server does not know (version %).', p_notice using errcode = '22023'; end if;
+    if reg_hash is not null and p_hash is distinct from reg_hash then raise exception 'The notice text on this phone does not match the registered notice. Update the app.' using errcode = '22023'; end if;
     bands := array(select jsonb_array_elements_text(staff.policy('adult_bands')));
     adult_event := public.consent_allows(uid, 'age_18');
-    band_ok := p_age_band = any (bands);
+    band_ok := p_age_band = any (bands) and p_age_band <> 'adult'; /* a concrete range attests; the plain label needs the event */
     if not adult_event and not band_ok then raise exception 'Confirm you are 18 or older first.' using errcode = '22023'; end if;
-    insert into public.analysis_consent (user_id, notice_version, notice_hash, age_band, history_scope, accepted_at, withdrawn_at, updated_at)
-      values (uid, p_notice, left(coalesce(p_hash, ''), 64), left(coalesce(p_age_band, case when adult_event then 'adult' else '' end), 12), case when p_scope = 'all' then 'all' else 'from_now' end, now(), null, now())
+    insert into public.analysis_consent (user_id, notice_version, notice_hash, age_band, history_scope, adult_attested_by, accepted_at, withdrawn_at, updated_at)
+      values (uid, p_notice, left(coalesce(p_hash, ''), 64), left(coalesce(p_age_band, case when adult_event then 'adult' else '' end), 12), case when p_scope = 'all' then 'all' else 'from_now' end, case when adult_event then 'age_18 event' else 'age band' end, now(), null, now())
       on conflict (user_id) do update set
-        notice_version = excluded.notice_version, notice_hash = excluded.notice_hash, age_band = excluded.age_band, history_scope = excluded.history_scope,
+        notice_version = excluded.notice_version, notice_hash = excluded.notice_hash, age_band = excluded.age_band, history_scope = excluded.history_scope, adult_attested_by = excluded.adult_attested_by,
         accepted_at = case when public.analysis_consent.withdrawn_at is null then public.analysis_consent.accepted_at else now() end, /* a repeat grant keeps its original start; a grant after a withdrawal starts again */
         withdrawn_at = null, updated_at = now();
     insert into public.consent_events (user_id, purpose, action, notice_version, notice_hash, method) values (uid, 'improve_logging', 'grant', p_notice, left(coalesce(p_hash, ''), 64), 'server');
@@ -182,6 +210,9 @@ begin
     if found then
       insert into public.consent_events (user_id, purpose, action, notice_version, method) values (uid, 'improve_logging', 'withdraw', coalesce(p_notice, staff.notice_current('improve_logging'), 1), 'server');
       perform staff.invalidate_runs('an account withdrew the improvement choice');
+    elsif cur is null then
+      /* nothing was on: the refusal is still a choice worth keeping on the record */
+      insert into public.consent_events (user_id, purpose, action, notice_version, method) values (uid, 'improve_logging', 'withdraw', coalesce(p_notice, staff.notice_current('improve_logging'), 1), 'server');
     end if;
   end if;
   select * into row_out from public.analysis_consent c where c.user_id = uid;
@@ -190,15 +221,38 @@ end $$;
 revoke all on function public.analysis_consent_set(boolean, integer, text, text, text, timestamptz) from public, anon;
 grant execute on function public.analysis_consent_set(boolean, integer, text, text, text, timestamptz) to authenticated;
 
+-- the phone also mirrors its consent events through consent_record (ovu-consent.js drain); for improve_logging the account's
+-- row and event are written by analysis_consent_set only, so the mirror returns the server's latest event and writes nothing
+create or replace function public.consent_record(p_purpose text, p_action text, p_notice integer, p_hash text default null, p_method text default 'you', p_device text default null, p_client_at timestamptz default null, p_client_id text default null)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare uid uuid := auth.uid(); row_out public.consent_events; cid text := nullif(left(coalesce(p_client_id, ''), 64), '');
+begin
+  if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  if p_notice is null or p_notice < 1 then raise exception 'the notice version is required'; end if;
+  if p_purpose = 'improve_logging' then
+    select * into row_out from public.consent_events where user_id = uid and purpose = 'improve_logging' and method = 'server' order by at desc, id desc limit 1;
+    if found then return to_jsonb(row_out) || jsonb_build_object('mirror', true); end if;
+    return jsonb_build_object('mirror', true, 'recorded', false, 'why', 'this choice is recorded by analysis_consent_set');
+  end if;
+  if cid is not null then
+    select * into row_out from public.consent_events where user_id = uid and client_id = cid;
+    if found then return to_jsonb(row_out); end if; /* already on record: a resend changes nothing */
+  end if;
+  insert into public.consent_events (user_id, purpose, action, notice_version, notice_hash, method, device_id, client_at, client_id)
+    values (uid, p_purpose, p_action, p_notice, left(coalesce(p_hash, ''), 64), p_method, left(coalesce(p_device, ''), 64), p_client_at, cid)
+    returning * into row_out;
+  return to_jsonb(row_out);
+end $$;
+
 -- ---------- 5. counts without a diary read ----------
 create or replace function staff.svc_counts() returns jsonb language sql stable security definer set search_path = '' as $$
   select jsonb_build_object(
     'accounts', (select count(*) from auth.users),
     'accounts_with_cloud_copy', (select count(*) from staff.backup_receipts),
     'consent_active', (select count(*) from public.analysis_consent c where c.withdrawn_at is null),
-    'consent_eligible', (select count(*) from public.analysis_consent c where c.withdrawn_at is null and c.age_band = any (array(select jsonb_array_elements_text(staff.policy('adult_bands'))))),
+    'consent_eligible', (select count(*) from public.analysis_consent c where c.withdrawn_at is null and c.adult_attested_by is not null and c.notice_version >= coalesce(staff.notice_current('improve_logging'), 1)),
     'consent_withdrawn', (select count(*) from public.analysis_consent c where c.withdrawn_at is not null),
-    'relay_buckets_today', (select coalesce(sum(count), 0) from public.luna_usage where day = current_date))
+    'relay_calls_today', (select coalesce(sum(count), 0) from public.luna_usage where day = current_date)) /* bucket increments: one per relay call */
 $$;
 revoke all on function staff.svc_counts() from public;
 grant execute on function staff.svc_counts() to rhythme_staff_fn;
@@ -208,20 +262,22 @@ create or replace function staff.metrics_build(p_run uuid, p_days integer defaul
 language plpgsql security definer set search_path = '' as $$
 declare
   k integer := staff.k_floor();
-  bands text[] := array(select jsonb_array_elements_text(staff.policy('adult_bands')));
   tz text := coalesce(staff.policy('report_tz') #>> '{}', 'Asia/Singapore');
   days integer := least(greatest(coalesce(p_days, 28), 7), 365);
   report_date date; win_start date; win_end date; win text;
   mv integer := staff.metric_version();
   elig integer; consenting integer; shown numeric; shown_people integer; under boolean;
-  rec record; summary jsonb := '{}'::jsonb; agent_name text;
+  rec record; summary jsonb := '{}'::jsonb; agent_name text; small boolean;
 begin
   report_date := (now() at time zone tz)::date; /* the reporting day in Singapore; the window is the completed dates before it */
   win_end := report_date; win_start := report_date - days; win := days || ' completed dates to ' || (win_end - 1);
-  create temp table if not exists pg_temp.elig_users (user_id uuid primary key, scope_from timestamptz) on commit drop;
+  create temp table if not exists pg_temp.elig_users (user_id uuid primary key, scope_from timestamptz, scope_date date) on commit drop;
   delete from pg_temp.elig_users;
-  insert into pg_temp.elig_users select c.user_id, case when c.history_scope = 'all' then '1970-01-01'::timestamptz else c.accepted_at end
-    from public.analysis_consent c where c.withdrawn_at is null and c.age_band = any (bands);
+  /* eligible: the choice is on, adulthood was attested, and the choice was made under the current notice */
+  insert into pg_temp.elig_users select c.user_id,
+      case when c.history_scope = 'all' then '1970-01-01'::timestamptz else c.accepted_at end,
+      case when c.history_scope = 'all' then date '1970-01-01' else (c.accepted_at at time zone tz)::date end
+    from public.analysis_consent c where c.withdrawn_at is null and c.adult_attested_by is not null and c.notice_version >= coalesce(staff.notice_current('improve_logging'), 1);
   select count(*) into elig from pg_temp.elig_users;
   select count(*) into consenting from public.analysis_consent c where c.withdrawn_at is null;
   under := elig > 0 and elig < k;
@@ -248,12 +304,13 @@ begin
       case when e.type = 'period' then nullif(e.data ->> 'flow', '') end,
       case when e.type = 'sleep' then e.source end,
       case when e.type = 'mindfulness' and (e.data ->> 'minutes') ~ '^[0-9]+(\.[0-9]+)?$' then (e.data ->> 'minutes')::numeric end,
-      case when e.type = 'mindfulness' then e.data ? 'completed' end,
-      case when e.type = 'mindfulness' then (e.data ->> 'completed') = 'true' end,
+      case when e.type = 'mindfulness' then jsonb_typeof(e.data -> 'completed') = 'boolean' end,
+      case when e.type = 'mindfulness' and jsonb_typeof(e.data -> 'completed') = 'boolean' then (e.data -> 'completed')::boolean end,
       case when e.type = 'food' then jsonb_typeof(e.data -> 'tags') = 'array' and jsonb_array_length(e.data -> 'tags') > 0 end
     from public.entries e join pg_temp.elig_users u on u.user_id = e.user_id
-    where not e.deleted and e.created_at >= u.scope_from and e.date < win_end and e.date >= least(win_start, date '1970-01-01') and e.type in ('period', 'symptom', 'sleep', 'food', 'mindfulness', 'reflection', 'weight');
-  /* history for cycles: all eligible dates up to the window end (the "from now" boundary still applies through scope_from) */
+    where not e.deleted and e.created_at >= u.scope_from and e.date >= u.scope_date and e.date < win_end
+      and (e.type = 'period' or e.date >= win_start) /* only period history reaches back past the window (cycle lengths); every other stream is read for the window alone */
+      and e.type in ('period', 'symptom', 'sleep', 'food', 'mindfulness', 'reflection', 'weight');
 
   for rec in
     with
@@ -264,36 +321,40 @@ begin
     cycles as (select user_id, date - lag(date) over (partition by user_id order by date) len from starts),
     good_cycles as (select user_id, len from cycles where len between 15 and 90),
     person_median as (select user_id, percentile_cont(0.5) within group (order by len) med from good_cycles group by user_id),
-    sleep_rows as (select user_id, date, source from pg_temp.elig_rows where type = 'sleep' and date >= win_start),
+    sleep_rows as (select user_id, date, source in ('apple-health', 'google-fit', 'takeout') imported from pg_temp.elig_rows where type = 'sleep' and date >= win_start),
     food_rows as (select user_id, date, has_tags from pg_temp.elig_rows where type = 'food' and date >= win_start),
     mind_rows as (select user_id, date, minutes, has_completed, completed from pg_temp.elig_rows where type = 'mindfulness' and date >= win_start),
     m as (
-      select 'cycle' agent, 'period_days' metric, win "window", count(*)::numeric value, count(distinct user_id) people from bleed where date >= win_start
-      union all select 'cycle', 'symptom_days', win, count(*), count(distinct user_id) from (select user_id, date from pg_temp.elig_rows where type = 'symptom' and date >= win_start group by 1, 2) s
-      union all select 'cycle', 'people_with_two_starts', 'eligible history', count(*), count(*) from (select user_id from starts group by user_id having count(*) >= 2) t
-      union all select 'cycle', 'median_cycle_days', 'eligible history', percentile_cont(0.5) within group (order by med), count(*) from person_median
-      union all select 'sleep', 'nights_recorded', win, count(*), count(distinct user_id) from (select user_id, date from sleep_rows group by 1, 2) n
-      union all select 'sleep', 'nights_with_several_records', win, count(*), count(distinct user_id) from (select user_id, date from sleep_rows group by 1, 2 having count(*) > 1) c
-      union all select 'sleep', 'imported_record_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where source in ('apple-health', 'google-fit', 'takeout')) / count(*), 1) end, count(distinct user_id) from sleep_rows
-      union all select 'food', 'meal_days', win, count(*), count(distinct user_id) from (select user_id, date from food_rows group by 1, 2) d
-      union all select 'food', 'meals_saved', win, count(*), count(distinct user_id) from food_rows
-      union all select 'food', 'tagged_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where has_tags) / count(*), 1) end, count(distinct user_id) from food_rows
-      union all select 'mind', 'practice_days', win, count(*), count(distinct user_id) from (select user_id, date from mind_rows group by 1, 2) d
-      union all select 'mind', 'practice_minutes', win, sum(minutes), count(distinct user_id) from mind_rows where minutes between 1 and 600
-      union all select 'mind', 'practices_missing_duration', win, count(*), count(distinct user_id) from mind_rows where minutes is null or minutes < 1 or minutes > 600
-      union all select 'mind', 'completed_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where completed) / count(*), 1) end, count(distinct user_id) from mind_rows where has_completed
-      union all select 'mind', 'reflection_days', win, count(*), count(distinct user_id) from (select user_id, date from pg_temp.elig_rows where type = 'reflection' and date >= win_start group by 1, 2) r
-      union all select 'inventory', 'weight_days', win, count(*), count(distinct user_id) from (select user_id, date from pg_temp.elig_rows where type = 'weight' and date >= win_start group by 1, 2) w
+      /* value, the people it is over, and for a share the people in its numerator and in its complement (a share with one
+         person on either side would tell on that person, so both sides are held to the floor) */
+      select 'cycle' agent, 'period_days' metric, win "window", count(*)::numeric value, count(distinct user_id) people, null::integer people_num, null::integer people_comp from bleed where date >= win_start
+      union all select 'cycle', 'symptom_days', win, count(*), count(distinct user_id), null, null from (select user_id, date from pg_temp.elig_rows where type = 'symptom' and date >= win_start group by 1, 2) s
+      union all select 'cycle', 'people_with_two_starts', 'eligible history', count(*), count(*), null, null from (select user_id from starts group by user_id having count(*) >= 2) t
+      union all select 'cycle', 'median_cycle_days', 'eligible history', percentile_cont(0.5) within group (order by med), count(*), null, null from person_median
+      union all select 'sleep', 'nights_recorded', win, count(*), count(distinct user_id), null, null from (select user_id, date from sleep_rows group by 1, 2) n
+      union all select 'sleep', 'nights_with_several_records', win, count(*) filter (where c > 1), count(distinct user_id), null, null from (select user_id, date, count(*) c from sleep_rows group by 1, 2) c /* people: everyone with a night, so none is an observed zero */
+      union all select 'sleep', 'imported_record_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where imported) / count(*), 1) end, count(distinct user_id), count(distinct user_id) filter (where imported), count(distinct user_id) filter (where not imported) from sleep_rows
+      union all select 'food', 'meal_days', win, count(*), count(distinct user_id), null, null from (select user_id, date from food_rows group by 1, 2) d
+      union all select 'food', 'meals_saved', win, count(*), count(distinct user_id), null, null from food_rows
+      union all select 'food', 'tagged_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where has_tags) / count(*), 1) end, count(distinct user_id), count(distinct user_id) filter (where has_tags), count(distinct user_id) filter (where not has_tags) from food_rows
+      union all select 'mind', 'practice_days', win, count(*), count(distinct user_id), null, null from (select user_id, date from mind_rows group by 1, 2) d
+      union all select 'mind', 'practice_minutes', win, sum(minutes), count(distinct user_id), null, null from mind_rows where minutes between 0.5 and 600
+      union all select 'mind', 'practices_missing_duration', win, count(*) filter (where minutes is null or minutes < 0.5 or minutes > 600), count(distinct user_id), null, null from mind_rows /* people: everyone with a practice, so none missing is an observed zero */
+      union all select 'mind', 'completed_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where completed) / count(*), 1) end, count(distinct user_id), count(distinct user_id) filter (where completed), count(distinct user_id) filter (where not completed) from mind_rows where has_completed
+      union all select 'mind', 'reflection_days', win, count(*), count(distinct user_id), null, null from (select user_id, date from pg_temp.elig_rows where type = 'reflection' and date >= win_start group by 1, 2) r
+      union all select 'inventory', 'weight_days', win, count(*), count(distinct user_id), null, null from (select user_id, date from pg_temp.elig_rows where type = 'weight' and date >= win_start group by 1, 2) w
     ) select m.*, r.unit, r.denominator, r.people_rule, r.note from m left join staff.metric_registry r on r.metric = m.metric
   loop
+    small := rec.people < k or coalesce(rec.people_num, 0) between 1 and k - 1 or coalesce(rec.people_comp, 0) between 1 and k - 1;
     insert into staff.agent_findings (run_id, agent, metric, "window", value, people, suppressed, state, detail)
       values (p_run, rec.agent, rec.metric, rec."window",
-        case when rec.people < k then null else rec.value end,
-        case when rec.people < k then null else rec.people end,
-        rec.people < k,
-        case when rec.people = 0 then 'no_data' when rec.people < k then 'insufficient' when rec.value is null then 'not_collected' else 'measured' end,
+        case when small then null else rec.value end,
+        case when small then null else rec.people end,
+        rec.people > 0 and small, /* no data is not a suppression: nothing was held back */
+        case when rec.people = 0 then 'no_data' when small then 'insufficient' when rec.value is null then 'not_collected' else 'measured' end,
         jsonb_build_object('unit', coalesce(rec.unit, 'count'), 'denominator', rec.denominator, 'people_rule', rec.people_rule, 'stream', 'backup', 'floor', k, 'metric_version', mv,
-          'report_tz', tz, 'window_start', win_start, 'window_end_exclusive', win_end, 'note', rec.note));
+          'report_tz', tz, 'window_start', case when rec."window" = 'eligible history' then null else win_start end, 'window_end_exclusive', win_end,
+          'history_from', case when rec."window" = 'eligible history' then 'each account''s own scope date' end, 'note', rec.note));
   end loop;
   for rec in select agent, count(*) n, count(*) filter (where suppressed) held, count(*) filter (where state = 'no_data') empty from staff.agent_findings where run_id = p_run and agent in ('cycle', 'sleep', 'food', 'mind') and metric <> 'eligible_people' group by agent loop
     perform staff.event(p_run, rec.agent, 'findings', rec.agent || ': ' || rec.n || ' metrics for ' || win || (case when rec.held > 0 then ', ' || rec.held || ' held back under the ' || k || '-person floor' else '' end) || (case when rec.empty > 0 then ', ' || rec.empty || ' with no data' else '' end), jsonb_build_object('metrics', rec.n, 'held', rec.held, 'no_data', rec.empty));
@@ -340,13 +401,26 @@ create or replace function staff.run_scheduled(p_due date default null) returns 
 declare due date := coalesce(p_due, (now() at time zone coalesce(staff.policy('report_tz') #>> '{}', 'Asia/Singapore'))::date); rid uuid;
 begin
   if current_setting('request.jwt.claims', true) is not null and current_setting('request.jwt.claims', true) <> '' then
-    return jsonb_build_object('error', 'the scheduled run is not for API callers'); /* belt and braces: the grant below already keeps API roles out */
+    return jsonb_build_object('error', 'the scheduled run is not for API callers');
+  end if;
+  if due <> (now() at time zone coalesce(staff.policy('report_tz') #>> '{}', 'Asia/Singapore'))::date then
+    return jsonb_build_object('error', 'a scheduled attempt is for today only: its metrics are computed as of today, so a past or future due date would mislabel the run'); /* belt and braces: the grant below already keeps API roles out */
   end if;
   rid := staff.run_begin('scheduled', 'cron', null, 'daily:' || due);
   if rid is null then return jsonb_build_object('skipped', true, 'due', due, 'why', 'already attempted today, or a run is going'); end if;
   return staff.run_core(rid, 28);
 end $$;
 revoke all on function staff.run_scheduled(date) from public, anon, authenticated, service_role, rhythme_staff_fn;
+-- is the daily job installed? (a later, approved migration installs it under this name)
+create or replace function staff.schedule_installed() returns boolean language plpgsql stable security definer set search_path = '' as $$
+declare b boolean;
+begin
+  execute 'select exists (select 1 from cron.job where jobname = $1)' into b using 'rhythme-daily-run';
+  return coalesce(b, false);
+exception when others then return false;
+end $$;
+revoke all on function staff.schedule_installed() from public;
+grant execute on function staff.schedule_installed() to rhythme_staff_fn;
 
 -- ---------- 8. the overview: the latest valid run, and the hold when runs are invalidated ----------
 create or replace function public.admin_overview() returns jsonb language plpgsql security definer set search_path = '' as $$
@@ -360,14 +434,32 @@ begin
     'floor', staff.k_floor(),
     'policy', (select coalesce(jsonb_object_agg(key, value), '{}'::jsonb) from staff.agent_policy),
     'metric_version', staff.metric_version(),
-    'runs', (select coalesce(jsonb_agg(jsonb_build_object('id', id, 'kind', kind, 'status', status, 'started_at', started_at, 'finished_at', finished_at, 'seconds', case when started_clock is not null and finished_clock is not null then round(extract(epoch from (finished_clock - started_clock))::numeric, 2) end, 'due_key', due_key, 'invalidated_at', invalidated_at, 'invalidation_reason', invalidation_reason, 'error', error, 'summary', summary) order by started_at desc), '[]'::jsonb) from (select * from staff.agent_runs order by started_at desc limit 8) r),
+    'runs', (select coalesce(jsonb_agg(jsonb_build_object('id', id, 'kind', kind, 'status', status, 'started_at', started_at, 'finished_at', finished_at, 'seconds', case when started_clock is not null and finished_clock is not null then round(extract(epoch from (finished_clock - started_clock))::numeric, 2) end, 'due_key', due_key, 'invalidated_at', invalidated_at, 'invalidation_reason', invalidation_reason, 'error', error, 'summary', case when invalidated_at is null then summary end) order by started_at desc), '[]'::jsonb) from (select * from staff.agent_runs order by started_at desc limit 8) r),
     'open_proposals', (select count(*) from staff.agent_proposals where status in ('open', 'held')),
     'live_actions', (select count(*) from staff.agent_actions where expires_at > now() and reverted_at is null),
     'blocked', (select coalesce(jsonb_agg(jsonb_build_object('id', id, 'at', at, 'source', source, 'error', left(error, 200))), '[]'::jsonb) from staff.provider_blocks where cleared_at is null),
     'held_runs', held,
     'latest_run', valid,
-    'scheduled', (select exists (select 1 from pg_catalog.pg_extension where extname = 'pg_cron') and exists (select 1 from staff.agent_runs where kind = 'scheduled')),
+    'scheduled', staff.schedule_installed(),
     'latest', (select coalesce(jsonb_object_agg(agent, f), '{}'::jsonb) from (
       select agent, jsonb_agg(jsonb_build_object('metric', metric, 'window', "window", 'value', value, 'people', people, 'suppressed', suppressed, 'state', state, 'note', detail ->> 'note', 'unit', detail ->> 'unit', 'metric_version', detail -> 'metric_version', 'prerequisite', detail ->> 'prerequisite') order by metric) f
       from staff.agent_findings where run_id = valid group by agent) x));
 end $$;
+
+-- findings are read through the same rule as the overview: only runs that published and were not held since
+create or replace function public.admin_findings(p_agent text default null, p_limit integer default 200) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare d jsonb;
+begin
+  d := staff.require('admin_findings', jsonb_build_object('agent', p_agent)); if d is not null then return d; end if;
+  return (select coalesce(jsonb_agg(to_jsonb(f) order by f.id desc), '[]'::jsonb) from (
+    select f.id, f.at, f.run_id, f.agent, f.metric, f."window", f.value, f.people, f.suppressed, f.state, f.detail from staff.agent_findings f
+    join staff.agent_runs r on r.id = f.run_id
+    where r.status = 'ok' and r.invalidated_at is null and (p_agent is null or f.agent = p_agent) order by f.id desc limit least(greatest(coalesce(p_limit, 200), 1), 500)) f);
+end $$;
+
+-- ---------- 9. the upgrade boundary: nothing computed under the previous contract stays published ----------
+select staff.invalidate_runs('metric contract upgraded to version 3; the next run recomputes under it');
+-- Rollback: there is no automatic rollback. Restoring the version 2 functions would reopen findings this migration held;
+-- if a rollback is ever needed, hold the readers first (revoke admin_overview and admin_findings from authenticated),
+-- then restore, then invalidate again.

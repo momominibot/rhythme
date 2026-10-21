@@ -10,6 +10,7 @@ do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
 end $$;
 grant usage on schema public to anon, authenticated;
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role; /* Supabase's default grants, so RLS is what the tests prove */
 
 create schema if not exists auth;
 grant usage on schema auth to anon, authenticated;
