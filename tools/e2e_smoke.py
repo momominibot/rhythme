@@ -2353,13 +2353,14 @@ async def main():
                 await tp.route("**/*", gate); await tp.bring_to_front()
                 await tp.goto(BASE + "room.html", wait_until="networkidle"); await tp.wait_for_timeout(400)
                 await tp.evaluate("()=>{ location.hash = 'medas'; }"); await tp.reload(wait_until="networkidle"); await tp.wait_for_selector(".mq", timeout=8000)
-            # a click waits for animation frames, which a background tab in CI never runs: bring each tab forward before its tap
-            await ta.bring_to_front(); await ta.click('.mq[data-mq="veg"] [data-yn="1"]'); await ta.wait_for_timeout(400)
-            await tb.bring_to_front(); await tb.click('.mq[data-mq="fish"] [data-yn="0"]'); await tb.wait_for_timeout(400)
-            await ta.bring_to_front()
+            # in CI's headless Chromium a pointer click into a second tab of one context hangs while it is dispatched, even after
+            # bring_to_front (21 Oct); this checks how the tabs share the store, so tap with the button's own click()
+            TAP = "(sel)=>document.querySelector(sel).click()"
+            await ta.evaluate(TAP, '.mq[data-mq="veg"] [data-yn="1"]'); await ta.wait_for_timeout(400)
+            await tb.evaluate(TAP, '.mq[data-mq="fish"] [data-yn="0"]'); await tb.wait_for_timeout(400)
             two = await ta.evaluate("()=>({saved: (OvuStore.state().medas||{}).answers, fishShown: document.querySelector('.mq[data-mq=fish] [data-yn=\\\"0\\\"]').getAttribute('aria-pressed')})")
             check("answers given in two tabs are both kept, and the first tab shows the second's answer", two["saved"] == {"veg": True, "fish": False} and two["fishShown"] == "true", two)
-            await tb.bring_to_front(); await tb.click("#mdClear"); await tb.wait_for_timeout(300)
+            await tb.evaluate(TAP, "#mdClear"); await tb.wait_for_timeout(300)
             await ta.close(); await tb.close()
             # a returning visitor follows a link to the check and taps Home while the room is still starting: the link stays closed
             th = await ctx.new_page(); await th.route("**/*", gate); await th.bring_to_front()
