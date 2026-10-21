@@ -309,6 +309,8 @@
       else if (reason === 'state' && S.state().sleeping) cancel();
     });
     doc.addEventListener('visibilitychange', function () { if (doc.hidden && run && !run.paused) pauseToggle(); }); /* away: the clock holds and the voice waits */
-    setInterval(fxTick, 600);
+    R.on('sheetHide', function () { setTimeout(fxTick, 60); }); /* the plain sits start from a sheet button: the weather follows at once */
+    if (root.OvuTones && root.OvuTones.onChange) root.OvuTones.onChange(function () { fxTick(); }); /* the cave's glints come and go with the sound */
+    setInterval(fxTick, 300);
   });
 })(typeof window !== 'undefined' ? window : this);
