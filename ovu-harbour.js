@@ -12,17 +12,17 @@
   'use strict';
   var SPECIES = [
     { id: 'grouper', name: 'Orange-spotted grouper', local: 'kerapu', spots: ['rocks', 'jetty'], time: 'any', img: 'fish-grouper.webp',
-      fact: 'Young groupers grow up in estuaries and mangroves; the adults live out on the reefs.', source: 'Wikipedia, orange-spotted grouper' },
+      fact: 'Young groupers grow up in estuaries and mangroves; the adults live out on the reefs.', source: 'Wikipedia, orange-spotted grouper', url: 'https://en.wikipedia.org/wiki/Orange-spotted_grouper' },
     { id: 'snapper', name: 'Mangrove red snapper', local: 'ikan merah', spots: ['rocks'], time: 'any', img: 'fish-snapper.webp',
-      fact: 'At home among mangrove roots when young, it moves out to open water to breed.', source: 'Wikipedia, mangrove red snapper' },
+      fact: 'At home among mangrove roots when young, it moves out to open water to breed.', source: 'Wikipedia, mangrove red snapper', url: 'https://en.wikipedia.org/wiki/Mangrove_red_snapper' },
     { id: 'barramundi', name: 'Barramundi', local: 'siakap', spots: ['jetty'], time: 'any', img: 'fish-barramundi.webp',
-      fact: 'Barramundi start life as males. In one study at a Singapore farm, most had become females by two to three years old.', source: 'Aquaculture Reports, 2021' },
+      fact: 'Barramundi start life as males. In one study at a Singapore farm, most had become females by two to three years old.', source: 'Aquaculture Reports, 2021', url: 'https://doi.org/10.1016/j.aqrep.2021.100712' },
     { id: 'mullet', name: 'Flathead grey mullet', local: 'belanak', spots: ['jetty', 'rocks'], time: 'day', img: 'fish-mullet.webp',
-      fact: 'It feeds by sucking up the top layer of the sea floor, for tiny algae and bits of food.', source: 'FAO species fact sheet' },
+      fact: 'It feeds by sucking up the top layer of the sea floor, for tiny algae and bits of food.', source: 'FAO species fact sheet', url: 'https://www.fao.org/fishery/culturedspecies/mugil_cephalus/en' },
     { id: 'rabbitfish', name: 'White-spotted rabbitfish', local: 'pek tor her', spots: ['rocks'], time: 'day', img: 'fish-rabbitfish.webp',
-      fact: 'A grazer of seaweed and seagrass, with venom in its fin spines, so fishers handle it with care. Teochew families prize it at Chinese New Year.', source: 'Wikipedia, white-spotted rabbitfish' },
+      fact: 'A grazer of seaweed and seagrass, with venom in its fin spines, so fishers handle it with care. Teochew families prize it at Chinese New Year.', source: 'Wikipedia, white-spotted rabbitfish', url: 'https://en.wikipedia.org/wiki/Siganus_canaliculatus' },
     { id: 'squid', name: 'Bigfin reef squid', local: 'sotong', spots: ['jetty'], time: 'night', img: 'fish-squid.webp',
-      fact: 'It changes the colour of its skin to match the sea floor beneath it.', source: 'Scientific Reports, 2022' }
+      fact: 'It changes the colour of its skin to match the sea floor beneath it.', source: 'Scientific Reports, 2022', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC8960755/' }
   ];
   var SPOTS = { jetty: { name: 'The jetty', where: 'out over the deep water', float: { x: 89, y: 60 } }, rocks: { name: 'The rocks', where: 'by the shore', float: { x: 46, y: 68 } } };
   function species(id) { return SPECIES.filter(function (s) { return s.id === id; })[0] || null; }
@@ -153,7 +153,7 @@
     var sp = r.species, line3 = R.moment ? R.moment('release', { quiet: true }) : '';
     R.openSheet('harbour-fish', sp.name, (r.first ? 'First time! ' : '') + esc(sp.local) + (r.n > 1 ? ' · met ' + r.n + ' times' : ''), 'set_meal',
       '<div class="fishcard"><img src="' + ART + sp.img + '" alt="' + esc(sp.name) + '"><div><b>' + esc(sp.name) + '</b><small>' + esc(sp.local) + '</small></div></div>' +
-      '<p class="fishfact">' + esc(sp.fact) + ' <span class="fishsrc">' + esc(sp.source) + '</span></p>' +
+      '<p class="fishfact">' + esc(sp.fact) + ' <span class="fishsrc">' + esc(sp.source) + (sp.url ? ' <a class="fishlink" href="' + esc(sp.url) + '" target="_blank" rel="noopener">Read the source</a>' : '') + '</span></p>' +
       (line3 ? '<p class="mindline"><span class="ms">spa</span><span>' + esc(line3) + '</span></p>' : '') +
       '<div class="row"><button type="button" class="btn primary" id="fishGo"><span class="ms">water</span>Let it go</button><button type="button" class="btn ghost" id="fishBook"><span class="ms">menu_book</span>Catch book</button></div>' +
       '<p class="help">It is already written in your catch book. Back it goes, the same as every fish here.</p>');
