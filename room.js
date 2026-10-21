@@ -842,7 +842,7 @@
   function asleep() { return !!S.state().sleeping; }
   /* Jamie, 19 Oct: once she is asleep nothing else happens until the bed wakes her. The bed and the window (its sheet
      offers "Wake up") stay open, and so does You: account, privacy and export are never locked away. */
-  var AWAKE_FREE = { bed: 1, window: 1, you: 1 };
+  var AWAKE_FREE = { bed: 1, window: 1, you: 1, cycle: 1 }; /* the diary is reachable whatever the room is doing (Cycle tab, 21 Oct) */
   function awake(id) { if (!asleep() || AWAKE_FREE[id]) return true; toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return false; }
   function enterNight(withPj) {
     stopEverything();
@@ -865,14 +865,17 @@
   /* ---------- calendar: period (5-day fill) + symptoms with backdating ---------- */
   var cal = { y: 0, m: 0, tab: 'period', sel: S.today(), lastFill: [] };
   function openCalendar(tab, date) {
-    var d = date ? new Date(date + 'T12:00:00') : new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab || 'period'; cal.sel = date || S.today(); cal.lastFill = [];
+    var d = date ? new Date(date + 'T12:00:00') : new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab || (S.state().cycleView === 'rhythm' ? 'rhythm' : 'period'); cal.sel = date || S.today(); cal.lastFill = []; /* the last view is remembered */
     openSheet('calendar', 'Your calendar', 'Tap a past day to log or backdate', 'calendar_month',
-      '<div class="tabs" id="calTabs"><button data-tab="period" class="' + (cal.tab === 'period' ? 'on' : '') + '">' + (A.isPostmenopausal(S.profile()) ? 'Bleeding' : 'Period') + '</button><button data-tab="symptom" class="' + (cal.tab === 'symptom' ? 'on' : '') + '">Symptoms</button></div>' +
+      '<div class="tabs" id="calTabs"><button data-tab="period" class="' + (cal.tab === 'period' ? 'on' : '') + '">' + (A.isPostmenopausal(S.profile()) ? 'Bleeding' : 'Period') + '</button><button data-tab="symptom" class="' + (cal.tab === 'symptom' ? 'on' : '') + '">Symptoms</button><button data-tab="rhythm" class="' + (cal.tab === 'rhythm' ? 'on' : '') + '">' + (A.isPostmenopausal(S.profile()) ? 'Your body' : 'Rhythm') + '</button></div>' +
+      '<div id="rhythmPanel" hidden></div><div id="calBody">' +
       '<div class="cal-head"><button class="cal-nav" id="calPrev" aria-label="Previous month"><span class="ms">chevron_left</span></button><b id="calTitle"></b><button class="cal-nav" id="calNext" aria-label="Next month"><span class="ms">chevron_right</span></button></div>' +
       '<div class="cal-grid" id="calGrid" role="grid"></div>' +
       '<div class="legend"><span><i style="background:#e58aa8"></i>Period</span><span><i style="background:repeating-linear-gradient(135deg,#fff 0 3px,#f6e3ea 3px 6px);border:1px solid #f0cfdb"></i>Expected</span><span><i style="background:#eaf5ee;border:1px solid #cfe6d8"></i>Est. fertile</span><span><i style="background:#7a5c96;border-radius:50%"></i>Symptoms</span>' + infoBtn('cycle') + '</div>' + guideHTML('cycle') +
-      '<p class="help calhint"><span class="ms">touch_app</span>Tap a pink day twice to untick it. Tap the day after a period to add just that day.</p><div id="cycleStat"></div><div class="day-editor" id="dayEditor"></div>');
-    $('#calTabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; cal.tab = b.dataset.tab; $$('button', $('#calTabs')).forEach(function (x) { x.classList.toggle('on', x === b); }); renderEditor(); });
+      '<p class="help calhint"><span class="ms">touch_app</span>Tap a pink day twice to untick it. Tap the day after a period to add just that day.</p><div id="cycleStat"></div><div class="day-editor" id="dayEditor"></div></div>');
+    function showView() { var rp = $('#rhythmPanel'), cb = $('#calBody'); if (!rp || !cb) return; var r = cal.tab === 'rhythm'; rp.hidden = !r; cb.hidden = r; if (r && window.OvuRhythm) OvuRhythm.render(rp); try { S.setState({ cycleView: r ? 'rhythm' : 'calendar' }); } catch (e) { } }
+    $('#calTabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; cal.tab = b.dataset.tab; $$('button', $('#calTabs')).forEach(function (x) { x.classList.toggle('on', x === b); }); showView(); if (cal.tab !== 'rhythm') renderEditor(); });
+    showView();
     $('#calPrev').addEventListener('click', function () { cal.m--; if (cal.m < 0) { cal.m = 11; cal.y--; } renderCal(); });
     $('#calNext').addEventListener('click', function () { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } renderCal(); });
     $('#calGrid').addEventListener('click', function (e) {
@@ -1467,6 +1470,9 @@
   /* ---------- bottom tabs: every tab opens a sheet in the room, so the look and the data never change ---------- */
   var TABS = { cycle: function () { openCalendar('period'); }, food: function () { openDiary(); }, mind: function () { openMindfulness(); }, you: function () { openYou(); } };
   function setTab(k) { $$('.nav a').forEach(function (a) { var on = (a.dataset.tab || 'home') === k; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); }
+  /* after the menopause the same place in the nav reads Body (design 2026-10-21-cycle-tab-rhythm.md) */
+  function labelCycleTab() { var a = $('#navCycle'); if (!a) return; var post = A.isPostmenopausal(S.profile()); var l = a.querySelector('.navlabel'), i = a.querySelector('.ms'); if (l) l.textContent = post ? 'Body' : 'Cycle'; if (i) i.textContent = post ? 'spa' : 'calendar_month'; }
+  labelCycleTab(); S.subscribe(function (why) { if (why === 'profile' || why === 'external' || why === 'import') labelCycleTab(); });
   function goTab(k) {
     hideBubble();
     if (k === 'home' || !TABS[k]) { if (current) closeSheet(); setTab('home'); return; }

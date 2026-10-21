@@ -3481,4 +3481,54 @@ var summarised = false;
   check('the map still never moves her: no travel call in the module', !/OvuWalk\.travel|applyLayout\(/.test(src));
 })();
 
+(function cycleRhythm() {
+  console.log('2k17. Your cycle rhythm (21 Oct): history is the only number, four cards with levels, nothing adds up to a score');
+  var w = fresh('2026-10-21'); vm.runInContext(fs.readFileSync(path.join(root, 'ovu-rhythm.js'), 'utf8'), w, { filename: 'ovu-rhythm.js' });
+  var R = w.OvuRhythm, S = w.OvuStore, A = w.OvuAgents, src = fs.readFileSync(path.join(root, 'ovu-rhythm.js'), 'utf8');
+  function per(start, days, extra) { for (var i = 0; i < days; i++) S.add('period', S.addDays(start, i), Object.assign({ flow: i < 2 ? 'medium' : 'light', clots: false, impact: false }, extra || {}), 'room'); }
+  function P() { return R.panel({ store: S, agents: A }); }
+  check('with nothing logged the picture is 0 of 3 and asks for a first period; a first start alone is still 0 of 3', P().readiness.n === 0 && /Log the first day/.test(P().readiness.line) && (per('2026-09-25', 5), P().readiness.n === 0) && /first period start is recorded/.test(P().readiness.line));
+  per('2026-07-01', 5); per('2026-07-29', 5); per('2026-08-27', 4);
+  var p4 = P();
+  check('four starts make three complete cycles (3 of 3): the fourth period need not have finished; lengths 28, 29, 29', p4.readiness.n === 3 && p4.readiness.total === 3 && p4.intervals.cycles.map(function (c) { return c.days; }).join() === '28,29,29', JSON.stringify(p4.readiness));
+  check('with no usable age band the spread is shown without a verdict and the band is asked; nothing is graded', p4.regularity.level === 'building' && p4.regularity.spread === 1 && p4.regularity.limit === null && p4.askBand === true);
+  S.setProfile({ ageRange: '30-34' }); var p30 = P();
+  check('ages 30 to 34 fall inside FIGO\'s 26 to 41 band without asking: a 1-day spread is within the 7-day reference', p30.regularity.band === '26-41' && p30.regularity.limit === 7 && p30.regularity.level === 'ref' && /up to 7 days/.test(p30.regularity.text));
+  S.setProfile({ ageRange: '25-29', cycleAgeBand: '' });
+  check('25 to 29 straddles two FIGO bands, so the panel asks; 18 to 25 answered makes the limit 9; 46 or older gives no verdict', P().askBand === true && (S.setProfile({ cycleAgeBand: '18-25' }), P().regularity.limit === 9) && (S.setProfile({ cycleAgeBand: '46+' }), P().regularity.limit === null && /no reference variation after 45/.test(P().regularity.text)));
+  S.setProfile({ cycleAgeBand: '26-41' });
+  /* an irregular set: 24, 36, 27 → spread 12 over the 7-day limit */
+  var w2 = fresh('2026-10-21'); vm.runInContext(fs.readFileSync(path.join(root, 'ovu-rhythm.js'), 'utf8'), w2, { filename: 'ovu-rhythm.js' });
+  var S2 = w2.OvuStore, R2 = w2.OvuRhythm; S2.setProfile({ ageRange: '30-34' });
+  [['2026-06-20', 4], ['2026-07-14', 4], ['2026-08-19', 4], ['2026-09-15', 4]].forEach(function (x) { for (var i = 0; i < x[1]; i++) S2.add('period', S2.addDays(x[0], i), { flow: 'medium', clots: false, impact: false }, 'room'); });
+  var p2 = R2.panel({ store: S2, agents: w2.OvuAgents });
+  check('a 12-day spread over the 7-day reference reads Worth a chat, as an observation, not a diagnosis', p2.regularity.level === 'chat' && p2.regularity.spread === 12 && /worth a conversation/.test(p2.regularity.text) && /not a diagnosis/.test(p2.regularity.text));
+  check('every cycle inside 24 to 38 and bleeding of 4 days reads Within the reference range; lengths never use the average alone', p2.lengths.level === 'ref' && /Every recorded cycle/.test(p2.lengths.text) && !/average/.test(p2.lengths.text));
+  for (var i = 0; i < 10; i++) S2.add('period', S2.addDays('2026-10-05', i), { flow: 'light', clots: false, impact: false }, 'room');
+  var p3 = R2.panel({ store: S2, agents: w2.OvuAgents });
+  check('bleeding recorded on more than 8 days is Worth a chat without waiting for anything, and the 20-day cycle before it is outside 24 to 38', p3.lengths.level === 'chat' && p3.lengths.longBleeds.length === 1 && p3.lengths.outside.length === 1 && p3.lengths.outside[0].days === 20);
+  check('an episode made only of filled-in days does not count; a filled day inside a logged episode is reported as uncertain', R.confirmedEpisodes([{ start: '2026-06-01', end: '2026-06-05', days: [1, 2, 3, 4, 5].map(function () { return { data: { autofill: true } }; }) }]).length === 0 && R.confirmedEpisodes([{ start: '2026-07-01', end: '2026-07-03', days: [{ data: {} }, { data: { autofill: true } }, { data: { autofill: true } }] }])[0].filled === 2);
+  var iv = R.intervals([{ start: '2026-05-01' }, { start: '2026-05-29' }, { start: '2026-08-20' }, { start: '2026-09-17' }, { start: '2026-10-15' }], '2026-10-21');
+  check('a gap of more than 60 days between records is kept as a gap, not a cycle, and the window is the last six months', iv.gaps.length === 1 && iv.gaps[0].days === 83 && iv.cycles.length === 3 && iv.from === '2026-04-21');
+  /* symptoms and comfort: three measures, their own denominators */
+  var sym = [];
+  for (var d = 0; d < 10; d++) sym.push({ type: 'symptom', date: S.addDays('2026-10-21', -d), data: { symptoms: d % 2 ? ['cramps'] : [], pain: d === 3 ? 8 : 2, mood: d < 5 ? 'low' : 'ok' } });
+  var sy = R.symptoms(sym, '2026-10-21', {}, []);
+  check('pain of 8 on one day and low mood on 5 days make Worth a chat, with every denominator shown', sy.level === 'chat' && sy.painMax === 8 && sy.moodLow === 5 && sy.symAnswered === 10 && sy.painAnswered === 10 && sy.moodAnswered === 10 && /answered on 10 of 14 days/.test(sy.text) && /Other days are unknown/.test(sy.text));
+  var mild = sym.map(function (e) { return { type: 'symptom', date: e.date, data: { symptoms: e.data.symptoms, pain: 2, mood: 'ok' } }; });
+  check('ten answered days with nothing over the lines reads Nothing flagged; four answered days reads Not enough information; an empty symptom list is still an answer', R.symptoms(mild, '2026-10-21', {}, []).level === 'ok' && R.symptoms(mild.slice(0, 4), '2026-10-21', {}, []).level === 'thin' && R.symptoms(mild, '2026-10-21', {}, []).symAnswered === 10);
+  check('a care flag from the entries is Worth a chat on its own; three low-mood days are enough after a birth', R.symptoms(mild, '2026-10-21', {}, [{ level: 'high' }]).level === 'chat' && R.symptoms(mild.map(function (e, i) { return { type: 'symptom', date: e.date, data: { symptoms: [], pain: 1, mood: i < 3 ? 'low' : 'ok' } }; }), '2026-10-21', { pregState: 'postpartum' }, []).level === 'chat');
+  /* stages and copy */
+  check('stages: pregnant pauses the count, postpartum before periods counts nothing, the pill shows lengths without a grade, after the menopause the view is the body', R.stage({ pregState: 'maybe' }, {}) === 'pregnant' && R.stage({ pregState: 'postpartum', periodsBack: 'no' }, {}) === 'postpartum-none' && R.stage({ hormones: ['pill'] }, {}) === 'hormones' && R.stage({ lifeStage: 'post' }, {}) === 'post' && R.stage({}, { mode: 'wide' }) === 'wide');
+  S.setProfile({ lifeStage: 'post' }); var hp = R.html({ store: S, agents: A });
+  check('after the menopause: Your body, no readiness, no ovulation card, a line that any bleeding is checked', /Your body/.test(hp) && !/Building your cycle picture/.test(hp) && !/Ovulation signs/.test(hp) && /any bleeding at all/.test(hp));
+  S.setProfile({ lifeStage: '', pregState: 'pregnant' }); var hg = R.html({ store: S, agents: A });
+  check('pregnant: the count, the comparisons and ovulation are paused; symptoms and care stay', /paused/.test(hg) && !/Building your cycle picture/.test(hg) && /Symptoms and comfort/.test(hg));
+  S.setProfile({ pregState: 'none' }); var hn = R.html({ store: S, agents: A });
+  check('the panel names no score and nothing unlocked, says ovulation is not assessed, carries the FIGO chips and the Rhythme threshold chip, and ends with care that never waits', !/score|unlocked|percent|out of 100/i.test(hn) && /Not assessed/.test(hn) && /cannot tell whether you ovulated/.test(hn) && /evidence\.html#E7/.test(hn) && /Rhythme threshold/.test(hn) && /Care prompts never wait for three cycles/.test(hn) && hn.indexOf('—') < 0 && src.indexOf('—') < 0);
+  check('the module pays no hearts, writes no entry and sends nothing to a model', !/OvuRewards|\.award\(|S\.add\(|OvuStore\.add\(|fetch\(|OvuInsight/.test(src));
+  var rh = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), ev = fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8');
+  check('the Cycle tab is back between Home and Food, reachable while she sleeps, with a Rhythm view in the calendar and Body after the menopause; evidence E91 to E94 exist', /data-tab="cycle" id="navCycle"/.test(rh) && rh.indexOf('data-tab="cycle"') < rh.indexOf('data-tab="food"') && /AWAKE_FREE = \{[^}]*cycle: 1/.test(rs) && /data-tab="rhythm"/.test(rs) && /function labelCycleTab/.test(rs) && ['E91', 'E92', 'E93', 'E94'].every(function (e) { return ev.indexOf("id: '" + e + "'") > -1; }) && ev.indexOf('—') < 0);
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
