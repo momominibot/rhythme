@@ -155,7 +155,8 @@
   /* Hay & Harvest: one start for its hearts, the hearts and the start in one save (OvuRewards.spend) */
   function buyStart(S, RW, herb) {
     var h = HERBS[herb]; if (!h) return { ok: false, why: 'Not in the shop.' };
-    var g = herbState(S); g.seeds[herb] = Math.min(99, (g.seeds[herb] || 0) + 1);
+    var g = herbState(S); if ((g.seeds[herb] || 0) >= 99) return { ok: false, why: 'Your bag holds plenty of ' + h.name.toLowerCase() + ' already.' }; /* never pay for one the bag cannot hold */
+    g.seeds[herb] = (g.seeds[herb] || 0) + 1;
     try { RW.spend(h.cost, 'herb:' + herb, { greenhouse: g }); } catch (e) { return { ok: false, why: e.message }; }
     return { ok: true, herb: herb, have: g.seeds[herb] };
   }
@@ -182,8 +183,9 @@
   function harvestHerb(S, id, ST) {
     var FM = root.OvuFarm; if (!FM) return { ok: false, why: 'The basket is not here.' };
     var g = herbState(S), b = g.beds[id]; if (!herbRipe(b)) return { ok: false, why: b ? 'Not ready yet.' : 'Nothing to pick.' };
-    var h = HERBS[b.herb], f = JSON.parse(JSON.stringify(FM.farmState(S)));
-    f.harvest[b.herb] = Math.min(FM.PANTRY_CAP || 99, (Math.floor(Number(f.harvest[b.herb])) || 0) + h.yield);
+    var h = HERBS[b.herb], f = JSON.parse(JSON.stringify(FM.farmState(S))), had = Math.floor(Number(f.harvest[b.herb])) || 0;
+    if (had >= 99) return { ok: false, why: 'The basket is full of ' + h.plural + '. Brew a cup or two first.' }; /* a pick that could not fit costs nothing, and the farm's own count is never cut */
+    f.harvest[b.herb] = had + h.yield;
     b.watered = []; b.cuts = Math.min(99, b.cuts + 1);
     var sv = herbSave(S, { greenhouse: g, farm: f }, ST, 'harvest'); if (!sv.ok) return sv;
     return { ok: true, herb: b.herb, n: h.yield, total: f.harvest[b.herb], again: h.regrow, charged: sv.charged };
@@ -445,7 +447,7 @@
     var h = HERBS[herb]; if (!h || napping()) return;
     var have = inBasket(S, herb), Hb = root.OvuHerbs, Gd = root.OvuGarden && root.OvuGarden.herb, pf = S.profile() || {};
     var tea = h.tea && Hb ? Hb.TEAS.filter(function (t) { return t.id === h.tea; })[0] : null;
-    var html = '<p class="mindline"><span class="ms">local_cafe</span><span>Warmth in your hands, the steam, then the first sip. One minute, and you can stop at any time.</span></p>' +
+    var html = '<p class="mindline"><span class="ms">local_cafe</span><span>Warmth in your hands, the steam, then the first sip. One minute; stop whenever you like.</span></p>' +
       (Gd && Gd.careful(pf) ? Gd.carefulHTML(pf) : '') +
       '<div class="row"><button type="button" class="btn primary" id="brewGo"' + (have ? '' : ' disabled') + '><span class="ms">local_cafe</span>Brew a cup</button>' +
       (tea ? '<button type="button" class="btn soft" id="brewCard"><span class="ms">menu_book</span>What research says</button>' : '') + '</div>' +
@@ -457,12 +459,13 @@
   }
   /* the tea table: the full tea list as before, with a row to brew from the basket when there is something to brew */
   function brewRow() {
+    if (R.sheetId && R.sheetId() !== 'greenhouse') return; /* only on the tea list itself, never on a plant card that shares its classes */
     var sec = doc.querySelector('#sheetBody .dsec.teas'); if (!sec) return;
     var ready = HERB_IDS.filter(function (k) { return inBasket(S, k) > 0; });
     var row = doc.createElement('div'); row.className = 'ghbrewrow';
     row.innerHTML = '<p class="shelf"><span class="ms">shopping_basket</span>Brew from your harvest</p>' + (ready.length ? '<div class="chips">' + ready.map(function (k) { return '<button type="button" class="chipbtn" data-brew="' + k + '">' + esc(HERBS[k].cup) + ' <small>' + inBasket(S, k) + ' in the basket</small></button>'; }).join('') + '</div>'
       : '<p class="help">Ginger, lemongrass, pandan and chamomile grow in the planters by the door. Pick some, and brew it here.</p>');
-    sec.insertBefore(row, sec.firstChild);
+    var ml = sec.querySelector('.mindline'); sec.insertBefore(row, ml ? ml.nextSibling : sec.firstChild);
     row.addEventListener('click', function (e) { var b = e.target.closest('[data-brew]'); if (!b) return; R.chime('tap'); openBrew(b.dataset.brew); });
   }
   R.hotspotHandlers.ghdoor = function (id, L) { if (!inside(L)) return false; root.OvuWalk.travel('garden'); return true; };

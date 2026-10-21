@@ -62,6 +62,9 @@ takes no hearts or energy; too tired changes nothing; restored values are cleane
 4. **The herb uses the basket, not a separate store**, so the kitchen branch can read `farm.harvest.ginger` and
    `farm.harvest.pandan` for sweet potato ginger soup and pandan rice.
 5. Herbs are not offered at the seed swap (the swap lists `CROPS` only; lemongrass already was).
+6. Independent review (21 Oct) fixes: a full bag is not sold a start and a full basket is not picked into, the
+   morning routine says "Finish the cup first" during a brew, the tea-table row is added only to the tea list, the cup
+   sheet's line is within 18 words, and the smoke check waits for the cup to finish instead of a fixed time.
 
 ## Art needed (placeholder SVG now)
 
@@ -75,4 +78,8 @@ takes no hearts or energy; too tired changes nothing; restored values are cleane
 2. Should lemongrass and pandan get sourced research cards in the tea list? None were added: no new health claims.
 3. Harvest sizes (the design gave none): 2, 3, 3, 2 as above.
 4. Should herbs join the seed swap?
-5. A Codex review of this diff is pending (Codex unavailable here; no other model stood in).
+5. Should a cup count as Erin's "Morning coffee or tea" slot (once a day) instead of a general practice? Today it pays
+   like the plant minute: 2 hearts a cup inside the shared 6-a-day practice cap, so it can never pay twice.
+6. A cup needs a herb, and starts cost hearts. The plant minute and Erin's cup stay free, so no care is behind hearts,
+   but say if the cup itself should be free of that too (for example, a free pinch of chamomile on the first visit).
+7. A Codex review of this diff is pending (Codex unavailable here; no other model stood in).

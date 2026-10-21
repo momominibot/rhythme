@@ -199,6 +199,7 @@
   /* anything else that owns her, the HUD or the sound right now (Codex sweeps, 20 Oct): Morning start waits for it */
   function otherOwner(room) {
     if ((room.sessionOn && room.sessionOn()) || (room.practiceOn && room.practiceOn())) return ['Finish or stop the practice that is running first.', 'self_improvement'];
+    if (root.OvuGreenhouse && root.OvuGreenhouse.brewing && root.OvuGreenhouse.brewing()) return ['Finish the cup first.', 'local_cafe'];
     if (root.OvuGreenhouse && root.OvuGreenhouse.caring && root.OvuGreenhouse.caring()) return ['Finish the minute with the plant first.', 'potted_plant'];
     if (root.OvuGarden && root.OvuGarden.watering && root.OvuGarden.watering()) return ['Finish watering the garden first.', 'water_drop'];
     if (root.OvuWalk && root.OvuWalk.travelling && root.OvuWalk.travelling()) return ['One moment, she is on her way.', 'directions_walk'];

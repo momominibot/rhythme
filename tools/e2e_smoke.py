@@ -1280,7 +1280,9 @@ async def main():
             await page.evaluate("()=>OvuGreenhouse.openBrew('ginger')"); await page.wait_for_timeout(200)
             await page.click('#brewGo'); await page.wait_for_timeout(350)
             bw = await page.evaluate("()=>({brewing: OvuGreenhouse.brewing(), hud: document.querySelector('#hud').classList.contains('on'), img: document.querySelector('#avatarImg').getAttribute('src'), line: document.querySelector('#hudLine').textContent, ours: OvuGreenhouse.brewLines('ginger').indexOf(document.querySelector('#hudLine').textContent) > -1})")
-            await page.wait_for_timeout(1400)
+            try: await page.wait_for_function("()=>OvuGreenhouse.brewing()===null", timeout=8000)
+            except Exception: pass
+            await page.wait_for_timeout(150)
             ba = await page.evaluate("()=>({brewing: OvuGreenhouse.brewing(), hud: document.querySelector('#hud').classList.contains('on'), basket: OvuFarm.farmState(OvuStore).harvest.ginger||0, hearts: OvuRewards.ledger().hearts, diary: OvuStore.list().length})")
             check("a cup of ginger tea: one minute in her own outfit with the cup, warmth then steam then the first sip; it uses one ginger, writes no diary entry and earns only the flat practice thank-you", bw["brewing"] == "ginger" and bw["hud"] and "act-coffee-sundress" in (bw["img"] or "") and bw["ours"] and ba["brewing"] is None and not ba["hud"] and ba["basket"] == 1 and ba["diary"] == b0["diary"] and ba["hearts"] - b0["hearts"] == (2 if b0["room"] else 0), [b0, bw, ba])
             await page.evaluate("()=>{OvuGreenhouse.setPace(1500); OvuGreenhouse.startBrew('ginger');}"); await page.wait_for_timeout(300)

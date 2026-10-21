@@ -3086,6 +3086,11 @@ var summarised = false;
   var rwSrc = fs.readFileSync(path.join(root, 'ovu-rewards.js'), 'utf8');
   check('the thank-you for a practice with no entry runs the same practicePoints as every practice', /function thank\(what, patch\) \{\s*var l = [^\n]*practicePoints\(l, /.test(rwSrc));
   var svgOk = [0, 1, 2, 3].every(function (st) { var b = st ? { herb: 'chamomile', watered: days(st === 3 ? 4 : st), cuts: 0, last: d1 } : null; return /^<svg[\s\S]*<\/svg>$/.test(GH.herbSVG(b, d1)); });
+  reset(100); S.setState({ greenhouse: { seeds: { ginger: 99 }, beds: { hb1: { herb: 'lemongrass', planted: d1, watered: days(4), last: S.addDays(d1, 3), cuts: 0 } } }, farm: { harvest: { lemongrass: 120 } } });
+  var full0 = RW.ledger().hearts, fullBuy = GH.buyStart(S, RW, 'ginger'), e2 = ST.value(), fullPick = GH.harvestHerb(S, 'hb1', ST);
+  check('a full bag is not sold another start, and a full basket is not picked into: nothing paid, nothing charged, the farm’s count kept', !fullBuy.ok && RW.ledger().hearts === full0 && GH.herbState(S).seeds.ginger === 99 && !fullPick.ok && F.farmState(S).harvest.lemongrass === 120 && ST.value() === e2 && GH.herbRipe(GH.herbState(S).beds.hb1));
+  var brewLine = /<p class="mindline"><span class="ms">local_cafe<\/span><span>([^<]+)<\/span>/.exec(src);
+  check('the cup’s own sheet line is short and free of em dashes too', !!brewLine && brewLine[1].split(/\s+/).length <= 18 && !/—/.test(brewLine[1]), brewLine && brewLine[1]);
   check('each planter draws as an SVG at every stage, darker soil when watered today', svgOk && GH.herbSVG({ herb: 'ginger', watered: [d1], cuts: 0, last: d1 }, d1).indexOf('#4f3828') > -1 && GH.herbSVG({ herb: 'ginger', watered: [d1], cuts: 0, last: d1 }, '2026-10-22').indexOf('#4f3828') < 0);
 })();
 
