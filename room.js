@@ -1526,7 +1526,7 @@
   }
   function measureNav() { var n = $('.nav'), f = $('#frame'); if (n && f) f.style.setProperty('--navh', n.offsetHeight + 'px'); }
   measureNav(); window.addEventListener('resize', measureNav);
-  $$('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); chime('tap'); requireConsent(function () { goTab(a.dataset.tab || 'home'); }); }); });
+  $$('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); chime('tap'); navSeq++; /* the tap itself counts, even while consent is still being checked */ requireConsent(function () { goTab(a.dataset.tab || 'home'); }); }); });
 
   /* ---------- You: name, outfit, hearts, settings and your data, all in the room ---------- */
   function openChoices() {

@@ -2357,6 +2357,9 @@ async def main():
             # bring_to_front (21 Oct); this checks how the tabs share the store, so tap with the button's own click()
             TAP = "(sel)=>document.querySelector(sel).click()"
             await ta.evaluate(TAP, '.mq[data-mq="veg"] [data-yn="1"]'); await ta.wait_for_timeout(400)
+            # Chromium shares localStorage between tabs through the browser process, so a background tab's write reaches the
+            # other tab a little later (much later in CI): wait until the second tab can see it, as a person switching tabs would
+            await tb.wait_for_function("()=>((JSON.parse(localStorage.getItem('ovumind_db_v1')).state.medas||{}).answers||{}).veg===true", polling=200, timeout=10000)
             await tb.evaluate(TAP, '.mq[data-mq="fish"] [data-yn="0"]'); await tb.wait_for_timeout(400)
             # the second tab's save is on the phone at once; a hidden tab may be frozen (CI) and catches up when she comes back to it
             disk = await tb.evaluate("()=>(JSON.parse(localStorage.getItem('ovumind_db_v1')).state.medas||{}).answers")
