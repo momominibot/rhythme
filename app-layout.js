@@ -21,7 +21,7 @@
   // Canonical header HTML
   function renderHeader() {
     const persona = getPersona();
-    const personaNames = { grow: 'Grow', nurture: 'Nurture', wisdom: 'Wisdom' };
+    const personaNames = { grow: 'Grow', nurture: 'Nurture', peri: 'Seasons', wisdom: 'Wisdom' };
     return `
     <div class="top" id="app-top-bar">
       <div class="brandline" style="cursor:pointer" onclick="window.location.href='home.html'"><b style="font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--mauve)">RHYTHME</b></div>

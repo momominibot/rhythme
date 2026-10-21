@@ -161,3 +161,15 @@ html[data-sky="night"] .yn button[data-yn="1"].on{background:#3a7559;border-colo
 html[data-sky="night"] .yn button[data-yn="0"].on{background:#5f4596;border-color:#5f4596;color:#fff}
 html[data-sky="night"] .rsafe{background:rgba(255,255,255,.06)}
 html[data-sky="night"] .rsafe .ms{color:#d7c3f3}
+/* farm can gauge and care steps keep dark ink on their light cards at night */
+html[data-sky] .farmcan{background:rgba(255,255,255,.9)!important;color:#3d2f55!important}
+html[data-sky] .farmcan b{color:#3d2f55!important}
+html[data-sky="night"] .sheet .farmsteps li{background:#2c2142!important}
+html[data-sky="night"] .sheet .farmsteps b{color:#fbf6ff!important}
+html[data-sky="night"] .sheet .farmsteps small{color:#d9cdec!important}
+html[data-sky="night"] .sheet .bedcard .canline{color:#a9d6f5!important}
+html[data-sky="night"] .sheet .slowverb{color:#efe6fb!important}
+
+/* mindful lines in sheets at night: a dark surface under the light words */
+html[data-sky="night"] .sheet .mindline{background:#2c2142!important;color:#efe6fb!important}
+html[data-sky="night"] .sheet .mindline .ms{color:#c9b2ee!important}

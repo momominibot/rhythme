@@ -455,6 +455,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .hud-orb.in,.hud-orb.hold{transform:scale(1.15)}
 .hud-orb.out{transform:scale(.8)}
 .hud-text{flex:1;min-width:0}
+.hud-row{display:flex;align-items:baseline;gap:8px;min-width:0}
+.hud-time{display:inline-flex;align-items:center;gap:5px;font:700 11px var(--sans);font-style:normal;color:var(--rm-mauve);font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
+.hud-time:empty{display:none}
+.hud-time::before{content:'';width:6px;height:6px;border-radius:50%;background:#2f8a5f;animation:hudlive 2s ease-in-out infinite}
+@keyframes hudlive{0%,100%{opacity:1}50%{opacity:.3}}
+@media (prefers-reduced-motion: reduce){.hud-time::before{animation:none}}
 .hud-text b{display:block;font:800 11px var(--sans);color:var(--rm-ink-3);letter-spacing:.06em;text-transform:uppercase}
 .hud-text span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;font-family:var(--serif);font-size:14px;color:var(--rm-plum);line-height:1.25;overflow:hidden;text-wrap:pretty}
 .hud-stop{width:36px;height:36px;border-radius:50%;border:none;background:var(--rm-lilac-2);color:var(--rm-plum);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -793,6 +799,8 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .welcome .btn{min-width:210px;justify-content:center;flex:0 0 auto}
 .welcome .btn.primary{box-shadow:0 10px 26px rgba(117,86,196,.42),0 0 28px rgba(226,210,255,.75)}
 .welcome .btn.ghost{background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+/* the welcome keeps its light look after sunset: the night ghost button (light text, no fill) vanished on it */
+html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);color:#5a4274;border-color:rgba(122,92,150,.28)}
 .welcome .btn+.btn{margin-top:8px}
 .onb{display:flex;flex-direction:column}
 .onb-head{display:flex;gap:12px;align-items:flex-end;margin-top:4px}
@@ -1708,6 +1716,11 @@ span.frchip{cursor:default}
 .carecard{display:block;margin:2px 0 12px}
 .moodcare{display:flex;gap:8px;align-items:flex-start;margin:-2px 0 10px;padding:9px 11px;border-radius:12px;background:#f7f0fb;color:var(--rm-ink);font:500 12.5px/1.45 var(--sans)}
 .moodcare .ms{color:#a5668f;font-size:18px;flex:none}
+/* display:flex on these beat the hidden attribute: the low-mood note showed under every mood, and the consent sheet told everyone
+   their earlier answers said they were under 18 (Jamie's screenshot, 20 Oct) */
+.flag[hidden],.moodcare[hidden]{display:none}
+html[data-sky="night"] .moodcare{background:#3b2e5a;color:#f1e9fb}
+html[data-sky="night"] .moodcare .ms{color:#f6c9d6}
 /* the mindful line under a toast's message (ovu-moments.js) */
 .toast.two{border-radius:18px;align-items:flex-start;text-align:left;padding:10px 14px}
 .toast .toastsub{display:block;margin-top:3px;font:600 12px/1.35 var(--sans);color:#f3e6ff;opacity:.92}
@@ -1820,3 +1833,99 @@ span.frchip{cursor:default}
 .yn button:focus-visible{outline:2px solid var(--rm-mauve);outline-offset:2px}
 .rsafe{display:flex;gap:8px;align-items:flex-start;background:var(--rm-paper-2);border-radius:14px;padding:10px 12px;margin-top:12px}
 .rsafe .ms{font-size:18px;color:var(--rm-mauve);flex-shrink:0;margin-top:1px}
+/* Today's check-in: six tiles, a calm status line, quick answers; a tick only for what she chose to count */
+.cihead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cichoose{border:none;background:none;font:800 11.5px var(--sans);color:var(--rm-mauve);cursor:pointer;padding:10px 4px;min-height:44px}
+.cistatus{display:flex;align-items:center;gap:6px;font:700 12.5px var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.cistatus.done{color:var(--rm-ink)}
+.cistatus.done .ms{font-size:20px;color:#2f8a5f;font-variation-settings:'FILL' 1}
+.tiles.ci{grid-template-columns:repeat(2,minmax(0,1fr))}
+html[data-text="larger"] .tiles.ci{grid-template-columns:minmax(0,1fr)}
+.citile{position:relative;text-align:left;padding:10px 12px;min-height:76px;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:8px;align-items:center;border:1.5px solid transparent}
+.citile>.ms{grid-row:1/4;font-size:24px}
+.citile .cil{font:800 10px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--rm-ink-2);padding-right:22px}
+.citile small{color:var(--rm-ink-2)}
+.citile b{margin-top:0;font-size:15px;overflow-wrap:anywhere}
+.citile small{margin-top:0}
+.citile.s-add.key{border-style:dashed;border-color:var(--rm-lilac)}
+.citile.s-add.key b{color:var(--rm-mauve)}
+.citile.s-optional b{color:var(--rm-ink-3);font-weight:700}
+/* a recorded tile looks like any tile; the green tick alone says it is done (Jamie, 20 Oct) */
+.citile.s-partial{border-color:var(--rm-lilac)}
+.cimark{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:800 12px var(--sans)}
+.cimark .ms{font-size:15px!important;color:inherit!important}
+.cimark.ok{background:#2f8a5f;color:#fff}
+.cimark.uns{background:#dfeee5;color:#2f7a55}
+.cimark.part{background:var(--rm-lilac-2);color:var(--rm-mauve)}
+.citile.choose{background:var(--rm-paper-2);border:1.5px dashed var(--rm-lilac)}
+.citile.choose.on{border-style:solid;border-color:var(--rm-mauve);background:var(--rm-lilac-2)}
+.ciquick{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ciquick:empty{display:none}
+.ciquick .qchip{border:1.5px solid var(--rm-lilac);background:var(--rm-card,#fff);color:var(--rm-plum);border-radius:99px;padding:8px 12px;min-height:40px;font:700 11.5px var(--sans);cursor:pointer}
+.ciquick .qchip.undo{border-style:dashed;color:var(--rm-ink-2)}
+html[data-sky="night"] .cistatus.done .ms{color:#86c7a6}
+html[data-sky="night"] .cimark.uns{background:#2f5a45;color:#c8f0da}
+/* farm: the watering can and mindful care steps (Jamie, 20 Oct) */
+.bedcard .bedpic.canpic{background:#eef4fb}
+.bedcard .canline{display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#3f6f96}
+.bedcard .canline .ms{font-size:16px}
+.farmcan{position:absolute;left:10px;bottom:56px;z-index:7;display:inline-flex;align-items:center;gap:6px;padding:6px 11px 6px 8px;border:1.5px solid rgba(255,255,255,.9);border-radius:99px;background:rgba(255,255,255,.88);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(80,50,110,.14);font:800 12px var(--sans);color:#3d2f55;cursor:pointer}
+.farmcan .ms{font-size:17px;color:#4a8fc4}
+.farmcan .cdots{display:inline-flex;gap:3px;font-weight:700;color:#3f6f96}
+.farmcan .cdots i{width:9px;height:9px;border-radius:50%;border:1.5px solid #6fa8d6;background:transparent}
+.farmcan .cdots i.on{background:#6fb3e6;border-color:#4a8fc4}
+.farmcan.empty{box-shadow:0 0 0 2px #f2b4c8,0 4px 14px rgba(80,50,110,.14)}
+.slowbox{display:block}
+.slowstep{display:flex;flex-direction:column;gap:8px;padding:2px 0 4px}
+.slowstep .mindline{margin:0}
+.slowbar{height:8px;border-radius:99px;background:rgba(120,90,150,.14);overflow:hidden}
+.slowbar i{display:block;width:0;height:100%;border-radius:99px;background:linear-gradient(90deg,#b9dcf3,#8fc6ea)}
+.slowbar.still{display:none}
+.slowverb{margin:0;font:700 13px var(--sans);color:var(--rm-plum)}
+.slowstep .btn{align-self:flex-start}
+.farmsteps{list-style:none;margin:4px 0 12px;padding:0;display:flex;flex-direction:column;gap:10px}
+.farmsteps li{display:flex;gap:10px;align-items:flex-start;background:var(--rm-card,#fff);border-radius:14px;padding:10px 12px}
+.farmsteps li>.ms{flex:none;width:32px;height:32px;line-height:32px;text-align:center;border-radius:50%;background:#f1eafb;color:#7c5aa8;font-size:18px}
+.farmsteps b{display:block;font-size:14px;color:#3d2f55}
+.farmsteps small{display:block;font-size:12.5px;line-height:1.45;color:#5d4f6c}
+/* the consent notice keeps its light look: a withdrawal that did not reach the account is said plainly above the button */
+.consent .c-err{margin:8px 0 10px;padding:9px 12px;border-radius:12px;background:#fdecef;color:#8a2140;font:700 12.5px/1.45 var(--sans)}
+
+/* large text in the room (ovu-textsize.js): everything around the plate grows; the plate, the avatar and taps on them stay true */
+html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud){zoom:var(--tz,1)}
+/* the barn and the hidden spring (ovu-barn.js, 21 Oct) */
+.barnthing{position:absolute;pointer-events:auto;border:0;background:none;padding:0}
+.barnthing.animal{transform:translate(-50%,-100%);cursor:pointer;z-index:2}
+.barnthing.animal img{width:100%;display:block;transform-origin:50% 100%;animation:animalidle 5.5s ease-in-out infinite;filter:drop-shadow(0 6px 5px rgba(70,40,90,.22))}
+.barnthing.animal.flip img{transform:scaleX(-1);animation-name:animalidleflip}
+.barnthing.animal.a-mochi img,.barnthing.animal.a-kaya img{animation-duration:3.8s}
+@keyframes animalidle{0%,100%{transform:scale(1,1)}50%{transform:scale(1.012,.988)}}
+@keyframes animalidleflip{0%,100%{transform:scaleX(-1) scale(1,1)}50%{transform:scaleX(-1) scale(1.012,.988)}}
+.barnthing.animal:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:12px}
+.barnthing.nestegg{width:2.2%;transform:translate(-50%,-100%);pointer-events:none;transition:transform .9s ease,opacity .9s ease}
+.barnthing.nestegg svg{width:100%;display:block}
+.barnthing.nestegg.lifted{transform:translate(-50%,-180%);opacity:0}
+.barnlist{list-style:none;margin:4px 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
+.barnlist li{display:flex;align-items:center;gap:8px;background:var(--rm-card,#fff);border-radius:12px;padding:9px 11px;font:600 13.5px var(--sans);color:var(--rm-ink)}
+.barnlist .ms{font-size:18px;color:#9a7bc2}
+.pantryline{display:flex;gap:6px;align-items:flex-start}
+.pantryline .ms{font-size:16px;color:#9a7bc2}
+.nb.springsitter{transform:translate(-50%,-100%);pointer-events:none;z-index:3}
+.nb.springsitter img{width:100%;display:block}
+.nb.springsitter.faceright img.seated{transform:scaleX(-1)}
+.scene.springsit #avatar{opacity:0;pointer-events:none}
+.springstop{position:absolute;right:12px;bottom:56px;z-index:12;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border:0;border-radius:99px;background:rgba(255,255,255,.94);color:#3d2f55;font:800 13px var(--sans);box-shadow:0 4px 14px rgba(20,10,40,.3);cursor:pointer}
+.springstop .ms{font-size:18px;color:#7c5aa8}
+.springstop:focus-visible{outline:2px solid #fff;outline-offset:3px}
+/* the cave is the same starry dark whatever the sky: no day tint, no night veil or extra stars; words on it are light */
+.scene[data-layout="cave"] .room-img.day,.scene[data-layout="cave"]:is(.is-night,.sky-night,[data-sky]) .room-img.day{filter:none!important}
+.scene[data-layout="cave"] :is(.night-veil,.stars){opacity:0!important}
+.scene[data-layout="cave"] :is(.brand,.greeting h1,.greeting p){color:#fbf6ff!important;text-shadow:0 1px 2px rgba(10,5,25,.7),0 0 14px rgba(10,5,25,.6)!important}
+.mapnode[data-node="cave"]{position:absolute}
+.mapnode[data-node="cave"]::after{content:"";position:absolute;top:2px;right:10px;width:14px;height:14px;background:radial-gradient(circle,#fff 0 18%,rgba(255,240,255,.9) 19% 30%,transparent 31%),conic-gradient(from 45deg,transparent 0 10%,#fff6c9 10% 15%,transparent 15% 35%,#fff6c9 35% 40%,transparent 40% 60%,#fff6c9 60% 65%,transparent 65% 85%,#fff6c9 85% 90%,transparent 90%);border-radius:50%;filter:drop-shadow(0 0 4px #fff3b0)}
+@media (prefers-reduced-motion: reduce){.barnthing.animal img{animation:none}.barnthing.nestegg{transition:none}}
+.scene.springsit .hotspot[data-id="warmstone"]{opacity:0;pointer-events:none}
+.scene.is-night .barnthing.animal img{filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg) drop-shadow(0 6px 5px rgba(70,40,90,.22))}
+.scene.sky-night:not(.is-night) .barnthing.animal img{filter:brightness(.9) saturate(1.02) hue-rotate(-3deg) drop-shadow(0 6px 5px rgba(70,40,90,.22))}
+.bedcard .bedpic.pailpic{background:#f6f0fb}
+.bedcard .bedpic.springpic{background:#101428}

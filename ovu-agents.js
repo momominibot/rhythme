@@ -244,6 +244,154 @@
       disclaimer: 'Self-reported entries summarised by deterministic rules in the browser. For clinician review; not a diagnosis.'
     };
   }
+  /* ---------- Cycle history: the trend over months, for the journal, the share, the Doctor view and the PDF ----------
+   * Clinical history, not the prediction: every interval between two logged starts is kept as a dated row, gaps over
+   * 60 days included, with the reason they are left out of the numbers (the same product rule as cycleStats, not a
+   * clinical threshold). Episodes use bleeding days only (spotting stays an observation) and are clipped to the range end.
+   * Recorded bleeding days and the span are reported apart: a bridged day is a missing day, never a bleeding day.
+   * Pain is the highest pain actually recorded on that period's days, or null; missing never reads as zero.
+   * No normal or irregular labels: FIGO 2018 is printed as a reference beside the numbers (Codex design review, 20 Oct). */
+  var IMPORTED = { 'apple-health': 1, 'google-fit': 1 };
+  function cycleHistory(from, to) {
+    to = to || S.today();
+    var eps = S.periodEpisodes().filter(function (ep) { return ep.start <= to; }).map(function (ep) {
+      var days = ep.days.filter(function (d) { return d.date <= to; });
+      return { start: ep.start, end: days[days.length - 1].date, days: days };
+    });
+    var painOn = {};
+    S.list('symptom', { to: to }).forEach(function (e) { if (typeof e.data.pain === 'number') painOn[e.date] = Math.max(painOn[e.date] === undefined ? 0 : painOn[e.date], e.data.pain); });
+    var rows = [];
+    eps.forEach(function (ep, i) {
+      var next = eps[i + 1];
+      if (from && ep.start < from && next && next.start < from) return; /* an interval that runs into the range is kept, and so is a period still open at its start */
+      var interval = next ? S.diffDays(ep.start, next.start) : null, pain = null, span = S.diffDays(ep.start, ep.end) + 1;
+      ep.days.forEach(function (d) { if (painOn[d.date] !== undefined) pain = Math.max(pain === null ? 0 : pain, painOn[d.date]); });
+      rows.push({
+        start: ep.start, end: ep.end, beforeRange: !!(from && ep.start < from),
+        interval: interval, nextStart: next ? next.start : null, current: !next, sinceStart: next ? null : S.diffDays(ep.start, to) + 1,
+        counted: interval !== null && interval <= 60, excluded: interval !== null && interval > 60 ? 'gap over 60 days: a break in the record, not counted as a cycle' : null,
+        bleedDays: ep.days.length, span: span, missingDays: span - ep.days.length,
+        heavyDays: ep.days.filter(function (d) { return d.data.flow === 'heavy'; }).length,
+        flowUnrecorded: ep.days.filter(function (d) { return d.data.flow === 'unspecified'; }).length,
+        largeClots: ep.days.some(function (d) { return !!d.data.largeClots; }), flooding: ep.days.some(function (d) { return !!d.data.flooding; }),
+        autofilled: ep.days.filter(function (d) { return !!d.data.autofill; }).length,
+        imported: ep.days.filter(function (d) { return !!IMPORTED[d.source]; }).length,
+        painMax: pain
+      });
+    });
+    var lens = rows.filter(function (r) { return r.counted && !r.beforeRange; }).map(function (r) { return r.interval; });
+    var sorted = lens.slice().sort(function (x, y) { return x - y; }), mid = Math.floor(sorted.length / 2);
+    var start = from || (rows[0] && rows[0].start) || to, spanDays = S.diffDays(start, to) + 1, logged = {};
+    S.list(null, { from: start, to: to }).forEach(function (e) { logged[e.date] = 1; });
+    return {
+      range: { from: start, to: to, days: spanDays }, rows: rows,
+      coverage: { daysWithEntries: Object.keys(logged).length, days: spanDays },
+      stats: {
+        starts: rows.filter(function (r) { return !r.beforeRange; }).length, intervals: lens.length,
+        excluded: rows.filter(function (r) { return r.excluded && !r.beforeRange; }).length,
+        median: sorted.length ? (sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2) : null, /* exact: 28 and 29 give 28.5 */
+        shortest: sorted.length ? sorted[0] : null, longest: sorted.length ? sorted[sorted.length - 1] : null,
+        variation: sorted.length >= 2 ? sorted[sorted.length - 1] - sorted[0] : null,
+        longestBleed: rows.length ? Math.max.apply(null, rows.map(function (r) { return r.bleedDays; })) : null,
+        heavyPeriods: rows.filter(function (r) { return r.heavyDays > 0; }).length
+      },
+      reference: 'FIGO 2018 (non-pregnant, reproductive years): cycles of 24 to 38 days; bleeding up to 8 days; shortest to longest cycle within 7 to 9 days depending on age. A reference, not a verdict: two or three intervals describe what was recorded, they do not establish a pattern.',
+      limits: 'Self-reported. Missing days are not absence of bleeding or symptoms. Intervals run from one logged first bleeding day to the next.'
+    };
+  }
+  /* ---------- Ranges in calendar months, and month-by-month totals ----------
+   * "6 months" ending 20 Oct starts 21 Apr: the same day of the month n months back, plus one day, clamped to the end of
+   * shorter months (31 Mar back one month is 28 Feb, so the range is 1 to 31 Mar). Week arithmetic called 364 days
+   * "12 months" (Codex diff review, 20 Oct). */
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function monthsBack(end, n) {
+    var y = +end.slice(0, 4), m = +end.slice(5, 7) - 1 - n, d = +end.slice(8, 10);
+    var first = new Date(Date.UTC(y, m, 1)), last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+    return S.addDays(first.getUTCFullYear() + '-' + pad2(first.getUTCMonth() + 1) + '-' + pad2(Math.min(d, last)), 1);
+  }
+  /* what a longer share keeps of everything, so older meals, movement and calm are counted even when their entries stay home */
+  function monthlyTotals(from, to) {
+    var by = {}, order = [];
+    function m(k) { if (!by[k]) { by[k] = { month: k, from: null, to: null, daysWithEntries: 0, bleedingDays: 0, filledDays: 0, symptomDays: 0, sleepNights: 0, meals: 0, foodDays: 0, movementSessions: 0, movementMinutes: 0, calmSessions: 0, calmMinutes: 0, _d: {}, _f: {}, _b: {}, _a: {}, _c: [] }; order.push(k); } return by[k]; }
+    for (var d = from; d <= to; d = S.addDays(d, 1)) { var o = m(d.slice(0, 7)); if (!o.from) o.from = d; o.to = d; }
+    S.list(null, { from: from, to: to }).forEach(function (e) {
+      var o = m(e.date.slice(0, 7)); o._d[e.date] = 1;
+      if (e.type === 'period' && e.data.flow && e.data.flow !== 'none' && e.data.flow !== 'spotting') { if (e.data.autofill) o._a[e.date] = 1; else o._b[e.date] = 1; } /* filled-in days are counted apart, never as recorded bleeding */
+      if (e.type === 'symptom') o.symptomDays++;
+      if (e.type === 'food') { o.meals++; o._f[e.date] = 1; }
+      if (e.type === 'exercise') { o.movementSessions++; o.movementMinutes += Number(e.data.minutes) || 0; }
+      if (e.type === 'mindfulness') { o._c.push(e); o.calmMinutes += Number(e.data.minutes) || 0; }
+    });
+    S.sleepStats(S.diffDays(from, to) + 1, to).nights.forEach(function (n) { if (by[n.date.slice(0, 7)]) by[n.date.slice(0, 7)].sleepNights++; });
+    return order.map(function (k) { var o = by[k]; o.daysWithEntries = Object.keys(o._d).length; o.foodDays = Object.keys(o._f).length; o.bleedingDays = Object.keys(o._b).length; o.filledDays = Object.keys(o._a).filter(function (d) { return !o._b[d]; }).length; o.calmSessions = sessionCount(o._c); o.movementMinutes = Math.round(o.movementMinutes); o.calmMinutes = Math.round(o.calmMinutes); o.days = S.diffDays(o.from, o.to) + 1; delete o._d; delete o._f; delete o._b; delete o._a; delete o._c; return o; });
+  }
+  /* ---------- Patterns: one row of marks per day, for the month calendars ----------
+   * Display bins only, not severity grades: bleeding by recorded flow, pain 0 / 1-3 / 4-6 / 7-10 only when a number was
+   * recorded, sleep < 6 / 6 to < 7 / 7 to 9 / > 9 hours from merged nights on the morning date (AASM: at least 7 for adults;
+   * more than 9 can be right, so it is never shown as a failure). No stress score. */
+  function painBand(n) { return n === 0 ? 0 : n <= 3 ? 1 : n <= 6 ? 2 : 3; }
+  function sleepBand(h) { return h < 6 ? 0 : h < 7 ? 1 : h <= 9 ? 2 : 3; }
+  function patternDays(from, to) {
+    to = to || S.today();
+    var out = {}, d;
+    for (d = from; d <= to; d = S.addDays(d, 1)) out[d] = { date: d, flow: null, autofill: false, pain: null, painBand: null, symptoms: null, none: false, mood: null, sleep: null, sleepBand: null, entries: 0 };
+    S.list(null, { from: from, to: to }).forEach(function (e) {
+      var o = out[e.date]; if (!o) return; o.entries++;
+      if (e.type === 'period' && e.data.flow && e.data.flow !== 'none') { o.flow = e.data.flow; o.autofill = !!e.data.autofill; }
+      if (e.type === 'symptom') {
+        if (typeof e.data.pain === 'number') { o.pain = o.pain === null ? e.data.pain : Math.max(o.pain, e.data.pain); o.painBand = painBand(o.pain); }
+        o.symptoms = (o.symptoms || []).concat(e.data.symptoms || []); if (e.data.none) o.none = true; if (e.data.mood) o.mood = e.data.mood;
+      }
+    });
+    var answers = S.load().state.checkin || {};
+    Object.keys(out).forEach(function (k) { var a = answers[k]; if (!a) return; if (a.bleeding && !out[k].flow) out[k].bleedAnswer = a.bleeding; if (a.sleep) out[k].sleepAnswer = a.sleep; if (a.mood && !out[k].mood) out[k].moodAnswer = a.mood; });
+    S.sleepStats(S.diffDays(from, to) + 1, to).nights.forEach(function (n) { var o = out[n.date]; if (o) { o.sleep = n.hours; o.sleepBand = sleepBand(n.hours); delete o.sleepAnswer; } });
+    return Object.keys(out).sort().map(function (k) { return out[k]; });
+  }
+  /* ---------- Today's check-in: what is recorded today, at a glance ----------
+   * Six tiles; a few are "key" and the tick means those were answered today. "None" and "not sure" are full answers; a
+   * missing day is never read as nothing happening. No health verdict, no streak, no hearts for the tick (the logs
+   * themselves earn as before). Bleeding is key only while periods are expected: not after menopause, in pregnancy,
+   * after a birth until she says periods are back, with predictions paused (hormonal methods, hysterectomy) or when
+   * nothing says she menstruates. She can choose what counts (choice) (Codex design review, 20 Oct). */
+  var CHECK_TILES = [['bleeding', 'Bleeding', 'water_drop'], ['sleep', 'Sleep', 'bedtime'], ['symptoms', 'Symptoms & mood', 'sentiment_satisfied'], ['food', 'Food', 'restaurant'], ['movement', 'Movement', 'directions_run'], ['calm', 'Calm', 'self_improvement']];
+  function bleedingExpected(p, cs) {
+    if (isPostmenopausal(p) || p.pregState === 'pregnant' || p.pregState === 'maybe') return false;
+    if (p.pregState === 'postpartum' && p.periodsBack !== 'yes') return false;
+    if (cs.mode === 'suspended' || p.periodsStarted === 'no') return false;
+    return p.periodsStarted === 'yes' || !!p.regularity || S.list('period').length > 0;
+  }
+  function defaultKeys(p, cs) { return { bleeding: bleedingExpected(p, cs), sleep: true, symptoms: true, food: true, movement: false, calm: false }; }
+  function todayCheckIn(date, choice) {
+    date = date || S.today();
+    var p = S.profile(), cs = S.cycleStats(date), ans = S.checkinAnswers(date), ent = S.byDate(date);
+    var keys = Object.assign(defaultKeys(p, cs), choice || {});
+    function of(t) { return ent.filter(function (e) { return e.type === t; }); }
+    var out = {};
+    var SRCNAME = { 'apple-health': 'from Apple Health', 'google-fit': 'from Google' };
+    var per = of('period').filter(function (e) { return e.data.flow && e.data.flow !== 'none'; })[0];
+    /* a day the calendar filled in as typical is not confirmed, so it never earns the tick until she checks the flow */
+    out.bleeding = per && per.data.autofill ? { state: 'partial', value: 'Filled in', sub: 'check the flow' }
+      : per ? { state: 'done', value: per.data.flow === 'unspecified' ? 'Logged' : per.data.flow.charAt(0).toUpperCase() + per.data.flow.slice(1), sub: SRCNAME[per.source] || (per.data.flow === 'spotting' ? 'spotting' : 'flow today') }
+      : ans.bleeding === 'none' ? { state: 'done', value: 'None', sub: 'no bleeding today', answer: true } : ans.bleeding === 'unsure' ? { state: 'unsure', value: 'Not sure', sub: 'answered', answer: true } : null;
+    var night = S.sleepStats(1, date).nights[0], nightSrc = of('sleep').map(function (e) { return SRCNAME[e.source]; }).filter(Boolean)[0];
+    out.sleep = night ? { state: 'done', value: fmtHours(night.hours), sub: nightSrc || 'last night' } : ans.sleep === 'unsure' ? { state: 'unsure', value: 'Not sure', sub: 'answered', answer: true } : null;
+    var sym = of('symptom'), list = [], none = false, mood = '';
+    sym.forEach(function (e) { list = list.concat(e.data.symptoms || []); if (e.data.none) none = true; if (e.data.mood) mood = e.data.mood; });
+    var symAns = list.length || none, moodAns = mood || ans.mood === 'unsure';
+    out.symptoms = symAns && moodAns ? { state: 'done', value: (list.length ? (list.length === 1 ? list[0].charAt(0).toUpperCase() + list[0].slice(1) : list.length + ' symptoms') : 'None'), sub: mood ? 'mood ' + mood : 'mood not sure', answer: !mood }
+      : symAns || moodAns ? { state: 'partial', value: symAns ? 'Mood?' : 'Symptoms?', sub: symAns ? 'add your mood' : 'tick symptoms or None', answer: !mood && !!moodAns } : null;
+    var meals = of('food');
+    out.food = meals.length ? { state: 'done', value: meals.length + (meals.length === 1 ? ' meal' : ' meals'), sub: 'logged' } : ans.food === 'skip' ? { state: 'done', value: 'Not today', sub: 'nothing to log', answer: true } : null;
+    var mv = of('exercise'); out.movement = mv.length ? { state: 'done', value: Math.round(mv.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) + ' min', sub: 'movement' } : null;
+    var mi = of('mindfulness'); out.calm = mi.length ? { state: 'done', value: Math.round(mi.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) + ' min', sub: 'calm' } : null;
+    var tiles = CHECK_TILES.map(function (t) {
+      var r = out[t[0]] || { state: keys[t[0]] ? 'add' : 'optional', value: keys[t[0]] ? 'Add' : 'Optional', sub: '' };
+      return { id: t[0], label: t[1], icon: t[2], key: !!keys[t[0]], state: r.state, value: r.value, sub: r.sub, answer: !!r.answer, recorded: r.state === 'done' || r.state === 'unsure' };
+    });
+    var key = tiles.filter(function (t) { return t.key; }), done = key.filter(function (t) { return t.recorded; });
+    return { date: date, tiles: tiles, keyCount: key.length, keyDone: done.length, complete: key.length > 0 && done.length === key.length, defaults: defaultKeys(p, cs) };
+  }
   function saveMonthlySummary() {
     var db = S.load(), sum = fourWeekSummary();
     if (root.OvuInsight) sum.insight = root.OvuInsight.cachedFourWeeks(sum.range.to) || null; /* the model-written prose rides along with the rule summary */
@@ -253,5 +401,5 @@
     return sum;
   }
 
-  root.OvuAgents = { isPostmenopausal: isPostmenopausal, SYMPTOMS: SYMPTOMS, MOODS: MOODS, FOOD_TAGS: FOOD_TAGS, supervisor: supervisor, analyze: analyze, allFlags: allFlags, dailySummary: dailySummary, fourWeekSummary: fourWeekSummary, dismissFlag: dismissFlag, saveMonthlySummary: saveMonthlySummary, agents: AGENTS, fmtHours: fmtHours };
+  root.OvuAgents = { isPostmenopausal: isPostmenopausal, SYMPTOMS: SYMPTOMS, MOODS: MOODS, FOOD_TAGS: FOOD_TAGS, supervisor: supervisor, analyze: analyze, allFlags: allFlags, dailySummary: dailySummary, fourWeekSummary: fourWeekSummary, cycleHistory: cycleHistory, patternDays: patternDays, monthsBack: monthsBack, monthlyTotals: monthlyTotals, todayCheckIn: todayCheckIn, dismissFlag: dismissFlag, saveMonthlySummary: saveMonthlySummary, agents: AGENTS, fmtHours: fmtHours };
 })(window);

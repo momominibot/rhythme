@@ -40,6 +40,16 @@
   .data-table th { background:var(--sunken); padding:10px 12px; text-align:left; font:700 11px var(--sans); color:var(--mauve); text-transform:uppercase; letter-spacing:.04em; border-bottom:2px solid var(--line-soft); }
   .data-table td { padding:10px 12px; border-bottom:1px solid var(--line-soft); color:var(--ink); vertical-align:top; line-height:1.5; }
   .data-table tr:last-child td { border-bottom:none; }
+  /* on a phone each row becomes a small card with its own labels, so no column is squeezed into broken words */
+  @media (max-width: 600px) {
+    .data-table thead { display:none; }
+    .data-table, .data-table tbody, .data-table tr, .data-table td { display:block; width:100%; }
+    .data-table tr { padding:10px 0; border-bottom:1px solid var(--line-soft); }
+    .data-table tr:last-child { border-bottom:none; }
+    .data-table td { border:none; padding:2px 0; }
+    .data-table td[data-label]:not(:first-child)::before { content:attr(data-label) ' '; display:block; font:700 10.5px var(--sans); color:var(--mauve); text-transform:uppercase; letter-spacing:.04em; margin-top:4px; }
+    .data-table td:first-child { font-size:13px; }
+  }
   .back-btn { display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:99px; background:var(--mauve); color:#fff; font:700 13px var(--sans); text-decoration:none; margin-top:20px; }
   .back-btn:hover { opacity:0.9; }
   .contact-card { background:var(--card); border:1.5px solid var(--line-soft); border-radius:16px; padding:20px; margin:16px 0; }
@@ -79,8 +89,8 @@
           <li><a href="#s6">Data Storage & Security</a></li>
           <li><a href="#s7">Data Retention & Deletion</a></li>
           <li><a href="#s8">Your Rights Under PDPA</a></li>
-          <li><a href="#s9">Third-Party Sharing</a></li>
-          <li><a href="#s10">Cookies & Local Storage</a></li>
+          <li><a href="#s9">Who Receives Data, and Where</a></li>
+          <li><a href="#s10">Local Storage, No Cookies</a></li>
           <li><a href="#s11">User Responsibilities</a></li>
           <li><a href="#s12">Prohibited Uses</a></li>
           <li><a href="#s13">Intellectual Property</a></li>
@@ -93,14 +103,14 @@
 
       <div class="terms-section" id="s1">
         <h2><span class="num">1</span> Acceptance of Terms</h2>
-        <p>By accessing or using Rhythme ("the App"), you agree to be bound by these Terms of Service and Privacy Policy ("Terms"). If you do not agree with any part of these Terms, you must not use the App.</p>
-        <p>You must be at least <strong>18 years old</strong> to use this App. Rhythme is for adults: we do not create accounts for anyone under 18, and we keep only your confirmation of age, never your date of birth.</p>
+        <p>Rhythme ("the App") is provided by <strong>RANKLORE PTE. LTD.</strong>, a company registered in Singapore ("we", "us"). By using the App, you agree to these Terms of Service and Privacy Policy ("Terms"). If you do not agree with any part of them, please do not use the App.</p>
+        <p>You must be at least <strong>18 years old</strong> to use this App. Rhythme is for adults: we ask you to confirm you are 18 or over, may ask for an optional age range, and never ask for your date of birth. If we learn that an account belongs to someone under 18, we close it and delete its cloud copy.</p>
       </div>
 
       <div class="terms-section" id="s2">
         <h2><span class="num">2</span> What Rhythme Is: Wellness, Not Medical</h2>
         <div class="warning-box">
-          <p><strong>Important:</strong> Rhythme is a <strong>general wellness application</strong>. It is <strong>NOT a medical device</strong>, diagnostic tool, or substitute for professional medical advice, diagnosis, or treatment.</p>
+          <p><strong>Important:</strong> Rhythme is a <strong>diary for recording and reviewing your own observations</strong>. Do not use what it shows for diagnosis, treatment or contraception, and it does not replace professional medical advice.</p>
         </div>
         <p>The App provides general wellness information, cycle tracking, lifestyle suggestions, and educational content based on self-reported data. It does not:</p>
         <ul>
@@ -114,145 +124,119 @@
 
       <div class="terms-section" id="s3">
         <h2><span class="num">3</span> Personal Data We Collect</h2>
-        <p>The <strong>Personal Data Protection Act 2012 (PDPA)</strong> of Singapore applies to the personal data Rhythme collects. We aim to collect only the personal data needed to provide and improve our wellness services. This page describes our practices; it is not a certification of compliance. We believe in <strong>data minimisation</strong>, collecting no more than what is needed.</p>
+        <p>The <strong>Personal Data Protection Act 2012 (PDPA)</strong> of Singapore applies to the personal data Rhythme handles. We collect only what each feature needs. This page describes what the App actually does; it is not a certification of compliance.</p>
 
         <table class="data-table">
           <thead>
-            <tr><th>Data Category</th><th>What We Collect</th><th>Why</th></tr>
+            <tr><th>Data Category</th><th>What</th><th>Where it is kept</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td><strong>Account Info</strong></td>
-              <td>Name, email address, login provider (Apple/Google/email)</td>
-              <td>Account creation, authentication, personalization</td>
-            </tr>
-            <tr>
-              <td><strong>Profile Data</strong></td>
-              <td>Age, height, weight, activity level, dietary preferences</td>
-              <td>Personalized wellness goals, water/calorie targets</td>
-            </tr>
-            <tr>
-              <td><strong>Cycle Data</strong></td>
-              <td>Period dates, cycle length, cycle regularity, symptoms, mood</td>
-              <td>Cycle tracking, phase-based wellness recommendations</td>
-            </tr>
-            <tr>
-              <td><strong>Wellness Logs</strong></td>
-              <td>Sleep, water intake, exercise, food logs, stress levels</td>
-              <td>Habit tracking, wellness score, trend analysis</td>
-            </tr>
-            <tr>
-              <td><strong>Optional Health Data</strong></td>
-              <td>Heart rate (PPG), HRV, optional blood biomarker entries</td>
-              <td>Wellness insights (not medical diagnosis)</td>
-            </tr>
-            <tr>
-              <td><strong>Family History</strong></td>
-              <td>Mother's age at menopause (optional)</td>
-              <td>Ovarian wellness stage estimation</td>
-            </tr>
-            <tr>
-              <td><strong>Usage Data</strong></td>
-              <td>App usage patterns, feature interactions, crash logs</td>
-              <td>App improvement, bug fixes, UX optimization</td>
-            </tr>
+            <tr><td data-label="Data Category"><strong>Your diary</strong></td><td data-label="What">Periods, symptoms, pain, mood, sleep, meals and food photo thumbnails, weight, movement, calm minutes and notes</td><td data-label="Where it is kept">On your phone. A copy goes to your account only if you turn on cloud backup (photo thumbnails never do)</td></tr>
+            <tr><td data-label="Data Category"><strong>Getting-to-know-you answers</strong></td><td data-label="What">Your first name or nickname, an optional age range, life stage, and optional answers about pregnancy, hormones, medicines, conditions, goals and health history</td><td data-label="Where it is kept">On your phone, and in your cloud backup if you turn it on</td></tr>
+            <tr><td data-label="Data Category"><strong>Account</strong> (only if you sign in)</td><td data-label="What">Your email address and sign-in records (sign-in is by a code sent to your email)</td><td data-label="Where it is kept">Our authentication service (database in Singapore)</td></tr>
+            <tr><td data-label="Data Category"><strong>Your choices</strong></td><td data-label="What">Each consent choice, when you made it and the notice version you read; your confirmation that you are 18 or over</td><td data-label="Where it is kept">On your phone, and on your account if you sign in</td></tr>
+            <tr><td data-label="Data Category"><strong>Plaza</strong> (only if you join)</td><td data-label="What">The group you are in and when you last checked in; if you make a plaza card, its name, look, friends and kind notes</td><td data-label="Where it is kept">Our database, in Singapore</td></tr>
+            <tr><td data-label="Data Category"><strong>Service records</strong></td><td data-label="What">Standard connection logs kept by our hosts; a daily counter tied to a one-way code made from your network address, used only to limit misuse of Luna, food look-ups, the podcast and Plus codes</td><td data-label="Where it is kept">Our hosts and our database</td></tr>
           </tbody>
         </table>
 
-        <div class="highlight-box">
-          <p><strong>Your diary stays on this phone unless you sign in and turn on cloud backup:</strong> By default your diary is stored <strong>in this browser on your phone</strong> and nowhere else. If you choose to sign in (with email, Google or Apple) and turn on cloud backup, a copy of your entries, your getting-to-know-you answers and your cycle settings is saved to your account in a secure database hosted in Singapore, so you can sign in on another phone and carry on. It is readable only by you, food photo thumbnails are never uploaded, and you can turn backup off or delete your account and its cloud copy at any time from Your account. The other exception is Luna’s AI help, if you turn it on: a note, food photo or 7 or 28 day summary goes through Rhythme’s server to a third-party AI service in China and the answer comes back; Rhythme does not keep it.</p>
-        </div>
+        <p><strong>Your diary stays on this phone unless you sign in and turn on cloud backup.</strong> If you do, a copy of your entries, your getting-to-know-you answers and your cycle settings is kept in your account in a database hosted in Singapore. Other users cannot read it. Things you add yourself stay on your phone unless you choose otherwise: files you import from Apple Health or Google, a clinician summary or encrypted share you create and send, and anything you export. The camera heart-rate check reads your camera on the phone only: the camera picture is never recorded or sent, and a reading you choose to keep is saved in your diary on this phone. Rhythme shows no advertising, uses no third-party behavioural analytics or tracking, and does not sell your data.</p>
+        <p><strong>Luna's AI help is paused.</strong> While it is paused, nothing from your diary is sent to any AI service. If it returns, it will run on a service licensed for Singapore, this policy will say exactly what it receives and where, and you will be asked again before anything is sent.</p>
       </div>
 
       <div class="terms-section" id="s4">
         <h2><span class="num">4</span> How We Use Your Data</h2>
-        <p>We use your personal data for the following purposes, as required by the PDPA:</p>
+        <p>We use your personal data only for these purposes:</p>
         <ul>
-          <li><strong>To provide our services:</strong> Cycle tracking, wellness logging, personalized recommendations, and habit scoring</li>
-          <li><strong>To personalize your experience:</strong> Tailoring content, goals, and suggestions based on your profile and logged data</li>
-          <li><strong>To improve the App:</strong> Analyzing usage patterns to fix bugs, improve features, and develop new functionality</li>
-          <li><strong>To communicate with you:</strong> Sending important updates, security notices, and responding to your inquiries</li>
-          <li><strong>To ensure security:</strong> Protecting against unauthorized access, fraud, and misuse</li>
+          <li><strong>To run the App on your phone:</strong> cycle tracking, logging, reminders, patterns and the summaries you ask for</li>
+          <li><strong>To back up and restore your diary</strong>, if you turn on cloud backup</li>
+          <li><strong>Luna's AI help</strong>, currently paused (see section 3)</li>
+          <li><strong>Plaza groups and friends</strong>, only if you join or make a plaza card</li>
+          <li><strong>To improve logging</strong>, only if you turn on "Help improve logging": then group counts and averages across at least 20 adults, never your diary on its own</li>
+          <li><strong>To keep the service safe:</strong> limiting misuse, and answering reports in the plaza</li>
+          <li><strong>To answer you:</strong> sign-in codes by email, and replies to messages you send us</li>
         </ul>
-        <p>We will <strong>not</strong> use your personal data for purposes unrelated to those listed above without obtaining your additional consent, as required by the PDPA.</p>
+        <p>We will not use your personal data for any other purpose without asking you first.</p>
       </div>
 
       <div class="terms-section" id="s5">
         <h2><span class="num">5</span> Consent & Withdrawal</h2>
-        <p>By using the App and creating an account, you consent to the collection, use, and disclosure of your personal data as described in these Terms.</p>
-        <p><strong>Your right to withdraw consent:</strong> You may withdraw your consent at any time by:</p>
+        <p>Keeping your diary on your phone is what the App is, so it is the one required choice. Every other use is a <strong>separate choice</strong>: cloud backup, Help improve logging, plaza groups and plaza friends (Luna's AI help is paused). New choices start off, choices you made before are shown as you left them, and every choice is recorded with the notice version you read.</p>
+        <p><strong>You can withdraw at any time</strong>, as easily as you agreed:</p>
         <ul>
-          <li>Deleting your account and all associated data from the App settings</li>
-          <li>Clearing your browser data (which removes all locally stored information)</li>
-          <li>Contacting our privacy contact, who will be named in the full privacy policy</li>
+          <li>Turn any choice off under <em>Your choices</em> in You, or in Luna's settings</li>
+          <li>Turn cloud backup off, or delete your account and its cloud copy, from <em>Your account</em></li>
+          <li>Leave a plaza group, or turn Plaza friends off</li>
+          <li>Or write to us at the address in section 17</li>
         </ul>
-        <p>Please note that withdrawing consent may result in the App being unable to provide certain features or services that rely on your personal data.</p>
+        <p>Turning something off stops that use from then on. Some features cannot work without the data they need.</p>
       </div>
 
       <div class="terms-section" id="s6">
         <h2><span class="num">6</span> Data Storage & Security</h2>
-        <p>We take the security of your personal data seriously and implement reasonable security measures to protect it:</p>
         <ul>
-          <li><strong>Local storage:</strong> Your data is stored on your device using browser localStorage, which is isolated to your browser and device</li>
-          <li><strong>Cloud backup is opt-in:</strong> Your diary is not stored on our servers unless you sign in and turn on cloud backup. When you do, a copy of your entries, answers and cycle settings is kept in a secure database hosted in Singapore, protected by row-level security so only your signed-in account can read it; food photo thumbnails are never uploaded, and deleting your account removes the cloud copy. Separately, what you choose to send to Luna’s AI help passes through and is not kept</li>
-          <li><strong>HTTPS encryption:</strong> All communication between your browser and our servers uses TLS/SSL encryption</li>
-          <li><strong>Access controls:</strong> Only authorized personnel have access to any aggregated, anonymized usage data</li>
+          <li><strong>On your phone:</strong> your diary is saved in this browser's storage. It is not encrypted by the App, so anyone who can open this browser on your phone may be able to read it. Please lock your phone with a passcode or biometrics.</li>
+          <li><strong>Cloud backup (optional):</strong> kept in a database in Singapore. Each account can read only its own rows. Our server functions use it to back up, restore and delete your diary, and authorised Rhythme administrators and the companies that run the database can reach records only when needed to run, secure or support the service; actions in the staff dashboard are logged.</li>
+          <li><strong>In transit:</strong> everything between the App and our servers uses encrypted connections (HTTPS).</li>
+          <li><strong>What staff see:</strong> the staff page shows counts and group averages, never anyone's diary. When someone reports a plaza card or note, staff see the two plaza cards (the names and looks people chose) and the reported phrase, to decide the report. Staff records name the staff member and what they did.</li>
         </ul>
-        <div class="warning-box">
-          <p><strong>Device security is your responsibility:</strong> Since data is stored locally on your device, please ensure your device is protected with a passcode, biometric lock, or other security measures. We are not responsible for data accessed from an unlocked or lost device.</p>
-        </div>
+        <p><strong>If a data breach happens</strong>, we will contain it and assess it as soon as practicable, aiming to finish within 30 days. If it is notifiable under the PDPA, we will tell the Personal Data Protection Commission as soon as practicable and within 3 calendar days of deciding so, and tell the people affected where the law requires it, with steps they can take.</p>
       </div>
 
       <div class="terms-section" id="s7">
         <h2><span class="num">7</span> Data Retention & Deletion</h2>
-        <p>We retain your personal data only for as long as necessary to fulfill the purposes for which it was collected, or as required by law.</p>
-        <ul>
-          <li><strong>Active account data:</strong> If you turn on cloud backup, your backed-up data is retained as long as you maintain an active account</li>
-          <li><strong>Upon account deletion:</strong> Everything backed up to your account is permanently deleted from our database. Your diary on this phone is kept and is yours to clear separately in App Settings</li>
-          <li><strong>Anonymized usage data:</strong> May be retained indefinitely for app improvement purposes, but cannot be linked back to you</li>
-        </ul>
-        <p><strong>How to delete your data:</strong></p>
-        <ul>
-          <li>Go to App Settings → "Delete My Data" to clear all locally stored information</li>
-          <li>Or clear your browser's site data for this Rhythme web address</li>
-          <li>Ask for help through the privacy contact named in the full privacy policy</li>
-        </ul>
+        <table class="data-table">
+          <thead><tr><th>Data</th><th>How long we keep it</th></tr></thead>
+          <tbody>
+            <tr><td data-label="Data">Diary on your phone</td><td data-label="How long we keep it">Until you delete it (Delete this phone’s diary in the journal, or Delete everything on this phone in You) or clear this site's data in your browser</td></tr>
+            <tr><td data-label="Data">Cloud backup</td><td data-label="How long we keep it">Until you delete the entry, turn backup off and delete the copy, or delete your account. When you delete an entry, the App empties it on the server: it keeps only its id, type, date, source and times, linked to your account, so your other phones delete it too. These stay until you delete your account</td></tr>
+            <tr><td data-label="Data">Your account and consent record</td><td data-label="How long we keep it">Until you delete your account</td></tr>
+            <tr><td data-label="Data">What Luna reads</td><td data-label="How long we keep it">Nothing, while Luna's AI help is paused</td></tr>
+            <tr><td data-label="Data">Plaza group membership</td><td data-label="How long we keep it">Removed when you leave or sign out. If your phone goes quiet instead, you stop being counted after 75 seconds and the record is removed the next time anyone uses the groups</td></tr>
+            <tr><td data-label="Data">Plaza notes and friend requests</td><td data-label="How long we keep it">30 days, removed at the next daily clean-up</td></tr>
+            <tr><td data-label="Data">Plaza reports</td><td data-label="How long we keep it">While open, and one year after a decision. A report is kept even if an account in it is deleted, so a decision can be checked</td></tr>
+            <tr><td data-label="Data">Daily plaza counts</td><td data-label="How long we keep it">One year (counts only, no names)</td></tr>
+            <tr><td data-label="Data">Staff audit records</td><td data-label="How long we keep it">Kept to check what staff did, until an owner clears them from the staff page; we clear records older than a year</td></tr>
+            <tr><td data-label="Data">Misuse counters</td><td data-label="How long we keep it">One small counter per one-way network code, reset each day it is used, and kept until we clear old counters</td></tr>
+            <tr><td data-label="Data">Plus access codes</td><td data-label="How long we keep it">That a code was used and its access dates. If a code was given to your email, our record of it (your email, the code's label and its access dates) stays after you delete your account, so the access can be restored; ask us and we will delete it</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Deleting your account</strong> removes everything backed up to it, your plaza card, friends and notes, and closes the account. Your diary on this phone is kept until you clear it there too. Files you exported yourself are yours and are not affected. Our providers keep their own service logs and backups for limited periods under their own policies.</p>
       </div>
 
       <div class="terms-section" id="s8">
         <h2><span class="num">8</span> Your Rights Under PDPA</h2>
-        <p>Under the Singapore Personal Data Protection Act 2012, you have the following rights regarding your personal data:</p>
+        <p>Under the Personal Data Protection Act 2012 you can:</p>
         <ul>
-          <li><strong>Right of Access:</strong> You may request access to the personal data we hold about you</li>
-          <li><strong>Right of Correction:</strong> You may request correction of any inaccurate or incomplete personal data</li>
-          <li><strong>Right to Withdraw Consent:</strong> You may withdraw consent to collection, use, or disclosure of your data at any time</li>
-          <li><strong>Right to Data Portability:</strong> You may export your data in a machine-readable format</li>
-          <li><strong>Right to Erasure:</strong> You may request deletion of your personal data</li>
-          <li><strong>Right to be Informed:</strong> You have the right to know what data is collected and how it is used</li>
+          <li><strong>Ask for access</strong> to the personal data we hold about you, and how it has been used or disclosed in the past year</li>
+          <li><strong>Ask for a correction</strong> of personal data that is wrong or incomplete</li>
+          <li><strong>Withdraw consent</strong> to a use of your data at any time (section 5)</li>
         </ul>
-        <p>To exercise any of these rights, contact the privacy contact named in the full privacy policy (being written now). We will respond to your request within <strong>30 days</strong>.</p>
+        <p>Write to us at the address in section 17. We reply to access requests as soon as reasonably possible, make corrections as soon as practicable, and if we need longer than 30 days we tell you in writing within that time when we will reply. While we work on a request, we keep the data it asks about.</p>
+        <p><strong>In the App, without asking us:</strong> export your diary (You, then Export my data), correct or delete any entry, delete this phone’s diary and settings (your sign-in, backup bookkeeping and Plus access stay on the phone), delete the cloud copy, and delete your account. Some records stay on our side after that, as listed above, such as Plus access and plaza safety reports, until we remove them; ask us at hello@ranklore.ai. These go beyond what the law requires.</p>
       </div>
 
       <div class="terms-section" id="s9">
-        <h2><span class="num">9</span> Third-Party Sharing</h2>
-        <p>We do <strong>not sell</strong> your personal data to third parties. We may share data only in the following limited circumstances:</p>
-        <ul>
-          <li><strong>Authentication providers:</strong> If you sign in with Apple or Google, those providers process your login credentials according to their own privacy policies. We receive only your name and email address.</li>
-          <li><strong>AI services (optional, off unless you turn them on):</strong> With Luna’s AI help on, notes, food photos and journal summaries are processed by a third-party AI service in China. No name is attached, but the content itself can include health details.</li>
-          <li><strong>Legal requirements:</strong> We may disclose data if required by law, court order, or government request, or to protect our rights, property, or safety.</li>
-          <li><strong>Aggregated, anonymized data:</strong> We may use aggregated, anonymized usage statistics that cannot identify you for research, analytics, or app improvement purposes.</li>
-        </ul>
+        <h2><span class="num">9</span> Who Receives Data, and Where</h2>
+        <p>We do <strong>not sell</strong> your personal data, and there is no advertising. These services handle data for us, only as needed for what you use:</p>
+        <table class="data-table">
+          <thead><tr><th>Service</th><th>What it handles</th><th>Where</th></tr></thead>
+          <tbody>
+            <tr><td data-label="Service"><strong>Supabase</strong> (database, sign-in and server functions)</td><td data-label="What it handles">Your account, cloud backup, choices and plaza data; sign-in code emails; food name look-ups</td><td data-label="Where">Database in Singapore; server functions run in Supabase's nearest region; its service logs and support may be outside Singapore, including the European Union and the United States</td></tr>
+            <tr><td data-label="Service"><strong>GitHub Pages</strong> (hosts the App)</td><td data-label="What it handles">Standard connection logs when the App loads</td><td data-label="Where">United States and worldwide</td></tr>
+            <tr><td data-label="Service"><strong>Google Fonts</strong></td><td data-label="What it handles">Your network address and browser details when the App's typefaces load</td><td data-label="Where">United States and worldwide</td></tr>
+            <tr><td data-label="Service"><strong>Substack</strong> (Erin's podcast host)</td><td data-label="What it handles">Your network address when a podcast episode plays</td><td data-label="Where">United States and other countries</td></tr>
+            <tr><td data-label="Service"><strong>Content delivery networks</strong> (Amazon CloudFront, jsDelivr), on a few pages</td><td data-label="What it handles">Your network address when some pictures or the barcode reader load</td><td data-label="Where">United States and worldwide</td></tr>
+            <tr><td data-label="Service"><strong>Open Food Facts</strong>, only when you scan or look up a packaged food</td><td data-label="What it handles">The barcode you scan, with your network address and browser details; a food name you type goes through our server first</td><td data-label="Where">France</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Transfers outside Singapore.</strong> Your diary backup is stored in Singapore. Some service data leaves Singapore, as shown above: connection details when the App, fonts, pictures or podcast load, and service logs kept by our providers. We send each provider only what its service needs. Supabase processes our data for us under its data processing terms. GitHub, Google, Substack, Open Food Facts and the content delivery networks receive your network address and browser details when you load their content, and use them under their own privacy policies, which can include their own purposes such as security and service improvement. Luna's AI help, which would send diary content to an AI service, is paused, and nothing goes to one.</p>
+        <p>We may also disclose data if the law requires it, for example under a court order.</p>
       </div>
 
       <div class="terms-section" id="s10">
-        <h2><span class="num">10</span> Cookies & Local Storage</h2>
-        <p>Rhythme uses the following technologies to store data on your device:</p>
-        <ul>
-          <li><strong>LocalStorage:</strong> Stores your profile data, cycle logs, wellness records, and app preferences directly on your device. This data does not leave your device unless you sign in and turn on cloud backup.</li>
-          <li><strong>Essential cookies:</strong> Used for authentication session management and theme/font preferences. These are necessary for the App to function.</li>
-          <li><strong>No tracking cookies:</strong> We do not use third-party tracking cookies, advertising cookies, or cross-site tracking.</li>
-        </ul>
-        <p>You can clear all stored data at any time through your browser settings or the App's "Delete My Data" function.</p>
+        <h2><span class="num">10</span> Local Storage, No Cookies</h2>
+        <p>Rhythme keeps your diary, choices and settings in this browser's local storage on your phone. It does not use cookies, tracking, advertising identifiers or third-party analytics. You can clear this phone's diary and settings at any time with Delete this phone's diary in the journal, or by clearing this site's data in your browser settings. Clearing the phone does not delete your account or its cloud copy; do that from Your account in You.</p>
       </div>
 
       <div class="terms-section" id="s11">
@@ -305,7 +289,7 @@
 
       <div class="terms-section" id="s15">
         <h2><span class="num">15</span> Changes to These Terms</h2>
-        <p>We may update these Terms from time to time. When we do, we will revise the "Last updated" date at the top of this page and notify you through the App or email. Your continued use of the App after any changes constitutes acceptance of the updated Terms.</p>
+        <p>We may update these Terms from time to time. When we do, we will revise the "Last updated" date at the top of this page and tell you in the App. Your continued use of the App after any changes constitutes acceptance of the updated Terms.</p>
         <p>For material changes that affect your privacy rights or data usage, we will provide prominent notice and obtain your consent where required by the PDPA.</p>
       </div>
 
@@ -316,20 +300,20 @@
 
       <div class="terms-section" id="s17">
         <h2><span class="num">17</span> Contact Us</h2>
-        <p>If you have any questions, concerns, or requests regarding these Terms, your personal data, or your PDPA rights, please contact our Data Protection Officer:</p>
+        <p>For questions or requests about these Terms, your personal data or your PDPA rights, write to our Data Protection Officer:</p>
 
         <div class="contact-card">
           <h4><span class="ms" style="font-size:18px;color:var(--mauve)">shield</span> Data Protection Officer</h4>
-          <p><strong>Privacy contact:</strong> to be published with the full privacy policy.</p>
-          <p><strong>Response time:</strong> Within 30 business days</p>
-          <p><strong>Address:</strong> Singapore (registered address available upon request)</p>
+          <p><strong>Email:</strong> <a href="mailto:hello@ranklore.ai">hello@ranklore.ai</a></p>
+          <p><strong>Organisation:</strong> RANKLORE PTE. LTD., Singapore</p>
+          <p><strong>Response time:</strong> within 30 days</p>
         </div>
 
-        <p>For PDPA-related complaints, you may also contact the <strong>Personal Data Protection Commission (PDPC)</strong> of Singapore at <a href="https://www.pdpc.gov.sg" target="_blank">www.pdpc.gov.sg</a>.</p>
+        <p>If you are not satisfied with our reply, you may contact the <strong>Personal Data Protection Commission (PDPC)</strong> of Singapore at <a href="https://www.pdpc.gov.sg" target="_blank" rel="noopener">www.pdpc.gov.sg</a>.</p>
 
-        <a href="login.html" class="back-btn">
+        <a href="room.html" class="back-btn">
           <span class="ms" style="font-size:16px">arrow_back</span>
-          Back to Login
+          Back to Rhythme
         </a>
       </div>
 

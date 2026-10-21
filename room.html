@@ -47,7 +47,7 @@
         <img class="prop mat" id="matProp" src="assets/room/dream/prop-yogamat.webp" alt="" aria-hidden="true">
         <div id="ownedProps"></div>
         <div class="holo" id="holo" aria-hidden="true"><div class="holo-cone"></div><div class="holo-disc"><img src="assets/avatars/erin/erin-chibi-face.webp" alt=""><i class="scan"></i></div><div class="holo-base"></div></div>
-        <div class="hud" id="hud" role="status" aria-live="polite"><div class="hud-orb" id="hudOrb"></div><div class="hud-text"><b id="hudTitle">With Erin</b><span id="hudLine">Settling in</span></div><button class="hud-stop hud-mute" id="hudMute" type="button" aria-pressed="false" aria-label="Mute Erin’s voice"><span class="ms" aria-hidden="true">volume_up</span></button><button class="hud-stop" id="hudStop" type="button" aria-label="Stop session"><span class="ms">stop_circle</span></button></div>
+        <div class="hud" id="hud" role="status" aria-live="polite"><div class="hud-orb" id="hudOrb"></div><div class="hud-text"><div class="hud-row"><b id="hudTitle">With Erin</b><em class="hud-time" id="hudTime" aria-hidden="true"></em></div><span id="hudLine">Settling in</span></div><button class="hud-stop hud-mute" id="hudMute" type="button" aria-pressed="false" aria-label="Mute Erin’s voice"><span class="ms" aria-hidden="true">volume_up</span></button><button class="hud-stop" id="hudStop" type="button" aria-label="Stop session"><span class="ms">stop_circle</span></button></div>
         <div class="meditator" id="meditator" role="button" aria-label="You are meditating. Tap to finish"><img src="assets/room/dream/avatar-meditate.webp" alt=""></div>
         <div class="sleeper" id="sleeper" role="button" aria-label="You are asleep. Tap to wake up"><img src="assets/room/dream/avatar-sleeping.webp" alt=""></div>
         <div class="zzz" aria-hidden="true"><span>z</span><span>z</span><span>z</span></div>
@@ -60,10 +60,12 @@
 
     <section class="deck">
       <div class="card">
-        <h2>Today</h2>
-        <div class="sub" id="dailyText">Nothing logged yet.</div>
+        <div class="cihead"><h2>Today’s check-in</h2><button type="button" class="cichoose" id="ciChoose" aria-pressed="false">Choose what counts</button></div>
+        <p class="cistatus" id="ciStatus" role="status"></p>
         <div class="minvite" id="morningInvite" hidden></div>
-        <div class="tiles" id="tiles"></div>
+        <div class="tiles ci" id="tiles"></div>
+        <div class="ciquick" id="ciQuick"></div>
+        <div class="sub" id="dailyText">Nothing logged yet.</div>
         <p class="note" id="symLine"></p>
       </div>
       <div class="card" id="flagCard" style="display:none">
@@ -91,7 +93,6 @@
   </section>
   <nav class="nav" aria-label="Main">
     <a href="room.html" data-tab="home" class="on" aria-current="page"><span class="ms">home</span>Home</a>
-    <a href="room.html#cycle" data-tab="cycle"><span class="ms">water_drop</span>Cycle</a>
     <a href="room.html#food" data-tab="food"><span class="ms">restaurant</span>Food</a>
     <a href="room.html#mind" data-tab="mind"><span class="ms">self_improvement</span>Mind</a>
     <a href="room.html#you" data-tab="you"><span class="ms">person</span>You</a>
@@ -111,6 +112,7 @@
     <p class="w-note">A dreamy room where you log sleep, cycle, symptoms, meals and calm by tapping the things around you.</p>
     <button class="btn primary" id="wBegin" type="button"><span class="ms">favorite</span>Let’s begin</button>
     <button class="btn ghost" id="wSkip" type="button">I’ve been here before</button>
+    <button class="btn ghost" id="wSignIn" type="button"><span class="ms">mail</span>Sign in with email</button>
   </div>
   <div class="welcome consent" id="consent" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
     <div class="w-stars" aria-hidden="true"></div>
@@ -118,7 +120,7 @@
       <div class="c-head"><div class="c-moon" aria-hidden="true"><img src="assets/room/dream/orb-moon.webp" alt="" data-mascot="full"></div><div><div class="w-brand">RHYTHME</div><h2 id="cTitle">Before your room opens</h2><p>What Rhythme keeps, where it goes, and the choices that stay yours.</p></div></div>
       <ul class="c-list">
         <li><span class="ms">edit_note</span><div><b>What you log</b><span>Periods, symptoms, pain, mood, sleep, meals and food photos, weight, calm minutes, and your getting-to-know-you answers, which can include pregnancy, hormones, medicines and health history.</span></div></li>
-        <li><span class="ms">smartphone</span><div><b>Kept on this phone unless you choose backup</b><span>Your diary stays in this browser, so clearing the browser or losing the phone can lose it. You can export a copy any time from You. Cloud backup is a separate choice below: a copy kept in your account in a secure database hosted in Singapore, which other people cannot read and Rhythme’s server handles only to back up, restore and delete your diary.</span></div></li>
+        <li><span class="ms">smartphone</span><div><b>Kept on this phone unless you choose backup</b><span>Your diary stays in this browser, so clearing the browser or losing the phone can lose it. You can export a copy any time from You. Cloud backup is a separate choice below: a copy kept in your account in a secure database hosted in Singapore, which other Rhythme users cannot see; authorised Rhythme administrators and the companies that run the database can reach it only to run, secure or support the service.</span></div></li>
         <li><span class="ms">auto_awesome</span><div><b>Luna’s AI help is your choice</b><span>Reading a note, naming the food in a photo and writing a journal reading are three separate choices. Each stays off until you turn it on. Your name is never added, and Rhythme keeps none of it.</span></div></li>
         <li><span class="ms">lock</span><div><b>What we will not do</b><span>We do not sell your data or use it for ads, and Rhythme does not keep what Luna reads for you.</span></div></li>
         <li><span class="ms">dns</span><div><b>Ordinary service records</b><span>Our web host keeps standard connection logs and fonts load from Google. Using a Rhythme Plus code records that use with a scrambled network address, to stop misuse. There is no advertising, and no analytics unless you turn on “Help improve logging” below; then only group counts and averages across at least 20 adults are produced.</span></div></li>
@@ -186,7 +188,9 @@
 <script src="ovu-hud.js"></script>
 <script src="ovu-interact.js"></script>
 <script src="ovu-zones.js"></script>
+<script src="ovu-care.js"></script>
 <script src="ovu-farm.js"></script>
+<script src="ovu-barn.js"></script>
 <script src="ovu-plaza.js"></script>
 <script src="ovu-friends.js"></script>
 </body>

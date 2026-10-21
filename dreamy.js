@@ -7,7 +7,7 @@
   };
   var emojiMap = {'🌙':'cycle-luteal','🌑':'cycle-luteal','🌔':'cycle-fertile','🌕':'cycle-ovulation','🌘':'cycle-luteal','☀️':'cycle-ovulation','☀':'cycle-ovulation','🌸':'persona-bloom','🌷':'persona-grow','🌺':'persona-wisdom','🌿':'herbs','🍃':'herbs','🌱':'cycle-fertile','💜':'partner','💛':'partner','❤️':'partner','🫶':'partner','✨':'cycle-ovulation','🌟':'cycle-ovulation','⭐':'cycle-ovulation','📖':'ovarian-age','📚':'ovarian-age','🧪':'labs','💧':'hydration','🫖':'tcm','🍵':'tcm','🧘':'exercise','🧘‍♀️':'exercise','😴':'sleep','🍼':'persona-nurture','🤱':'persona-nurture','🤰':'persona-grow','🥗':'nutrition','🍽️':'nutrition','🔬':'labs','⏳':'ovarian-age','💍':'persona-grow'};
   var pattern = /(?:\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?)*)/gu;
-  var artKeys={'persona-bloom':'bloom','persona-grow':'grow','persona-nurture':'nurture','persona-wisdom':'peri','cycle-luteal':'peri'};
+  var artKeys={'persona-grow':'grow','persona-nurture':'nurture','persona-peri':'peri','persona-wisdom':'post','cycle-luteal':'peri'};
   var emojiNames={'🌙':'Moon','☀️':'Sun','☀':'Sun','⚠️':'Warning','⚠':'Warning','❌':'Close','✖️':'Close','🔔':'Notifications','📅':'Calendar','🔍':'Search','🎨':'Appearance','💬':'Messages','ℹ️':'Information'};
   function upgradeArt(img,name) {
     var key=artKeys[name],url=key && window.DREAM_ASSETS && window.DREAM_ASSETS[key];
@@ -18,7 +18,7 @@
   function image(name) { var img=document.createElement('img');img.className='dream-icon';img.src='assets/icons/'+name+'.png';img.alt='';img.setAttribute('aria-hidden','true');img.width=28;img.height=28;upgradeArt(img,name);return img; }
   function decorate(root) {
     if (!root || root.nodeType !== 1 || root.closest('script,style,textarea,input,select,option,svg,code,pre,.qi-source,.dream-icon,[data-dream-skip]')) return;
-    root.querySelectorAll('img').forEach(function(img){var match=(img.getAttribute('src') || '').match(/assets\/icons\/(persona-(?:bloom|grow|nurture|wisdom)|cycle-luteal)(?:-\d+)?\.png$/);if(match)upgradeArt(img,match[1]);});
+    root.querySelectorAll('img').forEach(function(img){var match=(img.getAttribute('src') || '').match(/assets\/icons\/(persona-(?:grow|nurture|peri|wisdom)|cycle-luteal)(?:-\d+)?\.png$/);if(match)upgradeArt(img,match[1]);});
     root.querySelectorAll('.ms,.n-ic,.material-symbols-outlined').forEach(function(node){
       if(node.dataset.dreamIcon || node.childElementCount || node.closest('[data-dream-skip]')) return;
       var key=node.textContent.trim(), name=icons[key];if(!name)return;

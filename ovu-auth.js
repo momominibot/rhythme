@@ -32,7 +32,7 @@
    * sign-in; after that the account's own record is the truth and this phone mirrors it. */
   var IMPROVE = {
     title: 'Help improve logging, optional',
-    body: 'Rhythme’s automated agents and its staff may compute group counts and averages across at least 20 adults who turned this on, to improve logging, reminders and the app. Nobody sees your diary on its own: not your entries, your notes or your name. You can turn this off at any time and keep your backup.'
+    body: 'Rhythme’s server may use the backed-up entries of adults who turned this on to compute group counts and averages, to improve logging, reminders and the app. Staff are shown only group results across at least 20 adults, never your entries, notes or name. You can turn this off at any time and keep your backup.'
   };
   function improveText() { return IMPROVE.title + '. ' + IMPROVE.body; }
 
@@ -308,7 +308,7 @@
       '<p>Back up your diary to your account so you can sign in on another phone and carry on where you left off. It is optional, and off until you turn it on here.</p>' +
       '<ul class="ovu-cloud-list">' +
       '<li><span class="ms">inventory_2</span><span><b>What is saved</b><small>Your entries, your getting-to-know-you answers and your cycle settings. Food photo thumbnails are never uploaded.</small></span></li>' +
-      '<li><span class="ms">public</span><span><b>Where it lives</b><small>A secure database hosted in Singapore, tied to your account. Other people cannot read your backup. Rhythme’s server handles it only to back up, restore and delete your diary. Learning from your records to improve the app is a separate choice, off unless you turn it on.</small></span></li>' +
+      '<li><span class="ms">public</span><span><b>Where it lives</b><small>A secure database hosted in Singapore, tied to your account. Other Rhythme users cannot see your backup. Rhythme’s server uses it to back up, restore and delete your diary, and authorised Rhythme administrators and the companies that run the database can reach it only to run, secure or support the service. Learning from your records to improve the app is a separate choice, off unless you turn it on.</small></span></li>' +
       '<li><span class="ms">delete</span><span><b>You can undo it</b><small>Turn backup off, or delete your account and its cloud copy, any time from Your account.</small></span></li>' +
       '<li><span class="ms">dark_mode</span><span><b>Luna is unchanged</b><small>This is only about backing up your diary. Luna’s AI help settings stay exactly as you set them.</small></span></li>' +
       '</ul>' +
@@ -378,10 +378,10 @@
       var sub = cloud ? (st.state === 'syncing' ? 'Backing up…' : st.state === 'error' ? 'Backup paused, will retry' : held ? 'Cloud backup on · ' + held + ' Movement ' + (held === 1 ? 'entry' : 'entries') + ' not backed up yet' : (when ? 'Cloud backup on · last sync ' + when : 'Cloud backup on')) : 'Signed in · cloud backup off';
       html += '<div class="ya-who"><span class="ms">' + (cloud ? 'cloud_done' : 'account_circle') + '</span><div><b>' + esc(email() || 'Your account') + '</b><small>' + esc(sub) + '</small></div></div>' +
         '<div class="ya-btns">' +
-        (cloud ? '<button type="button" class="btn soft" data-ya="sync"><span class="ms">sync</span>Sync now</button><button type="button" class="btn ghost" data-ya="disable-cloud"><span class="ms">cloud_off</span>Turn off cloud backup</button>' : '<button type="button" class="btn primary" data-ya="enable-cloud"><span class="ms">cloud_upload</span>Turn on cloud backup</button>') +
+        (cloud ? '<button type="button" class="btn soft" data-ya="sync"><span class="ms">sync</span>Sync now</button><button type="button" class="btn ghost" data-ya="disable-cloud"><span class="ms">cloud_off</span>Turn off cloud backup</button>' : '<button type="button" class="btn primary" data-ya="enable-cloud"><span class="ms">cloud_upload</span>Turn on cloud backup</button><button type="button" class="btn ghost ya-danger" data-ya="wipe-cloud"><span class="ms">delete</span>Delete the cloud copy</button>') + /* with backup off a copy can still be there (kept, or a delete that failed): she can always delete it (Codex legal review, 20 Oct) */
         '<button type="button" class="btn ghost" data-ya="signout"><span class="ms">logout</span>Sign out</button>' +
         '<button type="button" class="btn ghost ya-danger" data-ya="delete-account"><span class="ms">delete_forever</span>Delete my account</button>' +
-        '</div><p class="help">' + (cloud ? (held ? 'Your diary is backed up except ' + held + ' Movement ' + (held === 1 ? 'entry, which stays' : 'entries, which stay') + ' on this phone until the backup can take ' + (held === 1 ? 'it' : 'them') + '. Please keep this phone’s data until then. ' : 'Your diary is backed up to your account and kept in step across your phones. ') + 'Food photos stay on this phone.' : 'Backup is off, so nothing leaves this phone yet. Turn it on to back up your diary.') + '</p>' +
+        '</div><p class="help">' + (cloud ? (held ? 'Your diary is backed up except ' + held + ' Movement ' + (held === 1 ? 'entry, which stays' : 'entries, which stay') + ' on this phone until the backup can take ' + (held === 1 ? 'it' : 'them') + '. Please keep this phone’s data until then. ' : 'Your diary is backed up to your account and kept in step across your phones. ') + 'Food photos stay on this phone.' : 'Backup is off. Your account, your choices and the features you use, such as the plaza and Plus, still talk to their services. Turn backup on to keep a copy of your diary in your account.') + '</p>' +
         improveHTML(true);
     }
     html += '</div>';
@@ -403,6 +403,7 @@
       if (act === 'sync') { toastVia(opts, 'Syncing…', 'sync'); OvuSync.syncNow().then(function (r) { toastVia(opts, r && r.ok ? (r.held ? 'Backed up, except ' + r.held + ' Movement ' + (r.held === 1 ? 'entry' : 'entries') + ' kept on this phone for now.' : 'Backed up.') : ('Sync failed: ' + ((r && r.error) || 'try again')), r && r.ok ? (r.held ? 'cloud_sync' : 'cloud_done') : 'error'); rerenderOpen(); }); return; }
       if (act === 'enable-cloud') { promptCloud(); return; }
       if (act === 'disable-cloud') { confirmDisableCloud(el, opts); return; }
+      if (act === 'wipe-cloud') { confirmWipeCloud(el, opts); return; }
       if (act === 'signout') { confirmSignOut(el, opts); return; }
       if (act === 'delete-account') { confirmDelete(el, opts); return; }
     };
@@ -439,6 +440,21 @@
     };
   }
 
+  /* delete whatever copy the account holds, with backup on or off; the server does not guard deletes on consent */
+  function confirmWipeCloud(el, opts) {
+    var g = el.querySelector('.ygroup'); if (!g || g.querySelector('.ya-confirm')) return;
+    var box = document.createElement('div'); box.className = 'flag watch ya-confirm'; box.style.marginTop = '10px';
+    box.innerHTML = '<span class="ms">delete</span><div><b>Delete the cloud copy?</b><span>This deletes the entries and settings kept in your account. Your diary on this phone stays, and your account stays until you delete it.</span>' +
+      '<div class="row"><button type="button" class="btn ghost ya-danger" data-wc="yes"><span class="ms">delete</span>Delete the cloud copy</button><button type="button" class="btn ghost" data-wc="no">Keep it</button></div></div>';
+    g.appendChild(box); box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    box.onclick = function (e) { var b = e.target.closest('[data-wc]'); if (!b) return;
+      if (b.dataset.wc === 'no') { box.remove(); return; }
+      if (!(root.OvuSync && OvuSync.wipeCloud)) { toastVia(opts, 'Deleting the cloud copy is not available here. Write to hello@ranklore.ai and we will do it.', 'error'); return; }
+      b.disabled = true;
+      OvuSync.wipeCloud().then(function () { toastVia(opts, 'The copy in your account is deleted. Your diary is still on this phone.', 'delete'); rerenderOpen(); },
+        function (err) { b.disabled = false; toastVia(opts, 'The copy could not be deleted just now: ' + err.message + '. Try again, or write to hello@ranklore.ai.', 'error'); });
+    };
+  }
   function confirmDisableCloud(el, opts) {
     var g = el.querySelector('.ygroup'); if (!g) return;
     if (g.querySelector('.ya-confirm')) return;
@@ -454,10 +470,10 @@
       if (what === 'wipe' && root.OvuSync && OvuSync.wipeCloud) {
         b.disabled = true;
         OvuSync.wipeCloud().then(function () { toastVia(opts, 'Cloud backup is off and the copy in your account is deleted. Your diary is still on this phone.', 'cloud_off'); rerenderOpen(); },
-          function (err) { toastVia(opts, 'Backup is off, but the copy could not be deleted just now: ' + err.message + '. Try again from Your account.', 'error'); rerenderOpen(); });
+          function (err) { toastVia(opts, 'Backup is off, but the copy could not be deleted just now: ' + err.message + '. Tap Delete the cloud copy in Your account to try again.', 'error'); rerenderOpen(); });
         return;
       }
-      toastVia(opts, 'Cloud backup is off. Nothing new leaves this phone; the copy in your account is kept.', 'cloud_off'); rerenderOpen();
+      toastVia(opts, 'Cloud backup is off. New entries stay on this phone; the copy in your account is kept until you delete it.', 'cloud_off'); rerenderOpen();
     };
   }
 
