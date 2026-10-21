@@ -96,11 +96,12 @@
    * A whole-phone wipe (reason 'clear') or a cloud pull (reason 'sync') never
    * becomes a tombstone, so "start fresh on this phone" does not delete the
    * cloud backup and a pull does not bounce back as a deletion. */
-  function onStoreChange(reason) {
+  function onStoreChange(reason, db, removed) {
     var st = loadState();
     if (reason && reason.indexOf('remove:') === 0) {
       var cur = snapshot();
-      Object.keys(st.shadow).forEach(function (id) { if (!(id in cur)) st.tombstones[id] = nowIso(); });
+      /* the store names the ids this tab deleted; an entry another tab's Delete everything wiped is not one (review, 21 Oct) */
+      (Array.isArray(removed) ? removed : Object.keys(st.shadow).filter(function (id) { return !(id in cur); })).forEach(function (id) { if (st.shadow[id] !== undefined && !(id in cur)) st.tombstones[id] = nowIso(); });
       st.shadow = cur;
     } else {
       if (reason === 'profile') st.profileDirty = true;
@@ -211,7 +212,8 @@
   function consentForUser(p, uid) { var c = (p || {}).cloud; return consentOk(p) && c.uid === uid; }
   /* nothing moves without a session, the cloud choice for this account, the 18+ attestation and the current notice (ovu-consent.js) */
   function doorOpen() { var C = root.OvuConsent; return !C || (!C.needsSheet() && C.allows('cloud_sync')); }
-  function canSync() { var s = session(); return !!(s && s.user && consentForUser(S.profile(), s.user.id) && doorOpen()); }
+  function ownerFits(p, uid) { p = p || {}; var o = typeof p.owner === 'string' ? (p.owner || null) : ((p.cloud && p.cloud.uid) || ((p.consentEvents || []).filter(function (e) { return e && e.uid; })[0] || {}).uid || null); return !o || o === uid; }
+  function canSync() { var s = session(); return !!(s && s.user && ownerFits(S.profile(), s.user.id) && consentForUser(S.profile(), s.user.id) && doorOpen()); } /* a diary never backs up to another account (Codex sweep, 21 Oct) */
 
   /* ---------- REST ---------- */
   /* How long one request may take (OVU_CONFIG.syncRequestMs, 30 seconds unless set). A sync holds the lock every tab
@@ -381,8 +383,12 @@
             return post(upRows).catch(function (err) {
               if (!typeRejected(err)) throw err;
               var sp = splitByType(upRows); if (!sp.held.length) throw err;
-              pushedRows = sp.ok; heldRows = sp.held;
-              return sp.ok.length ? post(sp.ok) : null;
+              /* the older types go up together; each newer type is tried on its own, so a type the server already takes is never held behind one it refuses (Codex, 21 Oct) */
+              pushedRows = sp.ok; heldRows = [];
+              var byType = {}; sp.held.forEach(function (r) { (byType[r.type] = byType[r.type] || []).push(r); });
+              var chain = sp.ok.length ? post(sp.ok) : Promise.resolve(null);
+              Object.keys(byType).forEach(function (t) { chain = chain.then(function () { return post(byType[t]).then(function () { pushedRows = pushedRows.concat(byType[t]); }, function (e2) { if (!typeRejected(e2)) throw e2; heldRows = heldRows.concat(byType[t]); }); }); });
+              return chain;
             });
           });
         }

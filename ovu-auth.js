@@ -239,6 +239,8 @@
     });
   }
   function cleanUrl() { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
+  /* is a provider round trip (or an emailed link) about to sign her in on this load? The room keeps its wall down until it is settled. */
+  function pendingRedirect() { try { var sp = new URLSearchParams(location.search); if (sp.get('code') || sp.get('error') || sp.get('error_description')) return true; } catch (e) { } return /access_token=/.test(location.hash || ''); }
   /* On load after an OAuth round trip the URL carries ?code= (PKCE); exchange it
      for a session. Returns quietly (no network) on an ordinary load. */
   function handleRedirect() {
@@ -268,6 +270,57 @@
     return Promise.resolve({});
   }
 
+  /* Is a social provider switched on in Supabase? A provider that is not enabled answers the authorize URL with 400; an enabled one
+     redirects (opaque to fetch). Anything else (offline, a CORS surprise) counts as on, so the probe can never block a real sign-in. */
+  var providerState = {};
+  function providerOn(p) {
+    if (oauthEnabled(p)) return Promise.resolve(true);
+    if (providerState[p] !== undefined) return Promise.resolve(providerState[p]);
+    return fetch(CFG.supabaseUrl + '/auth/v1/authorize?provider=' + encodeURIComponent(p), { redirect: 'manual' }).then(function (r) {
+      var on = !(r && r.status >= 400 && r.status < 500);
+      providerState[p] = on; return on;
+    }, function () { return true; });
+  }
+
+  /* One email-code form, shared by the sign-in wall (room.html #wEmailForm) and by You: send a six-digit code, then verify it.
+     els: { email, codeWrap, code, go, msg }. */
+  function emailForm(form, els, opts) {
+    if (!form || !els || !els.email || !els.go) return;
+    var stage = 'email', lastAddr = '', cooling = null;
+    var msg = function (text, ok) { if (els.msg) { els.msg.textContent = text; els.msg.className = text ? 'msg on ' + (ok ? 'ok' : 'err') : 'msg'; } };
+    /* a way out of the code stage: a new code (one a minute), or another address (Codex, 21 Oct: a mistyped address or a wait had no way back) */
+    var more = form.querySelector('.ef-more');
+    if (!more) { more = document.createElement('div'); more.className = 'ef-more'; more.hidden = true; more.innerHTML = '<button type="button" class="linkbtn" data-ef="resend">Send a new code</button><button type="button" class="linkbtn" data-ef="change">Use a different address</button>'; els.go.insertAdjacentElement('afterend', more); }
+    function toEmailStage() { stage = 'email'; els.email.readOnly = false; if (els.codeWrap) els.codeWrap.hidden = true; if (els.code) els.code.value = ''; els.go.disabled = false; els.go.innerHTML = '<span class="ms">send</span>Send me a code'; more.hidden = true; msg(''); }
+    function toCodeStage(addr, text) { stage = 'code'; lastAddr = addr; els.go.disabled = false; if (els.codeWrap) els.codeWrap.hidden = false; els.email.readOnly = true; els.go.innerHTML = '<span class="ms">login</span>Verify and sign in'; more.hidden = false; msg(text, true); if (els.code) els.code.focus(); }
+    function send(addr) {
+      els.go.disabled = true; msg('Sending…', true);
+      return sendCode(addr).then(function () { toCodeStage(addr, 'We emailed a six-digit code to ' + addr + '. Enter it here. If a sign-in link arrives instead, open it on this phone.'); },
+        function (err) { var se = sendError(err); if (se.limited) toCodeStage(addr, se.text); else { els.go.disabled = false; msg(se.text); } }); /* a code already in the inbox still works */
+    }
+    more.onclick = function (e) {
+      var b = e.target.closest('[data-ef]'); if (!b) return;
+      if (b.dataset.ef === 'change') { toEmailStage(); els.email.focus(); return; }
+      if (cooling) { msg('A code was sent less than a minute ago. Check your inbox and spam, then try again.'); return; }
+      cooling = setTimeout(function () { cooling = null; }, 60000);
+      send(lastAddr || (els.email.value || '').trim());
+    };
+    form.__reset = toEmailStage; /* the wall calls this after a sign-out, so the next sign-in starts from the address again */
+    form.onsubmit = function (e) {
+      e.preventDefault();
+      var addr = (els.email.value || '').trim();
+      if (stage === 'email') {
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { msg('Please enter a real email address.'); return; }
+        send(addr);
+      } else {
+        var code = ((els.code && els.code.value) || '').replace(/\s/g, '');
+        if (!/^\d{6}$/.test(code)) { msg('Enter the six-digit code from the email.'); return; }
+        els.go.disabled = true; msg('Checking…', true);
+        verifyCode(addr, code).then(function () { toastVia(opts, 'Signed in.', 'cloud_done'); }, function (err) { els.go.disabled = false; msg(err.message || 'That code did not match. Check it, or send a new one.'); });
+      }
+    };
+  }
+
   /* ---------- sign out / account ---------- */
   function signOut(removeLocal) {
     var s = getSession();
@@ -280,7 +333,7 @@
         try { location.replace('room.html'); } catch (e) { }
       }
     };
-    if (s) return call('POST', '/auth/v1/logout', {}, s.access_token).then(done, done);
+    if (s) { try { localStorage.removeItem(AUTH_LS); } catch (e) { } return call('POST', '/auth/v1/logout', {}, s.access_token).then(done, done); } /* the session is gone on this phone at once, not after the network (Codex sweep, 21 Oct) */
     done(); return Promise.resolve();
   }
 
@@ -291,7 +344,7 @@
   function onSignedIn() {
     try { if (root.OvuConsent) OvuConsent.bindAccount(); } catch (e) { } /* a choice made before any account belongs to this one now */
     rerenderOpen();
-    if (!hasCloud()) promptCloud();
+    if (!hasCloud()) { if (!(root.OvuConsent && root.OvuConsent.needsSheet && root.OvuConsent.needsSheet())) promptCloud(); } /* the notice sheet carries the backup choice while it is still due */
     else if (root.OvuSync) OvuSync.syncNow();
     syncImprove().then(rerenderOpen);
   }
@@ -342,7 +395,8 @@
       '.ya-intro{color:var(--muted,#6b6475);font-size:13px;margin:2px 0 10px;line-height:1.5}' +
       '.ya-btns{display:grid;gap:8px}.ya-who{display:flex;gap:10px;align-items:center;padding:4px 2px 10px}.ya-who .ms{font-size:24px;color:var(--accent,#b57edc)}.ya-who b{display:block;font-size:14px}.ya-who small{display:block;color:var(--muted,#6b6475);font-size:12.5px}' +
       '.ya-email{margin-top:10px}.ya-code{letter-spacing:.3em;text-align:center;font-size:18px}.ya-danger{color:#b4412f}' +
-      '.ya-improve{margin-top:12px}.ya-improve span:not(.ms){display:block;font-weight:500;line-height:1.45}.ya-state{display:block;margin-top:5px;font-size:12px;color:var(--muted,#6b6475)}';
+      '.ya-improve{margin-top:12px}.ya-improve span:not(.ms){display:block;font-weight:500;line-height:1.45}.ya-state{display:block;margin-top:5px;font-size:12px;color:var(--muted,#6b6475)}' +
+      '.ef-more{display:flex;gap:14px;justify-content:center;margin-top:4px}.ef-more .linkbtn{background:none;border:0;padding:4px 0;font:700 12px var(--sans,system-ui);color:var(--rm-plum,#5a4274);text-decoration:underline;cursor:pointer}';
     document.head.appendChild(s);
   }
 
@@ -391,9 +445,7 @@
   }
 
   function wire(el, opts) {
-    var msg = function (text, ok) { var m = el.querySelector('#yaMsg'); if (m) { m.textContent = text; m.className = 'msg on ' + (ok ? 'ok' : 'err'); } };
     var form = el.querySelector('#yaEmailForm');
-    var stage = 'email';
     /* assign (not addEventListener) so a re-render never stacks handlers */
     el.onclick = function (e) {
       var b = e.target.closest('[data-ya]'); if (!b) return;
@@ -415,29 +467,7 @@
         rerenderOpen();
       });
     };
-    if (form) form.onsubmit = function (e) {
-      e.preventDefault();
-      var go = el.querySelector('#yaEmailGo'), emailEl = el.querySelector('#yaEmail'), codeWrap = el.querySelector('#yaCodeWrap'), codeEl = el.querySelector('#yaCode');
-      var addr = (emailEl.value || '').trim();
-      if (stage === 'email') {
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { msg('Please enter a real email address.'); return; }
-        go.disabled = true; msg('Sending…', true);
-        sendCode(addr).then(function () {
-          stage = 'code'; go.disabled = false; codeWrap.hidden = false; emailEl.readOnly = true;
-          go.innerHTML = '<span class="ms">login</span>Verify and sign in';
-          msg('We emailed a six-digit code to ' + addr + '. Enter it here. If a sign-in link arrives instead, open it on this phone.', true);
-          if (codeEl) codeEl.focus();
-        }, function (err) {
-          var se = sendError(err); go.disabled = false; msg(se.text);
-          if (se.limited) { stage = 'code'; codeWrap.hidden = false; emailEl.readOnly = true; go.innerHTML = '<span class="ms">login</span>Verify and sign in'; if (codeEl) codeEl.focus(); } /* a code already in the inbox still works */
-        });
-      } else {
-        var code = (codeEl.value || '').replace(/\s/g, '');
-        if (!/^\d{6}$/.test(code)) { msg('Enter the six-digit code from the email.'); return; }
-        go.disabled = true; msg('Checking…', true);
-        verifyCode(addr, code).then(function () { toastVia(opts, 'Signed in.', 'cloud_done'); }, function (err) { go.disabled = false; msg(err.message || 'That code did not match. Check it, or send a new one.'); });
-      }
-    };
+    if (form) emailForm(form, { email: el.querySelector('#yaEmail'), codeWrap: el.querySelector('#yaCodeWrap'), code: el.querySelector('#yaCode'), go: el.querySelector('#yaEmailGo'), msg: el.querySelector('#yaMsg') }, opts);
   }
 
   /* delete whatever copy the account holds, with backup on or off; the server does not guard deletes on consent */
@@ -502,21 +532,24 @@
     box.onclick = function (e) { var b = e.target.closest('[data-da]'); if (!b) return;
       if (b.dataset.da === 'no') { box.remove(); return; }
       b.disabled = true; b.innerHTML = '<span class="ms">hourglass_empty</span>Deleting…';
-      OvuSync.deleteAccount().then(function () { clearSession(); toastVia(opts, 'Your account and its backup are deleted. Your diary is still on this phone.', 'check_circle'); rerenderOpen(); },
+      OvuSync.deleteAccount().then(function () { try { if (root.OvuStore) root.OvuStore.setProfile({ owner: '' }); } catch (e) { } clearSession(); toastVia(opts, 'Your account and its backup are deleted. Your diary is still on this phone.', 'check_circle'); rerenderOpen(); },
         function (err) { b.disabled = false; b.innerHTML = '<span class="ms">delete_forever</span>Delete my account'; toastVia(opts, 'Could not delete the account: ' + err.message, 'error'); });
     };
   }
 
+  try { root.addEventListener('storage', function (e) { if (e && e.key !== null && e.key !== AUTH_LS) return; authEpoch++; notifyAuth(); }); } catch (e) { } /* a sign-out or sign-in in another tab reaches this one at once (Codex, 21 Oct) */
   function init() {
-    handleRedirect().then(function (r) {
+    return handleRedirect().then(function (r) {
       if (r && r.error) { try { if (window.console) console.warn('sign-in:', r.error); } catch (e) { } }
-    });
+      return r || {};
+    }, function (err) { return { error: (err && err.message) || 'Could not complete sign-in.' }; });
   }
 
   root.OvuAuth = {
     init: init, renderAccount: renderAccount,
     session: session, userId: userId, email: email, isSignedIn: isSignedIn, token: token,
     sendCode: sendCode, sendError: sendError, verifyCode: verifyCode, signInWith: signInWith, signOut: signOut,
+    providerOn: providerOn, emailForm: emailForm, pendingRedirect: pendingRedirect,
     promptCloud: promptCloud, hasCloud: hasCloud,
     NOTICE_V: NOTICE_V, IMPROVE: IMPROVE, improveText: improveText, improvePlan: improvePlan, improveLocal: improveLocal, setImprove: setImprove, syncImprove: syncImprove,
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }

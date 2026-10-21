@@ -33,14 +33,15 @@
     page: { gap: 400, peak: 0.016 },
     swish: { gap: 400, peak: 0.015 },
     boop: { gap: 500, peak: 0.022 },
-    door: { gap: 800, peak: 0.02 }
+    door: { gap: 800, peak: 0.02 },
+    cast: { gap: 700, peak: 0.024 }
   };
   /* which small sound goes with which moment (ovu-moments.js); logging moments stay quiet, the save already sparkled */
-  var FOR_MOMENT = { food: 'munch', farmmeal: 'munch', tea: 'munch', petfeed: 'munch', plant: 'dig', weed: 'dig', farmwater: 'water', well: 'water', greenhouse: 'water', plantcare: 'water', harvest: 'pop', shop: 'coin', adopt: 'pet', petplay: 'pet', petcuddle: 'pet', pettidy: 'swish', petdress: 'swish', wardrobe: 'swish', learn: 'page', journal: 'page', reflection: 'page', hello: 'boop', friend: 'boop', plaza: 'boop', exercise: 'hup', wake: 'hup' };
+  var FOR_MOMENT = { food: 'munch', farmmeal: 'munch', tea: 'munch', petfeed: 'munch', plant: 'dig', weed: 'dig', farmwater: 'water', well: 'water', eggs: 'pop', milk: 'water', springlower: 'water', springlift: 'water', greenhouse: 'water', plantcare: 'water', harvest: 'pop', shop: 'coin', adopt: 'pet', petplay: 'pet', petcuddle: 'pet', pettidy: 'swish', petdress: 'swish', wardrobe: 'swish', learn: 'page', journal: 'page', reflection: 'page', hello: 'boop', friend: 'boop', plaza: 'boop', exercise: 'hup', wake: 'hup' };
   function forMoment(key) { return FOR_MOMENT[key] || null; }
   /* the ground under her feet: wood at home and in shops, grass outdoors, stone on the street and in the plaza */
   function surfaceFor(L) { var sc = L && L.scene; if (L && L.surface) return L.surface; /* a layout may name its own floor (the greenhouse's stone tiles) */ if (L && L.store) return 'wood'; if (sc === 'street' || sc === 'plaza') return 'stone'; if (sc === 'garden' || sc === 'farm' || (L && /garden|farm|greenhouse/.test(L.id || ''))) return 'grass'; return 'wood'; }
-  var ctx = null, master = null, dry = null, wet = null, last = {}, voices = 0, air = null, petalIdx = 2;
+  var ctx = null, master = null, dry = null, wet = null, impulse = null, last = {}, voices = 0, air = null, petalIdx = 2;
 
   function store() { return root.OvuStore || null; }
   function enabled() { try { var s = store(); if (!s) return false; var v = s.state().sound; return v === undefined || v === null ? true : !!v; } catch (e) { return false; } }
@@ -62,7 +63,7 @@
     try {
       var len = Math.round(ctx.sampleRate * 2), imp = ctx.createBuffer(2, len, ctx.sampleRate);
       for (var c = 0; c < 2; c++) { var d = imp.getChannelData(c); for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
-      var verb = ctx.createConvolver(); verb.buffer = imp; wet.connect(verb); verb.connect(master);
+      impulse = imp; var verb = ctx.createConvolver(); verb.buffer = imp; wet.connect(verb); verb.connect(master);
     } catch (e) { wet.connect(master); }
     return ctx;
   }
@@ -124,6 +125,7 @@
       else if (kind === 'swish') { var d7 = opt.when || 0.2; noise(0.22, 'bandpass', 800, 1.4, p * 3.5, d7, 2500); }
       else if (kind === 'boop') { var d8 = opt.when || 0.2; tone(659, 'sine', 0.008, 0.18, p, d8); tone(880, 'sine', 0.008, 0.25, p, d8 + 0.09); }
       else if (kind === 'door') { tone(784, 'sine', 0.01, 0.6, p); tone(587, 'sine', 0.01, 0.8, p, 0.18); }
+      else if (kind === 'cast') { noise(0.28, 'bandpass', 900, 1.1, p * 2.6, 0, 3200); glide(640, 180, 0.12, 0.006, 0.16, p, 0.42); noise(0.09, 'lowpass', 700, 0.8, p * 0.6, 0.44); } /* the line whistles out, the float plops */
       else if (kind === 'bell') tone(294, 'sine', 0.02, 2.2, p, 0, 0.22);
       else if (kind === 'alert') { tone(294, 'triangle', 0.01, 0.35, p); tone(294, 'triangle', 0.01, 0.35, p, 0.4); }
       else if (kind === 'drop') {
@@ -169,8 +171,12 @@
     else if (ctx.state === 'suspended' && ctx.resume) ctx.resume().catch(function () { });
   }
   function setVolume(v) { var s = store(); v = Math.max(0, Math.min(1, Number(v) || 0)); if (s) s.setState({ soundVol: v }); sync(); return v; }
+  /* the music module shares this graph (design 2026-10-21-game-music.md): the context as it is, never resumed here, the
+   * master and the impulse the room's echo was made from. resume() is for a gesture handler and tells the truth about the state. */
+  function graph() { if (!ctx) { try { ensure(); } catch (e) { return null; } if (!ctx) return null; } return { ctx: ctx, master: master, impulse: impulse }; }
+  function resume() { try { if (!ensure()) return Promise.resolve('none'); } catch (e) { return Promise.resolve('none'); } if (ctx.state === 'running') return Promise.resolve('running'); return (ctx.resume ? ctx.resume() : Promise.resolve()).then(function () { return ctx.state; }, function () { return ctx.state; }); }
   /* iOS starts audio only from a tap: the first touch anywhere wakes the kit, quietly */
   function unlock() { if (!enabled()) return; try { ensure(); } catch (e) { } }
   if (root.document) { root.document.addEventListener('pointerdown', unlock, true); root.document.addEventListener('keydown', unlock, true); }
-  root.OvuSound = { SCALE: SCALE, KIT: KIT, DEFAULT_VOL: DEFAULT_VOL, forMoment: forMoment, surfaceFor: surfaceFor, enabled: enabled, volume: volume, gainFor: gainFor, allowed: allowed, nextPetal: nextPetal, play: play, ambience: ambience, sync: sync, setVolume: setVolume };
+  root.OvuSound = { SCALE: SCALE, KIT: KIT, DEFAULT_VOL: DEFAULT_VOL, forMoment: forMoment, surfaceFor: surfaceFor, enabled: enabled, volume: volume, gainFor: gainFor, allowed: allowed, nextPetal: nextPetal, play: play, ambience: ambience, sync: sync, setVolume: setVolume, graph: graph, resume: resume };
 })(typeof window !== 'undefined' ? window : this);

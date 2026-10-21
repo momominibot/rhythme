@@ -2,7 +2,8 @@
  * doing at home right now (brushing teeth, a shower, the first coffee...).
  * Each activity has more than one script so repeats stay fresh. Scripts marked
  * author 'erin' are Erin Lee's own words (brushing teeth, morning and evening,
- * 19 Oct 2026), voiced in her cloned voice with her consent; the rest are interim
+ * 19 Oct 2026; waking up with breath and body, and a mindful sip, 21 Oct 2026),
+ * voiced in her cloned voice with her consent; the rest are interim
  * text by the Rhythme team in the same voice, replaced clip by clip (same ids) as
  * her scripts arrive. The data shape is the contract:
  * activity -> variations -> steps [{ text, secs }] (+ when: morning|evening). */
@@ -11,6 +12,17 @@
   var S = root.OvuStore;
   var KEY_STATE = 'explored'; /* S.state().explored[activityId] = times completed */
   var ACTIVITIES = [
+    { id: 'wake', name: 'Waking up with breath and body', icon: 'wb_twilight', minutes: 3, pose: 'stretch', when: 'On the edge of the bed, or standing beside it', intro: 'Erin’s three minutes to arrive in the body before the day: noticing, the breath, two small movements, stillness.',
+      variations: [
+        { title: 'Waking up with breath and body', when: 'morning', author: 'erin', steps: [
+          { text: 'Good morning. Before moving into your day, let’s take a few moments to wake up with the body. You can sit on the edge of your bed, with your feet resting on the floor. Or, if you feel steady, standing beside your bed with your feet hip-distance apart. Keeping your eyes softly open. Allowing your posture to be comfortable and upright. Feeling the support beneath you.', secs: 38 },
+          { text: 'How is the body feeling this morning? Perhaps there’s some heaviness, some stiffness, or a sense of ease. Simply acknowledging what is here. And becoming aware of the body breathing. Where do you feel the breath most clearly? At the nose, the chest, or the belly? Allowing the breath to find its own natural rhythm.', secs: 37 },
+          { text: 'Let’s invite a little movement now, staying within a comfortable range. You can leave out any movement that doesn’t feel right. Slowly lifting your shoulders towards your ears. And gently lowering them. Once more, lifting… and releasing. Noticing the sensations as the shoulders move.', secs: 33 },
+          { text: 'When you’re ready, slowly reaching your arms forward and upwards, only as far as feels comfortable. Perhaps feeling a gentle stretch through the arms and the sides of the body. Keeping the breath flowing naturally. And slowly lowering your arms, following the movement all the way down.', secs: 29 },
+          { text: 'Returning to stillness. Noticing your hands, your shoulders, and your face. Does anything feel different? Perhaps things feel much the same. Allowing the body to be just as it is. If your mind has already moved into the day ahead, gently returning to this body, breathing. One breath at a time.', secs: 38 },
+          { text: 'Feeling your feet on the floor again. Becoming aware of the room around you. And when you’re ready, carrying this gentle attention into your next activity. Thank you for practising with me. Have a gentle day ahead.', secs: 18 }
+        ] }
+      ] },
     { id: 'teeth', name: 'Brushing teeth', icon: 'mood', minutes: 4, pose: 'teeth', when: 'Morning or night, at the sink', intro: 'Erin’s own four minutes at the sink: a morning script and an evening one, and the room picks the one that fits the hour.',
       variations: [
         { title: 'Morning, at the sink', when: 'morning', author: 'erin', steps: [
@@ -53,12 +65,14 @@
       ] },
     { id: 'coffee', name: 'Morning coffee or tea', icon: 'local_cafe', minutes: 3, pose: 'coffee', when: 'The first warm cup', intro: 'The first cup becomes a small ceremony instead of a reflex.',
       variations: [
-        { title: 'Steam and warmth', steps: [
-          { text: 'Hold the cup with both hands. Feel the warmth move into your palms.', secs: 20 },
-          { text: 'Bring it close and breathe in the steam. Notice the scent before the taste.', secs: 30 },
-          { text: 'Take the first sip slowly. Where do you taste it? What follows the warmth?', secs: 50 },
-          { text: 'Between sips, set the cup down and notice the pause. There is no hurry here.', secs: 60 },
-          { text: 'Finish knowing you tasted it. A good way to begin.', secs: 20 }
+        { title: 'A mindful sip to begin your day', when: 'morning', author: 'erin', steps: [
+          { text: 'Good morning. Let’s take a few moments to enjoy your morning drink with awareness. Whether you have coffee, tea, water, or something else, allowing yourself to settle wherever you are. Feeling the support beneath you. Noticing your drink in front of you.', secs: 28 },
+          { text: 'Before reaching for it, take a moment to look. Noticing the colour of the drink, the surface of the liquid, or the shape of the cup. Perhaps there is steam rising. Perhaps a reflection of light. Simply noticing what catches your attention.', secs: 27 },
+          { text: 'And now, gently bringing your hand to the cup or glass. Feeling its texture against your fingers. Becoming aware of its temperature and weight as you lift it. As you bring it closer, is there a scent you can notice? Perhaps something familiar. Perhaps very little. There’s no need to search for anything.', secs: 32 },
+          { text: 'When the temperature feels comfortable, taking a small sip. Noticing the first contact with your lips, and the following sensations as the drink enters your mouth. What can you taste? Allowing yourself a moment to experience the flavour and texture, swallowing whenever you’re ready.', secs: 33 },
+          { text: 'Gently lowering your cup. Does any taste linger? Perhaps a sensation of warmth or coolness. Noticing how the experience continues to change, even between sips. You might notice an impulse to take another sip straight away. Simply becoming aware of that impulse, and choosing when to lift your cup again.', secs: 34 },
+          { text: 'Taking another sip in your own time. If your mind wanders towards the day ahead, gently returning to the sensations of drinking. The touch of the cup. An aroma. A taste. The feel of swallowing. One sip at a time.', secs: 29 },
+          { text: 'As you continue with your drink, allowing this gentle awareness to stay with you. There may be more moments like these to notice in your morning routine. Thank you for practising with me. Have a gentle day ahead.', secs: 17 }
         ] },
         { title: 'Three sips', steps: [
           { text: 'Sit, or stand by a window. Let the cup rest a moment before you drink.', secs: 25 },
@@ -173,12 +187,12 @@
   function nextVariation(a, d) { var pod = partOfDay(d), timed = a.variations.filter(function (v) { return v.when === pod; }); if (timed.length) return timed[0]; var n = timesDone(a.id); return a.variations[n % a.variations.length]; }
   function totalSecs(v) { return v.steps.reduce(function (t, s) { return t + s.secs; }, 0); }
   /* called after a practice is confirmed; returns the saved event */
-  function complete(id, variationIndex, secsDone, confirmed) {
+  function complete(id, variationIndex, secsDone, confirmed, finished) {
     var a = byId(id); if (!a) return null;
     var ex = explored(); var first = !ex[id]; ex[id] = (ex[id] || 0) + 1;
     S.setState({ explored: ex });
-    var minutes = Math.max(1, Math.round(secsDone / 60 * 10) / 10);
-    var ev = S.add('mindfulness', S.today(), { kind: 'informal', activity: id, activityName: a.name, variation: variationIndex, minutes: minutes, completed: true, confirmedReal: !!confirmed, guide: (a.variations[variationIndex] && a.variations[variationIndex].author === 'erin') ? 'Everyday mindfulness, Erin’s own script in her voice' : 'Everyday mindfulness, Erin’s voice (interim script)', first: first });
+    var minutes = Math.round(secsDone / 6) / 10; /* the time she practised, not rounded up to a minute (Codex sweep, 21 Oct) */
+    var ev = S.add('mindfulness', S.today(), { kind: 'informal', activity: id, activityName: a.name, variation: variationIndex, minutes: minutes, completed: finished === undefined ? true : !!finished, confirmedReal: !!confirmed, guide: (a.variations[variationIndex] && a.variations[variationIndex].author === 'erin') ? 'Everyday mindfulness, Erin’s own script in her voice' : 'Everyday mindfulness, Erin’s voice (interim script)', first: first });
     return { event: ev, first: first, count: ex[id] };
   }
   root.OvuMindful = { ACTIVITIES: ACTIVITIES, byId: byId, explored: explored, timesDone: timesDone, nextVariation: nextVariation, partOfDay: partOfDay, totalSecs: totalSecs, complete: complete };

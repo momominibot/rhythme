@@ -61,7 +61,10 @@ DISHES = [
     ("Roasted chicken rice", "roast-chicken-rice", ["roasted chicken rice", "roast chicken rice", "roasted chicken with rice"]),
     ("Soya sauce chicken rice", "soy-chicken-rice", ["soya sauce chicken rice", "soy sauce chicken rice", "soy chicken rice"]),
     ("Claypot chicken rice", "claypot-chicken-rice", ["claypot chicken rice", "claypot rice"]),
-    ("Nasi lemak (fish set)", "nasi-lemak", ["nasi lemak", "nasi lemak with fish", "nasi lemak fish", "nasi lemak ikan", "nasi lemak with fried fish", "nasi lemak fried fish", "nasi lemak with egg", "nasi lemak with fried egg", "nasi lemak with egg and ikan bilis"]),
+    # Set rows take only names that say which set. HPB has no plain nasi lemak plate, only these three
+    # sets and the coconut rice alone, so a bare "nasi lemak" (or one with only egg and ikan bilis named)
+    # is on no row and stays the photo estimate; see sgMatch in ovu-food.js.
+    ("Nasi lemak (fish set)", "nasi-lemak", ["nasi lemak with fish", "nasi lemak fish", "nasi lemak ikan", "nasi lemak with fried fish", "nasi lemak fried fish"]),
     ("Nasi lemak (chicken wing set)", "nasi-lemak-wing", ["nasi lemak chicken wing", "nasi lemak with chicken wing", "nasi lemak with fried chicken wing", "nasi lemak fried chicken wing", "nasi lemak ayam", "nasi lemak with chicken"]),
     ("Nasi lemak (chicken cutlet set)", "nasi-lemak-cutlet", ["nasi lemak chicken cutlet", "nasi lemak with chicken cutlet", "nasi lemak with fried chicken cutlet"]),
     ("Nasi lemak (rice only)", "coconut-rice", ["coconut rice", "nasi lemak rice", "nasi lemak rice only"]),
