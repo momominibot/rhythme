@@ -4,7 +4,8 @@
 `supabase/migrations/20261020120000_sync_pull_commit_order.sql` is a file only: applying it to the live project is
 Jamie's call (AGENTS gate 3).
 
-**Status: R5-B applied (Jamie, 21 Oct), Codex round five below.** Rounds two to four held the branch on the
+**Status: R5-B applied (Jamie, 21 Oct); not yet independently reviewed.** Codex round five could not run (its usage
+limit, until 27 Oct); the prompt is saved for when it can. Rounds two to four held the branch on the
 compatibility path (premortem 5). Jamie chose option A (the server certifies the time cursor, `time_safe`, below);
 round three proved that a single time cursor cannot be both skip-free and replay-free once the transaction-ordered pull
 has delivered rows out of time order. Jamie then chose A2: a phone that pulls by transaction id stops instead of
@@ -163,7 +164,9 @@ Premortem, assuming B failed:
    time you come back.", which the manual sync button shows). It reloads only when it is hidden **and** the room says
    nothing is unsaved: no sheet or form open (so no Luna card), no session, practice, meditation or Morning start
    running, no health file being read or waiting to be picked from, not arranging the room. If something is open it
-   waits and checks again each time she leaves the app. The room's note and its safety test are handed over by
+   waits and checks again each time she leaves the app. The price: while something stays open or waiting (a sheet left
+   open, a scanned health file never picked from), that page stays on the older code and does not back up; nothing is
+   lost, and it moves on the first time she leaves with nothing open. A `canReload` that throws counts as "not safe". The room's note and its safety test are handed over by
    `OvuSync.watchUpdates(onUpdate, canReload)`; an update seen before that gets its note when the room is ready, and no
    reload happens before the room's test exists. Limits: this cannot reach code already in the field before this
    change; it only fires when the service worker itself changes (an app-only change with an identical `sw.js` causes no
@@ -319,7 +322,9 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
   at load, "update" decided from the controller or an active registration at load (a force refresh), and the reload
   held until the page is hidden with nothing unsaved (case 12, `room.js`); case 10 tightened; a retired page's reason
   shown on the manual sync button (round four's nit).
-- Codex read-only, round five (`docs/debate/2026-10-20-sync-commit-order-codex-round5.md`): pending.
+- Codex read-only, round five (`docs/debate/2026-10-20-sync-commit-order-codex-round5.md`): not run. Codex stopped at
+  its usage limit ("try again at Oct 27th, 2026 2:41 PM"); under the token-waste rule it was not retried and no other
+  reviewer was substituted. The prompt is saved there, ready to run.
 
 ## Sources
 
