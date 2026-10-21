@@ -1,0 +1,12 @@
+[
+ ["room", "room.html", "__DB__", false, null, null],
+ ["bed", "room.html", "__DB__", false, null, "async()=>{OvuRoom.tap(OvuRoom.hotspot('bed')); await new Promise(r=>setTimeout(r,2600));}"],
+ ["morning", "room.html", "__DB__", false, null, "()=>{OvuStore.setState({morningStart:null}); OvuMorning.begin('erin', true);}"],
+ ["harbour", "room.html", "__DB__", false, null, "async()=>{OvuWalk.travel('harbour'); await new Promise(r=>setTimeout(r,2800)); OvuHarbour.sitDown(); await new Promise(r=>setTimeout(r,1500));}"],
+ ["street", "room.html", "__DB__", false, null, "async()=>{OvuWalk.travel('street'); await new Promise(r=>setTimeout(r,2800)); OvuSeats.begin('street'); await new Promise(r=>setTimeout(r,900));}"],
+ ["cave", "room.html", "__DB__", true, null, "async()=>{var f = JSON.parse(JSON.stringify(OvuStore.state().farm || {})); f.found = f.found || {}; f.found.cave = true; OvuStore.setState({farm: f}); OvuWalk.travel('cave'); await new Promise(r=>setTimeout(r,2800)); OvuTones.start(528, null); OvuTones.sitDown(); await new Promise(r=>setTimeout(r,1500));}"],
+ ["you", "room.html#you", "__DB__", false, null, null],
+ ["journal", "journal.html", "__DB__", false, null, null],
+ ["doctor", "doctor.html", "__DB__", false, null, "()=>{var b=document.querySelector('#demoBtn'); if(b) b.click();}"],
+ ["garden", "room.html", "__DB__", false, null, "async()=>{OvuWalk.travel('garden'); await new Promise(r=>setTimeout(r,2800));}"]
+]

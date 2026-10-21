@@ -183,6 +183,7 @@
     el.style.left = seat.x + '%'; el.style.top = seat.groundY + '%'; el.style.width = Math.min(14, Math.max(7, w)).toFixed(2) + '%';
     el.classList.toggle('faceright', seat.face === 'right');
   }
+  G.seatPlace = function (el, seat) { seatPlace(el, seat); }; G.seatedImg = function (img, fallback) { seatedImg(img, fallback); }; /* the hidden spring's warm stone sits her the same way (ovu-barn.js) */
   function seatedImg(img, fallback) {
     var want = seatedSrc(), probe = new Image();
     if (!want) { img.src = fallback; img.classList.remove('seated'); return; }
@@ -213,7 +214,7 @@
     el.className = 'nb sitter'; el.dataset.id = 'sitter'; el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', 'You are sitting on the bench. Tap to get up.');
     el.style.left = spot.x + '%'; el.style.top = spot.y + '%'; el.style.width = spot.w + '%';
     if (spot.seat) seatPlace(el, spot.seat);
-    el.innerHTML = '<img src="' + ART + 'avatar-' + outfitId() + '.webp" alt="">'; wrap.appendChild(el); seatedImg(el.querySelector('img'), el.querySelector('img').src);
+    el.innerHTML = '<img src="' + ART + 'avatar-' + (/^[a-z0-9-]{1,32}$/.test(outfitId() || '') ? outfitId() : 'base') + '.webp" alt="">'; /* an imported outfit name never becomes markup (Codex sweep, 21 Oct) */ wrap.appendChild(el); seatedImg(el.querySelector('img'), el.querySelector('img').src);
     sitting = { spot: spot, back: back, el: el }; R.els.scene.classList.add('sitting'); R.chime('tap');
     R.toast('Sitting a while. Tap anywhere to get up.', 'chair');
   }
@@ -296,7 +297,8 @@
     R.on('props', function (L) { renderPlot(L); if (sitting && !R.els.props.contains(sitting.el)) R.els.props.appendChild(sitting.el); }); /* a props re-render keeps her seated */
     R.on('layout', function (L) { if (watering) finishWatering(false); if (sitting) { sitting.el.remove(); sitting = null; R.els.scene.classList.remove('sitting'); } if (inGarden(L)) renderPlot(); });
     /* seated: the first tap anywhere stands her up, then the tap goes on to do what it does */
-    R.els.scene.addEventListener('click', function (e) { if (sitting && !e.defaultPrevented) standUp(); }, true); /* not the click the camera swallowed after a drag */
+    R.els.scene.addEventListener('click', function (e) { if (sitting && !e.defaultPrevented) standUp(); }, true);
+    doc.addEventListener('visibilitychange', function () { if (doc.hidden && watering && !watering.done) finishWatering(false); }); /* away from the app is not a mindful minute (persona walk, 21 Oct) */ /* not the click the camera swallowed after a drag */
     doc.addEventListener('keydown', function (e) { if (sitting && /^(Arrow|w|a|s|d|W|A|S|D)/.test(e.key)) standUp(); }, true);
   });
 })(window);

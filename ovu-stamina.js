@@ -5,7 +5,7 @@
   'use strict';
   var S = root.OvuStore, R = root.OvuRoom, W = root.OvuWalk, GT = root.OvuGameTime, doc = root.document;
   var MAX = 100, LOW = 25;
-  var COSTS = { plant: 2, water: 6, harvest: 4, clear: 5, fish: 3, forage: 2, travel: 1 };
+  var COSTS = { plant: 2, water: 6, harvest: 4, clear: 5, fish: 3, forage: 2, travel: 1, egg: 1, milk: 2 }; /* the barn: one visit to the nests, one milking (21 Oct) */
   var fns = [], wasAsleep = null;
   function today() { return GT ? GT.dayKey() : new Date().toISOString().slice(0, 10); }
   function read() { var s = S.state().stamina; return s && typeof s.v === 'number' ? s : { v: MAX, max: MAX, day: today() }; }
@@ -16,7 +16,7 @@
   function can(action) { return value() >= (COSTS[action] || 0); }
   function spend(action, quiet) {
     var c = COSTS[action] || 0, v = value(), s = read();
-    if (v < c) { if (!quiet && R) R.toast('Too tired for that. A rest first.', 'bedtime'); return false; }
+    if (v < c) { if (!quiet && R) R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); return false; }
     s.v = Math.max(0, v - c); write(s); return true;
   }
   function refill() { write(fresh()); }

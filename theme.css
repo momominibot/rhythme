@@ -674,3 +674,8 @@ body.overflow-hidden {
     background: linear-gradient(135deg, #e8dff5 0%, #f5c4a8 50%, #e8dff5 100%) !important;
   }
 }
+
+/* the Rhythme logo beside the wordmark (privacy, terms, sign-in and the older pages) */
+.rh-logo{display:inline-block;width:1.4em;height:1.4em;border-radius:28%;object-fit:cover;vertical-align:middle;flex:none;margin-right:.45em;box-shadow:0 1px 5px rgba(90,66,116,.25)}
+.rh-word{display:inline-flex;align-items:center}
+.lhero .rh-logo{width:1.05em;height:1.05em;margin-right:.32em;position:relative;box-shadow:0 4px 18px rgba(90,66,116,.25),0 0 0 3px rgba(255,255,255,.7)}
