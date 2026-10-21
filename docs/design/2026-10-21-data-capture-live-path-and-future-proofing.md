@@ -5,10 +5,33 @@ capture the data effectively for future proofing, using the Ranklore adaptive de
 
 Method: the live database was read on 21 October (counts, runs, findings, policy, cron); the code was walked link by
 link; jev (TypeSafe System One, model jev-1.13.0) gave typed judgments on the state; the Ranklore Quantum Optimization
-Playbook (v1.0, 21 Oct) was read for the decision-engine part. The Codex deep analysis could not run: the Codex account
-hit its usage limit (resets 27 October 14:41 SGT). The block is recorded at `~/.local/share/codex-block/BLOCKED.json`
-and nothing was retried or switched to another account. This note is therefore a single-reviewer analysis plus jev;
-the Codex pass should be added when the limit resets, or by another provider only on Jamie's word.
+Playbook (v1.0, 21 Oct) was read for the decision-engine part. The Codex deep analysis (gpt-6-astra, read-only, with
+this note as a draft to check) ran after Jamie reset the account; its full text is in
+`docs/design/reviews/2026-10-21-codex-data-capture-analysis.md` and is the authoritative deep version. Section 0 below
+lists where it corrected this note; the rest of this note was revised to agree with it.
+
+## 0. What the Codex pass corrected (verified where marked)
+
+| Draft claim | Checked conclusion |
+|---|---|
+| "The plumbing exists end to end and is not broken" | Too strong. The parts exist, but the source has defects before real numbers can be trusted (below), and nobody has traversed the deployed path with a real account. |
+| A daily pg_cron job can call `admin_run(28)` | **Wrong, verified**: `staff.caller()` requires an authenticated JWT (`20261019030000_team_dashboard.sql:186`); a cron call has none and would be denied while the SQL job reports success. A private worker entry point is needed. |
+| `metric_version` exists at 1 and nothing bumps it | **Wrong, verified in the live catalog**: the installed `metrics_build` hardcodes `metric_version 2` while `agent_policy.metric_version` is 1. Two competing authorities. |
+| The stale "is not built" sentence | **Verified**: the installed function no longer contains it; the 19 Oct findings carry the old wording until a new run. A run appends findings; the overview selects the latest successful run, so old rows stay in history. |
+| `metrics_build` is the only diary reader | `staff.svc_counts()` also reads account ids from `public.entries` (without improvement consent) to count cloud copies. Not content, but a row read. |
+| Free text is excluded | Excluded from the metric expressions, but the staging table copies the whole entry JSON, notes included. Minimise the projection. |
+| The two accounts never backed up | Not established; only that no cloud copy exists now. |
+| Real test diaries are the only way to see a number | No: a disposable synthetic cohort exercises the 20-person boundary without real health data (one such test was run and rolled back on 19 Oct). |
+| jev judgments establish readiness | They are reported judgments, not verification; jev is a model call and must obey `model_on` and provider blocks if it ever runs server side. |
+| The 20-person floor is anonymity | It is a minimum-contributor suppression rule, not k-anonymity or differential privacy; exact opt-in counts are still shown, percentages can have tiny numerators, overlapping releases can leak small changes. |
+| "Aggregates need no deletion" | Unsupported: withdrawal and deletion do not invalidate stored findings today; retention is purpose based under PDPA, not satisfied by calling something an aggregate. |
+
+Further defects Codex found in the metric contract: "last 28 days" spans 29 dates and has no upper bound; every finding is
+labelled unit `accounts`; the SQL splits a period on any gap over one day while the phone joins across one missing day;
+the median interval is over intervals, not people; missing minutes become zero; multiple sleep rows are called conflicts;
+the live adult bands include `adult` but the migration does not seed it (reproducibility drift); the client sync gate
+fails open when the consent module is absent; the feed can skip events past its page limit; `relay_calls_today` sums
+rate buckets, not answered calls; the staff `model_on` switch does not govern the Luna and insight relays.
 
 ## 1. The live path, link by link
 
@@ -35,41 +58,52 @@ What "live" would look like: an adult signs in, turns on cloud backup and "help 
 20 such adults; a daily run; the clouds on the dashboard report numbers with people counts. Today the count of such
 adults is zero, and the two accounts that exist have never backed up a diary.
 
-## 2. Gaps for future-proofing (ranked)
+## 2. Gaps for future-proofing (ranked, reconciled with the Codex pass)
 
-P0, before real data arrives
-- No scheduled run. Add a pg_cron job calling `public.admin_run(28)` once a day (Singapore night), with the existing
-  provider-block rule (a failure records a block and nothing retries). jev: safe before any consent exists, 0.75, since
-  the run reads no diary row when `analysis_consent` is empty and only records readiness.
-- The stale "is not built" findings from 19 Oct: one new run replaces them (the server copy was already corrected by
-  migration `20261019040000`). Pressing Run now on the dashboard does it; the scheduled run would do it every day.
-- Deletion propagation: define what happens to `staff.agent_findings` and run summaries when an account uses Delete
-  everything or withdraws the choice. Aggregates across at least 20 people need no deletion, but any per-run temp data,
-  audit rows naming a user id, and `analysis_consent` rows need a stated retention. Write the rule down and test it.
+P0, before any real contribution is processed
+- One authoritative, versioned consent contract on the server: record the consent event and its current-state
+  projection atomically, validate notice and purpose against an immutable notice registry, keep the original accepted
+  date on repeat grants, require the server's adult attestation, and make withdrawal and publication share a revision
+  check. Keep backup, improvement, AI help, social and research as separate purposes.
+- Define "from now" (observation date, first-collected date, or an approved history range), store observation date,
+  client time and server receipt time separately, and minimise the staging projection to the fields each approved metric
+  needs (no whole JSON, no notes). Move cloud-copy counts off `entries` onto backup receipts.
+- Deletion and withdrawal must reach derived outputs: invalidate affected report releases and recompute from the
+  remaining authorised data, suppressing newly small cells; inventory other retained identifiers (audit actors, email
+  keyed grants, copied social report names). Keep "Delete everything" unmistakably device only, or add a separate
+  global erasure.
+- Treat 20 as a suppression policy, not anonymity: suppress every relevant response and export, bound contributions,
+  add a release policy for overlapping windows, keep operational counts and health outputs apart.
+- Fix the metric contract (28 completed dates with explicit bounds, Singapore reporting clock, real units, the phone's
+  period-episode rule, person-level medians, missing is not zero, naps are not conflicts) in a new metrics version, and
+  remove the competing `metric_version` authorities.
 
-P1, before the first measured run
-- Versioning: `metric_version` exists (1) but nothing bumps it; add a rule: any change to how a metric is computed bumps
-  the version, and findings carry it, so time series are never silently mixed. Same for the notice version each consent
-  row was given under (`p_notice` already exists in `analysis_consent_set`).
-- Idempotent, replayable runs: a run should be reproducible from (window, consent set as of, metric_version); store
-  the consent snapshot size and the entry high-water mark (`synced_at`) in the run summary so a rerun can be compared.
-- Late and edited entries: the sync cursor work (PRs #16, #22) means entries can arrive after a run; findings should
-  state the `synced_at` watermark they saw, and the daily run should recompute the trailing window rather than append.
-- Date keys and time zones: entries carry a `date` column; the run uses `current_date` on the server (UTC). Use the
-  Singapore date for windows, or state the zone in every finding.
-- Observability: a run row already has started, finished, error and summary; add duration and a diff against the
-  previous run (which metrics changed by more than the floor allows to show), surfaced on Today.
+P1, dependable daily operation and provenance
+- Version schemas, notices and computations separately (entry schema version, notice id and hash, a metric registry
+  with definition, unit, denominator, people rule, window and computation version).
+- Idempotent runs with a unique due key, atomic publication of a report revision, provenance on every finding (run,
+  revision, metric version, window and zone, qualifying people, denominator, coverage, consent revision, suppression
+  reason); recompute rather than replay, never keep health snapshots for reproducibility.
+- Scheduling through a private worker entry point (never a manufactured staff JWT): one attempt per due key, no
+  automatic retry, bounded, `clock_timestamp` durations, reconciled against `cron.job_run_details`, overdue alerts,
+  explicit pause and unschedule.
+- Sync ordering: only the reviewed transaction-order cursor (PR #16 family) with real two-session race tests; late,
+  edited and deleted entries trigger a recompute of the affected windows.
+- Dashboard statuses kept apart: API reachable, run due, run completed, output fresh, no authorised data, suppressed,
+  failed. Drain feed pages before advancing the cursor. Sanitise error text.
 
-P2, as the product grows
-- An event vocabulary for app usage (feature opened, practice started, farm visited) with no health content, consented
-  under its own purpose, so product decisions do not lean on diary streams. Design doc section 4 already planned this.
-- Research export: tidy tables per finding (agent, metric, window, value, people, metric_version, notice_version,
-  run id), never row level; with a documented k floor of 20 and small-cell suppression as now.
-- Boundaries to confirm with a lawyer, not here: PDPA purposes for the improvement choice, and whether any planned use
-  becomes identifiable health research under HBRA (the 20 Oct data-strategy note for GoutBye covers the same ground).
+P2, purposeful capture
+- A small feature-event stream with an allowlisted vocabulary, its own opt-in purpose, deduplication, coarse dates and
+  short retention; no open-ended properties bag; no condition-specific screen names under a "no health content" label.
+- Research exports as releases (one tidy row per finding with release id, run, metric and version, window and zone,
+  value, unit, people, denominator, coverage, state, suppression reason, purpose, notice versions) plus a data
+  dictionary; suppressed stays null; improvement consent does not authorise a research purpose or person-level export.
+- A DPO and lawyer list before any new purpose: notice accuracy, purpose classification, retention per data class,
+  effects of withdrawal and deletion, transfers and processing locations, HBRA classification of any study.
 
-What not to capture: free-text notes and reflections (already excluded by the agents), exact per-person values, anything
-from local-only diaries, anything before the account's accepted date unless she chose all history.
+What not to capture: local-only diaries, pre-consent history by default, free-text reflections, photos, location,
+advertising identifiers, contact lists, device fingerprints, detailed interaction timelines, inferred diagnoses, and no
+joining of social identities with health records just because a join is possible.
 
 ## 3. The adaptive decision engine, honestly
 
@@ -79,9 +113,11 @@ the quantum label dropped (no proven quantum advantage for practical sizes; npj 
 digital health). That is the right frame here.
 
 Where each tool fits in this pipeline:
-- jev (typed judgments, about 0.3 s): gating questions on each proposal and on run health, with the state as evidence
-  and the question naming the condition, never the conclusion. Examples: "does this proposal read a diary row", "is this
-  finding below the floor", "did the run see fewer entries than the previous one". Used today in this note.
+- jev (typed judgments, about 0.3 s): optional classification of proposal descriptions, evidence relevance and
+  ambiguity, with the state as evidence and the question naming the condition, never the conclusion. Never for whether
+  consent exists, whether a count is under the floor, whether a run happened, or what is legally permitted: those are
+  deterministic code. jev is a model call, so server side it stays off while `model_on` is false and obeys provider
+  blocks; the judgments in this note were made by hand from the dashboard side, as advice.
 - An optimizer (CP-SAT): only once there is a real constrained choice, which today there is not. The first candidate is
   choosing which approved content levers to apply per cycle under a cap on live levers, a risk threshold and
   dependencies, with impact as evidence-graded ranges. Formulate per the playbook checklist (binary variables, two to
@@ -94,33 +130,58 @@ Where each tool fits in this pipeline:
 Concrete small layer, deterministic, on the existing tables: inputs = open `staff.agent_proposals` with evidence grade,
 estimated impact range, effort, risk, dependencies; constraints = at most N live levers, at most one high-risk, only
 approved content ids, only non-clinical surfaces; objective = evidence-weighted impact minus effort, ties to lower risk;
-output = one ranked plan plus two named alternatives written to the proposal rationale, nothing applied without an
-owner. jev screens each proposal first; CP-SAT ranks the survivors once there are more candidates than slots.
+objective = a transparent lexicographic order first (approved operational defects, then stronger evidence and clearer
+evaluation, then lower risk and effort, then a stable id), never a speculative impact probability; output = an immutable
+recommendation with selected and rejected ids, reasons, constraints, versions, alternatives and a greedy baseline,
+nothing applied without an owner. Bounded enumeration for a handful of proposals; CP-SAT only when dependencies and
+competing constraints make it useful; an empty selection is valid.
 
-## 4. Phased plan
+## 4. Phased plan (Codex's, kept as proposed; nothing implemented or scheduled)
 
-Phase 0, this week (reversible, no diary read before consent)
-1. Migration: the daily pg_cron run of `admin_run(28)`. Needs Jamie's word (production migration). Until then,
-   pressing Run now on the dashboard refreshes the findings and clears the stale 19 Oct sentence.
-2. Dashboard: Today shows "last scheduled run" and the next due time; the clouds already read the kept findings (PR #43).
-3. Jamie and one other adult account: sign in, turn on cloud backup and the improve choice, log for a week. This is the
-   only way to see a real number before launch, and it is still under the floor (held back) until 20 adults.
-4. A written retention and deletion rule for staff tables, with a test.
+Phase 0, this week
+1. Reconcile deployed state by catalog reads: function bodies, grants, triggers, the live `adult_bands`, migration
+   history, deployed app version (started above: the installed `metrics_build` matches the floor migration, with
+   `metric_version 2` hardcoded; live `adult_bands` includes `adult`).
+2. Specify consent and deletion semantics in the two design documents: purpose and notice registry, "from now", local
+   reset, cloud deletion, account deletion. Jamie approves the user-facing contract before production changes.
+3. Prepare the consent and minimisation repair (a migration plus `ovu-consent.js`, `ovu-auth.js`, `ovu-sync.js`):
+   atomic idempotent consent, account-switch checks, fail-closed client gate, no unconsented diary scan; additive and
+   flagged.
+4. Prepare corrected metrics as a new report version with a metric registry; publication stays off until verified.
+5. Prepare deletion invalidation (migration plus the account function and cloud-wipe flow); rollback keeps publication
+   paused rather than restoring unsafe exposure.
+6. Reproduce the whole path locally with synthetic accounts only (extend `tools/test-core.js`, add
+   `tools/db/test_team_pipeline.py`): no consent, backup only, 19 and 20 contributors, malformed values, history after
+   consent, stale consent update, account switch, withdrawal during a run, deletion after publication, one-person
+   numerator, edited records, concurrent writes, a cancelled run.
 
-Phase 1, before the first measured run (20 consenting adults)
-5. Versioning rule and run watermarks (metric_version bump policy, notice version on findings, synced_at high-water).
-6. Singapore-date windows and a run diff on Today.
-7. jev screening of proposals wired into the orchestrator step (deterministic function, typed questions, logged).
+Phase 1, dependable daily reporting
+7. Run contract migration (unique due keys, report revisions, provenance, consent revisions, atomic publication).
+8. Private scheduling migration (internal worker, one daily job) after the phase 0 gates pass; pause and unschedule
+   are explicit rollbacks. Until then, a staff press of Run now is the only refresh and it clears the 19 Oct wording.
+9. Failure reconciliation against cron receipts, sanitised errors, overdue alerts.
+10. Dashboard freshness, next run, measured coverage, invalidation and failure shown separately.
+11. Only the reviewed transaction-order sync cursor, migration first, with real race tests.
+12. Scheduled bounded retention with deletion receipts and invalidation tests. `model_on` and `autonomy_on` stay false.
 
 Phase 2
-8. App usage events under their own consent purpose; research export; the CP-SAT lever ranker only when proposals
-   exceed slots, with the baseline and kill criterion pre-registered.
+13. Consented feature events with an allowlisted vocabulary and short retention; versioned aggregate exports behind a
+    release gate; immutable proposal inputs and decision records; deterministic proposal selection first, CP-SAT only
+    when real choices exceed simple selection; jev screening only after an explicit model-use decision; interventions
+    evaluated against a predefined baseline before any claim of benefit.
 
-Gates for Jamie: the cron migration in phase 0; whether the two staff accounts become the first test diaries; the
-retention rule wording; any second-provider review while Codex is blocked.
+Gates for Jamie: the improvement purpose, history scope, notice and retention and deletion promises; whether "Delete
+everything" stays device only; every production migration, frontend deployment and the daily schedule; any real
+participant pilot (each participant consents independently; staff ownership is not consent); DPO and legal review
+before new research purposes, exports or provider transfers; any model activation or spend; the permitted proposal
+surfaces; resolving any two-failed-review hold before that work resumes.
 
 ## 5. What could not be verified
-- No Codex pass (usage limit). jev judgments are probabilities, not proof.
+- Codex itself could not verify: that the deployed frontend and every live function match this checkout (two of its
+  claims were checked here against the catalog and held); that a real account completes first backup, opt-in,
+  measurement and rendering on the deployed app; the current cron history and session time zone; complete deletion
+  behaviour across backups, moderation records, grants and providers; the production state of the sync-order fixes.
+- jev judgments are reported probabilities, not proof.
 - Deletion behaviour of the staff tables on Delete everything was read from the schema, not exercised.
 - Whether the social sweep cron runs successfully (its job exists; its run log was not read).
 - jevauto was run as the triage asked; its four candidates (API-first, event microservices, browser storage, third-party
