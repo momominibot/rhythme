@@ -2998,7 +2998,7 @@ var summarised = false;
 })();
 
 (function farmKitchen() {
-  console.log('2k8. the farm kitchen (21 Oct): staples for hearts in one save, recipes from the basket and the barn, cooking in one save with no hearts, no energy and no diary; no fish');
+  console.log('2k8a. the farm kitchen (21 Oct): staples for hearts in one save, recipes from the basket and the barn, cooking in one save with no hearts, no energy and no diary; no fish');
   var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
   ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-harbour.js', 'ovu-lane.js', 'ovu-kitchen.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
   var K = w.OvuKitchen, F = w.OvuFarm, S = w.OvuStore, RW = w.OvuRewards, B = w.OvuBarn, d1 = '2026-10-21';
@@ -3007,7 +3007,7 @@ var summarised = false;
   check('eight staples at Hay & Harvest, 2 to 4 hearts each: rice, eggs, noodles, tofu, garlic, coconut milk, honey and yoghurt', ids.join() === 'rice,egg,noodles,tofu,garlic,coconut,honey,yoghurt' && ids.every(function (k) { return K.STAPLES[k].cost >= 2 && K.STAPLES[k].cost <= 4; }));
   var known = function (k) { return !!F.CROPS[k] || !!K.STAPLES[k] || !!K.HERBS[k]; };
   check('every recipe is vegetables, herbs and staples only: no fish, no unknown ingredient', K.RECIPES.every(function (r) { return Object.keys(r.needs).every(known) && !/fish|ikan|prawn|bilis/i.test(JSON.stringify(r)); }) && !/fish/i.test(Object.keys(F.CROPS).join() + ids.join()));
-  check('the design’s recipes are there; the two with ginger or pandan wait for the greenhouse herbs and cannot be cooked', ['garlicpakchoy', 'kangkongfry', 'tomatoegg', 'pumpkinsoup', 'carrotradish', 'strawberrybowl', 'sweetpotatoginger', 'pandanrice'].every(function (id) { return !!K.recipe(id); }) && K.RECIPES.filter(function (r) { return Object.keys(r.needs).some(function (k) { return K.HERBS[k]; }); }).every(function (r) { return r.soon && K.canCook(S, r.id).soon; }) && K.RECIPES.filter(function (r) { return r.soon; }).length === 2);
+  check('the design’s recipes are there, and the two with ginger or pandan cook once the greenhouse herbs are picked into the basket (collation, 21 Oct)', ['garlicpakchoy', 'kangkongfry', 'tomatoegg', 'pumpkinsoup', 'carrotradish', 'strawberrybowl', 'sweetpotatoginger', 'pandanrice'].every(function (id) { return !!K.recipe(id); }) && K.RECIPES.every(function (r) { return !r.soon && r.steps.length === 4; }) && (function () { S.setState({ farm: { harvest: { sweetpotato: 1, ginger: 1, pandan: 1 }, kitchen: { rice: 1 }, pantry: {} } }); var a = K.canCook(S, 'sweetpotatoginger'), b = K.canCook(S, 'pandanrice'); S.setState({ farm: { harvest: { sweetpotato: 1 }, kitchen: { rice: 1 } } }); var c = K.canCook(S, 'sweetpotatoginger'); return a.ok && b.ok && !c.ok && c.missing && c.missing[0].key === 'ginger' && c.missing[0].herb; })());
   check('every staple sold has a dish that uses it, and every dish she can cook has its four steps', ids.every(function (k) { return K.RECIPES.some(function (r) { return !r.soon && r.needs[k]; }); }) && K.RECIPES.every(function (r) { return r.soon || (r.steps.length === 4 && r.steps.every(function (t) { return !/—|–/.test(t); })); }) && K.STEPS.map(function (x) { return x.id; }).join() === 'wash,chop,smell,taste');
   /* buying staples */
   S.setState({ farm: { harvest: {}, pantry: { egg: 2, milk: 1 } }, rewards: { hearts: 10, earned: 10, log: [], owned: [], placed: {} } });
@@ -3181,6 +3181,37 @@ var summarised = false;
   check('a full bag is not sold another start, and a full basket is not picked into: nothing paid, nothing charged, the farm’s count kept', !fullBuy.ok && RW.ledger().hearts === full0 && GH.herbState(S).seeds.ginger === 99 && !fullPick.ok && F.farmState(S).harvest.lemongrass === 120 && ST.value() === e2 && GH.herbRipe(GH.herbState(S).beds.hb1));
   var brewLine = /<p class="mindline"><span class="ms">local_cafe<\/span><span>([^<]+)<\/span>/.exec(src);
   check('the cup’s own sheet line is short and free of em dashes too', !!brewLine && brewLine[1].split(/\s+/).length <= 18 && !/—/.test(brewLine[1]), brewLine && brewLine[1]);
+  /* the first start is free, once (Jamie, 21 Oct) */
+  reset(0);
+  check('a new player has one free start waiting', GH.freeStartOpen(S));
+  var fr1 = GH.freeStart(S, 'chamomile', d1);
+  check('the free start gives one herb of her choice with no hearts, and is remembered', fr1.ok && GH.herbState(S).seeds.chamomile === 1 && RW.ledger().hearts === 0 && !GH.freeStartOpen(S) && GH.herbState(S).free.herb === 'chamomile');
+  check('it cannot be claimed twice, on the same day or with the clock set back', !GH.freeStart(S, 'ginger', d1).ok && !GH.freeStart(S, 'ginger', '2026-01-01').ok && !GH.herbState(S).seeds.ginger);
+  GH.plantHerb(S, 'hb1', 'chamomile', d1, ST); GH.waterHerb(S, 'hb1', d1, ST);
+  check('the claim survives every later greenhouse save', !GH.freeStartOpen(S));
+  S.setState({ greenhouse: { seeds: {}, beds: {}, free: 'yes please' } });
+  check('a restored claim with a malformed value stays claimed, never reopened', !GH.freeStartOpen(S) && !GH.freeStart(S, 'ginger', d1).ok);
+  S.setState({ greenhouse: null }); var rc = S.commit;
+  S.commit = function () { throw new Error('QuotaExceededError'); }; var frF = GH.freeStart(S, 'ginger', d1); S.commit = rc;
+  check('a failed save gives no start and keeps the free start open', !frF.ok && GH.freeStartOpen(S) && !GH.herbState(S).seeds.ginger);
+  check('the grocer offers the free start first, then the prices', /GH\.freeStartOpen\(S\) \? GH\.freeStart\(/.test(laneSrc));
+  /* the seed swap with herbs (Jamie, 21 Oct): three of a herb or a crop for a seed or a start, no hearts, one save */
+  reset(50); S.setState({ farm: { harvest: { ginger: 3, radish: 3, lemongrass: 3, chamomile: 2, pumpkin: 1 } } });
+  check('herbs with three in the basket count at the swap beside the crops; two are not enough', GH.swapGivableAll(S).sort().join() === 'ginger,lemongrass,pumpkin,radish' && GH.swapNeedAny('ginger') === 3 && GH.swapNeedAny('pumpkin') === 1);
+  check('she can take a seed of a crop she grows or a start of any herb, lemongrass as a herb', GH.swapTakeable(S).indexOf('carrot') > -1 && GH.swapTakeable(S).indexOf('kangkong') < 0 && ['ginger', 'lemongrass', 'pandan', 'chamomile'].every(function (k) { return GH.swapTakeable(S).indexOf(k) > -1; }));
+  var sa = GH.swapAny(S, 'ginger', 'carrot');
+  check('three ginger for a carrot seed: the basket and the shed move together, no hearts', sa.ok && sa.gave === 3 && !('ginger' in F.farmState(S).harvest) && F.farmState(S).seeds.carrot === 1 && RW.ledger().hearts === 50);
+  var sb = GH.swapAny(S, 'radish', 'pandan');
+  check('three radishes for a pandan start: it goes to the greenhouse bag', sb.ok && sb.herb && GH.herbState(S).seeds.pandan === 1 && !('radish' in F.farmState(S).harvest) && RW.ledger().hearts === 50);
+  var sc = GH.swapAny(S, 'lemongrass', 'lemongrass');
+  check('three lemongrass for a lemongrass start for the planters', sc.ok && GH.herbState(S).seeds.lemongrass === 1 && !('lemongrass' in F.farmState(S).harvest));
+  var sw0 = JSON.stringify([S.state().farm, S.state().greenhouse]);
+  check('too few, a crop she cannot grow, or an unknown kind: refused, nothing moves', !GH.swapAny(S, 'chamomile', 'ginger').ok && !GH.swapAny(S, 'pumpkin', 'kangkong').ok && !GH.swapAny(S, 'basil', 'ginger').ok && !GH.swapAny(S, 'pumpkin', 'basil').ok && JSON.stringify([S.state().farm, S.state().greenhouse]) === sw0);
+  S.commit = function () { throw new Error('QuotaExceededError'); }; var sF = GH.swapAny(S, 'pumpkin', 'ginger'); S.commit = rc;
+  check('a failed save swaps nothing: the pumpkin stays and no start is given', !sF.ok && JSON.stringify([S.state().farm, S.state().greenhouse]) === sw0);
+  var sp = GH.swapAny(S, 'pumpkin', 'ginger');
+  check('a pumpkin still counts as three, now for a herb start too', sp.ok && sp.gave === 1 && GH.herbState(S).seeds.ginger === 1 && RW.ledger().hearts === 50);
+  check('the grocer swaps through the one-save herb swap', /GH \? GH\.swapAny\(S, swapGive, b\.dataset\.take\)/.test(laneSrc));
   check('each planter draws as an SVG at every stage, darker soil when watered today', svgOk && GH.herbSVG({ herb: 'ginger', watered: [d1], cuts: 0, last: d1 }, d1).indexOf('#4f3828') > -1 && GH.herbSVG({ herb: 'ginger', watered: [d1], cuts: 0, last: d1 }, '2026-10-22').indexOf('#4f3828') < 0);
 })();
 

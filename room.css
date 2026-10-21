@@ -2132,3 +2132,19 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .sheet.luna-sheet .composer textarea.input{border-radius:22px;min-height:52px}
 .lunanote{margin:10px 0 0;text-align:center;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-3)}
 @media(min-width:520px){.sheet.luna-sheet{left:50%;right:auto;width:min(480px,92vw);transform:translate(-50%,105%)}.sheet.luna-sheet.on{transform:translate(-50%,0)}}
+
+/* night: the rhythm panel and Luna's card take the dark surfaces, as every other sheet does (Codex collation review, 21 Oct) */
+html[data-sky=night] .ready,html[data-sky=night] .rcard{background:var(--rm-card);border-color:rgba(255,255,255,.1)}
+html[data-sky=night] .ready .dot i{background:var(--rm-paper-2);border-color:#5b477f;color:#cdbfe4}
+html[data-sky=night] .ready .dot.on i{color:#2a1d44}
+html[data-sky=night] .ready .dot+.dot::before{background:#3b2e5a}
+html[data-sky=night] .rband{background:var(--rm-paper-2)}
+html[data-sky=night] .chip-th{background:#3b2e5a;color:#e3d4fa;border-color:#7a62a6}
+html[data-sky=night] .chip-e{background:#26344d;color:#b9d2f5}
+html[data-sky=night] .sheet.luna-sheet{background:linear-gradient(180deg,#2a2044,#1f1733 60px);border-color:rgba(255,255,255,.08)}
+html[data-sky=night] .lunastrip{background:#2a2044;border-color:rgba(255,255,255,.08)}
+html[data-sky=night] .lunastrip .lmore{color:#cbb2ec}
+html[data-sky=night] .askchip{background:#2b2147;color:#dccdf6;border-color:rgba(203,178,236,.35)}
+html[data-sky=night] .askchip:hover{background:#3b2e5a}
+/* closed, Luna's top-anchored card is hidden and untappable once it has slid away: on a tall screen its own height is not enough to leave the frame */
+.sheet.luna-sheet:not(.on){visibility:hidden;pointer-events:none;transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s linear .38s}

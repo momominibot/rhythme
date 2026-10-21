@@ -154,7 +154,8 @@
   var swapGive = null;
   function openGrocer() {
     var FM = F(); if (!FM) return;
-    var f = FM.farmState(S), h = hearts(), grow = FM.growable(f), locked = Object.keys(FM.CROPS).filter(function (k) { return !FM.canGrow(f, k) && !FM.CROPS[k].moved; }), give = FM.swapGivable(S), GH = root.OvuGreenhouse, gs = GH ? GH.herbState(S) : null; /* lemongrass moved to the greenhouse (21 Oct) */
+    var f = FM.farmState(S), h = hearts(), grow = FM.growable(f), locked = Object.keys(FM.CROPS).filter(function (k) { return !FM.canGrow(f, k) && !FM.CROPS[k].moved; }), GH = root.OvuGreenhouse, gs = GH ? GH.herbState(S) : null, free = !!GH && GH.freeStartOpen(S), give = GH ? GH.swapGivableAll(S) : FM.swapGivable(S), takes = GH ? GH.swapTakeable(S) : grow; /* lemongrass moved to the greenhouse, and the swap takes herbs too (21 Oct) */
+    var kind = function (k) { return (GH && GH.HERBS[k]) || FM.CROPS[k]; }, need = function (k) { return GH ? GH.swapNeedAny(k) : FM.swapNeed(k); }, have = function (k) { return GH && GH.HERBS[k] ? num(gs.seeds[k]) : num(f.seeds[k]); };
     if (swapGive && give.indexOf(swapGive) < 0) swapGive = null;
     var html = nav('hearts') + mind('Choose one thing you would like to grow in yourself this week.') +
       '<h4 class="shedh"><span class="ms">redeem</span>Seed packs <small>' + FM.PACK.seeds + ' seeds · ' + heartTxt(FM.PACK.cost) + '</small></h4>' +
@@ -163,14 +164,15 @@
       (KT() ? (function () { var kt = KT(), have = kt.staplesOf(S); return '<h4 class="shedh"><span class="ms">kitchen</span>Kitchen staples <small>one portion each</small></h4>' +
         '<div class="seedlist" id="grocerStaples">' + Object.keys(kt.STAPLES).map(function (k) { var st = kt.STAPLES[k]; return '<button type="button" class="btn soft" data-staple="' + k + '"' + (h >= st.cost ? '' : ' disabled') + '><span class="ms">' + st.icon + '</span><span><b>' + esc(st.name) + '</b><small>have ' + num(have[k]) + ' · ' + heartTxt(st.cost) + '</small></span></button>'; }).join('') + '</div>' +
         '<p class="help" style="margin-top:6px">For cooking what you grow: open the basket on the farm, or the stove in the family home.</p>'; })() : '') +
-      (GH ? '<h4 class="shedh"><span class="ms">local_florist</span>For the greenhouse <small>for the planters</small></h4>' +
-        '<div class="seedlist" id="grocerHerbs">' + GH.HERB_IDS.map(function (k) { var hb = GH.HERBS[k]; return '<button type="button" class="btn soft" data-herbstart="' + k + '"' + (h >= hb.cost ? '' : ' disabled') + '><span class="ms">spa</span><span><b>' + esc(hb.start) + '</b><small>ready in ' + hb.ripe + ' days, again every ' + hb.regrow + ' · have ' + num(gs.seeds[k]) + ' · ' + heartTxt(hb.cost) + '</small></span></button>'; }).join('') + '</div>' : '') +
+      (GH ? '<h4 class="shedh"><span class="ms">local_florist</span>For the greenhouse <small>' + (free ? 'your first one is free' : 'for the planters') + '</small></h4>' +
+        (free ? '<p class="help" style="margin-top:0">Choose any one to start with, free. After that, each costs what it says.</p>' : '') +
+        '<div class="seedlist" id="grocerHerbs">' + GH.HERB_IDS.map(function (k) { var hb = GH.HERBS[k]; return '<button type="button" class="btn soft" data-herbstart="' + k + '"' + (free || h >= hb.cost ? '' : ' disabled') + '><span class="ms">spa</span><span><b>' + esc(hb.start) + '</b><small>ready in ' + hb.ripe + ' days, again every ' + hb.regrow + ' · have ' + num(gs.seeds[k]) + ' · ' + (free ? 'free' : heartTxt(hb.cost)) + '</small></span></button>'; }).join('') + '</div>' : '') +
       '<h4 class="shedh"><span class="ms">swap_horiz</span>Seed swap <small>no hearts</small></h4>' +
-      '<p class="help" style="margin-top:0">Three from your basket for one seed of any crop you grow. A pumpkin counts as three.</p>';
+      '<p class="help" style="margin-top:0">Three from your basket for one seed of any crop you grow' + (GH ? ', or a start of any herb. Herbs count too' : '') + '. A pumpkin counts as three.</p>';
     if (!give.length) html += '<p class="help pantryline"><span class="ms">shopping_basket</span>Nothing to swap yet: the basket needs three of one kind, or a pumpkin.</p>';
     else {
-      html += '<div class="chips" id="swapGive">' + give.map(function (k) { var c = FM.CROPS[k], need = FM.swapNeed(k); return '<button type="button" class="chipbtn' + (k === swapGive ? ' on' : '') + '" data-give="' + k + '" aria-pressed="' + (k === swapGive) + '">' + need + ' ' + esc(need === 1 ? c.name.toLowerCase() : c.plural) + ' <small>of ' + num(f.harvest[k]) + '</small></button>'; }).join('') + '</div>' +
-        (swapGive ? '<div class="seedlist" id="swapTake">' + grow.map(function (k) { return '<button type="button" class="btn soft" data-take="' + k + '"><span class="ms">spa</span><span><b>' + esc(FM.CROPS[k].name) + ' seed</b><small>have ' + num(f.seeds[k]) + '</small></span></button>'; }).join('') + '</div>' : '<p class="help">Choose what to give, then which seed to take.</p>');
+      html += '<div class="chips" id="swapGive">' + give.map(function (k) { var c = kind(k), n = need(k); return '<button type="button" class="chipbtn' + (k === swapGive ? ' on' : '') + '" data-give="' + k + '" aria-pressed="' + (k === swapGive) + '">' + n + ' ' + esc(n === 1 ? c.name.toLowerCase() : c.plural) + ' <small>of ' + num(f.harvest[k]) + '</small></button>'; }).join('') + '</div>' +
+        (swapGive ? '<div class="seedlist" id="swapTake">' + takes.map(function (k) { var herb = !!(GH && GH.HERBS[k]); return '<button type="button" class="btn soft" data-take="' + k + '"><span class="ms">' + (herb ? 'local_florist' : 'spa') + '</span><span><b>' + esc(herb ? GH.HERBS[k].start : FM.CROPS[k].name + ' seed') + '</b><small>' + (herb ? 'for the greenhouse · ' : '') + 'have ' + have(k) + '</small></span></button>'; }).join('') + '</div>' : '<p class="help">Choose what to give, then which seed to take.</p>');
     }
     R.openSheet('lane-grocer', 'Hay & Harvest', 'Grocer · ' + hoursText('grocer'), 'storefront', html + '<p class="help">Hearts come from logging. The shed still gives its free seeds each day.</p>');
     wireBack();
@@ -191,7 +193,7 @@
     });
     var hs = doc.getElementById('grocerHerbs'); if (hs) hs.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-herbstart]'); if (!btn || btn.disabled || !stillOpen('grocer')) return;
-      var res = GH.buyStart(S, RW(), btn.dataset.herbstart); if (!res.ok) { R.toast(res.why, 'info'); return; }
+      var res = GH.freeStartOpen(S) ? GH.freeStart(S, btn.dataset.herbstart, today()) : GH.buyStart(S, RW(), btn.dataset.herbstart); if (!res.ok) { R.toast(res.why, 'info'); return; }
       R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
       R.toast(GH.HERBS[res.herb].start + ' for the greenhouse. Plant it in a planter by the door.', 'local_florist', line);
       if (R.renderDeck) R.renderDeck(); openGrocer();
@@ -199,10 +201,10 @@
     var gv = doc.getElementById('swapGive'); if (gv) gv.addEventListener('click', function (e) { var b = e.target.closest('[data-give]'); if (!b) return; R.chime('tap'); swapGive = b.dataset.give === swapGive ? null : b.dataset.give; openGrocer(); });
     var tk = doc.getElementById('swapTake'); if (tk) tk.addEventListener('click', function (e) {
       var b = e.target.closest('[data-take]'); if (!b || !swapGive || !stillOpen('grocer')) return;
-      var res = FM.swapSeed(S, swapGive, b.dataset.take); swapGive = null;
+      var res = GH ? GH.swapAny(S, swapGive, b.dataset.take) : FM.swapSeed(S, swapGive, b.dataset.take); swapGive = null;
       if (!res.ok) { R.toast(res.why, 'info'); openGrocer(); return; }
       R.chime('save'); var line = R.moment ? R.moment('seedswap', { quiet: true }) : '';
-      var gc = FM.CROPS[res.give]; R.toast('Swapped ' + res.gave + ' ' + (res.gave === 1 ? gc.name.toLowerCase() : gc.plural) + ' for a ' + FM.CROPS[res.crop].name.toLowerCase() + ' seed. It is in the shed.', 'swap_horiz', line);
+      var gc = kind(res.give), took = res.take || res.crop; R.toast('Swapped ' + res.gave + ' ' + (res.gave === 1 ? gc.name.toLowerCase() : gc.plural) + (res.herb ? ' for ' + GH.HERBS[took].start.toLowerCase() + '. It is ready for the greenhouse.' : ' for a ' + FM.CROPS[took].name.toLowerCase() + ' seed. It is in the shed.'), 'swap_horiz', line);
       openGrocer();
     });
   }

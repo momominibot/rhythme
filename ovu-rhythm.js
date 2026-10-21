@@ -95,13 +95,15 @@
     if (cs && cs.mode === 'wide') return 'wide';
     return 'normal';
   }
+  /* remembered period dates (ovu-store.js rhythmFromRecall): exact and approximate dates, counted together */
+  function recalledCount(rr) { if (!rr) return 0; if (Array.isArray(rr)) return rr.length; return (Array.isArray(rr.exact) ? rr.exact.length : 0) + (Array.isArray(rr.approx) ? rr.approx.length : 0); }
   /* everything the panel shows, from the data the app already keeps */
   function panel(ctx) {
     var S = ctx.store, A = ctx.agents, asOf = ctx.asOf || S.today(), profile = S.profile(), cs = S.cycleStats(asOf), st = stage(profile, cs);
     var eps = confirmedEpisodes(cs.episodes || S.periodEpisodes()), iv = intervals(eps, asOf), rd = readiness(iv);
     var careFlags = []; try { var sum = A && A.fourWeekSummary ? A.fourWeekSummary(asOf) : null; careFlags = sum && sum.flags ? sum.flags.filter(function (f) { return f.level === 'high'; }) : []; } catch (e) { careFlags = []; }
     var sym = symptoms(S.list('symptom', { from: addDays(asOf, -(SYM_DAYS - 1)), to: asOf }), asOf, profile, careFlags);
-    var out = { stage: st, asOf: asOf, readiness: rd, intervals: iv, episodes: eps, regularity: regularity(iv, profile), lengths: lengths(iv, eps), symptoms: sym, band: bandFor(profile), askBand: bandNeedsAsking(profile), remembered: (cs.recalled || []).length, showCycle: ['normal', 'wide', 'hormones', 'postpartum', 'suspended'].indexOf(st) > -1 };
+    var out = { stage: st, asOf: asOf, readiness: rd, intervals: iv, episodes: eps, regularity: regularity(iv, profile), lengths: lengths(iv, eps), symptoms: sym, band: bandFor(profile), askBand: bandNeedsAsking(profile), remembered: recalledCount(cs.recalled), showCycle: ['normal', 'wide', 'hormones', 'postpartum', 'suspended'].indexOf(st) > -1 };
     return out;
   }
 
@@ -131,11 +133,12 @@
     if (P.stage !== 'normal') h += '<p class="help stagenote">' + esc(stageNote(P.stage)) + '</p>';
     if (P.stage !== 'pregnant' && P.stage !== 'postpartum-none' && P.stage !== 'loss') {
       h += '<div class="ready"><span class="lbl">Building your cycle picture</span><div class="dots">' + [1, 2, 3].map(function (i) { return '<span class="dot' + (P.readiness.n >= i ? ' on' : '') + '"><i>' + i + '</i><em>' + ['First cycle', 'Taking shape', 'First comparison'][i - 1] + '</em></span>'; }).join('') + '</div><p>' + esc(P.readiness.n + ' of ' + P.readiness.of + ' complete cycles in the last six months. ' + P.readiness.line) + (P.remembered ? ' Remembered dates from your intro are shown on the calendar but do not count here.' : '') + '</p></div>';
-      var reg = P.regularity, regChips = chipE(['E7', 'E91']) + (reg.level === 'building' ? chipTh() : '');
-      var regText = reg.text + (P.stage === 'hormones' || P.stage === 'postpartum' ? ' Shown as recorded; no grade applies in your situation.' : '');
-      h += card('Cycle regularity', 'How much the time between your recorded period starts varies.', (P.stage === 'hormones' || P.stage === 'postpartum') && reg.level !== 'building' ? 'building' : reg.level, regText, regChips);
+      var reg = P.regularity, noGrade = P.stage === 'hormones' || P.stage === 'postpartum'; /* lengths shown as recorded, no comparison and no level (Codex collation review, 21 Oct) */
+      var regChips = chipE(['E7', 'E91']) + (!noGrade && reg.level === 'building' ? chipTh() : '');
+      var regText = noGrade ? (reg.lengths.length ? 'Recorded cycle lengths: ' + reg.lengths.join(', ') + ' days. Shown as recorded; no grade applies in your situation.' : 'No complete cycle recorded yet. What you record is shown as it is; no grade applies in your situation.') : reg.text;
+      h += card('Cycle regularity', noGrade ? 'The time between your recorded period starts, as recorded.' : 'How much the time between your recorded period starts varies.', noGrade ? 'na' : reg.level, regText, regChips);
       if (P.askBand || (!P.band && reg.lengths.length >= MIN_INTERVALS)) h += '<div class="rband"><span class="lbl">Which age band fits you? FIGO’s reference variation differs by age.</span><div class="chips">' + ['18-25', '26-41', '42-45', '46+'].map(function (b) { return '<button type="button" class="chipbtn' + (P.band === b ? ' on' : '') + '" data-band="' + b + '">' + b.replace('-', ' to ').replace('46+', '46 or older') + '</button>'; }).join('') + '</div></div>';
-      h += card('Cycle and bleeding length', 'Your recorded cycle lengths and bleeding days, alongside their reference ranges.', P.lengths.level, P.lengths.text, chipE(['E7', 'E4']));
+      h += noGrade ? card('Cycle and bleeding length', 'Your recorded cycle lengths and bleeding days.', 'na', 'Shown as recorded in the calendar; the reference comparison is not applied in your situation. Heavy bleeding, flooding or large clots are separate care signs whatever the length.', chipE(['E7', 'E4'])) : card('Cycle and bleeding length', 'Your recorded cycle lengths and bleeding days, alongside their reference ranges.', P.lengths.level, P.lengths.text, chipE(['E7', 'E4']));
       h += card('Ovulation signs', 'Signs you record can add context; Rhythme cannot confirm ovulation.', 'na', 'Your current records cannot tell whether you ovulated. The calendar’s phase and fertile colouring are estimates from dates, not evidence of ovulation, and they count for nothing here.', chipE(['E92']));
     }
     h += card('Symptoms and comfort', 'Pain, mood and symptoms on the days you answered; other days are unknown.', P.symptoms.level, P.symptoms.text, chipTh() + chipE(['E8', 'E9', 'E94']));

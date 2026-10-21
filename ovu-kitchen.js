@@ -20,7 +20,7 @@
     yoghurt: { name: 'Yoghurt', cost: 3, icon: 'icecream' }
   };
   var KEEP = Object.keys(STAPLES).filter(function (k) { return !STAPLES[k].pantry; });
-  /* herbs a recipe needs that cannot be grown yet: they arrive with the greenhouse herb beds (farm-loop step 4) */
+  /* herbs a recipe needs: grown in the greenhouse planters (ovu-greenhouse.js, farm-loop step 4) and picked into the farm basket under these keys */
   var HERBS = { ginger: 'Ginger', pandan: 'Pandan' };
   var STEPS = [
     { id: 'wash', name: 'Wash', icon: 'water_drop', moment: 'cookwash' },
@@ -40,8 +40,8 @@
     { id: 'strawberrybowl', name: 'Strawberry yoghurt bowl', icon: 'icecream', needs: { strawberry: 2, yoghurt: 1, honey: 1 }, steps: ['Rinsing the strawberries…', 'Halving each strawberry…', 'Honey over the cool yoghurt…', 'Tasting one spoonful…'] },
     { id: 'pakchoynoodles', name: 'Pak choy noodle soup', icon: 'ramen_dining', added: true, needs: { pakchoy: 1, noodles: 1, garlic: 1 }, steps: ['Rinsing the pak choy…', 'Slicing the garlic…', 'The broth and noodles steaming…', 'Tasting one slow sip…'] },
     { id: 'tomatotofu', name: 'Tomato tofu with rice', icon: 'rice_bowl', added: true, needs: { tomato: 2, tofu: 1, rice: 1 }, steps: ['Rinsing the tomatoes and the rice…', 'Cutting the tofu into cubes…', 'Tomato and tofu bubbling gently…', 'Tasting it with a little rice…'] },
-    { id: 'sweetpotatoginger', name: 'Sweet potato ginger soup', icon: 'soup_kitchen', soon: true, needs: { sweetpotato: 1, ginger: 1 }, steps: [] },
-    { id: 'pandanrice', name: 'Pandan rice', icon: 'rice_bowl', soon: true, needs: { pandan: 1, rice: 1 }, steps: [] }
+    { id: 'sweetpotatoginger', name: 'Sweet potato ginger soup', icon: 'soup_kitchen', needs: { sweetpotato: 1, ginger: 1 }, steps: ['Scrubbing the sweet potato…', 'Cutting it into chunks, slicing the ginger…', 'The soup simmering, ginger rising in the steam…', 'Tasting one warm spoonful…'] },
+    { id: 'pandanrice', name: 'Pandan rice', icon: 'rice_bowl', needs: { pandan: 1, rice: 1 }, steps: ['Rinsing the rice, knotting the pandan leaf…', 'Rice and pandan into the pot…', 'The rice steaming, the pandan scent filling the kitchen…', 'Tasting one spoonful…'] }
   ];
 
   function FM() { return root.OvuFarm; }
@@ -61,6 +61,7 @@
     if (FM().CROPS[key]) return n0(f.harvest && f.harvest[key]);
     if (key === 'egg') return n0(f.pantry && f.pantry.egg);
     if (STAPLES[key]) return n0(f.kitchen && f.kitchen[key]);
+    if (HERBS[key]) return n0(f.harvest && f.harvest[key]); /* greenhouse herbs are picked into the basket */
     return 0;
   }
   function label(key, n) {
@@ -86,7 +87,7 @@
     var r = c.recipe, f = copy(farm(S));
     Object.keys(r.needs).forEach(function (k) {
       var n = r.needs[k];
-      if (FM().CROPS[k]) { f.harvest[k] = n0(f.harvest[k]) - n; if (!f.harvest[k]) delete f.harvest[k]; }
+      if (FM().CROPS[k] || HERBS[k]) { f.harvest[k] = n0(f.harvest[k]) - n; if (!f.harvest[k]) delete f.harvest[k]; }
       else if (k === 'egg') f.pantry.egg = n0(f.pantry.egg) - n;
       else f.kitchen[k] = n0(f.kitchen[k]) - n;
     });

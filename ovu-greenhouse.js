@@ -135,7 +135,9 @@
       var last = typeof b.last === 'string' && DAYRX.test(b.last) ? b.last : (w.slice(-1)[0] || null);
       beds[hb.id] = { herb: b.herb, planted: b.planted, watered: w, last: last, cuts: whole(b.cuts) };
     });
-    return { seeds: seeds, beds: beds };
+    var out = { seeds: seeds, beds: beds };
+    if (g.free) out.free = g.free && typeof g.free === 'object' && HERBS[g.free.herb] && DAYRX.test(g.free.day || '') ? { herb: g.free.herb, day: g.free.day } : { herb: null, day: null }; /* any mark at all stays claimed: a bad value never reopens it */
+    return out;
   }
   function herbNeed(b) { return b && HERBS[b.herb] ? (b.cuts ? HERBS[b.herb].regrow : HERBS[b.herb].ripe) : 0; }
   function herbDays(b) { return b && b.herb ? b.watered.length : 0; }
@@ -159,6 +161,37 @@
     g.seeds[herb] = (g.seeds[herb] || 0) + 1;
     try { RW.spend(h.cost, 'herb:' + herb, { greenhouse: g }); } catch (e) { return { ok: false, why: e.message }; }
     return { ok: true, herb: herb, have: g.seeds[herb] };
+  }
+  /* the first start is free, once (Jamie, 21 Oct): any one herb, so a first cup never needs hearts. The claim is remembered
+   * in the greenhouse, not by date, so setting the clock back cannot reopen it */
+  function freeStartOpen(S) { return !herbState(S).free; }
+  function freeStart(S, herb, day) {
+    var h = HERBS[herb]; if (!h) return { ok: false, why: 'Not in the shop.' };
+    var g = herbState(S); if (g.free) return { ok: false, why: 'Your free start has been given already.' };
+    g.seeds[herb] = Math.min(99, (g.seeds[herb] || 0) + 1); g.free = { herb: herb, day: day };
+    var sv = herbSave(S, { greenhouse: g }); if (!sv.ok) return sv;
+    return { ok: true, herb: herb, have: g.seeds[herb] };
+  }
+  /* the seed swap with the herbs in it (Jamie, 21 Oct): three of a crop or a herb from the basket (a pumpkin counts as
+   * three) for one seed of a crop she grows or one start of any herb. No hearts change hands; the basket, the shed and the
+   * greenhouse move in one save. Lemongrass is a herb now, so taking it gives a greenhouse start */
+  function swapKinds() { var FM = root.OvuFarm, out = FM ? Object.keys(FM.CROPS) : []; HERB_IDS.forEach(function (k) { if (out.indexOf(k) < 0) out.push(k); }); return out; }
+  function swapNeedAny(k) { var FM = root.OvuFarm; return FM && FM.CROPS[k] ? FM.swapNeed(k) : HERBS[k] ? 3 : Infinity; }
+  function swapGivableAll(S) { var FM = root.OvuFarm; if (!FM) return []; var f = FM.farmState(S); return swapKinds().filter(function (k) { return (Math.floor(Number(f.harvest[k])) || 0) >= swapNeedAny(k); }); }
+  function swapTakeable(S) { var FM = root.OvuFarm; if (!FM) return HERB_IDS.slice(); return FM.growable(FM.farmState(S)).filter(function (k) { return !HERBS[k]; }).concat(HERB_IDS); }
+  function nameOf(k) { var FM = root.OvuFarm, c = HERBS[k] || (FM && FM.CROPS[k]); return c ? c.name : k; }
+  function swapAny(S, give, take) {
+    var FM = root.OvuFarm; if (!FM) return { ok: false, why: 'The basket is not here.' };
+    if (swapKinds().indexOf(give) < 0 || swapKinds().indexOf(take) < 0) return { ok: false, why: 'unknown crop' };
+    if (swapTakeable(S).indexOf(take) < 0) return { ok: false, why: nameOf(take) + ' is not growing on your farm yet.' };
+    var f = JSON.parse(JSON.stringify(FM.farmState(S))), g = herbState(S), need = swapNeedAny(give), have = Math.floor(Number(f.harvest[give])) || 0, c = HERBS[give] || FM.CROPS[give];
+    if (have < need) return { ok: false, why: 'The swap takes ' + need + ' ' + (need === 1 ? c.name.toLowerCase() : c.plural) + '. The basket has ' + have + '.' };
+    if (HERBS[take] && (g.seeds[take] || 0) >= 99) return { ok: false, why: 'Your bag holds plenty of ' + HERBS[take].name.toLowerCase() + ' already.' };
+    f.harvest[give] = have - need; if (!f.harvest[give]) delete f.harvest[give];
+    var patch = { farm: f };
+    if (HERBS[take]) { g.seeds[take] = (g.seeds[take] || 0) + 1; patch.greenhouse = g; } else f.seeds[take] = (f.seeds[take] || 0) + 1;
+    var sv = herbSave(S, patch); if (!sv.ok) return sv;
+    return { ok: true, give: give, gave: need, take: take, herb: !!HERBS[take], have: HERBS[take] ? g.seeds[take] : f.seeds[take] };
   }
   function plantHerb(S, id, herb, day, ST) {
     var hb = herbBed(id), h = HERBS[herb]; if (!hb || !h) return { ok: false, why: 'unknown herb' };
@@ -252,7 +285,7 @@
   }
   var GH = { LAYOUT: LAYOUT, PLANTS: PLANTS, HOUSE: HOUSE, ASK: ASK, CARE_SECONDS: CARE_SECONDS, CARE_STEP: CARE_STEP, careLines: careLines, plant: plant, sprite: sprite, info: info,
     HERBS: HERBS, HERB_IDS: HERB_IDS, HERB_BEDS: HERB_BEDS, herbBed: herbBed, herbState: herbState, herbNeed: herbNeed, herbDays: herbDays, herbRipe: herbRipe, herbStage: herbStage, herbWateredToday: herbWateredToday,
-    buyStart: buyStart, plantHerb: plantHerb, waterHerb: waterHerb, harvestHerb: harvestHerb, clearHerb: clearHerb, inBasket: inBasket, brewCup: brewCup, brewLines: brewLines, herbSVG: herbSVG,
+    buyStart: buyStart, freeStart: freeStart, freeStartOpen: freeStartOpen, swapAny: swapAny, swapGivableAll: swapGivableAll, swapTakeable: swapTakeable, swapNeedAny: swapNeedAny, nameOf: nameOf, plantHerb: plantHerb, waterHerb: waterHerb, harvestHerb: harvestHerb, clearHerb: clearHerb, inBasket: inBasket, brewCup: brewCup, brewLines: brewLines, herbSVG: herbSVG,
     /* for a map: where this place sits and how to get in (no shortcut button of its own) */
     PLACE: { id: 'greenhouse', name: 'The greenhouse', icon: 'local_florist', within: 'garden', door: 'greenhouse' } };
   root.OvuGreenhouse = GH;

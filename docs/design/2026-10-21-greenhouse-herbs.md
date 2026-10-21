@@ -39,13 +39,15 @@ branch (`claude/wizardly-galileo-0qg6f8`), where Hay & Harvest sells the farm's 
   `brew` (coffee). All within 18 words, no em dashes, no pressure words; every pose is drawn for every outfit.
 - `sw.js` `ovumind-2026-10-21o`.
 
-## Rules held by the tests (2k8, 39 checks; smoke block in the greenhouse section)
+## Rules held by the tests (2k8, 57 checks; smoke blocks in the greenhouse and Harbour Lane sections)
 
 Prices and days per herb; each ripens on its day and not before, and again after its regrow days; once a day; missed
 days; clock back; the harvest lands in the basket beside what was there; only the start costs hearts; a cup pays
 exactly the practice thank-you and respects the daily cap and the clock watermark; no `S.add`, `.award` or `.grant`
 in the herb code; a failed save (S.commit stubbed to throw) sells, plants, waters, picks, clears and brews nothing and
-takes no hearts or energy; too tired changes nothing; restored values are cleaned.
+takes no hearts or energy; too tired changes nothing; restored values are cleaned; the free start is given once,
+never again with the clock set back or a malformed restore, and a failed save leaves it open; the swap takes three
+of a herb or a crop for a seed or a start, refuses what she cannot grow, and a failed save moves nothing.
 
 ## Decisions
 
@@ -61,8 +63,13 @@ takes no hearts or energy; too tired changes nothing; restored values are cleane
    patch)`; it adds no new rule, only a second door into `practicePoints`.
 4. **The herb uses the basket, not a separate store**, so the kitchen branch can read `farm.harvest.ginger` and
    `farm.harvest.pandan` for sweet potato ginger soup and pandan rice.
-5. Herbs are not offered at the seed swap (the swap lists `CROPS` only; lemongrass already was).
-6. Independent review (21 Oct) fixes: a full bag is not sold a start and a full basket is not picked into, the
+5. **Herbs count at the seed swap** (Jamie, 21 Oct). Three of a herb or a crop from the basket (a pumpkin counts as
+   three) buys one seed of a crop she grows or one start of any herb. No hearts change hands, and the basket, the shed
+   and the greenhouse move in one save (`OvuGreenhouse.swapAny`). Lemongrass is taken as a greenhouse start.
+6. **The first herb start is free, once** (Jamie, 21 Oct), any herb she chooses, so a first cup never needs hearts.
+   The claim is kept in the greenhouse state as a mark, not a date, so a clock set back cannot reopen it, and a
+   restored mark with a malformed value still counts as claimed (`OvuGreenhouse.freeStart`).
+7. Independent review (21 Oct) fixes: a full bag is not sold a start and a full basket is not picked into, the
    morning routine says "Finish the cup first" during a brew, the tea-table row is added only to the tea list, the cup
    sheet's line is within 18 words, and the smoke check waits for the cup to finish instead of a fixed time.
 
@@ -72,14 +79,13 @@ takes no hearts or energy; too tired changes nothing; restored values are cleane
   greenhouse sprite style; and a planter box prop to match the bench's wood.
 - A teapot-and-cup brewing pose would read better than the coffee pose, in every outfit.
 
-## Open questions for Jamie
+## Jamie's answers (21 Oct)
 
-1. Lemongrass to the greenhouse (done here) or back on the farm?
-2. Should lemongrass and pandan get sourced research cards in the tea list? None were added: no new health claims.
-3. Harvest sizes (the design gave none): 2, 3, 3, 2 as above.
-4. Should herbs join the seed swap?
-5. Should a cup count as Erin's "Morning coffee or tea" slot (once a day) instead of a general practice? Today it pays
-   like the plant minute: 2 hearts a cup inside the shared 6-a-day practice cap, so it can never pay twice.
-6. A cup needs a herb, and starts cost hearts. The plant minute and Erin's cup stay free, so no care is behind hearts,
-   but say if the cup itself should be free of that too (for example, a free pinch of chamomile on the first visit).
-7. A Codex review of this diff is pending (Codex unavailable here; no other model stood in).
+1. Lemongrass stays in the greenhouse, with the migration for farms that already unlocked it.
+2. No research cards for lemongrass and pandan; their cups claim nothing.
+3. Harvest sizes 2, 3, 3, 2 stand.
+4. Herbs count at the seed swap (built, decision 5).
+5. A cup stays a separate flat practice thank-you inside the shared cap, not the morning coffee slot.
+6. One free first start for every player (built, decision 6).
+
+A Codex review of this diff is pending (Codex unavailable here; no other model stood in).
