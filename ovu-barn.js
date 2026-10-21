@@ -103,7 +103,7 @@
   };
   /* inside the barn and the hen house (Jamie, 21 Oct: "we can enter barn and chicken house"), rendered 21 Oct 2026 */
   var BARN_IN = {
-    id: 'barninside', scene: 'barninside', name: 'Inside the barn', img: 'barn-inside-v1.webp', w: 1024, h: 1280, avatarW: 14, only: [], mapIcon: 'cottage', indoor: true,
+    id: 'barninside', scene: 'barninside', mapHide: true, mapParent: 'barn', name: 'Inside the barn', img: 'barn-inside-v1.webp', w: 1024, h: 1280, avatarW: 14, only: [], mapIcon: 'cottage', indoor: true,
     hotspots: [
       { id: 'barninexit', x: 88, y: 66, label: 'Door · back to the yard', prompt: 'Tap to go back outside', icon: 'door_open', wp: { x: 85, y: 76, flip: false } },
       { id: 'clover', x: 33, y: 52, label: 'Clover · the cow', prompt: 'Tap to visit Clover', icon: 'pets', wp: { x: 46, y: 75, flip: true } }
@@ -115,7 +115,7 @@
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 }, props: {}
   };
   var HEN_IN = {
-    id: 'heninside', scene: 'heninside', name: 'The hen house', img: 'hen-inside-v1.webp', w: 1024, h: 1280, avatarW: 15, only: [], mapIcon: 'egg', indoor: true,
+    id: 'heninside', scene: 'heninside', mapHide: true, mapParent: 'barn', name: 'The hen house', img: 'hen-inside-v1.webp', w: 1024, h: 1280, avatarW: 15, only: [], mapIcon: 'egg', indoor: true,
     hotspots: [
       { id: 'heninexit', x: 40, y: 86, label: 'Door · back to the yard', prompt: 'Tap to go back outside', icon: 'door_open', wp: { x: 41, y: 80, flip: false } },
       { id: 'nests', x: 48, y: 39, label: 'The nests', prompt: 'Tap to look in the nests', icon: 'egg', wp: { x: 52, y: 68, flip: false } }

@@ -29,7 +29,7 @@
       var n = q.shift(), L = lay(n); if (!L) continue;
       nodes[n] = { id: n, name: placeName(L, n), icon: ICON[n] || L.mapIcon || 'park', img: L.img, store: L.store || null, w: L.w, h: L.h, span: L.span > 1 ? L.span : 1 };
       (L.doors || []).forEach(function (d) {
-        var to = nodeOf(d.to, homeId); if (!lay(to)) return;
+        var to = nodeOf(d.to, homeId); if (!lay(to) || lay(to).mapHide) return; /* the inside of a building is not a place on the map (Jamie, 21 Oct: "just the overview of the world") */
         var key = d.tap || d.id, hs = (L.hotspots || []).filter(function (x) { return x.id === key; })[0];
         edges.push({ from: n, to: to, door: key, x: d.x, y: d.y, label: hs && hs.label ? hs.label : key });
         if (!seen[to]) { seen[to] = true; q.push(to); }
@@ -94,7 +94,7 @@
   var R = root.OvuRoom; if (!R || !doc) return;
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function storeShut(n) { var ST = root.OvuStreet; return !!(n && n.store && ST && ST.openNow && !ST.openNow(n.store)); }
-  function hereNow(g) { var L = R.layout(); if (R.visiting()) return null; var h = nodeOf(L.id, R.homeId()); return g.nodes[h] ? h : null; }
+  function hereNow(g) { var L = R.layout(); if (R.visiting()) return null; var h = nodeOf(L.id, R.homeId()); if (!g.nodes[h] && L.mapParent && g.nodes[L.mapParent]) h = L.mapParent; /* inside the barn she is at the barn */ return g.nodes[h] ? h : null; }
   M.hereName = function () {
     var L = R.layout(); if (!L) return '';
     if (R.visiting()) return 'Visiting';
