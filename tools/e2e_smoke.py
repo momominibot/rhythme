@@ -785,6 +785,8 @@ async def main():
             # Moon Tap: open from the mat sheet, begin, three blooms, stop after the minimum, the entry is saved
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(800)
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindTap", timeout=8000); await page.click("#mindTap"); await page.wait_for_selector("#btapBegin", timeout=8000)
+            kh = await page.evaluate("()=>({how: !!document.querySelector('#btapCard details.btap-how'), steps: document.querySelectorAll('#btapCard details.btap-how li').length, open: document.querySelector('#btapCard details.btap-how').open})")
+            check("Koi Pond: the card carries a folded How to practise list of five steps", kh["how"] and kh["steps"] == 5 and not kh["open"], kh)
             await page.click("#btapBegin"); await page.wait_for_timeout(5600)
             for _ in range(3): await page.mouse.click(195, 300); await page.wait_for_timeout(150)
             f0 = await page.evaluate("()=>{var f=OvuBreathTap.koi()[0], r=document.querySelector('#btap').getBoundingClientRect(); return {x: f.x + r.left, y: f.y + r.top, fx: f.x, fy: f.y}}")
@@ -801,6 +803,10 @@ async def main():
             # Light Flower (Jamie and Codex, 20 Oct): a flower of light; a tap lights one petal and one soft note; Stop saves only time
             await page.click("#btapDoneClose"); await page.wait_for_timeout(400)
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindFlower", timeout=8000); await page.click("#mindFlower"); await page.wait_for_selector("#lfBegin", timeout=8000)
+            lfh = await page.evaluate("()=>({how: !!document.querySelector('#lfCard details.btap-how'), steps: document.querySelectorAll('#lfCard details.btap-how li').length, paces: [...document.querySelectorAll('#lfPaces [data-pace]')].map(b=>b.dataset.pace).join(), own: (document.querySelector('#lfPaces .on')||{}).dataset.pace, safeHidden: document.querySelector('.lf-pacesafe').hidden})")
+            await page.click("#lfPaces [data-pace=longout]"); await page.wait_for_timeout(100)
+            lfh2 = await page.evaluate("()=>({safeHidden: document.querySelector('.lf-pacesafe').hidden, on: document.querySelector('#lfPaces .on').dataset.pace})")
+            check("Light Flower: a How to practise list of five steps, four breathing paces with the flower's own rhythm chosen, and the gentle-breathing line only once a pace with words is picked", lfh["how"] and lfh["steps"] == 5 and lfh["paces"] == "own,easy,steady,longout" and lfh["own"] == "own" and lfh["safeHidden"] and not lfh2["safeHidden"] and lfh2["on"] == "longout", {"lfh": lfh, "lfh2": lfh2})
             lf0 = await page.evaluate("()=>({title: document.querySelector('#lflower h2').textContent, air: !document.querySelector('.lf-air').hidden, open: !document.querySelector('#lflower').hidden, sound: OvuSound.enabled()})")
             await page.click("#lfBegin"); await page.wait_for_timeout(700)
             box = await page.evaluate("()=>{var r=document.querySelector('#lfFlower').getBoundingClientRect(); return {x: r.left + r.width/2, y: r.top + r.height*0.2, w: r.width}}")
@@ -811,6 +817,8 @@ async def main():
             lf2 = await page.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); var e=d.events.filter(x=>x.type==='mindfulness'&&x.data.kind==='lightflower'); var last=e[e.length-1]; return {n: e.length, secs: last ? last.data.seconds : 0, taps: last ? ('taps' in last.data) : null, done: !document.querySelector('#lfDone').hidden, text: document.querySelector('#lfDone b').textContent, sub: (document.querySelector('#toast .toastsub')||{}).textContent || ''}}")
             check("Light Flower opens from the Mind hub with the soft-air choice, sound on by default, and lights petals on a drawn flower", lf0["title"] == "Light Flower" and lf0["open"] and lf0["air"] and lf0["sound"] and lf1["running"] and lf1["canvas"] and lf1["flower"], {"lf0": lf0, "lf1": lf1})
             check("Stop saves only the practice time (no tap count), says the pause is saved, and the mindful line follows", lf2["n"] == 1 and lf2["secs"] >= 2 and lf2["taps"] is False and lf2["done"] and "Your pause is saved" in lf2["text"] and ("quiet detail" in lf2["sub"] or "note has faded" in lf2["sub"]), lf2)
+            lfp = await page.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); var e=d.events.filter(x=>x.type==='mindfulness'&&x.data.kind==='lightflower'); return {pace: e[e.length-1].data.pace, word: (document.querySelector('#lfBreath')||{}).textContent}}")
+            check("Light Flower: the saved practice carries the Long out pace, and the breath word was shown on the stage", lfp["pace"] == "longout" and lfp["word"] in ("in", "out"), lfp)
             await page.click("#lfDoneClose"); await page.wait_for_timeout(300)
             # Erin's own teeth scripts: the hour picks morning or evening, eight steps each inside four minutes, the clips exist
             late = await page.evaluate("()=>OvuMindful.nextVariation(OvuMindful.byId('teeth'), new Date(2026,9,20,0,40)).when")
