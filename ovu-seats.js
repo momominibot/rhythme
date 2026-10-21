@@ -123,6 +123,7 @@
   }
   function begin(seatId) {
     var seat = SEATS[seatId]; if (!seat || run) return;
+    if (root.OvuSound) root.OvuSound.play('boop'); /* a practice begins */
     var L = R.layout(); if (!L || L.id !== seat.scene) return;
     var other = otherOwner(); if (other) { R.toast(other[0], other[1]); return; }
     var sp = spotFor(seatId); if (!sp || !sp.spot || !sp.spot.seat) return;

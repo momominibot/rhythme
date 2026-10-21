@@ -2900,4 +2900,92 @@ var summarised = false;
   check('the pictures are small (under 40 KB each)', big.length === 0, big.map(function (f) { return f.img; }).join());
 })();
 
+(function gameMusic() {
+  console.log('2k14. game music (21 Oct): opt in, one decide(), a 32-bar form in D over diatonic chords, media tracked by events');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-harbour.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-music.js'), 'utf8'), w, { filename: 'ovu-music.js' });
+  var M = w.OvuMusic, src = fs.readFileSync(path.join(root, 'ovu-music.js'), 'utf8');
+  /* every real layout has a theme, the cave alone has none, and an unknown id falls back to the home tune */
+  var ids = Object.keys(w.LAYOUTS).concat(['farm', 'barn', 'barninside', 'heninside', 'harbour', 'cave']);
+  var themes = {}; ids.forEach(function (id) { themes[id] = M.themeFor(w.LAYOUTS[id] || id); });
+  var noTheme = ids.filter(function (id) { return !themes[id]; });
+  check('every layout maps to a theme except the cave; the Dream Street shops keep the street\'s tune; an unknown id takes the home tune', noTheme.join() === 'cave' && themes.room === 'home' && themes['shop-pet'] === 'street' && themes['shop-homes'] === 'street' && themes.garden === 'garden' && themes.greenhouse === 'garden' && themes.farm === 'farm' && themes.plaza === 'plaza' && themes.harbour === 'harbour' && M.themeFor({ id: 'nowhere' }) === 'home' && M.themeFor(null) === 'home', JSON.stringify(themes));
+  check('bands follow the window: sunrise and morning bright, afternoon as written, sunset evening, the dark window evening until 21:00 then night, and the small hours night whatever the phase', M.bandFor('sunrise', 7) === 'morning' && M.bandFor('morning', 10) === 'morning' && M.bandFor('afternoon', 14) === 'day' && M.bandFor('sunset', 18) === 'evening' && M.bandFor('night', 19) === 'evening' && M.bandFor('night', 21) === 'night' && M.bandFor('night', 23) === 'night' && M.bandFor('morning', 3) === 'night');
+  var tempos = Object.keys(M.THEMES).map(function (t) { return ['morning', 'day', 'evening', 'night'].map(function (b) { return M.tempoFor(t, b); }); }).reduce(function (a, b) { return a.concat(b); }, []);
+  check('every tempo sits between 56 and 84 beats a minute, night never faster than day', tempos.every(function (x) { return x >= 56 && x <= 84; }) && Object.keys(M.THEMES).every(function (t) { return M.tempoFor(t, 'night') <= M.tempoFor(t, 'day') && M.tempoFor(t, 'evening') <= M.tempoFor(t, 'day'); }), tempos.join());
+  /* the form and the bank */
+  check('the form is 32 bars, A A\' B A\'\', and bar 32 is a held D6', M.BARS.length === 32 && M.LOOP_BEATS === 128 && M.BARS[31].join() === 'D6' && M.BARS[0].join() === M.BARS[8].join() && M.BARS[16][0] === 'Em7');
+  var bankBad = [];
+  Object.keys(M.BANK).forEach(function (ph) {
+    var grp = M.GROUP[ph], slot = M.SLOT_GROUPS.indexOf(grp), base = slot * 16, end = 0;
+    M.BANK[ph].forEach(function (n) {
+      var beat = base + n[0]; end = Math.max(end, n[0] + n[2]);
+      if (!M.inScale(n[1])) bankBad.push(ph + ' out of scale ' + n[1]);
+      if (Number.isInteger(n[0]) && !M.chordTone(n[1], M.chordAt(beat))) bankBad.push(ph + ' beat ' + n[0] + ' ' + n[1] + ' over ' + M.chordAt(beat));
+      var m = M.midi(n[1]); if (m < M.midi('D4') || m > M.midi('A5')) bankBad.push(ph + ' register ' + n[1]);
+    });
+    if (end > 15) bankBad.push(ph + ' no rest at the end (' + end + ')');
+    if (/^B2/.test(ph) && M.BANK[ph].some(function (n) { return n[0] < 8; })) bankBad.push(ph + ' plays in the accompaniment-only bars');
+  });
+  check('every phrase stays in D major, lands chord tones on the beat, keeps the melody register and ends in rest; B2 phrases leave their first two bars to the accompaniment', bankBad.length === 0, bankBad.join('; '));
+  check('the last slot always cadences on the same phrase, and that phrase ends on D', Object.keys(M.THEMES).every(function (t) { return M.arrange(t, 0)[7] === 'A2d' && M.arrange(t, 5)[7] === 'A2d'; }) && M.BANK.A2d[M.BANK.A2d.length - 1][1] === 'D5');
+  var a0 = M.arrange('home', 0), a1 = M.arrange('home', 1), a0b = M.arrange('home', 0);
+  check('the arrangement is fixed for a loop index and changes a little for the next (bounded variation, never a shuffle)', a0.join() === a0b.join() && a0.join() !== a1.join() && a0.every(function (ph, i) { return M.THEMES.home.slots[i].indexOf(ph) > -1; }) && a1.every(function (ph, i) { return M.THEMES.home.slots[i].indexOf(ph) > -1; }));
+  /* events */
+  var evBad = [], all = [];
+  Object.keys(M.THEMES).forEach(function (t) { ['morning', 'day', 'evening', 'night'].forEach(function (b) { [0, 1, 2].forEach(function (L) { var ev = M.events(t, b, L); all.push([t, b, L, ev]); }); }); });
+  all.forEach(function (x) {
+    var t = x[0], b = x[1], ev = x[3];
+    for (var i = 1; i < ev.length; i++) if (ev[i].t < ev[i - 1].t) { evBad.push(t + ' ' + b + ' order'); break; }
+    ev.forEach(function (e) {
+      if (e.pitch && !M.inScale(e.pitch)) evBad.push(t + ' ' + b + ' scale ' + e.pitch);
+      if (e.part === 'mel' && Number.isInteger(e.t) && !M.chordTone(e.pitch, e.chord)) evBad.push(t + ' ' + b + ' beat ' + e.t + ' ' + e.pitch);
+      if (e.part === 'pad' && !(e.pitches && e.pitches.length === 3)) evBad.push(t + ' pad shape');
+      if (e.t < -0.2 || e.t >= 128) evBad.push(t + ' ' + b + ' outside the loop ' + e.t);
+    });
+    var mel = ev.filter(function (e) { return e.part === 'mel'; }), last = mel[mel.length - 1];
+    if (!last || last.pitch !== 'D5' || last.t + last.d > 128) evBad.push(t + ' ' + b + ' does not end on D with a rest');
+    if (b === 'night' && ev.some(function (e) { return e.part === 'ans' || e.part === 'grace' || e.part === 'acc'; })) evBad.push(t + ' night has answering, grace or broken chords');
+    var dayMel = M.events(t, 'day', x[2]).filter(function (e) { return e.part === 'mel'; }).length;
+    if (b === 'night' && (M.THEMES[t].sparse ? mel.length > dayMel : mel.length >= dayMel)) evBad.push(t + ' night is not sparser'); /* the harbour is sparse by day already */
+  });
+  check('for every theme, band and loop: events in time order, in the scale, chord tones on the beat, a D with rest at the end; night drops the light notes, the answering voice and the broken chords', evBad.length === 0, evBad.slice(0, 6).join('; '));
+  var gm = M.events('garden', 'morning', 0), gd = M.events('garden', 'day', 0);
+  check('the garden adds grace notes and an answering voice in the morning only; the harbour keeps its melody sparse by day', gm.some(function (e) { return e.part === 'grace'; }) && !gd.some(function (e) { return e.part === 'grace'; }) && gm.some(function (e) { return e.part === 'ans'; }) && M.events('harbour', 'day', 0).filter(function (e) { return e.part === 'mel'; }).length < M.events('home', 'day', 0).filter(function (e) { return e.part === 'mel'; }).length);
+  check('a sixth below stays diatonic and below: A4 to C#4, D5 to F#4, and a step below E4 is D4', M.stepDown('A4', 5) === 'C#4' && M.stepDown('D5', 5) === 'F#4' && M.stepDown('E4', 1) === 'D4' && M.stepDown('D4', 1) === 'C#4');
+  /* decide: the precedence table */
+  var D = M.decide;
+  check('decide: off beats everything; hidden beats sleep; sleep beats an activity; an activity beats the scene; no theme beats a voice; a voice ducks; otherwise play',
+    D({ music: false, theme: 'home' }).mode === 'off' && D({ music: true, sound: false, theme: 'home' }).mode === 'off' && D({ music: true, hidden: true, sleeping: true, theme: 'home' }).why === 'hidden' && D({ music: true, sleeping: true, exclusive: true, theme: 'home' }).why === 'sleep' && D({ music: true, exclusive: true, theme: null }).why === 'activity' && D({ music: true, theme: null, media: true }).why === 'scene' && D({ music: true, theme: 'home', media: true }).mode === 'duck' && D({ music: true, theme: 'home' }).mode === 'play' && D({ music: true, theme: 'home', from: 'duck' }).fade === 2.5 && D({ music: true, theme: 'home', media: true }).fade < 0.1);
+  check('decide is pure: the same snapshot twice gives the same answer and never touches audio', JSON.stringify(D({ music: true, theme: 'plaza' })) === JSON.stringify(D({ music: true, theme: 'plaza' })) && !/ctx|gain/.test(D.toString()));
+  /* media: judged by events, never by the call */
+  function FakeEl(tag) { this.tagName = tag; this.paused = true; this.ended = false; this.muted = false; this.volume = 1; this.srcObject = null; this.src = 'assets/audio/x.mp3'; this.currentSrc = ''; this.h = {}; }
+  FakeEl.prototype.addEventListener = function (n, f) { (this.h[n] = this.h[n] || []).push(f); };
+  FakeEl.prototype.fire = function (n) { (this.h[n] || []).forEach(function (f) { f(); }); };
+  var a = new FakeEl('AUDIO'), v = new FakeEl('VIDEO'), s = new FakeEl('AUDIO'); s.src = 'data:audio/wav;base64,UklGR'; var cam = new FakeEl('VIDEO'); cam.srcObject = {}; cam.muted = true;
+  M._media.track(a); M._media.track(v); M._media.track(s); M._media.track(cam);
+  a.paused = false; a.fire('playing'); v.paused = false; v.fire('playing'); s.paused = false; s.fire('playing'); cam.paused = false; cam.fire('playing');
+  check('a playing audio and a playing video count; the silent data: clip and the camera preview never do', M._media.live().length === 2 && M._media.live().indexOf(a) > -1 && M._media.live().indexOf(v) > -1);
+  a.muted = true; a.fire('volumechange'); v.volume = 0; v.fire('volumechange');
+  check('a muted element or one at zero volume drops out at once', M._media.live().length === 0);
+  a.muted = false; a.fire('volumechange'); a.fire('ended'); a.paused = true; a.ended = true; a.fire('ended');
+  check('an element only counts while its own state says it plays: unmuting while playing counts, ending clears it', M._media.live().length === 0);
+  a.ended = false; a.paused = false; a.fire('playing'); a.src = 'assets/audio/y.mp3'; a.fire('emptied'); a.paused = true; a.fire('pause');
+  var reused = M._media.live().length === 0; a.paused = false; a.fire('playing');
+  check('one element reused for successive clips is re-read at every event: a stale ended cannot release a newer clip, and a new playing counts again', reused && M._media.live().length === 1);
+  check('nothing is inferred from a play() call: a rejected start never marks an element live', (function () { var el = new FakeEl('AUDIO'); w.HTMLMediaElement = function () { }; w.HTMLMediaElement.prototype.play = function () { return Promise.reject(new Error('blocked')); }; M._media.wrap(); var p = w.HTMLMediaElement.prototype.play.call(el); p.catch(function () { }); return !!w.HTMLMediaElement.prototype.play.__ovuMusic && M._media.live().indexOf(el) < 0 && typeof el.h.playing === 'object' && M._media.wrap() === false; })());
+  check('audible() reads the element, not a flag: paused, ended, muted, silent volume, a stream or a data source are not audible', !M.audible(Object.assign(new FakeEl('AUDIO'), { paused: true })) && !M.audible(Object.assign(new FakeEl('AUDIO'), { paused: false, ended: true })) && M.audible(Object.assign(new FakeEl('AUDIO'), { paused: false })) && !M.audible(Object.assign(new FakeEl('DIV'), { paused: false })));
+  /* the engine wires once */
+  w.setInterval = function () { return 0; }; w.clearInterval = function () { }; w.setTimeout = function () { return 0; }; w.clearTimeout = function () { }; /* the engine's pollers, inert here */
+  var hooks = {}, R = { on: function (n, f) { (hooks[n] = hooks[n] || []).push(f); }, layout: function () { return { id: 'room' }; }, practiceOn: function () { return false; }, sessionOn: function () { return false; }, meditating: function () { return false; }, toast: function () { } };
+  w.OvuRoom = R;
+  var first = M.init(), second = M.init();
+  check('init wires the room once: a second call does nothing, and the state reports off until she opts in', first === true && second === false && hooks.layout.length === 1 && hooks.travel.length === 1 && hooks.boot.length === 1 && M.state().on === false && M.state().mode === 'off');
+  check('the module pays no hearts, writes no diary entry, names no model and uses no em dash', !/OvuRewards|\.award\(|S\.add\(|OvuStore\.add\(|addMany\(/.test(src) && !/gpt|claude|doubao|deepseek|gemini/i.test(src) && src.indexOf('—') < 0);
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), rh = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), ss = fs.readFileSync(path.join(root, 'ovu-sound.js'), 'utf8');
+  check('the two controls are native buttons named Music with aria-pressed, the icon hidden from assistive technology, and the window help says what music is', /id="musicChip" type="button" aria-label="Music" aria-pressed="false"><span class="ms" aria-hidden="true">/.test(rh) && /id="winMusic" aria-pressed="/.test(rs) && /Music is a soft tune drawn in the browser/.test(rs) && rh.indexOf('<script src="ovu-music.js"></script>') > rh.indexOf('<script src="ovu-voicemute.js"></script>'));
+  check('the kit shares its graph without resuming it, resumes only on request, and knows the cast', /function graph\(\)/.test(ss) && !/function graph\(\)[^\n]*resume/.test(ss) && /function resume\(\)/.test(ss) && !!w.OvuSound.KIT.cast && /play\('cast'\)/.test(fs.readFileSync(path.join(root, 'ovu-harbour.js'), 'utf8')) && /play\('boop'\)/.test(fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8')) && /R\.emit\('travel', target, T\)/.test(fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8')) && typeof w.OvuBreathTap.running === 'function');
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

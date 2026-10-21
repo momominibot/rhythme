@@ -512,6 +512,7 @@
     if (!T) return false;
     if (T.store && !storeOpen(T.store)) { hoursCard(T.store); return false; } /* each interior keeps its own store's hours */
     travelling = true; clearInput(); if (active) commit();
+    R.emit('travel', target, T); /* the music fades before the plate swaps (the cave is reached in silence) */
     scene.classList.add('fading'); if (root.OvuSound) root.OvuSound.play('door'); else R.chime('tap');
     var t0 = Date.now();
     Promise.all([preload(R.ART + T.img), occWait(T)]).then(function () { /* the plate, and its cutouts decoded or the cap reached */

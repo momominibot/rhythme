@@ -89,6 +89,7 @@
   function invalidate(reopen) { enc++; clearLine(); var sp = spotSheet(); if (reopen && sp && here() && R.sheetOpen()) openSpot(sp); }
   function clearLine() { if (line) { if (line.parentNode) line.remove(); line = null; } R.els.scene.classList.remove('fishing', 'bite'); }
   function castLine(spot) {
+    if (root.OvuSound) root.OvuSound.play('cast'); /* the cast whistles out and plops (one owner for this cue) */
     clearLine();
     var f = SPOTS[spot].float, p = R.pos ? R.pos() : null;
     var el = doc.createElement('div'); el.className = 'harbourthing castline'; el.setAttribute('aria-hidden', 'true');
@@ -130,6 +131,7 @@
     });
   }
   function bite(spot, fish) {
+    if (root.OvuSound) root.OvuSound.play('pop'); /* the float dips */
     var my = ++enc;
     R.els.scene.classList.add('bite');
     var pic = doc.querySelector('#sheet .hbpic'); if (pic) pic.innerHTML = waterSVG('bite');
