@@ -16,6 +16,9 @@ function fresh(todayIso) {
   ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sound.js', 'ovu-breathtap.js', 'ovu-lightflower.js', 'ovu-moments.js', 'ovu-mindful.js', 'ovu-morning.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sync.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
+  /* ovu-sync.js fails closed without the consent module (nothing moves); the sync blocks here test the sync, so they get a
+   * double that says the gate is open; blocks that load the real ovu-consent.js replace it */
+  if (!w.OvuConsent) w.OvuConsent = { double: true, needsSheet: function () { return false; }, allows: function (p) { return p === 'cloud_sync'; }, record: function () { }, pullAccountState: function () { return Promise.resolve(null); }, flush: function () { return Promise.resolve(0); }, recordedOnAccount: function () { return true; }, boundTo: function () { return false; }, header: function () { return {}; } }; /* only the backup door is open and already on the account; nothing else is granted */
   return w;
 }
 var fails = 0, passes = 0;
@@ -96,6 +99,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('"skipped lunch" is still not a meal', O.parseLocal('skipped lunch, cramps 3/10').every(function (e) { return e.type !== 'food'; }));
   check('"had chicken rice for lunch" is a meal', O.parseLocal('had chicken rice for lunch').some(function (e) { return e.type === 'food' && e.data.meal === 'lunch'; }));
   check('spotting alone is a symptom, not a period day', (function () { var es = O.parseLocal('a bit of spotting today'); return es.some(function (e) { return e.type === 'symptom' && e.data.symptoms.indexOf('spotting') > -1; }) && !es.some(function (e) { return e.type === 'period'; }); })());
+  delete w.OvuConsent; /* the orb's own default, with no consent module present */
   check('model is off by default until permission is given', O.aiConfig().on === false && O.aiConfig().insights === false, JSON.stringify(O.aiConfig()));
 })();
 
@@ -1786,6 +1790,7 @@ function scenes(todayIso) {
 (function launchAiGuards() {
   console.log('launch sweep (20 Oct): Luna\'s AI help is paused, and a signed-in request never goes out without the account');
   var w = fresh('2026-10-20'), O = w.OvuOrb, sent = [];
+  delete w.OvuConsent; /* this sweep is about the account gate, with no consent module present */
   w.localStorage.setItem('ovumind_ai_v1', JSON.stringify({ on: true, provider: 'ovumind', insights: true, photos: true }));
   w.fetch = function (u) { sent.push(String(u)); return Promise.resolve({ ok: true, status: 200, json: function () { return Promise.resolve({ entries: [], reply: 'ok' }); } }); };
   vm.runInContext(fs.readFileSync(path.join(root, 'ovu-insight.js'), 'utf8'), w, { filename: 'ovu-insight.js' });

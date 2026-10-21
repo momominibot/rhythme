@@ -131,6 +131,9 @@ def main():
     global TODAY
     planted = {}
     def plant(c):
+        legacy = uuid.uuid4(); planted['legacy'] = legacy
+        c.execute("insert into auth.users (id, email, aud, role) values (%s, %s, 'authenticated', 'authenticated')", [legacy, 'legacy-%s@example.invalid' % legacy])
+        c.execute("insert into public.analysis_consent (user_id, notice_version, age_band, history_scope, accepted_at) values (%s, 9, '30-34', 'from_now', now() - interval '30 days')", [legacy])  # accepted under the old setter with an unregistered version
         planted['run'] = c.execute("insert into staff.agent_runs (kind, trigger, status, finished_at, summary) values ('run_now', 'staff', 'ok', now(), '{\"eligible\": 25}'::jsonb) returning id").fetchone()[0]
     c = fresh(plant)
     TODAY = c.execute("select (now() at time zone 'Asia/Singapore')::date").fetchone()[0]
@@ -150,12 +153,21 @@ def main():
     nob = person(c, attest=False)
     noa = consent(c, nob, band='')
     check('no adult attestation and no adult band is refused', 'error' in noa and '18 or older' in noa['error'], noa)
-    ok1 = consent(c, p)
+    ok1 = consent(c, p, backdate=0)
     acc1 = c.execute("select accepted_at from public.analysis_consent where user_id = %s", [p['id']]).fetchone()[0]
-    time.sleep(0.05); ok2 = consent(c, p)
+    time.sleep(0.05); ok2 = consent(c, p, backdate=0)
     acc2 = c.execute("select accepted_at from public.analysis_consent where user_id = %s", [p['id']]).fetchone()[0]
     ev = c.execute("select count(*) from public.consent_events where user_id = %s and purpose = 'improve_logging' and action = 'grant'", [p['id']]).fetchone()[0]
-    check('a grant writes the consent event in the same transaction, and a repeat grant keeps its original accepted date', ok1.get('adult_attested_by') == 'age_18 event' and acc1 == acc2 and ev == 2, {'ok1': ok1, 'acc': [str(acc1), str(acc2)], 'events': ev})
+    check('a grant writes the consent event in the same transaction, and a repeat grant keeps its original accepted date (no fixture backdating here)', ok1.get('adult_attested_by') == 'age_18 event' and acc1 == acc2 and ev == 2, {'ok1': ok1, 'acc': [str(acc1), str(acc2)], 'events': ev})
+    as_user(c, p['id']); r1 = c.execute("select public.analysis_consent_set(true, 4, '30-34', 'from_now', null, null, 'req-1')").fetchone()[0]; r2 = c.execute("select public.analysis_consent_set(true, 4, '30-34', 'from_now', null, null, 'req-1')").fetchone()[0]
+    try:
+        c.execute("select public.analysis_consent_set(false, 4, null, null, null, null, 'req-1')"); mism = False
+    except Exception:
+        mism = True
+    as_server(c)
+    ev2 = c.execute("select count(*) from public.consent_events where user_id = %s and purpose = 'improve_logging' and action = 'grant'", [p['id']]).fetchone()[0]
+    check('a replayed request id writes no second event and a reused id for a different choice is refused', r2.get('replayed') is True and ev2 == 3 and mism, {'r2': r2, 'ev2': ev2})
+    consent(c, p)  # the fixture's ordinary backdated choice for the diary that follows
     band_only = person(c, attest=False); bo = consent(c, band_only, band='25-29')
     check('an adult band from the phone attests when no age_18 event exists, and is recorded as such', bo.get('adult_attested_by') == 'age band', bo)
     consent(c, band_only, on=False)  # out again, so the counts below are exact
@@ -214,14 +226,17 @@ def main():
     ov = overview(c, owner)
     check('a tombstoned entry of a consenting account holds the published runs too', ov['latest_run'] is None and ov['held_runs'] >= 1, ov['held_runs'])
     run(c, owner)
-    c.execute("delete from public.analysis_consent where user_id = %s", [people[2]['id']])
+    c.execute("delete from auth.users where id = %s", [people[2]['id']])
     ov = overview(c, owner)
-    check('an account whose consent row disappears (account deletion) holds the runs', ov['latest_run'] is None, ov['held_runs'])
+    check('deleting the account itself (auth cascade) takes the consent row with it and holds the runs', ov['latest_run'] is None and c.execute("select count(*) from public.analysis_consent where user_id = %s", [people[2]['id']]).fetchone()[0] == 0, ov['held_runs'])
+    as_user(c, owner['id']); feed = c.execute("select public.admin_feed(200)").fetchone()[0]; as_server(c)
+    held_ev = [e for e in feed if e.get('run_id') and c.execute("select invalidated_at is not null from staff.agent_runs where id = %s", [e['run_id']]).fetchone()[0]]
+    check('the feed withholds the words and detail of events that belong to held runs', held_ev and all('held' in e['title'] and e['detail'] == {'held': True} for e in held_ev), {'n': len(held_ev), 'sample': held_ev[:1]})
 
     # 7. counts never read the diary: cloud copies come from receipts
     cnt = overview(c, owner)['counts']
     rec = c.execute("select count(*) from staff.backup_receipts").fetchone()[0]
-    check('cloud-copy count comes from backup receipts kept by a trigger, one per account with any entry (19 + p20 + late)', cnt['accounts_with_cloud_copy'] == rec == 21, {'counts': cnt, 'receipts': rec})
+    check('cloud-copy count comes from backup receipts kept by a trigger, one per account with any entry (19 + p20 + late, minus the deleted account whose receipt cascaded)', cnt['accounts_with_cloud_copy'] == rec == 20, {'counts': cnt, 'receipts': rec})
     src = open(os.path.join(MIG, ORDER[-1])).read()
     check('svc_counts no longer reads public.entries', 'from public.entries' not in src[src.index('create or replace function staff.svc_counts'):src.index('-- ---------- 6. metrics_build v3')])
 
@@ -284,6 +299,28 @@ def main():
     check('a share is held back exactly when its numerator or its complement is a small group (imported sleep records: %d imported, %d not)' % (num, comp), bool(share['suppressed']) == expect_held or share['state'] == 'no_data', {'share': share, 'num': num, 'comp': comp})
     c.execute("delete from public.entries where user_id = %s", [solo['id']])
     check('deleting the cloud copy removes the backup receipt', c.execute("select count(*) from staff.backup_receipts where user_id = %s", [solo['id']]).fetchone()[0] == 0)
+
+    nob2 = person(c, attest=False)
+    as_user(c, nob2['id'])
+    try:
+        c.execute("select public.analysis_consent_set(true, 4, null, 'from_now')"); om = False
+    except Exception as e:
+        om = '18 or older' in str(e)
+    as_server(c)
+    check('an omitted age band with no age_18 event is refused (NULL never passes the adulthood check)', om)
+    leg = c.execute("select adult_attested_by, staff.consent_eligible(c) from public.analysis_consent c where user_id = %s", [planted['legacy']]).fetchone()
+    check('a row accepted under an unregistered notice 9 by the old setter gains its attestation but is not eligible until re-accepted under the current notice', leg[0] == 'age band' and leg[1] is False, leg)
+    sc = consent(c, people[3], scope='all', backdate=0); back = consent(c, people[3], scope='from_now', backdate=0)
+    check('narrowing an active choice from all history to from now is refused (off, then on, gives a fresh boundary and a hold)', 'error' in back and 'turn the choice off' in back['error'], back)
+    first_no_row = c.execute("select withdrawn_at is not null from public.analysis_consent where user_id = %s", [first_no['id']]).fetchone()
+    check('a first refusal leaves a withdrawn row, so another phone reads a decision rather than nothing', first_no_row is not None and first_no_row[0] is True)
+    nul = person(c); consent(c, nul); entry(c, nul, 'sleep', d(2), {'hours': 7}, source='room'); entry(c, nul, 'food', d(2), {'items': ['toast']})
+    c.execute("update public.entries set source = null where user_id = %s and type = 'sleep'", [nul['id']])
+    r = run(c, owner); ov = overview(c, owner); sh = finding(ov, 'sleep', 'imported_record_share'); tg = finding(ov, 'food', 'tagged_share')
+    num, comp = c.execute("select count(distinct e.user_id) filter (where e.source in ('apple-health','google-fit','takeout')), count(distinct e.user_id) filter (where e.source is null or e.source not in ('apple-health','google-fit','takeout')) from public.entries e join public.analysis_consent a on a.user_id = e.user_id and a.withdrawn_at is null where e.type = 'sleep' and not e.deleted and e.date >= %s", [d(28)]).fetchone()
+    check('a NULL source counts on the not-imported side of the share, never in neither (%d imported, %d not)' % (num, comp), bool(sh['suppressed']) == ((1 <= num <= k - 1) or (1 <= comp <= k - 1)), {'sh': sh, 'num': num, 'comp': comp})
+    sev2 = finding(ov, 'sleep', 'nights_with_several_records'); n_sev = c.execute("select count(distinct x.user_id) from (select e.user_id, e.date from public.entries e join public.analysis_consent a on a.user_id = e.user_id and a.withdrawn_at is null where e.type = 'sleep' and not e.deleted and e.date >= %s group by 1, 2 having count(*) > 1) x", [d(28)]).fetchone()[0]
+    check('a count over everyone is still held back when its positive cell comes from fewer than the floor (%d accounts with several records)' % n_sev, bool(sev2['suppressed']) == (1 <= n_sev <= k - 1), {'sev2': sev2, 'n': n_sev})
 
     passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
     print('\n%d passed, %d failed' % (passed, failed))

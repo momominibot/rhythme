@@ -58,20 +58,20 @@ create table if not exists staff.metric_registry (
   note text
 );
 insert into staff.metric_registry (metric, agent, unit, denominator, people_rule, window_rule, computation_version, note) values
-  ('eligible_people', 'all', 'accounts', 'active improvement consents in an adult band', 'the count itself', 'as of the run', 3, 'exact only at zero or at the floor and above'),
+  ('eligible_people', 'all', 'accounts', 'active improvement choices with an adult attestation, made under the current notice', 'the count itself', 'as of the run', 3, 'exact only at zero or at the floor and above'),
   ('period_days', 'cycle', 'account-days', 'account-days with a flow that is not none or spotting', 'accounts with at least one such day', '28 completed Singapore dates', 3, 'spotting is an observation, never a period day'),
   ('symptom_days', 'cycle', 'account-days', 'account-days with a symptom entry', 'accounts with at least one such day', '28 completed Singapore dates', 3, null),
   ('people_with_two_starts', 'cycle', 'accounts', 'accounts with at least two episode starts in the eligible history', 'the count itself', 'eligible history', 3, 'an episode joins bleeding days up to two days apart, as the phone does'),
   ('median_cycle_days', 'cycle', 'days', 'completed cycles of 15 to 90 days between episode starts', 'accounts with at least one completed plausible cycle', 'eligible history', 3, 'median of each account''s own median, so one account never outweighs another'),
   ('nights_recorded', 'sleep', 'account-nights', 'account-nights with at least one sleep record', 'accounts with at least one such night', '28 completed Singapore dates', 3, null),
-  ('nights_with_several_records', 'sleep', 'account-nights', 'account-nights with more than one sleep record', 'accounts with at least one such night', '28 completed Singapore dates', 3, 'naps and split sleep are records, not conflicts'),
+  ('nights_with_several_records', 'sleep', 'account-nights', 'account-nights with more than one sleep record', 'everyone with a recorded night (so none is an observed zero); the accounts with such a night must also reach the floor', '28 completed Singapore dates', 3, 'naps and split sleep are records, not conflicts'),
   ('imported_record_share', 'sleep', 'per cent of sleep records', 'sleep records in the window', 'accounts with at least one sleep record', '28 completed Singapore dates', 3, 'sources apple-health, google-fit and takeout count as imported'),
   ('meal_days', 'food', 'account-days', 'account-days with a saved meal', 'accounts with at least one such day', '28 completed Singapore dates', 3, 'no nutrient, health or quality score is derived'),
   ('meals_saved', 'food', 'meals', 'saved meals', 'accounts with at least one saved meal', '28 completed Singapore dates', 3, null),
   ('tagged_share', 'food', 'per cent of meals', 'saved meals', 'accounts with at least one saved meal', '28 completed Singapore dates', 3, 'a meal with at least one tag'),
   ('practice_days', 'mind', 'account-days', 'account-days with a practice', 'accounts with at least one such day', '28 completed Singapore dates', 3, null),
   ('practice_minutes', 'mind', 'minutes', 'practices with a valid duration of 0.5 to 600 minutes (the phone floors a stopped practice at 0.5)', 'accounts with at least one valid duration', '28 completed Singapore dates', 3, 'practices without a valid duration are counted separately as missing, never as zero'),
-  ('practices_missing_duration', 'mind', 'practices', 'practices with no valid duration', 'accounts with at least one such practice', '28 completed Singapore dates', 3, null),
+  ('practices_missing_duration', 'mind', 'practices', 'practices with no valid duration', 'everyone with a practice (so none missing is an observed zero); the accounts with a missing duration must also reach the floor', '28 completed Singapore dates', 3, null),
   ('completed_share', 'mind', 'per cent of practices', 'practices that carry a completed field', 'accounts with at least one such practice', '28 completed Singapore dates', 3, 'practices without the field are left out of the denominator'),
   ('reflection_days', 'mind', 'account-days', 'account-days with a reflection', 'accounts with at least one such day', '28 completed Singapore dates', 3, 'the text is never read'),
   ('weight_days', 'inventory', 'account-days', 'account-days with a weigh-in', 'accounts with at least one such day', '28 completed Singapore dates', 3, 'listed, never optimised')
@@ -179,12 +179,22 @@ update public.analysis_consent c set adult_attested_by = case
     when c.age_band = any (array(select jsonb_array_elements_text(staff.policy('adult_bands')))) then 'age band' end
   where c.adult_attested_by is null;
 drop function if exists public.analysis_consent_set(boolean, integer, text, text, text, timestamptz);
-create or replace function public.analysis_consent_set(p_on boolean, p_notice integer default null, p_age_band text default null, p_scope text default 'from_now', p_hash text default null, p_expected_updated_at timestamptz default null)
+create or replace function public.analysis_consent_set(p_on boolean, p_notice integer default null, p_age_band text default null, p_scope text default 'from_now', p_hash text default null, p_expected_updated_at timestamptz default null, p_request_id text default null)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare uid uuid := auth.uid(); cur timestamptz; need integer; reg_hash text; bands text[]; adult_event boolean; band_ok boolean; row_out public.analysis_consent;
+declare uid uuid := auth.uid(); cur timestamptz; cur_scope text; cur_withdrawn timestamptz; need integer; reg_hash text; bands text[]; adult_event boolean; band_ok boolean; row_out public.analysis_consent; rid text := nullif(left(coalesce(p_request_id, ''), 64), ''); prior public.consent_events;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
-  select updated_at into cur from public.analysis_consent where user_id = uid for update;
+  perform pg_advisory_xact_lock(hashtext('analysis_consent_set'), hashtext(uid::text)); /* one transition at a time per account, row or no row yet */
+  if rid is not null then
+    /* an exact replay (the phone resent after a lost reply) returns the record as it stands and writes nothing */
+    select * into prior from public.consent_events where user_id = uid and purpose = 'improve_logging' and client_id = rid order by id desc limit 1;
+    if found then
+      if prior.action <> (case when p_on then 'grant' else 'withdraw' end) then raise exception 'This request id was already used for a different choice.' using errcode = '22023'; end if;
+      select * into row_out from public.analysis_consent c where c.user_id = uid;
+      return coalesce(to_jsonb(row_out), jsonb_build_object('user_id', uid, 'on', false)) || jsonb_build_object('replayed', true);
+    end if;
+  end if;
+  select updated_at, history_scope, withdrawn_at into cur, cur_scope, cur_withdrawn from public.analysis_consent where user_id = uid for update;
   if p_expected_updated_at is not null and cur is not null and cur <> p_expected_updated_at then
     raise exception 'This choice was changed on another phone just now. Reload and look again.' using errcode = '40001';
   end if;
@@ -196,30 +206,40 @@ begin
     if reg_hash is not null and p_hash is distinct from reg_hash then raise exception 'The notice text on this phone does not match the registered notice. Update the app.' using errcode = '22023'; end if;
     bands := array(select jsonb_array_elements_text(staff.policy('adult_bands')));
     adult_event := public.consent_allows(uid, 'age_18');
-    band_ok := p_age_band = any (bands) and p_age_band <> 'adult'; /* a concrete range attests; the plain label needs the event */
-    if not adult_event and not band_ok then raise exception 'Confirm you are 18 or older first.' using errcode = '22023'; end if;
+    band_ok := coalesce(p_age_band = any (bands) and p_age_band <> 'adult', false); /* a concrete range attests; the plain label, an empty or a missing band needs the event */
+    if (adult_event or band_ok) is not true then raise exception 'Confirm you are 18 or older first.' using errcode = '22023'; end if;
+    if cur_withdrawn is null and cur_scope = 'all' and coalesce(p_scope, 'from_now') <> 'all' then
+      raise exception 'To stop sharing earlier history, turn the choice off first and then on again.' using errcode = '22023'; /* a narrowed scope needs its own boundary and a hold on published results; off then on gives both */
+    end if;
     insert into public.analysis_consent (user_id, notice_version, notice_hash, age_band, history_scope, adult_attested_by, accepted_at, withdrawn_at, updated_at)
       values (uid, p_notice, left(coalesce(p_hash, ''), 64), left(coalesce(p_age_band, case when adult_event then 'adult' else '' end), 12), case when p_scope = 'all' then 'all' else 'from_now' end, case when adult_event then 'age_18 event' else 'age band' end, now(), null, now())
       on conflict (user_id) do update set
         notice_version = excluded.notice_version, notice_hash = excluded.notice_hash, age_band = excluded.age_band, history_scope = excluded.history_scope, adult_attested_by = excluded.adult_attested_by,
         accepted_at = case when public.analysis_consent.withdrawn_at is null then public.analysis_consent.accepted_at else now() end, /* a repeat grant keeps its original start; a grant after a withdrawal starts again */
         withdrawn_at = null, updated_at = now();
-    insert into public.consent_events (user_id, purpose, action, notice_version, notice_hash, method) values (uid, 'improve_logging', 'grant', p_notice, left(coalesce(p_hash, ''), 64), 'server');
+    insert into public.consent_events (user_id, purpose, action, notice_version, notice_hash, method, client_id) values (uid, 'improve_logging', 'grant', p_notice, left(coalesce(p_hash, ''), 64), 'server', rid);
   else
     update public.analysis_consent set withdrawn_at = now(), updated_at = now() where user_id = uid and withdrawn_at is null;
     if found then
-      insert into public.consent_events (user_id, purpose, action, notice_version, method) values (uid, 'improve_logging', 'withdraw', coalesce(p_notice, staff.notice_current('improve_logging'), 1), 'server');
+      insert into public.consent_events (user_id, purpose, action, notice_version, method, client_id) values (uid, 'improve_logging', 'withdraw', coalesce(p_notice, staff.notice_current('improve_logging'), 1), 'server', rid);
       perform staff.invalidate_runs('an account withdrew the improvement choice');
     elsif cur is null then
-      /* nothing was on: the refusal is still a choice worth keeping on the record */
-      insert into public.consent_events (user_id, purpose, action, notice_version, method) values (uid, 'improve_logging', 'withdraw', coalesce(p_notice, staff.notice_current('improve_logging'), 1), 'server');
+      /* nothing was on: the refusal is a decision, kept as a withdrawn row so another phone never reads "never decided" and pushes its own tick */
+      insert into public.analysis_consent (user_id, notice_version, age_band, history_scope, accepted_at, withdrawn_at, updated_at)
+        values (uid, coalesce(p_notice, staff.notice_current('improve_logging'), 1), '', 'from_now', now(), now(), now());
+      insert into public.consent_events (user_id, purpose, action, notice_version, method, client_id) values (uid, 'improve_logging', 'withdraw', coalesce(p_notice, staff.notice_current('improve_logging'), 1), 'server', rid);
     end if;
   end if;
   select * into row_out from public.analysis_consent c where c.user_id = uid;
   return coalesce(to_jsonb(row_out) || jsonb_build_object('adult_attested_by', case when adult_event then 'age_18 event' when band_ok then 'age band' else null end), jsonb_build_object('user_id', uid, 'on', false));
 end $$;
-revoke all on function public.analysis_consent_set(boolean, integer, text, text, text, timestamptz) from public, anon;
-grant execute on function public.analysis_consent_set(boolean, integer, text, text, text, timestamptz) to authenticated;
+revoke all on function public.analysis_consent_set(boolean, integer, text, text, text, timestamptz, text) from public, anon;
+grant execute on function public.analysis_consent_set(boolean, integer, text, text, text, timestamptz, text) to authenticated;
+-- the one eligibility rule, shared by the counts and the cohort: on, attested, and made under the registered current notice
+create or replace function staff.consent_eligible(c public.analysis_consent) returns boolean language sql stable set search_path = '' as $$
+  select c.withdrawn_at is null and c.adult_attested_by is not null and c.notice_version = staff.notice_current('improve_logging')
+$$;
+grant execute on function staff.consent_eligible(public.analysis_consent) to rhythme_staff_fn;
 
 -- the phone also mirrors its consent events through consent_record (ovu-consent.js drain); for improve_logging the account's
 -- row and event are written by analysis_consent_set only, so the mirror returns the server's latest event and writes nothing
@@ -250,9 +270,9 @@ create or replace function staff.svc_counts() returns jsonb language sql stable 
     'accounts', (select count(*) from auth.users),
     'accounts_with_cloud_copy', (select count(*) from staff.backup_receipts),
     'consent_active', (select count(*) from public.analysis_consent c where c.withdrawn_at is null),
-    'consent_eligible', (select count(*) from public.analysis_consent c where c.withdrawn_at is null and c.adult_attested_by is not null and c.notice_version >= coalesce(staff.notice_current('improve_logging'), 1)),
+    'consent_eligible', (select count(*) from public.analysis_consent c where staff.consent_eligible(c)),
     'consent_withdrawn', (select count(*) from public.analysis_consent c where c.withdrawn_at is not null),
-    'relay_calls_today', (select coalesce(sum(count), 0) from public.luna_usage where day = current_date)) /* bucket increments: one per relay call */
+    'relay_increments_today', (select coalesce(sum(count), 0) from public.luna_usage where day = current_date)) /* counter increments: a relay call bumps an IP bucket and a global bucket */
 $$;
 revoke all on function staff.svc_counts() from public;
 grant execute on function staff.svc_counts() to rhythme_staff_fn;
@@ -277,7 +297,7 @@ begin
   insert into pg_temp.elig_users select c.user_id,
       case when c.history_scope = 'all' then '1970-01-01'::timestamptz else c.accepted_at end,
       case when c.history_scope = 'all' then date '1970-01-01' else (c.accepted_at at time zone tz)::date end
-    from public.analysis_consent c where c.withdrawn_at is null and c.adult_attested_by is not null and c.notice_version >= coalesce(staff.notice_current('improve_logging'), 1);
+    from public.analysis_consent c where staff.consent_eligible(c);
   select count(*) into elig from pg_temp.elig_users;
   select count(*) into consenting from public.analysis_consent c where c.withdrawn_at is null;
   under := elig > 0 and elig < k;
@@ -332,15 +352,15 @@ begin
       union all select 'cycle', 'people_with_two_starts', 'eligible history', count(*), count(*), null, null from (select user_id from starts group by user_id having count(*) >= 2) t
       union all select 'cycle', 'median_cycle_days', 'eligible history', percentile_cont(0.5) within group (order by med), count(*), null, null from person_median
       union all select 'sleep', 'nights_recorded', win, count(*), count(distinct user_id), null, null from (select user_id, date from sleep_rows group by 1, 2) n
-      union all select 'sleep', 'nights_with_several_records', win, count(*) filter (where c > 1), count(distinct user_id), null, null from (select user_id, date, count(*) c from sleep_rows group by 1, 2) c /* people: everyone with a night, so none is an observed zero */
-      union all select 'sleep', 'imported_record_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where imported) / count(*), 1) end, count(distinct user_id), count(distinct user_id) filter (where imported), count(distinct user_id) filter (where not imported) from sleep_rows
+      union all select 'sleep', 'nights_with_several_records', win, count(*) filter (where c > 1), count(distinct user_id), count(distinct user_id) filter (where c > 1), null from (select user_id, date, count(*) c from sleep_rows group by 1, 2) c /* people: everyone with a night, so none is an observed zero; the positive cell has its own contributor count */
+      union all select 'sleep', 'imported_record_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where imported is true) / count(*), 1) end, count(distinct user_id), count(distinct user_id) filter (where imported is true), count(distinct user_id) filter (where imported is not true) from sleep_rows /* an unknown source is not imported */
       union all select 'food', 'meal_days', win, count(*), count(distinct user_id), null, null from (select user_id, date from food_rows group by 1, 2) d
       union all select 'food', 'meals_saved', win, count(*), count(distinct user_id), null, null from food_rows
-      union all select 'food', 'tagged_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where has_tags) / count(*), 1) end, count(distinct user_id), count(distinct user_id) filter (where has_tags), count(distinct user_id) filter (where not has_tags) from food_rows
+      union all select 'food', 'tagged_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where has_tags is true) / count(*), 1) end, count(distinct user_id), count(distinct user_id) filter (where has_tags is true), count(distinct user_id) filter (where has_tags is not true) from food_rows /* no tags field is untagged */
       union all select 'mind', 'practice_days', win, count(*), count(distinct user_id), null, null from (select user_id, date from mind_rows group by 1, 2) d
       union all select 'mind', 'practice_minutes', win, sum(minutes), count(distinct user_id), null, null from mind_rows where minutes between 0.5 and 600
-      union all select 'mind', 'practices_missing_duration', win, count(*) filter (where minutes is null or minutes < 0.5 or minutes > 600), count(distinct user_id), null, null from mind_rows /* people: everyone with a practice, so none missing is an observed zero */
-      union all select 'mind', 'completed_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where completed) / count(*), 1) end, count(distinct user_id), count(distinct user_id) filter (where completed), count(distinct user_id) filter (where not completed) from mind_rows where has_completed
+      union all select 'mind', 'practices_missing_duration', win, count(*) filter (where minutes is null or minutes < 0.5 or minutes > 600), count(distinct user_id), count(distinct user_id) filter (where minutes is null or minutes < 0.5 or minutes > 600), null from mind_rows /* people: everyone with a practice, so none missing is an observed zero; the positive cell has its own contributor count */
+      union all select 'mind', 'completed_share', win, case when count(*) = 0 then null else round(100.0 * count(*) filter (where completed is true) / count(*), 1) end, count(distinct user_id), count(distinct user_id) filter (where completed is true), count(distinct user_id) filter (where completed is not true) from mind_rows where has_completed
       union all select 'mind', 'reflection_days', win, count(*), count(distinct user_id), null, null from (select user_id, date from pg_temp.elig_rows where type = 'reflection' and date >= win_start group by 1, 2) r
       union all select 'inventory', 'weight_days', win, count(*), count(distinct user_id), null, null from (select user_id, date from pg_temp.elig_rows where type = 'weight' and date >= win_start group by 1, 2) w
     ) select m.*, r.unit, r.denominator, r.people_rule, r.note from m left join staff.metric_registry r on r.metric = m.metric
@@ -415,7 +435,7 @@ revoke all on function staff.run_scheduled(date) from public, anon, authenticate
 create or replace function staff.schedule_installed() returns boolean language plpgsql stable security definer set search_path = '' as $$
 declare b boolean;
 begin
-  execute 'select exists (select 1 from cron.job where jobname = $1)' into b using 'rhythme-daily-run';
+  execute 'select exists (select 1 from cron.job where jobname = $1 and active)' into b using 'rhythme-daily-run';
   return coalesce(b, false);
 exception when others then return false;
 end $$;
@@ -456,6 +476,20 @@ begin
     select f.id, f.at, f.run_id, f.agent, f.metric, f."window", f.value, f.people, f.suppressed, f.state, f.detail from staff.agent_findings f
     join staff.agent_runs r on r.id = f.run_id
     where r.status = 'ok' and r.invalidated_at is null and (p_agent is null or f.agent = p_agent) order by f.id desc limit least(greatest(coalesce(p_limit, 200), 1), 500)) f);
+end $$;
+
+-- the feed reads under the same rule: an event of a held run keeps its time, agent and kind, but its derived words and detail are withheld
+create or replace function public.admin_feed(p_limit integer default 60, p_before bigint default null, p_after bigint default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare d jsonb;
+begin
+  d := staff.require('admin_feed', jsonb_build_object('limit', p_limit, 'before', p_before, 'after', p_after)); if d is not null then return d; end if;
+  return (select coalesce(jsonb_agg(to_jsonb(e) order by e.id desc), '[]'::jsonb) from (
+    select ev.id, ev.at, ev.run_id, ev.agent, ev.kind,
+      case when r.invalidated_at is null then ev.title else ev.agent || ': (held: ' || coalesce(r.invalidation_reason, 'results withdrawn') || ')' end title,
+      case when r.invalidated_at is null then ev.detail else jsonb_build_object('held', true) end detail
+    from staff.agent_events ev left join staff.agent_runs r on r.id = ev.run_id
+    where (p_before is null or ev.id < p_before) and (p_after is null or ev.id > p_after) order by ev.id desc limit least(greatest(coalesce(p_limit, 60), 1), 200)) e);
 end $$;
 
 -- ---------- 9. the upgrade boundary: nothing computed under the previous contract stays published ----------
