@@ -29,6 +29,14 @@
       { text: 'If you would like, let the wish widen to everyone in the square, and out past it, to everyone going about their day. May we all be safe. May we all be at ease.', secs: 34 },
       { text: 'If this feels uncomfortable, stop now, or look around you. Nothing has to change. You can simply sit.', secs: 14 }
     ] },
+    lane: { name: 'Between errands', icon: 'shopping_basket', about: 'A pause on the lane, eyes open or closed', steps: [
+      { text: 'Sit down on the bench for a moment. Let your bags, your list and your plans rest beside you. You can stop whenever you need.', secs: 19 },
+      { text: 'Notice what you can see from here. The colours of the shop windows, the cobbles, the sky above the lane.', secs: 27 },
+      { text: 'If your mind is running through what still needs doing, that is all right. Picture setting the list down beside you. It will be there when you get up.', secs: 29 },
+      { text: 'Notice the bench under you and your feet on the ground. For now, there is nothing to buy and nowhere to be.', secs: 28 },
+      { text: 'Listen for one small sound nearby. A door, a bird, the wind in the leaves. Let it come and go.', secs: 30 },
+      { text: 'When you are ready, pick up your day again, one thing at a time. You can come back to this bench whenever you like.', secs: 14 }
+    ] },
     harbour: { name: 'Watching the water', icon: 'water', about: 'Eyes on the water, nothing to do', steps: [
       { text: 'Sit back on the bench. Let your eyes rest on the water, or on a still spot nearby. There is nothing to do here but watch. You can stop whenever you need.', secs: 23 },
       { text: 'Follow one ripple from where it starts to where it fades. Then another.', secs: 26 },
@@ -46,7 +54,8 @@
     street: { id: 'street', scene: 'street', practice: 'street', title: 'The street bench', sub: 'Under the lanterns', fx: 'lanterns', sit: 'Just sit a while' },
     'plaza:bench': { id: 'plaza:bench', scene: 'plaza', practice: 'plaza', title: 'The bench by the board', sub: 'On the square', fx: 'square', sit: 'Just sit a while' },
     'plaza:bench2': { id: 'plaza:bench2', scene: 'plaza', practice: 'plaza', title: 'The bench by the tree', sub: 'Across the square', fx: 'square', sit: 'Just sit a while' },
-    harbour: { id: 'harbour', scene: 'harbour', practice: 'harbour', title: 'The bench', sub: 'Under the sea-almond tree', fx: 'water', sit: 'Just watch the water' }
+    harbour: { id: 'harbour', scene: 'harbour', practice: 'harbour', title: 'The bench', sub: 'Under the sea-almond tree', fx: 'water', sit: 'Just watch the water' },
+    lane: { id: 'lane', scene: 'lane', practice: 'lane', title: 'The lane bench', sub: 'Between the shops', fx: 'blossom', sit: 'Just sit a while' }
   };
   function steps(practice, reduced) {
     var p = SCRIPTS[practice]; if (!p) return [];
@@ -93,6 +102,7 @@
     if (seatId === 'plaza:bench' && L.plaza) return { spot: L.plaza.meditator, back: { x: 34, y: 64, flip: true } };
     if (seatId === 'plaza:bench2' && C && C.BENCH2) return { spot: C.BENCH2.sit, back: C.BENCH2.back };
     if (seatId === 'harbour' && HB && HB.LAYOUT) return { spot: { seat: HB.LAYOUT.seat }, back: null };
+    if (seatId === 'lane' && L.lane) return { spot: L.lane.meditator, back: root.OvuLane && root.OvuLane.BENCH_BACK };
     return null;
   }
   function plainSit(seatId) {
@@ -260,6 +270,7 @@
     if (L.id === 'garden' && (sat || (R.meditating() && R.els.meditator.classList.contains('onseat')))) return 'petals';
     if (L.id === 'street' && sat) return 'lanterns';
     if (L.id === 'plaza' && sat) return 'square';
+    if (L.id === 'lane' && sat) return 'blossom';
     if (L.id === 'harbour' && root.OvuHarbour && root.OvuHarbour.sitting && root.OvuHarbour.sitting()) return 'water';
     if (L.id === 'cave' && root.OvuTones && root.OvuTones.sitting && root.OvuTones.sitting()) return 'crystals';
     return null;
@@ -270,6 +281,7 @@
     lanterns: function (add) { for (var i = 0; i < 12; i++) add('i', 'mote', { left: rnd(22, 84), top: rnd(42, 66), w: rnd(0.8, 1.4), d: rnd(6, 11), delay: -rnd(0, 11) }); },
     square: function (add) { for (var i = 0; i < 9; i++) add('i', 'spark', { left: rnd(38, 60), top: rnd(38, 52), w: rnd(0.7, 1.3), d: rnd(2.6, 4.8), delay: -rnd(0, 5) }); for (var j = 0; j < 6; j++) add('i', 'leaf', { left: rnd(58, 90), top: rnd(40, 60), w: rnd(1, 1.6), d: rnd(10, 16), delay: -rnd(0, 16) }); },
     water: function (add) { for (var i = 0; i < 5; i++) add('b', 'ring', { left: rnd(50, 88), top: rnd(50, 70), w: rnd(4, 7), d: rnd(5.5, 9.5), delay: -rnd(0, 9) }); for (var j = 0; j < 6; j++) add('i', 'streak', { left: rnd(48, 92), top: rnd(49, 72), w: rnd(4, 8), d: rnd(5, 8), delay: -rnd(0, 8) }); },
+    blossom: function (add) { for (var i = 0; i < 9; i++) add('i', 'petal blossom', { left: rnd(55, 96), top: rnd(4, 30), w: rnd(1.1, 1.8), d: rnd(10, 16), delay: -rnd(0, 16) }); },
     crystals: function (add) { for (var i = 0; i < 7; i++) add('i', 'glint', { left: rnd(15, 33), top: rnd(31, 48), w: rnd(1.4, 2.4), d: i % 2 ? 11 : 7, delay: -rnd(0, 11) }); }
   };
   function showFx(kind) {

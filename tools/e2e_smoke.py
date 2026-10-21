@@ -1384,7 +1384,7 @@ async def main():
             except Exception: pass
             await page.wait_for_timeout(600)
             hb = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.harbour, img: document.querySelector('#roomDay').getAttribute('src')||''})")
-            check("the farm's steps lead down to the harbour: the jetty, the rocks, the bench, the hut and the way back; the harbour is on the map", hb["layout"] == "harbour" and hb["hots"] == "harbourexit,hbjetty,hbrocks,hbbench,hbhut" and hb["map"] and "harbour-v1" in hb["img"], hb)
+            check("the farm's steps lead down to the harbour: the jetty, the rocks, the bench, the hut and the way back; the harbour is on the map", hb["layout"] == "harbour" and hb["hots"] == "harbourexit,hbjetty,hbrocks,hbbench,hbhut,lanesign" and hb["map"] and "harbour-v1" in hb["img"], hb)
             base = await page.evaluate("()=>({e: OvuStamina.value(), d: OvuStore.list().length})")
             await page.evaluate("()=>{OvuHarbour.openSpot('jetty'); document.querySelector('#spotActs [data-act=cast]').click();}"); await page.wait_for_timeout(400)
             bt = await page.evaluate("()=>({bite: document.querySelector('#scene').classList.contains('bite'), line: !!document.querySelector('#ownedProps .castline'), lift: !!document.querySelector('#spotActs [data-bite=lift]'), leave: !!document.querySelector('#spotActs [data-bite=leave]'), casts: OvuHarbour.harbourState(OvuStore).casts})")
@@ -1410,6 +1410,45 @@ async def main():
             except Exception: pass
             hx = await page.evaluate("()=>document.querySelector('#scene').dataset.layout")
             check("the harbour path leads back up to the farm", hx == "farm", hx)
+            # Harbour Lane (21 Oct): up from the harbour signpost; four shops, a post box with letters, a bench; nothing sold, nothing counted
+            await go_to('harbour')
+            ln0 = await page.evaluate("()=>({hearts: OvuRewards.ledger().hearts, d: OvuStore.list().length, e: OvuStamina.value()})")
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('lanesign'))")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'lane' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await page.wait_for_timeout(700)
+            ln1 = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(), flag: (document.querySelector('.laneflag')||{}).textContent, map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.lane})")
+            check("the harbour signpost leads up to Harbour Lane: four shops, the post box with a flag for two new letters, the bench, the cat and the way down, and the lane is on the map", ln1["layout"] == "lane" and ln1["hots"] == "laneexit,boutique,gym,fishshop,grocer,postbox,lanebench,lanecat" and ln1["flag"] == "2" and ln1["map"], ln1)
+            seen = {}
+            for hid in ["boutique", "gym", "fishshop", "grocer", "postbox"]:
+                await page.evaluate("(h)=>{if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); OvuRoom.tap(OvuRoom.hotspot(h))}", hid)
+                try: await page.wait_for_function("(h)=>OvuRoom.sheetId()===h", arg=hid, timeout=12000)
+                except Exception: pass
+                await page.wait_for_timeout(500)
+                seen[hid] = await page.evaluate("()=>({id: OvuRoom.sheetId(), n: document.querySelectorAll('#sheet .outfit, #sheet .aqfish, #sheet .shelfitem, #sheet .letter').length, gym: !!document.querySelector('#gymLog') && !!document.querySelector('#gymStretch')})")
+            check("each shop opens its own sheet: every look in the boutique, the gym's two buttons, six fish in the aquarium window, nineteen foods on the grocer's shelf, two letters in the post box", seen["boutique"]["id"] == "boutique" and seen["boutique"]["n"] >= 8 and seen["gym"]["gym"] and seen["fishshop"]["n"] == 6 and seen["grocer"]["n"] == 19 and seen["postbox"]["n"] == 2, seen)
+            await page.click("#pbList .letter"); await page.wait_for_timeout(300)
+            lt = await page.evaluate("()=>({id: OvuRoom.sheetId(), paper: !!document.querySelector('.letterpaper')})")
+            await page.click("#pbBack"); await page.wait_for_timeout(300)
+            lt2 = await page.evaluate("()=>({unread: document.querySelectorAll('#pbList .letter.unread').length, flag: (document.querySelector('.laneflag')||{}).textContent})")
+            await page.evaluate("()=>{OvuRoom.closeSheet(); var b=[...document.querySelectorAll('.outfit')]; }")
+            check("a letter opens on paper; once read, the box and the flag show one new letter", lt["id"] == "letter" and lt["paper"] and lt2["unread"] == 1 and lt2["flag"] == "1", {"lt": lt, "lt2": lt2})
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('lanebench'))")
+            try: await page.wait_for_function("()=>OvuRoom.sheetId()==='seat-lane'", timeout=12000)
+            except Exception: pass
+            lb = await page.evaluate("()=>({id: OvuRoom.sheetId(), name: (document.querySelector('#sheet .erin b')||{}).textContent})")
+            await page.click('#seatSit'); await page.wait_for_timeout(500)
+            lb2 = await page.evaluate("()=>({sat: OvuGarden.sitting(), fx: OvuSeats.fxKind()})")
+            await page.evaluate("()=>OvuGarden.standUp()")
+            ln2 = await page.evaluate("(a)=>({hearts: OvuRewards.ledger().hearts - a.hearts, d: OvuStore.list().length - a.d})", ln0)
+            check("the lane bench offers Between errands or just sitting, with its blossom; the whole visit changed no hearts and wrote no diary entry", lb["id"] == "seat-lane" and lb["name"] == "Between errands" and lb2["sat"] and lb2["fx"] == "blossom" and ln2["hearts"] == 0 and ln2["d"] == 0, {"lb": lb, "lb2": lb2, "ln2": ln2})
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('laneexit'))")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'harbour'", timeout=15000)
+            except Exception: pass
+            await page.wait_for_timeout(500)
+            lx = await page.evaluate("()=>document.querySelector('#scene').dataset.layout")
+            check("the lane path leads back down to the harbour", lx == "harbour", lx)
+            await go_to('farm')
             # seats (21 Oct): each bench its own practice in Erin's voice and its own small weather; a minute before anything is saved; one thank-you a day per seat
             await go_to('street')
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bench'))")
