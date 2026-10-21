@@ -1901,3 +1901,5 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .scene.sky-night:not(.is-night) .barnthing.animal img{filter:brightness(.9) saturate(1.02) hue-rotate(-3deg) drop-shadow(0 6px 5px rgba(70,40,90,.22))}
 .bedcard .bedpic.pailpic{background:#f6f0fb}
 .bedcard .bedpic.springpic{background:#101428}
+/* Morning start: the adaptation line before the wake-up's movements (21 Oct) */
+.mpcare{font:600 12px/1.45 var(--sans);color:var(--rm-ink-2);background:rgba(255,255,255,.6);border-radius:12px;padding:8px 10px;margin:0 0 8px}

@@ -24,21 +24,42 @@
       text: 'Sit, lie down or stand, whatever is easiest. If you feel dizzy, stay sitting or lying. Your eyes can be open or closed. There is no need to change your breathing. If you like, notice it as it is, or a sound, a colour, or something you can touch.' },
     notice: { key: 'notice', part: 2, title: 'Notice', secs: 55, audio: GUIDE + 'mstart-notice.mp3', /* a 21 s clip, then quiet */
       text: 'You don’t need to move. If you like, notice where your body is resting, on the bed, the floor or a chair. There is nothing you need to change. If this doesn’t feel right, choose a sound or a colour instead, or stop at any time.' },
-    ready: { key: 'ready', part: 3, title: 'Brushing', gate: true, audio: GUIDE + 'mstart-ready.mp3',
+    ready: { key: 'ready', part: 3, title: 'Brushing', gate: true, group: 'teeth', ready: 'Ready to brush', skip: 'Skip brushing', audio: GUIDE + 'mstart-ready.mp3',
       text: 'Go to wherever you brush, whenever you are ready. Take any time you need first, for prayer or anything else. Getting there is not part of the practice.' },
     yourway: { key: 'yourway', part: 3, title: 'Brush your way', open: true, pose: 'teeth', audio: GUIDE + 'mstart-yourway.mp3',
       text: 'Brush as you usually do. If you like, notice one sensation, a taste or a sound. Tap Done when you finish.' }
   };
   var GREETINGS = ['Good morning.', 'Hello.']; /* clip mstart-arrive-0 says the first, mstart-arrive-1 the second, mstart-arrive-2 neither */
   var VERSIONS = {
-    yourway: { id: 'yourway', name: 'A short pause, then brush your way', sub: '90 seconds of gentle noticing, then brushing at your own pace' },
-    erin: { id: 'erin', name: 'With Erin’s brushing guide', sub: 'About 5 minutes, with Erin’s own morning script in her voice' }
+    erin: { id: 'erin', name: 'Erin’s morning: wake, brush, sip', sub: 'Three short practices in her own words and voice. Take one part or all three.' },
+    yourway: { id: 'yourway', name: 'A short pause, then brush your way', sub: '90 seconds of gentle noticing, then brushing at your own pace' }
   };
+  /* the fuller routine (Jamie, 21 Oct: "a more complete morning routine - breath and body upon waking up, brushing teeth, mindful drinking";
+   * shape agreed with a Codex design review, docs/design/2026-10-21-erin-morning-routine.md): Erin's wake-up script, a gate, her brushing
+   * script, a gate, her mindful sip. Each part can be skipped or stopped; each part she really did is saved on its own. */
+  var GATES = {
+    brush: { key: 'ready', part: 2, title: 'Brushing', gate: true, group: 'teeth', ready: 'Ready to brush', skip: 'Already brushed', audio: GUIDE + 'mstart-ready.mp3', text: '' },
+    sip: { key: 'sipready', part: 3, title: 'A mindful sip', gate: true, group: 'sip', ready: 'Ready to sip', skip: 'Skip this part',
+      text: 'Choose a drink that is comfortable to sip: coffee, tea, water, anything. Take any time you need to make it; making it is not part of the practice. You can skip this part. No drink, fasting, or simply not wanting one are all fine reasons.' }
+  };
+  GATES.brush.text = STEPS.ready.text;
+  var PARTS = { wake: { activity: 'wake', name: 'Waking up with breath and body', did: 'woke up with breath and body' }, teeth: { activity: 'teeth', name: 'Brushing teeth', did: 'brushed' }, sip: { activity: 'coffee', name: 'A mindful sip', did: 'took a mindful sip' } };
+  var CARE_WAKE = 'Sit comfortably, in a chair or a wheelchair, or stand with support. Leave out any movement you do not want to do. There is no need to match the picture, or to change your breathing.';
 
   /* the morning window, read from the real clock at the moment of asking */
   function inWindow(d) { var h = (d || new Date()).getHours(); return h >= START_HOUR && h < END_HOUR; }
   /* Erin's own morning brushing script, whole and in her order, with her recorded clips */
-  function erinSteps() {
+  /* one of Erin's scripts as timed steps, in her order, with her clips */
+  function erinPart(actId, group, part, title, poseFor) {
+    var MF = root.OvuMindful, a = MF && MF.byId(actId); if (!a) return [];
+    var vi = -1; a.variations.forEach(function (v, i) { if (vi < 0 && v.when === 'morning' && v.author === 'erin') vi = i; });
+    if (vi < 0) return [];
+    return a.variations[vi].steps.map(function (s, si) { return { key: group + si, part: part, group: group, title: title, secs: s.secs, text: s.text, pose: poseFor(si, s), audio: GUIDE + actId + '-' + vi + '-' + si + '.mp3', erin: true }; });
+  }
+  /* the wake-up: the stretch pose only on the two movement passages (shoulders, arms); still otherwise. The sip: the coffee pose throughout. */
+  function wakeSteps() { return erinPart('wake', 'wake', 1, 'Waking up with breath and body', function (si, s) { return /lifting your shoulders|reaching your arms/i.test(s.text) ? 'stretch' : null; }); }
+  function sipSteps() { return erinPart('coffee', 'sip', 3, 'A mindful sip', function () { return 'coffee'; }); }
+  function erinSteps(part) {
     var MF = root.OvuMindful, a = MF && MF.byId('teeth'); if (!a) return [];
     var vi = -1; a.variations.forEach(function (v, i) { if (vi < 0 && v.when === 'morning' && v.author === 'erin') vi = i; });
     if (vi < 0) return [];
@@ -46,7 +67,7 @@
     var st = a.variations[vi].steps, from = -1; st.forEach(function (s, si) { if (from < 0 && /begin(ning)? to brush/i.test(s.text)) from = si + 1; });
     if (from < 0) from = 1;
     return st.map(function (s, si) {
-      return { key: 'erin' + si, part: 3, title: 'Brushing with Erin', secs: s.secs, text: s.text, pose: 'teeth', audio: GUIDE + 'teeth-' + vi + '-' + si + '.mp3', erin: true, brushing: si >= from };
+      return { key: 'erin' + si, part: part || 3, group: 'teeth', title: 'Brushing with Erin', secs: s.secs, text: s.text, pose: 'teeth', audio: GUIDE + 'teeth-' + vi + '-' + si + '.mp3', erin: true, brushing: si >= from };
     });
   }
   /* Arrive says Good morning only inside the morning window (she can open it from Everyday at any hour), with the matching
@@ -58,7 +79,18 @@
     a.text = (g < 2 ? GREETINGS[g] + ' ' : '') + STEPS.arrive.text; a.audio = GUIDE + 'mstart-arrive-' + g + '.mp3';
     return a;
   }
-  function plan(version, d) { return [arriveFor(d, version), STEPS.notice, STEPS.ready].concat(version === 'erin' ? erinSteps() : [STEPS.yourway]); }
+  function plan(version, d) {
+    if (version === 'erin') { var w = wakeSteps(), sp = sipSteps(); if (w.length && sp.length) return w.concat([GATES.brush], erinSteps(2), [GATES.sip], sp); return [arriveFor(d, version), STEPS.notice, STEPS.ready].concat(erinSteps()); } /* an older data file: the old shape */
+    return [arriveFor(d, version), STEPS.notice, STEPS.ready, STEPS.yourway];
+  }
+  /* the parts of a plan, in order, with their total scripted seconds (gates have none) */
+  function partsOf(steps) { var out = [], seen = {}; (steps || []).forEach(function (s) { if (!s.group) return; if (!seen[s.group]) { seen[s.group] = { group: s.group, name: PARTS[s.group] ? PARTS[s.group].name : s.title, secs: 0 }; out.push(seen[s.group]); } seen[s.group].secs += s.secs || 0; }); return out; }
+  /* one entry per part she really did (30 seconds or more of it, and only if she says so); stopped early is said plainly */
+  function partEntry(group, o) {
+    var p = PARTS[group], raw = Math.max(0, Number(o && o.seconds) || 0), secs = Math.round(raw);
+    if (!p || raw < MIN_SAVE_S || !o.confirmed) return null;
+    return { kind: 'informal', activity: p.activity, activityName: p.name, routine: 'morning', version: 'erin', seconds: secs, minutes: Math.round(secs / 6) / 10, completed: !!o.finished, finished: !!o.finished, stoppedEarly: !o.finished, confirmedReal: true, guide: 'Words by Erin Lee, in her own voice' };
+  }
   /* is the invitation in Today for this moment? never while asleep, only in the window, not once done or put away today */
   function offered(state, today, d) {
     state = state || {};
@@ -112,7 +144,7 @@
     el.hidden = !show; if (!show) { el.innerHTML = ''; el.dataset.on = ''; return; }
     if (el.dataset.on === '1') return;
     el.dataset.on = '1';
-    el.innerHTML = '<span class="ms" aria-hidden="true">wb_twilight</span><div><b>Morning start</b><small>A short pause, then brushing your way. Sitting or lying is fine.</small></div>' +
+    el.innerHTML = '<span class="ms" aria-hidden="true">wb_twilight</span><div><b>Morning start</b><small>Wake, brush, sip. Take one part or all three.</small></div>' +
       '<div class="minvite-btns"><button type="button" class="btn primary" id="miBegin">Begin</button><button type="button" class="btn ghost" id="miLater">Not today</button></div>';
     $('#miBegin').addEventListener('click', function () { open(); });
     $('#miLater').addEventListener('click', function () { markToday({ dismissed: true }); el.dataset.on = ''; renderInvite(); R().toast('Put away for today. Morning start is always in Everyday, and on the meditation mat.', 'wb_twilight'); });
@@ -125,15 +157,15 @@
     if (run) { showPanel(); return; }
     var quiet = quietDefault(), esc = room.esc;
     room.openSheet('morning', 'Morning start', 'A gentle way into the day', 'wb_twilight',
-      '<p class="mintro">About 90 seconds of gentle noticing, then brushing your teeth. Any position is fine, eyes open or closed, and you can stop at any time.</p>' +
+      '<p class="mintro">Three short practices in Erin’s own words (waking up with breath and body, brushing teeth, a mindful sip), or a short pause and brushing your way. Take one part or all three; any position is fine, and you can stop at any time.</p>' +
       '<fieldset class="mchoice"><legend>How would you like it?</legend>' +
-      ['yourway', 'erin'].map(function (k, i) { var v = VERSIONS[k]; return '<label class="mopt"><input type="radio" name="mver" value="' + k + '"' + (i === 0 ? ' checked' : '') + '><span><b>' + esc(v.name) + '</b><small>' + esc(v.sub) + '</small></span></label>'; }).join('') +
+      ['erin', 'yourway'].map(function (k, i) { var v = VERSIONS[k], sub = v.sub; if (k === 'erin') { var ps = partsOf(plan('erin')); if (ps.length) sub = 'About ' + Math.round(ps.reduce(function (t, p) { return t + p.secs; }, 0) / 60) + ' minutes in her voice: ' + ps.map(function (p) { return p.name + ' (' + Math.max(1, Math.round(p.secs / 60)) + ' min)'; }).join(', ') + '. Plus any time you need between parts.'; } return '<label class="mopt"><input type="radio" name="mver" value="' + k + '"' + (i === 0 ? ' checked' : '') + '><span><b>' + esc(v.name) + '</b><small>' + esc(sub) + '</small></span></label>'; }).join('') +
       '</fieldset>' +
       '<label class="mquiet"><input type="checkbox" id="mQuiet"' + (quiet ? ' checked' : '') + '><span>Quiet: captions only, no voice and no bells</span></label>' +
       '<div class="row"><button type="button" class="btn primary" id="mBegin"><span class="ms" aria-hidden="true">play_arrow</span>Begin</button></div>' +
-      '<p class="help">Read in Erin’s voice: the opening words are Rhythme’s, the brushing guide is Erin’s own. Saved only if you say you did it, with the same small thank-you as any practice, never a streak.</p>');
+      '<p class="help">Words by Erin Lee, voiced using her cloned voice with permission; the short pause uses Rhythme’s words, read in her voice. Saved only if you say you did it, one entry for each part you did, with the same small thank-you as any practice, never a streak.</p>');
     $('#mBegin').addEventListener('click', function () {
-      var ver = (document.querySelector('input[name=mver]:checked') || {}).value || 'yourway';
+      var ver = (document.querySelector('input[name=mver]:checked') || {}).value || 'erin';
       begin(ver, $('#mQuiet').checked);
     });
   }
@@ -148,7 +180,7 @@
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
     room.hideSheet(); hideInvite();
-    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, spent: {}, brushMs: 0, stepMs: 0, waits: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
+    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, spent: {}, done: {}, brushMs: 0, stepMs: 0, waits: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
     if (room.endMoment) room.endMoment();
     /* from the mat she sits there hidden: bring her back first, or the routine plays to an empty room */
     var onMat = room.meditating ? room.meditating() : !!(room.els && room.els.meditator && room.els.meditator.classList.contains('on'));
@@ -182,6 +214,7 @@
     if (!run) return;
     if (R().asleep()) { cancel(); return; }
     var cur = step(); if (cur && skippedNow && run.skipped.indexOf(cur.key) < 0 && !cur.erin) run.skipped.push(cur.key);
+    if (cur && cur.group && !cur.gate && !run.skipping && run.i === groupEnd(cur.group)) run.done[cur.group] = true; /* the last line of a part, reached: that part was finished */
     clearTimeout(run.timer); stopAudio(); leaveStep();
     run.i++;
     var s = step(); if (!s) { finish(true); return; }
@@ -258,7 +291,23 @@
     paint();
   }
   function ready() { if (!run) return; run.paused = false; next(false); }
-  function skipBrushing() { if (!run) return; run.skipped.push('brushing'); run.brushed = 'no'; clearTimeout(run.timer); stopAudio(); finish(true); }
+  function groupEnd(g) { var last = -1; (run ? run.steps : []).forEach(function (s, i) { if (s.group === g && !s.gate) last = i; }); return last; }
+  /* at a gate: the part is left out (Already brushed, Skip this part) and the routine goes on to the next part, or ends when it was the last */
+  function skipGate() {
+    var s = step(); if (!run || !s || !s.gate) return;
+    if (s.group === 'teeth') run.brushed = 'no';
+    run.skipped.push(s.group === 'teeth' ? 'brushing' : s.group);
+    clearTimeout(run.timer); stopAudio();
+    var end = groupEnd(s.group); if (end < 0 || end >= run.steps.length - 1) { finish(true); return; }
+    run.skipping = true; run.i = end; next(false); run.skipping = false;
+  }
+  var skipBrushing = skipGate;
+  /* in the middle of a part: the rest of it is left out; time already spent on it counts */
+  function skipPart() {
+    var s = step(); if (!run || !s || s.gate || !s.group) return;
+    run.skipped.push(s.group); clearTimeout(run.timer); stopAudio();
+    run.skipping = true; run.i = groupEnd(s.group); next(false); run.skipping = false;
+  }
   function stop() { if (!run) return; finish(false); }
   /* sleep, or anything that ends the room's day: everything stops at once and nothing is offered */
   function cancel() {
@@ -272,9 +321,13 @@
     clearTimeout(r.timer); stopAudio(); r.clock.hold(); clearInterval(ticker);
     var exact = r.clock.ms() / 1000, secs = Math.round(exact), room = R(), day = S().today(); /* the day she practised, even if she confirms after midnight */
     run = null; hidePanel(); settle(room);
+    var byPart = {}; r.steps.forEach(function (s) { if (s.group && !s.gate) byPart[s.group] = (byPart[s.group] || 0) + (r.spent[s.key] || 0); });
+    if (r.version === 'erin') byPart.teeth = r.brushMs; /* brushing is time on her brushing lines; her opening words at the sink are not brushing */
+    var parts = r.version === 'erin' ? Object.keys(PARTS).filter(function (g) { return (byPart[g] || 0) / 1000 >= MIN_SAVE_S; }) : [];
     if (exact < MIN_SAVE_S) { room.toast('Stopped. Pauses under 30 seconds are not saved.', 'wb_twilight'); renderInvite(); return; }
     var did = [];
-    if ((r.spent.arrive || 0) >= 5000) did.push('arrived'); if ((r.spent.notice || 0) >= 5000) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed'); /* only what she spent time on */
+    if (r.version === 'erin') parts.forEach(function (g) { did.push(PARTS[g].did); }); /* the sheet's title already says when she stopped early */
+    else { if ((r.spent.arrive || 0) >= 5000) did.push('arrived'); if ((r.spent.notice || 0) >= 5000) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed'); } /* only what she spent time on */
     var saved = false;
     /* another sheet is open (a symptoms form, the bed): never replace it; ask once it closes, unless she falls asleep */
     clearInterval(doneWait); pendingAsk = null;
@@ -294,14 +347,15 @@
     $('#mdYes').addEventListener('click', function () {
       if (saved) return;
       if (room.asleep()) { room.closeSheet(); return; }
-      var data = entryData({ seconds: exact, confirmed: true, version: r.version, skipped: r.skipped, brushed: r.brushed, finished: finished });
-      if (!data) { room.closeSheet(); return; }
-      var ev;
-      try { ev = S().add('mindfulness', day, data); } catch (e) { room.toast('This pause could not be saved: ' + e.message + ' Try again, or tap Not this time.', 'error'); return; } /* the sheet stays for a retry */
+      /* one entry per part she really did; a morning with no part of 30 seconds (she stopped in Erin's opening words) saves the plain morning entry, as the short pause does */
+      var datas = r.version === 'erin' && parts.length ? parts.map(function (g) { return partEntry(g, { seconds: byPart[g] / 1000, confirmed: true, finished: !!r.done[g] }); }).filter(Boolean) : [entryData({ seconds: exact, confirmed: true, version: r.version, skipped: r.skipped, brushed: r.brushed, finished: finished })].filter(Boolean);
+      if (!datas.length) { room.closeSheet(); return; }
+      var evs = [];
+      try { datas.forEach(function (data) { evs.push(S().add('mindfulness', day, data)); }); } catch (e) { room.toast('This pause could not be saved: ' + e.message + ' Try again, or tap Not this time.', 'error'); saved = evs.length > 0; if (!saved) return; } /* the sheet stays for a retry; parts already saved are not saved twice */
       saved = true; room.closeSheet();
-      try { markToday({ done: true }, day); } catch (e) { } /* the entry is saved; only the invitation's note for today failed */
+      try { markToday({ done: true }, day); } catch (e) { } /* the entries are saved; only the invitation's note for today failed */
       hideInvite();
-      room.afterSave(ev, 'Saved to your journal.');
+      evs.forEach(function (ev, i) { room.afterSave(ev, i === evs.length - 1 ? (evs.length > 1 ? evs.length + ' parts saved to your journal.' : 'Saved to your journal.') : ''); });
     });
     $('#mdNo').addEventListener('click', function () { room.closeSheet(); room.toast('No worries. Morning start is there whenever you like.', 'wb_twilight'); renderInvite(); });
     }
@@ -310,19 +364,21 @@
   function paint() {
     var s = step(); if (!s || !run) return;
     var parts = 3;
-    $('#mpCount').textContent = 'Step ' + s.part + ' of ' + parts + (run.paused ? ' · paused' : '');
+    $('#mpCount').textContent = (run.version === 'erin' ? 'Part ' : 'Step ') + s.part + ' of ' + parts + (run.paused ? ' · paused' : '');
     $('#mpTitle').textContent = s.title;
     $('#mpText').textContent = s.text;
+    var care = document.getElementById('mpCare'); /* the adaptation line for the wake-up, visible before its movements (Codex, 21 Oct) */
+    if (s.group === 'wake' && !s.gate) { if (!care) { care = document.createElement('p'); care.id = 'mpCare'; care.className = 'mpcare'; $('#mpBtns').parentNode.insertBefore(care, $('#mpBtns')); } care.textContent = CARE_WAKE; } else if (care) care.remove();
     var b = '';
-    if (s.gate) b = '<button type="button" class="btn primary" id="mpReady">Ready to brush</button><button type="button" class="btn ghost" id="mpSkipBrush">Skip brushing</button>';
+    if (s.gate) b = '<button type="button" class="btn primary" id="mpReady">' + (s.ready || 'Ready') + '</button><button type="button" class="btn ghost" id="mpSkipBrush">' + (s.skip || 'Skip this part') + '</button>';
     else if (s.open) b = '<button type="button" class="btn primary" id="mpDone">Done</button><button type="button" class="btn ghost" id="mpPause">' + (run.paused ? 'Resume' : 'Pause') + '</button>';
-    else b = '<button type="button" class="btn ghost" id="mpPause">' + (run.paused ? 'Resume' : 'Pause') + '</button><button type="button" class="btn ghost" id="mpNext">Next</button>';
+    else b = '<button type="button" class="btn ghost" id="mpPause">' + (run.paused ? 'Resume' : 'Pause') + '</button><button type="button" class="btn ghost" id="mpNext">Next</button>' + (s.group && run.version === 'erin' ? '<button type="button" class="btn ghost" id="mpSkipPart">Skip this part</button>' : '');
     if (s.audio) b += '<button type="button" class="btn ghost" id="mpQuiet" aria-pressed="' + (run.quiet ? 'true' : 'false') + '">' + (run.quiet ? 'Voice off' : 'Voice on') + '</button>';
     b += '<button type="button" class="btn ghost" id="mpStop">Stop</button>';
     var row = $('#mpBtns'), pnl = $('#mpanel'), ae = document.activeElement, focusId = ae && ae.id, inPanel = !!(ae && pnl && (pnl.contains(ae) || ae === document.body));
     row.innerHTML = b;
     var bind = function (id, f) { var el = document.getElementById(id); if (el) el.addEventListener('click', f); };
-    bind('mpReady', ready); bind('mpSkipBrush', skipBrushing); bind('mpDone', function () { if (run) run.brushed = 'yourway'; finish(true); }); bind('mpPause', pauseToggle); bind('mpNext', function () { next(true); }); bind('mpQuiet', quietToggle); bind('mpStop', stop);
+    bind('mpReady', ready); bind('mpSkipBrush', skipGate); bind('mpSkipPart', skipPart); bind('mpDone', function () { if (run) run.brushed = 'yourway'; finish(true); }); bind('mpPause', pauseToggle); bind('mpNext', function () { next(true); }); bind('mpQuiet', quietToggle); bind('mpStop', stop);
     var keep = focusId && document.getElementById(focusId);
     if (keep && row.contains(keep)) keep.focus(); /* keyboard focus stays where she was */
     else if (inPanel && focusId !== 'mpanel') { var first = row.querySelector('button'); if (first) first.focus(); } /* or moves to the first control, never lost */
@@ -330,7 +386,7 @@
 
   root.OvuMorning = {
     START_HOUR: START_HOUR, END_HOUR: END_HOUR, MIN_SAVE_S: MIN_SAVE_S, STEPS: STEPS, VERSIONS: VERSIONS,
-    inWindow: inWindow, GREETINGS: GREETINGS, arriveFor: arriveFor, plan: plan, erinSteps: erinSteps, offered: offered, makeClock: makeClock, entryData: entryData,
+    inWindow: inWindow, GREETINGS: GREETINGS, arriveFor: arriveFor, plan: plan, erinSteps: erinSteps, wakeSteps: wakeSteps, sipSteps: sipSteps, GATES: GATES, PARTS: PARTS, CARE_WAKE: CARE_WAKE, partsOf: partsOf, partEntry: partEntry, offered: offered, makeClock: makeClock, entryData: entryData,
     open: open, begin: begin, active: active, cancel: cancel, renderInvite: renderInvite,
     repose: function () { var s = step(); if (s && s.pose) { try { R().setPose(s.pose); } catch (e) { } } }, /* after she picks another outfit mid-step */ _due: function () { if (run) { clearTimeout(run.timer); due(); } }, /* tests only: a step's time is up now */
     state: function () { return run ? { version: run.version, i: run.i, key: step() && step().key, paused: run.paused, left: run.left, audioKey: run.audioKey || null, pending: run.pending || null, quiet: run.quiet, seconds: run.clock.seconds(), skipped: run.skipped.slice(), brushed: run.brushed } : null; }
