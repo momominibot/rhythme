@@ -3091,10 +3091,10 @@
   function boot() {
     if (booted) return; booted = true;
     buildScene();
+    try { var tq = new URLSearchParams(location.search).get('tester'); if (tq === 'hearts') { S.setState({ tester: { hearts: true } }); toast('Tester mode: hearts are unlimited on this device.', 'science'); } else if (tq === 'off') { S.setState({ tester: null }); } if (tq) history.replaceState(null, '', location.pathname + location.hash); } catch (e) { } /* read before her outfit is set: a Plus drop depends on tester mode (Codex-free smoke find, 21 Oct) */
     setOutfit(S.profile().outfit || 'base', true);
     avatar.classList.add('idle');
     if (S.state().sleeping) enterNight(false);
-    try { var tq = new URLSearchParams(location.search).get('tester'); if (tq === 'hearts') { S.setState({ tester: { hearts: true } }); toast('Tester mode: hearts are unlimited on this device.', 'science'); } else if (tq === 'off') { S.setState({ tester: null }); } if (tq) history.replaceState(null, '', location.pathname + location.hash); } catch (e) { }
     if (window.OvuMascot) OvuMascot.apply();
     updateGreeting(); renderDeck(); renderProps(); applySky();
     setInterval(function () { applySky(); if (window.OvuPets) renderProps(); }, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });

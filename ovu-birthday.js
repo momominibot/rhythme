@@ -155,6 +155,7 @@
     R.on('props', drawCake);
     R.on('layout', function () { drawCake(R.layout()); });
     drawCake(R.layout()); /* the first props render happened before this hook was in place */
+    if (isToday() && R.updateGreeting) R.updateGreeting(); /* the boot greeting ran before this module loaded */
     S.subscribe(function () { if (isToday()) maybeOpen(); });
     maybeOpen();
   });
