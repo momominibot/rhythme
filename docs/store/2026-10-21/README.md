@@ -17,7 +17,7 @@ store at the same time. i want the frame to be continuous from first to end pict
 | 08 yours | the You tab, cloud backup off | Your diary stays yours |
 
 Every caption is a plain description of something in the frame; none promises an outcome. Screenshots were taken from
-this build with `shoot.py` (390 x 844 at 3x, reduced motion, seeded diary, the account name "Smoke" is the smoke
+this build with `shoot.py` (390 x 844 at 3x, reduced motion, seeded diary, the person is named Momo (SHOT_NAME=Momo; the smoke
 fixture's) and composed with `compose.py` (Newsreader for titles, Manrope for the lines, both from Google Fonts). The
 JPEGs here are for review; the PNG originals (about 3 MB each) are what goes to App Store Connect and were sent to Jamie
 in the session.
