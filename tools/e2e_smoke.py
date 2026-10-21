@@ -121,7 +121,7 @@ async def main():
             check("room.html loads", r and r.status == 200, r and r.status)
             info = await page.evaluate("()=>({consent: document.querySelector('#consent')?.hidden, welcome: !!document.querySelector('#welcome:not([hidden])'), hots: document.querySelectorAll('.hotspot').length, tabs: document.querySelectorAll('nav a[data-tab]').length, hearts: document.querySelector('#heartsVal')?.textContent, width: document.documentElement.scrollWidth})")
             check("consent overlay stays hidden for a consenting person", info["consent"] is True, info)
-            check("eight or more hotspots and the four tabs render (the calendar has its own way in, so no Cycle tab: Jamie, 21 Oct)", info["hots"] >= 8 and info["tabs"] == 4, info)
+            check("eight or more hotspots and the five tabs render (the Cycle tab is back: Jamie, 21 Oct)", info["hots"] >= 8 and info["tabs"] == 5, info)
             check("no sideways scroll at phone width", info["width"] <= 390, info["width"])
 
             # 1b. garden, Dream Street and the plaza: the door walks her out, the joystick and keys move her, the mini-map jumps
