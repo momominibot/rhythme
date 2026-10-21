@@ -3179,6 +3179,9 @@ var summarised = false;
   reset(100); S.setState({ greenhouse: { seeds: { ginger: 99 }, beds: { hb1: { herb: 'lemongrass', planted: d1, watered: days(4), last: S.addDays(d1, 3), cuts: 0 } } }, farm: { harvest: { lemongrass: 120 } } });
   var full0 = RW.ledger().hearts, fullBuy = GH.buyStart(S, RW, 'ginger'), e2 = ST.value(), fullPick = GH.harvestHerb(S, 'hb1', ST);
   check('a full bag is not sold another start, and a full basket is not picked into: nothing paid, nothing charged, the farm’s count kept', !fullBuy.ok && RW.ledger().hearts === full0 && GH.herbState(S).seeds.ginger === 99 && !fullPick.ok && F.farmState(S).harvest.lemongrass === 120 && ST.value() === e2 && GH.herbRipe(GH.herbState(S).beds.hb1));
+  S.setState({ greenhouse: { seeds: { ginger: 99 }, beds: {} } });
+  var fullFree = GH.freeStart(S, 'ginger', d1);
+  check('a full bag is not given the free start either, and the free start stays unclaimed for later (collation re-check)', !fullFree.ok && GH.freeStartOpen(S) && GH.herbState(S).seeds.ginger === 99);
   var brewLine = /<p class="mindline"><span class="ms">local_cafe<\/span><span>([^<]+)<\/span>/.exec(src);
   check('the cup’s own sheet line is short and free of em dashes too', !!brewLine && brewLine[1].split(/\s+/).length <= 18 && !/—/.test(brewLine[1]), brewLine && brewLine[1]);
   /* the first start is free, once (Jamie, 21 Oct) */

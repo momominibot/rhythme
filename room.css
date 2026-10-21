@@ -2136,7 +2136,7 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 /* night: the rhythm panel and Luna's card take the dark surfaces, as every other sheet does (Codex collation review, 21 Oct) */
 html[data-sky=night] .ready,html[data-sky=night] .rcard{background:var(--rm-card);border-color:rgba(255,255,255,.1)}
 html[data-sky=night] .ready .dot i{background:var(--rm-paper-2);border-color:#5b477f;color:#cdbfe4}
-html[data-sky=night] .ready .dot.on i{color:#2a1d44}
+html[data-sky=night] .ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#2a1d44} /* the completed dots keep their gradient at night (Codex re-check) */
 html[data-sky=night] .ready .dot+.dot::before{background:#3b2e5a}
 html[data-sky=night] .rband{background:var(--rm-paper-2)}
 html[data-sky=night] .chip-th{background:#3b2e5a;color:#e3d4fa;border-color:#7a62a6}
@@ -2160,3 +2160,4 @@ html[data-sky=night] .wstrip{background:var(--rm-card);border-color:rgba(255,255
 html[data-sky=night] .wstrip .help,html[data-sky=night] .wstrip .lbl,html[data-sky=night] .winfo p,html[data-sky=night] .wlist li{color:var(--rm-ink)}
 html[data-sky=night] .wstrip .whead small,html[data-sky=night] .wlist li small,html[data-sky=night] .wstrip .help.muted{color:var(--rm-ink-2)}
 html[data-sky=night] .winfo summary{color:#b9d2f5}
+@media (prefers-reduced-motion: reduce){.sheet.luna-sheet:not(.on){transition:none}}

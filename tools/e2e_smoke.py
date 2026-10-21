@@ -148,7 +148,9 @@ async def main():
             bed = await page.evaluate("()=>({pos: OvuRoom.pos(), inBed: OvuWalk.blocked(OvuWalk.HOMES.room.solids, OvuRoom.pos().x, OvuRoom.pos().y) !== null, sheet: document.querySelector('#sheet').getAttribute('aria-hidden')})")
             check("a tap on the bed walks up beside it, never onto it, and opens nothing", not bed["inBed"] and abs(bed["pos"]["x"] - 20) < 10 and abs(bed["pos"]["y"] - 52) < 18 and bed["sheet"] == "true", bed)
             await page.click(".hotspot[data-id=bed]")
-            await page.wait_for_timeout(300); routed = await page.evaluate("()=>({walking: OvuWalk.walking(), route: !!OvuWalk.route(), cyc: OvuWalk.cycle().on})")
+            try: await page.wait_for_function("()=>OvuWalk.walking() && !!OvuWalk.route() && OvuWalk.cycle().on", timeout=3000)  # the walk and its cycle start within a frame or two; under machine load the first frames can take longer than a fixed wait (collation smoke, 21 Oct)
+            except Exception: pass
+            routed = await page.evaluate("()=>({walking: OvuWalk.walking(), route: !!OvuWalk.route(), cyc: OvuWalk.cycle().on})")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] #goodnight', timeout=8000)
             except Exception: pass
             hs = await page.evaluate("()=>({open: document.querySelector('#sheet').getAttribute('aria-hidden')==='false', btn: !!document.querySelector('#goodnight')})")
@@ -1548,8 +1550,8 @@ async def main():
             except Exception: pass
             kb = await page.evaluate("()=>({id: OvuRoom.sheetId(), cook: !!document.querySelector('#basketCook')})")
             await page.click("#basketCook"); await page.wait_for_timeout(200)
-            kl = await page.evaluate("()=>({id: OvuRoom.sheetId(), n: document.querySelectorAll('#kitchenList [data-recipe]').length, ready: [...document.querySelectorAll('#kitchenList [data-recipe]:not([disabled])')].map(b=>b.dataset.recipe).join(','), herb: /greenhouse herbs/.test((document.querySelector('#kitchenList [data-recipe=pandanrice]')||{}).textContent||'') && !!document.querySelector('#kitchenList [data-recipe=pandanrice][disabled]'), fish: /fish/i.test(document.querySelector('#kitchenList').textContent)})")
-            check("the farm basket offers Cook a dish; the kitchen lists ten dishes, tomato and egg ready, pandan rice waiting for the greenhouse herbs, and no fish", kb["id"] == "farmbasket" and kb["cook"] and kl["id"] == "kitchen" and kl["n"] == 10 and kl["ready"] == "tomatoegg" and kl["herb"] and not kl["fish"], [kb, kl])
+            kl = await page.evaluate("()=>({id: OvuRoom.sheetId(), n: document.querySelectorAll('#kitchenList [data-recipe]').length, ready: [...document.querySelectorAll('#kitchenList [data-recipe]:not([disabled])')].map(b=>b.dataset.recipe).join(','), herb: /greenhouse/.test((document.querySelector('#kitchenList [data-recipe=pandanrice]')||{}).textContent||'') && !!document.querySelector('#kitchenList [data-recipe=pandanrice][disabled]'), fish: /fish/i.test(document.querySelector('#kitchenList').textContent)})")
+            check("the farm basket offers Cook a dish; the kitchen lists ten dishes, tomato and egg ready, pandan rice waiting for pandan from the greenhouse, and no fish", kb["id"] == "farmbasket" and kb["cook"] and kl["id"] == "kitchen" and kl["n"] == 10 and kl["ready"] == "tomatoegg" and kl["herb"] and not kl["fish"], [kb, kl])
             await page.evaluate("()=>{OvuCare.slowMs = 4000}")
             await page.click("#kitchenList [data-recipe=tomatoegg]"); await page.wait_for_timeout(200)
             await page.click("#cookBegin"); await page.wait_for_timeout(300)
@@ -2446,6 +2448,12 @@ async def main():
             await pl.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('window'))"); await pl.wait_for_timeout(500)
             other = await pl.evaluate("()=>({card: document.querySelector('#sheet').classList.contains('luna-sheet'), icon: !!document.querySelector('#sheetIcon .ms')})")
             check("luna: another sheet is an ordinary sheet again, with an icon, not her face", not other["card"] and other["icon"], other)
+            # closed on a tall screen, Luna's top-anchored card leaves the screen for good (Codex re-check, 21 Oct)
+            await pl.set_viewport_size({"width": 390, "height": 1000})
+            await pl.evaluate("()=>document.querySelector('#lunaBtn').click()"); await pl.wait_for_timeout(500)
+            await pl.evaluate("()=>OvuRoom.closeSheet()"); await pl.wait_for_timeout(700)
+            lc = await pl.evaluate("()=>{var s=document.querySelector('#sheet'), cs=getComputedStyle(s), r=s.getBoundingClientRect(); var hit=document.elementFromPoint(195, Math.min(990, Math.max(0, r.top+10))); return {vis: cs.visibility, pe: cs.pointerEvents, inside: !!(hit && s.contains(hit)), aria: s.getAttribute('aria-hidden')}}")
+            check("luna: closed on a tall screen, the card is hidden, untappable and marked hidden for assistive technology", lc["vis"] == "hidden" and lc["pe"] == "none" and not lc["inside"] and lc["aria"] == "true", lc)
             check("luna: no page errors in the Luna run", not lerr, lerr[:3])
             await ctxl.close()
 
