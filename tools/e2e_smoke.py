@@ -148,7 +148,7 @@ async def main():
             bed = await page.evaluate("()=>({pos: OvuRoom.pos(), inBed: OvuWalk.blocked(OvuWalk.HOMES.room.solids, OvuRoom.pos().x, OvuRoom.pos().y) !== null, sheet: document.querySelector('#sheet').getAttribute('aria-hidden')})")
             check("a tap on the bed walks up beside it, never onto it, and opens nothing", not bed["inBed"] and abs(bed["pos"]["x"] - 20) < 10 and abs(bed["pos"]["y"] - 52) < 18 and bed["sheet"] == "true", bed)
             await page.click(".hotspot[data-id=bed]")
-            try: await page.wait_for_function("()=>OvuWalk.walking() && !!OvuWalk.route()", timeout=3000)  # the walk starts within a frame or two; under machine load the first frame can take longer than a fixed wait (collation smoke, 21 Oct)
+            try: await page.wait_for_function("()=>OvuWalk.walking() && !!OvuWalk.route() && OvuWalk.cycle().on", timeout=3000)  # the walk and its cycle start within a frame or two; under machine load the first frames can take longer than a fixed wait (collation smoke, 21 Oct)
             except Exception: pass
             routed = await page.evaluate("()=>({walking: OvuWalk.walking(), route: !!OvuWalk.route(), cyc: OvuWalk.cycle().on})")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] #goodnight', timeout=8000)
