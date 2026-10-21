@@ -87,30 +87,36 @@
   function at(g, id) { var n = g.nodes[id]; return AT[id] || (n && n.store ? 'in ' + n.name : 'in the ' + String(n ? n.name : id).toLowerCase()); }
   function stepText(g, e) { return { where: g.nodes[e.from] ? g.nodes[e.from].name : e.from, door: e.label }; }
 
-  /* the wider world (Jamie, 21 Oct: "a map to entice people that there are more to come so the map will be in the middle
-   * where can we zoom in, the surrounding will be ???"): the known world sits in the middle third of a canvas three times
-   * its size; the ring around it is fog with ??? patches. Three carry a hint of what may come; none names a partner, a
-   * product or a promise. Positions are percentages of the wide canvas; the known world is the square from 33.3 to 66.7. */
+  /* the wider world (Jamie, 21 Oct: "a map to entice people that there are more to come", and then "it should transit one
+   * piece of world map with paths not explored"): one continuous plate, map-world.webp (tools/art/world_plate.py paints it
+   * outward from map-bg.webp: the ground runs on, the known paths continue as dotted stone into thick mist). The known map
+   * sits in the plate at KNOWN (percent of the square plate); the ??? markers sit where each unexplored path vanishes.
+   * Three carry a hint of what may come; none names a partner, a product or a promise. */
+  var KNOWN = { x: 26.95, y: 31.64, w: 46, h: 36.72 };
   var FOG = [
-    { id: 'north', x: 50, y: 20, hint: 'A city of tomorrow, some day.' },
-    { id: 'east', x: 80, y: 50, hint: 'A kingdom of stories, some day.' },
-    { id: 'south', x: 50, y: 80, hint: 'A place for check-ups, some day.' },
-    { id: 'nw', x: 22, y: 22, hint: '' }, { id: 'ne', x: 78, y: 22, hint: '' }, { id: 'west', x: 20, y: 50, hint: '' }, { id: 'sw', x: 22, y: 78, hint: '' }, { id: 'se', x: 78, y: 78, hint: '' }
+    { id: 'north', x: 50, y: 8, hint: '' },
+    { id: 'ne', x: 84, y: 13, hint: 'A city of tomorrow, some day.' },
+    { id: 'east', x: 91, y: 50, hint: '' },
+    { id: 'se', x: 85, y: 86, hint: 'A place for check-ups, some day.' },
+    { id: 'south', x: 50, y: 92, hint: '' },
+    { id: 'sw', x: 15, y: 86, hint: '' },
+    { id: 'west', x: 9, y: 50, hint: '' },
+    { id: 'nw', x: 15, y: 13, hint: 'A kingdom of stories, some day.' }
   ];
-  var ZOOM = { min: 0.36, max: 1.6, start: 0.5, names: 0.75 }; /* names show from 0.75; at 0.5, centred, the known world fills the middle and the ??? patches peek in at the edges */
-  /* the translation that puts the known world (the canvas centre) in the middle of the view at scale s */
-  function centred(s, vw, vh) { return zoomClamp(s, vw * (0.5 - 1.5 * s), vh * (0.5 - 1.5 * s), vw, vh); }
-  /* the wide canvas is 3 by 3 viewports; keep it covering the viewport, or centred when smaller than it */
+  var ZOOM = { min: 0.26, max: 1.6, start: 0.6, names: 0.75 }; /* names show from 0.75; at 0.6, centred, the known map fills most of the view and the paths run out into the mist at its edges */
+  /* the translation that puts the known map (the plate's centre) in the middle of the view at scale s: the plate is a square three viewport widths wide */
+  function centred(s, vw, vh) { return zoomClamp(s, vw * 0.5 - 1.5 * vw * s, vh * 0.5 - 1.5 * vw * s, vw, vh); }
+  /* the plate is a square three viewport widths on a side; keep it covering the viewport, or centred when smaller than it */
   function zoomClamp(s, tx, ty, vw, vh) {
     s = Math.max(ZOOM.min, Math.min(ZOOM.max, s));
-    var ww = 3 * vw * s, wh = 3 * vh * s;
+    var ww = 3 * vw * s, wh = 3 * vw * s;
     tx = ww <= vw ? (vw - ww) / 2 : Math.max(vw - ww, Math.min(0, tx));
     ty = wh <= vh ? (vh - wh) / 2 : Math.max(vh - wh, Math.min(0, ty));
     return { s: s, tx: tx, ty: ty };
   }
-  function fogText(f) { return f.hint ? '<b>???</b> ' + f.hint + ' Nothing to do here yet; the known places are in the middle.' : '<b>???</b> Still unexplored. Something may be built here one day.'; }
+  function fogText(f) { return f.hint ? '<b>???</b> ' + f.hint + ' Not built yet; the path stops in the mist for now, and the known places are in the middle.' : '<b>???</b> Still unexplored, not built yet. Something may be built here one day.'; }
 
-  var M = { POS: POS, FOG: FOG, ZOOM: ZOOM, zoomClamp: zoomClamp, centred: centred, fogText: fogText, at: at, nodeOf: nodeOf, placeName: placeName, graph: graph, route: route, place: place, lines: lines, stepText: stepText };
+  var M = { POS: POS, KNOWN: KNOWN, FOG: FOG, ZOOM: ZOOM, zoomClamp: zoomClamp, centred: centred, fogText: fogText, at: at, nodeOf: nodeOf, placeName: placeName, graph: graph, route: route, place: place, lines: lines, stepText: stepText };
   root.OvuMap = M;
 
   /* ---------- the sheet ---------- */
@@ -153,7 +159,7 @@
       plate + '<div class="worldzoom far" id="worldZoom" style="aspect-ratio:100/' + H + '"><div class="worldwide" id="worldWide">' +
         FOG.map(function (f) { return '<button type="button" class="fog" data-fog="' + f.id + '" style="left:' + f.x + '%;top:' + f.y + '%" aria-label="Unknown place, not built yet">???</button>'; }).join('') +
         '<div class="worldmap known">' + svg + nodes + '</div></div></div>' +
-      '<div class="zoomctl"><button type="button" id="mapZoomOut" aria-label="Zoom out"><span class="ms" aria-hidden="true">remove</span></button><button type="button" id="mapZoomIn" aria-label="Zoom in"><span class="ms" aria-hidden="true">add</span></button><span class="zoomnote">The known world is in the middle. Pinch or drag to look around; the ??? places are not built yet.</span></div>' +
+      '<div class="zoomctl"><button type="button" id="mapZoomOut" aria-label="Zoom out"><span class="ms" aria-hidden="true">remove</span></button><button type="button" id="mapZoomIn" aria-label="Zoom in"><span class="ms" aria-hidden="true">add</span></button><span class="zoomnote">One world: the known places in the middle, and paths that run out into the mist. Pinch or drag to look around; the ??? places are not built yet.</span></div>' +
       '<div class="maproute" id="mapRoute" aria-live="polite">' + (here ? routeHTML(g, here, first) : '') + '</div>' +
       '<p class="help">The map shows the way; it does not move you. Doors and paths are labelled in each place.</p>');
     wireZoom();
