@@ -503,7 +503,7 @@
       if (mine) { items.push({ id: mine.id, data: data }); refreshed++; } else items.push({ type: type, date: date, data: data, source: src });
       counts[kind]++; dates.push(date);
     }
-    var label = src === SOURCE.apple ? 'Apple Health' : 'Google Takeout (Fit)';
+    var label = result.sourceLabel || (src === SOURCE.apple ? 'Apple Health' : 'Google Takeout (Fit)');
     if (want.sleep) (result.sleep || []).forEach(function (n) { consider('sleep', 'sleep', n.date, { bedTime: n.bedTime, wakeTime: n.wakeTime, hours: n.hours, asleepMin: n.asleepMin, quality: null, notes: 'From ' + label + (n.basis === 'in-bed' ? ' (time in bed; no sleep stages were recorded)' : ''), mode: 'import', basis: n.basis || 'asleep', segments: n.segments }); });
     if (want.weight) (result.weight || []).forEach(function (w) { consider('weight', 'weight', w.date, { kg: w.kg }); });
     if (want.period) (result.period || []).forEach(function (p) { consider('period', 'period', p.date, { flow: p.flow }); });

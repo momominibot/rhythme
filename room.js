@@ -1502,7 +1502,7 @@
       '<div id="youAccount"></div>' +
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
-      '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see them or bring in more' : 'Choose what comes in: sleep, cycle, weight and more', 'import') + (window.OvuHealthNative && OvuHealthNative.available() ? row('ios', 'Connect Apple Health', 'Read sleep and cycle days from Health on this iPhone; you choose what comes in', 'healthkit') : '') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see them or bring in more' : 'Choose what comes in: sleep, cycle, weight and more', 'import') + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep and cycle days from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : '') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Your sign-in, cloud backup and Rhythme Plus access stay. Export a copy first if you want to keep it.' + (function () { var h = window.OvuSync && OvuSync.status ? OvuSync.status().held || 0 : 0; return h ? ' ' + h + ' Movement ' + (h === 1 ? 'entry is' : 'entries are') + ' not in your cloud backup yet, so ' + (h === 1 ? 'it' : 'they') + ' would be lost.' : ''; })() + '</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is a diary, not a diagnosis, and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
@@ -1633,7 +1633,7 @@
     var from = impFrom(), found = H.kinds(imp.scan, { from: from, to: S.today() }), ready = found.ready;
     var preview = H.plan(imp.scan, S, { kinds: ready.map(function (k) { return k.id; }), from: from });
     var ticked = ready.filter(function (k) { return imp.pick[k.id] && k.count; });
-    var google = imp.scan.source === H.SOURCE.google, direct = imp.scan.origin === 'healthkit';
+    var direct = imp.scan.origin === 'healthkit' || imp.scan.origin === 'health-connect', google = imp.scan.source === H.SOURCE.google && !direct;
     var rows = ready.map(function (k) {
       var off = !k.count, kept = preview.keptBy[k.id] || 0;
       return '<label class="imp-kind' + (off ? ' off' : '') + '"><input type="checkbox" data-kind="' + k.id + '"' + (imp.pick[k.id] && !off ? ' checked' : '') + (off ? ' disabled' : '') + '><span class="ms">' + k.icon + '</span><span><b>' + esc(k.label) + '</b><small>' +
@@ -1641,13 +1641,13 @@
         (kept && !off ? '<small class="imp-kept">' + (kept === 1 ? '1 day you logged yourself stays as it is' : kept.toLocaleString() + ' days you logged yourself stay as they are') + '</small>' : '') + '</span></label>';
     }).join('');
     var later = found.later, laterHTML = later.length ? '<details class="imp-later"><summary>' + impPlural(later.length, 'other kind', 'other kinds') + ' Rhythme has no place for yet</summary><ul>' + later.map(function (l) { return '<li><b>' + esc(l.name) + '</b> · ' + l.count.toLocaleString() + (l.from ? ' · ' + esc(impDates(l.from, l.to)) : '') + '</li>'; }).join('') + '</ul><p class="help">These stay in your Health app. They are listed so you know what was in the file.</p></details>' : '';
-    var html = '<div class="imp-card"><div class="imp-head"><span class="ms">' + (google ? 'android' : 'ios') + '</span><div><b>Found in ' + (direct ? 'Apple Health' : 'your ' + (google ? 'Google Takeout' : 'Apple Health export')) + '</b><small>' + esc(imp.file) + '</small></div></div>' +
+    var html = '<div class="imp-card"><div class="imp-head"><span class="ms">' + (imp.scan.source === H.SOURCE.google ? 'android' : 'ios') + '</span><div><b>Found in ' + (direct ? esc(imp.scan.sourceLabel) : 'your ' + (google ? 'Google Takeout' : 'Apple Health export')) + '</b><small>' + esc(imp.file) + '</small></div></div>' +
       '<p class="help" style="margin-top:8px">Tick what you want in your diary. Nothing is saved until you tap Bring in.</p>' +
       '<div class="chips imp-range" role="radiogroup" aria-label="Which dates">' + IMP_RANGES.map(function (r) { return '<button type="button" class="chipbtn' + (imp.range === r.id ? ' on' : '') + '" role="radio" aria-checked="' + (imp.range === r.id) + '" data-range="' + r.id + '">' + r.label + '</button>'; }).join('') + '</div>' +
       (ready.length ? '<div class="imp-kinds">' + rows + '</div>' : '<div class="flag watch"><span class="ms">info</span><div><b>Nothing Rhythme can use</b><span>This file has no sleep, cycle, weight or mindful minutes in it.</span></div></div>') +
       laterHTML + '</div>' +
       '<div class="row"><button type="button" class="btn primary" id="impGo"' + (ticked.length ? '' : ' disabled') + '><span class="ms">move_to_inbox</span>' + (ticked.length ? 'Bring in ' + impPlural(ticked.length, 'kind', 'kinds') : 'Tick what to bring in') + '</button><button type="button" class="btn ghost" id="impCancel" style="flex:0 0 auto">Cancel</button></div>' +
-      '<p class="help">' + (direct ? 'Read from Health on this iPhone and never uploaded. Cancel forgets it; Health keeps everything as it was.' : 'The file was read on this phone and never uploaded. Cancel forgets it.') + '</p>';
+      '<p class="help">' + (direct ? 'Read from ' + esc(imp.scan.sourceLabel) + ' on this phone and never uploaded. Cancel forgets it; ' + esc(imp.scan.sourceLabel) + ' keeps everything as it was.' : 'The file was read on this phone and never uploaded. Cancel forgets it.') + '</p>';
     openSheet('import', 'Choose what comes in', 'Nothing is ticked until you tick it', 'checklist', html);
     body.addEventListener('change', function (e) { var c = e.target.closest('input[data-kind]'); if (!c) return; imp.pick[c.dataset.kind] = c.checked; var keep = body.scrollTop; renderImportPicker(H); body.scrollTop = keep; });
     body.addEventListener('click', function (e) {
@@ -1672,39 +1672,45 @@
     if (p.future) notes.push(impPlural(p.future, 'future-dated entry', 'future-dated entries') + ' skipped.');
     if (left.length) notes.push('Left out by your choice: ' + left.map(function (id) { return H.KINDS.filter(function (x) { return x.id === id; })[0].label.toLowerCase(); }).join(', ') + '.');
     if (!p.total && !p.kept) notes.push('Nothing here was new for your diary.');
-    notes.push(last.res && last.res.origin === 'healthkit' ? 'Read from Apple Health on this iPhone; nothing was written back to Health.' : 'The file was read on your phone and never left it.');
+    notes.push(last.res && last.res.sourceLabel && last.res.origin ? 'Read from ' + last.res.sourceLabel + ' on this phone; nothing was written back to it.' : 'The file was read on your phone and never left it.');
     return '<div class="imp-done" id="impSummary" data-run="' + importRuns + '"><span class="lbl">Just brought in</span>' + rows + '<p class="help">' + esc(notes.join(' ')) + '</p></div>';
   }
-  /* Apple Health read directly (iOS app only, ovu-healthnative.js). What is read is named before Apple's sheet
-   * appears; the read lands in the same picker as a file, with nothing ticked. */
+  /* Health data read directly in the app shells (ovu-healthnative.js): Apple Health on an iPhone, Health Connect
+   * on Android. What is read is named before the system's own screen appears; the read lands in the same picker
+   * as a file, with nothing ticked. */
   function openHealthKit(note) {
     var N = window.OvuHealthNative, H = window.OvuHealth; if (!N || !H || !N.available()) return openImport();
+    var P = N.info(), apple = P.origin === 'healthkit';
     var html = (note || '') +
-      '<div class="imp-card"><div class="imp-head"><span class="ms">ios</span><div><b>Apple Health on this iPhone</b><small>Read only, the last 90 days</small></div></div>' +
-      '<p class="help" style="margin-top:8px">Rhythme asks Health for three things and nothing else:</p><ul class="imp-steps">' + N.READS.map(function (r) { return '<li><b>' + esc(r.label) + '</b>. ' + esc(r.note) + '.</li>'; }).join('') + '</ul>' +
-      '<p class="help">Apple then shows its own sheet where you can allow each one. Rhythme never writes to Health, never uses what it reads for ads, and never sells or shares it. What you bring in joins your diary on this phone' + (S.profile().cloud && S.profile().cloud.v >= 1 ? ', and is backed up with it because cloud backup is on' : '') + '. After reading you see what was found and tick what comes into your diary; nothing is saved before that.</p>' +
-      '<div class="row"><button type="button" class="btn primary" id="hkGo"' + (importing ? ' disabled' : '') + '><span class="ms">favorite</span>Connect Apple Health</button></div>' +
+      '<div class="imp-card"><div class="imp-head"><span class="ms">' + (apple ? 'ios' : 'android') + '</span><div><b>' + esc(P.name) + ' on ' + esc(P.device) + '</b><small>Read only, the last 90 days</small></div></div>' +
+      '<p class="help" style="margin-top:8px">Rhythme asks ' + esc(P.name) + ' for three things and nothing else:</p><ul class="imp-steps">' + N.READS.map(function (r) { return '<li><b>' + esc(r.label) + '</b>. ' + esc(r.note) + '.</li>'; }).join('') + '</ul>' +
+      '<p class="help">' + (apple ? 'Apple then shows its own sheet where you can allow each one.' : 'Health Connect then shows its own screen where you can allow each one, and past data older than 30 days if you want it.') + ' Rhythme never writes to ' + esc(P.name) + ', never uses what it reads for ads, and never sells or shares it. What you bring in joins your diary on this phone' + (S.profile().cloud && S.profile().cloud.v >= 1 ? ', and is backed up with it because cloud backup is on' : '') + '. After reading you see what was found and tick what comes into your diary; nothing is saved before that.</p>' +
+      '<div class="row"><button type="button" class="btn primary" id="hkGo"' + (importing ? ' disabled' : '') + '><span class="ms">favorite</span>Connect ' + esc(P.name) + '</button></div>' +
       '<div id="impProgress"' + (importing ? '' : ' hidden') + '><div class="ibar"><i id="impBar" style="width:' + (importing ? '30%' : '0') + '"></i></div><p class="help" id="impStatus" role="status" aria-live="polite"></p></div><div id="impError"></div></div>' +
-      '<p class="help">To change what Rhythme may read later: Settings, then Health, then Data Access and Devices, then Rhythme.</p>';
-    openSheet('import', 'Apple Health', 'Read on this iPhone; you choose what comes in', 'ios', html);
+      '<p class="help">To change what Rhythme may read later: ' + esc(P.manage) + '.</p>';
+    openSheet('import', P.name, 'Read on ' + P.device + '; you choose what comes in', apple ? 'ios' : 'android', html);
     body.addEventListener('click', function (e) { if (e.target.closest('#hkGo')) { chime('tap'); runHealthKit(); } });
   }
   function runHealthKit() {
     var N = window.OvuHealthNative, H = window.OvuHealth; if (!N || !H || importing) return; importing = true; imp.last = null; imp.confirm = null;
+    var P = N.info(), apple = P.origin === 'healthkit';
     var ui = function (id) { return current === 'import' ? $('#' + id) : null; };
     var show = function (frac, label) { var p = ui('impProgress'), b = ui('impBar'), st = ui('impStatus'); if (p) p.hidden = false; if (b) b.style.width = Math.max(2, Math.min(100, Math.round(frac * 100))) + '%'; if (st) st.textContent = label; };
-    var go = ui('hkGo'); if (go) go.disabled = true; show(0.05, 'Waiting for Apple Health…');
+    var go = ui('hkGo'); if (go) go.disabled = true; show(0.05, 'Waiting for ' + P.name + '…');
     N.connectAndRead({ days: 90, onProgress: show }).then(function (res) {
       importing = false;
       if (res.empty) {
-        var emptyNote = '<div class="flag watch"><span class="ms">info</span><div><b>Nothing came back from Health</b><span>Either there is no sleep or cycle data from the last 90 days, or reading was not allowed. Apple does not tell apps which, so Rhythme cannot either. You can check in Settings, then Health, then Data Access and Devices.</span></div></div>';
-        return current === 'import' ? openHealthKit(emptyNote) : toast('Nothing came back from Apple Health.', 'info');
+        var why = apple ? 'Either there is no sleep or cycle data from the last 90 days, or reading was not allowed. Apple does not tell apps which, so Rhythme cannot either.'
+          : (res.granted && !res.granted.length ? 'None of the three was allowed, so nothing was read.' : 'Nothing was recorded in the days Health Connect let Rhythme see' + (res.history ? '.' : ' (the last 30 days, because past data was not allowed).'));
+        var emptyNote = '<div class="flag watch"><span class="ms">info</span><div><b>Nothing came back from ' + esc(P.name) + '</b><span>' + esc(why + ' You can check in ' + P.manage + '.') + '</span></div></div>';
+        return current === 'import' ? openHealthKit(emptyNote) : toast('Nothing came back from ' + P.name + '.', 'info');
       }
-      imp.scan = res; imp.file = 'Apple Health on this iPhone · last ' + res.window.days + ' days'; imp.pick = {}; imp.range = 'all';
-      if (current === 'import') renderImportPicker(H); else toast('Apple Health is read. Open You, then Apple Health and Google, to choose what comes in.', 'move_to_inbox');
+      var seen = res.seenDays || res.window.days;
+      imp.scan = res; imp.file = P.name + ' on ' + P.device + ' · last ' + seen + ' days' + (res.granted && res.granted.length < N.READS.length ? ' · ' + res.granted.length + ' of ' + N.READS.length + ' kinds allowed' : ''); imp.pick = {}; imp.range = 'all';
+      if (current === 'import') renderImportPicker(H); else toast(P.name + ' is read. Open You, then Apple Health and Google, to choose what comes in.', 'move_to_inbox');
     }, function (err) {
       importing = false; var g2 = ui('hkGo'); if (g2) g2.disabled = false; var p = ui('impProgress'); if (p) p.hidden = true;
-      var e2 = ui('impError'); if (e2) e2.innerHTML = '<div class="flag watch"><span class="ms">info</span><div><b>Apple Health did not answer</b><span>' + esc(err && err.message ? err.message : String(err)) + '</span></div></div>';
+      var e2 = ui('impError'); if (e2) e2.innerHTML = '<div class="flag watch"><span class="ms">info</span><div><b>' + esc(P.name) + ' did not answer</b><span>' + esc(err && err.message ? err.message : String(err)) + '</span></div></div>';
     });
   }
   /* The sheet body is rebuilt on every render, so progress writes look the elements up fresh and simply miss when another sheet is showing. */

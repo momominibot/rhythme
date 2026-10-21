@@ -5,12 +5,13 @@ Written 21 October 2026. Companion to `docs/design/2026-10-18-health-connections
 ## 1. The short answer
 
 A web page cannot reach HealthKit or Health Connect. Both live only inside native apps, so a direct
-link needs the Capacitor shells: the iOS one already exists in `ios/App`, an Android one does not yet.
-Inside the shell, a native read becomes one more source for the import that already ships: the same
-`kinds()` list, the same picker with nothing ticked, the same `plan()` and `apply()`, the same
-`source: 'apple-health'` on every entry, and the same Remove.
+link needs the Capacitor shells: `ios/App` (already there) and `android/` (added on this branch with
+`@capacitor/android` 8.5.1). Inside a shell, a native read becomes one more source for the import that
+already ships: the same `kinds()` list, the same picker with nothing ticked, the same `plan()` and
+`apply()`, and the same Remove. iPhone entries carry `source: 'apple-health'` like the export file; Health
+Connect entries carry `source: 'google-fit'`, the source Google's data already uses (see section 4).
 
-This branch builds the iOS slice behind a switch that is off. Health Connect is planned below and not built.
+This branch builds both slices, each behind its own switch, both off.
 
 ## 2. What Jamie needs on his side
 
@@ -36,15 +37,17 @@ Apple's rules that bind this feature (App Review Guidelines, read 21 October 202
 
 One thing to settle before the switch goes on: Luna's AI relay (paused today) sends diary text to a third-party AI service. If it is turned back on, entries that came from HealthKit must either be left out of every relay payload or be sent only after a specific permission that says so, to stay inside 5.1.3(i). The rules engine and the insight agents must be checked the same way.
 
-### Google (Health Connect, for a later Android slice)
+### Google (before the Android slice can reach real users)
 
 | Step | Where | Notes |
 |---|---|---|
-| Android shell | `npx cap add android` in this repo | Does not exist yet. Health Connect needs Android 9+ with the Health Connect app, or Android 14+ where it is built in. |
-| Permissions in `AndroidManifest.xml` | the Android project | `android.permission.health.READ_SLEEP`, `READ_MENSTRUATION` (covers flow and period records), `READ_INTERMENSTRUAL_BLEEDING`, and `READ_HEALTH_DATA_HISTORY` if more than the last 30 days is wanted. Plus the permissions-rationale activity that shows the privacy policy, which Health Connect opens from its own screen. |
-| Play Console: Health apps declaration | Play Console > App content > Health apps | Tick the health features, and for each data type give a specific justification of how it benefits the user. Request only the types the feature uses. The declaration can be reviewed again with each new version, and must be filled in again when the data types change. |
-| Play Console: Data safety | App content > Data safety | Must match the privacy policy, and the policy must be the same one Health Connect links to. |
-| Privacy policy | `privacy.html` | Add Health Connect by name (sleep, menstruation, spotting) when the Android slice ships. Do not name it before. |
+| Android shell | `android/` in this repo | Done on this branch. `minSdkVersion` is 26 (the Health Connect client needs it); Health Connect itself runs on Android 9+ with the Health Connect app, and is built into Android 14+. App ID is still `app.vercel.ovuluna.dev`; pick the real one before the Play app record exists, because it cannot change afterwards. |
+| Permissions in `AndroidManifest.xml` | `android/app/src/main/AndroidManifest.xml` | Done: `READ_SLEEP`, `READ_MENSTRUATION` (covers flow and period records), `READ_INTERMENSTRUAL_BLEEDING`, `READ_HEALTH_DATA_HISTORY` (only requested when the phone's Health Connect supports it), the `ACTION_SHOW_PERMISSIONS_RATIONALE` filter on MainActivity and the `VIEW_PERMISSION_USAGE` activity alias for Android 14+. Either one opens `privacy.html` in the app (`MainActivity.showPrivacyIfAsked`). |
+| Play Console developer account and app record | play.google.com/console | Jamie's account exists. Creating the app record and uploading a signed bundle is his step. |
+| Play Console: Health apps declaration | App content > Health apps | Tick sleep and cycle tracking, and for each of the three data types plus history give a specific reason ("shows your sleep and period days in your Rhythme diary when you choose to bring them in"). Request only these. Re-declare whenever the types change; Google may review again with each version. |
+| Play Console: Data safety | App content > Data safety | Health info (sleep, cycle) collected only when cloud backup is on, for app functionality, not shared, deletable. Must match the privacy policy, and the policy must be the same one Health Connect links to. |
+| Privacy policy | `privacy.html` | Done: the "Health data you bring in" entry names Health Connect and what is read. |
+| Switch on | `ovu-config.js` `nativeHealth.android: true` | Only in a build for testers after the declaration is accepted. |
 
 Google Fit's APIs are being retired in favour of Health Connect, so no Fit API work; the Takeout file import stays for people with old Fit history.
 
@@ -68,9 +71,14 @@ can come later from the same plugin (`HKQuantityType(.stepCount)`, `HKWorkout`) 
 `@capgo/capacitor-health` next to it; Rhythme has no place for steps today, so they stay in the
 "not in Rhythme yet" list.
 
-For Android, the plan is to try `@kiwi-health/capacitor-health-connect` on Capacitor 8 first; if its
-peer range blocks it, write the same kind of local Kotlin plugin (`HealthConnectClient.readRecords` for
-`SleepSessionRecord`, `MenstruationFlowRecord`, `IntermenstrualBleedingRecord`) and map it the same way.
+For Android the same reasoning won: `@kiwi-health/capacitor-health-connect` has the cycle records but
+declares Capacitor 7, and pulling an unmatched third-party package into the path of menstrual data was
+not worth it. `android/app/src/main/java/app/vercel/ovuluna/dev/RhythmeHealthPlugin.kt` (about 170 lines,
+Kotlin, `androidx.health.connect:connect-client` 1.1.0, the current stable release) answers to the same
+`RhythmeHealth` name with the same three methods and is registered in `MainActivity` before the bridge
+starts. It reads `SleepSessionRecord`, `MenstruationFlowRecord`, `MenstruationPeriodRecord` and
+`IntermenstrualBleedingRecord`, pages through every result, and returns the records as Health Connect
+describes them; the mapping lives in JavaScript where it is tested.
 
 ## 4. How the native read joins the existing import
 
@@ -97,26 +105,46 @@ RhythmeHealthPlugin.readSamples ──samples──▶  OvuHealthNative.read()
   Health on this iPhone").
 - Window: the last 90 days by default, capped at 366 days by both sides. The picker's own date chips still apply.
 - Nothing is written to Health; the plugin asks `requestAuthorization(toShare: nil, read: ...)`.
+- Health Connect mapping (`OvuHealthNative.fromHealthConnect`): sleep stages light, deep, REM and plain
+  sleeping become asleep; awake, awake in bed and out of bed are dropped like Apple's awake; an unknown stage
+  and a session with no stages at all count as time in bed, so they are labelled "time in bed" rather than
+  claimed as sleep. Flow light, medium, heavy keep their names, unknown becomes "not recorded". A
+  `MenstruationPeriodRecord` span (some apps write only these) marks each day it covers as not recorded,
+  capped at 20 days, and never weakens a day with recorded flow.
+- Health Connect, unlike HealthKit, says which permissions were granted. Types not allowed are not read and
+  the picker title says how many of the three were allowed. Without "past data" Health Connect shows apps only
+  the last 30 days; the picker then says "last 30 days" instead of 90.
+- Source: Health Connect entries use `google-fit`, which the store, journal, rewards, Luna's parser and the
+  two team dashboard SQL functions already treat as imported Google data. A new source name would have to be
+  added in nine files and two live migrations; the person-facing words say "Health Connect" from
+  `result.sourceLabel`, and `plan()` writes "From Health Connect" in each entry's note.
 - With `nativeHealth.apple` false, or in any browser, `OvuHealthNative.available()` is false: the You row
   is not drawn, no native call is made, and the web build behaves as before (`ovu-healthnative.js` loads and
   does nothing).
 
-## 5. What this slice includes
+## 5. What the slices include
 
 - `ovu-healthnative.js`: switch check, shell detection (`Capacitor.isNativePlatform`, platform `ios`, the
   plugin in `Capacitor.PluginHeaders`, `nativePromise`), `connect()`, `read({days, now})`, `fromSamples()`.
 - `ovu-health.js`: the Apple scanner gains `record(a)` (one parsed record) and `OvuHealth.HK` names the type identifiers.
-- `ovu-config.js`: `nativeHealth: { apple: false }`.
+- `ovu-config.js`: `nativeHealth: { apple: false, android: false }`.
+- Android: `@capacitor/android` 8.5.1, `android/` from `cap add android`, Kotlin 2.2.21 Gradle plugin,
+  `connect-client` 1.1.0, coroutines 1.10.2, `minSdkVersion` 26, the four read permissions, the rationale
+  intent filter and alias, `RhythmeHealthPlugin.kt`, and `MainActivity` registering it.
 - `room.js`: You > "Connect Apple Health" row (only when available), a sheet that names the three reads before
   Apple's sheet appears, progress, the honest empty message, and picker and summary wording for a direct read.
 - iOS: `RhythmeHealthPlugin.swift`, `RhythmeBridgeViewController.swift`, `App.entitlements`,
   `NSHealthShareUsageDescription` in `Info.plist`, `SceneDelegate` uses the new bridge view controller.
 - `privacy.html`: the "Health data you bring in" entry.
-- Tests: 21 checks in `tools/test-core.js` with a fake shell (flag, detection, exact permission request, 90-day
+- Tests: 21 checks in `tools/test-core.js` for iOS and 12 for Android with fake shells. Android: the switch,
+  per-platform switches, the exact permission request, stages into one night, a stage-less session as time
+  in bed, flow strength with a period span, spotting, the Health Connect note, period-span day counting and
+  cap, reading only allowed types with the 30-day notice, and nothing read when nothing is allowed. iOS (flag, detection, exact permission request, 90-day
   window, sleep stages across midnight, in-bed nights, flow strength, spotting, parity with export.xml, picker
   counts, hand-written day wins, refresh not duplicate, empty read, 366-day cap, errors, nothing called when off).
 
-Verified on 21 October 2026: a Debug build for the iOS 26.5 simulator (Xcode 26.6) compiles, and with the switch
+Verified on 21 October 2026: `./gradlew assembleDebug` builds the Android app with the plugin (Java 21, SDK 36).
+A Debug build for the iOS 26.5 simulator (Xcode 26.6) compiles, and with the switch
 forced on in a local copy, Apple's Health Access sheet appears asking to read exactly Menstruation, Sleep
 and Spotting. Not verified: the read after tapping Allow (the simulator has no Health data and was driven
 headless), and anything on a real iPhone.

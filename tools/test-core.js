@@ -2856,6 +2856,63 @@ var summarised = false;
   });
 })();
 
+(function healthConnectDirectRead() {
+  console.log('Health Connect read directly (Android shell): switch, permissions, and records mapped into the same import path');
+  var cfg = function (override) { var w = { }; w.window = w; if (override !== undefined) w.OVU_NATIVE_HEALTH_OVERRIDE = override; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-config.js'), 'utf8'), vm.createContext(w)); return w.OVU_CONFIG.nativeHealth; };
+  check('the Android switch is off by default and on only with a strict true', cfg().android === false && cfg(true).android === true);
+  function load(flags, cap) { var w = fresh('2026-10-20'); w.OVU_CONFIG = { nativeHealth: flags }; if (cap) w.Capacitor = cap; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-healthnative.js'), 'utf8'), w, { filename: 'ovu-healthnative.js' }); return w; }
+  function droid(records, auth) {
+    var calls = [];
+    return { calls: calls, cap: { isNativePlatform: function () { return true; }, getPlatform: function () { return 'android'; }, PluginHeaders: [{ name: 'RhythmeHealth', methods: [] }],
+      nativePromise: function (plugin, method, o) {
+        calls.push({ method: method, o: JSON.parse(JSON.stringify(o || {})) });
+        if (method === 'isAvailable') return Promise.resolve({ available: true, reason: 'available' });
+        if (method === 'requestAuthorization') return Promise.resolve(Object.assign({ requested: true }, auth));
+        if (method === 'readSamples') return Promise.resolve({ records: (records[o.type] || []).slice() });
+        return Promise.reject(new Error('unknown'));
+      } } };
+  }
+  check('each platform has its own switch: Apple on does not open Health Connect', load({ apple: true, android: false }, droid({}, {}).cap).OvuHealthNative.available() === false && load({ apple: false, android: true }, droid({}, {}).cap).OvuHealthNative.available() === true);
+  var recs = {
+    sleep: [
+      { record: 'SleepSession', start: '2026-10-14T23:10:00+08:00', end: '2026-10-15T06:55:00+08:00', stages: [
+        { start: '2026-10-14T23:10:00+08:00', end: '2026-10-15T03:00:00+08:00', stage: 4 }, { start: '2026-10-15T03:00:00+08:00', end: '2026-10-15T04:00:00+08:00', stage: 5 },
+        { start: '2026-10-15T04:00:00+08:00', end: '2026-10-15T06:50:00+08:00', stage: 6 }, { start: '2026-10-15T06:50:00+08:00', end: '2026-10-15T06:55:00+08:00', stage: 1 }] },
+      { record: 'SleepSession', start: '2026-10-16T22:30:00+08:00', end: '2026-10-17T06:30:00+08:00', stages: [] }
+    ],
+    menstrualFlow: [
+      { record: 'MenstruationFlow', time: '2026-10-01T08:00:00+08:00', flow: 2 }, { record: 'MenstruationFlow', time: '2026-10-01T20:00:00+08:00', flow: 3 },
+      { record: 'MenstruationFlow', time: '2026-10-02T08:00:00+08:00', flow: 1 }, { record: 'MenstruationFlow', time: '2026-10-04T08:00:00+08:00', flow: 0 },
+      { record: 'MenstruationPeriod', start: '2026-10-01T00:00:00+08:00', end: '2026-10-03T00:00:00+08:00' }
+    ],
+    intermenstrualBleeding: [{ record: 'IntermenstrualBleeding', time: '2026-10-12T10:00:00+08:00' }]
+  };
+  var NOW = Date.UTC(2026, 9, 20, 4, 0, 0), sh = droid(recs, { granted: ['sleep', 'menstrualFlow', 'intermenstrualBleeding'], history: true });
+  var w = load({ android: true }, sh.cap), N = w.OvuHealthNative, H = w.OvuHealth, S = w.OvuStore;
+  N.connectAndRead({ now: NOW }).then(function (res) {
+    var auth = sh.calls.filter(function (c) { return c.method === 'requestAuthorization'; })[0];
+    check('Health Connect is asked to read the three types and nothing is written', JSON.stringify(auth.o) === JSON.stringify({ types: ['sleep', 'menstrualFlow', 'intermenstrualBleeding'] }) && sh.calls.every(function (c) { return !/save|write|insert/i.test(c.method); }));
+    check('the result is Google data marked as Health Connect, with past data allowed so all 90 days were seen', res.source === 'google-fit' && res.origin === 'health-connect' && res.sourceLabel === 'Health Connect' && res.seenDays === 90 && res.empty === false);
+    check('light, deep and REM stages make one night on its morning; awake stages are left out', res.sleep[0].date === '2026-10-15' && res.sleep[0].bedTime === '23:10' && res.sleep[0].wakeTime === '06:50' && res.sleep[0].asleepMin === 460 && res.sleep[0].basis === 'asleep', JSON.stringify(res.sleep[0]));
+    check('a session with no stages is kept as time in bed, not claimed as sleep', res.sleep[1].date === '2026-10-17' && res.sleep[1].basis === 'in-bed');
+    check('flow per day: stronger of two, unknown kept as not recorded, a period span never weakens a recorded day', JSON.stringify(res.period) === JSON.stringify([{ date: '2026-10-01', flow: 'heavy' }, { date: '2026-10-02', flow: 'light' }, { date: '2026-10-04', flow: 'unspecified' }]), JSON.stringify(res.period));
+    check('spotting between periods comes through as spotting', JSON.stringify(res.spotting) === JSON.stringify([{ date: '2026-10-12', flow: 'spotting' }]));
+    var p = H.apply(res, S, { kinds: ['sleep'] }), e = S.list().filter(function (x) { return x.type === 'sleep'; })[0];
+    check('brought-in nights say they came from Health Connect and carry the google-fit source', p.counts.sleep === 2 && e.source === 'google-fit' && /From Health Connect/.test(e.data.notes), e && e.data.notes);
+    var span = N.fromHealthConnect([{ record: 'MenstruationPeriod', start: '2026-10-05T09:00:00+08:00', end: '2026-10-07T18:00:00+08:00' }, { record: 'MenstruationPeriod', start: '2026-09-01T00:00:00+08:00', end: '2026-12-01T00:00:00+08:00' }, { record: 'Steps', start: 'x' }]);
+    check('a period span marks each day it covers (end day included when it ends after midnight), long spans are capped at 20 days, unknown records are ignored', span.length === 23 && span[0].startDate === '2026-10-05T12:00:00+08:00' && span[2].startDate === '2026-10-07T12:00:00+08:00', span.length + ' ' + JSON.stringify(span.slice(0, 3)));
+    var some = droid(recs, { granted: ['sleep'], history: false });
+    return load({ android: true }, some.cap).OvuHealthNative.connectAndRead({ now: NOW }).then(function (r2) { return { r: r2, calls: some.calls }; });
+  }).then(function (x) {
+    var reads = x.calls.filter(function (c) { return c.method === 'readSamples'; });
+    check('only the allowed type is read, and without past data the person is told only 30 days were seen', reads.length === 1 && reads[0].o.type === 'sleep' && x.r.period.length === 0 && x.r.seenDays === 30 && x.r.history === false);
+    var none = droid(recs, { granted: [], history: false });
+    return load({ android: true }, none.cap).OvuHealthNative.connectAndRead({ now: NOW }).then(function (r3) { return { r: r3, calls: none.calls }; });
+  }).then(function (x) {
+    check('when nothing is allowed nothing is read and the result says so', x.calls.every(function (c) { return c.method !== 'readSamples'; }) && x.r.empty === true && x.r.granted.length === 0);
+  });
+})();
+
 (function sleepDetailsAndCheck() {
   console.log('optional sleep details and the two-week sleep check (21 Oct 2026)');
   var w = fresh(), S = w.OvuStore, A = w.OvuAgents, O = w.OvuOrb, today = S.today(), y1 = addDays(today, -1), y2 = addDays(today, -2);
