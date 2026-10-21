@@ -1990,11 +1990,12 @@ async def main():
             SESS_B2 = {"access_token": "smoke-token-b", "refresh_token": "r-b", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000bb", "email": "b@example.test"}}
             n_before = len(fcalls)
             await tab2.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS_B2)); await p6.wait_for_timeout(700)
-            xt = await p6.evaluate("()=>({open: OvuRoom.sheetOpen() && !!document.querySelector('#frSheet'), me: OvuFriends.state().me && OvuFriends.state().me.card ? OvuFriends.state().me.card.name : null})")
+            xt = await p6.evaluate("()=>({open: OvuRoom.sheetOpen() && !!document.querySelector('#frSheet'), me: OvuFriends.state().me && OvuFriends.state().me.card ? OvuFriends.state().me.card.name : null, wall: !!document.querySelector('#welcome:not([hidden])'), note: (document.querySelector('#wNote')||{}).textContent||'', sess: localStorage.getItem('ovumind_auth_v1')})")
             b_calls = [a for a in fauth[n_before:]]
             await tab2.evaluate("(s)=>localStorage.setItem('ovumind_auth_v1', s)", json.dumps(SESS)); await p6.wait_for_timeout(700)
             await tab2.close()
-            check("signing into another account in another tab closes the friends sheet here and drops the last account's card at once; what follows asks as the new account", not xt["open"] and xt["me"] is None and b_calls and all(a == "Bearer smoke-token-b" for a in b_calls), {"tab": xt, "calls after": b_calls})
+            # round five (21 Oct): this phone's diary belongs to the first account, so the other account is refused at once: the wall with its note, the session gone before any network answer, and nothing asked under either token
+            check("signing into another account in another tab closes the friends sheet here, drops the last account's card, shows the other-account wall and signs that account out at once; nothing is asked under either token", not xt["open"] and xt["me"] is None and xt["wall"] and "another account" in xt["note"] and xt["sess"] is None and not any(a in ("Bearer smoke-token", "Bearer smoke-token-b") for a in b_calls), {"tab": {k: xt[k] for k in ("open", "me", "wall", "note", "sess")}, "calls after": b_calls})
             fauth[:] = [a for a in fauth if a != "Bearer smoke-token-b"]  # the other account's own calls are not this account's
             # two accounts on one phone: a form opened by one account never sends for another, and a late reply is dropped
             FR["me"]["card"] = None; FR["me"]["on"] = False; FR["me"]["adult"] = False
