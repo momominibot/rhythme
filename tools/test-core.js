@@ -3635,7 +3635,7 @@ var summarised = false;
   check('the older pages\' copy of the intro never keeps the birthday, old copies are cleaned, and both intro buttons start from her answers as they are now', /delete mirror\.birthday; delete mirror\.birthYear;/.test(rs) && /source: 'room' \}, mirror\)\)/.test(rs) && /function scrubMirror\(\)/.test(mod) && /scrubMirror\(\);\n/.test(mod) && /function introAnswers\(\)/.test(rs) && /openOnboarding\(0, introAnswers\(\)\)/.test(rs) && /openOnboarding\(0, S\.profile\(\)\.onboarded \? introAnswers\(\) : \{\}\)/.test(rs));
   check('the card says it is a reflection before the readings, names the BaZi section as one, looks again when a sheet closes or the day turns, and a stray birth year can be removed', /class="bnote">A reflection read from your birthday, not a prediction and not health advice\./.test(mod) && /A reflection from the day you were born, the BaZi way/.test(mod) && mod.indexOf('Who you are') < 0 && /R\.on\('sheetReplace', replaced\)/.test(mod) && /R\.on\('sheetHide', function \(\) \{[^\n]*recheck\(\); \}\)/.test(mod) && /root\.setInterval\(recheck, 30000\)/.test(mod) && /has = !!\(p0\.birthday \|\| p0\.birthYear\)/.test(mod) && /\.bnote\{/.test(css));
   check('the Starlight gown is in the wardrobe as a Plus drop: locked without Plus or tester mode, never worn from a stale profile, labelled, and in the plaza look list', /id: 'gown', name: 'Starlight gown'[^}]*plus: true/.test(rs) && /function outfitLocked\(id\)/.test(rs) && /if \(outfitLocked\(id\)\) id = 'base'/.test(rs) && /With Rhythme Plus/.test(rs) && /openPlus\(\); return; \} setOutfit/.test(rs) && /\['gown', 'Starlight gown'\]/.test(fr));
-  check('a renewed notice does not send a Help improve logging choice the account already holds, and the intro asks "happening today" afresh', /var held = improve && wasOn && an\.on === true && !!an\.uid && \(!me \|\| an\.uid === me\);/.test(cj) && /\|\| held\) \{ record\(\); open\(\); return; \}/.test(cj) && /delete A0\.urgent;/.test(rs));
+  check('a renewed notice does not send a Help improve logging choice the account already holds, and the intro asks "happening today" afresh', /var held = improve && wasOn && an\.on === true && !!an\.uid && \(!me \|\| an\.uid === me\);/.test(cj) && /\(held && !me\)\) \{ record\(\); open\(\); return; \}/.test(cj) && /if \(held\) \{[\s\S]{0,900}OvuAuth\.syncImprove\(\)/.test(cj) && /off on your account, so it stays off here too/.test(cj) && /delete A0\.urgent;/.test(rs));
   var odd = B.fieldHTML('10-21', 2009, 'b', '2026-10-21'), old1899 = B.fieldHTML('10-21', 1899, 'b', '2026-10-21'), fine = B.fieldHTML('10-21', 1988, 'b', '2026-10-21');
   check('a stored year the list no longer offers is shown as it is, once, selected and marked as not used; a usable year is not', odd.split('value="2009"').length === 2 && /<option value="2009" selected>2009, not used<\/option>/.test(odd) && /<option value="1899" selected>1899, not used<\/option>/.test(old1899) && fine.indexOf('not used') < 0 && /<option value="1988" selected>1988<\/option>/.test(fine));
   check('the room greets her on the day, You holds the birthday field, the module loads after Plaza friends, the card has its wish and direction styles and no numbers grid, and no em dash in the words', /OvuBirthday\.isToday\(\) \? 'Happy birthday'/.test(rs) && /id="youBirthday"/.test(rs) && /OvuBirthday\.renderField/.test(rs) && html.indexOf('ovu-friends.js') < html.indexOf('ovu-birthday.js') && /\.prop\.event\{/.test(css) && /\.bcard\{/.test(css) && /\.bdir\{/.test(css) && /\.bwish\{/.test(css) && /\.bwho\{/.test(css) && css.indexOf('.bstats') < 0 && /\.outfit\.locked\{/.test(css) && mod.indexOf('—') < 0);
@@ -3645,21 +3645,22 @@ var summarised = false;
   console.log('2k22b. the birthday postcard opens by itself only into a settled, free room, and a sheet that covers it unseen does not use it up (Codex verification, 21 Oct)');
   function env(opts) {
     var T = 0, q = [], seq = 0, hooks = {}, sheet = { id: opts.sheet || null, body: node() }, log = [], sleeping = false, state = opts.state || {}, profile = { birthday: opts.mmdd, name: 'Mei' }, subs = [];
-    function node() { var n = { ls: {}, addEventListener: function (k, f) { (n.ls[k] = n.ls[k] || []).push(f); }, fire: function (k) { (n.ls[k] || []).forEach(function (f) { f({ target: { closest: function () { return null; } } }); }); } }; return n; }
+    function node() { var n = { ls: {}, style: {}, setAttribute: function () { }, addEventListener: function (k, f) { (n.ls[k] = n.ls[k] || []).push(f); }, fire: function (k) { (n.ls[k] || []).forEach(function (f) { f({ target: { closest: function () { return null; } }, stopPropagation: function () { } }); }); } }; return n; }
+    var props = opts.cake ? { kids: [], querySelectorAll: function () { return []; }, appendChild: function (n) { props.kids.push(n); } } : null; /* the room's props layer, where the cake stands */
     function emit(k, a) { (hooks[k] || []).forEach(function (f) { f(a); }); }
     var w = { console: console }; w.window = w;
     w.setTimeout = function (fn, ms) { var id = ++seq; q.push({ id: id, at: T + (ms || 0), f: fn, live: true }); return id; };
     w.clearTimeout = function (id) { q.forEach(function (t) { if (t.id === id) t.live = false; }); };
-    w.setInterval = function () { return 0; };
+    w.setInterval = function (fn, ms) { var id = ++seq, tick = function () { fn(); q.push({ id: id, at: T + ms, f: tick, live: true }); }; q.push({ id: id, at: T + ms, f: tick, live: true }); return id; };
     var RD = Date; function FD(a) { return arguments.length ? new RD(a) : new RD(); } FD.now = function () { return 1e12 + T; }; FD.parse = RD.parse; FD.UTC = RD.UTC; w.Date = FD;
     w.OvuStore = { profile: function () { return profile; }, state: function () { return state; }, setState: function (p) { Object.keys(p).forEach(function (k) { state[k] = p[k]; }); subs.forEach(function (f) { f(); }); }, setProfile: function (p) { Object.assign(profile, p); subs.forEach(function (f) { f(); }); }, subscribe: function (f) { subs.push(f); }, today: function () { return opts.today; } };
-    w.OvuRoom = { ART: '', els: { props: null }, on: function (k, f) { (hooks[k] = hooks[k] || []).push(f); }, busy: function () { return !!sheet.id || sleeping; }, layout: function () { return null; },
+    w.OvuRoom = { ART: '', els: { props: props }, on: function (k, f) { (hooks[k] = hooks[k] || []).push(f); }, busy: function () { return !!sheet.id || sleeping; }, layout: function () { return opts.cake ? { id: 'room' } : null; },
       openSheet: function (id) { if (sheet.id) emit('sheetReplace', id); sheet.id = id; sheet.body = node(); log.push(id); }, closeSheet: function () { if (!sheet.id) return; sheet.id = null; emit('sheetHide'); } };
     w.document = { hidden: false, createElement: function () { return node(); }, addEventListener: function () { }, getElementById: function (id) { return id === 'sheetBody' ? sheet.body : null; } };
     vm.runInContext(fs.readFileSync(path.join(root, 'ovu-birthday.js'), 'utf8'), vm.createContext(w), { filename: 'ovu-birthday.js' });
     (hooks.boot || []).forEach(function (f) { f(); });
     return { run: function (ms) { var end = T + ms; for (;;) { var due = q.filter(function (t) { return t.live && t.at <= end; }).sort(function (a, b) { return a.at - b.at || a.id - b.id; }); if (!due.length) break; due[0].live = false; T = due[0].at; due[0].f(); } T = end; },
-      R: w.OvuRoom, S: w.OvuStore, log: log, sheet: sheet, sleep: function (v) { sleeping = v; }, shown: function () { return (state.birthday || {}).shown; } };
+      R: w.OvuRoom, S: w.OvuStore, log: log, sheet: sheet, sleep: function (v) { sleeping = v; }, shown: function () { return (state.birthday || {}).shown; }, cake: function () { return props && props.kids[props.kids.length - 1]; } };
   }
   var DAY = { mmdd: '10-21', today: '2026-10-21' };
   var a = env(DAY), sync = a.log.length; a.run(450); var early = a.log.length; a.run(100);
@@ -3680,6 +3681,12 @@ var summarised = false;
   var k = env(Object.assign({ state: { birthday: { shown: 2026 } } }, DAY)); k.run(3000);
   var n = env({ mmdd: '10-22', today: '2026-10-21' }); n.run(3000);
   check('store changes while it waits never push it back; already shown this year, or not her birthday, it stays shut', h.log.join() === 'birthday' && k.log.length === 0 && n.log.length === 0, [h.log, k.log, n.log].join(' | '));
+  var ck = env(Object.assign({ sheet: 'window', cake: true }, DAY)); ck.run(100); var cakeThere = !!ck.cake();
+  ck.R.closeSheet(); ck.run(350); ck.cake().fire('click'); ck.run(2500); ck.R.closeSheet(); ck.run(3000);
+  check('tapping the cake while the card waits to open counts as shown: it opens once, and closing it brings no second card (Codex verification 2)', cakeThere && ck.log.join() === 'birthday' && ck.shown() === 2026, ck.log.join());
+  var ls = env(Object.assign({ sheet: 'window' }, DAY)); ls.run(100); ls.R.closeSheet(); ls.sleep(true); ls.run(49900);
+  var slept = ls.log.length; ls.sleep(false); ls.run(9000); var beforeLook = ls.log.length; ls.run(2000);
+  check('after a sleep that outlasts the retries, the 30-second look opens the card once she is up', slept === 0 && beforeLook === 0 && ls.log.join() === 'birthday' && ls.shown() === 2026, [slept, beforeLook, ls.log.join()].join(' '));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

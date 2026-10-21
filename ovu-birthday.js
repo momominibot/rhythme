@@ -214,7 +214,7 @@
     var p = POS[L.id] || (L.home ? { x: L.home.x + 14, y: L.home.y - 2, w: 7 } : null); if (!p) return;
     var b = doc.createElement('button'); b.type = 'button'; b.className = 'prop event cake'; b.style.left = p.x + '%'; b.style.top = p.y + '%'; b.style.width = p.w + '%';
     b.setAttribute('aria-label', 'Birthday cake. Tap to read your postcard.'); b.innerHTML = '<img src="' + ART + CAKE + '" alt="">';
-    b.addEventListener('click', function (e) { e.stopPropagation(); if (R.chime) R.chime('tap'); openCard(); });
+    b.addEventListener('click', function (e) { e.stopPropagation(); if (R.chime) R.chime('tap'); if (isToday() && !opened) { root.clearTimeout(settleT); settleT = 0; markShown(year()); } openCard(); }); /* on the day, opening it by hand counts as shown, so no automatic one follows (Codex verification 2) */
     wrap.appendChild(b);
   }
   /* the field in You: a month and a day, and the year if she likes, or none */

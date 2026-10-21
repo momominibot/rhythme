@@ -260,13 +260,25 @@
       function record() { attestAge('sheet'); grant('health_tracking', 'sheet'); setMany(map, 'sheet', true); if (!hasAuth && improve) grant('improve_logging', 'sheet'); }
       function open() { c.hidden = true; if (next) next(); }
       var em = c.querySelector('#cImproveErr'); if (em) em.hidden = true;
-      /* a choice the account already records is not sent again: a renewed notice that keeps Help improve logging on must not
+      /* A choice the account already records is not sent again: a renewed notice that keeps Help improve logging on must not
          restart the account's consent from now, which would drop the entries it already covered (Codex verification, 21 Oct).
-         The improvement words and their hash are unchanged under this notice, so the account's record stays true. A tick kept
+         The improvement words and their hash are unchanged under this notice, so the account's record and its version stay as
+         they are: keeping a choice is not a new decision. The phone's copy can be stale (it may have been turned off elsewhere),
+         so the account is read first, which changes nothing there, and the phone follows it (Codex verification 2). A tick kept
          only on this phone (no account yet) still goes through setImprove, so it is recorded under this notice as before. */
-      var an = S.profile().analysis || {}, me = root.OvuAuth.userId ? root.OvuAuth.userId() : null;
+      var an = S.profile().analysis || {}, me = hasAuth && root.OvuAuth.userId ? root.OvuAuth.userId() : null;
       var held = improve && wasOn && an.on === true && !!an.uid && (!me || an.uid === me);
-      if (!hasAuth || (!improve && !wasOn) || held) { record(); open(); return; }
+      if (!hasAuth || (!improve && !wasOn) || (held && !me)) { record(); open(); return; } /* signed out: nothing to send now; the next sign-in reads the account */
+      if (held) {
+        agree.disabled = true;
+        var settled = false, finish = function () { if (settled) return; settled = true; agree.disabled = !ready(); record(); open(); };
+        var slow = root.setTimeout(finish, 8000); /* a slow account never keeps the room shut; its answer still lands and the phone follows it */
+        (root.OvuAuth.syncImprove ? root.OvuAuth.syncImprove() : Promise.resolve({ action: 'none' })).then(function (r) { return r; }, function () { return { action: 'offline' }; }).then(function (r) {
+          root.clearTimeout(slow); finish();
+          if (r && r.action === 'adopt' && !((S.profile().analysis || {}).on) && ui.toast) ui.toast('Help improve logging is off on your account, so it stays off here too. You can turn it on again in You.', 'info');
+        });
+        return;
+      }
       agree.disabled = true;
       /* a withdrawal has to reach the account before anything on this notice is recorded: if it does not, nothing is saved,
          the notice stays (and comes back after a reload) and says so (Codex legal reviews, 20 Oct: a failed withdrawal was

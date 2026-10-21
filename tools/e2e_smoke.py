@@ -468,6 +468,11 @@ async def main():
             await page.click("#ownedProps .prop.cake"); await page.wait_for_timeout(500)
             check("tapping the cake reopens the postcard", await page.evaluate("()=>OvuRoom.sheetId()==='birthday'"))
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(200)
+            await page.evaluate("()=>OvuStore.setProfile({birthYear: 2009})")  # a stored year the list no longer offers (it would make her under 18)
+            await page.evaluate("()=>document.querySelector('nav a[data-tab=you]').click()"); await page.wait_for_selector('#bSave', timeout=8000)
+            yf = await page.evaluate("()=>({sel: (document.querySelector('#bYear')||{}).value, label: ((document.querySelector('#bYear option:checked')||{}).textContent)||'', help: (document.querySelector('#bHelp')||{}).textContent||'', clear: !!document.querySelector('#bClear'), who: (OvuBirthday.model()||{}).who || null})")
+            check("You shows a stored birth year the list no longer offers as it is, marked not used, with the reason and Remove; the card does not use it", yf["sel"] == "2009" and "not used" in yf["label"] and "is not used" in yf["help"] and "18 and over" in yf["help"] and yf["clear"] and yf["who"] is None, yf)
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(200)
             await page.evaluate("()=>{OvuStore.setProfile({birthday: null, birthYear: null}); OvuStore.setState({birthday: null});}")
             await page.goto(BASE + "room.html?tester=off", wait_until="networkidle"); await page.wait_for_timeout(1200)
             off = await page.evaluate("()=>({outfit: OvuStore.profile().outfit, src: document.querySelector('#avatarImg').src.split('/').pop(), cake: !!document.querySelector('#ownedProps .prop.cake')})")
@@ -490,15 +495,17 @@ async def main():
             await po.goto(BASE + "room.html", wait_until="networkidle"); await po.wait_for_timeout(900)
             await po.evaluate("()=>document.querySelector('nav a[data-tab=you]').click()"); await po.wait_for_selector('#sheet[aria-hidden="false"] [data-yact=intro]', timeout=8000)
             await po.click('[data-yact=intro]'); await po.wait_for_selector('#onbNext', timeout=8000)
-            urg = {"step": False, "ticked": 0, "card": False}
+            urg = {"step": False, "ticked": None, "card": False}
             for _ in range(30):
                 if await po.evaluate("()=>!!document.querySelector('#onbBMonth')"): break
+                if await po.evaluate("()=>!!document.querySelector('#urgentNext')"): urg["card"] = True; await po.click('#urgentNext'); await po.wait_for_timeout(150); continue
                 u = await po.evaluate("()=>({step: !!document.querySelector('#sheet .chips[data-key=urgent]'), ticked: document.querySelectorAll('#sheet .chips[data-key=urgent] .chipbtn.on').length})")
-                if u["step"]: urg["step"] = True; urg["ticked"] += u["ticked"]
-                if await po.evaluate("()=>!!document.querySelector('#urgentNext')"): urg["card"] = True; await po.click('#urgentNext')
-                else: await po.click('#onbNext')
+                if u["step"] and not urg["step"]:
+                    urg["step"] = True; urg["ticked"] = u["ticked"]
+                    await po.click('#sheet .chips[data-key=urgent] .chipbtn[data-v=severepain]')  # a fresh answer, about today
+                await po.click('#onbNext')
                 await po.wait_for_timeout(150)
-            check("updating the intro asks 'anything happening right now?' afresh: an earlier day's answer is not ticked and brings no urgent card", urg["step"] and urg["ticked"] == 0 and not urg["card"], urg)
+            check("updating the intro asks 'anything happening right now?' afresh: an earlier day's answer is not ticked, and a fresh answer still brings the urgent card", urg["step"] and urg["ticked"] == 0 and urg["card"], urg)
             ob = await po.evaluate("()=>({step: (document.querySelector('.onb-head h3')||{}).textContent, sub: (document.querySelector('.onb-head p')||{}).textContent, skip: !!document.querySelector('#onbSkip'), selects: document.querySelectorAll('#sheet select').length})")
             check("the intro asks her birthday just before her name: optional, a month, a day and an optional year, kept on the phone", ob["step"] == "Your birthday (optional)" and "The year is optional" in (ob["sub"] or "") and "stays on this phone" in (ob["sub"] or "") and ob["skip"] and ob["selects"] == 3, ob)
             tm = await po.evaluate("()=>{var t=OvuStore.addDays(OvuStore.today(),1); return {m: String(+t.slice(5,7)), d: String(+t.slice(8,10)), mmdd: t.slice(5), young: String(+OvuStore.today().slice(0,4)-18), sameYear: t.slice(0,4)===OvuStore.today().slice(0,4)};}")
@@ -511,7 +518,7 @@ async def main():
             await po.click('#onbNext'); await po.wait_for_selector('#onbName', timeout=8000)
             await po.click('#onbNext'); await po.wait_for_timeout(700)
             ob2 = await po.evaluate("()=>({urg: OvuStore.profile().urgent || [], b: OvuStore.profile().birthday, y: OvuStore.profile().birthYear, cloud: Object.keys(OvuSync.profileForCloud(OvuStore.profile())).filter(function(k){return k==='birthday'||k==='birthYear'}), open: OvuRoom.sheetOpen()})")
-            check("finishing the intro keeps her birthday and birth year on the phone and leaves both out of the cloud copy, and keeps no stale 'right now' answer", ob2["urg"] == [] and ob2["b"] == tm["mmdd"] and ob2["y"] == 1988 and ob2["cloud"] == [] and not ob2["open"], ob2)
+            check("finishing the intro keeps her birthday and birth year on the phone and leaves both out of the cloud copy, and keeps only today's 'right now' answer", ob2["urg"] == ["severepain"] and ob2["b"] == tm["mmdd"] and ob2["y"] == 1988 and ob2["cloud"] == [] and not ob2["open"], ob2)
             await ctxO.close()
 
             # 2. the Cycle tab opens a sheet with the calendar
@@ -815,26 +822,40 @@ async def main():
             rd = await p4.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); var p=db.profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); var ev=p.consentEvents||[]; return {v:p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed, imports: ev.filter(e=>e.method==='import').map(e=>e.purpose).sort(), sheet: ev.filter(e=>e.method==='sheet').map(e=>e.purpose+':'+e.action).sort(), aiOn: ai.on, aiPhotos: ai.photos, events: db.events.length, hidden: document.querySelector('#consent').hidden};}")
             check("agreeing again keeps the earlier choices as imports, records the sheet's choices at notice 5 and keeps every entry", rd["v"] == 5 and rd["age"] is True and rd["imports"] == ["food_photo_ai", "health_tracking"] and rd["sheet"] == ["age_18:grant", "ai_reading:grant", "food_photo_ai:grant", "health_tracking:grant"] and rd["aiOn"] is True and rd["aiPhotos"] is True and rd["events"] == 3 and rd["hidden"], rd)
             await ctx4.close()
-            # a v4 reader whose account already has Help improve logging on renews the notice: the choice is not sent again (that would
-            # restart the account's consent from now); unticking it still sends the withdrawal (Codex verification, 21 Oct)
+            # a v4 reader whose account already has Help improve logging on renews the notice. The choice is not sent again (that would
+            # restart the account's consent from now): the account is read instead and the phone follows it, so a choice turned off
+            # elsewhere stays off and she is told; unticking still sends the withdrawal (Codex verification rounds 1 and 2, 21 Oct)
             UID = SESS["user"]["id"]
             v4 = json.loads(json.dumps(DB)); v4["profile"]["consent"] = {"v": 4, "at": NOW, "luna": False, "improve": True}
             v4["profile"]["consentEvents"] = [dict(e, notice=4) for e in v4["profile"]["consentEvents"]] + [{"id": "ce3", "purpose": "improve_logging", "action": "grant", "at": NOW, "notice": 4, "method": "you", "uid": UID, "sent": True}]
             v4["profile"]["analysis"] = {"on": True, "v": 4, "at": NOW, "uid": UID, "syncedAt": NOW, "scope": "from_now", "rev": NOW}
             renew = {}
-            for keep in (True, False):
+            for case in ("kept", "elsewhere", "untick"):
+                acct = {"notice_version": 4, "history_scope": "from_now", "accepted_at": NOW, "withdrawn_at": (NOW if case == "elsewhere" else None), "updated_at": NOW}
+                reads, writes = [], []
                 ctxi = await browser.new_context(viewport={"width": 390, "height": 844})
                 await ctxi.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(v4))); await ctxi.add_init_script(SESSION_SEED)
                 pi = await ctxi.new_page(); await pi.route("**/*", gate)
+                def acct_handler(acct, reads, writes):  # one-argument handler: Playwright passes the request too when a handler takes more
+                    async def acct_route(route):
+                        u = route.request.url
+                        if "/rest/v1/analysis_consent?" in u and route.request.method == "GET":
+                            reads.append(u); return await route.fulfill(status=200, content_type="application/json", body=json.dumps([acct]))
+                        if "/rpc/analysis_consent_set" in u: writes.append(u); return await route.abort()
+                        return await route.fallback()
+                    return acct_route
+                await pi.route("**/rest/v1/**", acct_handler(acct, reads, writes))  # registered last, so it is asked first; everything else falls back to the gate
                 await pi.goto(BASE + "room.html", wait_until="networkidle"); await pi.wait_for_timeout(900)
-                await pi.evaluate("()=>{window.__imp=[]; OvuAuth.setImprove=function(on,m){__imp.push([!!on,m]); return Promise.resolve({ok:true});};}")
+                await pi.evaluate("()=>{window.__imp=[]; window.__toasts=[]; OvuAuth.setImprove=function(on,m){__imp.push([!!on,m]); return Promise.resolve({ok:true});}; var t=document.querySelector('#toast'); if (t) new MutationObserver(function(){ __toasts.push(t.textContent); }).observe(t, {childList:true, subtree:true, characterData:true});}")
                 pre = await pi.evaluate("()=>({shown: !document.querySelector('#consent').hidden, ticked: !!(document.querySelector('#c_improve_logging')||{}).checked})")
-                if not keep: await pi.uncheck("#c_improve_logging")
-                await pi.check("#cAge"); await pi.click("#cAgree"); await pi.wait_for_timeout(700)
-                renew[keep] = await pi.evaluate("()=>({calls: window.__imp, v: OvuStore.profile().consent && OvuStore.profile().consent.v, hidden: document.querySelector('#consent').hidden, mirrorV: (OvuStore.profile().analysis||{}).v})")
-                renew[keep].update(pre)
+                if case == "untick": await pi.uncheck("#c_improve_logging")
+                await pi.check("#cAge"); await pi.click("#cAgree"); await pi.wait_for_timeout(1200)
+                renew[case] = await pi.evaluate("()=>{var a=OvuStore.profile().analysis||{}; return {calls: window.__imp, v: OvuStore.profile().consent && OvuStore.profile().consent.v, hidden: document.querySelector('#consent').hidden, on: a.on === true, at: a.at, mirrorV: a.v, allows: OvuConsent.allows('improve_logging'), told: window.__toasts.some(function(x){return /off on your account/.test(x);})};}")
+                renew[case].update(pre); renew[case]["reads"] = len(reads); renew[case]["writes"] = len(writes)
                 await ctxi.close()
-            check("renewing the notice with Help improve logging still on sends nothing to the account and keeps its record; unticking it sends one withdrawal", renew[True]["shown"] and renew[True]["ticked"] and renew[True]["calls"] == [] and renew[True]["v"] == 5 and renew[True]["hidden"] and renew[True]["mirrorV"] == 4 and renew[False]["calls"] == [[False, "sheet"]] and renew[False]["v"] == 5 and renew[False]["hidden"], renew)
+            k, e2, u2 = renew["kept"], renew["elsewhere"], renew["untick"]
+            check("renewing the notice with Help improve logging still on reads the account, sends nothing, and keeps the consent's start and version", k["shown"] and k["ticked"] and k["calls"] == [] and k["reads"] >= 1 and k["writes"] == 0 and k["v"] == 5 and k["hidden"] and k["on"] and k["at"] == NOW and k["mirrorV"] == 4 and k["allows"] and not k["told"], k)
+            check("if the account turned it off elsewhere, the renewed notice leaves it off on this phone too and says so; unticking it sends one withdrawal", e2["calls"] == [] and e2["reads"] >= 1 and e2["writes"] == 0 and e2["v"] == 5 and e2["hidden"] and not e2["on"] and not e2["allows"] and e2["told"] and u2["calls"] == [[False, "sheet"]] and u2["v"] == 5 and u2["hidden"], {"elsewhere": e2, "untick": u2})
             # under 18: the room does not open, nothing is saved, and the notice is back on the next visit
             ctx5 = await browser.new_context(viewport={"width": 390, "height": 844}); await ctx5.add_init_script(SESSION_SEED)
             p5 = await ctx5.new_page(); await p5.route("**/*", gate)
