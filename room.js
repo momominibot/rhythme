@@ -502,7 +502,7 @@
     img.onload = function () {
       if (gen !== imgGen) return;
       if (!silent && twirlOk()) { /* she turns into it (the twirl, below); the wardrobe's words follow with a happy hop, not a pose */
-        twirl(img.src, id === 'gown', function () { if (gen === imgGen) moment('wardrobe', id === 'gown' ? { pose: null, line: 'Starlight, just for you.' } : { pose: null }); });
+        twirl(img.src, id === 'gown', function () { if (gen === imgGen) moment('wardrobe', id === 'gown' ? { pose: null, line: 'Starlight, just for you.' } : { pose: null }); }, gen);
         return;
       }
       finishTwirl(); avatarImg.src = img.src; if (!silent && window.OvuMorning && OvuMorning.active()) OvuMorning.repose(); /* brushing in the new outfit */ if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); }
@@ -552,7 +552,7 @@
     if (isFinite(x) && isFinite(y)) placeAvatar({ x: x, y: y }, avatar.classList.contains('flip'));
     avatar.classList.remove('walking', 'landing'); avatar.classList.add('idle');
   }
-  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (twirlRun || Date.now() - twirlEnded < 1800) { goHome(); return; } /* she finishes turning, hops and says her line before walking home */ if (!S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
+  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (twirlRun || Date.now() - twirlEnded < 1800) { if (current || practice || session || meditating || asleep()) return; goHome(); return; } /* she finishes turning, hops and says her line before walking home; anything else starting cancels it */ if (!practice && !session && !S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
@@ -2497,16 +2497,16 @@
     for (var j = 0; j < (glam ? 10 : 6); j++) html += '<b class="tw-b" style="--a:' + (j * (360 / (glam ? 10 : 6)) + 12) + 'deg"></b>';
     fx.innerHTML = html; avatar.appendChild(fx); return fx;
   }
-  function twirl(src, glam, done) {
-    finishTwirl();
-    var turns = glam ? 2.5 : 1.5, dur = glam ? 2100 : 1100, swapAt = turns / 2, flipSign = avatar.classList.contains('flip') ? -1 : 1;
+  function twirl(src, glam, done, gen) {
+    finishTwirl(); quietMoment(); /* an earlier moment's timer never ends this turn early */
+    var turns = glam ? 3 : 1, dur = glam ? 2300 : 1000, swapAt = glam ? 1.25 : 0.75, flipSign = avatar.classList.contains('flip') ? -1 : 1; /* whole turns, so she ends facing the way she started; the swap at an edge-on crossing (a quarter turn past a half) */
     var fx = twirlFx(glam ? 14 : 7, glam), stars = Array.prototype.slice.call(fx.querySelectorAll('.tw-s'));
     avatar.classList.remove('idle', 'moment', 'joy', 'landing'); avatar.classList.add('twirling'); if (glam) avatar.classList.add('glam');
     avatarImg.style.animation = 'none'; avatarImg.style.transition = 'none';
     if (glam && window.OvuSound && OvuSound.play) try { OvuSound.play('save'); } catch (e) { }
     var t0 = performance.now(), swapped = false, run;
     function ease(u) { return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; } /* slow start, quick middle, a soft landing */
-    function swap() { if (swapped) return; swapped = true; avatarImg.src = src; fx.classList.add('flash'); }
+    function swap() { if (swapped) return; swapped = true; if (gen !== undefined && gen !== imgGen) return; /* a newer picture (a pose, another outfit) owns her now */ avatarImg.src = src; fx.classList.add('flash'); }
     function end() {
       if (twirlRun !== run) return; twirlRun = null; twirlEnded = Date.now(); swap();
       avatarImg.style.transform = ''; avatarImg.style.animation = ''; avatarImg.style.transition = '';
@@ -2517,8 +2517,9 @@
     }
     function frame(now) {
       if (twirlRun !== run) return;
-      var u = Math.min(1, (now - t0) / dur), turn = ease(u) * turns, th = turn * 2 * Math.PI, c = Math.cos(th);
-      if (!swapped && turn >= swapAt) swap();
+      var u = Math.min(1, (now - t0) / dur), turn = ease(u) * turns;
+      if (!swapped && turn >= swapAt) { turn = swapAt; swap(); } /* the frame that changes her clothes is drawn exactly edge-on, whatever the frame rate */
+      var th = turn * 2 * Math.PI, c = Math.cos(th);
       var sx = (Math.abs(c) < 0.03 ? (c < 0 ? -0.03 : 0.03) : c) * flipSign;
       var lift = Math.sin(Math.PI * Math.min(1, u * 1.08)) * (glam ? 9 : 6), land = u > 0.86 ? Math.sin((u - 0.86) / 0.14 * Math.PI) * 0.06 : 0;
       avatarImg.style.transform = 'translateY(' + (-lift).toFixed(2) + '%) scale(' + (sx * (1 + land)).toFixed(3) + ',' + (1 - land).toFixed(3) + ')';
@@ -2536,6 +2537,7 @@
   }
   /* a walk, a sleep or a new outfit while she turns: she finishes at once, dressed in what she chose */
   function finishTwirl() { if (twirlRun) twirlRun.end(); }
+  function quietMoment() { clearTimeout(momentTimer); clearTimeout(momentRetry); momentRetry = null; if (!momentOn) return; momentOn = null; avatar.classList.remove('moment'); hideThought(); scene.classList.remove('saying'); }
 
   /* ---------- she blinks (Jamie, 21 Oct: "Not stiff avatar") ----------
    * Each standing outfit has a closed-eye copy (tools/art/make_blink.py: made from the sprite itself, only the eyes change),
@@ -2545,13 +2547,14 @@
   function preloadBlink(o) { o = o || 'base'; if (!blinkImgs[o]) { var im = new Image(); im.src = ART + 'avatar-' + o + '-blink.webp'; blinkImgs[o] = im; } return blinkImgs[o]; }
   function scheduleBlink() { clearTimeout(blinkT); if (reduced || !blinkOn) return; blinkT = setTimeout(blink, 2400 + Math.random() * 3600); }
   function blink(again) {
+    if (reduced || !blinkOn) return;
     var o = S.profile().outfit || 'base', open = 'avatar-' + o + '.webp', cur = avatarImg.getAttribute('src') || '', shut = preloadBlink(o);
     var free = !document.hidden && avatar.classList.contains('idle') && !avatar.classList.contains('walking') && !avatar.classList.contains('twirling') && !avatar.classList.contains('moment') && !avatar.classList.contains('hidden') && cur.slice(-open.length) === open && shut.complete && shut.naturalWidth > 0;
     if (!free) { scheduleBlink(); return; }
     var gen = imgGen; avatarImg.src = shut.src;
     setTimeout(function () {
-      if (gen === imgGen && (avatarImg.getAttribute('src') || '').indexOf('-blink.webp') > -1) avatarImg.src = ART + open;
-      if (!again && Math.random() < 0.2) setTimeout(function () { blink(true); }, 170); else scheduleBlink();
+      if ((avatarImg.getAttribute('src') || '').indexOf('-blink.webp') > -1) avatarImg.src = ART + open; /* her eyes open again even while another picture is still loading */
+      if (!again && Math.random() < 0.2) { clearTimeout(blinkT); blinkT = setTimeout(function () { blink(true); }, 170); } else scheduleBlink();
     }, 120);
   }
 
@@ -2572,7 +2575,7 @@
   /* say: a line of words (a moment, a pet's walk); without it the bubble is an emoji thought (Codex branch review, 20 Oct) */
   function showThought(t, say) { var el = $('#thought'); if (!el) return; el.classList.toggle('say', !!say); el.textContent = t; el.classList.add('on'); }
   function hideThought() { var el = $('#thought'); if (el) el.classList.remove('on'); }
-  function joy() { avatar.classList.remove('joy'); void avatar.offsetWidth; avatar.classList.add('joy'); setTimeout(function () { avatar.classList.remove('joy'); }, 560); }
+  function joy() { if (twirlRun) return; avatar.classList.remove('joy'); void avatar.offsetWidth; avatar.classList.add('joy'); setTimeout(function () { avatar.classList.remove('joy'); }, 560); }
 
   /* ---------- mindful moments (ovu-moments.js): she does the thing, in her own clothes, and one line of noticing ---------- */
   var MO = window.OvuMoments || null, momentTimer = null, momentOn = null, momentRetry = null, careOn = false; /* careOn: a care card is showing in Luna's chat */
@@ -2643,6 +2646,7 @@
   var BASE_SUFFIXED = { stretch: 1 }; /* the unsuffixed stretch file is the yoga set; her own clothes are avatar-act-stretch-base (Codex, 21 Oct) */
   function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && (outfit !== 'base' || BASE_SUFFIXED[pose]) ? '-' + outfit : '') + '.webp'; }
   function setPose(pose) {
+    finishTwirl();
     var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image(), gen = ++imgGen;
     img.onload = function () { if (gen === imgGen) avatarImg.src = img.src; };
     /* a missing outfit copy never borrows the default clothes: she keeps standing in her own (Jamie's rule; Codex review) */
@@ -3160,7 +3164,7 @@
   var hooks = { on: {}, hotspotHandlers: {}, fallbackHotspot: null, hudStop: null, moving: null, camFocus: null, walkTo: null }, booted = false;
   /* a walk ends a mindful moment at once: she never slides in a pose (Codex branch review, 20 Oct) */
   hooks.on.beforeWalk = [function () { finishTwirl(); endMoment(); }];
-  hooks.on.walk = [function () { endMoment(); }];
+  hooks.on.walk = [function () { finishTwirl(); endMoment(); }]; /* floor taps and keys start walks here: a turn finishes at once */
   function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = {
     LAYOUTS: LAYOUTS, ART: ART, hotspotHandlers: hooks.hotspotHandlers,

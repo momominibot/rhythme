@@ -28,3 +28,13 @@ Jamie's rule of 18 Oct still holds: no random moments. She keeps her outfit and 
 - **Walk strips** for the gown, the kebayas and the tudung. She still steps with the bob in those.
 - **Idle gestures**, such as stretching or waving on her own. Jamie's rule of 18 Oct leaves them out, and only Jamie can change that.
 - **Blinks in other pictures**: a blink in poses, or while seated, would need closed-eye copies of those pictures too.
+
+## Codex review fixes (21 Oct, night)
+
+The first review found no P1, three P2 and eight P3 problems. All are fixed:
+
+- **Interruptions**: floor taps and arrow keys start walks through the walk hook, so they now finish a twirl at once, as tapped walks already did. A pose asked for mid-turn (a pet cuddle) finishes the turn first and is never painted over: the twirl writes her picture only while it still owns it (the image generation check). An earlier moment's timer is cleared when a turn starts, so it can no longer end the new turn early. Tapping her mid-turn no longer hops over the turn.
+- **The walk home**: it waits only for the turn, and gives way entirely when a sheet, practice, session, meditation or sleep starts.
+- **The turn itself**: whole turns now (one, or three for the gown), so she ends facing the way she started with no snap. The frame that changes her clothes is drawn exactly edge-on whatever the frame rate (measured: width 0.03 at the swap). The gown turn takes about 2.3 seconds.
+- **The blink**: her eyes always open again, even while another picture is still loading. Switching blinking off also stops a queued second blink. The closed-eye copies were remade with wider eye areas (no iris crescent or lash ends left on the tudung or the blue kebaya) and saved losslessly. So no pixel outside the eyes changes: a lossy copy made the kebayas' batik shimmer during a blink. They are about 190 KB each, and only the outfit she wears is fetched.
+- **Tests**: the smoke now keeps blinking on through the twirl checks. It asserts that she ends idle, facing the same way, with no leftover transform, and it times the gown turn. It covers a floor tap mid-turn, a pose mid-turn, and reduced motion with blinking asked for. The birthday card check proves the turn finished.

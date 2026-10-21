@@ -39,7 +39,7 @@ def eye_boxes(rgba):
             x, y, w, h = stats[i, :4]
             xs0, ys0, xs1, ys1 = min(xs0, x), min(ys0, y), max(xs1, x + w), max(ys1, y + h)
         w, h = xs1 - xs0, ys1 - ys0
-        boxes.append((int(xs0 - 0.20 * w), int(ys0 - 0.20 * h), int(xs1 + 0.20 * w), int(ys1 + 0.14 * h)))
+        boxes.append((int(xs0 - 0.30 * w), int(ys0 - 0.42 * h), int(xs1 + 0.30 * w), int(ys1 + 0.30 * h)))  # the whites, the lash line above and the lower iris below
     return sorted(boxes)
 
 def make(id_):
@@ -53,7 +53,7 @@ def make(id_):
     patch = rgba[by0:by1, bx0:bx1, :3].reshape(-1, 3)
     skin = np.median(patch, 0) if len(patch) else np.array([245, 222, 205])
     hsv = cv2.cvtColor(rgba[..., :3], cv2.COLOR_RGB2HSV).astype(np.int32); Hh, Ss, Vv = hsv[..., 0], hsv[..., 1], hsv[..., 2]
-    violet = (Hh >= 118) & (Hh <= 168) & (Ss >= 22)          # irises, lash lines, the lilac lower iris
+    violet = (Hh >= 118) & (Hh <= 168) & (Ss >= 14)          # irises, lash lines, the lilac lower iris and the pale crease above
     white = (Ss < 34) & (Vv > 205)                          # the whites and the highlights
     dark = (Vv < 160) & ~((Hh < 18) | (Hh > 168))          # rims and lashes, never the blush
     blush = ((Hh < 18) | (Hh > 168)) & (Ss > 42)            # cheek blush and skin shadows stay as they are
@@ -76,8 +76,13 @@ def make(id_):
     # inside it are kept, and the edge is feathered into the face
     ell = np.zeros(rgba.shape[:2], np.uint8)
     for (x0, y0, x1, y1) in B:
-        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2 - 0.02 * (y1 - y0)
-        cv2.ellipse(ell, (int(round(cx)), int(round(cy))), (int(round((x1 - x0) / 2 * 1.02)), int(round((y1 - y0) / 2 * 1.04))), 0, 0, 360, 255, -1)
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2 + 0.02 * (y1 - y0)
+        cv2.ellipse(ell, (int(round(cx)), int(round(cy))), (int(round((x1 - x0) / 2 * 1.10)), int(round((y1 - y0) / 2 * 1.08))), 0, 0, 360, 255, -1)
+    # every eye-coloured piece touching an eye's ellipse goes too (lash ends and corner flicks are often separate pieces)
+    near = cv2.dilate(ell, np.ones((9, 9), np.uint8), iterations=1)
+    n_, lab2, st2, ce2 = cv2.connectedComponentsWithStats((eyeish & (near > 0)).astype(np.uint8), 8)
+    for k_ in range(1, n_):
+        if st2[k_, cv2.CC_STAT_AREA] >= 3: ell[lab2 == k_] = 255
     ell = np.where(blush, 0, ell).astype(np.uint8)
     ell = np.maximum(ell, mask)                         # anything eye-coloured the ellipse missed goes too
     yy = np.arange(rgba.shape[0], dtype=np.float32)[:, None]
@@ -102,7 +107,7 @@ def make(id_):
             box = np.zeros(rgba.shape[:2], bool); box[max(0, y0 - 4):y1 + 5, max(0, x0 - 4):x1 + 5] = True
             fillrgb[box] = local
     fillrgb = fillrgb * shade[..., None]
-    fm = cv2.GaussianBlur(ell.astype(np.float32) / 255, (0, 0), 1.8)[..., None]
+    fm = cv2.GaussianBlur(cv2.dilate(ell, np.ones((3, 3), np.uint8), iterations=1).astype(np.float32) / 255, (0, 0), 3.2)[..., None]  # a softer edge, so the eye's own shading never reads as a ring
     orig = rgba[..., :3].astype(np.float32)
     filled = cv2.cvtColor((fillrgb * fm + orig * (1 - fm)).clip(0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
     out = rgba.copy(); out[..., :3] = cv2.cvtColor(filled, cv2.COLOR_BGR2RGB)
@@ -111,22 +116,24 @@ def make(id_):
     col = tuple(int(v) for v in lash) + (255,)
     for side, (x0, y0, x1, y1) in zip((-1, 1), B):
         w, h = x1 - x0, y1 - y0
-        ya = y0 + 0.60 * h; sag = 0.13 * h; xa, xb = x0 + 0.10 * w, x1 - 0.10 * w
+        ya = y0 + 0.55 * h; sag = 0.11 * h; xa, xb = x0 + 0.16 * w, x1 - 0.16 * w
         pts = []
         for k in range(61):
             t = k / 60; X = xa + (xb - xa) * t; Y = ya + sag * 4 * t * (1 - t)
             pts.append((X, Y))
         for k in range(60):
-            t = (k + 0.5) / 60; wd = (0.35 + 0.65 * np.sin(np.pi * t)) * max(2.4, 0.075 * h)
+            t = (k + 0.5) / 60; wd = (0.35 + 0.65 * np.sin(np.pi * t)) * max(2.4, 0.058 * h)
             (xA, yA), (xB, yB) = pts[k], pts[k + 1]
             d.line([(xA * S, yA * S), (xB * S, yB * S)], fill=col, width=max(1, int(round(wd * S))))
         ox, oy = pts[0] if side < 0 else pts[-1]; dx = -1 if side < 0 else 1
-        for (lx, ly) in [(0.10, -0.06), (0.08, 0.05)]:
+        for (lx, ly) in [(0.08, -0.05), (0.065, 0.04)]:
             d.line([(ox * S, oy * S), ((ox + dx * lx * w) * S, (oy + ly * h) * S)], fill=col, width=max(1, int(1.4 * S)))
     big = big.filter(ImageFilter.GaussianBlur(S * 0.45)).resize(pim.size, Image.LANCZOS)
     pim.alpha_composite(big)
     res = np.array(pim); res[..., 3] = rgba[..., 3]
-    Image.fromarray(res, 'RGBA').save(os.path.join(OUT, 'avatar-%s-blink.webp' % id_), 'WEBP', quality=90)
+    # lossless, so every pixel outside the eyes stays exactly what the browser shows for the original (lossy re-encoding
+    # shimmered the kebayas' batik during a blink)
+    Image.fromarray(res, 'RGBA').save(os.path.join(OUT, 'avatar-%s-blink.webp' % id_), 'WEBP', lossless=True, method=6)
     changed = int((np.abs(res[..., :3].astype(int) - rgba[..., :3].astype(int)).sum(-1) > 6).sum())
     return {'id': id_, 'ok': True, 'boxes': B, 'changed_px': changed, 'lash': [int(v) for v in lash], 'skin': [int(v) for v in skin]}
 
