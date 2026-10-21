@@ -16,7 +16,7 @@
   function can(action) { return value() >= (COSTS[action] || 0); }
   function spend(action, quiet) {
     var c = COSTS[action] || 0, v = value(), s = read();
-    if (v < c) { if (!quiet && R) R.toast('Too tired for that. A rest first.', 'bedtime'); return false; }
+    if (v < c) { if (!quiet && R) R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); return false; }
     s.v = Math.max(0, v - c); write(s); return true;
   }
   function refill() { write(fresh()); }

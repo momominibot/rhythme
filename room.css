@@ -1959,3 +1959,65 @@ html[data-sky="night"] .sqnote.info b{color:#f3eaff}
 .bedcard .bedpic.springpic{background:#101428}
 /* Morning start: the adaptation line before the wake-up's movements (21 Oct) */
 .mpcare{font:600 12px/1.45 var(--sans);color:var(--rm-ink-2);background:rgba(255,255,255,.6);border-radius:12px;padding:8px 10px;margin:0 0 8px}
+/* the consent notice keeps its light look: a withdrawal that did not reach the account is said plainly above the button */
+.consent .c-err{margin:8px 0 10px;padding:9px 12px;border-radius:12px;background:#fdecef;color:#8a2140;font:700 12.5px/1.45 var(--sans)}
+
+/* large text in the room (ovu-textsize.js): everything around the plate grows; the plate, the avatar and taps on them stay true */
+html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud){zoom:var(--tz,1)}
+
+/* the harbour (ovu-harbour.js, 21 Oct): a line and a float on the water while she fishes; the fish card; the catch book */
+.harbourthing.castline{position:absolute;inset:0;pointer-events:none;z-index:4}
+.harbourthing.castline svg{position:absolute;inset:0;width:100%;height:100%}
+.harbourthing .float{position:absolute;width:3.2%;aspect-ratio:1;transform:translate(-50%,-50%)}
+.harbourthing .float b{position:absolute;inset:22%;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff 0 30%,#e58aa8 32% 100%);box-shadow:0 2px 4px rgba(60,40,110,.35);animation:floatbob 2.6s ease-in-out infinite}
+.harbourthing .float .ring{position:absolute;inset:-10%;border-radius:50%;border:1.5px solid rgba(255,255,255,.75);animation:floatring 2.6s ease-out infinite}
+.harbourthing .float .ring.r2{animation-delay:1.3s}
+.scene.bite .harbourthing .float b{animation:floatdip 1.2s ease-in-out infinite}
+@keyframes floatbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6%)}}
+@keyframes floatdip{0%,100%{transform:translateY(0)}40%{transform:translateY(38%)}}
+@keyframes floatring{0%{transform:scale(.5);opacity:.9}100%{transform:scale(2.4);opacity:0}}
+.hbpic{background:#b9addf}
+.hbpic .hbfloat{animation:floatbob 2.6s ease-in-out infinite;transform-origin:52px 30px}
+.hbpic .hbfloat.dip{animation:floatdip 1.2s ease-in-out infinite}
+.hbpic .hbring{animation:floatring 2.6s ease-out infinite;transform-origin:52px 30px}
+.hbpic .hbshadow{animation:fishshadow 3s ease-in-out infinite}
+@keyframes fishshadow{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
+.hbline{margin:0 0 8px}
+.fishcard{display:flex;align-items:center;gap:12px;background:var(--rm-card,#fff);border-radius:16px;padding:10px 12px;margin:2px 0 10px}
+.fishcard img{width:38%;max-width:150px;height:auto;filter:drop-shadow(0 6px 8px rgba(60,40,110,.22))}
+.fishcard b{display:block;font:800 16px var(--serif);color:var(--rm-plum)}
+.fishcard small{display:block;font:600 12.5px var(--sans);color:var(--rm-ink-2);margin-top:3px}
+.fishfact{font:600 13.5px/1.5 var(--sans);color:var(--rm-ink);margin:0 0 10px}
+.fishsrc,.bookrow em{display:block;font:500 11px var(--sans);color:var(--rm-ink-2);font-style:normal;margin-top:3px}
+.booklist{list-style:none;margin:4px 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
+.bookrow{display:flex;align-items:center;gap:10px;background:var(--rm-card,#fff);border-radius:14px;padding:8px 10px}
+.bookrow img{width:22%;max-width:84px;height:auto;flex:none}
+.bookrow .bookq{flex:none;width:22%;max-width:84px;aspect-ratio:3/2;display:grid;place-items:center;border-radius:12px;background:#efe8fb;color:#9a7bc2;font:800 22px var(--serif)}
+.bookrow b{display:block;font:800 14px var(--sans);color:var(--rm-ink)}
+.bookrow small{display:block;font:600 12px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.bookrow.unseen b{color:var(--rm-ink-2)}
+@media (prefers-reduced-motion: reduce){.harbourthing .float b,.harbourthing .float .ring,.hbpic .hbfloat,.hbpic .hbring,.hbpic .hbshadow,.scene.bite .harbourthing .float b,.hbpic .hbfloat.dip{animation:none}.harbourthing .float .ring{opacity:.5;transform:scale(1.4)}.scene.bite .harbourthing .float b{transform:translateY(30%)}.hbpic .hbfloat.dip{transform:translateY(6px)}}
+/* the crystals' tone (ovu-tones.js, 21 Oct): nine pitch chips, a pill to stop it from the scene */
+.tonechips .chipbtn{min-width:72px}
+.tonepill small{font:700 11px var(--sans);opacity:.75;margin-left:2px}
+/* ---- 21 Oct: seats (ovu-seats.js): each bench its own practice and its own small weather, below the sitter, inside the plate so the camera carries it ---- */
+#seatfx{position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+#seatfx i,#seatfx b{position:absolute;display:block;opacity:0;will-change:transform,opacity;transform:translate(-50%,-50%)}
+#seatfx .petal{aspect-ratio:1/1.35;border-radius:60% 60% 55% 55%/70% 70% 45% 45%;background:radial-gradient(circle at 40% 35%,#ffe6f1,#f4b4d2);animation:seatpetal 11s linear infinite}
+@keyframes seatpetal{0%{transform:translate(-50%,-50%) rotate(0deg);opacity:0}10%{opacity:.85}50%{transform:translate(calc(-50% + 34px),calc(-50% + 150px)) rotate(170deg)}90%{opacity:.7}100%{transform:translate(calc(-50% - 10px),calc(-50% + 300px)) rotate(330deg);opacity:0}}
+#seatfx .mote{aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff6cf 0 30%,rgba(255,214,140,0) 70%);box-shadow:0 0 9px 3px rgba(255,200,120,.35);animation:seatmote 8s ease-in-out infinite}
+@keyframes seatmote{0%{transform:translate(-50%,-50%);opacity:0}18%{opacity:.9}42%{opacity:.45}62%{opacity:.9}100%{transform:translate(calc(-50% + 14px),calc(-50% - 130px));opacity:0}}
+.scene.is-night #seatfx .mote,.scene.sky-night #seatfx .mote{filter:brightness(1.35)}
+#seatfx .spark{aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff 0 25%,rgba(255,255,255,0) 70%);animation:seatspark 3.6s ease-in-out infinite}
+@keyframes seatspark{0%,100%{transform:translate(-50%,-50%) scale(.3);opacity:0}50%{transform:translate(-50%,-50%) scale(1);opacity:.9}}
+#seatfx .leaf{aspect-ratio:1/1.8;border-radius:80% 0 80% 0;background:linear-gradient(135deg,#d9ecc2,#a9cf8e);animation:seatleaf 13s ease-in-out infinite}
+@keyframes seatleaf{0%{transform:translate(-50%,-50%) rotate(20deg);opacity:0}12%{opacity:.8}50%{transform:translate(calc(-50% - 60px),calc(-50% + 90px)) rotate(200deg)}88%{opacity:.6}100%{transform:translate(calc(-50% - 120px),calc(-50% + 200px)) rotate(380deg);opacity:0}}
+#seatfx .ring{aspect-ratio:2.4/1;border:2px solid rgba(255,255,255,.6);border-radius:50%;animation:seatring 7s ease-out infinite}
+@keyframes seatring{0%{transform:translate(-50%,-50%) scale(.15);opacity:0}12%{opacity:.6}100%{transform:translate(-50%,-50%) scale(1.7);opacity:0}}
+#seatfx .streak{height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.75),rgba(255,255,255,0));animation:seatstreak 6s ease-in-out infinite}
+@keyframes seatstreak{0%,100%{transform:translate(calc(-50% - 26px),-50%);opacity:0}50%{transform:translate(calc(-50% + 26px),-50%);opacity:.85}}
+#seatfx .glint{aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff 0 18%,rgba(196,176,255,.65) 42%,rgba(196,176,255,0) 70%);animation:seatglint 7s ease-in-out infinite}
+@keyframes seatglint{0%,100%{opacity:0}50%{opacity:.9}}
+@media (prefers-reduced-motion: reduce){#seatfx i{animation:none!important;opacity:.35}#seatfx .mote,#seatfx .spark,#seatfx .glint,#seatfx .streak{opacity:.22}#seatfx b{display:none}}
+.seatpanel .mp-btns{display:flex;flex-wrap:wrap;gap:8px}
+.seatpanel .mp-btns .btn{flex:1 1 40%}

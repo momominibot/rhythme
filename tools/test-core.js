@@ -528,8 +528,63 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the cave has no way in until it is found: the yard has no crack door in its data', B.LAYOUT.doors.every(function (x) { return x.id !== 'crack'; }));
   var M = fs.readFileSync(path.join(root, 'ovu-moments.js'), 'utf8');
   check('the barn and spring moments describe what is on screen and ask nothing', ['eggs', 'milk', 'brush', 'springlower', 'springsteam', 'springlift', 'springsit'].every(function (k) { return M.indexOf(k + ': {') > -1; }) && !/Notice its warmth|rhythm of your hands/.test(M));
+  (function () { /* treats from the basket (21 Oct): the harvest has somewhere to go, and it is only a treat */
+    var f0 = F.farmState(S); f0.harvest = { carrot: 2, kangkong: 1 }; S.setState({ farm: f0 });
+    check('treats on offer come from the basket, and only what each animal eats', B.treatOptions(S, 'clover').join() === 'carrot' && B.treatOptions(S, 'hens').join() === 'kangkong');
+    var e0 = w.OvuStamina.value(), r = B.giveTreat(S, 'clover', 'carrot', d1);
+    check('a treat takes one from the basket, marks the day for that animal only, and costs no energy', r.ok && F.farmState(S).harvest.carrot === 1 && B.treatedToday(S, 'clover', d1) && !B.treatedToday(S, 'hens', d1) && w.OvuStamina.value() === e0);
+    check('a crop the animal does not eat, or one with none left, is refused and changes nothing', !B.giveTreat(S, 'clover', 'kangkong', d1).ok && !B.giveTreat(S, 'hens', 'strawberry', d1).ok && F.farmState(S).harvest.carrot === 1 && F.farmState(S).harvest.kangkong === 1);
+    B.giveTreat(S, 'hens', 'kangkong', d1);
+    check('the last of a crop leaves the basket row behind, and the pantry and animals are untouched', F.farmState(S).harvest.kangkong === undefined && B.treatedToday(S, 'hens', d1) && F.farmState(S).pantry.egg === 0 && B.eggsReady(S, d1).length === 2);
+  })();
 })();
 
+(function harbour() {
+  console.log('2k4. the harbour (21 Oct): catch and release, no hearts, no clocks; fish that suit a spot and a time of day');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-harbour.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var H = w.OvuHarbour, F = w.OvuFarm, S = w.OvuStore, K = w.OvuWalk, ST = w.OvuStamina, d1 = '2026-10-21';
+  var HS = fs.readFileSync(path.join(root, 'ovu-harbour.js'), 'utf8');
+  check('six Singapore species, each with a spot, a time, a local name, a fact and a named source', H.SPECIES.length === 6 && H.SPECIES.every(function (s) { return s.spots.length && /^(any|day|night)$/.test(s.time) && s.local && s.fact.length > 20 && s.source && s.img; }));
+  check('every spot offers kinds by day and after dark; the squid comes to the jetty only after dark', ['jetty', 'rocks'].every(function (sp) { return H.candidates(sp, 'day').length >= 3 && H.candidates(sp, 'night').length >= 2; }) && H.candidates('jetty', 'night').some(function (s) { return s.id === 'squid'; }) && !H.candidates('jetty', 'day').some(function (s) { return s.id === 'squid'; }) && !H.candidates('rocks', 'night').some(function (s) { return s.id === 'squid'; }));
+  check('the pick is even and bounded: 0 gives the first candidate, 0.999 the last, a bad number the first', H.pick('jetty', 'day', 0).id === H.candidates('jetty', 'day')[0].id && H.pick('jetty', 'day', 0.999).id === H.candidates('jetty', 'day').slice(-1)[0].id && H.pick('rocks', 'night', 'x').id === H.candidates('rocks', 'night')[0].id);
+  check('sunset and night count as after dark; sunrise, morning and afternoon as day', H.phaseOf('night') === 'night' && H.phaseOf('sunset') === 'night' && H.phaseOf('sunrise') === 'day' && H.phaseOf('morning') === 'day' && H.phaseOf('afternoon') === 'day' && H.phaseOf('') === 'day');
+  var e0 = ST.value(), r1 = H.record(S, 'grouper', d1, ST);
+  check('a fish seen goes in the book with its first day, and the cast is charged in the same save', r1.ok && r1.first && r1.n === 1 && H.seen(S, 'grouper') && H.harbourState(S).book.grouper.first === d1 && H.harbourState(S).casts === 1 && ST.value() === e0 - ST.COSTS.fish);
+  var r2 = H.record(S, 'grouper', '2026-10-22', ST);
+  check('meeting the same fish again counts it, keeps the first day, and costs only the cast', r2.ok && !r2.first && r2.n === 2 && H.harbourState(S).book.grouper.first === d1 && H.seenCount(S) === 1 && ST.value() === e0 - 2 * ST.COSTS.fish);
+  check('an unknown fish is refused and changes nothing', !H.record(S, 'kraken', d1, ST).ok && H.harbourState(S).casts === 2);
+  var sd = (S.state().stamina || {}).day || d1; S.setState({ stamina: { v: 1, max: 100, day: sd } });
+  check('too tired: the fish is not written and nothing is charged', !H.record(S, 'snapper', d1, ST).ok && !H.seen(S, 'snapper') && H.harbourState(S).casts === 2 && ST.value() === 1);
+  S.setState({ harbour: { book: { grouper: { first: 'yesterday', n: -3 }, snapper: { first: '2026-99-99', n: 2 }, mullet: { first: '2020-01-01', n: 0 }, dragon: { first: d1, n: 2 } }, casts: 'many' } });
+  check('restored harbour values are cleaned: known fish only, whole counts, real dates only, and a zero-count entry is no meeting', JSON.stringify(H.harbourState(S).book) === '{"snapper":{"first":null,"n":2}}' && H.harbourState(S).casts === 0 && !H.seen(S, 'grouper') && !H.seen(S, 'mullet'));
+  S.setState({ stamina: { v: 100, max: 100, day: sd } });
+  var rm = H.record(S, 'mullet', d1, ST), rs = H.record(S, 'snapper', d1, ST);
+  check('meeting a fish whose old entry was dropped is a first meeting today; a kept count with no date gets today as its first day', rm.ok && rm.first && H.harbourState(S).book.mullet.first === d1 && rs.ok && !rs.first && rs.n === 3 && H.harbourState(S).book.snapper.first === d1);
+  check('no hearts are paid at the harbour, no energy is ever added, and no diary entry is written', !/OvuRewards|\.award\(|\.grant\(|\bS\.add\(|OvuStore\.add\(|addMany\(/.test(HS) && !/refill\(|\.v\s*\+=/.test(HS));
+  var L = H.LAYOUT, bad = K.checkLayout(L);
+  check('harbour: home, stand points and doors are on the floor and outside every solid', bad.length === 0, JSON.stringify(bad));
+  var wd = K.world(L, []), starts = L.doors.map(function (x) { return { x: x.x, y: x.y }; }), targets = L.hotspots.map(function (h) { return h.wp; }).concat(starts), miss = [];
+  starts.forEach(function (a) { targets.forEach(function (t) { if (!(Math.abs(a.x - t.x) < 0.01 && Math.abs(a.y - t.y) < 0.01) && !K.plan(wd, a, t, 2)) miss.push([a.x, a.y, t.x, t.y].join(',')); }); });
+  check('harbour: the planner reaches the jetty end, the rocks, the bench and the hut from the path', miss.length === 0, miss.join(' | '));
+  var FL = F.LAYOUT, fbad = K.checkLayout(FL), fw = K.world(FL, []), fd = FL.doors.filter(function (d) { return d.id === 'harboursteps'; })[0];
+  check('the farm has steps down to the harbour, on its floor and reachable from the garden gate', !!fd && fd.to === 'harbour' && fbad.length === 0 && !!K.plan(fw, { x: 15, y: 57 }, { x: fd.x, y: fd.y }, 2), JSON.stringify(fbad));
+  var M = fs.readFileSync(path.join(root, 'ovu-moments.js'), 'utf8');
+  check('the harbour moments describe the float, the fish and the water, and never hurry her', ['cast', 'bite', 'release', 'watchwater'].every(function (k) { return M.indexOf(k + ': {') > -1; }) && /no hurry/.test(M));
+})();
+(function tones() {
+  console.log('2k5. the crystals’ tone (21 Oct): nine pitches, no claims, no diary, no hearts; the hotspot stands on the cave floor');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-tones.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var T = w.OvuTones, B = w.OvuBarn, K = w.OvuWalk, TS = fs.readFileSync(path.join(root, 'ovu-tones.js'), 'utf8');
+  check('the nine pitches, labelled by pitch only, never by a promise', T.FREQS.join() === '174,285,396,417,528,639,741,852,963' && T.label(528) === '528 Hz, middle' && T.label(174) === '174 Hz, low' && T.label(963) === '963 Hz, high' && T.label(440) === '' && !/love|repair|liberation|healing|DNA|chakra/i.test(TS));
+  check('the tone follows the app volume and never passes its ceiling; a bad volume is silent', T.gainFor(1) === T.CEILING && T.gainFor(0.5) === Math.round(0.5 * T.CEILING * 1000) / 1000 && T.gainFor(0) === 0 && T.gainFor('x') === 0 && T.gainFor(9) === T.CEILING);
+  check('without Web Audio (node) starting a tone fails quietly and nothing is playing', T.start(528, null) === false && T.playing() === null && T.remaining() === null);
+  check('the module writes no diary entry, pays no hearts and costs no energy', !/OvuRewards|\bS\.add\(|OvuStore\.add\(|addMany\(|spend\(|spendWith\(/.test(TS));
+  var L = B.CAVE, bad = K.checkLayout(L), cry = L.hotspots.filter(function (h) { return h.id === 'crystals'; })[0];
+  var wd = K.world(L, []), from = { x: L.doors[0].x, y: L.doors[0].y };
+  check('the crystals are a cave hotspot whose stand point is on the floor, outside the pool and the crystals, and reachable from the way in', !!cry && bad.length === 0 && !!K.plan(wd, from, cry.wp, 2), JSON.stringify(bad));
+})();
 (function phase1ReviewFixes() {
   console.log('2k. Codex review of Phase 1: a full disk never half-buys, update day never pays twice, clocks cannot reopen caps');
   var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, t = S.today();
@@ -2797,6 +2852,41 @@ var summarised = false;
     var rows = A.sleepNotesRows(A.sleepNotes(addDays(today, -10), today)), wokeRow = rows.filter(function (r) { return r[0] === 'Woken by'; })[0];
     check('the Woken by row carries its denominator (of the nights with details)', !!wokeRow && / of \d+ nights? with details$/.test(wokeRow[1]));
   })();
+(function seats() {
+  console.log('2k6. seats (21 Oct): three bench practices in Erin’s voice, a minute before anything is saved, one thank-you a day per seat; the cave is the tone');
+  var w = fresh('2026-10-21'); w.OvuRoom = null;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), w, { filename: 'ovu-seats.js' });
+  var SE = w.OvuSeats, src = fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), ids = Object.keys(SE.SCRIPTS);
+  check('three practices, seven, six and six steps, each about three minutes', ids.join() === 'street,plaza,harbour' && SE.steps('street').length === 7 && SE.steps('plaza').length === 6 && SE.steps('harbour').length === 6 && ids.every(function (id) { var t = SE.total(id); return t >= 140 && t <= 185; }), ids.map(function (id) { return SE.total(id); }).join());
+  var missing = [];
+  ids.forEach(function (id) { SE.steps(id).forEach(function (s) { if (!fs.existsSync(path.join(root, s.audio))) missing.push(s.audio); }); });
+  SE.steps('harbour', true).forEach(function (s) { if (!fs.existsSync(path.join(root, s.audio))) missing.push(s.audio); });
+  check('every clip is on disk, the reduced-motion line too', missing.length === 0, missing.join());
+  var rm = SE.steps('harbour', true), plain = SE.steps('harbour', false);
+  check('with reduced motion the water’s second line asks for a colour, not a ripple; nothing else changes', /colour or a reflection/.test(rm[1].text) && /ripple/.test(plain[1].text) && rm[1].audio !== plain[1].audio && rm[0].text === plain[0].text && rm[2].audio === plain[2].audio && SE.steps('street', true)[1].text === SE.steps('street')[1].text);
+  var words = ids.map(function (id) { return SE.SCRIPTS[id].steps.map(function (s) { return s.text; }).join(' '); }).join(' ');
+  check('no claims in the scripts: nothing cured, healed or promised, no em dashes, every part of the kindness practice optional with a way out', !/\b(cure|heal|fix|anxiety|depression|reduce stress|lower your|boost|detox|will feel)\b/i.test(words) && words.indexOf('—') < 0 && SE.SCRIPTS.plaza.steps.slice(1, 5).every(function (s) { return /If you would like|If someone|you might|Otherwise/.test(s.text); }) && /stop now/.test(SE.SCRIPTS.plaza.steps[5].text));
+  check('the credit names Erin Lee, her cloned voice and her permission', /Erin Lee/.test(SE.CREDIT) && /cloned voice/.test(SE.CREDIT) && /permission/.test(SE.CREDIT));
+  var e1 = SE.entry('street', { seconds: 59.9, confirmed: true, finished: false }), e2 = SE.entry('street', { seconds: 60, confirmed: true, finished: false, startedAt: 'x' }), e3 = SE.entry('street', { seconds: 200, confirmed: false, finished: true }), e4 = SE.entry('nowhere', { seconds: 200, confirmed: true, finished: true }), e5 = SE.entry('plaza:bench2', { seconds: 168.4, confirmed: true, finished: true });
+  check('59.9 seconds is not a minute; sixty is; nothing unconfirmed and no unknown seat; a finished practice is complete, a stopped one says so', e1 === null && !!e2 && e2.seconds === 60 && e2.minutes === 1 && e2.stoppedEarly && !e2.completed && e2.activity === 'seat' && e2.seat === 'street' && e2.scene === 'street' && e2.activityName === 'Sounds of the street' && e2.confirmedReal && e2.startedAt === 'x' && e2.guide === SE.CREDIT && e3 === null && e4 === null && e5.completed && !e5.stoppedEarly && e5.minutes === 2.8 && e5.scene === 'plaza', JSON.stringify([e1, e2, e5]));
+  var t = 1000, clk = SE.makeClock(function () { return t; });
+  clk.run(); t += 5000; clk.hold(); t += 60000; clk.run(); t += 2000;
+  check('the clock counts running time only: five seconds, a minute held, two more', clk.ms() === 7000 && clk.running());
+  check('the module pays no hearts and spends no energy itself, and saves only the one confirmed entry', !/OvuRewards\.(award|spend|buy)|spendWith\(|OvuStamina/.test(src) && (src.match(/S\.add\('mindfulness'/g) || []).length === 1);
+  /* hearts: once a day per seat */
+  var S = w.OvuStore, RW = w.OvuRewards, tdy = S.today();
+  function seatEv(seat) { return S.add('mindfulness', tdy, SE.entry(seat, { seconds: 90, confirmed: true, finished: true }), 'room'); }
+  var a1 = RW.award(seatEv('street')), a2 = RW.award(seatEv('street')), a3 = RW.award(seatEv('plaza:bench')), a4 = RW.award(seatEv('plaza:bench2')), a5 = RW.award(seatEv('harbour'));
+  check('the street bench pays the flat practice points once; the same bench again pays nothing; the two plaza benches are two seats; the day’s cap still holds', a1.points === 2 && a2.points === 0 && a3.points === 2 && a4.points === 2 && a5.points === 0 && RW.ledger().hearts >= 6, JSON.stringify([a1.points, a2.points, a3.points, a4.points, a5.points]));
+  var l = RW.ledger(); l.seatDay = null; l.mindDay = null; l.dailyLast = S.addDays(tdy, 1); S.setState({ rewards: l });
+  check('a clock set back cannot reopen a seat’s thank-you either', RW.award(seatEv('street')).points === 0);
+  /* the cave: both hotspots are one seat */
+  var w2 = scenes('2026-10-21'); w2.OvuRoom = null; w2.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-tones.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w2, { filename: f }); });
+  var CV = w2.OvuBarn.CAVE, cry = CV.hotspots.filter(function (h) { return h.id === 'crystals'; })[0], stone = CV.hotspots.filter(function (h) { return h.id === 'warmstone'; })[0];
+  check('the crystals and the warm stone walk her to the same stand point', !!cry && !!stone && cry.wp.x === stone.wp.x && cry.wp.y === stone.wp.y && cry.wp.flip === stone.wp.flip);
+  var TS = fs.readFileSync(path.join(root, 'ovu-tones.js'), 'utf8');
+  check('the cave sheet makes no promise and keeps no pill; one Stop stands her up with the sound', !/love frequency|cellular|DNA|repair|transcend/i.test(TS) && TS.indexOf('tonePill') < 0 && /Stop sound and stand up/.test(TS) && /if \(!hz\) standUp\(\)/.test(TS));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
