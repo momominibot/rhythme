@@ -346,7 +346,7 @@
     sortDepth(cur.y);
   }
   /* ---------- the walk cycle ---------- */
-  function outfitNow() { var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatar.querySelector('#avatarImg').getAttribute('src') || ''); return m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; }
+  function outfitNow() { var m = /avatar-([a-z0-9-]+?)(?:-blink)?\.webp/.exec(avatar.querySelector('#avatarImg').getAttribute('src') || ''); return m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; }
   /* the outfits with walk strips drawn (tools/art/walkcycle.py). An outfit missing here, or a missing direction, falls back
      without a request, so a drop without strips yet (the gown, the kebayas, the tudung) does not log a 404 per direction */
   var STRIPS = { base: 'side away towards', cozy: 'side away towards', pajamas: 'side away towards', party: 'side away', sundress: 'side away towards', yoga: 'side away towards' };

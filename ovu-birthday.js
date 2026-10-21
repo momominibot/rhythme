@@ -145,7 +145,7 @@
   var R = root.OvuRoom, S = root.OvuStore, doc = root.document;
   if (!R || !S || !doc || !doc.createElement) return;
   var ART = R.ART, CAKE = 'prop-cake.webp', opened = false, tries = 0, tryT = 0;
-  var POS = { room: { x: 66, y: 66.5, w: 7.6 } }; /* on the round table by the diary; other homes put it a step from where she stands */
+  var POS = { room: { x: 66.8, y: 72.1, w: 9.2 } }; /* standing on the round table, just behind the open diary (read on a 1% grid of room-v3, 21 Oct); other homes put it a step from where she stands */
   /* exported before the boot hook below: when the room has already booted (a cached reload), R.on('boot') runs the hook at once,
      and the hook's greeting refresh reads these through window.OvuBirthday (function declarations hoist, so this is safe here) */
   B.isToday = isToday; B.inWeek = inWeek; B.openCard = openCard; B.renderField = renderField; B.model = model;
@@ -172,7 +172,7 @@
     var bodyEl = doc.getElementById('sheetBody'); if (!bodyEl) return; /* a fresh node for every sheet, so this listener dies with the card */
     bodyEl.addEventListener('click', function (e) {
       var b = e.target.closest('[data-b]'); if (!b) return;
-      if (b.dataset.b === 'party') { if (R.setOutfit) R.setOutfit(m.outfit); if (R.chime) R.chime('save'); if (R.toast) R.toast('Dressed for the day. Happy birthday.', 'cake'); R.closeSheet(); }
+      if (b.dataset.b === 'party') { if (R.chime) R.chime('save'); if (R.toast) R.toast('Dressed for the day. Happy birthday.', 'cake'); R.closeSheet(); root.setTimeout(function () { if (R.setOutfit) R.setOutfit(m.outfit); }, 260); } /* the card steps aside first, so she is seen turning into it */
       else { if (R.chime) R.chime('tap'); R.closeSheet(); }
     });
     return bodyEl;
