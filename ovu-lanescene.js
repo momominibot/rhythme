@@ -32,6 +32,7 @@
     doors: [{ id: 'laneexit', to: 'harbour', x: 51, y: 84, r: 4, flip: false }].concat(FRONTS.map(function (f) {
       var d = { id: f.id, tap: f.id, x: f.wp.x, y: f.wp.y, r: 3, flip: !!f.wp.flip }; if (f.layout) d.to = f.layout; return d;
     })),
+    meditator: { x: 47, y: 72, w: 8.3 }, aura: { x: 47, y: 70, w: 12.5 }, holo: { x: 56, y: 70, w: 10 }, /* meditation sits on the cobbles here, never where the last scene had it (Codex, 21 Oct) */
     sleeper: NOSLEEP, zzz: OFF, window: NOWIN, props: {}
   };
   /* the interiors (1024x1280, drawn without goods on purpose). The grocer is open at the front, so she walks in off the
@@ -49,7 +50,8 @@
     zones: [[[46, 47], [84, 66], [54, 84], [13, 64]]],
     solids: [{ id: 'counter', x0: 25, x1: 46, y0: 62, y1: 76 }, { id: 'crates', x0: 12, x1: 31, y0: 55, y1: 67 }, { id: 'sacks', x0: 28, x1: 43, y0: 48, y1: 58 },
       { id: 'bench', x0: 47, x1: 66, y0: 44, y1: 57 }, { id: 'baskets', x0: 61, x1: 76, y0: 60, y1: 71 }, { id: 'stairs', x0: 64, x1: 92, y0: 40, y1: 68 }, { id: 'door', x0: 44, x1: 56, y0: 63, y1: 76 }],
-    doors: [{ id: 'grocermat', to: 'lane', x: 50, y: 80, r: 4, flip: false }]
+    doors: [{ id: 'grocermat', to: 'lane', x: 50, y: 80, r: 4, flip: false }],
+    meditator: { x: 60, y: 76, w: 8.3 }, aura: { x: 60, y: 74, w: 12.5 }, holo: { x: 69, y: 74, w: 10 }
   });
   var BOUTIQUE = inside({
     id: 'lane-boutique', scene: 'lane-boutique', name: 'Petal & Thread', img: 'shop-boutique-2f-v1.webp', mapIcon: 'checkroom',
@@ -62,7 +64,8 @@
     home: { x: 50, y: 58, flip: false },
     zones: [[[36, 49], [60, 49], [60, 58], [57, 59], [57, 77], [44, 77], [44, 59], [36, 58]]],
     solids: [{ id: 'rail', x0: 32, x1: 46, y0: 47, y1: 56 }, { id: 'table', x0: 49, x1: 59, y0: 49, y1: 55 }],
-    doors: [{ id: 'boutiquemat', to: 'lane', x: 50, y: 76, r: 3, flip: false }]
+    doors: [{ id: 'boutiquemat', to: 'lane', x: 50, y: 76, r: 3, flip: false }],
+    meditator: { x: 50, y: 58, w: 8.3 }, aura: { x: 50, y: 56, w: 12.5 }, holo: { x: 59, y: 56, w: 10 }
   });
   /* the gym's four stations are ovu-lane.js STATIONS (treadmill, bike, mat, weights): each opens the movement log */
   var GYMSPOTS = [
@@ -79,7 +82,9 @@
     home: { x: 46, y: 57, flip: false },
     zones: [[[30, 51], [47, 47], [60, 50], [60, 59], [44, 61], [30, 60]]],
     solids: [{ id: 'rack', x0: 50, x1: 61, y0: 46, y1: 53 }, { id: 'shelf', x0: 33, x1: 47, y0: 43, y1: 49 }],
-    doors: [] /* the drawn door is shut: she arrives on the floor and goes out by tapping it */
+    doors: [], /* the drawn door is shut: she arrives on the floor and goes out by tapping it */
+    mapExits: [{ id: 'gymdoor', to: 'lane', x: 50, y: 70 }], /* the map's pin for that door, since it is a tap and not a doorstep */
+    meditator: { x: 46, y: 57, w: 8.3 }, aura: { x: 46, y: 55, w: 12.5 }, holo: { x: 55, y: 55, w: 10 }
   });
   var LAYOUTS = { lane: LANE, 'lane-grocer': GROCER, 'lane-boutique': BOUTIQUE, 'lane-gym': GYM };
   /* on the harbour: the post by the hut, a door that opens only where a walk ends */
@@ -98,22 +103,27 @@
   function at(L, id) { return !!L && L.id === id; }
   function napping() { return !!(W.napping && W.napping()); }
   function asleep() { return !!(R.asleep && R.asleep()); }
+  /* a session, practice or meditation that is running keeps the room: no counter or station opens over it (Codex, 21 Oct) */
+  function busy() { if (!(R.busy && R.busy())) return false; if (R.toast) R.toast('Finish what you are doing first.', 'info'); return true; }
+  var sign = HB && (HB.hotspots || []).filter(function (h) { return h.id === 'hblane'; })[0]; if (sign) sign.prompt = 'Tap to walk up Harbour Lane';
+  /* a shop that shuts, or a sleep that starts, while she is on her way in keeps her outside (the walk engine asks again at the end of the fade) */
+  FRONTS.forEach(function (f) { var T = f.layout && LAYOUTS[f.layout]; if (!T) return; T.admit = function () { return !asleep() && LN.openNow(f.place); }; T.refused = function () { LN.openPlace(f.place); }; });
   /* the signpost walks her up the lane (it was the lane's sheet before the plate was drawn) */
   R.hotspotHandlers.hblane = function (id, L) { if (!at(L, 'harbour')) return false; if (napping()) return true; W.travel('lane'); return true; };
   /* a shopfront: in its hours she goes in; asleep, shut, or with no interior drawn yet, the place's own sheet says why or
    * serves (ovu-lane.js openPlace checks asleep, then the hours, then opens the sheet) */
   FRONTS.forEach(function (f) {
     R.hotspotHandlers[f.id] = function (id, L) {
-      if (!at(L, 'lane')) return false; if (napping()) return true;
+      if (!at(L, 'lane')) return false; if (napping() || busy()) return true;
       if (asleep() || !LN.openNow(f.place) || !f.layout || !R.LAYOUTS[f.layout]) { LN.openPlace(f.place); return true; }
       W.travel(f.layout); return true;
     };
   });
-  R.hotspotHandlers.lanepost = function (id, L) { if (!at(L, 'lane')) return false; LN.openPlace('post'); return true; };
+  R.hotspotHandlers.lanepost = function (id, L) { if (!at(L, 'lane')) return false; if (busy()) return true; LN.openPlace('post'); return true; };
   R.hotspotHandlers.laneexit = function (id, L) { if (!at(L, 'lane')) return false; if (napping()) return true; W.travel('harbour'); return true; };
   /* inside, each counter, rail and station opens the sheet or log the lane already has; the mats and the gym's door go out */
   function out(layoutId) { return function (id, L) { if (!at(L, layoutId)) return false; if (napping()) return true; W.travel('lane'); return true; }; }
-  function counter(layoutId, placeId) { return function (id, L) { if (!at(L, layoutId)) return false; LN.openPlace(placeId); return true; }; }
+  function counter(layoutId, placeId) { return function (id, L) { if (!at(L, layoutId)) return false; if (busy()) return true; LN.openPlace(placeId); return true; }; }
   R.hotspotHandlers.grocermat = out('lane-grocer');
   R.hotspotHandlers.grocercounter = counter('lane-grocer', 'grocer');
   R.hotspotHandlers.grocerrack = counter('lane-grocer', 'grocer');
@@ -122,14 +132,14 @@
   R.hotspotHandlers.boutiquecounter = counter('lane-boutique', 'boutique');
   /* the fitting room is her wardrobe (every outfit she has is free to wear), as the boutique sheet's own button opens */
   R.hotspotHandlers.boutiquefit = function (id, L) {
-    if (!at(L, 'lane-boutique')) return false;
+    if (!at(L, 'lane-boutique')) return false; if (busy()) return true;
     if (asleep() || !LN.openNow('boutique') || !R.openWardrobe) { LN.openPlace('boutique'); return true; }
     R.chime('tap'); R.openWardrobe(); return true;
   };
   R.hotspotHandlers.gymdoor = out('lane-gym');
   GYMSPOTS.forEach(function (g) {
     R.hotspotHandlers['gym' + g.id] = function (id, L) {
-      if (!at(L, 'lane-gym')) return false;
+      if (!at(L, 'lane-gym')) return false; if (busy()) return true;
       var st = (LN.STATIONS || []).filter(function (s) { return s.id === g.id; })[0];
       if (asleep() || !LN.openNow('gym') || !st || !R.openExercise) { LN.openPlace('gym'); return true; }
       R.openExercise(st.act); if (R.moment) R.moment('gym', { quiet: true }); /* as the gym sheet's own buttons do; only her save logs anything */

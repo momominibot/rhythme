@@ -516,6 +516,7 @@
     var fromL = R.layout(), from = fromL.id, fromScene = sceneOf(fromL), target = to === 'home' ? R.homeId() : to, T = R.LAYOUTS[target];
     if (!T) return false;
     if (T.store && !storeOpen(T.store)) { hoursCard(T.store); return false; } /* each interior keeps its own store's hours */
+    if (T.admit && !T.admit()) { if (T.refused) T.refused(); return false; } /* a room with its own rule (Harbour Lane's shops keep their own hours) */
     travelling = true; clearInput(); if (active) commit();
     R.emit('travel', target, T); /* the music fades before the plate swaps (the cave is reached in silence) */
     scene.classList.add('fading'); if (root.OvuSound) root.OvuSound.play('door'); else R.chime('tap');
@@ -523,8 +524,10 @@
     Promise.all([preload(R.ART + T.img), occWait(T)]).then(function () { /* the plate, and its cutouts decoded or the cap reached */
       var left = Math.max(0, (reduced ? 80 : 380) - (Date.now() - t0));
       root.setTimeout(function () {
-        if (napping() || (T.store && !storeOpen(T.store))) { /* she fell asleep or the store shut during the fade */
+        var refused = !!(T.admit && !T.admit());
+        if (napping() || (T.store && !storeOpen(T.store)) || refused) { /* she fell asleep or the store shut during the fade */
           if (T.store && !storeOpen(T.store) && !(R.asleep && R.asleep())) hoursCard(T.store);
+          if (refused && !napping() && T.refused) T.refused();
           scene.classList.remove('fading'); travelling = false; return;
         }
         R.applyLayout(target, !!opts.visit);
