@@ -52,6 +52,11 @@
     bite: { pose: null, lines: ['Notice the float dipping.', 'Lift when you are ready; there is no hurry.'] },
     release: { pose: null, lines: ['Notice its colours before it goes.', 'Notice how light this moment is.'] },
     watchwater: { pose: null, lines: ['Notice the light on the water.', 'Notice whatever you can hear around you.'] },
+    /* the greenhouse herbs (21 Oct): planting, watering and picking a herb, and the cup brewed from it */
+    herbplant: { pose: 'tend', lines: ['Press it into the soil. Set one small intention for this week.'] },
+    herbwater: { pose: 'plants', lines: ['Watch the soil darken. Notice the green smell under the glass.', 'Pour slowly. Growth keeps its own pace.'] },
+    herbharvest: { pose: 'harvest', lines: ['Before you pick, notice the colour, the smell, the weight. Thank the plant.'] },
+    brew: { pose: 'coffee', lines: ['Warmth in your hands, the steam, then the first sip.', 'Notice the last of the warmth in the cup.'] },
     plantcare: { pose: 'plants', lines: ['One minute with one plant is enough.', 'Notice how it looks now, cared for.'] },
     harvest: { pose: 'harvest', lines: ['Notice what grew in its own time.', 'Feel the weight of what you picked. Enjoy it.'] },
     shop: { pose: 'shop', lines: ['Enjoy it. Nothing more needs buying.', 'Notice what made you smile about it.'] },

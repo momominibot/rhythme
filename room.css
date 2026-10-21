@@ -1152,6 +1152,14 @@ html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;bord
 .ghplant.tappable{pointer-events:auto;cursor:pointer}
 .ghplant.tappable:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
 .ghplant img{transition:transform .2s;transform-origin:50% 100%}
+/* the greenhouse herb planters (21 Oct): drawn SVG planters by the door, tapped like the pots */
+.nb.ghbed{transform:translate(-50%,-95%);pointer-events:auto;cursor:pointer;--cs:.8}
+.ghbed svg{width:100%;height:auto;display:block;overflow:visible;transition:transform .2s;transform-origin:50% 100%}
+.ghbed:hover svg,.ghbed:active svg{transform:scale(1.06)}
+.ghbed:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:10px}
+.bedcard .bedpic.herbpic{padding:4px}
+.ghbrewrow{margin:0 0 10px}
+.ghbrewrow .chips{margin-top:6px}
 .ghplant.tappable:hover img,.ghplant.tappable:active img{transform:scale(1.06)}
 .petsafe{margin-top:10px;border-radius:14px;padding:10px 12px;background:#eef7f0;border:1px solid #cfe6d5}
 .petsafe.warn{background:#fdf0f4;border-color:#f3d3df}

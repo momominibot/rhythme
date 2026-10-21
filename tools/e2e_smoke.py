@@ -1246,6 +1246,49 @@ async def main():
             check("the garden greenhouse lists every tea and the doctor-or-pharmacist cautions, with all sources folded behind small (i) buttons", gh["teas"] >= 15 and gh["cautions"] >= 5 and gh["shownChips"] == 0 and gh["infos"] >= 20 and gh["label"] == "Source for St John’s wort", gh)
             check("an (i) opens its sources (a link into the evidence register) and closes them again", op["expanded"] == "true" and op["shown"] and (op["href"] or "").startswith("evidence.html#E") and shut, op)
 
+            # the greenhouse herbs (21 Oct): four planters by the door; a start from Hay & Harvest, planted, watered and picked into
+            # the basket; a cup brewed from it for one minute (Stop keeps the herb), no diary entry, only the flat practice thank-you
+            await page.evaluate("()=>{OvuStore.setState({greenhouse: null, stamina: null}); var f=OvuFarm.farmState(OvuStore); f.harvest={}; OvuStore.setState({farm: f}); OvuWalk.travel('greenhouse');}")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='greenhouse' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await page.wait_for_timeout(500)
+            hb0 = await page.evaluate("()=>({beds: document.querySelectorAll('#ownedProps .ghbed').length, label: (document.querySelector('.ghbed[data-bed=hb1]')||{getAttribute:()=>''}).getAttribute('aria-label'), diary: OvuStore.list().length})")
+            await page.evaluate("()=>OvuLane.openGrocer()"); await page.wait_for_timeout(250)
+            hbuy = await page.evaluate("()=>{var n=document.querySelectorAll('#grocerHerbs [data-herbstart]').length, b=document.querySelector('#grocerHerbs [data-herbstart=ginger]'); if(b) b.click(); return {n: n, seeds: OvuGreenhouse.herbState(OvuStore).seeds.ginger||0, lemongrassFarm: !!document.querySelector('#grocerBuy [data-unlock=lemongrass]')}}")
+            check("Hay & Harvest sells the four greenhouse herbs; a ginger start lands in the greenhouse bag, and lemongrass is not a farm unlock any more", hb0["beds"] == 4 and "empty" in (hb0["label"] or "") and hbuy["n"] == 4 and hbuy["seeds"] == 1 and not hbuy["lemongrassFarm"], [hb0, hbuy])
+            await page.evaluate("()=>{OvuRoom.closeSheet(); OvuGreenhouse.slowMs = 0; document.querySelector('.ghbed[data-bed=hb1]').click();}")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] #herbActs [data-herb=plant][data-kind=ginger]', timeout=15000)
+            except Exception: pass
+            hp = await page.evaluate("()=>{var pos=OvuRoom.pos(), b=document.querySelector('#herbActs [data-herb=plant][data-kind=ginger]'); if(!b) return {btn:false, pos:pos}; b.click(); var bed=OvuGreenhouse.herbState(OvuStore).beds.hb1; var w=document.querySelector('#herbActs [data-herb=water]'); if(w) w.click(); bed=OvuGreenhouse.herbState(OvuStore).beds.hb1; return {btn:true, pos:pos, herb: bed&&bed.herb, days: OvuGreenhouse.herbDays(bed), stam: OvuStamina.value(), again: !!document.querySelector('#herbActs [data-herb=water]'), seeds: OvuGreenhouse.herbState(OvuStore).seeds.ginger||0}}")
+            check("tapping a planter walks her to its stand point; planting the ginger and watering it once costs energy and counts one day", hp["btn"] and abs(hp["pos"]["x"] - 39) < 1.5 and abs(hp["pos"]["y"] - 68.6) < 1.5 and hp["herb"] == "ginger" and hp["days"] == 1 and hp["stam"] == 100 - 2 - 6 and not hp["again"] and hp["seeds"] == 0, hp)
+            await page.evaluate("()=>{var g=OvuGreenhouse.herbState(OvuStore), b=g.beds.hb1, d=b.watered[0]; b.watered=['2020-01-01','2020-01-02','2020-01-03','2020-01-04','2020-01-05',d]; OvuStore.setState({greenhouse:g}); OvuGreenhouse.renderBeds(); OvuGreenhouse.openHerbBed('hb1');}"); await page.wait_for_timeout(200)
+            hk = await page.evaluate("()=>{var ripe=document.querySelector('.ghbed[data-bed=hb1]').classList.contains('ripe'), b=document.querySelector('#herbActs [data-herb=pick]'); if(!b) return {btn:false}; b.click(); var bed=OvuGreenhouse.herbState(OvuStore).beds.hb1; return {btn:true, ripe:ripe, basket: OvuFarm.farmState(OvuStore).harvest.ginger||0, stays: bed&&bed.herb, cuts: bed&&bed.cuts, brew: !!document.querySelector('#herbActs [data-herb=brew]')}}")
+            await page.evaluate("()=>OvuFarm.openBasket()"); await page.wait_for_timeout(150)
+            hk["listed"] = await page.evaluate("()=>/Ginger/.test(document.querySelector('#sheet .basketlist')?.textContent||'')")
+            check("a ripe planter sparkles; picking puts two pieces of ginger in the farm basket, the ginger stays to grow again, and the basket lists it", hk["btn"] and hk["ripe"] and hk["basket"] == 2 and hk["stays"] == "ginger" and hk["cuts"] == 1 and hk["brew"] and hk["listed"], hk)
+            await page.evaluate("()=>{OvuRoom.closeSheet(); OvuRoom.tap(OvuRoom.hotspot('teatable'))}")
+            try: await page.wait_for_selector('#sheet[aria-hidden="false"] .ghbrewrow [data-brew=ginger]', timeout=12000)
+            except Exception: pass
+            tt = await page.evaluate("()=>({row: !!document.querySelector('.ghbrewrow [data-brew=ginger]'), teas: document.querySelectorAll('#sheet .tea').length})")
+            await page.click('.ghbrewrow [data-brew=ginger]'); await page.wait_for_timeout(250)
+            bs = await page.evaluate("()=>({id: OvuRoom.sheetId(), card: !!document.getElementById('brewCard'), go: !!document.getElementById('brewGo')})")
+            await page.click('#brewCard'); await page.wait_for_timeout(250)
+            bs["research"] = await page.evaluate("()=>({id: OvuRoom.sheetId(), title: document.querySelector('#sheetTitle').textContent, says: /What research says/.test(document.querySelector('#sheet').textContent)})")
+            check("the tea table offers a cup from the basket beside the full tea list; the ginger cup links to its existing research card", tt["row"] and tt["teas"] >= 15 and bs["id"] == "ghbrew" and bs["card"] and bs["go"] and bs["research"]["id"] == "ghcard" and "Ginger" in bs["research"]["title"] and bs["research"]["says"], [tt, bs])
+            await page.evaluate("()=>{OvuRoom.closeSheet(); OvuStore.setProfile({outfit:'sundress'}); OvuRoom.restorePose(); OvuGreenhouse.setPace(250);}"); await page.wait_for_timeout(300)
+            b0 = await page.evaluate("()=>{var l=OvuRewards.ledger(), d=OvuStore.today(); return {hearts: l.hearts, room: (l.mindDay && l.mindDay.day===d) ? l.mindDay.pts < OvuRewards.PRACTICE.cap : true, diary: OvuStore.list().length}}")
+            await page.evaluate("()=>OvuGreenhouse.openBrew('ginger')"); await page.wait_for_timeout(200)
+            await page.click('#brewGo'); await page.wait_for_timeout(350)
+            bw = await page.evaluate("()=>({brewing: OvuGreenhouse.brewing(), hud: document.querySelector('#hud').classList.contains('on'), img: document.querySelector('#avatarImg').getAttribute('src'), line: document.querySelector('#hudLine').textContent, ours: OvuGreenhouse.brewLines('ginger').indexOf(document.querySelector('#hudLine').textContent) > -1})")
+            await page.wait_for_timeout(1400)
+            ba = await page.evaluate("()=>({brewing: OvuGreenhouse.brewing(), hud: document.querySelector('#hud').classList.contains('on'), basket: OvuFarm.farmState(OvuStore).harvest.ginger||0, hearts: OvuRewards.ledger().hearts, diary: OvuStore.list().length})")
+            check("a cup of ginger tea: one minute in her own outfit with the cup, warmth then steam then the first sip; it uses one ginger, writes no diary entry and earns only the flat practice thank-you", bw["brewing"] == "ginger" and bw["hud"] and "act-coffee-sundress" in (bw["img"] or "") and bw["ours"] and ba["brewing"] is None and not ba["hud"] and ba["basket"] == 1 and ba["diary"] == b0["diary"] and ba["hearts"] - b0["hearts"] == (2 if b0["room"] else 0), [b0, bw, ba])
+            await page.evaluate("()=>{OvuGreenhouse.setPace(1500); OvuGreenhouse.startBrew('ginger');}"); await page.wait_for_timeout(300)
+            await page.click('#hudStop'); await page.wait_for_timeout(300)
+            st_ = await page.evaluate("()=>({brewing: OvuGreenhouse.brewing(), basket: OvuFarm.farmState(OvuStore).harvest.ginger||0, hearts: OvuRewards.ledger().hearts, diary: OvuStore.list().length})")
+            check("Stop at any time: a stopped cup keeps the ginger, earns nothing and writes nothing", st_["brewing"] is None and st_["basket"] == 1 and st_["hearts"] == ba["hearts"] and st_["diary"] == b0["diary"], st_)
+            await page.evaluate("()=>{OvuGreenhouse.setPace(0); OvuGreenhouse.slowMs = null; OvuStore.setProfile({outfit:'base'}); OvuRoom.restorePose(); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+
             # the farm: the garden path leads there, twelve beds draw on the plate, the shed gives seeds, a bed is planted and
             # watered, and a harvest offers to log a meal without writing one
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(800)
@@ -1409,7 +1452,7 @@ async def main():
             await page.evaluate("()=>{var f=OvuFarm.farmState(OvuStore); f.harvest={}; OvuStore.setState({farm:f})}")
             await page.click("#sheet .lane [data-place=grocer]"); await page.wait_for_timeout(300)
             gr = await page.evaluate("()=>{var f0=OvuFarm.farmState(OvuStore), r0=f0.seeds.radish||0; var p=document.querySelector('#grocerBuy [data-pack=radish]'); var packs=document.querySelectorAll('#grocerBuy [data-pack]').length, unlocks=document.querySelectorAll('#grocerBuy [data-unlock]').length; if(p) p.click(); return {id: OvuRoom.sheetId(), packs: packs, unlocks: unlocks, gained: (OvuFarm.farmState(OvuStore).seeds.radish||0) - r0, empty: /Nothing to swap yet/.test(document.querySelector('#sheet').textContent)}}")
-            check("Hay & Harvest sells a pack for every crop she grows and the five local crops; a radish pack puts three seeds in the shed; an empty basket has nothing to swap", gr["id"] == "lane-grocer" and gr["packs"] >= 5 and gr["unlocks"] == 5 and gr["gained"] == 3 and gr["empty"], gr)
+            check("Hay & Harvest sells a pack for every crop she grows and four local crops (lemongrass moved to the greenhouse); a radish pack puts three seeds in the shed; an empty basket has nothing to swap", gr["id"] == "lane-grocer" and gr["packs"] >= 5 and gr["unlocks"] == 4 and gr["gained"] == 3 and gr["empty"], gr)
             await page.evaluate("()=>{var f=OvuFarm.farmState(OvuStore); f.harvest={radish:3}; OvuStore.setState({farm:f}); OvuLane.openGrocer()}"); await page.wait_for_timeout(200)
             await page.click("#swapGive [data-give=radish]"); await page.wait_for_timeout(200)
             sw = await page.evaluate("()=>{var c0=OvuFarm.farmState(OvuStore).seeds.carrot||0, h0=OvuRewards.ledger().hearts; var t=document.querySelector('#swapTake [data-take=carrot]'); if(t) t.click(); var f=OvuFarm.farmState(OvuStore); return {take: !!t, carrot: (f.seeds.carrot||0) - c0, radish: f.harvest.radish||0, hearts: OvuRewards.ledger().hearts - h0}}")

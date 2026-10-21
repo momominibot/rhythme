@@ -20,7 +20,7 @@
     /* local crops, unlocked with hearts and then grown for good (Codex, 20 Oct: locally familiar crops for Singapore) */
     kangkong: { name: 'Kangkong', plural: 'bunches of kangkong', days: 2, yield: 3, colour: '#8fcf86', top: '#4f9a62', cost: 40 },
     pakchoy: { name: 'Pak choy', plural: 'pak choy', days: 3, yield: 3, colour: '#b5e0a0', top: '#5f9c6a', cost: 40 },
-    lemongrass: { name: 'Lemongrass', plural: 'stalks of lemongrass', days: 4, yield: 3, colour: '#dfe6a0', top: '#8fbf6a', cost: 60 },
+    lemongrass: { name: 'Lemongrass', plural: 'stalks of lemongrass', days: 4, yield: 3, colour: '#dfe6a0', top: '#8fbf6a', cost: 60, moved: 'greenhouse' }, /* grows in the greenhouse planters since 21 Oct (ovu-greenhouse.js); a farm that unlocked it keeps it */
     chilli: { name: 'Chilli padi', plural: 'chilli padi', days: 5, yield: 4, colour: '#e2483d', top: '#5f9c6a', cost: 70 },
     sweetpotato: { name: 'Sweet potato', plural: 'sweet potatoes', days: 6, yield: 2, colour: '#b0607e', top: '#7fb894', cost: 80 }
   };
@@ -176,6 +176,7 @@
     var c = CROPS[crop], f = copy(farmState(S));
     if (!c || STARTER.indexOf(crop) > -1) return { ok: false, why: 'That one is free already.' };
     if (f.unlocked[crop]) return { ok: false, why: 'Already growing in your shed.' };
+    if (c.moved) return { ok: false, why: c.name + ' grows in the greenhouse now. Hay & Harvest sells it for the planters.' };
     f.unlocked[crop] = true; f.seeds[crop] = (f.seeds[crop] || 0) + 1; /* one seed to start */
     var r = pay(RW, c.cost, 'crop:' + crop, f); if (!r.ok) return r; return { ok: true, crop: crop };
   }
@@ -479,9 +480,10 @@
     });
   }
   function openBasket() {
-    var f = farmState(S), rows = Object.keys(f.harvest).filter(function (k) { return f.harvest[k] > 0; });
+    var HB = root.OvuGreenhouse && root.OvuGreenhouse.HERBS, kind = function (k) { return CROPS[k] || (HB && HB[k]) || null; }; /* the greenhouse herbs share the basket */
+    var f = farmState(S), rows = Object.keys(f.harvest).filter(function (k) { return f.harvest[k] > 0 && kind(k); });
     R.openSheet('farmbasket', 'Your harvest', rows.length ? 'In the basket' : 'Nothing picked yet', 'shopping_basket',
-      (rows.length ? '<ul class="basketlist">' + rows.map(function (k) { return '<li><span class="dot" style="background:' + CROPS[k].colour + '"></span>' + esc(CROPS[k].name) + ' <b>×' + esc(f.harvest[k]) + '</b></li>'; }).join('') + '</ul>' : '<p>Plant, water and pick, and the basket fills.</p>') +
+      (rows.length ? '<ul class="basketlist">' + rows.map(function (k) { return '<li><span class="dot" style="background:' + kind(k).colour + '"></span>' + esc(kind(k).name) + ' <b>×' + esc(f.harvest[k]) + '</b></li>'; }).join('') + '</ul>' : '<p>Plant, water and pick, and the basket fills.</p>') +
       (function () { var p = farmState(S).pantry, bits = []; if (p.egg) bits.push(p.egg + ' egg' + (p.egg > 1 ? 's' : '')); if (p.milk) bits.push(p.milk + ' milk'); if (p.onsenegg) bits.push(p.onsenegg + ' onsen egg' + (p.onsenegg > 1 ? 's' : '')); return bits.length ? '<p class="help pantryline"><span class="ms">kitchen</span>From the barn: ' + esc(bits.join(', ')) + '.</p>' : ''; })() +
       '<p class="help">Carrots, pumpkins and sweet potatoes are treats for Clover at the barn; kangkong, pak choy and strawberries for the hens. The rest is yours to admire.</p>');
   }

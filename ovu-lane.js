@@ -153,12 +153,14 @@
   var swapGive = null;
   function openGrocer() {
     var FM = F(); if (!FM) return;
-    var f = FM.farmState(S), h = hearts(), grow = FM.growable(f), locked = Object.keys(FM.CROPS).filter(function (k) { return !FM.canGrow(f, k); }), give = FM.swapGivable(S);
+    var f = FM.farmState(S), h = hearts(), grow = FM.growable(f), locked = Object.keys(FM.CROPS).filter(function (k) { return !FM.canGrow(f, k) && !FM.CROPS[k].moved; }), give = FM.swapGivable(S), GH = root.OvuGreenhouse, gs = GH ? GH.herbState(S) : null; /* lemongrass moved to the greenhouse (21 Oct) */
     if (swapGive && give.indexOf(swapGive) < 0) swapGive = null;
     var html = nav('hearts') + mind('Choose one thing you would like to grow in yourself this week.') +
       '<h4 class="shedh"><span class="ms">redeem</span>Seed packs <small>' + FM.PACK.seeds + ' seeds · ' + heartTxt(FM.PACK.cost) + '</small></h4>' +
       '<div class="seedlist" id="grocerBuy">' + grow.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-pack="' + k + '"' + (h >= FM.PACK.cost ? '' : ' disabled') + '><span class="ms">redeem</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + num(f.seeds[k]) + '</small></span></button>'; }).join('') +
       locked.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-unlock="' + k + '"' + (h >= c.cost ? '' : ' disabled') + '><span class="ms">lock_open</span><span><b>Grow ' + esc(c.name.toLowerCase()) + '</b><small>' + c.days + ' days · for good, one seed to start · ' + heartTxt(c.cost) + '</small></span></button>'; }).join('') + '</div>' +
+      (GH ? '<h4 class="shedh"><span class="ms">local_florist</span>For the greenhouse <small>for the planters</small></h4>' +
+        '<div class="seedlist" id="grocerHerbs">' + GH.HERB_IDS.map(function (k) { var hb = GH.HERBS[k]; return '<button type="button" class="btn soft" data-herbstart="' + k + '"' + (h >= hb.cost ? '' : ' disabled') + '><span class="ms">spa</span><span><b>' + esc(hb.start) + '</b><small>ready in ' + hb.ripe + ' days, again every ' + hb.regrow + ' · have ' + num(gs.seeds[k]) + ' · ' + heartTxt(hb.cost) + '</small></span></button>'; }).join('') + '</div>' : '') +
       '<h4 class="shedh"><span class="ms">swap_horiz</span>Seed swap <small>no hearts</small></h4>' +
       '<p class="help" style="margin-top:0">Three from your basket for one seed of any crop you grow. A pumpkin counts as three.</p>';
     if (!give.length) html += '<p class="help pantryline"><span class="ms">shopping_basket</span>Nothing to swap yet: the basket needs three of one kind, or a pumpkin.</p>';
@@ -174,6 +176,13 @@
       if (!res.ok) { R.toast(res.why, 'info'); return; }
       R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
       R.toast(btn.dataset.pack ? res.n + ' ' + FM.CROPS[btn.dataset.pack].name.toLowerCase() + ' seeds are in the shed.' : FM.CROPS[res.crop].name + ' grows on your farm now.', 'redeem', line);
+      if (R.renderDeck) R.renderDeck(); openGrocer();
+    });
+    var hs = doc.getElementById('grocerHerbs'); if (hs) hs.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-herbstart]'); if (!btn || btn.disabled || !stillOpen('grocer')) return;
+      var res = GH.buyStart(S, RW(), btn.dataset.herbstart); if (!res.ok) { R.toast(res.why, 'info'); return; }
+      R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
+      R.toast(GH.HERBS[res.herb].start + ' for the greenhouse. Plant it in a planter by the door.', 'local_florist', line);
       if (R.renderDeck) R.renderDeck(); openGrocer();
     });
     var gv = doc.getElementById('swapGive'); if (gv) gv.addEventListener('click', function (e) { var b = e.target.closest('[data-give]'); if (!b) return; R.chime('tap'); swapGive = b.dataset.give === swapGive ? null : b.dataset.give; openGrocer(); });
