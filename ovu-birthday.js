@@ -1,4 +1,4 @@
-/* Rhythme: her birthday week (Jamie, 21 Oct, on his own 36th: "special birthday drop.. I think it's good to have some
+/* Rhythme: her birthday week (Jamie, 21 Oct: "special birthday drop.. I think it's good to have some
  * heartfelt advise and motivation in life ... have the cute report sent as postcard").
  * Her birthday is a month and a day she may give in You. Optional, never a year, and no health screen reads it. On the
  * day the room greets her, a cake with balloons stands on her table for a week, and a postcard arrives once: three warm

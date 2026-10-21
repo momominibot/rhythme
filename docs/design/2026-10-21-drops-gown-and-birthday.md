@@ -1,6 +1,6 @@
 # The drops: the Starlight gown and her birthday week (21 Oct 2026)
 
-Jamie, on his 36th birthday: "We need to identify rhythme plus perks and set pricing ... Special drop down glamour dress to show off at the plaza, special birthday drop.. today is my birthday and I'm 36 this year and I think it's good to have some heartfelt advise and motivation in life. We could pull in YourdigitalDNA methodology in to calculate based on the user birthdate and have the cute report sent as postcard."
+Jamie, 21 Oct: "We need to identify rhythme plus perks and set pricing ... Special drop down glamour dress to show off at the plaza, special birthday drop.. I think it's good to have some heartfelt advise and motivation in life. We could pull in YourdigitalDNA methodology in to calculate based on the user birthdate and have the cute report sent as postcard."
 
 ## The Starlight gown (the first wardrobe drop)
 
@@ -18,11 +18,11 @@ Jamie, on his 36th birthday: "We need to identify rhythme plus perks and set pri
 
 ## Why no birth-date reading
 
-Jamie mentioned a "YourdigitalDNA" method that calculates from the birth date. I could not find a published method under that name (two web searches on 21 Oct found only general numerology services), and any reading that turns a birth date into statements about a person would sit inside a health app beside real records. The line this build keeps: nothing in Rhythme reads anything into her birth date. If Jamie wants that reading, it needs the source of the method, and a place clearly outside the health screens, labelled as a game, with no link to her diary. That is his call, not mine to improvise.
+Jamie mentioned a "YourdigitalDNA" method that calculates from the birth date. Two web searches found nothing because YourDigitalDNA is Jamie's own app, and its source is private. This build keeps the line it started with: nothing in Rhythme reads anything into her birth date yet. Bringing YourDigitalDNA's readings onto the postcard would put its copy into Rhythme's public code and needs her birth year for anything beyond the day number, so it waits for Jamie's decision. If it comes in, it stays on the postcard, labelled as a reflection, away from the health screens and the diary.
 
 ## Decisions this needs from Jamie
 
 1. Plus itself: the Stripe account, GST status, the price (the proposal: S$4.90 a month or S$49 a year, no auto-converting trial), and Erin's commercial terms. Until Plus can be bought, the gown is reachable through a preview code (You, Rhythme Plus) and tester mode.
 2. Whether the gown can also be bought one-off (the proposal: S$3.90 after a month) or stays Plus-only.
 3. Whether to render the gown's three walk strips now (one more guarded run) or wait for the first paying drop.
-4. The birth-date reading: leave it out (recommended), or name the method and a clearly separate place for it.
+4. The YourDigitalDNA panel on the postcard: whether to add it, and whether Rhythme may ask for an optional birth year to unlock its Day Master line.
