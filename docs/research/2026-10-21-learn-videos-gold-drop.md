@@ -338,6 +338,7 @@ Codex named topics a gynaecologist, perinatal psychiatrist or menopause speciali
 - Pelvic floor recovery after birth (NICE NG210).
 - Persistent tiredness: iron and thyroid.
 - Optional, text-first and specialist-reviewed: stillbirth, termination of pregnancy, and relationship safety. These should not be compressed into short clips.
+- Menopause after surgery or cancer treatment (Jamie, 21 Oct): people whose ovaries were removed, including for cancer. D6 covers POI briefly; this group needs its own film and app support, planned separately.
 
 ## Script rules for every film
 
@@ -383,6 +384,7 @@ Volcengine also requires an account balance over 200 yuan (or a Seedance resourc
 - Motion: Seedance 2.0, 1080p, 16:9, 5 s, from each keyframe, audio off. Each shot used 245,025 tokens, 12.50 yuan, exactly the list-price estimate, and took 2 to 6 minutes. Output is 1920 x 1080 at 24 fps, and the avatar stayed on model through the motion (stretching at dawn; moon lanterns swaying while she blinks).
 - Two hiccups, both stopped by the run rules: Seedream 5.0 pro now rejects the `stream` parameter (a rejected call is not billed), and a status check on shot 2 hit a network timeout, so the run stopped before shots 3 and 4 started. Shot 2 had already been submitted, so it was collected with free status checks rather than wasted.
 - Spent so far: 26.60 yuan. Shots 3 and 4 (about 25 yuan) wait for Jamie's go-ahead.
+- Explainer segments (Jamie, 21 Oct: "in between we can have explainer without the avatar but same theme with motions"): each film alternates avatar shots with avatar-free explainers. The test explainer is a Seedream sky backdrop in the same clay style (0.30 yuan, no characters) with the information animated in code: a timeline marking day 1, bleeding up to 8 days and the usual 24 to 38-day window, in the app's own fonts and colours, with drifting sparkles and a slow push-in. It costs nothing to animate and every word is exact. Seedance can add generated motion to these backdrops later if code motion feels too still. Spent after this step: 26.90 yuan.
 - Measured file size: the 18-second preview is 8.5 MB at 1080p (3.7 Mbit/s) and 4.2 MB at 720p (1.9 Mbit/s), higher than the estimate in the size budget because of the sparkle and petal motion. At that rate an 84-second film is about 39 MB plus 20 MB, and all 27 would be about 1.6 GB, so the films must be hosted off GitHub Pages; a CRF of 24 to 25 should be tried on the next encode before deciding.
 
 ### Voice
