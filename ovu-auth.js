@@ -400,7 +400,7 @@
       var act = b.dataset.ya;
       if (act === 'email-start') { if (form) { form.hidden = false; var i = el.querySelector('#yaEmail'); if (i) i.focus(); } return; }
       if (act === 'oauth') { b.disabled = true; signInWith(b.dataset.prov).catch(function (err) { b.disabled = false; toastVia(opts, 'Could not start sign-in: ' + err.message, 'error'); }); return; }
-      if (act === 'sync') { toastVia(opts, 'Syncing…', 'sync'); OvuSync.syncNow().then(function (r) { toastVia(opts, r && r.ok ? (r.held ? 'Backed up, except ' + r.held + ' Movement ' + (r.held === 1 ? 'entry' : 'entries') + ' kept on this phone for now.' : 'Backed up.') : ('Sync failed: ' + ((r && r.error) || 'try again')), r && r.ok ? (r.held ? 'cloud_sync' : 'cloud_done') : 'error'); rerenderOpen(); }); return; }
+      if (act === 'sync') { toastVia(opts, 'Syncing…', 'sync'); OvuSync.syncNow().then(function (r) { if (r && r.reason === 'update') { toastVia(opts, r.error, 'system_update'); rerenderOpen(); return; } toastVia(opts, r && r.ok ? (r.held ? 'Backed up, except ' + r.held + ' Movement ' + (r.held === 1 ? 'entry' : 'entries') + ' kept on this phone for now.' : 'Backed up.') : ('Sync failed: ' + ((r && r.error) || 'try again')), r && r.ok ? (r.held ? 'cloud_sync' : 'cloud_done') : 'error'); rerenderOpen(); }); return; }
       if (act === 'enable-cloud') { promptCloud(); return; }
       if (act === 'disable-cloud') { confirmDisableCloud(el, opts); return; }
       if (act === 'wipe-cloud') { confirmWipeCloud(el, opts); return; }

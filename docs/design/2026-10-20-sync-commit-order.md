@@ -4,15 +4,15 @@
 `supabase/migrations/20261020120000_sync_pull_commit_order.sql` is a file only: applying it to the live project is
 Jamie's call (AGENTS gate 3).
 
-**Status: held at AGENTS gate 6 (round four).** Rounds two and three held the branch on the compatibility path
-(premortem 5). Jamie chose option A (the server certifies the time cursor, `time_safe`, below); round three proved
-that a single time cursor cannot be both skip-free and replay-free once the transaction-ordered pull has delivered rows
-out of time order. Jamie then chose A2 (20 Oct): a phone that pulls by transaction id stops instead of pulling by time,
-`time_safe` stays only for tabs still running an older version, and a newer version taking over a page stops that page
-syncing. Round four found two ways this version can still reach the time-ordered pull after moving over, and two
-defects in the takeover handling (premortems 5 and 8). The transaction-ordered pull, the fence and the hand-over passed
-all four rounds. Round-five options R5-B (recommended) and R5-A are in
-`docs/debate/2026-10-20-sync-commit-order-codex-round4.md`, not applied.
+**Status: R5-B applied (Jamie, 21 Oct), Codex round five below.** Rounds two to four held the branch on the
+compatibility path (premortem 5). Jamie chose option A (the server certifies the time cursor, `time_safe`, below);
+round three proved that a single time cursor cannot be both skip-free and replay-free once the transaction-ordered pull
+has delivered rows out of time order. Jamie then chose A2: a phone that pulls by transaction id stops instead of
+pulling by time. Round four found two ways this version could still reach the time-ordered pull, and two defects in the
+takeover handling. Jamie chose R5-B: this version has no time-ordered pull at all (a missing `entries_pull` always
+pauses the sync), so the migration ships first and the app second; a newer version taking over a page reloads it only
+when it is hidden and nothing is unsaved; and "update or first install" is decided from the registration state at load.
+The transaction-ordered pull, the fence and the hand-over passed all four rounds.
 
 ## The gap
 
@@ -89,7 +89,7 @@ Each write records the id of its transaction, `sync_xid = pg_current_xact_id()`.
   back.
 - Complexity: medium. A column, an index, one more line in the trigger, one STABLE SQL function, a new client cursor
   (text, because an `xid8` can exceed what a JavaScript number holds exactly), a hand-over for phones on the time
-  cursor, and a fallback for a server without the migration.
+  cursor, and a pause on a server without the migration (R5-B; earlier rounds fell back to the time-ordered pull).
 - Storage: 8 bytes a row plus an index.
 
 ### C. A commit-time sequence under a lock
@@ -126,43 +126,50 @@ Premortem, assuming B failed:
 
 1. *A stuck writing transaction stalls every pull.* Nothing is lost; rows arrive when it ends. To find it:
    `select pid, backend_xid, xact_start, state, left(query, 80) from pg_stat_activity where backend_xid is not null order by xact_start limit 5;`
-2. *PostgREST's schema cache has not seen the new function yet.* PostgREST answers 404 `PGRST202` [9]. A phone that
-   has never pulled by transaction id pulls by time, as it does today. Checked on the live project on 20 Oct: an
-   anonymous call to `/rest/v1/rpc/entries_pull` returns exactly that. A phone that already holds a transaction cursor
-   stops instead (premortem 5).
-3. *The migration is applied before the app ships.* Older versions keep paging by `synced_at`, which is still stamped
-   as before. Nothing changes for them.
-4. *The app ships before the migration.* Same fallback as 2.
-5. *The migration is rolled back after phones moved over, or a tab still on an older version pulls by time.* Three
+2. *PostgREST's schema cache has not seen the new function yet.* PostgREST answers 404 `PGRST202` [9]. This version
+   then pauses the sync with "Cloud backup is paused until the cloud is updated again. Everything stays safe on this
+   phone." Nothing is pulled or pushed and no cursor moves; the next sync asks again. Checked on the live project on
+   20 Oct: an anonymous call to `/rest/v1/rpc/entries_pull` returns exactly that 404.
+3. *The migration is applied before the app ships* (the R5-B order). Older versions keep paging by `synced_at`, which is
+   still stamped as before. Nothing changes for them.
+4. *The app ships before the migration.* Every phone on the new version pauses its backup until the migration is
+   applied (premortem 2): nothing is lost, everything stays on the phone, but nothing is backed up either. So the ship
+   order is migration first, then the app.
+5. *The migration is rolled back after phones moved over, or a tab still on an older version pulls by time.* Four
    review rounds went here. Following the time cursor from the client's own view (round one) left a tie's id behind and
    could pass rows the 20,000 cap had not reached (round two). A server-certified `time_safe` (round three) fixed ties,
    but no time cursor can keep `early` (09:00, held behind the fence) and exclude `d` (10:00, already delivered), so a
-   pull by time either sends `d` again after a clear or, with a cursor kept from an earlier sync, skips `early`.
-   **A2 (Jamie, 20 Oct):** once a phone has saved a transaction cursor, a missing `entries_pull` stops the sync with
-   "Cloud backup is paused until the cloud is updated again. Everything stays safe on this phone." and nothing moves;
-   when `entries_pull` is back it carries on from its cursor. **Not yet complete (Codex round four, reproduced):** the
-   cursor is saved only after the uploads, so a failed upload leaves rows delivered with no cursor saved, and a later
-   missing `entries_pull` falls back by time and sends them again after a clear; and a tab decides the fallback from
-   the state it read when its sync began, so it can pull by time after another tab has moved over. The recommended
-   round-five fix (R5-B) removes the time-ordered pull from this version entirely. `time_safe` is kept only for a
-   tab still running an older version, which can only pull by time. Such a tab has a weaker guarantee, written down and
-   tested: it can skip rows that were still open, or held behind the fence, when an earlier `time_safe` was certified,
-   and after a clear it can receive again rows above a held-back row. Older tabs are transitional: see 8.
-6. *A page asked for `entries_pull` before the migration and was told it is missing.* It asks again as soon as any tab
-   holds a transaction-ordered cursor, instead of pulling by its own time cursor for the rest of its life (Codex round
-   one, finding 1).
+   pull by time either sends `d` again after a clear or, with a cursor kept from an earlier sync, skips `early`. A2
+   (pause once a phone holds a transaction cursor) still left two ways back to the time-ordered pull (round four: a
+   failed upload that left delivered rows with no saved cursor, and a tab deciding from a stale view of another tab's
+   mode). **R5-B (Jamie, 21 Oct):** this version has no pull by time at all. On a server without `entries_pull`, new
+   phone or old, the sync pauses with the message above; when `entries_pull` is back it carries on from its cursor or
+   hands over from its time cursor. A rollback of the migration therefore pauses backup; it never mixes orders.
+   `time_safe` is kept only for a tab still running an older version, which can only pull by time. Such a tab has a
+   weaker guarantee, written down and tested: it can skip rows that were still open, or held behind the fence, when an
+   earlier `time_safe` was certified, and after a clear it can receive again rows above a held-back row. Older tabs are
+   transitional: see 8.
+6. *A page asked for `entries_pull` before the migration and was told it is missing.* It remembers nothing about that:
+   every sync asks again (round four found the remembered answer was one of the ways back to the time-ordered pull).
 7. *Some other entries_pull failure* (a timeout, a malformed reply) fails the sync and moves nothing. It never falls
    back silently to the pull with the gap.
 8. *A tab keeps running older code after a newer version ships.* `sw.js` already skips waiting and claims every open
-   page, but nothing reloaded a page that was open. Now `OvuSync.watchUpdates()` (called from `room.js` next to the
-   registration) listens for `controllerchange`: the first install claiming the page is not an update, but every later
-   takeover stops this page syncing at once (`retire()`: a sync in flight is cancelled at its next check, `syncNow()`
-   answers `{ok: false, reason: 'update'}`) and reloads the page as soon as it is out of sight. A short note says the
-   new version opens next time she comes back. This cannot reach code already in the field before this change, and it
-   only fires when the service worker itself changes. **Not yet right (Codex round four):** reloading on hiding alone
-   can drop a form she had not saved (a Movement entry half filled in), and a page force-refreshed with a null
-   controller takes its first takeover for a first install. Proposed: reload only when hidden with nothing unsaved,
-   and decide "update" from the registration state at load.
+   page, but nothing reloaded a page that was open. Now `ovu-sync.js` listens for `controllerchange` from the moment it
+   loads, before the room registers the worker or boots, so an early takeover is not missed. A takeover is an update
+   when the page had a controller at load, or had none but its registration already had an active worker (a force
+   refresh leaves the page uncontrolled while a worker is active [11]); the first install claiming a fresh page is not.
+   On an update the page stops syncing at once (`retire()`: a sync in flight is cancelled at its next check, and
+   `syncNow()` answers `{ok: false, reason: 'update'}` with the words "A new version of Rhythme is ready. It opens next
+   time you come back.", which the manual sync button shows). It reloads only when it is hidden **and** the room says
+   nothing is unsaved: no sheet or form open (so no Luna card), no session, practice, meditation or Morning start
+   running, no health file being read or waiting to be picked from, not arranging the room. If something is open it
+   waits and checks again each time she leaves the app. The room's note and its safety test are handed over by
+   `OvuSync.watchUpdates(onUpdate, canReload)`; an update seen before that gets its note when the room is ready, and no
+   reload happens before the room's test exists. Limits: this cannot reach code already in the field before this
+   change; it only fires when the service worker itself changes (an app-only change with an identical `sw.js` causes no
+   takeover [12], which is why releases bump `VERSION` in `sw.js`; this branch leaves that bump to the merge, since main
+   moves it often); and it was tested with a pretend
+   service worker, document and location in Node, not in Safari on an iPhone.
 
 ## The hand-over from the time cursor
 
@@ -193,9 +200,8 @@ which would restore such cleared rows. The rule now:
 What it cannot recover: rows the older version had already lost to the gap before the hand-over. They sit behind its
 cursor, from transactions that had ended, exactly like rows it pulled; only a full re-pull could find them, and that
 would also bring back what someone cleared. So they stay lost, as they are today, and from the hand-over on nothing is
-lost. With today's fallback, shipping the app before applying the migration keeps this window short, since phones
-that load the new version hand over as soon as `entries_pull` answers (a page that was told it was missing waits for a
-reload or for another tab to move over). Under R5-B the order flips: migration first, then the app.
+lost. Under R5-B the migration ships first, then the app: a phone that loads the new version hands over on its first
+sync, so the window is the time between the two releases, during which older versions pull by time as they do today.
 
 One case this does not cover: a tab still on the older version, open at the same time as a newer one, pulling rows after
 the hand-over began, which the person then clears. The newer pull may send those again. It needs two versions open
@@ -218,12 +224,12 @@ can sit earlier in time than rows already delivered. Every page of `entries_pull
 4. never back past `p_time_at`/`p_time_id`, the time cursor this sync started from (a `(T, no id)` millisecond cursor
    counts as "rows before T").
 
-Since A2 a phone that has saved a transaction cursor does not read that cursor back for a pull of its own (round four
-found two gaps, premortem 5): it is kept for a tab still on an older version during the transition, with the weaker
-guarantee in premortem 5. Because of step 4 it is a forward-only position, not a fresh certificate against the current
+This version never reads that cursor back for a pull of its own (R5-B, premortem 5), except as the start of a
+hand-over: it is kept for a tab still on an older version during the transition, with the weaker guarantee in
+premortem 5. Because of step 4 it is a forward-only position, not a fresh certificate against the current
 snapshot: a row that was still open when an earlier `time_safe` was certified can sit behind it. The phone writes it as its time cursor. If another tab
 or an older version moved that cursor meanwhile, ours is written only when it is later by instant. A tie between two writers on one instant keeps the stored one, which can at most send
-again rows of that one instant to a phone that is cleared and then falls back while two tabs synced at once. The
+again rows of that one instant to an older-version tab, after a clear, when two tabs synced at once. The
 function is plpgsql and STABLE, so all four steps use the calling statement's snapshot [10]. Cost on a local
 PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 ms each.
 
@@ -235,17 +241,22 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
   ONLY [5]), security invoker so the "own entries" policy applies, `search_path = ''`, execute for `authenticated`
   only. It returns `{fence, snapshot, rows, time_safe}` with transaction ids as text, at most 1,000 rows a page. It
   also takes `p_time_at`/`p_time_id` (above), and drops the two earlier draft signatures in case one was ever applied.
-- `ovu-sync.js`: `pullShared` tries `entries_pull`. On `PGRST202` a phone with no transaction cursor yet falls back to
-  the time-ordered `pullSince`; a phone that holds one throws `PULL_PAUSED` and the sync stops (A2). A page that was
-  told it is missing asks again once any tab holds a transaction-ordered cursor. `pullCommitted` pages
-  by `(sync_xid, id)`; when a page comes back short it moves the cursor up to the fence, with no id ("from this
-  transaction id on"), so an empty pull is cheap. The cursor lives in `pulledXid`/`pulledXidId`, a hand-over in
-  progress in `pullSince` (`{at, id, snap}`); the cursor keeps the forward-only rule across tabs (`xidLater`), and every
-  reset and account switch clears all three. The time cursor (`pulledSeq`/`pulledId`) follows the server's
-  `time_safe`, only for a tab still on an older version. The returned snapshot text is checked only when a hand-over
-  begins. `watchUpdates()` and `retire()` stop a page that a newer service worker has taken over (premortem 8);
-  `canSync()` is false once retired. The typed recovery now also starts for a phone whose only
-  cursor is the new one. Any other `entries_pull` failure fails the sync without falling back.
+- `ovu-sync.js`: `pullShared` always pulls through `entries_pull`. On `PGRST202` it throws `PULL_PAUSED` and the sync
+  stops with nothing moved (R5-B); the time-ordered `pullSince` and the page's remembered "missing" answer are gone.
+  `pullCommitted` pages by `(sync_xid, id)`; when a page comes back short it moves the cursor up to the fence, with no
+  id ("from this transaction id on"), so an empty pull is cheap. The cursor lives in `pulledXid`/`pulledXidId`, a
+  hand-over in progress in `pullSince` (`{at, id, snap}`); the cursor keeps the forward-only rule across tabs
+  (`xidLater`), and every reset and account switch clears all three. The time cursor (`pulledSeq`/`pulledId`) starts a
+  hand-over and otherwise follows the server's `time_safe`, only for a tab still on an older version. The returned
+  snapshot text is checked only when a hand-over begins. The cursor is saved after the uploads, as before: a sync whose
+  upload fails pulls the same rows again next time, where they match what the phone already has, instead of finding
+  them as unsent local rows and pushing them back up (on a first restore that could be 20,000 rows sent back and pulled
+  again by every other phone). The cost is that rows delivered in a failed sync can come back after "Delete every
+  entry on this device" if that happens before the next good sync. The update watcher (premortem 8) is armed at load;
+  `canSync()` is false once retired. The typed recovery also starts for a phone whose only cursor is the new one. Any
+  other `entries_pull` failure fails the sync.
+- `room.js` hands `watchUpdates` the note and its "nothing unsaved" test; `ovu-auth.js` shows a retired page's reason
+  on the manual sync button instead of "Sync failed".
 
 ## Verification
 
@@ -261,13 +272,17 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
   the fence guards against. At 60,000 rows the planner uses `entries_user_sync_xid` with the fence and the cursor as
   index conditions; with `time_safe`, a full 60,000-row restore took 61 pages at a median 35 ms (worst 48 ms).
 - `tools/test-core.js`, `sharedPullCommitOrder`, on the shared `syncServer`/`syncWorld`/`syncRow` helpers (the pretend
-  server now has open transactions, PostgreSQL's snapshot rules with BigInt transaction ids, and an `entries_pull` that
-  matches the SQL including `time_safe`, arguments checked against the migration file): 35 checks, including both
-  round-three counterexamples (cases 10 and 11), the older-tab view of the time cursor, and a newer version taking
-  over a page (case 12). Against main's `ovu-sync.js` 26 of them fail (a new phone ends with 3 of 1,503 rows); against
-  the round-three code (525062b) the 7 A2 checks fail; on this branch all pass, with every earlier sync test unchanged
-  (945 in all, on main as of 3c99e14).
-- `tools/check.py`: 81 pages, 0 problems. `tools/e2e_smoke.py`: 238 passed, 0 failed.
+  server has open transactions, PostgreSQL's snapshot rules with BigInt transaction ids, and an `entries_pull` that
+  matches the SQL including `time_safe`, arguments checked against the migration file; with `commit: false` it answers
+  `PGRST202` like a server without the migration): 41 checks, including both round-three counterexamples (cases 10 and
+  11, case 10 now also proving that `d` first arrived once), the older-tab view of the time cursor, a new phone and an
+  old phone on a server without `entries_pull` (cases 2c and 4: both pause, ask again each sync, never pull by time, and
+  carry on by transaction id once it answers), and a newer version taking over a page (case 12: a first install is not
+  an update; a force-refreshed page's first takeover is; an open form holds the reload until she leaves with nothing
+  unsaved; a takeover before the room boots is caught). Tests that relied on the time-ordered pull now run on the
+  pretend `entries_pull`. Against main's `ovu-sync.js` (5750a53) 34 of the 41 fail; against round four's (4e4a218)
+  the 7 R5-B checks fail; on this branch all pass (1,037 in all).
+- `tools/check.py`: 81 pages, 0 problems. `tools/e2e_smoke.py`: 265 of 266 on each of two runs, each failing a different walk or camera timing check (the bed walk's route, a zoomed floor tap) while the machine ran at a load average near 40; none touches sync. A run on untouched main is noted in the PR.
 
 ## Review record
 
@@ -299,6 +314,12 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
   second confirmed in the code). Two should-fix defects in the takeover handling (an unsaved form lost on a hidden
   reload; a force-refreshed page's first takeover taken for an install). Fourth failure on the same path: held at
   AGENTS gate 6 with options R5-B (recommended: no time-ordered pull in this version, migration first) and R5-A.
+- Jamie, 21 Oct: R5-B. Applied: the time-ordered pull and the remembered "missing" answer removed, a missing
+  `entries_pull` always pauses (cases 2c and 4), the ship order flipped to migration first; the update watcher armed
+  at load, "update" decided from the controller or an active registration at load (a force refresh), and the reload
+  held until the page is hidden with nothing unsaved (case 12, `room.js`); case 10 tightened; a retired page's reason
+  shown on the manual sync button (round four's nit).
+- Codex read-only, round five (`docs/debate/2026-10-20-sync-commit-order-codex-round5.md`): pending.
 
 ## Sources
 
@@ -318,6 +339,10 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
 9. PostgREST docs, Errors (PGRST202, 404): https://docs.postgrest.org/en/stable/references/errors.html
 10. PostgreSQL 18 docs, Function Volatility Categories (STABLE functions use the calling query's snapshot):
    https://www.postgresql.org/docs/current/xfunc-volatility.html
+11. W3C Service Workers, 3.4.1 `controller` (returns null for a force refresh):
+   https://www.w3.org/TR/service-workers/#navigator-service-worker-controller
+12. W3C Service Workers editor's draft, Update algorithm (a byte-for-byte identical script and imports finish the job
+   with no new worker): https://w3c.github.io/ServiceWorker/#update-algorithm
 
 The docs pages above are for PostgreSQL 18; the functions and the `xid8` type used here were added in PostgreSQL 13, and
 the live project runs 17.6 (checked 20 Oct with the Supabase project details).

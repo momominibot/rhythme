@@ -25,9 +25,12 @@
 -- began arrives once it ends, whatever its synced_at. Rows the older version had already lost to the gap stay lost,
 -- as before: they look exactly like rows it pulled. From the hand-over on, nothing is lost.
 --
--- The time cursor. Old app versions keep paging entries by synced_at, which is still stamped as before, and the app
--- falls back to that pull if this function is missing. So each page also certifies how far a (synced_at, id) cursor
--- may safely stand: time_safe, the latest (synced_at, id) before which every visible row of the caller has been
+-- Ship order (Jamie, R5-B). The app version that uses this function never pulls by time: on a server without it, its
+-- sync pauses with a message and nothing is pulled. So this migration is applied first, then the app is released.
+--
+-- The time cursor. Older app versions (a tab left open, a phone not updated yet) keep paging entries by synced_at,
+-- which is still stamped as before. So each page also certifies how far such a (synced_at, id) cursor may safely
+-- stand, and the new app keeps it for them: time_safe, the latest (synced_at, id) before which every visible row of the caller has been
 -- delivered to the phone or was covered by the hand-over. It is bounded by the earliest visible row still after the
 -- cursor the phone will hold (rows the 20,000 cap has not reached, rows held behind the fence), compared with the
 -- server's own collation, so ties on one instant and backlog are both handled, and it never moves back past the

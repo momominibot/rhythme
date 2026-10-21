@@ -15,9 +15,9 @@
  * so wiping this phone and reloading does not re-download the whole cloud; only a
  * brand-new install (no cursor) restores the full diary. Rows come by the id of
  * the transaction that wrote them (sync_xid, id), and only once every lower one has
- * ended, so a long upload that commits late can never land behind the cursor. A
- * server without that (20261020120000_sync_pull_commit_order.sql not applied) is
- * pulled by synced_at then id, as before. */
+ * ended, so a long upload that commits late can never land behind the cursor. This
+ * version never pulls by synced_at: on a server without entries_pull
+ * (20261020120000_sync_pull_commit_order.sql not applied) the sync pauses. */
 (function (root) {
   'use strict';
   var S = root.OvuStore;
@@ -37,7 +37,7 @@
   var busy = false, busyPromise = null, debounceTimer = null;
   /* set when a newer version of the app has taken over this page (watchUpdates): this page never syncs again */
   var retired = false;
-  /* what the person reads when a phone that pulls by transaction id finds entries_pull missing (Codex round three) */
+  /* what the person reads when the server has no entries_pull (Jamie, 20 Oct, R5-B: no pull by time in this version) */
   var PULL_PAUSED = 'Cloud backup is paused until the cloud is updated again. Everything stays safe on this phone.';
 
   /* ---------- sync position (one object in localStorage) ---------- */
@@ -46,10 +46,10 @@
     /* pulledXid, pulledXidId: the transaction-ordered pull's cursor, the last row it saw (its transaction id as text, and
        its id), or the fence with no id once a page came back short. pullSince: { at, id, snap }, a hand-over in progress
        from the older time cursor, with the snapshot it began with.
-       pulledSeq, pulledId: the time-ordered pull's cursor (synced_at exactly as the server wrote it, and that row's id),
-       used where the server has no entries_pull; the other pull moves it to the server-certified time_safe, for a tab
-       on an older version;
-       pulledSeq without pulledId is an older version's millisecond cursor.
+       pulledSeq, pulledId: the time cursor older versions pull by (synced_at exactly as the server wrote it, and that
+       row's id). This version never pulls by it: a hand-over starts from it, and each pull moves it to the server's
+       time_safe for a tab still on an older version; pulledSeq without pulledId is an older version's millisecond
+       cursor.
        pushedAt: the newest local updatedAt we have pushed, so unchanged rows are not re-sent. */
     return { v: 1, gen: 0, userId: null, shadow: {}, tombstones: {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null };
   }
@@ -207,35 +207,6 @@
     });
   }
 
-  /* A PostgREST filter value in double quotes, so commas, brackets, dots and colons in it are read as text. */
-  function quoted(v) { return '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; }
-  /* Rows after the cursor in (synced_at, id) order. A cursor an older version saved (a millisecond time, no id)
-     resumes from that millisecond inclusive: rows it already had may come again, which is harmless, but none are missed. */
-  function afterCursor(at, id) {
-    if (!at) return '';
-    if (id == null) return '&synced_at=gte.' + encodeURIComponent(at);
-    return '&or=' + encodeURIComponent('(synced_at.gt.' + quoted(at) + ',and(synced_at.eq.' + quoted(at) + ',id.gt.' + quoted(id) + '))');
-  }
-  /* The time-ordered pull, for a server without entries_pull. Pull every entry whose server arrival is after the
-     cursor, oldest first, in pages (PostgREST caps a response, so a full restore needs more than one), at most 20,000
-     rows a sync. The cursor is the last row seen: its synced_at exactly as the server wrote it, and its id. One upload
-     stamps all its rows with one now(), so ids tell those rows apart, and the server's microseconds are never rounded
-     to milliseconds; a page or the 20,000 cap can split such a group without skipping or fetching again any of it.
-     Returns the rows and the new cursor. Its gap: now() is when the writing transaction STARTED, so a long upload that
-     commits after a later, shorter one lands behind a cursor that already moved past the short one, and is missed. */
-  function pullSince(at, id, token) {
-    var PAGE = 1000, all = [], cur = { at: at || null, id: at && id != null ? id : null };
-    var base = '/entries?select=*&order=synced_at.asc,id.asc&limit=' + PAGE;
-    function page() {
-      return rest('GET', base + afterCursor(cur.at, cur.id), null, null, token).then(function (rows) {
-        rows = rows || []; all = all.concat(rows);
-        if (rows.length) { var last = rows[rows.length - 1]; cur = { at: last.synced_at, id: last.id }; }
-        if (rows.length === PAGE && all.length < 20000) return page();
-        return { rows: all, at: cur.at, id: cur.id };
-      });
-    }
-    return page();
-  }
   /* A transaction id (xid8) as the server writes it: decimal, no leading zeros. Kept as text and compared by length,
      then digit by digit, because it can be larger than a JavaScript number holds exactly. */
   function isXid(v) { return typeof v === 'string' && /^(0|[1-9][0-9]{0,19})$/.test(v); }
@@ -244,7 +215,6 @@
   function snapXmax(v) { var m = typeof v === 'string' && v.length < 65536 ? /^(0|[1-9][0-9]{0,19}):(0|[1-9][0-9]{0,19}):((0|[1-9][0-9]{0,19})(,(0|[1-9][0-9]{0,19}))*)?$/.exec(v) : null; return m ? m[2] : null; }
   /* the server has no entries_pull (20261020120000_sync_pull_commit_order.sql not applied): PostgREST answers PGRST202 */
   function rpcMissing(err) { return !!err && err.status === 404 && err.code === 'PGRST202'; }
-  var commitPull = null; /* null: not tried on this page yet; false: this server had no entries_pull when asked */
   /* The transaction-ordered pull. Rows come in (sync_xid, id) order, and only from transactions that have all ended:
      the server cuts every page at a fence, the lowest transaction id still running, and any later write gets a higher
      id. So a long upload that started before a short one and commits after it can never land behind the cursor; its
@@ -262,8 +232,8 @@
      this page leaves: every visible row before it has reached this phone or was covered by the hand-over, compared in
      the server's own collation (ties on one instant), and bounded by the earliest row still to come (backlog past the
      cap, rows held behind the fence). It never goes back past `time`, the time cursor this sync started from. The time
-     cursor follows it, for a tab still on an older version or a server that loses entries_pull again: either then
-     resumes from there, never worse than today's pull (Codex round two). */
+     cursor follows it only for a tab still running an older version, which can pull by nothing else; that tab's
+     weaker guarantee is in docs/design/2026-10-20-sync-commit-order.md (premortem 5). */
   function pullCommitted(xid, id, hand, time, token) {
     var PAGE = 1000, all = [], cur = { xid: xid || null, id: xid && id != null ? id : null }, timeSafe = null;
     function page() {
@@ -291,24 +261,18 @@
     var k = xidCmp(a.xid, c.pulledXid);
     return k > 0 || (k === 0 && a.id != null && c.pulledXidId == null);
   }
-  /* The shared pull: by transaction id where the server has entries_pull, by time where it does not. */
+  /* The shared pull, always by transaction id (Jamie, 20 Oct, R5-B). A server without entries_pull pauses the sync:
+     this version has no pull by time to fall back on, because rows received out of time order cannot be described by
+     one time cursor without either skipping some or sending others again (Codex rounds three and four). */
   function pullShared(st, token) {
-    function byTime() { return pullSince(st.pulledSeq, st.pulledId, token).then(function (got) { got.mode = 'time'; return got; }); }
     var x = isXid(st.pulledXid) ? st.pulledXid : null;
-    /* this page found no entries_pull earlier; ask again once any tab has pulled by transaction id (the server has it now) */
-    if (commitPull === false && !x) return byTime();
     /* a phone with only the older time cursor hands over from it; a hand-over in progress (pullSince) carries on */
     var ps = st.pullSince, hand = !x ? (st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null, snap: null } : null)
       : (ps && ps.at && snapXmax(ps.snap) ? { at: ps.at, id: ps.id != null ? ps.id : null, snap: ps.snap } : null);
     var time = st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null } : null;
-    return pullCommitted(x, x ? st.pulledXidId : null, hand, time, token).then(function (got) { commitPull = true; got.mode = 'commit'; return got; }, function (err) {
-      if (!rpcMissing(err)) throw err;
-      commitPull = false;
-      /* A phone that already pulls by transaction id never goes back to pulling by time (Jamie, 20 Oct, option A2). Rows
-         it received out of time order cannot be described by one time cursor without either skipping some or sending
-         others again, which could bring back what someone cleared (Codex round three). It waits for entries_pull. */
-      if (x) throw new Error(PULL_PAUSED);
-      return byTime();
+    return pullCommitted(x, x ? st.pulledXidId : null, hand, time, token).catch(function (err) {
+      if (rpcMissing(err)) throw new Error(PULL_PAUSED);
+      throw err;
     });
   }
 
@@ -343,26 +307,52 @@
   var CANCELLED = { cancelled: true };
   /* A newer version of the app took over this page's service worker (sw.js skips waiting and claims every open page):
      the code running here is now older than the code beside it, so this page stops syncing at once (a sync in flight is
-     cancelled at its next check) and reloads as soon as it is out of sight, so nothing being typed is lost. The first
-     install also claims the page; that is not an update. onUpdate runs once, for a note on screen. */
+     cancelled at its next check) and reloads once it is out of sight AND the page says nothing is unsaved (canReload:
+     no sheet or form open, no session running). Hidden alone is not enough: a half-filled form would be lost (Codex
+     round four). Until then it waits, and checks again each time she leaves.
+     The first install also claims the page, and that is not an update. A page can also start with no controller after
+     a force refresh while a worker is already active; then its first takeover is an update. So the decision uses the
+     registration as it was when this module loaded, before the room registers anything, and the listener is armed at
+     load, before the room boots, so an early takeover is not missed. */
+  var upd = { armed: false, had: false, seen: false, onUpdate: null, canReload: null };
   function retire() { retired = true; clearTimeout(debounceTimer); setStatus('idle'); }
-  function watchUpdates(onUpdate) {
+  function tryReload() {
+    var doc = root.document;
+    if (!upd.seen || !upd.canReload || (doc && !doc.hidden)) return;
+    var ok = false; try { ok = !!upd.canReload(); } catch (e) { ok = false; }
+    if (ok) { try { root.location.reload(); } catch (e) { } }
+  }
+  function armUpdates() {
     var sw = root.navigator && root.navigator.serviceWorker;
-    if (!sw || typeof sw.addEventListener !== 'function') return false;
-    var had = !!sw.controller;
+    if (upd.armed || !sw || typeof sw.addEventListener !== 'function') return upd.armed;
+    upd.armed = true; upd.had = !!sw.controller;
+    if (!upd.had && typeof sw.getRegistration === 'function') {
+      try { Promise.resolve(sw.getRegistration()).then(function (reg) { if (reg && reg.active) upd.had = true; }, function () { }); } catch (e) { }
+    }
     sw.addEventListener('controllerchange', function () {
-      if (!had) { had = true; return; }
-      if (retired) return;
-      retire();
-      if (onUpdate) { try { onUpdate(); } catch (e) { } }
-      var doc = root.document, go = function () { try { root.location.reload(); } catch (e) { } };
-      if (!doc || doc.hidden) go();
-      else doc.addEventListener('visibilitychange', function () { if (doc.hidden) go(); });
+      if (!upd.had) { upd.had = true; return; }
+      if (upd.seen) return;
+      upd.seen = true; retire();
+      if (upd.onUpdate) { try { upd.onUpdate(); } catch (e) { } }
+      tryReload();
     });
+    var doc = root.document;
+    if (doc && typeof doc.addEventListener === 'function') doc.addEventListener('visibilitychange', function () { if (doc.hidden) tryReload(); });
     return true;
   }
+  /* the room hands over its note (onUpdate) and its own "nothing unsaved" test (canReload); an update seen before then
+     still gets its note, and the page reloads only once the room has said it is safe */
+  function watchUpdates(onUpdate, canReload) {
+    var on = armUpdates();
+    upd.onUpdate = typeof onUpdate === 'function' ? onUpdate : null;
+    upd.canReload = typeof canReload === 'function' ? canReload : null;
+    if (upd.seen) { if (upd.onUpdate) { try { upd.onUpdate(); } catch (e) { } } tryReload(); }
+    return on;
+  }
+  /* a retired page answers why it does not sync, in words */
+  var UPDATE_READY = 'A new version of Rhythme is ready. It opens next time you come back.';
   function syncNow() {
-    if (retired) return Promise.resolve({ ok: false, reason: 'update' });
+    if (retired) return Promise.resolve({ ok: false, reason: 'update', error: UPDATE_READY });
     if (busy) return busyPromise;
     if (!canSync()) { setStatus('idle'); return Promise.resolve({ ok: false, reason: 'not-enabled' }); }
     busy = true; setStatus('syncing');
@@ -451,29 +441,23 @@
           /* a sign-out, an account switch or a reset of the position during the upload cleared it: leave it cleared,
              rather than write this account and its progress back into it */
           if (cur.userId !== uid || genOf(cur) !== gen0 || a.userId() !== uid) throw CANCELLED;
-          /* the shared cursor moves to the last all-type row this pull saw (never a typed-recovery row), kept exactly as
-             the server wrote it, and only forward. If another tab moved it while this sync ran, ours is written only
-             when it is strictly later: a cursor wound back would pull again rows this phone may have cleared since.
-             A tie on the instant keeps the stored one, because comparing ids here could disagree with the server's
-             collation, and pulling a few rows again is safer than skipping any. */
-          if (incEnd.mode === 'commit') {
-            /* the same rule for the transaction-ordered cursor, which can move with no rows (up to the fence); a
-               hand-over still in progress travels with it (Codex round one, finding 2) */
-            var movedX = (cur.pulledXid || null) !== (st.pulledXid || null) || (cur.pulledXidId || null) !== (st.pulledXidId || null);
-            if (incEnd.xid && (!movedX || xidLater(incEnd, cur))) {
-              cur.pulledXid = incEnd.xid; cur.pulledXidId = incEnd.id;
-              if (incEnd.hand) cur.pullSince = incEnd.hand; else delete cur.pullSince;
-            }
-            /* the time cursor follows what the server certified (Codex rounds one and two, finding 1). The server already
-               kept it from going back past the one this sync started from; if another tab or an older version moved it
-               meanwhile, ours is written only when it is later by instant (a tie keeps the stored one: ids are ordered
-               by the server's collation, not this phone's) */
-            var ts = incEnd.timeSafe, movedT = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
-            if (ts && (!movedT || !cur.pulledSeq || micros(ts.at) > micros(cur.pulledSeq))) { cur.pulledSeq = ts.at; cur.pulledId = ts.id; }
-          } else {
-            var movedMeanwhile = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
-            if (incRows.length && (!movedMeanwhile || (cur.pulledSeq && micros(incEnd.at) > micros(cur.pulledSeq)))) { cur.pulledSeq = incEnd.at; cur.pulledId = incEnd.id; }
+          /* the shared cursor moves to where this pull ended (never past a typed-recovery row), and only forward. If
+             another tab moved it while this sync ran, ours is written only when it is strictly later: a cursor wound
+             back would pull again rows this phone may have cleared since. It can move with no rows (up to the fence);
+             a hand-over still in progress travels with it (Codex round one, finding 2). It is saved only once the
+             uploads went through: after a failed sync the next one pulls those rows again, as it always has, rather
+             than push them back up as if they were new here. */
+          var movedX = (cur.pulledXid || null) !== (st.pulledXid || null) || (cur.pulledXidId || null) !== (st.pulledXidId || null);
+          if (incEnd.xid && (!movedX || xidLater(incEnd, cur))) {
+            cur.pulledXid = incEnd.xid; cur.pulledXidId = incEnd.id;
+            if (incEnd.hand) cur.pullSince = incEnd.hand; else delete cur.pullSince;
           }
+          /* the time cursor, for a tab still on an older version, follows what the server certified (Codex rounds one
+             and two). The server already kept it from going back past the one this sync started from; if another tab or
+             an older version moved it meanwhile, ours is written only when it is later by instant (a tie keeps the
+             stored one: ids are ordered by the server's collation, not this phone's) */
+          var ts = incEnd.timeSafe, movedT = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
+          if (ts && (!movedT || !cur.pulledSeq || micros(ts.at) > micros(cur.pulledSeq))) { cur.pulledSeq = ts.at; cur.pulledId = ts.id; }
           if (typedDone) { cur.types = knownTypes; delete cur.typedAfter; }
           else if (typed && typed.lastId) cur.typedAfter = typed.lastId;
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
@@ -580,6 +564,8 @@
     saveState({ v: 1, gen: genOf(st) + 1, userId: null, shadow: snapshot(), tombstones: st.tombstones || {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null });
     setStatus('idle');
   }
+
+  armUpdates(); /* at load, before the room registers the worker or boots (premortem 8) */
 
   function init() {
     if (!S) return;
