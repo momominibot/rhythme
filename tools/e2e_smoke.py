@@ -2358,6 +2358,9 @@ async def main():
             TAP = "(sel)=>document.querySelector(sel).click()"
             await ta.evaluate(TAP, '.mq[data-mq="veg"] [data-yn="1"]'); await ta.wait_for_timeout(400)
             await tb.evaluate(TAP, '.mq[data-mq="fish"] [data-yn="0"]'); await tb.wait_for_timeout(400)
+            # a background tab gets the other tab's storage event when the browser gets to it: wait for the repaint, then read
+            try: await ta.wait_for_function("()=>document.querySelector('.mq[data-mq=fish] [data-yn=\\\"0\\\"]').getAttribute('aria-pressed')==='true'", polling=200, timeout=8000)
+            except Exception: pass
             two = await ta.evaluate("()=>({saved: (OvuStore.state().medas||{}).answers, fishShown: document.querySelector('.mq[data-mq=fish] [data-yn=\\\"0\\\"]').getAttribute('aria-pressed')})")
             check("answers given in two tabs are both kept, and the first tab shows the second's answer", two["saved"] == {"veg": True, "fish": False} and two["fishShown"] == "true", two)
             await tb.evaluate(TAP, "#mdClear"); await tb.wait_for_timeout(300)

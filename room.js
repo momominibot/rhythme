@@ -3244,7 +3244,7 @@
     if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () { });
     RM.start(function (h) { chime('bell', true); toast(h.item.label + (h.item.note ? ' · ' + h.item.note : ''), h.item.icon); });
     document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } if (e.target.closest('#arrDone')) exitArrange(false); if (e.target.closest('#arrReset')) exitArrange(true); });
-    var hk = (location.hash || '').slice(1), bootAt = Date.now();
+    var hk = (location.hash || '').slice(1), bootAt = Date.now(), seq0 = sheetSeq, nav0 = navSeq; /* counted from now: a tap while sign-in is still settling counts too */
     var lift = function () { $('#loading').classList.add('hidden'); joy(); };
     authReady.then(function (r) {
       if (r && r.error) toast(r.error, 'error');
@@ -3252,7 +3252,7 @@
       else if (wallOpen()) afterSignIn(); /* a provider round trip signed her in while the wall waited */
       else if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
       else if (!S.profile().onboarded && !S.state().welcomeSeen) { pendingRoute = hk; requireConsent(function () { S.setState({ welcomeSeen: true }); introForLink(); }); }
-      else { var seq0 = sheetSeq, nav0 = navSeq; setTimeout(function () { requireConsent(function () { if (hk && (sheetSeq !== seq0 || navSeq !== nav0 || current)) return; /* she already opened something or tapped a tab: leave it */ openRoute(hk); }); }, hk ? 600 : 0); }
+      else { setTimeout(function () { requireConsent(function () { if (hk && (sheetSeq !== seq0 || navSeq !== nav0 || current)) return; /* she already opened something or tapped a tab: leave it */ openRoute(hk); }); }, hk ? 600 : 0); }
       setTimeout(lift, Math.max(0, 500 - (Date.now() - bootAt))); /* the veil lifts only once the session question is settled */
     });
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
