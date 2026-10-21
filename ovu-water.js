@@ -188,10 +188,10 @@
       d.querySelectorAll('.wq .chips').forEach(function (c) { c.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; c.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); }); });
       d.getElementById('wqSave').addEventListener('click', function () {
         var answers = {}; d.querySelectorAll('.wq').forEach(function (q) { var on = q.querySelector('button.on'); if (on) answers[q.dataset.q] = on.dataset.v; });
-        try { saveSettings({ answers: answers, bf: !!d.getElementById('wqBf').checked }); toast('Saved. The information under your water records now fits your answers.', 'water_full'); reopenDiary(); }
+        try { saveSettings({ answers: answers, bf: !!d.getElementById('wqBf').checked }); toast('Saved. The information under your water records now fits your answers.', 'water_full'); refresh(); reopenDiary(); }
         catch (e) { var m = d.getElementById('wqMsg'); m.hidden = false; m.textContent = 'That could not be saved: ' + e.message; }
       });
-      d.getElementById('wqSkip').addEventListener('click', function () { try { saveSettings({ declined: true, bf: !!d.getElementById('wqBf').checked }); } catch (e) { } reopenDiary(); });
+      d.getElementById('wqSkip').addEventListener('click', function () { try { saveSettings({ declined: true, bf: !!d.getElementById('wqBf').checked }); } catch (e) { } refresh(); reopenDiary(); });
     });
   }
   function openOther() {
@@ -208,17 +208,19 @@
     var b = e.target.closest('[data-water]'); if (!b) return false;
     var act = b.dataset.water;
     try {
-      if (act === 'add') { if (R() && R().asleep && R().asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return true; } var r = add(b.dataset.ml, date); toast(fmtMl(r.ml) + ' recorded.' + (r.points ? ' +' + r.points + ' hearts for today’s first record.' : ''), 'water_full'); renderStrip(); if (R() && R().renderDeck) R().renderDeck(); }
+      if (act === 'add') { if (R() && R().asleep && R().asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return true; } var r = add(b.dataset.ml, date); toast(fmtMl(r.ml) + ' recorded.' + (r.points ? ' +' + r.points + ' hearts for today’s first record.' : ''), 'water_full'); refresh(); }
       else if (act === 'other') openOther();
-      else if (act === 'remove') { if (root.confirm && !root.confirm('Remove this water record?')) return true; remove(b.dataset.id); renderStrip(); if (R() && R().renderDeck) R().renderDeck(); }
+      else if (act === 'remove') { if (root.confirm && !root.confirm('Remove this water record?')) return true; remove(b.dataset.id); refresh(); }
       else if (act === 'questions') openQuestions();
-      else if (act === 'decline') { saveSettings({ declined: true }); renderStrip(); }
-      else if (act === 'hide') { saveSettings({ hideNumbers: true }); renderStrip(); }
-      else if (act === 'numbers') { saveSettings({ hideNumbers: false }); renderStrip(); }
-      else if (act === 'legacy') { var res = importLegacy(); toast(res.imported ? res.imported + ' old water records brought in. They earn nothing.' : 'No old water records were found.', 'water_full'); renderStrip(); }
+      else if (act === 'decline') { saveSettings({ declined: true }); refresh(); }
+      else if (act === 'hide') { saveSettings({ hideNumbers: true }); refresh(); }
+      else if (act === 'numbers') { saveSettings({ hideNumbers: false }); refresh(); }
+      else if (act === 'legacy') { var res = importLegacy(); toast(res.imported ? res.imported + ' old water records brought in. They earn nothing.' : 'No old water records were found.', 'water_full'); refresh(); }
     } catch (err) { toast('That could not be saved: ' + err.message, 'error'); renderStrip(); }
     return true;
   }
+  /* every change she makes redraws the strip and the deck: the Water tile reads the same settings (Hide amounts) and records */
+  function refresh() { renderStrip(); var r = R(); if (r && r.renderDeck) r.renderDeck(); }
   var refreshTimer = 0;
   function scheduleRefresh() { root.clearTimeout(refreshTimer); refreshTimer = root.setTimeout(renderStrip, 120); }
   function wire() {
