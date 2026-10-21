@@ -3466,4 +3466,19 @@ var summarised = false;
   check('the kit shares its graph without resuming it, resumes only on request, and knows the cast', /function graph\(\)/.test(ss) && !/function graph\(\)[^\n]*resume/.test(ss) && /function resume\(\)/.test(ss) && !!w.OvuSound.KIT.cast && /play\('cast'\)/.test(fs.readFileSync(path.join(root, 'ovu-harbour.js'), 'utf8')) && /play\('boop'\)/.test(fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8')) && /R\.emit\('travel', target, T\)/.test(fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8')) && typeof w.OvuBreathTap.running === 'function');
 })();
 
+(function widerWorld() {
+  console.log('2k16. the wider world (21 Oct): ??? fog around the known map, a zoom that keeps the canvas covering the view, no names or promises');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-map.js'), 'utf8'), w, { filename: 'ovu-map.js' });
+  var M = w.OvuMap, src = fs.readFileSync(path.join(root, 'ovu-map.js'), 'utf8');
+  check('eight fog patches sit in the ring around the known world (the middle third), none inside it, three with a hint', M.FOG.length === 8 && M.FOG.every(function (f) { return f.x < 26 || f.x > 74 || f.y < 26 || f.y > 74; }) && M.FOG.filter(function (f) { return f.hint; }).length === 3);
+  var texts = M.FOG.map(function (f) { return M.fogText(f); }).join(' ');
+  check('the fog names no partner, product or brand and promises nothing: "some day" and "may be built", no dates, no em dash', !/disney|pixar|hospital|clinic|functional medicine|coming soon|launch/i.test(texts) && /some day/.test(texts) && /may be built/.test(texts) && texts.indexOf('—') < 0 && src.indexOf('—') < 0);
+  var z0 = M.zoomClamp(0.5, 0, 0, 300, 240), zc = M.zoomClamp(0.5, 500, 500, 300, 240), zf = M.zoomClamp(0.5, -9999, -9999, 300, 240), zs = M.zoomClamp(0.1, 0, 0, 300, 240), zb = M.zoomClamp(9, 0, 0, 300, 240);
+  check('the zoom clamps the scale to its range and keeps the wide canvas covering the view: a pan can never show the edge, and a canvas smaller than the view is centred', z0.s === 0.5 && zc.tx === 0 && zc.ty === 0 && zf.tx === 300 - 450 && zf.ty === 240 - 360 && zs.s === M.ZOOM.min && zs.tx === 0 && M.ZOOM.min * 3 > 1 && zb.s === M.ZOOM.max && M.zoomClamp(0.2, 0, 0, 100, 100).tx === (100 - 300 * M.ZOOM.min) / 2 * 0 + Math.max(100 - 300 * M.ZOOM.min, 0));
+  check('names hide below the naming scale and the start scale shows the whole known world with fog around it', M.ZOOM.start < M.ZOOM.names && M.ZOOM.start * 3 >= 1.2 && M.ZOOM.start * 3 <= 2);
+  var c = M.centred(M.ZOOM.start, 300, 240);
+  check('the start view is centred on the known world: its centre lands in the middle of the view, and the view shows the fog ring\'s inner edge', Math.abs((c.tx + 450 * c.s) - 150) < 0.001 && Math.abs((c.ty + 360 * c.s) - 120) < 0.001 && (-c.tx / (900 * c.s)) * 100 < 22 && M.FOG.every(function (f) { return f.x >= 18 && f.x <= 82 && f.y >= 18 && f.y <= 82; }));
+  check('the map still never moves her: no travel call in the module', !/OvuWalk\.travel|applyLayout\(/.test(src));
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
