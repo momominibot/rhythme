@@ -143,7 +143,7 @@
   function inPlaza() { var L = R.layout && R.layout(); return !!(L && L.id === 'plaza'); }
   function img(look, cls) { return '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="' + R.ART + 'avatar-' + lookOf(look) + '.webp" alt="">'; }
   function cue(key) { return '<p class="frcue"><span class="ms" aria-hidden="true">spa</span>' + esc(CUES[key]) + '</p>'; }
-  function noticeV() { return (root.OvuConsent && root.OvuConsent.NOTICE_V) || 3; } /* the consent notice version she agreed to (3 since 19 Oct, ovu-consent.js) */
+  function noticeV() { return (root.OvuConsent && root.OvuConsent.NOTICE_V) || 3; } /* the consent notice version she agreed to (4 since 20 Oct, ovu-consent.js) */
   function device() { try { return root.OvuConsent && root.OvuConsent.device ? root.OvuConsent.device() : ''; } catch (e) { return ''; } }
   function legacyMinor() {
     if (root.OvuConsent && root.OvuConsent.legacyMinor) return root.OvuConsent.legacyMinor();
