@@ -1757,7 +1757,7 @@ async def main():
             z1 = await p9.evaluate("()=>({toast: document.querySelector('#toast').textContent, sheet: document.querySelector('#sheet').getAttribute('aria-hidden')})")
             await p9.click(".hotspot[data-id=door]"); await p9.wait_for_timeout(700)
             z1["door"] = await p9.evaluate("()=>({sheet: document.querySelector('#sheet').getAttribute('aria-hidden'), layout: (document.querySelector('.scene')||{}).dataset ? document.querySelector('.scene').dataset.layout : null})")
-            await p9.click("nav a[data-tab=cycle]"); await p9.wait_for_timeout(500)
+            await p9.click("nav a[data-tab=food]"); await p9.wait_for_timeout(500)
             z2 = await p9.evaluate("()=>({sheet: document.querySelector('#sheet').getAttribute('aria-hidden'), tab: (document.querySelector('nav a.on')||{}).dataset ? document.querySelector('nav a.on').dataset.tab : null})")
             await p9.evaluate("()=>document.querySelector('#lunaBtn').click()"); await p9.wait_for_timeout(500)  # the orb floats, so a synthetic click
             z3 = await p9.evaluate("()=>document.querySelector('#sheet').getAttribute('aria-hidden')")
@@ -1804,7 +1804,7 @@ async def main():
             # hand opens the care card; the mat draws her in her own clothes; after menopause the calendar says Bleeding, fills
             # nothing and a saved day opens the prompt card; the fertility page shows no invented result
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
-            await page.evaluate("()=>document.querySelector('nav a[data-tab=cycle]').click()"); await page.wait_for_selector('#calTabs', timeout=8000)
+            await page.evaluate("()=>document.querySelector('.hotspot[data-id=calendar]').click()"); await page.wait_for_selector('#calTabs', timeout=8000)
             await page.evaluate("()=>document.querySelector('#calTabs [data-tab=symptom]').click()"); await page.wait_for_selector('#saveSym', timeout=8000)
             await page.evaluate("()=>{document.querySelector('#symChips [data-sym=headache]').click(); document.querySelector('#saveSym').click();}"); await page.wait_for_timeout(600)
             mo = await page.evaluate("()=>({sub: (document.querySelector('#toast .toastsub')||{}).textContent||'', img: document.querySelector('#avatarImg').getAttribute('src')})")
@@ -1818,7 +1818,7 @@ async def main():
             md = await page.evaluate("()=>document.querySelector('#meditator img').getAttribute('src')")
             check("the mat draws her meditating in what she wears", "avatar-meditate-party" in (md or ""), md)
             await page.keyboard.press("Escape"); await page.wait_for_timeout(300)
-            await page.evaluate("()=>{OvuStore.setProfile({outfit:'base', lifeStage:'post'}); document.querySelector('nav a[data-tab=cycle]').click();}"); await page.wait_for_selector('#calTabs', timeout=8000)
+            await page.evaluate("()=>{OvuStore.setProfile({outfit:'base', lifeStage:'post'}); document.querySelector('.hotspot[data-id=calendar]').click();}"); await page.wait_for_selector('#calTabs', timeout=8000)
             pm1 = await page.evaluate("()=>{var tab=document.querySelector('#calTabs [data-tab=period]').textContent; var days=[...document.querySelectorAll('.cal-day[data-date]:not(.future)')].filter(b=>!/p-/.test(b.className)); var d=days[days.length-3]; var before=OvuStore.list('period').length; d.click(); return {tab:tab, added: OvuStore.list('period').length-before, date: d.dataset.date};}"); await page.wait_for_timeout(400)
             await page.evaluate("()=>{document.querySelector('#flowChips [data-flow=light]').click(); document.querySelector('#savePeriod').click();}"); await page.wait_for_timeout(600)
             pm2 = await page.evaluate("()=>({care: !!document.querySelector('#careDone'), text: (document.querySelector('.carecard')||{}).textContent||''})")
@@ -1828,7 +1828,7 @@ async def main():
             # Luna save (heavy flow logged earlier, then "dizzy today") is shown in the chat
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
             await page.evaluate("()=>{var t=OvuStore.today(); OvuStore.byDate(t).forEach(function(e){ OvuStore.remove(e.id); }); OvuStore.setProfile({lifeStage:''});}") # a clean today: earlier checks saved a chest-pain note
-            await page.evaluate("()=>document.querySelector('nav a[data-tab=cycle]').click()"); await page.wait_for_selector('#savePeriod', timeout=8000)
+            await page.evaluate("()=>document.querySelector('.hotspot[data-id=calendar]').click()"); await page.wait_for_selector('#savePeriod', timeout=8000)
             await page.evaluate("()=>{document.querySelector('#flowChips [data-flow=heavy]').click(); var r=document.querySelector('#ppain'); r.value='10'; r.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('#savePeriod').click();}"); await page.wait_for_timeout(600)
             pc = await page.evaluate("()=>({care: !!document.querySelector('#careDone'), text: (document.querySelector('.carecard')||{}).textContent||''})")
             check("pain 10 on the period form opens the same-day care card", pc["care"] and "10 out of 10" in pc["text"], pc["text"][:80])
