@@ -23,7 +23,7 @@ the Codex pass should be added when the limit resets, or by another provider onl
 | `admin_run` | built, deterministic, no model; one run so far (19 Oct, run_now, eligible 0) | `supabase/migrations/20261019030000_team_dashboard.sql:515`, `staff.agent_runs` |
 | Scheduled runs | **missing**: `cron.job` holds only `rhythme-social-sweep`; nothing runs the agents daily | database read |
 | `admin_overview` to the page | live; the dashboard shows the kept findings and the plaza counts | `admin.js` (PR #43 restyle pending) |
-| Finding text | **stale**: the 19 Oct findings say the improve switch "is not built"; it is built now. The sentence comes from the server, `supabase/migrations/20261019040000_team_dashboard_floor.sql:4`, so a rerun would repeat it until that migration is updated | database read, SQL |
+| Finding text | **stale, from the one run on 19 Oct**: those findings say the improve switch "is not built". That sentence was in the first version of `staff.metrics_build` (`supabase/migrations/20261019030000_team_dashboard.sql:307`); migration `20261019040000_team_dashboard_floor.sql` replaced the copy the same day, after that run. The next run, pressed or scheduled, rewrites the findings with the current wording; no migration is needed for this | database read, SQL |
 
 Verdict: the plumbing exists end to end and is not broken, but no data flows through it. jev agrees: "working end to end
 today" 0.10; the single biggest reason no number is measured is that no account has backed anything up (0.91), ahead
@@ -41,8 +41,8 @@ P0, before real data arrives
 - No scheduled run. Add a pg_cron job calling `public.admin_run(28)` once a day (Singapore night), with the existing
   provider-block rule (a failure records a block and nothing retries). jev: safe before any consent exists, 0.75, since
   the run reads no diary row when `analysis_consent` is empty and only records readiness.
-- The stale "is not built" sentence in `staff.metrics_build` (`supabase/migrations/20261019040000_team_dashboard_floor.sql:4`): replace with wording that
-  describes the actual state (nobody has the choice on). A migration, so it needs Jamie's word.
+- The stale "is not built" findings from 19 Oct: one new run replaces them (the server copy was already corrected by
+  migration `20261019040000`). Pressing Run now on the dashboard does it; the scheduled run would do it every day.
 - Deletion propagation: define what happens to `staff.agent_findings` and run summaries when an account uses Delete
   everything or withdraws the choice. Aggregates across at least 20 people need no deletion, but any per-run temp data,
   audit rows naming a user id, and `analysis_consent` rows need a stated retention. Write the rule down and test it.
@@ -100,8 +100,8 @@ owner. jev screens each proposal first; CP-SAT ranks the survivors once there ar
 ## 4. Phased plan
 
 Phase 0, this week (reversible, no diary read before consent)
-1. Migration: the daily pg_cron run of `admin_run(28)` and the corrected readiness sentence. Needs Jamie's word
-   (production migration).
+1. Migration: the daily pg_cron run of `admin_run(28)`. Needs Jamie's word (production migration). Until then,
+   pressing Run now on the dashboard refreshes the findings and clears the stale 19 Oct sentence.
 2. Dashboard: Today shows "last scheduled run" and the next due time; the clouds already read the kept findings (PR #43).
 3. Jamie and one other adult account: sign in, turn on cloud backup and the improve choice, log for a week. This is the
    only way to see a real number before launch, and it is still under the floor (held back) until 20 adults.
@@ -116,7 +116,7 @@ Phase 2
 8. App usage events under their own consent purpose; research export; the CP-SAT lever ranker only when proposals
    exceed slots, with the baseline and kill criterion pre-registered.
 
-Gates for Jamie: the two migrations in phase 0; whether the two staff accounts become the first test diaries; the
+Gates for Jamie: the cron migration in phase 0; whether the two staff accounts become the first test diaries; the
 retention rule wording; any second-provider review while Codex is blocked.
 
 ## 5. What could not be verified
