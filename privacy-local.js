@@ -91,6 +91,11 @@
   const d = root.document; if (!d) return;
   function boot() {
     const list = d.getElementById('privacy-stores'); if (!list) return;
+    /* the controls show, export and delete the diary on this phone, so they open only for its own signed-in account
+     * (menopause walk, 21 Oct: after Sign out, keep my diary, this page still listed and exported it) */
+    let sess = null, prof = {}; try { sess = JSON.parse(root.localStorage.getItem('ovumind_auth_v1') || 'null'); prof = ((JSON.parse(root.localStorage.getItem('ovumind_db_v1') || 'null') || {}).profile) || {}; } catch (_) { }
+    const owner = typeof prof.owner === 'string' ? (prof.owner || null) : ((prof.cloud && prof.cloud.uid) || ((prof.consentEvents || []).filter(e => e && e.uid)[0] || {}).uid || null), uidNow = sess && sess.user && sess.user.id;
+    if (!(sess && sess.access_token) || (owner && uidNow && owner !== uidNow)) { const box = list.closest('section') || list.parentNode; const note = d.createElement('p'); note.className = 'privacy-locked'; note.textContent = 'Sign in to Rhythme with the account this diary belongs to, to view, export or delete it here.'; const a = d.createElement('a'); a.href = 'room.html'; a.textContent = 'Open Rhythme'; note.append(' ', a); box.replaceChildren(note); return; }
     const status = d.getElementById('privacy-status'), dialog = d.getElementById('privacy-delete-dialog'), confirm = d.getElementById('privacy-confirm-delete'), agree = d.getElementById('privacy-delete-agree');
     const reviewButton = d.getElementById('privacy-review-delete'), exportButton = d.getElementById('privacy-export');
     let reviewed = null, downloadable = null;

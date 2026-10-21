@@ -47,8 +47,14 @@
     });
     return out;
   }
+  /* every save also writes a small revision stamp; a tab whose stamp is behind reloads before it reads or writes, so a
+   * stale tab never writes its old copy over a newer diary (persona walks, 21 Oct: a symptom saved in one tab vanished
+   * when a second tab saved harbour state) */
+  var REV_KEY = KEY + '_rev', lastRev = null;
+  function readRev() { try { return localStorage.getItem(REV_KEY); } catch (e) { return null; } }
   function load(force) {
-    if (cache && !force) return cache;
+    if (cache && !force && readRev() === lastRev) return cache;
+    lastRev = readRev();
     var raw = null;
     try { raw = localStorage.getItem(KEY); } catch (e) { raw = null; }
     try { cache = normalise(raw ? JSON.parse(raw) : null); } catch (e) { cache = empty(); cache.state.corruptBackup = raw; }
@@ -56,11 +62,12 @@
   }
   function emit(reason) { listeners.slice().forEach(function (fn) { try { fn(reason || 'change', cache); } catch (e) { /* listener errors never block saving */ } }); }
   function save(reason) {
-    var db = load();
+    var db = cache || load(); /* the copy this change was made on: never reloaded here, or the change itself would be lost */
     db.updatedAt = nowIso();
     var text = JSON.stringify(db);
     localStorage.setItem(KEY, text);
     if (localStorage.getItem(KEY) !== text) throw new Error('Saving did not verify. Your browser storage may be full or blocked.');
+    var rev = Date.now().toString(36) + Math.random().toString(36).slice(2, 7); try { localStorage.setItem(REV_KEY, rev); lastRev = rev; } catch (e) { }
     emit(reason);
   }
   try { window.addEventListener('storage', function (ev) { if (ev.key === KEY || ev.key === null) { load(true); emit('external'); } }); } catch (e) { /* non-browser */ }
@@ -565,4 +572,4 @@
 })(window);
 
 /* Rhythme asks for the data notice in the room first: a first-time visitor, anyone whose consent is older than the current notice (OvuStore.NOTICE_V), anyone who has not confirmed 18+, or an unreadable record, is sent there. appnav.js carries the same check for pages without this file. */
-(function () { function gate() { try { var pg = location.pathname.split('/').pop() || 'index.html'; if (/^(room|privacy|terms|index|404|doctor)\.html$/.test(pg)) return; /* doctor.html decrypts a patient's file for a clinician who has no account (persona walk, 21 Oct) */ var db = JSON.parse(localStorage.getItem('ovumind_db_v1') || 'null'), c = db && db.profile && db.profile.consent, a = db && db.profile && db.profile.ageAttest, sn = JSON.parse(localStorage.getItem('ovumind_auth_v1') || 'null'); if (!(sn && sn.access_token) || !(c && c.at && c.v >= window.OvuStore.NOTICE_V && a && a.confirmed === true)) location.replace('room.html'); } catch (e) { try { location.replace('room.html'); } catch (e2) { } } } gate(); try { window.addEventListener('storage', function (e) { if (!e || e.key === null || e.key === 'ovumind_auth_v1' || e.key === 'ovumind_db_v1') gate(); }); window.addEventListener('pageshow', function (e) { if (e && e.persisted) gate(); }); } catch (e) { } })(); /* a sign-out or a wipe in another tab closes this page too (Codex, 21 Oct) */
+(function () { function wrongOwner(db, sn) { var p = (db && db.profile) || {}, o = typeof p.owner === 'string' ? (p.owner || null) : ((p.cloud && p.cloud.uid) || ((p.consentEvents || []).filter(function (e) { return e && e.uid; })[0] || {}).uid || null), u = sn && sn.user && sn.user.id; return !!(o && u && o !== u); } /* the room shows which account this diary belongs to (persona walks, 21 Oct) */ function gate() { try { var pg = location.pathname.split('/').pop() || 'index.html'; if (/^(room|privacy|terms|index|404|doctor)\.html$/.test(pg)) return; /* doctor.html decrypts a patient's file for a clinician who has no account (persona walk, 21 Oct) */ var db = JSON.parse(localStorage.getItem('ovumind_db_v1') || 'null'), c = db && db.profile && db.profile.consent, a = db && db.profile && db.profile.ageAttest, sn = JSON.parse(localStorage.getItem('ovumind_auth_v1') || 'null'); if (!(sn && sn.access_token) || wrongOwner(db, sn) || !(c && c.at && c.v >= window.OvuStore.NOTICE_V && a && a.confirmed === true)) location.replace('room.html'); } catch (e) { try { location.replace('room.html'); } catch (e2) { } } } gate(); try { window.addEventListener('storage', function (e) { if (!e || e.key === null || e.key === 'ovumind_auth_v1' || e.key === 'ovumind_db_v1') gate(); }); window.addEventListener('pageshow', function (e) { if (e && e.persisted) gate(); }); } catch (e) { } })(); /* a sign-out or a wipe in another tab closes this page too (Codex, 21 Oct) */

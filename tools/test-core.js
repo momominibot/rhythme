@@ -190,7 +190,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   console.log('2c. a red flag saved by hand opens its card at once (four-persona review, 20 Oct)');
   var w = fresh(), S = w.OvuStore, O = w.OvuOrb, today = S.today();
   var p1 = S.add('period', today, { flow: 'heavy', clots: false, impact: false, flooding: true });
-  check('heavy flooding alone opens no emergency card', O.entryUrgent(p1, {}) === null);
+  check('heavy flooding alone opens no emergency card (it asks for a GP or polyclinic today)', (O.entryUrgent(p1, {}) || {}).level !== 'emergency' && (O.entryUrgent(p1, {}) || {}).code === 'FLOODING_TODAY');
   var s1 = S.add('symptom', today, { symptoms: ['dizziness'], pain: null, mood: '', notes: '' });
   check('dizziness on a heavy day opens the heavy-with-dizziness card', (O.entryUrgent(s1, {}) || {}).code === 'HEAVY_DIZZY_NOW');
   var w2 = fresh(), S2 = w2.OvuStore, O2 = w2.OvuOrb, t2 = S2.today(), post = { lifeStage: 'post' };
@@ -1833,7 +1833,7 @@ function scenes(todayIso) {
   var mine = function () { return Object.keys(L._m).filter(function (k) { return /^(ovumind_|ovuluna_|ov_|rhythme_)/.test(k); }).sort(); }, before = mine();
   S.clearAll();
   var left = mine();
-  check('Delete everything removes the diary and every older copy by an explicit list (meal and sleep mirrors, cycle mirror, earlier pages\' logs and scores, podcast listening), keeping the sign-in, backup bookkeeping and Plus access, and never another project\'s key on the shared origin', before.indexOf('ovumind_food_journal') > -1 && before.indexOf('ovuluna_sleep_logs') > -1 && left.join() === 'ov_unrelated_site,ovumind_auth_v1,ovumind_db_v1,ovumind_sync_v1,rhythme_plus_v1' && S.list(null).length === 0 && L.getItem('other_site_key') === 'keep', JSON.stringify({ before: before, left: left }));
+  check('Delete everything removes the diary and every older copy by an explicit list (meal and sleep mirrors, cycle mirror, earlier pages\' logs and scores, podcast listening), keeping the sign-in, backup bookkeeping, the empty diary revision stamp and Plus access, and never another project\'s key on the shared origin', before.indexOf('ovumind_food_journal') > -1 && before.indexOf('ovuluna_sleep_logs') > -1 && left.join() === 'ov_unrelated_site,ovumind_auth_v1,ovumind_db_v1,ovumind_db_v1_rev,ovumind_sync_v1,rhythme_plus_v1' && S.list(null).length === 0 && L.getItem('other_site_key') === 'keep', JSON.stringify({ before: before, left: left }));
   var w3 = fresh('2026-10-20'), S3 = w3.OvuStore, L3 = w3.localStorage;
   var pe = S3.add('period', '2026-10-18', { flow: 'medium' }); var hadCycle = !!L3.getItem('ovumind_cycle'); S3.remove(pe.id);
   S3.add('food', '2026-10-20', { meal: 'lunch', foods: 'laksa', items: [] }); S3.add('sleep', '2026-10-20', { bedTime: '23:00', wakeTime: '07:00', quality: 4 });
@@ -2967,6 +2967,50 @@ var summarised = false;
   check('the lane module sells nothing, pays no hearts, spends no energy and writes no diary entry', !/OvuRewards|\.award\(|\.buy\(|\.spend\(|spendWith\(|\bS\.add\(|OvuStore\.add\(|addMany\(|OvuStamina/.test(LS));
   var missing = LN.SHELF.filter(function (s) { return !fs.existsSync(path.join(root, 'assets/food', s[0] + '.webp')); });
   check('every food on the grocer\'s shelf has its picture on disk, and the plate and map icon exist', missing.length === 0 && fs.existsSync(path.join(root, 'assets/room/dream/lane-v1.webp')) && fs.existsSync(path.join(root, 'assets/room/dream/map-lane.webp')), missing.join());
+})();
+
+(function periWalkSafety() {
+  console.log('2k11. perimenopause walk (21 Oct): sleepy driving, fainting, bleeding between periods or after sex, a flooding day, page gates');
+  var w = fresh('2026-10-21'), O = w.OvuOrb, S = w.OvuStore;
+  function code(t, p) { var u = O.urgent(t, p || {}); return u ? u.code : null; }
+  check('nodding off or sleepy at the wheel is a do-not-drive card; sleepy at home is not', code('I am nodding off driving home after night shift') === 'DROWSY_DRIVE_TODAY' && code('so sleepy while driving to work') === 'DROWSY_DRIVE_TODAY' && code('so sleepy after lunch, napped on the sofa') === null);
+  check('fainting at any stage needs checking today; nearly fainting or a faint years ago does not', code('I fainted at the bus stop this morning') === 'FAINT_TODAY' && code('I nearly fainted in the heat') === null && code('passed out once years ago') === null);
+  var u1 = O.urgent('some bleeding after sex last night', {}), u2 = O.urgent('spotting between periods again', { hormones: ['pill'] }), u3 = O.urgent('spotting between periods this week', {});
+  check('bleeding after sex or between periods is a prompt card; on hormonal contraception the between-periods card says it is common early on', !!u1 && u1.code === 'BLEED_BETWEEN' && /after sex/.test(u1.message) && !!u2 && /common in the first months/.test(u2.message) && !!u3 && /between periods should be checked/.test(u3.message));
+  check('a period note with no bleeding between periods raises nothing new', code('period day 2, medium flow, cramps') === null);
+  var ev = S.add('period', S.today(), { flow: 'heavy', flooding: true }, 'room'), uf = O.entryUrgent(ev, S.profile());
+  check('a period saved with the flooding tick (every one to two hours) is a same-day card', !!uf && uf.code === 'FLOODING_TODAY' && uf.level === 'today', JSON.stringify(uf));
+  ['ovu-store.js', 'appnav.js', 'ovu-gate.js'].forEach(function (f) {
+    var src = fs.readFileSync(path.join(root, f), 'utf8'), m = /function wrongOwner\(db, sn\) \{[\s\S]*?\} \/\*/.exec(src);
+    var ok = false;
+    if (m) { var c = vm.createContext({}); vm.runInContext(m[0].replace(/ \/\*$/, ''), c); ok = c.wrongOwner({ profile: { owner: 'a' } }, { user: { id: 'b' } }) === true && c.wrongOwner({ profile: { owner: 'a' } }, { user: { id: 'a' } }) === false && c.wrongOwner({ profile: { cloud: { uid: 'a' } } }, { user: { id: 'b' } }) === true && c.wrongOwner({ profile: { owner: '' , cloud: { uid: 'a' } } }, { user: { id: 'b' } }) === false && c.wrongOwner({ profile: {} }, { user: { id: 'b' } }) === false && /wrongOwner\(db, sn\) \|\|/.test(src); }
+    check(f + ': the page gate sends a session that is not this diary\'s account back to the room', ok);
+  });
+})();
+
+(function menoWalk() {
+  console.log('2k12. menopause walk (21 Oct): a stale tab never overwrites the diary; missed phrasings; menopause without age; parts only');
+  var w = fresh('2026-10-21'), O = w.OvuOrb, S = w.OvuStore, ls = w.localStorage;
+  S.add('symptom', S.today(), { symptoms: ['headache'], pain: 3 }, 'room');
+  /* another tab writes: a newer diary with one more entry and a new revision stamp */
+  var other = JSON.parse(ls.getItem('ovumind_db_v1')); other.events.push({ id: 'from-other-tab', type: 'reflection', date: S.today(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), source: 'room', data: { text: 'written in tab A' } });
+  ls.setItem('ovumind_db_v1', JSON.stringify(other)); ls.setItem('ovumind_db_v1_rev', 'other-tab-rev');
+  S.setState({ harbour: { book: {}, casts: 1 } }); /* this tab saves without having seen tab A's write */
+  var kept = JSON.parse(ls.getItem('ovumind_db_v1')).events.some(function (e) { return e.id === 'from-other-tab'; });
+  check('a tab that saves after another tab wrote reloads first: the other tab\'s entry survives, and the stamp moves on', kept && ls.getItem('ovumind_db_v1_rev') !== 'other-tab-rev' && S.list('reflection').length === 1);
+  function code(t, p) { var u = O.urgent(t, p || {}); return u ? u.code : null; }
+  var post = { lifeStage: 'post' };
+  check('after the menopause, "pink vaginal discharge" asks for a check', code('pink vaginal discharge this morning', post) === 'POSTMENO_BLEED');
+  check('"my urine burns and I have a fever" is a doctor today', /FEVER_INFECTION/.test(code('my urine burns and I have a fever', post) || ''));
+  check('"I fell and now cannot bear weight" is checked today', code('I fell in the kitchen and now cannot bear weight', post) === 'FALL_TODAY');
+  check('waking up gasping last night is a GP visit about sleep apnoea, not 995; trouble breathing now is still 995', code('I woke gasping last night') === 'NIGHT_GASP' && /BREATH|CHEST|CALL/.test(code('woke gasping last night and I can\'t breathe properly now') || '') && code('woke gasping last night and I can\'t breathe properly now') !== 'NIGHT_GASP');
+  check('a breast lump, a vulval sore or bloating most days asks for a check; bloating before a period does not', code('found a lump in my left breast') === 'CHANGE_CHECK' && code('a sore on my vulva that won\'t heal') === 'CHANGE_CHECK' && code('bloated every day for weeks now', post) === 'CHANGE_CHECK' && code('bloating every day before my period') === null);
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('onboarding asks about the menopause when there has been no period for a year, and her yes counts without an age', /key: 'menoStatus'/.test(src) && /\|\| A\.menoStatus === 'yes'\)/.test(src));
+  var ms = fs.readFileSync(path.join(root, 'ovu-morning.js'), 'utf8');
+  check('Morning start with Erin saves one entry per part of thirty seconds, never a generic entry when no part qualifies', /No part reached 30 seconds, so nothing was added to your journal/.test(ms) && /var datas = r\.version === 'erin' \? parts\.map\(/.test(ms) && !/byPart\.teeth = r\.brushMs/.test(ms));
+  var pl = fs.readFileSync(path.join(root, 'privacy-local.js'), 'utf8');
+  check('the privacy page opens its diary controls only for the diary\'s own signed-in account', /Sign in to Rhythme with the account this diary belongs to/.test(pl) && /owner !== uidNow/.test(pl));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

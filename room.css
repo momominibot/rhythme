@@ -1885,7 +1885,7 @@ html[data-sky="night"] .cimark.uns{background:#2f5a45;color:#c8f0da}
 .consent .c-err{margin:8px 0 10px;padding:9px 12px;border-radius:12px;background:#fdecef;color:#8a2140;font:700 12.5px/1.45 var(--sans)}
 
 /* large text in the room (ovu-textsize.js): everything around the plate grows; the plate, the avatar and taps on them stay true */
-html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud){zoom:var(--tz,1)}
+html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud,.springstop,.seatpanel){zoom:var(--tz,1)}
 
 /* the Rhythme logo beside the wordmark (assets/brand/logo-mark.webp, the app icon at 192 px) */
 .rh-logo{display:inline-block;width:1.5em;height:1.5em;border-radius:28%;object-fit:cover;vertical-align:middle;flex:none;box-shadow:0 1px 5px rgba(90,66,116,.25)}
@@ -1965,7 +1965,7 @@ html[data-sky="night"] .sqnote.info b{color:#f3eaff}
 .consent .c-err{margin:8px 0 10px;padding:9px 12px;border-radius:12px;background:#fdecef;color:#8a2140;font:700 12.5px/1.45 var(--sans)}
 
 /* large text in the room (ovu-textsize.js): everything around the plate grows; the plate, the avatar and taps on them stay true */
-html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud){zoom:var(--tz,1)}
+html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud,.springstop,.seatpanel){zoom:var(--tz,1)}
 
 /* the harbour (ovu-harbour.js, 21 Oct): a line and a float on the water while she fishes; the fish card; the catch book */
 .harbourthing.castline{position:absolute;inset:0;pointer-events:none;z-index:4}
@@ -2053,3 +2053,5 @@ html[data-sky=night] .letterpaper{background:#3a3040;color:#f6ecf9;box-shadow:in
 .laneflag{position:absolute;transform:translate(-50%,-100%);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#d0587c;color:#fff;font:800 11px/18px var(--sans);text-align:center;pointer-events:none;box-shadow:0 1px 4px rgba(90,40,70,.35);z-index:3}
 #seatfx .petal.blossom{animation-name:seatblossom}
 @keyframes seatblossom{0%{transform:translate(-50%,-50%) rotate(0deg);opacity:0}10%{opacity:.85}50%{transform:translate(calc(-50% - 40px),calc(-50% + 150px)) rotate(-160deg)}90%{opacity:.7}100%{transform:translate(calc(-50% - 90px),calc(-50% + 300px)) rotate(-320deg);opacity:0}}
+
+.springstop{min-height:44px;font-size:15px} /* the scene's Stop button, big enough for slow taps (menopause walk, 21 Oct) */

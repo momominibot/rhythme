@@ -1417,8 +1417,9 @@ async def main():
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'lane' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
             except Exception: pass
             await page.wait_for_timeout(700)
-            ln1 = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(), flag: (document.querySelector('.laneflag')||{}).textContent, map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.lane})")
-            check("the harbour signpost leads up to Harbour Lane: four shops, the post box with a flag for two new letters, the bench, the cat and the way down, and the lane is on the map", ln1["layout"] == "lane" and ln1["hots"] == "laneexit,boutique,gym,fishshop,grocer,postbox,lanebench,lanecat" and ln1["flag"] == "2" and ln1["map"], ln1)
+            ln1 = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(), flag: (document.querySelector('.laneflag')||{}).textContent, map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.lane, ids: OvuLane.myLetters().map(l=>l.id)})")
+            nl = len(ln1["ids"])
+            check("the harbour signpost leads up to Harbour Lane: four shops, the post box with a flag counting the letters that have arrived (the welcome, the news, and the fish this run met), the bench, the cat and the way down; the lane is on the map", ln1["layout"] == "lane" and ln1["hots"] == "laneexit,boutique,gym,fishshop,grocer,postbox,lanebench,lanecat" and ln1["flag"] == str(nl) and "lane-welcome" in ln1["ids"] and "bluefin-first" in ln1["ids"] and ln1["map"], ln1)
             seen = {}
             for hid in ["boutique", "gym", "fishshop", "grocer", "postbox"]:
                 await page.evaluate("(h)=>{if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); OvuRoom.tap(OvuRoom.hotspot(h))}", hid)
@@ -1426,13 +1427,13 @@ async def main():
                 except Exception: pass
                 await page.wait_for_timeout(500)
                 seen[hid] = await page.evaluate("()=>({id: OvuRoom.sheetId(), n: document.querySelectorAll('#sheet .outfit, #sheet .aqfish, #sheet .shelfitem, #sheet .letter').length, gym: !!document.querySelector('#gymLog') && !!document.querySelector('#gymStretch')})")
-            check("each shop opens its own sheet: every look in the boutique, the gym's two buttons, six fish in the aquarium window, nineteen foods on the grocer's shelf, two letters in the post box", seen["boutique"]["id"] == "boutique" and seen["boutique"]["n"] >= 8 and seen["gym"]["gym"] and seen["fishshop"]["n"] == 6 and seen["grocer"]["n"] == 19 and seen["postbox"]["n"] == 2, seen)
+            check("each shop opens its own sheet: every look in the boutique, the gym's two buttons, six fish in the aquarium window, nineteen foods on the grocer's shelf, every arrived letter in the post box", seen["boutique"]["id"] == "boutique" and seen["boutique"]["n"] >= 8 and seen["gym"]["gym"] and seen["fishshop"]["n"] == 6 and seen["grocer"]["n"] == 19 and seen["postbox"]["n"] == nl, seen)
             await page.click("#pbList .letter"); await page.wait_for_timeout(300)
             lt = await page.evaluate("()=>({id: OvuRoom.sheetId(), paper: !!document.querySelector('.letterpaper')})")
             await page.click("#pbBack"); await page.wait_for_timeout(300)
             lt2 = await page.evaluate("()=>({unread: document.querySelectorAll('#pbList .letter.unread').length, flag: (document.querySelector('.laneflag')||{}).textContent})")
             await page.evaluate("()=>{OvuRoom.closeSheet(); var b=[...document.querySelectorAll('.outfit')]; }")
-            check("a letter opens on paper; once read, the box and the flag show one new letter", lt["id"] == "letter" and lt["paper"] and lt2["unread"] == 1 and lt2["flag"] == "1", {"lt": lt, "lt2": lt2})
+            check("a letter opens on paper; once read, the box and the flag show one fewer new letter", lt["id"] == "letter" and lt["paper"] and lt2["unread"] == nl - 1 and lt2["flag"] == str(nl - 1), {"lt": lt, "lt2": lt2, "nl": nl})
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('lanebench'))")
             try: await page.wait_for_function("()=>OvuRoom.sheetId()==='seat-lane'", timeout=12000)
             except Exception: pass
