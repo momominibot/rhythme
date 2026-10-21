@@ -81,10 +81,10 @@
     var ent = (ov.latest && ov.latest.cycle) || [];
     var elig = (ent.filter(function (f) { return f.metric === 'eligible_people'; })[0] || {});
     var alive = last ? (last.status === 'ok' ? 'ok' : (last.status === 'running' ? 'running' : 'failed')) : 'never';
-    var team = Object.keys(AGENTS), states = team.map(function (k) { return report(k).state; }), measured = states.filter(function (x) { return x === 'measured'; }).length;
-    var nim = !lastOk() ? 'No finished run yet. Press Run now and I will gather the team.' : (alive === 'failed' ? 'The last run failed, so the reports below are from the last finished run. ' : '') + (ov.open_proposals ? ov.open_proposals + ' proposal' + (ov.open_proposals > 1 ? 's are' : ' is') + ' waiting for an owner. ' : 'Nothing is waiting for you. ') + (measured ? measured + ' of the four reported results at the last finished run.' : 'None of the four reported a result at the last finished run, so today is counts only: accounts, cloud copies, the plazas and the relay.');
+    var team = Object.keys(AGENTS), reps = team.map(report), withResults = reps.filter(function (r) { return r.results > 0; }).length, eligible = reps.filter(function (r) { return r.state === 'measured'; }).length;
+    var nim = !hasFindings() ? 'No finished run yet. Press Run now and I will gather the team.' : (alive === 'failed' ? 'The last run failed, so the reports below are from the last finished run. ' : '') + (ov.open_proposals ? ov.open_proposals + ' proposal' + (ov.open_proposals > 1 ? 's are' : ' is') + ' waiting for an owner. ' : 'Nothing is waiting for you. ') + (withResults ? withResults + ' of the four have results from the last finished run.' : eligible ? 'The four met the floor at the last finished run but every result was held back.' : 'None of the four could report a result at the last finished run, so today is counts only: accounts, cloud copies, the plazas and the relay.');
     var html = '<div class="card nimbus"><div class="nimrow">' + cloudSVG(NIMBUS, true) + bubble('Nimbus, the orchestrator', nim, last ? 'Last run ' + ago(last.started_at) + ', ' + last.kind : 'Runs are deterministic: no model is called and nothing is applied on its own.') + '</div>' +
-      '<div class="team">' + team.map(function (k) { var a = AGENTS[k], r = report(k); return '<button type="button" class="mate" data-mate="' + k + '" title="' + esc(a.name) + '">' + cloudSVG(a) + '<b>' + esc(a.name) + '</b><small>' + esc(a.stream) + '</small><i class="st ' + esc(r.state) + '"></i></button>'; }).join('') + '</div></div>';
+      '<div class="team">' + team.map(function (k, i) { var a = AGENTS[k], r = reps[i]; return '<button type="button" class="mate" data-mate="' + k + '" title="' + esc(a.name) + '">' + cloudSVG(a) + '<b>' + esc(a.name) + '</b><small>' + esc(a.stream) + '</small><i class="st ' + esc(r.state) + '"></i></button>'; }).join('') + '</div></div>';
     html += '<div class="card"><h2>Status<span>' + (last ? 'last run ' + ago(last.started_at) : 'no run yet') + '</span></h2><div class="tiles">' +
       tile('Pipeline', alive === 'ok' ? 'Alive' : alive === 'running' ? 'Running' : alive === 'failed' ? 'Failed' : 'Not run', last ? (last.kind + ', ' + (last.finished_at ? 'finished ' + ago(last.finished_at) : 'in progress')) : 'Press Run now below') +
       tile('Needs you', String(ov.open_proposals || 0), (ov.open_proposals ? 'proposals waiting' : 'nothing waiting')) +
@@ -93,11 +93,12 @@
       '</div>' + (blocked.length ? '<div class="note"><b>Model runs are blocked.</b> ' + esc(blocked[0].error) + ' An owner clears it on the Queue tab; nothing retries by itself.</div>' : '') + '</div>';
     html += plazaCard();
     html += '<div class="card"><h2>Diary streams<span>floor ' + esc(ov.floor) + ' people</span></h2>';
-    if (!elig.state || elig.state === 'not_enabled') html += '<div class="note"><b>Not enabled.</b> Nobody has turned on the separate “help improve logging” choice yet, so the agents may not read any diary rows. Local-only diaries are never visible here. What exists: ' + esc(c.accounts_with_cloud_copy || 0) + ' account' + ((c.accounts_with_cloud_copy || 0) === 1 ? '' : 's') + ' with a cloud copy, kept private to their owners.</div>';
+    if (!elig.state && !hasFindings()) html += '<div class="note"><b>No finished run yet.</b> ' + (Number(c.consent_active) > 0 ? esc(c.consent_active) + ' account' + (c.consent_active > 1 ? 's have' : ' has') + ' the separate “help improve logging” choice on; a run decides who is eligible.' : 'No account has the separate “help improve logging” choice on yet.') + ' Local-only diaries are never visible here.</div>';
+    else if (!elig.state || elig.state === 'not_enabled') html += '<div class="note"><b>Not enabled.</b> At the last finished run no eligible adult had the separate “help improve logging” choice on, so the agents read no diary rows. Local-only diaries are never visible here. What exists: ' + esc(c.accounts_with_cloud_copy || 0) + ' account' + ((c.accounts_with_cloud_copy || 0) === 1 ? '' : 's') + ' with a cloud copy, kept private to their owners.</div>';
     else if (elig.state === 'insufficient') html += '<div class="note"><b>Insufficient contributors.</b> Fewer than ' + esc(ov.floor) + ' eligible adults have opted in; values stay held back until the floor is reached.</div>';
-    else html += '<div class="note"><b>Measured.</b> ' + esc(elig.value) + ' eligible adults contribute; every number below carries its people count.</div>';
+    else html += '<div class="note"><b>Measured.</b> ' + esc(elig.value) + ' eligible opted-in adults at the last finished run; each number carries its own people count.</div>';
     html += '</div>';
-    html += '<div class="card"><h2>Runs</h2>' + (runs.length ? '<table class="tbl"><tr><th>When</th><th>Kind</th><th>Status</th><th>Summary</th></tr>' + runs.map(function (r) { return '<tr><td>' + esc(when(r.started_at)) + '</td><td>' + esc(r.kind) + '</td><td><span class="chip ' + (r.status === 'ok' ? 'ok' : r.status === 'running' ? '' : 'high') + '">' + esc(r.status) + '</span></td><td>' + esc(r.error || (r.summary && r.summary.measured === false ? 'no eligible adults yet' : (r.summary && r.summary.measured ? r.summary.eligible + ' eligible, ' + r.summary.window : ''))) + '</td></tr>'; }).join('') + '</table>' : '<p class="empty">No run yet.</p>') +
+    html += '<div class="card"><h2>Runs</h2>' + (runs.length ? '<table class="tbl"><tr><th>When</th><th>Kind</th><th>Status</th><th>Summary</th></tr>' + runs.map(function (r) { return '<tr><td>' + esc(when(r.started_at)) + '</td><td>' + esc(r.kind) + '</td><td><span class="chip ' + (r.status === 'ok' ? 'ok' : r.status === 'running' ? '' : 'high') + '">' + esc(r.status) + '</span></td><td>' + esc(r.error || (r.summary && r.summary.measured === false ? 'no eligible adults yet' : (r.summary && r.summary.measured ? (r.summary.under_floor || r.summary.eligible == null ? 'under the floor, ' : r.summary.eligible + ' eligible, ') + r.summary.window : ''))) + '</td></tr>'; }).join('') + '</table>' : '<p class="empty">No run yet.</p>') +
       '<div class="row" style="margin-top:10px"><button class="btn primary" id="runNow">Run now</button><span class="msg" id="runMsg"></span></div><p class="srv">A run is deterministic: the four agents measure what the consent rules allow and the orchestrator records what it would do. No model is called and nothing is applied on its own in this phase.</p></div>';
     html += '<div class="card"><h2>Service<span>no diary content</span></h2><div class="tiles">' + tile('Relay calls today', String(c.relay_calls_today == null ? '–' : c.relay_calls_today), 'Luna and insight, resets daily') + tile('Withdrawn opt-ins', String(c.consent_withdrawn == null ? '–' : c.consent_withdrawn), 'kept on record, excluded from reads') + '</div></div>';
     panel(html);
@@ -160,15 +161,17 @@
   }
   function bubble(who, text, sub) { return '<div class="say"><div class="who">' + esc(who) + '</div><p>' + esc(text) + '</p>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>'; }
   /* what each cloud says about its stream, in its own words, from the latest findings; never a guess */
-  function lastOk() { return ((ov && ov.runs) || []).filter(function (r) { return r.status === 'ok'; })[0] || null; }
+  /* the last finished run is the one whose findings the server kept (latest), not the recent-run list, which can be all failures */
+  function hasFindings() { var l = (ov && ov.latest) || {}; return Object.keys(l).some(function (k) { return (l[k] || []).length > 0; }); }
   function report(k) {
     var rows = ((ov && ov.latest) || {})[k] || [], ready = rows.filter(function (f) { return f.metric === 'eligible_people'; })[0], floor = (ov && ov.floor) || 20, c = (ov && ov.counts) || {};
-    if (!ov) return { state: 'loading', text: 'Still getting my notes together.' };
-    if (!lastOk() || !ready) return { state: 'norun', text: 'No finished run yet, so I have nothing to report. ' + (Number(c.consent_active) > 0 ? c.consent_active + ' account' + (c.consent_active > 1 ? 's have' : ' has') + ' the separate "help improve logging" choice on.' : 'Nobody has turned on the separate "help improve logging" choice yet.') };
-    if (ready.state === 'not_enabled') return { state: 'not_enabled', text: 'At the last finished run nobody had turned on the separate "help improve logging" choice, so I read no diary rows. I am ready when they are.' };
-    if (ready.state === 'insufficient') return { state: 'insufficient', text: (ready.value != null ? ready.value + ' eligible' : 'Fewer than ' + floor) + ' opted-in adults, under the floor of ' + floor + ', so my results from the last finished run are held back.' };
-    var m = rows.filter(function (f) { return f.metric !== 'eligible_people' && !f.suppressed; }).slice(0, 3).map(function (f) { return f.metric.replace(/_/g, ' ') + ' ' + num(f.value) + ' over ' + f.window + (f.people ? ' from ' + f.people + ' people' : ''); });
-    return { state: 'measured', text: String(ready.value) + ' eligible opted-in adults at the last finished run. ' + (m.length ? 'I measured ' + m.join('; ') + '.' : 'Every result was held back under the floor.') };
+    var results = rows.filter(function (f) { return f.metric !== 'eligible_people' && !f.suppressed && f.value != null; });
+    if (!ov) return { state: 'loading', results: 0, text: 'Still getting my notes together.' };
+    if (!ready) return { state: 'norun', results: 0, text: 'No finished run has a report from me yet. ' + (Number(c.consent_active) > 0 ? c.consent_active + ' account' + (c.consent_active > 1 ? 's have' : ' has') + ' the separate "help improve logging" choice on; a run decides who is eligible.' : 'No account has the separate "help improve logging" choice on yet.') };
+    if (ready.state === 'not_enabled') return { state: 'not_enabled', results: 0, text: 'At the last finished run no eligible adult had the separate "help improve logging" choice on, so I read no diary rows. I am ready when they do.' };
+    if (ready.state === 'insufficient') return { state: 'insufficient', results: 0, text: 'Fewer than ' + floor + ' eligible opted-in adults at the last finished run, so my results are held back under the floor.' };
+    var m = results.slice(0, 3).map(function (f) { return f.metric.replace(/_/g, ' ') + ' ' + num(f.value) + ' over ' + f.window + (f.people ? ' from ' + f.people + ' people' : ''); });
+    return { state: 'measured', results: results.length, text: String(ready.value) + ' eligible opted-in adults at the last finished run. ' + (m.length ? 'I measured ' + m.join('; ') + '.' : 'Every result was held back under the floor.') };
   }
   /* ---------- charts: small inline SVGs, no library; every chart says what it counts ---------- */
   function dayNum(k) { return Math.round(Date.parse(k + 'T00:00:00Z') / 86400000); }
@@ -183,12 +186,12 @@
     var x = function (k) { return padL + (dayNum(k) - d0) * (W - padL - padR) / span; }, y = function (v) { return padT + (H - padT - padB) * (1 - v / top); };
     var ticks = top % 2 === 0 ? [0, top / 2, top] : [0, top];
     var grid = ticks.map(function (t) { var yy = y(t); return '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yy + '" y2="' + yy + '" class="g"/><text x="' + (padL - 5) + '" y="' + (yy + 3.5) + '" class="ax" text-anchor="end">' + t + '</text>'; }).join('');
-    var step = Math.max(1, Math.ceil(n / 5)), xl = days.map(function (k, i) {
-      var last = i === n - 1; if (!last && (i % step !== 0 || x(days[n - 1]) - x(k) < 30)) return '';
-      return '<text x="' + x(k) + '" y="' + (H - 6) + '" class="ax" text-anchor="' + (last ? 'end' : i === 0 ? 'start' : 'middle') + '">' + esc(k.slice(5).replace('-', '/')) + '</text>';
+    var LW = 34, lastX = x(days[n - 1]), placed = -1e9, xl = days.map(function (k, i) { /* labels by their real positions: the last one always, the rest only with room */
+      var last = i === n - 1, xx = x(k); if (!last && (xx - placed < LW || lastX - xx < LW)) return ''; placed = xx;
+      return '<text x="' + xx + '" y="' + (H - 6) + '" class="ax" text-anchor="' + (last ? 'end' : i === 0 ? 'start' : 'middle') + '">' + esc(k.slice(5).replace('-', '/')) + '</text>';
     }).join('');
     var paths = series.map(function (s, si) {
-      var runs = [], cur = []; days.forEach(function (k) { var v = s.byDay[k]; if (v == null || !isFinite(v)) { if (cur.length) runs.push(cur); cur = []; } else cur.push([x(k), y(v)]); }); if (cur.length) runs.push(cur);
+      var runs = [], cur = [], prev = null; days.forEach(function (k) { var v = s.byDay[k], dn = dayNum(k); if (prev !== null && dn - prev > 1 && cur.length) { runs.push(cur); cur = []; } /* a day with no record breaks the line */ prev = dn; if (v == null || !isFinite(v)) { if (cur.length) runs.push(cur); cur = []; } else cur.push([x(k), y(v)]); }); if (cur.length) runs.push(cur);
       var out = '<defs><linearGradient id="cg' + si + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="' + s.color + '" stop-opacity=".35"/><stop offset="1" stop-color="' + s.color + '" stop-opacity="0"/></linearGradient></defs>';
       runs.forEach(function (pts) {
         var d = pts.map(function (p, i) { if (!i) return 'M' + p[0] + ' ' + p[1]; var q = pts[i - 1], cx = (q[0] + p[0]) / 2; return 'C' + cx + ' ' + q[1] + ' ' + cx + ' ' + p[1] + ' ' + p[0] + ' ' + p[1]; }).join(' ');
@@ -222,13 +225,13 @@
     var latest = (ov && ov.latest) || {};
     panel('<div class="agents">' + Object.keys(AGENTS).map(function (k) {
       var a = AGENTS[k], rows = latest[k] || [], ready = rows.filter(function (f) { return f.metric === 'eligible_people'; })[0], r = report(k);
-      var state = ready ? ready.state : 'not_enabled';
-      var chip = state === 'measured' ? '<span class="chip ok">measuring</span>' : state === 'insufficient' ? '<span class="chip watch">under the floor</span>' : '<span class="chip">not enabled</span>';
+      var state = ready ? ready.state : 'norun';
+      var chip = state === 'measured' ? '<span class="chip ok">measuring</span>' : state === 'insufficient' ? '<span class="chip watch">under the floor</span>' : state === 'norun' ? '<span class="chip">no report yet</span>' : '<span class="chip">not enabled</span>';
       var metrics = rows.filter(function (f) { return f.metric !== 'eligible_people'; });
       var bars = metrics.length ? '<div class="mrows">' + metrics.map(function (f) { return '<div class="metric"><span class="k">' + esc(f.metric.replace(/_/g, ' ')) + '<br><small>' + esc(f.window) + '</small></span><span class="v">' + (f.suppressed ? 'held back' : num(f.value)) + '<small>' + (f.suppressed ? 'under ' + esc(ov.floor) + ' people' : esc(f.people) + ' people') + '</small></span></div>'; }).join('') + '</div>' : '';
       return '<div class="agent" id="mate-' + k + '"><div class="mhead">' + cloudSVG(a) + '<div><h3><i class="' + a.color + '"></i>' + esc(a.name) + ' ' + chip + '</h3><div class="sub">' + esc(a.stream) + '. ' + esc(a.hello) + '</div></div></div>' +
         bubble(a.name + ' says', r.text) +
-        (ready && ready.prerequisite ? '<div class="note">' + esc(ready.prerequisite) + '</div>' : '') + bars +
+        (ready && ready.prerequisite && !/nobody|no one|no-one/i.test(ready.prerequisite) ? '<div class="note">' + esc(ready.prerequisite) + '</div>' : '') + bars + /* the bubble already says who had the choice on; a server line that says nobody is left out */
         '<details class="owns"><summary>What ' + esc(a.name) + ' measures, and never</summary><div class="sub">Measures: ' + esc(a.owns) + '.<br>Never: ' + esc(a.excludes) + '.</div></details></div>';
     }).join('') + '</div><div class="card nimbus"><div class="nimrow">' + cloudSVG(NIMBUS, true) + bubble('Nimbus, the orchestrator', NIMBUS.hello + ' I read every report after a run, rank proposals by a fixed priority, and may only ever pick an approved content id for a non-clinical surface, and only once an owner turns autonomy on.', 'I cannot change care guidance, prediction rules, reminders or anything clinical.') + '</div></div>');
   }
@@ -342,7 +345,7 @@
     else if (tab === 'feed') renderFeed();
     else if (tab === 'agents') renderAgents();
     else if (tab === 'queue') { renderQueue(); if (!proposals) loadProposals().then(function () { if (tab === 'queue') renderQueue(); }); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); }
-    else if (tab === 'staff') { renderStaff(); loadStaff().then(renderStaff); }
+    else if (tab === 'staff') { renderStaff(); loadStaff().then(function () { if (tab === 'staff') renderStaff(); }); }
   }
   function stopTimers() { timers.forEach(clearInterval); timers = []; }
   function bootStaffOnly() { stopTimers(); me = null; staffOnly(); }

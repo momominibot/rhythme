@@ -1731,7 +1731,7 @@ async def main():
             check("the staff Today tab opens with Nimbus and the four named clouds (Bloom, Dozy, Pudding, Misty), says honestly that there is no run yet, and charts the plaza days", tm["nimbus"] and tm["mates"] == "Bloom,Dozy,Pudding,Misty" and tm["chart"] and tm["honest"], tm)
             await p5.click('nav.tabs button[data-tab=agents]'); await p5.wait_for_timeout(400)
             ag5 = await p5.evaluate("()=>({says: document.querySelectorAll('.agent .say').length, clouds: document.querySelectorAll('.agent svg.cloudy').length, text: (document.querySelector('#mate-cycle .say')||{}).textContent||''})")
-            check("the Agents tab shows each cloud with its own report bubble, and Bloom says there is no finished run yet", ag5["says"] == 4 and ag5["clouds"] == 4 and "No finished run yet" in ag5["text"], ag5)
+            check("the Agents tab shows each cloud with its own report bubble, and Bloom says there is no finished run yet", ag5["says"] == 4 and ag5["clouds"] == 4 and "No finished run has a report from me yet" in ag5["text"], ag5)
             await p5.click('nav.tabs button[data-tab=today]'); await p5.wait_for_timeout(400)
             # a refresh that fails is shown as not current, not as live numbers
             STAFF["admin_plaza"] = None
