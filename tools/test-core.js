@@ -3590,4 +3590,25 @@ var summarised = false;
   check('the card’s styles exist and no em dash entered the copy', /\.sheet\.luna-sheet\{/.test(css) && /\.askchip\{/.test(css) && /\.lunanote\{/.test(css) && luna.indexOf('—') < 0);
 })();
 
+(function pondAndFlowerBreathing() {
+  console.log('2k19. the koi pond and Light Flower with the breath (21 Oct): paces in and out only, the flower sways to the chosen pace, words only with a pace, how-to lists on both cards');
+  var w = fresh(), LF = w.OvuLightFlower;
+  var paces = Object.keys(LF.PACES);
+  check('four paces: the flower’s own rhythm and the koi pond’s three; in and out only, never a hold, none longer than six seconds a side', paces.join() === 'own,easy,steady,longout' && paces.every(function (k) { var p = LF.PACES[k]; return p.inS > 0 && p.outS > 0 && p.inS <= 6 && p.outS <= 6 && Object.keys(p).indexOf('holdS') < 0; }) && !LF.PACES.own.word && LF.PACES.longout.inS === 4 && LF.PACES.longout.outS === 6);
+  var ownOk = true; for (var q = 0; q < 12; q += 0.5) { if (Math.abs(LF.breathAt(q, 'own').v - Math.sin(q * 2 * Math.PI / LF.BREATH_S)) > 1e-9 || LF.breathAt(q, 'own').phase !== null) ownOk = false; }
+  check('the flower’s own rhythm is the six-second sway it always had, with no words', ownOk && LF.headAt(1.5).s > 1.02 && Math.abs(LF.headAt(1.5, false, 'own').s - LF.headAt(1.5).s) < 1e-9);
+  var up = true, down = true, last = -2; for (var a = 0; a <= 4; a += 0.25) { var v = LF.breathAt(a, 'longout').v; if (v < last - 1e-9) up = false; last = v; if (LF.breathAt(a, 'longout').phase !== 'in' && a < 4) up = false; }
+  last = 2; for (var b = 4; b < 10; b += 0.25) { var v2 = LF.breathAt(b, 'longout').v; if (v2 > last + 1e-9) down = false; last = v2; if (LF.breathAt(b, 'longout').phase !== 'out') down = false; }
+  check('Long out: the breath rises for four seconds (in) and settles for six (out), smoothly, then repeats', up && down && Math.abs(LF.breathAt(0, 'longout').v + 1) < 1e-9 && Math.abs(LF.breathAt(4, 'longout').v - 1) < 1e-9 && Math.abs(LF.breathAt(10, 'longout').v + 1) < 1e-9 && LF.breathAt(10.5, 'longout').phase === 'in');
+  check('the flower head sways with the chosen pace within the same few percent, and stays still under reduced motion', Math.abs(LF.headAt(4, false, 'longout').s - 1.022) < 1e-9 && LF.headAt(4, true, 'longout').s === 1 && Math.abs(LF.headAt(0, false, 'steady').s - 0.978) < 1e-9);
+  var e = LF.entryFor(90, 2, 'a', 'b', 'steady'), e2 = LF.entryFor(90, 2, 'a', 'b', 'nope'), e3 = LF.entryFor(90, 2, 'a', 'b');
+  check('the saved entry carries the pace she chose, and an unknown or missing pace reads as the flower’s own', e.pace === 'steady' && e2.pace === 'own' && e3.pace === 'own' && !('taps' in e));
+  var lf = fs.readFileSync(path.join(root, 'ovu-lightflower.js'), 'utf8'), bt = fs.readFileSync(path.join(root, 'ovu-breathtap.js'), 'utf8'), rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  var steps = function (src) { var m = /<details class="btap-how">[\s\S]*?<\/details>/.exec(src); return m ? (m[0].match(/<li>/g) || []).length : 0; };
+  check('both cards carry a How to practise list of five plain steps, and the flower’s pacing shows the same gentle-breathing line the pond has', steps(lf) === 5 && steps(bt) === 5 && /lf-pacesafe/.test(lf) && /without forcing a deeper or longer breath/.test(lf) && /without forcing a deeper or longer breath/.test(bt));
+  var how = (/<details class="btap-how">[\s\S]*?<\/details>/.exec(lf)[0] + /<details class="btap-how">[\s\S]*?<\/details>/.exec(bt)[0]);
+  check('the instructions promise nothing and push nothing: no cure, calm-guarantee, score, streak or em dash', !/\b(cure|heal|fix|anxiety|depression|reduce stress|guarantee|score|streak|must)\b/i.test(how) && how.indexOf('—') < 0);
+  check('the mat tiles say the pond breathes with the ring and the flower adds a gentle breath', /Breathe with the ring, watch the koi/.test(rs) && /Light, sound and a gentle breath/.test(rs));
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
