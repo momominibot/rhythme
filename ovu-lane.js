@@ -1,6 +1,7 @@
 /* Rhythme Harbour Lane: the grocer (Hay & Harvest), the boutique (Petal & Thread), the gym (Tideline Gym), the fish store
- * (Bait & Fin) and the post box. Until the lane's plate is drawn, the harbour's signpost opens the lane as a sheet and
- * every place is a sheet, the way Dream Street's stores were before their interiors existed. No place here awards hearts,
+ * (Bait & Fin) and the post box. The lane is drawn (ovu-lanescene.js, 21 Oct): the harbour's signpost walks her up it,
+ * and the grocer, the boutique and the gym are rooms she walks into, whose counters open these sheets; the fish store
+ * keeps its sheet until its room is drawn. The lane's own sheet is still where every place's Back row goes. No place here awards hearts,
  * and the gym and the post box never spend them. Nothing here writes a diary entry: the gym opens the movement log and
  * only her own save writes. Design: docs/design/2026-10-21-harbour-lane.md. Pure rules first (testable in node), then
  * the sheets. */
@@ -139,7 +140,7 @@
       '<div class="street lane">' + PLACES.map(function (p) {
         var on = openNow(p.id); return '<button type="button" class="store' + (on ? '' : ' closed') + '" data-place="' + p.id + '"><span class="ms storeic">' + p.icon + '</span><span><b>' + esc(p.name) + '</b><small>' + esc(p.kind) + ' · ' + esc(p.blurb) + (p.id === 'post' && post ? ' · <em class="postnew">post for you</em>' : '') + '</small><small class="hours">' + (on ? (p.hours ? 'Open now · ' : '') : 'Closed · opens ') + esc(hoursText(p.id)) + '</small></span><span class="ms">chevron_right</span></button>';
       }).join('') + '</div>' +
-      '<p class="help">The lane itself is still being drawn. Until then the signpost brings each place to you, and everything in it works.</p>');
+      '<p class="help">' + (R.LAYOUTS && R.LAYOUTS.lane ? 'Walk up the lane from the signpost to go into the grocer, the boutique and the gym. Bait &amp; Fin is still being drawn inside, so it opens here.' : 'The lane itself is still being drawn. Until then the signpost brings each place to you, and everything in it works.') + '</p>');
     var box = doc.querySelector('#sheet .lane'); if (box) box.addEventListener('click', function (e) { var b = e.target.closest('[data-place]'); if (!b) return; R.chime('tap'); openPlace(b.dataset.place); });
   }
   function openPlace(id) {

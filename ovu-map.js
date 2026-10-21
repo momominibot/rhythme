@@ -83,7 +83,7 @@
     });
     return out;
   }
-  var AT = { home: 'at home', garden: 'in the garden', farm: 'on the farm', street: 'on Dream Street', plaza: 'in the plaza' };
+  var AT = { home: 'at home', garden: 'in the garden', farm: 'on the farm', street: 'on Dream Street', plaza: 'in the plaza', lane: 'on Harbour Lane' };
   function at(g, id) { var n = g.nodes[id]; return AT[id] || (n && n.store ? 'in ' + n.name : 'in the ' + String(n ? n.name : id).toLowerCase()); }
   function stepText(g, e) { return { where: g.nodes[e.from] ? g.nodes[e.from].name : e.from, door: e.label }; }
 

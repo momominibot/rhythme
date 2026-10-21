@@ -60,8 +60,8 @@
       { id: 'hbrocks', x: 11, y: 58, label: 'Rocks · cast from the shore', prompt: 'Tap to fish from the rocks', icon: 'phishing', wp: { x: 26, y: 58, flip: true } },
       { id: 'hbbench', x: 40, y: 39, label: 'Bench · watch the water', prompt: 'Tap to sit a while', icon: 'chair', wp: { x: 41, y: 47, flip: false } },
       { id: 'hbhut', x: 27, y: 43, label: 'Harbour hut · the catch book', prompt: 'Tap to open the catch book', icon: 'menu_book', wp: { x: 31, y: 51, flip: true } },
-      /* the little post by the hut points up Harbour Lane (ovu-lane.js, 21 Oct): its shops are sheets until the lane's plate is drawn */
-      { id: 'hblane', x: 19, y: 44, label: 'Signpost · Harbour Lane', prompt: 'Tap to read the signpost', icon: 'signpost', wp: { x: 23, y: 51, flip: true } }
+      /* the little post by the hut points up Harbour Lane: she walks up it (ovu-lanescene.js), and its shops' sheets are ovu-lane.js */
+      { id: 'hblane', x: 19, y: 44, label: 'Signpost · Harbour Lane', prompt: 'Tap to walk up Harbour Lane', icon: 'signpost', wp: { x: 23, y: 51, flip: true } }
     ],
     home: { x: 34, y: 73, flip: false },
     zones: [[[8, 46], [18, 41], [34, 34], [50, 32], [63, 36], [60, 42], [50, 47], [44, 52], [39, 60], [37, 68], [45, 76], [40, 81], [28, 80], [12, 72], [3, 62], [3, 52]],

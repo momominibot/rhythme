@@ -1616,10 +1616,22 @@ async def main():
             # Harbour Lane (21 Oct): the signpost opens the lane; the grocer sells seeds and swaps, Bait & Fin sells floats, the gym opens the movement log, the post box keeps letters sealed
             lane_base = await page.evaluate("()=>({d: OvuStore.list().length, farm: JSON.stringify(OvuStore.state().farm||null), lane: JSON.stringify(OvuStore.state().lane||null)})")
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('hblane'))")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='lane' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await page.wait_for_timeout(500)
+            lw = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), img: document.querySelector('#roomDay').getAttribute('src')||'', pos: OvuRoom.pos(), map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.lane})")
+            check("the signpost by the hut walks her up Harbour Lane, to its foot: four shopfronts, the post box and the path back; the lane is on the map", lw["layout"] == "lane" and lw["hots"] == "lanegrocer,laneboutique,lanegym,lanefish,lanepost,laneexit" and "lane-v1" in lw["img"] and abs(lw["pos"]["x"] - 51) < 2 and abs(lw["pos"]["y"] - 84) < 2 and lw["map"], lw)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('laneexit'))")  # back down, so the harbour checks below (the float on the water) run at the harbour
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='harbour' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await page.wait_for_timeout(500)
+            lb = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, pos: OvuRoom.pos()})")
+            check("the lane's path takes her back down to the harbour, at the signpost", lb["layout"] == "harbour" and abs(lb["pos"]["x"] - 23) < 2 and abs(lb["pos"]["y"] - 51) < 2, lb)
+            await page.evaluate("()=>OvuLane.openLane()")
             try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='lane'", timeout=12000)
             except Exception: pass
             ln = await page.evaluate("()=>({id: OvuRoom.sheetId(), places: [...document.querySelectorAll('#sheet .lane [data-place]')].map(b=>b.dataset.place).join(','), post: /Always open/.test(document.querySelector('#sheet .lane [data-place=post]').textContent)})")
-            check("the signpost by the hut opens Harbour Lane: the grocer, the boutique, the gym, the fish store and the post box, which is always open", ln["id"] == "lane" and ln["places"] == "grocer,boutique,gym,fish,post" and ln["post"], ln)
+            check("the lane's own sheet lists the grocer, the boutique, the gym, the fish store and the post box, which is always open", ln["id"] == "lane" and ln["places"] == "grocer,boutique,gym,fish,post" and ln["post"], ln)
             await page.evaluate("()=>{var f=OvuFarm.farmState(OvuStore); f.harvest={}; OvuStore.setState({farm:f})}")
             await page.click("#sheet .lane [data-place=grocer]"); await page.wait_for_timeout(300)
             gr = await page.evaluate("()=>{var f0=OvuFarm.farmState(OvuStore), r0=f0.seeds.radish||0; var p=document.querySelector('#grocerBuy [data-pack=radish]'); var packs=document.querySelectorAll('#grocerBuy [data-pack]').length, unlocks=document.querySelectorAll('#grocerBuy [data-unlock]').length; if(p) p.click(); return {id: OvuRoom.sheetId(), packs: packs, unlocks: unlocks, gained: (OvuFarm.farmState(OvuStore).seeds.radish||0) - r0, empty: /Nothing to swap yet/.test(document.querySelector('#sheet').textContent)}}")
@@ -1667,6 +1679,45 @@ async def main():
             dl = await page.evaluate("(b)=>({left: OvuLane.laneState(OvuStore).letters.map(x=>x.id), diary: OvuStore.list().length - b.d})", lane_base)
             check("Delete takes two taps and removes the letter; nothing on the lane wrote a diary entry", "larrived" not in dl["left"] and len(dl["left"]) == 1 and dl["diary"] == 0, dl)
             await page.evaluate("(b)=>{OvuRoom.hideSheet(); OvuStore.setState({farm: JSON.parse(b.farm), lane: JSON.parse(b.lane)})}", lane_base); await page.wait_for_timeout(200)
+            # Harbour Lane as a place (21 Oct): each shopfront takes her into its room; the counters, the fitting room and the stations open what the lane has; the doors bring her back where she came in; the fish store and the post box are sheets
+            async def lane_go(hid, want):
+                await page.evaluate("(h)=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); OvuRoom.tap(OvuRoom.hotspot(h)); }", hid)
+                try: await page.wait_for_function("(t)=>document.querySelector('#scene').dataset.layout===t && !document.querySelector('#scene').classList.contains('fading') && !document.querySelector('#avatar').classList.contains('walking')", arg=want, timeout=15000)
+                except Exception: pass
+                await page.wait_for_timeout(400)
+                return await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, pos: OvuRoom.pos(), hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), img: document.querySelector('#roomDay').getAttribute('src')||''})")
+            async def lane_sheet(hid):
+                await page.evaluate("(h)=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); OvuRoom.tap(OvuRoom.hotspot(h)); }", hid)
+                try: await page.wait_for_function("()=>OvuRoom.sheetOpen()", timeout=12000)
+                except Exception: pass
+                await page.wait_for_timeout(250)
+                return await page.evaluate("()=>({id: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, layout: document.querySelector('#scene').dataset.layout})")
+            near = lambda p, x, y: abs(p["x"] - x) < 2 and abs(p["y"] - y) < 2
+            await page.evaluate("()=>OvuRoom.hideSheet()"); await page.wait_for_timeout(300)
+            lbase = await page.evaluate("()=>({d: OvuStore.list().length, st: JSON.stringify([OvuStore.state().farm||null, OvuStore.state().lane||null, OvuStore.state().rewards||null])})")
+            up = await lane_go('hblane', 'lane')
+            check("walking onto the signpost's doorstep from the harbour takes her up the lane again", up["layout"] == "lane" and near(up["pos"], 51, 84), up)
+            gi = await lane_go('lanegrocer', 'lane-grocer')
+            gc = await lane_sheet('grocercounter')
+            go = await lane_go('grocermat', 'lane')
+            check("Hay & Harvest's door takes her inside to its mat; its counter opens the grocer; its mat brings her back to the lane at the grocer's door", gi["layout"] == "lane-grocer" and near(gi["pos"], 50, 80) and gi["hots"] == "grocermat,grocercounter,grocerrack" and "shop-grocer-2f-v1" in gi["img"] and gc["id"] == "lane-grocer" and gc["layout"] == "lane-grocer" and go["layout"] == "lane" and near(go["pos"], 47, 36), [gi, gc, go])
+            bi = await lane_go('laneboutique', 'lane-boutique')
+            bf = await lane_sheet('boutiquefit')
+            br = await lane_sheet('boutiquerail')
+            bo = await lane_go('boutiquemat', 'lane')
+            check("Petal & Thread: inside, the fitting room opens her wardrobe and the rail opens the boutique; out through the arch she is back at its door", bi["layout"] == "lane-boutique" and bf["id"] == "wardrobe" and br["id"] == "lane-boutique" and bo["layout"] == "lane" and near(bo["pos"], 54, 59), [bi, bf, br, bo])
+            yi = await lane_go('lanegym', 'lane-gym')
+            yt = await lane_sheet('gymtreadmill')
+            ywalk = await page.evaluate("()=>({walk: !!document.querySelector('#sheet [data-act=walk].on, #sheet [data-ex=walk].on, #sheet .on[data-act=walk], #sheet [aria-pressed=true][data-act=walk]')})")
+            yo = await lane_go('gymdoor', 'lane')
+            check("Tideline Gym: she arrives on its floor; the treadmill opens the movement log, as the gym's own buttons do; its door brings her back to the lane at the gym", yi["layout"] == "lane-gym" and near(yi["pos"], 46, 57) and yt["id"] == "move" and yo["layout"] == "lane" and near(yo["pos"], 55, 36), [yi, yt, ywalk, yo])
+            fs2 = await lane_sheet('lanefish')
+            pb2 = await lane_sheet('lanepost')
+            lafter = await page.evaluate("(b)=>({d: OvuStore.list().length - b.d, same: JSON.stringify([OvuStore.state().farm||null, OvuStore.state().lane||null, OvuStore.state().rewards||null]) === b.st})", lbase)
+            check("Bait & Fin (its room not drawn yet) and the post box open their sheets on the lane; walking in and out of the rooms wrote nothing, logged nothing and spent nothing", fs2["id"] == "lane-fish" and fs2["layout"] == "lane" and pb2["id"] == "lane-post" and lafter["d"] == 0 and lafter["same"], [fs2, pb2, lafter])
+            await page.evaluate("()=>{ OvuRoom.hideSheet(); OvuRoom.placeAvatar({x: 51, y: 72}, false); }"); await page.wait_for_timeout(300)
+            hb2 = await lane_go('laneexit', 'harbour')
+            check("from anywhere on the lane, its path takes her down to the harbour at the signpost", hb2["layout"] == "harbour" and near(hb2["pos"], 23, 51), hb2)
             await page.evaluate("()=>{Math.random = window.__rnd; OvuCare.slowMs = null; OvuRoom.tap(OvuRoom.hotspot('harbourexit'))}")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'farm'", timeout=12000)
             except Exception: pass

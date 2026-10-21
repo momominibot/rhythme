@@ -2997,6 +2997,61 @@ var summarised = false;
   check('room.html loads the lane after the harbour', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('ovu-lane.js') > h.indexOf('ovu-harbour.js') && h.indexOf('ovu-harbour.js') > -1; })());
 })();
 
+(function harbourLaneScene() {
+  console.log('2k7c. Harbour Lane as a place (21 Oct): the signpost walks her up the lane; the grocer, the boutique and the gym are rooms to walk into; every spot on the floor and reachable; the map shows the lane, not its rooms; nothing new is written');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-harbour.js', 'ovu-lane.js', 'ovu-lanescene.js', 'ovu-map.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var LS = w.OvuLaneScene, LN = w.OvuLane, K = w.OvuWalk, H = w.OvuHarbour, MP = w.OvuMap;
+  var src = fs.readFileSync(path.join(root, 'ovu-lanescene.js'), 'utf8');
+  var ids = Object.keys(LS.LAYOUTS);
+  check('the lane and three rooms: Harbour Lane, Hay & Harvest, Petal & Thread and Tideline Gym, each with its own plate on disk', ids.join() === 'lane,lane-grocer,lane-boutique,lane-gym' && ids.every(function (id) { var L = LS.LAYOUTS[id]; return L.scene === id && fs.existsSync(path.join(root, 'assets/room/dream', L.img)); }));
+  ids.forEach(function (id) {
+    var L = LS.LAYOUTS[id], bad = K.checkLayout(L);
+    check(id + ': home, stand points and doors are on the floor and outside every solid', bad.length === 0, JSON.stringify(bad));
+    var wd = K.world(L, []), starts = (L.doors.length ? L.doors : [L.home]).map(function (x) { return { x: x.x, y: x.y }; });
+    var targets = L.hotspots.map(function (h) { return h.wp; }).concat(starts).concat([L.home]), miss = [];
+    starts.forEach(function (a) { targets.forEach(function (t) { if (!(Math.abs(a.x - t.x) < 0.01 && Math.abs(a.y - t.y) < 0.01) && !K.plan(wd, a, t, 2)) miss.push([a.x, a.y, t.x, t.y].join(',')); }); });
+    check(id + ': the planner reaches every stand point, door and resting spot from every way in', miss.length === 0, miss.join(' | '));
+  });
+  var lane = LS.LAYOUTS.lane, door = function (L, id) { return L.doors.filter(function (d) { return d.id === id; })[0]; };
+  check('the lane: four shopfronts and the post box; each front is a place in ovu-lane.js, and only the fish store has no room yet', LS.FRONTS.map(function (f) { return f.place; }).join() === 'grocer,boutique,gym,fish' && LS.FRONTS.every(function (f) { return !!LN.place(f.place); }) && lane.hotspots.some(function (h) { return h.id === 'lanepost'; }) && LS.FRONTS.filter(function (f) { return !f.layout; }).map(function (f) { return f.id; }).join() === 'lanefish');
+  check('a shopfront is a doorstep that opens only where a walk ends; the path back to the harbour takes her the moment she steps on it', LS.FRONTS.every(function (f) { var d = door(lane, f.id); return d && K.passing(d) && d.tap === f.id && d.x === f.wp.x && d.y === f.wp.y && (f.layout ? d.to === f.layout : !d.to); }) && !K.passing(door(lane, 'laneexit')) && door(lane, 'laneexit').to === 'harbour');
+  var hb = Object.assign({}, H.LAYOUT, { doors: H.LAYOUT.doors.concat([LS.SIGNPOST]) }), sign = H.LAYOUT.hotspots.filter(function (h) { return h.id === 'hblane'; })[0];
+  check('on the harbour the signpost is a doorstep to the lane at its own stand point, on the floor and reachable from the farm path', LS.SIGNPOST.to === 'lane' && K.passing(LS.SIGNPOST) && sign && sign.wp.x === LS.SIGNPOST.x && sign.wp.y === LS.SIGNPOST.y && K.checkLayout(hb).length === 0 && !!K.plan(K.world(hb, []), { x: 34, y: 73 }, { x: LS.SIGNPOST.x, y: LS.SIGNPOST.y }, 2));
+  var e1 = K.entryFor(lane, 'harbour', 'harbour'), e2 = K.entryFor(hb, 'lane', 'lane'), e3 = K.entryFor(lane, 'lane-grocer', 'lane-grocer'), e4 = K.entryFor(LS.LAYOUTS['lane-grocer'], 'lane', 'lane'), e5 = K.entryFor(LS.LAYOUTS['lane-gym'], 'lane', 'lane'), e6 = K.entryFor(lane, 'lane-gym', 'lane-gym');
+  check('she arrives where she came in: the lane at its foot from the harbour, the harbour at the signpost, the lane at the door she left by, a room at its mat (the gym, whose drawn door is shut, on its floor)', e1.x === 51 && e1.y === 84 && e2.x === 23 && e2.y === 51 && e3.x === 47 && e3.y === 36 && e4.x === 50 && e4.y === 80 && e5.x === 46 && e5.y === 57 && e6.x === 55 && e6.y === 36, JSON.stringify([e1, e2, e3, e4, e5, e6]));
+  check('the gym has the four stations of the lane, in the same order', LS.GYMSPOTS.map(function (g) { return g.id; }).join() === LN.STATIONS.map(function (s) { return s.id; }).join());
+  var lays = {}; Object.keys(w.LAYOUTS).forEach(function (k) { lays[k] = w.LAYOUTS[k]; });
+  lays.farm = w.OvuFarm.LAYOUT; lays.harbour = hb; ids.forEach(function (id) { lays[id] = LS.LAYOUTS[id]; });
+  var g = MP.graph(lays, 'room'), path_ = MP.route(g, 'home', 'lane');
+  check('the map finds the lane by its doors from home (home, garden, farm, harbour, lane), and its rooms are not places on the map', !!g.nodes.lane && !g.nodes['lane-grocer'] && !g.nodes['lane-boutique'] && !g.nodes['lane-gym'] && !!path_ && path_.map(function (e) { return e.to; }).join() === 'garden,farm,harbour,lane', path_ && path_.map(function (e) { return e.to; }).join());
+  check('the rooms belong to the lane and are hidden from the map, as the barn’s rooms are', ids.slice(1).every(function (id) { var L = LS.LAYOUTS[id]; return L.mapHide === true && L.mapParent === 'lane' && L.indoor === true; }) && LS.onLane(lane) && LS.onLane(LS.LAYOUTS['lane-gym']) && !LS.onLane(H.LAYOUT));
+  check('the lane is cobbles underfoot; the rooms are the default wood', lane.surface === 'stone' && ids.slice(1).every(function (id) { return !LS.LAYOUTS[id].surface; }));
+  check('the places write nothing: no store writes, no hearts, no diary, no energy (every counter opens ovu-lane.js, whose own rules save)', !/setState\(|\.commit\(|\.award\(|\.grant\(|\.spend\(|\bS\.add\(|OvuStore|addMany\(|OvuRewards|OvuStamina/.test(src));
+  check('the rooms never set a store, so the walk engine’s Dream Street hours never apply; the lane checks its own hours', !/\bstore\s*:/.test(src) && /LN\.openNow\(f\.place\)/.test(src) && /LN\.openNow\('gym'\)/.test(src) && /LN\.openNow\('boutique'\)/.test(src));
+  /* the handlers, with stand-ins for the room, the walk and the lane: which place opens, and where she goes */
+  var hw = vm.createContext({ console: console }); hw.window = hw;
+  var calls = [], open = { grocer: true, boutique: true, gym: true, fish: true, post: true }, sleeping = false, napping_ = false, regs = [];
+  hw.OvuRoom = { LAYOUTS: { harbour: { id: 'harbour', doors: [{ id: 'harbourexit', to: 'farm' }] } }, hotspotHandlers: {}, asleep: function () { return sleeping; }, chime: function () {}, openWardrobe: function () { calls.push('wardrobe'); }, openExercise: function (a) { calls.push('exercise:' + a); }, moment: function (k) { calls.push('moment:' + k); } };
+  hw.OvuWalk = { napping: function () { return napping_; }, travel: function (t) { calls.push('travel:' + t); return true; } };
+  hw.OvuZones = { register: function (L) { regs.push(L.id); hw.OvuRoom.LAYOUTS[L.id] = L; } };
+  hw.OvuLane = { STATIONS: LN.STATIONS, openNow: function (id) { return open[id]; }, openPlace: function (id) { calls.push('place:' + id); } };
+  hw.document = { createElement: function () { return {}; } };
+  vm.runInContext(src, hw, { filename: 'ovu-lanescene.js' });
+  var HH = hw.OvuRoom.hotspotHandlers, Lof = function (id) { return hw.OvuRoom.LAYOUTS[id]; };
+  var run = function (hid, lid) { calls = []; var r = HH[hid](hid, Lof(lid)); return { r: r, calls: calls.join() }; };
+  check('the lane and its rooms register as zones, and the signpost joins the harbour’s doors once', regs.join() === 'lane,lane-grocer,lane-boutique,lane-gym' && Lof('harbour').doors.filter(function (d) { return d.id === 'hblane'; }).length === 1);
+  check('the signpost walks her up the lane; while she naps nothing moves; elsewhere it is not this handler’s', run('hblane', 'harbour').calls === 'travel:lane' && (napping_ = true, run('hblane', 'harbour').calls === '') && (napping_ = false, HH.hblane('hblane', Lof('lane')) === false));
+  check('an open shop takes her inside; the fish store, not drawn yet, opens its sheet; the post box opens the post', run('lanegrocer', 'lane').calls === 'travel:lane-grocer' && run('laneboutique', 'lane').calls === 'travel:lane-boutique' && run('lanegym', 'lane').calls === 'travel:lane-gym' && run('lanefish', 'lane').calls === 'place:fish' && run('lanepost', 'lane').calls === 'place:post');
+  open.grocer = false; var shutG = run('lanegrocer', 'lane'); open.grocer = true; sleeping = true; var sleptB = run('laneboutique', 'lane'); sleeping = false;
+  check('a shut shop or a sleeping avatar: the place’s own card says why (its hours, or that she is asleep) and she stays outside', shutG.calls === 'place:grocer' && sleptB.calls === 'place:boutique');
+  check('inside: the counters open the grocer and the boutique, the fitting room opens her wardrobe, each station opens the movement log with its activity, and every way out goes to the lane', run('grocercounter', 'lane-grocer').calls === 'place:grocer' && run('grocerrack', 'lane-grocer').calls === 'place:grocer' && run('boutiquerail', 'lane-boutique').calls === 'place:boutique' && run('boutiquefit', 'lane-boutique').calls === 'wardrobe' && run('gymtreadmill', 'lane-gym').calls === 'exercise:walk,moment:gym' && run('gymweights', 'lane-gym').calls === 'exercise:strength,moment:gym' && ['grocermat:lane-grocer', 'boutiquemat:lane-boutique', 'gymdoor:lane-gym'].every(function (x) { var q = x.split(':'); return run(q[0], q[1]).calls === 'travel:lane'; }) && run('laneexit', 'lane').calls === 'travel:harbour');
+  open.gym = false; var shutGym = run('gymbike', 'lane-gym'); open.gym = true; open.boutique = false; var shutFit = run('boutiquefit', 'lane-boutique'); open.boutique = true;
+  check('inside after closing time a station or the fitting room shows the closed card instead, and nothing is logged or opened', shutGym.calls === 'place:gym' && shutFit.calls === 'place:boutique');
+  check('each handler answers only in its own place', HH.lanegrocer('lanegrocer', Lof('harbour')) === false && HH.grocercounter('grocercounter', Lof('lane')) === false && HH.gymdoor('gymdoor', Lof('lane-boutique')) === false);
+  check('room.html loads the lane’s places right after the lane, and the service worker has a new version', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('<script src="ovu-lanescene.js"></script>') === h.indexOf('<script src="ovu-lane.js"></script>') + '<script src="ovu-lane.js"></script>\n'.length; })() && !/life2'/.test(fs.readFileSync(path.join(root, 'sw.js'), 'utf8')));
+})();
+
 (function farmKitchen() {
   console.log('2k8a. the farm kitchen (21 Oct): staples for hearts in one save, recipes from the basket and the barn, cooking in one save with no hearts, no energy and no diary; no fish');
   var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
