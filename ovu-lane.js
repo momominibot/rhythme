@@ -64,8 +64,9 @@
     { id: 'studio-first', from: 'Mint Studio', title: 'You moved', when: function (f) { return f.moved > 0; },
       body: function () { return ['You logged some movement.', 'However much or little, it is yours. There are no targets at Mint Studio and nothing to keep up.']; } }
   ];
-  function letters(facts) { facts = facts || {}; return LETTERS.filter(function (l) { try { return !!l.when(facts); } catch (e) { return false; } }).map(function (l) { return { id: l.id, from: l.from, title: l.title, body: l.body(facts) }; }); }
-  function mailState(state) { var m = (state && state.mail) || {}; return { read: (m.read && typeof m.read === 'object') ? m.read : {}, arrived: (m.arrived && typeof m.arrived === 'object') ? m.arrived : {} }; }
+  function letters(facts, arrived) { facts = facts || {}; arrived = arrived || {}; return LETTERS.filter(function (l) { if (arrived[l.id]) return true; try { return !!l.when(facts); } catch (e) { return false; } }).map(function (l) { return { id: l.id, from: l.from, title: l.title, body: l.body(facts) }; }); }
+  function cleanMap(o) { var out = {}; if (o && typeof o === 'object' && !Array.isArray(o)) Object.keys(o).forEach(function (k) { if (typeof o[k] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o[k]) && /^[a-z0-9-]{1,40}$/.test(k)) out[k] = o[k]; }); return out; }
+  function mailState(state) { var m = (state && state.mail) || {}; return { read: cleanMap(m.read), arrived: cleanMap(m.arrived) }; } /* a copy, cleaned: a failed save never leaves the live state changed (Codex sweep, 21 Oct) */
   function unread(list, mail) { return list.filter(function (l) { return !mail.read[l.id]; }).length; }
   var LN = { LAYOUT: LANE, SIGN: SIGN, SHOPS: SHOPS, SHELF: SHELF, LETTERS: LETTERS, letters: letters, mailState: mailState, unread: unread, BENCH_BACK: BENCH_BACK };
   root.OvuLane = LN;
@@ -79,7 +80,7 @@
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function here() { var L = R.layout(); return !!L && L.id === 'lane'; }
   var foods = null;
-  function loadFoods() { if (foods) return Promise.resolve(foods); return fetch('assets/data/ovarian-foods.json').then(function (r) { return r.json(); }).then(function (d) { foods = d; return d; }).catch(function () { return null; }); }
+  function loadFoods() { if (foods) return Promise.resolve(foods); return fetch('assets/data/ovarian-foods.json').then(function (r) { if (!r.ok) throw new Error('food list ' + r.status); return r.json(); }).then(function (d) { if (!d || !Array.isArray(d.foods)) throw new Error('food list shape'); foods = d; return d; }).catch(function () { return null; }); } /* a failed or odd answer is never kept (Codex sweep, 21 Oct) */
   /* what has happened in her world, for the letters */
   function facts() {
     var f = {}, FM = root.OvuFarm, HB = root.OvuHarbour;
@@ -89,7 +90,7 @@
     return f;
   }
   function myLetters() {
-    var list = letters(facts()), mail = mailState(S.state()), today = S.today(), changed = false;
+    var mail = mailState(S.state()), list = letters(facts(), mail.arrived), today = S.today(), changed = false; /* a letter that arrived stays, even if its moment is later undone */
     list.forEach(function (l) { if (!mail.arrived[l.id]) { mail.arrived[l.id] = today; changed = true; } l.arrived = mail.arrived[l.id]; l.read = !!mail.read[l.id]; });
     if (changed) { try { S.setState({ mail: { read: mail.read, arrived: mail.arrived } }); } catch (e) { } }
     list.sort(function (a, b) { return (a.read === b.read ? 0 : a.read ? 1 : -1) || String(b.arrived).localeCompare(String(a.arrived)); });
@@ -105,6 +106,7 @@
       '<div class="outfits" id="lbOutfits">' + list.map(function (o) { return '<button type="button" class="outfit' + (o.id === cur ? ' on' : '') + '" data-id="' + esc(o.id) + '" aria-pressed="' + (o.id === cur ? 'true' : 'false') + '"><img src="' + ART + 'avatar-' + esc(o.id) + '.webp" alt=""><b>' + esc(o.name) + '</b><small>' + esc(o.note || '') + '</small></button>'; }).join('') + '</div>');
     var box = $('lbOutfits'); if (box) box.addEventListener('click', function (e) {
       var b = e.target.closest('.outfit'); if (!b || !R.setOutfit) return;
+      if (R.asleep()) { R.toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } /* bedtime in another tab keeps her pyjamas */
       R.setOutfit(b.dataset.id); R.chime('tap');
       Array.prototype.forEach.call(box.querySelectorAll('.outfit'), function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on ? 'true' : 'false'); });
       var o = list.filter(function (x) { return x.id === b.dataset.id; })[0]; R.toast((o ? o.name : 'That look') + ' it is.', 'checkroom');
@@ -177,6 +179,7 @@
   function renderFlag() {
     if (!here()) { if (flag) { flag.remove(); flag = null; } return; }
     var n = unread(myLetters(), mailState(S.state()));
+    var hs0 = doc.querySelector('.hotspot[data-id="postbox"]'); if (hs0) hs0.setAttribute('aria-label', n ? 'Post box, ' + n + ' new letter' + (n === 1 ? '' : 's') : 'Post box, your letters');
     if (!n) { if (flag) { flag.remove(); flag = null; } return; }
     if (!flag || !flag.isConnected) { flag = doc.createElement('span'); flag.className = 'laneflag'; flag.setAttribute('aria-hidden', 'true'); flag.style.left = '73.5%'; flag.style.top = '58%'; R.els.props.appendChild(flag); }
     flag.textContent = String(n);

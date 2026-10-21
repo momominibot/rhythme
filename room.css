@@ -2020,6 +2020,10 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 @keyframes seatstreak{0%,100%{transform:translate(calc(-50% - 26px),-50%);opacity:0}50%{transform:translate(calc(-50% + 26px),-50%);opacity:.85}}
 #seatfx .glint{aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff 0 18%,rgba(196,176,255,.65) 42%,rgba(196,176,255,0) 70%);animation:seatglint 7s ease-in-out infinite}
 @keyframes seatglint{0%,100%{opacity:0}50%{opacity:.9}}
+/* the bench by the tree: flecks of light through the canopy, slow and out of step (21 Oct) */
+#seatfx .fleck{aspect-ratio:1.9/1;border-radius:50%;background:radial-gradient(ellipse at center,rgba(255,250,224,.9) 0 30%,rgba(255,243,200,.35) 52%,rgba(255,243,200,0) 72%);animation:seatfleck 9s ease-in-out infinite}
+@keyframes seatfleck{0%,100%{transform:translate(-50%,-50%) scale(.8);opacity:0}25%{opacity:.5}50%{transform:translate(calc(-50% + 7px),calc(-50% + 2px)) scale(1.05);opacity:.8}75%{opacity:.4}}
+.scene.is-night #seatfx .fleck,.scene.sky-night #seatfx .fleck{filter:saturate(.15) brightness(.8)}
 @media (prefers-reduced-motion: reduce){#seatfx i{animation:none!important;opacity:.35}#seatfx .mote,#seatfx .spark,#seatfx .glint,#seatfx .streak{opacity:.22}#seatfx b{display:none}}
 .seatpanel .mp-btns{display:flex;flex-wrap:wrap;gap:8px}
 .seatpanel .mp-btns .btn{flex:1 1 40%}

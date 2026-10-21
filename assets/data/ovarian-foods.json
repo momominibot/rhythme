@@ -4,7 +4,7 @@
   {
    "name": "Salmon",
    "emoji": "🐟",
-   "tags": "Omega-3 · Vitamin D · Blood builder",
+   "tags": "Omega-3 · Vitamin D · Protein",
    "tcm": "Nourishes blood, warms yang",
    "phase": [
     "follicular",
@@ -42,7 +42,7 @@
   {
    "name": "Sweet Potato",
    "emoji": "🍠",
-   "tags": "Beta-carotene · Fiber · Vitamin A",
+   "tags": "Beta-carotene · Fibre · Vitamin A",
    "tcm": "Tonifies qi, harmonizes stomach",
    "phase": [
     "luteal",
@@ -54,7 +54,7 @@
   {
    "name": "Oats",
    "emoji": "🥣",
-   "tags": "Fiber · B vitamins · Iron",
+   "tags": "Fibre · B vitamins · Iron",
    "tcm": "Tonifies spleen, nourishes qi",
    "phase": [
     "follicular",
@@ -66,7 +66,7 @@
   {
    "name": "Ginger",
    "emoji": "🫚",
-   "tags": "Anti-inflammatory · Digestive",
+   "tags": "Spice · Gingerols",
    "tcm": "Warms middle, dispels cold",
    "phase": [
     "menstrual",
@@ -77,7 +77,7 @@
   {
    "name": "Turmeric",
    "emoji": "🟡",
-   "tags": "Curcumin · Anti-inflammatory",
+   "tags": "Spice · Curcumin",
    "tcm": "Invigorates blood, moves qi",
    "phase": [
     "luteal",
@@ -89,7 +89,7 @@
   {
    "name": "Berries",
    "emoji": "🫐",
-   "tags": "Antioxidants · Vitamin C",
+   "tags": "Vitamin C · Fibre",
    "tcm": "Nourishes yin, generates fluids",
    "phase": [
     "follicular",
@@ -125,7 +125,7 @@
   {
    "name": "Dark Chocolate",
    "emoji": "🍫",
-   "tags": "Magnesium · Iron · Mood",
+   "tags": "Magnesium · Iron",
    "tcm": "Moves blood, lifts mood",
    "phase": [
     "luteal"
@@ -136,7 +136,7 @@
   {
    "name": "Chamomile Tea",
    "emoji": "🍵",
-   "tags": "Calming · Digestive",
+   "tags": "Caffeine-free herbal tea",
    "tcm": "Calms spirit, soothes liver",
    "phase": [
     "luteal",
@@ -147,7 +147,7 @@
   {
    "name": "Bone Broth",
    "emoji": "🍲",
-   "tags": "Collagen · Minerals · Amino acids",
+   "tags": "Protein · Minerals",
    "tcm": "Nourishes yin, builds blood",
    "phase": [
     "menstrual",
@@ -181,7 +181,7 @@
   {
    "name": "Citrus",
    "emoji": "🍊",
-   "tags": "Vitamin C · Bioflavonoids",
+   "tags": "Vitamin C · Fibre",
    "tcm": "Moves qi, regulates liver",
    "phase": [
     "ovulatory",
@@ -216,7 +216,7 @@
   {
    "name": "Yogurt",
    "emoji": "🥛",
-   "tags": "Probiotics · Calcium · Protein",
+   "tags": "Calcium · Protein",
    "tcm": "Nourishes yin, clears heat",
    "phase": [
     "follicular",
@@ -239,7 +239,7 @@
   {
    "name": "Cinnamon",
    "emoji": "🪵",
-   "tags": "Blood sugar · Anti-inflammatory",
+   "tags": "Spice",
    "tcm": "Warms yang, invigorates blood",
    "phase": [
     "menstrual",
@@ -261,7 +261,7 @@
   {
    "name": "Green Tea",
    "emoji": "🍃",
-   "tags": "Antioxidants · L-theanine",
+   "tags": "Catechins · L-theanine · Caffeine",
    "tcm": "Clears heat, calms spirit",
    "phase": [
     "ovulatory",
@@ -272,7 +272,7 @@
   {
    "name": "Mushrooms",
    "emoji": "🍄",
-   "tags": "Vitamin D · Immunity · Adaptogens",
+   "tags": "B vitamins · Selenium · Fibre",
    "tcm": "Tonifies qi, nourishes yin",
    "phase": [
     "follicular",
@@ -284,7 +284,7 @@
  "phases": {
   "menstrual": {
    "label": "Menstrual phase",
-   "text": "Your body is releasing and renewing. Focus on warming, blood-building foods that are easy to digest. Rest and nourish.",
+   "text": "Iron-rich foods such as leafy greens, lentils, tofu and fish, with something rich in vitamin C to help your body take up the iron, and warm meals if they feel comforting.",
    "foods": [
     "Bone Broth",
     "Ginger",
@@ -297,7 +297,7 @@
   },
   "follicular": {
    "label": "Follicular phase",
-   "text": "Energy is rising. Support follicle growth with nutrient-dense, blood-building foods and gentle movement.",
+   "text": "Ordinary balanced meals: vegetables, whole grains, beans and lentils, and some protein at each meal.",
    "foods": [
     "Salmon",
     "Eggs",
@@ -310,7 +310,7 @@
   },
   "ovulatory": {
    "label": "Ovulatory phase",
-   "text": "Peak energy and vitality. Support liver detox and hormone balance with fresh, light foods.",
+   "text": "Fresh, light meals and plenty of water, if that is what you fancy.",
    "foods": [
     "Berries",
     "Citrus",
@@ -322,7 +322,7 @@
   },
   "luteal": {
    "label": "Luteal phase",
-   "text": "Progesterone rises. Support mood stability and reduce inflammation with magnesium-rich, warming foods.",
+   "text": "Regular meals with whole grains, nuts, seeds and leafy greens, which are good sources of magnesium.",
    "foods": [
     "Dark Chocolate",
     "Pumpkin Seeds",
@@ -333,5 +333,6 @@
    ]
   }
  },
- "art": "Food illustrations from Ovuluna (Jamie’s earlier app, ovuluna.vercel.app), ported 21 Oct 2026"
+ "art": "Food illustrations from Ovuluna (Jamie’s earlier app, ovuluna.vercel.app), ported 21 Oct 2026",
+ "note": "Food ideas only, not a diet or a treatment. Tags are nutrients a food is a source of (USDA FoodData Central); phase texts make no claim about hormones, the liver or inflammation (Codex sweep, 21 Oct 2026). Vitamin C helps the body absorb iron from plant foods (NIH ODS iron fact sheet)."
 }

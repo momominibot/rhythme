@@ -214,7 +214,7 @@
     el.className = 'nb sitter'; el.dataset.id = 'sitter'; el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', 'You are sitting on the bench. Tap to get up.');
     el.style.left = spot.x + '%'; el.style.top = spot.y + '%'; el.style.width = spot.w + '%';
     if (spot.seat) seatPlace(el, spot.seat);
-    el.innerHTML = '<img src="' + ART + 'avatar-' + outfitId() + '.webp" alt="">'; wrap.appendChild(el); seatedImg(el.querySelector('img'), el.querySelector('img').src);
+    el.innerHTML = '<img src="' + ART + 'avatar-' + (/^[a-z0-9-]{1,32}$/.test(outfitId() || '') ? outfitId() : 'base') + '.webp" alt="">'; /* an imported outfit name never becomes markup (Codex sweep, 21 Oct) */ wrap.appendChild(el); seatedImg(el.querySelector('img'), el.querySelector('img').src);
     sitting = { spot: spot, back: back, el: el }; R.els.scene.classList.add('sitting'); R.chime('tap');
     R.toast('Sitting a while. Tap anywhere to get up.', 'chair');
   }

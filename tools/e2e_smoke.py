@@ -1491,14 +1491,15 @@ async def main():
             # the plaza: a bench of its own, and sleep ends a practice with nothing asked
             await go_to('plaza')
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bench2'))")
-            try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='seat-plaza'", timeout=12000)
+            try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='seat-tree'", timeout=12000)
             except Exception: pass
+            pzname = await page.evaluate("()=>document.querySelector('.sheet .erin b') && document.querySelector('.sheet .erin b').textContent")
             await page.click('#seatBegin'); await page.wait_for_timeout(400)
-            pz = await page.evaluate("()=>({st: OvuSeats.state(), fx: OvuSeats.fxKind(), sparks: document.querySelectorAll('#seatfx .spark').length, leaves: document.querySelectorAll('#seatfx .leaf').length})")
+            pz = await page.evaluate("()=>({st: OvuSeats.state(), fx: OvuSeats.fxKind(), flecks: document.querySelectorAll('#seatfx .fleck').length, sparks: document.querySelectorAll('#seatfx .spark').length})")
             await page.evaluate("()=>OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}})"); await page.wait_for_timeout(400)
             pz2 = await page.evaluate("()=>({run: !!OvuSeats.state(), sitter: !!document.querySelector('.seatsitter'), hidden: document.querySelector('#avatar').classList.contains('hidden'), panel: document.querySelector('#spanel').hidden, sheet: OvuRoom.sheetOpen(), fx: OvuSeats.fxKind()})")
             await page.evaluate("()=>OvuStore.setState({sleeping:null})"); await page.wait_for_timeout(200)
-            check("the bench by the tree is a seat of its own with Wishing well, sparkles and leaves; falling asleep ends the practice at once with nothing asked and nothing left behind", pz["st"]["seat"] == "plaza:bench2" and pz["st"]["key"] == "plaza0" and pz["fx"] == "square" and pz["sparks"] == 9 and pz["leaves"] == 6 and not pz2["run"] and not pz2["sitter"] and not pz2["hidden"] and pz2["panel"] and not pz2["sheet"] and pz2["fx"] is None, {"pz": pz, "pz2": pz2})
+            check("the bench by the tree is a seat of its own with In the shade and flecks of light, not the board bench's words; falling asleep ends the practice at once with nothing asked and nothing left behind", pzname == "In the shade" and pz["st"]["seat"] == "plaza:bench2" and pz["st"]["key"] == "tree0" and pz["fx"] == "shade" and pz["flecks"] == 14 and pz["sparks"] == 0 and not pz2["run"] and not pz2["sitter"] and not pz2["hidden"] and pz2["panel"] and not pz2["sheet"] and pz2["fx"] is None, {"pz": pz, "pz2": pz2})
             # the harbour bench with reduced motion: Just watch, still water, and the colour line instead of the ripple
             await page.emulate_media(reduced_motion="reduce")
             await go_to('harbour')

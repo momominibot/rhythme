@@ -90,7 +90,7 @@
   /* her seated sprite on the warm stone while the tone plays; one Stop for both */
   function sitDown() {
     if (sitting || !inCave()) return;
-    var G = root.OvuGarden, el = doc.createElement('div'), outfit = S.profile().outfit || 'base';
+    var G = root.OvuGarden, el = doc.createElement('div'), outfit = (function (o) { return /^[a-z0-9-]{1,32}$/.test(o || '') ? o : 'base'; })(S.profile().outfit); /* an imported outfit name never becomes markup (Codex sweep, 21 Oct) */
     el.className = 'nb springsitter tonesitter'; el.dataset.id = 'tonesitter'; el.setAttribute('aria-hidden', 'true');
     el.innerHTML = '<img src="' + ART + 'avatar-' + outfit + '.webp" alt="">';
     var stopBtn = doc.createElement('button'); stopBtn.type = 'button'; stopBtn.className = 'springstop'; stopBtn.id = 'springStop'; stopBtn.innerHTML = '<span class="ms">stop_circle</span>Stop sound and stand up';

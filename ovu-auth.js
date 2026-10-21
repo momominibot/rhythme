@@ -333,7 +333,7 @@
         try { location.replace('room.html'); } catch (e) { }
       }
     };
-    if (s) return call('POST', '/auth/v1/logout', {}, s.access_token).then(done, done);
+    if (s) { try { localStorage.removeItem(AUTH_LS); } catch (e) { } return call('POST', '/auth/v1/logout', {}, s.access_token).then(done, done); } /* the session is gone on this phone at once, not after the network (Codex sweep, 21 Oct) */
     done(); return Promise.resolve();
   }
 

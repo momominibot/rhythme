@@ -214,7 +214,8 @@
     if (!run) return;
     if (R().asleep()) { cancel(); return; }
     var cur = step(); if (cur && skippedNow && run.skipped.indexOf(cur.key) < 0 && !cur.erin) run.skipped.push(cur.key);
-    if (cur && cur.group && !cur.gate && !run.skipping && run.i === groupEnd(cur.group)) run.done[cur.group] = true; /* the last line of a part, reached: that part was finished */
+    if (cur && cur.group && !cur.gate && skippedNow) { run.nexted = run.nexted || {}; run.nexted[cur.group] = true; } /* Next before a line was over: that part was not finished (Codex sweep, 21 Oct) */
+    if (cur && cur.group && !cur.gate && !run.skipping && run.i === groupEnd(cur.group) && !(run.nexted && run.nexted[cur.group])) run.done[cur.group] = true; /* the last line of a part, reached: that part was finished */
     clearTimeout(run.timer); stopAudio(); leaveStep();
     run.i++;
     var s = step(); if (!s) { finish(true); return; }
@@ -300,7 +301,7 @@
     run.skipped.push(s.group === 'teeth' ? 'brushing' : s.group);
     clearTimeout(run.timer); stopAudio();
     var end = groupEnd(s.group); if (end < 0 || end >= run.steps.length - 1) { finish(true); return; }
-    run.skipping = true; run.i = end; next(false); run.skipping = false;
+    var r0 = run; run.skipping = true; run.i = end; next(false); if (run === r0) run.skipping = false;
   }
   var skipBrushing = skipGate;
   /* in the middle of a part: the rest of it is left out; time already spent on it counts */
@@ -308,7 +309,7 @@
     var s = step(); if (!run || !s || s.gate || !s.group) return;
     leaveStep(); /* her time goes to the line she was on, before the index moves (persona walk, 21 Oct: wake-up listening was booked as brushing) */
     run.skipped.push(s.group); clearTimeout(run.timer); stopAudio();
-    run.skipping = true; run.i = groupEnd(s.group); next(false); run.skipping = false;
+    var r0 = run; run.skipping = true; run.i = groupEnd(s.group); next(false); if (run === r0) run.skipping = false; /* skipping the last part ends the run (Codex sweep, 21 Oct) */
   }
   function stop() { if (!run) return; finish(false); }
   /* sleep, or anything that ends the room's day: everything stops at once and nothing is offered */
@@ -351,8 +352,8 @@
       /* one entry per part she really did; a morning with no part of 30 seconds (she stopped in Erin's opening words) saves the plain morning entry, as the short pause does */
       var datas = r.version === 'erin' ? parts.map(function (g) { return partEntry(g, { seconds: byPart[g] / 1000, confirmed: true, finished: !!r.done[g] }); }).filter(Boolean) : [entryData({ seconds: exact, confirmed: true, version: r.version, skipped: r.skipped, brushed: r.brushed, finished: finished })].filter(Boolean);
       if (!datas.length) { room.closeSheet(); return; }
-      var evs = [];
-      try { datas.forEach(function (data) { evs.push(S().add('mindfulness', day, data)); }); } catch (e) { room.toast('This pause could not be saved: ' + e.message + ' Try again, or tap Not this time.', 'error'); saved = evs.length > 0; if (!saved) return; } /* the sheet stays for a retry; parts already saved are not saved twice */
+      var evs = r.savedEvs = r.savedEvs || []; r.savedIdx = r.savedIdx || {};
+      try { datas.forEach(function (data, i) { if (r.savedIdx[i]) return; evs.push(S().add('mindfulness', day, data)); r.savedIdx[i] = true; }); } catch (e) { room.toast('Part of this could not be saved: ' + e.message + ' Tap Yes to try the rest again, or Not this time.', 'error'); return; } /* the sheet stays; parts already saved are not saved twice (Codex sweep, 21 Oct) */ /* the sheet stays for a retry; parts already saved are not saved twice */
       saved = true; room.closeSheet();
       try { markToday({ done: true }, day); } catch (e) { } /* the entries are saved; only the invitation's note for today failed */
       hideInvite();
