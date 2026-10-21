@@ -2922,6 +2922,11 @@
     $('#journalBtn').href = 'journal.html'; $('#shareBtn').href = 'journal.html#share';
     if (!S.state().tourDone) { setTimeout(function () { $('#hint').classList.add('on'); }, 1200); setTimeout(function () { $('#hint').classList.remove('on'); S.setState({ tourDone: true }); }, 7000); }
     if (!S.state().lunaSeen) { setTimeout(function () { $('#lunaBtn').classList.add('hinting'); }, 2500); setTimeout(function () { $('#lunaBtn').classList.remove('hinting'); S.setState({ lunaSeen: true }); }, 9000); }
+    /* a newer version taking over this page stops its syncing at once, and reloads it when she has looked away with
+       nothing unsaved: no sheet or form open (so no Luna card either), no session, practice, meditation or Morning start
+       running, no file being read or waiting to be picked from, and not arranging the room (ovu-sync.js) */
+    if (window.OvuSync && OvuSync.watchUpdates) OvuSync.watchUpdates(function () { toast('A new version of Rhythme is ready. It opens next time you come back.', 'system_update'); },
+      function () { return !current && !careOn && !meditating && !session && !practice && !importing && !imp.scan && !arranging && !(window.OvuMorning && OvuMorning.active()); });
     if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () { });
     RM.start(function (h) { chime('bell', true); toast(h.item.label + (h.item.note ? ' · ' + h.item.note : ''), h.item.icon); });
     document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } if (e.target.closest('#arrDone')) exitArrange(false); if (e.target.closest('#arrReset')) exitArrange(true); });

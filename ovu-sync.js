@@ -11,9 +11,13 @@
  * readable on the server; launch sweep, 20 Oct 2026). The server keeps the
  * client's updatedAt (its touch trigger is dropped), so everything is one clock.
  *
- * Pull is incremental (rows that reached the server after the last one we pulled,
- * by synced_at then id), so wiping this phone and reloading does not re-download
- * the whole cloud; only a brand-new install (no cursor) restores the full diary. */
+ * Pull is incremental (rows that reached the server after the last one we pulled),
+ * so wiping this phone and reloading does not re-download the whole cloud; only a
+ * brand-new install (no cursor) restores the full diary. Rows come by the id of
+ * the transaction that wrote them (sync_xid, id), and only once every lower one has
+ * ended, so a long upload that commits late can never land behind the cursor. This
+ * version never pulls by synced_at: on a server without entries_pull
+ * (20261020120000_sync_pull_commit_order.sql not applied) the sync pauses. */
 (function (root) {
   'use strict';
   var S = root.OvuStore;
@@ -31,14 +35,23 @@
   var listeners = [];
   var statusNow = { state: 'idle', at: null, error: null };
   var busy = false, busyPromise = null, debounceTimer = null;
+  /* set when a newer version of the app has taken over this page (watchUpdates): this page never syncs again */
+  var retired = false;
+  /* what the person reads when the server has no entries_pull (Jamie, 20 Oct, R5-B: no pull by time in this version) */
+  var PULL_PAUSED = 'Cloud backup is paused until the cloud is updated again. Everything stays safe on this phone.';
 
   /* ---------- sync position (one object in localStorage) ---------- */
   function loadState() {
     try { var s = JSON.parse(localStorage.getItem(LS) || 'null'); if (s && s.v === 1) { s.shadow = s.shadow || {}; s.tombstones = s.tombstones || {}; return s; } } catch (e) { }
-    /* pulledSeq, pulledId: the incremental pull's cursor, the last row it saw (synced_at exactly as the server wrote
-       it, and that row's id); pulledSeq without pulledId is an older version's millisecond cursor.
+    /* pulledXid, pulledXidId: the transaction-ordered pull's cursor, the last row it saw (its transaction id as text, and
+       its id), or the fence with no id once a page came back short. pullSince: { at, id, snap }, a hand-over in progress
+       from the older time cursor, with the snapshot it began with.
+       pulledSeq, pulledId: the time cursor older versions pull by (synced_at exactly as the server wrote it, and that
+       row's id). This version never pulls by it: a hand-over starts from it, and each pull moves it to the server's
+       time_safe for a tab still on an older version; pulledSeq without pulledId is an older version's millisecond
+       cursor.
        pushedAt: the newest local updatedAt we have pushed, so unchanged rows are not re-sent. */
-    return { v: 1, gen: 0, userId: null, shadow: {}, tombstones: {}, pulledSeq: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null };
+    return { v: 1, gen: 0, userId: null, shadow: {}, tombstones: {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null };
   }
   /* gen: bumped by every reset and every account switch. A sync captures it when it starts and checks it, with the
      account, before each request and before every write, so a sync that a sign-out or a switch overtook can never
@@ -179,7 +192,7 @@
   function consentForUser(p, uid) { var c = (p || {}).cloud; return consentOk(p) && c.uid === uid; }
   /* nothing moves without a session, the cloud choice for this account, the 18+ attestation and the current notice (ovu-consent.js) */
   function doorOpen() { var C = root.OvuConsent; return !C || (!C.needsSheet() && C.allows('cloud_sync')); }
-  function canSync() { var s = session(); return !!(s && s.user && consentForUser(S.profile(), s.user.id) && doorOpen()); }
+  function canSync() { var s = session(); return !retired && !!(s && s.user && consentForUser(S.profile(), s.user.id) && doorOpen()); }
 
   /* ---------- REST ---------- */
   function rest(method, path, body, prefer, token) {
@@ -188,39 +201,81 @@
     return fetch(CFG.supabaseUrl + '/rest/v1' + path, { method: method, headers: h, body: body != null ? JSON.stringify(body) : undefined }).then(function (r) {
       return r.text().then(function (t) {
         var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { }
-        if (!r.ok) throw new Error('rest ' + r.status + (j && j.message ? ' ' + j.message : ''));
+        if (!r.ok) { var err = new Error('rest ' + r.status + (j && j.message ? ' ' + j.message : '')); err.status = r.status; err.code = (j && j.code) || null; throw err; }
         return j;
       });
     });
   }
 
-  /* A PostgREST filter value in double quotes, so commas, brackets, dots and colons in it are read as text. */
-  function quoted(v) { return '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; }
-  /* Rows after the cursor in (synced_at, id) order. A cursor an older version saved (a millisecond time, no id)
-     resumes from that millisecond inclusive: rows it already had may come again, which is harmless, but none are missed. */
-  function afterCursor(at, id) {
-    if (!at) return '';
-    if (id == null) return '&synced_at=gte.' + encodeURIComponent(at);
-    return '&or=' + encodeURIComponent('(synced_at.gt.' + quoted(at) + ',and(synced_at.eq.' + quoted(at) + ',id.gt.' + quoted(id) + '))');
-  }
-  /* Pull every entry whose server arrival is after the cursor, oldest first, in pages (PostgREST caps a response,
-     so a full restore needs more than one), at most 20,000 rows a sync. The cursor is the last row seen: its
-     synced_at exactly as the server wrote it, and its id. One upload stamps all its rows with one now(), so ids tell
-     those rows apart, and the server's microseconds are never rounded to milliseconds; a page or the 20,000 cap can
-     split such a group without skipping or fetching again any of it. Returns the rows and the new cursor. */
-  function pullSince(at, id, token) {
-    var PAGE = 1000, all = [], cur = { at: at || null, id: at && id != null ? id : null };
-    var base = '/entries?select=*&order=synced_at.asc,id.asc&limit=' + PAGE;
+  /* A transaction id (xid8) as the server writes it: decimal, no leading zeros. Kept as text and compared by length,
+     then digit by digit, because it can be larger than a JavaScript number holds exactly. */
+  function isXid(v) { return typeof v === 'string' && /^(0|[1-9][0-9]{0,19})$/.test(v); }
+  function xidCmp(a, b) { return a.length - b.length || (a < b ? -1 : a > b ? 1 : 0); }
+  /* A snapshot as the server writes it ('xmin:xmax:xip_list', transaction ids in text); returns its xmax, or null. */
+  function snapXmax(v) { var m = typeof v === 'string' && v.length < 65536 ? /^(0|[1-9][0-9]{0,19}):(0|[1-9][0-9]{0,19}):((0|[1-9][0-9]{0,19})(,(0|[1-9][0-9]{0,19}))*)?$/.exec(v) : null; return m ? m[2] : null; }
+  /* the server has no entries_pull (20261020120000_sync_pull_commit_order.sql not applied): PostgREST answers PGRST202 */
+  function rpcMissing(err) { return !!err && err.status === 404 && err.code === 'PGRST202'; }
+  /* The transaction-ordered pull. Rows come in (sync_xid, id) order, and only from transactions that have all ended:
+     the server cuts every page at a fence, the lowest transaction id still running, and any later write gets a higher
+     id. So a long upload that started before a short one and commits after it can never land behind the cursor; its
+     rows wait for the next page or the next sync instead. (This is transaction id order, not commit order: a lower id
+     that commits later still comes first, once final.) When a page comes back short, everything below the fence has
+     been seen, and the cursor moves up to the fence itself (id null: from that transaction id on). One upload is one
+     transaction id, so ids tell its rows apart and a page or the 20,000 cap can split it without skipping or fetching
+     again any of it.
+     `hand` is the hand-over from an older version's time cursor: { at, id, snap }. The server applies that cursor only
+     to rows whose transaction had ended when the hand-over began (the snapshot `snap`, which the first page returns),
+     so nothing the older version pulled comes again (rows cleared from this phone on purpose stay cleared), and a write
+     still open at that moment arrives once it ends. It is kept until the cursor reaches the snapshot's xmax, beyond
+     which no row can be one the older version saw.
+     Every page also returns `time_safe`, the (synced_at, id) the server certifies as a safe time cursor for the position
+     this page leaves: every visible row before it has reached this phone or was covered by the hand-over, compared in
+     the server's own collation (ties on one instant), and bounded by the earliest row still to come (backlog past the
+     cap, rows held behind the fence). It never goes back past `time`, the time cursor this sync started from. The time
+     cursor follows it only for a tab still running an older version, which can pull by nothing else; that tab's
+     weaker guarantee is in docs/design/2026-10-20-sync-commit-order.md (premortem 5). */
+  function pullCommitted(xid, id, hand, time, token) {
+    var PAGE = 1000, all = [], cur = { xid: xid || null, id: xid && id != null ? id : null }, timeSafe = null;
     function page() {
-      return rest('GET', base + afterCursor(cur.at, cur.id), null, null, token).then(function (rows) {
-        rows = rows || []; all = all.concat(rows);
-        if (rows.length) { var last = rows[rows.length - 1]; cur = { at: last.synced_at, id: last.id }; }
+      return rest('POST', '/rpc/entries_pull', { p_after_xid: cur.xid, p_after_id: cur.id, p_since: hand ? hand.at : null, p_since_id: hand && hand.id != null ? hand.id : null, p_handover: hand ? hand.snap || null : null, p_time_at: time ? time.at : null, p_time_id: time && time.id != null ? time.id : null, p_limit: PAGE }, null, token).then(function (res) {
+        var rows = res && res.rows, ts = res ? res.time_safe : undefined;
+        if (!Array.isArray(rows) || !isXid(res.fence) || !rows.every(function (r) { return r && isXid(r.sync_xid) && xidCmp(r.sync_xid, res.fence) < 0; })
+          || !(ts === null || (ts && micros(ts.at) >= 0 && (ts.id === null || typeof ts.id === 'string')))
+          || (hand && !hand.snap && !snapXmax(res.snapshot))) throw new Error('The cloud sent a pull reply this version does not understand.');
+        if (hand && !hand.snap) hand = { at: hand.at, id: hand.id, snap: res.snapshot }; /* the hand-over begins with this page's view */
+        all = all.concat(rows); timeSafe = ts;
+        if (rows.length) { var last = rows[rows.length - 1]; cur = { xid: last.sync_xid, id: last.id }; }
         if (rows.length === PAGE && all.length < 20000) return page();
-        return { rows: all, at: cur.at, id: cur.id };
+        if (rows.length < PAGE && (!cur.xid || xidCmp(res.fence, cur.xid) > 0)) cur = { xid: res.fence, id: null };
+        if (hand && cur.xid && xidCmp(cur.xid, snapXmax(hand.snap)) >= 0) hand = null; /* past every row the older version could have seen */
+        return { rows: all, xid: cur.xid, id: cur.id, hand: hand, timeSafe: timeSafe };
       });
     }
     return page();
   }
+  /* Is transaction-ordered cursor `a` strictly later than the stored one? (x, no id) means "from transaction x on", so it
+     sits before any (x, id). Two different ids under one transaction id are a tie, which keeps the stored one: the
+     server's collation orders ids, not this phone. */
+  function xidLater(a, c) {
+    if (!c.pulledXid) return true;
+    var k = xidCmp(a.xid, c.pulledXid);
+    return k > 0 || (k === 0 && a.id != null && c.pulledXidId == null);
+  }
+  /* The shared pull, always by transaction id (Jamie, 20 Oct, R5-B). A server without entries_pull pauses the sync:
+     this version has no pull by time to fall back on, because rows received out of time order cannot be described by
+     one time cursor without either skipping some or sending others again (Codex rounds three and four). */
+  function pullShared(st, token) {
+    var x = isXid(st.pulledXid) ? st.pulledXid : null;
+    /* a phone with only the older time cursor hands over from it; a hand-over in progress (pullSince) carries on */
+    var ps = st.pullSince, hand = !x ? (st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null, snap: null } : null)
+      : (ps && ps.at && snapXmax(ps.snap) ? { at: ps.at, id: ps.id != null ? ps.id : null, snap: ps.snap } : null);
+    var time = st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null } : null;
+    return pullCommitted(x, x ? st.pulledXidId : null, hand, time, token).catch(function (err) {
+      if (rpcMissing(err)) throw new Error(PULL_PAUSED);
+      throw err;
+    });
+  }
+
   /* The one-time recovery of newly known types walks every row of those types in id order, resuming after the last id
      it saw (keyset paging). Ids are unique, so rows that share a synced_at (one upload is stamped with one now()) can
      neither be skipped nor fetched forever, and no timestamp rounding is involved. At most 20,000 rows a sync;
@@ -250,7 +305,54 @@
     return fn();
   }
   var CANCELLED = { cancelled: true };
+  /* A newer version of the app took over this page's service worker (sw.js skips waiting and claims every open page):
+     the code running here is now older than the code beside it, so this page stops syncing at once (a sync in flight is
+     cancelled at its next check) and reloads once it is out of sight AND the page says nothing is unsaved (canReload:
+     no sheet or form open, no session running). Hidden alone is not enough: a half-filled form would be lost (Codex
+     round four). Until then it waits, and checks again each time she leaves.
+     The first install also claims the page, and that is not an update. A page can also start with no controller after
+     a force refresh while a worker is already active; then its first takeover is an update. So the decision uses the
+     registration as it was when this module loaded, before the room registers anything, and the listener is armed at
+     load, before the room boots, so an early takeover is not missed. */
+  var upd = { armed: false, had: false, seen: false, onUpdate: null, canReload: null };
+  function retire() { retired = true; clearTimeout(debounceTimer); setStatus('idle'); }
+  function tryReload() {
+    var doc = root.document;
+    if (!upd.seen || !upd.canReload || (doc && !doc.hidden)) return;
+    var ok = false; try { ok = !!upd.canReload(); } catch (e) { ok = false; }
+    if (ok) { try { root.location.reload(); } catch (e) { } }
+  }
+  function armUpdates() {
+    var sw = root.navigator && root.navigator.serviceWorker;
+    if (upd.armed || !sw || typeof sw.addEventListener !== 'function') return upd.armed;
+    upd.armed = true; upd.had = !!sw.controller;
+    if (!upd.had && typeof sw.getRegistration === 'function') {
+      try { Promise.resolve(sw.getRegistration()).then(function (reg) { if (reg && reg.active) upd.had = true; }, function () { }); } catch (e) { }
+    }
+    sw.addEventListener('controllerchange', function () {
+      if (!upd.had) { upd.had = true; return; }
+      if (upd.seen) return;
+      upd.seen = true; retire();
+      if (upd.onUpdate) { try { upd.onUpdate(); } catch (e) { } }
+      tryReload();
+    });
+    var doc = root.document;
+    if (doc && typeof doc.addEventListener === 'function') doc.addEventListener('visibilitychange', function () { if (doc.hidden) tryReload(); });
+    return true;
+  }
+  /* the room hands over its note (onUpdate) and its own "nothing unsaved" test (canReload); an update seen before then
+     still gets its note, and the page reloads only once the room has said it is safe */
+  function watchUpdates(onUpdate, canReload) {
+    var on = armUpdates();
+    upd.onUpdate = typeof onUpdate === 'function' ? onUpdate : null;
+    upd.canReload = typeof canReload === 'function' ? canReload : null;
+    if (upd.seen) { if (upd.onUpdate) { try { upd.onUpdate(); } catch (e) { } } tryReload(); }
+    return on;
+  }
+  /* a retired page answers why it does not sync, in words */
+  var UPDATE_READY = 'A new version of Rhythme is ready. It opens next time you come back.';
   function syncNow() {
+    if (retired) return Promise.resolve({ ok: false, reason: 'update', error: UPDATE_READY });
     if (busy) return busyPromise;
     if (!canSync()) { setStatus('idle'); return Promise.resolve({ ok: false, reason: 'not-enabled' }); }
     busy = true; setStatus('syncing');
@@ -266,8 +368,8 @@
       var st = loadState();
       /* a switch to another account, or the first sync after a reset: every position field starts clean and the
          generation moves on, so nothing still in flight from before can land in it */
-      if (st.userId && st.userId !== uid) { st = { v: 1, gen: genOf(st) + 1, userId: uid, shadow: snapshot(), tombstones: st.tombstones || {}, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: st.lastSyncAt || null }; }
-      if (!st.userId) { st.gen = genOf(st) + 1; st.userId = uid; st.shadow = snapshot(); st.pulledSeq = null; st.pulledId = null; st.pushedAt = null; st.profilePulledAt = null; delete st.typedAfter; delete st.types; delete st.held; st.profileDirty = !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage); }
+      if (st.userId && st.userId !== uid) { st = { v: 1, gen: genOf(st) + 1, userId: uid, shadow: snapshot(), tombstones: st.tombstones || {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: st.lastSyncAt || null }; }
+      if (!st.userId) { st.gen = genOf(st) + 1; st.userId = uid; st.shadow = snapshot(); st.pulledXid = null; st.pulledXidId = null; delete st.pullSince; st.pulledSeq = null; st.pulledId = null; st.pushedAt = null; st.profilePulledAt = null; delete st.typedAfter; delete st.types; delete st.held; st.profileDirty = !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage); }
       var gen0 = genOf(st);
       /* still the same account, the same generation, signed in as it, and allowed to sync */
       function alive() { var c = loadState(); return genOf(c) === gen0 && c.userId === uid && a.userId() === uid && canSync(); }
@@ -276,7 +378,7 @@
          version knows types the cursor was built without (Movement added 'exercise'), pull those types once from the
          start. Only the new types: a full re-pull would bring back older entries someone deliberately cleared. */
       var knownTypes = (S.TYPES || []).join(','), before = st.types ? st.types.split(',') : Object.keys(CLOUD_TYPES_V1);
-      var newTypes = st.pulledSeq ? (S.TYPES || []).filter(function (t) { return before.indexOf(t) < 0; }) : [];
+      var newTypes = st.pulledSeq || st.pulledXid ? (S.TYPES || []).filter(function (t) { return before.indexOf(t) < 0; }) : [];
       /* the typed recovery keeps its own position (typedAfter, the last id it saw) and never moves the shared cursor,
          so rows of other types that arrive between the two requests are still pulled next time; it resumes across
          syncs when the backlog is larger than one sync's share, and only a scan that reached the end marks the new
@@ -293,9 +395,9 @@
       }).then(function () {
         if (a.userId() !== uid || !C.allows('cloud_sync') || !C.recordedOnAccount('cloud_sync')) throw new Error('Your cloud backup choice has not reached your account yet. Try again in a moment.');
       });
-      /* pull every row whose server arrival (synced_at) is after our cursor, in
-         order and in pages, so a late-arriving older edit is never skipped */
-      return pre.then(function () { stillAlive(); return pullSince(st.pulledSeq, st.pulledId, token); }).then(function (got) {
+      /* pull every row that reached the server after our cursor, in order and in pages, so a late-arriving older edit
+         is never skipped */
+      return pre.then(function () { stillAlive(); return pullShared(st, token); }).then(function (got) {
         stillAlive();
         var rows = got.rows; incRows = rows; incEnd = got;
         if (!newTypes.length) return rows;
@@ -339,13 +441,23 @@
           /* a sign-out, an account switch or a reset of the position during the upload cleared it: leave it cleared,
              rather than write this account and its progress back into it */
           if (cur.userId !== uid || genOf(cur) !== gen0 || a.userId() !== uid) throw CANCELLED;
-          /* the shared cursor moves to the last all-type row this pull saw (never a typed-recovery row), kept exactly as
-             the server wrote it, and only forward. If another tab moved it while this sync ran, ours is written only
-             when it is strictly later: a cursor wound back would pull again rows this phone may have cleared since.
-             A tie on the instant keeps the stored one, because comparing ids here could disagree with the server's
-             collation, and pulling a few rows again is safer than skipping any. */
-          var movedMeanwhile = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
-          if (incRows.length && (!movedMeanwhile || (cur.pulledSeq && micros(incEnd.at) > micros(cur.pulledSeq)))) { cur.pulledSeq = incEnd.at; cur.pulledId = incEnd.id; }
+          /* the shared cursor moves to where this pull ended (never past a typed-recovery row), and only forward. If
+             another tab moved it while this sync ran, ours is written only when it is strictly later: a cursor wound
+             back would pull again rows this phone may have cleared since. It can move with no rows (up to the fence);
+             a hand-over still in progress travels with it (Codex round one, finding 2). It is saved only once the
+             uploads went through: after a failed sync the next one pulls those rows again, as it always has, rather
+             than push them back up as if they were new here. */
+          var movedX = (cur.pulledXid || null) !== (st.pulledXid || null) || (cur.pulledXidId || null) !== (st.pulledXidId || null);
+          if (incEnd.xid && (!movedX || xidLater(incEnd, cur))) {
+            cur.pulledXid = incEnd.xid; cur.pulledXidId = incEnd.id;
+            if (incEnd.hand) cur.pullSince = incEnd.hand; else delete cur.pullSince;
+          }
+          /* the time cursor, for a tab still on an older version, follows what the server certified (Codex rounds one
+             and two). The server already kept it from going back past the one this sync started from; if another tab or
+             an older version moved it meanwhile, ours is written only when it is later by instant (a tie keeps the
+             stored one: ids are ordered by the server's collation, not this phone's) */
+          var ts = incEnd.timeSafe, movedT = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
+          if (ts && (!movedT || !cur.pulledSeq || micros(ts.at) > micros(cur.pulledSeq))) { cur.pulledSeq = ts.at; cur.pulledId = ts.id; }
           if (typedDone) { cur.types = knownTypes; delete cur.typedAfter; }
           else if (typed && typed.lastId) cur.typedAfter = typed.lastId;
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
@@ -449,9 +561,11 @@
      local diary stays, deletions outbox is kept so they still propagate later. */
   function resetPosition() {
     var st = loadState();
-    saveState({ v: 1, gen: genOf(st) + 1, userId: null, shadow: snapshot(), tombstones: st.tombstones || {}, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null });
+    saveState({ v: 1, gen: genOf(st) + 1, userId: null, shadow: snapshot(), tombstones: st.tombstones || {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null });
     setStatus('idle');
   }
+
+  armUpdates(); /* at load, before the room registers the worker or boots (premortem 8) */
 
   function init() {
     if (!S) return;
@@ -461,6 +575,7 @@
   }
 
   root.OvuSync = {
+    watchUpdates: watchUpdates,
     wipeCloud: wipeCloud, CONTROL_KEYS: CONTROL_KEYS, canSync: canSync, doorOpen: doorOpen,
     init: init,
     syncNow: syncNow,
@@ -471,6 +586,6 @@
     status: function () { var st = loadState(); return { state: statusNow.state, error: statusNow.error, lastSyncAt: st.lastSyncAt, pending: Object.keys(st.tombstones || {}).length, held: Object.keys(st.held || {}).length }; },
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
     /* pure helpers, exported for the tests */
-    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud, addHeld: addHeld, splitByType: splitByType, typeRejected: typeRejected, mergeRows: mergeRows
+    merge: merge, stripThumbs: stripThumbs, evToRow: evToRow, rowToEvent: rowToEvent, profileForCloud: profileForCloud, addHeld: addHeld, splitByType: splitByType, typeRejected: typeRejected, mergeRows: mergeRows, xidCmp: xidCmp, isXid: isXid, snapXmax: snapXmax
   };
 })(window);
