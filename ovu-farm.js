@@ -49,13 +49,14 @@
       { id: 'shed', x: 18, y: 41, label: 'Shed · seeds and tools', prompt: 'Tap to open the shed', icon: 'home_repair_service', wp: { x: 25, y: 50, flip: true } },
       { id: 'well', x: 70, y: 38, label: 'Well · water for the can', prompt: 'Tap to draw water', icon: 'water_drop', wp: { x: 66, y: 48, flip: false } },
       { id: 'basket', x: 49, y: 69, label: 'Basket · your harvest', prompt: 'Tap to look in the basket', icon: 'shopping_basket', wp: { x: 41, y: 66, flip: false } },
-      { id: 'barnpath', x: 83, y: 65, label: 'Path · to the barn', prompt: 'Tap to walk to the barn', icon: 'cottage', wp: { x: 79, y: 62, flip: false } } /* the barn (ovu-barn.js), 21 Oct */
+      { id: 'barnpath', x: 83, y: 65, label: 'Path · to the barn', prompt: 'Tap to walk to the barn', icon: 'cottage', wp: { x: 79, y: 62, flip: false } }, /* the barn (ovu-barn.js), 21 Oct */
+      { id: 'harboursteps', x: 72, y: 74, label: 'Steps · down to the harbour', prompt: 'Tap to go down to the harbour', icon: 'sailing', wp: { x: 70, y: 67, flip: false } } /* the harbour (ovu-harbour.js), 21 Oct */
     ],
     home: { x: 19, y: 56, flip: false },
     zones: [[[48, 30], [95, 52], [86, 61], [68, 70], [50, 74], [6, 56]]], /* the island; its lower-right shore bows out past the bed frame's path */
     solids: [{ id: 'shed', x0: 8, x1: 30, y0: 33, y1: 46 }, { id: 'well', x0: 62, x1: 76, y0: 33, y1: 46 }, { id: 'scarecrow', x0: 45, x1: 57, y0: 25, y1: 36 }, { id: 'tree', x0: 84, x1: 95, y0: 44, y1: 52 } /* the trunk; she may walk under the canopy, and the path to the well runs between the beds and the trunk */, { id: 'basket', x0: 42, x1: 56, y0: 65, y1: 72 },
       { id: 'beds1', x0: 30, x1: 50, y0: 48, y1: 58 }, { id: 'beds2', x0: 44, x1: 64, y0: 44, y1: 62 }, { id: 'beds3', x0: 60, x1: 78, y0: 50, y1: 58 }],
-    doors: [{ id: 'farmgate', to: 'garden', x: 15, y: 57, r: 5, flip: true }, { id: 'barnpath', to: 'barn', x: 79, y: 62, r: 4, flip: false }],
+    doors: [{ id: 'farmgate', to: 'garden', x: 15, y: 57, r: 5, flip: true }, { id: 'barnpath', to: 'barn', x: 79, y: 62, r: 4, flip: false }, { id: 'harboursteps', to: 'harbour', x: 70, y: 67, r: 4, flip: false }],
     /* the beds are not hotspots (twelve orbs would smother the plate): they are drawn by this module and offered as prompts */
     prompts: STANDS.map(function (s) { return { id: s.id, wp: s.wp, beds: s.beds, prompt: s.beds.length > 1 ? 'Tap to tend the beds' : 'Tap to tend the bed', bed: true }; }),
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 }, props: {}
@@ -460,7 +461,7 @@
     R.openSheet('farmbasket', 'Your harvest', rows.length ? 'In the basket' : 'Nothing picked yet', 'shopping_basket',
       (rows.length ? '<ul class="basketlist">' + rows.map(function (k) { return '<li><span class="dot" style="background:' + CROPS[k].colour + '"></span>' + esc(CROPS[k].name) + ' <b>×' + esc(f.harvest[k]) + '</b></li>'; }).join('') + '</ul>' : '<p>Plant, water and pick, and the basket fills.</p>') +
       (function () { var p = farmState(S).pantry, bits = []; if (p.egg) bits.push(p.egg + ' egg' + (p.egg > 1 ? 's' : '')); if (p.milk) bits.push(p.milk + ' milk'); if (p.onsenegg) bits.push(p.onsenegg + ' onsen egg' + (p.onsenegg > 1 ? 's' : '')); return bits.length ? '<p class="help pantryline"><span class="ms">kitchen</span>From the barn: ' + esc(bits.join(', ')) + '.</p>' : ''; })() +
-      '<p class="help">Selling and gifting come with the market. For now the basket is yours to admire.</p>');
+      '<p class="help">Carrots, pumpkins and sweet potatoes are treats for Clover at the barn; kangkong, pak choy and strawberries for the hens. The rest is yours to admire.</p>');
   }
   /* several beds share this spot: ask which one */
   function openPicker(ids) {

@@ -12,7 +12,7 @@
   var ICON = { barn: 'cottage', barninside: 'cottage', heninside: 'egg', cave: 'auto_awesome', home: 'home', garden: 'yard', farm: 'agriculture', street: 'storefront', plaza: 'groups', 'shop-pet': 'pets', 'shop-furniture': 'chair', 'shop-homes': 'cottage' };
   var H = 80; /* the world map's height in its own units */
   /* a little clay drawing for each known place on the painted map (Jamie, 20 Oct: "a damn cute map"); a new place keeps its icon */
-  var ART_FOR = { barn: 'map-barn.webp', cave: 'map-cave.webp', home: 'map-home.webp', garden: 'map-garden.webp', greenhouse: 'map-greenhouse.webp', farm: 'map-farm.webp', street: 'map-street.webp', plaza: 'map-plaza.webp', 'shop-pet': 'map-shop-pet.webp', 'shop-furniture': 'map-shop-furniture.webp', 'shop-homes': 'map-shop-homes.webp' };
+  var ART_FOR = { harbour: 'map-harbour.webp', barn: 'map-barn.webp', cave: 'map-cave.webp', home: 'map-home.webp', garden: 'map-garden.webp', greenhouse: 'map-greenhouse.webp', farm: 'map-farm.webp', street: 'map-street.webp', plaza: 'map-plaza.webp', 'shop-pet': 'map-shop-pet.webp', 'shop-furniture': 'map-shop-furniture.webp', 'shop-homes': 'map-shop-homes.webp' };
 
   /* ---------- pure parts (tested in tools/test-core.js) ---------- */
   function nodeOf(id, homeId) { return id === 'home' || id === homeId ? 'home' : id; }

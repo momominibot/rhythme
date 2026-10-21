@@ -549,7 +549,7 @@
     sheet.setAttribute('aria-hidden', 'false');
     var first = body.querySelector('input,button,select,textarea,a'); if (first && window.matchMedia('(hover:hover)').matches) try { first.focus({ preventScroll: true }); } catch (e) { }
   }
-  function hideSheet() { var was = current; current = null; if (was === 'practiceDone' && practice && practice.endFn) { var fin = practice.endFn; setTimeout(function () { fin(false); }, 0); } /* closing "How was that?" any way ends the practice and puts her back (Jamie, 20 Oct) */ careOn = false; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
+  function hideSheet() { var was = current; current = null; if (was === 'practiceDone' && practice && practice.endFn) { var fin = practice.endFn; setTimeout(function () { fin(false); }, 0); } /* closing "How was that?" any way ends the practice and puts her back (Jamie, 20 Oct) */ careOn = false; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); emit('sheetHide'); }
   function closeSheet() {
     if (current === 'diary') stopCamera();
     if (current === 'mind' && session) stopSession(true);

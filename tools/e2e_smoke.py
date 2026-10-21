@@ -1162,7 +1162,7 @@ async def main():
             except Exception: pass
             await page.wait_for_timeout(900)
             farm = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, beds: document.querySelectorAll('#ownedProps .bed').length, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), here: document.querySelector('#mapHere')?.textContent, zone: document.querySelector('#zoneName')?.textContent})")
-            check("the garden path walks her onto the farm: twelve beds on the plate, five hotspots (the barn path too), the pill saying Farm", farm["layout"] == "farm" and farm["beds"] == 12 and farm["hots"] == "farmgate,shed,well,basket,barnpath" and farm["here"] == "Farm" and farm["zone"] == "Your farm", farm)
+            check("the garden path walks her onto the farm: twelve beds on the plate, six hotspots (the barn path and the harbour steps too), the pill saying Farm", farm["layout"] == "farm" and farm["beds"] == 12 and farm["hots"] == "farmgate,shed,well,basket,barnpath,harboursteps" and farm["here"] == "Farm" and farm["zone"] == "Your farm", farm)
             # the first visit explains the four steps once (Jamie, 20 Oct: "it's confusing")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] .farmsteps', timeout=6000)
             except Exception: pass
@@ -1236,6 +1236,8 @@ async def main():
             await go_to('barninside')
             cl = await page.evaluate("()=>{OvuBarn.openClover(); var b=document.querySelector('#cloverActs [data-act=milk]'); var cow=!!document.querySelector('#ownedProps .a-clover'); if(b) b.click(); return {cow: cow, milk: OvuFarm.farmState(OvuStore).pantry.milk, stam: OvuStamina.value()}}")
             check("inside the barn Clover stands in her stall; milking puts a pail in the pantry for a little energy", cl["cow"] and cl["milk"] == 1 and cl["stam"] == 100 - 2, cl)
+            tr = await page.evaluate("()=>{var f=OvuFarm.farmState(OvuStore); f.harvest={carrot:1}; OvuStore.setState({farm:f}); OvuBarn.openClover(); var b=document.querySelector('#cloverActs [data-act=treat][data-crop=carrot]'); var had=!!b; if(b) b.click(); var f2=OvuFarm.farmState(OvuStore); return {had: had, left: f2.harvest.carrot||0, today: OvuBarn.treatedToday(OvuStore,'clover',OvuGameTime.dayKey()), toast: document.querySelector('#toast').textContent, line: /had a treat/.test(document.querySelector('#sheet').textContent), stam: OvuStamina.value()}}")
+            check("a carrot from the basket is a treat for Clover: offered only while the basket has one, taken slowly, the basket one lighter, no energy spent", tr["had"] and tr["left"] == 0 and tr["today"] and "took the carrot" in tr["toast"] and tr["line"] and tr["stam"] == 100 - 2, tr)
             await page.evaluate("()=>OvuRoom.hideSheet()"); await go_to('barn'); await go_to('heninside')
             hn = await page.evaluate("()=>{var eggs=document.querySelectorAll('#ownedProps .nestegg').length, hens=document.querySelectorAll('#ownedProps .animal').length; OvuBarn.openNests(); var b=document.querySelector('#nestActs [data-act=eggs]'); if(b) b.click(); return {eggs: eggs, hens: hens, pantry: OvuFarm.farmState(OvuStore).pantry.egg, left: document.querySelectorAll('#ownedProps .nestegg').length}}")
             check("inside the hen house two hens and two eggs; collecting takes both into the pantry and empties the nests", hn["hens"] == 2 and hn["eggs"] == 2 and hn["pantry"] == 2 and hn["left"] == 0, hn)
@@ -1259,6 +1261,40 @@ async def main():
             except Exception: pass
             back = await page.evaluate("()=>document.querySelector('#scene').dataset.layout")
             check("the farm gate leads back to the garden", back == "garden", back)
+            # the harbour (21 Oct): steps down from the farm; catch-and-release fishing with no clock; a catch book; a bench
+            await go_to('farm')
+            await page.evaluate("()=>{OvuCare.slowMs = 0; window.__rnd = Math.random; Math.random = function(){ return 0; }; OvuRoom.tap(OvuRoom.hotspot('harboursteps'))}")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'harbour'", timeout=15000)
+            except Exception: pass
+            await page.wait_for_timeout(600)
+            hb = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.harbour, img: document.querySelector('#roomDay').getAttribute('src')||''})")
+            check("the farm's steps lead down to the harbour: the jetty, the rocks, the bench, the hut and the way back; the harbour is on the map", hb["layout"] == "harbour" and hb["hots"] == "harbourexit,hbjetty,hbrocks,hbbench,hbhut" and hb["map"] and "harbour-v1" in hb["img"], hb)
+            base = await page.evaluate("()=>({e: OvuStamina.value(), d: OvuStore.list().length})")
+            await page.evaluate("()=>{OvuHarbour.openSpot('jetty'); document.querySelector('#spotActs [data-act=cast]').click();}"); await page.wait_for_timeout(400)
+            bt = await page.evaluate("()=>({bite: document.querySelector('#scene').classList.contains('bite'), line: !!document.querySelector('#ownedProps .castline'), lift: !!document.querySelector('#spotActs [data-bite=lift]'), leave: !!document.querySelector('#spotActs [data-bite=leave]'), casts: OvuHarbour.harbourState(OvuStore).casts})")
+            check("a cast puts a line and a float on the water; when a fish comes, Lift gently and Let it be wait with no clock, and nothing is written yet", bt["bite"] and bt["line"] and bt["lift"] and bt["leave"] and bt["casts"] == 0, bt)
+            await page.click("#spotActs [data-bite=lift]"); await page.wait_for_timeout(400)
+            rv = await page.evaluate("(b)=>({first: /First time/.test(document.querySelector('#sheet').textContent), fact: !!document.querySelector('#sheet .fishfact'), src: !!document.querySelector('#sheet .fishsrc'), img: (document.querySelector('#sheet .fishcard img')||{}).naturalWidth||0, line: !!document.querySelector('#ownedProps .castline'), book: Object.keys(OvuHarbour.harbourState(OvuStore).book), spent: b.e - OvuStamina.value(), diary: OvuStore.list().length - b.d, go: !!document.querySelector('#fishGo')})", base)
+            check("lifting shows the fish with its fact and source, writes a first meeting in the book, charges one cast of energy, takes the line in, and writes no diary entry", rv["first"] and rv["fact"] and rv["src"] and rv["img"] > 0 and not rv["line"] and len(rv["book"]) == 1 and rv["spent"] == 3 and rv["diary"] == 0 and rv["go"], rv)
+            await page.click("#fishGo"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>document.querySelector('#spotActs [data-act=cast]').click()"); await page.wait_for_timeout(300)
+            await page.click("#spotActs [data-bite=leave]"); await page.wait_for_timeout(300)
+            lv = await page.evaluate("()=>({casts: OvuHarbour.harbourState(OvuStore).casts, cast: !!document.querySelector('#spotActs [data-act=cast]'), line: !!document.querySelector('#ownedProps .castline'), e: OvuStamina.value()})")
+            check("Let it be reels in nothing: no cast counted, no energy spent, the line in, and Cast back on offer", lv["casts"] == 1 and lv["cast"] and not lv["line"] and lv["e"] == base["e"] - 3, lv)
+            await page.evaluate("()=>OvuHarbour.openBook(null)"); await page.wait_for_timeout(300)
+            bk = await page.evaluate("()=>({met: document.querySelectorAll('.bookrow:not(.unseen)').length, unseen: document.querySelectorAll('.bookrow.unseen').length, sub: document.querySelector('#sheet .sheet-head').textContent, complete: /complete/.test(document.querySelector('#sheet').textContent)})")
+            check("the catch book shows one kind met and five not met, says 1 of 6, and says there is nothing to complete", bk["met"] == 1 and bk["unseen"] == 5 and "1 of 6" in bk["sub"] and bk["complete"], bk)
+            await page.evaluate("()=>{OvuRoom.hideSheet(); OvuHarbour.sitDown()}"); await page.wait_for_timeout(300)
+            sb = await page.evaluate("()=>({sitting: OvuHarbour.sitting(), stop: !!document.querySelector('#benchStop')})")
+            await page.click('#benchStop'); await page.wait_for_timeout(200)
+            sb["after"] = await page.evaluate("()=>OvuHarbour.sitting()")
+            check("the bench watches the water with a real Stop watching button, and Stop stands her up", sb["sitting"] and sb["stop"] and not sb["after"], sb)
+            await page.evaluate("()=>{Math.random = window.__rnd; OvuCare.slowMs = null; OvuRoom.tap(OvuRoom.hotspot('harbourexit'))}")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'farm'", timeout=12000)
+            except Exception: pass
+            hx = await page.evaluate("()=>document.querySelector('#scene').dataset.layout")
+            check("the harbour path leads back up to the farm", hx == "farm", hx)
+            await go_to('garden')
             # plaza servers, signed in: a fake session and a small fake plaza server answer the four plaza calls here;
             # nothing leaves the machine. 23 in PCOS, 2 in Everyone, Menopause full.
             SESS = {"access_token": "smoke-token", "refresh_token": "smoke-refresh", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000aa", "email": "smoke@example.test"}}
