@@ -2358,16 +2358,18 @@ async def main():
             TAP = "(sel)=>document.querySelector(sel).click()"
             await ta.evaluate(TAP, '.mq[data-mq="veg"] [data-yn="1"]'); await ta.wait_for_timeout(400)
             await tb.evaluate(TAP, '.mq[data-mq="fish"] [data-yn="0"]'); await tb.wait_for_timeout(400)
-            # a background tab gets the other tab's storage event when the browser gets to it: wait for the repaint, then read
+            # the second tab's save is on the phone at once; a hidden tab may be frozen (CI) and catches up when she comes back to it
+            disk = await tb.evaluate("()=>(JSON.parse(localStorage.getItem('ovumind_db_v1')).state.medas||{}).answers")
+            await ta.bring_to_front()
             try: await ta.wait_for_function("()=>document.querySelector('.mq[data-mq=fish] [data-yn=\\\"0\\\"]').getAttribute('aria-pressed')==='true'", polling=200, timeout=8000)
             except Exception: pass
             two = await ta.evaluate("()=>({saved: (OvuStore.state().medas||{}).answers, fishShown: document.querySelector('.mq[data-mq=fish] [data-yn=\\\"0\\\"]').getAttribute('aria-pressed')})")
-            check("answers given in two tabs are both kept, and the first tab shows the second's answer", two["saved"] == {"veg": True, "fish": False} and two["fishShown"] == "true", two)
+            check("answers given in two tabs are both kept, and the first tab shows the second's answer when she comes back to it", disk == {"veg": True, "fish": False} and two["saved"] == {"veg": True, "fish": False} and two["fishShown"] == "true", {"disk": disk, **two})
             await tb.evaluate(TAP, "#mdClear"); await tb.wait_for_timeout(300)
             await ta.close(); await tb.close()
             # a returning visitor follows a link to the check and taps Home while the room is still starting: the link stays closed
             th = await ctx.new_page(); await th.route("**/*", gate); await th.bring_to_front()
-            await th.goto(BASE + "room.html#medas", wait_until="domcontentloaded"); await th.wait_for_selector(".nav a", state="attached", timeout=8000)
+            await th.goto(BASE + "room.html#medas", wait_until="domcontentloaded"); await th.wait_for_selector(".hotspot", state="attached", timeout=8000)  # drawn by room.js, so the nav is wired
             await th.evaluate("()=>{[...document.querySelectorAll('.nav a')].filter(a=>(a.dataset.tab||'home')==='home')[0].click();}"); await th.wait_for_timeout(1500)
             hm = await th.evaluate("()=>({medas: !!document.querySelector('.mq'), home: (document.querySelector('.nav a.on')||{dataset:{}}).dataset.tab || 'home'})")
             check("tapping Home while the room starts keeps a link to the check from opening over it", not hm["medas"] and hm["home"] == "home", hm)
