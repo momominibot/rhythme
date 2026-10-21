@@ -1162,7 +1162,7 @@ async def main():
             except Exception: pass
             await page.wait_for_timeout(900)
             farm = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, beds: document.querySelectorAll('#ownedProps .bed').length, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), here: document.querySelector('#mapHere')?.textContent, zone: document.querySelector('#zoneName')?.textContent})")
-            check("the garden path walks her onto the farm: twelve beds on the plate, four hotspots, the pill saying Farm", farm["layout"] == "farm" and farm["beds"] == 12 and farm["hots"] == "farmgate,shed,well,basket" and farm["here"] == "Farm" and farm["zone"] == "Your farm", farm)
+            check("the garden path walks her onto the farm: twelve beds on the plate, five hotspots (the barn path too), the pill saying Farm", farm["layout"] == "farm" and farm["beds"] == 12 and farm["hots"] == "farmgate,shed,well,basket,barnpath" and farm["here"] == "Farm" and farm["zone"] == "Your farm", farm)
             # the first visit explains the four steps once (Jamie, 20 Oct: "it's confusing")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] .farmsteps', timeout=6000)
             except Exception: pass
@@ -1220,6 +1220,40 @@ async def main():
             await page.wait_for_timeout(300)
             check("while she sleeps the farm, the shed, a journey and a tap-walk all stop with the wake-her-first line, and no prompt shows", not slept["bedSheet"] and not slept["shedSheet"] and slept["travel"] is False and slept["walk"] is False and not slept["prompt"] and "asleep" in slept["toast"], slept)
             await page.evaluate("()=>{OvuStore.setState({sleeping:null}); OvuRoom.asleep=function(){return false};}"); await page.wait_for_timeout(300)
+            # the barn and the hidden spring (21 Oct): the farm path, Clover inside the barn, the hens inside the hen house, the
+            # crack that is secret on the map until found, pretend onsen eggs that change no energy, and sitting by the water
+            async def go_to(t):
+                await page.evaluate("(t)=>OvuWalk.travel(t)", t)
+                try: await page.wait_for_function("(t)=>document.querySelector('#scene').dataset.layout===t && !document.querySelector('#scene').classList.contains('fading')", arg=t, timeout=12000)
+                except Exception: pass
+                await page.wait_for_timeout(600)
+            await page.evaluate("()=>{OvuCare.slowMs = 0; OvuStore.setState({stamina: null})}")
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('barnpath'))")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'barn'", timeout=15000)
+            except Exception: pass
+            yard = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), cave: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.cave})")
+            check("the farm path leads to the barn yard: the barn door, the hen house, the crack and the way back; the cave is not on the map yet", yard["layout"] == "barn" and yard["hots"] == "barnexit,barndoor,hendoor,crack" and not yard["cave"], yard)
+            await go_to('barninside')
+            cl = await page.evaluate("()=>{OvuBarn.openClover(); var b=document.querySelector('#cloverActs [data-act=milk]'); var cow=!!document.querySelector('#ownedProps .a-clover'); if(b) b.click(); return {cow: cow, milk: OvuFarm.farmState(OvuStore).pantry.milk, stam: OvuStamina.value()}}")
+            check("inside the barn Clover stands in her stall; milking puts a pail in the pantry for a little energy", cl["cow"] and cl["milk"] == 1 and cl["stam"] == 100 - 2, cl)
+            await page.evaluate("()=>OvuRoom.hideSheet()"); await go_to('barn'); await go_to('heninside')
+            hn = await page.evaluate("()=>{var eggs=document.querySelectorAll('#ownedProps .nestegg').length, hens=document.querySelectorAll('#ownedProps .animal').length; OvuBarn.openNests(); var b=document.querySelector('#nestActs [data-act=eggs]'); if(b) b.click(); return {eggs: eggs, hens: hens, pantry: OvuFarm.farmState(OvuStore).pantry.egg, left: document.querySelectorAll('#ownedProps .nestegg').length}}")
+            check("inside the hen house two hens and two eggs; collecting takes both into the pantry and empties the nests", hn["hens"] == 2 and hn["eggs"] == 2 and hn["pantry"] == 2 and hn["left"] == 0, hn)
+            await page.evaluate("()=>OvuRoom.hideSheet()"); await go_to('barn')
+            await page.evaluate("()=>OvuBarn.openCrack()"); await page.wait_for_timeout(200)
+            await page.click('#crackGo')
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'cave'", timeout=12000)
+            except Exception: pass
+            await page.wait_for_timeout(600)
+            cv = await page.evaluate("()=>{var st=JSON.stringify(OvuStore.state().stamina), d=OvuStore.list().length; OvuBarn.openBasket(); var b=document.querySelector('#basketActs [data-act=cook]'); if(b) b.click(); var p=OvuFarm.farmState(OvuStore).pantry; return {layout: document.querySelector('#scene').dataset.layout, map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.cave, onsen: p.onsenegg, eggs: p.egg, sameEnergy: JSON.stringify(OvuStore.state().stamina) === st, sameDiary: OvuStore.list().length === d, done: !!document.querySelector('#cookDone'), primary: (document.querySelector('#cookDone')||{}).className||''}}")
+            check("stepping through the crack finds the hidden spring, which then shows on the map; onsen eggs change no energy or diary, and Done comes first", cv["layout"] == "cave" and cv["map"] and cv["onsen"] == 2 and cv["eggs"] == 0 and cv["sameEnergy"] and cv["sameDiary"] and cv["done"] and "primary" in cv["primary"], cv)
+            await page.click('#cookDone'); await page.evaluate("()=>OvuBarn.sitDown()"); await page.wait_for_timeout(300)
+            sat = await page.evaluate("()=>({sitting: OvuBarn.sitting(), stop: !!document.querySelector('#springStop')})")
+            await page.click('#springStop'); await page.wait_for_timeout(200)
+            stood = await page.evaluate("()=>({sitting: OvuBarn.sitting(), stop: !!document.querySelector('#springStop')})")
+            check("she sits by the water with a real Stop sitting button, and Stop stands her up", sat["sitting"] and sat["stop"] and not stood["sitting"] and not stood["stop"], {"sat": sat, "stood": stood})
+            await page.evaluate("()=>{OvuCare.slowMs = null}")
+            await go_to('barn'); await go_to('farm')
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('farmgate'))")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'garden'", timeout=12000)
             except Exception: pass

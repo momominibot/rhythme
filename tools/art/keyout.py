@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chroma-key a green-screen render to a trimmed RGBA sprite with edge despill.
+"""Chroma-key a green- or blue-screen render to a trimmed RGBA sprite with edge despill.
 Usage: keyout.py in.png out.png [--preview preview.png] [--pad 8] [--height 900]
 Alpha comes from distance to the key colour in a chroma-ish space, so soft hair
 edges keep partial transparency instead of a hard halo."""
@@ -7,8 +7,10 @@ import sys, argparse
 import numpy as np
 from PIL import Image, ImageFilter
 
-def key(img, tol_lo=0.18, tol_hi=0.42):
+def key(img, tol_lo=0.18, tol_hi=0.42, screen="green"):
     a = np.asarray(img.convert("RGB")).astype(np.float32) / 255.0
+    if screen == "blue":
+        a = a[..., [0, 2, 1]]  # treat blue as the key channel, swap back below
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     # "greenness": how much green exceeds the other two channels
     green = g - np.maximum(r, b)
@@ -21,6 +23,8 @@ def key(img, tol_lo=0.18, tol_hi=0.42):
     spill = np.clip(g - np.maximum(r, b), 0, 1)
     g2 = g - spill * np.clip(1.0 - alpha * 0.4, 0, 1)
     out = np.stack([r, g2, b, alpha], axis=-1)
+    if screen == "blue":
+        out = out[..., [0, 2, 1, 3]]
     return Image.fromarray((out * 255).round().astype(np.uint8), "RGBA")
 
 def main():
@@ -28,11 +32,11 @@ def main():
     ap.add_argument("inp"); ap.add_argument("out")
     ap.add_argument("--preview"); ap.add_argument("--pad", type=int, default=8)
     ap.add_argument("--height", type=int, default=0, help="downscale so content height equals this")
-    ap.add_argument("--lo", type=float, default=0.18); ap.add_argument("--hi", type=float, default=0.42)
+    ap.add_argument("--screen", default="green", choices=["green", "blue"], help="key colour (blue for subjects with pink or red parts)"); ap.add_argument("--lo", type=float, default=0.18); ap.add_argument("--hi", type=float, default=0.42)
     ap.add_argument("--largest", action="store_true", help="keep only the largest opaque shape (drops shaded floor and corner noise)")
     a = ap.parse_args()
     img = Image.open(a.inp)
-    rgba = key(img, a.lo, a.hi)
+    rgba = key(img, a.lo, a.hi, a.screen)
     if a.largest:
         from scipy import ndimage
         arr = np.asarray(rgba).copy(); al = arr[..., 3]
