@@ -1893,6 +1893,34 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .w-brand .rh-logo{width:1.35em;height:1.35em}
 .menubar .brandy{display:inline-flex;align-items:center;gap:.4em}
 .menubar .brandy .rh-logo{width:1.25em;height:1.25em;box-shadow:none}
+/* ---------- optional sleep details and the two-week sleep check ---------- */
+.sqbox{margin-top:10px}
+.sqtoggle{width:100%;justify-content:center}
+.sqbody{margin-top:6px;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.6);border:1px solid rgba(107,82,142,.1)}
+.sqf{margin-top:12px}
+.sqf .lbl{display:block;margin-bottom:6px}
+.sqhint{display:block;margin:-2px 0 6px;font:600 11px var(--sans);color:var(--rm-ink-3);line-height:1.4}
+.sqf .chips{gap:6px}
+.sqf .chipbtn{padding:7px 11px}
+.sqcard{margin-top:14px}
+.sqnotes{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+#sqResult{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.sqnote{border-radius:14px;padding:10px 12px;background:#fff7f1;border:1.5px solid #f0c9a6;color:var(--rm-ink)}
+.sqnote.today{background:#fff1f0;border-color:#e88a86}
+.sqnote.info{background:#f4f0fa;border-color:#ddd1ee}
+.sqnote b{display:block;font:600 15px var(--serif);color:#7b3a2c;margin-bottom:3px}
+.sqnote.today b{color:#9b2f2a}
+.sqnote.info b{color:var(--rm-ink)}
+.sqnote p{margin:0;font:600 12.5px var(--sans);line-height:1.45}
+.sqsmall{display:block;font:600 11px var(--sans);color:var(--rm-ink-3);line-height:1.4}
+/* night: the shared chip rule in ovu-night.css outranks a plain .chipbtn.on, so the chosen answer gets its own deeper rule */
+html[data-sky="night"] .sqf .chips .chipbtn.on{background:#5b477f;border-color:#8f74b8;color:#fff}
+html[data-sky="night"] .sqbody{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
+html[data-sky="night"] .sqnote{background:#3a2a40;border-color:#8a5a52;color:#f3eaff}
+html[data-sky="night"] .sqnote.today{background:#45252c;border-color:#c0645e}
+html[data-sky="night"] .sqnote.info{background:var(--rm-card);border-color:rgba(255,255,255,.12)}
+html[data-sky="night"] .sqnote b{color:#ffd7c8}
+html[data-sky="night"] .sqnote.info b{color:#f3eaff}
 /* the barn and the hidden spring (ovu-barn.js, 21 Oct) */
 .barnthing{position:absolute;pointer-events:auto;border:0;background:none;padding:0}
 .barnthing.animal{transform:translate(-50%,-100%);cursor:pointer;z-index:2}

@@ -8,8 +8,8 @@
   'use strict';
   var KEY = 'ovumind_db_v1';
   var VERSION = 1;
-  var TYPES = ['sleep', 'period', 'symptom', 'food', 'reflection', 'mindfulness', 'weight', 'exercise']; /* exercise: ovu-exercise.js, many a day */
-  var SINGLE_PER_DAY = { period: true, symptom: true, weight: true };
+  var TYPES = ['sleep', 'period', 'symptom', 'food', 'reflection', 'mindfulness', 'weight', 'exercise', 'sleepcheck']; /* exercise: ovu-exercise.js, many a day; sleepcheck: the two-week sleep check, one a day */
+  var SINGLE_PER_DAY = { period: true, symptom: true, weight: true, sleepcheck: true };
   var IMPORTED = { 'apple-health': true, 'google-fit': true };
   var listeners = [];
   var cache = null;
@@ -96,8 +96,40 @@
     }
     return Object.assign({}, o, n);
   }
+  /* ---------- optional sleep details and the two-week sleep check ----------
+   * Rhythme's own questions (not a licensed scale, and never scored), built on the items of the Consensus Sleep Diary
+   * (Carney 2012, E73) and the insomnia, sleep apnoea and restless legs guidance in ovu-evidence.js. Every answer is a
+   * fixed code and anything else is dropped, so a question left blank stays unknown: it is never read as zero, and
+   * "not sure" is kept as an answer of its own. Labels and patterns live in ovu-agents.js. */
+  var SLEEP_DETAIL = { latency: ['le15', '16-30', '31-60', 'gt60', 'unsure'], wakeups: ['0', '1', '2', '3', '4+', 'unsure'], awake: ['le15', '16-30', '31-60', '61-120', 'gt120', 'unsure'], early: ['yes', 'no', 'unsure'], rested: ['1', '2', '3', '4', '5', 'unsure'] };
+  var SLEEP_WOKE = ['flush', 'cramps', 'toilet', 'child', 'snoring', 'noise', 'worry', 'pain', 'gasp', 'other'];
+  var NIGHTS = ['0', '1', '2', '3', '4', '5', '6', '7', 'unsure'];
+  var SLEEP_CHECK = { w1: NIGHTS, w2: NIGHTS, chance: ['usually', 'sometimes', 'rarely', 'unsure'], impact: ['none', 'little', 'lot', 'unsure'], since: ['lt2w', '2w-3m', '3m+', 'unsure'], breathing: ['yes', 'no', 'unsure'], legs: ['yes', 'no', 'unsure'], driving: ['yes', 'no', 'nodrive'] };
+  function pickCodes(spec, o) {
+    var out = {}; if (!o || typeof o !== 'object') return out;
+    Object.keys(spec).forEach(function (k) { var v = o[k]; if (typeof v === 'number' && isFinite(v)) v = String(v); if (typeof v === 'string' && spec[k].indexOf(v) > -1) out[k] = v; });
+    return out;
+  }
+  function cleanSleepDetails(o) {
+    var out = pickCodes(SLEEP_DETAIL, o);
+    if (o && Array.isArray(o.woke)) { var w = SLEEP_WOKE.filter(function (c) { return o.woke.indexOf(c) > -1; }); if (w.length) out.woke = w; }
+    if (out.wakeups === '0') delete out.awake; /* no waking means no time awake to ask about */
+    return Object.keys(out).length ? out : null;
+  }
+  function cleanSleepCheck(o) {
+    var out = pickCodes(SLEEP_CHECK, o);
+    if (out.w1 === '0' && out.w2 === '0') delete out.since; /* "how long has it been like this" only follows a night of trouble */
+    return out;
+  }
+  /* the write boundary: a sleep entry keeps only known detail codes; a check must answer at least one question */
+  function cleanData(type, data) {
+    if (type === 'sleep' && data && typeof data === 'object' && data.details !== undefined) { var c = Object.assign({}, data), dt = cleanSleepDetails(data.details); if (dt) c.details = dt; else delete c.details; return c; }
+    if (type === 'sleepcheck') { var sc = cleanSleepCheck(data); if (!Object.keys(sc).length) throw new Error('Answer at least one question.'); return sc; }
+    return data;
+  }
   function add(type, date, data, source, opts) {
     if (TYPES.indexOf(type) < 0) throw new Error('Unknown entry type: ' + type);
+    data = cleanData(type, data);
     if (!validDate(date)) throw new Error('Choose a real date.');
     if (date > today()) throw new Error('Entries cannot be in the future.');
     var db = load();
@@ -115,8 +147,9 @@
     /* a failed write puts the entry back exactly as it was, as add() does: an edit that did not save must never show
        as saved (Codex diff review, 20 Oct: a mood edit that failed to save still completed the day's check-in) */
     var before = { date: ev.date, data: ev.data, source: ev.source, updatedAt: ev.updatedAt };
+    var newData = patch.data !== undefined ? cleanData(ev.type, patch.data) : undefined; /* checked before anything changes */
     if (patch.date !== undefined) { if (!validDate(patch.date) || patch.date > today()) throw new Error('Choose a real date on or before today.'); ev.date = patch.date; }
-    if (patch.data !== undefined) ev.data = patch.data;
+    if (patch.data !== undefined) ev.data = newData;
     /* An imported entry (Apple Health, Google) that the person changes by hand becomes hers: a later import
      * leaves it alone and "Remove imported data" keeps it. Imports refresh their own rows through addMany. */
     if (patch.source) ev.source = patch.source; else if ((patch.data !== undefined || patch.date !== undefined) && IMPORTED[ev.source]) ev.source = 'room';
@@ -135,10 +168,11 @@
     var have = {}; db.events.forEach(function (e) { if (SINGLE_PER_DAY[e.type]) have[e.type + '|' + e.date] = true; });
     (items || []).forEach(function (it) {
       if (!it || typeof it !== 'object') { skipped++; return; }
-      if (it.id) { var ev = get(it.id); if (!ev || !it.data || typeof it.data !== 'object') { skipped++; return; } ev.data = it.data; ev.updatedAt = nowIso(); updated++; if (ev.type === 'period') touchedPeriod = true; return; }
+      if (it.id) { var ev = get(it.id); if (!ev || !it.data || typeof it.data !== 'object') { skipped++; return; } try { ev.data = cleanData(ev.type, it.data); } catch (err) { skipped++; return; } ev.updatedAt = nowIso(); updated++; if (ev.type === 'period') touchedPeriod = true; return; }
       if (TYPES.indexOf(it.type) < 0 || !validDate(it.date) || it.date > t || !it.data || typeof it.data !== 'object') { skipped++; return; }
+      var itData; try { itData = cleanData(it.type, it.data); } catch (err) { skipped++; return; } /* the same write boundary as add(): an empty check or stray codes never land (Codex, 21 Oct) */
       if (SINGLE_PER_DAY[it.type]) { if (have[it.type + '|' + it.date]) { skipped++; return; } have[it.type + '|' + it.date] = true; }
-      db.events.push({ id: uid(), type: it.type, date: it.date, createdAt: nowIso(), updatedAt: nowIso(), source: it.source || 'import', data: it.data });
+      db.events.push({ id: uid(), type: it.type, date: it.date, createdAt: nowIso(), updatedAt: nowIso(), source: it.source || 'import', data: itData });
       added++; if (it.type === 'period') touchedPeriod = true;
     });
     if (added || updated) { save('import'); if (touchedPeriod) mirrorLegacy({ type: 'period' }); }
@@ -177,8 +211,8 @@
     var db = load(), changed = [];
     (puts || []).forEach(function (ev) {
       if (!ev || typeof ev !== 'object' || TYPES.indexOf(ev.type) < 0 || !validDate(ev.date) || !ev.data || typeof ev.data !== 'object') return;
-      var id = String(ev.id || uid());
-      var norm = { id: id, type: ev.type, date: ev.date, createdAt: ev.createdAt || nowIso(), updatedAt: ev.updatedAt || ev.createdAt || nowIso(), source: ev.source || 'cloud', data: ev.data };
+      var id = String(ev.id || uid()), evData; try { evData = cleanData(ev.type, ev.data); } catch (err) { return; } /* a cloud row that cleans to nothing is not applied */
+      var norm = { id: id, type: ev.type, date: ev.date, createdAt: ev.createdAt || nowIso(), updatedAt: ev.updatedAt || ev.createdAt || nowIso(), source: ev.source || 'cloud', data: evData };
       var found = false;
       for (var i = 0; i < db.events.length; i++) { if (db.events[i].id === id) { db.events[i] = norm; found = true; break; } }
       if (!found) db.events.push(norm);
@@ -432,6 +466,7 @@
   function exportJSON() { return JSON.stringify(load(), null, 1); }
   function importJSON(text, mode) {
     var incoming = normalise(JSON.parse(text));
+    incoming.events = (incoming.events || []).map(function (e) { try { return Object.assign({}, e, { data: cleanData(e.type, e.data) }); } catch (err) { return null; } }).filter(Boolean); /* a restored file passes the same write boundary */
     var db = load();
     if (mode === 'replace') { cache = incoming; }
     else {
@@ -511,16 +546,19 @@
   /* true while a sandbox runs: a save then would write the sample over the real record, so callers that write lazily check this */
   function isSandbox() { return sandboxDepth > 0; }
 
+  /* same-day duplicates (a sync can bring two checks for one day): the newest edit is the answer; on a tie, the later row (Codex, 21 Oct) */
+  function newestFirst(a, b) { var ta = String(a.updatedAt || a.createdAt || ''), tb = String(b.updatedAt || b.createdAt || ''); return tb > ta ? 1 : tb < ta ? -1 : 0; }
+  function latestOnDate(type, date) { var l = list(type, { from: date, to: date }).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return newestFirst(x.e, y.e) || (y.i - x.i); }); return l.length ? l[0].e : null; }
   root.OvuStore = {
     /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
     NOTICE_V: 4, /* v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
     KEY: KEY, TYPES: TYPES, checkinAnswers: checkinAnswers, setCheckinAnswer: setCheckinAnswer, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
-    load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
+    load: load, list: list, get: get, latestOnDate: latestOnDate, newestFirst: newestFirst, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
     putEvent: putEvent, applyRemote: applyRemote,
     addMany: addMany, removeWhere: removeWhere,
     profile: profile, setProfile: setProfile, state: state, setState: setState, commit: commit, reload: function () { load(true); return state(); },
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
-    sleepHours: sleepHours, sleepStats: sleepStats, periodEpisodes: periodEpisodes, cycleStats: cycleStats, rhythmFromRecall: rhythmFromRecall,
+    sleepHours: sleepHours, sleepStats: sleepStats, cleanSleepDetails: cleanSleepDetails, cleanSleepCheck: cleanSleepCheck, SLEEP_DETAIL: SLEEP_DETAIL, SLEEP_WOKE: SLEEP_WOKE, SLEEP_CHECK: SLEEP_CHECK, periodEpisodes: periodEpisodes, cycleStats: cycleStats, rhythmFromRecall: rhythmFromRecall,
     exportJSON: exportJSON, importJSON: importJSON, clearAll: clearAll,
     OWN_KEYS: OWN_KEYS, KEEP_ON_CLEAR: KEEP_ON_CLEAR, crypto: { PASS_ALPHABET: PASS_ALPHABET, encrypt: encrypt, decrypt: decrypt, generatePassphrase: generatePassphrase, toCode: toCode, fromCode: fromCode }
   };

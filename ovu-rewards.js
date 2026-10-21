@@ -91,7 +91,7 @@
   /* a saved record earns once: editing it again returns the same receipt and no hearts */
   function receipted(l, ev) { l.receipts = l.receipts || {}; if (!ev || !ev.id) return false; if (l.receipts[ev.id]) return true; l.receipts[ev.id] = 1; var ks = Object.keys(l.receipts); if (ks.length > 3000) ks.slice(0, ks.length - 3000).forEach(function (k) { delete l.receipts[k]; }); return false; }
   function award(ev) {
-    if (ev.type === 'weight') return { points: 0, bonus: 0, hearts: ledger().hearts }; /* numbers are never rewarded */
+    if (ev.type === 'weight' || ev.type === 'sleepcheck') return { points: 0, bonus: 0, hearts: ledger().hearts }; /* numbers are never rewarded, and neither is answering the sleep check */
     /* only today's own log earns: a backfilled day or an entry brought in from another app earns nothing, as the rule above
        says (Codex design review, 20 Oct: an old date or an import still paid six food hearts on an empty ledger) */
     if ((ev.date && ev.date !== S.today()) || IMPORTED_SRC[ev.source]) return { points: 0, bonus: 0, hearts: ledger().hearts, backfill: true };

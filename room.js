@@ -190,7 +190,11 @@
     },
     sleep: {
       icon: 'bedtime', title: 'How the sleep notes work',
-      body: '<p>Duration is bedtime to wake time, so it counts time in bed rather than measured sleep. Quality is your own 1 to 5 rating. The app notes weeks averaging under 6 hours and runs of three nights under 5 hours.</p>'
+      body: '<p>Duration is bedtime to wake time, so it counts time in bed rather than measured sleep. Quality is your own 1 to 5 rating. The app notes weeks averaging under 6 hours and runs of three nights under 5 hours.</p><p>The optional sleep details are Rhythme’s own questions, built on the standard sleep diary sleep researchers use. Skip any of them: a blank answer stays unknown and is never counted as zero. Patterns count only the nights that answered, and “over 30 minutes” is a research marker, not a diagnosis.</p>'
+    },
+    sleepcheck: {
+      icon: 'fact_check', title: 'About the two-week check',
+      body: '<p>Eight questions about the last two weeks, in Rhythme’s own words. They follow what doctors ask about: how often sleep is hard and whether it affects your day, whether you have time and a place to sleep, breathing at night, restless legs and sleepiness at the wheel. There is no score. Some answers bring a note about when to see a doctor, and any doctor’s visit is fine without one.</p>'
     },
     food: {
       icon: 'restaurant', title: 'Where the numbers come from',
@@ -602,7 +606,97 @@
   function sleepListHTML() {
     var st = S.sleepStats(7);
     if (!st.nights.length) return '<div class="empty">No nights recorded yet. Your first entry starts the pattern.</div>';
-    return '<div class="entries">' + (st.entries || st.nights).slice().reverse().map(function (n) { /* one row per entry, so each can be deleted; the agents count one night per date */ return '<div class="entry"><span class="ms">bedtime</span><div class="body"><b>' + esc(prettyDate(n.date)) + ' · ' + esc(A.fmtHours(n.hours)) + '</b><span>' + (n.quality ? 'Quality ' + n.quality + '/5' : 'Quality not rated') + '</span></div><button class="del" data-del="' + esc(n.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>'; }).join('') + '</div>';
+    return '<div class="entries">' + (st.entries || st.nights).slice().reverse().map(function (n) { /* one row per entry, so each can be deleted; the agents count one night per date */ return '<div class="entry"><span class="ms">bedtime</span><div class="body"><b>' + esc(prettyDate(n.date)) + ' · ' + esc(A.fmtHours(n.hours)) + '</b><span>' + (n.quality ? 'Quality ' + n.quality + '/5' : 'Quality not rated') + (detailOf(n.id) ? ' · ' + esc(detailOf(n.id)) : '') + '</span></div><button class="del" data-del="' + esc(n.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>'; }).join('') + '</div>';
+  }
+  /* ---------- optional sleep details and the two-week sleep check (labels and rules in ovu-agents.js) ----------
+   * Every question can be left blank (unknown) or answered "Not sure"; a second tap on a chosen answer clears it. */
+  function chipGroupHTML(map, key, val) {
+    var L = map[key], multi = key === 'woke', on = function (v) { return multi ? (val || []).indexOf(v) > -1 : val === v; };
+    return '<div class="field sqf" data-sq="' + key + '"' + (multi ? ' data-multi="1"' : '') + '><span class="lbl">' + esc(L.q) + '</span>' + (L.hint ? '<small class="sqhint">' + esc(L.hint) + '</small>' : '') +
+      '<div class="chips" role="group" aria-label="' + esc(L.q) + '">' + L.opts.map(function (o) { return '<button type="button" class="chipbtn' + (on(o[0]) ? ' on' : '') + '" data-v="' + esc(o[0]) + '" aria-pressed="' + (on(o[0]) ? 'true' : 'false') + '">' + esc(o[1]) + '</button>'; }).join('') + '</div></div>';
+  }
+  function wireChipGroups(root, onChange) {
+    root.addEventListener('click', function (e) {
+      var b = e.target.closest('.sqf .chipbtn'); if (!b) return;
+      var g = b.closest('.sqf'), multi = g.dataset.multi === '1', was = b.classList.contains('on');
+      if (!multi) $$('.chipbtn', g).forEach(function (x) { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); });
+      b.classList.toggle('on', !was); b.setAttribute('aria-pressed', !was ? 'true' : 'false');
+      if (onChange) onChange(g.dataset.sq);
+    });
+  }
+  function readChipGroups(root) {
+    var out = {};
+    $$('.sqf', root).forEach(function (g) {
+      if (g.hidden) return;
+      var vals = $$('.chipbtn.on', g).map(function (b) { return b.dataset.v; });
+      if (g.dataset.multi === '1') { if (vals.length) out[g.dataset.sq] = vals; } else if (vals[0] !== undefined) out[g.dataset.sq] = vals[0];
+    });
+    return out;
+  }
+  function sleepDetailsHTML() {
+    return '<div class="sqbox"><button type="button" class="btn ghost sqtoggle" aria-expanded="false" aria-controls="sqBody" id="sqToggle"><span class="ms">add</span>Add sleep details (optional)</button>' +
+      '<div class="sqbody" id="sqBody" hidden><p class="help">Skip any question. These notes help you see patterns; they are not a sleep test or a score.</p>' +
+      A.DETAIL_ORDER.map(function (k) { return chipGroupHTML(A.SLEEP_LABELS, k, null); }).join('') + '<p class="help sqclearrow"><button type="button" class="linkbtn" id="sqClear">Clear these answers</button></p></div></div>';
+  }
+  function wireSleepDetails(root) {
+    var t = $('#sqToggle', root), bd = $('#sqBody', root); if (!t || !bd) return;
+    function awakeShown() { var w = $('.sqf[data-sq="wakeups"] .chipbtn.on', bd); $('.sqf[data-sq="awake"]', bd).hidden = !w || w.dataset.v === '0'; }
+    t.addEventListener('click', function () { var open = bd.hidden, n = Object.keys(readChipGroups(bd)).length; bd.hidden = !open; t.setAttribute('aria-expanded', open ? 'true' : 'false'); t.innerHTML = open ? '<span class="ms">remove</span>Hide sleep details' : (n ? '<span class="ms">add</span>Sleep details (' + n + ' answered, kept)' : '<span class="ms">add</span>Add sleep details (optional)'); });
+    var cl = $('#sqClear', bd); if (cl) cl.addEventListener('click', function () { Array.prototype.forEach.call(bd.querySelectorAll('.chipbtn.on'), function (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); }); awakeShown(); });
+    wireChipGroups(bd, function (k) { if (k === 'wakeups') awakeShown(); });
+    awakeShown();
+  }
+  /* the answers count whether the box is open or folded away (Codex, 21 Oct: folding it used to drop them); Clear these answers is the one way to drop them */
+  function readSleepDetails(root) { var bd = $('#sqBody', root); if (!bd) return null; var d = readChipGroups(bd); return Object.keys(d).length ? d : null; }
+  /* the night form survives a trip to the two-week check and back (Codex, 21 Oct); the quality moons are the one field not kept */
+  var sleepDraft = null;
+  function keepSleepDraft(body) { var bd = $('#sqBody', body); if (!$('#slBed', body)) return; sleepDraft = { date: $('#slDate', body).value, bed: $('#slBed', body).value, wake: $('#slWake', body).value, notes: ($('#slNotes', body) || {}).value || '', open: !!(bd && !bd.hidden), details: bd ? readChipGroups(bd) : {} }; }
+  function restoreSleepDraft(body) {
+    var d = sleepDraft; if (!d) return; sleepDraft = null;
+    if ($('#slDate', body) && d.date) $('#slDate', body).value = d.date; if ($('#slBed', body)) $('#slBed', body).value = d.bed || ''; if ($('#slWake', body)) $('#slWake', body).value = d.wake || ''; if ($('#slNotes', body)) $('#slNotes', body).value = d.notes || '';
+    var bd = $('#sqBody', body), t = $('#sqToggle', body);
+    if (bd) { Object.keys(d.details || {}).forEach(function (k) { [].concat(d.details[k]).forEach(function (v) { var b = bd.querySelector('.sqf[data-sq="' + k + '"] .chipbtn[data-v="' + v + '"]'); if (b) { b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); } }); }); var w = bd.querySelector('.sqf[data-sq="wakeups"] .chipbtn.on'), aw = bd.querySelector('.sqf[data-sq="awake"]'); if (aw) aw.hidden = !w || w.dataset.v === '0'; }
+    if (d.open && t && bd && bd.hidden) t.click();
+  }
+  function detailLine(d) {
+    if (!d) return '';
+    var L = A.SLEEP_LABELS, lab = function (k) { var o = L[k].opts.filter(function (x) { return x[0] === d[k]; })[0]; return o ? o[1] : ''; }, bits = [];
+    if (d.latency && d.latency !== 'unsure') bits.push(lab('latency').toLowerCase() + ' to fall asleep');
+    if (d.wakeups && d.wakeups !== 'unsure') bits.push(d.wakeups === '0' ? 'no waking' : 'woke ' + (d.wakeups === '4+' ? '4+ times' : d.wakeups + (d.wakeups === '1' ? ' time' : ' times')));
+    if (d.early === 'yes') bits.push('woke too early');
+    if (d.rested && d.rested !== 'unsure') bits.push('rested: ' + lab('rested').toLowerCase());
+    return bits.join(' · ');
+  }
+  function detailOf(id) { var e = S.get(id); return e && e.data && e.data.details ? detailLine(S.cleanSleepDetails(e.data.details)) : ''; }
+  function sqNoteHTML(n) { return '<div class="sqnote ' + esc(n.level) + '"><b>' + esc(n.title) + '</b><p>' + esc(n.message) + '</p></div>'; }
+  /* the latest check's notes stay on show for two weeks, whatever else was or was not answered */
+  function sleepCheckCardHTML() {
+    var all = S.list('sleepcheck'), lastDay = all.length ? all.map(function (e) { return e.date; }).sort().slice(-1)[0] : null, last = lastDay ? S.latestOnDate('sleepcheck', lastDay) : null, age = last ? S.diffDays(last.date, S.today()) : null, due = !last || age >= 14;
+    var notes = last && age < 14 ? A.sleepCheckNotes(last.data) : [];
+    return '<div class="stat sqcard"><span class="ms">fact_check</span><div><b>Two-week sleep check</b><span>' + (last ? 'Last done ' + esc(prettyDate(last.date)) + (due ? '. Ready for another.' : '.') : 'Eight short questions about the last two weeks. About a minute.') + '</span></div><button type="button" class="btn soft" id="openSleepCheck" style="flex:0 0 auto">' + (last && !due ? 'Open' : 'Start') + '</button></div>' +
+      (notes.length ? '<div class="sqnotes">' + notes.map(sqNoteHTML).join('') + '</div>' : '');
+  }
+  function openSleepCheck() {
+    var last = S.list('sleepcheck', { from: S.today(), to: S.today() })[0], a = last ? last.data : {};
+    openSheet('sleepcheck', 'Two-week sleep check', 'Optional. Not a test or a score.', 'fact_check',
+      '<p class="help">These questions cover the last two weeks. Skip any you like. Your answers stay in your diary, and some may come with a note about when to talk to a doctor.</p>' +
+      A.CHECK_ORDER.map(function (k) { return chipGroupHTML(A.CHECK_LABELS, k, a[k]); }).join('') +
+      '<button class="btn primary" id="saveSleepCheck" style="width:100%"><span class="ms">check</span>Save the check</button><div class="msg" id="sqMsg"></div><div id="sqResult"></div>' + guideHTML('sleepcheck'));
+    var root = body;
+    function sinceShown() { var w1 = $('.sqf[data-sq="w1"] .chipbtn.on', root), w2 = $('.sqf[data-sq="w2"] .chipbtn.on', root); $('.sqf[data-sq="since"]', root).hidden = !!(w1 && w2 && w1.dataset.v === '0' && w2.dataset.v === '0'); }
+    wireChipGroups(root, function (k) { if (k === 'w1' || k === 'w2') sinceShown(); }); sinceShown();
+    $('#saveSleepCheck').addEventListener('click', function () {
+      try {
+        var ev = S.add('sleepcheck', S.today(), readChipGroups(root), 'room'), notes = A.sleepCheckNotes(ev.data);
+        chime('save'); message($('#sqMsg'), 'Saved to your diary.', true);
+        $('#sqResult').innerHTML = (notes.length ? notes.map(sqNoteHTML).join('') + '<small class="sqsmall">Rhythme cannot assess your sleep or diagnose. These notes follow published guidance; no clinician receives them.</small>' : '<div class="sqnote info"><b>Nothing to flag from these answers</b><p>If sleep is worrying you, it is always fine to talk to a doctor about it.</p></div>') +
+          '<div class="row"><button type="button" class="btn ghost" id="sqBack"><span class="ms">arrow_back</span>Back to sleep</button></div>';
+        $('#sqBack').addEventListener('click', openSleepRecord);
+        if (notes.some(function (n) { return n.level !== 'info'; })) { careOn = true; endMoment(); } /* a care note on screen holds the cheerful moments, as a care card does */
+        $('#sqResult').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'nearest' });
+        renderDeck();
+      } catch (e) { message($('#sqMsg'), e.message, false); }
+    });
   }
   function openBedtime() {
     openSheet('bedtime', 'Ready for bed?', 'Your room will dim while you sleep', 'bedtime',
@@ -626,11 +720,11 @@
     openSheet('wake', 'Good morning!', 'Finish last night’s sleep entry', 'wb_twilight',
       '<div class="stat"><span class="ms">bedtime</span><div><b>Bedtime ' + esc(sl.bedTime || '--:--') + '</b><span>Started ' + esc(sl.startedAt ? new Date(sl.startedAt).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '') + '</span></div></div>' +
       '<div class="grid2"><div class="field"><label for="wakeTime">Wake time</label><input class="input" id="wakeTime" type="time" value="' + nowHM() + '"></div><div class="field"><label for="wakeDate">Morning of</label><input class="input" id="wakeDate" type="date" value="' + S.today() + '" max="' + S.today() + '"></div></div>' +
-      '<div class="field"><div class="lbl-row"><span class="lbl">How did you sleep?</span>' + infoBtn('sleep') + '</div>' + moonsHTML('q', 0) + guideHTML('sleep') + '</div>' +
+      '<div class="field"><div class="lbl-row"><span class="lbl">How did you sleep?</span>' + infoBtn('sleep') + '</div>' + moonsHTML('q', 0) + guideHTML('sleep') + '</div>' + sleepDetailsHTML() +
       '<div class="field"><label for="wakeNotes">Notes (optional)</label><textarea class="input" id="wakeNotes" placeholder="Woke twice, vivid dreams, warm night..."></textarea></div>' +
       '<div class="row"><button class="btn primary" id="saveWake"><span class="ms">wb_sunny</span>Save my sleep</button><button class="btn ghost" id="cancelSleep">I did not sleep</button></div>' +
       '<div class="msg" id="sleepMsg"></div>');
-    wireMoons(body);
+    wireMoons(body); wireSleepDetails(body);
     if (soundOn()) new Audio(ERIN + 'morning_how.mp3').play().catch(function () { });
     $('#cancelSleep').addEventListener('click', function () { exitNight(); S.setState({ sleeping: null }); closeSheet(); toast('No worries. Nothing was recorded.', 'wb_sunny'); });
     $('#saveWake').addEventListener('click', function () {
@@ -638,7 +732,8 @@
       var cur = (S.reload ? S.reload() : S.state()).sleeping; if (!cur || (cur.startedAt || cur.at) !== (sl.startedAt || sl.at)) { closeSheet(); toast('This night was already saved.', 'wb_sunny'); return; }
       try {
         var q = Number($('.moons', body).dataset.value || 0) || null;
-        var ev = S.add('sleep', $('#wakeDate').value, { bedTime: sl.bedTime, wakeTime: $('#wakeTime').value, quality: q, notes: $('#wakeNotes').value.trim(), mode: 'room' });
+        var wd = { bedTime: sl.bedTime, wakeTime: $('#wakeTime').value, quality: q, notes: $('#wakeNotes').value.trim(), mode: 'room' }, det = readSleepDetails(body); if (det) wd.details = det;
+        var ev = S.add('sleep', $('#wakeDate').value, wd);
         if (window.OvuStamina && OvuStamina.rested) OvuStamina.rested(sl.startedAt); /* a saved night of real rest refills her energy; going to bed does not */
         exitNight(); S.setState({ sleeping: null }); closeSheet(); chime('save');
         afterSave(ev, 'Slept ' + A.fmtHours(S.sleepHours(ev.data)) + '. Saved to your journal.');
@@ -649,7 +744,7 @@
   var RM = window.OvuRemind;
   var DAYN = ['S', 'M', 'T', 'W', 'T', 'F', 'S'], DAYF = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   function clockTabs(on) { return '<div class="tabs" id="clockTabs"><button type="button" data-tab="reminders" class="' + (on === 'reminders' ? 'on' : '') + '">Reminders</button><button type="button" data-tab="sleep" class="' + (on === 'sleep' ? 'on' : '') + '">Record a night</button></div>'; }
-  function wireClockTabs() { var t = $('#clockTabs'); if (!t) return; t.addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b) return; chime('tap'); if (b.dataset.tab === 'sleep') openSleepRecord(); else openClock(); }); }
+  function wireClockTabs() { var t = $('#clockTabs'); if (!t) return; t.addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b || b.classList.contains('on')) return; chime('tap'); /* the active tab is a no-op: it must not wipe the form */ if (b.dataset.tab === 'sleep') openSleepRecord(); else openClock(); }); }
   function daysText(days) { if (days.length === 7) return 'Every day'; if (days.join() === '1,2,3,4,5') return 'Weekdays'; if (days.join() === '0,6') return 'Weekends'; return days.map(function (d) { return DAYF[d].slice(0, 3); }).join(', '); }
   function fmtTime(t) { var h = Number(t.slice(0, 2)), m = t.slice(3), ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12; return h + (m === '00' ? '' : ':' + m) + ap; }
   function permBox() {
@@ -709,15 +804,19 @@
       clockTabs('sleep') + '<div class="grid2"><div class="field"><label for="slDate">Morning of</label><input class="input" id="slDate" type="date" value="' + S.today() + '" max="' + S.today() + '"></div><div class="field"><label for="slBed">Bedtime</label><input class="input" id="slBed" type="time" value=""></div></div>' +
       '<div class="grid2"><div class="field"><label for="slWake">Wake time</label><input class="input" id="slWake" type="time" value=""></div><div class="field"><div class="lbl-row"><span class="lbl">Quality</span>' + infoBtn('sleep') + '</div>' + moonsHTML('q', 0) + '</div></div>' + guideHTML('sleep') +
       '<p class="help">Your best guess is enough. Nothing is filled in for you, so an unknown night is never recorded as eight hours.</p>' +
+      sleepDetailsHTML() +
       '<div class="field"><label for="slNotes">Notes (optional)</label><textarea class="input" id="slNotes" placeholder="Night feeds, night sweats, cramps, late coffee..."></textarea></div>' +
       '<button class="btn primary" id="saveSleep" style="width:100%"><span class="ms">check</span>Save night</button><div class="msg" id="sleepMsg"></div>' +
+      '<div id="sqCardWrap">' + sleepCheckCardHTML() + '</div>' +
       '<div class="field"><span class="lbl">Last 7 nights</span><div id="sleepList">' + sleepListHTML() + '</div></div>');
-    wireMoons(body); wireClockTabs();
+    wireMoons(body); wireClockTabs(); wireSleepDetails(body); restoreSleepDraft(body);
+    $('#openSleepCheck').addEventListener('click', function () { chime('tap'); keepSleepDraft(body); openSleepCheck(); });
     $('#saveSleep').addEventListener('click', function () {
       try {
         var q = Number($('.moons', body).dataset.value || 0) || null;
         if (!S.validTime($('#slBed').value) || !S.validTime($('#slWake').value)) throw new Error('Enter both bedtime and wake time.');
-        var ev = S.add('sleep', $('#slDate').value, { bedTime: $('#slBed').value, wakeTime: $('#slWake').value, quality: q, notes: $('#slNotes').value.trim(), mode: 'manual' });
+        var nd = { bedTime: $('#slBed').value, wakeTime: $('#slWake').value, quality: q, notes: $('#slNotes').value.trim(), mode: 'manual' }, det = readSleepDetails(body); if (det) nd.details = det;
+        var ev = S.add('sleep', $('#slDate').value, nd); sleepDraft = null;
         message($('#sleepMsg'), 'Saved: ' + A.fmtHours(S.sleepHours(ev.data)) + ' of sleep.', true); chime('save');
         $('#sleepList').innerHTML = sleepListHTML(); afterSave(ev);
       } catch (e) { message($('#sleepMsg'), e.message, false); }

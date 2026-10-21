@@ -481,6 +481,13 @@
     var dizzy = day.some(function (x) { return x.type === 'symptom' && (x.data.symptoms || []).indexOf('dizziness') > -1; });
     if (recent && heavy && dizzy && (ev.type === 'period' || ev.type === 'symptom')) return { level: 'emergency', code: 'HEAVY_DIZZY_NOW', title: 'Get emergency care now', trigger: 'heavy bleeding with dizziness or faintness' };
     if (post && ev.date >= S.addDays(today, -27) && ((ev.type === 'period' && d.flow && d.flow !== 'none') || (ev.type === 'symptom' && (d.symptoms || []).indexOf('spotting') > -1))) return { level: 'prompt', code: 'POSTMENO_BLEED', title: 'Please get this checked this week', trigger: 'bleeding after menopause' };
+    /* sleep: the two-week check's notes (ovu-agents.js sleepCheckNotes) for two weeks after it, and a night that woke her gasping */
+    var AG = root.OvuAgents;
+    if (ev.type === 'sleepcheck' && AG && AG.sleepCheckNotes && ev.date >= S.addDays(today, -13) && ev.date <= today) {
+      var sc = AG.sleepCheckNotes(d).filter(function (x) { return x.level !== 'info'; })[0];
+      if (sc) return card(sc.level, sc.code, sc.title, sc.trigger, sc.message);
+    }
+    if (ev.type === 'sleep' && recent && AG && AG.breathingNote && d.details && Array.isArray(d.details.woke) && d.details.woke.indexOf('gasp') > -1) { var bn = AG.breathingNote(); return card(bn.level, bn.code, bn.title, bn.trigger, bn.message); }
     var pain = typeof d.pain === 'number' ? d.pain : null;
     if (ev.type === 'symptom' && ev.date === today && pain !== null && pain >= 9) return card('today', 'PAIN_SEVERE_TODAY', 'Pain this strong deserves care today', 'pain of ' + pain + ' out of 10', 'Pain of ' + pain + ' out of 10 deserves a doctor today. If it came on suddenly, is on one side, or you could be pregnant, get emergency care now at KKH’s 24-hour Urgent O&G Centre or an A&E, and call 995 if you feel faint.', [{ label: 'KKH Urgent O&G (24h)', href: 'https://www.kkh.com.sg/our-specialties/urgent-og-centre' }, { label: 'Call 995', href: 'tel:995' }]);
     return null;
