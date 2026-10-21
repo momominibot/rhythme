@@ -2735,4 +2735,41 @@ var summarised = false;
   check('month totals keep filled-in days apart from recorded bleeding, and count imported calm sessions', oct.bleedingDays === 1 && oct.filledDays === 2 && oct.calmSessions === 3 && oct.calmMinutes === 30, JSON.stringify(oct));
 })();
 
+(function seats() {
+  console.log('2k6. seats (21 Oct): three bench practices in Erin’s voice, a minute before anything is saved, one thank-you a day per seat; the cave is the tone');
+  var w = fresh('2026-10-21'); w.OvuRoom = null;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), w, { filename: 'ovu-seats.js' });
+  var SE = w.OvuSeats, src = fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), ids = Object.keys(SE.SCRIPTS);
+  check('three practices, seven, six and six steps, each about three minutes', ids.join() === 'street,plaza,harbour' && SE.steps('street').length === 7 && SE.steps('plaza').length === 6 && SE.steps('harbour').length === 6 && ids.every(function (id) { var t = SE.total(id); return t >= 140 && t <= 185; }), ids.map(function (id) { return SE.total(id); }).join());
+  var missing = [];
+  ids.forEach(function (id) { SE.steps(id).forEach(function (s) { if (!fs.existsSync(path.join(root, s.audio))) missing.push(s.audio); }); });
+  SE.steps('harbour', true).forEach(function (s) { if (!fs.existsSync(path.join(root, s.audio))) missing.push(s.audio); });
+  check('every clip is on disk, the reduced-motion line too', missing.length === 0, missing.join());
+  var rm = SE.steps('harbour', true), plain = SE.steps('harbour', false);
+  check('with reduced motion the water’s second line asks for a colour, not a ripple; nothing else changes', /colour or a reflection/.test(rm[1].text) && /ripple/.test(plain[1].text) && rm[1].audio !== plain[1].audio && rm[0].text === plain[0].text && rm[2].audio === plain[2].audio && SE.steps('street', true)[1].text === SE.steps('street')[1].text);
+  var words = ids.map(function (id) { return SE.SCRIPTS[id].steps.map(function (s) { return s.text; }).join(' '); }).join(' ');
+  check('no claims in the scripts: nothing cured, healed or promised, no em dashes, every part of the kindness practice optional with a way out', !/\b(cure|heal|fix|anxiety|depression|reduce stress|lower your|boost|detox|will feel)\b/i.test(words) && words.indexOf('—') < 0 && SE.SCRIPTS.plaza.steps.slice(1, 5).every(function (s) { return /If you would like|If someone|you might|Otherwise/.test(s.text); }) && /stop now/.test(SE.SCRIPTS.plaza.steps[5].text));
+  check('the credit names Erin Lee, her cloned voice and her permission', /Erin Lee/.test(SE.CREDIT) && /cloned voice/.test(SE.CREDIT) && /permission/.test(SE.CREDIT));
+  var e1 = SE.entry('street', { seconds: 59.9, confirmed: true, finished: false }), e2 = SE.entry('street', { seconds: 60, confirmed: true, finished: false, startedAt: 'x' }), e3 = SE.entry('street', { seconds: 200, confirmed: false, finished: true }), e4 = SE.entry('nowhere', { seconds: 200, confirmed: true, finished: true }), e5 = SE.entry('plaza:bench2', { seconds: 168.4, confirmed: true, finished: true });
+  check('59.9 seconds is not a minute; sixty is; nothing unconfirmed and no unknown seat; a finished practice is complete, a stopped one says so', e1 === null && !!e2 && e2.seconds === 60 && e2.minutes === 1 && e2.stoppedEarly && !e2.completed && e2.activity === 'seat' && e2.seat === 'street' && e2.scene === 'street' && e2.activityName === 'Sounds of the street' && e2.confirmedReal && e2.startedAt === 'x' && e2.guide === SE.CREDIT && e3 === null && e4 === null && e5.completed && !e5.stoppedEarly && e5.minutes === 2.8 && e5.scene === 'plaza', JSON.stringify([e1, e2, e5]));
+  var t = 1000, clk = SE.makeClock(function () { return t; });
+  clk.run(); t += 5000; clk.hold(); t += 60000; clk.run(); t += 2000;
+  check('the clock counts running time only: five seconds, a minute held, two more', clk.ms() === 7000 && clk.running());
+  check('the module pays no hearts and spends no energy itself, and saves only the one confirmed entry', !/OvuRewards\.(award|spend|buy)|spendWith\(|OvuStamina/.test(src) && (src.match(/S\.add\('mindfulness'/g) || []).length === 1);
+  /* hearts: once a day per seat */
+  var S = w.OvuStore, RW = w.OvuRewards, tdy = S.today();
+  function seatEv(seat) { return S.add('mindfulness', tdy, SE.entry(seat, { seconds: 90, confirmed: true, finished: true }), 'room'); }
+  var a1 = RW.award(seatEv('street')), a2 = RW.award(seatEv('street')), a3 = RW.award(seatEv('plaza:bench')), a4 = RW.award(seatEv('plaza:bench2')), a5 = RW.award(seatEv('harbour'));
+  check('the street bench pays the flat practice points once; the same bench again pays nothing; the two plaza benches are two seats; the day’s cap still holds', a1.points === 2 && a2.points === 0 && a3.points === 2 && a4.points === 2 && a5.points === 0 && RW.ledger().hearts >= 6, JSON.stringify([a1.points, a2.points, a3.points, a4.points, a5.points]));
+  var l = RW.ledger(); l.seatDay = null; l.mindDay = null; l.dailyLast = S.addDays(tdy, 1); S.setState({ rewards: l });
+  check('a clock set back cannot reopen a seat’s thank-you either', RW.award(seatEv('street')).points === 0);
+  /* the cave: both hotspots are one seat */
+  var w2 = scenes('2026-10-21'); w2.OvuRoom = null; w2.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-tones.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w2, { filename: f }); });
+  var CV = w2.OvuBarn.CAVE, cry = CV.hotspots.filter(function (h) { return h.id === 'crystals'; })[0], stone = CV.hotspots.filter(function (h) { return h.id === 'warmstone'; })[0];
+  check('the crystals and the warm stone walk her to the same stand point', !!cry && !!stone && cry.wp.x === stone.wp.x && cry.wp.y === stone.wp.y && cry.wp.flip === stone.wp.flip);
+  var TS = fs.readFileSync(path.join(root, 'ovu-tones.js'), 'utf8');
+  check('the cave sheet makes no promise and keeps no pill; one Stop stands her up with the sound', !/love frequency|cellular|DNA|repair|transcend/i.test(TS) && TS.indexOf('tonePill') < 0 && /Stop sound and stand up/.test(TS) && /if \(!hz\) standUp\(\)/.test(TS));
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

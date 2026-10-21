@@ -282,6 +282,7 @@
   /* sitting by the water: her seated sprite on the warm stone, no breathing animation, no timer, no save, Stop any time */
   var sitting = null;
   function openStone() {
+    if (root.OvuTones && root.OvuTones.openSpring) return root.OvuTones.openSpring(); /* since 21 Oct sitting by the water is the crystals’ tone (ovu-tones.js) */
     R.openSheet('warmstone', 'A warm stone', 'By the water', 'chair',
       '<p>Sit for as long as you like. Nothing is counted.</p><div class="row"><button type="button" class="btn primary" id="sitGo"><span class="ms">chair</span>Sit by the water</button></div>');
     doc.getElementById('sitGo').addEventListener('click', function () { R.hideSheet(); sitDown(); });

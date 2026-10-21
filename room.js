@@ -533,7 +533,7 @@
     if (isFinite(x) && isFinite(y)) placeAvatar({ x: x, y: y }, avatar.classList.contains('flip'));
     avatar.classList.remove('walking', 'landing'); avatar.classList.add('idle');
   }
-  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
+  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
@@ -569,6 +569,7 @@
       if (h.id === 'bed') { openSheetFor('bed'); return; }
       toast('Morning start is running. Stop it first, or carry on.', 'wb_twilight'); return;
     }
+    if (window.OvuSeats && OvuSeats.active()) { if (h.id === 'bed') { openSheetFor('bed'); return; } toast('Stop to get up first.', 'chair'); return; } /* a seated practice (ovu-seats.js): she stays on the bench */
     var btn = $('.hotspot[data-id="' + h.id + '"]'); if (btn) { btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump'); }
     chime('tap'); hideBubble(); clearTimeout(idleTimer); /* a pending walk home must not cancel this walk */
     var visited = S.state().visited || {}; visited[h.id] = true; S.setState({ visited: visited });
@@ -732,6 +733,7 @@
     try { if (window.OvuBreathTap) OvuBreathTap.close(); } catch (e) { }
     try { if (window.OvuLightFlower) OvuLightFlower.close(); } catch (e) { }
     try { if (window.OvuMorning) OvuMorning.cancel(); } catch (e) { } /* Morning start ends at once, with no save prompt */
+    try { if (window.OvuSeats) OvuSeats.cancel(); } catch (e) { } /* so does a bench practice */
     try { if (hooks.hudStop) hooks.hudStop(); } catch (e) { }
     hud.classList.remove('on'); avatar.classList.remove('acting'); hudClockStop();
   }
@@ -2377,7 +2379,7 @@
     if (!MO || !MO.MOMENTS[key]) return '';
     opt = opt || {};
     var text = opt.line || MO.line(key), pose = opt.pose === undefined ? MO.pose(key) : opt.pose;
-    if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn || (window.OvuMorning && OvuMorning.active())) return text; /* Morning start keeps its own pose */
+    if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn || (window.OvuMorning && OvuMorning.active()) || (window.OvuSeats && OvuSeats.active())) return text; /* Morning start and a seated practice keep their own pose */
     /* while she walks the pose waits, a few times at most, and never starts over a walk (Codex branch review, 20 Oct) */
     if (avatar.classList.contains('walking') || (hooks.moving && hooks.moving())) {
       var tries = (opt.tries || 0) + 1; clearTimeout(momentRetry);
@@ -2894,7 +2896,7 @@
     setWalkTo: function (f) { hooks.walkTo = f; }, /* the walk engine routes her own walks around furniture; false hands a walk back to the straight line */
     layout: function () { return L; }, pos: function () { return { x: pos.x, y: pos.y }; }, visiting: function () { return visiting; }, homeId: currentHomeId,
     /* anything that should pause walking and scene changes */
-    busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || (window.OvuMorning && OvuMorning.active()) || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },
+    busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || (window.OvuMorning && OvuMorning.active()) || (window.OvuSeats && OvuSeats.active()) || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },
     sheetOpen: function () { return !!current; }, sheetId: function () { return current; }, cancelIdle: function () { clearTimeout(idleTimer); },
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,

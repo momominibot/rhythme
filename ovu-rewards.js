@@ -87,6 +87,14 @@
     var add = Math.max(0, Math.min(PRACTICE.points, PRACTICE.cap - l.mindDay.pts));
     l.mindDay.pts += add; if (add) l.dailyLast = day; return add;
   }
+  /* a bench practice (ovu-seats.js) says thank you once a day per physical seat: the flat practice points inside the day's
+     cap, and nothing for the same bench again today however the entry got there (Codex design review, 21 Oct) */
+  function seatPoints(l, ev) {
+    var d = ev.data || {}, day = S.today();
+    if (!l.seatDay || l.seatDay.day !== day) l.seatDay = { day: day, seats: {} };
+    if (!d.seat || l.seatDay.seats[d.seat]) return 0;
+    var add = practicePoints(l, ev); if (add) l.seatDay.seats[d.seat] = 1; return add;
+  }
   /* Award for a saved entry; a first log on a new day also grows the streak. */
   /* a saved record earns once: editing it again returns the same receipt and no hearts */
   function receipted(l, ev) { l.receipts = l.receipts || {}; if (!ev || !ev.id) return false; if (l.receipts[ev.id]) return true; l.receipts[ev.id] = 1; var ks = Object.keys(l.receipts); if (ks.length > 3000) ks.slice(0, ks.length - 3000).forEach(function (k) { delete l.receipts[k]; }); return false; }
@@ -102,7 +110,7 @@
       if (bp) { lb.hearts += bp; lb.earned += bp; lb.log = lb.log || []; lb.log.unshift({ at: new Date().toISOString(), type: 'breathtap', points: bp }); lb.log = lb.log.slice(0, 200); }
       write(lb); return { points: bp, bonus: 0, hearts: lb.hearts, streak: lb.streak };
     }
-    var l = ledger(), pts = ev.type === 'mindfulness' ? practicePoints(l, ev) /* a flat small thank-you, capped per day */ : dailyPoints(l, ev.type);
+    var l = ledger(), pts = ev.type === 'mindfulness' ? (ev.data && ev.data.seat ? seatPoints(l, ev) : practicePoints(l, ev)) /* a flat small thank-you, capped per day */ : dailyPoints(l, ev.type);
     /* no streak bonus and no per-item meal bonus (four-persona review, 20 Oct, every persona and every model: a run of days and
      * a longer meal list are pressure, and hearts are for logging, not for logging more). The days-logged count stays as a
      * plain record; it never changes what anything earns. */

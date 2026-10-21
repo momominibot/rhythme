@@ -7,6 +7,11 @@ without any voiceover just sound in the cave."
 
 Built on 21 Oct 2026 (`ovu-tones.js`, branch `claude/world-harbour`).
 
+> **Later on 21 Oct** (Jamie: "for the sitting in the cave will be different - it's purely frequency sounds"): sitting by
+> the water IS the tone. The warm stone and the crystals open one sheet (Sit by the water), the sound starts and she sits
+> on the stone, and one button on the scene, "Stop sound and stand up", ends both. The scene pill below is gone; the rest
+> of this note still holds. See docs/design/2026-10-21-seats.md.
+
 ## What it is
 
 - A new hotspot in the hidden spring: **The crystals**. Its sheet offers the nine pitches (174, 285, 396, 417, 528, 639,

@@ -199,7 +199,7 @@
     R.els.scene.classList.remove('sitting', 'springsit');
   }
   HB.standUp = standUp; HB.sitting = function () { return !!sitting; }; HB.sitDown = sitDown;
-  var OPEN = { hbjetty: function () { openSpot('jetty'); }, hbrocks: function () { openSpot('rocks'); }, hbbench: openBench, hbhut: function () { openBook(null); } }; /* ids of their own: the garden and the street have a bench too */
+  var OPEN = { hbjetty: function () { openSpot('jetty'); }, hbrocks: function () { openSpot('rocks'); }, hbbench: function () { if (root.OvuSeats && root.OvuSeats.open) root.OvuSeats.open('harbour'); else openBench(); }, /* since 21 Oct the bench offers Watching the water (ovu-seats.js) as well as just watching */ hbhut: function () { openBook(null); } }; /* ids of their own: the garden and the street have a bench too */
   function handler(id) { return function (hid, L) { if (!L || L.id !== 'harbour') return false; if ((W.napping && W.napping()) || R.busy() || !idle()) return true; OPEN[id](); return true; }; }
   R.hotspotHandlers.hbjetty = handler('hbjetty');
   R.hotspotHandlers.hbrocks = handler('hbrocks');
