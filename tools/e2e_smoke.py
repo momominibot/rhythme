@@ -1902,6 +1902,18 @@ async def main():
             r2 = await page.evaluate("()=>({on: document.querySelector('#recTabs .on').dataset.rg, pressed: document.querySelector('#recTabs .on').getAttribute('aria-pressed'), focus: document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.rg : null, note: document.querySelector('.rnote').textContent})")
             check("switching to Menopause keeps focus on the chosen button and says what food cannot do", r2["on"] == "meno" and r2["pressed"] == "true" and r2["focus"] == "meno" and "hot flushes" in r2["note"], r2)
             await page.keyboard.press("Escape"); await page.wait_for_timeout(300)
+            # two tabs on the check: an answer in one does not wipe the other's, and the open check repaints
+            ta = await ctx.new_page(); tb = await ctx.new_page()
+            for tp in (ta, tb):
+                await tp.route("**/*", gate)
+                await tp.goto(BASE + "room.html", wait_until="networkidle"); await tp.wait_for_timeout(400)
+                await tp.goto(BASE + "room.html#medas"); await tp.reload(wait_until="networkidle"); await tp.wait_for_selector(".mq", timeout=8000)
+            await ta.click('.mq[data-mq="veg"] [data-yn="1"]'); await ta.wait_for_timeout(400)
+            await tb.click('.mq[data-mq="fish"] [data-yn="0"]'); await tb.wait_for_timeout(400)
+            two = await ta.evaluate("()=>({saved: (OvuStore.state().medas||{}).answers, fishShown: document.querySelector('.mq[data-mq=fish] [data-yn=\\\"0\\\"]').getAttribute('aria-pressed')})")
+            check("answers given in two tabs are both kept, and the first tab shows the second's answer", two["saved"] == {"veg": True, "fish": False} and two["fishShown"] == "true", two)
+            await tb.click("#mdClear"); await tb.wait_for_timeout(300)
+            await ta.close(); await tb.close()
             # a first visit through the old page's link: the check opens once the welcome is done, not lost behind it
             fresh_db = json.loads(json.dumps(DB)); fresh_db["profile"]["onboarded"] = False; fresh_db["state"].pop("welcomeSeen", None)
             ctx9 = await browser.new_context(viewport={"width": 390, "height": 844})
@@ -1922,19 +1934,22 @@ async def main():
                 pg.on("pageerror", lambda e: errors.append("pageerror (first visit): " + str(e)))
                 await pg.goto(BASE + url); await pg.wait_for_url("**/room.html*", timeout=8000); await pg.wait_for_timeout(900)
                 return c, pg
+            async def walk_intro(pg):
+                n = 0
+                for n in range(45):
+                    if not await pg.query_selector("#onbNext"): break
+                    if await pg.query_selector("#onbSkip"): await pg.evaluate("()=>document.querySelector('#onbSkip').click()")
+                    else:
+                        await pg.evaluate("()=>{document.querySelectorAll('#sheetBody .chips[data-key]').forEach(function(r){ if(r.querySelector('.chipbtn.on')) return; var b=r.querySelector('.chipbtn[data-v=\\\"none\\\"]')||r.querySelector('.chipbtn[data-v]'); if(b) b.click(); });}")
+                        await pg.evaluate("()=>document.querySelector('#onbNext').click()")
+                    await pg.wait_for_timeout(120)
+                await pg.wait_for_timeout(300)
+                return n
             # Begin: the intro comes first and the check waits for "Enter my room"
             c10, p10 = await first_visit("medas14.html")
             await p10.click("#wBegin"); await p10.wait_for_timeout(1500)
             during = await p10.evaluate(sheet_title)
-            steps = 0
-            for steps in range(45):
-                if not await p10.query_selector("#onbNext"): break
-                if await p10.query_selector("#onbSkip"): await p10.click("#onbSkip")
-                else:
-                    await p10.evaluate("()=>{document.querySelectorAll('#sheetBody .chips[data-key]').forEach(function(r){ if(r.querySelector('.chipbtn.on')) return; var b=r.querySelector('.chipbtn[data-v=\\\"none\\\"]')||r.querySelector('.chipbtn[data-v]'); if(b) b.click(); });}")
-                    await p10.click("#onbNext")
-                await p10.wait_for_timeout(120)
-            await p10.wait_for_timeout(300)
+            steps = await walk_intro(p10)
             after = await p10.evaluate(sheet_title)
             check("from the old link, Begin shows the intro first and the check opens once she enters her room", during.startswith("Welcome") or ("Mediterranean" not in during and during != ""), {"during": during})
             check("after the last intro step the check is open", after.startswith("Mediterranean check"), {"after": after, "steps": steps})
@@ -1945,6 +1960,11 @@ async def main():
             await p11.click("#sheetClose"); await p11.wait_for_timeout(1200)
             left = await p11.evaluate(sheet_title)
             check("leaving the intro part way drops the old link's destination", left == "", left)
+            await p11.evaluate("()=>{var w=document.querySelector('.hotspot[data-id=\\\"window\\\"]'); if(w) w.click();}")
+            await p11.wait_for_selector("#winIntro", timeout=10000); await p11.click("#winIntro"); await p11.wait_for_timeout(800)
+            await walk_intro(p11)
+            again = await p11.evaluate(sheet_title)
+            check("an intro started again later, and finished, does not bring the old link's check back", "Mediterranean" not in again, again)
             await c11.close()
             # a plain first visit opens nothing after Skip
             c12, p12 = await first_visit("room.html")
@@ -1961,11 +1981,26 @@ async def main():
             await p13.goto(BASE + "room.html#learn"); await p13.reload(); await p13.wait_for_selector(".dicon", timeout=8000); await p13.wait_for_timeout(900)
             dk = await p13.evaluate("()=>{var r=[...document.querySelectorAll('.dicon')].map(function(e){return e.getBoundingClientRect();}), bad=0; for(var i=0;i<r.length;i++) for(var j=i+1;j<r.length;j++){ var a=r[i], b=r[j]; if(a.left<b.right-1 && b.left<a.right-1 && a.top<b.bottom-1 && b.top<a.bottom-1) bad++; } return {n:r.length, bad:bad, toast:document.querySelector('#toast').textContent, pos:JSON.parse(localStorage.getItem('ovumind_desk_v1')).pos}}")
             check("a desk with no room for new folders goes back on the grid with a note, and no folder covers another", dk["n"] >= 10 and dk["bad"] == 0 and "back on the grid" in dk["toast"] and dk["pos"] == {}, dk)
+            await p13.focus('.dicon[data-folder="recipes"]'); await p13.keyboard.press("Enter"); await p13.wait_for_timeout(400)
+            kb = await p13.evaluate("()=>{var f=document.querySelector('#finder'); return {on: !!(f && f.classList.contains('on')), text: f ? f.textContent : ''}}")
+            check("Enter on the Recipes folder opens it, as a tap does", kb["on"] and "For PCOS (PMOS)" in kb["text"], kb)
+            await p13.evaluate("()=>{var x=document.querySelector('.finder .x'); if(x) x.click();}"); await p13.wait_for_timeout(200)
             box = await p13.evaluate("()=>{var b=document.querySelector('.dicon[data-folder=recipes]').getBoundingClientRect(); return [b.left+b.width/2, b.top+b.height/2]}")
             await p13.mouse.move(box[0], box[1]); await p13.mouse.down(); await p13.mouse.move(box[0] + 30, box[1] + 12, steps=6); await p13.mouse.up(); await p13.wait_for_timeout(300)
-            kept = await p13.evaluate("()=>Object.keys(JSON.parse(localStorage.getItem('ovumind_desk_v1')).pos).length")
-            check("moving one folder keeps the whole desk as she sees it", kept == dk["n"], kept)
+            shown = await p13.evaluate("()=>{var o={}; document.querySelectorAll('.dicon').forEach(function(b){ o[b.dataset.folder]=[Math.round(parseFloat(b.style.left)*10)/10, Math.round(parseFloat(b.style.top)*10)/10]; }); return {shown:o, saved: JSON.parse(localStorage.getItem('ovumind_desk_v1')).pos, finder: document.querySelector('#finder').classList.contains('on')}}")
+            check("a drag saves every folder exactly where it is shown, and the drag does not open the folder", shown["saved"] == shown["shown"] and len(shown["saved"]) == dk["n"] and shown["saved"]["recipes"] != [2, 35] and not shown["finder"], shown)
+            await p13.goto(BASE + "room.html#learn"); await p13.reload(); await p13.wait_for_selector(".dicon", timeout=8000); await p13.wait_for_timeout(600)
+            back = await p13.evaluate("()=>{var o={}; document.querySelectorAll('.dicon').forEach(function(b){ o[b.dataset.folder]=[parseFloat(b.style.left), parseFloat(b.style.top)]; }); return o}")
+            check("after reopening the desk every folder is where she left it", back == shown["saved"], back)
             await c13.close()
+            c14 = await browser.new_context(viewport={"width": 320, "height": 568})
+            await c14.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB)))
+            p14 = await c14.new_page(); await p14.route("**/*", gate)
+            await p14.goto(BASE + "room.html"); await p14.wait_for_timeout(900)
+            await p14.goto(BASE + "room.html#learn"); await p14.reload(); await p14.wait_for_selector(".dicon", timeout=8000); await p14.wait_for_timeout(900)
+            small = await p14.evaluate("()=>{var d=document.querySelector('#dicons').getBoundingClientRect(), r=[...document.querySelectorAll('.dicon')].map(function(e){return e.getBoundingClientRect();}), bad=0, out=0; for(var i=0;i<r.length;i++){ if(r[i].bottom>d.bottom+0.5||r[i].right>d.right+0.5) out++; for(var j=i+1;j<r.length;j++){ var a=r[i], b=r[j]; if(a.left<b.right-0.5 && b.left<a.right-0.5 && a.top<b.bottom-0.5 && b.top<a.bottom-0.5) bad++; } } return {n:r.length, bad:bad, out:out}}")
+            check("on a 320 px phone the default desk has no folder over another and none past the edge", small["n"] >= 10 and small["bad"] == 0 and small["out"] == 0, small)
+            await c14.close()
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()
     finally:

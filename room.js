@@ -537,11 +537,11 @@
   function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
-  var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
+  var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null, sheetSeq = 0; /* counts sheets opened, so a delayed open can tell if she moved on */
   function openSheet(id, title, sub, icon, html) {
     careOn = false; /* a new sheet replaces Luna's chat and any card in it; Luna sets it again when she shows one */
     if (current === 'diary') stopCamera();
-    current = id; $('#sheetTitle').innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');
+    current = id; sheetSeq++; $('#sheetTitle').innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');
     $('#sheetIcon').innerHTML = '<span class="ms">' + esc(icon) + '</span>';
     /* a fresh body node each time, so listeners from the previous sheet (or a re-render of this one) never pile up */
     var fresh = body.cloneNode(false); body.parentNode.replaceChild(fresh, body); body = fresh; wireGuides(body);
@@ -552,7 +552,6 @@
   }
   function hideSheet() { var was = current; current = null; if (was === 'practiceDone' && practice && practice.endFn) { var fin = practice.endFn; setTimeout(function () { fin(false); }, 0); } /* closing "How was that?" any way ends the practice and puts her back (Jamie, 20 Oct) */ careOn = false; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
   function closeSheet() {
-    if (current === 'onboarding' && onb) pendingRoute = ''; /* she left the intro part way: the link's destination is dropped, not opened later */
     if (current === 'diary') stopCamera();
     if (current === 'mind' && session) stopSession(true);
     if ((current === 'mind' || current === 'morning') && !session && meditating) exitMeditation(); /* Morning start's choice, opened from the mat and closed without Begin, also lets her up */
@@ -1219,22 +1218,24 @@
     });
   }
   /* Where each folder sits: where she put it, or else the first free place on a 4 by 3 grid that fits the wallpaper (the
-     old default stacked a third row at 96%, below the wallpaper's edge). A folder is 22% of the desk wide and 22% to 27%
-     tall with a one-line name (measured at 360 to 1280 px), so a free place keeps a 22 by 30 box clear of every other
-     folder. If a new folder cannot get one without covering hers, the whole desk goes back onto the grid and openLearn
-     says so: never a folder on top of another (Codex round two). */
+     old default stacked a third row at 96%, below the wallpaper's edge). A folder is 22% of the desk wide and up to 29%
+     tall (measured from 320 to 1280 px; room.css shrinks the icons below 360 px), and "Share with doctor" takes two lines
+     and up to 33%, so a free place keeps that box clear of every other folder. If a new folder cannot get one without
+     covering hers, the whole desk goes back onto the grid and openLearn says so: never a folder on top of another. */
   function deskSpots(pos, folders) {
     folders = folders || FOLDERS;
-    var W = 22, H = 30, cells = [], fine = [], out = {}, taken = [], stuck = false;
+    var W = 22, cells = [], fine = [], out = {}, taken = [], stuck = false;
+    var tall = function (f) { return f && f.name && f.name.length > 14 ? 33 : 29; }; /* a name longer than about 14 letters wraps */
     for (var r = 0; r < 3; r++) for (var c = 0; c < 4; c++) cells.push([2 + c * 25, 4 + r * 31]);
     for (var y = 4; y <= 64; y += 2) for (var x = 2; x <= 78; x += 2) fine.push([x, y]);
-    var clash = function (a, b) { return Math.abs(a[0] - b[0]) < W && Math.abs(a[1] - b[1]) < H; };
-    folders.forEach(function (f) { var q = pos && pos[f.id]; if (q && isFinite(q[0]) && isFinite(q[1])) { out[f.id] = [q[0], q[1]]; taken.push(q); } });
+    /* boxes [x, y, height]: two clash when they overlap across and their top-to-bottom spans overlap */
+    var clash = function (a, b) { return Math.abs(a[0] - b[0]) < W && a[1] < b[1] + b[2] && b[1] < a[1] + a[2]; };
+    folders.forEach(function (f) { var q = pos && pos[f.id]; if (q && isFinite(q[0]) && isFinite(q[1])) { out[f.id] = [q[0], q[1]]; taken.push([q[0], q[1], tall(f)]); } });
     folders.forEach(function (f) {
       if (out[f.id] || stuck) return;
-      var free = cells.concat(fine).filter(function (q) { return !taken.some(function (t) { return clash(q, t); }); })[0];
+      var h = tall(f), free = cells.concat(fine).filter(function (q) { return !taken.some(function (t) { return clash([q[0], q[1], h], t); }); })[0];
       if (!free) { stuck = true; return; }
-      out[f.id] = free; taken.push(free);
+      out[f.id] = free; taken.push([free[0], free[1], h]);
     });
     if (!stuck) return { spots: out, tidied: false };
     var grid = {}; folders.forEach(function (f, i) { grid[f.id] = cells[i]; }); /* 12 places; tools/test-core.js keeps FOLDERS within them */
@@ -1261,8 +1262,13 @@
       }).join('');
       fd.classList.add('on'); fd.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-    /* drag the folders; a short press without movement opens the folder */
-    var icons = $('#dicons'), drag = null;
+    /* drag the folders; a tap, Enter or Space (a click) opens one, and the click that ends a drag does not (Codex round three) */
+    var icons = $('#dicons'), drag = null, dragged = 0;
+    icons.addEventListener('click', function (e) {
+      var b = e.target.closest('.dicon'); if (!b) return;
+      if (Date.now() - dragged < 500) return;
+      chime('tap'); openFolder(b.dataset.folder);
+    });
     icons.addEventListener('pointerdown', function (e) {
       var b = e.target.closest('.dicon'); if (!b) return;
       var r = icons.getBoundingClientRect();
@@ -1281,8 +1287,7 @@
     function endDrag() {
       if (!drag) return; var d = drag; drag = null; d.b.classList.remove('lift');
       /* a drag keeps the whole desk as she sees it, so only a folder added later ever needs a place found for it */
-      if (d.moved) { var pr = deskPrefs(); pr.pos = {}; icons.querySelectorAll('.dicon').forEach(function (b) { pr.pos[b.dataset.folder] = [Math.round(parseFloat(b.style.left) * 10) / 10, Math.round(parseFloat(b.style.top) * 10) / 10]; }); setDeskPrefs(pr); }
-      else { chime('tap'); openFolder(d.id); }
+      if (d.moved) { dragged = Date.now(); var pr = deskPrefs(); pr.pos = {}; icons.querySelectorAll('.dicon').forEach(function (b) { pr.pos[b.dataset.folder] = [Math.round(parseFloat(b.style.left) * 10) / 10, Math.round(parseFloat(b.style.top) * 10) / 10]; }); setDeskPrefs(pr); }
     }
     icons.addEventListener('pointerup', endDrag); icons.addEventListener('pointercancel', endDrag);
     function setWall(id) { var pr = deskPrefs(); pr.wall = id; setDeskPrefs(pr); $('#wallpaper').style.cssText = wallStyle(pr); $$('.wall').forEach(function (w) { w.classList.toggle('on', w.dataset.wall === id); }); }
@@ -2320,8 +2325,9 @@
   function openMedas() {
     var R = window.OvuRecipes; if (!R) return;
     if (meditating && !session) exitMeditation();
-    var C = R.MEDAS_COPY, saved = S.state().medas || {}, ans = {};
-    R.MEDAS.forEach(function (it) { var v = saved.answers && saved.answers[it.id]; if (v === true || v === false) ans[it.id] = v; });
+    var C = R.MEDAS_COPY;
+    function stored() { var saved = S.state().medas || {}, o = {}; R.MEDAS.forEach(function (it) { var v = saved.answers && saved.answers[it.id]; if (v === true || v === false) o[it.id] = v; }); return o; }
+    var ans = stored();
     openSheet('medas', 'Mediterranean check', '13 everyday habits, no grades', 'checklist',
       '<p class="rnote">' + esc(C.intro) + '</p>' +
       '<div class="mcount" aria-live="polite"><b id="mdYes"></b><span id="mdOf"></span></div>' +
@@ -2352,14 +2358,17 @@
     }
     body.querySelector('.mqs').addEventListener('click', function (e) {
       var b = e.target.closest('[data-yn]'); if (!b) return;
-      var id = b.closest('.mq').dataset.mq, v = b.dataset.yn === '1', next = Object.assign({}, ans);
+      /* start from what is stored now, not from when the sheet opened, so answers saved in another tab are kept */
+      var id = b.closest('.mq').dataset.mq, v = b.dataset.yn === '1', next = stored();
       if (next[id] === v) delete next[id]; else next[id] = v; /* a second tap on the same answer takes it back */
       chime('tap'); keep(next); paint();
     });
     $('#mdClear').addEventListener('click', function () { chime('tap'); keep({}); paint(); });
     $('#mdRecipes').addEventListener('click', function () { chime('tap'); openRecipes('every'); });
+    medasRefresh = function () { if (current === 'medas') { ans = stored(); paint(); } };
     paint();
   }
+  var medasRefresh = null; /* the open check repaints when another tab saves (see the store subscription at boot) */
 
   /* ---------- acupressure: numbered points on your avatar, then a zoomed locator ---------- */
   var acuData = null;
@@ -2766,6 +2775,7 @@
     return n;
   }
   function finishOnboarding(A) {
+    var fromLink = onb && onb === pendingOnb; pendingOnb = null; /* only the intro Begin started carries the link on; one she left and restarted does not */
     var num = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : null; };
     var patch = { name: A.name || S.profile().name || '', ageRange: A.ageRange || '', ageBand: '', minorAck: '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: (function () { var r = A.periodRecall, d = r ? recallDays(recallState(A)) : []; return r && r.latest === 'yes' && d.length ? d[d.length - 1] : ''; })(), cycleLength: null, periodLength: num(A.periodLength), periodLengthAnswer: A.periodLength || '', periodRecall: A.periodRecall ? Object.assign({}, A.periodRecall, { capturedAt: new Date().toISOString() }) : null, cycleVaries: false, bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' && ['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && A.pregState !== 'pregnant' && A.pregState !== 'postpartum' && !(A.hormones || []).some(function (x) { return x !== 'none' && x !== 'other' && x !== 'iud_cu' && x !== 'hrt'; }) ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), onboarded: true, onboardedAt: new Date().toISOString() };
     S.setProfile(patch);
@@ -2774,13 +2784,13 @@
     var gotScale = false; if (A.wantScale === 'yes') { try { RW.buy('scale'); gotScale = true; } catch (e) { gotScale = RW.ledger().owned.indexOf('scale') > -1; } }
     onb = null; closeSheet(); updateGreeting(); renderDeck(); renderProps();
     toast('Welcome home' + (patch.name ? ', ' + patch.name : '') + '. ' + (gotScale ? 'Your scale is by the rug, and 15 hearts are left for your nest.' : '20 hearts to start your nest.'), 'favorite');
-    takePending();
+    if (fromLink) takePending(); else pendingRoute = '';
   }
   /* ---------- data notice and the 18+ gate: ovu-consent.js owns the record and the sheet; this is the room's doorway ---------- */
   function hasConsent() { return !!(window.OvuConsent && !OvuConsent.needsSheet()); }
   function requireConsent(next) { if (!window.OvuConsent) { toast('Rhythme could not load its consent record. Please reload.', 'error'); return; } OvuConsent.require(next, { chime: chime, toast: toast }); }
   /* where a link into the room asked to go (room.html#medas and so on); a first visit keeps it until the welcome is done */
-  var pendingRoute = '';
+  var pendingRoute = '', pendingOnb = null; /* the intro that Begin started for that link */
   function openRoute(hk) {
     if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'medas') openMedas(); else if (hk === 'recipes') openRecipes(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk);
   }
@@ -2788,7 +2798,7 @@
   function takePending() { var r = pendingRoute; pendingRoute = ''; if (r && r !== 'onboarding') openRoute(r); }
   function showWelcome() {
     var w = $('#welcome'); if (!w) return; w.hidden = false;
-    $('#wBegin').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); }); });
+    $('#wBegin').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); pendingOnb = onb; }); });
     $('#wSkip').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); toast('Welcome back. Your intro is under the window whenever you want it.', 'favorite'); takePending(); }); });
     /* sign in from the first screen (Jamie, 20 Oct: "the email should login on first page"): consent first, then the email form in You */
     var si = $('#wSignIn'); if (si) si.addEventListener('click', function () { chime('tap'); w.hidden = true; pendingRoute = ''; requireConsent(function () { S.setState({ welcomeSeen: true }); openYou(); setTimeout(function () { var ya = $('#youAccount'), b = ya && ya.querySelector('[data-ya="email-start"]'); if (b) { b.click(); ya.scrollIntoView({ block: 'center', behavior: 'smooth' }); } else if (ya) ya.scrollIntoView({ block: 'center' }); }, 300); }); });
@@ -3023,7 +3033,7 @@
     /* accounts and cloud backup: quiet until the person signs in and opts in */
     if (window.OvuAuth) OvuAuth.init();
     if (window.OvuSync) OvuSync.init();
-    S.subscribe(function (reason) { if (reason === 'external' || (reason && reason.indexOf('sync') === 0)) { renderDeck(); renderProps(); updateGreeting(); } });
+    S.subscribe(function (reason) { if (reason === 'external' || (reason && reason.indexOf('sync') === 0)) { renderDeck(); renderProps(); updateGreeting(); if (medasRefresh) medasRefresh(); } });
     $('#journalBtn').href = 'journal.html'; $('#shareBtn').href = 'journal.html#share';
     if (!S.state().tourDone) { setTimeout(function () { $('#hint').classList.add('on'); }, 1200); setTimeout(function () { $('#hint').classList.remove('on'); S.setState({ tourDone: true }); }, 7000); }
     if (!S.state().lunaSeen) { setTimeout(function () { $('#lunaBtn').classList.add('hinting'); }, 2500); setTimeout(function () { $('#lunaBtn').classList.remove('hinting'); S.setState({ lunaSeen: true }); }, 9000); }
@@ -3033,7 +3043,7 @@
     var hk = (location.hash || '').slice(1);
     if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
     else if (!S.profile().onboarded && !S.state().welcomeSeen) { pendingRoute = hk; showWelcome(); }
-    else setTimeout(function () { requireConsent(function () { openRoute(hk); }); }, hk ? 600 : 0);
+    else { var seq0 = sheetSeq; setTimeout(function () { requireConsent(function () { if (hk && (sheetSeq !== seq0 || current)) return; /* she already opened something: leave it */ openRoute(hk); }); }, hk ? 600 : 0); }
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
     setTimeout(function () { $('#loading').classList.add('hidden'); joy(); }, 500);
     scheduleLife();

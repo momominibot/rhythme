@@ -2545,7 +2545,7 @@ function scenes(todayIso) {
   check('item 13 is the real MEDAS question (chicken, turkey or rabbit over red and processed meat), not the old page\'s whole-grain bread', /chicken, turkey or rabbit over beef, veal, pork, burgers or sausages/.test(R.MEDAS[11].q) && !R.MEDAS.some(function (m) { return /whole-?grain bread/i.test(m.q); }));
   /* each item keeps the published criterion for its point (Martínez-González 2012, Table 1) */
   var MEDAS_T1 = {
-    oil: [/main cooking fat/], oil4: [/4 tablespoons/, /cooking, salads and meals out/], veg: [/Two or more servings of vegetables a day/, /raw or as a salad/, /200 g/, /side dish counts as half/],
+    oil: [/main cooking fat/], oil4: [/About 4 tablespoons of olive oil a day or more/, /cooking, salads and meals out/], veg: [/Two or more servings of vegetables a day/, /raw or as a salad/, /200 g/, /side dish counts as half/],
     fruit: [/Three or more pieces of fruit a day/, /juice counts/], redmeat: [/Less than one serving a day of red meat, burgers or processed meat/, /100 to 150 g/], butter: [/Less than one serving a day of butter, margarine or cream/, /12 g/],
     drinks: [/Less than one sweet or fizzy drink a day/, /sweetened packet drinks/], legumes: [/three or more times a week/, /150 g/], fish: [/three or more times a week/, /100 to 150 g of fish, or 4 to 5 pieces or 200 g of shellfish/],
     sweets: [/sweets or pastries \(not homemade\)/, /custard/, /fewer than three times a week/], nuts: [/three or more times a week/, /Peanuts count/, /30 g/], poultry: [/chicken, turkey or rabbit/], sofrito: [/Twice a week or more/, /tomato with onion, leek or garlic/, /olive oil/]
@@ -2567,11 +2567,14 @@ function scenes(todayIso) {
   check('the sheets cite only sources in the register, all under the recipes topic', cited.length >= 8 && cited.every(function (id) { var e = E.get(id); return e && e.topics.indexOf('recipes') > -1; }), cited.join());
   var dsrc = /function deskSpots\(pos, folders\) \{[\s\S]*?\n    return \{ spots: grid, tidied: true \};\n  \}/.exec(roomSrc);
   var deskSpots = dsrc ? vm.runInContext('(' + dsrc[0] + ')', vm.createContext({ Math: Math, isFinite: isFinite, Infinity: Infinity })) : null;
-  var folderIds = ((/var FOLDERS = \[([\s\S]*?)\n  \];/.exec(roomSrc) || [])[1] || '').match(/\{ id: '([a-z]+)'/g).map(function (x) { return x.slice(7, -1); });
-  var desk = folderIds.map(function (id) { return { id: id }; });
-  /* a folder measured 22% of the desk wide and 22 to 27% tall at 360 to 1280 px (32% with a two-line name) */
-  var over = function (spots) { var k = Object.keys(spots), bad = []; k.forEach(function (a, i) { k.slice(i + 1).forEach(function (b) { if (Math.abs(spots[a][0] - spots[b][0]) < 22 && Math.abs(spots[a][1] - spots[b][1]) < 27) bad.push(a + '/' + b); }); }); return bad; };
-  var inside = function (spots) { return Object.keys(spots).every(function (k) { var q = spots[k]; return q[0] >= 0 && q[0] + 22 <= 100 && q[1] >= 0 && q[1] + 27 <= 98; }); };
+  var desk = [], fre = /\{ id: '([a-z]+)', name: '([^']+)'/g, fm, fsrc = ((/var FOLDERS = \[([\s\S]*?)\n  \];/.exec(roomSrc) || [])[1] || '');
+  while ((fm = fre.exec(fsrc))) desk.push({ id: fm[1], name: fm[2] });
+  var folderIds = desk.map(function (f) { return f.id; });
+  /* measured 21 Oct from 320 to 1280 px: a folder is 22% of the desk wide and at most 26.8% tall, and "Share with doctor"
+     (two lines) at most 32.1%; the boxes below are the measured maximum, not deskSpots' own (29 and 33) */
+  var hgt = function (id) { return id === 'doctor' ? 32.1 : 26.8; };
+  var over = function (spots) { var k = Object.keys(spots), bad = []; k.forEach(function (a, i) { k.slice(i + 1).forEach(function (b) { if (Math.abs(spots[a][0] - spots[b][0]) < 22 && spots[a][1] < spots[b][1] + hgt(b) && spots[b][1] < spots[a][1] + hgt(a)) bad.push(a + '/' + b); }); }); return bad; };
+  var inside = function (spots) { return Object.keys(spots).every(function (k) { var q = spots[k]; return q[0] >= 0 && q[0] + 22 <= 100 && q[1] >= 0 && q[1] + hgt(k) <= 100; }); };
   check('the desk has room for every folder on its grid (12 places; a 13th folder needs a new layout)', folderIds.length >= 10 && folderIds.length <= 12, folderIds.join());
   var d0 = deskSpots ? deskSpots({}, desk) : { spots: {} };
   check('with no saved spots every folder fits: no two overlap and none past the edge, all pairs checked', !d0.tidied && Object.keys(d0.spots).length === desk.length && over(d0.spots).length === 0 && inside(d0.spots), JSON.stringify(d0.spots) + ' ' + over(d0.spots).join());
@@ -2580,10 +2583,18 @@ function scenes(todayIso) {
   check('when new folders cannot fit around hers, the whole desk goes back onto the grid instead of overlapping', d1.tidied === true && over(d1.spots).length === 0 && inside(d1.spots) && JSON.stringify(d1.spots) === JSON.stringify(d0.spots), JSON.stringify(d1) + ' ' + over(d1.spots).join());
   var roomy = { cycle: [2, 4], fertility: [27, 4], chapters: [52, 4], nutrition: [77, 4] }, d2 = deskSpots ? deskSpots(roomy, desk) : { spots: {} };
   check('when there is room, her folders stay exactly where she put them and new ones take free places, no overlaps', !d2.tidied && Object.keys(roomy).every(function (k) { return d2.spots[k][0] === roomy[k][0] && d2.spots[k][1] === roomy[k][1]; }) && over(d2.spots).length === 0 && inside(d2.spots), JSON.stringify(d2.spots));
+  /* Codex round three: "Share with doctor" placed top left once let a new folder in just under it */
+  var tallTop = { doctor: [2, 4], fertility: [27, 4], chapters: [52, 4], nutrition: [77, 4], cycle: [2, 66], mind: [27, 35], move: [52, 35], body: [77, 35], videos: [27, 66] }, d4 = deskSpots ? deskSpots(tallTop, desk) : { spots: {} };
+  check('a two-line folder name counts its full height: nothing new is placed just under it', over(d4.spots).length === 0 && inside(d4.spots), JSON.stringify(d4) + ' ' + over(d4.spots).join());
   var all = {}; desk.forEach(function (f, i) { all[f.id] = [40, 10 + i]; }); var d3 = deskSpots ? deskSpots(all, desk) : { spots: {} };
   check('a desk she arranged in full is never tidied for her, even if she stacked folders', !d3.tidied && desk.every(function (f) { return d3.spots[f.id][0] === all[f.id][0] && d3.spots[f.id][1] === all[f.id][1]; }));
   check('a drag keeps the whole desk as shown, so only a folder added later needs a place, and a tidy is announced', /pr\.pos = \{\}; icons\.querySelectorAll\('\.dicon'\)\.forEach/.test(roomSrc) && /if \(lay\.tidied\) \{ p\.pos = \{\}; setDeskPrefs\(p\);[^\n]*toast\(/.test(roomSrc));
-  check('a link into the room opens its page once, straight after the welcome or the intro, never on a timer, and is dropped if she leaves the intro or signs in instead', /function takePending\(\) \{ var r = pendingRoute; pendingRoute = ''; if \(r && r !== 'onboarding'\) openRoute\(r\); \}/.test(roomSrc) && /onb = null; closeSheet\(\);[^\n]*\n[^\n]*\n\s*takePending\(\);\n  \}/.test(roomSrc) && /if \(current === 'onboarding' && onb\) pendingRoute = '';/.test(roomSrc) && /id="?wSignIn|wSignIn'\); if \(si\) si\.addEventListener\('click', function \(\) \{ chime\('tap'\); w\.hidden = true; pendingRoute = '';/.test(roomSrc));
+  check('a folder opens on a click (so Enter and Space work), not on pointer up, and the click that ends a drag is ignored', /icons\.addEventListener\('click', function \(e\) \{\n\s*var b = e\.target\.closest\('\.dicon'\); if \(!b\) return;\n\s*if \(Date\.now\(\) - dragged < 500\) return;\n\s*chime\('tap'\); openFolder\(b\.dataset\.folder\);/.test(roomSrc) && !/else \{ chime\('tap'\); openFolder\(d\.id\); \}/.test(roomSrc) && /if \(d\.moved\) \{ dragged = Date\.now\(\);/.test(roomSrc));
+  var css = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
+  check('below 360 px the folder icons shrink so a two-line name stays inside its grid row', /@media \(max-width:359px\)\{\.dicons\.free \.dicon\{[^}]*\}\.dicons\.free \.dicon svg\{width:31px;height:26px\}\.dicons\.free \.dicon span\{font-size:8\.5px/.test(css));
+  check('a link into the room opens its page once, straight after Skip or after the intro that Begin started, never on a timer; another intro or signing in drops it', /function takePending\(\) \{ var r = pendingRoute; pendingRoute = ''; if \(r && r !== 'onboarding'\) openRoute\(r\); \}/.test(roomSrc) && /openOnboarding\(0, \{\}\); pendingOnb = onb; \}\); \}\);/.test(roomSrc) && /var fromLink = onb && onb === pendingOnb; pendingOnb = null;/.test(roomSrc) && /if \(fromLink\) takePending\(\); else pendingRoute = '';/.test(roomSrc) && /w\.hidden = true; pendingRoute = ''; requireConsent/.test(roomSrc));
+  check('for a returning visitor the link opens only if she has not opened another sheet first', /current = id; sheetSeq\+\+;/.test(roomSrc) && /var seq0 = sheetSeq; setTimeout\(function \(\) \{ requireConsent\(function \(\) \{ if \(hk && \(sheetSeq !== seq0 \|\| current\)\) return;/.test(roomSrc));
+  check('the check starts each answer from what is stored now and repaints when another tab saves', /next = stored\(\);/.test(roomSrc) && /if \(medasRefresh\) medasRefresh\(\);/.test(roomSrc));
   check('the old Mediterranean page sends people to the check in the room, and the room opens it from that link', /location\.replace\('room\.html#medas'\)/.test(fs.readFileSync(path.join(root, 'medas14.html'), 'utf8')) && /hk === 'medas'\) openMedas\(\)/.test(roomSrc) && /\['action', 'medas', 'checklist'/.test(roomSrc) && !/'medas14\.html'/.test(roomSrc));
 })();
 

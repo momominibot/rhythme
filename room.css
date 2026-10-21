@@ -680,6 +680,8 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .dicons.free{display:block;inset:0}
 .dicons.free .dicon{position:absolute;width:22%;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .15s,background .15s}
 .dicon.lift{transform:scale(1.1);z-index:3;background:rgba(255,255,255,.22)}
+/* below 360 px the desk is short (16:10), so smaller icons keep a two-line name inside its row of the grid (measured: 36.6% tall before, 29% after) */
+@media (max-width:359px){.dicons.free .dicon{padding:3px 1px;gap:1px}.dicons.free .dicon svg{width:31px;height:26px}.dicons.free .dicon span{font-size:8.5px;line-height:1.1}}
 .menubar .mbtn{border:none;background:none;color:var(--rm-plum);cursor:pointer;display:flex;align-items:center;padding:0 4px}
 .menubar .mbtn .ms{font-size:17px}
 .wallpanel{display:none;margin-top:10px;background:#fff;border-radius:16px;padding:12px;box-shadow:var(--rm-shadow)}
