@@ -316,6 +316,14 @@
   /* words that make a dish a different dish: a match is only confident when every one of these that
    * appears in the photo name also appears in the HPB row's own name or aliases */
   var SG_QUALIFIERS = ['kimchi', 'pineapple', 'seafood', 'korean', 'thai', 'japanese', 'vietnamese', 'indian', 'vegetarian', 'vegan', 'mock', 'cheese', 'mushroom', 'mala', 'salted', 'truffle', 'curry', 'sambal', 'french', 'oat', 'oatmeal', 'pandan', 'wholemeal', 'garlic', 'butter', 'honey', 'lemon', 'green', 'matcha', 'chocolate', 'strawberry', 'mango', 'durian', 'packaged', 'canned', 'instant', 'raw', 'uncooked', 'dried', 'ice cream', 'jelly', 'pearl', 'penang', 'ipoh', 'claypot', 'crayfish', 'beef', 'mutton', 'lamb', 'duck', 'pork', 'chicken', 'fish', 'prawn', 'shrimp', 'crab', 'egg', 'tofu', 'soup', 'dry', 'fried', 'iced', 'ice'];
+  /* Nouns that say what kind of food a phrase is, in groups of words that mean the same form (after
+   * sgNorm, so singular). In English the last noun of a phrase is the food and the words before it
+   * describe it, so an alias followed later in its phrase by one of these is a modifier, not the dish:
+   * "steamed rice cakes" are a rice cake, not steamed rice; "fried rice vermicelli" is not fried rice;
+   * "milo flavoured biscuits" are not the drink. See sgNamed. */
+  var SG_FORMS = [['cake', 'kueh', 'kuih', 'kue'], ['noodle', 'mee', 'mian', 'vermicelli', 'bee', 'beehoon', 'pasta', 'spaghetti', 'macaroni', 'ramen', 'udon', 'soba'], ['bun', 'pau', 'bao'], ['ball'], ['dumpling'], ['porridge', 'congee'], ['pudding'], ['cracker', 'biscuit', 'cookie'], ['bread', 'toast', 'sandwich', 'burger'], ['pancake', 'crepe', 'waffle'], ['puff', 'pie', 'tart', 'pastry'], ['paste', 'sauce', 'powder', 'premix']];
+  var SG_FORM_OF = Object.create(null);
+  SG_FORMS.forEach(function (words, i) { words.forEach(function (w) { SG_FORM_OF[w] = i; }); });
   function sgNorm(s) {
     return String(s || '').toLowerCase().replace(/[’'`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
       .split(' ').map(function (t) { return t.length > 3 && /[^s]s$/.test(t) ? t.slice(0, -1) : t; }).join(' ');
@@ -324,6 +332,10 @@
     (t.foods || []).forEach(function (f) {
       f._keys = [f.name].concat(f.aliases || []).map(sgNorm).filter(Boolean);
       f._text = ' ' + f._keys.join(' ') + ' ';
+      /* the food forms this row already is, from its name, aliases and HPB category ("Noodle/Pasta-based
+       * dishes"), leaving out what it says it is not ("Fishball soup (no noodles)") */
+      var known = (f._text + sgNorm(f.cat) + ' ').replace(/ (no|without) [a-z0-9]+(?= )/g, '').split(' ');
+      f._forms = SG_FORMS.map(function (words, i) { return words.some(function (w) { return known.indexOf(w) > -1; }) ? i : -1; }).filter(function (i) { return i > -1; });
       f.portions = [{ label: f.basis === '100ml' ? '100 ml' : '100 g', g: 100 }].concat(f.serving && f.serving.g ? [{ label: f.serving.label || '1 serving', g: f.serving.g }] : []);
       f.source = { kind: 'hpb', label: 'HPB SG FoodID', ref: f.crId + ' ' + f.name, date: 'data ' + f.year + ', read ' + t.retrieved, detail: (f.method || 'HPB') + ' · per 100 ' + (f.basis === '100ml' ? 'ml' : 'g') + ' as served · HPB serving ' + ((f.serving && f.serving.label) || '?'), url: f.url || (t.licence && t.licence.link) || 'https://pphtpc.hpb.gov.sg/web/sgfoodid' };
     });
@@ -340,13 +352,34 @@
    * bracket) must not carry a qualifier word the row does not know, so "kimchi fried rice" stays an
    * estimate instead of becoming egg fried rice; in the tail, where the model lists ingredients
    * ("... with minced pork, mushrooms, cabbage"), only a protein the row does not know rejects it.
+   * An alias only counts where it names the dish (sgNamed): "steamed rice" inside "steamed rice cakes"
+   * is a modifier of cakes, so Cooked white rice is not a candidate there, and "fried egg" in "nasi lemak
+   * with fried egg" is a side of the plate, not the plate.
+   * Set rows are reached only by a name that says which set. Nasi lemak in the table (and in HPB itself)
+   * is a fish, chicken wing or chicken cutlet set, or the coconut rice alone; HPB has no plain plate. The
+   * relay returns a plate as one item, so a bare "nasi lemak" stays unmatched and keeps the photo
+   * estimate: the rice-only row would drop the egg, ikan bilis, peanuts and sambal, and a set row would
+   * add a protein nobody named. The bare alias lives on no row (tools/build-hpb-table.py, DISHES).
+   * Style variants differ: a bare "bak chor mee" lands on the default style DISHES chose (dry).
    * Returns null or { food, alias } where alias is the matched phrase. */
   function sgMatch(name) {
     if (!sgTable) return null;
     var raw = String(name || ''), nq = sgNorm(raw), q = ' ' + nq + ' ', best = null, hit = '';
     if (nq.length < 3) return null;
+    /* the same words as q, where each clause ends (a comma, semicolon or bracket), and which words come
+     * after "with", "and" and the like. A bracket is a gloss of what precedes it ("noodles (bak chor
+     * mee)"), so inside it the count starts again and after it the outer one resumes. */
+    var ws = { toks: [], ends: {}, tail: [] }, inTail = false, outer = [];
+    raw.split(/([,;()[\]])/).forEach(function (part) {
+      if (/^[,;()[\]]$/.test(part)) {
+        if (ws.toks.length) ws.ends[ws.toks.length - 1] = true;
+        if (part === '(' || part === '[') { outer.push(inTail); inTail = false; } else if ((part === ')' || part === ']') && outer.length) inTail = outer.pop();
+        return;
+      }
+      sgNorm(part).split(' ').forEach(function (t) { if (!t) return; if (SG_JOIN.indexOf(t) > -1) inTail = true; ws.toks.push(t); ws.tail.push(inTail); });
+    });
     sgTable.foods.forEach(function (f) {
-      f._keys.forEach(function (k) { if (k.length > hit.length && q.indexOf(' ' + k + ' ') > -1) { best = f; hit = k; } });
+      f._keys.forEach(function (k) { if (k.length > hit.length && q.indexOf(' ' + k + ' ') > -1 && sgNamed(ws, f, k)) { best = f; hit = k; } });
     });
     if (!best) return null;
     var head = ' ' + sgNorm(raw.split(/,|\(|\bwith\b|\band\b|\bserved\b|\btopped\b|\bplus\b/i)[0]) + ' ';
@@ -355,6 +388,29 @@
       if ((inHead || inTail) && best._text.indexOf(w) < 0) return null;
     }
     return { food: best, alias: hit };
+  }
+  /* True when some occurrence of alias k in the name is the dish itself: it does not start after "with",
+   * "and", "served", "topped" or "plus" (there it names a side or an ingredient of the dish before it),
+   * and no word after it in the same phrase (up to a comma, bracket or one of those words) is a food
+   * form this row is not. "Laksa noodles" is laksa (the row is a noodle dish); "fried rice noodles" is
+   * not egg fried rice; "chicken rice with rice cakes" still names chicken rice, the cakes being in
+   * another phrase; in "kaya toast with soft boiled eggs" the eggs are not the dish. An alias that runs
+   * across "with" ("steamed chicken with rice") counts, because it starts before it. */
+  var SG_JOIN = ['with', 'and', 'served', 'topped', 'plus'].map(sgNorm);
+  function sgNamed(ws, f, k) {
+    var toks = ws.toks, ends = ws.ends, kt = k.split(' '), n = kt.length;
+    for (var i = 0; i + n <= toks.length; i++) {
+      var j = 0, named = true;
+      if (ws.tail[i]) continue;
+      while (j < n && toks[i + j] === kt[j]) j++;
+      if (j < n) continue;
+      for (var t = i + n; t < toks.length && !ends[t - 1] && SG_JOIN.indexOf(toks[t]) < 0; t++) {
+        var form = SG_FORM_OF[toks[t]];
+        if (form !== undefined && f._forms.indexOf(form) < 0) { named = false; break; }
+      }
+      if (named) return true;
+    }
+    return false;
   }
   function sgTableLoaded() { return sgTable; }
 

@@ -33,3 +33,5 @@ main :is(p,li,td,small) > a:not([class]){color:var(--rh-plum);text-decoration-co
 .top .theme-toggle{display:none!important}
 .top .font-toggle{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.9)!important;background:rgba(255,255,255,.85)!important;box-shadow:0 4px 14px rgba(90,66,116,.14);color:var(--rh-plum)}
 .top .t-icon.ms{font-family:'Material Symbols Outlined'!important}
+.top .rh-brand{display:inline-flex;align-items:center;gap:.42em}
+.top .rh-brand .rh-logo{width:1.45em;height:1.45em;margin-right:0}

@@ -8,11 +8,14 @@
   'use strict';
   var KEY = 'ovumind_db_v1';
   var VERSION = 1;
-  var TYPES = ['sleep', 'period', 'symptom', 'food', 'reflection', 'mindfulness', 'weight', 'exercise']; /* exercise: ovu-exercise.js, many a day */
-  var SINGLE_PER_DAY = { period: true, symptom: true, weight: true };
+  var TYPES = ['sleep', 'period', 'symptom', 'food', 'reflection', 'mindfulness', 'weight', 'exercise', 'sleepcheck']; /* exercise: ovu-exercise.js, many a day; sleepcheck: the two-week sleep check, one a day */
+  var SINGLE_PER_DAY = { period: true, symptom: true, weight: true, sleepcheck: true };
   var IMPORTED = { 'apple-health': true, 'google-fit': true };
   var listeners = [];
   var cache = null;
+  var seenRaw = null, baseText = null; /* the stored text this tab last read or wrote, and its own copy at that moment: the base of mergeStored() */
+  var REV = 'ovumind_db_rev', seenRev = null; /* a short token every save changes, so a read can tell cheaply that another tab wrote */
+  function readRev() { try { return localStorage.getItem(REV); } catch (e) { return null; } }
 
   function nowIso() { return new Date().toISOString(); }
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -48,22 +51,91 @@
     return out;
   }
   function load(force) {
-    if (cache && !force) return cache;
-    var raw = null;
+    /* every read catches up when another tab saved since, so a caller that reads, builds a patch and commits it builds
+       on the current copy (review, 21 Oct: a stale tab's farm patch undid seeds whose hearts the other tab had taken) */
+    if (cache && !force) { if (sandboxDepth === 0 && readRev() !== seenRev) catchUp(); return cache; }
+    var raw = null; seenRev = readRev();
     try { raw = localStorage.getItem(KEY); } catch (e) { raw = null; }
     try { cache = normalise(raw ? JSON.parse(raw) : null); } catch (e) { cache = empty(); cache.state.corruptBackup = raw; }
+    seenRaw = raw; baseText = JSON.stringify(cache);
     return cache;
   }
-  function emit(reason) { listeners.slice().forEach(function (fn) { try { fn(reason || 'change', cache); } catch (e) { /* listener errors never block saving */ } }); }
-  function save(reason) {
-    var db = load();
-    db.updatedAt = nowIso();
-    var text = JSON.stringify(db);
+  function emit(reason, removed) { listeners.slice().forEach(function (fn) { try { fn(reason || 'change', cache, removed); } catch (e) { /* listener errors never block saving */ } }); }
+  /* ---------- several tabs on one phone ----------
+   * Each tab keeps its own copy in memory, and a tab that missed another tab's storage event (asleep in the background,
+   * or the event still on its way) used to write that stale copy over the other tab's saves, consent included. Now a
+   * save first merges in whatever another tab stored since this tab last read or wrote, three ways against that base
+   * (docs/design/2026-10-21-multitab-store.md):
+   * - entries and consent events, by id: one added in either tab is kept; one deleted in either tab stays deleted (a
+   *   delete is never undone); one changed in one tab takes that change; one changed in both takes the newer updatedAt,
+   *   and this tab's on a tie or when there is none. Their order is the stored one, then this tab's new ones.
+   * - profile and state, key by key: a key changed in one tab takes that change; a key changed in both takes this tab's,
+   *   the write being made now. A key moves whole (state.farm, state.rewards), so one game's state never mixes two tabs.
+   * - summaries move whole, the same way.
+   * The merge is built apart and adopted into memory, in place, only once the write verified, so a failed save leaves
+   * memory as it was (commit's contract) and callers holding an entry or the state object keep a live one. */
+  function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function byId(arr) { var m = {}; (arr || []).forEach(function (x) { if (x && x.id !== undefined) m[x.id] = x; }); return m; }
+  function newer(a, b) { var ta = Date.parse(a && a.updatedAt), tb = Date.parse(b && b.updatedAt); return isFinite(ta) && isFinite(tb) && ta > tb; }
+  function mergeById(mine, base, theirs) {
+    var M = byId(mine), B = byId(base), T = byId(theirs), out = [], seen = {};
+    function pick(id) {
+      var m = M[id], b = B[id], t = T[id];
+      if (b) { if (!m || !t) return null; if (same(m, b)) return t; if (same(t, b)) return m; return newer(t, m) ? t : m; }
+      if (m && t) return newer(t, m) ? t : m;
+      return m || t;
+    }
+    (theirs || []).concat(mine || []).forEach(function (x) { if (!x || x.id === undefined || seen[x.id]) return; seen[x.id] = true; var k = pick(x.id); if (k) out.push(k); });
+    return out;
+  }
+  function mergeKeys(mine, base, theirs, byIdKeys) {
+    var out = {}, keys = {};
+    [mine, base, theirs].forEach(function (o) { Object.keys(o || {}).forEach(function (k) { keys[k] = true; }); });
+    Object.keys(keys).forEach(function (k) {
+      var v = byIdKeys && byIdKeys[k] && (Array.isArray(mine[k]) || Array.isArray(theirs[k])) ? mergeById(mine[k], base[k], theirs[k]) : (!same(mine[k], base[k]) ? mine[k] : theirs[k]);
+      if (v !== undefined) out[k] = v;
+    });
+    return out;
+  }
+  /* null when the stored copy is the one this tab last saw (or cannot be read: then this tab's copy is written, as before) */
+  function mergeStored(db) {
+    var raw; try { raw = localStorage.getItem(KEY); } catch (e) { return null; }
+    if (raw === seenRaw || sandboxDepth > 0) return null;
+    var theirs, base; try { theirs = normalise(raw ? JSON.parse(raw) : null); base = normalise(baseText ? JSON.parse(baseText) : null); } catch (e) { return null; }
+    return { raw: raw, theirs: theirs, db: { version: db.version, createdAt: db.createdAt, updatedAt: db.updatedAt,
+      profile: mergeKeys(db.profile, base.profile, theirs.profile, { consentEvents: true }),
+      events: mergeById(db.events, base.events, theirs.events),
+      summaries: !same(db.summaries, base.summaries) ? db.summaries : theirs.summaries,
+      state: mergeKeys(db.state, base.state, theirs.state) } };
+  }
+  function adopt(next) {
+    var db = cache;
+    ['profile', 'state'].forEach(function (k) { var o = db[k]; Object.keys(o).forEach(function (x) { if (!(x in next[k])) delete o[x]; }); Object.assign(o, next[k]); });
+    db.events = next.events; db.summaries = next.summaries; db.updatedAt = next.updatedAt;
+  }
+  /* bring another tab's saves into memory before a write that looks at what is there (one entry a day, an entry that
+     may have been deleted), keeping anything this tab has not saved yet */
+  function catchUp() {
+    if (!cache) { load(); return; }
+    seenRev = readRev();
+    var m = mergeStored(cache); if (!m) return;
+    adopt(m.db); seenRaw = m.raw; baseText = JSON.stringify(m.theirs);
+  }
+  /* whole: write this tab's copy as it is (Delete everything, a restored file that replaces the diary) */
+  /* removed: the ids this call deleted, passed to listeners so the backup records only this tab's own deletes as
+     tombstones, never entries another tab's Delete everything wiped (review, 21 Oct) */
+  function save(reason, whole, removed) {
+    var db = whole ? cache : load(), m = whole ? null : mergeStored(db), /* a whole write is never caught up first */ next = m ? m.db : db, at = nowIso();
+    var text = JSON.stringify(Object.assign({}, next, { updatedAt: at }));
     localStorage.setItem(KEY, text);
     if (localStorage.getItem(KEY) !== text) throw new Error('Saving did not verify. Your browser storage may be full or blocked.');
-    emit(reason);
+    next.updatedAt = at; if (m) adopt(next);
+    seenRaw = baseText = text;
+    seenRev = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    try { localStorage.setItem(REV, seenRev); } catch (e) { /* the diary is saved; another tab still merges it at its next write */ }
+    emit(reason, removed);
   }
-  try { window.addEventListener('storage', function (ev) { if (ev.key === KEY || ev.key === null) { load(true); emit('external'); } }); } catch (e) { /* non-browser */ }
+  try { window.addEventListener('storage', function (ev) { if (ev.key === KEY || ev.key === null) { catchUp(); emit('external'); } }); } catch (e) { /* non-browser */ }
 
   /* ---------- events ---------- */
   function sortEvents(list) { return list.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.createdAt < b.createdAt ? -1 : 1); }); }
@@ -96,10 +168,43 @@
     }
     return Object.assign({}, o, n);
   }
+  /* ---------- optional sleep details and the two-week sleep check ----------
+   * Rhythme's own questions (not a licensed scale, and never scored), built on the items of the Consensus Sleep Diary
+   * (Carney 2012, E73) and the insomnia, sleep apnoea and restless legs guidance in ovu-evidence.js. Every answer is a
+   * fixed code and anything else is dropped, so a question left blank stays unknown: it is never read as zero, and
+   * "not sure" is kept as an answer of its own. Labels and patterns live in ovu-agents.js. */
+  var SLEEP_DETAIL = { latency: ['le15', '16-30', '31-60', 'gt60', 'unsure'], wakeups: ['0', '1', '2', '3', '4+', 'unsure'], awake: ['le15', '16-30', '31-60', '61-120', 'gt120', 'unsure'], early: ['yes', 'no', 'unsure'], rested: ['1', '2', '3', '4', '5', 'unsure'] };
+  var SLEEP_WOKE = ['flush', 'cramps', 'toilet', 'child', 'snoring', 'noise', 'worry', 'pain', 'gasp', 'other'];
+  var NIGHTS = ['0', '1', '2', '3', '4', '5', '6', '7', 'unsure'];
+  var SLEEP_CHECK = { w1: NIGHTS, w2: NIGHTS, chance: ['usually', 'sometimes', 'rarely', 'unsure'], impact: ['none', 'little', 'lot', 'unsure'], since: ['lt2w', '2w-3m', '3m+', 'unsure'], breathing: ['yes', 'no', 'unsure'], legs: ['yes', 'no', 'unsure'], driving: ['yes', 'no', 'nodrive'] };
+  function pickCodes(spec, o) {
+    var out = {}; if (!o || typeof o !== 'object') return out;
+    Object.keys(spec).forEach(function (k) { var v = o[k]; if (typeof v === 'number' && isFinite(v)) v = String(v); if (typeof v === 'string' && spec[k].indexOf(v) > -1) out[k] = v; });
+    return out;
+  }
+  function cleanSleepDetails(o) {
+    var out = pickCodes(SLEEP_DETAIL, o);
+    if (o && Array.isArray(o.woke)) { var w = SLEEP_WOKE.filter(function (c) { return o.woke.indexOf(c) > -1; }); if (w.length) out.woke = w; }
+    if (out.wakeups === '0') delete out.awake; /* no waking means no time awake to ask about */
+    return Object.keys(out).length ? out : null;
+  }
+  function cleanSleepCheck(o) {
+    var out = pickCodes(SLEEP_CHECK, o);
+    if (out.w1 === '0' && out.w2 === '0') delete out.since; /* "how long has it been like this" only follows a night of trouble */
+    return out;
+  }
+  /* the write boundary: a sleep entry keeps only known detail codes; a check must answer at least one question */
+  function cleanData(type, data) {
+    if (type === 'sleep' && data && typeof data === 'object' && data.details !== undefined) { var c = Object.assign({}, data), dt = cleanSleepDetails(data.details); if (dt) c.details = dt; else delete c.details; return c; }
+    if (type === 'sleepcheck') { var sc = cleanSleepCheck(data); if (!Object.keys(sc).length) throw new Error('Answer at least one question.'); return sc; }
+    return data;
+  }
   function add(type, date, data, source, opts) {
     if (TYPES.indexOf(type) < 0) throw new Error('Unknown entry type: ' + type);
+    data = cleanData(type, data);
     if (!validDate(date)) throw new Error('Choose a real date.');
     if (date > today()) throw new Error('Entries cannot be in the future.');
+    catchUp(); /* another tab may already have this day's entry */
     var db = load();
     var existing = SINGLE_PER_DAY[type] ? db.events.filter(function (e) { return e.type === type && e.date === date; })[0] : null;
     if (existing) { return update(existing.id, { data: opts && opts.merge ? mergeData(type, existing.data, data) : data, source: IMPORTED[existing.source] ? (source || 'room') : undefined }); }
@@ -110,13 +215,15 @@
     return ev;
   }
   function update(id, patch) {
+    catchUp(); /* an entry another tab deleted is gone here too, never written back */
     var db = load(), ev = get(id);
     if (!ev) throw new Error('That entry no longer exists.');
     /* a failed write puts the entry back exactly as it was, as add() does: an edit that did not save must never show
        as saved (Codex diff review, 20 Oct: a mood edit that failed to save still completed the day's check-in) */
     var before = { date: ev.date, data: ev.data, source: ev.source, updatedAt: ev.updatedAt };
+    var newData = patch.data !== undefined ? cleanData(ev.type, patch.data) : undefined; /* checked before anything changes */
     if (patch.date !== undefined) { if (!validDate(patch.date) || patch.date > today()) throw new Error('Choose a real date on or before today.'); ev.date = patch.date; }
-    if (patch.data !== undefined) ev.data = patch.data;
+    if (patch.data !== undefined) ev.data = newData;
     /* An imported entry (Apple Health, Google) that the person changes by hand becomes hers: a later import
      * leaves it alone and "Remove imported data" keeps it. Imports refresh their own rows through addMany. */
     if (patch.source) ev.source = patch.source; else if ((patch.data !== undefined || patch.date !== undefined) && IMPORTED[ev.source]) ev.source = 'room';
@@ -131,33 +238,37 @@
    * date that already has one is skipped, so a hand-written day is left alone. Nothing is mirrored to the
    * legacy keys except the cycle summary, which is recomputed once when a period day was written. */
   function addMany(items) {
+    catchUp();
     var db = load(), t = today(), added = 0, updated = 0, skipped = 0, touchedPeriod = false;
     var have = {}; db.events.forEach(function (e) { if (SINGLE_PER_DAY[e.type]) have[e.type + '|' + e.date] = true; });
     (items || []).forEach(function (it) {
       if (!it || typeof it !== 'object') { skipped++; return; }
-      if (it.id) { var ev = get(it.id); if (!ev || !it.data || typeof it.data !== 'object') { skipped++; return; } ev.data = it.data; ev.updatedAt = nowIso(); updated++; if (ev.type === 'period') touchedPeriod = true; return; }
+      if (it.id) { var ev = get(it.id); if (!ev || !it.data || typeof it.data !== 'object') { skipped++; return; } try { ev.data = cleanData(ev.type, it.data); } catch (err) { skipped++; return; } ev.updatedAt = nowIso(); updated++; if (ev.type === 'period') touchedPeriod = true; return; }
       if (TYPES.indexOf(it.type) < 0 || !validDate(it.date) || it.date > t || !it.data || typeof it.data !== 'object') { skipped++; return; }
+      var itData; try { itData = cleanData(it.type, it.data); } catch (err) { skipped++; return; } /* the same write boundary as add(): an empty check or stray codes never land (Codex, 21 Oct) */
       if (SINGLE_PER_DAY[it.type]) { if (have[it.type + '|' + it.date]) { skipped++; return; } have[it.type + '|' + it.date] = true; }
-      db.events.push({ id: uid(), type: it.type, date: it.date, createdAt: nowIso(), updatedAt: nowIso(), source: it.source || 'import', data: it.data });
+      db.events.push({ id: uid(), type: it.type, date: it.date, createdAt: nowIso(), updatedAt: nowIso(), source: it.source || 'import', data: itData });
       added++; if (it.type === 'period') touchedPeriod = true;
     });
     if (added || updated) { save('import'); if (touchedPeriod) mirrorLegacy({ type: 'period' }); }
     return { added: added, updated: updated, skipped: skipped };
   }
   function removeWhere(pred) {
+    catchUp();
     var db = load(), before = db.events.length, gone = db.events.filter(function (e) { return !!pred(e); });
     if (!gone.length) return 0;
     db.events = db.events.filter(function (e) { return !pred(e); });
-    save('remove:bulk');
+    save('remove:bulk', false, gone.map(function (e) { return e.id; }));
     gone.forEach(function (e) { if (e.type === 'food' || e.type === 'sleep') mirrorLegacy(e, true); }); /* the meal and sleep copies go with them */
     if (gone.some(function (e) { return e.type === 'period'; })) mirrorLegacy({ type: 'period' });
-    return before - db.events.length;
+    return gone.length;
   }
   function remove(id) {
+    catchUp();
     var db = load(), ev = get(id);
     if (!ev) return false;
     db.events = db.events.filter(function (e) { return e.id !== id; });
-    save('remove:' + ev.type);
+    save('remove:' + ev.type, false, [id]);
     mirrorLegacy(ev, true);
     return true;
   }
@@ -174,13 +285,16 @@
   /* Apply a batch of pulled cloud changes in one save: puts (insert or replace
    * by id), then deletes (by id). Emits 'sync' so the room can re-render. */
   function applyRemote(puts, dels) {
+    catchUp();
     var db = load(), changed = [];
     (puts || []).forEach(function (ev) {
       if (!ev || typeof ev !== 'object' || TYPES.indexOf(ev.type) < 0 || !validDate(ev.date) || !ev.data || typeof ev.data !== 'object') return;
-      var id = String(ev.id || uid());
-      var norm = { id: id, type: ev.type, date: ev.date, createdAt: ev.createdAt || nowIso(), updatedAt: ev.updatedAt || ev.createdAt || nowIso(), source: ev.source || 'cloud', data: ev.data };
+      var id = String(ev.id || uid()), evData; try { evData = cleanData(ev.type, ev.data); } catch (err) { return; } /* a cloud row that cleans to nothing is not applied */
+      var norm = { id: id, type: ev.type, date: ev.date, createdAt: ev.createdAt || nowIso(), updatedAt: ev.updatedAt || ev.createdAt || nowIso(), source: ev.source || 'cloud', data: evData };
       var found = false;
-      for (var i = 0; i < db.events.length; i++) { if (db.events[i].id === id) { db.events[i] = norm; found = true; break; } }
+      var stale = false; /* a put planned before another tab's newer edit arrived never replaces it (last write wins, as in the plan) */
+      for (var i = 0; i < db.events.length; i++) { if (db.events[i].id === id) { if (newer(db.events[i], norm)) stale = true; else db.events[i] = norm; found = true; break; } }
+      if (stale) return;
       if (!found) db.events.push(norm);
       changed.push({ ev: norm });
     });
@@ -196,7 +310,15 @@
 
   /* ---------- profile / state ---------- */
   function profile() { return Object.assign({}, load().profile); }
-  function setProfile(patch) { Object.assign(load().profile, patch); save('profile'); return profile(); }
+  /* a failed save puts the profile back as it was, as commit() does for state: a consent choice that did not save must not
+     sit in memory and land later, after a newer choice made in another tab (review, 21 Oct) */
+  function setProfile(patch) {
+    var p = load().profile, had = {}, prev = {};
+    Object.keys(patch).forEach(function (k) { had[k] = Object.prototype.hasOwnProperty.call(p, k); prev[k] = p[k]; });
+    Object.assign(p, patch);
+    try { save('profile'); } catch (e) { Object.keys(prev).forEach(function (k) { if (had[k]) p[k] = prev[k]; else delete p[k]; }); throw e; }
+    return profile();
+  }
   function state() { return load().state; }
   function setState(patch) { Object.assign(load().state, patch); save('state'); return state(); }
   /* a write that lands whole or leaves memory exactly as it was: a purchase must never take hearts without the item, or give
@@ -245,12 +367,12 @@
   function sleepStats(days, end) {
     end = end || today(); days = days || 7;
     var from = addDays(end, -(days - 1));
-    var entries = list('sleep', { from: from, to: end }).map(function (e) { return { date: e.date, hours: sleepHours(e.data), quality: e.data.quality || null, id: e.id, assumed: e.data.assumed === true, wakeTime: e.data.wakeTime }; }).filter(function (n) { return n.hours !== null; });
+    var entries = list('sleep', { from: from, to: end }).map(function (e) { return { date: e.date, hours: sleepHours(e.data), quality: e.data.quality || null, id: e.id, assumed: e.data.assumed === true, wakeTime: e.data.wakeTime, measured: typeof e.data.asleepMin === 'number' && e.data.asleepMin > 0 }; }).filter(function (n) { return n.hours !== null; });
     var byDay = {};
     entries.forEach(function (n) { (byDay[n.date] = byDay[n.date] || []).push(n); });
     var nights = Object.keys(byDay).sort().map(function (d) { return oneNight(d, byDay[d]); });
     var total = nights.reduce(function (s, n) { return s + n.hours; }, 0);
-    return { from: from, to: end, nights: nights, entries: entries.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality, id: n.id, assumed: n.assumed }; }), count: nights.length, avg: nights.length ? Math.round(total / nights.length * 10) / 10 : null, under6: nights.filter(function (n) { return n.hours < 6; }).length };
+    return { from: from, to: end, nights: nights, entries: entries.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality, id: n.id, assumed: n.assumed }; }), count: nights.length, windowed: entries.some(function (n) { return !n.measured; }), measured: entries.some(function (n) { return n.measured; }), avg: nights.length ? Math.round(total / nights.length * 10) / 10 : null, under6: nights.filter(function (n) { return n.hours < 6; }).length };
   }
 
   /* ---------- today's check-in answers ----------
@@ -261,6 +383,7 @@
   function checkinAnswers(date) { var c = load().state.checkin || {}; return Object.assign({}, c[date] || {}); }
   function setCheckinAnswer(date, domain, status) {
     if (!validDate(date) || !CHECKIN[domain] || (status !== null && CHECKIN[domain].indexOf(status) < 0)) throw new Error('That is not a check-in answer.');
+    catchUp(); /* the answers are copied whole below, so another tab's answers must be in them */
     var all = JSON.parse(JSON.stringify(load().state.checkin || {})), day = all[date] || {};
     if (status === null) delete day[domain]; else day[domain] = status;
     if (Object.keys(day).length) all[date] = day; else delete all[date];
@@ -432,14 +555,17 @@
   function exportJSON() { return JSON.stringify(load(), null, 1); }
   function importJSON(text, mode) {
     var incoming = normalise(JSON.parse(text));
-    var db = load();
+    incoming.events = (incoming.events || []).map(function (e) { try { return Object.assign({}, e, { data: cleanData(e.type, e.data) }); } catch (err) { return null; } }).filter(Boolean); /* a restored file passes the same write boundary */
+    if (mode !== 'replace') catchUp();
+    var db = load(), keep = {}; ['owner', 'cloud', 'consent', 'consentEvents', 'ageAttest'].forEach(function (k) { if (db.profile && db.profile[k] !== undefined) keep[k] = db.profile[k]; }); /* this phone's account and consent stay as they are (Codex sweep, 21 Oct) */
     if (mode === 'replace') { cache = incoming; }
     else {
       var ids = {}; db.events.forEach(function (e) { ids[e.id] = true; });
       incoming.events.forEach(function (e) { if (!ids[e.id]) db.events.push(e); });
       db.profile = Object.assign(db.profile, incoming.profile);
     }
-    save('import');
+    var pf = load().profile; ['owner', 'cloud', 'consent', 'consentEvents', 'ageAttest'].forEach(function (k) { if (k in keep) pf[k] = keep[k]; else delete pf[k]; }); /* a backup never brings an account, not even an old one onto a fresh phone */
+    save('import', mode === 'replace');
     return load().events.length;
   }
   /* Delete everything on this phone: the diary and every older copy of it, by an explicit list of Rhythme's own keys
@@ -458,7 +584,8 @@
   var DAILY_LOG = /^ovuluna_daily_log_\d{4}-\d{2}-\d{2}$/;
   function clearAll() {
     try { if (root.OvuPodcast && root.OvuPodcast.forget) root.OvuPodcast.forget(); } catch (e) { } /* its page-close save would write the listening back */
-    cache = empty(); save('clear');
+    cache = empty(); save('clear', true);
+    try { localStorage.removeItem(REV); } catch (e) { } /* not diary data; another tab reads its absence as a change */
     try {
       var keys = []; for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
       keys.forEach(function (k) { if (k && (OWN_KEYS.indexOf(k) > -1 || DAILY_LOG.test(k))) { try { localStorage.removeItem(k); } catch (e) { } } });
@@ -511,20 +638,23 @@
   /* true while a sandbox runs: a save then would write the sample over the real record, so callers that write lazily check this */
   function isSandbox() { return sandboxDepth > 0; }
 
+  /* same-day duplicates (a sync can bring two checks for one day): the newest edit is the answer; on a tie, the later row (Codex, 21 Oct) */
+  function newestFirst(a, b) { var ta = String(a.updatedAt || a.createdAt || ''), tb = String(b.updatedAt || b.createdAt || ''); return tb > ta ? 1 : tb < ta ? -1 : 0; }
+  function latestOnDate(type, date) { var l = list(type, { from: date, to: date }).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return newestFirst(x.e, y.e) || (y.i - x.i); }); return l.length ? l[0].e : null; }
   root.OvuStore = {
     /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
     NOTICE_V: 4, /* v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
     KEY: KEY, TYPES: TYPES, checkinAnswers: checkinAnswers, setCheckinAnswer: setCheckinAnswer, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
-    load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
+    load: load, list: list, get: get, latestOnDate: latestOnDate, newestFirst: newestFirst, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
     putEvent: putEvent, applyRemote: applyRemote,
     addMany: addMany, removeWhere: removeWhere,
     profile: profile, setProfile: setProfile, state: state, setState: setState, commit: commit, reload: function () { load(true); return state(); },
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
-    sleepHours: sleepHours, sleepStats: sleepStats, periodEpisodes: periodEpisodes, cycleStats: cycleStats, rhythmFromRecall: rhythmFromRecall,
+    sleepHours: sleepHours, sleepStats: sleepStats, cleanSleepDetails: cleanSleepDetails, cleanSleepCheck: cleanSleepCheck, SLEEP_DETAIL: SLEEP_DETAIL, SLEEP_WOKE: SLEEP_WOKE, SLEEP_CHECK: SLEEP_CHECK, periodEpisodes: periodEpisodes, cycleStats: cycleStats, rhythmFromRecall: rhythmFromRecall,
     exportJSON: exportJSON, importJSON: importJSON, clearAll: clearAll,
     OWN_KEYS: OWN_KEYS, KEEP_ON_CLEAR: KEEP_ON_CLEAR, crypto: { PASS_ALPHABET: PASS_ALPHABET, encrypt: encrypt, decrypt: decrypt, generatePassphrase: generatePassphrase, toCode: toCode, fromCode: fromCode }
   };
 })(window);
 
 /* Rhythme asks for the data notice in the room first: a first-time visitor, anyone whose consent is older than the current notice (OvuStore.NOTICE_V), anyone who has not confirmed 18+, or an unreadable record, is sent there. appnav.js carries the same check for pages without this file. */
-(function () { try { var pg = location.pathname.split('/').pop() || 'index.html'; if (/^(room|privacy|terms|index|404)\.html$/.test(pg)) return; var db = JSON.parse(localStorage.getItem('ovumind_db_v1') || 'null'), c = db && db.profile && db.profile.consent, a = db && db.profile && db.profile.ageAttest; if (!(c && c.at && c.v >= window.OvuStore.NOTICE_V && a && a.confirmed === true)) location.replace('room.html'); } catch (e) { try { location.replace('room.html'); } catch (e2) { } } })();
+(function () { function wrongOwner(db, sn) { var p = (db && db.profile) || {}, o = typeof p.owner === 'string' ? (p.owner || null) : ((p.cloud && p.cloud.uid) || ((p.consentEvents || []).filter(function (e) { return e && e.uid; })[0] || {}).uid || null), u = sn && sn.user && sn.user.id; return !!(o && u && o !== u); } /* the room shows which account this diary belongs to (persona walks, 21 Oct) */ function gate() { try { var pg = location.pathname.split('/').pop() || 'index.html'; if (/^(room|privacy|terms|index|404|doctor)\.html$/.test(pg)) return; /* doctor.html decrypts a patient's file for a clinician who has no account (persona walk, 21 Oct) */ var db = JSON.parse(localStorage.getItem('ovumind_db_v1') || 'null'), c = db && db.profile && db.profile.consent, a = db && db.profile && db.profile.ageAttest, sn = JSON.parse(localStorage.getItem('ovumind_auth_v1') || 'null'); if (!(sn && sn.access_token) || wrongOwner(db, sn) || !(c && c.at && c.v >= window.OvuStore.NOTICE_V && a && a.confirmed === true)) location.replace('room.html'); } catch (e) { try { location.replace('room.html'); } catch (e2) { } } } gate(); try { window.addEventListener('storage', function (e) { if (!e || e.key === null || e.key === 'ovumind_auth_v1' || e.key === 'ovumind_db_v1') gate(); }); window.addEventListener('pageshow', function (e) { if (e && e.persisted) gate(); }); } catch (e) { } })(); /* a sign-out or a wipe in another tab closes this page too (Codex, 21 Oct) */

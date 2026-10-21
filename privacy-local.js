@@ -91,6 +91,14 @@
   const d = root.document; if (!d) return;
   function boot() {
     const list = d.getElementById('privacy-stores'); if (!list) return;
+    /* the controls show, export and delete the diary on this phone, so they open only for its own signed-in account
+     * (menopause walk, 21 Oct: after Sign out, keep my diary, this page still listed and exported it) */
+    let sess = null, prof = {}; try { sess = JSON.parse(root.localStorage.getItem('ovumind_auth_v1') || 'null'); prof = ((JSON.parse(root.localStorage.getItem('ovumind_db_v1') || 'null') || {}).profile) || {}; } catch (_) { }
+    const owner = typeof prof.owner === 'string' ? (prof.owner || null) : ((prof.cloud && prof.cloud.uid) || ((prof.consentEvents || []).filter(e => e && e.uid)[0] || {}).uid || null), uidNow = sess && sess.user && sess.user.id;
+    function allowed() { let s2 = null, p2 = {}; try { s2 = JSON.parse(root.localStorage.getItem('ovumind_auth_v1') || 'null'); p2 = ((JSON.parse(root.localStorage.getItem('ovumind_db_v1') || 'null') || {}).profile) || {}; } catch (_) { return false; } const o2 = typeof p2.owner === 'string' ? (p2.owner || null) : ((p2.cloud && p2.cloud.uid) || ((p2.consentEvents || []).filter(e => e && e.uid)[0] || {}).uid || null), u2 = s2 && s2.user && s2.user.id; return !!(s2 && s2.access_token) && !(o2 && u2 && o2 !== u2); }
+    function lock() { const ej = d.getElementById('privacy-export-json'), er = d.getElementById('privacy-export-result'), dg = d.getElementById('privacy-delete-dialog'); if (ej) ej.value = ''; if (er) er.hidden = true; if (dg && dg.open) dg.close(); if (!list.isConnected) return; const box = list.closest('section') || list.parentNode; const note = d.createElement('p'); note.className = 'privacy-locked'; note.textContent = 'Sign in to Rhythme with the account this diary belongs to, to view, export or delete it here.'; const a = d.createElement('a'); a.href = 'room.html'; a.textContent = 'Open Rhythme'; note.append(' ', a); box.replaceChildren(note); }
+    try { root.addEventListener('storage', function (e) { if ((!e || e.key === null || e.key === 'ovumind_auth_v1' || e.key === 'ovumind_db_v1') && !allowed()) lock(); }); root.addEventListener('pageshow', function () { if (!allowed()) lock(); }); } catch (_) { }
+    if (!(sess && sess.access_token) || (owner && uidNow && owner !== uidNow)) { const box = list.closest('section') || list.parentNode; const note = d.createElement('p'); note.className = 'privacy-locked'; note.textContent = 'Sign in to Rhythme with the account this diary belongs to, to view, export or delete it here.'; const a = d.createElement('a'); a.href = 'room.html'; a.textContent = 'Open Rhythme'; note.append(' ', a); box.replaceChildren(note); return; }
     const status = d.getElementById('privacy-status'), dialog = d.getElementById('privacy-delete-dialog'), confirm = d.getElementById('privacy-confirm-delete'), agree = d.getElementById('privacy-delete-agree');
     const reviewButton = d.getElementById('privacy-review-delete'), exportButton = d.getElementById('privacy-export');
     let reviewed = null, downloadable = null;
@@ -118,6 +126,7 @@
     function closeReview() { reviewed = null; if (dialog.open) dialog.close(); reviewButton.focus(); }
     function finishDelete() {
       if (!reviewed || !agree.checked) return;
+      if (!allowed()) { closeReview(); lock(); return; }
       try {
         const result = removeReviewed(root.localStorage, reviewed); closeReview(); clearExport(); refresh();
         message(result.deleted.length + ' selected items deleted from this origin.' + (result.failed.length ? ' ' + result.failed.length + ' could not be deleted; review the remaining list.' : ' Unselected and unrecognized stores were preserved.') + ' Other devices, downloads and server-held records are unaffected. Reload other open tabs before editing records.');
@@ -127,6 +136,7 @@
     d.getElementById('privacy-clear-selection').addEventListener('click', function () { list.querySelectorAll('input').forEach(input => { input.checked = false; }); setActions(); message('Selection cleared. No data has changed.'); });
     d.getElementById('privacy-export-before-delete').addEventListener('click', function () { closeReview(); exportButton.click(); });
     exportButton.addEventListener('click', function () {
+      if (!allowed()) { lock(); return; }
       try {
         downloadable = JSON.stringify(exportData(root.localStorage, selected(), root.location.origin), null, 2);
         d.getElementById('privacy-export-json').value = downloadable; d.getElementById('privacy-export-result').hidden = false;
