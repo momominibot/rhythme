@@ -2023,3 +2023,29 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 @media (prefers-reduced-motion: reduce){#seatfx i{animation:none!important;opacity:.35}#seatfx .mote,#seatfx .spark,#seatfx .glint,#seatfx .streak{opacity:.22}#seatfx b{display:none}}
 .seatpanel .mp-btns{display:flex;flex-wrap:wrap;gap:8px}
 .seatpanel .mp-btns .btn{flex:1 1 40%}
+
+/* Your cycle rhythm (design 2026-10-21-cycle-tab-rhythm.md): history as the only number, four cards with levels */
+.rhythm h3{font:800 18px var(--serif,Georgia,serif);color:var(--rm-plum);margin:4px 0 8px}
+.rhythm .stagenote{margin:0 0 10px;font-size:13px}
+.ready{background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:16px;padding:12px;margin-bottom:10px}
+.ready .lbl{display:block;margin-bottom:8px}
+.ready .dots{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin:4px 0 8px}
+.ready .dot{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative}
+.ready .dot i{width:40px;height:40px;border-radius:50%;border:2px solid #d9cdee;background:#fff;display:flex;align-items:center;justify-content:center;font:800 15px var(--sans);color:#a394bd;font-style:normal}
+.ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#fff}
+.ready .dot em{font:700 10px/1.2 var(--sans);font-style:normal;color:var(--rm-ink-2);text-align:center}
+.ready .dot+.dot::before{content:"";position:absolute;left:-50%;right:50%;top:20px;height:2px;background:#e4dbf2;z-index:-1}
+.ready p{margin:0;font:600 13px/1.45 var(--sans);color:var(--rm-ink)}
+.rcard{background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:16px;padding:12px;margin-bottom:10px}
+.rcard .rhead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.rcard .rhead b{font:800 15px var(--sans);color:var(--rm-plum)}
+.rcard small{display:block;font:600 12px/1.4 var(--sans);color:var(--rm-ink-2);margin:2px 0 6px}
+.rcard p{margin:0 0 8px;font:600 13px/1.45 var(--sans);color:var(--rm-ink)}
+.rchips{display:flex;flex-wrap:wrap;gap:6px}
+.lvl{font:800 10px var(--sans);letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:4px 9px;background:#eef0f5;color:#5e6475}
+.lvl-ok,.lvl-ref{background:#e7f6ee;color:#2d7a4f}.lvl-note{background:#fff3df;color:#9a6200}.lvl-chat{background:#fde8ee;color:#b03a5c}.lvl-building,.lvl-thin,.lvl-na{background:#eef0f5;color:#5e6475}
+.chip-th{font:700 10px var(--sans);border-radius:999px;padding:3px 8px;background:#f3eefb;color:#6e4fa3;border:1px dashed #c9b6e6}
+.chip-e{font:800 10px var(--sans);border-radius:999px;padding:3px 8px;background:#eaf2fb;color:#2f5f9e;text-decoration:none}
+.rband{background:#f8f4fd;border-radius:14px;padding:10px 12px;margin:-4px 0 10px}
+.rband .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.rfoot{margin-top:4px;font-size:12px}

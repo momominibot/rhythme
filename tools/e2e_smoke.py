@@ -2109,6 +2109,40 @@ async def main():
             ft = await page.evaluate("()=>({t: document.body.innerText, est: (document.querySelector('#myEstimate')||{}).innerText||''})")
             check("the fertility page shows no invented result and her own estimate is labelled", "85%" not in ft["t"] and "surge detected" not in ft["t"].lower() and len(ft["est"]) > 10 and "Reading your calendar" not in ft["est"], ft["est"][:140])
 
+            # ---------- the Cycle tab and Your cycle rhythm (21 Oct) ----------
+            ctxc = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctxc.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxc.add_init_script(SESSION_SEED)
+            pc = await ctxc.new_page(); await pc.route("**/*", gate)
+            cerr = []; pc.on("pageerror", lambda e: cerr.append("pageerror: " + str(e)))
+            await pc.goto(BASE + "room.html", wait_until="domcontentloaded")
+            try: await pc.wait_for_function("()=>window.OvuRhythm && window.OvuRoom && document.querySelector('#scene').dataset.layout && !OvuRoom.busy()", timeout=15000)
+            except Exception: pass
+            nav = await pc.evaluate("()=>[...document.querySelectorAll('.nav a')].map(a=>a.dataset.tab||'home')")
+            # asleep, the Cycle tab still opens the calendar: the diary does not depend on the game
+            await pc.evaluate("()=>OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}})"); await pc.wait_for_timeout(300)
+            await pc.click('.nav a[data-tab=cycle]'); await pc.wait_for_timeout(700)
+            c1 = await pc.evaluate("()=>({sheet: OvuRoom.sheetId(), tabs: [...document.querySelectorAll('#calTabs button')].map(b=>b.textContent), on: document.querySelector('.nav a[data-tab=cycle]').classList.contains('on')})")
+            check("cycle: the tab is back between Home and Food and opens the calendar even while she sleeps, with Period, Symptoms and Rhythm views", nav[:3] == ["home", "cycle", "food"] and c1["sheet"] == "calendar" and c1["tabs"] == ["Period", "Symptoms", "Rhythm"] and c1["on"], {"nav": nav, "c1": c1})
+            await pc.evaluate("()=>OvuStore.setState({sleeping:null})")
+            await pc.click('#calTabs button[data-tab=rhythm]'); await pc.wait_for_timeout(400)
+            r1 = await pc.evaluate("()=>({panel: document.querySelector('#rhythmPanel').textContent, hiddenCal: document.querySelector('#calBody').hidden, view: OvuStore.state().cycleView, dots: document.querySelectorAll('.ready .dot.on').length})")
+            check("cycle: the Rhythm view shows Building your cycle picture at 0 of 3 for one logged period, Ovulation signs not assessed, no score anywhere", "Building your cycle picture" in r1["panel"] and "0 of 3" in r1["panel"] and r1["dots"] == 0 and "Not assessed" in r1["panel"] and "score" not in r1["panel"].lower() and "unlocked" not in r1["panel"].lower() and r1["hiddenCal"] and r1["view"] == "rhythm", {"dots": r1["dots"], "view": r1["view"], "head": r1["panel"][:160]})
+            # four starts a month apart make 3 of 3 and a regularity comparison once the age band is known
+            await pc.evaluate("""()=>{var S=OvuStore; S.setProfile({ageRange:'30-34'}); ['2026-07-02','2026-07-30','2026-08-27','2026-09-24'].forEach(function(s){ for(var i=0;i<4;i++) S.add('period', S.addDays(s,i), {flow:i<2?'medium':'light', clots:false, impact:false}, 'room'); });}""")
+            await pc.keyboard.press("Escape"); await pc.wait_for_timeout(300)
+            await pc.click('.nav a[data-tab=cycle]'); await pc.wait_for_timeout(700)
+            r2 = await pc.evaluate("()=>({tab: document.querySelector('#calTabs button.on').dataset.tab, panel: document.querySelector('#rhythmPanel').textContent, dots: document.querySelectorAll('.ready .dot.on').length, levels: [...document.querySelectorAll('.rcard .lvl')].map(l=>l.textContent)})")
+            check("cycle: the last view is remembered; four starts give 3 of 3, Within the reference range for regularity and lengths, Not assessed for ovulation; levels never add up", r2["tab"] == "rhythm" and r2["dots"] == 3 and "3 of 3" in r2["panel"] and r2["levels"][0] == "Within the reference range in these records" and r2["levels"][1] == "Within the reference range in these records" and r2["levels"][2] == "Not assessed" and "FIGO" in r2["panel"], {"tab": r2["tab"], "dots": r2["dots"], "levels": r2["levels"]})
+            # after the menopause the tab reads Body and the view keeps symptoms, drops the count and names bleeding as a check
+            await pc.evaluate("()=>OvuStore.setProfile({lifeStage:'post', ageRange:'50+'})"); await pc.wait_for_timeout(400)
+            await pc.keyboard.press("Escape"); await pc.wait_for_timeout(300)
+            lbl = await pc.evaluate("()=>document.querySelector('#navCycle .navlabel').textContent")
+            await pc.click('.nav a[data-tab=cycle]'); await pc.wait_for_timeout(700)
+            r3 = await pc.evaluate("()=>({tabs: [...document.querySelectorAll('#calTabs button')].map(b=>b.textContent), panel: document.querySelector('#rhythmPanel').textContent})")
+            check("cycle: after the menopause the tab reads Body, the calendar's third view is Your body, there is no cycle count and any bleeding is named as a check", lbl == "Body" and r3["tabs"] == ["Bleeding", "Symptoms", "Your body"] and "Building your cycle picture" not in r3["panel"] and "any bleeding at all" in r3["panel"], {"lbl": lbl, "tabs": r3["tabs"]})
+            check("cycle: no page errors in the cycle run", not cerr, cerr[:3])
+            await ctxc.close()
+
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()
     finally:
