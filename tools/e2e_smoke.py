@@ -2149,6 +2149,26 @@ async def main():
             check("no sign-in request and no diary row left the page in the whole run (the signed-in account's own calls aside), and no relay call", not odd, odd[:4])
             check("nothing was requested from any third party during the run", not external, external[:3])
 
+            # two tabs in one browser (21 Oct): tab A stops hearing storage events, standing in for a tab asleep in the background;
+            # tab B saves a diary entry, a consent choice and game state, then tab A saves; nothing of B's is lost or brought back
+            ctxT = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxT.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxT.add_init_script(SESSION_SEED)
+            await ctxT.add_init_script("window.addEventListener('storage', function (e) { if (window.__deaf) e.stopImmediatePropagation(); }, true);")
+            tA = await ctxT.new_page(); tB = await ctxT.new_page()
+            for tp in (tA, tB):
+                await tp.route("**/*", gate); tp.on("pageerror", lambda e: errors.append("two tabs pageerror: " + str(e)))
+                await tp.goto(BASE + "room.html", wait_until="networkidle"); await tp.wait_for_selector(".hotspot")
+            await tA.evaluate("()=>{ window.__deaf = true; OvuStore.list(null); }")
+            bid = await tB.evaluate("()=>{ var e = OvuStore.add('reflection', OvuStore.today(), {text: 'from tab B'}); OvuConsent.grant('improve_logging', 'you'); OvuStore.commit({farm: Object.assign({}, OvuStore.state().farm || {}, {smokeTab: 'B'})}); OvuStore.remove('s3'); return e.id; }")
+            await tA.wait_for_timeout(300)
+            await tA.evaluate("()=>OvuStore.add('mindfulness', OvuStore.today(), {activity: 'breathe', seconds: 60})")
+            tt = await tA.evaluate("(id)=>{ var db = JSON.parse(localStorage.getItem('ovumind_db_v1')); return {b: db.events.some(e => e.id === id), a: db.events.some(e => e.type === 'mindfulness' && e.data.activity === 'breathe'), consent: db.profile.consentEvents.some(e => e.purpose === 'improve_logging' && e.action === 'grant') && db.profile.consent && db.profile.consent.improve === true, farm: (db.state.farm || {}).smokeTab === 'B', deleted: !db.events.some(e => e.id === 's3'), mem: !!OvuStore.get(id) && !OvuStore.get('s3')}; }", bid)
+            check("a stale tab's save keeps the other tab's diary entry, consent choice, game state and delete, and then shows them", all(tt.values()), tt)
+            await tA.evaluate("()=>{ window.__deaf = false; }")
+            nid = await tB.evaluate("()=>OvuStore.add('reflection', OvuStore.today(), {text: 'heard at once'}).id"); await tA.wait_for_timeout(400)
+            heard = await tA.evaluate("(id)=>!!OvuStore.get(id)", nid)
+            check("a tab that hears the storage event shows the other tab's save without writing", heard, heard)
+            await ctxT.close()
+
             # 9. asleep: nothing opens until the bed wakes her (hotspots, the nav sheets, Luna); You and the bed stay open
             ctx9 = await browser.new_context(viewport={"width": 390, "height": 844})
             zz = json.loads(json.dumps(DB)); zz["state"]["sleeping"] = {"startedAt": NOW, "bedTime": "23:00", "prevOutfit": "base", "pj": True}
