@@ -167,8 +167,8 @@
   }
   /* consent, the cloud choice, the improve record, the consent log and the age attestation are this phone's or the account's own control state, never part of the backed-up profile, so a restore can never carry a choice between phones */
   var CONTROL_KEYS = { consent: 1, cloud: 1, analysis: 1, consentEvents: 1, consentImportedAt: 1, ageAttest: 1 };
-  /* kept on this phone only: her birthday (a month and a day, for the birthday card) never travels in the cloud copy, either way */
-  var DEVICE_KEYS = { birthday: 1 };
+  /* kept on this phone only: her birthday (a month and a day, and the year if she gave it, for the birthday card) never travels in the cloud copy, either way */
+  var DEVICE_KEYS = { birthday: 1, birthYear: 1 };
   function profileForCloud(p) { var out = {}; Object.keys(p || {}).forEach(function (k) { if (CONTROL_KEYS[k] || DEVICE_KEYS[k]) return; out[k] = p[k]; }); return out; }
 
   /* ---------- gate ---------- */

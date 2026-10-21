@@ -2165,6 +2165,11 @@ html[data-sky=night] .askchip:hover{background:#3b2e5a}
 .bline{margin:0;font:600 14px/1.45 var(--sans);color:var(--rm-ink);padding-left:12px;border-left:3px solid var(--rm-blush)}
 .bcard .lbl{display:block;margin-top:14px;font:800 10px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-mauve)}
 .bwish{margin-top:12px}
+.bwho{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.72)}
+.bcard .bwho .lbl{margin-top:0}
+.bwho b{display:block;margin-top:4px;font:600 18px var(--serif);color:var(--rm-plum)}
+.bwho p{margin:6px 0 0;font:600 14px/1.45 var(--sans);color:var(--rm-ink)}
+.bwho .bquote{font-style:italic;color:var(--rm-ink-2)}
 .bdir{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.72)}
 .bcard .bdir .lbl{margin-top:0}
 .bdir b{display:block;margin-top:4px;font:600 18px var(--serif);color:var(--rm-plum)}
@@ -2176,4 +2181,4 @@ html[data-sky=night] .askchip:hover{background:#3b2e5a}
 .byrow select.input{flex:1 1 7rem;min-width:0}
 .byrow .btn{flex:0 0 auto;min-height:44px}
 html[data-sky="night"] .bcard{background:var(--rm-card);border-color:rgba(255,255,255,.14)}
-html[data-sky="night"] .bdir{background:rgba(255,255,255,.08)}
+html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}

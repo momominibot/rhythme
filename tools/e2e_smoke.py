@@ -456,10 +456,10 @@ async def main():
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
 
             # 1f. the drops (21 Oct): her birthday week and the Starlight gown as a Rhythme Plus drop (this page runs in tester mode, so the gown is open here)
-            await page.evaluate("()=>{OvuStore.setProfile({birthday: OvuStore.today().slice(5)}); OvuStore.setState({birthday: null});}")
+            await page.evaluate("()=>{OvuStore.setProfile({birthday: OvuStore.today().slice(5), birthYear: 1988}); OvuStore.setState({birthday: null});}")
             await page.reload(wait_until="networkidle"); await page.wait_for_timeout(2600)
-            bday = await page.evaluate("()=>({greet: document.querySelector('#greetTitle').textContent, cake: !!document.querySelector('#ownedProps .prop.cake'), sheet: OvuRoom.sheetId(), title: document.querySelector('#sheetTitle').textContent, lines: document.querySelectorAll('#sheet .bline').length, dir: ((document.querySelector('#sheet .bdir b')||{}).textContent||''), how: ((document.querySelector('#sheet .help')||{}).textContent||''), btn: (document.querySelector('#sheet [data-b=party]')||{}).textContent, shown: (OvuStore.state().birthday||{}).shown})")
-            check("on her birthday the room says happy birthday, a cake stands on her table, and the postcard opens by itself with one warm wish, a direction for the year ahead with how it is read, and the gown to wear (tester mode)", bday["greet"].startswith("Happy birthday") and bday["cake"] and bday["sheet"] == "birthday" and "Happy birthday" in bday["title"] and bday["lines"] == 1 and bday["dir"].startswith("A year for") and "add up to" in bday["how"] and "not a prediction or health advice" in bday["how"] and "Starlight gown" in (bday["btn"] or "") and bool(bday["shown"]), bday)
+            bday = await page.evaluate("()=>({greet: document.querySelector('#greetTitle').textContent, cake: !!document.querySelector('#ownedProps .prop.cake'), sheet: OvuRoom.sheetId(), title: document.querySelector('#sheetTitle').textContent, lines: document.querySelectorAll('#sheet .bline').length, who: ((document.querySelector('#sheet .bwho b')||{}).textContent||''), whoWant: (OvuBirthday.dayMaster(1988, OvuStore.today().slice(5))||{}).name, dir: ((document.querySelector('#sheet .bdir b')||{}).textContent||''), how: ((document.querySelector('#sheet .help')||{}).textContent||''), btn: (document.querySelector('#sheet [data-b=party]')||{}).textContent, shown: (OvuStore.state().birthday||{}).shown})")
+            check("on her birthday the room says happy birthday, a cake stands on her table, and the postcard opens by itself with one warm wish, who she is from the day she was born, a direction for the year ahead with how both are read, and the gown to wear (tester mode)", bday["greet"].startswith("Happy birthday") and bday["cake"] and bday["sheet"] == "birthday" and "Happy birthday" in bday["title"] and bday["lines"] == 1 and bday["who"] and bday["who"] == bday["whoWant"] and "BaZi day count" in bday["how"] and bday["dir"].startswith("A year for") and "add up to" in bday["how"] and "not a prediction or health advice" in bday["how"] and "Starlight gown" in (bday["btn"] or "") and bool(bday["shown"]), bday)
             await page.click("#sheet [data-b=party]"); await page.wait_for_timeout(900)
             check("the button dresses her in the gown and closes the card", await page.evaluate("()=>OvuStore.profile().outfit==='gown' && !OvuRoom.sheetOpen() && /gown\\.webp/.test(document.querySelector('#avatarImg').src)"))  # the outfit moment may still be playing, in the gown
             await page.reload(wait_until="networkidle"); await page.wait_for_timeout(1800)
@@ -468,7 +468,7 @@ async def main():
             await page.click("#ownedProps .prop.cake"); await page.wait_for_timeout(500)
             check("tapping the cake reopens the postcard", await page.evaluate("()=>OvuRoom.sheetId()==='birthday'"))
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(200)
-            await page.evaluate("()=>{OvuStore.setProfile({birthday: null}); OvuStore.setState({birthday: null});}")
+            await page.evaluate("()=>{OvuStore.setProfile({birthday: null, birthYear: null}); OvuStore.setState({birthday: null});}")
             await page.goto(BASE + "room.html?tester=off", wait_until="networkidle"); await page.wait_for_timeout(1200)
             off = await page.evaluate("()=>({outfit: OvuStore.profile().outfit, src: document.querySelector('#avatarImg').src.split('/').pop(), cake: !!document.querySelector('#ownedProps .prop.cake')})")
             check("without tester mode the gown is locked again: she wears the knit and her profile falls back to it (so poses never show the locked gown); the cake is gone with the birthday", off["outfit"] == "base" and off["src"] == "avatar-base.webp" and not off["cake"], off)
@@ -483,7 +483,7 @@ async def main():
             check("in tester mode the gown is open in the wardrobe", True)
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
 
-            # 1g. the intro asks her birthday (a month and a day, no year) just before her name; it stays on the phone, never in the cloud copy
+            # 1g. the intro asks her birthday (a month, a day and an optional adult year) just before her name; it stays on the phone, never in the cloud copy
             ctxO = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxO.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxO.add_init_script(SESSION_SEED)
             po = await ctxO.new_page(); await po.route("**/*", gate)
             await po.goto(BASE + "room.html", wait_until="networkidle"); await po.wait_for_timeout(900)
@@ -495,13 +495,18 @@ async def main():
                 else: await po.click('#onbNext')
                 await po.wait_for_timeout(150)
             ob = await po.evaluate("()=>({step: (document.querySelector('.onb-head h3')||{}).textContent, sub: (document.querySelector('.onb-head p')||{}).textContent, skip: !!document.querySelector('#onbSkip'), selects: document.querySelectorAll('#sheet select').length})")
-            check("the intro asks her birthday just before her name: optional, a month and a day, no year, kept on the phone", ob["step"] == "Your birthday (optional)" and "A month and a day only, no year" in (ob["sub"] or "") and "stays on this phone" in (ob["sub"] or "") and ob["skip"] and ob["selects"] == 2, ob)
-            bmo = await po.evaluate("()=>String((new Date().getMonth()+1)%12+1)")
-            await po.select_option('#onbBMonth', bmo); await po.select_option('#onbBDay', '15')
+            check("the intro asks her birthday just before her name: optional, a month, a day and an optional year, kept on the phone", ob["step"] == "Your birthday (optional)" and "The year is optional" in (ob["sub"] or "") and "stays on this phone" in (ob["sub"] or "") and ob["skip"] and ob["selects"] == 3, ob)
+            tm = await po.evaluate("()=>{var t=OvuStore.addDays(OvuStore.today(),1); return {m: String(+t.slice(5,7)), d: String(+t.slice(8,10)), mmdd: t.slice(5), young: String(+OvuStore.today().slice(0,4)-18), sameYear: t.slice(0,4)===OvuStore.today().slice(0,4)};}")
+            await po.select_option('#onbBMonth', tm["m"]); await po.select_option('#onbBDay', tm["d"])
+            if tm["sameYear"]:
+                await po.select_option('#onbBYear', tm["young"]); await po.click('#onbNext'); await po.wait_for_timeout(300)
+                yo = await po.evaluate("()=>({still: !!document.querySelector('#onbBMonth'), msg: (document.querySelector('#onbBMsg')||{}).textContent||'', shown: !!document.querySelector('#onbBMsg:not([hidden])')})")
+                check("a birth year that makes her 17 (18 tomorrow) is refused kindly and the step waits", yo["still"] and yo["shown"] and "18 and over" in yo["msg"], yo)
+            await po.select_option('#onbBYear', '1988')
             await po.click('#onbNext'); await po.wait_for_selector('#onbName', timeout=8000)
             await po.click('#onbNext'); await po.wait_for_timeout(700)
-            ob2 = await po.evaluate("()=>({b: OvuStore.profile().birthday, cloud: 'birthday' in OvuSync.profileForCloud(OvuStore.profile()), open: OvuRoom.sheetOpen()})")
-            check("finishing the intro keeps her birthday as a month and a day on the phone and leaves it out of the cloud copy", ob2["b"] == ("%02d-15" % int(bmo)) and not ob2["cloud"] and not ob2["open"], ob2)
+            ob2 = await po.evaluate("()=>({b: OvuStore.profile().birthday, y: OvuStore.profile().birthYear, cloud: Object.keys(OvuSync.profileForCloud(OvuStore.profile())).filter(function(k){return k==='birthday'||k==='birthYear'}), open: OvuRoom.sheetOpen()})")
+            check("finishing the intro keeps her birthday and birth year on the phone and leaves both out of the cloud copy", ob2["b"] == tm["mmdd"] and ob2["y"] == 1988 and ob2["cloud"] == [] and not ob2["open"], ob2)
             await ctxO.close()
 
             # 2. the Cycle tab opens a sheet with the calendar
