@@ -505,7 +505,7 @@
         twirl(img.src, id === 'gown', function () { if (gen === imgGen) moment('wardrobe', id === 'gown' ? { pose: null, line: 'Starlight, just for you.' } : { pose: null }); }, gen);
         return;
       }
-      finishTwirl(); avatarImg.src = img.src; if (!silent && window.OvuMorning && OvuMorning.active()) OvuMorning.repose(); /* brushing in the new outfit */ if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); }
+      finishTwirl(); avatarImg.src = img.src; if (!silent && window.OvuMorning && OvuMorning.active()) OvuMorning.repose(); /* brushing in the new outfit */ if (!silent) { avatar.classList.add('poofing'); clearTimeout(poofTimer); poofTimer = setTimeout(function () { poofTimer = null; avatar.classList.remove('poofing'); if (gen === imgGen) moment('wardrobe'); }, 700); } /* tracked: a newer outfit or twirl clears it (Codex verification, 21 Oct) */
     };
     preloadBlink(id);
     img.src = ART + 'avatar-' + id + '.webp';
@@ -552,7 +552,7 @@
     if (isFinite(x) && isFinite(y)) placeAvatar({ x: x, y: y }, avatar.classList.contains('flip'));
     avatar.classList.remove('walking', 'landing'); avatar.classList.add('idle');
   }
-  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (twirlRun || Date.now() - twirlEnded < 1800) { if (current || practice || session || meditating || asleep()) return; goHome(); return; } /* she finishes turning, hops and says her line before walking home; anything else starting cancels it */ if (!practice && !session && !S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
+  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (twirlRun || Date.now() - twirlEnded < 1800) { if (current || practice || session || meditating || arranging || asleep()) return; goHome(); return; } /* she finishes turning, hops and says her line before walking home; anything else starting cancels it */ if (!practice && !session && !S.state().sleeping && !meditating && !current && !arranging && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
@@ -2507,13 +2507,13 @@
     var t0 = performance.now(), swapped = false, run;
     function ease(u) { return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; } /* slow start, quick middle, a soft landing */
     function swap() { if (swapped) return; swapped = true; if (gen !== undefined && gen !== imgGen) return; /* a newer picture (a pose, another outfit) owns her now */ avatarImg.src = src; fx.classList.add('flash'); }
-    function end() {
+    function end(cut) { /* cut: something else (a walk, a pose, another outfit) asked for her, so no closing line or hop */
       if (twirlRun !== run) return; twirlRun = null; twirlEnded = Date.now(); swap();
       avatarImg.style.transform = ''; avatarImg.style.animation = ''; avatarImg.style.transition = '';
       avatar.classList.remove('twirling', 'glam'); avatar.classList.add('idle');
       fx.classList.add('burst'); setTimeout(function () { if (fx.parentNode) fx.parentNode.removeChild(fx); }, 900);
-      if (!glam && window.OvuSound && OvuSound.play) try { OvuSound.play('save'); } catch (e) { }
-      scheduleBlink(); if (run.done) run.done();
+      if (!glam && !cut && window.OvuSound && OvuSound.play) try { OvuSound.play('save'); } catch (e) { }
+      scheduleBlink(); if (!cut && run.done) run.done();
     }
     function frame(now) {
       if (twirlRun !== run) return;
@@ -2529,22 +2529,22 @@
         el.style.left = (50 + x * 58).toFixed(1) + '%'; el.style.top = (100 - rise * (glam ? 108 : 92) + z * 9 - (i % 2) * 4).toFixed(1) + '%';
         el.style.zIndex = z > 0 ? 3 : 0; el.style.opacity = (Math.sin(Math.PI * u) * (0.55 + 0.45 * Math.abs(Math.sin(a * 3 + i)))).toFixed(2);
       });
-      if (u < 1) requestAnimationFrame(frame); else end();
+      if (u < 1) requestAnimationFrame(frame); else end(false);
     }
     run = twirlRun = { done: done, end: end };
     requestAnimationFrame(frame);
-    setTimeout(end, dur + 450); /* frames stop on a hidden page: she still ends up dressed and standing */
+    setTimeout(function () { end(false); }, dur + 450); /* frames stop on a hidden page: she still ends up dressed and standing */
   }
   /* a walk, a sleep or a new outfit while she turns: she finishes at once, dressed in what she chose */
-  function finishTwirl() { if (twirlRun) twirlRun.end(); }
-  function quietMoment() { clearTimeout(momentTimer); clearTimeout(momentRetry); momentRetry = null; if (!momentOn) return; momentOn = null; avatar.classList.remove('moment'); hideThought(); scene.classList.remove('saying'); }
+  function finishTwirl() { if (twirlRun) twirlRun.end(true); }
+  function quietMoment() { clearTimeout(momentTimer); clearTimeout(momentRetry); momentRetry = null; clearTimeout(poofTimer); poofTimer = null; avatar.classList.remove('poofing'); if (!momentOn) return; momentOn = null; avatar.classList.remove('moment'); hideThought(); scene.classList.remove('saying'); }
 
   /* ---------- she blinks (Jamie, 21 Oct: "Not stiff avatar") ----------
    * Each standing outfit has a closed-eye copy (tools/art/make_blink.py: made from the sprite itself, only the eyes change),
    * shown for a moment every few seconds while she stands idle, now and then twice. Never during a pose, a walk, a twirl or
    * sleep, and nothing else about her changes. Reduced motion keeps her eyes open, as it keeps the rest of her still */
   var blinkT = 0, blinkImgs = {}, blinkOn = !(navigator && navigator.webdriver); /* an automated test browser keeps her eyes still unless a test asks (OvuRoom.blinking), so no screenshot or check lands mid-blink */
-  function preloadBlink(o) { o = o || 'base'; if (!blinkImgs[o]) { var im = new Image(); im.src = ART + 'avatar-' + o + '-blink.webp'; blinkImgs[o] = im; } return blinkImgs[o]; }
+  function preloadBlink(o) { o = o || 'base'; if (!blinkImgs[o]) { var im = new Image(); im.onerror = function () { if (blinkImgs[o] === im) delete blinkImgs[o]; }; /* a failed load is asked for again next time, not kept (Codex verification, 21 Oct) */ im.src = ART + 'avatar-' + o + '-blink.webp'; blinkImgs[o] = im; } return blinkImgs[o]; }
   function scheduleBlink() { clearTimeout(blinkT); if (reduced || !blinkOn) return; blinkT = setTimeout(blink, 2400 + Math.random() * 3600); }
   function blink(again) {
     if (reduced || !blinkOn) return;
@@ -2578,7 +2578,7 @@
   function joy() { if (twirlRun) return; avatar.classList.remove('joy'); void avatar.offsetWidth; avatar.classList.add('joy'); setTimeout(function () { avatar.classList.remove('joy'); }, 560); }
 
   /* ---------- mindful moments (ovu-moments.js): she does the thing, in her own clothes, and one line of noticing ---------- */
-  var MO = window.OvuMoments || null, momentTimer = null, momentOn = null, momentRetry = null, careOn = false; /* careOn: a care card is showing in Luna's chat */
+  var MO = window.OvuMoments || null, momentTimer = null, momentOn = null, momentRetry = null, poofTimer = null, careOn = false; /* careOn: a care card is showing in Luna's chat */
   function endMoment() {
     clearTimeout(momentTimer); clearTimeout(momentRetry); momentRetry = null; if (!momentOn) return;
     momentOn = null; avatar.classList.remove('moment'); imgGen++; /* a pose still loading never lands after its moment (Codex re-review) */

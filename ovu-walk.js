@@ -359,6 +359,7 @@
   var BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
   function preloadCycle() {
     var o = outfitNow(); if (!o) return;
+    if (cyc.on && cyc.key && cyc.key.indexOf(o + '-') !== 0) cycleHide(); /* a new outfit mid-walk: the old strip goes at once, and the walk shows the new one when it is ready (Codex verification, 21 Oct) */
     Object.keys(cyc.sheets).forEach(function (k) { if (k.indexOf(o + '-') !== 0) { cyc.sheets[k].img.src = BLANK; delete cyc.sheets[k]; } }); /* only her current outfit stays decoded; a blank data URI, not an empty src, so Safari lets go of the pixels */
     ['side', 'away', 'towards'].forEach(function (d) { sheet(o, d); });
   }

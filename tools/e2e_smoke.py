@@ -502,6 +502,7 @@ async def main():
                 await pg.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='wardrobe'", timeout=8000); await pg.wait_for_timeout(400)
                 await pg.evaluate(TW); await pg.click('#sheet[aria-hidden="false"] .outfit[data-id=%s]' % oid); await pg.wait_for_timeout(3900)
                 tw = await pg.evaluate("()=>window.__tw")
+                for x in tw: x["src"] = x["src"].replace("-blink.webp", ".webp")  # a blink after the turn is her in the same outfit (Codex verification, 21 Oct)
                 sw = next((x for x in tw if x["src"] == "avatar-%s.webp" % oid and x["tw"]), None)
                 spin = [x for x in tw if x["tw"]]
                 return {"turned": bool(spin), "glam": any(x["glam"] for x in tw), "fx": any(x["fx"] for x in tw), "swap": sw, "end": tw[-1] if tw else None, "open": await pg.evaluate("()=>OvuRoom.sheetOpen()"),
@@ -526,9 +527,10 @@ async def main():
             check("a floor tap mid-turn finishes the twirl at once, dressed in what she chose, and she walks", not ti["tw"] and ti["src"] == "avatar-sundress.webp" and ti["moving"] and not ti["tf"], ti)
             await page.wait_for_timeout(2500)
             await mid_turn(page, "cozy")
-            await page.evaluate("()=>OvuRoom.setPose('wave')"); await page.wait_for_timeout(2600)
-            tq = await page.evaluate("()=>({tw: document.querySelector('#avatar').classList.contains('twirling'), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), outfit: OvuStore.profile().outfit})")
-            check("a pose asked for mid-turn is kept: the twirl never paints over it", not tq["tw"] and "act-wave" in tq["src"] and tq["outfit"] == "cozy", tq)
+            await page.evaluate("()=>OvuRoom.moment('food')"); await page.wait_for_timeout(900)  # a moment with a pose, as a logged meal brings
+            tq = await page.evaluate("()=>({tw: document.querySelector('#avatar').classList.contains('twirling'), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), outfit: OvuStore.profile().outfit, line: (document.querySelector('#thought')||{}).textContent||''})")
+            check("a pose asked for mid-turn is kept: the twirl ends at once, never paints over it, and says no closing line of its own", not tq["tw"] and "act-eat" in tq["src"] and tq["outfit"] == "cozy" and "Comfort is reason enough" not in tq["line"], tq)
+            await page.evaluate("()=>OvuRoom.endMoment()"); await page.wait_for_timeout(300)
             await page.evaluate("()=>OvuRoom.blinking(false)")
             await page.evaluate("()=>{ OvuStore.setProfile({outfit: 'base'}); OvuRoom.restorePose(); }"); await page.wait_for_timeout(300)  # the rest of this page's checks expect the knit
             ctxR = await browser.new_context(viewport={"width": 390, "height": 844}, reduced_motion="reduce"); await ctxR.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxR.add_init_script(SESSION_SEED)

@@ -38,3 +38,16 @@ The first review found no P1, three P2 and eight P3 problems. All are fixed:
 - **The turn itself**: whole turns now (one, or three for the gown), so she ends facing the way she started with no snap. The frame that changes her clothes is drawn exactly edge-on whatever the frame rate (measured: width 0.03 at the swap). The gown turn takes about 2.3 seconds.
 - **The blink**: her eyes always open again, even while another picture is still loading. Switching blinking off also stops a queued second blink. The closed-eye copies were remade with wider eye areas (no iris crescent or lash ends left on the tudung or the blue kebaya) and saved losslessly. So no pixel outside the eyes changes: a lossy copy made the kebayas' batik shimmer during a blink. They are about 190 KB each, and only the outfit she wears is fetched.
 - **Tests**: the smoke now keeps blinking on through the twirl checks. It asserts that she ends idle, facing the same way, with no leftover transform, and it times the gown turn. It covers a floor tap mid-turn, a pose mid-turn, and reduced motion with blinking asked for. The birthday card check proves the turn finished.
+
+## Codex verification (21 Oct, night)
+
+Codex checked the fixes above against 2204d43: ten of the eleven were fixed, and the blink art was not clean enough (HOLD). Its full sweep found one P1, two P2 and six P3 problems. Fixed here:
+
+- **A cut turn** (a walk, a pose, another outfit asking for her) now ends without the wardrobe's closing line, hop or sound. Before, a cuddle during the gown turn showed "Starlight, just for you." over the cuddle (P3), and the smoke's pose check failed the same way.
+- **The walk home after a sheet closes waits while she arranges her things** (P2): Arrange hides the sheet, so it looked like a free room.
+- **The wardrobe line after an outfit change without a turn** is a tracked timer. It belongs to its own picture, and a new turn clears it, so it can no longer end a newer gown turn early (P3).
+- **A closed-eye picture that failed to load** is dropped and asked for again at the next blink, instead of switching off that outfit's blink until a reload (P3).
+- **A new outfit mid-walk** drops the old walk strip at once. The walk shows the new strip when it is ready (P3).
+- **The smoke's twirl samples** treat a closed-eye frame after the turn as the same outfit, so a correct blink can no longer fail the check (P3).
+
+Not fixed here, as they are older than this work and need their own changes: Everyday practice and a meditation can run at once, and Stop then hides the meditation's controls (P1). Changing clothes during an activity leaves her standing, or keeps old clothes on a seated or sleeping picture (P2). The closed-eye art still shows a rim and a lash stub on the tudung and pale repair rings on every outfit (P3). It needs an inpainted remake.
