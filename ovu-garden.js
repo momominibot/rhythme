@@ -183,6 +183,7 @@
     el.style.left = seat.x + '%'; el.style.top = seat.groundY + '%'; el.style.width = Math.min(14, Math.max(7, w)).toFixed(2) + '%';
     el.classList.toggle('faceright', seat.face === 'right');
   }
+  G.seatPlace = function (el, seat) { seatPlace(el, seat); }; G.seatedImg = function (img, fallback) { seatedImg(img, fallback); }; /* the hidden spring's warm stone sits her the same way (ovu-barn.js) */
   function seatedImg(img, fallback) {
     var want = seatedSrc(), probe = new Image();
     if (!want) { img.src = fallback; img.classList.remove('seated'); return; }

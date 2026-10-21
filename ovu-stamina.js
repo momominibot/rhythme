@@ -5,7 +5,7 @@
   'use strict';
   var S = root.OvuStore, R = root.OvuRoom, W = root.OvuWalk, GT = root.OvuGameTime, doc = root.document;
   var MAX = 100, LOW = 25;
-  var COSTS = { plant: 2, water: 6, harvest: 4, clear: 5, fish: 3, forage: 2, travel: 1 };
+  var COSTS = { plant: 2, water: 6, harvest: 4, clear: 5, fish: 3, forage: 2, travel: 1, egg: 1, milk: 2 }; /* the barn: one visit to the nests, one milking (21 Oct) */
   var fns = [], wasAsleep = null;
   function today() { return GT ? GT.dayKey() : new Date().toISOString().slice(0, 10); }
   function read() { var s = S.state().stamina; return s && typeof s.v === 'number' ? s : { v: MAX, max: MAX, day: today() }; }

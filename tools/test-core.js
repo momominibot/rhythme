@@ -467,7 +467,55 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('watering all waters exactly the beds she was shown', shown.ok && shown.n === 2 && !F.wateredToday(F.bed(S, d2[1]), t) === (d2.length > 2 && d2[1] !== tg[1]) && F.wateredToday(F.bed(S, last), t) && F.canLevel(S) === 10);
   var src = fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8');
   check('the bed sheet waters from the can, with the well one tap away when it is empty', src.indexOf("res = pour(S, id, t, ST)") > -1 && src.indexOf('data-bed="well"') > -1 && src.indexOf('Fill the can at the well') > -1 && src.indexOf("res = water(S, id, now)") < 0);
-  check('care steps are slow and stoppable, and save only when the bar is full and the sheet still open', /function slowStep[\s\S]*?!box\.isConnected \|\| !R\.sheetOpen\(\)[\s\S]*?asleepNow\(\)/.test(src) && src.indexOf('function liveSlow') > -1 && src.indexOf('data-slow="stop"') > -1);
+  check('care steps are slow and stoppable, and save only when the bar is full and the sheet still open', (function () { var care = fs.readFileSync(path.join(root, 'ovu-care.js'), 'utf8'); return /function step[\s\S]*?!box\.isConnected \|\| !R\.sheetOpen\(\) \|\| here\(\) !== tok\.scene[\s\S]*?asleepNow\(\)/.test(care) && care.indexOf('data-slow="stop"') > -1 && src.indexOf("scene: 'farm'") > -1; })() && true);
+})();
+
+(function barnAndSpring() {
+  console.log('2k3. the barn, the hens, Clover and the hidden spring (Jamie, 20-21 Oct): no needs, no guilt, nothing that refills energy');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-stamina.js'), 'utf8'), w, { filename: 'ovu-stamina.js' });
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8'), w, { filename: 'ovu-barn.js' });
+  var F = w.OvuFarm, B = w.OvuBarn, S = w.OvuStore, K = w.OvuWalk, d1 = '2026-10-21', d2 = '2026-10-22';
+  check('both hens have an egg and Clover has milk on a first visit', B.eggsReady(S, d1).join() === 'mochi,kaya' && B.milkReady(S, d1));
+  var c1 = B.collectEggs(S, d1);
+  check('collecting takes both eggs into the pantry in one go; the nests rest for the rest of the day', c1.ok && c1.n === 2 && F.farmState(S).pantry.egg === 2 && B.eggsReady(S, d1).length === 0 && !B.collectEggs(S, d1).ok);
+  check('a clock set back gives nothing twice', B.eggsReady(S, '2026-10-20').length === 0 && !B.milkReady(S, d1) === false);
+  var m1 = B.milk(S, d1);
+  check('Clover gives one pail a day; a second milking that day is refused', m1.ok && F.farmState(S).pantry.milk === 1 && !B.milk(S, d1).ok && !B.milkReady(S, d1));
+  check('a later day has one egg per hen and one pail: nothing stacks up while she is away', B.eggsReady(S, '2026-10-30').length === 2 && B.milkReady(S, '2026-10-30'));
+  var e0 = S.state().stamina;
+  var ok = B.collectEggs(S, d2, w.OvuStamina);
+  check('collecting with the energy module charges the visit in the same save as the eggs', ok.ok && ok.charged && F.farmState(S).pantry.egg === 4);
+  F.fillCan && F.fillCan(S);
+  check('farm actions keep the barn’s pantry, animals and places (one canonical farm)', F.farmState(S).pantry.egg === 4 && F.farmState(S).animals.mochi === d2 && F.farmState(S).animals.clover === d1);
+  var stam = JSON.stringify(S.state().stamina), hearts = JSON.stringify(S.state().rewards || null), diary = S.list().length;
+  var ck = B.cookEggs(S);
+  check('onsen eggs: up to four eggs become onsen eggs in one save', ck.ok && ck.n === 4 && F.farmState(S).pantry.egg === 0 && F.farmState(S).pantry.onsenegg === 4);
+  check('the spring changes no energy, no hearts and no diary', JSON.stringify(S.state().stamina) === stam && JSON.stringify(S.state().rewards || null) === hearts && S.list().length === diary);
+  check('with no eggs the basket says so and changes nothing', !B.cookEggs(S).ok && F.farmState(S).pantry.onsenegg === 4);
+  var src = fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8');
+  check('no energy is ever added in the barn or the spring', !/refill\(|\.v\s*\+=|spend\([^)]*-\s*\d|OvuStamina\.refill/.test(src) && src.indexOf("'egg'") > -1 && w.OvuStamina.COSTS.egg === 1 && w.OvuStamina.COSTS.milk === 2);
+  var bad = {}; S.setState({ farm: { pantry: { egg: -3, milk: 1.7, onsenegg: 'x' }, animals: { mochi: 'not a date', bogus: '2026-01-01' }, found: { cave: 5 } } });
+  var fs2 = F.farmState(S);
+  check('restored farm values are cleaned: whole non-negative counts, dates only, known animals only', fs2.pantry.egg === 0 && fs2.pantry.milk === 1 && fs2.pantry.onsenegg === 0 && !fs2.animals.mochi && !('bogus' in fs2.animals) && !fs2.found.cave);
+  S.setState({ farm: { pantry: { egg: 99 } } });
+  check('a full pantry takes no more eggs and changes nothing', !B.collectEggs(S, d1).ok && F.farmState(S).pantry.egg === 99 && B.eggsReady(S, d1).length === 2);
+  S.setState({ farm: null });
+  check('the cave is not found at first; finding it once is remembered and finding it again changes nothing', !B.caveFound(S) && B.findCave(S, d1).first && B.caveFound(S) && B.findCave(S, d2).first === false && F.farmState(S).found.cave === d1);
+  /* the four scenes: every stand point and door on the floor, and reachable from every entrance */
+  [B.LAYOUT, B.BARN_IN, B.HEN_IN, B.CAVE].forEach(function (L) {
+    var withCrack = L === B.LAYOUT ? Object.assign({}, L, { doors: L.doors.concat([B.CRACK_DOOR]) }) : L;
+    var bad = K.checkLayout(withCrack);
+    check(L.id + ': home, stand points and doors are on the floor and outside every solid', bad.length === 0, JSON.stringify(bad));
+    var wd = K.world(withCrack, []), starts = withCrack.doors.map(function (x) { return { x: x.x, y: x.y }; });
+    var targets = withCrack.hotspots.map(function (h) { return h.wp; }).concat(starts);
+    var miss = []; starts.forEach(function (a) { targets.forEach(function (t) { if (!(Math.abs(a.x - t.x) < 0.01 && Math.abs(a.y - t.y) < 0.01) && !K.plan(wd, a, t, 2)) miss.push([a.x, a.y, t.x, t.y].join(',')); }); });
+    check(L.id + ': the planner reaches every stand point and door from every entrance', miss.length === 0, miss.join(' | '));
+  });
+  check('the cave has no way in until it is found: the yard has no crack door in its data', B.LAYOUT.doors.every(function (x) { return x.id !== 'crack'; }));
+  var M = fs.readFileSync(path.join(root, 'ovu-moments.js'), 'utf8');
+  check('the barn and spring moments describe what is on screen and ask nothing', ['eggs', 'milk', 'brush', 'springlower', 'springsteam', 'springlift', 'springsit'].every(function (k) { return M.indexOf(k + ': {') > -1; }) && !/Notice its warmth|rhythm of your hands/.test(M));
 })();
 
 (function phase1ReviewFixes() {
