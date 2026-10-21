@@ -145,7 +145,7 @@
     if (root.OvuWalk.napping()) return;
     var H = root.OvuHerbs, cs = S.cycleStats(), teas = H ? H.forPhase(cs.mode === 'suspended' ? null : cs.phase).slice(0, 3) : [];
     R.openSheet('stall', 'The tea stall', 'A cup for where you are in your cycle', 'emoji_food_beverage',
-      '<p class="help">' + (cs.phase ? 'Day ' + cs.cycleDay + ', ' + esc(cs.phase) + ' phase: these come first.' : 'No phase yet, so a few gentle favourites.') + ' Food notes, not medicine. If you are pregnant, breastfeeding or on medicines, ask first.</p>' +
+      '<p class="help">' + (cs.phase ? 'Day ' + cs.cycleDay + ', ' + esc(cs.phase) + ' phase: these come first.' : 'No phase yet, so a few gentle favourites.') + ' Food notes, not medicine. If you are pregnant, trying to conceive, breastfeeding or on medicines, ask first.</p>' +
       '<div class="teas">' + teas.map(function (t) { return '<div class="tea"><span class="ms">' + esc(t.icon || 'local_cafe') + '</span><div><b>' + esc(t.name) + '</b><span>' + esc(t.why) + '</span><small>' + esc(t.research) + '</small>' + (t.care ? '<em>' + esc(t.care) + '</em>' : '') + '</div></div>'; }).join('') + '</div>' +
       '<div class="row"><button type="button" class="btn soft" id="stallSip"><span class="ms">emoji_food_beverage</span>Sip one slowly</button></div>');
     doc.getElementById('stallSip').addEventListener('click', function () { R.closeSheet(); if (R.moment) R.moment('tea', { line: 'Both hands on the cup. Notice the warmth before the taste.' }); R.toast('A cup of tea at the stall.', 'emoji_food_beverage'); });
