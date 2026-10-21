@@ -2900,4 +2900,63 @@ var summarised = false;
   check('the pictures are small (under 40 KB each)', big.length === 0, big.map(function (f) { return f.img; }).join());
 })();
 
+(function harbourLane() {
+  console.log('2k7. Harbour Lane (21 Oct): the grocer sells the seeds and swaps three for one, floats for looks, a free gym, letters sealed until their day; no hearts paid, no diary');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-harbour.js', 'ovu-lane.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var LN = w.OvuLane, F = w.OvuFarm, S = w.OvuStore, RW = w.OvuRewards, EX = w.OvuExercise, H = w.OvuHarbour, d1 = '2026-10-21';
+  var src = fs.readFileSync(path.join(root, 'ovu-lane.js'), 'utf8'), farmSrc = fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8');
+  var at = function (h, m) { return new Date(2026, 9, 21, h, m || 0); };
+  check('five places on the lane: the grocer, the boutique, the gym, the fish store and the post box', LN.PLACES.map(function (p) { return p.id; }).join() === 'grocer,boutique,gym,fish,post');
+  check('each shop keeps its own hours and the post box never shuts', !LN.openAt('grocer', at(7, 59)) && LN.openAt('grocer', at(8)) && LN.openAt('grocer', at(19, 59)) && !LN.openAt('grocer', at(20)) && LN.openAt('gym', at(6)) && !LN.openAt('gym', at(22)) && !LN.openAt('fish', at(19)) && LN.openAt('post', at(3)) && LN.hoursText('post') === 'Always open' && LN.hoursText('grocer') === '8 am to 8 pm');
+  S.setState({ tester: { hearts: true } }); var tOpen = LN.openNow('grocer', at(3)); S.setState({ tester: null });
+  check('tester mode visits any place at any hour, as on Dream Street', tOpen && !LN.openNow('grocer', at(3)));
+  check('the harbour has a signpost to the lane with a stand point (the floor and the planner checks above cover it)', H.LAYOUT.hotspots.some(function (h) { return h.id === 'hblane' && h.wp && h.wp.x === 23 && h.wp.y === 51; }));
+  /* the grocer: the shed no longer sells packs or crops; the lane does, through the farm's own one-save functions */
+  check('the shed keeps its free seeds and tools; seed packs and new crops are sold at Hay & Harvest', !/data-pack|data-unlock/.test(farmSrc) && /data-pack/.test(src) && /data-unlock/.test(src) && /F(M)?\.buyPack\(/.test(src) && /F(M)?\.unlockCrop\(/.test(src) && /Hay & Harvest/.test(farmSrc));
+  S.setState({ farm: { harvest: { radish: 4, carrot: 2, pumpkin: 1 } }, rewards: { hearts: 50, earned: 50, log: [], owned: [], placed: {} } });
+  check('the swap offers what the basket holds three of, or a pumpkin', F.swapGivable(S).join() === 'radish,pumpkin' && F.swapNeed('radish') === 3 && F.swapNeed('pumpkin') === 1);
+  var sw1 = F.swapSeed(S, 'radish', 'carrot');
+  check('three radishes for one carrot seed: the basket and the seed move in one save, and no hearts change hands', sw1.ok && sw1.gave === 3 && F.farmState(S).harvest.radish === 1 && F.farmState(S).seeds.carrot === 1 && RW.ledger().hearts === 50);
+  var sw2 = F.swapSeed(S, 'pumpkin', 'tomato');
+  check('a pumpkin counts as three, and a used-up crop leaves the basket', sw2.ok && sw2.gave === 1 && !('pumpkin' in F.farmState(S).harvest) && F.farmState(S).seeds.tomato === 1);
+  var before = JSON.stringify(S.state().farm);
+  check('too few to swap, a crop she cannot grow yet, or an unknown crop: refused, nothing moves', !F.swapSeed(S, 'carrot', 'radish').ok && !F.swapSeed(S, 'radish', 'radish').ok && !F.swapSeed(S, 'carrot', 'kangkong').ok && !F.swapSeed(S, 'dragonfruit', 'radish').ok && JSON.stringify(S.state().farm) === before);
+  /* floats */
+  check('blush is everyone’s float from the start, and in use', LN.owns(LN.laneState(S), 'blush') && LN.floatOf(S).id === 'blush');
+  var b1 = LN.buyFloat(S, RW, 'mint', d1);
+  check('a mint float: 15 hearts and the float in one save, and on the line at once', b1.ok && RW.ledger().hearts === 35 && LN.laneState(S).floats.mint === d1 && LN.floatOf(S).id === 'mint');
+  check('a float bought is kept: buying it again is refused and charges nothing', !LN.buyFloat(S, RW, 'mint', d1).ok && RW.ledger().hearts === 35);
+  check('swapping to an owned float is free; one not owned cannot be used', LN.useFloat(S, 'blush').ok && LN.floatOf(S).id === 'blush' && !LN.useFloat(S, 'lilac').ok && LN.useFloat(S, 'mint').ok && RW.ledger().hearts === 35);
+  S.setState({ rewards: Object.assign({}, RW.ledger(), { hearts: 10 }) }); var lane0 = JSON.stringify(S.state().lane);
+  check('too few hearts: no float and no change', !LN.buyFloat(S, RW, 'moon', d1).ok && RW.ledger().hearts === 10 && JSON.stringify(S.state().lane) === lane0);
+  S.setState({ lane: { floats: { lilac: 'soon', sunshine: d1, blush: d1, kraken: d1 }, float: 'lilac', letters: [{ id: 'x' }, 'nope', { id: 'ok', text: 'hi', written: d1, opens: '2026-10-28' }] } });
+  var cl = LN.laneState(S);
+  check('restored lane values are cleaned: known floats with real dates only, a float not owned falls back to blush, malformed letters dropped', JSON.stringify(cl.floats) === '{"sunshine":"2026-10-21"}' && cl.float === 'blush' && cl.letters.length === 1 && cl.letters[0].id === 'ok');
+  /* the boutique's rail and the aquarium wait for their art */
+  check('nothing on the rail or the aquarium can be bought before its art exists, and trying costs nothing', LN.RAIL.concat([LN.AQUARIUM]).every(function (o) { return o.ready === false && o.cost > 0; }) && /art run/.test(LN.buyRail('batik').why) && !LN.buyRail('aquarium').ok && RW.ledger().hearts === 10);
+  /* the gym: four stations, each an activity the movement log knows */
+  check('the gym’s four stations open activities the movement log knows, and each has one line of noticing', LN.STATIONS.length === 4 && LN.STATIONS.every(function (s) { return !!EX.activity(s.act) && s.line.split(/\s+/).length <= 18 && !/—|–/.test(s.line); }));
+  /* letters */
+  S.setState({ lane: null });
+  var L1 = LN.writeLetter(S, '  Dear me,\r\nbe gentle.  ', 'week', d1, 0.5);
+  check('a letter is posted for a week later, its text trimmed, sealed', L1.ok && L1.letter.opens === '2026-10-28' && L1.letter.text === 'Dear me,\nbe gentle.' && LN.waiting(LN.laneState(S), d1).length === 1 && LN.unread(S, d1).length === 0);
+  check('an empty letter or an unknown arrival is refused', !LN.writeLetter(S, '   ', 'week', d1).ok && !LN.writeLetter(S, 'hi', 'tomorrow', d1).ok && LN.laneState(S).letters.length === 1);
+  check('a month and three months arrive 30 and 91 days on', LN.writeLetter(S, 'a', 'month', d1, 0.1).letter.opens === '2026-11-20' && LN.writeLetter(S, 'b', 'season', d1, 0.2).letter.opens === '2027-01-20');
+  var early = LN.openLetter(S, L1.letter.id, '2026-10-27');
+  check('a letter cannot be opened before its day, and an early try marks nothing', !early.ok && early.sealed && early.opens === '2026-10-28' && !LN.laneState(S).letters.filter(function (x) { return x.id === L1.letter.id; })[0].read);
+  var due = LN.unread(S, '2026-10-28').map(function (x) { return x.id; }).join(), on = LN.openLetter(S, L1.letter.id, '2026-10-28');
+  check('on its day it is post for her; opened, it is marked read and no longer new', due === L1.letter.id && on.ok && on.letter.read === '2026-10-28' && LN.unread(S, '2026-10-28').length === 0 && LN.arrived(LN.laneState(S), '2026-10-28').length === 1);
+  check('a letter can be deleted, sealed or read', LN.deleteLetter(S, L1.letter.id).ok && LN.laneState(S).letters.length === 2 && !LN.deleteLetter(S, L1.letter.id).ok);
+  var long = LN.writeLetter(S, new Array(800).join('x'), 'week', d1, 0.3);
+  check('a letter keeps at most 600 characters', long.ok && long.letter.text.length === 600);
+  for (var i = 0; i < 12; i++) LN.writeLetter(S, 'n' + i, 'week', d1, i / 100);
+  check('twelve letters on their way at most', LN.waiting(LN.laneState(S), d1).length === 12 && !LN.writeLetter(S, 'one more', 'week', d1).ok);
+  check('letter ids are unique', (function () { var ids = LN.laneState(S).letters.map(function (x) { return x.id; }); return ids.length === new Set(ids).size; })());
+  check('the lane pays no hearts, writes no diary entry, and spends hearts only on a float', !/\.award\(|\.grant\(|\bS\.add\(|OvuStore\.add\(|addMany\(/.test(src) && (src.match(/\.spend\(/g) || []).length === 1 && /function buyFloat[\s\S]*?RW\.spend\(/.test(src));
+  var MS = fs.readFileSync(path.join(root, 'ovu-moments.js'), 'utf8');
+  check('the lane’s moments are there: the swap, the gym, a letter posted and a letter read', ['seedswap', 'gym', 'letter', 'letterread'].every(function (k) { return MS.indexOf(k + ': {') > -1; }));
+  check('room.html loads the lane after the harbour', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('ovu-lane.js') > h.indexOf('ovu-harbour.js') && h.indexOf('ovu-harbour.js') > -1; })());
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

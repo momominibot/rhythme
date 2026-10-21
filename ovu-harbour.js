@@ -59,7 +59,9 @@
       { id: 'hbjetty', x: 78, y: 47, label: 'Jetty · cast a line', prompt: 'Tap to fish from the jetty', icon: 'phishing', wp: { x: 77, y: 53, flip: false } },
       { id: 'hbrocks', x: 11, y: 58, label: 'Rocks · cast from the shore', prompt: 'Tap to fish from the rocks', icon: 'phishing', wp: { x: 26, y: 58, flip: true } },
       { id: 'hbbench', x: 40, y: 39, label: 'Bench · watch the water', prompt: 'Tap to sit a while', icon: 'chair', wp: { x: 41, y: 47, flip: false } },
-      { id: 'hbhut', x: 27, y: 43, label: 'Harbour hut · the catch book', prompt: 'Tap to open the catch book', icon: 'menu_book', wp: { x: 31, y: 51, flip: true } }
+      { id: 'hbhut', x: 27, y: 43, label: 'Harbour hut · the catch book', prompt: 'Tap to open the catch book', icon: 'menu_book', wp: { x: 31, y: 51, flip: true } },
+      /* the little post by the hut points up Harbour Lane (ovu-lane.js, 21 Oct): its shops are sheets until the lane's plate is drawn */
+      { id: 'hblane', x: 19, y: 44, label: 'Signpost · Harbour Lane', prompt: 'Tap to read the signpost', icon: 'signpost', wp: { x: 23, y: 51, flip: true } }
     ],
     home: { x: 34, y: 73, flip: false },
     zones: [[[8, 46], [18, 41], [34, 34], [50, 32], [63, 36], [60, 42], [50, 47], [44, 52], [39, 60], [37, 68], [45, 76], [40, 81], [28, 80], [12, 72], [3, 62], [3, 52]],
@@ -87,6 +89,8 @@
   var line = null, enc = 0;
   function spotSheet() { var id = R.sheetId ? R.sheetId() : ''; var m = /^harbour-(jetty|rocks)$/.exec(id || ''); return m ? m[1] : null; }
   function invalidate(reopen) { enc++; clearLine(); var sp = spotSheet(); if (reopen && sp && here() && R.sheetOpen()) openSpot(sp); }
+  /* the float she chose at Bait & Fin (ovu-lane.js); blush is everyone's from the start */
+  function floatOf() { var LN = root.OvuLane; return LN && LN.floatOf ? LN.floatOf(S) : { id: 'blush', top: '#e58aa8' }; }
   function clearLine() { if (line) { if (line.parentNode) line.remove(); line = null; } R.els.scene.classList.remove('fishing', 'bite'); }
   function castLine(spot) {
     clearLine();
@@ -94,14 +98,14 @@
     var el = doc.createElement('div'); el.className = 'harbourthing castline'; el.setAttribute('aria-hidden', 'true');
     var x0 = p ? p.x : f.x, y0 = p ? p.y - 9 : f.y;
     el.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M' + x0 + ' ' + y0 + ' Q ' + ((x0 + f.x) / 2) + ' ' + (Math.min(y0, f.y) - 6) + ' ' + f.x + ' ' + f.y + '" fill="none" stroke="rgba(255,255,255,.85)" stroke-width=".35" vector-effect="non-scaling-stroke"/></svg>' +
-      '<span class="float" style="left:' + f.x + '%;top:' + f.y + '%"><i class="ring"></i><i class="ring r2"></i><b></b></span>';
+      '<span class="float' + (floatOf().glow ? ' glow' : '') + '" style="left:' + f.x + '%;top:' + f.y + '%;--floatc:' + floatOf().top + '"><i class="ring"></i><i class="ring r2"></i><b></b></span>';
     R.els.props.appendChild(el); line = el; R.els.scene.classList.add('fishing');
   }
   function waterSVG(stage, sp) {
     var s = '<svg viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="hbw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfc3f3"/><stop offset="1" stop-color="#9a8ad8"/></linearGradient></defs><rect width="100" height="70" fill="url(#hbw)"/>';
     s += '<path d="M0 24 q 10 -4 20 0 t 20 0 t 20 0 t 20 0 t 20 0" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1.6"/><path d="M0 46 q 10 -4 20 0 t 20 0 t 20 0 t 20 0 t 20 0" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.6"/>';
     if (stage === 'bite') s += '<ellipse class="hbshadow" cx="46" cy="44" rx="16" ry="6" fill="rgba(60,40,110,.35)"/>';
-    if (stage !== 'ready') s += '<g class="hbfloat' + (stage === 'bite' ? ' dip' : '') + '"><circle cx="52" cy="30" r="4.5" fill="#fff"/><circle cx="52" cy="28" r="3" fill="#e58aa8"/>' + (stage === 'bite' ? '' : '<circle cx="52" cy="30" r="9" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1" class="hbring"/>') + '</g>';
+    if (stage !== 'ready') s += '<g class="hbfloat' + (stage === 'bite' ? ' dip' : '') + '"><circle cx="52" cy="30" r="4.5" fill="#fff"/><circle cx="52" cy="28" r="3" fill="' + floatOf().top + '"/>' + (stage === 'bite' ? '' : '<circle cx="52" cy="30" r="9" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1" class="hbring"/>') + '</g>';
     return s + '</svg>';
   }
   function spotHot(id) { return HARBOUR.hotspots.filter(function (h) { return h.id === id; })[0]; }

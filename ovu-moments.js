@@ -55,6 +55,11 @@
     plantcare: { pose: 'plants', lines: ['One minute with one plant is enough.', 'Notice how it looks now, cared for.'] },
     harvest: { pose: 'harvest', lines: ['Notice what grew in its own time.', 'Feel the weight of what you picked. Enjoy it.'] },
     shop: { pose: 'shop', lines: ['Enjoy it. Nothing more needs buying.', 'Notice what made you smile about it.'] },
+    /* Harbour Lane (21 Oct): the grocer's swap, a gym station, a letter posted and a letter read */
+    seedswap: { pose: 'shop', lines: ['Notice what you grew, and what it can become next.'] },
+    gym: { pose: 'stretch', lines: ['Move at a pace that feels kind today. Rest counts too.', 'Notice your breath before you begin. There is nowhere to arrive.'] },
+    letter: { pose: 'note', lines: ['Write to her the way a kind friend would.', 'A few honest words are enough.'] },
+    letterread: { pose: 'note', lines: ['Read it slowly. Notice what has changed, and what has stayed.'] },
     adopt: { pose: 'pets', lines: ['Welcome home, little one. Notice how she looks at you.'] },
     petfeed: { pose: 'pets', lines: ['Watch one happy mouthful.', 'Notice how she eats, all in.'] },
     petplay: { pose: 'pets', lines: ['Share her small excitement for a moment.'] },
