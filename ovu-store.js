@@ -643,7 +643,7 @@
   function latestOnDate(type, date) { var l = list(type, { from: date, to: date }).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return newestFirst(x.e, y.e) || (y.i - x.i); }); return l.length ? l[0].e : null; }
   root.OvuStore = {
     /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
-    NOTICE_V: 4, /* v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
+    NOTICE_V: 5, /* v5, 21 Oct 2026: an optional birthday, the year only if she adds it, kept on this phone for the birthday card (the sheet promises to ask again when what is collected changes); v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
     KEY: KEY, TYPES: TYPES, checkinAnswers: checkinAnswers, setCheckinAnswer: setCheckinAnswer, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
     load: load, list: list, get: get, latestOnDate: latestOnDate, newestFirst: newestFirst, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
     putEvent: putEvent, applyRemote: applyRemote,

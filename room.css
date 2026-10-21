@@ -2165,6 +2165,7 @@ html[data-sky=night] .askchip:hover{background:#3b2e5a}
 .bline{margin:0;font:600 14px/1.45 var(--sans);color:var(--rm-ink);padding-left:12px;border-left:3px solid var(--rm-blush)}
 .bcard .lbl{display:block;margin-top:14px;font:800 10px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-mauve)}
 .bwish{margin-top:12px}
+.bnote{margin:8px 0 0;font:600 12px/1.4 var(--sans);color:var(--rm-ink-3)}
 .bwho{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.72)}
 .bcard .bwho .lbl{margin-top:0}
 .bwho b{display:block;margin-top:4px;font:600 18px var(--serif);color:var(--rm-plum)}

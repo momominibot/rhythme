@@ -66,7 +66,9 @@
   function boundTo(p) { var s = state()[p]; return !!(s && s.uid); } /* the choice was recorded on an account */
   var PAUSED_LINE = 'Paused for now, while we move Luna’s AI help to a service licensed for Singapore. Your diary and Luna’s own rules work as usual.';
   function allows(p) { if (AI_IDS[p] && aiPaused()) return false; var s = state()[p]; return !!(s && s.on); }
-  function noticeText() { return PURPOSES.map(function (p) { return p.title + '. ' + p.body; }).join('\n'); }
+  /* the notice's own fixed lines beside the purposes, so the receipt's hash covers them too (v5: the optional birthday; room.html shows the same words) */
+  var NOTICE_LINES = ['Rhythme is for people 18 and over. For that we keep only your confirmation. Your birthday is optional: a month and a day, with the year only if you add it, kept on this phone and used only for the birthday card.'];
+  function noticeText() { return PURPOSES.map(function (p) { return p.title + '. ' + p.body; }).join('\n') + '\n' + NOTICE_LINES.join('\n'); }
   function sha256hex(s) {
     try { return crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s))).then(function (h) { return Array.prototype.map.call(new Uint8Array(h), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }, function () { return ''; }); } catch (e) { return Promise.resolve(''); }
   }
@@ -223,7 +225,8 @@
     var st = state(), returning = !!(S.profile().consent && S.profile().consent.at), minor = legacyMinor(), u = uid();
     var title = c.querySelector('#cTitle'), sub = title && title.nextElementSibling, fine = c.querySelector('#cFine'), lbl = c.querySelector('.c-lbl'), box = c.querySelector('#cChoices'), age = c.querySelector('#cAge'), minorNote = c.querySelector('#cMinor');
     if (title) title.textContent = returning ? 'Our data notice has changed' : 'Before your room opens';
-    if (sub) sub.textContent = returning ? 'Rhythme is now for adults, has accounts and cloud backup, and asks about each use of your data separately. Please read what is new. Your diary on this phone is kept as it is.' : 'What Rhythme keeps, where it goes, and the choices that stay yours.';
+    var prevV = (st.health_tracking && st.health_tracking.notice) || 0; /* what changed since the notice she last agreed to */
+    if (sub) sub.textContent = returning ? (prevV >= 4 ? 'New in this notice: Rhythme can ask for your birthday, with the year only if you add it, for a birthday card. It stays on this phone, and none of your health notes use it. Your diary on this phone is kept as it is.' : 'Rhythme is now for adults, has accounts and cloud backup, and asks about each use of your data separately. It can also ask for your birthday, kept on this phone, for a birthday card. Please read what is new. Your diary on this phone is kept as it is.') : 'What Rhythme keeps, where it goes, and the choices that stay yours.';
     if (fine) fine.textContent = returning ? 'Your diary on this phone is kept as it is.' : 'No diary entries have been saved yet.';
     if (lbl) lbl.textContent = returning ? 'Your choices (all optional, shown as you have them today; anything new starts off)' : 'Your choices (all optional, all off until you turn them on)';
     if (minorNote) { minorNote.hidden = !minor; minorNote.style.display = minor ? '' : 'none'; } /* the flag's own display rule would beat the hidden attribute */
@@ -339,7 +342,7 @@
 
   root.OvuConsent = {
     aiPaused: aiPaused, boundTo: boundTo, AI_IDS: AI_IDS, PAUSED_LINE: PAUSED_LINE,
-    NOTICE_V: NOTICE_V, AGE_V: AGE_V, PURPOSES: PURPOSES, REGION_AI: REGION_AI, REGION_CLOUD: REGION_CLOUD, AI_WHERE: AI_WHERE, AI_WHERE_HTML: AI_WHERE_HTML,
+    NOTICE_V: NOTICE_V, NOTICE_LINES: NOTICE_LINES, AGE_V: AGE_V, PURPOSES: PURPOSES, REGION_AI: REGION_AI, REGION_CLOUD: REGION_CLOUD, AI_WHERE: AI_WHERE, AI_WHERE_HTML: AI_WHERE_HTML,
     purpose: purpose, events: events, state: state, stateFromEvents: stateFromEvents, allows: allows,
     noticeText: noticeText, noticeHash: noticeHash,
     record: record, grant: grant, withdraw: withdraw, setMany: setMany, apply: apply,

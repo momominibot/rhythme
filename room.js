@@ -1517,7 +1517,7 @@
     if (confirmDelete) { var yd = $('#yDel'); if (yd) yd.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     body.addEventListener('click', function (e) {
       var b = e.target.closest('[data-yact]'); if (!b) return; var act = b.dataset.yact; chime('tap');
-      if (act === 'intro') { var A0 = JSON.parse(JSON.stringify(P)); Object.assign(A0, P.habits || {}); ['cycleLength', 'periodLength'].forEach(function (k) { if (A0[k] !== null && A0[k] !== undefined) A0[k] = String(A0[k]); }); openOnboarding(0, A0); return; }
+      if (act === 'intro') { openOnboarding(0, introAnswers()); return; } /* her answers as they are now, not as they were when You opened (Codex, 21 Oct) */
       if (act === 'text') return window.OvuTextSize && OvuTextSize.open ? OvuTextSize.open() : undefined;
       if (act === 'wardrobe') return openWardrobe();
       if (act === 'shop') return openShop();
@@ -2721,6 +2721,8 @@
     $('#recallMore').innerHTML = recallMoreHTML(A); chime('tap');
     return true;
   }
+  /* the intro's starting answers: the profile as it is at the tap, shared by You and the window, so neither brings back an answer she removed */
+  function introAnswers() { var P0 = S.profile(), A0 = JSON.parse(JSON.stringify(P0)); Object.assign(A0, P0.habits || {}); ['cycleLength', 'periodLength'].forEach(function (k) { if (A0[k] !== null && A0[k] !== undefined) A0[k] = String(A0[k]); }); return A0; }
   function openOnboarding(i, a) {
     if (!onb || a !== undefined) onb = { i: 0, a: a || {}, openedAt: Date.now() };
     var steps = onbVisible(onb.a), A = onb.a;
@@ -2734,7 +2736,7 @@
     if (st.type === 'recall') html = recallHTML(A);
     if (st.type === 'body') html = sliderHTML('onbH', 'Height', 'cm', 130, 200, 1, A.heightCm || 160, !!A.heightCm) + sliderHTML('onbW', 'Weight', 'kg', 30, 150, 0.5, A.weightKg || 55, !!A.weightKg) +
       (RW.ledger().owned.indexOf('scale') > -1 ? '' : '<div class="field scaleoffer"><img src="' + ART + 'prop-scale.webp" alt=""><div><span class="lbl">Add a weighing scale to your room?</span><p class="help" style="margin:0 0 6px">' + (S.profile().onboarded ? 'It costs 5 hearts.' : 'It costs 5 of the 20 hearts you get for finishing.') + ' Tap it any day to note your weight; nothing is rewarded or judged.</p>' + chipRow('wantScale', [['yes', 'Yes, add it'], ['no', 'Not now']], A.wantScale, false) + '</div></div>');
-    if (st.type === 'birthday') html = '<div class="field">' + OvuBirthday.fieldHTML(A.birthday, A.birthYear, 'onbB', S.today()) + '<p class="help" id="onbBMsg" role="alert" hidden></p></div>';
+    if (st.type === 'birthday') { var bdr = A._bdraft || null, bde = bdr ? OvuBirthday.readValues(bdr.m, bdr.d, bdr.y, S.today()).error : ''; html = '<div class="field">' + OvuBirthday.fieldHTML(A.birthday, A.birthYear, 'onbB', S.today(), bdr) + '<p class="help" id="onbBMsg" role="alert"' + (bde ? '>' + esc(bde) : ' hidden>') + '</p></div>'; } /* what she chose, even a year still to fix, comes back as she left it (Codex, 21 Oct) */
     if (st.type === 'final') html = '<div class="field"><input class="input" id="onbName" maxlength="24" placeholder="Your name" value="' + esc(A.name || S.profile().name || '') + '"></div>';
     openSheet('onboarding', 'Getting to know you', 'Step ' + (onb.i + 1) + ' of ' + steps.length, 'favorite',
       '<div class="onb"><div class="onb-head"><div class="onb-ico" aria-hidden="true"><span class="ms">' + (st.icon || 'favorite') + '</span></div><div><h3>' + esc(st.title) + '</h3><p>' + esc(st.sub) + '</p></div></div><div class="onb-dots">' + steps.map(function (_, k) { return '<i class="' + (k <= onb.i ? 'on' : '') + '"></i>'; }).join('') + '</div>' + html +
@@ -2745,7 +2747,7 @@
       if (st.type === 'date') { var d = $('#onbDate').value; A[st.key] = S.validDate(d) && d <= S.today() ? d : ''; if (A[st.key] && st.extraKey) A[st.extraKey] = ''; }
       if (st.type === 'body') { var hv = sliderVal('onbH'), wv = sliderVal('onbW'); A.heightCm = hv || A.heightCm || null; A.weightKg = wv || A.weightKg || null; }
       if (st.type === 'final') { A.name = $('#onbName').value.trim(); }
-      if (st.type === 'birthday') { var bv = OvuBirthday.readField(document, 'onbB', S.today()); if (bv.birthday) { A.birthday = bv.birthday; if (bv.year) A.birthYear = bv.year; else delete A.birthYear; } else { delete A.birthday; delete A.birthYear; } }
+      if (st.type === 'birthday') { var bv = OvuBirthday.readField(document, 'onbB', S.today()); if (bv.error) A._bdraft = OvuBirthday.rawField(document, 'onbB'); else { delete A._bdraft; if (bv.birthday) { A.birthday = bv.birthday; if (bv.year) A.birthYear = bv.year; else delete A.birthYear; } else { delete A.birthday; delete A.birthYear; } } } /* Back keeps a choice still to fix as a draft, never as a silent omission */
       if (st.type === 'recall') { var rr0 = recallState(A); if (!rr0.starts.length && !rr0.status) rr0.status = 'none-remembered'; }
     }
     body.addEventListener('click', function (e) {
@@ -2758,7 +2760,7 @@
         chime('tap'); return;
       }
       if (e.target.closest('#onbBack')) { collect(); openOnboarding(onb.i - 1); return; }
-      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.type === 'birthday') delete A.birthYear; if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; delete A.wantScale; } if (st.type === 'recall') { A.periodRecall = { version: 1, status: 'none-remembered', starts: [], clusters: {}, complete: '', latest: '' }; A.lastPeriodStatus = ''; } openOnboarding(onb.i + 1); return; }
+      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.type === 'birthday') { delete A.birthYear; delete A._bdraft; } if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; delete A.wantScale; } if (st.type === 'recall') { A.periodRecall = { version: 1, status: 'none-remembered', starts: [], clusters: {}, complete: '', latest: '' }; A.lastPeriodStatus = ''; } openOnboarding(onb.i + 1); return; }
       if (e.target.closest('#onbNext')) {
         if (st.type === 'birthday') { var bchk = OvuBirthday.readField(document, 'onbB', S.today()); if (bchk.error) { var bm = $('#onbBMsg'); if (bm) { bm.hidden = false; bm.textContent = bchk.error; } chime('tap'); return; } } /* a year that is not hers to give (under 18, or no 29 February) waits to be fixed */
         collect();
@@ -2813,7 +2815,8 @@
     patch.birthday = (window.OvuBirthday && OvuBirthday.clean(A.birthday)) || null; /* the intro's birthday step: a month and a day, or none */
     patch.birthYear = patch.birthday && A.birthYear && !OvuBirthday.yearError(A.birthYear, patch.birthday, S.today()) ? Number(A.birthYear) : null; /* and the year, only an adult's */
     S.setProfile(patch);
-    try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, patch))); } catch (e) { }
+    var mirror = Object.assign({}, patch); delete mirror.birthday; delete mirror.birthYear; /* the older pages' copy of the intro never holds her birthday: it lives in the profile alone, so Remove removes it (Codex, 21 Oct) */
+    try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, mirror))); } catch (e) { }
     RW.grant(20, 'welcome');
     var gotScale = false; if (A.wantScale === 'yes') { try { RW.buy('scale'); gotScale = true; } catch (e) { gotScale = RW.ledger().owned.indexOf('scale') > -1; } }
     onb = null; closeSheet(); updateGreeting(); renderDeck(); renderProps();
@@ -2907,7 +2910,7 @@
     $('#winSound').addEventListener('click', function () { S.setState({ sound: !soundOn() }); if (window.OvuSound) OvuSound.sync(); chime('tap'); openWindow(); });
     var wm = $('#winMusic'); if (wm) wm.addEventListener('click', function () { if (window.OvuMusic) OvuMusic.toggle(); else S.setState({ music: S.state().music !== true }); chime('tap'); var again = $('#winMusic'); if (again) again.setAttribute('aria-pressed', S.state().music === true ? 'true' : 'false'); var ic = again && again.querySelector('.ms'); if (ic) ic.textContent = S.state().music === true ? 'music_note' : 'music_off'; var lb = again && again.querySelector('.mlabel'); if (lb) lb.textContent = 'Music ' + (S.state().music === true ? 'on' : 'off'); }); /* repainted in place, so focus stays on the button */
     var vol = $('#winVol'); if (vol) { vol.addEventListener('input', function () { OvuSound.setVolume(vol.value / 100); }); vol.addEventListener('change', function () { chime('tap'); }); }
-    $('#winIntro').addEventListener('click', function () { openOnboarding(0, {}); });
+    $('#winIntro').addEventListener('click', function () { openOnboarding(0, S.profile().onboarded ? introAnswers() : {}); });
   }
 
   /* ---------- avatar bubble ---------- */
