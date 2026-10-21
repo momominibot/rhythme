@@ -2347,19 +2347,20 @@ async def main():
             check("switching to Menopause keeps focus on the chosen button and says what food cannot do", r2["on"] == "meno" and r2["pressed"] == "true" and r2["focus"] == "meno" and "hot flushes" in r2["note"], r2)
             await page.keyboard.press("Escape"); await page.wait_for_timeout(300)
             # two tabs on the check: an answer in one does not wipe the other's, and the open check repaints
-            ta = await ctx.new_page(); tb = await ctx.new_page()
-            for tp in (ta, tb):
-                # a hash-only goto in a background tab never finished in CI's headless Chromium (21 Oct): bring the tab forward and set the hash in the page
-                await tp.route("**/*", gate); await tp.bring_to_front()
-                await tp.goto(BASE + "room.html", wait_until="networkidle"); await tp.wait_for_timeout(400)
-                await tp.evaluate("()=>{ location.hash = 'medas'; }"); await tp.reload(wait_until="networkidle"); await tp.wait_for_selector(".mq", timeout=8000)
-            # in CI's headless Chromium a pointer click into a second tab of one context hangs while it is dispatched, even after
-            # bring_to_front (21 Oct); this checks how the tabs share the store, so tap with the button's own click()
+            # the second tab is opened from the first (a link opened in a new tab), so both share one renderer and one copy of
+            # localStorage; two unrelated pages of one context did not see each other's writes in CI's headless shell (21 Oct)
+            ta = await ctx.new_page(); await ta.route("**/*", gate); await ta.bring_to_front()
+            await ta.goto(BASE + "room.html", wait_until="networkidle"); await ta.wait_for_timeout(400)
+            await ta.evaluate("()=>{ location.hash = 'medas'; }"); await ta.reload(wait_until="networkidle"); await ta.wait_for_selector(".mq", timeout=15000)
+            async with ctx.expect_page() as pinfo:
+                await ta.evaluate("()=>{ window.__tb = window.open('about:blank'); }")
+            tb = await pinfo.value; await tb.route("**/*", gate)
+            await ta.evaluate("()=>{ window.__tb.location.href = 'room.html#medas'; }")
+            await tb.wait_for_selector(".mq", timeout=15000)
+            # a pointer click into a second tab hung in CI's headless Chromium (21 Oct); this checks how the tabs share the
+            # store, so tap with the button's own click()
             TAP = "(sel)=>document.querySelector(sel).click()"
             await ta.evaluate(TAP, '.mq[data-mq="veg"] [data-yn="1"]'); await ta.wait_for_timeout(400)
-            # Chromium shares localStorage between tabs through the browser process, so a background tab's write reaches the
-            # other tab a little later (much later in CI): wait until the second tab can see it, as a person switching tabs would
-            await tb.wait_for_function("()=>((JSON.parse(localStorage.getItem('ovumind_db_v1')).state.medas||{}).answers||{}).veg===true", polling=200, timeout=10000)
             await tb.evaluate(TAP, '.mq[data-mq="fish"] [data-yn="0"]'); await tb.wait_for_timeout(400)
             # the second tab's save is on the phone at once; a hidden tab may be frozen (CI) and catches up when she comes back to it
             disk = await tb.evaluate("()=>(JSON.parse(localStorage.getItem('ovumind_db_v1')).state.medas||{}).answers")
