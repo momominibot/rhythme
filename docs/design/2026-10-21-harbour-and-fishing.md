@@ -5,7 +5,7 @@ fishing capability. Make sure all the farming system makes sense and is function
 
 Built on 21 Oct 2026 (branch `claude/world-harbour`, on top of the barn branch). The shape is Codex's harbour review of
 the same morning (gpt-6-astra, read-only, with web search), trimmed to the smallest worthwhile slice it recommended: one
-harbour scene with two fishing spots, six species, a catch book, release animations, and a way to sit and watch the
+harbour scene with two fishing spots, six species, a catch book, a release line, and a way to sit and watch the
 water instead. Harbour Lane and its three shops, aquarium adoption and fish cooking are not built; see section 7.
 
 ## 1. Where it is

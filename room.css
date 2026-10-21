@@ -1923,14 +1923,17 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .fishcard{display:flex;align-items:center;gap:12px;background:var(--rm-card,#fff);border-radius:16px;padding:10px 12px;margin:2px 0 10px}
 .fishcard img{width:38%;max-width:150px;height:auto;filter:drop-shadow(0 6px 8px rgba(60,40,110,.22))}
 .fishcard b{display:block;font:800 16px var(--serif);color:var(--rm-plum)}
-.fishcard small{display:block;font:600 12.5px var(--sans);color:var(--rm-ink-3);margin-top:3px}
+.fishcard small{display:block;font:600 12.5px var(--sans);color:var(--rm-ink-2);margin-top:3px}
 .fishfact{font:600 13.5px/1.5 var(--sans);color:var(--rm-ink);margin:0 0 10px}
-.fishsrc,.bookrow em{display:block;font:500 11px var(--sans);color:var(--rm-ink-3);font-style:normal;margin-top:3px}
+.fishsrc,.bookrow em{display:block;font:500 11px var(--sans);color:var(--rm-ink-2);font-style:normal;margin-top:3px}
 .booklist{list-style:none;margin:4px 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
 .bookrow{display:flex;align-items:center;gap:10px;background:var(--rm-card,#fff);border-radius:14px;padding:8px 10px}
 .bookrow img{width:22%;max-width:84px;height:auto;flex:none}
 .bookrow .bookq{flex:none;width:22%;max-width:84px;aspect-ratio:3/2;display:grid;place-items:center;border-radius:12px;background:#efe8fb;color:#9a7bc2;font:800 22px var(--serif)}
 .bookrow b{display:block;font:800 14px var(--sans);color:var(--rm-ink)}
-.bookrow small{display:block;font:600 12px/1.45 var(--sans);color:var(--rm-ink-3);margin-top:2px}
-.bookrow.unseen b{color:var(--rm-ink-3)}
-@media (prefers-reduced-motion: reduce){.harbourthing .float b,.harbourthing .float .ring,.hbpic .hbfloat,.hbpic .hbring,.hbpic .hbshadow{animation:none}.harbourthing .float .ring{opacity:.5;transform:scale(1.4)}.scene.bite .harbourthing .float b{transform:translateY(30%)}.hbpic .hbfloat.dip{transform:translateY(6px)}}
+.bookrow small{display:block;font:600 12px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.bookrow.unseen b{color:var(--rm-ink-2)}
+@media (prefers-reduced-motion: reduce){.harbourthing .float b,.harbourthing .float .ring,.hbpic .hbfloat,.hbpic .hbring,.hbpic .hbshadow,.scene.bite .harbourthing .float b,.hbpic .hbfloat.dip{animation:none}.harbourthing .float .ring{opacity:.5;transform:scale(1.4)}.scene.bite .harbourthing .float b{transform:translateY(30%)}.hbpic .hbfloat.dip{transform:translateY(6px)}}
+/* the crystals' tone (ovu-tones.js, 21 Oct): nine pitch chips, a pill to stop it from the scene */
+.tonechips .chipbtn{min-width:72px}
+.tonepill small{font:700 11px var(--sans);opacity:.75;margin-left:2px}

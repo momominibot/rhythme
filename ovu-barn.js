@@ -17,7 +17,7 @@
   function save(S, f, ST, action) {
     if (ST && ST.spendWith) {
       if (!ST.COSTS || ST.COSTS[action] == null) return { ok: false, why: 'unknown action' }; /* an unregistered action would cost nothing */
-      if (!ST.spendWith(action, { farm: f })) return { ok: false, why: 'Too tired for that. A rest first.' };
+      if (!ST.spendWith(action, { farm: f })) return { ok: false, why: 'Too tired for that. Energy comes back with a night’s sleep, or with the new day.' };
       return { ok: true, charged: true };
     }
     if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f });
@@ -200,15 +200,15 @@
     var rows = HENS.map(function (h) { return '<li><span class="ms">' + (ready.indexOf(h) > -1 ? 'egg' : 'bedtime') + '</span>' + esc(NAMES[h]) + (ready.indexOf(h) > -1 ? ' laid an egg.' : '’s nest is resting today.') + '</li>'; }).join('');
     R.openSheet('barnnests', 'The hen house', 'Mochi and Kaya', 'egg',
       '<ul class="barnlist">' + rows + (treatedToday(S, 'hens', day) ? '<li><span class="ms">nutrition</span>The hens had a treat from the basket today.</li>' : '') + '</ul><div class="row" id="nestActs">' + (ready.length ? '<button type="button" class="btn primary" data-act="eggs"><span class="ms">egg</span>Collect ' + (ready.length > 1 ? 'the eggs' : 'the egg') + '</button>' : '') + treatButtons('hens') + '</div>' +
-      pantryLine() + '<p class="help">The hens are fine on their own. An egg waits in the nest until you come by.</p>');
+      pantryLine() + '<p class="help">The hens are fine on their own. An egg waits in the nest until you come by; the pantry holds 99 of each thing.</p>');
     var acts = doc.getElementById('nestActs'); if (!acts) return;
     acts.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (btn.dataset.act === 'treat') { treatStep(acts, 'hens', btn, openNests); return; }
-      if (ST && !ST.can('egg')) { R.toast('Too tired for that. A rest first.', 'bedtime'); return; }
+      if (ST && !ST.can('egg')) { R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); return; }
       var seen = JSON.stringify(eggsReady(S, day));
       var lifts = [];
-      step(acts, { ms: 2500, moment: 'eggs', verb: 'Lifting each egg into the basket…', cancel: openNests, undo: function () { lifts.forEach(root.clearTimeout); lifts = []; renderBarn(); }, start: function (ms) { Array.prototype.forEach.call(doc.querySelectorAll('#ownedProps .nestegg'), function (el, i) { lifts.push(root.setTimeout(function () { el.classList.add('lifted'); }, (i + 0.5) * ms / 3)); }); } }, function () {
+      step(acts, { ms: 2500, moment: 'eggs', verb: 'Lifting each egg into the basket…', cancel: openNests, undo: function () { lifts.forEach(root.clearTimeout); lifts = []; renderBarn(); }, start: function (ms, still) { Array.prototype.forEach.call(doc.querySelectorAll('#ownedProps .nestegg'), function (el, i) { lifts.push(root.setTimeout(function () { el.classList.add('lifted'); }, still ? 0 : (i + 0.5) * ms / 3)); }); } }, function () {
         if (today() !== day || JSON.stringify(eggsReady(S, day)) !== seen) { renderBarn(); openNests(); return; } /* the day turned or another tab collected */
         var r = collectEggs(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); renderBarn(); openNests(); return; }
         R.chime('save'); renderBarn(); R.toast(r.n + ' egg' + (r.n > 1 ? 's' : '') + ' in the pantry.', 'egg'); openNests();
@@ -230,8 +230,8 @@
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (btn.dataset.act === 'treat') { treatStep(acts, 'clover', btn, openClover); return; }
       if (btn.dataset.act === 'brush') { step(acts, { ms: 3000, moment: 'brush', verb: 'Brushing slowly…', cancel: openClover }, function () { R.chime('tap'); openClover(); }); return; }
-      if (ST && !ST.can('milk')) { R.toast('Too tired for that. A rest first.', 'bedtime'); return; }
-      step(acts, { ms: 3000, moment: 'milk', verb: 'Milking slowly…', cancel: openClover, start: function (ms) { var m = doc.querySelector('#sheet .pailmilk'); if (m) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { m.style.transition = 'transform ' + ms + 'ms ease-in-out'; m.style.transform = 'scaleY(1)'; }); }); } }, function () {
+      if (ST && !ST.can('milk')) { R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); return; }
+      step(acts, { ms: 3000, moment: 'milk', verb: 'Milking slowly…', cancel: openClover, start: function (ms, still) { var m = doc.querySelector('#sheet .pailmilk'); if (m) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { m.style.transition = still ? 'none' : 'transform ' + ms + 'ms ease-in-out'; m.style.transform = 'scaleY(1)'; }); }); } }, function () {
         if (today() !== day || !milkReady(S, day)) { openClover(); return; }
         var r = milk(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); openClover(); return; }
         R.chime('save'); R.toast('A pail of milk in the pantry.', 'water_full'); openClover();
@@ -253,17 +253,17 @@
   function openBasket() {
     var f0 = FM().farmState(S), p = f0.pantry, n = cookable(f0);
     R.openSheet('springbasket', 'The spring basket', 'Pretend onsen eggs', 'egg',
-      '<div class="bedcard"><div class="bedpic springpic">' + basketSVG() + '</div><div class="bedtext"><b>' + (n ? n + ' egg' + (n > 1 ? 's' : '') + ' to lower' : p.egg ? 'The pantry is full of onsen eggs' : 'No eggs yet') + '</b><span>' + (n ? 'The warm water does the rest.' : p.egg ? 'Enjoy some first.' : 'Bring an egg from the hen house.') + '</span></div></div>' +
+      '<div class="bedcard"><div class="bedpic springpic">' + basketSVG() + '</div><div class="bedtext"><b>' + (n ? n + ' egg' + (n > 1 ? 's' : '') + ' to lower' : p.egg ? 'The pantry is full of onsen eggs' : 'No eggs yet') + '</b><span>' + (n ? 'The warm water does the rest.' : p.egg ? 'It holds 99, and they stay as they are: pretend food, kept on this device.' : 'Bring an egg from the hen house.') + '</span></div></div>' +
       '<div class="row" id="basketActs">' + (n ? '<button type="button" class="btn primary" data-act="cook"><span class="ms">egg</span>Make onsen eggs</button>' : '') + '</div>' +
       pantryLine() + '<p class="help">This is pretend cooking in a pretend spring. Nothing here changes your energy.</p>');
     var acts = doc.getElementById('basketActs'); if (!acts) return;
     acts.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       var seen = JSON.stringify(FM().farmState(S).pantry), want = n;
-      var anim = function (sel, prop, val, ms) { return function () { var el = doc.querySelector('#sheet ' + sel); if (el) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { el.style.transition = prop + ' ' + ms + 'ms ease-in-out'; el.style[prop] = val; }); }); }; };
-      step(acts, { ms: 2500, moment: 'springlower', verb: 'Lowering the basket…', cancel: openBasket, start: function (ms) { anim('.sbasket', 'transform', 'translateY(26px)', ms)(); } }, function () {
-        step(acts, { ms: 6000, moment: 'springsteam', verb: 'The eggs rest in the warm water…', cancel: openBasket, start: function (ms) { anim('.ssteam', 'opacity', '1', ms * 0.4)(); } }, function () {
-          step(acts, { ms: 2500, moment: 'springlift', verb: 'Lifting the basket…', cancel: openBasket, start: function (ms) { anim('.ssteam', 'opacity', '0', ms)(); anim('.sbasket', 'transform', 'translateY(0)', ms)(); } }, function () {
+      var anim = function (sel, prop, val, ms, still) { return function () { var el = doc.querySelector('#sheet ' + sel); if (el) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { el.style.transition = still ? 'none' : prop + ' ' + ms + 'ms ease-in-out'; el.style[prop] = val; }); }); }; };
+      step(acts, { ms: 2500, moment: 'springlower', verb: 'Lowering the basket…', cancel: openBasket, start: function (ms, still) { anim('.sbasket', 'transform', 'translateY(26px)', ms, still)(); } }, function () {
+        step(acts, { ms: 6000, moment: 'springsteam', verb: 'The eggs rest in the warm water…', cancel: openBasket, start: function (ms, still) { anim('.ssteam', 'opacity', '1', ms * 0.4, still)(); } }, function () {
+          step(acts, { ms: 2500, moment: 'springlift', verb: 'Lifting the basket…', cancel: openBasket, start: function (ms, still) { anim('.ssteam', 'opacity', '0', ms, still)(); anim('.sbasket', 'transform', 'translateY(0)', ms, still)(); } }, function () {
             if (JSON.stringify(FM().farmState(S).pantry) !== seen) { openBasket(); return; } /* another tab changed the pantry */
             var r = cookEggs(S, want); if (!r.ok) { R.toast(r.why, 'info'); openBasket(); return; }
             R.chime('save'); afterCook(r.n);
@@ -274,7 +274,7 @@
   }
   function afterCook(n) {
     R.openSheet('springdone', 'Onsen eggs', n + ' in the pantry', 'egg',
-      '<p>Your onsen egg' + (n > 1 ? 's are' : ' is') + ' in the pantry.</p>' + pantryLine() +
+      '<p>Your onsen egg' + (n > 1 ? 's are' : ' is') + ' in the pantry.</p>' + pantryLine() + '<p class="help">Only log food you really ate; these eggs stay in the game.</p>' +
       '<div class="row"><button type="button" class="btn primary" id="cookDone">Done</button><button type="button" class="btn ghost" id="cookDiary">Open food diary</button></div>');
     doc.getElementById('cookDone').addEventListener('click', function () { R.hideSheet(); });
     doc.getElementById('cookDiary').addEventListener('click', function () { R.hideSheet(); var a = doc.querySelector('nav a[data-tab="food"]'); if (a) a.click(); });

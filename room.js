@@ -538,6 +538,7 @@
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
   function openSheet(id, title, sub, icon, html) {
+    if (current) emit('sheetReplace', id); /* a care step or a cast in the old sheet ends with it (Codex, 21 Oct) */
     careOn = false; /* a new sheet replaces Luna's chat and any card in it; Luna sets it again when she shows one */
     if (current === 'diary') stopCamera();
     current = id; $('#sheetTitle').innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');

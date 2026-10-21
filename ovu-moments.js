@@ -39,8 +39,8 @@
     well: { pose: 'plants', lines: ['Watch the water rise in the can.', 'Listen to the water as it fills the can.'] },
     /* the barn and the hidden spring (21 Oct): lines describe what is on screen; no pose, she stands with a basket or pail */
     eggs: { pose: null, lines: ['Watch the egg lift from the straw.', 'Notice the straw around each egg.'] },
-    treat: { pose: null, lines: ['Watch her take it slowly.', 'Notice how still you can hold it.'] },
-    hentreat: { pose: null, lines: ['Watch the hens hurry over.', 'Notice the pecking, quick and light.'] },
+    treat: { pose: null, lines: ['Hold it out slowly. Notice its weight in your hand.', 'Notice how still you can be.'] },
+    hentreat: { pose: null, lines: ['Hold it low and still. Notice the hens as they are.', 'Notice the straw, the light, the small sounds.'] },
     milk: { pose: null, lines: ['Watch the milk collect in the pail.'] },
     brush: { pose: null, lines: ['Notice how still Clover stands.', 'Notice the straw at her feet.'] },
     springlower: { pose: null, lines: ['Watch the basket sink into the water.'] },
@@ -49,9 +49,9 @@
     springsit: { pose: null, lines: ['Watch one ripple reach the stone.', 'Listen to the water, and the quiet around it.'] },
     /* the harbour (21 Oct): the float, the fish, the water; nothing to do faster */
     cast: { pose: null, lines: ['Watch the float settle on the water.', 'Notice the rings spreading across the water.'] },
-    bite: { pose: null, lines: ['Notice the float dip, once.', 'Lift when you are ready; there is no hurry.'] },
-    release: { pose: null, lines: ['Watch it swim back into the deep water.', 'Notice how quickly it is gone.'] },
-    watchwater: { pose: null, lines: ['Watch one ripple reach the stilts.', 'Listen to the water under the jetty.'] },
+    bite: { pose: null, lines: ['Notice the float dipping.', 'Lift when you are ready; there is no hurry.'] },
+    release: { pose: null, lines: ['Notice its colours before it goes.', 'Notice how light this moment is.'] },
+    watchwater: { pose: null, lines: ['Notice the light on the water.', 'Notice whatever you can hear around you.'] },
     plantcare: { pose: 'plants', lines: ['One minute with one plant is enough.', 'Notice how it looks now, cared for.'] },
     harvest: { pose: 'harvest', lines: ['Notice what grew in its own time.', 'Feel the weight of what you picked. Enjoy it.'] },
     shop: { pose: 'shop', lines: ['Enjoy it. Nothing more needs buying.', 'Notice what made you smile about it.'] },

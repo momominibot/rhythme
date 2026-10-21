@@ -544,8 +544,11 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('an unknown fish is refused and changes nothing', !H.record(S, 'kraken', d1, ST).ok && H.harbourState(S).casts === 2);
   var sd = (S.state().stamina || {}).day || d1; S.setState({ stamina: { v: 1, max: 100, day: sd } });
   check('too tired: the fish is not written and nothing is charged', !H.record(S, 'snapper', d1, ST).ok && !H.seen(S, 'snapper') && H.harbourState(S).casts === 2 && ST.value() === 1);
-  S.setState({ harbour: { book: { grouper: { first: 'yesterday', n: -3 }, dragon: { first: d1, n: 2 } }, casts: 'many' } });
-  check('restored harbour values are cleaned: known fish only, whole counts, dates only', JSON.stringify(H.harbourState(S).book) === '{"grouper":{"first":null,"n":0}}' && H.harbourState(S).casts === 0 && !H.seen(S, 'grouper'));
+  S.setState({ harbour: { book: { grouper: { first: 'yesterday', n: -3 }, snapper: { first: '2026-99-99', n: 2 }, mullet: { first: '2020-01-01', n: 0 }, dragon: { first: d1, n: 2 } }, casts: 'many' } });
+  check('restored harbour values are cleaned: known fish only, whole counts, real dates only, and a zero-count entry is no meeting', JSON.stringify(H.harbourState(S).book) === '{"snapper":{"first":null,"n":2}}' && H.harbourState(S).casts === 0 && !H.seen(S, 'grouper') && !H.seen(S, 'mullet'));
+  S.setState({ stamina: { v: 100, max: 100, day: sd } });
+  var rm = H.record(S, 'mullet', d1, ST), rs = H.record(S, 'snapper', d1, ST);
+  check('meeting a fish whose old entry was dropped is a first meeting today; a kept count with no date gets today as its first day', rm.ok && rm.first && H.harbourState(S).book.mullet.first === d1 && rs.ok && !rs.first && rs.n === 3 && H.harbourState(S).book.snapper.first === d1);
   check('no hearts are paid at the harbour, no energy is ever added, and no diary entry is written', !/OvuRewards|\.award\(|\.grant\(|\bS\.add\(|OvuStore\.add\(|addMany\(/.test(HS) && !/refill\(|\.v\s*\+=/.test(HS));
   var L = H.LAYOUT, bad = K.checkLayout(L);
   check('harbour: home, stand points and doors are on the floor and outside every solid', bad.length === 0, JSON.stringify(bad));
@@ -556,6 +559,19 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the farm has steps down to the harbour, on its floor and reachable from the garden gate', !!fd && fd.to === 'harbour' && fbad.length === 0 && !!K.plan(fw, { x: 15, y: 57 }, { x: fd.x, y: fd.y }, 2), JSON.stringify(fbad));
   var M = fs.readFileSync(path.join(root, 'ovu-moments.js'), 'utf8');
   check('the harbour moments describe the float, the fish and the water, and never hurry her', ['cast', 'bite', 'release', 'watchwater'].every(function (k) { return M.indexOf(k + ': {') > -1; }) && /no hurry/.test(M));
+})();
+(function tones() {
+  console.log('2k5. the crystals’ tone (21 Oct): nine pitches, no claims, no diary, no hearts; the hotspot stands on the cave floor');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-tones.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var T = w.OvuTones, B = w.OvuBarn, K = w.OvuWalk, TS = fs.readFileSync(path.join(root, 'ovu-tones.js'), 'utf8');
+  check('the nine pitches, labelled by pitch only, never by a promise', T.FREQS.join() === '174,285,396,417,528,639,741,852,963' && T.label(528) === '528 Hz, middle' && T.label(174) === '174 Hz, low' && T.label(963) === '963 Hz, high' && T.label(440) === '' && !/love|repair|liberation|healing|DNA|chakra/i.test(TS));
+  check('the tone follows the app volume and never passes its ceiling; a bad volume is silent', T.gainFor(1) === T.CEILING && T.gainFor(0.5) === Math.round(0.5 * T.CEILING * 1000) / 1000 && T.gainFor(0) === 0 && T.gainFor('x') === 0 && T.gainFor(9) === T.CEILING);
+  check('without Web Audio (node) starting a tone fails quietly and nothing is playing', T.start(528, null) === false && T.playing() === null && T.remaining() === null);
+  check('the module writes no diary entry, pays no hearts and costs no energy', !/OvuRewards|\bS\.add\(|OvuStore\.add\(|addMany\(|spend\(|spendWith\(/.test(TS));
+  var L = B.CAVE, bad = K.checkLayout(L), cry = L.hotspots.filter(function (h) { return h.id === 'crystals'; })[0];
+  var wd = K.world(L, []), from = { x: L.doors[0].x, y: L.doors[0].y };
+  check('the crystals are a cave hotspot whose stand point is on the floor, outside the pool and the crystals, and reachable from the way in', !!cry && bad.length === 0 && !!K.plan(wd, from, cry.wp, 2), JSON.stringify(bad));
 })();
 (function phase1ReviewFixes() {
   console.log('2k. Codex review of Phase 1: a full disk never half-buys, update day never pays twice, clocks cannot reopen caps');

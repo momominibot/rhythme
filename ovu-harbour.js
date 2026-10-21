@@ -16,7 +16,7 @@
     { id: 'snapper', name: 'Mangrove red snapper', local: 'ikan merah', spots: ['rocks'], time: 'any', img: 'fish-snapper.webp',
       fact: 'At home among mangrove roots when young, it moves out to open water to breed.', source: 'Wikipedia, mangrove red snapper' },
     { id: 'barramundi', name: 'Barramundi', local: 'siakap', spots: ['jetty'], time: 'any', img: 'fish-barramundi.webp',
-      fact: 'Barramundi start life as males. In Singapore farms, most had become females by two to three years old.', source: 'Aquaculture Reports, 2021' },
+      fact: 'Barramundi start life as males. In one study at a Singapore farm, most had become females by two to three years old.', source: 'Aquaculture Reports, 2021' },
     { id: 'mullet', name: 'Flathead grey mullet', local: 'belanak', spots: ['jetty', 'rocks'], time: 'day', img: 'fish-mullet.webp',
       fact: 'It feeds by sucking up the top layer of the sea floor, for tiny algae and bits of food.', source: 'FAO species fact sheet' },
     { id: 'rabbitfish', name: 'White-spotted rabbitfish', local: 'pek tor her', spots: ['rocks'], time: 'day', img: 'fish-rabbitfish.webp',
@@ -30,10 +30,12 @@
   function candidates(spot, phase) { return SPECIES.filter(function (s) { return s.spots.indexOf(spot) > -1 && (s.time === 'any' || s.time === phase); }); }
   /* which fish comes: an even choice among those that suit the spot and the time of day; rnd is 0 to 1 (the scene passes Math.random) */
   function pick(spot, phase, rnd) { var c = candidates(spot, phase); if (!c.length) return null; var i = Math.min(c.length - 1, Math.max(0, Math.floor((Number(rnd) || 0) * c.length))); return c[i]; }
+  var CAP = 999999;
+  function realDate(S, d) { return typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && (!S.validDate || S.validDate(d)); }
   function harbourState(S) {
     var h = S.state().harbour || {}, book = {};
-    Object.keys(h.book || {}).forEach(function (k) { var e = h.book[k]; if (!species(k) || !e) return; var n = Math.floor(Number(e.n)); book[k] = { first: typeof e.first === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.first) ? e.first : null, n: isFinite(n) && n > 0 ? Math.min(9999, n) : 0 }; });
-    var casts = Math.floor(Number(h.casts)); return Object.assign({}, h, { book: book, casts: isFinite(casts) && casts > 0 ? casts : 0 });
+    Object.keys(h.book || {}).forEach(function (k) { var e = h.book[k]; if (!species(k) || !e) return; var n = Math.floor(Number(e.n)); if (!(isFinite(n) && n > 0)) return; /* a zero-count entry is no meeting */ book[k] = { first: realDate(S, e.first) ? e.first : null, n: Math.min(CAP, n) }; });
+    var casts = Math.floor(Number(h.casts)); return Object.assign({}, h, { book: book, casts: isFinite(casts) && casts > 0 ? Math.min(CAP, casts) : 0 });
   }
   function seen(S, id) { var e = harbourState(S).book[id]; return !!(e && e.n > 0); }
   function seenCount(S) { var b = harbourState(S).book; return Object.keys(b).filter(function (k) { return b[k].n > 0; }).length; }
@@ -42,9 +44,9 @@
   function record(S, id, day, ST) {
     var sp = species(id); if (!sp) return { ok: false, why: 'unknown fish' };
     var h = JSON.parse(JSON.stringify(harbourState(S))), e = h.book[id] || { first: null, n: 0 }, first = !e.n;
-    e.n += 1; if (!e.first) e.first = day; h.book[id] = e; h.casts += 1;
+    e.n = Math.min(CAP, e.n + 1); if (first || !e.first) e.first = day; h.book[id] = e; h.casts = Math.min(CAP, h.casts + 1); /* the first meeting is today when none was counted before */
     try {
-      if (ST && ST.spendWith) { if (!ST.COSTS || ST.COSTS.fish == null) return { ok: false, why: 'unknown action' }; if (!ST.spendWith('fish', { harbour: h })) return { ok: false, why: 'Too tired for that. A rest first.' }; }
+      if (ST && ST.spendWith) { if (!ST.COSTS || ST.COSTS.fish == null) return { ok: false, why: 'unknown action' }; if (!ST.spendWith('fish', { harbour: h })) return { ok: false, why: 'Too tired for that. Energy comes back with a night’s sleep, or with the new day.' }; }
       else if (S.commit) S.commit({ harbour: h }); else S.setState({ harbour: h });
     } catch (err) { return { ok: false, why: 'That could not be saved just now.' }; }
     return { ok: true, first: first, n: e.n, species: sp };
@@ -61,7 +63,7 @@
     ],
     home: { x: 34, y: 73, flip: false },
     zones: [[[8, 46], [18, 41], [34, 34], [50, 32], [63, 36], [60, 42], [50, 47], [44, 52], [39, 60], [37, 68], [45, 76], [40, 81], [28, 80], [12, 72], [3, 62], [3, 52]],
-      [[44, 42], [50, 41], [72, 48], [86, 45], [87, 57], [70, 57], [67, 52], [44, 48]]], /* the meadow and sand; the jetty and its deck */
+      [[44, 42.5], [49, 41.5], [70, 47.5], [85, 45.5], [86, 54], [72, 55.5], [70, 52.5], [44, 47.5]]], /* the meadow and sand; the planks and the deck only, not the water between the stilts (Codex, 21 Oct) */
     solids: [{ id: 'hut', x0: 18, x1: 35, y0: 33, y1: 48 }, { id: 'tree', x0: 32, x1: 37, y0: 37, y1: 41 }, { id: 'bench', x0: 35, x1: 46, y0: 36, y1: 43 }, { id: 'rocks', x0: 1, x1: 21, y0: 53, y1: 69 }, { id: 'sign', x0: 17, x1: 21, y0: 44, y1: 49 }, { id: 'lantern', x0: 72, x1: 76, y0: 43, y1: 49 }],
     doors: [{ id: 'harbourexit', to: 'farm', x: 34, y: 73, r: 4, flip: false }],
     seat: { x: 40.5, seatY: 39.5, groundY: 44, face: 'right' },
@@ -81,8 +83,10 @@
   function phaseNow() { return phaseOf(R.els && R.els.scene ? R.els.scene.dataset.sky : ''); }
   Z.register(HARBOUR, { label: 'Harbour', icon: 'sailing', after: 'farm' });
 
-  /* the float on the water while a line is out, and the line from her to it */
-  var line = null;
+  /* the float on the water while a line is out, and the line from her to it; `enc` is the encounter token: a bite is only good while nothing has moved under it (Codex, 21 Oct) */
+  var line = null, enc = 0;
+  function spotSheet() { var id = R.sheetId ? R.sheetId() : ''; var m = /^harbour-(jetty|rocks)$/.exec(id || ''); return m ? m[1] : null; }
+  function invalidate(reopen) { enc++; clearLine(); var sp = spotSheet(); if (reopen && sp && here() && R.sheetOpen()) openSpot(sp); }
   function clearLine() { if (line) { if (line.parentNode) line.remove(); line = null; } R.els.scene.classList.remove('fishing', 'bite'); }
   function castLine(spot) {
     clearLine();
@@ -101,7 +105,7 @@
     return s + '</svg>';
   }
   function spotHot(id) { return HARBOUR.hotspots.filter(function (h) { return h.id === id; })[0]; }
-  function bookLine() { var n = seenCount(S), c = harbourState(S).casts; return '<p class="help pantryline"><span class="ms">menu_book</span>' + (n ? n + ' of ' + SPECIES.length + ' kinds met, ' + c + ' cast' + (c === 1 ? '' : 's') + '.' : 'Nothing in the catch book yet.') + ' Every fish goes back in the water.</p>'; }
+  function bookLine() { var n = seenCount(S), c = harbourState(S).casts; return '<p class="help pantryline"><span class="ms">menu_book</span>' + (n ? n + ' of ' + SPECIES.length + ' kinds met, ' + c + ' fish recorded.' : 'Nothing in the catch book yet.') + ' Every fish goes back in the water.</p>'; }
   function step(box, o, done) { if (!CARE || !CARE.step) { done(); return; } CARE.step(box, Object.assign({ scene: 'harbour' }, o), done); }
 
   /* one spot: Cast, the float drifts (a slow step; Stop reels in nothing), a fish comes, Lift gently whenever she likes, see it, let it go */
@@ -115,7 +119,7 @@
     acts.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (btn.dataset.act === 'book') { openBook(spot); return; }
-      if (ST && !ST.can('fish')) { R.toast('Too tired for that. A rest first.', 'bedtime'); return; }
+      if (ST && !ST.can('fish')) { R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); return; }
       if (!here()) { R.hideSheet(); return; }
       var pic = doc.querySelector('#sheet .hbpic'); if (pic) pic.innerHTML = waterSVG('cast');
       castLine(spot);
@@ -126,6 +130,7 @@
     });
   }
   function bite(spot, fish) {
+    var my = ++enc;
     R.els.scene.classList.add('bite');
     var pic = doc.querySelector('#sheet .hbpic'); if (pic) pic.innerHTML = waterSVG('bite');
     var line2 = R.moment ? R.moment('bite', { quiet: true }) : '';
@@ -136,7 +141,8 @@
     acts.onclick = function (e) {
       var btn = e.target.closest('[data-bite]'); if (!btn) return; acts.onclick = null;
       if (btn.dataset.bite === 'leave') { clearLine(); R.toast('It swims on. Nothing lost.', 'water'); openSpot(spot); return; }
-      if (!here()) { clearLine(); R.hideSheet(); return; }
+      if (my !== enc || !here() || S.state().sleeping || (CARE && CARE.asleepNow && CARE.asleepNow())) { clearLine(); R.hideSheet(); return; } /* the moment passed: a reset, another tab, sleep */
+      if (ST && !ST.can('fish')) { R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); clearLine(); openSpot(spot); return; }
       var r = record(S, fish.id, today(), ST);
       clearLine();
       if (!r.ok) { R.toast(r.why, 'info'); openSpot(spot); return; }
@@ -162,7 +168,7 @@
       return '<li class="bookrow' + (met ? '' : ' unseen') + '">' + (met ? '<img src="' + ART + sp.img + '" alt="">' : '<span class="bookq">?</span>') + '<span><b>' + (met ? esc(sp.name) : 'Not met yet') + '</b><small>' + (met ? esc(sp.local) + ' · first ' + esc(e.first || '') + ' · ' + e.n + (e.n === 1 ? ' time' : ' times') + '<br>' + esc(sp.fact) + ' <em>' + esc(sp.source) + '</em>' : (sp.spots.join(' or ') === 'jetty' ? 'Try the jetty' : sp.spots.indexOf('jetty') > -1 ? 'The jetty or the rocks' : 'Try the rocks') + (sp.time === 'night' ? ', after dark' : sp.time === 'day' ? ', in daylight' : '')) + '</small></span></li>';
     }).join('');
     R.openSheet('harbourbook', 'The catch book', n ? n + ' of ' + SPECIES.length + ' kinds met' : 'Nothing met yet', 'menu_book',
-      '<ul class="booklist">' + rows + '</ul><p class="help">' + h.casts + ' cast' + (h.casts === 1 ? '' : 's') + ' so far. Every fish went back in the water. There is nothing to complete here; the book is for noticing.</p>' +
+      '<ul class="booklist">' + rows + '</ul><p class="help">' + h.casts + ' fish recorded so far. Every fish went back in the water. There is nothing to complete here; the book is for noticing.</p>' +
       (backTo ? '<div class="row"><button type="button" class="btn soft" id="bookBack"><span class="ms">phishing</span>Back to ' + esc(SPOTS[backTo].name.toLowerCase()) + '</button></div>' : ''));
     var b = doc.getElementById('bookBack'); if (b) b.addEventListener('click', function () { openSpot(backTo); });
   }
@@ -203,10 +209,13 @@
   /* the farm's way down: steps on the island's lower shore */
   R.hotspotHandlers.harboursteps = function (id, L) { if (!L || L.id !== 'farm') return false; if (W.napping && W.napping()) return true; W.travel('harbour'); return true; };
   R.on('boot', function () {
-    R.on('layout', function (L) { if (!L || L.id !== 'harbour') { standUp(); clearLine(); } });
+    R.on('layout', function (L) { if (!L || L.id !== 'harbour') { standUp(); invalidate(false); } });
     R.on('props', function () { if (sitting && !sitting.el.isConnected) R.els.props.appendChild(sitting.el); if (line && !line.isConnected) R.els.props.appendChild(line); });
-    R.on('beforeWalk', standUp); R.on('walk', standUp); R.on('activity', function () { standUp(); });
-    R.on('sheetHide', function () { if (!(CARE && CARE.live && CARE.live())) clearLine(); }); /* the line comes in with the sheet; a drifting float is the care step's to clear */
+    R.on('beforeWalk', standUp); R.on('walk', standUp); R.on('activity', function () { standUp(); invalidate(false); });
+    R.on('sheetHide', function () { invalidate(false); }); /* the line comes in with the sheet */
+    R.on('sheetReplace', function () { invalidate(false); });
+    doc.addEventListener('visibilitychange', function () { if (doc.hidden) invalidate(false); else if (spotSheet()) invalidate(true); }); /* away and back: the float is gone, the spot sheet is drawn fresh */
+    S.subscribe(function (reason) { if (reason === 'clear' || reason === 'import' || reason === 'external' || String(reason).indexOf('sync') === 0) { if (enc && (line || spotSheet())) invalidate(true); } else if (reason === 'state' && S.state().sleeping && (line || spotSheet())) invalidate(false); }); /* a reset or another tab under a bite: the old fish is forgotten */
   });
   HB.openSpot = openSpot; HB.openBook = openBook; HB.openBench = openBench;
 })(typeof window !== 'undefined' ? window : this);
