@@ -122,7 +122,8 @@ class RhythmeHealthPlugin : Plugin() {
         val hc = client() ?: return call.reject("Health Connect is not available on this device", "UNAVAILABLE")
         val name = call.getString("type") ?: ""
         val classes = types[name] ?: return call.reject("Unknown health type", "BAD_TYPES")
-        val from = call.getDouble("from"); val to = call.getDouble("to")
+        // epoch ms arrive as whole numbers, which PluginCall.getDouble does not return, so read any Number
+        val from = (call.data.opt("from") as? Number)?.toDouble(); val to = (call.data.opt("to") as? Number)?.toDouble()
         if (from == null || to == null || to <= from || to - from > maxDays * 86_400_000.0) return call.reject("The date window must be under a year", "BAD_WINDOW")
         val range = TimeRangeFilter.between(Instant.ofEpochMilli(from.toLong()), Instant.ofEpochMilli(to.toLong()))
         scope.launch {

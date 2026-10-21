@@ -144,6 +144,14 @@ RhythmeHealthPlugin.readSamples ──samples──▶  OvuHealthNative.read()
   counts, hand-written day wins, refresh not duplicate, empty read, 366-day cap, errors, nothing called when off).
 
 Verified on 21 October 2026: `./gradlew assembleDebug` builds the Android app with the plugin (Java 21, SDK 36).
+On an Android 15 emulator (Google APIs image, Health Connect built in) with the switch forced on in a local
+copy, tapping through showed Health Connect's onboarding, then its own screen asking to read exactly
+Menstruation, Sleep and Spotting, then the separate past-data screen. With the three allowed and past data
+refused, the plugin reported all three granted and `history: false`, and the three reads came back without
+error (empty: the emulator holds no health data). That run caught a real bug the unit tests could not:
+Capacitor's `PluginCall.getDouble` returns null for whole-number epoch milliseconds, so every read was refused
+as "window must be under a year"; the plugin now reads any `Number`. Records with real data in them have
+not been read on Android yet.
 A Debug build for the iOS 26.5 simulator (Xcode 26.6) compiles, and with the switch
 forced on in a local copy, Apple's Health Access sheet appears asking to read exactly Menstruation, Sleep
 and Spotting. Not verified: the read after tapping Allow (the simulator has no Health data and was driven
