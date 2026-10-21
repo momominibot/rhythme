@@ -10,7 +10,7 @@ The round-two findings:
 |---|---|---|
 | 1. Menopause wording | **FIXED** | `ovu-recipes.js:20` now describes insufficient evidence to recommend dietary changes, matching the [2023 statement](https://menopause.org/wp-content/uploads/professional/2023-nonhormone-therapy-position-statement.pdf). |
 | 2. Saved-layout collisions | **NOT FIXED completely, P3 residual** | The original crowded-layout reproduction now tidies correctly. The remaining 32%-tall-name case below escapes `H=30`. |
-| 3. E84 soft cheeses | **FIXED** | `ovu-evidence.js:109` preserves cooking requirements for pasteurised mould-ripened and soft blue cheeses, matching [NHS guidance](https://www.nhs.uk/pregnancy/keeping-well/foods-to-avoid/). |
+| 3. E106 soft cheeses | **FIXED** | `ovu-evidence.js:109` preserves cooking requirements for pasteurised mould-ripened and soft blue cheeses, matching [NHS guidance](https://www.nhs.uk/pregnancy/keeping-well/foods-to-avoid/). |
 | 4. Pending-route timer race | **FIXED** | `room.js:2788` clears and opens synchronously. Completion consumes after `onb=null`; Skip consumes immediately. Rare abandonment paths remain below. |
 | 5. Test weaknesses | **NOT FIXED completely, P3** | The original three mutations are caught. Coordinate persistence and some navigation behavior still escape coverage. |
 | 6. Faint hints | **FIXED** | `room.css:1828` uses secondary ink, approximately 5.7:1 on white. `ovu-night.css:158` supplies the brighter night colour. |
@@ -19,8 +19,8 @@ The round-two findings:
 The additional nits:
 
 - **Caffeine: FIXED.** `ovu-recipes.js:71` carries the pregnancy qualification within the drinks suggestion, including when no recipes render.
-- **Folic acid: FIXED.** `ovu-recipes.js:22` and E81 at `ovu-evidence.js:106` match the [NHS dose, timing and higher-dose exception](https://www.nhs.uk/pregnancy/keeping-well/pregnancy-vitamins-and-supplements/).
-- **E83 transition: FIXED in runtime copy.** `ovu-evidence.js:108` matches the [Lancet abstract](https://pubmed.ncbi.nlm.nih.gov/42119588/) without inventing a 2028 transition end. The old design-note sentence remains.
+- **Folic acid: FIXED.** `ovu-recipes.js:22` and E103 at `ovu-evidence.js:106` match the [NHS dose, timing and higher-dose exception](https://www.nhs.uk/pregnancy/keeping-well/pregnancy-vitamins-and-supplements/).
+- **E105 transition: FIXED in runtime copy.** `ovu-evidence.js:108` matches the [Lancet abstract](https://pubmed.ncbi.nlm.nih.gov/42119588/) without inventing a 2028 transition end. The old design-note sentence remains.
 - The earlier filter-focus, rabbit, commercial-sweets, atomic-save and selected-Yes fixes remain intact.
 
 Remaining findings, ranked:
@@ -101,6 +101,6 @@ Remaining findings, ranked:
 
    **Fix:** update those statements or label them explicitly as historical.
 
-All 13 retained MEDAS questions and hints substantively match Table 1, including serving sizes, thresholds, rabbit, commercial sweets and sofrito. The adaptation disclaimer and wine exclusion are clear. The pregnancy line is conservative relative to NHS exceptions; its fish restrictions and limits agree with the source. E73–E84 revealed no further substantive health-copy problem.
+All 13 retained MEDAS questions and hints substantively match Table 1, including serving sizes, thresholds, rabbit, commercial sweets and sofrito. The adaptation disclaimer and wine exclusion are clear. The pregnancy line is conservative relative to NHS exceptions; its fish restrictions and limits agree with the source. E95–E106 revealed no further substantive health-copy problem.
 
 VERDICT: NOT READY

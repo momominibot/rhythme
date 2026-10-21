@@ -17,7 +17,7 @@
   function here() { var L = R.layout(); return L ? L.id : null; }
   /* a step dropped from outside: its sheet is redrawn when it is still open, and whatever it changed on the plate is put
    * back either way (o.abort), so no bar and no half-lifted egg is left behind */
-  function cancel() { if (!cur) return; var c = cur; root.clearTimeout(c.t); cur = null; try { if (c.abort) c.abort(); if (c.box.isConnected && R.sheetOpen() && c.cancel) c.cancel(); } catch (e) { } }
+  function cancel(noRedraw) { if (!cur) return; var c = cur; root.clearTimeout(c.t); cur = null; try { if (c.abort) c.abort(); if (!noRedraw && c.box.isConnected && R.sheetOpen() && c.cancel) c.cancel(); } catch (e) { } } /* a sheet that replaced it is left alone (noRedraw) */
   /* the step on screen, or null: one whose sheet closed, changed or was left behind is dropped at once */
   function live() { if (cur && !(cur.box.isConnected && R.sheetOpen() && here() === cur.scene)) cancel(); return cur; }
   function step(box, o, done) {
@@ -32,7 +32,7 @@
       '<div class="slowbar' + (still ? ' still' : '') + '" aria-hidden="true"><i></i></div><p class="slowverb" role="status">' + esc(o.verb) + '</p>' +
       '<button type="button" class="btn ghost" data-slow="stop">Stop</button></div>';
     var bar = box.querySelector('.slowbar i');
-    if (o.start && !still) o.start(ms);
+    if (o.start) o.start(ms, still); /* the thing the line says to watch happens with reduced motion too; `still` asks the effect to land without a transition (Codex, 21 Oct) */
     if (!still) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { bar.style.transition = 'width ' + ms + 'ms linear'; bar.style.width = '100%'; }); });
     tok.t = root.setTimeout(function () {
       if (cur !== tok) return; cur = null;
@@ -46,6 +46,9 @@
   /* anything else taking over drops a pending step at once: a new place, another activity, the page going away */
   R.on('layout', cancel);
   R.on('activity', cancel);
+  R.on('sheetHide', cancel); /* X, the veil, Escape: the step ends with the sheet */
+  R.on('sheetReplace', function () { cancel(true); }); /* another sheet took its place: the plate is put back, the old sheet is not redrawn */
+  if (S.subscribe) S.subscribe(function (reason) { if (reason === 'clear' || reason === 'import') cancel(); else if (asleepNow() && cur) cancel(); }); /* Delete everything, a restored copy, or sleep beginning under a running step: nothing of it is saved */
   doc.addEventListener('visibilitychange', function () { if (doc.hidden) cancel(); });
   C.step = step; C.live = live; C.cancel = cancel; C.asleepNow = asleepNow;
 })(typeof window !== 'undefined' ? window : this);

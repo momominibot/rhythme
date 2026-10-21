@@ -7,12 +7,12 @@
 ```
 You are reviewing one commit in the Rhythme PWA repository (current directory), read-only. Do not modify files. You may use web search to check sources.
 
-Commit HEAD (af1b691): `git show HEAD`. Read ovu-recipes.js (data and scoring), the new functions openRecipes / openMedas / recSources / recCard / deskSpots in room.js, the evidence entries E73 to E82 in ovu-evidence.js, room.css and ovu-night.css additions, medas14.html (now a redirect stub), and the new test block recipesAndMedas in tools/test-core.js.
+Commit HEAD (af1b691): `git show HEAD`. Read ovu-recipes.js (data and scoring), the new functions openRecipes / openMedas / recSources / recCard / deskSpots in room.js, the evidence entries E95 to E104 in ovu-evidence.js, room.css and ovu-night.css additions, medas14.html (now a redirect stub), and the new test block recipesAndMedas in tools/test-core.js.
 
 The feature: a Recipes sheet (PCOS/PMOS, Menopause, Everyday) linking to recipe pages by Jean Hailes and the Bone Health & Osteoporosis Foundation, with the source's own title and one line of ours per recipe, plus HealthHub guides; and a Mediterranean check (MEDAS from PREDIMED without its wine item: 13 items, Yes / Not yet, no grades, saved in OvuStore state.medas) that suggests recipes for "not yet" habits. It replaces the old medas14.html page.
 
 Find real defects. For each: severity (blocker / should-fix / nit), file:line, the failing scenario, and the fix. In particular:
-1. Facts: open the cited pages (each recipe URL and each E73-E82 source) and check that every title, every "why" line (ingredients), every group note and every evidence summary matches its source. Flag any overclaim about PCOS, menopause, fertility or ovaries, and any line unsafe in pregnancy or for people with eating disorders.
+1. Facts: open the cited pages (each recipe URL and each E95-E104 source) and check that every title, every "why" line (ingredients), every group note and every evidence summary matches its source. Flag any overclaim about PCOS, menopause, fertility or ovaries, and any line unsafe in pregnancy or for people with eating disorders.
 2. MEDAS fidelity: compare the 13 questions and hints with the 14 items and criteria of the published screener (Martinez-Gonzalez 2012 PLoS One Table 1; Schroder 2011 J Nutr).
 3. Code: XSS (all text through esc?), listeners piling up on re-render, the yes / not-yet toggle and saving, the hash routes #medas and #recipes, the action routing (recipes:<group>), deskSpots collisions and edge cases (saved positions, more folders than cells), night-theme coverage, accessibility (aria-pressed, tablist roles, focus), and anything that breaks existing behaviour (the Nutrition folder, the old medas14.html link, privacy-local.js listing ovuluna_medas14).
 4. Tests: do the new checks test what they claim?
@@ -57,7 +57,7 @@ Found eight should-fix issues and two nits. No files were modified.
 
 `node tools/test-core.js` passed **922 checks**. However, all 12 new checks also passed an in-memory mutation changing vegetables to **20 servings daily** and pointing a recipe at a nonexistent path. They verify data structure, selected strings and pure scoring, not source fidelity, link availability or UI behavior. Add behavioral coverage for saving, clearing, routing, desk allocation and focus.
 
-The remaining recipe titles and ingredient descriptions matched retrieved source text; chicken and carrots required indexed first-party text because direct requests returned errors. E73–E82 summaries matched their primary sources. No listener accumulation or exploitable XSS was found in the new rendering paths. Normal toggling, `aria-pressed` updates and action routing are consistent. Retaining `ovuluna_medas14` for historical privacy controls is appropriate; current answers participate in the main store’s export/deletion.
+The remaining recipe titles and ingredient descriptions matched retrieved source text; chicken and carrots required indexed first-party text because direct requests returned errors. E95–E104 summaries matched their primary sources. No listener accumulation or exploitable XSS was found in the new rendering paths. Normal toggling, `aria-pressed` updates and action routing are consistent. Retaining `ovuluna_medas14` for historical privacy controls is appropriate; current answers participate in the main store’s export/deletion.
 
 VERDICT: NOT READY
 

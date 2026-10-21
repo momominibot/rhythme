@@ -6,7 +6,7 @@
   This is not an accepted international rename in the 2023 PCOS guideline or current clinical practice. A single Jean Hailes page dated 2026 cannot establish that PCOS “is now also called” PMOS. Do not present PMOS as a recognised synonym or replacement.  
   **Replacement:** “Some resources are beginning to use the term PMOS, but PCOS remains the standard clinical name used in Singapore and in the 2023 international guideline.”
 
-- **“PCOS has been renamed polyendocrine metabolic ovarian syndrome (PMOS)” in source E75.**  
+- **“PCOS has been renamed polyendocrine metabolic ovarian syndrome (PMOS)” in source E97.**  
   This is presented as established fact, but it is not supported by the cited 2023 international guideline. It may confuse users searching for care, insurance claims or medication information. If retained, label it explicitly as terminology used by that resource, not a global rename.
 
 - **“There, more yeses went with better cholesterol, blood sugar and waistlines.”**  

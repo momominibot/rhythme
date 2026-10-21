@@ -149,3 +149,57 @@ input:focus,select:focus,textarea:focus{border-color:var(--rm-lilac);box-shadow:
 
 /* a card whose numbers did not refresh says so */
 .card h2 .stale{color:#b04a63;font-weight:800}
+.brand .rh-logo{display:inline-block;width:1.4em;height:1.4em;border-radius:28%;object-fit:cover;vertical-align:middle;margin-right:.45em;box-shadow:0 1px 4px rgba(90,66,116,.25)}
+
+/* ---------- dreamier (Jamie, 21 Oct: "same aesthetic but even more dreamy with clouds") ---------- */
+body{background:linear-gradient(180deg,#cdb9ea 0%,#e4d3f3 38%,#f6dfe8 72%,#fbe9dc 100%) fixed}
+.sky{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.sky .cl{position:absolute;width:260px;height:90px;border-radius:999px;background:rgba(255,255,255,.72);filter:blur(1px);opacity:.9;
+  box-shadow:60px -34px 0 10px rgba(255,255,255,.78),130px -14px 0 4px rgba(255,255,255,.7),-40px -10px 0 -6px rgba(255,255,255,.65),30px 18px 0 -10px rgba(240,226,250,.8);animation:drift 90s linear infinite}
+.sky .c1{top:8%;left:-20%;transform:scale(.9)}.sky .c2{top:22%;left:70%;transform:scale(1.2);animation-duration:120s;animation-delay:-40s;opacity:.75}
+.sky .c3{top:46%;left:-10%;transform:scale(.7);animation-duration:70s;animation-delay:-20s;opacity:.6}.sky .c4{top:64%;left:60%;transform:scale(1);animation-duration:110s;animation-delay:-70s;opacity:.55}
+.sky .c5{top:82%;left:10%;transform:scale(.8);animation-duration:95s;animation-delay:-10s;opacity:.5}.sky .c6{top:35%;left:35%;transform:scale(.55);animation-duration:80s;animation-delay:-55s;opacity:.45}
+@keyframes drift{from{margin-left:-20vw}to{margin-left:120vw}}
+.sky .tw{position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 10px 3px rgba(255,255,255,.8);animation:twk 3.4s ease-in-out infinite}
+.sky .t1{top:12%;left:18%}.sky .t2{top:30%;left:82%;animation-delay:-1s}.sky .t3{top:58%;left:8%;animation-delay:-2s}.sky .t4{top:74%;left:88%;animation-delay:-.5s}.sky .t5{top:90%;left:45%;animation-delay:-2.6s}
+@keyframes twk{0%,100%{opacity:.25;transform:scale(.7)}50%{opacity:1;transform:scale(1.15)}}
+.wrap{position:relative;z-index:1;background:rgba(250,245,253,.94)} /* no backdrop-filter here: it would pin the fixed bottom bar to the page instead of the viewport (Codex) */
+@media(min-width:800px){.wrap{box-shadow:0 30px 80px rgba(90,66,116,.25)}}
+.card{box-shadow:0 10px 30px rgba(120,96,160,.14),0 0 0 1px rgba(255,255,255,.6) inset}
+nav.tabs{background:rgba(255,255,255,.88)}
+/* Nimbus and the team */
+.card.nimbus{background:linear-gradient(160deg,#fff 0%,#f7f0fd 100%);overflow:hidden}
+.nimrow{display:flex;gap:12px;align-items:flex-start}
+.cloudy{flex:none;filter:drop-shadow(0 6px 10px rgba(90,66,116,.16));animation:bob 5.5s ease-in-out infinite}
+.cloudy .body{transform-origin:50% 60%}
+.say{position:relative;flex:1;min-width:0;background:var(--rm-paper-2);border-radius:18px;padding:11px 13px}
+.say::before{content:'';position:absolute;left:-7px;top:22px;width:14px;height:14px;background:var(--rm-paper-2);transform:rotate(45deg);border-radius:3px}
+.say .who{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-2);margin-bottom:3px}
+.say p{margin:0;font-size:13.5px;line-height:1.45;color:var(--rm-ink)}
+.say small{display:block;margin-top:5px;font-size:11.5px;color:var(--rm-ink-2);font-weight:600}
+.team{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:12px}
+.mate{position:relative;border:0;background:rgba(255,255,255,.7);border-radius:16px;padding:8px 4px 9px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-width:0}
+.mate .cloudy{width:62px;height:45px;animation-delay:calc(var(--i,0) * -1.3s)}
+.mate b{font-size:12px;color:var(--rm-plum)}
+.mate small{font-size:9.5px;font-weight:700;color:var(--rm-ink-2);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.mate .st{position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:#c9bdd1}
+.mate .st.measured{background:var(--rm-ok)}.mate .st.insufficient{background:var(--rm-warn)}
+.mate:focus-visible{outline:2px solid var(--rm-mauve);outline-offset:2px}
+.mate:nth-child(2){--i:1}.mate:nth-child(3){--i:2}.mate:nth-child(4){--i:3}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.agent .mhead{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.agent .mhead .cloudy{width:70px;height:51px}
+.agent .mhead h3{margin:0}
+.agent .say{margin:4px 0 8px}
+.agent .owns{margin-top:8px}
+.agent .owns summary{font-size:11.5px;font-weight:800;color:var(--rm-mauve);cursor:pointer}
+/* charts */
+.chart{margin:10px 0 4px}
+.chart svg{width:100%;height:auto;display:block}
+.chart .g{stroke:rgba(107,82,142,.14);stroke-width:1}
+.chart .ax{font:600 9px var(--sans);fill:var(--rm-ink-2)}
+.chart.empty{font-size:12px;color:var(--rm-ink-2);background:var(--rm-paper-2);border-radius:12px;padding:12px;text-align:center}
+.mrows{display:flex;flex-direction:column;margin:4px 0 2px}
+.mrows .metric{border-top:1px solid var(--line)}
+.mrows .metric:first-child{border-top:0}
+@media (prefers-reduced-motion: reduce){.sky .cl,.sky .tw,.cloudy{animation:none}}

@@ -94,6 +94,7 @@
         { id: 'window', x: 40, y: 30, label: 'Window · tonight', icon: 'dark_mode', wp: null },
         { id: 'diary', x: 33, y: 75, label: 'Kitchen · food diary', icon: 'menu_book', wp: { x: 34, y: 84, flip: true } },
         { id: 'fridge', x: 16, y: 72, label: 'Fridge · food ideas, teas and herbs', icon: 'kitchen', wp: { x: 22, y: 85, flip: true } },
+        { id: 'stove', x: 27, y: 68, label: 'Stove · cook a dish', icon: 'skillet', wp: { x: 28, y: 85, flip: true } }, /* the farm kitchen (ovu-kitchen.js), 21 Oct */
         { id: 'coach', x: 22, y: 62, label: 'M · everyday mindfulness', icon: 'self_improvement', badge: 'M', wp: { x: 28, y: 85, flip: true } },
         { id: 'computer', x: 66, y: 64, label: 'Computer · learn', icon: 'computer', wp: { x: 62, y: 82, flip: false } },
         { id: 'sofa', x: 78, y: 71, label: 'Sofa · tell Luna about today', icon: 'chair', wp: { x: 72, y: 85, flip: false } },
@@ -191,7 +192,11 @@
     },
     sleep: {
       icon: 'bedtime', title: 'How the sleep notes work',
-      body: '<p>Duration is bedtime to wake time, so it counts time in bed rather than measured sleep. Quality is your own 1 to 5 rating. The app notes weeks averaging under 6 hours and runs of three nights under 5 hours.</p>'
+      body: '<p>Duration is bedtime to wake time, so it counts time in bed rather than measured sleep. Quality is your own 1 to 5 rating. The app notes weeks averaging under 6 hours and runs of three nights under 5 hours.</p><p>The optional sleep details are Rhythme’s own questions, built on the standard sleep diary sleep researchers use. Skip any of them: a blank answer stays unknown and is never counted as zero. Patterns count only the nights that answered, and “over 30 minutes” is a research marker, not a diagnosis.</p>'
+    },
+    sleepcheck: {
+      icon: 'fact_check', title: 'About the two-week check',
+      body: '<p>Eight questions about the last two weeks, in Rhythme’s own words. They follow what doctors ask about: how often sleep is hard and whether it affects your day, whether you have time and a place to sleep, breathing at night, restless legs and sleepiness at the wheel. There is no score. Some answers bring a note about when to see a doctor, and any doctor’s visit is fine without one.</p>'
     },
     food: {
       icon: 'restaurant', title: 'Where the numbers come from',
@@ -199,7 +204,7 @@
     },
     cycle: {
       icon: 'calendar_month', title: 'How predictions are made',
-      body: '<p>The next period is estimated from the average of your last logged cycles (or your profile setting, or 28 days until there is history). The fertile window shown is a calendar estimate around 14 days before the expected period and is not a contraceptive method. Tapping a past day fills a typical period length so you can backdate quickly, then adjust any day.</p>'
+      body: '<p>The next period is estimated from the average of your last logged cycles (or the cycle length in your profile; with no history yet, no date is shown). The fertile window shown is a calendar estimate: the six days ending on the estimated ovulation day (about 14 days before the expected period) and the day after. It is not a contraceptive method. Tapping a past day fills a typical period length so you can backdate quickly, then adjust any day.</p>'
     },
     acu: {
       icon: 'spa', title: 'What the research says about acupressure',
@@ -207,7 +212,7 @@
     },
     reminders: {
       icon: 'alarm', title: 'Why these four nudges',
-      body: '<p>Regular sleep and wake times, water through the day, short movement breaks and a couple of minutes of slow breathing are the everyday habits with the broadest support for sleep, energy and mood. The clock reminds you; it does not track whether you did it. Notifications depend on your phone: they fire while Rhythme is open or installed to the Home Screen, and the calendar file gives you alarms that always ring.</p>'
+      body: '<p>Regular sleep and wake times, water through the day, short movement breaks and a couple of minutes of slow breathing are the everyday habits with the broadest support for sleep, energy and mood. The clock reminds you; it does not track whether you did it. Notifications depend on your phone: they fire while Rhythme is open, and the calendar file puts the times in your phone’s calendar, whose alerts follow your phone’s settings.</p>'
     },
     move: {
       icon: 'directions_run', title: 'How Movement counts',
@@ -534,15 +539,17 @@
     if (isFinite(x) && isFinite(y)) placeAvatar({ x: x, y: y }, avatar.classList.contains('flip'));
     avatar.classList.remove('walking', 'landing'); avatar.classList.add('idle');
   }
-  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
+  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null, sheetSeq = 0; /* counts sheets opened, so a delayed open can tell if she moved on */
   function openSheet(id, title, sub, icon, html) {
+    if (current) emit('sheetReplace', id); /* a care step or a cast in the old sheet ends with it (Codex, 21 Oct) */
     careOn = false; /* a new sheet replaces Luna's chat and any card in it; Luna sets it again when she shows one */
     if (current === 'diary') stopCamera();
     current = id; sheetSeq++; $('#sheetTitle').innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');
-    $('#sheetIcon').innerHTML = '<span class="ms">' + esc(icon) + '</span>';
+    sheet.classList.toggle('luna-sheet', id === 'luna'); /* Luna's chat is a floating card with her face (Jamie, 21 Oct: the Ovuluna panel) */
+    $('#sheetIcon').innerHTML = id === 'luna' ? '<img class="lunaico" src="assets/room/dream/orb-luna.webp" alt="">' : '<span class="ms">' + esc(icon) + '</span>';
     /* a fresh body node each time, so listeners from the previous sheet (or a re-render of this one) never pile up */
     var fresh = body.cloneNode(false); body.parentNode.replaceChild(fresh, body); body = fresh; wireGuides(body);
     body.innerHTML = html; body.scrollTop = 0;
@@ -550,7 +557,7 @@
     sheet.setAttribute('aria-hidden', 'false');
     var first = body.querySelector('input,button,select,textarea,a'); if (first && window.matchMedia('(hover:hover)').matches) try { first.focus({ preventScroll: true }); } catch (e) { }
   }
-  function hideSheet() { var was = current; current = null; if (was === 'practiceDone' && practice && practice.endFn) { var fin = practice.endFn; setTimeout(function () { fin(false); }, 0); } /* closing "How was that?" any way ends the practice and puts her back (Jamie, 20 Oct) */ careOn = false; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
+  function hideSheet() { var was = current; current = null; if (was === 'practiceDone' && practice && practice.endFn) { var fin = practice.endFn; setTimeout(function () { fin(false); }, 0); } /* closing "How was that?" any way ends the practice and puts her back (Jamie, 20 Oct) */ careOn = false; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); emit('sheetHide'); }
   function closeSheet() {
     if (current === 'diary') stopCamera();
     if (current === 'mind' && session) stopSession(true);
@@ -569,6 +576,8 @@
       if (h.id === 'bed') { openSheetFor('bed'); return; }
       toast('Morning start is running. Stop it first, or carry on.', 'wb_twilight'); return;
     }
+    if (window.OvuSeats && OvuSeats.active()) { if (h.id === 'bed') { openSheetFor('bed'); return; } toast('Stop to get up first.', 'chair'); return; }
+    if (practice) { if (h.id === 'bed') { openSheetFor('bed'); return; } toast('Finish the practice first, or tap Stop.', 'self_improvement'); return; } /* never a straight walk through the furniture (Codex sweep, 21 Oct) */ /* a seated practice (ovu-seats.js): she stays on the bench */
     var btn = $('.hotspot[data-id="' + h.id + '"]'); if (btn) { btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump'); }
     chime('tap'); hideBubble(); clearTimeout(idleTimer); /* a pending walk home must not cancel this walk */
     var visited = S.state().visited || {}; visited[h.id] = true; S.setState({ visited: visited });
@@ -603,7 +612,98 @@
   function sleepListHTML() {
     var st = S.sleepStats(7);
     if (!st.nights.length) return '<div class="empty">No nights recorded yet. Your first entry starts the pattern.</div>';
-    return '<div class="entries">' + (st.entries || st.nights).slice().reverse().map(function (n) { /* one row per entry, so each can be deleted; the agents count one night per date */ return '<div class="entry"><span class="ms">bedtime</span><div class="body"><b>' + esc(prettyDate(n.date)) + ' · ' + esc(A.fmtHours(n.hours)) + '</b><span>' + (n.quality ? 'Quality ' + n.quality + '/5' : 'Quality not rated') + '</span></div><button class="del" data-del="' + esc(n.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>'; }).join('') + '</div>';
+    return '<div class="entries">' + (st.entries || st.nights).slice().reverse().map(function (n) { /* one row per entry, so each can be deleted; the agents count one night per date */ return '<div class="entry"><span class="ms">bedtime</span><div class="body"><b>' + esc(prettyDate(n.date)) + ' · ' + esc(A.fmtHours(n.hours)) + '</b><span>' + (n.quality ? 'Quality ' + n.quality + '/5' : 'Quality not rated') + (detailOf(n.id) ? ' · ' + esc(detailOf(n.id)) : '') + '</span></div><button class="del" data-del="' + esc(n.id) + '" aria-label="Delete"><span class="ms">delete</span></button></div>'; }).join('') + '</div>';
+  }
+  /* ---------- optional sleep details and the two-week sleep check (labels and rules in ovu-agents.js) ----------
+   * Every question can be left blank (unknown) or answered "Not sure"; a second tap on a chosen answer clears it. */
+  function chipGroupHTML(map, key, val) {
+    var L = map[key], multi = key === 'woke', on = function (v) { return multi ? (val || []).indexOf(v) > -1 : val === v; };
+    return '<div class="field sqf" data-sq="' + key + '"' + (multi ? ' data-multi="1"' : '') + '><span class="lbl">' + esc(L.q) + '</span>' + (L.hint ? '<small class="sqhint">' + esc(L.hint) + '</small>' : '') +
+      '<div class="chips" role="group" aria-label="' + esc(L.q) + '">' + L.opts.map(function (o) { return '<button type="button" class="chipbtn' + (on(o[0]) ? ' on' : '') + '" data-v="' + esc(o[0]) + '" aria-pressed="' + (on(o[0]) ? 'true' : 'false') + '">' + esc(o[1]) + '</button>'; }).join('') + '</div></div>';
+  }
+  function wireChipGroups(root, onChange) {
+    root.addEventListener('click', function (e) {
+      var b = e.target.closest('.sqf .chipbtn'); if (!b) return;
+      var g = b.closest('.sqf'), multi = g.dataset.multi === '1', was = b.classList.contains('on');
+      if (!multi) $$('.chipbtn', g).forEach(function (x) { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); });
+      b.classList.toggle('on', !was); b.setAttribute('aria-pressed', !was ? 'true' : 'false');
+      if (onChange) onChange(g.dataset.sq);
+    });
+  }
+  function readChipGroups(root) {
+    var out = {};
+    $$('.sqf', root).forEach(function (g) {
+      if (g.hidden) return;
+      var vals = $$('.chipbtn.on', g).map(function (b) { return b.dataset.v; });
+      if (g.dataset.multi === '1') { if (vals.length) out[g.dataset.sq] = vals; } else if (vals[0] !== undefined) out[g.dataset.sq] = vals[0];
+    });
+    return out;
+  }
+  function sleepDetailsHTML() {
+    return '<div class="sqbox"><button type="button" class="btn ghost sqtoggle" aria-expanded="false" aria-controls="sqBody" id="sqToggle"><span class="ms">add</span>Add sleep details (optional)</button>' +
+      '<div class="sqbody" id="sqBody" hidden><p class="help">Skip any question. These notes help you see patterns; they are not a sleep test or a score.</p>' +
+      A.DETAIL_ORDER.map(function (k) { return chipGroupHTML(A.SLEEP_LABELS, k, null); }).join('') + '<p class="help sqclearrow"><button type="button" class="linkbtn" id="sqClear">Clear these answers</button></p></div></div>';
+  }
+  function wireSleepDetails(root) {
+    var t = $('#sqToggle', root), bd = $('#sqBody', root); if (!t || !bd) return;
+    function awakeShown() { var w = $('.sqf[data-sq="wakeups"] .chipbtn.on', bd); $('.sqf[data-sq="awake"]', bd).hidden = !w || w.dataset.v === '0'; }
+    t.addEventListener('click', function () { var open = bd.hidden, n = Object.keys(readChipGroups(bd)).length; bd.hidden = !open; t.setAttribute('aria-expanded', open ? 'true' : 'false'); t.innerHTML = open ? '<span class="ms">remove</span>Hide sleep details' : (n ? '<span class="ms">add</span>Sleep details (' + n + ' answered, kept)' : '<span class="ms">add</span>Add sleep details (optional)'); });
+    var cl = $('#sqClear', bd); if (cl) cl.addEventListener('click', function () { Array.prototype.forEach.call(bd.querySelectorAll('.chipbtn.on'), function (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); }); awakeShown(); });
+    wireChipGroups(bd, function (k) { if (k === 'wakeups') awakeShown(); });
+    awakeShown();
+  }
+  /* the answers count whether the box is open or folded away (Codex, 21 Oct: folding it used to drop them); Clear these answers is the one way to drop them */
+  function readSleepDetails(root) { var bd = $('#sqBody', root); if (!bd) return null; var d = readChipGroups(bd); return Object.keys(d).length ? d : null; }
+  /* the night form survives a trip to the two-week check and back (Codex, 21 Oct), the quality moons included */
+  var sleepDraft = null;
+  function keepSleepDraft(body) { var bd = $('#sqBody', body); if (!$('#slBed', body)) return; sleepDraft = { q: Number(($('.moons', body) || { dataset: {} }).dataset.value || 0) || 0, date: $('#slDate', body).value, bed: $('#slBed', body).value, wake: $('#slWake', body).value, notes: ($('#slNotes', body) || {}).value || '', open: !!(bd && !bd.hidden), details: bd ? readChipGroups(bd) : {} }; }
+  function restoreSleepDraft(body) {
+    var d = sleepDraft; if (!d) return; sleepDraft = null;
+    if ($('#slDate', body) && d.date) $('#slDate', body).value = d.date; if ($('#slBed', body)) $('#slBed', body).value = d.bed || ''; if ($('#slWake', body)) $('#slWake', body).value = d.wake || ''; if ($('#slNotes', body)) $('#slNotes', body).value = d.notes || '';
+    var bd = $('#sqBody', body), t = $('#sqToggle', body);
+    if (bd) { Object.keys(d.details || {}).forEach(function (k) { [].concat(d.details[k]).forEach(function (v) { var b = bd.querySelector('.sqf[data-sq="' + k + '"] .chipbtn[data-v="' + v + '"]'); if (b) { b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); } }); }); var w = bd.querySelector('.sqf[data-sq="wakeups"] .chipbtn.on'), aw = bd.querySelector('.sqf[data-sq="awake"]'); if (aw) aw.hidden = !w || w.dataset.v === '0'; }
+    if (d.open && t && bd && bd.hidden) t.click();
+    var mo = $('.moons', body); if (mo && d.q) { mo.dataset.value = d.q; $$('button', mo).forEach(function (x, i) { x.classList.toggle('on', i < d.q); x.textContent = i < d.q ? '🌕' : '🌑'; }); } /* the quality moons come back too (menopause walk, 21 Oct) */
+  }
+  function detailLine(d) {
+    if (!d) return '';
+    var L = A.SLEEP_LABELS, lab = function (k) { var o = L[k].opts.filter(function (x) { return x[0] === d[k]; })[0]; return o ? o[1] : ''; }, bits = [];
+    if (d.latency && d.latency !== 'unsure') bits.push(lab('latency').toLowerCase() + ' to fall asleep');
+    if (d.wakeups && d.wakeups !== 'unsure') bits.push(d.wakeups === '0' ? 'no waking' : 'woke ' + (d.wakeups === '4+' ? '4+ times' : d.wakeups + (d.wakeups === '1' ? ' time' : ' times')));
+    if (d.early === 'yes') bits.push('woke too early');
+    if (d.rested && d.rested !== 'unsure') bits.push('rested: ' + lab('rested').toLowerCase());
+    return bits.join(' · ');
+  }
+  function detailOf(id) { var e = S.get(id); return e && e.data && e.data.details ? detailLine(S.cleanSleepDetails(e.data.details)) : ''; }
+  function sqNoteHTML(n) { return '<div class="sqnote ' + esc(n.level) + '"><b>' + esc(n.title) + '</b><p>' + esc(n.message) + '</p></div>'; }
+  /* the latest check's notes stay on show for two weeks, whatever else was or was not answered */
+  function sleepCheckCardHTML() {
+    var all = S.list('sleepcheck'), lastDay = all.length ? all.map(function (e) { return e.date; }).sort().slice(-1)[0] : null, last = lastDay ? S.latestOnDate('sleepcheck', lastDay) : null, age = last ? S.diffDays(last.date, S.today()) : null, due = !last || age >= 14;
+    var notes = last && age < 14 ? A.sleepCheckNotes(last.data) : [];
+    return '<div class="stat sqcard"><span class="ms">fact_check</span><div><b>Two-week sleep check</b><span>' + (last ? 'Last done ' + esc(prettyDate(last.date)) + (due ? '. Ready for another.' : '.') : 'Eight short questions about the last two weeks. About a minute.') + '</span></div><button type="button" class="btn soft" id="openSleepCheck" style="flex:0 0 auto">' + (last && !due ? 'Open' : 'Start') + '</button></div>' +
+      (notes.length ? '<div class="sqnotes">' + notes.map(sqNoteHTML).join('') + '</div>' : '');
+  }
+  function openSleepCheck() {
+    var last = S.list('sleepcheck', { from: S.today(), to: S.today() })[0], a = last ? last.data : {};
+    openSheet('sleepcheck', 'Two-week sleep check', 'Optional. Not a test or a score.', 'fact_check',
+      '<p class="help">These questions cover the last two weeks. Skip any you like. Your answers stay in your diary, and some may come with a note about when to talk to a doctor.</p>' +
+      A.CHECK_ORDER.map(function (k) { return chipGroupHTML(A.CHECK_LABELS, k, a[k]); }).join('') +
+      '<button class="btn primary" id="saveSleepCheck" style="width:100%"><span class="ms">check</span>Save the check</button><div class="msg" id="sqMsg"></div><div id="sqResult"></div>' + guideHTML('sleepcheck'));
+    var root = body;
+    function sinceShown() { var w1 = $('.sqf[data-sq="w1"] .chipbtn.on', root), w2 = $('.sqf[data-sq="w2"] .chipbtn.on', root); $('.sqf[data-sq="since"]', root).hidden = !!(w1 && w2 && w1.dataset.v === '0' && w2.dataset.v === '0'); }
+    wireChipGroups(root, function (k) { if (k === 'w1' || k === 'w2') sinceShown(); }); sinceShown();
+    $('#saveSleepCheck').addEventListener('click', function () {
+      try {
+        var ev = S.add('sleepcheck', S.today(), readChipGroups(root), 'room'), notes = A.sleepCheckNotes(ev.data);
+        chime('save'); message($('#sqMsg'), 'Saved to your diary.', true);
+        $('#sqResult').innerHTML = (notes.length ? notes.map(sqNoteHTML).join('') + '<small class="sqsmall">Rhythme cannot assess your sleep or diagnose. These notes follow published guidance; no clinician receives them.</small>' : '<div class="sqnote info"><b>Nothing to flag from these answers</b><p>If sleep is worrying you, it is always fine to talk to a doctor about it.</p></div>') +
+          '<div class="row"><button type="button" class="btn ghost" id="sqBack"><span class="ms">arrow_back</span>Back to sleep</button></div>';
+        $('#sqBack').addEventListener('click', openSleepRecord);
+        if (notes.some(function (n) { return n.level !== 'info'; })) { careOn = true; endMoment(); } /* a care note on screen holds the cheerful moments, as a care card does */
+        $('#sqResult').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'nearest' });
+        renderDeck();
+      } catch (e) { message($('#sqMsg'), e.message, false); }
+    });
   }
   function openBedtime() {
     openSheet('bedtime', 'Ready for bed?', 'Your room will dim while you sleep', 'bedtime',
@@ -627,11 +727,11 @@
     openSheet('wake', 'Good morning!', 'Finish last night’s sleep entry', 'wb_twilight',
       '<div class="stat"><span class="ms">bedtime</span><div><b>Bedtime ' + esc(sl.bedTime || '--:--') + '</b><span>Started ' + esc(sl.startedAt ? new Date(sl.startedAt).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '') + '</span></div></div>' +
       '<div class="grid2"><div class="field"><label for="wakeTime">Wake time</label><input class="input" id="wakeTime" type="time" value="' + nowHM() + '"></div><div class="field"><label for="wakeDate">Morning of</label><input class="input" id="wakeDate" type="date" value="' + S.today() + '" max="' + S.today() + '"></div></div>' +
-      '<div class="field"><div class="lbl-row"><span class="lbl">How did you sleep?</span>' + infoBtn('sleep') + '</div>' + moonsHTML('q', 0) + guideHTML('sleep') + '</div>' +
+      '<div class="field"><div class="lbl-row"><span class="lbl">How did you sleep?</span>' + infoBtn('sleep') + '</div>' + moonsHTML('q', 0) + guideHTML('sleep') + '</div>' + sleepDetailsHTML() +
       '<div class="field"><label for="wakeNotes">Notes (optional)</label><textarea class="input" id="wakeNotes" placeholder="Woke twice, vivid dreams, warm night..."></textarea></div>' +
       '<div class="row"><button class="btn primary" id="saveWake"><span class="ms">wb_sunny</span>Save my sleep</button><button class="btn ghost" id="cancelSleep">I did not sleep</button></div>' +
       '<div class="msg" id="sleepMsg"></div>');
-    wireMoons(body);
+    wireMoons(body); wireSleepDetails(body);
     if (soundOn()) new Audio(ERIN + 'morning_how.mp3').play().catch(function () { });
     $('#cancelSleep').addEventListener('click', function () { exitNight(); S.setState({ sleeping: null }); closeSheet(); toast('No worries. Nothing was recorded.', 'wb_sunny'); });
     $('#saveWake').addEventListener('click', function () {
@@ -639,10 +739,11 @@
       var cur = (S.reload ? S.reload() : S.state()).sleeping; if (!cur || (cur.startedAt || cur.at) !== (sl.startedAt || sl.at)) { closeSheet(); toast('This night was already saved.', 'wb_sunny'); return; }
       try {
         var q = Number($('.moons', body).dataset.value || 0) || null;
-        var ev = S.add('sleep', $('#wakeDate').value, { bedTime: sl.bedTime, wakeTime: $('#wakeTime').value, quality: q, notes: $('#wakeNotes').value.trim(), mode: 'room' });
+        var wd = { bedTime: sl.bedTime, wakeTime: $('#wakeTime').value, quality: q, notes: $('#wakeNotes').value.trim(), mode: 'room' }, det = readSleepDetails(body); if (det) wd.details = det;
+        var ev = S.add('sleep', $('#wakeDate').value, wd);
         if (window.OvuStamina && OvuStamina.rested) OvuStamina.rested(sl.startedAt); /* a saved night of real rest refills her energy; going to bed does not */
         exitNight(); S.setState({ sleeping: null }); closeSheet(); chime('save');
-        afterSave(ev, 'Slept ' + A.fmtHours(S.sleepHours(ev.data)) + '. Saved to your journal.');
+        afterSave(ev, (typeof ev.data.asleepMin === 'number' && ev.data.asleepMin > 0 ? 'Slept ' + A.fmtHours(S.sleepHours(ev.data)) : A.fmtHours(S.sleepHours(ev.data)) + ' from bedtime to waking') + '. Saved to your journal.');
       } catch (e) { message($('#sleepMsg'), e.message, false); }
     });
   }
@@ -650,13 +751,13 @@
   var RM = window.OvuRemind;
   var DAYN = ['S', 'M', 'T', 'W', 'T', 'F', 'S'], DAYF = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   function clockTabs(on) { return '<div class="tabs" id="clockTabs"><button type="button" data-tab="reminders" class="' + (on === 'reminders' ? 'on' : '') + '">Reminders</button><button type="button" data-tab="sleep" class="' + (on === 'sleep' ? 'on' : '') + '">Record a night</button></div>'; }
-  function wireClockTabs() { var t = $('#clockTabs'); if (!t) return; t.addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b) return; chime('tap'); if (b.dataset.tab === 'sleep') openSleepRecord(); else openClock(); }); }
+  function wireClockTabs() { var t = $('#clockTabs'); if (!t) return; t.addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b || b.classList.contains('on')) return; chime('tap'); /* the active tab is a no-op: it must not wipe the form */ if (b.dataset.tab === 'sleep') openSleepRecord(); else openClock(); }); }
   function daysText(days) { if (days.length === 7) return 'Every day'; if (days.join() === '1,2,3,4,5') return 'Weekdays'; if (days.join() === '0,6') return 'Weekends'; return days.map(function (d) { return DAYF[d].slice(0, 3); }).join(', '); }
   function fmtTime(t) { var h = Number(t.slice(0, 2)), m = t.slice(3), ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12; return h + (m === '00' ? '' : ':' + m) + ap; }
   function permBox() {
     var p = RM.permission(), ios = RM.isIOS() && !RM.standalone();
     if (!RM.supported() || ios) return '<div class="stat"><span class="ms">ios_share</span><div><b>' + (ios ? 'Add Rhythme to your Home Screen for notifications' : 'This browser cannot show notifications') + '</b><span>' + (ios ? 'In Safari tap Share, then “Add to Home Screen”, and open Rhythme from there. Or add the reminders to your calendar below; those alarms always ring.' : 'Add the reminders to your calendar below instead; those alarms always ring.') + '</span></div></div>';
-    if (p === 'granted') return '<div class="stat"><span class="ms">notifications_active</span><div><b>Notifications are on</b><span>They fire while Rhythme is open or installed. For alarms that always ring, add them to your calendar too.</span></div></div>';
+    if (p === 'granted') return '<div class="stat"><span class="ms">notifications_active</span><div><b>Notifications are on</b><span>They fire while Rhythme is open. For reminders while it is closed, add them to your phone’s calendar too; its alerts follow your phone’s settings.</span></div></div>';
     if (p === 'denied') return '<div class="stat"><span class="ms">notifications_off</span><div><b>Notifications are blocked</b><span>Allow them for this site in your browser settings, or add the reminders to your calendar below.</span></div></div>';
     return '<div class="stat"><span class="ms">notifications</span><div><b>Allow notifications</b><span>So the clock can nudge you at the times you choose.</span></div><button type="button" class="btn soft" id="remAllow" style="flex:0 0 auto">Allow</button></div>';
   }
@@ -710,16 +811,20 @@
       clockTabs('sleep') + '<div class="grid2"><div class="field"><label for="slDate">Morning of</label><input class="input" id="slDate" type="date" value="' + S.today() + '" max="' + S.today() + '"></div><div class="field"><label for="slBed">Bedtime</label><input class="input" id="slBed" type="time" value=""></div></div>' +
       '<div class="grid2"><div class="field"><label for="slWake">Wake time</label><input class="input" id="slWake" type="time" value=""></div><div class="field"><div class="lbl-row"><span class="lbl">Quality</span>' + infoBtn('sleep') + '</div>' + moonsHTML('q', 0) + '</div></div>' + guideHTML('sleep') +
       '<p class="help">Your best guess is enough. Nothing is filled in for you, so an unknown night is never recorded as eight hours.</p>' +
+      sleepDetailsHTML() +
       '<div class="field"><label for="slNotes">Notes (optional)</label><textarea class="input" id="slNotes" placeholder="Night feeds, night sweats, cramps, late coffee..."></textarea></div>' +
       '<button class="btn primary" id="saveSleep" style="width:100%"><span class="ms">check</span>Save night</button><div class="msg" id="sleepMsg"></div>' +
+      '<div id="sqCardWrap">' + sleepCheckCardHTML() + '</div>' +
       '<div class="field"><span class="lbl">Last 7 nights</span><div id="sleepList">' + sleepListHTML() + '</div></div>');
-    wireMoons(body); wireClockTabs();
+    wireMoons(body); wireClockTabs(); wireSleepDetails(body); restoreSleepDraft(body);
+    $('#openSleepCheck').addEventListener('click', function () { chime('tap'); keepSleepDraft(body); openSleepCheck(); });
     $('#saveSleep').addEventListener('click', function () {
       try {
         var q = Number($('.moons', body).dataset.value || 0) || null;
         if (!S.validTime($('#slBed').value) || !S.validTime($('#slWake').value)) throw new Error('Enter both bedtime and wake time.');
-        var ev = S.add('sleep', $('#slDate').value, { bedTime: $('#slBed').value, wakeTime: $('#slWake').value, quality: q, notes: $('#slNotes').value.trim(), mode: 'manual' });
-        message($('#sleepMsg'), 'Saved: ' + A.fmtHours(S.sleepHours(ev.data)) + ' of sleep.', true); chime('save');
+        var nd = { bedTime: $('#slBed').value, wakeTime: $('#slWake').value, quality: q, notes: $('#slNotes').value.trim(), mode: 'manual' }, det = readSleepDetails(body); if (det) nd.details = det;
+        var ev = S.add('sleep', $('#slDate').value, nd); sleepDraft = null;
+        message($('#sleepMsg'), 'Saved: ' + A.fmtHours(S.sleepHours(ev.data)) + ' from bedtime to waking.', true); chime('save');
         $('#sleepList').innerHTML = sleepListHTML(); afterSave(ev);
       } catch (e) { message($('#sleepMsg'), e.message, false); }
     });
@@ -732,13 +837,14 @@
     try { if (window.OvuBreathTap) OvuBreathTap.close(); } catch (e) { }
     try { if (window.OvuLightFlower) OvuLightFlower.close(); } catch (e) { }
     try { if (window.OvuMorning) OvuMorning.cancel(); } catch (e) { } /* Morning start ends at once, with no save prompt */
+    try { if (window.OvuSeats) OvuSeats.cancel(); } catch (e) { } /* so does a bench practice */
     try { if (hooks.hudStop) hooks.hudStop(); } catch (e) { }
     hud.classList.remove('on'); avatar.classList.remove('acting'); hudClockStop();
   }
   function asleep() { return !!S.state().sleeping; }
   /* Jamie, 19 Oct: once she is asleep nothing else happens until the bed wakes her. The bed and the window (its sheet
      offers "Wake up") stay open, and so does You: account, privacy and export are never locked away. */
-  var AWAKE_FREE = { bed: 1, window: 1, you: 1 };
+  var AWAKE_FREE = { bed: 1, window: 1, you: 1, cycle: 1 }; /* the diary is reachable whatever the room is doing (Cycle tab, 21 Oct) */
   function awake(id) { if (!asleep() || AWAKE_FREE[id]) return true; toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return false; }
   function enterNight(withPj) {
     stopEverything();
@@ -761,14 +867,17 @@
   /* ---------- calendar: period (5-day fill) + symptoms with backdating ---------- */
   var cal = { y: 0, m: 0, tab: 'period', sel: S.today(), lastFill: [] };
   function openCalendar(tab, date) {
-    var d = date ? new Date(date + 'T12:00:00') : new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab || 'period'; cal.sel = date || S.today(); cal.lastFill = [];
+    var d = date ? new Date(date + 'T12:00:00') : new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab || (S.state().cycleView === 'rhythm' ? 'rhythm' : 'period'); cal.sel = date || S.today(); cal.lastFill = []; /* the last view is remembered */
     openSheet('calendar', 'Your calendar', 'Tap a past day to log or backdate', 'calendar_month',
-      '<div class="tabs" id="calTabs"><button data-tab="period" class="' + (cal.tab === 'period' ? 'on' : '') + '">' + (A.isPostmenopausal(S.profile()) ? 'Bleeding' : 'Period') + '</button><button data-tab="symptom" class="' + (cal.tab === 'symptom' ? 'on' : '') + '">Symptoms</button></div>' +
+      '<div class="tabs" id="calTabs"><button data-tab="period" class="' + (cal.tab === 'period' ? 'on' : '') + '">' + (A.isPostmenopausal(S.profile()) ? 'Bleeding' : 'Period') + '</button><button data-tab="symptom" class="' + (cal.tab === 'symptom' ? 'on' : '') + '">Symptoms</button><button data-tab="rhythm" class="' + (cal.tab === 'rhythm' ? 'on' : '') + '">' + (A.isPostmenopausal(S.profile()) ? 'Your body' : 'Rhythm') + '</button></div>' +
+      '<div id="rhythmPanel" hidden></div><div id="calBody">' +
       '<div class="cal-head"><button class="cal-nav" id="calPrev" aria-label="Previous month"><span class="ms">chevron_left</span></button><b id="calTitle"></b><button class="cal-nav" id="calNext" aria-label="Next month"><span class="ms">chevron_right</span></button></div>' +
       '<div class="cal-grid" id="calGrid" role="grid"></div>' +
       '<div class="legend"><span><i style="background:#e58aa8"></i>Period</span><span><i style="background:repeating-linear-gradient(135deg,#fff 0 3px,#f6e3ea 3px 6px);border:1px solid #f0cfdb"></i>Expected</span><span><i style="background:#eaf5ee;border:1px solid #cfe6d8"></i>Est. fertile</span><span><i style="background:#7a5c96;border-radius:50%"></i>Symptoms</span>' + infoBtn('cycle') + '</div>' + guideHTML('cycle') +
-      '<p class="help calhint"><span class="ms">touch_app</span>Tap a pink day twice to untick it. Tap the day after a period to add just that day.</p><div id="cycleStat"></div><div class="day-editor" id="dayEditor"></div>');
-    $('#calTabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; cal.tab = b.dataset.tab; $$('button', $('#calTabs')).forEach(function (x) { x.classList.toggle('on', x === b); }); renderEditor(); });
+      '<p class="help calhint"><span class="ms">touch_app</span>Tap a pink day twice to untick it. Tap the day after a period to add just that day.</p><div id="cycleStat"></div><div class="day-editor" id="dayEditor"></div></div>');
+    function showView() { var rp = $('#rhythmPanel'), cb = $('#calBody'); if (!rp || !cb) return; var r = cal.tab === 'rhythm'; rp.hidden = !r; cb.hidden = r; if (r && window.OvuRhythm) OvuRhythm.render(rp); try { S.setState({ cycleView: r ? 'rhythm' : 'calendar' }); } catch (e) { } }
+    $('#calTabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; cal.tab = b.dataset.tab; $$('button', $('#calTabs')).forEach(function (x) { x.classList.toggle('on', x === b); }); showView(); if (cal.tab !== 'rhythm') renderEditor(); });
+    showView();
     $('#calPrev').addEventListener('click', function () { cal.m--; if (cal.m < 0) { cal.m = 11; cal.y--; } renderCal(); });
     $('#calNext').addEventListener('click', function () { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } renderCal(); });
     $('#calGrid').addEventListener('click', function (e) {
@@ -784,7 +893,8 @@
           var near = S.list('period', { from: S.addDays(day, -1), to: S.addDays(day, 1) }).filter(function (x) { return x.data.flow && x.data.flow !== 'none'; }).length;
           /* after menopause nothing is filled or guessed: the day opens below to say how much, and saving it shows the care card */
           if (A.isPostmenopausal(S.profile())) { cal.lastFill = []; toast('Choose how much bleeding below, then save. Any bleeding after menopause needs a check.', 'medical_information'); }
-          else if (near) { var ev1 = S.add('period', day, { flow: 'light', clots: false, impact: false }); cal.lastFill = []; chime('save'); toast('Added ' + prettyDate(day) + '. Tap it again to untick.', 'water_drop'); renderDeck(); }
+          else if (S.cycleStats().mode === 'suspended') { cal.lastFill = []; toast('Choose how much bleeding below, then save. Nothing is filled in while your periods are paused.', 'water_drop'); } /* after a birth, before periods return: no guessed days (persona walk, 21 Oct) */
+          else if (near) { var ev1 = S.add('period', day, { flow: 'light' }); cal.lastFill = []; chime('save'); toast('Added ' + prettyDate(day) + '. Tap it again to untick.', 'water_drop'); renderDeck(); }
           else autoFillPeriod(day);
         }
       }
@@ -804,7 +914,7 @@
     for (var i = 0; i < len; i++) {
       var d = S.addDays(start, i); if (d > today) break;
       if (S.list('period', { from: d, to: d }).length) break;
-      var ev = S.add('period', d, { flow: i < 3 ? 'medium' : 'light', clots: false, impact: false, autofill: true }); ids.push(ev.id); days++;
+      var ev = S.add('period', d, { flow: i < 3 ? 'medium' : 'light', autofill: true }); /* clots and impact stay unanswered, not "no" (persona walk, 21 Oct) */ ids.push(ev.id); days++;
     }
     cal.lastFill = ids;
     /* the fill is one log: hearts and the avatar's moment once, never once per guessed day */
@@ -830,14 +940,14 @@
       html += '<button type="button" class="' + cls + '" data-date="' + iso + '" aria-label="' + prettyDate(iso) + '">' + dd + (syms[iso] ? '<span class="sdot"></span>' : '') + '</button>';
     }
     $('#calGrid').innerHTML = html;
-    var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + ' (estimate from ' + esc(cs.basis) + ')' + (cs.uncertain ? ', a loose estimate while cycles are changing' : '') + '.' : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Add a cycle length in your intro or log another period to start predictions.')) + (gapNote(cs) ? ' ' + esc(gapNote(cs)) : '') + '</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>Tap the first day of your last period and ' + periodFillLength() + ' typical days are filled for you to adjust.</span></div></div>';
+    var statHtml = cs.lastStart ? '<div class="stat"><span class="ms">water_drop</span><div><b>Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + ' (estimate from ' + esc(cs.basis) + ')' + (cs.uncertain ? ', a loose estimate while cycles are changing' : '') + '.' : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : 'Add a cycle length in your intro or log another period to start predictions.')) + (gapNote(cs) ? ' ' + esc(gapNote(cs)) : '') + '</span></div></div>' : '<div class="stat"><span class="ms">water_drop</span><div><b>No period logged yet</b><span>' + (cs.mode === 'suspended' ? 'Tap a day you bled, choose how much bleeding, then save. Nothing is filled in while your periods are paused.' : 'Tap the first day of your last period and ' + periodFillLength() + ' typical days are filled for you to adjust.') + '</span></div></div>';
     statHtml += '<div class="row"><button class="btn blush" id="menstruatingNow"><span class="ms">water_drop</span>' + (A.isPostmenopausal(S.profile()) ? 'I’m bleeding today' : 'I’m menstruating now') + '</button>' + (cal.lastFill.length ? '<button class="btn ghost" id="undoFill"><span class="ms">undo</span>Undo ' + cal.lastFill.length + '-day fill</button>' : '') + '</div>';
     var pq = S.profile();
     if (pq.pregState === 'postpartum' && pq.periodsBack === 'no' && S.list('period').some(function (e) { return e.data.flow && e.data.flow !== 'none' && e.data.flow !== 'spotting' && (!pq.onboardedAt || e.date >= String(pq.onboardedAt).slice(0, 10)); }))
       statHtml += '<div class="row ppq"><span class="help" style="margin:0">Is your period back since the birth?</span><button type="button" class="btn soft" id="ppBack2"><span class="ms">water_drop</span>Yes, my period is back</button></div>';
     $('#cycleStat').innerHTML = statHtml;
     var pb2 = $('#ppBack2'); if (pb2) pb2.addEventListener('click', function () { var np = Object.assign({}, S.profile(), { periodsBack: 'yes' }), nm = predictionModeFor(np); S.setProfile({ periodsBack: 'yes', predictionMode: nm }); toast(nm === 'suspended' ? 'Noted. Predictions stay paused for another reason you told Rhythme; your entries still count.' : 'Noted. Predictions start again, as a wide estimate while cycles settle.', 'water_drop'); renderCal(); renderDeck(); });
-    $('#menstruatingNow').addEventListener('click', function () { var ev = S.add('period', S.today(), { flow: 'medium', clots: false, impact: false }); cal.sel = S.today(); cal.lastFill = []; renderCal(); renderEditor(); afterSave(ev, 'Period logged for today.'); });
+    $('#menstruatingNow').addEventListener('click', function () { var had = S.list('period', { from: S.today(), to: S.today() })[0]; if (had) { cal.sel = S.today(); renderCal(); renderEditor(); toast('Today is already logged. Change it below if you like.', 'water_drop'); return; } /* what she noted today is never overwritten (menopause walk, 21 Oct) */ var ev = S.add('period', S.today(), { flow: 'medium' }); cal.sel = S.today(); cal.lastFill = []; renderCal(); renderEditor(); afterSave(ev, 'Period logged for today.'); });
     var undo = $('#undoFill'); if (undo) undo.addEventListener('click', function () { cal.lastFill.forEach(function (id) { S.remove(id); }); cal.lastFill = []; renderCal(); renderEditor(); renderDeck(); toast('Fill removed.', 'undo'); });
   }
   /* a day brought in from Apple Health or Google says so; saving a change makes it hers (ovu-store.js) */
@@ -871,7 +981,7 @@
       });
       if (cur) $('#clearPeriod').addEventListener('click', function () { S.remove(cur.id); cal.lastFill = cal.lastFill.filter(function (id) { return id !== cur.id; }); chime('tap'); renderCal(); renderEditor(); renderDeck(); });
     } else {
-      var cs = S.list('symptom', { from: date, to: date })[0], sd = cs ? cs.data : { symptoms: [], pain: 0, mood: '', notes: '' };
+      var cs = S.list('symptom', { from: date, to: date })[0], sd = cs ? cs.data : { symptoms: [], pain: null, mood: '', notes: '' }; /* an untouched slider saves no pain value (persona walk, 21 Oct) */
       ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' + importedNote(cs) +
         '<div class="field"><span class="lbl">Symptoms</span><div class="chips" id="symChips">' + '<button type="button" class="chipbtn symnone' + (sd.none ? ' on' : '') + '" data-none="1">None</button>' + A.SYMPTOMS.map(function (s) { return '<button type="button" class="chipbtn' + ((sd.symptoms || []).indexOf(s) > -1 ? ' on' : '') + '" data-sym="' + esc(s) + '">' + esc(cap(s)) + '</button>'; }).join('') + '</div></div>' +
         /* hot flushes: how many, and whether they woke her (four-persona review, 20 Oct: Siti and Mrs Tan wanted to show their doctor) */
@@ -945,7 +1055,7 @@
     if (!ovarian) return '';
     var ph = ovarian.phases[phase] || null, list = ovarian.foods.filter(function (f) { return (f.phase || []).indexOf(phase) > -1; }).slice(0, 10);
     if (!list.length) return '';
-    return '<div class="field"><span class="lbl">Foods to try in this phase</span>' + (ph ? '<p class="help" style="margin:0 0 6px">' + esc(ph.text) + '</p>' : '') + '<div class="picks">' + list.map(function (f) { return '<button type="button" class="pick" data-usda="' + esc(f.usda || '') + '" data-name="' + esc(f.name) + '"><b>' + esc(f.emoji + ' ' + f.name) + '</b><small>' + esc(f.tags) + '</small><em>' + esc(f.usda ? 'Tap to add with USDA values' : f.tcm) + '</em></button>'; }).join('') + '</div></div>';
+    return '<div class="field"><span class="lbl">Foods to try in this phase</span>' + (ph ? '<p class="help" style="margin:0 0 6px">' + esc(ph.text) + '</p>' : '') + '<div class="picks">' + list.map(function (f) { return '<button type="button" class="pick' + (f.img ? ' haspic' : '') + '" data-usda="' + esc(f.usda || '') + '" data-name="' + esc(f.name) + '">' + (f.img ? '<img class="pickimg" src="' + esc(f.img) + '" alt="" loading="lazy">' : '') + '<b>' + esc((f.img ? '' : f.emoji + ' ') + f.name) + '</b><small>' + esc(f.tags) + '</small><em>' + esc(f.usda ? 'Tap to add with USDA values' : f.tcm) + '</em></button>'; }).join('') + '</div></div>';
   }
   function showPicker(food) {
     picked = { food: food, portion: food.portions[1] || food.portions[0], grams: (food.portions[1] || food.portions[0]).g };
@@ -954,7 +1064,7 @@
     p.innerHTML = '<h4>' + esc(food.name) + '</h4><div class="src">' + esc(food.source.label) + (food.source.ref ? ' · ' + esc(food.source.ref) : '') + (food.source.date ? ' · ' + esc(food.source.date) : '') + (food.source.detail ? '<br>' + esc(food.source.detail) : '') + '</div>' + (cls ? '<div class="nrow">' + novaChip(cls) + '<small>' + esc(NV.basisText(cls)) + '</small></div>' : '') +
       (offerLabel ? labelSnapHTML('pk') : '') +
       '<div class="portions" id="portions">' + food.portions.map(function (po, i) { return '<button type="button" class="chipbtn' + (po === picked.portion ? ' on' : '') + '" data-i="' + i + '">' + esc(po.label) + ' · ' + po.g + ' g</button>'; }).join('') + '</div>' +
-      '<div class="grams"><input class="input" type="number" id="gramsIn" min="1" max="3000" step="1" value="' + picked.grams + '"><span>' + (food.basis === '100ml' ? 'ml' : 'g') + ' you ate</span></div>' +
+      '<div class="grams"><input class="input" type="number" id="gramsIn" min="1" max="3000" step="1" value="' + picked.grams + '"><span>' + (food.basis === '100ml' ? 'ml you drank' : 'g you ate') + '</span></div>' +
       '<div class="nutline" id="nutline"></div>' +
       '<div class="row"><button class="btn primary" id="addItem"><span class="ms">add</span>Add to this meal</button><button class="btn ghost" id="cancelPick">Cancel</button></div>';
     function refresh() { var n = FD.scale(food.n, picked.grams); $('#nutline').innerHTML = esc(FD.line(n)) + '<small>' + esc(FD.line(n, ['fe', 'ca', 'sugar', 'na'])) + ' · ? means the source has no value</small>'; }
@@ -1032,7 +1142,8 @@
       '<div class="row"><button class="btn primary" id="cfUse"><span class="ms">check</span>Use this food</button><button class="btn ghost" id="cfCancel">Cancel</button></div></div>';
   }
   function num(id) { var v = $(id).value; return v === '' ? null : Number(v); }
-  function openDiary(pane) {
+  /* pre: { notes, tags } fills the form in (the kitchen's "Did you eat something like this today?"); only Save writes */
+  function openDiary(pane, pre) {
     diaryDate = S.today(); draft = { items: [], photo: null }; picked = null;
     var cs = S.cycleStats(), phase = cs.phase || 'none', tip = PHASE_TIPS[phase] || PHASE_TIPS.none;
     var h = new Date().getHours(), defMeal = h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 17 ? 'snack' : h < 22 ? 'dinner' : 'snack';
@@ -1064,6 +1175,7 @@
     function setPane(k) { $$('#dTabs button').forEach(function (b) { var on = b.dataset.dpane === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); }); $$('.dpane', body).forEach(function (pn) { pn.hidden = pn.dataset.pane !== k; }); if (k !== 'add') stopCamera(); body.scrollTop = 0; }
     $('#dTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-dpane]'); if (b) { chime('tap'); setPane(b.dataset.dpane); } });
     if (pane) setPane(pane);
+    if (pre) { if (pre.notes) $('#fdFoods').value = String(pre.notes).slice(0, 200); (pre.tags || []).forEach(function (t) { var b = $$('#tagChips button').filter(function (x) { return x.dataset.tag === t; })[0]; if (b) b.classList.add('on'); }); }
     var area = $('#modeArea');
     function setMode(mode) {
       stopCamera(); $$('.foodmodes button').forEach(function (b) { b.classList.toggle('on', b.dataset.mode === mode); });
@@ -1243,7 +1355,7 @@
     var p = deskPrefs(), lay = deskSpots(p.pos || {}), spots = lay.spots; moment('learn');
     if (lay.tidied) { p.pos = {}; setDeskPrefs(p); setTimeout(function () { toast('A folder had no free spot, so your desk is back on the grid. Drag them wherever you like.', 'grid_view'); }, 400); }
     openSheet('learn', 'Your desk', 'Drag the folders around; make it yours', 'computer',
-      '<div class="desk"><div class="menubar"><span class="brandy">RHYTHME</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
+      '<div class="desk"><div class="menubar"><span class="brandy"><img class="rh-logo" src="assets/brand/logo-mark.webp" alt="" width="16" height="16">RHYTHME</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
       '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f) { var q = spots[f.id]; return '<button type="button" class="dicon" data-folder="' + f.id + '" aria-expanded="false" aria-controls="finder" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="dock"><button type="button" data-dock="videos" aria-label="Videos"><span class="ms">play_circle</span></button><button type="button" data-dock="mind" aria-label="Erin"><span class="ms">self_improvement</span></button><button type="button" data-dock="acu" aria-label="Acupressure"><span class="ms">spa</span></button><button type="button" data-dock="luna" aria-label="Luna"><span class="ms">dark_mode</span></button><button type="button" data-dock="doctor" aria-label="Share with doctor"><span class="ms">medical_services</span></button></div></div>' +
       '<div class="wallpanel" id="wallpanel"><b>Wallpaper</b><div class="wadjust" id="wallAdjust" hidden><p><span class="ms">open_with</span>Drag your photo on the screen above to move it, and use the slider to zoom.</p><div class="field"><label for="wallZoom">Zoom</label><input type="range" id="wallZoom" min="100" max="300" step="5" value="100"></div><div class="row"><button type="button" class="btn primary" id="wallDone"><span class="ms">check</span>Done</button><button type="button" class="btn ghost" id="wallReset">Reset</button></div></div><div class="walls">' + WALLS.map(function (w) { return '<button type="button" class="wall' + (p.wall === w.id ? ' on' : '') + '" data-wall="' + w.id + '" style="' + (w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY) + '"><span>' + esc(w.name) + '</span></button>'; }).join('') + '<button type="button" class="wall upload' + (p.wall === 'custom' ? ' on' : '') + '" data-wall="custom" style="' + (p.custom ? customWallCss(p).replace(/background-size:[^;]+/, 'background-size:cover') : '') + '"><span class="ms">add_photo_alternate</span><span>' + (p.custom ? 'My photo' : 'Upload a photo') + '</span></button></div><input type="file" id="wallFile" accept="image/*" hidden><div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="deskTidy"><span class="ms">grid_view</span>Tidy the icons</button>' + (p.custom ? '<button type="button" class="btn ghost" id="wallAdjustBtn"><span class="ms">open_with</span>Adjust my photo</button><button type="button" class="btn ghost" id="wallForget"><span class="ms">delete</span>Forget my photo</button>' : '') + '</div><p class="help">Your photo is stored only on this device.</p></div>' +
@@ -1384,7 +1496,7 @@
     var hist = logs.length ? '<div class="field"><span class="lbl">Recent notes</span><div class="whist">' + logs.map(function (e) { return '<div><span>' + esc(prettyDate(e.date)) + '</span><b>' + e.data.kg + ' kg</b></div>'; }).join('') + '</div>' + (logs.length > 1 ? '<p class="help">Since ' + esc(prettyDate(logs[logs.length - 1].date)) + ': ' + (function (d) { return (d > 0 ? '+' : '') + d.toFixed(1); })(logs[0].data.kg - logs[logs.length - 1].data.kg) + ' kg. Day-to-day changes are mostly water.</p>' : '') + '</div>' : '';
     openSheet('weigh', 'Weighing scale', 'A private note, never judged', 'monitor_weight',
       '<div class="weighart"><img src="' + ART + 'prop-scale.webp" alt=""></div>' +
-      sliderHTML('wKg', mine ? 'Today’s weight (update it)' : 'Today’s weight', 'kg', 30, 150, 0.1, last, !!last) +
+      sliderHTML('wKg', mine ? 'Today’s weight (update it)' : 'Today’s weight', 'kg', 30, 150, 0.1, mine ? mine.data.kg : last, !!mine) + (!mine && last ? '<p class="help">Last noted: ' + esc(String(last)) + ' kg. Slide to today’s weight; nothing is saved until you do.</p>' : '') + /* yesterday’s number is never saved as today’s (persona walk, 21 Oct) */
       '<div class="row"><button type="button" class="btn primary" id="wSave"><span class="ms">check</span>' + (mine ? 'Update today' : 'Save today') + '</button></div><div class="msg" id="wMsg"></div>' + hist +
       '<details class="field"><summary class="lbl" style="cursor:pointer">My height</summary>' + sliderHTML('wCm', 'Height', 'cm', 130, 200, 1, P.heightCm || null, !!P.heightCm) + '<div class="row"><button type="button" class="btn soft" id="wCmSave"><span class="ms">save</span>Save height</button></div></details>' +
       '<p class="help">Weight shifts a kilo or two with your cycle, salt, sleep and water. Rhythme never judges it and gives no hearts for numbers, so there is nothing to chase. If weighing yourself feels stressful, put the scale away in the heart shop any time.</p>');
@@ -1398,8 +1510,11 @@
   }
 
   /* ---------- bottom tabs: every tab opens a sheet in the room, so the look and the data never change ---------- */
-  var TABS = { cycle: function () { openCalendar('period'); }, food: function () { openDiary(); }, mind: function () { openMindfulness(); }, you: function () { openYou(); } };
+  var TABS = { cycle: function () { openCalendar(); }, food: function () { openDiary(); }, mind: function () { openMindfulness(); }, you: function () { openYou(); } };
   function setTab(k) { $$('.nav a').forEach(function (a) { var on = (a.dataset.tab || 'home') === k; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); }
+  /* after the menopause the same place in the nav reads Body (design 2026-10-21-cycle-tab-rhythm.md) */
+  function labelCycleTab() { var a = $('#navCycle'); if (!a) return; var post = A.isPostmenopausal(S.profile()); var l = a.querySelector('.navlabel'), i = a.querySelector('.ms'); if (l) l.textContent = post ? 'Body' : 'Cycle'; if (i) i.textContent = post ? 'spa' : 'calendar_month'; }
+  labelCycleTab(); S.subscribe(function (why) { if (why === 'profile' || why === 'external' || why === 'import') labelCycleTab(); });
   var navSeq = 0; /* counts every tab tap, Home included, so a delayed link from boot never opens over her choice */
   function goTab(k) {
     navSeq++;
@@ -1788,16 +1903,21 @@
   var lunaLog = [];
   function openLuna(prefill, draft) {
     var cfg = ORB.aiConfig();
-    openSheet('luna', 'Luna', 'Tell me how you are; I’ll write it down', 'dark_mode',
+    var paused = !!(ORB.aiPaused && ORB.aiPaused()), stateLine = paused ? 'Rules only · AI help paused' : (cfg.on ? 'Luna’s reading is on' : 'Rules only · reading off');
+    openSheet('luna', 'Luna', 'Your wellness companion', 'dark_mode',
+      '<div class="lunastrip"><span class="lstate"><i class="ldot' + (cfg.on && !paused ? ' on' : '') + '" aria-hidden="true"></i>' + stateLine + '</span><button type="button" class="lmore" id="lunaMore">About Luna’s reading</button></div>' +
       '<div class="chat" id="chat"></div>' +
+      '<div class="askrow" aria-label="Ask about"><span class="asklbl">Ask about</span>' + [['How does stress affect my cycle?', 'stress.html'], ['How do I know my cycle phase?', 'hormones.html'], ['What foods support my cycle?', 'foods.html']].map(function (q) { return '<a class="askchip" href="' + q[1] + '">' + esc(q[0]) + '</a>'; }).join('') + '</div>' +
       '<div class="quick" id="quick">' + ['Slept 11pm to 7am, quality 4', 'Period started today, medium', 'Cramps and bloating, pain 5, mood ok', 'Had oats and a latte for breakfast', 'Meditated 10 min'].map(function (q) { return '<span class="qchip"><button type="button" class="qsend" data-q="' + esc(q) + '">' + esc(q) + '</button><button type="button" class="qpen" data-q="' + esc(q) + '" aria-label="Edit this shortcut before sending"><span class="ms">edit</span></button></span>'; }).join('') + '</div>' +
-      '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><textarea class="input" id="lunaIn" rows="3" maxlength="400" enterkeyhint="send" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice">' + esc(prefill || '') + '</textarea><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
+      '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><textarea class="input" id="lunaIn" rows="3" maxlength="400" enterkeyhint="send" placeholder="Tell Luna, or ask about your cycle…">' + esc(prefill || '') + '</textarea><button type="button" class="btn primary lsend" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
+      '<p class="lunanote">Luna is a wellness companion, not a doctor. For medical concerns, talk to a clinician.</p>' +
       ((ORB.aiPaused && ORB.aiPaused()) ? '<details class="aibox" id="aibox"><summary><span class="ms">pause_circle</span>Luna’s AI help is paused · rules only' + infoBtn('luna') + '</summary>' + guideHTML('luna') + '<p>Luna’s AI help is paused for now, while we move it to a service licensed for Singapore. Luna’s own rules still read most notes, and your diary works as usual.</p></details>' :
       '<details class="aibox" id="aibox"><summary><span class="ms">auto_awesome</span>' + (cfg.on ? 'Luna’s reading is on' : 'Luna’s reading is off · rules only') + infoBtn('luna') + '</summary>' + guideHTML('luna') +
       '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Write journal readings</b><span>Luna writes a short reading of your last 7 or 28 days.</span></div></label>' +
       '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Recognise food photos</b><span>Luna names the food in your photo. Only a small thumbnail is kept, on this phone.</span></div></label>' +
       '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn Luna’s reading off (rules only)' : 'Turn Luna’s reading on') + '</button></div><p>You always see what Luna understood before it is saved. These choices are also under Your choices in You.</p></details>'));
     var chat = $('#chat'), shownCare = {};
+    var more = $('#lunaMore'); if (more) more.addEventListener('click', function () { var ab = $('#aibox'); if (ab) { ab.open = true; ab.scrollIntoView({ block: 'start', behavior: 'smooth' }); } });
     function bubble(kind, html) { var d = document.createElement('div'); d.className = 'bub ' + (kind === 'luna' ? 'from-luna' : kind); d.innerHTML = html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d; }
     if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took' + ((ORB.aiPaused && ORB.aiPaused()) ? '.' : ', or send a photo of your meal with the camera button.') + ' I will show you what I understood before saving.');
     lunaLog.forEach(function (m) { bubble(m.kind, m.html); });
@@ -2231,7 +2351,7 @@
     var d = e.data || {}, mm = EX.metMinutes(d), today = S.today();
     return '<li data-id="' + esc(e.id) + '"><span><b>' + esc(d.label || 'Movement') + '</b><small>' + esc(d.detail || '') + '</small></span><small>' + esc(e.date === today ? 'Today' : prettyDate(e.date)) + ' · ' + (Number(d.minutes) || 0) + ' min' + (mm !== null ? ' · ' + Math.round(mm) + ' MET-min' : '') + '</small><button type="button" class="mvdel" data-mdel="' + esc(e.id) + '" aria-label="Remove this entry"><span class="ms">close</span></button></li>';
   }
-  function openExercise() {
+  function openExercise(pre) { /* pre: an activity id to choose at once (the gym's stations, ovu-lane.js) */
     if (!EX) return;
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (meditating && !session) exitMeditation();
@@ -2288,6 +2408,7 @@
     });
     var acu = $('#mvAcu'); if (acu) acu.addEventListener('click', function () { chime('tap'); openAcupressure(); });
     $('#mvGuide').addEventListener('click', function () { chime('tap'); openMoveGuide(); });
+    if (typeof pre === 'string') { var pb = actsBox.querySelector('[data-mact="' + pre + '"]'); if (pb) pb.click(); }
   }
   function openMoveGuide() {
     if (!EX) return;
@@ -2328,7 +2449,7 @@
       '<p class="rnote rsafe"><span class="ms">pregnant_woman</span>' + esc(R.MEDAS_COPY.pregnancy) + '</p>' +
       '<p class="help">' + esc(R.MEDAS_COPY.care) + '</p>' +
       '<div class="row"><button type="button" class="btn primary" id="recMedas"><span class="ms">checklist</span>Mediterranean check</button></div>' +
-      recSources(g.id === 'pcos' ? ['E73', 'E74', 'E75', 'E83', 'E82', 'E84'] : g.id === 'meno' ? ['E76', 'E82', 'E84'] : ['E79', 'E80', 'E81', 'E82', 'E84']));
+      recSources(g.id === 'pcos' ? ['E95', 'E96', 'E97', 'E105', 'E104', 'E106'] : g.id === 'meno' ? ['E98', 'E104', 'E106'] : ['E101', 'E102', 'E103', 'E104', 'E106']));
     $('#recTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-rg]'); if (!b || b.dataset.rg === g.id) return; chime('tap'); openRecipes(b.dataset.rg, true); });
     if (refocus) { var on = $('#recTabs [data-rg="' + g.id + '"]'); if (on) try { on.focus({ preventScroll: true }); } catch (e) { } }
     $('#recMedas').addEventListener('click', function () { chime('tap'); openMedas(); });
@@ -2352,7 +2473,7 @@
       '<div id="mdIdeas"></div>' +
       '<p class="help">' + esc(C.wine) + '</p>' +
       '<div class="row"><button type="button" class="btn" id="mdClear"><span class="ms">restart_alt</span>Clear my answers</button><button type="button" class="btn primary" id="mdRecipes"><span class="ms">restaurant_menu</span>All recipes</button></div>' +
-      recSources(['E77', 'E78', 'E80', 'E84']));
+      recSources(['E99', 'E100', 'E102', 'E106']));
     function paint() {
       var sc = R.score(ans);
       $('#mdYes').textContent = sc.answered ? sc.yes + ' of ' + sc.of : 'Tap Yes or Not usually';
@@ -2496,7 +2617,7 @@
     if (!MO || !MO.MOMENTS[key]) return '';
     opt = opt || {};
     var text = opt.line || MO.line(key), pose = opt.pose === undefined ? MO.pose(key) : opt.pose;
-    if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn || (window.OvuMorning && OvuMorning.active())) return text; /* Morning start keeps its own pose */
+    if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn || (window.OvuMorning && OvuMorning.active()) || (window.OvuSeats && OvuSeats.active())) return text; /* Morning start and a seated practice keep their own pose */
     /* while she walks the pose waits, a few times at most, and never starts over a walk (Codex branch review, 20 Oct) */
     if (avatar.classList.contains('walking') || (hooks.moving && hooks.moving())) {
       var tries = (opt.tries || 0) + 1; clearTimeout(momentRetry);
@@ -2548,7 +2669,8 @@
    * the stretch's yoga set are that activity's own clothes, so those two keep their one sprite. A missing file falls back to
    * the original pose */
   var OUTFIT_POSES = { plants: 1, coffee: 1, teeth: 1, dishes: 1, pets: 1, bed: 1, outfit: 1, stretch: 1, note: 1, eat: 1, listen: 1, read: 1, tend: 1, harvest: 1, wave: 1, press: 1, phone: 1, shop: 1, scale: 1 }; /* stretch and the eleven moment poses joined on 20 Oct (ovu-moments.js); the shower keeps its robe */
-  function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && outfit !== 'base' ? '-' + outfit : '') + '.webp'; }
+  var BASE_SUFFIXED = { stretch: 1 }; /* the unsuffixed stretch file is the yoga set; her own clothes are avatar-act-stretch-base (Codex, 21 Oct) */
+  function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && (outfit !== 'base' || BASE_SUFFIXED[pose]) ? '-' + outfit : '') + '.webp'; }
   function setPose(pose) {
     var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image(), gen = ++imgGen;
     img.onload = function () { if (gen === imgGen) avatarImg.src = img.src; };
@@ -2561,7 +2683,7 @@
     var ex = MF.explored();
     openSheet('everyday', 'Everyday mindfulness', 'Guides for things you are really doing', 'self_improvement',
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Informal practice, with Erin</b><small>Pick what you are about to do for real, press Begin as you start, and let the guide walk alongside you. The guides are spoken in Erin’s voice from interim scripts; her own written scripts will replace them one by one.</small></div></div>' +
-      (window.OvuMorning ? '<button type="button" class="act morningact" id="evMorning"><img src="' + ART + 'avatar-act-teeth.webp" alt=""><span><b>Morning start</b><small>Just after you wake · a short pause, then brushing</small></span><em><span class="ms">wb_twilight</span></em></button>' : '') +
+      (window.OvuMorning ? '<button type="button" class="act morningact" id="evMorning"><img src="' + ART + 'avatar-act-teeth.webp" alt=""><span><b>Morning start</b><small>Just after you wake · wake, brush, sip, in Erin’s voice</small></span><em><span class="ms">wb_twilight</span></em></button>' : '') +
       '<div class="acts" id="acts">' + MF.ACTIVITIES.map(function (a) { var n = ex[a.id] || 0; return '<button type="button" class="act' + (selId === a.id ? ' on' : '') + '" data-act="' + a.id + '"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><span><b>' + esc(a.name) + '</b><small>' + esc(a.when) + ' · ' + a.minutes + ' min</small></span><em>' + (n ? '<span class="ms">check_circle</span>' + n : '<span class="ms fill">favorite</span>2') + '</em></button>'; }).join('') + '</div>' +
       '<div class="actdetail" id="actDetail"></div>' +
       '<p class="help">Each completed practice earns 2 hearts, up to 6 a day. The point is not the points: it is two ordinary minutes, fully lived. Please only confirm practices you really did.</p>');
@@ -2581,7 +2703,7 @@
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     var a = MF.byId(id); if (!a || practice) return; var v = a.variations[vi] || a.variations[0]; vi = a.variations.indexOf(v);
     if (window.OvuPodcast) OvuPodcast.pause();
-    practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: new Audio(), timer: null, total: MF.totalSecs(v), pre: null };
+    practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: new Audio(), timer: null, total: MF.totalSecs(v), pre: null, hiddenMs: 0, hiddenAt: null };
     try { var first = GUIDE + id + '-' + vi + '-0.mp3'; practice.audio.src = first; practice.pre = first; var pr0 = practice.audio.play(); if (pr0 && pr0.catch) pr0.catch(function () { }); } catch (e) { } /* the first line starts inside the tap, which unlocks the element for the rest */
     /* from the Mind hub she was on the mat, hidden: bring her back before the pose, or the practice plays to an empty room
      * (four-persona review, 20 Oct, all four Codex walkthroughs) */
@@ -2604,7 +2726,7 @@
   function askPracticeDone(finished) {
     var p = practice; if (!p) return;
     p.stopped = true; clearTimeout(p.timer); if (p.audio) { try { p.audio.pause(); } catch (e) { } } hudClockStop();
-    var secs = Math.round((Date.now() - p.startedAt) / 1000);
+    var secs = Math.round(practiceMs(p) / 1000);
     chime('bell', true); caption(finished ? 'That is the practice.' : 'Paused');
     openSheet('practiceDone', finished ? 'How was that?' : 'Stopping early', p.a.name, 'self_improvement',
       '<div class="orbwrap"><div class="orb out"></div><div class="orbtext">' + (finished ? 'Save this pause to your journal?' : 'You did about ' + Math.max(1, Math.round(secs / 60)) + ' minute' + (secs >= 90 ? 's' : '') + '. Save it?') + '</div></div>' +
@@ -2612,16 +2734,19 @@
       '<p class="help">Save it if you really did it. A mind that wandered and came back still counts: noticing is the practice. This stays between you and your room.</p>');
     function end(confirmed) {
       hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null; closeSheet();
-      if (confirmed && secs >= 30) { var r = MF.complete(p.a.id, p.vi, secs, true); afterSave(r.event, (r.first ? 'First ' + p.a.name.toLowerCase() + ' practice! ' : '') + 'Saved to your journal.'); }
+      if (confirmed && secs >= 30) { var r = MF.complete(p.a.id, p.vi, secs, true, !!finished); afterSave(r.event, (r.first ? 'First ' + p.a.name.toLowerCase() + ' practice! ' : '') + 'Saved to your journal.'); }
       else toast('No worries. The practice is there whenever you are.', 'self_improvement');
     }
     p.endFn = function (c) { if (practice === p) end(c); };
     $('#pdYes').addEventListener('click', function () { end(true); });
     $('#pdNo').addEventListener('click', function () { end(false); });
   }
+  /* practice time leaves out the time the app was hidden (persona walk, 21 Oct: leaving to feed the baby was counted) */
+  function practiceMs(p) { return Math.max(0, Date.now() - p.startedAt - (p.hiddenMs || 0) - (p.hiddenAt ? Date.now() - p.hiddenAt : 0)); }
+  document.addEventListener('visibilitychange', function () { var p = practice; if (!p) return; if (document.hidden) { if (!p.hiddenAt) p.hiddenAt = Date.now(); } else if (p.hiddenAt) { p.hiddenMs += Date.now() - p.hiddenAt; p.hiddenAt = null; } });
   function stopPractice() {
     if (!practice) return;
-    var elapsed = (Date.now() - practice.startedAt) / 1000;
+    var elapsed = practiceMs(practice) / 1000;
     if (elapsed >= Math.min(60, practice.total * 0.5)) { askPracticeDone(false); return; }
     practice.stopped = true; clearTimeout(practice.timer); if (practice.audio) { try { practice.audio.pause(); } catch (e) { } } hudClockStop();
     hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null;
@@ -2631,7 +2756,7 @@
   /* ---------- Rhythme welcome + getting to know you (in the room, so the theme never changes) ---------- */
   var ONB = [
     { id: 'agerange', icon: 'cake', pose: 'coffee', title: 'Your age range (optional)', sub: 'Only so the notes stay honest about what is typical at different ages. Skip if you prefer; Rhythme is for adults and never asks your date of birth.', type: 'chips', key: 'ageRange', optional: true, options: [['18-24', '18–24'], ['25-29', '25–29'], ['30-34', '30–34'], ['35-39', '35–39'], ['40-44', '40–44'], ['45-49', '45–49'], ['50+', '50 and over']] },
-    { id: 'regular', icon: 'calendar_month', pose: 'stretch', title: 'Your periods', sub: 'Pick what fits best. If you are pregnant or past menopause, choose the closest; you can change it later.', type: 'rows', rows: [{ key: 'regularity', label: 'How regular', options: [['regular', 'Fairly regular'], ['irregular', 'Irregular'], ['rare', 'Rare, with gaps of 3 months or more'], ['none12', 'No period for 12 months or more'], ['notyet', 'My periods haven’t started yet'], ['unsure', 'Not sure']] }, { key: 'menarche', label: 'Age at your first period (optional)', options: [['lt10', 'Under 10'], ['10-12', '10–12'], ['13-15', '13–15'], ['16+', '16 or older'], ['unknown', 'Don’t remember']], showIf: function (A) { return !!A.regularity && A.regularity !== 'notyet'; } }] },
+    { id: 'regular', icon: 'calendar_month', pose: 'stretch', title: 'Your periods', sub: 'Pick what fits best. If you are pregnant or past menopause, choose the closest; you can change it later.', type: 'rows', rows: [{ key: 'regularity', label: 'How regular', options: [['regular', 'Fairly regular'], ['irregular', 'Irregular'], ['rare', 'Rare, with gaps of 3 months or more'], ['none12', 'No period for 12 months or more'], ['notyet', 'My periods haven’t started yet'], ['unsure', 'Not sure']] }, { key: 'menoStatus', label: 'Have you been through the menopause? (optional)', options: [['yes', 'Yes'], ['no', 'No'], ['unsure', 'Not sure']], showIf: function (A) { return A.regularity === 'none12'; } }, { key: 'menarche', label: 'Age at your first period (optional)', options: [['lt10', 'Under 10'], ['10-12', '10–12'], ['13-15', '13–15'], ['16+', '16 or older'], ['unknown', 'Don’t remember']], showIf: function (A) { return !!A.regularity && A.regularity !== 'notyet'; } }] },
     { id: 'preg', icon: 'pregnant_woman', pose: 'plants', title: 'Pregnancy and plans', sub: 'These change how dates should be read.', type: 'rows', rows: [{ key: 'pregState', label: 'Right now', options: [['none', 'None of these'], ['maybe', 'I could be pregnant'], ['pregnant', 'Pregnant'], ['postpartum', 'Gave birth in the last year'], ['loss', 'Recent pregnancy loss']] }, { key: 'breastfeeding', label: 'Breastfeeding', options: [['yes', 'Yes'], ['no', 'No']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'periodsBack', label: 'Have periods returned?', options: [['yes', 'Yes'], ['no', 'Not yet']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'plans', label: 'Plans', options: [['ttc', 'Trying to conceive now'], ['later', 'Maybe later'], ['no', 'Not planning']] }, { key: 'ttcMonths', label: 'Months trying', showIf: function (A) { return A.plans === 'ttc'; }, options: [['0-5', '0–5'], ['6-11', '6–11'], ['12+', '12 or more']], showIf: function (A) { return A.plans === 'ttc'; } }, { key: 'fertilityTx', label: 'Fertility treatment before?', options: [['no', 'No'], ['yes', 'Yes']], showIf: function (A) { return A.plans === 'ttc'; } }] },
     { id: 'hormones', icon: 'medication', pose: 'outfit', title: 'Hormones and medicines', sub: 'Tick what you use now. These change what cycle dates mean.', type: 'multi', key: 'hormones', options: [['pill', 'Combined pill'], ['pop', 'Progestogen-only pill'], ['iud_h', 'Hormonal IUD'], ['iud_cu', 'Copper IUD'], ['implant', 'Implant or injection'], ['hrt', 'HRT (MHT)'], ['fertility', 'Fertility medicines'], ['ec', 'Emergency contraception this month'], ['other', 'Other relevant medicine'], ['none', 'None']], exclusive: ['none'] },
     { id: 'recall', icon: 'calendar_month', pose: 'bed', title: 'Which periods do you remember?', sub: 'Tap the first day of each period you remember. A few is enough.', type: 'recall', optional: true, showIf: function (A) { return periodsMayCome(A); } },
@@ -2708,7 +2833,7 @@
     return true;
   }
   function openOnboarding(i, a) {
-    if (!onb || a !== undefined) onb = { i: 0, a: a || {} };
+    if (!onb || a !== undefined) onb = { i: 0, a: a || {}, openedAt: Date.now() };
     var steps = onbVisible(onb.a), A = onb.a;
     onb.i = Math.max(0, Math.min(steps.length - 1, i || 0));
     var st = steps[onb.i], last = onb.i === steps.length - 1, html = '';
@@ -2790,8 +2915,10 @@
   }
   function finishOnboarding(A) {
     var fromLink = onb && onb === pendingOnb; pendingOnb = null; /* only the intro Begin started carries the link on; one she left and restarted does not */
+    /* her answers came back from a backup while the intro was open: keep them, never write an empty intro over them (Codex, 21 Oct) */
+    var pr = S.profile(); if (onb && onb.openedAt && pr.onboarded && pr.onboardedAt && Date.parse(pr.onboardedAt) > onb.openedAt) { closeSheet(); toast('Your answers came back from your backup. Update my intro is under the window if anything has changed.', 'cloud_done'); pendingRoute = ''; return; }
     var num = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : null; };
-    var patch = { name: A.name || S.profile().name || '', ageRange: A.ageRange || '', ageBand: '', minorAck: '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: (function () { var r = A.periodRecall, d = r ? recallDays(recallState(A)) : []; return r && r.latest === 'yes' && d.length ? d[d.length - 1] : ''; })(), cycleLength: null, periodLength: num(A.periodLength), periodLengthAnswer: A.periodLength || '', periodRecall: A.periodRecall ? Object.assign({}, A.periodRecall, { capturedAt: new Date().toISOString() }) : null, cycleVaries: false, bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' && ['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && A.pregState !== 'pregnant' && A.pregState !== 'postpartum' && !(A.hormones || []).some(function (x) { return x !== 'none' && x !== 'other' && x !== 'iud_cu' && x !== 'hrt'; }) ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), onboarded: true, onboardedAt: new Date().toISOString() };
+    var patch = { name: A.name || S.profile().name || '', ageRange: A.ageRange || '', ageBand: '', minorAck: '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: (function () { var r = A.periodRecall, d = r ? recallDays(recallState(A)) : []; return r && r.latest === 'yes' && d.length ? d[d.length - 1] : ''; })(), cycleLength: null, periodLength: num(A.periodLength), periodLengthAnswer: A.periodLength || '', periodRecall: A.periodRecall ? Object.assign({}, A.periodRecall, { capturedAt: new Date().toISOString() }) : null, cycleVaries: false, bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), menoStatus: A.menoStatus || '', lifeStage: A.regularity === 'none12' && (A.menoStatus === 'yes' || (A.menoStatus !== 'no' && A.menoStatus !== 'unsure' && ['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1)) && /* her own answer counts, and a No or Not sure is never overridden by age (Codex sweep, 21 Oct) */ /* her own answer counts when she skips her age (menopause walk, 21 Oct) */ A.pregState !== 'pregnant' && A.pregState !== 'postpartum' && !(A.hormones || []).some(function (x) { return x !== 'none' && x !== 'other' && x !== 'iud_cu' && x !== 'hrt'; }) ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), onboarded: true, onboardedAt: new Date().toISOString() };
     S.setProfile(patch);
     try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, patch))); } catch (e) { }
     RW.grant(20, 'welcome');
@@ -2803,19 +2930,69 @@
   /* ---------- data notice and the 18+ gate: ovu-consent.js owns the record and the sheet; this is the room's doorway ---------- */
   function hasConsent() { return !!(window.OvuConsent && !OvuConsent.needsSheet()); }
   function requireConsent(next) { if (!window.OvuConsent) { toast('Rhythme could not load its consent record. Please reload.', 'error'); return; } OvuConsent.require(next, { chime: chime, toast: toast }); }
-  /* where a link into the room asked to go (room.html#medas and so on); a first visit keeps it until the welcome is done */
-  var pendingRoute = '', pendingOnb = null; /* the intro that Begin started for that link */
+  /* where a link into the room asked to go (room.html#medas and so on); a new account keeps it until the intro is done */
+  var pendingRoute = '', pendingOnb = null; /* the intro that the link waits behind */
   function openRoute(hk) {
     if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'medas') openMedas(); else if (hk === 'recipes') openRecipes(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk);
   }
   /* opened at once, never on a timer: a delayed open could cover a sheet she opened in the meantime (Codex round two) */
   function takePending() { var r = pendingRoute; pendingRoute = ''; if (r && r !== 'onboarding') openRoute(r); }
+  function introForLink() { openOnboarding(0, {}); pendingOnb = onb; }
+  /* The first screen is the sign-in wall (Jamie, 21 Oct: an account before anything): Apple, Google, or a six-digit code by email.
+     Signing in never touches the diary on this phone. The data notice, and the intro for a new account, follow the first sign-in. */
+  var wallWired = false;
+  function wallOpen() { var w = $('#welcome'); return !!(w && !w.hidden); }
+  /* while the wall is up the room behind it is inert: no tab stop, no screen-reader path, no tap reaches the diary (Codex, 21 Oct) */
+  function wallInert(on) { ['#main', '#lunaBtn', '#podMini', '#mpanel', 'nav.nav', '#sheet', '#veil', '#toast'].forEach(function (sel) { var el = document.querySelector(sel); if (el) { try { el.inert = !!on; } catch (e) { } } }); }
   function showWelcome() {
-    var w = $('#welcome'); if (!w) return; w.hidden = false;
-    $('#wBegin').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); pendingOnb = onb; }); });
-    $('#wSkip').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); toast('Welcome back. Your intro is under the window whenever you want it.', 'favorite'); takePending(); }); });
-    /* sign in from the first screen (Jamie, 20 Oct: "the email should login on first page"): consent first, then the email form in You */
-    var si = $('#wSignIn'); if (si) si.addEventListener('click', function () { chime('tap'); w.hidden = true; pendingRoute = ''; requireConsent(function () { S.setState({ welcomeSeen: true }); openYou(); setTimeout(function () { var ya = $('#youAccount'), b = ya && ya.querySelector('[data-ya="email-start"]'); if (b) { b.click(); ya.scrollIntoView({ block: 'center', behavior: 'smooth' }); } else if (ya) ya.scrollIntoView({ block: 'center' }); }, 300); }); });
+    var w = $('#welcome'); if (!w) return;
+    var note = $('#wNote'); if (note) note.textContent = S.list().length ? 'Your diary on this phone is kept as it is. Sign in to carry on.' : 'A dreamy room where you log sleep, cycle, symptoms, meals and calm by tapping the things around you. Sign in to open it.';
+    w.hidden = false; wallInert(true);
+    setTimeout(function () { var b = $('#wApple'); if (b && wallOpen()) { try { b.focus({ preventScroll: true }); } catch (e) { } } }, 60);
+    if (wallWired) return; wallWired = true;
+    var A = window.OvuAuth;
+    function social(prov, btn) {
+      chime('tap');
+      if (!A) { toast('Sign-in could not load. Please reload.', 'error'); return; }
+      btn.disabled = true;
+      A.providerOn(prov).then(function (on) {
+        if (!on) { btn.disabled = false; toast((prov === 'apple' ? 'Apple' : 'Google') + ' sign-in is still being set up. Email works now.', 'info'); return; }
+        return A.signInWith(prov); /* leaves the page; the code comes back to room.html */
+      }).catch(function (err) { btn.disabled = false; toast('Could not start sign-in: ' + ((err && err.message) || 'try again'), 'error'); });
+    }
+    $('#wApple').addEventListener('click', function () { social('apple', this); });
+    $('#wGoogle').addEventListener('click', function () { social('google', this); });
+    $('#wSignIn').addEventListener('click', function () { chime('tap'); var f = $('#wEmailForm'); if (!f) return; f.hidden = false; this.hidden = true; var i = $('#wEmail'); if (i) i.focus(); });
+    if (A && A.emailForm) A.emailForm($('#wEmailForm'), { email: $('#wEmail'), codeWrap: $('#wCodeWrap'), code: $('#wCode'), go: $('#wEmailGo'), msg: $('#wMsg') }, { toast: toast });
+  }
+  /* after a sign-in while the wall is up: the wall closes, then the notice, then the intro for an account that has not done it */
+  function resetWallForm() { var f = $('#wEmailForm'); if (f) { f.hidden = true; if (f.__reset) f.__reset(); else { try { f.reset(); } catch (e) { } } } var si = $('#wSignIn'); if (si) si.hidden = false; }
+  /* a diary belongs to the account that opened it on this phone (persona walks, 21 Oct: after "Sign out, keep my diary"
+   * another account opened the same diary). The owner is the profile's owner field, or for a diary from before this, the
+   * account its backup or its consent receipts were bound to; an empty owner (after Delete my account) is free again. */
+  function diaryOwner() { var p = S.profile() || {}; if (typeof p.owner === 'string') return p.owner || null; if (p.cloud && p.cloud.uid) return p.cloud.uid; var ce = (p.consentEvents || []).filter(function (e) { return e && e.uid; })[0]; return ce ? ce.uid : null; }
+  function ownerOk() {
+    var A = window.OvuAuth; if (!A || !A.isSignedIn || !A.isSignedIn()) return true;
+    var u = A.userId ? A.userId() : null; if (!u) return true;
+    var o = diaryOwner(); if (!o) { try { S.setProfile({ owner: u }); } catch (e) { } return true; }
+    return o === u;
+  }
+  function wrongAccount() {
+    pendingRoute = ''; pendingOnb = null;
+    try { closeSheet(); } catch (e) { }
+    resetWallForm(); showWelcome();
+    var note = $('#wNote'); if (note) note.textContent = 'This phone has another account’s diary. Sign in with that account to open it.';
+    var A = window.OvuAuth; if (A && A.signOut) { try { A.signOut(false); } catch (e) { } }
+  }
+  function afterSignIn() {
+    if (!ownerOk()) { wrongAccount(); return; }
+    var w = $('#welcome'); if (w) w.hidden = true; wallInert(false); resetWallForm();
+    requireConsent(function () {
+      S.setState({ welcomeSeen: true });
+      var go = function () { if (!S.profile().onboarded) introForLink(); else if (pendingRoute) takePending(); else toast('Welcome back.', 'favorite'); };
+      /* a backup may hold her answers: let the first restore land before the intro is offered, so it is never written over them (Codex, 21 Oct) */
+      if (!S.profile().onboarded && window.OvuSync && OvuSync.canSync()) { toast('Checking your backup…', 'cloud_sync'); OvuSync.syncNow().then(go, go); } else go();
+    });
   }
 
   /* ---------- window: follows the sun (ovu-sun.js) ---------- */
@@ -2838,12 +3015,14 @@
       '<div class="stat"><span class="ms">bedtime</span><div><b>' + (st.avg ? 'Averaging ' + st.avg + ' h over ' + st.count + ' nights' : 'No sleep logged this week') + '</b><span>Adults generally do best with 7 hours or more.</span></div></div>' +
       '<div class="stat"><span class="ms">water_drop</span><div><b>' + (cs.cycleDay ? 'Cycle day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '') : 'Cycle not started') + '</b><span>' + (cs.predictedFrom ? 'Next period expected ' + windowText(cs) + (cs.uncertain ? ' (a loose estimate while cycles are changing).' : '.') : (cs.mode === 'suspended' ? 'Predictions are paused for your situation; your entries still count.' : (cs.lastStart ? 'Predictions begin once your next period is logged, or add your usual cycle length in Tell me about you.' : 'Log a period on the wall calendar to start predictions.'))) + (gapNote(cs) ? ' ' + esc(gapNote(cs)) : '') + '</span></div></div>' +
       '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">' + act.icon + '</span>' + act.text + '</button><button class="btn soft" id="winSound"><span class="ms">' + (soundOn() ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (soundOn() ? 'on' : 'off') + '</button></div>' +
+      '<div class="row"><button type="button" class="btn soft music" id="winMusic" aria-pressed="' + (S.state().music === true ? 'true' : 'false') + '"><span class="ms" aria-hidden="true">' + (S.state().music === true ? 'music_note' : 'music_off') + '</span><span class="mlabel">Music ' + (S.state().music === true ? 'on' : 'off') + '</span></button></div>' +
         (soundOn() && window.OvuSound ? '<label class="volrow"><span class="ms">volume_down</span><input type="range" id="winVol" min="0" max="100" step="5" value="' + Math.round(OvuSound.volume() * 100) + '" aria-label="Sound volume"><span class="ms">volume_up</span></label>' : '') +
       '<div class="row"><a class="btn ghost" href="settings.html"><span class="ms">settings</span>Settings & health connections</a><a class="btn ghost" href="face-ppg.html"><span class="ms">monitor_heart</span>Calm check (experimental)</a></div>' +
       '<div class="row"><button type="button" class="btn ghost" id="winIntro"><span class="ms">favorite</span>' + (S.profile().onboarded ? 'Update my intro' : 'Tell me about you') + '</button></div>' +
-      '<p class="help">Sounds are tiny chimes plus Erin’s good-night and good-morning lines; they stay off unless you turn them on. Guided sessions always play when you start one.</p>');
+      '<p class="help">Sounds are tiny chimes plus Erin’s good-night and good-morning lines; they stay off unless you turn them on. Guided sessions always play when you start one. Music is a soft tune drawn in the browser for each place, off until you turn it on; it shares the Sounds volume, pauses while she sleeps and never plays over Erin’s voice. The note in the top bar stops it any time.</p>');
     $('#winSleep').addEventListener('click', function () { if (act.id === 'log') { openSleepRecord(); return; } closeSheet(); tap(hotspot(act.id)); });
     $('#winSound').addEventListener('click', function () { S.setState({ sound: !soundOn() }); if (window.OvuSound) OvuSound.sync(); chime('tap'); openWindow(); });
+    var wm = $('#winMusic'); if (wm) wm.addEventListener('click', function () { if (window.OvuMusic) OvuMusic.toggle(); else S.setState({ music: S.state().music !== true }); chime('tap'); var again = $('#winMusic'); if (again) again.setAttribute('aria-pressed', S.state().music === true ? 'true' : 'false'); var ic = again && again.querySelector('.ms'); if (ic) ic.textContent = S.state().music === true ? 'music_note' : 'music_off'; var lb = again && again.querySelector('.mlabel'); if (lb) lb.textContent = 'Music ' + (S.state().music === true ? 'on' : 'off'); }); /* repainted in place, so focus stays on the button */
     var vol = $('#winVol'); if (vol) { vol.addEventListener('input', function () { OvuSound.setVolume(vol.value / 100); }); vol.addEventListener('change', function () { chime('tap'); }); }
     $('#winIntro').addEventListener('click', function () { openOnboarding(0, {}); });
   }
@@ -3022,11 +3201,11 @@
     setWalkTo: function (f) { hooks.walkTo = f; }, /* the walk engine routes her own walks around furniture; false hands a walk back to the straight line */
     layout: function () { return L; }, pos: function () { return { x: pos.x, y: pos.y }; }, visiting: function () { return visiting; }, homeId: currentHomeId,
     /* anything that should pause walking and scene changes */
-    busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || (window.OvuMorning && OvuMorning.active()) || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },
+    busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || (window.OvuMorning && OvuMorning.active()) || (window.OvuSeats && OvuSeats.active()) || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },
     sheetOpen: function () { return !!current; }, sheetId: function () { return current; }, cancelIdle: function () { clearTimeout(idleTimer); },
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
-    openSheet: openSheet, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES,
+    openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, openExercise: openExercise, openMoveGuide: openMoveGuide,
     moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on && title) { clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }
@@ -3045,8 +3224,19 @@
     setInterval(function () { applySky(); if (window.OvuPets) renderProps(); }, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });
     FD.load().catch(function () { });
     /* accounts and cloud backup: quiet until the person signs in and opts in */
-    if (window.OvuAuth) OvuAuth.init();
+    var authReady = window.OvuAuth ? OvuAuth.init() : Promise.resolve({ error: 'Sign-in could not load. Please reload.' });
     if (window.OvuSync) OvuSync.init();
+    /* no session and nothing on its way back from a provider: the wall at once, before the room is ever touchable (fail closed) */
+    if (!window.OvuAuth || (!OvuAuth.isSignedIn() && !OvuAuth.pendingRedirect())) showWelcome();
+    else if (OvuAuth.isSignedIn() && !ownerOk()) wrongAccount(); /* already signed in as another account (a sign-in on another page): the wall, before the room shows anything (Codex sweep, 21 Oct) */
+    /* signed out (from You, another tab, or a revoked session): the wall comes back over whatever was open, the notice and the cloud prompt included; signed in at the wall: on into the room */
+    if (window.OvuAuth) OvuAuth.subscribe(function () {
+      if (OvuAuth.isSignedIn()) { if (wallOpen()) afterSignIn(); else if (!ownerOk()) wrongAccount(); return; }
+      if (wallOpen()) return;
+      try { closeSheet(); } catch (e) { }
+      var c = $('#consent'); if (c && !c.hidden) c.hidden = true; var cs = document.getElementById('ovuCloudSheet'); if (cs) cs.remove();
+      resetWallForm(); showWelcome();
+    });
     S.subscribe(function (reason) { if (reason === 'external' || (reason && reason.indexOf('sync') === 0)) { renderDeck(); renderProps(); updateGreeting(); if (medasRefresh) medasRefresh(); } });
     $('#journalBtn').href = 'journal.html'; $('#shareBtn').href = 'journal.html#share';
     if (!S.state().tourDone) { setTimeout(function () { $('#hint').classList.add('on'); }, 1200); setTimeout(function () { $('#hint').classList.remove('on'); S.setState({ tourDone: true }); }, 7000); }
@@ -3054,12 +3244,18 @@
     if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () { });
     RM.start(function (h) { chime('bell', true); toast(h.item.label + (h.item.note ? ' · ' + h.item.note : ''), h.item.icon); });
     document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } if (e.target.closest('#arrDone')) exitArrange(false); if (e.target.closest('#arrReset')) exitArrange(true); });
-    var hk = (location.hash || '').slice(1);
-    if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
-    else if (!S.profile().onboarded && !S.state().welcomeSeen) { pendingRoute = hk; showWelcome(); }
-    else { var seq0 = sheetSeq, nav0 = navSeq; setTimeout(function () { requireConsent(function () { if (hk && (sheetSeq !== seq0 || navSeq !== nav0 || current)) return; /* she already opened something: leave it */ openRoute(hk); }); }, hk ? 600 : 0); }
+    var hk = (location.hash || '').slice(1), bootAt = Date.now();
+    var lift = function () { $('#loading').classList.add('hidden'); joy(); };
+    authReady.then(function (r) {
+      if (r && r.error) toast(r.error, 'error');
+      if (!(window.OvuAuth && OvuAuth.isSignedIn())) { if (hk && hk !== 'onboarding') pendingRoute = hk; if (!wallOpen()) showWelcome(); }
+      else if (wallOpen()) afterSignIn(); /* a provider round trip signed her in while the wall waited */
+      else if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
+      else if (!S.profile().onboarded && !S.state().welcomeSeen) { pendingRoute = hk; requireConsent(function () { S.setState({ welcomeSeen: true }); introForLink(); }); }
+      else { var seq0 = sheetSeq, nav0 = navSeq; setTimeout(function () { requireConsent(function () { if (hk && (sheetSeq !== seq0 || navSeq !== nav0 || current)) return; /* she already opened something or tapped a tab: leave it */ openRoute(hk); }); }, hk ? 600 : 0); }
+      setTimeout(lift, Math.max(0, 500 - (Date.now() - bootAt))); /* the veil lifts only once the session question is settled */
+    });
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
-    setTimeout(function () { $('#loading').classList.add('hidden'); joy(); }, 500);
     scheduleLife();
     function tick() { var d = new Date(); $('#clockTime').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); var dc = $('#deskClock'); if (dc) dc.textContent = nowHM(); } tick(); setInterval(tick, 20000);
     emit('boot');

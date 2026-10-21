@@ -1,6 +1,6 @@
 <!-- Codex read-only review, round two, 20 October 2026 (gpt-6.1-sol, web search on), of 71efce0 and the whole feature. Prompt: the round-two brief in the design note. -->
 
-Eight round-one findings are fixed. Two remain: the menopause claim and saved-layout collisions. I also found a new route race and an unsafe simplification in E84.
+Eight round-one findings are fixed. Two remain: the menopause claim and saved-layout collisions. I also found a new route race and an unsafe simplification in E106.
 
 I reviewed `71efce0` and the complete feature diff. `node tools/test-core.js` passed **927 checks**. Reproductions and mutations below ran entirely in memory. No files were modified. I inspected the browser tests but did not run the full suite, which writes a temporary PDF into the repository.
 
@@ -36,9 +36,9 @@ I reviewed `71efce0` and the complete feature diff. `node tools/test-core.js` pa
 
    **Fix:** use actual button bounds and an overflow arrangement when the remaining space cannot fit folders. Never substitute “least crowded” for collision-free placement.
 
-3. **Should-fix | [ovu-evidence.js:109](ovu-evidence.js:109) | E84 incorrectly clears all pasteurised soft cheeses.**
+3. **Should-fix | [ovu-evidence.js:109](ovu-evidence.js:109) | E106 incorrectly clears all pasteurised soft cheeses.**
 
-   A pregnant reader consulting E84 could conclude that cold pasteurised brie or blue cheese is safe. NHS explicitly retains cooking requirements for mould-ripened and soft blue cheeses, including pasteurised ones.
+   A pregnant reader consulting E106 could conclude that cold pasteurised brie or blue cheese is safe. NHS explicitly retains cooking requirements for mould-ripened and soft blue cheeses, including pasteurised ones.
 
    **Fix:** distinguish the permitted pasteurised soft cheeses from mould-ripened/blue cheeses requiring thorough cooking. The actual recipe-sheet pregnancy line at `ovu-recipes.js:73` is conservative on cooking and does not contain this same exemption. [NHS pregnancy food guidance](https://www.nhs.uk/pregnancy/keeping-well/foods-to-avoid/)
 

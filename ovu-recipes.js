@@ -69,7 +69,7 @@
     intro: 'These 13 questions are adapted from MEDAS, a short checklist from PREDIMED, a Spanish heart study of older adults. The original has 14 questions and a validated score; this is not that score. In the study, people with more yeses tended to have higher HDL (good) cholesterol, lower triglycerides and blood sugar, and smaller waists: an association, not proof. It was not built for fertility or the ovaries. Use it as a mirror of your week and a list of ideas: you do not need every habit, and if keeping track of food makes you anxious, skip it.',
     wine: 'The original has a 14th question that gives a point for drinking 7 or more glasses of wine a week. Rhythme leaves it out: nobody should start drinking for health, and the NHS advises no alcohol when you are trying to get pregnant.',
     drinks: 'No recipe for this one: water, or tea and coffee without sugar, such as kopi-o kosong or teh-o kosong. If you are pregnant, the NHS advises keeping caffeine under 200 mg a day.',
-    /* under every recipe list (NHS foods to avoid in pregnancy, E84), and the general care line */
+    /* under every recipe list (NHS foods to avoid in pregnancy, E106), and the general care line */
     pregnancy: 'Pregnant? Cook eggs until firm, and soft cheese and fish until steaming hot; choose pasteurised dairy; skip raw fish and shellfish, and shark, swordfish and marlin; keep tuna to 4 cans a week, and oily fish such as sardines and salmon to 2 portions.',
     care: 'Check each recipe for allergens such as dairy, egg, soy, fish, nuts, sesame and wheat. If you have kidney disease, diabetes or a thyroid condition, or have had an eating disorder, a dietitian or your doctor can tailor these ideas.'
   };

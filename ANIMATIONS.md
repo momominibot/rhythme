@@ -77,3 +77,20 @@ The app uses **CSS keyframe animations** for all UI transitions, pulses, and mic
 - Lottie renders to canvas/SVG (GPU-friendly)
 - No main-thread jank from GIF decoding
 - All animations respect `prefers-reduced-motion`
+
+## Seats (21 Oct 2026, `ovu-seats.js`, styles under "seats" in room.css)
+
+One pooled layer `#seatfx` inside the plate's inner box, below the sitter, pointer-events none, aria-hidden. CSS only,
+transforms and opacity only, each element with its own duration and a negative delay so nothing moves in step:
+
+| Seat | Elements | Keyframes |
+|---|---|---|
+| Garden bench | 10 petals | `seatpetal`, 9 to 15 s, fall and sway with a slow turn |
+| Dream Street bench | 12 lantern motes (brighter at night) | `seatmote`, 6 to 11 s, rise and flicker |
+| Plaza benches | 9 sparkles over the fountain, 6 leaves | `seatspark` 2.6 to 4.8 s; `seatleaf` 10 to 16 s |
+| Harbour bench | 5 ripple arcs from offset origins, 6 light streaks | `seatring` 5.5 to 9.5 s; `seatstreak` 5 to 8 s |
+| Hidden spring (tone) | 7 crystal glints | `seatglint`, 7 or 11 s, opacity only, no scaling |
+
+Nothing here is timed to breath and nothing pulses together. `prefers-reduced-motion: reduce` stops every animation:
+petals and leaves stay as a few still shapes at low opacity, motes, sparkles, streaks and glints fade to almost nothing,
+rings are not drawn.
