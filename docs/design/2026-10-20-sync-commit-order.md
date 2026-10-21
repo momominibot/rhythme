@@ -285,7 +285,7 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
   unsaved; a takeover before the room boots is caught). Tests that relied on the time-ordered pull now run on the
   pretend `entries_pull`. Against main's `ovu-sync.js` (5750a53) 34 of the 41 fail; against round four's (4e4a218)
   the 7 R5-B checks fail; on this branch all pass (1,037 in all).
-- `tools/check.py`: 81 pages, 0 problems. `tools/e2e_smoke.py`: 265 of 266 on each of two runs, each failing a different walk or camera timing check (the bed walk's route, a zoomed floor tap) while the machine ran at a load average near 40; none touches sync. A run on untouched main is noted in the PR.
+- `tools/check.py`: 81 pages, 0 problems. `tools/e2e_smoke.py`: 266 passed, 0 failed (as on untouched main). Two earlier runs at a load average near 40 each failed one different walk or camera timing check; neither came back once the load dropped.
 
 ## Review record
 
