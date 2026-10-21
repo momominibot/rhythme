@@ -95,10 +95,15 @@
    * Decides, per id, what to apply locally and what to push, by last-write-wins.
    * remoteRows are the cloud rows changed since `syncedAt`; absence from that
    * incremental set means "unchanged on the server", not "absent", so a local
-   * row older than syncedAt with no remote change is left alone (not re-pushed). */
-  function merge(localEvents, tombstones, remoteRows, syncedAt) {
+   * row older than syncedAt with no remote change is left alone (not re-pushed).
+   * acked: { id: updated_at } of cloud revisions this phone applied after a pull that was saved before its uploads
+   * finished. A local row still exactly that revision is the cloud's own copy, not an edit made here, so it is never
+   * pushed back up (Codex round five, finding 2). */
+  function merge(localEvents, tombstones, remoteRows, syncedAt, acked) {
     syncedAt = syncedAt || '';
     tombstones = tombstones || {};
+    acked = acked || {};
+    function mine(id, t) { return ts(t) > ts(syncedAt) && !(acked[id] != null && ts(acked[id]) === ts(t)); }
     var L = {}, R = {}, ids = {};
     (localEvents || []).forEach(function (e) { L[e.id] = e; ids[e.id] = 1; });
     (remoteRows || []).forEach(function (r) { R[r.id] = r; ids[r.id] = 1; });
@@ -113,12 +118,12 @@
         if (ts(remote.t) > ts(local.t)) {
           if (remote.kind === 'live') applyPut.push(remote.row); else if (local.kind === 'live') applyDel.push(id);
         } else {
-          if (local.kind === 'live') { if (ts(local.t) > ts(syncedAt)) pushUp.push(local.ev); } else pushDel.push({ id: id, deleted_at: local.t });
+          if (local.kind === 'live') { if (mine(id, local.t)) pushUp.push(local.ev); } else pushDel.push({ id: id, deleted_at: local.t });
         }
       } else if (remote && !local) {
         if (remote.kind === 'live') applyPut.push(remote.row);
       } else if (local && !remote) {
-        if (local.kind === 'live') { if (ts(local.t) > ts(syncedAt)) pushUp.push(local.ev); } else pushDel.push({ id: id, deleted_at: local.t });
+        if (local.kind === 'live') { if (mine(id, local.t)) pushUp.push(local.ev); } else pushDel.push({ id: id, deleted_at: local.t });
       }
     });
     return { applyPut: applyPut, applyDel: applyDel, pushUp: pushUp, pushDel: pushDel };
@@ -228,13 +233,15 @@
      so nothing the older version pulled comes again (rows cleared from this phone on purpose stay cleared), and a write
      still open at that moment arrives once it ends. It is kept until the cursor reaches the snapshot's xmax, beyond
      which no row can be one the older version saw.
-     Every page also returns `time_safe`, the (synced_at, id) the server certifies as a safe time cursor for the position
-     this page leaves: every visible row before it has reached this phone or was covered by the hand-over, compared in
-     the server's own collation (ties on one instant), and bounded by the earliest row still to come (backlog past the
-     cap, rows held behind the fence). It never goes back past `time`, the time cursor this sync started from. The time
-     cursor follows it only for a tab still running an older version, which can pull by nothing else; that tab's
+     Every page also returns `time_safe`, a forward-only (synced_at, id) position kept for a tab still on an older
+     version. From this page's view it is the latest point before which every visible row has reached this phone or was
+     covered by the hand-over (the server's own collation, so ties on one instant; bounded by the earliest row still to
+     come: backlog past the cap, rows held behind the fence). But it never goes back past `time`, the time cursor this
+     sync started from, so a row that became visible behind an earlier position can stay behind it: a compatibility
+     cursor with known gaps, not a fresh guarantee. The time cursor follows it only for that older tab, which can pull
+     by nothing else; that tab's
      weaker guarantee is in docs/design/2026-10-20-sync-commit-order.md (premortem 5). */
-  function pullCommitted(xid, id, hand, time, token) {
+  function pullCommitted(xid, id, hand, time, token, onHand) {
     var PAGE = 1000, all = [], cur = { xid: xid || null, id: xid && id != null ? id : null }, timeSafe = null;
     function page() {
       return rest('POST', '/rpc/entries_pull', { p_after_xid: cur.xid, p_after_id: cur.id, p_since: hand ? hand.at : null, p_since_id: hand && hand.id != null ? hand.id : null, p_handover: hand ? hand.snap || null : null, p_time_at: time ? time.at : null, p_time_id: time && time.id != null ? time.id : null, p_limit: PAGE }, null, token).then(function (res) {
@@ -242,7 +249,10 @@
         if (!Array.isArray(rows) || !isXid(res.fence) || !rows.every(function (r) { return r && isXid(r.sync_xid) && xidCmp(r.sync_xid, res.fence) < 0; })
           || !(ts === null || (ts && micros(ts.at) >= 0 && (ts.id === null || typeof ts.id === 'string')))
           || (hand && !hand.snap && !snapXmax(res.snapshot))) throw new Error('The cloud sent a pull reply this version does not understand.');
-        if (hand && !hand.snap) hand = { at: hand.at, id: hand.id, snap: res.snapshot }; /* the hand-over begins with this page's view */
+        if (hand && !hand.snap) { /* the hand-over begins with this page's view, saved at once so a retry after a failed page or upload keeps it (Codex round five, finding 1) */
+          hand = { at: hand.at, id: hand.id, snap: res.snapshot };
+          if (onHand) onHand(hand);
+        }
         all = all.concat(rows); timeSafe = ts;
         if (rows.length) { var last = rows[rows.length - 1]; cur = { xid: last.sync_xid, id: last.id }; }
         if (rows.length === PAGE && all.length < 20000) return page();
@@ -264,13 +274,14 @@
   /* The shared pull, always by transaction id (Jamie, 20 Oct, R5-B). A server without entries_pull pauses the sync:
      this version has no pull by time to fall back on, because rows received out of time order cannot be described by
      one time cursor without either skipping some or sending others again (Codex rounds three and four). */
-  function pullShared(st, token) {
+  function pullShared(st, token, onHand) {
     var x = isXid(st.pulledXid) ? st.pulledXid : null;
-    /* a phone with only the older time cursor hands over from it; a hand-over in progress (pullSince) carries on */
-    var ps = st.pullSince, hand = !x ? (st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null, snap: null } : null)
-      : (ps && ps.at && snapXmax(ps.snap) ? { at: ps.at, id: ps.id != null ? ps.id : null, snap: ps.snap } : null);
+    /* a hand-over in progress (pullSince, with the snapshot its first page returned) carries on, also when no
+       transaction cursor was saved yet; a phone with only the older time cursor starts one from it */
+    var ps = st.pullSince, saved = ps && ps.at && snapXmax(ps.snap) ? { at: ps.at, id: ps.id != null ? ps.id : null, snap: ps.snap } : null;
+    var hand = saved || (!x && st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null, snap: null } : null);
     var time = st.pulledSeq ? { at: st.pulledSeq, id: st.pulledId != null ? st.pulledId : null } : null;
-    return pullCommitted(x, x ? st.pulledXidId : null, hand, time, token).catch(function (err) {
+    return pullCommitted(x, x ? st.pulledXidId : null, hand, time, token, onHand).catch(function (err) {
       if (rpcMissing(err)) throw new Error(PULL_PAUSED);
       throw err;
     });
@@ -307,41 +318,58 @@
   var CANCELLED = { cancelled: true };
   /* A newer version of the app took over this page's service worker (sw.js skips waiting and claims every open page):
      the code running here is now older than the code beside it, so this page stops syncing at once (a sync in flight is
-     cancelled at its next check) and reloads once it is out of sight AND the page says nothing is unsaved (canReload:
-     no sheet or form open, no session running). Hidden alone is not enough: a half-filled form would be lost (Codex
-     round four). Until then it waits, and checks again each time she leaves.
+     cancelled at its next check) and reloads once it is out of sight AND nothing is unfinished (canReload, the room's
+     test: no sheet or form open, no activity holding the HUD, no session, practice or podcast running). Hidden alone is
+     not enough: a half-filled form would be lost (Codex round four). Until then it waits, and checks again each time
+     she leaves, a moment after the other hide handlers (Breath Tap and Light Flower save when the app is hidden).
      The first install also claims the page, and that is not an update. A page can also start with no controller after
-     a force refresh while a worker is already active; then its first takeover is an update. So the decision uses the
-     registration as it was when this module loaded, before the room registers anything, and the listener is armed at
-     load, before the room boots, so an early takeover is not missed. */
-  var upd = { armed: false, had: false, seen: false, onUpdate: null, canReload: null };
+     a force refresh while a worker is already active; then its first takeover is an update. So a takeover counts as an
+     update when the page had a controller at load, or this browser has seen a controlling worker before (a flag kept
+     from earlier loads), or the registration lookup started at load finds an active worker; a takeover that comes
+     before that lookup answers waits for it (Codex round five, finding 3). The listener is armed at load, before the
+     room boots, so an early takeover is not missed. */
+  var SW_SEEN = 'ovumind_sw_seen_v1';
+  var upd = { armed: false, had: false, looking: false, deferred: false, seen: false, reloading: false, onUpdate: null, canReload: null };
   function retire() { retired = true; clearTimeout(debounceTimer); setStatus('idle'); }
+  function swSeen() { try { return localStorage.getItem(SW_SEEN) === '1'; } catch (e) { return false; } }
+  function markSeen() { try { localStorage.setItem(SW_SEEN, '1'); } catch (e) { } }
   function tryReload() {
     var doc = root.document;
-    if (!upd.seen || !upd.canReload || (doc && !doc.hidden)) return;
+    if (!upd.seen || upd.reloading || !upd.canReload || (doc && !doc.hidden)) return;
     var ok = false; try { ok = !!upd.canReload(); } catch (e) { ok = false; }
-    if (ok) { try { root.location.reload(); } catch (e) { } }
+    if (ok) { upd.reloading = true; try { root.location.reload(); } catch (e) { upd.reloading = false; } }
+  }
+  function takeover() {
+    if (upd.seen) return;
+    upd.seen = true; retire();
+    if (upd.onUpdate) { try { upd.onUpdate(); } catch (e) { } }
+    tryReload();
   }
   function armUpdates() {
     var sw = root.navigator && root.navigator.serviceWorker;
     if (upd.armed || !sw || typeof sw.addEventListener !== 'function') return upd.armed;
-    upd.armed = true; upd.had = !!sw.controller;
+    upd.armed = true; upd.had = !!sw.controller || swSeen();
+    if (sw.controller) markSeen();
     if (!upd.had && typeof sw.getRegistration === 'function') {
-      try { Promise.resolve(sw.getRegistration()).then(function (reg) { if (reg && reg.active) upd.had = true; }, function () { }); } catch (e) { }
+      upd.looking = true;
+      var settle = function (active) {
+        upd.looking = false;
+        if (active) upd.had = true;
+        if (upd.deferred) { upd.deferred = false; if (active) takeover(); else upd.had = true; }
+      };
+      try { Promise.resolve(sw.getRegistration()).then(function (reg) { settle(!!(reg && reg.active)); }, function () { settle(false); }); } catch (e) { settle(false); }
     }
     sw.addEventListener('controllerchange', function () {
-      if (!upd.had) { upd.had = true; return; }
-      if (upd.seen) return;
-      upd.seen = true; retire();
-      if (upd.onUpdate) { try { upd.onUpdate(); } catch (e) { } }
-      tryReload();
+      markSeen();
+      if (!upd.had) { if (upd.looking) upd.deferred = true; else upd.had = true; return; }
+      takeover();
     });
     var doc = root.document;
-    if (doc && typeof doc.addEventListener === 'function') doc.addEventListener('visibilitychange', function () { if (doc.hidden) tryReload(); });
+    if (doc && typeof doc.addEventListener === 'function') doc.addEventListener('visibilitychange', function () { if (doc.hidden && upd.seen) setTimeout(tryReload, 0); });
     return true;
   }
-  /* the room hands over its note (onUpdate) and its own "nothing unsaved" test (canReload); an update seen before then
-     still gets its note, and the page reloads only once the room has said it is safe */
+  /* the room hands over its note (onUpdate) and its own "nothing unfinished" test (canReload); an update seen before
+     then still gets its note, and the page reloads only once the room has said it is safe */
   function watchUpdates(onUpdate, canReload) {
     var on = armUpdates();
     upd.onUpdate = typeof onUpdate === 'function' ? onUpdate : null;
@@ -350,7 +378,7 @@
     return on;
   }
   /* a retired page answers why it does not sync, in words */
-  var UPDATE_READY = 'A new version of Rhythme is ready. It opens next time you come back.';
+  var UPDATE_READY = 'A new version of Rhythme is ready. It opens once you finish what you are doing and leave the app.';
   function syncNow() {
     if (retired) return Promise.resolve({ ok: false, reason: 'update', error: UPDATE_READY });
     if (busy) return busyPromise;
@@ -369,7 +397,7 @@
       /* a switch to another account, or the first sync after a reset: every position field starts clean and the
          generation moves on, so nothing still in flight from before can land in it */
       if (st.userId && st.userId !== uid) { st = { v: 1, gen: genOf(st) + 1, userId: uid, shadow: snapshot(), tombstones: st.tombstones || {}, pulledXid: null, pulledXidId: null, pulledSeq: null, pulledId: null, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: st.lastSyncAt || null }; }
-      if (!st.userId) { st.gen = genOf(st) + 1; st.userId = uid; st.shadow = snapshot(); st.pulledXid = null; st.pulledXidId = null; delete st.pullSince; st.pulledSeq = null; st.pulledId = null; st.pushedAt = null; st.profilePulledAt = null; delete st.typedAfter; delete st.types; delete st.held; st.profileDirty = !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage); }
+      if (!st.userId) { st.gen = genOf(st) + 1; st.userId = uid; st.shadow = snapshot(); st.pulledXid = null; st.pulledXidId = null; delete st.pullSince; delete st.acked; st.pulledSeq = null; st.pulledId = null; st.pushedAt = null; st.profilePulledAt = null; delete st.typedAfter; delete st.types; delete st.held; st.profileDirty = !!(S.list(null).length || (S.profile().name || '').trim() || S.profile().lifeStage); }
       var gen0 = genOf(st);
       /* still the same account, the same generation, signed in as it, and allowed to sync */
       function alive() { var c = loadState(); return genOf(c) === gen0 && c.userId === uid && a.userId() === uid && canSync(); }
@@ -397,7 +425,13 @@
       });
       /* pull every row that reached the server after our cursor, in order and in pages, so a late-arriving older edit
          is never skipped */
-      return pre.then(function () { stillAlive(); return pullShared(st, token); }).then(function (got) {
+      /* the first page of a hand-over saves its snapshot straight away, unless another tab already moved on */
+      function onHand(h) {
+        var c = loadState();
+        if (c.userId !== uid || genOf(c) !== gen0 || isXid(c.pulledXid) || (c.pullSince && snapXmax(c.pullSince.snap))) return;
+        c.pullSince = h; saveState(c);
+      }
+      return pre.then(function () { stillAlive(); return pullShared(st, token, onHand); }).then(function (got) {
         stillAlive();
         var rows = got.rows; incRows = rows; incEnd = got;
         if (!newTypes.length) return rows;
@@ -406,12 +440,60 @@
         /* consent, sign-in or a reset may have changed during the network wait */
         stillAlive();
         var pushedAt = loadState().pushedAt || '';
-        var plan = addHeld(merge(S.list(null), loadState().tombstones || {}, remoteRows, pushedAt), loadState().held, S.get);
+        var plan = addHeld(merge(S.list(null), loadState().tombstones || {}, remoteRows, pushedAt, loadState().acked), loadState().held, S.get);
         /* serialise what we push NOW: an edit made to the same event during the
            upload must not move the watermark to an unsent time (pushUp holds live
            event references), or that edit would never be backed up. */
         var upRows = plan.pushUp.map(function (ev) { return evToRow(ev, uid); });
         if (plan.applyPut.length || plan.applyDel.length) S.applyRemote(plan.applyPut.map(function (r) { return keepLocalPhotos(rowToEvent(r)); }), plan.applyDel);
+        var remoteMax = remoteRows.reduce(function (m, r) { return maxIso(m, r.updated_at, r.deleted_at || ''); }, '');
+        checkpoint();
+        /* What this pull brought is saved before any upload (Codex round five, findings 1 and 2): the cursors move, the
+           hand-over keeps its snapshot, and tombstones and holds the cloud's newer copy settled are cleared. So a failed
+           upload neither pulls those rows again (which could bring back one cleared from this phone in between) nor lets
+           a retry start a new hand-over that would miss a write still open at the first one. Rows now on this phone
+           exactly as the cloud has them go in `acked`, so a retry does not push them back up as if they were new here;
+           with nothing to upload, the push watermark moves past them instead. */
+        function checkpoint() {
+          var cur = loadState();
+          if (cur.userId !== uid || genOf(cur) !== gen0 || a.userId() !== uid) throw CANCELLED;
+          /* the shared cursor moves to where this pull ended (never past a typed-recovery row), and only forward. If
+             another tab moved it while this sync ran, ours is written only when it is strictly later: a cursor wound
+             back would pull again rows this phone may have cleared since. It can move with no rows (up to the fence);
+             a hand-over still in progress travels with it (Codex round one, finding 2). */
+          var movedX = (cur.pulledXid || null) !== (st.pulledXid || null) || (cur.pulledXidId || null) !== (st.pulledXidId || null);
+          if (incEnd.xid && (!movedX || xidLater(incEnd, cur))) {
+            cur.pulledXid = incEnd.xid; cur.pulledXidId = incEnd.id;
+            if (incEnd.hand) cur.pullSince = incEnd.hand; else delete cur.pullSince;
+          }
+          /* the time cursor, for a tab still on an older version, follows the server's time_safe (Codex rounds one and
+             two). The server already kept it from going back past the one this sync started from; if another tab or an
+             older version moved it meanwhile, ours is written only when it is later by instant (a tie keeps the stored
+             one: ids are ordered by the server's collation, not this phone's) */
+          var tsafe = incEnd.timeSafe, movedT = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
+          if (tsafe && (!movedT || !cur.pulledSeq || micros(tsafe.at) > micros(cur.pulledSeq))) { cur.pulledSeq = tsafe.at; cur.pulledId = tsafe.id; }
+          if (typedDone) { cur.types = knownTypes; delete cur.typedAfter; }
+          else if (typed && typed.lastId) cur.typedAfter = typed.lastId;
+          var push = {}; plan.pushDel.forEach(function (d) { push[d.id] = 1; });
+          plan.applyDel.forEach(function (id) { delete cur.tombstones[id]; });
+          plan.applyPut.forEach(function (r) { delete cur.tombstones[r.id]; });
+          remoteRows.forEach(function (r) { if (r.deleted && !push[r.id]) delete cur.tombstones[r.id]; });
+          var held = cur.held || {};
+          plan.applyPut.forEach(function (r) { delete held[r.id]; });
+          plan.applyDel.forEach(function (id) { delete held[id]; });
+          cur.held = held;
+          if (!plan.pushUp.length && !plan.pushDel.length) cur.pushedAt = maxIso(cur.pushedAt || '', remoteMax) || cur.pushedAt || null;
+          else {
+            var acked = cur.acked || {}, wm = ts(cur.pushedAt || '');
+            remoteRows.forEach(function (r) {
+              if (r.deleted) { delete acked[r.id]; return; }
+              var ev = S.get(r.id);
+              if (ev && ts(ev.updatedAt) === ts(r.updated_at) && ts(r.updated_at) > wm) acked[r.id] = r.updated_at;
+            });
+            cur.acked = acked;
+          }
+          saveState(cur);
+        }
         var step = Promise.resolve(), pushedRows = upRows, heldRows = [];
         function post(rows) { stillAlive(); return rest('POST', '/entries?on_conflict=user_id,id', rows, 'resolution=merge-duplicates,return=minimal', token); }
         if (upRows.length) {
@@ -430,7 +512,6 @@
         return step.then(function () {
           var upMax = pushedRows.reduce(function (m, r) { return maxIso(m, r.updated_at); }, ''); /* held rows did not go up */
           var delMax = plan.pushDel.reduce(function (m, d) { return maxIso(m, d.deleted_at); }, '');
-          var remoteMax = remoteRows.reduce(function (m, r) { return maxIso(m, r.updated_at, r.deleted_at || ''); }, '');
           var settled = {};
           plan.pushDel.forEach(function (d) { settled[d.id] = 1; });
           plan.applyDel.forEach(function (id) { settled[id] = 1; });
@@ -441,26 +522,14 @@
           /* a sign-out, an account switch or a reset of the position during the upload cleared it: leave it cleared,
              rather than write this account and its progress back into it */
           if (cur.userId !== uid || genOf(cur) !== gen0 || a.userId() !== uid) throw CANCELLED;
-          /* the shared cursor moves to where this pull ended (never past a typed-recovery row), and only forward. If
-             another tab moved it while this sync ran, ours is written only when it is strictly later: a cursor wound
-             back would pull again rows this phone may have cleared since. It can move with no rows (up to the fence);
-             a hand-over still in progress travels with it (Codex round one, finding 2). It is saved only once the
-             uploads went through: after a failed sync the next one pulls those rows again, as it always has, rather
-             than push them back up as if they were new here. */
-          var movedX = (cur.pulledXid || null) !== (st.pulledXid || null) || (cur.pulledXidId || null) !== (st.pulledXidId || null);
-          if (incEnd.xid && (!movedX || xidLater(incEnd, cur))) {
-            cur.pulledXid = incEnd.xid; cur.pulledXidId = incEnd.id;
-            if (incEnd.hand) cur.pullSince = incEnd.hand; else delete cur.pullSince;
-          }
-          /* the time cursor, for a tab still on an older version, follows what the server certified (Codex rounds one
-             and two). The server already kept it from going back past the one this sync started from; if another tab or
-             an older version moved it meanwhile, ours is written only when it is later by instant (a tie keeps the
-             stored one: ids are ordered by the server's collation, not this phone's) */
-          var ts = incEnd.timeSafe, movedT = (cur.pulledSeq || null) !== (st.pulledSeq || null) || (cur.pulledId || null) !== (st.pulledId || null);
-          if (ts && (!movedT || !cur.pulledSeq || micros(ts.at) > micros(cur.pulledSeq))) { cur.pulledSeq = ts.at; cur.pulledId = ts.id; }
-          if (typedDone) { cur.types = knownTypes; delete cur.typedAfter; }
-          else if (typed && typed.lastId) cur.typedAfter = typed.lastId;
+          /* the cursors were saved before the uploads (checkpoint above); the push watermark moves now, and the ledger
+             keeps only cloud revisions it does not cover that are still on this phone unchanged */
           cur.pushedAt = maxIso(cur.pushedAt || '', upMax, delMax, remoteMax) || cur.pushedAt || null;
+          if (cur.acked) {
+            var wm2 = ts(cur.pushedAt || '');
+            Object.keys(cur.acked).forEach(function (id) { var ev = S.get(id), v = cur.acked[id]; if (ts(v) <= wm2 || !ev || ts(ev.updatedAt) !== ts(v)) delete cur.acked[id]; });
+            if (!Object.keys(cur.acked).length) delete cur.acked;
+          }
           Object.keys(settled).forEach(function (id) { delete cur.tombstones[id]; });
           var held = cur.held || {};
           /* a held row is released only if the version that went up is still the one on this phone; an edit made

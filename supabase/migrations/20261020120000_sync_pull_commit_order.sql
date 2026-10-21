@@ -23,19 +23,21 @@
 -- every page until its cursor reaches that snapshot's xmax. So nothing the older version already pulled is sent again
 -- (rows someone cleared from that phone on purpose stay cleared), while a write that was still open when the hand-over
 -- began arrives once it ends, whatever its synced_at. Rows the older version had already lost to the gap stay lost,
--- as before: they look exactly like rows it pulled. From the hand-over on, nothing is lost.
+-- as before: they look exactly like rows it pulled. From the hand-over's first page on, nothing is lost: the app saves
+-- that page's snapshot at once and sends it again on every retry, also after a failed page or upload.
 --
 -- Ship order (Jamie, R5-B). The app version that uses this function never pulls by time: on a server without it, its
 -- sync pauses with a message and nothing is pulled. So this migration is applied first, then the app is released.
 --
 -- The time cursor. Older app versions (a tab left open, a phone not updated yet) keep paging entries by synced_at,
--- which is still stamped as before. So each page also certifies how far such a (synced_at, id) cursor may safely
--- stand, and the new app keeps it for them: time_safe, the latest (synced_at, id) before which every visible row of the caller has been
--- delivered to the phone or was covered by the hand-over. It is bounded by the earliest visible row still after the
--- cursor the phone will hold (rows the 20,000 cap has not reached, rows held behind the fence), compared with the
--- server's own collation, so ties on one instant and backlog are both handled, and it never moves back past the
--- time cursor the phone sent. A pull by time from it is never worse than today's pull: its only gap is writes still
--- open, whose rows are not visible yet.
+-- which is still stamped as before. So each page also returns time_safe, a forward-only (synced_at, id) position the
+-- new app keeps for them. From the page's own view it is the latest (synced_at, id) before which every visible row of
+-- the caller has been delivered to the phone or was covered by the hand-over, bounded by the earliest visible row
+-- still after the cursor the phone will hold (rows the 20,000 cap has not reached, rows held behind the fence) and
+-- compared in the server's own collation, so ties on one instant and backlog are both handled. But it never moves back
+-- past the time cursor the phone sent, so a row that became visible behind an earlier position can stay behind it.
+-- It is a compatibility cursor with known gaps for older tabs (docs/design/2026-10-20-sync-commit-order.md,
+-- premortem 5), not a guarantee.
 
 -- 1. The writing transaction's id. A constant default only records it in the catalog: the table is not rewritten and
 --    the sync trigger does not fire, so no existing row's synced_at changes and no phone pulls anything again. New

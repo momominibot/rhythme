@@ -2884,7 +2884,19 @@
   hooks.on.beforeWalk = [function () { endMoment(); }];
   hooks.on.walk = [function () { endMoment(); }];
   function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
+  /* May a newer version reload this page now? Only with nothing unfinished: no sheet or form open (so no Luna card), no
+     activity holding the HUD (garden watering, greenhouse care and any later one: holding the HUD is the contract), no
+     session, practice, meditation or Morning start, no Light Flower or Breath Tap open, no podcast playing, no health file
+     being read or waiting to be picked from, and not arranging the room (Codex rounds four and five). Sleep is kept in the
+     saved state, so a sleeping room may reload. */
+  function safeToReload() {
+    var P = window.OvuPodcast && OvuPodcast.state ? OvuPodcast.state() : null;
+    return !current && !careOn && !hooks.hudStop && !meditating && !session && !practice && !importing && !imp.scan && !arranging && !dragProp
+      && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuLightFlower && OvuLightFlower.running && OvuLightFlower.running())
+      && !document.body.classList.contains('btap-open') && !(P && P.playing);
+  }
   window.OvuRoom = {
+    safeToReload: safeToReload,
     LAYOUTS: LAYOUTS, ART: ART, hotspotHandlers: hooks.hotspotHandlers,
     on: function (name, f) { (hooks.on[name] = hooks.on[name] || []).push(f); if (name === 'boot' && booted) f(); },
     setFallbackHotspot: function (f) { hooks.fallbackHotspot = f; }, setHudStop: function (f) { hooks.hudStop = f; }, setMoving: function (f) { hooks.moving = f; }, emit: emit,
@@ -2923,10 +2935,8 @@
     if (!S.state().tourDone) { setTimeout(function () { $('#hint').classList.add('on'); }, 1200); setTimeout(function () { $('#hint').classList.remove('on'); S.setState({ tourDone: true }); }, 7000); }
     if (!S.state().lunaSeen) { setTimeout(function () { $('#lunaBtn').classList.add('hinting'); }, 2500); setTimeout(function () { $('#lunaBtn').classList.remove('hinting'); S.setState({ lunaSeen: true }); }, 9000); }
     /* a newer version taking over this page stops its syncing at once, and reloads it when she has looked away with
-       nothing unsaved: no sheet or form open (so no Luna card either), no session, practice, meditation or Morning start
-       running, no file being read or waiting to be picked from, and not arranging the room (ovu-sync.js) */
-    if (window.OvuSync && OvuSync.watchUpdates) OvuSync.watchUpdates(function () { toast('A new version of Rhythme is ready. It opens next time you come back.', 'system_update'); },
-      function () { return !current && !careOn && !meditating && !session && !practice && !importing && !imp.scan && !arranging && !(window.OvuMorning && OvuMorning.active()); });
+       nothing unfinished (safeToReload, below; ovu-sync.js) */
+    if (window.OvuSync && OvuSync.watchUpdates) OvuSync.watchUpdates(function () { toast('A new version of Rhythme is ready. It opens once you finish what you are doing and leave the app.', 'system_update'); }, safeToReload);
     if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () { });
     RM.start(function (h) { chime('bell', true); toast(h.item.label + (h.item.note ? ' · ' + h.item.note : ''), h.item.icon); });
     document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } if (e.target.closest('#arrDone')) exitArrange(false); if (e.target.closest('#arrReset')) exitArrange(true); });

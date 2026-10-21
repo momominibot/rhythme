@@ -4,16 +4,19 @@
 `supabase/migrations/20261020120000_sync_pull_commit_order.sql` is a file only: applying it to the live project is
 Jamie's call (AGENTS gate 3).
 
-**Status: R5-B applied (Jamie, 21 Oct); not yet independently reviewed.** Codex round five could not run (its usage
-limit, until 27 Oct); the prompt is saved for when it can. Rounds two to four held the branch on the
-compatibility path (premortem 5). Jamie chose option A (the server certifies the time cursor, `time_safe`, below);
-round three proved that a single time cursor cannot be both skip-free and replay-free once the transaction-ordered pull
-has delivered rows out of time order. Jamie then chose A2: a phone that pulls by transaction id stops instead of
-pulling by time. Round four found two ways this version could still reach the time-ordered pull, and two defects in the
-takeover handling. Jamie chose R5-B: this version has no time-ordered pull at all (a missing `entries_pull` always
-pauses the sync), so the migration ships first and the app second; a newer version taking over a page reloads it only
-when it is hidden and nothing is unsaved; and "update or first install" is decided from the registration state at load.
-The transaction-ordered pull, the fence and the hand-over passed all four rounds.
+**Status: R5-B applied (Jamie, 21 Oct); Codex round five (21 Oct, one guarded run) found four should-fix defects and
+three nits, all fixed here with regression tests; the fixes themselves have not had a second independent review.**
+Rounds two to four held the branch on the compatibility path (premortem 5). Jamie chose option A (the server certifies
+the time cursor, `time_safe`, below); round three proved that a single time cursor cannot be both skip-free and
+replay-free once the transaction-ordered pull has delivered rows out of time order. Jamie then chose A2: a phone that
+pulls by transaction id stops instead of pulling by time. Round four found two ways this version could still reach the
+time-ordered pull, and two defects in the takeover handling. Jamie chose R5-B: this version has no time-ordered pull at
+all (a missing `entries_pull` always pauses the sync), so the migration ships first and the app second; a newer version
+taking over a page reloads it only when it is hidden and nothing is unfinished. Round five confirmed the time-ordered
+pull is gone and found what remained: a pull saved only after its uploads could lose a write open at a hand-over's
+first page and did not in fact spare re-uploads, a takeover could beat the registration lookup, and sheetless
+activities were not counted as unfinished. The transaction-ordered pull, the fence and the hand-over itself passed all
+five rounds.
 
 ## The gap
 
@@ -157,22 +160,31 @@ Premortem, assuming B failed:
 8. *A tab keeps running older code after a newer version ships.* `sw.js` already skips waiting and claims every open
    page, but nothing reloaded a page that was open. Now `ovu-sync.js` listens for `controllerchange` from the moment it
    loads, before the room registers the worker or boots, so an early takeover is not missed. A takeover is an update
-   when the page had a controller at load, or had none but its registration already had an active worker (a force
-   refresh leaves the page uncontrolled while a worker is active [11]); the first install claiming a fresh page is not.
-   On an update the page stops syncing at once (`retire()`: a sync in flight is cancelled at its next check, and
-   `syncNow()` answers `{ok: false, reason: 'update'}` with the words "A new version of Rhythme is ready. It opens next
-   time you come back.", which the manual sync button shows). It reloads only when it is hidden **and** the room says
-   nothing is unsaved: no sheet or form open (so no Luna card), no session, practice, meditation or Morning start
-   running, no health file being read or waiting to be picked from, not arranging the room. If something is open it
-   waits and checks again each time she leaves the app. The price: while something stays open or waiting (a sheet left
-   open, a scanned health file never picked from), that page stays on the older code and does not back up; nothing is
-   lost, and it moves on the first time she leaves with nothing open. A `canReload` that throws counts as "not safe". The room's note and its safety test are handed over by
-   `OvuSync.watchUpdates(onUpdate, canReload)`; an update seen before that gets its note when the room is ready, and no
-   reload happens before the room's test exists. Limits: this cannot reach code already in the field before this
+   when the page had a controller at load, or this browser has had a controlling worker before (a flag,
+   `ovumind_sw_seen_v1`, set whenever a controller is seen), or the registration lookup started at load finds an active
+   worker (a force refresh leaves the page uncontrolled while a worker is active [11]); a takeover that arrives before
+   that lookup answers waits for its answer (Codex round five, finding 3). The first install claiming a fresh page is
+   not an update. If the lookup only answered after a brand-new worker had installed, a first install would be taken
+   for an update; that costs one reload when she next leaves the app, never a missed update, and the lookup answers in
+   milliseconds while an install needs a network fetch. On an update the page stops syncing at once (`retire()`: a sync
+   in flight is cancelled at its next check, and `syncNow()` answers `{ok: false, reason: 'update'}` with the words "A
+   new version of Rhythme is ready. It opens once you finish what you are doing and leave the app.", which the manual
+   sync button shows). It reloads only when it is hidden **and** the room's `safeToReload()` says nothing is unfinished:
+   no sheet or form open (so no Luna card), no activity holding the HUD (garden watering, greenhouse care and any later
+   one: holding the HUD is the contract, Codex round five, finding 4), no session, practice, meditation or Morning
+   start, no Light Flower or Breath Tap open, no podcast playing, no health file being read or waiting to be picked
+   from, not arranging the room. Sleep is kept in the saved state, so a sleeping room may reload. The check runs a
+   moment after the page is hidden, once the other hide handlers have run (Breath Tap and Light Flower save then), and
+   asks for one reload only. If something is open it waits and checks again each time she leaves the app. The price:
+   while something stays open or waiting (a sheet left open, a scanned health file never picked from), that page stays
+   on the older code and does not back up; nothing is lost, and it moves on the first time she leaves with nothing open.
+   A `canReload` that throws counts as "not safe". Limits: this cannot reach code already in the field before this
    change; it only fires when the service worker itself changes (an app-only change with an identical `sw.js` causes no
    takeover [12], which is why releases bump `VERSION` in `sw.js`; this branch leaves that bump to the merge, since main
-   moves it often); and it was tested with a pretend
-   service worker, document and location in Node, not in Safari on an iPhone.
+   moves it often); and it was tested with a pretend service worker, document and location in Node, plus the room's
+   real `safeToReload()` in the browser smoke suite, not in Safari on an iPhone. iOS suspends pages in the background
+   [13], so a reload asked for while hidden may only complete when she comes back; a device check of takeover,
+   backgrounding, return and offline reload is still owed.
 
 ## The hand-over from the time cursor
 
@@ -202,8 +214,10 @@ which would restore such cleared rows. The rule now:
 
 What it cannot recover: rows the older version had already lost to the gap before the hand-over. They sit behind its
 cursor, from transactions that had ended, exactly like rows it pulled; only a full re-pull could find them, and that
-would also bring back what someone cleared. So they stay lost, as they are today, and from the hand-over on nothing is
-lost. Under R5-B the migration ships first, then the app: a phone that loads the new version hands over on its first
+would also bring back what someone cleared. So they stay lost, as they are today. From the hand-over's first page on,
+nothing is lost: the phone saves that page's snapshot as soon as it arrives, before any row is applied, and sends it on
+every retry, so a failed later page or a failed upload cannot start a second hand-over that would count a write still
+open at the first page as one the older version saw (Codex round five, finding 1). Under R5-B the migration ships first, then the app: a phone that loads the new version hands over on its first
 sync, so the window is the time between the two releases, during which older versions pull by time as they do today.
 
 One case this does not cover: a tab still on the older version, open at the same time as a newer one, pulling rows after
@@ -251,15 +265,22 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
   hand-over in progress in `pullSince` (`{at, id, snap}`); the cursor keeps the forward-only rule across tabs
   (`xidLater`), and every reset and account switch clears all three. The time cursor (`pulledSeq`/`pulledId`) starts a
   hand-over and otherwise follows the server's `time_safe`, only for a tab still on an older version. The returned
-  snapshot text is checked only when a hand-over begins. The cursor is saved after the uploads, as before: a sync whose
-  upload fails pulls the same rows again next time, where they match what the phone already has, instead of finding
-  them as unsent local rows and pushing them back up (on a first restore that could be 20,000 rows sent back and pulled
-  again by every other phone). The cost is that rows delivered in a failed sync can come back after "Delete every
-  entry on this device" if that happens before the next good sync. The update watcher (premortem 8) is armed at load;
+  snapshot text is checked only when a hand-over begins, and saved at once (above).
+  What a pull brought is saved before any upload (`checkpoint()`, Codex round five, findings 1 and 2): the cursors,
+  the hand-over, the typed-recovery position, and the tombstones and holds that the cloud's newer copy settled. So a
+  failed upload neither pulls those rows again (which could bring back one cleared from this phone in between, round
+  four's replay) nor starts a second hand-over. Rows now on the phone exactly as the cloud has them go in a small ledger,
+  `acked` (`{id: updated_at}`); `merge` never pushes a local row that is still exactly such a revision, so a retry does
+  not send the cloud's own rows back up, while any edit made here changes `updatedAt` and goes up as usual. When there
+  is nothing to upload, the push watermark moves past the pulled rows instead and the ledger stays empty. After a sync
+  goes through, the ledger keeps only revisions the watermark does not cover that are still on the phone unchanged, so
+  it is empty again after an ordinary sync. My earlier reason for saving after the uploads (that re-pulling spared
+  re-uploads) was wrong: equal timestamps were pushed again anyway (round five, finding 2). The update watcher
+  (premortem 8) is armed at load;
   `canSync()` is false once retired. The typed recovery also starts for a phone whose only cursor is the new one. Any
   other `entries_pull` failure fails the sync.
-- `room.js` hands `watchUpdates` the note and its "nothing unsaved" test; `ovu-auth.js` shows a retired page's reason
-  on the manual sync button instead of "Sync failed".
+- `room.js` hands `watchUpdates` the note and `safeToReload()`, also on `OvuRoom` so the smoke suite tests the real
+  one; `ovu-auth.js` shows a retired page's reason on the manual sync button instead of "Sync failed".
 
 ## Verification
 
@@ -277,15 +298,16 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
 - `tools/test-core.js`, `sharedPullCommitOrder`, on the shared `syncServer`/`syncWorld`/`syncRow` helpers (the pretend
   server has open transactions, PostgreSQL's snapshot rules with BigInt transaction ids, and an `entries_pull` that
   matches the SQL including `time_safe`, arguments checked against the migration file; with `commit: false` it answers
-  `PGRST202` like a server without the migration): 41 checks, including both round-three counterexamples (cases 10 and
-  11, case 10 now also proving that `d` first arrived once), the older-tab view of the time cursor, a new phone and an
-  old phone on a server without `entries_pull` (cases 2c and 4: both pause, ask again each sync, never pull by time, and
-  carry on by transaction id once it answers), and a newer version taking over a page (case 12: a first install is not
-  an update; a force-refreshed page's first takeover is; an open form holds the reload until she leaves with nothing
-  unsaved; a takeover before the room boots is caught). Tests that relied on the time-ordered pull now run on the
-  pretend `entries_pull`. Against main's `ovu-sync.js` (5750a53) 34 of the 41 fail; against round four's (4e4a218)
-  the 7 R5-B checks fail; on this branch all pass (1,037 in all).
-- `tools/check.py`: 81 pages, 0 problems. `tools/e2e_smoke.py`: 266 passed, 0 failed (as on untouched main). Two earlier runs at a load average near 40 each failed one different walk or camera timing check; neither came back once the load dropped.
+  `PGRST202` like a server without the migration): 55 checks, including both round-three counterexamples (cases 10 and
+  11), the older-tab view of the time cursor, a new phone and an old phone on a server without `entries_pull` (cases 2c
+  and 4), a newer version taking over a page (case 12: first install, force refresh, an open form, a takeover before the
+  room boots, a takeover before the registration lookup answers, the remembered flag, one reload only), and round
+  five's sync findings (case 13: a failed upload after the first hand-over page, a failed second page, a failed upload
+  then a clear, a retry that must send only what was written here, an edit of a pulled row, and the ledger in `merge`).
+  Against round five's `ovu-sync.js` (8545e88) 11 of the 55 fail; against main's (5750a53) 44 fail (46 in the whole
+  file); on this branch all pass (1,051 in all).
+- `tools/check.py`: 81 pages, 0 problems. `tools/e2e_smoke.py`: 267 passed, 0 failed, including a check that the room's real
+  `safeToReload()` is held by an activity holding the HUD and by an open sheet.
 
 ## Review record
 
@@ -322,9 +344,17 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
   at load, "update" decided from the controller or an active registration at load (a force refresh), and the reload
   held until the page is hidden with nothing unsaved (case 12, `room.js`); case 10 tightened; a retired page's reason
   shown on the manual sync button (round four's nit).
-- Codex read-only, round five (`docs/debate/2026-10-20-sync-commit-order-codex-round5.md`): not run. Codex stopped at
-  its usage limit ("try again at Oct 27th, 2026 2:41 PM"); under the token-waste rule it was not retried and no other
-  reviewer was substituted. The prompt is saved there, ready to run.
+- Codex read-only, round five (`docs/debate/2026-10-20-sync-commit-order-codex-round5.md`): the first attempt (21 Oct,
+  10:30) stopped at Codex's usage limit and was not retried. Codex runs in other sessions that evening returned answers
+  (their local logs, not a probe call), and Jamie asked for the review to finish that day, so it ran once more under a
+  guarded runner (one run, a lock, stdout and stderr checked, a block written on any provider failure, no retry, no
+  other model; its stop rules were first tested against a fake `codex`), on gpt-6-astra, the reviewer AGENTS.md names.
+  NOT READY: round four's finding 2 FIXED, 1, 3 and 4 PARTLY FIXED, with four should-fix defects (a failed first
+  hand-over could lose a write open at its first page, reproduced; re-uploads were not in fact spared, reproduced; a
+  takeover before the registration lookup answered was taken for a first install; sheetless activities were not
+  counted as unfinished) and three nits (`time_safe` wording in the migration and client, main's failure count, the
+  update note's "next time you come back"). All fixed as above, each with a test that fails on 8545e88. The fixes have
+  not had a second independent review.
 
 ## Sources
 
@@ -344,10 +374,12 @@ PostgreSQL 17 with 60,000 rows for one person: 61 pages, median 35 ms, worst 48 
 9. PostgREST docs, Errors (PGRST202, 404): https://docs.postgrest.org/en/stable/references/errors.html
 10. PostgreSQL 18 docs, Function Volatility Categories (STABLE functions use the calling query's snapshot):
    https://www.postgresql.org/docs/current/xfunc-volatility.html
-11. W3C Service Workers, 3.4.1 `controller` (returns null for a force refresh):
+11. W3C Service Workers, 3.4.1 `controller` (returns null for a force refresh) and `getRegistration()` (asynchronous):
    https://www.w3.org/TR/service-workers/#navigator-service-worker-controller
 12. W3C Service Workers editor's draft, Update algorithm (a byte-for-byte identical script and imports finish the job
    with no new worker): https://w3c.github.io/ServiceWorker/#update-algorithm
+13. WebKit blog, How Web Content Can Affect Power Usage (background pages are suspended):
+   https://webkit.org/blog/8970/how-web-content-can-affect-power-usage/
 
 The docs pages above are for PostgreSQL 18; the functions and the `xid8` type used here were added in PostgreSQL 13, and
 the live project runs 17.6 (checked 20 Oct with the Supabase project details).

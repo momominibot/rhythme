@@ -1808,23 +1808,28 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   /* 12. A newer version takes over this page's service worker (premortem 8; Codex round four, findings 3 and 4). swWorld
      builds a signed-in phone whose service worker, document and location are pretend ones; atLoad loads ovu-sync.js again
      with the service worker already there, as the page does, so the watcher is armed before the room hands it anything. */
+  function tick() { return new Promise(function (res) { setTimeout(res, 0); }); }
   function swWorld(o) {
     var u = fresh(), L = [], D = [], h = { reloads: 0, notes: 0, safe: true };
     u.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('t'); }, userId: function () { return 'u1'; } };
     u.OvuStore.setProfile({ cloud: { v: 1, at: '2026-10-20T00:00:00Z', uid: 'u1' } });
-    u.navigator.serviceWorker = { controller: o.controller ? {} : null, addEventListener: function (t, f) { if (t === 'controllerchange') L.push(f); }, getRegistration: function () { return Promise.resolve(o.active ? { active: {} } : undefined); } };
+    var regResolve = null, regP = o.pending ? new Promise(function (res) { regResolve = res; }) : Promise.resolve(o.active ? { active: {} } : undefined);
+    h.resolveReg = function (active) { if (regResolve) regResolve(active ? { active: {} } : undefined); return tick(); };
+    if (o.seenBefore) u.localStorage.setItem('ovumind_sw_seen_v1', '1');
+    u.navigator.serviceWorker = { controller: o.controller ? {} : null, addEventListener: function (t, f) { if (t === 'controllerchange') L.push(f); }, getRegistration: function () { return regP; } };
     u.document = { hidden: false, addEventListener: function (t, f) { if (t === 'visibilitychange') D.push(f); }, querySelector: function () { return null; } };
     u.location = { reload: function () { h.reloads++; } };
     if (o.atLoad) vm.runInContext(fs.readFileSync(path.join(root, 'ovu-sync.js'), 'utf8'), u, { filename: 'ovu-sync.js' });
     h.Y = u.OvuSync;
     h.take = function () { L.forEach(function (f) { f(); }); };
-    h.hide = function () { u.document.hidden = true; D.forEach(function (f) { f(); }); };
-    h.show = function () { u.document.hidden = false; D.forEach(function (f) { f(); }); };
+    /* the page checks a moment after she leaves, once the other hide handlers have saved; these wait for that check */
+    h.hide = function () { u.document.hidden = true; D.forEach(function (f) { f(); }); return tick(); };
+    h.show = function () { u.document.hidden = false; D.forEach(function (f) { f(); }); return tick(); };
+    h.flag = function () { return u.localStorage.getItem('ovumind_sw_seen_v1'); };
     /* code without watchUpdates fails these checks cleanly instead of stopping the run */
     h.hook = function () { return typeof h.Y.watchUpdates === 'function' && h.Y.watchUpdates(function () { h.notes++; }, function () { return h.safe; }); };
     return h;
   }
-  var tick = function () { return new Promise(function (res) { setTimeout(res, 0); }); };
   /* a: a first install claims the page (no controller, no registration): not an update; a later takeover is */
   var A12 = swWorld({}), a12 = {};
   A12.hook();
@@ -1835,8 +1840,12 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   }).then(function (r) {
     check('a first install claiming the page is not an update; a later takeover stops this page syncing at once', a12.afterInstall.sync === true && a12.afterInstall.notes === 0 && a12.afterUpdate.sync === false && a12.afterUpdate.notes === 1, JSON.stringify(a12));
     check('and a sync asked for then says a new version is ready, instead of failing', r && r.ok === false && r.reason === 'update' && /new version of Rhythme is ready/.test(r.error || ''), JSON.stringify(r));
-    A12.hide();
-    check('it reloads once she looks away with nothing unsaved', A12.reloads === 1, JSON.stringify({ reloads: A12.reloads }));
+    return A12.hide();
+  }).then(function () {
+    check('it reloads once she looks away with nothing unfinished', A12.reloads === 1, JSON.stringify({ reloads: A12.reloads }));
+    return A12.hide();
+  }).then(function () {
+    check('and asks for that reload only once, however often she leaves before it happens', A12.reloads === 1, JSON.stringify({ reloads: A12.reloads }));
     /* b: a force refresh leaves the page with no controller while a worker is already active: its first takeover is an update */
     var B12 = swWorld({ active: true }); B12.hook();
     return tick().then(function () {
@@ -1844,28 +1853,136 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
       check('a force-refreshed page (no controller, an active registration) treats its first takeover as an update', B12.Y.canSync() === false && B12.notes === 1, JSON.stringify({ sync: B12.Y.canSync(), notes: B12.notes }));
     });
   }).then(function () {
-    /* c: something unsaved: looking away does not reload until the room says it is safe */
-    var C12 = swWorld({ controller: true }); C12.safe = false; C12.hook();
-    C12.take(); C12.hide();
-    var held = C12.reloads;
-    C12.show(); C12.safe = true; C12.hide();
-    check('with a form open, looking away does not reload; it reloads the next time she looks away with nothing unsaved', held === 0 && C12.reloads === 1, JSON.stringify({ held: held, reloads: C12.reloads }));
+    /* c: something unfinished: looking away does not reload until the room says it is safe */
+    var C12 = swWorld({ controller: true }), held = null; C12.safe = false; C12.hook();
+    C12.take();
+    return C12.hide().then(function () {
+      held = C12.reloads;
+      return C12.show();
+    }).then(function () { C12.safe = true; return C12.hide(); }).then(function () {
+      check('with a form open, looking away does not reload; it reloads the next time she looks away with nothing unfinished', held === 0 && C12.reloads === 1, JSON.stringify({ held: held, reloads: C12.reloads }));
+      check('a page that had a controller remembers that this browser has a worker', C12.flag() === '1', String(C12.flag()));
+    });
+  }).then(function () {
     /* d: the takeover comes before the room boots and hands over its note and its safety test */
-    var D12 = swWorld({ controller: true, atLoad: true });
+    var D12 = swWorld({ controller: true, atLoad: true }), early = null, beforeHook = null;
     D12.take();
-    var early = { sync: D12.Y.canSync(), notes: D12.notes };
-    D12.hide();
-    var beforeHook = D12.reloads;
-    D12.hook();
-    check('a takeover before the room boots is caught: syncing stops at once, the note shows when the room is ready, and the reload waits for its safety test', early.sync === false && early.notes === 0 && beforeHook === 0 && D12.notes === 1 && D12.reloads === 1, JSON.stringify({ early: early, beforeHook: beforeHook, notes: D12.notes, reloads: D12.reloads }));
+    early = { sync: D12.Y.canSync(), notes: D12.notes };
+    return D12.hide().then(function () {
+      beforeHook = D12.reloads;
+      D12.hook();
+      check('a takeover before the room boots is caught: syncing stops at once, the note shows when the room is ready, and the reload waits for its safety test', early.sync === false && early.notes === 0 && beforeHook === 0 && D12.notes === 1 && D12.reloads === 1, JSON.stringify({ early: early, beforeHook: beforeHook, notes: D12.notes, reloads: D12.reloads }));
+    });
+  }).then(function () {
+    /* e: (Codex round five, finding 3) a force-refreshed page whose takeover comes before the registration lookup answers */
+    var E12 = swWorld({ pending: true }); E12.hook();
+    E12.take();
+    var waiting = { sync: E12.Y.canSync(), notes: E12.notes };
+    return E12.resolveReg(true).then(function () {
+      check('a takeover that comes before the registration lookup answers waits for it, and counts as an update when a worker was already active', waiting.sync === true && waiting.notes === 0 && E12.Y.canSync() === false && E12.notes === 1, JSON.stringify({ waiting: waiting, sync: E12.Y.canSync(), notes: E12.notes }));
+    });
+  }).then(function () {
+    /* f: the same wait on a true first install: no worker was there, so it is not an update; the next takeover is */
+    var F12 = swWorld({ pending: true }), first = null; F12.hook();
+    F12.take();
+    return F12.resolveReg(false).then(function () {
+      first = { sync: F12.Y.canSync(), notes: F12.notes };
+      F12.take();
+      check('and on a first install it is not an update; the next takeover is', first.sync === true && first.notes === 0 && F12.Y.canSync() === false && F12.notes === 1, JSON.stringify({ first: first, sync: F12.Y.canSync(), notes: F12.notes }));
+    });
+  }).then(function () {
+    /* g: a browser that had a worker on an earlier load knows at once, without the lookup */
+    var G12 = swWorld({ seenBefore: true }); G12.hook();
+    G12.take();
+    check('a page whose browser had a worker before (remembered) treats a takeover after a force refresh as an update at once', G12.Y.canSync() === false && G12.notes === 1, JSON.stringify({ sync: G12.Y.canSync(), notes: G12.notes }));
   });
+  /* 13. (Codex round five, findings 1 and 2) what one pull brought is saved before the uploads. `failing` wraps a
+     phone's fetch so its next n uploads (or n-th pull page) answer 500, and records every upload's ids. */
+  function failing(w, o) {
+    var inner = w.fetch, n = 0, rpcN = 0, rpcFail = o.rpcFail || 0, uploads = o.uploads || 0, posts = [];
+    w.fetch = function (url, opt) {
+      var m = (opt && opt.method) || 'GET';
+      if (m === 'POST' && /\/rpc\/entries_pull/.test(url) && ++rpcN === rpcFail) return Promise.resolve({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"timeout"}'); } });
+      if (m === 'POST' && /\/entries\?on_conflict/.test(url)) {
+        posts.push(JSON.parse(opt.body).map(function (r) { return r.id; }).sort().join());
+        if (n++ < uploads) return Promise.resolve({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"upstream"}'); } });
+      }
+      return inner(url, opt);
+    };
+    return posts;
+  }
+  var LEGACY13 = function () { return { v: 1, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: '2026-10-20T10:00:00.000001+00:00', pulledId: null, pushedAt: '2026-10-20T10:00:00Z', profilePulledAt: '2026-10-20T10:00:00Z', profileDirty: false, lastSyncAt: null }; };
+  /* a: an older cursor at 10:00. Transaction 99 wrote d at 11:00 and committed; 100 is still open with pending, stamped
+     09:00; 101 wrote later at 12:00 and committed. The first hand-over delivers d, then this phone's own upload fails.
+     100 commits. The retry must keep the hand-over's first snapshot, in which 100 was still running, so pending arrives. */
+  var s13 = syncServer({ commit: true }), t13 = tally();
+  var D13 = s13.begin('2026-10-20T11:00:00.000001+00:00', '99'); D13.add(syncRow('d', 'reflection', null, note('d'))); D13.commit();
+  var P13 = s13.begin('2026-10-20T09:00:00.000001+00:00', '100'); P13.add(syncRow('pending', 'reflection', null, note('pending')));
+  var L13 = s13.begin('2026-10-20T12:00:00.000001+00:00', '101'); L13.add(syncRow('later', 'reflection', null, note('later'))); L13.commit();
+  var w13 = syncWorld(s13, t13.onGet, LEGACY13()), mid13 = null;
+  failing(w13, { uploads: 1 });
+  w13.OvuStore.add('reflection', w13.OvuStore.today(), { text: 'written here', mood: '' });
+  var g13 = w13.OvuSync.syncNow().then(function (r) {
+    mid13 = { r: r, st: stateOf(w13), d: !!w13.OvuStore.get('d') };
+    P13.commit(); t13.sync = 1;
+    return w13.OvuSync.syncNow();
+  }).then(function (r) {
+    check('round five, finding 1: a failed upload after the first hand-over page keeps the hand-over (cursor and snapshot) it began with', mid13.r.ok === false && mid13.d && mid13.st.pulledXid === '100' && !!(mid13.st.pullSince && mid13.st.pullSince.snap), JSON.stringify({ r: mid13.r, xid: mid13.st.pulledXid, since: mid13.st.pullSince }));
+    check('so the write still open at that first page arrives on the retry, with later, and d is not sent again', r.ok === true && !!w13.OvuStore.get('pending') && !!w13.OvuStore.get('later') && t13.seen.d === 1, JSON.stringify({ r: r, seen: t13.seen }));
+  });
+  /* b: the same, but the hand-over's second page fails before anything is applied: its first page's snapshot is kept */
+  var s13b = syncServer({ commit: true });
+  var B13 = s13b.begin('2026-10-20T11:00:00.000001+00:00', '98'); for (var k13 = 0; k13 < 1000; k13++) B13.add(syncRow('b' + pad(k13), 'reflection', null, note(k13))); B13.commit();
+  var P13b = s13b.begin('2026-10-20T09:00:00.000001+00:00', '100'); P13b.add(syncRow('pending', 'reflection', null, note('pending')));
+  var w13b = syncWorld(s13b, null, LEGACY13()), mid13b = null;
+  failing(w13b, { rpcFail: 2 });
+  var g13b = w13b.OvuSync.syncNow().then(function (r) {
+    mid13b = { r: r, st: stateOf(w13b), n: w13b.OvuStore.list('reflection').length };
+    P13b.commit();
+    return w13b.OvuSync.syncNow();
+  }).then(function (r) {
+    check('a hand-over whose second page fails keeps its first page\'s snapshot, and nothing is applied', mid13b.r.ok === false && mid13b.n === 0 && !mid13b.st.pulledXid && !!(mid13b.st.pullSince && mid13b.st.pullSince.snap), JSON.stringify({ r: mid13b.r, n: mid13b.n, since: mid13b.st.pullSince }));
+    check('so the retry still delivers the write that was open at that first page', r.ok === true && !!w13b.OvuStore.get('pending') && w13b.OvuStore.list('reflection').length === 1001, JSON.stringify({ r: r, n: w13b.OvuStore.list('reflection').length }));
+  });
+  /* c: a new phone pulls d, its own upload fails, and she clears the phone before the next sync: d must not come back */
+  var s13c = syncServer({ commit: true }), C13 = s13c.begin('2026-10-20T11:00:00.000001+00:00', '99'); C13.add(syncRow('d', 'reflection', null, note('d'))); C13.commit();
+  var w13c = syncWorld(s13c, null, null), mid13c = null;
+  failing(w13c, { uploads: 1 });
+  w13c.OvuStore.add('reflection', w13c.OvuStore.today(), { text: 'written here', mood: '' });
+  var g13c = w13c.OvuSync.syncNow().then(function (r) {
+    mid13c = { r: r, d: !!w13c.OvuStore.get('d') };
+    clearPhone(w13c);
+    return w13c.OvuSync.syncNow();
+  }).then(function (r) {
+    check('round four\'s replay: a pull whose upload failed is still saved, so a row cleared from this phone before the next sync stays cleared', mid13c.r.ok === false && mid13c.d && r.ok === true && ids(w13c) === '', JSON.stringify({ first: mid13c, r: r, local: ids(w13c) }));
+  });
+  /* d: (finding 2) the retry after a failed upload sends only what was written here, not the cloud's own rows; an edit
+     made here to a cloud row afterwards still goes up, and the ledger empties once the watermark covers it */
+  var s13d = syncServer({ commit: true }), E13 = s13d.begin('2026-10-20T11:00:00.000001+00:00', '99'); E13.add(syncRow('c', 'reflection', null, note('c'))); E13.commit();
+  var w13d = syncWorld(s13d, null, null), posts13 = failing(w13d, { uploads: 1 }), mine13 = null, mid13d = null;
+  mine13 = w13d.OvuStore.add('reflection', w13d.OvuStore.today(), { text: 'written here', mood: '' }).id;
+  var g13d = w13d.OvuSync.syncNow().then(function () {
+    mid13d = stateOf(w13d);
+    return w13d.OvuSync.syncNow();
+  }).then(function (r) {
+    var st = stateOf(w13d);
+    check('round five, finding 2: after a failed upload the retry sends only the entry written here, not the cloud row it pulled', posts13.length === 2 && posts13[0] === mine13 && posts13[1] === mine13 && r.ok === true && !!(mid13d.acked && mid13d.acked.c), JSON.stringify({ posts: posts13, r: r, acked: mid13d.acked }));
+    check('and once a sync goes through, the ledger of cloud revisions is empty again', !st.acked, JSON.stringify(st.acked));
+    w13d.OvuStore.update('c', { data: { text: 'c, edited here', mood: '' } });
+    return w13d.OvuSync.syncNow();
+  }).then(function () {
+    check('an edit made here to a pulled cloud row still goes up', posts13.length === 3 && posts13[2] === 'c', JSON.stringify(posts13));
+  });
+  var ackA = Y0.merge([{ id: 'c', updatedAt: '2026-10-20T11:00:00.000Z' }], {}, [], '2026-10-20T10:00:00Z', { c: '2026-10-20T11:00:00.000001+00:00' });
+  var ackB = Y0.merge([{ id: 'c', updatedAt: '2026-10-21T08:00:00.000Z' }], {}, [], '2026-10-20T10:00:00Z', { c: '2026-10-20T11:00:00.000001+00:00' });
+  check('merge: a local row that is still exactly an acknowledged cloud revision is not pushed; an edit of it is', ackA.pushUp.length === 0 && ackB.pushUp.length === 1, JSON.stringify({ a: ackA.pushUp.length, b: ackB.pushUp.length }));
   function micros9(x) { var m = /^(.+?)(?:\.(\d+))?(Z|[+-]\d\d:?\d\d)$/.exec(String(x)); return Date.parse(m[1] + m[3]) * 1000 + Number(((m[2] || '') + '000000').slice(0, 6)); }
 
   /* 7. a sign-out or reset forgets the transaction-ordered cursor too */
   var r7 = fresh(); r7.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, gen: 2, userId: 'u1', shadow: {}, tombstones: {}, pulledXid: '900', pulledXidId: 'x', pulledSeq: '2026-10-20T08:00:00Z' })); r7.OvuSync.resetPosition();
   var s7 = JSON.parse(r7.localStorage.getItem('ovumind_sync_v1'));
   check('a reset clears the transaction-ordered cursor with the time cursor', s7.pulledXid === null && s7.pulledXidId === null && s7.pulledSeq === null && s7.gen === 3, JSON.stringify(s7));
-  Promise.all([a, b, b2, b3, b4, c, d, e, f, g8, g9, g10, g11, g12]).catch(function (err) { check('the transaction-ordered pull tests ran to the end', false, String(err && err.stack || err)); });
+  Promise.all([a, b, b2, b3, b4, c, d, e, f, g8, g9, g10, g11, g12, g13, g13b, g13c, g13d]).catch(function (err) { check('the transaction-ordered pull tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 (function syncGenerationAcrossAccounts() {
