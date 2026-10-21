@@ -104,10 +104,10 @@
     <div class="sheet-head"><div class="ico" id="sheetIcon"></div><h2 id="sheetTitle">Title</h2><button class="sheet-close" id="sheetClose" aria-label="Close"><span class="ms">close</span></button></div>
     <div class="sheet-body" id="sheetBody"></div>
   </section>
-  <div class="welcome" id="welcome" hidden>
+  <div class="welcome" id="welcome" hidden role="dialog" aria-modal="true" aria-labelledby="wTitle">
     <div class="w-stars" aria-hidden="true"></div>
     <div class="w-hero" aria-hidden="true"><img src="assets/brand/logo-hero.webp" alt="" width="512" height="512"></div>
-    <h1 class="w-erin">Rhythme</h1>
+    <h1 class="w-erin" id="wTitle">Rhythme</h1>
     <p class="w-tag">Her body, her rhythm, mindfully aged.</p>
     <p class="w-note" id="wNote">A dreamy room where you log sleep, cycle, symptoms, meals and calm by tapping the things around you. Sign in to open it.</p>
     <div class="w-auth" id="wAuth">
@@ -146,7 +146,7 @@
       <label class="c-opt c-req"><input type="checkbox" id="cAge"><span><b>I confirm I am 18 or older</b><small>Required. We keep only this confirmation, not your date of birth.</small></span></label>
       <button class="btn primary" id="cAgree" type="button" disabled><span class="ms">favorite</span>I agree, open my room</button>
       <button class="btn ghost" id="cUnder" type="button">I am under 18</button>
-      <p class="c-small">By tapping, you agree to the <a href="privacy.html">privacy notes</a> and <a href="terms.html">terms</a>. Optional features stay off unless you turn them on. <span id="cFine">No diary entries have been saved yet.</span> Notice version 3, 19 October 2026. If what we collect or where it goes changes, we will ask you again.</p>
+      <p class="c-small">By tapping, you agree to the <a href="privacy.html">privacy notes</a> and <a href="terms.html">terms</a>. Optional features stay off unless you turn them on. <span id="cFine">No diary entries have been saved yet.</span> Notice version 4, 20 October 2026. If what we collect or where it goes changes, we will ask you again.</p>
     </div>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

@@ -239,6 +239,8 @@
     });
   }
   function cleanUrl() { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
+  /* is a provider round trip (or an emailed link) about to sign her in on this load? The room keeps its wall down until it is settled. */
+  function pendingRedirect() { try { var sp = new URLSearchParams(location.search); if (sp.get('code') || sp.get('error') || sp.get('error_description')) return true; } catch (e) { } return /access_token=/.test(location.hash || ''); }
   /* On load after an OAuth round trip the URL carries ?code= (PKCE); exchange it
      for a session. Returns quietly (no network) on an ordinary load. */
   function handleRedirect() {
@@ -284,23 +286,32 @@
      els: { email, codeWrap, code, go, msg }. */
   function emailForm(form, els, opts) {
     if (!form || !els || !els.email || !els.go) return;
-    var stage = 'email';
-    var msg = function (text, ok) { if (els.msg) { els.msg.textContent = text; els.msg.className = 'msg on ' + (ok ? 'ok' : 'err'); } };
+    var stage = 'email', lastAddr = '', cooling = null;
+    var msg = function (text, ok) { if (els.msg) { els.msg.textContent = text; els.msg.className = text ? 'msg on ' + (ok ? 'ok' : 'err') : 'msg'; } };
+    /* a way out of the code stage: a new code (one a minute), or another address (Codex, 21 Oct: a mistyped address or a wait had no way back) */
+    var more = form.querySelector('.ef-more');
+    if (!more) { more = document.createElement('div'); more.className = 'ef-more'; more.hidden = true; more.innerHTML = '<button type="button" class="linkbtn" data-ef="resend">Send a new code</button><button type="button" class="linkbtn" data-ef="change">Use a different address</button>'; els.go.insertAdjacentElement('afterend', more); }
+    function toEmailStage() { stage = 'email'; els.email.readOnly = false; if (els.codeWrap) els.codeWrap.hidden = true; if (els.code) els.code.value = ''; els.go.disabled = false; els.go.innerHTML = '<span class="ms">send</span>Send me a code'; more.hidden = true; msg(''); }
+    function toCodeStage(addr, text) { stage = 'code'; lastAddr = addr; els.go.disabled = false; if (els.codeWrap) els.codeWrap.hidden = false; els.email.readOnly = true; els.go.innerHTML = '<span class="ms">login</span>Verify and sign in'; more.hidden = false; msg(text, true); if (els.code) els.code.focus(); }
+    function send(addr) {
+      els.go.disabled = true; msg('Sending…', true);
+      return sendCode(addr).then(function () { toCodeStage(addr, 'We emailed a six-digit code to ' + addr + '. Enter it here. If a sign-in link arrives instead, open it on this phone.'); },
+        function (err) { var se = sendError(err); if (se.limited) toCodeStage(addr, se.text); else { els.go.disabled = false; msg(se.text); } }); /* a code already in the inbox still works */
+    }
+    more.onclick = function (e) {
+      var b = e.target.closest('[data-ef]'); if (!b) return;
+      if (b.dataset.ef === 'change') { toEmailStage(); els.email.focus(); return; }
+      if (cooling) { msg('A code was sent less than a minute ago. Check your inbox and spam, then try again.'); return; }
+      cooling = setTimeout(function () { cooling = null; }, 60000);
+      send(lastAddr || (els.email.value || '').trim());
+    };
+    form.__reset = toEmailStage; /* the wall calls this after a sign-out, so the next sign-in starts from the address again */
     form.onsubmit = function (e) {
       e.preventDefault();
       var addr = (els.email.value || '').trim();
       if (stage === 'email') {
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { msg('Please enter a real email address.'); return; }
-        els.go.disabled = true; msg('Sending…', true);
-        sendCode(addr).then(function () {
-          stage = 'code'; els.go.disabled = false; if (els.codeWrap) els.codeWrap.hidden = false; els.email.readOnly = true;
-          els.go.innerHTML = '<span class="ms">login</span>Verify and sign in';
-          msg('We emailed a six-digit code to ' + addr + '. Enter it here. If a sign-in link arrives instead, open it on this phone.', true);
-          if (els.code) els.code.focus();
-        }, function (err) {
-          var se = sendError(err); els.go.disabled = false; msg(se.text);
-          if (se.limited) { stage = 'code'; if (els.codeWrap) els.codeWrap.hidden = false; els.email.readOnly = true; els.go.innerHTML = '<span class="ms">login</span>Verify and sign in'; if (els.code) els.code.focus(); } /* a code already in the inbox still works */
-        });
+        send(addr);
       } else {
         var code = ((els.code && els.code.value) || '').replace(/\s/g, '');
         if (!/^\d{6}$/.test(code)) { msg('Enter the six-digit code from the email.'); return; }
@@ -384,7 +395,8 @@
       '.ya-intro{color:var(--muted,#6b6475);font-size:13px;margin:2px 0 10px;line-height:1.5}' +
       '.ya-btns{display:grid;gap:8px}.ya-who{display:flex;gap:10px;align-items:center;padding:4px 2px 10px}.ya-who .ms{font-size:24px;color:var(--accent,#b57edc)}.ya-who b{display:block;font-size:14px}.ya-who small{display:block;color:var(--muted,#6b6475);font-size:12.5px}' +
       '.ya-email{margin-top:10px}.ya-code{letter-spacing:.3em;text-align:center;font-size:18px}.ya-danger{color:#b4412f}' +
-      '.ya-improve{margin-top:12px}.ya-improve span:not(.ms){display:block;font-weight:500;line-height:1.45}.ya-state{display:block;margin-top:5px;font-size:12px;color:var(--muted,#6b6475)}';
+      '.ya-improve{margin-top:12px}.ya-improve span:not(.ms){display:block;font-weight:500;line-height:1.45}.ya-state{display:block;margin-top:5px;font-size:12px;color:var(--muted,#6b6475)}' +
+      '.ef-more{display:flex;gap:14px;justify-content:center;margin-top:4px}.ef-more .linkbtn{background:none;border:0;padding:4px 0;font:700 12px var(--sans,system-ui);color:var(--rm-plum,#5a4274);text-decoration:underline;cursor:pointer}';
     document.head.appendChild(s);
   }
 
@@ -525,6 +537,7 @@
     };
   }
 
+  try { root.addEventListener('storage', function (e) { if (e && e.key !== null && e.key !== AUTH_LS) return; authEpoch++; notifyAuth(); }); } catch (e) { } /* a sign-out or sign-in in another tab reaches this one at once (Codex, 21 Oct) */
   function init() {
     return handleRedirect().then(function (r) {
       if (r && r.error) { try { if (window.console) console.warn('sign-in:', r.error); } catch (e) { } }
@@ -536,7 +549,7 @@
     init: init, renderAccount: renderAccount,
     session: session, userId: userId, email: email, isSignedIn: isSignedIn, token: token,
     sendCode: sendCode, sendError: sendError, verifyCode: verifyCode, signInWith: signInWith, signOut: signOut,
-    providerOn: providerOn, emailForm: emailForm,
+    providerOn: providerOn, emailForm: emailForm, pendingRedirect: pendingRedirect,
     promptCloud: promptCloud, hasCloud: hasCloud,
     NOTICE_V: NOTICE_V, IMPROVE: IMPROVE, improveText: improveText, improvePlan: improvePlan, improveLocal: improveLocal, setImprove: setImprove, syncImprove: syncImprove,
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }

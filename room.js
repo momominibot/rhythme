@@ -2588,7 +2588,7 @@
     return true;
   }
   function openOnboarding(i, a) {
-    if (!onb || a !== undefined) onb = { i: 0, a: a || {} };
+    if (!onb || a !== undefined) onb = { i: 0, a: a || {}, openedAt: Date.now() };
     var steps = onbVisible(onb.a), A = onb.a;
     onb.i = Math.max(0, Math.min(steps.length - 1, i || 0));
     var st = steps[onb.i], last = onb.i === steps.length - 1, html = '';
@@ -2669,6 +2669,8 @@
     return n;
   }
   function finishOnboarding(A) {
+    /* her answers came back from a backup while the intro was open: keep them, never write an empty intro over them (Codex, 21 Oct) */
+    var pr = S.profile(); if (onb && onb.openedAt && pr.onboarded && pr.onboardedAt && Date.parse(pr.onboardedAt) > onb.openedAt) { closeSheet(); toast('Your answers came back from your backup. Update my intro is under the window if anything has changed.', 'cloud_done'); return; }
     var num = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : null; };
     var patch = { name: A.name || S.profile().name || '', ageRange: A.ageRange || '', ageBand: '', minorAck: '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: (function () { var r = A.periodRecall, d = r ? recallDays(recallState(A)) : []; return r && r.latest === 'yes' && d.length ? d[d.length - 1] : ''; })(), cycleLength: null, periodLength: num(A.periodLength), periodLengthAnswer: A.periodLength || '', periodRecall: A.periodRecall ? Object.assign({}, A.periodRecall, { capturedAt: new Date().toISOString() }) : null, cycleVaries: false, bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), lifeStage: A.regularity === 'none12' && ['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && A.pregState !== 'pregnant' && A.pregState !== 'postpartum' && !(A.hormones || []).some(function (x) { return x !== 'none' && x !== 'other' && x !== 'iud_cu' && x !== 'hrt'; }) ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), onboarded: true, onboardedAt: new Date().toISOString() };
     S.setProfile(patch);
@@ -2685,10 +2687,13 @@
      Signing in never touches the diary on this phone. The data notice, and the intro for a new account, follow the first sign-in. */
   var wallWired = false;
   function wallOpen() { var w = $('#welcome'); return !!(w && !w.hidden); }
+  /* while the wall is up the room behind it is inert: no tab stop, no screen-reader path, no tap reaches the diary (Codex, 21 Oct) */
+  function wallInert(on) { ['#main', '#lunaBtn', '#podMini', '#mpanel', 'nav.nav', '#sheet', '#veil', '#toast'].forEach(function (sel) { var el = document.querySelector(sel); if (el) { try { el.inert = !!on; } catch (e) { } } }); }
   function showWelcome() {
     var w = $('#welcome'); if (!w) return;
     var note = $('#wNote'); if (note) note.textContent = S.list().length ? 'Your diary on this phone is kept as it is. Sign in to carry on.' : 'A dreamy room where you log sleep, cycle, symptoms, meals and calm by tapping the things around you. Sign in to open it.';
-    w.hidden = false;
+    w.hidden = false; wallInert(true);
+    setTimeout(function () { var b = $('#wApple'); if (b && wallOpen()) { try { b.focus({ preventScroll: true }); } catch (e) { } } }, 60);
     if (wallWired) return; wallWired = true;
     var A = window.OvuAuth;
     function social(prov, btn) {
@@ -2706,10 +2711,15 @@
     if (A && A.emailForm) A.emailForm($('#wEmailForm'), { email: $('#wEmail'), codeWrap: $('#wCodeWrap'), code: $('#wCode'), go: $('#wEmailGo'), msg: $('#wMsg') }, { toast: toast });
   }
   /* after a sign-in while the wall is up: the wall closes, then the notice, then the intro for an account that has not done it */
+  function resetWallForm() { var f = $('#wEmailForm'); if (f) { f.hidden = true; if (f.__reset) f.__reset(); else { try { f.reset(); } catch (e) { } } } var si = $('#wSignIn'); if (si) si.hidden = false; }
   function afterSignIn() {
-    var w = $('#welcome'); if (w) w.hidden = true;
-    var f = $('#wEmailForm'); if (f) { f.hidden = true; try { f.reset(); } catch (e) { } } var si = $('#wSignIn'); if (si) si.hidden = false;
-    requireConsent(function () { S.setState({ welcomeSeen: true }); if (!S.profile().onboarded) openOnboarding(0, {}); else toast('Welcome back.', 'favorite'); });
+    var w = $('#welcome'); if (w) w.hidden = true; wallInert(false); resetWallForm();
+    requireConsent(function () {
+      S.setState({ welcomeSeen: true });
+      var go = function () { if (!S.profile().onboarded) openOnboarding(0, {}); else toast('Welcome back.', 'favorite'); };
+      /* a backup may hold her answers: let the first restore land before the intro is offered, so it is never written over them (Codex, 21 Oct) */
+      if (!S.profile().onboarded && window.OvuSync && OvuSync.canSync()) { toast('Checking your backup…', 'cloud_sync'); OvuSync.syncNow().then(go, go); } else go();
+    });
   }
 
   /* ---------- window: follows the sun (ovu-sun.js) ---------- */
@@ -2939,10 +2949,18 @@
     setInterval(function () { applySky(); if (window.OvuPets) renderProps(); }, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });
     FD.load().catch(function () { });
     /* accounts and cloud backup: quiet until the person signs in and opts in */
-    var authReady = window.OvuAuth ? OvuAuth.init() : Promise.resolve({});
+    var authReady = window.OvuAuth ? OvuAuth.init() : Promise.resolve({ error: 'Sign-in could not load. Please reload.' });
     if (window.OvuSync) OvuSync.init();
-    /* signed out (from You, or a revoked session): the wall comes back over whatever was open; signed in at the wall: on into the room */
-    if (window.OvuAuth) OvuAuth.subscribe(function () { if (OvuAuth.isSignedIn()) { if (wallOpen()) afterSignIn(); } else if (!wallOpen()) { try { closeSheet(); } catch (e) { } showWelcome(); } });
+    /* no session and nothing on its way back from a provider: the wall at once, before the room is ever touchable (fail closed) */
+    if (!window.OvuAuth || (!OvuAuth.isSignedIn() && !OvuAuth.pendingRedirect())) showWelcome();
+    /* signed out (from You, another tab, or a revoked session): the wall comes back over whatever was open, the notice and the cloud prompt included; signed in at the wall: on into the room */
+    if (window.OvuAuth) OvuAuth.subscribe(function () {
+      if (OvuAuth.isSignedIn()) { if (wallOpen()) afterSignIn(); return; }
+      if (wallOpen()) return;
+      try { closeSheet(); } catch (e) { }
+      var c = $('#consent'); if (c && !c.hidden) c.hidden = true; var cs = document.getElementById('ovuCloudSheet'); if (cs) cs.remove();
+      resetWallForm(); showWelcome();
+    });
     S.subscribe(function (reason) { if (reason === 'external' || (reason && reason.indexOf('sync') === 0)) { renderDeck(); renderProps(); updateGreeting(); } });
     $('#journalBtn').href = 'journal.html'; $('#shareBtn').href = 'journal.html#share';
     if (!S.state().tourDone) { setTimeout(function () { $('#hint').classList.add('on'); }, 1200); setTimeout(function () { $('#hint').classList.remove('on'); S.setState({ tourDone: true }); }, 7000); }
@@ -2950,16 +2968,18 @@
     if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () { });
     RM.start(function (h) { chime('bell', true); toast(h.item.label + (h.item.note ? ' · ' + h.item.note : ''), h.item.icon); });
     document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } if (e.target.closest('#arrDone')) exitArrange(false); if (e.target.closest('#arrReset')) exitArrange(true); });
-    var hk = (location.hash || '').slice(1);
+    var hk = (location.hash || '').slice(1), bootAt = Date.now();
+    var lift = function () { $('#loading').classList.add('hidden'); joy(); };
     authReady.then(function (r) {
       if (r && r.error) toast(r.error, 'error');
-      if (window.OvuAuth && !OvuAuth.isSignedIn()) { showWelcome(); return; }
-      if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
+      if (!(window.OvuAuth && OvuAuth.isSignedIn())) { if (!wallOpen()) showWelcome(); }
+      else if (wallOpen()) afterSignIn(); /* a provider round trip signed her in while the wall waited */
+      else if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
       else if (!S.profile().onboarded && !S.state().welcomeSeen) requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); });
       else setTimeout(function () { requireConsent(function () { if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk); }); }, hk ? 600 : 0);
+      setTimeout(lift, Math.max(0, 500 - (Date.now() - bootAt))); /* the veil lifts only once the session question is settled */
     });
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
-    setTimeout(function () { $('#loading').classList.add('hidden'); joy(); }, 500);
     scheduleLife();
     function tick() { var d = new Date(); $('#clockTime').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); var dc = $('#deskClock'); if (dc) dc.textContent = nowHM(); } tick(); setInterval(tick, 20000);
     emit('boot');

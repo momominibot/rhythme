@@ -282,10 +282,11 @@
   function blockUnder18(c) {
     var scroll = c.querySelector('.c-scroll'); if (!scroll) return;
     scroll.innerHTML = '<div class="c-head"><div class="c-moon" aria-hidden="true"><img src="assets/room/dream/orb-moon.webp" alt="" data-mascot="full"></div><div><div class="w-brand">RHYTHME</div><h2>Rhythme is designed for adults 18 and over</h2><p>We are not able to open Rhythme for you yet. The diary on this phone stays here, and you can take a copy or remove it below. If you already made an account, write to hello@ranklore.ai and we will close it and delete its cloud copy.</p></div></div>' +
-      '<div class="c-choices"><button type="button" class="btn soft" id="cExport"><span class="ms">download</span>Export my diary as a file</button><button type="button" class="btn ghost" id="cWipe"><span class="ms">delete</span>Delete everything on this phone</button></div>' +
+      '<div class="c-choices"><button type="button" class="btn soft" id="cExport"><span class="ms">download</span>Export my diary as a file</button><button type="button" class="btn ghost" id="cWipe"><span class="ms">delete</span>Delete everything on this phone</button>' + (root.OvuAuth && root.OvuAuth.isSignedIn && root.OvuAuth.isSignedIn() ? '<button type="button" class="btn ghost" id="cSignOut"><span class="ms">logout</span>Sign out of this account</button>' : '') + '</div>' +
       '<p class="c-small">If you are 18 or older, reload Rhythme and confirm it on the notice.</p>';
-    var ex = scroll.querySelector('#cExport'), wipe = scroll.querySelector('#cWipe');
+    var ex = scroll.querySelector('#cExport'), wipe = scroll.querySelector('#cWipe'), so = scroll.querySelector('#cSignOut');
     if (ex) ex.onclick = function () { download('rhythme-diary.json', S.exportJSON()); };
+    if (so) so.onclick = function () { so.disabled = true; root.OvuAuth.signOut(false).then(function () { try { location.reload(); } catch (e) { } }, function () { try { location.reload(); } catch (e) { } }); }; /* the account is not for someone under 18: sign out; the diary on this phone stays (Codex, 21 Oct) */
     if (wipe) wipe.onclick = function () {
       if (wipe.dataset.sure !== '1') { wipe.dataset.sure = '1'; wipe.innerHTML = '<span class="ms">warning</span>Tap again to delete everything'; return; }
       try { S.clearAll(); } catch (e) { }
