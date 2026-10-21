@@ -2353,11 +2353,13 @@ async def main():
                 await tp.route("**/*", gate); await tp.bring_to_front()
                 await tp.goto(BASE + "room.html", wait_until="networkidle"); await tp.wait_for_timeout(400)
                 await tp.evaluate("()=>{ location.hash = 'medas'; }"); await tp.reload(wait_until="networkidle"); await tp.wait_for_selector(".mq", timeout=8000)
-            await ta.click('.mq[data-mq="veg"] [data-yn="1"]'); await ta.wait_for_timeout(400)
-            await tb.click('.mq[data-mq="fish"] [data-yn="0"]'); await tb.wait_for_timeout(400)
+            # a click waits for animation frames, which a background tab in CI never runs: bring each tab forward before its tap
+            await ta.bring_to_front(); await ta.click('.mq[data-mq="veg"] [data-yn="1"]'); await ta.wait_for_timeout(400)
+            await tb.bring_to_front(); await tb.click('.mq[data-mq="fish"] [data-yn="0"]'); await tb.wait_for_timeout(400)
+            await ta.bring_to_front()
             two = await ta.evaluate("()=>({saved: (OvuStore.state().medas||{}).answers, fishShown: document.querySelector('.mq[data-mq=fish] [data-yn=\\\"0\\\"]').getAttribute('aria-pressed')})")
             check("answers given in two tabs are both kept, and the first tab shows the second's answer", two["saved"] == {"veg": True, "fish": False} and two["fishShown"] == "true", two)
-            await tb.click("#mdClear"); await tb.wait_for_timeout(300)
+            await tb.bring_to_front(); await tb.click("#mdClear"); await tb.wait_for_timeout(300)
             await ta.close(); await tb.close()
             # a returning visitor follows a link to the check and taps Home while the room is still starting: the link stays closed
             th = await ctx.new_page(); await th.route("**/*", gate); await th.bring_to_front()
@@ -2365,7 +2367,7 @@ async def main():
             await th.evaluate("()=>{[...document.querySelectorAll('.nav a')].filter(a=>(a.dataset.tab||'home')==='home')[0].click();}"); await th.wait_for_timeout(1500)
             hm = await th.evaluate("()=>({medas: !!document.querySelector('.mq'), home: (document.querySelector('.nav a.on')||{dataset:{}}).dataset.tab || 'home'})")
             check("tapping Home while the room starts keeps a link to the check from opening over it", not hm["medas"] and hm["home"] == "home", hm)
-            await th.close()
+            await th.close(); await page.bring_to_front()
             # a first visit through the old page's link: signed out, the sign-in wall comes first and nothing opens behind it
             fresh_db = json.loads(json.dumps(DB)); fresh_db["profile"]["onboarded"] = False; fresh_db["state"].pop("welcomeSeen", None)
             ctx9 = await browser.new_context(viewport={"width": 390, "height": 844})
