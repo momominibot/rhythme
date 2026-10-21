@@ -92,12 +92,14 @@
    * its size; the ring around it is fog with ??? patches. Three carry a hint of what may come; none names a partner, a
    * product or a promise. Positions are percentages of the wide canvas; the known world is the square from 33.3 to 66.7. */
   var FOG = [
-    { id: 'north', x: 50, y: 12, hint: 'A city of tomorrow, some day.' },
-    { id: 'east', x: 87, y: 50, hint: 'A kingdom of stories, some day.' },
-    { id: 'south', x: 50, y: 88, hint: 'A place for check-ups, some day.' },
-    { id: 'nw', x: 15, y: 15, hint: '' }, { id: 'ne', x: 85, y: 15, hint: '' }, { id: 'west', x: 13, y: 50, hint: '' }, { id: 'sw', x: 15, y: 85, hint: '' }, { id: 'se', x: 85, y: 85, hint: '' }
+    { id: 'north', x: 50, y: 20, hint: 'A city of tomorrow, some day.' },
+    { id: 'east', x: 80, y: 50, hint: 'A kingdom of stories, some day.' },
+    { id: 'south', x: 50, y: 80, hint: 'A place for check-ups, some day.' },
+    { id: 'nw', x: 22, y: 22, hint: '' }, { id: 'ne', x: 78, y: 22, hint: '' }, { id: 'west', x: 20, y: 50, hint: '' }, { id: 'sw', x: 22, y: 78, hint: '' }, { id: 'se', x: 78, y: 78, hint: '' }
   ];
-  var ZOOM = { min: 0.36, max: 1.6, start: 0.5, names: 0.75 }; /* names show from 0.75; at 0.5 the whole known world and the fog around it fit */
+  var ZOOM = { min: 0.36, max: 1.6, start: 0.5, names: 0.75 }; /* names show from 0.75; at 0.5, centred, the known world fills the middle and the ??? patches peek in at the edges */
+  /* the translation that puts the known world (the canvas centre) in the middle of the view at scale s */
+  function centred(s, vw, vh) { return zoomClamp(s, vw * (0.5 - 1.5 * s), vh * (0.5 - 1.5 * s), vw, vh); }
   /* the wide canvas is 3 by 3 viewports; keep it covering the viewport, or centred when smaller than it */
   function zoomClamp(s, tx, ty, vw, vh) {
     s = Math.max(ZOOM.min, Math.min(ZOOM.max, s));
@@ -108,7 +110,7 @@
   }
   function fogText(f) { return f.hint ? '<b>???</b> ' + f.hint + ' Nothing to do here yet; the known places are in the middle.' : '<b>???</b> Still unexplored. Something may be built here one day.'; }
 
-  var M = { POS: POS, FOG: FOG, ZOOM: ZOOM, zoomClamp: zoomClamp, fogText: fogText, at: at, nodeOf: nodeOf, placeName: placeName, graph: graph, route: route, place: place, lines: lines, stepText: stepText };
+  var M = { POS: POS, FOG: FOG, ZOOM: ZOOM, zoomClamp: zoomClamp, centred: centred, fogText: fogText, at: at, nodeOf: nodeOf, placeName: placeName, graph: graph, route: route, place: place, lines: lines, stepText: stepText };
   root.OvuMap = M;
 
   /* ---------- the sheet ---------- */
@@ -170,7 +172,7 @@
   var zoom = null;
   function wireZoom() {
     var vp = doc.getElementById('worldZoom'), wide = doc.getElementById('worldWide'); if (!vp || !wide) return;
-    var vw = vp.clientWidth || 300, vh = vp.clientHeight || 240, st = zoomClamp(ZOOM.start, 0, 0, vw, vh), ptrs = {}, pinch = null;
+    var vw = vp.clientWidth || 300, vh = vp.clientHeight || 240, st = centred(ZOOM.start, vw, vh), ptrs = {}, pinch = null;
     zoom = st;
     function paint() { wide.style.transform = 'translate(' + zoom.tx.toFixed(1) + 'px,' + zoom.ty.toFixed(1) + 'px) scale(' + zoom.s.toFixed(3) + ')'; vp.classList.toggle('far', zoom.s < ZOOM.names); }
     function zoomTo(s, cx, cy) { /* keep the point under (cx, cy) in place */
