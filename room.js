@@ -1244,14 +1244,18 @@
     if (lay.tidied) { p.pos = {}; setDeskPrefs(p); setTimeout(function () { toast('A folder had no free spot, so your desk is back on the grid. Drag them wherever you like.', 'grid_view'); }, 400); }
     openSheet('learn', 'Your desk', 'Drag the folders around; make it yours', 'computer',
       '<div class="desk"><div class="menubar"><span class="brandy">RHYTHME</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
-      '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f) { var q = spots[f.id]; return '<button type="button" class="dicon" data-folder="' + f.id + '" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
+      '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f) { var q = spots[f.id]; return '<button type="button" class="dicon" data-folder="' + f.id + '" aria-expanded="false" aria-controls="finder" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="dock"><button type="button" data-dock="videos" aria-label="Videos"><span class="ms">play_circle</span></button><button type="button" data-dock="mind" aria-label="Erin"><span class="ms">self_improvement</span></button><button type="button" data-dock="acu" aria-label="Acupressure"><span class="ms">spa</span></button><button type="button" data-dock="luna" aria-label="Luna"><span class="ms">dark_mode</span></button><button type="button" data-dock="doctor" aria-label="Share with doctor"><span class="ms">medical_services</span></button></div></div>' +
       '<div class="wallpanel" id="wallpanel"><b>Wallpaper</b><div class="wadjust" id="wallAdjust" hidden><p><span class="ms">open_with</span>Drag your photo on the screen above to move it, and use the slider to zoom.</p><div class="field"><label for="wallZoom">Zoom</label><input type="range" id="wallZoom" min="100" max="300" step="5" value="100"></div><div class="row"><button type="button" class="btn primary" id="wallDone"><span class="ms">check</span>Done</button><button type="button" class="btn ghost" id="wallReset">Reset</button></div></div><div class="walls">' + WALLS.map(function (w) { return '<button type="button" class="wall' + (p.wall === w.id ? ' on' : '') + '" data-wall="' + w.id + '" style="' + (w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY) + '"><span>' + esc(w.name) + '</span></button>'; }).join('') + '<button type="button" class="wall upload' + (p.wall === 'custom' ? ' on' : '') + '" data-wall="custom" style="' + (p.custom ? customWallCss(p).replace(/background-size:[^;]+/, 'background-size:cover') : '') + '"><span class="ms">add_photo_alternate</span><span>' + (p.custom ? 'My photo' : 'Upload a photo') + '</span></button></div><input type="file" id="wallFile" accept="image/*" hidden><div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="deskTidy"><span class="ms">grid_view</span>Tidy the icons</button>' + (p.custom ? '<button type="button" class="btn ghost" id="wallAdjustBtn"><span class="ms">open_with</span>Adjust my photo</button><button type="button" class="btn ghost" id="wallForget"><span class="ms">delete</span>Forget my photo</button>' : '') + '</div><p class="help">Your photo is stored only on this device.</p></div>' +
-      '<div class="finder" id="finder"></div><div class="player" id="player"></div>' +
+      '<div class="finder" id="finder" role="region"></div><div class="player" id="player"></div>' +
       '<p class="help" style="margin-top:10px">Short, sourced reads and six little videos. Nothing here is personal medical advice; bring questions to your clinician.</p>');
     function openFolder(id) {
       var f = FOLDERS.filter(function (x) { return x.id === id; })[0]; if (!f) return;
-      var fd = $('#finder');
+      var fd = $('#finder'), from = document.activeElement;
+      /* a keyboard or screen reader user lands in the folder and goes back to where they were when it closes (Codex round four) */
+      folderFrom = from && from.closest && from.closest('.dicon, [data-dock]') ? from : null;
+      $$('#dicons .dicon').forEach(function (d) { d.setAttribute('aria-expanded', String(d.dataset.folder === id)); });
+      fd.setAttribute('aria-label', f.name + ' folder');
       fd.innerHTML = '<div class="fbar"><span class="lights"><i></i><i></i><i></i></span>' + esc(f.name) + '<button class="x" aria-label="Close folder"><span class="ms">close</span></button></div>' + f.items.map(function (it) {
         if (it[0] === 'video') return '<button type="button" class="frow" data-video="' + it[1] + '"><img src="assets/eduvid/' + it[1] + '.jpg" alt=""><span><b>' + esc(it[2]) + '</b><small>' + esc(it[3]) + '</small></span></button>';
         if (it[0] === 'link') return '<a class="frow" href="' + it[1] + '" target="_blank" rel="noopener"><span class="ms">' + it[2] + '</span><span><b>' + esc(it[3]) + '</b><small>' + esc(it[4]) + '</small></span></a>';
@@ -1259,6 +1263,14 @@
         return '<a class="frow" href="' + it[1] + '"><span class="ms">' + it[2] + '</span><span><b>' + esc(it[3]) + '</b><small>' + esc(it[4]) + '</small></span></a>';
       }).join('');
       fd.classList.add('on'); fd.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (folderFrom) { var first = fd.querySelector('.frow') || fd.querySelector('.x'); if (first) first.focus({ preventScroll: true }); }
+    }
+    var folderFrom = null;
+    function closeFolder() {
+      $('#finder').classList.remove('on');
+      $$('#dicons .dicon').forEach(function (d) { d.setAttribute('aria-expanded', 'false'); });
+      var back = folderFrom; folderFrom = null;
+      if (back && document.contains(back)) back.focus({ preventScroll: true });
     }
     /* drag the folders; a tap, Enter or Space (a click) opens one, and the click that ends a drag does not (Codex round three) */
     var icons = $('#dicons'), drag = null, dragged = 0;
@@ -1332,7 +1344,7 @@
       if (e.target.closest('#deskTidy')) { var pr = deskPrefs(); pr.pos = {}; setDeskPrefs(pr); openLearn(); $('#wallpanel').classList.add('on'); return; }
       if (e.target.closest('#wallForget')) { var pr2 = deskPrefs(); pr2.custom = null; if (pr2.wall === 'custom') pr2.wall = 'cat'; setDeskPrefs(pr2); openLearn(); $('#wallpanel').classList.add('on'); return; }
       var dk = e.target.closest('[data-dock]'); if (dk) { var k = dk.dataset.dock; chime('tap'); if (k === 'videos' || k === 'mind' || k === 'doctor') openFolder(k); if (k === 'acu') openAcupressure(); if (k === 'luna') openLuna(); return; }
-      if (e.target.closest('.finder .x')) { $('#finder').classList.remove('on'); return; }
+      if (e.target.closest('.finder .x')) { closeFolder(); return; }
       var v = e.target.closest('[data-video]'); if (v) { var meta = VIDEOS.filter(function (x) { return x[0] === v.dataset.video; })[0]; stopVideo(); var pl = $('#player'); pl.innerHTML = '<video controls playsinline poster="assets/eduvid/' + meta[0] + '.jpg" src="assets/eduvid/' + meta[1] + '"></video>'; pl.classList.add('on'); player = pl.querySelector('video'); player.play().catch(function () { }); pl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
       var act = e.target.closest('[data-action]'); if (act) { var a = act.dataset.action; if (a === 'diary') openDiary(); if (a === 'mat') tap(hotspot('mat')); if (a === 'acu') openAcupressure(); if (a === 'move') openExercise(); if (a === 'moveguide') openMoveGuide(); if (a === 'bed') tap(hotspot('bed')); if (a === 'medas') openMedas(); if (a.indexOf('recipes') === 0) openRecipes(a.split(':')[1]); }
     });
@@ -1388,7 +1400,9 @@
   /* ---------- bottom tabs: every tab opens a sheet in the room, so the look and the data never change ---------- */
   var TABS = { cycle: function () { openCalendar('period'); }, food: function () { openDiary(); }, mind: function () { openMindfulness(); }, you: function () { openYou(); } };
   function setTab(k) { $$('.nav a').forEach(function (a) { var on = (a.dataset.tab || 'home') === k; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); }
+  var navSeq = 0; /* counts every tab tap, Home included, so a delayed link from boot never opens over her choice */
   function goTab(k) {
+    navSeq++;
     hideBubble();
     if (k === 'home' || !TABS[k]) { if (current) closeSheet(); setTab('home'); return; }
     if (!awake(k)) { setTab(current ? current : 'home'); return; }
@@ -2324,7 +2338,9 @@
     var R = window.OvuRecipes; if (!R) return;
     if (meditating && !session) exitMeditation();
     var C = R.MEDAS_COPY;
-    function stored() { var saved = S.state().medas || {}, o = {}; R.MEDAS.forEach(function (it) { var v = saved.answers && saved.answers[it.id]; if (v === true || v === false) o[it.id] = v; }); return o; }
+    /* fresh: read what is on the phone now (another tab may have saved without its storage event reaching this one yet), so a
+       tap or Clear never writes over an answer or a change saved elsewhere (Codex round four) */
+    function stored(fresh) { var saved = (fresh && S.reload ? S.reload() : S.state()).medas || {}, o = {}; R.MEDAS.forEach(function (it) { var v = saved.answers && saved.answers[it.id]; if (v === true || v === false) o[it.id] = v; }); return o; }
     var ans = stored();
     openSheet('medas', 'Mediterranean check', '13 everyday habits, no grades', 'checklist',
       '<p class="rnote">' + esc(C.intro) + '</p>' +
@@ -2357,11 +2373,11 @@
     body.querySelector('.mqs').addEventListener('click', function (e) {
       var b = e.target.closest('[data-yn]'); if (!b) return;
       /* start from what is stored now, not from when the sheet opened, so answers saved in another tab are kept */
-      var id = b.closest('.mq').dataset.mq, v = b.dataset.yn === '1', next = stored();
+      var id = b.closest('.mq').dataset.mq, v = b.dataset.yn === '1', next = stored(true);
       if (next[id] === v) delete next[id]; else next[id] = v; /* a second tap on the same answer takes it back */
       chime('tap'); keep(next); paint();
     });
-    $('#mdClear').addEventListener('click', function () { chime('tap'); keep({}); paint(); });
+    $('#mdClear').addEventListener('click', function () { chime('tap'); stored(true); keep({}); paint(); });
     $('#mdRecipes').addEventListener('click', function () { chime('tap'); openRecipes('every'); });
     medasRefresh = function () { if (current === 'medas') { ans = stored(); paint(); } };
     paint();
@@ -3041,7 +3057,7 @@
     var hk = (location.hash || '').slice(1);
     if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
     else if (!S.profile().onboarded && !S.state().welcomeSeen) { pendingRoute = hk; showWelcome(); }
-    else { var seq0 = sheetSeq; setTimeout(function () { requireConsent(function () { if (hk && (sheetSeq !== seq0 || current)) return; /* she already opened something: leave it */ openRoute(hk); }); }, hk ? 600 : 0); }
+    else { var seq0 = sheetSeq, nav0 = navSeq; setTimeout(function () { requireConsent(function () { if (hk && (sheetSeq !== seq0 || navSeq !== nav0 || current)) return; /* she already opened something: leave it */ openRoute(hk); }); }, hk ? 600 : 0); }
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
     setTimeout(function () { $('#loading').classList.add('hidden'); joy(); }, 500);
     scheduleLife();
