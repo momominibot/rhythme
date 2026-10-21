@@ -2392,6 +2392,26 @@ async def main():
             check("cycle: after the menopause the tab reads Body, the calendar's third view is Your body, there is no cycle count and any bleeding is named as a check", lbl == "Body" and r3["tabs"] == ["Bleeding", "Symptoms", "Your body"] and "Building your cycle picture" not in r3["panel"] and "any bleeding at all" in r3["panel"], {"lbl": lbl, "tabs": r3["tabs"]})
             check("cycle: no page errors in the cycle run", not cerr, cerr[:3])
             await ctxc.close()
+            # ---------- Luna's chat panel (21 Oct): the Ovuluna card, honest about what Luna is ----------
+            ctxl = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctxl.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxl.add_init_script(SESSION_SEED)
+            pl = await ctxl.new_page(); await pl.route("**/*", gate)
+            lerr = []; pl.on("pageerror", lambda e: lerr.append("pageerror: " + str(e)))
+            await pl.goto(BASE + "room.html", wait_until="domcontentloaded")
+            try: await pl.wait_for_function("()=>window.OvuRoom && document.querySelector('#scene').dataset.layout && !OvuRoom.busy()", timeout=15000)
+            except Exception: pass
+            await pl.evaluate("()=>document.querySelector('#lunaBtn').click()"); await pl.wait_for_timeout(600)
+            lp = await pl.evaluate("()=>({card: document.querySelector('#sheet').classList.contains('luna-sheet'), face: !!document.querySelector('#sheetIcon img.lunaico'), title: document.querySelector('#sheetTitle').textContent, state: (document.querySelector('.lunastrip .lstate')||{}).textContent||'', dot: !!document.querySelector('.ldot'), asks: [...document.querySelectorAll('.askchip')].map(a=>a.getAttribute('href')), note: (document.querySelector('.lunanote')||{}).textContent||'', placeholder: document.querySelector('#lunaIn').placeholder, upgrade: /upgrade|premium/i.test(document.querySelector('#sheetBody').textContent)})")
+            pages_ok = []
+            for href in lp["asks"]:
+                r = await pl.request.get(BASE + href); pages_ok.append(r.ok)
+            check("luna: the chat is a floating card with her face, 'Your wellness companion', an honest state line, three ask chips that open real guides, the companion note, and no upsell", lp["card"] and lp["face"] and "Your wellness companion" in lp["title"] and ("Rules only" in lp["state"] or "reading is on" in lp["state"]) and lp["dot"] and len(lp["asks"]) == 3 and all(pages_ok) and "not a doctor" in lp["note"] and "ask about your cycle" in lp["placeholder"] and not lp["upgrade"], {"lp": {k: lp[k] for k in ("card", "face", "title", "state", "asks", "placeholder", "upgrade")}, "pages": pages_ok})
+            await pl.keyboard.press("Escape"); await pl.wait_for_timeout(300)
+            await pl.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('window'))"); await pl.wait_for_timeout(500)
+            other = await pl.evaluate("()=>({card: document.querySelector('#sheet').classList.contains('luna-sheet'), icon: !!document.querySelector('#sheetIcon .ms')})")
+            check("luna: another sheet is an ordinary sheet again, with an icon, not her face", not other["card"] and other["icon"], other)
+            check("luna: no page errors in the Luna run", not lerr, lerr[:3])
+            await ctxl.close()
 
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()

@@ -547,7 +547,8 @@
     careOn = false; /* a new sheet replaces Luna's chat and any card in it; Luna sets it again when she shows one */
     if (current === 'diary') stopCamera();
     current = id; $('#sheetTitle').innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');
-    $('#sheetIcon').innerHTML = '<span class="ms">' + esc(icon) + '</span>';
+    sheet.classList.toggle('luna-sheet', id === 'luna'); /* Luna's chat is a floating card with her face (Jamie, 21 Oct: the Ovuluna panel) */
+    $('#sheetIcon').innerHTML = id === 'luna' ? '<img class="lunaico" src="assets/room/dream/orb-luna.webp" alt="">' : '<span class="ms">' + esc(icon) + '</span>';
     /* a fresh body node each time, so listeners from the previous sheet (or a re-render of this one) never pile up */
     var fresh = body.cloneNode(false); body.parentNode.replaceChild(fresh, body); body = fresh; wireGuides(body);
     body.innerHTML = html; body.scrollTop = 0;
@@ -1859,16 +1860,21 @@
   var lunaLog = [];
   function openLuna(prefill, draft) {
     var cfg = ORB.aiConfig();
-    openSheet('luna', 'Luna', 'Tell me how you are; I’ll write it down', 'dark_mode',
+    var paused = !!(ORB.aiPaused && ORB.aiPaused()), stateLine = paused ? 'Rules only · AI help paused' : (cfg.on ? 'Luna’s reading is on' : 'Rules only · reading off');
+    openSheet('luna', 'Luna', 'Your wellness companion', 'dark_mode',
+      '<div class="lunastrip"><span class="lstate"><i class="ldot' + (cfg.on && !paused ? ' on' : '') + '" aria-hidden="true"></i>' + stateLine + '</span><button type="button" class="lmore" id="lunaMore">About Luna’s reading</button></div>' +
       '<div class="chat" id="chat"></div>' +
+      '<div class="askrow" aria-label="Ask about"><span class="asklbl">Ask about</span>' + [['How does stress affect my cycle?', 'stress.html'], ['How do I know my cycle phase?', 'hormones.html'], ['What foods support my cycle?', 'foods.html']].map(function (q) { return '<a class="askchip" href="' + q[1] + '">' + esc(q[0]) + '</a>'; }).join('') + '</div>' +
       '<div class="quick" id="quick">' + ['Slept 11pm to 7am, quality 4', 'Period started today, medium', 'Cramps and bloating, pain 5, mood ok', 'Had oats and a latte for breakfast', 'Meditated 10 min'].map(function (q) { return '<span class="qchip"><button type="button" class="qsend" data-q="' + esc(q) + '">' + esc(q) + '</button><button type="button" class="qpen" data-q="' + esc(q) + '" aria-label="Edit this shortcut before sending"><span class="ms">edit</span></button></span>'; }).join('') + '</div>' +
-      '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><textarea class="input" id="lunaIn" rows="3" maxlength="400" enterkeyhint="send" placeholder="e.g. slept badly, cramps 6/10, ate chicken rice">' + esc(prefill || '') + '</textarea><button type="button" class="btn primary" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
+      '<div class="composer"><label class="btn soft lphoto" for="lunaPhoto" aria-label="Take or upload a food photo" title="Take or upload a food photo"><span class="ms">add_a_photo</span></label><input type="file" id="lunaPhoto" accept="image/*" hidden><textarea class="input" id="lunaIn" rows="3" maxlength="400" enterkeyhint="send" placeholder="Tell Luna, or ask about your cycle…">' + esc(prefill || '') + '</textarea><button type="button" class="btn primary lsend" id="lunaSend" aria-label="Send"><span class="ms">send</span></button></div>' +
+      '<p class="lunanote">Luna is a wellness companion, not a doctor. For medical concerns, talk to a clinician.</p>' +
       ((ORB.aiPaused && ORB.aiPaused()) ? '<details class="aibox" id="aibox"><summary><span class="ms">pause_circle</span>Luna’s AI help is paused · rules only' + infoBtn('luna') + '</summary>' + guideHTML('luna') + '<p>Luna’s AI help is paused for now, while we move it to a service licensed for Singapore. Luna’s own rules still read most notes, and your diary works as usual.</p></details>' :
       '<details class="aibox" id="aibox"><summary><span class="ms">auto_awesome</span>' + (cfg.on ? 'Luna’s reading is on' : 'Luna’s reading is off · rules only') + infoBtn('luna') + '</summary>' + guideHTML('luna') +
       '<label class="perm"><input type="checkbox" id="aiInsights"' + (cfg.insights === true ? ' checked' : '') + '><span class="ms">menu_book</span><div><b>Write journal readings</b><span>Luna writes a short reading of your last 7 or 28 days.</span></div></label>' +
       '<label class="perm"><input type="checkbox" id="aiPhotos"' + (cfg.photos === true ? ' checked' : '') + '><span class="ms">photo_camera</span><div><b>Recognise food photos</b><span>Luna names the food in your photo. Only a small thumbnail is kept, on this phone.</span></div></label>' +
       '<div class="row"><button type="button" class="btn soft" id="aiSave"><span class="ms">save</span>Save</button><button type="button" class="btn ghost" id="aiToggle">' + (cfg.on ? 'Turn Luna’s reading off (rules only)' : 'Turn Luna’s reading on') + '</button></div><p>You always see what Luna understood before it is saved. These choices are also under Your choices in You.</p></details>'));
     var chat = $('#chat'), shownCare = {};
+    var more = $('#lunaMore'); if (more) more.addEventListener('click', function () { var ab = $('#aibox'); if (ab) { ab.open = true; ab.scrollIntoView({ block: 'start', behavior: 'smooth' }); } });
     function bubble(kind, html) { var d = document.createElement('div'); d.className = 'bub ' + (kind === 'luna' ? 'from-luna' : kind); d.innerHTML = html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d; }
     if (!lunaLog.length) bubble('luna', '<b>Luna</b>Hello' + (S.profile().name ? ', ' + esc(S.profile().name) : '') + '. Tell me about your sleep, your period, how you feel, what you ate, or a pause you took' + ((ORB.aiPaused && ORB.aiPaused()) ? '.' : ', or send a photo of your meal with the camera button.') + ' I will show you what I understood before saving.');
     lunaLog.forEach(function (m) { bubble(m.kind, m.html); });

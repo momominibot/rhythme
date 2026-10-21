@@ -2112,3 +2112,23 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .rband{background:#f8f4fd;border-radius:14px;padding:10px 12px;margin:-4px 0 10px}
 .rband .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .rfoot{margin-top:4px;font-size:12px}
+
+/* Luna's chat as a floating card (Jamie, 21 Oct: the Ovuluna panel): her face in the head, a status line, questions to ask, a round send, the companion line */
+.sheet.luna-sheet{bottom:auto;top:max(10vh,70px);left:10px;right:10px;border-radius:26px;max-height:min(78%,calc(100% - 140px));box-shadow:0 24px 60px rgba(60,40,90,.28);border:1px solid rgba(255,255,255,.7);background:linear-gradient(180deg,#fbf7ff,#fff 60px)}
+.sheet.luna-sheet .sheet-head{padding:14px 16px 10px;border-bottom:1px solid rgba(150,120,190,.12)}
+.sheet.luna-sheet .sheet-head .ico{background:transparent;width:48px;height:48px;overflow:visible}
+.sheet.luna-sheet .lunaico{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(120,90,170,.25))}
+.sheet.luna-sheet h2{font-size:22px}
+.sheet.luna-sheet h2 small{display:flex;align-items:center;gap:6px;color:var(--rm-ink-2)}
+.lunastrip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px -16px 6px;padding:8px 16px;background:#f6f1fc;border-bottom:1px solid rgba(150,120,190,.1);font:700 12px var(--sans);color:var(--rm-ink-2)}
+.lunastrip .lstate{display:inline-flex;align-items:center;gap:7px}
+.ldot{width:8px;height:8px;border-radius:50%;background:#c9c2d6;display:inline-block}.ldot.on{background:#4fbf7f;box-shadow:0 0 0 3px rgba(79,191,127,.18)}
+.lunastrip .lmore{border:none;background:none;color:#8a63c9;font:800 12px var(--sans);cursor:pointer;padding:4px 0}
+.askrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px;align-items:center}
+.askrow .asklbl{font:800 10px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3);width:100%}
+.askchip{display:inline-flex;align-items:center;padding:9px 14px;border-radius:999px;border:1.5px solid rgba(138,99,201,.28);background:#faf7ff;color:#6e4fa3;font:700 13px var(--sans);text-decoration:none}
+.askchip:hover{background:#f1e9fc}
+.composer .lsend{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#9a7ad1,#7b5bb5)}
+.sheet.luna-sheet .composer textarea.input{border-radius:22px;min-height:52px}
+.lunanote{margin:10px 0 0;text-align:center;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-3)}
+@media(min-width:520px){.sheet.luna-sheet{left:50%;right:auto;width:min(480px,92vw);transform:translate(-50%,105%)}.sheet.luna-sheet.on{transform:translate(-50%,0)}}

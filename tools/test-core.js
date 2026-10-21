@@ -3531,4 +3531,14 @@ var summarised = false;
   check('the Cycle tab is back between Home and Food, reachable while she sleeps, with a Rhythm view in the calendar and Body after the menopause; evidence E91 to E94 exist', /data-tab="cycle" id="navCycle"/.test(rh) && rh.indexOf('data-tab="cycle"') < rh.indexOf('data-tab="food"') && /AWAKE_FREE = \{[^}]*cycle: 1/.test(rs) && /data-tab="rhythm"/.test(rs) && /function labelCycleTab/.test(rs) && ['E91', 'E92', 'E93', 'E94'].every(function (e) { return ev.indexOf("id: '" + e + "'") > -1; }) && ev.indexOf('—') < 0);
 })();
 
+(function lunaPanel() {
+  console.log('2k18. Luna’s chat panel (21 Oct): the Ovuluna card, honest about what Luna is');
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), css = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
+  var luna = rs.slice(rs.indexOf('function openLuna('), rs.indexOf('function openLuna(') + 6000);
+  check('the sheet becomes a card only for Luna and shows her face; the title names her a wellness companion', /sheet\.classList\.toggle\('luna-sheet', id === 'luna'\)/.test(rs) && /img class="lunaico" src="assets\/room\/dream\/orb-luna\.webp"/.test(rs) && /'Your wellness companion'/.test(luna));
+  check('the state line tells the truth (rules only while AI help is paused or off; reading on otherwise) and there is no upsell, no quota invented, no model name', /Rules only · AI help paused/.test(luna) && /Luna’s reading is on/.test(luna) && !/upgrade|premium|questions left/i.test(luna) && !/gpt|claude|doubao|deepseek|gemini/i.test(luna));
+  check('three ask chips open real guides, the composer asks about her cycle, and the companion note is the last line', /stress\.html/.test(luna) && /hormones\.html/.test(luna) && /foods\.html/.test(luna) && ['stress.html', 'hormones.html', 'foods.html'].every(function (f) { return fs.existsSync(path.join(root, f)); }) && /Tell Luna, or ask about your cycle…/.test(luna) && /Luna is a wellness companion, not a doctor\. For medical concerns, talk to a clinician\./.test(luna));
+  check('the card’s styles exist and no em dash entered the copy', /\.sheet\.luna-sheet\{/.test(css) && /\.askchip\{/.test(css) && /\.lunanote\{/.test(css) && luna.indexOf('—') < 0);
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
