@@ -325,11 +325,10 @@
     var exact = r.clock.ms() / 1000, secs = Math.round(exact), room = R(), day = S().today(); /* the day she practised, even if she confirms after midnight */
     run = null; hidePanel(); settle(room);
     var byPart = {}; r.steps.forEach(function (s) { if (s.group && !s.gate) byPart[s.group] = (byPart[s.group] || 0) + (r.spent[s.key] || 0); });
-    if (r.version === 'erin') byPart.teeth = r.brushMs; /* brushing is time on her brushing lines; her opening words at the sink are not brushing */
     var parts = r.version === 'erin' ? Object.keys(PARTS).filter(function (g) { return (byPart[g] || 0) / 1000 >= MIN_SAVE_S; }) : [];
-    if (exact < MIN_SAVE_S) { room.toast('Stopped. Pauses under 30 seconds are not saved.', 'wb_twilight'); renderInvite(); return; }
+    if (r.version === 'erin' ? !parts.length : exact < MIN_SAVE_S) { room.toast(r.version === 'erin' ? 'Stopped. No part reached 30 seconds, so nothing was added to your journal.' : 'Stopped. Pauses under 30 seconds are not saved.', 'wb_twilight'); renderInvite(); return; } /* one entry per part she really did, never a generic one (menopause walk, 21 Oct) */
     var did = [];
-    if (r.version === 'erin') parts.forEach(function (g) { did.push(PARTS[g].did); }); /* the sheet's title already says when she stopped early */
+    if (r.version === 'erin') parts.forEach(function (g) { did.push(g === 'teeth' && r.brushed !== 'erin' ? 'began at the sink with Erin' : PARTS[g].did); }); /* brushed only once she spent time on the brushing lines */
     else { if ((r.spent.arrive || 0) >= 5000) did.push('arrived'); if ((r.spent.notice || 0) >= 5000) did.push('noticed'); if (r.brushed !== 'no') did.push('brushed'); } /* only what she spent time on */
     var saved = false;
     /* another sheet is open (a symptoms form, the bed): never replace it; ask once it closes, unless she falls asleep */
@@ -351,7 +350,7 @@
       if (saved) return;
       if (room.asleep()) { room.closeSheet(); return; }
       /* one entry per part she really did; a morning with no part of 30 seconds (she stopped in Erin's opening words) saves the plain morning entry, as the short pause does */
-      var datas = r.version === 'erin' && parts.length ? parts.map(function (g) { return partEntry(g, { seconds: byPart[g] / 1000, confirmed: true, finished: !!r.done[g] }); }).filter(Boolean) : [entryData({ seconds: exact, confirmed: true, version: r.version, skipped: r.skipped, brushed: r.brushed, finished: finished })].filter(Boolean);
+      var datas = r.version === 'erin' ? parts.map(function (g) { return partEntry(g, { seconds: byPart[g] / 1000, confirmed: true, finished: !!r.done[g] }); }).filter(Boolean) : [entryData({ seconds: exact, confirmed: true, version: r.version, skipped: r.skipped, brushed: r.brushed, finished: finished })].filter(Boolean);
       if (!datas.length) { room.closeSheet(); return; }
       var evs = [];
       try { datas.forEach(function (data) { evs.push(S().add('mindfulness', day, data)); }); } catch (e) { room.toast('This pause could not be saved: ' + e.message + ' Try again, or tap Not this time.', 'error'); saved = evs.length > 0; if (!saved) return; } /* the sheet stays for a retry; parts already saved are not saved twice */

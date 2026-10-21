@@ -134,7 +134,7 @@
   function canCap(f) { return f.tools && f.tools.bigcan ? BIG_CAN : CAN; }
   function canLevel(S) { var f = farmState(S); return Math.max(0, Math.min(canCap(f), Math.floor(Number(f.can) || 0))); }
   function save(S, f, ST, action) {
-    if (ST && ST.spendWith) { if (!ST.spendWith(action, { farm: f })) return { ok: false, why: 'Too tired for that. Energy comes back with a night’s sleep, or with the new day.' }; return { ok: true, charged: true }; }
+    if (ST && ST.spendWith) { if (!ST.spendWith(action, { farm: f })) return { ok: false, why: 'Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.' }; return { ok: true, charged: true }; }
     if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f });
     return { ok: true, charged: false };
   }
@@ -218,7 +218,7 @@
     ids.forEach(function (id) { var b = f.beds[id]; b.watered = (b.watered || []).concat([day]); });
     var charged = false;
     try {
-      if (ST && ST.spendWith) { if (!ST.spendWith('water', { farm: f })) return { ok: false, why: 'Too tired for that. Energy comes back with a night’s sleep, or with the new day.' }; charged = true; }
+      if (ST && ST.spendWith) { if (!ST.spendWith('water', { farm: f })) return { ok: false, why: 'Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.' }; charged = true; }
       else if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f }); /* an older energy module: the caller charges the watering itself */
     } catch (e) { return { ok: false, why: e.message }; }
     return { ok: true, n: ids.length, charged: charged };
@@ -368,7 +368,7 @@
     R.walkTo(bb.wp, function () { openBed(bb.id); });
   }
   /* energy: checked before the rule runs, charged only when the rule says yes, so a refused action costs nothing */
-  function canAct(name) { if (!ST || ST.can(name)) return true; R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); return false; }
+  function canAct(name) { if (!ST || ST.can(name)) return true; R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); return false; }
   function act(name) { return !ST || ST.spend(name, true); }
   var lastBed = null;
   function openBed(id) {

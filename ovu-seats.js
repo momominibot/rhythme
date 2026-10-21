@@ -128,7 +128,7 @@
     var sp = spotFor(seatId); if (!sp || !sp.spot || !sp.spot.seat) return;
     var st = steps(seat.practice, reduced()), audio = null;
     try { audio = new Audio(); } catch (e) { }
-    run = { seat: seat, id: seatId, spot: sp.spot, back: sp.back, steps: st, i: -1, paused: false, quiet: false, timer: null, left: 0, t0: 0, waits: 0, clock: makeClock(), startedAt: new Date().toISOString(), audio: audio, pending: null, preloaded: null, el: null };
+    run = { seat: seat, id: seatId, spot: sp.spot, back: sp.back, steps: st, i: -1, paused: false, quiet: !!(root.OvuVoice && root.OvuVoice.muted && root.OvuVoice.muted()), /* a remembered mute starts her quiet (perimenopause walk, 21 Oct) */ timer: null, left: 0, t0: 0, waits: 0, clock: makeClock(), startedAt: new Date().toISOString(), audio: audio, pending: null, preloaded: null, el: null };
     /* the first line starts inside the tap, which unlocks the one audio element for the rest (as the room's practices do) */
     if (audio) { try { audio.src = st[0].audio; run.preloaded = st[0].audio; var pr = audio.play(); if (pr && pr.catch) pr.catch(function () { }); } catch (e) { } }
     R.emit('activity', 'seat', seatId); /* the care steps, a float on the water, the greenhouse minute: everything else steps aside first */
@@ -204,6 +204,7 @@
   }
   function quietToggle() {
     if (!run) return; run.quiet = !run.quiet;
+    if (!run.quiet && root.OvuVoice && root.OvuVoice.muted && root.OvuVoice.muted()) root.OvuVoice.set(false); /* Voice on lifts the app's remembered mute, as Morning start does */
     if (run.quiet) { silence(run.audio); run.pending = null; }
     else { var s = step(); if (s && !run.paused) play(s.audio); else if (s) run.pending = s.audio; } /* the voice comes back with the current line from its start */
     paint();

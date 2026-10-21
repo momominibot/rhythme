@@ -46,7 +46,7 @@
     var h = JSON.parse(JSON.stringify(harbourState(S))), e = h.book[id] || { first: null, n: 0 }, first = !e.n;
     e.n = Math.min(CAP, e.n + 1); if (first || !e.first) e.first = day; h.book[id] = e; h.casts = Math.min(CAP, h.casts + 1); /* the first meeting is today when none was counted before */
     try {
-      if (ST && ST.spendWith) { if (!ST.COSTS || ST.COSTS.fish == null) return { ok: false, why: 'unknown action' }; if (!ST.spendWith('fish', { harbour: h })) return { ok: false, why: 'Too tired for that. Energy comes back with a night’s sleep, or with the new day.' }; }
+      if (ST && ST.spendWith) { if (!ST.COSTS || ST.COSTS.fish == null) return { ok: false, why: 'unknown action' }; if (!ST.spendWith('fish', { harbour: h })) return { ok: false, why: 'Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.' }; }
       else if (S.commit) S.commit({ harbour: h }); else S.setState({ harbour: h });
     } catch (err) { return { ok: false, why: 'That could not be saved just now.' }; }
     return { ok: true, first: first, n: e.n, species: sp };
@@ -123,7 +123,7 @@
     acts.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (btn.dataset.act === 'book') { openBook(spot); return; }
-      if (ST && !ST.can('fish')) { R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); return; }
+      if (ST && !ST.can('fish')) { R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); return; }
       if (!here()) { R.hideSheet(); return; }
       var pic = doc.querySelector('#sheet .hbpic'); if (pic) pic.innerHTML = waterSVG('cast');
       castLine(spot);
@@ -146,7 +146,7 @@
       var btn = e.target.closest('[data-bite]'); if (!btn) return; acts.onclick = null;
       if (btn.dataset.bite === 'leave') { clearLine(); R.toast('It swims on. Nothing lost.', 'water'); openSpot(spot); return; }
       if (my !== enc || !here() || S.state().sleeping || (CARE && CARE.asleepNow && CARE.asleepNow())) { clearLine(); R.hideSheet(); return; } /* the moment passed: a reset, another tab, sleep */
-      if (ST && !ST.can('fish')) { R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); clearLine(); openSpot(spot); return; }
+      if (ST && !ST.can('fish')) { R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); clearLine(); openSpot(spot); return; }
       var r = record(S, fish.id, today(), ST);
       clearLine();
       if (!r.ok) { R.toast(r.why, 'info'); openSpot(spot); return; }

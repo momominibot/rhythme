@@ -17,7 +17,7 @@
   function save(S, f, ST, action) {
     if (ST && ST.spendWith) {
       if (!ST.COSTS || ST.COSTS[action] == null) return { ok: false, why: 'unknown action' }; /* an unregistered action would cost nothing */
-      if (!ST.spendWith(action, { farm: f })) return { ok: false, why: 'Too tired for that. Energy comes back with a night’s sleep, or with the new day.' };
+      if (!ST.spendWith(action, { farm: f })) return { ok: false, why: 'Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.' };
       return { ok: true, charged: true };
     }
     if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f });
@@ -205,7 +205,7 @@
     acts.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (btn.dataset.act === 'treat') { treatStep(acts, 'hens', btn, openNests); return; }
-      if (ST && !ST.can('egg')) { R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); return; }
+      if (ST && !ST.can('egg')) { R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); return; }
       var seen = JSON.stringify(eggsReady(S, day));
       var lifts = [], putBack = function () { lifts.forEach(root.clearTimeout); lifts = []; renderBarn(); };
       step(acts, { ms: 2500, moment: 'eggs', verb: 'Lifting each egg from the straw…', stillLine: 'Notice the straw around each egg.', abort: putBack, cancel: openNests, start: function (ms, still) { Array.prototype.forEach.call(doc.querySelectorAll('#ownedProps .nestegg'), function (el, i) { lifts.push(root.setTimeout(function () { el.classList.add('lifted'); }, still ? 0 : (i + 0.5) * ms / 3)); }); } }, function () {
@@ -230,7 +230,7 @@
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (btn.dataset.act === 'treat') { treatStep(acts, 'clover', btn, openClover); return; }
       if (btn.dataset.act === 'brush') { step(acts, { ms: 3000, moment: 'brush', verb: 'Brushing slowly…', cancel: openClover }, function () { R.chime('tap'); openClover(); }); return; }
-      if (ST && !ST.can('milk')) { R.toast('Too tired for that. Energy comes back with a night’s sleep, or with the new day.', 'bedtime'); return; }
+      if (ST && !ST.can('milk')) { R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); return; }
       step(acts, { ms: 3000, moment: 'milk', verb: 'Milking slowly…', stillLine: 'Notice how still Clover stands.', cancel: openClover, start: function (ms, still) { var m = doc.querySelector('#sheet .pailmilk'); if (m) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { m.style.transition = still ? 'none' : 'transform ' + ms + 'ms ease-in-out'; m.style.transform = 'scaleY(1)'; }); }); } }, function () {
         if (today() !== day || !milkReady(S, day)) { openClover(); return; }
         var r = milk(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); openClover(); return; }

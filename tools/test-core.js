@@ -190,7 +190,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   console.log('2c. a red flag saved by hand opens its card at once (four-persona review, 20 Oct)');
   var w = fresh(), S = w.OvuStore, O = w.OvuOrb, today = S.today();
   var p1 = S.add('period', today, { flow: 'heavy', clots: false, impact: false, flooding: true });
-  check('heavy flooding alone opens no emergency card', O.entryUrgent(p1, {}) === null);
+  check('heavy flooding alone opens no emergency card (it asks for a GP or polyclinic today)', (O.entryUrgent(p1, {}) || {}).level !== 'emergency' && (O.entryUrgent(p1, {}) || {}).code === 'FLOODING_TODAY');
   var s1 = S.add('symptom', today, { symptoms: ['dizziness'], pain: null, mood: '', notes: '' });
   check('dizziness on a heavy day opens the heavy-with-dizziness card', (O.entryUrgent(s1, {}) || {}).code === 'HEAVY_DIZZY_NOW');
   var w2 = fresh(), S2 = w2.OvuStore, O2 = w2.OvuOrb, t2 = S2.today(), post = { lifeStage: 'post' };
