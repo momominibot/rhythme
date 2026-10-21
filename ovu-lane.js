@@ -8,7 +8,7 @@
   'use strict';
   /* names are placeholders Jamie can change here (Bait & Fin and Hay & Harvest are Codex's, from the harbour review) */
   var PLACES = [
-    { id: 'grocer', name: 'Hay & Harvest', kind: 'Grocer', icon: 'storefront', hours: [8, 20], blurb: 'Seed packs, new crops and the seed swap' },
+    { id: 'grocer', name: 'Hay & Harvest', kind: 'Grocer', icon: 'storefront', hours: [8, 20], blurb: 'Seed packs, new crops, kitchen staples and the seed swap' },
     { id: 'boutique', name: 'Petal & Thread', kind: 'Boutique', icon: 'checkroom', hours: [10, 21], blurb: 'The fitting room and a new rail' },
     { id: 'gym', name: 'Tideline Gym', kind: 'Gym', icon: 'fitness_center', hours: [6, 22], blurb: 'Four stations, always free' },
     { id: 'fish', name: 'Bait & Fin', kind: 'Fish store', icon: 'phishing', hours: [7, 19], blurb: 'Float colours and the catch book' },
@@ -115,6 +115,7 @@
   function farmDay() { var GT = root.OvuGameTime; return GT ? GT.dayKey() : S.today(); }
   function RW() { return root.OvuRewards; }
   function F() { return root.OvuFarm; }
+  function KT() { return root.OvuKitchen; } /* the farm kitchen's staples (ovu-kitchen.js) */
   function hearts() { var rw = RW(); return rw ? (rw.tester && rw.tester() ? Infinity : rw.ledger().hearts) : 0; }
   function heartTxt(n) { return n + ' ♥'; }
   function num(v) { var x = Math.floor(Number(v)); return isFinite(x) && x > 0 ? x : 0; } /* a restored backup's counts reach the page as numbers only (review, 21 Oct) */
@@ -159,6 +160,9 @@
       '<h4 class="shedh"><span class="ms">redeem</span>Seed packs <small>' + FM.PACK.seeds + ' seeds · ' + heartTxt(FM.PACK.cost) + '</small></h4>' +
       '<div class="seedlist" id="grocerBuy">' + grow.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-pack="' + k + '"' + (h >= FM.PACK.cost ? '' : ' disabled') + '><span class="ms">redeem</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + num(f.seeds[k]) + '</small></span></button>'; }).join('') +
       locked.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-unlock="' + k + '"' + (h >= c.cost ? '' : ' disabled') + '><span class="ms">lock_open</span><span><b>Grow ' + esc(c.name.toLowerCase()) + '</b><small>' + c.days + ' days · for good, one seed to start · ' + heartTxt(c.cost) + '</small></span></button>'; }).join('') + '</div>' +
+      (KT() ? (function () { var kt = KT(), have = kt.staplesOf(S); return '<h4 class="shedh"><span class="ms">kitchen</span>Kitchen staples <small>one portion each</small></h4>' +
+        '<div class="seedlist" id="grocerStaples">' + Object.keys(kt.STAPLES).map(function (k) { var st = kt.STAPLES[k]; return '<button type="button" class="btn soft" data-staple="' + k + '"' + (h >= st.cost ? '' : ' disabled') + '><span class="ms">' + st.icon + '</span><span><b>' + esc(st.name) + '</b><small>have ' + num(have[k]) + ' · ' + heartTxt(st.cost) + '</small></span></button>'; }).join('') + '</div>' +
+        '<p class="help" style="margin-top:6px">For cooking what you grow: open the basket on the farm, or the stove in the family home.</p>'; })() : '') +
       '<h4 class="shedh"><span class="ms">swap_horiz</span>Seed swap <small>no hearts</small></h4>' +
       '<p class="help" style="margin-top:0">Three from your basket for one seed of any crop you grow. A pumpkin counts as three.</p>';
     if (!give.length) html += '<p class="help pantryline"><span class="ms">shopping_basket</span>Nothing to swap yet: the basket needs three of one kind, or a pumpkin.</p>';
@@ -174,6 +178,13 @@
       if (!res.ok) { R.toast(res.why, 'info'); return; }
       R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
       R.toast(btn.dataset.pack ? res.n + ' ' + FM.CROPS[btn.dataset.pack].name.toLowerCase() + ' seeds are in the shed.' : FM.CROPS[res.crop].name + ' grows on your farm now.', 'redeem', line);
+      if (R.renderDeck) R.renderDeck(); openGrocer();
+    });
+    var sp = doc.getElementById('grocerStaples'); if (sp) sp.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-staple]'); if (!btn || btn.disabled || !stillOpen('grocer')) return;
+      var res = KT().buyStaple(S, RW(), btn.dataset.staple); if (!res.ok) { R.toast(res.why, 'info'); return; }
+      R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '', st = KT().STAPLES[res.id];
+      R.toast(st.pantry ? 'An egg is in the pantry.' : st.name + (st.pl ? ' are' : ' is') + ' in the kitchen.', 'kitchen', line);
       if (R.renderDeck) R.renderDeck(); openGrocer();
     });
     var gv = doc.getElementById('swapGive'); if (gv) gv.addEventListener('click', function (e) { var b = e.target.closest('[data-give]'); if (!b) return; R.chime('tap'); swapGive = b.dataset.give === swapGive ? null : b.dataset.give; openGrocer(); });

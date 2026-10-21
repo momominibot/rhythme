@@ -2049,3 +2049,6 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .letterrow .btn{flex:none}
 .lettertext{width:100%;min-height:96px;resize:vertical;margin-top:8px}
 .letterbody{margin:8px 0 0;padding:16px;background:var(--rm-paper-2);border-radius:16px;font:500 16px/1.6 var(--serif);color:var(--rm-ink);overflow-wrap:anywhere}
+/* the farm kitchen's guided steps (ovu-kitchen.js): the step she is on is outlined, the ones done are quieter */
+.cooksteps li.on{box-shadow:0 0 0 2px var(--rm-mauve)}
+.cooksteps li.done{opacity:.6}

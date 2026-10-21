@@ -2973,4 +2973,70 @@ var summarised = false;
   check('room.html loads the lane after the harbour', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('ovu-lane.js') > h.indexOf('ovu-harbour.js') && h.indexOf('ovu-harbour.js') > -1; })());
 })();
 
+(function farmKitchen() {
+  console.log('2k8. the farm kitchen (21 Oct): staples for hearts in one save, recipes from the basket and the barn, cooking in one save with no hearts, no energy and no diary; no fish');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-harbour.js', 'ovu-lane.js', 'ovu-kitchen.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var K = w.OvuKitchen, F = w.OvuFarm, S = w.OvuStore, RW = w.OvuRewards, B = w.OvuBarn, d1 = '2026-10-21';
+  var src = fs.readFileSync(path.join(root, 'ovu-kitchen.js'), 'utf8'), laneSrc = fs.readFileSync(path.join(root, 'ovu-lane.js'), 'utf8'), roomSrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  var ids = Object.keys(K.STAPLES);
+  check('eight staples at Hay & Harvest, 2 to 4 hearts each: rice, eggs, noodles, tofu, garlic, coconut milk, honey and yoghurt', ids.join() === 'rice,egg,noodles,tofu,garlic,coconut,honey,yoghurt' && ids.every(function (k) { return K.STAPLES[k].cost >= 2 && K.STAPLES[k].cost <= 4; }));
+  var known = function (k) { return !!F.CROPS[k] || !!K.STAPLES[k] || !!K.HERBS[k]; };
+  check('every recipe is vegetables, herbs and staples only: no fish, no unknown ingredient', K.RECIPES.every(function (r) { return Object.keys(r.needs).every(known) && !/fish|ikan|prawn|bilis/i.test(JSON.stringify(r)); }) && !/fish/i.test(Object.keys(F.CROPS).join() + ids.join()));
+  check('the design’s recipes are there; the two with ginger or pandan wait for the greenhouse herbs and cannot be cooked', ['garlicpakchoy', 'kangkongfry', 'tomatoegg', 'pumpkinsoup', 'carrotradish', 'strawberrybowl', 'sweetpotatoginger', 'pandanrice'].every(function (id) { return !!K.recipe(id); }) && K.RECIPES.filter(function (r) { return Object.keys(r.needs).some(function (k) { return K.HERBS[k]; }); }).every(function (r) { return r.soon && K.canCook(S, r.id).soon; }) && K.RECIPES.filter(function (r) { return r.soon; }).length === 2);
+  check('every staple sold has a dish that uses it, and every dish she can cook has its four steps', ids.every(function (k) { return K.RECIPES.some(function (r) { return !r.soon && r.needs[k]; }); }) && K.RECIPES.every(function (r) { return r.soon || (r.steps.length === 4 && r.steps.every(function (t) { return !/—|–/.test(t); })); }) && K.STEPS.map(function (x) { return x.id; }).join() === 'wash,chop,smell,taste');
+  /* buying staples */
+  S.setState({ farm: { harvest: {}, pantry: { egg: 2, milk: 1 } }, rewards: { hearts: 10, earned: 10, log: [], owned: [], placed: {} } });
+  var b1 = K.buyStaple(S, RW, 'rice');
+  check('rice: 2 hearts and a portion in the kitchen, in one save', b1.ok && RW.ledger().hearts === 8 && F.farmState(S).kitchen.rice === 1 && RW.ledger().log[0].what === 'staple:rice');
+  var b2 = K.buyStaple(S, RW, 'egg');
+  check('eggs are the barn’s pantry eggs: a bought egg joins them, never a second count', b2.ok && F.farmState(S).pantry.egg === 3 && !('egg' in (F.farmState(S).kitchen || {})) && RW.ledger().hearts === 5 && F.farmState(S).pantry.milk === 1);
+  S.setState({ rewards: Object.assign({}, RW.ledger(), { hearts: 1 }) }); var snap0 = JSON.stringify([S.state().farm, S.state().rewards]);
+  check('too few hearts or an unknown staple: refused, nothing changes', !K.buyStaple(S, RW, 'honey').ok && !K.buyStaple(S, RW, 'caviar').ok && JSON.stringify([S.state().farm, S.state().rewards]) === snap0);
+  S.setState({ farm: { kitchen: { garlic: 99 }, pantry: { egg: 99 } }, rewards: Object.assign({}, RW.ledger(), { hearts: 50 }) });
+  check('the kitchen holds 99 of a staple and the pantry 99 eggs; a full shelf charges nothing', !K.buyStaple(S, RW, 'garlic').ok && !K.buyStaple(S, RW, 'egg').ok && RW.ledger().hearts === 50);
+  S.setState({ farm: { kitchen: { rice: '3', tofu: -2, garlic: 'lots', honey: 1e9, saffron: 4, 'bad key': 2, egg: 7 } } });
+  check('restored kitchen values are cleaned: whole numbers, at most 99, eggs only in the pantry; a newer build’s staple is carried, not dropped', JSON.stringify(K.kitchenOf(S.state().farm)) === '{"saffron":4,"rice":3,"noodles":0,"tofu":0,"garlic":0,"coconut":0,"honey":99,"yoghurt":0}');
+  /* cooking */
+  S.setState({ farm: { harvest: { tomato: 3, pakchoy: 2 }, pantry: { egg: 1 }, kitchen: { rice: 1 } }, stamina: { v: 40, max: 100, day: d1 }, rewards: { hearts: 5, earned: 5, log: [], owned: [], placed: {} } });
+  var gp = K.canCook(S, 'garlicpakchoy');
+  check('a dish missing a staple says what is still needed', !gp.ok && gp.missing.length === 1 && gp.missing[0].key === 'garlic' && /1 garlic/.test(gp.why));
+  check('the dishes ready now are the ones with everything in the basket, pantry and kitchen', K.ready(S).join() === 'tomatoegg');
+  var n0 = S.list().length, st0 = JSON.stringify(S.state().stamina), c1 = K.cook(S, 'tomatoegg'), f1 = F.farmState(S);
+  check('tomato and egg uses two tomatoes, the pantry egg and the rice, all in one save', c1.ok && f1.harvest.tomato === 1 && f1.pantry.egg === 0 && f1.kitchen.rice === 0 && f1.harvest.pakchoy === 2);
+  check('cooking earns no hearts, takes no energy and writes no diary entry', RW.ledger().hearts === 5 && RW.ledger().log.length === 0 && JSON.stringify(S.state().stamina) === st0 && S.list().length === n0);
+  check('a dish cannot be cooked twice from one set of ingredients', !K.cook(S, 'tomatoegg').ok && F.farmState(S).harvest.tomato === 1);
+  S.setState({ farm: Object.assign({}, S.state().farm, { harvest: { pumpkin: 1 }, kitchen: { coconut: 1 } }) });
+  var c2 = K.cook(S, 'pumpkinsoup');
+  check('a crop used up leaves the basket', c2.ok && !('pumpkin' in F.farmState(S).harvest) && F.farmState(S).kitchen.coconut === 0);
+  check('a herb dish is refused and nothing moves', (function () { var b = JSON.stringify(S.state().farm); return !K.cook(S, 'pandanrice').ok && !K.cook(S, 'nope').ok && JSON.stringify(S.state().farm) === b; })());
+  /* the farm's other actions keep the kitchen, and the barn's eggs cook */
+  S.setState({ farm: { harvest: { radish: 3 }, kitchen: { honey: 2 } } });
+  F.swapSeed(S, 'radish', 'carrot'); F.fillCan(S);
+  check('a seed swap or filling the can keeps the kitchen’s staples', F.farmState(S).kitchen && F.farmState(S).kitchen.honey === 2);
+  var eg = B.collectEggs(S, d1);
+  check('eggs from the hen house are the eggs a dish uses', eg.ok && F.farmState(S).pantry.egg === eg.n && F.farmState(S).kitchen.honey === 2);
+  /* a failed save: nothing bought, nothing cooked, no hearts (S.commit leaves memory as it was) */
+  S.setState({ farm: { harvest: { kangkong: 2 }, kitchen: { garlic: 1 } }, rewards: { hearts: 20, earned: 20, log: [], owned: [], placed: {} } });
+  var snap = JSON.stringify([S.state().farm, S.state().rewards]), realCommit = S.commit;
+  S.commit = function () { throw new Error('QuotaExceededError'); };
+  var fBuy = K.buyStaple(S, RW, 'tofu'), fCook = K.cook(S, 'kangkongfry');
+  S.commit = realCommit;
+  check('a failed save sells no staple, cooks nothing and takes no hearts', !fBuy.ok && !fCook.ok && JSON.stringify([S.state().farm, S.state().rewards]) === snap, JSON.stringify([fBuy, fCook]));
+  var realSet = w.localStorage.setItem; w.localStorage.setItem = function () { throw new Error('QuotaExceededError'); };
+  var gBuy = K.buyStaple(S, RW, 'tofu'), gCook = K.cook(S, 'kangkongfry');
+  w.localStorage.setItem = realSet;
+  check('a full disk under the real S.commit: memory is as it was, nothing sold, nothing cooked, no hearts', !gBuy.ok && !gCook.ok && JSON.stringify([S.state().farm, S.state().rewards]) === snap, JSON.stringify([gBuy, gCook]));
+  check('then it cooks once the save works', K.cook(S, 'kangkongfry').ok && !('kangkong' in F.farmState(S).harvest) && F.farmState(S).kitchen.garlic === 0);
+  /* the house rules, read from the source */
+  check('the kitchen pays no hearts, writes no diary entry, spends hearts only on a staple and costs no energy', !/\.award\(|\.grant\(|\bS\.add\(|OvuStore\.add\(|addMany\(|spendWith\(|ST\.spend\(/.test(src) && (src.match(/\.spend\(/g) || []).length === 1 && /function buyStaple[\s\S]*?RW\.spend\(/.test(src));
+  check('the grocer sells staples through the kitchen’s one-save function and still spends hearts only on a float itself', /KT\(\)\.buyStaple\(S, RW\(\)/.test(laneSrc) && (laneSrc.match(/\.spend\(/g) || []).length === 1);
+  check('Yes opens the food diary filled in and saves nothing; No opens nothing', /dishYes[\s\S]*?R\.openDiary\('add', \{ notes:/.test(src) && /dishNo[\s\S]*?R\.hideSheet\(\)/.test(src) && /function openDiary\(pane, pre\)/.test(roomSrc) && /openDiary: openDiary/.test(roomSrc));
+  var MS = w.OvuMoments || null; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-moments.js'), 'utf8'), w, { filename: 'ovu-moments.js' }); MS = w.OvuMoments;
+  check('a mindful line for each cooking step and one for the dish, each with her pose', K.STEPS.map(function (x) { return x.moment; }).concat(['cookdish']).every(function (k) { return MS.MOMENTS[k] && MS.MOMENTS[k].lines.length && MS.MOMENTS[k].pose && fs.existsSync(path.join(root, 'assets/room/dream/avatar-act-' + MS.MOMENTS[k].pose + '.webp')); }));
+  var homes = ['room', 'house', 'bathhouse', 'familyhome'], withStove = homes.filter(function (id) { return w.LAYOUTS[id].hotspots.some(function (h) { return h.id === 'stove'; }); });
+  check('a stove only where a plate draws a kitchen: the family home', withStove.join() === 'familyhome' && K.STOVES.join() === 'familyhome');
+  check('room.html loads the kitchen after the farm and the lane', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('ovu-kitchen.js') > h.indexOf('ovu-lane.js') && h.indexOf('ovu-lane.js') > h.indexOf('ovu-farm.js'); })());
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

@@ -94,6 +94,7 @@
         { id: 'window', x: 40, y: 30, label: 'Window · tonight', icon: 'dark_mode', wp: null },
         { id: 'diary', x: 33, y: 75, label: 'Kitchen · food diary', icon: 'menu_book', wp: { x: 34, y: 84, flip: true } },
         { id: 'fridge', x: 16, y: 72, label: 'Fridge · food ideas, teas and herbs', icon: 'kitchen', wp: { x: 22, y: 85, flip: true } },
+        { id: 'stove', x: 27, y: 68, label: 'Stove · cook a dish', icon: 'skillet', wp: { x: 28, y: 85, flip: true } }, /* the farm kitchen (ovu-kitchen.js), 21 Oct */
         { id: 'coach', x: 22, y: 62, label: 'M · everyday mindfulness', icon: 'self_improvement', badge: 'M', wp: { x: 28, y: 85, flip: true } },
         { id: 'computer', x: 66, y: 64, label: 'Computer · learn', icon: 'computer', wp: { x: 62, y: 82, flip: false } },
         { id: 'sofa', x: 78, y: 71, label: 'Sofa · tell Luna about today', icon: 'chair', wp: { x: 72, y: 85, flip: false } },
@@ -1133,7 +1134,8 @@
       '<div class="row"><button class="btn primary" id="cfUse"><span class="ms">check</span>Use this food</button><button class="btn ghost" id="cfCancel">Cancel</button></div></div>';
   }
   function num(id) { var v = $(id).value; return v === '' ? null : Number(v); }
-  function openDiary(pane) {
+  /* pre: { notes, tags } fills the form in (the kitchen's "Did you eat something like this today?"); only Save writes */
+  function openDiary(pane, pre) {
     diaryDate = S.today(); draft = { items: [], photo: null }; picked = null;
     var cs = S.cycleStats(), phase = cs.phase || 'none', tip = PHASE_TIPS[phase] || PHASE_TIPS.none;
     var h = new Date().getHours(), defMeal = h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 17 ? 'snack' : h < 22 ? 'dinner' : 'snack';
@@ -1165,6 +1167,7 @@
     function setPane(k) { $$('#dTabs button').forEach(function (b) { var on = b.dataset.dpane === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); }); $$('.dpane', body).forEach(function (pn) { pn.hidden = pn.dataset.pane !== k; }); if (k !== 'add') stopCamera(); body.scrollTop = 0; }
     $('#dTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-dpane]'); if (b) { chime('tap'); setPane(b.dataset.dpane); } });
     if (pane) setPane(pane);
+    if (pre) { if (pre.notes) $('#fdFoods').value = String(pre.notes).slice(0, 200); (pre.tags || []).forEach(function (t) { var b = $$('#tagChips button').filter(function (x) { return x.dataset.tag === t; })[0]; if (b) b.classList.add('on'); }); }
     var area = $('#modeArea');
     function setMode(mode) {
       stopCamera(); $$('.foodmodes button').forEach(function (b) { b.classList.toggle('on', b.dataset.mode === mode); });
@@ -3034,7 +3037,7 @@
     sheetOpen: function () { return !!current; }, sheetId: function () { return current; }, cancelIdle: function () { clearTimeout(idleTimer); },
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
-    openSheet: openSheet, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, openExercise: openExercise, openMoveGuide: openMoveGuide,
+    openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, openExercise: openExercise, openMoveGuide: openMoveGuide,
     moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on && title) { clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }

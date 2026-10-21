@@ -60,6 +60,12 @@
     gym: { pose: 'stretch', lines: ['Move at a pace that feels kind today. Rest counts too.', 'Notice your breath before you begin. There is nowhere to arrive.'] },
     letter: { pose: 'note', lines: ['Write to her the way a kind friend would.', 'A few honest words are enough.'] },
     letterread: { pose: 'note', lines: ['Read it slowly. Notice what has changed, and what has stayed.'] },
+    /* the farm kitchen (21 Oct): wash, chop, smell, taste, then the dish; she stands at the sink, then lifts the bowl */
+    cookwash: { pose: 'dishes', lines: ['Feel the cool water on your hands as you rinse.', 'Notice the colours brighten as you rinse.'] },
+    cookchop: { pose: 'dishes', lines: ['One slow cut at a time. Notice the sound of the knife.'] },
+    cooksmell: { pose: 'coffee', lines: ['Breathe in slowly. Notice what you can smell.', 'Notice how the smell changes as you breathe in.'] },
+    cooktaste: { pose: 'eat', lines: ['Taste one small bite. Notice the flavour and the texture.'] },
+    cookdish: { pose: 'eat', lines: ['Something you grew, now on the table. Enjoy it slowly.', 'Notice the colours on the plate before the first bite.'] },
     adopt: { pose: 'pets', lines: ['Welcome home, little one. Notice how she looks at you.'] },
     petfeed: { pose: 'pets', lines: ['Watch one happy mouthful.', 'Notice how she eats, all in.'] },
     petplay: { pose: 'pets', lines: ['Share her small excitement for a moment.'] },

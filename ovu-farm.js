@@ -483,7 +483,9 @@
     R.openSheet('farmbasket', 'Your harvest', rows.length ? 'In the basket' : 'Nothing picked yet', 'shopping_basket',
       (rows.length ? '<ul class="basketlist">' + rows.map(function (k) { return '<li><span class="dot" style="background:' + CROPS[k].colour + '"></span>' + esc(CROPS[k].name) + ' <b>×' + esc(f.harvest[k]) + '</b></li>'; }).join('') + '</ul>' : '<p>Plant, water and pick, and the basket fills.</p>') +
       (function () { var p = farmState(S).pantry, bits = []; if (p.egg) bits.push(p.egg + ' egg' + (p.egg > 1 ? 's' : '')); if (p.milk) bits.push(p.milk + ' milk'); if (p.onsenegg) bits.push(p.onsenegg + ' onsen egg' + (p.onsenegg > 1 ? 's' : '')); return bits.length ? '<p class="help pantryline"><span class="ms">kitchen</span>From the barn: ' + esc(bits.join(', ')) + '.</p>' : ''; })() +
-      '<p class="help">Carrots, pumpkins and sweet potatoes are treats for Clover at the barn; kangkong, pak choy and strawberries for the hens. The rest is yours to admire.</p>');
+      '<p class="help">Carrots, pumpkins and sweet potatoes are treats for Clover at the barn; kangkong, pak choy and strawberries for the hens. The rest is yours to admire.</p>' +
+      (root.OvuKitchen && root.OvuKitchen.openKitchen ? '<div class="row"><button type="button" class="btn soft" id="basketCook"><span class="ms">skillet</span>Cook a dish</button></div>' : '')); /* the farm kitchen (ovu-kitchen.js) */
+    var ck = doc.getElementById('basketCook'); if (ck) ck.addEventListener('click', function () { R.chime('tap'); root.OvuKitchen.openKitchen(); });
   }
   /* several beds share this spot: ask which one */
   function openPicker(ids) {
