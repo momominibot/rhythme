@@ -3039,4 +3039,125 @@ var summarised = false;
   check('room.html loads the kitchen after the farm and the lane', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('ovu-kitchen.js') > h.indexOf('ovu-lane.js') && h.indexOf('ovu-lane.js') > h.indexOf('ovu-farm.js'); })());
 })();
 
+(function greenhouseHerbs() {
+  console.log('2k8b. greenhouse herbs (21 Oct): four planters by the door, starts from Hay & Harvest, growth by watered days, the basket, a tea minute with no diary and only the flat thank-you');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-harbour.js', 'ovu-lane.js', 'ovu-herbs.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var GH = w.OvuGreenhouse, F = w.OvuFarm, S = w.OvuStore, RW = w.OvuRewards, ST = w.OvuStamina, K = w.OvuWalk, HB = w.OvuHerbs, L = GH.LAYOUT, d1 = '2026-10-21';
+  var src = fs.readFileSync(path.join(root, 'ovu-greenhouse.js'), 'utf8'), laneSrc = fs.readFileSync(path.join(root, 'ovu-lane.js'), 'utf8');
+  var days = function (n) { var out = []; for (var i = 0; i < n; i++) out.push(S.addDays(d1, i)); return out; };
+  var reset = function (hearts) { S.setState({ greenhouse: null, farm: null, stamina: { v: 100, max: 100, day: (S.state().stamina || {}).day || d1 }, rewards: { hearts: hearts == null ? 100 : hearts, earned: 0, log: [], owned: [], placed: {} } }); };
+  var T = { ginger: [6, 6, 3], lemongrass: [4, 4, 2], pandan: [4, 4, 2], chamomile: [5, 4, 2] };
+  check('the four herbs at the design’s prices and days: ginger 6 hearts, ripe on day 6, again every 3; lemongrass and pandan 4, 4, 2; chamomile 5, 4, 2', GH.HERB_IDS.join() === 'ginger,lemongrass,pandan,chamomile' && GH.HERB_IDS.every(function (k) { var h = GH.HERBS[k]; return h.cost === T[k][0] && h.ripe === T[k][1] && h.regrow === T[k][2] && h.yield > 0; }));
+  /* the planters on the plate: on the floor, clear of the furniture, every stand point reachable from the door */
+  var bad = K.checkLayout(L);
+  check('the greenhouse with its planters: home, the tea table, the door and every stand point are on the floor and clear', bad.length === 0, bad.join('; '));
+  var props = GH.HERB_BEDS.map(function (b) { return { id: b.id, x: b.at[0], y: b.at[1], w: b.w }; }).concat(GH.PLANTS.map(function (p) { return { id: p.id, x: p.at[0], y: p.at[1], w: p.w }; }));
+  var wl = K.world(L, props), door = L.doors[0], miss = [];
+  GH.HERB_BEDS.forEach(function (b) { if (!K.inZones(L.zones, b.wp.x, b.wp.y) || K.blocked(wl.solids, b.wp.x, b.wp.y)) miss.push(b.id + ' stand point'); else { if (!K.plan(wl, L.home, b.wp, 2)) miss.push(b.id + ' from home'); if (!K.plan(wl, { x: door.x, y: door.y }, b.wp, 2)) miss.push(b.id + ' from the door'); } });
+  check('every planter has a stand point on the floor, outside every solid and drawn pot, that the planner reaches from home and from the door', miss.length === 0, miss.join('; '));
+  var targets = L.hotspots.map(function (h) { return h.wp; }).concat(GH.PLANTS.filter(function (p) { return p.wp; }).map(function (p) { return p.wp; })), cut = [];
+  targets.forEach(function (t) { if (!K.plan(wl, L.home, t, 2)) cut.push(JSON.stringify(t)); });
+  check('the planters cut nothing off: the tea table, the door and every plant are still reachable with the planters drawn', cut.length === 0, cut.join('; '));
+  check('the planters stand on the tiled floor, in front of the chairs and the tea table, and leave the way in clear', GH.HERB_BEDS.every(function (b) { return K.inZones(L.zones, b.at[0], b.at[1] - 0.3) && b.box[2] >= 69.5; }) && GH.HERB_BEDS.every(function (b) { return b.box[1] <= 46.3 || b.box[0] >= 52.7; }));
+  check('the planters are solids of the layout, one per planter', L.solids.filter(function (x) { return x.id === 'herbbed'; }).length === 4);
+  /* Hay & Harvest: hearts and the start in one save */
+  reset(10);
+  var b1 = GH.buyStart(S, RW, 'ginger');
+  check('a ginger start costs 6 hearts and lands in the greenhouse bag in the same save', b1.ok && RW.ledger().hearts === 4 && GH.herbState(S).seeds.ginger === 1);
+  check('too few hearts: no start and no change; an unknown herb is not sold', !GH.buyStart(S, RW, 'chamomile').ok && RW.ledger().hearts === 4 && !GH.herbState(S).seeds.chamomile && !GH.buyStart(S, RW, 'basil').ok);
+  /* planting and watering by real days */
+  var e0 = ST.value(), p1 = GH.plantHerb(S, 'hb1', 'ginger', d1, ST);
+  check('planting uses the start and charges the planting energy in the same save', p1.ok && p1.charged && !GH.herbState(S).seeds.ginger && GH.herbState(S).beds.hb1.herb === 'ginger' && ST.value() === e0 - ST.COSTS.plant);
+  check('a planted planter, a start she does not have, or an unknown planter is refused', !GH.plantHerb(S, 'hb1', 'ginger', d1, ST).ok && !GH.plantHerb(S, 'hb2', 'pandan', d1, ST).ok && !GH.plantHerb(S, 'hb9', 'ginger', d1, ST).ok);
+  var w1 = GH.waterHerb(S, 'hb1', d1, ST);
+  check('watering counts the day once; again the same day counts nothing', w1.ok && w1.days === 1 && w1.need === 6 && !GH.waterHerb(S, 'hb1', d1, ST).ok && GH.herbDays(GH.herbState(S).beds.hb1) === 1);
+  var gap = GH.waterHerb(S, 'hb1', '2026-10-25', ST);
+  check('a missed day adds nothing and takes nothing away: three dry days later it is day 2 of 6', gap.ok && gap.days === 2 && GH.herbStage(GH.herbState(S).beds.hb1) === 1);
+  check('a clock set back before the last watering counts nothing', !GH.waterHerb(S, 'hb1', '2026-10-24', ST).ok && GH.herbDays(GH.herbState(S).beds.hb1) === 2);
+  ['2026-10-26', '2026-10-27', '2026-10-28'].forEach(function (d) { GH.waterHerb(S, 'hb1', d, ST); });
+  check('five watered days is not yet ripe for ginger', !GH.herbRipe(GH.herbState(S).beds.hb1) && GH.herbStage(GH.herbState(S).beds.hb1) === 2);
+  var w6 = GH.waterHerb(S, 'hb1', '2026-10-29', ST);
+  check('the sixth watered day ripens ginger, and a ripe planter needs no more water', w6.ok && w6.ripe && GH.herbStage(GH.herbState(S).beds.hb1) === 3 && !GH.waterHerb(S, 'hb1', '2026-10-30', ST).ok);
+  /* the harvest goes into the farm's basket; the herb grows again on its regrow cadence */
+  S.setState({ farm: { harvest: { lemongrass: 5, radish: 2 }, seeds: { radish: 1 }, beds: { bed1: { crop: 'radish', planted: d1, watered: [d1] } } } });
+  var e1 = ST.value(), h1 = GH.harvestHerb(S, 'hb1', ST), f1 = F.farmState(S);
+  check('a ripe ginger goes into the basket with what was there, charged the picking energy in the same save', h1.ok && h1.n === 2 && f1.harvest.ginger === 2 && f1.harvest.lemongrass === 5 && f1.harvest.radish === 2 && f1.beds.bed1.crop === 'radish' && ST.value() === e1 - ST.COSTS.harvest);
+  var gb = GH.herbState(S).beds.hb1;
+  check('after picking, ginger stays and starts again from young: three watered days to pick again', gb.herb === 'ginger' && gb.cuts === 1 && GH.herbDays(gb) === 0 && GH.herbNeed(gb) === 3 && GH.herbStage(gb) === 2 && !GH.harvestHerb(S, 'hb1', ST).ok);
+  check('picked on a day she watered, the same day cannot be watered again', !GH.waterHerb(S, 'hb1', '2026-10-29', ST).ok && GH.waterHerb(S, 'hb1', '2026-10-30', ST).ok);
+  /* every herb: ripe exactly on its day, then again on its cadence */
+  var cad = [];
+  GH.HERB_IDS.forEach(function (k) {
+    reset(100); GH.buyStart(S, RW, k); GH.plantHerb(S, 'hb2', k, d1, ST); var h = GH.HERBS[k], dd = days(h.ripe + h.regrow);
+    for (var i = 0; i < h.ripe; i++) { if (GH.herbRipe(GH.herbState(S).beds.hb2)) cad.push(k + ' ripe early at ' + i); S.setState({ stamina: { v: 100, max: 100, day: (S.state().stamina || {}).day } }); GH.waterHerb(S, 'hb2', dd[i], ST); }
+    if (!GH.herbRipe(GH.herbState(S).beds.hb2)) cad.push(k + ' not ripe on day ' + h.ripe);
+    var r = GH.harvestHerb(S, 'hb2', ST); if (!r.ok || F.farmState(S).harvest[k] !== h.yield) cad.push(k + ' harvest ' + JSON.stringify(r));
+    for (var j = 0; j < h.regrow; j++) { if (GH.herbRipe(GH.herbState(S).beds.hb2)) cad.push(k + ' regrew early'); GH.waterHerb(S, 'hb2', dd[h.ripe + j], ST); }
+    if (!GH.herbRipe(GH.herbState(S).beds.hb2)) cad.push(k + ' not ripe again after ' + h.regrow);
+  });
+  check('each herb ripens on its watered day and not before, and comes back after its regrow days', cad.length === 0, cad.join('; '));
+  /* lemongrass: one basket key for the farm's and the greenhouse's */
+  S.setState({ farm: { harvest: { lemongrass: 1 }, unlocked: { lemongrass: true }, seeds: { lemongrass: 2 } } });
+  GH.buyStart(S, RW, 'lemongrass'); GH.plantHerb(S, 'hb3', 'lemongrass', d1, ST); days(4).forEach(function (d) { GH.waterHerb(S, 'hb3', d, ST); }); GH.harvestHerb(S, 'hb3', ST);
+  check('greenhouse lemongrass joins the farm’s lemongrass in the basket, under the same name', F.farmState(S).harvest.lemongrass === 4 && F.CROPS.lemongrass.name === GH.HERBS.lemongrass.name);
+  check('a farm that unlocked lemongrass keeps it: its seeds, its packs and its beds', F.canGrow(F.farmState(S), 'lemongrass') && F.farmState(S).seeds.lemongrass === 2 && F.buyPack(S, RW, 'lemongrass').ok && F.farmState(S).seeds.lemongrass === 5);
+  S.setState({ farm: null }); var hh = RW.ledger().hearts;
+  check('a new farm is not sold lemongrass to unlock any more: it grows in the greenhouse; nothing is charged', !F.unlockCrop(S, RW, 'lemongrass').ok && /greenhouse/.test(F.unlockCrop(S, RW, 'lemongrass').why) && RW.ledger().hearts === hh && F.CROPS.lemongrass.moved === 'greenhouse');
+  check('Hay & Harvest lists the four herbs for the greenhouse and no longer offers lemongrass for the farm', /data-herbstart/.test(laneSrc) && /GH\.buyStart\(/.test(laneSrc) && /!FM\.CROPS\[k\]\.moved/.test(laneSrc));
+  /* letting a planter go */
+  check('a planter can be let go, free, and planted again', GH.clearHerb(S, 'hb3').ok && !GH.herbState(S).beds.hb3 && !GH.clearHerb(S, 'hb3').ok && RW.ledger().hearts === hh);
+  /* restored values are cleaned */
+  S.setState({ greenhouse: { seeds: { ginger: 2.7, basil: 3, pandan: -1, chamomile: 'lots' }, beds: { hb1: { herb: 'ginger', planted: d1, watered: [d1, 'soon', 7], cuts: -2 }, hb2: { herb: 'basil', planted: d1 }, hb3: { herb: 'pandan', planted: 'today' }, hb9: { herb: 'ginger', planted: d1 } } } });
+  var cs = GH.herbState(S);
+  check('restored greenhouse values are cleaned: known herbs, whole counts, real dates, known planters only', JSON.stringify(cs.seeds) === '{"ginger":2}' && Object.keys(cs.beds).join() === 'hb1' && cs.beds.hb1.watered.join() === d1 && cs.beds.hb1.cuts === 0 && cs.beds.hb1.last === d1);
+  /* no farm or greenhouse action pays hearts */
+  reset(100); var hb = RW.ledger().hearts; GH.buyStart(S, RW, 'pandan'); var afterBuy = RW.ledger().hearts;
+  GH.plantHerb(S, 'hb4', 'pandan', d1, ST); days(4).forEach(function (d) { GH.waterHerb(S, 'hb4', d, ST); }); GH.harvestHerb(S, 'hb4', ST);
+  check('only the start costs hearts; planting, watering and picking never pay or charge any', afterBuy === hb - 4 && RW.ledger().hearts === afterBuy && RW.ledger().earned === 0);
+  /* brewing: one from the basket, the flat practice thank-you within the day's cap, no diary entry */
+  var n0 = S.list().length, br1 = GH.brewCup(S, RW, 'pandan');
+  check('a finished cup uses one from the basket and earns the flat practice thank-you, and no diary entry is written', br1.ok && br1.points === RW.PRACTICE.points && F.farmState(S).harvest.pandan === 2 && RW.ledger().hearts === afterBuy + RW.PRACTICE.points && S.list().length === n0);
+  GH.brewCup(S, RW, 'pandan'); GH.brewCup(S, RW, 'pandan');
+  var capped = RW.ledger().mindDay.pts;
+  check('cups after the day’s practice cap earn nothing, and the basket empties to nothing more', capped === RW.PRACTICE.cap && !GH.brewCup(S, RW, 'pandan').ok && !('pandan' in F.farmState(S).harvest) && RW.ledger().hearts === afterBuy + RW.PRACTICE.cap);
+  S.setState({ farm: { harvest: { chamomile: 1 } }, rewards: { hearts: 0, earned: 0, log: [], owned: [], placed: {}, mindDay: { day: d1, pts: 4 } } });
+  var br2 = GH.brewCup(S, RW, 'chamomile');
+  check('a cup counts inside the same daily practice cap as every other practice', br2.ok && br2.points === 2 && RW.ledger().mindDay.pts === 6);
+  S.setState({ farm: { harvest: { ginger: 1 } }, rewards: { hearts: 0, earned: 0, log: [], owned: [], placed: {}, dailyLast: '2026-10-25' } });
+  var br3 = GH.brewCup(S, RW, 'ginger');
+  check('with the clock set back a cup earns nothing, as for any practice, and still uses the herb', br3.ok && br3.points === 0 && RW.ledger().hearts === 0 && !('ginger' in F.farmState(S).harvest));
+  check('an empty basket brews nothing; an unknown herb is refused', !GH.brewCup(S, RW, 'ginger').ok && !GH.brewCup(S, RW, 'rose').ok);
+  /* a full disk: nothing moves, no hearts go, no energy is charged */
+  reset(100); S.setState({ farm: { harvest: { ginger: 2 } }, greenhouse: { seeds: { ginger: 1 }, beds: { hb2: { herb: 'chamomile', planted: d1, watered: days(4), last: S.addDays(d1, 3), cuts: 0 }, hb3: { herb: 'pandan', planted: d1, watered: [], cuts: 0 } } } });
+  var snap = JSON.stringify([S.state().farm, S.state().greenhouse, S.state().rewards, S.state().stamina]), realCommit = S.commit;
+  S.commit = function () { throw new Error('QuotaExceededError'); };
+  var fb = GH.buyStart(S, RW, 'pandan'), fp = GH.plantHerb(S, 'hb1', 'ginger', d1, ST), fw = GH.waterHerb(S, 'hb3', d1, ST), fh = GH.harvestHerb(S, 'hb2', ST), fc = GH.clearHerb(S, 'hb3'), fbr = GH.brewCup(S, RW, 'ginger');
+  S.commit = realCommit;
+  check('a failed save sells no start, plants, waters, picks, clears and brews nothing, and takes no hearts and no energy', !fb.ok && !fp.ok && !fw.ok && !fh.ok && !fc.ok && !fbr.ok && JSON.stringify([S.state().farm, S.state().greenhouse, S.state().rewards, S.state().stamina]) === snap, JSON.stringify([fb, fp, fw, fh, fc, fbr]));
+  S.setState({ stamina: { v: 1, max: 100, day: (S.state().stamina || {}).day } }); var g0 = JSON.stringify(S.state().greenhouse);
+  var tired = GH.waterHerb(S, 'hb3', d1, ST);
+  check('too tired: nothing is watered and nothing is charged', !tired.ok && tired.tired && JSON.stringify(S.state().greenhouse) === g0 && ST.value() === 1);
+  /* the cup: four short lines, a card only where the tea list already has one, no new claims */
+  var MO = w.OvuMoments, badL = [];
+  GH.HERB_IDS.forEach(function (k) { GH.brewLines(k).forEach(function (l) { if (l.split(/\s+/).length > 18 || /—|–|\b(should|must|goal|score|streak)\b/i.test(l)) badL.push(k + ': ' + l); }); });
+  ['herbplant', 'herbwater', 'herbharvest', 'brew'].forEach(function (k) { var m = MO.MOMENTS[k]; if (!m) { badL.push(k + ' missing'); return; } m.lines.forEach(function (l) { if (l.split(/\s+/).length > 18 || /—|–|\b(should|must|goal|score|streak)\b/i.test(l)) badL.push(k + ': ' + l); }); });
+  check('the tea minute is four lines (warmth, steam, the first sip) and every herb moment is short, kind and free of em dashes and pressure words', GH.HERB_IDS.every(function (k) { var ls = GH.brewLines(k); return ls.length === 4 && /pour/i.test(ls[0]) && /warmth/i.test(ls[1]) && /steam/i.test(ls[2]) && /first sip/i.test(ls[3]); }) && badL.length === 0, badL.join(' | '));
+  var roomSrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), poses = /var OUTFIT_POSES = (\{[^}]*\})/.exec(roomSrc)[1];
+  check('she does something visible in her own outfit: plant, water, pick and brew each have a pose drawn for every outfit', ['herbplant', 'herbwater', 'herbharvest', 'brew'].every(function (k) { var ps = MO.pose(k); return ps && new RegExp('\\b' + ps + ': 1').test(poses) && ['sundress', 'cozy', 'tudung'].every(function (o) { return fs.existsSync(path.join(root, 'assets/room/dream', 'avatar-act-' + ps + '-' + o + '.webp')); }); }));
+  var teaIds = HB.TEAS.map(function (t) { return t.id; });
+  check('ginger and chamomile link to their existing research cards; lemongrass and pandan have none, and the tea list is unchanged', GH.HERBS.ginger.tea === 'ginger' && GH.HERBS.chamomile.tea === 'chamomile' && teaIds.indexOf('ginger') > -1 && teaIds.indexOf('chamomile') > -1 && GH.HERBS.lemongrass.tea === null && GH.HERBS.pandan.tea === null && teaIds.indexOf('lemongrass') < 0 && teaIds.indexOf('pandan') < 0 && !!GH.plant('ginger') && !!GH.plant('chamomile'));
+  var herbSrc = src.slice(src.indexOf('the herb beds (21 Oct'), src.indexOf('var GH = {')) + src.slice(src.indexOf('function startBrew'), src.indexOf('function stepAside')) + src.slice(src.indexOf('function finishBrew'), src.indexOf('R.hotspotHandlers.ghdoor'));
+  check('the herb code pays no hearts but the practice thank-you, spends only on a start, and writes no diary entry', herbSrc.length > 3000 && !/\.award\(|\.grant\(|\bS\.add\(|OvuStore\.add\(|addMany\(/.test(herbSrc) && (herbSrc.match(/\.spend\(/g) || []).length === 1 && /RW\.thank\(/.test(herbSrc) && !/—/.test(herbSrc.replace(/\/\*[\s\S]*?\*\//g, '')));
+  var rwSrc = fs.readFileSync(path.join(root, 'ovu-rewards.js'), 'utf8');
+  check('the thank-you for a practice with no entry runs the same practicePoints as every practice', /function thank\(what, patch\) \{\s*var l = [^\n]*practicePoints\(l, /.test(rwSrc));
+  var svgOk = [0, 1, 2, 3].every(function (st) { var b = st ? { herb: 'chamomile', watered: days(st === 3 ? 4 : st), cuts: 0, last: d1 } : null; return /^<svg[\s\S]*<\/svg>$/.test(GH.herbSVG(b, d1)); });
+  reset(100); S.setState({ greenhouse: { seeds: { ginger: 99 }, beds: { hb1: { herb: 'lemongrass', planted: d1, watered: days(4), last: S.addDays(d1, 3), cuts: 0 } } }, farm: { harvest: { lemongrass: 120 } } });
+  var full0 = RW.ledger().hearts, fullBuy = GH.buyStart(S, RW, 'ginger'), e2 = ST.value(), fullPick = GH.harvestHerb(S, 'hb1', ST);
+  check('a full bag is not sold another start, and a full basket is not picked into: nothing paid, nothing charged, the farm’s count kept', !fullBuy.ok && RW.ledger().hearts === full0 && GH.herbState(S).seeds.ginger === 99 && !fullPick.ok && F.farmState(S).harvest.lemongrass === 120 && ST.value() === e2 && GH.herbRipe(GH.herbState(S).beds.hb1));
+  var brewLine = /<p class="mindline"><span class="ms">local_cafe<\/span><span>([^<]+)<\/span>/.exec(src);
+  check('the cup’s own sheet line is short and free of em dashes too', !!brewLine && brewLine[1].split(/\s+/).length <= 18 && !/—/.test(brewLine[1]), brewLine && brewLine[1]);
+  check('each planter draws as an SVG at every stage, darker soil when watered today', svgOk && GH.herbSVG({ herb: 'ginger', watered: [d1], cuts: 0, last: d1 }, d1).indexOf('#4f3828') > -1 && GH.herbSVG({ herb: 'ginger', watered: [d1], cuts: 0, last: d1 }, '2026-10-22').indexOf('#4f3828') < 0);
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

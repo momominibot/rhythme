@@ -136,6 +136,16 @@
     var p = { rewards: l }; Object.keys(patch || {}).forEach(function (k) { p[k] = patch[k]; });
     if (S.commit) S.commit(p); else S.setState(p); return l;
   }
+  /* a practice that writes no diary entry (a cup brewed in the greenhouse, 21 Oct): exactly the flat practice thank-you and
+     the day's practice cap, by the same practicePoints as every other practice, written with what the practice used up
+     (patch) in one save. A day already at its cap, or a clock set back, earns nothing, and the patch still lands. */
+  function thank(what, patch) {
+    var l = JSON.parse(JSON.stringify(ledger())), pts = practicePoints(l, { type: 'mindfulness', data: { kind: 'informal', practice: String(what || '') } });
+    if (pts) { l.hearts += pts; l.earned += pts; l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'practice', what: String(what || ''), points: pts }); l.log = l.log.slice(0, 200); }
+    var p = { rewards: l }; Object.keys(patch || {}).forEach(function (k) { p[k] = patch[k]; });
+    if (S.commit) S.commit(p); else S.setState(p);
+    return { points: pts, hearts: l.hearts };
+  }
   function buy(id) {
     var l = ledger(), item = SHOP.filter(function (s) { return s.id === id; })[0];
     if (!item || item.locked) throw new Error('Not available yet.');
@@ -194,5 +204,5 @@
     if (add) { l.hearts += add; l.earned += add; l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'petcare', pet: pet, action: action, points: add }); l.log = l.log.slice(0, 200); }
     write(l); return { points: add, hearts: l.hearts, capped: add < pts };
   }
-  root.OvuRewards = { SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, PRACTICE: PRACTICE, ledger: ledger, award: award, buy: buy, spend: spend, todayLeft: todayLeft, tester: tester, toggle: toggle, grant: grant, care: care, item: item, treatsFor: treatsFor, useTreat: useTreat, wearing: wearing, wear: wear, nextWear: nextWear, CARE: CARE, CARE_CAP: CARE_CAP };
+  root.OvuRewards = { SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, PRACTICE: PRACTICE, ledger: ledger, award: award, buy: buy, spend: spend, thank: thank, todayLeft: todayLeft, tester: tester, toggle: toggle, grant: grant, care: care, item: item, treatsFor: treatsFor, useTreat: useTreat, wearing: wearing, wear: wear, nextWear: nextWear, CARE: CARE, CARE_CAP: CARE_CAP };
 })(window);
