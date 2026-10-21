@@ -241,10 +241,10 @@ async def main():
             check("tapping the plaza on the map shows the way (the arch, then the street arch) and does not move her", pr["layout"] == "garden" and len(pr["steps"]) == 2 and "on to Dream Street" in pr["steps"][0] and "on to the plaza" in pr["steps"][1], pr)
             # the wider world (21 Oct): the known map in the middle, ??? fog around it, zoom by buttons; names appear once zoomed in
             ww = await page.evaluate("()=>({fog: document.querySelectorAll('.fog').length, far: document.querySelector('#worldZoom').classList.contains('far'), z: OvuMap.zoomState(), known: !!document.querySelector('.worldmap.known'), nameShown: getComputedStyle(document.querySelector('.mapnode[data-node=plaza] b')).display})")
+            await page.evaluate("()=>document.querySelector('.fog[data-fog=north]').click()"); await page.wait_for_timeout(150)  # the patches drift, so a synthetic tap; zoomed in they sit off screen
+            wf = await page.evaluate("()=>({route: document.querySelector('#mapRoute').textContent, layout: document.querySelector('#scene').dataset.layout})")
             await page.click('#mapZoomIn'); await page.click('#mapZoomIn'); await page.wait_for_timeout(150)
             wz = await page.evaluate("()=>({far: document.querySelector('#worldZoom').classList.contains('far'), z: OvuMap.zoomState(), nameShown: getComputedStyle(document.querySelector('.mapnode[data-node=plaza] b')).display})")
-            await page.click('.fog[data-fog=north]'); await page.wait_for_timeout(150)
-            wf = await page.evaluate("()=>({route: document.querySelector('#mapRoute').textContent, layout: document.querySelector('#scene').dataset.layout})")
             check("the wider world: eight ??? patches around the known map, names hidden while zoomed out and shown after two zoom-ins; a ??? patch says it is not built yet and moves nobody", ww["fog"] == 8 and ww["far"] and ww["known"] and ww["nameShown"] == "none" and abs(ww["z"]["s"] - 0.5) < 0.01 and not wz["far"] and wz["z"]["s"] > 0.9 and wz["nameShown"] != "none" and "???" in wf["route"] and wf["layout"] == "garden", {"out": ww, "in": wz, "fog": wf})
             await page.click("#sheetClose"); await page.wait_for_timeout(300)
             hidden = await page.evaluate("()=>{var p=document.querySelector('#walkpad'); return !p || getComputedStyle(p).display==='none'}")

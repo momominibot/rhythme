@@ -183,7 +183,8 @@
     var zi = doc.getElementById('mapZoomIn'), zo = doc.getElementById('mapZoomOut');
     if (zi) zi.addEventListener('click', function () { zoomTo(zoom.s * 1.4, (vp.clientWidth || vw) / 2, (vp.clientHeight || vh) / 2); if (R.chime) R.chime('tap'); });
     if (zo) zo.addEventListener('click', function () { zoomTo(zoom.s / 1.4, (vp.clientWidth || vw) / 2, (vp.clientHeight || vh) / 2); if (R.chime) R.chime('tap'); });
-    vp.addEventListener('pointerdown', function (e) { ptrs[e.pointerId] = { x: e.clientX, y: e.clientY, moved: false }; try { vp.setPointerCapture(e.pointerId); } catch (x) { } var ids = Object.keys(ptrs); if (ids.length === 2) { var a = ptrs[ids[0]], c = ptrs[ids[1]]; pinch = { d: Math.hypot(a.x - c.x, a.y - c.y), s: zoom.s }; } });
+    /* no pointer capture: capturing would retarget the click, so a tap on a place would no longer reach its button */
+    vp.addEventListener('pointerdown', function (e) { if (e.button !== undefined && e.button !== 0) return; ptrs[e.pointerId] = { x: e.clientX, y: e.clientY, moved: false }; var ids = Object.keys(ptrs); if (ids.length === 2) { var a = ptrs[ids[0]], c = ptrs[ids[1]]; pinch = { d: Math.hypot(a.x - c.x, a.y - c.y), s: zoom.s }; } });
     vp.addEventListener('pointermove', function (e) {
       var p = ptrs[e.pointerId]; if (!p) return; var ids = Object.keys(ptrs), r = vp.getBoundingClientRect();
       if (ids.length >= 2 && pinch) {
@@ -196,7 +197,7 @@
       p.x = e.clientX; p.y = e.clientY;
     });
     function up(e) { var p = ptrs[e.pointerId]; delete ptrs[e.pointerId]; if (Object.keys(ptrs).length < 2) pinch = null; if (p && p.moved) { var stop = function (ev) { ev.stopPropagation(); ev.preventDefault(); vp.removeEventListener('click', stop, true); }; vp.addEventListener('click', stop, true); root.setTimeout(function () { vp.removeEventListener('click', stop, true); }, 0); } }
-    vp.addEventListener('pointerup', up); vp.addEventListener('pointercancel', up);
+    vp.addEventListener('pointerup', up); vp.addEventListener('pointercancel', up); vp.addEventListener('pointerleave', up);
   }
   M.zoomState = function () { return zoom ? { s: zoom.s, tx: zoom.tx, ty: zoom.ty } : null; };
   /* the pill was drawn before this file loaded: name the place now, and on every move after (ovu-walk.js) */
