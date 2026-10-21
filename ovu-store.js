@@ -279,12 +279,12 @@
   function sleepStats(days, end) {
     end = end || today(); days = days || 7;
     var from = addDays(end, -(days - 1));
-    var entries = list('sleep', { from: from, to: end }).map(function (e) { return { date: e.date, hours: sleepHours(e.data), quality: e.data.quality || null, id: e.id, assumed: e.data.assumed === true, wakeTime: e.data.wakeTime }; }).filter(function (n) { return n.hours !== null; });
+    var entries = list('sleep', { from: from, to: end }).map(function (e) { return { date: e.date, hours: sleepHours(e.data), quality: e.data.quality || null, id: e.id, assumed: e.data.assumed === true, wakeTime: e.data.wakeTime, measured: typeof e.data.asleepMin === 'number' && e.data.asleepMin > 0 }; }).filter(function (n) { return n.hours !== null; });
     var byDay = {};
     entries.forEach(function (n) { (byDay[n.date] = byDay[n.date] || []).push(n); });
     var nights = Object.keys(byDay).sort().map(function (d) { return oneNight(d, byDay[d]); });
     var total = nights.reduce(function (s, n) { return s + n.hours; }, 0);
-    return { from: from, to: end, nights: nights, entries: entries.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality, id: n.id, assumed: n.assumed }; }), count: nights.length, avg: nights.length ? Math.round(total / nights.length * 10) / 10 : null, under6: nights.filter(function (n) { return n.hours < 6; }).length };
+    return { from: from, to: end, nights: nights, entries: entries.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality, id: n.id, assumed: n.assumed }; }), count: nights.length, windowed: entries.some(function (n) { return !n.measured; }), avg: nights.length ? Math.round(total / nights.length * 10) / 10 : null, under6: nights.filter(function (n) { return n.hours < 6; }).length };
   }
 
   /* ---------- today's check-in answers ----------

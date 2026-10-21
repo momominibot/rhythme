@@ -183,7 +183,8 @@
   R.on('boot', function () {
     R.on('props', function (L) { render(L); });
     R.on('layout', function (L) { cutShort(); render(L); });
-    R.on('beforeWalk', cutShort); /* walking away ends the minute (a practice that moves her takes over instead) */
+    R.on('beforeWalk', cutShort);
+    doc.addEventListener('visibilitychange', function () { if (doc.hidden && caring) cutShort(); }); /* away from the app is not a mindful minute (persona walk, 21 Oct) */ /* walking away ends the minute (a practice that moves her takes over instead) */
     R.on('activity', function () { stepAside(); }); /* a practice or session is starting: hand the HUD over now */
     R.els.props.addEventListener('click', function (e) { var p = e.target.closest('.ghplant.tappable'); if (p) { e.stopPropagation(); tapPlant(p); } });
     R.els.props.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var p = e.target.closest('.ghplant.tappable'); if (p) { e.preventDefault(); tapPlant(p); } });

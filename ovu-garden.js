@@ -297,7 +297,8 @@
     R.on('props', function (L) { renderPlot(L); if (sitting && !R.els.props.contains(sitting.el)) R.els.props.appendChild(sitting.el); }); /* a props re-render keeps her seated */
     R.on('layout', function (L) { if (watering) finishWatering(false); if (sitting) { sitting.el.remove(); sitting = null; R.els.scene.classList.remove('sitting'); } if (inGarden(L)) renderPlot(); });
     /* seated: the first tap anywhere stands her up, then the tap goes on to do what it does */
-    R.els.scene.addEventListener('click', function (e) { if (sitting && !e.defaultPrevented) standUp(); }, true); /* not the click the camera swallowed after a drag */
+    R.els.scene.addEventListener('click', function (e) { if (sitting && !e.defaultPrevented) standUp(); }, true);
+    doc.addEventListener('visibilitychange', function () { if (doc.hidden && watering && !watering.done) finishWatering(false); }); /* away from the app is not a mindful minute (persona walk, 21 Oct) */ /* not the click the camera swallowed after a drag */
     doc.addEventListener('keydown', function (e) { if (sitting && /^(Arrow|w|a|s|d|W|A|S|D)/.test(e.key)) standUp(); }, true);
   });
 })(window);

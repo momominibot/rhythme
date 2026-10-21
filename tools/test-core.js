@@ -2903,4 +2903,44 @@ var summarised = false;
   check('the pictures are small (under 40 KB each)', big.length === 0, big.map(function (f) { return f.img; }).join());
 })();
 
+(function personaWalkSafety() {
+  console.log('2k7. persona walks (21 Oct): postnatal warning signs, reflections read, the card shared with the journal');
+  var w = fresh('2026-10-21'), O = w.OvuOrb, S = w.OvuStore, post = { pregState: 'postpartum' }, preg = { pregState: 'pregnant' };
+  function code(t, p) { var u = O.urgent(t, p || {}); return u ? u.code : null; }
+  check('a pad full every hour is heavy bleeding now, with or without a baby', code('my pad is full every hour since this morning', post) === 'HEAVY_BLEED_NOW' && code('pad full every hour today') === 'HEAVY_BLEED_NOW');
+  check('after a birth: a fever alone needs advice today; with no baby and no other sign, a fever still raises nothing new', code('fever 38.2 this afternoon', post) === 'FEVER_BABY_TODAY' && code('fever 38.2 this afternoon', preg) === 'FEVER_BABY_TODAY' && code('fever 38.2 this afternoon') === null);
+  check('after a birth: a red, hot or lumpy breast is checked today; sore breasts in pregnancy or before a period are not a card', code('my left breast is red and hot', post) === 'BREAST_TODAY' && code('breasts a bit sore this week', preg) === null && code('sore breasts, period due soon') === null);
+  check('after a birth: stitches that opened or a wound getting worse is checked today', code('I think my stitches opened, it hurts more', post) === 'WOUND_TODAY' && code('the c-section wound is oozing and smells', post) === 'WOUND_TODAY' && code('stitches feel fine, healing well', post) === null);
+  check('in pregnancy or after a birth one sore calf is checked today; a cramp after a walk is not', code('my left calf hurts', post) === 'LEG_CLOT_TODAY' && code('calf is swollen and tender', preg) === 'LEG_CLOT_TODAY' && code('calf cramp after my walk', post) === null && code('my left calf hurts') === null);
+  check('in pregnancy or after a birth fainting is urgent now; a faint years ago is not', code('I fainted in the kitchen this morning', post) === 'FAINT_PREG_NOW' && code('passed out at lunch', preg) === 'FAINT_PREG_NOW' && code('I fainted once years ago', post) === null);
+  check('after a birth: confusion, no sleep and unusual energy together are urgent now; tired and confused alone is not', code('so confused, haven\'t slept in two days and I have so much energy', post) === 'PSYCHOSIS_NOW' && code('so tired and confused, haven\'t slept properly', post) === null, JSON.stringify([code('so confused, haven\'t slept in two days and I have so much energy', post), code('so tired and confused, haven\'t slept properly', post)]));
+  var ev = S.add('reflection', S.today(), { text: 'I want to die', mood: 'low' }, 'room'), u = O.entryUrgent(ev, S.profile());
+  check('a journal reflection is read for safety: "I want to die" raises the self-harm card', !!u && u.code === 'SELF_HARM_NOW', JSON.stringify(u));
+  var html = O.careHTML(u);
+  check('the journal gets the same care card as the room: its words and the SOS and 995 links, escaped', /Please get help now/.test(html) && /tel:995/.test(html) && /1767/.test(html) && html.indexOf('<script') < 0);
+  var html2 = O.careHTML({ level: 'emergency', code: 'X', title: 'Get <b>care</b>', trigger: 'a <img src=x> test' });
+  check('the shared card escapes what it is given', html2.indexOf('<img') < 0 && html2.indexOf('&lt;img') > -1);
+  /* the earlier rules still hold: the 95 model-written notes are checked in their own block */
+  check('pregnancy in the profile with bleeding is still emergency care, and a period note with no profile is not', code('some bleeding today and cramps', preg) === 'PREG_BLEED_NOW' && code('period started, some bleeding and cramps') === null);
+})();
+(function morningSkipTime() {
+  console.log('2k8. Morning start: a skipped part books its time on the line she was on, never on the part after');
+  var src = fs.readFileSync(path.join(root, 'ovu-morning.js'), 'utf8');
+  var sp = src.slice(src.indexOf('function skipPart()'), src.indexOf('function stop()'));
+  check('skipPart and skipGate call leaveStep before the index moves', /leaveStep\(\);[\s\S]*run\.i = groupEnd/.test(sp) && /function skipGate\(\) \{[\s\S]{0,120}leaveStep\(\);/.test(src));
+  check('the run keeps one completion map (no done:false after done:{})', !/done: \{\}[^\n]*done: false/.test(src));
+})();
+(function diaryOwner() {
+  console.log('2k9. a diary belongs to one account on this phone (persona walks, 21 Oct)');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  var body = src.slice(src.indexOf('function diaryOwner()'), src.indexOf('function afterSignIn()'));
+  var ctx = vm.createContext({ profile: {}, set: null });
+  vm.runInContext('var S = { profile: function () { return profile; }, setProfile: function (p) { Object.assign(profile, p); set = p; } }; var window = {}; function $() { return null; } function closeSheet() {} function resetWallForm() {} function showWelcome() {}\n' + body, ctx);
+  function run(p, uid) { ctx.profile = p; ctx.set = null; ctx.window.OvuAuth = { isSignedIn: function () { return true; }, userId: function () { return uid; }, signOut: function () {} }; return vm.runInContext('ownerOk()', ctx); }
+  check('an unowned diary is adopted by the account that signs in', run({}, 'a') === true && ctx.profile.owner === 'a');
+  check('the owner signs in: open; another account: refused', run({ owner: 'a' }, 'a') === true && run({ owner: 'a' }, 'b') === false);
+  check('a diary from before owners is bound by its backup or its consent receipts', run({ cloud: { uid: 'a' } }, 'b') === false && run({ consentEvents: [{ purpose: 'health_tracking', uid: 'a' }] }, 'b') === false && run({ cloud: { uid: 'a' } }, 'a') === true);
+  check('after Delete my account (owner empty) the next account adopts it', run({ owner: '', cloud: { uid: 'a' } }, 'b') === true && ctx.profile.owner === 'b');
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

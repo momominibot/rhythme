@@ -202,7 +202,7 @@
     },
     cycle: {
       icon: 'calendar_month', title: 'How predictions are made',
-      body: '<p>The next period is estimated from the average of your last logged cycles (or the cycle length in your profile; with no history yet, no date is shown). The fertile window shown is a calendar estimate: the six days ending on the estimated ovulation day (about 14 days before the expected period) plus one day after, because the estimate is uncertain. It is not a contraceptive method. Tapping a past day fills a typical period length so you can backdate quickly, then adjust any day.</p>'
+      body: '<p>The next period is estimated from the average of your last logged cycles (or the cycle length in your profile; with no history yet, no date is shown). The fertile window shown is a calendar estimate: the six days ending on the estimated ovulation day (about 14 days before the expected period) and the day after. It is not a contraceptive method. Tapping a past day fills a typical period length so you can backdate quickly, then adjust any day.</p>'
     },
     acu: {
       icon: 'spa', title: 'What the research says about acupressure',
@@ -885,7 +885,8 @@
           var near = S.list('period', { from: S.addDays(day, -1), to: S.addDays(day, 1) }).filter(function (x) { return x.data.flow && x.data.flow !== 'none'; }).length;
           /* after menopause nothing is filled or guessed: the day opens below to say how much, and saving it shows the care card */
           if (A.isPostmenopausal(S.profile())) { cal.lastFill = []; toast('Choose how much bleeding below, then save. Any bleeding after menopause needs a check.', 'medical_information'); }
-          else if (near) { var ev1 = S.add('period', day, { flow: 'light', clots: false, impact: false }); cal.lastFill = []; chime('save'); toast('Added ' + prettyDate(day) + '. Tap it again to untick.', 'water_drop'); renderDeck(); }
+          else if (S.cycleStats().mode === 'suspended') { cal.lastFill = []; toast('Choose how much bleeding below, then save. Nothing is filled in while your periods are paused.', 'water_drop'); } /* after a birth, before periods return: no guessed days (persona walk, 21 Oct) */
+          else if (near) { var ev1 = S.add('period', day, { flow: 'light' }); cal.lastFill = []; chime('save'); toast('Added ' + prettyDate(day) + '. Tap it again to untick.', 'water_drop'); renderDeck(); }
           else autoFillPeriod(day);
         }
       }
@@ -905,7 +906,7 @@
     for (var i = 0; i < len; i++) {
       var d = S.addDays(start, i); if (d > today) break;
       if (S.list('period', { from: d, to: d }).length) break;
-      var ev = S.add('period', d, { flow: i < 3 ? 'medium' : 'light', clots: false, impact: false, autofill: true }); ids.push(ev.id); days++;
+      var ev = S.add('period', d, { flow: i < 3 ? 'medium' : 'light', autofill: true }); /* clots and impact stay unanswered, not "no" (persona walk, 21 Oct) */ ids.push(ev.id); days++;
     }
     cal.lastFill = ids;
     /* the fill is one log: hearts and the avatar's moment once, never once per guessed day */
@@ -1445,7 +1446,7 @@
     var hist = logs.length ? '<div class="field"><span class="lbl">Recent notes</span><div class="whist">' + logs.map(function (e) { return '<div><span>' + esc(prettyDate(e.date)) + '</span><b>' + e.data.kg + ' kg</b></div>'; }).join('') + '</div>' + (logs.length > 1 ? '<p class="help">Since ' + esc(prettyDate(logs[logs.length - 1].date)) + ': ' + (function (d) { return (d > 0 ? '+' : '') + d.toFixed(1); })(logs[0].data.kg - logs[logs.length - 1].data.kg) + ' kg. Day-to-day changes are mostly water.</p>' : '') + '</div>' : '';
     openSheet('weigh', 'Weighing scale', 'A private note, never judged', 'monitor_weight',
       '<div class="weighart"><img src="' + ART + 'prop-scale.webp" alt=""></div>' +
-      sliderHTML('wKg', mine ? 'Today’s weight (update it)' : 'Today’s weight', 'kg', 30, 150, 0.1, last, !!last) +
+      sliderHTML('wKg', mine ? 'Today’s weight (update it)' : 'Today’s weight', 'kg', 30, 150, 0.1, mine ? mine.data.kg : last, !!mine) + (!mine && last ? '<p class="help">Last noted: ' + esc(String(last)) + ' kg. Slide to today’s weight; nothing is saved until you do.</p>' : '') + /* yesterday’s number is never saved as today’s (persona walk, 21 Oct) */
       '<div class="row"><button type="button" class="btn primary" id="wSave"><span class="ms">check</span>' + (mine ? 'Update today' : 'Save today') + '</button></div><div class="msg" id="wMsg"></div>' + hist +
       '<details class="field"><summary class="lbl" style="cursor:pointer">My height</summary>' + sliderHTML('wCm', 'Height', 'cm', 130, 200, 1, P.heightCm || null, !!P.heightCm) + '<div class="row"><button type="button" class="btn soft" id="wCmSave"><span class="ms">save</span>Save height</button></div></details>' +
       '<p class="help">Weight shifts a kilo or two with your cycle, salt, sleep and water. Rhythme never judges it and gives no hearts for numbers, so there is nothing to chase. If weighing yourself feels stressful, put the scale away in the heart shop any time.</p>');
@@ -2564,7 +2565,7 @@
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     var a = MF.byId(id); if (!a || practice) return; var v = a.variations[vi] || a.variations[0]; vi = a.variations.indexOf(v);
     if (window.OvuPodcast) OvuPodcast.pause();
-    practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: new Audio(), timer: null, total: MF.totalSecs(v), pre: null };
+    practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: new Audio(), timer: null, total: MF.totalSecs(v), pre: null, hiddenMs: 0, hiddenAt: null };
     try { var first = GUIDE + id + '-' + vi + '-0.mp3'; practice.audio.src = first; practice.pre = first; var pr0 = practice.audio.play(); if (pr0 && pr0.catch) pr0.catch(function () { }); } catch (e) { } /* the first line starts inside the tap, which unlocks the element for the rest */
     /* from the Mind hub she was on the mat, hidden: bring her back before the pose, or the practice plays to an empty room
      * (four-persona review, 20 Oct, all four Codex walkthroughs) */
@@ -2587,7 +2588,7 @@
   function askPracticeDone(finished) {
     var p = practice; if (!p) return;
     p.stopped = true; clearTimeout(p.timer); if (p.audio) { try { p.audio.pause(); } catch (e) { } } hudClockStop();
-    var secs = Math.round((Date.now() - p.startedAt) / 1000);
+    var secs = Math.round(practiceMs(p) / 1000);
     chime('bell', true); caption(finished ? 'That is the practice.' : 'Paused');
     openSheet('practiceDone', finished ? 'How was that?' : 'Stopping early', p.a.name, 'self_improvement',
       '<div class="orbwrap"><div class="orb out"></div><div class="orbtext">' + (finished ? 'Save this pause to your journal?' : 'You did about ' + Math.max(1, Math.round(secs / 60)) + ' minute' + (secs >= 90 ? 's' : '') + '. Save it?') + '</div></div>' +
@@ -2602,9 +2603,12 @@
     $('#pdYes').addEventListener('click', function () { end(true); });
     $('#pdNo').addEventListener('click', function () { end(false); });
   }
+  /* practice time leaves out the time the app was hidden (persona walk, 21 Oct: leaving to feed the baby was counted) */
+  function practiceMs(p) { return Math.max(0, Date.now() - p.startedAt - (p.hiddenMs || 0) - (p.hiddenAt ? Date.now() - p.hiddenAt : 0)); }
+  document.addEventListener('visibilitychange', function () { var p = practice; if (!p) return; if (document.hidden) { if (!p.hiddenAt) p.hiddenAt = Date.now(); } else if (p.hiddenAt) { p.hiddenMs += Date.now() - p.hiddenAt; p.hiddenAt = null; } });
   function stopPractice() {
     if (!practice) return;
-    var elapsed = (Date.now() - practice.startedAt) / 1000;
+    var elapsed = practiceMs(practice) / 1000;
     if (elapsed >= Math.min(60, practice.total * 0.5)) { askPracticeDone(false); return; }
     practice.stopped = true; clearTimeout(practice.timer); if (practice.audio) { try { practice.audio.pause(); } catch (e) { } } hudClockStop();
     hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null;
@@ -2815,7 +2819,24 @@
   }
   /* after a sign-in while the wall is up: the wall closes, then the notice, then the intro for an account that has not done it */
   function resetWallForm() { var f = $('#wEmailForm'); if (f) { f.hidden = true; if (f.__reset) f.__reset(); else { try { f.reset(); } catch (e) { } } } var si = $('#wSignIn'); if (si) si.hidden = false; }
+  /* a diary belongs to the account that opened it on this phone (persona walks, 21 Oct: after "Sign out, keep my diary"
+   * another account opened the same diary). The owner is the profile's owner field, or for a diary from before this, the
+   * account its backup or its consent receipts were bound to; an empty owner (after Delete my account) is free again. */
+  function diaryOwner() { var p = S.profile() || {}; if (typeof p.owner === 'string') return p.owner || null; if (p.cloud && p.cloud.uid) return p.cloud.uid; var ce = (p.consentEvents || []).filter(function (e) { return e && e.uid; })[0]; return ce ? ce.uid : null; }
+  function ownerOk() {
+    var A = window.OvuAuth; if (!A || !A.isSignedIn || !A.isSignedIn()) return true;
+    var u = A.userId ? A.userId() : null; if (!u) return true;
+    var o = diaryOwner(); if (!o) { try { S.setProfile({ owner: u }); } catch (e) { } return true; }
+    return o === u;
+  }
+  function wrongAccount() {
+    try { closeSheet(); } catch (e) { }
+    resetWallForm(); showWelcome();
+    var note = $('#wNote'); if (note) note.textContent = 'This phone has another account’s diary. Sign in with that account to open it.';
+    var A = window.OvuAuth; if (A && A.signOut) { try { A.signOut(false); } catch (e) { } }
+  }
   function afterSignIn() {
+    if (!ownerOk()) { wrongAccount(); return; }
     var w = $('#welcome'); if (w) w.hidden = true; wallInert(false); resetWallForm();
     requireConsent(function () {
       S.setState({ welcomeSeen: true });
@@ -3058,7 +3079,7 @@
     if (!window.OvuAuth || (!OvuAuth.isSignedIn() && !OvuAuth.pendingRedirect())) showWelcome();
     /* signed out (from You, another tab, or a revoked session): the wall comes back over whatever was open, the notice and the cloud prompt included; signed in at the wall: on into the room */
     if (window.OvuAuth) OvuAuth.subscribe(function () {
-      if (OvuAuth.isSignedIn()) { if (wallOpen()) afterSignIn(); return; }
+      if (OvuAuth.isSignedIn()) { if (wallOpen()) afterSignIn(); else if (!ownerOk()) wrongAccount(); return; }
       if (wallOpen()) return;
       try { closeSheet(); } catch (e) { }
       var c = $('#consent'); if (c && !c.hidden) c.hidden = true; var cs = document.getElementById('ovuCloudSheet'); if (cs) cs.remove();

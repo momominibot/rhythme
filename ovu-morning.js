@@ -295,6 +295,7 @@
   /* at a gate: the part is left out (Already brushed, Skip this part) and the routine goes on to the next part, or ends when it was the last */
   function skipGate() {
     var s = step(); if (!run || !s || !s.gate) return;
+    leaveStep();
     if (s.group === 'teeth') run.brushed = 'no';
     run.skipped.push(s.group === 'teeth' ? 'brushing' : s.group);
     clearTimeout(run.timer); stopAudio();
@@ -305,6 +306,7 @@
   /* in the middle of a part: the rest of it is left out; time already spent on it counts */
   function skipPart() {
     var s = step(); if (!run || !s || s.gate || !s.group) return;
+    leaveStep(); /* her time goes to the line she was on, before the index moves (persona walk, 21 Oct: wake-up listening was booked as brushing) */
     run.skipped.push(s.group); clearTimeout(run.timer); stopAudio();
     run.skipping = true; run.i = groupEnd(s.group); next(false); run.skipping = false;
   }
