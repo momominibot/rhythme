@@ -1893,3 +1893,39 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .w-brand .rh-logo{width:1.35em;height:1.35em}
 .menubar .brandy{display:inline-flex;align-items:center;gap:.4em}
 .menubar .brandy .rh-logo{width:1.25em;height:1.25em;box-shadow:none}
+/* the barn and the hidden spring (ovu-barn.js, 21 Oct) */
+.barnthing{position:absolute;pointer-events:auto;border:0;background:none;padding:0}
+.barnthing.animal{transform:translate(-50%,-100%);cursor:pointer;z-index:2}
+.barnthing.animal img{width:100%;display:block;transform-origin:50% 100%;animation:animalidle 5.5s ease-in-out infinite;filter:drop-shadow(0 6px 5px rgba(70,40,90,.22))}
+.barnthing.animal.flip img{transform:scaleX(-1);animation-name:animalidleflip}
+.barnthing.animal.a-mochi img,.barnthing.animal.a-kaya img{animation-duration:3.8s}
+@keyframes animalidle{0%,100%{transform:scale(1,1)}50%{transform:scale(1.012,.988)}}
+@keyframes animalidleflip{0%,100%{transform:scaleX(-1) scale(1,1)}50%{transform:scaleX(-1) scale(1.012,.988)}}
+.barnthing.animal:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:12px}
+.barnthing.nestegg{width:2.2%;transform:translate(-50%,-100%);pointer-events:none;transition:transform .9s ease,opacity .9s ease}
+.barnthing.nestegg svg{width:100%;display:block}
+.barnthing.nestegg.lifted{transform:translate(-50%,-180%);opacity:0}
+.barnlist{list-style:none;margin:4px 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
+.barnlist li{display:flex;align-items:center;gap:8px;background:var(--rm-card,#fff);border-radius:12px;padding:9px 11px;font:600 13.5px var(--sans);color:var(--rm-ink)}
+.barnlist .ms{font-size:18px;color:#9a7bc2}
+.pantryline{display:flex;gap:6px;align-items:flex-start}
+.pantryline .ms{font-size:16px;color:#9a7bc2}
+.nb.springsitter{transform:translate(-50%,-100%);pointer-events:none;z-index:3}
+.nb.springsitter img{width:100%;display:block}
+.nb.springsitter.faceright img.seated{transform:scaleX(-1)}
+.scene.springsit #avatar{opacity:0;pointer-events:none}
+.springstop{position:absolute;right:12px;bottom:56px;z-index:12;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border:0;border-radius:99px;background:rgba(255,255,255,.94);color:#3d2f55;font:800 13px var(--sans);box-shadow:0 4px 14px rgba(20,10,40,.3);cursor:pointer}
+.springstop .ms{font-size:18px;color:#7c5aa8}
+.springstop:focus-visible{outline:2px solid #fff;outline-offset:3px}
+/* the cave is the same starry dark whatever the sky: no day tint, no night veil or extra stars; words on it are light */
+.scene[data-layout="cave"] .room-img.day,.scene[data-layout="cave"]:is(.is-night,.sky-night,[data-sky]) .room-img.day{filter:none!important}
+.scene[data-layout="cave"] :is(.night-veil,.stars){opacity:0!important}
+.scene[data-layout="cave"] :is(.brand,.greeting h1,.greeting p){color:#fbf6ff!important;text-shadow:0 1px 2px rgba(10,5,25,.7),0 0 14px rgba(10,5,25,.6)!important}
+.mapnode[data-node="cave"]{position:absolute}
+.mapnode[data-node="cave"]::after{content:"";position:absolute;top:2px;right:10px;width:14px;height:14px;background:radial-gradient(circle,#fff 0 18%,rgba(255,240,255,.9) 19% 30%,transparent 31%),conic-gradient(from 45deg,transparent 0 10%,#fff6c9 10% 15%,transparent 15% 35%,#fff6c9 35% 40%,transparent 40% 60%,#fff6c9 60% 65%,transparent 65% 85%,#fff6c9 85% 90%,transparent 90%);border-radius:50%;filter:drop-shadow(0 0 4px #fff3b0)}
+@media (prefers-reduced-motion: reduce){.barnthing.animal img{animation:none}.barnthing.nestegg{transition:none}}
+.scene.springsit .hotspot[data-id="warmstone"]{opacity:0;pointer-events:none}
+.scene.is-night .barnthing.animal img{filter:brightness(.52) saturate(.85) contrast(1.05) hue-rotate(-8deg) drop-shadow(0 6px 5px rgba(70,40,90,.22))}
+.scene.sky-night:not(.is-night) .barnthing.animal img{filter:brightness(.9) saturate(1.02) hue-rotate(-3deg) drop-shadow(0 6px 5px rgba(70,40,90,.22))}
+.bedcard .bedpic.pailpic{background:#f6f0fb}
+.bedcard .bedpic.springpic{background:#101428}
