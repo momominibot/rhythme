@@ -1318,6 +1318,20 @@ html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;bord
 .mapexit{position:absolute;transform:translate(-50%,-115%);display:flex;align-items:center;gap:3px;white-space:nowrap;background:rgba(255,255,255,.92);color:var(--rm-plum);font:800 10px var(--sans);padding:3px 7px 3px 4px;border-radius:999px;box-shadow:0 2px 8px rgba(90,66,116,.22)}
 .mapexit .ms{font-size:13px}
 .worldmap{position:relative;width:100%;max-width:100%;background:linear-gradient(160deg,#f6effb,#eef6f1);border:1px solid rgba(150,120,190,.18);border-radius:18px;margin-bottom:10px}
+/* the wider world: the known map in the middle third of a canvas three times its size, fog and ??? around it (21 Oct) */
+.worldzoom{position:relative;width:100%;max-width:100%;overflow:hidden;border-radius:18px;border:1px solid rgba(150,120,190,.18);background:#e9edf6;touch-action:none;margin-bottom:8px;user-select:none;-webkit-user-select:none}
+.worldwide{position:absolute;left:0;top:0;width:300%;height:300%;transform-origin:0 0;background:radial-gradient(ellipse at 50% 50%,#f4eefb 0 22%,#e6e9f3 40%,#dfe3ee 60%,#d6dbe8 100%);will-change:transform}
+.worldmap.known{position:absolute;left:33.333%;top:33.333%;width:33.334%;height:33.334%;margin:0;box-shadow:0 0 0 1px rgba(150,120,190,.18),0 10px 40px rgba(90,66,116,.12)}
+.fog{position:absolute;transform:translate(-50%,-50%);width:22%;aspect-ratio:1.35;border:0;padding:0;cursor:pointer;color:#9d8fbb;font:800 clamp(14px,6vw,30px)/1 var(--sans);letter-spacing:.08em;background:radial-gradient(ellipse at center,rgba(255,255,255,.95) 0 28%,rgba(240,237,247,.85) 52%,rgba(240,237,247,0) 72%);animation:fogdrift 11s ease-in-out infinite alternate}
+.fog:nth-child(2n){animation-duration:14s;animation-delay:-5s}.fog:nth-child(3n){animation-duration:17s;animation-delay:-9s}
+@keyframes fogdrift{from{transform:translate(-50%,-50%) translate(-1.5%,1%)}to{transform:translate(-50%,-50%) translate(1.5%,-1%)}}
+.fog:focus-visible{outline:3px solid #b9a3e3;outline-offset:-6px;border-radius:50%}
+.worldzoom.far .mapnode b,.worldzoom.far .mapnode em{display:none}
+.worldzoom.far .mapnode{width:44px}
+.zoomctl{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.zoomctl button{width:40px;height:40px;flex:0 0 40px;border-radius:50%;border:1px solid rgba(150,120,190,.3);background:#fff;color:var(--rm-plum);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.zoomctl .zoomnote{font:600 12px/1.35 var(--sans);color:var(--rm-ink-2)}
+@media (prefers-reduced-motion: reduce){.fog{animation:none}}
 .worldlines{position:absolute;inset:0;width:100%;height:100%}
 .worldlines path{fill:none;stroke:#c9b6e6;stroke-width:1.6;stroke-dasharray:2.4 2;vector-effect:non-scaling-stroke}
 .mapnode{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;width:64px;border:0;background:none;padding:0;cursor:pointer;color:var(--rm-plum)}

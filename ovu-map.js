@@ -87,7 +87,28 @@
   function at(g, id) { var n = g.nodes[id]; return AT[id] || (n && n.store ? 'in ' + n.name : 'in the ' + String(n ? n.name : id).toLowerCase()); }
   function stepText(g, e) { return { where: g.nodes[e.from] ? g.nodes[e.from].name : e.from, door: e.label }; }
 
-  var M = { POS: POS, at: at, nodeOf: nodeOf, placeName: placeName, graph: graph, route: route, place: place, lines: lines, stepText: stepText };
+  /* the wider world (Jamie, 21 Oct: "a map to entice people that there are more to come so the map will be in the middle
+   * where can we zoom in, the surrounding will be ???"): the known world sits in the middle third of a canvas three times
+   * its size; the ring around it is fog with ??? patches. Three carry a hint of what may come; none names a partner, a
+   * product or a promise. Positions are percentages of the wide canvas; the known world is the square from 33.3 to 66.7. */
+  var FOG = [
+    { id: 'north', x: 50, y: 12, hint: 'A city of tomorrow, some day.' },
+    { id: 'east', x: 87, y: 50, hint: 'A kingdom of stories, some day.' },
+    { id: 'south', x: 50, y: 88, hint: 'A place for check-ups, some day.' },
+    { id: 'nw', x: 15, y: 15, hint: '' }, { id: 'ne', x: 85, y: 15, hint: '' }, { id: 'west', x: 13, y: 50, hint: '' }, { id: 'sw', x: 15, y: 85, hint: '' }, { id: 'se', x: 85, y: 85, hint: '' }
+  ];
+  var ZOOM = { min: 0.36, max: 1.6, start: 0.5, names: 0.75 }; /* names show from 0.75; at 0.5 the whole known world and the fog around it fit */
+  /* the wide canvas is 3 by 3 viewports; keep it covering the viewport, or centred when smaller than it */
+  function zoomClamp(s, tx, ty, vw, vh) {
+    s = Math.max(ZOOM.min, Math.min(ZOOM.max, s));
+    var ww = 3 * vw * s, wh = 3 * vh * s;
+    tx = ww <= vw ? (vw - ww) / 2 : Math.max(vw - ww, Math.min(0, tx));
+    ty = wh <= vh ? (vh - wh) / 2 : Math.max(vh - wh, Math.min(0, ty));
+    return { s: s, tx: tx, ty: ty };
+  }
+  function fogText(f) { return f.hint ? '<b>???</b> ' + f.hint + ' Nothing to do here yet; the known places are in the middle.' : '<b>???</b> Still unexplored. Something may be built here one day.'; }
+
+  var M = { POS: POS, FOG: FOG, ZOOM: ZOOM, zoomClamp: zoomClamp, fogText: fogText, at: at, nodeOf: nodeOf, placeName: placeName, graph: graph, route: route, place: place, lines: lines, stepText: stepText };
   root.OvuMap = M;
 
   /* ---------- the sheet ---------- */
@@ -127,11 +148,17 @@
     var head = here ? 'You are ' + at(g, here) : 'You are visiting a neighbour';
     R.openSheet('map', 'Map', 'Where you are, and the way around', 'map',
       '<div class="mapnow"><span class="ms">location_on</span><div><b>' + esc(head) + '</b><small>' + (here ? 'The pins show the ways out. Walk to one and through it.' : 'Tap Back when you are ready to return to the plaza.') + '</small></div></div>' +
-      plate + '<div class="worldmap" style="aspect-ratio:100/' + H + '">' + svg + nodes + '</div>' +
+      plate + '<div class="worldzoom far" id="worldZoom" style="aspect-ratio:100/' + H + '"><div class="worldwide" id="worldWide">' +
+        FOG.map(function (f) { return '<button type="button" class="fog" data-fog="' + f.id + '" style="left:' + f.x + '%;top:' + f.y + '%" aria-label="Unknown place, not built yet">???</button>'; }).join('') +
+        '<div class="worldmap known">' + svg + nodes + '</div></div></div>' +
+      '<div class="zoomctl"><button type="button" id="mapZoomOut" aria-label="Zoom out"><span class="ms" aria-hidden="true">remove</span></button><button type="button" id="mapZoomIn" aria-label="Zoom in"><span class="ms" aria-hidden="true">add</span></button><span class="zoomnote">The known world is in the middle. Pinch or drag to look around; the ??? places are not built yet.</span></div>' +
       '<div class="maproute" id="mapRoute" aria-live="polite">' + (here ? routeHTML(g, here, first) : '') + '</div>' +
       '<p class="help">The map shows the way; it does not move you. Doors and paths are labelled in each place.</p>');
+    wireZoom();
     var b = doc.getElementById('sheetBody');
     if (b) b.addEventListener('click', function (e) {
+      var fg = e.target.closest('[data-fog]');
+      if (fg) { var f = FOG.filter(function (x) { return x.id === fg.dataset.fog; })[0], out0 = doc.getElementById('mapRoute'); if (out0 && f) out0.innerHTML = fogText(f); if (R.chime) R.chime('tap'); return; }
       var n = e.target.closest('[data-node]'); if (!n || !here) return;
       Array.prototype.slice.call(b.querySelectorAll('.mapnode')).forEach(function (x) { x.classList.toggle('picked', x === n); });
       var out = doc.getElementById('mapRoute'); if (out) out.innerHTML = routeHTML(g, here, n.dataset.node);
@@ -139,6 +166,37 @@
     });
   }
   M.open = open;
+  /* zoom and pan on the wide canvas: buttons, a drag, or two fingers; names appear once zoomed in */
+  var zoom = null;
+  function wireZoom() {
+    var vp = doc.getElementById('worldZoom'), wide = doc.getElementById('worldWide'); if (!vp || !wide) return;
+    var vw = vp.clientWidth || 300, vh = vp.clientHeight || 240, st = zoomClamp(ZOOM.start, 0, 0, vw, vh), ptrs = {}, pinch = null;
+    zoom = st;
+    function paint() { wide.style.transform = 'translate(' + zoom.tx.toFixed(1) + 'px,' + zoom.ty.toFixed(1) + 'px) scale(' + zoom.s.toFixed(3) + ')'; vp.classList.toggle('far', zoom.s < ZOOM.names); }
+    function zoomTo(s, cx, cy) { /* keep the point under (cx, cy) in place */
+      var k = Math.max(ZOOM.min, Math.min(ZOOM.max, s)) / zoom.s, tx = cx - (cx - zoom.tx) * k, ty = cy - (cy - zoom.ty) * k;
+      zoom = zoomClamp(zoom.s * k, tx, ty, vp.clientWidth || vw, vp.clientHeight || vh); paint();
+    }
+    paint();
+    var zi = doc.getElementById('mapZoomIn'), zo = doc.getElementById('mapZoomOut');
+    if (zi) zi.addEventListener('click', function () { zoomTo(zoom.s * 1.4, (vp.clientWidth || vw) / 2, (vp.clientHeight || vh) / 2); if (R.chime) R.chime('tap'); });
+    if (zo) zo.addEventListener('click', function () { zoomTo(zoom.s / 1.4, (vp.clientWidth || vw) / 2, (vp.clientHeight || vh) / 2); if (R.chime) R.chime('tap'); });
+    vp.addEventListener('pointerdown', function (e) { ptrs[e.pointerId] = { x: e.clientX, y: e.clientY, moved: false }; try { vp.setPointerCapture(e.pointerId); } catch (x) { } var ids = Object.keys(ptrs); if (ids.length === 2) { var a = ptrs[ids[0]], c = ptrs[ids[1]]; pinch = { d: Math.hypot(a.x - c.x, a.y - c.y), s: zoom.s }; } });
+    vp.addEventListener('pointermove', function (e) {
+      var p = ptrs[e.pointerId]; if (!p) return; var ids = Object.keys(ptrs), r = vp.getBoundingClientRect();
+      if (ids.length >= 2 && pinch) {
+        var a = ptrs[ids[0]], c = ptrs[ids[1]]; if (e.pointerId === Number(ids[0])) a = { x: e.clientX, y: e.clientY }; else c = { x: e.clientX, y: e.clientY };
+        var d = Math.hypot(a.x - c.x, a.y - c.y); if (d > 0) zoomTo(pinch.s * d / pinch.d, (a.x + c.x) / 2 - r.left, (a.y + c.y) / 2 - r.top);
+      } else if (ids.length === 1) {
+        var dx = e.clientX - p.x, dy = e.clientY - p.y; if (Math.abs(dx) + Math.abs(dy) > 3) p.moved = true;
+        zoom = zoomClamp(zoom.s, zoom.tx + dx, zoom.ty + dy, vp.clientWidth || vw, vp.clientHeight || vh); paint();
+      }
+      p.x = e.clientX; p.y = e.clientY;
+    });
+    function up(e) { var p = ptrs[e.pointerId]; delete ptrs[e.pointerId]; if (Object.keys(ptrs).length < 2) pinch = null; if (p && p.moved) { var stop = function (ev) { ev.stopPropagation(); ev.preventDefault(); vp.removeEventListener('click', stop, true); }; vp.addEventListener('click', stop, true); root.setTimeout(function () { vp.removeEventListener('click', stop, true); }, 0); } }
+    vp.addEventListener('pointerup', up); vp.addEventListener('pointercancel', up);
+  }
+  M.zoomState = function () { return zoom ? { s: zoom.s, tx: zoom.tx, ty: zoom.ty } : null; };
   /* the pill was drawn before this file loaded: name the place now, and on every move after (ovu-walk.js) */
   function name() { var t = doc.getElementById('mapHere'), b = doc.getElementById('mapBtn'), n = M.hereName(); if (t && n) t.textContent = n; if (b && n) b.setAttribute('aria-label', 'Map. You are ' + (n === 'Home' ? 'at home' : 'in ' + n) + '.'); }
   if (R.layout && R.layout()) name();
