@@ -1860,6 +1860,11 @@ html[data-sky="night"] .cimark.uns{background:#2f5a45;color:#c8f0da}
 .farmsteps li>.ms{flex:none;width:32px;height:32px;line-height:32px;text-align:center;border-radius:50%;background:#f1eafb;color:#7c5aa8;font-size:18px}
 .farmsteps b{display:block;font-size:14px;color:#3d2f55}
 .farmsteps small{display:block;font-size:12.5px;line-height:1.45;color:#5d4f6c}
+/* the consent notice keeps its light look: a withdrawal that did not reach the account is said plainly above the button */
+.consent .c-err{margin:8px 0 10px;padding:9px 12px;border-radius:12px;background:#fdecef;color:#8a2140;font:700 12.5px/1.45 var(--sans)}
+
+/* large text in the room (ovu-textsize.js): everything around the plate grows; the plate, the avatar and taps on them stay true */
+html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud){zoom:var(--tz,1)}
 /* the barn and the hidden spring (ovu-barn.js, 21 Oct) */
 .barnthing{position:absolute;pointer-events:auto;border:0;background:none;padding:0}
 .barnthing.animal{transform:translate(-50%,-100%);cursor:pointer;z-index:2}
