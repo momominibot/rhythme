@@ -19,6 +19,8 @@ Y2 = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
 NOW = datetime.datetime.now().isoformat()
 
 # a consenting, onboarded person with three entries; Luna's AI help off (the default)
+SESS = {"access_token": "smoke-token", "refresh_token": "smoke-refresh", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000aa", "email": "smoke@example.test"}}
+SESSION_SEED = "localStorage.setItem('ovumind_auth_v1', %s);" % json.dumps(json.dumps(SESS))
 DB = {"version": 1, "createdAt": NOW, "updatedAt": NOW,
       "profile": {"name": "Smoke", "outfit": "base", "lifeStage": "", "cycleLength": None, "periodLength": None, "onboarded": True,
                   "consent": {"v": 4, "at": NOW, "luna": False, "improve": False}, "ageAttest": {"confirmed": True, "version": 1, "at": NOW},
@@ -88,11 +90,14 @@ async def main():
                 return c
             browser.new_context = new_context_unpaused
             ctx = await browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, accept_downloads=True)
-            await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB)))
+            await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctx.add_init_script(SESSION_SEED)
             page = await ctx.new_page()
             errors = []
             page.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
-            page.on("console", lambda m: errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text else None)
+            def _loc(m):
+                try: return (m.location or {}).get("url", "") if isinstance(m.location, dict) else str(m.location or "")
+                except Exception: return ""
+            page.on("console", lambda m: errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text and not ("ERR_FAILED" in m.text and ".supabase.co" in _loc(m)) else None)  # the gate aborts the signed-in account calls on purpose; the browser logs each abort
             relay_calls, external = [], []
             async def gate(route):
                 url = route.request.url
@@ -389,7 +394,7 @@ async def main():
             await page.click('#plazaPill'); await page.wait_for_timeout(400)
             po['signin'] = await page.evaluate("()=>!!document.querySelector('#plazaSignIn') && !document.querySelector('#plazaList')")
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
-            check("signed out, the pill says Groups · sign in to join and its sheet offers sign-in, with no group list and no request", po["shown"] and "Groups · sign in to join" in po["text"] and po["signin"], po)
+            check("signed in (the room opens to nobody else now), the pill offers a group to choose and its sheet lists groups rather than a sign-in", po["shown"] and "Choose a group" in po["text"] and not po["signin"], po)
             check("the plaza shows four sample neighbours with their pets, a noticeboard and a tea stall", pz["layout"] == "plaza" and pz["nbs"] == 4 and pz["pets"] == 4 and pz["board"] and pz["stall"], pz)
             await tap_hot("board")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] .notice.today', timeout=8000)
@@ -461,7 +466,7 @@ async def main():
             await page.click("#lunaSend"); await page.wait_for_timeout(500)
             luna = await page.evaluate("()=>({cards: document.querySelectorAll('.bub.confirm').length, text: [...document.querySelectorAll('.bub.confirm label span')].map(s=>s.textContent).join(' | ')})")
             check("Luna understood sleep and cramps on the phone", luna["cards"] >= 1 and "Sleep" in luna["text"] and "cramps" in luna["text"], luna)
-            check("no relay call was made with AI help off", not relay_calls, relay_calls[:2])
+            check("no relay call was made with AI help off (account calls to the database are the only thing that leaves)", not [u for u in relay_calls if "/functions/v1/" in u], relay_calls[:2])
             await page.click("#lunaSave"); await page.wait_for_timeout(400)
             await page.reload(wait_until="networkidle"); await page.wait_for_timeout(600)
             saved = await page.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1'));return db.events.filter(e=>e.date==='%s').map(e=>e.type).sort().join(',');}" % TODAY)
@@ -474,18 +479,18 @@ async def main():
             await page.fill("#lunaIn", "My period has not returned."); await page.click("#lunaSend"); await page.wait_for_timeout(400)
             np = await page.evaluate("()=>{var b=[...document.querySelectorAll('.bub.from-luna')].pop(); var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); return {text: b ? b.textContent : '', periodsToday: db.events.filter(e=>e.type==='period'&&e.date==='%s').length, confirm: document.querySelectorAll('.bub.confirm').length}}" % TODAY)
             check("'My period has not returned.' is acknowledged as no bleeding and adds no period day", "no bleeding" in np["text"] and np["periodsToday"] == 0 and np["confirm"] == 0, np)
-            check("still no relay call after the safety notes", not relay_calls, relay_calls[:2])
+            check("still no relay call after the safety notes", not [u for u in relay_calls if "/functions/v1/" in u], relay_calls[:2])
 
             # 4. the food diary opens with its tabs
             await page.goto(BASE + "room.html#food", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector(".foodmodes button", timeout=10000)
             food = await page.evaluate("()=>({modes: document.querySelectorAll('.foodmodes button').length, panes: document.querySelectorAll('.dtabs button, .dpane').length})")
             check("food diary opens with its modes and panes", food["modes"] >= 2 and food["panes"] >= 2, food)
 
-            # 4b. the You tab shows the Your account row; a signed-out visitor makes no auth or data call
+            # 4b. the You tab shows the Your account row for the signed-in person: who she is, backup off, sign out and delete on offer
             await page.goto(BASE + "room.html#you", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] #youAccount .ygroup', timeout=10000)
-            acct = await page.evaluate("()=>{var a=document.querySelector('#youAccount');return {label:a&&a.querySelector('.lbl')?a.querySelector('.lbl').textContent:null, email: !!(a&&a.querySelector('[data-ya=\"email-start\"]')), intro: ((a&&a.querySelector('.ya-intro')?a.querySelector('.ya-intro').textContent:'')||'').toLowerCase().indexOf('cloud backup')>=0};}")
-            check("You tab shows the Your account row with email sign-in and the backup line", acct["label"] == "Your account" and acct["email"] and acct["intro"], acct)
-            check("no sign-in or data request leaves the page for a signed-out person", not [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1" in u)], relay_calls[:3])
+            acct = await page.evaluate("()=>{var a=document.querySelector('#youAccount');return {label:a&&a.querySelector('.lbl')?a.querySelector('.lbl').textContent:null, who: (a&&a.querySelector('.ya-who b')||{}).textContent||'', sub: (a&&a.querySelector('.ya-who small')||{}).textContent||'', signout: !!(a&&a.querySelector('[data-ya=\"signout\"]')), del: !!(a&&a.querySelector('[data-ya=\"delete-account\"]')), enable: !!(a&&a.querySelector('[data-ya=\"enable-cloud\"]'))};}")
+            check("You tab shows the Your account row with her email, backup off, and sign out, turn on backup and delete account on offer", acct["label"] == "Your account" and acct["who"] == "smoke@example.test" and "backup off" in acct["sub"] and acct["signout"] and acct["del"] and acct["enable"], acct)
+            check("no sign-in request leaves the page for a signed-in person with a live session, and no diary row is sent with backup off", not [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1/entries" in u)], relay_calls[:3])
             # Your choices: every use of the data as a switch, the required one locked on, a receipt; a change is recorded with where it was made
             await page.evaluate("()=>document.querySelector('[data-yact=choices]').click()"); await page.wait_for_selector("#y_health_tracking", timeout=8000); await page.wait_for_timeout(300)
             ch = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, n: document.querySelectorAll('.c-choice input').length, req: document.querySelector('#y_health_tracking').checked && document.querySelector('#y_health_tracking').disabled, anyOn: Array.from(document.querySelectorAll('.c-choice input:not(#y_health_tracking)')).some(i=>i.checked), receipt: (document.body.textContent||'').indexOf('Your consent receipt')>-1 && (document.body.textContent||'').indexOf('Notice version 3')>-1})")
@@ -626,21 +631,45 @@ async def main():
             jm = await page.evaluate("()=>Array.from(document.querySelectorAll('#timeline .entry b')).map(b=>b.textContent).filter(t=>t.indexOf('Movement')===0)")
             check("the journal lists the walk as Movement with its minutes", jm == ["Movement · Walking · 45 min"], jm)
 
-            # 7. first launch without consent: the room shows the welcome, not the diary
+            # 7. first launch: the sign-in wall (Jamie, 21 Oct: an account before anything), never the diary
             ctx2 = await browser.new_context(viewport={"width": 390, "height": 844})
-            p2 = await ctx2.new_page(); await p2.route("**/*", gate)
+            p2 = await ctx2.new_page()
+            async def auth_gate(route):
+                url = route.request.url
+                if "/auth/v1/authorize" in url: return await route.fulfill(status=400, content_type="application/json", body='{"code":400,"error_code":"validation_failed","msg":"Unsupported provider: provider is not enabled"}')
+                if "/auth/v1/otp" in url: return await route.fulfill(status=200, content_type="application/json", body="{}")
+                if "/auth/v1/verify" in url:
+                    body = json.loads(route.request.post_data or "{}")
+                    if body.get("token") != "246810": return await route.fulfill(status=403, content_type="application/json", body='{"error_code":"otp_expired","msg":"Token has expired or is invalid"}')
+                    return await route.fulfill(status=200, content_type="application/json", body=json.dumps({"access_token": "smoke-token", "refresh_token": "smoke-refresh", "expires_in": 3600, "user": SESS["user"]}))
+                return await gate(route)
+            await p2.route("**/*", auth_gate)
             p2.on("pageerror", lambda e: errors.append("fresh pageerror: " + str(e)))
-            p2.on("console", lambda m: errors.append("fresh console: " + m.text) if m.type == "error" and "favicon" not in m.text else None)
+            p2.on("console", lambda m: errors.append("fresh console: " + m.text) if m.type == "error" and "favicon" not in m.text and ".supabase.co" not in _loc(m) else None)  # the deliberate 400 from the provider probe, and the gate's aborts of the new account's own calls
             await p2.goto(BASE + "room.html", wait_until="networkidle"); await p2.wait_for_timeout(900)
-            fresh = await p2.evaluate("()=>({welcome: !!document.querySelector('#welcome:not([hidden])'), signin: (document.querySelector('#welcome #wSignIn')||{}).textContent||'', db: localStorage.getItem('ovumind_db_v1')})")
-            check("fresh visitor sees the welcome, with Sign in with email on it, and nothing is saved yet", fresh["welcome"] and "Sign in with email" in fresh["signin"] and (fresh["db"] is None or '"consent"' not in fresh["db"]), fresh)
-            wn = await p2.evaluate("()=>{var h=document.documentElement,was=h.getAttribute('data-sky');h.setAttribute('data-sky','night');var c=getComputedStyle(document.querySelector('#wSignIn')).color;if(was===null)h.removeAttribute('data-sky');else h.setAttribute('data-sky',was);return c}")
-            check("after sunset the welcome's lighter buttons keep dark plum text on the light welcome", wn == "rgb(90, 66, 116)", wn)
+            fresh = await p2.evaluate("()=>({welcome: !!document.querySelector('#welcome:not([hidden])'), moon: !!document.querySelector('#welcome .w-moon'), logo: (document.querySelector('#welcome .w-hero img')||{}).naturalWidth||0, buttons: [...document.querySelectorAll('#welcome .w-auth .btn')].map(b=>[...b.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()), begin: !!document.querySelector('#wBegin'), consent: document.querySelector('#consent').hidden, db: localStorage.getItem('ovumind_db_v1'), note: document.querySelector('#wNote').textContent})")
+            check("a fresh visitor meets the sign-in wall: the logo where the moon was, Apple, Google and email, no Let's begin, the notice not yet shown, nothing saved", fresh["welcome"] and not fresh["moon"] and fresh["logo"] == 512 and fresh["buttons"] == ["Sign in with Apple", "Sign in with Google", "Sign in with email"] and not fresh["begin"] and fresh["consent"] and (fresh["db"] is None or '"consent"' not in fresh["db"]) and "Sign in to open it" in fresh["note"], fresh)
+            wn = await p2.evaluate("()=>{var h=document.documentElement,was=h.getAttribute('data-sky');h.setAttribute('data-sky','night');var c=getComputedStyle(document.querySelector('#wSignIn')).color, g=getComputedStyle(document.querySelector('#wGoogle')).backgroundColor;if(was===null)h.removeAttribute('data-sky');else h.setAttribute('data-sky',was);return {c:c,g:g}}")
+            check("after sunset the wall's lighter buttons keep dark plum text and the Google button stays white", wn["c"] == "rgb(90, 66, 116)" and wn["g"] == "rgb(255, 255, 255)", wn)
             await p2.goto(BASE + "journal.html", wait_until="load"); await p2.wait_for_timeout(600)
-            check("fresh visitor on another page is sent to the room first", p2.url.endswith("room.html"), p2.url)
-            # the real consent controls: nothing optional pre-ticked, the button locked until the age tick
+            check("a fresh visitor on another page is sent to the room first", p2.url.endswith("room.html"), p2.url)
             await p2.goto(BASE + "room.html", wait_until="networkidle"); await p2.wait_for_timeout(700)
-            await p2.click("#welcome .btn.primary"); await p2.wait_for_timeout(400)
+            await p2.click("#wGoogle"); await p2.wait_for_timeout(900)
+            gp = await p2.evaluate("()=>({toast: document.querySelector('#toast').textContent, url: location.pathname, wall: !!document.querySelector('#welcome:not([hidden])'), enabled: !document.querySelector('#wGoogle').disabled})")
+            check("a provider that is not switched on in Supabase says so in a toast and leaves the wall where it was, with the button usable again", "still being set up" in gp["toast"] and gp["url"].endswith("room.html") and gp["wall"] and gp["enabled"], gp)
+            await p2.click("#wSignIn"); await p2.wait_for_timeout(300)
+            await p2.fill("#wEmail", "not-an-address"); await p2.click("#wEmailGo"); await p2.wait_for_timeout(300)
+            bad = await p2.evaluate("()=>document.querySelector('#wMsg').textContent")
+            await p2.fill("#wEmail", "friend@example.test"); await p2.click("#wEmailGo"); await p2.wait_for_timeout(600)
+            sent = await p2.evaluate("()=>({code: !document.querySelector('#wCodeWrap').hidden, msg: document.querySelector('#wMsg').textContent, ro: document.querySelector('#wEmail').readOnly, go: document.querySelector('#wEmailGo').textContent})")
+            check("the email form asks for a real address, then sends a code and asks for it", "real email" in bad and sent["code"] and "six-digit code to friend@example.test" in sent["msg"] and sent["ro"] and "Verify" in sent["go"], {"bad": bad, "sent": sent})
+            await p2.fill("#wCode", "111111"); await p2.click("#wEmailGo"); await p2.wait_for_timeout(600)
+            wrong = await p2.evaluate("()=>({msg: document.querySelector('#wMsg').textContent, wall: !!document.querySelector('#welcome:not([hidden])'), session: localStorage.getItem('ovumind_auth_v1')})")
+            check("a wrong code keeps the wall up with the server's reason, and no session is written", wrong["wall"] and wrong["session"] is None and ("expired" in wrong["msg"] or "invalid" in wrong["msg"]), wrong)
+            await p2.fill("#wCode", "246810"); await p2.click("#wEmailGo"); await p2.wait_for_timeout(900)
+            signed = await p2.evaluate("()=>({wall: !!document.querySelector('#welcome:not([hidden])'), consent: !document.querySelector('#consent').hidden, email: JSON.parse(localStorage.getItem('ovumind_auth_v1')||'{}').user?.email, cloudSheet: !!document.querySelector('#ovuCloudSheet')})")
+            check("the right code signs her in: the wall closes, the data notice opens next, and the cloud prompt waits because the notice carries that choice", not signed["wall"] and signed["consent"] and signed["email"] == "smoke@example.test" and not signed["cloudSheet"], signed)
+            # the real consent controls: nothing optional pre-ticked, the button locked until the age tick
             before = await p2.evaluate("()=>({shown: !document.querySelector('#consent').hidden, n: document.querySelectorAll('#cChoices input[type=checkbox]').length, anyOn: Array.from(document.querySelectorAll('#cChoices input')).some(i=>i.checked), age: document.querySelector('#cAge').checked, health: document.querySelector('#cHealth').checked, locked: document.querySelector('#cAgree').disabled, under: !!document.querySelector('#cUnder')})")
             check("the notice opens with five separate choices all off, the required health line ticked, the 18+ tick unticked, the button locked and an under-18 way out", before["shown"] and before["n"] == 5 and not before["anyOn"] and not before["age"] and before["health"] and before["locked"] and before["under"], before)
             await p2.uncheck("#cHealth"); await p2.check("#cAge"); lockedStill = await p2.evaluate("()=>document.querySelector('#cAgree').disabled"); await p2.check("#cHealth"); await p2.click("#cAgree"); await p2.wait_for_timeout(600)
@@ -649,8 +678,8 @@ async def main():
             check("agreeing records the 18+ attestation and health tracking at notice 4, nothing else, and closes the notice", after["v"] == 4 and after["age"] == 1 and after["purposes"] == ["age_18:grant:sheet", "health_tracking:grant:sheet"] and not after["aiOn"] and not after["cloud"] and after["hidden"], after)
             await ctx2.close()
             # the notice itself: no under-18 note for an ordinary visitor; a withdrawal that does not reach the account keeps the sheet
-            ctxw = await browser.new_context(viewport={"width": 390, "height": 844}); pw = await ctxw.new_page(); await pw.route("**/*", gate)
-            await pw.goto(BASE + "room.html", wait_until="networkidle"); await pw.wait_for_timeout(700); await pw.click("#welcome .btn.primary"); await pw.wait_for_timeout(400)
+            ctxw = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxw.add_init_script(SESSION_SEED); pw = await ctxw.new_page(); await pw.route("**/*", gate)
+            await pw.goto(BASE + "room.html", wait_until="networkidle"); await pw.wait_for_timeout(900)
             minor = await pw.evaluate("()=>getComputedStyle(document.querySelector('#cMinor')).display")
             await pw.evaluate("()=>{OvuStore.setProfile({analysis:{on:true}}); window.OvuAuth.setImprove=function(){return Promise.resolve({ok:false,error:'offline'})};}")
             await pw.check("#cAge"); await pw.click("#cAgree"); await pw.wait_for_timeout(500)
@@ -662,7 +691,7 @@ async def main():
             # a person whose consent predates notice v2 is sent back to the room from any other page
             ctx3 = await browser.new_context(viewport={"width": 390, "height": 844})
             old = json.loads(json.dumps(DB)); old["profile"]["consent"] = {"v": 1, "at": NOW, "improve": True}
-            await ctx3.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(old)))
+            await ctx3.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(old))); await ctx3.add_init_script(SESSION_SEED)
             p3 = await ctx3.new_page(); await p3.route("**/*", gate)
             await p3.goto(BASE + "hormones.html", wait_until="load"); await p3.wait_for_timeout(700)
             check("a v1 consent is sent back to the room to be asked again", p3.url.endswith("room.html"), p3.url)
@@ -671,7 +700,7 @@ async def main():
             ctx4 = await browser.new_context(viewport={"width": 390, "height": 844})
             v2 = json.loads(json.dumps(DB)); v2["profile"]["consent"] = {"v": 2, "at": NOW, "luna": True, "improve": False, "age13": True}
             for k in ("ageAttest", "consentEvents", "consentImportedAt"): v2["profile"].pop(k, None)
-            await ctx4.add_init_script("if(!localStorage.getItem('ovumind_db_v1')){ localStorage.setItem('ovumind_db_v1', %s); localStorage.setItem('ovumind_ai_v1', JSON.stringify({on:false, insights:false, photos:true})); }" % json.dumps(json.dumps(v2)))
+            await ctx4.add_init_script("if(!localStorage.getItem('ovumind_db_v1')){ localStorage.setItem('ovumind_db_v1', %s); localStorage.setItem('ovumind_ai_v1', JSON.stringify({on:false, insights:false, photos:true})); }" % json.dumps(json.dumps(v2))); await ctx4.add_init_script(SESSION_SEED)
             p4 = await ctx4.new_page(); await p4.route("**/*", gate)
             p4.on("pageerror", lambda e: errors.append("v2 pageerror: " + str(e)))
             await p4.goto(BASE + "room.html", wait_until="networkidle"); await p4.wait_for_timeout(900)
@@ -682,10 +711,9 @@ async def main():
             check("agreeing again keeps the earlier choices as imports, records the sheet's choices at notice 4 and keeps every entry", rd["v"] == 4 and rd["age"] is True and rd["imports"] == ["food_photo_ai", "health_tracking"] and rd["sheet"] == ["age_18:grant", "ai_reading:grant", "food_photo_ai:grant", "health_tracking:grant"] and rd["aiOn"] is True and rd["aiPhotos"] is True and rd["events"] == 3 and rd["hidden"], rd)
             await ctx4.close()
             # under 18: the room does not open, nothing is saved, and the notice is back on the next visit
-            ctx5 = await browser.new_context(viewport={"width": 390, "height": 844})
+            ctx5 = await browser.new_context(viewport={"width": 390, "height": 844}); await ctx5.add_init_script(SESSION_SEED)
             p5 = await ctx5.new_page(); await p5.route("**/*", gate)
-            await p5.goto(BASE + "room.html", wait_until="networkidle"); await p5.wait_for_timeout(700)
-            await p5.click("#welcome .btn.primary"); await p5.wait_for_timeout(400)
+            await p5.goto(BASE + "room.html", wait_until="networkidle"); await p5.wait_for_timeout(900)
             await p5.click("#cUnder"); await p5.wait_for_timeout(400)
             u1 = await p5.evaluate("()=>({msg: (document.querySelector('#consent h2')||{}).textContent, agree: !!document.querySelector('#cAgree'), open: !document.querySelector('#consent').hidden, exportLink: !!document.querySelector('#cExport') && !!document.querySelector('#cWipe'), db: localStorage.getItem('ovumind_db_v1')})")
             await p5.reload(wait_until="networkidle"); await p5.wait_for_timeout(700)
@@ -696,7 +724,7 @@ async def main():
             ctx6 = await browser.new_context(viewport={"width": 390, "height": 844})
             pm = json.loads(json.dumps(DB)); pm["profile"]["lifeStage"] = "post"
             pm["events"].append({"id": "pm1", "type": "symptom", "date": TODAY, "createdAt": NOW, "updatedAt": NOW, "source": "luna", "data": {"symptoms": ["spotting"], "pain": None, "mood": "", "notes": ""}})
-            await ctx6.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(pm)))
+            await ctx6.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(pm))); await ctx6.add_init_script(SESSION_SEED)
             p6 = await ctx6.new_page(); await p6.route("**/*", gate)
             p6.on("pageerror", lambda e: errors.append("postmeno pageerror: " + str(e)))
             p6.on("dialog", lambda d: asyncio.ensure_future(d.accept()))
@@ -1227,7 +1255,6 @@ async def main():
             check("the farm gate leads back to the garden", back == "garden", back)
             # plaza servers, signed in: a fake session and a small fake plaza server answer the four plaza calls here;
             # nothing leaves the machine. 23 in PCOS, 2 in Everyone, Menopause full.
-            SESS = {"access_token": "smoke-token", "refresh_token": "smoke-refresh", "expires_at": int(time.time()) + 86400, "user": {"id": "00000000-0000-4000-8000-0000000000aa", "email": "smoke@example.test"}}
             seed_signed_in = "if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s); localStorage.setItem('ovumind_auth_v1', %s);" % (json.dumps(json.dumps(DB)), json.dumps(json.dumps(SESS)))
             fake = {"servers": [{"id": "pcos", "name": "PCOS", "blurb": "Living with polycystic ovary syndrome", "capacity": 24, "open": True, "people": 23}, {"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 2}, {"id": "menopause", "name": "Menopause", "capacity": 24, "open": True, "people": 24}], "mine": None, "visit": None, "seq": 0}
             pcalls, pauth, p_other, p_errors, pvisits = [], [], [], [], []
@@ -1718,7 +1745,7 @@ async def main():
 
             # the launch setting: Luna's AI help is paused. The three AI choices cannot be turned on, Luna says so, and no AI request goes out
             ctxP = await browser.new_context(viewport={"width": 390, "height": 844}, paused=True)
-            await ctxP.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB)))
+            await ctxP.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxP.add_init_script(SESSION_SEED)
             pP = await ctxP.new_page(); ai_calls = []
             async def p_gate(route):
                 u = route.request.url
@@ -1743,13 +1770,14 @@ async def main():
             await page.goto(BASE + "admin.html", wait_until="networkidle"); await page.wait_for_timeout(500)
             ag = await page.evaluate("()=>({h2: (document.querySelector('h2')||{}).textContent, email: !!document.querySelector('#gEmail'), send: !!document.querySelector('#gSend'), nav: !!document.querySelector('nav.tabs')})")
             check("the staff page signed out shows only the sign-in gate (no dashboard, no data request)", ag["h2"] == "Rhythme staff" and ag["email"] and ag["send"] and not ag["nav"], ag)
-            check("no Supabase auth or data request was made anywhere in the signed-out run", not [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1" in u)], relay_calls[:3])
+            odd = [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1/entries" in u or ("/functions/v1/" in u and "/podcast" not in u))]  # the Plus claim (functions/v1/podcast) is the signed-in account's own call, not a model relay
+            check("no sign-in request and no diary row left the page in the whole run (the signed-in account's own calls aside), and no relay call", not odd, odd[:4])
             check("nothing was requested from any third party during the run", not external, external[:3])
 
             # 9. asleep: nothing opens until the bed wakes her (hotspots, the nav sheets, Luna); You and the bed stay open
             ctx9 = await browser.new_context(viewport={"width": 390, "height": 844})
             zz = json.loads(json.dumps(DB)); zz["state"]["sleeping"] = {"startedAt": NOW, "bedTime": "23:00", "prevOutfit": "base", "pj": True}
-            await ctx9.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(zz)))
+            await ctx9.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(zz))); await ctx9.add_init_script(SESSION_SEED)
             p9 = await ctx9.new_page(); await p9.route("**/*", gate)
             p9.on("pageerror", lambda e: errors.append("asleep pageerror: " + str(e)))
             await p9.goto(BASE + "room.html", wait_until="networkidle"); await p9.wait_for_selector(".hotspot"); await p9.wait_for_timeout(900)

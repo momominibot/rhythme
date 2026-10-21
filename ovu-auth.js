@@ -268,6 +268,48 @@
     return Promise.resolve({});
   }
 
+  /* Is a social provider switched on in Supabase? A provider that is not enabled answers the authorize URL with 400; an enabled one
+     redirects (opaque to fetch). Anything else (offline, a CORS surprise) counts as on, so the probe can never block a real sign-in. */
+  var providerState = {};
+  function providerOn(p) {
+    if (oauthEnabled(p)) return Promise.resolve(true);
+    if (providerState[p] !== undefined) return Promise.resolve(providerState[p]);
+    return fetch(CFG.supabaseUrl + '/auth/v1/authorize?provider=' + encodeURIComponent(p), { redirect: 'manual' }).then(function (r) {
+      var on = !(r && r.status >= 400 && r.status < 500);
+      providerState[p] = on; return on;
+    }, function () { return true; });
+  }
+
+  /* One email-code form, shared by the sign-in wall (room.html #wEmailForm) and by You: send a six-digit code, then verify it.
+     els: { email, codeWrap, code, go, msg }. */
+  function emailForm(form, els, opts) {
+    if (!form || !els || !els.email || !els.go) return;
+    var stage = 'email';
+    var msg = function (text, ok) { if (els.msg) { els.msg.textContent = text; els.msg.className = 'msg on ' + (ok ? 'ok' : 'err'); } };
+    form.onsubmit = function (e) {
+      e.preventDefault();
+      var addr = (els.email.value || '').trim();
+      if (stage === 'email') {
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { msg('Please enter a real email address.'); return; }
+        els.go.disabled = true; msg('Sending…', true);
+        sendCode(addr).then(function () {
+          stage = 'code'; els.go.disabled = false; if (els.codeWrap) els.codeWrap.hidden = false; els.email.readOnly = true;
+          els.go.innerHTML = '<span class="ms">login</span>Verify and sign in';
+          msg('We emailed a six-digit code to ' + addr + '. Enter it here. If a sign-in link arrives instead, open it on this phone.', true);
+          if (els.code) els.code.focus();
+        }, function (err) {
+          var se = sendError(err); els.go.disabled = false; msg(se.text);
+          if (se.limited) { stage = 'code'; if (els.codeWrap) els.codeWrap.hidden = false; els.email.readOnly = true; els.go.innerHTML = '<span class="ms">login</span>Verify and sign in'; if (els.code) els.code.focus(); } /* a code already in the inbox still works */
+        });
+      } else {
+        var code = ((els.code && els.code.value) || '').replace(/\s/g, '');
+        if (!/^\d{6}$/.test(code)) { msg('Enter the six-digit code from the email.'); return; }
+        els.go.disabled = true; msg('Checking…', true);
+        verifyCode(addr, code).then(function () { toastVia(opts, 'Signed in.', 'cloud_done'); }, function (err) { els.go.disabled = false; msg(err.message || 'That code did not match. Check it, or send a new one.'); });
+      }
+    };
+  }
+
   /* ---------- sign out / account ---------- */
   function signOut(removeLocal) {
     var s = getSession();
@@ -291,7 +333,7 @@
   function onSignedIn() {
     try { if (root.OvuConsent) OvuConsent.bindAccount(); } catch (e) { } /* a choice made before any account belongs to this one now */
     rerenderOpen();
-    if (!hasCloud()) promptCloud();
+    if (!hasCloud()) { if (!(root.OvuConsent && root.OvuConsent.needsSheet && root.OvuConsent.needsSheet())) promptCloud(); } /* the notice sheet carries the backup choice while it is still due */
     else if (root.OvuSync) OvuSync.syncNow();
     syncImprove().then(rerenderOpen);
   }
@@ -391,9 +433,7 @@
   }
 
   function wire(el, opts) {
-    var msg = function (text, ok) { var m = el.querySelector('#yaMsg'); if (m) { m.textContent = text; m.className = 'msg on ' + (ok ? 'ok' : 'err'); } };
     var form = el.querySelector('#yaEmailForm');
-    var stage = 'email';
     /* assign (not addEventListener) so a re-render never stacks handlers */
     el.onclick = function (e) {
       var b = e.target.closest('[data-ya]'); if (!b) return;
@@ -415,29 +455,7 @@
         rerenderOpen();
       });
     };
-    if (form) form.onsubmit = function (e) {
-      e.preventDefault();
-      var go = el.querySelector('#yaEmailGo'), emailEl = el.querySelector('#yaEmail'), codeWrap = el.querySelector('#yaCodeWrap'), codeEl = el.querySelector('#yaCode');
-      var addr = (emailEl.value || '').trim();
-      if (stage === 'email') {
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { msg('Please enter a real email address.'); return; }
-        go.disabled = true; msg('Sending…', true);
-        sendCode(addr).then(function () {
-          stage = 'code'; go.disabled = false; codeWrap.hidden = false; emailEl.readOnly = true;
-          go.innerHTML = '<span class="ms">login</span>Verify and sign in';
-          msg('We emailed a six-digit code to ' + addr + '. Enter it here. If a sign-in link arrives instead, open it on this phone.', true);
-          if (codeEl) codeEl.focus();
-        }, function (err) {
-          var se = sendError(err); go.disabled = false; msg(se.text);
-          if (se.limited) { stage = 'code'; codeWrap.hidden = false; emailEl.readOnly = true; go.innerHTML = '<span class="ms">login</span>Verify and sign in'; if (codeEl) codeEl.focus(); } /* a code already in the inbox still works */
-        });
-      } else {
-        var code = (codeEl.value || '').replace(/\s/g, '');
-        if (!/^\d{6}$/.test(code)) { msg('Enter the six-digit code from the email.'); return; }
-        go.disabled = true; msg('Checking…', true);
-        verifyCode(addr, code).then(function () { toastVia(opts, 'Signed in.', 'cloud_done'); }, function (err) { go.disabled = false; msg(err.message || 'That code did not match. Check it, or send a new one.'); });
-      }
-    };
+    if (form) emailForm(form, { email: el.querySelector('#yaEmail'), codeWrap: el.querySelector('#yaCodeWrap'), code: el.querySelector('#yaCode'), go: el.querySelector('#yaEmailGo'), msg: el.querySelector('#yaMsg') }, opts);
   }
 
   /* delete whatever copy the account holds, with backup on or off; the server does not guard deletes on consent */
@@ -508,15 +526,17 @@
   }
 
   function init() {
-    handleRedirect().then(function (r) {
+    return handleRedirect().then(function (r) {
       if (r && r.error) { try { if (window.console) console.warn('sign-in:', r.error); } catch (e) { } }
-    });
+      return r || {};
+    }, function (err) { return { error: (err && err.message) || 'Could not complete sign-in.' }; });
   }
 
   root.OvuAuth = {
     init: init, renderAccount: renderAccount,
     session: session, userId: userId, email: email, isSignedIn: isSignedIn, token: token,
     sendCode: sendCode, sendError: sendError, verifyCode: verifyCode, signInWith: signInWith, signOut: signOut,
+    providerOn: providerOn, emailForm: emailForm,
     promptCloud: promptCloud, hasCloud: hasCloud,
     NOTICE_V: NOTICE_V, IMPROVE: IMPROVE, improveText: improveText, improvePlan: improvePlan, improveLocal: improveLocal, setImprove: setImprove, syncImprove: syncImprove,
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }

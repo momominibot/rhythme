@@ -34,7 +34,7 @@
         <div class="stars" id="stars" aria-hidden="true"></div>
         <div class="sparkles" id="sparkles" aria-hidden="true"></div>
         <header class="topbar">
-          <a class="brand" href="room.html" aria-label="Rhythme home">RHYTHME</a>
+          <a class="brand" href="room.html" aria-label="Rhythme home"><img class="rh-logo" src="assets/brand/logo-mark.webp" alt="" width="26" height="26">RHYTHME</a>
           <div class="top-actions">
             <button class="chip hearts" id="heartsChip" type="button" aria-label="Hearts, opens Dream Street"><span class="ms fill">favorite</span><span id="heartsVal">0</span></button>
       <a class="icon-btn" id="journalBtn" href="journal.html" aria-label="My journal"><span class="ms">auto_stories</span><span class="dot"></span></a>
@@ -106,18 +106,27 @@
   </section>
   <div class="welcome" id="welcome" hidden>
     <div class="w-stars" aria-hidden="true"></div>
-    <div class="w-moon" aria-hidden="true"><img src="assets/room/dream/orb-moon.webp" alt="" data-mascot="full"></div>
+    <div class="w-hero" aria-hidden="true"><img src="assets/brand/logo-hero.webp" alt="" width="512" height="512"></div>
     <h1 class="w-erin">Rhythme</h1>
     <p class="w-tag">Her body, her rhythm, mindfully aged.</p>
-    <p class="w-note">A dreamy room where you log sleep, cycle, symptoms, meals and calm by tapping the things around you.</p>
-    <button class="btn primary" id="wBegin" type="button"><span class="ms">favorite</span>Let’s begin</button>
-    <button class="btn ghost" id="wSkip" type="button">I’ve been here before</button>
-    <button class="btn ghost" id="wSignIn" type="button"><span class="ms">mail</span>Sign in with email</button>
+    <p class="w-note" id="wNote">A dreamy room where you log sleep, cycle, symptoms, meals and calm by tapping the things around you. Sign in to open it.</p>
+    <div class="w-auth" id="wAuth">
+      <button class="btn w-apple" id="wApple" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>Sign in with Apple</button>
+      <button class="btn w-google" id="wGoogle" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Sign in with Google</button>
+      <button class="btn ghost" id="wSignIn" type="button"><span class="ms">mail</span>Sign in with email</button>
+    </div>
+    <form class="w-email" id="wEmailForm" hidden autocomplete="on" novalidate>
+      <div class="field"><label for="wEmail">Your email</label><input class="input" id="wEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com"></div>
+      <div class="field" id="wCodeWrap" hidden><label for="wCode">Six-digit code we emailed you</label><input class="input ya-code" id="wCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="------"></div>
+      <button type="submit" class="btn primary" id="wEmailGo"><span class="ms">send</span>Send me a code</button>
+      <p class="msg" id="wMsg" aria-live="polite"></p>
+    </form>
+    <p class="w-fine">By signing in you agree to the <a href="terms.html">terms</a>. The <a href="privacy.html">privacy notice</a> says what Rhythme keeps and where.</p>
   </div>
   <div class="welcome consent" id="consent" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
     <div class="w-stars" aria-hidden="true"></div>
     <div class="c-scroll">
-      <div class="c-head"><div class="c-moon" aria-hidden="true"><img src="assets/room/dream/orb-moon.webp" alt="" data-mascot="full"></div><div><div class="w-brand">RHYTHME</div><h2 id="cTitle">Before your room opens</h2><p>What Rhythme keeps, where it goes, and the choices that stay yours.</p></div></div>
+      <div class="c-head"><div class="c-moon" aria-hidden="true"><img src="assets/room/dream/orb-moon.webp" alt="" data-mascot="full"></div><div><div class="w-brand"><img class="rh-logo" src="assets/brand/logo-mark.webp" alt="" width="16" height="16">RHYTHME</div><h2 id="cTitle">Before your room opens</h2><p>What Rhythme keeps, where it goes, and the choices that stay yours.</p></div></div>
       <ul class="c-list">
         <li><span class="ms">edit_note</span><div><b>What you log</b><span>Periods, symptoms, pain, mood, sleep, meals and food photos, weight, calm minutes, and your getting-to-know-you answers, which can include pregnancy, hormones, medicines and health history.</span></div></li>
         <li><span class="ms">smartphone</span><div><b>Kept on this phone unless you choose backup</b><span>Your diary stays in this browser, so clearing the browser or losing the phone can lose it. You can export a copy any time from You. Cloud backup is a separate choice below: a copy kept in your account in a secure database hosted in Singapore, which other Rhythme users cannot see; authorised Rhythme administrators and the companies that run the database can reach it only to run, secure or support the service.</span></div></li>

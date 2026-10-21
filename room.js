@@ -1219,7 +1219,7 @@
   function openLearn() {
     var p = deskPrefs(); moment('learn');
     openSheet('learn', 'Your desk', 'Drag the folders around; make it yours', 'computer',
-      '<div class="desk"><div class="menubar"><span class="brandy">RHYTHME</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
+      '<div class="desk"><div class="menubar"><span class="brandy"><img class="rh-logo" src="assets/brand/logo-mark.webp" alt="" width="16" height="16">RHYTHME</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
       '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f, i) { var q = p.pos[f.id] || [2 + (i % 4) * 25, 4 + Math.floor(i / 4) * 46]; return '<button type="button" class="dicon" data-folder="' + f.id + '" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="dock"><button type="button" data-dock="videos" aria-label="Videos"><span class="ms">play_circle</span></button><button type="button" data-dock="mind" aria-label="Erin"><span class="ms">self_improvement</span></button><button type="button" data-dock="acu" aria-label="Acupressure"><span class="ms">spa</span></button><button type="button" data-dock="luna" aria-label="Luna"><span class="ms">dark_mode</span></button><button type="button" data-dock="doctor" aria-label="Share with doctor"><span class="ms">medical_services</span></button></div></div>' +
       '<div class="wallpanel" id="wallpanel"><b>Wallpaper</b><div class="wadjust" id="wallAdjust" hidden><p><span class="ms">open_with</span>Drag your photo on the screen above to move it, and use the slider to zoom.</p><div class="field"><label for="wallZoom">Zoom</label><input type="range" id="wallZoom" min="100" max="300" step="5" value="100"></div><div class="row"><button type="button" class="btn primary" id="wallDone"><span class="ms">check</span>Done</button><button type="button" class="btn ghost" id="wallReset">Reset</button></div></div><div class="walls">' + WALLS.map(function (w) { return '<button type="button" class="wall' + (p.wall === w.id ? ' on' : '') + '" data-wall="' + w.id + '" style="' + (w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY) + '"><span>' + esc(w.name) + '</span></button>'; }).join('') + '<button type="button" class="wall upload' + (p.wall === 'custom' ? ' on' : '') + '" data-wall="custom" style="' + (p.custom ? customWallCss(p).replace(/background-size:[^;]+/, 'background-size:cover') : '') + '"><span class="ms">add_photo_alternate</span><span>' + (p.custom ? 'My photo' : 'Upload a photo') + '</span></button></div><input type="file" id="wallFile" accept="image/*" hidden><div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="deskTidy"><span class="ms">grid_view</span>Tidy the icons</button>' + (p.custom ? '<button type="button" class="btn ghost" id="wallAdjustBtn"><span class="ms">open_with</span>Adjust my photo</button><button type="button" class="btn ghost" id="wallForget"><span class="ms">delete</span>Forget my photo</button>' : '') + '</div><p class="help">Your photo is stored only on this device.</p></div>' +
@@ -2681,12 +2681,35 @@
   /* ---------- data notice and the 18+ gate: ovu-consent.js owns the record and the sheet; this is the room's doorway ---------- */
   function hasConsent() { return !!(window.OvuConsent && !OvuConsent.needsSheet()); }
   function requireConsent(next) { if (!window.OvuConsent) { toast('Rhythme could not load its consent record. Please reload.', 'error'); return; } OvuConsent.require(next, { chime: chime, toast: toast }); }
+  /* The first screen is the sign-in wall (Jamie, 21 Oct: an account before anything): Apple, Google, or a six-digit code by email.
+     Signing in never touches the diary on this phone. The data notice, and the intro for a new account, follow the first sign-in. */
+  var wallWired = false;
+  function wallOpen() { var w = $('#welcome'); return !!(w && !w.hidden); }
   function showWelcome() {
-    var w = $('#welcome'); if (!w) return; w.hidden = false;
-    $('#wBegin').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); }); });
-    $('#wSkip').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); toast('Welcome back. Your intro is under the window whenever you want it.', 'favorite'); }); });
-    /* sign in from the first screen (Jamie, 20 Oct: "the email should login on first page"): consent first, then the email form in You */
-    var si = $('#wSignIn'); if (si) si.addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openYou(); setTimeout(function () { var ya = $('#youAccount'), b = ya && ya.querySelector('[data-ya="email-start"]'); if (b) { b.click(); ya.scrollIntoView({ block: 'center', behavior: 'smooth' }); } else if (ya) ya.scrollIntoView({ block: 'center' }); }, 300); }); });
+    var w = $('#welcome'); if (!w) return;
+    var note = $('#wNote'); if (note) note.textContent = S.list().length ? 'Your diary on this phone is kept as it is. Sign in to carry on.' : 'A dreamy room where you log sleep, cycle, symptoms, meals and calm by tapping the things around you. Sign in to open it.';
+    w.hidden = false;
+    if (wallWired) return; wallWired = true;
+    var A = window.OvuAuth;
+    function social(prov, btn) {
+      chime('tap');
+      if (!A) { toast('Sign-in could not load. Please reload.', 'error'); return; }
+      btn.disabled = true;
+      A.providerOn(prov).then(function (on) {
+        if (!on) { btn.disabled = false; toast((prov === 'apple' ? 'Apple' : 'Google') + ' sign-in is still being set up. Email works now.', 'info'); return; }
+        return A.signInWith(prov); /* leaves the page; the code comes back to room.html */
+      }).catch(function (err) { btn.disabled = false; toast('Could not start sign-in: ' + ((err && err.message) || 'try again'), 'error'); });
+    }
+    $('#wApple').addEventListener('click', function () { social('apple', this); });
+    $('#wGoogle').addEventListener('click', function () { social('google', this); });
+    $('#wSignIn').addEventListener('click', function () { chime('tap'); var f = $('#wEmailForm'); if (!f) return; f.hidden = false; this.hidden = true; var i = $('#wEmail'); if (i) i.focus(); });
+    if (A && A.emailForm) A.emailForm($('#wEmailForm'), { email: $('#wEmail'), codeWrap: $('#wCodeWrap'), code: $('#wCode'), go: $('#wEmailGo'), msg: $('#wMsg') }, { toast: toast });
+  }
+  /* after a sign-in while the wall is up: the wall closes, then the notice, then the intro for an account that has not done it */
+  function afterSignIn() {
+    var w = $('#welcome'); if (w) w.hidden = true;
+    var f = $('#wEmailForm'); if (f) { f.hidden = true; try { f.reset(); } catch (e) { } } var si = $('#wSignIn'); if (si) si.hidden = false;
+    requireConsent(function () { S.setState({ welcomeSeen: true }); if (!S.profile().onboarded) openOnboarding(0, {}); else toast('Welcome back.', 'favorite'); });
   }
 
   /* ---------- window: follows the sun (ovu-sun.js) ---------- */
@@ -2916,8 +2939,10 @@
     setInterval(function () { applySky(); if (window.OvuPets) renderProps(); }, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });
     FD.load().catch(function () { });
     /* accounts and cloud backup: quiet until the person signs in and opts in */
-    if (window.OvuAuth) OvuAuth.init();
+    var authReady = window.OvuAuth ? OvuAuth.init() : Promise.resolve({});
     if (window.OvuSync) OvuSync.init();
+    /* signed out (from You, or a revoked session): the wall comes back over whatever was open; signed in at the wall: on into the room */
+    if (window.OvuAuth) OvuAuth.subscribe(function () { if (OvuAuth.isSignedIn()) { if (wallOpen()) afterSignIn(); } else if (!wallOpen()) { try { closeSheet(); } catch (e) { } showWelcome(); } });
     S.subscribe(function (reason) { if (reason === 'external' || (reason && reason.indexOf('sync') === 0)) { renderDeck(); renderProps(); updateGreeting(); } });
     $('#journalBtn').href = 'journal.html'; $('#shareBtn').href = 'journal.html#share';
     if (!S.state().tourDone) { setTimeout(function () { $('#hint').classList.add('on'); }, 1200); setTimeout(function () { $('#hint').classList.remove('on'); S.setState({ tourDone: true }); }, 7000); }
@@ -2926,9 +2951,13 @@
     RM.start(function (h) { chime('bell', true); toast(h.item.label + (h.item.note ? ' · ' + h.item.note : ''), h.item.icon); });
     document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } if (e.target.closest('#arrDone')) exitArrange(false); if (e.target.closest('#arrReset')) exitArrange(true); });
     var hk = (location.hash || '').slice(1);
-    if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
-    else if (!S.profile().onboarded && !S.state().welcomeSeen) showWelcome();
-    else setTimeout(function () { requireConsent(function () { if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk); }); }, hk ? 600 : 0);
+    authReady.then(function (r) {
+      if (r && r.error) toast(r.error, 'error');
+      if (window.OvuAuth && !OvuAuth.isSignedIn()) { showWelcome(); return; }
+      if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
+      else if (!S.profile().onboarded && !S.state().welcomeSeen) requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); });
+      else setTimeout(function () { requireConsent(function () { if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk); }); }, hk ? 600 : 0);
+    });
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
     setTimeout(function () { $('#loading').classList.add('hidden'); joy(); }, 500);
     scheduleLife();

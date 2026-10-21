@@ -60,7 +60,7 @@
     doc.getElementById('soOut').addEventListener('click', function () { A.signOut().then(boot, boot); });
   }
   function shell() {
-    app.innerHTML = '<header class="top"><div><a class="brand" href="room.html">RHYTHME<em>STAFF</em></a><h1>' + esc(greeting()) + '<small>' + esc(A.email() || '') + ' · ' + esc(me.role) + '</small></h1></div><span class="pill" id="livePill"><span class="dot"></span><span id="liveTxt">checking</span></span></header>' +
+    app.innerHTML = '<header class="top"><div><a class="brand" href="room.html"><img class="rh-logo" src="assets/brand/logo-mark.webp" alt="" width="22" height="22">RHYTHME<em>STAFF</em></a><h1>' + esc(greeting()) + '<small>' + esc(A.email() || '') + ' · ' + esc(me.role) + '</small></h1></div><span class="pill" id="livePill"><span class="dot"></span><span id="liveTxt">checking</span></span></header>' +
       '<div class="hero"><img src="assets/room/dream/room-v3-sm.webp" alt=""><p>Here is Rhythme today<small>Counts and agent runs only. No diary is shown here.</small></p></div>' +
       '<section id="panel"></section>' +
       '<nav class="tabs" aria-label="Sections">' + TABS.map(function (t) { return '<button type="button" data-tab="' + t[0] + '" class="' + (t[0] === tab ? 'on' : '') + '"' + (t[0] === tab ? ' aria-current="page"' : '') + '><span class="ms" aria-hidden="true">' + t[2] + '</span>' + t[1] + '</button>'; }).join('') + '</nav>';
