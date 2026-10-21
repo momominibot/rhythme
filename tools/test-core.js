@@ -3590,4 +3590,21 @@ var summarised = false;
   check('the card’s styles exist and no em dash entered the copy', /\.sheet\.luna-sheet\{/.test(css) && /\.askchip\{/.test(css) && /\.lunanote\{/.test(css) && luna.indexOf('—') < 0);
 })();
 
+(function podcastOrder() {
+  console.log('2k18. Listen with Erin (21 Oct): the playable episodes shuffle by seed, the locked ones sit at the bottom oldest first, Shuffle gives a new order');
+  var w = fresh('2026-10-21'); vm.runInContext(fs.readFileSync(path.join(root, 'ovu-podcast.js'), 'utf8'), w, { filename: 'ovu-podcast.js' });
+  var P = w.OvuPodcast, eps = JSON.parse(fs.readFileSync(path.join(root, 'assets/data/erin-podcasts.json'), 'utf8')).episodes;
+  var ids = function (l) { return l.map(function (e) { return e.id; }); }, prem = function (e) { return e.access === 'premium'; };
+  var free = eps.filter(function (e) { return !prem(e); }), locked = eps.filter(prem), byDate = locked.slice().sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+  var o1 = P.order(eps, false, 7), o2 = P.order(eps, false, 7), o3 = P.order(eps, false, 8);
+  check('every episode appears once, and the same seed gives the same order', o1.length === eps.length && new Set(ids(o1)).size === eps.length && ids(o1).join() === ids(o2).join());
+  check('the locked episodes come last, oldest first, and every playable one comes before them', ids(o1).slice(free.length).join() === ids(byDate).join() && o1.slice(0, free.length).every(function (e) { return !prem(e); }));
+  check('another seed shuffles the playable ones into another order', ids(o1.slice(0, free.length)).join() !== ids(o3.slice(0, free.length)).join() && ids(o1.slice(0, free.length)).join() !== ids(free).join());
+  var all = P.order(eps, true, 7), firstPrem = all.map(prem).indexOf(true), lastFree = all.length - 1 - all.slice().reverse().map(prem).indexOf(false);
+  check('with Plus on nothing is held back: the Plus episodes join the shuffle', all.length === eps.length && firstPrem > -1 && firstPrem < lastFree);
+  check('a missing seed still returns every episode, locked last', (function () { var o = P.order(eps, false); return o.length === eps.length && o.slice(free.length).every(prem); })());
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('the Listen sheet lists through the order with one seed per sheet, a Shuffle button, and a small label before the locked group', /POD\.order\(d\.episodes, on, podSeed\)/.test(rs) && /id="podShuffle"/.test(rs) && /With Rhythme Plus/.test(rs) && /podSeed = Date\.now\(\) \^/.test(rs));
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

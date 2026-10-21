@@ -810,6 +810,16 @@ async def main():
             check("Light Flower opens from the Mind hub with the soft-air choice, sound on by default, and lights petals on a drawn flower", lf0["title"] == "Light Flower" and lf0["open"] and lf0["air"] and lf0["sound"] and lf1["running"] and lf1["canvas"] and lf1["flower"], {"lf0": lf0, "lf1": lf1})
             check("Stop saves only the practice time (no tap count), says the pause is saved, and the mindful line follows", lf2["n"] == 1 and lf2["secs"] >= 2 and lf2["taps"] is False and lf2["done"] and "Your pause is saved" in lf2["text"] and ("quiet detail" in lf2["sub"] or "note has faded" in lf2["sub"]), lf2)
             await page.click("#lfDoneClose"); await page.wait_for_timeout(300)
+            # Listen with Erin (Jamie, 21 Oct): the playable episodes shuffle, the locked ones sit at the bottom under one label, Shuffle reorders
+            await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#podShelf [data-pod-open]", timeout=8000); await page.evaluate("()=>document.querySelector('#podShelf [data-pod-open]').click()"); await page.wait_for_selector("#podList .podep", timeout=8000)
+            po1 = await page.evaluate("()=>{var l=[...document.querySelectorAll('#podList .podep')]; var ids=l.map(b=>b.dataset.ep); var lk=l.map(b=>b.classList.contains('locked')); var first=lk.indexOf(true); return {ids: ids, n: l.length, lockedLast: first<0 || lk.slice(first).every(Boolean), label: !!document.querySelector('#podList .podlocked'), shuffle: !!document.querySelector('#podShuffle')}}")
+            orders = [po1["ids"]]
+            for _ in range(3):
+                await page.click("#podShuffle"); await page.wait_for_timeout(200)
+                orders.append(await page.evaluate("()=>[...document.querySelectorAll('#podList .podep')].map(b=>b.dataset.ep)"))
+            po2 = await page.evaluate("()=>{var l=[...document.querySelectorAll('#podList .podep')]; var lk=l.map(b=>b.classList.contains('locked')); var first=lk.indexOf(true); return first<0 || lk.slice(first).every(Boolean)}")
+            check("Listen with Erin: nineteen episodes, the locked ones at the bottom under With Rhythme Plus, and Shuffle gives a new order that keeps them there", po1["n"] == 19 and po1["lockedLast"] and po1["label"] and po1["shuffle"] and any(o != orders[0] for o in orders[1:]) and po2 and all(sorted(o) == sorted(orders[0]) for o in orders), {"n": po1["n"], "lockedLast": po1["lockedLast"], "label": po1["label"], "changed": any(o != orders[0] for o in orders[1:])})
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
             # Erin's own teeth scripts: the hour picks morning or evening, eight steps each inside four minutes, the clips exist
             late = await page.evaluate("()=>OvuMindful.nextVariation(OvuMindful.byId('teeth'), new Date(2026,9,20,0,40)).when")
             check("just after midnight Erin's teeth script is the evening one, never good morning", late == "evening", late)

@@ -2150,10 +2150,11 @@
         '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Erin Lee · certified MBSR teacher</b><small>Short talks on patience, kindness and balance, drawn from the Dhammapada. Put one on when the day feels loud.</small></div></div>' +
         '<div id="podPlayer"></div>' +
         (sug ? '<div class="podsug"><span class="ms">wb_twilight</span><span>' + (cs.phase && cs.mode !== 'suspended' ? 'A gentle pick for your ' + esc(cs.phase === 'late' ? 'luteal' : cs.phase) + ' days: ' : 'A gentle place to start: ') + '<button type="button" class="linkbtn" data-ep="' + sug.id + '">' + esc(sug.title) + '</button>. Choose anything that suits you.</span></div>' : '') +
-        '<div class="field"><span class="lbl">All episodes</span><div class="podlist">' + d.episodes.map(podCard).join('') + '</div></div>' +
+        '<div class="field"><div class="lbl-row"><span class="lbl">All episodes</span><button type="button" class="linkbtn" id="podShuffle"><span class="ms" aria-hidden="true">shuffle</span> Shuffle</button></div><div class="podlist" id="podList">' + podListHTML(d) + '</div></div>' +
         '<p class="help">From <a href="' + esc(d.publication) + '" target="_blank" rel="noopener">Take A Pause by Erin Lee</a>. Each episode links to its post, where you can read Erin’s notes.</p>');
       renderPodPlayer();
       body.addEventListener('click', function (e) {
+        if (e.target.closest('#podShuffle')) { chime('tap'); podSeed = Date.now() ^ Math.floor(Math.random() * 1e9); var box = $('#podList'); if (box) box.innerHTML = podListHTML(d); return; }
         var ep = e.target.closest('[data-ep]'); if (ep) { chime('tap'); POD.select(ep.dataset.ep); renderPodPlayer(); var pl = $('#podPlayer'); if (pl) pl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
         if (e.target.closest('#podPlay')) { POD.toggle(); return; }
         if (e.target.closest('#podBack')) { POD.skip(-15); return; }
@@ -2187,6 +2188,12 @@
     });
   }
   document.addEventListener('click', function (e) { if (e.target.closest('[data-plus-open]')) { chime('tap'); openPlus(); } });
+  /* the shuffled list: one seed per sheet, a new one on Shuffle; the locked episodes come last under their own small label */
+  var podSeed = Date.now();
+  function podListHTML(d) {
+    var on = POD.plusActive(), list = POD.order(d.episodes, on, podSeed), labelled = false;
+    return list.map(function (ep) { var locked = ep.access === 'premium' && !on, h = ''; if (locked && !labelled) { labelled = true; h = '<span class="lbl podlocked">With Rhythme Plus</span>'; } return h + podCard(ep); }).join('');
+  }
   function podCard(ep) {
     var pos = POD.progress(ep.id), pct = ep.durationSeconds ? Math.min(100, Math.round(pos / ep.durationSeconds * 100)) : 0, done = POD.finished(ep.id), sel = POD.state().ep && POD.state().ep.id === ep.id;
     var locked = ep.access === 'premium' && !POD.plusActive();
