@@ -260,7 +260,13 @@
       function record() { attestAge('sheet'); grant('health_tracking', 'sheet'); setMany(map, 'sheet', true); if (!hasAuth && improve) grant('improve_logging', 'sheet'); }
       function open() { c.hidden = true; if (next) next(); }
       var em = c.querySelector('#cImproveErr'); if (em) em.hidden = true;
-      if (!hasAuth || (!improve && !wasOn)) { record(); open(); return; }
+      /* a choice the account already records is not sent again: a renewed notice that keeps Help improve logging on must not
+         restart the account's consent from now, which would drop the entries it already covered (Codex verification, 21 Oct).
+         The improvement words and their hash are unchanged under this notice, so the account's record stays true. A tick kept
+         only on this phone (no account yet) still goes through setImprove, so it is recorded under this notice as before. */
+      var an = S.profile().analysis || {}, me = root.OvuAuth.userId ? root.OvuAuth.userId() : null;
+      var held = improve && wasOn && an.on === true && !!an.uid && (!me || an.uid === me);
+      if (!hasAuth || (!improve && !wasOn) || held) { record(); open(); return; }
       agree.disabled = true;
       /* a withdrawal has to reach the account before anything on this notice is recorded: if it does not, nothing is saved,
          the notice stays (and comes back after a reload) and says so (Codex legal reviews, 20 Oct: a failed withdrawal was

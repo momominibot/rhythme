@@ -122,10 +122,11 @@
     var cur = clean(mmdd), mo = cur ? +cur.slice(0, 2) : 0, d = cur ? +cur.slice(3) : 0, yr = Number(year) || 0, ty = /^\d{4}/.test(String(today || '')) ? +String(today).slice(0, 4) : new Date().getFullYear(), yrs = [];
     if (raw) { mo = Number(raw.m) || 0; d = Number(raw.d) || 0; yr = Number(raw.y) || 0; } /* a draft she left with something still to fix */
     for (var yy = ty - ADULT; yy >= FIRST; yy--) yrs.push(yy);
+    var odd = yr && yrs.indexOf(yr) < 0 ? '<option value="' + esc(yr) + '" selected>' + esc(yr) + ', not used</option>' : ''; /* a stored year the list no longer offers, shown as it is (Codex verification, 21 Oct) */
     return '<div class="byrow">' +
       '<select class="input" id="' + p + 'Month" aria-label="Birthday month"><option value="0">Month</option>' + MONTHS.map(function (n, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === mo ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select>' +
       '<select class="input" id="' + p + 'Day" aria-label="Birthday day"><option value="0">Day</option>' + Array.apply(null, Array(31)).map(function (_, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === d ? ' selected' : '') + '>' + (i + 1) + '</option>'; }).join('') + '</select>' +
-      '<select class="input" id="' + p + 'Year" aria-label="Birth year, optional"><option value="0">Year (optional)</option>' + yrs.map(function (v) { return '<option value="' + v + '"' + (v === yr ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select></div>';
+      '<select class="input" id="' + p + 'Year" aria-label="Birth year, optional"><option value="0">Year (optional)</option>' + odd + yrs.map(function (v) { return '<option value="' + v + '"' + (v === yr ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select></div>';
   }
   /* what the selects hold: { birthday: 'MM-DD' or null, year: a checked year or null, error: '' or what to fix } */
   function readValues(mv, dv, yv, today) {
@@ -174,13 +175,32 @@
       if (b.dataset.b === 'party') { if (R.setOutfit) R.setOutfit(m.outfit); if (R.chime) R.chime('save'); if (R.toast) R.toast('Dressed for the day. Happy birthday.', 'cake'); R.closeSheet(); }
       else { if (R.chime) R.chime('tap'); R.closeSheet(); }
     });
+    return bodyEl;
   }
   /* once a birthday: the postcard opens by itself the first time the room is free that day */
+  /* It looks again a moment later before opening, so a sheet closing on the way to something else (Window's Bedtime closes its
+     sheet, then starts bedtime) is not taken for a free room; and if another sheet replaces the postcard before she has touched it
+     or within SEEN of it opening, it does not count as shown and opens again once the room is free (Codex verification, 21 Oct). */
+  var SETTLE = 500, SEEN = 1500, settleT = 0, watch = null;
+  function due() { if (opened || !isToday()) return 0; var y = year(), st = S.state().birthday || {}; if (st.shown === y) { opened = true; return 0; } return y; }
+  function later() { if (tries++ < 12) { root.clearTimeout(tryT); tryT = root.setTimeout(maybeOpen, 900); } }
   function maybeOpen() {
-    if (opened || !isToday()) return;
-    var y = year(), st = S.state().birthday || {}; if (st.shown === y) { opened = true; return; }
-    if (R.busy()) { if (tries++ < 12) { root.clearTimeout(tryT); tryT = root.setTimeout(maybeOpen, 900); } return; }
-    markShown(y); openCard();
+    if (!due()) return;
+    if (R.busy()) { later(); return; }
+    if (settleT) return; /* already looking again in a moment; store changes in between never push it back */
+    settleT = root.setTimeout(function () {
+      settleT = 0;
+      var y = due(); if (!y) return;
+      if (R.busy()) { later(); return; }
+      var prev = (S.state().birthday || {}).shown, node;
+      markShown(y); node = openCard();
+      if (node) { var w = watch = { node: node, y: y, prev: prev == null ? null : prev, at: Date.now(), touched: false }, t = function () { w.touched = true; }; node.addEventListener('pointerdown', t, true); node.addEventListener('keydown', t, true); }
+    }, SETTLE);
+  }
+  function replaced() { /* another sheet is about to take the postcard's place */
+    var w = watch; if (!w || doc.getElementById('sheetBody') !== w.node) return; watch = null;
+    if (w.touched || Date.now() - w.at >= SEEN) return; /* she touched it, or it was up long enough to be seen */
+    root.setTimeout(function () { var st = S.state().birthday || {}; if (st.shown !== w.y) return; try { S.setState({ birthday: { shown: w.prev } }); } catch (e) { } opened = false; tries = 0; }, 0);
   }
   function markShown(y) { opened = true; try { S.setState({ birthday: { shown: y } }); } catch (e) { } }
   /* the older pages' copy of the intro (ovuluna_onboarding) never keeps her birthday; copies written before this build are cleaned once */
@@ -203,7 +223,7 @@
     var p0 = S.profile(), cur = mmdd(), by = birthYear(), rawY = Number(p0.birthYear) || 0, has = !!(p0.birthday || p0.birthYear); /* what is stored, even something no longer valid, can be seen and removed (Codex, 21 Oct) */
     el.innerHTML = '<div class="field byou"><span class="lbl" id="bLbl">Your birthday (optional)</span><div role="group" aria-labelledby="bLbl">' + fieldHTML(cur, by || rawY, 'b', S.today()) + '</div>' +
       '<div class="byrow"><button type="button" class="btn soft" id="bSave"><span class="ms">check</span>Save</button>' + (has ? '<button type="button" class="btn ghost" id="bClear">Remove</button>' : '') + '</div>' +
-      '<p class="help" id="bHelp">' + (cur ? 'Kept: ' + esc(text(cur)) + (by ? ' ' + by : '') + '. ' : rawY ? 'A birth year is kept without a month and a day. Choose them, or remove it. ' : '') + 'A month and a day, and the year if you like, kept on this phone. On the day: a wish, a direction for your year ahead and a cake on your table for the week; the year adds who you are from the day you were born. Nothing else uses it.</p></div>';
+      '<p class="help" id="bHelp">' + (cur ? 'Kept: ' + esc(text(cur)) + (by ? ' ' + by : '') + '. ' + (rawY && !by ? 'The birth year kept, ' + esc(rawY) + ', is not used. ' + esc(yearError(rawY, cur, S.today())) + ' ' : '') : rawY ? 'A birth year is kept without a month and a day. Choose them, or remove it. ' : '') + 'A month and a day, and the year if you like, kept on this phone. On the day: a wish, a direction for your year ahead and a cake on your table for the week; the year adds who you are from the day you were born. Nothing else uses it.</p></div>';
     var save = function (patch) { try { S.setProfile(patch); } catch (e) { if (R.toast) R.toast('Could not save that on this device.', 'error'); return false; } scrubMirror(); if (R.updateGreeting) R.updateGreeting(); if (R.renderProps) R.renderProps(); opened = false; tries = 0; renderField(el); return true; };
     doc.getElementById('bSave').addEventListener('click', function () {
       var r = readField(doc, 'b', S.today()), h = doc.getElementById('bHelp');
@@ -226,7 +246,8 @@
     var recheck = function () { var t = S.today(); if (t !== lastDay) { lastDay = t; opened = false; tries = 0; drawCake(R.layout()); if (R.updateGreeting) R.updateGreeting(); } if (!opened && isToday()) { tries = 0; maybeOpen(); } };
     root.setInterval(recheck, 30000);
     doc.addEventListener('visibilitychange', function () { if (!doc.hidden) recheck(); });
-    R.on('sheetHide', recheck);
+    R.on('sheetReplace', replaced);
+    R.on('sheetHide', function () { if (watch && doc.getElementById('sheetBody') === watch.node) watch = null; recheck(); });
     maybeOpen();
   });
 })(typeof window !== 'undefined' ? window : this);

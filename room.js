@@ -2722,7 +2722,7 @@
     return true;
   }
   /* the intro's starting answers: the profile as it is at the tap, shared by You and the window, so neither brings back an answer she removed */
-  function introAnswers() { var P0 = S.profile(), A0 = JSON.parse(JSON.stringify(P0)); Object.assign(A0, P0.habits || {}); ['cycleLength', 'periodLength'].forEach(function (k) { if (A0[k] !== null && A0[k] !== undefined) A0[k] = String(A0[k]); }); return A0; }
+  function introAnswers() { var P0 = S.profile(), A0 = JSON.parse(JSON.stringify(P0)); Object.assign(A0, P0.habits || {}); delete A0.urgent; /* 'happening today' is asked afresh every time, never carried from an earlier day (Codex verification, 21 Oct) */ ['cycleLength', 'periodLength'].forEach(function (k) { if (A0[k] !== null && A0[k] !== undefined) A0[k] = String(A0[k]); }); return A0; }
   function openOnboarding(i, a) {
     if (!onb || a !== undefined) onb = { i: 0, a: a || {}, openedAt: Date.now() };
     var steps = onbVisible(onb.a), A = onb.a;

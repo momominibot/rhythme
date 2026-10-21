@@ -29,3 +29,10 @@ Jamie, later on 21 Oct: "I just want a birthing wishing with a good life advice 
 2. Whether the gown can also be bought one-off (the proposal: S$3.90 after a month) or stays Plus-only.
 3. Whether to render the gown's three walk strips now (one more guarded run) or wait for the first paying drop.
 4. Notice version 5 is in the branch: after release, everyone who agreed to version 4 sees the notice once more. Say if you would rather hold the birthday year back until a later notice.
+
+## Codex verification fixes (21 Oct, evening)
+
+- **Help improve logging on a renewed notice**: a choice the account already holds is not sent again. The account's consent function sets `accepted_at` to now on every grant, and the staff metrics read entries from that time, so a re-grant would have dropped entries the consent already covered. The improvement words and their hash are unchanged under version 5. A tick kept only on this phone (no account yet) still goes through `setImprove`, so the first sign-in can record it.
+- **"Anything happening right now?"**: both intro buttons start from her answers as they are now, except this one, which is about today and is always asked afresh.
+- **The card's timing**: it opens by itself only after the room has stayed free for half a second, so Window's Bedtime (close the sheet, then start bedtime) is never taken for a free room. If another sheet replaces it within 1.5 seconds and she has not touched it, it does not count as shown and opens again once the room is free. Closing it herself, or touching it, counts.
+- **A stored year outside the list** (for example 1899, or one that would make her under 18) is shown as it is, marked as not used, so she can see it and change or remove it.
