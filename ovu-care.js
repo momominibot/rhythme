@@ -15,14 +15,14 @@
   function reducedMo() { return !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches); } /* read each time: the setting can change */
   function asleepNow() { return !!((W && W.napping && W.napping()) || S.state().sleeping); }
   function here() { var L = R.layout(); return L ? L.id : null; }
-  function cancel() { if (!cur) return; root.clearTimeout(cur.t); cur = null; }
+  function cancel() { if (!cur) return; var c = cur; root.clearTimeout(c.t); cur = null; if (c.box.isConnected && R.sheetOpen() && c.cancel) { try { c.cancel(); } catch (e) { } } } /* a step dropped from outside redraws its sheet, so no bar is left behind */
   /* the step on screen, or null: one whose sheet closed, changed or was left behind is dropped at once */
   function live() { if (cur && !(cur.box.isConnected && R.sheetOpen() && here() === cur.scene)) cancel(); return cur; }
   function step(box, o, done) {
     if (live() || !box || !o || !o.scene) return false;
     var ms = C.slowMs != null ? C.slowMs : o.ms, line = R.moment && o.moment ? R.moment(o.moment, { quiet: true }) : ''; /* her pose and a small sound */
     if (!ms) { done(); return true; }
-    var still = reducedMo(), tok = cur = { box: box, scene: o.scene };
+    var still = reducedMo(), tok = cur = { box: box, scene: o.scene, cancel: o.cancel };
     box.className = 'slowbox';
     box.innerHTML = '<div class="slowstep">' + (line ? '<p class="mindline"><span class="ms">spa</span><span>' + esc(line) + '</span></p>' : '') +
       '<div class="slowbar' + (still ? ' still' : '') + '" aria-hidden="true"><i></i></div><p class="slowverb" role="status">' + esc(o.verb) + '</p>' +
@@ -36,7 +36,7 @@
       if (asleepNow()) { R.hideSheet(); return; } /* sleep began meanwhile: nothing is saved */
       done();
     }, ms);
-    box.querySelector('[data-slow=stop]').addEventListener('click', function (e) { e.stopPropagation(); if (cur !== tok) return; cancel(); if (R.endMoment) R.endMoment(); if (o.cancel) o.cancel(); });
+    box.querySelector('[data-slow=stop]').addEventListener('click', function (e) { e.stopPropagation(); if (cur !== tok) return; cur = null; root.clearTimeout(tok.t); if (R.endMoment) R.endMoment(); if (o.cancel) o.cancel(); });
     return true;
   }
   /* anything else taking over drops a pending step at once: a new place, another activity, the page going away */

@@ -40,10 +40,10 @@
     /* the barn and the hidden spring (21 Oct): lines describe what is on screen; no pose, she stands with a basket or pail */
     eggs: { pose: null, lines: ['Watch the egg settle in the basket.', 'Notice the straw around each egg.'] },
     milk: { pose: null, lines: ['Watch the milk collect in the pail.'] },
-    brush: { pose: null, lines: ['Watch the brush move along Clover\u2019s back.', 'Notice how still Clover stands.'] },
+    brush: { pose: null, lines: ['Notice how still Clover stands.', 'Notice the straw at her feet.'] },
     springlower: { pose: null, lines: ['Watch the basket sink into the water.'] },
     springsteam: { pose: null, lines: ['Watch the steam curl over the basket.', 'Notice the stars above the water.'] },
-    springlift: { pose: null, lines: ['Watch the drops fall from the basket.'] },
+    springlift: { pose: null, lines: ['Watch the basket rise out of the water.'] },
     springsit: { pose: null, lines: ['Watch one ripple reach the stone.', 'Listen to the water, and the quiet around it.'] },
     plantcare: { pose: 'plants', lines: ['One minute with one plant is enough.', 'Notice how it looks now, cared for.'] },
     harvest: { pose: 'harvest', lines: ['Notice what grew in its own time.', 'Feel the weight of what you picked. Enjoy it.'] },

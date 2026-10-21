@@ -8,7 +8,7 @@
   var doc = root.document;
 
   /* where each known place sits on the world map (x 0-100, y 0-80); a new place is set beside a neighbour */
-  var POS = { home: [10, 34], garden: [34, 34], farm: [34, 58], street: [66, 34], plaza: [88, 58], 'shop-pet': [50, 10], 'shop-furniture': [66, 10], 'shop-homes': [82, 10], greenhouse: [20, 12], barn: [58, 64], barninside: [46, 74], heninside: [72, 74], cave: [86, 72] }; /* the barn below the street, the hidden spring beside it once found */ /* the greenhouse up beside the garden, away from the row of shops */
+  var POS = { home: [10, 34], garden: [34, 34], farm: [34, 58], street: [66, 34], plaza: [88, 58], 'shop-pet': [50, 10], 'shop-furniture': [66, 10], 'shop-homes': [82, 10], greenhouse: [20, 12], barn: [56, 60], barninside: [44, 71], heninside: [66, 71], cave: [86, 70] }; /* the barn below the street, the hidden spring beside it once found */ /* the greenhouse up beside the garden, away from the row of shops */
   var ICON = { barn: 'cottage', barninside: 'cottage', heninside: 'egg', cave: 'auto_awesome', home: 'home', garden: 'yard', farm: 'agriculture', street: 'storefront', plaza: 'groups', 'shop-pet': 'pets', 'shop-furniture': 'chair', 'shop-homes': 'cottage' };
   var H = 80; /* the world map's height in its own units */
   /* a little clay drawing for each known place on the painted map (Jamie, 20 Oct: "a damn cute map"); a new place keeps its icon */

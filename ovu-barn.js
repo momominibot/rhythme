@@ -43,8 +43,9 @@
     return attempt(function () { var sv = save(S, f, ST, 'milk'); if (!sv.ok) return sv; return { ok: true, n: 1, charged: sv.charged }; });
   }
   /* pretend onsen eggs: up to four eggs in one save, eggs out and onsen eggs in; no energy */
-  function cookEggs(S) {
-    var f = farm(S), n = Math.min(BATCH, f.pantry.egg, cap() - f.pantry.onsenegg);
+  function cookable(f) { return Math.min(BATCH, f.pantry.egg, cap() - f.pantry.onsenegg); }
+  function cookEggs(S, want) {
+    var f = farm(S), n = cookable(f); if (want != null) { if (want < 1 || want > n) return { ok: false, why: 'The pantry changed in the meantime. Have another look.' }; n = want; }
     if (f.pantry.egg < 1) return { ok: false, why: 'Bring an egg from the hen house first.' };
     if (n < 1) return { ok: false, why: 'The pantry has all the onsen eggs it can hold.' };
     f.pantry.egg -= n; f.pantry.onsenegg += n;
@@ -97,7 +98,7 @@
     ],
     home: { x: 85, y: 76, flip: true },
     zones: [[[22, 76], [50, 67], [57, 63], [69, 67], [86, 73], [93, 77], [60, 85], [27, 88]]],
-    solids: [{ id: 'stall', x0: 15, x1: 51, y0: 45, y1: 71 }, { id: 'stool', x0: 59, x1: 67, y0: 55, y1: 63 }, { id: 'door', x0: 70, x1: 80, y0: 45, y1: 70 }],
+    solids: [{ id: 'stall', x0: 15, x1: 51, y0: 45, y1: 71 }, { id: 'stool', x0: 59, x1: 67, y0: 55, y1: 63 }, { id: 'door', x0: 70, x1: 80, y0: 45, y1: 70 }, { id: 'clover', x0: 24, x1: 42, y0: 66, y1: 71 }],
     doors: [{ id: 'barninexit', to: 'barn', x: 85, y: 76, r: 4, flip: true }],
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 }, props: {}
   };
@@ -109,11 +110,11 @@
     ],
     home: { x: 41, y: 80, flip: false },
     zones: [[[30, 72], [45, 64], [60, 63], [78, 66], [80, 72], [62, 82], [42, 86], [32, 80]]],
-    solids: [{ id: 'shelf', x0: 40, x1: 76, y0: 38, y1: 64.5 }, { id: 'bowl', x0: 55, x1: 61, y0: 72, y1: 76 }, { id: 'tray', x0: 68, x1: 77, y0: 69, y1: 74 }],
+    solids: [{ id: 'shelf', x0: 40, x1: 76, y0: 38, y1: 64.5 }, { id: 'bowl', x0: 55, x1: 61, y0: 72, y1: 76 }, { id: 'tray', x0: 68, x1: 77, y0: 69, y1: 74 }, { id: 'mochi', x0: 43, x1: 51, y0: 74, y1: 77 }, { id: 'kaya', x0: 66, x1: 74, y0: 68.5, y1: 71 }],
     doors: [{ id: 'heninexit', to: 'barn', x: 41, y: 80, r: 4, flip: false }],
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 }, props: {}
   };
-  var B = { LAYOUT: BARN, CAVE: CAVE, BARN_IN: BARN_IN, HEN_IN: HEN_IN, CRACK_DOOR: CRACK_DOOR, HENS: HENS, NAMES: NAMES, BATCH: BATCH, eggsReady: eggsReady, milkReady: milkReady, collectEggs: collectEggs, milk: milk, cookEggs: cookEggs, caveFound: caveFound, findCave: findCave };
+  var B = { LAYOUT: BARN, CAVE: CAVE, BARN_IN: BARN_IN, HEN_IN: HEN_IN, CRACK_DOOR: CRACK_DOOR, HENS: HENS, NAMES: NAMES, BATCH: BATCH, eggsReady: eggsReady, milkReady: milkReady, collectEggs: collectEggs, milk: milk, cookEggs: cookEggs, cookable: cookable, caveFound: caveFound, findCave: findCave };
   root.OvuBarn = B;
 
   /* ---------- the scenes ---------- */
@@ -139,7 +140,7 @@
     { id: 'kaya', scene: 'heninside', img: 'animal-hen-kaya.webp', x: 70, y: 70, w: 12, flip: true, label: 'Kaya the hen' }
   ];
   /* an egg sits in each nest box that has one */
-  var NESTS = { mochi: { x: 44.5, y: 47 }, kaya: { x: 55, y: 48 } };
+  var NESTS = { mochi: { x: 52, y: 41 }, kaya: { x: 66, y: 45 } };
   function eggSVG() { return '<svg viewBox="0 0 20 24" aria-hidden="true"><ellipse cx="10" cy="13" rx="7.5" ry="9.5" fill="#fff8ee" stroke="#e6d3bd" stroke-width="1.2"/><ellipse cx="7.5" cy="9" rx="2" ry="3" fill="#fff"/></svg>'; }
   function renderBarn() {
     var L = R.layout(); if (!L || (L.id !== 'barninside' && L.id !== 'heninside')) return;
@@ -147,7 +148,7 @@
     Array.prototype.slice.call(wrap.querySelectorAll('.barnthing')).forEach(function (el) { el.remove(); });
     ANIMALS.forEach(function (a) {
       if (a.scene !== L.id) return;
-      var el = doc.createElement('button'); el.type = 'button'; el.className = 'barnthing animal' + (a.flip ? ' flip' : '') + ' a-' + a.id; el.dataset.id = a.id;
+      var el = doc.createElement('button'); el.type = 'button'; el.className = 'nb barnthing animal' + (a.flip ? ' flip' : '') + ' a-' + a.id; el.dataset.id = a.id;
       el.style.left = a.x + '%'; el.style.top = a.y + '%'; el.style.width = a.w + '%'; el.setAttribute('aria-label', a.label);
       el.innerHTML = '<img src="' + ART + a.img + '" alt="">';
       el.addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); go(a.id === 'clover' ? 'clover' : 'nests'); });
@@ -183,17 +184,20 @@
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (ST && !ST.can('egg')) { R.toast('Too tired for that. A rest first.', 'bedtime'); return; }
       var seen = JSON.stringify(eggsReady(S, day));
-      step(acts, { ms: 2500, moment: 'eggs', verb: 'Lifting each egg into the basket…', cancel: openNests, start: function (ms) { Array.prototype.forEach.call(doc.querySelectorAll('#ownedProps .nestegg'), function (el, i) { root.setTimeout(function () { el.classList.add('lifted'); }, (i + 0.5) * ms / 3); }); } }, function () {
-        if (today() !== day || JSON.stringify(eggsReady(S, day)) !== seen) { openNests(); return; } /* the day turned or another tab collected */
-        var r = collectEggs(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); openNests(); return; }
+      var lifts = [];
+      step(acts, { ms: 2500, moment: 'eggs', verb: 'Lifting each egg into the basket…', cancel: function () { lifts.forEach(root.clearTimeout); renderBarn(); openNests(); }, start: function (ms) { Array.prototype.forEach.call(doc.querySelectorAll('#ownedProps .nestegg'), function (el, i) { lifts.push(root.setTimeout(function () { el.classList.add('lifted'); }, (i + 0.5) * ms / 3)); }); } }, function () {
+        if (today() !== day || JSON.stringify(eggsReady(S, day)) !== seen) { renderBarn(); openNests(); return; } /* the day turned or another tab collected */
+        var r = collectEggs(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); renderBarn(); openNests(); return; }
         R.chime('save'); renderBarn(); R.toast(r.n + ' egg' + (r.n > 1 ? 's' : '') + ' in the pantry.', 'egg'); openNests();
       });
     });
   }
+  function pailSVG() { return '<svg viewBox="0 0 80 70" aria-hidden="true"><path d="M18 20 Q40 6 62 20" fill="none" stroke="#9d86c4" stroke-width="4"/><defs><clipPath id="pailBody"><path d="M16 22 L64 22 L58 64 L22 64 Z"/></clipPath></defs><path d="M16 22 L64 22 L58 64 L22 64 Z" fill="#efe8fb" stroke="#9d86c4" stroke-width="3"/><g clip-path="url(#pailBody)"><rect class="pailmilk" x="10" y="30" width="60" height="40" fill="#fffaf2" style="transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.04)"/></g></svg>'; }
+  function basketSVG() { return '<svg viewBox="0 0 90 90" aria-hidden="true"><ellipse cx="45" cy="72" rx="38" ry="12" fill="#7ad9d3" opacity=".6"/><g class="sbasket" style="transform-box:fill-box;transform-origin:50% 0%"><path d="M45 2 V22" stroke="#b9956a" stroke-width="3"/><path d="M26 26 L64 26 L58 48 L32 48 Z" fill="#d6b48a" stroke="#a37c52" stroke-width="3"/><path d="M28 34 H62 M30 41 H60" stroke="#a37c52" stroke-width="2"/></g><g class="ssteam" opacity="0"><path d="M30 60 q 4 -8 0 -16 q -4 -8 0 -16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/><path d="M58 62 q 4 -8 0 -16 q -4 -8 0 -16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".6"/></g></svg>'; }
   function openClover() {
     var day = today(), has = milkReady(S, day);
     R.openSheet('barnclover', 'Clover', 'The cow in the stall', 'pets',
-      '<p>' + (has ? 'Clover has milk to give today.' : 'Clover is resting today.') + '</p><div class="row" id="cloverActs">' +
+      '<div class="bedcard"><div class="bedpic pailpic">' + pailSVG() + '</div><div class="bedtext"><b>' + (has ? 'Clover has milk today' : 'Clover is resting today') + '</b><span>' + (has ? 'One pail, when you are ready.' : 'She gives one pail on a new day.') + '</span></div></div><div class="row" id="cloverActs">' +
       (has ? '<button type="button" class="btn primary" data-act="milk"><span class="ms">water_full</span>Milk Clover</button>' : '') +
       '<button type="button" class="btn ' + (has ? 'soft' : 'primary') + '" data-act="brush"><span class="ms">brush</span>Brush Clover</button></div>' +
       pantryLine() + '<p class="help">Brushing is just for the two of you. Clover is fine while you are away.</p>');
@@ -202,7 +206,7 @@
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (btn.dataset.act === 'brush') { step(acts, { ms: 3000, moment: 'brush', verb: 'Brushing slowly…', cancel: openClover }, function () { R.chime('tap'); openClover(); }); return; }
       if (ST && !ST.can('milk')) { R.toast('Too tired for that. A rest first.', 'bedtime'); return; }
-      step(acts, { ms: 3000, moment: 'milk', verb: 'Milking slowly…', cancel: openClover }, function () {
+      step(acts, { ms: 3000, moment: 'milk', verb: 'Milking slowly…', cancel: openClover, start: function (ms) { var m = doc.querySelector('#sheet .pailmilk'); if (m) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { m.style.transition = 'transform ' + ms + 'ms ease-in-out'; m.style.transform = 'scaleY(1)'; }); }); } }, function () {
         if (today() !== day || !milkReady(S, day)) { openClover(); return; }
         var r = milk(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); openClover(); return; }
         R.chime('save'); R.toast('A pail of milk in the pantry.', 'water_full'); openClover();
@@ -215,26 +219,28 @@
       '<p class="mindline"><span class="ms">auto_awesome</span><span>There is a narrow path between the stones.</span></p><div class="row"><button type="button" class="btn primary" id="crackGo"><span class="ms">auto_awesome</span>Step through</button><button type="button" class="btn soft" id="crackNo">Not now</button></div>');
     doc.getElementById('crackNo').addEventListener('click', function () { R.hideSheet(); });
     doc.getElementById('crackGo').addEventListener('click', function () {
+      if (!at('barn') || (CARE && CARE.asleepNow && CARE.asleepNow())) { R.hideSheet(); return; }
       var r = findCave(S, today()); if (!r.ok) { R.toast(r.why, 'info'); return; }
       syncCrack(); R.hideSheet(); W.travel('cave');
     });
   }
   /* pretend onsen eggs: lower, watch the steam, lift; Stop anywhere changes nothing, the eggs change only at the end */
   function openBasket() {
-    var p = FM().farmState(S).pantry, n = Math.min(BATCH, p.egg);
+    var f0 = FM().farmState(S), p = f0.pantry, n = cookable(f0);
     R.openSheet('springbasket', 'The spring basket', 'Pretend onsen eggs', 'egg',
-      '<p>' + (n ? 'Lower ' + n + ' egg' + (n > 1 ? 's' : '') + ' into the warm water in the basket.' : 'Bring an egg from the hen house, and the basket will lower it into the spring.') + '</p>' +
+      '<div class="bedcard"><div class="bedpic springpic">' + basketSVG() + '</div><div class="bedtext"><b>' + (n ? n + ' egg' + (n > 1 ? 's' : '') + ' to lower' : p.egg ? 'The pantry is full of onsen eggs' : 'No eggs yet') + '</b><span>' + (n ? 'The warm water does the rest.' : p.egg ? 'Enjoy some first.' : 'Bring an egg from the hen house.') + '</span></div></div>' +
       '<div class="row" id="basketActs">' + (n ? '<button type="button" class="btn primary" data-act="cook"><span class="ms">egg</span>Make onsen eggs</button>' : '') + '</div>' +
       pantryLine() + '<p class="help">This is pretend cooking in a pretend spring. Nothing here changes your energy.</p>');
     var acts = doc.getElementById('basketActs'); if (!acts) return;
     acts.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
-      var seen = JSON.stringify(FM().farmState(S).pantry);
-      step(acts, { ms: 2500, moment: 'springlower', verb: 'Lowering the basket…', cancel: openBasket }, function () {
-        step(acts, { ms: 6000, moment: 'springsteam', verb: 'The eggs rest in the warm water…', cancel: openBasket }, function () {
-          step(acts, { ms: 2500, moment: 'springlift', verb: 'Lifting the basket…', cancel: openBasket }, function () {
+      var seen = JSON.stringify(FM().farmState(S).pantry), want = n;
+      var anim = function (sel, prop, val, ms) { return function () { var el = doc.querySelector('#sheet ' + sel); if (el) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { el.style.transition = prop + ' ' + ms + 'ms ease-in-out'; el.style[prop] = val; }); }); }; };
+      step(acts, { ms: 2500, moment: 'springlower', verb: 'Lowering the basket…', cancel: openBasket, start: function (ms) { anim('.sbasket', 'transform', 'translateY(26px)', ms)(); } }, function () {
+        step(acts, { ms: 6000, moment: 'springsteam', verb: 'The eggs rest in the warm water…', cancel: openBasket, start: function (ms) { anim('.ssteam', 'opacity', '1', ms * 0.4)(); } }, function () {
+          step(acts, { ms: 2500, moment: 'springlift', verb: 'Lifting the basket…', cancel: openBasket, start: function (ms) { anim('.ssteam', 'opacity', '0', ms)(); anim('.sbasket', 'transform', 'translateY(0)', ms)(); } }, function () {
             if (JSON.stringify(FM().farmState(S).pantry) !== seen) { openBasket(); return; } /* another tab changed the pantry */
-            var r = cookEggs(S); if (!r.ok) { R.toast(r.why, 'info'); openBasket(); return; }
+            var r = cookEggs(S, want); if (!r.ok) { R.toast(r.why, 'info'); openBasket(); return; }
             R.chime('save'); afterCook(r.n);
           });
         });
@@ -304,10 +310,20 @@
       if (L && L.id === 'barn') maybeHint();
       renderBarn();
     });
-    R.on('props', function () { renderBarn(); });
+    R.on('props', function () { renderBarn(); if (sitting && !sitting.el.isConnected) R.els.props.appendChild(sitting.el); });
+    R.on('beforeWalk', standUp); R.on('walk', standUp);
     R.on('activity', standUp);
-    if (GT) GT.onNewDay(function () { renderBarn(); });
-    S.subscribe(function (reason) { if (reason === 'external' || String(reason).indexOf('sync') === 0) { syncCrack(); renderBarn(); } });
+    var shown = null; /* which barn sheet is open, so a new day or another tab can redraw it as it is now */
+    var SHEETS = { barnnests: openNests, barnclover: openClover, springbasket: openBasket };
+    function redrawOpen() { var id = R.sheetId ? R.sheetId() : null; var fn = id && SHEETS[id]; if (!fn || !R.sheetOpen()) return; if (CARE && CARE.cancel) CARE.cancel(); fn(); }
+    if (GT) GT.onNewDay(function () { renderBarn(); redrawOpen(); });
+    var key = JSON.stringify(S.state().farm || null);
+    S.subscribe(function (reason) {
+      if (reason === 'state') { key = JSON.stringify(S.state().farm || null); return; } /* our own saves move the baseline */
+      if (!(reason === 'external' || String(reason).indexOf('sync') === 0)) return;
+      var k = JSON.stringify(S.state().farm || null); if (k === key) return; key = k;
+      syncCrack(); renderBarn(); redrawOpen();
+    });
   });
   B.openNests = openNests; B.openClover = openClover; B.openBasket = openBasket; B.openCrack = openCrack; B.openStone = openStone; B.sitDown = sitDown; B.renderBarn = renderBarn; B.syncCrack = syncCrack;
 })(typeof window !== 'undefined' ? window : this);
