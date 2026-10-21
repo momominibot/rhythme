@@ -122,7 +122,7 @@
   function state(r, c) {
     if (r.soon) return 'Arrives with the greenhouse herbs';
     if (c.ok) return 'Ready to cook';
-    var m = c.missing || [], hint = function (x) { return x.crop ? 'grow' : x.key === 'egg' ? 'hen house or Hay & Harvest' : 'Hay & Harvest'; };
+    var m = c.missing || [], hint = function (x) { return x.herb ? 'greenhouse' : x.crop ? 'grow' : x.key === 'egg' ? 'hen house or Hay & Harvest' : 'Hay & Harvest'; }; /* a herb is picked in the greenhouse; the grocer sells only its start (Codex re-check) */
     return 'Needs ' + m.map(function (x) { return (x.need - x.have) + ' ' + label(x.key, x.need - x.have) + ' (' + hint(x) + ')'; }).join(', ');
   }
   function openKitchen() {

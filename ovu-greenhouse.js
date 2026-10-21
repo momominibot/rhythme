@@ -168,6 +168,7 @@
   function freeStart(S, herb, day) {
     var h = HERBS[herb]; if (!h) return { ok: false, why: 'Not in the shop.' };
     var g = herbState(S); if (g.free) return { ok: false, why: 'Your free start has been given already.' };
+    if ((g.seeds[herb] || 0) >= 99) return { ok: false, why: 'Your bag already holds 99 of these. Plant one first.' }; /* a full bag never spends the one free start (Codex re-check) */
     g.seeds[herb] = Math.min(99, (g.seeds[herb] || 0) + 1); g.free = { herb: herb, day: day };
     var sv = herbSave(S, { greenhouse: g }); if (!sv.ok) return sv;
     return { ok: true, herb: herb, have: g.seeds[herb] };
