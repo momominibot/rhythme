@@ -422,6 +422,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 /* ---------- hearts, luna orb, hologram, HUD ---------- */
 .chip.hearts{border:none;cursor:pointer;color:#c0507c;background:rgba(255,255,255,.85);padding:6px 10px;height:38px;gap:4px;font-size:12px}
 .chip.hearts .ms{font-size:16px;color:#e26a93}
+/* the music chip: a native button, pressed when the tune plays (design 2026-10-21-game-music.md) */
+.chip.music{border:none;cursor:pointer;color:var(--rm-mauve);background:rgba(255,255,255,.85);padding:6px 9px;height:38px;min-width:38px;justify-content:center}
+.chip.music .ms{font-size:18px;color:#a98bc9}
+.chip.music[aria-pressed="true"]{background:#efe6ff;color:#6e4fa3}.chip.music[aria-pressed="true"] .ms{color:#7b5bb5}
+.chip.music:focus-visible{outline:3px solid #b9a3e3;outline-offset:2px}
+.btn.music .mlabel{margin-left:2px}
 .chip.hearts.pop{animation:heartpop .5s ease}
 @keyframes heartpop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
 .luna{position:absolute;right:12px;bottom:84px;z-index:36;width:68px;height:68px;border:none;background:none;padding:0;cursor:pointer;filter:drop-shadow(0 10px 16px rgba(90,66,116,.35));animation:lunafloat 4s ease-in-out infinite}

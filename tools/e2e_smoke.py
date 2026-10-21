@@ -2287,6 +2287,72 @@ async def main():
             ft = await page.evaluate("()=>({t: document.body.innerText, est: (document.querySelector('#myEstimate')||{}).innerText||''})")
             check("the fertility page shows no invented result and her own estimate is labelled", "85%" not in ft["t"] and "surge detected" not in ft["t"].lower() and len(ft["est"]) > 10 and "Reading your calendar" not in ft["est"], ft["est"][:140])
 
+            # ---------- game music (21 Oct): opt in, one stop, silent where it must be ----------
+            ctxm = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctxm.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxm.add_init_script(SESSION_SEED)
+            pm = await ctxm.new_page(); await pm.route("**/*", gate)
+            merr = []; pm.on("pageerror", lambda e: merr.append("pageerror: " + str(e)))
+            await pm.goto(BASE + "room.html", wait_until="domcontentloaded")
+            try: await pm.wait_for_function("()=>window.OvuMusic && window.OvuRoom && document.querySelector('#scene').dataset.layout && !OvuRoom.busy()", timeout=15000)
+            except Exception: pass
+            async def travel_m(t):
+                await pm.evaluate("(t)=>OvuWalk.travel(t)", t)
+                try: await pm.wait_for_function("(t)=>document.querySelector('#scene').dataset.layout===t && !document.querySelector('#scene').classList.contains('fading')", arg=t, timeout=12000)
+                except Exception: pass
+                await pm.wait_for_timeout(700)
+            await pm.mouse.click(195, 420); await pm.wait_for_timeout(300); await pm.keyboard.press("Escape"); await pm.wait_for_timeout(200)
+            await travel_m('garden')
+            m0 = await pm.evaluate("()=>Object.assign(OvuMusic.state(), {chip: document.querySelector('#musicChip').getAttribute('aria-pressed'), pressedName: document.querySelector('#musicChip').getAttribute('aria-label')})")
+            check("music: with the preference off, taps and a scene change start nothing; the chip is a Music button, not pressed", m0["on"] is False and m0["mode"] == "off" and m0["running"] is False and m0["chip"] == "false" and m0["pressedName"] == "Music", m0)
+            await travel_m('home')
+            await pm.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('window'))")
+            try: await pm.wait_for_function("()=>OvuRoom.sheetOpen() && document.querySelector('#winMusic')", timeout=8000)
+            except Exception: pass
+            await pm.click('#winMusic'); await pm.wait_for_timeout(1200)
+            m1 = await pm.evaluate("()=>Object.assign(OvuMusic.state(), {btn: document.querySelector('#winMusic') && document.querySelector('#winMusic').getAttribute('aria-pressed'), label: document.querySelector('#winMusic .mlabel') && document.querySelector('#winMusic .mlabel').textContent, focus: document.activeElement && document.activeElement.id, chip: document.querySelector('#musicChip').getAttribute('aria-pressed')})")
+            check("music: Music on from the window sheet starts the home tune with the context running; the button stays focused and reads pressed, the chip too", m1["on"] is True and m1["mode"] == "play" and m1["theme"] == "home" and m1["running"] is True and m1["ctx"] == "running" and m1["btn"] == "true" and m1["label"] == "Music on" and m1["focus"] == "winMusic" and m1["chip"] == "true" and m1["layers"] == 1, m1)
+            await pm.keyboard.press("Escape"); await pm.wait_for_timeout(300)
+            await travel_m('garden'); await pm.wait_for_timeout(400)
+            m2 = await pm.evaluate("()=>OvuMusic.state()")
+            await travel_m('cave'); await pm.wait_for_timeout(1300)
+            m3 = await pm.evaluate("()=>OvuMusic.state()")
+            check("music: the garden brings its own theme on a crossfade; the cave has none and the engine goes quiet for the scene", m2["theme"] == "garden" and m2["mode"] == "play" and m3["mode"] == "silent" and m3["why"] == "scene" and m3["running"] is False and m3["gate"] <= 0.01, {"garden": m2, "cave": m3})
+            await travel_m('home'); await pm.wait_for_timeout(1500)
+            SILENT = re.search(r"var SILENT = '([^']+)'", open(os.path.join(ROOT, "ovu-morning.js")).read()).group(1)
+            dk = await pm.evaluate("""async(sil)=>{var out={};
+              var a=new Audio('assets/audio/guide-interim/teeth-0-0.mp3'); a.volume=1; try{ await a.play(); }catch(e){ out.playErr=String(e); }
+              await new Promise(r=>setTimeout(r,500)); out.during=OvuMusic.state();
+              a.pause(); await new Promise(r=>setTimeout(r,1700)); out.after=OvuMusic.state();
+              var s=new Audio(sil); try{ await s.play(); }catch(e){ out.silErr=String(e); } await new Promise(r=>setTimeout(r,400)); out.silent=OvuMusic.state(); s.pause();
+              return out; }""", SILENT)
+            check("music: a voice clip ducks the tune to silence while it plays and the tune returns after it; the silent data: clip ducks nothing", dk["during"]["mode"] == "duck" and dk["during"]["media"] == 1 and dk["during"]["running"] is True and dk["after"]["mode"] == "play" and dk["after"]["media"] == 0 and dk["silent"]["mode"] == "play" and dk["silent"]["media"] == 0, dk)
+            md = await pm.evaluate("""async()=>{ OvuRoom.enterMeditation(); await new Promise(r=>setTimeout(r,900)); var during=OvuMusic.state(); OvuRoom.exitMeditation(); await new Promise(r=>setTimeout(r,1400)); return {during: during, after: OvuMusic.state()}; }""")
+            check("music: paced breathing is an activity that needs the ear: silent for its whole length, back afterwards", md["during"]["mode"] == "silent" and md["during"]["why"] == "activity" and md["after"]["mode"] == "play", md)
+            sl = await pm.evaluate("""async()=>{ OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}}); await new Promise(r=>setTimeout(r,700)); var asleep=OvuMusic.state(); OvuStore.setState({sleeping:null}); await new Promise(r=>setTimeout(r,1400)); return {asleep: asleep, awake: OvuMusic.state()}; }""")
+            check("music: sleep silences the tune at once and waking brings it back", sl["asleep"]["mode"] == "silent" and sl["asleep"]["why"] == "sleep" and sl["asleep"]["running"] is False and sl["awake"]["mode"] == "play", sl)
+            hd = await pm.evaluate("""async()=>{ Object.defineProperty(document,'hidden',{configurable:true,get:function(){return true}}); document.dispatchEvent(new Event('visibilitychange')); await new Promise(r=>setTimeout(r,500)); var hidden=OvuMusic.state(); Object.defineProperty(document,'hidden',{configurable:true,get:function(){return false}}); document.dispatchEvent(new Event('visibilitychange')); await new Promise(r=>setTimeout(r,900)); return {hidden: hidden, back: OvuMusic.state()}; }""")
+            check("music: a hidden page stops the scheduling and the tune returns when the page is back", hd["hidden"]["mode"] == "silent" and hd["hidden"]["why"] == "hidden" and hd["hidden"]["running"] is False and hd["back"]["mode"] == "play" and hd["back"]["running"] is True, hd)
+            cues = await pm.evaluate("()=>({cast: OvuSound.play('cast'), boop: OvuSound.play('boop'), kit: !!OvuSound.KIT.cast})")
+            check("music: the new harbour cast cue exists in the kit and plays", cues["kit"] and cues["cast"] is True and cues["boop"] is True, cues)
+            await pm.click('#musicChip'); await pm.wait_for_timeout(900)
+            m4 = await pm.evaluate("()=>Object.assign(OvuMusic.state(), {chip: document.querySelector('#musicChip').getAttribute('aria-pressed')})")
+            await pm.reload(wait_until="domcontentloaded")
+            try: await pm.wait_for_function("()=>window.OvuMusic && window.OvuRoom && document.querySelector('#scene').dataset.layout", timeout=15000)
+            except Exception: pass
+            await pm.wait_for_timeout(800)
+            m5 = await pm.evaluate("()=>Object.assign(OvuMusic.state(), {chip: document.querySelector('#musicChip').getAttribute('aria-pressed')})")
+            check("music: the top-bar chip stops the tune within a second, and the choice survives a reload", m4["on"] is False and m4["mode"] == "off" and m4["running"] is False and m4["chip"] == "false" and m5["on"] is False and m5["mode"] == "off" and m5["chip"] == "false", {"stopped": m4, "reloaded": m5})
+            await pm.evaluate("()=>OvuStore.setState({music: true})"); await pm.reload(wait_until="domcontentloaded")
+            try: await pm.wait_for_function("()=>window.OvuMusic && window.OvuRoom && document.querySelector('#scene').dataset.layout", timeout=15000)
+            except Exception: pass
+            await pm.wait_for_timeout(900)
+            m6 = await pm.evaluate("()=>OvuMusic.state()")
+            await pm.mouse.click(195, 420); await pm.wait_for_timeout(1200)
+            m7 = await pm.evaluate("()=>OvuMusic.state()")
+            check("music: with the preference already on, a fresh page waits for her first tap before anything sounds, then plays", m6["on"] is True and m6["mode"] in ("waiting", "silent") and m6["running"] is False and m7["mode"] == "play" and m7["running"] is True and m7["ctx"] == "running", {"before": m6, "after": m7})
+            check("music: no page errors in the music run", not merr, merr[:3])
+            await ctxm.close()
+
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()
     finally:
