@@ -1,10 +1,13 @@
-/* Rhythme: her birthday week (Jamie, 21 Oct: "special birthday drop.. I think it's good to have some
- * heartfelt advise and motivation in life ... have the cute report sent as postcard").
- * Her birthday is a month and a day she may give in You. Optional, never a year, and no health screen reads it. On the
- * day the room greets her, a cake with balloons stands on her table for a week, and a postcard arrives once: three warm
- * lines chosen for this year, her own year in Rhythme in numbers that exist on this phone, and the party outfit to wear
- * (the Starlight gown when Plus is on). No hearts change hands: hearts are for logging. Nothing here reads anything into
- * her birth date; the same kind words go to everyone, picked afresh each year. Pure parts tested in tools/test-core.js. */
+/* Rhythme: her birthday (Jamie, 21 Oct: "I just want a birthing wishing with a good life advice direction based on the
+ * birthdate entered during onboarding").
+ * Her birthday is a month and a day she may give in the intro (Getting to know you) or in You. It is optional and never a
+ * year: Rhythme's notice and terms promise it never asks a date of birth. It stays on this phone (ovu-sync.js keeps it out
+ * of the cloud copy) and no health screen reads it. On the day the room greets her, a cake with balloons stands on her
+ * table for a week, and a postcard opens once: one warm wish, and a direction for the year ahead read from her birthday
+ * the Pythagorean way (the digits of her birth month, her birth day and the year the birthday falls in, added up to a
+ * number from 1 to 9, so the direction changes every birthday). The card says how the number is made and that everyone
+ * with her birthday shares it this year. No hearts change hands: hearts are for logging. Pure parts tested in
+ * tools/test-core.js. */
 (function (root) {
   'use strict';
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -33,7 +36,7 @@
   function yearOf(today, mmdd) { var d = dayOf(today, mmdd); if (d < 0) return null; var y = +today.slice(0, 4); return dayNum(today) - dayNum(dateIn(y, clean(mmdd))) >= 0 ? y : y - 1; }
   function text(mmdd) { mmdd = clean(mmdd); return mmdd ? (+mmdd.slice(3)) + ' ' + MONTHS[+mmdd.slice(0, 2) - 1] : ''; }
 
-  /* the same warm words for everyone; three are picked by the year, so each birthday reads differently */
+  /* the wish: the same warm words for everyone, one picked by the year and the date, so each birthday reads differently */
   var LINES = [
     'Another year of you. Not a finished version, a continuing one, and that is the good news.',
     'You do not have to earn rest. Tonight, let the day be enough.',
@@ -53,28 +56,46 @@
   function rng(seed) { var a = (seed >>> 0) || 1; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   function pick(seed, n) {
     var r = rng(Number(seed) || 1), idx = LINES.map(function (_, i) { return i; }), out = [];
-    while (out.length < Math.min(n || 3, idx.length)) out.push(idx.splice(Math.floor(r() * idx.length), 1)[0]);
+    while (out.length < Math.min(n || 1, idx.length)) out.push(idx.splice(Math.floor(r() * idx.length), 1)[0]);
     return out.map(function (i) { return LINES[i]; });
   }
-  /* her year in numbers, from what this phone holds: dates with any note (deduped, within the year), pauses, hearts, harvest, friends */
-  function stats(c) {
-    c = c || {}; var seen = {}, days = 0;
-    (c.dates || []).forEach(function (d) { if (typeof d !== 'string' || seen[d]) return; if (c.from && d < c.from) return; if (c.today && d > c.today) return; seen[d] = 1; days++; });
-    var rows = [];
-    if (days) rows.push({ n: days, label: days === 1 ? 'day with a note' : 'days with a note' });
-    if (c.practices > 0) rows.push({ n: Math.floor(c.practices), label: c.practices === 1 ? 'pause with Erin' : 'pauses with Erin' });
-    if (c.earned > 0) rows.push({ n: Math.floor(c.earned), label: 'hearts earned in all' });
-    if (c.harvest > 0) rows.push({ n: Math.floor(c.harvest), label: c.harvest === 1 ? 'thing harvested' : 'things harvested' });
-    if (c.friends > 0) rows.push({ n: Math.floor(c.friends), label: c.friends === 1 ? 'plaza friend' : 'plaza friends' });
-    return rows;
+  /* the Pythagorean personal year that begins on this birthday: the digits of the birth month, the birth day and the year the
+     birthday falls in, added and reduced to 1 to 9 (21 October in 2026: 1+0 + 2+1 + 2+0+2+6 = 14, and 1+4 = 5) */
+  function digits(n) { return String(Math.abs(Math.floor(Number(n) || 0))).split('').reduce(function (a, c) { return a + (+c); }, 0); }
+  function personalYear(mmdd, y) {
+    mmdd = clean(mmdd); y = Math.floor(Number(y)); if (!mmdd || !(y > 0)) return 0;
+    var n = digits(+mmdd.slice(0, 2)) + digits(+mmdd.slice(3)) + digits(y);
+    while (n > 9) n = digits(n);
+    return n;
   }
+  /* the direction for each personal year, in the classic themes of the nine years; an invitation and one small first step,
+     never a prediction, never about her health */
+  var YEARS = {
+    1: { title: 'A year for beginnings', text: 'Start the thing you keep circling back to. It does not need to be big, only yours, and you do not need to feel ready first.', step: 'Write down one first step, and take it this week.' },
+    2: { title: 'A year for patience and people', text: 'What matters this year grows slowly and grows better shared. Let people help, and let some things take their time.', step: 'Say yes the next time someone offers to help.' },
+    3: { title: 'A year for your voice', text: 'Make things, say things and share them. Your ideas and your joy are allowed to take up space.', step: 'Share one thing you made, or one thing you think.' },
+    4: { title: 'A year for foundations', text: 'Small routines, kept kindly, become the floor you stand on. Steady is the point this year, not a compromise.', step: 'Choose one small routine and keep it for a month.' },
+    5: { title: 'A year for change', text: 'Leave a door open for the unexpected: a new place, a new idea, a new way of doing an old thing. You adapt better than you think.', step: 'Try one thing you have never done before.' },
+    6: { title: 'A year for care', text: 'Home, the people you love, and you. Give generously this year, and remember that you are on your own list.', step: 'Keep one evening a month only for yourself.' },
+    7: { title: 'A year for looking inward', text: 'Quiet is not lost time. Rest, read and ask the bigger questions; this year the answers come when you slow down.', step: 'Keep one quiet hour a week that is only yours.' },
+    8: { title: 'A year for your strength', text: 'Ask for what your work is worth, and let yourself be seen doing well. Your effort deserves its reward.', step: 'Say one thing you are proud of out loud.' },
+    9: { title: 'A year for letting go', text: 'Finish what is ready to finish, forgive what you can, and set down what is done. You are making room for what comes next.', step: 'Clear out one thing: a drawer, a habit or a worry.' }
+  };
   function card(c) {
-    c = c || {}; var mmdd = clean(c.mmdd), y = Number(c.year) || 0;
-    return { title: 'Happy birthday' + (c.name ? ', ' + String(c.name).trim() : '') + '!', date: text(mmdd), year: y,
-      lines: pick(y * 1000 + (mmdd ? +mmdd.slice(0, 2) * 31 + +mmdd.slice(3) : 0), 3), stats: stats(c), outfit: c.canGown ? 'gown' : 'party' };
+    c = c || {}; var mmdd = clean(c.mmdd), y = Math.floor(Number(c.year)) || 0, n = personalYear(mmdd, y), nm = String(c.name || '').trim();
+    return { title: 'Happy birthday' + (nm ? ', ' + nm : '') + '!', date: text(mmdd), year: y,
+      wish: pick(y * 1000 + (mmdd ? +mmdd.slice(0, 2) * 31 + +mmdd.slice(3) : 0), 1)[0], number: n, direction: n ? YEARS[n] : null, outfit: c.canGown ? 'gown' : 'party' };
   }
+  /* the two selects, shared by the intro step and You: a month and a day, never a year */
+  function fieldHTML(mmdd, p) {
+    var cur = clean(mmdd), mo = cur ? +cur.slice(0, 2) : 0, d = cur ? +cur.slice(3) : 0;
+    return '<div class="byrow">' +
+      '<select class="input" id="' + p + 'Month" aria-label="Birthday month"><option value="0">Month</option>' + MONTHS.map(function (n, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === mo ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select>' +
+      '<select class="input" id="' + p + 'Day" aria-label="Birthday day"><option value="0">Day</option>' + Array.apply(null, Array(31)).map(function (_, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === d ? ' selected' : '') + '>' + (i + 1) + '</option>'; }).join('') + '</select></div>';
+  }
+  function readField(d, p) { var mo = d && d.getElementById(p + 'Month'), dy = d && d.getElementById(p + 'Day'); return mo && dy ? clean(mo.value + '-' + dy.value) : null; }
 
-  var B = { MONTHS: MONTHS, LINES: LINES, clean: clean, dayOf: dayOf, isDay: isDay, yearOf: yearOf, text: text, pick: pick, stats: stats, card: card, dateIn: dateIn };
+  var B = { MONTHS: MONTHS, LINES: LINES, YEARS: YEARS, clean: clean, dayOf: dayOf, isDay: isDay, yearOf: yearOf, text: text, pick: pick, personalYear: personalYear, card: card, dateIn: dateIn, fieldHTML: fieldHTML, readField: readField };
   root.OvuBirthday = B;
 
   /* ---------- the room ---------- */
@@ -90,25 +111,16 @@
   function inWeek() { var b = mmdd(); return !!b && dayOf(S.today(), b) >= 0; }
   function canGown() { return !!(R.outfitLocked && !R.outfitLocked('gown')); }
   function year() { return yearOf(S.today(), mmdd()); }
-  function model() {
-    var today = S.today(), from = S.addDays ? S.addDays(today, -364) : null, dates = [];
-    (S.TYPES || []).forEach(function (t) { try { S.list(t).forEach(function (e) { dates.push(e.date); }); } catch (e) { } });
-    var l = root.OvuRewards ? root.OvuRewards.ledger() : {}, farm = root.OvuFarm && root.OvuFarm.farmState ? root.OvuFarm.farmState(S) : { harvest: {} };
-    var harvest = Object.keys(farm.harvest || {}).reduce(function (a, k) { var n = Math.floor(Number(farm.harvest[k])); return a + (n > 0 ? n : 0); }, 0);
-    var fs = null; try { fs = root.OvuFriends && root.OvuFriends.state ? root.OvuFriends.state() : null; } catch (e) { }
-    var friends = fs && fs.inbox && fs.inbox.ok ? (fs.inbox.friends || []).length : 0;
-    var practices = 0; try { practices = S.list('mindfulness', { from: from, to: today }).length; } catch (e) { }
-    return card({ name: S.profile().name, mmdd: mmdd(), year: year(), dates: dates, from: from, today: today, practices: practices, earned: l.earned, harvest: harvest, friends: friends, canGown: canGown() });
-  }
+  function model() { return card({ name: S.profile().name, mmdd: mmdd(), year: year(), canGown: canGown() }); }
   function openCard() {
-    var m = model(), outfitName = m.outfit === 'gown' ? 'Starlight gown' : 'party outfit';
+    var m = model(), outfitName = m.outfit === 'gown' ? 'Starlight gown' : 'party outfit', dir = m.direction;
     R.openSheet('birthday', m.title, 'A postcard from your room', 'cake',
       '<div class="bcard"><div class="bhead"><img src="' + ART + CAKE + '" alt=""><div><b>' + esc(m.title) + '</b><small>' + esc(m.date) + (m.year ? ' · ' + m.year : '') + '</small></div></div>' +
-      '<div class="blines">' + m.lines.map(function (l) { return '<p class="bline">' + esc(l) + '</p>'; }).join('') + '</div>' +
-      (m.stats.length ? '<span class="lbl">Your year in Rhythme</span><div class="bstats">' + m.stats.map(function (s) { return '<div><b>' + s.n + '</b><span>' + esc(s.label) + '</span></div>'; }).join('') + '</div>' : '<p class="help">Your first birthday here. Next year this card will carry your year in numbers.</p>') +
+      '<p class="bline bwish">' + esc(m.wish) + '</p>' +
+      (dir ? '<div class="bdir"><span class="lbl">Your direction for the year ahead</span><b>' + esc(dir.title) + '</b><p>' + esc(dir.text) + '</p><p class="bstep"><span class="ms" aria-hidden="true">footprint</span><span>A first step, if you like: ' + esc(dir.step.charAt(0).toLowerCase() + dir.step.slice(1)) + '</span></p></div>' : '') +
       '<p class="bfrom">With love from your room, and from Luna.</p></div>' +
       '<div class="row"><button type="button" class="btn primary" data-b="party"><span class="ms">checkroom</span>Wear the ' + esc(outfitName) + '</button><button type="button" class="btn soft" data-b="close"><span class="ms">favorite</span>Thank you</button></div>' +
-      '<p class="help">The same warm words go to everyone on their birthday, picked afresh each year. The numbers are yours, from this phone only. Nothing here reads anything into your birth date, and no hearts are involved.</p>');
+      '<p class="help">' + (dir ? 'Read from your birthday the Pythagorean way: your birth month, your birth day and ' + m.year + ' add up to ' + m.number + '. Everyone with your birthday shares this direction this year, and it changes every birthday. ' : '') + 'A reflection for the year, not a prediction or health advice. No hearts are involved.</p>');
     var bodyEl = doc.getElementById('sheetBody'); if (!bodyEl) return; /* a fresh node for every sheet, so this listener dies with the card */
     bodyEl.addEventListener('click', function (e) {
       var b = e.target.closest('[data-b]'); if (!b) return;
@@ -139,15 +151,13 @@
   /* the field in You: a month and a day, or none */
   function renderField(el) {
     if (!el) return;
-    var cur = mmdd(), mo = cur ? +cur.slice(0, 2) : 0, d = cur ? +cur.slice(3) : 0;
-    el.innerHTML = '<div class="field byou"><span class="lbl" id="bLbl">Your birthday (optional)</span><div class="byrow" role="group" aria-labelledby="bLbl">' +
-      '<select class="input" id="bMonth" aria-label="Month"><option value="0">Month</option>' + MONTHS.map(function (n, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === mo ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select>' +
-      '<select class="input" id="bDay" aria-label="Day"><option value="0">Day</option>' + Array.apply(null, Array(31)).map(function (_, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === d ? ' selected' : '') + '>' + (i + 1) + '</option>'; }).join('') + '</select>' +
-      '<button type="button" class="btn soft" id="bSave"><span class="ms">check</span>Save</button>' + (cur ? '<button type="button" class="btn ghost" id="bClear">Remove</button>' : '') + '</div>' +
-      '<p class="help" id="bHelp">' + (cur ? 'Kept: ' + esc(text(cur)) + '. ' : '') + 'A month and a day only, kept on this phone. On the day: a greeting, a cake on your table for the week, and a postcard. Nothing else uses it.</p></div>';
+    var cur = mmdd();
+    el.innerHTML = '<div class="field byou"><span class="lbl" id="bLbl">Your birthday (optional)</span><div role="group" aria-labelledby="bLbl">' + fieldHTML(cur, 'b') + '</div>' +
+      '<div class="byrow"><button type="button" class="btn soft" id="bSave"><span class="ms">check</span>Save</button>' + (cur ? '<button type="button" class="btn ghost" id="bClear">Remove</button>' : '') + '</div>' +
+      '<p class="help" id="bHelp">' + (cur ? 'Kept: ' + esc(text(cur)) + '. ' : '') + 'A month and a day only, no year, kept on this phone. On the day: a wish, a direction for your year ahead and a cake on your table for the week. Nothing else uses it.</p></div>';
     var save = function (v) { try { S.setProfile({ birthday: v }); } catch (e) { if (R.toast) R.toast('Could not save that on this device.', 'error'); return; } if (R.updateGreeting) R.updateGreeting(); if (R.renderProps) R.renderProps(); opened = false; tries = 0; renderField(el); };
     doc.getElementById('bSave').addEventListener('click', function () {
-      var v = clean(doc.getElementById('bMonth').value + '-' + doc.getElementById('bDay').value);
+      var v = readField(doc, 'b');
       if (!v) { var h = doc.getElementById('bHelp'); if (h) h.textContent = 'Choose a month and a day that month has.'; return; }
       save(v); if (R.chime) R.chime('save'); if (R.toast) R.toast('Kept. ' + text(v) + ' is yours.', 'cake');
       if (isToday()) { markShown(year()); openCard(); } /* her birthday is today: the card replaces the You sheet straight away */

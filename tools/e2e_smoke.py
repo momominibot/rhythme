@@ -458,8 +458,8 @@ async def main():
             # 1f. the drops (21 Oct): her birthday week and the Starlight gown as a Rhythme Plus drop (this page runs in tester mode, so the gown is open here)
             await page.evaluate("()=>{OvuStore.setProfile({birthday: OvuStore.today().slice(5)}); OvuStore.setState({birthday: null});}")
             await page.reload(wait_until="networkidle"); await page.wait_for_timeout(2600)
-            bday = await page.evaluate("()=>({greet: document.querySelector('#greetTitle').textContent, cake: !!document.querySelector('#ownedProps .prop.cake'), sheet: OvuRoom.sheetId(), title: document.querySelector('#sheetTitle').textContent, lines: document.querySelectorAll('#sheet .bline').length, stats: document.querySelectorAll('#sheet .bstats div').length, btn: (document.querySelector('#sheet [data-b=party]')||{}).textContent, shown: (OvuStore.state().birthday||{}).shown})")
-            check("on her birthday the room says happy birthday, a cake stands on her table, and the postcard opens by itself with three warm lines, her numbers and the gown to wear (tester mode)", bday["greet"].startswith("Happy birthday") and bday["cake"] and bday["sheet"] == "birthday" and "Happy birthday" in bday["title"] and bday["lines"] == 3 and bday["stats"] >= 1 and "Starlight gown" in (bday["btn"] or "") and bool(bday["shown"]), bday)
+            bday = await page.evaluate("()=>({greet: document.querySelector('#greetTitle').textContent, cake: !!document.querySelector('#ownedProps .prop.cake'), sheet: OvuRoom.sheetId(), title: document.querySelector('#sheetTitle').textContent, lines: document.querySelectorAll('#sheet .bline').length, dir: ((document.querySelector('#sheet .bdir b')||{}).textContent||''), how: ((document.querySelector('#sheet .help')||{}).textContent||''), btn: (document.querySelector('#sheet [data-b=party]')||{}).textContent, shown: (OvuStore.state().birthday||{}).shown})")
+            check("on her birthday the room says happy birthday, a cake stands on her table, and the postcard opens by itself with one warm wish, a direction for the year ahead with how it is read, and the gown to wear (tester mode)", bday["greet"].startswith("Happy birthday") and bday["cake"] and bday["sheet"] == "birthday" and "Happy birthday" in bday["title"] and bday["lines"] == 1 and bday["dir"].startswith("A year for") and "add up to" in bday["how"] and "not a prediction or health advice" in bday["how"] and "Starlight gown" in (bday["btn"] or "") and bool(bday["shown"]), bday)
             await page.click("#sheet [data-b=party]"); await page.wait_for_timeout(900)
             check("the button dresses her in the gown and closes the card", await page.evaluate("()=>OvuStore.profile().outfit==='gown' && !OvuRoom.sheetOpen() && /gown\\.webp/.test(document.querySelector('#avatarImg').src)"))  # the outfit moment may still be playing, in the gown
             await page.reload(wait_until="networkidle"); await page.wait_for_timeout(1800)
@@ -482,6 +482,27 @@ async def main():
             await page.evaluate("()=>OvuRoom.openWardrobe()"); await page.wait_for_selector('#sheet[aria-hidden="false"] .outfit[data-id=gown]:not(.locked)', timeout=8000)
             check("in tester mode the gown is open in the wardrobe", True)
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+
+            # 1g. the intro asks her birthday (a month and a day, no year) just before her name; it stays on the phone, never in the cloud copy
+            ctxO = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxO.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxO.add_init_script(SESSION_SEED)
+            po = await ctxO.new_page(); await po.route("**/*", gate)
+            await po.goto(BASE + "room.html", wait_until="networkidle"); await po.wait_for_timeout(900)
+            await po.evaluate("()=>document.querySelector('nav a[data-tab=you]').click()"); await po.wait_for_selector('#sheet[aria-hidden="false"] [data-yact=intro]', timeout=8000)
+            await po.click('[data-yact=intro]'); await po.wait_for_selector('#onbNext', timeout=8000)
+            for _ in range(30):
+                if await po.evaluate("()=>!!document.querySelector('#onbBMonth')"): break
+                if await po.evaluate("()=>!!document.querySelector('#urgentNext')"): await po.click('#urgentNext')
+                else: await po.click('#onbNext')
+                await po.wait_for_timeout(150)
+            ob = await po.evaluate("()=>({step: (document.querySelector('.onb-head h3')||{}).textContent, sub: (document.querySelector('.onb-head p')||{}).textContent, skip: !!document.querySelector('#onbSkip'), selects: document.querySelectorAll('#sheet select').length})")
+            check("the intro asks her birthday just before her name: optional, a month and a day, no year, kept on the phone", ob["step"] == "Your birthday (optional)" and "A month and a day only, no year" in (ob["sub"] or "") and "stays on this phone" in (ob["sub"] or "") and ob["skip"] and ob["selects"] == 2, ob)
+            bmo = await po.evaluate("()=>String((new Date().getMonth()+1)%12+1)")
+            await po.select_option('#onbBMonth', bmo); await po.select_option('#onbBDay', '15')
+            await po.click('#onbNext'); await po.wait_for_selector('#onbName', timeout=8000)
+            await po.click('#onbNext'); await po.wait_for_timeout(700)
+            ob2 = await po.evaluate("()=>({b: OvuStore.profile().birthday, cloud: 'birthday' in OvuSync.profileForCloud(OvuStore.profile()), open: OvuRoom.sheetOpen()})")
+            check("finishing the intro keeps her birthday as a month and a day on the phone and leaves it out of the cloud copy", ob2["b"] == ("%02d-15" % int(bmo)) and not ob2["cloud"] and not ob2["open"], ob2)
+            await ctxO.close()
 
             # 2. the Cycle tab opens a sheet with the calendar
             await page.goto(BASE + "room.html#cycle", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] [data-date], #sheet[aria-hidden="false"] .rday', timeout=10000)
