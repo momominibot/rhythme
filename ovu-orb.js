@@ -158,7 +158,7 @@
       var preg = /\bpregnan|\bhcg\b|\bhpt\b/.test(left + m2[0]), other = OTHER_RE.test(m2[0]) || OTHER_RE.test(left) || new RegExp('^\\s+for\\s+(?:a\\s+|the\\s+)?' + OTHER + '\\b').test(right);
       if ((preg || !other) && !/\b(?:not|never|no)\s+$/.test(left)) positiveTest = true; /* only a denial right before it ("not positive"); "no pain + positive test" stays positive */
     }
-    return /\bpregnan\w*\b|\bpreggy\b|\bpreggers\b|\b\d+\s*(?:weeks?|wks?|w)\s+(?:preg\w*|along)\b/.test(s) || /\bfaint (?:second )?line\b|\bbfp\b/.test(t) || positiveTest;
+    return /\bpregnan\w*\b|\bpreggy\b|\bpreggers\b|\b\d+\s*(?:weeks?|wks?|w)\s+(?:preg\w*|along)\b/.test(s) || faintLine(t) || positiveTest;
   }
   var ONE_SIDE = /\b(?:one[- ]sided|on one side|(?:left|right)[- ]sided)\b[^.;]{0,25}?\b(?:pain|ache|cramp\w*|hurts?)\b|\b(?:pain|ache|cramp\w*|hurts?|hurting)\b[^.;]{0,25}?\b(?:on one side|on (?:the|my) (?:left|right)|(?:left|right) side)\b|\b(?:left|right) side\b[^.;]{0,15}?\b(?:pain|ache|hurts?|hurting|cramp\w*)\b|\b(?:only\s+)?one\s+side\b|\b(?:left|right)\s+(?:lower\s+)?(?:abdomen|abdominal|tummy|belly|stomach|pelvis|pelvic|groin)\b[^.;]{0,20}?\b(?:pain|ache|hurts?|hurting|cramp\w*)\b|\bshoulder[- ]tip\b/;
   var FEVER = /\bfevers?\b|\bfeverish\b|\bhigh temp(?:erature)?\b|\btemp(?:erature)? (?:of )?3[89]\b|\b3[89](?:\.\d)?\s*(?:°|deg|degrees|c)\b|\bchills\b|\bshivering\b|\brigors?\b/;
@@ -185,6 +185,9 @@
     return any;
   }
   function card(level, code, title, trigger, message, actions) { return { level: level, code: code, title: title, trigger: trigger, message: message, actions: actions }; }
+  function profilePregnant(p) { p = p || {}; return p.pregState === 'pregnant' || p.lifeStage === 'pregnant'; }
+  function profileMaybePregnant(p) { p = p || {}; return profilePregnant(p) || p.pregState === 'maybe'; } /* "I could be pregnant" in the profile counts for the ectopic rule (persona walk, 21 Oct) */
+  function faintLine(t) { var m = /\bfaint (?:second )?line\b|\bbfp\b/.exec(t); return !!m && !/\b(?:no|not|never|without)\s+(?:\w+\s+){0,2}$/.test(t.slice(0, m.index)); } /* "no faint second line" is a denial */
   function hasBaby(t, profile) { var p = profile || {}; return p.pregState === 'postpartum' || p.pregState === 'pregnant' || p.lifeStage === 'pregnant' || /\b(?:baby|babies|newborn|infant|little one|gave birth|give birth|delivered|born|postpartum|postnatal|confinement)\b/.test(t) || pregnantNow(t); }
   /* Returns an urgent card to show before parsing, or null. Emergency cards need care now (995 or an
    * emergency department); the postmenopausal card is prompt care, not an emergency. Rules only, never a model.
@@ -206,10 +209,10 @@
     if (said(SADDLE, t)) return card('emergency', 'SADDLE_NUMB_NOW', 'Get emergency care now', 'numbness around the groin or bottom', 'New numbness around your groin or bottom, or new trouble controlling your bladder or bowels, needs emergency care now. Go to A&E or call 995.', CALL_995.slice());
     if (said(HEAD_VISION, t)) return card('emergency', 'HEADACHE_VISION_NOW', 'Get emergency care now', 'a severe headache with vision changes', 'A severe headache with blurred vision or flashing lights, or the worst headache of your life, needs emergency care now. Call 995 or go to A&E.' + (hasBaby(t, profile) ? ' Tell them if you are pregnant or had a baby recently.' : ''), CALL_995.slice());
     if (said(PSYCHOSIS, t) || said(PSY_HEARD, t, { unless: PSY_ORDINARY })) return card('emergency', 'PSYCHOSIS_NOW', 'Please get help now', 'hearing or seeing things others do not', 'Hearing voices, seeing things that others cannot, or feeling sure people are against you needs emergency help now. Ask someone you trust to stay with you' + (hasBaby(t, profile) ? ' and your baby' : '') + ', and go to A&E or call 995. This can be treated.', SOS_ACTIONS.slice());
-    if (pregnantNow(t) && (bleeding || severe)) return { level: 'emergency', code: 'PREG_BLEED_NOW', title: 'Get emergency care now', trigger: 'bleeding or severe pain in pregnancy' };
+    if ((pregnantNow(t) || profilePregnant(profile)) && (bleeding || severe)) return { level: 'emergency', code: 'PREG_BLEED_NOW', title: 'Get emergency care now', trigger: 'bleeding or severe pain in pregnancy' };
     /* a late or missed period, a positive test or a possible pregnancy, with one-sided pain: RCOG lists one-sided tummy pain
      * and shoulder-tip pain among the signs of an ectopic pregnancy, and a negative test does not rule it out early on */
-    var maybePreg = pregnantNow(t) || (t.match(NO_PERIOD_LATE) || []).some(function (m) { return /\b(?:late|overdue|missed|missing|skipped|skip|miss)\b/.test(m); }); NO_PERIOD_LATE.lastIndex = 0;
+    var maybePreg = pregnantNow(t) || profileMaybePregnant(profile) || (t.match(NO_PERIOD_LATE) || []).some(function (m) { return /\b(?:late|overdue|missed|missing|skipped|skip|miss)\b/.test(m); }); NO_PERIOD_LATE.lastIndex = 0;
     if (maybePreg && said(ONE_SIDE, painText)) return card('emergency', 'ECTOPIC_NOW', 'Get urgent care now', 'one-sided pain when pregnancy is possible', 'One-sided tummy pain or shoulder-tip pain when your period is late or you could be pregnant needs urgent assessment now, even if a test was negative or you have not done one. Call 995 if the pain is sudden or severe, you feel dizzy, weak or faint, or you cannot travel safely. Otherwise go with someone to KKH’s 24-hour Urgent O&G Centre or an A&E.', [{ label: 'Call 995', href: 'tel:995' }, { label: 'KKH Urgent O&G (24h)', href: 'https://www.kkh.com.sg/our-specialties/urgent-og-centre' }]);
     if (severe || (/\bshoulder[- ]tip\b/.test(t) && /\bpain\b/.test(painText))) return { level: 'emergency', code: 'SEVERE_PAIN_NOW', title: 'Get emergency care now', trigger: 'sudden severe pelvic or abdominal pain' };
     /* the same day: a doctor today, A&E if very unwell */

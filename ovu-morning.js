@@ -38,7 +38,7 @@
    * shape agreed with a Codex design review, docs/design/2026-10-21-erin-morning-routine.md): Erin's wake-up script, a gate, her brushing
    * script, a gate, her mindful sip. Each part can be skipped or stopped; each part she really did is saved on its own. */
   var GATES = {
-    brush: { key: 'ready', part: 2, title: 'Brushing', gate: true, group: 'teeth', ready: 'Ready to brush', skip: 'Already brushed', audio: GUIDE + 'mstart-ready.mp3', text: '' },
+    brush: { key: 'ready', part: 2, title: 'Brushing', gate: true, group: 'teeth', ready: 'Ready to brush', skip: 'Skip this part', audio: GUIDE + 'mstart-ready.mp3', text: '' },
     sip: { key: 'sipready', part: 3, title: 'A mindful sip', gate: true, group: 'sip', ready: 'Ready to sip', skip: 'Skip this part',
       text: 'Choose a drink that is comfortable to sip: coffee, tea, water, anything. Take any time you need to make it; making it is not part of the practice. You can skip this part. No drink, fasting, or simply not wanting one are all fine reasons.' }
   };
@@ -180,7 +180,7 @@
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
     room.hideSheet(); hideInvite();
-    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, spent: {}, done: {}, brushMs: 0, stepMs: 0, waits: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null, done: false }; /* made inside the Begin tap, so later clips may play on phones */
+    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, spent: {}, done: {}, brushMs: 0, stepMs: 0, waits: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null }; /* made inside the Begin tap, so later clips may play on phones */
     if (room.endMoment) room.endMoment();
     /* from the mat she sits there hidden: bring her back first, or the routine plays to an empty room */
     var onMat = room.meditating ? room.meditating() : !!(room.els && room.els.meditator && room.els.meditator.classList.contains('on'));

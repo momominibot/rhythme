@@ -34,7 +34,7 @@ ahead." (British "practising", as in her brushing script).
   the earlier "A short pause, then brush your way". Credit once: "Words by Erin Lee, voiced using her cloned voice with
   permission; the short pause uses Rhythme's words, read in her voice."
 - **The journey** (`ovu-morning.js` `plan('erin')`): her six wake steps (Part 1 of 3), then the brushing gate ("Ready to
-  brush" / "Already brushed", any sink, time for prayer first), her eight brushing steps (Part 2), the sip gate ("Ready
+  brush" / "Skip this part", any sink, time for prayer first), her eight brushing steps (Part 2), the sip gate ("Ready
   to sip" / "Skip this part", with "Choose a drink that is comfortable to sip: coffee, tea, water, anything... No drink,
   fasting, or simply not wanting one are all fine reasons"), her seven sip steps (Part 3). Every timed step keeps Pause,
   Next, Voice and Stop and gains **Skip this part**. A gate's skip moves on to the next part, or ends the routine when
@@ -60,5 +60,5 @@ ahead." (British "practising", as in her brushing script).
 `tools/test-core.js` 2i: the plan's shape, Erin's steps and clips in order, the poses, the parts' seconds (three parts of
 three to four minutes, about ten in all), the gate labels and the care line, the first words being hers, every clip on
 disk, `partEntry` (30 seconds, confirmation, stopped early), the once-a-day hearts per part. `tools/e2e_smoke.py`: the
-choice sheet, Part 1 with the care line and Skip this part, the brushing gate, Already brushed to the sip gate, Ready to
+choice sheet, Part 1 with the care line and Skip this part, the brushing gate, Skip this part to the sip gate, Ready to
 sip with the cup, Stop after 40 s saving the sip alone, and a repeat paying nothing more.

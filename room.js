@@ -203,7 +203,7 @@
     },
     cycle: {
       icon: 'calendar_month', title: 'How predictions are made',
-      body: '<p>The next period is estimated from the average of your last logged cycles (or your profile setting, or 28 days until there is history). The fertile window shown is a calendar estimate around 14 days before the expected period and is not a contraceptive method. Tapping a past day fills a typical period length so you can backdate quickly, then adjust any day.</p>'
+      body: '<p>The next period is estimated from the average of your last logged cycles (or the cycle length in your profile; with no history yet, no date is shown). The fertile window shown is a calendar estimate: the six days ending on the estimated ovulation day (about 14 days before the expected period) plus one day after, because the estimate is uncertain. It is not a contraceptive method. Tapping a past day fills a typical period length so you can backdate quickly, then adjust any day.</p>'
     },
     acu: {
       icon: 'spa', title: 'What the research says about acupressure',
@@ -211,7 +211,7 @@
     },
     reminders: {
       icon: 'alarm', title: 'Why these four nudges',
-      body: '<p>Regular sleep and wake times, water through the day, short movement breaks and a couple of minutes of slow breathing are the everyday habits with the broadest support for sleep, energy and mood. The clock reminds you; it does not track whether you did it. Notifications depend on your phone: they fire while Rhythme is open or installed to the Home Screen, and the calendar file gives you alarms that always ring.</p>'
+      body: '<p>Regular sleep and wake times, water through the day, short movement breaks and a couple of minutes of slow breathing are the everyday habits with the broadest support for sleep, energy and mood. The clock reminds you; it does not track whether you did it. Notifications depend on your phone: they fire while Rhythme is open, and the calendar file puts the times in your phone’s calendar, whose alerts follow your phone’s settings.</p>'
     },
     move: {
       icon: 'directions_run', title: 'How Movement counts',
@@ -820,7 +820,7 @@
         if (!S.validTime($('#slBed').value) || !S.validTime($('#slWake').value)) throw new Error('Enter both bedtime and wake time.');
         var nd = { bedTime: $('#slBed').value, wakeTime: $('#slWake').value, quality: q, notes: $('#slNotes').value.trim(), mode: 'manual' }, det = readSleepDetails(body); if (det) nd.details = det;
         var ev = S.add('sleep', $('#slDate').value, nd); sleepDraft = null;
-        message($('#sleepMsg'), 'Saved: ' + A.fmtHours(S.sleepHours(ev.data)) + ' of sleep.', true); chime('save');
+        message($('#sleepMsg'), 'Saved: ' + A.fmtHours(S.sleepHours(ev.data)) + ' from bedtime to waking.', true); chime('save');
         $('#sleepList').innerHTML = sleepListHTML(); afterSave(ev);
       } catch (e) { message($('#sleepMsg'), e.message, false); }
     });
@@ -973,7 +973,7 @@
       });
       if (cur) $('#clearPeriod').addEventListener('click', function () { S.remove(cur.id); cal.lastFill = cal.lastFill.filter(function (id) { return id !== cur.id; }); chime('tap'); renderCal(); renderEditor(); renderDeck(); });
     } else {
-      var cs = S.list('symptom', { from: date, to: date })[0], sd = cs ? cs.data : { symptoms: [], pain: 0, mood: '', notes: '' };
+      var cs = S.list('symptom', { from: date, to: date })[0], sd = cs ? cs.data : { symptoms: [], pain: null, mood: '', notes: '' }; /* an untouched slider saves no pain value (persona walk, 21 Oct) */
       ed.innerHTML = '<h3>' + esc(prettyDate(date, { weekday: 'long', day: 'numeric', month: 'long' })) + '</h3>' + importedNote(cs) +
         '<div class="field"><span class="lbl">Symptoms</span><div class="chips" id="symChips">' + '<button type="button" class="chipbtn symnone' + (sd.none ? ' on' : '') + '" data-none="1">None</button>' + A.SYMPTOMS.map(function (s) { return '<button type="button" class="chipbtn' + ((sd.symptoms || []).indexOf(s) > -1 ? ' on' : '') + '" data-sym="' + esc(s) + '">' + esc(cap(s)) + '</button>'; }).join('') + '</div></div>' +
         /* hot flushes: how many, and whether they woke her (four-persona review, 20 Oct: Siti and Mrs Tan wanted to show their doctor) */

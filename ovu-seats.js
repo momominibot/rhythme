@@ -110,7 +110,7 @@
     R.openSheet('seat-' + seat.practice, seat.title, seat.sub, 'chair',
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>' + esc(p.name) + '</b><small>' + esc(p.about) + '. About ' + mins + ' minutes in Erin’s voice, seated. Pause, skip a step or stop whenever you like.</small></div></div>' +
       '<div class="row"><button type="button" class="btn primary" id="seatBegin"><span class="ms">' + p.icon + '</span>Begin</button><button type="button" class="btn soft" id="seatSit"><span class="ms">chair</span>' + esc(seat.sit) + '</button></div>' +
-      '<p class="help">A practice of a minute or more can be saved to your journal, with the usual small thank-you once a day for this seat' + (doneToday(seatId) ? ' (already said today)' : '') + '. Sitting is just sitting: nothing is counted. ' + esc(CREDIT) + '.</p>');
+      '<p class="help">A practice of a minute or more can be saved to your journal, with the small thank-you once a day for this seat (practices share up to six hearts a day)' + (doneToday(seatId) ? ' (already said today)' : '') + '. Sitting is just sitting: nothing is counted. ' + esc(CREDIT) + '.</p>');
     $('seatSit').addEventListener('click', function () { R.hideSheet(); plainSit(seatId); });
     $('seatBegin').addEventListener('click', function () { begin(seatId); });
   }
