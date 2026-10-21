@@ -141,6 +141,7 @@
       R.chime('save'); openBoard(); R.toast('Pinned. It stays with you.', 'push_pin');
     });
   }
+  C.openBoard = openBoard; /* the Today card's Channel tab opens the board from home (ovu-today.js) */
   function openStall() {
     if (root.OvuWalk.napping()) return;
     var H = root.OvuHerbs, cs = S.cycleStats(), teas = H ? H.forPhase(cs.mode === 'suspended' ? null : cs.phase).slice(0, 3) : [];

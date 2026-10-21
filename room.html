@@ -60,14 +60,23 @@
     </section>
 
     <section class="deck">
-      <div class="card">
-        <div class="cihead"><h2>Today’s check-in</h2><button type="button" class="cichoose" id="ciChoose" aria-pressed="false">Choose what counts</button></div>
-        <p class="cistatus" id="ciStatus" role="status"></p>
-        <div class="minvite" id="morningInvite" hidden></div>
-        <div class="tiles ci" id="tiles"></div>
-        <div class="ciquick" id="ciQuick"></div>
-        <div class="sub" id="dailyText">Nothing logged yet.</div>
-        <p class="note" id="symLine"></p>
+      <div class="card" id="deckCard">
+        <div class="tabs decktabs" role="tablist" aria-label="Today, your channel and your inventory" id="deckTabs">
+          <button type="button" role="tab" class="on" data-deck="today" id="deckTabToday" aria-selected="true" aria-controls="deckToday"><span class="ms" aria-hidden="true">task_alt</span><span class="tl">Today</span></button>
+          <button type="button" role="tab" data-deck="channel" id="deckTabChannel" aria-selected="false" aria-controls="deckChannel" tabindex="-1"><span class="ms" aria-hidden="true">forum</span><span class="tl">Channel</span><span class="dbadge" id="deckChBadge" hidden></span></button>
+          <button type="button" role="tab" data-deck="inventory" id="deckTabInventory" aria-selected="false" aria-controls="deckInventory" tabindex="-1"><span class="ms" aria-hidden="true">inventory_2</span><span class="tl">Inventory</span></button>
+        </div>
+        <div class="deckpane" id="deckToday" role="tabpanel" aria-labelledby="deckTabToday">
+          <div class="cihead"><h2>Today’s check-in</h2><button type="button" class="cichoose" id="ciChoose" aria-pressed="false">Choose what counts</button></div>
+          <p class="cistatus" id="ciStatus" role="status"></p>
+          <div class="minvite" id="morningInvite" hidden></div>
+          <div class="tiles ci" id="tiles"></div>
+          <div class="ciquick" id="ciQuick"></div>
+          <div class="sub" id="dailyText">Nothing logged yet.</div>
+          <p class="note" id="symLine"></p>
+        </div>
+        <div class="deckpane" id="deckChannel" role="tabpanel" aria-labelledby="deckTabChannel" hidden></div>
+        <div class="deckpane" id="deckInventory" role="tabpanel" aria-labelledby="deckTabInventory" hidden></div>
       </div>
       <div class="card" id="flagCard" style="display:none">
         <h2>To discuss with your clinician</h2>
@@ -209,6 +218,7 @@
 <script src="ovu-seats.js"></script>
 <script src="ovu-plaza.js"></script>
 <script src="ovu-friends.js"></script>
+<script src="ovu-today.js"></script>
 <script src="ovu-music.js"></script>
 </body>
 </html>
