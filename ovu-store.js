@@ -14,6 +14,8 @@
   var listeners = [];
   var cache = null;
   var seenRaw = null, baseText = null; /* the stored text this tab last read or wrote, and its own copy at that moment: the base of mergeStored() */
+  var REV = 'ovumind_db_rev', seenRev = null; /* a short token every save changes, so a read can tell cheaply that another tab wrote */
+  function readRev() { try { return localStorage.getItem(REV); } catch (e) { return null; } }
 
   function nowIso() { return new Date().toISOString(); }
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -49,14 +51,16 @@
     return out;
   }
   function load(force) {
-    if (cache && !force) return cache;
-    var raw = null;
+    /* every read catches up when another tab saved since, so a caller that reads, builds a patch and commits it builds
+       on the current copy (review, 21 Oct: a stale tab's farm patch undid seeds whose hearts the other tab had taken) */
+    if (cache && !force) { if (sandboxDepth === 0 && readRev() !== seenRev) catchUp(); return cache; }
+    var raw = null; seenRev = readRev();
     try { raw = localStorage.getItem(KEY); } catch (e) { raw = null; }
     try { cache = normalise(raw ? JSON.parse(raw) : null); } catch (e) { cache = empty(); cache.state.corruptBackup = raw; }
     seenRaw = raw; baseText = JSON.stringify(cache);
     return cache;
   }
-  function emit(reason) { listeners.slice().forEach(function (fn) { try { fn(reason || 'change', cache); } catch (e) { /* listener errors never block saving */ } }); }
+  function emit(reason, removed) { listeners.slice().forEach(function (fn) { try { fn(reason || 'change', cache, removed); } catch (e) { /* listener errors never block saving */ } }); }
   /* ---------- several tabs on one phone ----------
    * Each tab keeps its own copy in memory, and a tab that missed another tab's storage event (asleep in the background,
    * or the event still on its way) used to write that stale copy over the other tab's saves, consent included. Now a
@@ -105,25 +109,31 @@
       state: mergeKeys(db.state, base.state, theirs.state) } };
   }
   function adopt(next) {
-    var db = load();
+    var db = cache;
     ['profile', 'state'].forEach(function (k) { var o = db[k]; Object.keys(o).forEach(function (x) { if (!(x in next[k])) delete o[x]; }); Object.assign(o, next[k]); });
     db.events = next.events; db.summaries = next.summaries; db.updatedAt = next.updatedAt;
   }
   /* bring another tab's saves into memory before a write that looks at what is there (one entry a day, an entry that
      may have been deleted), keeping anything this tab has not saved yet */
   function catchUp() {
-    var m = mergeStored(load()); if (!m) return;
+    if (!cache) { load(); return; }
+    seenRev = readRev();
+    var m = mergeStored(cache); if (!m) return;
     adopt(m.db); seenRaw = m.raw; baseText = JSON.stringify(m.theirs);
   }
   /* whole: write this tab's copy as it is (Delete everything, a restored file that replaces the diary) */
-  function save(reason, whole) {
-    var db = load(), m = whole ? null : mergeStored(db), next = m ? m.db : db, at = nowIso();
+  /* removed: the ids this call deleted, passed to listeners so the backup records only this tab's own deletes as
+     tombstones, never entries another tab's Delete everything wiped (review, 21 Oct) */
+  function save(reason, whole, removed) {
+    var db = whole ? cache : load(), m = whole ? null : mergeStored(db), /* a whole write is never caught up first */ next = m ? m.db : db, at = nowIso();
     var text = JSON.stringify(Object.assign({}, next, { updatedAt: at }));
     localStorage.setItem(KEY, text);
     if (localStorage.getItem(KEY) !== text) throw new Error('Saving did not verify. Your browser storage may be full or blocked.');
     next.updatedAt = at; if (m) adopt(next);
     seenRaw = baseText = text;
-    emit(reason);
+    seenRev = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    try { localStorage.setItem(REV, seenRev); } catch (e) { /* the diary is saved; another tab still merges it at its next write */ }
+    emit(reason, removed);
   }
   try { window.addEventListener('storage', function (ev) { if (ev.key === KEY || ev.key === null) { catchUp(); emit('external'); } }); } catch (e) { /* non-browser */ }
 
@@ -248,17 +258,17 @@
     var db = load(), before = db.events.length, gone = db.events.filter(function (e) { return !!pred(e); });
     if (!gone.length) return 0;
     db.events = db.events.filter(function (e) { return !pred(e); });
-    save('remove:bulk');
+    save('remove:bulk', false, gone.map(function (e) { return e.id; }));
     gone.forEach(function (e) { if (e.type === 'food' || e.type === 'sleep') mirrorLegacy(e, true); }); /* the meal and sleep copies go with them */
     if (gone.some(function (e) { return e.type === 'period'; })) mirrorLegacy({ type: 'period' });
-    return before - db.events.length;
+    return gone.length;
   }
   function remove(id) {
     catchUp();
     var db = load(), ev = get(id);
     if (!ev) return false;
     db.events = db.events.filter(function (e) { return e.id !== id; });
-    save('remove:' + ev.type);
+    save('remove:' + ev.type, false, [id]);
     mirrorLegacy(ev, true);
     return true;
   }
@@ -282,7 +292,9 @@
       var id = String(ev.id || uid()), evData; try { evData = cleanData(ev.type, ev.data); } catch (err) { return; } /* a cloud row that cleans to nothing is not applied */
       var norm = { id: id, type: ev.type, date: ev.date, createdAt: ev.createdAt || nowIso(), updatedAt: ev.updatedAt || ev.createdAt || nowIso(), source: ev.source || 'cloud', data: evData };
       var found = false;
-      for (var i = 0; i < db.events.length; i++) { if (db.events[i].id === id) { db.events[i] = norm; found = true; break; } }
+      var stale = false; /* a put planned before another tab's newer edit arrived never replaces it (last write wins, as in the plan) */
+      for (var i = 0; i < db.events.length; i++) { if (db.events[i].id === id) { if (newer(db.events[i], norm)) stale = true; else db.events[i] = norm; found = true; break; } }
+      if (stale) return;
       if (!found) db.events.push(norm);
       changed.push({ ev: norm });
     });
@@ -298,7 +310,15 @@
 
   /* ---------- profile / state ---------- */
   function profile() { return Object.assign({}, load().profile); }
-  function setProfile(patch) { Object.assign(load().profile, patch); save('profile'); return profile(); }
+  /* a failed save puts the profile back as it was, as commit() does for state: a consent choice that did not save must not
+     sit in memory and land later, after a newer choice made in another tab (review, 21 Oct) */
+  function setProfile(patch) {
+    var p = load().profile, had = {}, prev = {};
+    Object.keys(patch).forEach(function (k) { had[k] = Object.prototype.hasOwnProperty.call(p, k); prev[k] = p[k]; });
+    Object.assign(p, patch);
+    try { save('profile'); } catch (e) { Object.keys(prev).forEach(function (k) { if (had[k]) p[k] = prev[k]; else delete p[k]; }); throw e; }
+    return profile();
+  }
   function state() { return load().state; }
   function setState(patch) { Object.assign(load().state, patch); save('state'); return state(); }
   /* a write that lands whole or leaves memory exactly as it was: a purchase must never take hearts without the item, or give
@@ -564,6 +584,7 @@
   function clearAll() {
     try { if (root.OvuPodcast && root.OvuPodcast.forget) root.OvuPodcast.forget(); } catch (e) { } /* its page-close save would write the listening back */
     cache = empty(); save('clear', true);
+    try { localStorage.removeItem(REV); } catch (e) { } /* not diary data; another tab reads its absence as a change */
     try {
       var keys = []; for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
       keys.forEach(function (k) { if (k && (OWN_KEYS.indexOf(k) > -1 || DAILY_LOG.test(k))) { try { localStorage.removeItem(k); } catch (e) { } } });

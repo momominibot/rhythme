@@ -2988,6 +2988,29 @@ var summarised = false;
   check('Delete everything in one tab clears what the other tab had just saved', reread(t5).OvuStore.list(null).length === 0);
   B5.add('reflection', day, { text: 'after the wipe' });
   check('the other tab\'s next save does not bring the wiped diary back', reread(t5).OvuStore.list(null).length === 1);
+
+  /* adversarial review (21 Oct): a read then a commit builds on the current copy; a failed consent save is not kept to
+     land later; the backup records only this tab's own deletes */
+  var t6 = tabs(day), A6 = t6.A, B6 = t6.B;
+  A6.commit({ rewards: { hearts: 20 }, farm: { plots: [] } }); B6.load(true);
+  var bf = JSON.parse(JSON.stringify(B6.state().farm)); bf.plots.push('mint'); B6.commit({ rewards: { hearts: 10 }, farm: bf }); /* tab B buys seeds */
+  var af = JSON.parse(JSON.stringify(A6.state().farm)); af.watered = true; A6.commit({ farm: af }); /* tab A reads its farm and waters */
+  var C6 = reread(t6).OvuStore;
+  check('a stale tab that reads its farm and commits a change builds on the other tab\'s purchase: hearts and seeds stay together', C6.state().rewards.hearts === 10 && JSON.stringify(C6.state().farm) === JSON.stringify({ plots: ['mint'], watered: true }), JSON.stringify(C6.state()));
+  var t7 = tabs(day), ls7 = t7.a.localStorage, real7 = ls7.setItem;
+  t7.a.OvuConsent.grant('health_tracking', 'sheet'); t7.B.load(true);
+  ls7.setItem = function () { throw new Error('storage full'); };
+  var threw7 = false; try { t7.a.OvuConsent.grant('cloud_sync', 'you'); } catch (e) { threw7 = true; }
+  ls7.setItem = real7;
+  check('a consent choice whose save failed is not kept in memory', threw7 && !t7.a.OvuConsent.events().some(function (e) { return e.purpose === 'cloud_sync'; }));
+  t7.b.OvuConsent.grant('cloud_sync', 'you'); t7.b.OvuConsent.withdraw('cloud_sync', 'you'); t7.A.setState({ foo: 1 });
+  var c7 = reread(t7);
+  check('so it never lands after a newer withdrawal made in the other tab', !c7.OvuConsent.allows('cloud_sync') && c7.OvuStore.profile().cloud.v === 0);
+  var t8 = tabs(day), A8 = t8.A, B8 = t8.B; t8.a.OvuSync.init();
+  for (var i8 = 0; i8 < 5; i8++) A8.add('reflection', day, { text: 'n' + i8 });
+  B8.load(true); B8.clearAll(); var x8 = B8.add('reflection', day, { text: 'after the wipe' }); /* a page without the sync script */
+  A8.remove(x8.id);
+  check('a delete in a stale tab after another tab\'s Delete everything sends no tombstones for the wiped entries', Object.keys(JSON.parse(t8.a.localStorage.getItem('ovumind_sync_v1')).tombstones).length <= 1, t8.a.localStorage.getItem('ovumind_sync_v1').slice(0, 200));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

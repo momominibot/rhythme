@@ -46,6 +46,24 @@ no longer exists." instead of being written back), `remove`, `removeWhere`, `add
 too, instead of a plain reload, so anything this tab has not saved yet survives it. Delete everything (`clearAll`)
 and a replacing import write whole, on purpose: they must not keep what another tab had just saved.
 
+Reads catch up too. Every save also writes a short token to `ovumind_db_rev`. `load()`, which every read goes through,
+compares that token with the one this tab last saw (one small read, not the whole diary) and catches up when it
+changed. So a caller that reads `S.state().farm`, builds a patch and commits it builds on the current copy, and sync
+plans its upload from the current diary. Delete everything removes the token; other tabs read its absence as a change.
+
+Adversarial review (a subagent, 21 Oct) found four more, all fixed with a check each:
+
+1. Read, then commit: a stale tab's farm patch undid seeds whose hearts the other tab had already taken. Fixed by the
+   read catch-up above.
+2. A cloud put planned from a stale list replaced another tab's newer edit. Fixed by the read catch-up, and
+   `applyRemote` never replaces a local copy with a newer `updatedAt`. A put for an entry another tab deleted is
+   settled by sync's own tombstones, which live in the shared `ovumind_sync_v1`.
+3. `setProfile` did not roll back on a failed save, so a consent choice that never saved stayed in memory and could
+   land later, after a newer withdrawal in the other tab. It now rolls back like `commit`.
+4. Backup tombstones came from "in the old shadow, not in memory", so a delete in a stale tab, made after another
+   page's Delete everything, would have queued tombstones for the whole wiped diary and emptied the cloud backup. The
+   store now passes the ids a `remove` or `removeWhere` deleted, and only those become tombstones.
+
 Why not refresh on the storage event with a generation check: the event is exactly what a stale tab missed, and a
 counter would only detect the conflict, not resolve it. The sync code's generation counter and web lock guard uploads
 across tabs; a lock around every local save would make each tap asynchronous, which `add()` and `commit()` callers do
@@ -53,9 +71,9 @@ not expect.
 
 ## Limits
 
-- **Read, then write in the caller.** A caller that computes a value from its stale copy and writes it as a patch
-  writes that value. The key rule then keeps this tab's value, so the other tab's change to that same key is lost.
-  Example: tab B earns hearts (`state.rewards`) and stale tab A buys an item; A's ledger wins. The diary and the
+- **A value held across time.** A caller that read a value earlier (a sheet opened a minute ago) and commits it now
+  writes that value whole; the key rule keeps it, so the other tab's change to that same key in between is lost.
+  Example: an open shop sheet in tab A built from `state.rewards` before tab B earned hearts. The diary and the
   consent log are safe (by id); only same-key game state and settings can lose the other tab's edit. Counters would
   need operations, not values.
 - **Edit against delete.** An entry edited in one tab and deleted in the other stays deleted. That honours the delete
@@ -66,14 +84,18 @@ not expect.
 - **Not atomic across processes.** Each write is read, merge, write in one task. Browsers do not lock localStorage
   between tabs, so two tabs writing within the same few milliseconds could still race; the window is now one task,
   not "as long as the tab was asleep".
-- **Cost.** Each save reads the stored text once more; a merge parses the stored copy and the base and compares entries
-  as JSON. That happens only when another tab wrote.
+- **Cost.** Each read checks a short token; each save reads the stored text once more and writes the token. A merge
+  parses the stored copy and the base and compares entries as JSON, only when another tab wrote.
+- **Other writers.** A page that writes `ovumind_db_v1` without this file (none today) changes no token: reads would
+  not notice, but every write still merges. Entries without a string id, from a foreign writer, get a new id on each
+  read and cannot be matched across tabs.
 
 ## Checks
 
 - `tools/test-core.js`, `twoTabsShareOneStore`: the scenario above; edits and deletes both ways; editing an entry
   deleted elsewhere; consent order both ways with `profile.cloud` following; failed `commit` and `add` in a stale tab
-  and the retry; one period a day across tabs; a summary pushed onto the live copy; Delete everything in either tab.
+  and the retry; one period a day across tabs; a summary pushed onto the live copy; Delete everything in either tab;
+  and the four review findings. The new checks fail on the base (14) and the review ones on the first version (4).
 - `tools/e2e_smoke.py`: two pages in one context, tab A ignoring storage events; then the storage event path still
   shows the other tab's save without a write.
 

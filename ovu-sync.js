@@ -63,11 +63,12 @@
    * A whole-phone wipe (reason 'clear') or a cloud pull (reason 'sync') never
    * becomes a tombstone, so "start fresh on this phone" does not delete the
    * cloud backup and a pull does not bounce back as a deletion. */
-  function onStoreChange(reason) {
+  function onStoreChange(reason, db, removed) {
     var st = loadState();
     if (reason && reason.indexOf('remove:') === 0) {
       var cur = snapshot();
-      Object.keys(st.shadow).forEach(function (id) { if (!(id in cur)) st.tombstones[id] = nowIso(); });
+      /* the store names the ids this tab deleted; an entry another tab's Delete everything wiped is not one (review, 21 Oct) */
+      (Array.isArray(removed) ? removed : Object.keys(st.shadow).filter(function (id) { return !(id in cur); })).forEach(function (id) { if (st.shadow[id] !== undefined && !(id in cur)) st.tombstones[id] = nowIso(); });
       st.shadow = cur;
     } else {
       if (reason === 'profile') st.profileDirty = true;
