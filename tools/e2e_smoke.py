@@ -626,6 +626,38 @@ async def main():
             jm = await page.evaluate("()=>Array.from(document.querySelectorAll('#timeline .entry b')).map(b=>b.textContent).filter(t=>t.indexOf('Movement')===0)")
             check("the journal lists the walk as Movement with its minutes", jm == ["Movement · Walking · 45 min"], jm)
 
+            # sleep details and the two-week check (21 Oct, "write our own based on evidence"): optional chips on Record a night,
+            # a check whose answers raise care notes, one a day, no hearts; the patterns in the journal and the doctor view
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_timeout(900)
+            await page.click("[data-ci=sleep]"); await page.wait_for_timeout(400)
+            sq0 = await page.evaluate("()=>({sheet: document.querySelector('#sheetTitle').textContent, toggle: !!document.querySelector('#sqToggle'), hidden: document.querySelector('#sqBody').hidden, expanded: document.querySelector('#sqToggle').getAttribute('aria-expanded')})")
+            await page.click("#sqToggle"); await page.wait_for_timeout(200)
+            await page.evaluate("()=>{document.querySelector('#slBed').value='23:30'; document.querySelector('#slWake').value='06:40';}")
+            for k, v in (("latency", "gt60"), ("wakeups", "2"), ("awake", "31-60"), ("woke", "flush"), ("woke", "toilet"), ("rested", "2")):
+                await page.click(".sqf[data-sq=%s] .chipbtn[data-v='%s']" % (k, v)); await page.wait_for_timeout(80)
+            sq1 = await page.evaluate("()=>({open: !document.querySelector('#sqBody').hidden, awakeShown: !document.querySelector('.sqf[data-sq=awake]').hidden, woke: [...document.querySelectorAll('.sqf[data-sq=woke] .chipbtn.on')].map(b=>b.dataset.v), pressed: document.querySelector('.sqf[data-sq=latency] .chipbtn[data-v=gt60]').getAttribute('aria-pressed')})")
+            await page.click("#saveSleep"); await page.wait_for_timeout(500)
+            sv = await page.evaluate("()=>{var e=OvuStore.list('sleep').filter(x=>x.data&&x.data.details).slice(-1)[0]; var lab=OvuAgents.SLEEP_LABELS.latency.opts.filter(o=>o[0]==='gt60')[0][1]; return {msg: document.querySelector('#sleepMsg').textContent, det: e && e.data.details, listHasDetail: document.querySelector('#sleepList').textContent.indexOf(lab)>-1}}")
+            check("Record a night: the details box starts closed and opens on its toggle, the awake question appears once wakings are chosen, two wakers can be ticked, and the saved night carries the answers and shows them in the list", sq0["toggle"] and sq0["hidden"] and sq0["expanded"] == "false" and sq1["open"] and sq1["awakeShown"] and sq1["woke"] == ["flush", "toilet"] and sq1["pressed"] == "true" and "Saved" in sv["msg"] and bool(sv["det"]) and sv["det"]["latency"] == "gt60" and sv["det"]["wakeups"] == "2" and sv["det"]["awake"] == "31-60" and sorted(sv["det"]["woke"]) == ["flush", "toilet"] and sv["listHasDetail"], {"sq0": sq0, "sq1": sq1, "sv": sv})
+            await page.click("#openSleepCheck"); await page.wait_for_timeout(400)
+            ck0 = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, groups: [...document.querySelectorAll('.sqf')].map(f=>f.dataset.sq).join(','), save: !!document.querySelector('#saveSleepCheck')})")
+            for k, v in (("w1", "4"), ("w2", "3"), ("chance", "usually"), ("impact", "lot"), ("since", "3m+"), ("breathing", "yes"), ("legs", "no"), ("driving", "yes")):
+                await page.click(".sqf[data-sq=%s] .chipbtn[data-v='%s']" % (k, v)); await page.wait_for_timeout(60)
+            h0 = await page.evaluate("()=>OvuRewards.ledger().hearts")
+            await page.click("#saveSleepCheck"); await page.wait_for_timeout(500)
+            ck = await page.evaluate("(h0)=>{var ev=OvuStore.list('sleepcheck').slice(-1)[0]; var card=ev && OvuOrb.entryUrgent(ev, OvuStore.profile()); var notes=[...document.querySelectorAll('#sqResult .sqnote')].map(n=>n.className.replace('sqnote','').trim()+':'+n.querySelector('b').textContent); return {saved: !!ev, n: OvuStore.list('sleepcheck').length, notes: notes, text: document.querySelector('#sqResult').textContent, card: card ? card.code + ':' + card.level : null, back: !!document.querySelector('#sqBack'), hearts: OvuRewards.ledger().hearts - h0}}", h0)
+            check("the two-week check: eight groups, saved once; the notes put drowsy driving first (today), name breathing signs and persistent trouble with CBT-I (prompt), say Rhythme cannot assess, pay no hearts, and Luna's card for the check is the driving one", ck0["groups"] == "w1,w2,chance,impact,since,breathing,legs,driving" and ck0["save"] and ck["saved"] and ck["n"] == 1 and len(ck["notes"]) >= 3 and ck["notes"][0].startswith("today:") and "cannot assess" in ck["text"] and "CBT" in ck["text"] and ck["card"] == "SLEEP_DROWSY_DRIVING:today" and ck["back"] and ck["hearts"] == 0, {"ck0": ck0, "ck": ck})
+            await page.click("#sqBack"); await page.wait_for_timeout(300); await page.click("#openSleepCheck"); await page.wait_for_timeout(300)
+            await page.click(".sqf[data-sq=driving] .chipbtn[data-v=no]"); await page.click("#saveSleepCheck"); await page.wait_for_timeout(400)
+            ck2 = await page.evaluate("()=>{var l=OvuStore.list('sleepcheck'); return {n: l.length, driving: l[0].data.driving}}")
+            check("a second check on the same day replaces the first: one a day", ck2["n"] == 1 and ck2["driving"] == "no", ck2)
+            await page.evaluate("()=>OvuRoom.closeSheet()")
+            await page.goto(BASE + "journal.html", wait_until="networkidle"); await page.wait_for_timeout(900)
+            jn = await page.evaluate("()=>{var c=document.querySelector('#sleepNotesCard'); var t=c?c.textContent:''; return {shown: !!c && !c.hidden && c.offsetParent !== null, rows: document.querySelectorAll('#sleepNotesBody .sndl').length, of: / of /.test(t), checks: /Notes raised/.test(t), notScore: /not a score/.test(t)}}")
+            check("the journal's Sleep details card shows the four-week rows with their denominators, the notes the check raised, and says it is not a score", jn["shown"] and jn["rows"] >= 1 and jn["of"] and jn["checks"] and jn["notScore"], jn)
+            await page.goto(BASE + "doctor.html", wait_until="networkidle"); await page.wait_for_timeout(900)
+            dn = await page.evaluate("()=>{var b=document.querySelector('#sleepNotesBox'); return {rows: b ? b.querySelectorAll('.sndl').length : 0, check: !!b && /Notes raised/.test(b.textContent)}}")
+            check("the doctor view's sample carries the sleep details rows and the sample two-week check", dn["rows"] >= 1 and dn["check"], dn)
             # 7. first launch without consent: the room shows the welcome, not the diary
             ctx2 = await browser.new_context(viewport={"width": 390, "height": 844})
             p2 = await ctx2.new_page(); await p2.route("**/*", gate)

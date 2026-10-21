@@ -1293,13 +1293,13 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var clearedRow = { id: 'oldrefl', user_id: 'u1', type: 'reflection', date: SV.today(), data: { text: 'cleared on purpose', mood: '' }, source: 'room', created_at: '2026-10-01T09:00:00Z', updated_at: '2026-10-01T09:00:00Z', synced_at: '2026-10-01T09:30:00Z', deleted: false, deleted_at: null };
   v.fetch = function (url, opt) {
     var m = (opt && opt.method) || 'GET';
-    if (m === 'GET' && /\/entries/.test(url)) { gets.push(url); if (/synced_at=gt/.test(url)) return v.reply(200, []); return v.reply(200, /type=in\.\(exercise\)/.test(url) ? [cloudRow] : [cloudRow, clearedRow]); }
+    if (m === 'GET' && /\/entries/.test(url)) { gets.push(url); if (/synced_at=gt/.test(url)) return v.reply(200, []); return v.reply(200, /type=in\.\([^)]*exercise[^)]*\)/.test(url) ? [cloudRow] : [cloudRow, clearedRow]); } /* the newer types this version knows: exercise, and sleepcheck since 21 Oct */
     if (m === 'GET') return v.reply(200, []);
     return v.reply(201, null);
   };
   var t2 = YV.syncNow().then(function (r) {
     var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
-    check('after learning the exercise type, a one-time pull of that type alone brings back the row the old version skipped', gets.length === 2 && /synced_at=gt/.test(gets[0]) && /type=in\.\(exercise\)/.test(gets[1]) && !/synced_at=gt/.test(gets[1]) && SV.list('exercise').length === 1 && st.types === SV.TYPES.join(','), JSON.stringify({ r: r, gets: gets, n: SV.list('exercise').length, types: st.types }));
+    check('after learning the exercise type, a one-time pull of that type alone brings back the row the old version skipped', gets.length === 2 && /synced_at=gt/.test(gets[0]) && /type=in\.\([^)]*exercise[^)]*\)/.test(gets[1]) && !/synced_at=gt/.test(gets[1]) && SV.list('exercise').length === 1 && st.types === SV.TYPES.join(','), JSON.stringify({ r: r, gets: gets, n: SV.list('exercise').length, types: st.types }));
     check('an older entry cleared from this phone on purpose is not brought back', SV.list('reflection').length === 0);
     return YV.syncNow();
   }).then(function () {
@@ -2630,6 +2630,88 @@ var summarised = false;
   S.add('mindfulness', '2026-10-05', { kind: 'imported', minutes: 30, sessions: 3 }, 'apple-health');
   var oct = A.monthlyTotals('2026-10-01', '2026-10-20')[0];
   check('month totals keep filled-in days apart from recorded bleeding, and count imported calm sessions', oct.bleedingDays === 1 && oct.filledDays === 2 && oct.calmSessions === 3 && oct.calmMinutes === 30, JSON.stringify(oct));
+})();
+
+(function sleepDetailsAndCheck() {
+  console.log('optional sleep details and the two-week sleep check (21 Oct 2026)');
+  var w = fresh(), S = w.OvuStore, A = w.OvuAgents, O = w.OvuOrb, today = S.today(), y1 = addDays(today, -1), y2 = addDays(today, -2);
+  /* the write boundary keeps known codes only */
+  var e1 = S.add('sleep', y2, { bedTime: '23:00', wakeTime: '06:30', quality: 2, notes: '', details: { latency: '31-60', wakeups: 2, awake: '16-30', early: 'maybe', woke: ['flush', 'bogus', 'gasp'], rested: '9', extra: 'x' } });
+  check('sleep details keep only known answers: numbers become codes, unknown keys and values are dropped', JSON.stringify(e1.data.details) === JSON.stringify({ latency: '31-60', wakeups: '2', awake: '16-30', woke: ['flush', 'gasp'] }), JSON.stringify(e1.data.details));
+  var e2 = S.add('sleep', y2, { bedTime: '13:00', wakeTime: '14:00', details: { latency: 'soon', rested: 0 } });
+  check('details with nothing valid leave no details at all, so the night stays unknown', e2.data.details === undefined);
+  var e3 = S.add('sleep', y1, { bedTime: '22:30', wakeTime: '06:00', details: { wakeups: '0', awake: '31-60', latency: 'unsure' } });
+  check('no waking drops any time-awake answer; "not sure" is kept as its own answer', e3.data.details.awake === undefined && e3.data.details.latency === 'unsure' && e3.data.details.wakeups === '0');
+  check('a sleep check with no valid answer is refused', /Answer at least one question/.test((function () { try { S.add('sleepcheck', today, { w1: '9', driving: 'sometimes' }); return ''; } catch (e) { return e.message; } })()));
+  var c1 = S.add('sleepcheck', today, { w1: '0', w2: '0', since: '3m+', breathing: 'no' });
+  check('two quiet weeks drop the "how long" answer', c1.data.since === undefined && c1.data.w1 === '0');
+  var c2 = S.add('sleepcheck', today, { w1: '4', w2: 'unsure', impact: 'lot', since: '3m+' });
+  check('a second check on the same day replaces the first (one a day)', S.list('sleepcheck').length === 1 && S.list('sleepcheck')[0].data.w1 === '4' && c2.id === c1.id);
+  var before = S.get(c1.id).date;
+  check('an edit that leaves no valid answer is refused before anything changes', /Answer at least one question/.test((function () { try { S.update(c1.id, { date: y1, data: { w1: 'x' } }); return ''; } catch (e) { return e.message; } })()) && S.get(c1.id).date === before && S.get(c1.id).data.w1 === '4');
+  S.update(e3.id, { data: Object.assign({}, e3.data, { details: { rested: '2', woke: ['<b>'] } }) });
+  check('an edited night is cleaned the same way', JSON.stringify(S.get(e3.id).data.details) === JSON.stringify({ rested: '2' }));
+
+  /* patterns: unknown is never zero, "not sure" is apart, a later answer wins, a symptom note's night flush counts */
+  var w2 = fresh(), S2 = w2.OvuStore, A2 = w2.OvuAgents, t = S2.today(), d1 = addDays(t, -3), d2 = addDays(t, -2), d3 = addDays(t, -1);
+  S2.add('sleep', d1, { bedTime: '23:00', wakeTime: '06:00', details: { latency: 'gt60', wakeups: '2', rested: '1', woke: ['flush'] } });
+  S2.add('sleep', d2, { bedTime: '23:00', wakeTime: '07:00', details: { latency: 'unsure', wakeups: '0' } });
+  S2.add('sleep', d3, { bedTime: '23:30', wakeTime: '07:00' });
+  S2.add('symptom', d3, { symptoms: ['hot flushes'], flushNight: true, pain: null, mood: '', notes: '' });
+  var sn = A2.sleepNotes(addDays(t, -27), t);
+  check('nights with details are counted against recorded nights', sn.nights === 3 && sn.withDetails === 2, JSON.stringify(sn));
+  check('time to fall asleep: one answered night over 30 minutes and one "not sure", counted apart', sn.fields.latency.answered === 1 && sn.fields.latency.marked === 1 && sn.fields.latency.unsure === 1);
+  check('woke 2 or more times on 1 of 2 answered nights', sn.fields.wakeups.answered === 2 && sn.fields.wakeups.marked === 1);
+  check('a question nobody answered counts nothing (time awake is unknown, not zero minutes)', sn.fields.awake.answered === 0 && sn.fields.awake.marked === 0 && sn.fields.awake.unsure === 0);
+  check('hot flush nights come from the sleep details or the symptom note, each night once', sn.flushNights === 2 && sn.woke.flush === 1);
+  var rows = A2.sleepNotesRows(sn), r1 = rows.filter(function (r) { return r[0] === 'Over 30 min to fall asleep'; })[0];
+  check('the rows give counts with their own denominators and the not-sure count', rows[0][1] === '2 of 3 recorded nights' && r1 && r1[1] === '1 of 1 answered night, 1 not sure', JSON.stringify(rows));
+  check('rows leave out questions nobody answered', !rows.some(function (r) { return /Awake over 30/.test(r[0]); }));
+  S2.add('sleep', d1, { bedTime: '14:00', wakeTime: '15:00', details: { latency: 'le15', woke: ['toilet'] } });
+  var nd = A2.nightDetails(d1);
+  check('two entries on one night: the newer answer wins and reasons for waking add up', nd.latency === 'le15' && nd.wakeups === '2' && nd.woke.indexOf('flush') > -1 && nd.woke.indexOf('toilet') > -1, JSON.stringify(nd));
+  check('a night line reads in plain words', A2.sleepDetailText({ latency: '31-60', wakeups: '4+', early: 'yes', woke: ['child'] }) === 'time to fall asleep 31 to 60 min; times woken 4 or more; woke too early yes; woken by baby or child', A2.sleepDetailText({ latency: '31-60', wakeups: '4+', early: 'yes', woke: ['child'] }));
+
+  /* the check's notes: care is never gated by how much was answered */
+  var N = function (a) { return A.sleepCheckNotes(a).map(function (x) { return x.code; }); };
+  check('sleepy at the wheel comes first and is a today note, even when it is the only answer', N({ driving: 'yes' })[0] === 'SLEEP_DROWSY_DRIVING' && A.sleepCheckNotes({ driving: 'yes' })[0].level === 'today');
+  check('breathing noticed brings the sleep apnoea note, whatever the sleepiness', N({ breathing: 'yes' }).join() === 'SLEEP_BREATHING');
+  check('restless legs feelings bring the legs note, with heavy periods and an iron test, not iron on her own', N({ legs: 'yes' }).join() === 'SLEEP_LEGS' && /heavy/.test(A.sleepCheckNotes({ legs: 'yes' })[0].message) && /before taking iron/.test(A.sleepCheckNotes({ legs: 'yes' })[0].message));
+  check('3 or more hard nights in a week that affect the day bring the ongoing-trouble note', N({ w1: '3', impact: 'little' }).join() === 'SLEEP_PERSISTENT' && N({ w1: '1', w2: '4', impact: 'lot' }).join() === 'SLEEP_PERSISTENT');
+  check('three months or more names the first treatment usually offered (CBT-I), sooner says not to wait', /CBT-I/.test(A.sleepCheckNotes({ w1: '5', impact: 'lot', since: '3m+' })[0].message) && /do not need to wait/.test(A.sleepCheckNotes({ w1: '5', impact: 'lot', since: 'lt2w' })[0].message));
+  check('no note for 2 hard nights a week, for no effect on the day, or for "not sure"', !N({ w1: '2', w2: '2', impact: 'lot' }).length && !N({ w1: '6', impact: 'none' }).length && !N({ w1: 'unsure', w2: 'unsure', impact: 'lot' }).length);
+  check('rarely enough time or place to sleep gives an information note, not a care card', N({ chance: 'rarely' }).join() === 'SLEEP_OPPORTUNITY' && A.sleepCheckNotes({ chance: 'rarely' })[0].level === 'info');
+  check('quiet answers raise nothing', !N({ w1: '0', w2: '1', chance: 'usually', impact: 'none', breathing: 'no', legs: 'no', driving: 'nodrive' }).length);
+  check('the check reads back in plain words', A.sleepCheckText({ w1: '4', impact: 'lot', driving: 'nodrive' }) === 'hard nights, last 7 days: 4; affects the day: a lot; sleepy while driving: does not drive', A.sleepCheckText({ w1: '4', impact: 'lot', driving: 'nodrive' }));
+
+  /* Luna's care cards after a save */
+  var w3 = fresh(), S3 = w3.OvuStore, O3 = w3.OvuOrb, t3 = S3.today();
+  var drive = S3.add('sleepcheck', t3, { driving: 'yes', breathing: 'yes' }), u = O3.entryUrgent(drive, {});
+  check('a check saying sleepy at the wheel shows its own today card first', u && u.level === 'today' && u.code === 'SLEEP_DROWSY_DRIVING' && /pull over/.test(u.message), JSON.stringify(u));
+  check('an old check (over two weeks) brings no card', O3.entryUrgent({ id: 'x', type: 'sleepcheck', date: addDays(t3, -20), source: 'room', data: { driving: 'yes' } }, {}) === null);
+  check('an information note is not a care card', O3.entryUrgent({ id: 'y', type: 'sleepcheck', date: t3, source: 'room', data: { chance: 'rarely' } }, {}) === null);
+  var gasp = S3.add('sleep', t3, { bedTime: '23:00', wakeTime: '06:00', details: { woke: ['gasp'] } }), ug = O3.entryUrgent(gasp, {});
+  check('a night that woke her gasping or choking brings the breathing card', ug && ug.code === 'SLEEP_BREATHING' && ug.level === 'prompt');
+  check('a night without it brings none', O3.entryUrgent(S3.add('sleep', t3, { bedTime: '23:00', wakeTime: '06:00', details: { woke: ['toilet'] } }), {}) === null);
+
+  /* hearts and backup */
+  var w4 = fresh(), S4 = w4.OvuStore, R4 = w4.OvuRewards;
+  var aw = R4.award(S4.add('sleepcheck', S4.today(), { w1: '2' }));
+  check('answering the sleep check earns no hearts', aw.points === 0 && aw.bonus === 0);
+  var sw = R4.award(S4.add('sleep', S4.today(), { bedTime: '23:00', wakeTime: '07:00', quality: 3, details: { rested: '4' } }));
+  check('a night with details earns the ordinary sleep hearts, no extra', sw.points === 10 && sw.bonus === 0, JSON.stringify(sw));
+  var sp = w.OvuSync.splitByType([{ id: 1, type: 'sleep' }, { id: 2, type: 'sleepcheck' }]);
+  check('sleep check rows are held on the phone until the server accepts the type; sleep rows with details go up as before', sp.ok.length === 1 && sp.ok[0].type === 'sleep' && sp.held.length === 1 && sp.held[0].type === 'sleepcheck');
+
+  /* a share from outside is cleaned before it is drawn */
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-patterns.js'), 'utf8'), w2);
+  var P = w2.OvuPatterns, bad = { sleepNotes: { from: addDays(t, -27), to: t, nights: '3', withDetails: 2, fields: { latency: { answered: 1, marked: 5, unsure: '1' }, wakeups: { answered: 'x' } }, woke: { flush: 2, '<script>': 9 }, flushNights: 1, checks: [{ date: t, answers: { driving: 'yes', w1: '<img src=x onerror=alert(1)>' } }, { date: 'nope', answers: {} }] } };
+  var cl = P.cleanShare(bad).sleepNotes;
+  check('a shared summary keeps numbers as numbers, never more marked than answered, and only known reasons', cl.nights === 3 && cl.fields.latency.marked === 1 && cl.fields.wakeups.answered === 0 && cl.woke.flush === 2 && Object.keys(cl.woke).length === 1, JSON.stringify(cl));
+  check('a shared check keeps only known answers and real dates', cl.checks.length === 1 && cl.checks[0].answers.driving === 'yes' && cl.checks[0].answers.w1 === undefined);
+  var html = P.sleepNotesHTML(cl);
+  check('the drawn summary carries no markup from the file, names the note raised and says it is not a score', !/<script|onerror/.test(html) && /sleepy at the wheel/i.test(html) && /not a score/.test(html), html.slice(0, 300));
+  check('an empty summary says so in plain words', /No sleep details/.test(P.sleepNotesHTML({ from: t, to: t, nights: 0, withDetails: 0, fields: {}, woke: {}, flushNights: 0, checks: [] })));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
