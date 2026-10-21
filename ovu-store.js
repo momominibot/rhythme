@@ -513,7 +513,7 @@
 
   root.OvuStore = {
     /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
-    NOTICE_V: 3,
+    NOTICE_V: 4, /* v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
     KEY: KEY, TYPES: TYPES, checkinAnswers: checkinAnswers, setCheckinAnswer: setCheckinAnswer, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
     load: load, list: list, get: get, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
     putEvent: putEvent, applyRemote: applyRemote,

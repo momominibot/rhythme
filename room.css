@@ -1716,6 +1716,11 @@ span.frchip{cursor:default}
 .carecard{display:block;margin:2px 0 12px}
 .moodcare{display:flex;gap:8px;align-items:flex-start;margin:-2px 0 10px;padding:9px 11px;border-radius:12px;background:#f7f0fb;color:var(--rm-ink);font:500 12.5px/1.45 var(--sans)}
 .moodcare .ms{color:#a5668f;font-size:18px;flex:none}
+/* display:flex on these beat the hidden attribute: the low-mood note showed under every mood, and the consent sheet told everyone
+   their earlier answers said they were under 18 (Jamie's screenshot, 20 Oct) */
+.flag[hidden],.moodcare[hidden]{display:none}
+html[data-sky="night"] .moodcare{background:#3b2e5a;color:#f1e9fb}
+html[data-sky="night"] .moodcare .ms{color:#f6c9d6}
 /* the mindful line under a toast's message (ovu-moments.js) */
 .toast.two{border-radius:18px;align-items:flex-start;text-align:left;padding:10px 14px}
 .toast .toastsub{display:block;margin-top:3px;font:600 12px/1.35 var(--sans);color:#f3e6ff;opacity:.92}
@@ -1804,7 +1809,7 @@ span.frchip{cursor:default}
 .cihead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .cichoose{border:none;background:none;font:800 11.5px var(--sans);color:var(--rm-mauve);cursor:pointer;padding:10px 4px;min-height:44px}
 .cistatus{display:flex;align-items:center;gap:6px;font:700 12.5px var(--sans);color:var(--rm-ink-2);margin-top:2px}
-.cistatus.done{color:#2f7a55}
+.cistatus.done{color:var(--rm-ink)}
 .cistatus.done .ms{font-size:20px;color:#2f8a5f;font-variation-settings:'FILL' 1}
 .tiles.ci{grid-template-columns:repeat(2,minmax(0,1fr))}
 html[data-text="larger"] .tiles.ci{grid-template-columns:minmax(0,1fr)}
@@ -1817,7 +1822,7 @@ html[data-text="larger"] .tiles.ci{grid-template-columns:minmax(0,1fr)}
 .citile.s-add.key{border-style:dashed;border-color:var(--rm-lilac)}
 .citile.s-add.key b{color:var(--rm-mauve)}
 .citile.s-optional b{color:var(--rm-ink-3);font-weight:700}
-.citile.s-done,.citile.s-unsure{background:#eef7f1;border-color:#cfe8d9}
+/* a recorded tile looks like any tile; the green tick alone says it is done (Jamie, 20 Oct) */
 .citile.s-partial{border-color:var(--rm-lilac)}
 .cimark{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:800 12px var(--sans)}
 .cimark .ms{font-size:15px!important;color:inherit!important}
@@ -1830,8 +1835,6 @@ html[data-text="larger"] .tiles.ci{grid-template-columns:minmax(0,1fr)}
 .ciquick:empty{display:none}
 .ciquick .qchip{border:1.5px solid var(--rm-lilac);background:var(--rm-card,#fff);color:var(--rm-plum);border-radius:99px;padding:8px 12px;min-height:40px;font:700 11.5px var(--sans);cursor:pointer}
 .ciquick .qchip.undo{border-style:dashed;color:var(--rm-ink-2)}
-html[data-sky="night"] .citile.s-done,html[data-sky="night"] .citile.s-unsure{background:#1f3a2e;border-color:#2f5a45}
-html[data-sky="night"] .cistatus.done{color:#9fe0bd}
 html[data-sky="night"] .cistatus.done .ms{color:#86c7a6}
 html[data-sky="night"] .cimark.uns{background:#2f5a45;color:#c8f0da}
 /* farm: the watering can and mindful care steps (Jamie, 20 Oct) */
@@ -1857,6 +1860,11 @@ html[data-sky="night"] .cimark.uns{background:#2f5a45;color:#c8f0da}
 .farmsteps li>.ms{flex:none;width:32px;height:32px;line-height:32px;text-align:center;border-radius:50%;background:#f1eafb;color:#7c5aa8;font-size:18px}
 .farmsteps b{display:block;font-size:14px;color:#3d2f55}
 .farmsteps small{display:block;font-size:12.5px;line-height:1.45;color:#5d4f6c}
+/* the consent notice keeps its light look: a withdrawal that did not reach the account is said plainly above the button */
+.consent .c-err{margin:8px 0 10px;padding:9px 12px;border-radius:12px;background:#fdecef;color:#8a2140;font:700 12.5px/1.45 var(--sans)}
+
+/* large text in the room (ovu-textsize.js): everything around the plate grows; the plate, the avatar and taps on them stay true */
+html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud){zoom:var(--tz,1)}
 /* the barn and the hidden spring (ovu-barn.js, 21 Oct) */
 .barnthing{position:absolute;pointer-events:auto;border:0;background:none;padding:0}
 .barnthing.animal{transform:translate(-50%,-100%);cursor:pointer;z-index:2}
