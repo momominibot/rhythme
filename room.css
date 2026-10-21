@@ -2138,7 +2138,7 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 /* night: the rhythm panel and Luna's card take the dark surfaces, as every other sheet does (Codex collation review, 21 Oct) */
 html[data-sky=night] .ready,html[data-sky=night] .rcard{background:var(--rm-card);border-color:rgba(255,255,255,.1)}
 html[data-sky=night] .ready .dot i{background:var(--rm-paper-2);border-color:#5b477f;color:#cdbfe4}
-html[data-sky=night] .ready .dot.on i{color:#2a1d44}
+html[data-sky=night] .ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#2a1d44} /* the completed dots keep their gradient at night (Codex re-check) */
 html[data-sky=night] .ready .dot+.dot::before{background:#3b2e5a}
 html[data-sky=night] .rband{background:var(--rm-paper-2)}
 html[data-sky=night] .chip-th{background:#3b2e5a;color:#e3d4fa;border-color:#7a62a6}
@@ -2150,3 +2150,4 @@ html[data-sky=night] .askchip{background:#2b2147;color:#dccdf6;border-color:rgba
 html[data-sky=night] .askchip:hover{background:#3b2e5a}
 /* closed, Luna's top-anchored card is hidden and untappable once it has slid away: on a tall screen its own height is not enough to leave the frame */
 .sheet.luna-sheet:not(.on){visibility:hidden;pointer-events:none;transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s linear .38s}
+@media (prefers-reduced-motion: reduce){.sheet.luna-sheet:not(.on){transition:none}}
