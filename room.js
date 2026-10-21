@@ -1156,7 +1156,7 @@
         '<section class="dsec"><h4><i>3</i>Anything else <small>optional</small></h4>' + '<div class="field"><label for="fdFoods">Notes or anything not in the list</label><textarea class="input" id="fdFoods" placeholder="Kopi C, two slices of kaya toast..."></textarea></div>' + '<div class="field"><span class="lbl">Tags</span><div class="chips" id="tagChips">' + A.FOOD_TAGS.map(function (t) { return '<button type="button" class="chipbtn" data-tag="' + esc(t) + '">' + esc(cap(t)) + '</button>'; }).join('') + '</div></div>' + '</section>' +
         '<button class="btn primary" id="saveFood" style="width:100%"><span class="ms">check</span>Save meal</button><div class="msg" id="foodMsg"></div>' +
       '</div>' +
-      '<div class="dpane" data-pane="today" hidden>' + guideHTML('nova') + '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' + '</div>' +
+      '<div class="dpane" data-pane="today" hidden>' + guideHTML('nova') + '<div id="waterStrip"></div>' + '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' + '</div>' +
       '<div class="dpane" data-pane="ideas" hidden>' + '<p class="help" style="margin:2px 0 10px"><span class="ms" style="font-size:16px;vertical-align:-3px">yard</span> Teas and herbs now live in the garden greenhouse, with pictures, research and who should take care.</p>' + '<div class="phasechips chips" id="ideaPhases" role="group" aria-label="Food ideas for each phase">' + [['menstrual', 'Period'], ['follicular', 'Follicular'], ['ovulatory', 'Ovulation'], ['luteal', 'Luteal']].map(function (q) { return '<button type="button" class="chipbtn" data-iphase="' + q[0] + '">' + q[1] + '</button>'; }).join('') + '</div>' +
       (cs.mode === 'suspended' ? '<p class="mindline"><span class="ms">info</span>Cycle phases are paused for you right now, so none of these is meant for you today. They are general ideas to browse; nothing here is needed.</p>' : '') +
       '<div id="ideaTip"></div><div id="picksWrap"></div><p class="help">General food ideas for each part of the cycle, not a diet or a treatment.</p></div>');
@@ -1170,6 +1170,7 @@
     }
     $('#ideaPhases').addEventListener('click', function (e) { var b = e.target.closest('[data-iphase]'); if (b) { chime('tap'); showIdeas(b.dataset.iphase); } });
     showIdeas(ideaPhase);
+    if (window.OvuWater) OvuWater.setDate(diaryDate); /* the water strip follows the pane's date */
     (ovarian ? Promise.resolve(ovarian) : loadJSON('assets/data/ovarian-foods.json').then(function (d) { ovarian = d; return d; })).then(function () { showIdeas(ideaPhase); }).catch(function () { });
     function setPane(k) { $$('#dTabs button').forEach(function (b) { var on = b.dataset.dpane === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); }); $$('.dpane', body).forEach(function (pn) { pn.hidden = pn.dataset.pane !== k; }); if (k !== 'add') stopCamera(); body.scrollTop = 0; }
     $('#dTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-dpane]'); if (b) { chime('tap'); setPane(b.dataset.dpane); } });
@@ -1282,11 +1283,12 @@
       var r = e.target.closest('.result'); if (r) { var f = r.dataset.food.indexOf('off:') === 0 ? null : FD.byId(r.dataset.food); if (f) showPicker(f); return; }
       var pk = e.target.closest('.pick'); if (pk) { if (pk.dataset.usda) { FD.load().then(function () { var f = FD.byId(pk.dataset.usda); if (f) showPicker(f); }); } else { var ta = $('#fdFoods'); ta.value = (ta.value ? ta.value + ', ' : '') + pk.dataset.name; toast(pk.dataset.name + ' added to your notes (no USDA entry yet).', 'edit'); } return; }
       var del = e.target.closest('#items .del'); if (del) { draft.items.splice(Number(del.dataset.i), 1); renderItems(); return; }
+      if (window.OvuWater && OvuWater.onClick(e)) return; /* the water strip's own buttons */
       var d = e.target.closest('#foodList [data-del]'); if (d && confirm('Delete this entry?')) { S.remove(d.dataset.del); $('#foodList').innerHTML = foodEntriesHTML(diaryDate); renderDeck(); }
     });
     $('#mealChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#mealChips')).forEach(function (x) { x.classList.toggle('on', x === b); }); });
     $('#tagChips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) b.classList.toggle('on'); });
-    $('#fdDate').addEventListener('change', function () { diaryDate = this.value; $('#fdLabel').textContent = prettyDate(diaryDate); $('#foodList').innerHTML = foodEntriesHTML(diaryDate); });
+    $('#fdDate').addEventListener('change', function () { diaryDate = this.value; $('#fdLabel').textContent = prettyDate(diaryDate); $('#foodList').innerHTML = foodEntriesHTML(diaryDate); if (window.OvuWater) OvuWater.setDate(diaryDate); });
     $('#saveFood').addEventListener('click', function () {
       try {
         var notes = $('#fdFoods').value.trim();
@@ -2981,7 +2983,7 @@
    * Six tiles open their editors straight away. The tick means the key check-ins she chose were answered today; "none",
    * "not sure" and "nothing to log" count. No red, no streak, no nagging, no hearts for the tick. */
   var ciChoosing = false;
-  function ciChoice() { return S.state().checkinChoice || null; }
+  function ciChoice() { var c = S.state().checkinChoice || null; if (c && c.food !== undefined && c.water === undefined) { c = Object.assign({}, c); c.water = c.food; delete c.food; } return c; } /* a food opt-out from before 21 Oct reads as a water one until she chooses again */
   function renderCheckIn() {
     var ci = A.todayCheckIn(S.today(), ciChoice());
     $('#tiles').innerHTML = ci.tiles.map(function (t) {
@@ -3002,7 +3004,7 @@
       if (by.bleeding.state === 'add') q.push(['bleeding', 'none', 'No bleeding today'], ['bleeding', 'unsure', 'Not sure about bleeding']);
       if (by.sleep.state === 'add') q.push(['sleep', 'unsure', 'Not sure about last night']);
       if (by.symptoms.state === 'partial' && by.symptoms.value === 'Mood?') q.push(['mood', 'unsure', 'Mood: not sure']);
-      if (by.food.state === 'add') q.push(['food', 'skip', 'Nothing to log for food today']);
+      if (by.water.state === 'add') q.push(['water', 'skip', 'Not recording water today']);
       ci.tiles.forEach(function (t) { if (t.answer) q.push([t.id === 'symptoms' ? 'mood' : t.id, null, 'Change my answer: ' + t.label.toLowerCase()]); });
     }
     $('#ciQuick').innerHTML = q.length ? q.map(function (x) { return '<button type="button" class="qchip' + (x[1] === null ? ' undo' : '') + '" data-qa="' + x[0] + '" data-qv="' + (x[1] === null ? '' : x[1]) + '">' + esc(x[2]) + '</button>'; }).join('') : '';
@@ -3013,7 +3015,7 @@
     if (id === 'bleeding') openCalendar('period', S.today());
     else if (id === 'sleep') openSleepRecord();
     else if (id === 'symptoms') openCalendar('symptom', S.today());
-    else if (id === 'food') openDiary();
+    else if (id === 'water') openDiary('today');
     else if (id === 'movement') openExercise();
     else if (id === 'calm') tap(hotspot('mat'));
   }

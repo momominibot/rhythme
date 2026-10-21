@@ -4,7 +4,7 @@
 (function (root) {
   'use strict';
   var S = root.OvuStore;
-  var RULES = { sleep: 10, period: 10, symptom: 8, food: 6, reflection: 5, mindfulness: 0, exercise: 6 };
+  var RULES = { sleep: 10, period: 10, symptom: 8, food: 6, reflection: 5, mindfulness: 0, exercise: 6, water: 6 }; /* water: the first record of the real day, never an amount (21 Oct) */
   var SHOP = [
     /* pets in a slot are options: one kitten and one puppy show at a time, the rest wait in your inventory.
      * posAs borrows the layout spot of the original pet; wk keeps each sprite the same height as the original. */
@@ -146,6 +146,15 @@
     if (S.commit) S.commit(p); else S.setState(p);
     return { points: pts, hearts: l.hearts };
   }
+  /* a record that lives outside the diary (water, 21 Oct): the kind's logging hearts for the first record of the real day, written
+     with the record in one save, so a failed write takes neither; nothing on later records, edits or other days */
+  function recordWith(kind, patch) {
+    var l = JSON.parse(JSON.stringify(ledger())), pts = dailyPoints(l, kind);
+    if (pts) { l.hearts += pts; l.earned += pts; l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: kind, points: pts }); l.log = l.log.slice(0, 200); }
+    var p = { rewards: l }; Object.keys(patch || {}).forEach(function (k) { p[k] = patch[k]; });
+    if (S.commit) S.commit(p); else S.setState(p);
+    return { points: pts, hearts: l.hearts };
+  }
   function buy(id) {
     var l = ledger(), item = SHOP.filter(function (s) { return s.id === id; })[0];
     if (!item || item.locked) throw new Error('Not available yet.');
@@ -204,5 +213,5 @@
     if (add) { l.hearts += add; l.earned += add; l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'petcare', pet: pet, action: action, points: add }); l.log = l.log.slice(0, 200); }
     write(l); return { points: add, hearts: l.hearts, capped: add < pts };
   }
-  root.OvuRewards = { SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, PRACTICE: PRACTICE, ledger: ledger, award: award, buy: buy, spend: spend, thank: thank, todayLeft: todayLeft, tester: tester, toggle: toggle, grant: grant, care: care, item: item, treatsFor: treatsFor, useTreat: useTreat, wearing: wearing, wear: wear, nextWear: nextWear, CARE: CARE, CARE_CAP: CARE_CAP };
+  root.OvuRewards = { recordWith: recordWith, SHOP: SHOP, SLOTS: SLOTS, RULES: RULES, PRACTICE: PRACTICE, ledger: ledger, award: award, buy: buy, spend: spend, thank: thank, todayLeft: todayLeft, tester: tester, toggle: toggle, grant: grant, care: care, item: item, treatsFor: treatsFor, useTreat: useTreat, wearing: wearing, wear: wear, nextWear: nextWear, CARE: CARE, CARE_CAP: CARE_CAP };
 })(window);

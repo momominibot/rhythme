@@ -13,8 +13,8 @@ function fresh(todayIso) {
   w.window = w; w.self = w; w.globalThis = w;
   var ctx = vm.createContext(w);
   w.Uint8Array = Uint8Array; w.ArrayBuffer = ArrayBuffer; w.isFinite = isFinite; w.isNaN = isNaN; w.Blob = Blob; w.File = File;
-  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sound.js', 'ovu-breathtap.js', 'ovu-lightflower.js', 'ovu-moments.js', 'ovu-mindful.js', 'ovu-morning.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
-  ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sync.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
+  ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-water.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sound.js', 'ovu-breathtap.js', 'ovu-lightflower.js', 'ovu-moments.js', 'ovu-mindful.js', 'ovu-morning.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
+  ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-water.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sync.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
   return w;
 }
@@ -2660,10 +2660,10 @@ var summarised = false;
   var w = fresh('2026-10-20'), S = w.OvuStore, A = w.OvuAgents, RW = w.OvuRewards, t = '2026-10-20';
   S.setProfile({ periodsStarted: 'yes', regularity: 'regular' });
   var c0 = A.todayCheckIn(t);
-  check('periods expected: bleeding, sleep, symptoms and mood, food count; movement and calm are optional', c0.keyCount === 4 && c0.keyDone === 0 && !c0.complete && c0.tiles.filter(function (x) { return x.key; }).map(function (x) { return x.id; }).join() === 'bleeding,sleep,symptoms,food' && c0.tiles[4].state === 'optional', JSON.stringify(c0.tiles.map(function (x) { return [x.id, x.key, x.state]; })));
+  check('periods expected: bleeding, sleep, symptoms and mood, water count (water took food\'s place, 21 Oct); movement and calm are optional', c0.keyCount === 4 && c0.keyDone === 0 && !c0.complete && c0.tiles.filter(function (x) { return x.key; }).map(function (x) { return x.id; }).join() === 'bleeding,sleep,symptoms,water' && c0.tiles[4].state === 'optional', JSON.stringify(c0.tiles.map(function (x) { return [x.id, x.key, x.state]; })));
   S.add('sleep', t, { bedTime: '23:00', wakeTime: '06:30', quality: 3 }, 'room');
   S.add('symptom', t, { symptoms: [], none: true, pain: null, mood: '' }, 'room');
-  S.add('food', t, { meal: 'lunch', foods: 'chicken rice', items: [], tags: [] }, 'room');
+  S.add('food', t, { meal: 'lunch', foods: 'chicken rice', items: [], tags: [] }, 'room'); w.OvuWater.add(250, t); /* a meal no longer ticks a tile; a water record does */
   var c1 = A.todayCheckIn(t), sym = c1.tiles[2];
   check('"None" for symptoms without a mood is only partly answered', sym.state === 'partial' && sym.value === 'Mood?' && c1.keyDone === 2, JSON.stringify(sym));
   var hearts = RW.ledger().hearts, events = S.list().length;
@@ -3588,6 +3588,64 @@ var summarised = false;
   check('the state line tells the truth (rules only while AI help is paused or off; reading on otherwise) and there is no upsell, no quota invented, no model name', /Rules only · AI help paused/.test(luna) && /Luna’s reading is on/.test(luna) && !/upgrade|premium|questions left/i.test(luna) && !/gpt|claude|doubao|deepseek|gemini/i.test(luna));
   check('three ask chips open real guides, the composer asks about her cycle, and the companion note is the last line', /stress\.html/.test(luna) && /hormones\.html/.test(luna) && /foods\.html/.test(luna) && ['stress.html', 'hormones.html', 'foods.html'].every(function (f) { return fs.existsSync(path.join(root, f)); }) && /Tell Luna, or ask about your cycle…/.test(luna) && /Luna is a wellness companion, not a doctor\. For medical concerns, talk to a clinician\./.test(luna));
   check('the card’s styles exist and no em dash entered the copy', /\.sheet\.luna-sheet\{/.test(css) && /\.askchip\{/.test(css) && /\.lunanote\{/.test(css) && luna.indexOf('—') < 0);
+})();
+
+(function waterInTheFoodDiary() {
+  console.log('2k20. water in the food diary (21 Oct): records by id, hearts once a day for recording, never for an amount; two tabs lose nothing; a wipe stays wiped; information by answers, never a personal number');
+  var day = '2026-10-21', w = fresh(day), S = w.OvuStore, WT = w.OvuWater, RW = w.OvuRewards, A = w.OvuAgents;
+  check('amounts are whole millilitres from 1 to 3000; nothing else is one', WT.validMl(250) === 250 && WT.validMl('330') === 330 && WT.validMl(249.6) === 250 && [0, -5, 3001, 'ml', '', null, true, Infinity, NaN, 1e9].every(function (v) { return WT.validMl(v) === null; }));
+  var h0 = RW.ledger().hearts, r1 = WT.add(250), r2 = WT.add(200);
+  check('the first record of today earns the logging hearts once; the second earns nothing; the total is a derived sum', r1.points === 6 && RW.ledger().hearts === h0 + 6 && r2.points === 0 && RW.ledger().hearts === h0 + 6 && WT.dayTotal(day) === 450 && WT.dayCount(day) === 2);
+  var yest = S.addDays(day, -1), r3 = WT.add(500, yest);
+  check('a record for another day is kept and earns nothing; a future day is refused', r3.points === 0 && WT.dayTotal(yest) === 500 && (function () { try { WT.add(100, S.addDays(day, 1)); return false; } catch (e) { return /not come/.test(e.message); } })());
+  check('removing leaves a tombstone, and adding again today earns nothing more', WT.remove(r1.id) && !WT.current().records[r1.id] && !!WT.current().tombstones[r1.id] && WT.dayTotal(day) === 200 && WT.add(250).points === 0 && RW.ledger().hearts === h0 + 6);
+  check('a bad amount or an unknown id changes nothing', (function () { try { WT.add('lots'); return false; } catch (e) { return !WT.remove('nope') && WT.dayTotal(day) === 450; } })());
+  /* information follows the answers and nothing else */
+  check('no answers: general information; declined: general; kidney, heart, advice or not sure on any of them: the care line; pregnancy or breastfeeding: that line', WT.mode({}) === 'unknown' && WT.mode({ declined: true }) === 'general' && WT.mode({ answers: { kidney: 'no', heart: 'no', advice: 'no', preg: 'no' } }) === 'general' && WT.mode({ answers: { kidney: 'yes' } }) === 'care' && WT.mode({ answers: { advice: 'unsure', preg: 'yes' } }) === 'care' && WT.mode({ answers: { kidney: 'no', heart: 'no', advice: 'no', preg: 'yes' } }) === 'preg' && WT.mode({ answers: { kidney: 'no', heart: 'no', advice: 'no', preg: 'no' }, bf: true }) === 'preg');
+  var st1 = WT.saveSettings({ answers: { kidney: 'unsure', heart: 'no', advice: 'no', preg: 'no' } });
+  check('not sure stays not sure, and the answers never change the hearts', st1.answers.kidney === 'unsure' && WT.mode(WT.current().settings) === 'care' && RW.ledger().hearts === h0 + 6);
+  var texts = Object.keys(WT.INFO).map(function (k) { return WT.INFO[k].join(' '); }).join(' ') + WT.stripHTML(day).replace(/<[^>]*>/g, ' '); /* words only: a link's target attribute is not copy */
+  check('no target, goal, percentage, bar, streak or benefit claim anywhere in the copy; the care line names the care team and plain water; no em dash', !/\bgoal|target|remaining|on track|complete\b|%|streak|dehydrat|skin|weight loss|energy level/i.test(texts) && /care team/.test(texts) && /plain water/.test(texts) && texts.indexOf('—') < 0 && !/ml you require|you need \d/i.test(texts));
+  check('the strip never shows a personal amount: no litres-per-day figure is computed from her weight', !/weightKg|kg \*|\* kg|ml\/kg|per kg/.test(fs.readFileSync(path.join(root, 'ovu-water.js'), 'utf8')));
+  /* two tabs over one storage: both records survive; a wipe stays wiped; a tombstone wins */
+  var a = fresh(day), b = fresh(day); b.localStorage = a.localStorage; a.OvuStore.load(true); b.OvuStore.load(true);
+  a.OvuWater.add(250); b.OvuWater.add(200); /* B saved without seeing A's record */
+  var c = fresh(day); c.localStorage = a.localStorage; c.OvuStore.load(true);
+  check('two tabs recording at once keep both records, merged by id inside the store', c.OvuWater.dayCount(day) === 2 && c.OvuWater.dayTotal(day) === 450, JSON.stringify(c.OvuWater.current().records));
+  var ids = Object.keys(c.OvuWater.current().records); a.OvuStore.load(true); b.OvuStore.load(true);
+  a.OvuWater.remove(ids[0]); b.OvuWater.saveSettings({ hideNumbers: true }); /* B, stale, writes settings after A removed a record */
+  var c2 = fresh(day); c2.localStorage = a.localStorage; c2.OvuStore.load(true);
+  check('a stale tab’s write never brings a removed record back, and both tabs’ settings and tombstones are kept', c2.OvuWater.dayCount(day) === 1 && !!c2.OvuWater.current().tombstones[ids[0]] && c2.OvuWater.current().settings.hideNumbers === true);
+  a.OvuStore.load(true); b.OvuStore.load(true); a.OvuStore.clearAll(); b.OvuWater.add(100); /* B, stale, records after A's Delete everything */
+  var c3 = fresh(day); c3.localStorage = a.localStorage; c3.OvuStore.load(true);
+  check('after Delete everything in another tab, a stale tab’s new record stands alone: the wiped records do not come back', c3.OvuWater.dayCount(day) === 1 && c3.OvuWater.dayTotal(day) === 100);
+  /* a failed save takes neither the record nor the hearts */
+  var w2 = fresh(day), S2 = w2.OvuStore, W2 = w2.OvuWater, RW2 = w2.OvuRewards, snap = JSON.stringify([S2.state().water, S2.state().rewards]);
+  var realSet = w2.localStorage.setItem; w2.localStorage.setItem = function () { throw new Error('QuotaExceededError'); };
+  var failed = false; try { W2.add(250); } catch (e) { failed = true; }
+  w2.localStorage.setItem = realSet;
+  check('a full disk: the record is refused, the hearts and the water state are exactly as they were, and the next save works and pays once', failed && JSON.stringify([S2.state().water, S2.state().rewards]) === snap && W2.add(250).points === 6 && RW2.ledger().hearts === 6);
+  /* restore through the journal's path: by id, no hearts; a replace never brings answers */
+  var w3 = fresh(day), W3 = w3.OvuWater, RW3 = w3.OvuRewards, file = { v: 1, settings: { answers: { kidney: 'yes' } }, records: { x1: { id: 'x1', date: day, ml: 300, at: '2026-10-21T01:00:00.000Z' }, bad: { id: 'bad', date: day, ml: 'lots', at: 'x' } }, tombstones: {} };
+  var rs1 = W3.restore(file), rs2 = W3.restore(file);
+  check('a restored backup brings its valid records once, pays nothing and leaves this phone’s answers alone', rs1.restored === 1 && rs2.restored === 0 && W3.dayTotal(day) === 300 && RW3.ledger().hearts === 0 && !W3.current().settings.answers);
+  /* the check-in and the kinds */
+  var w4 = fresh(day), S4 = w4.OvuStore, A4 = w4.OvuAgents, W4 = w4.OvuWater; S4.setProfile({ periodsStarted: 'yes', regularity: 'regular' });
+  var t0 = A4.todayCheckIn(day).tiles.filter(function (x) { return x.id === 'water'; })[0];
+  S4.setCheckinAnswer(day, 'water', 'skip'); var t1 = A4.todayCheckIn(day).tiles.filter(function (x) { return x.id === 'water'; })[0];
+  S4.setCheckinAnswer(day, 'water', null); W4.add(330); var t2 = A4.todayCheckIn(day).tiles.filter(function (x) { return x.id === 'water'; })[0];
+  check('the Water tile: to add, then answered by Not today, then recorded with the day’s amount; no Food tile remains', t0.state === 'add' && t1.state === 'done' && t1.value === 'Not today' && t1.answer && t2.state === 'done' && t2.value === '330 ml' && A4.todayCheckIn(day).tiles.every(function (x) { return x.id !== 'food'; }));
+  S4.setCheckinAnswer(day, 'food', 'skip'); var t3 = A4.todayCheckIn(day, { food: false }).tiles.filter(function (x) { return x.id === 'water'; })[0];
+  check('an old food skip answer is never read as a water answer, while an old food opt-out carries over to the water tile once', t3.state === 'done' && t3.value === '330 ml' && !t3.key && (function () { var c0 = A4.todayCheckIn(day, { food: false, water: true }); return c0.tiles.filter(function (x) { return x.id === 'water'; })[0].key; })());
+  W4.saveSettings({ hideNumbers: true }); var t4 = A4.todayCheckIn(day).tiles.filter(function (x) { return x.id === 'water'; })[0];
+  check('with amounts hidden the tile says how many records, not how much', t4.value === '1 record');
+  /* the structured records stay out of the summaries, Luna, the PDF and the shares */
+  var others = ['ovu-orb.js', 'ovu-insight.js', 'ovu-pdf.js', 'ovu-sync.js', 'journal.html', 'doctor.html'].map(function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); }).join('\n');
+  var agentsSrc = fs.readFileSync(path.join(root, 'ovu-agents.js'), 'utf8'), ciBlock = agentsSrc.slice(agentsSrc.indexOf('function todayCheckIn'), agentsSrc.indexOf('function saveMonthlySummary'));
+  check('nothing but today’s check-in tile reads the water records: no summary, model, sync, PDF or share code touches them', !/OvuWater|state\.water\b|\.water\b/.test(others) && (agentsSrc.match(/OvuWater/g) || []).length === (ciBlock.match(/OvuWater/g) || []).length && /out\.water = wn/.test(ciBlock));
+  check('the old water page redirects into the food diary, its route points there, and the privacy page names water as local only', /room\.html#food/.test(fs.readFileSync(path.join(root, 'hydration.html'), 'utf8')) && /\[\/hydrat\/i,'room\.html#food'\]/.test(fs.readFileSync(path.join(root, 'appnav.js'), 'utf8')) && /water records/.test(fs.readFileSync(path.join(root, 'privacy.html'), 'utf8')) && /water records/.test(fs.readFileSync(path.join(root, 'privacy-local.js'), 'utf8')));
+  var E = w.OvuEvidence; var evOk = E ? ['E95', 'E96', 'E97', 'E98', 'E99', 'E100', 'E101'].every(function (id) { var e = E.get ? E.get(id) : null; return e && e.topics.indexOf('water') > -1 && /^https:/.test(e.url); }) : /id: 'E101'/.test(fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8'));
+  check('evidence E95 to E101 exist under the water topic with primary links', evOk);
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

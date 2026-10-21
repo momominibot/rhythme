@@ -5,7 +5,7 @@
   'use strict';
   const STORES = [
     /* the room's own stores (launch sweep, 20 Oct 2026: the list used to start at the earlier pages and missed the diary) */
-    ['ovumind_db_v1', 'Your Rhythme diary: entries, answers, choices and room', 'current'],
+    ['ovumind_db_v1', 'Your Rhythme diary: entries, answers, choices, room, water records and the water questions (water stays on this phone even with cloud backup on)', 'current'],
     ['ovumind_food_journal', 'Older copy of your meals', 'current'],
     ['ovumind_cycle', 'Older copy of your cycle summary', 'current'],
     ['ovumind_ai_v1', "Luna's AI settings", 'preferences'],

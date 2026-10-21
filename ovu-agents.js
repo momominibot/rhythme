@@ -358,17 +358,18 @@
    * themselves earn as before). Bleeding is key only while periods are expected: not after menopause, in pregnancy,
    * after a birth until she says periods are back, with predictions paused (hormonal methods, hysterectomy) or when
    * nothing says she menstruates. She can choose what counts (choice) (Codex design review, 20 Oct). */
-  var CHECK_TILES = [['bleeding', 'Bleeding', 'water_drop'], ['sleep', 'Sleep', 'bedtime'], ['symptoms', 'Symptoms & mood', 'sentiment_satisfied'], ['food', 'Food', 'restaurant'], ['movement', 'Movement', 'directions_run'], ['calm', 'Calm', 'self_improvement']];
+  var CHECK_TILES = [['bleeding', 'Bleeding', 'water_drop'], ['sleep', 'Sleep', 'bedtime'], ['symptoms', 'Symptoms & mood', 'sentiment_satisfied'], ['water', 'Water', 'water_full'], ['movement', 'Movement', 'directions_run'], ['calm', 'Calm', 'self_improvement']];
   function bleedingExpected(p, cs) {
     if (isPostmenopausal(p) || p.pregState === 'pregnant' || p.pregState === 'maybe') return false;
     if (p.pregState === 'postpartum' && p.periodsBack !== 'yes') return false;
     if (cs.mode === 'suspended' || p.periodsStarted === 'no') return false;
     return p.periodsStarted === 'yes' || !!p.regularity || S.list('period').length > 0;
   }
-  function defaultKeys(p, cs) { return { bleeding: bleedingExpected(p, cs), sleep: true, symptoms: true, food: true, movement: false, calm: false }; }
+  function defaultKeys(p, cs) { return { bleeding: bleedingExpected(p, cs), sleep: true, symptoms: true, water: true, movement: false, calm: false }; } /* water took food's place in Today's check-in (Jamie, 21 Oct); meals are still logged and still earn */
   function todayCheckIn(date, choice) {
     date = date || S.today();
     var p = S.profile(), cs = S.cycleStats(date), ans = S.checkinAnswers(date), ent = S.byDate(date);
+    if (choice && choice.food !== undefined && choice.water === undefined) { choice = Object.assign({}, choice); choice.water = choice.food; delete choice.food; } /* a food opt-out made before 21 Oct carries over to water once */
     var keys = Object.assign(defaultKeys(p, cs), choice || {});
     function of(t) { return ent.filter(function (e) { return e.type === t; }); }
     var out = {};
@@ -385,8 +386,8 @@
     var symAns = list.length || none, moodAns = mood || ans.mood === 'unsure';
     out.symptoms = symAns && moodAns ? { state: 'done', value: (list.length ? (list.length === 1 ? list[0].charAt(0).toUpperCase() + list[0].slice(1) : list.length + ' symptoms') : 'None'), sub: mood ? 'mood ' + mood : 'mood not sure', answer: !mood }
       : symAns || moodAns ? { state: 'partial', value: symAns ? 'Mood?' : 'Symptoms?', sub: symAns ? 'add your mood' : 'tick symptoms or None', answer: !mood && !!moodAns } : null;
-    var meals = of('food');
-    out.food = meals.length ? { state: 'done', value: meals.length + (meals.length === 1 ? ' meal' : ' meals'), sub: 'logged' } : ans.food === 'skip' ? { state: 'done', value: 'Not today', sub: 'nothing to log', answer: true } : null;
+    var WT = root.OvuWater, wn = WT ? WT.dayCount(date) : 0, wml = WT ? WT.dayTotal(date) : 0, whide = !!(WT && WT.current().settings.hideNumbers); /* recorded, or answered: never a word about adequacy */
+    out.water = wn ? { state: 'done', value: whide ? wn + (wn === 1 ? ' record' : ' records') : WT.fmtMl(wml), sub: 'recorded' } : ans.water === 'skip' ? { state: 'done', value: 'Not today', sub: 'not recording water', answer: true } : null;
     var mv = of('exercise'); out.movement = mv.length ? { state: 'done', value: Math.round(mv.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) + ' min', sub: 'movement' } : null;
     var mi = of('mindfulness'); out.calm = mi.length ? { state: 'done', value: Math.round(mi.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) + ' min', sub: 'calm' } : null;
     var tiles = CHECK_TILES.map(function (t) {

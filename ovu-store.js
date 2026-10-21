@@ -88,11 +88,14 @@
     (theirs || []).concat(mine || []).forEach(function (x) { if (!x || x.id === undefined || seen[x.id]) return; seen[x.id] = true; var k = pick(x.id); if (k) out.push(k); });
     return out;
   }
+  /* a module may merge its own state key by id (water records, 21 Oct): fn(mine, base, theirs) returns the merged value */
+  var MERGERS = {};
+  function registerMerge(key, fn) { if (typeof fn === 'function') MERGERS[key] = fn; }
   function mergeKeys(mine, base, theirs, byIdKeys) {
     var out = {}, keys = {};
     [mine, base, theirs].forEach(function (o) { Object.keys(o || {}).forEach(function (k) { keys[k] = true; }); });
     Object.keys(keys).forEach(function (k) {
-      var v = byIdKeys && byIdKeys[k] && (Array.isArray(mine[k]) || Array.isArray(theirs[k])) ? mergeById(mine[k], base[k], theirs[k]) : (!same(mine[k], base[k]) ? mine[k] : theirs[k]);
+      var v = MERGERS[k] && (mine[k] !== undefined || theirs[k] !== undefined) && !same(mine[k], theirs[k]) ? MERGERS[k](mine[k], base[k], theirs[k]) : byIdKeys && byIdKeys[k] && (Array.isArray(mine[k]) || Array.isArray(theirs[k])) ? mergeById(mine[k], base[k], theirs[k]) : (!same(mine[k], base[k]) ? mine[k] : theirs[k]);
       if (v !== undefined) out[k] = v;
     });
     return out;
@@ -379,7 +382,7 @@
    * Answers that are not measurements: "no bleeding today", "not sure", "nothing to log". They only mark a check-in as
    * answered on this device: never an entry, a flow, coverage, a cycle or hearts, and anything logged later wins.
    * The write lands whole or not at all (commit), so a full storage never shows a tick (Codex design review, 20 Oct). */
-  var CHECKIN = { bleeding: ['none', 'unsure'], sleep: ['unsure'], mood: ['unsure'], food: ['skip'] };
+  var CHECKIN = { bleeding: ['none', 'unsure'], sleep: ['unsure'], mood: ['unsure'], food: ['skip'], water: ['skip'] }; /* water replaced food in Today's check-in (21 Oct); old food answers stay readable */
   function checkinAnswers(date) { var c = load().state.checkin || {}; return Object.assign({}, c[date] || {}); }
   function setCheckinAnswer(date, domain, status) {
     if (!validDate(date) || !CHECKIN[domain] || (status !== null && CHECKIN[domain].indexOf(status) < 0)) throw new Error('That is not a check-in answer.');
@@ -641,7 +644,7 @@
   /* same-day duplicates (a sync can bring two checks for one day): the newest edit is the answer; on a tie, the later row (Codex, 21 Oct) */
   function newestFirst(a, b) { var ta = String(a.updatedAt || a.createdAt || ''), tb = String(b.updatedAt || b.createdAt || ''); return tb > ta ? 1 : tb < ta ? -1 : 0; }
   function latestOnDate(type, date) { var l = list(type, { from: date, to: date }).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return newestFirst(x.e, y.e) || (y.i - x.i); }); return l.length ? l[0].e : null; }
-  root.OvuStore = {
+  root.OvuStore = { registerMerge: registerMerge,
     /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
     NOTICE_V: 4, /* v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
     KEY: KEY, TYPES: TYPES, checkinAnswers: checkinAnswers, setCheckinAnswer: setCheckinAnswer, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
