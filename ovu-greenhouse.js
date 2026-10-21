@@ -473,7 +473,8 @@
   R.on('boot', function () {
     R.on('props', function (L) { render(L); });
     R.on('layout', function (L) { cutShort(); render(L); });
-    R.on('beforeWalk', cutShort); /* walking away ends the minute (a practice that moves her takes over instead) */
+    R.on('beforeWalk', cutShort);
+    doc.addEventListener('visibilitychange', function () { if (doc.hidden && caring) cutShort(); }); /* away from the app is not a mindful minute (persona walk, 21 Oct) */ /* walking away ends the minute (a practice that moves her takes over instead) */
     R.on('activity', function () { stepAside(); }); /* a practice or session is starting: hand the HUD over now */
     if (root.OvuGameTime && root.OvuGameTime.onNewDay) root.OvuGameTime.onNewDay(function () { renderBeds(); }); /* a new day dries the soil */
     if (S.subscribe) S.subscribe(function (reason) { if (reason === 'external' || String(reason).indexOf('sync') === 0) renderBeds(); }); /* another tab moved a planter */
