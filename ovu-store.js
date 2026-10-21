@@ -13,6 +13,7 @@
   var IMPORTED = { 'apple-health': true, 'google-fit': true };
   var listeners = [];
   var cache = null;
+  var seenRaw = null, baseText = null; /* the stored text this tab last read or wrote, and its own copy at that moment: the base of mergeStored() */
 
   function nowIso() { return new Date().toISOString(); }
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -52,18 +53,79 @@
     var raw = null;
     try { raw = localStorage.getItem(KEY); } catch (e) { raw = null; }
     try { cache = normalise(raw ? JSON.parse(raw) : null); } catch (e) { cache = empty(); cache.state.corruptBackup = raw; }
+    seenRaw = raw; baseText = JSON.stringify(cache);
     return cache;
   }
   function emit(reason) { listeners.slice().forEach(function (fn) { try { fn(reason || 'change', cache); } catch (e) { /* listener errors never block saving */ } }); }
-  function save(reason) {
+  /* ---------- several tabs on one phone ----------
+   * Each tab keeps its own copy in memory, and a tab that missed another tab's storage event (asleep in the background,
+   * or the event still on its way) used to write that stale copy over the other tab's saves, consent included. Now a
+   * save first merges in whatever another tab stored since this tab last read or wrote, three ways against that base
+   * (docs/design/2026-10-21-multitab-store.md):
+   * - entries and consent events, by id: one added in either tab is kept; one deleted in either tab stays deleted (a
+   *   delete is never undone); one changed in one tab takes that change; one changed in both takes the newer updatedAt,
+   *   and this tab's on a tie or when there is none. Their order is the stored one, then this tab's new ones.
+   * - profile and state, key by key: a key changed in one tab takes that change; a key changed in both takes this tab's,
+   *   the write being made now. A key moves whole (state.farm, state.rewards), so one game's state never mixes two tabs.
+   * - summaries move whole, the same way.
+   * The merge is built apart and adopted into memory, in place, only once the write verified, so a failed save leaves
+   * memory as it was (commit's contract) and callers holding an entry or the state object keep a live one. */
+  function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function byId(arr) { var m = {}; (arr || []).forEach(function (x) { if (x && x.id !== undefined) m[x.id] = x; }); return m; }
+  function newer(a, b) { var ta = Date.parse(a && a.updatedAt), tb = Date.parse(b && b.updatedAt); return isFinite(ta) && isFinite(tb) && ta > tb; }
+  function mergeById(mine, base, theirs) {
+    var M = byId(mine), B = byId(base), T = byId(theirs), out = [], seen = {};
+    function pick(id) {
+      var m = M[id], b = B[id], t = T[id];
+      if (b) { if (!m || !t) return null; if (same(m, b)) return t; if (same(t, b)) return m; return newer(t, m) ? t : m; }
+      if (m && t) return newer(t, m) ? t : m;
+      return m || t;
+    }
+    (theirs || []).concat(mine || []).forEach(function (x) { if (!x || x.id === undefined || seen[x.id]) return; seen[x.id] = true; var k = pick(x.id); if (k) out.push(k); });
+    return out;
+  }
+  function mergeKeys(mine, base, theirs, byIdKeys) {
+    var out = {}, keys = {};
+    [mine, base, theirs].forEach(function (o) { Object.keys(o || {}).forEach(function (k) { keys[k] = true; }); });
+    Object.keys(keys).forEach(function (k) {
+      var v = byIdKeys && byIdKeys[k] && (Array.isArray(mine[k]) || Array.isArray(theirs[k])) ? mergeById(mine[k], base[k], theirs[k]) : (!same(mine[k], base[k]) ? mine[k] : theirs[k]);
+      if (v !== undefined) out[k] = v;
+    });
+    return out;
+  }
+  /* null when the stored copy is the one this tab last saw (or cannot be read: then this tab's copy is written, as before) */
+  function mergeStored(db) {
+    var raw; try { raw = localStorage.getItem(KEY); } catch (e) { return null; }
+    if (raw === seenRaw || sandboxDepth > 0) return null;
+    var theirs, base; try { theirs = normalise(raw ? JSON.parse(raw) : null); base = normalise(baseText ? JSON.parse(baseText) : null); } catch (e) { return null; }
+    return { raw: raw, theirs: theirs, db: { version: db.version, createdAt: db.createdAt, updatedAt: db.updatedAt,
+      profile: mergeKeys(db.profile, base.profile, theirs.profile, { consentEvents: true }),
+      events: mergeById(db.events, base.events, theirs.events),
+      summaries: !same(db.summaries, base.summaries) ? db.summaries : theirs.summaries,
+      state: mergeKeys(db.state, base.state, theirs.state) } };
+  }
+  function adopt(next) {
     var db = load();
-    db.updatedAt = nowIso();
-    var text = JSON.stringify(db);
+    ['profile', 'state'].forEach(function (k) { var o = db[k]; Object.keys(o).forEach(function (x) { if (!(x in next[k])) delete o[x]; }); Object.assign(o, next[k]); });
+    db.events = next.events; db.summaries = next.summaries; db.updatedAt = next.updatedAt;
+  }
+  /* bring another tab's saves into memory before a write that looks at what is there (one entry a day, an entry that
+     may have been deleted), keeping anything this tab has not saved yet */
+  function catchUp() {
+    var m = mergeStored(load()); if (!m) return;
+    adopt(m.db); seenRaw = m.raw; baseText = JSON.stringify(m.theirs);
+  }
+  /* whole: write this tab's copy as it is (Delete everything, a restored file that replaces the diary) */
+  function save(reason, whole) {
+    var db = load(), m = whole ? null : mergeStored(db), next = m ? m.db : db, at = nowIso();
+    var text = JSON.stringify(Object.assign({}, next, { updatedAt: at }));
     localStorage.setItem(KEY, text);
     if (localStorage.getItem(KEY) !== text) throw new Error('Saving did not verify. Your browser storage may be full or blocked.');
+    next.updatedAt = at; if (m) adopt(next);
+    seenRaw = baseText = text;
     emit(reason);
   }
-  try { window.addEventListener('storage', function (ev) { if (ev.key === KEY || ev.key === null) { load(true); emit('external'); } }); } catch (e) { /* non-browser */ }
+  try { window.addEventListener('storage', function (ev) { if (ev.key === KEY || ev.key === null) { catchUp(); emit('external'); } }); } catch (e) { /* non-browser */ }
 
   /* ---------- events ---------- */
   function sortEvents(list) { return list.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.createdAt < b.createdAt ? -1 : 1); }); }
@@ -132,6 +194,7 @@
     data = cleanData(type, data);
     if (!validDate(date)) throw new Error('Choose a real date.');
     if (date > today()) throw new Error('Entries cannot be in the future.');
+    catchUp(); /* another tab may already have this day's entry */
     var db = load();
     var existing = SINGLE_PER_DAY[type] ? db.events.filter(function (e) { return e.type === type && e.date === date; })[0] : null;
     if (existing) { return update(existing.id, { data: opts && opts.merge ? mergeData(type, existing.data, data) : data, source: IMPORTED[existing.source] ? (source || 'room') : undefined }); }
@@ -142,6 +205,7 @@
     return ev;
   }
   function update(id, patch) {
+    catchUp(); /* an entry another tab deleted is gone here too, never written back */
     var db = load(), ev = get(id);
     if (!ev) throw new Error('That entry no longer exists.');
     /* a failed write puts the entry back exactly as it was, as add() does: an edit that did not save must never show
@@ -164,6 +228,7 @@
    * date that already has one is skipped, so a hand-written day is left alone. Nothing is mirrored to the
    * legacy keys except the cycle summary, which is recomputed once when a period day was written. */
   function addMany(items) {
+    catchUp();
     var db = load(), t = today(), added = 0, updated = 0, skipped = 0, touchedPeriod = false;
     var have = {}; db.events.forEach(function (e) { if (SINGLE_PER_DAY[e.type]) have[e.type + '|' + e.date] = true; });
     (items || []).forEach(function (it) {
@@ -179,6 +244,7 @@
     return { added: added, updated: updated, skipped: skipped };
   }
   function removeWhere(pred) {
+    catchUp();
     var db = load(), before = db.events.length, gone = db.events.filter(function (e) { return !!pred(e); });
     if (!gone.length) return 0;
     db.events = db.events.filter(function (e) { return !pred(e); });
@@ -188,6 +254,7 @@
     return before - db.events.length;
   }
   function remove(id) {
+    catchUp();
     var db = load(), ev = get(id);
     if (!ev) return false;
     db.events = db.events.filter(function (e) { return e.id !== id; });
@@ -208,6 +275,7 @@
   /* Apply a batch of pulled cloud changes in one save: puts (insert or replace
    * by id), then deletes (by id). Emits 'sync' so the room can re-render. */
   function applyRemote(puts, dels) {
+    catchUp();
     var db = load(), changed = [];
     (puts || []).forEach(function (ev) {
       if (!ev || typeof ev !== 'object' || TYPES.indexOf(ev.type) < 0 || !validDate(ev.date) || !ev.data || typeof ev.data !== 'object') return;
@@ -295,6 +363,7 @@
   function checkinAnswers(date) { var c = load().state.checkin || {}; return Object.assign({}, c[date] || {}); }
   function setCheckinAnswer(date, domain, status) {
     if (!validDate(date) || !CHECKIN[domain] || (status !== null && CHECKIN[domain].indexOf(status) < 0)) throw new Error('That is not a check-in answer.');
+    catchUp(); /* the answers are copied whole below, so another tab's answers must be in them */
     var all = JSON.parse(JSON.stringify(load().state.checkin || {})), day = all[date] || {};
     if (status === null) delete day[domain]; else day[domain] = status;
     if (Object.keys(day).length) all[date] = day; else delete all[date];
@@ -467,6 +536,7 @@
   function importJSON(text, mode) {
     var incoming = normalise(JSON.parse(text));
     incoming.events = (incoming.events || []).map(function (e) { try { return Object.assign({}, e, { data: cleanData(e.type, e.data) }); } catch (err) { return null; } }).filter(Boolean); /* a restored file passes the same write boundary */
+    if (mode !== 'replace') catchUp();
     var db = load();
     if (mode === 'replace') { cache = incoming; }
     else {
@@ -474,7 +544,7 @@
       incoming.events.forEach(function (e) { if (!ids[e.id]) db.events.push(e); });
       db.profile = Object.assign(db.profile, incoming.profile);
     }
-    save('import');
+    save('import', mode === 'replace');
     return load().events.length;
   }
   /* Delete everything on this phone: the diary and every older copy of it, by an explicit list of Rhythme's own keys
@@ -493,7 +563,7 @@
   var DAILY_LOG = /^ovuluna_daily_log_\d{4}-\d{2}-\d{2}$/;
   function clearAll() {
     try { if (root.OvuPodcast && root.OvuPodcast.forget) root.OvuPodcast.forget(); } catch (e) { } /* its page-close save would write the listening back */
-    cache = empty(); save('clear');
+    cache = empty(); save('clear', true);
     try {
       var keys = []; for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
       keys.forEach(function (k) { if (k && (OWN_KEYS.indexOf(k) > -1 || DAILY_LOG.test(k))) { try { localStorage.removeItem(k); } catch (e) { } } });
