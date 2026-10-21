@@ -552,6 +552,7 @@
   }
   function hideSheet() { var was = current; current = null; if (was === 'practiceDone' && practice && practice.endFn) { var fin = practice.endFn; setTimeout(function () { fin(false); }, 0); } /* closing "How was that?" any way ends the practice and puts her back (Jamie, 20 Oct) */ careOn = false; setTab('home'); if (typeof updatePodMini === 'function') setTimeout(updatePodMini, 0); scheduleLife(); sheet.classList.remove('on'); veil.classList.remove('on'); scene.classList.remove('quiet'); sheet.setAttribute('aria-hidden', 'true'); }
   function closeSheet() {
+    if (current === 'onboarding' && onb) pendingRoute = ''; /* she left the intro part way: the link's destination is dropped, not opened later */
     if (current === 'diary') stopCamera();
     if (current === 'mind' && session) stopSession(true);
     if ((current === 'mind' || current === 'morning') && !session && meditating) exitMeditation(); /* Morning start's choice, opened from the mat and closed without Begin, also lets her up */
@@ -1217,27 +1218,31 @@
       img.src = url;
     });
   }
-  /* Where each folder sits: where she put it, or else the first free spot of a 4 by 3 grid that fits the wallpaper. The
-     old default stacked a third row at 96%, below the wallpaper's edge, so a ninth folder (and any new one) was hidden. */
+  /* Where each folder sits: where she put it, or else the first free place on a 4 by 3 grid that fits the wallpaper (the
+     old default stacked a third row at 96%, below the wallpaper's edge). A folder is 22% of the desk wide and 22% to 27%
+     tall with a one-line name (measured at 360 to 1280 px), so a free place keeps a 22 by 30 box clear of every other
+     folder. If a new folder cannot get one without covering hers, the whole desk goes back onto the grid and openLearn
+     says so: never a folder on top of another (Codex round two). */
   function deskSpots(pos, folders) {
     folders = folders || FOLDERS;
-    var cells = [], fine = [], out = {}, taken = [];
+    var W = 22, H = 30, cells = [], fine = [], out = {}, taken = [], stuck = false;
     for (var r = 0; r < 3; r++) for (var c = 0; c < 4; c++) cells.push([2 + c * 25, 4 + r * 31]);
-    for (var y = 4; y <= 66; y += 2) for (var x = 2; x <= 77; x += 3) fine.push([x, y]);
-    /* a folder icon is about 18% of the desk wide and 24% tall */
-    var clash = function (a, b) { return Math.abs(a[0] - b[0]) < 18 && Math.abs(a[1] - b[1]) < 24; };
-    var room = function (q) { return taken.reduce(function (m, t) { return Math.min(m, Math.max(Math.abs(q[0] - t[0]) / 18, Math.abs(q[1] - t[1]) / 24)); }, Infinity); };
-    folders.forEach(function (f) { var q = pos[f.id]; if (q && isFinite(q[0]) && isFinite(q[1])) { out[f.id] = q; taken.push(q); } });
+    for (var y = 4; y <= 64; y += 2) for (var x = 2; x <= 78; x += 2) fine.push([x, y]);
+    var clash = function (a, b) { return Math.abs(a[0] - b[0]) < W && Math.abs(a[1] - b[1]) < H; };
+    folders.forEach(function (f) { var q = pos && pos[f.id]; if (q && isFinite(q[0]) && isFinite(q[1])) { out[f.id] = [q[0], q[1]]; taken.push(q); } });
     folders.forEach(function (f) {
-      if (out[f.id]) return;
+      if (out[f.id] || stuck) return;
       var free = cells.concat(fine).filter(function (q) { return !taken.some(function (t) { return clash(q, t); }); })[0];
-      if (!free) free = fine.reduce(function (best, q) { return room(q) > room(best) ? q : best; }, fine[0]); /* no free place: the least crowded one */
+      if (!free) { stuck = true; return; }
       out[f.id] = free; taken.push(free);
     });
-    return out;
+    if (!stuck) return { spots: out, tidied: false };
+    var grid = {}; folders.forEach(function (f, i) { grid[f.id] = cells[i]; }); /* 12 places; tools/test-core.js keeps FOLDERS within them */
+    return { spots: grid, tidied: true };
   }
   function openLearn() {
-    var p = deskPrefs(), spots = deskSpots(p.pos || {}); moment('learn');
+    var p = deskPrefs(), lay = deskSpots(p.pos || {}), spots = lay.spots; moment('learn');
+    if (lay.tidied) { p.pos = {}; setDeskPrefs(p); setTimeout(function () { toast('A folder had no free spot, so your desk is back on the grid. Drag them wherever you like.', 'grid_view'); }, 400); }
     openSheet('learn', 'Your desk', 'Drag the folders around; make it yours', 'computer',
       '<div class="desk"><div class="menubar"><span class="brandy">RHYTHME</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
       '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f) { var q = spots[f.id]; return '<button type="button" class="dicon" data-folder="' + f.id + '" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
@@ -1275,7 +1280,8 @@
     });
     function endDrag() {
       if (!drag) return; var d = drag; drag = null; d.b.classList.remove('lift');
-      if (d.moved) { var pr = deskPrefs(); pr.pos[d.id] = [Math.round(parseFloat(d.b.style.left) * 10) / 10, Math.round(parseFloat(d.b.style.top) * 10) / 10]; setDeskPrefs(pr); }
+      /* a drag keeps the whole desk as she sees it, so only a folder added later ever needs a place found for it */
+      if (d.moved) { var pr = deskPrefs(); pr.pos = {}; icons.querySelectorAll('.dicon').forEach(function (b) { pr.pos[b.dataset.folder] = [Math.round(parseFloat(b.style.left) * 10) / 10, Math.round(parseFloat(b.style.top) * 10) / 10]; }); setDeskPrefs(pr); }
       else { chime('tap'); openFolder(d.id); }
     }
     icons.addEventListener('pointerup', endDrag); icons.addEventListener('pointercancel', endDrag);
@@ -2778,13 +2784,14 @@
   function openRoute(hk) {
     if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'medas') openMedas(); else if (hk === 'recipes') openRecipes(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk);
   }
-  function takePending() { var r = pendingRoute; pendingRoute = ''; if (r && r !== 'onboarding') setTimeout(function () { openRoute(r); }, 700); }
+  /* opened at once, never on a timer: a delayed open could cover a sheet she opened in the meantime (Codex round two) */
+  function takePending() { var r = pendingRoute; pendingRoute = ''; if (r && r !== 'onboarding') openRoute(r); }
   function showWelcome() {
     var w = $('#welcome'); if (!w) return; w.hidden = false;
     $('#wBegin').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); }); });
     $('#wSkip').addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); toast('Welcome back. Your intro is under the window whenever you want it.', 'favorite'); takePending(); }); });
     /* sign in from the first screen (Jamie, 20 Oct: "the email should login on first page"): consent first, then the email form in You */
-    var si = $('#wSignIn'); if (si) si.addEventListener('click', function () { chime('tap'); w.hidden = true; requireConsent(function () { S.setState({ welcomeSeen: true }); openYou(); setTimeout(function () { var ya = $('#youAccount'), b = ya && ya.querySelector('[data-ya="email-start"]'); if (b) { b.click(); ya.scrollIntoView({ block: 'center', behavior: 'smooth' }); } else if (ya) ya.scrollIntoView({ block: 'center' }); }, 300); }); });
+    var si = $('#wSignIn'); if (si) si.addEventListener('click', function () { chime('tap'); w.hidden = true; pendingRoute = ''; requireConsent(function () { S.setState({ welcomeSeen: true }); openYou(); setTimeout(function () { var ya = $('#youAccount'), b = ya && ya.querySelector('[data-ya="email-start"]'); if (b) { b.click(); ya.scrollIntoView({ block: 'center', behavior: 'smooth' }); } else if (ya) ya.scrollIntoView({ block: 'center' }); }, 300); }); });
   }
 
   /* ---------- window: follows the sun (ovu-sun.js) ---------- */

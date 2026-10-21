@@ -17,9 +17,9 @@
     { id: 'pcos', name: 'PCOS (PMOS)', icon: 'restaurant_menu',
       note: 'PCOS was renamed PMOS (polyendocrine metabolic ovarian syndrome) in 2026 after a global consensus, so you will see both names for a while. No one diet has been shown to be best for it: the international guideline asks for everyday healthy eating, built on vegetables, wholegrains, beans and enough protein. Food is one part of care: irregular periods, acne, extra hair or trouble getting pregnant are worth a doctor\'s visit, where checks of blood sugar and heart health belong too. These recipes are the ones on the PCOS page of Jean Hailes, an Australian women\'s health charity whose clinicians review it.' },
     { id: 'meno', name: 'Menopause', icon: 'spa',
-      note: 'No food or diet change has been shown to ease hot flushes: the Menopause Society\'s 2023 review found the evidence too weak to recommend diet changes or soy for them, and there are treatments that work, so talk to your doctor if they trouble you. What food can do around and after menopause is help look after bones and heart: calcium-rich foods, protein, oily fish, beans and olive oil.' },
+      note: 'The Menopause Society\'s 2023 review found insufficient evidence to recommend diet changes or soy for treating hot flushes. There are treatments that work, so talk to your doctor if they trouble you. What food can do around and after menopause is help look after bones and heart: calcium-rich foods, protein, oily fish, beans and olive oil.' },
     { id: 'every', name: 'Everyday', icon: 'soup_kitchen',
-      note: 'Mediterranean-style eating: vegetables, beans, fish, nuts and olive oil. Studies of people trying to conceive are observational and mixed, and no food has been proven to protect the ovaries or egg supply, so think of this as good everyday eating rather than a treatment. If you are trying to get pregnant, the NHS advises a folic acid supplement, carried on for the first 12 weeks of pregnancy; a pharmacist can tell you the dose.' }
+      note: 'Mediterranean-style eating: vegetables, beans, fish, nuts and olive oil. Studies of people trying to conceive are observational and mixed, and no food has been proven to protect the ovaries or egg supply, so think of this as good everyday eating rather than a treatment. If you are trying to get pregnant, the NHS advises 400 micrograms of folic acid every day, carried on for the first 12 weeks of pregnancy; some people need a higher dose, which a doctor can prescribe, so ask a pharmacist or doctor which is right for you.' }
   ];
 
   /* id, the source's own title, source, link, groups, icon, and our one line on what is in it */
@@ -57,9 +57,9 @@
     { id: 'fruit', q: 'Three or more pieces of fruit a day?', hint: 'In the original checklist natural fruit juice counts; whole fruit is the better everyday pick.', ideas: ['bircher'] },
     { id: 'redmeat', q: 'Less than one serving a day of red meat, burgers or processed meat such as ham or sausage?', hint: 'A serving is 100 to 150 g.', ideas: ['chicken-greens', 'tofu', 'four-bean'] },
     { id: 'butter', q: 'Less than one serving a day of butter, margarine or cream?', hint: 'A serving is 12 g.', ideas: ['hummus'] },
-    { id: 'drinks', q: 'Less than one sweet or fizzy drink a day?', hint: 'Bubble tea, sweetened kopi and teh, soft drinks, cordials and packet drinks all count.', ideas: [] },
+    { id: 'drinks', q: 'Less than one sweet or fizzy drink a day?', hint: 'Bubble tea, sweetened kopi and teh, soft drinks, cordials and sweetened packet drinks all count.', ideas: [] },
     { id: 'legumes', q: 'Beans, lentils or chickpeas three or more times a week?', hint: 'A serving is 150 g.', ideas: ['cauli-soup', 'four-bean', 'hummus', 'bean-tuna'] },
-    { id: 'fish', q: 'Fish or seafood three or more times a week?', hint: 'A serving is 100 to 150 g of fish, or 200 g of shellfish.', ideas: ['sardines', 'cod', 'salmon', 'kebabs'] },
+    { id: 'fish', q: 'Fish or seafood three or more times a week?', hint: 'A serving is 100 to 150 g of fish, or 4 to 5 pieces or 200 g of shellfish.', ideas: ['sardines', 'cod', 'salmon', 'kebabs'] },
     { id: 'sweets', q: 'Shop-bought sweets or pastries (not homemade), such as cakes, biscuits or custard, fewer than three times a week?', ideas: ['bircher'] },
     { id: 'nuts', q: 'Nuts three or more times a week? Peanuts count.', hint: 'A serving is 30 g, about a small handful.', ideas: ['bircher', 'carrots', 'granola'] },
     { id: 'poultry', q: 'Do you usually choose chicken, turkey or rabbit over beef, veal, pork, burgers or sausages?', ideas: ['chicken-greens'] },
@@ -68,7 +68,7 @@
   var MEDAS_COPY = {
     intro: 'These 13 questions are adapted from MEDAS, a short checklist from PREDIMED, a Spanish heart study of older adults. The original has 14 questions and a validated score; this is not that score. In the study, people with more yeses tended to have higher HDL (good) cholesterol, lower triglycerides and blood sugar, and smaller waists: an association, not proof. It was not built for fertility or the ovaries. Use it as a mirror of your week and a list of ideas: you do not need every habit, and if keeping track of food makes you anxious, skip it.',
     wine: 'The original has a 14th question that gives a point for drinking 7 or more glasses of wine a week. Rhythme leaves it out: nobody should start drinking for health, and the NHS advises no alcohol when you are trying to get pregnant.',
-    drinks: 'No recipe for this one: water, or tea and coffee without sugar, such as kopi-o kosong or teh-o kosong.',
+    drinks: 'No recipe for this one: water, or tea and coffee without sugar, such as kopi-o kosong or teh-o kosong. If you are pregnant, the NHS advises keeping caffeine under 200 mg a day.',
     /* under every recipe list (NHS foods to avoid in pregnancy, E84), and the general care line */
     pregnancy: 'Pregnant? Cook eggs until firm, and soft cheese and fish until steaming hot; choose pasteurised dairy; skip raw fish and shellfish, and shark, swordfish and marlin; keep tuna to 4 cans a week, and oily fish such as sardines and salmon to 2 portions.',
     care: 'Check each recipe for allergens such as dairy, egg, soy, fish, nuts, sesame and wheat. If you have kidney disease, diabetes or a thyroid condition, or have had an eating disorder, a dietitian or your doctor can tailor these ideas.'

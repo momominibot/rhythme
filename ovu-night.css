@@ -155,7 +155,7 @@ html[data-sky="night"] .rcard i,html[data-sky="night"] .mq p b{color:#d7c3f3}
 html[data-sky="night"] .rcard .ric{background:rgba(201,182,230,.18);color:#efe6fb}
 html[data-sky="night"] .rsub,html[data-sky="night"] .mcount b{color:#efe6fb}
 html[data-sky="night"] .mcount{background:rgba(255,255,255,.07)}
-html[data-sky="night"] .mq small{color:#a998c4}
+html[data-sky="night"] .mq small{color:#cbbde3}
 html[data-sky="night"] .yn button{background:rgba(255,255,255,.06);border-color:rgba(201,182,230,.2);color:#cbbde3}
 html[data-sky="night"] .yn button[data-yn="1"].on{background:#3a7559;border-color:#3a7559;color:#fff}
 html[data-sky="night"] .yn button[data-yn="0"].on{background:#5f4596;border-color:#5f4596;color:#fff}

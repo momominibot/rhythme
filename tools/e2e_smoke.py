@@ -1889,6 +1889,12 @@ async def main():
             await page.click("#mdClear"); await page.wait_for_timeout(200)
             m3 = await page.evaluate("()=>({count: document.querySelector('#mdYes').textContent, saved: OvuStore.state().medas, on: document.querySelectorAll('.yn button.on').length})")
             check("Clear my answers empties the check and the store", m3["saved"] is None and m3["on"] == 0 and "Not usually" in m3["count"], m3)
+            # the phone refuses the save: nothing looks saved, the store is unchanged and she is told
+            await page.evaluate("()=>{window.__rset=Storage.prototype.setItem; Storage.prototype.setItem=function(k,v){ if(k==='ovumind_db_v1'){ throw new DOMException('full','QuotaExceededError'); } return window.__rset.call(this,k,v); };}")
+            await page.click('.mq[data-mq="nuts"] [data-yn="1"]'); await page.wait_for_timeout(250)
+            mq = await page.evaluate("()=>({pressed: document.querySelector('.mq[data-mq=nuts] [data-yn=\\\"1\\\"]').getAttribute('aria-pressed'), count: document.querySelector('#mdYes').textContent, saved: OvuStore.state().medas, toast: document.querySelector('#toast').textContent})")
+            await page.evaluate("()=>{Storage.prototype.setItem=window.__rset;}")
+            check("when the phone cannot save an answer, it is not shown as kept, the store is unchanged and a message says so", mq["pressed"] == "false" and mq["saved"] is None and "could not save" in mq["toast"] and "of 13" not in mq["count"], mq)
             await page.click("#mdRecipes"); await page.wait_for_timeout(400)
             r1 = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, groups: [...document.querySelectorAll('#recTabs [data-rg]')].map(b=>b.dataset.rg+':'+b.getAttribute('aria-pressed')), links: [...document.querySelectorAll('.rcard')].map(a=>[a.target, a.rel, new URL(a.href).host])})")
             check("Recipes opens on Everyday from the check, and every card opens its source in a new tab", r1["title"].startswith("Recipes") and "every:true" in r1["groups"] and len(r1["links"]) >= 8 and all(l[0] == "_blank" and "noopener" in l[1] and l[2] in ("www.jeanhailes.org.au", "www.bonehealthandosteoporosis.org", "www.healthhub.sg") for l in r1["links"]), r1)
@@ -1904,10 +1910,62 @@ async def main():
             p9.on("pageerror", lambda e: errors.append("pageerror (first visit): " + str(e)))
             await p9.goto(BASE + "medas14.html"); await p9.wait_for_url("**/room.html*", timeout=8000); await p9.wait_for_timeout(900)
             w9 = await p9.evaluate("()=>!!document.querySelector('#welcome:not([hidden])')")
-            await p9.click("#wSkip"); await p9.wait_for_timeout(1300)
+            await p9.click("#wSkip"); await p9.wait_for_timeout(150)
             t9 = await p9.evaluate("()=>(document.querySelector('#sheetTitle')||{}).textContent||''")
-            check("the old Mediterranean link on a first visit shows the welcome, then opens the check", w9 and t9.startswith("Mediterranean check"), {"welcome": w9, "title": t9})
+            check("the old Mediterranean link on a first visit shows the welcome, then opens the check straight after Skip", w9 and t9.startswith("Mediterranean check"), {"welcome": w9, "title": t9})
             await ctx9.close()
+            sheet_title = "()=>{var s=document.querySelector('#sheet'); return s && s.classList.contains('on') ? (document.querySelector('#sheetTitle').textContent||'') : ''}"
+            async def first_visit(url):
+                c = await browser.new_context(viewport={"width": 390, "height": 844})
+                await c.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(fresh_db)))
+                pg = await c.new_page(); await pg.route("**/*", gate)
+                pg.on("pageerror", lambda e: errors.append("pageerror (first visit): " + str(e)))
+                await pg.goto(BASE + url); await pg.wait_for_url("**/room.html*", timeout=8000); await pg.wait_for_timeout(900)
+                return c, pg
+            # Begin: the intro comes first and the check waits for "Enter my room"
+            c10, p10 = await first_visit("medas14.html")
+            await p10.click("#wBegin"); await p10.wait_for_timeout(1500)
+            during = await p10.evaluate(sheet_title)
+            steps = 0
+            for steps in range(45):
+                if not await p10.query_selector("#onbNext"): break
+                if await p10.query_selector("#onbSkip"): await p10.click("#onbSkip")
+                else:
+                    await p10.evaluate("()=>{document.querySelectorAll('#sheetBody .chips[data-key]').forEach(function(r){ if(r.querySelector('.chipbtn.on')) return; var b=r.querySelector('.chipbtn[data-v=\\\"none\\\"]')||r.querySelector('.chipbtn[data-v]'); if(b) b.click(); });}")
+                    await p10.click("#onbNext")
+                await p10.wait_for_timeout(120)
+            await p10.wait_for_timeout(300)
+            after = await p10.evaluate(sheet_title)
+            check("from the old link, Begin shows the intro first and the check opens once she enters her room", during.startswith("Welcome") or ("Mediterranean" not in during and during != ""), {"during": during})
+            check("after the last intro step the check is open", after.startswith("Mediterranean check"), {"after": after, "steps": steps})
+            await c10.close()
+            # Begin, then close the intro part way: she chose the room, so nothing pops up later
+            c11, p11 = await first_visit("medas14.html")
+            await p11.click("#wBegin"); await p11.wait_for_timeout(1200)
+            await p11.click("#sheetClose"); await p11.wait_for_timeout(1200)
+            left = await p11.evaluate(sheet_title)
+            check("leaving the intro part way drops the old link's destination", left == "", left)
+            await c11.close()
+            # a plain first visit opens nothing after Skip
+            c12, p12 = await first_visit("room.html")
+            await p12.click("#wSkip"); await p12.wait_for_timeout(1200)
+            plain = await p12.evaluate(sheet_title)
+            check("a first visit with no link opens no sheet after Skip", plain == "", plain)
+            await c12.close()
+            # the desk: four folders she placed leave no room for the rest, so the desk goes back on the grid, says so, and nothing overlaps
+            c13 = await browser.new_context(viewport={"width": 360, "height": 740})
+            await c13.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s); if(!localStorage.getItem('ovumind_desk_v1')) localStorage.setItem('ovumind_desk_v1', JSON.stringify({pos:{cycle:[14,19],fertility:[64,19],chapters:[14,50],nutrition:[64,50]},wall:'cat',custom:null}));" % json.dumps(json.dumps(DB)))
+            p13 = await c13.new_page(); await p13.route("**/*", gate)
+            p13.on("pageerror", lambda e: errors.append("pageerror (desk): " + str(e)))
+            await p13.goto(BASE + "room.html"); await p13.wait_for_timeout(900)
+            await p13.goto(BASE + "room.html#learn"); await p13.reload(); await p13.wait_for_selector(".dicon", timeout=8000); await p13.wait_for_timeout(900)
+            dk = await p13.evaluate("()=>{var r=[...document.querySelectorAll('.dicon')].map(function(e){return e.getBoundingClientRect();}), bad=0; for(var i=0;i<r.length;i++) for(var j=i+1;j<r.length;j++){ var a=r[i], b=r[j]; if(a.left<b.right-1 && b.left<a.right-1 && a.top<b.bottom-1 && b.top<a.bottom-1) bad++; } return {n:r.length, bad:bad, toast:document.querySelector('#toast').textContent, pos:JSON.parse(localStorage.getItem('ovumind_desk_v1')).pos}}")
+            check("a desk with no room for new folders goes back on the grid with a note, and no folder covers another", dk["n"] >= 10 and dk["bad"] == 0 and "back on the grid" in dk["toast"] and dk["pos"] == {}, dk)
+            box = await p13.evaluate("()=>{var b=document.querySelector('.dicon[data-folder=recipes]').getBoundingClientRect(); return [b.left+b.width/2, b.top+b.height/2]}")
+            await p13.mouse.move(box[0], box[1]); await p13.mouse.down(); await p13.mouse.move(box[0] + 30, box[1] + 12, steps=6); await p13.mouse.up(); await p13.wait_for_timeout(300)
+            kept = await p13.evaluate("()=>Object.keys(JSON.parse(localStorage.getItem('ovumind_desk_v1')).pos).length")
+            check("moving one folder keeps the whole desk as she sees it", kept == dk["n"], kept)
+            await c13.close()
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()
     finally:
