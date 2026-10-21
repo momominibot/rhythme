@@ -2862,7 +2862,7 @@ var summarised = false;
   var w = fresh('2026-10-21'); w.OvuRoom = null;
   vm.runInContext(fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), w, { filename: 'ovu-seats.js' });
   var SE = w.OvuSeats, src = fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), ids = Object.keys(SE.SCRIPTS);
-  check('three practices, seven, six and six steps, each about three minutes', ids.join() === 'street,plaza,harbour' && SE.steps('street').length === 7 && SE.steps('plaza').length === 6 && SE.steps('harbour').length === 6 && ids.every(function (id) { var t = SE.total(id); return t >= 140 && t <= 185; }), ids.map(function (id) { return SE.total(id); }).join());
+  check('four practices, seven, six, six and six steps, each about two and a half to three minutes', ids.join() === 'street,plaza,tree,harbour' && SE.steps('street').length === 7 && SE.steps('plaza').length === 6 && SE.steps('tree').length === 6 && SE.steps('harbour').length === 6 && ids.every(function (id) { var t = SE.total(id); return t >= 140 && t <= 185; }), ids.map(function (id) { return SE.total(id); }).join());
   var missing = [];
   ids.forEach(function (id) { SE.steps(id).forEach(function (s) { if (!fs.existsSync(path.join(root, s.audio))) missing.push(s.audio); }); });
   SE.steps('harbour', true).forEach(function (s) { if (!fs.existsSync(path.join(root, s.audio))) missing.push(s.audio); });
@@ -2871,6 +2871,9 @@ var summarised = false;
   check('with reduced motion the water’s second line asks for a colour, not a ripple; nothing else changes', /colour or a reflection/.test(rm[1].text) && /ripple/.test(plain[1].text) && rm[1].audio !== plain[1].audio && rm[0].text === plain[0].text && rm[2].audio === plain[2].audio && SE.steps('street', true)[1].text === SE.steps('street')[1].text);
   var words = ids.map(function (id) { return SE.SCRIPTS[id].steps.map(function (s) { return s.text; }).join(' '); }).join(' ');
   check('no claims in the scripts: nothing cured, healed or promised, no em dashes, every part of the kindness practice optional with a way out', !/\b(cure|heal|fix|anxiety|depression|reduce stress|lower your|boost|detox|will feel)\b/i.test(words) && words.indexOf('—') < 0 && SE.SCRIPTS.plaza.steps.slice(1, 5).every(function (s) { return /If you would like|If someone|you might|Otherwise/.test(s.text); }) && /stop now/.test(SE.SCRIPTS.plaza.steps[5].text));
+  var seatList = Object.keys(SE.SEATS).map(function (k) { return SE.SEATS[k]; });
+  check('every bench has its own words and its own animation (Codex, 21 Oct: the bench by the tree had shared the board bench’s)', seatList.length === 4 && new Set(seatList.map(function (s) { return s.practice; })).size === 4 && new Set(seatList.map(function (s) { return s.fx; })).size === 4 && SE.SEATS['plaza:bench2'].practice === 'tree' && SE.SEATS['plaza:bench2'].fx === 'shade');
+  check('the shade practice makes its small thanks optional and says so when nothing comes', /^If you would like/.test(SE.SCRIPTS.tree.steps[4].text) && /If nothing comes to mind, that is fine too/.test(SE.SCRIPTS.tree.steps[4].text) && /stop whenever you need/.test(SE.SCRIPTS.tree.steps[0].text));
   check('the credit names Erin Lee, her cloned voice and her permission', /Erin Lee/.test(SE.CREDIT) && /cloned voice/.test(SE.CREDIT) && /permission/.test(SE.CREDIT));
   var e1 = SE.entry('street', { seconds: 59.9, confirmed: true, finished: false }), e2 = SE.entry('street', { seconds: 60, confirmed: true, finished: false, startedAt: 'x' }), e3 = SE.entry('street', { seconds: 200, confirmed: false, finished: true }), e4 = SE.entry('nowhere', { seconds: 200, confirmed: true, finished: true }), e5 = SE.entry('plaza:bench2', { seconds: 168.4, confirmed: true, finished: true });
   check('59.9 seconds is not a minute; sixty is; nothing unconfirmed and no unknown seat; a finished practice is complete, a stopped one says so', e1 === null && !!e2 && e2.seconds === 60 && e2.minutes === 1 && e2.stoppedEarly && !e2.completed && e2.activity === 'seat' && e2.seat === 'street' && e2.scene === 'street' && e2.activityName === 'Sounds of the street' && e2.confirmedReal && e2.startedAt === 'x' && e2.guide === SE.CREDIT && e3 === null && e4 === null && e5.completed && !e5.stoppedEarly && e5.minutes === 2.8 && e5.scene === 'plaza', JSON.stringify([e1, e2, e5]));
@@ -3314,6 +3317,65 @@ var summarised = false;
   check('the owner signs in: open; another account: refused', run({ owner: 'a' }, 'a') === true && run({ owner: 'a' }, 'b') === false);
   check('a diary from before owners is bound by its backup or its consent receipts', run({ cloud: { uid: 'a' } }, 'b') === false && run({ consentEvents: [{ purpose: 'health_tracking', uid: 'a' }] }, 'b') === false && run({ cloud: { uid: 'a' } }, 'a') === true);
   check('after Delete my account (owner empty) the next account adopts it', run({ owner: '', cloud: { uid: 'a' } }, 'b') === true && ctx.profile.owner === 'b');
+})();
+
+
+(function laneReviewFixes() {
+  console.log('2k13. the Codex lane review (21 Oct): accounts, the sample diary, outfits, warning signs in her words, parts and practice time');
+  function read(f) { return fs.readFileSync(path.join(root, f), 'utf8'); }
+  var w = fresh('2026-10-21'), O = w.OvuOrb, S = w.OvuStore;
+  function code(t, p) { var u = O.urgent(t, p || {}); return u ? u.code : null; }
+  var pp = { pregState: 'postpartum' }, preg = { pregState: 'pregnant' };
+  check('a symptom now survives history and worry: since before breakfast, chest pain now after a history, not worried about a fever', code('Pad full every hour since before breakfast') === 'HEAVY_BLEED_NOW' && code('History of asthma, chest pain now') === 'CHEST_BREATH_NOW' && code('not worried about the chest pain') === 'CHEST_BREATH_NOW' && code('I am not worried about my fever', pp) === 'FEVER_BABY_TODAY' && code('chest pain last year, fine now') === null && code('I am not worried, just tired') === null);
+  var f40 = O.urgent('My temperature is 40°C', pp);
+  check('40°C after a birth is a fever and means advice now; 37.5 is not a fever', !!f40 && f40.code === 'FEVER_BABY_TODAY' && f40.level === 'emergency' && code('temp 38.5 this morning', preg) === 'FEVER_BABY_TODAY' && code('My temperature is 37.5', pp) === null);
+  check('one swollen leg is checked today, even after a walk or with a cramp; a twisted ankle is not a clot', code('One calf swollen after walking') === 'LEG_CLOT_TODAY' && code('My left leg is swollen, probably a cramp') === 'LEG_CLOT_TODAY' && code('My ankle is swollen after I twisted it') === null);
+  check('maternal warning signs in her own words: pengsan, keep fainting, blurred vision, the baby moving less, leaking fluid, nothing staying down, a smelly discharge, egg-sized clots', code('I went pengsan at the market', preg) === 'FAINT_PREG_NOW' && code('I keep fainting', preg) === 'FAINT_PREG_NOW' && code('My vision is blurry', preg) === 'VISION_PREG_NOW' && code('Baby moving less than usual today', preg) === 'MOVES_NOW' && code('the baby hasn\'t moved since this morning', preg) === 'MOVES_NOW' && code('Leaking fluid from down there', preg) === 'WATERS_NOW' && code('I can\'t keep water down', preg) === 'VOMIT_TODAY' && code('Smelly discharge since yesterday', pp) === 'FOUL_DISCHARGE_TODAY' && code('Passed egg-sized clots this morning', pp) === 'CLOTS_PP_NOW');
+  check('postpartum psychosis in the words people use: never felt better, feel high', code('no sleep, racing thoughts and never felt better', pp) === 'PSYCHOSIS_NOW' && code('Not slept for three days, feel high, thoughts racing', pp) === 'PSYCHOSIS_NOW');
+  check('a baby\'s fever gets the baby\'s card; 38 weeks, a room temperature or "no fever" do not', code('my newborn has a fever', pp) === 'BABY_FEVER_NOW' && code('baby\'s temperature is 38.2', pp) === 'BABY_FEVER_NOW' && code('baby kicking a lot at 38 weeks', preg) === null && code('the baby\'s room temperature is fine', pp) === null && code('my baby has no fever', pp) === null);
+  check('a red boob, an opened tear and stitches that came out are checked; healed stitches are not', code('red boob and it hurts', pp) === 'BREAST_TODAY' && code('my tear opened', pp) === 'WOUND_TODAY' && code('stitches came out', pp) === 'WOUND_TODAY' && code('my stitches have healed nicely', pp) === null);
+  check('a blood test is not bleeding, sleeping on one side is not one-sided pain, and brown discharge in pregnancy is bleeding', code('blood test tomorrow', preg) === null && code('My period is late and I have a blood test tomorrow') === null && code('I sleep on one side', preg) === null && code('I lie on my left side to sleep', preg) === null && code('Pain in my tummy, only one side', preg) === 'ECTOPIC_NOW' && code('brown discharge today', preg) === 'PREG_BLEED_NOW' && code('brown discharge before my period, as usual') === null);
+  var ub = O.urgent('blood in my urine', {});
+  check('blood in the urine asks for an urgent GP appointment, not one this week', !!ub && /urgent GP or polyclinic appointment/.test(ub.message) && !/this week/.test(ub.message));
+  S.setProfile({ pregState: 'pregnant' });
+  var u1 = O.entryUrgent(S.add('period', S.today(), { flow: 'light' }, 'room'), S.profile()), u2 = O.entryUrgent(S.add('symptom', S.today(), { symptoms: ['spotting'] }, 'room'), S.profile());
+  check('a tapped light flow or the spotting chip in pregnancy gets the same card as the words in a note', !!u1 && u1.code === 'PREG_BLEED_NOW' && !!u2 && u2.code === 'PREG_BLEED_NOW', JSON.stringify([u1 && u1.code, u2 && u2.code]));
+  /* the clinician's sample diary never reads the real one, even when another tab writes during it */
+  var w2 = fresh('2026-10-21'), S2 = w2.OvuStore, ls2 = w2.localStorage;
+  S2.add('reflection', S2.today(), { text: 'the real diary' }, 'room');
+  var seen = S2.sandbox({ events: [], profile: {} }, function () { ls2.setItem('ovumind_db_rev', 'another-tab-wrote'); return S2.list('reflection').length; });
+  check('the sample diary stays the sample while another tab writes', seen === 0 && S2.list('reflection').length === 1);
+  /* a backup brings a diary, never an account */
+  var w3 = fresh('2026-10-21'), S3 = w3.OvuStore;
+  S3.setProfile({ owner: 'uid-a', cloud: { uid: 'uid-a' }, consentEvents: [{ purpose: 'health_tracking', uid: 'uid-a' }] });
+  var backup = JSON.parse(S3.exportJSON()); backup.profile.owner = 'uid-old'; backup.profile.cloud = { uid: 'uid-old' }; backup.profile.consentEvents = []; backup.profile.periodLength = 6;
+  S3.importJSON(JSON.stringify(backup), 'merge'); var pr = S3.profile();
+  var mergeOk = pr.owner === 'uid-a' && pr.cloud.uid === 'uid-a' && pr.consentEvents.length === 1 && pr.periodLength === 6;
+  S3.importJSON(JSON.stringify(backup), 'replace'); pr = S3.profile();
+  check('importing a backup keeps this phone\'s owner, cloud binding and consent, merged or replaced, and still brings the diary\'s settings', mergeOk && pr.owner === 'uid-a' && pr.cloud.uid === 'uid-a' && pr.consentEvents.length === 1 && pr.periodLength === 6);
+  var w3b = fresh('2026-10-21'), S3b = w3b.OvuStore; S3b.importJSON(JSON.stringify(backup), 'merge');
+  check('on a fresh phone an old backup brings no account at all, so the signed-in account adopts the diary', S3b.profile().owner === undefined && S3b.profile().cloud === undefined);
+  /* accounts at start, in backups and on the privacy page */
+  var rs = read('room.js'), sy = read('ovu-sync.js'), pl = read('privacy-local.js'), au = read('ovu-auth.js');
+  check('a phone already signed in to another account meets the wall at start, before the room shows anything', /else if \(OvuAuth\.isSignedIn\(\) && !ownerOk\(\)\) wrongAccount\(\);/.test(rs));
+  check('a diary never backs up to an account that does not own it', /ownerFits\(S\.profile\(\), s\.user\.id\) && consentForUser/.test(sy));
+  check('the privacy page checks the account again before export and delete, and when the session or diary changes elsewhere', /exportButton\.addEventListener\('click', function \(\) \{\n      if \(!allowed\(\)\) \{ lock\(\); return; \}/.test(pl) && /if \(!allowed\(\)\) \{ closeReview\(\); lock\(\); return; \}/.test(pl) && /e\.key === 'ovumind_auth_v1' \|\| e\.key === 'ovumind_db_v1'\) && !allowed\(\)\) lock\(\)/.test(pl) && /if \(ej\) ej\.value = ''/.test(pl));
+  check('signing out forgets the session on this phone at once, before the network answers', /if \(s\) \{ try \{ localStorage\.removeItem\(AUTH_LS\); \}/.test(au));
+  /* an outfit name from a backup never becomes markup */
+  var sit = ['ovu-seats.js', 'ovu-tones.js', 'ovu-barn.js', 'ovu-harbour.js', 'ovu-garden.js'].filter(function (f) { return !/\/\^\[a-z0-9-\]\{1,32\}\$\/\.test\(/.test(read(f)); });
+  check('every sitter checks the outfit name against a plain pattern before building its picture', sit.length === 0, sit.join());
+  /* practice time and Morning start parts */
+  var w5 = fresh('2026-10-21'); vm.runInContext(read('ovu-mindful.js'), w5, { filename: 'ovu-mindful.js' });
+  var r45 = w5.OvuMindful.complete('teeth', 0, 45, true, false), r240 = w5.OvuMindful.complete('teeth', 0, 240, true, true);
+  check('a practice saves the time she practised, not a rounded-up minute, and a stop says it was not finished', !!r45 && r45.event.data.minutes === 0.8 && r45.event.data.completed === false && r240.event.data.minutes === 4 && r240.event.data.completed === true, JSON.stringify(r45 && r45.event.data));
+  var mm = read('ovu-morning.js');
+  check('Morning start: skipping the last part ends cleanly, Next through a line means that part was not finished, and a failed save keeps the parts already saved', /var r0 = run; run\.skipping = true; run\.i = groupEnd\(s\.group\); next\(false\); if \(run === r0\) run\.skipping = false;/.test(mm) && /!\(run\.nexted && run\.nexted\[cur\.group\]\)/.test(mm) && /if \(r\.savedIdx\[i\]\) return;/.test(mm));
+  check('a practice cannot be walked out of: a tap elsewhere asks her to finish or stop first', /if \(practice\) \{ if \(h\.id === 'bed'\)/.test(rs));
+  check('a menopause No or Not sure is kept and never overridden by age', /menoStatus: A\.menoStatus \|\| ''/.test(rs) && /A\.menoStatus !== 'no' && A\.menoStatus !== 'unsure'/.test(rs));
+  check('with periods paused the calendar asks for the bleeding itself and promises no filled-in days', /Nothing is filled in while your periods are paused\.' : 'Tap the first day of your last period/.test(rs));
+  var jr = read('journal.html');
+  check('the journal\'s care card can be closed and goes with the reflection it was about', /id="rfCareClose"/.test(jr) && /cc\.dataset\.ev&&!S\.get\(cc\.dataset\.ev\)/.test(jr));
+  check('mixed nights are labelled as mixed, in the journal and for the doctor', /sum\.sleep\.mixed\?'Sleep and bed to wake'/.test(jr) && /sl\.mixed\?'Average, mixed measured and bedtime to waking'/.test(read('doctor.html')));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

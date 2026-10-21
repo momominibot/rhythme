@@ -372,7 +372,7 @@
     entries.forEach(function (n) { (byDay[n.date] = byDay[n.date] || []).push(n); });
     var nights = Object.keys(byDay).sort().map(function (d) { return oneNight(d, byDay[d]); });
     var total = nights.reduce(function (s, n) { return s + n.hours; }, 0);
-    return { from: from, to: end, nights: nights, entries: entries.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality, id: n.id, assumed: n.assumed }; }), count: nights.length, windowed: entries.some(function (n) { return !n.measured; }), avg: nights.length ? Math.round(total / nights.length * 10) / 10 : null, under6: nights.filter(function (n) { return n.hours < 6; }).length };
+    return { from: from, to: end, nights: nights, entries: entries.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality, id: n.id, assumed: n.assumed }; }), count: nights.length, windowed: entries.some(function (n) { return !n.measured; }), measured: entries.some(function (n) { return n.measured; }), avg: nights.length ? Math.round(total / nights.length * 10) / 10 : null, under6: nights.filter(function (n) { return n.hours < 6; }).length };
   }
 
   /* ---------- today's check-in answers ----------
@@ -557,13 +557,14 @@
     var incoming = normalise(JSON.parse(text));
     incoming.events = (incoming.events || []).map(function (e) { try { return Object.assign({}, e, { data: cleanData(e.type, e.data) }); } catch (err) { return null; } }).filter(Boolean); /* a restored file passes the same write boundary */
     if (mode !== 'replace') catchUp();
-    var db = load();
+    var db = load(), keep = {}; ['owner', 'cloud', 'consent', 'consentEvents', 'ageAttest'].forEach(function (k) { if (db.profile && db.profile[k] !== undefined) keep[k] = db.profile[k]; }); /* this phone's account and consent stay as they are (Codex sweep, 21 Oct) */
     if (mode === 'replace') { cache = incoming; }
     else {
       var ids = {}; db.events.forEach(function (e) { ids[e.id] = true; });
       incoming.events.forEach(function (e) { if (!ids[e.id]) db.events.push(e); });
       db.profile = Object.assign(db.profile, incoming.profile);
     }
+    var pf = load().profile; ['owner', 'cloud', 'consent', 'consentEvents', 'ageAttest'].forEach(function (k) { if (k in keep) pf[k] = keep[k]; else delete pf[k]; }); /* a backup never brings an account, not even an old one onto a fresh phone */
     save('import', mode === 'replace');
     return load().events.length;
   }

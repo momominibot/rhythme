@@ -289,7 +289,7 @@
   }
   function sitDown() {
     if (sitting || !at('cave') || !idle()) return;
-    var G = root.OvuGarden, el = doc.createElement('div'), outfit = S.profile().outfit || 'base';
+    var G = root.OvuGarden, el = doc.createElement('div'), outfit = (function (o) { return /^[a-z0-9-]{1,32}$/.test(o || '') ? o : 'base'; })(S.profile().outfit); /* an imported outfit name never becomes markup (Codex sweep, 21 Oct) */
     el.className = 'nb springsitter'; el.dataset.id = 'springsitter';
     el.innerHTML = '<img src="' + ART + 'avatar-' + outfit + '.webp" alt="">';
     var stop = doc.createElement('button'); stop.type = 'button'; stop.className = 'springstop'; stop.id = 'springStop'; stop.innerHTML = '<span class="ms">stop_circle</span>Stop sitting';
