@@ -2023,3 +2023,20 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 @media (prefers-reduced-motion: reduce){#seatfx i{animation:none!important;opacity:.35}#seatfx .mote,#seatfx .spark,#seatfx .glint,#seatfx .streak{opacity:.22}#seatfx b{display:none}}
 .seatpanel .mp-btns{display:flex;flex-wrap:wrap;gap:8px}
 .seatpanel .mp-btns .btn{flex:1 1 40%}
+
+/* fasting timing in the food diary (design 2026-10-21-fasting-timing.md): plain, no counter, no colour for lengths */
+.fstrip{margin-top:12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid rgba(160,130,190,.18)}
+.fstrip .lbl{display:block;margin-bottom:6px}
+.fstrip .row{margin-top:8px;flex-wrap:wrap}
+.fstrip .btn.small{padding:7px 11px;font-size:13px;min-height:40px}
+.fstrip .fopen{margin:4px 0 2px;font-size:14px}
+.fstrip .foffer{margin:8px 0;padding:10px;border-radius:12px;background:#f6effd;font-size:14px}
+.fstrip .fconflict{margin:6px 0;padding:10px;border-radius:12px;background:#fff4ea;font-size:14px}
+.fstrip .frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:13px}
+.fstrip .frow span{flex:1 1 180px;min-width:0}
+.fstrip .fgaps,.fstrip .fcare,.fstrip .freason{margin-top:8px;font-size:13px;line-height:1.4}
+.fstrip .muted{color:#8d7fa0}
+.fstrip .evid a{color:#7b5bb5;text-decoration:none;margin-right:4px;font-size:12px}
+.fq .chips{display:flex;gap:6px;flex-wrap:wrap}
+.fq .chipbtn[disabled]{opacity:.6}
+.fastingcard .ilist{margin-top:6px}
