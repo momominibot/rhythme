@@ -3052,7 +3052,7 @@
   /* ---------- greeting ---------- */
   function updateGreeting() {
     var h = new Date().getHours(), p = S.profile(), name = p.name ? ', ' + p.name : '';
-    var g = S.state().sleeping ? 'Sleep well' : window.OvuBirthday && OvuBirthday.isToday() ? 'Happy birthday' : window.OvuSun ? OvuSun.phase().greeting : h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    var g = S.state().sleeping ? 'Sleep well' : window.OvuBirthday && OvuBirthday.isToday && OvuBirthday.isToday() ? 'Happy birthday' : window.OvuSun ? OvuSun.phase().greeting : h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
     $('#greetTitle').textContent = g + name;
     $('#greetSub').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
     var cs = S.cycleStats(); var chip = $('#phaseChip');

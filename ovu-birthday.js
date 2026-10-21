@@ -82,6 +82,9 @@
   if (!R || !S || !doc || !doc.createElement) return;
   var ART = R.ART, CAKE = 'prop-cake.webp', opened = false, tries = 0, tryT = 0;
   var POS = { room: { x: 66, y: 66.5, w: 7.6 } }; /* on the round table by the diary; other homes put it a step from where she stands */
+  /* exported before the boot hook below: when the room has already booted (a cached reload), R.on('boot') runs the hook at once,
+     and the hook's greeting refresh reads these through window.OvuBirthday (function declarations hoist, so this is safe here) */
+  B.isToday = isToday; B.inWeek = inWeek; B.openCard = openCard; B.renderField = renderField; B.model = model;
   function mmdd() { return clean(S.profile().birthday); }
   function isToday() { var b = mmdd(); return !!b && isDay(S.today(), b); }
   function inWeek() { var b = mmdd(); return !!b && dayOf(S.today(), b) >= 0; }
@@ -159,5 +162,4 @@
     S.subscribe(function () { if (isToday()) maybeOpen(); });
     maybeOpen();
   });
-  B.isToday = isToday; B.inWeek = inWeek; B.openCard = openCard; B.renderField = renderField; B.model = model;
 })(typeof window !== 'undefined' ? window : this);

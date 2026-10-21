@@ -471,7 +471,7 @@ async def main():
             await page.evaluate("()=>{OvuStore.setProfile({birthday: null}); OvuStore.setState({birthday: null});}")
             await page.goto(BASE + "room.html?tester=off", wait_until="networkidle"); await page.wait_for_timeout(1200)
             off = await page.evaluate("()=>({outfit: OvuStore.profile().outfit, src: document.querySelector('#avatarImg').src.split('/').pop(), cake: !!document.querySelector('#ownedProps .prop.cake')})")
-            check("without tester mode the gown is locked again: the profile still says gown but she wears the knit; the cake is gone with the birthday", off["outfit"] == "gown" and off["src"] == "avatar-base.webp" and not off["cake"], off)
+            check("without tester mode the gown is locked again: she wears the knit and her profile falls back to it (so poses never show the locked gown); the cake is gone with the birthday", off["outfit"] == "base" and off["src"] == "avatar-base.webp" and not off["cake"], off)
             await page.evaluate("()=>OvuRoom.openWardrobe()"); await page.wait_for_selector('#sheet[aria-hidden="false"] .outfit', timeout=8000)
             gw = await page.evaluate("()=>{var g=document.querySelector('.outfit[data-id=gown]'); return {there: !!g, locked: !!g && g.classList.contains('locked'), label: g && g.querySelector('small').textContent, lock: !!g && !!g.querySelector('.olock')};}")
             check("the wardrobe shows the Starlight gown as a locked Rhythme Plus drop", gw["there"] and gw["locked"] and gw["label"] == "With Rhythme Plus" and gw["lock"], gw)
