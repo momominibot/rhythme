@@ -122,8 +122,12 @@
     /* four-persona review, 20 Oct: Nadia wears a tudung, and Codex, DeepSeek and Doubao all said her avatar should be able to.
      * It joined once its meditate, sleep, bench and every action sprite existed (a missing one would fall back to a sprite
      * with her hair showing, which takes her tudung off; tools/test-core.js 2g holds that line) */
-    { id: 'tudung', name: 'Baju kurung & tudung', note: 'Dusty rose, lilac tudung' }
+    { id: 'tudung', name: 'Baju kurung & tudung', note: 'Dusty rose, lilac tudung' },
+    /* the first wardrobe drop (Jamie, 21 Oct: "special drop down glamour dress to show off at the plaza"): a Rhythme Plus perk */
+    { id: 'gown', name: 'Starlight gown', note: 'Plaza drop · sparkle', plus: true }
   ];
+  /* a Plus drop is worn only while Plus is on this phone (a preview code or the account), or in tester mode */
+  function outfitLocked(id) { var o = OUTFITS.filter(function (x) { return x.id === id; })[0]; return !!(o && o.plus && !(window.OvuPodcast && OvuPodcast.plusActive()) && !(RW.tester && RW.tester())); }
   var VIDEOS = [
     ['normal', 'normal-v4.mp4', 'A normal cycle', 'What typical looks like'],
     ['hormones', 'hormones-v4.mp4', 'Hormones', 'Oestrogen & progesterone'],
@@ -493,6 +497,7 @@
   var imgGen = 0;
   function setOutfit(id, silent) {
     if (!OUTFITS.some(function (o) { return o.id === id; })) id = 'base';
+    if (outfitLocked(id)) id = 'base'; /* a drop needs Plus on this phone; a stale profile never dresses her in it */
     var img = new Image(), gen = ++imgGen;
     img.onload = function () { if (gen !== imgGen) return; avatarImg.src = img.src; if (!silent && window.OvuMorning && OvuMorning.active()) OvuMorning.repose(); /* brushing in the new outfit */ if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); } };
     img.src = ART + 'avatar-' + id + '.webp';
@@ -1425,10 +1430,10 @@
   function openWardrobe() {
     var cur = S.profile().outfit || 'base';
     openSheet('wardrobe', 'Wardrobe', 'Pick an outfit for today', 'checkroom',
-      '<div class="outfits">' + OUTFITS.map(function (o) { return '<button type="button" class="outfit' + (o.id === cur ? ' on' : '') + '" data-id="' + o.id + '"><img src="' + ART + 'avatar-' + o.id + '.webp" alt=""><b>' + esc(o.name) + '</b><small>' + esc(o.note) + '</small></button>'; }).join('') + '</div>' +
+      '<div class="outfits">' + OUTFITS.map(function (o) { var lk = outfitLocked(o.id); return '<button type="button" class="outfit' + (o.id === cur ? ' on' : '') + (lk ? ' locked' : '') + '" data-id="' + o.id + '"' + (lk ? ' aria-label="' + esc(o.name) + ', with Rhythme Plus"' : '') + '><img src="' + ART + 'avatar-' + o.id + '.webp" alt=""><b>' + esc(o.name) + '</b><small>' + (lk ? 'With Rhythme Plus' : esc(o.note)) + '</small>' + (lk ? '<span class="ms olock" aria-hidden="true">lock</span>' : '') + '</button>'; }).join('') + '</div>' +
       '<div class="field"><label for="nameInput">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="nameInput" maxlength="24" placeholder="Your name" value="' + esc(S.profile().name || '') + '"><button class="btn soft" id="saveName" style="flex:0 0 auto">Save</button></div></div>' +
       '<p class="help">Your avatar remembers her outfit on this device. Pyjamas go on automatically at bedtime. Pets and furniture come from Dream Street.</p>');
-    body.addEventListener('click', function (e) { var o = e.target.closest('.outfit'); if (!o) return; setOutfit(o.dataset.id); chime('tap'); toast(OUTFITS.filter(function (x) { return x.id === o.dataset.id; })[0].name + ' it is!', 'checkroom'); });
+    body.addEventListener('click', function (e) { var o = e.target.closest('.outfit'); if (!o) return; if (outfitLocked(o.dataset.id)) { chime('tap'); toast('The Starlight gown is a Rhythme Plus drop. Plus is in preview from You.', 'lock'); openPlus(); return; } setOutfit(o.dataset.id); chime('tap'); toast(OUTFITS.filter(function (x) { return x.id === o.dataset.id; })[0].name + ' it is!', 'checkroom'); });
     $('#saveName').addEventListener('click', function () { S.setProfile({ name: $('#nameInput').value.trim() }); updateGreeting(); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); });
   }
 
@@ -1499,6 +1504,7 @@
     openSheet('you', P.name ? P.name : 'You', 'Your room, your answers, your data', 'person',
       '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + '</span></div></div>' +
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
+      '<div id="youBirthday"></div>' +
       '<div id="youAccount"></div>' +
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
@@ -1507,6 +1513,7 @@
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is a diary, not a diagnosis, and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
     if (window.OvuAuth) { var ya = $('#youAccount'); if (ya) OvuAuth.renderAccount(ya, { toast: toast, chime: chime }); }
+    if (window.OvuBirthday) OvuBirthday.renderField($('#youBirthday')); /* a month and a day, optional (ovu-birthday.js) */
     if (confirmDelete) { var yd = $('#yDel'); if (yd) yd.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     body.addEventListener('click', function (e) {
       var b = e.target.closest('[data-yact]'); if (!b) return; var act = b.dataset.yact; chime('tap');
@@ -2536,10 +2543,10 @@
    * fraction of the image]. Her head, and so her size, stays the same in every pose. The tudung covers less width than
    * her hair (the silhouette measures 1.16), so it keeps the knit's scale, matched by figure height like its pose copies,
    * and only its head centre is its own. */
-  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513],'tudung':[1.0,0.544]};
+  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513],'tudung':[1.0,0.544],'gown':[1.403,0.518],'act-plants-gown':[1.581,0.574],'act-coffee-gown':[1.424,0.502],'act-teeth-gown':[1.355,0.542],'act-pets-gown':[1.538,0.454],'act-bed-gown':[1.775,0.571],'act-outfit-gown':[1.568,0.643],'act-stretch-gown':[1.502,0.569],'act-note-gown':[1.581,0.522],'act-eat-gown':[1.43,0.539],'act-listen-gown':[1.474,0.532],'act-read-gown':[1.486,0.531],'act-tend-gown':[1.372,0.4],'act-harvest-gown':[1.455,0.53],'act-wave-gown':[1.741,0.522],'act-press-gown':[1.533,0.519],'act-phone-gown':[1.395,0.518],'act-shop-gown':[1.427,0.505],'act-scale-gown':[1.592,0.504]}; /* the gown entries: a skirt wider than the base canvas keeps her height on a wider canvas (scratchpad gown/fit_all.py, 21 Oct) */
   function fitAvatar() {
     /* an outfit's copy of a pose is fitted on the pose's own canvas (tools/art: fit.py), so it shares the pose's numbers */
-    var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatarImg.src || ''), f = m && (AVATAR_FIT[m[1]] || AVATAR_FIT[m[1].replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung)$/, '')]); if (!f) f = [1, 0.5];
+    var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatarImg.src || ''), f = m && (AVATAR_FIT[m[1]] || AVATAR_FIT[m[1].replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung|gown)$/, '')]); if (!f) f = [1, 0.5];
     avatarImg.style.width = (f[0] * 100).toFixed(2) + '%'; avatarImg.style.maxWidth = 'none';
     avatarImg.style.marginLeft = ((0.5 - f[1] * f[0]) * 100).toFixed(2) + '%';
     avatarImg.style.transformOrigin = (f[1] * 100).toFixed(1) + '% 100%';
@@ -3045,7 +3052,7 @@
   /* ---------- greeting ---------- */
   function updateGreeting() {
     var h = new Date().getHours(), p = S.profile(), name = p.name ? ', ' + p.name : '';
-    var g = S.state().sleeping ? 'Sleep well' : window.OvuSun ? OvuSun.phase().greeting : h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    var g = S.state().sleeping ? 'Sleep well' : window.OvuBirthday && OvuBirthday.isToday() ? 'Happy birthday' : window.OvuSun ? OvuSun.phase().greeting : h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
     $('#greetTitle').textContent = g + name;
     $('#greetSub').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
     var cs = S.cycleStats(); var chip = $('#phaseChip');
@@ -3074,7 +3081,7 @@
     sheetOpen: function () { return !!current; }, sheetId: function () { return current; }, cancelIdle: function () { clearTimeout(idleTimer); },
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
-    openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, openExercise: openExercise, openMoveGuide: openMoveGuide,
+    openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, setOutfit: setOutfit, outfitLocked: outfitLocked, updateGreeting: updateGreeting, openPlus: openPlus, openExercise: openExercise, openMoveGuide: openMoveGuide,
     moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on && title) { clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }

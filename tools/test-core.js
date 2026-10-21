@@ -3593,4 +3593,24 @@ var summarised = false;
   check('the card’s styles exist and no em dash entered the copy', /\.sheet\.luna-sheet\{/.test(css) && /\.askchip\{/.test(css) && /\.lunanote\{/.test(css) && luna.indexOf('—') < 0);
 })();
 
+(function drops() {
+  console.log('2k22. the drops (21 Oct): her birthday week, and the Starlight gown as a Rhythme Plus drop');
+  var w = { document: undefined }; w.window = w;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-birthday.js'), 'utf8'), vm.createContext(w), { filename: 'ovu-birthday.js' });
+  var B = w.OvuBirthday;
+  check('a birthday is a month and a day only: 10-21 and 2-29 are kept, 13-01, 02-30, a year and nothing are refused', B.clean('10-21') === '10-21' && B.clean('2-29') === '02-29' && B.clean('13-01') === null && B.clean('02-30') === null && B.clean('1990-10-21') === null && B.clean('') === null && B.clean(null) === null);
+  check('the day and the six days after are the week, across a year end; 29 February falls on the 28th in other years', B.dayOf('2026-10-21', '10-21') === 0 && B.dayOf('2026-10-27', '10-21') === 6 && B.dayOf('2026-10-28', '10-21') === -1 && B.dayOf('2026-10-20', '10-21') === -1 && B.dayOf('2027-01-02', '12-30') === 3 && B.dayOf('2026-02-28', '02-29') === 0 && B.dayOf('2028-02-29', '02-29') === 0 && B.dayOf('2028-02-28', '02-29') === -1 && B.dayOf('2026-10-21', null) === -1 && B.dayOf('nope', '10-21') === -1);
+  check('the birthday year the week belongs to follows the day, so a week that crosses New Year keeps its year; outside the week there is none', B.yearOf('2026-10-24', '10-21') === 2026 && B.yearOf('2027-01-02', '12-30') === 2026 && B.yearOf('2026-05-05', '10-21') === null && B.text('10-21') === '21 October' && B.text('02-09') === '9 February');
+  var a = B.pick(2026, 3), b = B.pick(2026, 3), c = B.pick(2027, 3);
+  check('three distinct warm lines, the same for the same seed and different the next year; none reads anything into numbers, none has an em dash', a.length === 3 && a.join('|') === b.join('|') && new Set(a).size === 3 && c.join('|') !== a.join('|') && B.LINES.length >= 12 && B.LINES.every(function (l) { return l.indexOf('—') < 0 && !/numerolog|destiny|life path|zodiac|star sign/i.test(l); }));
+  var cd = B.card({ name: ' Mei ', mmdd: '10-21', year: 2026, dates: ['2026-10-20', '2026-10-20', '2026-09-01', '2025-01-01', '2027-01-01'], from: '2025-10-21', today: '2026-10-21', practices: 4, earned: 230, harvest: 7, friends: 1, canGown: false });
+  var lab = function (l) { return cd.stats.filter(function (s) { return s.label === l; })[0]; };
+  check('the postcard: her name, the date in words, three lines, her year in numbers (dates deduped and inside the year, singulars right), and the party outfit while the gown is locked', cd.title === 'Happy birthday, Mei!' && cd.date === '21 October' && cd.lines.length === 3 && lab('days with a note').n === 2 && lab('pauses with Erin').n === 4 && lab('hearts earned in all').n === 230 && lab('things harvested').n === 7 && lab('plaza friend').n === 1 && cd.outfit === 'party' && B.card({ name: '', mmdd: '10-21', year: 2026, canGown: true }).outfit === 'gown');
+  var empty = B.card({ mmdd: '01-05', year: 2026 });
+  check('a first birthday in Rhythme has no numbers, only the words, and the lines differ from another date in the same year', empty.title === 'Happy birthday!' && empty.stats.length === 0 && empty.lines.length === 3 && empty.lines.join('|') !== B.card({ mmdd: '07-19', year: 2026 }).lines.join('|'));
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), fr = fs.readFileSync(path.join(root, 'ovu-friends.js'), 'utf8'), css = fs.readFileSync(path.join(root, 'room.css'), 'utf8'), html = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), mod = fs.readFileSync(path.join(root, 'ovu-birthday.js'), 'utf8');
+  check('the Starlight gown is in the wardrobe as a Plus drop: locked without Plus or tester mode, never worn from a stale profile, labelled, and in the plaza look list', /id: 'gown', name: 'Starlight gown'[^}]*plus: true/.test(rs) && /function outfitLocked\(id\)/.test(rs) && /if \(outfitLocked\(id\)\) id = 'base'/.test(rs) && /With Rhythme Plus/.test(rs) && /openPlus\(\); return; \} setOutfit/.test(rs) && /\['gown', 'Starlight gown'\]/.test(fr));
+  check('the room greets her on the day, You holds the birthday field, the module loads after Plaza friends, the styles exist, and no em dash in the words', /OvuBirthday\.isToday\(\) \? 'Happy birthday'/.test(rs) && /id="youBirthday"/.test(rs) && /OvuBirthday\.renderField/.test(rs) && html.indexOf('ovu-friends.js') < html.indexOf('ovu-birthday.js') && /\.prop\.event\{/.test(css) && /\.bcard\{/.test(css) && /\.outfit\.locked\{/.test(css) && mod.indexOf('—') < 0);
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
