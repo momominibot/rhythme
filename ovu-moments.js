@@ -38,7 +38,7 @@
     farmwater: { pose: 'plants', lines: ['Watch one drop settle into the soil.', 'Notice the soil darken as it drinks.'] },
     well: { pose: 'plants', lines: ['Watch the water rise in the can.', 'Listen to the water as it fills the can.'] },
     /* the barn and the hidden spring (21 Oct): lines describe what is on screen; no pose, she stands with a basket or pail */
-    eggs: { pose: null, lines: ['Watch the egg settle in the basket.', 'Notice the straw around each egg.'] },
+    eggs: { pose: null, lines: ['Watch each egg lift from the straw.', 'Notice the straw around each egg.'] },
     milk: { pose: null, lines: ['Watch the milk collect in the pail.'] },
     brush: { pose: null, lines: ['Notice how still Clover stands.', 'Notice the straw at her feet.'] },
     springlower: { pose: null, lines: ['Watch the basket sink into the water.'] },

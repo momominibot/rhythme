@@ -159,6 +159,7 @@
       if (ready.indexOf(h) < 0) return;
       var n = NESTS[h], el = doc.createElement('span'); el.className = 'barnthing nestegg'; el.style.left = n.x + '%'; el.style.top = n.y + '%'; el.innerHTML = eggSVG(); el.setAttribute('aria-hidden', 'true'); wrap.appendChild(el);
     });
+    if (W.sortDepth) W.sortDepth(); /* the animals were just recreated: she stands in front of or behind them by her feet */
   }
   function hot(L, id) { return L.hotspots.filter(function (h) { return h.id === id; })[0]; }
   function go(id) {
@@ -184,8 +185,8 @@
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (ST && !ST.can('egg')) { R.toast('Too tired for that. A rest first.', 'bedtime'); return; }
       var seen = JSON.stringify(eggsReady(S, day));
-      var lifts = [];
-      step(acts, { ms: 2500, moment: 'eggs', verb: 'Lifting each egg into the basket…', cancel: function () { lifts.forEach(root.clearTimeout); renderBarn(); openNests(); }, start: function (ms) { Array.prototype.forEach.call(doc.querySelectorAll('#ownedProps .nestegg'), function (el, i) { lifts.push(root.setTimeout(function () { el.classList.add('lifted'); }, (i + 0.5) * ms / 3)); }); } }, function () {
+      var lifts = [], putBack = function () { lifts.forEach(root.clearTimeout); lifts = []; renderBarn(); };
+      step(acts, { ms: 2500, moment: 'eggs', verb: 'Lifting each egg from the straw…', stillLine: 'Notice the straw around each egg.', abort: putBack, cancel: openNests, start: function (ms) { Array.prototype.forEach.call(doc.querySelectorAll('#ownedProps .nestegg'), function (el, i) { lifts.push(root.setTimeout(function () { el.classList.add('lifted'); }, (i + 0.5) * ms / 3)); }); } }, function () {
         if (today() !== day || JSON.stringify(eggsReady(S, day)) !== seen) { renderBarn(); openNests(); return; } /* the day turned or another tab collected */
         var r = collectEggs(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); renderBarn(); openNests(); return; }
         R.chime('save'); renderBarn(); R.toast(r.n + ' egg' + (r.n > 1 ? 's' : '') + ' in the pantry.', 'egg'); openNests();
@@ -206,7 +207,7 @@
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (btn.dataset.act === 'brush') { step(acts, { ms: 3000, moment: 'brush', verb: 'Brushing slowly…', cancel: openClover }, function () { R.chime('tap'); openClover(); }); return; }
       if (ST && !ST.can('milk')) { R.toast('Too tired for that. A rest first.', 'bedtime'); return; }
-      step(acts, { ms: 3000, moment: 'milk', verb: 'Milking slowly…', cancel: openClover, start: function (ms) { var m = doc.querySelector('#sheet .pailmilk'); if (m) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { m.style.transition = 'transform ' + ms + 'ms ease-in-out'; m.style.transform = 'scaleY(1)'; }); }); } }, function () {
+      step(acts, { ms: 3000, moment: 'milk', verb: 'Milking slowly…', stillLine: 'Notice how still Clover stands.', cancel: openClover, start: function (ms) { var m = doc.querySelector('#sheet .pailmilk'); if (m) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { m.style.transition = 'transform ' + ms + 'ms ease-in-out'; m.style.transform = 'scaleY(1)'; }); }); } }, function () {
         if (today() !== day || !milkReady(S, day)) { openClover(); return; }
         var r = milk(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); openClover(); return; }
         R.chime('save'); R.toast('A pail of milk in the pantry.', 'water_full'); openClover();
@@ -236,9 +237,9 @@
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       var seen = JSON.stringify(FM().farmState(S).pantry), want = n;
       var anim = function (sel, prop, val, ms) { return function () { var el = doc.querySelector('#sheet ' + sel); if (el) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { el.style.transition = prop + ' ' + ms + 'ms ease-in-out'; el.style[prop] = val; }); }); }; };
-      step(acts, { ms: 2500, moment: 'springlower', verb: 'Lowering the basket…', cancel: openBasket, start: function (ms) { anim('.sbasket', 'transform', 'translateY(26px)', ms)(); } }, function () {
-        step(acts, { ms: 6000, moment: 'springsteam', verb: 'The eggs rest in the warm water…', cancel: openBasket, start: function (ms) { anim('.ssteam', 'opacity', '1', ms * 0.4)(); } }, function () {
-          step(acts, { ms: 2500, moment: 'springlift', verb: 'Lifting the basket…', cancel: openBasket, start: function (ms) { anim('.ssteam', 'opacity', '0', ms)(); anim('.sbasket', 'transform', 'translateY(0)', ms)(); } }, function () {
+      step(acts, { ms: 2500, moment: 'springlower', verb: 'Lowering the basket…', stillLine: 'Notice the glow of the water.', cancel: openBasket, start: function (ms) { anim('.sbasket', 'transform', 'translateY(26px)', ms)(); } }, function () {
+        step(acts, { ms: 6000, moment: 'springsteam', verb: 'The eggs rest in the warm water…', stillLine: 'Notice the stars above the water.', cancel: openBasket, start: function (ms) { anim('.ssteam', 'opacity', '1', ms * 0.4)(); } }, function () {
+          step(acts, { ms: 2500, moment: 'springlift', verb: 'Lifting the basket…', stillLine: 'Notice the glow of the water.', cancel: openBasket, start: function (ms) { anim('.ssteam', 'opacity', '0', ms)(); anim('.sbasket', 'transform', 'translateY(0)', ms)(); } }, function () {
             if (JSON.stringify(FM().farmState(S).pantry) !== seen) { openBasket(); return; } /* another tab changed the pantry */
             var r = cookEggs(S, want); if (!r.ok) { R.toast(r.why, 'info'); openBasket(); return; }
             R.chime('save'); afterCook(r.n);
@@ -319,9 +320,10 @@
     if (GT) GT.onNewDay(function () { renderBarn(); redrawOpen(); });
     var key = JSON.stringify(S.state().farm || null);
     S.subscribe(function (reason) {
+      if (reason === 'clear' || reason === 'import') { if (CARE && CARE.cancel) CARE.cancel(); key = JSON.stringify(S.state().farm || null); syncCrack(); renderBarn(); redrawOpen(); return; } /* the diary was replaced here: nothing pending survives it */
       if (reason === 'state') { key = JSON.stringify(S.state().farm || null); return; } /* our own saves move the baseline */
       if (!(reason === 'external' || String(reason).indexOf('sync') === 0)) return;
-      var k = JSON.stringify(S.state().farm || null); if (k === key) return; key = k;
+      var k = JSON.stringify(S.state().farm || null), wiped = !S.state().farm; if (k === key && !wiped) return; key = k; /* a wipe (Delete everything elsewhere) always counts */
       syncCrack(); renderBarn(); redrawOpen();
     });
   });
