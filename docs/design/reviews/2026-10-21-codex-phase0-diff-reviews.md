@@ -171,3 +171,65 @@ Of the original P2s, `no_data` display, boolean-only completion, historical due-
 I accept the four declared decisions for this unscheduled phase, with the rollback-reader qualification above. They do not account for the remaining findings.
 
 **FIX**
+
+# Round three (after commit e7e620f, verdict FIX; all items fixed in the following commit)
+
+**FIX.** Reviewed `e7e620f` against `01a10a1`. The main metric corrections are present, but consent handling and verification remain incomplete.
+
+References: **M** = [migration](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/supabase/migrations/20261021100000_staff_data_contract_v3.sql); **T** = [database tests](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/tools/db/test_team_pipeline.py). P0 retains the earlier reviews’ meaning: fix before processing real contributions.
+
+1. **P0: A stale automatic grant can still overwrite a first refusal.**  
+   `ovu-auth.js:115,185`; **M:197–199**. Phone A reads no row and prepares an automatic grant. Phone B records its first refusal. A then submits without an expected revision, and the setter reactivates consent. The advisory lock serializes writes but does not protect this read-to-write gap.  
+   **Smallest fix:** give automatic binding an explicit “expect no existing decision” precondition, checked under the account lock. On conflict, adopt the server decision. This is separate from the deferred age-receipt ordering.
+
+2. **P1: Request idempotency remains incomplete.**  
+   `ovu-auth.js:133–141`; **M:188–195,221–231**.
+   - The actual client never sends `p_request_id`.
+   - Replay validation compares only the action, accepting changed notice, hash, scope or age-band payloads.
+   - A withdrawal while already withdrawn stores no request receipt. With no expected revision, `withdraw A → withdraw B while off → grant C → retry B` performs another withdrawal.
+
+   **Smallest fix:** send a stable ID per logical request and persist its normalized payload and receipt, including accepted no-op requests. Reject mismatched reuse.
+
+3. **P1: The mirror still reports an unconfirmed transition as recorded.**  
+   `ovu-consent.js:179,207`. `drain()` marks improvement events sent merely because `setImprove` exists. My focused execution returned `recordedOnAccount=true` with **zero setter calls**. Awaiting the age receipt does not resolve this separate part of round-two finding 8.  
+   **Smallest fix:** mark the mirror recorded only after a confirmed authoritative transition or matching account-state reconciliation.
+
+4. **P1: Eligibility omits the configured notice-hash requirement.**  
+   **M:239–240**. Exact notice-version equality fixes the legacy notice-9 case. However, once a current-version hash is registered, existing rows with missing or different hashes remain eligible. The seeded hashes are currently NULL, so this is a conditional contract gap, not evidence of a current mismatch.  
+   **Smallest fix:** require the current registry row and `(registry.hash IS NULL OR consent.notice_hash = registry.hash)`.
+
+5. **P1: Acceptance tests still miss concurrency and do not isolate the suppression fixes.**  
+   **T:244–247,317–323**. The lock check uses a previously committed running row, not concurrent transactions. The new sleep assertions have only **18 contributors**, already below `k=20`; reverting either relevant suppression correction can still pass. The missing-tags result `tg` is never asserted.  
+   **Smallest fix:** add two-session run-versus-withdrawal/deletion tests. Use isolated suppression fixtures with sufficient total contributors but exactly one positive or complement contributor, plus observed-zero cases. Verify those fixtures fail against the previous SQL.
+
+6. **P1: Manual rollback still omits a reader.**  
+   **M:498** lists only `admin_overview` and `admin_findings`. Restoring the old `admin_feed` definition would reopen held summaries.  
+   **Smallest fix:** include `public.admin_feed(integer,bigint,bigint)` in the initial reader revocation. This preserves the accepted manual rollback approach.
+
+7. **P2: Schedule detection still does not verify the intended job.**  
+   **M:438** now checks `active`, but any active job with that name counts, regardless of its command or schedule.  
+   **Smallest fix:** validate the intended command and schedule when the phase-1 job contract is defined. This does not justify enabling scheduling now.
+
+Round-two disposition:
+
+| Finding | Round-three result |
+|---|---|
+| 1. NULL adulthood bypass | Resolved in source. |
+| 2. Small positive groups | Source corrected; effective regression coverage still missing. |
+| 3. NULL complements | Source corrected with `IS NOT TRUE`; coverage still incomplete. |
+| 4. Held feed exposure | Current RPC corrected; rollback omission remains. |
+| 5. First refusal and serialization | Persisted row and lock added; stale automatic-grant gap remains. |
+| 6. Unsupported legacy notice | Version issue resolved; configured-hash condition missing. |
+| 7. Active scope narrowing | Resolved by rejecting narrowing until withdrawal. |
+| 8. Sign-in ordering and false receipt | Ordering deliberately deferred; false receipt remains. |
+| 9. Request idempotency | Partial; finding 2 above. |
+| 10. Test coverage | Repeat-grant backdating, auth cascade and feed checks improved; finding 5 remains. |
+| P2: Inactive schedule | Inactive check fixed; configuration check remains. |
+| P2: Relay label | Resolved. |
+| P2: Registry descriptions | Resolved. |
+
+The metadata-only seed, observation-date boundary and scheduled reservation deferral remain accepted. I found no additional execution defect in the changed metric or feed SQL.
+
+JavaScript syntax, Python parsing and **1,004 core checks passed**. Focused client probes reproduced the omissions above. I did not rerun the PostgreSQL suite or modify files; the reported 50 database passes remain independently unverified.
+
+**FIX**

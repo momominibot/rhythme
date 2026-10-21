@@ -172,11 +172,15 @@
      server refuses outright (a 4xx that is not a session or rate problem) is marked failed and skipped, never a cork. */
   function drain(u, h, n) {
     if (uid() !== u) return Promise.resolve(n);
-    var next = events().filter(function (e) { return e.uid === u && !e.sent && !e.failed; })[0];
+    /* the account's improve-logging choice is recorded by the server's own setter (ovu-auth.js setImprove); its mirror here is
+     * marked recorded only once the account's record, as this phone last read it, holds that same choice, and is never sent */
+    var A = root.OvuAuth, viaAccount = !!(A && A.setImprove);
+    function confirmed(e) { var l = viaAccount && A.improveLocal ? A.improveLocal() : null; return !!(l && l.uid === u && l.syncedAt && l.on === (e.action === 'grant')); }
+    var next = events().filter(function (e) { return e.uid === u && !e.sent && !e.failed && !(e.purpose === 'improve_logging' && viaAccount && !confirmed(e)); })[0];
     if (!next) return Promise.resolve(n);
     var notice = next.notice || NOTICE_V;
     /* the account's improve-logging choice is recorded by the server's own setter (ovu-auth.js setImprove); the mirror of it is kept on this phone and never sent as a second record */
-    if (next.purpose === 'improve_logging' && root.OvuAuth && root.OvuAuth.setImprove) { mark(next.id, { sent: true, serverId: null, via: 'account' }); return drain(u, h, n); }
+    if (next.purpose === 'improve_logging' && viaAccount) { mark(next.id, { sent: true, serverId: null, via: 'account' }); return drain(u, h, n); }
     return rpc('consent_record', { p_purpose: next.purpose, p_action: next.action, p_notice: notice, p_hash: notice >= NOTICE_V ? (h || null) : null, p_method: next.method || 'you', p_device: device(), p_client_at: next.at, p_client_id: next.id }, u).then(function (row) {
       if (row === null || uid() !== u) return n;
       mark(next.id, { sent: true, serverId: row && row.id });

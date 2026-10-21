@@ -179,22 +179,36 @@ update public.analysis_consent c set adult_attested_by = case
     when c.age_band = any (array(select jsonb_array_elements_text(staff.policy('adult_bands')))) then 'age band' end
   where c.adult_attested_by is null;
 drop function if exists public.analysis_consent_set(boolean, integer, text, text, text, timestamptz);
-create or replace function public.analysis_consent_set(p_on boolean, p_notice integer default null, p_age_band text default null, p_scope text default 'from_now', p_hash text default null, p_expected_updated_at timestamptz default null, p_request_id text default null)
+drop function if exists public.analysis_consent_set(boolean, integer, text, text, text, timestamptz, text);
+-- every request the phone names gets a receipt (its normalised payload), so a resend after a lost reply returns the same answer and writes nothing
+create table if not exists staff.consent_requests (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  request_id text not null,
+  action text not null,
+  payload_hash text not null,
+  at timestamptz not null default now(),
+  primary key (user_id, request_id)
+);
+create or replace function public.analysis_consent_set(p_on boolean, p_notice integer default null, p_age_band text default null, p_scope text default 'from_now', p_hash text default null, p_expected_updated_at timestamptz default null, p_request_id text default null, p_expect_none boolean default false)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare uid uuid := auth.uid(); cur timestamptz; cur_scope text; cur_withdrawn timestamptz; need integer; reg_hash text; bands text[]; adult_event boolean; band_ok boolean; row_out public.analysis_consent; rid text := nullif(left(coalesce(p_request_id, ''), 64), ''); prior public.consent_events;
+declare uid uuid := auth.uid(); cur timestamptz; cur_scope text; cur_withdrawn timestamptz; need integer; reg_hash text; bands text[]; adult_event boolean; band_ok boolean; row_out public.analysis_consent; rid text := nullif(left(coalesce(p_request_id, ''), 64), ''); prior staff.consent_requests; want_action text := case when p_on then 'grant' else 'withdraw' end; want_hash text;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtext('analysis_consent_set'), hashtext(uid::text)); /* one transition at a time per account, row or no row yet */
+  want_hash := md5(want_action || '|' || coalesce(p_notice::text, '') || '|' || coalesce(p_age_band, '') || '|' || coalesce(p_scope, '') || '|' || coalesce(p_hash, ''));
   if rid is not null then
-    /* an exact replay (the phone resent after a lost reply) returns the record as it stands and writes nothing */
-    select * into prior from public.consent_events where user_id = uid and purpose = 'improve_logging' and client_id = rid order by id desc limit 1;
+    select * into prior from staff.consent_requests r where r.user_id = uid and r.request_id = rid;
     if found then
-      if prior.action <> (case when p_on then 'grant' else 'withdraw' end) then raise exception 'This request id was already used for a different choice.' using errcode = '22023'; end if;
+      if prior.action <> want_action or prior.payload_hash <> want_hash then raise exception 'This request id was already used for a different request.' using errcode = '22023'; end if;
       select * into row_out from public.analysis_consent c where c.user_id = uid;
       return coalesce(to_jsonb(row_out), jsonb_build_object('user_id', uid, 'on', false)) || jsonb_build_object('replayed', true);
     end if;
   end if;
   select updated_at, history_scope, withdrawn_at into cur, cur_scope, cur_withdrawn from public.analysis_consent where user_id = uid for update;
+  if p_expect_none and cur is not null then
+    /* an automatic first binding from a phone that read no row: another phone decided meanwhile, and that decision stands */
+    raise exception 'This choice was already decided on another phone. Reload and look again.' using errcode = '40001';
+  end if;
   if p_expected_updated_at is not null and cur is not null and cur <> p_expected_updated_at then
     raise exception 'This choice was changed on another phone just now. Reload and look again.' using errcode = '40001';
   end if;
@@ -230,14 +244,16 @@ begin
       insert into public.consent_events (user_id, purpose, action, notice_version, method, client_id) values (uid, 'improve_logging', 'withdraw', coalesce(p_notice, staff.notice_current('improve_logging'), 1), 'server', rid);
     end if;
   end if;
+  if rid is not null then insert into staff.consent_requests (user_id, request_id, action, payload_hash) values (uid, rid, want_action, want_hash) on conflict do nothing; end if; /* a receipt for every accepted request, no-ops included */
   select * into row_out from public.analysis_consent c where c.user_id = uid;
   return coalesce(to_jsonb(row_out) || jsonb_build_object('adult_attested_by', case when adult_event then 'age_18 event' when band_ok then 'age band' else null end), jsonb_build_object('user_id', uid, 'on', false));
 end $$;
-revoke all on function public.analysis_consent_set(boolean, integer, text, text, text, timestamptz, text) from public, anon;
-grant execute on function public.analysis_consent_set(boolean, integer, text, text, text, timestamptz, text) to authenticated;
+revoke all on function public.analysis_consent_set(boolean, integer, text, text, text, timestamptz, text, boolean) from public, anon;
+grant execute on function public.analysis_consent_set(boolean, integer, text, text, text, timestamptz, text, boolean) to authenticated;
 -- the one eligibility rule, shared by the counts and the cohort: on, attested, and made under the registered current notice
 create or replace function staff.consent_eligible(c public.analysis_consent) returns boolean language sql stable set search_path = '' as $$
   select c.withdrawn_at is null and c.adult_attested_by is not null and c.notice_version = staff.notice_current('improve_logging')
+    and exists (select 1 from staff.notice_registry r where r.purpose = 'improve_logging' and r.version = c.notice_version and (r.hash is null or r.hash = c.notice_hash)) /* once the words are registered, only a choice made over those words counts */
 $$;
 grant execute on function staff.consent_eligible(public.analysis_consent) to rhythme_staff_fn;
 
@@ -435,7 +451,7 @@ revoke all on function staff.run_scheduled(date) from public, anon, authenticate
 create or replace function staff.schedule_installed() returns boolean language plpgsql stable security definer set search_path = '' as $$
 declare b boolean;
 begin
-  execute 'select exists (select 1 from cron.job where jobname = $1 and active)' into b using 'rhythme-daily-run';
+  execute 'select exists (select 1 from cron.job where jobname = $1 and active and command like $2)' into b using 'rhythme-daily-run', '%staff.run_scheduled%';
   return coalesce(b, false);
 exception when others then return false;
 end $$;
@@ -495,5 +511,5 @@ end $$;
 -- ---------- 9. the upgrade boundary: nothing computed under the previous contract stays published ----------
 select staff.invalidate_runs('metric contract upgraded to version 3; the next run recomputes under it');
 -- Rollback: there is no automatic rollback. Restoring the version 2 functions would reopen findings this migration held;
--- if a rollback is ever needed, hold the readers first (revoke admin_overview and admin_findings from authenticated),
+-- if a rollback is ever needed, hold the readers first (revoke admin_overview, admin_findings and admin_feed(integer, bigint, bigint) from authenticated),
 -- then restore, then invalidate again.

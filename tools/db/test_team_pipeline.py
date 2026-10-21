@@ -319,8 +319,74 @@ def main():
     r = run(c, owner); ov = overview(c, owner); sh = finding(ov, 'sleep', 'imported_record_share'); tg = finding(ov, 'food', 'tagged_share')
     num, comp = c.execute("select count(distinct e.user_id) filter (where e.source in ('apple-health','google-fit','takeout')), count(distinct e.user_id) filter (where e.source is null or e.source not in ('apple-health','google-fit','takeout')) from public.entries e join public.analysis_consent a on a.user_id = e.user_id and a.withdrawn_at is null where e.type = 'sleep' and not e.deleted and e.date >= %s", [d(28)]).fetchone()
     check('a NULL source counts on the not-imported side of the share, never in neither (%d imported, %d not)' % (num, comp), bool(sh['suppressed']) == ((1 <= num <= k - 1) or (1 <= comp <= k - 1)), {'sh': sh, 'num': num, 'comp': comp})
+    tnum, tcomp = c.execute("select count(distinct e.user_id) filter (where jsonb_typeof(e.data -> 'tags') = 'array' and jsonb_array_length(e.data -> 'tags') > 0), count(distinct e.user_id) filter (where not (jsonb_typeof(e.data -> 'tags') = 'array' and jsonb_array_length(e.data -> 'tags') > 0) or e.data -> 'tags' is null) from public.entries e join public.analysis_consent a on a.user_id = e.user_id and a.withdrawn_at is null where e.type = 'food' and not e.deleted and e.date >= %s", [d(28)]).fetchone()
+    check('a meal without a tags field counts on the untagged side of the share (%d tagged, %d not)' % (tnum, tcomp), tg is not None and bool(tg['suppressed']) == ((1 <= tnum <= k - 1) or (1 <= tcomp <= k - 1)), {'tg': tg, 'tnum': tnum, 'tcomp': tcomp})
     sev2 = finding(ov, 'sleep', 'nights_with_several_records'); n_sev = c.execute("select count(distinct x.user_id) from (select e.user_id, e.date from public.entries e join public.analysis_consent a on a.user_id = e.user_id and a.withdrawn_at is null where e.type = 'sleep' and not e.deleted and e.date >= %s group by 1, 2 having count(*) > 1) x", [d(28)]).fetchone()[0]
     check('a count over everyone is still held back when its positive cell comes from fewer than the floor (%d accounts with several records)' % n_sev, bool(sev2['suppressed']) == (1 <= n_sev <= k - 1), {'sev2': sev2, 'n': n_sev})
+
+    # 12. the contract edges from round three: an automatic first binding, request receipts, a withdrawal while off
+    noA = person(c); consent(c, noA, on=False)  # phone B's first refusal
+    as_user(c, noA['id'])
+    try:
+        c.execute("select public.analysis_consent_set(true, 4, '30-34', 'from_now', null, null, 'auto-1', true)"); auto = None
+    except Exception as e:
+        auto = str(e)
+    as_server(c)
+    check("an automatic first binding (expect no decision) is refused with 40001 when another phone already decided, so the refusal stands", auto is not None and 'already decided' in auto and c.execute("select withdrawn_at is not null from public.analysis_consent where user_id = %s", [noA['id']]).fetchone()[0] is True, auto)
+    as_user(c, plain['id'])
+    c.execute("select public.analysis_consent_set(true, 4, '30-34', 'from_now', null, null, 'req-p')")
+    try:
+        c.execute("select public.analysis_consent_set(true, 4, '30-34', 'all', null, null, 'req-p')"); changed = False
+    except Exception:
+        changed = True
+    off1 = c.execute("select public.analysis_consent_set(false, 4, null, null, null, null, 'off-1')").fetchone()[0]
+    off2 = c.execute("select public.analysis_consent_set(false, 4, null, null, null, null, 'off-1')").fetchone()[0]
+    as_server(c)
+    receipts = c.execute("select count(*) from staff.consent_requests where user_id = %s", [plain['id']]).fetchone()[0]
+    check('a reused request id with a changed payload (scope) is refused; a withdrawal while already off still gets a receipt and replays as such', changed and off2.get('replayed') is True and receipts >= 2, {'off1': off1, 'off2': off2, 'receipts': receipts})
+
+    # 13. two sessions: a withdrawal that lands while a report is being built waits for it and then holds it
+    import psycopg as _pg
+    a_conn = _pg.connect(DSN + ' dbname=' + DB, autocommit=False)
+    a_conn.execute("select set_config('request.jwt.claims', %s, false)", [json.dumps({'sub': str(owner['id']), 'role': 'authenticated'})]); a_conn.execute("set role authenticated")
+    r_a = a_conn.execute("select public.admin_run(28)").fetchone()[0]  # the worker lock is held until this commits
+    outcome = {}
+    def withdraw_b():
+        b_conn = _pg.connect(DSN + ' dbname=' + DB, autocommit=True)
+        try:
+            b_conn.execute("select set_config('request.jwt.claims', %s, false)", [json.dumps({'sub': str(people[4]['id']), 'role': 'authenticated'})]); b_conn.execute("set role authenticated")
+            outcome['r'] = b_conn.execute("select public.analysis_consent_set(false)").fetchone()[0]
+        except Exception as e:
+            outcome['err'] = str(e)
+        finally:
+            b_conn.close()
+    t = threading.Thread(target=withdraw_b); t.start()
+    waited = False
+    for _ in range(100):
+        time.sleep(0.05)
+        if c.execute("select count(*) from pg_stat_activity where wait_event_type = 'Lock' and query like '%analysis_consent_set%'").fetchone()[0] > 0: waited = True; break
+    a_conn.commit(); t.join(15); a_conn.close()
+    held = c.execute("select invalidated_at is not null from staff.agent_runs where id = %s", [r_a['run_id']]).fetchone()[0]
+    check('a withdrawal during a running report waits on the worker lock and then holds that report (two real sessions)', waited and 'err' not in outcome and held, {'waited': waited, 'outcome': outcome, 'held': held})
+
+    # 14. the suppression rules on their own: a fresh database with exactly one positive or one complement contributor
+    c2 = fresh(); owner2 = staff_owner(c2); k2 = c2.execute("select staff.k_floor()").fetchone()[0]
+    crowd = [person(c2) for _ in range(k2 + 1)]
+    for i, q in enumerate(crowd):
+        consent(c2, q)
+        entry(c2, q, 'sleep', d(3), {'hours': 7}, source='apple-health' if i == 0 else 'room')   # one imported record among 21
+        entry(c2, q, 'food', d(3), {'items': ['rice']} if i == 0 else {'items': ['rice'], 'tags': ['home']})  # one untagged meal among 21
+        entry(c2, q, 'mindfulness', d(3), {'minutes': 10, 'completed': True})                      # nobody is missing a duration
+    r2 = run(c2, owner2); ov2 = overview(c2, owner2)
+    imp = finding(ov2, 'sleep', 'imported_record_share'); tag = finding(ov2, 'food', 'tagged_share'); sev = finding(ov2, 'sleep', 'nights_with_several_records'); miss = finding(ov2, 'mind', 'practices_missing_duration')
+    check('21 contributors, one imported record: the share is held back because its numerator is one person', imp['suppressed'] and imp['value'] is None and imp['state'] == 'insufficient', imp)
+    check('21 contributors, one untagged meal: the share is held back because its complement is one person', tag['suppressed'] and tag['value'] is None and tag['state'] == 'insufficient', tag)
+    check('nobody has several records: an observed zero over 21 people, not no data', sev['state'] == 'measured' and sev['value'] == 0 and sev['people'] == k2 + 1, sev)
+    check('nobody is missing a duration: an observed zero over 21 people', miss['state'] == 'measured' and miss['value'] == 0 and miss['people'] == k2 + 1, miss)
+    entry(c2, crowd[0], 'sleep', d(3), {'hours': 1}, source='room')  # one person now has two records on a night
+    r2 = run(c2, owner2); ov2 = overview(c2, owner2); sev = finding(ov2, 'sleep', 'nights_with_several_records')
+    check('one person with several records among 21: the positive cell is held back although the count is over everyone', sev['suppressed'] and sev['value'] is None and sev['state'] == 'insufficient', sev)
+    c2.close()
 
     passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
     print('\n%d passed, %d failed' % (passed, failed))
