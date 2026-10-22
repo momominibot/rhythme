@@ -293,6 +293,13 @@
   /* the care step itself lives in ovu-care.js (shared with the barn and the spring); the farm's steps belong to the farm */
   function liveSlow() { return root.OvuCare && root.OvuCare.live ? root.OvuCare.live() : null; }
   function cancelSlow() { if (root.OvuCare && root.OvuCare.cancel) root.OvuCare.cancel(); }
+  /* the sheet a step started from is still the one open (same opening, not a reopen after Stop), and she is awake */
+  function stillHere(sheetId, seq) {
+    if (!R.sheetOpen() || R.sheetId() !== sheetId) return false;
+    if (R.sheetSeq && R.sheetSeq() !== seq) return false;
+    if (root.OvuCare && root.OvuCare.asleepNow && root.OvuCare.asleepNow()) return false;
+    return true;
+  }
   function slowStep(box, o, done) {
     if (!root.OvuCare || !root.OvuCare.step) { done(); return; }
     root.OvuCare.step(box, Object.assign({}, o, { scene: 'farm', ms: F.slowMs == null ? o.ms : F.slowMs }), done);
@@ -345,7 +352,9 @@
       if (btn.dataset.well === 'beds') { R.hideSheet(); R.toast('Tap a bed to water it.', 'yard'); return; }
       if (btn.dataset.well === 'back') { var bb = BEDS.filter(function (x) { return x.id === back; })[0]; R.hideSheet(); if (bb) goTend(bb); return; }
       slowStep(acts, { ms: 3000, moment: 'well', verb: 'Drawing water slowly…', cancel: function () { openWell(back); }, start: function (ms, still) { var wv = doc.querySelector('#sheet .canpic .canwater'); if (wv) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { wv.style.transition = still ? 'none' : 'transform ' + ms + 'ms ease-in-out'; wv.style.transform = 'scaleY(1)'; }); }); } }, function () {
+        var wseq = R.sheetSeq ? R.sheetSeq() : 0;
         F.locked(S, function () {
+          if (!stillHere('farmwell', wseq)) return;
           var r = fillCan(S); if (!r.ok) { R.toast(r.why, 'info'); openWell(back); return; }
           R.chime('save'); renderCan(); openWell(back, true);
         });
@@ -373,7 +382,7 @@
       '<ol class="farmsteps">' + steps.map(function (s) { return '<li><span class="ms">' + s[0] + '</span><span><b>' + s[1] + '</b><small>' + s[2] + '</small></span></li>'; }).join('') + '</ol>' +
       '<p class="mindline"><span class="ms">spa</span><span>Each step here is slow on purpose. Notice the soil, the water and the weight of what you pick.</span></p>' +
       '<div class="row"><button type="button" class="btn primary" id="guideGo">Begin</button></div>');
-    var f = copy(farmState(S)); if (!f.guided) { f.guided = true; try { write(S, f); } catch (e) { } }
+    if (!farmState(S).guided) F.locked(S, function () { var f = copy(farmState(S)); if (f.guided) return; f.guided = true; try { write(S, f); } catch (e) { } }); /* inside the farm lock like every farm write */
     var go = doc.getElementById('guideGo'); if (go) go.addEventListener('click', function () { R.hideSheet(); });
   }
   /* a logged sleep stops the farm with the room's own words (napping toasts); any other busy state stays quiet */
@@ -417,7 +426,7 @@
       var kind = btn.dataset.bed, now = today(); /* the date at the tap, not at the sheet's opening: midnight may have passed */
       if (now !== day) { openBed(id); return; } /* the sheet showed yesterday: redraw it for today before anything is done */
       if (kind === 'well') { goWell(id); return; }
-      if (kind === 'harvest') { if (!canAct('harvest')) return; F.locked(S, function () { if (R.sheetOpen() && R.sheetId() !== 'farmbed') return; finish('harvest', harvest(S, id, ST)); }); return; }
+      if (kind === 'harvest') { if (!canAct('harvest')) return; var hseq = R.sheetSeq ? R.sheetSeq() : 0; F.locked(S, function () { if (!stillHere('farmbed', hseq)) return; finish('harvest', harvest(S, id, ST)); }); return; }
       var cost = kind === 'shedplant' ? 'plant' : kind === 'waterall' ? 'water' : kind;
       if (!canAct(cost)) return;
       var crop0 = btn.dataset.crop, seen = JSON.stringify(bed(S, id)), lv0 = canLevel(S), targets = kind === 'waterall' ? bulkTargets(S, now, id, lv0) : null;
@@ -428,7 +437,8 @@
       if (kind === 'plant' || kind === 'shedplant') o.start = function (ms, still) { if (still) return; var svg = doc.querySelector('#sheet .bedpic svg'); if (!svg) return; var c = CROPS[crop0] || {}, el = doc.createElementNS('http://www.w3.org/2000/svg', 'ellipse'); el.setAttribute('cx', '50'); el.setAttribute('cy', '14'); el.setAttribute('rx', '4'); el.setAttribute('ry', '5.5'); el.setAttribute('fill', '#c9a27a'); el.setAttribute('stroke', '#8a6440'); svg.appendChild(el); root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { el.style.transition = 'transform ' + (ms * 0.7) + 'ms ease-in, opacity ' + (ms * 0.3) + 'ms ease ' + (ms * 0.7) + 'ms'; el.style.transform = 'translateY(30px)'; el.style.opacity = '0'; }); }); };
       if (kind === 'clear') o.start = function (ms, still) { if (still) { Array.prototype.forEach.call(doc.querySelectorAll('#sheet .bedpic svg path[stroke="#6f9a62"]'), function (w) { w.style.opacity = '0'; }); return; } var weeds = doc.querySelectorAll('#sheet .bedpic svg path[stroke="#6f9a62"]'); Array.prototype.forEach.call(weeds, function (w, i) { root.setTimeout(function () { w.style.transition = 'opacity ' + (ms / 4) + 'ms ease'; w.style.opacity = '0'; }, (i + 0.4) * ms / (weeds.length + 1)); }); };
       if (kind === 'water' || kind === 'waterall') o.start = function (ms, still) { if (still) return; var svg = doc.querySelector('#sheet .bedpic svg'); if (!svg) return; var el = doc.createElementNS('http://www.w3.org/2000/svg', 'ellipse'); el.setAttribute('cx', '50'); el.setAttribute('cy', '44'); el.setAttribute('rx', '30'); el.setAttribute('ry', '12'); el.setAttribute('fill', 'rgba(70,50,120,.22)'); el.style.opacity = '0'; svg.insertBefore(el, svg.firstChild); root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { el.style.transition = 'opacity ' + ms + 'ms ease-in'; el.style.opacity = '1'; }); }); };
-      slowStep(acts, o, function () { F.locked(S, function () { /* the farm lock: the bed is read again after other tabs' saves */
+      slowStep(acts, o, function () { var seq = R.sheetSeq ? R.sheetSeq() : 0; F.locked(S, function () { /* the farm lock: the bed is read again after other tabs' saves */
+        if (!stillHere('farmbed', seq)) return; /* a Stop, a close, another sheet or sleep during the lock wait: nothing saved, nothing charged */
         var t = today(), res; if (t !== now) { openBed(id); return; }
         if (JSON.stringify(bed(S, id)) !== seen || ((kind === 'water' || kind === 'waterall') && canLevel(S) !== lv0)) { R.toast('The bed changed in the meantime. Have another look.', 'info'); openBed(id); return; } /* another tab or phone moved first */
         if (!(ST ? ST.can(cost) : true)) { canAct(cost); openBed(id); return; } /* energy is checked again at the end of the step */

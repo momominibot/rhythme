@@ -423,9 +423,10 @@
   }
   var ranchReq = 0;
   function openRanch() { /* due babies land first, then the counter reads the farm; a later tap, another sheet or a counter she closed while the lock waited all win (Codex, 22 Oct) */
-    if (!RN()) return; var tok = ++ranchReq, wasOpen = R.sheetOpen() && R.sheetId() === 'ranch';
+    if (!RN()) return; var tok = ++ranchReq, wasOpen = R.sheetOpen() && R.sheetId() === 'ranch', seq0 = R.sheetSeq ? R.sheetSeq() : 0;
     settle().then(function () {
       if (tok !== ranchReq || !at('barn')) return;
+      if (!wasOpen && R.sheetSeq && R.sheetSeq() !== seq0) return; /* another sheet came and went while the lock waited */
       if (R.sheetOpen() && R.sheetId() !== 'ranch') return; /* she opened something else meanwhile */
       if (wasOpen && !(R.sheetOpen() && R.sheetId() === 'ranch')) return; /* a redraw of a counter she has since closed */
       openRanchNow();

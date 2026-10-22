@@ -238,8 +238,11 @@
   }
   /* a deleted save is tried once per sign-in; the server refuses unless that sign-in came after the deletion */
   function mayTry(m, row) { return !!(row && row.deleted && m && m.tried !== row.rev); }
+  /* the whole cycle (pack, send, apply the account's copy) runs inside the farm lock as well as its own: a purchase on
+     this phone waits for the cycle instead of landing between the pack and the apply and being written over (Codex, 22 Oct) */
   function sync() {
-    if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) return navigator.locks.request('ovumind-gamesave', function () { return syncNow(); });
+    var L = typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request ? navigator.locks : null;
+    if (L) return L.request('ovumind-gamesave', function () { return L.request('ovumind-farm', function () { try { if (S.reload) S.reload(); } catch (e) { } return syncNow(); }); });
     return syncNow();
   }
   function syncNow() {
