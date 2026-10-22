@@ -97,7 +97,7 @@
     });
     return out;
   }
-  var AT = { home: 'at home', garden: 'in the garden', farm: 'on the farm', street: 'on Dream Street', plaza: 'in the plaza' };
+  var AT = { home: 'at home', garden: 'in the garden', farm: 'on the farm', street: 'on Dream Street', plaza: 'in the plaza', lane: 'on Harbour Lane' };
   function at(g, id) { var n = g.nodes[id]; return AT[id] || (n && n.store ? 'in ' + n.name : 'in the ' + String(n ? n.name : id).toLowerCase()); }
   function stepText(g, e) { return { where: g.nodes[e.from] ? g.nodes[e.from].name : e.from, door: e.label }; }
 
@@ -142,18 +142,21 @@
     if (R.visiting()) return 'Visiting';
     var h = nodeOf(L.id, R.homeId()); return placeName(L, h);
   };
-  function routeHTML(g, here, to) {
+  function routeHTML(g, here, to, lead) {
     var n = g.nodes[to]; if (!n) return '';
     if (to === here) return '<b>You are here, ' + esc(at(g, to)) + '.</b> Tap another place to see the way there.';
     var r = route(g, here, to);
     if (!r) return '<b>' + esc(n.name) + '</b> No path from here yet.';
     return '<b>' + (to === 'home' ? 'The way home' : 'The way to ' + esc(n.name)) + '</b>' + (storeShut(n) ? '<small>It is closed right now; the hours are on its door.</small>' : '') +
-      '<ol>' + r.map(function (e) { var s = stepText(g, e); return '<li><span>' + esc(s.where) + '</span>' + esc(s.door) + '</li>'; }).join('') + '</ol>';
+      '<ol>' + (lead ? '<li><span>' + esc(lead.where) + '</span>' + esc(lead.door) + '</li>' : '') + r.map(function (e) { var s = stepText(g, e); return '<li><span>' + esc(s.where) + '</span>' + esc(s.door) + '</li>'; }).join('') + '</ol>';
   }
   function open() {
     var L = R.layout(), g = graph(R.LAYOUTS, R.homeId()), here = hereNow(g), P = place(g), p = R.pos();
     var span = L.span > 1 ? L.span : 1, aspect = (L.w && L.h ? L.w / L.h : 0.8) * span;
-    var exits = here ? g.edges.filter(function (e) { return e.from === here; }) : [];
+    var room = !!(here && L.mapParent && L.mapParent === here && nodeOf(L.id, R.homeId()) !== here); /* inside a building: its own doors, not its yard's (Codex, 21 Oct) */
+    var exits = room ? (L.doors || []).filter(function (d) { return d.to; }).concat(L.mapExits || []).map(function (d) { return { from: here, to: nodeOf(d.to, R.homeId()), door: d.tap || d.id, x: d.x, y: d.y }; })
+      : here ? g.edges.filter(function (e) { return e.from === here; }) : [];
+    var way = room && exits[0] ? (L.hotspots || []).filter(function (h) { return h.id === exits[0].door; })[0] : null, lead = way ? { where: placeName(L, L.id), door: way.label } : null;
     var plate = '<div class="mapplate" style="aspect-ratio:' + aspect.toFixed(4) + '"><img src="' + esc(R.ART + L.img) + '" alt="">' +
       exits.map(function (e) { return '<span class="mapexit" style="left:' + (e.x / span).toFixed(1) + '%;top:' + e.y.toFixed(1) + '%"><span class="ms">' + esc(g.nodes[e.to] ? g.nodes[e.to].icon : 'door_open') + '</span>' + esc(g.nodes[e.to] ? g.nodes[e.to].name : e.to) + '</span>'; }).join('') +
       '<i class="mapme" style="left:' + (p.x / span).toFixed(1) + '%;top:' + p.y.toFixed(1) + '%" aria-hidden="true"></i></div>';
@@ -172,14 +175,14 @@
       plate + '<div class="worldzoom far" id="worldZoom" style="aspect-ratio:100/' + H + '"><div class="worldwide" id="worldWide">' +
         '<div class="worldmap known">' + svg + nodes + '</div></div></div>' +
       '<div class="zoomctl"><button type="button" id="mapZoomOut" aria-label="Zoom out"><span class="ms" aria-hidden="true">remove</span></button><button type="button" id="mapZoomIn" aria-label="Zoom in"><span class="ms" aria-hidden="true">add</span></button><span class="zoomnote">Your places are in this corner. All around is open country, not built yet. Pinch or drag to look around.</span></div>' +
-      '<div class="maproute" id="mapRoute" aria-live="polite">' + (here ? routeHTML(g, here, first) : '') + '</div>' +
+      '<div class="maproute" id="mapRoute" aria-live="polite">' + (here ? routeHTML(g, here, first, lead) : '') + '</div>' +
       '<p class="help">The map shows the way; it does not move you. Doors and paths are labelled in each place.</p>');
     wireZoom(P);
     var b = doc.getElementById('sheetBody');
     if (b) b.addEventListener('click', function (e) {
       var n = e.target.closest('[data-node]'); if (!n || !here) return;
       Array.prototype.slice.call(b.querySelectorAll('.mapnode')).forEach(function (x) { x.classList.toggle('picked', x === n); });
-      var out = doc.getElementById('mapRoute'); if (out) out.innerHTML = routeHTML(g, here, n.dataset.node);
+      var out = doc.getElementById('mapRoute'); if (out) out.innerHTML = routeHTML(g, here, n.dataset.node, lead);
       if (R.chime) R.chime('tap');
     });
   }
