@@ -2152,7 +2152,7 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .sheet.luna-sheet .lunaico{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(120,90,170,.25))}
 .sheet.luna-sheet h2{font-size:22px}
 .sheet.luna-sheet h2 small{display:flex;align-items:center;gap:6px;color:var(--rm-ink-2)}
-.lunastrip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px -16px 6px;padding:8px 16px;background:#f6f1fc;border-bottom:1px solid rgba(150,120,190,.1);font:700 12px var(--sans);color:var(--rm-ink-2)}
+.lunastrip{flex-wrap:wrap;row-gap:4px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px -16px 6px;padding:8px 16px;background:#f6f1fc;border-bottom:1px solid rgba(150,120,190,.1);font:700 12px var(--sans);color:var(--rm-ink-2)}
 .lunastrip .lstate{display:inline-flex;align-items:center;gap:7px}
 .ldot{width:8px;height:8px;border-radius:50%;background:#c9c2d6;display:inline-block}.ldot.on{background:#4fbf7f;box-shadow:0 0 0 3px rgba(79,191,127,.18)}
 .lunastrip .lmore{border:none;background:none;color:#8a63c9;font:800 12px var(--sans);cursor:pointer;padding:4px 0}
@@ -2173,11 +2173,11 @@ html[data-sky=night] .ready .dot+.dot::before{background:#3b2e5a}
 html[data-sky=night] .rband{background:var(--rm-paper-2)}
 html[data-sky=night] .chip-th{background:#3b2e5a;color:#e3d4fa;border-color:#7a62a6}
 html[data-sky=night] .chip-e{background:#26344d;color:#b9d2f5}
-html[data-sky=night] .sheet.luna-sheet{background:linear-gradient(180deg,#2a2044,#1f1733 60px);border-color:rgba(255,255,255,.08)}
-html[data-sky=night] .lunastrip{background:#2a2044;border-color:rgba(255,255,255,.08)}
-html[data-sky=night] .lunastrip .lmore{color:#cbb2ec}
-html[data-sky=night] .askchip{background:#2b2147;color:#dccdf6;border-color:rgba(203,178,236,.35)}
-html[data-sky=night] .askchip:hover{background:#3b2e5a}
+
+
+
+
+
 /* closed, Luna's top-anchored card is hidden and untappable once it has slid away: on a tall screen its own height is not enough to leave the frame */
 .sheet.luna-sheet:not(.on){visibility:hidden;pointer-events:none;transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s linear .38s}
 
