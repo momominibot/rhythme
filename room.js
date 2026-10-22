@@ -3300,7 +3300,7 @@
   /* where a link into the room asked to go (room.html#medas and so on); a new account keeps it until the intro is done */
   var pendingRoute = '', pendingOnb = null; /* the intro that the link waits behind */
   function openRoute(hk) {
-    if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'medas') openMedas(); else if (hk === 'recipes') openRecipes(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk);
+    if (hk === 'luna') openLuna(); else if (hk === 'calendar') openCalendar(); else if (hk === 'scores') openScores(); else if (hk === 'learn') openLearn(); else if (hk === 'medas') openMedas(); else if (hk === 'recipes') openRecipes(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk);
   }
   /* opened at once, never on a timer: a delayed open could cover a sheet she opened in the meantime (Codex round two) */
   function takePending() { var r = pendingRoute; pendingRoute = ''; if (r && r !== 'onboarding') openRoute(r); }

@@ -233,7 +233,7 @@
     return out;
   }
 
-  var F = { cropPic: cropPic, PANTRY: PANTRY, ANIMALS: ANIMALS, PANTRY_CAP: PANTRY_CAP, CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, SWAP: SWAP, swapWorth: swapWorth, swapNeed: swapNeed, swapGivable: swapGivable, swapSeed: swapSeed, dryBeds: dryBeds, waterAll: waterAll, CAN: CAN, BIG_CAN: BIG_CAN, canCap: canCap, canLevel: canLevel, fillCan: fillCan, pour: pour, plantFromShed: plantFromShed, bulkTargets: bulkTargets, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
+  var F = { cropPic: cropPic, cropSprite: cropSprite, PANTRY: PANTRY, ANIMALS: ANIMALS, PANTRY_CAP: PANTRY_CAP, CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, SWAP: SWAP, swapWorth: swapWorth, swapNeed: swapNeed, swapGivable: swapGivable, swapSeed: swapSeed, dryBeds: dryBeds, waterAll: waterAll, CAN: CAN, BIG_CAN: BIG_CAN, canCap: canCap, canLevel: canLevel, fillCan: fillCan, pour: pour, plantFromShed: plantFromShed, bulkTargets: bulkTargets, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
   /* one farm change at a time across tabs (Codex, 22 Oct: a care save read before another tab's purchase overwrote the
      purchase): the browser-wide ovumind-farm lock where Web Locks exist, else straight through; fn reads the farm fresh
      inside, after the store reloads what other tabs saved */
@@ -253,21 +253,16 @@
   function inFarm(L) { return !!L && L.id === 'farm'; }
   Z.register(FARM, { label: 'Farm', icon: 'agriculture', after: 'garden' });
 
-  /* each bed is drawn on top of the plate as a small SVG: soil, sprouts, fruit, weeds, a drop when watered today */
-  function bedSVG(b, id, day) {
-    var s = '<svg viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">';
+  /* each bed is drawn on top of the plate: the crop's rendered stage picture (assets/room/farm/crops, 22 Oct: Jamie,
+     "aesthetic can be better and realistic"), a shared seedling for the first stage, then the crop half grown and ripe;
+     weeds and the drop when watered today stay as a small SVG over it */
+  function cropSprite(k, st) { return st >= 3 ? k + '-ripe' : st === 2 ? k + '-grow' : 'seedling'; }
+  function bedArt(b, id, day) {
     var st = stage(b), weeds = hasWeeds(b, id, day), wet = wateredToday(b, day), crop = b && b.crop ? CROPS[b.crop] : null;
-    if (wet) s += '<ellipse cx="50" cy="44" rx="30" ry="12" fill="rgba(70,50,120,.22)"/>';
-    if (weeds) { [22, 48, 74].forEach(function (x, k) { s += '<path d="M' + x + ' 50 c -4 -8, -2 -14, 2 -18 M' + x + ' 50 c 4 -8, 7 -12, 10 -14 M' + x + ' 50 c -1 -10, 3 -16, 5 -20" stroke="#6f9a62" stroke-width="3" fill="none" stroke-linecap="round"/>'; }); }
-    if (crop && st >= 1) {
-      var xs = st >= 2 ? [26, 50, 74] : [50];
-      xs.forEach(function (x) {
-        var h = st === 1 ? 10 : st === 2 ? 20 : 24;
-        s += '<path d="M' + x + ' 48 v -' + h + '" stroke="' + crop.top + '" stroke-width="3.5" stroke-linecap="round"/>';
-        s += '<path d="M' + x + ' ' + (48 - h * 0.6) + ' c -9 -2, -12 -10, -10 -15 c 7 2, 10 8, 10 15 Z" fill="' + crop.top + '"/><path d="M' + x + ' ' + (48 - h * 0.75) + ' c 9 -2, 12 -9, 10 -14 c -7 2, -10 8, -10 14 Z" fill="' + crop.top + '" opacity=".85"/>';
-        if (st === 3) s += '<circle cx="' + x + '" cy="' + (48 - h * 0.3) + '" r="7" fill="' + crop.colour + '"/><circle cx="' + (x - 2) + '" cy="' + (48 - h * 0.3 - 2) + '" r="2" fill="rgba(255,255,255,.6)"/>';
-      });
-    }
+    var s = crop && st >= 1 ? '<img class="bedcrop" src="assets/room/farm/crops/' + cropSprite(b.crop, st) + '.webp" alt="" draggable="false">' : '';
+    s += '<svg class="bedover" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">';
+    if (wet) s += '<ellipse cx="50" cy="91" rx="34" ry="8" fill="rgba(70,50,120,.22)"/>';
+    if (weeds) { [22, 48, 74].forEach(function (x) { s += '<path d="M' + x + ' 94 c -4 -8, -2 -14, 2 -18 M' + x + ' 94 c 4 -8, 7 -12, 10 -14 M' + x + ' 94 c -1 -10, 3 -16, 5 -20" stroke="#6f9a62" stroke-width="3" fill="none" stroke-linecap="round"/>'; }); }
     return s + '</svg>';
   }
   function renderBeds() {
@@ -279,8 +274,8 @@
       var el = doc.createElement('button'); el.type = 'button'; el.className = 'bed'; el.dataset.id = bb.id;
       var b = f.beds[bb.id], label = 'Bed ' + (BEDS.indexOf(bb) + 1) + ': ' + (b && b.crop ? CROPS[b.crop].name.toLowerCase() + (ripe(b) ? ', ripe' : ', growing, ' + growthDays(b) + ' of ' + CROPS[b.crop].days + ' watered days' + (wateredToday(b, day) ? ', watered today' : ', not watered today')) : 'empty');
       el.setAttribute('aria-label', label + (hasWeeds(b, bb.id, day) ? ', weeds' : ''));
-      el.style.left = bb.at.x + '%'; el.style.top = bb.at.y + '%'; el.style.width = '8.5%';
-      el.innerHTML = bedSVG(b, bb.id, day);
+      el.style.left = bb.at.x + '%'; el.style.top = bb.at.y + '%'; el.style.width = '10.5%'; /* the sprite's mound fills most of the plate's bed */
+      el.innerHTML = bedArt(b, bb.id, day);
       el.addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); goTend(bb); });
       wrap.appendChild(el);
     });
@@ -400,7 +395,7 @@
     var bb = BEDS.filter(function (x) { return x.id === id; })[0]; if (!bb) return;
     lastBed = id; interacted = true; shown = { kind: 'bed', arg: id };
     var day = today(), b = bed(S, id), f = farmState(S), weeds = hasWeeds(b, id, day), crop = b && b.crop ? CROPS[b.crop] : null;
-    var html = '<div class="bedcard"><div class="bedpic">' + bedSVG(b, id, day) + '</div><div class="bedtext">';
+    var html = '<div class="bedcard"><div class="bedpic">' + bedArt(b, id, day) + '</div><div class="bedtext">';
     if (crop) {
       html += '<b>' + esc(crop.name) + '</b><span>' + (ripe(b) ? 'Ripe and ready to pick.' : growthDays(b) + ' of ' + crop.days + ' watered days. ' + (wateredToday(b, day) ? 'Watered today.' : 'Not watered yet today.')) + '</span>';
       if (!ripe(b) && !wateredToday(b, day)) html += '<span class="canline"><span class="ms">water_drop</span>Can: ' + (canLevel(S) ? canLevel(S) + ' of ' + canCap(f) + ' pours' : 'empty') + '</span>';
