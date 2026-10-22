@@ -4963,7 +4963,11 @@ var summarised = false;
   check('a phone\'s unsaved practice awards replay onto the account copy: a bench paid elsewhere is not paid again, and the day\'s cap of 20 holds', (function () {
     var acct = { rewards: { hearts: 50, earned: 50, mindDay: { day: '2026-10-22', pts: 18 }, seatDay: { day: '2026-10-22', seats: { street: 1 } } } };
     var j = [{ kind: 'mind', day: '2026-10-22', n: 2, seats: ['street'], acts: [] }, { kind: 'mind', day: '2026-10-22', n: 2, seats: ['garden'], acts: [] }, { kind: 'mind', day: '2026-10-22', n: 2, seats: [], acts: ['teeth'] }, { kind: 'other', n: 6 }];
-    var r = G.replay(acct, j).rewards; return r.hearts === 58 && r.mindDay.pts === 20 && r.seatDay.seats.garden === 1 && !(r.mindActs.acts.teeth) && acct.rewards.hearts === 50; })());
+    var r = G.replay(acct, j, '2026-10-22').rewards; return r.hearts === 58 && r.mindDay.pts === 20 && r.seatDay.seats.garden === 1 && !(r.mindActs.acts.teeth) && acct.rewards.hearts === 50; })());
+  check('a practice award from a past day is let go on replay, never paid again; other hearts from that day still arrive', (function () {
+    var acct = { rewards: { hearts: 104, earned: 104, mindDay: { day: '2026-10-22', pts: 2 }, seatDay: { day: '2026-10-22', seats: {} } } };
+    var r = G.replay(acct, [{ kind: 'mind', day: '2026-10-21', n: 2, seats: ['street'], acts: [] }, { kind: 'other', n: 6 }], '2026-10-22').rewards; return r.hearts === 110 && r.mindDay.pts === 2;
+  })());
   check('a change is read into the award journal: practice hearts with the bench they used, and other hearts apart', (function () { var a = G.caps({ earned: 10, mindDay: { day: 'd', pts: 2 }, seatDay: { day: 'd', seats: {} } }), b = G.caps({ earned: 18, mindDay: { day: 'd', pts: 4 }, seatDay: { day: 'd', seats: { street: 1 } } }), j = G.journalFor(a, b); return j.length === 2 && j[0].kind === 'mind' && j[0].n === 2 && j[0].seats[0] === 'street' && j[1].kind === 'other' && j[1].n === 6; })());
   check('first sign-in carries this phone\'s treats and owned items, but placements stay as the account has them (one per slot)', (function () { var m = G.linkMerge({ rewards: { hearts: 88, earned: 100, treats: { biscuit: 5 }, owned: ['armchair'], placed: { armchair: true } } }, { rewards: { hearts: 10, earned: 10, owned: ['beanbag'], placed: { beanbag: true }, treats: { biscuit: 1 } } }).rewards; return m.hearts === 98 && m.treats.biscuit === 6 && m.owned.join() === 'beanbag,armchair' && m.placed.beanbag === true && !m.placed.armchair; })());
   server.row = null;

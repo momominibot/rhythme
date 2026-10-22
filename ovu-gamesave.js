@@ -9,8 +9,8 @@
  *    saves a few seconds after every game change.
  *  - When the account moved on, the phone takes the account's save whole and replays on top of it the hearts it earned
  *    that the account has not seen, from a short journal of its own awards: practice hearts again obey the day's cap of
- *    twenty and a bench or morning part already paid on another phone is not paid again; other hearts are added as they
- *    are. Its other unsaved changes (a purchase, a planting) are dropped together with what they cost.
+ *    twenty, a bench or morning part already paid on another phone is not paid again, and practice hearts from a past day
+ *    are let go (the account cannot tell whether they were paid elsewhere); other hearts are added as they are. Its other unsaved changes (a purchase, a planting) are dropped together with what they cost.
  *  - Every write carries this phone's id and a number that only goes up; the server keeps the highest number it applied
  *    from each phone, so a write whose answer was lost is never applied twice, however much later it is sent again.
  *    Tabs take turns (a browser lock) and acknowledge a write once.
@@ -106,14 +106,16 @@
     return out;
   }
   /* the account's save with this phone's unseen awards replayed on top, under the same caps */
-  function replay(remote, journal) {
+  function replay(remote, journal, today) {
     var out = clone(remote) || {}; if (!journal || !journal.length) return out;
     var r = out.rewards = ledger(out.rewards), cap = practiceCap();
     journal.forEach(function (e) {
       var n = Math.max(0, num(e.n)); if (!n) return;
       if (e.kind !== 'mind') { r.hearts += n; r.earned += n; return; }
       var md = plain(r.mindDay) ? r.mindDay : null;
-      if (md && md.day && e.day && String(md.day) > String(e.day)) { r.hearts += n; r.earned += n; return; } /* a past day the account no longer tracks */
+      /* a practice award from a past day is let go: the account no longer tracks that day's cap or seats, so it cannot
+         tell whether another phone already paid it (Codex, sixth review); other hearts are never affected */
+      if (e.day && ((md && md.day && String(md.day) > String(e.day)) || (today && String(e.day) < String(today)))) return;
       if (!md || md.day !== e.day) r.mindDay = md = { day: e.day, pts: 0 };
       if (!plain(r.seatDay) || r.seatDay.day !== e.day) r.seatDay = { day: e.day, seats: {} };
       if (!plain(r.mindActs) || r.mindActs.day !== e.day) r.mindActs = { day: e.day, acts: {} };
@@ -262,7 +264,7 @@
       if (!row) return queue(uid, 'save', mine, 0, { seq: seq });
       if (m.tainted) { apply(uid, row.save); patchMeta(uid, { tainted: false, rev: row.rev, savedEarned: earned(row.save), journal: [], acked: seq }); return 'pulled'; }
       if (row.rev > num(m.rev)) {
-        apply(uid, replay(row.save, journal));
+        apply(uid, replay(row.save, journal, S.today()));
         if (journal.length) return queue(uid, 'save', pack(S.state()), row.rev, { seq: seq }); /* the replayed awards and joined caps go up */
         patchMeta(uid, { rev: row.rev, savedEarned: earned(row.save), acked: seq }); return 'pulled';
       }
