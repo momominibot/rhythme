@@ -68,7 +68,9 @@
     var f = c.farm || {}, crops = c.crops || {}, herbs = c.herbs || {}, tools = c.tools || {};
     var basket = Object.keys(f.harvest || {}).filter(function (k) { return n0(f.harvest[k]) && (crops[k] || herbs[k]); })
       .map(function (k) { var d = crops[k] || herbs[k], n = n0(f.harvest[k]); return { name: n === 1 ? d.name : cap(d.plural || d.name), count: n }; });
-    var pantry = Object.keys(f.pantry || {}).filter(function (k) { return n0(f.pantry[k]) && PANTRY[k]; }).map(function (k) { var n = n0(f.pantry[k]); return { name: PANTRY[k][n === 1 ? 0 : 1], count: n }; });
+    var RN = root.OvuRanch, rr = RN && RN.ranchOf(f); /* eggs and milk carry their size mix (small, medium, large follow the animal's love) */
+    function mix(k) { var m = rr && rr.sizes && rr.sizes[k]; if (!m) return ''; var bits = ['large', 'medium', 'small'].filter(function (s) { return m[s] > 0; }).map(function (s) { return m[s] + ' ' + s; }); return bits.length ? ' (' + bits.join(', ') + ')' : ''; }
+    var pantry = Object.keys(f.pantry || {}).filter(function (k) { return n0(f.pantry[k]) && PANTRY[k]; }).map(function (k) { var n = n0(f.pantry[k]); return { name: PANTRY[k][n === 1 ? 0 : 1] + mix(k), count: n }; });
     var seeds = Object.keys(f.seeds || {}).filter(function (k) { return n0(f.seeds[k]) && crops[k]; }).map(function (k) { return { name: crops[k].name + ' seeds', count: n0(f.seeds[k]) }; });
     var shed = Object.keys(f.tools || {}).filter(function (k) { return f.tools[k] && tools[k]; }).map(function (k) { return { name: tools[k].name, sub: 'In the shed' }; });
     var farm = basket.concat(pantry, seeds, shed);

@@ -282,9 +282,10 @@
     R.walkTo(h.wp, function () { if (R.layout() === L && OPEN[id]) OPEN[id](); });
   }
   function pantryLine() {
-    var p = FM().farmState(S).pantry, bits = [];
-    if (p.egg) bits.push(p.egg + ' egg' + (p.egg > 1 ? 's' : '')); if (p.milk) bits.push(p.milk + ' milk'); if (p.onsenegg) bits.push(p.onsenegg + ' onsen egg' + (p.onsenegg > 1 ? 's' : ''));
-    return '<p class="help pantryline"><span class="ms">kitchen</span>' + (bits.length ? 'In the pantry: ' + esc(bits.join(', ')) + '.' : 'The pantry is empty for now.') + ' Kept on this device.</p>';
+    var f = FM().farmState(S), p = f.pantry, bits = [], rr = RN() && RN().ranchOf(f);
+    function mix(k) { var m = rr && rr.sizes && rr.sizes[k]; if (!m) return ''; var b = ['large', 'medium', 'small'].filter(function (s) { return m[s] > 0; }).map(function (s) { return m[s] + ' ' + s; }); return b.length ? ' (' + b.join(', ') + ')' : ''; }
+    if (p.egg) bits.push(p.egg + ' egg' + (p.egg > 1 ? 's' : '') + mix('egg')); if (p.milk) bits.push(p.milk + ' milk' + mix('milk')); if (p.onsenegg) bits.push(p.onsenegg + ' onsen egg' + (p.onsenegg > 1 ? 's' : ''));
+    return '<p class="help pantryline"><span class="ms">kitchen</span>' + (bits.length ? 'In the pantry: ' + esc(bits.join(', ')) + '.' : 'The pantry is empty for now.') + ' Saved with your game.</p>';
   }
   function step(box, o, done) { if (!CARE || !CARE.step) { done(); return; } CARE.step(box, Object.assign({ scene: R.layout().id }, o), done); }
 
