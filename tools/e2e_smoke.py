@@ -482,7 +482,7 @@ async def main():
             check("a group remembered on this device opens its channel at home: its name, the counted-while-there line, the noticeboard prompt, Plaza friends and a walk to the plaza", "PCOS" in rem["text"] and "while you stand in the plaza" in rem["text"] and "prompt" in rem["text"].lower() and rem["board"] and rem["friends"] and rem["walk"], rem)
             await page.click("#deckTabs [data-deck=inventory]"); await page.wait_for_timeout(200)
             inv = await page.evaluate("()=>({on: document.querySelector('#deckTabs .on').dataset.deck, text: document.querySelector('#deckInventory').innerText, secs: document.querySelectorAll('#deckInventory .invsec').length, hearts: OvuRewards.ledger().hearts, go: [...document.querySelectorAll('#deckInventory [data-today]')].map(b=>b.dataset.today)})")
-            check("the Inventory tab lists her hearts and seven sections from this device's state, each with a way in", inv["on"] == "inventory" and (str(inv["hearts"]) + " hearts") in inv["text"] and inv["secs"] == 7 and "wardrobe" in inv["text"].lower() and "farm basket" in inv["text"].lower() and "harbour" in inv["text"].lower() and set(["shop", "wardrobe", "basket", "kitchen", "petshop"]) <= set(inv["go"]), inv)  # section titles are uppercased by CSS, and innerText keeps that
+            check("the Inventory tab lists her hearts and eight sections (dishes from the kitchen too) from this device's state, each with a way in", inv["on"] == "inventory" and (str(inv["hearts"]) + " hearts") in inv["text"] and inv["secs"] == 8 and "wardrobe" in inv["text"].lower() and "farm basket" in inv["text"].lower() and "harbour" in inv["text"].lower() and set(["shop", "wardrobe", "basket", "kitchen", "petshop"]) <= set(inv["go"]), inv)  # section titles are uppercased by CSS, and innerText keeps that
             await page.click("#deckInventory [data-today=wardrobe]"); await page.wait_for_selector('#sheet[aria-hidden="false"] .outfit', timeout=8000)
             check("Wardrobe from the inventory opens the wardrobe sheet", await page.evaluate("()=>document.querySelector('#sheetTitle').textContent.indexOf('Wardrobe')===0"))
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
@@ -2996,7 +2996,7 @@ async def main():
             m2 = await pm.evaluate("()=>OvuMusic.state()")
             await travel_m('cave'); await pm.wait_for_timeout(1300)
             m3 = await pm.evaluate("()=>OvuMusic.state()")
-            check("music: the garden brings its own theme on a crossfade; the cave has none and the engine goes quiet for the scene", m2["theme"] == "garden" and m2["mode"] == "play" and m3["mode"] == "silent" and m3["why"] == "scene" and m3["running"] is False and m3["gate"] <= 0.01, {"garden": m2, "cave": m3})
+            check("music: the garden brings its own theme on a crossfade; the cave plays its own soft ambient theme (Jamie, 22 Oct)", m2["theme"] == "garden" and m2["mode"] == "play" and m3["mode"] == "play" and m3["theme"] == "cave", {"garden": m2, "cave": m3})
             await travel_m('home'); await pm.wait_for_timeout(1500)
             SILENT = re.search(r"var SILENT = '([^']+)'", open(os.path.join(ROOT, "ovu-morning.js")).read()).group(1)
             dk = await pm.evaluate("""async(sil)=>{var out={};
@@ -3135,15 +3135,15 @@ async def main():
             f3 = await pf.evaluate("()=>({open: /Fasting record open since 20:15 yesterday/.test(document.querySelector('#fastStrip').textContent), counter: /\\(\\d+ h/.test((document.querySelector('.fopen')||{}).textContent||''), end: !!document.querySelector('[data-fast=\"end\"]'), start: !!document.querySelector('[data-fast=\"start\"]')})")
             check("fasting: the open record reads 'open since 20:15 yesterday' with End record and no running counter, and a second cannot start", f3["open"] and not f3["counter"] and f3["end"] and not f3["start"], f3)
             await pf.evaluate("()=>{var b=document.querySelector('#dTabs [data-dpane=\"add\"]'); if(b) b.click();}"); await pf.wait_for_timeout(300)
-            await pf.evaluate("()=>{var t=document.querySelector('#fdTime'); t.value='12:30'; t.dispatchEvent(new Event('input',{bubbles:true})); var n=document.querySelector('#fdFoods'); n.value='kaya toast'; document.querySelector('#mealChips button[data-meal=\"lunch\"]').click();}")
+            await pf.evaluate("()=>{var t=document.querySelector('#fdTime'); t.value='00:30'; t.dispatchEvent(new Event('input',{bubbles:true})); var n=document.querySelector('#fdFoods'); n.value='kaya toast'; document.querySelector('#mealChips button[data-meal=\"lunch\"]').click();}")
             await pf.click('#saveFood'); await pf.wait_for_timeout(1200)
             await pf.evaluate("()=>{if(!OvuRoom.sheetOpen()||OvuRoom.sheetId()!=='diary') OvuRoom.openDiary('today');}"); await pf.wait_for_timeout(500)
             await pf.evaluate("()=>{var b=document.querySelector('#dTabs [data-dpane=\"today\"]'); if(b) b.click();}"); await pf.wait_for_timeout(400)
             f4 = await pf.evaluate("()=>({offer: (document.querySelector('.foffer')||{}).textContent||'', timeSet: OvuStore.list('food').filter(function(e){return e.data.foods==='kaya toast';}).map(function(e){return e.data.timeSet;})[0], gaps: (document.querySelector('.fgaps')||{}).textContent||''})")
-            check("fasting: the meal saved with a time she set carries timeSet, and the strip offers to end the record at 12:30 with End record and Leave unchanged", "12:30" in f4["offer"] and f4["timeSet"] is True and ("One timed food entry so far (12:30)" in f4["gaps"] or "Timed food entries today" in f4["gaps"]), f4)
+            check("fasting: the meal saved with a time she set carries timeSet, and the strip offers to end the record at 00:30 with End record and Leave unchanged", "00:30" in f4["offer"] and f4["timeSet"] is True and ("One timed food entry so far (00:30)" in f4["gaps"] or "Timed food entries today" in f4["gaps"]), f4)
             await pf.click('[data-fast="end-at-meal"]'); await pf.wait_for_timeout(700)
             f5 = await pf.evaluate("()=>({strip: document.querySelector('#fastStrip').textContent, hist: (document.querySelector('.fhist')||{}).textContent||'', open: !!document.querySelector('.fopen'), start: !!document.querySelector('[data-fast=\"start\"]'), toast: document.querySelector('#toast').textContent, hearts: (OvuRewards.ledger().hearts)})")
-            check("fasting: ending at the meal closes the record, the history shows the length once (16 h 15 m) and Start is offered again", not f5["open"] and f5["start"] and "16 h 15 m" in f5["hist"] and "20:15 yesterday to 12:30" in f5["hist"], f5)
+            check("fasting: ending at the meal closes the record, the history shows the length once (4 h 15 m) and Start is offered again", not f5["open"] and f5["start"] and "4 h 15 m" in f5["hist"] and "20:15 yesterday to 00:30" in f5["hist"], f5)
             # the journal block, a reload, Hide fasting, and the pregnant profile
             await pf.reload(wait_until="domcontentloaded")
             try: await pf.wait_for_function("()=>window.OvuFasting && window.OvuRoom && !OvuRoom.busy()", timeout=15000)
@@ -3151,7 +3151,7 @@ async def main():
             kept = await pf.evaluate("()=>({n: OvuFasting.records().length, on: OvuFasting.fasting().on})")
             await pf.goto(BASE + "journal.html", wait_until="domcontentloaded"); await pf.wait_for_timeout(1200)
             jb = await pf.evaluate("()=>({block: (document.querySelector('#fastingBlock')||{}).textContent||''})")
-            check("fasting: the record and the switch survive a reload, and the journal shows the block with the ended record and 'not measured fasting'", kept["n"] == 1 and kept["on"] is True and "16 h 15 m" in jb["block"] and "not measured fasting" in jb["block"], {"kept": kept, "journal": jb["block"][:160]})
+            check("fasting: the record and the switch survive a reload, and the journal shows the block with the ended record and 'not measured fasting'", kept["n"] == 1 and kept["on"] is True and "4 h 15 m" in jb["block"] and "not measured fasting" in jb["block"], {"kept": kept, "journal": jb["block"][:160]})
             await pf.goto(BASE + "room.html", wait_until="domcontentloaded")
             try: await pf.wait_for_function("()=>window.OvuFasting && window.OvuRoom && !OvuRoom.busy()", timeout=15000)
             except Exception: pass
