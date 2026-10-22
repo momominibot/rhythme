@@ -203,7 +203,7 @@
       var baby = isBaby(f, a.id, day), kind = a.kind;
       var sl = kind === 'cow' ? SLOTS.cow[ci++ % SLOTS.cow.length] : SLOTS.hen[hi++ % SLOTS.hen.length];
       out.push({ id: a.id, kind: kind, baby: baby, scene: kind === 'cow' ? 'barninside' : 'heninside', img: kind === 'cow' ? 'animal-cow.webp' : HEN_IMGS[(hi - 1) % 2],
-        x: sl.x, y: sl.y, w: baby ? Math.round(sl.w * 0.6) : sl.w, flip: sl.flip, label: a.name + (baby ? (kind === 'cow' ? ' the calf' : ' the chick') : (kind === 'cow' ? ' the cow' : ' the hen')) });
+        x: sl.x, y: sl.y, w: baby ? Math.round(sl.w * 0.6) : sl.w, flip: sl.flip, label: (a.name === 'Calf' || a.name === 'Chick') ? (kind === 'cow' ? 'A calf, not yet named' : 'A chick, not yet named') : a.name + (baby ? (kind === 'cow' ? ' the calf' : ' the chick') : (kind === 'cow' ? ' the cow' : ' the hen')) });
     });
     return out;
   }
