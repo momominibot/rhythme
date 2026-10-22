@@ -1,0 +1,17 @@
+{
+ "model": "doubao-seedream-4-0-250828",
+ "prompt": "A small, round baby calf, the child of the reference cow: the same cream and soft brown patches, a shorter muzzle, big gentle eyes, stubby legs, a tiny tuft on its head, standing and looking at the viewer with a slight turn, whole body in frame with space around it. Same 3D chibi clay-toy art style, soft pastel lighting and palette as the reference. Solid flat pure chroma green background #00FF00, no shadow on the background, one animal only, no text.",
+ "size_req": "1024x1024",
+ "size": "1024x1024",
+ "seed": 4201,
+ "refs": [
+  "assets/room/dream/animal-cow.webp"
+ ],
+ "usage": {
+  "generated_images": 1,
+  "output_tokens": 4096,
+  "total_tokens": 4096
+ },
+ "seconds": 23.0,
+ "bytes": 256227
+}

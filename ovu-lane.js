@@ -183,34 +183,51 @@
     wireBack();
     var buy = doc.getElementById('grocerBuy'); if (buy) buy.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-pack],[data-unlock]'); if (!btn || btn.disabled || !stillOpen('grocer')) return;
-      var res = btn.dataset.pack ? FM.buyPack(S, RW(), btn.dataset.pack) : FM.unlockCrop(S, RW(), btn.dataset.unlock);
-      if (!res.ok) { R.toast(res.why, 'info'); return; }
-      R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
-      R.toast(btn.dataset.pack ? res.n + ' ' + FM.CROPS[btn.dataset.pack].name.toLowerCase() + ' seeds are in the shed.' : FM.CROPS[res.crop].name + ' grows on your farm now.', 'redeem', line);
-      if (R.renderDeck) R.renderDeck(); openGrocer();
+      var go = function () {
+        if (!stillOpen('grocer')) return;
+        var res = btn.dataset.pack ? FM.buyPack(S, RW(), btn.dataset.pack) : FM.unlockCrop(S, RW(), btn.dataset.unlock);
+        if (!res.ok) { R.toast(res.why, 'info'); return; }
+        R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
+        R.toast(btn.dataset.pack ? res.n + ' ' + FM.CROPS[btn.dataset.pack].name.toLowerCase() + ' seeds are in the shed.' : FM.CROPS[res.crop].name + ' grows on your farm now.', 'redeem', line);
+        if (R.renderDeck) R.renderDeck(); openGrocer();
+      };
+      if (FM.locked) FM.locked(S, go); else go(); /* the farm lock: hearts and seeds in one save, after other tabs' saves */
     });
     var sp = doc.getElementById('grocerStaples'); if (sp) sp.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-staple]'); if (!btn || btn.disabled || !stillOpen('grocer')) return;
-      var res = KT().buyStaple(S, RW(), btn.dataset.staple); if (!res.ok) { R.toast(res.why, 'info'); return; }
-      R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '', st = KT().STAPLES[res.id];
-      R.toast(st.pantry ? 'An egg is in the pantry.' : st.name + (st.pl ? ' are' : ' is') + ' in the kitchen.', 'kitchen', line);
-      if (R.renderDeck) R.renderDeck(); openGrocer();
+      var go = function () {
+        if (!stillOpen('grocer')) return;
+        var res = KT().buyStaple(S, RW(), btn.dataset.staple); if (!res.ok) { R.toast(res.why, 'info'); return; }
+        R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '', st = KT().STAPLES[res.id];
+        R.toast(st.pantry ? 'An egg is in the pantry.' : st.name + (st.pl ? ' are' : ' is') + ' in the kitchen.', 'kitchen', line);
+        if (R.renderDeck) R.renderDeck(); openGrocer();
+      };
+      if (FM.locked) FM.locked(S, go); else go(); /* the farm lock: the pantry is read again after other tabs' saves */
     });
     var hs = doc.getElementById('grocerHerbs'); if (hs) hs.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-herbstart]'); if (!btn || btn.disabled || !stillOpen('grocer')) return;
-      var res = GH.freeStartOpen(S) ? GH.freeStart(S, btn.dataset.herbstart, today()) : GH.buyStart(S, RW(), btn.dataset.herbstart); if (!res.ok) { R.toast(res.why, 'info'); return; }
-      R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
-      R.toast(GH.HERBS[res.herb].start + ' for the greenhouse. Plant it in a planter by the door.', 'local_florist', line);
-      if (R.renderDeck) R.renderDeck(); openGrocer();
+      var go = function () {
+        if (!stillOpen('grocer')) return;
+        var res = GH.freeStartOpen(S) ? GH.freeStart(S, btn.dataset.herbstart, today()) : GH.buyStart(S, RW(), btn.dataset.herbstart); if (!res.ok) { R.toast(res.why, 'info'); return; }
+        R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
+        R.toast(GH.HERBS[res.herb].start + ' for the greenhouse. Plant it in a planter by the door.', 'local_florist', line);
+        if (R.renderDeck) R.renderDeck(); openGrocer();
+      };
+      if (FM.locked) FM.locked(S, go); else go();
     });
     var gv = doc.getElementById('swapGive'); if (gv) gv.addEventListener('click', function (e) { var b = e.target.closest('[data-give]'); if (!b) return; R.chime('tap'); swapGive = b.dataset.give === swapGive ? null : b.dataset.give; openGrocer(); });
     var tk = doc.getElementById('swapTake'); if (tk) tk.addEventListener('click', function (e) {
       var b = e.target.closest('[data-take]'); if (!b || !swapGive || !stillOpen('grocer')) return;
-      var res = GH ? GH.swapAny(S, swapGive, b.dataset.take) : FM.swapSeed(S, swapGive, b.dataset.take); swapGive = null;
+      var giving = swapGive; swapGive = null;
+      var go = function () {
+      if (!stillOpen('grocer')) return;
+      var res = GH ? GH.swapAny(S, giving, b.dataset.take) : FM.swapSeed(S, giving, b.dataset.take);
       if (!res.ok) { R.toast(res.why, 'info'); openGrocer(); return; }
       R.chime('save'); var line = R.moment ? R.moment('seedswap', { quiet: true }) : '';
       var gc = kind(res.give), took = res.take || res.crop; R.toast('Swapped ' + res.gave + ' ' + (res.gave === 1 ? gc.name.toLowerCase() : gc.plural) + (res.herb ? ' for ' + GH.HERBS[took].start.toLowerCase() + '. It is ready for the greenhouse.' : ' for a ' + FM.CROPS[took].name.toLowerCase() + ' seed. It is in the shed.'), 'swap_horiz', line);
       openGrocer();
+      };
+      if (FM.locked) FM.locked(S, go); else go(); /* the farm lock: the basket is read again inside */
     });
   }
 

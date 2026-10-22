@@ -3545,7 +3545,7 @@
     layout: function () { return L; }, pos: function () { return { x: pos.x, y: pos.y }; }, visiting: function () { return visiting; }, homeId: currentHomeId,
     /* anything that should pause walking and scene changes */
     busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || (window.OvuMorning && OvuMorning.active()) || (window.OvuSeats && OvuSeats.active()) || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },
-    sheetOpen: function () { return !!current; }, sheetId: function () { return current; }, cancelIdle: function () { clearTimeout(idleTimer); },
+    sheetOpen: function () { return !!current; }, sheetId: function () { return current; }, sheetSeq: function () { return sheetSeq; }, cancelIdle: function () { clearTimeout(idleTimer); },
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, setOutfit: setOutfit, outfitLocked: outfitLocked,
@@ -3593,7 +3593,7 @@
     /* a room loaded inside the in-app viewer (a retired page redirected to room.html#x) hands its route to the real room and
        stops here, instead of booting a second app in the frame (live check, 22 Oct: the nested room stripped its hash before
        the viewer could read it, so MEDAS never opened) */
-    try { if (window.frameElement && window.parent !== window && window.parent.OvuPage) { var hh = (location.hash || '').slice(1); window.parent.OvuPage.close(); if (hh) window.parent.dispatchEvent(new CustomEvent('ovu-route', { detail: hh })); return; } } catch (e) { }
+    try { if (window.frameElement && window.parent !== window && window.parent.OvuPage) { var hh = (location.hash || '').slice(1), PP = window.parent.OvuPage; if (PP.handoff) PP.handoff(hh); else { PP.close(); if (hh) window.parent.dispatchEvent(new CustomEvent('ovu-route', { detail: hh })); } return; } } catch (e) { }
     var hk = (location.hash || '').slice(1), bootAt = Date.now(), seq0 = sheetSeq, nav0 = navSeq; /* counted from now: a tap while sign-in is still settling counts too */
     var lift = function () { $('#loading').classList.add('hidden'); joy(); };
     authReady.then(function (r) {

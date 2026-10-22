@@ -84,11 +84,12 @@
   /* the dish is made: every ingredient goes in one save, or nothing does; no hearts, no energy, no diary entry */
   function cook(S, id) {
     var c = canCook(S, id); if (!c.ok) return c;
-    var r = c.recipe, f = copy(farm(S));
+    var r = c.recipe, f = copy(farm(S)), RN = root.OvuRanch;
+    if (n0(f.dishes && f.dishes[r.id]) >= 99) return { ok: false, why: 'Your bag already holds 99 of this dish. Give some away first.' }; /* refuse before anything is used (Codex, 22 Oct) */
     Object.keys(r.needs).forEach(function (k) {
       var n = r.needs[k];
       if (FM().CROPS[k] || HERBS[k]) { f.harvest[k] = n0(f.harvest[k]) - n; if (!f.harvest[k]) delete f.harvest[k]; }
-      else if (k === 'egg') f.pantry.egg = n0(f.pantry.egg) - n;
+      else if (k === 'egg') { f.pantry.egg = n0(f.pantry.egg) - n; if (RN) f = RN.takeProduct(f, 'egg', n).farm; /* the size mix follows the eggs out */ }
       else f.kitchen[k] = n0(f.kitchen[k]) - n;
     });
     /* the dish stays in her bag, Harvest Moon style (Jamie, 22 Oct: "dishes can be used to court the NPC"): up to 99 of each; game state only */
@@ -101,7 +102,7 @@
     var st = STAPLES[id]; if (!st) return { ok: false, why: 'Not on the shelf.' };
     var f = copy(farm(S)), n = st.pantry ? n0(f.pantry.egg) : n0(f.kitchen[id]);
     if (n >= cap()) return { ok: false, why: 'The kitchen has all the ' + st.name.toLowerCase() + ' it can hold.' };
-    if (st.pantry) f.pantry.egg = n + 1; else f.kitchen[id] = n + 1;
+    if (st.pantry) { f.pantry.egg = n + 1; if (root.OvuRanch) f = root.OvuRanch.addProduct(f, 'egg', 'small', 1); } else f.kitchen[id] = n + 1; /* a grocer egg is a small one */
     try { RW.spend(st.cost, 'staple:' + id, { farm: f }); } catch (e) { return { ok: false, why: e.message }; }
     return { ok: true, id: id, have: n + 1 };
   }
@@ -157,9 +158,8 @@
     if (!root.OvuCare.step(acts, o, next)) openRecipe(r.id); /* a step that cannot start leaves the recipe as it was */
   }
   function finish(r) {
-    var res = cook(S, r.id);
-    if (!res.ok) { R.toast(res.why, 'info'); openKitchen(); return; }
-    R.chime('save'); openDish(r);
+    var go = function () { var res = cook(S, r.id); if (!res.ok) { R.toast(res.why, 'info'); openKitchen(); return; } R.chime('save'); openDish(r); };
+    if (FM().locked) FM().locked(S, go); else go(); /* the farm lock: another tab's purchase or harvest lands first, then the pot is checked again */
   }
   /* the dish, and one question; Yes opens the food diary filled in, and nothing is saved unless she saves it there */
   function openDish(r) {

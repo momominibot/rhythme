@@ -718,7 +718,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('no energy is ever added in the barn or the spring', !/refill\(|\.v\s*\+=|spend\([^)]*-\s*\d|OvuStamina\.refill/.test(src) && src.indexOf("'egg'") > -1 && w.OvuStamina.COSTS.egg === 1 && w.OvuStamina.COSTS.milk === 2);
   var bad = {}; S.setState({ farm: { pantry: { egg: -3, milk: 1.7, onsenegg: 'x' }, animals: { mochi: 'not a date', bogus: '2026-01-01' }, found: { cave: 5 } } });
   var fs2 = F.farmState(S);
-  check('restored farm values are cleaned: whole non-negative counts, dates only, known animals only', fs2.pantry.egg === 0 && fs2.pantry.milk === 1 && fs2.pantry.onsenegg === 0 && !fs2.animals.mochi && !('bogus' in fs2.animals) && !fs2.found.cave);
+  check('restored farm values are cleaned: whole non-negative counts, dates only; any animal id keeps a valid date (ranch animals, 22 Oct)', fs2.pantry.egg === 0 && fs2.pantry.milk === 1 && fs2.pantry.onsenegg === 0 && !fs2.animals.mochi && (!('bogus' in fs2.animals) || /^\d{4}-\d{2}-\d{2}$/.test(fs2.animals.bogus)) && !fs2.found.cave);
   S.setState({ farm: { pantry: { egg: 99 } } });
   check('a full pantry takes no more eggs and changes nothing', !B.collectEggs(S, d1).ok && F.farmState(S).pantry.egg === 99 && B.eggsReady(S, d1).length === 2);
   S.setState({ farm: null });
@@ -4089,7 +4089,7 @@ var summarised = false;
   check('a failed save swaps nothing: the pumpkin stays and no start is given', !sF.ok && JSON.stringify([S.state().farm, S.state().greenhouse]) === sw0);
   var sp = GH.swapAny(S, 'pumpkin', 'ginger');
   check('a pumpkin still counts as three, now for a herb start too', sp.ok && sp.gave === 1 && GH.herbState(S).seeds.ginger === 1 && RW.ledger().hearts === 50);
-  check('the grocer swaps through the one-save herb swap', /GH \? GH\.swapAny\(S, swapGive, b\.dataset\.take\)/.test(laneSrc));
+  check('the grocer swaps through the one-save herb swap', /GH \? GH\.swapAny\(S, giving, b\.dataset\.take\)/.test(laneSrc));
   check('each planter draws as an SVG at every stage, darker soil when watered today', svgOk && GH.herbSVG({ herb: 'ginger', watered: [d1], cuts: 0, last: d1 }, d1).indexOf('#4f3828') > -1 && GH.herbSVG({ herb: 'ginger', watered: [d1], cuts: 0, last: d1 }, '2026-10-22').indexOf('#4f3828') < 0);
 })();
 
@@ -5052,6 +5052,120 @@ var summarised = false;
   check('the PULSE flow asks before saving, ends the break when she leaves the sheet or the app, and joins the one-activity rule', /Log what I did/.test(rs) && /current !== 'pulse' \|\| document\.hidden/.test(rs) && /function openPulse\(id\) \{[\s\S]{0,200}refuseBusy\(\)/.test(rs));
   var lines = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/erin-actions/lines.json'), 'utf8')).map(function (x) { return x.id; });
   check("Erin's voice for before, start, stop and log, each with its clip", ['pulse-before', 'pulse-start', 'pulse-stop', 'pulse-log'].every(function (id) { return lines.indexOf(id) > -1 && fs.existsSync(path.join(root, 'assets/audio/erin-actions/' + id + '.mp3')); }));
+})();
+
+(function () {
+  console.log('2k32. the ranch (22 Oct): herd, barn and coop room, babies on day strings, product size by love; nothing lost, nothing gamed');
+  var c = vm.createContext({ Math: Math, Number: Number, String: String, Array: Array, Object: Object, JSON: JSON, Date: Date, isFinite: isFinite, RegExp: RegExp }); c.window = c;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-ranch.js'), 'utf8'), c);
+  var R = c.OvuRanch, D = '2026-10-22';
+  var farm0 = { pantry: { egg: 3, milk: 1, onsenegg: 0 }, animals: { clover: '2026-10-21', mochi: '2026-10-22' }, love: { clover: { n: 10, day: D, acts: {}, full: '2026-10-10' }, mochi: { n: 5, day: D, acts: {} } }, harvest: {} };
+  var f1 = R.migrate(farm0, D), r1 = R.ranchOf(f1);
+  check('migration once: the three starters become the herd, with their love and collection days kept, and pantry eggs and milk counted as small', r1.herd.map(function (a) { return a.id; }).join() === 'clover,mochi,kaya' && f1.love.clover.n === 10 && f1.animals.mochi === '2026-10-22' && r1.sizes.egg.small === 3 && r1.sizes.milk.small === 1 && R.migrate(f1, '2026-10-23') === f1);
+  check('an unknown or broken ranch record never replaces the herd with starters; a malformed animal is dropped, the rest kept', (function () { var f = JSON.parse(JSON.stringify(f1)); f.ranch.herd.push({ id: 'cow9', kind: 'cow', name: 'Bess' }); f.ranch.herd.push({ kind: 'cat' }); f.ranch.herd.push({ id: 'BAD ID', kind: 'hen' }); var r = R.ranchOf(f); return r.herd.length === 4 && r.herd[3].name === 'Bess' && R.ranchOf(R.migrate(f, D)).herd.length === 4; })());
+  check('starter room: the barn holds 1 cow and the coop 2 hens, so expansion comes first; an upgrade takes the barn to 4 and the coop to 6', R.room(r1, 'barn') === 0 && R.room(r1, 'coop') === 0 && R.upgrade(f1, 'barn').capacity === 4 && R.upgrade(f1, 'coop').capacity === 6 && R.upgrade(R.upgrade(f1, 'barn').farm, 'barn').ok === false);
+  var fb = R.upgrade(f1, 'coop').farm, b1 = R.buy(fb, 'hen', 'Pip <b>x</b>', D);
+  check('buying a hen after the coop upgrade: a named adult that produces from tomorrow (collection day set to today), name cleaned', b1.ok && b1.cost === 120 && b1.animal.name === 'Pip x' && b1.farm.animals[b1.animal.id] === D && R.list(R.ranchOf(b1.farm), 'hen').length === 3 && R.buy(f1, 'hen', 'Z', D).ok === false);
+  check('prices: hen 120, cow 240, barn and coop upgrades 300 each; no way to turn products into hearts', R.KINDS.hen.cost === 120 && R.KINDS.cow.cost === 240 && R.UPGRADE_COST.barn === 300 && R.UPGRADE_COST.coop === 300 && !/hearts \+=|earned/.test(fs.readFileSync(path.join(root, 'ovu-ranch.js'), 'utf8')));
+  var inc = R.incubate(b1.farm, 'small', D);
+  check('an egg in the incubator: one small egg leaves the pantry and the size mix, a coop place is reserved, due in three days', inc.ok && inc.due === '2026-10-25' && inc.farm.pantry.egg === 2 && R.ranchOf(inc.farm).sizes.egg.small === 2 && R.room(R.ranchOf(inc.farm), 'coop') === 2 && R.incubate(inc.farm, 'small', D).ok === false);
+  var hatched = R.advance(inc.farm, '2026-10-25'), rh = R.ranchOf(hatched), chick = R.list(rh, 'hen')[3];
+  check('hatching on the due day, in the same step as the timer clearing: a chick that grows up seven days later and makes nothing until then', chick && chick.name === 'Chick' && chick.born === '2026-10-25' && chick.adultOn === '2026-11-01' && rh.incubator === null && !R.isAdult(chick, '2026-10-31') && R.isAdult(chick, '2026-11-01'));
+  check('a day never moves backwards: a clock set back changes nothing, and the same day again changes nothing', R.advance(hatched, '2026-10-20') === hatched && R.advance(hatched, '2026-10-25') === hatched);
+  var fbarn = R.upgrade(f1, 'barn').farm, cd = R.calfDue(fbarn, 'clover', D), sc = R.startCalf(fbarn, 'clover', D);
+  check('a cow at ten hearts for a week can expect a calf: due today when already qualified, a stall reserved, no second calf at once', cd === D && sc.ok && sc.due === D && R.room(R.ranchOf(sc.farm), 'barn') === 2 && R.startCalf(sc.farm, 'clover', D).ok === false);
+  var born = R.advance(sc.farm, '2026-10-23'), calf = R.list(R.ranchOf(born), 'cow')[1];
+  check('the calf arrives on the next day change and grows up in fourteen days; a repeat calf waits seven days after the last', calf && calf.name === 'Calf' && calf.adultOn === R.addDays(calf.born, 14) && R.calfDue(born, 'clover', '2026-10-24') === '2026-10-29');
+  check('a cow without full love, or a baby, cannot have a calf', R.calfDue(R.upgrade(f1, 'barn').farm, 'nope', D) === null && (function () { var f = JSON.parse(JSON.stringify(fbarn)); f.love.clover.n = 9; return R.calfDue(f, 'clover', D) === null; })());
+  check('Codex round one: a repeat calf waits seven days from the last birth, not from the day it was planned', (function () { var f = JSON.parse(JSON.stringify(fbarn)); var a = R.startCalf(f, 'clover', D); var b = R.advance(a.farm, '2026-10-23'); return R.list(R.ranchOf(b), 'cow').length === 2 && R.calfDue(b, 'clover', '2026-10-23') === '2026-10-29' && R.calfDue(b, 'clover', '2026-10-29') === '2026-10-29'; })());
+  check('a clock set back cannot buy, incubate or plan: commands refuse a day before the ranch\'s last day', (function () { var f = R.advance(R.upgrade(f1, 'coop').farm, '2026-10-22'); return !R.buy(f, 'hen', 'Z', '2026-10-01').ok && !R.incubate(f, 'small', '2026-10-01').ok && !R.startCalf(f, 'clover', '2026-10-01').ok && R.buy(f, 'hen', 'Z', '2026-10-22').ok; })());
+  check('migration gives an already full-love cow her baseline, so a calf is possible a week later without another care action', (function () { var f = R.migrate({ pantry: {}, animals: {}, love: { clover: { n: 10, day: '2026-10-01', acts: {} } } }, D); f.ranch = R.upgrade(f, 'barn').farm.ranch; return f.love.clover.full === D && R.calfDue(f, 'clover', D) === '2026-10-29' && R.calfDue(f, 'clover', '2026-10-30') === '2026-10-30'; })());
+  check('love filled as a calf counts from the day she grew up, so a calf cannot follow adulthood at once', (function () { var f = JSON.parse(JSON.stringify(fbarn)); f.ranch.herd.push({ id: 'cow7', kind: 'cow', name: 'Bell', born: '2026-10-01', adultOn: '2026-10-15' }); f.love.cow7 = { n: 10, day: '2026-10-10', acts: {}, full: '2026-10-10' }; return R.calfDue(f, 'cow7', '2026-10-15') === '2026-10-22'; })());
+  check('adulthood once announced never reverses when the date goes back', (function () { var a = { id: 'hen9', kind: 'hen', adultOn: '2026-10-20', grown: true }; return R.isAdult(a, '2026-10-01') && R.ranchOf({ ranch: { herd: [a] } }).herd[0].grown === true; })());
+  check('product size follows love: 0 to 3 small, 4 to 7 medium, 8 to 10 large', [0, 3, 4, 7, 8, 10].map(R.productSize).join() === 'small,small,medium,medium,large,large');
+  var add = R.addProduct(f1, 'egg', 'large', 2), tkr = R.takeProduct(add, 'egg', 4), tk = tkr.farm;
+  check('the size mix: products added at their size and taken smallest first; it never exceeds the pantry total and a gap fills as small', R.ranchOf(add).sizes.egg.large === 2 && R.ranchOf(tk).sizes.egg.small === 0 && R.ranchOf(tk).sizes.egg.large === 1 && JSON.stringify(tkr.taken) === '{"small":3,"large":1}' && (function () { var f = JSON.parse(JSON.stringify(f1)); f.pantry.egg = 7; f.ranch.sizes.egg.large = 9; var r = R.ranchOf(R.reconcile(f)).sizes.egg; return r.small + r.medium + r.large === 7; })());
+  /* the barn over the herd, through the real farm and barn modules */
+  var wb = scenes('2026-10-22'); wb.OvuRoom = null; wb.OvuZones = null;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), wb, { filename: 'ovu-farm.js' });
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-ranch.js'), 'utf8'), wb, { filename: 'ovu-ranch.js' });
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8'), wb, { filename: 'ovu-barn.js' });
+  var Bb = wb.OvuBarn, Sb = wb.OvuStore, Fb = wb.OvuFarm, Rb = wb.OvuRanch, DB = '2026-10-22';
+  check('before any ranch record the herd is the three starters, and the barn reads them by name', Bb.herd(Fb.farmState(Sb)).map(function (a) { return a.id; }).join() === 'clover,mochi,kaya' && Bb.nameOf(Fb.farmState(Sb), 'kaya') === 'Kaya');
+  var e1 = Bb.collectEggs(Sb, DB, null);
+  check('collecting writes the ranch record once and counts each egg at the hen\'s love size (two small from new hens)', e1.ok && e1.n === 2 && e1.sizes.small === 2 && Rb.ranchOf(Fb.farmState(Sb)).sizes.egg.small === 2 && Fb.farmState(Sb).pantry.egg === 2);
+  (function () { var f = Fb.farmState(Sb); f.love = { clover: { n: 9, day: DB, acts: {} } }; f.ranch = Rb.upgrade(Rb.upgrade(f, 'barn').farm, 'coop').farm.ranch; var b = Rb.buy(f, 'cow', 'Daisy', DB); Sb.setState({ farm: b.farm }); })();
+  var m0 = Bb.milkCows(Sb, DB), m1 = Bb.milk(Sb, DB, null);
+  check('a cow bought today gives milk from tomorrow: today only Clover is ready, at the large size her nine hearts earn', m0.join() === 'clover' && m1.ok && m1.n === 1 && m1.sizes.large === 1 && Rb.ranchOf(Fb.farmState(Sb)).sizes.milk.large === 1);
+  var m2 = Bb.milkCows(Sb, '2026-10-23'), mm = Bb.milk(Sb, '2026-10-23', null);
+  check('the next day both cows have milk, milked together in one go: Clover large, Daisy small', m2.join() === 'clover,cow1' && mm.ok && mm.n === 2 && mm.sizes.large === 1 && mm.sizes.small === 1 && Fb.farmState(Sb).pantry.milk === 3);
+  (function () { var f = Fb.farmState(Sb); f.harvest = { carrot: 2 }; Sb.setState({ farm: f }); })();
+  var t1 = Bb.giveTreat(Sb, 'cow1', 'carrot', DB), t2 = Bb.giveTreat(Sb, 'cow1', 'kangkong', DB);
+  check('a treat goes to the cow it was offered to: Daisy takes the carrot (love 1), kangkong is not cow food', t1.ok && t1.gained && Bb.love(Sb, 'cow1') === 1 && Bb.love(Sb, 'clover') === 9 && !t2.ok);
+  (function () { var f = Fb.farmState(Sb); var inc = Rb.incubate(f, 'small', DB); Sb.setState({ farm: Rb.advance(inc.farm, '2026-10-25') }); })();
+  var chickId = Rb.list(Rb.ranchOf(Fb.farmState(Sb)), 'hen')[2].id;
+  check('a hatched chick is in the herd but lays nothing until it grows up; it can still be petted', Bb.isBaby(Fb.farmState(Sb), chickId, '2026-10-26') && Bb.eggsReady(Sb, '2026-10-26').indexOf(chickId) < 0 && Bb.eggsReady(Sb, '2026-11-02').indexOf(chickId) > -1 && Bb.care(Sb, chickId, 'pet', '2026-10-26').gained);
+  check('love reaching ten records the day it filled, which a calf is counted from', (function () { for (var i = 0; i < 3; i++) Bb.care(Sb, 'clover', 'pet', '2026-11-0' + (i + 1)); var l = Fb.farmState(Sb).love.clover; return l.n === 10 && l.full === '2026-11-01'; })());
+  check('news between two ranch records names what arrived and what grew up, once', (function () { var f = Fb.farmState(Sb), before = f.ranch, after = Rb.advance(f, '2026-11-02').ranch; var n = Rb.news(before, after); return n.grown.length === 1 && n.grown[0].id === chickId && Rb.news(after, Rb.advance({ ranch: after, pantry: {}, animals: {} }, '2026-11-03').ranch || after).grown.length === 0; })());
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-kitchen.js'), 'utf8'), wb, { filename: 'ovu-kitchen.js' });
+  var Kb = wb.OvuKitchen;
+  (function () { var f = Fb.farmState(Sb); f.harvest = { tomato: 2 }; f.kitchen = { rice: 1 }; f.pantry.egg = 1; f.ranch.sizes.egg = { small: 0, medium: 0, large: 1 }; Sb.setState({ farm: f }); })();
+  var ck = Kb.cook(Sb, 'tomatoegg'), fz = Rb.ranchOf(Fb.farmState(Sb)).sizes.egg;
+  check('cooking takes the egg\'s size with it: the one large egg leaves the mix', ck.ok && Fb.farmState(Sb).pantry.egg === 0 && fz.large === 0 && fz.small === 0);
+  (function () { var f = Fb.farmState(Sb); f.harvest = { tomato: 2 }; f.kitchen = { rice: 1 }; f.pantry.egg = 1; f.dishes = { tomatoegg: 99 }; Sb.setState({ farm: f }); })();
+  var full = Kb.cook(Sb, 'tomatoegg'), fa = Fb.farmState(Sb);
+  check('a full dish shelf refuses before anything is used: tomatoes, rice and the egg all stay', !full.ok && /99/.test(full.why) && fa.harvest.tomato === 2 && fa.kitchen.rice === 1 && fa.pantry.egg === 1 && fa.dishes.tomatoegg === 99);
+  var bought = Kb.buyStaple(Sb, wb.OvuRewards, 'egg');
+  check('a grocer egg joins the mix as a small one', !bought.ok || Rb.ranchOf(Fb.farmState(Sb)).sizes.egg.small >= 1);
+  check('every Erin ranch line has its script and clip', ['ranch-open', 'ranch-room', 'ranch-arrive', 'ranch-egg', 'ranch-hatch', 'ranch-calf', 'ranch-born', 'ranch-grown'].every(function (id) { return fs.existsSync(path.join(root, 'assets/audio/erin-actions/' + id + '.mp3')); }));
+  check('the farm keeps every animal\'s collection day, not only the three starters, and the ranch record rides along in farmState', /Object\.keys\(f\.animals/.test(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8')) && /ranch: f\.ranch/.test(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8')));
+  /* Codex, 22 Oct (second review): a care save read before another tab's purchase overwrote the purchase. Two tabs share
+     one storage and one lock; the care runs inside the lock, so it reads the farm after the hen was bought. */
+  (function () {
+    var wa = scenes('2026-10-22'); wa.OvuRoom = null; wa.OvuZones = null; wa.localStorage = wb.localStorage;
+    ['ovu-farm.js', 'ovu-ranch.js', 'ovu-barn.js', 'ovu-kitchen.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), wa, { filename: f }); });
+    var Sa = wa.OvuStore, Fa = wa.OvuFarm, Ba = wa.OvuBarn, chain = Promise.resolve(), names = [], DL = '2026-11-03'; /* after every day the ranch has seen */
+    var mgr = { request: function (name, fn) { names.push(name); chain = chain.then(fn); return chain; } }; wa.navigator.locks = mgr; wb.navigator.locks = mgr;
+    (function () { var f = Fb.farmState(Sb); f.love = {}; var u = Rb.upgrade(f, 'coop'); if (u.ok) f.ranch = u.farm.ranch; Sb.setState({ farm: f }); })();
+    Sa.reload(); var hensBefore = Rb.list(Rb.ranchOf(Fa.farmState(Sa)), 'hen').length;
+    var staleA = Fa.farmState(Sa); /* tab A has read the farm */
+    var buy = Rb.buy(Fb.farmState(Sb), 'hen', 'Bao', DL); if (buy.ok) Sb.commit({ farm: buy.farm });
+    var unlocked = JSON.parse(JSON.stringify(staleA)); unlocked.love = { clover: { n: 1, day: DL, acts: { pet: 1 } } };
+    check('without the lock a stale tab\'s care save would drop the hen (the reported race)', buy.ok && Rb.list(Rb.ranchOf(unlocked), 'hen').length === hensBefore && Rb.list(Rb.ranchOf(Fb.farmState(Sb)), 'hen').length === hensBefore + 1);
+    var done = Fa.locked(Sa, function () { return Ba.care(Sa, 'clover', 'pet', DL); }).then(function (r) {
+      var fa = Fa.farmState(Sa), fb2 = Fb.farmState(Sb);
+      check('inside the farm lock the care save reads the farm again: Bao stays and the heart is kept, in both tabs', r.ok && r.gained && Rb.list(Rb.ranchOf(fa), 'hen').length === hensBefore + 1 && Rb.list(Rb.ranchOf(fa), 'hen').some(function (h) { return h.name === 'Bao'; }) && fa.love.clover.n === 1 && Sb.reload() && Rb.list(Rb.ranchOf(Fb.farmState(Sb)), 'hen').length === hensBefore + 1, JSON.stringify({ r: r, hens: Rb.list(Rb.ranchOf(fa), 'hen').map(function (h) { return h.name; }) }));
+      check('every barn, kitchen, villager and grocer farm writer goes through the one ovumind-farm lock, and no subscriber writes the farm back', names.length === 1 && names[0] === 'ovumind-farm' && (function () { var src = fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8'), bare = src.replace(/locked\(function \(\) \{[\s\S]*?\n\s*\}\);/g, ''); return !/\n\s*var r = (care|giveTreat|collectEggs|milk|findCave|cookEggs)\(S/.test(bare) && /function settle\(\) \{ return locked\(settleNow\)/.test(src) && /function maybeHint\(\) \{\s*locked\(function/.test(src) && !/fixing = true/.test(src) && (src.split('S.subscribe(')[1] || '').indexOf('save(S') < 0; })() && /FM\(\)\.locked\(S, go\)/.test(fs.readFileSync(path.join(root, 'ovu-kitchen.js'), 'utf8')) && /FM\.locked\(S, go\)/.test(fs.readFileSync(path.join(root, 'ovu-villagers.js'), 'utf8')) && /FM\.locked\(S, go\)[\s\S]{0,120}/.test(fs.readFileSync(path.join(root, 'ovu-lane.js'), 'utf8')) && /buyStaple\(S, RW\(\), btn\.dataset\.staple\)/.test(fs.readFileSync(path.join(root, 'ovu-lane.js'), 'utf8').split('var go = function () {').slice(1).join('|')));
+    });
+    done.catch(function (e) { check('the locked care race test ran to the end', false, String(e && e.stack || e)); });
+    (function () { /* round seven: a tester phone's resent link carries no tester rewards; the token wait has the request's deadline */
+      var gs = fs.readFileSync(path.join(root, 'ovu-gamesave.js'), 'utf8');
+      check('a resent link from a tester phone applies the account copy alone, and the token wait gives up after the same 15 s as the request', /tainted: !!m\.tainted \}\);/.test(gs) && /else if \(p\.remote\) apply\(uid, linkMerge\(now, p\.remote\)\);/.test(gs) && /return withDeadline\(token \|\| A\(\)\.token\(\), FETCH_MS\)\.then\(function \(tk\) \{/.test(gs) && /function withDeadline\(p, ms\)/.test(gs));
+    })();
+    (function () { /* round six: a resent link never writes an old copy over newer play; a deadline on the game-save request; Stop during the lock wait */
+      var read = function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); }, gs = read('ovu-gamesave.js'), care = read('ovu-care.js');
+      check('a link remembers the local copy it was packed from and the account copy it merged; its answer applies the old target only when nothing changed here, else merges the account copy into what the phone has now and sends that up', /localHash: hashOf\(mine\), remote: live \? clone\(row\.save\) : null/.test(gs) && /if \(p\.localHash == null \|\| hashOf\(now\) === p\.localHash\) \{/.test(gs) && /else if \(p\.remote\) apply\(uid, linkMerge\(now, p\.remote\)\);/.test(gs) && /journal: extra && !tnt \? \[\{ id: 'l' \+ Date\.now\(\), kind: 'other', n: extra \}\] : \[\], pending: null, seq: tnt \? 0 : 1, acked: 0, hash: tnt \? hashOf\(pack\(S\.state\(\)\)\) : hashOf\(p\.save\) \}\);\s*schedule\(\);/.test(gs) && /var tnt = !!\(p\.tainted \|\| m\.tainted\);/.test(gs) && /if \(tnt\) apply\(uid, clone\(p\.save\)\);/.test(gs));
+      check('every game-save request has a 15 s deadline (the farm lock is held meanwhile), cleared on any answer', /var FETCH_MS = 15000;/.test(gs) && /new AbortController\(\) : null, deadline = setTimeout\(function \(\) \{ if \(ac\) ac\.abort\(\); \}, FETCH_MS\)/.test(gs) && /signal: ac \? ac\.signal : undefined/.test(gs) && /clearTimeout\(deadline\); return j; \}, function \(e\) \{ clearTimeout\(deadline\); throw e; \}/.test(gs));
+      check('a Stop after the step finished but before its save had the lock marks the token stopped and puts the sheet back; the writers read it inside the lock', /tok\.finished = true; done\(tok\);/.test(care) && /if \(cur !== tok\) \{ if \(tok\.finished && !tok\.stopped\) \{ tok\.stopped = true; if \(R\.endMoment\) R\.endMoment\(\); if \(o\.cancel\) o\.cancel\(\); \} return; \}/.test(care));
+    })();
+    (function () { /* round five: the guide and the game save inside the farm lock, the sheet counter, steps that re-check */
+      var read = function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); };
+      var farm = read('ovu-farm.js'), gh = read('ovu-greenhouse.js'), gs = read('ovu-gamesave.js'), rm = read('room.js'), barn = read('ovu-barn.js');
+      check('the farm guide\'s first-visit flag is written inside the lock, and the game save holds the farm lock for its whole cycle inside its own', /if \(!farmState\(S\)\.guided\) F\.locked\(S, function/.test(farm) && !/\n\s*var f = copy\(farmState\(S\)\); if \(!f\.guided\)/.test(farm) && /L\.request\('ovumind-gamesave', function \(\) \{ return L\.request\('ovumind-farm', function \(\) \{ try \{ if \(S\.reload\) S\.reload\(\); \} catch \(e\) \{ \} return syncNow\(\); \}\); \}\)/.test(gs));
+      check('the room counts sheet openings; the counter does not open after settle if a sheet came and went; every farm and greenhouse step, the harvest, the well and clearing a planter re-check the same opening and wakefulness inside the lock', /sheetSeq: function \(\) \{ return sheetSeq; \}/.test(rm) && /if \(R\.sheetSeq && R\.sheetSeq\(\) !== seq0\) return;/.test(barn) && (farm.match(/if \(!stillHere\('farm(bed|well)', (tk|null), (id|back)\)\) return;/g) || []).length === 3 && (gh.match(/if \(!stillHere\('ghbed', (tk|null), id\)\) return;/g) || []).length === 2 && /function stillHere\(sheetId, tk, arg\)/.test(farm) && /function stillHere\(sheetId, tk, id\)/.test(gh) && /shown && shown\.kind === 'bed' && shown\.arg === arg/.test(farm) && /if \(id != null && shownBed !== id\) return false;/.test(gh) && /if \(tk && tk\.stopped\) return false;/.test(farm) && /if \(tk && tk\.stopped\) return false;/.test(gh));
+    })();
+    (function () { /* round four: every remaining writer, the readers, the viewer and the counter */
+      var read = function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); };
+      var lane = read('ovu-lane.js'), farm = read('ovu-farm.js'), gh = read('ovu-greenhouse.js'), pv = read('ovu-pageview.js'), rm = read('room.js'), barn = read('ovu-barn.js');
+      check('the grocer\'s seed packs, crop unlocks, herb starts and swaps all run inside FM.locked, each re-checking the grocer is still open', (lane.match(/if \(FM\.locked\) FM\.locked\(S, go\); else go\(\);/g) || []).length === 4 && !/\n\s*var res = (FM\.buyPack|KT\(\)\.buyStaple|GH\.freeStartOpen|GH \? GH\.swapAny)/.test(lane.replace(/var go = function \(\) \{[\s\S]*?\n\s*\};/g, '')));
+      check('the farm scene\'s bed step, harvest, well, shed seed and tool all run inside F.locked, and the greenhouse planter step, clearing and brewing inside its lock helper', (farm.match(/F\.locked\(S, function/g) || []).length === 6 && /slowStep\(acts, o, function \(tk\) \{ F\.locked\(S, function/.test(farm) && (gh.match(/lockedF\(function/g) || []).length === 3 && /function lockedF\(fn\) \{ var FMl = root\.OvuFarm; return FMl && FMl\.locked \? FMl\.locked\(S, fn\)/.test(gh));
+      var stale = { pantry: { egg: 1, milk: 0, onsenegg: 0 }, animals: {}, harvest: {}, ranch: { v: 1, herd: [], sizes: { egg: { small: 0, medium: 0, large: 3 }, milk: { small: 0, medium: 0, large: 0 } } } };
+      var vs = Rb.viewSizes(stale);
+      check('a reader shows the size mix trimmed to the pantry (one egg, not three large), without writing the stored farm', vs.egg.large === 1 && vs.egg.small === 0 && stale.ranch.sizes.egg.large === 3 && /RN\.viewSizes\(f\)/.test(read('ovu-today.js')) && /RN\(\)\.viewSizes\(f\)/.test(barn));
+      check('the counter opens after settle only if nothing changed her mind: a later tap, another sheet or a counter she closed all win', /var tok = \+\+ranchReq, wasOpen = R\.sheetOpen\(\) && R\.sheetId\(\) === 'ranch'/.test(barn) && /if \(tok !== ranchReq \|\| !at\('barn'\)\) return;/.test(barn) && /if \(wasOpen && !\(R\.sheetOpen\(\) && R\.sheetId\(\) === 'ranch'\)\) return;/.test(barn));
+      check('the viewer hands over once per opening: load, poll, link click and the nested room all go through handoff(), the poll never throws on a cross-origin frame', /function handoff\(h\) \{\s*if \(handed\) return; handed = true; root\.clearInterval\(watch\);/.test(pv) && (pv.match(/handoff\(/g) || []).length >= 4 && (pv.match(/close\(\); if \(h\) root\.dispatchEvent/g) || []).length === 1 && /handed = false; frame\.src = href; watchFrame\(\);/.test(pv) && /try \{ p = frame\.contentWindow\.location\.pathname; h = frame\.contentWindow\.location\.hash \|\| ''; \} catch \(e\) \{ return; \}/.test(pv) && /if \(PP\.handoff\) PP\.handoff\(hh\)/.test(rm));
+    })();
+  })();
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

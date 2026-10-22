@@ -234,5 +234,37 @@
  {
   "id": "pulse-log",
   "text": "Well done. Notice how you feel now."
+ },
+ {
+  "id": "ranch-open",
+  "text": "There's a little ranch counter here, when you want it."
+ },
+ {
+  "id": "ranch-room",
+  "text": "More room, ready for a new arrival."
+ },
+ {
+  "id": "ranch-arrive",
+  "text": "Welcome home, little one."
+ },
+ {
+  "id": "ranch-egg",
+  "text": "One egg, tucked into a warm nest."
+ },
+ {
+  "id": "ranch-hatch",
+  "text": "A little chick has hatched."
+ },
+ {
+  "id": "ranch-calf",
+  "text": "A calf is on the way."
+ },
+ {
+  "id": "ranch-born",
+  "text": "Your calf is here."
+ },
+ {
+  "id": "ranch-grown",
+  "text": "All grown up now. Notice how they have changed."
  }
 ]

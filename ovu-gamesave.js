@@ -30,7 +30,7 @@
   var DAY_FIELDS = ['mindDay', 'mindActs', 'seatDay'];
   function practiceCap() { var R = root.OvuRewards; return R && R.PRACTICE && isFinite(R.PRACTICE.cap) ? R.PRACTICE.cap : 20; }
   var LOG_KINDS = { sleep: 1, period: 1, symptom: 1, food: 1, reflection: 1, exercise: 1, water: 1 };
-  var META = 'ovumind_gamesave_v1', MAX_BYTES = 200000, KEEPALIVE_MAX = 60000, DEBOUNCE_MS = 4000;
+  var META = 'ovumind_gamesave_v1', MAX_BYTES = 200000, KEEPALIVE_MAX = 60000, DEBOUNCE_MS = 4000; var FETCH_MS = 15000; /* one game-save request may take this long; the farm lock is held meanwhile */
 
   function clone(v) { return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); }
   function plain(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
@@ -171,12 +171,16 @@
   function tester() { var t = S && S.state && S.state().tester; return !!(t && t.hearts); }
   function ownerOk(uid) { var p = (S && S.profile && S.profile()) || {}, o = typeof p.owner === 'string' ? p.owner : null; return !o || o === uid; }
   function ready() { var a = A(); return !!(S && a && a.isSignedIn && a.isSignedIn() && a.userId() && !(S.isSandbox && S.isSandbox()) && typeof fetch === 'function' && CFG.supabaseUrl); }
+  /* a promise that gives up after ms: the token wait (a hung refresh) needs the same deadline as the request itself */
+  function withDeadline(p, ms) { return new Promise(function (res, rej) { var t = setTimeout(function () { rej(new Error('timed out')); }, ms); Promise.resolve(p).then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); }); }); }
   function call(method, path, body, token) {
-    return Promise.resolve(token || A().token()).then(function (tk) {
+    return withDeadline(token || A().token(), FETCH_MS).then(function (tk) {
       if (!tk) throw new Error('no token');
       var text = body != null ? JSON.stringify(body) : undefined;
-      return fetch(CFG.supabaseUrl + '/rest/v1' + path, { method: method, headers: { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: text, keepalive: !!(text && text.length < KEEPALIVE_MAX) })
-        .then(function (r) { return r.text().then(function (t) { var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { } if (!r.ok) { var er = new Error('game save ' + r.status); er.status = r.status; er.code = j && j.code; throw er; } return j; }); });
+      var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, deadline = setTimeout(function () { if (ac) ac.abort(); }, FETCH_MS); /* the sync holds the farm lock: a request that never answers must end (Codex, 22 Oct) */
+      return fetch(CFG.supabaseUrl + '/rest/v1' + path, { method: method, headers: { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: text, keepalive: !!(text && text.length < KEEPALIVE_MAX), signal: ac ? ac.signal : undefined })
+        .then(function (r) { return r.text().then(function (t) { var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { } if (!r.ok) { var er = new Error('game save ' + r.status); er.status = r.status; er.code = j && j.code; throw er; } return j; }); })
+        .then(function (j) { clearTimeout(deadline); return j; }, function (e) { clearTimeout(deadline); throw e; });
     });
   }
   function getRow(uid) { return call('GET', '/game_saves?select=save,rev,deleted&user_id=eq.' + encodeURIComponent(uid)).then(function (rows) { return rows && rows[0] || null; }); }
@@ -216,10 +220,25 @@
         var m = metaFor(uid) || {}, mine = num(p.base) + 1;
         if (!m.pending || m.pending.op !== p.op) return 'saved';         /* another tab already acknowledged this write */
         if (p.kind === 'link') {
-          var extra = Math.max(0, earned(pack(S.state())) - num(p.localEarned)); /* hearts she earned while the link was on its way */
-          apply(uid, withEarnings(p.save, extra));
-          patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), journal: extra ? [{ id: 'l' + Date.now(), kind: 'other', n: extra }] : [], pending: null, seq: extra ? 1 : 0, acked: 0 });
-          if (extra) schedule();
+          var now = pack(S.state()), extra = Math.max(0, earned(now) - num(p.localEarned)); /* hearts she earned while the link was on its way */
+          if (p.localHash == null || hashOf(now) === p.localHash) {
+            apply(uid, withEarnings(p.save, extra));
+            patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), journal: extra ? [{ id: 'l' + Date.now(), kind: 'other', n: extra }] : [], pending: null, seq: extra ? 1 : 0, acked: 0 });
+            if (extra) schedule();
+            return 'linked';
+          }
+          /* the phone played on while the answer was lost and the link was sent again (a seed claimed, an animal bought):
+             the old target never goes over that. With no account copy the phone's play stands as it is. With an account
+             copy the rule is the one every link follows: the account's game is the game and the phone's rewards join it
+             (what the phone did to its own farm while unlinked yields to the account's farm, as it would have at the first
+             link); a tester phone takes the account copy alone, its tester rewards never join (Codex, 22 Oct) */
+          var tnt = !!(p.tainted || m.tainted); /* tester mode at the link, or entered since: tester play never joins the account (Codex, 22 Oct) */
+          if (tnt) apply(uid, clone(p.save)); /* the copy the server accepted at the link (the account's game with this phone's pre-tester rewards joined); tester play on this phone is let go, as the tainted pull does */
+          else if (p.remote) apply(uid, linkMerge(now, p.remote));
+          /* the hearts earned here since the link was packed ride in the journal, so a pull of a newer account copy
+             (another phone wrote first) replays them instead of losing them (Codex, 22 Oct) */
+          patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), journal: extra && !tnt ? [{ id: 'l' + Date.now(), kind: 'other', n: extra }] : [], pending: null, seq: tnt ? 0 : 1, acked: 0, hash: tnt ? hashOf(pack(S.state())) : hashOf(p.save) });
+          schedule();
           return 'linked';
         }
         var carried = p.ids || [];
@@ -238,8 +257,11 @@
   }
   /* a deleted save is tried once per sign-in; the server refuses unless that sign-in came after the deletion */
   function mayTry(m, row) { return !!(row && row.deleted && m && m.tried !== row.rev); }
+  /* the whole cycle (pack, send, apply the account's copy) runs inside the farm lock as well as its own: a purchase on
+     this phone waits for the cycle instead of landing between the pack and the apply and being written over (Codex, 22 Oct) */
   function sync() {
-    if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) return navigator.locks.request('ovumind-gamesave', function () { return syncNow(); });
+    var L = typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request ? navigator.locks : null;
+    if (L) return L.request('ovumind-gamesave', function () { return L.request('ovumind-farm', function () { try { if (S.reload) S.reload(); } catch (e) { } return syncNow(); }); });
     return syncNow();
   }
   function syncNow() {
@@ -259,7 +281,7 @@
       if (!m.linked || m.off || (row && row.deleted)) {
         if (m.tainted && !live) return 'tester';                    /* tester progress is never uploaded */
         var target = live ? (m.tainted ? clone(row.save) : linkMerge(mine, row.save)) : mine;
-        return queue(uid, 'link', target, row ? row.rev : 0, { localEarned: earned(mine) });
+        return queue(uid, 'link', target, row ? row.rev : 0, { localEarned: earned(mine), localHash: hashOf(mine), remote: live ? clone(row.save) : null, tainted: !!m.tainted });
       }
       if (!row) return queue(uid, 'save', mine, 0, { seq: seq });
       if (m.tainted) { apply(uid, row.save); patchMeta(uid, { tainted: false, rev: row.rev, savedEarned: earned(row.save), journal: [], acked: seq }); return 'pulled'; }

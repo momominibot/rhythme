@@ -39,9 +39,12 @@
       if (cur !== tok) return; cur = null;
       if (!box.isConnected || !R.sheetOpen() || here() !== tok.scene) { if (o.abort) { try { o.abort(); } catch (e) { } } return; } /* closed or left: nothing is saved, the plate is put back */
       if (asleepNow()) { if (o.abort) { try { o.abort(); } catch (e) { } } R.hideSheet(); return; } /* sleep began meanwhile: nothing is saved */
-      done();
+      tok.finished = true; done(tok); /* the writer may still be waiting for the farm lock: it reads tok.stopped inside */
     }, ms);
-    box.querySelector('[data-slow=stop]').addEventListener('click', function (e) { e.stopPropagation(); if (cur !== tok) return; cur = null; root.clearTimeout(tok.t); if (R.endMoment) R.endMoment(); if (o.abort) o.abort(); if (o.cancel) o.cancel(); });
+    box.querySelector('[data-slow=stop]').addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (cur !== tok) { if (tok.finished && !tok.stopped) { tok.stopped = true; if (R.endMoment) R.endMoment(); if (o.cancel) o.cancel(); } return; } /* a Stop while the save waits for the lock: nothing is saved (Codex, 22 Oct) */
+      cur = null; root.clearTimeout(tok.t); if (R.endMoment) R.endMoment(); if (o.abort) o.abort(); if (o.cancel) o.cancel(); });
     return true;
   }
   /* anything else taking over drops a pending step at once: a new place, another activity, the page going away */
