@@ -128,7 +128,20 @@
   <div class="welcome consent" id="consent" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
     <div class="w-stars" aria-hidden="true"></div>
     <div class="c-scroll">
-      <div class="c-head"><div class="c-moon" aria-hidden="true"><img src="assets/room/dream/orb-luna.webp" alt="" data-mascot="full"></div><div><div class="w-brand"><img class="rh-logo" src="assets/brand/logo-mark.webp" alt="" width="16" height="16">RHYTHME</div><h2 id="cTitle">Before your room opens</h2><p>What Rhythme keeps, where it goes, and the choices that stay yours.</p></div></div>
+      <div class="c-head"><div class="c-moon" aria-hidden="true"><img src="assets/room/dream/orb-luna.webp" alt="" data-mascot="full"></div><div><div class="w-brand"><img class="rh-logo" src="assets/brand/logo-mark.webp" alt="" width="16" height="16">RHYTHME</div><h2 id="cTitle">Before your room opens</h2><p>A cosy diary for your cycle, body and mind.</p></div></div>
+      <div class="c-caps" aria-label="What Rhythme does">
+        <div><i>🌙</i><span>Cycle &amp; periods</span></div>
+        <div><i>😴</i><span>Sleep &amp; mood</span></div>
+        <div><i>🍜</i><span>Meals &amp; photos</span></div>
+        <div><i>🧘</i><span>Calm minutes</span></div>
+        <div><i>📓</i><span>Notes for your doctor</span></div>
+        <div><i>🐾</i><span>A cosy room &amp; pets</span></div>
+      </div>
+      <div class="c-promise">
+        <p><i>🔒</i>Your diary stays on this phone. Never sold, no ads.</p>
+        <p><i>🩺</i>A friend, not a doctor. Emergency in Singapore: call 995.</p>
+      </div>
+      <details class="c-full"><summary>Read the full notice</summary>
       <ul class="c-list">
         <li><span class="ms">edit_note</span><div><b>What you log</b><span>Periods, symptoms, pain, mood, sleep, meals and food photos, weight, calm minutes, and your getting-to-know-you answers, which can include pregnancy, hormones, medicines and health history.</span></div></li>
         <li><span class="ms">smartphone</span><div><b>Kept on this phone unless you choose backup</b><span>Your diary stays in this browser, so clearing the browser or losing the phone can lose it. You can export a copy any time from You. Cloud backup is a separate choice below: a copy kept in your account in a secure database hosted in Singapore, which other Rhythme users cannot see; authorised Rhythme administrators and the companies that run the database can reach it only to run, secure or support the service.</span></div></li>
@@ -139,16 +152,16 @@
         <li><span class="ms">medical_information</span><div><b>A friend, not a doctor</b><span>Predictions and Luna can be wrong. Rhythme does not diagnose, treat, or work as contraception. In an emergency in Singapore, call 995.</span></div></li>
         <li><span class="ms">cake</span><div><b>For adults</b><span>Rhythme is for people 18 and over. We keep only your confirmation of that, never your date of birth.</span></div></li>
       </ul>
+      </details>
       <div class="flag info" id="cMinor" hidden><span class="ms">info</span><div><b>Your earlier answers said you were under 18</b><span>Rhythme is now for adults only. Tick the confirmation below only if it is true today; otherwise choose “I am under 18”.</span></div></div>
       <div class="c-choices">
         <span class="c-lbl">Your choices (all optional, all off until you turn them on)</span>
         <div id="cChoices"></div>
       </div>
-      <label class="c-opt c-req"><input type="checkbox" id="cHealth"><span><b>Health tracking on this phone</b><small>Required: this is the diary itself. Periods, symptoms, sleep, meals, calm minutes and your answers stay in this browser on this phone unless you choose backup above.</small></span></label>
       <label class="c-opt c-req"><input type="checkbox" id="cAge"><span><b>I confirm I am 18 or older</b><small>Required. We keep only this confirmation, not your date of birth.</small></span></label>
       <button class="btn primary" id="cAgree" type="button" disabled><span class="ms">favorite</span>I agree, open my room</button>
       <button class="btn ghost" id="cUnder" type="button">I am under 18</button>
-      <p class="c-small">By tapping, you agree to the <a href="privacy.html">privacy notes</a> and <a href="terms.html">terms</a>. Optional features stay off unless you turn them on. <span id="cFine">No diary entries have been saved yet.</span> Notice version 4, 20 October 2026. If what we collect or where it goes changes, we will ask you again.</p>
+      <p class="c-small">By tapping, you agree to the <a href="privacy.html">privacy notice</a> and <a href="terms.html">terms</a>. <span id="cFine">No diary entries have been saved yet.</span> Notice version 4, 20 October 2026.</p>
     </div>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

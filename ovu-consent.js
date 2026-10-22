@@ -64,7 +64,7 @@
   var AI_IDS = { ai_reading: 1, food_photo_ai: 1, ai_summaries: 1 };
   function aiPaused() { return !(root.OVU_CONFIG && root.OVU_CONFIG.aiPaused === false); } /* off unless the config says so explicitly: a missing or older config keeps it paused */
   function boundTo(p) { var s = state()[p]; return !!(s && s.uid); } /* the choice was recorded on an account */
-  var PAUSED_LINE = 'Paused for now, while we move Luna’s AI help to a service licensed for Singapore. Your diary and Luna’s own rules work as usual.';
+  var PAUSED_LINE = 'Paused for now.';
   function allows(p) { if (AI_IDS[p] && aiPaused()) return false; var s = state()[p]; return !!(s && s.on); }
   function noticeText() { return PURPOSES.map(function (p) { return p.title + '. ' + p.body; }).join('\n'); }
   function sha256hex(s) {
@@ -220,19 +220,29 @@
   }
 
   /* ---------- the sheet (#consent in room.html) ---------- */
+  /* the notice shows each choice as an emoji, its title and one short line; the full consent text (the hashed body) sits
+     under "More" beside it, outside the label so opening it never flips the switch (Jamie, 22 Oct: simpler and prettier). */
+  var HINTS = {
+    cloud_sync: ['☁️', 'Keep a backup in your account, stored in Singapore.'],
+    improve_logging: ['💜', 'Share anonymous group totals to help improve Rhythme.'],
+    ai_reading: ['✨', 'Luna’s AI reads notes her own rules cannot.'],
+    food_photo_ai: ['📸', 'Luna’s AI names the food in your photos.'],
+    ai_summaries: ['📖', 'Luna’s AI writes your journal readings.']
+  };
   function toggleHTML(p, on, note) {
-    var paused = AI_IDS[p.id] && aiPaused();
-    return '<label class="c-opt' + (paused ? ' c-paused' : '') + '" data-purpose="' + p.id + '"><input type="checkbox" id="c_' + p.id + '"' + (on && !paused ? ' checked' : '') + (paused ? ' disabled' : '') + '><span><b>' + esc(p.title) + '</b><small>' + esc(paused ? PAUSED_LINE : p.body) + (note ? ' ' + esc(note) : '') + '</small></span></label>';
+    var paused = AI_IDS[p.id] && aiPaused(), h = HINTS[p.id] || ['', p.body];
+    return '<div class="c-pick"><label class="c-opt' + (paused ? ' c-paused' : '') + '" data-purpose="' + p.id + '"><input type="checkbox" id="c_' + p.id + '"' + (on && !paused ? ' checked' : '') + (paused ? ' disabled' : '') + '><span>' + (h[0] ? '<i class="c-emo" aria-hidden="true">' + h[0] + '</i>' : '') + '<b>' + esc(p.title) + '</b><small>' + esc(paused ? PAUSED_LINE : h[1]) + (note ? ' ' + esc(note) : '') + '</small></span></label>' +
+      '<details class="c-more"><summary>More</summary><p>' + esc(p.body) + '</p></details></div>';
   }
   function fillSheet(c) {
     var st = state(), returning = !!(S.profile().consent && S.profile().consent.at), minor = legacyMinor(), u = uid();
     var title = c.querySelector('#cTitle'), sub = title && title.nextElementSibling, fine = c.querySelector('#cFine'), lbl = c.querySelector('.c-lbl'), box = c.querySelector('#cChoices'), age = c.querySelector('#cAge'), minorNote = c.querySelector('#cMinor');
-    if (title) title.textContent = returning ? 'Our data notice has changed' : 'Before your room opens';
-    if (sub) sub.textContent = returning ? 'Rhythme is now for adults, has accounts and cloud backup, and asks about each use of your data separately. Please read what is new. Your diary on this phone is kept as it is.' : 'What Rhythme keeps, where it goes, and the choices that stay yours.';
+    if (title) title.textContent = returning ? 'Your data choices' : 'Before your room opens';
+    if (sub) sub.textContent = returning ? 'Have a quick look at how Rhythme keeps your data and choose what you are happy with. Your diary on this phone is kept as it is.' : 'A cosy diary for your cycle, body and mind.';
     if (fine) fine.textContent = returning ? 'Your diary on this phone is kept as it is.' : 'No diary entries have been saved yet.';
-    if (lbl) lbl.textContent = returning ? 'Your choices (all optional, shown as you have them today; anything new starts off)' : 'Your choices (all optional, all off until you turn them on)';
+    if (lbl) lbl.textContent = 'Optional extras';
     if (minorNote) { minorNote.hidden = !minor; minorNote.style.display = minor ? '' : 'none'; } /* the flag's own display rule would beat the hidden attribute */
-    if (box) box.innerHTML = PURPOSES.filter(function (p) { return !p.required && !p.hidden; }).map(function (p) {
+    if (box) box.innerHTML = PURPOSES.filter(function (p) { return !p.required && !p.hidden && !(AI_IDS[p.id] && aiPaused()); }).map(function (p) {
       var on = !!(st[p.id] && st[p.id].on && (!p.account || !st[p.id].uid || st[p.id].uid === u));
       return toggleHTML(p, on, '') + (p.id === 'ai_reading' && !aiPaused() ? AI_WHERE_HTML : '');
     }).join('');
