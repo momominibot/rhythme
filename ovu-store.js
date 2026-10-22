@@ -583,7 +583,7 @@
     'ovuluna_footsoak_reminder', 'ovuluna_luna', 'ovuluna_luna_seen', 'ovuluna_ovarian_age', 'ovuluna_labs', 'ovuluna_wellness_data', 'ovuluna_cycle_data', 'ovuluna_onboarding', 'ovuluna_language', 'ovuluna_units',
     'ovuluna_auth', 'ovuluna_preferences_v1', 'ovuluna_persona', 'ovuluna_theme', 'ovuluna_fontsize', 'ovuluna_font_size', 'ovuluna_hormone_view',
     'ov_hydro', 'ov_acupoint_routine', 'ov_result', 'ov_mascot_hide'];
-  var KEEP_ON_CLEAR = ['ovumind_auth_v1', 'ovumind_sync_v1', 'rhythme_plus_v1', 'rhythme_plus_v1_pending'];
+  var KEEP_ON_CLEAR = ['ovumind_auth_v1', 'ovumind_sync_v1', 'ovumind_sync_pos_v1', 'ovumind_sync_reset_v1', 'rhythme_plus_v1', 'rhythme_plus_v1_pending']; /* the two sync_pos/reset keys are backup bookkeeping too (ovu-sync.js) */
   var DAILY_LOG = /^ovuluna_daily_log_\d{4}-\d{2}-\d{2}$/;
   function clearAll() {
     try { if (root.OvuPodcast && root.OvuPodcast.forget) root.OvuPodcast.forget(); } catch (e) { } /* its page-close save would write the listening back */

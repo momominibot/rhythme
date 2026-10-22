@@ -44,8 +44,15 @@
     app.innerHTML = '<div class="gate">' + LUNA + '<div class="card"><h2>Rhythme staff</h2><p class="note">This page is for Rhythme staff. Sign in with the email that was invited; a code is sent to it.</p>' +
       '<div class="field"><label for="gEmail">Email</label><input type="email" id="gEmail" autocomplete="email" inputmode="email" placeholder="you@example.com"></div>' +
       '<div class="field hidden" id="gCodeWrap"><label for="gCode">Code from the email</label><input type="text" id="gCode" inputmode="numeric" autocomplete="one-time-code" placeholder="123456"></div>' +
-      '<div class="row"><button class="btn primary" id="gSend">Send code</button><button class="btn ghost hidden" id="gVerify">Sign in</button></div><p class="msg' + (bad ? ' bad' : '') + '" id="gMsg">' + esc(msg || '') + '</p></div></div>';
+      '<div class="row"><button class="btn primary" id="gSend">Send code</button><button class="btn ghost hidden" id="gVerify">Sign in</button></div>' +
+      '<div class="row"><button class="btn ghost" id="gGoogle">Sign in with Google</button></div><p class="msg' + (bad ? ' bad' : '') + '" id="gMsg">' + esc(msg || '') + '</p></div></div>';
     var email = doc.getElementById('gEmail'), code = doc.getElementById('gCode'), m = doc.getElementById('gMsg');
+    /* Google needs no email, so the 2-an-hour email limit never locks staff out (Jamie, 22 Oct). The same Gmail address
+       links to the same account, so staff membership (by account id) carries over. */
+    doc.getElementById('gGoogle').addEventListener('click', function () {
+      var btn = this; btn.disabled = true; m.className = 'msg'; m.textContent = 'Opening Google…';
+      A.signInWith('google').catch(function (err) { btn.disabled = false; m.textContent = 'Could not start Google sign-in: ' + err.message; m.className = 'msg bad'; });
+    });
     doc.getElementById('gSend').addEventListener('click', function () {
       var e = email.value.trim(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { m.textContent = 'That is not an email address.'; m.className = 'msg bad'; return; }
       this.disabled = true; m.className = 'msg'; m.textContent = 'Sending…';
@@ -364,5 +371,6 @@
     }).catch(function (e) { gate('Could not check your account: ' + e.message, true); });
   }
   doc.addEventListener('visibilitychange', function () { if (!doc.hidden && me) { loadFeed(false); loadOverview(); loadPlaza(); } });
-  boot();
+  /* finish a Google round trip (?code= in the URL) before deciding what to show */
+  (A && A.init ? A.init() : Promise.resolve({})).then(function (r) { if (r && r.error && !A.session()) return gate('Sign-in did not finish: ' + r.error, true); boot(); }, function () { boot(); });
 })(window);

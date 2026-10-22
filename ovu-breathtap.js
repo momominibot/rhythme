@@ -40,6 +40,12 @@
       '<div class="btap-card" id="btapCard">' +
         '<h2>Koi Pond</h2>' +
         '<p>Breathe comfortably. Watch the koi glide; tap the water and they slip away. You don’t need to match the ring.</p>' +
+        '<details class="btap-how"><summary><span class="ms" aria-hidden="true">menu_book</span>How to practise</summary><ol>' +
+          '<li>Sit or stand comfortably and let your shoulders drop. Let each breath be its own size.</li>' +
+          '<li>Choose a pace, or keep your own. The ring widens as you breathe in and closes as you breathe out; follow it only while it feels easy.</li>' +
+          '<li>Rest your eyes on the koi, the water or the ring. When your mind wanders, that is the practice working: notice it, and come back to the next breath.</li>' +
+          '<li>A tap on the water is one way to come back, not a task. Watching quietly counts just as much.</li>' +
+          '<li>When you stop, take one ordinary breath and notice how you feel before you carry on.</li></ol></details>' +
         '<div class="btap-chips" id="btapPresets" role="group" aria-label="Pace"></div>' +
         '<div class="btap-chips" id="btapLengths" role="group" aria-label="How long"></div>' +
         '<p class="safe">Breathe gently, without forcing a deeper or longer breath. Stop if you feel dizzy, tingly, short of breath or distressed, and return to your usual breathing.</p>' +

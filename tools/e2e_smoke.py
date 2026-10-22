@@ -716,10 +716,10 @@ async def main():
             signed = await p2.evaluate("()=>({wall: !!document.querySelector('#welcome:not([hidden])'), consent: !document.querySelector('#consent').hidden, email: JSON.parse(localStorage.getItem('ovumind_auth_v1')||'{}').user?.email, cloudSheet: !!document.querySelector('#ovuCloudSheet'), inert: document.querySelector('#main').inert === true})")
             check("the right code signs her in: the wall closes, the room is no longer inert, the data notice opens next, and the cloud prompt waits because the notice carries that choice", not signed["wall"] and signed["consent"] and signed["email"] == "smoke@example.test" and not signed["cloudSheet"] and not signed["inert"], signed)
             # the real consent controls: nothing optional pre-ticked, the button locked until the age tick
-            before = await p2.evaluate("()=>({shown: !document.querySelector('#consent').hidden, n: document.querySelectorAll('#cChoices input[type=checkbox]').length, anyOn: Array.from(document.querySelectorAll('#cChoices input')).some(i=>i.checked), age: document.querySelector('#cAge').checked, health: document.querySelector('#cHealth').checked, locked: document.querySelector('#cAgree').disabled, under: !!document.querySelector('#cUnder')})")
-            check("the notice opens with five separate choices all off, the required health line ticked, the 18+ tick unticked, the button locked and an under-18 way out", before["shown"] and before["n"] == 5 and not before["anyOn"] and not before["age"] and before["health"] and before["locked"] and before["under"], before)
-            await p2.uncheck("#cHealth"); await p2.check("#cAge"); lockedStill = await p2.evaluate("()=>document.querySelector('#cAgree').disabled"); await p2.check("#cHealth"); await p2.click("#cAgree"); await p2.wait_for_timeout(600)
-            check("the health line is still required: with it unticked, the age tick alone does not unlock the button", lockedStill)
+            before = await p2.evaluate("()=>({shown: !document.querySelector('#consent').hidden, n: document.querySelectorAll('#cChoices input[type=checkbox]').length, anyOn: Array.from(document.querySelectorAll('#cChoices input')).some(i=>i.checked), age: document.querySelector('#cAge').checked, locked: document.querySelector('#cAgree').disabled, under: !!document.querySelector('#cUnder')})")
+            check("the notice opens with five separate choices all off, the 18+ tick unticked, the button locked and an under-18 way out", before["shown"] and before["n"] == 5 and not before["anyOn"] and not before["age"] and before["locked"] and before["under"], before)
+            lockedStill = await p2.evaluate("()=>document.querySelector('#cAgree').disabled"); await p2.check("#cAge"); await p2.click("#cAgree"); await p2.wait_for_timeout(600)
+            check("the 18+ tick is the one tick: the button stays locked until it is ticked", lockedStill)
             after = await p2.evaluate("()=>{var p=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {v:p.consent&&p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed===true?p.ageAttest.version:null, purposes:(p.consentEvents||[]).map(e=>e.purpose+':'+e.action+':'+e.method).sort(), aiOn:!!ai.on, cloud:p.cloud&&p.cloud.v, hidden: document.querySelector('#consent').hidden};}")
             check("agreeing records the 18+ attestation and health tracking at notice 4, nothing else, and closes the notice", after["v"] == 4 and after["age"] == 1 and after["purposes"] == ["age_18:grant:sheet", "health_tracking:grant:sheet"] and not after["aiOn"] and not after["cloud"] and after["hidden"], after)
             await ctx2.close()
@@ -751,8 +751,8 @@ async def main():
             p4.on("pageerror", lambda e: errors.append("v2 pageerror: " + str(e)))
             await p4.goto(BASE + "room.html", wait_until="networkidle"); await p4.wait_for_timeout(900)
             rc = await p4.evaluate("()=>({shown: !document.querySelector('#consent').hidden, title: document.querySelector('#cTitle').textContent, photos: document.querySelector('#c_food_photo_ai').checked, reading: document.querySelector('#c_ai_reading').checked, cloud: document.querySelector('#c_cloud_sync').checked, age: document.querySelector('#cAge').checked, locked: document.querySelector('#cAgree').disabled, fine: document.querySelector('#cFine').textContent, welcome: !!document.querySelector('#welcome:not([hidden])')})")
-            check("a v2 consent reads the changed notice: the photo switch mirrors her setting, the rest are off, 18+ is asked afresh", rc["shown"] and rc["title"] == "Our data notice has changed" and rc["photos"] and not rc["reading"] and not rc["cloud"] and not rc["age"] and rc["locked"] and rc["fine"] == "Your diary on this phone is kept as it is." and not rc["welcome"], rc)
-            await p4.check("#c_ai_reading"); await p4.check("#cAge"); await p4.check("#cHealth"); await p4.click("#cAgree"); await p4.wait_for_timeout(700)
+            check("a v2 consent reads the changed notice: the photo switch mirrors her setting, the rest are off, 18+ is asked afresh", rc["shown"] and rc["title"] == "Your data choices" and rc["photos"] and not rc["reading"] and not rc["cloud"] and not rc["age"] and rc["locked"] and rc["fine"] == "Your diary on this phone is kept as it is." and not rc["welcome"], rc)
+            await p4.check("#c_ai_reading"); await p4.check("#cAge"); await p4.click("#cAgree"); await p4.wait_for_timeout(700)
             rd = await p4.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); var p=db.profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); var ev=p.consentEvents||[]; return {v:p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed, imports: ev.filter(e=>e.method==='import').map(e=>e.purpose).sort(), sheet: ev.filter(e=>e.method==='sheet').map(e=>e.purpose+':'+e.action).sort(), aiOn: ai.on, aiPhotos: ai.photos, events: db.events.length, hidden: document.querySelector('#consent').hidden};}")
             check("agreeing again keeps the earlier choices as imports, records the sheet's choices at notice 4 and keeps every entry", rd["v"] == 4 and rd["age"] is True and rd["imports"] == ["food_photo_ai", "health_tracking"] and rd["sheet"] == ["age_18:grant", "ai_reading:grant", "food_photo_ai:grant", "health_tracking:grant"] and rd["aiOn"] is True and rd["aiPhotos"] is True and rd["events"] == 3 and rd["hidden"], rd)
             await ctx4.close()
@@ -785,6 +785,8 @@ async def main():
             # Moon Tap: open from the mat sheet, begin, three blooms, stop after the minimum, the entry is saved
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(800)
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindTap", timeout=8000); await page.click("#mindTap"); await page.wait_for_selector("#btapBegin", timeout=8000)
+            kh = await page.evaluate("()=>({how: !!document.querySelector('#btapCard details.btap-how'), steps: document.querySelectorAll('#btapCard details.btap-how li').length, open: document.querySelector('#btapCard details.btap-how').open})")
+            check("Koi Pond: the card carries a folded How to practise list of five steps", kh["how"] and kh["steps"] == 5 and not kh["open"], kh)
             await page.click("#btapBegin"); await page.wait_for_timeout(5600)
             for _ in range(3): await page.mouse.click(195, 300); await page.wait_for_timeout(150)
             f0 = await page.evaluate("()=>{var f=OvuBreathTap.koi()[0], r=document.querySelector('#btap').getBoundingClientRect(); return {x: f.x + r.left, y: f.y + r.top, fx: f.x, fy: f.y}}")
@@ -801,6 +803,10 @@ async def main():
             # Light Flower (Jamie and Codex, 20 Oct): a flower of light; a tap lights one petal and one soft note; Stop saves only time
             await page.click("#btapDoneClose"); await page.wait_for_timeout(400)
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindFlower", timeout=8000); await page.click("#mindFlower"); await page.wait_for_selector("#lfBegin", timeout=8000)
+            lfh = await page.evaluate("()=>({how: !!document.querySelector('#lfCard details.btap-how'), steps: document.querySelectorAll('#lfCard details.btap-how li').length, paces: [...document.querySelectorAll('#lfPaces [data-pace]')].map(b=>b.dataset.pace).join(), own: (document.querySelector('#lfPaces .on')||{}).dataset.pace, safeHidden: document.querySelector('.lf-pacesafe').hidden})")
+            await page.click("#lfPaces [data-pace=longout]"); await page.wait_for_timeout(100)
+            lfh2 = await page.evaluate("()=>({safeHidden: document.querySelector('.lf-pacesafe').hidden, on: document.querySelector('#lfPaces .on').dataset.pace})")
+            check("Light Flower: a How to practise list of five steps, four breathing paces with the flower's own rhythm chosen, and the gentle-breathing line only once a pace with words is picked", lfh["how"] and lfh["steps"] == 5 and lfh["paces"] == "own,easy,steady,longout" and lfh["own"] == "own" and lfh["safeHidden"] and not lfh2["safeHidden"] and lfh2["on"] == "longout", {"lfh": lfh, "lfh2": lfh2})
             lf0 = await page.evaluate("()=>({title: document.querySelector('#lflower h2').textContent, air: !document.querySelector('.lf-air').hidden, open: !document.querySelector('#lflower').hidden, sound: OvuSound.enabled()})")
             await page.click("#lfBegin"); await page.wait_for_timeout(700)
             box = await page.evaluate("()=>{var r=document.querySelector('#lfFlower').getBoundingClientRect(); return {x: r.left + r.width/2, y: r.top + r.height*0.2, w: r.width}}")
@@ -811,6 +817,8 @@ async def main():
             lf2 = await page.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); var e=d.events.filter(x=>x.type==='mindfulness'&&x.data.kind==='lightflower'); var last=e[e.length-1]; return {n: e.length, secs: last ? last.data.seconds : 0, taps: last ? ('taps' in last.data) : null, done: !document.querySelector('#lfDone').hidden, text: document.querySelector('#lfDone b').textContent, sub: (document.querySelector('#toast .toastsub')||{}).textContent || ''}}")
             check("Light Flower opens from the Mind hub with the soft-air choice, sound on by default, and lights petals on a drawn flower", lf0["title"] == "Light Flower" and lf0["open"] and lf0["air"] and lf0["sound"] and lf1["running"] and lf1["canvas"] and lf1["flower"], {"lf0": lf0, "lf1": lf1})
             check("Stop saves only the practice time (no tap count), says the pause is saved, and the mindful line follows", lf2["n"] == 1 and lf2["secs"] >= 2 and lf2["taps"] is False and lf2["done"] and "Your pause is saved" in lf2["text"] and ("quiet detail" in lf2["sub"] or "note has faded" in lf2["sub"]), lf2)
+            lfp = await page.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); var e=d.events.filter(x=>x.type==='mindfulness'&&x.data.kind==='lightflower'); return {pace: e[e.length-1].data.pace, word: (document.querySelector('#lfBreath')||{}).textContent}}")
+            check("Light Flower: the saved practice carries the Long out pace, and the breath word was shown on the stage", lfp["pace"] == "longout" and lfp["word"] in ("in", "out"), lfp)
             await page.click("#lfDoneClose"); await page.wait_for_timeout(300)
             # water in the food diary (Jamie, 21 Oct): a record with examples of amounts, hearts once for recording, information by answers, the Water tile, the old page redirects
             wq0 = await page.evaluate("()=>({chip: !!document.querySelector('#ciQuick [data-qa=water]'), tile: (document.querySelector('.citile[data-ci=water] b')||{}).textContent, food: !!document.querySelector('.citile[data-ci=food]')})")
@@ -2332,6 +2340,44 @@ async def main():
             ft = await page.evaluate("()=>({t: document.body.innerText, est: (document.querySelector('#myEstimate')||{}).innerText||''})")
             check("the fertility page shows no invented result and her own estimate is labelled", "85%" not in ft["t"] and "surge detected" not in ft["t"].lower() and len(ft["est"]) > 10 and "Reading your calendar" not in ft["est"], ft["est"][:140])
 
+            # round four of the sync review (20 Oct): real Web Locks and real fetch, two tabs of one phone. The first tab's
+            # pull never answers; within its time limit the sync gives up, aborts the request and lets go of the lock, so
+            # the second tab's sync, queued behind it, then runs. Only ovu-store.js and ovu-sync.js load, on a page with
+            # no scripts of its own, against a host that cannot resolve: every request is answered or held here.
+            ctx8 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx8.add_init_script("window.OVU_CONFIG={supabaseUrl:'https://sync-test.invalid',supabaseKey:'k',functionsBase:'https://sync-test.invalid/functions/v1',syncRequestMs:400};")
+            hold, held_urls, failed_urls = asyncio.Event(), [], []
+            async def sync_gate(route):
+                url, m = route.request.url, route.request.method
+                if url.startswith(BASE): return await route.continue_()
+                if "sync-test.invalid/rest/v1/entries" in url and m == "GET" and not held_urls:
+                    held_urls.append(url); await hold.wait()
+                    try: await route.abort()
+                    except Exception: pass
+                    return
+                if "sync-test.invalid/rest/v1/" in url:
+                    return await route.fulfill(status=200 if m == "GET" else 201, content_type="application/json", body="[]" if m == "GET" else "")
+                await route.abort()
+            await ctx8.route("**/*", sync_gate)
+            ctx8.on("requestfailed", lambda r: failed_urls.append(r.url))
+            stub = "()=>{window.OvuAuth={session:()=>({user:{id:'u1'}}),token:()=>Promise.resolve('t'),userId:()=>'u1'}; OvuStore.setProfile({cloud:{v:1,at:'2026-10-20T00:00:00Z',uid:'u1'}}); return true;}"
+            tabs8 = []
+            for _ in range(2):
+                t = await ctx8.new_page(); await t.goto(BASE + "404.html")
+                await t.add_script_tag(url=BASE + "ovu-store.js"); await t.add_script_tag(url=BASE + "ovu-sync.js"); await t.evaluate(stub)
+                tabs8.append(t)
+            await tabs8[0].evaluate("()=>{window.__s=OvuSync.syncNow(); return true;}")
+            await tabs8[0].wait_for_timeout(50)
+            try: second = await asyncio.wait_for(tabs8[1].evaluate("()=>{var t0=performance.now(); return OvuSync.syncNow().then(r=>({r:r, ms:Math.round(performance.now()-t0)}));}"), 10)
+            except asyncio.TimeoutError: second = {"r": {}, "ms": -1, "stuck": True}
+            try: first = await asyncio.wait_for(tabs8[0].evaluate("()=>window.__s"), 10)
+            except asyncio.TimeoutError: first = {"stuck": True}
+            locks = await tabs8[0].evaluate("()=>navigator.locks.query().then(q=>({held:q.held.length, pending:q.pending.length}))")
+            await tabs8[0].wait_for_timeout(100); aborted_by_page = list(failed_urls) # before this harness lets go of the held request
+            hold.set(); await tabs8[0].wait_for_timeout(100)
+            check("real Web Locks: a pull that never answers ends the first tab's sync within its limit, and the second tab's sync then runs", bool(held_urls) and first.get("ok") is False and "too long" in (first.get("error") or "") and second["r"].get("ok") is True and second["ms"] >= 250 and locks == {"held": 0, "pending": 0}, {"first": first, "second": second, "locks": locks, "held": len(held_urls)})
+            check("and the page aborted the stalled request itself, not left open", any("rest/v1/entries" in u for u in aborted_by_page), aborted_by_page[:2])
+            await ctx8.close()
             # ---------- game music (21 Oct): opt in, one stop, silent where it must be ----------
             ctxm = await browser.new_context(viewport={"width": 390, "height": 844})
             await ctxm.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxm.add_init_script(SESSION_SEED)
