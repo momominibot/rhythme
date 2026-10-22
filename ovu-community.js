@@ -76,6 +76,7 @@
   function esc(s) { return R.esc(s); }
   function inPlaza(L) { return L && L.id === 'plaza'; }
   function notesState() { var c = S.state().community || {}; return { notes: (c.notes || []).slice(), hellos: c.hellos || {} }; }
+  function copiedNotes() { return JSON.parse(JSON.stringify(S.state().community || {})); }
 
   /* display-only nodes: the class .nb keeps them out of the room's pet and tool click handling */
   function nbNode(n, spot, cls) {
@@ -100,7 +101,8 @@
       '<div class="row"><button type="button" class="btn primary" id="nbHello"' + (said ? ' disabled' : '') + '><span class="ms">waving_hand</span>' + (said ? 'You said hello today' : 'Say hello') + '</button><button type="button" class="btn soft" id="nbVisit"><span class="ms">cottage</span>Visit her home</button></div>' +
       '<p class="help">Neighbours are samples for now. Nothing here is sent anywhere, and visiting changes nothing of theirs or yours.</p>');
     doc.getElementById('nbHello').addEventListener('click', function () {
-      var c = S.state().community || {}; c.hellos = c.hellos || {}; c.hellos[id] = S.today(); S.setState({ community: c });
+      var c = copiedNotes(); c.hellos = c.hellos || {}; c.hellos[id] = S.today();
+      try { S.commit({ community: c }); } catch (e) { R.toast('Your hello could not be saved. Please try again.', 'info'); return; }
       R.closeSheet(); R.chime('save'); R.toast(n.name + ' waves back. ' + ['A good day to you too.', 'Nice to see you.', 'See you at the fountain.'][Math.floor(Math.random() * 3)], 'waving_hand', R.moment ? R.moment('hello', { quiet: true }) : '');
       var el = doc.querySelector('.nbperson[data-nb="' + id + '"]'); if (el) { el.classList.remove('wave'); void el.offsetWidth; el.classList.add('wave'); }
     });
@@ -137,7 +139,9 @@
       '<p class="help">Your notes stay on this phone until friends can join; then you will choose what to share. No likes, no counts, no feed.</p>');
     doc.getElementById('notePin').addEventListener('click', function () {
       var t = doc.getElementById('noteText').value.trim(); if (!t) return;
-      var c = S.state().community || {}; c.notes = (c.notes || []).concat([{ text: t.slice(0, 140), date: today }]).slice(-20); S.setState({ community: c });
+      var c = copiedNotes(); c.notes = (c.notes || []).concat([{ text: t.slice(0, 140), date: today }]).slice(-20);
+      /* Keep the sheet and her words in place until the save succeeds. */
+      try { S.commit({ community: c }); } catch (e) { R.toast('Your note could not be saved. Please try again.', 'info'); return; }
       R.chime('save'); openBoard(); R.toast('Pinned. It stays with you.', 'push_pin');
     });
   }

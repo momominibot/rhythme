@@ -93,12 +93,14 @@
   function write(S, f) { S.setState({ farm: f }); }
   function takeSeed(S, crop, day) {
     if (!CROPS[crop]) return { ok: false, why: 'unknown crop' };
-    var f = farmState(S), taken = f.seedsByDay[day] || 0;
+    var f = copy(farmState(S)), taken = f.seedsByDay[day] || 0;
     if (!canGrow(f, crop)) return { ok: false, why: CROPS[crop].name + ' is not in the shed yet. Hay & Harvest on Harbour Lane sells it.' };
     if (taken >= seedsADay(f)) return { ok: false, why: 'The shed has given out its seeds for today. More tomorrow.' };
     f.seedsByDay[day] = taken + 1; f.seeds[crop] = (f.seeds[crop] || 0) + 1;
     Object.keys(f.seedsByDay).forEach(function (k) { if (k < S.addDays(day, -30)) delete f.seedsByDay[k]; }); /* a month of dates is plenty */
-    write(S, f); return { ok: true, left: seedsADay(f) - f.seedsByDay[day] };
+    /* Both the seed and its allowance stay unused if storage refuses the claim. */
+    try { if (S.commit) S.commit({ farm: f }); else write(S, f); } catch (e) { return { ok: false, why: 'That could not be saved just now.' }; }
+    return { ok: true, left: seedsADay(f) - f.seedsByDay[day] };
   }
   function plant(S, id, crop, day, ST) {
     var f = copy(farmState(S)), b = f.beds[id];

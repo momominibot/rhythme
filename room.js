@@ -924,12 +924,14 @@
     try { endTryOn(true); } catch (e) { } /* she sleeps in her own clothes */
     /* bedtime: a running practice, breathing session, Moon Tap or garden task ends quietly before she sleeps */
     try { if (practice) stopPractice(); } catch (e) { }
-    try { if (session) finishSession(false); } catch (e) { }
+    try { if (session) stopSession(true, true); } catch (e) { }
+    try { if (erinAudio) erinAudio.pause(); } catch (e) { } /* Just breathe can still be speaking its opening line. */
     try { if (window.OvuBreathTap) OvuBreathTap.close(); } catch (e) { }
     try { if (window.OvuLightFlower) OvuLightFlower.close(); } catch (e) { }
     try { if (window.OvuMorning) OvuMorning.cancel(); } catch (e) { } /* Morning start ends at once, with no save prompt */
     try { if (window.OvuSeats) OvuSeats.cancel(); } catch (e) { } /* so does a bench practice */
     try { if (hooks.hudStop) hooks.hudStop(); } catch (e) { }
+    clearTimeout(fadeTimer); fadeTimer = null; clearTimeout(medTimer); meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on');
     hud.classList.remove('on'); avatar.classList.remove('acting'); hudClockStop();
   }
   function asleep() { return !!S.state().sleeping; }
@@ -1327,37 +1329,44 @@
           '<input class="input" id="fdSearch" placeholder="Add something else: type a food…" autocomplete="off" style="margin-top:8px"><div class="results" id="fdResults"></div>';
         var inp2 = $('#fdSearch'); inp2.addEventListener('input', function () { $('#fdResults').innerHTML = resultsHTML(FD.search(inp2.value, 12)); });
         FD.load();
-        var st = $('#fdPhotoState');
-        var recognise = function (big) {
+        var st = $('#fdPhotoState'), photoRun = null;
+        /* A late photo belongs to its meal and picker, never the replacement form. */
+        function currentPhoto(run) { return photoRun === run && draft === run.draft && document.body.contains(st) && $('#fdPhotoState') === st; }
+        var recognise = function (big, run) {
+          if (!currentPhoto(run)) return;
           st.innerHTML = '<div class="fdstate busy"><span class="ms">auto_awesome</span>Luna is looking at your plate…</div>';
-          ORB.parsePhoto(big).then(function (res) {
+          return ORB.parsePhoto(big).then(function (res) {
+            if (!currentPhoto(run)) return;
             if (!res.isFood || !res.items.length) { st.innerHTML = '<div class="fdstate"><span class="ms">help</span>I could not see food in that photo. Pick what you ate below, or try a closer, brighter shot from above.</div>'; inp2.focus(); return; }
-            res.items.forEach(function (it) { draft.items.push(it); }); renderItems();
+            res.items.forEach(function (it) { run.draft.items.push(it); }); renderItems();
             var hpb = res.items.filter(function (it) { return it.source && it.source.kind === 'hpb'; }).length;
             st.innerHTML = '<div class="fdstate ok"><span class="ms">check_circle</span>Found ' + res.items.length + ' item' + (res.items.length === 1 ? '' : 's') + (res.mealName ? ': ' + esc(res.mealName) : '') + '. ' + (hpb ? hpb + ' matched to HPB values. ' : '') + 'Change the grams below if they look off, then save.</div>';
-          }).catch(function (err) { st.innerHTML = '<div class="fdstate"><span class="ms">error</span>' + esc(err.message) + ' You can pick the foods below.</div>'; });
+          }).catch(function (err) { if (currentPhoto(run)) st.innerHTML = '<div class="fdstate"><span class="ms">error</span>' + esc(err.message) + ' You can pick the foods below.</div>'; });
         };
         var onPhoto = function () {
           var f = this.files && this.files[0]; this.value = ''; if (!f) return;
-          Promise.all([FD.shrink(f, 420), FD.shrink(f, 1024)]).then(function (rs) {
-            draft.photo = rs[0].dataUrl; var t = $('#thumb'); t.src = rs[0].dataUrl; t.classList.add('on');
+          var run = { draft: draft }; photoRun = run;
+          return Promise.all([FD.shrink(f, 420), FD.shrink(f, 1024)]).then(function (rs) {
+            if (!currentPhoto(run)) return;
+            run.draft.photo = rs[0].dataUrl; var t = $('#thumb'); t.src = rs[0].dataUrl; t.classList.add('on');
             return FD.detectInImage(rs[0].image).then(function (code) {
-              if (code) { toast('Barcode found: ' + code, 'qr_code_2'); lookup(code); return; }
-              if (ORB.photosAllowed()) { recognise(rs[1].dataUrl); return; }
+              if (!currentPhoto(run)) return;
+              if (code) { toast('Barcode found: ' + code, 'qr_code_2'); lookup(code, function () { return currentPhoto(run); }); return; }
+              if (ORB.photosAllowed()) return recognise(rs[1].dataUrl, run);
               if (ORB.aiPaused && ORB.aiPaused()) { st.innerHTML = '<div class="fdstate"><span class="ms">pause_circle</span>Photo recognition is paused for now. Your photo is kept as the meal\'s thumbnail; pick the foods below.</div>'; return; }
               st.innerHTML = '<div class="fdstate ask"><span class="ms">photo_camera</span><div><b>Let Luna recognise the food?</b><span>She looks at the photo once and does not keep it. A small thumbnail stays on this phone.</span><div class="row"><button type="button" class="btn primary" id="fdAllow">Allow food photos</button><button type="button" class="btn ghost" id="fdPick">I’ll pick myself</button></div></div></div>';
-              $('#fdAllow').addEventListener('click', function () { var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c, 'jit'); recognise(rs[1].dataUrl); });
-              $('#fdPick').addEventListener('click', function () { st.innerHTML = ''; inp2.focus(); });
+              $('#fdAllow').addEventListener('click', function () { if (!currentPhoto(run)) return; var c = ORB.aiConfig(); c.photos = true; c.provider = c.provider || 'ovumind'; ORB.setAiConfig(c, 'jit'); recognise(rs[1].dataUrl, run); });
+              $('#fdPick').addEventListener('click', function () { if (currentPhoto(run)) { st.innerHTML = ''; inp2.focus(); } });
             });
-          }).catch(function (e) { toast(e.message, 'error'); });
+          }).catch(function (e) { if (currentPhoto(run)) toast(e.message, 'error'); });
         };
         $('#fdPhotoCam').addEventListener('change', onPhoto);
         $('#fdPhotoLib').addEventListener('change', onPhoto);
       }
     }
-    function lookup(code) {
+    function lookup(code, stillCurrent) {
       var m = $('#bcMsg'); if (m) message(m, 'Looking up ' + code + '…', true);
-      FD.lookupBarcode(code).then(function (food) { if (m) message(m, 'Found: ' + food.name, true); showPicker(food); }).catch(function (e) { if (m) message(m, e.message, false); else toast(e.message, 'error'); $('#customWrap').innerHTML = customFoodForm(); wireCustom(); });
+      FD.lookupBarcode(code).then(function (food) { if (stillCurrent && !stillCurrent()) return; if (m) message(m, 'Found: ' + food.name, true); showPicker(food); }).catch(function (e) { if (stillCurrent && !stillCurrent()) return; if (m) message(m, e.message, false); else toast(e.message, 'error'); $('#customWrap').innerHTML = customFoodForm(); wireCustom(); });
     }
     function wireCustom() {
       $('#cfCancel').addEventListener('click', function () { $('#customWrap').innerHTML = ''; });
@@ -2175,7 +2184,7 @@
   $('#lunaBtn').addEventListener('click', function () { if (!awake('luna')) return; chime('tap'); $('#lunaBtn').classList.remove('hinting'); openLuna(); });
 
   /* ---------- yoga mat: mindfulness with Erin projected beside you ---------- */
-  var meditating = false, session = null;
+  var meditating = false, session = null, activityGen = 0;
   /* one activity at a time (Codex sweep, 21 Oct: Everyday brushing and Just breathe could run together, and Stop then hid the
    * breathing's controls). A practice, a breathing session (the mat or a bench), a seated bench practice and Morning start
    * never overlap: the one running keeps going, anything new is refused with one line, and the running one's controls come
@@ -2209,25 +2218,33 @@
     clearTimeout(medTimer); medTimer = setTimeout(function () { if (meditating) { meditator.classList.add('on'); $('#aura').classList.add('on'); } }, 350);
   }
   var medTimer = 0; /* the mat's entrance: a quick exit (Morning start begun within 350 ms) cancels it (Codex sweep, 20 Oct) */
-  function exitMeditation() { clearTimeout(medTimer); if (!session && !practice) hudClockStop(); meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); hud.classList.remove('on'); setTimeout(function () { avatar.classList.remove('hidden'); placeAvatar(HOME, false); avatar.classList.add('idle'); }, 300); }
+  function exitMeditation() { var gen = activityGen; clearTimeout(medTimer); if (!session && !practice) hudClockStop(); meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); hud.classList.remove('on'); setTimeout(function () { if (gen !== activityGen || meditating || session || practice || asleep()) return; avatar.classList.remove('hidden'); placeAvatar(HOME, false); avatar.classList.add('idle'); }, 300); }
   meditator.addEventListener('click', function () { if (current !== 'mind') openMindfulness(); });
   /* Erin's lines play on ONE audio element per session, created and first played inside the tap that began it: a fresh
    * element started from a promise chain is silent on the iPhone, which is why her voice came and went. A guard moves
    * the chain on if a clip stalls, so "breathe in" is always followed by "breathe out". */
-  function playClip(name) {
+  function sessionCurrent(run) { return session === run && !run.stopped; }
+  /* Settling the old promise lets its chain finish quietly without borrowing the next run. */
+  function cancelRunner(run) {
+    run.stopped = true; clearTimeout(run.timer); run.timer = null;
+    if (run.cancelWait) run.cancelWait();
+    if (run.audio) { run.audio.onended = run.audio.onerror = run.audio.onloadedmetadata = null; try { run.audio.pause(); } catch (e) { } }
+  }
+  function playClip(name, run) {
     return new Promise(function (resolve) {
-      if (!session || session.stopped) return resolve();
+      if (!sessionCurrent(run)) return resolve();
       caption(CAPTION[name] || '');
-      var a = session.audio || (session.audio = new Audio()), done = false, guard = 0;
-      var fin = function () { if (done) return; done = true; clearTimeout(guard); a.onended = a.onerror = null; resolve(); };
+      var a = run.audio || (run.audio = new Audio()), done = false, guard = 0;
+      var fin = function () { if (done) return; done = true; clearTimeout(guard); a.onended = a.onerror = a.onloadedmetadata = null; if (run.cancelWait === fin) run.cancelWait = null; resolve(); };
+      run.cancelWait = fin;
       a.onended = fin; a.onerror = fin;
-      a.onloadedmetadata = function () { if (isFinite(a.duration) && a.duration > 0) { clearTimeout(guard); guard = setTimeout(fin, a.duration * 1000 + 1500); } };
+      a.onloadedmetadata = function () { if (!sessionCurrent(run)) return fin(); if (isFinite(a.duration) && a.duration > 0) { clearTimeout(guard); guard = setTimeout(fin, a.duration * 1000 + 1500); } };
       guard = setTimeout(fin, 12000);
       try { a.pause(); a.src = ERIN + name + '.mp3'; a.currentTime = 0; } catch (e) { }
       var pr = a.play(); if (pr && pr.catch) pr.catch(function () { fin(); });
     });
   }
-  function wait(ms) { return new Promise(function (resolve) { if (!session || session.stopped) return resolve(); session.timer = setTimeout(resolve, ms); }); }
+  function wait(ms, run) { return new Promise(function (resolve) { if (!sessionCurrent(run)) return resolve(); var fin = function () { clearTimeout(run.timer); run.timer = null; if (run.cancelWait === fin) run.cancelWait = null; resolve(); }; run.cancelWait = fin; run.timer = setTimeout(fin, ms); }); }
   function setOrb(phase, text) { var o = $('#orb'), t = $('#orbText'); if (o) { o.className = 'orb ' + phase; if (text) t.textContent = text; } var ho = $('#hudOrb'); ho.className = 'hud-orb ' + phase; if (text) $('#hudLine').textContent = text; }
   function caption(text) { if (!text) return; $('#hudLine').textContent = text; var t = $('#orbText'); if (t) t.textContent = text; }
   /* a running clock on the session bar (Jamie, 20 Oct: "the mindfulness can be a bit slow so we should put a timer for user
@@ -2249,8 +2266,9 @@
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (window.OvuPodcast) OvuPodcast.pause();
     if (kind !== 'erin') erin('just-breathe'); /* Erin's own session speaks for itself */
-    session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: kind === 'erin' ? new Audio() : null, timer: null };
+    var run = session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: kind === 'erin' ? new Audio() : null, timer: null };
     emit('activity', 'session', kind); /* anything else using the HUD (a greenhouse minute) hands it over before this claims it */
+    if (!sessionCurrent(run)) return;
     clearTimeout(fadeTimer); fadeTimer = null;
     hideSheet(); holo.classList.toggle('on', kind === 'erin'); hud.classList.add('on'); $('#hudTitle').textContent = kind === 'erin' ? 'With Erin' : 'Just breathe'; hudClockStart(minutes * 60000);
     var total = minutes * 60000, cycleMs = kind === 'erin' ? 8500 : 10000, hour = new Date().getHours(); /* in and a longer out, no hold */
@@ -2258,38 +2276,45 @@
     var guides = ['guide_soften', 'guide_feet', 'guide_wander', 'guide_nothing_to_fix', 'guide_quiet_work'].concat(cramps ? ['guide_cramps'] : []);
     var p = Promise.resolve();
     if (kind === 'erin') {
-      setOrb('hold', 'Hello'); p = playClip(hour >= 5 && hour < 12 ? 'greeting_morning' : hour >= 12 && hour < 17 ? 'greeting_welcome' : 'greeting_evening') /* never good morning after midnight (Jamie, 20 Oct) */ /* started inside the tap, which unlocks the element for every later line */
-        .then(function () { setOrb('hold', 'Settling in'); return playClip('meditation_begin'); });
+      setOrb('hold', 'Hello'); p = playClip(hour >= 5 && hour < 12 ? 'greeting_morning' : hour >= 12 && hour < 17 ? 'greeting_welcome' : 'greeting_evening', run) /* never good morning after midnight (Jamie, 20 Oct) */ /* started inside the tap, which unlocks the element for every later line */
+        .then(function () { if (!sessionCurrent(run)) return; setOrb('hold', 'Settling in'); return playClip('meditation_begin', run); });
     }
     p = p.then(function () {
+      if (!sessionCurrent(run)) return;
       var fixed = kind === 'erin' ? 52000 : 0, cycles = Math.max(3, Math.round((total - fixed) / cycleMs)), chain = Promise.resolve(), gi = 0;
       for (var i = 0; i < cycles; i++) {
         (function (idx) {
           /* no holds: breathe in gently, then out a little longer, at a pace that feels comfortable (Codex, 20 Oct, and the
            * reviewed breath rules in docs/design/2026-10-18-breath-tap.md: holds are never asked for) */
-          chain = chain.then(function () { if (session.stopped) return; setOrb('in', 'Breathe in gently'); if (kind === 'erin') return playClip('breathing_in').then(function () { return wait(1500); }); chime('bell', true); return wait(4000); })
-            .then(function () { if (session.stopped) return; setOrb('out', 'Breathe out slowly'); if (kind === 'erin') return playClip('breathing_out').then(function () { return wait(2500); }); return wait(6000); })
-            .then(function () { if (session.stopped || kind !== 'erin') return; if (idx % 2 === 1 && gi < guides.length) { setOrb('hold', ''); return playClip(guides[gi++]).then(function () { return wait(1500); }); } });
+          chain = chain.then(function () { if (!sessionCurrent(run)) return; setOrb('in', 'Breathe in gently'); if (kind === 'erin') return playClip('breathing_in', run).then(function () { return wait(1500, run); }); chime('bell', true); return wait(4000, run); })
+            .then(function () { if (!sessionCurrent(run)) return; setOrb('out', 'Breathe out slowly'); if (kind === 'erin') return playClip('breathing_out', run).then(function () { return wait(2500, run); }); return wait(6000, run); })
+            .then(function () { if (!sessionCurrent(run) || kind !== 'erin') return; if (idx % 2 === 1 && gi < guides.length) { setOrb('hold', ''); return playClip(guides[gi++], run).then(function () { return wait(1500, run); }); } });
         })(i);
       }
       return chain;
     });
-    if (kind === 'erin') p = p.then(function () { setOrb('hold', 'Coming back'); return playClip('meditation_end'); }).then(function () { return playClip('guide_thanks'); }).then(function () { return playClip(Math.random() < 0.5 ? 'closing_steady' : 'closing_patience'); });
-    p.then(function () { if (!session || session.stopped) return; finishSession(true); });
+    if (kind === 'erin') p = p.then(function () { if (!sessionCurrent(run)) return; setOrb('hold', 'Coming back'); return playClip('meditation_end', run); }).then(function () { return playClip('guide_thanks', run); }).then(function () { return playClip(Math.random() < 0.5 ? 'closing_steady' : 'closing_patience', run); });
+    p.then(function () { if (!sessionCurrent(run)) return; finishSession(true, run); });
   }
-  function finishSession(completed) {
-    if (!session) return;
-    var mins = Math.max(0.5, Math.round((Date.now() - session.startedAt) / 6000) / 10);
-    var ev = S.add('mindfulness', S.today(), { kind: session.kind, minutes: completed ? session.minutes : mins, completed: completed, startedAt: new Date(session.startedAt).toISOString(), guide: session.kind === 'erin' ? 'Erin Lee, Take A Pause (cloned voice clips)' : 'Breathing orb' });
-    session.stopped = true; session = null; hudClockStop();
+  function finishSession(completed, run, forNight) {
+    run = run || session; if (!run || session !== run) return;
+    cancelRunner(run); hudClockStop();
+    var elapsed = Date.now() - run.startedAt, mins = Math.round(elapsed / 6000) / 10;
+    if (!completed && elapsed < 60000) { session = null; if (!forNight) exitMeditation(); return; }
+    var ev;
+    try { ev = S.add('mindfulness', S.today(), { kind: run.kind, minutes: completed ? run.minutes : mins, completed: completed, startedAt: new Date(run.startedAt).toISOString(), guide: run.kind === 'erin' ? 'Erin Lee, Take A Pause (cloned voice clips)' : 'Breathing orb' }); }
+    catch (e) { session = null; if (!forNight) exitMeditation(); toast('Your session could not be saved.', 'error'); return; }
+    session = null;
+    if (forNight) { afterSave(ev, 'Session saved. ' + ev.data.minutes + ' min of calm added to your journal.'); return; }
     setOrb('out', completed ? 'Well done' : 'Paused'); chime('bell', true);
-    clearTimeout(fadeTimer); fadeTimer = setTimeout(function () { fadeTimer = null; if (!session && !practice) exitMeditation(); }, 2500); afterSave(ev, (completed ? 'Session complete. ' : 'Session saved. ') + (ev.data.minutes) + ' min of calm added to your journal.');
+    var gen = activityGen;
+    clearTimeout(fadeTimer); fadeTimer = setTimeout(function () { fadeTimer = null; if (gen === activityGen && !session && !practice && !asleep()) exitMeditation(); }, 2500); afterSave(ev, (completed ? 'Session complete. ' : 'Session saved. ') + (ev.data.minutes) + ' min of calm added to your journal.');
   }
-  function stopSession(fromClose) {
+  function stopSession(fromClose, forNight) {
     if (!session) { if (meditating) exitMeditation(); return; }
-    var elapsedMin = (Date.now() - session.startedAt) / 60000;
-    session.stopped = true; clearTimeout(session.timer); if (session.audio) { try { session.audio.pause(); } catch (e) { } } hudClockStop();
-    if (elapsedMin >= 1) finishSession(false); else { session = null; exitMeditation(); if (!fromClose) toast('Stopped. Nothing under a minute is recorded.', 'self_improvement'); }
+    var run = session, elapsedMin = (Date.now() - run.startedAt) / 60000;
+    cancelRunner(run); hudClockStop();
+    if (elapsedMin >= 1) finishSession(false, run, forNight); else { session = null; if (!forNight) exitMeditation(); if (!fromClose) toast('Stopped. Nothing under a minute is recorded.', 'self_improvement'); }
   }
   $('#hudStop').addEventListener('click', function () { if (practice) stopPractice(); else if (hooks.hudStop && hooks.hudStop()) return; else stopSession(false); });
   /* ---------- Listen with Erin: Take A Pause, streamed from her own Substack ---------- */
@@ -2450,8 +2475,8 @@
     $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
     if ($('#matMorning')) $('#matMorning').addEventListener('click', function () { chime('tap'); OvuMorning.open(); });
     var flowerSaved = false;
-    $('#mindFlower').addEventListener('click', function () { if (!window.OvuLightFlower) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuLightFlower.open({ onSaved: function (ev) { flowerSaved = true; afterSave(ev); }, onClose: function () { renderDeck(); if (!flowerSaved) moment('lightflower'); flowerSaved = false; } }); });
-    $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { tapSaved = true; afterSave(ev); }, onClose: function () { renderDeck(); if (!tapSaved) moment('moontap'); tapSaved = false; } }); });
+    $('#mindFlower').addEventListener('click', function () { if (!window.OvuLightFlower) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuLightFlower.open({ onSaved: function (ev) { flowerSaved = true; return afterSave(ev); }, onClose: function () { renderDeck(); if (!flowerSaved) moment('lightflower'); flowerSaved = false; } }); });
+    $('#mindTap').addEventListener('click', function () { if (!window.OvuBreathTap) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuBreathTap.open({ pet: window.OvuMascot ? OvuMascot.src(null, false) : null, onSaved: function (ev) { tapSaved = true; return afterSave(ev); }, onClose: function () { renderDeck(); if (!tapSaved) moment('moontap'); tapSaved = false; } }); });
   }
 
   /* ---------- Movement: exercise as minutes and MET-minutes, the week against WHO (ovu-exercise.js) ----------
@@ -2856,20 +2881,22 @@
   var MF = window.OvuMindful, practice = null, GUIDE = 'assets/audio/guide-interim/';
   /* one audio element per practice, first played inside the tap that began it (see playClip): later lines reuse it, and a
    * guard moves the script on if a clip stalls or is missing, so the captions and bells never wait on silence */
-  function playUrl(url) {
+  function practiceCurrent(run) { return practice === run && !run.stopped; }
+  function playUrl(url, run) {
     return new Promise(function (resolve) {
-      if (!practice || practice.stopped) return resolve();
-      var a = practice.audio || (practice.audio = new Audio()), done = false, guard = 0;
-      var fin = function () { if (done) return; done = true; clearTimeout(guard); a.onended = a.onerror = null; resolve(); };
+      if (!practiceCurrent(run)) return resolve();
+      var a = run.audio || (run.audio = new Audio()), done = false, guard = 0;
+      var fin = function () { if (done) return; done = true; clearTimeout(guard); a.onended = a.onerror = a.onloadedmetadata = null; if (run.cancelWait === fin) run.cancelWait = null; resolve(); };
+      run.cancelWait = fin;
       a.onended = fin; a.onerror = fin;
-      a.onloadedmetadata = function () { if (isFinite(a.duration) && a.duration > 0) { clearTimeout(guard); guard = setTimeout(fin, Math.max(0, a.duration - a.currentTime) * 1000 + 1500); } };
+      a.onloadedmetadata = function () { if (!practiceCurrent(run)) return fin(); if (isFinite(a.duration) && a.duration > 0) { clearTimeout(guard); guard = setTimeout(fin, Math.max(0, a.duration - a.currentTime) * 1000 + 1500); } };
       guard = setTimeout(fin, 20000);
-      if (practice.pre === url) { practice.pre = null; if (a.error || a.ended) fin(); else if (isFinite(a.duration) && a.duration > 0) { clearTimeout(guard); guard = setTimeout(fin, Math.max(0, a.duration - a.currentTime) * 1000 + 1500); } return; } /* already playing from the tap */
+      if (run.pre === url) { run.pre = null; if (a.error || a.ended) fin(); else if (isFinite(a.duration) && a.duration > 0) { clearTimeout(guard); guard = setTimeout(fin, Math.max(0, a.duration - a.currentTime) * 1000 + 1500); } return; } /* already playing from the tap */
       try { a.pause(); a.src = url; a.currentTime = 0; } catch (e) { }
       var pr = a.play(); if (pr && pr.catch) pr.catch(function () { fin(); });
     });
   }
-  function pwait(ms) { return new Promise(function (resolve) { if (!practice || practice.stopped) return resolve(); practice.timer = setTimeout(resolve, ms); }); }
+  function pwait(ms, run) { return new Promise(function (resolve) { if (!practiceCurrent(run)) return resolve(); var fin = function () { clearTimeout(run.timer); run.timer = null; if (run.cancelWait === fin) run.cancelWait = null; resolve(); }; run.cancelWait = fin; run.timer = setTimeout(fin, ms); }); }
   /* Pose and outfit images include their props (a watering can, a pillow, a wardrobe), so each one is
    * scaled by how wide the girl's head is in it: [image width relative to her head, her centre as a
    * fraction of the image]. Her head, and so her size, stays the same in every pose. The tudung covers less width than
@@ -2927,29 +2954,30 @@
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     var a = MF.byId(id); if (!a || practice) return; var v = a.variations[vi] || a.variations[0]; vi = a.variations.indexOf(v);
     if (window.OvuPodcast) OvuPodcast.pause();
-    practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: new Audio(), timer: null, total: MF.totalSecs(v), pre: null, hiddenMs: 0, hiddenAt: null };
-    try { var first = GUIDE + id + '-' + vi + '-0.mp3'; practice.audio.src = first; practice.pre = first; var pr0 = practice.audio.play(); if (pr0 && pr0.catch) pr0.catch(function () { }); } catch (e) { } /* the first line starts inside the tap, which unlocks the element for the rest */
+    var run = practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: new Audio(), timer: null, total: MF.totalSecs(v), pre: null, hiddenMs: 0, hiddenAt: null };
+    try { var first = GUIDE + id + '-' + vi + '-0.mp3'; run.audio.src = first; run.pre = first; var pr0 = run.audio.play(); if (pr0 && pr0.catch) pr0.catch(function () { }); } catch (e) { } /* the first line starts inside the tap, which unlocks the element for the rest */
     /* from the Mind hub she was on the mat, hidden: bring her back before the pose, or the practice plays to an empty room
      * (four-persona review, 20 Oct, all four Codex walkthroughs) */
     endMoment();
     if (meditating && !session) { meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on'); avatar.classList.remove('hidden'); }
     emit('activity', 'practice', id); /* as for a session: the HUD is handed over first */
+    if (!practiceCurrent(run)) return;
     clearTimeout(fadeTimer); fadeTimer = null;
-    hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting'); hudClockStart((practice.total || 0) * 1000);
+    hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting'); hudClockStart((run.total || 0) * 1000);
     var chain = Promise.resolve();
     v.steps.forEach(function (s, si) {
       chain = chain.then(function () {
-        if (!practice || practice.stopped) return;
+        if (!practiceCurrent(run)) return;
         caption(s.text); if (si) chime('bell', true);
         var t0 = Date.now();
-        return playUrl(GUIDE + id + '-' + vi + '-' + si + '.mp3').then(function () { return pwait(Math.max(0, s.secs * 1000 - (Date.now() - t0))); });
+        return playUrl(GUIDE + id + '-' + vi + '-' + si + '.mp3', run).then(function () { return pwait(Math.max(0, s.secs * 1000 - (Date.now() - t0)), run); });
       });
     });
-    chain.then(function () { if (practice && !practice.stopped) askPracticeDone(true); });
+    chain.then(function () { if (practiceCurrent(run)) askPracticeDone(true, run); });
   }
-  function askPracticeDone(finished) {
-    var p = practice; if (!p) return;
-    p.stopped = true; clearTimeout(p.timer); if (p.audio) { try { p.audio.pause(); } catch (e) { } } hudClockStop();
+  function askPracticeDone(finished, run) {
+    var p = run || practice; if (!p || practice !== p) return;
+    cancelRunner(p); hudClockStop();
     var secs = Math.round(practiceMs(p) / 1000);
     chime('bell', true); caption(finished ? 'That is the practice.' : 'Paused');
     openSheet('practiceDone', finished ? 'How was that?' : 'Stopping early', p.a.name, 'self_improvement',
@@ -2957,8 +2985,13 @@
       '<div class="row"><button type="button" class="btn primary" id="pdYes"><span class="ms">check</span>Yes, I did it</button><button type="button" class="btn ghost" id="pdNo">Not this time</button></div>' +
       '<p class="help">Save it if you really did it. A mind that wandered and came back still counts: noticing is the practice. This stays between you and your room.</p>');
     function end(confirmed) {
+      if (practice !== p) return;
+      if (confirmed && secs >= 30) {
+        try { if (!p.saved) p.saved = MF.complete(p.a.id, p.vi, secs, true, !!finished); }
+        catch (e) { toast('Your practice could not be saved. Tap Yes to retry.', 'error'); return; }
+      }
       if (!session) hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null; closeSheet();
-      if (confirmed && secs >= 30) { var r = MF.complete(p.a.id, p.vi, secs, true, !!finished); afterSave(r.event, (r.first ? 'First ' + p.a.name.toLowerCase() + ' practice! ' : '') + 'Saved to your journal.'); }
+      if (p.saved) afterSave(p.saved.event, (p.saved.first ? 'First ' + p.a.name.toLowerCase() + ' practice! ' : '') + 'Saved to your journal.');
       else toast('No worries. The practice is there whenever you are.', 'self_improvement');
     }
     p.endFn = function (c) { if (practice === p) end(c); };
@@ -2972,7 +3005,7 @@
     if (!practice) return;
     var elapsed = practiceMs(practice) / 1000;
     if (elapsed >= Math.min(60, practice.total * 0.5)) { askPracticeDone(false); return; }
-    practice.stopped = true; clearTimeout(practice.timer); if (practice.audio) { try { practice.audio.pause(); } catch (e) { } } hudClockStop();
+    cancelRunner(practice); hudClockStop();
     if (!session) hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null;
     toast('Stopped. Nothing under a minute is recorded.', 'self_improvement');
   }
@@ -3303,9 +3336,11 @@
     return best;
   }
   function afterSave(ev, text, viaLuna, alsoSaved) {
-    var res = A.analyze(ev), rw = RW.award(ev);
+    var res = A.analyze(ev), rw = { points: 0, bonus: 0 }, rewardFailed = false;
+    /* The entry already saved. A hearts failure must never ask her to log it twice. */
+    try { rw = RW.award(ev); } catch (e) { rewardFailed = true; }
     var hi = res.flags.filter(function (f) { return f.level === 'high'; })[0], w = res.flags.filter(function (f) { return f.level === 'watch'; })[0];
-    var heartsText = rw.points ? ' +' + (rw.points + rw.bonus) + ' ♥' : '';
+    var heartsText = rewardFailed ? ' Hearts could not be saved.' : rw.points ? ' +' + (rw.points + rw.bonus) + ' ♥' : '';
     /* a red flag in what was just saved is shown at once, never left for the journal (four-persona review, 20 Oct) */
     var care = topCare([ev].concat(alsoSaved || []));
     if (care) endMoment(); /* a care card always comes alone */
@@ -3318,6 +3353,7 @@
     else toast((text || 'Saved to your journal.') + heartsText, 'check_circle', line);
     var chip = $('#heartsChip'); chip.classList.remove('pop'); if (!care) { void chip.offsetWidth; chip.classList.add('pop'); }
     renderProps(); renderDeck();
+    return { rewardFailed: rewardFailed };
   }
 
   /* ---------- deck below the scene ---------- */
@@ -3429,7 +3465,7 @@
   /* a session or practice claims her (and could save in her clothes), or she leaves the room she was trying on in */
   hooks.on.activity = (hooks.on.activity || []).concat([function () { endTryOn(true); }]);
   hooks.on.layout = (hooks.on.layout || []).concat([function (L2) { if (trying && (!L2 || L2.id !== trying.at)) endTryOn(true); }]);
-  function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
+  function emit(name, a, b) { if (name === 'activity' || name === 'beforeWalk' || name === 'layout') activityGen++; (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = {
     erin: erin, /* Erin's short line for an action, by id (assets/audio/erin-actions/lines.json) */
     LAYOUTS: LAYOUTS, ART: ART, OUTFITS: OUTFITS, hotspotHandlers: hooks.hotspotHandlers,
@@ -3450,7 +3486,7 @@
     activityNow: activityNow, busyLine: busyLine, refuseBusy: refuseBusy,
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     blinking: function (on) { blinkOn = !!on; if (blinkOn) scheduleBlink(); else clearTimeout(blinkT); return blinkOn; },
-    setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on && title) { clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }
+    setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on && title) { activityGen++; clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }
   };
 
   /* ---------- boot ---------- */

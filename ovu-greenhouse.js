@@ -347,7 +347,7 @@
     R.openSheet('ghcard', it.name, { tea: 'On the potting bench', ask: 'Ask first, before any herb', house: 'A houseplant' }[p.kind] || 'The greenhouse', p.kind === 'house' ? 'potted_plant' : 'local_florist',
       body + '<div class="row"><button type="button" class="btn primary" data-act="care"><span class="ms">' + (p.kind === 'house' ? 'water_drop' : 'yard') + '</span>One mindful minute with it</button>' +
       (p.kind === 'tea' && R.openEveryday ? '<button type="button" class="btn soft" data-act="cup"><span class="ms">local_cafe</span>A mindful cup with Erin</button>' : '') + '</div>' +
-      '<p class="help">' + (p.kind === 'house' ? (it.house.steps || 'Mist, wipe a leaf, notice one thing.') : 'Water, touch a leaf, notice one thing.') + ' Saved to your journal as one minute of calm.</p>');
+      '<p class="help">' + (p.kind === 'house' ? (it.house.steps || 'Mist, wipe a leaf, notice one thing.') : 'Water, touch a leaf, notice one thing.') + ' You can choose whether to save the minute to your journal.</p>');
     doc.getElementById('sheetBody').addEventListener('click', function (e) {
       var b = e.target.closest('[data-act]'); if (!b) return;
       if (b.dataset.act === 'care') startCare(id);
@@ -367,17 +367,18 @@
    * leaving the HUD, her pose and the stop button to it (Codex reviews, 20 Oct: waiting for a timer let a practice start and
    * stop unseen, the hidden minute still saved, and a Stop tap in that window reached the minute instead of the session).
    * Walking away ends it. */
-  var caring = null, stepMs = CARE_STEP * 1000;
+  var caring = null, stepMs = CARE_STEP * 1000, careAsk = null, careAskTimer = 0;
   function other() { return !!(R.sessionOn() || (R.practiceOn && R.practiceOn())); }
   function busyToast() { if (caring && caring.kind === 'brew') R.toast('Finish the cup first.', 'local_cafe'); else R.toast('Finish the minute with the plant first.', 'potted_plant'); }
   /* one minute on the HUD, for a plant (care) or a cup of tea (brew): four lines a quarter-minute apart, Stop at any time */
   function runMinute(c, lines, pose) {
+    clearCareAsk();
     caring = Object.assign(c, { startedAt: Date.now(), timers: [], done: false });
     R.hudOn(true, c.title); R.caption(lines[0]);
     R.setPose(pose); R.els.avatar.classList.add('acting');
-    lines.forEach(function (line, i) { if (i) caring.timers.push(root.setTimeout(function () { if (!caring || caring.done) return; if (other()) return stepAside(); R.caption(line); R.chime('bell', true); }, i * stepMs)); });
-    caring.timers.push(root.setTimeout(function () { if (!caring || caring.done) return; if (other()) return stepAside(); finishCare(true); }, lines.length * stepMs));
-    R.setHudStop(function () { if (!caring) return false; finishCare(false); return true; });
+    lines.forEach(function (line, i) { if (i) c.timers.push(root.setTimeout(function () { if (caring !== c || c.done) return; if (other()) return stepAside(); R.caption(line); R.chime('bell', true); }, i * stepMs)); });
+    c.timers.push(root.setTimeout(function () { if (caring !== c || c.done) return; if (other()) return stepAside(); finishCare(true); }, lines.length * stepMs));
+    R.setHudStop(function () { if (caring !== c || c.done) return false; finishCare(false); return true; });
   }
   function startCare(id) {
     var p = plant(id); if (!p || caring || napping()) return;
@@ -397,15 +398,37 @@
   function stepAside() { var c = caring; if (!c) return; c.done = true; c.timers.forEach(root.clearTimeout); caring = null; R.setHudStop(null); }
   /* leaving, walking off, or anything else that cuts it short: if a practice or session now owns the HUD, just step aside */
   function cutShort() { if (!caring) return; if (other()) stepAside(); else finishCare(false); }
+  /* a completed minute must not replace a form or follow a newer activity */
+  function clearCareAsk() { careAsk = null; root.clearInterval(careAskTimer); careAskTimer = 0; }
+  function askCareSave(ask) {
+    clearCareAsk(); var token = {}; careAsk = token;
+    function ready() { return !caring && !(R.sheetOpen && R.sheetOpen()) && !R.sessionOn() && !(R.practiceOn && R.practiceOn()); }
+    function checkAsk() {
+      if (careAsk !== token) return;
+      if (R.asleep && R.asleep()) { clearCareAsk(); return; }
+      if (ready()) { clearCareAsk(); ask(); }
+    }
+    if (ready()) { checkAsk(); return; }
+    careAskTimer = root.setInterval(checkAsk, 400);
+  }
   function finishCare(completed) {
     var c = caring; if (!c || c.done) return; c.done = true;
     c.timers.forEach(root.clearTimeout); caring = null; R.setHudStop(null);
     R.hudOn(false); R.els.avatar.classList.remove('acting'); R.restorePose();
     if (c.kind === 'brew') return finishBrew(c, completed);
     if (!completed) { R.toast('Stopped. Thank you for the moment you gave it.', 'potted_plant'); return; }
-    var ever = S.list('mindfulness').some(function (e) { return e.data && e.data.practice === 'greenhouse'; }), ev = null;
-    try { ev = S.add('mindfulness', S.today(), { kind: 'informal', first: !ever, practice: 'greenhouse', plant: c.id, minutes: 1, completed: true, startedAt: new Date(c.startedAt).toISOString(), guide: 'Greenhouse, one mindful minute with the ' + c.name.toLowerCase() }); } catch (e) { R.toast('The minute could not be saved: ' + e.message, 'error'); }
-    if (ev) R.afterSave(ev, 'One mindful minute in the greenhouse.');
+    var ever = S.list('mindfulness').some(function (e) { return e.data && e.data.practice === 'greenhouse'; }), day = S.today(), saved = false;
+    askCareSave(function () {
+      R.openSheet('greenhouseDone', 'A moment with ' + c.name.toLowerCase(), 'One mindful minute', 'potted_plant',
+        '<p class="mintro">Save this mindful minute to your journal?</p><div class="row"><button type="button" class="btn primary" id="ghYes">Yes</button><button type="button" class="btn ghost" id="ghNo">No</button></div><p class="help">Save it if you really practised. Caring for the plant does not need a journal entry.</p>');
+      doc.getElementById('ghYes').addEventListener('click', function () {
+        if (saved) return;
+        var ev; try { ev = S.add('mindfulness', day, { kind: 'informal', first: !ever, practice: 'greenhouse', plant: c.id, minutes: 1, completed: true, confirmedReal: true, startedAt: new Date(c.startedAt).toISOString(), guide: 'Greenhouse, one mindful minute with the ' + c.name.toLowerCase() }); }
+        catch (e) { R.toast('The minute could not be saved: ' + e.message + ' Try Yes again, or tap No.', 'error'); return; }
+        saved = true; R.hideSheet(); R.afterSave(ev, 'One mindful minute in the greenhouse.');
+      });
+      doc.getElementById('ghNo').addEventListener('click', function () { saved = true; R.hideSheet(); });
+    });
   }
   /* a finished cup uses one from the basket and says the practice thank-you if today still has one; it writes no diary entry */
   function finishBrew(c, completed) {
@@ -509,7 +532,7 @@
     R.on('layout', function (L) { cutShort(); render(L); });
     R.on('beforeWalk', cutShort);
     doc.addEventListener('visibilitychange', function () { if (doc.hidden && caring) cutShort(); }); /* away from the app is not a mindful minute (persona walk, 21 Oct) */ /* walking away ends the minute (a practice that moves her takes over instead) */
-    R.on('activity', function () { stepAside(); }); /* a practice or session is starting: hand the HUD over now */
+    R.on('activity', function () { clearCareAsk(); stepAside(); }); /* a practice or session is starting: hand the HUD over now */
     if (root.OvuGameTime && root.OvuGameTime.onNewDay) root.OvuGameTime.onNewDay(function () { renderBeds(); }); /* a new day dries the soil */
     if (S.subscribe) S.subscribe(function (reason) { if (reason === 'external' || String(reason).indexOf('sync') === 0) renderBeds(); }); /* another tab moved a planter */
     R.els.props.addEventListener('click', function (e) { var p = e.target.closest('.ghplant.tappable'); if (p) { e.stopPropagation(); tapPlant(p); return; } var hb = e.target.closest('.ghbed'); if (hb) { e.stopPropagation(); tapBed(hb); } });
