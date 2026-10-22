@@ -2443,24 +2443,22 @@
     var hr = new Date().getHours(), cs = S.cycleStats(), today = S.today();
     var crampy = S.list('symptom', { from: today, to: today }).some(function (e) { return (e.data.symptoms || []).indexOf('cramps') > -1; }) || S.list('period', { from: today, to: today }).length > 0;
     var sessions = recent.length, days = {}; recent.forEach(function (e) { days[e.date] = 1; });
-    var sug = hr >= 20 || hr < 5 ? { t: 'Tonight: wind down', s: 'Two quiet minutes with the orb, then bed.', kind: 'breathe', min: 2, icon: 'bedtime' }
+    var sug = hr >= 20 || hr < 5 ? { t: 'Tonight: wind down', s: 'Breathe with the Light Flower, then bed.', kind: 'flower', min: 0, icon: 'bedtime' }
       : crampy ? { t: 'Today: ease the cramps', s: 'Three minutes with Erin, then the pressure points.', kind: 'erin', min: 3, icon: 'spa' }
       : window.OvuMorning && OvuMorning.offered(S.state(), today, new Date()) ? { t: 'This morning: Morning start', s: 'A short pause, then brushing your way. Sitting or lying is fine.', kind: 'morning', min: 0, icon: 'wb_twilight' }
       : hr < 11 ? { t: 'This morning: start slow', s: 'Three guided minutes before the day picks up.', kind: 'erin', min: 3, icon: 'wb_twilight' }
       : !mins ? { t: 'This week: a first pause', s: 'Erin guides three minutes. Nothing to get right.', kind: 'erin', min: 3, icon: 'self_improvement' }
-      : { t: 'This afternoon: a reset', s: 'Five silent minutes, follow the orb.', kind: 'breathe', min: 5, icon: 'light_mode' };
+      : { t: 'This afternoon: a reset', s: 'Breathe with the ring at the koi pond.', kind: 'koi', min: 0, icon: 'water_drop' };
     var last = S.list('mindfulness', { from: S.addDays(today, -30), to: today }).slice(-3).reverse();
     function label(e) { var k = e.data.kind; return k === 'erin' ? 'With Erin' : k === 'breathe' ? 'Just breathe' : k === 'breathtap' ? 'Koi Pond' : k === 'garden' ? 'Garden watering' : k === 'informal' ? 'Everyday practice' : 'Practice'; }
     openSheet('mind', 'Your mat', 'Erin appears beside you while you practise', 'self_improvement',
       '<div class="podshelf" id="podShelf"></div>' +
-      '<div class="matnow"><span class="ms">' + sug.icon + '</span><div><b>' + esc(sug.t) + '</b><small>' + esc(sug.s) + '</small></div>' + (sug.kind === 'morning' ? '<button type="button" class="btn primary" id="matMorning">Start</button>' : '<button type="button" class="btn primary" data-kind="' + sug.kind + '" data-min="' + sug.min + '">Start</button>') + '</div>' +
+      '<div class="matnow"><span class="ms">' + sug.icon + '</span><div><b>' + esc(sug.t) + '</b><small>' + esc(sug.s) + '</small></div>' + (sug.kind === 'morning' ? '<button type="button" class="btn primary" id="matMorning">Start</button>' : sug.kind === 'koi' || sug.kind === 'flower' ? '<button type="button" class="btn primary" data-open="' + (sug.kind === 'koi' ? 'mindTap' : 'mindFlower') + '">Start</button>' : '<button type="button" class="btn primary" data-kind="' + sug.kind + '" data-min="' + sug.min + '">Start</button>') + '</div>' +
       '<div class="mattiles">' +
         '<button type="button" class="mattile" data-kind="erin" data-min="3"><span class="ms">record_voice_over</span><b>With Erin</b><small>3 min, guided</small></button>' +
         '<button type="button" class="mattile" data-kind="erin" data-min="6"><span class="ms">record_voice_over</span><b>With Erin</b><small>6 min, longer settle</small></button>' +
-        '<button type="button" class="mattile" data-kind="breathe" data-min="2"><span class="ms">blur_circular</span><b>Just breathe</b><small>2 min, 4-4-6 with a bell</small></button>' +
-        '<button type="button" class="mattile" data-kind="breathe" data-min="5"><span class="ms">blur_circular</span><b>Just breathe</b><small>5 min, silent</small></button>' +
-        '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Koi Pond</b><small>Breathe with the ring, watch the koi, 3 to 5 min</small></button>' +
-        '<button type="button" class="mattile" id="mindFlower"><span class="ms">local_florist</span><b>Light Flower</b><small>Light, sound and a gentle breath, 2 to 5 min</small></button>' +
+        '<button type="button" class="mattile" id="mindTap"><span class="ms">water_drop</span><b>Koi Pond</b><small>Breathe with the ring over the koi</small></button>' +
+        '<button type="button" class="mattile" id="mindFlower"><span class="ms">local_florist</span><b>Light Flower</b><small>Breathe with a flower of light</small></button>' +
         '<button type="button" class="mattile" id="mindEveryday"><span class="ms">home</span><b>Everyday practice</b><small>Teeth, tea, dishes, plants</small></button>' +
         '<button type="button" class="mattile" id="mindAcu"><span class="ms">spa</span><b>Cramp relief points</b><small>Pressure points on your body</small></button>' +
         '<button type="button" class="mattile" id="mindMove"><span class="ms">directions_run</span><b>Movement</b><small>Log exercise, see your week</small></button>' +
@@ -2473,6 +2471,7 @@
     $('#mindAcu').addEventListener('click', openAcupressure);
     $('#mindMove').addEventListener('click', function () { if (session) return; chime('tap'); openExercise(); });
     $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
+    var openBtn = body.querySelector('[data-open]'); if (openBtn) openBtn.addEventListener('click', function () { var t = $('#' + openBtn.dataset.open); if (t) t.click(); }); /* breathing lives in the koi pond and the Light Flower (Jamie, 22 Oct) */
     if ($('#matMorning')) $('#matMorning').addEventListener('click', function () { chime('tap'); OvuMorning.open(); });
     var flowerSaved = false;
     $('#mindFlower').addEventListener('click', function () { if (!window.OvuLightFlower) return; if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; } chime('tap'); hideSheet(); OvuLightFlower.open({ onSaved: function (ev) { flowerSaved = true; return afterSave(ev); }, onClose: function () { renderDeck(); if (!flowerSaved) moment('lightflower'); flowerSaved = false; } }); });

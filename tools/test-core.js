@@ -4572,7 +4572,7 @@ var summarised = false;
   check('both cards carry a How to practise list of five plain steps, and the flower’s pacing shows the same gentle-breathing line the pond has', steps(lf) === 5 && steps(bt) === 5 && /lf-pacesafe/.test(lf) && /without forcing a deeper or longer breath/.test(lf) && /without forcing a deeper or longer breath/.test(bt));
   var how = (/<details class="btap-how">[\s\S]*?<\/details>/.exec(lf)[0] + /<details class="btap-how">[\s\S]*?<\/details>/.exec(bt)[0]);
   check('the instructions promise nothing and push nothing: no cure, calm-guarantee, score, streak or em dash', !/\b(cure|heal|fix|anxiety|depression|reduce stress|guarantee|score|streak|must)\b/i.test(how) && how.indexOf('—') < 0);
-  check('the mat tiles say the pond breathes with the ring and the flower adds a gentle breath', /Breathe with the ring, watch the koi/.test(rs) && /Light, sound and a gentle breath/.test(rs));
+  check('breathing lives in the koi pond and the Light Flower: no separate Just breathe tiles, and the night and afternoon suggestions open them (Jamie, 22 Oct)', /Breathe with the ring over the koi/.test(rs) && /Breathe with a flower of light/.test(rs) && !/<b>Just breathe<\/b>/.test(rs) && /kind: 'flower'/.test(rs) && /kind: 'koi'/.test(rs) && !/the orb/.test(rs));
 })();
 
 (function fastingTiming() {
