@@ -147,7 +147,8 @@
     { id: 'cycle', name: 'Cycle basics', color: '#f6c9d6', items: [['page', 'room.html#cycle', 'bloodtype', 'Your cycle', 'Phases, length and what is typical'], ['page', 'hormones.html', 'show_chart', 'Hormones 101', 'What rises and falls each cycle'], ['video', 'normal', 'A normal cycle', 'What typical looks like'], ['video', 'hormones', 'Hormones', 'Oestrogen & progesterone'], ['page', 'period-start.html', 'water_drop', 'Period start', 'Logging the first day']] },
     { id: 'fertility', name: 'Fertility', color: '#bfe3d4', items: [['page', 'fertility.html', 'spa', 'Fertile window', 'Ovulation signs, explained'], ['video', 'fertile', 'Fertile window', 'Your most fertile days'], ['page', 'journey-grow.html', 'eco', 'Trying to conceive', 'Timing, tests and support'], ['page', 'ovarian-health.html', 'menu_book', 'Understand your records', 'What your entries can and cannot show']] },
     { id: 'chapters', name: 'Life chapters', color: '#c9b6e6', items: [['page', 'life-journey.html', 'auto_stories', 'Your life journey', 'Four chapters, one body'], ['page', 'journey-nurture.html', 'favorite', 'After pregnancy', 'Recovery and cycles returning'], ['page', 'journey-peri.html', 'dark_mode', 'Perimenopause', 'Hot flushes, sleep and mood'], ['video', 'peri', 'Perimenopause', 'The transition years'], ['page', 'journey-post.html', 'wb_sunny', 'After menopause', 'Bone, heart and bleeding rules'], ['video', 'menopause', 'Menopause', 'Life after periods']] },
-    { id: 'nutrition', name: 'Nutrition', color: '#f3d49b', items: [['page', 'foods.html', 'restaurant', 'Foods by phase', 'TCM and Western notes'], ['page', 'medas14.html', 'nutrition', 'Mediterranean score', 'A 14-point check'], ['action', 'diary', 'menu_book', 'Open the food diary', 'Snap, scan or search']] },
+    { id: 'nutrition', name: 'Nutrition', color: '#f3d49b', items: [['page', 'foods.html', 'restaurant', 'Foods by phase', 'TCM and Western notes'], ['action', 'recipes:every', 'restaurant_menu', 'Recipes', 'PCOS, menopause and everyday'], ['action', 'medas', 'checklist', 'Mediterranean check', '13 everyday habits'], ['action', 'diary', 'menu_book', 'Open the food diary', 'Snap, scan or search']] },
+    { id: 'recipes', name: 'Recipes', color: '#f7c3a6', items: [['action', 'recipes:pcos', 'restaurant_menu', 'For PCOS (PMOS)', 'From Jean Hailes, reviewed 2026'], ['action', 'recipes:meno', 'spa', 'Through menopause', 'Calcium, protein, heart'], ['action', 'recipes:every', 'soup_kitchen', 'Everyday', 'Mediterranean-style, and eating out'], ['action', 'medas', 'checklist', 'Mediterranean check', '13 everyday habits']] },
     { id: 'mind', name: 'Mind & mood', color: '#b8cde0', items: [['page', 'room.html#mind', 'self_improvement', 'Mindfulness hub', 'Erin Lee’s pauses and podcasts'], ['link', 'https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change', 'article', 'The Quiet Work of Change', 'An essay by Erin'], ['page', 'mental-health.html', 'psychology', 'Mood & calm', 'When to reach for support'], ['action', 'mat', 'self_improvement', 'Sit on the mat', 'A session with Erin']] },
     { id: 'move', name: 'Movement', color: '#cfe6c4', items: [['action', 'move', 'directions_run', 'Log movement', 'Minutes, MET-minutes and your week'], ['action', 'moveguide', 'menu_book', 'Movement and your cycle', 'What the research says, with sources']] },
     { id: 'body', name: 'Body & relief', color: '#f5c6b8', items: [['action', 'bed', 'bedtime', 'Log sleep', 'Your bed in the room keeps your nights'], ['action', 'acu', 'spa', 'Acupressure on your avatar', 'Points for cramps, with evidence'], ['page', 'face-ppg.html', 'monitor_heart', 'Calm check (experimental)', 'Face camera, not a medical test']] },
@@ -626,12 +627,12 @@
   function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (twirlRun || Date.now() - twirlEnded < 1800) { if (current || practice || session || meditating || arranging || asleep()) return; goHome(); return; } /* she finishes turning, hops and says her line before walking home; anything else starting cancels it */ if (!practice && !session && !S.state().sleeping && !meditating && !current && !arranging && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
-  var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
+  var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null, sheetSeq = 0; /* counts sheets opened, so a delayed open can tell if she moved on */
   function openSheet(id, title, sub, icon, html) {
     if (current) emit('sheetReplace', id); /* a care step or a cast in the old sheet ends with it (Codex, 21 Oct) */
     careOn = false; /* a new sheet replaces Luna's chat and any card in it; Luna sets it again when she shows one */
     if (current === 'diary') stopCamera();
-    current = id; $('#sheetTitle').innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');
+    current = id; sheetSeq++; $('#sheetTitle').innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');
     sheet.classList.toggle('luna-sheet', id === 'luna'); /* Luna's chat is a floating card with her face (Jamie, 21 Oct: the Ovuluna panel) */
     $('#sheetIcon').innerHTML = id === 'luna' ? '<img class="lunaico" src="assets/room/dream/orb-luna.webp" alt="">' : '<span class="ms">' + esc(icon) + '</span>';
     /* a fresh body node each time, so listeners from the previous sheet (or a re-render of this one) never pile up */
@@ -1418,18 +1419,45 @@
       img.src = url;
     });
   }
+  /* Where each folder sits: where she put it, or else the first free place on a 4 by 3 grid that fits the wallpaper (the
+     old default stacked a third row at 96%, below the wallpaper's edge). A folder is 22% of the desk wide and, because
+     room.css scales its icon and name with the desk, under 31% tall even with a two-line name in any font, so a free
+     place keeps a 22 by 31 box clear of every other folder. If a new folder cannot get one without covering hers, the
+     whole desk goes back onto the grid and openLearn says so: never a folder on top of another. */
+  function deskSpots(pos, folders) {
+    folders = folders || FOLDERS;
+    var W = 22, H = 31, cells = [], fine = [], out = {}, taken = [], stuck = false;
+    for (var r = 0; r < 3; r++) for (var c = 0; c < 4; c++) cells.push([2 + c * 25, 4 + r * 31]);
+    for (var y = 4; y <= 64; y += 2) for (var x = 2; x <= 78; x += 2) fine.push([x, y]);
+    var clash = function (a, b) { return Math.abs(a[0] - b[0]) < W && Math.abs(a[1] - b[1]) < H; };
+    folders.forEach(function (f) { var q = pos && pos[f.id]; if (q && isFinite(q[0]) && isFinite(q[1])) { out[f.id] = [q[0], q[1]]; taken.push(q); } });
+    folders.forEach(function (f) {
+      if (out[f.id] || stuck) return;
+      var free = cells.concat(fine).filter(function (q) { return !taken.some(function (t) { return clash(q, t); }); })[0];
+      if (!free) { stuck = true; return; }
+      out[f.id] = free; taken.push(free);
+    });
+    if (!stuck) return { spots: out, tidied: false };
+    var grid = {}; folders.forEach(function (f, i) { grid[f.id] = cells[i]; }); /* 12 places; tools/test-core.js keeps FOLDERS within them */
+    return { spots: grid, tidied: true };
+  }
   function openLearn() {
-    var p = deskPrefs(); moment('learn');
+    var p = deskPrefs(), lay = deskSpots(p.pos || {}), spots = lay.spots; moment('learn');
+    if (lay.tidied) { p.pos = {}; setDeskPrefs(p); setTimeout(function () { toast('A folder had no free spot, so your desk is back on the grid. Drag them wherever you like.', 'grid_view'); }, 400); }
     openSheet('learn', 'Your desk', 'Drag the folders around; make it yours', 'computer',
       '<div class="desk"><div class="menubar"><span class="brandy"><img class="rh-logo" src="assets/brand/logo-mark.webp" alt="" width="16" height="16">RHYTHME</span><span>Learn</span><span class="sp"></span><button type="button" class="mbtn" id="wallBtn" aria-label="Change wallpaper"><span class="ms">wallpaper</span></button><span id="deskClock">' + esc(nowHM()) + '</span></div>' +
-      '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f, i) { var q = p.pos[f.id] || [2 + (i % 4) * 25, 4 + Math.floor(i / 4) * 46]; return '<button type="button" class="dicon" data-folder="' + f.id + '" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
+      '<div class="wallpaper" id="wallpaper" style="' + wallStyle(p) + '"><div class="dicons free" id="dicons">' + FOLDERS.map(function (f) { var q = spots[f.id]; return '<button type="button" class="dicon" data-folder="' + f.id + '" aria-expanded="false" aria-controls="finder" style="left:' + q[0] + '%;top:' + q[1] + '%">' + folderSVG(f.color) + '<span>' + esc(f.name) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="dock"><button type="button" data-dock="videos" aria-label="Videos"><span class="ms">play_circle</span></button><button type="button" data-dock="mind" aria-label="Erin"><span class="ms">self_improvement</span></button><button type="button" data-dock="acu" aria-label="Acupressure"><span class="ms">spa</span></button><button type="button" data-dock="luna" aria-label="Luna"><span class="ms">dark_mode</span></button><button type="button" data-dock="doctor" aria-label="Share with doctor"><span class="ms">medical_services</span></button></div></div>' +
       '<div class="wallpanel" id="wallpanel"><b>Wallpaper</b><div class="wadjust" id="wallAdjust" hidden><p><span class="ms">open_with</span>Drag your photo on the screen above to move it, and use the slider to zoom.</p><div class="field"><label for="wallZoom">Zoom</label><input type="range" id="wallZoom" min="100" max="300" step="5" value="100"></div><div class="row"><button type="button" class="btn primary" id="wallDone"><span class="ms">check</span>Done</button><button type="button" class="btn ghost" id="wallReset">Reset</button></div></div><div class="walls">' + WALLS.map(function (w) { return '<button type="button" class="wall' + (p.wall === w.id ? ' on' : '') + '" data-wall="' + w.id + '" style="' + (w.src ? 'background-image:url(' + w.src + ')' : 'background:' + SKY) + '"><span>' + esc(w.name) + '</span></button>'; }).join('') + '<button type="button" class="wall upload' + (p.wall === 'custom' ? ' on' : '') + '" data-wall="custom" style="' + (p.custom ? customWallCss(p).replace(/background-size:[^;]+/, 'background-size:cover') : '') + '"><span class="ms">add_photo_alternate</span><span>' + (p.custom ? 'My photo' : 'Upload a photo') + '</span></button></div><input type="file" id="wallFile" accept="image/*" hidden><div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="deskTidy"><span class="ms">grid_view</span>Tidy the icons</button>' + (p.custom ? '<button type="button" class="btn ghost" id="wallAdjustBtn"><span class="ms">open_with</span>Adjust my photo</button><button type="button" class="btn ghost" id="wallForget"><span class="ms">delete</span>Forget my photo</button>' : '') + '</div><p class="help">Your photo is stored only on this device.</p></div>' +
-      '<div class="finder" id="finder"></div><div class="player" id="player"></div>' +
+      '<div class="finder" id="finder" role="region"></div><div class="player" id="player"></div>' +
       '<p class="help" style="margin-top:10px">Short, sourced reads and six little videos. Nothing here is personal medical advice; bring questions to your clinician.</p>');
     function openFolder(id) {
       var f = FOLDERS.filter(function (x) { return x.id === id; })[0]; if (!f) return;
-      var fd = $('#finder');
+      var fd = $('#finder'), from = document.activeElement;
+      /* a keyboard or screen reader user lands in the folder and goes back to where they were when it closes (Codex round four) */
+      folderFrom = from && from.closest && from.closest('.dicon, [data-dock]') ? from : null;
+      $$('#dicons .dicon').forEach(function (d) { d.setAttribute('aria-expanded', String(d.dataset.folder === id)); });
+      fd.setAttribute('aria-label', f.name + ' folder');
       fd.innerHTML = '<div class="fbar"><span class="lights"><i></i><i></i><i></i></span>' + esc(f.name) + '<button class="x" aria-label="Close folder"><span class="ms">close</span></button></div>' + f.items.map(function (it) {
         if (it[0] === 'video') return '<button type="button" class="frow" data-video="' + it[1] + '"><img src="assets/eduvid/' + it[1] + '.jpg" alt=""><span><b>' + esc(it[2]) + '</b><small>' + esc(it[3]) + '</small></span></button>';
         if (it[0] === 'link') return '<a class="frow" href="' + it[1] + '" target="_blank" rel="noopener"><span class="ms">' + it[2] + '</span><span><b>' + esc(it[3]) + '</b><small>' + esc(it[4]) + '</small></span></a>';
@@ -1437,9 +1465,22 @@
         return '<a class="frow" href="' + it[1] + '"><span class="ms">' + it[2] + '</span><span><b>' + esc(it[3]) + '</b><small>' + esc(it[4]) + '</small></span></a>';
       }).join('');
       fd.classList.add('on'); fd.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (folderFrom) { var first = fd.querySelector('.frow') || fd.querySelector('.x'); if (first) first.focus({ preventScroll: true }); }
     }
-    /* drag the folders; a short press without movement opens the folder */
-    var icons = $('#dicons'), drag = null;
+    var folderFrom = null;
+    function closeFolder() {
+      $('#finder').classList.remove('on');
+      $$('#dicons .dicon').forEach(function (d) { d.setAttribute('aria-expanded', 'false'); });
+      var back = folderFrom; folderFrom = null;
+      if (back && document.contains(back)) back.focus({ preventScroll: true });
+    }
+    /* drag the folders; a tap, Enter or Space (a click) opens one, and the click that ends a drag does not (Codex round three) */
+    var icons = $('#dicons'), drag = null, dragged = 0;
+    icons.addEventListener('click', function (e) {
+      var b = e.target.closest('.dicon'); if (!b) return;
+      if (Date.now() - dragged < 500) return;
+      chime('tap'); openFolder(b.dataset.folder);
+    });
     icons.addEventListener('pointerdown', function (e) {
       var b = e.target.closest('.dicon'); if (!b) return;
       var r = icons.getBoundingClientRect();
@@ -1457,8 +1498,8 @@
     });
     function endDrag() {
       if (!drag) return; var d = drag; drag = null; d.b.classList.remove('lift');
-      if (d.moved) { var pr = deskPrefs(); pr.pos[d.id] = [Math.round(parseFloat(d.b.style.left) * 10) / 10, Math.round(parseFloat(d.b.style.top) * 10) / 10]; setDeskPrefs(pr); }
-      else { chime('tap'); openFolder(d.id); }
+      /* a drag keeps the whole desk as she sees it, so only a folder added later ever needs a place found for it */
+      if (d.moved) { dragged = Date.now(); var pr = deskPrefs(); pr.pos = {}; icons.querySelectorAll('.dicon').forEach(function (b) { pr.pos[b.dataset.folder] = [Math.round(parseFloat(b.style.left) * 10) / 10, Math.round(parseFloat(b.style.top) * 10) / 10]; }); setDeskPrefs(pr); }
     }
     icons.addEventListener('pointerup', endDrag); icons.addEventListener('pointercancel', endDrag);
     function setWall(id) { var pr = deskPrefs(); pr.wall = id; setDeskPrefs(pr); $('#wallpaper').style.cssText = wallStyle(pr); $$('.wall').forEach(function (w) { w.classList.toggle('on', w.dataset.wall === id); }); }
@@ -1505,9 +1546,9 @@
       if (e.target.closest('#deskTidy')) { var pr = deskPrefs(); pr.pos = {}; setDeskPrefs(pr); openLearn(); $('#wallpanel').classList.add('on'); return; }
       if (e.target.closest('#wallForget')) { var pr2 = deskPrefs(); pr2.custom = null; if (pr2.wall === 'custom') pr2.wall = 'cat'; setDeskPrefs(pr2); openLearn(); $('#wallpanel').classList.add('on'); return; }
       var dk = e.target.closest('[data-dock]'); if (dk) { var k = dk.dataset.dock; chime('tap'); if (k === 'videos' || k === 'mind' || k === 'doctor') openFolder(k); if (k === 'acu') openAcupressure(); if (k === 'luna') openLuna(); return; }
-      if (e.target.closest('.finder .x')) { $('#finder').classList.remove('on'); return; }
+      if (e.target.closest('.finder .x')) { closeFolder(); return; }
       var v = e.target.closest('[data-video]'); if (v) { var meta = VIDEOS.filter(function (x) { return x[0] === v.dataset.video; })[0]; stopVideo(); var pl = $('#player'); pl.innerHTML = '<video controls playsinline poster="assets/eduvid/' + meta[0] + '.jpg" src="assets/eduvid/' + meta[1] + '"></video>'; pl.classList.add('on'); player = pl.querySelector('video'); player.play().catch(function () { }); pl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
-      var act = e.target.closest('[data-action]'); if (act) { var a = act.dataset.action; if (a === 'diary') openDiary(); if (a === 'mat') tap(hotspot('mat')); if (a === 'acu') openAcupressure(); if (a === 'move') openExercise(); if (a === 'moveguide') openMoveGuide(); if (a === 'bed') tap(hotspot('bed')); }
+      var act = e.target.closest('[data-action]'); if (act) { var a = act.dataset.action; if (a === 'diary') openDiary(); if (a === 'mat') tap(hotspot('mat')); if (a === 'acu') openAcupressure(); if (a === 'move') openExercise(); if (a === 'moveguide') openMoveGuide(); if (a === 'bed') tap(hotspot('bed')); if (a === 'medas') openMedas(); if (a.indexOf('recipes') === 0) openRecipes(a.split(':')[1]); }
     });
   }
 
@@ -1564,7 +1605,9 @@
   /* after the menopause the same place in the nav reads Body (design 2026-10-21-cycle-tab-rhythm.md) */
   function labelCycleTab() { var a = $('#navCycle'); if (!a) return; var post = A.isPostmenopausal(S.profile()); var l = a.querySelector('.navlabel'), i = a.querySelector('.ms'); if (l) l.textContent = post ? 'Body' : 'Cycle'; if (i) i.textContent = post ? 'spa' : 'calendar_month'; }
   labelCycleTab(); S.subscribe(function (why) { if (why === 'profile' || why === 'external' || why === 'import') labelCycleTab(); });
+  var navSeq = 0; /* counts every tab tap, Home included, so a delayed link from boot never opens over her choice */
   function goTab(k) {
+    navSeq++;
     hideBubble();
     if (k === 'home' || !TABS[k]) { if (current) closeSheet(); setTab('home'); return; }
     if (!awake(k)) { setTab(current ? current : 'home'); return; }
@@ -1573,7 +1616,7 @@
   }
   function measureNav() { var n = $('.nav'), f = $('#frame'); if (n && f) f.style.setProperty('--navh', n.offsetHeight + 'px'); }
   measureNav(); window.addEventListener('resize', measureNav);
-  $$('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); chime('tap'); requireConsent(function () { goTab(a.dataset.tab || 'home'); }); }); });
+  $$('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); chime('tap'); navSeq++; /* the tap itself counts, even while consent is still being checked */ requireConsent(function () { goTab(a.dataset.tab || 'home'); }); }); });
 
   /* ---------- You: name, outfit, hearts, settings and your data, all in the room ---------- */
   function openChoices() {
@@ -2505,6 +2548,83 @@
     $('#mgLog').addEventListener('click', function () { chime('tap'); openExercise(); });
   }
 
+  /* ---------- recipes and the Mediterranean check (ovu-recipes.js) ---------- */
+  function recSources(ids) {
+    var refs = window.OvuEvidence ? OvuEvidence.forTopic('recipes').filter(function (e) { return !ids || ids.indexOf(e.id) > -1; }) : [];
+    return '<div class="guide on mvsec"><div class="ev"><b>Sources</b><p class="evrefs">' + refs.map(function (e) { return '<a href="evidence.html#' + e.id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + e.id + '</i></a>'; }).join('') + '</p><span>Guidance, not a diagnosis. Bring questions to a clinician you trust, and look up any number on the <a href="evidence.html" target="_blank" rel="noopener">Evidence page</a>.</span></div></div>';
+  }
+  /* a recipe opens its source's own page in a new tab; we only add a line on what is in it */
+  function recCard(r) {
+    return '<a class="rcard" href="' + esc(r.url) + '" target="_blank" rel="noopener"><span class="ms ric">' + esc(r.icon) + '</span><span class="rtx"><b>' + esc(r.title) + '</b><small>' + esc(r.why) + '</small><i>' + esc(r.src) + '<span class="ms">open_in_new</span></i></span></a>';
+  }
+  function openRecipes(group, refocus) {
+    var R = window.OvuRecipes; if (!R) return;
+    if (meditating && !session) exitMeditation();
+    var g = R.GROUPS.filter(function (x) { return x.id === group; })[0] || R.GROUPS[0];
+    openSheet('recipes', 'Recipes', 'From women\'s health and bone health charities', 'restaurant_menu',
+      '<div class="tabs" id="recTabs" role="group" aria-label="Recipes for">' + R.GROUPS.map(function (x) { return '<button type="button" aria-pressed="' + (x.id === g.id) + '" data-rg="' + x.id + '" class="' + (x.id === g.id ? 'on' : '') + '">' + esc(x.name) + '</button>'; }).join('') + '</div>' +
+      '<p class="rnote">' + esc(g.note) + '</p>' +
+      '<div class="rlist">' + R.forGroup(g.id).map(recCard).join('') + '</div>' +
+      '<h4 class="rsub"><span class="ms">location_on</span>Eating in Singapore</h4><div class="rlist">' + R.LOCAL.map(recCard).join('') + '</div>' +
+      '<p class="rnote rsafe"><span class="ms">pregnant_woman</span>' + esc(R.MEDAS_COPY.pregnancy) + '</p>' +
+      '<p class="help">' + esc(R.MEDAS_COPY.care) + '</p>' +
+      '<div class="row"><button type="button" class="btn primary" id="recMedas"><span class="ms">checklist</span>Mediterranean check</button></div>' +
+      recSources(g.id === 'pcos' ? ['E107', 'E108', 'E109', 'E117', 'E116', 'E118'] : g.id === 'meno' ? ['E110', 'E116', 'E118'] : ['E113', 'E114', 'E115', 'E116', 'E118']));
+    $('#recTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-rg]'); if (!b || b.dataset.rg === g.id) return; chime('tap'); openRecipes(b.dataset.rg, true); });
+    if (refocus) { var on = $('#recTabs [data-rg="' + g.id + '"]'); if (on) try { on.focus({ preventScroll: true }); } catch (e) { } }
+    $('#recMedas').addEventListener('click', function () { chime('tap'); openMedas(); });
+  }
+  /* The checklist answers itself as she taps (Yes or Not usually): each answer is kept on this phone (state.medas) and nothing is graded. */
+  function openMedas() {
+    var R = window.OvuRecipes; if (!R) return;
+    if (meditating && !session) exitMeditation();
+    var C = R.MEDAS_COPY;
+    /* fresh: read what is on the phone now (another tab may have saved without its storage event reaching this one yet), so a
+       tap or Clear never writes over an answer or a change saved elsewhere (Codex round four) */
+    function stored(fresh) { var saved = (fresh && S.reload ? S.reload() : S.state()).medas || {}, o = {}; R.MEDAS.forEach(function (it) { var v = saved.answers && saved.answers[it.id]; if (v === true || v === false) o[it.id] = v; }); return o; }
+    var ans = stored();
+    openSheet('medas', 'Mediterranean check', '13 everyday habits, no grades', 'checklist',
+      '<p class="rnote">' + esc(C.intro) + '</p>' +
+      '<div class="mcount" aria-live="polite"><b id="mdYes"></b><span id="mdOf"></span></div>' +
+      '<div class="mqs">' + R.MEDAS.map(function (it, i) {
+        return '<div class="mq" data-mq="' + it.id + '"><p><b>' + (i + 1) + '.</b> ' + esc(it.q) + (it.hint ? '<small>' + esc(it.hint) + '</small>' : '') + '</p>' +
+          '<div class="yn" role="group" aria-label="' + esc(it.q) + '"><button type="button" data-yn="1" aria-pressed="false">Yes</button><button type="button" data-yn="0" aria-pressed="false">Not usually</button></div></div>';
+      }).join('') + '</div>' +
+      '<div id="mdIdeas"></div>' +
+      '<p class="help">' + esc(C.wine) + '</p>' +
+      '<div class="row"><button type="button" class="btn" id="mdClear"><span class="ms">restart_alt</span>Clear my answers</button><button type="button" class="btn primary" id="mdRecipes"><span class="ms">restaurant_menu</span>All recipes</button></div>' +
+      recSources(['E111', 'E112', 'E114', 'E118']));
+    function paint() {
+      var sc = R.score(ans);
+      $('#mdYes').textContent = sc.answered ? sc.yes + ' of ' + sc.of : 'Tap Yes or Not usually';
+      $('#mdOf').textContent = sc.answered ? (sc.answered < sc.of ? sc.answered + ' of ' + sc.of + ' answered' : 'habits already in your week') : 'for each habit, as your week usually goes';
+      body.querySelectorAll('.mq').forEach(function (row) {
+        var v = ans[row.dataset.mq];
+        row.querySelectorAll('[data-yn]').forEach(function (b) { var on = (b.dataset.yn === '1') === v && v !== undefined; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+      });
+      var ideas = R.ideasFor(ans).slice(0, 6), drinks = sc.missing.indexOf('drinks') > -1;
+      $('#mdIdeas').innerHTML = ideas.length || drinks ? '<h4 class="rsub"><span class="ms">lightbulb</span>Ideas, if you would like them</h4>' + (drinks ? '<p class="rnote">' + esc(C.drinks) + '</p>' : '') + '<div class="rlist">' + ideas.map(function (x) { return recCard(x.recipe); }).join('') + '</div>' + (ideas.length ? '<p class="rnote rsafe"><span class="ms">pregnant_woman</span>' + esc(C.pregnancy) + '</p>' : '') : '';
+    }
+    /* every change is saved as a fresh copy through S.commit, which puts the store back if the phone refuses the save; the
+       screen then shows what is really kept */
+    function keep(next) {
+      try { S.commit({ medas: Object.keys(next).length ? { v: 1, at: new Date().toISOString(), answers: Object.assign({}, next) } : null }); ans = next; return true; }
+      catch (err) { toast('This phone could not save that. Its storage may be full.', 'error'); return false; }
+    }
+    body.querySelector('.mqs').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-yn]'); if (!b) return;
+      /* start from what is stored now, not from when the sheet opened, so answers saved in another tab are kept */
+      var id = b.closest('.mq').dataset.mq, v = b.dataset.yn === '1', next = stored(true);
+      if (next[id] === v) delete next[id]; else next[id] = v; /* a second tap on the same answer takes it back */
+      chime('tap'); keep(next); paint();
+    });
+    $('#mdClear').addEventListener('click', function () { chime('tap'); stored(true); keep({}); paint(); });
+    $('#mdRecipes').addEventListener('click', function () { chime('tap'); openRecipes('every'); });
+    medasRefresh = function () { if (current === 'medas') { ans = stored(); paint(); } };
+    paint();
+  }
+  var medasRefresh = null; /* the open check repaints when another tab saves (see the store subscription at boot) */
+
   /* ---------- acupressure: numbered points on your avatar, then a zoomed locator ---------- */
   var acuData = null;
   /* region illustrations (Seedream, 18 Oct) and where each point sits on them, percent of the image */
@@ -3004,8 +3124,9 @@
     return n;
   }
   function finishOnboarding(A) {
+    var fromLink = onb && onb === pendingOnb; pendingOnb = null; /* only the intro Begin started carries the link on; one she left and restarted does not */
     /* her answers came back from a backup while the intro was open: keep them, never write an empty intro over them (Codex, 21 Oct) */
-    var pr = S.profile(); if (onb && onb.openedAt && pr.onboarded && pr.onboardedAt && Date.parse(pr.onboardedAt) > onb.openedAt) { closeSheet(); toast('Your answers came back from your backup. Update my intro is under the window if anything has changed.', 'cloud_done'); return; }
+    var pr = S.profile(); if (onb && onb.openedAt && pr.onboarded && pr.onboardedAt && Date.parse(pr.onboardedAt) > onb.openedAt) { closeSheet(); toast('Your answers came back from your backup. Update my intro is under the window if anything has changed.', 'cloud_done'); pendingRoute = ''; return; }
     var num = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : null; };
     var patch = { name: A.name || S.profile().name || '', ageRange: A.ageRange || '', ageBand: '', minorAck: '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: (function () { var r = A.periodRecall, d = r ? recallDays(recallState(A)) : []; return r && r.latest === 'yes' && d.length ? d[d.length - 1] : ''; })(), cycleLength: null, periodLength: num(A.periodLength), periodLengthAnswer: A.periodLength || '', periodRecall: A.periodRecall ? Object.assign({}, A.periodRecall, { capturedAt: new Date().toISOString() }) : null, cycleVaries: false, bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), menoStatus: A.menoStatus || '', lifeStage: A.regularity === 'none12' && (A.menoStatus === 'yes' || (A.menoStatus !== 'no' && A.menoStatus !== 'unsure' && ['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1)) && /* her own answer counts, and a No or Not sure is never overridden by age (Codex sweep, 21 Oct) */ /* her own answer counts when she skips her age (menopause walk, 21 Oct) */ A.pregState !== 'pregnant' && A.pregState !== 'postpartum' && !(A.hormones || []).some(function (x) { return x !== 'none' && x !== 'other' && x !== 'iud_cu' && x !== 'hrt'; }) ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), onboarded: true, onboardedAt: new Date().toISOString() };
     patch.birthday = (window.OvuBirthday && OvuBirthday.clean(A.birthday)) || null; /* the intro's birthday step: a month and a day, or none */
@@ -3017,10 +3138,19 @@
     var gotScale = false; if (A.wantScale === 'yes') { try { RW.buy('scale'); gotScale = true; } catch (e) { gotScale = RW.ledger().owned.indexOf('scale') > -1; } }
     onb = null; closeSheet(); updateGreeting(); renderDeck(); renderProps();
     toast('Welcome home' + (patch.name ? ', ' + patch.name : '') + '. ' + (gotScale ? 'Your scale is by the rug, and 15 hearts are left for your nest.' : '20 hearts to start your nest.'), 'favorite');
+    if (fromLink) takePending(); else pendingRoute = '';
   }
   /* ---------- data notice and the 18+ gate: ovu-consent.js owns the record and the sheet; this is the room's doorway ---------- */
   function hasConsent() { return !!(window.OvuConsent && !OvuConsent.needsSheet()); }
   function requireConsent(next) { if (!window.OvuConsent) { toast('Rhythme could not load its consent record. Please reload.', 'error'); return; } OvuConsent.require(next, { chime: chime, toast: toast }); }
+  /* where a link into the room asked to go (room.html#medas and so on); a new account keeps it until the intro is done */
+  var pendingRoute = '', pendingOnb = null; /* the intro that the link waits behind */
+  function openRoute(hk) {
+    if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'medas') openMedas(); else if (hk === 'recipes') openRecipes(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk);
+  }
+  /* opened at once, never on a timer: a delayed open could cover a sheet she opened in the meantime (Codex round two) */
+  function takePending() { var r = pendingRoute; pendingRoute = ''; if (r && r !== 'onboarding') openRoute(r); }
+  function introForLink() { openOnboarding(0, {}); pendingOnb = onb; }
   /* The first screen is the sign-in wall (Jamie, 21 Oct: an account before anything): Apple, Google, or a six-digit code by email.
      Signing in never touches the diary on this phone. The data notice, and the intro for a new account, follow the first sign-in. */
   var wallWired = false;
@@ -3061,6 +3191,7 @@
     return o === u;
   }
   function wrongAccount() {
+    pendingRoute = ''; pendingOnb = null;
     try { closeSheet(); } catch (e) { }
     resetWallForm(); showWelcome();
     var note = $('#wNote'); if (note) note.textContent = 'This phone has another account’s diary. Sign in with that account to open it.';
@@ -3071,7 +3202,7 @@
     var w = $('#welcome'); if (w) w.hidden = true; wallInert(false); resetWallForm();
     requireConsent(function () {
       S.setState({ welcomeSeen: true });
-      var go = function () { if (!S.profile().onboarded) openOnboarding(0, {}); else toast('Welcome back.', 'favorite'); };
+      var go = function () { if (!S.profile().onboarded) introForLink(); else if (pendingRoute) takePending(); else toast('Welcome back.', 'favorite'); };
       /* a backup may hold her answers: let the first restore land before the intro is offered, so it is never written over them (Codex, 21 Oct) */
       if (!S.profile().onboarded && window.OvuSync && OvuSync.canSync()) { toast('Checking your backup…', 'cloud_sync'); OvuSync.syncNow().then(go, go); } else go();
     });
@@ -3326,22 +3457,22 @@
       var c = $('#consent'); if (c && !c.hidden) c.hidden = true; var cs = document.getElementById('ovuCloudSheet'); if (cs) cs.remove();
       resetWallForm(); showWelcome();
     });
-    S.subscribe(function (reason) { if (reason === 'external' || (reason && reason.indexOf('sync') === 0)) { renderDeck(); renderProps(); updateGreeting(); } });
+    S.subscribe(function (reason) { if (reason === 'external' || (reason && reason.indexOf('sync') === 0)) { renderDeck(); renderProps(); updateGreeting(); if (medasRefresh) medasRefresh(); } });
     $('#journalBtn').href = 'journal.html'; $('#shareBtn').href = 'journal.html#share';
     if (!S.state().tourDone) { setTimeout(function () { $('#hint').classList.add('on'); }, 1200); setTimeout(function () { $('#hint').classList.remove('on'); S.setState({ tourDone: true }); }, 7000); }
     if (!S.state().lunaSeen) { setTimeout(function () { $('#lunaBtn').classList.add('hinting'); }, 2500); setTimeout(function () { $('#lunaBtn').classList.remove('hinting'); S.setState({ lunaSeen: true }); }, 9000); }
     if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () { });
     RM.start(function (h) { chime('bell', true); toast(h.item.label + (h.item.note ? ' · ' + h.item.note : ''), h.item.icon); });
     document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } if (e.target.closest('#arrDone')) exitArrange(false); if (e.target.closest('#arrReset')) exitArrange(true); });
-    var hk = (location.hash || '').slice(1), bootAt = Date.now();
+    var hk = (location.hash || '').slice(1), bootAt = Date.now(), seq0 = sheetSeq, nav0 = navSeq; /* counted from now: a tap while sign-in is still settling counts too */
     var lift = function () { $('#loading').classList.add('hidden'); joy(); };
     authReady.then(function (r) {
       if (r && r.error) toast(r.error, 'error');
-      if (!(window.OvuAuth && OvuAuth.isSignedIn())) { if (!wallOpen()) showWelcome(); }
+      if (!(window.OvuAuth && OvuAuth.isSignedIn())) { if (hk && hk !== 'onboarding') pendingRoute = hk; if (!wallOpen()) showWelcome(); }
       else if (wallOpen()) afterSignIn(); /* a provider round trip signed her in while the wall waited */
       else if (hk === 'onboarding') setTimeout(function () { requireConsent(function () { openOnboarding(0, {}); }); }, 400);
-      else if (!S.profile().onboarded && !S.state().welcomeSeen) requireConsent(function () { S.setState({ welcomeSeen: true }); openOnboarding(0, {}); });
-      else setTimeout(function () { requireConsent(function () { if (hk === 'luna') openLuna(); else if (hk === 'learn') openLearn(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk); }); }, hk ? 600 : 0);
+      else if (!S.profile().onboarded && !S.state().welcomeSeen) { pendingRoute = hk; requireConsent(function () { S.setState({ welcomeSeen: true }); introForLink(); }); }
+      else { setTimeout(function () { requireConsent(function () { if (hk && (sheetSeq !== seq0 || navSeq !== nav0 || current)) return; /* she already opened something or tapped a tab: leave it */ openRoute(hk); }); }, hk ? 600 : 0); }
       setTimeout(lift, Math.max(0, 500 - (Date.now() - bootAt))); /* the veil lifts only once the session question is settled */
     });
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
