@@ -232,10 +232,12 @@
              copy the rule is the one every link follows: the account's game is the game and the phone's rewards join it
              (what the phone did to its own farm while unlinked yields to the account's farm, as it would have at the first
              link); a tester phone takes the account copy alone, its tester rewards never join (Codex, 22 Oct) */
-          if (p.remote) apply(uid, p.tainted ? clone(p.remote) : linkMerge(now, p.remote));
+          var tnt = !!(p.tainted || m.tainted); /* tester mode at the link, or entered since: tester play never joins the account (Codex, 22 Oct) */
+          if (tnt) apply(uid, clone(p.remote || p.save)); /* the account copy alone (what the server now holds); tester play on this phone is let go, as the tainted pull does */
+          else if (p.remote) apply(uid, linkMerge(now, p.remote));
           /* the hearts earned here since the link was packed ride in the journal, so a pull of a newer account copy
              (another phone wrote first) replays them instead of losing them (Codex, 22 Oct) */
-          patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), journal: extra && !p.tainted ? [{ id: 'l' + Date.now(), kind: 'other', n: extra }] : [], pending: null, seq: 1, acked: 0, hash: hashOf(p.save) });
+          patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), journal: extra && !tnt ? [{ id: 'l' + Date.now(), kind: 'other', n: extra }] : [], pending: null, seq: tnt ? 0 : 1, acked: 0, hash: tnt ? hashOf(pack(S.state())) : hashOf(p.save) });
           schedule();
           return 'linked';
         }

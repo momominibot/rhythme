@@ -153,4 +153,21 @@ The unchanged farm planting/watering/harvest writers and greenhouse basket write
 
 
 
-## Round 9 (after the resend journal keeps the hearts earned since the link was packed): see below once it ends
+## Round 9 (after the resend journal keeps the hearts earned since the link was packed): HOLD on one item
+
+1. **Both requested cases pass.** With B’s intervening +7, A resends and reaches **25**, stable across repeated syncs. Without B, the result is **18**, with no double counting. The preserved journal at `ovu-gamesave.js:238` feeds newer-revision replay (`:286–288`); the same-revision path uploads the current pack (`:291–293`). The parent commit reproduced **22**.
+
+2. **P1 remains: tester mode entered after the link was packed.** Reproduced with real `OvuStore` and `OvuRewards.buy('cat')`:
+   - Account 10 + A’s 5; link accepted, reply lost.
+   - Enable tester, buy the 150-heart cat free, disable tester, resend.
+   - Account ends with **15 hearts and the unpaid cat**.
+
+   Current `m.tainted` is true, but pending `p.tainted` remains false. Resend trusts the older flag (`ovu-gamesave.js:235`), then clears current taint (`:238`), bypassing the protective pull (`:285`). Tester purchasing bypasses payment at `ovu-rewards.js:166–171`. Recovery must honor taint acquired since packing before merging or uploading.
+
+   No additional P1 reproduced in the other tested link/resend/clash/pull cases.
+
+`node tools/test-core.js`: **1,791 passed, 0 failed**. No files modified.
+
+**Verdict: HOLD.**
+
+## Round 10 (after the resend honours tester mode entered since the link was packed): see below once it ends
