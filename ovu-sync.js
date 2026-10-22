@@ -462,6 +462,7 @@
       var uid = a.userId();
       return rest('DELETE', '/entries?user_id=eq.' + encodeURIComponent(uid), null, 'return=minimal', token)
         .then(function () { return rest('DELETE', '/profiles?user_id=eq.' + encodeURIComponent(uid), null, 'return=minimal', token); })
+        .then(function () { return root.OvuGameSave ? OvuGameSave.forget(uid, token) : null; }) /* the game save is marked deleted too (22 Oct); a real failure is reported */
         .then(function () { resetPosition(); return { ok: true }; });
     });
   }

@@ -2485,7 +2485,7 @@
   var EX = window.OvuExercise || null;
   function moveWeekHTML(wk) {
     var W = EX.WHO, top = W.moderateMax * 1.2, pct = function (n) { return Math.round(Math.max(0, Math.min(100, n / top * 100)) * 10) / 10; };
-    var extra = (wk.light ? ' Plus ' + wk.light + ' min of light movement.' : '') + (wk.strengthMinutes ? ' Plus ' + wk.strengthMinutes + ' min of strength work.' : '') + (wk.metUnknown ? ' ' + wk.metUnknown + (wk.metUnknown === 1 ? ' entry has no MET value, so it is' : ' entries have no MET value, so they are') + ' left out of MET-minutes.' : '');
+    var extra = (wk.pulse ? ' Plus ' + wk.pulse + (wk.pulse === 1 ? ' PULSE break' : ' PULSE breaks') + ' (' + Math.round((wk.pulseSeconds || 0) / 6) / 10 + ' min, not counted toward WHO).' : '') + (wk.light ? ' Plus ' + wk.light + ' min of light movement.' : '') + (wk.strengthMinutes ? ' Plus ' + wk.strengthMinutes + ' min of strength work.' : '') + (wk.metUnknown ? ' ' + wk.metUnknown + (wk.metUnknown === 1 ? ' entry has no MET value, so it is' : ' entries have no MET value, so they are') + ' left out of MET-minutes.' : '');
     return '<div class="mvweek" id="mvWeek"><div class="mvhead"><b>' + wk.moderateEquivalent + '</b><span>moderate minutes in the last 7 days</span>' + infoBtn('move') + '</div>' +
       '<div class="mvbar" role="img" aria-label="' + wk.moderateEquivalent + ' minutes; WHO suggests 150 to 300 a week"><i class="range" style="left:' + pct(W.moderateMin) + '%;width:' + (pct(W.moderateMax) - pct(W.moderateMin)) + '%"></i><i class="fill" style="width:' + pct(wk.moderateEquivalent) + '%"></i></div>' +
       '<div class="mvscale" aria-hidden="true"><span style="left:0">0</span><span style="left:' + pct(W.moderateMin) + '%">150</span><span style="left:' + pct(W.moderateMax) + '%">300</span></div>' +
@@ -2501,7 +2501,75 @@
   }
   function moveRowHTML(e) {
     var d = e.data || {}, mm = EX.metMinutes(d), today = S.today();
-    return '<li data-id="' + esc(e.id) + '"><span><b>' + esc(d.label || 'Movement') + '</b><small>' + esc(d.detail || '') + '</small></span><small>' + esc(e.date === today ? 'Today' : prettyDate(e.date)) + ' · ' + (Number(d.minutes) || 0) + ' min' + (mm !== null ? ' · ' + Math.round(mm) + ' MET-min' : '') + '</small><button type="button" class="mvdel" data-mdel="' + esc(e.id) + '" aria-label="Remove this entry"><span class="ms">close</span></button></li>';
+    return '<li data-id="' + esc(e.id) + '"><span><b>' + esc(d.label || 'Movement') + '</b><small>' + esc(d.detail || '') + '</small></span><small>' + esc(e.date === today ? 'Today' : prettyDate(e.date)) + ' · ' + (d.activity === 'pulse' ? (Number(d.seconds) || 0) + ' s' : (Number(d.minutes) || 0) + ' min') + (mm !== null ? ' · ' + Math.round(mm) + ' MET-min' : '') + '</small><button type="button" class="mvdel" data-mdel="' + esc(e.id) + '" aria-label="Remove this entry"><span class="ms">close</span></button></li>';
+  }
+  /* ---------- PULSE: a short movement break (ovu-pulse.js; Dr Vernece's library, Codex review 22 Oct) ----------
+   * Only cards a qualified reviewer has signed show; tester mode also sees the drafts. Before you move, then 45 seconds of
+   * movement with one cue and Stop, then 10 seconds of rest. Nothing saves until "Log what I did". Leaving the sheet or the
+   * app ends the break early. */
+  function pulseTester() { var t = S.state().tester; return !!(t && t.hearts); }
+  function pulseCardsHTML() {
+    var P = window.OvuPulse; if (!P) return '';
+    var ms = P.visible(pulseTester()); if (!ms.length) return '';
+    return '<div class="field"><span class="lbl">PULSE · a short movement break</span><div class="pulsecards" id="pulseCards">' + ms.map(function (m) {
+      return '<button type="button" class="pulsecard" data-pulse="' + m.id + '"><span class="ms">' + esc(m.icon) + '</span><span><b>' + esc(m.name) + '</b><small>' + esc(m.settings.map(function (k) { return P.SETTINGS[k]; }).join(' · ')) + ' · 1 min</small></span>' + (P.reviewed(m) ? '' : '<i class="pdraft">Draft</i>') + '</button>';
+    }).join('') + '</div></div>';
+  }
+  var pulseRun = null;
+  function pulseCancel() { if (pulseRun) { clearInterval(pulseRun.timer); pulseRun = null; } }
+  function openPulse(id) {
+    var P = window.OvuPulse, m = P && P.move(id); if (!m) return;
+    if (refuseBusy()) return;
+    if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
+    pulseCancel();
+    var setting = m.settings[0], B = P.BEFORE;
+    openSheet('pulse', m.name, 'PULSE · a short movement break', 'directions_run',
+      '<div class="pulsebefore"><b>' + esc(B.title) + '</b>' + B.lines.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '<p class="pulseurgent"><span class="ms">emergency</span>' + esc(B.urgent) + '</p></div>' +
+      '<div class="field"><span class="lbl">Where are you?</span><div class="chips" id="puSet">' + m.settings.map(function (k) { return '<button type="button" class="chipbtn' + (k === setting ? ' on' : '') + '" data-set="' + k + '">' + esc(P.SETTINGS[k]) + '</button>'; }).join('') + '</div></div>' +
+      '<p class="pulsesetup"><b>Set up</b> ' + esc(m.setup) + '</p><p class="pulsesetup"><b>Easier</b> ' + esc(m.easy) + '</p><p class="help">' + esc(m.skip) + '</p>' +
+      (P.reviewed(m) ? '' : '<p class="help pdraftline">Draft card, waiting for review. Shown in tester mode only.</p>') +
+      '<div class="row"><button type="button" class="btn primary" id="puReady"><span class="ms">play_arrow</span>I am ready</button><button type="button" class="btn ghost" id="puSkip">Skip</button></div>');
+    erin('pulse-before');
+    $('#puSet').addEventListener('click', function (e) { var b = e.target.closest('[data-set]'); if (!b) return; setting = b.dataset.set; $$('[data-set]', this).forEach(function (x) { x.classList.toggle('on', x === b); }); });
+    $('#puSkip').addEventListener('click', function () { chime('tap'); openExercise(); });
+    $('#puReady').addEventListener('click', function () {
+      chime('tap');
+      $('#sheetBody').innerHTML = '<div class="pulserun"><div class="pulseclock" id="puClock">' + m.work + '</div><p class="pulsecue">' + esc(m.cue) + '</p><p class="help" id="puPhase">Move gently, at your own pace.</p><div class="row"><button type="button" class="btn ghost" id="puStop"><span class="ms">stop</span>Stop</button></div></div>';
+      var t0 = performance.now(); pulseRun = { t0: t0, phase: 'work', active: 0, timer: setInterval(tick, 250) };
+      erin('pulse-start');
+      $('#puStop').addEventListener('click', function () { stop(); });
+    });
+    function tick() {
+      var r = pulseRun; if (!r) return;
+      if (current !== 'pulse' || document.hidden) { stop(true); return; }
+      var el = (performance.now() - r.t0) / 1000;
+      if (r.phase === 'work') {
+        if (el >= m.work) { r.active = m.work; r.phase = 'rest'; r.t1 = performance.now(); $('#puPhase').textContent = 'Rest. Breathe normally.'; $('#puStop').hidden = true; }
+        $('#puClock').textContent = Math.max(0, Math.ceil(m.work - el));
+      } else {
+        var rr = (performance.now() - r.t1) / 1000;
+        $('#puClock').textContent = Math.max(0, Math.ceil(m.rest - rr));
+        if (rr >= m.rest) done(false);
+      }
+    }
+    function stop(quiet) {
+      var r = pulseRun; if (!r) return;
+      if (r.phase === 'work') r.active = Math.min(m.work, (performance.now() - r.t0) / 1000);
+      done(r.phase === 'work', quiet);
+    }
+    function done(early, quiet) {
+      var r = pulseRun; if (!r) return; pulseCancel();
+      var secs = Math.round(r.active);
+      if (early && !quiet) erin('pulse-stop');
+      if (current !== 'pulse') return; /* she left the sheet: nothing is saved */
+      $('#sheetBody').innerHTML = '<div class="pulsedone"><b>' + (secs ? 'You moved for ' + secs + ' seconds.' : 'You stopped before starting. That is fine.') + '</b><p class="help">Log it only if you really did it. Logging movement earns hearts once a day, the same for a short break.</p>' +
+        '<div class="row">' + (secs ? '<button type="button" class="btn primary" id="puLog"><span class="ms">check</span>Log what I did</button>' : '') + '<button type="button" class="btn ghost" id="puNot">Not now</button></div></div>';
+      $('#puNot').addEventListener('click', function () { chime('tap'); openExercise(); });
+      var lg = $('#puLog'); if (lg) lg.addEventListener('click', function () {
+        var ev; try { ev = S.add('exercise', S.today(), P.entryFor(m, setting, secs, early), 'room'); } catch (e) { toast('It could not be saved: ' + e.message, 'error'); return; }
+        erin('pulse-log'); afterSave(ev, 'A short movement break.'); openExercise();
+      });
+    }
   }
   function openExercise(pre) { /* pre: an activity id to choose at once (the gym's stations, ovu-lane.js) */
     if (!EX) return;
@@ -2511,7 +2579,7 @@
     var ctx = EX.periodContext(S.byDate(today)), recent = S.list('exercise', { from: from, to: today }).reverse().slice(0, 10);
     var st = { act: null, variant: null };
     openSheet('move', 'Movement', 'Log what you did and see your week', 'directions_run',
-      (ctx ? movePeriodHTML(ctx) : '') + moveWeekHTML(wk) +
+      (ctx ? movePeriodHTML(ctx) : '') + moveWeekHTML(wk) + pulseCardsHTML() +
       '<div class="field"><span class="lbl">What did you do?</span><div class="mvacts" id="mvActs">' + EX.ACTIVITIES.map(function (a) { return '<button type="button" class="mvact" data-mact="' + a.id + '" aria-pressed="false"><span class="ms">' + a.icon + '</span><span>' + esc(a.label) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="field" id="mvVarField" hidden><span class="lbl">How did it go?</span><div class="mvvars" id="mvVars"></div></div>' +
       '<div class="field"><label for="mvMin">Minutes</label><input class="input" id="mvMin" type="number" inputmode="numeric" min="1" max="' + EX.MAX_MINUTES + '" step="1" value="30"><div class="chips mvquick" id="mvQuick">' + [10, 20, 30, 45, 60, 90].map(function (n) { return '<button type="button" class="chipbtn' + (n === 30 ? ' on' : '') + '" data-min="' + n + '">' + n + ' min</button>'; }).join('') + '</div></div>' +
@@ -2560,6 +2628,7 @@
     });
     var acu = $('#mvAcu'); if (acu) acu.addEventListener('click', function () { chime('tap'); openAcupressure(); });
     $('#mvGuide').addEventListener('click', function () { chime('tap'); openMoveGuide(); });
+    var pc = $('#pulseCards'); if (pc) pc.addEventListener('click', function (e) { var b = e.target.closest('[data-pulse]'); if (!b) return; chime('tap'); openPulse(b.dataset.pulse); });
     if (typeof pre === 'string') { var pb = actsBox.querySelector('[data-mact="' + pre + '"]'); if (pb) pb.click(); }
   }
   function openMoveGuide() {
@@ -3521,6 +3590,10 @@
     if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () { });
     RM.start(function (h) { chime('bell', true); toast(h.item.label + (h.item.note ? ' · ' + h.item.note : ''), h.item.icon); });
     document.addEventListener('click', function (e) { if (e.target.closest('#visitBack')) { chime('tap'); applyLayout(currentHomeId(), false); toast('Back home.', 'home'); } if (e.target.closest('#arrDone')) exitArrange(false); if (e.target.closest('#arrReset')) exitArrange(true); });
+    /* a room loaded inside the in-app viewer (a retired page redirected to room.html#x) hands its route to the real room and
+       stops here, instead of booting a second app in the frame (live check, 22 Oct: the nested room stripped its hash before
+       the viewer could read it, so MEDAS never opened) */
+    try { if (window.frameElement && window.parent !== window && window.parent.OvuPage) { var hh = (location.hash || '').slice(1); window.parent.OvuPage.close(); if (hh) window.parent.dispatchEvent(new CustomEvent('ovu-route', { detail: hh })); return; } } catch (e) { }
     var hk = (location.hash || '').slice(1), bootAt = Date.now(), seq0 = sheetSeq, nav0 = navSeq; /* counted from now: a tap while sign-in is still settling counts too */
     var lift = function () { $('#loading').classList.add('hidden'); joy(); };
     authReady.then(function (r) {

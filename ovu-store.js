@@ -577,7 +577,7 @@
    * and cycle copies, the earlier Ovuluna pages' logs, scores and choices, and Erin's podcast listening all go (launch
    * sweep, 20 Oct 2026: they used to stay). Kept, and named on the Delete screen: the sign-in, the backup bookkeeping
    * and Rhythme Plus access, which are not diary data; the privacy page can remove them one by one. */
-  var OWN_KEYS = ['ovumind_food_journal', 'ovumind_cycle', 'ovumind_ai_v1', 'ovumind_reminders_v1', 'ovumind_nova_words', 'ovumind_room', 'ovumind_room_skipped', 'ovumind_device_v1', 'ovumind_desk_v1',
+  var OWN_KEYS = ['ovumind_gamesave_v1', 'ovumind_food_journal', 'ovumind_cycle', 'ovumind_ai_v1', 'ovumind_reminders_v1', 'ovumind_nova_words', 'ovumind_room', 'ovumind_room_skipped', 'ovumind_device_v1', 'ovumind_desk_v1',
     'rhythme_podcast_v1', 'rhythme_voice_muted',
     'ovuluna_observations_v1', 'ovuluna_lab_records_v1', 'ovuluna_wellness_journal_v1', 'ovuluna_daily_checkins_v1', 'ovuluna_daily_context_v1', 'ovuluna_daily_routine_v1', 'ovuluna_daily_completions_v1',
     'ovuluna_ovarian_assessments_v2', 'ovuluna_phenoage_records_v1', 'ovuluna_profile', 'ovuluna_label_scans', 'ovuluna_medas14', 'ovuluna_pss10', 'ovuluna_sleep_logs', 'ovuluna_cycle', 'ovuluna_cycles',

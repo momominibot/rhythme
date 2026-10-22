@@ -106,7 +106,7 @@
     /* after a birth, three low days in two weeks are enough to say so (four-persona review, 20 Oct: help must not wait for seven
      * records); otherwise most of at least a week of logged days */
     var pp = (S.profile() || {}).pregState === 'postpartum';
-    if ((pp && low.length >= 3) || (recent.length >= 7 && low.length >= 5)) flags.push(flag('watch', 'MOOD_LOW', 'Low mood on ' + (pp ? 'several' : 'most') + ' logged days', low.length + ' of the last ' + recent.length + ' logged days were low. You deserve support, and you do not have to wait: mindline 1771 is open 24 hours, and your GP, polyclinic' + (pp ? ' or KKH' : '') + ' can help.', low[low.length - 1].date));
+    if ((pp && low.length >= 3) || (recent.length >= 7 && low.length >= 5)) flags.push(flag('watch', 'MOOD_LOW', 'Low mood on ' + (pp ? 'several' : 'most') + ' logged days', low.length + ' of the last ' + recent.length + ' logged days were low. You deserve support, and you do not have to wait: mindline 1771 is open 24 hours, and your doctor, clinic' + (pp ? ' or maternity team' : '') + ' can help.', low[low.length - 1].date));
     var dizzyHeavy = recent.filter(function (e) {
       var heavy = S.byDate(e.date).some(function (x) { return x.type === 'period' && x.data.flow === 'heavy'; });
       return heavy && (e.data.symptoms || []).indexOf('dizziness') > -1;
@@ -114,7 +114,7 @@
     if (dizzyHeavy.length) flags.push(flag('high', 'HEAVY_DIZZY', 'Heavy bleeding with dizziness', 'Heavy bleeding together with dizziness or faintness should be checked soon, today if it is happening now.', dizzyHeavy[dizzyHeavy.length - 1].date));
     /* pain during sex is worth a review at any age (RCOG, ACOG); it is named once, never counted as a score */
     var sexPain = S.list('symptom', { from: S.addDays(end, -27), to: end }).filter(function (e) { return (e.data.symptoms || []).indexOf('pain during sex') > -1; });
-    if (sexPain.length) flags.push(flag('watch', 'SEX_PAIN', 'Pain during sex', 'Logged on ' + sexPain.length + ' day' + (sexPain.length > 1 ? 's' : '') + ' in the last 4 weeks. Pain during or after sex is worth raising with your GP or polyclinic; there are often simple things that help.', sexPain[sexPain.length - 1].date));
+    if (sexPain.length) flags.push(flag('watch', 'SEX_PAIN', 'Pain during sex', 'Logged on ' + sexPain.length + ' day' + (sexPain.length > 1 ? 's' : '') + ' in the last 4 weeks. Pain during or after sex is worth raising with your doctor or clinic; there are often simple things that help.', sexPain[sexPain.length - 1].date));
     var counts = {};
     recent.forEach(function (e) { (e.data.symptoms || []).forEach(function (s) { counts[s] = (counts[s] || 0) + 1; }); });
     return { agent: 'symptomAgent', metrics: { days: recent.length, counts: counts }, flags: flags };
@@ -467,7 +467,7 @@
   }
   function breathingNote() {
     return { level: 'prompt', code: 'SLEEP_BREATHING', title: 'Worth raising: breathing at night', trigger: 'snoring, gasping or pauses in breathing during sleep',
-      message: 'Loud snoring, gasping or choking, or pauses in breathing during sleep can be signs of sleep apnoea. Please book a visit with your GP or a polyclinic to talk about it, even if you do not feel sleepy in the day. If you are pregnant, or you drive or work with machinery for a living, say so when you book: the guideline asks for a faster assessment then.' };
+      message: 'Loud snoring, gasping or choking, or pauses in breathing during sleep can be signs of sleep apnoea. Please book a visit with your doctor or a clinic to talk about it, even if you do not feel sleepy in the day. If you are pregnant, or you drive or work with machinery for a living, say so when you book: the guideline asks for a faster assessment then.' };
   }
   /* ---------- sleep quality from the data itself (imported or synced nights, and hand-written times) ----------
    * Not a score. Each line keeps its own denominator and a night without a measure is never counted as zero.

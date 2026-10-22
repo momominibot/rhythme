@@ -218,5 +218,21 @@
  {
   "id": "saved",
   "text": "Thank you for taking a moment to notice."
+ },
+ {
+  "id": "pulse-before",
+  "text": "Find a clear, steady spot. You can stop any time."
+ },
+ {
+  "id": "pulse-start",
+  "text": "Move slowly, and notice how it feels."
+ },
+ {
+  "id": "pulse-stop",
+  "text": "Stopping is listening to your body. That counts too."
+ },
+ {
+  "id": "pulse-log",
+  "text": "Well done. Notice how you feel now."
  }
 ]
