@@ -1156,7 +1156,7 @@
         '<section class="dsec"><h4><i>3</i>Anything else <small>optional</small></h4>' + '<div class="field"><label for="fdFoods">Notes or anything not in the list</label><textarea class="input" id="fdFoods" placeholder="Kopi C, two slices of kaya toast..."></textarea></div>' + '<div class="field"><span class="lbl">Tags</span><div class="chips" id="tagChips">' + A.FOOD_TAGS.map(function (t) { return '<button type="button" class="chipbtn" data-tag="' + esc(t) + '">' + esc(cap(t)) + '</button>'; }).join('') + '</div></div>' + '</section>' +
         '<button class="btn primary" id="saveFood" style="width:100%"><span class="ms">check</span>Save meal</button><div class="msg" id="foodMsg"></div>' +
       '</div>' +
-      '<div class="dpane" data-pane="today" hidden>' + guideHTML('nova') + '<div id="waterStrip"></div>' + '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div>' + '</div>' +
+      '<div class="dpane" data-pane="today" hidden>' + guideHTML('nova') + '<div id="waterStrip"></div>' + '<div class="field"><span class="lbl">Entries for <span id="fdLabel">' + esc(prettyDate(diaryDate)) + '</span></span><div id="foodList">' + foodEntriesHTML(diaryDate) + '</div></div><div id="fastStrip"></div>' + '</div>' +
       '<div class="dpane" data-pane="ideas" hidden>' + '<p class="help" style="margin:2px 0 10px"><span class="ms" style="font-size:16px;vertical-align:-3px">yard</span> Teas and herbs now live in the garden greenhouse, with pictures, research and who should take care.</p>' + '<div class="phasechips chips" id="ideaPhases" role="group" aria-label="Food ideas for each phase">' + [['menstrual', 'Period'], ['follicular', 'Follicular'], ['ovulatory', 'Ovulation'], ['luteal', 'Luteal']].map(function (q) { return '<button type="button" class="chipbtn" data-iphase="' + q[0] + '">' + q[1] + '</button>'; }).join('') + '</div>' +
       (cs.mode === 'suspended' ? '<p class="mindline"><span class="ms">info</span>Cycle phases are paused for you right now, so none of these is meant for you today. They are general ideas to browse; nothing here is needed.</p>' : '') +
       '<div id="ideaTip"></div><div id="picksWrap"></div><p class="help">General food ideas for each part of the cycle, not a diet or a treatment.</p></div>');
@@ -1172,8 +1172,10 @@
     showIdeas(ideaPhase);
     if (window.OvuWater) OvuWater.setDate(diaryDate); /* the water strip follows the pane's date */
     (ovarian ? Promise.resolve(ovarian) : loadJSON('assets/data/ovarian-foods.json').then(function (d) { ovarian = d; return d; })).then(function () { showIdeas(ideaPhase); }).catch(function () { });
-    function setPane(k) { $$('#dTabs button').forEach(function (b) { var on = b.dataset.dpane === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); }); $$('.dpane', body).forEach(function (pn) { pn.hidden = pn.dataset.pane !== k; }); if (k !== 'add') stopCamera(); body.scrollTop = 0; }
+    function setPane(k) { $$('#dTabs button').forEach(function (b) { var on = b.dataset.dpane === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); }); $$('.dpane', body).forEach(function (pn) { pn.hidden = pn.dataset.pane !== k; }); if (k !== 'add') stopCamera(); if (k === 'today' && window.OvuFasting) OvuFasting.renderStrip(); body.scrollTop = 0; }
     $('#dTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-dpane]'); if (b) { chime('tap'); setPane(b.dataset.dpane); } });
+    body.addEventListener('click', function (e) { if (window.OvuFasting && OvuFasting.onClick(e)) chime('tap'); }); /* the fasting strip's buttons (ovu-fasting.js) */
+    var fdTimeTouched = false; $('#fdTime').addEventListener('input', function () { fdTimeTouched = true; }); /* a time she set herself counts as confirmed (design 2026-10-21-fasting-timing.md) */
     if (pane) setPane(pane);
     if (pre) { if (pre.notes) $('#fdFoods').value = String(pre.notes).slice(0, 200); (pre.tags || []).forEach(function (t) { var b = $$('#tagChips button').filter(function (x) { return x.dataset.tag === t; })[0]; if (b) b.classList.add('on'); }); }
     var area = $('#modeArea');
@@ -1295,10 +1297,10 @@
         if (!draft.items.length && !notes) throw new Error('Add at least one food, or write a note.');
         var names = draft.items.map(function (it) { return it.name.split(' · ')[0]; });
         var sm = draft.items.length ? FD.sum(draft.items) : null;
-        var ev = S.add('food', $('#fdDate').value, { meal: $('#mealChips .on').dataset.meal, time: $('#fdTime').value, foods: (names.join(', ') + (notes ? (names.length ? ' · ' : '') + notes : '')), notes: notes, tags: $$('#tagChips .on').map(function (b) { return b.dataset.tag; }), items: draft.items, photo: draft.photo, totals: sm ? sm.totals : null, method: 'camera-assisted v1' });
+        var ev = S.add('food', $('#fdDate').value, { meal: $('#mealChips .on').dataset.meal, time: $('#fdTime').value, timeSet: fdTimeTouched, foods: (names.join(', ') + (notes ? (names.length ? ' · ' : '') + notes : '')), notes: notes, tags: $$('#tagChips .on').map(function (b) { return b.dataset.tag; }), items: draft.items, photo: draft.photo, totals: sm ? sm.totals : null, method: 'camera-assisted v1' });
         draft = { items: [], photo: null }; renderItems(); $('#thumb').classList.remove('on'); $('#fdFoods').value = ''; $$('#tagChips .on').forEach(function (b) { b.classList.remove('on'); });
         message($('#foodMsg'), 'Saved' + (sm && sm.totals.kcal !== null ? ': ' + Math.round(sm.totals.kcal) + ' kcal, ' + FD.fmt('protein', sm.totals.protein) + ' g protein, ' + FD.fmt('fiber', sm.totals.fiber) + ' g fibre.' : '.'), true);
-        $('#foodList').innerHTML = foodEntriesHTML(diaryDate); afterSave(ev); setPane('today');
+        $('#foodList').innerHTML = foodEntriesHTML(diaryDate); afterSave(ev); setPane('today'); if (window.OvuFasting) OvuFasting.onMealSaved(ev); /* a saved meal may offer to end an open fasting record, in the strip */
       } catch (e) { message($('#foodMsg'), e.message, false); }
     });
   }

@@ -4016,4 +4016,55 @@ var summarised = false;
   check('the mat tiles say the pond breathes with the ring and the flower adds a gentle breath', /Breathe with the ring, watch the koi/.test(rs) && /Light, sound and a gentle breath/.test(rs));
 })();
 
+(function fastingTiming() {
+  console.log('2k15. fasting timing (21 Oct): confirmed times only, separate medians, records with no counter, eligibility that withholds on a yes or a not sure');
+  var w = fresh('2026-10-21'); vm.runInContext(fs.readFileSync(path.join(root, 'ovu-fasting.js'), 'utf8'), w, { filename: 'ovu-fasting.js' });
+  var F = w.OvuFasting, S = w.OvuStore, src = fs.readFileSync(path.join(root, 'ovu-fasting.js'), 'utf8');
+  function realDay(back) { var d = new Date(Date.now() - back * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); } /* saved records are validated against the real clock */
+  var Y1 = realDay(1), Y2 = realDay(2);
+  function mk(id, date, time, created, extra) { return Object.assign({ id: id, type: 'food', date: date, createdAt: created, updatedAt: created, data: { meal: 'lunch', time: time } }, extra || {}); }
+  /* which times count */
+  var atMeal = mk('a', '2026-10-21', '08:10', '2026-10-21T08:30:00'), backdated = mk('b', '2026-10-20', '13:00', '2026-10-21T22:00:00'), touched = mk('c', '2026-10-20', '13:00', '2026-10-21T22:00:00'); touched.data.timeSet = true;
+  var noTime = mk('d', '2026-10-21', '', '2026-10-21T22:00:00'), badTime = mk('e', '2026-10-21', '25:00', '2026-10-21T22:00:00');
+  check('a time counts when she set it or when the entry was saved within 90 minutes of it on its own date; a backdated default time, no time or a bad time does not', F.timeStatus(atMeal) === 'confirmed' && F.timeStatus(touched) === 'confirmed' && F.timeStatus(backdated) === 'unconfirmed' && F.timeStatus(noTime) === 'none' && F.timeStatus(badTime) === 'none' && F.timeStatus({ type: 'sleep', date: '2026-10-21', data: { time: '08:00' } }) === 'none');
+  /* one calendar day, literal */
+  var day = [mk('1', '2026-10-21', '00:15', '2026-10-21T00:20:00'), mk('2', '2026-10-21', '23:45', '2026-10-21T23:50:00'), mk('3', '2026-10-21', '23:45', '2026-10-21T23:52:00'), noTime, backdated];
+  var t = F.dayTimes(day, '2026-10-21');
+  check('00:15 and 23:45 on one date are 23 h 30 m apart (calendar days are literal), a duplicate time is one occasion, and missing or unconfirmed entries are counted as left out', t.span === 1410 && t.count === 2 && t.first === 15 && t.last === 1425 && t.untimed === 1 && t.unconfirmed === 0 && F.dayTimes(day, '2026-10-20').unconfirmed === 1, JSON.stringify(t));
+  check('one confirmed entry gives no span (unavailable, not zero); no entries give none', F.dayTimes([atMeal], '2026-10-21').span === null && F.dayTimes([atMeal], '2026-10-21').count === 1 && F.dayTimes([], '2026-10-21').first === null);
+  var two = [mk('p', '2026-10-20', '21:10', '2026-10-20T21:12:00'), atMeal];
+  check('the overnight gap runs from the previous calendar day\'s last confirmed entry to this day\'s first, and is null without either', F.gapFromPrevious(two, '2026-10-21') === 660 && F.gapFromPrevious([atMeal], '2026-10-21') === null && F.gapFromPrevious([two[0]], '2026-10-21') === null);
+  /* the review's counter-example: medians are separate statistics */
+  var md = [mk('1', '2026-10-01', '08:00', '2026-10-01T08:05:00'), mk('2', '2026-10-01', '09:00', '2026-10-01T09:05:00'), mk('3', '2026-10-02', '10:00', '2026-10-02T10:05:00'), mk('4', '2026-10-02', '20:00', '2026-10-02T20:05:00'), mk('5', '2026-10-03', '18:00', '2026-10-03T18:05:00'), mk('6', '2026-10-03', '19:00', '2026-10-03T19:05:00'), mk('7', '2026-10-04', '12:00', '2026-10-04T12:05:00')];
+  var sm = F.summary(md, '2026-10-01', '2026-10-05');
+  check('medians are separate: first 10:00, last 19:00 and a one-hour span, over 3 of 5 days with two or more timed entries', sm.medianFirst === 600 && sm.medianLast === 1140 && sm.medianSpan === 60 && sm.eligible === 3 && sm.days === 5, JSON.stringify(sm));
+  check('no eligible day gives no medians', F.summary([atMeal], '2026-10-21', '2026-10-21').medianSpan === null && F.summary([], '2026-10-21', '2026-10-21').eligible === 0);
+  /* records */
+  var now = new Date('2026-10-21T22:00:00'), r = F.validateRecord({ startLocal: '2026-10-21T20:15', note: ' after dinner ' }, now);
+  check('a record keeps the instant, the device offset and the local wall clock, trims its note, and has no end yet', /Z$/.test(r.startAt) && typeof r.startOffset === 'number' && r.startLocal === '2026-10-21T20:15' && r.note === 'after dinner' && r.endAt === null && r.id.indexOf('fast_') === 0);
+  function fails(rec) { try { F.validateRecord(rec, now); return false; } catch (e) { return e.message; } }
+  check('validation refuses an end before the start, a future start or end, a start over 30 days ago, a non-text note and a non-record', /after the start/.test(fails({ startLocal: '2026-10-21T20:15', endLocal: '2026-10-21T19:00' })) && /future/.test(fails({ startLocal: '2026-10-22T01:00' })) && /future/.test(fails({ startLocal: '2026-10-21T20:00', endLocal: '2026-10-22T01:00' })) && /30 days/.test(fails({ startLocal: '2026-09-01T01:00' })) && /text/.test(fails({ startLocal: '2026-10-21T20:00', note: 5 })) && !!fails(null) && !!fails({ startLocal: '2026-10-21T2015' }));
+  var done = F.validateRecord({ startLocal: '2026-10-20T20:15', endLocal: '2026-10-21T09:40' }, now);
+  check('an ended record shows its length once as a fact: 13 h 25 m', F.fmtMin(F.lengthMs(done) / 60000) === '13 h 25 m' && F.lengthMs(r) === null);
+  check('a record open for more than three days is flagged as probably forgotten, never ended for her', F.forgotten({ startAt: '2026-10-17T10:00:00Z' }, now) === true && F.forgotten({ startAt: '2026-10-21T10:00:00Z' }, now) === false && !/endAt = now|auto/.test(src.split('function forgotten')[1].split('\n')[0]));
+  S.setState({ fasting: { on: true, elig: { answers: { preg: 'no', bf: 'no', dm: 'no', ed: 'no', weight: 'no' }, at: 'x' }, records: [] } });
+  var saved = F.saveRecord({ startLocal: Y2 + 'T20:15' }); var saved2 = F.saveRecord({ startLocal: Y1 + 'T06:00' });
+  check('records are saved in state.fasting through setState (no diary type, nothing for Luna\'s filter to accept), and two open records are a conflict nobody resolves for her', F.records().length === 2 && F.openRecords().length === 2 && F.conflict() === true && S.TYPES.indexOf('fast') < 0 && S.list().length === 0 && !/S\(\)\.add\(|OvuStore\.add\(|TYPES/.test(src));
+  F.saveRecord(Object.assign({}, saved2, { endLocal: Y1 + 'T09:30' })); F.deleteRecord(saved.id);
+  check('ending one and deleting the other leaves one ended record and no conflict; the export carries it', F.records().length === 1 && F.openRecords().length === 0 && JSON.parse(S.exportJSON()).state.fasting.records.length === 1);
+  /* eligibility */
+  var allNo = { preg: 'no', bf: 'no', dm: 'no', ed: 'no', weight: 'no' };
+  check('all five answered no opens the control; a yes or a not sure keeps it closed with the reason; the intro\'s pregnancy, breastfeeding and restrictive-eating answers win; trying to conceive is a labelled precaution', F.eligible(allNo, {}).ok === true && F.eligible(Object.assign({}, allNo, { dm: 'yes' }), {}).reasons.join() === 'dm' && F.eligible(Object.assign({}, allNo, { ed: 'unsure' }), {}).unknown.join() === 'ed' && F.eligible(allNo, { pregState: 'maybe' }).reasons.join() === 'preg' && F.eligible(allNo, { breastfeeding: 'yes' }).reasons.join() === 'bf' && F.eligible(allNo, { signals: ['restrict'] }).reasons.join() === 'ed' && F.eligible(allNo, { plans: 'ttc' }).ok === false && /precaution/.test(F.reasonText(F.eligible(allNo, { plans: 'ttc' }))) && /not sure/.test(F.reasonText(F.eligible(Object.assign({}, allNo, { dm: 'unsure' }), {}))));
+  check('the five questions cover pregnancy, breastfeeding, blood sugar medicines, disordered eating and weight or age', F.QUESTIONS.map(function (q) { return q.key; }).join() === 'preg,bf,dm,ed,weight');
+  /* the meal offer */
+  var rec = { id: 'r1', startAt: '2026-10-21T02:00:00.000Z', updatedAt: 'u1' };
+  check('a meal offers to end the record only when dated today, with a confirmed time, after the start; yesterday\'s meal, an unconfirmed time or a meal before the start offers nothing', !!F.offerFor(mk('m', '2026-10-21', '12:30', '2026-10-21T12:35:00'), rec, '2026-10-21') && F.offerFor(mk('m', '2026-10-20', '12:30', '2026-10-20T12:35:00'), rec, '2026-10-21') === null && F.offerFor(mk('m', '2026-10-21', '12:30', '2026-10-21T22:35:00'), rec, '2026-10-21') === null && F.offerFor(mk('m', '2026-10-21', '01:30', '2026-10-21T01:35:00'), { id: 'r1', startAt: '2026-10-21T04:00:00.000Z' }, '2026-10-21') === null && F.offerFor(mk('m', '2026-10-21', '12:30', '2026-10-21T12:35:00'), Object.assign({}, rec, { endAt: 'x' }), '2026-10-21') === null);
+  /* copy and boundaries */
+  var html = F.stripHTML();
+  check('the strip never shows a running counter, a target, a streak or a heart; the care line names 995 and the hypo advice; lengths appear only for ended records', !/streak|target|goal|longest|♥|hearts?\b/i.test(html) && /call 995/.test(html) && /treat a low as your care team/.test(html) && /Entries, not measured fasting/.test(html) && !/since .* \(\d+ h/.test(html) && src.indexOf('—') < 0 && !/gpt|claude|doubao|deepseek/i.test(src));
+  check('the module pays no hearts, writes no diary entry and leaves the summary agents alone', !/OvuRewards|\.award\(|afterSave\(|summary\.food/.test(src));
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), js = fs.readFileSync(path.join(root, 'journal.html'), 'utf8'), ev = fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8');
+  check('the food sheet carries the strip, confirms a time she touched, offers after a save, and the journal loads the block; evidence E81 to E90 exist with no em dash', /id="fastStrip"/.test(rs) && /timeSet: fdTimeTouched/.test(rs) && /OvuFasting\.onMealSaved\(ev\)/.test(rs) && /OvuFasting\.onClick\(e\)/.test(rs) && /ovu-fasting\.js/.test(js) && /fastingBlock/.test(js) && /<script src="ovu-fasting\.js"><\/script>/.test(fs.readFileSync(path.join(root, 'room.html'), 'utf8')) && ['E81', 'E82', 'E83', 'E84', 'E85', 'E86', 'E87', 'E88', 'E89', 'E90'].every(function (e) { return ev.indexOf("id: '" + e + "'") > -1; }) && ev.indexOf('—') < 0);
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

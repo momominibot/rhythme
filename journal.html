@@ -37,6 +37,7 @@
       <div class="ct" style="margin-top:10px;font:800 10px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)">Recent 28 days</div>
       <div class="kpis" id="shareKpis"></div>
       <div id="shareBody"></div>
+      <div id="fastingBlock"></div>
       <div id="aiShare"></div>
       <div class="row">
         <button class="btn primary" id="makePdf"><span class="ms">picture_as_pdf</span>Download PDF</button>
@@ -118,6 +119,7 @@
 <script src="ovu-auth.js"></script>
 <script src="ovu-textsize.js"></script>
 <script src="ovu-food.js"></script>
+<script src="ovu-fasting.js"></script>
 <script src="ovu-agents.js"></script>
 <script src="ovu-orb.js"></script>
 <script src="ovu-insight.js"></script>
@@ -170,7 +172,7 @@
   $('#flags').addEventListener('click',function(e){var b=e.target.closest('[data-dismiss]');if(!b)return;if(!confirm('Hide this note? It comes back if you log bleeding or spotting again. Please still get the check.'))return;A.dismissFlag(b.dataset.dismiss);renderAll();});
   var KICON={coverage:'event_available',period:'water_drop',cycle:'calendar_month',sleep:'bedtime',symptoms:'healing',calm:'self_improvement'};
   function kpi(key,label,val,sub){return '<div class="kpi"><small><span class="ms">'+KICON[key]+'</span>'+label+'</small><b>'+val+'</b><span>'+esc(sub)+'</span></div>';}
-  function renderShare(){
+  function renderShare(){var fb=$('#fastingBlock');if(fb){try{fb.innerHTML=window.OvuFasting?OvuFasting.journalHTML(S.addDays(S.today(),-27),S.today()):'';}catch(e){fb.innerHTML='';}}
     var sum=A.fourWeekSummary(),cov=sum.coverage.daysWithEntries,low=cov<14,eps=sum.cycle.episodes.length,cl=sum.cycle.cycleLengths.length;
     $('#shareKpis').innerHTML=
       kpi('coverage','Logged',cov+'<em>/28</em>','days with entries')+
