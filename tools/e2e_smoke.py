@@ -494,8 +494,10 @@ async def main():
             await page.reload(wait_until="networkidle"); await page.wait_for_timeout(2600)
             bday = await page.evaluate("()=>({greet: document.querySelector('#greetTitle').textContent, cake: !!document.querySelector('#ownedProps .prop.cake'), sheet: OvuRoom.sheetId(), title: document.querySelector('#sheetTitle').textContent, lines: document.querySelectorAll('#sheet .bline').length, note: ((document.querySelector('#sheet .bnote')||{}).textContent||''), who: ((document.querySelector('#sheet .bwho b')||{}).textContent||''), whoWant: (OvuBirthday.dayMaster(1988, OvuStore.today().slice(5))||{}).name, dir: ((document.querySelector('#sheet .bdir b')||{}).textContent||''), how: ((document.querySelector('#sheet .help')||{}).textContent||''), btn: (document.querySelector('#sheet [data-b=party]')||{}).textContent, shown: (OvuStore.state().birthday||{}).shown})")
             check("on her birthday the room says happy birthday, a cake stands on her table, and the postcard opens by itself with one warm wish, who she is from the day she was born, a direction for the year ahead with how both are read, and the gown to wear (tester mode)", bday["greet"].startswith("Happy birthday") and bday["cake"] and bday["sheet"] == "birthday" and "Happy birthday" in bday["title"] and bday["lines"] == 1 and bday["who"] and bday["who"] == bday["whoWant"] and "BaZi day count" in bday["how"] and bday["dir"].startswith("A year for") and "add up to" in bday["how"] and "not a prediction" in bday["note"] and "Starlight gown" in (bday["btn"] or "") and bool(bday["shown"]), bday)
-            await page.click("#sheet [data-b=party]"); await page.wait_for_timeout(900)
-            check("the button dresses her in the gown and closes the card", await page.evaluate("()=>OvuStore.profile().outfit==='gown' && !OvuRoom.sheetOpen() && /gown\\.webp/.test(document.querySelector('#avatarImg').src)"))  # the outfit moment may still be playing, in the gown
+            await page.click("#sheet [data-b=party]")
+            try: await page.wait_for_function("()=>/gown\\.webp/.test(document.querySelector('#avatarImg').src) && !document.querySelector('#avatar').classList.contains('twirling')", timeout=7000)
+            except Exception: pass
+            check("the button closes the card and she twirls into the gown, ending idle", await page.evaluate("()=>{var av=document.querySelector('#avatar'); return OvuStore.profile().outfit==='gown' && !OvuRoom.sheetOpen() && /gown\\.webp/.test(document.querySelector('#avatarImg').src) && !av.classList.contains('twirling') && av.classList.contains('idle') && !document.querySelector('#avatarImg').style.transform}"))  # the outfit moment may still be playing, in the gown
             await page.reload(wait_until="networkidle"); await page.wait_for_timeout(1800)
             again = await page.evaluate("()=>({sheet: OvuRoom.sheetId(), cake: !!document.querySelector('#ownedProps .prop.cake')})")
             check("the postcard does not open again on the same birthday, but the cake stays for the week", not again["sheet"] and again["cake"], again)
@@ -521,6 +523,58 @@ async def main():
             await page.evaluate("()=>OvuRoom.openWardrobe()"); await page.wait_for_selector('#sheet[aria-hidden="false"] .outfit[data-id=gown]:not(.locked)', timeout=8000)
             check("in tester mode the gown is open in the wardrobe", True)
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+
+            # 1h. she is not a stiff picture (Jamie, 21 Oct: "Turn around like a Cinderella changing into the glamorous gown", "I want it like
+            # animal crossing", "Not stiff avatar"): a picked outfit twirls in, the new one swapping while she is edge-on; the gown gets the
+            # Cinderella version; she blinks while she stands; reduced motion keeps her still
+            TW = """()=>{ window.__tw = []; var img = document.querySelector('#avatarImg'), av = document.querySelector('#avatar'), t0 = performance.now();
+              (function f(){ var mm = /matrix\\(([^)]+)\\)/.exec(getComputedStyle(img).transform || ''), a = mm ? parseFloat(mm[1].split(',')[0]) : 1;
+                __tw.push({t: Math.round(performance.now() - t0), sx: a, src: (img.getAttribute('src') || '').split('/').pop(), tw: av.classList.contains('twirling'), glam: av.classList.contains('glam'), fx: !!av.querySelector('.twirl-fx'), idle: av.classList.contains('idle'), tf: img.style.transform || ''});
+                if (performance.now() - t0 < 3800) requestAnimationFrame(f); })(); }"""
+            async def twirl_pick(pg, oid):
+                await pg.evaluate("()=>OvuRoom.openWardrobe()")
+                await pg.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='wardrobe'", timeout=8000); await pg.wait_for_timeout(400)
+                await pg.evaluate(TW); await pg.click('#sheet[aria-hidden="false"] .outfit[data-id=%s]' % oid); await pg.wait_for_timeout(3900)
+                tw = await pg.evaluate("()=>window.__tw")
+                for x in tw: x["src"] = x["src"].replace("-blink.webp", ".webp")  # a blink after the turn is her in the same outfit (Codex verification, 21 Oct)
+                sw = next((x for x in tw if x["src"] == "avatar-%s.webp" % oid and x["tw"]), None)
+                spin = [x for x in tw if x["tw"]]
+                return {"turned": bool(spin), "glam": any(x["glam"] for x in tw), "fx": any(x["fx"] for x in tw), "swap": sw, "end": tw[-1] if tw else None, "open": await pg.evaluate("()=>OvuRoom.sheetOpen()"),
+                        "span": (spin[-1]["t"] - spin[0]["t"]) if spin else 0, "facing": (tw[0]["sx"] > 0) == (tw[-1]["sx"] > 0) if tw else False}
+            await page.evaluate("()=>OvuRoom.blinking(true)")  # she blinks through these checks, as she does for a person
+            tp = await twirl_pick(page, "party")
+            check("picking the lilac tulle closes the wardrobe and she twirls into it: the outfit swaps edge-on, she ends idle, facing the way she started, with no leftover transform", tp["turned"] and not tp["glam"] and tp["swap"] and abs(tp["swap"]["sx"]) < 0.2 and tp["end"]["src"] == "avatar-party.webp" and not tp["end"]["tw"] and tp["end"]["idle"] and not tp["end"]["tf"] and tp["facing"] and not tp["open"], tp)
+            seen = await page.evaluate("()=>new Promise(function(res){ var img=document.querySelector('#avatarImg'), seen=[]; var ob=new MutationObserver(function(){ seen.push([Math.round(performance.now()), (img.getAttribute('src')||'').split('/').pop()]); }); ob.observe(img,{attributes:true,attributeFilter:['src']}); setTimeout(function(){ ob.disconnect(); res(seen); }, 8000); })")
+            bl = [x for x in seen if x[1] == "avatar-party-blink.webp"]
+            reopen = [x for x in seen if bl and x[1] == "avatar-party.webp" and x[0] > bl[0][0]]
+            check("she blinks while she stands: her own outfit's closed-eye copy for a moment, then her eyes open again", bool(bl) and bool(reopen) and reopen[0][0] - bl[0][0] < 400, seen[:6])
+            tg = await twirl_pick(page, "gown")
+            check("the Starlight gown gets the Cinderella version: about two seconds, with sparkles, the swap edge-on, ending idle in the gown facing the way she started", tg["turned"] and tg["glam"] and tg["fx"] and tg["swap"] and abs(tg["swap"]["sx"]) < 0.2 and 1800 <= tg["span"] <= 3200 and tg["end"]["src"] == "avatar-gown.webp" and not tg["end"]["tw"] and tg["end"]["idle"] and tg["facing"], tg)
+            # interruptions (Codex review): a floor tap mid-turn finishes it at once and she walks; a pose asked for mid-turn is kept
+            async def mid_turn(pg, oid):
+                await pg.evaluate("()=>OvuRoom.openWardrobe()"); await pg.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='wardrobe'", timeout=8000); await pg.wait_for_timeout(400)
+                await pg.click('#sheet[aria-hidden="false"] .outfit[data-id=%s]' % oid)
+                await pg.wait_for_function("()=>document.querySelector('#avatar').classList.contains('twirling')", timeout=4000); await pg.wait_for_timeout(200)
+            await mid_turn(page, "sundress")
+            await floor_tap(56, 66); await page.wait_for_timeout(250)
+            ti = await page.evaluate("()=>{var av=document.querySelector('#avatar'); return {tw: av.classList.contains('twirling'), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), moving: av.classList.contains('walking') || !!(window.OvuWalk && OvuWalk.walking && OvuWalk.walking()), tf: document.querySelector('#avatarImg').style.transform || ''}}")
+            check("a floor tap mid-turn finishes the twirl at once, dressed in what she chose, and she walks", not ti["tw"] and ti["src"] == "avatar-sundress.webp" and ti["moving"] and not ti["tf"], ti)
+            await page.wait_for_timeout(2500)
+            await mid_turn(page, "cozy")
+            await page.evaluate("()=>OvuRoom.moment('food')"); await page.wait_for_timeout(900)  # a moment with a pose, as a logged meal brings
+            tq = await page.evaluate("()=>({tw: document.querySelector('#avatar').classList.contains('twirling'), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), outfit: OvuStore.profile().outfit, line: (document.querySelector('#thought')||{}).textContent||''})")
+            check("a pose asked for mid-turn is kept: the twirl ends at once, never paints over it, and says no closing line of its own", not tq["tw"] and "act-eat" in tq["src"] and tq["outfit"] == "cozy" and "Comfort is reason enough" not in tq["line"], tq)
+            await page.evaluate("()=>OvuRoom.endMoment()"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuRoom.blinking(false)")
+            await page.evaluate("()=>{ OvuStore.setProfile({outfit: 'base'}); OvuRoom.restorePose(); }"); await page.wait_for_timeout(300)  # the rest of this page's checks expect the knit
+            ctxR = await browser.new_context(viewport={"width": 390, "height": 844}, reduced_motion="reduce"); await ctxR.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxR.add_init_script(SESSION_SEED)
+            pr_ = await ctxR.new_page(); await pr_.route("**/*", gate); await pr_.goto(BASE + "room.html", wait_until="networkidle"); await pr_.wait_for_timeout(900)
+            await pr_.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); }")
+            tr = await twirl_pick(pr_, "sundress")
+            await pr_.evaluate("()=>OvuRoom.blinking(true)")
+            rb = await pr_.evaluate("()=>new Promise(function(res){ var img=document.querySelector('#avatarImg'), n=0; var ob=new MutationObserver(function(){ if ((img.getAttribute('src')||'').indexOf('-blink')>-1) n++; }); ob.observe(img,{attributes:true,attributeFilter:['src']}); setTimeout(function(){ ob.disconnect(); res(n); }, 6500); })")
+            check("with reduced motion she does not twirl or blink: the outfit simply changes and her eyes stay open", not tr["turned"] and tr["end"]["src"] == "avatar-sundress.webp" and rb == 0, {"tr": tr, "blinks": rb})
+            await ctxR.close()
 
             # 1g. the intro asks her birthday (a month, a day and an optional adult year) just before her name; it stays on the phone, never in the cloud copy
             DBO = json.loads(json.dumps(DB)); DBO["profile"]["urgent"] = ["severepain"]  # an answer about 'today' given on an earlier day

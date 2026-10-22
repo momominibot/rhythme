@@ -499,7 +499,15 @@
     if (!OUTFITS.some(function (o) { return o.id === id; })) id = 'base';
     if (outfitLocked(id)) id = 'base'; /* a drop needs Plus on this phone; a stale profile never dresses her in it */
     var img = new Image(), gen = ++imgGen;
-    img.onload = function () { if (gen !== imgGen) return; avatarImg.src = img.src; if (!silent && window.OvuMorning && OvuMorning.active()) OvuMorning.repose(); /* brushing in the new outfit */ if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); } };
+    img.onload = function () {
+      if (gen !== imgGen) return;
+      if (!silent && twirlOk()) { /* she turns into it (the twirl, below); the wardrobe's words follow with a happy hop, not a pose */
+        twirl(img.src, id === 'gown', function () { if (gen === imgGen) moment('wardrobe', id === 'gown' ? { pose: null, line: 'Starlight, just for you.' } : { pose: null }); }, gen);
+        return;
+      }
+      finishTwirl(); avatarImg.src = img.src; if (!silent && window.OvuMorning && OvuMorning.active()) OvuMorning.repose(); /* brushing in the new outfit */ if (!silent) { avatar.classList.add('poofing'); clearTimeout(poofTimer); poofTimer = setTimeout(function () { poofTimer = null; avatar.classList.remove('poofing'); if (gen === imgGen) moment('wardrobe'); }, 700); } /* tracked: a newer outfit or twirl clears it (Codex verification, 21 Oct) */
+    };
+    preloadBlink(id);
     img.src = ART + 'avatar-' + id + '.webp';
     S.setProfile({ outfit: id });
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
@@ -508,6 +516,7 @@
   function sameFloor(a, b) { if (!L.stairs) return true; return (a.y < L.upstairsY) === (b.y < L.upstairsY); }
   function walkTo(wp, done) {
     if (window.OvuMorning && OvuMorning.active()) return; /* Morning start: she stays where she is (Codex review) */
+    finishTwirl(); /* a walk never starts mid-turn: she finishes dressed in what she chose */
     if (done) { var d0 = done; done = function () { if (window.OvuMorning && OvuMorning.active()) return; d0(); }; } /* a walk begun before Morning start never opens a sheet over it */
     if (wp && !reduced && hooks.walkTo && hooks.walkTo(wp, function () { avatar.classList.toggle('flip', !!wp.flip); scheduleLife(); done && done(); })) return; /* routed around furniture, with her walk cycle */
     if (wp && !reduced && !sameFloor(pos, wp)) {
@@ -543,7 +552,7 @@
     if (isFinite(x) && isFinite(y)) placeAvatar({ x: x, y: y }, avatar.classList.contains('flip'));
     avatar.classList.remove('walking', 'landing'); avatar.classList.add('idle');
   }
-  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (!S.state().sleeping && !meditating && !current && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
+  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (twirlRun || Date.now() - twirlEnded < 1800) { if (current || practice || session || meditating || arranging || asleep()) return; goHome(); return; } /* she finishes turning, hops and says her line before walking home; anything else starting cancels it */ if (!practice && !session && !S.state().sleeping && !meditating && !current && !arranging && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null;
@@ -1437,7 +1446,7 @@
       '<div class="outfits">' + OUTFITS.map(function (o) { var lk = outfitLocked(o.id); return '<button type="button" class="outfit' + (o.id === cur ? ' on' : '') + (lk ? ' locked' : '') + '" data-id="' + o.id + '"' + (lk ? ' aria-label="' + esc(o.name) + ', with Rhythme Plus"' : '') + '><img src="' + ART + 'avatar-' + o.id + '.webp" alt=""><b>' + esc(o.name) + '</b><small>' + (lk ? 'With Rhythme Plus' : esc(o.note)) + '</small>' + (lk ? '<span class="ms olock" aria-hidden="true">lock</span>' : '') + '</button>'; }).join('') + '</div>' +
       '<div class="field"><label for="nameInput">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="nameInput" maxlength="24" placeholder="Your name" value="' + esc(S.profile().name || '') + '"><button class="btn soft" id="saveName" style="flex:0 0 auto">Save</button></div></div>' +
       '<p class="help">Your avatar remembers her outfit on this device. Pyjamas go on automatically at bedtime. Pets and furniture come from Dream Street.</p>');
-    body.addEventListener('click', function (e) { var o = e.target.closest('.outfit'); if (!o) return; if (outfitLocked(o.dataset.id)) { chime('tap'); toast('The Starlight gown is a Rhythme Plus drop. Plus is in preview from You.', 'lock'); openPlus(); return; } setOutfit(o.dataset.id); chime('tap'); toast(OUTFITS.filter(function (x) { return x.id === o.dataset.id; })[0].name + ' it is!', 'checkroom'); });
+    body.addEventListener('click', function (e) { var o = e.target.closest('.outfit'); if (!o) return; if (outfitLocked(o.dataset.id)) { chime('tap'); toast('The Starlight gown is a Rhythme Plus drop. Plus is in preview from You.', 'lock'); openPlus(); return; } var pick = o.dataset.id; chime('tap'); toast(OUTFITS.filter(function (x) { return x.id === pick; })[0].name + ' it is!', 'checkroom'); closeSheet(); setTimeout(function () { setOutfit(pick); }, 260); }); /* the sheet steps aside first, so she is seen turning into it (Jamie, 21 Oct) */
     $('#saveName').addEventListener('click', function () { S.setProfile({ name: $('#nameInput').value.trim() }); updateGreeting(); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); });
   }
 
@@ -2482,6 +2491,84 @@
     }).catch(function (e) { toast('Could not load the atlas: ' + e.message, 'error'); });
   }
 
+  /* ---------- the twirl (Jamie, 21 Oct: "can the avatar be animated? Turn around like a Cinderella changing into the glamorous
+   * gown", "I want it like animal crossing", "Not stiff avatar") ----------
+   * She spins about her own middle to show what she now wears, as in Animal Crossing's wardrobe. Her picture turns edge-on
+   * (its width follows cos of the angle) and the new outfit takes its place at an edge-on moment halfway through, so the
+   * change itself is never seen. An outfit gets one and a half turns; the Starlight gown, the Plus drop, gets the Cinderella
+   * version: two and a half turns inside a rising ring of sparkles, a soft flash at the change and a starburst as she lands.
+   * One rAF clock drives the turn and the sparkles, so the swap lands exactly edge-on; a timer finishes it if frames stop
+   * (a hidden page). It only ever runs because she picked an outfit: pose and outfit never change by themselves (Jamie, 18 Oct) */
+  var twirlRun = null, twirlEnded = 0;
+  function twirlOk() { return !reduced && !document.hidden && !asleep() && !meditating && !practice && !session && !arranging && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !avatar.classList.contains('walking') && !avatar.classList.contains('hidden') && !(hooks.moving && hooks.moving()); }
+  function twirlFx(n, glam) {
+    var fx = document.createElement('span'); fx.className = 'twirl-fx' + (glam ? ' glam' : ''); fx.setAttribute('aria-hidden', 'true');
+    var html = '<span class="tw-flash"></span>';
+    for (var i = 0; i < n; i++) html += '<i class="tw-s' + (i % 3 === 0 ? ' gold' : i % 3 === 1 ? ' lilac' : '') + '"></i>';
+    for (var j = 0; j < (glam ? 10 : 6); j++) html += '<b class="tw-b" style="--a:' + (j * (360 / (glam ? 10 : 6)) + 12) + 'deg"></b>';
+    fx.innerHTML = html; avatar.appendChild(fx); return fx;
+  }
+  function twirl(src, glam, done, gen) {
+    finishTwirl(); quietMoment(); /* an earlier moment's timer never ends this turn early */
+    var turns = glam ? 3 : 1, dur = glam ? 2300 : 1000, swapAt = glam ? 1.25 : 0.75, flipSign = avatar.classList.contains('flip') ? -1 : 1; /* whole turns, so she ends facing the way she started; the swap at an edge-on crossing (a quarter turn past a half) */
+    var fx = twirlFx(glam ? 14 : 7, glam), stars = Array.prototype.slice.call(fx.querySelectorAll('.tw-s'));
+    avatar.classList.remove('idle', 'moment', 'joy', 'landing'); avatar.classList.add('twirling'); if (glam) avatar.classList.add('glam');
+    avatarImg.style.animation = 'none'; avatarImg.style.transition = 'none';
+    if (glam && window.OvuSound && OvuSound.play) try { OvuSound.play('save'); } catch (e) { }
+    var t0 = performance.now(), swapped = false, run;
+    function ease(u) { return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; } /* slow start, quick middle, a soft landing */
+    function swap() { if (swapped) return; swapped = true; if (gen !== undefined && gen !== imgGen) return; /* a newer picture (a pose, another outfit) owns her now */ avatarImg.src = src; fx.classList.add('flash'); }
+    function end(cut) { /* cut: something else (a walk, a pose, another outfit) asked for her, so no closing line or hop */
+      if (twirlRun !== run) return; twirlRun = null; twirlEnded = Date.now(); swap();
+      avatarImg.style.transform = ''; avatarImg.style.animation = ''; avatarImg.style.transition = '';
+      avatar.classList.remove('twirling', 'glam'); avatar.classList.add('idle');
+      fx.classList.add('burst'); setTimeout(function () { if (fx.parentNode) fx.parentNode.removeChild(fx); }, 900);
+      if (!glam && !cut && window.OvuSound && OvuSound.play) try { OvuSound.play('save'); } catch (e) { }
+      scheduleBlink(); if (!cut && run.done) run.done();
+    }
+    function frame(now) {
+      if (twirlRun !== run) return;
+      var u = Math.min(1, (now - t0) / dur), turn = ease(u) * turns;
+      if (!swapped && turn >= swapAt) { turn = swapAt; swap(); } /* the frame that changes her clothes is drawn exactly edge-on, whatever the frame rate */
+      var th = turn * 2 * Math.PI, c = Math.cos(th);
+      var sx = (Math.abs(c) < 0.03 ? (c < 0 ? -0.03 : 0.03) : c) * flipSign;
+      var lift = Math.sin(Math.PI * Math.min(1, u * 1.08)) * (glam ? 9 : 6), land = u > 0.86 ? Math.sin((u - 0.86) / 0.14 * Math.PI) * 0.06 : 0;
+      avatarImg.style.transform = 'translateY(' + (-lift).toFixed(2) + '%) scale(' + (sx * (1 + land)).toFixed(3) + ',' + (1 - land).toFixed(3) + ')';
+      var rise = Math.min(1, u * 1.15); /* the ring climbs from her feet to above her head */
+      stars.forEach(function (el, i) {
+        var a = th * 1.25 + i * 2 * Math.PI / stars.length, x = Math.cos(a), z = Math.sin(a);
+        el.style.left = (50 + x * 58).toFixed(1) + '%'; el.style.top = (100 - rise * (glam ? 108 : 92) + z * 9 - (i % 2) * 4).toFixed(1) + '%';
+        el.style.zIndex = z > 0 ? 3 : 0; el.style.opacity = (Math.sin(Math.PI * u) * (0.55 + 0.45 * Math.abs(Math.sin(a * 3 + i)))).toFixed(2);
+      });
+      if (u < 1) requestAnimationFrame(frame); else end(false);
+    }
+    run = twirlRun = { done: done, end: end };
+    requestAnimationFrame(frame);
+    setTimeout(function () { end(false); }, dur + 450); /* frames stop on a hidden page: she still ends up dressed and standing */
+  }
+  /* a walk, a sleep or a new outfit while she turns: she finishes at once, dressed in what she chose */
+  function finishTwirl() { if (twirlRun) twirlRun.end(true); }
+  function quietMoment() { clearTimeout(momentTimer); clearTimeout(momentRetry); momentRetry = null; clearTimeout(poofTimer); poofTimer = null; avatar.classList.remove('poofing'); if (!momentOn) return; momentOn = null; avatar.classList.remove('moment'); hideThought(); scene.classList.remove('saying'); }
+
+  /* ---------- she blinks (Jamie, 21 Oct: "Not stiff avatar") ----------
+   * Each standing outfit has a closed-eye copy (tools/art/make_blink.py: made from the sprite itself, only the eyes change),
+   * shown for a moment every few seconds while she stands idle, now and then twice. Never during a pose, a walk, a twirl or
+   * sleep, and nothing else about her changes. Reduced motion keeps her eyes open, as it keeps the rest of her still */
+  var blinkT = 0, blinkImgs = {}, blinkOn = !(navigator && navigator.webdriver); /* an automated test browser keeps her eyes still unless a test asks (OvuRoom.blinking), so no screenshot or check lands mid-blink */
+  function preloadBlink(o) { o = o || 'base'; if (!blinkImgs[o]) { var im = new Image(); im.onerror = function () { if (blinkImgs[o] === im) delete blinkImgs[o]; }; /* a failed load is asked for again next time, not kept (Codex verification, 21 Oct) */ im.src = ART + 'avatar-' + o + '-blink.webp'; blinkImgs[o] = im; } return blinkImgs[o]; }
+  function scheduleBlink() { clearTimeout(blinkT); if (reduced || !blinkOn) return; blinkT = setTimeout(blink, 2400 + Math.random() * 3600); }
+  function blink(again) {
+    if (reduced || !blinkOn) return;
+    var o = S.profile().outfit || 'base', open = 'avatar-' + o + '.webp', cur = avatarImg.getAttribute('src') || '', shut = preloadBlink(o);
+    var free = !document.hidden && avatar.classList.contains('idle') && !avatar.classList.contains('walking') && !avatar.classList.contains('twirling') && !avatar.classList.contains('moment') && !avatar.classList.contains('hidden') && cur.slice(-open.length) === open && shut.complete && shut.naturalWidth > 0;
+    if (!free) { scheduleBlink(); return; }
+    var gen = imgGen; avatarImg.src = shut.src;
+    setTimeout(function () {
+      if ((avatarImg.getAttribute('src') || '').indexOf('-blink.webp') > -1) avatarImg.src = ART + open; /* her eyes open again even while another picture is still loading */
+      if (!again && Math.random() < 0.2) { clearTimeout(blinkT); blinkT = setTimeout(function () { blink(true); }, 170); } else scheduleBlink();
+    }, 120);
+  }
+
   /* ---------- a livelier avatar: micro-moments between taps ---------- */
   var lifeTimer = null, lifeBusy = false;
   /* Jamie, 18 Oct: no random moments. The avatar keeps her outfit and pose until she is asked to do something. */
@@ -2499,10 +2586,10 @@
   /* say: a line of words (a moment, a pet's walk); without it the bubble is an emoji thought (Codex branch review, 20 Oct) */
   function showThought(t, say) { var el = $('#thought'); if (!el) return; el.classList.toggle('say', !!say); el.textContent = t; el.classList.add('on'); }
   function hideThought() { var el = $('#thought'); if (el) el.classList.remove('on'); }
-  function joy() { avatar.classList.remove('joy'); void avatar.offsetWidth; avatar.classList.add('joy'); setTimeout(function () { avatar.classList.remove('joy'); }, 560); }
+  function joy() { if (twirlRun) return; avatar.classList.remove('joy'); void avatar.offsetWidth; avatar.classList.add('joy'); setTimeout(function () { avatar.classList.remove('joy'); }, 560); }
 
   /* ---------- mindful moments (ovu-moments.js): she does the thing, in her own clothes, and one line of noticing ---------- */
-  var MO = window.OvuMoments || null, momentTimer = null, momentOn = null, momentRetry = null, careOn = false; /* careOn: a care card is showing in Luna's chat */
+  var MO = window.OvuMoments || null, momentTimer = null, momentOn = null, momentRetry = null, poofTimer = null, careOn = false; /* careOn: a care card is showing in Luna's chat */
   function endMoment() {
     clearTimeout(momentTimer); clearTimeout(momentRetry); momentRetry = null; if (!momentOn) return;
     momentOn = null; avatar.classList.remove('moment'); imgGen++; /* a pose still loading never lands after its moment (Codex re-review) */
@@ -2557,7 +2644,7 @@
   var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513],'tudung':[1.0,0.544],'gown':[1.403,0.518],'act-plants-gown':[1.581,0.574],'act-coffee-gown':[1.424,0.502],'act-teeth-gown':[1.355,0.542],'act-pets-gown':[1.538,0.454],'act-bed-gown':[1.775,0.571],'act-outfit-gown':[1.568,0.643],'act-stretch-gown':[1.502,0.569],'act-note-gown':[1.581,0.522],'act-eat-gown':[1.43,0.539],'act-listen-gown':[1.474,0.532],'act-read-gown':[1.486,0.531],'act-tend-gown':[1.372,0.4],'act-harvest-gown':[1.455,0.53],'act-wave-gown':[1.741,0.522],'act-press-gown':[1.533,0.519],'act-phone-gown':[1.395,0.518],'act-shop-gown':[1.427,0.505],'act-scale-gown':[1.592,0.504]}; /* the gown entries: a skirt wider than the base canvas keeps her height on a wider canvas (scratchpad gown/fit_all.py, 21 Oct) */
   function fitAvatar() {
     /* an outfit's copy of a pose is fitted on the pose's own canvas (tools/art: fit.py), so it shares the pose's numbers */
-    var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatarImg.src || ''), f = m && (AVATAR_FIT[m[1]] || AVATAR_FIT[m[1].replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung|gown)$/, '')]); if (!f) f = [1, 0.5];
+    var m = /avatar-([a-z0-9-]+?)(?:-blink)?\.webp/.exec(avatarImg.src || ''), f = m && (AVATAR_FIT[m[1]] || AVATAR_FIT[m[1].replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung|gown)$/, '')]); if (!f) f = [1, 0.5];
     avatarImg.style.width = (f[0] * 100).toFixed(2) + '%'; avatarImg.style.maxWidth = 'none';
     avatarImg.style.marginLeft = ((0.5 - f[1] * f[0]) * 100).toFixed(2) + '%';
     avatarImg.style.transformOrigin = (f[1] * 100).toFixed(1) + '% 100%';
@@ -2570,6 +2657,7 @@
   var BASE_SUFFIXED = { stretch: 1 }; /* the unsuffixed stretch file is the yoga set; her own clothes are avatar-act-stretch-base (Codex, 21 Oct) */
   function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && (outfit !== 'base' || BASE_SUFFIXED[pose]) ? '-' + outfit : '') + '.webp'; }
   function setPose(pose) {
+    finishTwirl();
     var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image(), gen = ++imgGen;
     img.onload = function () { if (gen === imgGen) avatarImg.src = img.src; };
     /* a missing outfit copy never borrows the default clothes: she keeps standing in her own (Jamie's rule; Codex review) */
@@ -3087,8 +3175,8 @@
    * everything else here stays private. */
   var hooks = { on: {}, hotspotHandlers: {}, fallbackHotspot: null, hudStop: null, moving: null, camFocus: null, walkTo: null }, booted = false;
   /* a walk ends a mindful moment at once: she never slides in a pose (Codex branch review, 20 Oct) */
-  hooks.on.beforeWalk = [function () { endMoment(); }];
-  hooks.on.walk = [function () { endMoment(); }];
+  hooks.on.beforeWalk = [function () { finishTwirl(); endMoment(); }];
+  hooks.on.walk = [function () { finishTwirl(); endMoment(); }]; /* floor taps and keys start walks here: a turn finishes at once */
   function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = {
     LAYOUTS: LAYOUTS, ART: ART, OUTFITS: OUTFITS, hotspotHandlers: hooks.hotspotHandlers,
@@ -3106,6 +3194,7 @@
     openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, setOutfit: setOutfit, outfitLocked: outfitLocked, updateGreeting: updateGreeting, openPlus: openPlus, openExercise: openExercise, openMoveGuide: openMoveGuide,
     moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
+    blinking: function (on) { blinkOn = !!on; if (blinkOn) scheduleBlink(); else clearTimeout(blinkT); return blinkOn; },
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on && title) { clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }
   };
 
@@ -3115,7 +3204,7 @@
     buildScene();
     try { var tq = new URLSearchParams(location.search).get('tester'); if (tq === 'hearts') { S.setState({ tester: { hearts: true } }); toast('Tester mode: hearts are unlimited on this device.', 'science'); } else if (tq === 'off') { S.setState({ tester: null }); } if (tq) history.replaceState(null, '', location.pathname + location.hash); } catch (e) { } /* read before her outfit is set: a Plus drop depends on tester mode (Codex-free smoke find, 21 Oct) */
     setOutfit(S.profile().outfit || 'base', true);
-    avatar.classList.add('idle');
+    avatar.classList.add('idle'); scheduleBlink();
     if (S.state().sleeping) enterNight(false);
     if (window.OvuMascot) OvuMascot.apply();
     updateGreeting(); renderDeck(); renderProps(); applySky();
