@@ -225,15 +225,15 @@
   /* the notice shows each choice as an emoji, its title and one short line; the full consent text (the hashed body) sits
      under "More" beside it, outside the label so opening it never flips the switch (Jamie, 22 Oct: simpler and prettier). */
   var HINTS = {
-    cloud_sync: ['☁️', 'Keep a backup in your account, stored in Singapore.'],
-    improve_logging: ['💜', 'Share anonymous group totals to help improve Rhythme.'],
-    ai_reading: ['✨', 'Luna’s AI reads notes her own rules cannot.'],
-    food_photo_ai: ['📸', 'Luna’s AI names the food in your photos.'],
-    ai_summaries: ['📖', 'Luna’s AI writes your journal readings.']
+    cloud_sync: ['cloud', 'Keep a backup in your account, stored in Singapore.'],
+    improve_logging: ['favorite', 'Share anonymous group totals to help improve Rhythme.'],
+    ai_reading: ['auto_awesome', 'Luna’s AI reads notes her own rules cannot.'],
+    food_photo_ai: ['photo_camera', 'Luna’s AI names the food in your photos.'],
+    ai_summaries: ['menu_book', 'Luna’s AI writes your journal readings.']
   };
   function toggleHTML(p, on, note) {
     var paused = AI_IDS[p.id] && aiPaused(), h = HINTS[p.id] || ['', p.body];
-    return '<div class="c-pick"><label class="c-opt' + (paused ? ' c-paused' : '') + '" data-purpose="' + p.id + '"><input type="checkbox" id="c_' + p.id + '"' + (on && !paused ? ' checked' : '') + (paused ? ' disabled' : '') + '><span>' + (h[0] ? '<i class="c-emo" aria-hidden="true">' + h[0] + '</i>' : '') + '<b>' + esc(p.title) + '</b><small>' + esc(paused ? PAUSED_LINE : h[1]) + (note ? ' ' + esc(note) : '') + '</small></span></label>' +
+    return '<div class="c-pick"><label class="c-opt' + (paused ? ' c-paused' : '') + '" data-purpose="' + p.id + '"><input type="checkbox" id="c_' + p.id + '"' + (on && !paused ? ' checked' : '') + (paused ? ' disabled' : '') + '><span>' + (h[0] ? '<i class="c-emo ms" aria-hidden="true">' + h[0] + '</i>' : '') + '<b>' + esc(p.title) + '</b><small>' + esc(paused ? PAUSED_LINE : h[1]) + (note ? ' ' + esc(note) : '') + '</small></span></label>' +
       '<details class="c-more"><summary>More</summary><p>' + esc(p.body) + '</p></details></div>';
   }
   function fillSheet(c) {

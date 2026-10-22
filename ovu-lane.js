@@ -118,7 +118,7 @@
   function F() { return root.OvuFarm; }
   function KT() { return root.OvuKitchen; } /* the farm kitchen's staples (ovu-kitchen.js) */
   function hearts() { var rw = RW(); return rw ? (rw.tester && rw.tester() ? Infinity : rw.ledger().hearts) : 0; }
-  function heartTxt(n) { return n + ' ♥'; }
+  function heartTxt(n) { return n + ' hearts'; }
   function num(v) { var x = Math.floor(Number(v)); return isFinite(x) && x > 0 ? x : 0; } /* a restored backup's counts reach the page as numbers only (review, 21 Oct) */
   function dateText(d) { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: d.slice(0, 4) === today().slice(0, 4) ? undefined : 'numeric' }); } catch (e) { return d; } }
   /* the back row: with the hearts she has (a shop), "Free" (the gym) or nothing beside it */

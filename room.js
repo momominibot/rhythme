@@ -330,7 +330,7 @@
     }
     scene.classList.toggle('has-win-patch', wps.length > 0);
     var wn = $('#winNight'); if (wn && L.window) { wn.style.left = L.window.x + '%'; wn.style.top = L.window.y + '%'; wn.style.width = (L.window.rx * 2) + '%'; wn.style.height = (L.window.ry * 2) + '%'; }
-    var vb = $('#visitBar'); if (vb) { vb.classList.toggle('on', !!visiting); vb.innerHTML = visiting && houseItem(L.id) ? '<span class="ms">cottage</span><span>Visiting ' + esc(houseItem(L.id).name.replace(/^./, function (c) { return c.toLowerCase(); })) + ' · <b>' + houseItem(L.id).cost + ' ♥ to move in</b></span><button type="button" id="visitBack"><span class="ms">arrow_back</span>Back</button>' : ''; }
+    var vb = $('#visitBar'); if (vb) { vb.classList.toggle('on', !!visiting); vb.innerHTML = visiting && houseItem(L.id) ? '<span class="ms">cottage</span><span>Visiting ' + esc(houseItem(L.id).name.replace(/^./, function (c) { return c.toLowerCase(); })) + ' · <b>' + houseItem(L.id).cost + ' hearts to move in</b></span><button type="button" id="visitBack"><span class="ms">arrow_back</span>Back</button>' : ''; }
     renderProps(); placeAvatar(HOME, false);
     emit('layout', L, !!asVisit); /* the scene modules (walk, garden, community) re-read floors, doors and props */
   }
@@ -468,7 +468,7 @@
     var res = PETS.clean(id, poopId); if (!res.ok) { renderProps(); return; }
     var rw = RW.care(id, 'clean');
     if (btn) { btn.classList.add('poof'); btn.disabled = true; }
-    chime('tap'); toast('All tidy. ' + (PETS.NAMES[id] || 'Your pet') + ' thanks you.' + (rw.points ? ' +' + rw.points + ' ♥' : ''), 'cleaning_services', moment('pettidy', { quiet: true }));
+    chime('tap'); toast('All tidy. ' + (PETS.NAMES[id] || 'Your pet') + ' thanks you.' + (rw.points ? ' +' + rw.points + ' hearts' : ''), 'cleaning_services', moment('pettidy', { quiet: true }));
     setTimeout(renderProps, 650);
   }
   function petAction(id, act) {
@@ -486,7 +486,7 @@
     if (!r.ok) { toast(act === 'feed' ? name + ' is already full. Maybe a cuddle instead?' : name + ' is happily tired. Maybe a cuddle instead?', 'favorite'); return; }
     var rw = RW.care(id, act);
     petFx(id, act); chime('save');
-    toast((act === 'feed' ? name + ' munched happily.' : act === 'play' ? name + ' loved chasing the ball.' : name + ' snuggled in.') + (rw.points ? ' +' + rw.points + ' ♥' : ''), act === 'feed' ? 'restaurant' : act === 'play' ? 'sports_baseball' : 'favorite', moment(act === 'feed' ? 'petfeed' : act === 'play' ? 'petplay' : 'petcuddle', { quiet: true }));
+    toast((act === 'feed' ? name + ' munched happily.' : act === 'play' ? name + ' loved chasing the ball.' : name + ' snuggled in.') + (rw.points ? ' +' + rw.points + ' hearts' : ''), act === 'feed' ? 'restaurant' : act === 'play' ? 'sports_baseball' : 'favorite', moment(act === 'feed' ? 'petfeed' : act === 'play' ? 'petplay' : 'petcuddle', { quiet: true }));
     setTimeout(renderProps, act === 'cuddle' ? 1500 : 2400);
   }
   $('#ownedProps').addEventListener('click', function (e) {
@@ -692,8 +692,8 @@
   }
 
   /* ---------- sleep flows ---------- */
-  function moonsHTML(name, val) { var out = ''; for (var i = 1; i <= 5; i++) out += '<button type="button" data-q="' + i + '" class="' + (val >= i ? 'on' : '') + '" aria-label="Quality ' + i + ' of 5">' + (val >= i ? '🌕' : '🌑') + '</button>'; return '<div class="moons" data-name="' + name + '">' + out + '</div>'; }
-  function wireMoons(root) { $$('.moons', root).forEach(function (m) { m.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var v = Number(b.dataset.q); m.dataset.value = v; $$('button', m).forEach(function (x, i) { x.classList.toggle('on', i < v); x.textContent = i < v ? '🌕' : '🌑'; }); }); }); }
+  function moonsHTML(name, val) { var out = ''; for (var i = 1; i <= 5; i++) out += '<button type="button" data-q="' + i + '" class="' + (val >= i ? 'on' : '') + '" aria-label="Quality ' + i + ' of 5">' + '</button>'; return '<div class="moons" data-name="' + name + '">' + out + '</div>'; }
+  function wireMoons(root) { $$('.moons', root).forEach(function (m) { m.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var v = Number(b.dataset.q); m.dataset.value = v; $$('button', m).forEach(function (x, i) { x.classList.toggle('on', i < v); x.textContent = ''; }); }); }); }
   function sleepListHTML() {
     var st = S.sleepStats(7);
     if (!st.nights.length) return '<div class="empty">No nights recorded yet. Your first entry starts the pattern.</div>';
@@ -751,7 +751,7 @@
     var bd = $('#sqBody', body), t = $('#sqToggle', body);
     if (bd) { Object.keys(d.details || {}).forEach(function (k) { [].concat(d.details[k]).forEach(function (v) { var b = bd.querySelector('.sqf[data-sq="' + k + '"] .chipbtn[data-v="' + v + '"]'); if (b) { b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); } }); }); var w = bd.querySelector('.sqf[data-sq="wakeups"] .chipbtn.on'), aw = bd.querySelector('.sqf[data-sq="awake"]'); if (aw) aw.hidden = !w || w.dataset.v === '0'; }
     if (d.open && t && bd && bd.hidden) t.click();
-    var mo = $('.moons', body); if (mo && d.q) { mo.dataset.value = d.q; $$('button', mo).forEach(function (x, i) { x.classList.toggle('on', i < d.q); x.textContent = i < d.q ? '🌕' : '🌑'; }); } /* the quality moons come back too (menopause walk, 21 Oct) */
+    var mo = $('.moons', body); if (mo && d.q) { mo.dataset.value = d.q; $$('button', mo).forEach(function (x, i) { x.classList.toggle('on', i < d.q); x.textContent = ''; }); } /* the quality moons come back too (menopause walk, 21 Oct) */
   }
   function detailLine(d) {
     if (!d) return '';
@@ -1157,7 +1157,7 @@
     if (!ovarian) return '';
     var ph = ovarian.phases[phase] || null, list = ovarian.foods.filter(function (f) { return (f.phase || []).indexOf(phase) > -1; }).slice(0, 10);
     if (!list.length) return '';
-    return '<div class="field"><span class="lbl">Foods to try in this phase</span>' + (ph ? '<p class="help" style="margin:0 0 6px">' + esc(ph.text) + '</p>' : '') + '<div class="picks">' + list.map(function (f) { return '<button type="button" class="pick' + (f.img ? ' haspic' : '') + '" data-usda="' + esc(f.usda || '') + '" data-name="' + esc(f.name) + '">' + (f.img ? '<img class="pickimg" src="' + esc(f.img) + '" alt="" loading="lazy">' : '') + '<b>' + esc((f.img ? '' : f.emoji + ' ') + f.name) + '</b><small>' + esc(f.tags) + '</small><em>' + esc(f.usda ? 'Tap to add with USDA values' : f.tcm) + '</em></button>'; }).join('') + '</div></div>';
+    return '<div class="field"><span class="lbl">Foods to try in this phase</span>' + (ph ? '<p class="help" style="margin:0 0 6px">' + esc(ph.text) + '</p>' : '') + '<div class="picks">' + list.map(function (f) { return '<button type="button" class="pick' + (f.img ? ' haspic' : '') + '" data-usda="' + esc(f.usda || '') + '" data-name="' + esc(f.name) + '">' + (f.img ? '<img class="pickimg" src="' + esc(f.img) + '" alt="" loading="lazy">' : '') + '<b>' + esc(f.name) + '</b><small>' + esc(f.tags) + '</small><em>' + esc(f.usda ? 'Tap to add with USDA values' : f.tcm) + '</em></button>'; }).join('') + '</div></div>';
   }
   function showPicker(food) {
     picked = { food: food, portion: food.portions[1] || food.portions[0], grams: (food.portions[1] || food.portions[0]).g };
@@ -2924,12 +2924,13 @@
     lifeBusy = true;
     var h = new Date().getHours(), pool = h < 11 ? ['coffee', 'stretch', 'plants', 'bed'] : h < 18 ? ['plants', 'pets', 'outfit', 'coffee'] : ['bed', 'stretch', 'pets', 'coffee'];
     var pose = pool[Math.floor(Math.random() * pool.length)];
-    var thought = { coffee: '☕', stretch: '✨', bed: '💤', plants: '🌱', pets: '🐾', outfit: '👗' }[pose];
+    var thought = { coffee: 'coffee', stretch: 'auto_awesome', bed: 'bedtime', plants: 'eco', pets: 'pets', outfit: 'checkroom' }[pose]; /* an icon, never an emoji (Jamie, 22 Oct) */
     avatar.classList.add('moment'); setPose(pose); showThought(thought);
     setTimeout(function () { avatar.classList.remove('moment'); if (!practice) restorePose(); hideThought(); lifeBusy = false; scheduleLife(); }, 3200 + Math.random() * 1400);
   }
   /* say: a line of words (a moment, a pet's walk); without it the bubble is an emoji thought (Codex branch review, 20 Oct) */
-  function showThought(t, say) { var el = $('#thought'); if (!el) return; el.classList.toggle('say', !!say); el.textContent = t; el.classList.add('on'); }
+  /* a thought is an icon name (a Material Symbol) or, with say, a short line of words */
+  function showThought(t, say) { var el = $('#thought'); if (!el) return; el.classList.toggle('say', !!say); if (say) el.textContent = t; else el.innerHTML = /^[a-z_0-9]+$/.test(t || '') ? '<span class="ms" aria-hidden="true">' + t + '</span>' : ''; el.classList.add('on'); }
   function hideThought() { var el = $('#thought'); if (el) el.classList.remove('on'); }
   function joy() { if (twirlRun) return; avatar.classList.remove('joy'); void avatar.offsetWidth; avatar.classList.add('joy'); setTimeout(function () { avatar.classList.remove('joy'); }, 560); }
 
@@ -3440,7 +3441,7 @@
     /* The entry already saved. A hearts failure must never ask her to log it twice. */
     try { rw = RW.award(ev); } catch (e) { rewardFailed = true; }
     var hi = res.flags.filter(function (f) { return f.level === 'high'; })[0], w = res.flags.filter(function (f) { return f.level === 'watch'; })[0];
-    var heartsText = rewardFailed ? ' Hearts could not be saved.' : rw.points ? ' +' + (rw.points + rw.bonus) + ' ♥' : '';
+    var heartsText = rewardFailed ? ' Hearts could not be saved.' : rw.points ? ' +' + (rw.points + rw.bonus) + ' hearts' : '';
     /* a red flag in what was just saved is shown at once, never left for the journal (four-persona review, 20 Oct) */
     var care = topCare([ev].concat(alsoSaved || []));
     if (care) endMoment(); /* a care card always comes alone */

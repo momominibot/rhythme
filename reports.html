@@ -240,7 +240,7 @@
   });
 
   // uploads (prototype feedback)
-  function onFile(input, kind){ input.addEventListener('change',function(){ if(input.files&&input.files[0]) toast('📄 '+kind+' “'+input.files[0].name.slice(0,22)+'” received — extracting values…'); }); }
+  function onFile(input, kind){ input.addEventListener('change',function(){ if(input.files&&input.files[0]) toast(''+kind+' “'+input.files[0].name.slice(0,22)+'” received — extracting values…'); }); }
   onFile(document.getElementById('pdfIn'),'Report'); onFile(document.getElementById('imgIn'),'Scan');
   document.getElementById('bookAfc').addEventListener('click',function(){ toast('Finding partner clinics near you…'); });
 })();
