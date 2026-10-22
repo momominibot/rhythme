@@ -178,11 +178,12 @@
   /* the inventory: her hearts, a row of category tabs, and the chosen category as pictures with counts (Jamie, 22 Oct) */
   var invTab = null;
   function pic(r) {
+    var tint = /^#[0-9a-f]{3,8}$/i.test(r.tint || '') ? r.tint : null;
     var face = r.img ? '<img src="' + esc(r.img) + '" alt="" loading="lazy">' : '<span class="ms invicon" aria-hidden="true">' + esc(r.icon || 'inventory_2') + '</span>';
-    return '<span class="invface"' + (r.tint ? ' style="--tint:' + esc(r.tint) + '"' : '') + '>' + face + (r.badge ? '<img class="invbadge" src="' + esc(r.badge) + '" alt="">' : '') + (r.tint ? '<i class="invtint" aria-hidden="true"></i>' : '') + '</span>';
+    return '<span class="invface"' + (tint ? ' style="--tint:' + tint + '"' : '') + '>' + face + (r.badge ? '<img class="invbadge" src="' + esc(r.badge) + '" alt="">' : '') + (tint ? '<i class="invtint" aria-hidden="true"></i>' : '') + '</span>';
   }
   function renderInventory(el) {
-    var m = inventoryModel(inventoryCtx());
+    var m = inventoryModel(inventoryCtx()), oldBar = el.querySelector('.invtabs'), keepX = oldBar ? oldBar.scrollLeft : 0; /* a redraw keeps the tab strip where she scrolled it */
     var first = m.sections.filter(function (s) { return s.rows.length; })[0];
     if (!invTab || !m.sections.some(function (s) { return s.id === invTab; })) invTab = first ? first.id : m.sections[0].id;
     var cur = m.sections.filter(function (s) { return s.id === invTab; })[0];
@@ -198,7 +199,12 @@
     if (cur.go && can(cur.go.id)) h += '<button type="button" class="invgo" data-today="' + esc(cur.go.id) + '">' + esc(cur.go.label) + '<span class="ms" aria-hidden="true">chevron_right</span></button>';
     h += '</section>';
     el.innerHTML = h;
-    var tb = el.querySelector('.invtabs'); if (tb) tb.addEventListener('click', function (e) { var b = e.target.closest('[data-invtab]'); if (!b) return; invTab = b.dataset.invtab; renderInventory(el); var nb = el.querySelector('[data-invtab="' + invTab + '"]'); if (nb) { try { nb.focus({ preventScroll: true }); } catch (x) { } } });
+    var tb = el.querySelector('.invtabs');
+    if (tb) {
+      tb.scrollLeft = keepX;
+      var sel = tb.querySelector('.invtab.on'); if (sel) { var l = sel.offsetLeft, r = l + sel.offsetWidth; if (l < tb.scrollLeft || r > tb.scrollLeft + tb.clientWidth) tb.scrollLeft = Math.max(0, l - (tb.clientWidth - sel.offsetWidth) / 2); } /* the chosen tab is always in view (Codex, 22 Oct) */
+      tb.addEventListener('click', function (e) { var b = e.target.closest('[data-invtab]'); if (!b) return; invTab = b.dataset.invtab; renderInventory(el); var nb = el.querySelector('[data-invtab="' + invTab + '"]'); if (nb) { try { nb.focus({ preventScroll: true }); } catch (x) { } } });
+    }
   }
   function render() {
     var e = els(); if (!e.tabs) return;
