@@ -2377,3 +2377,15 @@ html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
 .lovemeter .ms{font-size:17px;color:#ff6f9f}
 .lovemeter .ms.off{color:rgba(150,120,190,.35)}
 @media (prefers-reduced-motion: reduce){.lovepop{animation-duration:.01s}.barnthing.animal.peck img,.barnthing.animal.loved img{animation:none}}
+/* fishing actions (22 Oct): a power bar while Cast is held, nibbles on the float, a bite line, and a reel bar with tugs */
+.castpower,.reelbar{height:8px;border-radius:99px;background:rgba(150,120,190,.18);overflow:hidden;margin:2px 0 10px}
+.castpower i,.reelbar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#b9a3ef,#7d5cc4)}
+.reelbar{flex:1 1 100%;margin:0 0 8px}
+.reelbar i{background:linear-gradient(90deg,#9fd7f0,#5f8fd8);transition:width .08s linear}
+.hbpic .hbfloat.nibble{animation:floatnibble .5s ease-in-out 1}
+@keyframes floatnibble{0%,100%{transform:translateY(0)}40%{transform:translateY(2px)}70%{transform:translateY(-1px)}}
+.biteline{animation:bitepulse 1s ease-in-out infinite}
+@keyframes bitepulse{0%,100%{opacity:1}50%{opacity:.6}}
+.reelbtn.tug{animation:reeltug .45s ease-in-out}
+@keyframes reeltug{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px) rotate(-2deg)}75%{transform:translateX(4px) rotate(2deg)}}
+@media (prefers-reduced-motion: reduce){.biteline,.reelbtn.tug,.hbpic .hbfloat.nibble{animation:none}}

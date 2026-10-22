@@ -221,7 +221,7 @@
   var sitting = null;
   function sitDown(spot, back) {
     if (root.OvuWalk.napping()) return;
-    standUp(); var wrap = R.els.props, el = doc.createElement('div');
+    standUp(); if (R.erin) R.erin('sit'); var wrap = R.els.props, el = doc.createElement('div');
     el.className = 'nb sitter'; el.dataset.id = 'sitter'; el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', 'You are sitting on the bench. Tap to get up.');
     el.style.left = spot.x + '%'; el.style.top = spot.y + '%'; el.style.width = spot.w + '%';
     if (spot.seat) seatPlace(el, spot.seat);

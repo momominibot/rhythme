@@ -2241,6 +2241,7 @@
     if (refuseBusy()) return; /* never over a practice, a bench practice or Morning start */
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (window.OvuPodcast) OvuPodcast.pause();
+    if (kind !== 'erin') erin('just-breathe'); /* Erin's own session speaks for itself */
     session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: kind === 'erin' ? new Audio() : null, timer: null };
     emit('activity', 'session', kind); /* anything else using the HUD (a greenhouse minute) hands it over before this claims it */
     clearTimeout(fadeTimer); fadeTimer = null;
@@ -2811,9 +2812,22 @@
   }
   /* returns the line, so a caller can also show it in its own sheet; the pose is skipped while she sleeps, meditates,
    * practises, walks or the room is being arranged, and the line still shows */
+  /* Erin's short line for an action (Jamie, 22 Oct: "All actions must have Erin's mindfulness voice"): one clip per action in
+   * assets/audio/erin-actions (voiced with her cloned voice by tools/voice/erin_lines.py, checked by transcription). Silent
+   * while her own guided practice speaks, while she sleeps or with sound off; the same line never twice within 20 s. */
+  var ERIN_ACT = 'assets/audio/erin-actions/', erinAudio = null, erinLast = {};
+  /* no line for the spring: the cave stays without a voice (Jamie, 21 Oct: "just sound in the cave") */
+  var MOMENT_ERIN = { period: 'saved', symptom: 'saved', food: 'saved', reflection: 'saved', farmmeal: 'cook-taste', exercise: 'gym', lightflower: 'light-flower', moontap: 'koi-pond', acupressure: 'acupressure', greenhouse: 'arrive', tea: 'tea-sip', plant: 'plant', weed: 'pull-weeds', farmwater: 'water-bed', well: 'draw-water', eggs: 'collect-eggs', treat: 'give-treat', hentreat: 'give-treat', milk: 'milk-clover', brush: 'brush-clover', springlower: 'spring-lower', springsteam: 'spring-wait', springlift: 'spring-lift', cast: 'cast', bite: 'bite', release: 'release-fish', watchwater: 'ripple', herbplant: 'plant-herb', herbwater: 'water-herb', herbharvest: 'pick-herb', brew: 'brew', plantcare: 'plant-care', harvest: 'harvest', shop: 'shop', seedswap: 'shop', gym: 'gym', letter: 'post-letter', letterread: 'read-letter', cookwash: 'cook-wash', cookchop: 'cook-chop', cooksmell: 'cook-smell', cooktaste: 'cook-taste', cookdish: 'cook-taste', adopt: 'arrange', petfeed: 'feed-pet', petplay: 'play-ball', petcuddle: 'cuddle', pettidy: 'tidy', petdress: 'dress-pet', wardrobe: 'change-outfit', plaza: 'arrive', friend: 'say-hello', hello: 'say-hello' };
+  function erin(id) {
+    if (!id || !soundOn() || asleep() || session || practice || meditating || (window.OvuMorning && OvuMorning.active())) return false;
+    var now = Date.now(); if (erinLast[id] && now - erinLast[id] < 20000) return false; erinLast[id] = now;
+    try { if (erinAudio) erinAudio.pause(); erinAudio = new Audio(ERIN_ACT + id + '.mp3'); erinAudio.play().catch(function () { }); } catch (e) { return false; }
+    return true;
+  }
   function moment(key, opt) {
     if (!MO || !MO.MOMENTS[key]) return '';
     opt = opt || {};
+    if (!opt.tries) erin(opt.erin || (key === 'brush' && L && L.id === 'heninside' ? 'brush-hen' : MOMENT_ERIN[key]));
     var text = opt.line || MO.line(key), pose = opt.pose === undefined ? MO.pose(key) : opt.pose;
     if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn || (window.OvuMorning && OvuMorning.active()) || (window.OvuSeats && OvuSeats.active())) return text; /* Morning start and a seated practice keep their own pose */
     /* while she walks the pose waits, a few times at most, and never starts over a walk (Codex branch review, 20 Oct) */
@@ -3410,6 +3424,7 @@
   hooks.on.layout = (hooks.on.layout || []).concat([function (L2) { if (trying && (!L2 || L2.id !== trying.at)) endTryOn(true); }]);
   function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = {
+    erin: erin, /* Erin's short line for an action, by id (assets/audio/erin-actions/lines.json) */
     LAYOUTS: LAYOUTS, ART: ART, OUTFITS: OUTFITS, hotspotHandlers: hooks.hotspotHandlers,
     on: function (name, f) { (hooks.on[name] = hooks.on[name] || []).push(f); if (name === 'boot' && booted) f(); },
     setFallbackHotspot: function (f) { hooks.fallbackHotspot = f; }, setHudStop: function (f) { hooks.hudStop = f; }, setMoving: function (f) { hooks.moving = f; }, emit: emit,
