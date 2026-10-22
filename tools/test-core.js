@@ -1370,7 +1370,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   };
   var t = S.today(), sl = S.add('sleep', t, { bedTime: '23:00', wakeTime: '07:00', quality: 3, notes: '' }), ex = S.add('exercise', t, EX.makeEntry({ activity: 'walk', variant: 'brisk', minutes: 30 }));
   return Y.syncNow().then(function (r1) {
-    var st1 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    var st1 = syncView(w);
     check('the first sync succeeds: the sleep row uploads and the exercise row is held', r1.ok === true && r1.held === 1 && posts.length === 1 && posts[0].join() === 'sleep:' + sl.id && st1.held && st1.held[ex.id], JSON.stringify({ r1: r1, posts: posts, held: st1.held }));
     /* a later edit to another row moves the push watermark past the held row's time */
     return new Promise(function (res) { setTimeout(res, 15); }).then(function () { S.update(sl.id, { data: Object.assign({}, sl.data, { quality: 4 }) }); return Y.syncNow(); });
@@ -1379,7 +1379,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
     migrated = true;
     return Y.syncNow();
   }).then(function (r3) {
-    var st3 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    var st3 = syncView(w);
     check('once the server accepts it, the held row goes up even though the watermark moved past it', r3.ok === true && r3.held === 0 && posts[posts.length - 1].indexOf('exercise:' + ex.id) > -1 && !Object.keys(st3.held || {}).length, JSON.stringify({ r3: r3, posts: posts, held: st3.held }));
   }).catch(function (err) { check('the sync hold test ran to the end', false, String(err && err.stack || err)); });
 })();
@@ -1414,12 +1414,12 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
     return w.reply(201, null);
   };
   var t1 = Y.syncNow().then(function () { refuse = false; return Y.syncNow(); }).then(function (r2) {
-    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncView(w);
     check('a held row edited during its upload stays held, even when an older deletion of it arrives in the same sync', tombGiven && !!(st.held && st.held[ex.id]), JSON.stringify({ held: st.held, sent: sent, tomb: tombGiven }));
     check('and the sync reports it as still waiting, so the app cannot say "Backed up."', r2 && r2.ok === true && r2.held === 1, JSON.stringify(r2));
     return Y.syncNow();
   }).then(function () {
-    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncView(w);
     check('and the newer version (20 minutes) goes up on the next sync, then the hold is released', sent.indexOf('exercise:20') > -1 && !(st.held && st.held[ex.id]), JSON.stringify({ held: st.held, sent: sent }));
   });
   /* 2. an older version advanced its cursor past an exercise row it could not keep; this version pulls everything once */
@@ -1435,7 +1435,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
     return v.reply(201, null);
   };
   var t2 = YV.syncNow().then(function (r) {
-    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncPull(v);
     check('after learning the exercise type, a one-time pull of that type alone brings back the row the old version skipped', gets.length === 2 && /synced_at=gt/.test(gets[0]) && /type=in\.\([^)]*exercise[^)]*\)/.test(gets[1]) && !/synced_at=gt/.test(gets[1]) && SV.list('exercise').length === 1 && st.types === SV.TYPES.join(','), JSON.stringify({ r: r, gets: gets, n: SV.list('exercise').length, types: st.types }));
     check('an older entry cleared from this phone on purpose is not brought back', SV.list('reflection').length === 0);
     return YV.syncNow();
@@ -1484,6 +1484,48 @@ function syncServer() {
     }
   };
 }
+/* where the pull resumes (shared cursor, typed recovery): its own key since round four of the sync review, inside the
+   main sync state before that; and the reset generation, likewise. The checks read either layout, so mutation runs
+   against older sync code still mean something. */
+function syncView(w) {
+  var ls = w.localStorage, pos = JSON.parse(ls.getItem('ovumind_sync_pos_v1') || 'null'), main = JSON.parse(ls.getItem('ovumind_sync_v1') || '{}');
+  if (pos || ls.getItem('ovumind_sync_reset_v1') != null) {
+    /* round five: one position, valid only under the current reset token (after a reset with none stored yet: empty) */
+    var tok = ls.getItem('ovumind_sync_reset_v1') || '';
+    if (!pos || pos.token !== tok) return { userId: null, pushedAt: null, held: {}, profilePulledAt: null, lastSyncAt: null, pulledSeq: null, pulledId: null, types: null, typedAfter: null };
+    return { userId: pos.uid || null, pushedAt: pos.pushedAt || null, held: pos.held || {}, profilePulledAt: pos.profilePulledAt || null, lastSyncAt: pos.lastSyncAt || null, pulledSeq: pos.pulledSeq || null, pulledId: pos.pulledId != null ? pos.pulledId : null, types: pos.types || null, typedAfter: pos.typedAfter || null };
+  }
+  var pull = JSON.parse(ls.getItem('ovumind_sync_pull_v1') || 'null'), out = Object.assign({}, main);
+  if (pull) ['pulledSeq', 'pulledId', 'types', 'typedAfter'].forEach(function (k) { out[k] = pull[k]; });
+  return out;
+}
+var syncPull = syncView;
+/* the reset generation: a random token since round five, a counter before */
+function syncGen(w) { var t = w.localStorage.getItem('ovumind_sync_reset_v1'); if (t != null) return t; var g = w.localStorage.getItem('ovumind_sync_gen_v1'); return g != null ? Number(g) : Number((JSON.parse(w.localStorage.getItem('ovumind_sync_v1') || '{}')).gen) || 0; }
+/* a pretend Web Locks manager shared by pretend tabs: exclusive, granted in request order, the callback run
+   asynchronously and the lock held until its promise settles; idle() resolves once nothing holds or waits */
+function lockManager() {
+  var held = {}, queue = {}, waiters = [];
+  function busy() { return Object.keys(held).some(function (k) { return held[k]; }); }
+  function wake() { if (busy()) return; var w = waiters; waiters = []; w.forEach(function (fn) { fn(); }); }
+  return {
+    idle: function () { return new Promise(function (res) { waiters.push(res); Promise.resolve().then(wake); }); },
+    request: function (name, cb) {
+      return new Promise(function (res, rej) {
+        var done = function () { var q = queue[name]; if (q && q.length) q.shift()(); else { held[name] = false; Promise.resolve().then(wake); } };
+        var go = function () { Promise.resolve().then(function () { return cb({ name: name, mode: 'exclusive' }); }).then(function (v) { done(); res(v); }, function (e) { done(); rej(e); }); };
+        if (held[name]) (queue[name] = queue[name] || []).push(go); else { held[name] = true; go(); }
+      });
+    }
+  };
+}
+/* two tabs of one phone: one storage, one lock manager, one pretend server */
+function syncTabs(srv, onGetA, onGetB) {
+  var mgr = lockManager(), A = syncWorld(srv, onGetA, null), B = syncWorld(srv, onGetB, null);
+  B.localStorage = A.localStorage; A.navigator.locks = mgr; B.navigator.locks = mgr;
+  return { A: A, B: B, mgr: mgr };
+}
+function ticks(ms) { return new Promise(function (r) { setTimeout(r, ms || 0); }); }
 /* a signed-in phone with cloud backup on, talking to `srv`; `state` is its saved sync position (null: a new phone,
    undefined: an older version's millisecond cursor at 10:00 on 19 Oct) */
 function syncWorld(srv, onGet, state) {
@@ -1510,7 +1552,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   var w = world(srv, function (url) { calls++; if (calls === 1) { srv.rows.push(row('r101', 'reflection', '2026-10-19T10:01:00Z', { text: 'between the requests', mood: '' })); srv.rows.push(row('x102', 'exercise', '2026-10-19T10:02:00Z', { activity: 'walk', label: 'Walking', variant: 'brisk', code: '17200', met: 4.8, minutes: 20, intensity: 'moderate', strength: false, aerobic: true, note: '' })); } });
   var S = w.OvuStore, Y = w.OvuSync;
   var a = Y.syncNow().then(function () {
-    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncPull(w);
     check('the typed pull brings the exercise row but leaves the shared cursor where it was', S.list('exercise').length === 1 && Date.parse(st.pulledSeq) === Date.parse('2026-10-19T10:00:00Z'), JSON.stringify({ seq: st.pulledSeq, n: S.list('exercise').length }));
     return Y.syncNow();
   }).then(function () {
@@ -1524,11 +1566,11 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   var v = world(big, function (url) { gets.push(url); }), SV = v.OvuStore, YV = v.OvuSync;
   SV.putEvent({ id: 'h' + pad(20000), type: 'exercise', date: '2025-12-31', data: { activity: 'walk', label: 'Walking', variant: 'brisk', code: '17200', met: 4.8, minutes: 30, intensity: 'moderate', strength: false, aerobic: true, note: '' }, createdAt: '2025-12-31T09:00:00Z', updatedAt: '2025-12-31T09:00:00Z', source: 'cloud' });
   var b = YV.syncNow().then(function () {
-    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncPull(v);
     check('20,001 rows sharing one timestamp: the first sync takes 20,000 by id and is not marked recovered', SV.list('exercise').length === 20001 && !st.types && st.typedAfter === 'h19999', JSON.stringify({ n: SV.list('exercise').length, types: st.types, after: st.typedAfter }));
     return YV.syncNow();
   }).then(function () {
-    var st = JSON.parse(v.localStorage.getItem('ovumind_sync_v1')), typedGets = gets.filter(function (u) { return /type=in/.test(u); });
+    var st = syncPull(v), typedGets = gets.filter(function (u) { return /type=in/.test(u); });
     check('the next sync resumes after the last id, applies the final deletion, then marks the type known', !SV.get('h' + pad(20000)) && SV.list('exercise').length === 20000 && st.types === SV.TYPES.join(',') && !st.typedAfter && /id=gt\.h19999/.test(typedGets[typedGets.length - 1]), JSON.stringify({ n: SV.list('exercise').length, types: st.types, after: st.typedAfter, last: typedGets[typedGets.length - 1] }));
     return YV.syncNow();
   }).then(function () {
@@ -1562,7 +1604,7 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
     srv.rows.push(syncRow('late1', 'reflection', '2026-10-19T13:00:00.000001+00:00', { text: 'from the other phone', mood: '' }));
     t.sync = 1; return Y.syncNow();
   }).then(function () { t.sync = 2; return Y.syncNow(); }).then(function () {
-    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncPull(w);
     check('a restore larger than one sync: 20,000 rows, then the rest of the same upload and the late row, then nothing', t.per.join() === '20000,5004,0', 'per sync: ' + t.per.join());
     check('every row arrives exactly once, none skipped at the cut and none fetched again', Object.keys(t.seen).length === 25004 && t.twice() === 0 && S.list('reflection').length === 25004, JSON.stringify({ distinct: Object.keys(t.seen).length, twice: t.twice(), local: S.list('reflection').length }));
     check('the cursor keeps the server\'s own timestamp, microseconds included, and the last id', st.pulledSeq === '2026-10-19T13:00:00.000001+00:00' && st.pulledId === 'late1', JSON.stringify({ seq: st.pulledSeq, id: st.pulledId }));
@@ -1583,24 +1625,27 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   var c = u.OvuSync.syncNow().then(function () {
     check('a cursor id with quotes, commas, brackets and a backslash resumes exactly after itself', Object.keys(t3.seen).sort().join('|') === [odd + 'z', 'x1'].join('|'), JSON.stringify(Object.keys(t3.seen)));
   });
-  /* 4. (Codex round one) another tab moves the cursor further while this sync uploads, then the person clears that
-     newer row from the phone. This sync must not wind the cursor back, or the next sync brings the cleared row back. */
+  /* 4. (Codex round one) a second tab of the same phone, in a browser without Web Locks, syncs to the end while this
+     sync's upload is in flight, so it moves the cursor further (to r2), and r2 never reaches this tab's diary (as if
+     cleared). This sync must not wind the cursor back, or the next sync brings r2 back. */
   var R1 = '2026-10-19T11:00:00.000001+00:00', R2 = '2026-10-19T12:00:00.000002+00:00';
   var srv4 = syncServer(), posted4 = false;
   srv4.rows.push(syncRow('r1', 'reflection', R1, { text: 'eleven', mood: '' }));
   var x = syncWorld(srv4, null, null), SX = x.OvuStore, YX = x.OvuSync, xPost = x.fetch;
+  var x2 = syncWorld(srv4, null, null); x2.localStorage = x.localStorage;
   SX.add('reflection', SX.today(), { text: 'written here', mood: '' });
   x.fetch = function (url, opt) {
     if (opt && opt.method === 'POST' && /\/entries/.test(url) && !posted4) {
       posted4 = true;
-      /* the other tab: r2 arrives, it pulls through r2 and saves that cursor; r2 is then cleared from this phone */
       srv4.rows.push(syncRow('r2', 'reflection', R2, { text: 'twelve, cleared later', mood: '' }));
-      var st = JSON.parse(x.localStorage.getItem('ovumind_sync_v1')); st.pulledSeq = R2; st.pulledId = 'r2'; x.localStorage.setItem('ovumind_sync_v1', JSON.stringify(st));
+      /* the other tab pulls r2, then the phone loses it without a delete (as if cleared): with the multi-tab store (#46) a
+         row another tab saved now reaches this tab, so the clear is made in the shared copy, with no tombstone sent */
+      return x2.OvuSync.syncNow().then(function () { var db = JSON.parse(x.localStorage.getItem('ovumind_db_v1')); db.events = db.events.filter(function (e) { return e.id !== 'r2'; }); x.localStorage.setItem('ovumind_db_v1', JSON.stringify(db)); return xPost(url, opt); });
     }
     return xPost(url, opt);
   };
   var d = YX.syncNow().then(function () {
-    var st = JSON.parse(x.localStorage.getItem('ovumind_sync_v1'));
+    var st = syncPull(x);
     check('a slower tab never winds the cursor back past where another tab moved it', st.pulledSeq === R2 && st.pulledId === 'r2', JSON.stringify({ seq: st.pulledSeq, id: st.pulledId }));
     return YX.syncNow();
   }).then(function () {
@@ -1614,8 +1659,8 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   SY5.add('reflection', SY5.today(), { text: 'written here', mood: '' });
   y.fetch = function (url, opt) { if (opt && opt.method === 'POST' && /\/entries/.test(url) && !posted5) { posted5 = true; YY.resetPosition(); } return yPost(url, opt); };
   var e = YY.syncNow().then(function (r) {
-    var st = JSON.parse(y.localStorage.getItem('ovumind_sync_v1'));
-    check('a reset during the upload stays a reset: no account, no cursor, no push watermark written back', posted5 && st.userId === null && st.pulledSeq === null && !st.pulledId && st.pushedAt === null && r && r.ok === false, JSON.stringify({ r: r, userId: st.userId, seq: st.pulledSeq, pushedAt: st.pushedAt }));
+    var st = syncView(y), pos = st;
+    check('a reset during the upload stays a reset: no account, no cursor, no push watermark written back', posted5 && st.userId === null && !pos.pulledSeq && !pos.pulledId && st.pushedAt === null && r && r.ok === false, JSON.stringify({ r: r, userId: st.userId, seq: pos.pulledSeq, pushedAt: st.pushedAt }));
   });
   Promise.all([a, b, c, d, e]).catch(function (err) { check('the shared pull cursor tests ran to the end', false, String(err && err.stack || err)); });
 })();
@@ -1641,17 +1686,17 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   var g0 = 0, first = Y.syncNow();
   var waitPost = function (n) { return new Promise(function (res) { (function poll() { if (posts.length >= n && releasePost) return res(); setTimeout(poll, 1); })(); }); };
   var done = waitPost(1).then(function () {
-    g0 = JSON.parse(w.localStorage.getItem('ovumind_sync_v1')).gen;
+    g0 = syncGen(w);
     Y.resetPosition(); /* sign-out */
     uid = 'uB'; S.setProfile({ cloud: { v: 1, at: '2026-10-20T00:05:00Z', uid: 'uB' } }); /* B signs in and turns on backup */
     releasePost(); /* A's upload completes now */
     return first;
   }).then(function (r1) {
-    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1'));
-    check('the overtaken sync ends cancelled and writes nothing into the reset state', r1 && r1.ok === false && r1.reason === 'cancelled' && st.userId === null && st.profilePulledAt === null && st.gen === g0 + 1, JSON.stringify({ r1: r1, st: { userId: st.userId, pulled: st.profilePulledAt, gen: st.gen, g0: g0 } }));
+    var st = syncView(w);
+    check('the overtaken sync ends cancelled and writes nothing into the reset state', r1 && r1.ok === false && r1.reason === 'cancelled' && st.userId === null && st.profilePulledAt === null && syncGen(w) !== g0, JSON.stringify({ r1: r1, st: { userId: st.userId, pulled: st.profilePulledAt, gen: syncGen(w), g0: g0 } }));
     return Y.syncNow();
   }).then(function (r2) {
-    var st = JSON.parse(w.localStorage.getItem('ovumind_sync_v1')), toB = posts.filter(function (p) { return p.user === 'uB'; });
+    var st = syncView(w), toB = posts.filter(function (p) { return p.user === 'uB'; });
     check('B\'s first sync restores B\'s own cloud profile instead of uploading over it', r2 && r2.ok === true && S.profile().name === 'Bea' && S.profile().lifeStage === 'peri' && st.userId === 'uB' && toB.length === 0, JSON.stringify({ r2: r2, name: S.profile().name, toB: toB }));
     check('nothing of A was ever sent with B\'s token, and A\'s only upload used A\'s own token', posts.every(function (p) { return (p.user === 'uA') === (p.tok === 'tok-uA'); }) && !posts.some(function (p) { return p.user === 'uB' && p.name === 'Ann'; }), JSON.stringify(posts));
   });
@@ -1664,8 +1709,280 @@ function syncRow(id, type, at, data) { return { id: id, user_id: 'u1', type: typ
   var locked = v.OvuSync.syncNow().then(function (r) { check('a sync runs inside the browser-wide ovumind-sync lock when Web Locks exist', lockNames.length === 1 && lockNames[0] === 'ovumind-sync' && r && r.ok === true, JSON.stringify({ locks: lockNames, r: r })); });
   /* every reset moves the generation on */
   var z = fresh(); z.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, gen: 4, userId: 'u1', shadow: {}, tombstones: {} })); z.OvuSync.resetPosition();
-  check('a reset moves the generation on and clears the account', JSON.parse(z.localStorage.getItem('ovumind_sync_v1')).gen === 5 && JSON.parse(z.localStorage.getItem('ovumind_sync_v1')).userId === null);
+  check('a reset moves the generation on and clears the account', syncGen(z) !== 4 && syncView(z).userId === null);
   Promise.all([done, locked]).catch(function (err) { check('the sync generation tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
+(function syncRoundFour() {
+  console.log('cloud sync, round four: every request has a time limit, resets finish inside the lock, the pull position has its own key, the generation is read before queuing');
+  var T1 = '2026-10-19T11:00:00.000001+00:00', T2 = '2026-10-19T12:00:00.000002+00:00', note = function (t) { return { text: t, mood: '' }; };
+  var never = function () { return new Promise(function () { }); };
+  /* the sync settles within `ms`, or the race says it did not */
+  var within = function (p, ms) { return Promise.race([p.then(function (r) { return { r: r }; }), ticks(ms).then(function () { return null; })]); };
+
+  /* 1. time limits. A request that never answers ends the sync within the limit, and the answer arriving later writes nothing. */
+  var srv1 = syncServer(), w1 = syncWorld(srv1, null, null), release1 = null;
+  srv1.rows.push(syncRow('t1', 'reflection', T1, note('t1')));
+  w1.OVU_CONFIG = { syncRequestMs: 40 };
+  var f1 = w1.fetch;
+  w1.fetch = function (url, opt) { if (/\/entries/.test(url) && !release1) return new Promise(function (res) { release1 = function () { res(f1(url, opt)); }; }).then(function (r) { return r; }); return f1(url, opt); };
+  var one = within(w1.OvuSync.syncNow(), 1500).then(function (got) {
+    check('a pull that never answers ends the sync within its time limit', !!got && got.r && got.r.ok === false, JSON.stringify(got));
+    if (release1) release1(); /* the answer finally arrives */
+    return ticks(30);
+  }).then(function () {
+    var pos = syncPull(w1);
+    check('and its late answer is never applied or saved', !w1.OvuStore.get('t1') && !pos.pulledSeq, JSON.stringify({ t1: !!w1.OvuStore.get('t1'), seq: pos.pulledSeq }));
+  });
+  var w1b = syncWorld(syncServer(), null, null);
+  w1b.OVU_CONFIG = { syncRequestMs: 40 };
+  w1b.OvuAuth.token = never;
+  var oneB = within(w1b.OvuSync.syncNow(), 1500).then(function (got) {
+    check('a sign-in token that never comes ends the sync within its time limit', !!got && got.r && got.r.ok === false, JSON.stringify(got));
+  });
+  /* with Web Locks, the stalled tab lets go of the lock, so the second tab's sync runs */
+  var srv1c = syncServer(), tabs1 = syncTabs(srv1c), stalled = false;
+  tabs1.A.OVU_CONFIG = { syncRequestMs: 40 }; tabs1.B.OVU_CONFIG = { syncRequestMs: 40 };
+  var fA = tabs1.A.fetch; tabs1.A.fetch = function (url, opt) { if (/\/entries/.test(url) && !stalled) { stalled = true; return never(); } return fA(url, opt); };
+  var pA1 = tabs1.A.OvuSync.syncNow(), oneC = ticks(5).then(function () { return within(tabs1.B.OvuSync.syncNow(), 1500); }).then(function (got) {
+    check('a stalled sync in one tab does not hold the lock for the others', !!got && got.r && got.r.ok === true, JSON.stringify(got));
+    return pA1;
+  });
+
+  /* 2. a reset in another tab lands after this sync's last check but before its write: the reset finishes inside the
+     lock, after this sync lets go of it, so the write does not survive */
+  var srv2 = syncServer(), tabs2 = syncTabs(srv2), fired2 = false, store2 = tabs2.A.localStorage, set2 = store2.setItem;
+  srv2.rows.push(syncRow('q1', 'reflection', T1, note('q1')));
+  store2.setItem = function (k, v) {
+    if (!fired2 && (k === 'ovumind_sync_v1' || k === 'ovumind_sync_pull_v1' || k === 'ovumind_sync_pos_v1') && String(v).indexOf(T1) > -1) { fired2 = true; tabs2.B.OvuSync.resetPosition(); }
+    return set2.call(store2, k, v);
+  };
+  var two = tabs2.A.OvuSync.syncNow().then(function (r) { return tabs2.mgr.idle().then(function () { return r; }); }).then(function (r) {
+    var st = syncView(tabs2.A), pos = st;
+    check('a reset that lands between a sync\'s last check and its write still wins once the lock is free', fired2 && !pos.pulledSeq && !pos.pulledId && st.userId === null && st.pushedAt === null && r && r.ok === false, JSON.stringify({ fired: fired2, seq: pos.pulledSeq, userId: st.userId, pushedAt: st.pushedAt, r: r }));
+  });
+
+  /* 3. the pull position has its own key. (a) Another tab's whole-state write, read before this sync finished and
+     saved after it, lands late; the person then starts fresh on this phone and turns backup on again. */
+  var srv3 = syncServer(), stale = null;
+  srv3.rows.push(syncRow('p1', 'reflection', T1, note('p1')));
+  var w3 = syncWorld(srv3, null, null), S3 = w3.OvuStore, f3 = w3.fetch;
+  S3.add('reflection', S3.today(), note('written here'));
+  w3.fetch = function (url, opt) { if (!stale && opt && opt.method === 'POST' && /\/entries/.test(url)) stale = w3.localStorage.getItem('ovumind_sync_v1'); return f3(url, opt); };
+  var three = w3.OvuSync.syncNow().then(function () {
+    w3.localStorage.setItem('ovumind_sync_v1', stale);
+    S3.clearAll(); S3.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+    return w3.OvuSync.syncNow();
+  }).then(function () {
+    check('the pull position survives another tab\'s late whole-state write, so a cleared diary is not refilled', !!stale && !S3.get('p1') && S3.list('reflection').length === 0, JSON.stringify({ stale: !!stale, p1: !!S3.get('p1'), n: S3.list('reflection').length }));
+  });
+  /* (b) the first sync after updating starts from an older version's cursor kept in the main state (T2); another
+     tab's stale write (T1) lands while that sync's pull is in flight. The cursor must still be T2 afterwards. */
+  var srv3b = syncServer(), staleWritten = false;
+  srv3b.rows.push(syncRow('m1', 'reflection', T1, note('m1'))); srv3b.rows.push(syncRow('m2', 'reflection', T2, note('m2, cleared here')));
+  var legacy = { v: 1, gen: 0, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: T2, pulledId: 'm2', pushedAt: '2026-10-19T12:00:00.000Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null };
+  var w3b = syncWorld(srv3b, function () {
+    if (staleWritten) return; staleWritten = true;
+    var s = JSON.parse(JSON.stringify(legacy)); s.pulledSeq = T1; s.pulledId = 'm1'; w3b.localStorage.setItem('ovumind_sync_v1', JSON.stringify(s));
+  }, legacy);
+  var threeB = w3b.OvuSync.syncNow().then(function () { return w3b.OvuSync.syncNow(); }).then(function () {
+    check('an older version\'s cursor moves to its own key before the first pull, so a stale write cannot wind it back', staleWritten && !w3b.OvuStore.get('m2'), JSON.stringify({ stale: staleWritten, m2: !!w3b.OvuStore.get('m2'), pos: syncPull(w3b) }));
+  });
+
+  /* 4. the generation is read when the sync is asked for, before it waits. (a) A reset while the token is on its way,
+     then the same account turning sync back on in another tab: the waiting sync writes nothing. */
+  var srv4 = syncServer(), w4 = syncWorld(srv4, null, null), giveToken = null;
+  srv4.rows.push(syncRow('g1', 'reflection', T1, note('g1')));
+  w4.OvuAuth.token = function () { return new Promise(function (res) { giveToken = function () { res('tok'); }; }); };
+  var p4 = w4.OvuSync.syncNow();
+  var four = ticks(5).then(function () {
+    w4.OvuSync.resetPosition();
+    var s = JSON.parse(w4.localStorage.getItem('ovumind_sync_v1') || '{"v":1,"shadow":{},"tombstones":{}}'); s.userId = 'u1'; w4.localStorage.setItem('ovumind_sync_v1', JSON.stringify(s));
+    giveToken(); return p4;
+  }).then(function (r) {
+    var st = syncView(w4), pos = syncPull(w4);
+    check('a reset while the token is on its way, then the same account back on elsewhere: the old sync writes nothing', r && r.ok === false && !pos.pulledSeq && st.pushedAt === null && !w4.OvuStore.get('g1'), JSON.stringify({ r: r, seq: pos.pulledSeq, pushedAt: st.pushedAt, g1: !!w4.OvuStore.get('g1') }));
+  });
+  /* (b) a sync queued in a second tab behind the first, then a reset and the same account back on: when its turn
+     comes, the queued sync stops without a request */
+  var srv4b = syncServer(), bGets = 0, tabs4 = syncTabs(srv4b, null, function () { bGets++; }), openGate, gate = new Promise(function (r) { openGate = r; }), postSeen, posted = new Promise(function (r) { postSeen = r; });
+  srv4b.rows.push(syncRow('k1', 'reflection', T1, note('k1')));
+  tabs4.A.OvuStore.add('reflection', tabs4.A.OvuStore.today(), note('written in tab A'));
+  var fA4 = tabs4.A.fetch; tabs4.A.fetch = function (url, opt) { if (opt && opt.method === 'POST' && /\/entries/.test(url)) { postSeen(); return gate.then(function () { return fA4(url, opt); }); } return fA4(url, opt); };
+  var pA4 = tabs4.A.OvuSync.syncNow(), pB4 = null;
+  var fourB = posted.then(function () {
+    pB4 = tabs4.B.OvuSync.syncNow();
+    return ticks(5);
+  }).then(function () {
+    tabs4.A.OvuSync.resetPosition();
+    var s = JSON.parse(tabs4.A.localStorage.getItem('ovumind_sync_v1') || '{"v":1,"shadow":{},"tombstones":{}}'); s.userId = 'u1'; tabs4.A.localStorage.setItem('ovumind_sync_v1', JSON.stringify(s));
+    openGate(); return Promise.all([pA4, pB4]);
+  }).then(function (rs) { return tabs4.mgr.idle().then(function () { return rs; }); }).then(function (rs) {
+    var st = syncView(tabs4.A);
+    check('a sync queued before a reset stops when its turn comes, without a request or a write', rs[1] && rs[1].ok === false && bGets === 0 && st.pushedAt === null && !syncPull(tabs4.A).pulledSeq, JSON.stringify({ rs: rs, bGets: bGets, pushedAt: st.pushedAt }));
+  });
+  Promise.all([one, oneB, oneC, two, three, threeB, four, fourB]).catch(function (err) { check('the round-four sync tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
+(function syncRoundFive() {
+  console.log('cloud sync, round five: one writer for the position, random reset tokens, and the consent check bound to its account');
+  var T1 = '2026-10-19T11:00:00.000001+00:00', T2 = '2026-10-19T12:00:00.000002+00:00', note = function (t) { return { text: t, mood: '' }; };
+  var empty = function (v) { return !v.userId && !v.pulledSeq && !v.pushedAt; };
+
+  /* 1. (round four, finding 1) an older version's cursor (T2) waits in the main state while the sign-in token is on
+     its way; another tab's stale write (T1) lands during that wait. The cursor must still be T2 afterwards. */
+  var srv1 = syncServer(), give1 = null;
+  srv1.rows.push(syncRow('m1', 'reflection', T1, note('m1'))); srv1.rows.push(syncRow('m2', 'reflection', T2, note('m2, cleared here')));
+  var legacy1 = { v: 1, gen: 0, userId: 'u1', shadow: {}, tombstones: {}, pulledSeq: T2, pulledId: 'm2', pushedAt: '2026-10-19T12:00:00.000Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null };
+  var w1 = syncWorld(srv1, null, legacy1);
+  w1.OvuAuth.token = function () { return new Promise(function (r) { give1 = r; }); };
+  var p1 = w1.OvuSync.syncNow();
+  var one = ticks(5).then(function () {
+    var s = JSON.parse(JSON.stringify(legacy1)); s.pulledSeq = T1; s.pulledId = 'm1'; w1.localStorage.setItem('ovumind_sync_v1', JSON.stringify(s));
+    give1('tok'); return p1;
+  }).then(function () { w1.OvuAuth.token = function () { return Promise.resolve('tok'); }; return w1.OvuSync.syncNow(); }).then(function () {
+    check('an older version\'s cursor is kept before the token wait, so a stale write during it cannot wind it back', !w1.OvuStore.get('m2'), JSON.stringify({ m2: !!w1.OvuStore.get('m2'), view: syncView(w1) }));
+  });
+
+  /* 2. (round four, finding 2) this phone last synced another account; this sync must switch accounts. Another tab's
+     reset lands after this sync read the old account and before it switched: the reset must still win. */
+  var srv2 = syncServer(), tabs2 = syncTabs(srv2), armed2 = false, fired2 = false, store2 = tabs2.A.localStorage, get2 = store2.getItem;
+  srv2.rows.push(syncRow('n1', 'reflection', T1, note('n1')));
+  store2.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, userId: 'old', shadow: {}, tombstones: {}, pulledSeq: T1, pulledId: 'n0', pushedAt: '2026-10-19T11:00:00.000Z', profilePulledAt: '2026-10-19T10:00:00Z', profileDirty: false, lastSyncAt: null }));
+  store2.setItem('ovumind_sync_gen_v1', '0'); /* round four's counter, so its generation check does not read the main state (round five ignores it) */
+  tabs2.A.OvuAuth.token = function () { return Promise.resolve('tok').then(function (t) { armed2 = true; return t; }); };
+  store2.getItem = function (k) {
+    var v = get2.call(store2, k);
+    /* the main object is read right after the sync has learned which account the position names (round four reads the
+       account from it; round five reads the position just before), so the reset lands between that read and the switch */
+    if (armed2 && !fired2 && k === 'ovumind_sync_v1') { fired2 = true; tabs2.B.OvuSync.resetPosition(); }
+    return v; /* the value read before the reset */
+  };
+  var two = tabs2.A.OvuSync.syncNow().then(function (r) { return tabs2.mgr.idle().then(function () { return r; }); }).then(function (r) {
+    var v = syncView(tabs2.A);
+    check('a reset that lands while a sync switches accounts still wins: the old sync stops and the position stays empty', fired2 && r && r.ok === false && empty(v) && !tabs2.A.OvuStore.get('n1'), JSON.stringify({ fired: fired2, r: r, view: v, n1: !!tabs2.A.OvuStore.get('n1') }));
+  });
+
+  /* 3. (round four, finding 3) another tab read the main state before this phone's first sync (no account yet) and
+     saves it late. The person then starts fresh on this phone and turns backup on again: the next sync must not take
+     her for a new phone and download everything again. */
+  var srv3 = syncServer();
+  srv3.rows.push(syncRow('p1', 'reflection', T1, note('p1')));
+  var w3 = syncWorld(srv3, null, null), S3 = w3.OvuStore;
+  var three = w3.OvuSync.syncNow().then(function () {
+    w3.localStorage.setItem('ovumind_sync_v1', JSON.stringify({ v: 1, userId: null, shadow: {}, tombstones: {}, pushedAt: null, profilePulledAt: null, profileDirty: false, lastSyncAt: null }));
+    S3.clearAll(); S3.setProfile({ cloud: { v: 1, at: '2026-10-19T00:00:00Z', uid: 'u1' } });
+    return w3.OvuSync.syncNow();
+  }).then(function () {
+    check('a late "no account yet" write from another tab does not make the next sync start over', !S3.get('p1'), JSON.stringify({ p1: !!S3.get('p1'), view: syncView(w3) }));
+  });
+
+  /* 4. (round four, finding 4) two tabs reset at the same moment, and the second tab asks for a sync in between: the
+     two resets must not end up sharing a generation that lets that sync through */
+  var srv4 = syncServer(), tabs4 = syncTabs(srv4), inReset = false, pB4 = null, store4 = tabs4.A.localStorage, set4 = store4.setItem;
+  srv4.rows.push(syncRow('h1', 'reflection', T1, note('h1')));
+  store4.setItem = function (k, v) {
+    if (inReset) { inReset = false; tabs4.B.OvuSync.resetPosition(); pB4 = tabs4.B.OvuSync.syncNow(); }
+    return set4.call(store4, k, v);
+  };
+  inReset = true; tabs4.A.OvuSync.resetPosition(); inReset = false;
+  var four = Promise.resolve().then(function () { return pB4; }).then(function (rB) { return tabs4.mgr.idle().then(function () { return rB; }); }).then(function (rB) {
+    check('overlapping resets in two tabs never let a sync asked for between them through', !!pB4 && rB && rB.ok === false && !tabs4.B.OvuStore.get('h1') && empty(syncView(tabs4.A)), JSON.stringify({ rB: rB, h1: !!tabs4.B.OvuStore.get('h1'), view: syncView(tabs4.A) }));
+  });
+
+  /* 5. (round four, finding 5) a consent answer for one account must never be applied to another */
+  function consentWorld(srv) {
+    var w = syncWorld(srv, null, null), c = { who: 'uA', on: { uA: true, uB: false }, records: [], answer: null };
+    w.OvuAuth = { session: function () { return { user: { id: c.who } }; }, token: function () { return Promise.resolve('tok-' + c.who); }, userId: function () { return c.who; } };
+    w.OvuStore.setProfile({ cloud: { v: 1, at: '2026-10-20T00:00:00Z', uid: 'uA' } });
+    /* the real module's shape: record() stamps the account signed in now, unless told which */
+    w.OvuConsent = {
+      needsSheet: function () { return false; }, recordedOnAccount: function () { return true; }, flush: function () { return Promise.resolve(0); },
+      allows: function (p) { return p !== 'cloud_sync' || !!c.on[c.who]; },
+      pullAccountState: function () { return c.hold ? new Promise(function (r) { c.answer = r; }) : Promise.resolve(null); },
+      record: function (p, action, method, extra) { var ev = Object.assign({ purpose: p, action: action, method: method, uid: c.who }, extra || {}); c.records.push(ev); if (p === 'cloud_sync' && action === 'withdraw') c.on[ev.uid] = false; return ev; }
+    };
+    c.switchToB = function () { w.OvuSync.resetPosition(); c.who = 'uB'; c.on.uB = true; w.OvuStore.setProfile({ cloud: { v: 1, at: '2026-10-20T00:05:00Z', uid: 'uB' } }); };
+    return { w: w, c: c };
+  }
+  /* (a) A's account record arrives after a sign-out and B signing in and turning backup on, and says A's backup is off */
+  var cw = consentWorld(syncServer()); cw.c.hold = true;
+  var p5 = cw.w.OvuSync.syncNow();
+  var five = ticks(5).then(function () { cw.c.switchToB(); cw.c.answer({ cloud_sync: { on: false } }); return p5; }).then(function (r) {
+    var toB = cw.c.records.filter(function (e) { return e.uid === 'uB'; });
+    check('an old account record arriving after a switch never turns off the new account\'s backup', r && r.ok === false && toB.length === 0 && cw.c.on.uB === true, JSON.stringify({ r: r, records: cw.c.records, onB: cw.c.on.uB }));
+  });
+  /* (b) the server's "backup is off" refusal of A's request arrives after the same switch */
+  var cw2 = consentWorld(syncServer()), deliver = null, base2 = cw2.w.fetch;
+  cw2.w.fetch = function (url, opt) {
+    if (/\/entries/.test(url) && !deliver) return new Promise(function (r) { deliver = function () { r({ ok: false, status: 403, text: function () { return Promise.resolve(JSON.stringify({ message: 'Cloud backup is off for this account' })); } }); }; });
+    return base2(url, opt);
+  };
+  var p5b = cw2.w.OvuSync.syncNow();
+  var fiveB = ticks(5).then(function () { cw2.c.switchToB(); deliver(); return p5b; }).then(function (r) {
+    var toB = cw2.c.records.filter(function (e) { return e.uid === 'uB'; });
+    check('an old account\'s "backup is off" answer arriving after a switch never turns off the new account\'s backup', !!deliver && r && r.ok === false && toB.length === 0 && cw2.c.on.uB === true, JSON.stringify({ r: r, records: cw2.c.records, onB: cw2.c.on.uB }));
+  });
+  /* 6. (Codex round five) one tab resets; another tab's sync, asked for right after, gets the lock first and finishes
+     under the new token. Nothing the reset does afterwards may erase that sync's valid position. */
+  var srv6 = syncServer(), tabs6 = syncTabs(srv6), store6 = tabs6.A.localStorage, set6 = store6.setItem, pB6 = null;
+  srv6.rows.push(syncRow('v1', 'reflection', T1, note('v1')));
+  store6.setItem = function (k, v) {
+    var out = set6.call(store6, k, v);
+    if (!pB6 && (k === 'ovumind_sync_reset_v1' || k === 'ovumind_sync_gen_v1')) pB6 = tabs6.B.OvuSync.syncNow(); /* right after the reset is published */
+    return out;
+  };
+  tabs6.A.OvuSync.resetPosition();
+  var six = Promise.resolve().then(function () { return pB6; }).then(function (rB) { return tabs6.mgr.idle().then(function () { return rB; }); }).then(function (rB) {
+    var v = syncView(tabs6.A);
+    check('a sync that finishes after a reset keeps its position: the reset never erases later progress', !!pB6 && rB && rB.ok === true && v.userId === 'u1' && v.pulledSeq === T1, JSON.stringify({ rB: rB, view: v }));
+  });
+  Promise.all([one, two, three, four, five, fiveB, six]).catch(function (err) { check('the round-five sync tests ran to the end', false, String(err && err.stack || err)); });
+})();
+
+(function consentLateAnswer() {
+  console.log('consent: an answer about one account, arriving after another signed in here, changes nothing on this phone (real ovu-consent.js)');
+  function world() {
+    var w = syncWorld(syncServer(), null, null), c = { who: 'uA' };
+    w.OvuAuth = { session: function () { return c.who ? { user: { id: c.who } } : null; }, token: function () { return Promise.resolve('tok-' + c.who); }, userId: function () { return c.who; } };
+    vm.runInContext(fs.readFileSync(path.join(root, 'ovu-consent.js'), 'utf8'), w, { filename: 'ovu-consent.js' });
+    var C = w.OvuConsent;
+    C.attestAge('sheet'); C.grant('health_tracking', 'sheet');
+    c.signIn = function (u) { c.who = u; C.bindAccount(); C.grant('cloud_sync', 'you'); };
+    return { w: w, C: C, c: c };
+  }
+  function cloudOf(t) { var p = t.w.OvuStore.profile().cloud || {}; return { v: p.v, uid: p.uid || null, allows: t.C.allows('cloud_sync') }; }
+  /* 1. A turned backup on; B signed in and turned it on too; then A's account record arrives saying A's backup is off */
+  var t1 = world(); t1.c.signIn('uA'); t1.c.signIn('uB');
+  var before1 = t1.C.events().length;
+  t1.C.record('cloud_sync', 'withdraw', 'server', { sent: true, uid: 'uA' });
+  var c1 = cloudOf(t1);
+  check('a withdrawal for account A, arriving while B is signed in, leaves B\'s backup on and the log unchanged', c1.v === 1 && c1.uid === 'uB' && c1.allows === true && t1.C.events().length === before1, JSON.stringify({ cloud: c1, events: t1.C.events().length - before1 }));
+  /* 2. the same answer for the account that is signed in still counts */
+  var t2 = world(); t2.c.signIn('uA');
+  t2.C.record('cloud_sync', 'withdraw', 'server', { sent: true, uid: 'uA' });
+  var c2 = cloudOf(t2);
+  check('a withdrawal for the account that is signed in still turns its backup off', c2.v === 0 && c2.allows === false, JSON.stringify(c2));
+  /* 3. nobody signed in any more: an answer for A changes nothing either */
+  var t3 = world(); t3.c.signIn('uA'); t3.c.who = null;
+  var before3 = t3.C.events().length;
+  t3.C.record('cloud_sync', 'withdraw', 'server', { sent: true, uid: 'uA' });
+  check('a withdrawal for account A, arriving after a sign-out, changes nothing on this phone', t3.C.events().length === before3 && (t3.w.OvuStore.profile().cloud || {}).uid === 'uA', JSON.stringify({ events: t3.C.events().length - before3, cloud: t3.w.OvuStore.profile().cloud }));
+  /* 4. end to end (Codex round five, finding 2): A's sync asks A's account about backup; the answer says off; another tab
+     signs B in and turns B's backup on in the instant between the sync's last check and its recording of that answer */
+  var t4 = world(); t4.c.signIn('uA');
+  var answer = null, C4 = t4.C, realRecord = C4.record, switched = false;
+  C4.pullAccountState = function () { return new Promise(function (r) { answer = r; }); };
+  C4.record = function (p, action, method, extra) {
+    if (!switched && p === 'cloud_sync' && action === 'withdraw' && method === 'server') { switched = true; t4.w.OvuSync.resetPosition(); t4.c.signIn('uB'); }
+    return realRecord.apply(this, arguments);
+  };
+  var p4 = t4.w.OvuSync.syncNow();
+  var four = ticks(5).then(function () { answer({ cloud_sync: { on: false } }); return p4; }).then(function (r) {
+    var c4 = cloudOf(t4);
+    check('A\'s "backup is off" answer recorded just after B signed in elsewhere never turns off B\'s backup', switched && r && r.ok === false && c4.v === 1 && c4.uid === 'uB' && c4.allows === true, JSON.stringify({ switched: switched, r: r, cloud: c4 }));
+  });
+  four.catch(function (err) { check('the consent late-answer tests ran to the end', false, String(err && err.stack || err)); });
 })();
 
 /* ---------- garden, Dream Street, plaza and walking (ovu-walk.js, ovu-garden.js, ovu-street.js, ovu-community.js) ---------- */
@@ -3617,6 +3934,27 @@ var summarised = false;
   check('the state line tells the truth (rules only while AI help is paused or off; reading on otherwise) and there is no upsell, no quota invented, no model name', /Rules only · AI help paused/.test(luna) && /Luna’s reading is on/.test(luna) && !/upgrade|premium|questions left/i.test(luna) && !/gpt|claude|doubao|deepseek|gemini/i.test(luna));
   check('three ask chips open real guides, the composer asks about her cycle, and the companion note is the last line', /stress\.html/.test(luna) && /hormones\.html/.test(luna) && /foods\.html/.test(luna) && ['stress.html', 'hormones.html', 'foods.html'].every(function (f) { return fs.existsSync(path.join(root, f)); }) && /Tell Luna, or ask about your cycle…/.test(luna) && /Luna is a wellness companion, not a doctor\. For medical concerns, talk to a clinician\./.test(luna));
   check('the card’s styles exist and no em dash entered the copy', /\.sheet\.luna-sheet\{/.test(css) && /\.askchip\{/.test(css) && /\.lunanote\{/.test(css) && luna.indexOf('—') < 0);
+})();
+
+(function pondAndFlowerBreathing() {
+  console.log('2k19. the koi pond and Light Flower with the breath (21 Oct): paces in and out only, the flower sways to the chosen pace, words only with a pace, how-to lists on both cards');
+  var w = fresh(), LF = w.OvuLightFlower;
+  var paces = Object.keys(LF.PACES);
+  check('four paces: the flower’s own rhythm and the koi pond’s three; in and out only, never a hold, none longer than six seconds a side', paces.join() === 'own,easy,steady,longout' && paces.every(function (k) { var p = LF.PACES[k]; return p.inS > 0 && p.outS > 0 && p.inS <= 6 && p.outS <= 6 && Object.keys(p).indexOf('holdS') < 0; }) && !LF.PACES.own.word && LF.PACES.longout.inS === 4 && LF.PACES.longout.outS === 6);
+  var ownOk = true; for (var q = 0; q < 12; q += 0.5) { if (Math.abs(LF.breathAt(q, 'own').v - Math.sin(q * 2 * Math.PI / LF.BREATH_S)) > 1e-9 || LF.breathAt(q, 'own').phase !== null) ownOk = false; }
+  check('the flower’s own rhythm is the six-second sway it always had, with no words', ownOk && LF.headAt(1.5).s > 1.02 && Math.abs(LF.headAt(1.5, false, 'own').s - LF.headAt(1.5).s) < 1e-9);
+  var up = true, down = true, last = -2; for (var a = 0; a <= 4; a += 0.25) { var v = LF.breathAt(a, 'longout').v; if (v < last - 1e-9) up = false; last = v; if (LF.breathAt(a, 'longout').phase !== 'in' && a < 4) up = false; }
+  last = 2; for (var b = 4; b < 10; b += 0.25) { var v2 = LF.breathAt(b, 'longout').v; if (v2 > last + 1e-9) down = false; last = v2; if (LF.breathAt(b, 'longout').phase !== 'out') down = false; }
+  check('Long out: the breath rises for four seconds (in) and settles for six (out), smoothly, then repeats', up && down && Math.abs(LF.breathAt(0, 'longout').v + 1) < 1e-9 && Math.abs(LF.breathAt(4, 'longout').v - 1) < 1e-9 && Math.abs(LF.breathAt(10, 'longout').v + 1) < 1e-9 && LF.breathAt(10.5, 'longout').phase === 'in');
+  check('the flower head sways with the chosen pace within the same few percent, and stays still under reduced motion', Math.abs(LF.headAt(4, false, 'longout').s - 1.022) < 1e-9 && LF.headAt(4, true, 'longout').s === 1 && Math.abs(LF.headAt(0, false, 'steady').s - 0.978) < 1e-9);
+  var e = LF.entryFor(90, 2, 'a', 'b', 'steady'), e2 = LF.entryFor(90, 2, 'a', 'b', 'nope'), e3 = LF.entryFor(90, 2, 'a', 'b');
+  check('the saved entry carries the pace she chose, and an unknown or missing pace reads as the flower’s own', e.pace === 'steady' && e2.pace === 'own' && e3.pace === 'own' && !('taps' in e));
+  var lf = fs.readFileSync(path.join(root, 'ovu-lightflower.js'), 'utf8'), bt = fs.readFileSync(path.join(root, 'ovu-breathtap.js'), 'utf8'), rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  var steps = function (src) { var m = /<details class="btap-how">[\s\S]*?<\/details>/.exec(src); return m ? (m[0].match(/<li>/g) || []).length : 0; };
+  check('both cards carry a How to practise list of five plain steps, and the flower’s pacing shows the same gentle-breathing line the pond has', steps(lf) === 5 && steps(bt) === 5 && /lf-pacesafe/.test(lf) && /without forcing a deeper or longer breath/.test(lf) && /without forcing a deeper or longer breath/.test(bt));
+  var how = (/<details class="btap-how">[\s\S]*?<\/details>/.exec(lf)[0] + /<details class="btap-how">[\s\S]*?<\/details>/.exec(bt)[0]);
+  check('the instructions promise nothing and push nothing: no cure, calm-guarantee, score, streak or em dash', !/\b(cure|heal|fix|anxiety|depression|reduce stress|guarantee|score|streak|must)\b/i.test(how) && how.indexOf('—') < 0);
+  check('the mat tiles say the pond breathes with the ring and the flower adds a gentle breath', /Breathe with the ring, watch the koi/.test(rs) && /Light, sound and a gentle breath/.test(rs));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

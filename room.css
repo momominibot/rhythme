@@ -2143,4 +2143,14 @@ html[data-sky=night] .askchip{background:#2b2147;color:#dccdf6;border-color:rgba
 html[data-sky=night] .askchip:hover{background:#3b2e5a}
 /* closed, Luna's top-anchored card is hidden and untappable once it has slid away: on a tall screen its own height is not enough to leave the frame */
 .sheet.luna-sheet:not(.on){visibility:hidden;pointer-events:none;transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s linear .38s}
+
+/* How to practise, on the koi pond and Light Flower cards (Jamie, 21 Oct); the flower's breath words */
+.btap-how{margin:4px 0 2px;text-align:left}
+.btap-how summary{cursor:pointer;font:800 12.5px var(--sans);color:#f1e9fb;display:flex;align-items:center;gap:6px;list-style:none;padding:6px 0}
+.btap-how summary::-webkit-details-marker{display:none}
+.btap-how summary .ms{font-size:18px}
+.btap-how ol{margin:4px 0 2px;padding-left:18px;font:600 12.5px/1.5 var(--sans);color:#d9cdef}
+.btap-how li{margin:3px 0}
+.btap-chips button small{display:block;font:600 10.5px var(--sans);opacity:.8}
+.lf-breath{position:absolute;left:50%;top:12%;transform:translateX(-50%);font:600 24px var(--serif);color:rgba(255,255,255,.82);letter-spacing:.08em;pointer-events:none}
 @media (prefers-reduced-motion: reduce){.sheet.luna-sheet:not(.on){transition:none}}

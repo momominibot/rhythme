@@ -17,6 +17,8 @@
     ['rhythme_podcast_v1', "Erin's podcast listening on this phone", 'additional'],
     ['rhythme_voice_muted', 'Voice on or off', 'preferences'],
     ['ovumind_sync_v1', 'Cloud backup bookkeeping (no entries)', 'preferences'],
+    ['ovumind_sync_pos_v1', 'Cloud backup position: which account and how far it has synced (no entries)', 'preferences'],
+    ['ovumind_sync_reset_v1', 'Cloud backup reset marker (no entries)', 'preferences'],
     ['ovumind_desk_v1', 'Desk layout', 'preferences'],
     ['rhythme_plus_v1', 'Rhythme Plus access on this phone', 'preferences'],
     ['rhythme_plus_v1_pending', 'A Rhythme Plus code being checked', 'preferences'],
