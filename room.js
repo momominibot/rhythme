@@ -959,19 +959,26 @@
 
   /* ---------- calendar: period (5-day fill) + symptoms with backdating ---------- */
   var cal = { y: 0, m: 0, tab: 'period', sel: S.today(), lastFill: [] };
+  /* the Cycle tab (Jamie, 22 Oct: "remove calendar and I need the cute dreamy scoring"): the scores and the rhythm check,
+   * nothing else; the month grid lives in its own sheet for logging or fixing a past day */
+  function openScores() {
+    openSheet('scores', 'Your rhythm', 'Scores from what you have recorded', 'favorite', '<div id="rhythmPanel"></div><div class="row scpast"><button type="button" class="btn ghost" id="scPast"><span class="ms">edit_calendar</span>Log or fix a past day</button></div>');
+    var rp = $('#rhythmPanel'); if (rp && window.OvuRhythm) OvuRhythm.render(rp); if (rp && window.OvuScores) rp.insertAdjacentHTML('afterbegin', OvuScores.panelHTML(S.profile()));
+    $('#scPast').addEventListener('click', function () { chime('tap'); openCalendar('period'); });
+  }
   function openCalendar(tab, date) {
-    var d = date ? new Date(date + 'T12:00:00') : new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab || (S.state().cycleView === 'calendar' ? 'period' : 'rhythm'); /* scores and graphs first (Jamie, 22 Oct) */ cal.sel = date || S.today(); cal.lastFill = []; /* the last view is remembered */
-    openSheet('calendar', 'Your calendar', 'Tap a past day to log or backdate', 'calendar_month',
-      /* Jamie, 22 Oct: "remove period, symptoms since we already have 2 spaces to enter... for cycle tab - i want graphing and
-       * scoring": Scores and graphs first, the calendar second for backdating; Symptoms only when a check-in tile opens it */
-      '<div class="tabs" id="calTabs"><button data-tab="rhythm" class="' + (cal.tab === 'rhythm' ? 'on' : '') + '">Scores</button><button data-tab="period" class="' + (cal.tab === 'period' ? 'on' : '') + '">Calendar</button>' + (cal.tab === 'symptom' ? '<button data-tab="symptom" class="on">Symptoms</button>' : '') + '</div>' +
-      '<div id="rhythmPanel" hidden></div><div id="calBody">' +
+    var d = date ? new Date(date + 'T12:00:00') : new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab === 'symptom' ? 'symptom' : 'period'; cal.sel = date || S.today(); cal.lastFill = [];
+    openSheet('calendar', 'Past days', 'Tap a day to log or fix it', 'calendar_month',
+      /* Jamie, 22 Oct: the Cycle tab is the scores (openScores); this sheet is the month grid for backdating, and
+       * Symptoms only when a check-in tile opens it */
+      (cal.tab === 'symptom' ? '<div class="tabs" id="calTabs"><button data-tab="period" class="">Days</button><button data-tab="symptom" class="on">Symptoms</button></div>' : '') +
+      '<div id="calBody">' +
       '<div class="cal-head"><button class="cal-nav" id="calPrev" aria-label="Previous month"><span class="ms">chevron_left</span></button><b id="calTitle"></b><button class="cal-nav" id="calNext" aria-label="Next month"><span class="ms">chevron_right</span></button></div>' +
       '<div class="cal-grid" id="calGrid" role="grid"></div>' +
       '<div class="legend"><span><i style="background:#e58aa8"></i>Period</span><span><i style="background:repeating-linear-gradient(135deg,#fff 0 3px,#f6e3ea 3px 6px);border:1px solid #f0cfdb"></i>Expected</span><span><i style="background:#eaf5ee;border:1px solid #cfe6d8"></i>Est. fertile</span><span><i style="background:#7a5c96;border-radius:50%"></i>Symptoms</span>' + infoBtn('cycle') + '</div>' + guideHTML('cycle') +
       '<p class="help calhint"><span class="ms">touch_app</span>Tap a pink day twice to untick it. Tap the day after a period to add just that day.</p><div id="cycleStat"></div><div class="day-editor" id="dayEditor"></div></div>');
-    function showView() { var rp = $('#rhythmPanel'), cb = $('#calBody'); if (!rp || !cb) return; var r = cal.tab === 'rhythm'; rp.hidden = !r; cb.hidden = r; if (r && window.OvuRhythm) OvuRhythm.render(rp); if (r && window.OvuScores) rp.insertAdjacentHTML('afterbegin', OvuScores.panelHTML(S.profile())); try { S.setState({ cycleView: r ? 'rhythm' : 'calendar' }); } catch (e) { } }
-    $('#calTabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; cal.tab = b.dataset.tab; $$('button', $('#calTabs')).forEach(function (x) { x.classList.toggle('on', x === b); }); showView(); if (cal.tab !== 'rhythm') renderEditor(); });
+    function showView() { var cb = $('#calBody'); if (!cb) return; cb.hidden = false; }
+    var ct = $('#calTabs'); if (ct) ct.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; cal.tab = b.dataset.tab; $$('button', ct).forEach(function (x) { x.classList.toggle('on', x === b); }); showView(); renderEditor(); });
     showView();
     $('#calPrev').addEventListener('click', function () { cal.m--; if (cal.m < 0) { cal.m = 11; cal.y--; } renderCal(); });
     $('#calNext').addEventListener('click', function () { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } renderCal(); });
@@ -1616,11 +1623,11 @@
   }
 
   /* ---------- bottom tabs: every tab opens a sheet in the room, so the look and the data never change ---------- */
-  var TABS = { cycle: function () { openCalendar(); }, food: function () { openDiary(); }, mind: function () { openMindfulness(); }, you: function () { openYou(); } };
+  var TABS = { cycle: function () { openScores(); }, food: function () { openDiary(); }, mind: function () { openMindfulness(); }, you: function () { openYou(); } };
   function setTab(k) { $$('.nav a').forEach(function (a) { var on = (a.dataset.tab || 'home') === k; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); }
   /* after the menopause the same place in the nav reads Body (design 2026-10-21-cycle-tab-rhythm.md) */
   function labelCycleTab() { var a = $('#navCycle'); if (!a) return; var post = A.isPostmenopausal(S.profile()); var l = a.querySelector('.navlabel'), i = a.querySelector('.ms'); if (l) l.textContent = post ? 'Body' : 'Cycle'; if (i) i.textContent = post ? 'spa' : 'calendar_month'; }
-  labelCycleTab(); S.subscribe(function (why) { if (why === 'profile' || why === 'external' || why === 'import') labelCycleTab(); });
+  labelCycleTab(); applyMindful(); S.subscribe(function (why) { if (why === 'profile' || why === 'external' || why === 'import') { labelCycleTab(); applyMindful(); } });
   var navSeq = 0; /* counts every tab tap, Home included, so a delayed link from boot never opens over her choice */
   function goTab(k) {
     navSeq++;
@@ -1640,6 +1647,10 @@
     openSheet('choices', 'Your choices', 'Each use of your data, separately', 'fact_check', OvuConsent.choicesHTML());
     OvuConsent.wireChoices(body, { toast: toast, chime: chime, rerender: openChoices });
   }
+  /* Jamie, 22 Oct: "some may not want the mindfulness part and we shouldn't force". A choice on the You tab: slow mindful
+     steps and gentle cues (the default), or quick steps with no cues. Practices she opens on purpose are unchanged. */
+  function mindfulQuick() { return (S.profile() || {}).mindfulPace === 'quick'; }
+  function applyMindful() { document.documentElement.dataset.mindful = mindfulQuick() ? 'quick' : 'slow'; }
   function openYou(confirmDelete) {
     var P = S.profile(), l = RW.ledger(), dates = {};
     S.TYPES.forEach(function (t) { S.list(t).forEach(function (e) { dates[e.date] = 1; }); });
@@ -1650,7 +1661,7 @@
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
       '<div id="youBirthday"></div>' +
       '<div id="youAccount"></div>' +
-      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('self_improvement', 'Mindful pace', mindfulQuick() ? 'Quick steps, no cues. Tap to bring the slow steps back' : 'Slow steps and gentle cues. Tap for quick steps instead', 'mindful') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see them or bring in more' : 'Choose what comes in: sleep, cycle, weight and more', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Your sign-in, cloud backup and Rhythme Plus access stay. Export a copy first if you want to keep it.' + (function () { var h = window.OvuSync && OvuSync.status ? OvuSync.status().held || 0 : 0; return h ? ' ' + h + ' Movement ' + (h === 1 ? 'entry is' : 'entries are') + ' not in your cloud backup yet, so ' + (h === 1 ? 'it' : 'they') + ' would be lost.' : ''; })() + '</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
@@ -1663,6 +1674,7 @@
       var b = e.target.closest('[data-yact]'); if (!b) return; var act = b.dataset.yact; chime('tap');
       if (act === 'intro') { openOnboarding(0, introAnswers()); return; } /* her answers as they are now, not as they were when You opened (Codex, 21 Oct) */
       if (act === 'text') return window.OvuTextSize && OvuTextSize.open ? OvuTextSize.open() : undefined;
+      if (act === 'mindful') { S.setProfile({ mindfulPace: mindfulQuick() ? 'slow' : 'quick' }); applyMindful(); chime('tap'); toast(mindfulQuick() ? 'Quick steps from now on. The practices you open on purpose are unchanged.' : 'Slow steps and gentle cues are back.', 'self_improvement'); openYou(); return; }
       if (act === 'wardrobe') return openWardrobe();
       if (act === 'shop') return openShop();
       if (act === 'friends') return window.OvuFriends && OvuFriends.open ? OvuFriends.open() : undefined;
@@ -2944,7 +2956,8 @@
   function moment(key, opt) {
     if (!MO || !MO.MOMENTS[key]) return '';
     opt = opt || {};
-    if (!opt.tries) erin(opt.erin || (key === 'brush' && L && L.id === 'heninside' ? 'brush-hen' : MOMENT_ERIN[key]));
+    if (mindfulQuick()) { opt = Object.assign({}, opt, { quiet: true, line: '' }); } /* quick pace: no cue, no Erin line */
+    if (!opt.tries && !mindfulQuick()) erin(opt.erin || (key === 'brush' && L && L.id === 'heninside' ? 'brush-hen' : MOMENT_ERIN[key]));
     var text = opt.line || MO.line(key), pose = opt.pose === undefined ? MO.pose(key) : opt.pose;
     if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn || (window.OvuMorning && OvuMorning.active()) || (window.OvuSeats && OvuSeats.active())) return text; /* Morning start and a seated practice keep their own pose */
     /* while she walks the pose waits, a few times at most, and never starts over a walk (Codex branch review, 20 Oct) */
@@ -3551,7 +3564,7 @@
   hooks.on.activity = (hooks.on.activity || []).concat([function () { endTryOn(true); }]);
   hooks.on.layout = (hooks.on.layout || []).concat([function (L2) { if (trying && (!L2 || L2.id !== trying.at)) endTryOn(true); }]);
   function emit(name, a, b) { if (name === 'activity' || name === 'beforeWalk' || name === 'layout') activityGen++; (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
-  window.OvuRoom = { openCalendar: openCalendar,
+  window.OvuRoom = { openCalendar: openCalendar, openScores: openScores, mindfulQuick: mindfulQuick,
     erin: erin, /* Erin's short line for an action, by id (assets/audio/erin-actions/lines.json) */
     LAYOUTS: LAYOUTS, ART: ART, OUTFITS: OUTFITS, hotspotHandlers: hooks.hotspotHandlers,
     on: function (name, f) { (hooks.on[name] = hooks.on[name] || []).push(f); if (name === 'boot' && booted) f(); },

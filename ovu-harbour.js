@@ -206,7 +206,7 @@
     var sp = r.species, line3 = R.moment ? R.moment('release', { quiet: true }) : '';
     R.openSheet('harbour-fish', sp.name, (r.first ? 'First time! ' : '') + esc(sp.local) + (r.n > 1 ? ' · met ' + r.n + ' times' : ''), 'set_meal',
       '<div class="fishcard"><img src="' + ART + sp.img + '" alt="' + esc(sp.name) + '"><div><b>' + esc(sp.name) + '</b><small>' + esc(sp.local) + '</small></div></div>' +
-      '<p class="fishfact">' + esc(sp.fact) + ' <span class="fishsrc">' + esc(sp.source) + (sp.url ? ' <a class="fishlink" href="' + esc(sp.url) + '" target="_blank" rel="noopener">Read the source</a>' : '') + '</span></p>' +
+      '<p class="fishfact">' + esc(sp.fact) + '</p>' + /* the citation stays in the data, not on screen (Jamie, 22 Oct) */
       (line3 ? '<p class="mindline"><span class="ms">spa</span><span>' + esc(line3) + '</span></p>' : '') +
       '<div class="row"><button type="button" class="btn primary" id="fishGo"><span class="ms">water</span>Let it go</button><button type="button" class="btn ghost" id="fishBook"><span class="ms">menu_book</span>Catch book</button></div>' +
       '<p class="help">It is already written in your catch book. Back it goes, the same as every fish here.</p>');
