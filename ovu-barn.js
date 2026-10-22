@@ -426,8 +426,7 @@
     if (!RN()) return; var tok = ++ranchReq, wasOpen = R.sheetOpen() && R.sheetId() === 'ranch', seq0 = R.sheetSeq ? R.sheetSeq() : 0;
     settle().then(function () {
       if (tok !== ranchReq || !at('barn')) return;
-      if (!wasOpen && R.sheetSeq && R.sheetSeq() !== seq0) return; /* another sheet came and went while the lock waited */
-      if (R.sheetOpen() && R.sheetId() !== 'ranch') return; /* she opened something else meanwhile */
+      if (R.sheetSeq && R.sheetSeq() !== seq0) return; /* a sheet opened (and maybe closed again) while the lock waited: her later choice wins */
       if (wasOpen && !(R.sheetOpen() && R.sheetId() === 'ranch')) return; /* a redraw of a counter she has since closed */
       openRanchNow();
     });

@@ -30,7 +30,7 @@
   var DAY_FIELDS = ['mindDay', 'mindActs', 'seatDay'];
   function practiceCap() { var R = root.OvuRewards; return R && R.PRACTICE && isFinite(R.PRACTICE.cap) ? R.PRACTICE.cap : 20; }
   var LOG_KINDS = { sleep: 1, period: 1, symptom: 1, food: 1, reflection: 1, exercise: 1, water: 1 };
-  var META = 'ovumind_gamesave_v1', MAX_BYTES = 200000, KEEPALIVE_MAX = 60000, DEBOUNCE_MS = 4000;
+  var META = 'ovumind_gamesave_v1', MAX_BYTES = 200000, KEEPALIVE_MAX = 60000, DEBOUNCE_MS = 4000; var FETCH_MS = 15000; /* one game-save request may take this long; the farm lock is held meanwhile */
 
   function clone(v) { return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); }
   function plain(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
@@ -175,8 +175,10 @@
     return Promise.resolve(token || A().token()).then(function (tk) {
       if (!tk) throw new Error('no token');
       var text = body != null ? JSON.stringify(body) : undefined;
-      return fetch(CFG.supabaseUrl + '/rest/v1' + path, { method: method, headers: { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: text, keepalive: !!(text && text.length < KEEPALIVE_MAX) })
-        .then(function (r) { return r.text().then(function (t) { var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { } if (!r.ok) { var er = new Error('game save ' + r.status); er.status = r.status; er.code = j && j.code; throw er; } return j; }); });
+      var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, deadline = setTimeout(function () { if (ac) ac.abort(); }, FETCH_MS); /* the sync holds the farm lock: a request that never answers must end (Codex, 22 Oct) */
+      return fetch(CFG.supabaseUrl + '/rest/v1' + path, { method: method, headers: { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: text, keepalive: !!(text && text.length < KEEPALIVE_MAX), signal: ac ? ac.signal : undefined })
+        .then(function (r) { return r.text().then(function (t) { var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { } if (!r.ok) { var er = new Error('game save ' + r.status); er.status = r.status; er.code = j && j.code; throw er; } return j; }); })
+        .then(function (j) { clearTimeout(deadline); return j; }, function (e) { clearTimeout(deadline); throw e; });
     });
   }
   function getRow(uid) { return call('GET', '/game_saves?select=save,rev,deleted&user_id=eq.' + encodeURIComponent(uid)).then(function (rows) { return rows && rows[0] || null; }); }
@@ -216,10 +218,19 @@
         var m = metaFor(uid) || {}, mine = num(p.base) + 1;
         if (!m.pending || m.pending.op !== p.op) return 'saved';         /* another tab already acknowledged this write */
         if (p.kind === 'link') {
-          var extra = Math.max(0, earned(pack(S.state())) - num(p.localEarned)); /* hearts she earned while the link was on its way */
-          apply(uid, withEarnings(p.save, extra));
-          patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), journal: extra ? [{ id: 'l' + Date.now(), kind: 'other', n: extra }] : [], pending: null, seq: extra ? 1 : 0, acked: 0 });
-          if (extra) schedule();
+          var now = pack(S.state()), extra = Math.max(0, earned(now) - num(p.localEarned)); /* hearts she earned while the link was on its way */
+          if (p.localHash == null || hashOf(now) === p.localHash) {
+            apply(uid, withEarnings(p.save, extra));
+            patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), journal: extra ? [{ id: 'l' + Date.now(), kind: 'other', n: extra }] : [], pending: null, seq: extra ? 1 : 0, acked: 0 });
+            if (extra) schedule();
+            return 'linked';
+          }
+          /* the phone played on while the answer was lost and the link was sent again (a seed claimed, an animal bought):
+             the old target never goes over that. The account's copy, if there was one, is merged into what the phone has
+             now, and the next save carries the result up (Codex, 22 Oct) */
+          if (p.remote) apply(uid, linkMerge(now, p.remote));
+          patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), journal: [], pending: null, seq: 1, acked: 0, hash: hashOf(p.save) });
+          schedule();
           return 'linked';
         }
         var carried = p.ids || [];
@@ -262,7 +273,7 @@
       if (!m.linked || m.off || (row && row.deleted)) {
         if (m.tainted && !live) return 'tester';                    /* tester progress is never uploaded */
         var target = live ? (m.tainted ? clone(row.save) : linkMerge(mine, row.save)) : mine;
-        return queue(uid, 'link', target, row ? row.rev : 0, { localEarned: earned(mine) });
+        return queue(uid, 'link', target, row ? row.rev : 0, { localEarned: earned(mine), localHash: hashOf(mine), remote: live ? clone(row.save) : null });
       }
       if (!row) return queue(uid, 'save', mine, 0, { seq: seq });
       if (m.tainted) { apply(uid, row.save); patchMeta(uid, { tainted: false, rev: row.rev, savedEarned: earned(row.save), journal: [], acked: seq }); return 'pulled'; }

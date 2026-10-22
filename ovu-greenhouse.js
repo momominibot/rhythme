@@ -458,9 +458,9 @@
     LAYOUT.home.x = hb.wp.x; LAYOUT.home.y = hb.wp.y; LAYOUT.home.flip = !!hb.wp.flip;
     R.walkTo(hb.wp, function () { if (!R.busy()) openHerbBed(hb.id); });
   }
-  function stillHere(sheetId, seq) { /* the same opening of the same sheet, and she is awake */
+  function stillHere(sheetId, tk) { /* the sheet is still open, she is awake, and the step was not stopped while its save waited for the lock */
+    if (tk && tk.stopped) return false;
     if (!R.sheetOpen() || R.sheetId() !== sheetId) return false;
-    if (R.sheetSeq && R.sheetSeq() !== seq) return false;
     if (root.OvuCare && root.OvuCare.asleepNow && root.OvuCare.asleepNow()) return false;
     return napping() ? false : true;
   }
@@ -487,9 +487,8 @@
     R.openSheet('ghbed', 'Planter ' + n, 'The greenhouse herbs', 'yard', html);
     var clr = doc.getElementById('herbClear'); if (clr) clr.addEventListener('click', function () {
       if (!clr.classList.contains('confirm')) { clr.classList.add('confirm'); clr.textContent = 'Tap again: the ' + h.name.toLowerCase() + ' here is let go'; return; }
-      var cseq = R.sheetSeq ? R.sheetSeq() : 0;
       lockedF(function () {
-        if (!stillHere('ghbed', cseq)) return;
+        if (!stillHere('ghbed', null)) return;
         var r = clearHerb(S, id); if (!r.ok) { R.toast(r.why, 'info'); return; }
         R.chime('tap'); renderBeds(); R.toast('The planter is empty, ready for something new.', 'yard'); openHerbBed(id);
       });
@@ -504,8 +503,8 @@
       var herb = btn.dataset.kind, seen = JSON.stringify(herbState(S).beds[id] || null);
       var o = kind === 'plant' ? { ms: 2200, moment: 'herbplant', verb: 'Pressing it into the soil…' } : kind === 'water' ? { ms: 3000, moment: 'herbwater', verb: 'Pouring slowly…' } : { ms: 3000, moment: 'herbharvest', verb: 'Picking slowly…' };
       o.cancel = function () { openHerbBed(id); };
-      slowStep(acts, o, function () { var seq = R.sheetSeq ? R.sheetSeq() : 0; lockedF(function () {
-        if (!stillHere('ghbed', seq)) return; /* a Stop, a close, another sheet or sleep during the lock wait: nothing saved, nothing charged */
+      slowStep(acts, o, function (tk) { lockedF(function () {
+        if (!stillHere('ghbed', tk)) return; /* a Stop, a close, another sheet or sleep during the lock wait: nothing saved, nothing charged */
         var t = day(); if (t !== now) { openHerbBed(id); return; }
         if (JSON.stringify(herbState(S).beds[id] || null) !== seen) { R.toast('The planter changed in the meantime. Have another look.', 'info'); openHerbBed(id); return; } /* another tab or phone moved first */
         var res = kind === 'plant' ? plantHerb(S, id, herb, t, ST()) : kind === 'water' ? waterHerb(S, id, t, ST()) : harvestHerb(S, id, ST());

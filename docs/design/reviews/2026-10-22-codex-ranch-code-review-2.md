@@ -93,4 +93,24 @@ The unchanged farm planting/watering/harvest writers and greenhouse basket write
 
 **HOLD: P1 unlocked guide and GameSave overwrite; P2 residual ranch reopening and async cancellation/sheet ownership.**
 
-## Round 6 (after the guide flag and the game-save cycle inside the farm lock, the sheet counter guard and step re-checks): see below once it ends
+## Round 6 (after the guide flag and the game-save cycle inside the farm lock, the sheet counter guard and step re-checks): HOLD
+
+1. **P1: NOT FIXED.** With two real stores, shared storage and per-name lock queues, I reproduced: first-link PUT succeeds but its response is lost → sync releases locks → B’s locked seed claim persists `carrot:1` → A retries → `sendPending('link')` applies the old `p.save`, leaving `carrot:0` in both stores (`ovu-gamesave.js:209–221,277`). The uninterrupted pack → PUT → apply window is fixed (`:245`). Only `sync()` requests `ovumind-gamesave`; debounce, auth/startup and visibility callbacks invoke it (`:279,308–313`). No reverse acquisition or cyclic deadlock found. FIFO progress still requires network promises to settle.
+
+2. **P2 results.** **Ranch reopening: FIXED** for request → another sheet opens and closes → settle resolves; no counter opened (`ovu-barn.js:426–432`).
+
+   **Stop: NOT FIXED** for bed, well and planter steps. Timer completes → save queues behind farm lock → tap visible Stop → release lock: action still saves. `cur` becomes `null` before `done()` (`ovu-care.js:39–42`), so Stop returns without calling `o.cancel` (`:44`); `sheetSeq` never changes.
+
+   **Close / other sheet / other sheet opens then closes / sleep: FIXED** while awaiting the lock for bed, harvest, well, planter and clear. Guard probes rejected each (`ovu-farm.js:297–301,355–357,429,440–441`; `ovu-greenhouse.js:461–465,490–492,507–508`). Harvest and clear have no Stop control.
+
+3. **Regressions.** An unrelated external farm change can redraw the unchanged bed/well sheet (`ovu-farm.js:547–555`), increment `sheetSeq` (`room.js:635`) and silently discard its valid queued action. `renderBeds()` alone does not reopen sheets. Ordinary pre-completion `o.cancel` correctly prevents saving. Concurrent guide openings produced exactly one flag write (`ovu-farm.js:385`). No energy-only charge found: effect and charge share the commit (`ovu-stamina.js:51–55`).
+
+   Finite network delay preserves serialization, but blocking every farm action indefinitely is **P2**: fetch and body reading have no deadline (`ovu-gamesave.js:178–179,245`), compounded by ineffective pending Stop.
+
+4. **HOLD: P1 pending-link overwrite; P2 ineffective queued Stop and unbounded farm blocking.**
+
+`node tools/test-core.js`: **1,787 passed, 0 failed**. Files unchanged.
+
+
+
+## Round 7 (after the resent-link rule, the fetch deadline, Stop during the lock wait and the token-based re-check): see below once it ends
