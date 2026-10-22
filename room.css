@@ -496,7 +496,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .confirm label{display:flex;gap:8px;align-items:flex-start;font:600 12px var(--sans);color:var(--rm-ink);padding:6px 0;border-bottom:1px solid rgba(107,82,142,.08);cursor:pointer}
 .confirm label:last-of-type{border-bottom:none}
 .confirm input{accent-color:var(--rm-mauve);margin-top:2px}
-.quick{display:flex;gap:6px;overflow-x:auto;padding:4px 0;scrollbar-width:none}
+.quick{flex-wrap:wrap;display:flex;gap:6px;padding:4px 0;scrollbar-width:none}
 .quick::-webkit-scrollbar{display:none}
 .quick .qchip{flex-shrink:0;display:inline-flex;align-items:center;background:#fff;border:1.5px solid rgba(107,82,142,.14);border-radius:99px;overflow:hidden}
 .quick .qsend{border:none;background:none;padding:8px 6px 8px 12px;font:700 12px var(--sans);color:var(--rm-ink-2);cursor:pointer;white-space:nowrap}
