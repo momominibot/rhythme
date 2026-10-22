@@ -13,14 +13,16 @@ import argparse, asyncio, base64, os, socket, subprocess, sys, time, wave
 from playwright.async_api import async_playwright
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-THEMES = ['home', 'garden', 'farm', 'street', 'plaza', 'harbour']
+THEMES = ['home', 'garden', 'farm', 'street', 'plaza', 'harbour', 'cave']
 BANDS = ['morning', 'day', 'evening', 'night']
 
 def free_port():
     s = socket.socket(); s.bind(("127.0.0.1", 0)); p = s.getsockname()[1]; s.close(); return p
 
 async def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('--out', default=''); ap.add_argument('--preview', type=float, default=40); ap.add_argument('--quick', action='store_true'); a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument('--out', default=''); ap.add_argument('--preview', type=float, default=40); ap.add_argument('--quick', action='store_true'); ap.add_argument('--themes', default=''); a = ap.parse_args()
+    global THEMES
+    if a.themes: THEMES = a.themes.split(',')
     port = free_port(); base = "http://127.0.0.1:%d/" % port
     srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(port), '--bind', '127.0.0.1'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(0.6)
@@ -71,8 +73,8 @@ async def main():
     sys.exit(1 if bad else 0)
 
 def tempo(theme, band):
-    T = {'home': {'morning': 72, 'day': 72, 'evening': 66, 'night': 58}, 'garden': {'morning': 76, 'day': 76, 'evening': 70, 'night': 60}, 'farm': {'morning': 70, 'day': 70, 'evening': 64, 'night': 58},
-         'street': {'morning': 80, 'day': 80, 'evening': 72, 'night': 60}, 'plaza': {'morning': 84, 'day': 84, 'evening': 76, 'night': 62}, 'harbour': {'morning': 64, 'day': 64, 'evening': 60, 'night': 56}}
+    # kept in step with THEMES in ovu-music.js (22 Oct: slower tempos and the cave)
+    T = {'home': {'morning': 61, 'day': 61, 'evening': 56, 'night': 49}, 'garden': {'morning': 65, 'day': 65, 'evening': 60, 'night': 51}, 'farm': {'morning': 60, 'day': 60, 'evening': 54, 'night': 49}, 'street': {'morning': 68, 'day': 68, 'evening': 61, 'night': 51}, 'plaza': {'morning': 71, 'day': 71, 'evening': 65, 'night': 53}, 'cave': {'morning': 48, 'day': 48, 'evening': 46, 'night': 44}, 'harbour': {'morning': 54, 'day': 54, 'evening': 51, 'night': 48}}
     return T[theme][band]
 
 if __name__ == '__main__':

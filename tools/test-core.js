@@ -3776,10 +3776,10 @@ var summarised = false;
   var ids = Object.keys(w.LAYOUTS).concat(['farm', 'barn', 'barninside', 'heninside', 'harbour', 'cave']);
   var themes = {}; ids.forEach(function (id) { themes[id] = M.themeFor(w.LAYOUTS[id] || id); });
   var noTheme = ids.filter(function (id) { return !themes[id]; });
-  check('every layout maps to a theme except the cave; the Dream Street shops keep the street\'s tune; an unknown id takes the home tune', noTheme.join() === 'cave' && themes.room === 'home' && themes['shop-pet'] === 'street' && themes['shop-homes'] === 'street' && themes.garden === 'garden' && themes.greenhouse === 'garden' && themes.farm === 'farm' && themes.plaza === 'plaza' && themes.harbour === 'harbour' && M.themeFor({ id: 'nowhere' }) === 'home' && M.themeFor(null) === 'home', JSON.stringify(themes));
+  check('every layout maps to a theme, the cave to its own ambient spring (22 Oct); the Dream Street shops keep the street\'s tune; an unknown id takes the home tune', noTheme.length === 0 && themes.cave === 'cave' && themes.room === 'home' && themes['shop-pet'] === 'street' && themes['shop-homes'] === 'street' && themes.garden === 'garden' && themes.greenhouse === 'garden' && themes.farm === 'farm' && themes.plaza === 'plaza' && themes.harbour === 'harbour' && M.themeFor({ id: 'nowhere' }) === 'home' && M.themeFor(null) === 'home', JSON.stringify(themes));
   check('bands follow the window: sunrise and morning bright, afternoon as written, sunset evening, the dark window evening until 21:00 then night, and the small hours night whatever the phase', M.bandFor('sunrise', 7) === 'morning' && M.bandFor('morning', 10) === 'morning' && M.bandFor('afternoon', 14) === 'day' && M.bandFor('sunset', 18) === 'evening' && M.bandFor('night', 19) === 'evening' && M.bandFor('night', 21) === 'night' && M.bandFor('night', 23) === 'night' && M.bandFor('morning', 3) === 'night');
   var tempos = Object.keys(M.THEMES).map(function (t) { return ['morning', 'day', 'evening', 'night'].map(function (b) { return M.tempoFor(t, b); }); }).reduce(function (a, b) { return a.concat(b); }, []);
-  check('every tempo sits between 56 and 84 beats a minute, night never faster than day', tempos.every(function (x) { return x >= 56 && x <= 84; }) && Object.keys(M.THEMES).every(function (t) { return M.tempoFor(t, 'night') <= M.tempoFor(t, 'day') && M.tempoFor(t, 'evening') <= M.tempoFor(t, 'day'); }), tempos.join());
+  check('every tempo sits between 44 and 84 beats a minute (slower since 22 Oct), night never faster than day', tempos.every(function (x) { return x >= 44 && x <= 84; }) && Object.keys(M.THEMES).every(function (t) { return M.tempoFor(t, 'night') <= M.tempoFor(t, 'day') && M.tempoFor(t, 'evening') <= M.tempoFor(t, 'day'); }), tempos.join());
   /* the form and the bank */
   check('the form is 32 bars, A A\' B A\'\', and bar 32 is a held D6', M.BARS.length === 32 && M.LOOP_BEATS === 128 && M.BARS[31].join() === 'D6' && M.BARS[0].join() === M.BARS[8].join() && M.BARS[16][0] === 'Em7');
   var bankBad = [];
@@ -3795,12 +3795,12 @@ var summarised = false;
     if (/^B2/.test(ph) && M.BANK[ph].some(function (n) { return n[0] < 8; })) bankBad.push(ph + ' plays in the accompaniment-only bars');
   });
   check('every phrase stays in D major, lands chord tones on the beat, keeps the melody register and ends in rest; B2 phrases leave their first two bars to the accompaniment', bankBad.length === 0, bankBad.join('; '));
-  check('the last slot always cadences on the same phrase, and that phrase ends on D', Object.keys(M.THEMES).every(function (t) { return M.arrange(t, 0)[7] === 'A2d' && M.arrange(t, 5)[7] === 'A2d'; }) && M.BANK.A2d[M.BANK.A2d.length - 1][1] === 'D5');
+  check('the last slot always cadences on the same phrase, and that phrase ends on D', Object.keys(M.THEMES).filter(function (t) { return !M.THEMES[t].ambient; }).every(function (t) { return M.arrange(t, 0)[7] === 'A2d' && M.arrange(t, 5)[7] === 'A2d'; }) && M.BANK.A2d[M.BANK.A2d.length - 1][1] === 'D5');
   var a0 = M.arrange('home', 0), a1 = M.arrange('home', 1), a0b = M.arrange('home', 0);
   check('the arrangement is fixed for a loop index and changes a little for the next (bounded variation, never a shuffle)', a0.join() === a0b.join() && a0.join() !== a1.join() && a0.every(function (ph, i) { return M.THEMES.home.slots[i].indexOf(ph) > -1; }) && a1.every(function (ph, i) { return M.THEMES.home.slots[i].indexOf(ph) > -1; }));
   /* events */
   var evBad = [], all = [];
-  Object.keys(M.THEMES).forEach(function (t) { ['morning', 'day', 'evening', 'night'].forEach(function (b) { [0, 1, 2].forEach(function (L) { var ev = M.events(t, b, L); all.push([t, b, L, ev]); }); }); });
+  Object.keys(M.THEMES).filter(function (t) { return !M.THEMES[t].ambient; }).forEach(function (t) { ['morning', 'day', 'evening', 'night'].forEach(function (b) { [0, 1, 2].forEach(function (L) { var ev = M.events(t, b, L); all.push([t, b, L, ev]); }); }); });
   all.forEach(function (x) {
     var t = x[0], b = x[1], ev = x[3];
     for (var i = 1; i < ev.length; i++) if (ev[i].t < ev[i - 1].t) { evBad.push(t + ' ' + b + ' order'); break; }
@@ -3816,6 +3816,8 @@ var summarised = false;
     var dayMel = M.events(t, 'day', x[2]).filter(function (e) { return e.part === 'mel'; }).length;
     if (b === 'night' && (M.THEMES[t].sparse ? mel.length > dayMel : mel.length >= dayMel)) evBad.push(t + ' night is not sparser'); /* the harbour is sparse by day already */
   });
+  var cv = M.events('cave', 'day', 0), cv2 = M.events('cave', 'day', 0);
+  check('the cave is ambient: a drone, singing bowls and drips, no melody, the same events every time for a loop', cv.length && !cv.some(function (e) { return e.part === 'mel'; }) && cv.some(function (e) { return e.part === 'bowl'; }) && cv.some(function (e) { return e.part === 'drip'; }) && cv.some(function (e) { return e.part === 'pad' && e.d > 8; }) && JSON.stringify(cv) === JSON.stringify(cv2) && cv.every(function (e) { return e.t >= 0 && e.t < 128 && (!e.pitch || M.inScale(e.pitch)); }));
   check('for every theme, band and loop: events in time order, in the scale, chord tones on the beat, a D with rest at the end; night drops the light notes, the answering voice and the broken chords', evBad.length === 0, evBad.slice(0, 6).join('; '));
   var gm = M.events('garden', 'morning', 0), gd = M.events('garden', 'day', 0);
   check('the garden adds grace notes and an answering voice in the morning only; the harbour keeps its melody sparse by day', gm.some(function (e) { return e.part === 'grace'; }) && !gd.some(function (e) { return e.part === 'grace'; }) && gm.some(function (e) { return e.part === 'ans'; }) && M.events('harbour', 'day', 0).filter(function (e) { return e.part === 'mel'; }).length < M.events('home', 'day', 0).filter(function (e) { return e.part === 'mel'; }).length);
