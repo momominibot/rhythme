@@ -107,8 +107,11 @@
   function partRow(name, v, note) { return '<li><span>' + esc(name) + '</span><b>' + (v === null ? '—' : v) + '</b>' + (note ? '<small>' + esc(note) + '</small>' : '') + '</li>'; }
   function panelHTML(profile) {
     var today = S.today(), RH = root.OvuRhythm, band = RH && RH.bandFor ? RH.bandFor(profile || {}) : null;
-    var cs = cycleScore(episodesFromStore(), today, band), ss = sleepScore(nightsFromStore(), today);
-    var h = '<section class="scorecard"><h3><span class="ms">favorite</span>Cycle wellness</h3><div class="scbig">' + (cs.score === null ? '—' : cs.score) + '<small>/100</small></div>' +
+    var cs = cycleScore(episodesFromStore(), today, band), ss = sleepScore(nightsFromStore(), today), AG = root.OvuAgents;
+    /* the cycle score is for menstrual cycles: after menopause it is not shown, and in pregnancy it pauses (request check, 22 Oct) */
+    var post = !!(AG && AG.isPostmenopausal && AG.isPostmenopausal(profile || {})), preg = (profile || {}).lifeStage === 'pregnant';
+    var h = post || preg ? '<section class="scorecard"><h3><span class="ms">favorite</span>Cycle wellness</h3><p class="help">' + (post ? 'Cycle wellness is for menstrual cycles, so it is not shown after menopause. Any bleeding you record is named as something to get checked.' : 'Cycle wellness pauses during pregnancy. It comes back once your periods return.') + '</p></section>' :
+      '<section class="scorecard"><h3><span class="ms">favorite</span>Cycle wellness</h3><div class="scbig">' + (cs.score === null ? '—' : cs.score) + '<small>/100</small></div>' +
       '<ul class="scparts">' + partRow('Regularity (25%)', cs.parts.regularity, 'spread vs FIGO normal for your age') + partRow('Frequency (25%)', cs.parts.frequency, 'cycles 24 to 38 days') + partRow('Period length (20%)', cs.parts.duration, '8 days or less') + partRow('Comfort (30%)', cs.parts.comfort, 'from your 0 to 10 period pain') + '</ul>' +
       (cs.need.length ? '<p class="help">Still needed: ' + esc(cs.need.join('; ')) + '.</p>' : '') +
       '<h4 class="schead">Cycle lengths (days)</h4>' + bars(cs.lengths, 24, 38, 60) + '<h4 class="schead">Period lengths (days)</h4>' + bars(cs.periodDays, 1, 8, 12) +

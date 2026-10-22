@@ -1563,6 +1563,7 @@ async def main():
             await page.wait_for_timeout(1400)
             after = await page.evaluate("()=>({caring: OvuGreenhouse.caring(), hud: document.querySelector('#hud').classList.contains('on'), img: document.querySelector('#avatarImg').getAttribute('src')})")
             await page.evaluate("()=>OvuGreenhouse.finishCare(true)")
+            await page.wait_for_timeout(500); await page.evaluate("()=>{var y=document.querySelector('#ghYes'); if(y) y.click();}"); await page.wait_for_timeout(300)   # the minute saves only after Yes (Codex integrity fix, 22 Oct)
             await page.evaluate("()=>{OvuRoom.closeSheet && OvuRoom.closeSheet(); OvuGreenhouse.startCare('hoya');}"); await page.wait_for_timeout(200)
             await page.click('#hudStop'); await page.wait_for_timeout(300)
             stopped = await page.evaluate("()=>({caring: OvuGreenhouse.caring(), hud: document.querySelector('#hud').classList.contains('on')})")
@@ -2762,7 +2763,7 @@ async def main():
             pm1 = await page.evaluate("()=>{var tab=document.querySelector('#calTabs [data-tab=period]').textContent; var days=[...document.querySelectorAll('.cal-day[data-date]:not(.future)')].filter(b=>!/p-/.test(b.className)); var d=days[days.length-3]; var before=OvuStore.list('period').length; d.click(); return {tab:tab, added: OvuStore.list('period').length-before, date: d.dataset.date};}"); await page.wait_for_timeout(400)
             await page.evaluate("()=>{document.querySelector('#flowChips [data-flow=light]').click(); document.querySelector('#savePeriod').click();}"); await page.wait_for_timeout(600)
             pm2 = await page.evaluate("()=>({care: !!document.querySelector('#careDone'), text: (document.querySelector('.carecard')||{}).textContent||''})")
-            check("after menopause the calendar says Bleeding, fills nothing, and a saved day opens the prompt card", pm1["tab"] == "Bleeding" and pm1["added"] == 0 and pm2["care"] and "This is not a period" in pm2["text"], [pm1, pm2["text"][:80]])
+            check("after menopause the calendar fills nothing, and a saved day opens the prompt card (the tab is Calendar for everyone since 22 Oct)", pm1["tab"] == "Calendar" and pm1["added"] == 0 and pm2["care"] and "This is not a period" in pm2["text"], [pm1, pm2["text"][:80]])
             await page.evaluate("()=>{var b=document.querySelector('#careDone'); if(b) b.click(); OvuStore.setProfile({lifeStage:''});}"); await page.wait_for_timeout(300)
             # Codex branch review (20 Oct): pain 10 entered on the period form opens the same-day card; a red flag found only after a
             # Luna save (heavy flow logged earlier, then "dizzy today") is shown in the chat
@@ -3058,11 +3059,11 @@ async def main():
             await pc.evaluate("()=>OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}})"); await pc.wait_for_timeout(300)
             await pc.click('.nav a[data-tab=cycle]'); await pc.wait_for_timeout(700)
             c1 = await pc.evaluate("()=>({sheet: OvuRoom.sheetId(), tabs: [...document.querySelectorAll('#calTabs button')].map(b=>b.textContent), on: document.querySelector('.nav a[data-tab=cycle]').classList.contains('on')})")
-            check("cycle: the tab is back between Home and Food and opens the calendar even while she sleeps, with Period, Symptoms and Rhythm views", nav[:3] == ["home", "cycle", "food"] and c1["sheet"] == "calendar" and c1["tabs"] == ["Period", "Symptoms", "Rhythm"] and c1["on"], {"nav": nav, "c1": c1})
+            check("cycle: the tab sits between Home and Food and opens even while she sleeps, with Scores first and the Calendar (Jamie, 22 Oct)", nav[:3] == ["home", "cycle", "food"] and c1["sheet"] == "calendar" and c1["tabs"] == ["Scores", "Calendar"] and c1["on"], {"nav": nav, "c1": c1})
             await pc.evaluate("()=>OvuStore.setState({sleeping:null})")
             await pc.click('#calTabs button[data-tab=rhythm]'); await pc.wait_for_timeout(400)
             r1 = await pc.evaluate("()=>({panel: document.querySelector('#rhythmPanel').textContent, hiddenCal: document.querySelector('#calBody').hidden, view: OvuStore.state().cycleView, dots: document.querySelectorAll('.ready .dot.on').length})")
-            check("cycle: the Rhythm view shows Building your cycle picture at 0 of 3 for one logged period, Ovulation signs not assessed, no score anywhere", "Building your cycle picture" in r1["panel"] and "0 of 3" in r1["panel"] and r1["dots"] == 0 and "Not assessed" in r1["panel"] and "score" not in r1["panel"].lower() and "unlocked" not in r1["panel"].lower() and r1["hiddenCal"] and r1["view"] == "rhythm", {"dots": r1["dots"], "view": r1["view"], "head": r1["panel"][:160]})
+            check("cycle: the Scores view leads with Cycle wellness and Circadian rhythm, then Building your cycle picture at 0 of 3 for one logged period, Ovulation signs not assessed", "Cycle wellness" in r1["panel"] and "Circadian rhythm" in r1["panel"] and "Building your cycle picture" in r1["panel"] and "0 of 3" in r1["panel"] and r1["dots"] == 0 and "Not assessed" in r1["panel"] and "unlocked" not in r1["panel"].lower() and r1["hiddenCal"] and r1["view"] == "rhythm", {"dots": r1["dots"], "view": r1["view"], "head": r1["panel"][:160]})
             # four starts a month apart make 3 of 3 and a regularity comparison once the age band is known
             await pc.evaluate("""()=>{var S=OvuStore; S.setProfile({ageRange:'30-34'}); ['2026-07-02','2026-07-30','2026-08-27','2026-09-24'].forEach(function(s){ for(var i=0;i<4;i++) S.add('period', S.addDays(s,i), {flow:i<2?'medium':'light', clots:false, impact:false}, 'room'); });}""")
             await pc.keyboard.press("Escape"); await pc.wait_for_timeout(300)
@@ -3075,7 +3076,7 @@ async def main():
             lbl = await pc.evaluate("()=>document.querySelector('#navCycle .navlabel').textContent")
             await pc.click('.nav a[data-tab=cycle]'); await pc.wait_for_timeout(700)
             r3 = await pc.evaluate("()=>({tabs: [...document.querySelectorAll('#calTabs button')].map(b=>b.textContent), panel: document.querySelector('#rhythmPanel').textContent})")
-            check("cycle: after the menopause the tab reads Body, the calendar's third view is Your body, there is no cycle count and any bleeding is named as a check", lbl == "Body" and r3["tabs"] == ["Bleeding", "Symptoms", "Your body"] and "Building your cycle picture" not in r3["panel"] and "any bleeding at all" in r3["panel"], {"lbl": lbl, "tabs": r3["tabs"]})
+            check("cycle: after the menopause the tab reads Body, the cycle score is not shown, there is no cycle count and any bleeding is named as a check", lbl == "Body" and r3["tabs"] == ["Scores", "Calendar"] and "not shown after menopause" in r3["panel"] and "Building your cycle picture" not in r3["panel"] and "any bleeding at all" in r3["panel"], {"lbl": lbl, "tabs": r3["tabs"]})
             check("cycle: no page errors in the cycle run", not cerr, cerr[:3])
             await ctxc.close()
             # ---------- Luna's chat panel (21 Oct): the Ovuluna card, honest about what Luna is ----------
