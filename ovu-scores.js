@@ -103,12 +103,13 @@
    * cycleScore and sleepScore computed, and says plainly what is still needed. */
   var ART = 'assets/room/scores/';
   function mood(score) { return score === null ? 'sleepy' : score < 40 ? 'tender' : score < 70 ? 'calm' : score < 90 ? 'happy' : 'glow'; }
+  /* the line says where the number sits, not how she is: an app-defined index can be high with pain in it (Codex, 22 Oct) */
   function moodLine(kind, score) {
-    if (score === null) return kind === 'cycle' ? 'Still gathering your cycles. Luna is resting until there is enough to say.' : 'Still gathering your nights. Luna is resting until there is enough to say.';
-    if (score < 40) return 'A tender stretch. Nothing to fix tonight, just something to notice gently.';
-    if (score < 70) return 'A calm, steady picture, with room to settle further.';
-    if (score < 90) return 'A happy, settled rhythm.';
-    return 'Glowing. Your rhythm is as steady as it gets.';
+    if (score === null) return kind === 'cycle' ? 'Still gathering your cycles. Luna rests until there is enough to draw.' : 'Still gathering your nights. Luna rests until there is enough to draw.';
+    if (score < 40) return 'Lower in these records. A number to notice, not a verdict; the parts below say which.';
+    if (score < 70) return 'Mid-range in these records. The parts below say what is pulling it where.';
+    if (score < 90) return 'High in these records. Each part below has its own picture.';
+    return 'At the top of the range in these records. The parts below still carry their own detail.';
   }
   function ring(score, label, id) {
     var r = 52, c = 2 * Math.PI * r, v = score === null ? 0 : score, dash = c * v / 100;
@@ -136,7 +137,7 @@
     var W = 300, H = 96, n = vals.length, bw = Math.min(24, (W - 24) / n - 5), gap = (W - 24 - n * bw) / Math.max(1, n - 1), step = bw + Math.min(gap, 10);
     var x0 = (W - (n * bw + (n - 1) * Math.min(gap, 10))) / 2;
     var y = function (v) { return H - 18 - (Math.min(v, max) / max) * (H - 30); };
-    var band = lo !== null ? '<rect x="6" y="' + y(hi).toFixed(1) + '" width="' + (W - 12) + '" height="' + (y(lo) - y(hi)).toFixed(1) + '" rx="8" fill="rgba(191,227,212,.35)"/><text x="12" y="' + (y(hi) + 10).toFixed(1) + '" font-size="8" fill="#6ba88a" font-weight="700">comfortable</text>' : '';
+    var band = lo !== null ? '<rect x="6" y="' + y(hi).toFixed(1) + '" width="' + (W - 12) + '" height="' + (y(lo) - y(hi)).toFixed(1) + '" rx="8" fill="rgba(191,227,212,.35)"/><text x="12" y="' + (y(hi) + 10).toFixed(1) + '" font-size="8" fill="#2f6b4f" font-weight="800">reference range</text>' : '';
     return '<svg class="scgraph" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + n + ' values">' +
       '<defs><linearGradient id="scb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9c7f2"/><stop offset="1" stop-color="#a98bd8"/></linearGradient><linearGradient id="sco" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbd7c2"/><stop offset="1" stop-color="#f0a07a"/></linearGradient></defs>' + band +
       vals.map(function (v, i) { var x = x0 + i * step, inside = lo === null || (v >= lo && v <= hi); return '<rect x="' + x.toFixed(1) + '" y="' + y(v).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (H - 18 - y(v)).toFixed(1) + '" rx="' + Math.min(8, bw / 2) + '" fill="url(#' + (inside ? 'scb' : 'sco') + ')"/><text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 5) + '" text-anchor="middle" font-size="9" font-weight="700" fill="#7a6a96">' + v + '</text>'; }).join('') + '</svg>';
@@ -156,12 +157,12 @@
       card('cycle', 'Cycle wellness', 'favorite', cs.score,
         '<div class="scpills">' + pill('Regularity', cs.parts.regularity, 'how much your cycle lengths vary, against what is usual for your age') + pill('Frequency', cs.parts.frequency, 'cycles of 24 to 38 days') + pill('Period length', cs.parts.duration, 'periods of 8 days or less') + pill('Comfort', cs.parts.comfort, 'from your 0 to 10 period pain') + '</div>' +
         needRow(cs.need) +
-        '<h4 class="schead">Cycle lengths, days</h4>' + bars(cs.lengths, 24, 38, 60, 'cycles') + '<h4 class="schead">Period lengths, days</h4>' + bars(cs.periodDays, 1, 8, 12, 'periods') +
+        '<h4 class="schead">Cycle lengths, days (reference 24 to 38)</h4>' + bars(cs.lengths, 24, 38, 60, 'cycles') + '<h4 class="schead">Period lengths, days (reference up to 8)</h4>' + bars(cs.periodDays, 1, 8, 12, 'periods') +
         '<p class="help scfoot">An app-defined summary of your recorded cycles and period pain (weights: regularity 25, frequency 25, period length 20, comfort 30). It does not assess fertility, confirm ovulation or rule out a health condition.</p>');
     h += card('sleep', 'Circadian rhythm', 'bedtime', ss.score,
       '<div class="scpills">' + pill('Steady timing', ss.parts.timing, ss.midSpread !== null ? 'the middle of your sleep moves about ' + ss.midSpread + ' min' : 'how much the middle of your sleep moves') + pill('Enough sleep', ss.parts.duration, 'nights reaching 7 hours') + pill('Wake time spread', ss.wakeSpread === null ? null : ss.wakeSpread + ' min', 'shown, not scored', true) + pill('Weekend shift', ss.weekendShift === null ? null : ss.weekendShift + ' min', 'shown, not scored', true) + '</div>' +
       needRow(ss.need) +
-      '<h4 class="schead">Sleep, last 14 nights, hours</h4>' + bars(ss.hours.map(function (x) { return x.h; }), 7, 9, 12, 'nights') +
+      '<h4 class="schead">Sleep, last 14 nights, hours (reference 7 to 9)</h4>' + bars(ss.hours.map(function (x) { return x.h; }), 7, 9, 12, 'nights') +
       '<p class="help scfoot">Estimated from your recorded sleep schedule and length (weights: steady timing 70, enough sleep 30). It does not measure your body clock, and a steady score does not rule out a sleep problem.</p>');
     return h;
   }

@@ -3,7 +3,7 @@
  * a timber jetty on stilts with a lantern shelter, a moored bumboat, a hut, a bench under a sea-almond tree, rocks.
  * Fishing is catch-and-release only. Cast, watch the float, and when a fish comes, Lift gently whenever you like: no
  * reaction window, no tension bar, no escape, no bait to lose. See it, write it in the catch book, let it go. Six
- * Singapore species, each with one plain fact from a named source; they prefer a spot and a time of day, that is all.
+ * Singapore species, each with one plain fact (no citations on screen or in the data, Jamie 22 Oct); they prefer a spot and a time of day, that is all.
  * No hearts, no rarity tiers, no clocks, no completion. The bench just watches the water, for anyone who would rather
  * not hook a fish. A cast costs the energy of a cast (OvuStamina.COSTS.fish), charged only when a fish is written in the
  * book, in the same save; Stop at any point changes nothing. Nothing here writes a diary entry.
@@ -12,17 +12,17 @@
   'use strict';
   var SPECIES = [
     { id: 'grouper', name: 'Orange-spotted grouper', local: 'kerapu', spots: ['rocks', 'jetty'], time: 'any', img: 'fish-grouper.webp',
-      fact: 'Young groupers grow up in estuaries and mangroves; the adults live out on the reefs.', source: 'Wikipedia, orange-spotted grouper', url: 'https://en.wikipedia.org/wiki/Orange-spotted_grouper' },
+      fact: 'Young groupers grow up in estuaries and mangroves; the adults live out on the reefs.' },
     { id: 'snapper', name: 'Mangrove red snapper', local: 'ikan merah', spots: ['rocks'], time: 'any', img: 'fish-snapper.webp',
-      fact: 'At home among mangrove roots when young, it moves out to open water to breed.', source: 'Wikipedia, mangrove red snapper', url: 'https://en.wikipedia.org/wiki/Mangrove_red_snapper' },
+      fact: 'At home among mangrove roots when young, it moves out to open water to breed.' },
     { id: 'barramundi', name: 'Barramundi', local: 'siakap', spots: ['jetty'], time: 'any', img: 'fish-barramundi.webp',
-      fact: 'Barramundi start life as males. In one study at a Singapore farm, most had become females by two to three years old.', source: 'Aquaculture Reports, 2021', url: 'https://doi.org/10.1016/j.aqrep.2021.100712' },
+      fact: 'Barramundi start life as males. In one study at a Singapore farm, most had become females by two to three years old.' },
     { id: 'mullet', name: 'Flathead grey mullet', local: 'belanak', spots: ['jetty', 'rocks'], time: 'day', img: 'fish-mullet.webp',
-      fact: 'It feeds by sucking up the top layer of the sea floor, for tiny algae and bits of food.', source: 'FAO species fact sheet', url: 'https://www.fao.org/fishery/culturedspecies/mugil_cephalus/en' },
+      fact: 'It feeds by sucking up the top layer of the sea floor, for tiny algae and bits of food.' },
     { id: 'rabbitfish', name: 'White-spotted rabbitfish', local: 'pek tor her', spots: ['rocks'], time: 'day', img: 'fish-rabbitfish.webp',
-      fact: 'A grazer of seaweed and seagrass, with venom in its fin spines, so fishers handle it with care. Teochew families prize it at Chinese New Year.', source: 'Wikipedia, white-spotted rabbitfish', url: 'https://en.wikipedia.org/wiki/Siganus_canaliculatus' },
+      fact: 'A grazer of seaweed and seagrass, with venom in its fin spines, so fishers handle it with care. Teochew families prize it at Chinese New Year.' },
     { id: 'squid', name: 'Bigfin reef squid', local: 'sotong', spots: ['jetty'], time: 'night', img: 'fish-squid.webp',
-      fact: 'It changes the colour of its skin to match the sea floor beneath it.', source: 'Scientific Reports, 2022', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC8960755/' }
+      fact: 'It changes the colour of its skin to match the sea floor beneath it.' }
   ];
   var SPOTS = { jetty: { name: 'The jetty', where: 'out over the deep water', float: { x: 89, y: 60 } }, rocks: { name: 'The rocks', where: 'by the shore', float: { x: 46, y: 68 } } };
   function species(id) { return SPECIES.filter(function (s) { return s.id === id; })[0] || null; }
@@ -161,7 +161,7 @@
     if (R.moment) R.moment('bite', { quiet: true });
     var acts = doc.getElementById('spotActs'); if (!acts) return;
     var old = acts.parentNode.querySelector('.hbline'); if (old) old.remove();
-    var pl = doc.createElement('p'); pl.className = 'mindline hbline biteline'; pl.innerHTML = '<span class="ms">priority_high</span><span>A bite! Reel in.</span>'; acts.parentNode.insertBefore(pl, acts);
+    var pl = doc.createElement('p'); pl.className = 'mindline keep hbline biteline'; pl.innerHTML = '<span class="ms">priority_high</span><span>A bite! Reel in.</span>'; acts.parentNode.insertBefore(pl, acts);
     acts.className = 'row'; acts.innerHTML = '<button type="button" class="btn primary" data-bite="lift"><span class="ms">phishing</span>Reel in</button><button type="button" class="btn ghost" data-bite="leave">Let it be</button>';
     var timeout = (reduced() || fast()) ? 0 : root.setTimeout(function () { if (my !== enc) return; acts.onclick = null; clearLine(); R.toast('It slipped away. Nothing lost.', 'water'); openSpot(spot); }, BITE_MS);
     acts.onclick = function (e) {
