@@ -505,12 +505,28 @@
         twirl(img.src, id === 'gown', function () { if (gen === imgGen) moment('wardrobe', id === 'gown' ? { pose: null, line: 'Starlight, just for you.' } : { pose: null }); }, gen);
         return;
       }
-      finishTwirl(); avatarImg.src = img.src; if (!silent && window.OvuMorning && OvuMorning.active()) OvuMorning.repose(); /* brushing in the new outfit */ if (!silent) { avatar.classList.add('poofing'); clearTimeout(poofTimer); poofTimer = setTimeout(function () { poofTimer = null; avatar.classList.remove('poofing'); if (gen === imgGen) moment('wardrobe'); }, 700); } /* tracked: a newer outfit or twirl clears it (Codex verification, 21 Oct) */
+      finishTwirl(); avatarImg.src = img.src; if (!silent && !avatar.classList.contains('hidden') && !scene.classList.contains('sitting')) { avatar.classList.add('poofing'); clearTimeout(poofTimer); poofTimer = setTimeout(function () { poofTimer = null; avatar.classList.remove('poofing'); if (gen === imgGen) moment('wardrobe'); }, 700); } /* tracked: a newer outfit or twirl clears it (Codex verification, 21 Oct) */
     };
     preloadBlink(id);
     img.src = ART + 'avatar-' + id + '.webp';
     S.setProfile({ outfit: id });
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
+    if (!silent) redress();
+  }
+  /* an outfit picked during an activity, a sit or sleep is drawn in the picture she is in right now, not the standing one
+   * (Codex sweep, 21 Oct: brushing went on with a standing avatar, a bench kept the old clothes, the sleeper never changed).
+   * The pose takes over from the standing picture (a newer image generation), with no twirl, hop or line */
+  function redress() {
+    var o = wornOutfit();
+    if (asleep()) {
+      wearImg(sleeper.querySelector('img'), sleepSrc(o), ART + 'avatar-sleeping.webp');
+      var sl = S.state().sleeping; if (sl && sl.prevOutfit) S.setState({ sleeping: Object.assign({}, sl, { prevOutfit: null }) }); /* her pick stands when she wakes: the clothes she went to bed in are not put back over it */
+    }
+    if (meditating && !meditator.classList.contains('onseat')) wearImg(meditator.querySelector('img'), meditateSrc(o), ART + 'avatar-meditate.webp'); /* the mat; a bench is redrawn by ovu-garden.js */
+    if (practice) setPose(practice.a.pose);
+    else if (window.OvuMorning && OvuMorning.active()) OvuMorning.repose();
+    else if (lastPose && avatar.classList.contains('acting')) setPose(lastPose); /* watering the garden, a minute with a plant */
+    emit('outfit', o); /* a bench, the warm stone and a seated practice redraw their own sitter */
   }
   function placeAvatar(p, flip) { pos = { x: p.x, y: p.y }; avatar.style.left = p.x + '%'; avatar.style.top = p.y + '%'; avatar.classList.toggle('flip', !!flip); emit('placed', pos); } /* the walk engine re-ranks her depth */
   function sameFloor(a, b) { if (!L.stairs) return true; return (a.y < L.upstairsY) === (b.y < L.upstairsY); }
@@ -1496,7 +1512,7 @@
     hideBubble();
     if (k === 'home' || !TABS[k]) { if (current) closeSheet(); setTab('home'); return; }
     if (!awake(k)) { setTab(current ? current : 'home'); return; }
-    if (k === 'mind' && window.OvuMorning && OvuMorning.active()) { openMindfulness(); return; } /* refused with a toast; Mind is not selected */
+    if (k === 'mind' && activityNow()) { openMindfulness(); return; } /* refused with a line, or the running session's bar back; Mind is not selected */
     TABS[k](); setTab(k);
   }
   function measureNav() { var n = $('.nav'), f = $('#frame'); if (n && f) f.style.setProperty('--navh', n.offsetHeight + 'px'); }
@@ -2054,6 +2070,26 @@
 
   /* ---------- yoga mat: mindfulness with Erin projected beside you ---------- */
   var meditating = false, session = null;
+  /* one activity at a time (Codex sweep, 21 Oct: Everyday brushing and Just breathe could run together, and Stop then hid the
+   * breathing's controls). A practice, a breathing session (the mat or a bench), a seated bench practice and Morning start
+   * never overlap: the one running keeps going, anything new is refused with one line, and the running one's controls come
+   * back. A care step lives in its own sheet, so leaving the sheet is its Stop, and it is refused the same way (ovu-care.js) */
+  function activityNow() {
+    if (practice) return { kind: 'practice', name: practice.a.name, icon: 'self_improvement' };
+    if (session) return { kind: 'session', name: session.kind === 'erin' ? 'Breathing with Erin' : 'Just breathe', icon: 'self_improvement' };
+    if (window.OvuMorning && OvuMorning.active()) return { kind: 'morning', name: 'Morning start', icon: 'wb_twilight' };
+    if (window.OvuSeats && OvuSeats.active()) { var st = OvuSeats.state(), seat = st && OvuSeats.SEATS[st.seat], sc = seat && OvuSeats.SCRIPTS[seat.practice]; return { kind: 'seat', name: sc ? sc.name : 'The bench practice', icon: 'chair' }; }
+    return null;
+  }
+  function busyLine(a) { return a.name + ' is running. Finish it, or tap Stop first.'; }
+  function refuseBusy() {
+    var a = activityNow(); if (!a) return false;
+    toast(busyLine(a), a.icon);
+    if (a.kind === 'practice' || a.kind === 'session') hud.classList.add('on');
+    else if (a.kind === 'morning' && OvuMorning.reveal) OvuMorning.reveal();
+    else if (a.kind === 'seat' && OvuSeats.reveal) OvuSeats.reveal();
+    return true;
+  }
   /* meditating and sleeping are drawn in what she is wearing (four-persona review, 20 Oct: the mat put everyone in the yoga set and
    * the bed in pyjamas); the yoga set is the original meditation sprite and the pyjamas the original sleeper. A missing file
    * falls back to the original. */
@@ -2102,7 +2138,8 @@
   function hudClockStop() { clearInterval(hudClock.id); hudClock.id = null; hudClock.total = 0; var el = $('#hudTime'); if (el) el.textContent = ''; }
   var fadeTimer = null; /* the fade after a saved session; a new activity cancels it so it can never hide the new one */
   function runSession(kind, minutes) {
-    if (window.OvuMorning && OvuMorning.active()) { toast('Morning start is running. Stop it first.', 'wb_twilight'); return; }
+    if (session) { hud.classList.add('on'); return; }
+    if (refuseBusy()) return; /* never over a practice, a bench practice or Morning start */
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (window.OvuPodcast) OvuPodcast.pause();
     session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: kind === 'erin' ? new Audio() : null, timer: null };
@@ -2265,8 +2302,8 @@
   })();
 
   function openMindfulness() {
-    if (window.OvuMorning && OvuMorning.active()) { toast('Morning start is running. Stop it first.', 'wb_twilight'); return; }
     if (session) { hud.classList.add('on'); return; }
+    if (refuseBusy()) return; /* the mat never opens under a running practice: she would vanish from it */
     var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
     enterMeditation();
     setTimeout(fillPodShelf, 0);
@@ -2500,7 +2537,7 @@
    * One rAF clock drives the turn and the sparkles, so the swap lands exactly edge-on; a timer finishes it if frames stop
    * (a hidden page). It only ever runs because she picked an outfit: pose and outfit never change by themselves (Jamie, 18 Oct) */
   var twirlRun = null, twirlEnded = 0;
-  function twirlOk() { return !reduced && !document.hidden && !asleep() && !meditating && !practice && !session && !arranging && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !avatar.classList.contains('walking') && !avatar.classList.contains('hidden') && !(hooks.moving && hooks.moving()); }
+  function twirlOk() { return !reduced && !document.hidden && !asleep() && !meditating && !practice && !session && !arranging && !avatar.classList.contains('acting') && !scene.classList.contains('sitting') && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !avatar.classList.contains('walking') && !avatar.classList.contains('hidden') && !(hooks.moving && hooks.moving()); }
   function twirlFx(n, glam) {
     var fx = document.createElement('span'); fx.className = 'twirl-fx' + (glam ? ' glam' : ''); fx.setAttribute('aria-hidden', 'true');
     var html = '<span class="tw-flash"></span>';
@@ -2656,15 +2693,16 @@
   var OUTFIT_POSES = { plants: 1, coffee: 1, teeth: 1, dishes: 1, pets: 1, bed: 1, outfit: 1, stretch: 1, note: 1, eat: 1, listen: 1, read: 1, tend: 1, harvest: 1, wave: 1, press: 1, phone: 1, shop: 1, scale: 1 }; /* stretch and the eleven moment poses joined on 20 Oct (ovu-moments.js); the shower keeps its robe */
   var BASE_SUFFIXED = { stretch: 1 }; /* the unsuffixed stretch file is the yoga set; her own clothes are avatar-act-stretch-base (Codex, 21 Oct) */
   function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && (outfit !== 'base' || BASE_SUFFIXED[pose]) ? '-' + outfit : '') + '.webp'; }
+  var lastPose = null; /* the pose she holds, so a new outfit can redraw it (redress) */
   function setPose(pose) {
-    finishTwirl();
+    finishTwirl(); lastPose = pose;
     var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image(), gen = ++imgGen;
     img.onload = function () { if (gen === imgGen) avatarImg.src = img.src; };
     /* a missing outfit copy never borrows the default clothes: she keeps standing in her own (Jamie's rule; Codex review) */
     img.onerror = function () { if (gen !== imgGen) return; if (want === plain) { if (img.src.indexOf(plain) < 0) img.src = plain; } else setOutfit(S.profile().outfit || 'base', true); };
     img.src = want;
   }
-  function restorePose() { setOutfit(S.profile().outfit || 'base', true); }
+  function restorePose() { lastPose = null; setOutfit(S.profile().outfit || 'base', true); }
   function openEveryday(selId) {
     var ex = MF.explored();
     openSheet('everyday', 'Everyday mindfulness', 'Guides for things you are really doing', 'self_improvement',
@@ -2685,7 +2723,8 @@
     if (selId) detail(selId);
   }
   function runPractice(id, vi) {
-    if (window.OvuMorning && OvuMorning.active()) { toast('Morning start is running. Stop it first.', 'wb_twilight'); return; }
+    if (practice) { hud.classList.add('on'); return; }
+    if (refuseBusy()) return; /* never over a session, a bench practice or Morning start */
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     var a = MF.byId(id); if (!a || practice) return; var v = a.variations[vi] || a.variations[0]; vi = a.variations.indexOf(v);
     if (window.OvuPodcast) OvuPodcast.pause();
@@ -2719,7 +2758,7 @@
       '<div class="row"><button type="button" class="btn primary" id="pdYes"><span class="ms">check</span>Yes, I did it</button><button type="button" class="btn ghost" id="pdNo">Not this time</button></div>' +
       '<p class="help">Save it if you really did it. A mind that wandered and came back still counts: noticing is the practice. This stays between you and your room.</p>');
     function end(confirmed) {
-      hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null; closeSheet();
+      if (!session) hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null; closeSheet();
       if (confirmed && secs >= 30) { var r = MF.complete(p.a.id, p.vi, secs, true, !!finished); afterSave(r.event, (r.first ? 'First ' + p.a.name.toLowerCase() + ' practice! ' : '') + 'Saved to your journal.'); }
       else toast('No worries. The practice is there whenever you are.', 'self_improvement');
     }
@@ -2735,7 +2774,7 @@
     var elapsed = practiceMs(practice) / 1000;
     if (elapsed >= Math.min(60, practice.total * 0.5)) { askPracticeDone(false); return; }
     practice.stopped = true; clearTimeout(practice.timer); if (practice.audio) { try { practice.audio.pause(); } catch (e) { } } hudClockStop();
-    hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null;
+    if (!session) hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null;
     toast('Stopped. Nothing under a minute is recorded.', 'self_improvement');
   }
 
@@ -3192,7 +3231,7 @@
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, setOutfit: setOutfit, outfitLocked: outfitLocked, updateGreeting: updateGreeting, openPlus: openPlus, openExercise: openExercise, openMoveGuide: openMoveGuide,
-    moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
+    moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; }, activityNow: activityNow, busyLine: busyLine, refuseBusy: refuseBusy,
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     blinking: function (on) { blinkOn = !!on; if (blinkOn) scheduleBlink(); else clearTimeout(blinkT); return blinkOn; },
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on && title) { clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }

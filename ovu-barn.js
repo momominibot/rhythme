@@ -339,6 +339,7 @@
     R.on('props', function () { renderBarn(); if (sitting && !sitting.el.isConnected) R.els.props.appendChild(sitting.el); });
     R.on('beforeWalk', standUp); R.on('walk', standUp);
     R.on('activity', standUp);
+    R.on('outfit', function () { if (sitting && sitting.el && root.OvuGarden && root.OvuGarden.reseat) root.OvuGarden.reseat(sitting.el, CAVE.seat); });
     var shown = null; /* which barn sheet is open, so a new day or another tab can redraw it as it is now */
     var SHEETS = { barnnests: openNests, barnclover: openClover, springbasket: openBasket };
     function redrawOpen() { var id = R.sheetId ? R.sheetId() : null; var fn = id && SHEETS[id]; if (!fn || !R.sheetOpen()) return; if (CARE && CARE.cancel) CARE.cancel(); fn(); }
