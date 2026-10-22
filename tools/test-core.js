@@ -3119,7 +3119,7 @@ var summarised = false;
   check('a question nobody answered counts nothing (time awake is unknown, not zero minutes)', sn.fields.awake.answered === 0 && sn.fields.awake.marked === 0 && sn.fields.awake.unsure === 0);
   check('hot flush nights come from the sleep details or the symptom note, each night once', sn.flushNights === 2 && sn.woke.flush === 1);
   var rows = A2.sleepNotesRows(sn), r1 = rows.filter(function (r) { return r[0] === 'Over 30 min to fall asleep'; })[0];
-  check('the rows give counts with their own denominators and the not-sure count', rows[0][1] === '2 of 3 recorded nights' && r1 && r1[1] === '1 of 1 answered night, 1 not sure', JSON.stringify(rows));
+  check('the rows give counts with their own denominators and the not-sure count', rows.filter(function (r) { return r[0] === 'Sleep details'; })[0][1] === '2 of 3 recorded nights' && r1 && r1[1] === '1 of 1 answered night, 1 not sure', JSON.stringify(rows));
   check('rows leave out questions nobody answered', !rows.some(function (r) { return /Awake over 30/.test(r[0]); }));
   S2.add('sleep', d1, { bedTime: '14:00', wakeTime: '15:00', details: { latency: 'le15', woke: ['toilet'] } });
   var nd = A2.nightDetails(d1);
@@ -3929,6 +3929,64 @@ var summarised = false;
   var how = (/<details class="btap-how">[\s\S]*?<\/details>/.exec(lf)[0] + /<details class="btap-how">[\s\S]*?<\/details>/.exec(bt)[0]);
   check('the instructions promise nothing and push nothing: no cure, calm-guarantee, score, streak or em dash', !/\b(cure|heal|fix|anxiety|depression|reduce stress|guarantee|score|streak|must)\b/i.test(how) && how.indexOf('—') < 0);
   check('the mat tiles say the pond breathes with the ring and the flower adds a gentle breath', /Breathe with the ring, watch the koi/.test(rs) && /Light, sound and a gentle breath/.test(rs));
+})();
+
+(function sleepQuality() {
+  console.log('sleep quality: stages, time awake and time in bed travel with imported nights; a summary with denominators, no score');
+  var w = fresh('2026-10-18'), H = w.OvuHealth, S = w.OvuStore, A = w.OvuAgents;
+  var r = H.parseAppleXml(fs.readFileSync(path.join(root, 'tools/fixtures/apple-export-mini.xml'), 'utf8')), n1 = r.sleep[0], n2 = r.sleep[1];
+  check('Apple stages are counted one minute one stage: core 190, deep 240, and REM written inside deep is not counted twice', n1 && JSON.stringify(n1.stageMin) === JSON.stringify({ core: 190, deep: 240, rem: 0 }), JSON.stringify(n1));
+  check('the stage minutes never add up to more than the minutes asleep', n1 && n1.stageMin.core + n1.stageMin.deep + n1.stageMin.rem <= n1.asleepMin);
+  check('Apple awake records inside the night become time awake (20 min); hours still leave it out', n1 && n1.awakeMin === 20 && n1.asleepMin === 430);
+  check('the phone\'s in-bed block around the night becomes time in bed (23:05 to 07:10, 485 min)', n1 && n1.inBedMin === 485);
+  check('an old numeric night with no stages, awake or in-bed records carries none of them (unknown, not zero)', n2 && n2.stageMin === undefined && n2.awakeMin === undefined && n2.inBedMin === undefined, JSON.stringify(n2));
+  var gb = H.googleBuilder(); gb.json(fs.readFileSync(path.join(root, 'tools/fixtures/fit-session-sleep.json'), 'utf8'), '2025-05-10T23_12_00+08_00_SLEEP.json');
+  var g = gb.result().sleep[0];
+  check('Google Fit light, deep and REM segments map to core, deep and rem, and its awake segment to time awake', g && JSON.stringify(g.stageMin) === JSON.stringify({ core: 108, deep: 120, rem: 218 }) && g.awakeMin === 20 && g.asleepMin === 446, JSON.stringify(g));
+  var gb2 = H.googleBuilder(); gb2.json(JSON.stringify({ fitnessActivity: 'sleep', startTime: '2025-05-12T23:00:00.000+08:00', endTime: '2025-05-13T06:00:00.000+08:00', segment: [{ sleepSegmentType: 4, startTime: '2025-05-12T23:00:00.000+08:00', endTime: '2025-05-13T02:00:00.000+08:00' }, { sleepSegmentType: 1, startTime: '2025-05-13T02:00:00.000+08:00', endTime: '2025-05-13T02:40:00.000+08:00' }, { sleepSegmentType: 5, startTime: '2025-05-13T02:40:00.000+08:00', endTime: '2025-05-13T06:00:00.000+08:00' }] }), 'b_SLEEP.json');
+  var g2 = gb2.result().sleep[0];
+  check('numeric Fit sleep segment types (4 light, 1 awake, 5 deep) are read too', g2 && g2.stageMin.core === 180 && g2.stageMin.deep === 200 && g2.awakeMin === 40, JSON.stringify(g2));
+
+  var p = H.apply(r, S, { kinds: ['sleep'] }), e1 = S.list('sleep').filter(function (e) { return e.date === '2025-06-02'; })[0];
+  check('an imported night keeps its stages, time awake and time in bed in the diary', p.counts.sleep === 2 && e1 && e1.data.stageMin.deep === 240 && e1.data.awakeMin === 20 && e1.data.inBedMin === 485, JSON.stringify(e1 && e1.data));
+  var w2 = fresh('2025-06-03'), S2 = w2.OvuStore, H2 = w2.OvuHealth;
+  S2.add('sleep', '2025-06-02', { bedTime: '22:00', wakeTime: '06:00' });
+  H2.apply(r, S2, { kinds: ['sleep'] });
+  var hw = S2.list('sleep').filter(function (e) { return e.date === '2025-06-02'; });
+  check('a night she wrote herself still wins: the import adds nothing on that date', hw.length === 1 && hw[0].data.stageMin === undefined && hw[0].source !== 'apple-health', JSON.stringify(hw));
+
+  var w3 = fresh('2026-10-18'), S3 = w3.OvuStore, A3 = w3.OvuAgents, t = S3.today();
+  [[-6, '23:00', '06:30', 390, 40, 450, { core: 200, deep: 90, rem: 100 }], [-5, '23:30', '06:30', 380, 35, 430, { core: 190, deep: 90, rem: 100 }], [-4, '00:15', '07:00', 370, 10, 410, null], [-3, '23:10', '07:10', 450, 45, null, { core: 250, deep: 100, rem: 100 }], [-2, '23:40', '06:40', 400, null, null, null]].forEach(function (x) {
+    var d = { bedTime: x[1], wakeTime: x[2], asleepMin: x[3], hours: Math.round(x[3] / 6) / 10, mode: 'import' };
+    if (x[4] !== null) d.awakeMin = x[4]; if (x[5] !== null) d.inBedMin = x[5]; if (x[6]) d.stageMin = x[6];
+    S3.addMany([{ type: 'sleep', date: addDays(t, x[0]), data: d, source: 'apple-health' }]);
+  });
+  var q = A3.sleepQuality(addDays(t, -27), t);
+  check('the summary counts nights and keeps each measure\'s own denominator', q.nights === 5 && q.withHours === 5 && q.awakeNights === 4 && q.effNights === 3 && q.stagedNights === 3 && q.timed === 5, JSON.stringify(q));
+  check('nights at 7 h or more are counted against nights with hours (one of five)', q.sevenPlus === 1 && q.avgHours === 6.6, JSON.stringify(q));
+  check('typical time awake is the median of measured nights only, and 31 min or more is counted (3 of 4)', q.awakeMedian === 38 && q.awakeOver30 === 3);
+  check('time in bed spent asleep is the median of nights with both measures (88%)', q.effMedian === 88, JSON.stringify(q));
+  check('timing spread is circular, so 23:00 and 00:15 are close, not 23 hours apart', typeof q.midSD === 'number' && q.midSD < 60 && q.bedSD < 60, JSON.stringify(q));
+  check('stage shares are percentages of staged minutes, from staged nights only', q.stages && q.stages.core + q.stages.deep + q.stages.rem >= 99 && q.stages.core === 52, JSON.stringify(q.stages));
+  var rows = A3.sleepQualityRows(q), labels = rows.map(function (x) { return x[0]; });
+  check('rows name each measure with its nights, call stages a device estimate and give no score', labels.indexOf('Awake in the night') > -1 && labels.indexOf('Sleep stages (device estimate)') > -1 && /3 of 4 nights measured/.test(rows[labels.indexOf('Awake in the night')][1]) && !rows.some(function (x) { return /score|good|poor/i.test(x.join(' ')); }), JSON.stringify(rows));
+  check('the journal rows show the quality lines even before any sleep details are answered', A3.sleepNotesRows(A3.sleepNotes(addDays(t, -27), t)).some(function (x) { return x[0] === 'Awake in the night'; }));
+  check('three measured nights awake 31 min or more in a week raise one watch note', A3.allFlags(t).filter(function (f) { return f.code === 'SLEEP_LONG_AWAKE'; }).length === 1);
+  var w4 = fresh('2026-10-18'), S4 = w4.OvuStore, A4 = w4.OvuAgents, t4 = S4.today();
+  [-3, -2, -1].forEach(function (k, i) { S4.add('sleep', addDays(t4, k), { bedTime: '23:00', wakeTime: '07:00' }); });
+  S4.addMany([{ type: 'sleep', date: addDays(t4, -4), data: { bedTime: '23:00', wakeTime: '07:00', asleepMin: 440, awakeMin: 50, mode: 'import' }, source: 'apple-health' }]);
+  check('nights without a measure of time awake never count towards the note', !A4.allFlags(t4).some(function (f) { return f.code === 'SLEEP_LONG_AWAKE'; }));
+  var qe = A4.sleepQuality(addDays(t4, -27), t4);
+  check('hand-written nights add hours and timing but no time awake, efficiency or stages', qe.withHours === 4 && qe.awakeNights === 1 && qe.effNights === 0 && qe.stages === null);
+
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-patterns.js'), 'utf8'), w3);
+  var sn = A3.sleepNotes(addDays(t, -27), t), sh = JSON.parse(JSON.stringify(sn));
+  sh.quality.effMedian = 400; sh.quality.awakeOver30 = 99; sh.quality.stages = { core: '<b>', deep: 1, rem: 1 };
+  var cq = w3.OvuPatterns.cleanShare({ sleepNotes: sh }).sleepNotes.quality;
+  check('a shared summary keeps quality numbers in range, never more marked than measured, and drops a broken stage line', cq.effNights === 0 && cq.awakeOver30 === cq.awakeNights && cq.stages === null && cq.awakeMedian === 38, JSON.stringify(cq));
+  var html = w3.OvuPatterns.sleepNotesHTML(sn);
+  check('the drawn card shows the quality lines and says stages are the device estimate', /Awake in the night/.test(html) && /device/.test(html) && !/—/.test(html), html.slice(0, 300));
+  check('the evidence ledger names the NSF sleep quality panel', /Ohayon/.test(fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8')));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
