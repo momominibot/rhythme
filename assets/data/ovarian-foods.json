@@ -2,7 +2,7 @@
  "source": "Ovuluna food database (food-journal.html FOOD_DB and PHASE_INFO): TCM and Western notes, phase matching; nutrient maths uses the USDA table where a match exists",
  "foods": [
   {
-   "name": "Salmon",
+   "name": "Wild Caught Salmon",
    "emoji": "🐟",
    "tags": "Omega-3 · Vitamin D · Protein",
    "tcm": "Nourishes blood, warms yang",
@@ -52,7 +52,7 @@
    "img": "assets/food/sweet-potato.webp"
   },
   {
-   "name": "Oats",
+   "name": "Organic Oats",
    "emoji": "🥣",
    "tags": "Fibre · B vitamins · Iron",
    "tcm": "Tonifies spleen, nourishes qi",
@@ -288,7 +288,7 @@
    "foods": [
     "Bone Broth",
     "Ginger",
-    "Oats",
+    "Organic Oats",
     "Eggs",
     "Beetroot",
     "Cinnamon",
@@ -299,7 +299,7 @@
    "label": "Follicular phase",
    "text": "Ordinary balanced meals: vegetables, whole grains, beans and lentils, and some protein at each meal.",
    "foods": [
-    "Salmon",
+    "Wild Caught Salmon",
     "Eggs",
     "Spinach",
     "Berries",
@@ -317,7 +317,7 @@
     "Leafy Greens",
     "Green Tea",
     "Yogurt",
-    "Salmon"
+    "Wild Caught Salmon"
    ]
   },
   "luteal": {

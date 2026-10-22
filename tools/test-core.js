@@ -2269,6 +2269,11 @@ function scenes(todayIso) {
 (function lunaLook() {
   console.log("Luna's look (ovu-mascot.js): one pastel crescent moon");
   var w = fresh(), M = w.OvuMascot;
+  (function () {
+    var rh = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), pv = fs.readFileSync(path.join(root, 'ovu-pageview.js'), 'utf8');
+    check('older Rhythme pages open in the in-app viewer, never by leaving the room (Jamie, 22 Oct)', /<script src="ovu-pageview\.js"><\/script>/.test(rh) && /OvuPage\.open\('journal\.html#'/.test(rj) && /e\.preventDefault\(\); open\(a\.getAttribute\('href'\)\)/.test(pv));
+    check('retired pages are not linked from the room: foods, period start, account, calm check', !/'(foods|period-start|account|face-ppg)\.html'/.test(rj) && !/href="(foods|period-start|account|face-ppg)\.html"/.test(rj + rh));
+  })();
   check('one look only, the soft Ovuluna crescent (Jamie, 21 Oct)', M.LIST.length === 1 && M.LIST[0].id === 'luna' && /orb-luna\.webp$/.test(M.src()));
   check('its crescent sprite is on disk and no round badge is used', fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].img)) && !M.LIST[0].head);
   check('the crescent is the default and an unknown look (an old saved pick too) is ignored', M.current().id === 'luna' && M.set('rabbit').id === 'luna' && M.set('moon').id === 'luna');

@@ -133,10 +133,10 @@
   ];
   /* desktop folders on the computer */
   var FOLDERS = [
-    { id: 'cycle', name: 'Cycle basics', color: '#f6c9d6', items: [['page', 'room.html#cycle', 'bloodtype', 'Your cycle', 'Phases, length and what is typical'], ['page', 'hormones.html', 'show_chart', 'Hormones 101', 'What rises and falls each cycle'], ['video', 'normal', 'A normal cycle', 'What typical looks like'], ['video', 'hormones', 'Hormones', 'Oestrogen & progesterone'], ['page', 'period-start.html', 'water_drop', 'Period start', 'Logging the first day']] },
+    { id: 'cycle', name: 'Cycle basics', color: '#f6c9d6', items: [['page', 'room.html#cycle', 'bloodtype', 'Your cycle', 'Phases, length and what is typical'], ['page', 'hormones.html', 'show_chart', 'Hormones 101', 'What rises and falls each cycle'], ['video', 'normal', 'A normal cycle', 'What typical looks like'], ['video', 'hormones', 'Hormones', 'Oestrogen & progesterone'], ['page', 'room.html#cycle', 'water_drop', 'Period start', 'Logging the first day']] },
     { id: 'fertility', name: 'Fertility', color: '#bfe3d4', items: [['page', 'fertility.html', 'spa', 'Fertile window', 'Ovulation signs, explained'], ['video', 'fertile', 'Fertile window', 'Your most fertile days'], ['page', 'journey-grow.html', 'eco', 'Trying to conceive', 'Timing, tests and support'], ['page', 'ovarian-health.html', 'menu_book', 'Understand your records', 'What your entries can and cannot show']] },
     { id: 'chapters', name: 'Life chapters', color: '#c9b6e6', items: [['page', 'life-journey.html', 'auto_stories', 'Your life journey', 'Four chapters, one body'], ['page', 'journey-nurture.html', 'favorite', 'After pregnancy', 'Recovery and cycles returning'], ['page', 'journey-peri.html', 'dark_mode', 'Perimenopause', 'Hot flushes, sleep and mood'], ['video', 'peri', 'Perimenopause', 'The transition years'], ['page', 'journey-post.html', 'wb_sunny', 'After menopause', 'Bone, heart and bleeding rules'], ['video', 'menopause', 'Menopause', 'Life after periods']] },
-    { id: 'nutrition', name: 'Nutrition', color: '#f3d49b', items: [['page', 'foods.html', 'restaurant', 'Foods by phase', 'TCM and Western notes'], ['page', 'medas14.html', 'nutrition', 'Mediterranean score', 'A 14-point check'], ['action', 'diary', 'menu_book', 'Open the food diary', 'Snap, scan or search']] },
+    { id: 'nutrition', name: 'Nutrition', color: '#f3d49b', items: [['page', 'room.html#food', 'restaurant', 'Foods by phase', 'TCM and Western notes'], ['page', 'medas14.html', 'nutrition', 'Mediterranean score', 'A 14-point check'], ['action', 'diary', 'menu_book', 'Open the food diary', 'Snap, scan or search']] },
     { id: 'mind', name: 'Mind & mood', color: '#b8cde0', items: [['page', 'room.html#mind', 'self_improvement', 'Mindfulness hub', 'Erin Lee’s pauses and podcasts'], ['link', 'https://erinmindfulmoments.substack.com/p/the-quiet-work-of-change', 'article', 'The Quiet Work of Change', 'An essay by Erin'], ['page', 'mental-health.html', 'psychology', 'Mood & calm', 'When to reach for support'], ['action', 'mat', 'self_improvement', 'Sit on the mat', 'A session with Erin']] },
     { id: 'move', name: 'Movement', color: '#cfe6c4', items: [['action', 'move', 'directions_run', 'Log movement', 'Minutes, MET-minutes and your week'], ['action', 'moveguide', 'menu_book', 'Movement and your cycle', 'What the research says, with sources']] },
     { id: 'body', name: 'Body & relief', color: '#f5c6b8', items: [['action', 'bed', 'bedtime', 'Log sleep', 'Your bed in the room keeps your nights'], ['action', 'acu', 'spa', 'Acupressure on your avatar', 'Points for cramps, with evidence']] },
@@ -1585,7 +1585,7 @@
         toast('Removed ' + impPlural(gone, 'imported entry', 'imported entries') + '. Your own entries are untouched.', 'delete_sweep'); return renderImportHome(H);
       }
       if (act === 'calendar') { var dt = b.dataset.date; openCalendar(kind === 'symptoms' ? 'symptom' : 'period', dt); return; }
-      if (act === 'journal') { location.href = 'journal.html#' + (b.dataset.type || ''); }
+      if (act === 'journal') { if (window.OvuPage) OvuPage.open('journal.html#' + (b.dataset.type || '')); else location.href = 'journal.html#' + (b.dataset.type || ''); }
     });
   }
   function impConfirmHTML(kind, title, text) {
@@ -3125,6 +3125,8 @@
       setTimeout(lift, Math.max(0, 500 - (Date.now() - bootAt))); /* the veil lifts only once the session question is settled */
     });
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
+    /* a link inside the in-app page viewer back to a room tab (ovu-pageview.js) */
+    window.addEventListener('ovu-route', function (e) { var k = e && e.detail; if (!k) return; requireConsent(function () { if (k === 'luna') openLuna(); else if (k === 'learn') openLearn(); else if (k === 'move') { openExercise(); setTab('mind'); } else if (TABS[k]) goTab(k); }); });
     scheduleLife();
     function tick() { var d = new Date(); $('#clockTime').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); var dc = $('#deskClock'); if (dc) dc.textContent = nowHM(); } tick(); setInterval(tick, 20000);
     emit('boot');
