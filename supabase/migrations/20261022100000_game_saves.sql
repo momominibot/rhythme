@@ -37,7 +37,8 @@ begin
   end if;
   -- a deleted save comes back only for a sign-in made after the deletion (the token's sign-in time, amr)
   if cur.deleted then
-    select max((e->>'timestamp')::bigint) into signed_in from jsonb_array_elements(coalesce(auth.jwt()->'amr', '[]'::jsonb)) e;
+    select max((e->>'timestamp')::bigint) into signed_in from jsonb_array_elements(coalesce(auth.jwt()->'amr', '[]'::jsonb)) e
+      where e->>'method' not in ('token_refresh', 'totp'); -- a refreshed token or a second factor is not a new sign-in
     if signed_in is null or signed_in <= extract(epoch from cur.saved_at) then
       return query select false, cur.rev, cur.save, cur.deleted; return;
     end if;
