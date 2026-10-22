@@ -1,25 +1,51 @@
--- Game save (22 Oct 2026): hearts, farm, bag, villagers, home and pets follow the signed-in account. One row per account,
--- readable and writable only by that account. Nothing in it is diary data: the client scrubs the hearts log to times and
--- points before saving. Deleting the account deletes the row.
+-- Game save (22 Oct 2026): hearts, farm, bag, villagers, home and pets follow the signed-in account. One row per
+-- account. People read their own row; every write goes through the two functions below, which check a revision so two
+-- phones can never overwrite each other (the client merges and tries again), and a deletion stays visible to every phone
+-- (deleted = true, rev moves on) instead of disappearing and being recreated by a phone that missed it.
+-- Nothing in the save is diary data: the client saves only game fields (no letters, no diary dates, no hearts log).
 create table if not exists public.game_saves (
   user_id uuid primary key references auth.users (id) on delete cascade,
-  save jsonb not null check (jsonb_typeof(save) = 'object' and pg_column_size(save) <= 262144),
-  saved_at timestamptz not null,
-  updated_at timestamptz not null default now()
+  save jsonb not null default '{}'::jsonb check (jsonb_typeof(save) = 'object' and pg_column_size(save) <= 262144),
+  rev bigint not null default 0 check (rev >= 0),
+  deleted boolean not null default false,
+  saved_at timestamptz not null default now()
 );
 alter table public.game_saves enable row level security;
-revoke all on public.game_saves from anon, public;
-grant select, insert, update on public.game_saves to authenticated;
+revoke all on public.game_saves from anon, authenticated, public;
+grant select on public.game_saves to authenticated;
 drop policy if exists game_saves_own_select on public.game_saves;
-drop policy if exists game_saves_own_insert on public.game_saves;
-drop policy if exists game_saves_own_update on public.game_saves;
 create policy game_saves_own_select on public.game_saves for select to authenticated using (user_id = (select auth.uid()));
-create policy game_saves_own_insert on public.game_saves for insert to authenticated with check (user_id = (select auth.uid()));
-create policy game_saves_own_update on public.game_saves for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create or replace function public.game_saves_touch() returns trigger language plpgsql set search_path = '' as $$
-begin new.updated_at := now(); return new; end $$;
-drop trigger if exists game_saves_touch on public.game_saves;
-create trigger game_saves_touch before update on public.game_saves for each row execute function public.game_saves_touch();
-grant delete on public.game_saves to authenticated;
-drop policy if exists game_saves_own_delete on public.game_saves;
-create policy game_saves_own_delete on public.game_saves for delete to authenticated using (user_id = (select auth.uid()));
+
+-- Write when the phone saw the latest revision; otherwise return the current row so the phone can merge and retry.
+create or replace function public.game_save_put(p_save jsonb, p_base bigint)
+returns table (ok boolean, rev bigint, save jsonb, deleted boolean)
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid := auth.uid(); cur public.game_saves;
+begin
+  if uid is null then raise exception 'not signed in' using errcode = '28000'; end if;
+  if p_save is null or jsonb_typeof(p_save) <> 'object' or pg_column_size(p_save) > 262144 then raise exception 'bad save' using errcode = '22023'; end if;
+  insert into public.game_saves (user_id, save, rev, deleted) values (uid, '{}'::jsonb, 0, false) on conflict (user_id) do nothing;
+  select * into cur from public.game_saves g where g.user_id = uid for update;
+  if cur.rev <> coalesce(p_base, -1) then
+    return query select false, cur.rev, cur.save, cur.deleted; return;
+  end if;
+  update public.game_saves g set save = p_save, rev = cur.rev + 1, deleted = false, saved_at = now() where g.user_id = uid;
+  return query select true, cur.rev + 1, p_save, false;
+end $$;
+
+-- "Delete my cloud copy": empty the save and mark it deleted; the revision moves on so every phone sees it.
+create or replace function public.game_save_delete()
+returns bigint language plpgsql security definer set search_path = '' as $$
+declare uid uuid := auth.uid(); r bigint;
+begin
+  if uid is null then raise exception 'not signed in' using errcode = '28000'; end if;
+  insert into public.game_saves as g (user_id, save, rev, deleted) values (uid, '{}'::jsonb, 1, true)
+    on conflict (user_id) do update set save = '{}'::jsonb, rev = g.rev + 1, deleted = true, saved_at = now()
+    returning g.rev into r;
+  return r;
+end $$;
+
+revoke all on function public.game_save_put(jsonb, bigint) from public, anon;
+revoke all on function public.game_save_delete() from public, anon;
+grant execute on function public.game_save_put(jsonb, bigint) to authenticated;
+grant execute on function public.game_save_delete() to authenticated;

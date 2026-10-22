@@ -4904,35 +4904,78 @@ var summarised = false;
 })();
 
 (function () {
-  console.log('2k30. game save (22 Oct): hearts, farm and bag follow the login; the diary never rides along');
-  var g = vm.createContext({ JSON: JSON, Date: Date, Math: Math, Number: Number, String: String, Array: Array, Object: Object, Promise: Promise, isFinite: isFinite });
-  g.window = g;
-  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-gamesave.js'), 'utf8'), g, { filename: 'ovu-gamesave.js' });
-  var G = g.OvuGameSave;
-  var st = { rewards: { hearts: 40, earned: 120, owned: ['lamp'], placed: { lamp: 1 }, daily: { day: 'x' }, log: [{ at: '2026-10-22T01:00:00Z', type: 'period', points: 10 }, { at: '2026-10-22T02:00:00Z', type: 'spend', what: 'lamp', points: -20 }] },
-    farm: { eggs: 3 }, villagers: { shen: { pts: 12 } }, sleeping: { startedAt: 'x' }, insights: { a: 1 }, sound: true, tester: { hearts: true }, plaza: { x: 1 } };
-  var pk = G.pack(st);
-  check('pack keeps only game keys: no sleep state, insights, sound, tester or plaza', Object.keys(pk).sort().join() === 'farm,rewards,villagers', Object.keys(pk).join());
-  check('the hearts log keeps time and points but no diary kind (period becomes log), and spends keep their item', pk.rewards.log[0].type === 'log' && pk.rewards.log[0].points === 10 && pk.rewards.log[1].type === 'spend' && pk.rewards.log[1].what === 'lamp' && !/period/.test(JSON.stringify(pk)));
-  check('pack copies: changing the save never changes the phone state, and the daily cap record is left behind', (pk.farm.eggs = 9, st.farm.eggs === 3) && !pk.rewards.daily && st.rewards.daily);
-  var remote = { rewards: { hearts: 300, earned: 900, owned: ['bench'], placed: { bench: 1 }, log: [] }, farm: { eggs: 20 } };
-  var m = G.firstLinkMerge(G.pack({ rewards: { hearts: 15, earned: 15, owned: ['lamp', 'bench'], placed: { lamp: 1 }, log: [] }, farm: { eggs: 1 } }), remote);
-  check('first sign-in on a phone with an account save: the account save is used, and hearts earned here first are added on top', m.rewards.hearts === 315 && m.rewards.earned === 915 && m.farm.eggs === 20, JSON.stringify(m.rewards));
-  check('owned items are joined without duplicates, and placements from both survive', m.rewards.owned.join() === 'bench,lamp' && m.rewards.placed.lamp === 1 && m.rewards.placed.bench === 1);
-  check('the merge never changes the account save it was given', remote.rewards.hearts === 300 && remote.rewards.owned.length === 1);
-  var at = function (s) { return '2026-10-22T' + s + ':00.000Z'; }, R = function (t, e) { return { saved_at: at(t), save: { rewards: { earned: e } } }; };
-  check('no account save yet: this phone pushes', G.decide({ linked: true }, null, {}) === 'push' && G.decide(null, null, {}) === 'push');
-  check('an account save this phone has never linked to: link (merge) first', G.decide(null, R('10:00', 5), {}) === 'link' && G.decide({ uid: 'u' }, R('10:00', 5), {}) === 'link');
-  check('nothing new anywhere: no request beyond the read; only this phone moved: push', G.decide({ linked: true, pulledAt: at('10:00'), dirty: false }, R('10:00', 5), {}) === 'none' && G.decide({ linked: true, pulledAt: at('10:00'), dirty: true }, R('10:00', 5), {}) === 'push');
-  check('only the other phone moved: pull, even if this phone has an older local time', G.decide({ linked: true, pulledAt: at('10:00'), savedAt: at('09:00'), dirty: false }, R('11:00', 50), { rewards: { earned: 5 } }) === 'pull');
-  check('both moved: more hearts earned in total wins, whichever saved last (a phone left open never wipes newer play)', G.decide({ linked: true, pulledAt: at('10:00'), savedAt: at('12:00'), dirty: true }, R('11:00', 80), { rewards: { earned: 60 } }) === 'pull' && G.decide({ linked: true, pulledAt: at('10:00'), savedAt: at('09:30'), dirty: true }, R('11:00', 80), { rewards: { earned: 90 } }) === 'push');
-  check('both moved with equal play: the newer save wins', G.decide({ linked: true, pulledAt: at('10:00'), savedAt: at('12:00'), dirty: true }, R('11:00', 80), { rewards: { earned: 80 } }) === 'push');
-  check('a settings change is not progress: the hash ignores keys outside the game', G.hashOf(G.pack(Object.assign({}, st, { sound: false }))) === G.hashOf(G.pack(st)) && G.hashOf(G.pack(Object.assign({}, st, { farm: { eggs: 4 } }))) !== G.hashOf(G.pack(st)));
-  var src = fs.readFileSync(path.join(root, 'ovu-gamesave.js'), 'utf8');
-  check('the module never reads or writes diary entries, and room.html loads it after the villagers', !/S\.(list|add|update|remove|addMany)\(/.test(src) && /ovu-villagers\.js"><\/script>\s*<script src="ovu-gamesave\.js"/.test(fs.readFileSync(path.join(root, 'room.html'), 'utf8')));
-  check('deleting the cloud copy deletes the game save and stops this phone saving it until the next sign-in', /game_saves\?user_id=eq\./.test(fs.readFileSync(path.join(root, 'ovu-sync.js'), 'utf8')) && /OvuGameSave\.forget\(uid\)/.test(fs.readFileSync(path.join(root, 'ovu-sync.js'), 'utf8')) && /off: true/.test(src));
+  console.log('2k30. game save (22 Oct, second version): hearts, farm and bag follow the login on every phone; the diary never rides along');
+  var G0src = fs.readFileSync(path.join(root, 'ovu-gamesave.js'), 'utf8');
+  /* one pretend server with the migration's rules: own row, revision check, deletion marker */
+  var server = { row: null, puts: 0, bodies: [] , hold: null };
+  function respond(obj, status) { return Promise.resolve({ ok: (status || 200) < 300, status: status || 200, text: function () { return Promise.resolve(obj === undefined ? '' : JSON.stringify(obj)); } }); }
+  function fakeFetch(url, o) {
+    var body = o && o.body ? JSON.parse(o.body) : null;
+    if (/\/game_saves\?/.test(url)) return respond(server.row ? [JSON.parse(JSON.stringify(server.row))] : []);
+    if (/rpc\/game_save_put/.test(url)) {
+      server.puts++; server.bodies.push(o.body);
+      var go = function () {
+        var cur = server.row || { save: {}, rev: 0, deleted: false };
+        if (cur.rev !== body.p_base) return respond([{ ok: false, rev: cur.rev, save: cur.save, deleted: cur.deleted }]);
+        server.row = { save: body.p_save, rev: cur.rev + 1, deleted: false };
+        return respond([{ ok: true, rev: server.row.rev, save: body.p_save, deleted: false }]);
+      };
+      if (server.hold) { var h = server.hold; server.hold = null; return Promise.resolve(h()).then(go); }
+      return go();
+    }
+    if (/rpc\/game_save_delete/.test(url)) { var c = server.row || { save: {}, rev: 0 }; server.row = { save: {}, rev: c.rev + 1, deleted: true }; return respond(server.row.rev); }
+    return respond({ message: 'no' }, 404);
+  }
+  function phone(stateInit, opts) {
+    opts = opts || {};
+    var ls = {}, listeners = [], st = JSON.parse(JSON.stringify(stateInit || {})), uid = 'u1';
+    var ctx = { JSON: JSON, Date: Date, Math: Math, Number: Number, String: String, Array: Array, Object: Object, Promise: Promise, isFinite: isFinite, setTimeout: function () { return 0; }, clearTimeout: function () { },
+      fetch: fakeFetch, localStorage: { getItem: function (k) { return k in ls ? ls[k] : null; }, setItem: function (k, v) { ls[k] = String(v); }, removeItem: function (k) { delete ls[k]; } },
+      document: { readyState: 'loading', addEventListener: function () { } }, addEventListener: function () { }, OVU_CONFIG: { supabaseUrl: 'https://x.test', supabaseKey: 'k' } };
+    ctx.window = ctx;
+    ctx.OvuStore = { state: function () { return st; }, profile: function () { return opts.profile || {}; }, today: function () { return '2026-10-22'; }, isSandbox: function () { return false; },
+      commit: function (p) { Object.assign(st, JSON.parse(JSON.stringify(p))); listeners.forEach(function (f) { f('state'); }); }, subscribe: function (f) { listeners.push(f); } };
+    ctx.OvuAuth = { isSignedIn: function () { return !!uid; }, userId: function () { return uid; }, token: function () { return Promise.resolve('t'); }, subscribe: function () { } };
+    vm.createContext(ctx); vm.runInContext(G0src, ctx, { filename: 'ovu-gamesave.js' });
+    return { G: ctx.OvuGameSave, st: function () { return st; }, change: function (fn) { fn(st); listeners.forEach(function (f) { f('state'); }); }, clear: function () { st = {}; delete ls['ovumind_gamesave_v1']; }, ls: ls };
+  }
+  var G = phone({}).G;
+  var full = { rewards: { hearts: 40, earned: 120, owned: ['lamp'], placed: { lamp: 1 }, daily: { day: '2026-10-22', kinds: { period: 1 } }, log: [{ at: 'x', type: 'period', points: 10 }], mindDay: { day: 'x', pts: 4 } },
+    farm: { seeds: { mint: 2 } }, greenhouse: { pots: ['basil'] }, lane: { visits: 2, letters: [{ text: 'dear me, a private letter' }] }, garden: { credited: ['2026-10-01'], watered: ['2026-10-20'] }, sleeping: { startedAt: 'x' }, insights: { a: 1 }, tester: { hearts: true }, plaza: { x: 1 } };
+  var pk = G.pack(full), pj = JSON.stringify(pk);
+  check('only game fields leave the phone: no letters, garden diary dates, hearts log, daily logging record, sleep, insights, tester or plaza', !/private letter|2026-10-01|period|kinds|sleeping|insights|tester|plaza/.test(pj) && pk.greenhouse && pk.garden.watered[0] === '2026-10-20' && pk.lane.visits === 2, pj);
+  check('a restored save keeps her letters, garden dates, hearts log and today\'s logging record on the phone', (function () { var p = G.applyTo(full, { rewards: { hearts: 9, earned: 9 }, lane: { visits: 5 }, garden: { watered: ['2026-10-21'] } }, '2026-10-22'); return p.lane.letters[0].text === 'dear me, a private letter' && p.lane.visits === 5 && p.garden.credited[0] === '2026-10-01' && p.garden.watered[0] === '2026-10-21' && p.rewards.log.length === 1 && p.rewards.daily.kinds.period === 1 && p.rewards.hearts === 9; })());
+  check('a phone that never earned here gets the account\'s hearts but not a second round of today\'s logging or practice hearts', (function () { var p = G.applyTo({}, { rewards: { hearts: 9 } }, '2026-10-22').rewards; return p.daily.day === '2026-10-22' && p.daily.kinds.food === 1 && p.daily.kinds.period === 1 && p.mindDay.pts >= 20 && p.dailyLast === '2026-10-22'; })());
+  var b = { rewards: { hearts: 45, earned: 45, owned: ['lamp'] }, farm: { seeds: { mint: 2 }, can: 3 } };
+  var m3 = G.merge3(b, { rewards: { hearts: 25, earned: 45, owned: ['lamp', 'seedpack'] }, farm: { seeds: { mint: 2, rose: 1 }, can: 3 } }, { rewards: { hearts: 55, earned: 55, owned: ['lamp'] }, farm: { seeds: { mint: 1 }, can: 1 } });
+  check('three-way merge: hearts and counts add up from both phones, items bought on either side are kept, changed fields come from whichever side changed', m3.rewards.hearts === 35 && m3.rewards.earned === 55 && m3.rewards.owned.join() === 'lamp,seedpack' && m3.farm.seeds.mint === 1 && m3.farm.seeds.rose === 1 && m3.farm.can === 1, JSON.stringify(m3));
+  check('an item removed on one phone (a refund) stays removed when the other phone did not touch it', G.merge3({ o: ['a', 'b'] }, { o: ['a'] }, { o: ['a', 'b', 'c'] }).o.join() === 'a,c');
+
+  server.row = null;
+  var A1 = phone({ rewards: { hearts: 40, earned: 40, owned: [] } });
+  var B1 = phone({ rewards: { hearts: 5, earned: 5, owned: ['shell'] } });
+  var B2 = phone({ rewards: { hearts: 7, earned: 7, owned: [] }, tester: { hearts: true } });
+  var C1 = phone({ rewards: { hearts: 0, earned: 0 } }, { profile: { owner: 'someone-else' } });
+  var steps = [];
+  Promise.resolve()
+    .then(function () { return A1.G.sync(); }).then(function (r) { steps.push(['A links to an empty account', r === 'linked' && server.row.rev === 1 && server.row.save.rewards.hearts === 40, r]); })
+    .then(function () { return B1.G.sync(); }).then(function (r) { steps.push(['a second phone links: the account\'s 40 plus its own 5, and its shell is kept', r === 'linked' && server.row.save.rewards.hearts === 45 && B1.st().rewards.hearts === 45 && server.row.save.rewards.owned.indexOf('shell') > -1, r + ' ' + JSON.stringify(server.row.save.rewards)]); })
+    .then(function () { return A1.G.sync(); }).then(function (r) { steps.push(['the first phone picks up the shared 45 when it has not changed', r === 'pulled' && A1.st().rewards.hearts === 45, r]); })
+    .then(function () { A1.change(function (s) { s.rewards = Object.assign({}, s.rewards, { hearts: s.rewards.hearts + 10, earned: s.rewards.earned + 10 }); }); B1.change(function (s) { s.rewards = Object.assign({}, s.rewards, { hearts: s.rewards.hearts - 20, owned: s.rewards.owned.concat(['seedpack']) }); s.farm = { seeds: { rose: 3 } }; }); return A1.G.sync(); })
+    .then(function () { return B1.G.sync(); }).then(function (r) { steps.push(['both phones played: the second write merges (45 +10 -20 = 35 hearts), keeps the seed pack and the seeds', r === 'saved' && server.row.save.rewards.hearts === 35 && server.row.save.rewards.owned.indexOf('seedpack') > -1 && server.row.save.farm.seeds.rose === 3, r + ' ' + JSON.stringify(server.row.save)]); })
+    .then(function () { return A1.G.sync(); }).then(function (r) { steps.push(['and the first phone then shows the same 35 hearts and the seed pack', A1.st().rewards.hearts === 35 && A1.st().rewards.owned.indexOf('seedpack') > -1, r + ' ' + JSON.stringify(A1.st().rewards)]); })
+    .then(function () { server.hold = function () { A1.change(function (s) { s.rewards = Object.assign({}, s.rewards, { hearts: s.rewards.hearts + 6, earned: s.rewards.earned + 6 }); }); }; A1.change(function (s) { s.rewards = Object.assign({}, s.rewards, { hearts: s.rewards.hearts + 1, earned: s.rewards.earned + 1 }); }); return A1.G.sync(); })
+    .then(function () { var mid = server.row.save.rewards.hearts; return A1.G.sync().then(function (r) { steps.push(['hearts earned while a save is on its way are not dropped: the next sync carries them (36 then 42)', mid === 36 && server.row.save.rewards.hearts === 42, mid + ' ' + server.row.save.rewards.hearts + ' ' + r]); }); })
+    .then(function () { B1.clear(); return B1.G.sync(); }).then(function (r) { steps.push(['a phone whose data was cleared links again and gets everything back, and never uploads an empty game', B1.st().rewards && B1.st().rewards.hearts === 42 && server.row.save.rewards.hearts === 42, r + ' ' + JSON.stringify(B1.st().rewards)]); })
+    .then(function () { var n = server.puts; return B2.G.sync().then(function (r) { steps.push(['tester mode never saves and never adds its hearts', r === 'tester' && server.puts === n && server.row.save.rewards.hearts === 42, r]); }); })
+    .then(function () { var n = server.puts; return C1.G.sync().then(function (r) { steps.push(['a phone holding another account\'s diary never saves to this account', r === 'owner' && server.puts === n, r]); }); })
+    .then(function () { return A1.G.forget(); }).then(function () { B1.change(function (s) { s.rewards = Object.assign({}, s.rewards, { hearts: 99, earned: 999 }); }); return B1.G.sync(); }).then(function (r) { steps.push(['after "delete my cloud copy" on one phone, another phone sees the deletion and stops instead of recreating the save', r === 'deleted' && server.row.deleted === true && JSON.stringify(server.row.save) === '{}', r + ' ' + JSON.stringify(server.row)]); })
+    .then(function () { steps.push(['no upload ever carried a letter, a diary date or a diary kind', server.bodies.every(function (t) { return !/private letter|period|kinds|credited/.test(t); })]); })
+    .catch(function (e) { steps.push(['the two-phone run finished without an error', false, String(e && e.stack || e)]); })
+    .then(function () { steps.forEach(function (x) { check(x[0], x[1], x[2]); }); });
   var mig = fs.readFileSync(path.join(root, 'supabase/migrations/20261022100000_game_saves.sql'), 'utf8');
-  check('the table is own-row only for signed-in people, closed to anon, size-capped and removed with the account', /enable row level security/.test(mig) && /revoke all on public\.game_saves from anon/.test(mig) && (mig.match(/auth\.uid\(\)/g) || []).length >= 5 && /262144/.test(mig) && /on delete cascade/.test(mig));
+  check('the table is read-own-row only; writes go through revision-checked functions closed to anon; size-capped; gone with the account', /enable row level security/.test(mig) && /revoke all on public\.game_saves from anon, authenticated, public/.test(mig) && /grant select on public\.game_saves to authenticated/.test(mig) && /cur\.rev <> coalesce\(p_base, -1\)/.test(mig) && /revoke all on function public\.game_save_put\(jsonb, bigint\) from public, anon/.test(mig) && /262144/.test(mig) && /on delete cascade/.test(mig));
+  check('room.html loads the game save after the villagers; clearing the phone clears its link; the cloud delete goes through it', /ovu-villagers\.js"><\/script>\s*<script src="ovu-gamesave\.js"/.test(fs.readFileSync(path.join(root, 'room.html'), 'utf8')) && /'ovumind_gamesave_v1'/.test(fs.readFileSync(path.join(root, 'ovu-store.js'), 'utf8')) && /OvuGameSave\.forget\(\)/.test(fs.readFileSync(path.join(root, 'ovu-sync.js'), 'utf8')));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
