@@ -257,6 +257,8 @@
     var c = document.getElementById('consent'); if (!c) return;
     c.classList.toggle('returning', !!(S.profile().consent && S.profile().consent.at));
     fillSheet(c);
+    /* the only tick on show is the 18+ one; the optional extras stay folded on a first visit and open for a returning check (Jamie, 22 Oct) */
+    var ex = c.querySelector('#cExtras'); if (ex) ex.open = !!(S.profile().consent && S.profile().consent.at);
     c.hidden = false; try { c.querySelector('.c-scroll').scrollTop = 0; } catch (e) { }
     var age = c.querySelector('#cAge'), health = c.querySelector('#cHealth'), agree = c.querySelector('#cAgree'), under = c.querySelector('#cUnder');
     /* the one required line starts ticked (Jamie, 19 Oct): the diary cannot work without it and tapping I agree is the person's act.

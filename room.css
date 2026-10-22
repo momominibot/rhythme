@@ -1263,6 +1263,7 @@ html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;bord
 .plushero span{display:block;font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}
 
 .c-choices{display:flex;flex-direction:column;gap:8px}
+summary.c-lbl{cursor:pointer;list-style-position:inside}
 .c-lbl{font:800 10.5px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)}
 .c-opt.c-req{border-style:solid;border-color:rgba(122,92,150,.45);background:rgba(255,255,255,.7)}
 .consent #cAgree:disabled{opacity:.5;cursor:not-allowed}

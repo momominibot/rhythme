@@ -3534,7 +3534,7 @@
     });
     if (hk) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
     /* a link inside the in-app page viewer back to a room tab (ovu-pageview.js) */
-    window.addEventListener('ovu-route', function (e) { var k = e && e.detail; if (!k) return; requireConsent(function () { if (k === 'luna') openLuna(); else if (k === 'learn') openLearn(); else if (k === 'move') { openExercise(); setTab('mind'); } else if (TABS[k]) goTab(k); }); });
+    window.addEventListener('ovu-route', function (e) { var k = e && e.detail; if (!k) return; requireConsent(function () { openRoute(k); }); }); /* one router for links in the viewer and links at start (medas, recipes too: request check, 22 Oct) */
     scheduleLife();
     function tick() { var d = new Date(); $('#clockTime').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); var dc = $('#deskClock'); if (dc) dc.textContent = nowHM(); } tick(); setInterval(tick, 20000);
     emit('boot');
