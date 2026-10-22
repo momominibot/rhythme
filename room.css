@@ -1824,9 +1824,10 @@ span.frchip{cursor:default}
  * room furniture and pets, shop stock, greenhouse plants, neighbours) gets a dark ellipse right where it meets the
  * surface, a hair of overlap into it, and only a tight 1 px edge shadow. --cs is the footprint as a share of the width. */
 .nb,.prop.owned,.avatar{isolation:isolate}
-.nb::before,.prop.owned::before,.avatar::before{content:'';position:absolute;left:50%;bottom:0;width:calc(var(--cs,.7) * 100%);aspect-ratio:4/1;transform:translate(-50%,48%);border-radius:50%;
+.nb::before,.prop.owned::before,.avatar::before,.keeper::before{content:'';position:absolute;left:50%;bottom:0;width:calc(var(--cs,.7) * 100%);aspect-ratio:4/1;transform:translate(-50%,48%);border-radius:50%;
   background:radial-gradient(closest-side,rgba(52,26,72,.46),rgba(52,26,72,.2) 58%,rgba(52,26,72,0));z-index:-1;pointer-events:none;opacity:var(--co,1)}
 .avatar::before{--cs:.62}
+.keeper::before{--cs:.62} /* the same ground shadow under a keeper's feet as under hers: without it they read as hovering (Jamie, 22 Oct: "make sure the people dont float") */
 .avatar.hidden::before,.avatar.walking.cycling::before{opacity:.85}
 /* footprints: narrow bases get small shadows, flat or wide pieces get wide thin ones */
 [data-id=lamp],[data-item=lamp]{--cs:.36}
@@ -1843,7 +1844,7 @@ span.frchip{cursor:default}
 .nb.nbperson,.nb.sitter{--cs:.6}
 /* lifted in arrange mode: the shadow stays on the floor, smaller and fainter */
 .prop.owned.lift::before{opacity:.35;width:calc(var(--cs,.7) * 80%)}
-@media (prefers-reduced-motion:reduce){.nb::before,.prop.owned::before,.avatar::before{transition:none}}
+@media (prefers-reduced-motion:reduce){.nb::before,.prop.owned::before,.avatar::before,.keeper::before{transition:none}}
 /* the storybook map: a painted meadow, a clay drawing at every place, labels on white pills so they read on the painting */
 .worldmap{background:#e9f1ea url(assets/room/dream/map-bg.webp) center/cover no-repeat;border:0;box-shadow:inset 0 0 0 1px rgba(150,120,190,.18),0 6px 18px rgba(90,66,116,.12);overflow:hidden}
 .worldlines path{stroke:#fff;stroke-width:3.2;stroke-dasharray:1.2 3.2;stroke-linecap:round;filter:drop-shadow(0 1px 1px rgba(90,66,116,.35))}
@@ -2443,7 +2444,7 @@ html[data-mindful=quick] .mindline:not(.keep){display:none}
 .thought .ms{display:block;font-size:20px;line-height:1;color:var(--rm-mauve)}
 .c-emo.ms{font-size:20px;color:var(--rm-mauve);vertical-align:-4px}
 /* shopkeepers (ovu-keepers.js, 22 Oct): at her height, a gentle idle, a bubble with one line on a tap */
-.keeper{position:absolute;transform:translate(-50%,-100%);background:none;border:0;padding:0;cursor:pointer;pointer-events:none;z-index:2;filter:drop-shadow(0 4px 5px rgba(70,40,100,.18))}
+.keeper{position:absolute;transform:translate(-50%,-100%);background:none;border:0;padding:0;cursor:pointer;pointer-events:none;z-index:2;filter:drop-shadow(0 1px 2px rgba(70,40,100,.2))} /* her own drop shadow, not one offset downward: an offset shadow lifts a figure off the floor */
 .keeper img{width:100%;display:block;transform-origin:50% 100%;animation:keeperidle 4.2s ease-in-out infinite;pointer-events:auto} /* the button lets taps through; only the picture, clipped to her outline, takes them */
 .keeper.flip img{transform:scaleX(-1);animation-name:keeperidleflip}
 @keyframes keeperidle{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.018)}}
