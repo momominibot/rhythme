@@ -2340,7 +2340,7 @@ function scenes(todayIso) {
   var w = fresh(), M = w.OvuMascot;
   (function () {
     var rh = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), pv = fs.readFileSync(path.join(root, 'ovu-pageview.js'), 'utf8');
-    check('older Rhythme pages open in the in-app viewer, never by leaving the room (Jamie, 22 Oct)', /<script src="ovu-pageview\.js"><\/script>/.test(rh) && /OvuPage\.open\('journal\.html#'/.test(rj) && /e\.preventDefault\(\); open\(a\.getAttribute\('href'\)\)/.test(pv));
+    check('older Rhythme pages open in the in-app viewer, never by leaving the room (Jamie, 22 Oct)', /<script src="ovu-pageview\.js"><\/script>/.test(rh) && /OvuPage\.open\('journal\.html#'/.test(rj) && /e\.preventDefault\(\); open\(href\);/.test(pv) && /dispatchEvent\(new CustomEvent\('ovu-route'/.test(pv) && !/a\.target === '_blank'/.test(pv));
     check('retired pages are not linked from the room: foods, period start, account, calm check', !/'(foods|period-start|account|face-ppg)\.html'/.test(rj) && !/href="(foods|period-start|account|face-ppg)\.html"/.test(rj + rh));
   })();
   check('one look only, the soft Ovuluna crescent (Jamie, 21 Oct)', M.LIST.length === 1 && M.LIST[0].id === 'luna' && /orb-luna\.webp$/.test(M.src()));

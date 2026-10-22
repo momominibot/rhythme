@@ -64,9 +64,10 @@
   /* every link from the room to one of Rhythme's own pages opens here instead of leaving the room */
   doc.addEventListener('click', function (e) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
-    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null; if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
-    var m = OWN.exec(a.getAttribute('href') || ''); if (!m || /^room\.html$/i.test(m[1]) || /^index\.html$/i.test(m[1])) return;
-    e.preventDefault(); open(a.getAttribute('href'));
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null; if (!a || a.hasAttribute('download')) return;
+    var href = a.getAttribute('href') || '', m = OWN.exec(href); if (!m) return; /* other sites keep their own tab; Rhythme's own pages never leave the room, even when marked for a new tab (Codex audit, 22 Oct) */
+    if (/^room\.html$/i.test(m[1]) || /^index\.html$/i.test(m[1])) { var h = href.split('#')[1]; if (h) { e.preventDefault(); root.dispatchEvent(new CustomEvent('ovu-route', { detail: h })); } return; } /* a room tab link opens the tab, not just the address bar */
+    e.preventDefault(); open(href);
   });
   root.OvuPage = { open: open, close: close, isOpen: function () { return !!(view && !view.hidden); } };
 })(window);
