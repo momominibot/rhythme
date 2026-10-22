@@ -32,7 +32,7 @@
     lines: ['Choose a clear, dry space and something stable to hold or lean on.',
       'Need an adapted option? Skip for now if you are pregnant or recently gave birth, have pelvic floor symptoms, a recent fracture or surgery, painful joints, or feel dizzy or faint when standing.',
       'Stop if you feel pain, dizziness or unwell. You can skip any time.'],
-    urgent: 'Chest pain, severe breathlessness, collapse or stroke signs: call 995.'
+    urgent: 'Chest pain, severe breathlessness, collapse or stroke signs: call your local emergency number.'
   };
   function move(id) { return MOVES.filter(function (m) { return m.id === id; })[0] || null; }
   function reviewed(m) { return !!(m && m.reviewedBy && m.reviewedAt); }
