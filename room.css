@@ -1212,6 +1212,8 @@ html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;bord
 .podsug .ms{color:var(--rm-mauve);font-size:18px;flex:none}
 .linkbtn{border:none;background:none;padding:0;font:800 12.5px var(--sans);color:var(--rm-plum);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .podlist{display:flex;flex-direction:column;gap:6px}
+.podlist .podlocked{margin:10px 0 2px}
+.lbl-row #podShuffle{margin-left:auto;font:800 12px var(--sans)}
 .podep{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:14px;padding:8px 10px;cursor:pointer;font:inherit;color:inherit}
 .podep.on{border-color:var(--rm-mauve);background:#faf6fd}
 .podep i{font-style:normal;flex:none;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);font:900 11px var(--sans);color:var(--rm-plum)}

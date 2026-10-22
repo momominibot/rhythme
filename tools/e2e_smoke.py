@@ -862,6 +862,21 @@ async def main():
             hy = await page.evaluate("()=>({path: location.pathname.split('/').pop(), sheet: OvuRoom.sheetId && OvuRoom.sheetId(), total: OvuWater.dayTotal(OvuStore.today())})")
             check("water: the old hydration page lands in the room's food diary, and the records survive the reload", hy["path"] == "room.html" and hy["sheet"] == "diary" and hy["total"] == 200, hy)
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            # Listen with Erin (Jamie, 21 Oct): the playable episodes shuffle, the locked ones sit at the bottom under one label, Shuffle reorders
+            # the Listen sheet shows Erin's episode covers from her own Substack (by design: nothing is copied to our servers); the smoke answers those image requests itself so the third-party count stays about tracking, not her content
+            PNG1 = bytes.fromhex("89504e470d0a1a0a0000000d494844520000000100000001080600000" "01f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082")
+            async def cover_ok(route): await route.fulfill(status=200, body=PNG1, content_type="image/png")
+            await page.route("**/substack-video.s3.amazonaws.com/**", cover_ok); await page.route("**/substackcdn.com/**", cover_ok)
+            await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#podShelf [data-pod-open]", timeout=8000); await page.evaluate("()=>document.querySelector('#podShelf [data-pod-open]').click()"); await page.wait_for_selector("#podList .podep", timeout=8000)
+            po1 = await page.evaluate("()=>{var l=[...document.querySelectorAll('#podList .podep')]; var ids=l.map(b=>b.dataset.ep); var lk=l.map(b=>b.classList.contains('locked')); var first=lk.indexOf(true); return {ids: ids, n: l.length, lockedLast: first<0 || lk.slice(first).every(Boolean), label: !!document.querySelector('#podList .podlocked'), shuffle: !!document.querySelector('#podShuffle')}}")
+            orders = [po1["ids"]]
+            for _ in range(3):
+                await page.click("#podShuffle"); await page.wait_for_timeout(200)
+                orders.append(await page.evaluate("()=>[...document.querySelectorAll('#podList .podep')].map(b=>b.dataset.ep)"))
+            po2 = await page.evaluate("()=>{var l=[...document.querySelectorAll('#podList .podep')]; var lk=l.map(b=>b.classList.contains('locked')); var first=lk.indexOf(true); return first<0 || lk.slice(first).every(Boolean)}")
+            check("Listen with Erin: nineteen episodes, the locked ones at the bottom under With Rhythme Plus, and Shuffle gives a new order that keeps them there", po1["n"] == 19 and po1["lockedLast"] and po1["label"] and po1["shuffle"] and any(o != orders[0] for o in orders[1:]) and po2 and all(sorted(o) == sorted(orders[0]) for o in orders), {"n": po1["n"], "lockedLast": po1["lockedLast"], "label": po1["label"], "changed": any(o != orders[0] for o in orders[1:])})
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            await page.unroute("**/substack-video.s3.amazonaws.com/**", cover_ok); await page.unroute("**/substackcdn.com/**", cover_ok)
             # Erin's own teeth scripts: the hour picks morning or evening, eight steps each inside four minutes, the clips exist
             late = await page.evaluate("()=>OvuMindful.nextVariation(OvuMindful.byId('teeth'), new Date(2026,9,20,0,40)).when")
             check("just after midnight Erin's teeth script is the evening one, never good morning", late == "evening", late)
