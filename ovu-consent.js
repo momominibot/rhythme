@@ -227,8 +227,8 @@
   function fillSheet(c) {
     var st = state(), returning = !!(S.profile().consent && S.profile().consent.at), minor = legacyMinor(), u = uid();
     var title = c.querySelector('#cTitle'), sub = title && title.nextElementSibling, fine = c.querySelector('#cFine'), lbl = c.querySelector('.c-lbl'), box = c.querySelector('#cChoices'), age = c.querySelector('#cAge'), minorNote = c.querySelector('#cMinor');
-    if (title) title.textContent = returning ? 'Our data notice has changed' : 'Before your room opens';
-    if (sub) sub.textContent = returning ? 'Rhythme is now for adults, has accounts and cloud backup, and asks about each use of your data separately. Please read what is new. Your diary on this phone is kept as it is.' : 'What Rhythme keeps, where it goes, and the choices that stay yours.';
+    if (title) title.textContent = returning ? 'Your data choices' : 'Before your room opens';
+    if (sub) sub.textContent = returning ? 'Have a quick look at how Rhythme keeps your data and choose what you are happy with. Your diary on this phone is kept as it is.' : 'What Rhythme keeps, where it goes, and the choices that stay yours.';
     if (fine) fine.textContent = returning ? 'Your diary on this phone is kept as it is.' : 'No diary entries have been saved yet.';
     if (lbl) lbl.textContent = returning ? 'Your choices (all optional, shown as you have them today; anything new starts off)' : 'Your choices (all optional, all off until you turn them on)';
     if (minorNote) { minorNote.hidden = !minor; minorNote.style.display = minor ? '' : 'none'; } /* the flag's own display rule would beat the hidden attribute */
