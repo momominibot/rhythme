@@ -1,7 +1,7 @@
-# Rhythme App Store listing (draft, 22 Oct 2026)
+# Rhythme App Store listing (draft, 22 Oct 2026; submission on hold until the review sign-in is decided)
 
 App: Rhythme 1.0.0 (build 1). Bundle ID: ai.ranklore.rhythme (registered 22 Oct, team X534KT8F6Z). Publisher: Ranklore Pte Ltd.
-Price: USD 29.99, paid up front (Jamie, 22 Oct: "put $29.99 for purchase of app"). No ads. No in-app codes: Apple
+Price: Free download (Jamie, 22 Oct: "we can set the download to free"; the earlier USD 29.99 is dropped). No ads. No in-app codes: Apple
 guideline 3.1.1 does not allow an app's own codes to unlock paid features, so the Plus code box is hidden in the
 iPhone build; testers use TestFlight, and Apple promo codes give free downloads after release.
 Availability: Singapore to start (care numbers and food guides are Singapore's). Widen later if Jamie wants.
@@ -62,4 +62,3 @@ a harbour to explore. Your diary stays on your phone.
    (a) a "Use on this phone only" path in the iPhone build, so a reviewer can use the diary without an account; or
    (b) a custom email service for Supabase (Resend or similar) plus a review account Jamie controls.
 2. Availability: Singapore only, or more countries.
-3. The Paid Applications Agreement must be active in App Store Connect for a paid app (banking and tax set up).
