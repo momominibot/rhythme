@@ -2393,3 +2393,4 @@ html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
 /* crop and dish pictures on the seed, plant and recipe buttons, and the finished dish (22 Oct) */
 .btn img.croppic{width:34px;height:34px;object-fit:contain;flex:none;border-radius:10px;background:#fff;box-shadow:0 2px 6px rgba(120,90,150,.15);margin-right:2px}
 .dishpic{display:flex;justify-content:center;margin:2px 0 6px}.dishpic img{width:150px;height:150px;object-fit:contain;border-radius:22px;background:#fff;box-shadow:0 8px 22px rgba(120,90,150,.18)}
+.invlist img.invpic{width:30px;height:30px;object-fit:contain;border-radius:8px;background:#fff;margin-right:6px;vertical-align:middle}
