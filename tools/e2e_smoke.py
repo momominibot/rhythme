@@ -100,6 +100,10 @@ async def check_legacy_pages(browser):
     await pg.set_input_files("#setSleepCsv", files=[{"name": "sleep.csv", "mimeType": "text/csv", "buffer": b"date,bedTime,wakeTime,quality\n2026-10-17,23:10,06:45,4\nnot a night\n"}]); await pg.wait_for_timeout(600)
     s3 = await pg.evaluate("()=>({msg: (document.querySelector('#setSleepMsg')||{}).textContent||'', id: OvuRoom.sheetId(), night: OvuStore.list('sleep').filter(e=>e.date==='2026-10-17').map(e=>({src:e.source, bed:e.data.bedTime, wake:e.data.wakeTime, q:e.data.quality, mode:e.data.mode}))})")
     check("settings: a sleep file comes in as sleep entries from 'import', the same as the old page, and says what it skipped", s3["id"] == "settings" and s3["night"] == [{"src": "import", "bed": "23:10", "wake": "06:45", "q": 4, "mode": "import"}] and "Brought in 1 night, skipped 1 unreadable line" in s3["msg"], s3)
+    await pg.evaluate("()=>OvuStore.add('sleep','2026-10-16',{bedTime:'22:00',wakeTime:'06:00',quality:3},'room')")  # a night she wrote herself
+    await pg.set_input_files("#setSleepCsv", files=[{"name": "sleep.csv", "mimeType": "text/csv", "buffer": b"2026-10-17,23:30,07:00,5\n2026-10-16,23:00,07:15,4\n"}]); await pg.wait_for_timeout(600)
+    s3b = await pg.evaluate("()=>({n17: OvuStore.list('sleep').filter(e=>e.date==='2026-10-17').map(e=>e.data.bedTime), n16: OvuStore.list('sleep').filter(e=>e.date==='2026-10-16').map(e=>e.source+':'+e.data.bedTime).sort()})")
+    check("settings: the same night brought in again is updated, not doubled, and a night she wrote herself is kept beside it", s3b["n17"] == ["23:30"] and s3b["n16"] == ["import:23:00", "room:22:00"], s3b)
     # the retired settings page, opened in the viewer, hands over to the sheet; opened on its own, it lands on the sheet
     await pg.evaluate("()=>{ OvuRoom.closeSheet && OvuRoom.closeSheet(); }"); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(300)
     await pg.evaluate("()=>OvuPage.open('settings.html')"); await pg.wait_for_timeout(1500)
@@ -113,16 +117,18 @@ async def check_legacy_pages(browser):
     # representative older pages: one header with a way back, the room's five tabs, the light palette, no second Luna
     looks = {}
     await pg.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); d.profile.textSize='large'; localStorage.setItem('ovumind_db_v1', JSON.stringify(d));}")
-    for name in ["fertility.html", "journey-peri.html", "labs.html", "privacy.html", "ppg.html", "terms.html"]:
+    for name in ["fertility.html", "journey-peri.html", "labs.html", "privacy.html", "ppg.html", "terms.html", "ovarian-health.html"]:
         await pg.goto(BASE + name, wait_until="load"); await pg.wait_for_timeout(500)
         looks[name] = await pg.evaluate("""()=>{const b=document.querySelector('.top.rh-top .rh-back'), t=document.querySelector('.top.rh-top .rh-title'), n=document.querySelector('nav.rh-nav'), l=document.querySelector('#lunaBtn');
           return {back: b && b.getAttribute('href'), title: t && t.textContent, tabs: n ? [...n.querySelectorAll('a')].map(a=>[...a.childNodes].filter(x=>x.nodeType===3).map(x=>x.textContent).join('').trim()) : null,
+            on: n && n.querySelector('a.on') ? [...n.querySelector('a.on').childNodes].filter(x=>x.nodeType===3).map(x=>x.textContent).join('').trim() : null, icon: n && n.querySelectorAll('a .ms')[1] ? n.querySelectorAll('a .ms')[1].textContent : null, pad: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--shell-bottom-size'))||0,
             theme: document.documentElement.getAttribute('data-theme'), bg: getComputedStyle(document.body).backgroundColor, luna: !!(l && l.offsetParent),
             font: parseFloat(document.documentElement.style.fontSize)||0, sheet: !!document.querySelector('link[href="rhythme-legacy.css"]')}}""")
     bad = {k: v for k, v in looks.items() if not (v["back"] and v["back"].startswith("room.html") and v["title"] and v["theme"] == "light" and v["bg"] == "rgb(248, 243, 251)" and not v["luna"] and v["sheet"] and abs(v["font"] - 17.92) < 0.2)}
     check("older pages: each has the room's back button and title, the light palette even after an old dark choice, no second Luna, and the room's text size", not bad, bad)
-    navs = {k: v["tabs"] for k, v in looks.items() if v["tabs"] is not None}
-    check("older pages: the tabs are the room's five (Home, Cycle, Food, Mind, You)", navs and all(t == ["Home", "Cycle", "Food", "Mind", "You"] for t in navs.values()), navs)
+    navs = {k: [v["tabs"], v["on"], v["icon"], v["pad"]] for k, v in looks.items()}
+    want_on = {"fertility.html": "Home", "journey-peri.html": "Home", "labs.html": "You", "privacy.html": "You", "ppg.html": "Mind", "terms.html": "You", "ovarian-health.html": "Home"}
+    check("older pages: every one has the room's five tabs with the room's calendar icon, its own tab chosen, and room left under the content for them", all(v[0] == ["Home", "Cycle", "Food", "Mind", "You"] and v[1] == want_on[k] and v[2] == "calendar_month" and v[3] >= 50 for k, v in navs.items()), navs)
     # retired duplicates go where their content lives
     ends = {}
     for name in ["notifications.html", "reports.html", "meds.html", "sleep.html", "community.html", "premium.html"]:

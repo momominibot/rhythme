@@ -11,9 +11,12 @@
 
   // ---- Rhythme alignment: the room's header, five tabs and look on every older page (22 Oct: one look everywhere) ----
   // The header is the journal's: a round back button to the room (to the Learn desk for a Learn page) and the page's
-  // name. The tabs are the room's five; Cycle reads Body after the menopause, as in the room.
+  // name. The tabs are the room's five, with the room's icons (Cycle reads Body after the menopause, as in the room),
+  // and the tab the page belongs to is chosen: records and privacy under You, calm under Mind, reading under Home.
+  // A page that had no tab bar gets one.
   (function(){
     function esc(t){ return String(t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+    var TAB_OF={'journal.html':'you','privacy.html':'you','terms.html':'you','labs.html':'you','health-profile.html':'you','ovarian-age.html':'you','evidence.html':'you','mental-health.html':'mind','ppg.html':'mind'};
     function postMeno(){ try { var p=(JSON.parse(localStorage.getItem('ovumind_db_v1')||'null')||{}).profile||{}; return ['post','postmenopause','postmenopausal'].indexOf(p.lifeStage||'')>-1; } catch(e){ return false; } }
     function align(){
       try {
@@ -27,11 +30,14 @@
           top.setAttribute('data-dream-skip',''); top.classList.add('rh-top');
           top.innerHTML='<a class="rh-back" href="'+back+'" aria-label="'+(learn?'Back to your desk':'Back to your room')+'"><span class="ms" aria-hidden="true">arrow_back</span></a><h1 class="rh-title">'+esc(title)+'</h1>';
         }
-        var nav=document.querySelector('nav.nav, nav.bottom-nav');
+        var nav=document.querySelector('nav.nav, nav.bottom-nav'), made=false;
+        if(!nav && top){ nav=document.createElement('nav'); document.body.appendChild(nav); made=true; }
         if(nav && !nav.dataset.rhythme){
-          var pm=postMeno();
+          var pm=postMeno(), here=TAB_OF[(location.pathname.split('/').pop()||'')]||'home';
           nav.setAttribute('data-dream-skip',''); nav.dataset.rhythme='1'; nav.className='nav rh-nav'; nav.setAttribute('aria-label','Main');
-          nav.innerHTML=[['room.html','home','Home'],['room.html#cycle',pm?'spa':'monitoring',pm?'Body':'Cycle'],['room.html#food','restaurant','Food'],['room.html#mind','self_improvement','Mind'],['room.html#you','person','You']].map(function(t){ return '<a href="'+t[0]+'"><span class="ms" aria-hidden="true">'+t[1]+'</span>'+t[2]+'</a>'; }).join('');
+          nav.innerHTML=[['home','room.html','home','Home'],['cycle','room.html#cycle',pm?'spa':'calendar_month',pm?'Body':'Cycle'],['food','room.html#food','restaurant','Food'],['mind','room.html#mind','self_improvement','Mind'],['you','room.html#you','person','You']].map(function(t){ return '<a href="'+t[1]+'"'+(t[0]===here?' class="on" aria-current="page"':'')+'><span class="ms" aria-hidden="true">'+t[2]+'</span>'+t[3]+'</a>'; }).join('');
+          /* a bar this script added is not in the page's own measure, so leave room for it under the content */
+          if(made){ var hgt=Math.ceil(nav.getBoundingClientRect().height)||72, cur=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--shell-bottom-size'))||0; if(hgt>cur) document.documentElement.style.setProperty('--shell-bottom-size', hgt+'px'); document.body.classList.add('rh-made-nav'); }
         }
         document.querySelectorAll('a.learning-back').forEach(function(a){ var h=a.getAttribute('href')||''; if(h==='home.html'||/Knowledge Hub/.test(a.textContent)){ a.setAttribute('href','room.html#learn'); a.textContent='Back to your desk'; } });
         if(top) document.documentElement.classList.add('rh-aligned');

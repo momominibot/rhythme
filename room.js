@@ -1651,14 +1651,17 @@
      setting it had is kept, stored where it always was: the life-stage look in localStorage 'ovuluna_persona' (the older
      reading pages and the privacy list read it), and sleep from a CSV file as OvuStore sleep entries with source 'import'.
      Its links go to the same places, each opening in the room or its page viewer. */
-  var PERSONAS = [['grow', 'eco', 'Grow', 'Trying to conceive'], ['nurture', 'spa', 'Nurture', 'After pregnancy'], ['peri', 'eco', 'Seasons', 'Perimenopause'], ['wisdom', 'bedtime', 'Wisdom', 'Menopause and beyond']];
+  var PERSONAS = [['grow', 'eco', 'Grow', 'Trying to conceive'], ['nurture', 'spa', 'Nurture', 'After pregnancy'], ['peri', 'eco', 'Changing seasons', 'Perimenopause'], ['wisdom', 'bedtime', 'Your next chapter', 'After menopause']]; /* the chapter names of the reading pages (journey-*.html) */
   function personaNow() { try { var p = localStorage.getItem('ovuluna_persona'); return PERSONAS.some(function (x) { return x[0] === p; }) ? p : 'grow'; } catch (e) { return 'grow'; } }
   function sleepCsv(text) {
     var ok = 0, bad = 0;
     String(text).split(/\r?\n/).forEach(function (line) {
       var c = line.split(',').map(function (x) { return x.trim(); });
       if (c.length < 3 || !S.validDate(c[0]) || !S.validTime(c[1]) || !S.validTime(c[2])) { if (line.trim() && !/^date/i.test(line)) bad++; return; }
-      try { S.add('sleep', c[0], { bedTime: c[1], wakeTime: c[2], quality: c[3] && Number(c[3]) >= 1 && Number(c[3]) <= 5 ? Number(c[3]) : null, notes: 'Imported from CSV', mode: 'import' }, 'import'); ok++; } catch (e) { bad++; }
+      var data = { bedTime: c[1], wakeTime: c[2], quality: c[3] && Number(c[3]) >= 1 && Number(c[3]) <= 5 ? Number(c[3]) : null, notes: 'Imported from CSV', mode: 'import' };
+      /* a night an earlier sleep file brought in is updated, never added twice; nights she wrote herself are left as they are */
+      var mine = S.list('sleep').filter(function (e) { return e.date === c[0] && e.source === 'import' && e.data && e.data.notes === 'Imported from CSV'; })[0];
+      try { if (mine) S.update(mine.id, { data: data, source: 'import' }); else S.add('sleep', c[0], data, 'import'); ok++; } catch (e) { bad++; }
     });
     return { ok: ok, bad: bad };
   }
@@ -1668,13 +1671,15 @@
     var cur = personaNow();
     openSheet('settings', 'Settings', 'Your look, your files, your connections', 'settings',
       '<div class="ygroup"><span class="lbl">Life-stage look</span><div class="chips" role="group" aria-label="Life-stage look">' + PERSONAS.map(function (p) { return '<button type="button" class="chipbtn' + (p[0] === cur ? ' on' : '') + '" data-persona="' + p[0] + '" aria-pressed="' + (p[0] === cur) + '"><span class="ms">' + p[1] + '</span>' + esc(p[2]) + ' · ' + esc(p[3]) + '</button>'; }).join('') + '</div>' +
-      '<p class="help">A look kept on this phone for the reading pages. It does not measure your cycle or change any check.</p><div class="msg" id="setPersonaMsg" role="status" aria-live="polite"></div></div>' +
-      '<div class="ygroup"><span class="lbl">Health connections</span>' + row('move_to_inbox', 'Apple Health and Google', 'Bring in an export file: sleep, cycle, weight and more', 'import') +
-      conn('phone_iphone', 'Apple Health', 'A live link needs the phone app. Today: in the Health app tap your picture, Export All Health Data, then choose export.zip above. Nothing is uploaded.', 'File') +
-      conn('android', 'Google Fit and Health Connect', 'A live link needs the phone app. Today: Google Takeout with Fit ticked, then choose the Takeout zip above.', 'File') +
-      conn('radio_button_checked', 'Smart rings', 'Ring links (Oura, Ultrahuman, RingConn) are planned. Today their sleep exports come in as a sleep file below.', 'Planned') +
-      '<label class="yrow" for="setSleepCsv" style="cursor:pointer"><span class="ms">bedtime</span><span><b>Sleep from a file</b><small>One night per line: date,bedTime,wakeTime,quality (quality 1 to 5, optional), for example 2026-10-17,23:10,06:45,4. A header row is skipped. Nothing is uploaded.</small></span><span class="ms go">upload_file</span></label><input type="file" id="setSleepCsv" accept=".csv,text/csv" hidden><div class="msg" id="setSleepMsg" role="status" aria-live="polite"></div></div>' +
-      '<div class="ygroup"><span class="lbl">Your records</span>' + row('medical_information', 'Your health notes', 'Medicines, supplements and treatments, kept for your care team', '', 'health-profile.html') + row('science', 'Lab records', 'Enter, review and export dated results', '', 'labs.html') + row('edit_note', 'Cycle observations', 'Dated signs on your wall calendar', 'calendar') + '</div>' +
+      '<p class="help">The life chapter you chose on the old settings page, kept on this phone. Your room and its readings follow your answers in Getting to know you; this choice never measures your cycle or changes a check.</p><div class="msg" id="setPersonaMsg" role="status" aria-live="polite"></div></div>' +
+      '<div class="ygroup"><span class="lbl">Bring in from files</span>' + row('move_to_inbox', 'Apple Health and Google', 'Choose an export file: sleep, cycle, weight and more', 'import') +
+      conn('phone_iphone', 'Apple Health', 'In the Health app, tap your picture, then Export All Health Data. Then tap Apple Health and Google above and choose export.zip. Nothing is uploaded.', 'File') +
+      conn('android', 'Google Fit and Health Connect', 'Make a Google Takeout with Fit ticked. Then tap Apple Health and Google above and choose the Takeout zip.', 'File') +
+      conn('radio_button_checked', 'Smart rings', 'Bring a ring’s sleep export in with Sleep from a file, below.', 'File') +
+      '<label class="yrow" for="setSleepCsv" style="cursor:pointer"><span class="ms">bedtime</span><span><b>Sleep from a file</b><small>A CSV file, one night per line. Nothing is uploaded.</small></span><span class="ms go">upload_file</span></label><input type="file" id="setSleepCsv" accept=".csv,text/csv" hidden>' +
+      '<details class="help"><summary style="cursor:pointer">The file’s format</summary>Each line is date, bedtime, wake time and an optional quality from 1 to 5, separated by commas: 2026-10-17,23:10,06:45,4. A header line is skipped. Bringing the same nights in again updates them instead of adding them twice; nights you wrote yourself are kept.</details><div class="msg" id="setSleepMsg" role="status" aria-live="polite"></div></div>' +
+      '<div class="ygroup"><span class="lbl">Live links</span>' + conn('sync_disabled', 'Not here yet', 'A live link to Apple Health, Health Connect or a ring needs the phone app. Until then, files bring your data in.', 'Planned') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your records</span>' + row('medical_information', 'Your health notes', 'A short guide to keeping medicines, supplements and treatment notes for your care team', '', 'health-profile.html') + row('science', 'Lab records', 'Enter, review and export dated results', '', 'labs.html') + row('edit_note', 'Cycle observations', 'Dated signs on your wall calendar', 'calendar') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data and account</span>' + row('delete_sweep', 'Choose what to delete', 'Pick local records, export a copy, then confirm', '', 'privacy.html#privacy-local-title') + row('person_remove', 'Your account', 'Sign in, account status and deleting your account', 'you') + row('shield', 'Privacy and local data', 'What is kept on this phone and why', '', 'privacy.html') + '</div>' +
       '<p class="help" style="text-align:center">Rhythme offers wellness notes, not a medical diagnosis.</p>');
     if (note) message($('#setSleepMsg'), note.text, note.ok);
@@ -1696,11 +1701,11 @@
       var f = this.files && this.files[0], input = this; if (!f) return;
       var r = new FileReader();
       r.onload = function () {
-        var n = sleepCsv(r.result); input.value = '';
+        var n = sleepCsv(r.result), text = 'Brought in ' + n.ok + ' night' + (n.ok === 1 ? '' : 's') + (n.bad ? ', skipped ' + n.bad + ' unreadable line' + (n.bad === 1 ? '' : 's') : '') + '.'; input.value = '';
         if (n.ok) { chime('save'); renderDeck(); }
-        openSettings({ ok: n.ok > 0, text: 'Brought in ' + n.ok + ' night' + (n.ok === 1 ? '' : 's') + (n.bad ? ', skipped ' + n.bad + ' unreadable line' + (n.bad === 1 ? '' : 's') : '') + '.' });
+        if (current === 'settings') openSettings({ ok: n.ok > 0, text: text }); else toast(text, 'bedtime'); /* she may have closed Settings while the file was read: never reopen it over what she is doing */
       };
-      r.onerror = function () { input.value = ''; message($('#setSleepMsg'), 'This file could not be read.', false); };
+      r.onerror = function () { input.value = ''; if (current === 'settings') message($('#setSleepMsg'), 'This file could not be read.', false); else toast('This file could not be read.', 'error'); };
       r.readAsText(f);
     });
   }

@@ -36,6 +36,10 @@ html.rh-aligned :is(a.learning-back,a.back-link,a.assessment-back){display:none!
 .nav.rh-nav{display:flex;justify-content:space-around;border-top:1px solid rgba(107,82,142,.08)!important;background:rgba(255,255,255,.94)!important;padding-top:8px!important}
 .nav.rh-nav a{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-height:44px;font:700 10px var(--sans)!important;color:var(--rm-ink-3)!important;text-decoration:none;border-radius:12px;outline:none}
 .nav.rh-nav a .ms{font-size:22px!important}
+.nav.rh-nav a.on{color:var(--rm-mauve)!important;background:rgba(231,220,245,.55)}
+.nav.rh-nav a.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.nav.rh-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:430px;z-index:40;align-items:center;padding:8px 0 calc(10px + env(safe-area-inset-bottom))!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+body.rh-column.rh-made-nav{padding-bottom:calc(var(--shell-bottom-size,72px) + 16px)}
 .nav.rh-nav a:focus-visible{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--rm-lilac);background:rgba(231,220,245,.6)}
 .nav .dream-symbol{display:none!important}
 
@@ -65,3 +69,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--rm-lilac
 body.rh-column{flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;padding-top:calc(var(--shell-top-size,64px) + 6px)}
 body.rh-column > *{width:100%;max-width:430px;box-sizing:border-box}
 body.rh-column > .expbanner{width:calc(100% - 32px);max-width:398px}
+
+/* a sources button on a page's opening card sits top right, as on the reading cards below it */
+.chapter-hero{position:relative}
+.chapter-hero > .qi{position:absolute;top:16px;right:16px;margin:0}

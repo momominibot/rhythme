@@ -43,6 +43,14 @@
     <p class="sub" style="text-align:center;padding:4px 10px 0">Guidance, not a diagnosis. Bring the pattern to a clinician you trust.</p>
   </div>
 </main>
+<nav class="nav" aria-label="Main">
+  <a href="room.html"><span class="ms">home</span>Home</a>
+  <a href="room.html#cycle" id="navCycle"><span class="ms">calendar_month</span><span class="navlabel">Cycle</span></a>
+  <a href="room.html#food"><span class="ms">restaurant</span>Food</a>
+  <a href="room.html#mind"><span class="ms">self_improvement</span>Mind</a>
+  <a href="room.html#you" class="on" aria-current="page"><span class="ms">person</span>You</a>
+</nav>
+<script>(function(){try{var p=(JSON.parse(localStorage.getItem('ovumind_db_v1')||'null')||{}).profile||{},c=document.getElementById('navCycle');if(c&&['post','postmenopause','postmenopausal'].indexOf(p.lifeStage||'')>-1){c.querySelector('.ms').textContent='spa';c.querySelector('.navlabel').textContent='Body';}}catch(e){}})(); /* the room's tab names, Body after the menopause */</script>
 <script src="ovu-evidence.js"></script>
 <script>
 (function () {

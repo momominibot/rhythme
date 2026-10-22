@@ -108,10 +108,10 @@
 
 <nav class="nav" aria-label="Main">
   <a href="room.html"><span class="ms">home</span>Home</a>
-  <a href="room.html#cycle" id="navCycle"><span class="ms">monitoring</span><span class="navlabel">Cycle</span></a>
+  <a href="room.html#cycle" id="navCycle"><span class="ms">calendar_month</span><span class="navlabel">Cycle</span></a>
   <a href="room.html#food"><span class="ms">restaurant</span>Food</a>
   <a href="room.html#mind"><span class="ms">self_improvement</span>Mind</a>
-  <a href="room.html#you"><span class="ms">person</span>You</a>
+  <a href="room.html#you" class="on" aria-current="page"><span class="ms">person</span>You</a>
 </nav>
 
 <script src="ovu-config.js"></script>
@@ -179,8 +179,8 @@
     $('#shareKpis').innerHTML=
       kpi('coverage','Logged',cov+'<em>/28</em>','days with entries')+
       kpi('period','Period',String(sum.cycle.periodDays),eps?'bleeding day'+(sum.cycle.periodDays===1?'':'s')+' in '+eps+' period'+(eps===1?'':'s'):'bleeding days')+
-      kpi('cycle','Cycle',sum.cycle.averageLength?sum.cycle.averageLength+'<em>d</em>':'—',sum.cycle.averageLength&&!/logged cycle/.test(sum.cycle.basis||'')?'from '+sum.cycle.basis:(cl?'average of '+cl+' cycle'+(cl===1?'':'s'):'no full cycle yet'))+
-      kpi('sleep',sum.sleep.mixed?'Sleep and bed to wake':sum.sleep.windowed?'Bed to wake':'Sleep',sum.sleep.average?sum.sleep.average+'<em>h</em>':'—',sum.sleep.nights+' night'+(sum.sleep.nights===1?'':'s')+(sum.sleep.under6?', '+sum.sleep.under6+' under 6h':''))+
+      kpi('cycle','Cycle',sum.cycle.averageLength?sum.cycle.averageLength+'<em>d</em>':'Not yet',sum.cycle.averageLength&&!/logged cycle/.test(sum.cycle.basis||'')?'from '+sum.cycle.basis:(cl?'average of '+cl+' cycle'+(cl===1?'':'s'):'no full cycle yet'))+
+      kpi('sleep',sum.sleep.mixed?'Sleep and bed to wake':sum.sleep.windowed?'Bed to wake':'Sleep',sum.sleep.average?sum.sleep.average+'<em>h</em>':'Not yet',sum.sleep.nights+' night'+(sum.sleep.nights===1?'':'s')+(sum.sleep.under6?', '+sum.sleep.under6+' under 6h':''))+
       kpi('symptoms','Symptoms',String(sum.symptoms.daysLogged),sum.symptoms.painMax!==null?'pain up to '+sum.symptoms.painMax+'/10':'days logged')+
       kpi('calm','Calm',sum.mindfulness.minutes+'<em> min</em>',sum.mindfulness.sessions+' session'+(sum.mindfulness.sessions===1?'':'s'))+
       '<div class="covbar" role="img" aria-label="'+cov+' of 28 days logged"><i style="width:'+Math.round(cov/28*100)+'%"></i></div>'+
@@ -325,7 +325,7 @@
     B.push({t:'h2',text:'Limits'},{t:'p',text:(c&&c.limits?c.limits+' ':'')+'Everything here is self-reported in a diary app. Missing days are not absence of symptoms or bleeding. Rules are deterministic'+(c?'; the written summary was drafted by a model from the same aggregated data and shown to the person first':'')+'. Not a diagnosis.'});
     var events=S.list(null,{from:from,to:end}).slice().reverse();
     B.push({t:'page'},{t:'h1',text:'Entries, '+pretty(from,{day:'numeric',month:'short'})+' to '+pretty(end,{day:'numeric',month:'short',year:'numeric'})},{t:'small',text:events.length+' entr'+(events.length===1?'y':'ies')+', newest first'},{t:'rule'});
-    var last=null;events.forEach(function(e){if(e.date!==last){last=e.date;B.push({t:'h2',text:pretty(e.date,{weekday:'long',day:'numeric',month:'long',year:'numeric'})});}var et=entryText(e);B.push({t:'kv',label:et[0],text:et[1]||'—'});});
+    var last=null;events.forEach(function(e){if(e.date!==last){last=e.date;B.push({t:'h2',text:pretty(e.date,{weekday:'long',day:'numeric',month:'long',year:'numeric'})});}var et=entryText(e);B.push({t:'kv',label:et[0],text:et[1]||'Not yet'});});
     if(!events.length)B.push({t:'p',text:'No entries in this range.'});
     return {title:'Rhythme summary '+end,footer:'Rhythme · self-reported entries · not a diagnosis',blocks:B};
   }

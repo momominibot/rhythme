@@ -34,7 +34,7 @@ for u, pages in missing.items(): bad += 1; print('MISSING %s (e.g. %s)' % (u, pa
 # stylesheet for pages (ovu-pages.css) or for the older pages (rhythme-legacy.css), and either links back to room.html
 # itself or loads appnav.js with a .top bar for it to turn into the room's back button and title. A retired page is a
 # stub in three parts (location.replace, a meta refresh, a plain link). No reachable page opens one of Rhythme's own
-# pages in a new tab or wears the old night palette.
+# pages in a new tab, wears the old night palette or shows an em dash.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import page_inventory
 inv = page_inventory.crawl()
@@ -48,6 +48,8 @@ for i in inv:
     if i['kind'] != 'stub':
         for m in own_blank.finditer(text): bad += 1; print('NEWTAB %s opens its own page in a new tab: %s' % (name, m.group(0)[:120]))
         if 'ovu-night-palette.css' in i['styles']: bad += 1; print('NIGHT %s links the retired night palette' % name)
+        vis = re.sub(r'<[^>]+>', ' ', re.sub(r'<!--[\s\S]*?-->|<script[\s\S]*?</script>|<style[\s\S]*?</style>', '', text))
+        if '\u2014' in vis: bad += 1; print('DASH %s shows an em dash: %s' % (name, re.search(r'.{0,30}\u2014.{0,20}', vis).group(0).strip()))
     else:
         t = i['target']
         if not (re.search(r'<meta http-equiv="refresh" content="0;\s*url=' + re.escape(t) + '"', text) and re.search(r'<a href="' + re.escape(t) + '"', text)):

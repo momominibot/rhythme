@@ -42,7 +42,8 @@
 
   else if(/^(food|nutrition|diet|medas|nutrient|supplement|hydration)/.test(route))section='foods.html';
   else if(/^(profile|premium|settings|privacy|personal-info|health-profile|partner|community|circle|login|onboarding|terms)/.test(route))section='room.html#you';
-  document.querySelectorAll('.nav a').forEach(function(a){var active=a.getAttribute('href')===section;a.classList.toggle('on',active);a.classList.toggle('active',active);if(active)a.setAttribute('aria-current',route===section?'page':'true');else a.removeAttribute('aria-current');});
+  /* the room's tab bar (appnav.js, data-rhythme) chooses its own tab */
+  document.querySelectorAll('.nav:not([data-rhythme]) a').forEach(function(a){var active=a.getAttribute('href')===section;a.classList.toggle('on',active);a.classList.toggle('active',active);if(active)a.setAttribute('aria-current',route===section?'page':'true');else a.removeAttribute('aria-current');});
   decorate(document.body);
   var pending=new Set(),queued=false;
   new MutationObserver(function(changes){changes.forEach(function(c){if(c.type==='characterData')pending.add(c.target.parentElement);else c.addedNodes.forEach(function(n){if(n.nodeType===1)pending.add(n);else if(n.nodeType===3)pending.add(n.parentElement);});});if(!queued){queued=true;requestAnimationFrame(function(){queued=false;var roots=Array.from(pending);pending.clear();roots.forEach(decorate);});}}).observe(document.body,{childList:true,subtree:true,characterData:true});

@@ -69,6 +69,7 @@
     var pending = false;
     function measure() {
       pending = false;
+      top = document.querySelector('.top'); nav = document.querySelector('.nav, .bottom-nav'); /* appnav.js may add the tab bar after this first ran */
       var topSize = top ? Math.ceil(top.getBoundingClientRect().height) : 0;
       var bottomSize = nav ? Math.ceil(nav.getBoundingClientRect().height) : 0;
       if (root.style.getPropertyValue('--shell-top-size') !== topSize + 'px') root.style.setProperty('--shell-top-size', topSize + 'px');
