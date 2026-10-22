@@ -2269,6 +2269,11 @@ function scenes(todayIso) {
 (function lunaLook() {
   console.log("Luna's look (ovu-mascot.js): one pastel crescent moon");
   var w = fresh(), M = w.OvuMascot;
+  (function () {
+    var rh = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), pv = fs.readFileSync(path.join(root, 'ovu-pageview.js'), 'utf8');
+    check('older Rhythme pages open in the in-app viewer, never by leaving the room (Jamie, 22 Oct)', /<script src="ovu-pageview\.js"><\/script>/.test(rh) && /OvuPage\.open\('journal\.html#'/.test(rj) && /e\.preventDefault\(\); open\(a\.getAttribute\('href'\)\)/.test(pv));
+    check('retired pages are not linked from the room: foods, period start, account, calm check', !/'(foods|period-start|account|face-ppg)\.html'/.test(rj) && !/href="(foods|period-start|account|face-ppg)\.html"/.test(rj + rh));
+  })();
   check('one look only, the soft Ovuluna crescent (Jamie, 21 Oct)', M.LIST.length === 1 && M.LIST[0].id === 'luna' && /orb-luna\.webp$/.test(M.src()));
   check('its crescent sprite is on disk and no round badge is used', fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].img)) && !M.LIST[0].head);
   check('the crescent is the default and an unknown look (an old saved pick too) is ignored', M.current().id === 'luna' && M.set('rabbit').id === 'luna' && M.set('moon').id === 'luna');
@@ -3296,7 +3301,7 @@ var summarised = false;
   var S = w.OvuStore, RW = w.OvuRewards, tdy = S.today();
   function seatEv(seat) { return S.add('mindfulness', tdy, SE.entry(seat, { seconds: 90, confirmed: true, finished: true }), 'room'); }
   var a1 = RW.award(seatEv('street')), a2 = RW.award(seatEv('street')), a3 = RW.award(seatEv('plaza:bench')), a4 = RW.award(seatEv('plaza:bench2')), a5 = RW.award(seatEv('harbour'));
-  check('the street bench pays the flat practice points once; the same bench again pays nothing; the two plaza benches are two seats; the day’s cap still holds', a1.points === 2 && a2.points === 0 && a3.points === 2 && a4.points === 2 && a5.points === 0 && RW.ledger().hearts >= 6, JSON.stringify([a1.points, a2.points, a3.points, a4.points, a5.points]));
+  check('the street bench pays the flat practice points once; the same bench again pays nothing; the two plaza benches are two seats; each other seat pays too (cap 20 since 22 Oct)', a1.points === 2 && a2.points === 0 && a3.points === 2 && a4.points === 2 && a5.points === 2 && RW.ledger().hearts >= 8, JSON.stringify([a1.points, a2.points, a3.points, a4.points, a5.points]));
   var l = RW.ledger(); l.seatDay = null; l.mindDay = null; l.dailyLast = S.addDays(tdy, 1); S.setState({ rewards: l });
   check('a clock set back cannot reopen a seat’s thank-you either', RW.award(seatEv('street')).points === 0);
   /* the cave: both hotspots are one seat */
@@ -3626,7 +3631,7 @@ var summarised = false;
   check('a finished cup uses one from the basket and earns the flat practice thank-you, and no diary entry is written', br1.ok && br1.points === RW.PRACTICE.points && F.farmState(S).harvest.pandan === 2 && RW.ledger().hearts === afterBuy + RW.PRACTICE.points && S.list().length === n0);
   GH.brewCup(S, RW, 'pandan'); GH.brewCup(S, RW, 'pandan');
   var capped = RW.ledger().mindDay.pts;
-  check('cups after the day’s practice cap earn nothing, and the basket empties to nothing more', capped === RW.PRACTICE.cap && !GH.brewCup(S, RW, 'pandan').ok && !('pandan' in F.farmState(S).harvest) && RW.ledger().hearts === afterBuy + RW.PRACTICE.cap);
+  check('every cup pays the practice thank-you (three cups, six hearts), and the basket empties to nothing more', capped === 3 * RW.PRACTICE.points && !GH.brewCup(S, RW, 'pandan').ok && !('pandan' in F.farmState(S).harvest) && RW.ledger().hearts === afterBuy + 3 * RW.PRACTICE.points);
   S.setState({ farm: { harvest: { chamomile: 1 } }, rewards: { hearts: 0, earned: 0, log: [], owned: [], placed: {}, mindDay: { day: d1, pts: 4 } } });
   var br2 = GH.brewCup(S, RW, 'chamomile');
   check('a cup counts inside the same daily practice cap as every other practice', br2.ok && br2.points === 2 && RW.ledger().mindDay.pts === 6);
@@ -4097,7 +4102,7 @@ var summarised = false;
   var luna = rs.slice(rs.indexOf('function openLuna('), rs.indexOf('function openLuna(') + 6000);
   check('the sheet becomes a card only for Luna and shows her face; the title names her a wellness companion', /sheet\.classList\.toggle\('luna-sheet', id === 'luna'\)/.test(rs) && /img class="lunaico" src="assets\/room\/dream\/orb-luna\.webp"/.test(rs) && /'Your wellness companion'/.test(luna));
   check('the state line tells the truth (rules only while AI help is paused or off; reading on otherwise) and there is no upsell, no quota invented, no model name', /Rules only · AI help paused/.test(luna) && /Luna’s reading is on/.test(luna) && !/upgrade|premium|questions left/i.test(luna) && !/gpt|claude|doubao|deepseek|gemini/i.test(luna));
-  check('three ask chips open real guides, the composer asks about her cycle, and the companion note is the last line', /stress\.html/.test(luna) && /hormones\.html/.test(luna) && /foods\.html/.test(luna) && ['stress.html', 'hormones.html', 'foods.html'].every(function (f) { return fs.existsSync(path.join(root, f)); }) && /Tell Luna, or ask about your cycle…/.test(luna) && /Luna is a wellness companion, not a doctor\. For medical concerns, talk to a clinician\./.test(luna));
+  check('three ask chips open real guides (foods: the Food diary, 22 Oct), the composer asks about her cycle, and the companion note is the last line', /stress\.html/.test(luna) && /hormones\.html/.test(luna) && /room\.html#food/.test(luna) && ['stress.html', 'hormones.html'].every(function (f) { return fs.existsSync(path.join(root, f)); }) && /Tell Luna, or ask about your cycle…/.test(luna) && /Luna is a wellness companion, not a doctor\. For medical concerns, talk to a clinician\./.test(luna));
   check('the card’s styles exist and no em dash entered the copy', /\.sheet\.luna-sheet\{/.test(css) && /\.askchip\{/.test(css) && /\.lunanote\{/.test(css) && luna.indexOf('—') < 0);
 })();
 
