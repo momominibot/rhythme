@@ -2,7 +2,7 @@
  * notification plumbing for reminders. Pages, scripts and styles go network
  * first so a new release is never mixed with an old one; media and fonts are
  * cached first because their file names change when their content does. */
-var VERSION = 'ovumind-2026-10-22-erin1';
+var VERSION = 'ovumind-2026-10-22-fish1';
 var MEDIA = /\.(?:webp|png|jpe?g|gif|svg|mp3|mp4|woff2?|ttf|wasm)(\?.*)?$/i;
 var CODE = /\.(?:css|js|json|html)(\?.*)?$/i;
 
