@@ -241,7 +241,7 @@
     var title = c.querySelector('#cTitle'), sub = title && title.nextElementSibling, fine = c.querySelector('#cFine'), lbl = c.querySelector('.c-lbl'), box = c.querySelector('#cChoices'), age = c.querySelector('#cAge'), minorNote = c.querySelector('#cMinor');
     if (title) title.textContent = returning ? 'Your data choices' : 'Before your room opens';
     var prevV = (st.health_tracking && st.health_tracking.notice) || 0; /* what changed since the notice she last agreed to */
-    if (sub) sub.textContent = returning ? 'Have a quick look at how Rhythme keeps your data and choose what you are happy with. Your diary on this phone is kept as it is.' : 'A cosy diary for your cycle, body and mind.';
+    if (sub) sub.textContent = returning ? (prevV >= 4 ? 'New in this notice: Rhythme can ask for your birthday, for a birthday card. It stays on this phone.' : 'Have a quick look at how Rhythme keeps your data and choose what you are happy with. Your diary on this phone is kept as it is.') : 'A cosy diary for your cycle, body and mind.';
     if (fine) fine.textContent = returning ? 'Your diary on this phone is kept as it is.' : 'No diary entries have been saved yet.';
     if (lbl) lbl.textContent = 'Optional extras';
     if (minorNote) { minorNote.hidden = !minor; minorNote.style.display = minor ? '' : 'none'; } /* the flag's own display rule would beat the hidden attribute */
