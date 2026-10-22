@@ -2424,3 +2424,9 @@ html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
 .pulsesetup{margin:6px 0;font-size:13px}.pulserun,.pulsedone{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:8px 0}
 .pulseclock{font:800 56px/1 var(--serif,Georgia,serif);color:var(--rm-plum,#5b3e8a)}.pulsecue{font-size:15px;line-height:1.5;margin:0;max-width:30em}
 .pulsedone .row,.pulserun .row{width:100%;flex-direction:column;align-items:stretch}.pulsedone .btn{width:100%}
+
+/* the ranch counter and baby animals (22 Oct) */
+.ranchsec{border:1px solid var(--rm-line,#e8def5);border-radius:14px;padding:10px 12px;margin:8px 0;display:flex;flex-direction:column;gap:8px}
+.ranchsec h4{margin:0;font-size:14px;display:flex;align-items:center;gap:6px}
+.ranchsec small.help{display:block;margin:-4px 0 0;font-size:12px}
+.barnthing.animal.baby img{animation-duration:2.6s}

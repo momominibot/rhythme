@@ -27,7 +27,9 @@
   function sizesOf(o) { var out = {}; ['egg', 'milk'].forEach(function (p) { var s = o && o[p] || {}; out[p] = { small: n0(s.small), medium: n0(s.medium), large: n0(s.large) }; }); return out; }
   function animal(a) {
     if (!a || typeof a !== 'object' || !KINDS[a.kind] || typeof a.id !== 'string' || !/^[a-z][a-z0-9]{0,23}$/.test(a.id)) return null;
-    return { id: a.id, kind: a.kind, name: cleanName(a.name) || KINDS[a.kind].name, born: day(a.born), adultOn: day(a.adultOn) };
+    var out = { id: a.id, kind: a.kind, name: cleanName(a.name) || KINDS[a.kind].name, born: day(a.born), adultOn: day(a.adultOn) };
+    if (a.grown) out.grown = true; /* its growing up has been announced */
+    return out;
   }
   function timer(t, keys) { if (!t || typeof t !== 'object') return null; var out = {}; for (var i = 0; i < keys.length; i++) { var v = t[keys[i]]; if (keys[i] === 'childId' || keys[i] === 'motherId') { if (typeof v !== 'string') return null; out[keys[i]] = v; } else { if (!day(v)) return null; out[keys[i]] = v; } } return out; }
   function ranchOf(farm) {
@@ -60,8 +62,15 @@
     var changed = r.lastDay !== today; r.lastDay = today;
     if (r.incubator && today >= r.incubator.due) { r.herd.push({ id: r.incubator.childId, kind: 'hen', name: 'Chick', born: r.incubator.due, adultOn: addDays(r.incubator.due, KINDS.hen.grow) }); r.incubator = null; changed = true; }
     if (r.calf && today >= r.calf.due) { r.herd.push({ id: r.calf.childId, kind: 'cow', name: 'Calf', born: r.calf.due, adultOn: addDays(r.calf.due, KINDS.cow.grow) }); r.calf = null; changed = true; }
+    r.herd.forEach(function (a) { if (a.adultOn && today >= a.adultOn && !a.grown) { a.grown = true; changed = true; } });
     if (!changed) return farm;
     f.ranch = r; return f;
+  }
+  /* what changed between two ranch records: babies that arrived and animals that grew up (for a word from Erin) */
+  function news(before, after) {
+    var b = ranchOf({ ranch: before }) || { herd: [] }, a = ranchOf({ ranch: after }) || { herd: [] }, had = {}, grown = {};
+    b.herd.forEach(function (x) { had[x.id] = 1; if (x.grown) grown[x.id] = 1; });
+    return { born: a.herd.filter(function (x) { return !had[x.id] && x.born; }), grown: a.herd.filter(function (x) { return x.grown && !grown[x.id] && x.born; }) };
   }
   function newId(r, kind) { var id = kind + r.nextId; r.nextId += 1; while (r.herd.some(function (a) { return a.id === id; })) { id = kind + r.nextId; r.nextId += 1; } return id; }
   /* buy an adult: it produces from tomorrow (farm.animals[id] = today) */
@@ -128,5 +137,5 @@
   function sizeWord(size) { return size === 'large' ? 'large' : size === 'medium' ? 'medium' : 'small'; }
   root.OvuRanch = { KINDS: KINDS, CAPACITY: CAPACITY, UPGRADE_COST: UPGRADE_COST, HATCH_DAYS: HATCH_DAYS, CALF_FULL_DAYS: CALF_FULL_DAYS, STARTERS: STARTERS, SIZES: SIZES,
     ranchOf: ranchOf, migrate: migrate, advance: advance, isAdult: isAdult, list: list, capacity: capacity, occupied: occupied, room: room, productSize: productSize,
-    buy: buy, upgrade: upgrade, incubate: incubate, calfDue: calfDue, startCalf: startCalf, addProduct: addProduct, takeProduct: takeProduct, reconcile: reconcile, sizeWord: sizeWord, addDays: addDays, cleanName: cleanName };
+    buy: buy, upgrade: upgrade, incubate: incubate, calfDue: calfDue, startCalf: startCalf, addProduct: addProduct, takeProduct: takeProduct, reconcile: reconcile, news: news, sizeWord: sizeWord, addDays: addDays, cleanName: cleanName };
 })(typeof window !== 'undefined' ? window : this);
