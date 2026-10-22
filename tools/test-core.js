@@ -614,6 +614,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the nine pitches, labelled by pitch only, never by a promise', T.FREQS.join() === '174,285,396,417,528,639,741,852,963' && T.label(528) === '528 Hz, middle' && T.label(174) === '174 Hz, low' && T.label(963) === '963 Hz, high' && T.label(440) === '' && !/love|repair|liberation|healing|DNA|chakra/i.test(TS));
   check('the tone follows the app volume and never passes its ceiling; a bad volume is silent', T.gainFor(1) === T.CEILING && T.gainFor(0.5) === Math.round(0.5 * T.CEILING * 1000) / 1000 && T.gainFor(0) === 0 && T.gainFor('x') === 0 && T.gainFor(9) === T.CEILING);
   check('without Web Audio (node) starting a tone fails quietly and nothing is playing', T.start(528, null) === false && T.playing() === null && T.remaining() === null);
+  check('each pitch has a tradition word and no health promise; the sheet says research has not shown it (22 Oct)', T.FREQS.every(function (f) { return T.MEANING[f] && !/heal|cure|repair|DNA|love|pain|anxiety/i.test(T.MEANING[f]); }) && /sound-bath tradition/.test(TS) && /Research has not shown that a pitch does this/.test(TS));
+  check('she can just sit with nothing playing, or sit with rain, a stream or waves; Stop ends sound and sitting together', /\['none', 'Just sit'\]/.test(TS) && Object.keys(T.BEDS).join() === 'rain,stream,waves' && T.startBed('rain', null) === false && T.bed() === null && /function endAll\(\) \{ stop\(\); standUp\(\); \}/.test(TS));
   check('the module writes no diary entry, pays no hearts and costs no energy', !/OvuRewards|\bS\.add\(|OvuStore\.add\(|addMany\(|spend\(|spendWith\(/.test(TS));
   var L = B.CAVE, bad = K.checkLayout(L), cry = L.hotspots.filter(function (h) { return h.id === 'crystals'; })[0];
   var wd = K.world(L, []), from = { x: L.doors[0].x, y: L.doors[0].y };
@@ -3341,7 +3343,7 @@ var summarised = false;
   var CV = w2.OvuBarn.CAVE, cry = CV.hotspots.filter(function (h) { return h.id === 'crystals'; })[0], stone = CV.hotspots.filter(function (h) { return h.id === 'warmstone'; })[0];
   check('the crystals and the warm stone walk her to the same stand point', !!cry && !!stone && cry.wp.x === stone.wp.x && cry.wp.y === stone.wp.y && cry.wp.flip === stone.wp.flip);
   var TS = fs.readFileSync(path.join(root, 'ovu-tones.js'), 'utf8');
-  check('the cave sheet makes no promise and keeps no pill; one Stop stands her up with the sound', !/love frequency|cellular|DNA|repair|transcend/i.test(TS) && TS.indexOf('tonePill') < 0 && /Stop sound and stand up/.test(TS) && /if \(!hz\) standUp\(\)/.test(TS));
+  check('the cave sheet makes no promise and keeps no pill; one Stop stands her up with the sound', !/love frequency|cellular|DNA|repair|transcend/i.test(TS) && TS.indexOf('tonePill') < 0 && /Stop sound and stand up/.test(TS) && /if \(!hz && !bed && sitting && sitting\.snd !== 'none' && endAt === null\) standUp\(\)/.test(TS)); /* a sound that ends on its own stands her up; a quiet sit does not (22 Oct) */
 })();
 
 (function ovulunaFoodArt() {
