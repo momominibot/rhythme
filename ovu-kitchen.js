@@ -127,7 +127,7 @@
   }
   function openKitchen() {
     var here = where();
-    var list = RECIPES.map(function (r) { var c = canCook(S, r.id); return '<button type="button" class="btn soft" data-recipe="' + r.id + '"' + (c.ok ? '' : ' disabled') + '><span class="ms">' + r.icon + '</span><span><b>' + esc(r.name) + '</b><small>' + esc(needsText(r)) + ' · ' + esc(state(r, c)) + '</small></span></button>'; }).join('');
+    var list = RECIPES.map(function (r) { var c = canCook(S, r.id); return '<button type="button" class="btn soft" data-recipe="' + r.id + '"' + (c.ok ? '' : ' disabled') + '><img class="croppic" src="assets/food/dish-' + r.id + '.webp" alt=""><span><b>' + esc(r.name) + '</b><small>' + esc(needsText(r)) + ' · ' + esc(state(r, c)) + '</small></span></button>'; }).join('');
     R.openSheet('kitchen', here === 'farm' ? 'Cook from the basket' : 'The kitchen', 'A dish, one step at a time', 'skillet',
       mind('Choose one dish. Cooking here is slow on purpose.') + '<div class="seedlist one" id="kitchenList">' + list + '</div>' + stockLine(S) +
       '<p class="help">Cooking uses what the dish needs from the basket and the pantry. It earns no hearts, takes no energy and logs nothing for you.</p>');
@@ -163,7 +163,7 @@
   function openDish(r) {
     var line = R.moment ? R.moment('cookdish', { quiet: true }) : '';
     R.openSheet('kitchen-dish', r.name, 'On the table', r.icon,
-      '<p>' + esc(r.name) + ' is ready.</p>' + mind(line) +
+      '<div class="dishpic"><img src="assets/food/dish-' + r.id + '.webp" alt="' + esc(r.name) + '"></div><p>' + esc(r.name) + ' is ready.</p>' + mind(line) +
       '<p><b>Did you eat something like this today?</b></p>' +
       '<div class="row"><button type="button" class="btn primary" id="dishYes"><span class="ms">restaurant</span>Yes, open the diary</button><button type="button" class="btn soft" id="dishNo">No</button></div>' +
       '<p class="help">Only a meal you really ate. The kitchen never logs anything for you.</p>');

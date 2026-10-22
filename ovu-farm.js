@@ -24,6 +24,8 @@
     chilli: { name: 'Chilli padi', plural: 'chilli padi', days: 5, yield: 4, colour: '#e2483d', top: '#5f9c6a', cost: 70 },
     sweetpotato: { name: 'Sweet potato', plural: 'sweet potatoes', days: 6, yield: 2, colour: '#b0607e', top: '#7fb894', cost: 80 }
   };
+  /* the crop's picture, drawn 22 Oct in the Ovuluna food style (assets/food/crop-*.webp; sweet potato reuses the food card) */
+  function cropPic(k) { return '<img class="croppic" src="assets/food/' + (k === 'sweetpotato' ? 'sweet-potato' : 'crop-' + k) + '.webp" alt="">'; }
   var STARTER = ['radish', 'carrot', 'strawberry', 'tomato', 'pumpkin']; /* everyone has grown these from the start: never locked */
   var SEEDS_A_DAY = 3;
   var PACK = { seeds: 3, cost: 10 }; /* a seed pack: three seeds of a crop she can grow */
@@ -229,7 +231,7 @@
     return out;
   }
 
-  var F = { PANTRY: PANTRY, ANIMALS: ANIMALS, PANTRY_CAP: PANTRY_CAP, CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, SWAP: SWAP, swapWorth: swapWorth, swapNeed: swapNeed, swapGivable: swapGivable, swapSeed: swapSeed, dryBeds: dryBeds, waterAll: waterAll, CAN: CAN, BIG_CAN: BIG_CAN, canCap: canCap, canLevel: canLevel, fillCan: fillCan, pour: pour, plantFromShed: plantFromShed, bulkTargets: bulkTargets, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
+  var F = { cropPic: cropPic, PANTRY: PANTRY, ANIMALS: ANIMALS, PANTRY_CAP: PANTRY_CAP, CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, SWAP: SWAP, swapWorth: swapWorth, swapNeed: swapNeed, swapGivable: swapGivable, swapSeed: swapSeed, dryBeds: dryBeds, waterAll: waterAll, CAN: CAN, BIG_CAN: BIG_CAN, canCap: canCap, canLevel: canLevel, fillCan: fillCan, pour: pour, plantFromShed: plantFromShed, bulkTargets: bulkTargets, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
   root.OvuFarm = F;
 
   /* ---------- scene wiring ---------- */
@@ -392,8 +394,8 @@
     else if (crop && canLevel(S) < 1) html += '<button type="button" class="btn primary" data-bed="well"><span class="ms">water_drop</span>Fill the can at the well</button>';
     else if (crop) html += '<button type="button" class="btn primary" data-bed="water"><span class="ms">water_drop</span>Water slowly</button>' +
       (f.tools.bigcan && dryBeds(S, day).length > 1 && canLevel(S) > 1 ? '<button type="button" class="btn soft" data-bed="waterall"><span class="ms">water_drop</span><span><b>Water ' + bulkTargets(S, day, id, canLevel(S)).length + ' dry beds</b><small>This one first, then beds ' + bulkTargets(S, day, id, canLevel(S)).slice(1).map(bedNo).join(', ') + '</small></span></button>' : '');
-    else if (!Object.keys(CROPS).some(function (k) { return (f.seeds[k] || 0) > 0; }) && seedsLeftToday(S, day) > 0) growable(f).forEach(function (k) { html += '<button type="button" class="btn soft" data-bed="shedplant" data-crop="' + k + '"><span class="ms">spa</span><span><b>' + esc(CROPS[k].name) + '</b><small>' + CROPS[k].days + ' days to ripen</small></span></button>'; });
-    else Object.keys(CROPS).forEach(function (k) { if (f.seeds[k] > 0) html += '<button type="button" class="btn soft" data-bed="plant" data-crop="' + k + '"><span class="ms">spa</span><span><b>' + esc(CROPS[k].name) + '</b><small>' + CROPS[k].days + ' days · ' + f.seeds[k] + ' seed' + (f.seeds[k] > 1 ? 's' : '') + '</small></span></button>'; });
+    else if (!Object.keys(CROPS).some(function (k) { return (f.seeds[k] || 0) > 0; }) && seedsLeftToday(S, day) > 0) growable(f).forEach(function (k) { html += '<button type="button" class="btn soft" data-bed="shedplant" data-crop="' + k + '">' + cropPic(k) + '<span><b>' + esc(CROPS[k].name) + '</b><small>' + CROPS[k].days + ' days to ripen</small></span></button>'; });
+    else Object.keys(CROPS).forEach(function (k) { if (f.seeds[k] > 0) html += '<button type="button" class="btn soft" data-bed="plant" data-crop="' + k + '">' + cropPic(k) + '<span><b>' + esc(CROPS[k].name) + '</b><small>' + CROPS[k].days + ' days · ' + f.seeds[k] + ' seed' + (f.seeds[k] > 1 ? 's' : '') + '</small></span></button>'; });
     html += '</div><p class="help">Watering costs a little energy; a missed day adds nothing and takes nothing away. Each day a few beds need weeding before they can be tended. You need not tend every bed every day. <button type="button" class="linkbtn" id="farmHow">How the farm works</button></p>';
     R.openSheet('farmbed', 'Bed ' + (BEDS.indexOf(bb) + 1), 'Your farm', 'yard', html);
     var how = doc.getElementById('farmHow'); if (how) how.addEventListener('click', openGuide);
@@ -456,7 +458,7 @@
     var heartTxt = function (n) { return n + ' \u2665'; };
     /* short on purpose (Jamie, 22 Oct: "too wordy ... How the farm works should be fine") */
     var html = '<p>' + (left ? left + ' free seed packet' + (left === 1 ? '' : 's') + ' left today.' : 'Free seeds are all given out today. More tomorrow.') + '</p><div class="seedlist" id="shedActs">' +
-      growable(f).map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-seed="' + k + '"' + (left ? '' : ' disabled') + '><span class="ms">spa</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + (Math.floor(Number(f.seeds[k])) > 0 ? Math.floor(Number(f.seeds[k])) : 0) + '</small></span></button>'; }).join('') +
+      growable(f).map(function (k) { var c = CROPS[k]; return '<button type="button" class="btn soft" data-seed="' + k + '"' + (left ? '' : ' disabled') + '>' + cropPic(k) + '<span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + (Math.floor(Number(f.seeds[k])) > 0 ? Math.floor(Number(f.seeds[k])) : 0) + '</small></span></button>'; }).join('') +
       '</div>';
     if (RW) {
       var tools = Object.keys(TOOLS);

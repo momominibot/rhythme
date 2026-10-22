@@ -72,7 +72,8 @@
     "menstrual",
     "luteal"
    ],
-   "usda": null
+   "usda": null,
+   "img": "assets/food/ginger.webp"
   },
   {
    "name": "Turmeric",
@@ -142,7 +143,8 @@
     "luteal",
     "menstrual"
    ],
-   "usda": "tea"
+   "usda": "tea",
+   "img": "assets/food/chamomile-tea.webp"
   },
   {
    "name": "Bone Broth",
@@ -153,7 +155,8 @@
     "menstrual",
     "follicular"
    ],
-   "usda": null
+   "usda": null,
+   "img": "assets/food/bone-broth.webp"
   },
   {
    "name": "Beetroot",
@@ -164,7 +167,8 @@
     "follicular",
     "menstrual"
    ],
-   "usda": null
+   "usda": null,
+   "img": "assets/food/beetroot.webp"
   },
   {
    "name": "Pumpkin Seeds",
@@ -187,7 +191,8 @@
     "ovulatory",
     "luteal"
    ],
-   "usda": "orange"
+   "usda": "orange",
+   "img": "assets/food/citrus.webp"
   },
   {
    "name": "Leafy Greens",
@@ -234,7 +239,8 @@
     "follicular",
     "luteal"
    ],
-   "usda": "quinoa"
+   "usda": "quinoa",
+   "img": "assets/food/quinoa.webp"
   },
   {
    "name": "Cinnamon",
@@ -245,7 +251,8 @@
     "menstrual",
     "luteal"
    ],
-   "usda": null
+   "usda": null,
+   "img": "assets/food/cinnamon.webp"
   },
   {
    "name": "Sesame Seeds",
@@ -256,7 +263,8 @@
     "follicular",
     "menstrual"
    ],
-   "usda": null
+   "usda": null,
+   "img": "assets/food/sesame-seeds.webp"
   },
   {
    "name": "Green Tea",
@@ -267,7 +275,8 @@
     "ovulatory",
     "follicular"
    ],
-   "usda": "green-tea"
+   "usda": "green-tea",
+   "img": "assets/food/green-tea.webp"
   },
   {
    "name": "Mushrooms",
@@ -278,7 +287,8 @@
     "follicular",
     "luteal"
    ],
-   "usda": "mushroom"
+   "usda": "mushroom",
+   "img": "assets/food/mushrooms.webp"
   }
  ],
  "phases": {

@@ -3349,7 +3349,14 @@ var summarised = false;
 (function ovulunaFoodArt() {
   console.log('food pictures (21 Oct): every picture the ovarian foods name is on disk, small, and the rest keep their emoji');
   var d = JSON.parse(fs.readFileSync(path.join(root, 'assets/data/ovarian-foods.json'), 'utf8')), withPic = d.foods.filter(function (f) { return f.img; }), missing = withPic.filter(function (f) { return !fs.existsSync(path.join(root, f.img)); });
-  check('fourteen foods carry an Ovuluna picture and every file exists under assets/food', withPic.length === 14 && missing.length === 0, JSON.stringify(missing.map(function (f) { return f.img; })));
+  (function () {
+    var fsrc = fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), ksrc = fs.readFileSync(path.join(root, 'ovu-kitchen.js'), 'utf8');
+    var crops = (/var CROPS = \{([\s\S]*?)\n  \};/.exec(fsrc) || [, ''])[1].match(/^    (\w+):/gm).map(function (x) { return x.trim().slice(0, -1); });
+    var dishes = (ksrc.match(/\{ id: '(\w+)', name: '[^']+', icon: '[^']+', (?:added: true, )?needs:/g) || []).map(function (x) { return /id: '(\w+)'/.exec(x)[1]; });
+    var miss = crops.map(function (k) { return 'assets/food/' + (k === 'sweetpotato' ? 'sweet-potato' : 'crop-' + k) + '.webp'; }).concat(dishes.map(function (d) { return 'assets/food/dish-' + d + '.webp'; })).filter(function (f) { return !fs.existsSync(path.join(root, f)); });
+    check('every crop and every dish has its picture (drawn 22 Oct), small enough for a phone', crops.length >= 10 && dishes.length >= 10 && miss.length === 0, miss.join());
+  })();
+  check('every food card carries a picture (14 from Ovuluna, 10 drawn 22 Oct in the same style) and every file exists under assets/food', withPic.length === d.foods.length && missing.length === 0, JSON.stringify(missing.map(function (f) { return f.img; })));
   check('every food still has an emoji, so the ones without a picture draw as before', d.foods.every(function (f) { return f.emoji; }));
   var big = withPic.filter(function (f) { return fs.statSync(path.join(root, f.img)).size > 40000; });
   check('the pictures are small (under 40 KB each)', big.length === 0, big.map(function (f) { return f.img; }).join());
