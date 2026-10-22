@@ -3704,9 +3704,12 @@ var summarised = false;
   (function noEmoji() {
     /* Jamie, 22 Oct: "never put such emoji, it must always be generated. everything has to be aesthetically cute". Nothing the
        app serves holds an emoji character; tables that must match emoji typed elsewhere write them as escapes */
-    var bad = [], re = /\p{Extended_Pictographic}/u;
-    (function walk(d) { fs.readdirSync(d, { withFileTypes: true }).forEach(function (e) { var p = path.join(d, e.name); if (e.isDirectory()) { if (['node_modules', '.git', 'tools', 'docs', 'supabase', 'ios', 'android', 'store'].indexOf(e.name) < 0) walk(p); } else if (/\.(html|js|css|json|webmanifest)$/.test(e.name) && re.test(fs.readFileSync(p, 'utf8'))) bad.push(path.relative(root, p)); }); })(root);
+    /* pictographs, flags (regional indicator pairs) and keycaps (a digit, # or * with U+20E3) */
+    var bad = [], re = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u;
+    (function walk(d) { fs.readdirSync(d, { withFileTypes: true }).forEach(function (e) { var p = path.join(d, e.name); if (e.isDirectory()) { if (['node_modules', '.git', 'tools', 'docs', 'supabase', 'ios', 'android', 'store'].indexOf(e.name) < 0) walk(p); } else if (/\.(html|js|css|json|webmanifest|svg|txt)$/.test(e.name) && re.test(fs.readFileSync(p, 'utf8'))) bad.push(path.relative(root, p)); }); })(root);
     check('no emoji anywhere the app serves: pages, scripts, styles and data (icons and drawn pictures instead)', bad.length === 0, bad.join());
+    var flag = String.fromCodePoint(0x1F1F8, 0x1F1EC), keycap = '1\uFE0F\u20E3', moon = String.fromCodePoint(0x1F319);
+    check('the emoji check itself catches a moon in a JS string, the Singapore flag and a keycap, and passes plain marks (check, cross, middle dot)', re.test("var t = '" + moon + "';") && re.test('<text>' + flag + '</text>') && re.test('Step ' + keycap) && !re.test('\u2713 \u2715 \u00b7 \u2192 no emoji'));
   })();
   console.log('food pictures (21 Oct): every picture the ovarian foods name is on disk and small; no emoji (22 Oct)');
   var d = JSON.parse(fs.readFileSync(path.join(root, 'assets/data/ovarian-foods.json'), 'utf8')), withPic = d.foods.filter(function (f) { return f.img; }), missing = withPic.filter(function (f) { return !fs.existsSync(path.join(root, f.img)); });
