@@ -91,6 +91,8 @@
       else if (k === 'egg') f.pantry.egg = n0(f.pantry.egg) - n;
       else f.kitchen[k] = n0(f.kitchen[k]) - n;
     });
+    /* the dish stays in her bag, Harvest Moon style (Jamie, 22 Oct: "dishes can be used to court the NPC"): up to 99 of each; game state only */
+    f.dishes = Object.assign({}, f.dishes || {}); f.dishes[r.id] = Math.min(99, n0(f.dishes[r.id]) + 1);
     try { if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f }); } catch (e) { return { ok: false, why: 'That could not be saved just now.' }; } /* commit: a failed save leaves memory as it was */
     return { ok: true, recipe: r };
   }
@@ -166,7 +168,7 @@
       '<div class="dishpic"><img src="assets/food/dish-' + r.id + '.webp" alt="' + esc(r.name) + '"></div><p>' + esc(r.name) + ' is ready.</p>' + mind(line) +
       '<p><b>Did you eat something like this today?</b></p>' +
       '<div class="row"><button type="button" class="btn primary" id="dishYes"><span class="ms">restaurant</span>Yes, open the diary</button><button type="button" class="btn soft" id="dishNo">No</button></div>' +
-      '<p class="help">Only a meal you really ate. The kitchen never logs anything for you.</p>');
+      '<p class="help">It is in your bag now, to share. The diary only gets a meal you really ate.</p>');
     var y = doc.getElementById('dishYes'), n = doc.getElementById('dishNo');
     if (y) y.addEventListener('click', function () { R.chime('tap'); if (R.openDiary) R.openDiary('add', { notes: r.name + ', cooked at home', tags: ['home-cooked'] }); else R.hideSheet(); });
     if (n) n.addEventListener('click', function () { R.chime('tap'); R.hideSheet(); });

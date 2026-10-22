@@ -78,6 +78,7 @@
       .concat(Object.keys(growing).map(function (h) { return { name: herbs[h].name, sub: growing[h] === 1 ? 'Growing in a planter' : 'Growing in ' + growing[h] + ' planters' }; }));
     var st = c.staples || {}, sn = c.stapleNames || {};
     var kitchen = Object.keys(st).filter(function (k) { return n0(st[k]) && sn[k] && !sn[k].pantry; }).map(function (k) { return { name: sn[k].name, count: n0(st[k]) }; });
+    var dn = c.dishNames || {}, dishes = Object.keys(f.dishes || {}).filter(function (k) { return n0(f.dishes[k]) && dn[k]; }).map(function (k) { return { name: dn[k], count: n0(f.dishes[k]), img: 'assets/food/dish-' + k + '.webp' }; });
     var book = c.book || {}, sp = c.speciesNames || {};
     var harbour = Object.keys(book).filter(function (k) { return book[k] && n0(book[k].n) && sp[k]; }).map(function (k) { return { name: sp[k].name, count: n0(book[k].n), sub: 'met' }; });
     if (harbour.length && n0(c.casts)) harbour.push({ name: count(n0(c.casts), 'cast', 'casts'), sub: 'so far' });
@@ -90,6 +91,7 @@
       { id: 'wardrobe', icon: 'checkroom', title: 'Wardrobe', rows: wardrobe, empty: 'Your outfits live in the wardrobe.', go: { id: 'wardrobe', label: 'Wardrobe' } },
       { id: 'farm', icon: 'agriculture', title: 'Farm basket and shed', rows: farm, empty: 'The basket is empty. The shed gives seeds every day.', go: { id: 'basket', label: 'Basket' } },
       { id: 'greenhouse', icon: 'potted_plant', title: 'Greenhouse', rows: greenhouse, empty: 'Nothing planted yet. The greenhouse gives a free start.' },
+      { id: 'dishes', icon: 'restaurant', title: 'Dishes in your bag', rows: dishes, empty: 'No dishes yet. Cook in a kitchen and they stay here to share.', go: { id: 'kitchen', label: 'Kitchen' } },
       { id: 'kitchen', icon: 'skillet', title: 'Kitchen staples', rows: kitchen, empty: 'No staples yet. The grocer on the lane sells rice, noodles, tofu and more.', go: { id: 'kitchen', label: 'Kitchen' } },
       { id: 'harbour', icon: 'sailing', title: 'Harbour and lane', rows: harbour.concat(lane), empty: 'No fish met yet. The harbour is past the lane.' }
     ];
@@ -122,7 +124,7 @@
     var hb = HB && HB.harbourState ? HB.harbourState(S) : {}, ln = LN && LN.laneState ? LN.laneState(S) : {}, species = {}, floats = {};
     ((HB && HB.SPECIES) || []).forEach(function (s) { species[s.id] = s; }); ((LN && LN.FLOATS) || []).forEach(function (f) { floats[f.id] = f; });
     return { hearts: l.hearts, earned: l.earned, items: RW ? RW.SHOP : [], owned: l.owned || [], placed: l.placed || {}, treats: l.treats || {}, wear: l.wear || {}, petNames: PT ? PT.NAMES : {}, homeId: R.homeId ? R.homeId() : null,
-      farm: farm, crops: FM ? FM.CROPS : {}, tools: FM ? FM.TOOLS : {}, herbs: GH ? GH.HERBS : {}, herbSeeds: g.seeds || {}, herbBeds: g.beds || {}, staples: K && K.staplesOf ? K.staplesOf(S) : {}, stapleNames: K ? K.STAPLES : {},
+      farm: farm, crops: FM ? FM.CROPS : {}, tools: FM ? FM.TOOLS : {}, herbs: GH ? GH.HERBS : {}, herbSeeds: g.seeds || {}, herbBeds: g.beds || {}, staples: K && K.staplesOf ? K.staplesOf(S) : {}, stapleNames: K ? K.STAPLES : {}, dishNames: K && K.RECIPES ? K.RECIPES.reduce(function (o, r) { o[r.id] = r.name; return o; }, {}) : {},
       outfits: R.OUTFITS || [], outfit: S.profile().outfit || 'base', book: hb.book || {}, speciesNames: species, casts: hb.casts, floats: ln.floats || {}, float: ln.float, floatNames: floats, letters: ln.letters || [] };
   }
   /* which buttons can do something here: a missing module hides its button rather than showing one that does nothing */
@@ -167,7 +169,7 @@
     var h = '<h2>Inventory</h2><div class="invhearts"><span class="ms" aria-hidden="true">favorite</span><div><b>' + m.hearts + ' hearts</b><small>' + (m.earned ? m.earned + ' earned in all' : 'Daily check-ins earn hearts') + '</small></div>' + (can('shop') ? '<button type="button" class="btn soft" data-today="shop"><span class="ms" aria-hidden="true">storefront</span>Shop</button>' : '') + '</div>';
     m.sections.forEach(function (s) {
       h += '<section class="invsec"><h3><span class="ms" aria-hidden="true">' + esc(s.icon) + '</span>' + esc(s.title) + (s.rows.length ? ' <small>' + s.rows.length + '</small>' : '') + '</h3>';
-      h += s.rows.length ? '<ul class="invlist">' + s.rows.map(function (r) { return '<li><b>' + esc(r.name) + '</b>' + (r.count ? '<i>' + r.count + '</i>' : '') + (r.sub ? '<span>' + esc(r.sub) + '</span>' : '') + '</li>'; }).join('') + '</ul>' : '<p class="help">' + esc(s.empty) + '</p>';
+      h += s.rows.length ? '<ul class="invlist">' + s.rows.map(function (r) { return '<li>' + (r.img ? '<img class="invpic" src="' + esc(r.img) + '" alt="">' : '') + '<b>' + esc(r.name) + '</b>' + (r.count ? '<i>' + r.count + '</i>' : '') + (r.sub ? '<span>' + esc(r.sub) + '</span>' : '') + '</li>'; }).join('') + '</ul>' : '<p class="help">' + esc(s.empty) + '</p>';
       if (s.go && can(s.go.id)) h += '<button type="button" class="invgo" data-today="' + esc(s.go.id) + '">' + esc(s.go.label) + '<span class="ms" aria-hidden="true">chevron_right</span></button>';
       h += '</section>';
     });
