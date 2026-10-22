@@ -2468,3 +2468,16 @@ html[data-mindful=quick] .mindline:not(.keep){display:none}
 .stat b .spill{display:inline-block;margin-left:4px;padding:2px 7px;border-radius:99px;background:var(--rm-lilac-2);color:var(--rm-plum);font:800 9.5px var(--sans);letter-spacing:.05em;text-transform:uppercase;vertical-align:1px}
 .ygroup .stat{margin-top:0}
 .ygroup .stat span:not(.ms):not(.spill){display:block;line-height:1.45;margin-top:2px}
+
+/* Tideline Gym workouts (ovu-gym.js, 22 Oct): her strip on the machine, feet on the cell's bottom edge, clipped where the
+   plate stands in front of her; a flipped station mirrors the cell, not the strip, so the frame step still works */
+.nb.gymworker{transform:translate(-50%,-100%);pointer-events:none;--cs:.55}
+.nb.gymworker .gwcell{position:relative;width:100%;overflow:hidden}
+.nb.gymworker .gwcell img{position:absolute;left:0;top:0;height:100%;max-width:none;display:block;will-change:transform,opacity}
+.nb.gymworker .gwcell img.gwb{opacity:0}
+.nb.gymworker.flip .gwcell{transform:scaleX(-1)}
+.nb.gymworker.flip img{transform:none}
+.nb.gym-treadmill::before,.nb.gym-bike::before{display:none}
+.mvfrom{font-weight:700;color:var(--rm-plum)}
+@media (prefers-reduced-motion:reduce){.nb.gymworker .gwcell img{transition:none!important}}
+#scene.gymming .hotspot .pulse{opacity:0} /* no tap rings over her while she works out */

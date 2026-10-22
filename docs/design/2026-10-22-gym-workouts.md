@@ -1,0 +1,144 @@
+# Tideline Gym: workouts she does on the equipment (22 Oct 2026)
+
+Jamie asked for gym animations on the treadmill, the weights and the yoga mat, with her changing into a workout outfit
+automatically, "Animal Crossing style". The session that started this one added the bike (pedalling) so all four stations
+of `ovu-lanescene.js` GYMSPOTS become things she does. Today each station only opens the movement log with its activity
+chosen (`R.openExercise(act)`).
+
+## What she sees
+
+1. She taps a station (treadmill, bike, mats, weights). The room's own tap walks her to its stand point (unchanged
+   GYMSPOTS `wp`), then the station's sheet opens: its line from `OvuLane.STATIONS`, a length (5, 10, 15, 20 or 30 minutes,
+   10 chosen), **Begin**, and **Just log movement** (today's path: the movement log with the activity chosen), plus one
+   safety line and the world-wide emergency line.
+2. Begin: she turns into her workout clothes with the existing twirl (room.js `twirl`, one and a half turns; no turn under
+   reduced motion or on a hidden page). The clothes are the Mint yoga set (`yoga`); if her saved outfit is the tudung
+   (`tudung`), a covered-head gym kit instead (`gym-tudung`: long-sleeved mint top to the hips, loose lilac trousers, white
+   trainers, a lilac sports tudung covering hair, ears and neck). If she already wears the yoga set there is no turn.
+3. She steps onto the equipment: her standing picture is hidden and a frame strip plays on the machine, in the same
+   picture scale as her walk strips (one cell per frame, scaled so her head and height match her standing sprite):
+   - treadmill: walking in place on the belt, facing the console (her existing 8-frame side walk strip for the yoga set;
+     a new side strip for `gym-tudung`, which also gives that kit a walk cycle);
+   - bike: seated and pedalling, two frames (her on a small pastel exercise bike, drawn to cover the plate's bike);
+   - weights: slow curls with two small dumbbells, two frames cross-faded (about 2 s up, 2 s down);
+   - mats: a slow standing flow of four poses (mountain, arms overhead, tree, warrior two), each held about 5 s and
+     cross-faded. Standing poses only, so nothing reads as a clinical instruction and her size never changes.
+   Under reduced motion each station shows one still frame and nothing moves.
+4. A small panel (the seats panel's shape, its own ids) shows the station, a clock that counts up ("3:12 of 10 min"),
+   the station line, **Pause** / **Resume** and **Stop**. The clock sits outside the spoken status.
+5. When the length is reached, or she taps Stop: the strip goes, she stands at the stand point in her workout clothes, and
+   turns back into her own saved outfit (`savedOutfit()` at that moment, so a pick made meanwhile wins). Then, if she was
+   moving for a minute or more of active time (unrounded: 59.9 s is not a minute), the movement log opens with the activity
+   chosen and the minutes filled in from the clock, and a line at the top: "About N minutes on the treadmill. Save it if
+   you really moved too." Everything else in that sheet is today's contract unchanged: she picks how it went (variant),
+   the strength tick is pre-ticked for strength work and never locked, the date, the note, **Save** is the only write
+   (`EX.makeEntry` then `S.add('exercise', ...)` then `afterSave`, hearts as today). Under a minute: one toast, "Stopped.
+   Nothing under a minute is recorded.", and no sheet. If another sheet is open when the workout ends, the log waits until
+   it closes (the seats' rule), unless she falls asleep.
+
+Nothing in the gym writes a store entry, state, hearts or energy by itself (checkpoint 29). The workout clothes are a
+picture only and are never saved (checkpoint 2: the change happens because she began a workout, and it is undone).
+
+## Ownership and endings
+
+- **One activity at a time.** `room.js activityNow()` reports `{ kind: 'gym' }` while a workout runs; `refuseBusy()`
+  brings its panel back; `R.busy()` includes it (no tap-walks, no travel, no relayout from a game-save pull); `tap()`
+  answers other hotspots with "Stop to get off first." (the bed still opens, so bedtime ends it). Begin is refused while
+  anything else runs. Starting emits `activity('gym', id)` first, so a try-on, a greenhouse minute or a care step steps
+  aside; any other `activity` event cancels the workout.
+- **Endings.** Stop or the planned length: finish with the turn back and the log offer. Pause: the clock holds and the
+  frames freeze. A hidden page pauses (the clock never counts hidden time; she comes back to Resume or Stop). Leaving the
+  gym (layout event), sleep (stopEverything, or a state change to sleeping), clearing or importing data, or another
+  activity: cancel at once, her own clothes put back silently, nothing asked. A walk that starts anyway (beforeWalk; walks
+  are refused while busy, so this is a safety net): finish early, clothes back silently, the log offered if a minute or more.
+  A cloud pull (`sync`) changes nothing she is doing: it re-checks sleep (cancel if asleep) and redraws the strip if the
+  props layer was rebuilt; the workout keeps going.
+- **Never half dressed or invisible.** room.js owns the clothes: `dressFor(id)` sets a memory-only costume (like a try-on;
+  `wearing()` returns it so a blink or a pose draws the right clothes), `undress(silent)` puts `savedOutfit()` back. room.js
+  itself drops the costume on any layout change away from the room it began in and in `stopEverything`, so even a gym bug
+  cannot leave her in it. The standing avatar is hidden only while the strip element is mounted; unmounting always shows
+  her at the stand point. A strip that fails to load leaves her standing at the machine in her workout clothes, visible,
+  with the clock still running.
+- **setOutfit during a workout** (the wardrobe from You): the pick is saved and she turns into it when the workout ends.
+
+## Placement
+
+Positions read off a 1% grid of `shop-gym-2f-v1.webp` (1024x1280). The stand points stay where they are and clear of the
+coach the shopkeepers branch adds (feet 40.5, 53.2, block x 38.5 to 42.5, y 51.8 to 54.6). The strip element is a `.nb`
+in `#ownedProps`, depth-sorted with her and the pets by its feet:
+
+| station  | stand point | on the machine (feet) | faces | hidden behind |
+|----------|-------------|-----------------------|-------|---------------|
+| treadmill| 33, 58      | 33.8, 64.6 (the belt's visible end) | left, to the console | the window arch's right column (x < 30.3) |
+| bike     | 39, 60      | 36, 75.5 (her bike's base, behind the wall like the plate's bike, which hers covers) | left | the low front wall (its top edge, about y 70.3 at x 30 to 73.5 at x 40), the window arch (x < 30.2) and the door's arch (x > 42.3) |
+| mats     | 46, 56      | about 48.5, 60.2 (the mint mat)           | viewer | nothing |
+| weights  | 55, 56      | about 55.5, 56.5 (in front of the rack)   | viewer | nothing |
+
+Occlusion is a CSS `clip-path` polygon on the strip element, given in plate percent per station and converted to the
+element's own percent (pure, tested), so no plate cutout or night-veil copy is needed and night mode stays as it is.
+
+## Art (one guarded run, Seedream 5.0 pro, 1024 or 2048x1024, prompts under 600 characters, no retries)
+
+References are her sprites composited onto pure #00FF00 (gen.py sends references as JPEG, so transparency would be lost).
+
+1. `gym-tudung` standing: two references (the yoga set standing, the tudung standing), the tudung renders' proven
+   two-reference wording.
+2. Yoga set: bike frame A (her on a small exercise bike, side view facing left, one knee up); bike frame B as an edit of
+   A (only the legs, the pedals half a turn on); weights frame A (dumbbells down) and B as an edit of A (curled up); a
+   2048x1024 sheet of the four flow poses.
+3. `gym-tudung`: the same four with the yoga renders and the `gym-tudung` standing render as references, plus an 8-frame
+   side walk sheet (the walk sheets' proven prompt).
+
+Keyed with `keyflood.py`, sliced and scaled with `walkcycle.py` (`--match height` for standing frames, a head-band match
+for the seated bike), so she never changes size. `gym-tudung` also gets its blink frame from `make_blink.py` (no model).
+The run stops on its first failure and persists BLOCKED.json; nothing is retried.
+
+## Tests
+
+- Core (`tools/test-core.js`): stations match GYMSPOTS and STATIONS; every strip and its sidecar exist for both kits and
+  have the frame count the station plays; frame maths (loop, cross-fade, still under reduced motion); clip conversion;
+  minutes (59.9 s is nothing, 60 s is one minute, rounding); the workout kit (`tudung` -> `gym-tudung`, anything else ->
+  `yoga`); stand points and machine spots clear of the coach's block; no store write, hearts or state in ovu-gym.js;
+  room.js costume rules (layout drop, stopEverything, setOutfit leaves the costume, wearing()); handlers in a vm with
+  stand-ins (Begin refused while busy or asleep or shut; any other activity cancels; the end offers the log only past a
+  minute).
+- Browser (`tools/e2e_smoke.py`): in the gym, tap the treadmill, Begin 5 minutes, she twirls into the yoga set, the
+  strip plays on the belt and the avatar is hidden; Pause freezes the clock; Stop under a minute puts her own clothes
+  back, shows her, writes nothing; a run with the clock advanced past a minute opens the movement log with walking and
+  the minutes filled, and Save writes one exercise entry; the tudung kit for a tudung wearer; leaving the gym mid-run
+  and bedtime mid-run put her own clothes back with nothing written; reduced motion shows one still frame.
+
+## Open questions for review
+
+- Is "hidden page pauses" right for a workout (a person may lock the phone on a treadmill), or should hiding end it with
+  the log offer, as a PULSE break does?
+- Is the movement log, prefilled, the right place to confirm, or should the gym ask "Save?" first like the seats?
+- Any risk in a costume that is not a wardrobe outfit (`gym-tudung`) flowing through `wearing()` (walk strips, blink,
+  poses, the boutique accessory layer)?
+
+## After the Codex design review (BUILD WITH CHANGES, docs/design/reviews/2026-10-22-codex-gym-design.md)
+
+- Costume ownership: room.js `dressFor`/`undress` own the picture through the same image generation counter as every
+  other picture, so a newer picture or a cancel drops a pending turn; a wardrobe pick during a workout is saved and never
+  replaces the costume; she is hidden only once the strip is decoded.
+- Cleanup never moves her out of a new scene or shows her over bedtime or the mat: she is placed back at the stand point
+  only while she is still in the gym and awake; a new scene does not show her by itself, so the gym shows her again.
+- The bed ends the workout first (the walk home refuses while busy); `goHome`, `walkTo` and the idle moments leave her
+  on the machine; sign-out or another account cancels it; the panel goes inert behind the sign-in wall.
+- A log offer is tokened: anything else starting, bedtime, leaving the gym or the account changing drops it, and it is
+  rechecked (no activity, still in the gym, awake, no other sheet) before it opens.
+- A props rebuild (a game-save pull) re-attaches the strip with its clock and frame; the strip is never a solid.
+- The clock is monotonic (performance.now), counts only while she is on the machine and running, stops where it was last
+  seen after a frozen page, and never passes the chosen length.
+- The gym's offer leaves the strength-day tick for her to give (`openExercise(act, { strengthTick: false })`).
+- Hidden pages pause with Resume (her answer to open question 1), the panel saying that time away is not counted; the
+  prefilled movement log is the confirmation (question 2); `gym-tudung` is never a wardrobe outfit, a try-on cannot keep
+  it, and the boutique's exact-sprite accessory rule hides any piece over it (question 3).
+
+## As built
+
+Twelve renders in one guarded run (28 to 43 s each, no failure). Final placements: treadmill feet at 33.8, 64.6 (her
+walk strip, flipped to face the console); bike base at 36, 75.5, so her bike covers the plate's and its base sits behind
+the low wall; mat 48.5, 60.2; weights 55.5, 56.5. Strips: `tools/art/gymstrip.py` (new) for the bike, weights and mat,
+`tools/art/walkcycle.py` for the covered-head kit's side walk. Known small art notes: the star brooch on the covered-head
+kit shows in five of its eight walk frames, and its blink has faint smudges at the eye edges visible only when zoomed.

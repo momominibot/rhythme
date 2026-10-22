@@ -132,9 +132,13 @@
    * shown, never saved. `trying` lives in memory, tied to the room it began in; her own pictures (a blink, a pose) read
    * wearing(), and everything saved or shared (sleep, the mat, the plaza, the other scenes) reads profile.outfit */
   var trying = null, tryTok = 0;
+  /* the gym's workout clothes (ovu-gym.js, Jamie, 22 Oct): like a try-on, a picture only, never saved, tied to the room it
+   * began in; she turns back into her own clothes when the workout ends, and this file drops it on any way out of that room
+   * and at bedtime, so nothing can leave her in it */
+  var costume = null;
   function isOutfit(id) { return OUTFITS.some(function (x) { return x.id === id; }); }
   function savedOutfit() { var o = S.profile().outfit || 'base'; return isOutfit(o) && !outfitLocked(o) ? o : 'base'; }
-  function wearing() { return trying ? trying.outfit : savedOutfit(); }
+  function wearing() { return trying ? trying.outfit : costume ? costume.outfit : savedOutfit(); }
   var VIDEOS = [
     ['normal', 'normal-v4.mp4', 'A normal cycle', 'What typical looks like'],
     ['hormones', 'hormones-v4.mp4', 'Hormones', 'Oestrogen & progesterone'],
@@ -522,7 +526,7 @@
     if (!isOutfit(id)) id = 'base';
     if (outfitLocked(id)) id = 'base'; /* a drop needs Plus on this phone; a stale profile never dresses her in it */
     if (trying) { trying = null; tryTok++; emit('tryon', null); } /* choosing from the wardrobe ends a try-on */
-    showOutfit(id, silent);
+    if (!costume) showOutfit(id, silent); /* in the gym's workout clothes her pick is saved and she turns into it when the workout ends */
     S.setProfile({ outfit: id });
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
     if (!silent) redress();
@@ -574,6 +578,35 @@
     } else showOutfit(own, reduced);
     emit('tryon', null); return true;
   }
+  /* the gym's workout clothes: she turns into them (or, when she cannot turn, simply wears them); done(ok) once the picture
+   * is on her, or never if something newer took her picture first (the gym keeps its own timer) */
+  function turnInto(id, done) {
+    var img = new Image(), gen = ++imgGen;
+    img.onerror = function () { if (gen === imgGen && done) done(false); };
+    img.onload = function () {
+      if (gen !== imgGen) return;
+      if (twirlOk() && spriteKey() !== id) { twirl(img.src, false, function () { if (gen === imgGen && done) done(true); }, gen); return; }
+      finishTwirl(); avatarImg.src = img.src; if (done) done(true);
+    };
+    preloadBlink(id); img.src = ART + 'avatar-' + id + '.webp';
+  }
+  function dressFor(id, done) {
+    if (!/^[a-z0-9-]{1,32}$/.test(id || '') || asleep()) return false;
+    if (trying) endTryOn(true);
+    costume = { outfit: id, at: L.id }; quietMoment();
+    turnInto(id, done); return true;
+  }
+  /* back into her own saved clothes (a pick made meanwhile wins). silent: at once, no turn (leaving the room, bedtime) */
+  function undress(silent, done) {
+    if (!costume) return false;
+    costume = null; var own = savedOutfit();
+    if (silent) {
+      ++imgGen; finishTwirl(); quietMoment();
+      if (!avatar.classList.contains('hidden') || (avatarImg.getAttribute('src') || '').indexOf('/avatar-act-') < 0) avatarImg.src = ART + 'avatar-' + own + '.webp';
+      if (done) done(true); return true;
+    }
+    turnInto(own, done); return true;
+  }
   /* Keep: an outfit she has (and the accessory) becomes hers to wear, free, as the wardrobe has always been; the only save */
   function keepTryOn() {
     if (!trying) return { ok: false, why: 'Nothing to keep.' };
@@ -588,6 +621,7 @@
   function sameFloor(a, b) { if (!L.stairs) return true; return (a.y < L.upstairsY) === (b.y < L.upstairsY); }
   function walkTo(wp, done) {
     if (window.OvuMorning && OvuMorning.active()) return; /* Morning start: she stays where she is (Codex review) */
+    if ((window.OvuGym && OvuGym.active && OvuGym.active())) return; /* on a gym machine she stays on it; Stop brings her off (Codex design review, 22 Oct) */
     finishTwirl(); /* a walk never starts mid-turn: she finishes dressed in what she chose */
     if (done) { var d0 = done; done = function () { if (window.OvuMorning && OvuMorning.active()) return; d0(); }; } /* a walk begun before Morning start never opens a sheet over it */
     if (wp && !reduced && hooks.walkTo && hooks.walkTo(wp, function () { avatar.classList.toggle('flip', !!wp.flip); scheduleLife(); done && done(); })) return; /* routed around furniture, with her walk cycle */
@@ -624,7 +658,7 @@
     if (isFinite(x) && isFinite(y)) placeAvatar({ x: x, y: y }, avatar.classList.contains('flip'));
     avatar.classList.remove('walking', 'landing'); avatar.classList.add('idle');
   }
-  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (twirlRun || Date.now() - twirlEnded < 1800) { if (current || practice || session || meditating || arranging || asleep()) return; goHome(); return; } /* she finishes turning, hops and says her line before walking home; anything else starting cancels it */ if (!practice && !session && !S.state().sleeping && !meditating && !current && !arranging && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
+  function goHome() { clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (twirlRun || Date.now() - twirlEnded < 1800) { if (current || practice || session || meditating || arranging || asleep()) return; goHome(); return; } /* she finishes turning, hops and says her line before walking home; anything else starting cancels it */ if (!practice && !session && !S.state().sleeping && !meditating && !current && !arranging && !(window.OvuMorning && OvuMorning.active()) && !(window.OvuSeats && OvuSeats.active()) && !(window.OvuGym && OvuGym.active && OvuGym.active()) && !(hooks.moving && hooks.moving())) walkTo(HOME); }, 1400); }
 
   /* ---------- sheets ---------- */
   var sheet = $('#sheet'), veil = $('#veil'), body = $('#sheetBody'), current = null, sheetSeq = 0; /* counts sheets opened, so a delayed open can tell if she moved on */
@@ -662,6 +696,7 @@
       toast('Morning start is running. Stop it first, or carry on.', 'wb_twilight'); return;
     }
     if (window.OvuSeats && OvuSeats.active()) { if (h.id === 'bed') { openSheetFor('bed'); return; } toast('Stop to get up first.', 'chair'); return; }
+    if (window.OvuGym && OvuGym.active && OvuGym.active()) { if (h.id === 'bed') { OvuGym.cancel(); toast('Workout stopped for bedtime.', 'bedtime'); openSheetFor('bed'); return; } toast('Stop to get off first.', 'fitness_center'); if (OvuGym.reveal) OvuGym.reveal(); return; } /* a gym workout: she stays on the machine; the bed ends it first, since the walk home refuses while she is busy (Codex design review, 22 Oct) */
     if (practice) { if (h.id === 'bed') { openSheetFor('bed'); return; } toast('Finish the practice first, or tap Stop.', 'self_improvement'); return; } /* never a straight walk through the furniture (Codex sweep, 21 Oct) */ /* a seated practice (ovu-seats.js): she stays on the bench */
     var btn = $('.hotspot[data-id="' + h.id + '"]'); if (btn) { btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump'); }
     chime('tap'); hideBubble(); clearTimeout(idleTimer); /* a pending walk home must not cancel this walk */
@@ -930,6 +965,8 @@
     try { if (window.OvuLightFlower) OvuLightFlower.close(); } catch (e) { }
     try { if (window.OvuMorning) OvuMorning.cancel(); } catch (e) { } /* Morning start ends at once, with no save prompt */
     try { if (window.OvuSeats) OvuSeats.cancel(); } catch (e) { } /* so does a bench practice */
+    try { if (window.OvuGym && OvuGym.cancel) OvuGym.cancel(); } catch (e) { } /* and a gym workout, with nothing asked */
+    try { undress(true); } catch (e) { } /* she never sleeps in the gym's workout clothes */
     try { if (hooks.hudStop) hooks.hudStop(); } catch (e) { }
     clearTimeout(fadeTimer); fadeTimer = null; clearTimeout(medTimer); meditating = false; meditator.classList.remove('on'); $('#aura').classList.remove('on'); holo.classList.remove('on');
     hud.classList.remove('on'); avatar.classList.remove('acting'); hudClockStop();
@@ -2272,6 +2309,7 @@
     if (window.OvuMorning && OvuMorning.active()) return { kind: 'morning', name: 'Morning start', icon: 'wb_twilight' };
     if (window.OvuSeats && OvuSeats.active()) { var st = OvuSeats.state(), seat = st && OvuSeats.SEATS[st.seat], sc = seat && OvuSeats.SCRIPTS[seat.practice]; return { kind: 'seat', name: sc ? sc.name : 'The bench practice', icon: 'chair' }; }
     if (pulseRun) return { kind: 'pulse', name: 'The PULSE break', icon: 'directions_run' }; /* a running PULSE break is an activity too (Codex, 22 Oct) */
+    if (window.OvuGym && OvuGym.active && OvuGym.active()) { var gs = OvuGym.state(); return { kind: 'gym', name: gs && gs.title ? gs.title : 'Your workout', icon: 'fitness_center' }; } /* a gym workout (ovu-gym.js) */
     return null;
   }
   function busyLine(a) { return a.name + ' is running. Finish it, or tap Stop first.'; }
@@ -2282,6 +2320,7 @@
     else if (a.kind === 'morning' && OvuMorning.reveal) OvuMorning.reveal();
     else if (a.kind === 'seat' && OvuSeats.reveal) OvuSeats.reveal();
     else if (a.kind === 'pulse' && current !== 'pulse') pulseCancel(); /* its sheet is gone: the break has already ended */
+    else if (a.kind === 'gym' && OvuGym.reveal) OvuGym.reveal();
     return true;
   }
   /* meditating and sleeping are drawn in what she is wearing (four-persona review, 20 Oct: the mat put everyone in the yoga set and
@@ -2665,20 +2704,25 @@
       });
     }
   }
-  function openExercise(pre) { /* pre: an activity id to choose at once (the gym's stations, ovu-lane.js) */
+  function openExercise(pre, opt) { /* pre: an activity id to choose at once (the gym's stations, ovu-lane.js); opt (a gym workout,
+    ovu-gym.js): { minutes, intro, date } fill the minutes from its clock and say where they came from; the save is unchanged */
     if (!EX) return;
+    opt = opt && typeof opt === 'object' ? opt : {};
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (meditating && !session) exitMeditation();
     var today = S.today(), from = EX.addDays(today, -6), wk = EX.week(S.list('exercise', { from: from, to: today }), today);
     var ctx = EX.periodContext(S.byDate(today)), recent = S.list('exercise', { from: from, to: today }).reverse().slice(0, 10);
     var st = { act: null, variant: null };
+    var preMin = Math.round(Number(opt.minutes)); if (!(preMin >= 1 && preMin <= EX.MAX_MINUTES)) preMin = 30;
+    var preDay = typeof opt.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(opt.date) && opt.date <= today ? opt.date : today;
     openSheet('move', 'Movement', 'Log what you did and see your week', 'directions_run',
+      (opt.intro ? '<p class="mintro mvfrom" id="mvFrom">' + esc(String(opt.intro)) + '</p>' : '') +
       (ctx ? movePeriodHTML(ctx) : '') + moveWeekHTML(wk) + pulseCardsHTML() +
       '<div class="field"><span class="lbl">What did you do?</span><div class="mvacts" id="mvActs">' + EX.ACTIVITIES.map(function (a) { return '<button type="button" class="mvact" data-mact="' + a.id + '" aria-pressed="false"><span class="ms">' + a.icon + '</span><span>' + esc(a.label) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="field" id="mvVarField" hidden><span class="lbl">How did it go?</span><div class="mvvars" id="mvVars"></div></div>' +
-      '<div class="field"><label for="mvMin">Minutes</label><input class="input" id="mvMin" type="number" inputmode="numeric" min="1" max="' + EX.MAX_MINUTES + '" step="1" value="30"><div class="chips mvquick" id="mvQuick">' + [10, 20, 30, 45, 60, 90].map(function (n) { return '<button type="button" class="chipbtn' + (n === 30 ? ' on' : '') + '" data-min="' + n + '">' + n + ' min</button>'; }).join('') + '</div></div>' +
+      '<div class="field"><label for="mvMin">Minutes</label><input class="input" id="mvMin" type="number" inputmode="numeric" min="1" max="' + EX.MAX_MINUTES + '" step="1" value="' + preMin + '"><div class="chips mvquick" id="mvQuick">' + [10, 20, 30, 45, 60, 90].map(function (n) { return '<button type="button" class="chipbtn' + (n === preMin ? ' on' : '') + '" data-min="' + n + '">' + n + ' min</button>'; }).join('') + '</div></div>' +
       '<label class="mvcheck"><input type="checkbox" id="mvStr"><span>' + esc(EX.COPY.strengthTick) + '</span></label>' +
-      '<div class="field"><label for="mvDate">Day</label><input class="input" id="mvDate" type="date" max="' + today + '" value="' + today + '"></div>' +
+      '<div class="field"><label for="mvDate">Day</label><input class="input" id="mvDate" type="date" max="' + today + '" value="' + preDay + '"></div>' +
       '<div class="field"><label for="mvNote">Note (optional)</label><input class="input" id="mvNote" maxlength="280" placeholder="How it felt, where you went"></div>' +
       '<p class="mvpreview" id="mvPreview">Choose what you did to see its MET value.</p>' +
       '<div class="row"><button type="button" class="btn primary" id="mvSave"><span class="ms">check</span>Save</button></div><div class="msg" id="mvMsg"></div>' +
@@ -2724,6 +2768,7 @@
     $('#mvGuide').addEventListener('click', function () { chime('tap'); openMoveGuide(); });
     var pc = $('#pulseCards'); if (pc) pc.addEventListener('click', function (e) { var b = e.target.closest('[data-pulse]'); if (!b) return; chime('tap'); openPulse(b.dataset.pulse); });
     if (typeof pre === 'string') { var pb = actsBox.querySelector('[data-mact="' + pre + '"]'); if (pb) pb.click(); }
+    if (opt.strengthTick === false) { $('#mvStr').checked = false; preview(); } /* a few curls at the gym never pre-confirm a whole strength day: she ticks it if it was (Codex design review, 22 Oct) */
   }
   function openMoveGuide() {
     if (!EX) return;
@@ -2983,7 +3028,7 @@
   var LIFE_MOMENTS = false;
   function scheduleLife() { clearTimeout(lifeTimer); if (reduced || !LIFE_MOMENTS) return; lifeTimer = setTimeout(lifeMoment, 12000 + Math.random() * 14000); }
   function lifeMoment() {
-    if (S.state().sleeping || meditating || practice || current || arranging || lifeBusy || document.hidden || avatar.classList.contains('walking')) { scheduleLife(); return; }
+    if (S.state().sleeping || meditating || practice || current || arranging || lifeBusy || document.hidden || avatar.classList.contains('walking') || (window.OvuGym && OvuGym.active && OvuGym.active())) { scheduleLife(); return; }
     lifeBusy = true;
     var h = new Date().getHours(), pool = h < 11 ? ['coffee', 'stretch', 'plants', 'bed'] : h < 18 ? ['plants', 'pets', 'outfit', 'coffee'] : ['bed', 'stretch', 'pets', 'coffee'];
     var pose = pool[Math.floor(Math.random() * pool.length)];
@@ -3066,7 +3111,7 @@
    * fraction of the image]. Her head, and so her size, stays the same in every pose. The tudung covers less width than
    * her hair (the silhouette measures 1.16), so it keeps the knit's scale, matched by figure height like its pose copies,
    * and only its head centre is its own. */
-  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513],'tudung':[1.0,0.544],'gown':[1.403,0.518],'act-plants-gown':[1.581,0.574],'act-coffee-gown':[1.424,0.502],'act-teeth-gown':[1.355,0.542],'act-pets-gown':[1.538,0.454],'act-bed-gown':[1.775,0.571],'act-outfit-gown':[1.568,0.643],'act-stretch-gown':[1.502,0.569],'act-note-gown':[1.581,0.522],'act-eat-gown':[1.43,0.539],'act-listen-gown':[1.474,0.532],'act-read-gown':[1.486,0.531],'act-tend-gown':[1.372,0.4],'act-harvest-gown':[1.455,0.53],'act-wave-gown':[1.741,0.522],'act-press-gown':[1.533,0.519],'act-phone-gown':[1.395,0.518],'act-shop-gown':[1.427,0.505],'act-scale-gown':[1.592,0.504]}; /* the gown entries: a skirt wider than the base canvas keeps her height on a wider canvas (scratchpad gown/fit_all.py, 21 Oct) */
+  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513],'tudung':[1.0,0.544],'gym-tudung':[1.0,0.534],'gown':[1.403,0.518],'act-plants-gown':[1.581,0.574],'act-coffee-gown':[1.424,0.502],'act-teeth-gown':[1.355,0.542],'act-pets-gown':[1.538,0.454],'act-bed-gown':[1.775,0.571],'act-outfit-gown':[1.568,0.643],'act-stretch-gown':[1.502,0.569],'act-note-gown':[1.581,0.522],'act-eat-gown':[1.43,0.539],'act-listen-gown':[1.474,0.532],'act-read-gown':[1.486,0.531],'act-tend-gown':[1.372,0.4],'act-harvest-gown':[1.455,0.53],'act-wave-gown':[1.741,0.522],'act-press-gown':[1.533,0.519],'act-phone-gown':[1.395,0.518],'act-shop-gown':[1.427,0.505],'act-scale-gown':[1.592,0.504]}; /* the gown entries: a skirt wider than the base canvas keeps her height on a wider canvas (scratchpad gown/fit_all.py, 21 Oct) */
   function spriteKey() { var m = /avatar-([a-z0-9-]+?)(?:-blink)?\.webp/.exec(avatarImg.getAttribute('src') || ''); return m ? m[1] : null; }
   function fitFor(k) { return k ? AVATAR_FIT[k] || AVATAR_FIT[k.replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung|gown)$/, '')] || null : null; }
   function fitAvatar() {
@@ -3376,7 +3421,7 @@
   var wallWired = false;
   function wallOpen() { var w = $('#welcome'); return !!(w && !w.hidden); }
   /* while the wall is up the room behind it is inert: no tab stop, no screen-reader path, no tap reaches the diary (Codex, 21 Oct) */
-  function wallInert(on) { ['#main', '#lunaBtn', '#podMini', '#mpanel', 'nav.nav', '#sheet', '#veil', '#toast'].forEach(function (sel) { var el = document.querySelector(sel); if (el) { try { el.inert = !!on; } catch (e) { } } }); }
+  function wallInert(on) { ['#main', '#lunaBtn', '#podMini', '#mpanel', '#gpanel', 'nav.nav', '#sheet', '#veil', '#toast'].forEach(function (sel) { var el = document.querySelector(sel); if (el) { try { el.inert = !!on; } catch (e) { } } }); }
   function showWelcome() {
     var w = $('#welcome'); if (!w) return;
     var note = $('#wNote'); if (note) note.textContent = S.list().length ? 'Your diary on this phone is kept as it is. Sign in to carry on.' : 'A dreamy room where you log sleep, cycle, symptoms, meals and calm by tapping the things around you. Sign in to open it.';
@@ -3630,7 +3675,7 @@
   hooks.on.walk = [function () { finishTwirl(); endMoment(); }]; /* floor taps and keys start walks here: a turn finishes at once */
   /* a session or practice claims her (and could save in her clothes), or she leaves the room she was trying on in */
   hooks.on.activity = (hooks.on.activity || []).concat([function () { endTryOn(true); }]);
-  hooks.on.layout = (hooks.on.layout || []).concat([function (L2) { if (trying && (!L2 || L2.id !== trying.at)) endTryOn(true); }]);
+  hooks.on.layout = (hooks.on.layout || []).concat([function (L2) { if (trying && (!L2 || L2.id !== trying.at)) endTryOn(true); if (costume && (!L2 || L2.id !== costume.at)) undress(true); }]);
   function emit(name, a, b) { if (name === 'activity' || name === 'beforeWalk' || name === 'layout' || name === 'meditate') activityGen++; /* meditate too: a saved session's pending fade must not close a reopened Mind (Codex, 22 Oct) */ (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = { openCalendar: openCalendar, openScores: openScores, mindfulQuick: mindfulQuick, erinCuesOn: erinCuesOn,
     erin: erin, /* Erin's short line for an action, by id (assets/audio/erin-actions/lines.json) */
@@ -3642,12 +3687,12 @@
     setWalkTo: function (f) { hooks.walkTo = f; }, /* the walk engine routes her own walks around furniture; false hands a walk back to the straight line */
     layout: function () { return L; }, pos: function () { return { x: pos.x, y: pos.y }; }, visiting: function () { return visiting; }, homeId: currentHomeId,
     /* anything that should pause walking and scene changes */
-    busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || (window.OvuMorning && OvuMorning.active()) || (window.OvuSeats && OvuSeats.active()) || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },
+    busy: function () { var w = $('#welcome'), c = $('#consent'), ld = $('#loading'); return !!(current || S.state().sleeping || meditating || session || practice || (window.OvuMorning && OvuMorning.active()) || (window.OvuSeats && OvuSeats.active()) || (window.OvuGym && OvuGym.active && OvuGym.active()) || arranging || dragProp || (w && !w.hidden) || (c && !c.hidden) || (ld && !ld.classList.contains('hidden'))); },
     sheetOpen: function () { return !!current; }, sheetId: function () { return current; }, sheetSeq: function () { return sheetSeq; }, cancelIdle: function () { clearTimeout(idleTimer); },
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, setOutfit: setOutfit, outfitLocked: outfitLocked,
-    OUTFITS: OUTFITS, wearing: wearing, tryOn: tryOn, tryAcc: tryAcc, endTryOn: endTryOn, keepTryOn: keepTryOn, tryingOn: tryingOn, savedAcc: savedAcc, spriteKey: spriteKey, fitFor: fitFor, reduced: function () { return reduced; }, updateGreeting: updateGreeting, openPlus: openPlus, openExercise: openExercise, openMoveGuide: openMoveGuide,
+    OUTFITS: OUTFITS, wearing: wearing, savedOutfit: savedOutfit, dressFor: dressFor, undress: undress, costume: function () { return costume ? costume.outfit : null; }, tryOn: tryOn, tryAcc: tryAcc, endTryOn: endTryOn, keepTryOn: keepTryOn, tryingOn: tryingOn, savedAcc: savedAcc, spriteKey: spriteKey, fitFor: fitFor, reduced: function () { return reduced; }, updateGreeting: updateGreeting, openPlus: openPlus, openExercise: openExercise, openMoveGuide: openMoveGuide,
     moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
     activityNow: activityNow, busyLine: busyLine, refuseBusy: refuseBusy,
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
@@ -3675,6 +3720,7 @@
     else if (OvuAuth.isSignedIn() && !ownerOk()) wrongAccount(); /* already signed in as another account (a sign-in on another page): the wall, before the room shows anything (Codex sweep, 21 Oct) */
     /* signed out (from You, another tab, or a revoked session): the wall comes back over whatever was open, the notice and the cloud prompt included; signed in at the wall: on into the room */
     if (window.OvuAuth) OvuAuth.subscribe(function () {
+      try { if (window.OvuGym && OvuGym.cancel && (!OvuAuth.isSignedIn() || !ownerOk())) OvuGym.cancel(); } catch (e) { } /* a gym workout and its log offer never outlive the account */
       if (OvuAuth.isSignedIn()) { if (wallOpen()) afterSignIn(); else if (!ownerOk()) wrongAccount(); return; }
       if (wallOpen()) return;
       try { closeSheet(); } catch (e) { }
