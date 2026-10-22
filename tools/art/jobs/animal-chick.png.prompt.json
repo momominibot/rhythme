@@ -1,0 +1,17 @@
+{
+ "model": "doubao-seedream-4-0-250828",
+ "prompt": "A tiny fluffy pale yellow chick, the child of the reference hen: round body, little wings, big gentle eyes, a small orange beak and feet, standing and looking at the viewer with a slight turn, whole body in frame with space around it. Same 3D chibi clay-toy art style, soft pastel lighting and palette as the reference. Solid flat pure chroma green background #00FF00, no shadow on the background, one animal only, no text.",
+ "size_req": "1024x1024",
+ "size": "1024x1024",
+ "seed": 4202,
+ "refs": [
+  "assets/room/dream/animal-hen.webp"
+ ],
+ "usage": {
+  "generated_images": 1,
+  "output_tokens": 4096,
+  "total_tokens": 4096
+ },
+ "seconds": 14.2,
+ "bytes": 247010
+}
