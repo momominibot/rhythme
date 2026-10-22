@@ -2194,6 +2194,7 @@
     if (session) return { kind: 'session', name: session.kind === 'erin' ? 'Breathing with Erin' : 'Just breathe', icon: 'self_improvement' };
     if (window.OvuMorning && OvuMorning.active()) return { kind: 'morning', name: 'Morning start', icon: 'wb_twilight' };
     if (window.OvuSeats && OvuSeats.active()) { var st = OvuSeats.state(), seat = st && OvuSeats.SEATS[st.seat], sc = seat && OvuSeats.SCRIPTS[seat.practice]; return { kind: 'seat', name: sc ? sc.name : 'The bench practice', icon: 'chair' }; }
+    if (pulseRun) return { kind: 'pulse', name: 'The PULSE break', icon: 'directions_run' }; /* a running PULSE break is an activity too (Codex, 22 Oct) */
     return null;
   }
   function busyLine(a) { return a.name + ' is running. Finish it, or tap Stop first.'; }
@@ -2203,6 +2204,7 @@
     if (a.kind === 'practice' || a.kind === 'session') hud.classList.add('on');
     else if (a.kind === 'morning' && OvuMorning.reveal) OvuMorning.reveal();
     else if (a.kind === 'seat' && OvuSeats.reveal) OvuSeats.reveal();
+    else if (a.kind === 'pulse' && current !== 'pulse') pulseCancel(); /* its sheet is gone: the break has already ended */
     return true;
   }
   /* meditating and sleeping are drawn in what she is wearing (four-persona review, 20 Oct: the mat put everyone in the yoga set and
@@ -2485,7 +2487,7 @@
   var EX = window.OvuExercise || null;
   function moveWeekHTML(wk) {
     var W = EX.WHO, top = W.moderateMax * 1.2, pct = function (n) { return Math.round(Math.max(0, Math.min(100, n / top * 100)) * 10) / 10; };
-    var extra = (wk.pulse ? ' Plus ' + wk.pulse + (wk.pulse === 1 ? ' PULSE break' : ' PULSE breaks') + ' (' + Math.round((wk.pulseSeconds || 0) / 6) / 10 + ' min, not counted toward WHO).' : '') + (wk.light ? ' Plus ' + wk.light + ' min of light movement.' : '') + (wk.strengthMinutes ? ' Plus ' + wk.strengthMinutes + ' min of strength work.' : '') + (wk.metUnknown ? ' ' + wk.metUnknown + (wk.metUnknown === 1 ? ' entry has no MET value, so it is' : ' entries have no MET value, so they are') + ' left out of MET-minutes.' : '');
+    var extra = (wk.pulse ? ' Plus ' + wk.pulse + (wk.pulse === 1 ? ' PULSE break' : ' PULSE breaks') + ' (' + ((wk.pulseSeconds || 0) < 60 ? (wk.pulseSeconds || 0) + ' s' : Math.round((wk.pulseSeconds || 0) / 6) / 10 + ' min') + ', not counted toward WHO).' : '') + (wk.light ? ' Plus ' + wk.light + ' min of light movement.' : '') + (wk.strengthMinutes ? ' Plus ' + wk.strengthMinutes + ' min of strength work.' : '') + (wk.metUnknown ? ' ' + wk.metUnknown + (wk.metUnknown === 1 ? ' entry has no MET value, so it is' : ' entries have no MET value, so they are') + ' left out of MET-minutes.' : '');
     return '<div class="mvweek" id="mvWeek"><div class="mvhead"><b>' + wk.moderateEquivalent + '</b><span>moderate minutes in the last 7 days</span>' + infoBtn('move') + '</div>' +
       '<div class="mvbar" role="img" aria-label="' + wk.moderateEquivalent + ' minutes; WHO suggests 150 to 300 a week"><i class="range" style="left:' + pct(W.moderateMin) + '%;width:' + (pct(W.moderateMax) - pct(W.moderateMin)) + '%"></i><i class="fill" style="width:' + pct(wk.moderateEquivalent) + '%"></i></div>' +
       '<div class="mvscale" aria-hidden="true"><span style="left:0">0</span><span style="left:' + pct(W.moderateMin) + '%">150</span><span style="left:' + pct(W.moderateMax) + '%">300</span></div>' +
@@ -2504,7 +2506,7 @@
     return '<li data-id="' + esc(e.id) + '"><span><b>' + esc(d.label || 'Movement') + '</b><small>' + esc(d.detail || '') + '</small></span><small>' + esc(e.date === today ? 'Today' : prettyDate(e.date)) + ' · ' + (d.activity === 'pulse' ? (Number(d.seconds) || 0) + ' s' : (Number(d.minutes) || 0) + ' min') + (mm !== null ? ' · ' + Math.round(mm) + ' MET-min' : '') + '</small><button type="button" class="mvdel" data-mdel="' + esc(e.id) + '" aria-label="Remove this entry"><span class="ms">close</span></button></li>';
   }
   /* ---------- PULSE: a short movement break (ovu-pulse.js; Dr Vernece's library, Codex review 22 Oct) ----------
-   * Only cards a qualified reviewer has signed show; tester mode also sees the drafts. Before you move, then 45 seconds of
+   * Only signed cards show (the first three are, 22 Oct); tester mode also sees any drafts. Before you move, then 45 seconds of
    * movement with one cue and Stop, then 10 seconds of rest. Nothing saves until "Log what I did". Leaving the sheet or the
    * app ends the break early. */
   function pulseTester() { var t = S.state().tester; return !!(t && t.hearts); }
@@ -2512,11 +2514,11 @@
     var P = window.OvuPulse; if (!P) return '';
     var ms = P.visible(pulseTester()); if (!ms.length) return '';
     return '<div class="field"><span class="lbl">PULSE · a short movement break</span><div class="pulsecards" id="pulseCards">' + ms.map(function (m) {
-      return '<button type="button" class="pulsecard" data-pulse="' + m.id + '"><span class="ms">' + esc(m.icon) + '</span><span><b>' + esc(m.name) + '</b><small>' + esc(m.settings.map(function (k) { return P.SETTINGS[k]; }).join(' · ')) + ' · 1 min</small></span>' + (P.reviewed(m) ? '' : '<i class="pdraft">Draft</i>') + '</button>';
+      return '<button type="button" class="pulsecard" data-pulse="' + m.id + '"><span class="ms">' + esc(m.icon) + '</span><span><b>' + esc(m.name) + '</b><small>' + esc(m.settings.map(function (k) { return P.SETTINGS[k]; }).join(' · ')) + ' · 45 s</small></span>' + (P.reviewed(m) ? '' : '<i class="pdraft">Draft</i>') + '</button>';
     }).join('') + '</div></div>';
   }
   var pulseRun = null;
-  function pulseCancel() { if (pulseRun) { clearInterval(pulseRun.timer); pulseRun = null; } }
+  function pulseCancel() { if (pulseRun) { clearInterval(pulseRun.timer); if (pulseRun.vis) document.removeEventListener('visibilitychange', pulseRun.vis); pulseRun = null; } }
   function openPulse(id) {
     var P = window.OvuPulse, m = P && P.move(id); if (!m) return;
     if (refuseBusy()) return;
@@ -2528,23 +2530,38 @@
       '<div class="field"><span class="lbl">Where are you?</span><div class="chips" id="puSet">' + m.settings.map(function (k) { return '<button type="button" class="chipbtn' + (k === setting ? ' on' : '') + '" data-set="' + k + '">' + esc(P.SETTINGS[k]) + '</button>'; }).join('') + '</div></div>' +
       '<p class="pulsesetup"><b>Set up</b> ' + esc(m.setup) + '</p><p class="pulsesetup"><b>Easier</b> ' + esc(m.easy) + '</p><p class="help">' + esc(m.skip) + '</p>' +
       (P.reviewed(m) ? '' : '<p class="help pdraftline">Draft card, waiting for review. Shown in tester mode only.</p>') +
-      '<div class="row"><button type="button" class="btn primary" id="puReady"><span class="ms">play_arrow</span>I am ready</button><button type="button" class="btn ghost" id="puSkip">Skip</button></div>');
+      '<p class="pulsecheck"><b>' + esc(B.check) + '</b></p>' +
+      '<div class="row"><button type="button" class="btn primary" id="puReady"><span class="ms">play_arrow</span>Nothing applies, I am ready</button><button type="button" class="btn soft" id="puApplies">Something applies</button></div>' +
+      '<div class="row"><button type="button" class="btn ghost" id="puSwap"><span class="ms">swap_horiz</span>Choose another</button><button type="button" class="btn ghost" id="puSkip">Skip</button></div>');
     erin('pulse-before');
     $('#puSet').addEventListener('click', function (e) { var b = e.target.closest('[data-set]'); if (!b) return; setting = b.dataset.set; $$('[data-set]', this).forEach(function (x) { x.classList.toggle('on', x === b); }); });
-    $('#puSkip').addEventListener('click', function () { chime('tap'); openExercise(); });
+    $('#puSkip').addEventListener('click', function () { chime('tap'); erin('pulse-skip'); openExercise(); });
+    $('#puSwap').addEventListener('click', function () { chime('tap'); erin('pulse-swap'); openExercise(); });
+    $('#puApplies').addEventListener('click', function () { /* screening: nothing in this card fits today, so the break is not offered; ordinary movement logging stays */
+      chime('tap'); erin('pulse-skip');
+      $('#sheetBody').innerHTML = '<div class="pulsedone"><b>Then skip these for today.</b><p class="help">That is a good choice. If you moved in your own way, you can still log it as ordinary movement. If you are unsure what suits you, ask your doctor, physio or midwife.</p><p class="pulseurgent"><span class="ms">emergency</span>' + esc(B.urgent) + '</p><div class="row"><button type="button" class="btn primary" id="puBack">Back to movement</button></div></div>';
+      $('#puBack').addEventListener('click', function () { chime('tap'); openExercise(); });
+    });
     $('#puReady').addEventListener('click', function () {
       chime('tap');
-      $('#sheetBody').innerHTML = '<div class="pulserun"><div class="pulseclock" id="puClock">' + m.work + '</div><p class="pulsecue">' + esc(m.cue) + '</p><p class="help" id="puPhase">Move gently, at your own pace.</p><div class="row"><button type="button" class="btn ghost" id="puStop"><span class="ms">stop</span>Stop</button></div></div>';
-      var t0 = performance.now(); pulseRun = { t0: t0, phase: 'work', active: 0, timer: setInterval(tick, 250) };
+      emit('activity', 'pulse', m.id); /* as for a session or practice: anything else on the HUD (a greenhouse minute) hands over first (Codex, 22 Oct) */
+      $('#sheetBody').innerHTML = '<div class="pulserun"><div class="pulseclock" id="puClock">' + m.work + '</div><p class="pulsecue">' + esc(m.cue) + '</p><p class="help" id="puPhase">Move gently, at your own pace.</p><div class="row"><button type="button" class="btn ghost" id="puStop"><span class="ms">stop</span>Stop</button></div><p class="help pulseurgent"><span class="ms">emergency</span>' + esc(B.urgent) + '</p></div>';
+      var t0 = performance.now(); pulseRun = { t0: t0, last: t0, phase: 'work', active: 0, timer: setInterval(tick, 250) };
+      /* the app going to the background ends the break at once, counted up to the last moment it was on screen (Codex, 22 Oct:
+         a backgrounded tab's timers wake late, and a wake after a minute away recorded the full 45 s) */
+      pulseRun.vis = function () { if (document.hidden) stop(true); }; document.addEventListener('visibilitychange', pulseRun.vis);
       erin('pulse-start');
       $('#puStop').addEventListener('click', function () { stop(); });
     });
     function tick() {
       var r = pulseRun; if (!r) return;
       if (current !== 'pulse' || document.hidden) { stop(true); return; }
-      var el = (performance.now() - r.t0) / 1000;
+      var now = performance.now();
+      if (now - r.last > 1500) { stop(true); return; } /* a timer that woke late (the page was paused): counted up to the last tick seen */
+      r.last = now;
+      var el = (now - r.t0) / 1000;
       if (r.phase === 'work') {
-        if (el >= m.work) { r.active = m.work; r.phase = 'rest'; r.t1 = performance.now(); $('#puPhase').textContent = 'Rest. Breathe normally.'; $('#puStop').hidden = true; }
+        if (el >= m.work) { r.active = m.work; r.phase = 'rest'; r.t1 = now; $('#puPhase').textContent = 'Rest. Breathe normally.'; }
         $('#puClock').textContent = Math.max(0, Math.ceil(m.work - el));
       } else {
         var rr = (performance.now() - r.t1) / 1000;
@@ -2554,7 +2571,7 @@
     }
     function stop(quiet) {
       var r = pulseRun; if (!r) return;
-      if (r.phase === 'work') r.active = Math.min(m.work, (performance.now() - r.t0) / 1000);
+      if (r.phase === 'work') r.active = Math.min(m.work, (Math.min(performance.now(), r.last + 300) - r.t0) / 1000); /* never past the last moment it was seen running */
       done(r.phase === 'work', quiet);
     }
     function done(early, quiet) {

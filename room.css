@@ -2420,7 +2420,7 @@ html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
 .pulsecard b{display:block;font-size:14px}.pulsecard small{display:block;color:var(--rm-ink-3,#7a6c90);font-size:12px}
 .pulsecard .pdraft{margin-left:auto;font-style:normal;font-size:11px;font-weight:700;color:#8a5a00;background:#fff3d6;border-radius:999px;padding:2px 8px}
 .pulsebefore{background:var(--rm-blush,#fbeef3);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
-.pulsebefore p{margin:0;font-size:13px;line-height:1.45}.pulseurgent{display:flex;gap:6px;align-items:flex-start;font-weight:700}
+.pulsebefore p{margin:0;font-size:13px;line-height:1.45}.pulsecheck{margin:10px 0 2px}.pulserun .pulseurgent{margin-top:12px;font-size:12px}.pulseurgent{display:flex;gap:6px;align-items:flex-start;font-weight:700}
 .pulsesetup{margin:6px 0;font-size:13px}.pulserun,.pulsedone{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:8px 0}
 .pulseclock{font:800 56px/1 var(--serif,Georgia,serif);color:var(--rm-plum,#5b3e8a)}.pulsecue{font-size:15px;line-height:1.5;margin:0;max-width:30em}
 .pulsedone .row,.pulserun .row{width:100%;flex-direction:column;align-items:stretch}.pulsedone .btn{width:100%}
