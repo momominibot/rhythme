@@ -2159,3 +2159,24 @@ html[data-sky=night] .askchip:hover{background:#3b2e5a}
 .btap-chips button small{display:block;font:600 10.5px var(--sans);opacity:.8}
 .lf-breath{position:absolute;left:50%;top:12%;transform:translateX(-50%);font:600 24px var(--serif);color:rgba(255,255,255,.82);letter-spacing:.08em;pointer-events:none}
 @media (prefers-reduced-motion: reduce){.sheet.luna-sheet:not(.on){transition:none}}
+/* the data notice, simple (Jamie, 22 Oct): an emoji grid of what Rhythme does, two promises, the full notice folded away */
+.c-caps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.c-caps div{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 9px;border-radius:16px;background:rgba(255,255,255,.62);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.95);box-shadow:0 6px 16px rgba(122,92,150,.12);text-align:center}
+.c-caps i{font-style:normal;font-size:26px;line-height:1}
+.c-caps span{font:800 11.5px/1.25 var(--sans);color:var(--rm-plum)}
+.c-promise{display:flex;flex-direction:column;gap:6px}
+.c-promise p{display:flex;gap:8px;align-items:center;margin:0;font:700 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}
+.c-promise i{font-style:normal;font-size:17px;flex:none}
+.c-full{border-radius:14px;background:rgba(255,255,255,.4);padding:2px 12px}
+.c-full summary,.c-more summary{cursor:pointer;font:800 12px var(--sans);color:var(--rm-plum);padding:8px 0;list-style:none}
+.c-full summary::-webkit-details-marker,.c-more summary::-webkit-details-marker{display:none}
+.c-full summary::after,.c-more summary::after{content:' ›';display:inline-block;transition:transform .2s}
+.c-full[open] summary::after,.c-more[open] summary::after{transform:rotate(90deg)}
+.c-full .c-list{padding-bottom:10px}
+.c-pick{display:flex;flex-direction:column}
+.c-pick .c-opt{border-style:solid;border-color:rgba(255,255,255,.95);background:rgba(255,255,255,.62)}
+.c-emo{font-style:normal;font-size:18px;margin-right:6px;vertical-align:-2px}
+.c-pick .c-opt b{display:inline}
+.c-more{margin:2px 0 0 38px}
+.c-more summary{padding:4px 0;font-size:11px;color:var(--rm-ink-3)}
+.c-more p{margin:0 0 6px;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-3)}
