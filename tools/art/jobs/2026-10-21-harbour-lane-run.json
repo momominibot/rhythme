@@ -1,0 +1,54 @@
+{
+ "note": "Harbour Lane art, 21 Oct 2026 night (Jamie: \"All five stores logic works ... can draw these ?\"). From tools/art/jobs/2026-10-21-harbour-lane.json; the lane prompt trimmed under 800 characters and the four interiors drawn at 1024x1280 so each render stays under the service cutoff seen near 60 s.",
+ "jobs": [
+  {
+   "id": "lane",
+   "out": "lane-v1.png",
+   "size": "1024x1280",
+   "seed": 21,
+   "prompt": "Isometric miniature diorama on a small floating island, soft clay 3D render, pastel lavender, blush, cream and soft mint, gentle morning light, plain lavender background, cosy, no text or letters on any sign, no people, no animals. A short cobbled lane runs from the bottom edge up into the island, open cobbles in the middle for walking. Four small shopfronts face the lane: on the left a grocer with vegetable crates and seed packets under a lavender and cream striped awning, then a boutique with a pastel dress in its round window; on the right a small bright gym with a big window showing a yoga mat, then a fish and tackle shop with coloured floats and a coiled net by its door, no fish. A red cylindrical Singapore post box by a lamp post near the bottom. Potted flowers and one bench."
+  },
+  {
+   "id": "grocer",
+   "out": "shop-grocer-2f-v1.png",
+   "size": "1024x1280",
+   "seed": 7334,
+   "prompt": "Isometric cutaway interior of a cosy two-storey shop on a floating slab, soft clay 3D render, rounded shapes, pastel lavender, blush pink, cream and soft mint palette, warm soft light, plain lavender background around the cutaway, a wide open floor in the middle of the ground floor, a door mat at the front centre, a staircase on the right leading up to a gallery along the back walls, no text, no letters or words anywhere, no people, no animals. A grocer: wooden produce crates and woven baskets drawn empty on the ground floor, a long wooden counter near the front with a small weighing scale, an empty seed rack on one wall, sacks along the side; upstairs gallery with empty shelves for jars."
+  },
+  {
+   "id": "boutique",
+   "out": "shop-boutique-2f-v1.png",
+   "size": "1024x1280",
+   "seed": 7335,
+   "prompt": "Isometric cutaway interior of a cosy two-storey shop on a floating slab, soft clay 3D render, rounded shapes, pastel lavender, blush pink, cream and soft mint palette, warm soft light, plain lavender background around the cutaway, a wide open floor in the middle of the ground floor, a door mat at the front centre, a staircase on the right leading up to a gallery along the back walls, no text, no letters or words anywhere, no people, no animals. A boutique: empty clothing rails with a few padded hangers, a round display table drawn empty, a curtained fitting room with a tall arched mirror, a small counter; upstairs gallery with empty shelves and two hat stands."
+  },
+  {
+   "id": "gym",
+   "out": "shop-gym-2f-v1.png",
+   "size": "1024x1280",
+   "seed": 7336,
+   "prompt": "Isometric cutaway interior of a cosy two-storey shop on a floating slab, soft clay 3D render, rounded shapes, pastel lavender, blush pink, cream and soft mint palette, warm soft light, plain lavender background around the cutaway, a wide open floor in the middle of the ground floor, a door mat at the front centre, a staircase on the right leading up to a gallery along the back walls, no text, no letters or words anywhere, no people, no animals. A small calm gym: a treadmill, an exercise bike, two rolled-out yoga mats on a soft floor, a rack of light pastel dumbbells, big windows and potted plants; upstairs gallery with a quiet stretching area and a few cushions."
+  },
+  {
+   "id": "fish",
+   "out": "shop-fish-2f-v1.png",
+   "size": "1024x1280",
+   "seed": 7337,
+   "prompt": "Isometric cutaway interior of a cosy two-storey shop on a floating slab, soft clay 3D render, rounded shapes, pastel lavender, blush pink, cream and soft mint palette, warm soft light, plain lavender background around the cutaway, a wide open floor in the middle of the ground floor, a door mat at the front centre, a staircase on the right leading up to a gallery along the back walls, no text, no letters or words anywhere, no people, no animals. A seaside tackle and aquarium shop: empty glass aquarium tanks with soft lights on low stands, a wall of hooks for coloured fishing floats, coiled ropes and folded nets, a small counter; upstairs gallery with empty shelves. No fish anywhere."
+  },
+  {
+   "id": "mapicon",
+   "out": "map-lane.png",
+   "size": "1024x1024",
+   "seed": 9,
+   "prompt": "A tiny isometric soft clay model of a short cobbled lane with a red cylindrical post box and one shopfront with a lavender and cream striped awning, centred, solid flat pure chroma green background #00FF00, no shadow on the background, no text, no green anywhere on the object"
+  },
+  {
+   "id": "aquarium",
+   "out": "prop-aquarium.png",
+   "size": "1024x1024",
+   "seed": 11,
+   "prompt": "A small round glass aquarium tank on a little cream wooden stand, pale sand, soft pink and lavender water plants, a tiny pastel castle, clear water, no fish, soft clay 3D render, centred, solid flat pure chroma green background #00FF00, no shadow on the background, no text, no green anywhere on the object"
+  }
+ ]
+}

@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Manrope:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet">
 <link rel="stylesheet" href="ovu-pages.css">
 <link rel="stylesheet" href="ovu-night.css">
-<style>.srcchip{display:inline-block;margin-left:6px;vertical-align:1px;font:800 9px var(--sans,Manrope,sans-serif);letter-spacing:.05em;text-transform:uppercase;font-style:normal;color:var(--rm-plum,#5a4274);background:var(--rm-lilac-2,#e7dcf5);border-radius:99px;padding:2px 7px}</style>
+<style>.carecard{margin:10px 0;padding:14px;border-radius:16px;background:#fff4f6;border:1.5px solid #e8a0b4;color:#4a2b3a;font:600 13.5px/1.5 var(--sans,Manrope,sans-serif)}.carecard b{display:block;font-size:15px;margin-bottom:4px}.carecard p{margin:6px 0}.carecard .row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.carecard small{display:block;opacity:.8;font-size:11.5px}.srcchip{display:inline-block;margin-left:6px;vertical-align:1px;font:800 9px var(--sans,Manrope,sans-serif);letter-spacing:.05em;text-transform:uppercase;font-style:normal;color:var(--rm-plum,#5a4274);background:var(--rm-lilac-2,#e7dcf5);border-radius:99px;padding:2px 7px}</style>
 <script src="ovu-sky.js"></script>
 </head>
 <body>
@@ -37,6 +37,7 @@
       <div class="ct" style="margin-top:10px;font:800 10px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)">Recent 28 days</div>
       <div class="kpis" id="shareKpis"></div>
       <div id="shareBody"></div>
+      <div id="fastingBlock"></div>
       <div id="aiShare"></div>
       <div class="row">
         <button class="btn primary" id="makePdf"><span class="ms">picture_as_pdf</span>Download PDF</button>
@@ -60,6 +61,12 @@
       <h2><span class="ms">calendar_view_month</span>Your patterns</h2>
       <p class="sub">This month and the three before it. Each day has three lines: bleeding, pain and sleep. Tap a day to read it.</p>
       <div id="patternBody"></div>
+    </section>
+
+    <section class="card" id="sleepNotesCard">
+      <h2><span class="ms">bedtime</span>Sleep quality</h2>
+      <p class="sub">The last four weeks: how steady your sleep times were and, from Apple Health or Google, time awake, time in bed and sleep stages. Then your sleep questions and the two-week check. Each line counts only the nights that have it.</p>
+      <div id="sleepNotesBody"></div>
     </section>
 
     <section class="card" id="flagCard">
@@ -112,6 +119,7 @@
 <script src="ovu-auth.js"></script>
 <script src="ovu-textsize.js"></script>
 <script src="ovu-food.js"></script>
+<script src="ovu-fasting.js"></script>
 <script src="ovu-agents.js"></script>
 <script src="ovu-orb.js"></script>
 <script src="ovu-insight.js"></script>
@@ -126,21 +134,22 @@
   function pretty(iso,o){return new Date(iso+'T12:00:00').toLocaleDateString(undefined,o||{weekday:'short',day:'numeric',month:'short'});}
   function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
   function message(el,t,cls){el.textContent=t;el.className='msg on '+cls;}
-  var ICON={sleep:'bedtime',period:'water_drop',symptom:'spa',food:'restaurant',reflection:'edit_note',mindfulness:'self_improvement',weight:'monitor_weight',exercise:'directions_run'};
+  var ICON={sleep:'bedtime',period:'water_drop',symptom:'spa',food:'restaurant',reflection:'edit_note',mindfulness:'self_improvement',weight:'monitor_weight',exercise:'directions_run',sleepcheck:'fact_check'};
   var SRC={'apple-health':'Apple Health','google-fit':'Google'};
   function metMin(d){return typeof d.met==='number'&&d.met>0?Math.round(d.met*(Number(d.minutes)||0)):null;}
   var filter='';
 
   function entryHTML(e){
     var d=e.data,title='',text='';
-    if(e.type==='sleep'){title='Sleep · '+A.fmtHours(S.sleepHours(d));text=(d.bedTime||'?')+' → '+(d.wakeTime||'?')+(d.quality?' · quality '+d.quality+'/5':'')+(d.notes?'\n'+d.notes:'');}
+    if(e.type==='sleep'){var dt=A.sleepDetailText(d.details);title='Sleep · '+A.fmtHours(S.sleepHours(d));text=(d.bedTime||'?')+' → '+(d.wakeTime||'?')+(d.quality?' · quality '+d.quality+'/5':'')+(dt?'\n'+dt:'')+(d.notes?'\n'+d.notes:'');}
+    if(e.type==='sleepcheck'){var sn=A.sleepCheckNotes(d);title='Two-week sleep check';text=A.sleepCheckText(d)+(sn.length?'\nNotes: '+sn.map(function(x){return x.title.replace(/^Worth raising: /,'');}).join('; '):'');}
     if(e.type==='weight'){title='Weight · '+d.kg+' kg';text='';}
     if(e.type==='period'){title='Period · '+(d.flow==='unspecified'?'flow not recorded':cap(d.flow));text=[d.largeClots?'clots over 2.5 cm':d.clots?'clots':'',d.flooding?'soaked through or changed every 1 to 2 h':'',d.impact?'affected my day':''].filter(Boolean).join(' · ')||'no extra details';}
     if(e.type==='symptom'){title='Symptoms'+(typeof d.pain==='number'?' · pain '+d.pain+'/10':'');text=((d.symptoms||[]).join(', ')||'none ticked')+(d.mood?' · mood '+d.mood:'')+(d.notes?'\n'+d.notes:'');}
     if(e.type==='food'){title=cap(d.meal)+(d.time?' · '+d.time:'');var tot=(d.items&&d.items.length&&window.OvuFood)?window.OvuFood.sum(d.items):null;text=(d.foods||'')+(tot?'\n'+window.OvuFood.line(tot.totals)+' · '+d.items.map(function(it){return it.source&&it.source.label?it.source.label:'';}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}).join(', '):'')+((d.tags||[]).length?'\n'+d.tags.join(' · '):'');}
     if(e.type==='mindfulness'){title='Mindfulness · '+(d.minutes||0)+' min';text=(d.kind==='erin'?'Guided by Erin':d.kind==='imported'?(d.guide||'Brought in')+(d.sessions>1?', '+d.sessions+' sessions':''):d.kind==='informal'&&d.activity==='morning'?'Morning start'+(d.version==='erin'?' with Erin’s guide':', your way')+(d.brushed&&d.brushed!=='no'?' · brushed':''):d.kind==='informal'?(d.activityName||d.guide||'Everyday mindfulness'):d.kind==='lightflower'?'Light Flower':d.kind==='breathtap'?'Moon Tap':'Breathing orb')+(d.completed?' · completed':' · stopped early');}
     if(e.type==='reflection'){title='Reflection'+(d.mood?' · '+d.mood:'');text=d.text||'';}
-    if(e.type==='exercise'){title='Movement · '+(d.label||'activity')+' · '+(d.minutes||0)+' min';text=[d.detail||'',metMin(d)!==null?metMin(d)+' MET-minutes':'',d.intensity||'',d.strength?'strength':''].filter(Boolean).join(' · ')+(d.note?'\n'+d.note:'');}
+    if(e.type==='exercise'){title='Movement · '+(d.label||'activity')+' · '+(d.activity==='pulse'?(d.seconds||0)+' s':(d.minutes||0)+' min');text=[d.detail||'',metMin(d)!==null?metMin(d)+' MET-minutes':'',d.intensity||'',d.strength?'strength':''].filter(Boolean).join(' · ')+(d.note?'\n'+d.note:'');}
     return '<div class="entry">'+(e.type==='food'&&d.photo?'<img class="ethumb" src="'+d.photo+'" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0">':'<span class="ms">'+ICON[e.type]+'</span>')+'<div class="body"><b>'+esc(title)+(SRC[e.source]?'<em class="srcchip">'+SRC[e.source]+'</em>':'')+'</b><span>'+esc(text)+'</span></div><button class="del" data-del="'+esc(e.id)+'" aria-label="Delete entry"><span class="ms">delete</span></button></div>';
   }
   function renderTimeline(){
@@ -163,13 +172,13 @@
   $('#flags').addEventListener('click',function(e){var b=e.target.closest('[data-dismiss]');if(!b)return;if(!confirm('Hide this note? It comes back if you log bleeding or spotting again. Please still get the check.'))return;A.dismissFlag(b.dataset.dismiss);renderAll();});
   var KICON={coverage:'event_available',period:'water_drop',cycle:'calendar_month',sleep:'bedtime',symptoms:'healing',calm:'self_improvement'};
   function kpi(key,label,val,sub){return '<div class="kpi"><small><span class="ms">'+KICON[key]+'</span>'+label+'</small><b>'+val+'</b><span>'+esc(sub)+'</span></div>';}
-  function renderShare(){
+  function renderShare(){var fb=$('#fastingBlock');if(fb){try{fb.innerHTML=window.OvuFasting?OvuFasting.journalHTML(S.addDays(S.today(),-27),S.today()):'';}catch(e){fb.innerHTML='';}}
     var sum=A.fourWeekSummary(),cov=sum.coverage.daysWithEntries,low=cov<14,eps=sum.cycle.episodes.length,cl=sum.cycle.cycleLengths.length;
     $('#shareKpis').innerHTML=
       kpi('coverage','Logged',cov+'<em>/28</em>','days with entries')+
       kpi('period','Period',String(sum.cycle.periodDays),eps?'bleeding day'+(sum.cycle.periodDays===1?'':'s')+' in '+eps+' period'+(eps===1?'':'s'):'bleeding days')+
       kpi('cycle','Cycle',sum.cycle.averageLength?sum.cycle.averageLength+'<em>d</em>':'—',sum.cycle.averageLength&&!/logged cycle/.test(sum.cycle.basis||'')?'from '+sum.cycle.basis:(cl?'average of '+cl+' cycle'+(cl===1?'':'s'):'no full cycle yet'))+
-      kpi('sleep','Sleep',sum.sleep.average?sum.sleep.average+'<em>h</em>':'—',sum.sleep.nights+' night'+(sum.sleep.nights===1?'':'s')+(sum.sleep.under6?', '+sum.sleep.under6+' under 6h':''))+
+      kpi('sleep',sum.sleep.mixed?'Sleep and bed to wake':sum.sleep.windowed?'Bed to wake':'Sleep',sum.sleep.average?sum.sleep.average+'<em>h</em>':'—',sum.sleep.nights+' night'+(sum.sleep.nights===1?'':'s')+(sum.sleep.under6?', '+sum.sleep.under6+' under 6h':''))+
       kpi('symptoms','Symptoms',String(sum.symptoms.daysLogged),sum.symptoms.painMax!==null?'pain up to '+sum.symptoms.painMax+'/10':'days logged')+
       kpi('calm','Calm',sum.mindfulness.minutes+'<em> min</em>',sum.mindfulness.sessions+' session'+(sum.mindfulness.sessions===1?'':'s'))+
       '<div class="covbar" role="img" aria-label="'+cov+' of 28 days logged"><i style="width:'+Math.round(cov/28*100)+'%"></i></div>'+
@@ -245,20 +254,21 @@
     var events=S.list(null,{from:from,to:end}).filter(function(e){return e.date>=detailFrom||KEEP_LONG[e.type];}).map(function(e){if(e.type!=='food'||!e.data||!e.data.photo)return e;var c=JSON.parse(JSON.stringify(e));delete c.data.photo;c.data.hadPhoto=true;return c;});
     var dates={};events.forEach(function(e){if(e.date>=detailFrom)dates[e.date]=true;});
     return {kind:'ovumind-share',v:1,created:new Date().toISOString(),alias:S.profile().name||'Rhythme user',lifeStage:S.profile().lifeStage||'',range:{from:from,to:end},
-      included:{from:from,to:end,allEntriesFrom:detailFrom,olderEntries:detailFrom>from?'bleeding, symptoms and sleep only':'',monthlyTotals:'every month in the range',photos:'not included'},months:A.monthlyTotals(from,end),
+      included:{from:from,to:end,allEntriesFrom:detailFrom,olderEntries:detailFrom>from?'bleeding, symptoms and sleep only':'',monthlyTotals:'every month in the range',photos:'not included'},months:A.monthlyTotals(from,end),sleepNotes:A.sleepNotes(from,end),
       history:A.cycleHistory(from,end),patterns:A.patternDays(from,end).map(function(d){return {date:d.date,flow:d.flow,autofill:d.autofill||undefined,pain:d.pain,painBand:d.painBand,symptoms:d.symptoms,none:d.none||undefined,mood:d.mood,sleep:d.sleep,sleepBand:d.sleepBand,entries:d.entries,bleedAnswer:d.bleedAnswer,sleepAnswer:d.sleepAnswer,moodAnswer:d.moodAnswer};}),
       summary:A.fourWeekSummary(end),insight:freshFourWeeks(end),dailies:Object.keys(dates).sort().map(function(d){var s=A.dailySummary(d);return {date:d,text:s.text,flags:s.flags};}),events:events};
   }
   function entryText(e){
     var d=e.data;
-    if(e.type==='sleep')return ['Sleep '+A.fmtHours(S.sleepHours(d)),(d.bedTime||'?')+' to '+(d.wakeTime||'?')+(d.quality?', quality '+d.quality+'/5':'')+(d.notes?'. '+d.notes:'')];
+    if(e.type==='sleep'){var dt=A.sleepDetailText(d.details);return ['Sleep '+A.fmtHours(S.sleepHours(d)),(d.bedTime||'?')+' to '+(d.wakeTime||'?')+(d.quality?', quality '+d.quality+'/5':'')+(dt?'; '+dt:'')+(d.notes?'. '+d.notes:'')];}
+    if(e.type==='sleepcheck')return ['Two-week sleep check',A.sleepCheckText(d)];
     if(e.type==='period')return ['Period, '+d.flow+' flow',[d.largeClots?'clots over 2.5 cm':d.clots?'clots':'',d.flooding?'soaked through or changed every 1 to 2 h':'',d.impact?'affected the day':''].filter(Boolean).join(', ')];
     if(e.type==='symptom')return ['Symptoms'+(typeof d.pain==='number'?', pain '+d.pain+'/10':''),((d.symptoms||[]).join(', ')||'none ticked')+(d.mood?', mood '+d.mood:'')+(d.notes?'. '+d.notes:'')];
     if(e.type==='food'){var tot=(d.items&&d.items.length&&window.OvuFood)?window.OvuFood.sum(d.items):null;return [cap(d.meal||'meal'),(d.foods||'')+(tot?' ('+window.OvuFood.line(tot.totals)+')':'')+((d.tags||[]).length?'; '+d.tags.join(', '):'')];}
     if(e.type==='mindfulness')return ['Mindfulness, '+(d.minutes||0)+' min',(d.kind==='erin'?'guided by Erin':d.kind==='informal'?'everyday practice':d.kind==='imported'?String(d.guide||'brought in').replace(/^From /,'from ')+(d.sessions>1?', '+d.sessions+' sessions':''):'breathing')+(d.completed&&d.kind!=='imported'?', completed':'')];
     if(e.type==='reflection')return ['Reflection'+(d.mood?', '+d.mood:''),d.text||''];
     if(e.type==='weight')return ['Weight',d.kg+' kg'];
-    if(e.type==='exercise')return ['Movement, '+(d.label||'activity')+', '+(d.minutes||0)+' min',[d.detail||'',metMin(d)!==null?metMin(d)+' MET-minutes':'',d.intensity||'',d.strength?'strength':''].filter(Boolean).join(', ')+(d.note?'. '+d.note:'')];
+    if(e.type==='exercise')return ['Movement, '+(d.label||'activity')+', '+(d.activity==='pulse'?(d.seconds||0)+' s':(d.minutes||0)+' min'),[d.detail||'',metMin(d)!==null?metMin(d)+' MET-minutes':'',d.intensity||'',d.strength?'strength':''].filter(Boolean).join(', ')+(d.note?'. '+d.note:'')];
     return [e.type,''];
   }
   function pdfDoc(weeks){
@@ -272,8 +282,13 @@
     /* the average says where it came from: logged cycles, remembered dates or the set-up answer; logged lengths are listed apart */
     var lens=cl?sum.cycle.cycleLengths.join(', ')+' days':'',viaLogs=/logged cycle/.test(sum.cycle.basis||'');
     B.push({t:'kv',label:'Cycle',text:sum.cycle.averageLength?(viaLogs?sum.cycle.averageLength+' days average of '+cl+' logged cycle'+(cl===1?'':'s')+' ('+lens+')':sum.cycle.averageLength+' days, '+(sum.cycle.basis==='your profile setting'?'stated at set-up, not yet logged':'estimated from remembered period dates')+(cl?'; logged cycle'+(cl===1?'':'s')+' '+lens:'')):'no full cycle logged yet'+(sum.cycle.basis==='remembered period dates'?' (remembered dates give a day count only)':'')});
-    B.push({t:'kv',label:'Sleep',text:sum.sleep.average?sum.sleep.average+' h average over '+sum.sleep.nights+' night'+(sum.sleep.nights===1?'':'s')+', '+sum.sleep.under6+' under 6 h':'no nights logged'});
+    B.push({t:'kv',label:'Sleep',text:sum.sleep.average?sum.sleep.average+' h average'+(sum.sleep.mixed?' (some nights measured asleep, some from bedtime to waking)':sum.sleep.windowed?' from bedtime to waking':'')+' over '+sum.sleep.nights+' night'+(sum.sleep.nights===1?'':'s')+', '+sum.sleep.under6+' under 6 h':'no nights logged'});
     B.push({t:'kv',label:'Symptoms',text:sum.symptoms.daysLogged?sum.symptoms.daysLogged+' day'+(sum.symptoms.daysLogged===1?'':'s')+' logged'+(sum.symptoms.top.length?'; most often '+sum.symptoms.top.map(function(x){return x.name+' ('+x.days+')';}).join(', '):'')+(sum.symptoms.painMax!==null?'; pain average '+sum.symptoms.painAvg+'/10, up to '+sum.symptoms.painMax+'/10':''):'none logged'});
+    /* the optional sleep details and the two-week check, over the same weeks as this PDF */
+    var snp=A.sleepNotes(from,end),snr=A.sleepNotesRows(snp);if(snp.flushNights)snr.push(['Nights woken by a hot flush or night sweat',snp.flushNights+' of '+Math.max(snp.nights,snp.flushNights)+' recorded dates (sleep details or symptom notes; a night without either is not counted as no)']);
+    snr.forEach(function(r){B.push({t:'kv',label:r[0],text:r[1]});});
+    snp.checks.slice(0,2).forEach(function(c){var nt=A.sleepCheckNotes(c.answers).map(function(x){return x.title.replace(/^Worth raising: /,'');});B.push({t:'kv',label:'Sleep check '+pretty(c.date,{day:'numeric',month:'short'}),text:A.sleepCheckText(c.answers)+(nt.length?'. Notes raised: '+nt.join('; ').toLowerCase():'')});});
+    if(snr.length||snp.checks.length)B.push({t:'small',text:(A.sleepQualityRows(snp.quality).length?'Sleep figures come from the nights recorded, imported or synced; stages are the device’s own estimate. ':'')+'Sleep details are optional questions in the app’s own words, not a validated scale or a score; counts use only the nights that answered. “Over 30 min” is a research marker (Lichstein 2003), not a diagnosis.'});
     var fl=sum.symptoms.flushes||{};if(fl.days)B.push({t:'kv',label:'Hot flushes',text:fl.days+' day'+(fl.days===1?'':'s')+(fl.counted?', '+Math.round(fl.total/fl.counted*10)/10+' a day on average on the '+fl.counted+' day'+(fl.counted===1?'':'s')+' counted':'')+(fl.nightsWoken?', woke her on '+fl.nightsWoken+' night'+(fl.nightsWoken===1?'':'s'):'')});
     var moods=Object.keys(sum.symptoms.moods||{});if(moods.length)B.push({t:'kv',label:'Mood',text:moods.map(function(k){return k+' ('+sum.symptoms.moods[k]+')';}).join(', ')});
     B.push({t:'kv',label:'Food',text:sum.food.meals+' meal'+(sum.food.meals===1?'':'s')+' over '+sum.food.daysLogged+' day'+(sum.food.daysLogged===1?'':'s')+(Object.keys(sum.food.tags||{}).length?'; tags: '+Object.keys(sum.food.tags).map(function(k){return k+' ('+sum.food.tags[k]+')';}).join(', '):'')});
@@ -302,7 +317,7 @@
     }
     var flags=sum.flags||[];
     B.push({t:'h2',text:'Pattern notes raised by the app’s rules'});
-    if(flags.length)flags.forEach(function(f){B.push({t:'li',text:f.title+': '+f.detail+(f.date?' ('+pretty(f.date,{day:'numeric',month:'short'})+')':'')});});else B.push({t:'p',text:'None in this window. Ranges used: FIGO 2018 for cycles (24 to 38 days, bleeding up to 8 days), AASM for sleep (7 hours or more).'});
+    if(flags.length)flags.forEach(function(f){B.push({t:'li',text:f.title+': '+f.detail+(f.date?' ('+pretty(f.date,{day:'numeric',month:'short'})+')':'')});});else B.push({t:'p',text:(snp.checks.some(function(c){return A.sleepCheckNotes(c.answers).length;})?'None from the cycle and sleep-hours rules in this window; the two-week sleep check’s notes are listed above. ':'None in this window. ')+'Ranges used: FIGO 2018 for cycles (24 to 38 days, bleeding up to 8 days), AASM for sleep (7 hours or more).'});
     var qs=(c&&c.questions&&c.questions.length?c.questions:sum.questions)||[];
     if(qs.length){B.push({t:'h2',text:'Questions to raise'});qs.forEach(function(q){B.push({t:'li',text:q});});}
     B.push({t:'h2',text:'Limits'},{t:'p',text:(c&&c.limits?c.limits+' ':'')+'Everything here is self-reported in a diary app. Missing days are not absence of symptoms or bleeding. Rules are deterministic'+(c?'; the written summary was drafted by a model from the same aggregated data and shown to the person first':'')+'. Not a diagnosis.'});
@@ -341,7 +356,7 @@
   });
   $('#saveMonthly').addEventListener('click',function(){var s=A.saveMonthlySummary();message($('#rfMsg'),'Summary for '+pretty(s.range.from)+' – '+pretty(s.range.to)+' saved to your records.','ok');});
   $('#rfDate').value=S.today();$('#rfDate').max=S.today();
-  $('#saveRf').addEventListener('click',function(){try{var t=$('#rfText').value.trim();if(!t)throw new Error('Write a few words first.');S.add('reflection',$('#rfDate').value,{text:t,mood:$('#rfMood').value});$('#rfText').value='';message($('#rfMsg'),'Reflection saved.','ok');renderAll();}catch(e){message($('#rfMsg'),e.message,'err');}});
+  $('#saveRf').addEventListener('click',function(){try{var t=$('#rfText').value.trim();if(!t)throw new Error('Write a few words first.');var oldCare=document.getElementById('rfCare');if(oldCare)oldCare.remove();var rfEv=S.add('reflection',$('#rfDate').value,{text:t,mood:$('#rfMood').value});var rfU=window.OvuOrb&&OvuOrb.entryUrgent?OvuOrb.entryUrgent(rfEv,S.profile()):null;if(rfU&&OvuOrb.careHTML){var cb=document.getElementById('rfCare');if(!cb){cb=document.createElement('div');cb.id='rfCare';cb.setAttribute('role','alert');$('#rfMsg').parentNode.insertBefore(cb,$('#rfMsg'));}cb.className='bub urgent carecard'+(rfU.level==='emergency'?' emergency':'');cb.dataset.ev=rfEv.id;cb.innerHTML=OvuOrb.careHTML(rfU)+'<div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="rfCareClose">Close this note</button></div>';document.getElementById('rfCareClose').addEventListener('click',function(){cb.remove();$('#rfText').focus();});try{cb.scrollIntoView({block:'center'});}catch(e){}}$('#rfText').value='';message($('#rfMsg'),'Reflection saved.','ok');renderAll();}catch(e){message($('#rfMsg'),e.message,'err');}});
   $('#filters').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;filter=b.dataset.f;$$('button',$('#filters')).forEach(function(x){x.classList.toggle('on',x===b);});renderTimeline();});
   $('#timeline').addEventListener('click',function(e){var d=e.target.closest('[data-del]');if(d&&confirm('Delete this entry?')){S.remove(d.dataset.del);renderAll();}});
   $('#exportBtn').addEventListener('click',function(){var blob=new Blob([S.exportJSON()],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Rhythme-backup-'+S.today()+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);message($('#dataMsg'),'Backup downloaded (unencrypted, keep it private).','ok');});
@@ -356,7 +371,8 @@
   var patternDays=[];
   function renderPatterns(){patternDays=A.patternDays(patternFrom(),S.today());$('#patternBody').innerHTML=window.OvuPatterns.calendarHTML(patternDays,{today:S.today()});}
   window.OvuPatterns.wire($('#patternBody'),function(){return patternDays;});
-  function renderAll(){renderShare();renderAiShare();renderInsight();renderHistory();renderPatterns();renderFlags();renderTimeline();}
+  function renderSleepNotes(){var e=S.today();$('#sleepNotesBody').innerHTML=window.OvuPatterns.sleepNotesHTML(A.sleepNotes(S.addDays(e,-27),e),{empty:'No sleep details yet. Add them from the morning sheet or the bedside clock, any time you like.'});}
+  function renderAll(){var cc=document.getElementById('rfCare');if(cc&&cc.dataset.ev&&!S.get(cc.dataset.ev))cc.remove();/* the card goes with the reflection it was about (Codex sweep, 21 Oct) */renderShare();renderAiShare();renderInsight();renderHistory();renderPatterns();renderSleepNotes();renderFlags();renderTimeline();}
   S.subscribe(function(r){if(r==='external')renderAll();});
   renderAll();
   if(I.plan('journal').indexOf('daily')>-1){message($('#insightMsg'),'Luna is reading today’s entries…','info');I.daily(S.today()).then(function(){$('#insightMsg').className='msg';renderInsight();renderTimeline();}).catch(function(e){message($('#insightMsg'),e.message,'err');});}

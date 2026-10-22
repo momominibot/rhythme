@@ -210,9 +210,19 @@ details.more summary::-webkit-details-marker{display:none}
 .rangechips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .rangechips button{border:1.5px solid var(--rm-lilac);background:var(--rm-card);border-radius:99px;padding:6px 12px;font:800 11.5px var(--sans);color:var(--rm-plum);cursor:pointer;min-height:36px}
 .rangechips button[aria-pressed="true"]{background:var(--rm-plum);border-color:var(--rm-plum);color:var(--rm-card)}
-html[data-sky="night"] .tr.b1 i{background-color:#f7c3d3}html[data-sky="night"] .tr.b2 i{background-color:#f09ab6}html[data-sky="night"] .tr.b3 i{background-color:#e9779e}html[data-sky="night"] .tr.b4 i{background-color:#e0578a}
-html[data-sky="night"] .tr.unk i{background:repeating-linear-gradient(90deg,#f09ab6 0 3px,transparent 3px 6px)}
-html[data-sky="night"] .tr.p0 i{background-color:#f3e2a0}html[data-sky="night"] .tr.p1 i{background-color:#ebc76a}html[data-sky="night"] .tr.p2 i{background-color:#dfa84e}html[data-sky="night"] .tr.p3 i{background-color:#d18a3c}
-html[data-sky="night"] .tr.s0 i{background-color:#c5daf5}html[data-sky="night"] .tr.s1 i{background-color:#9cc0ee}html[data-sky="night"] .tr.s2 i{background-color:#79a6e6}html[data-sky="night"] .tr.s3 i{background-color:#5b8ddc}
+
 .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:4px}
 #monthTable{min-width:560px}
+
+/* sleep details (OvuPatterns.sleepNotesHTML), journal and Doctor view */
+.sndl{margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.sndl div{display:flex;justify-content:space-between;gap:12px;align-items:baseline;border-bottom:1px solid rgba(107,82,142,.08);padding-bottom:6px}
+.sndl dt{font:700 12px var(--sans);color:var(--rm-ink-2);min-width:0}
+.sndl dd{margin:0;font:600 12px var(--sans);color:var(--rm-ink);text-align:right;min-width:0}
+.snchecks{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.sncheck{border-radius:12px;padding:9px 11px;background:rgba(107,82,142,.05)}
+.sncheck b{display:block;font:800 12px var(--sans);color:var(--rm-ink)}
+.sncheck span{display:block;font:600 11.5px var(--sans);color:var(--rm-ink-2);line-height:1.45;margin-top:2px}
+.sncheck .snnotes{color:#9b4a2c}
+.snfoot{font:600 11px var(--sans);color:var(--rm-ink-3);line-height:1.45;margin-top:8px}
+

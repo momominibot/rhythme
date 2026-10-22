@@ -1,0 +1,26 @@
+{
+ "note": "World map open land, 21 Oct 2026 (Jamie: 'The whole map must be filled just that whatever we built will be at a corner of it, the rest of the area will be just the field, the land unbuilt'). Three text-only 1024x1024 land tiles in the style of map-bg.webp, blended by tools/art/world_plate.py into map-world.webp around the built corner. No reference image (the reference edit of the map hit the 60 second cut twice on 21 Oct). Run with tools/art/run_batch.py, one job at a time, no retries, stop on the first failure.",
+ "jobs": [
+  {
+   "id": "land-fields",
+   "out": "land-fields.png",
+   "size": "1024x1024",
+   "seed": 52101,
+   "prompt": "Open countryside seen from high above in a gentle three-quarter bird's-eye view, like a storybook world map; the ground fills the whole picture with no horizon and no sky. A patchwork of empty farm fields with soft furrow stripes in pale green and cream, divided by low rounded hedgerows, a few lone trees, and a faint footpath of sandy dots that fades out into the grass. Soft pastel watercolour illustration, dreamy and cute: mint green grass with lilac and blush pink haze, round fluffy trees in lilac, pink, mint, peach and butter yellow, tiny wildflower dots and faint white sparkles. Nothing built anywhere: no houses, no buildings, no roads, no fences, no bridges, no people, no animals, no text, no clouds, no mist, no border, no vignette, no white edges."
+  },
+  {
+   "id": "land-stream",
+   "out": "land-stream.png",
+   "size": "1024x1024",
+   "seed": 52102,
+   "prompt": "Open countryside seen from high above in a gentle three-quarter bird's-eye view, like a storybook world map; the ground fills the whole picture with no horizon and no sky. Rolling meadows with a pale blue stream winding across from one side to the other, soft grassy banks, clumps of pastel trees and wildflower patches along the water. Soft pastel watercolour illustration, dreamy and cute: mint green grass with lilac and blush pink haze, round fluffy trees in lilac, pink, mint, peach and butter yellow, tiny wildflower dots and faint white sparkles. Nothing built anywhere: no houses, no buildings, no roads, no fences, no bridges, no people, no animals, no text, no clouds, no mist, no border, no vignette, no white edges."
+  },
+  {
+   "id": "land-woods",
+   "out": "land-woods.png",
+   "size": "1024x1024",
+   "seed": 52103,
+   "prompt": "Open countryside seen from high above in a gentle three-quarter bird's-eye view, like a storybook world map; the ground fills the whole picture with no horizon and no sky. Wide meadows with groves of round pastel trees, a small round pond, drifts of wildflowers, and a few empty grassy plots outlined by low hedges. Soft pastel watercolour illustration, dreamy and cute: mint green grass with lilac and blush pink haze, round fluffy trees in lilac, pink, mint, peach and butter yellow, tiny wildflower dots and faint white sparkles. Nothing built anywhere: no houses, no buildings, no roads, no fences, no bridges, no people, no animals, no text, no clouds, no mist, no border, no vignette, no white edges."
+  }
+ ]
+}

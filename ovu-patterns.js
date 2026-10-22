@@ -174,7 +174,42 @@
         var o = { month: m.month }; ['days', 'daysWithEntries', 'bleedingDays', 'filledDays', 'symptomDays', 'sleepNights', 'meals', 'foodDays', 'movementSessions', 'movementMinutes', 'calmSessions', 'calmMinutes'].forEach(function (k) { o[k] = int(m[k], 0, 100000) || 0; }); return o;
       });
     }
+    var sn = share && share.sleepNotes, ST = root.OvuStore;
+    if (sn && typeof sn === 'object' && DATE.test(sn.from) && DATE.test(sn.to) && ST && ST.cleanSleepCheck) {
+      var f = {}, woke = {};
+      ['latency', 'wakeups', 'awake', 'early', 'rested'].forEach(function (k) { var v = sn.fields && sn.fields[k] || {}; f[k] = { answered: int(v.answered, 0, 5000) || 0, marked: int(v.marked, 0, 5000) || 0, unsure: int(v.unsure, 0, 5000) || 0 }; if (f[k].marked > f[k].answered) f[k].marked = f[k].answered; });
+      (ST.SLEEP_WOKE || []).forEach(function (c) { var x = int(sn.woke && sn.woke[c], 0, 5000); if (x) woke[c] = x; });
+      out.sleepNotes = { from: sn.from, to: sn.to, nights: int(sn.nights, 0, 5000) || 0, withDetails: int(sn.withDetails, 0, 5000) || 0, fields: f, woke: woke, flushNights: int(sn.flushNights, 0, 5000) || 0,
+        checks: (Array.isArray(sn.checks) ? sn.checks : []).filter(function (c) { return c && DATE.test(c.date); }).slice(0, 60).map(function (c) { return { date: c.date, answers: ST.cleanSleepCheck(c.answers || {}) }; }) };
+      /* the sleep quality summary: numbers only, each kept in range; anything missing stays missing (never zero) */
+      var q = sn.quality;
+      if (q && typeof q === 'object') {
+        var num = function (v, lo, hi) { return typeof v === 'number' && isFinite(v) && v >= lo && v <= hi ? v : null; }, cnt = function (v) { return int(v, 0, 5000) || 0; };
+        var oq = { nights: cnt(q.nights), avgHours: num(q.avgHours, 0, 24), sevenPlus: cnt(q.sevenPlus), withHours: cnt(q.withHours), timed: cnt(q.timed), midSD: num(q.midSD, 0, 720), bedSD: num(q.bedSD, 0, 720), wakeSD: num(q.wakeSD, 0, 720), awakeNights: cnt(q.awakeNights), awakeMedian: num(q.awakeMedian, 0, 1440), awakeOver30: cnt(q.awakeOver30), effNights: cnt(q.effNights), effMedian: num(q.effMedian, 0, 100), stagedNights: cnt(q.stagedNights), stages: null };
+        if (q.stages && typeof q.stages === 'object') { var sc = num(q.stages.core, 0, 100), sd = num(q.stages.deep, 0, 100), sr = num(q.stages.rem, 0, 100); if (sc !== null && sd !== null && sr !== null) oq.stages = { core: sc, deep: sd, rem: sr }; }
+        if (oq.withHours > oq.nights) oq.withHours = oq.nights; if (oq.sevenPlus > oq.withHours) oq.sevenPlus = oq.withHours; if (oq.awakeOver30 > oq.awakeNights) oq.awakeOver30 = oq.awakeNights;
+        if (oq.avgHours === null) oq.withHours = 0; if (oq.awakeMedian === null) oq.awakeNights = 0; if (oq.effMedian === null) oq.effNights = 0; if (oq.midSD === null || oq.bedSD === null || oq.wakeSD === null) oq.midSD = null;
+        out.sleepNotes.quality = oq;
+      }
+    }
     return out;
   }
-  root.OvuPatterns = { cleanShare: cleanShare, historyHTML: historyHTML, calendarHTML: calendarHTML, wire: wire, dayLabel: dayLabel, detailHTML: detailHTML };
+  /* ---------- sleep details (OvuAgents.sleepNotes), the same words in the journal and the Doctor view ---------- */
+  function sleepNotesHTML(sn, opts) {
+    var A = root.OvuAgents; opts = opts || {};
+    if (!sn || !A) return '';
+    var rows = A.sleepNotesRows(sn);
+    if (sn.flushNights) rows.push(['Nights woken by a hot flush or night sweat', sn.flushNights + ' of ' + Math.max(sn.nights, sn.flushNights) + ' recorded date' + (Math.max(sn.nights, sn.flushNights) === 1 ? '' : 's') + ' (from sleep details or symptom notes; a night without either is not counted as no)']);
+    var checks = (sn.checks || []).filter(function (c) { return c.answers && Object.keys(c.answers).length; });
+    if (!rows.length && !checks.length) return '<p class="note">' + esc(opts.empty || 'No sleep details answered in this range.') + '</p>';
+    var html = rows.length ? '<dl class="sndl">' + rows.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' : '';
+    if (checks.length) html += '<div class="snchecks">' + checks.slice(0, opts.checks || 2).map(function (c) {
+      var notes = A.sleepCheckNotes(c.answers).map(function (x) { return x.title.replace(/^Worth raising: /, ''); });
+      return '<div class="sncheck"><b>Two-week sleep check, ' + esc(pretty(c.date, { day: 'numeric', month: 'short', year: 'numeric' })) + '</b><span>' + esc(A.sleepCheckText(c.answers)) + '</span>' + (notes.length ? '<span class="snnotes">Notes raised: ' + esc(notes.join('; ').toLowerCase()) + '</span>' : '') + '</div>';
+    }).join('') + '</div>';
+    var hasQ = A.sleepQualityRows && A.sleepQualityRows(sn.quality).length;
+    var hasAnswers = sn.withDetails || checks.length;
+    return html + '<p class="snfoot">' + (hasQ ? 'Sleep figures come from the nights recorded, imported or synced; stages are the device’s own estimate, not a score. ' : '') + (hasAnswers || !hasQ ? 'Rhythme’s own optional questions, not a validated scale and not a score. Counts use only the nights that answered; ' : 'Counts use only the nights that have each measure; ') + '“over 30 min” is a research marker (Lichstein 2003), not a diagnosis.</p>';
+  }
+  root.OvuPatterns = { sleepNotesHTML: sleepNotesHTML, cleanShare: cleanShare, historyHTML: historyHTML, calendarHTML: calendarHTML, wire: wire, dayLabel: dayLabel, detailHTML: detailHTML };
 })(typeof window !== 'undefined' ? window : this);

@@ -76,6 +76,7 @@
   function esc(s) { return R.esc(s); }
   function inPlaza(L) { return L && L.id === 'plaza'; }
   function notesState() { var c = S.state().community || {}; return { notes: (c.notes || []).slice(), hellos: c.hellos || {} }; }
+  function copiedNotes() { return JSON.parse(JSON.stringify(S.state().community || {})); }
 
   /* display-only nodes: the class .nb keeps them out of the room's pet and tool click handling */
   function nbNode(n, spot, cls) {
@@ -100,7 +101,8 @@
       '<div class="row"><button type="button" class="btn primary" id="nbHello"' + (said ? ' disabled' : '') + '><span class="ms">waving_hand</span>' + (said ? 'You said hello today' : 'Say hello') + '</button><button type="button" class="btn soft" id="nbVisit"><span class="ms">cottage</span>Visit her home</button></div>' +
       '<p class="help">Neighbours are samples for now. Nothing here is sent anywhere, and visiting changes nothing of theirs or yours.</p>');
     doc.getElementById('nbHello').addEventListener('click', function () {
-      var c = S.state().community || {}; c.hellos = c.hellos || {}; c.hellos[id] = S.today(); S.setState({ community: c });
+      var c = copiedNotes(); c.hellos = c.hellos || {}; c.hellos[id] = S.today();
+      try { S.commit({ community: c }); } catch (e) { R.toast('Your hello could not be saved. Please try again.', 'info'); return; }
       R.closeSheet(); R.chime('save'); R.toast(n.name + ' waves back. ' + ['A good day to you too.', 'Nice to see you.', 'See you at the fountain.'][Math.floor(Math.random() * 3)], 'waving_hand', R.moment ? R.moment('hello', { quiet: true }) : '');
       var el = doc.querySelector('.nbperson[data-nb="' + id + '"]'); if (el) { el.classList.remove('wave'); void el.offsetWidth; el.classList.add('wave'); }
     });
@@ -137,15 +139,18 @@
       '<p class="help">Your notes stay on this phone until friends can join; then you will choose what to share. No likes, no counts, no feed.</p>');
     doc.getElementById('notePin').addEventListener('click', function () {
       var t = doc.getElementById('noteText').value.trim(); if (!t) return;
-      var c = S.state().community || {}; c.notes = (c.notes || []).concat([{ text: t.slice(0, 140), date: today }]).slice(-20); S.setState({ community: c });
+      var c = copiedNotes(); c.notes = (c.notes || []).concat([{ text: t.slice(0, 140), date: today }]).slice(-20);
+      /* Keep the sheet and her words in place until the save succeeds. */
+      try { S.commit({ community: c }); } catch (e) { R.toast('Your note could not be saved. Please try again.', 'info'); return; }
       R.chime('save'); openBoard(); R.toast('Pinned. It stays with you.', 'push_pin');
     });
   }
+  C.openBoard = openBoard; /* the Today card's Channel tab opens the board from home (ovu-today.js) */
   function openStall() {
     if (root.OvuWalk.napping()) return;
     var H = root.OvuHerbs, cs = S.cycleStats(), teas = H ? H.forPhase(cs.mode === 'suspended' ? null : cs.phase).slice(0, 3) : [];
     R.openSheet('stall', 'The tea stall', 'A cup for where you are in your cycle', 'emoji_food_beverage',
-      '<p class="help">' + (cs.phase ? 'Day ' + cs.cycleDay + ', ' + esc(cs.phase) + ' phase: these come first.' : 'No phase yet, so a few gentle favourites.') + ' Food notes, not medicine. If you are pregnant, breastfeeding or on medicines, ask first.</p>' +
+      '<p class="help">' + (cs.phase ? 'Day ' + cs.cycleDay + ', ' + esc(cs.phase) + ' phase: these come first.' : 'No phase yet, so a few gentle favourites.') + ' Food notes, not medicine. If you are pregnant, trying to conceive, breastfeeding or on medicines, ask first.</p>' +
       '<div class="teas">' + teas.map(function (t) { return '<div class="tea"><span class="ms">' + esc(t.icon || 'local_cafe') + '</span><div><b>' + esc(t.name) + '</b><span>' + esc(t.why) + '</span><small>' + esc(t.research) + '</small>' + (t.care ? '<em>' + esc(t.care) + '</em>' : '') + '</div></div>'; }).join('') + '</div>' +
       '<div class="row"><button type="button" class="btn soft" id="stallSip"><span class="ms">emoji_food_beverage</span>Sip one slowly</button></div>');
     doc.getElementById('stallSip').addEventListener('click', function () { R.closeSheet(); if (R.moment) R.moment('tea', { line: 'Both hands on the cup. Notice the warmth before the taste.' }); R.toast('A cup of tea at the stall.', 'emoji_food_beverage'); });
@@ -156,7 +161,7 @@
     var wrap = R.els.props, fx = doc.createElement('div'); fx.className = 'wish'; fx.setAttribute('aria-hidden', 'true'); fx.style.left = '50%'; fx.style.top = '44%'; fx.style.width = '18%';
     for (var i = 0; i < 6; i++) fx.innerHTML += '<i style="left:' + (15 + i * 14) + '%;animation-delay:' + (i * 0.12) + 's"></i>';
     wrap.appendChild(fx); root.setTimeout(function () { fx.remove(); }, 2400);
-    R.joy(); R.showThought('✨'); root.setTimeout(R.hideThought, 2600); R.chime('bell', true); R.toast(WISHES[Math.floor(Math.random() * WISHES.length)], 'auto_awesome');
+    R.joy(); R.showThought('auto_awesome'); root.setTimeout(R.hideThought, 2600); R.chime('bell', true); R.toast(WISHES[Math.floor(Math.random() * WISHES.length)], 'auto_awesome');
   }
   R.hotspotHandlers.board = function (id, L) { if (!inPlaza(L)) return false; openBoard(); return true; };
   R.hotspotHandlers.stall = function (id, L) { if (!inPlaza(L)) return false; openStall(); return true; };

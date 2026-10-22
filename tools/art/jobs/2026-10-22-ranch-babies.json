@@ -1,0 +1,23 @@
+{
+ "note": "22 Oct, Harvest Moon phase 3: a calf and a chick for the ranch. References: the adult cow and hen sprites for style and palette. Chroma green for keying. One at a time, no retries (Jamie authorised Volcengine credits on 22 Oct).",
+ "jobs": [
+  {
+   "id": "animal-calf",
+   "out": "animal-calf.png",
+   "size": "1024x1024",
+   "seed": 4201,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": ["assets/room/dream/animal-cow.webp"],
+   "prompt": "A small, round baby calf, the child of the reference cow: the same cream and soft brown patches, a shorter muzzle, big gentle eyes, stubby legs, a tiny tuft on its head, standing and looking at the viewer with a slight turn, whole body in frame with space around it. Same 3D chibi clay-toy art style, soft pastel lighting and palette as the reference. Solid flat pure chroma green background #00FF00, no shadow on the background, one animal only, no text."
+  },
+  {
+   "id": "animal-chick",
+   "out": "animal-chick.png",
+   "size": "1024x1024",
+   "seed": 4202,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": ["assets/room/dream/animal-hen.webp"],
+   "prompt": "A tiny fluffy pale yellow chick, the child of the reference hen: round body, little wings, big gentle eyes, a small orange beak and feet, standing and looking at the viewer with a slight turn, whole body in frame with space around it. Same 3D chibi clay-toy art style, soft pastel lighting and palette as the reference. Solid flat pure chroma green background #00FF00, no shadow on the background, one animal only, no text."
+  }
+ ]
+}

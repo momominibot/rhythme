@@ -177,27 +177,27 @@ const FW = {
   fertile:  {cls:'ok',   badge:['spa','Open · peak'], title:'Your fertile days are here', pct:'High', pcol:'var(--terracotta)',
     bars:[.25,.4,.6,.85,1,.7,.4], peak:4,
     why:'Egg-white mucus and a small pre-ovulation temperature dip point to ovulation in the next day or two — your highest-chance window to conceive.',
-    signals:['💧 Mucus: egg-white','🌡 Temp: pre-shift dip','🧪 LH: rising']},
+    signals:['Mucus: egg-white','Temp: pre-shift dip','LH: rising']},
   active:   {cls:'',     badge:['water_drop','Closed · period'], title:'Fertile window is closed', pct:'Low', pcol:'var(--cocoa)',
     bars:[.15,.12,.1,.1,.12,.15,.2], peak:-1,
     why:'You’re menstruating, so conception is very unlikely now. Your fertile window usually opens about a week after your period begins.',
-    signals:['💧 Flow: medium','🌡 Temp: low baseline']},
+    signals:['Flow: medium','Temp: low baseline']},
   none:     {cls:'',     badge:['event_available','Closed · luteal'], title:'Past ovulation this cycle', pct:'Low', pcol:'var(--cocoa)',
     bars:[.9,.6,.4,.3,.2,.15,.12], peak:0,
     why:'You likely ovulated around day 14. The window has closed for this cycle — your next fertile days come after your next period.',
-    signals:['🌡 Temp: high (luteal)','💧 Mucus: dry / sticky']},
+    signals:['Temp: high (luteal)','Mucus: dry / sticky']},
   spotting: {cls:'',     badge:['opacity','Low'], title:'Fertile window likely closed', pct:'Low', pcol:'var(--cocoa)',
     bars:[.2,.18,.15,.15,.18,.2,.22], peak:-1,
     why:'Spotting on its own isn’t a fertility sign. Keep logging your discharge and temperature and we’ll refine the estimate.',
-    signals:['💧 Spotting logged']},
+    signals:['Spotting logged']},
   unknown:  {cls:'',     badge:['hourglass_empty','Learning'], title:'Not enough data yet', pct:'—', pcol:'var(--taupe)',
     bars:[.3,.3,.3,.3,.3,.3,.3], peak:-1,
     why:'Log your discharge feel, temperature or LH tests across a cycle and Rhythme will map your fertile window with a confidence score.',
-    signals:['➕ Add today’s signs']},
+    signals:['Add today’s signs']},
   offline:  {cls:'warn', badge:['sync','Pending sync'], title:'Forecast refreshes when you reconnect', pct:'Low', pcol:'var(--cocoa)',
     bars:[.15,.12,.1,.1,.12,.15,.2], peak:-1,
     why:'Your logged signs are saved on device. The fertile-window estimate updates automatically once you’re back online.',
-    signals:['💧 Flow: medium (pending)']}
+    signals:['Flow: medium (pending)']}
 };
 document.addEventListener('DOMContentLoaded', function(){
   var stage = document.getElementById('stage');

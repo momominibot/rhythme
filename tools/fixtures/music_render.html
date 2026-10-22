@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rhythme music render fixture</title>
+<p>Loads the sound kit and the music module for tools/music_render.py. Nothing plays here.</p>
+<script src="../../ovu-sound.js"></script>
+<script src="../../ovu-music.js"></script>
+<script>
+/* render one theme and band for `loops` loops into an OfflineAudioContext; optional duck window and crossfade */
+window.renderCase = async function (opts) {
+  var sr = 44100, secs = opts.seconds, ctx = new OfflineAudioContext(2, Math.ceil(sr * secs), sr);
+  var master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination);
+  var gate = ctx.createGain(); gate.gain.value = 1; gate.connect(master);
+  var out = { end: 0 };
+  if (opts.crossfadeTo) {
+    var g1 = ctx.createGain(), g2 = ctx.createGain(); g1.connect(gate); g2.connect(gate); g2.gain.value = 0;
+    OvuMusic.render(ctx, g1, opts.theme, opts.band, opts.loops, 0.1, null);
+    OvuMusic.render(ctx, g2, opts.crossfadeTo, opts.band, opts.loops, 0.1, null);
+    var tx = opts.crossfadeAt; g1.gain.setValueAtTime(1, tx); g1.gain.linearRampToValueAtTime(0, tx + 1.5); g2.gain.setValueAtTime(0, tx); g2.gain.linearRampToValueAtTime(1, tx + 2.5);
+  } else {
+    out = OvuMusic.render(ctx, gate, opts.theme, opts.band, opts.loops, 0.1, null);
+  }
+  if (opts.duckAt) { var td = opts.duckAt; gate.gain.setValueAtTime(1, td); gate.gain.linearRampToValueAtTime(0, td + 0.06); gate.gain.setValueAtTime(0, td + 4); gate.gain.linearRampToValueAtTime(1, td + 6.5); }
+  var buf = await ctx.startRendering();
+  var L = buf.getChannelData(0), Rr = buf.getChannelData(1), n = L.length, peak = 0, sum = 0;
+  for (var i = 0; i < n; i++) { var x = Math.max(Math.abs(L[i]), Math.abs(Rr[i])); if (x > peak) peak = x; var m = (L[i] + Rr[i]) / 2; sum += m * m; }
+  /* one-second windows of RMS, for the sustained level and the quiet of a duck */
+  var win = [], step = sr; for (var s0 = 0; s0 + step <= n; s0 += step) { var acc = 0; for (var k = s0; k < s0 + step; k++) { var mm = (L[k] + Rr[k]) / 2; acc += mm * mm; } win.push(Math.sqrt(acc / step)); }
+  /* the loop seam: largest sample step across the boundary against the largest step elsewhere */
+  var beat = 60 / OvuMusic.tempoFor(opts.theme, opts.band), seam = 0.1 + 128 * beat, si = Math.round(seam * sr), maxStep = 0, seamStep = 0;
+  for (var j = 1; j < n; j++) { var d = Math.abs(L[j] - L[j - 1]); if (d > maxStep) maxStep = d; if (Math.abs(j - si) < sr * 0.02 && d > seamStep) seamStep = d; }
+  var head = Math.min(n, Math.round(sr * (opts.previewSeconds || 0))), pcm = new Int16Array(head * 2);
+  for (var q = 0; q < head; q++) { pcm[q * 2] = Math.max(-32768, Math.min(32767, Math.round(L[q] * 32767))); pcm[q * 2 + 1] = Math.max(-32768, Math.min(32767, Math.round(Rr[q] * 32767))); }
+  var bytes = new Uint8Array(pcm.buffer), chunks = []; for (var c = 0; c < bytes.length; c += 0x8000) chunks.push(String.fromCharCode.apply(null, bytes.subarray(c, c + 0x8000)));
+  return { peakDb: 20 * Math.log10(peak || 1e-9), rmsDb: 20 * Math.log10(Math.sqrt(sum / n) || 1e-9), windowsDb: win.map(function (r) { return 20 * Math.log10(r || 1e-9); }), seamStep: seamStep, maxStep: maxStep, seamAt: seam, made: out.made || null, sampleRate: sr, pcm: head ? btoa(chunks.join('')) : null };
+};
+</script>

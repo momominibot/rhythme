@@ -422,6 +422,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 /* ---------- hearts, luna orb, hologram, HUD ---------- */
 .chip.hearts{border:none;cursor:pointer;color:#c0507c;background:rgba(255,255,255,.85);padding:6px 10px;height:38px;gap:4px;font-size:12px}
 .chip.hearts .ms{font-size:16px;color:#e26a93}
+/* the music chip: a native button, pressed when the tune plays (design 2026-10-21-game-music.md) */
+.chip.music{border:none;cursor:pointer;color:var(--rm-mauve);background:rgba(255,255,255,.85);padding:6px 9px;height:38px;min-width:38px;justify-content:center}
+.chip.music .ms{font-size:18px;color:#a98bc9}
+.chip.music[aria-pressed="true"]{background:#efe6ff;color:#6e4fa3}.chip.music[aria-pressed="true"] .ms{color:#7b5bb5}
+.chip.music:focus-visible{outline:3px solid #b9a3e3;outline-offset:2px}
+.btn.music .mlabel{margin-left:2px}
 .chip.hearts.pop{animation:heartpop .5s ease}
 @keyframes heartpop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
 .luna{position:absolute;right:12px;bottom:84px;z-index:36;width:68px;height:68px;border:none;background:none;padding:0;cursor:pointer;filter:drop-shadow(0 10px 16px rgba(90,66,116,.35));animation:lunafloat 4s ease-in-out infinite}
@@ -490,7 +496,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .confirm label{display:flex;gap:8px;align-items:flex-start;font:600 12px var(--sans);color:var(--rm-ink);padding:6px 0;border-bottom:1px solid rgba(107,82,142,.08);cursor:pointer}
 .confirm label:last-of-type{border-bottom:none}
 .confirm input{accent-color:var(--rm-mauve);margin-top:2px}
-.quick{display:flex;gap:6px;overflow-x:auto;padding:4px 0;scrollbar-width:none}
+.quick{flex-wrap:wrap;display:flex;gap:6px;padding:4px 0;scrollbar-width:none}
 .quick::-webkit-scrollbar{display:none}
 .quick .qchip{flex-shrink:0;display:inline-flex;align-items:center;background:#fff;border:1.5px solid rgba(107,82,142,.14);border-radius:99px;overflow:hidden}
 .quick .qsend{border:none;background:none;padding:8px 6px 8px 12px;font:700 12px var(--sans);color:var(--rm-ink-2);cursor:pointer;white-space:nowrap}
@@ -634,6 +640,8 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .pick b{display:block;font:800 12px var(--sans);color:var(--rm-ink)}
 .pick small{display:block;font:600 9.5px var(--sans);color:var(--rm-ink-3);line-height:1.3;margin-top:2px}
 .pick em{display:block;font:600 9.5px var(--sans);color:var(--rm-mauve);font-style:normal;margin-top:2px}
+.pick .pickimg{display:block;width:54px;height:54px;object-fit:contain;margin:0 auto 4px;filter:drop-shadow(0 2px 3px rgba(90,66,116,.14))} /* the Ovuluna food illustrations (21 Oct) */
+.pick.haspic{min-width:124px}
 
 /* ---- 18 Oct round 4: night window, visiting bar, reminders, desk drag + wallpaper, acupoint locator, dream house ---- */
 .win-night{position:absolute;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 40% 30%,#4a3b78,#1e1742 72%);box-shadow:inset 0 0 22px rgba(0,0,0,.4);opacity:0;transition:opacity 1.6s ease;pointer-events:none;overflow:hidden;z-index:2}
@@ -680,6 +688,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .dicons.free{display:block;inset:0}
 .dicons.free .dicon{position:absolute;width:22%;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .15s,background .15s}
 .dicon.lift{transform:scale(1.1);z-index:3;background:rgba(255,255,255,.22)}
+/* the folder icon and its name scale with the desk (cqw, capped at the usual sizes), so on the 16:10 desk a folder with a
+   two-line name stays under 31% of the desk's height at any width and with any font (the name never takes three lines):
+   the grid's rows are 31% apart, and deskSpots in room.js uses that 31 */
+.dicons.free{container-type:inline-size}
+.dicons.free .dicon svg{width:min(40px,10.1cqw);height:min(34px,8.6cqw)}
+.dicons.free .dicon span{font-size:min(9.5px,2.9cqw)}
 .menubar .mbtn{border:none;background:none;color:var(--rm-plum);cursor:pointer;display:flex;align-items:center;padding:0 4px}
 .menubar .mbtn .ms{font-size:17px}
 .wallpanel{display:none;margin-top:10px;background:#fff;border-radius:16px;padding:12px;box-shadow:var(--rm-shadow)}
@@ -780,11 +794,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
   radial-gradient(1.4px 1.4px at 8% 46%,#fff,transparent),radial-gradient(1.2px 1.2px at 94% 44%,#fff,transparent),radial-gradient(1.6px 1.6px at 20% 70%,#fff,transparent),
   radial-gradient(1.2px 1.2px at 84% 72%,#fff,transparent),radial-gradient(1.4px 1.4px at 52% 88%,#fff,transparent),radial-gradient(1.2px 1.2px at 36% 56%,#fff,transparent),
   radial-gradient(1.2px 1.2px at 70% 84%,#fff,transparent),radial-gradient(1.6px 1.6px at 60% 50%,#fff,transparent);animation:twinkle 3.2s ease-in-out infinite}
-.w-moon{position:relative;width:40%;max-width:168px;margin:0 auto 8px;z-index:1}
-.w-moon::before{content:'';position:absolute;inset:-38%;border-radius:50%;background:radial-gradient(circle,rgba(255,243,204,.85) 0%,rgba(222,204,255,.45) 42%,transparent 70%);filter:blur(8px);animation:moonglow 5s ease-in-out infinite}
-.w-moon img{position:relative;width:100%;display:block;filter:drop-shadow(0 0 20px rgba(255,236,190,.7)) drop-shadow(0 14px 18px rgba(90,66,116,.3));animation:moonfloat 6s ease-in-out infinite}
+.w-hero{position:relative;width:40%;max-width:164px;margin:0 auto 10px;z-index:1}
+.w-hero::before{content:'';position:absolute;inset:-34%;border-radius:50%;background:radial-gradient(circle,rgba(255,243,204,.8) 0%,rgba(222,204,255,.45) 42%,transparent 70%);filter:blur(8px);animation:moonglow 5s ease-in-out infinite}
+.w-hero img{position:relative;width:100%;height:auto;display:block;border-radius:26%;box-shadow:0 0 0 4px rgba(255,255,255,.75),0 14px 30px rgba(90,66,116,.28),0 0 26px rgba(255,236,190,.55);animation:moonfloat 6s ease-in-out infinite}
 @keyframes moonglow{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.07)}}
 @keyframes moonfloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-8px) rotate(3deg)}}
+.welcome [hidden]{display:none!important}
 .welcome>:not(.w-stars){position:relative;z-index:1}
 .welcome[hidden]{display:none}
 .w-art{position:relative;width:44%;margin-bottom:6px}
@@ -799,9 +814,25 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .welcome .btn{min-width:210px;justify-content:center;flex:0 0 auto}
 .welcome .btn.primary{box-shadow:0 10px 26px rgba(117,86,196,.42),0 0 28px rgba(226,210,255,.75)}
 .welcome .btn.ghost{background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-/* the welcome keeps its light look after sunset: the night ghost button (light text, no fill) vanished on it */
-html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);color:#5a4274;border-color:rgba(122,92,150,.28)}
+
 .welcome .btn+.btn{margin-top:8px}
+.w-auth{display:flex;flex-direction:column;gap:8px;width:min(100%,290px);margin-top:2px}
+.w-auth .btn,.w-email .btn{width:100%;min-width:0;margin:0}
+.welcome .w-auth .btn+.btn{margin-top:0}
+.welcome .btn.w-apple,.welcome .btn.w-google{min-height:46px;font-size:15px}
+.welcome .btn.w-apple{background:#111;color:#fff;border-color:#111;box-shadow:0 10px 24px rgba(40,30,60,.28)}
+.welcome .btn.w-google{background:#fff;color:#1f1f1f;border-color:#dadce0;font-weight:600;box-shadow:0 8px 20px rgba(90,66,116,.14)}
+.w-auth svg{width:18px;height:18px;flex:0 0 auto}
+.w-email{width:min(100%,290px);display:flex;flex-direction:column;gap:8px;margin-top:4px;text-align:left}
+.w-email[hidden]{display:none}
+.w-email .field{margin:0}.w-email .field label{display:block;font:600 11.5px var(--sans);color:var(--rm-ink-2);margin:0 0 4px 4px}
+.w-email .msg{font:600 12px/1.45 var(--sans);color:var(--rm-ink-2);margin:0;text-align:center;overflow-wrap:anywhere}
+.ef-more{display:flex;gap:14px;justify-content:center;margin-top:2px}
+.ef-more .linkbtn{background:none;border:0;padding:4px 0;font:700 12px var(--sans);color:var(--rm-plum);text-decoration:underline;cursor:pointer}
+.w-email .msg.err{color:#b23b5b}
+.w-fine{font:500 11px/1.5 var(--sans);color:var(--rm-ink-2);max-width:290px;margin-top:14px}
+.w-fine a{color:var(--rm-plum);font-weight:700}
+
 .onb{display:flex;flex-direction:column}
 .onb-head{display:flex;gap:12px;align-items:flex-end;margin-top:4px}
 .onb-head img{width:70px;height:104px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 8px 10px rgba(90,66,116,.25))}
@@ -1131,6 +1162,14 @@ html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);colo
 .ghplant.tappable{pointer-events:auto;cursor:pointer}
 .ghplant.tappable:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
 .ghplant img{transition:transform .2s;transform-origin:50% 100%}
+/* the greenhouse herb planters (21 Oct): drawn SVG planters by the door, tapped like the pots */
+.nb.ghbed{transform:translate(-50%,-95%);pointer-events:auto;cursor:pointer;--cs:.8}
+.ghbed svg{width:100%;height:auto;display:block;overflow:visible;transition:transform .2s;transform-origin:50% 100%}
+.ghbed:hover svg,.ghbed:active svg{transform:scale(1.06)}
+.ghbed:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:10px}
+.bedcard .bedpic.herbpic{padding:4px}
+.ghbrewrow{margin:0 0 10px}
+.ghbrewrow .chips{margin-top:6px}
 .ghplant.tappable:hover img,.ghplant.tappable:active img{transform:scale(1.06)}
 .petsafe{margin-top:10px;border-radius:14px;padding:10px 12px;background:#eef7f0;border:1px solid #cfe6d5}
 .petsafe.warn{background:#fdf0f4;border-color:#f3d3df}
@@ -1177,6 +1216,8 @@ html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);colo
 .podsug .ms{color:var(--rm-mauve);font-size:18px;flex:none}
 .linkbtn{border:none;background:none;padding:0;font:800 12.5px var(--sans);color:var(--rm-plum);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .podlist{display:flex;flex-direction:column;gap:6px}
+.podlist .podlocked{margin:10px 0 2px}
+.lbl-row #podShuffle{margin-left:auto;font:800 12px var(--sans)}
 .podep{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:14px;padding:8px 10px;cursor:pointer;font:inherit;color:inherit}
 .podep.on{border-color:var(--rm-mauve);background:#faf6fd}
 .podep i{font-style:normal;flex:none;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);font:900 11px var(--sans);color:var(--rm-plum)}
@@ -1219,7 +1260,8 @@ html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);colo
 .plushero b{display:block;font-family:var(--serif);font-weight:600;font-size:18px;color:var(--rm-plum);line-height:1.2}
 .plushero span{display:block;font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}
 
-.c-choices{display:flex;flex-direction:column;gap:8px}
+.c-choices{display:block}.c-choices>#cChoices{display:flex;flex-direction:column;gap:8px;margin-top:8px} /* a closed details with display:flex showed its content (live check, 22 Oct) */
+summary.c-lbl{cursor:pointer;list-style-position:inside}
 .c-lbl{font:800 10.5px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)}
 .c-opt.c-req{border-style:solid;border-color:rgba(122,92,150,.45);background:rgba(255,255,255,.7)}
 .consent #cAgree:disabled{opacity:.5;cursor:not-allowed}
@@ -1297,7 +1339,16 @@ html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);colo
 .mapexit{position:absolute;transform:translate(-50%,-115%);display:flex;align-items:center;gap:3px;white-space:nowrap;background:rgba(255,255,255,.92);color:var(--rm-plum);font:800 10px var(--sans);padding:3px 7px 3px 4px;border-radius:999px;box-shadow:0 2px 8px rgba(90,66,116,.22)}
 .mapexit .ms{font-size:13px}
 .worldmap{position:relative;width:100%;max-width:100%;background:linear-gradient(160deg,#f6effb,#eef6f1);border:1px solid rgba(150,120,190,.18);border-radius:18px;margin-bottom:10px}
-.worldlines{position:absolute;inset:0;width:100%;height:100%}
+/* the wider world (21 Oct): one plate of open country three of the map's boxes wide and three tall; the places sit in its top-left box, the rest is unbuilt land, edge to edge */
+.worldzoom{position:relative;width:100%;max-width:100%;overflow:hidden;border-radius:18px;border:1px solid rgba(150,120,190,.18);background:#dfeadb;touch-action:none;margin-bottom:8px;user-select:none;-webkit-user-select:none}
+.worldwide{position:absolute;left:0;top:0;width:300%;height:auto;aspect-ratio:5/4;transform-origin:0 0;background:#dfeadb url(assets/room/dream/map-world.webp) 0 0/100% 100% no-repeat;will-change:transform}
+.worldmap.known{position:absolute;left:0;top:0;width:33.3333%;height:33.3333%;margin:0;border:0;border-radius:0;box-shadow:none;background:none;overflow:visible} /* the places and their paths over the plate's top-left box; the plate draws the land under them */
+.worldzoom.far .mapnode b,.worldzoom.far .mapnode em{display:none}
+.worldzoom.far .mapnode{width:44px}
+.zoomctl{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.zoomctl button{width:40px;height:40px;flex:0 0 40px;border-radius:50%;border:1px solid rgba(150,120,190,.3);background:#fff;color:var(--rm-plum);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.zoomctl .zoomnote{font:600 12px/1.35 var(--sans);color:var(--rm-ink-2)}
+.worldlines{position:absolute;inset:0;width:100%;height:100%;overflow:visible} /* a place set just outside the box keeps its path */
 .worldlines path{fill:none;stroke:#c9b6e6;stroke-width:1.6;stroke-dasharray:2.4 2;vector-effect:non-scaling-stroke}
 .mapnode{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;width:64px;border:0;background:none;padding:0;cursor:pointer;color:var(--rm-plum)}
 .mapnode>.ms{width:34px;height:34px;line-height:34px;font-size:19px;text-align:center;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(90,66,116,.2);border:2px solid #fff}
@@ -1544,11 +1595,7 @@ body.btap-open{overflow:hidden}
 .mvperiod .mvflags b{display:inline;font-weight:800;color:var(--rm-plum)}
 .mvperiod .btn{margin-top:8px;flex:none;width:auto;padding:8px 12px}
 .mvsec{display:block}
-html[data-sky="night"] :is(.mvweek,.mvact,.mvvar){background:var(--rm-card);border-color:rgba(255,255,255,.08)}
-html[data-sky="night"] .mvact.on{background:var(--rm-mauve)}
-html[data-sky="night"] .mvvar.on{border-color:#b89be6;background:rgba(155,127,208,.3)}
-html[data-sky="night"] .matnow{background:linear-gradient(135deg,#3b2e5a,#4d3252)}
-html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);border-color:rgba(255,255,255,.08)}
+
 /* ---------- the pets walk (ovu-petwalk.js): a strip box inside the pet's body, shown while it walks; the strip is clipped
  * in its own element so a hat or bow riding on the head anchor can reach past the cell ---------- */
 .petwalk{display:none;position:absolute;left:50%;bottom:0;transform:translateX(-50%);pointer-events:auto}
@@ -1597,11 +1644,12 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .gamehud .gh-stam b{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8fcfb4,#e5c98a);transition:width .4s}
 .gamehud.low .gh-stam b{background:linear-gradient(90deg,#e58fa8,#f3b58e)}
 /* seed packets and crops to plant: two to a row, the name over its days, nothing wraps word by word */
-.seedlist{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.seedlist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.seedlist.one{grid-template-columns:minmax(0,1fr)}
 .seedlist .btn{justify-content:flex-start;text-align:left;padding:10px 12px}
 .seedlist .btn>span:not(.ms){display:flex;flex-direction:column;gap:1px;min-width:0}
 .seedlist .btn b{font:800 14px var(--sans)}
-.seedlist .btn small{font:600 11px var(--sans);opacity:.75;white-space:nowrap}
+.seedlist .btn small{font:600 11px/1.35 var(--sans);opacity:.75} /* wraps: a long price line pushed the second column off a phone screen */
 .gamehud.low .gh-stam .ms{color:#d9646f}
 .gamehud.hidden{display:none}
 .zonename{position:absolute;left:50%;top:18%;transform:translate(-50%,0) scale(.96);z-index:7;padding:8px 18px;border-radius:99px;background:rgba(58,42,64,.72);color:#fff;font:800 15px var(--sans);letter-spacing:.02em;opacity:0;pointer-events:none;transition:opacity .4s,transform .4s;backdrop-filter:blur(6px)}
@@ -1618,11 +1666,16 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 @media (prefers-reduced-motion: reduce){.zonename,.nearpill,.gamehud .gh-stam b{transition:none}}
 
 /* ---------- the farm (ovu-farm.js): beds drawn on the plate, the bed and shed sheets ---------- */
-.bed{position:absolute;transform:translate(-50%,-62%);background:none;border:0;padding:0;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 3px 4px rgba(70,40,100,.16))}
-.bed svg{width:100%;height:auto;display:block;overflow:visible}
+.bed{position:absolute;transform:translate(-50%,-50%);width:16.47%;aspect-ratio:1.838;background:none;border:0;padding:0;margin:0;cursor:pointer;pointer-events:auto;clip-path:polygon(47.8% 4%,96% 51.8%,52.2% 96%,4% 48.2%)} /* one bed's soil: E1 + E2 across, 1472x1840 plate */
+.bedplants{position:absolute;transform:translate(-50%,-100%);width:13%;aspect-ratio:1;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(70,40,100,.16))}
+.bedplants.focus{filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #7a5c96)}
+.bedplants.focus::after{content:"";position:absolute;left:50%;bottom:-25%;width:118%;height:52%;transform:translateX(-50%);border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #7a5c96,0 0 10px rgba(122,92,150,.6)} /* a ring round the bed's soil, so an empty bed shows focus too (Codex, 22 Oct) */
+.bedplants .bedcrop,.bedpic .bedcrop{position:absolute;left:22.5%;bottom:0;width:55%;height:auto;display:block;pointer-events:none}
+.bedplants .bedcrop.back,.bedpic .bedcrop.back{left:2.5%;bottom:10.8%}.bedplants .bedcrop.front,.bedpic .bedcrop.front{left:42.5%;bottom:-10.8%}
+.bedplants .bedover,.bedpic .bedover{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;pointer-events:none}
 .bed:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:10px}
 .bedcard{display:flex;gap:12px;align-items:center;background:var(--rm-card,#fff);border-radius:16px;padding:12px;margin-top:4px}
-.bedcard .bedpic{width:84px;flex:none;background:#f6eefb;border-radius:12px;padding:6px}
+.bedcard .bedpic{position:relative;width:84px;aspect-ratio:1;flex:none;background:#f6eefb;border-radius:12px;padding:6px}
 .bedcard .bedpic svg{width:100%;height:auto;display:block}
 .bedcard .bedtext{display:flex;flex-direction:column;gap:3px;font-size:13.5px}
 .bedcard .bedtext b{font-size:15px}
@@ -1643,7 +1696,8 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .snapbtns + .help,.snapbtns ~ p.help{margin-top:12px;line-height:1.5}
 .phasechips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
 /* the bed card shows soil, not a blank square */
-.bedcard .bedpic{background:radial-gradient(ellipse 46% 30% at 50% 66%,#7a5034 0 62%,#5e3c27 63% 100%,transparent 101%),#f6eefb}
+.bedcard .bedpic{overflow:hidden;background:radial-gradient(ellipse 46% 20% at 50% 74%,#8a5a44 0 62%,#6e4535 64% 100%,transparent 102%),linear-gradient(180deg,#f8f1fd,#efe4f7)}
+.bedpic .bedover{transform:translateY(-24%)}.bedpic .bedcrop{bottom:24%}.bedpic .bedcrop.back{bottom:33%}.bedpic .bedcrop.front{bottom:15%}
 
 /* plaza servers (ovu-plaza.js): a pill in screen space while she is in the plaza, and the chooser sheet */
 .plazapill{position:absolute;left:10px;top:12px;z-index:7;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 120px);padding:7px 12px 7px 9px;border:1.5px solid rgba(255,255,255,.9);border-radius:99px;background:rgba(255,255,255,.86);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(80,50,110,.14);font:800 12px var(--sans);color:var(--rm-ink);cursor:pointer}
@@ -1719,8 +1773,7 @@ span.frchip{cursor:default}
 /* display:flex on these beat the hidden attribute: the low-mood note showed under every mood, and the consent sheet told everyone
    their earlier answers said they were under 18 (Jamie's screenshot, 20 Oct) */
 .flag[hidden],.moodcare[hidden]{display:none}
-html[data-sky="night"] .moodcare{background:#3b2e5a;color:#f1e9fb}
-html[data-sky="night"] .moodcare .ms{color:#f6c9d6}
+
 /* the mindful line under a toast's message (ovu-moments.js) */
 .toast.two{border-radius:18px;align-items:flex-start;text-align:left;padding:10px 14px}
 .toast .toastsub{display:block;margin-top:3px;font:600 12px/1.35 var(--sans);color:#f3e6ff;opacity:.92}
@@ -1805,6 +1858,34 @@ html[data-sky="night"] .moodcare .ms{color:#f6c9d6}
 /* shop names sit side by side on the map: let each wrap under its own shop rather than run into the next */
 .mapnode b{white-space:normal;max-width:66px;line-height:1.15}
 
+/* recipes and the Mediterranean check (ovu-recipes.js): cards that open the source's own page */
+.rnote{font:600 12.5px var(--sans);color:var(--rm-ink-2);line-height:1.55;margin:12px 2px 0}
+.rsub{font-family:var(--serif);font-weight:600;font-size:15px;color:var(--rm-plum);display:flex;align-items:center;gap:6px;margin:16px 2px 0}
+.rsub .ms{font-size:18px;color:var(--rm-mauve)}
+.rlist{display:grid;gap:8px;margin-top:10px}
+.rcard{display:flex;gap:11px;align-items:flex-start;background:#fff;border-radius:18px;padding:11px 12px;box-shadow:0 4px 14px rgba(90,66,116,.10);border:1.5px solid rgba(201,182,230,.45);text-decoration:none;color:var(--rm-ink);transition:transform .15s ease,box-shadow .15s ease}
+.rcard:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(90,66,116,.16)}
+.rcard .ric{flex-shrink:0;width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:21px;color:var(--rm-plum);background:linear-gradient(135deg,var(--rm-blush-2),var(--rm-lilac-2))}
+.rcard .rtx{min-width:0}
+.rcard b{display:block;font:800 13px/1.3 var(--sans);color:var(--rm-ink)}
+.rcard small{display:block;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}
+.rcard i{display:inline-flex;align-items:center;gap:3px;font:800 10px var(--sans);font-style:normal;letter-spacing:.03em;color:var(--rm-mauve);margin-top:5px}
+.rcard i .ms{font-size:13px}
+.mcount{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:12px;background:linear-gradient(135deg,var(--rm-cream),var(--rm-blush-2));border-radius:18px;padding:12px 14px}
+.mcount b{font-family:var(--serif);font-weight:600;font-size:22px;color:var(--rm-plum)}
+.mcount span{font:700 12px var(--sans);color:var(--rm-ink-2)}
+.mqs{display:grid;gap:8px;margin-top:10px}
+.mq{background:#fff;border-radius:18px;padding:11px 12px;box-shadow:0 4px 14px rgba(90,66,116,.08);border:1.5px solid rgba(201,182,230,.4)}
+.mq p{font:700 12.5px/1.45 var(--sans);color:var(--rm-ink)}
+.mq p b{color:var(--rm-mauve)}
+.mq small{display:block;font:600 11px/1.4 var(--sans);color:var(--rm-ink-2);margin-top:2px} /* 5.7:1 on white: these hints say what a serving is */
+.yn{display:flex;gap:6px;margin-top:8px}
+.yn button{flex:1;border:1.5px solid rgba(107,82,142,.16);background:var(--rm-paper);border-radius:99px;padding:7px 10px;font:800 12px var(--sans);color:var(--rm-ink-2);cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease}
+.yn button[data-yn="1"].on{background:#3a7559;border-color:#3a7559;color:#fff} /* white on it is 5.4:1 */
+.yn button[data-yn="0"].on{background:var(--rm-lilac);border-color:var(--rm-lilac);color:var(--rm-plum)}
+.yn button:focus-visible{outline:2px solid var(--rm-mauve);outline-offset:2px}
+.rsafe{display:flex;gap:8px;align-items:flex-start;background:var(--rm-paper-2);border-radius:14px;padding:10px 12px;margin-top:12px}
+.rsafe .ms{font-size:18px;color:var(--rm-mauve);flex-shrink:0;margin-top:1px}
 /* Today's check-in: six tiles, a calm status line, quick answers; a tick only for what she chose to count */
 .cihead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .cichoose{border:none;background:none;font:800 11.5px var(--sans);color:var(--rm-mauve);cursor:pointer;padding:10px 4px;min-height:44px}
@@ -1835,8 +1916,7 @@ html[data-text="larger"] .tiles.ci{grid-template-columns:minmax(0,1fr)}
 .ciquick:empty{display:none}
 .ciquick .qchip{border:1.5px solid var(--rm-lilac);background:var(--rm-card,#fff);color:var(--rm-plum);border-radius:99px;padding:8px 12px;min-height:40px;font:700 11.5px var(--sans);cursor:pointer}
 .ciquick .qchip.undo{border-style:dashed;color:var(--rm-ink-2)}
-html[data-sky="night"] .cistatus.done .ms{color:#86c7a6}
-html[data-sky="night"] .cimark.uns{background:#2f5a45;color:#c8f0da}
+
 /* farm: the watering can and mindful care steps (Jamie, 20 Oct) */
 .bedcard .bedpic.canpic{background:#eef4fb}
 .bedcard .canline{display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#3f6f96}
@@ -1864,7 +1944,37 @@ html[data-sky="night"] .cimark.uns{background:#2f5a45;color:#c8f0da}
 .consent .c-err{margin:8px 0 10px;padding:9px 12px;border-radius:12px;background:#fdecef;color:#8a2140;font:700 12.5px/1.45 var(--sans)}
 
 /* large text in the room (ovu-textsize.js): everything around the plate grows; the plate, the avatar and taps on them stay true */
-html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud){zoom:var(--tz,1)}
+html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud,.springstop,.seatpanel){zoom:var(--tz,1)}
+
+/* the Rhythme logo beside the wordmark (assets/brand/logo-mark.webp, the app icon at 192 px) */
+.rh-logo{display:inline-block;width:1.5em;height:1.5em;border-radius:28%;object-fit:cover;vertical-align:middle;flex:none;box-shadow:0 1px 5px rgba(90,66,116,.25)}
+.brand{display:inline-flex;align-items:center;gap:.42em}
+.w-erin{display:flex;align-items:center;justify-content:center;gap:.2em}
+.w-brand{display:inline-flex;align-items:center;gap:.5em}
+.w-brand .rh-logo{width:1.35em;height:1.35em}
+.menubar .brandy{display:inline-flex;align-items:center;gap:.4em}
+.menubar .brandy .rh-logo{width:1.25em;height:1.25em;box-shadow:none}
+/* ---------- optional sleep details and the two-week sleep check ---------- */
+.sqbox{margin-top:10px}
+.sqtoggle{width:100%;justify-content:center}
+.sqbody{margin-top:6px;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.6);border:1px solid rgba(107,82,142,.1)}
+.sqf{margin-top:12px}
+.sqf .lbl{display:block;margin-bottom:6px}
+.sqhint{display:block;margin:-2px 0 6px;font:600 11px var(--sans);color:var(--rm-ink-3);line-height:1.4}
+.sqf .chips{gap:6px}
+.sqf .chipbtn{padding:7px 11px}
+.sqcard{margin-top:14px}
+.sqnotes{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+#sqResult{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.sqnote{border-radius:14px;padding:10px 12px;background:#fff7f1;border:1.5px solid #f0c9a6;color:var(--rm-ink)}
+.sqnote.today{background:#fff1f0;border-color:#e88a86}
+.sqnote.info{background:#f4f0fa;border-color:#ddd1ee}
+.sqnote b{display:block;font:600 15px var(--serif);color:#7b3a2c;margin-bottom:3px}
+.sqnote.today b{color:#9b2f2a}
+.sqnote.info b{color:var(--rm-ink)}
+.sqnote p{margin:0;font:600 12.5px var(--sans);line-height:1.45}
+.sqsmall{display:block;font:600 11px var(--sans);color:var(--rm-ink-3);line-height:1.4}
+
 /* the barn and the hidden spring (ovu-barn.js, 21 Oct) */
 .barnthing{position:absolute;pointer-events:auto;border:0;background:none;padding:0}
 .barnthing.animal{transform:translate(-50%,-100%);cursor:pointer;z-index:2}
@@ -1874,7 +1984,7 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 @keyframes animalidle{0%,100%{transform:scale(1,1)}50%{transform:scale(1.012,.988)}}
 @keyframes animalidleflip{0%,100%{transform:scaleX(-1) scale(1,1)}50%{transform:scaleX(-1) scale(1.012,.988)}}
 .barnthing.animal:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:12px}
-.barnthing.nestegg{width:2.2%;transform:translate(-50%,-100%);pointer-events:none;transition:transform .9s ease,opacity .9s ease}
+.barnthing.nestegg{width:3.6%;filter:drop-shadow(0 2px 3px rgba(120,90,60,.35));transform:translate(-50%,-100%);pointer-events:none;transition:transform .9s ease,opacity .9s ease}
 .barnthing.nestegg svg{width:100%;display:block}
 .barnthing.nestegg.lifted{transform:translate(-50%,-180%);opacity:0}
 .barnlist{list-style:none;margin:4px 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -1901,3 +2011,434 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .scene.sky-night:not(.is-night) .barnthing.animal img{filter:brightness(.9) saturate(1.02) hue-rotate(-3deg) drop-shadow(0 6px 5px rgba(70,40,90,.22))}
 .bedcard .bedpic.pailpic{background:#f6f0fb}
 .bedcard .bedpic.springpic{background:#101428}
+/* Morning start: the adaptation line before the wake-up's movements (21 Oct) */
+.mpcare{font:600 12px/1.45 var(--sans);color:var(--rm-ink-2);background:rgba(255,255,255,.6);border-radius:12px;padding:8px 10px;margin:0 0 8px}
+/* the consent notice keeps its light look: a withdrawal that did not reach the account is said plainly above the button */
+.consent .c-err{margin:8px 0 10px;padding:9px 12px;border-radius:12px;background:#fdecef;color:#8a2140;font:700 12.5px/1.45 var(--sans)}
+
+/* large text in the room (ovu-textsize.js): everything around the plate grows; the plate, the avatar and taps on them stay true */
+html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.loading,.topbar,.greeting,.hud,.springstop,.seatpanel){zoom:var(--tz,1)}
+
+/* the harbour (ovu-harbour.js, 21 Oct): a line and a float on the water while she fishes; the fish card; the catch book */
+.harbourthing.castline{position:absolute;inset:0;pointer-events:none;z-index:4}
+.harbourthing.castline svg{position:absolute;inset:0;width:100%;height:100%}
+.harbourthing .float{position:absolute;width:3.2%;aspect-ratio:1;transform:translate(-50%,-50%)}
+.harbourthing .float b{position:absolute;inset:22%;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff 0 30%,var(--floatc,#e58aa8) 32% 100%);box-shadow:0 2px 4px rgba(60,40,110,.35);animation:floatbob 2.6s ease-in-out infinite}
+.harbourthing .float.glow b{box-shadow:0 2px 4px rgba(60,40,110,.35),0 0 10px 3px rgba(255,248,210,.75)}
+.harbourthing .float .ring{position:absolute;inset:-10%;border-radius:50%;border:1.5px solid rgba(255,255,255,.75);animation:floatring 2.6s ease-out infinite}
+.harbourthing .float .ring.r2{animation-delay:1.3s}
+.scene.bite .harbourthing .float b{animation:floatdip 1.2s ease-in-out infinite}
+@keyframes floatbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6%)}}
+@keyframes floatdip{0%,100%{transform:translateY(0)}40%{transform:translateY(38%)}}
+@keyframes floatring{0%{transform:scale(.5);opacity:.9}100%{transform:scale(2.4);opacity:0}}
+.hbpic{background:#b9addf}
+.hbpic .hbfloat{animation:floatbob 2.6s ease-in-out infinite;transform-origin:52px 30px}
+.hbpic .hbfloat.dip{animation:floatdip 1.2s ease-in-out infinite}
+.hbpic .hbring{animation:floatring 2.6s ease-out infinite;transform-origin:52px 30px}
+.hbpic .hbshadow{animation:fishshadow 3s ease-in-out infinite}
+@keyframes fishshadow{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
+.hbline{margin:0 0 8px}
+.fishcard{display:flex;align-items:center;gap:12px;background:var(--rm-card,#fff);border-radius:16px;padding:10px 12px;margin:2px 0 10px}
+.fishcard img{width:38%;max-width:150px;height:auto;filter:drop-shadow(0 6px 8px rgba(60,40,110,.22))}
+.fishcard b{display:block;font:800 16px var(--serif);color:var(--rm-plum)}
+.fishcard small{display:block;font:600 12.5px var(--sans);color:var(--rm-ink-2);margin-top:3px}
+.fishfact{font:600 13.5px/1.5 var(--sans);color:var(--rm-ink);margin:0 0 10px}
+.fishsrc,.bookrow em{display:block;font:500 11px var(--sans);color:var(--rm-ink-2);font-style:normal;margin-top:3px}
+.booklist{list-style:none;margin:4px 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
+.bookrow{display:flex;align-items:center;gap:10px;background:var(--rm-card,#fff);border-radius:14px;padding:8px 10px}
+.bookrow img{width:22%;max-width:84px;height:auto;flex:none}
+.bookrow .bookq{flex:none;width:22%;max-width:84px;aspect-ratio:3/2;display:grid;place-items:center;border-radius:12px;background:#efe8fb;color:#9a7bc2;font:800 22px var(--serif)}
+.bookrow b{display:block;font:800 14px var(--sans);color:var(--rm-ink)}
+.bookrow small{display:block;font:600 12px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.bookrow.unseen b{color:var(--rm-ink-2)}
+@media (prefers-reduced-motion: reduce){.harbourthing .float b,.harbourthing .float .ring,.hbpic .hbfloat,.hbpic .hbring,.hbpic .hbshadow,.scene.bite .harbourthing .float b,.hbpic .hbfloat.dip{animation:none}.harbourthing .float .ring{opacity:.5;transform:scale(1.4)}.scene.bite .harbourthing .float b{transform:translateY(30%)}.hbpic .hbfloat.dip{transform:translateY(6px)}}
+/* the crystals' tone (ovu-tones.js, 21 Oct): nine pitch chips, a pill to stop it from the scene */
+.tonechips .chipbtn{min-width:72px}
+.tonepill small{font:700 11px var(--sans);opacity:.75;margin-left:2px}
+/* ---- 21 Oct: seats (ovu-seats.js): each bench its own practice and its own small weather, below the sitter, inside the plate so the camera carries it ---- */
+#seatfx{position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+#seatfx i,#seatfx b{position:absolute;display:block;opacity:0;will-change:transform,opacity;transform:translate(-50%,-50%)}
+#seatfx .petal{aspect-ratio:1/1.35;border-radius:60% 60% 55% 55%/70% 70% 45% 45%;background:radial-gradient(circle at 40% 35%,#ffe6f1,#f4b4d2);animation:seatpetal 11s linear infinite}
+@keyframes seatpetal{0%{transform:translate(-50%,-50%) rotate(0deg);opacity:0}10%{opacity:.85}50%{transform:translate(calc(-50% + 34px),calc(-50% + 150px)) rotate(170deg)}90%{opacity:.7}100%{transform:translate(calc(-50% - 10px),calc(-50% + 300px)) rotate(330deg);opacity:0}}
+#seatfx .mote{aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff6cf 0 30%,rgba(255,214,140,0) 70%);box-shadow:0 0 9px 3px rgba(255,200,120,.35);animation:seatmote 8s ease-in-out infinite}
+@keyframes seatmote{0%{transform:translate(-50%,-50%);opacity:0}18%{opacity:.9}42%{opacity:.45}62%{opacity:.9}100%{transform:translate(calc(-50% + 14px),calc(-50% - 130px));opacity:0}}
+.scene.is-night #seatfx .mote,.scene.sky-night #seatfx .mote{filter:brightness(1.35)}
+#seatfx .spark{aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff 0 25%,rgba(255,255,255,0) 70%);animation:seatspark 3.6s ease-in-out infinite}
+@keyframes seatspark{0%,100%{transform:translate(-50%,-50%) scale(.3);opacity:0}50%{transform:translate(-50%,-50%) scale(1);opacity:.9}}
+#seatfx .leaf{aspect-ratio:1/1.8;border-radius:80% 0 80% 0;background:linear-gradient(135deg,#d9ecc2,#a9cf8e);animation:seatleaf 13s ease-in-out infinite}
+@keyframes seatleaf{0%{transform:translate(-50%,-50%) rotate(20deg);opacity:0}12%{opacity:.8}50%{transform:translate(calc(-50% - 60px),calc(-50% + 90px)) rotate(200deg)}88%{opacity:.6}100%{transform:translate(calc(-50% - 120px),calc(-50% + 200px)) rotate(380deg);opacity:0}}
+#seatfx .ring{aspect-ratio:2.4/1;border:2px solid rgba(255,255,255,.6);border-radius:50%;animation:seatring 7s ease-out infinite}
+@keyframes seatring{0%{transform:translate(-50%,-50%) scale(.15);opacity:0}12%{opacity:.6}100%{transform:translate(-50%,-50%) scale(1.7);opacity:0}}
+#seatfx .streak{height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.75),rgba(255,255,255,0));animation:seatstreak 6s ease-in-out infinite}
+@keyframes seatstreak{0%,100%{transform:translate(calc(-50% - 26px),-50%);opacity:0}50%{transform:translate(calc(-50% + 26px),-50%);opacity:.85}}
+#seatfx .glint{aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff 0 18%,rgba(196,176,255,.65) 42%,rgba(196,176,255,0) 70%);animation:seatglint 7s ease-in-out infinite}
+@keyframes seatglint{0%,100%{opacity:0}50%{opacity:.9}}
+/* the bench by the tree: flecks of light through the canopy, slow and out of step (21 Oct) */
+#seatfx .fleck{aspect-ratio:1.9/1;border-radius:50%;background:radial-gradient(ellipse at center,rgba(255,250,224,.9) 0 30%,rgba(255,243,200,.35) 52%,rgba(255,243,200,0) 72%);animation:seatfleck 9s ease-in-out infinite}
+@keyframes seatfleck{0%,100%{transform:translate(-50%,-50%) scale(.8);opacity:0}25%{opacity:.5}50%{transform:translate(calc(-50% + 7px),calc(-50% + 2px)) scale(1.05);opacity:.8}75%{opacity:.4}}
+.scene.is-night #seatfx .fleck,.scene.sky-night #seatfx .fleck{filter:saturate(.15) brightness(.8)}
+@media (prefers-reduced-motion: reduce){#seatfx i{animation:none!important;opacity:.35}#seatfx .mote,#seatfx .spark,#seatfx .glint,#seatfx .streak{opacity:.22}#seatfx b{display:none}}
+.seatpanel .mp-btns{display:flex;flex-wrap:wrap;gap:8px}
+.seatpanel .mp-btns .btn{flex:1 1 40%}
+/* Harbour Lane (ovu-lane.js, 21 Oct): the places as rows, the gym's stations, float swatches and the post box */
+.street.lane .store .storeic{width:64px;height:64px;flex:none;display:grid;place-items:center;font-size:34px;color:var(--rm-mauve);background:var(--rm-paper-2);border-radius:18px}
+.street.lane .store.closed .storeic{opacity:.6}
+.postnew{font-style:normal;color:#e2557e;font-weight:800}
+.gymlist{display:grid;gap:8px;margin-top:10px}
+.gymst{display:flex;align-items:center;gap:10px;background:var(--rm-card);border-radius:16px;padding:10px 12px;box-shadow:var(--rm-shadow)}
+.gymst>.ms{font-size:26px;color:var(--rm-mauve);flex:none}
+.gymst>span:not(.ms){flex:1;min-width:0}
+.gymst b{display:block;font:800 14px var(--sans);color:var(--rm-plum)}
+.gymst small{display:block;font:600 12px/1.4 var(--sans);color:var(--rm-ink-2)}
+.gymst .btn{flex:none}
+.floatdot{width:22px;height:22px;flex:none;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff 0 30%,var(--floatc,#e58aa8) 32% 100%);box-shadow:0 1px 3px rgba(60,40,110,.3)}
+.floatdot.glow{box-shadow:0 1px 3px rgba(60,40,110,.3),0 0 8px 2px rgba(255,236,170,.9)}
+#floatList .btn.on{outline:2px solid var(--rm-mauve);outline-offset:1px}
+.letterlist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.letterrow{display:flex;align-items:center;gap:8px;background:var(--rm-card);border-radius:16px;padding:10px 12px;box-shadow:var(--rm-shadow)}
+.letterrow>.ms{color:var(--rm-mauve);flex:none}
+.letterrow.new>.ms{color:#e2557e}
+.letterrow>span:not(.ms){flex:1;min-width:0}
+.letterrow b{display:block;font:800 13.5px var(--sans);color:var(--rm-plum)}
+.letterrow small{display:block;font:600 12px/1.4 var(--sans);color:var(--rm-ink-2);overflow-wrap:anywhere}
+.letterrow .btn{flex:none}
+.lettertext{width:100%;min-height:96px;resize:vertical;margin-top:8px}
+.letterbody{margin:8px 0 0;padding:16px;background:var(--rm-paper-2);border-radius:16px;font:500 16px/1.6 var(--serif);color:var(--rm-ink);overflow-wrap:anywhere}
+/* the farm kitchen's guided steps (ovu-kitchen.js): the step she is on is outlined, the ones done are quieter */
+.cooksteps li.on{box-shadow:0 0 0 2px var(--rm-mauve)}
+.cooksteps li.done{opacity:.6}
+
+.springstop{min-height:44px;font-size:15px} /* the scene's Stop button, big enough for slow taps (menopause walk, 21 Oct) */
+
+/* Your cycle rhythm (design 2026-10-21-cycle-tab-rhythm.md): history as the only number, four cards with levels */
+.rhythm h3{font:800 18px var(--serif,Georgia,serif);color:var(--rm-plum);margin:4px 0 8px}
+.rhythm .stagenote{margin:0 0 10px;font-size:13px}
+.ready{background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:16px;padding:12px;margin-bottom:10px}
+.ready .lbl{display:block;margin-bottom:8px}
+.ready .dots{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin:4px 0 8px}
+.ready .dot{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative}
+.ready .dot i{width:40px;height:40px;border-radius:50%;border:2px solid #d9cdee;background:#fff;display:flex;align-items:center;justify-content:center;font:800 15px var(--sans);color:#a394bd;font-style:normal}
+.ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#2a1d44} /* dark plum on the pale gradient (Codex, 22 Oct: white was under 2:1) */
+.ready .dot em{font:700 10px/1.2 var(--sans);font-style:normal;color:var(--rm-ink-2);text-align:center}
+.ready .dot+.dot::before{content:"";position:absolute;left:-50%;right:50%;top:20px;height:2px;background:#e4dbf2;z-index:-1}
+.ready p{margin:0;font:600 13px/1.45 var(--sans);color:var(--rm-ink)}
+.rcard{background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:16px;padding:12px;margin-bottom:10px}
+.rcard .rhead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.rcard .rhead b{font:800 15px var(--sans);color:var(--rm-plum)}
+.rcard small{display:block;font:600 12px/1.4 var(--sans);color:var(--rm-ink-2);margin:2px 0 6px}
+.rcard p{margin:0 0 8px;font:600 13px/1.45 var(--sans);color:var(--rm-ink)}
+.rchips{display:flex;flex-wrap:wrap;gap:6px}
+.lvl{font:800 10px var(--sans);letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:4px 9px;background:#eef0f5;color:#5e6475}
+.lvl-ok,.lvl-ref{background:#e7f6ee;color:#2d7a4f}.lvl-note{background:#fff3df;color:#9a6200}.lvl-chat{background:#fde8ee;color:#b03a5c}.lvl-building,.lvl-thin,.lvl-na{background:#eef0f5;color:#5e6475}
+.chip-th{font:700 10px var(--sans);border-radius:999px;padding:3px 8px;background:#f3eefb;color:#6e4fa3;border:1px dashed #c9b6e6}
+.chip-e{font:800 10px var(--sans);border-radius:999px;padding:3px 8px;background:#eaf2fb;color:#2f5f9e;text-decoration:none}
+.rband{background:#f8f4fd;border-radius:14px;padding:10px 12px;margin:-4px 0 10px}
+.rband .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.rfoot{margin-top:4px;font-size:12px}
+
+/* Luna's chat as a floating card (Jamie, 21 Oct: the Ovuluna panel): her face in the head, a status line, questions to ask, a round send, the companion line */
+.sheet.luna-sheet{bottom:auto;top:max(10vh,70px);left:10px;right:10px;border-radius:26px;max-height:min(78%,calc(100% - 140px));box-shadow:0 24px 60px rgba(60,40,90,.28);border:1px solid rgba(255,255,255,.7);background:linear-gradient(180deg,#fbf7ff,#fff 60px)}
+.sheet.luna-sheet .sheet-head{padding:14px 16px 10px;border-bottom:1px solid rgba(150,120,190,.12)}
+.sheet.luna-sheet .sheet-head .ico{background:transparent;width:48px;height:48px;overflow:visible}
+.sheet.luna-sheet .lunaico{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(120,90,170,.25))}
+.sheet.luna-sheet h2{font-size:22px}
+.sheet.luna-sheet h2 small{display:flex;align-items:center;gap:6px;color:var(--rm-ink-2)}
+.lunastrip{flex-wrap:wrap;row-gap:4px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px -16px 6px;padding:8px 16px;background:#f6f1fc;border-bottom:1px solid rgba(150,120,190,.1);font:700 12px var(--sans);color:var(--rm-ink-2)}
+.lunastrip .lstate{display:inline-flex;align-items:center;gap:7px}
+.ldot{width:8px;height:8px;border-radius:50%;background:#c9c2d6;display:inline-block}.ldot.on{background:#4fbf7f;box-shadow:0 0 0 3px rgba(79,191,127,.18)}
+.lunastrip .lmore{border:none;background:none;color:#8a63c9;font:800 12px var(--sans);cursor:pointer;padding:4px 0}
+.askrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px;align-items:center}
+.askrow .asklbl{font:800 10px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3);width:100%}
+.askchip{display:inline-flex;align-items:center;padding:9px 14px;border-radius:999px;border:1.5px solid rgba(138,99,201,.28);background:#faf7ff;color:#6e4fa3;font:700 13px var(--sans);text-decoration:none}
+.askchip:hover{background:#f1e9fc}
+.composer .lsend{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#9a7ad1,#7b5bb5)}
+.sheet.luna-sheet .composer textarea.input{border-radius:22px;min-height:52px}
+.lunanote{margin:10px 0 0;text-align:center;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-3)}
+@media(min-width:520px){.sheet.luna-sheet{left:50%;right:auto;width:min(480px,92vw);transform:translate(-50%,105%)}.sheet.luna-sheet.on{transform:translate(-50%,0)}}
+
+ /* the completed dots keep their gradient at night (Codex re-check) */
+
+/* closed, Luna's top-anchored card is hidden and untappable once it has slid away: on a tall screen its own height is not enough to leave the frame */
+.sheet.luna-sheet:not(.on){visibility:hidden;pointer-events:none;transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s linear .38s}
+
+/* water in the food diary (21 Oct): a record, examples of amounts, information with sources; no bar, no target */
+.wstrip{margin:0 0 12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid rgba(160,130,190,.18);color:#3b2d52}
+.wstrip .whead{display:flex;gap:10px;align-items:center}.wstrip .whead .ms{font-size:26px;color:#5f7fb8}.wstrip .whead b{display:block;font:800 15px var(--sans)}.wstrip .whead small{display:block;font:600 12px var(--sans);color:#6f5f8c}
+.wstrip .wadd{margin-top:10px}.wstrip .wrow{flex-wrap:wrap;gap:6px}.wstrip .wrow .btn small{display:block;font:600 10.5px var(--sans);opacity:.8}
+.wlist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}.wlist li{display:flex;justify-content:space-between;align-items:center;gap:8px;font:700 13px var(--sans)}.wlist li small{font-weight:600;color:#6f5f8c;margin-left:6px}
+.winfo{margin-top:10px}.winfo summary{cursor:pointer;font:800 12.5px var(--sans);color:#4b5f8a;display:flex;align-items:center;gap:6px;list-style:none}.winfo summary::-webkit-details-marker{display:none}.winfo p{margin:6px 0 0;font:600 12.5px/1.5 var(--sans);color:#3b2d52}.winfo .evid a{margin-right:6px}
+.wstrip .help,.wstrip .lbl{color:#3b2d52}.wstrip .help.muted{color:#6f5f8c}.wbf{display:flex;align-items:center;gap:8px;margin:8px 0;font:700 13px var(--sans)}
+
+/* How to practise, on the koi pond and Light Flower cards (Jamie, 21 Oct); the flower's breath words */
+.btap-how{margin:4px 0 2px;text-align:left}
+.btap-how summary{cursor:pointer;font:800 12.5px var(--sans);color:#f1e9fb;display:flex;align-items:center;gap:6px;list-style:none;padding:6px 0}
+.btap-how summary::-webkit-details-marker{display:none}
+.btap-how summary .ms{font-size:18px}
+.btap-how ol{margin:4px 0 2px;padding-left:18px;font:600 12.5px/1.5 var(--sans);color:#d9cdef}
+.btap-how li{margin:3px 0}
+.btap-chips button small{display:block;font:600 10.5px var(--sans);opacity:.8}
+.lf-breath{position:absolute;left:50%;top:12%;transform:translateX(-50%);font:600 24px var(--serif);color:rgba(255,255,255,.82);letter-spacing:.08em;pointer-events:none}
+@media (prefers-reduced-motion: reduce){.sheet.luna-sheet:not(.on){transition:none}}
+/* in-app page viewer (ovu-pageview.js): older Rhythme pages slide over the room instead of leaving it */
+.pageview{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;background:var(--rm-bg,#f6f0fb);transform:translateX(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);box-shadow:-12px 0 40px rgba(60,30,90,.18)}
+.pageview.on{transform:none}
+.pv-bar{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 10px) max(14px,env(safe-area-inset-right,0px)) 10px max(14px,env(safe-area-inset-left,0px));background:rgba(255,255,255,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(150,120,190,.18)}
+.pv-back{width:38px;height:38px;border-radius:50%;border:0;background:rgba(122,92,150,.1);color:var(--rm-plum,#5b3f7a);display:grid;place-items:center;cursor:pointer}
+.pv-bar b{font:600 18px/1.2 var(--serif,Georgia,serif);color:var(--rm-plum,#5b3f7a);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pageview iframe{flex:1;width:100%;border:0;background:transparent}
+@media (prefers-reduced-motion:reduce){.pageview{transition:none}}
+/* hint dots and route markers sit lighter on the art (Jamie, 22 Oct: "more transparent ... looks nicer"); a seat's own dot hides while she sits there */
+.hotspot .pulse{opacity:.45}
+.hotspot:hover .pulse,.hotspot:focus-visible .pulse,.hotspot.show-tip .pulse{opacity:.85}
+#scene:has(.nb.sitter) .hotspot[data-id="bench"] .pulse,#scene:has(.nb.sitter) .hotspot[data-id="hbbench"] .pulse{opacity:0}
+/* the data notice, simple (Jamie, 22 Oct): an emoji grid of what Rhythme does, two promises, the full notice folded away */
+.c-caps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.c-caps div{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 9px;border-radius:16px;background:rgba(255,255,255,.62);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.95);box-shadow:0 6px 16px rgba(122,92,150,.12);text-align:center}
+.c-caps i{font-style:normal;font-size:26px;line-height:1}
+.c-caps i img{width:40px;height:40px;display:block;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(120,90,160,.18))} /* drawn icons, never emoji (Jamie, 22 Oct) */
+.c-caps span{font:800 11.5px/1.25 var(--sans);color:var(--rm-plum)}
+.c-promise{display:flex;flex-direction:column;gap:6px}
+.c-promise p{display:flex;gap:8px;align-items:center;margin:0;font:700 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}
+.c-promise i{font-style:normal;font-size:17px;flex:none}
+.c-promise i img{width:26px;height:26px;display:block;object-fit:contain}
+.c-full{border-radius:14px;background:rgba(255,255,255,.4);padding:2px 12px}
+.c-full summary,.c-more summary{cursor:pointer;font:800 12px var(--sans);color:var(--rm-plum);padding:8px 0;list-style:none}
+.c-full summary::-webkit-details-marker,.c-more summary::-webkit-details-marker{display:none}
+.c-full summary::after,.c-more summary::after{content:' ›';display:inline-block;transition:transform .2s}
+.c-full[open] summary::after,.c-more[open] summary::after{transform:rotate(90deg)}
+.c-full .c-list{padding-bottom:10px}
+.c-pick{display:flex;flex-direction:column}
+.c-pick .c-opt{border-style:solid;border-color:rgba(255,255,255,.95);background:rgba(255,255,255,.62)}
+.c-emo{font-style:normal;font-size:18px;margin-right:6px;vertical-align:-2px}
+.c-pick .c-opt b{display:inline}
+.c-more{margin:2px 0 0 38px}
+.c-more summary{padding:4px 0;font-size:11px;color:var(--rm-ink-3)}
+.c-more p{margin:0 0 6px;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-3)}
+
+/* fasting timing in the food diary (design 2026-10-21-fasting-timing.md): plain, no counter, no colour for lengths */
+.fstrip{margin-top:12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid rgba(160,130,190,.18)}
+.fstrip .lbl{display:block;margin-bottom:6px}
+.fstrip .row{margin-top:8px;flex-wrap:wrap}
+.fstrip .btn.small{padding:7px 11px;font-size:13px;min-height:40px}
+.fstrip .fopen{margin:4px 0 2px;font-size:14px}
+.fstrip .foffer{margin:8px 0;padding:10px;border-radius:12px;background:#f6effd;font-size:14px}
+.fstrip .fconflict{margin:6px 0;padding:10px;border-radius:12px;background:#fff4ea;font-size:14px}
+.fstrip .frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:13px}
+.fstrip .frow span{flex:1 1 180px;min-width:0}
+.fstrip .fgaps,.fstrip .fcare,.fstrip .freason{margin-top:8px;font-size:13px;line-height:1.4}
+.fstrip .muted{color:#8d7fa0}
+.fstrip .evid a{color:#7b5bb5;text-decoration:none;margin-right:4px;font-size:12px}
+.fq .chips{display:flex;gap:6px;flex-wrap:wrap}
+.fq .chipbtn[disabled]{opacity:.6}
+.fastingcard .ilist{margin-top:6px}
+
+/* ---------- the Today card's three tabs (21 Oct): Today, Channel once she has joined a plaza group, Inventory ---------- */
+.decktabs{margin:0 0 4px}
+.decktabs button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:40px;position:relative}
+.decktabs button .ms{font-size:18px}
+.dbadge{position:absolute;top:3px;right:6px;min-width:18px;height:18px;border-radius:9px;background:var(--rm-blush);color:var(--rm-plum);font:800 11px/18px var(--sans);text-align:center;padding:0 5px}
+.dbadge[hidden]{display:none}
+.deckpane[hidden]{display:none}
+.deckpane>h2{margin-bottom:2px}
+.chhead,.chfriends,.invhearts{display:flex;align-items:center;gap:10px;padding:12px;border-radius:16px;background:var(--rm-paper-2);margin-top:10px}
+.chhead>.ms,.chfriends>.ms,.invhearts>.ms{font-size:26px;color:var(--rm-mauve)}
+.chhead>div,.chfriends>div,.invhearts>div{flex:1;min-width:0}
+.chhead b,.chfriends b,.invhearts b{display:block;font:800 14px var(--sans);color:var(--rm-plum)}
+.chhead small,.chfriends small,.invhearts small{display:block;font:600 12.5px/1.35 var(--sans);color:var(--rm-ink-2)}
+.invhearts .btn{flex:0 0 auto;padding:10px 14px;min-height:40px}
+.chprompt{margin-top:10px;padding:12px;border-radius:16px;background:var(--rm-cream)}
+.chprompt .lbl{display:block;font:800 10px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-mauve)}
+.chprompt p{margin:4px 0 0;font:600 13.5px/1.4 var(--sans);color:var(--rm-ink)}
+.chrow{flex-wrap:wrap}
+.chrow .btn{min-height:44px;flex:1 1 40%}
+.chbadge{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:#fff;color:var(--rm-plum);font:800 11px/18px var(--sans);text-align:center;padding:0 5px}
+.invsec{margin-top:12px}
+.invsec h3{display:flex;align-items:center;gap:6px;margin:0;font:800 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-mauve)}
+.invsec h3 .ms{font-size:16px}
+.invsec h3 small{font:800 11px var(--sans);color:var(--rm-ink-3);letter-spacing:0}
+.invlist{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.invlist li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--rm-paper-2);font:600 13px/1.3 var(--sans);color:var(--rm-ink)}
+.invlist li b{font-weight:800;color:var(--rm-plum)}
+.invlist li i{font:800 11px/18px var(--sans);min-width:18px;padding:0 6px;border-radius:9px;background:var(--rm-lilac-2);color:var(--rm-plum);text-align:center}
+.invlist li span{margin-left:auto;font:600 12px var(--sans);color:var(--rm-ink-3);text-align:right}
+.invsec .help{margin-top:6px}
+.invgo{display:inline-flex;align-items:center;gap:2px;margin-top:6px;border:none;background:transparent;padding:6px 2px;font:800 12px var(--sans);color:var(--rm-plum);cursor:pointer}
+.invgo .ms{font-size:18px}
+
+/* ---------- the drops (21 Oct): the Starlight gown as a Rhythme Plus drop, her birthday week ---------- */
+.outfit.locked{position:relative;opacity:.82}
+.outfit.locked img{filter:saturate(.7)}
+.outfit .olock{position:absolute;top:6px;right:6px;font-size:16px;color:var(--rm-plum);background:#fff;border-radius:50%;padding:3px;box-shadow:0 1px 4px rgba(90,66,116,.18)}
+.prop.event{position:absolute;transform:translate(-50%,-98.5%);z-index:7;pointer-events:auto;cursor:pointer;border:none;background:transparent;padding:0;filter:drop-shadow(0 1px 1.5px rgba(60,30,80,.22));animation:propin .6s ease-out}
+.prop.event img{width:100%;display:block}
+.prop.event:focus-visible{outline:3px solid var(--rm-mauve);outline-offset:3px;border-radius:12px}
+.bcard{border-radius:20px;padding:14px;background:linear-gradient(160deg,var(--rm-cream),var(--rm-lilac-2));border:1px dashed rgba(122,92,150,.35)}
+.bhead{display:flex;align-items:center;gap:12px}
+.bhead img{width:64px;height:auto}
+.bhead b{display:block;font:600 20px var(--serif);color:var(--rm-plum)}
+.bhead small{display:block;font:700 12px var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.bline{margin:0;font:600 14px/1.45 var(--sans);color:var(--rm-ink);padding-left:12px;border-left:3px solid var(--rm-blush)}
+.bcard .lbl{display:block;margin-top:14px;font:800 10px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-mauve)}
+.bwish{margin-top:12px}
+.bnote{margin:8px 0 0;font:600 12px/1.4 var(--sans);color:var(--rm-ink-3)}
+.bwho{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.72)}
+.bcard .bwho .lbl{margin-top:0}
+.bwho b{display:block;margin-top:4px;font:600 18px var(--serif);color:var(--rm-plum)}
+.bwho p{margin:6px 0 0;font:600 14px/1.45 var(--sans);color:var(--rm-ink)}
+.bwho .bquote{font-style:italic;color:var(--rm-ink-2)}
+.bdir{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.72)}
+.bcard .bdir .lbl{margin-top:0}
+.bdir b{display:block;margin-top:4px;font:600 18px var(--serif);color:var(--rm-plum)}
+.bdir p{margin:6px 0 0;font:600 14px/1.45 var(--sans);color:var(--rm-ink)}
+.bdir .bstep{display:flex;gap:6px;align-items:flex-start;font:700 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}
+.bdir .bstep .ms{font-size:18px;color:var(--rm-mauve)}
+.bfrom{margin:12px 0 0;font:600 12.5px var(--serif);font-style:italic;color:var(--rm-ink-2);text-align:right}
+.byrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.byrow select.input{flex:1 1 7rem;min-width:0}
+.byrow .btn{flex:0 0 auto;min-height:44px}
+
+/* the twirl (room.js twirl): she spins to show a new outfit, Animal Crossing style, and the gown gets the Cinderella
+ * version (.glam). JS turns her picture; these are the sparkles riding around her, the flash at the change and the
+ * starburst as she lands. Inside #avatar (its own stacking context) the picture sits between the back and front sparkles */
+.avatar.twirling img{position:relative;z-index:1}
+.twirl-fx{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+.twirl-fx .tw-s{position:absolute;width:9px;height:9px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#fff 0 32%,rgba(255,238,196,.95) 46%,rgba(255,214,238,0) 72%);opacity:0;filter:drop-shadow(0 0 3px rgba(255,255,255,.9))}
+.twirl-fx .tw-s::before,.twirl-fx .tw-s::after{content:'';position:absolute;left:50%;top:50%;width:15px;height:1.6px;margin:-.8px 0 0 -7.5px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,0),#fff,rgba(255,255,255,0))}
+.twirl-fx .tw-s::after{transform:rotate(90deg)}
+.twirl-fx .tw-s.gold{background:radial-gradient(circle,#fff 0 28%,rgba(255,212,120,.95) 48%,rgba(255,200,120,0) 72%)}
+.twirl-fx .tw-s.lilac{background:radial-gradient(circle,#fff 0 28%,rgba(214,186,255,.95) 48%,rgba(214,186,255,0) 72%)}
+.twirl-fx.glam .tw-s{width:11px;height:11px}
+.twirl-fx .tw-flash{position:absolute;left:50%;top:52%;width:150%;height:90%;transform:translate(-50%,-50%) scale(.6);border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.95),rgba(255,236,250,.6) 45%,rgba(255,236,250,0));opacity:0;z-index:2}
+.twirl-fx.flash .tw-flash{animation:twflash .6s ease-out forwards}
+@keyframes twflash{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+.twirl-fx.glam::before{content:'';position:absolute;left:12%;right:12%;top:-34%;bottom:-2%;border-radius:40%;background:linear-gradient(to top,rgba(255,240,252,0),rgba(255,238,252,.6) 35%,rgba(232,214,255,.35) 70%,rgba(255,255,255,0));filter:blur(5px);opacity:0;animation:twpillar 2.1s ease-in-out forwards}
+@keyframes twpillar{0%{opacity:0;transform:scaleY(.3);transform-origin:50% 100%}30%{opacity:.9}70%{opacity:.85}100%{opacity:0;transform:scaleY(1.05);transform-origin:50% 100%}}
+.twirl-fx .tw-b{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#fff;box-shadow:0 0 6px 2px rgba(255,236,196,.9);opacity:0;z-index:3}
+.twirl-fx.glam .tw-b{width:7px;height:7px;box-shadow:0 0 8px 3px rgba(255,214,150,.9)}
+.twirl-fx.burst .tw-b{animation:twburst .8s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes twburst{0%{opacity:1;transform:rotate(var(--a)) translateX(0) scale(1)}100%{opacity:0;transform:rotate(var(--a)) translateX(46px) scale(.4)}}
+@media (prefers-reduced-motion: reduce){.twirl-fx{display:none}}
+/* ---- 21 Oct: trying on at Petal & Thread (ovu-boutique.js) ---- */
+.trybar{position:absolute;left:10px;right:54px;top:10px;z-index:14;display:none;flex-wrap:wrap;align-items:center;gap:6px 8px;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-radius:14px;padding:8px 10px;font:700 11.5px var(--sans);color:var(--rm-plum);box-shadow:var(--rm-shadow)}
+.trybar.on{display:flex}
+.trybar>.ms{font-size:18px;color:var(--rm-mauve)}
+.trybar .tbname{flex:1 1 auto;min-width:0}
+.trybar button{border:none;background:var(--rm-lilac-2);color:var(--rm-plum);border-radius:99px;padding:6px 10px;font:800 11px var(--sans);display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0}
+.trybar button .ms{font-size:16px}
+.trybar button[data-tb=keep]{background:var(--rm-mauve);color:#fff}
+.trybar .tbplus{background:linear-gradient(135deg,#f3d49b,#e8a3bf);color:#5a3a2a}
+.outfit.plusdrop{position:relative}
+.outfit.plusdrop .pluschip{position:absolute;top:6px;right:6px;margin:0}
+.avatar .acc{position:absolute;display:none;left:var(--acc-l);top:var(--acc-t);width:var(--acc-w);height:auto;transform:translate(-50%,-50%) rotate(var(--acc-r));pointer-events:none;z-index:2}
+.avatar.flip .acc{left:var(--acc-lf);transform:translate(-50%,-50%) scaleX(-1) rotate(var(--acc-r))}
+.avatar .acc.on{display:block}
+.avatar:is(.walking,.cycling,.twirling,.moment,.joy,.landing,.hidden,.acting) .acc{display:none}
+/* animal love (22 Oct): hearts pop when she pets, brushes or treats; a love meter in each sheet; hens wander and peck */
+.lovepop{position:absolute;transform:translate(-50%,-50%);z-index:6;pointer-events:none;color:#ff6f9f;font-size:22px;text-shadow:0 2px 6px rgba(255,255,255,.9);animation:lovepop 1.3s ease-out forwards;opacity:0}
+.lovepop .ms{font-size:inherit}
+@keyframes lovepop{0%{opacity:0;transform:translate(-50%,-30%) scale(.5)}18%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),-260%) scale(.9)}}
+.barnthing.animal.loved img{animation:animalloved .5s ease}
+.barnthing.animal.flip.loved img{animation:animallovedflip .5s ease}
+@keyframes animalloved{0%,100%{transform:scale(1)}40%{transform:scale(1.07,.94)}70%{transform:scale(.97,1.04)}}
+@keyframes animallovedflip{0%,100%{transform:scaleX(-1)}40%{transform:scale(-1.07,.94)}70%{transform:scale(-.97,1.04)}}
+.barnthing.animal.a-mochi,.barnthing.animal.a-kaya{transition:left 1.9s linear,top 1.9s linear}
+.barnthing.animal.peck img{animation:henpeck .7s ease 2}
+.barnthing.animal.flip.peck img{animation:henpeckflip .7s ease 2}
+@keyframes henpeck{0%,100%{transform:rotate(0)}45%{transform:rotate(14deg) translateY(4%)}}
+@keyframes henpeckflip{0%,100%{transform:scaleX(-1) rotate(0)}45%{transform:scaleX(-1) rotate(14deg) translateY(4%)}}
+.lovemeter{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.lovemeter b{font:800 12.5px var(--sans);color:var(--rm-plum);min-width:52px}
+.lovemeter .lm{display:flex;gap:1px}
+.lovemeter .ms{font-size:17px;color:#ff6f9f}
+.lovemeter .ms.off{color:rgba(150,120,190,.35)}
+@media (prefers-reduced-motion: reduce){.lovepop{animation-duration:.01s}.barnthing.animal.peck img,.barnthing.animal.loved img{animation:none}}
+/* fishing actions (22 Oct): a power bar while Cast is held, nibbles on the float, a bite line, and a reel bar with tugs */
+.castpower,.reelbar{height:8px;border-radius:99px;background:rgba(150,120,190,.18);overflow:hidden;margin:2px 0 10px}
+.castpower i,.reelbar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#b9a3ef,#7d5cc4)}
+.reelbar{flex:1 1 100%;margin:0 0 8px}
+.reelbar i{background:linear-gradient(90deg,#9fd7f0,#5f8fd8);transition:width .08s linear}
+.hbpic .hbfloat.nibble{animation:floatnibble .5s ease-in-out 1}
+@keyframes floatnibble{0%,100%{transform:translateY(0)}40%{transform:translateY(2px)}70%{transform:translateY(-1px)}}
+.biteline{animation:bitepulse 1s ease-in-out infinite}
+@keyframes bitepulse{0%,100%{opacity:1}50%{opacity:.6}}
+.reelbtn.tug{animation:reeltug .45s ease-in-out}
+@keyframes reeltug{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px) rotate(-2deg)}75%{transform:translateX(4px) rotate(2deg)}}
+@media (prefers-reduced-motion: reduce){.biteline,.reelbtn.tug,.hbpic .hbfloat.nibble{animation:none}}
+.sqhead{display:flex;align-items:center;gap:6px;margin:10px 0 2px;font:800 13px var(--sans);color:var(--rm-plum)}.sqhead .ms{font-size:18px}
+/* crop and dish pictures on the seed, plant and recipe buttons, and the finished dish (22 Oct) */
+.btn img.croppic{width:34px;height:34px;object-fit:contain;flex:none;border-radius:10px;background:#fff;box-shadow:0 2px 6px rgba(120,90,150,.15);margin-right:2px}
+.dishpic{display:flex;justify-content:center;margin:2px 0 6px}.dishpic img{width:150px;height:150px;object-fit:contain;border-radius:22px;background:#fff;box-shadow:0 8px 22px rgba(120,90,150,.18)}
+.invlist img.invpic{width:30px;height:30px;object-fit:contain;border-radius:8px;background:#fff;margin-right:6px;vertical-align:middle}
+/* villagers (22 Oct, Harvest Moon phase 4) */
+.villager{position:absolute;transform:translate(-50%,-100%);z-index:2;border:0;background:none;padding:0;cursor:pointer}
+.villager img{width:100%;display:block;filter:drop-shadow(0 6px 5px rgba(70,50,100,.25));animation:animalidle 5s ease-in-out infinite;transform-origin:50% 100%}
+.villager .vname{position:absolute;left:50%;top:-6%;transform:translateX(-50%);font:800 10px var(--sans);color:var(--rm-plum);background:rgba(255,255,255,.75);padding:2px 7px;border-radius:99px;white-space:nowrap}
+.vcard,.vevent{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.vcard img,.vevent img{width:78px;flex:none;filter:drop-shadow(0 4px 6px rgba(70,50,100,.2))}
+.vevent p{margin:0 0 6px;font:600 13.5px/1.5 var(--sans);color:var(--rm-ink-2)}
+.vline{margin:6px 0 0;font:600 13px/1.45 var(--sans);color:var(--rm-ink-2)}
+.vhearts{display:flex;gap:1px}.vhearts .ms{font-size:17px}.vhearts .ms.off{color:rgba(150,120,190,.3)}
+/* scores and graphs in the Cycle tab (22 Oct) */
+.scorecard{background:rgba(255,255,255,.72);border-radius:22px;padding:14px 14px 12px;margin:0 0 14px;box-shadow:0 10px 26px rgba(122,92,150,.12);position:relative;overflow:hidden}.scorecard.dreamy{background:linear-gradient(160deg,rgba(255,255,255,.88),rgba(247,239,252,.9) 60%,rgba(236,246,242,.9))}.scorecard.dreamy:before{content:"";position:absolute;inset:-40% -20% auto auto;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(201,182,230,.35),rgba(201,182,230,0) 70%);pointer-events:none}.scorecard h3{display:flex;gap:6px;align-items:center;margin:0 0 4px;font:600 17px var(--serif);color:var(--rm-plum)}.schero{display:grid;grid-template-columns:112px 1fr 84px;gap:10px;align-items:center;position:relative}.scring{position:relative;width:112px;height:112px}.scring svg{width:112px;height:112px;display:block;background:none;border-radius:0;box-shadow:none}.scnum{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font:800 30px var(--serif);color:var(--rm-plum);line-height:1}.scnum small{font:700 10px var(--sans);color:var(--rm-ink-3);letter-spacing:.04em;margin-top:2px}.scdash{font-size:34px;color:var(--rm-lilac)}.scmood{margin:4px 0 0;font:600 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}.sccloud{width:84px;height:84px;object-fit:contain;justify-self:end;filter:drop-shadow(0 6px 10px rgba(122,92,150,.18));animation:scfloat 4.5s ease-in-out infinite}.sc-sleep .sccloud{animation-delay:-2s}@keyframes scfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@media (prefers-reduced-motion:reduce){.sccloud{animation:none}}.scpills{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}.scpill{background:rgba(255,255,255,.7);border-radius:14px;padding:8px 10px;box-shadow:inset 0 0 0 1px rgba(201,182,230,.35)}.scpill-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font:700 12px var(--sans);color:var(--rm-ink-2)}.scpill-top b{font:800 15px var(--serif);color:var(--rm-plum)}.scpill.empty .scpill-top b{font:700 11px var(--sans);color:var(--rm-ink-3)}.scbar{height:8px;border-radius:99px;background:#efe7f7;margin:6px 0 4px;overflow:hidden}.scbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f6c9d6,#c9b6e6 55%,#bfe3d4);box-shadow:0 0 8px rgba(201,182,230,.6)}.scpill small{display:block;font:600 10.5px/1.35 var(--sans);color:var(--rm-ink-3)}.scneed{display:flex;gap:8px;align-items:flex-start;margin:8px 0 2px;padding:8px 10px;border-radius:14px;background:rgba(243,212,155,.22);font:600 12px/1.4 var(--sans);color:var(--rm-ink-2)}.scneed .ms{color:var(--rm-warn);font-size:18px}.schead{margin:12px 0 4px;font:800 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)}.scgraph{width:100%;height:auto;display:block;background:rgba(255,255,255,.55);border-radius:14px}.scgraph-empty{display:flex;gap:8px;align-items:center;padding:14px 12px;border-radius:14px;background:rgba(255,255,255,.55);font:600 12px var(--sans);color:var(--rm-ink-3)}.scgraph-empty .ms{color:var(--rm-lilac)}.scfoot{margin:10px 0 0}@media (max-width:360px){.schero{grid-template-columns:96px 1fr 64px}.scring,.scring svg{width:96px;height:96px}.sccloud{width:64px;height:64px}}.scparts{display:none}
+
+/* PULSE movement breaks (22 Oct) */
+.pulsecards{display:flex;flex-direction:column;gap:8px}
+.pulsecard{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:14px;border:1px solid var(--rm-line,#e8def5);background:var(--rm-card,#fff);color:inherit;font:inherit;cursor:pointer;position:relative}
+.pulsecard b{display:block;font-size:14px}.pulsecard small{display:block;color:var(--rm-ink-3,#7a6c90);font-size:12px}
+.pulsecard .pdraft{margin-left:auto;font-style:normal;font-size:11px;font-weight:700;color:#8a5a00;background:#fff3d6;border-radius:999px;padding:2px 8px}
+.pulsebefore{background:var(--rm-blush,#fbeef3);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.pulsebefore p{margin:0;font-size:13px;line-height:1.45}.pulsecheck{margin:10px 0 2px}.pulserun .pulseurgent{margin-top:12px;font-size:12px}.pulseurgent{display:flex;gap:6px;align-items:flex-start;font-weight:700}
+.pulsesetup{margin:6px 0;font-size:13px}.pulserun,.pulsedone{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:8px 0}
+.pulseclock{font:800 56px/1 var(--serif,Georgia,serif);color:var(--rm-plum,#5b3e8a)}.pulsecue{font-size:15px;line-height:1.5;margin:0;max-width:30em}
+.pulsedone .row,.pulserun .row{width:100%;flex-direction:column;align-items:stretch}.pulsedone .btn{width:100%}
+
+/* the ranch counter and baby animals (22 Oct) */
+.ranchsec{border:1px solid var(--rm-line,#e8def5);border-radius:14px;padding:10px 12px;margin:8px 0;display:flex;flex-direction:column;gap:8px}
+.ranchsec h4{margin:0;font-size:14px;display:flex;align-items:center;gap:6px}
+.ranchsec small.help{display:block;margin:-4px 0 0;font-size:12px}
+.barnthing.animal.baby img{animation-duration:2.6s}
+.lovemeter .namebtn{margin-left:6px;padding:2px 6px;vertical-align:middle}
+
+html[data-mindful=quick] .mindline:not(.keep){display:none}
+
+
+/* the rails (ovu-boutique.js openRail/openItem, 22 Oct): every outfit on its hanger, three across; one opens beside her in it */
+.railgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+.railtile{position:relative;background:linear-gradient(180deg,#fff,#f8f1fd);border:2px solid transparent;border-radius:18px;padding:8px 6px 10px;text-align:center;cursor:pointer;box-shadow:0 4px 12px rgba(120,90,160,.10);min-width:0}
+.railtile img{width:100%;aspect-ratio:1;object-fit:contain;display:block}
+.railtile b{display:block;font:700 12px/1.25 var(--sans);color:var(--rm-ink);margin-top:2px}
+.railtile small{display:flex;align-items:center;justify-content:center;gap:3px;font:700 10.5px/1.3 var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.railtile small .ms{font-size:13px}
+.railtile.on{border-color:#b89be6}
+.railtile.plus{background:linear-gradient(180deg,#fff8ee,#fbeef4)}.railtile.plus small{color:#8a5a3c}
+.railtile.hearts small{color:#b24f78}.railtile.hearts small .ms{color:#e0628f}
+.railview{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:2px 0 8px}
+.railview figure{margin:0;background:linear-gradient(180deg,#fff,#f6eefb);border-radius:18px;padding:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:190px}
+.railview figure img{max-width:100%;max-height:170px;object-fit:contain;display:block}
+.railview figcaption{font:700 11px var(--sans);color:var(--rm-ink-2);margin-top:6px}
+.railher.soon{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--rm-ink-2);text-align:center;padding:30px 6px}
+.railher.soon .ms{font-size:30px;color:#b89be6}
+.railnote{margin:0 0 8px;font:600 13.5px/1.5 var(--sans);color:var(--rm-ink)}
+
+/* the inventory as pictures (22 Oct): category tabs that scroll sideways, then a grid of tiles with a count badge */
+.invtabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:10px -2px 0;padding:2px 2px 6px}
+.invtabs::-webkit-scrollbar{display:none}
+.invtab{flex:0 0 auto;display:flex;align-items:center;gap:4px;border:1.5px solid rgba(150,120,190,.22);background:#fff;border-radius:999px;padding:7px 11px;font:800 12px var(--sans);color:var(--rm-ink-2);cursor:pointer}
+.invtab .ms{font-size:17px;color:var(--rm-mauve)}
+.invtab i{font:800 10px/16px var(--sans);font-style:normal;min-width:16px;padding:0 5px;border-radius:8px;background:var(--rm-lilac-2);color:var(--rm-plum);text-align:center}
+.invtab.on{background:linear-gradient(135deg,#efe3fb,#fbe4ee);border-color:#b89be6;color:var(--rm-plum)}
+.invgrid{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.invtile{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px 7px;border-radius:16px;background:linear-gradient(180deg,#fff,#f8f1fd);box-shadow:0 3px 10px rgba(120,90,160,.08);min-width:0}
+.invtile.on{box-shadow:0 0 0 2px #b89be6,0 3px 10px rgba(120,90,160,.12)}
+.invface{position:relative;width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+.invface img{width:100%;height:100%;object-fit:contain;display:block}
+.invface .invicon{font-size:30px;color:var(--rm-mauve)}
+.invface .invbadge{position:absolute;right:-2px;bottom:-2px;width:46%;height:46%;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(70,40,100,.25))}
+.invface .invtint{position:absolute;left:50%;top:6%;width:30%;aspect-ratio:1;transform:translateX(-50%);border-radius:50%;background:var(--tint);mix-blend-mode:multiply;opacity:.85}
+.invcount{position:absolute;top:4px;right:5px;font:800 11px/18px var(--sans);font-style:normal;min-width:18px;padding:0 5px;border-radius:9px;background:var(--rm-plum);color:#fff;text-align:center}
+.invtile b{font:700 10.5px/1.2 var(--sans);color:var(--rm-ink);text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* no emoji (Jamie, 22 Oct): the sleep-quality moons are drawn, the thought bubble and consent purposes carry icons */
+.moons button::before{content:"";display:block;width:20px;height:20px;margin:0 auto;border-radius:50%;border:2px solid #cfc2e2;box-sizing:border-box}
+.moons button.on::before{background:radial-gradient(circle at 35% 35%,#fff8df,#f3d49b 72%);border-color:#e9c27a;box-shadow:0 0 8px rgba(243,212,155,.6)}
+.thought .ms{display:block;font-size:20px;line-height:1;color:var(--rm-mauve)}
+.c-emo.ms{font-size:20px;color:var(--rm-mauve);vertical-align:-4px}

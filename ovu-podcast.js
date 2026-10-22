@@ -113,6 +113,18 @@
   /* An editorial starting point by cycle phase, never a prescription; the listener can pick anything. */
   var PHASE_PICK = { menstrual: 86, follicular: 82, ovulatory: 98, luteal: 87, late: 87 };
   function suggestFor(phase) { if (!data) return null; var n = PHASE_PICK[phase]; return data.episodes.filter(function (e) { return e.number === n; })[0] || data.episodes[0]; }
+  /* the list's order (Jamie, 21 Oct: "the 19 episodes should shuffle and the remaining locked ones at the bottom"): the
+   * episodes she can play, shuffled by a seed (so a sheet keeps its order until she taps Shuffle), then the locked ones,
+   * oldest first. Every episode appears once; numbering is untouched. */
+  function rng(seed) { var a = (Number(seed) >>> 0) || 1; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function order(list, unlockedAll, seed) {
+    var free = [], locked = [];
+    (list || []).forEach(function (e) { if (!e) return; (e.access === 'premium' && !unlockedAll ? locked : free).push(e); });
+    var r = rng(seed === undefined || seed === null ? Date.now() : seed);
+    for (var i = free.length - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)), t = free[i]; free[i] = free[j]; free[j] = t; }
+    locked.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+    return free.concat(locked);
+  }
   function fmt(s) { s = Math.max(0, Math.floor(s || 0)); var m = Math.floor(s / 60), r = s % 60; return m + ':' + String(r).padStart(2, '0'); }
-  root.OvuPodcast = { forget: forget, plus: plus, plusActive: plusActive, redeem: redeem, removePlus: removePlus, load: load, select: select, play: play, pause: pause, toggle: toggle, skip: skip, seekTo: seekTo, setSpeed: setSpeed, setSleep: setSleep, state: state, episode: episode, indexOf: indexOf, lastId: lastId, claimAccount: claimAccount, progress: progress, finished: finished, suggestFor: suggestFor, fmt: fmt, on: function (fn) { listeners.push(fn); }, data: function () { return data; } };
+  root.OvuPodcast = { order: order, forget: forget, plus: plus, plusActive: plusActive, redeem: redeem, removePlus: removePlus, load: load, select: select, play: play, pause: pause, toggle: toggle, skip: skip, seekTo: seekTo, setSpeed: setSpeed, setSleep: setSleep, state: state, episode: episode, indexOf: indexOf, lastId: lastId, claimAccount: claimAccount, progress: progress, finished: finished, suggestFor: suggestFor, fmt: fmt, on: function (fn) { listeners.push(fn); }, data: function () { return data; } };
 })(window);

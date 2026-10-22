@@ -38,6 +38,11 @@
     /* nights are one per date (ovu-store.js sleepStats); "in a row" needs adjacent dates, so a gap restarts the run */
     var run = 0, worst = 0, prev = null;
     st.nights.forEach(function (n) { run = n.hours < 5 ? (run && prev && S.diffDays(prev, n.date) === 1 ? run + 1 : 1) : 0; prev = n.date; worst = Math.max(worst, run); });
+    /* long time awake in the night on measured nights (31 min or more, Lichstein 2003, E79); unmeasured nights count for nothing */
+    var awEnd = end || S.today(), awBy = {};
+    S.list('sleep', { from: S.addDays(awEnd, -6), to: awEnd }).forEach(function (e) { if (e.data && typeof e.data.awakeMin === 'number') awBy[e.date] = Math.max(awBy[e.date] || 0, e.data.awakeMin); });
+    var awDates = Object.keys(awBy), awLong = awDates.filter(function (d) { return awBy[d] >= 31; }).length;
+    if (awLong >= 3) flags.push(flag('watch', 'SLEEP_LONG_AWAKE', 'Long spells awake at night', 'Awake for 31 minutes or more on ' + awLong + ' of ' + awDates.length + ' measured nights this week. If it keeps happening and your days feel it, it is worth talking to your GP.', end));
     if (worst >= 3) flags.push(flag('watch', 'SLEEP_SHORT_RUN', 'Three or more very short nights in a row', 'Several consecutive nights under 5 hours. Worth mentioning if this continues.', end));
     return { agent: 'sleepAgent', metrics: st, flags: flags };
   }
@@ -101,7 +106,7 @@
     /* after a birth, three low days in two weeks are enough to say so (four-persona review, 20 Oct: help must not wait for seven
      * records); otherwise most of at least a week of logged days */
     var pp = (S.profile() || {}).pregState === 'postpartum';
-    if ((pp && low.length >= 3) || (recent.length >= 7 && low.length >= 5)) flags.push(flag('watch', 'MOOD_LOW', 'Low mood on ' + (pp ? 'several' : 'most') + ' logged days', low.length + ' of the last ' + recent.length + ' logged days were low. You deserve support, and you do not have to wait: mindline 1771 is open 24 hours, and your GP, polyclinic' + (pp ? ' or KKH' : '') + ' can help.', low[low.length - 1].date));
+    if ((pp && low.length >= 3) || (recent.length >= 7 && low.length >= 5)) flags.push(flag('watch', 'MOOD_LOW', 'Low mood on ' + (pp ? 'several' : 'most') + ' logged days', low.length + ' of the last ' + recent.length + ' logged days were low. You deserve support, and you do not have to wait: mindline 1771 is open 24 hours, and your doctor, clinic' + (pp ? ' or maternity team' : '') + ' can help.', low[low.length - 1].date));
     var dizzyHeavy = recent.filter(function (e) {
       var heavy = S.byDate(e.date).some(function (x) { return x.type === 'period' && x.data.flow === 'heavy'; });
       return heavy && (e.data.symptoms || []).indexOf('dizziness') > -1;
@@ -109,7 +114,7 @@
     if (dizzyHeavy.length) flags.push(flag('high', 'HEAVY_DIZZY', 'Heavy bleeding with dizziness', 'Heavy bleeding together with dizziness or faintness should be checked soon, today if it is happening now.', dizzyHeavy[dizzyHeavy.length - 1].date));
     /* pain during sex is worth a review at any age (RCOG, ACOG); it is named once, never counted as a score */
     var sexPain = S.list('symptom', { from: S.addDays(end, -27), to: end }).filter(function (e) { return (e.data.symptoms || []).indexOf('pain during sex') > -1; });
-    if (sexPain.length) flags.push(flag('watch', 'SEX_PAIN', 'Pain during sex', 'Logged on ' + sexPain.length + ' day' + (sexPain.length > 1 ? 's' : '') + ' in the last 4 weeks. Pain during or after sex is worth raising with your GP or polyclinic; there are often simple things that help.', sexPain[sexPain.length - 1].date));
+    if (sexPain.length) flags.push(flag('watch', 'SEX_PAIN', 'Pain during sex', 'Logged on ' + sexPain.length + ' day' + (sexPain.length > 1 ? 's' : '') + ' in the last 4 weeks. Pain during or after sex is worth raising with your doctor or clinic; there are often simple things that help.', sexPain[sexPain.length - 1].date));
     var counts = {};
     recent.forEach(function (e) { (e.data.symptoms || []).forEach(function (s) { counts[s] = (counts[s] || 0) + 1; }); });
     return { agent: 'symptomAgent', metrics: { days: recent.length, counts: counts }, flags: flags };
@@ -170,8 +175,10 @@
     var food = entries.filter(function (e) { return e.type === 'food'; });
     var refl = entries.filter(function (e) { return e.type === 'reflection'; });
     var cs = S.cycleStats(date);
-    if (sleep) { var h = S.sleepHours(sleep.data); bullets.push('bedtime'); parts.push('Slept ' + fmtHours(h) + (sleep.data.quality ? ' (quality ' + sleep.data.quality + '/5)' : '') + '.'); highlights.push({ icon: 'bedtime', text: fmtHours(h) + ' sleep' }); }
-    if (period) { bullets.push('water_drop'); parts.push('Period day' + (cs.cycleDay ? ' ' + cs.cycleDay : '') + ', ' + period.data.flow + ' flow' + (period.data.clots ? ' with clots' : '') + '.'); highlights.push({ icon: 'water_drop', text: period.data.flow + ' flow' }); }
+    if (sleep) { var h = S.sleepHours(sleep.data), measured = typeof sleep.data.asleepMin === 'number' && sleep.data.asleepMin > 0; bullets.push('bedtime'); parts.push((measured ? 'Slept ' + fmtHours(h) : fmtHours(h) + ' from bedtime to waking') + (sleep.data.quality ? ' (quality ' + sleep.data.quality + '/5)' : '') + '.'); highlights.push({ icon: 'bedtime', text: fmtHours(h) + (measured ? ' sleep' : ' in bed') }); } /* bedtime to waking includes time awake (persona walks, 21 Oct) */
+    var postMeno = root.OvuAgents && root.OvuAgents.isPostmenopausal ? root.OvuAgents.isPostmenopausal(S.profile()) : ['post', 'postmenopause', 'postmenopausal'].indexOf((S.profile() || {}).lifeStage || '') > -1;
+    if (period && postMeno) { bullets.push('water_drop'); parts.push('Bleeding after the menopause, ' + period.data.flow + (period.data.clots ? ' with clots' : '') + '. This needs a check with a clinician.'); highlights.push({ icon: 'water_drop', text: 'bleeding after the menopause' }); } /* not a period day (menopause walk, 21 Oct) */
+    else if (period) { bullets.push('water_drop'); parts.push('Period day' + (cs.cycleDay ? ' ' + cs.cycleDay : '') + ', ' + period.data.flow + ' flow' + (period.data.clots ? ' with clots' : '') + '.'); highlights.push({ icon: 'water_drop', text: period.data.flow + ' flow' }); }
     else if (cs.cycleDay) { bullets.push('water_drop'); parts.push('Cycle day ' + cs.cycleDay + (cs.phase ? ', estimated ' + cs.phase + ' phase' : '') + '.'); }
     if (sym) { var list = (sym.data.symptoms || []); bullets.push('sentiment_satisfied'); parts.push((list.length ? 'Logged ' + list.join(', ') : 'No symptoms ticked') + (typeof sym.data.pain === 'number' ? ', pain ' + sym.data.pain + '/10' : '') + (sym.data.mood ? ', mood ' + sym.data.mood : '') + '.'); if (list.length) highlights.push({ icon: 'spa', text: list.slice(0, 2).join(', ') + (list.length > 2 ? ' +' + (list.length - 2) : '') }); }
     if (food.length) {
@@ -185,6 +192,8 @@
     var moves = entries.filter(function (e) { return e.type === 'exercise'; });
     if (moves.length) { var mvMin = moves.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0), mvNames = []; moves.forEach(function (e) { var n = String(e.data.label || 'movement').toLowerCase(); if (mvNames.indexOf(n) < 0) mvNames.push(n); }); bullets.push('directions_run'); parts.push(Math.round(mvMin) + ' min of movement (' + mvNames.join(', ') + ').'); highlights.push({ icon: 'directions_run', text: Math.round(mvMin) + ' min moving' }); }
     if (refl.length) { bullets.push('edit_note'); parts.push(refl.length + ' reflection' + (refl.length > 1 ? 's' : '') + '.'); }
+    var chk = S.latestOnDate ? S.latestOnDate('sleepcheck', date) : entries.filter(function (e) { return e.type === 'sleepcheck'; }).slice(-1)[0]; /* the newest edit of the day's check, whatever a sync brought */
+    if (chk) { var cn = sleepCheckNotes(chk.data).filter(function (x) { return x.level !== 'info'; }).length; bullets.push('fact_check'); parts.push('Two-week sleep check done' + (cn ? ', ' + cn + ' note' + (cn === 1 ? '' : 's') + ' raised' : '') + '.'); }
     var flags = allFlags(date).filter(function (f) { return f.date === date; });
     return { date: date, text: parts.length ? parts.join(' ') : 'Nothing logged this day.', items: parts.map(function (t, k) { return { icon: bullets[k] || 'circle', text: t }; }), highlights: highlights, flags: flags, count: entries.length, agent: 'DailySummaryAgent v1 (rule-based)' };
   }
@@ -232,14 +241,14 @@
       agent: 'FourWeekSummaryAgent v1 (rule-based)', generatedAt: new Date().toISOString(), range: { from: from, to: end },
       coverage: { daysWithEntries: Object.keys(daysWithEntries).length, totalDays: 28 },
       cycle: { filledDays: periodDays.filter(function (e) { return e.data.autofill; }).length, periodDays: periodDays.length, episodes: cs.episodes.filter(function (ep) { return ep.end >= from; }).map(function (ep) { return { start: ep.start, end: ep.end, length: ep.length, heavyDays: ep.heavyDays }; }), cycleLengths: cs.lengths.slice(-6), averageLength: cs.averageLength, lastStart: cs.lastStart, predictedNext: cs.predictedNext, cycleDay: cs.cycleDay, phase: cs.phase, basis: cs.basis },
-      sleep: { nights: sl.count, average: sl.avg, under6: sl.under6, series: sl.nights.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality }; }) },
+      sleep: { nights: sl.count, average: sl.avg, windowed: !!sl.windowed, mixed: !!(sl.windowed && sl.measured), under6: sl.under6, series: sl.nights.map(function (n) { return { date: n.date, hours: n.hours, quality: n.quality }; }) },
       context: contextLines(S.profile()),
       symptoms: { flushes: flush, daysLogged: symptoms.length, top: top, painAvg: pain.length ? Math.round(pain.reduce(function (a, b) { return a + b; }, 0) / pain.length * 10) / 10 : null, painMax: pain.length ? Math.max.apply(null, pain) : null, moods: moods },
       food: { meals: meals.length, daysLogged: Object.keys(foodDays).length, tags: tags, nutrients: nutrientDays(meals) },
       mindfulness: (function () { var ss = S.list('mindfulness', { from: from, to: end }); return { sessions: sessionCount(ss), minutes: Math.round(ss.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) }; })(),
       /* self-reported movement over the 28 days: totals only, no score (ovu-exercise.js has the weekly WHO view) */
       /* metMinutes covers entries with a known MET only; metUnknownSessions says how many had none (never counted as zero) */
-      movement: (function () { var ex = S.list('exercise', { from: from, to: end }), days = {}, sdays = {}, met = 0, known = 0; ex.forEach(function (e) { days[e.date] = 1; if (e.data.strength) sdays[e.date] = 1; if (typeof e.data.met === 'number' && e.data.met > 0) { known++; met += e.data.met * (Number(e.data.minutes) || 0); } }); return { sessions: ex.length, minutes: Math.round(ex.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)), activeDays: Object.keys(days).length, strengthDays: Object.keys(sdays).length, metMinutes: known ? Math.round(met) : null, metUnknownSessions: ex.length - known }; })(),
+      movement: (function () { var ex = S.list('exercise', { from: from, to: end }), days = {}, sdays = {}, met = 0, known = 0; ex.forEach(function (e) { days[e.date] = 1; if (e.data.strength) sdays[e.date] = 1; if (typeof e.data.met === 'number' && e.data.met > 0) { known++; met += e.data.met * (Number(e.data.minutes) || 0); } }); var pb = ex.filter(function (e) { return e.data.activity === 'pulse'; }); return { sessions: ex.length, minutes: Math.round(ex.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)), pulseBreaks: pb.length, pulseSeconds: pb.reduce(function (a, e) { return a + (Number(e.data.seconds) || 0); }, 0), activeDays: Object.keys(days).length, strengthDays: Object.keys(sdays).length, metMinutes: known ? Math.round(met) : null, metUnknownSessions: ex.length - known }; })(),
       flags: flags, questions: questions,
       disclaimer: 'Self-reported entries summarised by deterministic rules in the browser. For clinician review; not a diagnosis.'
     };
@@ -354,17 +363,18 @@
    * themselves earn as before). Bleeding is key only while periods are expected: not after menopause, in pregnancy,
    * after a birth until she says periods are back, with predictions paused (hormonal methods, hysterectomy) or when
    * nothing says she menstruates. She can choose what counts (choice) (Codex design review, 20 Oct). */
-  var CHECK_TILES = [['bleeding', 'Bleeding', 'water_drop'], ['sleep', 'Sleep', 'bedtime'], ['symptoms', 'Symptoms & mood', 'sentiment_satisfied'], ['food', 'Food', 'restaurant'], ['movement', 'Movement', 'directions_run'], ['calm', 'Calm', 'self_improvement']];
+  var CHECK_TILES = [['bleeding', 'Bleeding', 'water_drop'], ['sleep', 'Sleep', 'bedtime'], ['symptoms', 'Symptoms & mood', 'sentiment_satisfied'], ['water', 'Water', 'water_full'], ['movement', 'Movement', 'directions_run'], ['calm', 'Calm', 'self_improvement']];
   function bleedingExpected(p, cs) {
     if (isPostmenopausal(p) || p.pregState === 'pregnant' || p.pregState === 'maybe') return false;
     if (p.pregState === 'postpartum' && p.periodsBack !== 'yes') return false;
     if (cs.mode === 'suspended' || p.periodsStarted === 'no') return false;
     return p.periodsStarted === 'yes' || !!p.regularity || S.list('period').length > 0;
   }
-  function defaultKeys(p, cs) { return { bleeding: bleedingExpected(p, cs), sleep: true, symptoms: true, food: true, movement: false, calm: false }; }
+  function defaultKeys(p, cs) { return { bleeding: bleedingExpected(p, cs), sleep: true, symptoms: true, water: true, movement: false, calm: false }; } /* water took food's place in Today's check-in (Jamie, 21 Oct); meals are still logged and still earn */
   function todayCheckIn(date, choice) {
     date = date || S.today();
     var p = S.profile(), cs = S.cycleStats(date), ans = S.checkinAnswers(date), ent = S.byDate(date);
+    if (choice && choice.food !== undefined && choice.water === undefined) { choice = Object.assign({}, choice); choice.water = choice.food; delete choice.food; } /* a food opt-out made before 21 Oct carries over to water once */
     var keys = Object.assign(defaultKeys(p, cs), choice || {});
     function of(t) { return ent.filter(function (e) { return e.type === t; }); }
     var out = {};
@@ -381,8 +391,8 @@
     var symAns = list.length || none, moodAns = mood || ans.mood === 'unsure';
     out.symptoms = symAns && moodAns ? { state: 'done', value: (list.length ? (list.length === 1 ? list[0].charAt(0).toUpperCase() + list[0].slice(1) : list.length + ' symptoms') : 'None'), sub: mood ? 'mood ' + mood : 'mood not sure', answer: !mood }
       : symAns || moodAns ? { state: 'partial', value: symAns ? 'Mood?' : 'Symptoms?', sub: symAns ? 'add your mood' : 'tick symptoms or None', answer: !mood && !!moodAns } : null;
-    var meals = of('food');
-    out.food = meals.length ? { state: 'done', value: meals.length + (meals.length === 1 ? ' meal' : ' meals'), sub: 'logged' } : ans.food === 'skip' ? { state: 'done', value: 'Not today', sub: 'nothing to log', answer: true } : null;
+    var WT = root.OvuWater, wn = WT ? WT.dayCount(date) : 0, wml = WT ? WT.dayTotal(date) : 0, whide = !!(WT && WT.current().settings.hideNumbers); /* recorded, or answered: never a word about adequacy */
+    out.water = wn ? { state: 'done', value: whide ? wn + (wn === 1 ? ' record' : ' records') : WT.fmtMl(wml), sub: 'recorded' } : ans.water === 'skip' ? { state: 'done', value: 'Not today', sub: 'not recording water', answer: true } : null;
     var mv = of('exercise'); out.movement = mv.length ? { state: 'done', value: Math.round(mv.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) + ' min', sub: 'movement' } : null;
     var mi = of('mindfulness'); out.calm = mi.length ? { state: 'done', value: Math.round(mi.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0)) + ' min', sub: 'calm' } : null;
     var tiles = CHECK_TILES.map(function (t) {
@@ -401,5 +411,170 @@
     return sum;
   }
 
-  root.OvuAgents = { isPostmenopausal: isPostmenopausal, SYMPTOMS: SYMPTOMS, MOODS: MOODS, FOOD_TAGS: FOOD_TAGS, supervisor: supervisor, analyze: analyze, allFlags: allFlags, dailySummary: dailySummary, fourWeekSummary: fourWeekSummary, cycleHistory: cycleHistory, patternDays: patternDays, monthsBack: monthsBack, monthlyTotals: monthlyTotals, todayCheckIn: todayCheckIn, dismissFlag: dismissFlag, saveMonthlySummary: saveMonthlySummary, agents: AGENTS, fmtHours: fmtHours };
+  /* ---------- sleep details and the two-week sleep check ----------
+   * Rhythme's own optional questions (codes in ovu-store.js). Nothing here is a score or a diagnosis: patterns are counts
+   * over the nights that answered, "not sure" is counted apart, and a blank question is unknown, never zero. The
+   * 30-minute marker is a common research cut-off (Lichstein 2003, E79), labelled as Rhythme's marker wherever it shows. */
+  var SLEEP_LABELS = {
+    latency: { q: 'Falling asleep took about', hint: '', opts: [['le15', '15 min or less'], ['16-30', '16 to 30 min'], ['31-60', '31 to 60 min'], ['gt60', 'Over an hour'], ['unsure', 'Not sure']] },
+    wakeups: { q: 'Times you woke in the night', hint: 'Leave out the final waking in the morning.', opts: [['0', 'None'], ['1', '1'], ['2', '2'], ['3', '3'], ['4+', '4 or more'], ['unsure', 'Not sure']] },
+    awake: { q: 'Time awake in the night, all together', hint: '', opts: [['le15', 'Up to 15 min'], ['16-30', '16 to 30 min'], ['31-60', '31 to 60 min'], ['61-120', '1 to 2 hours'], ['gt120', 'Over 2 hours'], ['unsure', 'Not sure']] },
+    early: { q: 'Woke earlier than you wanted and could not get back to sleep', hint: '', opts: [['yes', 'Yes'], ['no', 'No'], ['unsure', 'Not sure']] },
+    woke: { q: 'What woke you?', hint: 'Tick any that fit.', opts: [['flush', 'Hot flush or night sweat'], ['cramps', 'Cramps or period pain'], ['toilet', 'Needed the toilet'], ['child', 'Baby or child'], ['snoring', 'Someone snoring'], ['noise', 'Noise or light'], ['worry', 'Worry or a busy mind'], ['pain', 'Other pain'], ['gasp', 'Woke gasping or choking'], ['other', 'Something else']] },
+    rested: { q: 'How rested did you feel on waking?', hint: '', opts: [['1', 'Not at all'], ['2', 'A little'], ['3', 'Moderately'], ['4', 'Quite'], ['5', 'Fully'], ['unsure', 'Not sure']] }
+  };
+  var CHECK_LABELS = {
+    w1: { q: 'In the last 7 days, on how many nights was sleep hard?', hint: 'Trouble falling asleep, staying asleep, or waking too early.', opts: ['0', '1', '2', '3', '4', '5', '6', '7'].map(function (n) { return [n, n]; }).concat([['unsure', 'Not sure']]) },
+    w2: { q: 'And in the 7 days before that?', hint: '', opts: ['0', '1', '2', '3', '4', '5', '6', '7'].map(function (n) { return [n, n]; }).concat([['unsure', 'Not sure']]) },
+    chance: { q: 'Did you have enough time and a suitable place to sleep?', hint: '', opts: [['usually', 'Usually'], ['sometimes', 'Sometimes'], ['rarely', 'Rarely'], ['unsure', 'Not sure']] },
+    impact: { q: 'How much has sleep trouble affected your days?', hint: 'Mood, energy, focus or work.', opts: [['none', 'Not at all'], ['little', 'A little'], ['lot', 'A lot'], ['unsure', 'Not sure']] },
+    since: { q: 'How long has sleep been like this?', hint: '', opts: [['lt2w', 'Under 2 weeks'], ['2w-3m', '2 weeks to 3 months'], ['3m+', '3 months or more'], ['unsure', 'Not sure']] },
+    breathing: { q: 'Has anyone noticed loud snoring, gasping, or pauses in your breathing while you sleep?', hint: '', opts: [['yes', 'Yes'], ['no', 'No'], ['unsure', 'Not sure, or I sleep alone']] },
+    legs: { q: 'Do your legs get an urge to move, often with uncomfortable feelings, that comes on when resting in the evening or at night and eases when you move?', hint: '', opts: [['yes', 'Yes'], ['no', 'No'], ['unsure', 'Not sure']] },
+    driving: { q: 'In these two weeks, have you felt sleepy while driving, or nodded off at the wheel?', hint: '', opts: [['yes', 'Yes'], ['no', 'No'], ['nodrive', 'I do not drive']] }
+  };
+  var CHECK_ORDER = ['w1', 'w2', 'chance', 'impact', 'since', 'breathing', 'legs', 'driving'];
+  var DETAIL_ORDER = ['latency', 'wakeups', 'awake', 'early', 'woke', 'rested'];
+  function optLabel(map, k, v) { var o = (map[k] && map[k].opts || []).filter(function (x) { return x[0] === v; })[0]; return o ? o[1] : ''; }
+  /* one night's details: entries on the same date are read newest first, so a later answer wins; reasons for waking add up */
+  function nightDetails(date) {
+    var es = S.list('sleep', { from: date, to: date }).filter(function (e) { return e.data && e.data.details; }).map(function (e, i) { return { e: e, i: i }; })
+      .sort(function (a, b) { var ta = String(a.e.updatedAt || a.e.createdAt || ''), tb = String(b.e.updatedAt || b.e.createdAt || ''); return tb > ta ? 1 : tb < ta ? -1 : (b.i - a.i); }).map(function (x) { return x.e; }); /* newest edit first; on a tie the later entry (Codex, 21 Oct) */
+    var out = null;
+    es.forEach(function (e) {
+      var d = S.cleanSleepDetails(e.data.details); if (!d) return; out = out || {};
+      Object.keys(d).forEach(function (k) { if (k === 'woke') { out.woke = (out.woke || []).concat(d.woke.filter(function (c) { return (out.woke || []).indexOf(c) < 0; })); } else if (out[k] === undefined) out[k] = d[k]; });
+    });
+    if (out && out.wakeups === '0') delete out.awake;
+    return out;
+  }
+  var DETAIL_MARK = { latency: ['31-60', 'gt60'], wakeups: ['2', '3', '4+'], awake: ['31-60', '61-120', 'gt120'], early: ['yes'], rested: ['1', '2'] };
+  function sleepCheckNotes(a) {
+    a = S.cleanSleepCheck(a || {}); var out = [], n = function (v) { return v === undefined || v === 'unsure' ? null : Number(v); };
+    if (a.driving === 'yes') out.push({ level: 'today', code: 'SLEEP_DROWSY_DRIVING', title: 'Sleepy at the wheel is dangerous', trigger: 'feeling sleepy while driving',
+      message: 'If you feel sleepy while driving, pull over somewhere safe and stop. An open window or loud music will not keep you awake. Please do not drive while sleepy, and see a doctor soon about why you are this sleepy.' });
+    if (a.breathing === 'yes') out.push(breathingNote());
+    if (a.legs === 'yes') out.push({ level: 'prompt', code: 'SLEEP_LEGS', title: 'Worth raising: restless legs', trigger: 'an urge to move the legs at rest',
+      message: 'An urge to move your legs that comes on at rest in the evening and eases when you move can be restless legs syndrome. It is more common in women and in pregnancy. Mention it to your GP, and say if your periods are heavy: low iron can play a part, and a blood test can check it. It is best to have that test before taking iron.' });
+    var worst = Math.max(n(a.w1) || 0, n(a.w2) || 0);
+    if (worst >= 3 && (a.impact === 'little' || a.impact === 'lot')) out.push({ level: 'prompt', code: 'SLEEP_PERSISTENT', title: 'Worth raising: ongoing sleep trouble', trigger: 'sleep trouble on 3 or more nights a week that affects the day',
+      message: a.since === '3m+'
+        ? 'You reported trouble sleeping on ' + worst + ' nights in one of the last two weeks, with an effect on your days, and say it has gone on for 3 months or more. That is worth talking through with a doctor, who can say whether it is chronic insomnia. For chronic insomnia the recommended first treatment is a talking therapy (CBT-I), not sleeping pills.'
+        : 'Trouble sleeping on ' + worst + ' nights in a week, with an effect on your days, is worth talking through with a doctor or nurse. You do not need to wait for it to last for months.' });
+    if (a.chance === 'rarely') out.push({ level: 'info', code: 'SLEEP_OPPORTUNITY', title: 'Time and place to sleep', trigger: 'rarely enough time or a suitable place to sleep',
+      message: 'You said you rarely have enough time or a suitable place to sleep. Sleep cut short by too little time or a hard place to sleep is a different problem from insomnia, and it is worth telling a clinician about too.' });
+    return out;
+  }
+  function breathingNote() {
+    return { level: 'prompt', code: 'SLEEP_BREATHING', title: 'Worth raising: breathing at night', trigger: 'snoring, gasping or pauses in breathing during sleep',
+      message: 'Loud snoring, gasping or choking, or pauses in breathing during sleep can be signs of sleep apnoea. Please book a visit with your doctor or a clinic to talk about it, even if you do not feel sleepy in the day. If you are pregnant, or you drive or work with machinery for a living, say so when you book: the guideline asks for a faster assessment then.' };
+  }
+  /* ---------- sleep quality from the data itself (imported or synced nights, and hand-written times) ----------
+   * Not a score. Each line keeps its own denominator and a night without a measure is never counted as zero.
+   * Continuity measures (time awake in the night, sleep efficiency) follow the NSF sleep quality panel (Ohayon 2017,
+   * E119), which agreed they indicate good sleep; it reached no agreement on sleep stages, so stage shares are shown as
+   * the device's own estimate and never judged. The 31-minute marker is the research cut-off already used by the sleep
+   * check (Lichstein 2003, E79). */
+  function clockMin(t) { var m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; }
+  function circSD(mins) {
+    /* circular standard deviation in minutes of clock times on a 24-hour dial, so 23:30 and 00:30 are an hour apart */
+    if (mins.length < 2) return null;
+    var c = 0, sn = 0; mins.forEach(function (m) { var a = m / 1440 * 2 * Math.PI; c += Math.cos(a); sn += Math.sin(a); });
+    var R = Math.sqrt(c * c + sn * sn) / mins.length; if (R >= 1) return 0;
+    return Math.round(Math.sqrt(-2 * Math.log(R)) * 1440 / (2 * Math.PI));
+  }
+  function median(xs) { if (!xs.length) return null; var a = xs.slice().sort(function (x, y) { return x - y; }), m = a.length >> 1; return a.length % 2 ? a[m] : Math.round((a[m - 1] + a[m]) / 2); }
+  function sleepQuality(from, to) {
+    var nights = S.sleepStats(S.diffDays(from, to) + 1, to).nights;
+    var hours = nights.map(function (n) { return n.hours; }).filter(function (h) { return typeof h === 'number' && h > 0; });
+    var byDate = {};
+    /* per date the entry with the most sleep carries the detail; times from back-computed ("slept 7h") entries are left out */
+    S.list('sleep', { from: from, to: to }).forEach(function (e) {
+      var d = e.data || {}, cur = byDate[e.date], am = typeof d.asleepMin === 'number' ? d.asleepMin : Math.round((d.hours || 0) * 60);
+      if (!cur || am > cur.am) byDate[e.date] = { am: am, d: d };
+    });
+    var mids = [], beds = [], wakes = [], awake = [], over = 0, eff = [], st = { core: 0, deep: 0, rem: 0 }, staged = 0;
+    Object.keys(byDate).sort().forEach(function (date) {
+      var d = byDate[date].d, b = clockMin(d.bedTime), w = clockMin(d.wakeTime);
+      if (b !== null && w !== null && d.assumed !== true) {
+        var len = w - b; if (len <= 0) len += 1440;
+        beds.push(b); wakes.push(w); mids.push((b + len / 2) % 1440);
+      }
+      if (typeof d.awakeMin === 'number' && d.awakeMin >= 0) { awake.push(d.awakeMin); if (d.awakeMin >= 31) over++; }
+      if (typeof d.inBedMin === 'number' && typeof d.asleepMin === 'number' && d.inBedMin > 0 && d.inBedMin >= d.asleepMin) eff.push(Math.round(d.asleepMin / d.inBedMin * 100));
+      if (d.stageMin && typeof d.stageMin === 'object') {
+        var tot = (d.stageMin.core || 0) + (d.stageMin.deep || 0) + (d.stageMin.rem || 0);
+        if (tot > 0) { staged++; ['core', 'deep', 'rem'].forEach(function (k) { st[k] += d.stageMin[k] || 0; }); }
+      }
+    });
+    var stTot = st.core + st.deep + st.rem;
+    return {
+      from: from, to: to, nights: nights.length,
+      avgHours: hours.length ? Math.round(hours.reduce(function (a, b) { return a + b; }, 0) / hours.length * 10) / 10 : null,
+      sevenPlus: hours.filter(function (h) { return h >= 7; }).length, withHours: hours.length,
+      timed: mids.length, midSD: mids.length >= 3 ? circSD(mids) : null, bedSD: beds.length >= 3 ? circSD(beds) : null, wakeSD: wakes.length >= 3 ? circSD(wakes) : null,
+      awakeNights: awake.length, awakeMedian: median(awake), awakeOver30: over,
+      effNights: eff.length, effMedian: median(eff),
+      stagedNights: staged, stages: stTot ? { core: Math.round(st.core / stTot * 100), deep: Math.round(st.deep / stTot * 100), rem: Math.round(st.rem / stTot * 100) } : null
+    };
+  }
+  function nightsWord(n) { return n + ' night' + (n === 1 ? '' : 's'); }
+  function hm(min) { var h = Math.floor(min / 60), m = min % 60; return h ? h + ' h' + (m ? ' ' + m + ' min' : '') : m + ' min'; }
+  /* label and value rows for the journal, the PDF and the doctor's view; a line only appears when it has data */
+  function sleepQualityRows(q) {
+    if (!q || !q.nights) return [];
+    var rows = [];
+    /* hours per night already show beside this card (the sleep tiles, the PDF's sleep line), so they are not repeated here */
+    if (typeof q.midSD === 'number') rows.push(['How steady the timing was', 'middle of sleep varied by about ' + hm(q.midSD) + ' (bedtime ' + hm(q.bedSD) + ', waking ' + hm(q.wakeSD) + '), from ' + nightsWord(q.timed) + ' with clock times']);
+    if (q.awakeNights) rows.push(['Awake in the night', 'typically ' + hm(q.awakeMedian) + ', 31 min or more on ' + q.awakeOver30 + ' of ' + nightsWord(q.awakeNights) + ' measured']);
+    if (q.effNights) rows.push(['Time in bed spent asleep', 'typically ' + q.effMedian + '% over ' + nightsWord(q.effNights) + ' with time in bed']);
+    if (q.stages) rows.push(['Sleep stages (device estimate)', 'light or core ' + q.stages.core + '%, deep ' + q.stages.deep + '%, REM ' + q.stages.rem + '% over ' + nightsWord(q.stagedNights)]);
+    return rows;
+  }
+  function sleepNotes(from, to) {
+    var dates = {}, nights = S.sleepStats(S.diffDays(from, to) + 1, to).nights;
+    nights.forEach(function (x) { dates[x.date] = 1; });
+    S.list('sleep', { from: from, to: to }).forEach(function (e) { if (e.data && e.data.details) dates[e.date] = 1; });
+    var fields = {}, woke = {}, withDetails = 0, flushDates = {};
+    Object.keys(DETAIL_MARK).forEach(function (k) { fields[k] = { answered: 0, marked: 0, unsure: 0 }; });
+    Object.keys(dates).sort().forEach(function (date) {
+      var d = nightDetails(date); if (!d) return; withDetails++;
+      Object.keys(DETAIL_MARK).forEach(function (k) { var v = d[k]; if (v === undefined) return; if (v === 'unsure') { fields[k].unsure++; return; } fields[k].answered++; if (DETAIL_MARK[k].indexOf(v) > -1) fields[k].marked++; });
+      (d.woke || []).forEach(function (c) { woke[c] = (woke[c] || 0) + 1; if (c === 'flush') flushDates[date] = 1; });
+    });
+    S.list('symptom', { from: from, to: to }).forEach(function (e) { if (e.data && e.data.flushNight) flushDates[e.date] = 1; });
+    var byDay = {}; S.list('sleepcheck', { from: from, to: to }).forEach(function (e, i) { var cur = byDay[e.date], te = String(e.updatedAt || e.createdAt || ''), tc = cur ? String(cur.e.updatedAt || cur.e.createdAt || '') : ''; if (!cur || te > tc || (te === tc && i > cur.i)) byDay[e.date] = { e: e, i: i }; }); /* one check a day: the newest edit, whatever a sync brought */
+    var checks = Object.keys(byDay).sort().reverse().map(function (d) { var e = byDay[d].e, a = S.cleanSleepCheck(e.data); return { date: e.date, answers: a, notes: sleepCheckNotes(a) }; });
+    return { from: from, to: to, nights: Object.keys(dates).length, withDetails: withDetails, fields: fields, woke: woke, flushNights: Object.keys(flushDates).length, checks: checks, quality: sleepQuality(from, to) };
+  }
+  /* one night's answers as a short line for the journal and the PDF */
+  var DETAIL_SHORT = { latency: 'time to fall asleep', wakeups: 'times woken', awake: 'awake in the night', early: 'woke too early', rested: 'rested on waking' };
+  function sleepDetailText(raw) {
+    var d = S.cleanSleepDetails(raw); if (!d) return '';
+    return DETAIL_ORDER.filter(function (k) { return d[k] !== undefined; }).map(function (k) {
+      if (k === 'woke') return 'woken by ' + d.woke.map(function (c) { return optLabel(SLEEP_LABELS, 'woke', c).toLowerCase(); }).join(', ');
+      return DETAIL_SHORT[k] + ' ' + optLabel(SLEEP_LABELS, k, d[k]).toLowerCase();
+    }).join('; ');
+  }
+  /* label and value rows, the same words in the journal, the PDF and the doctor's view */
+  var NOTE_ROWS = [['latency', 'Over 30 min to fall asleep'], ['wakeups', 'Woke 2 or more times'], ['awake', 'Awake over 30 min in the night'], ['early', 'Woke too early and could not get back to sleep'], ['rested', 'Felt not at all or only a little rested']];
+  function sleepNotesRows(sn) {
+    if (!sn) return [];
+    var rows = sleepQualityRows(sn.quality);
+    if (!sn.withDetails) return rows;
+    rows.push(['Sleep details', sn.withDetails + ' of ' + sn.nights + ' recorded night' + (sn.nights === 1 ? '' : 's')]);
+    NOTE_ROWS.forEach(function (r) { var f = sn.fields[r[0]]; if (!f || (!f.answered && !f.unsure)) return; rows.push([r[1], f.answered ? f.marked + ' of ' + f.answered + ' answered night' + (f.answered === 1 ? '' : 's') + (f.unsure ? ', ' + f.unsure + ' not sure' : '') : f.unsure + ' not sure']); });
+    var wk = Object.keys(sn.woke).sort(function (a, b) { return sn.woke[b] - sn.woke[a]; });
+    if (wk.length) rows.push(['Woken by', wk.map(function (c) { return optLabel(SLEEP_LABELS, 'woke', c).toLowerCase() + ' ' + sn.woke[c] + ' of ' + sn.withDetails; }).join(', ') + ' night' + (sn.withDetails === 1 ? '' : 's') + ' with details']);
+    return rows;
+  }
+  function sleepCheckText(a) {
+    a = S.cleanSleepCheck(a || {});
+    return CHECK_ORDER.filter(function (k) { return a[k] !== undefined; }).map(function (k) {
+      /* answers in the third person for the doctor and the PDF ("I do not drive" reads "does not drive") */
+      var v = ({ driving: { nodrive: 'does not drive' }, breathing: { unsure: 'not sure, or sleeps alone' } }[k] || {})[a[k]] || optLabel(CHECK_LABELS, k, a[k]).toLowerCase();
+      return { w1: 'hard nights, last 7 days: ' + v, w2: 'the 7 days before: ' + v, chance: 'enough time and place to sleep: ' + v, impact: 'affects the day: ' + v, since: 'for: ' + v, breathing: 'snoring, gasping or pauses noticed: ' + v, legs: 'restless legs feelings: ' + v, driving: 'sleepy while driving: ' + v }[k];
+    }).join('; ');
+  }
+  root.OvuAgents = { SLEEP_LABELS: SLEEP_LABELS, CHECK_LABELS: CHECK_LABELS, CHECK_ORDER: CHECK_ORDER, DETAIL_ORDER: DETAIL_ORDER, nightDetails: nightDetails, sleepDetailText: sleepDetailText, sleepNotes: sleepNotes, sleepNotesRows: sleepNotesRows, sleepQuality: sleepQuality, sleepQualityRows: sleepQualityRows, sleepCheckNotes: sleepCheckNotes, sleepCheckText: sleepCheckText, breathingNote: breathingNote, isPostmenopausal: isPostmenopausal, SYMPTOMS: SYMPTOMS, MOODS: MOODS, FOOD_TAGS: FOOD_TAGS, supervisor: supervisor, analyze: analyze, allFlags: allFlags, dailySummary: dailySummary, fourWeekSummary: fourWeekSummary, cycleHistory: cycleHistory, patternDays: patternDays, monthsBack: monthsBack, monthlyTotals: monthlyTotals, todayCheckIn: todayCheckIn, dismissFlag: dismissFlag, saveMonthlySummary: saveMonthlySummary, agents: AGENTS, fmtHours: fmtHours };
 })(window);

@@ -1,7 +1,7 @@
 /* Koi Pond (was Moon Tap): a no-fail breath break. A ring opens on the in-breath and closes on the out-breath over a
  * still pond where three koi swim (Jamie, 19 Oct: koi, not the moon). Tap the water and a ripple spreads and the koi nearby dart away, then glide on;
  * or only watch. Nothing is scored, tap timing
- * changes nothing, and stopping at any moment saves the practice time. The design and the review that shaped
+ * changes nothing, and journal saving is a separate choice after stopping. The design and the review that shaped
  * it: docs/design/2026-10-18-breath-tap.md, docs/debate/2026-10-18-breath-tap-codex-review.md. */
 (function (root) {
   'use strict';
@@ -12,7 +12,7 @@
     own: { id: 'own', name: 'My own pace', sub: 'a gentle pulse, no words', inMs: 4000, outMs: 4000, quiet: true }
   };
   var LENGTHS = [{ min: 3, name: '3 min' }, { min: 4, name: '4 min' }, { min: 5, name: '5 min' }, { min: 0, name: 'Open' }];
-  var MIN_SAVE_S = 5;
+  var MIN_SAVE_S = 60;
   function ease(x) { x = Math.max(0, Math.min(1, x)); return 0.5 - 0.5 * Math.cos(Math.PI * x); }
   /* where the ring is t ms into a session: the phase, progress through it, and the ring's size from 0 to 1 */
   function phaseAt(preset, t) {
@@ -27,7 +27,7 @@
   }
 
   /* ---- the screen ---- */
-  var el = null, state = null, raf = 0, opts = {}, audio = null, reduced = false;
+  var el = null, state = null, raf = 0, opts = {}, audio = null, reduced = false, pending = null;
   function h(html) { var d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; }
   function $(s) { return el ? el.querySelector(s) : null; }
   function store() { return root.OvuStore || null; }
@@ -40,6 +40,12 @@
       '<div class="btap-card" id="btapCard">' +
         '<h2>Koi Pond</h2>' +
         '<p>Breathe comfortably. Watch the koi glide; tap the water and they slip away. You don’t need to match the ring.</p>' +
+        '<details class="btap-how"><summary><span class="ms" aria-hidden="true">menu_book</span>How to practise</summary><ol>' +
+          '<li>Sit or stand comfortably and let your shoulders drop. Let each breath be its own size.</li>' +
+          '<li>Choose a pace, or keep your own. The ring widens as you breathe in and closes as you breathe out; follow it only while it feels easy.</li>' +
+          '<li>Rest your eyes on the koi, the water or the ring. When your mind wanders, that is the practice working: notice it, and come back to the next breath.</li>' +
+          '<li>A tap on the water is one way to come back, not a task. Watching quietly counts just as much.</li>' +
+          '<li>When you stop, take one ordinary breath and notice how you feel before you carry on.</li></ol></details>' +
         '<div class="btap-chips" id="btapPresets" role="group" aria-label="Pace"></div>' +
         '<div class="btap-chips" id="btapLengths" role="group" aria-label="How long"></div>' +
         '<p class="safe">Breathe gently, without forcing a deeper or longer breath. Stop if you feel dizzy, tingly, short of breath or distressed, and return to your usual breathing.</p>' +
@@ -52,7 +58,7 @@
         '<div class="btap-word" id="btapWord" aria-live="polite"></div>' +
         '<button type="button" class="btn btap-stop" id="btapStop">Stop</button>' +
       '</div>' +
-      '<div class="btap-card btap-done" id="btapDone" hidden><b>Your pause is saved.</b><p id="btapSum"></p><div class="row"><button type="button" class="btn primary" id="btapDoneClose">Close</button></div></div>' +
+      '<div class="btap-card btap-done" id="btapDone" hidden><b></b><p id="btapSum"></p><div class="row"><button type="button" class="btn primary" id="btapYes" hidden>Yes</button><button type="button" class="btn ghost" id="btapNo" hidden>No</button><button type="button" class="btn primary" id="btapRetry" hidden>Retry</button><button type="button" class="btn primary" id="btapDoneClose">Close</button></div></div>' +
     '</div>');
     document.body.appendChild(el);
     $('#btapPresets').innerHTML = Object.keys(PRESETS).map(function (k) { var p = PRESETS[k]; return '<button type="button" data-preset="' + k + '" class="' + (k === 'easy' ? 'on' : '') + '" aria-pressed="' + (k === 'easy') + '">' + p.name + '<small>' + p.sub + '</small></button>'; }).join('');
@@ -64,22 +70,26 @@
     $('#btapBegin').addEventListener('click', start);
     $('#btapClose').addEventListener('click', close);
     $('#btapDoneClose').addEventListener('click', close);
+    $('#btapYes').addEventListener('click', function () { if (pending) finishSave(pending); });
+    $('#btapNo').addEventListener('click', close);
+    $('#btapRetry').addEventListener('click', function () { if (pending) finishSave(pending); });
     $('#btapStop').addEventListener('click', function () { stop(false); });
-    document.addEventListener('visibilitychange', function () { if (document.hidden && state) stop(false); }); /* leaving the app ends and saves the pause, as Light Flower does (Codex, 20 Oct) */
+    document.addEventListener('visibilitychange', function () { if (document.hidden && state) stop(false); }); /* leaving the app ends the game; saving still needs a choice */
     $('#btapStage').addEventListener('pointerdown', function (e) { if (e.target.closest('#btapStop')) return; bloom(e.clientX, e.clientY); });
     document.addEventListener('keydown', function (e) { if (!state || el.hidden) return; if (e.key === ' ' || e.key === 'Enter') { if (e.target && /BUTTON|INPUT|TEXTAREA/.test(e.target.tagName)) return; e.preventDefault(); var r = $('#btapRing').getBoundingClientRect(); bloom(r.left + r.width / 2, r.top + r.height / 2); } if (e.key === 'Escape') stop(false); });
     return el;
   }
   function open(o) {
-    opts = o || {}; build();
+    opts = o || {}; pending = null; build();
     var pet = $('#btapPet'); pet.hidden = true; pet.removeAttribute('src'); /* no moon: the koi are the company now */
     $('#btapCard').hidden = false; $('#btapStage').hidden = true; $('#btapDone').hidden = true; el.hidden = false;
     document.body.classList.add('btap-open');
   }
-  function close() { if (state) stop(false, true); if (el) el.hidden = true; document.body.classList.remove('btap-open'); if (opts.onClose) opts.onClose(); }
+  function close() { if (state) stop(false, true); pending = null; if (el) el.hidden = true; document.body.classList.remove('btap-open'); if (opts.onClose) opts.onClose(); }
   function start() {
     var preset = ($('#btapPresets .on') || {}).dataset ? $('#btapPresets .on').dataset.preset : 'easy';
     var plan = Number(($('#btapLengths .on') || { dataset: { min: 3 } }).dataset.min) || 0;
+    pending = null;
     state = { preset: preset, plan: plan, startedAt: Date.now(), taps: 0, lastPhase: '' };
     $('#btapCard').hidden = true; $('#btapDone').hidden = true; $('#btapStage').hidden = false;
     $('#btapWord').textContent = PRESETS[preset].quiet ? '' : 'in';
@@ -172,16 +182,33 @@
   function stop(completed, silent) {
     if (!state) return null;
     root.cancelAnimationFrame(raf);
-    var seconds = (Date.now() - state.startedAt) / 1000, data = entryFor(seconds, state.preset, state.taps, state.plan), ev = null, s = store();
-    state = null;
-    if (data.seconds >= MIN_SAVE_S && s) { try { ev = s.add('mindfulness', s.today(), data, 'room'); if (opts.onSaved) opts.onSaved(ev); } catch (e) { ev = null; } }
-    if (silent) return ev;
+    var seconds = (Date.now() - state.startedAt) / 1000, data = entryFor(seconds, state.preset, state.taps, state.plan), S = store();
+    state = null; water = null;
+    /* a game is not a confirmed practice until she chooses Yes */
+    pending = !silent && seconds >= MIN_SAVE_S ? { data: data, day: S ? S.today() : null, ev: null, tried: false, onSaved: opts.onSaved } : null;
+    if (!silent) showDone(null, data);
+    return null;
+  }
+  function finishSave(p) {
+    if (!p || pending !== p) return null;
+    var S = store(); p.tried = true;
+    if (!p.ev) {
+      try { if (!S) throw new Error('Journal unavailable.'); p.data.confirmedReal = true; p.ev = S.add('mindfulness', p.day, p.data, 'room'); }
+      catch (e) { showDone(null, p.data); return null; }
+    }
+    /* an award failure keeps the entry identity, so Retry never duplicates the diary record */
+    try { var result = p.onSaved ? p.onSaved(p.ev) : null; if (result && result.rewardFailed) { p.rewardFailed = true; showDone(p.ev, p.data); return p.ev; } }
+    catch (e) { p.rewardFailed = true; showDone(p.ev, p.data); return p.ev; }
+    p.rewardFailed = false; pending = null; showDone(p.ev, p.data); return p.ev;
+  }
+  function showDone(ev, data) {
     $('#btapStage').hidden = true; $('#btapDone').hidden = false;
-    water = null; var m = Math.floor(data.seconds / 60), sec = data.seconds % 60;
-    /* a short pause is still a pause (four-persona review, 20 Oct: "stay a little longer next time" read as a target) */
-    $('#btapDone b').textContent = ev ? 'Your pause is saved.' : 'A brief pause still belongs to you.';
-    $('#btapSum').textContent = (ev ? 'Practice time ' + (m ? m + ' min ' : '') + sec + ' s' : 'Short pauses are not saved as practice time, and they still count for you') + (data.taps ? ' · ' + data.taps + (data.taps === 1 ? ' ripple' : ' ripples') : '') + '.';
-    return ev;
+    var m = Math.floor(data.seconds / 60), sec = data.seconds % 60, asking = pending && !pending.tried, failed = pending && pending.tried;
+    $('#btapDone b').textContent = asking ? 'Save this mindful minute to your journal?' : ev ? 'Your pause is saved.' : failed ? 'Your pause could not be saved' : 'A brief pause still belongs to you.';
+    $('#btapSum').textContent = asking ? 'Save this as practice if you really practised. Practice time ' + (m ? m + ' min ' : '') + sec + ' s.' : ev ? (pending && pending.rewardFailed ? 'Your journal entry is saved. Its hearts could not be saved. Retry the thank-you here.' : 'Practice time ' + (m ? m + ' min ' : '') + sec + ' s.') : failed ? 'Your practice time is kept here. Retry, or close and it is let go.' : 'Nothing under a minute is saved as practice time.';
+    if (data.taps) $('#btapSum').textContent = $('#btapSum').textContent.replace(/\.$/, '') + ' · ' + data.taps + (data.taps === 1 ? ' ripple.' : ' ripples.');
+    $('#btapYes').hidden = !asking; $('#btapNo').hidden = !asking; $('#btapRetry').hidden = !failed;
+    try { $(asking ? '#btapYes' : failed ? '#btapRetry' : '#btapDoneClose').focus({ preventScroll: true }); } catch (e) { }
   }
 
   /* ---- the koi (Jamie, 20 Oct: big, beautiful, swimming elegantly, and shy of a tap). Three koi about 150 px long glide on
@@ -242,5 +269,5 @@
       f.flee = Math.max(f.flee, 1 - d / reach * 0.5); f.turn = 0;
     });
   }
-  root.OvuBreathTap = { PRESETS: PRESETS, LENGTHS: LENGTHS, MIN_SAVE_S: MIN_SAVE_S, phaseAt: phaseAt, entryFor: entryFor, open: open, close: close, start: start, stop: stop, makeWater: makeWater, drop: drop, stepWater: stepWater, koi: function () { return koi.map(function (f) { return { x: f.x, y: f.y, fleeing: f.flee > 0.05, len: f.len }; }); } };
+  root.OvuBreathTap = { running: function () { return !!state; }, PRESETS: PRESETS, LENGTHS: LENGTHS, MIN_SAVE_S: MIN_SAVE_S, phaseAt: phaseAt, entryFor: entryFor, open: open, close: close, start: start, stop: stop, makeWater: makeWater, drop: drop, stepWater: stepWater, koi: function () { return koi.map(function (f) { return { x: f.x, y: f.y, fleeing: f.flee > 0.05, len: f.len }; }); } };
 })(typeof window !== 'undefined' ? window : this);

@@ -201,47 +201,47 @@
 <script>
 // Food database (TCM + Western, from Rhythme)
 const FOOD_DB = [
-  {name:'Salmon', emoji:'🐟', tags:'Omega-3 · Vitamin D · Blood builder', tcm:'Nourishes blood, warms yang', phase:['follicular','ovulatory','luteal']},
-  {name:'Eggs', emoji:'🥚', tags:'Protein · Choline · B12', tcm:'Nourishes yin, builds blood', phase:['follicular','luteal','menstrual']},
-  {name:'Spinach', emoji:'🥬', tags:'Iron · Folate · Magnesium', tcm:'Clears heat, nourishes blood', phase:['follicular','menstrual']},
-  {name:'Sweet Potato', emoji:'🍠', tags:'Beta-carotene · Fiber · Vitamin A', tcm:'Tonifies qi, harmonizes stomach', phase:['luteal','menstrual']},
-  {name:'Oats', emoji:'🥣', tags:'Fiber · B vitamins · Iron', tcm:'Tonifies spleen, nourishes qi', phase:['follicular','menstrual']},
-  {name:'Ginger', emoji:'🫚', tags:'Anti-inflammatory · Digestive', tcm:'Warms middle, dispels cold', phase:['menstrual','luteal']},
-  {name:'Turmeric', emoji:'🟡', tags:'Curcumin · Anti-inflammatory', tcm:'Invigorates blood, moves qi', phase:['luteal','menstrual']},
-  {name:'Berries', emoji:'🫐', tags:'Antioxidants · Vitamin C', tcm:'Nourishes yin, generates fluids', phase:['follicular','ovulatory']},
-  {name:'Avocado', emoji:'🥑', tags:'Healthy fats · Vitamin E', tcm:'Nourishes blood, moistens', phase:['follicular','luteal']},
-  {name:'Walnuts', emoji:'🌰', tags:'Omega-3 · Vitamin E', tcm:'Tonifies kidney, warms yang', phase:['luteal','menstrual']},
-  {name:'Dark Chocolate', emoji:'🍫', tags:'Magnesium · Iron · Mood', tcm:'Moves blood, lifts mood', phase:['luteal']},
-  {name:'Chamomile Tea', emoji:'🍵', tags:'Calming · Digestive', tcm:'Calms spirit, soothes liver', phase:['luteal','menstrual']},
-  {name:'Bone Broth', emoji:'🍲', tags:'Collagen · Minerals · Amino acids', tcm:'Nourishes yin, builds blood', phase:['menstrual','follicular']},
-  {name:'Beetroot', emoji:'🟣', tags:'Iron · Folate · Nitrates', tcm:'Builds blood, moves stagnation', phase:['follicular','menstrual']},
-  {name:'Pumpkin Seeds', emoji:'🎃', tags:'Zinc · Magnesium · Iron', tcm:'Tonifies kidney, anchors spirit', phase:['luteal','ovulatory']},
-  {name:'Citrus', emoji:'🍊', tags:'Vitamin C · Bioflavonoids', tcm:'Moves qi, regulates liver', phase:['ovulatory','luteal']},
-  {name:'Leafy Greens', emoji:'🥗', tags:'Iron · Calcium · Folate', tcm:'Clears heat, nourishes blood', phase:['follicular','ovulatory']},
-  {name:'Lentils', emoji:'🫘', tags:'Protein · Iron · Folate', tcm:'Tonifies qi, builds blood', phase:['follicular','menstrual']},
-  {name:'Yogurt', emoji:'🥛', tags:'Probiotics · Calcium · Protein', tcm:'Nourishes yin, clears heat', phase:['follicular','ovulatory']},
-  {name:'Quinoa', emoji:'🌾', tags:'Complete protein · Iron · Magnesium', tcm:'Tonifies spleen, harmonizes', phase:['follicular','luteal']},
-  {name:'Cinnamon', emoji:'🪵', tags:'Blood sugar · Anti-inflammatory', tcm:'Warms yang, invigorates blood', phase:['menstrual','luteal']},
-  {name:'Sesame Seeds', emoji:'⚪', tags:'Calcium · Iron · Healthy fats', tcm:'Nourishes liver blood, moistens', phase:['follicular','menstrual']},
-  {name:'Green Tea', emoji:'🍃', tags:'Antioxidants · L-theanine', tcm:'Clears heat, calms spirit', phase:['ovulatory','follicular']},
-  {name:'Mushrooms', emoji:'🍄', tags:'Vitamin D · Immunity · Adaptogens', tcm:'Tonifies qi, nourishes yin', phase:['follicular','luteal']},
+  {name:'Wild Caught Salmon', emoji:'', tags:'Omega-3 · Vitamin D · Blood builder', tcm:'Nourishes blood, warms yang', phase:['follicular','ovulatory','luteal']},
+  {name:'Eggs', emoji:'', tags:'Protein · Choline · B12', tcm:'Nourishes yin, builds blood', phase:['follicular','luteal','menstrual']},
+  {name:'Spinach', emoji:'', tags:'Iron · Folate · Magnesium', tcm:'Clears heat, nourishes blood', phase:['follicular','menstrual']},
+  {name:'Sweet Potato', emoji:'', tags:'Beta-carotene · Fiber · Vitamin A', tcm:'Tonifies qi, harmonizes stomach', phase:['luteal','menstrual']},
+  {name:'Organic Oats', emoji:'', tags:'Fiber · B vitamins · Iron', tcm:'Tonifies spleen, nourishes qi', phase:['follicular','menstrual']},
+  {name:'Ginger', emoji:'', tags:'Anti-inflammatory · Digestive', tcm:'Warms middle, dispels cold', phase:['menstrual','luteal']},
+  {name:'Turmeric', emoji:'', tags:'Curcumin · Anti-inflammatory', tcm:'Invigorates blood, moves qi', phase:['luteal','menstrual']},
+  {name:'Berries', emoji:'', tags:'Antioxidants · Vitamin C', tcm:'Nourishes yin, generates fluids', phase:['follicular','ovulatory']},
+  {name:'Avocado', emoji:'', tags:'Healthy fats · Vitamin E', tcm:'Nourishes blood, moistens', phase:['follicular','luteal']},
+  {name:'Walnuts', emoji:'', tags:'Omega-3 · Vitamin E', tcm:'Tonifies kidney, warms yang', phase:['luteal','menstrual']},
+  {name:'Dark Chocolate', emoji:'', tags:'Magnesium · Iron · Mood', tcm:'Moves blood, lifts mood', phase:['luteal']},
+  {name:'Chamomile Tea', emoji:'', tags:'Calming · Digestive', tcm:'Calms spirit, soothes liver', phase:['luteal','menstrual']},
+  {name:'Bone Broth', emoji:'', tags:'Collagen · Minerals · Amino acids', tcm:'Nourishes yin, builds blood', phase:['menstrual','follicular']},
+  {name:'Beetroot', emoji:'', tags:'Iron · Folate · Nitrates', tcm:'Builds blood, moves stagnation', phase:['follicular','menstrual']},
+  {name:'Pumpkin Seeds', emoji:'', tags:'Zinc · Magnesium · Iron', tcm:'Tonifies kidney, anchors spirit', phase:['luteal','ovulatory']},
+  {name:'Citrus', emoji:'', tags:'Vitamin C · Bioflavonoids', tcm:'Moves qi, regulates liver', phase:['ovulatory','luteal']},
+  {name:'Leafy Greens', emoji:'', tags:'Iron · Calcium · Folate', tcm:'Clears heat, nourishes blood', phase:['follicular','ovulatory']},
+  {name:'Lentils', emoji:'', tags:'Protein · Iron · Folate', tcm:'Tonifies qi, builds blood', phase:['follicular','menstrual']},
+  {name:'Yogurt', emoji:'', tags:'Probiotics · Calcium · Protein', tcm:'Nourishes yin, clears heat', phase:['follicular','ovulatory']},
+  {name:'Quinoa', emoji:'', tags:'Complete protein · Iron · Magnesium', tcm:'Tonifies spleen, harmonizes', phase:['follicular','luteal']},
+  {name:'Cinnamon', emoji:'', tags:'Blood sugar · Anti-inflammatory', tcm:'Warms yang, invigorates blood', phase:['menstrual','luteal']},
+  {name:'Sesame Seeds', emoji:'', tags:'Calcium · Iron · Healthy fats', tcm:'Nourishes liver blood, moistens', phase:['follicular','menstrual']},
+  {name:'Green Tea', emoji:'', tags:'Antioxidants · L-theanine', tcm:'Clears heat, calms spirit', phase:['ovulatory','follicular']},
+  {name:'Mushrooms', emoji:'', tags:'Vitamin D · Immunity · Adaptogens', tcm:'Tonifies qi, nourishes yin', phase:['follicular','luteal']},
 ];
 
 const PHASE_INFO = {
   menstrual: {
     label: 'Menstrual phase',
     text: 'Your body is releasing and renewing. Focus on warming, blood-building foods that are easy to digest. Rest and nourish.',
-    foods: ['Bone Broth','Ginger','Oats','Eggs','Beetroot','Cinnamon','Sesame Seeds']
+    foods: ['Bone Broth','Ginger','Organic Oats','Eggs','Beetroot','Cinnamon','Sesame Seeds']
   },
   follicular: {
     label: 'Follicular phase',
     text: 'Energy is rising. Support follicle growth with nutrient-dense, blood-building foods and gentle movement.',
-    foods: ['Salmon','Eggs','Spinach','Berries','Avocado','Lentils','Leafy Greens']
+    foods: ['Wild Caught Salmon','Eggs','Spinach','Berries','Avocado','Lentils','Leafy Greens']
   },
   ovulatory: {
     label: 'Ovulatory phase',
     text: 'Peak energy and vitality. Support liver detox and hormone balance with fresh, light foods.',
-    foods: ['Berries','Citrus','Leafy Greens','Green Tea','Yogurt','Salmon']
+    foods: ['Berries','Citrus','Leafy Greens','Green Tea','Yogurt','Wild Caught Salmon']
   },
   luteal: {
     label: 'Luteal phase',
@@ -372,7 +372,7 @@ function renderPhaseRec() {
     document.getElementById('phaseRecText').textContent = info.text;
     document.getElementById('phaseRecFoods').innerHTML = info.foods.map(name => {
       const f = FOOD_DB.find(x => x.name === name);
-      return `<span class="rec-food"><span class="emoji">${f?f.emoji:'🍽️'}</span>${name}</span>`;
+      return `<span class="rec-food"><span class="emoji">${f?f.emoji:''}</span>${name}</span>`;
     }).join('');
   }
 }

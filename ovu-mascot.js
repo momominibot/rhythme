@@ -4,9 +4,10 @@
 (function (root) {
   'use strict';
   var ART = 'assets/room/dream/';
-  /* Jamie, 18 Oct 23:50: one Luna, the pastel crescent moon. The other looks stay on disk but are not offered. */
+  /* Jamie, 21 Oct: one Luna, the soft watercolour crescent Ovuluna began with (assets/onboarding/luna.png on ovuluna.vercel.app),
+   * on her own everywhere, no round badge. The other looks stay on disk but are not offered. */
   var LIST = [
-    { id: 'moon', name: 'Luna the moon', img: 'orb-moon.webp', head: null, note: 'The glowing crescent Rhythme began with.' } /* Jamie, 19 Oct: the crescent on its own everywhere, no round badge */
+    { id: 'luna', name: 'Luna the moon', img: 'orb-luna.webp', head: null, note: 'The soft crescent Ovuluna began with.' }
   ];
   function store() { return root.OvuStore || null; }
   function byId(id) { for (var i = 0; i < LIST.length; i++) if (LIST[i].id === id) return LIST[i]; return null; }

@@ -188,7 +188,7 @@ surfaces; resolving any two-failed-review hold before that work resumes.
   analytics) describe greenfield architectures and were rejected as not applicable to the existing pipeline.
 
 ## 6. Phase 0 as built (21 Oct, branch claude/data-capture-phase0)
-Migration `supabase/migrations/20261021100000_staff_data_contract_v3.sql`, test `tools/db/test_team_pipeline.py` (42 checks on a
+Migration `supabase/migrations/20261021100000_staff_data_contract_v3.sql`, test `tools/db/test_team_pipeline.py` (59 checks on a
 throwaway postgres@17 with `tools/db/local_stub.sql`, which emulates Supabase's default grants so RLS is what the tests prove),
 and small changes to admin.js, ovu-consent.js and ovu-sync.js. Reviewed by Codex gpt-6-astra in three rounds (FIX, FIX, FIX: 13, 10 and 7 ranked items, every one verified against
 the source before any change and fixed in the following commit; full texts under docs/design/reviews/). A

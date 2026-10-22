@@ -1,0 +1,205 @@
+{
+ "note": "Farm kitchen, 21 Oct 2026 (docs/design/2026-10-21-farm-kitchen.md, Art needed): ten dish pictures and eight staple pictures in the Ovuluna food style (reference assets/food/eggs.webp), and two base-outfit poses, chop and stir (reference avatar-act-dishes.webp). The other outfits' versions of the two poses come after Jamie approves the base ones. No fish. Counter art for the dream house and the bath house is a plate edit and is not here. Run with tools/art/run_batch.py, one job at a time, no retries, stop on the first failure.",
+ "jobs": [
+  {
+   "id": "dish-garlicpakchoy",
+   "out": "dish-garlicpakchoy.png",
+   "size": "1024x1024",
+   "seed": 2110,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Garlic pak choy: glossy stir-fried baby pak choy with thin golden garlic slices on a small round cream plate. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "dish-kangkongfry",
+   "out": "dish-kangkongfry.png",
+   "size": "1024x1024",
+   "seed": 2111,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Kangkong stir-fry: bright green water spinach stems and leaves with a little garlic on a small round cream plate. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "dish-tomatoegg",
+   "out": "dish-tomatoegg.png",
+   "size": "1024x1024",
+   "seed": 2112,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Tomato and egg: soft scrambled egg with red tomato wedges beside a small mound of white rice in a pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "dish-pumpkinsoup",
+   "out": "dish-pumpkinsoup.png",
+   "size": "1024x1024",
+   "seed": 2113,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Pumpkin soup: smooth orange pumpkin soup with a swirl of coconut milk in a small pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "dish-carrotradish",
+   "out": "dish-carrotradish.png",
+   "size": "1024x1024",
+   "seed": 2114,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Carrot and radish salad: thin orange carrot rounds and pink radish slices with a drizzle of honey in a small pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "dish-strawberrybowl",
+   "out": "dish-strawberrybowl.png",
+   "size": "1024x1024",
+   "seed": 2115,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Strawberry yoghurt bowl: white yoghurt topped with halved strawberries and a drizzle of honey in a small pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "dish-pakchoynoodles",
+   "out": "dish-pakchoynoodles.png",
+   "size": "1024x1024",
+   "seed": 2116,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Pak choy noodle soup: clear broth with noodles and a few pak choy leaves in a small pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "dish-tomatotofu",
+   "out": "dish-tomatotofu.png",
+   "size": "1024x1024",
+   "seed": 2117,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Tomato tofu with rice: soft tofu cubes in a light tomato sauce beside a small mound of white rice in a pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "dish-sweetpotatoginger",
+   "out": "dish-sweetpotatoginger.png",
+   "size": "1024x1024",
+   "seed": 2118,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Sweet potato ginger soup: purple-orange sweet potato chunks in a pale golden ginger broth in a small pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "dish-pandanrice",
+   "out": "dish-pandanrice.png",
+   "size": "1024x1024",
+   "seed": 2119,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Pandan rice: a small mound of pale green pandan rice with a knotted pandan leaf on top in a pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "staple-rice",
+   "out": "staple-rice.png",
+   "size": "1024x1024",
+   "seed": 2120,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "a small cloth sack of white rice tied with a ribbon, a few grains beside it. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "staple-egg",
+   "out": "staple-egg.png",
+   "size": "1024x1024",
+   "seed": 2121,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "two brown eggs in a small woven basket. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "staple-noodles",
+   "out": "staple-noodles.png",
+   "size": "1024x1024",
+   "seed": 2122,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "a neat nest of dried noodles. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "staple-tofu",
+   "out": "staple-tofu.png",
+   "size": "1024x1024",
+   "seed": 2123,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "a soft white block of tofu on a small leaf. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "staple-garlic",
+   "out": "staple-garlic.png",
+   "size": "1024x1024",
+   "seed": 2124,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "one plump garlic bulb with a single clove beside it. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "staple-coconut",
+   "out": "staple-coconut.png",
+   "size": "1024x1024",
+   "seed": 2125,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "a small tin of coconut milk with half a coconut beside it. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "staple-honey",
+   "out": "staple-honey.png",
+   "size": "1024x1024",
+   "seed": 2126,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "a small round honey jar with a cloth lid tied with string and a wooden dipper. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "staple-yoghurt",
+   "out": "staple-yoghurt.png",
+   "size": "1024x1024",
+   "seed": 2127,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "a small glass pot of white yoghurt with a cloth lid tied with string. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "pose-chop",
+   "out": "avatar-act-chop.png",
+   "size": "1024x1536",
+   "seed": 2140,
+   "ref": [
+    "assets/room/dream/avatar-act-dishes.webp"
+   ],
+   "prompt": "The same girl as in the reference picture, identical face, hair, star hair clip, cream jumper, pink skirt, socks and shoes, same soft clay 3D render, same lighting, full body standing, plain white background, no text. She wears the same mint apron and stands at a small wooden chopping board held at waist height, slicing a green pak choy carefully with a small kitchen knife, eyes lowered and calm, a gentle smile."
+  },
+  {
+   "id": "pose-stir",
+   "out": "avatar-act-stir.png",
+   "size": "1024x1536",
+   "seed": 2141,
+   "ref": [
+    "assets/room/dream/avatar-act-dishes.webp"
+   ],
+   "prompt": "The same girl as in the reference picture, identical face, hair, star hair clip, cream jumper, pink skirt, socks and shoes, same soft clay 3D render, same lighting, full body standing, plain white background, no text. She wears the same mint apron and holds a small pastel saucepan with a wooden spoon, stirring slowly, a curl of soft steam rising, eyes half closed as she breathes in the smell, a gentle smile."
+  }
+ ]
+}

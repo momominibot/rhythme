@@ -25,7 +25,7 @@
     return inside;
   }
   function inZones(zones, x, y) { if (!zones || !zones.length) return true; for (var i = 0; i < zones.length; i++) if (inPoly(zones[i], x, y)) return true; return false; }
-  function inBox(b, x, y) { return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1; }
+  function inBox(b, x, y) { if (b.poly) return inPoly(b.poly, x, y); return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1; } /* a solid may be a polygon: the farm's bed frame (22 Oct) */
   function blocked(solids, x, y) { for (var i = 0; i < (solids || []).length; i++) if (inBox(solids[i], x, y)) return solids[i]; return null; }
   /* the box a prop or pet takes up at its feet: narrower than the sprite and shallow in y */
   function propBox(p) { var w = p.w || 8; return { id: p.id, x0: p.x - w * 0.34, x1: p.x + w * 0.34, y0: p.y - w * 0.22, y1: p.y + w * 0.12 }; }
@@ -346,15 +346,20 @@
     sortDepth(cur.y);
   }
   /* ---------- the walk cycle ---------- */
-  function outfitNow() { var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatar.querySelector('#avatarImg').getAttribute('src') || ''); return m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; }
+  function outfitNow() { var m = /avatar-([a-z0-9-]+?)(?:-blink)?\.webp/.exec(avatar.querySelector('#avatarImg').getAttribute('src') || ''); return m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; }
+  /* the outfits with walk strips drawn (tools/art/walkcycle.py). An outfit missing here, or a missing direction, falls back
+     without a request, so a drop without strips yet (the gown, the kebayas, the tudung) does not log a 404 per direction */
+  var STRIPS = { base: 'side away towards', cozy: 'side away towards', pajamas: 'side away towards', party: 'side away', sundress: 'side away towards', yoga: 'side away towards' };
   function sheet(outfit, dir) {
     var k = outfit + '-' + dir, e = cyc.sheets[k];
+    if (!e && (!STRIPS[outfit] || STRIPS[outfit].indexOf(dir) < 0)) return (cyc.sheets[k] = { ok: false, img: { src: '' } });
     if (!e) { e = cyc.sheets[k] = { ok: null, img: new Image() }; e.img.onload = function () { if (e.img.decode) e.img.decode().then(function () { e.ok = true; }, function () { e.ok = true; }); else e.ok = true; }; e.img.onerror = function () { e.ok = false; }; e.img.src = R.ART + 'avatar-walk-' + k + '.webp'; }
     return e;
   }
   var BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
   function preloadCycle() {
     var o = outfitNow(); if (!o) return;
+    if (cyc.on && cyc.key && cyc.key.indexOf(o + '-') !== 0) cycleHide(); /* a new outfit mid-walk: the old strip goes at once, and the walk shows the new one when it is ready (Codex verification, 21 Oct) */
     Object.keys(cyc.sheets).forEach(function (k) { if (k.indexOf(o + '-') !== 0) { cyc.sheets[k].img.src = BLANK; delete cyc.sheets[k]; } }); /* only her current outfit stays decoded; a blank data URI, not an empty src, so Safari lets go of the pixels */
     ['side', 'away', 'towards'].forEach(function (d) { sheet(o, d); });
   }
@@ -511,14 +516,18 @@
     var fromL = R.layout(), from = fromL.id, fromScene = sceneOf(fromL), target = to === 'home' ? R.homeId() : to, T = R.LAYOUTS[target];
     if (!T) return false;
     if (T.store && !storeOpen(T.store)) { hoursCard(T.store); return false; } /* each interior keeps its own store's hours */
+    if (T.admit && !T.admit()) { if (T.refused) T.refused(); return false; } /* a room with its own rule (Harbour Lane's shops keep their own hours) */
     travelling = true; clearInput(); if (active) commit();
+    R.emit('travel', target, T); /* the music fades before the plate swaps (the cave is reached in silence) */
     scene.classList.add('fading'); if (root.OvuSound) root.OvuSound.play('door'); else R.chime('tap');
     var t0 = Date.now();
     Promise.all([preload(R.ART + T.img), occWait(T)]).then(function () { /* the plate, and its cutouts decoded or the cap reached */
       var left = Math.max(0, (reduced ? 80 : 380) - (Date.now() - t0));
       root.setTimeout(function () {
-        if (napping() || (T.store && !storeOpen(T.store))) { /* she fell asleep or the store shut during the fade */
+        var refused = !!(T.admit && !T.admit());
+        if (napping() || (T.store && !storeOpen(T.store)) || refused) { /* she fell asleep or the store shut during the fade */
           if (T.store && !storeOpen(T.store) && !(R.asleep && R.asleep())) hoursCard(T.store);
+          if (refused && !napping() && T.refused) T.refused();
           scene.classList.remove('fading'); travelling = false; return;
         }
         R.applyLayout(target, !!opts.visit);
@@ -583,7 +592,7 @@
     var old = doc.getElementById('walkDebug'); if (old) old.remove(); if (!on) return;
     var L = R.layout(), w = worldNow(), m = rasterise(w), sw = 100 * w.span, s = '<svg id="walkDebug" viewBox="0 0 ' + sw + ' 100" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:' + sw + '%;height:100%;z-index:50;pointer-events:none">';
     for (var r = 0; r < ROWS; r++) for (var c = 0; c < m.cols; c++) if (m[r * m.cols + c]) s += '<rect x="' + (c * CELL) + '" y="' + (r * ROWH) + '" width="' + CELL + '" height="' + ROWH + '" fill="rgba(80,200,120,.16)"/>';
-    (w.solids || []).forEach(function (b) { s += '<rect x="' + b.x0 + '" y="' + b.y0 + '" width="' + (b.x1 - b.x0) + '" height="' + (b.y1 - b.y0) + '" fill="rgba(220,60,60,.2)" stroke="#c33" stroke-width=".3"/>'; });
+    (w.solids || []).forEach(function (b) { s += b.poly ? '<polygon points="' + b.poly.map(function (p) { return p.join(','); }).join(' ') + '" fill="rgba(220,60,60,.2)" stroke="#c33" stroke-width=".3"/>' : '<rect x="' + b.x0 + '" y="' + b.y0 + '" width="' + (b.x1 - b.x0) + '" height="' + (b.y1 - b.y0) + '" fill="rgba(220,60,60,.2)" stroke="#c33" stroke-width=".3"/>'; });
     (w.doors || []).forEach(function (d) { s += '<ellipse cx="' + d.x + '" cy="' + d.y + '" rx="' + (d.r || 4) + '" ry="' + ((d.r || 4) * Y_SCALE) + '" fill="rgba(60,120,240,.25)" stroke="#36c" stroke-width=".3"/>'; });
     (L.hotspots || []).forEach(function (h) { if (h.wp) s += '<circle cx="' + h.wp.x + '" cy="' + h.wp.y + '" r=".8" fill="#fff" stroke="#639" stroke-width=".3"/>'; });
     if (L.home) s += '<circle cx="' + L.home.x + '" cy="' + L.home.y + '" r="1" fill="#fc0"/>';
@@ -604,6 +613,7 @@
     if (R.setWalkTo) R.setWalkTo(routeTo); /* the room's own walks route around furniture */
   }
   W.setSpeedScale = function (k) { speedScale = Math.min(1, Math.max(0.4, Number(k) || 1)); }; W.speedScale = function () { return speedScale; };
+  W.sortDepth = function () { sortDepth(); }; /* a scene that recreates its sprites after the props event (the barn's animals) ranks them itself */
   W.travel = travel; W.mount = mount; W.walking = function () { return active; }; W.travelling = function () { return !!travelling; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(); }; W.routeTo = routeTo; W.OCC_CAP = OCC_CAP; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
   R.on('boot', mount);
 })(window);
