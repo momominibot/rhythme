@@ -30,3 +30,14 @@ All 1,795 core checks pass; they miss the reproduced overlap. No files modified.
 
 **HOLD: fix the remaining activity overlap before release.**
 
+
+## Round 3: GO LIVE
+
+1. **Overlap fixed.** Replayed the real handlers in memory: Ready synchronously emits before PULSE’s timer starts (`room.js:2547–2549`). The greenhouse listener invokes `stepAside`, clearing its timers and Stop handler without saving (`ovu-greenhouse.js:404,555`). After 70 simulated seconds, zero entries were saved; PULSE alone completed and awaited explicit logging.
+
+   No other timed-activity overlap found: existing owners are refused (`room.js:2192–2208,2524`); garden watering and shared care hand over (`ovu-garden.js:338`; `ovu-care.js:52–54`). Background podcast playback can continue.
+
+2. **Both correct.** Weekly formatting produced `2 s`, `45 s`, `59 s`, then `1 min` (`room.js:2490`). Screening now explicitly asks about reasons to skip or stop (`ovu-pulse.js:42`). Independently reran: **1,795 passed, zero failed**.
+
+3. **GO LIVE.**
+
