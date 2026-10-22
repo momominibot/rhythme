@@ -4903,4 +4903,25 @@ var summarised = false;
   check('the evidence ledger names the NSF sleep quality panel', /Ohayon/.test(fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8')));
 })();
 
+(function () {
+  console.log('2k31. PULSE movement breaks (22 Oct): signed cards only, active seconds only, never WHO minutes or a strength day');
+  var c = vm.createContext({ Math: Math, Number: Number, String: String, Array: Array, Object: Object, JSON: JSON }); c.window = c;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-pulse.js'), 'utf8'), c);
+  var P = c.OvuPulse;
+  check('three first movements, seated or at a wall: knee extension, shoulder-blade squeeze, wall push-up', P.MOVES.map(function (m) { return m.id; }).join() === 'P05,P06,P02');
+  check('no card shows until a reviewer has signed it; tester mode sees the drafts', P.visible(false).length === P.MOVES.filter(P.reviewed).length && P.visible(true).length === 3);
+  check('every card has a setup, one cue, an easier version, a skip line and 45 s of movement with 10 s of rest', P.MOVES.every(function (m) { return m.setup && m.cue && m.easy && /^Skip if/.test(m.skip) && m.work === 45 && m.rest === 10; }));
+  check('the before-you-move screen names the groups to skip, says stop for pain or dizziness, and gives 995 for emergencies', /pregnant/.test(P.BEFORE.lines.join(' ')) && /pelvic floor/.test(P.BEFORE.lines.join(' ')) && /fracture/.test(P.BEFORE.lines.join(' ')) && /dizz/.test(P.BEFORE.lines.join(' ')) && /995/.test(P.BEFORE.urgent));
+  var e = P.entryFor(P.move('P02'), 'work', 61, true);
+  check('a logged break keeps active seconds only (capped at 45), stopped early, no MET, never a strength day', e.activity === 'pulse' && e.seconds === 45 && e.stoppedEarly === true && e.met === null && e.strength === false && e.minutes === 0 && e.setting === 'work');
+  var w = vm.createContext({ Math: Math, Number: Number, String: String, Array: Array, Object: Object, JSON: JSON, Date: Date, isFinite: isFinite }); w.window = w;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-exercise.js'), 'utf8'), w);
+  var wk = w.OvuExercise.week([{ type: 'exercise', date: '2026-10-22', data: e }, { type: 'exercise', date: '2026-10-22', data: P.entryFor(P.move('P05'), 'home', 30, false) }], '2026-10-22');
+  check('the week shows PULSE breaks apart: 2 breaks, 75 s, and no WHO minutes, sessions or strength days from them', wk.pulse === 2 && wk.pulseSeconds === 75 && wk.minutes === 0 && wk.sessions === 0 && wk.strengthDays === 0 && wk.moderateEquivalent === 0, JSON.stringify(wk));
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('the PULSE flow asks before saving, ends the break when she leaves the sheet or the app, and joins the one-activity rule', /Log what I did/.test(rs) && /current !== 'pulse' \|\| document\.hidden/.test(rs) && /function openPulse\(id\) \{[\s\S]{0,200}refuseBusy\(\)/.test(rs));
+  var lines = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/erin-actions/lines.json'), 'utf8')).map(function (x) { return x.id; });
+  check("Erin's voice for before, start, stop and log, each with its clip", ['pulse-before', 'pulse-start', 'pulse-stop', 'pulse-log'].every(function (id) { return lines.indexOf(id) > -1 && fs.existsSync(path.join(root, 'assets/audio/erin-actions/' + id + '.mp3')); }));
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
