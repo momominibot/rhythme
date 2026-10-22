@@ -97,7 +97,7 @@
     R.openSheet('villager-' + id, v.name, v.role + (vs.engaged ? ' · engaged to you' : ''), 'favorite',
       '<div class="vcard"><img src="' + R.ART + v.img + '" alt=""><div>' + heartRow(vs.points) + '<p class="vline">' + esc(line) + '</p></div></div>' +
       '<div class="row" id="vActs"><button type="button" class="btn primary" data-v="talk"' + (vs.talked === day ? ' disabled' : '') + '><span class="ms">chat</span>' + (vs.talked === day ? 'Talked today' : 'Talk') + '</button>' +
-      (propose ? '<button type="button" class="btn soft" data-v="propose"><span class="ms">favorite</span>Propose (' + FEATHER + ' ♥ blue feather)</button>' : '') + '</div>' +
+      (propose ? '<button type="button" class="btn soft" data-v="propose"><span class="ms">favorite</span>Propose (' + FEATHER + ' hearts, a blue feather)</button>' : '') + '</div>' +
       '<h4 class="shedh"><span class="ms">redeem</span>Give a gift' + (vs.gifted === day ? ' <small>given today</small>' : '') + '</h4>' +
       (items.length ? '<div class="seedlist" id="vGifts">' + items.map(function (it, i) { return '<button type="button" class="btn soft" data-gift="' + i + '"' + (vs.gifted === day ? ' disabled' : '') + '>' + (it.kind === 'dish' ? '<img class="croppic" src="' + it.img + '" alt="">' : it.kind === 'crop' && FM.cropPic ? FM.cropPic(it.key) : '<span class="ms">' + (it.key === 'milk' ? 'water_full' : 'egg') + '</span>') + '<span><b>' + esc(it.name) + '</b><small>have ' + it.n + '</small></span></button>'; }).join('') + '</div>' : '<p class="help">Your bag is empty. Cook a dish or pick something from the farm.</p>'));
     var acts = doc.getElementById('vActs'), gifts = doc.getElementById('vGifts');

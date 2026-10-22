@@ -161,7 +161,7 @@
     var wrap = R.els.props, fx = doc.createElement('div'); fx.className = 'wish'; fx.setAttribute('aria-hidden', 'true'); fx.style.left = '50%'; fx.style.top = '44%'; fx.style.width = '18%';
     for (var i = 0; i < 6; i++) fx.innerHTML += '<i style="left:' + (15 + i * 14) + '%;animation-delay:' + (i * 0.12) + 's"></i>';
     wrap.appendChild(fx); root.setTimeout(function () { fx.remove(); }, 2400);
-    R.joy(); R.showThought('✨'); root.setTimeout(R.hideThought, 2600); R.chime('bell', true); R.toast(WISHES[Math.floor(Math.random() * WISHES.length)], 'auto_awesome');
+    R.joy(); R.showThought('auto_awesome'); root.setTimeout(R.hideThought, 2600); R.chime('bell', true); R.toast(WISHES[Math.floor(Math.random() * WISHES.length)], 'auto_awesome');
   }
   R.hotspotHandlers.board = function (id, L) { if (!inPlaza(L)) return false; openBoard(); return true; };
   R.hotspotHandlers.stall = function (id, L) { if (!inPlaza(L)) return false; openStall(); return true; };

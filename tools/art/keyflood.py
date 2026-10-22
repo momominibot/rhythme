@@ -4,7 +4,7 @@ inside the outline stays). Soft 2 px edge, green spill pulled down at the edge."
 import sys, colorsys, numpy as np
 from PIL import Image, ImageFilter
 from scipy import ndimage
-def key2(src, size=240, pad=0.94, key='green', despill='edge', nokeyhue=False):
+def key2(src, size=240, pad=0.94, key='green', despill='edge', nokeyhue=False, shade_s=0.22, dist=70, shade_lo=70, shade_v=0.55):
     im = np.asarray(Image.open(src).convert('RGB')).astype(np.float32); H, W, _ = im.shape
     edge = np.concatenate([im[:, :10], im[:, -10:]], axis=1); rowbg = np.median(edge, axis=1)  # H x 3
     rowbg = ndimage.uniform_filter1d(rowbg, 31, axis=0)
@@ -17,8 +17,8 @@ def key2(src, size=240, pad=0.94, key='green', despill='edge', nokeyhue=False):
     else:
         greenish = (g >= r) & (g >= b) & (g - np.maximum(r, b) > 0.12) & (s > 0.40) & (mx > 0.50)
     hue_k = np.where(mx == r, ((g - b) / np.maximum(mx - mn, 1e-6)) % 6, np.where(mx == g, (b - r) / np.maximum(mx - mn, 1e-6) + 2, (r - g) / np.maximum(mx - mn, 1e-6) + 4)) * 60
-    shade = ((hue_k > 285) & (hue_k < 350) & (s > 0.25) & (mx > 0.03)) if key == 'magenta' else ((hue_k > 70) & (hue_k < 170) & (s > 0.22) & (mx < 0.55)) if nokeyhue else np.zeros_like(greenish)  # magenta's own shadows, however dark; never for green, where it eats dark green cloth
-    cand = (d < 70) | greenish | shade
+    shade = ((hue_k > 285) & (hue_k < 350) & (s > 0.25) & (mx > 0.03)) if key == 'magenta' else ((hue_k > shade_lo) & (hue_k < 170) & (s > shade_s) & (mx < shade_v)) if nokeyhue else np.zeros_like(greenish)  # magenta's own shadows, however dark; never for green, where it eats dark green cloth
+    cand = (d < dist) | greenish | shade
     lab, n = ndimage.label(cand); border = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
     bg = np.isin(lab, list(border))
     # enclosed pockets of the backdrop (inside a hanger's triangle, between two shoes): bright saturated green regions not joined to the border

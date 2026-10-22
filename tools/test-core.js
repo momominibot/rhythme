@@ -3701,7 +3701,17 @@ var summarised = false;
 })();
 
 (function ovulunaFoodArt() {
-  console.log('food pictures (21 Oct): every picture the ovarian foods name is on disk, small, and the rest keep their emoji');
+  (function noEmoji() {
+    /* Jamie, 22 Oct: "never put such emoji, it must always be generated. everything has to be aesthetically cute". Nothing the
+       app serves holds an emoji character; tables that must match emoji typed elsewhere write them as escapes */
+    /* pictographs, flags (regional indicator pairs) and keycaps (a digit, # or * with U+20E3) */
+    var bad = [], re = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u;
+    (function walk(d) { fs.readdirSync(d, { withFileTypes: true }).forEach(function (e) { var p = path.join(d, e.name); if (e.isDirectory()) { if (['node_modules', '.git', 'tools', 'docs', 'supabase', 'ios', 'android', 'store'].indexOf(e.name) < 0) walk(p); } else if (/\.(html|js|css|json|webmanifest|svg|txt)$/.test(e.name) && re.test(fs.readFileSync(p, 'utf8'))) bad.push(path.relative(root, p)); }); })(root);
+    check('no emoji anywhere the app serves: pages, scripts, styles and data (icons and drawn pictures instead)', bad.length === 0, bad.join());
+    var flag = String.fromCodePoint(0x1F1F8, 0x1F1EC), keycap = '1\uFE0F\u20E3', moon = String.fromCodePoint(0x1F319);
+    check('the emoji check itself catches a moon in a JS string, the Singapore flag and a keycap, and passes plain marks (check, cross, middle dot)', re.test("var t = '" + moon + "';") && re.test('<text>' + flag + '</text>') && re.test('Step ' + keycap) && !re.test('\u2713 \u2715 \u00b7 \u2192 no emoji'));
+  })();
+  console.log('food pictures (21 Oct): every picture the ovarian foods name is on disk and small; no emoji (22 Oct)');
   var d = JSON.parse(fs.readFileSync(path.join(root, 'assets/data/ovarian-foods.json'), 'utf8')), withPic = d.foods.filter(function (f) { return f.img; }), missing = withPic.filter(function (f) { return !fs.existsSync(path.join(root, f.img)); });
   (function () {
     var fsrc = fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), ksrc = fs.readFileSync(path.join(root, 'ovu-kitchen.js'), 'utf8');
@@ -3711,7 +3721,7 @@ var summarised = false;
     check('every crop and every dish has its picture (drawn 22 Oct), small enough for a phone', crops.length >= 10 && dishes.length >= 10 && miss.length === 0, miss.join());
   })();
   check('every food card carries a picture (14 from Ovuluna, 10 drawn 22 Oct in the same style) and every file exists under assets/food', withPic.length === d.foods.length && missing.length === 0, JSON.stringify(missing.map(function (f) { return f.img; })));
-  check('every food still has an emoji, so the ones without a picture draw as before', d.foods.every(function (f) { return f.emoji; }));
+  check('no food carries an emoji (Jamie, 22 Oct: "never put such emoji, it must always be generated"): every one has its picture', d.foods.every(function (f) { return !f.emoji && f.img; }));
   var big = withPic.filter(function (f) { return fs.statSync(path.join(root, f.img)).size > 40000; });
   check('the pictures are small (under 40 KB each)', big.length === 0, big.map(function (f) { return f.img; }).join());
 })();

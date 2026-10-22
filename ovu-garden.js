@@ -280,7 +280,7 @@
   function openPond() {
     if (root.OvuWalk.napping()) return;
     var line = POND_LINES[Math.floor(Date.now() / 3600000) % POND_LINES.length];
-    R.showThought('🌸'); root.setTimeout(R.hideThought, 2600); R.toast(line, 'water');
+    R.showThought('local_florist'); root.setTimeout(R.hideThought, 2600); R.toast(line, 'water');
     var wrap = R.els.props, rip = doc.createElement('div'); rip.className = 'ripple'; rip.setAttribute('aria-hidden', 'true'); rip.style.left = '68%'; rip.style.top = '58%'; rip.style.width = '14%'; wrap.appendChild(rip); root.setTimeout(function () { rip.remove(); }, 2200);
   }
   /* the greenhouse holds the teas and herbs (Jamie, 19 Oct: "herbs and tea can be placed at the garden. Food diary

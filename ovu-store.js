@@ -534,7 +534,7 @@
         Object.keys(j).forEach(function (d) { var r = j[d]; if (!r || typeof r !== 'object') return; ['breakfast', 'lunch', 'dinner', 'snack'].forEach(function (m) { if (Array.isArray(r[m])) r[m] = r[m].filter(function (it) { return !it || it.ovuId !== ev.id; }); }); }); /* every date: a meal moved to another day leaves no copy behind */
         var dayRec = j[ev.date] || (j[ev.date] = { breakfast: [], lunch: [], dinner: [], snack: [] });
         var meal = ['breakfast', 'lunch', 'dinner', 'snack'].indexOf(ev.data.meal) > -1 ? ev.data.meal : 'snack';
-        if (!removed) dayRec[meal].push({ ovuId: ev.id, emoji: ({ breakfast: '🥣', lunch: '🥗', dinner: '🍲', snack: '🍓' })[meal], name: ev.data.foods || 'Meal', tags: (ev.data.tags || []).join(' · ') || 'Logged in your room' });
+        if (!removed) dayRec[meal].push({ ovuId: ev.id, emoji: '', name: ev.data.foods || 'Meal', tags: (ev.data.tags || []).join(' · ') || 'Logged in your room' });
         localStorage.setItem('ovumind_food_journal', JSON.stringify(j));
       }
       if (ev.type === 'sleep') {

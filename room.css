@@ -2195,10 +2195,12 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .c-caps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .c-caps div{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 9px;border-radius:16px;background:rgba(255,255,255,.62);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.95);box-shadow:0 6px 16px rgba(122,92,150,.12);text-align:center}
 .c-caps i{font-style:normal;font-size:26px;line-height:1}
+.c-caps i img{width:40px;height:40px;display:block;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(120,90,160,.18))} /* drawn icons, never emoji (Jamie, 22 Oct) */
 .c-caps span{font:800 11.5px/1.25 var(--sans);color:var(--rm-plum)}
 .c-promise{display:flex;flex-direction:column;gap:6px}
 .c-promise p{display:flex;gap:8px;align-items:center;margin:0;font:700 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}
 .c-promise i{font-style:normal;font-size:17px;flex:none}
+.c-promise i img{width:26px;height:26px;display:block;object-fit:contain}
 .c-full{border-radius:14px;background:rgba(255,255,255,.4);padding:2px 12px}
 .c-full summary,.c-more summary{cursor:pointer;font:800 12px var(--sans);color:var(--rm-plum);padding:8px 0;list-style:none}
 .c-full summary::-webkit-details-marker,.c-more summary::-webkit-details-marker{display:none}
@@ -2435,3 +2437,8 @@ html[data-mindful=quick] .mindline:not(.keep){display:none}
 .invface .invtint{position:absolute;left:50%;top:6%;width:30%;aspect-ratio:1;transform:translateX(-50%);border-radius:50%;background:var(--tint);mix-blend-mode:multiply;opacity:.85}
 .invcount{position:absolute;top:4px;right:5px;font:800 11px/18px var(--sans);font-style:normal;min-width:18px;padding:0 5px;border-radius:9px;background:var(--rm-plum);color:#fff;text-align:center}
 .invtile b{font:700 10.5px/1.2 var(--sans);color:var(--rm-ink);text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* no emoji (Jamie, 22 Oct): the sleep-quality moons are drawn, the thought bubble and consent purposes carry icons */
+.moons button::before{content:"";display:block;width:20px;height:20px;margin:0 auto;border-radius:50%;border:2px solid #cfc2e2;box-sizing:border-box}
+.moons button.on::before{background:radial-gradient(circle at 35% 35%,#fff8df,#f3d49b 72%);border-color:#e9c27a;box-shadow:0 0 8px rgba(243,212,155,.6)}
+.thought .ms{display:block;font-size:20px;line-height:1;color:var(--rm-mauve)}
+.c-emo.ms{font-size:20px;color:var(--rm-mauve);vertical-align:-4px}
