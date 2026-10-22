@@ -231,7 +231,8 @@
     var n = love(S, who), out = '', f = FM().farmState(S), baby = isBaby(f, who, today()), a = animalOf(f, who);
     for (var i = 0; i < B.LOVE_MAX; i++) out += '<span class="ms' + (i < n ? ' fill' : ' off') + '">favorite</span>';
     var grow = baby && a && a.adultOn && RN() ? ' <small>grows up in ' + Math.max(1, Math.round((Date.parse(a.adultOn) - Date.parse(today())) / 86400000)) + ' days</small>' : '';
-    return '<div class="lovemeter" aria-label="' + esc(NM(who)) + ': ' + n + ' of ' + B.LOVE_MAX + ' hearts"><b>' + esc(NM(who)) + grow + '</b><span class="lm">' + out + '</span></div>';
+    var rename = a && a.born ? ' <button type="button" class="chipbtn namebtn" data-rename="' + who + '" aria-label="Name ' + esc(NM(who)) + '"><span class="ms">edit</span></button>' : ''; /* an animal born here can be named */
+    return '<div class="lovemeter" aria-label="' + esc(NM(who)) + ': ' + n + ' of ' + B.LOVE_MAX + ' hearts"><b>' + esc(NM(who)) + grow + rename + '</b><span class="lm">' + out + '</span></div>';
   }
   function petNow(who) {
     var r = care(S, who, 'pet', today()); heartPop(who, r.ok && r.gained);
@@ -305,6 +306,7 @@
       hens.map(meter).join('') + '<div class="row" id="henCare">' + hens.map(function (h) { return '<button type="button" class="btn soft" data-care="pet" data-who="' + h + '"' + (doneToday(S, h, 'pet', day) ? ' disabled' : '') + '><span class="ms">pan_tool</span>Pet ' + esc(nameOf(f, h)) + '</button><button type="button" class="btn soft" data-care="brush" data-who="' + h + '"' + (doneToday(S, h, 'brush', day) ? ' disabled' : '') + '><span class="ms">brush</span>Brush ' + esc(nameOf(f, h)) + '</button>'; }).join('') + '</div>' +
       '<ul class="barnlist">' + rows + (treatedToday(S, 'hens', day) ? '<li><span class="ms">nutrition</span>The hens had a treat from the basket today.</li>' : '') + '</ul><div class="row" id="nestActs">' + (ready.length ? '<button type="button" class="btn primary" data-act="eggs"><span class="ms">egg</span>Collect ' + (ready.length > 1 ? 'the eggs' : 'the egg') + '</button>' : '') + treatButtons('hens') + '</div>' +
       pantryLine() + '<p class="help">The hens are fine on their own. An egg waits in the nest until you come by; the pantry holds 99 of each thing.</p>');
+    wireRename(openNests);
     var hc = doc.getElementById('henCare');
     if (hc) hc.addEventListener('click', function (e) {
       var b = e.target.closest('[data-care]'); if (!b || !idle()) return;
@@ -339,6 +341,7 @@
       cows.map(function (c) { return '<button type="button" class="btn soft" data-act="pet" data-who="' + c + '"' + (doneToday(S, c, 'pet', day) ? ' disabled' : '') + '><span class="ms">pan_tool</span>Pet ' + esc(nameOf(f, c)) + '</button>' + '<button type="button" class="btn ' + (has ? 'soft' : 'primary') + '" data-act="brush" data-who="' + c + '"' + (doneToday(S, c, 'brush', day) ? ' disabled' : '') + '><span class="ms">brush</span>Brush ' + esc(nameOf(f, c)) + '</button>'; }).join('') + treats + '</div>' +
       cows.filter(function (c) { return treatedToday(S, c, day); }).map(function (c) { return '<p class="help pantryline"><span class="ms">nutrition</span>' + esc(nameOf(f, c)) + ' had a treat from the basket today.</p>'; }).join('') + calfLine +
       pantryLine());
+    wireRename(openClover);
     var acts = doc.getElementById('cloverActs'); if (!acts) return;
     acts.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
@@ -371,6 +374,21 @@
   function RW() { return root.OvuRewards; }
   function daysTo(d, day) { return Math.max(0, Math.round((Date.parse(d) - Date.parse(day)) / 86400000)); }
   function dueText(d, day) { var n = daysTo(d, day); return n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days'; }
+  /* naming a baby born here (the hatch line promises it): a short name, cleaned the way the ranch cleans names */
+  function openName(who, reopen) {
+    var f = FM().farmState(S), a = animalOf(f, who); if (!a || !RN()) return;
+    R.openSheet('ranchname', 'A name for ' + (a.kind === 'cow' ? 'the calf' : 'the chick'), a.name, 'edit',
+      '<div class="field"><label for="rnName">Name</label><input class="input" id="rnName" maxlength="16" value="' + esc(a.name === 'Calf' || a.name === 'Chick' ? '' : a.name) + '" placeholder="' + (a.kind === 'cow' ? 'Buttercup' : 'Pip') + '"></div>' +
+      '<div class="row"><button type="button" class="btn primary" id="rnSave"><span class="ms">check</span>Keep this name</button><button type="button" class="btn ghost" id="rnBack">Back</button></div>');
+    doc.getElementById('rnBack').addEventListener('click', function () { reopen(); });
+    doc.getElementById('rnSave').addEventListener('click', function () {
+      var nm = RN().cleanName(doc.getElementById('rnName').value); if (!nm) { R.toast('A name needs at least one letter.', 'info'); return; }
+      var f1 = farm(S), r = RN().ranchOf(f1); r.herd.forEach(function (x) { if (x.id === who) x.name = nm; }); f1.ranch = r;
+      try { save(S, f1, null); } catch (e) { R.toast('That could not be saved just now.', 'info'); return; }
+      R.chime('save'); renderBarn(); reopen();
+    });
+  }
+  function wireRename(reopen) { var body = doc.getElementById('sheetBody'); if (!body) return; body.addEventListener('click', function (e) { var b = e.target.closest('[data-rename]'); if (!b || !idle()) return; e.stopPropagation(); openName(b.dataset.rename, reopen); }); }
   function settle() { /* the ranch record exists, and due babies have arrived or grown: written only when something changed */
     var f0 = FM().farmState(S), f = farm(S);
     if (JSON.stringify(f.ranch || null) === JSON.stringify(f0.ranch || null)) return false;
@@ -520,8 +538,8 @@
     R.on('activity', standUp);
     R.on('outfit', function () { if (sitting && sitting.el && root.OvuGarden && root.OvuGarden.reseat) root.OvuGarden.reseat(sitting.el, CAVE.seat); });
     var shown = null; /* which barn sheet is open, so a new day or another tab can redraw it as it is now */
-    var SHEETS = { barnnests: openNests, barnclover: openClover, springbasket: openBasket, ranch: openRanch };
-    function redrawOpen() { var id = R.sheetId ? R.sheetId() : null; var fn = id && SHEETS[id]; if (!fn || !R.sheetOpen()) return; if (CARE && CARE.cancel) CARE.cancel(); fn(); }
+    var SHEETS = { barnnests: openNests, barnclover: openClover, springbasket: openBasket, ranch: openRanch, ranchname: null };
+    function redrawOpen() { var id = R.sheetId ? R.sheetId() : null; var fn = id && SHEETS[id]; if (!fn || !R.sheetOpen()) return; if (CARE && CARE.cancel) CARE.cancel(); fn(); } /* a name box left open keeps her typing */
     if (GT) GT.onNewDay(function () { settle(); renderBarn(); redrawOpen(); });
     root.setTimeout(function () { if (settle()) renderBarn(); }, 1200); /* a baby due while the app was closed arrives at boot */
     var key = JSON.stringify(S.state().farm || null);

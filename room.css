@@ -2430,3 +2430,4 @@ html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
 .ranchsec h4{margin:0;font-size:14px;display:flex;align-items:center;gap:6px}
 .ranchsec small.help{display:block;margin:-4px 0 0;font-size:12px}
 .barnthing.animal.baby img{animation-duration:2.6s}
+.lovemeter .namebtn{margin-left:6px;padding:2px 6px;vertical-align:middle}
