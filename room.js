@@ -122,8 +122,12 @@
     /* four-persona review, 20 Oct: Nadia wears a tudung, and Codex, DeepSeek and Doubao all said her avatar should be able to.
      * It joined once its meditate, sleep, bench and every action sprite existed (a missing one would fall back to a sprite
      * with her hair showing, which takes her tudung off; tools/test-core.js 2g holds that line) */
-    { id: 'tudung', name: 'Baju kurung & tudung', note: 'Dusty rose, lilac tudung' }
+    { id: 'tudung', name: 'Baju kurung & tudung', note: 'Dusty rose, lilac tudung' },
+    /* the first wardrobe drop (Jamie, 21 Oct: "special drop down glamour dress to show off at the plaza"): a Rhythme Plus perk */
+    { id: 'gown', name: 'Starlight gown', note: 'Plaza drop · sparkle', plus: true }
   ];
+  /* a Plus drop is worn only while Plus is on this phone (a preview code or the account), or in tester mode */
+  function outfitLocked(id) { var o = OUTFITS.filter(function (x) { return x.id === id; })[0]; return !!(o && o.plus && !(window.OvuPodcast && OvuPodcast.plusActive()) && !(RW.tester && RW.tester())); }
   var VIDEOS = [
     ['normal', 'normal-v4.mp4', 'A normal cycle', 'What typical looks like'],
     ['hormones', 'hormones-v4.mp4', 'Hormones', 'Oestrogen & progesterone'],
@@ -493,6 +497,7 @@
   var imgGen = 0;
   function setOutfit(id, silent) {
     if (!OUTFITS.some(function (o) { return o.id === id; })) id = 'base';
+    if (outfitLocked(id)) id = 'base'; /* a drop needs Plus on this phone; a stale profile never dresses her in it */
     var img = new Image(), gen = ++imgGen;
     img.onload = function () { if (gen !== imgGen) return; avatarImg.src = img.src; if (!silent && window.OvuMorning && OvuMorning.active()) OvuMorning.repose(); /* brushing in the new outfit */ if (!silent) { avatar.classList.add('poofing'); setTimeout(function () { avatar.classList.remove('poofing'); moment('wardrobe'); }, 700); } };
     img.src = ART + 'avatar-' + id + '.webp';
@@ -1429,10 +1434,10 @@
   function openWardrobe() {
     var cur = S.profile().outfit || 'base';
     openSheet('wardrobe', 'Wardrobe', 'Pick an outfit for today', 'checkroom',
-      '<div class="outfits">' + OUTFITS.map(function (o) { return '<button type="button" class="outfit' + (o.id === cur ? ' on' : '') + '" data-id="' + o.id + '"><img src="' + ART + 'avatar-' + o.id + '.webp" alt=""><b>' + esc(o.name) + '</b><small>' + esc(o.note) + '</small></button>'; }).join('') + '</div>' +
+      '<div class="outfits">' + OUTFITS.map(function (o) { var lk = outfitLocked(o.id); return '<button type="button" class="outfit' + (o.id === cur ? ' on' : '') + (lk ? ' locked' : '') + '" data-id="' + o.id + '"' + (lk ? ' aria-label="' + esc(o.name) + ', with Rhythme Plus"' : '') + '><img src="' + ART + 'avatar-' + o.id + '.webp" alt=""><b>' + esc(o.name) + '</b><small>' + (lk ? 'With Rhythme Plus' : esc(o.note)) + '</small>' + (lk ? '<span class="ms olock" aria-hidden="true">lock</span>' : '') + '</button>'; }).join('') + '</div>' +
       '<div class="field"><label for="nameInput">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="nameInput" maxlength="24" placeholder="Your name" value="' + esc(S.profile().name || '') + '"><button class="btn soft" id="saveName" style="flex:0 0 auto">Save</button></div></div>' +
       '<p class="help">Your avatar remembers her outfit on this device. Pyjamas go on automatically at bedtime. Pets and furniture come from Dream Street.</p>');
-    body.addEventListener('click', function (e) { var o = e.target.closest('.outfit'); if (!o) return; setOutfit(o.dataset.id); chime('tap'); toast(OUTFITS.filter(function (x) { return x.id === o.dataset.id; })[0].name + ' it is!', 'checkroom'); });
+    body.addEventListener('click', function (e) { var o = e.target.closest('.outfit'); if (!o) return; if (outfitLocked(o.dataset.id)) { chime('tap'); toast('The Starlight gown is a Rhythme Plus drop. Plus is in preview from You.', 'lock'); openPlus(); return; } setOutfit(o.dataset.id); chime('tap'); toast(OUTFITS.filter(function (x) { return x.id === o.dataset.id; })[0].name + ' it is!', 'checkroom'); });
     $('#saveName').addEventListener('click', function () { S.setProfile({ name: $('#nameInput').value.trim() }); updateGreeting(); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); });
   }
 
@@ -1503,6 +1508,7 @@
     openSheet('you', P.name ? P.name : 'You', 'Your room, your answers, your data', 'person',
       '<div class="you-card"><img src="' + ART + 'avatar-' + esc(P.outfit || 'base') + '.webp" alt=""><div><b>' + esc(P.name || 'Hello there') + '</b><span>' + days + ' day' + (days === 1 ? '' : 's') + ' logged · ' + (l.hearts || 0) + ' hearts' + '</span></div></div>' +
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
+      '<div id="youBirthday"></div>' +
       '<div id="youAccount"></div>' +
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
@@ -1511,10 +1517,11 @@
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is a diary, not a diagnosis, and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
     if (window.OvuAuth) { var ya = $('#youAccount'); if (ya) OvuAuth.renderAccount(ya, { toast: toast, chime: chime }); }
+    if (window.OvuBirthday) OvuBirthday.renderField($('#youBirthday')); /* a month and a day, optional (ovu-birthday.js) */
     if (confirmDelete) { var yd = $('#yDel'); if (yd) yd.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     body.addEventListener('click', function (e) {
       var b = e.target.closest('[data-yact]'); if (!b) return; var act = b.dataset.yact; chime('tap');
-      if (act === 'intro') { var A0 = JSON.parse(JSON.stringify(P)); Object.assign(A0, P.habits || {}); ['cycleLength', 'periodLength'].forEach(function (k) { if (A0[k] !== null && A0[k] !== undefined) A0[k] = String(A0[k]); }); openOnboarding(0, A0); return; }
+      if (act === 'intro') { openOnboarding(0, introAnswers()); return; } /* her answers as they are now, not as they were when You opened (Codex, 21 Oct) */
       if (act === 'text') return window.OvuTextSize && OvuTextSize.open ? OvuTextSize.open() : undefined;
       if (act === 'wardrobe') return openWardrobe();
       if (act === 'shop') return openShop();
@@ -2547,10 +2554,10 @@
    * fraction of the image]. Her head, and so her size, stays the same in every pose. The tudung covers less width than
    * her hair (the silhouette measures 1.16), so it keeps the knit's scale, matched by figure height like its pose copies,
    * and only its head centre is its own. */
-  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513],'tudung':[1.0,0.544]};
+  var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513],'tudung':[1.0,0.544],'gown':[1.403,0.518],'act-plants-gown':[1.581,0.574],'act-coffee-gown':[1.424,0.502],'act-teeth-gown':[1.355,0.542],'act-pets-gown':[1.538,0.454],'act-bed-gown':[1.775,0.571],'act-outfit-gown':[1.568,0.643],'act-stretch-gown':[1.502,0.569],'act-note-gown':[1.581,0.522],'act-eat-gown':[1.43,0.539],'act-listen-gown':[1.474,0.532],'act-read-gown':[1.486,0.531],'act-tend-gown':[1.372,0.4],'act-harvest-gown':[1.455,0.53],'act-wave-gown':[1.741,0.522],'act-press-gown':[1.533,0.519],'act-phone-gown':[1.395,0.518],'act-shop-gown':[1.427,0.505],'act-scale-gown':[1.592,0.504]}; /* the gown entries: a skirt wider than the base canvas keeps her height on a wider canvas (scratchpad gown/fit_all.py, 21 Oct) */
   function fitAvatar() {
     /* an outfit's copy of a pose is fitted on the pose's own canvas (tools/art: fit.py), so it shares the pose's numbers */
-    var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatarImg.src || ''), f = m && (AVATAR_FIT[m[1]] || AVATAR_FIT[m[1].replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung)$/, '')]); if (!f) f = [1, 0.5];
+    var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatarImg.src || ''), f = m && (AVATAR_FIT[m[1]] || AVATAR_FIT[m[1].replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung|gown)$/, '')]); if (!f) f = [1, 0.5];
     avatarImg.style.width = (f[0] * 100).toFixed(2) + '%'; avatarImg.style.maxWidth = 'none';
     avatarImg.style.marginLeft = ((0.5 - f[1] * f[0]) * 100).toFixed(2) + '%';
     avatarImg.style.transformOrigin = (f[1] * 100).toFixed(1) + '% 100%';
@@ -2646,7 +2653,7 @@
 
   /* ---------- Rhythme welcome + getting to know you (in the room, so the theme never changes) ---------- */
   var ONB = [
-    { id: 'agerange', icon: 'cake', pose: 'coffee', title: 'Your age range (optional)', sub: 'Only so the notes stay honest about what is typical at different ages. Skip if you prefer; Rhythme is for adults and never asks your date of birth.', type: 'chips', key: 'ageRange', optional: true, options: [['18-24', '18–24'], ['25-29', '25–29'], ['30-34', '30–34'], ['35-39', '35–39'], ['40-44', '40–44'], ['45-49', '45–49'], ['50+', '50 and over']] },
+    { id: 'agerange', icon: 'cake', pose: 'coffee', title: 'Your age range (optional)', sub: 'Only so the notes stay honest about what is typical at different ages. Skip if you prefer; Rhythme is for adults.', type: 'chips', key: 'ageRange', optional: true, options: [['18-24', '18–24'], ['25-29', '25–29'], ['30-34', '30–34'], ['35-39', '35–39'], ['40-44', '40–44'], ['45-49', '45–49'], ['50+', '50 and over']] },
     { id: 'regular', icon: 'calendar_month', pose: 'stretch', title: 'Your periods', sub: 'Pick what fits best. If you are pregnant or past menopause, choose the closest; you can change it later.', type: 'rows', rows: [{ key: 'regularity', label: 'How regular', options: [['regular', 'Fairly regular'], ['irregular', 'Irregular'], ['rare', 'Rare, with gaps of 3 months or more'], ['none12', 'No period for 12 months or more'], ['notyet', 'My periods haven’t started yet'], ['unsure', 'Not sure']] }, { key: 'menoStatus', label: 'Have you been through the menopause? (optional)', options: [['yes', 'Yes'], ['no', 'No'], ['unsure', 'Not sure']], showIf: function (A) { return A.regularity === 'none12'; } }, { key: 'menarche', label: 'Age at your first period (optional)', options: [['lt10', 'Under 10'], ['10-12', '10–12'], ['13-15', '13–15'], ['16+', '16 or older'], ['unknown', 'Don’t remember']], showIf: function (A) { return !!A.regularity && A.regularity !== 'notyet'; } }] },
     { id: 'preg', icon: 'pregnant_woman', pose: 'plants', title: 'Pregnancy and plans', sub: 'These change how dates should be read.', type: 'rows', rows: [{ key: 'pregState', label: 'Right now', options: [['none', 'None of these'], ['maybe', 'I could be pregnant'], ['pregnant', 'Pregnant'], ['postpartum', 'Gave birth in the last year'], ['loss', 'Recent pregnancy loss']] }, { key: 'breastfeeding', label: 'Breastfeeding', options: [['yes', 'Yes'], ['no', 'No']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'periodsBack', label: 'Have periods returned?', options: [['yes', 'Yes'], ['no', 'Not yet']], showIf: function (A) { return A.pregState === 'postpartum'; } }, { key: 'plans', label: 'Plans', options: [['ttc', 'Trying to conceive now'], ['later', 'Maybe later'], ['no', 'Not planning']] }, { key: 'ttcMonths', label: 'Months trying', showIf: function (A) { return A.plans === 'ttc'; }, options: [['0-5', '0–5'], ['6-11', '6–11'], ['12+', '12 or more']], showIf: function (A) { return A.plans === 'ttc'; } }, { key: 'fertilityTx', label: 'Fertility treatment before?', options: [['no', 'No'], ['yes', 'Yes']], showIf: function (A) { return A.plans === 'ttc'; } }] },
     { id: 'hormones', icon: 'medication', pose: 'outfit', title: 'Hormones and medicines', sub: 'Tick what you use now. These change what cycle dates mean.', type: 'multi', key: 'hormones', options: [['pill', 'Combined pill'], ['pop', 'Progestogen-only pill'], ['iud_h', 'Hormonal IUD'], ['iud_cu', 'Copper IUD'], ['implant', 'Implant or injection'], ['hrt', 'HRT (MHT)'], ['fertility', 'Fertility medicines'], ['ec', 'Emergency contraception this month'], ['other', 'Other relevant medicine'], ['none', 'None']], exclusive: ['none'] },
@@ -2660,6 +2667,8 @@
     { id: 'goals', icon: 'favorite', pose: 'plants', title: 'What would you like from Rhythme?', sub: 'Pick as many as you like. The room will lean toward them.', type: 'multi', key: 'goals', options: [['understand', 'Understand my cycle'], ['conceive', 'Conceive'], ['symptoms', 'Ease cramps and PMS'], ['sleep', 'Sleep better'], ['peri', 'Perimenopause support'], ['calm', 'Build calm habits'], ['doctor', 'Clear records for my doctor']] },
     { id: 'habits', icon: 'spa', pose: 'stretch', title: 'Everyday habits (optional)', sub: 'No judgement. Smoking and sleep in particular shape ovarian health over the years.', type: 'rows', optional: true, rows: [{ key: 'smoking', label: 'Smoking', options: [['no', 'No'], ['sometimes', 'Sometimes'], ['daily', 'Daily']] }, { key: 'alcohol', label: 'Alcohol', options: [['none', 'None'], ['weekly', 'Some weeks'], ['most', 'Most days']] }, { key: 'sleep', label: 'Usual sleep', options: [['lt6', 'Under 6 h'], ['6-7', '6–7 h'], ['7-8', '7–8 h'], ['8+', '8 h or more']] }, { key: 'exercise', label: 'Movement days a week', options: [['0', '0'], ['1-2', '1–2'], ['3-4', '3–4'], ['5+', '5+']] }] },
     { id: 'body', icon: 'monitor_weight', pose: 'shower', title: 'Height and weight (optional)', sub: 'Only if you want. Weight at either extreme can change ovulation, so it helps the notes.', type: 'body', optional: true },
+    /* her birthday (Jamie, 21 Oct): a month and a day, never a year, for the birthday card only (ovu-birthday.js); shown only when that module is there */
+    { id: 'birthday', icon: 'celebration', pose: 'wave', title: 'Your birthday (optional)', sub: 'For a wish on the day and a direction for your year ahead. The year is optional and adds who you are, read from the day you were born. It stays on this phone, and none of your health notes use it.', type: 'birthday', key: 'birthday', optional: true, showIf: function () { return !!window.OvuBirthday; } },
     { id: 'final', icon: 'waving_hand', pose: 'outfit', title: 'Lastly, what should I call you?', sub: 'A first name or a nickname, or leave it blank.', type: 'final' }
   ];
   var onb = null;
@@ -2723,6 +2732,8 @@
     $('#recallMore').innerHTML = recallMoreHTML(A); chime('tap');
     return true;
   }
+  /* the intro's starting answers: the profile as it is at the tap, shared by You and the window, so neither brings back an answer she removed */
+  function introAnswers() { var P0 = S.profile(), A0 = JSON.parse(JSON.stringify(P0)); Object.assign(A0, P0.habits || {}); delete A0.urgent; /* 'happening today' is asked afresh every time, never carried from an earlier day (Codex verification, 21 Oct) */ ['cycleLength', 'periodLength'].forEach(function (k) { if (A0[k] !== null && A0[k] !== undefined) A0[k] = String(A0[k]); }); return A0; }
   function openOnboarding(i, a) {
     if (!onb || a !== undefined) onb = { i: 0, a: a || {}, openedAt: Date.now() };
     var steps = onbVisible(onb.a), A = onb.a;
@@ -2736,6 +2747,7 @@
     if (st.type === 'recall') html = recallHTML(A);
     if (st.type === 'body') html = sliderHTML('onbH', 'Height', 'cm', 130, 200, 1, A.heightCm || 160, !!A.heightCm) + sliderHTML('onbW', 'Weight', 'kg', 30, 150, 0.5, A.weightKg || 55, !!A.weightKg) +
       (RW.ledger().owned.indexOf('scale') > -1 ? '' : '<div class="field scaleoffer"><img src="' + ART + 'prop-scale.webp" alt=""><div><span class="lbl">Add a weighing scale to your room?</span><p class="help" style="margin:0 0 6px">' + (S.profile().onboarded ? 'It costs 5 hearts.' : 'It costs 5 of the 20 hearts you get for finishing.') + ' Tap it any day to note your weight; nothing is rewarded or judged.</p>' + chipRow('wantScale', [['yes', 'Yes, add it'], ['no', 'Not now']], A.wantScale, false) + '</div></div>');
+    if (st.type === 'birthday') { var bdr = A._bdraft || null, bde = bdr ? OvuBirthday.readValues(bdr.m, bdr.d, bdr.y, S.today()).error : ''; html = '<div class="field">' + OvuBirthday.fieldHTML(A.birthday, A.birthYear, 'onbB', S.today(), bdr) + '<p class="help" id="onbBMsg" role="alert"' + (bde ? '>' + esc(bde) : ' hidden>') + '</p></div>'; } /* what she chose, even a year still to fix, comes back as she left it (Codex, 21 Oct) */
     if (st.type === 'final') html = '<div class="field"><input class="input" id="onbName" maxlength="24" placeholder="Your name" value="' + esc(A.name || S.profile().name || '') + '"></div>';
     openSheet('onboarding', 'Getting to know you', 'Step ' + (onb.i + 1) + ' of ' + steps.length, 'favorite',
       '<div class="onb"><div class="onb-head"><div class="onb-ico" aria-hidden="true"><span class="ms">' + (st.icon || 'favorite') + '</span></div><div><h3>' + esc(st.title) + '</h3><p>' + esc(st.sub) + '</p></div></div><div class="onb-dots">' + steps.map(function (_, k) { return '<i class="' + (k <= onb.i ? 'on' : '') + '"></i>'; }).join('') + '</div>' + html +
@@ -2746,6 +2758,7 @@
       if (st.type === 'date') { var d = $('#onbDate').value; A[st.key] = S.validDate(d) && d <= S.today() ? d : ''; if (A[st.key] && st.extraKey) A[st.extraKey] = ''; }
       if (st.type === 'body') { var hv = sliderVal('onbH'), wv = sliderVal('onbW'); A.heightCm = hv || A.heightCm || null; A.weightKg = wv || A.weightKg || null; }
       if (st.type === 'final') { A.name = $('#onbName').value.trim(); }
+      if (st.type === 'birthday') { var bv = OvuBirthday.readField(document, 'onbB', S.today()); if (bv.error) A._bdraft = OvuBirthday.rawField(document, 'onbB'); else { delete A._bdraft; if (bv.birthday) { A.birthday = bv.birthday; if (bv.year) A.birthYear = bv.year; else delete A.birthYear; } else { delete A.birthday; delete A.birthYear; } } } /* Back keeps a choice still to fix as a draft, never as a silent omission */
       if (st.type === 'recall') { var rr0 = recallState(A); if (!rr0.starts.length && !rr0.status) rr0.status = 'none-remembered'; }
     }
     body.addEventListener('click', function (e) {
@@ -2758,8 +2771,9 @@
         chime('tap'); return;
       }
       if (e.target.closest('#onbBack')) { collect(); openOnboarding(onb.i - 1); return; }
-      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; delete A.wantScale; } if (st.type === 'recall') { A.periodRecall = { version: 1, status: 'none-remembered', starts: [], clusters: {}, complete: '', latest: '' }; A.lastPeriodStatus = ''; } openOnboarding(onb.i + 1); return; }
+      if (e.target.closest('#onbSkip')) { if (st.key) delete A[st.key]; if (st.type === 'birthday') { delete A.birthYear; delete A._bdraft; } if (st.rows) st.rows.forEach(function (r) { delete A[r.key]; }); if (st.type === 'body') { delete A.heightCm; delete A.weightKg; delete A.wantScale; } if (st.type === 'recall') { A.periodRecall = { version: 1, status: 'none-remembered', starts: [], clusters: {}, complete: '', latest: '' }; A.lastPeriodStatus = ''; } openOnboarding(onb.i + 1); return; }
       if (e.target.closest('#onbNext')) {
+        if (st.type === 'birthday') { var bchk = OvuBirthday.readField(document, 'onbB', S.today()); if (bchk.error) { var bm = $('#onbBMsg'); if (bm) { bm.hidden = false; bm.textContent = bchk.error; } chime('tap'); return; } } /* a year that is not hers to give (under 18, or no 29 February) waits to be fixed */
         collect();
         if (st.id === 'urgent' && (A.urgent || []).some(function (x) { return x !== 'none'; })) { openUrgentCard(function () { openOnboarding(onb.i + 1); }); return; }
         if (last) finishOnboarding(A); else openOnboarding(onb.i + 1);
@@ -2809,8 +2823,11 @@
     var pr = S.profile(); if (onb && onb.openedAt && pr.onboarded && pr.onboardedAt && Date.parse(pr.onboardedAt) > onb.openedAt) { closeSheet(); toast('Your answers came back from your backup. Update my intro is under the window if anything has changed.', 'cloud_done'); return; }
     var num = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : null; };
     var patch = { name: A.name || S.profile().name || '', ageRange: A.ageRange || '', ageBand: '', minorAck: '', periodsStarted: A.regularity === 'notyet' ? 'no' : (A.regularity ? 'yes' : (A.periodsStarted || '')), lastPeriodStatus: A.lastPeriodStatus || '', menarche: A.menarche || '', regularity: A.regularity || '', pregState: A.pregState || '', breastfeeding: A.breastfeeding || '', periodsBack: A.periodsBack || '', plans: A.plans || '', ttcMonths: A.ttcMonths || '', fertilityTx: A.fertilityTx || '', hormones: A.hormones || [], lastPeriodStart: (function () { var r = A.periodRecall, d = r ? recallDays(recallState(A)) : []; return r && r.latest === 'yes' && d.length ? d[d.length - 1] : ''; })(), cycleLength: null, periodLength: num(A.periodLength), periodLengthAnswer: A.periodLength || '', periodRecall: A.periodRecall ? Object.assign({}, A.periodRecall, { capturedAt: new Date().toISOString() }) : null, cycleVaries: false, bleedSigns: A.bleedSigns || [], urgent: A.urgent || [], conditions: A.conditions || [], family: A.family || [], signals: A.signals || [], goals: A.goals || [], habits: { smoking: A.smoking || '', alcohol: A.alcohol || '', sleep: A.sleep || '', exercise: A.exercise || '' }, heightCm: A.heightCm || null, weightKg: A.weightKg || null, predictionMode: predictionModeFor(A), intakeNotes: intakeNotes(A), menoStatus: A.menoStatus || '', lifeStage: A.regularity === 'none12' && (A.menoStatus === 'yes' || (A.menoStatus !== 'no' && A.menoStatus !== 'unsure' && ['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1)) && /* her own answer counts, and a No or Not sure is never overridden by age (Codex sweep, 21 Oct) */ /* her own answer counts when she skips her age (menopause walk, 21 Oct) */ A.pregState !== 'pregnant' && A.pregState !== 'postpartum' && !(A.hormones || []).some(function (x) { return x !== 'none' && x !== 'other' && x !== 'iud_cu' && x !== 'hrt'; }) ? 'post' : (A.pregState === 'pregnant' ? 'pregnant' : (A.plans === 'ttc' ? 'ttc' : (['40-44', '45-49', '50+'].indexOf(A.ageRange) > -1 && (A.signals || []).indexOf('flushes') > -1 ? 'peri' : ''))), onboarded: true, onboardedAt: new Date().toISOString() };
+    patch.birthday = (window.OvuBirthday && OvuBirthday.clean(A.birthday)) || null; /* the intro's birthday step: a month and a day, or none */
+    patch.birthYear = patch.birthday && A.birthYear && !OvuBirthday.yearError(A.birthYear, patch.birthday, S.today()) ? Number(A.birthYear) : null; /* and the year, only an adult's */
     S.setProfile(patch);
-    try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, patch))); } catch (e) { }
+    var mirror = Object.assign({}, patch); delete mirror.birthday; delete mirror.birthYear; /* the older pages' copy of the intro never holds her birthday: it lives in the profile alone, so Remove removes it (Codex, 21 Oct) */
+    try { localStorage.setItem('ovuluna_onboarding', JSON.stringify(Object.assign({ completed: true, completedAt: patch.onboardedAt, source: 'room' }, mirror))); } catch (e) { }
     RW.grant(20, 'welcome');
     var gotScale = false; if (A.wantScale === 'yes') { try { RW.buy('scale'); gotScale = true; } catch (e) { gotScale = RW.ledger().owned.indexOf('scale') > -1; } }
     onb = null; closeSheet(); updateGreeting(); renderDeck(); renderProps();
@@ -2904,7 +2921,7 @@
     $('#winSound').addEventListener('click', function () { S.setState({ sound: !soundOn() }); if (window.OvuSound) OvuSound.sync(); chime('tap'); openWindow(); });
     var wm = $('#winMusic'); if (wm) wm.addEventListener('click', function () { if (window.OvuMusic) OvuMusic.toggle(); else S.setState({ music: S.state().music !== true }); chime('tap'); var again = $('#winMusic'); if (again) again.setAttribute('aria-pressed', S.state().music === true ? 'true' : 'false'); var ic = again && again.querySelector('.ms'); if (ic) ic.textContent = S.state().music === true ? 'music_note' : 'music_off'; var lb = again && again.querySelector('.mlabel'); if (lb) lb.textContent = 'Music ' + (S.state().music === true ? 'on' : 'off'); }); /* repainted in place, so focus stays on the button */
     var vol = $('#winVol'); if (vol) { vol.addEventListener('input', function () { OvuSound.setVolume(vol.value / 100); }); vol.addEventListener('change', function () { chime('tap'); }); }
-    $('#winIntro').addEventListener('click', function () { openOnboarding(0, {}); });
+    $('#winIntro').addEventListener('click', function () { openOnboarding(0, S.profile().onboarded ? introAnswers() : {}); });
   }
 
   /* ---------- avatar bubble ---------- */
@@ -3057,7 +3074,7 @@
   /* ---------- greeting ---------- */
   function updateGreeting() {
     var h = new Date().getHours(), p = S.profile(), name = p.name ? ', ' + p.name : '';
-    var g = S.state().sleeping ? 'Sleep well' : window.OvuSun ? OvuSun.phase().greeting : h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    var g = S.state().sleeping ? 'Sleep well' : window.OvuBirthday && OvuBirthday.isToday && OvuBirthday.isToday() ? 'Happy birthday' : window.OvuSun ? OvuSun.phase().greeting : h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
     $('#greetTitle').textContent = g + name;
     $('#greetSub').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
     var cs = S.cycleStats(); var chip = $('#phaseChip');
@@ -3086,7 +3103,7 @@
     sheetOpen: function () { return !!current; }, sheetId: function () { return current; }, cancelIdle: function () { clearTimeout(idleTimer); },
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
-    openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, openExercise: openExercise, openMoveGuide: openMoveGuide,
+    openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, setOutfit: setOutfit, outfitLocked: outfitLocked, updateGreeting: updateGreeting, openPlus: openPlus, openExercise: openExercise, openMoveGuide: openMoveGuide,
     moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on && title) { clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }
@@ -3096,10 +3113,10 @@
   function boot() {
     if (booted) return; booted = true;
     buildScene();
+    try { var tq = new URLSearchParams(location.search).get('tester'); if (tq === 'hearts') { S.setState({ tester: { hearts: true } }); toast('Tester mode: hearts are unlimited on this device.', 'science'); } else if (tq === 'off') { S.setState({ tester: null }); } if (tq) history.replaceState(null, '', location.pathname + location.hash); } catch (e) { } /* read before her outfit is set: a Plus drop depends on tester mode (Codex-free smoke find, 21 Oct) */
     setOutfit(S.profile().outfit || 'base', true);
     avatar.classList.add('idle');
     if (S.state().sleeping) enterNight(false);
-    try { var tq = new URLSearchParams(location.search).get('tester'); if (tq === 'hearts') { S.setState({ tester: { hearts: true } }); toast('Tester mode: hearts are unlimited on this device.', 'science'); } else if (tq === 'off') { S.setState({ tester: null }); } if (tq) history.replaceState(null, '', location.pathname + location.hash); } catch (e) { }
     if (window.OvuMascot) OvuMascot.apply();
     updateGreeting(); renderDeck(); renderProps(); applySky();
     setInterval(function () { applySky(); if (window.OvuPets) renderProps(); }, 5 * 60 * 1000); document.addEventListener('visibilitychange', function () { if (!document.hidden) applySky(); });

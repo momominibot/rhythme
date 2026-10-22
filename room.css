@@ -2241,3 +2241,37 @@ html[data-sky=night] .winfo summary{color:#b9d2f5}
 html[data-sky="night"] .decktabs button.on{background:var(--rm-card)}
 html[data-sky="night"] :is(.chhead,.chfriends,.invhearts,.chprompt,.invlist li){background:var(--rm-card);border:1px solid rgba(255,255,255,.08)}
 html[data-sky="night"] .chbadge{background:var(--rm-lilac-2)}
+
+/* ---------- the drops (21 Oct): the Starlight gown as a Rhythme Plus drop, her birthday week ---------- */
+.outfit.locked{position:relative;opacity:.82}
+.outfit.locked img{filter:saturate(.7)}
+.outfit .olock{position:absolute;top:6px;right:6px;font-size:16px;color:var(--rm-plum);background:#fff;border-radius:50%;padding:3px;box-shadow:0 1px 4px rgba(90,66,116,.18)}
+.prop.event{position:absolute;transform:translate(-50%,-98.5%);z-index:7;pointer-events:auto;cursor:pointer;border:none;background:transparent;padding:0;filter:drop-shadow(0 1px 1.5px rgba(60,30,80,.22));animation:propin .6s ease-out}
+.prop.event img{width:100%;display:block}
+.prop.event:focus-visible{outline:3px solid var(--rm-mauve);outline-offset:3px;border-radius:12px}
+.bcard{border-radius:20px;padding:14px;background:linear-gradient(160deg,var(--rm-cream),var(--rm-lilac-2));border:1px dashed rgba(122,92,150,.35)}
+.bhead{display:flex;align-items:center;gap:12px}
+.bhead img{width:64px;height:auto}
+.bhead b{display:block;font:600 20px var(--serif);color:var(--rm-plum)}
+.bhead small{display:block;font:700 12px var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.bline{margin:0;font:600 14px/1.45 var(--sans);color:var(--rm-ink);padding-left:12px;border-left:3px solid var(--rm-blush)}
+.bcard .lbl{display:block;margin-top:14px;font:800 10px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-mauve)}
+.bwish{margin-top:12px}
+.bnote{margin:8px 0 0;font:600 12px/1.4 var(--sans);color:var(--rm-ink-3)}
+.bwho{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.72)}
+.bcard .bwho .lbl{margin-top:0}
+.bwho b{display:block;margin-top:4px;font:600 18px var(--serif);color:var(--rm-plum)}
+.bwho p{margin:6px 0 0;font:600 14px/1.45 var(--sans);color:var(--rm-ink)}
+.bwho .bquote{font-style:italic;color:var(--rm-ink-2)}
+.bdir{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.72)}
+.bcard .bdir .lbl{margin-top:0}
+.bdir b{display:block;margin-top:4px;font:600 18px var(--serif);color:var(--rm-plum)}
+.bdir p{margin:6px 0 0;font:600 14px/1.45 var(--sans);color:var(--rm-ink)}
+.bdir .bstep{display:flex;gap:6px;align-items:flex-start;font:700 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}
+.bdir .bstep .ms{font-size:18px;color:var(--rm-mauve)}
+.bfrom{margin:12px 0 0;font:600 12.5px var(--serif);font-style:italic;color:var(--rm-ink-2);text-align:right}
+.byrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.byrow select.input{flex:1 1 7rem;min-width:0}
+.byrow .btn{flex:0 0 auto;min-height:44px}
+html[data-sky="night"] .bcard{background:var(--rm-card);border-color:rgba(255,255,255,.14)}
+html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
