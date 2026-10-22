@@ -1,0 +1,324 @@
+{
+ "note": "22 Oct, Jamie's go-ahead to use Volcengine: the ten phase-food pictures (the 22 Oct 08:37 run stopped at ginger: Seedream 5.0 pro reference edits hit the 62 s cut-off), nine crop pictures for the seed shop and farm, and the kitchen's dish pictures (from 2026-10-21-farm-kitchen.json). Seedream 4.0 finishes reference edits in about 34 s. One job at a time, no retries, stop on the first failure.",
+ "jobs": [
+  {
+   "id": "food-ginger",
+   "out": "ginger.png",
+   "size": "1024x1024",
+   "seed": 2210,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A knobbly fresh ginger root with one cut end showing pale yellow flesh. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "food-chamomile-tea",
+   "out": "chamomile-tea.png",
+   "size": "1024x1024",
+   "seed": 2211,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A small round teacup of pale golden chamomile tea with two little white chamomile flowers beside it. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "food-bone-broth",
+   "out": "bone-broth.png",
+   "size": "1024x1024",
+   "seed": 2212,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A small cream bowl of clear golden broth with a few herbs floating on top. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "food-beetroot",
+   "out": "beetroot.png",
+   "size": "1024x1024",
+   "seed": 2213,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "One whole deep magenta beetroot with short leafy stems. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "food-citrus",
+   "out": "citrus.png",
+   "size": "1024x1024",
+   "seed": 2214,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "An orange cut in half showing its juicy segments, with a small whole orange beside it. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "food-quinoa",
+   "out": "quinoa.png",
+   "size": "1024x1024",
+   "seed": 2215,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A small cream bowl heaped with fluffy cooked quinoa grains. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "food-cinnamon",
+   "out": "cinnamon.png",
+   "size": "1024x1024",
+   "seed": 2216,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Three rolled cinnamon sticks tied with a thin ribbon. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "food-sesame-seeds",
+   "out": "sesame-seeds.png",
+   "size": "1024x1024",
+   "seed": 2217,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A small cream dish of white and black sesame seeds. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "food-green-tea",
+   "out": "green-tea.png",
+   "size": "1024x1024",
+   "seed": 2218,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A small round cup of light green tea with a single fresh tea leaf beside it. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "food-mushrooms",
+   "out": "mushrooms.png",
+   "size": "1024x1024",
+   "seed": 2219,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Three small brown shiitake mushrooms grouped together. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "crop-radish",
+   "out": "crop-radish.png",
+   "size": "1024x1024",
+   "seed": 2300,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Two round pink radishes with short green leafy tops. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "crop-carrot",
+   "out": "crop-carrot.png",
+   "size": "1024x1024",
+   "seed": 2301,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "One bright orange carrot with feathery green leaves. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "crop-strawberry",
+   "out": "crop-strawberry.png",
+   "size": "1024x1024",
+   "seed": 2302,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Two plump red strawberries with little green caps. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "crop-tomato",
+   "out": "crop-tomato.png",
+   "size": "1024x1024",
+   "seed": 2303,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "One round ripe red tomato with a small green star-shaped stem. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "crop-pumpkin",
+   "out": "crop-pumpkin.png",
+   "size": "1024x1024",
+   "seed": 2304,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "One small round orange pumpkin with a curly green stem. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "crop-kangkong",
+   "out": "crop-kangkong.png",
+   "size": "1024x1024",
+   "seed": 2305,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A small bunch of kangkong water spinach with long green leaves and hollow stems. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "crop-pakchoy",
+   "out": "crop-pakchoy.png",
+   "size": "1024x1024",
+   "seed": 2306,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "One baby pak choy with pale green stems and dark green leaves. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "crop-lemongrass",
+   "out": "crop-lemongrass.png",
+   "size": "1024x1024",
+   "seed": 2307,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Three pale green lemongrass stalks tied together. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "crop-chilli",
+   "out": "crop-chilli.png",
+   "size": "1024x1024",
+   "seed": 2308,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Three small red chilli padi with green stems. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "dish-garlicpakchoy",
+   "out": "dish-garlicpakchoy.png",
+   "size": "1024x1024",
+   "seed": 2110,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Garlic pak choy: glossy stir-fried baby pak choy with thin golden garlic slices on a small round cream plate. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "dish-kangkongfry",
+   "out": "dish-kangkongfry.png",
+   "size": "1024x1024",
+   "seed": 2111,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Kangkong stir-fry: bright green water spinach stems and leaves with a little garlic on a small round cream plate. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "dish-tomatoegg",
+   "out": "dish-tomatoegg.png",
+   "size": "1024x1024",
+   "seed": 2112,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Tomato and egg: soft scrambled egg with red tomato wedges beside a small mound of white rice in a pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "dish-pumpkinsoup",
+   "out": "dish-pumpkinsoup.png",
+   "size": "1024x1024",
+   "seed": 2113,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Pumpkin soup: smooth orange pumpkin soup with a swirl of coconut milk in a small pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "dish-carrotradish",
+   "out": "dish-carrotradish.png",
+   "size": "1024x1024",
+   "seed": 2114,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Carrot and radish salad: thin orange carrot rounds and pink radish slices with a drizzle of honey in a small pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "dish-strawberrybowl",
+   "out": "dish-strawberrybowl.png",
+   "size": "1024x1024",
+   "seed": 2115,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Strawberry yoghurt bowl: white yoghurt topped with halved strawberries and a drizzle of honey in a small pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "dish-pakchoynoodles",
+   "out": "dish-pakchoynoodles.png",
+   "size": "1024x1024",
+   "seed": 2116,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Pak choy noodle soup: clear broth with noodles and a few pak choy leaves in a small pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "dish-tomatotofu",
+   "out": "dish-tomatotofu.png",
+   "size": "1024x1024",
+   "seed": 2117,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Tomato tofu with rice: soft tofu cubes in a light tomato sauce beside a small mound of white rice in a pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "dish-sweetpotatoginger",
+   "out": "dish-sweetpotatoginger.png",
+   "size": "1024x1024",
+   "seed": 2118,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Sweet potato ginger soup: purple-orange sweet potato chunks in a pale golden ginger broth in a small pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  },
+  {
+   "id": "dish-pandanrice",
+   "out": "dish-pandanrice.png",
+   "size": "1024x1024",
+   "seed": 2119,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Pandan rice: a small mound of pale green pandan rice with a knotted pandan leaf on top in a pastel bowl. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands, no fish, no meat. Match the style of the reference picture exactly.",
+   "model": "doubao-seedream-4-0-250828"
+  }
+ ]
+}
