@@ -281,3 +281,30 @@ Before migration, even withdrawals send `p_request_id` at `ovu-auth.js:140–141
 Independently verified: **1,809 core checks passed**, **81 pages with zero static-check problems**, and scoped diff checks passed. Static checking used stdin instead of temporary files to respect read-only access. The reported **59 PostgreSQL passes were not rerun**. No files or live state changed.
 
 FIX
+
+# Round five (commit d48ca43, verdict FIX, one P1; fixed in the following commit)
+
+**One P1 remains at `d48ca43`.**
+
+**P1: Invalidated summaries can survive feed reconciliation.** [admin.js:336](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/admin.js:336) advances `releaseKey` before the full feed refresh succeeds, while line 348 swallows refresh failures.
+
+Independently reproduced with the actual loading functions:
+
+- A failed full refresh leaves `eligible:21` cached. Subsequent identical overviews never retry reconciliation.
+- An older incremental response arriving after successful redaction restores the invalidated summary.
+
+**Smallest fix:** immediately clear/redact cached feed content when the release key changes, reject responses from earlier request generations, and keep full reconciliation pending until replacement succeeds.
+
+| Round-four finding | Round-five disposition |
+|---|---|
+| 1. Notice-version mismatch | Resolved: v4 and v5 explicitly accepted; v3 retired; hash checks retained. |
+| 2. Cached invalidated summaries | Partially resolved. P1 above remains. |
+| 3. Acceptance coverage | Resolved in test source: concurrent deletion, NULL-source complement, one-person missing duration, and exact no-op withdrawal replay added. |
+| 4. Permanently pending superseded mirrors | Resolved: distinct terminal status excluded from pending and delivery. |
+| 5. No-data versus suppression wording | Resolved in both summaries. |
+
+No additional P0/P1/P2 findings in the changed-code sweep. All stated owner deferrals remain accepted, as does migration first, schema-cache refresh and eight-argument RPC verification, then client merge.
+
+Independently verified **1,810 core checks**, **81 pages with zero static problems**, Python parsing and scoped code-diff checks. PostgreSQL **64/64** and the three mutation catches remain owner-reported, not rerun. No files or live state changed.
+
+FIX

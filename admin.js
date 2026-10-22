@@ -332,12 +332,16 @@
   }
 
   /* ---------- loading ---------- */
-  var releaseKey = null; /* the published run and the hold count as last seen: when either changes, the feed is reloaded whole, so words from a run held since never stay on screen */
-  function loadOverview() { return rpc('admin_overview').then(function (j) { if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); var rk = String(j && j.latest_run) + '|' + String(j && j.held_runs); if (releaseKey !== null && rk !== releaseKey) loadFeed(true); releaseKey = rk; if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); if (tab === 'queue') renderQueue(); }).catch(function (e) { pill('bad', 'offline'); }); }
+  var releaseKey = null; /* the published run and the hold count as last seen: when either changes, the cached feed is dropped at once and reloaded whole, so words from a run held since never stay on screen */
+  var feedGen = 0, feedNeedsFull = false; /* only the newest feed request may write; a full reload stays owed until one succeeds */
+  function loadOverview() { return rpc('admin_overview').then(function (j) { if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); var rk = String(j && j.latest_run) + '|' + String(j && j.held_runs); if (releaseKey !== null && rk !== releaseKey) { feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); } releaseKey = rk; if (feedNeedsFull) loadFeed(true); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); if (tab === 'queue') renderQueue(); }).catch(function (e) { pill('bad', 'offline'); }); }
   function loadFeed(all) {
-    var args = all || !feedTop ? { p_limit: 60 } : { p_limit: 60, p_after: feedTop };
+    all = all || feedNeedsFull;
+    var gen = ++feedGen, args = all || !feedTop ? { p_limit: 60 } : { p_limit: 60, p_after: feedTop };
     return rpc('admin_feed', args).then(function (rows) {
+      if (gen !== feedGen) return; /* a newer request was sent since: this answer may predate a hold */
       if (denied(rows)) return bootStaffOnly();
+      if (all) feedNeedsFull = false;
       rows = Array.isArray(rows) ? rows : [];
       if (all || !feedTop) { feed = rows; } else if (rows.length) { feed = rows.concat(feed).slice(0, 300); }
       if (feed.length) feedTop = feed[0].id;
@@ -373,6 +377,7 @@
     }).catch(function (e) { gate('Could not check your account: ' + e.message, true); });
   }
   doc.addEventListener('visibilitychange', function () { if (!doc.hidden && me) { loadFeed(false); loadOverview(); loadPlaza(); } });
+  if (root.__ADMIN_TEST__) root.__ADMIN_TEST__.api = { loadOverview: loadOverview, loadFeed: loadFeed, setTab: function (t) { tab = t; }, state: function () { return { feed: feed, feedTop: feedTop, needsFull: feedNeedsFull, releaseKey: releaseKey }; } }; /* core tests only */
   /* finish a Google round trip (?code= in the URL) before deciding what to show */
   (A && A.init ? A.init() : Promise.resolve({})).then(function (r) { if (r && r.error && !A.session()) return gate('Sign-in did not finish: ' + r.error, true); boot(); }, function () { boot(); });
 })(window);
