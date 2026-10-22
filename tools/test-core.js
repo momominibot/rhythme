@@ -3225,7 +3225,7 @@ var summarised = false;
   var S = w.OvuStore, RW = w.OvuRewards, tdy = S.today();
   function seatEv(seat) { return S.add('mindfulness', tdy, SE.entry(seat, { seconds: 90, confirmed: true, finished: true }), 'room'); }
   var a1 = RW.award(seatEv('street')), a2 = RW.award(seatEv('street')), a3 = RW.award(seatEv('plaza:bench')), a4 = RW.award(seatEv('plaza:bench2')), a5 = RW.award(seatEv('harbour'));
-  check('the street bench pays the flat practice points once; the same bench again pays nothing; the two plaza benches are two seats; the day’s cap still holds', a1.points === 2 && a2.points === 0 && a3.points === 2 && a4.points === 2 && a5.points === 0 && RW.ledger().hearts >= 6, JSON.stringify([a1.points, a2.points, a3.points, a4.points, a5.points]));
+  check('the street bench pays the flat practice points once; the same bench again pays nothing; the two plaza benches are two seats; each other seat pays too (cap 20 since 22 Oct)', a1.points === 2 && a2.points === 0 && a3.points === 2 && a4.points === 2 && a5.points === 2 && RW.ledger().hearts >= 8, JSON.stringify([a1.points, a2.points, a3.points, a4.points, a5.points]));
   var l = RW.ledger(); l.seatDay = null; l.mindDay = null; l.dailyLast = S.addDays(tdy, 1); S.setState({ rewards: l });
   check('a clock set back cannot reopen a seat’s thank-you either', RW.award(seatEv('street')).points === 0);
   /* the cave: both hotspots are one seat */
@@ -3466,7 +3466,7 @@ var summarised = false;
   check('a finished cup uses one from the basket and earns the flat practice thank-you, and no diary entry is written', br1.ok && br1.points === RW.PRACTICE.points && F.farmState(S).harvest.pandan === 2 && RW.ledger().hearts === afterBuy + RW.PRACTICE.points && S.list().length === n0);
   GH.brewCup(S, RW, 'pandan'); GH.brewCup(S, RW, 'pandan');
   var capped = RW.ledger().mindDay.pts;
-  check('cups after the day’s practice cap earn nothing, and the basket empties to nothing more', capped === RW.PRACTICE.cap && !GH.brewCup(S, RW, 'pandan').ok && !('pandan' in F.farmState(S).harvest) && RW.ledger().hearts === afterBuy + RW.PRACTICE.cap);
+  check('every cup pays the practice thank-you (three cups, six hearts), and the basket empties to nothing more', capped === 3 * RW.PRACTICE.points && !GH.brewCup(S, RW, 'pandan').ok && !('pandan' in F.farmState(S).harvest) && RW.ledger().hearts === afterBuy + 3 * RW.PRACTICE.points);
   S.setState({ farm: { harvest: { chamomile: 1 } }, rewards: { hearts: 0, earned: 0, log: [], owned: [], placed: {}, mindDay: { day: d1, pts: 4 } } });
   var br2 = GH.brewCup(S, RW, 'chamomile');
   check('a cup counts inside the same daily practice cap as every other practice', br2.ok && br2.points === 2 && RW.ledger().mindDay.pts === 6);

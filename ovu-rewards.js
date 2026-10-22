@@ -78,7 +78,7 @@
      amount): 2 hearts for a completed practice, session or watering, at most 6 a day across all practice, nothing for
      length, taps or first times. Moon Tap counts once a session reaches a full minute; seconds are not carried. */
   var IMPORTED_SRC = { 'apple-health': 1, 'google-fit': 1, import: 1, imported: 1 };
-  var PRACTICE = { points: 2, cap: 6 };
+  var PRACTICE = { points: 2, cap: 20 }; /* Jamie, 22 Oct: "all mindfulness practice needs points reward": the cap was 6 (three practices), now ten a day */
   var CANON_PART = { wake: 'wake', teeth: 'teeth', coffee: 'coffee', morning: 'teeth' }; /* the short-pause morning counts as the brushing slot */
   function practicePoints(l, ev) {
     var d = ev.data || {}, day = S.today();
