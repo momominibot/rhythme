@@ -575,7 +575,7 @@
     });
     R.on('props', function () { renderBarn(); if (sitting && !sitting.el.isConnected) R.els.props.appendChild(sitting.el); });
     R.on('beforeWalk', standUp); R.on('walk', standUp);
-    R.on('activity', standUp);
+    R.on('activity', standUp); R.on('meditate', standUp); /* Mind opening ends a sit first */
     R.on('outfit', function () { if (sitting && sitting.el && root.OvuGarden && root.OvuGarden.reseat) root.OvuGarden.reseat(sitting.el, CAVE.seat); });
     var shown = null; /* which barn sheet is open, so a new day or another tab can redraw it as it is now */
     var SHEETS = { barnnests: openNests, barnclover: openClover, springbasket: openBasket, ranch: openRanch, ranchname: null };

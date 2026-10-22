@@ -41,7 +41,7 @@
   R.on('boot', function () {
     R.on('layout', function (L) { if (!L || L.id !== 'cave') getOut(); });
     R.on('props', function () { if (soaking && !soaking.el.isConnected) R.els.props.appendChild(soaking.el); });
-    R.on('activity', getOut); R.on('beforeWalk', getOut); R.on('walk', getOut);
+    R.on('activity', getOut); R.on('meditate', getOut); R.on('beforeWalk', getOut); R.on('walk', getOut);
     R.on('outfit', function () { if (soaking) { var o = S.profile().outfit; soaking.el.querySelector('img').src = ART + picFor(/^[a-z0-9-]{1,32}$/.test(o || '') ? o : 'base'); } });
     doc.addEventListener('visibilitychange', function () { if (doc.hidden) getOut(); });
     S.subscribe(function (reason) { if (reason === 'clear' || reason === 'import' || reason === 'external' || String(reason).indexOf('sync') === 0) getOut(); else if (reason === 'state' && S.state().sleeping) getOut(); });

@@ -336,6 +336,7 @@
     });
     R.on('props', function (L) { renderPlot(L); if (sitting && !R.els.props.contains(sitting.el)) R.els.props.appendChild(sitting.el); }); /* a props re-render keeps her seated */
     R.on('activity', function () { clearWaterAsk(); if (watering) finishWatering(false, watering, true); });
+    R.on('meditate', standUp); /* Just sit a while, then the Mind tab: she gets up before the mat appears (Codex, 22 Oct); the bench's own sessions use sitAt, not this */
     R.on('beforeWalk', function () { clearWaterAsk(); if (watering) finishWatering(false, watering); });
     R.on('layout', function (L) { if (watering) finishWatering(false); if (sitting) { sitting.el.remove(); sitting = null; R.els.scene.classList.remove('sitting'); } if (inGarden(L)) renderPlot(); });
     /* seated: the first tap anywhere stands her up, then the tap goes on to do what it does */
