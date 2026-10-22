@@ -173,7 +173,7 @@
   R.on('boot', function () {
     R.on('layout', function (L) { if (!L || L.id !== 'cave') endAll(); });
     R.on('props', function () { if (sitting && !sitting.el.isConnected) R.els.props.appendChild(sitting.el); });
-    R.on('activity', function () { endAll(); }); R.on('beforeWalk', function () { endAll(); }); R.on('walk', function () { endAll(); });
+    R.on('activity', function () { endAll(); }); R.on('meditate', function () { endAll(); }); R.on('beforeWalk', function () { endAll(); }); R.on('walk', function () { endAll(); });
     R.on('outfit', function () { if (sitting && sitting.el && root.OvuGarden && root.OvuGarden.reseat) root.OvuGarden.reseat(sitting.el, CAVE.seat); });
     doc.addEventListener('visibilitychange', function () { if (doc.hidden) endAll(); });
     S.subscribe(function (reason) {

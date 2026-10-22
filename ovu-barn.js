@@ -137,13 +137,15 @@
     hotspots: [
       { id: 'caveexit', x: 47, y: 80, label: 'Way out · back to the barn', prompt: 'Tap to go back to the barn', icon: 'door_open', wp: { x: 48, y: 73, flip: false } },
       { id: 'springbasket', x: 42, y: 42, label: 'The spring basket', prompt: 'Tap to use the basket', icon: 'egg', wp: { x: 33, y: 62, flip: true } },
-      { id: 'warmstone', x: 66, y: 57, label: 'A warm stone', prompt: 'Tap to sit by the water', icon: 'chair', wp: { x: 55, y: 66, flip: true } }
+      { id: 'warmstone', x: 66, y: 57, label: 'A warm stone', prompt: 'Tap to sit by the water', icon: 'chair', wp: { x: 55, y: 66, flip: true } },
+      { id: 'springsoak', x: 53, y: 51, label: 'The warm water', prompt: 'Tap to soak in the spring', icon: 'hot_tub', wp: { x: 47, y: 62, flip: false } } /* ovu-soak.js, 22 Oct */
     ],
     home: { x: 48, y: 73, flip: false },
     zones: [[[10, 60], [18, 52], [28, 47], [70, 46], [88, 53], [92, 61], [84, 69], [66, 74], [50, 77], [34, 75], [18, 70], [9, 65]]],
     solids: [{ id: 'pool', x0: 29, x1: 67, y0: 42, y1: 59 }, { id: 'crystals', x0: 14, x1: 34, y0: 30, y1: 49 }, { id: 'pillar', x0: 69, x1: 92, y0: 25, y1: 58 }, { id: 'plant', x0: 10, x1: 21, y0: 42, y1: 57 }, { id: 'stone', x0: 58, x1: 74, y0: 56, y1: 64 }],
     doors: [{ id: 'caveexit', to: 'barn', x: 48, y: 73, r: 4, flip: false }],
     seat: { x: 66, seatY: 59, groundY: 63.5, face: 'left' },
+    soak: { x: 52, y: 54.5 }, /* where she soaks: the open right of the pool, clear of the basket; y is the water line at her shoulders */
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 }, props: {}
   };
   /* inside the barn and the hen house (Jamie, 21 Oct: "we can enter barn and chicken house"), rendered 21 Oct 2026 */
@@ -573,7 +575,7 @@
     });
     R.on('props', function () { renderBarn(); if (sitting && !sitting.el.isConnected) R.els.props.appendChild(sitting.el); });
     R.on('beforeWalk', standUp); R.on('walk', standUp);
-    R.on('activity', standUp);
+    R.on('activity', standUp); R.on('meditate', standUp); /* Mind opening ends a sit first */
     R.on('outfit', function () { if (sitting && sitting.el && root.OvuGarden && root.OvuGarden.reseat) root.OvuGarden.reseat(sitting.el, CAVE.seat); });
     var shown = null; /* which barn sheet is open, so a new day or another tab can redraw it as it is now */
     var SHEETS = { barnnests: openNests, barnclover: openClover, springbasket: openBasket, ranch: openRanch, ranchname: null };

@@ -2229,7 +2229,7 @@
   function sleepSrc(o) { return ART + (o === 'pajamas' ? 'avatar-sleeping.webp' : 'avatar-sleeping-' + o + '.webp'); }
   function wearImg(img, src, plain) { if (!img) return; img.onerror = function () { img.onerror = null; img.src = plain; }; if (img.getAttribute('src') !== src) img.src = src; }
   function enterMeditation() {
-    endTryOn(true); endMoment(); meditating = true; avatar.classList.add('hidden'); if (window.OvuSound) OvuSound.play('sit');
+    endTryOn(true); endMoment(); emit('meditate'); /* the in-place sits (a soak, the water, the jetty, the garden's Just sit) end first with their own cleanup; not 'activity', which hands a running care step over without restoring her (Codex, 22 Oct) */ meditating = true; avatar.classList.add('hidden'); if (window.OvuSound) OvuSound.play('sit');
     if (!meditator.classList.contains('onseat')) wearImg(meditator.querySelector('img'), meditateSrc(wornOutfit()), ART + 'avatar-meditate.webp'); /* a bench keeps her seated sprite */
     clearTimeout(medTimer); medTimer = setTimeout(function () { if (meditating) { meditator.classList.add('on'); $('#aura').classList.add('on'); } }, 350);
   }
@@ -3566,7 +3566,7 @@
   /* a session or practice claims her (and could save in her clothes), or she leaves the room she was trying on in */
   hooks.on.activity = (hooks.on.activity || []).concat([function () { endTryOn(true); }]);
   hooks.on.layout = (hooks.on.layout || []).concat([function (L2) { if (trying && (!L2 || L2.id !== trying.at)) endTryOn(true); }]);
-  function emit(name, a, b) { if (name === 'activity' || name === 'beforeWalk' || name === 'layout') activityGen++; (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
+  function emit(name, a, b) { if (name === 'activity' || name === 'beforeWalk' || name === 'layout' || name === 'meditate') activityGen++; /* meditate too: a saved session's pending fade must not close a reopened Mind (Codex, 22 Oct) */ (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = { openCalendar: openCalendar, openScores: openScores, mindfulQuick: mindfulQuick, erinCuesOn: erinCuesOn,
     erin: erin, /* Erin's short line for an action, by id (assets/audio/erin-actions/lines.json) */
     LAYOUTS: LAYOUTS, ART: ART, OUTFITS: OUTFITS, hotspotHandlers: hooks.hotspotHandlers,
