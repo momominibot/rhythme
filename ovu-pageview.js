@@ -27,6 +27,10 @@
   function tidy() {
     var d; try { d = frame.contentDocument; } catch (e) { return; }
     if (!d || !d.documentElement) return;
+    /* an older page sending her back to the room (its back button, a sign-in gate, a redirect stub) closes the sheet
+       instead of loading a second room inside it; a #tab it named opens that tab */
+    var loc; try { loc = frame.contentWindow.location; } catch (e) { loc = null; }
+    if (loc && /\/room\.html$|\/$|\/index\.html$/.test(loc.pathname) && frame.src.indexOf('about:') !== 0) { var h = (loc.hash || '').slice(1); close(); if (h) root.dispatchEvent(new CustomEvent('ovu-route', { detail: h })); return; }
     if (!d.getElementById('pvEmbedStyle')) {
       var st = d.createElement('style'); st.id = 'pvEmbedStyle';
       st.textContent = 'nav.nav,nav.bottom-nav,.top,.topbar,a.back,.back-link,a.learning-back,#lunaFab,.luna-fab{display:none!important}body{padding-bottom:24px!important}';
