@@ -180,4 +180,12 @@ The unchanged farm planting/watering/harvest writers and greenhouse basket write
 
 **Verdict: HOLD.**
 
-## Round 11 (after the tainted resend takes the copy the server accepted, not the pre-link account copy): see below once it ends
+## Round 11 (after the tainted resend takes the copy the server accepted, not the pre-link account copy): MERGE
+
+1. **Yes.** Reproduced with real `OvuStore`/`OvuRewards` and a mock server: recovery gives **15 on both, no cat**; earning five more gives **20 on both**. The accepted payload is restored at `ovu-gamesave.js:236`, with the matching earnings baseline and hash at `:240`. The parent commit reproduces the **10/15** mismatch.
+
+2. **No remaining P1 found** in the reviewed link/resend/clash/pull/tainted paths. Additional probes passed with intervening account writes, normal resend earnings, tainted link clashes and ordinary-save resends (`ovu-gamesave.js:248–249,283–295`). `node tools/test-core.js`: **1,791 passed, 0 failed**. Files unchanged.
+
+**Verdict: MERGE.**
+
+Browser suite on the round-seven tree: 458 passed, 1 failed (the spring's onsen-egg read, a test that read a locked writer on the same task; split in 6e08318, re-run by CI on the pull request).
