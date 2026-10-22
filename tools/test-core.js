@@ -4903,4 +4903,36 @@ var summarised = false;
   check('the evidence ledger names the NSF sleep quality panel', /Ohayon/.test(fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8')));
 })();
 
+(function () {
+  console.log('2k30. game save (22 Oct): hearts, farm and bag follow the login; the diary never rides along');
+  var g = vm.createContext({ JSON: JSON, Date: Date, Math: Math, Number: Number, String: String, Array: Array, Object: Object, Promise: Promise, isFinite: isFinite });
+  g.window = g;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-gamesave.js'), 'utf8'), g, { filename: 'ovu-gamesave.js' });
+  var G = g.OvuGameSave;
+  var st = { rewards: { hearts: 40, earned: 120, owned: ['lamp'], placed: { lamp: 1 }, daily: { day: 'x' }, log: [{ at: '2026-10-22T01:00:00Z', type: 'period', points: 10 }, { at: '2026-10-22T02:00:00Z', type: 'spend', what: 'lamp', points: -20 }] },
+    farm: { eggs: 3 }, villagers: { shen: { pts: 12 } }, sleeping: { startedAt: 'x' }, insights: { a: 1 }, sound: true, tester: { hearts: true }, plaza: { x: 1 } };
+  var pk = G.pack(st);
+  check('pack keeps only game keys: no sleep state, insights, sound, tester or plaza', Object.keys(pk).sort().join() === 'farm,rewards,villagers', Object.keys(pk).join());
+  check('the hearts log keeps time and points but no diary kind (period becomes log), and spends keep their item', pk.rewards.log[0].type === 'log' && pk.rewards.log[0].points === 10 && pk.rewards.log[1].type === 'spend' && pk.rewards.log[1].what === 'lamp' && !/period/.test(JSON.stringify(pk)));
+  check('pack copies: changing the save never changes the phone state, and the daily cap record is left behind', (pk.farm.eggs = 9, st.farm.eggs === 3) && !pk.rewards.daily && st.rewards.daily);
+  var remote = { rewards: { hearts: 300, earned: 900, owned: ['bench'], placed: { bench: 1 }, log: [] }, farm: { eggs: 20 } };
+  var m = G.firstLinkMerge(G.pack({ rewards: { hearts: 15, earned: 15, owned: ['lamp', 'bench'], placed: { lamp: 1 }, log: [] }, farm: { eggs: 1 } }), remote);
+  check('first sign-in on a phone with an account save: the account save is used, and hearts earned here first are added on top', m.rewards.hearts === 315 && m.rewards.earned === 915 && m.farm.eggs === 20, JSON.stringify(m.rewards));
+  check('owned items are joined without duplicates, and placements from both survive', m.rewards.owned.join() === 'bench,lamp' && m.rewards.placed.lamp === 1 && m.rewards.placed.bench === 1);
+  check('the merge never changes the account save it was given', remote.rewards.hearts === 300 && remote.rewards.owned.length === 1);
+  var at = function (s) { return '2026-10-22T' + s + ':00.000Z'; }, R = function (t, e) { return { saved_at: at(t), save: { rewards: { earned: e } } }; };
+  check('no account save yet: this phone pushes', G.decide({ linked: true }, null, {}) === 'push' && G.decide(null, null, {}) === 'push');
+  check('an account save this phone has never linked to: link (merge) first', G.decide(null, R('10:00', 5), {}) === 'link' && G.decide({ uid: 'u' }, R('10:00', 5), {}) === 'link');
+  check('nothing new anywhere: no request beyond the read; only this phone moved: push', G.decide({ linked: true, pulledAt: at('10:00'), dirty: false }, R('10:00', 5), {}) === 'none' && G.decide({ linked: true, pulledAt: at('10:00'), dirty: true }, R('10:00', 5), {}) === 'push');
+  check('only the other phone moved: pull, even if this phone has an older local time', G.decide({ linked: true, pulledAt: at('10:00'), savedAt: at('09:00'), dirty: false }, R('11:00', 50), { rewards: { earned: 5 } }) === 'pull');
+  check('both moved: more hearts earned in total wins, whichever saved last (a phone left open never wipes newer play)', G.decide({ linked: true, pulledAt: at('10:00'), savedAt: at('12:00'), dirty: true }, R('11:00', 80), { rewards: { earned: 60 } }) === 'pull' && G.decide({ linked: true, pulledAt: at('10:00'), savedAt: at('09:30'), dirty: true }, R('11:00', 80), { rewards: { earned: 90 } }) === 'push');
+  check('both moved with equal play: the newer save wins', G.decide({ linked: true, pulledAt: at('10:00'), savedAt: at('12:00'), dirty: true }, R('11:00', 80), { rewards: { earned: 80 } }) === 'push');
+  check('a settings change is not progress: the hash ignores keys outside the game', G.hashOf(G.pack(Object.assign({}, st, { sound: false }))) === G.hashOf(G.pack(st)) && G.hashOf(G.pack(Object.assign({}, st, { farm: { eggs: 4 } }))) !== G.hashOf(G.pack(st)));
+  var src = fs.readFileSync(path.join(root, 'ovu-gamesave.js'), 'utf8');
+  check('the module never reads or writes diary entries, and room.html loads it after the villagers', !/S\.(list|add|update|remove|addMany)\(/.test(src) && /ovu-villagers\.js"><\/script>\s*<script src="ovu-gamesave\.js"/.test(fs.readFileSync(path.join(root, 'room.html'), 'utf8')));
+  check('deleting the cloud copy deletes the game save and stops this phone saving it until the next sign-in', /game_saves\?user_id=eq\./.test(fs.readFileSync(path.join(root, 'ovu-sync.js'), 'utf8')) && /OvuGameSave\.forget\(uid\)/.test(fs.readFileSync(path.join(root, 'ovu-sync.js'), 'utf8')) && /off: true/.test(src));
+  var mig = fs.readFileSync(path.join(root, 'supabase/migrations/20261022100000_game_saves.sql'), 'utf8');
+  check('the table is own-row only for signed-in people, closed to anon, size-capped and removed with the account', /enable row level security/.test(mig) && /revoke all on public\.game_saves from anon/.test(mig) && (mig.match(/auth\.uid\(\)/g) || []).length >= 5 && /262144/.test(mig) && /on delete cascade/.test(mig));
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

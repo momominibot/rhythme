@@ -462,7 +462,8 @@
       var uid = a.userId();
       return rest('DELETE', '/entries?user_id=eq.' + encodeURIComponent(uid), null, 'return=minimal', token)
         .then(function () { return rest('DELETE', '/profiles?user_id=eq.' + encodeURIComponent(uid), null, 'return=minimal', token); })
-        .then(function () { resetPosition(); return { ok: true }; });
+        .then(function () { return rest('DELETE', '/game_saves?user_id=eq.' + encodeURIComponent(uid), null, 'return=minimal', token).catch(function () { return null; }); }) /* the game save goes too (22 Oct); a server without the table is not an error */
+        .then(function () { resetPosition(); try { if (root.OvuGameSave) OvuGameSave.forget(uid); } catch (e) { } return { ok: true }; });
     });
   }
 
