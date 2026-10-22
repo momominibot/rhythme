@@ -53,19 +53,24 @@
     doors: [{ id: 'grocermat', to: 'lane', x: 50, y: 80, r: 4, flip: false }],
     meditator: { x: 60, y: 76, w: 8.3 }, aura: { x: 60, y: 74, w: 12.5 }, holo: { x: 69, y: 74, w: 10 }
   });
+  /* the grand boutique (Jamie, 22 Oct: "more grand with chandelier... showcase whole range of clothes on the rack"), read on a
+   * 1% grid of shop-boutique-3-v1.webp so she never stands on a wall (Jamie: "the walking on building issue again") */
   var BOUTIQUE = inside({
-    id: 'lane-boutique', scene: 'lane-boutique', name: 'Petal & Thread', img: 'shop-boutique-2f-v1.webp', mapIcon: 'checkroom',
+    id: 'lane-boutique', scene: 'lane-boutique', name: 'Petal & Thread', img: 'shop-boutique-3-v1.webp', mapIcon: 'checkroom',
     hotspots: [
-      { id: 'boutiquemat', x: 50, y: 79, label: 'Door · back to the lane', prompt: 'Tap to go back outside', icon: 'door_open', wp: { x: 50, y: 75, flip: false } },
-      { id: 'boutiquefit', x: 20, y: 56, label: 'Fitting room · everything you have', prompt: 'Tap to try something on', icon: 'checkroom', wp: { x: 40, y: 57, flip: true } },
-      { id: 'boutiquerail', x: 38, y: 52, label: 'The rail · new looks', prompt: 'Tap to look at the rail', icon: 'apparel', wp: { x: 45, y: 57, flip: true } },
-      { id: 'boutiquecounter', x: 66, y: 59, label: 'Counter · Petal & Thread', prompt: 'Tap to see the shop', icon: 'storefront', wp: { x: 57, y: 57, flip: false } }
+      { id: 'boutiquemat', x: 52, y: 79.5, label: 'Door · back to the lane', prompt: 'Tap to go back outside', icon: 'door_open', wp: { x: 52, y: 77, flip: false } },
+      { id: 'boutiquefit', x: 21, y: 58, label: 'Fitting room · try on anything', prompt: 'Tap to try something on', icon: 'checkroom', wp: { x: 47.2, y: 60.8, flip: true } },
+      { id: 'boutiquerail', x: 52, y: 53, label: 'The rails · every outfit', prompt: 'Tap to look along the rails', icon: 'apparel', wp: { x: 51.5, y: 60.5, flip: false } },
+      { id: 'boutiquegown', x: 40, y: 57, label: 'The gown on show', prompt: 'Tap to look at the gown', icon: 'diamond', wp: { x: 47.2, y: 60.8, flip: true } },
+      { id: 'boutiquecounter', x: 75, y: 61, label: 'Counter · Petal & Thread', prompt: 'Tap to see the shop', icon: 'storefront', wp: { x: 55.5, y: 60.8, flip: false } }
     ],
-    home: { x: 50, y: 58, flip: false },
-    zones: [[[36, 49], [60, 49], [60, 58], [57, 59], [57, 77], [44, 77], [44, 59], [36, 58]]],
-    solids: [{ id: 'rail', x0: 32, x1: 46, y0: 47, y1: 56 }, { id: 'table', x0: 49, x1: 59, y0: 49, y1: 55 }],
-    doors: [{ id: 'boutiquemat', to: 'lane', x: 50, y: 76, r: 3, flip: false }],
-    meditator: { x: 50, y: 58, w: 8.3 }, aura: { x: 50, y: 56, w: 12.5 }, holo: { x: 59, y: 56, w: 10 }
+    home: { x: 52, y: 77, flip: false },
+    /* the doorway under the arch, and the strip in front of the rails kept above the front wall's top edge (y 61.6): past the
+       gold mirror the floor lies behind the arch's right column, where she would be drawn over the wall */
+    zones: [[[46, 59.4], [56.5, 59.4], [56.5, 61.6], [56, 61.6], [56, 80], [48.5, 80], [48.5, 61.6], [46, 61.6]]],
+    solids: [{ id: 'gown', x0: 33, x1: 46, y0: 50, y1: 66 }, { id: 'mirror', x0: 56.6, x1: 61, y0: 58, y1: 63.2 }],
+    doors: [{ id: 'boutiquemat', to: 'lane', x: 52, y: 78.5, r: 3, flip: false }],
+    meditator: { x: 52, y: 61, w: 8.3 }, aura: { x: 52, y: 59, w: 12.5 }, holo: { x: 56, y: 61, w: 10 }
   });
   /* the gym's four stations are ovu-lane.js STATIONS (treadmill, bike, mat, weights): each opens the movement log */
   var GYMSPOTS = [
@@ -128,7 +133,8 @@
   R.hotspotHandlers.grocercounter = counter('lane-grocer', 'grocer');
   R.hotspotHandlers.grocerrack = counter('lane-grocer', 'grocer');
   R.hotspotHandlers.boutiquemat = out('lane-boutique');
-  R.hotspotHandlers.boutiquerail = counter('lane-boutique', 'boutique');
+  R.hotspotHandlers.boutiquerail = function (id, L) { if (!at(L, 'lane-boutique')) return false; if (busy()) return true; if (root.OvuBoutique && root.OvuBoutique.openRail) root.OvuBoutique.openRail(); else LN.openPlace('boutique'); return true; };
+  R.hotspotHandlers.boutiquegown = function (id, L) { if (!at(L, 'lane-boutique')) return false; if (busy()) return true; if (root.OvuBoutique && root.OvuBoutique.openItem) root.OvuBoutique.openItem('gown'); else LN.openPlace('boutique'); return true; };
   R.hotspotHandlers.boutiquecounter = counter('lane-boutique', 'boutique');
   /* the fitting room: she tries on anything (ovu-boutique.js), and keeps what she has, free; without it, her wardrobe */
   R.hotspotHandlers.boutiquefit = function (id, L) {
