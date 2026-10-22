@@ -58,18 +58,18 @@
   var BOUTIQUE = inside({
     id: 'lane-boutique', scene: 'lane-boutique', name: 'Petal & Thread', img: 'shop-boutique-3-v1.webp', mapIcon: 'checkroom',
     hotspots: [
-      { id: 'boutiquemat', x: 52, y: 79.5, label: 'Door · back to the lane', prompt: 'Tap to go back outside', icon: 'door_open', wp: { x: 52, y: 77, flip: false } },
+      { id: 'boutiquemat', x: 53.5, y: 79.5, label: 'Door · back to the lane', prompt: 'Tap to go back outside', icon: 'door_open', wp: { x: 53.5, y: 77, flip: false } },
       { id: 'boutiquefit', x: 21, y: 58, label: 'Fitting room · try on anything', prompt: 'Tap to try something on', icon: 'checkroom', wp: { x: 47.2, y: 60.8, flip: true } },
       { id: 'boutiquerail', x: 52, y: 53, label: 'The rails · every outfit', prompt: 'Tap to look along the rails', icon: 'apparel', wp: { x: 51.5, y: 60.5, flip: false } },
       { id: 'boutiquegown', x: 40, y: 57, label: 'The gown on show', prompt: 'Tap to look at the gown', icon: 'diamond', wp: { x: 47.2, y: 60.8, flip: true } },
       { id: 'boutiquecounter', x: 75, y: 61, label: 'Counter · Petal & Thread', prompt: 'Tap to see the shop', icon: 'storefront', wp: { x: 55.5, y: 60.8, flip: false } }
     ],
-    home: { x: 52, y: 77, flip: false },
+    home: { x: 53.5, y: 77, flip: false },
     /* the doorway under the arch, and the strip in front of the rails kept above the front wall's top edge (y 61.6): past the
        gold mirror the floor lies behind the arch's right column, where she would be drawn over the wall */
-    zones: [[[46, 59.4], [56.5, 59.4], [56.5, 61.6], [56, 61.6], [56, 80], [48.5, 80], [48.5, 61.6], [46, 61.6]]],
+    zones: [[[46, 59.4], [56.5, 59.4], [56.5, 61.6], [56, 61.6], [56, 80], [51.5, 80], [51.5, 61.6], [46, 61.6]]], /* the doorway's open half: the closed left door panel runs to x 50.5 (Codex, 22 Oct) */
     solids: [{ id: 'gown', x0: 33, x1: 46, y0: 50, y1: 66 }, { id: 'mirror', x0: 56.6, x1: 61, y0: 58, y1: 63.2 }],
-    doors: [{ id: 'boutiquemat', to: 'lane', x: 52, y: 78.5, r: 3, flip: false }],
+    doors: [{ id: 'boutiquemat', to: 'lane', x: 53.5, y: 78.5, r: 2.5, flip: false }],
     meditator: { x: 52, y: 61, w: 8.3 }, aura: { x: 52, y: 59, w: 12.5 }, holo: { x: 56, y: 61, w: 10 }
   });
   /* the gym's four stations are ovu-lane.js STATIONS (treadmill, bike, mat, weights): each opens the movement log */
