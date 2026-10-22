@@ -2417,3 +2417,21 @@ html[data-mindful=quick] .mindline:not(.keep){display:none}
 .railher.soon{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--rm-ink-2);text-align:center;padding:30px 6px}
 .railher.soon .ms{font-size:30px;color:#b89be6}
 .railnote{margin:0 0 8px;font:600 13.5px/1.5 var(--sans);color:var(--rm-ink)}
+
+/* the inventory as pictures (22 Oct): category tabs that scroll sideways, then a grid of tiles with a count badge */
+.invtabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:10px -2px 0;padding:2px 2px 6px}
+.invtabs::-webkit-scrollbar{display:none}
+.invtab{flex:0 0 auto;display:flex;align-items:center;gap:4px;border:1.5px solid rgba(150,120,190,.22);background:#fff;border-radius:999px;padding:7px 11px;font:800 12px var(--sans);color:var(--rm-ink-2);cursor:pointer}
+.invtab .ms{font-size:17px;color:var(--rm-mauve)}
+.invtab i{font:800 10px/16px var(--sans);font-style:normal;min-width:16px;padding:0 5px;border-radius:8px;background:var(--rm-lilac-2);color:var(--rm-plum);text-align:center}
+.invtab.on{background:linear-gradient(135deg,#efe3fb,#fbe4ee);border-color:#b89be6;color:var(--rm-plum)}
+.invgrid{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.invtile{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px 7px;border-radius:16px;background:linear-gradient(180deg,#fff,#f8f1fd);box-shadow:0 3px 10px rgba(120,90,160,.08);min-width:0}
+.invtile.on{box-shadow:0 0 0 2px #b89be6,0 3px 10px rgba(120,90,160,.12)}
+.invface{position:relative;width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+.invface img{width:100%;height:100%;object-fit:contain;display:block}
+.invface .invicon{font-size:30px;color:var(--rm-mauve)}
+.invface .invbadge{position:absolute;right:-2px;bottom:-2px;width:46%;height:46%;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(70,40,100,.25))}
+.invface .invtint{position:absolute;left:50%;top:6%;width:30%;aspect-ratio:1;transform:translateX(-50%);border-radius:50%;background:var(--tint);mix-blend-mode:multiply;opacity:.85}
+.invcount{position:absolute;top:4px;right:5px;font:800 11px/18px var(--sans);font-style:normal;min-width:18px;padding:0 5px;border-radius:9px;background:var(--rm-plum);color:#fff;text-align:center}
+.invtile b{font:700 10.5px/1.2 var(--sans);color:var(--rm-ink);text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}

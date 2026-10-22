@@ -113,7 +113,7 @@
   /* where she can cook: the farm's basket, and a home whose plate draws a kitchen (only the family home today) */
   var STOVES = ['familyhome'];
   var K = { STAPLES: STAPLES, HERBS: HERBS, STEPS: STEPS, STEP_MS: STEP_MS, RECIPES: RECIPES, STOVES: STOVES, recipe: recipe, kitchenOf: kitchenOf, have: have, label: label, needsText: needsText, missing: missing, canCook: canCook, ready: ready, cook: cook, buyStaple: buyStaple, staplesOf: staplesOf, stepMs: null };
-  root.OvuKitchen = K; K.staplePic = staplePic;
+  root.OvuKitchen = K; K.staplePic = staplePic; K.STAPLE_PIC = STAPLE_PIC;
 
   /* ---------- the sheets ---------- */
   var S = root.OvuStore, R = root.OvuRoom, W = root.OvuWalk, doc = root.document;
