@@ -2,7 +2,7 @@
  * designed with Codex, docs/design/2026-10-20-light-flower.md). One luminous flower, drawn here from points of light.
  * A tap lights one petal and sounds one soft glass note that fades; she notices it fading and, when her mind wanders,
  * gently comes back. Nothing fills, grows or scores: the flower is whole from the start, fast taps never stack light or
- * sound, and stopping at any moment saves the practice time. No fast flashing: a petal brightens over 180 ms and settles
+ * sound, and journal saving is a separate choice after stopping. No fast flashing: a petal brightens over 180 ms and settles
  * over three seconds, and a new petal can light at most every 400 ms. The flower turns slowly and breathes (one breath
  * every six seconds), a soft light walks round its petals, and a tap sends out one quiet ripple (Jamie, 20 Oct: "more
  * swiftly, more therapeutic, more dreamy"). Reduced motion: a still flower, no drifting light, no ripple. */
@@ -87,7 +87,7 @@
         '<div class="btap-word lf-word" id="lfWord" aria-live="polite"></div>' +
         '<button type="button" class="btn btap-stop" id="lfStop">Stop</button>' +
       '</div>' +
-      '<div class="btap-card btap-done" id="lfDone" hidden><b></b><p id="lfSum"></p><div class="row"><button type="button" class="btn primary" id="lfRetry" hidden>Try saving again</button><button type="button" class="btn primary" id="lfDoneClose">Close</button></div></div>' +
+      '<div class="btap-card btap-done" id="lfDone" hidden><b></b><p id="lfSum"></p><div class="row"><button type="button" class="btn primary" id="lfYes" hidden>Yes</button><button type="button" class="btn ghost" id="lfNo" hidden>No</button><button type="button" class="btn primary" id="lfRetry" hidden>Retry</button><button type="button" class="btn primary" id="lfDoneClose">Close</button></div></div>' +
     '</div>');
     document.body.appendChild(el);
     $('#lfLengths').innerHTML = LENGTHS.map(function (L, i) { return '<button type="button" data-min="' + L.min + '" class="' + (i === 0 ? 'on' : '') + '" aria-pressed="' + (i === 0) + '">' + L.name + '</button>'; }).join('');
@@ -100,17 +100,19 @@
     $('#lfBegin').addEventListener('click', start);
     $('#lfClose').addEventListener('click', close);
     $('#lfDoneClose').addEventListener('click', close);
+    $('#lfYes').addEventListener('click', function () { if (pending) finishSave(pending); });
+    $('#lfNo').addEventListener('click', close);
     $('#lfRetry').addEventListener('click', function () { if (pending) finishSave(pending); });
     $('#lfStop').addEventListener('click', function () { stop(false); });
     $('#lfStage').addEventListener('pointerdown', function (e) { if (e.target.closest('#lfStop')) return; e.preventDefault(); light(e.clientX, e.clientY); });
     $('#lfFlower').addEventListener('keydown', function (e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); light(null, null); } });
     document.addEventListener('keydown', function (e) { if (st && !el.hidden && e.key === 'Escape') stop(false); });
-    document.addEventListener('visibilitychange', function () { if (document.hidden && st) stop(false); }); /* leaving the app ends and saves the pause */
+    document.addEventListener('visibilitychange', function () { if (document.hidden && st) stop(false); }); /* leaving the app ends the game; saving still needs a choice */
     root.addEventListener('resize', function () { if (st) { size(); paintBase(); } });
     return el;
   }
   function open(o) {
-    opts = o || {}; build();
+    opts = o || {}; pending = null; build();
     $('#lfCard').hidden = false; $('#lfStage').hidden = true; $('#lfDone').hidden = true; el.hidden = false;
     var s = sound(); $('#lfAir').closest('label').hidden = !(s && s.enabled());
     document.body.classList.add('btap-open');
@@ -118,6 +120,7 @@
   }
   function close() {
     if (st) stop(false, true);
+    pending = null;
     if (el) el.hidden = true; document.body.classList.remove('btap-open');
     var s = sound(); if (s) s.ambience(false);
     var f = opts.onClose; opts = {}; if (f) f();
@@ -126,6 +129,7 @@
   function start() {
     if (asleep()) { close(); return; } /* a real sleep stops every game until she wakes */
     var plan = Number(($('#lfLengths .on') || { dataset: { min: 0 } }).dataset.min) || 0, pace = (($('#lfPaces .on') || {}).dataset || {}).pace || 'own';
+    pending = null;
     st = { plan: plan, pace: PACES[pace] ? pace : 'own', lastPhase: null, t0: root.performance.now(), startedAt: new Date().toISOString(), lit: new Array(PETALS).fill(-1e9), lastLit: -1e9, prev: PETALS - 1, sparks: [], ripples: [], hinted: false };
     $('#lfCard').hidden = true; $('#lfDone').hidden = true; $('#lfStage').hidden = false;
     size(); paintBase();
@@ -144,7 +148,7 @@
     var s = sound(); if (s) s.play('petal');
     if (!reduced) { spark(k); st.ripples.push(now); if (st.ripples.length > 4) st.ripples.shift(); }
     try { if (root.navigator && root.navigator.vibrate) root.navigator.vibrate(8); } catch (e) { }
-    if (!st.hinted) { st.hinted = true; $('#lfWord').textContent = ''; root.setTimeout(function () { if (st) $('#lfWord').textContent = 'Notice the note fading.'; }, 600); root.setTimeout(function () { if (st) $('#lfWord').textContent = ''; }, 6000); }
+    if (!st.hinted) { var run = st; st.hinted = true; $('#lfWord').textContent = ''; root.setTimeout(function () { if (st === run) $('#lfWord').textContent = 'Notice the note fading.'; }, 600); root.setTimeout(function () { if (st === run) $('#lfWord').textContent = ''; }, 6000); }
   }
   function tick() {
     if (!st) return;
@@ -156,27 +160,32 @@
   function stop(completed, silent) {
     if (!st) return null;
     root.cancelAnimationFrame(raf);
-    var seconds = (root.performance.now() - st.t0) / 1000, data = entryFor(seconds, st.plan, st.startedAt, new Date().toISOString(), st.pace);
+    var seconds = (root.performance.now() - st.t0) / 1000, data = entryFor(seconds, st.plan, st.startedAt, new Date().toISOString(), st.pace), S = store();
     st = null; var s = sound(); if (s) s.ambience(false);
-    if (data.seconds < 1) { if (!silent) showDone(null, data); return null; }
-    var ev = finishSave(data, silent);
-    return ev;
+    /* playing never writes the diary; only Yes below confirms a full minute as practice */
+    pending = !silent && seconds >= 60 ? { data: data, day: S ? S.today() : null, ev: null, tried: false, onSaved: opts.onSaved } : null;
+    if (!silent) showDone(null, data);
+    return null;
   }
-  function finishSave(data, silent) {
-    var S = store(), ev = null;
-    try { ev = S ? S.add('mindfulness', S.today(), data, 'room') : null; } catch (e) { ev = null; }
-    pending = ev ? null : data;
-    if (ev && opts.onSaved) { try { opts.onSaved(ev); } catch (e) { } }
-    if (!silent) showDone(ev, data);
-    return ev;
+  function finishSave(p) {
+    if (!p || pending !== p) return null;
+    var S = store(); p.tried = true;
+    if (!p.ev) {
+      try { if (!S) throw new Error('Journal unavailable.'); p.data.confirmedReal = true; p.ev = S.add('mindfulness', p.day, p.data, 'room'); }
+      catch (e) { showDone(null, p.data); return null; }
+    }
+    /* a failed thank-you must retry the saved entry, never insert the minute twice */
+    try { var result = p.onSaved ? p.onSaved(p.ev) : null; if (result && result.rewardFailed) { p.rewardFailed = true; showDone(p.ev, p.data); return p.ev; } }
+    catch (e) { p.rewardFailed = true; showDone(p.ev, p.data); return p.ev; }
+    p.rewardFailed = false; pending = null; showDone(p.ev, p.data); return p.ev;
   }
   function showDone(ev, data) {
     $('#lfStage').hidden = true; $('#lfDone').hidden = false;
-    var m = Math.floor(data.seconds / 60), sec = data.seconds % 60;
-    $('#lfDone b').textContent = ev ? 'Your pause is saved.' : pending ? 'This pause could not be saved yet.' : 'A brief pause still belongs to you.';
-    $('#lfSum').textContent = ev ? 'Practice time ' + (m ? m + ' min ' : '') + sec + ' s.' : pending ? 'Your practice time is kept here. Try again, or close and it is let go.' : 'Nothing to save this time.';
-    $('#lfRetry').hidden = !pending;
-    try { $(pending ? '#lfRetry' : '#lfDoneClose').focus({ preventScroll: true }); } catch (e) { }
+    var m = Math.floor(data.seconds / 60), sec = data.seconds % 60, asking = pending && !pending.tried, failed = pending && pending.tried;
+    $('#lfDone b').textContent = asking ? 'Save this mindful minute to your journal?' : ev ? 'Your pause is saved.' : failed ? 'Your pause could not be saved' : 'A brief pause still belongs to you.';
+    $('#lfSum').textContent = asking ? 'Save this as practice if you really practised. Practice time ' + (m ? m + ' min ' : '') + sec + ' s.' : ev ? (pending && pending.rewardFailed ? 'Your journal entry is saved. Its hearts could not be saved. Retry the thank-you here.' : 'Practice time ' + (m ? m + ' min ' : '') + sec + ' s.') : failed ? 'Your practice time is kept here. Retry, or close and it is let go.' : 'Nothing under a minute is saved as practice time.';
+    $('#lfYes').hidden = !asking; $('#lfNo').hidden = !asking; $('#lfRetry').hidden = !failed;
+    try { $(asking ? '#lfYes' : failed ? '#lfRetry' : '#lfDoneClose').focus({ preventScroll: true }); } catch (e) { }
   }
 
   /* ---- drawing: everything is points of light on a near-black night, composed once, then lit per petal ---- */

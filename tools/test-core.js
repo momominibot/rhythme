@@ -367,6 +367,73 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the moment after it: "That pause was yours", not a claim about minutes', MO.forEntry(ev) === 'morning' && MO.MOMENTS.morning.lines.indexOf('That pause was yours.') >= 0 && MO.MOMENTS.morning.pose === null);
 })();
 
+(function gameMinutesNeedConfirmation() {
+  console.log('garden and games: diary writes require a confirmed mindful minute; stale watering cannot claim a new activity');
+  function node() { return { style: {}, dataset: {}, innerHTML: '', hidden: false, textContent: '', ls: {}, classList: { add: function () { }, remove: function () { }, contains: function () { return false; } }, setAttribute: function () { }, addEventListener: function (k, f) { this.ls[k] = f; }, querySelector: function () { return null; }, appendChild: function () { }, remove: function () { }, focus: function () { }, fire: function () { if (this.ls.click) this.ls.click(); } }; }
+  function plantWorld(greenhouse) {
+    var w = fresh('2026-10-22'), nodes = {}, q = [], hooks = {}, calls = [], stop = null, active = false, sheetOpen = false, intervals = [];
+    function el(id) { return nodes[id] || (nodes[id] = node()); }
+    w.setTimeout = function (f, ms) { var t = { f: f, ms: ms, live: true }; q.push(t); return t; }; w.clearTimeout = function (t) { if (t) t.live = false; }; w.setInterval = function (f) { var t = { f: f, live: true }; intervals.push(t); return t; }; w.clearInterval = w.clearTimeout;
+    w.document = { createElement: node, addEventListener: function () { }, getElementById: el };
+    w.Audio = function () { this.pause = function () { calls.push('pause'); }; this.play = function () { return Promise.resolve(); }; };
+    var R = w.OvuRoom = { ART: '', LAYOUTS: {}, hotspotHandlers: {}, els: { props: node(), avatar: node(), scene: node() }, layout: function () { return { id: greenhouse ? 'greenhouse' : 'garden' }; },
+      on: function (k, f) { (hooks[k] = hooks[k] || []).push(f); }, esc: function (x) { return x; }, sessionOn: function () { return active; }, sheetOpen: function () { return sheetOpen; }, asleep: function () { return false; }, practiceOn: function () { return false; }, busy: function () { return false; },
+      hideSheet: function () { calls.push('hideSheet'); }, openSheet: function (id) { calls.push(id); }, setHudStop: function (f) { stop = f; calls.push('stopHook'); }, hudOn: function (x) { calls.push('hud:' + x); }, caption: function (x) { calls.push('caption:' + x); }, setPose: function () { calls.push('pose'); }, restorePose: function () { calls.push('restore'); }, chime: function () { }, toast: function (x) { calls.push(x); }, afterSave: function (ev) { w.OvuRewards.award(ev); calls.push('saved'); } };
+    w.OvuWalk = { napping: function () { return false; } };
+    var file = greenhouse ? 'ovu-greenhouse.js' : 'ovu-garden.js', src = fs.readFileSync(path.join(root, file), 'utf8');
+    if (greenhouse) src = src.replace('})(window);', 'root.__minuteStart = function () { runMinute({ kind: "care", id: "hoya", name: "Hoya", title: "Hoya" }, ["one", "two", "three", "four"], "plants"); };\n})(window);');
+    else src = src.replace('})(window);', 'root.__minuteStart = startWatering;\n})(window);');
+    vm.runInContext(src, w, { filename: file }); (hooks.boot || []).forEach(function (f) { f(); });
+    return { w: w, q: q, calls: calls, el: el, intervals: intervals, sheet: function (v) { sheetOpen = v; }, wait: function () { intervals.forEach(function (t) { if (t.live) t.f(); }); }, start: w.__minuteStart, stop: function () { return stop; }, active: function (x) { active = x; }, emit: function (k) { (hooks[k] || []).forEach(function (f) { f(); }); }, finish: function () { q.filter(function (t) { return t.live && t.ms === 60000; }).slice(-1)[0].f(); } };
+  }
+  var g = plantWorld(false); g.start(); var stale = g.q.map(function (t) { return t.f; }), oldStop = g.stop();
+  g.emit('activity'); g.active(true); var endedAt = g.calls.length; stale.forEach(function (f) { f(); }); oldStop();
+  check('garden watering cancels synchronously on activity, pauses audio and leaves a new session\'s HUD, pose, Stop and diary untouched', !g.w.OvuGarden.watering() && g.q.every(function (t) { return !t.live; }) && g.calls.indexOf('pause') > -1 && g.calls.length === endedAt && g.w.OvuStore.list('mindfulness').length === 0);
+  g.active(false); g.start(); var newerAt = g.calls.length; stale.forEach(function (f) { f(); }); oldStop();
+  check('a cancelled watering\'s clips, captions, completion and Stop callbacks cannot act inside its replacement', g.w.OvuGarden.watering() && g.calls.length === newerAt && g.w.OvuStore.list('mindfulness').length === 0);
+  g.emit('beforeWalk');
+  check('beforeWalk cancels watering at once and restores the old pose without a journal entry', !g.w.OvuGarden.watering() && g.calls.indexOf('restore') > -1 && g.w.OvuStore.list('mindfulness').length === 0);
+  [false, true].forEach(function (gh) {
+    var p = plantWorld(gh), S = p.w.OvuStore, id = gh ? 'gh' : 'garden'; p.start(); p.finish();
+    check((gh ? 'greenhouse' : 'garden') + ' completion asks Yes/No and writes no mindfulness automatically' + (gh ? '' : ', while the plot keeps its watering'), S.list('mindfulness').length === 0 && p.calls.indexOf(gh ? 'greenhouseDone' : 'gardenDone') > -1 && (gh || S.state().garden.watered.indexOf(S.today()) > -1));
+    p.el(id + 'No').fire(); check((gh ? 'greenhouse' : 'garden') + ' No leaves the journal empty', S.list('mindfulness').length === 0);
+    p.start(); p.sheet(true); var asked = p.calls.filter(function (c) { return c === (gh ? 'greenhouseDone' : 'gardenDone'); }).length; p.finish(); p.wait(); var whileOpen = p.calls.filter(function (c) { return c === (gh ? 'greenhouseDone' : 'gardenDone'); }).length; p.sheet(false); p.wait();
+    check((gh ? 'greenhouse' : 'garden') + ' a finished minute waits for an open journal form to close before asking', asked === whileOpen && p.calls.filter(function (c) { return c === (gh ? 'greenhouseDone' : 'gardenDone'); }).length === asked + 1 && S.list('mindfulness').length === 0); p.el(id + 'No').fire();
+    p.start(); p.finish(); var add = S.add, fail = true; S.add = function () { if (fail) throw new Error('quota'); return add.apply(S, arguments); };
+    p.el(id + 'Yes').fire(); var beforeRetry = S.list('mindfulness').length; fail = false; p.el(id + 'Yes').fire(); p.el(id + 'Yes').fire();
+    check((gh ? 'greenhouse' : 'garden') + ' a failed Yes keeps the confirmation for retry, then saves and awards once', beforeRetry === 0 && S.list('mindfulness').length === 1 && S.list('mindfulness')[0].data.confirmedReal === true && p.calls.filter(function (c) { return c === 'saved'; }).length === 1 && p.w.OvuRewards.ledger().hearts === 2);
+    var d = plantWorld(gh); d.start(); d.sheet(true); d.finish(); var oldAsk = d.intervals[0].f; d.start(); d.sheet(false); var atNew = d.calls.length; oldAsk();
+    check((gh ? 'greenhouse' : 'garden') + ' an old deferred question cannot open over a new minute', d.calls.length === atNew); d.finish(); var atDone = d.calls.length; oldAsk(); check((gh ? 'greenhouse' : 'garden') + ' a new completion invalidates the previous deferred question', d.calls.length === atDone);
+  });
+  function gameWorld(flower) {
+    var w = fresh('2026-10-22'), nodes = {}, stamp = 100000, now = Date.now(), prefix = flower ? 'lf' : 'btap';
+    function el(id) { return nodes[id] || (nodes[id] = node()); }
+    w.__gameEl = { querySelector: el }; w.document.body = { classList: { remove: function () { } } }; w.performance = { now: function () { return stamp; } }; w.cancelAnimationFrame = function () { };
+    var file = flower ? 'ovu-lightflower.js' : 'ovu-breathtap.js', src = fs.readFileSync(path.join(root, file), 'utf8'), name = flower ? 'OvuLightFlower' : 'OvuBreathTap';
+    var seed = flower ? 'st = {t0: root.performance.now() - seconds * 1000, plan: 0, startedAt: "start", pace: "own"};' : 'state = {startedAt: Date.now() - seconds * 1000, preset: "own", taps: 3, plan: 0};';
+    src = src.replace('  root.' + name + ' = ', '  el = root.__gameEl; root.__gameTest = { seed: function(seconds, cb) { opts = {onSaved: cb}; pending = null; ' + seed + ' }, pending: function() { return pending; }, confirm: function() { return finishSave(pending); } };\n  root.' + name + ' = ');
+    vm.runInContext(src, w, { filename: file }); return { w: w, S: w.OvuStore, game: w[name], T: w.__gameTest, el: function (s) { return el('#' + prefix + s); } };
+  }
+  [false, true].forEach(function (flower) {
+    var a = gameWorld(flower), label = flower ? 'Light Flower' : 'Koi Pond', awarded = 0;
+    function award(ev) { awarded++; a.w.OvuRewards.award(ev); }
+    a.T.seed(61, award); a.game.stop(false);
+    check(label + ' Stop asks about saving a mindful minute and writes nothing before Yes', a.S.list('mindfulness').length === 0 && a.T.pending() && /Save this mindful minute/.test(a.el('Done b').textContent));
+    if (!flower) check('Koi Pond keeps its ripple count while asking about journal saving', /3 ripples/.test(a.el('Sum').textContent));
+    a.game.close(); check(label + ' No or Close discards the game without a diary entry', a.S.list('mindfulness').length === 0 && !a.T.pending());
+    a.T.seed(59.9, award); a.game.stop(false); check(label + ' never rounds a sub-minute game up into save eligibility', !a.T.pending() && a.S.list('mindfulness').length === 0);
+    a.T.seed(90, award); a.game.stop(false, true); check(label + ' a silent bedtime close cannot save a long game', !a.T.pending() && a.S.list('mindfulness').length === 0);
+    a.T.seed(90, award); a.game.stop(false); var original = a.S.add, fail = true; a.S.add = function () { if (fail) throw new Error('quota'); return original.apply(a.S, arguments); }; a.T.confirm();
+    check(label + ' a failed long save says Your pause could not be saved and keeps Retry with its payload', a.S.list('mindfulness').length === 0 && a.T.pending() && a.T.pending().data.seconds === 90 && a.el('Done b').textContent === 'Your pause could not be saved' && !a.el('Retry').hidden);
+    fail = false; a.T.confirm(); a.T.confirm(); check(label + ' Retry inserts and awards the confirmed minute exactly once', a.S.list('mindfulness').length === 1 && a.S.list('mindfulness')[0].data.confirmedReal === true && awarded === 1 && !a.T.pending());
+    var b = gameWorld(flower), attempts = 0; b.T.seed(80, function (ev) { attempts++; if (attempts === 1) throw new Error('reward quota'); b.w.OvuRewards.award(ev); }); b.game.stop(false); b.T.confirm();
+    check(label + ' distinguishes an already saved entry from a failed award', b.S.list('mindfulness').length === 1 && b.T.pending() && b.T.pending().ev && /hearts could not be saved/.test(b.el('Sum').textContent));
+    b.T.confirm(); check(label + ' reward retry uses the same entry instead of duplicating the journal', b.S.list('mindfulness').length === 1 && attempts === 2 && b.w.OvuRewards.ledger().hearts === 2 && !b.T.pending());
+    var c = gameWorld(flower), tries = 0; c.T.seed(75, function (ev) { tries++; if (tries === 1) return { rewardFailed: true }; c.w.OvuRewards.award(ev); return { rewardFailed: false }; }); c.game.stop(false); c.T.confirm(); var retained = !!(c.T.pending() && c.T.pending().ev); c.T.confirm();
+    check(label + ' the room\'s nonthrowing rewardFailed result also keeps Retry and reuses the saved entry', retained && tries === 2 && c.S.list('mindfulness').length === 1 && c.w.OvuRewards.ledger().hearts === 2 && !c.T.pending());
+  });
+})();
+
 (function soundKitAndLightFlower() {
   console.log('2i. the sound kit: one switch (never chosen is on), quiet volume, no stacking; Light Flower lights without flashing and saves only time');
   var w = fresh(), S = w.OvuStore, SD = w.OvuSound, LF = w.OvuLightFlower, RW = w.OvuRewards, MO = w.OvuMoments;
@@ -501,6 +568,77 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var t = B.giveTreat(S, 'hens', 'kangkong', '2026-12-01');
   check('a treat for the hens adds a heart to each hen that had none from a treat that day', t.ok && t.gained && B.love(S, 'kaya') === 1);
   check('love never writes a diary entry and never touches the logging hearts', S.list().length === n0 && !/OvuRewards/.test(fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8').split('function heartPop')[0]));
+})();
+
+(function staleRunnersAndPracticeSave() {
+  console.log('confirmed audit defects: old session and Everyday callbacks, bedtime threshold, atomic practice confirmation');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), finished = false;
+  function fn(name) { var i = src.indexOf('function ' + name + '('), j = src.indexOf('{', i), d = 0; for (var k = j; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}' && !--d) return src.slice(i, k + 1); } throw new Error('Missing runner ' + name); }
+  function hudFn() { var i = src.indexOf('hudOn: function'), j = src.indexOf('{', i), d = 0; for (var k = j; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}' && !--d) return src.slice(i + 7, k + 1); } throw new Error('Missing HUD handover'); }
+  function env() {
+    var w = fresh('2026-10-22'), now = Date.parse('2026-10-22T10:00:00+08:00'), timers = [], els = {}, clips = [], captions = [], poses = [], saves = [], sheets = [], toasts = [];
+    function node(id) { if (els[id]) return els[id]; var cls = {}; return els[id] = { textContent: '', events: {}, classList: { add: function (k) { cls[k] = true; }, remove: function (k) { delete cls[k]; }, contains: function (k) { return !!cls[k]; }, toggle: function (k, on) { if (on) cls[k] = true; else delete cls[k]; } }, addEventListener: function (k, f) { this.events[k] = f; } }; }
+    function FD(v) { return arguments.length ? new Date(v) : new Date(now); } FD.now = function () { return now; };
+    var c = { window: {}, S: w.OvuStore, MF: w.OvuMindful, session: null, practice: null, meditating: true, activityGen: 0, fadeTimer: null, medTimer: 0, GUIDE: 'guide/', ERIN: 'erin/', CAPTION: {}, HOME: {}, hooks: { on: {} },
+      Date: FD, Promise: Promise, Math: Math, isFinite: isFinite, console: console,
+      Audio: function () { this.pause = function () { this.paused = true; }; this.play = function () { clips.push(this.src + ':' + (c.session ? c.session.kind : c.practice ? c.practice.a.id : 'none')); this.paused = false; return Promise.resolve(); }; },
+      setTimeout: function (f, ms) { var t = { f: f, ms: ms, live: true }; timers.push(t); return t; }, clearTimeout: function (t) { if (t) t.live = false; },
+      $: node, hud: node('hud'), avatar: node('avatar'), meditator: node('meditator'), holo: node('holo'),
+      refuseBusy: function () { return false; }, asleep: function () { return false; }, erin: function () { }, endMoment: function () { }, endTryOn: function () { },
+      hideSheet: function () { c.current = null; }, closeSheet: function () { c.current = null; }, openSheet: function (id) { c.current = id; sheets.push(id); },
+      setPose: function (p) { poses.push(p); }, restorePose: function () { poses.push('restore'); }, placeAvatar: function () { poses.push('home'); },
+      setOrb: function (phase, text) { captions.push(text); }, caption: function (text) { captions.push(text); }, chime: function () { },
+      hudClockStart: function () { c.clock = true; }, hudClockStop: function () { c.clock = false; },
+      afterSave: function (ev) { saves.push(ev); }, toast: function (text) { toasts.push(text); }, esc: function (t) { return t; } };
+    vm.createContext(c);
+    ['emit', 'sessionCurrent', 'cancelRunner', 'playClip', 'wait', 'runSession', 'finishSession', 'stopSession', 'exitMeditation', 'stopEverything', 'practiceCurrent', 'playUrl', 'pwait', 'runPractice', 'askPracticeDone', 'practiceMs', 'stopPractice'].forEach(function (n) { vm.runInContext(fn(n), c); });
+    vm.runInContext('hudOn = ' + hudFn(), c);
+    return { c: c, w: w, timers: timers, clips: clips, captions: captions, poses: poses, saves: saves, sheets: sheets, toasts: toasts, node: node, advance: function (ms) { now += ms; }, call: function (code) { return vm.runInContext(code, c); } };
+  }
+  function flush() { var p = Promise.resolve(); for (var i = 0; i < 100; i++) p = p.then(function () { }); return p; }
+  process.on('exit', function () { if (!finished) { console.error('  FAIL runner regression promises did not settle'); process.exitCode = 1; } });
+  var s = env(); s.call('runSession("erin", 3)'); var old = s.c.session, ended = old.audio.onended, metadata = old.audio.onloadedmetadata;
+  s.call('stopSession(false)'); s.call('runSession("breathe", 5)'); var replacement = s.c.session;
+  ended(); metadata();
+  flush().then(function () {
+    check('a stopped Erin greeting settles without clips or captions entering the replacement breathing session', s.c.session === replacement && s.clips.length === 1 && !s.captions.some(function (t) { return t === 'Settling in' || t === 'Coming back'; }) && old.audio.paused && old.cancelWait === null, s.clips.join(' | '));
+    var timer = replacement.timer, settled = false;
+    s.call('wait(250, session)').then(function () { settled = true; }); s.call('stopSession(false)'); s.call('runSession("erin", 3)'); var newest = s.c.session;
+    if (timer) timer.f();
+    return flush().then(function () { check('cancelling a timed wait resolves it, clears its own timer, and an old timer cannot act on the next session', settled && !replacement.timer && s.c.session === newest && !s.clips.some(function (t) { return /meditation_begin/.test(t); })); });
+  }).then(function () {
+    var p = env(); p.call('runPractice("plants", 0)');
+    return flush().then(function () {
+      var oldP = p.c.practice, fin = oldP.audio.onended, meta = oldP.audio.onloadedmetadata;
+      p.call('stopPractice()'); p.call('runPractice("teeth", 0)'); var nextP = p.c.practice; if (fin) fin(); if (meta) meta();
+      return flush().then(function () {
+        check('Everyday callbacks and captions belong to the originating practice, with the old audio and wait cancelled', p.c.practice === nextP && oldP.audio.paused && oldP.cancelWait === null && p.clips.length === 2 && p.clips[0].indexOf('plants-0-0') > -1 && p.clips[1].indexOf('teeth-0-0') > -1 && p.captions.length === 2, p.clips.join(' | '));
+        var b = env(); b.call('runSession("erin", 3)'); var bedRun = b.c.session; b.advance(5000); var openingPaused = false; b.c.erinAudio = { pause: function () { openingPaused = true; } }; b.call('stopEverything()');
+        check('bedtime stops the session audio and pending callbacks, saving nothing below a full minute', b.c.session === null && bedRun.audio.paused && openingPaused && bedRun.cancelWait === null && !b.timers.some(function (t) { return t.live; }) && b.w.OvuStore.list('mindfulness').length === 0 && !b.c.clock);
+        var long = env(); long.call('runSession("erin", 3)'); var lr = long.c.session; long.advance(61000); long.call('stopEverything()');
+        check('bedtime and Stop share the one-minute rule and stopped-session duration, with no delayed fade into night', long.c.session === null && lr.audio.paused && long.w.OvuStore.list('mindfulness').length === 1 && long.w.OvuStore.list('mindfulness')[0].data.minutes === 1 && !long.timers.some(function (t) { return t.live; }));
+        var failed = env(); failed.call('runSession("erin", 3)'); var fr = failed.c.session; failed.advance(61000); failed.w.localStorage.setItem = function () { throw new Error('quota'); }; failed.call('stopEverything()');
+        check('a bedtime save failure leaves no stopped session, live media timer or false completion behind', failed.c.session === null && fr.audio.paused && fr.cancelWait === null && !failed.timers.some(function (t) { return t.live; }) && !failed.w.OvuStore.list('mindfulness').length && !failed.saves.length && failed.toasts[0] === 'Your session could not be saved.');
+        var owner = env(); owner.call('exitMeditation()'); var restore = owner.timers[owner.timers.length - 1], before = owner.poses.length; owner.call('hudOn(true, "Watering")'); restore.f();
+        owner.c.meditating = true; owner.call('runSession("breathe", 1)'); owner.advance(61000); owner.call('finishSession(false)'); var fade = owner.timers[owner.timers.length - 1]; owner.call('hudOn(true, "Plant care")'); fade.f();
+        check('old mat restoration and saved-session fades cannot change the avatar or hide a newer garden or greenhouse HUD', owner.poses.length === before && owner.c.hud.classList.contains('on'));
+      });
+    });
+  }).then(function () {
+    var p = env(); p.call('runPractice("plants", 0)');
+    return flush().then(function () {
+      p.advance(65000); p.call('stopPractice()'); var pending = p.c.practice, yes = p.node('#pdYes').events.click, storage = p.w.localStorage, original = storage.setItem, writes = 0;
+      storage.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('quota'); return original.call(storage, k, v); };
+      yes();
+      var intact = p.c.practice === pending && p.c.current === 'practiceDone' && p.w.OvuStore.list('mindfulness').length === 0 && !p.w.OvuStore.state().explored;
+      storage.setItem = function (k, v) { if (k === 'ovumind_db_v1') writes++; return original.call(storage, k, v); }; yes(); yes();
+      var events = p.w.OvuStore.list('mindfulness');
+      check('failed Everyday confirmation keeps the prompt and exact pending practice, with no event or explored count left in memory', intact && /could not be saved/.test(p.toasts[0] || ''), p.toasts.join(' | '));
+      check('retry confirms the same practice once, committing its entry and exploration count in one database write', p.c.practice === null && p.c.current === null && events.length === 1 && p.w.OvuStore.state().explored.plants === 1 && events[0].data.confirmedReal && writes === 1 && p.saves.length === 1, JSON.stringify({ writes: writes, events: events.length }));
+      var no = env(); no.call('runPractice("plants", 0)'); no.advance(65000); no.call('stopPractice()'); no.node('#pdNo').events.click();
+      check('declining Everyday confirmation saves neither a journal entry nor an exploration completion', !no.w.OvuStore.list('mindfulness').length && !no.w.OvuStore.state().explored && no.c.practice === null);
+    });
+  }).then(function () { finished = true; }).catch(function (e) { check('runner regression chain completes', false, e.stack); finished = true; });
 })();
 
 (function erinOnEveryAction() {
@@ -694,6 +832,66 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('with an older energy module the big can reports it did not charge, so the caller charges the watering', wc.ok === true && wc.charged === false);
 })();
 
+(function rewardWritesAreAtomic() {
+  console.log('audit P1: failed reward writes leave no purchase, entitlement or receipt in memory');
+  var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, ls = w.localStorage, realSet = ls.setItem;
+  var base = { hearts: 500, earned: 500, log: [], owned: ['cat', 'acc-bow'], placed: { cat: true }, treats: { 'treat-fish': 2 }, wear: { cat: 'acc-bow' }, lastDay: null, streak: 0 };
+  var cases = [
+    ['furniture purchase', function () { RW.buy('plant'); }],
+    ['treat purchase', function () { RW.buy('treat-fish'); }],
+    ['treat use', function () { RW.useTreat('cat', 'treat-fish'); }],
+    ['accessory change', function () { RW.wear('cat', null); }],
+    ['placing an item', function () { RW.toggle('cat'); }],
+    ['one-off gift', function () { RW.grant(20, 'audit-gift'); }],
+    ['pet care', function () { RW.care('cat', 'feed'); }],
+    ['spending with state', function () { RW.spend(10, 'audit', { auditPurchase: true }); }],
+    ['practice thank-you', function () { RW.thank('audit', { auditPurchase: true }); }],
+    ['logging entitlement', function () { RW.recordWith('water', { auditPurchase: true }); }]
+  ];
+  cases.forEach(function (c) {
+    S.setState({ rewards: JSON.parse(JSON.stringify(base)) });
+    var snap = JSON.stringify(S.state()), threw = false;
+    ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+    try { c[1](); } catch (e) { threw = true; }
+    ls.setItem = realSet;
+    check(c[0] + ': a failed commit leaves memory exactly as before', threw && JSON.stringify(S.state()) === snap);
+    S.setProfile({ name: 'After failed ' + c[0] });
+    check(c[0] + ': a later unrelated save cannot persist the refused action', JSON.stringify(JSON.parse(ls.getItem('ovumind_db_v1')).state) === snap);
+  });
+  S.setState({ rewards: { hearts: 100, earned: 100, log: [], owned: ['cat', 'catgrey'], placed: { cat: false, catgrey: true } } });
+  var refund0 = JSON.stringify(S.state().rewards), refundFailed = false;
+  ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+  try { RW.ledger(); } catch (e) { refundFailed = true; }
+  ls.setItem = realSet;
+  check('a refused retired-item refund changes neither hearts nor ownership', refundFailed && JSON.stringify(S.state().rewards) === refund0);
+  check('the refund retries once when storage works', RW.ledger().hearts === 250 && RW.ledger().owned.join() === 'cat');
+  S.setState({ rewards: JSON.parse(JSON.stringify(base)) });
+  RW.buy('plant');
+  check('a successful purchase commits its price and item together', RW.ledger().hearts === 440 && RW.ledger().owned.indexOf('plant') > -1 && RW.ledger().placed.plant === true);
+
+  [
+    ['daily logging', 'food', { meal: 'lunch', foods: 'rice' }, 6],
+    ['seat practice', 'mindfulness', { kind: 'seat', seat: 'audit-seat', minutes: 1, completed: true }, 2],
+    ['Moon Tap', 'mindfulness', { kind: 'breathtap', seconds: 60, minutes: 1, completed: true }, 2]
+  ].forEach(function (c) {
+    S.setState({ rewards: { hearts: 0, earned: 0, log: [], owned: [], placed: {}, lastDay: null, streak: 0 } });
+    var ev = S.add(c[1], S.today(), c[2], 'room'), snap = JSON.stringify(S.state().rewards), failed = false;
+    ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+    try { RW.award(ev); } catch (e) { failed = true; }
+    ls.setItem = realSet;
+    check(c[0] + ': reward failure keeps the saved entry and no receipt or entitlement', failed && !!S.get(ev.id) && JSON.stringify(S.state().rewards) === snap);
+    S.load(true);
+    var writes = 0;
+    ls.setItem = function (k, v) { if (k === 'ovumind_db_v1' && ++writes === 2) throw new Error('second write refused'); return realSet.call(ls, k, v); };
+    var r = null; try { r = RW.award(ev); } catch (e) {} ls.setItem = realSet;
+    var paid = S.state().rewards, saved = JSON.parse(ls.getItem('ovumind_db_v1')).state.rewards;
+    check(c[0] + ': retry writes receipt, entitlement and points in a single commit', writes === 1 && r && r.points === c[3] && paid.hearts === c[3] && paid.receipts[ev.id] === 1 && JSON.stringify(paid) === JSON.stringify(saved));
+    S.load(true);
+    check(c[0] + ': reloaded receipt prevents a second award', RW.award(ev).again === true && RW.ledger().hearts === c[3]);
+  });
+})();
+
+
 (function noPeriodStatementsAreNotFlow() {
   console.log('3. "has not returned", "no period", "not bleeding" are no-period observations, never a period entry');
   var w = fresh(), O = w.OvuOrb, S = w.OvuStore;
@@ -795,6 +993,68 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('three short nights on separate dates are not "in a row"', !A4.allFlags(t4).some(function (f) { return f.code === 'SLEEP_SHORT_RUN'; }));
   [-2, -1].forEach(function (d) { S4.add('sleep', addDays(t4, d), { bedTime: '02:00', wakeTime: '06:00', quality: null, notes: '' }); });
   check('three short nights on adjacent dates are "in a row"', A4.allFlags(t4).some(function (f) { return f.code === 'SLEEP_SHORT_RUN'; }));
+})();
+
+(function savedEntryIsNotARewardFailure() {
+  console.log('a saved journal entry stays saved when its hearts write fails');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), start = src.indexOf('  function afterSave('), end = src.indexOf('\n  /* ---------- deck', start), lines = [];
+  var w = vm.createContext({ A: { analyze: function () { return { flags: [] }; } }, RW: { award: function () { throw new Error('QuotaExceededError'); } }, MO: null,
+    S: { profile: function () { return {}; } }, topCare: function () { return null; }, endMoment: function () { }, moment: function () { },
+    toast: function (line) { lines.push(line); }, renderProps: function () { }, renderDeck: function () { },
+    $: function () { return { classList: { add: function () { }, remove: function () { } } }; } });
+  vm.runInContext(src.slice(start, end), w);
+  var threw = false, result; try { result = w.afterSave({ id: 'already-saved' }); } catch (e) { threw = true; }
+  check('a failed award does not throw back into the diary save or claim that the entry failed', !threw && result && result.rewardFailed && lines.length === 1 && /Saved to your journal/.test(lines[0]) && /Hearts could not be saved/.test(lines[0]), lines.join());
+})();
+
+(function foodPhotoKeepsItsDraft() {
+  console.log('food photos: late shrink, barcode and recognition results keep their original meal and picker');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  var block = src.slice(src.indexOf("        var st = $('#fdPhotoState')"), src.indexOf("        $('#fdPhotoCam').addEventListener('change', onPhoto)"));
+  function gate() { var resolve, reject, promise = new Promise(function (a, b) { resolve = a; reject = b; }); return { promise: promise, resolve: resolve, reject: reject }; }
+  function turn() { return new Promise(function (resolve) { setImmediate(resolve); }); }
+  function world(stage) {
+    var g = gate(), nodes = {}, connected = true, out = { renders: 0, looks: 0, reads: 0, toasts: 0 }, current = { items: [], photo: null };
+    ['#fdPhotoState', '#thumb', '#fdAllow', '#fdPick'].forEach(function (id) { nodes[id] = { innerHTML: '', classList: { add: function () { } }, addEventListener: function () { } }; });
+    var w = vm.createContext({ draft: current, Promise: Promise, esc: String, inp2: { focus: function () { } },
+      $: function (id) { return nodes[id]; }, document: { body: { contains: function () { return connected; } } },
+      renderItems: function () { out.renders++; }, toast: function () { out.toasts++; }, lookup: function () { out.looks++; },
+      FD: { shrink: function () { return stage === 'shrink' ? g.promise : Promise.resolve({ dataUrl: 'photo', image: {} }); }, detectInImage: function () { return stage === 'barcode' ? g.promise : Promise.resolve(null); } },
+      ORB: { photosAllowed: function () { return true; }, parsePhoto: function () { out.reads++; return g.promise; } } });
+    vm.runInContext(block, w);
+    out.w = w; out.g = g; out.nodes = nodes; out.original = current; out.start = function () { return w.onPhoto.call({ files: [{}], value: 'chosen' }); };
+    out.detach = function () { connected = false; }; return out;
+  }
+  var finished = false;
+  process.on('exit', function () { if (!finished) { console.error('food photo regression did not finish'); process.exitCode = 1; } });
+  var a = world('shrink'), ap = a.start(); a.w.draft = { items: [], photo: null }; a.g.resolve({ dataUrl: 'old', image: {} });
+  ap.then(function () {
+    check('shrinking an old photo cannot set the new meal thumbnail or start recognition', a.w.draft.photo === null && a.original.photo === null && a.reads === 0);
+    var b = world('barcode'), bp = b.start();
+    return turn().then(function () { b.w.draft = { items: [], photo: null }; b.g.resolve('12345678'); return bp; }).then(function () {
+      check('a late barcode result never opens a picker in a new meal', b.looks === 0 && b.toasts === 0 && b.w.draft.photo === null);
+    });
+  }).then(function () {
+    var c = world('recognition'), cp = c.start();
+    return turn().then(function () { c.w.draft = { items: [], photo: null }; c.g.resolve({ isFood: true, items: [{ name: 'old noodles' }] }); return cp; }).then(function () {
+      check('old recognition cannot add food to its replacement draft', c.reads === 1 && c.w.draft.items.length === 0 && c.original.items.length === 0 && c.renders === 0);
+    });
+  }).then(function () {
+    var d = world('recognition'), dp = d.start();
+    return turn().then(function () { d.detach(); d.g.reject(new Error('late failure')); return dp; }).then(function () {
+      check('an old recognition failure cannot paint an error on a closed picker', d.renders === 0 && d.nodes['#fdPhotoState'].innerHTML.indexOf('late failure') < 0 && d.toasts === 0);
+    });
+  }).then(function () {
+    var e = world('recognition'), ep = e.start();
+    return turn().then(function () { e.nodes['#fdPhotoState'] = { innerHTML: '' }; e.g.resolve({ isFood: true, items: [{ name: 'old rice' }] }); return ep; }).then(function () {
+      check('replacing only the photo picker also invalidates recognition', e.original.items.length === 0 && e.renders === 0);
+    });
+  }).then(function () {
+    var f = world('recognition'), fp = f.start();
+    return turn().then(function () { f.g.resolve({ isFood: true, items: [{ name: 'current rice' }] }); return fp; }).then(function () {
+      check('recognition still fills its current meal exactly once', f.original.items.length === 1 && f.original.items[0].name === 'current rice' && f.renders === 1);
+    });
+  }).then(function () { finished = true; }).catch(function (e) { check('food photo continuations run to completion', false, e.stack); finished = true; });
 })();
 
 (function foodPhotoEstimates() {
@@ -2335,6 +2595,38 @@ function scenes(todayIso) {
   check('today’s prompt is the same all day and comes from the list', C.promptFor('2026-10-18') === C.promptFor('2026-10-18') && C.PROMPTS.indexOf(C.promptFor('2026-10-18')) > -1 && C.promptFor('2026-10-19') !== C.promptFor('2026-10-18'));
   check('noticeboard sample notes are marked as samples', C.NOTES.length >= 3 && C.NOTES.every(function (n) { return n.sample; }));
 })();
+(function communityFailedSavesKeepTheSheet() {
+  console.log('audit P1: hello and pinned notes leave no failed action in memory and retain her words');
+  var w = fresh(), S = w.OvuStore, ls = w.localStorage, realSet = ls.setItem, nodes = {}, opens = 0, closes = 0, toasts = [];
+  function node() { return { value: '', handlers: {}, addEventListener: function (k, f) { this.handlers[k] = f; } }; }
+  w.document = { createElement: node, getElementById: function (id) { return nodes[id] || (nodes[id] = node()); }, querySelector: function () { return null; }, addEventListener: function () {} };
+  w.OvuWalk = { napping: function () { return false; } };
+  w.OvuRoom = { ART: '', LAYOUTS: {}, hotspotHandlers: {}, esc: function (s) { return String(s || ''); }, on: function () {},
+    openSheet: function () { opens++; nodes = {}; }, closeSheet: function () { closes++; }, chime: function () {}, toast: function (t) { toasts.push(t); } };
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8'), w, { filename: 'ovu-community.js' });
+  var C = w.OvuCommunity;
+  S.setState({ community: { notes: [{ text: 'Original', date: S.today() }], hellos: { nadia: S.today() }, extra: 'keep' } });
+  C.openNeighbour('mei');
+  var snap = JSON.stringify(S.state().community), opened = opens;
+  ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+  var helloThrew = false; try { nodes.nbHello.handlers.click(); } catch (e) { helloThrew = true; } ls.setItem = realSet;
+  check('a refused hello leaves memory unchanged and keeps its sheet open for retry', !helloThrew && JSON.stringify(S.state().community) === snap && opens === opened && closes === 0 && /hello could not be saved/.test(toasts[toasts.length - 1]));
+  S.setProfile({ name: 'After failed hello' });
+  check('the refused hello cannot leak through a later unrelated save', JSON.stringify(JSON.parse(ls.getItem('ovumind_db_v1')).state.community) === snap);
+  nodes.nbHello.handlers.click();
+  check('retry saves just the intended hello and closes after success', S.state().community.hellos.mei === S.today() && S.state().community.hellos.nadia === S.today() && S.state().community.extra === 'keep' && closes === 1);
+  C.openBoard(); w.document.getElementById('noteText').value = 'Keep these words for retry';
+  var textarea = nodes.noteText, pin = nodes.notePin, snap2 = JSON.stringify(S.state().community), opened2 = opens;
+  ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+  var pinThrew = false; try { pin.handlers.click(); } catch (e) { pinThrew = true; } ls.setItem = realSet;
+  check('a refused pin leaves memory unchanged, the entered words and the same sheet available', !pinThrew && JSON.stringify(S.state().community) === snap2 && opens === opened2 && nodes.noteText === textarea && textarea.value === 'Keep these words for retry' && /note could not be saved/.test(toasts[toasts.length - 1]));
+  S.setProfile({ name: 'After failed pin' });
+  check('the refused pin cannot leak through a later unrelated save', JSON.stringify(JSON.parse(ls.getItem('ovumind_db_v1')).state.community) === snap2);
+  pin.handlers.click();
+  check('retry pins one copy, preserves other community data and redraws after success', S.state().community.notes.length === 2 && S.state().community.notes[1].text === textarea.value && S.state().community.extra === 'keep' && opens === opened2 + 1);
+})();
+
+
 (function lunaLook() {
   console.log("Luna's look (ovu-mascot.js): one pastel crescent moon");
   var w = fresh(), M = w.OvuMascot;
@@ -2809,6 +3101,25 @@ function scenes(todayIso) {
 })();
 
 /* ---------- plaza servers (ovu-plaza.js): the words a person sees; the server rules are tested in the database ---------- */
+(function freeSeedFailureIsAtomic() {
+  console.log('audit P1: free seeds and their daily allowance commit together');
+  var w = fresh(), S = w.OvuStore, ls = w.localStorage, realSet = ls.setItem, day = S.today();
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  var F = w.OvuFarm;
+  S.setState({ farm: { seeds: { carrot: 2 }, seedsByDay: {}, beds: {}, harvest: {}, guided: true } });
+  var snap = JSON.stringify(S.state().farm), failed = null;
+  ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+  try { failed = F.takeSeed(S, 'carrot', day); } catch (e) { failed = null; }
+  ls.setItem = realSet;
+  check('a failed free-seed claim is handled, keeps the farm unchanged and retains all three claims', failed && !failed.ok && /could not be saved/.test(failed.why) && JSON.stringify(S.state().farm) === snap && F.seedsLeftToday(S, day) === 3);
+  S.setProfile({ name: 'Unrelated later save' });
+  check('a later save never persists the refused seed', JSON.stringify(JSON.parse(ls.getItem('ovumind_db_v1')).state.farm) === snap);
+  var writes = 0; ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') writes++; return realSet.call(ls, k, v); };
+  var r = F.takeSeed(S, 'carrot', day); ls.setItem = realSet;
+  check('retry takes one allowance and gives one seed in one commit', r.ok && writes === 1 && F.farmState(S).seeds.carrot === 3 && F.seedsLeftToday(S, day) === 2);
+})();
+
+
 (function plazaWords() {
   console.log('plaza servers: counts read like a person would say them; full plazas point to one with room');
   var w = fresh('2026-10-19');

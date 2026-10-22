@@ -67,11 +67,13 @@
     var st = S.state(), l = st.rewards || { hearts: 0, earned: 0, log: [], owned: [], placed: {}, lastDay: null, streak: 0 };
     var gone = (l.owned || []).filter(function (id) { return RETIRED[id]; });
     if (!gone.length) return l;
+    l = JSON.parse(JSON.stringify(l)); /* a failed refund must leave the live ledger untouched */
     gone.forEach(function (id) { l.hearts += RETIRED[id]; l.owned.splice(l.owned.indexOf(id), 1); delete l.placed[id]; l.log.unshift({ at: new Date().toISOString(), type: 'refund', item: id, points: RETIRED[id] }); });
     if (l.owned.indexOf('cat') > -1 && !SHOP.some(function (o) { return o.slot === 'cat' && l.placed[o.id]; })) l.placed.cat = true;
-    S.setState({ rewards: l }); return l;
+    return write(l);
   }
-  function write(l) { S.setState({ rewards: l }); return l; }
+  function copiedLedger() { return JSON.parse(JSON.stringify(ledger())); }
+  function write(l) { if (S.commit) S.commit({ rewards: l }); else S.setState({ rewards: l }); return l; }
   /* tester mode (room.html?tester=hearts): nothing is deducted on this device, so every shelf can be tried */
   function tester() { var t = S.state().tester; return !!(t && t.hearts); }
   /* Practice is a small, flat thank-you (Jamie, 19 Oct: hearts are for logging data; mindfulness contributes a small
@@ -107,21 +109,22 @@
     /* only today's own log earns: a backfilled day or an entry brought in from another app earns nothing, as the rule above
        says (Codex design review, 20 Oct: an old date or an import still paid six food hearts on an empty ledger) */
     if ((ev.date && ev.date !== S.today()) || IMPORTED_SRC[ev.source]) return { points: 0, bonus: 0, hearts: ledger().hearts, backfill: true };
-    var l0 = ledger(); if (receipted(l0, ev)) { write(l0); return { points: 0, bonus: 0, hearts: l0.hearts, streak: l0.streak, again: true }; } write(l0);
+    /* The receipt, daily entitlement and hearts land together, or all remain retryable. */
+    var l = copiedLedger(); if (receipted(l, ev)) return { points: 0, bonus: 0, hearts: l.hearts, streak: l.streak, again: true };
     if (ev.type === 'mindfulness' && ev.data && ev.data.kind === 'breathtap') {
       /* Moon Tap: the flat practice thank-you once a session reaches a full minute; never touches the streak, nothing for taps */
-      var lb = ledger(), bp = practicePoints(lb, ev);
-      if (bp) { lb.hearts += bp; lb.earned += bp; lb.log = lb.log || []; lb.log.unshift({ at: new Date().toISOString(), type: 'breathtap', points: bp }); lb.log = lb.log.slice(0, 200); }
-      write(lb); return { points: bp, bonus: 0, hearts: lb.hearts, streak: lb.streak };
+      var bp = practicePoints(l, ev);
+      if (bp) { l.hearts += bp; l.earned += bp; l.log = l.log || []; l.log.unshift({ at: new Date().toISOString(), type: 'breathtap', points: bp }); l.log = l.log.slice(0, 200); }
+      write(l); return { points: bp, bonus: 0, hearts: l.hearts, streak: l.streak };
     }
-    var l = ledger(), pts = ev.type === 'mindfulness' ? (ev.data && ev.data.seat ? seatPoints(l, ev) : practicePoints(l, ev)) /* a flat small thank-you, capped per day */ : dailyPoints(l, ev.type);
+    var pts = ev.type === 'mindfulness' ? (ev.data && ev.data.seat ? seatPoints(l, ev) : practicePoints(l, ev)) /* a flat small thank-you, capped per day */ : dailyPoints(l, ev.type);
     /* no streak bonus and no per-item meal bonus (four-persona review, 20 Oct, every persona and every model: a run of days and
      * a longer meal list are pressure, and hearts are for logging, not for logging more). The days-logged count stays as a
      * plain record; it never changes what anything earns. */
     var today = S.today(), bonus = 0;
     if (l.lastDay !== today) { l.lastDay = today; l.streak = 0; } /* no streak is counted any more (Codex branch review, 20 Oct) */
     var total = pts + bonus;
-    if (total <= 0) return { points: 0, bonus: 0, hearts: l.hearts };
+    if (total <= 0) { write(l); return { points: 0, bonus: 0, hearts: l.hearts }; }
     l.hearts += total; l.earned += total; l.log.unshift({ at: new Date().toISOString(), type: ev.type, points: pts, bonus: bonus }); l.log = l.log.slice(0, 200);
     write(l); return { points: pts, bonus: bonus, hearts: l.hearts, streak: l.streak };
   }
@@ -156,8 +159,9 @@
     return { points: pts, hearts: l.hearts };
   }
   function buy(id) {
-    var l = ledger(), item = SHOP.filter(function (s) { return s.id === id; })[0];
+    var l = copiedLedger(), item = SHOP.filter(function (s) { return s.id === id; })[0];
     if (!item || item.locked) throw new Error('Not available yet.');
+    item = Object.assign({}, item); /* purchase feedback belongs to this successful purchase */
     if (item.kind !== 'treat' && l.owned.indexOf(id) > -1) throw new Error('Already yours.');
     if (l.hearts < item.cost && !tester()) throw new Error('You need ' + (item.cost - l.hearts) + ' more hearts.');
     if (!tester()) l.hearts -= item.cost;
@@ -175,13 +179,13 @@
       .map(function (s) { return { id: s.id, name: s.name, img: s.img, left: t[s.id] }; }).sort(function (a, b) { return b.left - a.left; });
   }
   function useTreat(petId, treatId) {
-    var l = ledger(), t = l.treats || {}; if (!(t[treatId] > 0)) throw new Error('None of those left.');
+    var l = copiedLedger(), t = l.treats || {}; if (!(t[treatId] > 0)) throw new Error('None of those left.');
     t[treatId] -= 1; if (!t[treatId]) delete t[treatId]; l.treats = t; write(l); return { left: t[treatId] || 0, item: item(treatId) };
   }
   /* accessories: one per pet, and each piece is worn by one pet at a time */
   function wearing(petId) { var w = ledger().wear || {}; return w[petId] ? item(w[petId]) : null; }
   function wear(petId, accId) {
-    var l = ledger(), w = l.wear || {};
+    var l = copiedLedger(), w = l.wear || {};
     if (accId && (l.owned.indexOf(accId) < 0 || !item(accId) || item(accId).kind !== 'accessory')) throw new Error('Not in the drawer.');
     Object.keys(w).forEach(function (p) { if (w[p] === accId) delete w[p]; });
     if (accId) w[petId] = accId; else delete w[petId];
@@ -195,10 +199,10 @@
     return wear(petId, next);
   }
   /* a one-off gift, e.g. finishing the intro */
-  function grant(points, type) { var l = ledger(); points = Math.max(0, Math.round(points)); if (!points) return l; l.gifts = l.gifts || {}; if (l.gifts[type] || (l.log || []).some(function (x) { return x.type === type && x.gift; })) return l; l.gifts[type] = true; l.hearts += points; l.earned += points; l.log.unshift({ at: new Date().toISOString(), type: type, points: points, bonus: 0, gift: true }); write(l); return l; }
+  function grant(points, type) { var l = copiedLedger(); points = Math.max(0, Math.round(points)); if (!points) return l; l.gifts = l.gifts || {}; if (l.gifts[type] || (l.log || []).some(function (x) { return x.type === type && x.gift; })) return l; l.gifts[type] = true; l.hearts += points; l.earned += points; l.log.unshift({ at: new Date().toISOString(), type: type, points: points, bonus: 0, gift: true }); write(l); return l; }
   /* two pets at home at a time, whatever their kind */
   function petsAtHome(l, except) { return SHOP.filter(function (s) { return s.kind === 'pet' && s.id !== except && l.owned.indexOf(s.id) > -1 && l.placed[s.id]; }).length; }
-  function toggle(id, on) { var l = ledger(); if (l.owned.indexOf(id) < 0) return false; var it = item(id); if (it && it.kind === 'pet' && !l.placed[id] && !(it.slot && SHOP.some(function (o) { return o.slot === it.slot && o.id !== id && l.placed[o.id]; })) && petsAtHome(l, id) >= 2) throw new Error('Two pets at home at a time. Put one away first.'); l.placed[id] = !l.placed[id]; if (l.placed[id]) swapOut(l, SHOP.filter(function (s) { return s.id === id; })[0]); write(l); return l.placed[id]; }
+  function toggle(id, on) { var l = copiedLedger(); if (l.owned.indexOf(id) < 0) return false; var it = item(id); if (it && it.kind === 'pet' && !l.placed[id] && !(it.slot && SHOP.some(function (o) { return o.slot === it.slot && o.id !== id && l.placed[o.id]; })) && petsAtHome(l, id) >= 2) throw new Error('Two pets at home at a time. Put one away first.'); l.placed[id] = !l.placed[id]; if (l.placed[id]) swapOut(l, SHOP.filter(function (s) { return s.id === id; })[0]); write(l); return l.placed[id]; }
   /* One piece per slot (seat, lamp, corner): placing one puts the others in its slot away. */
   var SLOTS = { seat: 'Seat on the rug', lamp: 'Lamp by the wardrobe', corner: 'Corner by the wardrobe', cat: 'One kitten at a time', dog: 'One puppy at a time' };
   function swapOut(l, item) { var out = []; if (!item || !item.slot) return out; SHOP.forEach(function (o) { if (o.slot === item.slot && o.id !== item.id && l.placed[o.id]) { l.placed[o.id] = false; out.push(o.name); } }); return out; }
@@ -206,7 +210,7 @@
      The function stays so the pets' actions keep working and the ledger shape is unchanged. */
   var CARE = { feed: 0, play: 0, clean: 0, cuddle: 0 }, CARE_CAP = 0;
   function care(pet, action) {
-    var l = ledger(), today = S.today(), pts = CARE[action] || 0;
+    var l = copiedLedger(), today = S.today(), pts = CARE[action] || 0;
     var c = l.care && l.care.day === today ? l.care : { day: today, by: {} };
     var got = c.by[pet] || 0, add = Math.max(0, Math.min(pts, CARE_CAP - got));
     c.by[pet] = got + add; l.care = c;
