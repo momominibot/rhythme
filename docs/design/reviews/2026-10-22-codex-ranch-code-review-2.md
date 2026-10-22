@@ -135,4 +135,22 @@ The unchanged farm planting/watering/harvest writers and greenhouse basket write
 
 
 
-## Round 8: see below once it ends
+## Round 8 (after the tainted-resend rule, the token-wait deadline and per-bed ownership of a queued save): HOLD on one item
+
+1. **P1: seed overwrite FIXED by policy.** Account-wins covers discarding unlinked farm edits; a field-wise merge would contradict that rule. **However, reward loss remains outside the policy.** Reproduced with two real stores and a mock server: account 10 + phone A’s 5 → link accepted, reply lost → A earns 3 → phone B adds 7 → A resends. Result: **22 hearts, expected 25**. Recovery clears `journal` at `ovu-gamesave.js:236`; the newer-revision pull then replays that empty journal at `ovu-gamesave.js:285`. Preserve A’s unapplied award journal through recovery.
+
+   **Specified tainted cases: FIXED.** Lost reply → tester farm write → resend retained only the account’s 10 hearts/items/treats (`ovu-gamesave.js:235`). With no account copy, the tainted phone made zero uploads and preserved local play (`ovu-gamesave.js:278`).
+
+2. **P2 token deadline: FIXED.** A never-resolving `A().token()` timed out, returned `error`, and allowed a subsequent sync. Late token resolution caused no request (`ovu-gamesave.js:175`, `ovu-gamesave.js:177`).
+
+   **P2 stale bed/planter takeover: FIXED.** Finish A → queue → close A → open B → release produced zero writes and left B open. Guards check the bed identity (`ovu-farm.js:301`, `ovu-greenhouse.js:464`), including harvest and planter clearing (`ovu-farm.js:431`, `ovu-greenhouse.js:493`).
+
+3. **No regression reproduced in the requested cases.** External redraw reopened the same farm bed and its queued operation still committed once (`ovu-farm.js:557`, `ovu-farm.js:443`). Well filling succeeded both with and without `back`; its guard correctly checks `shown.kind`, without comparing the navigation argument (`ovu-farm.js:302`, `ovu-farm.js:359`). A queued harvest from A saved nothing after B replaced it (`ovu-farm.js:431`).
+
+`node tools/test-core.js`: **1,791 passed, 0 failed**. Additional in-memory probes above; no files modified.
+
+**HOLD: P1 post-link awards lost when another phone advances the account before resend; no remaining P2 in the requested cases.**
+
+
+
+## Round 9 (after the resend journal keeps the hearts earned since the link was packed): see below once it ends

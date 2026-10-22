@@ -233,7 +233,9 @@
              (what the phone did to its own farm while unlinked yields to the account's farm, as it would have at the first
              link); a tester phone takes the account copy alone, its tester rewards never join (Codex, 22 Oct) */
           if (p.remote) apply(uid, p.tainted ? clone(p.remote) : linkMerge(now, p.remote));
-          patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), journal: [], pending: null, seq: 1, acked: 0, hash: hashOf(p.save) });
+          /* the hearts earned here since the link was packed ride in the journal, so a pull of a newer account copy
+             (another phone wrote first) replays them instead of losing them (Codex, 22 Oct) */
+          patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), journal: extra && !p.tainted ? [{ id: 'l' + Date.now(), kind: 'other', n: extra }] : [], pending: null, seq: 1, acked: 0, hash: hashOf(p.save) });
           schedule();
           return 'linked';
         }
