@@ -1850,6 +1850,15 @@ async def main():
             cv = await page.evaluate("()=>{var st=window.__t.st, d=window.__t.d, before=window.__t.before; var p=OvuFarm.farmState(OvuStore).pantry; return {before: before, layout: document.querySelector('#scene').dataset.layout, map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.cave, onsen: p.onsenegg, eggs: p.egg, sameEnergy: JSON.stringify(OvuStore.state().stamina) === st, sameDiary: OvuStore.list().length === d, done: !!document.querySelector('#cookDone'), primary: (document.querySelector('#cookDone')||{}).className||''}}")
             check("stepping through the crack finds the hidden spring, which then shows on the map; onsen eggs change no energy or diary, and Done comes first", cv["layout"] == "cave" and cv["map"] and cv["before"] >= 1 and cv["onsen"] == cv["before"] and cv["eggs"] == 0 and cv["sameEnergy"] and cv["sameDiary"] and cv["done"] and "primary" in cv["primary"], cv)
             await page.click('#cookDone')
+            # the soak (22 Oct): she walks to the edge and only her head and shoulders show, a towel on her head; Get out brings her back
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('springsoak'))")
+            try: await page.wait_for_function("()=>OvuSoak.soaking()", timeout=12000)
+            except Exception: pass
+            await page.wait_for_timeout(300)
+            sk = await page.evaluate("()=>{var e=document.querySelector('#ownedProps .soaker'), a=document.querySelector('#avatar'); return {on: OvuSoak.soaking(), img: e ? e.querySelector('img').getAttribute('src').split('/').pop() : null, loaded: !!(e && e.querySelector('img').naturalWidth>0), hidden: getComputedStyle(a).opacity === '0', stop: !!document.querySelector('#soakStop'), d: OvuStore.list().length, st: JSON.stringify(OvuStore.state().stamina)}}")
+            await page.evaluate("()=>{var b=document.querySelector('#soakStop'); if(b) b.click()}"); await page.wait_for_timeout(300)
+            sk2 = await page.evaluate("()=>({on: OvuSoak.soaking(), shown: getComputedStyle(document.querySelector('#avatar')).opacity !== '0', stop: !!document.querySelector('#soakStop'), d: OvuStore.list().length, st: JSON.stringify(OvuStore.state().stamina)})")
+            check("the warm water: she soaks with only her head and shoulders above the water and a towel on her head; her standing picture is hidden; Get out brings her back; nothing is counted", sk["on"] and sk["img"] in ("soak-base.webp", "soak-tudung.webp") and sk["loaded"] and sk["hidden"] and sk["stop"] and not sk2["on"] and sk2["shown"] and not sk2["stop"] and sk2["d"] == sk["d"] and sk2["st"] == sk["st"], [sk, sk2])
             # the hidden spring (21 Oct): sitting by the water is the tone; one Stop for both; no diary, no hearts, no energy
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")
             try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
@@ -1997,6 +2006,9 @@ async def main():
             up = await lane_go('hblane', 'lane')
             check("walking onto the signpost's doorstep from the harbour takes her up the lane again", up["layout"] == "lane" and near(up["pos"], 51, 84), up)
             gi = await lane_go('lanegrocer', 'lane-grocer')
+            # the grocer's keeper (22 Oct): at her height by the counter; a tap says hello in a bubble and to screen readers
+            kp = await page.evaluate("()=>{var k=document.querySelector('#ownedProps .keeper'); if(!k) return null; k.click(); var r=k.getBoundingClientRect(), a=document.querySelector('#avatar').getBoundingClientRect(); return {id: k.dataset.id, h: r.height, ah: a.height, loaded: k.querySelector('img').naturalWidth>0, saying: k.classList.contains('saying'), line: k.querySelector('.keepsay').textContent, live: (document.getElementById('keeperLive')||{}).textContent||'', label: k.getAttribute('aria-label')}}")
+            check("Hay & Harvest has its keeper by the counter at her height; a tap says hello in a bubble and for screen readers", kp and kp["id"] == "keeper-grocer" and kp["loaded"] and abs(kp["h"] - kp["ah"]) < 1.5 and kp["saying"] and kp["line"].startswith("Good ") and kp["line"] in kp["live"] and "Tap to say hello" in kp["label"], kp)
             gc = await lane_sheet('grocercounter')
             await page.click('#sheet[aria-hidden="false"] [data-lane=back]'); await page.wait_for_timeout(400)
             gb = await page.evaluate("()=>({open: OvuRoom.sheetOpen(), layout: document.querySelector('#scene').dataset.layout})")

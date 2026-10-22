@@ -3799,6 +3799,34 @@ var summarised = false;
   check('room.html loads the lane after the harbour', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('ovu-lane.js') > h.indexOf('ovu-harbour.js') && h.indexOf('ovu-harbour.js') > -1; })());
 })();
 
+(function shopkeepersAndSoak() {
+  console.log('2k7s. shopkeepers and the soak (22 Oct): a keeper in every store at her height, never in her way; a soak in the spring with a towel, a hood under it in the tudung');
+  var w = scenes('2026-10-22'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-harbour.js', 'ovu-lane.js', 'ovu-lanescene.js', 'ovu-barn.js', 'ovu-keepers.js', 'ovu-soak.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var KP = w.OvuKeepers, K = w.OvuWalk, LS = w.OvuLaneScene.LAYOUTS, ids = Object.keys(KP.KEEPERS);
+  var lay = function (id) { return LS[id] || w.LAYOUTS[id]; };
+  check('a keeper in each store (Jamie, 22 Oct: "I want NPC in each store"): the grocer, the boutique, the gym, the tackle shelf on the lane and the three Dream Street shops, each picture on disk on her own canvas', ids.slice().sort().join() === 'lane,lane-boutique,lane-grocer,lane-gym,shop-furniture,shop-homes,shop-pet' && ids.every(function (id) { var k = KP.KEEPERS[id], p = path.join(root, 'assets/room/dream', k.img); return !!lay(id) && fs.existsSync(p) && k.lines.length >= 3 && k.name && k.role; }));
+  var trouble = [];
+  ids.forEach(function (id) {
+    var k = KP.KEEPERS[id], L = JSON.parse(JSON.stringify(lay(id)));
+    if (k.x < 5 || k.x > 95 || k.y < 20 || k.y > 95) trouble.push(id + ' off the plate');
+    if (k.block) L.solids = (L.solids || []).concat([Object.assign({ id: 'keeper' }, k.block)]);
+    var bad = K.checkLayout(L); if (bad.length) trouble.push(id + ': ' + bad.join('; '));
+    var wd = K.world(L, []), starts = (L.doors && L.doors.length ? L.doors : [L.home]).map(function (x) { return { x: x.x, y: x.y }; });
+    var targets = (L.hotspots || []).filter(function (h) { return h.wp; }).map(function (h) { return h.wp; }).concat([L.home]);
+    starts.forEach(function (a) { targets.forEach(function (t) { if (!(Math.abs(a.x - t.x) < 0.01 && Math.abs(a.y - t.y) < 0.01) && !K.plan(wd, a, t, 2)) trouble.push(id + ' cannot reach ' + t.x + ',' + t.y); }); });
+  });
+  check('with each keeper\'s floor taken, every stand point, home and door of that store is still on the floor, outside every solid, and reachable from the way in', trouble.length === 0, trouble.join(' | '));
+  var k0 = KP.KEEPERS['lane-grocer'], r1 = KP.nextLine(k0, null, '2026-10-22', 9), r2 = KP.nextLine(k0, r1.mem, '2026-10-22', 9), r3 = KP.nextLine(k0, r2.mem, '2026-10-22', 9), r4 = KP.nextLine(k0, r3.mem, '2026-10-23', 20);
+  check('a tap says hello first each day (by the hour), then the shop\'s own lines in turn, and a new day says hello again', r1.text === 'Good morning! I am ' + k0.name + '.' && r2.text === k0.lines[0] && r3.text === k0.lines[1] && r4.text === 'Good evening! I am ' + k0.name + '.' && KP.hello('X', 14) === 'Good afternoon! I am X.');
+  var ksrc = fs.readFileSync(path.join(root, 'ovu-keepers.js'), 'utf8');
+  check('keepers sell nothing, count nothing and save nothing: no store writes, no hearts, no diary; the line is also read to screen readers', !/S\.setState|setProfile|OvuRewards|OvuStore\.add|localStorage/.test(ksrc) && /aria-live/.test(ksrc) && /aria-label/.test(ksrc));
+  var Q = w.OvuSoak, CV = w.OvuBarn.CAVE, soak = CV.hotspots.filter(function (h) { return h.id === 'springsoak'; })[0];
+  check('the soak: a hotspot on the warm water with its stand point by the edge; the towel picture, and the swim hood under the towel in the tudung so her hair never shows; both pictures on disk', !!soak && !!CV.soak && Q.picFor('tudung') === 'soak-tudung.webp' && Q.picFor('base') === 'soak-base.webp' && Q.picFor('gown') === 'soak-base.webp' && ['soak-base.webp', 'soak-tudung.webp'].every(function (f) { return fs.existsSync(path.join(root, 'assets/room/dream', f)); }));
+  var qsrc = fs.readFileSync(path.join(root, 'ovu-soak.js'), 'utf8');
+  check('the soak counts nothing and ends like sitting by the water: on walking, leaving the cave, a practice, sleep, a hidden screen or a sync; it waits its turn behind a running activity', !/OvuRewards|OvuStamina|S\.setState|OvuStore\.add/.test(qsrc) && ['beforeWalk', "'walk'", "'layout'", "'activity'", 'visibilitychange', 'sleeping', 'sync'].every(function (k) { return qsrc.indexOf(k) > -1; }) && /refuseBusy/.test(qsrc));
+})();
+
 (function harbourLaneScene() {
   console.log('2k7c. Harbour Lane as a place (21 Oct): the signpost walks her up the lane; the grocer, the boutique and the gym are rooms to walk into; every spot on the floor and reachable; the map shows the lane, not its rooms; nothing new is written');
   var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
