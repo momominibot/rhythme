@@ -12,6 +12,10 @@ Usage: run_batch.py jobs.json OUTDIR [--only id,id] [--dry] [--redo id,id]
 - each job runs `gen.py --retries 0 --url`; success is gen.py's exit code 0 AND an output file that PIL opens at the size
   asked for (judged by gen.py's exit code and the file, never by grepping its output, which once matched "403" inside a
   path); anything else stops the run with the job's id, and nothing after it is attempted;
+- both output channels are read on every job, exit 0 included: a success must print exactly gen.py's one JSON line on
+  stdout (naming this output) and nothing on stderr; anything else (a usage, rate, credit or session message) stops the run;
+- a stop is persisted as OUTDIR/BLOCKED.json and a later run refuses to start while it exists: no automatic retry and no
+  model or account fallback; a person reads it and decides;
 - every start, finish and stop is appended to OUTDIR/run.log. The key is gen.py's business (ARK_API_KEY or the file).
 No keying, no WebP: those are done by hand after looking at each picture (keyout.py, cwebp)."""
 import argparse, json, os, signal, subprocess, sys, time
@@ -47,7 +51,9 @@ def main():
     if a.only:
         keep = set(a.only.split(",")); jobs = [j for j in jobs if j["id"] in keep]
     os.makedirs(a.outdir, exist_ok=True)
-    lock, logp = os.path.join(a.outdir, ".lock"), os.path.join(a.outdir, "run.log")
+    lock, logp, blockp = os.path.join(a.outdir, ".lock"), os.path.join(a.outdir, "run.log"), os.path.join(a.outdir, "BLOCKED.json")
+    if os.path.exists(blockp):
+        print("a stopped run is persisted in %s; not starting (read it; only a person lifts it)" % blockp, file=sys.stderr); sys.exit(10)
 
     def log(msg):
         line = time.strftime("%Y-%m-%d %H:%M:%S ") + msg
@@ -84,9 +90,19 @@ def main():
             log("job %s: %s %s seed %s" % (j["id"], j["out"], j["size"], j.get("seed")))
             t0 = time.time(); p = subprocess.run(cmd, capture_output=True, text=True)
             ok, got = opens(out, j.get("size")) if p.returncode == 0 and os.path.exists(out) else (False, None)
-            if not ok:
-                if p.returncode == 0 and os.path.exists(out): os.replace(out, bad)  # paid for: keep it, and never render it again by accident
-                log("STOP at %s: exit %s, image %s, after %.1f s. stderr: %s" % (j["id"], p.returncode, got, time.time() - t0, (p.stderr or "").strip()[-400:]))
+            so, se = (p.stdout or "").strip(), (p.stderr or "").strip()
+            clean = False
+            try:
+                line = json.loads(so) if so and "\n" not in so else None
+                clean = isinstance(line, dict) and os.path.abspath(line.get("out", "")) == os.path.abspath(out) and not se
+            except ValueError:
+                clean = False
+            if not ok or not clean:
+                if p.returncode == 0 and os.path.exists(out) and not ok: os.replace(out, bad)  # paid for: keep it, and never render it again by accident
+                why = "exit %s, image %s, clean output %s" % (p.returncode, got, clean)
+                log("STOP at %s: %s, after %.1f s. stdout: %s | stderr: %s" % (j["id"], why, time.time() - t0, so[-300:], se[-400:]))
+                json.dump({"job": j["id"], "why": why, "stdout": so[-300:], "stderr": se[-400:], "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                           "rule": "first failure stops the run; no retry, no model or account fallback; a person decides"}, open(blockp, "w"), indent=1)
                 sys.exit(1)
             log("done %s: %s in %.1f s" % (j["id"], got, time.time() - t0))
         log("finished")

@@ -241,13 +241,30 @@ async def main():
             await page.click('.mapnode[data-node=plaza]'); await page.wait_for_timeout(200)
             pr = await page.evaluate("()=>({steps: [...document.querySelectorAll('#mapRoute li')].map(l=>l.textContent), layout: document.querySelector('#scene').dataset.layout})")
             check("tapping the plaza on the map shows the way (the arch, then the street arch) and does not move her", pr["layout"] == "garden" and len(pr["steps"]) == 2 and "on to Dream Street" in pr["steps"][0] and "on to the plaza" in pr["steps"][1], pr)
-            # the wider world (21 Oct): the known map in the middle, ??? fog around it, zoom by buttons; names appear once zoomed in
-            ww = await page.evaluate("()=>({fog: document.querySelectorAll('.fog').length, far: document.querySelector('#worldZoom').classList.contains('far'), z: OvuMap.zoomState(), known: !!document.querySelector('.worldmap.known'), nameShown: getComputedStyle(document.querySelector('.mapnode[data-node=plaza] b')).display})")
-            await page.evaluate("()=>document.querySelector('.fog[data-fog=north]').click()"); await page.wait_for_timeout(150)  # the patches drift, so a synthetic tap; zoomed in they sit off screen
-            wf = await page.evaluate("()=>({route: document.querySelector('#mapRoute').textContent, layout: document.querySelector('#scene').dataset.layout})")
+            # the wider world (21 Oct, Jamie: "whatever we built will be at a corner of it, the rest ... just the field, the land unbuilt"):
+            # land edge to edge, the places in the top-left corner, the view opening on them; no ??? and no mist (the box measured inside its border)
+            GEO = "()=>{var e=document.querySelector('#worldZoom'), o=e.getBoundingClientRect(), v={left:o.left+e.clientLeft, top:o.top+e.clientTop, width:e.clientWidth, height:e.clientHeight}; v.right=v.left+v.width; v.bottom=v.top+v.height; var p=document.querySelector('#worldWide').getBoundingClientRect(), ns=[...document.querySelectorAll('.mapnode')].map(n=>{var r=n.getBoundingClientRect(); return {id:n.dataset.node, x:(r.left+r.width/2-p.left)/p.width, y:(r.top+r.height/2-p.top)/p.height, sx:r.left+r.width/2-v.left, sy:r.top+r.height/2-v.top}}); return {fog: document.querySelectorAll('.fog,[data-fog]').length, q: /\\?\\?\\?/.test(document.querySelector('#sheet').textContent), far: document.querySelector('#worldZoom').classList.contains('far'), z: OvuMap.zoomState(), vw: v.width, vh: v.height, cover: p.left<=v.left+0.5 && p.top<=v.top+0.5 && p.right>=v.right-0.5 && p.bottom>=v.bottom-0.5, ns: ns, nameShown: getComputedStyle(document.querySelector('.mapnode[data-node=plaza] b')).display}}"
+            w0 = await page.evaluate(GEO)
+            check("the wider world opens on the built corner: land under the whole box, every place on screen, names hidden until zoomed in, no ??? anywhere", w0["fog"] == 0 and not w0["q"] and w0["cover"] and w0["far"] and w0["nameShown"] == "none" and all(4 <= n["sx"] <= w0["vw"] - 4 and 4 <= n["sy"] <= w0["vh"] - 4 for n in w0["ns"]) and all(n["x"] < 0.45 and n["y"] < 0.45 for n in w0["ns"]) and 0.5 < w0["z"]["s"] < 1, {k: w0[k] for k in ("fog", "q", "cover", "far", "z")})
             await page.click('#mapZoomIn'); await page.click('#mapZoomIn'); await page.wait_for_timeout(150)
-            wz = await page.evaluate("()=>({far: document.querySelector('#worldZoom').classList.contains('far'), z: OvuMap.zoomState(), nameShown: getComputedStyle(document.querySelector('.mapnode[data-node=plaza] b')).display})")
-            check("the wider world: eight ??? patches around the known map, names hidden while zoomed out and shown after two zoom-ins; a ??? patch says it is not built yet and moves nobody", ww["fog"] == 8 and ww["far"] and ww["known"] and ww["nameShown"] == "none" and abs(ww["z"]["s"] - 0.5) < 0.01 and not wz["far"] and wz["z"]["s"] > 0.9 and wz["nameShown"] != "none" and "???" in wf["route"] and wf["layout"] == "garden", {"out": ww, "in": wz, "fog": wf})
+            wz = await page.evaluate(GEO)
+            box = await page.query_selector('#worldZoom'); bb = await box.bounding_box()
+            for _ in range(3):  # drag towards the far corner of the world, further than the land goes
+                await page.mouse.move(bb["x"] + bb["width"] * 0.9, bb["y"] + bb["height"] * 0.9); await page.mouse.down(); await page.mouse.move(bb["x"] + bb["width"] * 0.05, bb["y"] + bb["height"] * 0.05, steps=6); await page.mouse.up(); await page.wait_for_timeout(80)
+            wd = await page.evaluate(GEO)
+            await page.evaluate("()=>{for(var i=0;i<8;i++) document.querySelector('#mapZoomOut').click()}"); await page.wait_for_timeout(200)
+            wo = await page.evaluate(GEO)
+            shot = await box.screenshot()
+            bw, bh, bpp, rows = png_rows(shot); white = 0; tot = 0
+            for yy in range(4, bh - 4, 3):
+                r = rows[yy]
+                for xx in range(4, bw - 4, 3):
+                    c = r[xx * bpp:xx * bpp + 3]; tot += 1
+                    if min(c) > 242 and max(c) - min(c) < 10: white += 1
+            check("zoomed in twice the names show; zoomed all the way out the whole world fills the box with land (the places in its top-left corner, open country everywhere else, nothing near white); a drag never shows past the land", not wz["far"] and wz["nameShown"] != "none" and wz["z"]["s"] > 1 and wo["cover"] and abs(wo["z"]["s"] - 1 / 3) < 0.01 and all(n["sx"] < wo["vw"] * 0.45 and n["sy"] < wo["vh"] * 0.45 for n in wo["ns"]) and white / max(1, tot) < 0.01 and wd["cover"] and wd["z"]["tx"] < -wd["vw"] and wd["z"]["ty"] < -wd["vh"], {"in": wz["z"], "out": wo["z"], "white": round(white / max(1, tot), 4), "drag": wd["z"], "dragCover": wd["cover"]})
+            await page.click('.mapnode[data-node=home]', force=True); await page.wait_for_timeout(150)
+            wr = await page.evaluate("()=>({route: document.querySelector('#mapRoute').textContent, layout: document.querySelector('#scene').dataset.layout})")
+            check("zoomed out, a tap on a place still shows the way and moves nobody", "The way home" in wr["route"] and wr["layout"] == "garden", wr)
             await page.click("#sheetClose"); await page.wait_for_timeout(300)
             hidden = await page.evaluate("()=>{var p=document.querySelector('#walkpad'); return !p || getComputedStyle(p).display==='none'}")
             check("the joystick stays hidden (tap-to-walk replaces it)", hidden, hidden)
