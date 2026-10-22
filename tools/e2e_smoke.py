@@ -748,12 +748,15 @@ async def main():
             await ctxO.close()
 
             # 2. the Cycle tab opens a sheet with the calendar
-            await page.goto(BASE + "room.html#cycle", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] [data-date], #sheet[aria-hidden="false"] .rday', timeout=10000)
+            await page.goto(BASE + "room.html#cycle", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] #calTabs', timeout=10000)
+            sc0 = await page.evaluate("()=>({first: (document.querySelector('#calTabs button.on')||{}).dataset && document.querySelector('#calTabs button.on').dataset.tab, scores: !!document.querySelector('#sheet .scores, #sheet [data-score], #sheet .scorecard')})")
+            check("the Cycle tab opens on its scores first (Jamie, 22 Oct)", sc0["first"] == "rhythm", sc0)
+            await page.evaluate("()=>document.querySelector('#calTabs [data-tab=period]').click()"); await page.wait_for_selector('#sheet[aria-hidden="false"] [data-date]', timeout=10000)
             cyc = await page.evaluate("()=>{var cells=document.querySelectorAll('#sheet [data-date], #sheet .rday'); return {sheet: document.querySelector('#sheet')?.getAttribute('aria-hidden') === 'false', title: document.querySelector('#sheetTitle')?.textContent.slice(0,13), days: cells.length, visible: (cells[0]?.getBoundingClientRect().height || 0) > 0};}")
             check("room.html#cycle (old links and the Cycle hash) still opens the calendar sheet with visible days", cyc["sheet"] and cyc["title"] == "Your calendar" and cyc["days"] >= 28 and cyc["visible"], cyc)
             ib = await page.evaluate("()=>{var b=document.querySelector('#sheet .ibtn'); if(!b) return null; b.click(); var p=document.querySelector('#sheet .guide[data-guide-panel='+b.dataset.guide+']'); return {topic: b.dataset.guide, on: !!(p && p.classList.contains('on'))}}")
             check("an (i) button in the calendar sheet opens its guide panel, made on the spot if the sheet forgot it", ib is None or ib["on"], ib)
-            await page.evaluate("()=>{var b=document.querySelector('#calTabs [data-tab=symptom]'); if(b) b.click();}"); await page.wait_for_timeout(400)
+            await page.evaluate("()=>OvuRoom.openCalendar('symptom')"); await page.wait_for_selector('#moodFaces', timeout=8000)
             mc0 = await page.evaluate("()=>{var m=document.querySelector('#moodCare'); return m?getComputedStyle(m).display:'missing'}")
             await page.evaluate("()=>{var b=document.querySelector('#moodFaces [data-mood=good]'); if(b) b.click();}"); await page.wait_for_timeout(150)
             mc1 = await page.evaluate("()=>getComputedStyle(document.querySelector('#moodCare')).display")
@@ -2732,7 +2735,7 @@ async def main():
             # nothing and a saved day opens the prompt card; the fertility page shows no invented result
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
             await page.evaluate("()=>document.querySelector('.hotspot[data-id=calendar]').click()"); await page.wait_for_selector('#calTabs', timeout=8000)
-            await page.evaluate("()=>document.querySelector('#calTabs [data-tab=symptom]').click()"); await page.wait_for_selector('#saveSym', timeout=8000)
+            await page.evaluate("()=>OvuRoom.openCalendar('symptom')"); await page.wait_for_selector('#saveSym', timeout=8000)
             await page.evaluate("()=>{document.querySelector('#symChips [data-sym=headache]').click(); document.querySelector('#saveSym').click();}"); await page.wait_for_timeout(600)
             mo = await page.evaluate("()=>({sub: (document.querySelector('#toast .toastsub')||{}).textContent||'', img: document.querySelector('#avatarImg').getAttribute('src')})")
             check("a saved symptom shows a mindful line under the toast and her notebook pose", len(mo["sub"]) > 10 and "act-note" in mo["img"], mo)
