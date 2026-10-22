@@ -409,7 +409,8 @@
     });
   }
   function wireRename(reopen) { var body = doc.getElementById('sheetBody'); if (!body) return; body.addEventListener('click', function (e) { var b = e.target.closest('[data-rename]'); if (!b || !idle()) return; e.stopPropagation(); openName(b.dataset.rename, reopen); }); }
-  function settle() { /* the ranch record exists, and due babies have arrived or grown: written only when something changed */
+  function settle() { return locked(settleNow).then(function (changed) { if (changed) renderBarn(); return changed; }); } /* inside the farm lock, like every farm write */
+  function settleNow() { /* the ranch record exists, and due babies have arrived or grown: written only when something changed */
     var f0 = FM().farmState(S), f = farm(S);
     if (JSON.stringify(f.ranch || null) === JSON.stringify(f0.ranch || null)) return false;
     try { save(S, f, null); } catch (e) { return false; }
@@ -420,9 +421,9 @@
     } catch (e) { }
     return true;
   }
-  function openRanch() {
-    var R0 = RN(); if (!R0) return;
-    settle();
+  function openRanch() { if (!RN()) return; settle().then(function () { if (at('barn')) openRanchNow(); }); } /* due babies land first, then the counter reads the farm */
+  function openRanchNow() {
+    var R0 = RN();
     var day = today(), f = FM().farmState(S), r = R0.ranchOf(f) || R0.ranchOf(R0.migrate(f, day)), hearts = RW() ? RW().ledger().hearts : 0, K = R0.KINDS, free = !!(RW() && RW().tester && RW().tester());
     function afford(cost) { return free || hearts >= cost; } /* tester mode pays nothing, as in every shop */
     var cows = idsOf(f, 'cow'), hens = idsOf(f, 'hen');
@@ -547,10 +548,12 @@
   R.hotspotHandlers.barnpath = function (id, L) { if (!L || L.id !== 'farm') return false; if (W.napping && W.napping()) return true; W.travel('barn'); return true; };
   /* Luna's one gentle hint, on a later barn visit, if the crack is still unfound; once only, never required */
   function maybeHint() {
-    var f = FM().farmState(S); if (f.found.cave || f.lunaHint) return;
-    var visits = (f.barnVisits | 0) + 1, g = copy(f); g.barnVisits = visits;
-    if (visits >= 2) { g.lunaHint = true; root.setTimeout(function () { if (at('barn') && !caveFound(S)) R.toast('I saw starlight between the rocks behind the barn.', 'dark_mode', 'Luna'); }, 1800); }
-    try { if (S.commit) S.commit({ farm: g }); else S.setState({ farm: g }); } catch (e) { }
+    locked(function () {
+      var f = FM().farmState(S); if (f.found.cave || f.lunaHint) return;
+      var visits = (f.barnVisits | 0) + 1, g = copy(f); g.barnVisits = visits;
+      if (visits >= 2) { g.lunaHint = true; root.setTimeout(function () { if (at('barn') && !caveFound(S)) R.toast('I saw starlight between the rocks behind the barn.', 'dark_mode', 'Luna'); }, 1800); }
+      try { if (S.commit) S.commit({ farm: g }); else S.setState({ farm: g }); } catch (e) { }
+    });
   }
   R.on('boot', function () {
     R.on('layout', function (L) {
@@ -566,12 +569,12 @@
     var shown = null; /* which barn sheet is open, so a new day or another tab can redraw it as it is now */
     var SHEETS = { barnnests: openNests, barnclover: openClover, springbasket: openBasket, ranch: openRanch, ranchname: null };
     function redrawOpen() { var id = R.sheetId ? R.sheetId() : null; var fn = id && SHEETS[id]; if (!fn || !R.sheetOpen()) return; if (CARE && CARE.cancel) CARE.cancel(); fn(); } /* a name box left open keeps her typing */
-    if (GT) GT.onNewDay(function () { settle(); renderBarn(); redrawOpen(); });
-    root.setTimeout(function () { if (settle()) renderBarn(); }, 1200); /* a baby due while the app was closed arrives at boot */
-    var key = JSON.stringify(S.state().farm || null), fixing = false;
+    if (GT) GT.onNewDay(function () { settle().then(function () { renderBarn(); redrawOpen(); }); });
+    root.setTimeout(function () { settle(); }, 1200); /* a baby due while the app was closed arrives at boot */
+    /* the size mix never outlives the pantry total: every reader trims it (farm(S) reconciles), and nothing writes the farm
+       back from a subscriber (Codex, 22 Oct: a write in reaction to another tab's write is a race by construction) */
+    var key = JSON.stringify(S.state().farm || null);
     S.subscribe(function (reason) {
-      /* the size mix never outlives the pantry total: a consumer that took eggs or milk without sizes is trimmed at once */
-      if (!fixing && RN() && (reason === 'state' || reason === 'external')) { var f0 = FM().farmState(S), fr = RN().reconcile(f0); if (fr !== f0) { fixing = true; try { save(S, fr, null); } catch (e) { } fixing = false; } }
       if (reason === 'clear' || reason === 'import') { if (CARE && CARE.cancel) CARE.cancel(); key = JSON.stringify(S.state().farm || null); syncCrack(); renderBarn(); redrawOpen(); return; } /* the diary was replaced here: nothing pending survives it */
       if (reason === 'state') { key = JSON.stringify(S.state().farm || null); return; } /* our own saves move the baseline */
       if (!(reason === 'external' || String(reason).indexOf('sync') === 0)) return;

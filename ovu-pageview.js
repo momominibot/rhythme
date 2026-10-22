@@ -47,9 +47,20 @@
       }, true);
     }
   }
+  var watch = 0;
+  /* a pointer page (location.replace to room.html#tab) is caught the moment the frame's address changes, not two seconds
+     later when a whole second room has loaded inside the sheet (live check, 22 Oct) */
+  function watchFrame() {
+    root.clearInterval(watch);
+    watch = root.setInterval(function () {
+      if (!view || view.hidden) { root.clearInterval(watch); return; }
+      var loc; try { loc = frame.contentWindow.location; } catch (e) { return; }
+      if (loc && /\/room\.html$|\/index\.html$/.test(loc.pathname)) { var h = (loc.hash || '').slice(1); root.clearInterval(watch); close(); if (h) root.dispatchEvent(new CustomEvent('ovu-route', { detail: h })); }
+    }, 120);
+  }
   function open(href) {
     build();
-    frame.src = href;
+    frame.src = href; watchFrame();
     title.textContent = '';
     view.hidden = false;
     root.requestAnimationFrame(function () { view.classList.add('on'); });

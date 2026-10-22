@@ -191,10 +191,14 @@
     });
     var sp = doc.getElementById('grocerStaples'); if (sp) sp.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-staple]'); if (!btn || btn.disabled || !stillOpen('grocer')) return;
-      var res = KT().buyStaple(S, RW(), btn.dataset.staple); if (!res.ok) { R.toast(res.why, 'info'); return; }
-      R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '', st = KT().STAPLES[res.id];
-      R.toast(st.pantry ? 'An egg is in the pantry.' : st.name + (st.pl ? ' are' : ' is') + ' in the kitchen.', 'kitchen', line);
-      if (R.renderDeck) R.renderDeck(); openGrocer();
+      var go = function () {
+        if (!stillOpen('grocer')) return;
+        var res = KT().buyStaple(S, RW(), btn.dataset.staple); if (!res.ok) { R.toast(res.why, 'info'); return; }
+        R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '', st = KT().STAPLES[res.id];
+        R.toast(st.pantry ? 'An egg is in the pantry.' : st.name + (st.pl ? ' are' : ' is') + ' in the kitchen.', 'kitchen', line);
+        if (R.renderDeck) R.renderDeck(); openGrocer();
+      };
+      if (FM.locked) FM.locked(S, go); else go(); /* the farm lock: the pantry is read again after other tabs' saves */
     });
     var hs = doc.getElementById('grocerHerbs'); if (hs) hs.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-herbstart]'); if (!btn || btn.disabled || !stillOpen('grocer')) return;
