@@ -78,7 +78,7 @@
     [/exercise|workout|training|fitness/i,'room.html#mind'],
     [/food|meal|nutrition|diet/i,'room.html#food'],
     [/supplement/i,'room.html#food'],
-    [/hydrat/i,'hydration.html'],
+    [/hydrat/i,'room.html#food'],
     [/lab|marker|report|amh|fsh/i,'reports.html'],
     [/longevity|roadmap|milestone/i,'room.html'],
     [/bio-age|recalc/i,'room.html'],

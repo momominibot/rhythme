@@ -2144,6 +2144,17 @@ html[data-sky=night] .askchip:hover{background:#3b2e5a}
 /* closed, Luna's top-anchored card is hidden and untappable once it has slid away: on a tall screen its own height is not enough to leave the frame */
 .sheet.luna-sheet:not(.on){visibility:hidden;pointer-events:none;transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s linear .38s}
 
+/* water in the food diary (21 Oct): a record, examples of amounts, information with sources; no bar, no target */
+.wstrip{margin:0 0 12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid rgba(160,130,190,.18);color:#3b2d52}
+.wstrip .whead{display:flex;gap:10px;align-items:center}.wstrip .whead .ms{font-size:26px;color:#5f7fb8}.wstrip .whead b{display:block;font:800 15px var(--sans)}.wstrip .whead small{display:block;font:600 12px var(--sans);color:#6f5f8c}
+.wstrip .wadd{margin-top:10px}.wstrip .wrow{flex-wrap:wrap;gap:6px}.wstrip .wrow .btn small{display:block;font:600 10.5px var(--sans);opacity:.8}
+.wlist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}.wlist li{display:flex;justify-content:space-between;align-items:center;gap:8px;font:700 13px var(--sans)}.wlist li small{font-weight:600;color:#6f5f8c;margin-left:6px}
+.winfo{margin-top:10px}.winfo summary{cursor:pointer;font:800 12.5px var(--sans);color:#4b5f8a;display:flex;align-items:center;gap:6px;list-style:none}.winfo summary::-webkit-details-marker{display:none}.winfo p{margin:6px 0 0;font:600 12.5px/1.5 var(--sans);color:#3b2d52}.winfo .evid a{margin-right:6px}
+.wstrip .help,.wstrip .lbl{color:#3b2d52}.wstrip .help.muted{color:#6f5f8c}.wbf{display:flex;align-items:center;gap:8px;margin:8px 0;font:700 13px var(--sans)}
+html[data-sky=night] .wstrip{background:var(--rm-card);border-color:rgba(255,255,255,.1);color:var(--rm-ink)}
+html[data-sky=night] .wstrip .help,html[data-sky=night] .wstrip .lbl,html[data-sky=night] .winfo p,html[data-sky=night] .wlist li{color:var(--rm-ink)}
+html[data-sky=night] .wstrip .whead small,html[data-sky=night] .wlist li small,html[data-sky=night] .wstrip .help.muted{color:var(--rm-ink-2)}
+html[data-sky=night] .winfo summary{color:#b9d2f5}
 /* How to practise, on the koi pond and Light Flower cards (Jamie, 21 Oct); the flower's breath words */
 .btap-how{margin:4px 0 2px;text-align:left}
 .btap-how summary{cursor:pointer;font:800 12.5px var(--sans);color:#f1e9fb;display:flex;align-items:center;gap:6px;list-style:none;padding:6px 0}
