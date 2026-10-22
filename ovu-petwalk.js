@@ -368,6 +368,7 @@
     if (R.asleep && R.asleep()) { if (R.toast) R.toast('She is asleep. A walk can wait until morning.', 'bedtime'); return false; }
     if (pal && pal.id === id) return true;
     if (pal) endWalk(true);
+    if (R.erin) R.erin('walk-pet');
     clearTimeout(pet.timer); if (pet.state === 'walk') { pet.route = null; hideCycle(pet); place(pet); }
     if (pet.sleeping) { pet.sleeping = false; pet.el.classList.remove('sleeping', 'napping'); }
     pet.bedtime = false; pet.el.classList.remove('napping'); delete holds[id];

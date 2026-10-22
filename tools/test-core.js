@@ -485,6 +485,19 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('care steps are slow and stoppable, and save only when the bar is full and the sheet still open', (function () { var care = fs.readFileSync(path.join(root, 'ovu-care.js'), 'utf8'); return /function step[\s\S]*?!box\.isConnected \|\| !R\.sheetOpen\(\) \|\| here\(\) !== tok\.scene[\s\S]*?asleepNow\(\)/.test(care) && care.indexOf('data-slow="stop"') > -1 && src.indexOf("scene: 'farm'") > -1; })() && true);
 })();
 
+(function erinOnEveryAction() {
+  console.log('2k3c. Erin speaks for every action (Jamie, 22 Oct): one clip per action, each one on disk with its script');
+  var rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), lines = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/erin-actions/lines.json'), 'utf8'));
+  var ids = lines.map(function (l) { return l.id; }), m = /var MOMENT_ERIN = (\{[^}]*\});/.exec(rj), map = m ? (new Function('return ' + m[1]))() : {};
+  var used = Object.keys(map).map(function (k) { return map[k]; }).concat(['brush-hen']);
+  var src = fs.readdirSync(root).filter(function (f) { return /^ovu-.*\.js$/.test(f); }).map(function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); }).join('\n') + rj;
+  (src.match(/\.erin\('([a-z-]+)'\)/g) || []).forEach(function (x) { used.push(/'([a-z-]+)'/.exec(x)[1]); });
+  var missing = used.filter(function (id) { return ids.indexOf(id) < 0 || !fs.existsSync(path.join(root, 'assets/audio/erin-actions', id + '.mp3')); });
+  check('every Erin line the app plays has a script and an mp3', m && Object.keys(map).length > 40 && missing.length === 0, missing.join());
+  check('every scripted line has its clip, and no script has an em dash', lines.every(function (l) { return fs.existsSync(path.join(root, 'assets/audio/erin-actions', l.id + '.mp3')) && l.text.indexOf('\u2014') < 0; }));
+  check('moment() plays her line before any early return, and stays quiet while her guided practice speaks', /if \(!opt\.tries\) erin\(/.test(rj) && /function erin\(id\) \{\n    if \(!id \|\| !soundOn\(\) \|\| asleep\(\) \|\| session \|\| practice \|\| meditating/.test(rj));
+})();
+
 (function barnAndSpring() {
   console.log('2k3. the barn, the hens, Clover and the hidden spring (Jamie, 20-21 Oct): no needs, no guilt, nothing that refills energy');
   var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
