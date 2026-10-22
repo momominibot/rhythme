@@ -13,3 +13,20 @@
 
 4. **HOLD: fix background timing, activity ownership, downstream seconds and the missing safety/screening requirements before release.** No files modified.
 
+
+## Round 2: HOLD
+
+- **FIXED:** 18+ reminder, screening with ordinary logging retained, and Swap/Skip voices (`ovu-pulse.js:37`; `room.js:2533–2543`). Journal/PDF seconds and summary totals are fixed (`journal.html:152,271`; `ovu-agents.js:251`).
+
+- **FIXED:** Both seated setups, pregnancy/postpartum feature limits, fracture/clinician restrictions, osteoporosis distinction, pelvic symptoms, persistent-symptom advice and expanded emergency wording (`ovu-pulse.js:17,23,38–43`). These address the earlier [NHS](https://www.nhs.uk/live-well/exercise/strength-exercises/) and [ROS](https://theros.org.uk/information-and-support/exercise/how-to-exercise-safely-for-bones/) concerns. No new safety blocker found.
+
+- **FIXED:** Background and delayed-timer overcounting (`room.js:2551,2557–2574`), running-screen emergency guidance and rest Stop (`room.js:2547,2563–2568`), and “45 s” labels (`room.js:2517`). No PULSE save without “Log what I did” found (`room.js:2584–2585`). Signed/no-Draft behavior remains correct (`ovu-pulse.js:13,46–48`).
+
+- **NOT FIXED completely: one-activity ownership.** Reproduced greenhouse mindful minute → Today/Movement → PULSE/Ready: both remain running. Today opens Movement without walking (`room.js:3503`); PULSE never emits the handover event (`room.js:2545–2553`), which the greenhouse requires (`ovu-greenhouse.js:555`). Its timers detect only sessions/practices (`ovu-greenhouse.js:377,385–386`).
+
+- **New:** A two-second break still displays “0 min” in the weekly panel (`room.js:2490`). “Anything above” also ambiguously includes being 18+ and osteoporosis alone (`ovu-pulse.js:37–42`).
+
+All 1,795 core checks pass; they miss the reproduced overlap. No files modified.
+
+**HOLD: fix the remaining activity overlap before release.**
+

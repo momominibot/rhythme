@@ -39,7 +39,7 @@
       'Skip for now if you have a recent fracture or surgery, a spinal fracture or several fractures, limits a physio or doctor gave you, painful joints, or feel dizzy or faint when standing. Having osteoporosis on its own is not a reason to skip.',
       'Stop and ask for advice if you notice leaking, a heavy or dragging feeling in the vagina, or a bulge along the middle of your tummy.',
       'Stop if you feel pain, dizziness or unwell. If a symptom stays after you stop, see your doctor or a clinic. You can skip any time.'],
-    check: 'Does anything above apply to you today?',
+    check: 'Is there a reason above to skip or stop today?',
     urgent: 'Chest pain, pressure or tightness, unusual breathlessness, collapse or stroke signs: call your local emergency number.'
   };
   function move(id) { return MOVES.filter(function (m) { return m.id === id; })[0] || null; }

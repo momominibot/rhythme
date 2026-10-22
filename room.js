@@ -2487,7 +2487,7 @@
   var EX = window.OvuExercise || null;
   function moveWeekHTML(wk) {
     var W = EX.WHO, top = W.moderateMax * 1.2, pct = function (n) { return Math.round(Math.max(0, Math.min(100, n / top * 100)) * 10) / 10; };
-    var extra = (wk.pulse ? ' Plus ' + wk.pulse + (wk.pulse === 1 ? ' PULSE break' : ' PULSE breaks') + ' (' + Math.round((wk.pulseSeconds || 0) / 6) / 10 + ' min, not counted toward WHO).' : '') + (wk.light ? ' Plus ' + wk.light + ' min of light movement.' : '') + (wk.strengthMinutes ? ' Plus ' + wk.strengthMinutes + ' min of strength work.' : '') + (wk.metUnknown ? ' ' + wk.metUnknown + (wk.metUnknown === 1 ? ' entry has no MET value, so it is' : ' entries have no MET value, so they are') + ' left out of MET-minutes.' : '');
+    var extra = (wk.pulse ? ' Plus ' + wk.pulse + (wk.pulse === 1 ? ' PULSE break' : ' PULSE breaks') + ' (' + ((wk.pulseSeconds || 0) < 60 ? (wk.pulseSeconds || 0) + ' s' : Math.round((wk.pulseSeconds || 0) / 6) / 10 + ' min') + ', not counted toward WHO).' : '') + (wk.light ? ' Plus ' + wk.light + ' min of light movement.' : '') + (wk.strengthMinutes ? ' Plus ' + wk.strengthMinutes + ' min of strength work.' : '') + (wk.metUnknown ? ' ' + wk.metUnknown + (wk.metUnknown === 1 ? ' entry has no MET value, so it is' : ' entries have no MET value, so they are') + ' left out of MET-minutes.' : '');
     return '<div class="mvweek" id="mvWeek"><div class="mvhead"><b>' + wk.moderateEquivalent + '</b><span>moderate minutes in the last 7 days</span>' + infoBtn('move') + '</div>' +
       '<div class="mvbar" role="img" aria-label="' + wk.moderateEquivalent + ' minutes; WHO suggests 150 to 300 a week"><i class="range" style="left:' + pct(W.moderateMin) + '%;width:' + (pct(W.moderateMax) - pct(W.moderateMin)) + '%"></i><i class="fill" style="width:' + pct(wk.moderateEquivalent) + '%"></i></div>' +
       '<div class="mvscale" aria-hidden="true"><span style="left:0">0</span><span style="left:' + pct(W.moderateMin) + '%">150</span><span style="left:' + pct(W.moderateMax) + '%">300</span></div>' +
@@ -2544,6 +2544,7 @@
     });
     $('#puReady').addEventListener('click', function () {
       chime('tap');
+      emit('activity', 'pulse', m.id); /* as for a session or practice: anything else on the HUD (a greenhouse minute) hands over first (Codex, 22 Oct) */
       $('#sheetBody').innerHTML = '<div class="pulserun"><div class="pulseclock" id="puClock">' + m.work + '</div><p class="pulsecue">' + esc(m.cue) + '</p><p class="help" id="puPhase">Move gently, at your own pace.</p><div class="row"><button type="button" class="btn ghost" id="puStop"><span class="ms">stop</span>Stop</button></div><p class="help pulseurgent"><span class="ms">emergency</span>' + esc(B.urgent) + '</p></div>';
       var t0 = performance.now(); pulseRun = { t0: t0, last: t0, phase: 'work', active: 0, timer: setInterval(tick, 250) };
       /* the app going to the background ends the break at once, counted up to the last moment it was on screen (Codex, 22 Oct:
