@@ -11,6 +11,9 @@ Setup (once):  brew install postgresql@17; initdb -D DIR -U postgres --auth=trus
                LC_ALL=en_US.UTF-8 pg_ctl -D DIR -o "-p 55432 -c listen_addresses=127.0.0.1 -c unix_socket_directories=''" start
                python -m pip install "psycopg[binary]"
 Usage:         python3 tools/db/race_test.py [--mutate] [--dryrun]      (RACE_DSN overrides host/port/user)
+               python3 tools/db/race_test.py --rooms [--mutate] [--dryrun]  plaza rooms and room chat (20261022120000): six
+               races; --mutate also takes the plaza membership lock out of staff.plaza_sweep(); --dryrun runs
+               tools/db/plaza_rooms_dryrun.sql against the local copy
 """
 import json, os, re, sys, threading, time, uuid
 import psycopg
@@ -21,6 +24,7 @@ DB = 'friends_race'
 MIG = os.path.join(ROOT, 'supabase', 'migrations')
 PLAZA = ['20261019080000_plaza_presence.sql', '20261019090000_plaza_presence_v2.sql', '20261019100000_plaza_groups.sql', '20261019110000_plaza_visits.sql']
 FRIENDS = '20261019130000_plaza_friends.sql'
+ROOMS = '20261022120000_plaza_rooms_chat.sql'
 results = []
 
 
@@ -29,7 +33,7 @@ def check(name, ok, detail=''):
     print(('  ok   ' if ok else '  FAIL ') + name + ('' if ok else '  ' + str(detail)[:300]))
 
 
-def fresh(mutate=False):
+def fresh(mutate=False, rooms=False):
     with psycopg.connect(DSN + ' dbname=postgres', autocommit=True) as c:
         c.execute('drop database if exists %s with (force)' % DB)
         c.execute('create database %s' % DB)
@@ -40,8 +44,14 @@ def fresh(mutate=False):
     sql = open(os.path.join(MIG, FRIENDS)).read()
     assert sql.count('create extension if not exists pg_cron;') == 1
     c.execute(sql.replace('create extension if not exists pg_cron;', '-- (pg_cron is a stand-in locally)'))
+    if rooms:
+        c.execute(open(os.path.join(MIG, ROOMS)).read())
     if mutate:
         c.execute("create or replace function social.lock(p_a uuid, p_b uuid default null) returns void language plpgsql as $$ begin end $$")
+        if rooms:  # the sweep without its membership lock, and without the daily-count upsert, whose shared row would
+            # otherwise serialise two calls in the same group by accident and hide a missing lock
+            c.execute("create or replace function staff.plaza_sweep() returns void language plpgsql security definer set search_path = '' as $$ "
+                      "begin delete from public.plaza_presence where seen_at <= clock_timestamp() - interval '75 seconds'; end $$")
     return c
 
 
@@ -203,8 +213,107 @@ def rules(c):
     return out
 
 
+def chatter(c, name, server, room=None):
+    """A person with Room chat on, in a group now and, if a room is named, in that room; carries the room entry."""
+    P = person(c, name, server)
+    c.execute("insert into public.consent_events (user_id, purpose, action, notice_version, method) values (%s, 'plaza_chat', 'grant', 1, 'jit')", [P['id']])
+    P['entry'] = None
+    if room:
+        P['entry'] = one(c, "insert into public.plaza_room_presence (user_id, server, visit, room) values (%s, %s, %s, %s) returning entry", [P['id'], server, P['visit'], room])
+    return P
+
+
+def room_scenarios(c):
+    """Plaza rooms and room chat (20261022120000). Each reports (safe outcome, detail, the second session waited)."""
+    seen = {}
+
+    # 1. two people taking the last place in a room: the membership lock lets one in; the other hears it is full
+    for i in range(11):
+        chatter(c, 'Fill%d' % i, 'everyone', 'everyone-chat')
+    A = chatter(c, 'Ana', 'everyone'); B = chatter(c, 'Bee', 'everyone')
+    sql = 'select public.plaza_room_join(%s, %s, %s)'
+    r1, r2, w = race((A['id'], sql, ['everyone', A['visit'], 'everyone-chat']), (B['id'], sql, ['everyone', B['visit'], 'everyone-chat']))
+    n = one(c, "select plaza.room_count('everyone-chat')")
+    seen['room_capacity_last_place'] = (r1.get('ok') is True and r2.get('why') == 'full' and n == 12, {'first': r1, 'second': r2, 'waited': w, 'count': n}, w)
+
+    # 2. saying something while Room chat is turned off on another phone: the message never outlives the withdrawal
+    A = chatter(c, 'Ava', 'pcos', 'pcos-chat')
+    r1, r2, w = race((A['id'], 'select public.plaza_say(%s, %s, false)', [A['entry'], 'hello there']), (A['id'], 'select public.plaza_chat_off(3, null)', []))
+    left = one(c, 'select count(*) from public.plaza_messages where author = %s', [A['id']])
+    seen['say_vs_chat_off'] = (r1.get('ok') is True and r2.get('ok') is True and left == 0, {'say': r1, 'off': r2, 'waited': w, 'messages': left}, w)
+
+    # 3. another phone takes her into another group while she is sending: the send waits, then finds her gone
+    A = chatter(c, 'Amy', 'everyone', 'everyone-vent')
+    r1, r2, w = race((A['id'], "select public.plaza_join('pcos')", []), (A['id'], 'select public.plaza_say(%s, %s, false)', [A['entry'], 'still here?']))
+    sent = one(c, 'select count(*) from public.plaza_messages where author = %s', [A['id']])
+    seen['displaced_vs_say'] = (r1.get('ok') is True and r2.get('why') == 'not_in_room' and sent == 0, {'join': r1, 'say': r2, 'waited': w, 'messages': sent}, w)
+
+    # 4. the second and third reports of one message at once: counted one at a time, so the third hides it
+    X = chatter(c, 'Xin', 'menopause', 'meno-chat'); R1 = chatter(c, 'Ria', 'menopause'); R2 = chatter(c, 'Rue', 'menopause'); R3 = chatter(c, 'Ros', 'menopause')
+    c.execute("update public.plaza_flags set value = 'live' where key = 'mode'")
+    s0 = Session(); m = s0.call(X['id'], 'select public.plaza_say(%s, %s, false)', [X['entry'], 'nobody listens to me here']); s0.c.commit(); s0.c.close()
+    c.execute("update public.plaza_flags set value = 'review' where key = 'mode'")
+    mid = int(m['message']['id'])
+    s0 = Session(); s0.call(R1['id'], 'select public.plaza_report_message(%s, %s, false)', [mid, 'advice']); s0.c.commit(); s0.c.close()
+    sql = 'select public.plaza_report_message(%s, %s, false)'
+    r1, r2, w = race((R2['id'], sql, [mid, 'advice']), (R3['id'], sql, [mid, 'unkind']))
+    st = one(c, 'select status from public.plaza_messages where id = %s', [mid])
+    seen['third_report_hides'] = (r1.get('ok') is True and r2.get('hidden') is True and st == 'held', {'second': r1, 'third': r2, 'waited': w, 'status': st}, w)
+
+    # 5. joining a room while Plaza friends is turned off: the join waits, then finds no card
+    A = chatter(c, 'Abi', 'new-mothers')
+    r1, r2, w = race((A['id'], "select public.consent_record('social', 'withdraw', 3)", []), (A['id'], 'select public.plaza_room_join(%s, %s, %s)', ['new-mothers', A['visit'], 'mothers-night']))
+    rows = one(c, 'select count(*) from public.plaza_room_presence where user_id = %s', [A['id']])
+    seen['withdraw_vs_room_join'] = (r2.get('why') == 'card' and rows == 0, {'join': r2, 'waited': w, 'rows': rows}, w)
+
+    # 6. an owner showing a held message while its writer turns Room chat off: the decision finds it gone
+    O = person(c, 'Own')
+    c.execute("insert into staff.admin_accounts (user_id, email, role) values (%s, 'owner-rooms@example.invalid', 'owner')", [O['id']])
+    A = chatter(c, 'Ada', 'everyone', 'everyone-wins')
+    s0 = Session(); m = s0.call(A['id'], 'select public.plaza_say(%s, %s, false)', [A['entry'], 'waiting for a check']); s0.c.commit(); s0.c.close()
+    mid = int(m['message']['id'])
+    r1, r2, w = race((A['id'], 'select public.plaza_chat_off(3, null)', []), (O['id'], 'select public.admin_plaza_decide(%s, %s)', [mid, 'show']))
+    left = one(c, 'select count(*) from public.plaza_messages where id = %s', [mid])
+    seen['chat_off_vs_staff_show'] = (r2.get('ok') is False and left == 0, {'decide': r2, 'waited': w, 'left': left}, w)
+    return seen
+
+
+def main_rooms(mutate, dry):
+    print('Plaza rooms and room chat races on a local copy (two real sessions each)')
+    c = fresh(rooms=True)
+    for name, (ok, detail, waited) in room_scenarios(c).items():
+        check('race: ' + name.replace('_', ' '), ok, detail)
+        check('race: ' + name.replace('_', ' ') + ', the second session waited on a lock', waited, detail)
+    c.close()
+    if mutate:
+        print('the same races with social.lock() a no-op and the membership lock taken out of staff.plaza_sweep()')
+        c = fresh(mutate=True, rooms=True)
+        seen = room_scenarios(c)
+        wrong = [k for k, (ok, _, _w) in seen.items() if not ok]
+        check('without the locks, the races that write after a check go wrong (%d of %d: %s)' % (len(wrong), len(seen), ', '.join(wrong)),
+              {'room_capacity_last_place', 'say_vs_chat_off', 'displaced_vs_say', 'withdraw_vs_room_join'} <= set(wrong), seen)
+        c.close()
+    if dry:
+        print('the rolled-back dry run, against the local copy')
+        c = fresh(rooms=True)
+        c.autocommit = False
+        try:
+            c.execute(open(os.path.join(ROOT, 'tools', 'db', 'plaza_rooms_dryrun.sql')).read())
+            check('local dry run raised its RESULT', False, 'no RESULT')
+        except psycopg.Error as e:
+            m = re.search(r'RESULT (\{.*\})', str(e), re.S)
+            res = json.loads(m.group(1)) if m else {}
+            check('local dry run: %s of %s checks, missing %s, failing %s' % (res.get('count'), res.get('expected'), res.get('missing'), res.get('failing')), res.get('all') is True, str(e)[:400])
+        c.rollback(); c.close()
+    failed = [r for r in results if not r[1]]
+    print('\n%d passed, %d failed' % (len(results) - len(failed), len(failed)))
+    sys.exit(1 if failed else 0)
+
+
 def main():
     mutate, dry = '--mutate' in sys.argv, '--dryrun' in sys.argv
+    if '--rooms' in sys.argv:
+        return main_rooms(mutate, dry)
     print('Plaza friends races on a local copy (two real sessions each)')
     c = fresh()
     # the saved outcome and the lock wait are separate assertions (Codex pre-merge review, 20 Oct, item 8): a run where the

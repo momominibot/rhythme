@@ -9,7 +9,10 @@
   var plaza = null, plazaOk = 0, plazaBad = false, plazaBusy = false; /* admin_plaza: people in each group now, and the daily joins and peak (counts only) */
   var me = null, tab = 'today', ov = null, feed = [], feedTop = 0, findings = null, proposals = null, admins = null, audit = null, timers = [];
   var reports = null, reportsAll = false, reportsBad = false, reportsMissing = false; /* admin_social_reports: Plaza friends reports, cards only (no account ids, emails or groups) */
-  var REASONS = { unkind: 'Unkind or upsetting', spam: 'Spam or selling', pretending: 'Pretending to be someone else', under18: 'Seems to be under 18', worried: 'Worried about her safety', other: 'Something else' };
+  var REASONS = { unkind: 'Unkind or upsetting', spam: 'Spam or selling', pretending: 'Pretending to be someone else', under18: 'Seems to be under 18', worried: 'Worried about her safety', other: 'Something else', advice: 'Unsafe health advice', news: 'Pregnancy or birth news in a quiet room' };
+  /* why a room message waits for a person (supabase/migrations/20261022120000_plaza_rooms_chat.sql) */
+  var HELD = { review: 'Review mode: every message is read first', care: 'Words of self-harm or crisis', advice: 'Tells someone what to take, stop or buy, or a dose', news: 'Pregnancy or birth news in a quiet room', asked: 'Her phone asked for a check (its warning-sign rules matched)', reports: 'Hidden after three reports' };
+  var roomMsgs = null, roomMsgsBad = false, roomMsgsMissing = false; /* admin_plaza_messages: room messages waiting for a person */
   /* the team (Jamie, 21 Oct: "my agents in there, give them cute names to report the data and I will have one agent to
    * orchestrate"): four little clouds who each own one stream and say what they measured in their own words, and Nimbus,
    * the big cloud who gathers their reports. Names are for the page; the server knows them by their stream. */
@@ -252,7 +255,7 @@
     else if (!list.length) html += '<p class="empty">' + (reportsAll ? 'No reports yet.' : 'No open reports.') + '</p>';
     else html += list.map(function (r) {
       return '<div class="prop" data-report="' + r.id + '"><div class="h"><b>' + esc(r.name) + ' · card ' + esc(r.card) + '</b><span class="chip ' + (r.status === 'open' ? 'watch' : r.status === 'dismissed' ? '' : 'high') + '">' + esc(r.status) + '</span></div>' +
-        '<div class="why">' + esc(REASONS[r.reason] || r.reason) + (r.about_note ? ' · about the note “' + esc(r.phrase || '') + '”' : ' · about the card') + '</div>' +
+        '<div class="why">' + esc(REASONS[r.reason] || r.reason) + (r.about_message ? ' · about a room message: “' + esc(r.phrase || '') + '”' : r.about_note ? ' · about the note “' + esc(r.phrase || '') + '”' : ' · about the card') + '</div>' +
         '<div class="meta">Reported by ' + esc(r.from_name || 'an account since deleted') + (r.from_card ? ' (card ' + esc(r.from_card) + ')' : '') + ' · ' + esc(ago(r.at)) + ' · ' + esc(r.open_on_card) + ' open on this card · card now ' + esc(r.card_now) + (r.days ? ' · paused ' + esc(r.days) + ' days' : '') + '</div>' +
         (owner && r.status === 'open' ? '<div class="row acts"><button class="btn sm" data-sdecide="dismiss" data-id="' + r.id + '">Dismiss</button><button class="btn sm primary" data-sdecide="pause" data-id="' + r.id + '">Pause 7 days</button><button class="btn sm danger" data-sdecide="remove" data-id="' + r.id + '">Remove the card</button></div>' : '') + '</div>';
     }).join('');
@@ -272,9 +275,34 @@
       reportsBad = true; reports = null;
     });
   }
+  /* room messages waiting for a person: an owner shows or hides each one; an analyst reads (supabase 20261022120000) */
+  function roomMsgsCard(owner) {
+    if (roomMsgsMissing) return '';
+    var list = (roomMsgs && roomMsgs.messages) || [];
+    var html = '<div class="card" id="roomMsgsCard"><h2>Room messages waiting<span>' + (roomMsgs ? list.length + (roomMsgs.mode ? ' · ' + esc(roomMsgs.mode) + ' mode' : '') : '') + '</span></h2>';
+    if (!roomMsgs) html += '<p class="empty">' + (roomMsgsBad ? 'Could not load the room messages. Open this tab again to retry.' : 'Loading…') + '</p>';
+    else if (!list.length) html += '<p class="empty">Nothing waiting. Held messages show here until someone shows or hides them; each is deleted 24 hours after it was written.</p>';
+    else html += list.map(function (m) {
+      return '<div class="prop" data-roommsg="' + m.id + '"><div class="h"><b>' + esc(m.group) + ', ' + esc(m.room) + ' · ' + esc(m.name) + ' · card ' + esc(m.card) + '</b><span class="chip ' + (m.why === 'care' || m.why === 'asked' ? 'high' : 'watch') + '">' + esc(m.why || 'held') + '</span></div>' +
+        '<div class="why"></div><div class="meta">' + esc(HELD[m.why] || 'Held') + ' · ' + esc(ago(m.at)) + (m.reports ? ' · ' + esc(m.reports) + ' open reports' : '') + '</div>' +
+        (owner ? '<div class="row acts"><button class="btn sm primary" data-rdecide="show" data-id="' + m.id + '">Show in the room</button><button class="btn sm danger" data-rdecide="hide" data-id="' + m.id + '">Hide</button></div>' : '') + '</div>';
+    }).join('');
+    html += '<p class="msg" id="roomMsgsMsg"></p><p class="srv">The writer sees her held message as waiting; nobody else does until it is shown. Crisis words and her phone\'s own request mean she may need help now: the room shows her the help card, but nobody is told. ' + (owner ? 'Hide also closes the open reports on that message; Show dismisses them.' : 'An owner decides.') + '</p></div>';
+    return html;
+  }
+  function loadRoomMsgs() {
+    if (roomMsgsMissing) return Promise.resolve();
+    return deadline(rpc('admin_plaza_messages', { p_status: 'held' }), 10000).then(function (j) {
+      if (denied(j) || !j || !Array.isArray(j.messages)) { roomMsgsBad = true; roomMsgs = null; return; }
+      roomMsgs = j; roomMsgsBad = false;
+    }).catch(function (e) {
+      if (/PGRST202|Could not find the function|\b404\b/i.test(String((e && e.message) || ''))) { roomMsgsMissing = true; roomMsgsBad = false; roomMsgs = null; return; }
+      roomMsgsBad = true; roomMsgs = null;
+    });
+  }
   function renderQueue() {
     var owner = me.role === 'owner', pol = (ov && ov.policy) || {}, blocked = (ov && ov.blocked) || [];
-    var html = reportsCard(owner) + '<div class="card"><h2>Proposals<span>' + ((proposals || []).length) + '</span></h2>';
+    var html = roomMsgsCard(owner) + reportsCard(owner) + '<div class="card"><h2>Proposals<span>' + ((proposals || []).length) + '</span></h2>';
     if (!proposals) html += '<p class="empty">Loading…</p>';
     else if (!proposals.length) html += '<p class="empty">No proposals. The agents raise one only when a measured finding suggests a lever, and this phase has nothing it may measure yet.</p>';
     else html += proposals.map(function (p) {
@@ -301,6 +329,16 @@
       });
     });
     var ra = doc.getElementById('reportsAll'); if (ra) ra.addEventListener('click', function () { reportsAll = !reportsAll; reports = null; renderQueue(); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); });
+    (roomMsgs && roomMsgs.messages || []).forEach(function (m) { var el = app.querySelector('[data-roommsg="' + m.id + '"] .why'); if (el) el.textContent = m.body; }); /* her words as text, never markup */
+    app.querySelectorAll('[data-rdecide]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var m = doc.getElementById('roomMsgsMsg'); app.querySelectorAll('[data-rdecide]').forEach(function (x) { x.disabled = true; });
+        rpc('admin_plaza_decide', { p_id: Number(b.dataset.id), p_decision: b.dataset.rdecide }).then(function (j) {
+          if (j && (j.error || j.ok === false)) { m.textContent = j.error || 'Not done.'; m.className = 'msg bad'; }
+          return Promise.all([loadRoomMsgs(), loadReports()]);
+        }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; }).then(function () { if (tab === 'queue') renderQueue(); });
+      });
+    });
     app.querySelectorAll('[data-clear]').forEach(function (b) { b.addEventListener('click', function () { b.disabled = true; rpc('admin_block_clear', { p_id: Number(b.dataset.clear) }).then(loadOverview).then(render); }); });
     app.querySelectorAll('[data-pol]').forEach(function (el) {
       el.addEventListener('change', function () {
@@ -351,7 +389,7 @@
     if (tab === 'today') renderToday();
     else if (tab === 'feed') renderFeed();
     else if (tab === 'agents') renderAgents();
-    else if (tab === 'queue') { renderQueue(); if (!proposals) loadProposals().then(function () { if (tab === 'queue') renderQueue(); }); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); }
+    else if (tab === 'queue') { renderQueue(); if (!proposals) loadProposals().then(function () { if (tab === 'queue') renderQueue(); }); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); loadRoomMsgs().then(function () { if (tab === 'queue') renderQueue(); }); }
     else if (tab === 'staff') { renderStaff(); loadStaff().then(function () { if (tab === 'staff') renderStaff(); }); }
   }
   function stopTimers() { timers.forEach(clearInterval); timers = []; }

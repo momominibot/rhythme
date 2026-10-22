@@ -1,0 +1,71 @@
+{
+ "note": "22 Oct, plaza group door signs for the Channel tab (Jamie: door signs are generated art, never emoji). One guarded run, no retries. Magenta key; prompts keep pink and magenta off the sign.",
+ "jobs": [
+  {
+   "id": "door-everyone",
+   "out": "door-everyone.png",
+   "size": "1024x1024",
+   "seed": 5201,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/room/dream/prop-bookshelf.webp"
+   ],
+   "prompt": "A small hanging door sign for a cosy plaza: a rounded cream clay plaque hung from a tiny brass hook by two short ropes, and on the plaque a raised clay emblem of three small round flowers in lavender, butter yellow and cream, leaning together. Same 3D chibi clay-toy art style, soft pastel lighting and palette as the reference. Colours cream, lavender, butter yellow and sage only, no pink and no magenta anywhere. Whole sign in frame, centred, with space around it. Solid flat pure chroma magenta background #FF00FF, no shadow on the background, one sign only, no letters, no words, no numbers."
+  },
+  {
+   "id": "door-pcos",
+   "out": "door-pcos.png",
+   "size": "1024x1024",
+   "seed": 5202,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/room/dream/prop-bookshelf.webp"
+   ],
+   "prompt": "A small hanging door sign for a cosy plaza: a rounded cream clay plaque hung from a tiny brass hook by two short ropes, and on the plaque a raised clay emblem of two small awareness ribbons side by side, one soft teal and one butter yellow. Same 3D chibi clay-toy art style, soft pastel lighting and palette as the reference. Colours cream, lavender, butter yellow and sage only, no pink and no magenta anywhere. Whole sign in frame, centred, with space around it. Solid flat pure chroma magenta background #FF00FF, no shadow on the background, one sign only, no letters, no words, no numbers."
+  },
+  {
+   "id": "door-trying-to-conceive",
+   "out": "door-trying-to-conceive.png",
+   "size": "1024x1024",
+   "seed": 5203,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/room/dream/prop-bookshelf.webp"
+   ],
+   "prompt": "A small hanging door sign for a cosy plaza: a rounded cream clay plaque hung from a tiny brass hook by two short ropes, and on the plaque a raised clay emblem of a tiny sage seedling with two leaves sprouting from a small clay pot. Same 3D chibi clay-toy art style, soft pastel lighting and palette as the reference. Colours cream, lavender, butter yellow and sage only, no pink and no magenta anywhere. Whole sign in frame, centred, with space around it. Solid flat pure chroma magenta background #FF00FF, no shadow on the background, one sign only, no letters, no words, no numbers."
+  },
+  {
+   "id": "door-after-a-loss",
+   "out": "door-after-a-loss.png",
+   "size": "1024x1024",
+   "seed": 5204,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/room/dream/prop-bookshelf.webp"
+   ],
+   "prompt": "A small hanging door sign for a cosy plaza: a rounded cream clay plaque hung from a tiny brass hook by two short ropes, and on the plaque a raised clay emblem of a single small lit candle with a soft warm glow beside a tiny forget-me-not flower. Same 3D chibi clay-toy art style, soft pastel lighting and palette as the reference. Colours cream, lavender, butter yellow and sage only, no pink and no magenta anywhere. Whole sign in frame, centred, with space around it. Solid flat pure chroma magenta background #FF00FF, no shadow on the background, one sign only, no letters, no words, no numbers."
+  },
+  {
+   "id": "door-new-mothers",
+   "out": "door-new-mothers.png",
+   "size": "1024x1024",
+   "seed": 5205,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/room/dream/prop-bookshelf.webp"
+   ],
+   "prompt": "A small hanging door sign for a cosy plaza: a rounded cream clay plaque hung from a tiny brass hook by two short ropes, and on the plaque a raised clay emblem of a little hanging cot mobile with a crescent moon and three stars. Same 3D chibi clay-toy art style, soft pastel lighting and palette as the reference. Colours cream, lavender, butter yellow and sage only, no pink and no magenta anywhere. Whole sign in frame, centred, with space around it. Solid flat pure chroma magenta background #FF00FF, no shadow on the background, one sign only, no letters, no words, no numbers."
+  },
+  {
+   "id": "door-menopause",
+   "out": "door-menopause.png",
+   "size": "1024x1024",
+   "seed": 5206,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/room/dream/prop-bookshelf.webp"
+   ],
+   "prompt": "A small hanging door sign for a cosy plaza: a rounded cream clay plaque hung from a tiny brass hook by two short ropes, and on the plaque a raised clay emblem of an open lavender folding hand fan with a small crescent moon. Same 3D chibi clay-toy art style, soft pastel lighting and palette as the reference. Colours cream, lavender, butter yellow and sage only, no pink and no magenta anywhere. Whole sign in frame, centred, with space around it. Solid flat pure chroma magenta background #FF00FF, no shadow on the background, one sign only, no letters, no words, no numbers."
+  }
+ ]
+}

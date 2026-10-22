@@ -1,0 +1,187 @@
+{
+ "note": "One list of cases for the room text and hold rules: the phone (ovu-rooms.js textProblem, holdWhy) and the server (plaza.text_problem, plaza.hold_why, in tools/db/plaza_rooms_dryrun.sql) must agree. tools/test-core.js runs the phone side and checks every case is in the dry run.",
+ "text": [
+  {
+   "text": "",
+   "problem": "empty"
+  },
+  {
+   "text": "   ",
+   "problem": "empty"
+  },
+  {
+   "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "problem": "long"
+  },
+  {
+   "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "problem": null
+  },
+  {
+   "text": "see https://example.org/x",
+   "problem": "link"
+  },
+  {
+   "text": "go to www.shop now",
+   "problem": "link"
+  },
+  {
+   "text": "my site is pcoshelp.com",
+   "problem": "link"
+  },
+  {
+   "text": "bit.ly/abc",
+   "problem": "link"
+  },
+  {
+   "text": "findahelpline.com has numbers for every country",
+   "problem": null
+  },
+  {
+   "text": "email me at mei@example.org",
+   "problem": "contact"
+  },
+  {
+   "text": "find me @mei_sg",
+   "problem": "contact"
+  },
+  {
+   "text": "call 9123 4567 anytime",
+   "problem": "contact"
+  },
+  {
+   "text": "+65 9123-4567",
+   "problem": "contact"
+  },
+  {
+   "text": "dm me for tips",
+   "problem": "contact"
+  },
+  {
+   "text": "join my telegram group",
+   "problem": "contact"
+  },
+  {
+   "text": "Day 2026-10-22 was rough",
+   "problem": null
+  },
+  {
+   "text": "I was 38 weeks, 3 days",
+   "problem": null
+  },
+  {
+   "text": "call me crazy but it helped",
+   "problem": null
+  },
+  {
+   "text": "my phone died mid-appointment",
+   "problem": null
+  },
+  {
+   "text": "sex hurts since the baby",
+   "problem": null
+  },
+  {
+   "text": "I keep thinking about suicide",
+   "problem": null
+  },
+  {
+   "text": "this fucking cramp",
+   "problem": null
+  },
+  {
+   "text": "what a slut",
+   "problem": "word"
+  },
+  {
+   "text": "I saw it on Instagram",
+   "problem": null
+  },
+  {
+   "text": "it.in my back hurts",
+   "problem": null
+  }
+ ],
+ "hold": [
+  {
+   "text": "I keep thinking about suicide",
+   "noNews": false,
+   "hold": "care"
+  },
+  {
+   "text": "some days I want to die",
+   "noNews": false,
+   "hold": "care"
+  },
+  {
+   "text": "I don’t want to be here any more",
+   "noNews": false,
+   "hold": "care"
+  },
+  {
+   "text": "I used to self-harm",
+   "noNews": false,
+   "hold": "care"
+  },
+  {
+   "text": "Stop your HRT and double your supplement dose",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "I take 50 mg at night",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "I’m pregnant!",
+   "noNews": true,
+   "hold": "news"
+  },
+  {
+   "text": "we are expecting in May",
+   "noNews": true,
+   "hold": "news"
+  },
+  {
+   "text": "BFP this morning",
+   "noNews": true,
+   "hold": "news"
+  },
+  {
+   "text": "I’m pregnant!",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "we lost the heartbeat at 9 weeks",
+   "noNews": true,
+   "hold": null
+  },
+  {
+   "text": "my due date would have been today",
+   "noNews": true,
+   "hold": null
+  },
+  {
+   "text": "I gave birth to my son sleeping",
+   "noNews": true,
+   "hold": null
+  },
+  {
+   "text": "I'm not pregnant again this month",
+   "noNews": true,
+   "hold": null
+  },
+  {
+   "text": "my doctor finally listened",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "this cramp is killing me",
+   "noNews": false,
+   "hold": null
+  }
+ ]
+}

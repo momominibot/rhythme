@@ -2667,6 +2667,175 @@ async def main():
             check("no page errors in the Plaza friends before-the-server run", not m_errors, m_errors[:3])
             await ctx7.close()
 
+            # plaza rooms and room chat (22 Oct), against a fake rooms server (nothing leaves the machine): the Channel tab shows
+            # every group with how many are there now, the rooms of her group, a read-only peek, one-tap join, Room chat asked
+            # once at her first message, a message waiting for a check, the care card for her own words, report and mute
+            RM = {"servers": [{"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 6}, {"id": "pcos", "name": "PCOS and endometriosis", "capacity": 24, "open": True, "people": 3},
+                              {"id": "trying-to-conceive", "name": "Trying to conceive", "capacity": 24, "open": True, "people": 2}, {"id": "after-a-loss", "name": "After a loss", "capacity": 24, "open": True, "people": 1},
+                              {"id": "new-mothers", "name": "New mothers", "capacity": 24, "open": True, "people": 4}, {"id": "menopause", "name": "Perimenopause and menopause", "capacity": 24, "open": True, "people": 9}],
+                  "rooms": [{"id": "everyone-chat", "name": "Chat", "blurb": "Anything on your mind today", "kind": "chat", "capacity": 12, "open": True, "no_news": False, "people": 3, "last_at": NOW},
+                            {"id": "everyone-wins", "name": "Wins", "blurb": "Small wins and good news, cheered on", "kind": "wins", "capacity": 12, "open": True, "no_news": False, "people": 12, "last_at": None},
+                            {"id": "everyone-vent", "name": "Vent", "blurb": "Let it out. No fixing needed", "kind": "vent", "capacity": 12, "open": True, "no_news": False, "people": 1, "last_at": None},
+                            {"id": "everyone-doctor", "name": "Doctor visits", "blurb": "Getting ready for a visit, and being heard", "kind": "doctor", "capacity": 12, "open": True, "no_news": False, "people": 2, "last_at": NOW},
+                            {"id": "everyone-cycle", "name": "Cycle and PMDD", "blurb": "Luteal days, PMS and PMDD. Humour welcome", "kind": "topic", "capacity": 12, "open": True, "no_news": False, "people": 0, "last_at": None}],
+                  "msgs": {"everyone-doctor": [{"id": 11, "at": NOW, "body": "My GP finally listened when I wrote my questions down.", "care": False, "mine": False, "held": False, "handle": "h-mei", "name": "Mei", "look": "kebaya-blue"},
+                                               {"id": 12, "at": NOW, "body": "Same here, the list helped me too.", "care": False, "mine": False, "held": False, "handle": "h-ana", "name": "Ana", "look": "cozy"}]},
+                  "room": None, "entry": None, "talk": False, "chat_event": None, "next": 20, "missing": False}
+            rcalls, r_errors = [], []
+            def rcall(n): return [b for (m, b) in rcalls if m == n]
+            async def rooms_gate(route):
+                url = route.request.url
+                if url.startswith(BASE): return await route.continue_()
+                if "fonts.googleapis.com" in url or "fonts.gstatic.com" in url: return await route.fulfill(status=200, content_type="text/css", body="")
+                m = re.search(r"/rest/v1/rpc/([a-z_]+)", url); name = m.group(1) if m else ""; body = json.loads(route.request.post_data or "{}")
+                rcalls.append((name, body))
+                ROOMCALLS = ("plaza_rooms_list", "plaza_room_join", "plaza_room_leave", "plaza_room_feed", "plaza_say", "plaza_chat_on", "plaza_chat_off", "plaza_report_message")
+                if RM["missing"] and name in ROOMCALLS:
+                    return await route.fulfill(status=404, content_type="application/json", body=json.dumps({"code": "PGRST202", "message": "Could not find the function public.%s in the schema cache" % name}))
+                if route.request.headers.get("authorization", "") != "Bearer smoke-token":
+                    out = {"ok": False, "why": "not_here"} if name in ROOMCALLS else ({"card": None, "on": False, "adult": True, "paused_until": None} if name == "social_me" else ({"servers": RM["servers"], "mine": None, "beat_seconds": 25} if name == "plaza_list" else {"ok": False, "why": "off"}))
+                    return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+                def visible(room): return [x for x in RM["msgs"].get(room, [])][-40:]
+                if name == "plaza_list": out = {"servers": RM["servers"], "mine": "everyone", "beat_seconds": 25}
+                elif name == "plaza_join": out = {"ok": True, "server": body["p_server"], "name": "Everyone", "capacity": 24, "people": 6, "visit": "vE", "beat_seconds": 25}
+                elif name == "plaza_beat": out = {"ok": True, "server": body["p_server"], "visit": body.get("p_visit"), "people": 6}
+                elif name == "plaza_leave": out = {"ok": True}
+                elif name == "social_me": out = {"card": {"handle": "h-me", "name": "Fern", "look": "kebaya-red", "hidden": False, "paused_until": None}, "on": True, "adult": True, "paused_until": None}
+                elif name == "social_inbox": out = {"ok": True, "card": {"handle": "h-me", "name": "Fern", "look": "kebaya-red", "hidden": False, "paused_until": None}, "friends": [], "asks": [], "asked": [], "notes": [], "blocked": []}
+                elif name == "social_people": out = {"ok": True, "people": []}
+                elif name == "social_block": RM["msgs"]["everyone-doctor"] = [x for x in RM["msgs"].get("everyone-doctor", []) if x["handle"] != body.get("p_handle")]; out = {"ok": True}
+                elif name == "plaza_rooms_list":
+                    if body.get("p_visit") != "vE": out = {"ok": False, "why": "not_here"}
+                    else: out = {"ok": True, "server": "everyone", "room": RM["room"], "entry": RM["entry"], "chat_on": True, "mode": "review", "read": True, "why": None, "talk": RM["talk"], "chat_event": RM["chat_event"], "card": "h-me", "rooms": RM["rooms"]}
+                elif name == "plaza_room_feed":
+                    v = visible(body["p_room"]); after = body.get("p_after") or 0
+                    out = {"ok": True, "room": body["p_room"], "people": 2, "capacity": 12, "mode": "review", "open": True, "joined": RM["room"] == body["p_room"], "entry": RM["entry"] if RM["room"] == body["p_room"] else None,
+                           "ids": [x["id"] for x in v], "messages": [x for x in v if x["id"] > after]}
+                elif name == "plaza_room_join":
+                    if body["p_room"] == "everyone-wins": out = {"ok": False, "why": "full", "room": "everyone-wins", "name": "Wins", "people": 12, "capacity": 12, "suggest": [{"id": "everyone-chat", "name": "Chat"}, {"id": "everyone-vent", "name": "Vent"}]}
+                    else: RM["room"] = body["p_room"]; RM["entry"] = "e-%s" % body["p_room"]; out = {"ok": True, "room": body["p_room"], "entry": RM["entry"], "people": 3, "capacity": 12}
+                elif name == "plaza_room_leave": RM["room"] = None; RM["entry"] = None; out = {"ok": True}
+                elif name == "plaza_chat_on":
+                    if body.get("p_opt_in") and body.get("p_expect") == "h-me" and body.get("p_seen") == RM["chat_event"]: RM["talk"] = True; RM["chat_event"] = 101; out = {"ok": True, "recorded": ["plaza_chat"], "chat_event": 101}
+                    else: out = {"ok": False, "why": "stale"}
+                elif name == "plaza_say":
+                    if not RM["talk"]: out = {"ok": False, "why": "notice"}
+                    else:
+                        RM["next"] += 1; msg = {"id": RM["next"], "at": NOW, "body": body["p_body"], "care": False, "mine": True, "held": True, "handle": "h-me", "name": "Fern", "look": "kebaya-red"}
+                        RM["msgs"].setdefault(RM["room"], []).append(msg); out = {"ok": True, "message": msg, "held": True, "held_why": "asked" if body.get("p_hold") else "review"}
+                elif name == "plaza_report_message": out = {"ok": True, "hidden": False}
+                elif name == "plaza_chat_off": RM["talk"] = False; out = {"ok": True}
+                else: out = {}
+                return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+            ctxR2 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctxR2.add_init_script(seed_signed_in)
+            pr2 = await ctxR2.new_page(); await pr2.route("**/*", rooms_gate)
+            pr2.on("pageerror", lambda e: r_errors.append("pageerror: " + str(e)))
+            pr2.on("console", lambda m: r_errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text and "404" not in m.text else None)
+            await pr2.goto(BASE + "room.html", wait_until="networkidle"); await pr2.wait_for_selector(".hotspot"); await pr2.wait_for_timeout(600)
+            await pr2.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+            check("rooms: nothing about the rooms is asked at boot, before she opens the Channel tab", not [c for c in rcalls if c[0].startswith("plaza_room") or c[0] in ("plaza_rooms_list", "plaza_say")], [c[0] for c in rcalls])
+            await pr2.evaluate("()=>OvuWalk.travel('plaza')")  # a test jump
+            try: await pr2.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza'", timeout=12000)
+            except Exception: pass
+            await pr2.evaluate("()=>OvuPlaza.join('everyone')")
+            try: await pr2.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.visit==='vE'", timeout=8000)
+            except Exception: pass
+            await pr2.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()")
+            await pr2.click("#deckTabs [data-deck=channel]")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chGroups .rmgroup').length===6 && document.querySelectorAll('#chRooms .rmrow').length===5", timeout=8000)
+            except Exception: pass
+            g1 = await pr2.evaluate("()=>({groups: [...document.querySelectorAll('#chGroups .rmgroup')].map(e=>e.textContent), doors: [...document.querySelectorAll('#chGroups img.rmdoor')].map(i=>i.getAttribute('src')), mine: (document.querySelector('#chGroups .rmgroup.mine')||{}).textContent||'', rows: [...document.querySelectorAll('#chRooms .rmrow')].map(e=>e.textContent), head: (document.querySelector('#deckChannel .chhead')||{}).textContent||'', width: document.documentElement.scrollWidth, note: (document.querySelector('#deckChannel .chnote')||{}).textContent||''})")
+            check("rooms: the Channel tab lists all six groups with their door signs and how many are here now, marks hers, and says she is in the plaza", len(g1["groups"]) == 6 and len(g1["doors"]) == 6 and all(d.startswith("assets/room/dream/door-") for d in g1["doors"]) and "9 here now" in " ".join(g1["groups"]) and "You are here" in g1["mine"] and "Everyone" in g1["mine"] and "In the plaza" in g1["head"], g1)
+            check("rooms: the rooms of her group show with who joined each, a full room says so, the last message time shows, and the page has no sideways scroll", len(g1["rows"]) == 5 and "3 joined" in g1["rows"][0] and "12 of 12 joined, full" in g1["rows"][1] and "Nobody joined yet" in g1["rows"][4] and "Last message" in g1["rows"][0] and g1["width"] <= 390 and "peer support" in g1["note"], g1)
+            if os.environ.get("SMOKE_SHOTS"): await pr2.screenshot(path=os.path.join(os.environ["SMOKE_SHOTS"], "rooms-list.png"), full_page=True)
+            await pr2.click("#chRooms [data-rmroom=everyone-doctor]")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chRooms .rmm').length===2", timeout=8000)
+            except Exception: pass
+            pk = await pr2.evaluate("()=>({msgs: [...document.querySelectorAll('#chRooms .rmm')].map(e=>e.textContent), help: (document.querySelector('#chRooms .rmhelp')||{}).textContent||'', note: [...document.querySelectorAll('#chRooms .rmnote')].map(e=>e.textContent), join: !!document.querySelector('#chRooms [data-rmact=join]'), compose: !document.querySelector('#chRooms .rmcompose').hidden, more: document.querySelectorAll('#chRooms .rmmore').length})")
+            check("rooms: tapping a room shows its latest messages read-only, with the world-wide help card, the room note, the doctor-visit card and a Join button, and no box to write in", len(pk["msgs"]) == 2 and "GP finally listened" in pk["msgs"][0] and "local emergency number" in pk["help"] and "findahelpline.com" in pk["help"] and any("not instructions" in n for n in pk["note"]) and any("three questions" in n and "second opinion" in n for n in pk["note"]) and pk["join"] and not pk["compose"] and pk["more"] == 2, pk)
+            await pr2.click("#chRooms [data-rmact=join]")
+            try: await pr2.wait_for_function("()=>!document.querySelector('#chRooms .rmcompose').hidden", timeout=6000)
+            except Exception: pass
+            jn = rcall("plaza_room_join")
+            check("rooms: Join is one tap, for her visit and that room", jn and jn[-1] == {"p_server": "everyone", "p_visit": "vE", "p_room": "everyone-doctor"}, jn)
+            await pr2.fill("#rmText", "Write down three questions before you go, it really helps."); await pr2.click("#chRooms [data-rmact=send]")
+            try: await pr2.wait_for_selector("#rmChatOn", timeout=5000)
+            except Exception: pass
+            ask = await pr2.evaluate("()=>({text: (document.querySelector('#rmSheet')||{}).textContent||'', said: 0})")
+            check("rooms: her first message asks for Room chat first, with the words (24 hours, held and reported messages, not medical advice), and nothing is said yet", "24 hours" in ask["text"] and "90 days" in ask["text"] and "not medical advice" in ask["text"] and not rcall("plaza_say"), ask["text"][:200])
+            await pr2.click("#rmChatOn"); await pr2.wait_for_timeout(200)
+            nochk = await pr2.evaluate("()=>(document.querySelector('#rmChatMsg')||{}).textContent||''")
+            await pr2.check("#rmChatOk"); await pr2.click("#rmChatOn")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chRooms .rmm.mine.held').length===1", timeout=8000)
+            except Exception: pass
+            co = rcall("plaza_chat_on"); sd = rcall("plaza_say")
+            mine = await pr2.evaluate("()=>({mine: (document.querySelector('#chRooms .rmm.mine')||{}).textContent||'', box: document.querySelector('#rmText').value, toast: document.querySelector('#toast').textContent})")
+            check("rooms: Turn on waits for the box to be ticked, then sends her own yes with the card it was opened for and the last Room chat event it knew, and the message goes out", "Tick the box" in nochk and co and co[-1]["p_opt_in"] is True and co[-1]["p_expect"] == "h-me" and co[-1]["p_seen"] is None and sd and sd[-1]["p_entry"] == "e-everyone-doctor" and sd[-1]["p_hold"] is False, {"chk": nochk, "on": co, "say": sd})
+            check("rooms: in review mode her message shows only to her, marked as waiting for a check, and the box empties", "Waiting for a check" in mine["mine"] and "three questions" in mine["mine"] and mine["box"] == "" and "Sent" in mine["toast"], mine)
+            if os.environ.get("SMOKE_SHOTS"): await pr2.screenshot(path=os.path.join(os.environ["SMOKE_SHOTS"], "rooms-doctor.png"), full_page=True)
+            await pr2.wait_for_timeout(3100)
+            await pr2.fill("#rmText", "Some nights I want to die, honestly."); await pr2.click("#chRooms [data-rmact=send]")
+            try: await pr2.wait_for_selector("#rmCareSend", timeout=5000)
+            except Exception: pass
+            care = await pr2.evaluate("()=>({text: (document.querySelector('#rmSheet')||{}).textContent||'', link: !!document.querySelector('#rmSheet a[href=\"https://findahelpline.com\"]')})")
+            n_say = len(rcall("plaza_say"))
+            check("rooms: words of self-harm bring her the care card first (local emergency number, a helpline link), nothing is sent, and she may send it for a person to read or keep it", "local emergency number" in care["text"] and care["link"] and "Send it for a check" in care["text"] and n_say == 1, care)
+            await pr2.click("#rmCareKeep"); await pr2.wait_for_timeout(200)
+            kept = await pr2.evaluate("()=>document.querySelector('#rmText').value")
+            check("rooms: Keep it here sends nothing and keeps her words in the box", kept.startswith("Some nights") and len(rcall("plaza_say")) == 1, kept)
+            await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_selector("#rmCareSend"); await pr2.click("#rmCareSend")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chRooms .rmm.mine.held').length===2", timeout=6000)
+            except Exception: pass
+            check("rooms: Send it for a check sends it held (the phone can only hold, never show)", rcall("plaza_say") and rcall("plaza_say")[-1]["p_hold"] is True, rcall("plaza_say")[-1:])
+            await pr2.click("#chRooms .rmmore[data-rmmore='11']"); await pr2.wait_for_selector("#rmReport")
+            await pr2.check("#rmSheet input[value=advice]"); await pr2.click("#rmReport"); await pr2.wait_for_timeout(400)
+            rp = rcall("plaza_report_message")
+            check("rooms: Report sends the message id and the reason she chose, without blocking unless she ticks it", rp and rp[-1] == {"p_message": 11, "p_reason": "advice", "p_block": False}, rp)
+            await pr2.click("#chRooms .rmmore[data-rmmore='12']"); await pr2.wait_for_selector("#rmMute"); await pr2.click("#rmMute"); await pr2.wait_for_timeout(300)
+            mu = await pr2.evaluate("()=>({msgs: [...document.querySelectorAll('#chRooms .rmm')].map(e=>e.getAttribute('data-id')), saved: OvuStore.state().roomsMuted})")
+            check("rooms: Mute takes her messages off this phone only, for this account", "12" not in mu["msgs"] and mu["saved"] and mu["saved"]["handles"] == ["h-ana"], mu)
+            RM["msgs"]["everyone-doctor"] = [x for x in RM["msgs"]["everyone-doctor"] if x["id"] != 11]  # the server hid Mei's message
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(500)
+            gone = await pr2.evaluate("()=>[...document.querySelectorAll('#chRooms .rmm')].map(e=>e.getAttribute('data-id'))")
+            check("rooms: a message the server stops listing (hidden, blocked or expired) leaves her screen at the next look", "11" not in gone and len(gone) == 2, gone)
+            await pr2.click("#chRooms [data-rmact=back]"); await pr2.wait_for_timeout(300)
+            await pr2.click("#chRooms [data-rmroom=everyone-wins]"); await pr2.wait_for_timeout(400)
+            await pr2.click("#chRooms [data-rmact=join]"); await pr2.wait_for_timeout(500)
+            fl = await pr2.evaluate("()=>document.querySelector('#toast').textContent")
+            check("rooms: a full room says which rooms in the group have space", "Wins is full right now. Chat and Vent have space." in fl, fl)
+            # another tab signs in B: everything of hers goes from this tab at once
+            await pr2.evaluate("()=>{document.querySelector('#rmText') && (document.querySelector('#rmText').value='draft');}")
+            SESS_RB = dict(SESS); SESS_RB["access_token"] = "smoke-token-b"; SESS_RB["user"] = dict(SESS["user"]); SESS_RB["user"]["id"] = "00000000-0000-4000-8000-00000000000b"
+            await pr2.evaluate("(s)=>{localStorage.setItem('ovumind_auth_v1', s); window.dispatchEvent(new StorageEvent('storage',{key:'ovumind_auth_v1'}));}", json.dumps(SESS_RB)); await pr2.wait_for_timeout(900)
+            sw = await pr2.evaluate("()=>({st: OvuRooms.state(), msgs: document.querySelectorAll('#chRooms .rmm').length})")
+            check("rooms: another account signing in clears her rooms, messages and drafts from this tab", sw["st"]["view"] is None and sw["st"]["feed"] is None and sw["msgs"] == 0, {"view": sw["st"]["view"], "msgs": sw["msgs"]})
+            await pr2.evaluate("(s)=>{localStorage.setItem('ovumind_auth_v1', s); window.dispatchEvent(new StorageEvent('storage',{key:'ovumind_auth_v1'}));}", json.dumps(SESS)); await pr2.wait_for_timeout(600)
+            check("rooms: no page errors in the rooms run", not r_errors, r_errors[:3])
+            await ctxR2.close()
+            # before the rooms exist on the server (404 PGRST202 until the migration is applied): the Channel tab is as it was
+            RM["missing"] = True; rcalls.clear(); r_errors.clear()
+            ctxR3 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctxR3.add_init_script(seed_signed_in)
+            pr3 = await ctxR3.new_page(); await pr3.route("**/*", rooms_gate)
+            pr3.on("pageerror", lambda e: r_errors.append("pageerror: " + str(e)))
+            await pr3.goto(BASE + "room.html", wait_until="networkidle"); await pr3.wait_for_selector(".hotspot"); await pr3.wait_for_timeout(600)
+            await pr3.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+            await pr3.evaluate("()=>OvuWalk.travel('plaza')")
+            try: await pr3.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza'", timeout=12000)
+            except Exception: pass
+            await pr3.evaluate("()=>OvuPlaza.join('everyone')")
+            try: await pr3.wait_for_function("()=>OvuPlaza.state().joined", timeout=8000)
+            except Exception: pass
+            await pr3.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()"); await pr3.click("#deckTabs [data-deck=channel]"); await pr3.wait_for_timeout(1200)
+            n0 = len([c for c in rcalls if c[0] in ("plaza_rooms_list", "plaza_room_feed")])
+            await pr3.evaluate("()=>OvuRooms.poll()"); await pr3.wait_for_timeout(500)
+            ms = await pr3.evaluate("()=>({st: OvuRooms.state(), rooms: document.querySelectorAll('#chRooms .rmrow').length, hidden: document.querySelector('#chRooms').hidden, note: (document.querySelector('#deckChannel .chnote')||{}).textContent||''})")
+            n1 = len([c for c in rcalls if c[0] in ("plaza_rooms_list", "plaza_room_feed")])
+            check("rooms: before the server has them, the rooms stay hidden, the old note stays, and after one question nothing more is asked", ms["st"]["missing"] and ms["rooms"] == 0 and ms["hidden"] and "Typed chat is not open yet" in ms["note"] and n0 == 1 and n1 == n0, {"n0": n0, "n1": n1, "missing": ms["st"]["missing"], "note": ms["note"][:60]})
+            check("rooms: no page errors in the before-the-server run", not r_errors, r_errors[:3])
+            await ctxR3.close()
+
             # the staff dashboard signed in as an owner (fake session, fake staff calls): the Plazas card shows counts only
             ctx5 = await browser.new_context(viewport={"width": 390, "height": 844})
             await ctx5.add_init_script("localStorage.setItem('ovumind_auth_v1', %s);" % json.dumps(json.dumps(SESS)))
@@ -2678,7 +2847,9 @@ async def main():
                                      "days": [{"day": sg_today, "server": "pcos", "joins": 5, "peak": 4}, {"day": sg_today, "server": "everyone", "joins": 1, "peak": 1}]},
                      "admin_proposals": [],
                      "admin_social_reports": {"at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "reports": [{"id": 3, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "reason": "unkind", "status": "open", "decided_at": None, "days": None, "card": "1a2b3c4d", "name": "Mei", "look": "base", "phrase": "Sending you a warm cup of tea.", "about_note": True, "from_card": "9f8e7d6c", "from_name": "Priya", "open_on_card": 1, "card_now": "active"}]},
-                     "admin_social_decide": {"ok": True}}
+                     "admin_social_decide": {"ok": True},
+                     "admin_plaza_messages": {"at": NOW, "mode": "review", "chat_on": True, "messages": [{"id": 5, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": "held", "why": "care", "care": True, "body": "<b>not markup</b> a rough night", "group": "Everyone", "room": "Vent", "name": "Fern", "card": "1a2b3c4d", "reports": 0}]},
+                     "admin_plaza_decide": {"ok": True}}
             async def staff_gate(route):
                 url = route.request.url
                 if url.startswith(BASE): return await route.continue_()
@@ -2723,6 +2894,19 @@ async def main():
             try: await p5.wait_for_function("()=>/No open reports/.test((document.querySelector('#reportsCard')||{}).textContent||'') || /paused/.test((document.querySelector('#reportsCard')||{}).textContent||'')", timeout=6000)
             except Exception: pass
             check("an owner's Pause 7 days sends that report and seven days", sdec == [{"p_id": 3, "p_decision": "pause", "p_days": 7}], sdec)
+            rdec = []
+            async def staff_gate3(route):
+                if re.search(r"/rest/v1/rpc/admin_plaza_decide", route.request.url): rdec.append(json.loads(route.request.post_data or "{}")); STAFF["admin_plaza_messages"]["messages"] = []
+                return await staff_gate(route)
+            await p5.unroute("**/*"); await p5.route("**/*", staff_gate3)
+            try: await p5.wait_for_function("()=>/Room messages waiting/.test((document.querySelector('#roomMsgsCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            rmc = await p5.evaluate("()=>{var c=document.querySelector('#roomMsgsCard'); return c ? {text: c.textContent, bold: !!c.querySelector('.why b'), acts: c.querySelectorAll('[data-rdecide]').length} : null}")
+            check("the staff Queue tab lists room messages waiting for a person (group, room, card, why), her words as text never markup, with Show and Hide for an owner", rmc and "Everyone, Vent" in rmc["text"] and "Words of self-harm or crisis" in rmc["text"] and "<b>not markup</b> a rough night" in rmc["text"] and not rmc["bold"] and rmc["acts"] == 2 and "review mode" in rmc["text"], rmc)
+            await p5.click('#roomMsgsCard [data-rdecide=show]')
+            try: await p5.wait_for_function("()=>/Nothing waiting/.test((document.querySelector('#roomMsgsCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            check("an owner's Show sends that message and the decision, and the card empties", rdec == [{"p_id": 5, "p_decision": "show"}], rdec)
             await ctx5.close()
 
             # the launch setting: Luna's AI help is paused. The three AI choices cannot be turned on, Luna says so, and no AI request goes out
