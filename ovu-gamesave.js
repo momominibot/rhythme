@@ -2,25 +2,29 @@
  * the villagers, the home and the pets lived only on this phone, so a new phone or a cleared browser lost them. This saves
  * that game progress to the signed-in account. It needs only a login, never the diary cloud-backup choice, because nothing
  * in it is diary data: only game fields are saved (no Harbour Lane letters, no garden diary dates, no hearts log, no
- * diary receipts, no daily logging record), chosen field by field in pack().
+ * diary receipts, no record of which kinds of diary entry earned today), chosen field by field in pack().
  *
- * The rule (third version, after two Codex HOLDs on 22 Oct: a field-by-field merge of game state double-counts harvests,
- * adds up positions and energy, and charges a retried purchase twice):
- *  - The account's save is the one true copy. A phone writes only on top of the revision it last saw (game_save_put);
- *    it saves a few seconds after every change, so two phones rarely both change between saves.
- *  - When the account moved on since this phone last saw it, the account's save is taken whole, and the hearts this
- *    phone earned since its last save are added on top. Its other unsaved changes (a purchase, a planting) are dropped
- *    together with what they cost, so nothing is double-counted or charged twice.
- *  - Every write carries an operation id kept until the server answers, so a write whose answer was lost is never applied twice.
- *  - First sign-in on a phone: the account's save, plus this phone's hearts balance, earnings and owned items (once).
- *  - A cleared phone forgets its link (OvuStore clears this key) and links again instead of uploading an empty game.
- *  - Tester mode never saves; a phone that used it takes the account's save whole on its next sync.
- *  - "Delete my cloud copy" marks the save deleted on the server; a phone never revives it on its own, only after a new
- *    sign-in. The deletion is sent with the account and token of the delete itself. */
+ * The rule (fourth version, after three Codex reviews on 22 Oct):
+ *  - The account's save is the one true copy. A phone writes only on top of the revision it last saw (game_save_put) and
+ *    saves a few seconds after every game change.
+ *  - When the account moved on, the phone takes the account's save whole and adds only the hearts it earned that the
+ *    account has not seen yet (kept as its own running count, so a clash never counts them twice). Its other unsaved
+ *    changes (a purchase, a planting) are dropped together with what they cost.
+ *  - Every write carries an operation id; the server remembers the last twenty, so a write whose answer was lost is never
+ *    applied twice, even if another phone saved in between.
+ *  - Today's game caps (practice hearts, the benches, pet care) are part of the save, so they hold across phones; the
+ *    record of which diary kinds earned today stays on the phone, and a phone that never earned here gets none of today's
+ *    logging hearts a second time.
+ *  - First sign-in on a phone: the account's save, plus this phone's hearts balance, earnings, treats and owned items
+ *    (placed items stay as the account has them, so one-per-slot holds).
+ *  - A cleared phone links again instead of uploading an empty game; a tester phone never saves and takes the account copy.
+ *  - "Delete my cloud copy" marks the save deleted on the server. A phone revives it only after a sign-in that happened
+ *    after that deletion. The deletion is sent with the account and token of the delete itself. */
 (function (root) {
   'use strict';
   var GAME_KEYS = ['rewards', 'farm', 'greenhouse', 'villagers', 'home', 'propPos', 'pets', 'garden', 'harbour', 'lane', 'stamina', 'visited', 'game'];
-  var REWARD_FIELDS = ['hearts', 'earned', 'owned', 'placed', 'treats', 'wear', 'gifts', 'streak', 'lastDay'];
+  var REWARD_FIELDS = ['hearts', 'earned', 'owned', 'placed', 'treats', 'wear', 'gifts', 'streak', 'lastDay', 'mindDay', 'mindActs', 'seatDay', 'care'];
+  var DAY_FIELDS = ['mindDay', 'mindActs', 'seatDay', 'care'];
   var LOG_KINDS = { sleep: 1, period: 1, symptom: 1, food: 1, reflection: 1, exercise: 1, water: 1 };
   var META = 'ovumind_gamesave_v1', MAX_BYTES = 200000, KEEPALIVE_MAX = 60000, DEBOUNCE_MS = 4000;
 
@@ -28,6 +32,14 @@
   function plain(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
   function eq(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
   function num(v) { v = Number(v); return isFinite(v) ? v : 0; }
+  /* a complete ledger: the shape ovu-rewards.js starts from, so every reader finds its arrays and objects */
+  function ledger(r) {
+    r = plain(r) ? r : {};
+    r.hearts = Math.max(0, num(r.hearts)); r.earned = Math.max(0, num(r.earned));
+    if (!Array.isArray(r.owned)) r.owned = []; if (!plain(r.placed)) r.placed = {};
+    if (r.lastDay === undefined) r.lastDay = null; if (r.streak === undefined) r.streak = 0;
+    return r;
+  }
   /* only game fields leave the phone */
   function pack(state) {
     var out = {}; state = state || {};
@@ -44,44 +56,59 @@
   /* the account's save, plus hearts this phone earned that the account has not seen (never less than nothing) */
   function withEarnings(remote, gain) {
     var out = clone(remote) || {}; gain = Math.max(0, num(gain)); if (!gain) return out;
-    var r = out.rewards = plain(out.rewards) ? out.rewards : {};
-    r.hearts = Math.max(0, num(r.hearts)) + gain; r.earned = num(r.earned) + gain;
+    var r = out.rewards = ledger(out.rewards);
+    r.hearts += gain; r.earned += gain;
     return out;
   }
-  /* first sign-in: the account's save, plus the hearts balance, earnings and items this phone gathered before signing in */
+  /* first sign-in: the account's save, plus the hearts balance, earnings, treats and items this phone gathered before */
   function linkMerge(local, remote) {
     var out = clone(remote) || {}, lr = local && local.rewards;
     if (plain(lr)) {
-      var r = out.rewards = plain(out.rewards) ? out.rewards : {};
-      r.hearts = Math.max(0, num(r.hearts)) + Math.max(0, num(lr.hearts)); r.earned = num(r.earned) + Math.max(0, num(lr.earned));
-      r.owned = Array.isArray(r.owned) ? r.owned : []; (Array.isArray(lr.owned) ? lr.owned : []).forEach(function (id) { if (r.owned.indexOf(id) < 0) r.owned.push(id); });
-      r.placed = plain(r.placed) ? r.placed : {}; Object.keys(plain(lr.placed) ? lr.placed : {}).forEach(function (id) { if (!(id in r.placed)) r.placed[id] = lr.placed[id]; });
+      var r = out.rewards = ledger(out.rewards);
+      r.hearts += Math.max(0, num(lr.hearts)); r.earned += Math.max(0, num(lr.earned));
+      (Array.isArray(lr.owned) ? lr.owned : []).forEach(function (id) { if (r.owned.indexOf(id) < 0) r.owned.push(id); });
+      if (plain(lr.treats)) { r.treats = plain(r.treats) ? r.treats : {}; Object.keys(lr.treats).forEach(function (k) { r.treats[k] = num(r.treats[k]) + Math.max(0, num(lr.treats[k])); }); }
+      if (plain(lr.wear)) { r.wear = plain(r.wear) ? r.wear : {}; Object.keys(lr.wear).forEach(function (k) { if (!(k in r.wear)) r.wear[k] = clone(lr.wear[k]); }); }
     }
     return out;
   }
-  /* what this phone's state becomes when a save arrives: game fields from the save; letters, garden diary dates and every
-     local-only rewards field (log, receipts, today's caps) stay as they are here. A phone that never earned here gets no
-     second round of today's hearts. */
+  /* two records of the same day's caps join (a seat or practice paid on either phone stays paid); a newer day wins */
+  function mergeDay(a, b) {
+    if (!plain(a)) return clone(b); if (!plain(b)) return clone(a);
+    if (a.day !== b.day) return clone(String(a.day) > String(b.day) ? a : b);
+    var out = clone(a);
+    Object.keys(b).forEach(function (k) {
+      if (k === 'day') return;
+      if (typeof b[k] === 'number') out[k] = Math.max(num(out[k]), b[k]);
+      else if (plain(b[k])) { out[k] = plain(out[k]) ? out[k] : {}; Object.keys(b[k]).forEach(function (j) { var x = b[k][j]; out[k][j] = typeof x === 'number' ? Math.max(num(out[k][j]), x) : (out[k][j] || x); }); }
+    });
+    return out;
+  }
+  /* what this phone's state becomes when a save arrives: the account copy taken whole for game fields; letters, garden
+     diary dates and the phone-only rewards fields stay; today's game caps join; a phone that never earned here gets no
+     second round of today's logging hearts */
   function applyTo(state, save, today) {
     var patch = {};
     GAME_KEYS.forEach(function (k) {
-      if (!save || save[k] === undefined) {
-        /* the account copy is taken whole: game progress it does not have goes too (tester gifts, unsaved purchases),
-           while this phone's private parts stay */
-        var had = state[k]; if (had === undefined || had === null) return;
-        if (k === 'rewards') { var keep = {}; if (plain(had)) Object.keys(had).forEach(function (f) { if (REWARD_FIELDS.indexOf(f) < 0) keep[f] = clone(had[f]); }); patch.rewards = keep; }
-        else if (k === 'garden') patch.garden = plain(had) && had.credited ? { credited: clone(had.credited), watered: [] } : null;
+      var had = state[k], v = save ? clone(save[k]) : undefined;
+      if (k === 'rewards') {
+        var r = ledger(plain(v) ? v : {});
+        if (plain(had)) {
+          Object.keys(had).forEach(function (f) { if (REWARD_FIELDS.indexOf(f) < 0) r[f] = clone(had[f]); });
+          DAY_FIELDS.forEach(function (f) { var m = mergeDay(had[f], r[f]); if (m !== undefined) r[f] = m; });
+        } else { r.log = []; r.daily = { day: today, kinds: clone(LOG_KINDS) }; r.dailyLast = today; r.moveDay = { day: today, pts: 999 }; }
+        if (!Array.isArray(r.log)) r.log = [];
+        patch.rewards = r; return;
+      }
+      if (v === undefined) {
+        if (had === undefined || had === null) return;                         /* game progress the account does not have goes */
+        if (k === 'garden') patch.garden = plain(had) && had.credited ? { credited: clone(had.credited), watered: [] } : null;
         else if (k === 'lane') patch.lane = plain(had) && had.letters !== undefined ? { letters: clone(had.letters) } : null;
         else patch[k] = null;
         return;
       }
-      var v = clone(save[k]), mine = state[k];
-      if (k === 'rewards') {
-        if (plain(mine)) Object.keys(mine).forEach(function (f) { if (REWARD_FIELDS.indexOf(f) < 0) v[f] = clone(mine[f]); });
-        else { v.log = []; v.daily = { day: today, kinds: clone(LOG_KINDS) }; v.dailyLast = today; v.mindDay = { day: today, pts: 999 }; v.moveDay = { day: today, pts: 999 }; }
-      }
-      if (k === 'garden') v = Object.assign({}, plain(mine) ? clone(mine) : {}, { watered: v.watered || [] });
-      if (k === 'lane' && plain(mine) && mine.letters !== undefined) v.letters = clone(mine.letters);
+      if (k === 'garden') v = Object.assign({}, plain(had) ? clone(had) : {}, { watered: Array.isArray(v.watered) ? v.watered : [] });
+      if (k === 'lane' && plain(had) && had.letters !== undefined) v.letters = clone(had.letters);
       patch[k] = v;
     });
     return patch;
@@ -112,20 +139,24 @@
     return call('POST', '/rpc/game_save_put', { p_save: save, p_base: base, p_op: op }).then(function (rows) { return Array.isArray(rows) ? rows[0] || null : rows; });
   }
   var homeTries = 0;
+  function homeOf() { try { return root.OvuRoom && OvuRoom.homeId ? OvuRoom.homeId() : (S.state().home || 'room'); } catch (e) { return 'room'; } }
   function showHome(before) {
-    try { /* a restored home shows as soon as she is standing in the old one with nothing running (tried for a minute) */
-      var R = root.OvuRoom, now = S.state().home; if (!R || !now || now === before || !R.layout || !R.applyLayout) return;
-      if (R.layout() && R.layout().id === now) return;
-      if (R.layout() && R.layout().id === (before || 'room') && !(R.busy && R.busy()) && !(R.sheetOpen && R.sheetOpen())) { R.applyLayout(now); return; }
-      if (++homeTries < 30) setTimeout(function () { showHome(before); }, 2000);
+    try { /* the home she has now shows as soon as she is standing in the old one with nothing running (tried for a minute) */
+      var R = root.OvuRoom, now = homeOf(); if (!R || now === before || !R.layout || !R.applyLayout || !R.layout()) return;
+      if (R.layout().id === now) return;
+      if (R.layout().id === before && !(R.busy && R.busy()) && !(R.sheetOpen && R.sheetOpen())) { R.applyLayout(now); return; }
+      if (R.layout().id === before && ++homeTries < 30) setTimeout(function () { showHome(before); }, 2000);
     } catch (e) { }
   }
-  function apply(save) {
-    var before = S.state().home, patch = applyTo(S.state(), save, S.today());
-    if (!Object.keys(patch).length) return;
-    applying = true; try { (S.commit || S.setState)(patch); } finally { applying = false; }
-    try { if (root.OvuRoom && OvuRoom.renderProps) OvuRoom.renderProps(); } catch (e) { }
-    homeTries = 0; showHome(before);
+  /* apply a save; the running count of unsaved earnings starts again from what the phone now shows */
+  function apply(uid, save) {
+    var before = homeOf(), patch = applyTo(S.state(), save, S.today());
+    if (Object.keys(patch).length) {
+      applying = true; try { (S.commit || S.setState)(patch); } finally { applying = false; }
+      try { if (root.OvuRoom && OvuRoom.renderProps) OvuRoom.renderProps(); } catch (e) { }
+      homeTries = 0; showHome(before);
+    }
+    var p = pack(S.state()); if (uid) patchMeta(uid, { seenEarned: earned(p), hash: hashOf(p) });
   }
   function isOff(uid) { return !!(metaFor(uid) || {}).off; }
   /* send the write recorded in meta.pending (kept until the server answers, so a lost answer is resent with the same id) */
@@ -134,50 +165,54 @@
     return put(p.save, p.base, p.op).then(function (res) {
       if (A().userId() !== uid) return 'stopped';
       if (res && res.ok) {
-        var m = metaFor(uid) || {};
+        /* the revision this write made is base + 1; a resend reported as already done may come back with a later one,
+           which another phone wrote and this phone has not seen yet, so the next sync still takes it */
+        var m = metaFor(uid) || {}, mine = num(p.base) + 1;
         if (p.kind === 'link') {
-          var gain = earned(pack(S.state())) - num(p.localEarned); /* hearts she earned while the link was on its way */
-          apply(withEarnings(p.save, gain));
-          patchMeta(uid, { linked: true, off: false, revive: false, tainted: false, rev: res.rev, savedEarned: earned(p.save), seq: gain > 0 ? 1 : 0, acked: 0, hash: hashOf(pack(S.state())), pending: null });
+          var extra = Math.max(0, earned(pack(S.state())) - num(p.localEarned)); /* hearts she earned while the link was on its way */
+          apply(uid, withEarnings(p.save, extra));
+          patchMeta(uid, { linked: true, off: false, reviveRev: null, tainted: false, rev: mine, savedEarned: earned(p.save), gain: extra, pending: null, seq: extra ? 1 : 0, acked: 0 });
+          if (extra) schedule();
           return 'linked';
         }
-        patchMeta(uid, { rev: res.rev, savedEarned: earned(p.save), acked: Math.max(num(m.acked), num(p.seq)), pending: null });
+        patchMeta(uid, { rev: mine, savedEarned: earned(p.save), gain: Math.max(0, num(m.gain) - num(p.gain)), acked: Math.max(num(m.acked), num(p.seq)), pending: null });
         return 'saved';
       }
       patchMeta(uid, { pending: null });
-      if (res && res.deleted && !(metaFor(uid) || {}).revive) { patchMeta(uid, { off: true }); return 'deleted'; }
       schedule(); return 'clash';                                /* the next sync takes the account's newer save */
     });
   }
   function queue(uid, kind, save, base, extra) { patchMeta(uid, { pending: Object.assign({ kind: kind, save: save, base: base, op: opId() }, extra || {}) }); return sendPending(uid); }
+  function canRevive(m, row) { return !!(row && row.deleted && m && m.reviveRev != null && m.reviveRev === row.rev); }
   function sync() {
     if (!ready()) return Promise.resolve('off');
     var uid = A().userId(); if (!ownerOk(uid)) return Promise.resolve('owner');
     if (tester()) { patchMeta(uid, { tainted: true }); return Promise.resolve('tester'); }
-    if (isOff(uid)) return Promise.resolve('deleted');
+    if (isOff(uid) && (metaFor(uid) || {}).reviveRev == null) return Promise.resolve('deleted');
     if (busy) { again = true; return Promise.resolve('busy'); }
     busy = true;
     return sendPending(uid).then(function () { return getRow(uid); }).then(function (row) {
-      if (A().userId() !== uid || isOff(uid)) return 'stopped';
-      var m = metaFor(uid) || { uid: uid }, seq = num(m.seq), dirty = seq > num(m.acked), mine = pack(S.state());
+      if (A().userId() !== uid) return 'stopped';
+      var m = metaFor(uid) || { uid: uid }, seq = num(m.seq), dirty = seq > num(m.acked), mine = pack(S.state()), gain = Math.max(0, num(m.gain));
       var live = row && !row.deleted && row.rev > 0;
-      if (row && row.deleted && !m.revive) { patchMeta(uid, { off: true }); return 'deleted'; }
-      if (!m.linked) {
+      if (row && row.deleted && !canRevive(m, row)) { patchMeta(uid, { off: true, reviveRev: null }); return 'deleted'; }
+      if (m.off && !canRevive(m, row)) return 'deleted';
+      if (!m.linked || m.off) {
         if (m.tainted && !live) return 'tester';                    /* tester progress is never uploaded */
         var target = live ? (m.tainted ? clone(row.save) : linkMerge(mine, row.save)) : mine;
         return queue(uid, 'link', target, row ? row.rev : 0, { localEarned: earned(mine) });
       }
-      if (!row) return queue(uid, 'save', mine, 0, { seq: seq });
-      if (m.tainted) { apply(row.save); patchMeta(uid, { tainted: false, rev: row.rev, savedEarned: earned(row.save), acked: seq, hash: hashOf(pack(S.state())) }); return 'pulled'; }
-      if (row.rev > num(m.rev) || row.deleted) {
-        var gain = dirty ? earned(mine) - num(m.savedEarned) : 0, next = withEarnings(row.save, gain);
-        if (!eq(next, mine)) apply(next);
-        if (gain > 0) return queue(uid, 'save', next, row.rev, { seq: seq });
-        patchMeta(uid, { rev: row.rev, savedEarned: earned(row.save), acked: seq, hash: hashOf(pack(S.state())) }); return 'pulled';
+      if (!row) return queue(uid, 'save', mine, 0, { seq: seq, gain: gain });
+      if (m.tainted) { apply(uid, row.save); patchMeta(uid, { tainted: false, rev: row.rev, savedEarned: earned(row.save), gain: 0, acked: seq }); return 'pulled'; }
+      if (row.rev > num(m.rev)) {
+        var next = withEarnings(row.save, gain);
+        apply(uid, next);
+        if (gain > 0) return queue(uid, 'save', next, row.rev, { seq: seq, gain: gain });
+        patchMeta(uid, { rev: row.rev, savedEarned: earned(row.save), acked: seq }); return 'pulled';
       }
       if (!dirty) return 'none';
       if (earned(mine) < num(m.savedEarned)) return 'refused';      /* a lost or cleared game never overwrites the account */
-      return queue(uid, 'save', mine, num(m.rev), { seq: seq });
+      return queue(uid, 'save', mine, num(m.rev), { seq: seq, gain: gain });
     }).catch(function () { return 'error'; }).then(function (r) { busy = false; if (again) { again = false; schedule(); } return r; });
   }
   function schedule() { clearTimeout(timer); timer = setTimeout(function () { timer = 0; sync(); }, DEBOUNCE_MS); }
@@ -187,16 +222,21 @@
     if (tester()) { patchMeta(uid, { tainted: true }); return; }
     if (m && m.off) return;
     if (!m || !m.linked) { schedule(); return; }
-    var h = hashOf(pack(S.state())); if (h === m.hash) return;   /* a settings change, not game progress */
-    patchMeta(uid, { seq: num(m.seq) + 1, hash: h }); schedule();
+    var p = pack(S.state()), h = hashOf(p); if (h === m.hash) return;   /* a settings change, not game progress */
+    var e = earned(p), seen = m.seenEarned == null ? e : num(m.seenEarned), up = Math.max(0, e - seen);
+    patchMeta(uid, { seq: num(m.seq) + 1, hash: h, seenEarned: e, gain: num(m.gain) + up }); schedule();
   }
   /* "delete my cloud copy", for the account and token the delete was started with: mark the save deleted on the server,
-     then stop saving on this phone for that account until its next sign-in. A server without the game save is not an
-     error; any other failure goes back to the caller. */
+     then stop saving on this phone for that account until a sign-in after the deletion. A server without the game save is
+     not an error; any other failure goes back to the caller. */
   function forget(uid, token) {
     if (!uid || !token) return Promise.reject(new Error('Please sign in again.'));
-    clearTimeout(timer); timer = 0; patchMeta(uid, { off: true, pending: null, revive: false });
+    clearTimeout(timer); timer = 0; patchMeta(uid, { off: true, pending: null, reviveRev: null });
     return call('POST', '/rpc/game_save_delete', {}, token).catch(function (e) { if (e && (e.status === 404 || e.code === 'PGRST202')) return null; throw e; });
+  }
+  /* a sign-in records which revision it saw, so a deletion that happens later is never undone by this sign-in */
+  function noteSignIn(uid) {
+    return getRow(uid).then(function (row) { if (A().userId() === uid) patchMeta(uid, { reviveRev: row ? row.rev : 0 }); }).catch(function () { });
   }
   if (S && S.subscribe && typeof window !== 'undefined' && window.document) {
     S.subscribe(onChange);
@@ -204,14 +244,13 @@
     var start = function () {
       lastUid = A() && A().userId ? A().userId() : null;
       if (A() && A().subscribe) A().subscribe(function () {
-        var now = A().userId();
-        if (now && now !== lastUid) { var m = metaFor(now); if (m && m.off) setMetaFor(now, { uid: now, revive: true }); else if (m && !m.linked) patchMeta(now, { revive: true }); else if (!m) setMetaFor(now, { uid: now, revive: true }); } /* a new sign-in may start a save again */
-        lastUid = now; setTimeout(sync, 500);
+        var now = A().userId(), fresh = now && now !== lastUid; lastUid = now;
+        if (fresh) noteSignIn(now).then(function () { setTimeout(sync, 300); }); else setTimeout(sync, 500);
       });
       setTimeout(sync, 1500);
     };
     if (document.readyState === 'complete') start(); else window.addEventListener('load', start);
     document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden' && timer) { clearTimeout(timer); timer = 0; sync(); } });
   }
-  root.OvuGameSave = { META: META, GAME_KEYS: GAME_KEYS, REWARD_FIELDS: REWARD_FIELDS, pack: pack, withEarnings: withEarnings, linkMerge: linkMerge, applyTo: applyTo, hashOf: hashOf, sync: sync, forget: forget };
+  root.OvuGameSave = { META: META, GAME_KEYS: GAME_KEYS, REWARD_FIELDS: REWARD_FIELDS, pack: pack, withEarnings: withEarnings, linkMerge: linkMerge, applyTo: applyTo, mergeDay: mergeDay, hashOf: hashOf, sync: sync, forget: forget, noteSignIn: noteSignIn };
 })(typeof window !== 'undefined' ? window : this);
