@@ -76,6 +76,68 @@ def serve():
         s.close(); time.sleep(0.1)
     raise SystemExit("static server did not start")
 
+async def check_legacy_pages(browser):
+    """The older pages wear the room's look and lead back to it; settings.html is a sheet on the You tab (22 Oct)."""
+    ctx = await browser.new_context(viewport={"width": 390, "height": 844})
+    await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctx.add_init_script(SESSION_SEED)
+    await ctx.add_init_script("localStorage.setItem('ovuluna_theme','dark');")  # a dark choice left by the old theme button
+    await ctx.route("**/functions/v1/**", lambda r: r.abort())
+    pg = await ctx.new_page(); errs = []
+    pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
+    async def room_ready(p):
+        try: await p.wait_for_function("()=>window.OvuRoom && !OvuRoom.busy()", timeout=15000)
+        except Exception: pass
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded"); await room_ready(pg)
+    await pg.click("nav a[data-tab=you]")
+    try: await pg.wait_for_selector('[data-yact="settings"]', timeout=8000)
+    except Exception: check("settings: the You tab has a Settings row", False, "no [data-yact=settings]"); await ctx.close(); return
+    await pg.click('[data-yact="settings"]'); await pg.wait_for_timeout(400)
+    s1 = await pg.evaluate("()=>({id: OvuRoom.sheetId(), chips: [...document.querySelectorAll('#sheetBody [data-persona], .sheet [data-persona]')].map(b=>b.dataset.persona), on: (document.querySelector('[data-persona].on')||{}).dataset, csv: !!document.querySelector('#setSleepCsv'), links: [...document.querySelectorAll('.sheet a.yrow')].map(a=>a.getAttribute('href'))})")
+    check("settings: You opens a Settings sheet in the room with the four life-stage looks, the sleep file and the records links", s1["id"] == "settings" and s1["chips"] == ["grow", "nurture", "peri", "wisdom"] and s1["csv"] and "health-profile.html" in s1["links"] and "labs.html" in s1["links"] and "privacy.html#privacy-local-title" in s1["links"], s1)
+    await pg.click('[data-persona="nurture"]'); await pg.wait_for_timeout(200)
+    s2 = await pg.evaluate("()=>({saved: localStorage.getItem('ovuluna_persona'), pressed: document.querySelector('[data-persona=nurture]').getAttribute('aria-pressed'), others: document.querySelectorAll('[data-persona].on').length})")
+    check("settings: a life-stage look is saved where it always was (localStorage ovuluna_persona) and shows as chosen", s2["saved"] == "nurture" and s2["pressed"] == "true" and s2["others"] == 1, s2)
+    await pg.set_input_files("#setSleepCsv", files=[{"name": "sleep.csv", "mimeType": "text/csv", "buffer": b"date,bedTime,wakeTime,quality\n2026-10-17,23:10,06:45,4\nnot a night\n"}]); await pg.wait_for_timeout(600)
+    s3 = await pg.evaluate("()=>({msg: (document.querySelector('#setSleepMsg')||{}).textContent||'', id: OvuRoom.sheetId(), night: OvuStore.list('sleep').filter(e=>e.date==='2026-10-17').map(e=>({src:e.source, bed:e.data.bedTime, wake:e.data.wakeTime, q:e.data.quality, mode:e.data.mode}))})")
+    check("settings: a sleep file comes in as sleep entries from 'import', the same as the old page, and says what it skipped", s3["id"] == "settings" and s3["night"] == [{"src": "import", "bed": "23:10", "wake": "06:45", "q": 4, "mode": "import"}] and "Brought in 1 night, skipped 1 unreadable line" in s3["msg"], s3)
+    # the retired settings page, opened in the viewer, hands over to the sheet; opened on its own, it lands on the sheet
+    await pg.evaluate("()=>{ OvuRoom.closeSheet && OvuRoom.closeSheet(); }"); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(300)
+    await pg.evaluate("()=>OvuPage.open('settings.html')"); await pg.wait_for_timeout(1500)
+    s4 = await pg.evaluate("()=>({viewer: OvuPage.isOpen(), id: OvuRoom.sheetId()})")
+    check("settings: settings.html opened from a link in the room closes the viewer and opens the Settings sheet", not s4["viewer"] and s4["id"] == "settings", s4)
+    await pg.goto(BASE + "settings.html", wait_until="domcontentloaded"); await pg.wait_for_url("**/room.html*", timeout=8000); await room_ready(pg)
+    try: await pg.wait_for_function("()=>OvuRoom.sheetId()==='settings'", timeout=6000)
+    except Exception: pass
+    s5 = await pg.evaluate("()=>({id: OvuRoom.sheetId(), tab: (document.querySelector('nav a.on')||{}).dataset})")
+    check("settings: the old settings.html address lands on the Settings sheet with the You tab chosen", s5["id"] == "settings" and (s5["tab"] or {}).get("tab") == "you", s5)
+    # representative older pages: one header with a way back, the room's five tabs, the light palette, no second Luna
+    looks = {}
+    await pg.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); d.profile.textSize='large'; localStorage.setItem('ovumind_db_v1', JSON.stringify(d));}")
+    for name in ["fertility.html", "journey-peri.html", "labs.html", "privacy.html", "ppg.html", "terms.html"]:
+        await pg.goto(BASE + name, wait_until="load"); await pg.wait_for_timeout(500)
+        looks[name] = await pg.evaluate("""()=>{const b=document.querySelector('.top.rh-top .rh-back'), t=document.querySelector('.top.rh-top .rh-title'), n=document.querySelector('nav.rh-nav'), l=document.querySelector('#lunaBtn');
+          return {back: b && b.getAttribute('href'), title: t && t.textContent, tabs: n ? [...n.querySelectorAll('a')].map(a=>[...a.childNodes].filter(x=>x.nodeType===3).map(x=>x.textContent).join('').trim()) : null,
+            theme: document.documentElement.getAttribute('data-theme'), bg: getComputedStyle(document.body).backgroundColor, luna: !!(l && l.offsetParent),
+            font: parseFloat(document.documentElement.style.fontSize)||0, sheet: !!document.querySelector('link[href="rhythme-legacy.css"]')}}""")
+    bad = {k: v for k, v in looks.items() if not (v["back"] and v["back"].startswith("room.html") and v["title"] and v["theme"] == "light" and v["bg"] == "rgb(248, 243, 251)" and not v["luna"] and v["sheet"] and abs(v["font"] - 17.92) < 0.2)}
+    check("older pages: each has the room's back button and title, the light palette even after an old dark choice, no second Luna, and the room's text size", not bad, bad)
+    navs = {k: v["tabs"] for k, v in looks.items() if v["tabs"] is not None}
+    check("older pages: the tabs are the room's five (Home, Cycle, Food, Mind, You)", navs and all(t == ["Home", "Cycle", "Food", "Mind", "You"] for t in navs.values()), navs)
+    # retired duplicates go where their content lives
+    ends = {}
+    for name in ["notifications.html", "reports.html", "meds.html", "sleep.html", "community.html", "premium.html"]:
+        await pg.goto(BASE + name, wait_until="domcontentloaded"); await pg.wait_for_timeout(900)
+        ends[name] = pg.url.replace(BASE, "")
+    want = {"notifications.html": "room.html", "reports.html": "labs.html", "meds.html": "health-profile.html", "sleep.html": "journal.html", "community.html": "room.html", "premium.html": "room.html"}
+    check("retired pages: reminders, sample reports, sample medicines, sleep notes, sample groups and the premium preview each land on their home", all(ends[k].split("#")[0] == v for k, v in want.items()), ends)
+    # a Learn page in the viewer: its own header and tabs step aside for the viewer's bar
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded"); await room_ready(pg)
+    await pg.evaluate("()=>OvuPage.open('fertility.html')"); await pg.wait_for_timeout(1800)
+    v1 = await pg.evaluate("()=>{const f=document.querySelector('#pvFrame'), d=f.contentDocument, top=d.querySelector('.top'), nav=d.querySelector('nav.nav');return {open: OvuPage.isOpen(), title: document.querySelector('#pvTitle').textContent, top: top ? getComputedStyle(top).display : 'none', nav: nav ? getComputedStyle(nav).display : 'none'}}")
+    check("viewer: a Learn page opens over the room with the viewer's title, its own header and tabs hidden", v1["open"] and v1["title"] == "Fertility" and v1["top"] == "none" and v1["nav"] == "none", v1)
+    check("older pages and settings: no page errors", not errs, errs[:3])
+    await ctx.close()
+
 async def main():
     server = serve()
     try:
@@ -3298,6 +3360,8 @@ async def main():
             check("fasting: a pregnant profile closes the record control with the reason, the intro's answer winning over hers", not f7["record"] and "pregnancy" in f7["reason"], f7)
             check("fasting: no page errors in the fasting run", not ferr, ferr[:3])
             await ctxf.close()
+
+            await check_legacy_pages(browser)  # the older pages and the Settings sheet (22 Oct)
 
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()

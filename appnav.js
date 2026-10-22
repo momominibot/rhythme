@@ -9,21 +9,32 @@
   `;
   var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
 
-  // ---- Rhythme alignment: the room's header, five tabs and theme on every older page ----
+  // ---- Rhythme alignment: the room's header, five tabs and look on every older page (22 Oct: one look everywhere) ----
+  // The header is the journal's: a round back button to the room (to the Learn desk for a Learn page) and the page's
+  // name. The tabs are the room's five; Cycle reads Body after the menopause, as in the room.
   (function(){
+    function esc(t){ return String(t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+    function postMeno(){ try { var p=(JSON.parse(localStorage.getItem('ovumind_db_v1')||'null')||{}).profile||{}; return ['post','postmenopause','postmenopausal'].indexOf(p.lifeStage||'')>-1; } catch(e){ return false; } }
     function align(){
       try {
         if(!document.querySelector('link[href*="rhythme-legacy.css"]')){ var l=document.createElement('link'); l.rel='stylesheet'; l.href='rhythme-legacy.css'; document.head.appendChild(l); }
         if(!document.querySelector('link[href*="Material+Symbols"]')){ var m=document.createElement('link'); m.rel='stylesheet'; m.href='https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block'; document.head.appendChild(m); }
         if(!document.querySelector('link[href*="family=Newsreader"]')){ var f=document.createElement('link'); f.rel='stylesheet'; f.href='https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Manrope:wght@400;600;700;800&display=swap'; document.head.appendChild(f); }
+        var learn=!!document.querySelector('a.learning-back'), back=learn?'room.html#learn':'room.html';
+        var title=(document.title||'').replace(/^Rhythme\s*[·|:-]\s*/,'')||'Rhythme';
         var top=document.querySelector('.top');
-        if(top){ top.setAttribute('data-dream-skip',''); var bl=top.querySelector('.brandline'); if(bl) bl.innerHTML='<a class="rh-brand" href="room.html" aria-label="Rhythme, back to your room"><img class="rh-logo" src="assets/brand/logo-mark.webp" alt="" width="26" height="26">RHYTHME</a>'; }
+        if(top && !top.classList.contains('rh-top')){
+          top.setAttribute('data-dream-skip',''); top.classList.add('rh-top');
+          top.innerHTML='<a class="rh-back" href="'+back+'" aria-label="'+(learn?'Back to your desk':'Back to your room')+'"><span class="ms" aria-hidden="true">arrow_back</span></a><h1 class="rh-title">'+esc(title)+'</h1>';
+        }
         var nav=document.querySelector('nav.nav, nav.bottom-nav');
         if(nav && !nav.dataset.rhythme){
-          nav.setAttribute('data-dream-skip',''); nav.dataset.rhythme='1'; nav.className='nav'; nav.setAttribute('aria-label','Main');
-          nav.innerHTML=[['room.html','home','Home'],['room.html#food','restaurant','Food'],['room.html#mind','self_improvement','Mind'],['room.html#you','person','You']].map(function(t,i){ return '<a href="'+t[0]+'"'+(i===0?' class="on" aria-current="true"':'')+'><span class="ms">'+t[1]+'</span>'+t[2]+'</a>'; }).join('');
+          var pm=postMeno();
+          nav.setAttribute('data-dream-skip',''); nav.dataset.rhythme='1'; nav.className='nav rh-nav'; nav.setAttribute('aria-label','Main');
+          nav.innerHTML=[['room.html','home','Home'],['room.html#cycle',pm?'spa':'monitoring',pm?'Body':'Cycle'],['room.html#food','restaurant','Food'],['room.html#mind','self_improvement','Mind'],['room.html#you','person','You']].map(function(t){ return '<a href="'+t[0]+'"><span class="ms" aria-hidden="true">'+t[1]+'</span>'+t[2]+'</a>'; }).join('');
         }
-        document.querySelectorAll('a.learning-back').forEach(function(a){ var h=a.getAttribute('href')||''; if(h==='home.html'||/Knowledge Hub/.test(a.textContent)){ a.setAttribute('href','room.html#learn'); a.textContent='← Back to your desk'; } });
+        document.querySelectorAll('a.learning-back').forEach(function(a){ var h=a.getAttribute('href')||''; if(h==='home.html'||/Knowledge Hub/.test(a.textContent)){ a.setAttribute('href','room.html#learn'); a.textContent='Back to your desk'; } });
+        if(top) document.documentElement.classList.add('rh-aligned');
       } catch(e){}
     }
     if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', align); else align();
@@ -41,7 +52,7 @@
   });
 
   // ---- home domain names/legend → domain detail screens ----
-  var DOMAP={medical:'reports.html',cycle:'room.html#cycle',stress:'stress.html',exercise:'room.html#move',diet:'room.html#food',sleep:'sleep.html',mind:'room.html#mind',mindfulness:'room.html#mind'};
+  var DOMAP={medical:'labs.html',cycle:'room.html#cycle',stress:'room.html#mind',exercise:'room.html#move',diet:'room.html#food',sleep:'journal.html#sleep',mind:'room.html#mind',mindfulness:'room.html#mind'};
   document.querySelectorAll('.scroll span, .metric').forEach(function(el){
     // Text inside a real control belongs to that control. Binding a second
     // route to its label can hijack check-in dialogs when the label is tapped.
@@ -67,29 +78,29 @@
   // ---- smart-route common dead #-links to real screens by their text/icon ----
   var ROUTES=[
     [/view insights|see insights|ai insight|insights/i,'room.html'],
-    [/notification/i,'notifications.html'],
+    [/notification|reminder/i,'room.html#reminders'],
     [/calendar_today|calendar|history|cycle status/i,'room.html#cycle'],
     [/log today|log flow|log your|edit_note/i,'room.html#cycle'],
     [/fertile|ovulation|conceive/i,'fertility.html'],
     [/hormone/i,'hormones.html'],
-    [/sleep/i,'sleep.html'],
-    [/stress|breathing|calm/i,'stress.html'],
+    [/sleep/i,'journal.html#sleep'],
+    [/stress|breathing|calm/i,'room.html#mind'],
     [/mindful|meditation|erin|pause/i,'room.html#mind'],
     [/exercise|workout|training|fitness/i,'room.html#mind'],
     [/food|meal|nutrition|diet/i,'room.html#food'],
     [/supplement/i,'room.html#food'],
     [/hydrat/i,'room.html#food'],
-    [/lab|marker|report|amh|fsh/i,'reports.html'],
+    [/lab|marker|report|amh|fsh/i,'labs.html'],
     [/longevity|roadmap|milestone/i,'room.html'],
     [/bio-age|recalc/i,'room.html'],
-    [/premium|upgrade|unlock/i,'premium.html'],
+    [/premium|upgrade|unlock/i,'room.html#plus'],
     [/privacy|security|data/i,'privacy.html'],
-    [/setting|preferences/i,'settings.html'],
-    [/medication|contracept/i,'meds.html'],
-    [/period ended|period start/i,'period-start.html'],
+    [/setting|preferences/i,'room.html#settings'],
+    [/medication|contracept/i,'health-profile.html'],
+    [/period ended|period start/i,'room.html#cycle'],
     [/measure|scan|pulse|ppg/i,'ppg.html'],
     [/profile|account/i,'room.html#you'],
-    [/community|circle|discussion/i,'community.html']
+    [/community|circle|discussion/i,'room.html#friends']
   ];
   function toast(m){ var t=document.createElement('div'); t.className='otoast'; t.textContent=m; document.body.appendChild(t);
     requestAnimationFrame(function(){ t.style.opacity='1'; t.style.transform='translateX(-50%)'; });

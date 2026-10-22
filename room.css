@@ -2463,3 +2463,8 @@ html[data-mindful=quick] .mindline:not(.keep){display:none}
 .soaker .steam.s1{left:-6%}.soaker .steam.s2{left:78%;animation-delay:1.5s}.soaker .steam.s3{left:36%;animation-delay:3s}
 @keyframes soaksteam{0%{opacity:0;transform:translateY(0) scale(.6)}30%{opacity:.8}100%{opacity:0;transform:translateY(-260%) scale(1.5)}}
 @media (prefers-reduced-motion:reduce){.soaker .steam{animation:none;opacity:.35}}
+
+/* Settings sheet (You tab, 22 Oct): a small status word beside each health connection */
+.stat b .spill{display:inline-block;margin-left:4px;padding:2px 7px;border-radius:99px;background:var(--rm-lilac-2);color:var(--rm-plum);font:800 9.5px var(--sans);letter-spacing:.05em;text-transform:uppercase;vertical-align:1px}
+.ygroup .stat{margin-top:0}
+.ygroup .stat span{line-height:1.45}

@@ -108,6 +108,7 @@
 
 <nav class="nav" aria-label="Main">
   <a href="room.html"><span class="ms">home</span>Home</a>
+  <a href="room.html#cycle" id="navCycle"><span class="ms">monitoring</span><span class="navlabel">Cycle</span></a>
   <a href="room.html#food"><span class="ms">restaurant</span>Food</a>
   <a href="room.html#mind"><span class="ms">self_improvement</span>Mind</a>
   <a href="room.html#you"><span class="ms">person</span>You</a>
@@ -129,6 +130,7 @@
 (function(){
   'use strict';
   var S=window.OvuStore,A=window.OvuAgents,I=window.OvuInsight;
+  (function(){var c=document.getElementById('navCycle');if(!c||!A||!A.isPostmenopausal||!A.isPostmenopausal(S.profile()))return;c.querySelector('.ms').textContent='spa';c.querySelector('.navlabel').textContent='Body';})(); /* the room's tab names, Body after the menopause */
   var $=function(s,r){return (r||document).querySelector(s);},$$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
   function esc(s){return String(s===undefined||s===null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];});}
   function pretty(iso,o){return new Date(iso+'T12:00:00').toLocaleDateString(undefined,o||{weekday:'short',day:'numeric',month:'short'});}
