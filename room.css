@@ -1666,8 +1666,9 @@ body.btap-open{overflow:hidden}
 @media (prefers-reduced-motion: reduce){.zonename,.nearpill,.gamehud .gh-stam b{transition:none}}
 
 /* ---------- the farm (ovu-farm.js): beds drawn on the plate, the bed and shed sheets ---------- */
-.bed{position:absolute;transform:translate(-50%,-86%);aspect-ratio:1;background:none;border:0;padding:0;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 3px 4px rgba(70,40,100,.16))}
-.bed .bedcrop,.bedpic .bedcrop{position:absolute;left:0;bottom:0;width:100%;height:auto;display:block;pointer-events:none}
+.bed{position:absolute;transform:translate(-50%,-100%);aspect-ratio:1;background:none;border:0;padding:0;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 3px 4px rgba(70,40,100,.16))}
+.bed .bedcrop,.bedpic .bedcrop{position:absolute;left:22.5%;bottom:0;width:55%;height:auto;display:block;pointer-events:none}
+.bed .bedcrop.back,.bedpic .bedcrop.back{left:2.5%;bottom:10.8%}.bed .bedcrop.front,.bedpic .bedcrop.front{left:42.5%;bottom:-10.8%}
 .bed .bedover,.bedpic .bedover{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;pointer-events:none}
 .bed:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:10px}
 .bedcard{display:flex;gap:12px;align-items:center;background:var(--rm-card,#fff);border-radius:16px;padding:12px;margin-top:4px}
@@ -1692,7 +1693,8 @@ body.btap-open{overflow:hidden}
 .snapbtns + .help,.snapbtns ~ p.help{margin-top:12px;line-height:1.5}
 .phasechips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
 /* the bed card shows soil, not a blank square */
-.bedcard .bedpic{background:linear-gradient(180deg,#f8f1fd,#efe4f7)}
+.bedcard .bedpic{overflow:hidden;background:radial-gradient(ellipse 46% 20% at 50% 74%,#8a5a44 0 62%,#6e4535 64% 100%,transparent 102%),linear-gradient(180deg,#f8f1fd,#efe4f7)}
+.bedpic .bedover{transform:translateY(-24%)}.bedpic .bedcrop{bottom:24%}.bedpic .bedcrop.back{bottom:33%}.bedpic .bedcrop.front{bottom:15%}
 
 /* plaza servers (ovu-plaza.js): a pill in screen space while she is in the plaza, and the chooser sheet */
 .plazapill{position:absolute;left:10px;top:12px;z-index:7;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 120px);padding:7px 12px 7px 9px;border:1.5px solid rgba(255,255,255,.9);border-radius:99px;background:rgba(255,255,255,.86);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(80,50,110,.14);font:800 12px var(--sans);color:var(--rm-ink);cursor:pointer}
@@ -2113,7 +2115,7 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .ready .dots{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin:4px 0 8px}
 .ready .dot{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative}
 .ready .dot i{width:40px;height:40px;border-radius:50%;border:2px solid #d9cdee;background:#fff;display:flex;align-items:center;justify-content:center;font:800 15px var(--sans);color:#a394bd;font-style:normal}
-.ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#fff}
+.ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#2a1d44} /* dark plum on the pale gradient (Codex, 22 Oct: white was under 2:1) */
 .ready .dot em{font:700 10px/1.2 var(--sans);font-style:normal;color:var(--rm-ink-2);text-align:center}
 .ready .dot+.dot::before{content:"";position:absolute;left:-50%;right:50%;top:20px;height:2px;background:#e4dbf2;z-index:-1}
 .ready p{margin:0;font:600 13px/1.45 var(--sans);color:var(--rm-ink)}

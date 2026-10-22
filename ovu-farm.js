@@ -33,14 +33,17 @@
     shelf: { name: 'Seed shelf', note: '5 free seeds a day.', cost: 150, icon: 'shelves' },
     bigcan: { name: 'Big watering can', note: 'Waters every bed at once.', cost: 120, icon: 'water_drop' }
   };
-  /* the bed grid on the plate: corner A (left), B (top), C (right); four beds along AB, three along BC */
-  var A = { x: 24, y: 53 }, B = { x: 51, y: 41 }, C = { x: 81, y: 54 };
-  function bedAt(i, j) { var u = (i + 0.5) / 4, v = (j + 0.5) / 3; return { x: round(A.x + u * (B.x - A.x) + v * (C.x - B.x)), y: round(A.y + u * (B.y - A.y) + v * (C.y - B.y)) }; }
-  /* she tends a bed from the slab's margin: the front-left edge for the beds nearer it, the front-right edge otherwise */
+  /* the bed grid as the plate draws it (measured from farm-v1.webp's soil, 22 Oct: Jamie, "it doesnt tally to the bed"):
+     four beds run from the top bed down to the right (i), three from the top bed down to the left (j). T is the top bed's
+     soil centre, E1 one bed along i, E2 one bed along j, all in plate percent; the fit is within 0.7 of every measured centre */
+  var T = { x: 48.72, y: 45.46 }, E1 = { x: 8.64, y: 3.72 }, E2 = { x: -7.83, y: 3.45 };
+  function at(u, v) { return { x: round(T.x + u * E1.x + v * E2.x), y: round(T.y + u * E1.y + v * E2.y) }; }
+  function bedAt(i, j) { return at(i, j); }
+  /* she tends a bed from the slab's margin: the front-left edge (past the last row along j) or the front-right edge (past
+     the last row along i), whichever is nearer; beds in one line share that stand */
   function standFor(i, j) {
-    var u = (i + 0.5) / 4, v = (j + 0.5) / 3;
-    if (i <= 2 - j) return { x: round(A.x - 0.3 * (B.x - A.x) + v * (C.x - B.x)), y: round(A.y - 0.3 * (B.y - A.y) + v * (C.y - B.y)), flip: false };
-    return { x: round(A.x + u * (B.x - A.x) + 1.24 * (C.x - B.x)), y: round(A.y + u * (B.y - A.y) + 1.24 * (C.y - B.y)), flip: true };
+    if (2 - j < 3 - i) { var p = at(i, 2.95); return { x: p.x, y: p.y, flip: false }; } /* a tie goes right: the basket sits at the front-left corner */
+    var q = at(3.95, j); return { x: q.x, y: q.y, flip: true };
   }
   function round(n) { return Math.round(n * 10) / 10; }
   var BEDS = []; for (var jj = 0; jj < 3; jj++) for (var ii = 0; ii < 4; ii++) BEDS.push({ id: 'bed' + (jj * 4 + ii + 1), i: ii, j: jj, at: bedAt(ii, jj), wp: standFor(ii, jj) });
@@ -259,22 +262,25 @@
   function cropSprite(k, st) { return st >= 3 ? k + '-ripe' : st === 2 ? k + '-grow' : 'seedling'; }
   function bedArt(b, id, day) {
     var st = stage(b), weeds = hasWeeds(b, id, day), wet = wateredToday(b, day), crop = b && b.crop ? CROPS[b.crop] : null;
-    var s = crop && st >= 1 ? '<img class="bedcrop" src="assets/room/farm/crops/' + cropSprite(b.crop, st) + '.webp" alt="" draggable="false">' : '';
-    s += '<svg class="bedover" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">';
-    if (wet) s += '<ellipse cx="50" cy="91" rx="34" ry="8" fill="rgba(70,50,120,.22)"/>';
-    if (weeds) { [22, 48, 74].forEach(function (x) { s += '<path d="M' + x + ' 94 c -4 -8, -2 -14, 2 -18 M' + x + ' 94 c 4 -8, 7 -12, 10 -14 M' + x + ' 94 c -1 -10, 3 -16, 5 -20" stroke="#6f9a62" stroke-width="3" fill="none" stroke-linecap="round"/>'; }); }
-    return s + '</svg>';
+    /* three plants in a row along the bed (its long side runs along E1), drawn back to front */
+    var s = '';
+    if (crop && st >= 1) [['back', -1], ['mid', 0], ['front', 1]].forEach(function (k) { s += '<img class="bedcrop ' + k[0] + '" src="assets/room/farm/crops/' + cropSprite(b.crop, st) + '.webp" alt="" draggable="false">'; });
+    var o = '<svg class="bedover" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">';
+    if (crop && st >= 1) o += '<ellipse cx="50" cy="99" rx="' + (st >= 3 ? 26 : st === 2 ? 20 : 12) + '" ry="' + (st >= 3 ? 6 : 4.5) + '" fill="rgba(74,40,30,.28)"/>';
+    if (wet) o += '<ellipse cx="50" cy="99" rx="38" ry="8" fill="rgba(70,50,120,.22)"/>';
+    if (weeds) { [18, 50, 82].forEach(function (x) { o += '<path d="M' + x + ' 100 c -4 -8, -2 -14, 2 -18 M' + x + ' 100 c 4 -8, 7 -12, 10 -14 M' + x + ' 100 c -1 -10, 3 -16, 5 -20" stroke="#6f9a62" stroke-width="3" fill="none" stroke-linecap="round"/>'; }); }
+    return o + '</svg>' + s;
   }
   function renderBeds() {
     if (!inFarm(R.layout())) return;
     var wrap = R.els.props, day = today();
     Array.prototype.slice.call(wrap.querySelectorAll('.bed')).forEach(function (el) { el.remove(); });
     var f = farmState(S);
-    BEDS.forEach(function (bb) {
+    BEDS.slice().sort(function (a, b) { return a.at.y - b.at.y; }).forEach(function (bb) {
       var el = doc.createElement('button'); el.type = 'button'; el.className = 'bed'; el.dataset.id = bb.id;
       var b = f.beds[bb.id], label = 'Bed ' + (BEDS.indexOf(bb) + 1) + ': ' + (b && b.crop ? CROPS[b.crop].name.toLowerCase() + (ripe(b) ? ', ripe' : ', growing, ' + growthDays(b) + ' of ' + CROPS[b.crop].days + ' watered days' + (wateredToday(b, day) ? ', watered today' : ', not watered today')) : 'empty');
       el.setAttribute('aria-label', label + (hasWeeds(b, bb.id, day) ? ', weeds' : ''));
-      el.style.left = bb.at.x + '%'; el.style.top = bb.at.y + '%'; el.style.width = '10.5%'; /* the sprite's mound fills most of the plate's bed */
+      el.style.left = bb.at.x + '%'; el.style.top = bb.at.y + '%'; el.style.width = '13%'; /* the middle plant's base sits on the bed's soil centre */
       el.innerHTML = bedArt(b, bb.id, day);
       el.addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); goTend(bb); });
       wrap.appendChild(el);
