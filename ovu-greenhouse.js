@@ -115,10 +115,10 @@
    * at: bottom centre of the planter; box: its footprint (a solid); wp: where she stands to tend it. The chairs and the tea
    * table come down to y 69.5, so the right pair are tended from their sides. */
   var HERB_BEDS = [
-    { id: 'hb1', at: [39, 72.3], w: 5, box: [36.8, 41.2, 69.6, 72.4], wp: { x: 39, y: 68.6, flip: false } },
-    { id: 'hb2', at: [44, 72.3], w: 5, box: [41.8, 46.2, 69.6, 72.4], wp: { x: 45, y: 68.8, flip: false } },
-    { id: 'hb3', at: [55, 72.3], w: 5, box: [52.8, 57.2, 69.6, 72.4], wp: { x: 51.2, y: 71, flip: true } },
-    { id: 'hb4', at: [60, 72.3], w: 5, box: [57.8, 62.2, 69.6, 72.4], wp: { x: 63.8, y: 71.2, flip: true } }
+    { id: 'hb1', at: [39, 72.3], w: 6, box: [36.8, 41.2, 69.6, 72.4], wp: { x: 39, y: 68.6, flip: false } },
+    { id: 'hb2', at: [44, 72.3], w: 6, box: [41.8, 46.2, 69.6, 72.4], wp: { x: 45, y: 68.8, flip: false } },
+    { id: 'hb3', at: [55, 72.3], w: 6, box: [52.8, 57.2, 69.6, 72.4], wp: { x: 51.2, y: 71, flip: true } },
+    { id: 'hb4', at: [60, 72.3], w: 6, box: [57.8, 62.2, 69.6, 72.4], wp: { x: 63.8, y: 71.2, flip: true } }
   ];
   HERB_BEDS.forEach(function (b) { LAYOUT.solids.push({ id: 'herbbed', x0: b.box[0], x1: b.box[1], y0: b.box[2], y1: b.box[3] }); });
   var DAYRX = /^\d{4}-\d{2}-\d{2}$/;
@@ -278,7 +278,12 @@
   }
   function herbSVG(b, day) {
     var st = herbStage(b), wet = herbWateredToday(b, day);
-    return '<svg viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    /* each planter stands on a little two-tier wooden stand with a soft shadow, so it sits on the floor instead of floating
+       (Jamie, 22 Oct: "a layered bench so it does not look like this") */
+    return '<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<ellipse cx="50" cy="114" rx="44" ry="5.5" fill="#5b4466" opacity=".2"/><ellipse cx="50" cy="114" rx="30" ry="3" fill="#5b4466" opacity=".18"/>' +
+      '<path d="M22 86 V110 M78 86 V110" stroke="#b27e52" stroke-width="5" stroke-linecap="round"/><path d="M34 84 V104 M66 84 V104" stroke="#9c6c45" stroke-width="4" stroke-linecap="round" opacity=".8"/>' +
+      '<path d="M14 99 L50 94 L86 99 L50 104Z" fill="#e2b98c"/><path d="M14 99 L50 104 L86 99 L86 102 L50 107 L14 102Z" fill="#c4915f"/>' +
       '<path d="M12 60 L50 52 L88 60 L88 80 Q88 86 82 86 L18 86 Q12 86 12 80Z" fill="#d6a173"/><path d="M12 60 L50 52 L88 60 L50 68Z" fill="#e9c49a"/>' +
       '<path d="M12 70 H88 M12 78 H88" stroke="#c18a5c" stroke-width="1.4" opacity=".7"/><path d="M50 68 V86" stroke="#c18a5c" stroke-width="1.2" opacity=".5"/>' +
       '<ellipse cx="50" cy="59" rx="33" ry="6" fill="' + (wet ? '#4f3828' : '#7a5a42') + '"/>' + (wet ? '<ellipse cx="42" cy="58" rx="6" ry="1.4" fill="#8fc6ea" opacity=".55"/>' : '') +
