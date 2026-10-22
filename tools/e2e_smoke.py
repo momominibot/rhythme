@@ -1830,7 +1830,7 @@ async def main():
             await page.fill('#rnHen', 'Bao'); await page.click('[data-ranch="buy:hen"]'); await page.wait_for_timeout(600)
             pay["after"] = await page.evaluate("()=>OvuRewards.ledger().hearts"); pay["hens"] = await page.evaluate("()=>OvuRanch.ranchOf(OvuFarm.farmState(OvuStore)).herd.filter(a=>a.kind==='hen').map(a=>a.name).join()")
             check("outside tester mode a hen costs 120 hearts, taken in the same save as Bao arrives", pay["can"] and pay["after"] == pay["before"] - 120 and pay["hens"].endswith("Bao"), pay)
-            await page.evaluate("()=>OvuRoom.closeSheet()")
+            await page.evaluate("()=>{OvuRoom.closeSheet(); OvuStore.setState({tester:{hearts:true}});}")  # back to the seeded profile: later sections (Harbour Lane's hours, free purchases) run in tester mode, whatever the clock says on the CI runner
             await page.evaluate("()=>OvuRoom.hideSheet()"); await go_to('barn')
             await page.evaluate("()=>OvuBarn.openCrack()"); await page.wait_for_timeout(200)
             await page.click('#crackGo')
