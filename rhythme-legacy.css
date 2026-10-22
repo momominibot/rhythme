@@ -73,3 +73,7 @@ body.rh-column > .expbanner{width:calc(100% - 32px);max-width:398px}
 /* a sources button on a page's opening card sits top right, as on the reading cards below it */
 .chapter-hero{position:relative}
 .chapter-hero > .qi{position:absolute;top:16px;right:16px;margin:0}
+
+/* the chapter she chose in Settings, marked on Your life journey (journey.js) */
+.journey-link.mine{border:1.5px solid var(--rm-mauve)!important}
+.journey-link .mine-tag{display:inline-block;align-self:flex-start;padding:2px 8px;border-radius:99px;background:var(--rm-lilac-2);color:var(--rm-plum);font:800 9.5px var(--sans);letter-spacing:.05em;text-transform:uppercase}

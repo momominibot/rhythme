@@ -2467,4 +2467,4 @@ html[data-mindful=quick] .mindline:not(.keep){display:none}
 /* Settings sheet (You tab, 22 Oct): a small status word beside each health connection */
 .stat b .spill{display:inline-block;margin-left:4px;padding:2px 7px;border-radius:99px;background:var(--rm-lilac-2);color:var(--rm-plum);font:800 9.5px var(--sans);letter-spacing:.05em;text-transform:uppercase;vertical-align:1px}
 .ygroup .stat{margin-top:0}
-.ygroup .stat span{line-height:1.45}
+.ygroup .stat span:not(.ms):not(.spill){display:block;line-height:1.45;margin-top:2px}

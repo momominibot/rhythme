@@ -124,6 +124,9 @@ async def check_legacy_pages(browser):
             on: n && n.querySelector('a.on') ? [...n.querySelector('a.on').childNodes].filter(x=>x.nodeType===3).map(x=>x.textContent).join('').trim() : null, icon: n && n.querySelectorAll('a .ms')[1] ? n.querySelectorAll('a .ms')[1].textContent : null, pad: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--shell-bottom-size'))||0,
             theme: document.documentElement.getAttribute('data-theme'), bg: getComputedStyle(document.body).backgroundColor, luna: !!(l && l.offsetParent),
             font: parseFloat(document.documentElement.style.fontSize)||0, sheet: !!document.querySelector('link[href="rhythme-legacy.css"]')}}""")
+    await pg.goto(BASE + "life-journey.html", wait_until="load"); await pg.wait_for_timeout(400)
+    s2b = await pg.evaluate("()=>({mine: [...document.querySelectorAll('.journey-link.mine')].map(a=>a.getAttribute('href')), tag: (document.querySelector('.journey-link.mine .mine-tag')||{}).textContent})")
+    check("settings: the life chapter chosen in Settings is marked on Your life journey, and only that one", s2b["mine"] == ["journey-nurture.html"] and s2b["tag"] == "Your chapter", s2b)
     bad = {k: v for k, v in looks.items() if not (v["back"] and v["back"].startswith("room.html") and v["title"] and v["theme"] == "light" and v["bg"] == "rgb(248, 243, 251)" and not v["luna"] and v["sheet"] and abs(v["font"] - 17.92) < 0.2)}
     check("older pages: each has the room's back button and title, the light palette even after an old dark choice, no second Luna, and the room's text size", not bad, bad)
     navs = {k: [v["tabs"], v["on"], v["icon"], v["pad"]] for k, v in looks.items()}
@@ -138,7 +141,10 @@ async def check_legacy_pages(browser):
     check("retired pages: reminders, sample reports, sample medicines, sleep notes, sample groups and the premium preview each land on their home", all(ends[k].split("#")[0] == v for k, v in want.items()), ends)
     # a Learn page in the viewer: its own header and tabs step aside for the viewer's bar
     await pg.goto(BASE + "room.html", wait_until="domcontentloaded"); await room_ready(pg)
-    await pg.evaluate("()=>OvuPage.open('fertility.html')"); await pg.wait_for_timeout(1800)
+    await pg.evaluate("()=>OvuPage.open('fertility.html')")
+    try: await pg.wait_for_function("()=>document.querySelector('#pvTitle').textContent==='Fertility' && document.querySelector('#pvFrame').contentDocument.getElementById('pvEmbedStyle')", timeout=15000)
+    except Exception: pass
+    await pg.wait_for_timeout(300)
     v1 = await pg.evaluate("()=>{const f=document.querySelector('#pvFrame'), d=f.contentDocument, top=d.querySelector('.top'), nav=d.querySelector('nav.nav');return {open: OvuPage.isOpen(), title: document.querySelector('#pvTitle').textContent, top: top ? getComputedStyle(top).display : 'none', nav: nav ? getComputedStyle(nav).display : 'none'}}")
     check("viewer: a Learn page opens over the room with the viewer's title, its own header and tabs hidden", v1["open"] and v1["title"] == "Fertility" and v1["top"] == "none" and v1["nav"] == "none", v1)
     check("older pages and settings: no page errors", not errs, errs[:3])
@@ -929,8 +935,8 @@ async def main():
             ev = await page.evaluate("()=>document.body.innerText.includes('E49')")
             check("evidence page lists E49", r.status == 200 and ev)
             await page.goto(BASE + "hormones.html", wait_until="networkidle"); await page.wait_for_timeout(400)
-            hd = await page.evaluate("()=>({brand: document.querySelector('.rh-brand')?.textContent, tabs: document.querySelectorAll('nav.nav a').length, fab: !!document.querySelector('.mapfab')})")
-            check("Learn page carries the Rhythme header and tabs, no old launcher", hd["brand"] == "RHYTHME" and hd["tabs"] == 4 and not hd["fab"], hd)
+            hd = await page.evaluate("()=>({title: document.querySelector('.top .rh-title')?.textContent, back: document.querySelector('.top .rh-back')?.getAttribute('href'), tabs: document.querySelectorAll('nav.nav a').length, fab: !!document.querySelector('.mapfab')})")
+            check("Learn page carries the room's header (back to the room, the page's name) and the room's five tabs, no old launcher", hd["title"] == "Hormones" and (hd["back"] or "").startswith("room.html") and hd["tabs"] == 5 and not hd["fab"], hd)
             dests = {}
             for old_page, want_tab in [("home.html", "home"), ("cycle-log.html", "cycle"), ("diet.html", "food"), ("breathwork.html", "mind")]:
                 await page.goto(BASE + old_page, wait_until="load")
