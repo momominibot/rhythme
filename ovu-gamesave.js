@@ -171,8 +171,10 @@
   function tester() { var t = S && S.state && S.state().tester; return !!(t && t.hearts); }
   function ownerOk(uid) { var p = (S && S.profile && S.profile()) || {}, o = typeof p.owner === 'string' ? p.owner : null; return !o || o === uid; }
   function ready() { var a = A(); return !!(S && a && a.isSignedIn && a.isSignedIn() && a.userId() && !(S.isSandbox && S.isSandbox()) && typeof fetch === 'function' && CFG.supabaseUrl); }
+  /* a promise that gives up after ms: the token wait (a hung refresh) needs the same deadline as the request itself */
+  function withDeadline(p, ms) { return new Promise(function (res, rej) { var t = setTimeout(function () { rej(new Error('timed out')); }, ms); Promise.resolve(p).then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); }); }); }
   function call(method, path, body, token) {
-    return Promise.resolve(token || A().token()).then(function (tk) {
+    return withDeadline(token || A().token(), FETCH_MS).then(function (tk) {
       if (!tk) throw new Error('no token');
       var text = body != null ? JSON.stringify(body) : undefined;
       var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, deadline = setTimeout(function () { if (ac) ac.abort(); }, FETCH_MS); /* the sync holds the farm lock: a request that never answers must end (Codex, 22 Oct) */
@@ -226,9 +228,11 @@
             return 'linked';
           }
           /* the phone played on while the answer was lost and the link was sent again (a seed claimed, an animal bought):
-             the old target never goes over that. The account's copy, if there was one, is merged into what the phone has
-             now, and the next save carries the result up (Codex, 22 Oct) */
-          if (p.remote) apply(uid, linkMerge(now, p.remote));
+             the old target never goes over that. With no account copy the phone's play stands as it is. With an account
+             copy the rule is the one every link follows: the account's game is the game and the phone's rewards join it
+             (what the phone did to its own farm while unlinked yields to the account's farm, as it would have at the first
+             link); a tester phone takes the account copy alone, its tester rewards never join (Codex, 22 Oct) */
+          if (p.remote) apply(uid, p.tainted ? clone(p.remote) : linkMerge(now, p.remote));
           patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), journal: [], pending: null, seq: 1, acked: 0, hash: hashOf(p.save) });
           schedule();
           return 'linked';
@@ -273,7 +277,7 @@
       if (!m.linked || m.off || (row && row.deleted)) {
         if (m.tainted && !live) return 'tester';                    /* tester progress is never uploaded */
         var target = live ? (m.tainted ? clone(row.save) : linkMerge(mine, row.save)) : mine;
-        return queue(uid, 'link', target, row ? row.rev : 0, { localEarned: earned(mine), localHash: hashOf(mine), remote: live ? clone(row.save) : null });
+        return queue(uid, 'link', target, row ? row.rev : 0, { localEarned: earned(mine), localHash: hashOf(mine), remote: live ? clone(row.save) : null, tainted: !!m.tainted });
       }
       if (!row) return queue(uid, 'save', mine, 0, { seq: seq });
       if (m.tainted) { apply(uid, row.save); patchMeta(uid, { tainted: false, rev: row.rev, savedEarned: earned(row.save), journal: [], acked: seq }); return 'pulled'; }

@@ -113,4 +113,26 @@ The unchanged farm planting/watering/harvest writers and greenhouse basket write
 
 
 
-## Round 7 (after the resent-link rule, the fetch deadline, Stop during the lock wait and the token-based re-check): see below once it ends
+## Round 7 (after the resent-link rule, the fetch deadline, Stop during the lock wait and the token-based re-check): HOLD
+
+`node tools/test-core.js`: **1,790 passed, 0 failed**. Additional in-memory reproductions used two real stores, shared storage, and per-name lock queues. No files modified.
+
+1. **P1: NOT FIXED.** Existing account → link accepted, answer lost → another tab claims one seed → resend: seed count becomes **1 → 0**, then uploads as 0. `ovu-gamesave.js:231` calls `linkMerge(now, remote)`, which starts from the remote copy and merges only rewards (`:68–77`). Empty-account recovery preserves the write.
+
+   Clash→pull and ordinary newer-revision/tainted pulls still discard unsaved farm changes under the documented account-wins policy (`:240–241`, `:279–283`).
+
+   Normal acknowledgement/repeated-sync cases did **not** duplicate hearts, owned items, or treats: the acknowledgement guard (`:219`) and linked-state check (`:273`) prevent re-merging. However, **tainted link recovery leaks tester rewards**: tainted link accepted → answer lost → farm write → resend produced **1,009 hearts instead of 10**, plus tester items/treats. The retry branch bypasses the tainted target selection (`:275`) and clears taint (`:231–232`).
+
+2. **P2 Stop: FIXED.** Tried timer completion → writer queued behind lock → Stop twice → release. Bed, well, and planter each performed **zero writes, one cancellation** (`ovu-care.js:42–46`; `ovu-farm.js:357,441`; `ovu-greenhouse.js:507`).
+
+   **P2 blocking: NOT FIXED overall.** A hung fetch aborts and releases the lock at 15 seconds. A hung token refresh creates **no deadline**: token acquisition precedes timer creation (`ovu-gamesave.js:175–178`), and auth refresh has no timeout (`ovu-auth.js:69,90`).
+
+   **External redraw: FIXED for the same operation.** All three queued writers survived a redraw. **New P2:** finish A → queue → close/open bed or planter B → release still writes A and reopens A. Guards compare generic `farmbed`/`ghbed` IDs (`ovu-farm.js:298–302,441,461`; `ovu-greenhouse.js:461–465,507,516`).
+
+3. **Other regressions:** Normal completed writers detach Stop through sheet replacement (`room.js:639`). Forcing its detached listener calls cancellation once; repeated calls are guarded (`ovu-care.js:46`). Stop-before-release prevents the writer’s second reopen. Ranch correctly replaces a sheet already open before tapping and rejects intervening openings/dismissal (`ovu-barn.js:426–431`). Undefined-token fallback executed successfully for all three writers; `tk && tk.stopped` is safe.
+
+**HOLD: P1 existing-account link overwrite; P1 tainted-link reward leakage; P2 unbounded auth wait; P2 stale bed/planter takeover.**
+
+
+
+## Round 8: see below once it ends

@@ -458,9 +458,10 @@
     LAYOUT.home.x = hb.wp.x; LAYOUT.home.y = hb.wp.y; LAYOUT.home.flip = !!hb.wp.flip;
     R.walkTo(hb.wp, function () { if (!R.busy()) openHerbBed(hb.id); });
   }
-  function stillHere(sheetId, tk) { /* the sheet is still open, she is awake, and the step was not stopped while its save waited for the lock */
+  function stillHere(sheetId, tk, id) { /* the same planter's sheet is still open, she is awake, and the step was not stopped while its save waited for the lock */
     if (tk && tk.stopped) return false;
     if (!R.sheetOpen() || R.sheetId() !== sheetId) return false;
+    if (id != null && shownBed !== id) return false; /* another planter's sheet took the place of this one */
     if (root.OvuCare && root.OvuCare.asleepNow && root.OvuCare.asleepNow()) return false;
     return napping() ? false : true;
   }
@@ -468,8 +469,9 @@
     if (!root.OvuCare || !root.OvuCare.step) { done(); return; }
     root.OvuCare.step(box, Object.assign({ scene: 'greenhouse' }, o, { ms: GH.slowMs == null ? o.ms : GH.slowMs }), done);
   }
+  var shownBed = null; /* the planter whose sheet is on screen */
   function openHerbBed(id) {
-    var hb = herbBed(id); if (!hb || napping()) return;
+    var hb = herbBed(id); if (!hb || napping()) return; shownBed = id;
     var d = day(), g = herbState(S), b = g.beds[id], h = b ? HERBS[b.herb] : null, n = HERB_BEDS.indexOf(hb) + 1;
     var html = '<div class="bedcard"><div class="bedpic herbpic">' + herbSVG(b, d) + '</div><div class="bedtext">';
     if (h) html += '<b>' + esc(h.name) + '</b><span>' + (herbRipe(b) ? 'Ready to pick.' : herbDays(b) + ' of ' + herbNeed(b) + ' watered days' + (b.cuts ? ' until it is ready again' : '') + '. ' + (herbWateredToday(b, d) ? 'Watered today.' : 'Not watered yet today.')) + '</span>' +
@@ -488,7 +490,7 @@
     var clr = doc.getElementById('herbClear'); if (clr) clr.addEventListener('click', function () {
       if (!clr.classList.contains('confirm')) { clr.classList.add('confirm'); clr.textContent = 'Tap again: the ' + h.name.toLowerCase() + ' here is let go'; return; }
       lockedF(function () {
-        if (!stillHere('ghbed', null)) return;
+        if (!stillHere('ghbed', null, id)) return;
         var r = clearHerb(S, id); if (!r.ok) { R.toast(r.why, 'info'); return; }
         R.chime('tap'); renderBeds(); R.toast('The planter is empty, ready for something new.', 'yard'); openHerbBed(id);
       });
@@ -504,7 +506,7 @@
       var o = kind === 'plant' ? { ms: 2200, moment: 'herbplant', verb: 'Pressing it into the soil…' } : kind === 'water' ? { ms: 3000, moment: 'herbwater', verb: 'Pouring slowly…' } : { ms: 3000, moment: 'herbharvest', verb: 'Picking slowly…' };
       o.cancel = function () { openHerbBed(id); };
       slowStep(acts, o, function (tk) { lockedF(function () {
-        if (!stillHere('ghbed', tk)) return; /* a Stop, a close, another sheet or sleep during the lock wait: nothing saved, nothing charged */
+        if (!stillHere('ghbed', tk, id)) return; /* a Stop, a close, another sheet or sleep during the lock wait: nothing saved, nothing charged */
         var t = day(); if (t !== now) { openHerbBed(id); return; }
         if (JSON.stringify(herbState(S).beds[id] || null) !== seen) { R.toast('The planter changed in the meantime. Have another look.', 'info'); openHerbBed(id); return; } /* another tab or phone moved first */
         var res = kind === 'plant' ? plantHerb(S, id, herb, t, ST()) : kind === 'water' ? waterHerb(S, id, t, ST()) : harvestHerb(S, id, ST());

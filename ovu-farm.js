@@ -295,9 +295,11 @@
   function cancelSlow() { if (root.OvuCare && root.OvuCare.cancel) root.OvuCare.cancel(); }
   /* the sheet a step started from is still the one open, she is awake, and the step was not stopped while its save
      waited for the lock (tk.stopped, set by the Stop button after the step finished) */
-  function stillHere(sheetId, tk) {
+  function stillHere(sheetId, tk, arg) {
     if (tk && tk.stopped) return false;
     if (!R.sheetOpen() || R.sheetId() !== sheetId) return false;
+    if (sheetId === 'farmbed' && !(shown && shown.kind === 'bed' && shown.arg === arg)) return false; /* another bed's sheet took the place of the one this step started from */
+    if (sheetId === 'farmwell' && !(shown && shown.kind === 'well')) return false;
     if (root.OvuCare && root.OvuCare.asleepNow && root.OvuCare.asleepNow()) return false;
     return true;
   }
@@ -354,7 +356,7 @@
       if (btn.dataset.well === 'back') { var bb = BEDS.filter(function (x) { return x.id === back; })[0]; R.hideSheet(); if (bb) goTend(bb); return; }
       slowStep(acts, { ms: 3000, moment: 'well', verb: 'Drawing water slowly…', cancel: function () { openWell(back); }, start: function (ms, still) { var wv = doc.querySelector('#sheet .canpic .canwater'); if (wv) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { wv.style.transition = still ? 'none' : 'transform ' + ms + 'ms ease-in-out'; wv.style.transform = 'scaleY(1)'; }); }); } }, function (tk) {
         F.locked(S, function () {
-          if (!stillHere('farmwell', tk)) return;
+          if (!stillHere('farmwell', tk, back)) return;
           var r = fillCan(S); if (!r.ok) { R.toast(r.why, 'info'); openWell(back); return; }
           R.chime('save'); renderCan(); openWell(back, true);
         });
@@ -426,7 +428,7 @@
       var kind = btn.dataset.bed, now = today(); /* the date at the tap, not at the sheet's opening: midnight may have passed */
       if (now !== day) { openBed(id); return; } /* the sheet showed yesterday: redraw it for today before anything is done */
       if (kind === 'well') { goWell(id); return; }
-      if (kind === 'harvest') { if (!canAct('harvest')) return; F.locked(S, function () { if (!stillHere('farmbed', null)) return; finish('harvest', harvest(S, id, ST)); }); return; }
+      if (kind === 'harvest') { if (!canAct('harvest')) return; F.locked(S, function () { if (!stillHere('farmbed', null, id)) return; finish('harvest', harvest(S, id, ST)); }); return; }
       var cost = kind === 'shedplant' ? 'plant' : kind === 'waterall' ? 'water' : kind;
       if (!canAct(cost)) return;
       var crop0 = btn.dataset.crop, seen = JSON.stringify(bed(S, id)), lv0 = canLevel(S), targets = kind === 'waterall' ? bulkTargets(S, now, id, lv0) : null;
@@ -438,7 +440,7 @@
       if (kind === 'clear') o.start = function (ms, still) { if (still) { Array.prototype.forEach.call(doc.querySelectorAll('#sheet .bedpic svg path[stroke="#6f9a62"]'), function (w) { w.style.opacity = '0'; }); return; } var weeds = doc.querySelectorAll('#sheet .bedpic svg path[stroke="#6f9a62"]'); Array.prototype.forEach.call(weeds, function (w, i) { root.setTimeout(function () { w.style.transition = 'opacity ' + (ms / 4) + 'ms ease'; w.style.opacity = '0'; }, (i + 0.4) * ms / (weeds.length + 1)); }); };
       if (kind === 'water' || kind === 'waterall') o.start = function (ms, still) { if (still) return; var svg = doc.querySelector('#sheet .bedpic svg'); if (!svg) return; var el = doc.createElementNS('http://www.w3.org/2000/svg', 'ellipse'); el.setAttribute('cx', '50'); el.setAttribute('cy', '44'); el.setAttribute('rx', '30'); el.setAttribute('ry', '12'); el.setAttribute('fill', 'rgba(70,50,120,.22)'); el.style.opacity = '0'; svg.insertBefore(el, svg.firstChild); root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { el.style.transition = 'opacity ' + ms + 'ms ease-in'; el.style.opacity = '1'; }); }); };
       slowStep(acts, o, function (tk) { F.locked(S, function () { /* the farm lock: the bed is read again after other tabs' saves */
-        if (!stillHere('farmbed', tk)) return; /* a Stop, a close, another sheet or sleep during the lock wait: nothing saved, nothing charged */
+        if (!stillHere('farmbed', tk, id)) return; /* a Stop, a close, another sheet or sleep during the lock wait: nothing saved, nothing charged */
         var t = today(), res; if (t !== now) { openBed(id); return; }
         if (JSON.stringify(bed(S, id)) !== seen || ((kind === 'water' || kind === 'waterall') && canLevel(S) !== lv0)) { R.toast('The bed changed in the meantime. Have another look.', 'info'); openBed(id); return; } /* another tab or phone moved first */
         if (!(ST ? ST.can(cost) : true)) { canAct(cost); openBed(id); return; } /* energy is checked again at the end of the step */

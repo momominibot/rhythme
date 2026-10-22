@@ -1805,7 +1805,7 @@ async def main():
             # the ranch counter (Jamie, 22 Oct: buy a cow or a hen, bigger barn and coop, babies): tester mode pays nothing, so the
             # counter can be tried; the coop grows to six, a named hen comes home, an egg goes into the incubator, a chick hatches
             # when its day comes and can be named; nothing writes the diary
-            await go_to('barn')
+            await page.evaluate("()=>OvuRoom.hideSheet()"); await go_to('barn')  # the nests sheet is still up: travel refuses with a sheet open, and the counter opens only in the yard
             d0 = await page.evaluate("()=>OvuStore.list().length")
             await page.evaluate("()=>{OvuStore.setState({tester:{hearts:true}}); var f=OvuFarm.farmState(OvuStore); f.pantry.egg = Math.max(1, f.pantry.egg); OvuStore.setState({farm:f}); OvuBarn.openRanch();}")
             await page.wait_for_selector('[data-ranch="upgrade:coop"]', timeout=8000)
