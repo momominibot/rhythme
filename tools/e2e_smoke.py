@@ -653,6 +653,12 @@ async def main():
             gs = await pa.evaluate("()=>{var el=document.querySelector('.nb.sitter'), img=el&&el.querySelector('img'); return {there: !!el, src: img && (img.getAttribute('src')||'').split('/').pop(), seated: !!(img && img.classList.contains('seated')), sitting: OvuGarden.sitting(), w: el && el.style.width, standing: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop()}}"); gs["twSeen"] = await pa.evaluate("()=>window.__twSeen")
             check("sitting on the garden bench, a new outfit is drawn on the bench, seated in it, and no twirl plays on the standing avatar hidden behind her", gs["there"] and gs["seated"] and gs["src"] == "avatar-sit-kebaya-blue.webp" and not gs["twSeen"] and gs["standing"] == "avatar-kebaya-blue.webp", gs)
             # a seated bench practice on the street: Mind, brushing and Morning start wait for it; a new outfit is drawn on the bench
+            # Codex (22 Oct): Just sit a while, then the Mind tab: she gets up before the mat appears, and closing Mind without a session lets her up again
+            await pa.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await pa.wait_for_timeout(700)
+            js = await pa.evaluate("()=>({sitting: OvuGarden.sitting(), med: OvuRoom.meditating(), sitter: !!document.querySelector('.nb.sitter'), cls: document.querySelector('#scene').classList.contains('sitting')})")
+            await pa.evaluate("()=>OvuRoom.closeSheet()"); await pa.wait_for_timeout(500)
+            js2 = await pa.evaluate("()=>({med: OvuRoom.meditating(), hidden: document.querySelector('#avatar').classList.contains('hidden'), sheet: OvuRoom.sheetOpen()})")
+            check("Just sit a while, then Mind: she stands up before the mat appears (no sitter left behind the meditator), and closing Mind lets her up", js["sitting"] is False and js["med"] and not js["sitter"] and not js["cls"] and not js2["med"] and not js2["hidden"] and not js2["sheet"], [js, js2])
             await pa.evaluate("()=>{ if (OvuGarden.sitting()) OvuGarden.standUp(); OvuWalk.travel('street'); }")
             try: await pa.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
             except Exception: pass
