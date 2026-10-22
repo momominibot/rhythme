@@ -158,9 +158,8 @@
     if (!root.OvuCare.step(acts, o, next)) openRecipe(r.id); /* a step that cannot start leaves the recipe as it was */
   }
   function finish(r) {
-    var res = cook(S, r.id);
-    if (!res.ok) { R.toast(res.why, 'info'); openKitchen(); return; }
-    R.chime('save'); openDish(r);
+    var go = function () { var res = cook(S, r.id); if (!res.ok) { R.toast(res.why, 'info'); openKitchen(); return; } R.chime('save'); openDish(r); };
+    if (FM().locked) FM().locked(S, go); else go(); /* the farm lock: another tab's purchase or harvest lands first, then the pot is checked again */
   }
   /* the dish, and one question; Yes opens the food diary filled in, and nothing is saved unless she saves it there */
   function openDish(r) {

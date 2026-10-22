@@ -234,9 +234,12 @@
     var rename = a && a.born ? ' <button type="button" class="chipbtn namebtn" data-rename="' + who + '" aria-label="Name ' + esc(NM(who)) + '"><span class="ms">edit</span></button>' : ''; /* an animal born here can be named */
     return '<div class="lovemeter" aria-label="' + esc(NM(who)) + ': ' + n + ' of ' + B.LOVE_MAX + ' hearts"><b>' + esc(NM(who)) + grow + rename + '</b><span class="lm">' + out + '</span></div>';
   }
-  function petNow(who) {
-    var r = care(S, who, 'pet', today()); heartPop(who, r.ok && r.gained);
-    if (r.ok && r.gained) R.toast(NM(who) + ' loves that. ' + r.n + ' of ' + B.LOVE_MAX + ' hearts.', 'favorite');
+  function petNow(who, then) {
+    locked(function () {
+      var r = care(S, who, 'pet', today()); heartPop(who, r.ok && r.gained);
+      if (r.ok && r.gained) R.toast(NM(who) + ' loves that. ' + r.n + ' of ' + B.LOVE_MAX + ' hearts.', 'favorite');
+      if (then) then();
+    });
   }
   /* the hens wander the floor and peck while she is in the hen house */
   var wander = null;
@@ -293,10 +296,12 @@
   function treatStep(acts, who, btn, reopen) {
     var crop = btn.dataset.crop, name = FM().CROPS[crop] ? FM().CROPS[crop].name.toLowerCase() : crop, seen = JSON.stringify(FM().farmState(S).harvest);
     step(acts, { ms: 3000, moment: who === 'hens' ? 'hentreat' : 'treat', verb: 'Holding it out…', cancel: reopen }, function () {
-      if (JSON.stringify(FM().farmState(S).harvest) !== seen) { reopen(); return; } /* the basket changed in the meantime */
-      who = btn.dataset.who || who;
-      var r = giveTreat(S, who, crop, today()); if (!r.ok) { R.toast(r.why, 'info'); reopen(); return; }
-      (who === 'hens' ? idsOf(FM().farmState(S), 'hen') : [who]).forEach(function (a) { heartPop(a, r.gained); }); R.toast(who === 'hens' ? 'The hens shared the ' + name + '.' : NM(who) + ' took the ' + name + ' slowly.', 'nutrition'); reopen();
+      locked(function () {
+        if (JSON.stringify(FM().farmState(S).harvest) !== seen) { reopen(); return; } /* the basket changed in the meantime */
+        who = btn.dataset.who || who;
+        var r = giveTreat(S, who, crop, today()); if (!r.ok) { R.toast(r.why, 'info'); reopen(); return; }
+        (who === 'hens' ? idsOf(FM().farmState(S), 'hen') : [who]).forEach(function (a) { heartPop(a, r.gained); }); R.toast(who === 'hens' ? 'The hens shared the ' + name + '.' : NM(who) + ' took the ' + name + ' slowly.', 'nutrition'); reopen();
+      });
     });
   }
   function openNests() {
@@ -312,8 +317,8 @@
     if (hc) hc.addEventListener('click', function (e) {
       var b = e.target.closest('[data-care]'); if (!b || !idle()) return;
       var who = b.dataset.who, act = b.dataset.care;
-      if (act === 'pet') { petNow(who); openNests(); return; }
-      step(hc, { ms: 2500, moment: 'brush', verb: 'Smoothing ' + NM(who) + '’s feathers…', cancel: openNests }, function () { var r = care(S, who, 'brush', today()); heartPop(who, r.ok && r.gained); if (r.ok && r.gained) R.toast(NM(who) + ' fluffs up happily. ' + r.n + ' of ' + B.LOVE_MAX + ' hearts.', 'favorite'); openNests(); });
+      if (act === 'pet') { petNow(who, openNests); return; }
+      step(hc, { ms: 2500, moment: 'brush', verb: 'Smoothing ' + NM(who) + '’s feathers…', cancel: openNests }, function () { locked(function () { var r = care(S, who, 'brush', today()); heartPop(who, r.ok && r.gained); if (r.ok && r.gained) R.toast(NM(who) + ' fluffs up happily. ' + r.n + ' of ' + B.LOVE_MAX + ' hearts.', 'favorite'); openNests(); }); });
     });
     var acts = doc.getElementById('nestActs'); if (!acts) return;
     acts.addEventListener('click', function (e) {
@@ -323,9 +328,11 @@
       var seen = JSON.stringify(eggsReady(S, day));
       var lifts = [], putBack = function () { lifts.forEach(root.clearTimeout); lifts = []; renderBarn(); };
       step(acts, { ms: 2500, moment: 'eggs', verb: 'Lifting each egg from the straw…', stillLine: 'Notice the straw around each egg.', abort: putBack, cancel: openNests, start: function (ms, still) { Array.prototype.forEach.call(doc.querySelectorAll('#ownedProps .nestegg'), function (el, i) { lifts.push(root.setTimeout(function () { el.classList.add('lifted'); }, still ? 0 : (i + 0.5) * ms / 3)); }); } }, function () {
-        if (today() !== day || JSON.stringify(eggsReady(S, day)) !== seen) { renderBarn(); openNests(); return; } /* the day turned or another tab collected */
-        var r = collectEggs(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); renderBarn(); openNests(); return; }
-        R.chime('save'); renderBarn(); R.toast(r.n + ' egg' + (r.n > 1 ? 's' : '') + ' in the pantry' + sizesLine(r.sizes) + '.', 'egg'); openNests();
+        locked(function () {
+          if (today() !== day || JSON.stringify(eggsReady(S, day)) !== seen) { renderBarn(); openNests(); return; } /* the day turned or another tab collected */
+          var r = collectEggs(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); renderBarn(); openNests(); return; }
+          R.chime('save'); renderBarn(); R.toast(r.n + ' egg' + (r.n > 1 ? 's' : '') + ' in the pantry' + sizesLine(r.sizes) + '.', 'egg'); openNests();
+        });
       });
     });
   }
@@ -348,13 +355,15 @@
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       var who = btn.dataset.who || cows[0] || 'clover';
       if (btn.dataset.act === 'treat') { treatStep(acts, who, btn, openClover); return; }
-      if (btn.dataset.act === 'pet') { petNow(who); openClover(); return; }
-      if (btn.dataset.act === 'brush') { step(acts, { ms: 3000, moment: 'brush', verb: 'Brushing slowly…', cancel: openClover }, function () { var r = care(S, who, 'brush', today()); heartPop(who, r.ok && r.gained); if (r.ok && r.gained) R.toast(NM(who) + ' leans into the brush. ' + r.n + ' of ' + B.LOVE_MAX + ' hearts.', 'favorite'); openClover(); }); return; }
+      if (btn.dataset.act === 'pet') { petNow(who, openClover); return; }
+      if (btn.dataset.act === 'brush') { step(acts, { ms: 3000, moment: 'brush', verb: 'Brushing slowly…', cancel: openClover }, function () { locked(function () { var r = care(S, who, 'brush', today()); heartPop(who, r.ok && r.gained); if (r.ok && r.gained) R.toast(NM(who) + ' leans into the brush. ' + r.n + ' of ' + B.LOVE_MAX + ' hearts.', 'favorite'); openClover(); }); }); return; }
       if (ST && !ST.can('milk')) { R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); return; }
       step(acts, { ms: 3000, moment: 'milk', verb: 'Milking slowly…', stillLine: 'Notice how still she stands.', cancel: openClover, start: function (ms, still) { var m = doc.querySelector('#sheet .pailmilk'); if (m) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { m.style.transition = still ? 'none' : 'transform ' + ms + 'ms ease-in-out'; m.style.transform = 'scaleY(1)'; }); }); } }, function () {
-        if (today() !== day || !milkReady(S, day)) { openClover(); return; }
-        var r = milk(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); openClover(); return; }
-        R.chime('save'); R.toast((r.n > 1 ? r.n + ' pails' : 'A pail') + ' of milk in the pantry' + sizesLine(r.sizes) + '.', 'water_full'); openClover();
+        locked(function () {
+          if (today() !== day || !milkReady(S, day)) { openClover(); return; }
+          var r = milk(S, day, ST); if (!r.ok) { R.toast(r.why, 'info'); openClover(); return; }
+          R.chime('save'); R.toast((r.n > 1 ? r.n + ' pails' : 'A pail') + ' of milk in the pantry' + sizesLine(r.sizes) + '.', 'water_full'); openClover();
+        });
       });
     });
   }
@@ -365,8 +374,10 @@
     doc.getElementById('crackNo').addEventListener('click', function () { R.hideSheet(); });
     doc.getElementById('crackGo').addEventListener('click', function () {
       if (!at('barn') || (CARE && CARE.asleepNow && CARE.asleepNow())) { R.hideSheet(); return; }
-      var r = findCave(S, today()); if (!r.ok) { R.toast(r.why, 'info'); return; }
-      syncCrack(); R.hideSheet(); W.travel('cave');
+      locked(function () {
+        var r = findCave(S, today()); if (!r.ok) { R.toast(r.why, 'info'); return; }
+        syncCrack(); R.hideSheet(); W.travel('cave');
+      });
     });
   }
   /* ---------- the ranch counter (Jamie, 22 Oct: buy a cow or a hen, bigger barn and coop, babies) ----------
@@ -375,7 +386,7 @@
   function RW() { return root.OvuRewards; }
   /* one farm change at a time across tabs, each reading the farm fresh inside the lock (Codex, 22 Oct: two tabs buying at
      once could pay for both and keep one); Web Locks where the browser has them, else straight through */
-  function locked(fn) { var L = root.navigator && root.navigator.locks; var run = function () { try { if (S.reload) S.reload(); } catch (e) { } return fn(); }; if (L && L.request) return L.request('ovumind-farm', run); try { return Promise.resolve(run()); } catch (e) { return Promise.reject(e); } }
+  function locked(fn) { return FM().locked(S, fn); }
   function daysTo(d, day) { return Math.max(0, Math.round((Date.parse(d) - Date.parse(day)) / 86400000)); }
   function dueText(d, day) { var n = daysTo(d, day); return n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days'; }
   /* naming a baby born here (the hatch line promises it): a short name, cleaned the way the ranch cleans names */
@@ -473,9 +484,11 @@
       step(acts, { ms: 2500, moment: 'springlower', verb: 'Lowering the basket…', stillLine: 'Notice the glow of the water.', cancel: openBasket, start: function (ms, still) { anim('.sbasket', 'transform', 'translateY(26px)', ms, still)(); } }, function () {
         step(acts, { ms: 6000, moment: 'springsteam', verb: 'The eggs rest in the warm water…', stillLine: 'Notice the stars above the water.', cancel: openBasket, start: function (ms, still) { anim('.ssteam', 'opacity', '1', ms * 0.4, still)(); } }, function () {
           step(acts, { ms: 2500, moment: 'springlift', verb: 'Lifting the basket…', stillLine: 'Notice the glow of the water.', cancel: openBasket, start: function (ms, still) { anim('.ssteam', 'opacity', '0', ms, still)(); anim('.sbasket', 'transform', 'translateY(0)', ms, still)(); } }, function () {
-            if (JSON.stringify(FM().farmState(S).pantry) !== seen) { openBasket(); return; } /* another tab changed the pantry */
-            var r = cookEggs(S, want); if (!r.ok) { R.toast(r.why, 'info'); openBasket(); return; }
-            R.chime('save'); afterCook(r.n);
+            locked(function () {
+              if (JSON.stringify(FM().farmState(S).pantry) !== seen) { openBasket(); return; } /* another tab changed the pantry */
+              var r = cookEggs(S, want); if (!r.ok) { R.toast(r.why, 'info'); openBasket(); return; }
+              R.chime('save'); afterCook(r.n);
+            });
           });
         });
       });

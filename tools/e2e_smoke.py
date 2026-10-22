@@ -28,7 +28,7 @@ DB = {"version": 1, "createdAt": NOW, "updatedAt": NOW,
       "events": [{"id": "s1", "type": "period", "date": Y1, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"flow": "medium"}},
                  {"id": "s2", "type": "sleep", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"bedTime": "23:00", "wakeTime": "07:00", "quality": 4}},
                  {"id": "s3", "type": "food", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"meal": "lunch", "foods": "chicken rice", "items": [], "tags": ["home-cooked"]}}],
-      "summaries": [], "state": {"sleeping": None, "visited": {}, "tourDone": True, "tester": {"hearts": True}, "rewards": {"hearts": 200, "earned": 200, "log": [], "owned": ["dog"], "placed": {"dog": True}, "lastDay": None, "streak": 0}}}  # Peach the corgi lives on the room's rim, so her walks start from the nearest floor cell  # tester mode: Dream Street may be visited after hours, so the run does not depend on the clock
+      "summaries": [], "state": {"sleeping": None, "visited": {}, "tourDone": True, "musicInvited": True, "tester": {"hearts": True}, "rewards": {"hearts": 200, "earned": 200, "log": [], "owned": ["dog"], "placed": {"dog": True}, "lastDay": None, "streak": 0}}}  # Peach the corgi lives on the room's rim, so her walks start from the nearest floor cell  # tester mode: Dream Street may be visited after hours, so the run does not depend on the clock
 
 def png_rows(data):
     """RGB(A) rows of an 8-bit non-interlaced PNG (Playwright screenshots), with only the standard library."""
@@ -1789,7 +1789,7 @@ async def main():
             d0 = await page.evaluate("()=>OvuStore.list().length")
             await page.evaluate("()=>{OvuStore.setState({tester:{hearts:true}}); var f=OvuFarm.farmState(OvuStore); f.pantry.egg = Math.max(1, f.pantry.egg); OvuStore.setState({farm:f}); OvuBarn.openRanch();}")
             await page.wait_for_selector('[data-ranch="upgrade:coop"]', timeout=8000)
-            rc0 = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, buyHen: document.querySelector('[data-ranch=\"buy:hen\"]').disabled, cowFull: document.querySelector('[data-ranch=\"buy:cow\"]').disabled})")
+            rc0 = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').childNodes[0].textContent, buyHen: document.querySelector('[data-ranch=\"buy:hen\"]').disabled, cowFull: document.querySelector('[data-ranch=\"buy:cow\"]').disabled})")
             await page.click('[data-ranch="upgrade:coop"]'); await page.wait_for_timeout(500)
             await page.fill('#rnHen', 'Pip'); await page.click('[data-ranch="buy:hen"]'); await page.wait_for_timeout(500)
             await page.click('[data-ranch="incubate"]'); await page.wait_for_timeout(500)
@@ -1817,8 +1817,8 @@ async def main():
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'cave'", timeout=12000)
             except Exception: pass
             await page.wait_for_timeout(600)
-            cv = await page.evaluate("()=>{var st=JSON.stringify(OvuStore.state().stamina), d=OvuStore.list().length; OvuBarn.openBasket(); var b=document.querySelector('#basketActs [data-act=cook]'); if(b) b.click(); var p=OvuFarm.farmState(OvuStore).pantry; return {layout: document.querySelector('#scene').dataset.layout, map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.cave, onsen: p.onsenegg, eggs: p.egg, sameEnergy: JSON.stringify(OvuStore.state().stamina) === st, sameDiary: OvuStore.list().length === d, done: !!document.querySelector('#cookDone'), primary: (document.querySelector('#cookDone')||{}).className||''}}")
-            check("stepping through the crack finds the hidden spring, which then shows on the map; onsen eggs change no energy or diary, and Done comes first", cv["layout"] == "cave" and cv["map"] and cv["onsen"] == 2 and cv["eggs"] == 0 and cv["sameEnergy"] and cv["sameDiary"] and cv["done"] and "primary" in cv["primary"], cv)
+            cv = await page.evaluate("()=>{var st=JSON.stringify(OvuStore.state().stamina), d=OvuStore.list().length, before=OvuFarm.farmState(OvuStore).pantry.egg; OvuBarn.openBasket(); var b=document.querySelector('#basketActs [data-act=cook]'); if(b) b.click(); var p=OvuFarm.farmState(OvuStore).pantry; return {before: before, layout: document.querySelector('#scene').dataset.layout, map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.cave, onsen: p.onsenegg, eggs: p.egg, sameEnergy: JSON.stringify(OvuStore.state().stamina) === st, sameDiary: OvuStore.list().length === d, done: !!document.querySelector('#cookDone'), primary: (document.querySelector('#cookDone')||{}).className||''}}")
+            check("stepping through the crack finds the hidden spring, which then shows on the map; onsen eggs change no energy or diary, and Done comes first", cv["layout"] == "cave" and cv["map"] and cv["before"] >= 1 and cv["onsen"] == cv["before"] and cv["eggs"] == 0 and cv["sameEnergy"] and cv["sameDiary"] and cv["done"] and "primary" in cv["primary"], cv)
             await page.click('#cookDone')
             # the hidden spring (21 Oct): sitting by the water is the tone; one Stop for both; no diary, no hearts, no energy
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")

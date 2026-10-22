@@ -112,11 +112,16 @@
     });
     if (gifts) gifts.addEventListener('click', function (e) {
       var b = e.target.closest('[data-gift]'); if (!b) return; var it = items[Number(b.dataset.gift)]; if (!it) return;
-      var r = gift(all(), id, today(), it.key, it.kind); if (!r.ok) { R.toast(r.why, 'info'); return; }
-      var f = JSON.parse(JSON.stringify(FM.farmState(S))); takeFromBag(f, it);
-      try { save({ villagers: r.state, farm: f }); } catch (er) { R.toast('That could not be saved just now.', 'info'); return; }
-      if (R.moment) R.moment('friend', { quiet: true }); popHearts(id);
-      R.toast(r.loved ? v.name + ' lights up. That is a favourite.' : v.name + ' smiles and keeps it close.', 'favorite'); openVillager(id);
+      var go = function () {
+        var f = JSON.parse(JSON.stringify(FM.farmState(S))), have = it.kind === 'dish' ? n0(f.dishes && f.dishes[it.key]) : it.kind === 'crop' ? n0(f.harvest[it.key]) : n0(f.pantry && f.pantry[it.key]);
+        if (!have) { R.toast('That is no longer in your bag.', 'info'); openVillager(id); return; } /* another tab used it first */
+        var r = gift(all(), id, today(), it.key, it.kind); if (!r.ok) { R.toast(r.why, 'info'); return; }
+        takeFromBag(f, it);
+        try { save({ villagers: r.state, farm: f }); } catch (er) { R.toast('That could not be saved just now.', 'info'); return; }
+        if (R.moment) R.moment('friend', { quiet: true }); popHearts(id);
+        R.toast(r.loved ? v.name + ' lights up. That is a favourite.' : v.name + ' smiles and keeps it close.', 'favorite'); openVillager(id);
+      };
+      if (FM.locked) FM.locked(S, go); else go(); /* the farm lock: the bag is read again after other tabs' saves */
     });
   }
   function playEvent(v, level) {

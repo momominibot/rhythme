@@ -234,6 +234,14 @@
   }
 
   var F = { cropPic: cropPic, PANTRY: PANTRY, ANIMALS: ANIMALS, PANTRY_CAP: PANTRY_CAP, CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, SWAP: SWAP, swapWorth: swapWorth, swapNeed: swapNeed, swapGivable: swapGivable, swapSeed: swapSeed, dryBeds: dryBeds, waterAll: waterAll, CAN: CAN, BIG_CAN: BIG_CAN, canCap: canCap, canLevel: canLevel, fillCan: fillCan, pour: pour, plantFromShed: plantFromShed, bulkTargets: bulkTargets, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
+  /* one farm change at a time across tabs (Codex, 22 Oct: a care save read before another tab's purchase overwrote the
+     purchase): the browser-wide ovumind-farm lock where Web Locks exist, else straight through; fn reads the farm fresh
+     inside, after the store reloads what other tabs saved */
+  F.locked = function (S, fn) {
+    var L = root.navigator && root.navigator.locks, run = function () { try { if (S.reload) S.reload(); } catch (e) { } return fn(); };
+    if (L && L.request) return L.request('ovumind-farm', run);
+    try { return Promise.resolve(run()); } catch (e) { return Promise.reject(e); }
+  };
   root.OvuFarm = F;
 
   /* ---------- scene wiring ---------- */

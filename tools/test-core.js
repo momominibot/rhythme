@@ -5119,6 +5119,26 @@ var summarised = false;
   check('a grocer egg joins the mix as a small one', !bought.ok || Rb.ranchOf(Fb.farmState(Sb)).sizes.egg.small >= 1);
   check('every Erin ranch line has its script and clip', ['ranch-open', 'ranch-room', 'ranch-arrive', 'ranch-egg', 'ranch-hatch', 'ranch-calf', 'ranch-born', 'ranch-grown'].every(function (id) { return fs.existsSync(path.join(root, 'assets/audio/erin-actions/' + id + '.mp3')); }));
   check('the farm keeps every animal\'s collection day, not only the three starters, and the ranch record rides along in farmState', /Object\.keys\(f\.animals/.test(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8')) && /ranch: f\.ranch/.test(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8')));
+  /* Codex, 22 Oct (second review): a care save read before another tab's purchase overwrote the purchase. Two tabs share
+     one storage and one lock; the care runs inside the lock, so it reads the farm after the hen was bought. */
+  (function () {
+    var wa = scenes('2026-10-22'); wa.OvuRoom = null; wa.OvuZones = null; wa.localStorage = wb.localStorage;
+    ['ovu-farm.js', 'ovu-ranch.js', 'ovu-barn.js', 'ovu-kitchen.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), wa, { filename: f }); });
+    var Sa = wa.OvuStore, Fa = wa.OvuFarm, Ba = wa.OvuBarn, chain = Promise.resolve(), names = [], DL = '2026-11-03'; /* after every day the ranch has seen */
+    var mgr = { request: function (name, fn) { names.push(name); chain = chain.then(fn); return chain; } }; wa.navigator.locks = mgr; wb.navigator.locks = mgr;
+    (function () { var f = Fb.farmState(Sb); f.love = {}; var u = Rb.upgrade(f, 'coop'); if (u.ok) f.ranch = u.farm.ranch; Sb.setState({ farm: f }); })();
+    Sa.reload(); var hensBefore = Rb.list(Rb.ranchOf(Fa.farmState(Sa)), 'hen').length;
+    var staleA = Fa.farmState(Sa); /* tab A has read the farm */
+    var buy = Rb.buy(Fb.farmState(Sb), 'hen', 'Bao', DL); if (buy.ok) Sb.commit({ farm: buy.farm });
+    var unlocked = JSON.parse(JSON.stringify(staleA)); unlocked.love = { clover: { n: 1, day: DL, acts: { pet: 1 } } };
+    check('without the lock a stale tab\'s care save would drop the hen (the reported race)', buy.ok && Rb.list(Rb.ranchOf(unlocked), 'hen').length === hensBefore && Rb.list(Rb.ranchOf(Fb.farmState(Sb)), 'hen').length === hensBefore + 1);
+    var done = Fa.locked(Sa, function () { return Ba.care(Sa, 'clover', 'pet', DL); }).then(function (r) {
+      var fa = Fa.farmState(Sa), fb2 = Fb.farmState(Sb);
+      check('inside the farm lock the care save reads the farm again: Bao stays and the heart is kept, in both tabs', r.ok && r.gained && Rb.list(Rb.ranchOf(fa), 'hen').length === hensBefore + 1 && Rb.list(Rb.ranchOf(fa), 'hen').some(function (h) { return h.name === 'Bao'; }) && fa.love.clover.n === 1 && Sb.reload() && Rb.list(Rb.ranchOf(Fb.farmState(Sb)), 'hen').length === hensBefore + 1, JSON.stringify({ r: r, hens: Rb.list(Rb.ranchOf(fa), 'hen').map(function (h) { return h.name; }) }));
+      check('every barn, kitchen and villager farm writer goes through the one ovumind-farm lock', names.length === 1 && names[0] === 'ovumind-farm' && (function () { var src = fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8'); return !/\n\s*var r = (care|giveTreat|collectEggs|milk|findCave|cookEggs)\(S/.test(src.replace(/locked\(function \(\) \{[\s\S]*?\n\s*\}\);/g, '')); })() && /FM\(\)\.locked\(S, go\)/.test(fs.readFileSync(path.join(root, 'ovu-kitchen.js'), 'utf8')) && /FM\.locked\(S, go\)/.test(fs.readFileSync(path.join(root, 'ovu-villagers.js'), 'utf8')));
+    });
+    done.catch(function (e) { check('the locked care race test ran to the end', false, String(e && e.stack || e)); });
+  })();
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
