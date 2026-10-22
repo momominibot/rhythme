@@ -39,6 +39,13 @@
   var T = { x: 48.72, y: 45.46 }, E1 = { x: 8.64, y: 3.72 }, E2 = { x: -7.83, y: 3.45 };
   function at(u, v) { return { x: round(T.x + u * E1.x + v * E2.x), y: round(T.y + u * E1.y + v * E2.y) }; }
   function bedAt(i, j) { return at(i, j); }
+  /* the bed frame as one polygon solid: its four corners 0.6 of a bed out from the outer soil centres, so she walks round the
+     frame, never across it or onto a bed (Codex, 22 Oct: the old three boxes left beds 8 and 12 walkable) */
+  function frameSolid() {
+    var poly = [at(-0.6, -0.6), at(3.6, -0.6), at(3.6, 2.6), at(-0.6, 2.6)].map(function (p) { return [p.x, p.y]; });
+    var xs = poly.map(function (p) { return p[0]; }), ys = poly.map(function (p) { return p[1]; });
+    return { id: 'beds', poly: poly, x0: Math.min.apply(null, xs), x1: Math.max.apply(null, xs), y0: Math.min.apply(null, ys), y1: Math.max.apply(null, ys) };
+  }
   /* she tends a bed from the slab's margin: the front-left edge (past the last row along j) or the front-right edge (past
      the last row along i), whichever is nearer; beds in one line share that stand */
   function standFor(i, j) {
@@ -62,7 +69,7 @@
     home: { x: 19, y: 56, flip: false },
     zones: [[[48, 30], [95, 52], [86, 61], [68, 70], [50, 74], [6, 56]]], /* the island; its lower-right shore bows out past the bed frame's path */
     solids: [{ id: 'shed', x0: 8, x1: 30, y0: 33, y1: 46 }, { id: 'well', x0: 62, x1: 76, y0: 33, y1: 46 }, { id: 'scarecrow', x0: 45, x1: 57, y0: 25, y1: 36 }, { id: 'tree', x0: 84, x1: 95, y0: 44, y1: 52 } /* the trunk; she may walk under the canopy, and the path to the well runs between the beds and the trunk */, { id: 'basket', x0: 42, x1: 56, y0: 65, y1: 72 },
-      { id: 'beds1', x0: 30, x1: 50, y0: 48, y1: 58 }, { id: 'beds2', x0: 44, x1: 64, y0: 44, y1: 62 }, { id: 'beds3', x0: 60, x1: 78, y0: 50, y1: 58 }],
+      frameSolid()],
     doors: [{ id: 'farmgate', to: 'garden', x: 15, y: 57, r: 5, flip: true }, { id: 'barnpath', to: 'barn', x: 79, y: 62, r: 4, flip: false }, { id: 'harboursteps', to: 'harbour', x: 70, y: 67, r: 4, flip: false }],
     /* the beds are not hotspots (twelve orbs would smother the plate): they are drawn by this module and offered as prompts */
     prompts: STANDS.map(function (s) { return { id: s.id, wp: s.wp, beds: s.beds, prompt: s.beds.length > 1 ? 'Tap to tend the beds' : 'Tap to tend the bed', bed: true }; }),
@@ -236,7 +243,7 @@
     return out;
   }
 
-  var F = { cropPic: cropPic, cropSprite: cropSprite, PANTRY: PANTRY, ANIMALS: ANIMALS, PANTRY_CAP: PANTRY_CAP, CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, SWAP: SWAP, swapWorth: swapWorth, swapNeed: swapNeed, swapGivable: swapGivable, swapSeed: swapSeed, dryBeds: dryBeds, waterAll: waterAll, CAN: CAN, BIG_CAN: BIG_CAN, canCap: canCap, canLevel: canLevel, fillCan: fillCan, pour: pour, plantFromShed: plantFromShed, bulkTargets: bulkTargets, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
+  var F = { cropPic: cropPic, cropSprite: cropSprite, at: at, PANTRY: PANTRY, ANIMALS: ANIMALS, PANTRY_CAP: PANTRY_CAP, CROPS: CROPS, STARTER: STARTER, PACK: PACK, TOOLS: TOOLS, canGrow: canGrow, growable: growable, seedsADay: seedsADay, buyPack: buyPack, unlockCrop: unlockCrop, buyTool: buyTool, SWAP: SWAP, swapWorth: swapWorth, swapNeed: swapNeed, swapGivable: swapGivable, swapSeed: swapSeed, dryBeds: dryBeds, waterAll: waterAll, CAN: CAN, BIG_CAN: BIG_CAN, canCap: canCap, canLevel: canLevel, fillCan: fillCan, pour: pour, plantFromShed: plantFromShed, bulkTargets: bulkTargets, BEDS: BEDS, STANDS: STANDS, LAYOUT: FARM, SEEDS_A_DAY: SEEDS_A_DAY, bedAt: bedAt, standFor: standFor, farmState: farmState, bed: bed, growthDays: growthDays, ripe: ripe, stage: stage, hasWeeds: hasWeeds, wateredToday: wateredToday, seedsLeftToday: seedsLeftToday, takeSeed: takeSeed, plant: plant, water: water, clearWeeds: clearWeeds, harvest: harvest, summary: summary, hash: hash };
   /* one farm change at a time across tabs (Codex, 22 Oct: a care save read before another tab's purchase overwrote the
      purchase): the browser-wide ovumind-farm lock where Web Locks exist, else straight through; fn reads the farm fresh
      inside, after the store reloads what other tabs saved */
@@ -274,15 +281,21 @@
   function renderBeds() {
     if (!inFarm(R.layout())) return;
     var wrap = R.els.props, day = today();
-    Array.prototype.slice.call(wrap.querySelectorAll('.bed')).forEach(function (el) { el.remove(); });
-    var f = farmState(S);
+    Array.prototype.slice.call(wrap.querySelectorAll('.bed,.bedplants')).forEach(function (el) { el.remove(); });
+    var f = farmState(S), pics = {};
     BEDS.slice().sort(function (a, b) { return a.at.y - b.at.y; }).forEach(function (bb) {
+      var pic = doc.createElement('div'); pic.className = 'bedplants'; pic.dataset.id = bb.id; pic.setAttribute('aria-hidden', 'true');
+      pic.style.left = bb.at.x + '%'; pic.style.top = bb.at.y + '%';
+      pic.innerHTML = bedArt(f.beds[bb.id], bb.id, day);
+      wrap.appendChild(pic); pics[bb.id] = pic;
+    });
+    BEDS.forEach(function (bb) {
       var el = doc.createElement('button'); el.type = 'button'; el.className = 'bed'; el.dataset.id = bb.id;
       var b = f.beds[bb.id], label = 'Bed ' + (BEDS.indexOf(bb) + 1) + ': ' + (b && b.crop ? CROPS[b.crop].name.toLowerCase() + (ripe(b) ? ', ripe' : ', growing, ' + growthDays(b) + ' of ' + CROPS[b.crop].days + ' watered days' + (wateredToday(b, day) ? ', watered today' : ', not watered today')) : 'empty');
       el.setAttribute('aria-label', label + (hasWeeds(b, bb.id, day) ? ', weeds' : ''));
-      el.style.left = bb.at.x + '%'; el.style.top = bb.at.y + '%'; el.style.width = '13%'; /* the middle plant's base sits on the bed's soil centre */
-      el.innerHTML = bedArt(b, bb.id, day);
+      el.style.left = bb.at.x + '%'; el.style.top = bb.at.y + '%';
       el.addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); goTend(bb); });
+      el.addEventListener('focus', function () { pics[bb.id].classList.add('focus'); }); el.addEventListener('blur', function () { pics[bb.id].classList.remove('focus'); }); /* the clip hides a focus ring, so the plants glow */
       wrap.appendChild(el);
     });
   }

@@ -1712,6 +1712,8 @@ async def main():
             await page.wait_for_timeout(900)
             farm = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, beds: document.querySelectorAll('#ownedProps .bed').length, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), here: document.querySelector('#mapHere')?.textContent, zone: document.querySelector('#zoneName')?.textContent})")
             check("the garden path walks her onto the farm: twelve beds on the plate, six hotspots (the barn path and the harbour steps too), the pill saying Farm", farm["layout"] == "farm" and farm["beds"] == 12 and farm["hots"] == "farmgate,shed,well,basket,barnpath,harboursteps" and farm["here"] == "Farm" and farm["zone"] == "Your farm", farm)
+            hits = await page.evaluate("()=>{ var plate=document.querySelector('#ownedProps').getBoundingClientRect(), host=document.querySelector('#sceneInner')||document.querySelector('#ownedProps'); return OvuFarm.BEDS.map(function(b){ var el=document.querySelector('#ownedProps .bed[data-id='+b.id+']'), r=el.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2, hit=document.elementFromPoint(x,y); return {id:b.id, got: hit && hit.closest && hit.closest('.bed') ? hit.closest('.bed').dataset.id : (hit ? hit.className : null)}; }); }")
+            check("Codex (22 Oct): a tap on each bed's own soil lands on that bed, never on a plant drawn in front of it", all(h["id"] == h["got"] for h in hits), [h for h in hits if h["id"] != h["got"]])
             # the first visit explains the four steps once (Jamie, 20 Oct: "it's confusing")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] .farmsteps', timeout=6000)
             except Exception: pass
