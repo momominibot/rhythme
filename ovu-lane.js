@@ -1,6 +1,7 @@
 /* Rhythme Harbour Lane: the grocer (Hay & Harvest), the boutique (Petal & Thread), the gym (Tideline Gym), the fish store
- * (Bait & Fin) and the post box. Until the lane's plate is drawn, the harbour's signpost opens the lane as a sheet and
- * every place is a sheet, the way Dream Street's stores were before their interiors existed. No place here awards hearts,
+ * (Bait & Fin) and the post box. The lane is drawn (ovu-lanescene.js, 21 Oct): the harbour's signpost walks her up it,
+ * and the grocer, the boutique and the gym are rooms she walks into, whose counters open these sheets; the fish store
+ * keeps its sheet until its room is drawn. The lane's own sheet is still where every place's Back row goes. No place here awards hearts,
  * and the gym and the post box never spend them. Nothing here writes a diary entry: the gym opens the movement log and
  * only her own save writes. Design: docs/design/2026-10-21-harbour-lane.md. Pure rules first (testable in node), then
  * the sheets. */
@@ -121,10 +122,14 @@
   function num(v) { var x = Math.floor(Number(v)); return isFinite(x) && x > 0 ? x : 0; } /* a restored backup's counts reach the page as numbers only (review, 21 Oct) */
   function dateText(d) { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: d.slice(0, 4) === today().slice(0, 4) ? undefined : 'numeric' }); } catch (e) { return d; } }
   /* the back row: with the hearts she has (a shop), "Free" (the gym) or nothing beside it */
-  function nav(mode) { var h = hearts(), side = mode === 'hearts' ? '<span class="heartsmini"><span class="ms fill">favorite</span>' + (h === Infinity ? '∞' : h) + '</span>' : mode === 'free' ? '<span class="heartsmini"><span class="ms">volunteer_activism</span>Free</span>' : ''; return '<div class="streetnav"><button type="button" class="back" data-lane="back"><span class="ms">arrow_back</span>Harbour Lane</button>' + side + '</div>'; }
+  /* with the lane drawn (ovu-lanescene.js), a place's sheet is the counter of the room she stands in: Back closes it, and the
+   * lane's own sheet only lists, so no sheet carries her from one shop to another (Codex, 21 Oct) */
+  function walkable() { return !!(root.OvuLaneScene && R.LAYOUTS && R.LAYOUTS.lane); }
+  function standing() { var L = R.layout && R.layout(); return walkable() && root.OvuLaneScene.onLane(L) ? L : null; }
+  function nav(mode) { var here = standing(), h = hearts(), side = mode === 'hearts' ? '<span class="heartsmini"><span class="ms fill">favorite</span>' + (h === Infinity ? '∞' : h) + '</span>' : mode === 'free' ? '<span class="heartsmini"><span class="ms">volunteer_activism</span>Free</span>' : ''; return '<div class="streetnav"><button type="button" class="back" data-lane="back"><span class="ms">arrow_back</span>' + esc(here ? here.name : 'Harbour Lane') + '</button>' + side + '</div>'; }
   function mind(text) { return text ? '<p class="mindline"><span class="ms">spa</span><span>' + esc(text) + '</span></p>' : ''; }
   /* every place sheet: Back goes to the lane; a closed place shows its hours instead */
-  function wireBack() { var b = doc.querySelector('#sheet [data-lane=back]'); if (b) b.addEventListener('click', function () { R.chime('tap'); openLane(); }); }
+  function wireBack() { var b = doc.querySelector('#sheet [data-lane=back]'); if (b) b.addEventListener('click', function () { R.chime('tap'); if (standing()) R.closeSheet(); else openLane(); }); }
   function shut(id) {
     var p = place(id), now = new Date(), h = now.getHours() + now.getMinutes() / 60, when = h < p.hours[0] ? 'It opens at ' + fmtHour(p.hours[0]) + ' today.' : 'It opens again at ' + fmtHour(p.hours[0]) + ' tomorrow.';
     R.openSheet('lane-closed', p.name, 'Opening hours', 'schedule', nav() +
@@ -137,10 +142,10 @@
     var post = unread(S, today()).length;
     R.openSheet('lane', 'Harbour Lane', 'Four shops and a post box, up from the harbour', 'signpost',
       '<div class="street lane">' + PLACES.map(function (p) {
-        var on = openNow(p.id); return '<button type="button" class="store' + (on ? '' : ' closed') + '" data-place="' + p.id + '"><span class="ms storeic">' + p.icon + '</span><span><b>' + esc(p.name) + '</b><small>' + esc(p.kind) + ' · ' + esc(p.blurb) + (p.id === 'post' && post ? ' · <em class="postnew">post for you</em>' : '') + '</small><small class="hours">' + (on ? (p.hours ? 'Open now · ' : '') : 'Closed · opens ') + esc(hoursText(p.id)) + '</small></span><span class="ms">chevron_right</span></button>';
+        var on = openNow(p.id), tag = walkable() ? 'div' : 'button'; return '<' + tag + (tag === 'button' ? ' type="button"' : '') + ' class="store' + (on ? '' : ' closed') + '" data-place="' + p.id + '"><span class="ms storeic">' + p.icon + '</span><span><b>' + esc(p.name) + '</b><small>' + esc(p.kind) + ' · ' + esc(p.blurb) + (p.id === 'post' && post ? ' · <em class="postnew">post for you</em>' : '') + '</small><small class="hours">' + (on ? (p.hours ? 'Open now · ' : '') : 'Closed · opens ') + esc(hoursText(p.id)) + '</small></span>' + (tag === 'button' ? '<span class="ms">chevron_right</span>' : '') + '</' + tag + '>';
       }).join('') + '</div>' +
-      '<p class="help">The lane itself is still being drawn. Until then the signpost brings each place to you, and everything in it works.</p>');
-    var box = doc.querySelector('#sheet .lane'); if (box) box.addEventListener('click', function (e) { var b = e.target.closest('[data-place]'); if (!b) return; R.chime('tap'); openPlace(b.dataset.place); });
+      '<p class="help">' + (R.LAYOUTS && R.LAYOUTS.lane ? 'Walk up the lane from the harbour signpost and go in: the grocer, the boutique and the gym are rooms, and Bait &amp; Fin and the post box open on the lane.' : 'The lane itself is still being drawn. Until then the signpost brings each place to you, and everything in it works.') + '</p>');
+    var box = doc.querySelector('#sheet .lane'); if (box && !walkable()) box.addEventListener('click', function (e) { var b = e.target.closest('[data-place]'); if (!b) return; R.chime('tap'); openPlace(b.dataset.place); });
   }
   function openPlace(id) {
     if (!place(id)) return;
@@ -159,8 +164,8 @@
     if (swapGive && give.indexOf(swapGive) < 0) swapGive = null;
     var html = nav('hearts') + mind('Choose one thing you would like to grow in yourself this week.') +
       '<h4 class="shedh"><span class="ms">redeem</span>Seed packs <small>' + FM.PACK.seeds + ' seeds · ' + heartTxt(FM.PACK.cost) + '</small></h4>' +
-      '<div class="seedlist" id="grocerBuy">' + grow.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-pack="' + k + '"' + (h >= FM.PACK.cost ? '' : ' disabled') + '><span class="ms">redeem</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + num(f.seeds[k]) + '</small></span></button>'; }).join('') +
-      locked.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-unlock="' + k + '"' + (h >= c.cost ? '' : ' disabled') + '><span class="ms">lock_open</span><span><b>Grow ' + esc(c.name.toLowerCase()) + '</b><small>' + c.days + ' days · for good, one seed to start · ' + heartTxt(c.cost) + '</small></span></button>'; }).join('') + '</div>' +
+      '<div class="seedlist" id="grocerBuy">' + grow.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-pack="' + k + '"' + (h >= FM.PACK.cost ? '' : ' disabled') + '>' + FM.cropPic(k) + '<span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + num(f.seeds[k]) + '</small></span></button>'; }).join('') +
+      locked.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-unlock="' + k + '"' + (h >= c.cost ? '' : ' disabled') + '>' + FM.cropPic(k) + '<span><b>Grow ' + esc(c.name.toLowerCase()) + '</b><small>' + c.days + ' days · for good, one seed to start · ' + heartTxt(c.cost) + '</small></span></button>'; }).join('') + '</div>' +
       (KT() ? (function () { var kt = KT(), have = kt.staplesOf(S); return '<h4 class="shedh"><span class="ms">kitchen</span>Kitchen staples <small>one portion each</small></h4>' +
         '<div class="seedlist" id="grocerStaples">' + Object.keys(kt.STAPLES).map(function (k) { var st = kt.STAPLES[k]; return '<button type="button" class="btn soft" data-staple="' + k + '"' + (h >= st.cost ? '' : ' disabled') + '><span class="ms">' + st.icon + '</span><span><b>' + esc(st.name) + '</b><small>have ' + num(have[k]) + ' · ' + heartTxt(st.cost) + '</small></span></button>'; }).join('') + '</div>' +
         '<p class="help" style="margin-top:6px">For cooking what you grow: open the basket on the farm, or the stove in the family home.</p>'; })() : '') +
@@ -213,12 +218,12 @@
   function openBoutique() {
     R.openSheet('lane-boutique', 'Petal & Thread', 'Boutique · ' + hoursText('boutique'), 'checkroom', nav('hearts') +
       '<div class="row"><button type="button" class="btn primary" id="fitRoom"><span class="ms">checkroom</span>The fitting room</button></div>' +
-      '<p class="help">Every outfit you have is free to wear, and always will be.</p>' +
+      '<p class="help">Try on anything in the fitting room, Plus drops too. Every outfit you have is free to wear, and always will be.</p>' +
       '<p class="shelf"><span class="ms">new_releases</span>The new rail</p>' +
       '<div class="seedlist one" id="railList">' + RAIL.map(function (o) { return '<button type="button" class="btn soft" data-rail="' + o.id + '" disabled><span class="ms">checkroom</span><span><b>' + esc(o.name) + '</b><small>' + esc(o.note) + ' · ' + heartTxt(o.cost) + ' · Arriving with the next art run</small></span></button>'; }).join('') + '</div>' +
       mind('Notice how the fabric feels. Nothing to fix about you.'));
     wireBack();
-    var fr = doc.getElementById('fitRoom'); if (fr) fr.addEventListener('click', function () { R.chime('tap'); if (R.openWardrobe) R.openWardrobe(); });
+    var fr = doc.getElementById('fitRoom'); if (fr) fr.addEventListener('click', function () { R.chime('tap'); var BT = root.OvuBoutique, L = R.layout && R.layout(); if (BT && BT.openFitting && L && L.id === 'lane-boutique') BT.openFitting(); else if (R.openWardrobe) R.openWardrobe(); }); /* in the shop she tries things on; elsewhere it is her wardrobe */
   }
 
   /* Tideline Gym: free, earns nothing by itself, logs nothing; a station opens the movement log with its activity chosen */

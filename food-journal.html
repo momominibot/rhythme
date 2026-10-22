@@ -201,11 +201,11 @@
 <script>
 // Food database (TCM + Western, from Rhythme)
 const FOOD_DB = [
-  {name:'Salmon', emoji:'🐟', tags:'Omega-3 · Vitamin D · Blood builder', tcm:'Nourishes blood, warms yang', phase:['follicular','ovulatory','luteal']},
+  {name:'Wild Caught Salmon', emoji:'🐟', tags:'Omega-3 · Vitamin D · Blood builder', tcm:'Nourishes blood, warms yang', phase:['follicular','ovulatory','luteal']},
   {name:'Eggs', emoji:'🥚', tags:'Protein · Choline · B12', tcm:'Nourishes yin, builds blood', phase:['follicular','luteal','menstrual']},
   {name:'Spinach', emoji:'🥬', tags:'Iron · Folate · Magnesium', tcm:'Clears heat, nourishes blood', phase:['follicular','menstrual']},
   {name:'Sweet Potato', emoji:'🍠', tags:'Beta-carotene · Fiber · Vitamin A', tcm:'Tonifies qi, harmonizes stomach', phase:['luteal','menstrual']},
-  {name:'Oats', emoji:'🥣', tags:'Fiber · B vitamins · Iron', tcm:'Tonifies spleen, nourishes qi', phase:['follicular','menstrual']},
+  {name:'Organic Oats', emoji:'🥣', tags:'Fiber · B vitamins · Iron', tcm:'Tonifies spleen, nourishes qi', phase:['follicular','menstrual']},
   {name:'Ginger', emoji:'🫚', tags:'Anti-inflammatory · Digestive', tcm:'Warms middle, dispels cold', phase:['menstrual','luteal']},
   {name:'Turmeric', emoji:'🟡', tags:'Curcumin · Anti-inflammatory', tcm:'Invigorates blood, moves qi', phase:['luteal','menstrual']},
   {name:'Berries', emoji:'🫐', tags:'Antioxidants · Vitamin C', tcm:'Nourishes yin, generates fluids', phase:['follicular','ovulatory']},
@@ -231,17 +231,17 @@ const PHASE_INFO = {
   menstrual: {
     label: 'Menstrual phase',
     text: 'Your body is releasing and renewing. Focus on warming, blood-building foods that are easy to digest. Rest and nourish.',
-    foods: ['Bone Broth','Ginger','Oats','Eggs','Beetroot','Cinnamon','Sesame Seeds']
+    foods: ['Bone Broth','Ginger','Organic Oats','Eggs','Beetroot','Cinnamon','Sesame Seeds']
   },
   follicular: {
     label: 'Follicular phase',
     text: 'Energy is rising. Support follicle growth with nutrient-dense, blood-building foods and gentle movement.',
-    foods: ['Salmon','Eggs','Spinach','Berries','Avocado','Lentils','Leafy Greens']
+    foods: ['Wild Caught Salmon','Eggs','Spinach','Berries','Avocado','Lentils','Leafy Greens']
   },
   ovulatory: {
     label: 'Ovulatory phase',
     text: 'Peak energy and vitality. Support liver detox and hormone balance with fresh, light foods.',
-    foods: ['Berries','Citrus','Leafy Greens','Green Tea','Yogurt','Salmon']
+    foods: ['Berries','Citrus','Leafy Greens','Green Tea','Yogurt','Wild Caught Salmon']
   },
   luteal: {
     label: 'Luteal phase',

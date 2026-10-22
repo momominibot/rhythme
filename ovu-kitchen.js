@@ -91,6 +91,8 @@
       else if (k === 'egg') f.pantry.egg = n0(f.pantry.egg) - n;
       else f.kitchen[k] = n0(f.kitchen[k]) - n;
     });
+    /* the dish stays in her bag, Harvest Moon style (Jamie, 22 Oct: "dishes can be used to court the NPC"): up to 99 of each; game state only */
+    f.dishes = Object.assign({}, f.dishes || {}); f.dishes[r.id] = Math.min(99, n0(f.dishes[r.id]) + 1);
     try { if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f }); } catch (e) { return { ok: false, why: 'That could not be saved just now.' }; } /* commit: a failed save leaves memory as it was */
     return { ok: true, recipe: r };
   }
@@ -127,7 +129,7 @@
   }
   function openKitchen() {
     var here = where();
-    var list = RECIPES.map(function (r) { var c = canCook(S, r.id); return '<button type="button" class="btn soft" data-recipe="' + r.id + '"' + (c.ok ? '' : ' disabled') + '><span class="ms">' + r.icon + '</span><span><b>' + esc(r.name) + '</b><small>' + esc(needsText(r)) + ' · ' + esc(state(r, c)) + '</small></span></button>'; }).join('');
+    var list = RECIPES.map(function (r) { var c = canCook(S, r.id); return '<button type="button" class="btn soft" data-recipe="' + r.id + '"' + (c.ok ? '' : ' disabled') + '><img class="croppic" src="assets/food/dish-' + r.id + '.webp" alt=""><span><b>' + esc(r.name) + '</b><small>' + esc(needsText(r)) + ' · ' + esc(state(r, c)) + '</small></span></button>'; }).join('');
     R.openSheet('kitchen', here === 'farm' ? 'Cook from the basket' : 'The kitchen', 'A dish, one step at a time', 'skillet',
       mind('Choose one dish. Cooking here is slow on purpose.') + '<div class="seedlist one" id="kitchenList">' + list + '</div>' + stockLine(S) +
       '<p class="help">Cooking uses what the dish needs from the basket and the pantry. It earns no hearts, takes no energy and logs nothing for you.</p>');
@@ -163,10 +165,10 @@
   function openDish(r) {
     var line = R.moment ? R.moment('cookdish', { quiet: true }) : '';
     R.openSheet('kitchen-dish', r.name, 'On the table', r.icon,
-      '<p>' + esc(r.name) + ' is ready.</p>' + mind(line) +
+      '<div class="dishpic"><img src="assets/food/dish-' + r.id + '.webp" alt="' + esc(r.name) + '"></div><p>' + esc(r.name) + ' is ready.</p>' + mind(line) +
       '<p><b>Did you eat something like this today?</b></p>' +
       '<div class="row"><button type="button" class="btn primary" id="dishYes"><span class="ms">restaurant</span>Yes, open the diary</button><button type="button" class="btn soft" id="dishNo">No</button></div>' +
-      '<p class="help">Only a meal you really ate. The kitchen never logs anything for you.</p>');
+      '<p class="help">It is in your bag now, to share. The diary only gets a meal you really ate.</p>');
     var y = doc.getElementById('dishYes'), n = doc.getElementById('dishNo');
     if (y) y.addEventListener('click', function () { R.chime('tap'); if (R.openDiary) R.openDiary('add', { notes: r.name + ', cooked at home', tags: ['home-cooked'] }); else R.hideSheet(); });
     if (n) n.addEventListener('click', function () { R.chime('tap'); R.hideSheet(); });

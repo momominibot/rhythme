@@ -1,0 +1,27 @@
+{
+ "note": "22 Oct, Harvest Moon phase 4: two original villagers to befriend and court (not based on any real person). Reference: the avatar for style. Chroma green for keying. One at a time, no retries.",
+ "jobs": [
+  {
+   "id": "villager-shen",
+   "out": "villager-shen.png",
+   "size": "1024x1024",
+   "seed": 3101,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/room/dream/avatar-base.webp"
+   ],
+   "prompt": "A gentle young man in his late twenties, a calm bookseller: soft black hair with a light fringe, thin round glasses, a cream knit cardigan over a pale lilac shirt, beige trousers, brown loafers, holding a small book. Full body, standing, facing the viewer at a slight three-quarter angle, arms relaxed, whole figure in frame with space around it. Same 3D chibi clay-toy art style, proportions, soft pastel lighting and big gentle eyes as the reference girl. Solid flat pure chroma green background #00FF00, no shadow on the background, one character only, no text."
+  },
+  {
+   "id": "villager-lu",
+   "out": "villager-lu.png",
+   "size": "1024x1024",
+   "seed": 3102,
+   "model": "doubao-seedream-4-0-250828",
+   "ref": [
+    "assets/room/dream/avatar-base.webp"
+   ],
+   "prompt": "A cheerful young man in his late twenties, a harbour boat-builder: tousled dark brown hair, a warm smile, a pastel blue rolled-sleeve shirt, a light denim apron, navy trousers, white canvas shoes, a small wooden toy boat in one hand. Full body, standing, facing the viewer at a slight three-quarter angle, arms relaxed, whole figure in frame with space around it. Same 3D chibi clay-toy art style, proportions, soft pastel lighting and big gentle eyes as the reference girl. Solid flat pure chroma green background #00FF00, no shadow on the background, one character only, no text."
+  }
+ ]
+}

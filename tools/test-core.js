@@ -124,8 +124,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
 (function selfHarmCardComesFirst() {
   console.log('2. thoughts of harming yourself or your baby raise the emergency card before anything is parsed');
   var w = fresh(), O = w.OvuOrb;
-  var COPY = 'If you have thoughts of harming yourself or your baby, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.';
-  var COPY_SELF = 'If you have thoughts of harming yourself, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.';
+  var COPY = 'If you have thoughts of harming yourself or your baby, you need help now. Call your local emergency number or go to the nearest emergency department, and ask someone you trust to stay with you. A crisis helpline can also help, at any hour.';
+  var COPY_SELF = 'If you have thoughts of harming yourself, you need help now. Call your local emergency number or go to the nearest emergency department, and ask someone you trust to stay with you. A crisis helpline can also help, at any hour.';
   /* the baby is named only when the note or the profile has one (four-persona review, 20 Oct) */
   [['I want to hurt myself', COPY_SELF], ['I feel like killing myself', COPY_SELF], ['thoughts of hurting my baby', COPY], ['I’m scared I might hurt my baby', COPY], ['I don’t want to be alive anymore', COPY_SELF], ['having suicidal thoughts again', COPY_SELF]].forEach(function (c) {
     var u = O.urgent(c[0], {});
@@ -135,7 +135,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var both = O.urgent('soaking through a pad every hour and I want to hurt myself', {});
   check('the self-harm card comes first, even with heavy bleeding', both && both.code === 'SELF_HARM_NOW', JSON.stringify(both));
   var u = O.urgent('I want to hurt myself', { lifeStage: 'post' });
-  check('the card carries call links for 995, SOS 1767 and WhatsApp 9151 1767', u && JSON.stringify(u.actions) === JSON.stringify([{ label: 'Call 995', href: 'tel:995' }, { label: 'Call SOS 1767', href: 'tel:1767' }, { label: 'WhatsApp SOS', href: 'https://wa.me/6591511767' }]), JSON.stringify(u && u.actions));
+  check('the card carries one link, an international helpline directory, and no country-specific number (22 Oct: the app is for the whole world)', u && JSON.stringify(u.actions) === JSON.stringify([{ label: 'Find a helpline', href: 'https://findahelpline.com' }]), JSON.stringify(u && u.actions));
   check('"I think about hurting myself" and "I’d hurt my baby" raise it too, "I’d never hurt my baby" does not', (O.urgent('Sometimes I think about hurting myself', {}) || {}).code === 'SELF_HARM_NOW' && (O.urgent('I’m so tired I’d hurt my baby', {}) || {}).code === 'SELF_HARM_NOW' && O.urgent('I’d never hurt my baby, just so tired', {}) === null);
   check('an ordinary hurt is not a self-harm card', O.urgent('I hurt my back carrying the baby', {}) === null && O.urgent('my feet are killing me', {}) === null && O.urgent('am I hurting my baby by drinking coffee?', {}) === null);
   check('the existing bleeding cards keep their codes and no self-harm copy', (function () { var h = O.urgent('soaking through a pad every hour', {}); return h && h.code === 'HEAVY_BLEED_NOW' && !h.message; })());
@@ -181,7 +181,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
  ['tired, low, didn\'t sleep',{},null],['ate chicken rice for lunch',{},null],['chest of drawers arrived',{},null],
 ];
   cases.forEach(function (c) { var u = O.urgent(c[0], c[1]); check('"' + c[0] + '" -> ' + c[2], (u ? u.code : null) === c[2], u ? u.code : 'null'); });
-  check('every new card brings its own words and a 995 link where it is an emergency', ['chest pain', 'my face is drooping on one side', 'lips swollen', 'hearing voices', 'period is late and pain on my left side'].every(function (t) { var u = O.urgent(t, {}); return u && u.message && (u.level !== 'emergency' || (u.actions || []).some(function (a) { return a.href === 'tel:995'; })); }));
+  check('every new card brings its own words; an emergency card says emergency and names no country\'s number', ['chest pain', 'my face is drooping on one side', 'lips swollen', 'hearing voices', 'period is late and pain on my left side'].every(function (t) { var u = O.urgent(t, {}); return u && u.message && (u.level !== 'emergency' || (/emergency/i.test(u.message + ' ' + u.title) && !/\b995\b|1767|KKH/.test(u.message))); }));
   var w2 = fresh(), O2 = w2.OvuOrb;
   check('Luna reads worry about a period as a feeling, never a period day', ['worried my period is coming', 'dreading my period', 'when will my period come', 'my period is coming soon I think'].every(function (t) { return !O2.parseLocal(t).some(function (e) { return e.type === 'period'; }); }) && O2.parseLocal('anxious about my period this month').some(function (e) { return e.type === 'symptom' && e.data.symptoms.indexOf('anxiety') > -1; }) && O2.parseLocal('worried, period started heavy today').some(function (e) { return e.type === 'period' && e.data.flow === 'heavy'; }));
 })();
@@ -367,6 +367,73 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the moment after it: "That pause was yours", not a claim about minutes', MO.forEntry(ev) === 'morning' && MO.MOMENTS.morning.lines.indexOf('That pause was yours.') >= 0 && MO.MOMENTS.morning.pose === null);
 })();
 
+(function gameMinutesNeedConfirmation() {
+  console.log('garden and games: diary writes require a confirmed mindful minute; stale watering cannot claim a new activity');
+  function node() { return { style: {}, dataset: {}, innerHTML: '', hidden: false, textContent: '', ls: {}, classList: { add: function () { }, remove: function () { }, contains: function () { return false; } }, setAttribute: function () { }, addEventListener: function (k, f) { this.ls[k] = f; }, querySelector: function () { return null; }, appendChild: function () { }, remove: function () { }, focus: function () { }, fire: function () { if (this.ls.click) this.ls.click(); } }; }
+  function plantWorld(greenhouse) {
+    var w = fresh('2026-10-22'), nodes = {}, q = [], hooks = {}, calls = [], stop = null, active = false, sheetOpen = false, intervals = [];
+    function el(id) { return nodes[id] || (nodes[id] = node()); }
+    w.setTimeout = function (f, ms) { var t = { f: f, ms: ms, live: true }; q.push(t); return t; }; w.clearTimeout = function (t) { if (t) t.live = false; }; w.setInterval = function (f) { var t = { f: f, live: true }; intervals.push(t); return t; }; w.clearInterval = w.clearTimeout;
+    w.document = { createElement: node, addEventListener: function () { }, getElementById: el };
+    w.Audio = function () { this.pause = function () { calls.push('pause'); }; this.play = function () { return Promise.resolve(); }; };
+    var R = w.OvuRoom = { ART: '', LAYOUTS: {}, hotspotHandlers: {}, els: { props: node(), avatar: node(), scene: node() }, layout: function () { return { id: greenhouse ? 'greenhouse' : 'garden' }; },
+      on: function (k, f) { (hooks[k] = hooks[k] || []).push(f); }, esc: function (x) { return x; }, sessionOn: function () { return active; }, sheetOpen: function () { return sheetOpen; }, asleep: function () { return false; }, practiceOn: function () { return false; }, busy: function () { return false; },
+      hideSheet: function () { calls.push('hideSheet'); }, openSheet: function (id) { calls.push(id); }, setHudStop: function (f) { stop = f; calls.push('stopHook'); }, hudOn: function (x) { calls.push('hud:' + x); }, caption: function (x) { calls.push('caption:' + x); }, setPose: function () { calls.push('pose'); }, restorePose: function () { calls.push('restore'); }, chime: function () { }, toast: function (x) { calls.push(x); }, afterSave: function (ev) { w.OvuRewards.award(ev); calls.push('saved'); } };
+    w.OvuWalk = { napping: function () { return false; } };
+    var file = greenhouse ? 'ovu-greenhouse.js' : 'ovu-garden.js', src = fs.readFileSync(path.join(root, file), 'utf8');
+    if (greenhouse) src = src.replace('})(window);', 'root.__minuteStart = function () { runMinute({ kind: "care", id: "hoya", name: "Hoya", title: "Hoya" }, ["one", "two", "three", "four"], "plants"); };\n})(window);');
+    else src = src.replace('})(window);', 'root.__minuteStart = startWatering;\n})(window);');
+    vm.runInContext(src, w, { filename: file }); (hooks.boot || []).forEach(function (f) { f(); });
+    return { w: w, q: q, calls: calls, el: el, intervals: intervals, sheet: function (v) { sheetOpen = v; }, wait: function () { intervals.forEach(function (t) { if (t.live) t.f(); }); }, start: w.__minuteStart, stop: function () { return stop; }, active: function (x) { active = x; }, emit: function (k) { (hooks[k] || []).forEach(function (f) { f(); }); }, finish: function () { q.filter(function (t) { return t.live && t.ms === 60000; }).slice(-1)[0].f(); } };
+  }
+  var g = plantWorld(false); g.start(); var stale = g.q.map(function (t) { return t.f; }), oldStop = g.stop();
+  g.emit('activity'); g.active(true); var endedAt = g.calls.length; stale.forEach(function (f) { f(); }); oldStop();
+  check('garden watering cancels synchronously on activity, pauses audio and leaves a new session\'s HUD, pose, Stop and diary untouched', !g.w.OvuGarden.watering() && g.q.every(function (t) { return !t.live; }) && g.calls.indexOf('pause') > -1 && g.calls.length === endedAt && g.w.OvuStore.list('mindfulness').length === 0);
+  g.active(false); g.start(); var newerAt = g.calls.length; stale.forEach(function (f) { f(); }); oldStop();
+  check('a cancelled watering\'s clips, captions, completion and Stop callbacks cannot act inside its replacement', g.w.OvuGarden.watering() && g.calls.length === newerAt && g.w.OvuStore.list('mindfulness').length === 0);
+  g.emit('beforeWalk');
+  check('beforeWalk cancels watering at once and restores the old pose without a journal entry', !g.w.OvuGarden.watering() && g.calls.indexOf('restore') > -1 && g.w.OvuStore.list('mindfulness').length === 0);
+  [false, true].forEach(function (gh) {
+    var p = plantWorld(gh), S = p.w.OvuStore, id = gh ? 'gh' : 'garden'; p.start(); p.finish();
+    check((gh ? 'greenhouse' : 'garden') + ' completion asks Yes/No and writes no mindfulness automatically' + (gh ? '' : ', while the plot keeps its watering'), S.list('mindfulness').length === 0 && p.calls.indexOf(gh ? 'greenhouseDone' : 'gardenDone') > -1 && (gh || S.state().garden.watered.indexOf(S.today()) > -1));
+    p.el(id + 'No').fire(); check((gh ? 'greenhouse' : 'garden') + ' No leaves the journal empty', S.list('mindfulness').length === 0);
+    p.start(); p.sheet(true); var asked = p.calls.filter(function (c) { return c === (gh ? 'greenhouseDone' : 'gardenDone'); }).length; p.finish(); p.wait(); var whileOpen = p.calls.filter(function (c) { return c === (gh ? 'greenhouseDone' : 'gardenDone'); }).length; p.sheet(false); p.wait();
+    check((gh ? 'greenhouse' : 'garden') + ' a finished minute waits for an open journal form to close before asking', asked === whileOpen && p.calls.filter(function (c) { return c === (gh ? 'greenhouseDone' : 'gardenDone'); }).length === asked + 1 && S.list('mindfulness').length === 0); p.el(id + 'No').fire();
+    p.start(); p.finish(); var add = S.add, fail = true; S.add = function () { if (fail) throw new Error('quota'); return add.apply(S, arguments); };
+    p.el(id + 'Yes').fire(); var beforeRetry = S.list('mindfulness').length; fail = false; p.el(id + 'Yes').fire(); p.el(id + 'Yes').fire();
+    check((gh ? 'greenhouse' : 'garden') + ' a failed Yes keeps the confirmation for retry, then saves and awards once', beforeRetry === 0 && S.list('mindfulness').length === 1 && S.list('mindfulness')[0].data.confirmedReal === true && p.calls.filter(function (c) { return c === 'saved'; }).length === 1 && p.w.OvuRewards.ledger().hearts === 2);
+    var d = plantWorld(gh); d.start(); d.sheet(true); d.finish(); var oldAsk = d.intervals[0].f; d.start(); d.sheet(false); var atNew = d.calls.length; oldAsk();
+    check((gh ? 'greenhouse' : 'garden') + ' an old deferred question cannot open over a new minute', d.calls.length === atNew); d.finish(); var atDone = d.calls.length; oldAsk(); check((gh ? 'greenhouse' : 'garden') + ' a new completion invalidates the previous deferred question', d.calls.length === atDone);
+  });
+  function gameWorld(flower) {
+    var w = fresh('2026-10-22'), nodes = {}, stamp = 100000, now = Date.now(), prefix = flower ? 'lf' : 'btap';
+    function el(id) { return nodes[id] || (nodes[id] = node()); }
+    w.__gameEl = { querySelector: el }; w.document.body = { classList: { remove: function () { } } }; w.performance = { now: function () { return stamp; } }; w.cancelAnimationFrame = function () { };
+    var file = flower ? 'ovu-lightflower.js' : 'ovu-breathtap.js', src = fs.readFileSync(path.join(root, file), 'utf8'), name = flower ? 'OvuLightFlower' : 'OvuBreathTap';
+    var seed = flower ? 'st = {t0: root.performance.now() - seconds * 1000, plan: 0, startedAt: "start", pace: "own"};' : 'state = {startedAt: Date.now() - seconds * 1000, preset: "own", taps: 3, plan: 0};';
+    src = src.replace('  root.' + name + ' = ', '  el = root.__gameEl; root.__gameTest = { seed: function(seconds, cb) { opts = {onSaved: cb}; pending = null; ' + seed + ' }, pending: function() { return pending; }, confirm: function() { return finishSave(pending); } };\n  root.' + name + ' = ');
+    vm.runInContext(src, w, { filename: file }); return { w: w, S: w.OvuStore, game: w[name], T: w.__gameTest, el: function (s) { return el('#' + prefix + s); } };
+  }
+  [false, true].forEach(function (flower) {
+    var a = gameWorld(flower), label = flower ? 'Light Flower' : 'Koi Pond', awarded = 0;
+    function award(ev) { awarded++; a.w.OvuRewards.award(ev); }
+    a.T.seed(61, award); a.game.stop(false);
+    check(label + ' Stop asks about saving a mindful minute and writes nothing before Yes', a.S.list('mindfulness').length === 0 && a.T.pending() && /Save this mindful minute/.test(a.el('Done b').textContent));
+    if (!flower) check('Koi Pond keeps its ripple count while asking about journal saving', /3 ripples/.test(a.el('Sum').textContent));
+    a.game.close(); check(label + ' No or Close discards the game without a diary entry', a.S.list('mindfulness').length === 0 && !a.T.pending());
+    a.T.seed(59.9, award); a.game.stop(false); check(label + ' never rounds a sub-minute game up into save eligibility', !a.T.pending() && a.S.list('mindfulness').length === 0);
+    a.T.seed(90, award); a.game.stop(false, true); check(label + ' a silent bedtime close cannot save a long game', !a.T.pending() && a.S.list('mindfulness').length === 0);
+    a.T.seed(90, award); a.game.stop(false); var original = a.S.add, fail = true; a.S.add = function () { if (fail) throw new Error('quota'); return original.apply(a.S, arguments); }; a.T.confirm();
+    check(label + ' a failed long save says Your pause could not be saved and keeps Retry with its payload', a.S.list('mindfulness').length === 0 && a.T.pending() && a.T.pending().data.seconds === 90 && a.el('Done b').textContent === 'Your pause could not be saved' && !a.el('Retry').hidden);
+    fail = false; a.T.confirm(); a.T.confirm(); check(label + ' Retry inserts and awards the confirmed minute exactly once', a.S.list('mindfulness').length === 1 && a.S.list('mindfulness')[0].data.confirmedReal === true && awarded === 1 && !a.T.pending());
+    var b = gameWorld(flower), attempts = 0; b.T.seed(80, function (ev) { attempts++; if (attempts === 1) throw new Error('reward quota'); b.w.OvuRewards.award(ev); }); b.game.stop(false); b.T.confirm();
+    check(label + ' distinguishes an already saved entry from a failed award', b.S.list('mindfulness').length === 1 && b.T.pending() && b.T.pending().ev && /hearts could not be saved/.test(b.el('Sum').textContent));
+    b.T.confirm(); check(label + ' reward retry uses the same entry instead of duplicating the journal', b.S.list('mindfulness').length === 1 && attempts === 2 && b.w.OvuRewards.ledger().hearts === 2 && !b.T.pending());
+    var c = gameWorld(flower), tries = 0; c.T.seed(75, function (ev) { tries++; if (tries === 1) return { rewardFailed: true }; c.w.OvuRewards.award(ev); return { rewardFailed: false }; }); c.game.stop(false); c.T.confirm(); var retained = !!(c.T.pending() && c.T.pending().ev); c.T.confirm();
+    check(label + ' the room\'s nonthrowing rewardFailed result also keeps Retry and reuses the saved entry', retained && tries === 2 && c.S.list('mindfulness').length === 1 && c.w.OvuRewards.ledger().hearts === 2 && !c.T.pending());
+  });
+})();
+
 (function soundKitAndLightFlower() {
   console.log('2i. the sound kit: one switch (never chosen is on), quiet volume, no stacking; Light Flower lights without flashing and saves only time');
   var w = fresh(), S = w.OvuStore, SD = w.OvuSound, LF = w.OvuLightFlower, RW = w.OvuRewards, MO = w.OvuMoments;
@@ -485,6 +552,144 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('care steps are slow and stoppable, and save only when the bar is full and the sheet still open', (function () { var care = fs.readFileSync(path.join(root, 'ovu-care.js'), 'utf8'); return /function step[\s\S]*?!box\.isConnected \|\| !R\.sheetOpen\(\) \|\| here\(\) !== tok\.scene[\s\S]*?asleepNow\(\)/.test(care) && care.indexOf('data-slow="stop"') > -1 && src.indexOf("scene: 'farm'") > -1; })() && true);
 })();
 
+(function animalLove() {
+  console.log('2k3b. animal love (Jamie, 22 Oct): pet, brush and a treat each add one heart a day, up to ten; game state only');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8'), w, { filename: 'ovu-barn.js' });
+  var B = w.OvuBarn, S = w.OvuStore, F = w.OvuFarm, n0 = S.list().length;
+  var a = B.care(S, 'clover', 'pet', '2026-10-21'), b = B.care(S, 'clover', 'pet', '2026-10-21'), c = B.care(S, 'clover', 'brush', '2026-10-21');
+  check('a first pet and a first brush each add a heart; a second pet the same day adds nothing', a.gained && !b.gained && c.gained && B.love(S, 'clover') === 2);
+  var back = B.care(S, 'clover', 'brush', '2026-10-20');
+  check('a clock set back to an earlier day adds nothing', !back.gained && B.love(S, 'clover') === 2);
+  for (var i = 0; i < 12; i++) { var d = '2026-11-' + String(i + 1).padStart(2, '0'); B.care(S, 'mochi', 'pet', d); B.care(S, 'mochi', 'brush', d); }
+  check('the meter stops at ten', B.love(S, 'mochi') === B.LOVE_MAX && B.LOVE_MAX === 10);
+  var f = F.farmState(S); f.harvest = { kangkong: 2 }; S.setState({ farm: f });
+  var t = B.giveTreat(S, 'hens', 'kangkong', '2026-12-01');
+  check('a treat for the hens adds a heart to each hen that had none from a treat that day', t.ok && t.gained && B.love(S, 'kaya') === 1);
+  check('love never writes a diary entry and never touches the logging hearts', S.list().length === n0 && !/OvuRewards/.test(fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8').split('function heartPop')[0]));
+})();
+
+(function staleRunnersAndPracticeSave() {
+  console.log('confirmed audit defects: old session and Everyday callbacks, bedtime threshold, atomic practice confirmation');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), finished = false;
+  function fn(name) { var i = src.indexOf('function ' + name + '('), j = src.indexOf('{', i), d = 0; for (var k = j; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}' && !--d) return src.slice(i, k + 1); } throw new Error('Missing runner ' + name); }
+  function hudFn() { var i = src.indexOf('hudOn: function'), j = src.indexOf('{', i), d = 0; for (var k = j; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}' && !--d) return src.slice(i + 7, k + 1); } throw new Error('Missing HUD handover'); }
+  function env() {
+    var w = fresh('2026-10-22'), now = Date.parse('2026-10-22T10:00:00+08:00'), timers = [], els = {}, clips = [], captions = [], poses = [], saves = [], sheets = [], toasts = [];
+    function node(id) { if (els[id]) return els[id]; var cls = {}; return els[id] = { textContent: '', events: {}, classList: { add: function (k) { cls[k] = true; }, remove: function (k) { delete cls[k]; }, contains: function (k) { return !!cls[k]; }, toggle: function (k, on) { if (on) cls[k] = true; else delete cls[k]; } }, addEventListener: function (k, f) { this.events[k] = f; } }; }
+    function FD(v) { return arguments.length ? new Date(v) : new Date(now); } FD.now = function () { return now; };
+    var c = { window: {}, S: w.OvuStore, MF: w.OvuMindful, session: null, practice: null, meditating: true, activityGen: 0, fadeTimer: null, medTimer: 0, GUIDE: 'guide/', ERIN: 'erin/', CAPTION: {}, HOME: {}, hooks: { on: {} },
+      Date: FD, Promise: Promise, Math: Math, isFinite: isFinite, console: console,
+      Audio: function () { this.pause = function () { this.paused = true; }; this.play = function () { clips.push(this.src + ':' + (c.session ? c.session.kind : c.practice ? c.practice.a.id : 'none')); this.paused = false; return Promise.resolve(); }; },
+      setTimeout: function (f, ms) { var t = { f: f, ms: ms, live: true }; timers.push(t); return t; }, clearTimeout: function (t) { if (t) t.live = false; },
+      $: node, hud: node('hud'), avatar: node('avatar'), meditator: node('meditator'), holo: node('holo'),
+      refuseBusy: function () { return false; }, asleep: function () { return false; }, erin: function () { }, endMoment: function () { }, endTryOn: function () { },
+      hideSheet: function () { c.current = null; }, closeSheet: function () { c.current = null; }, openSheet: function (id) { c.current = id; sheets.push(id); },
+      setPose: function (p) { poses.push(p); }, restorePose: function () { poses.push('restore'); }, placeAvatar: function () { poses.push('home'); },
+      setOrb: function (phase, text) { captions.push(text); }, caption: function (text) { captions.push(text); }, chime: function () { },
+      hudClockStart: function () { c.clock = true; }, hudClockStop: function () { c.clock = false; },
+      afterSave: function (ev) { saves.push(ev); }, toast: function (text) { toasts.push(text); }, esc: function (t) { return t; } };
+    vm.createContext(c);
+    ['emit', 'sessionCurrent', 'cancelRunner', 'playClip', 'wait', 'runSession', 'finishSession', 'stopSession', 'exitMeditation', 'stopEverything', 'practiceCurrent', 'playUrl', 'pwait', 'runPractice', 'askPracticeDone', 'practiceMs', 'stopPractice'].forEach(function (n) { vm.runInContext(fn(n), c); });
+    vm.runInContext('hudOn = ' + hudFn(), c);
+    return { c: c, w: w, timers: timers, clips: clips, captions: captions, poses: poses, saves: saves, sheets: sheets, toasts: toasts, node: node, advance: function (ms) { now += ms; }, call: function (code) { return vm.runInContext(code, c); } };
+  }
+  function flush() { var p = Promise.resolve(); for (var i = 0; i < 100; i++) p = p.then(function () { }); return p; }
+  process.on('exit', function () { if (!finished) { console.error('  FAIL runner regression promises did not settle'); process.exitCode = 1; } });
+  var s = env(); s.call('runSession("erin", 3)'); var old = s.c.session, ended = old.audio.onended, metadata = old.audio.onloadedmetadata;
+  s.call('stopSession(false)'); s.call('runSession("breathe", 5)'); var replacement = s.c.session;
+  ended(); metadata();
+  flush().then(function () {
+    check('a stopped Erin greeting settles without clips or captions entering the replacement breathing session', s.c.session === replacement && s.clips.length === 1 && !s.captions.some(function (t) { return t === 'Settling in' || t === 'Coming back'; }) && old.audio.paused && old.cancelWait === null, s.clips.join(' | '));
+    var timer = replacement.timer, settled = false;
+    s.call('wait(250, session)').then(function () { settled = true; }); s.call('stopSession(false)'); s.call('runSession("erin", 3)'); var newest = s.c.session;
+    if (timer) timer.f();
+    return flush().then(function () { check('cancelling a timed wait resolves it, clears its own timer, and an old timer cannot act on the next session', settled && !replacement.timer && s.c.session === newest && !s.clips.some(function (t) { return /meditation_begin/.test(t); })); });
+  }).then(function () {
+    var p = env(); p.call('runPractice("plants", 0)');
+    return flush().then(function () {
+      var oldP = p.c.practice, fin = oldP.audio.onended, meta = oldP.audio.onloadedmetadata;
+      p.call('stopPractice()'); p.call('runPractice("teeth", 0)'); var nextP = p.c.practice; if (fin) fin(); if (meta) meta();
+      return flush().then(function () {
+        check('Everyday callbacks and captions belong to the originating practice, with the old audio and wait cancelled', p.c.practice === nextP && oldP.audio.paused && oldP.cancelWait === null && p.clips.length === 2 && p.clips[0].indexOf('plants-0-0') > -1 && p.clips[1].indexOf('teeth-0-0') > -1 && p.captions.length === 2, p.clips.join(' | '));
+        var b = env(); b.call('runSession("erin", 3)'); var bedRun = b.c.session; b.advance(5000); var openingPaused = false; b.c.erinAudio = { pause: function () { openingPaused = true; } }; b.call('stopEverything()');
+        check('bedtime stops the session audio and pending callbacks, saving nothing below a full minute', b.c.session === null && bedRun.audio.paused && openingPaused && bedRun.cancelWait === null && !b.timers.some(function (t) { return t.live; }) && b.w.OvuStore.list('mindfulness').length === 0 && !b.c.clock);
+        var long = env(); long.call('runSession("erin", 3)'); var lr = long.c.session; long.advance(61000); long.call('stopEverything()');
+        check('bedtime and Stop share the one-minute rule and stopped-session duration, with no delayed fade into night', long.c.session === null && lr.audio.paused && long.w.OvuStore.list('mindfulness').length === 1 && long.w.OvuStore.list('mindfulness')[0].data.minutes === 1 && !long.timers.some(function (t) { return t.live; }));
+        var failed = env(); failed.call('runSession("erin", 3)'); var fr = failed.c.session; failed.advance(61000); failed.w.localStorage.setItem = function () { throw new Error('quota'); }; failed.call('stopEverything()');
+        check('a bedtime save failure leaves no stopped session, live media timer or false completion behind', failed.c.session === null && fr.audio.paused && fr.cancelWait === null && !failed.timers.some(function (t) { return t.live; }) && !failed.w.OvuStore.list('mindfulness').length && !failed.saves.length && failed.toasts[0] === 'Your session could not be saved.');
+        var owner = env(); owner.call('exitMeditation()'); var restore = owner.timers[owner.timers.length - 1], before = owner.poses.length; owner.call('hudOn(true, "Watering")'); restore.f();
+        owner.c.meditating = true; owner.call('runSession("breathe", 1)'); owner.advance(61000); owner.call('finishSession(false)'); var fade = owner.timers[owner.timers.length - 1]; owner.call('hudOn(true, "Plant care")'); fade.f();
+        check('old mat restoration and saved-session fades cannot change the avatar or hide a newer garden or greenhouse HUD', owner.poses.length === before && owner.c.hud.classList.contains('on'));
+      });
+    });
+  }).then(function () {
+    var p = env(); p.call('runPractice("plants", 0)');
+    return flush().then(function () {
+      p.advance(65000); p.call('stopPractice()'); var pending = p.c.practice, yes = p.node('#pdYes').events.click, storage = p.w.localStorage, original = storage.setItem, writes = 0;
+      storage.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('quota'); return original.call(storage, k, v); };
+      yes();
+      var intact = p.c.practice === pending && p.c.current === 'practiceDone' && p.w.OvuStore.list('mindfulness').length === 0 && !p.w.OvuStore.state().explored;
+      storage.setItem = function (k, v) { if (k === 'ovumind_db_v1') writes++; return original.call(storage, k, v); }; yes(); yes();
+      var events = p.w.OvuStore.list('mindfulness');
+      check('failed Everyday confirmation keeps the prompt and exact pending practice, with no event or explored count left in memory', intact && /could not be saved/.test(p.toasts[0] || ''), p.toasts.join(' | '));
+      check('retry confirms the same practice once, committing its entry and exploration count in one database write', p.c.practice === null && p.c.current === null && events.length === 1 && p.w.OvuStore.state().explored.plants === 1 && events[0].data.confirmedReal && writes === 1 && p.saves.length === 1, JSON.stringify({ writes: writes, events: events.length }));
+      var no = env(); no.call('runPractice("plants", 0)'); no.advance(65000); no.call('stopPractice()'); no.node('#pdNo').events.click();
+      check('declining Everyday confirmation saves neither a journal entry nor an exploration completion', !no.w.OvuStore.list('mindfulness').length && !no.w.OvuStore.state().explored && no.c.practice === null);
+    });
+  }).then(function () { finished = true; }).catch(function (e) { check('runner regression chain completes', false, e.stack); finished = true; });
+})();
+
+(function erinOnEveryAction() {
+  console.log('2k3c. Erin speaks for every action (Jamie, 22 Oct): one clip per action, each one on disk with its script');
+  var rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), lines = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/erin-actions/lines.json'), 'utf8'));
+  var ids = lines.map(function (l) { return l.id; }), m = /var MOMENT_ERIN = (\{[^}]*\});/.exec(rj), map = m ? (new Function('return ' + m[1]))() : {};
+  var used = Object.keys(map).map(function (k) { return map[k]; }).concat(['brush-hen']);
+  var src = fs.readdirSync(root).filter(function (f) { return /^ovu-.*\.js$/.test(f); }).map(function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); }).join('\n') + rj;
+  (src.match(/\.erin\('([a-z-]+)'\)/g) || []).forEach(function (x) { used.push(/'([a-z-]+)'/.exec(x)[1]); });
+  var missing = used.filter(function (id) { return ids.indexOf(id) < 0 || !fs.existsSync(path.join(root, 'assets/audio/erin-actions', id + '.mp3')); });
+  check('every Erin line the app plays has a script and an mp3', m && Object.keys(map).length > 40 && missing.length === 0, missing.join());
+  check('every scripted line has its clip, and no script has an em dash', lines.every(function (l) { return fs.existsSync(path.join(root, 'assets/audio/erin-actions', l.id + '.mp3')) && l.text.indexOf('\u2014') < 0; }));
+  check('moment() plays her line before any early return, and stays quiet while her guided practice speaks', /if \(!opt\.tries\) erin\(/.test(rj) && /function erin\(id\) \{\n    if \(!id \|\| !soundOn\(\) \|\| asleep\(\) \|\| session \|\| practice \|\| meditating/.test(rj));
+})();
+
+(function scoresAndVillagers() {
+  console.log('2k3d. cycle and circadian scores (Codex sol formulas, 22 Oct) and the villagers');
+  var w = { console: console }; w.window = w; vm.createContext(w);
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-scores.js'), 'utf8'), w, { filename: 'ovu-scores.js' });
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-villagers.js'), 'utf8'), w, { filename: 'ovu-villagers.js' });
+  var SC = w.OvuScores, V = w.OvuVillagers;
+  function ep(start, len, pains) { var days = []; for (var k = 0; k < len; k++) { var d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + k); days.push({ date: d.toISOString().slice(0, 10), pain: pains === undefined ? undefined : pains }); } return { start: start, end: days[days.length - 1].date, days: days }; }
+  var eps = [ep('2026-06-01', 5, 2), ep('2026-06-29', 5, 2), ep('2026-07-27', 5, 2), ep('2026-08-24', 5, 2), ep('2026-09-21', 5, 2)];
+  var c = SC.cycleScore(eps, '2026-10-22', '26-41');
+  check('cycle: four 28-day cycles, 5-day periods, pain 2 of 10 give regularity, frequency and length 100 and comfort 80, so 94', c.parts.regularity === 100 && c.parts.frequency === 100 && c.parts.duration === 100 && c.parts.comfort === 80 && c.score === 94 && c.version === 'cycle-v1', JSON.stringify(c));
+  var noPain = SC.cycleScore(eps.map(function (e) { return ep(e.start, 5); }), '2026-10-22', '26-41');
+  check('cycle: no pain answers leave comfort and the total empty (never 0), and say what is needed', noPain.score === null && noPain.parts.comfort === null && noPain.need.join().indexOf('pain answer') > -1);
+  var noAge = SC.cycleScore(eps, '2026-10-22', null);
+  check('cycle: without an age band no regularity limit is invented, so no total', noAge.parts.regularity === null && noAge.score === null && noAge.need.join().indexOf('age range') > -1);
+  check('cycle: two cycles are not enough', SC.cycleScore(eps.slice(0, 3), '2026-10-22', '26-41').score === null);
+  var irregular = SC.cycleScore([ep('2026-05-01', 5, 0), ep('2026-05-23', 5, 0), ep('2026-07-01', 5, 0), ep('2026-07-25', 5, 0), ep('2026-09-02', 5, 0)], '2026-10-22', '26-41');
+  check('cycle: cycles of 22, 39, 24 and 39 days (a 17-day spread, one of four within 24 to 38) score regularity 23 and frequency 25', irregular.parts.regularity === 23 && irregular.parts.frequency === 25, JSON.stringify(irregular.parts));
+  var nights = []; for (var k = 0; k < 14; k++) { var d = new Date('2026-10-09T12:00:00Z'); d.setUTCDate(d.getUTCDate() + k); nights.push({ date: d.toISOString().slice(0, 10), bed: '23:00', wake: '07:00' }); }
+  var sl = SC.sleepScore(nights, '2026-10-22');
+  check('circadian: fourteen nights 23:00 to 07:00 give steady timing 100 and enough sleep 100', sl.score === 100 && sl.parts.timing === 100 && sl.parts.duration === 100 && sl.midSpread === 0, JSON.stringify(sl.parts));
+  var short = SC.sleepScore(nights.map(function (n) { return { date: n.date, bed: '02:00', wake: '06:00' }; }), '2026-10-22');
+  check('circadian: steady four-hour nights score 70, so length always shows beside the total', short.score === 70 && short.parts.duration === 0);
+  check('circadian: seven nights are not enough (10, with 4 in each week)', SC.sleepScore(nights.slice(7), '2026-10-22').score === null);
+  check('circadian: the circular spread treats 23:30 and 00:30 as an hour apart, not a day', Math.round(SC.circular([1410, 30]).sd) > 20 && Math.round(SC.circular([1410, 30]).sd) < 40);
+  var t1 = V.talk({}, 'shen', '2026-10-22'), t2 = V.talk(t1.state, 'shen', '2026-10-22');
+  check('villagers: talking adds 3 points once a day; a second talk adds nothing', t1.gained === 3 && t2.gained === 0 && V.stateOf({ villagers: t2.state }, 'shen').points === 3);
+  var g1 = V.gift(t2.state, 'shen', '2026-10-22', 'pandanrice', 'dish'), g2 = V.gift(g1.state, 'shen', '2026-10-22', 'egg', 'pantry');
+  check('villagers: one gift a day; a loved dish is worth 8', g1.ok && g1.loved && g1.gained === 8 && !g2.ok);
+  var st = {}; for (var day = 1; day <= 12; day++) { var dd = '2026-11-' + String(day).padStart(2, '0'); st = V.talk(st, 'lu', dd).state; st = V.gift(st, 'lu', dd, 'tomatoegg', 'dish').state; }
+  var lu = V.stateOf({ villagers: st }, 'lu');
+  check('villagers: hearts reach 10 at 100 points and the first heart scene waits to be seen', V.hearts(lu.points) === 10 && V.nextEvent(lu) === 2 && !V.canPropose(lu, true));
+  lu.seen = [2, 4, 6, 8, 10];
+  check('villagers: a proposal needs every scene, a red heart and a home of her own', V.canPropose(lu, true) && !V.canPropose(lu, false) && V.colour(10)[0] === 'Red' && V.colour(0)[0] === 'Black');
+  check('villagers: original characters, no real names; game state only, no diary writes', V.VILLAGERS.map(function (v) { return v.name; }).join() === 'Shen Yuan,Lu Chen' && !/S\.add\(|OvuStore\.add\(/.test(fs.readFileSync(path.join(root, 'ovu-villagers.js'), 'utf8')));
+})();
+
 (function barnAndSpring() {
   console.log('2k3. the barn, the hens, Clover and the hidden spring (Jamie, 20-21 Oct): no needs, no guilt, nothing that refills energy');
   var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
@@ -583,6 +788,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the nine pitches, labelled by pitch only, never by a promise', T.FREQS.join() === '174,285,396,417,528,639,741,852,963' && T.label(528) === '528 Hz, middle' && T.label(174) === '174 Hz, low' && T.label(963) === '963 Hz, high' && T.label(440) === '' && !/love|repair|liberation|healing|DNA|chakra/i.test(TS));
   check('the tone follows the app volume and never passes its ceiling; a bad volume is silent', T.gainFor(1) === T.CEILING && T.gainFor(0.5) === Math.round(0.5 * T.CEILING * 1000) / 1000 && T.gainFor(0) === 0 && T.gainFor('x') === 0 && T.gainFor(9) === T.CEILING);
   check('without Web Audio (node) starting a tone fails quietly and nothing is playing', T.start(528, null) === false && T.playing() === null && T.remaining() === null);
+  check('each pitch has a tradition word and no health promise; the sheet says research has not shown it (22 Oct)', T.FREQS.every(function (f) { return T.MEANING[f] && !/heal|cure|repair|DNA|love|pain|anxiety/i.test(T.MEANING[f]); }) && /sound-bath tradition/.test(TS) && /Research has not shown that a pitch does this/.test(TS));
+  check('she can just sit with nothing playing, or sit with rain, a stream or waves; Stop ends sound and sitting together', /\['none', 'Just sit'\]/.test(TS) && Object.keys(T.BEDS).join() === 'rain,stream,waves' && T.startBed('rain', null) === false && T.bed() === null && /function endAll\(\) \{ stop\(\); standUp\(\); \}/.test(TS));
   check('the module writes no diary entry, pays no hearts and costs no energy', !/OvuRewards|\bS\.add\(|OvuStore\.add\(|addMany\(|spend\(|spendWith\(/.test(TS));
   var L = B.CAVE, bad = K.checkLayout(L), cry = L.hotspots.filter(function (h) { return h.id === 'crystals'; })[0];
   var wd = K.world(L, []), from = { x: L.doors[0].x, y: L.doors[0].y };
@@ -624,6 +831,66 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var st5 = { spendWith: undefined }, wc = F.waterAll(S, S.addDays(t, 1), st5);
   check('with an older energy module the big can reports it did not charge, so the caller charges the watering', wc.ok === true && wc.charged === false);
 })();
+
+(function rewardWritesAreAtomic() {
+  console.log('audit P1: failed reward writes leave no purchase, entitlement or receipt in memory');
+  var w = fresh(), S = w.OvuStore, RW = w.OvuRewards, ls = w.localStorage, realSet = ls.setItem;
+  var base = { hearts: 500, earned: 500, log: [], owned: ['cat', 'acc-bow'], placed: { cat: true }, treats: { 'treat-fish': 2 }, wear: { cat: 'acc-bow' }, lastDay: null, streak: 0 };
+  var cases = [
+    ['furniture purchase', function () { RW.buy('plant'); }],
+    ['treat purchase', function () { RW.buy('treat-fish'); }],
+    ['treat use', function () { RW.useTreat('cat', 'treat-fish'); }],
+    ['accessory change', function () { RW.wear('cat', null); }],
+    ['placing an item', function () { RW.toggle('cat'); }],
+    ['one-off gift', function () { RW.grant(20, 'audit-gift'); }],
+    ['pet care', function () { RW.care('cat', 'feed'); }],
+    ['spending with state', function () { RW.spend(10, 'audit', { auditPurchase: true }); }],
+    ['practice thank-you', function () { RW.thank('audit', { auditPurchase: true }); }],
+    ['logging entitlement', function () { RW.recordWith('water', { auditPurchase: true }); }]
+  ];
+  cases.forEach(function (c) {
+    S.setState({ rewards: JSON.parse(JSON.stringify(base)) });
+    var snap = JSON.stringify(S.state()), threw = false;
+    ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+    try { c[1](); } catch (e) { threw = true; }
+    ls.setItem = realSet;
+    check(c[0] + ': a failed commit leaves memory exactly as before', threw && JSON.stringify(S.state()) === snap);
+    S.setProfile({ name: 'After failed ' + c[0] });
+    check(c[0] + ': a later unrelated save cannot persist the refused action', JSON.stringify(JSON.parse(ls.getItem('ovumind_db_v1')).state) === snap);
+  });
+  S.setState({ rewards: { hearts: 100, earned: 100, log: [], owned: ['cat', 'catgrey'], placed: { cat: false, catgrey: true } } });
+  var refund0 = JSON.stringify(S.state().rewards), refundFailed = false;
+  ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+  try { RW.ledger(); } catch (e) { refundFailed = true; }
+  ls.setItem = realSet;
+  check('a refused retired-item refund changes neither hearts nor ownership', refundFailed && JSON.stringify(S.state().rewards) === refund0);
+  check('the refund retries once when storage works', RW.ledger().hearts === 250 && RW.ledger().owned.join() === 'cat');
+  S.setState({ rewards: JSON.parse(JSON.stringify(base)) });
+  RW.buy('plant');
+  check('a successful purchase commits its price and item together', RW.ledger().hearts === 440 && RW.ledger().owned.indexOf('plant') > -1 && RW.ledger().placed.plant === true);
+
+  [
+    ['daily logging', 'food', { meal: 'lunch', foods: 'rice' }, 6],
+    ['seat practice', 'mindfulness', { kind: 'seat', seat: 'audit-seat', minutes: 1, completed: true }, 2],
+    ['Moon Tap', 'mindfulness', { kind: 'breathtap', seconds: 60, minutes: 1, completed: true }, 2]
+  ].forEach(function (c) {
+    S.setState({ rewards: { hearts: 0, earned: 0, log: [], owned: [], placed: {}, lastDay: null, streak: 0 } });
+    var ev = S.add(c[1], S.today(), c[2], 'room'), snap = JSON.stringify(S.state().rewards), failed = false;
+    ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+    try { RW.award(ev); } catch (e) { failed = true; }
+    ls.setItem = realSet;
+    check(c[0] + ': reward failure keeps the saved entry and no receipt or entitlement', failed && !!S.get(ev.id) && JSON.stringify(S.state().rewards) === snap);
+    S.load(true);
+    var writes = 0;
+    ls.setItem = function (k, v) { if (k === 'ovumind_db_v1' && ++writes === 2) throw new Error('second write refused'); return realSet.call(ls, k, v); };
+    var r = null; try { r = RW.award(ev); } catch (e) {} ls.setItem = realSet;
+    var paid = S.state().rewards, saved = JSON.parse(ls.getItem('ovumind_db_v1')).state.rewards;
+    check(c[0] + ': retry writes receipt, entitlement and points in a single commit', writes === 1 && r && r.points === c[3] && paid.hearts === c[3] && paid.receipts[ev.id] === 1 && JSON.stringify(paid) === JSON.stringify(saved));
+    S.load(true);
+    check(c[0] + ': reloaded receipt prevents a second award', RW.award(ev).again === true && RW.ledger().hearts === c[3]);
+  });
+})();
+
 
 (function noPeriodStatementsAreNotFlow() {
   console.log('3. "has not returned", "no period", "not bleeding" are no-period observations, never a period entry');
@@ -726,6 +993,68 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('three short nights on separate dates are not "in a row"', !A4.allFlags(t4).some(function (f) { return f.code === 'SLEEP_SHORT_RUN'; }));
   [-2, -1].forEach(function (d) { S4.add('sleep', addDays(t4, d), { bedTime: '02:00', wakeTime: '06:00', quality: null, notes: '' }); });
   check('three short nights on adjacent dates are "in a row"', A4.allFlags(t4).some(function (f) { return f.code === 'SLEEP_SHORT_RUN'; }));
+})();
+
+(function savedEntryIsNotARewardFailure() {
+  console.log('a saved journal entry stays saved when its hearts write fails');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), start = src.indexOf('  function afterSave('), end = src.indexOf('\n  /* ---------- deck', start), lines = [];
+  var w = vm.createContext({ A: { analyze: function () { return { flags: [] }; } }, RW: { award: function () { throw new Error('QuotaExceededError'); } }, MO: null,
+    S: { profile: function () { return {}; } }, topCare: function () { return null; }, endMoment: function () { }, moment: function () { },
+    toast: function (line) { lines.push(line); }, renderProps: function () { }, renderDeck: function () { },
+    $: function () { return { classList: { add: function () { }, remove: function () { } } }; } });
+  vm.runInContext(src.slice(start, end), w);
+  var threw = false, result; try { result = w.afterSave({ id: 'already-saved' }); } catch (e) { threw = true; }
+  check('a failed award does not throw back into the diary save or claim that the entry failed', !threw && result && result.rewardFailed && lines.length === 1 && /Saved to your journal/.test(lines[0]) && /Hearts could not be saved/.test(lines[0]), lines.join());
+})();
+
+(function foodPhotoKeepsItsDraft() {
+  console.log('food photos: late shrink, barcode and recognition results keep their original meal and picker');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  var block = src.slice(src.indexOf("        var st = $('#fdPhotoState')"), src.indexOf("        $('#fdPhotoCam').addEventListener('change', onPhoto)"));
+  function gate() { var resolve, reject, promise = new Promise(function (a, b) { resolve = a; reject = b; }); return { promise: promise, resolve: resolve, reject: reject }; }
+  function turn() { return new Promise(function (resolve) { setImmediate(resolve); }); }
+  function world(stage) {
+    var g = gate(), nodes = {}, connected = true, out = { renders: 0, looks: 0, reads: 0, toasts: 0 }, current = { items: [], photo: null };
+    ['#fdPhotoState', '#thumb', '#fdAllow', '#fdPick'].forEach(function (id) { nodes[id] = { innerHTML: '', classList: { add: function () { } }, addEventListener: function () { } }; });
+    var w = vm.createContext({ draft: current, Promise: Promise, esc: String, inp2: { focus: function () { } },
+      $: function (id) { return nodes[id]; }, document: { body: { contains: function () { return connected; } } },
+      renderItems: function () { out.renders++; }, toast: function () { out.toasts++; }, lookup: function () { out.looks++; },
+      FD: { shrink: function () { return stage === 'shrink' ? g.promise : Promise.resolve({ dataUrl: 'photo', image: {} }); }, detectInImage: function () { return stage === 'barcode' ? g.promise : Promise.resolve(null); } },
+      ORB: { photosAllowed: function () { return true; }, parsePhoto: function () { out.reads++; return g.promise; } } });
+    vm.runInContext(block, w);
+    out.w = w; out.g = g; out.nodes = nodes; out.original = current; out.start = function () { return w.onPhoto.call({ files: [{}], value: 'chosen' }); };
+    out.detach = function () { connected = false; }; return out;
+  }
+  var finished = false;
+  process.on('exit', function () { if (!finished) { console.error('food photo regression did not finish'); process.exitCode = 1; } });
+  var a = world('shrink'), ap = a.start(); a.w.draft = { items: [], photo: null }; a.g.resolve({ dataUrl: 'old', image: {} });
+  ap.then(function () {
+    check('shrinking an old photo cannot set the new meal thumbnail or start recognition', a.w.draft.photo === null && a.original.photo === null && a.reads === 0);
+    var b = world('barcode'), bp = b.start();
+    return turn().then(function () { b.w.draft = { items: [], photo: null }; b.g.resolve('12345678'); return bp; }).then(function () {
+      check('a late barcode result never opens a picker in a new meal', b.looks === 0 && b.toasts === 0 && b.w.draft.photo === null);
+    });
+  }).then(function () {
+    var c = world('recognition'), cp = c.start();
+    return turn().then(function () { c.w.draft = { items: [], photo: null }; c.g.resolve({ isFood: true, items: [{ name: 'old noodles' }] }); return cp; }).then(function () {
+      check('old recognition cannot add food to its replacement draft', c.reads === 1 && c.w.draft.items.length === 0 && c.original.items.length === 0 && c.renders === 0);
+    });
+  }).then(function () {
+    var d = world('recognition'), dp = d.start();
+    return turn().then(function () { d.detach(); d.g.reject(new Error('late failure')); return dp; }).then(function () {
+      check('an old recognition failure cannot paint an error on a closed picker', d.renders === 0 && d.nodes['#fdPhotoState'].innerHTML.indexOf('late failure') < 0 && d.toasts === 0);
+    });
+  }).then(function () {
+    var e = world('recognition'), ep = e.start();
+    return turn().then(function () { e.nodes['#fdPhotoState'] = { innerHTML: '' }; e.g.resolve({ isFood: true, items: [{ name: 'old rice' }] }); return ep; }).then(function () {
+      check('replacing only the photo picker also invalidates recognition', e.original.items.length === 0 && e.renders === 0);
+    });
+  }).then(function () {
+    var f = world('recognition'), fp = f.start();
+    return turn().then(function () { f.g.resolve({ isFood: true, items: [{ name: 'current rice' }] }); return fp; }).then(function () {
+      check('recognition still fills its current meal exactly once', f.original.items.length === 1 && f.original.items[0].name === 'current rice' && f.renders === 1);
+    });
+  }).then(function () { finished = true; }).catch(function (e) { check('food photo continuations run to completion', false, e.stack); finished = true; });
 })();
 
 (function foodPhotoEstimates() {
@@ -2266,9 +2595,46 @@ function scenes(todayIso) {
   check('today’s prompt is the same all day and comes from the list', C.promptFor('2026-10-18') === C.promptFor('2026-10-18') && C.PROMPTS.indexOf(C.promptFor('2026-10-18')) > -1 && C.promptFor('2026-10-19') !== C.promptFor('2026-10-18'));
   check('noticeboard sample notes are marked as samples', C.NOTES.length >= 3 && C.NOTES.every(function (n) { return n.sample; }));
 })();
+(function communityFailedSavesKeepTheSheet() {
+  console.log('audit P1: hello and pinned notes leave no failed action in memory and retain her words');
+  var w = fresh(), S = w.OvuStore, ls = w.localStorage, realSet = ls.setItem, nodes = {}, opens = 0, closes = 0, toasts = [];
+  function node() { return { value: '', handlers: {}, addEventListener: function (k, f) { this.handlers[k] = f; } }; }
+  w.document = { createElement: node, getElementById: function (id) { return nodes[id] || (nodes[id] = node()); }, querySelector: function () { return null; }, addEventListener: function () {} };
+  w.OvuWalk = { napping: function () { return false; } };
+  w.OvuRoom = { ART: '', LAYOUTS: {}, hotspotHandlers: {}, esc: function (s) { return String(s || ''); }, on: function () {},
+    openSheet: function () { opens++; nodes = {}; }, closeSheet: function () { closes++; }, chime: function () {}, toast: function (t) { toasts.push(t); } };
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8'), w, { filename: 'ovu-community.js' });
+  var C = w.OvuCommunity;
+  S.setState({ community: { notes: [{ text: 'Original', date: S.today() }], hellos: { nadia: S.today() }, extra: 'keep' } });
+  C.openNeighbour('mei');
+  var snap = JSON.stringify(S.state().community), opened = opens;
+  ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+  var helloThrew = false; try { nodes.nbHello.handlers.click(); } catch (e) { helloThrew = true; } ls.setItem = realSet;
+  check('a refused hello leaves memory unchanged and keeps its sheet open for retry', !helloThrew && JSON.stringify(S.state().community) === snap && opens === opened && closes === 0 && /hello could not be saved/.test(toasts[toasts.length - 1]));
+  S.setProfile({ name: 'After failed hello' });
+  check('the refused hello cannot leak through a later unrelated save', JSON.stringify(JSON.parse(ls.getItem('ovumind_db_v1')).state.community) === snap);
+  nodes.nbHello.handlers.click();
+  check('retry saves just the intended hello and closes after success', S.state().community.hellos.mei === S.today() && S.state().community.hellos.nadia === S.today() && S.state().community.extra === 'keep' && closes === 1);
+  C.openBoard(); w.document.getElementById('noteText').value = 'Keep these words for retry';
+  var textarea = nodes.noteText, pin = nodes.notePin, snap2 = JSON.stringify(S.state().community), opened2 = opens;
+  ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+  var pinThrew = false; try { pin.handlers.click(); } catch (e) { pinThrew = true; } ls.setItem = realSet;
+  check('a refused pin leaves memory unchanged, the entered words and the same sheet available', !pinThrew && JSON.stringify(S.state().community) === snap2 && opens === opened2 && nodes.noteText === textarea && textarea.value === 'Keep these words for retry' && /note could not be saved/.test(toasts[toasts.length - 1]));
+  S.setProfile({ name: 'After failed pin' });
+  check('the refused pin cannot leak through a later unrelated save', JSON.stringify(JSON.parse(ls.getItem('ovumind_db_v1')).state.community) === snap2);
+  pin.handlers.click();
+  check('retry pins one copy, preserves other community data and redraws after success', S.state().community.notes.length === 2 && S.state().community.notes[1].text === textarea.value && S.state().community.extra === 'keep' && opens === opened2 + 1);
+})();
+
+
 (function lunaLook() {
   console.log("Luna's look (ovu-mascot.js): one pastel crescent moon");
   var w = fresh(), M = w.OvuMascot;
+  (function () {
+    var rh = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), pv = fs.readFileSync(path.join(root, 'ovu-pageview.js'), 'utf8');
+    check('older Rhythme pages open in the in-app viewer, never by leaving the room (Jamie, 22 Oct)', /<script src="ovu-pageview\.js"><\/script>/.test(rh) && /OvuPage\.open\('journal\.html#'/.test(rj) && /e\.preventDefault\(\); open\(href\);/.test(pv) && /dispatchEvent\(new CustomEvent\('ovu-route'/.test(pv) && !/a\.target === '_blank'/.test(pv));
+    check('retired pages are not linked from the room: foods, period start, account, calm check', !/'(foods|period-start|account|face-ppg)\.html'/.test(rj) && !/href="(foods|period-start|account|face-ppg)\.html"/.test(rj + rh));
+  })();
   check('one look only, the soft Ovuluna crescent (Jamie, 21 Oct)', M.LIST.length === 1 && M.LIST[0].id === 'luna' && /orb-luna\.webp$/.test(M.src()));
   check('its crescent sprite is on disk and no round badge is used', fs.existsSync(path.join(root, 'assets/room/dream', M.LIST[0].img)) && !M.LIST[0].head);
   check('the crescent is the default and an unknown look (an old saved pick too) is ignored', M.current().id === 'luna' && M.set('rabbit').id === 'luna' && M.set('moon').id === 'luna');
@@ -2735,6 +3101,25 @@ function scenes(todayIso) {
 })();
 
 /* ---------- plaza servers (ovu-plaza.js): the words a person sees; the server rules are tested in the database ---------- */
+(function freeSeedFailureIsAtomic() {
+  console.log('audit P1: free seeds and their daily allowance commit together');
+  var w = fresh(), S = w.OvuStore, ls = w.localStorage, realSet = ls.setItem, day = S.today();
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  var F = w.OvuFarm;
+  S.setState({ farm: { seeds: { carrot: 2 }, seedsByDay: {}, beds: {}, harvest: {}, guided: true } });
+  var snap = JSON.stringify(S.state().farm), failed = null;
+  ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
+  try { failed = F.takeSeed(S, 'carrot', day); } catch (e) { failed = null; }
+  ls.setItem = realSet;
+  check('a failed free-seed claim is handled, keeps the farm unchanged and retains all three claims', failed && !failed.ok && /could not be saved/.test(failed.why) && JSON.stringify(S.state().farm) === snap && F.seedsLeftToday(S, day) === 3);
+  S.setProfile({ name: 'Unrelated later save' });
+  check('a later save never persists the refused seed', JSON.stringify(JSON.parse(ls.getItem('ovumind_db_v1')).state.farm) === snap);
+  var writes = 0; ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') writes++; return realSet.call(ls, k, v); };
+  var r = F.takeSeed(S, 'carrot', day); ls.setItem = realSet;
+  check('retry takes one allowance and gives one seed in one commit', r.ok && writes === 1 && F.farmState(S).seeds.carrot === 3 && F.seedsLeftToday(S, day) === 2);
+})();
+
+
 (function plazaWords() {
   console.log('plaza servers: counts read like a person would say them; full plazas point to one with room');
   var w = fresh('2026-10-19');
@@ -2818,7 +3203,7 @@ function scenes(todayIso) {
   var C = w.OvuConsent, S = w.OvuStore, O = w.OvuOrb, SY = w.OvuSync, A = w.OvuAuth;
   var src = function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); };
   var roomJs = src('room.js'), roomHtml = src('room.html'), storeJs = src('ovu-store.js'), appnav = src('appnav.js'), orbJs = src('ovu-orb.js'), terms = src('terms.html'), priv = src('privacy.html'), luna = src('supabase/functions/luna/index.ts'), insight = src('supabase/functions/insight/index.ts'), mig = src('supabase/migrations/20261019050000_consent_events.sql');
-  check('one notice version, 4, in the store, the module and both page gates, which also require the 18+ attestation', S.NOTICE_V === 4 && C.NOTICE_V === 4 && /c\.v >= window\.OvuStore\.NOTICE_V && a && a\.confirmed === true/.test(storeJs) && /c\.v >= 4 && a && a\.confirmed === true/.test(appnav));
+  check('one notice version, 5, in the store, the module and both page gates, which also require the 18+ attestation', S.NOTICE_V === 5 && C.NOTICE_V === 5 && /c\.v >= window\.OvuStore\.NOTICE_V && a && a\.confirmed === true/.test(storeJs) && /c\.v >= 5 && a && a\.confirmed === true/.test(appnav));
   check('the teen logic is gone from the room, the orb and the terms, and the room goes through the consent module', !/isMinor|under13|13-16|minorAck: A\.|openMinorNote|openTeenPregnancyCard|BABES|age13|CONSENT_V/.test(roomJs) && !/under13|13-16/.test(orbJs) && /OvuConsent\.require\(next/.test(roomJs) && /at least <strong>18 years old<\/strong>/.test(terms) && !/16 years old/.test(terms));
   check('the onboarding asks an optional adult age range, never a band with minors', /id: 'agerange'[^\n]*optional: true[^\n]*\['18-24'/.test(roomJs) && !/\['under13'/.test(roomJs) && /ageRange: A\.ageRange \|\| '', ageBand: '', minorAck: ''/.test(roomJs));
   check('the sheet carries the switches container, the 18+ tick, the under-18 way out and the current notice version', /id="cChoices"/.test(roomHtml) && /id="cAge"[^\n]*I confirm I am 18 or older/.test(roomHtml) && /id="cUnder"/.test(roomHtml) && new RegExp('Notice version ' + w.OvuStore.NOTICE_V + ', ').test(roomHtml) && !/13 or older/.test(roomHtml));
@@ -2826,7 +3211,7 @@ function scenes(todayIso) {
     var AU = w.OvuAuth, cap = AU.sendError(Object.assign(new Error('email rate limit exceeded'), { status: 429, code: 'over_email_send_rate_limit' })), wait = AU.sendError(Object.assign(new Error('For security purposes, you can only request this after 47 seconds.'), { status: 429 })), other = AU.sendError(new Error('Signups not allowed for otp'));
     check('a refused sign-in email reads in plain words: the hourly cap and the one-minute wait open the code box for a code already sent; other errors do not', cap.limited && /2 an hour/.test(cap.text) && /already arrived/.test(cap.text) && wait.limited && /wait 47 seconds/.test(wait.text) && !other.limited && /Could not send the code: Signups not allowed/.test(other.text), JSON.stringify([cap, wait, other]));
   })();
-  check('the pages say Singapore for the backup and name the separate choices', !/outside Singapore/.test(priv) && !/outside Singapore/.test(roomHtml) && !/outside Singapore/.test(src('ovu-auth.js')) && /notice v4/.test(priv) && /version 4 \(20 October 2026\)/.test(priv) && /Help improve logging/.test(priv) && /For adults/.test(priv));
+  check('the pages say Singapore for the backup and name the separate choices', !/outside Singapore/.test(priv) && !/outside Singapore/.test(roomHtml) && !/outside Singapore/.test(src('ovu-auth.js')) && /notice v5/.test(priv) && /version 5 \(21 October 2026\)/.test(priv) && /Version 4 \(20 October 2026\)/.test(priv) && /Help improve logging/.test(priv) && /For adults/.test(priv));
   check('both diary-reading functions gate by consent: the account record when signed in, the phone\'s word otherwise', /consentGate\(req, sb, image \? "food_photo_ai" : "ai_reading"/.test(luna) && /consentGate\(req, sb, "ai_summaries"/.test(insight) && /consent_allows/.test(luna) && /x-rhythme-consent/.test(luna) && /x-rhythme-consent/.test(insight));
   check('the migration logs events append-only, derives state, exposes allows to the service role only, and guards sync writes', /create table if not exists public\.consent_events/.test(mig) && /consent_record\(/.test(mig) && /consent_allows\(uuid, text\) to service_role/.test(mig) && /revoke all on function public\.consent_allows\(uuid, text\) from public, anon, authenticated/.test(mig) && /entries_consent_guard/.test(mig) && /profiles_consent_guard/.test(mig) && /Rollback:/.test(mig));
   /* a fresh phone */
@@ -2848,10 +3233,10 @@ function scenes(todayIso) {
   check('after import the sheet is still due (old notice, no attestation) and the mirrors agree with the old flags', C.needsSheet() && O.aiConfig().on === true && O.aiConfig().insights === false && O.aiConfig().photos === true && S.profile().cloud.v === 1 && S.profile().cloud.uid === 'u1');
   /* the sheet: attestation, the required purpose, the switches as shown */
   C.attestAge('sheet'); C.grant('health_tracking', 'sheet'); C.setMany({ ai_reading: true, food_photo_ai: false, ai_summaries: false, cloud_sync: true }, 'sheet', true);
-  check('after the sheet nothing is due: 18+ attested once, health tracking at notice 4, photos withdrawn, the rest as ticked', !C.needsSheet() && C.ageOk() && S.profile().ageAttest.version === 1 && S.profile().consent.v === 4 && C.allows('ai_reading') && !C.allows('food_photo_ai') && C.allows('cloud_sync') && O.aiConfig().photos === false && O.aiConfig().on === true, JSON.stringify(S.profile().consent));
+  check('after the sheet nothing is due: 18+ attested once, health tracking at the current notice, photos withdrawn, the rest as ticked', !C.needsSheet() && C.ageOk() && S.profile().ageAttest.version === 1 && S.profile().consent.v === C.NOTICE_V && C.allows('ai_reading') && !C.allows('food_photo_ai') && C.allows('cloud_sync') && O.aiConfig().photos === false && O.aiConfig().on === true, JSON.stringify(S.profile().consent));
   var r = C.receipt();
-  check('the receipt names the notice, the purposes, the attestation and the count', r.noticeVersion === 4 && r.purposes.ai_reading === true && r.purposes.food_photo_ai === false && r.purposes.health_tracking === true && r.ageAttest && r.ageAttest.confirmed === true && r.events >= 9 && r.userId === null, JSON.stringify(r));
-  check('the phone\'s word travels only for an allowed purpose', C.header('ai_reading')['X-Rhythme-Consent'].indexOf('ai_reading;notice=4;device=d') === 0 && !C.header('food_photo_ai')['X-Rhythme-Consent']);
+  check('the receipt names the notice, the purposes, the attestation and the count', r.noticeVersion === C.NOTICE_V && r.purposes.ai_reading === true && r.purposes.food_photo_ai === false && r.purposes.health_tracking === true && r.ageAttest && r.ageAttest.confirmed === true && r.events >= 9 && r.userId === null, JSON.stringify(r));
+  check('the phone\'s word travels only for an allowed purpose', C.header('ai_reading')['X-Rhythme-Consent'].indexOf('ai_reading;notice=' + C.NOTICE_V + ';device=d') === 0 && !C.header('food_photo_ai')['X-Rhythme-Consent']);
   /* Luna's switches write events with their method; the mirror follows */
   var n0 = C.events().length; O.setAiConfig({ on: true, insights: true, photos: true }, 'jit');
   var last = C.events().slice(n0);
@@ -2867,7 +3252,7 @@ function scenes(todayIso) {
   var done = false; C.bindAccount().then(function () { done = true; });
   setTimeout(function () {
     var st = C.state(), evs = C.events();
-    check('after sign-in the pre-account choices are bound to this account and every bound event reached the server once', done && st.health_tracking.uid === U && st.ai_summaries.uid === U && st.cloud_sync.uid === U && evs.filter(function (e) { return e.uid === U; }).every(function (e) { return e.sent === true; }) && sent.length === evs.filter(function (e) { return e.uid === U; }).length && sent.every(function (b) { return b.p_notice === 4 && typeof b.p_hash === 'string' && b.p_hash.length === 64 && b.p_method && b.p_client_at; }), JSON.stringify({ sent: sent.length, bound: evs.filter(function (e) { return e.uid === U; }).length }));
+    check('after sign-in the pre-account choices are bound to this account and every bound event reached the server once', done && st.health_tracking.uid === U && st.ai_summaries.uid === U && st.cloud_sync.uid === U && evs.filter(function (e) { return e.uid === U; }).every(function (e) { return e.sent === true; }) && sent.length === evs.filter(function (e) { return e.uid === U; }).length && sent.every(function (b) { return b.p_notice === C.NOTICE_V && typeof b.p_hash === 'string' && b.p_hash.length === 64 && b.p_method && b.p_client_at; }), JSON.stringify({ sent: sent.length, bound: evs.filter(function (e) { return e.uid === U; }).length }));
     check('a withdrawn purpose is not bound, and events never bound stay as the record of the phone', !st.ai_reading.uid && evs.filter(function (e) { return !e.uid; }).length > 0);
     check('every event carries the phone\'s own id, so a resend can never undo a later choice', sent.every(function (b) { return typeof b.p_client_id === 'string' && b.p_client_id.length > 4; }) && C.receipt().recorded === true && C.receipt().pending === 0);
     var before = sent.length; C.withdraw('ai_summaries', 'you');
@@ -2930,6 +3315,81 @@ function scenes(todayIso) {
       });
     }, 5);
   }, 10);
+})();
+
+(function recipesAndMedas() {
+  console.log('recipes and the Mediterranean check: sourced links, honest notes, MEDAS without its wine point');
+  var w = fresh();
+  ['ovu-evidence.js', 'ovu-recipes.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var R = w.OvuRecipes, E = w.OvuEvidence, ids = {};
+  var HOSTS = ['www.jeanhailes.org.au', 'www.bonehealthandosteoporosis.org', 'www.healthhub.sg'];
+  var allCards = R.RECIPES.concat(R.LOCAL);
+  check('every recipe and guide links over https to Jean Hailes, the Bone Health & Osteoporosis Foundation or HealthHub', allCards.every(function (r) { var u = new URL(r.url); return u.protocol === 'https:' && HOSTS.indexOf(u.host) > -1; }), JSON.stringify(allCards.filter(function (r) { return HOSTS.indexOf(new URL(r.url).host) < 0; }).map(function (r) { return r.url; })));
+  var CHECKED_20OCT = ['cauliflower-cannellini-bean-soup', 'one-pot-chicken-greens', 'sardines-with-tomato-and-green-beans', 'red-rice-roast-vegetable-and-aduki-bean-salad', 'bircher-muesli', 'vegetable-frittata', 'tofu-sesame-stir-fry', 'savoury-phytoestrogen-bread', '2015/12/Spinach-and-Ricotta-Cannelloni-recipe.pdf', 'Recipe-for-Gingered-Salmon-Croquettes.pdf', 'Recipe-Cod-with-Tomatoes-and-Black-Olives.pdf', 'Recipe-Chunky-Hummus.pdf', 'Four-Bean-Salad-1.pdf', 'Recipe-Bean-Tuna-Sald-with-White-Balsamic-Vinegar.pdf', 'roasted-carrots-linseed-dukkah', 'iron-rich-granola', 'fish-and-vegetable-kebabs', 'balanced-diet-qqh-concept', 'healthyhawkerfood'];
+  var urlKeys = allCards.map(function (r) { return r.url.replace(/^https:\/\/[^/]+\/(recipes\/|wp-content\/uploads\/|live-healthy\/)/, '').replace(/\/$/, ''); });
+  check('the links are exactly the 19 pages checked by hand on 20 Oct (a changed path has to be checked again; this cannot tell if a page is still up)', urlKeys.join() === CHECKED_20OCT.join(), urlKeys.filter(function (k, i) { return k !== CHECKED_20OCT[i]; }).join());
+  check('ids are unique, and every card has a title, a source, an icon and a line of its own', allCards.every(function (r) { var ok = !ids[r.id] && r.title && r.src && r.icon && r.why && r.why.length < 170; ids[r.id] = 1; return ok; }));
+  check('each group (PCOS, menopause, everyday) has at least five recipes', R.GROUPS.every(function (g) { return R.forGroup(g.id).length >= 5; }), R.GROUPS.map(function (g) { return g.id + ':' + R.forGroup(g.id).length; }).join());
+  var words = R.GROUPS.map(function (g) { return g.note; }).concat(allCards.map(function (r) { return r.why; }), [R.MEDAS_COPY.intro, R.MEDAS_COPY.wine, R.MEDAS_COPY.drinks, R.MEDAS_COPY.pregnancy, R.MEDAS_COPY.care], R.MEDAS.map(function (m) { return m.q + ' ' + (m.hint || ''); })).join(' \n ');
+  check('no promises: no boost, cure, detox, balancing hormones, ovarian-friendly or fertility diet, and no em dashes', !/boost|\bcure|detox|balanc\w* (your )?hormone|ovarian[- ]friendly|fertility diet|superfood|—/i.test(words), (words.match(/boost|\bcure|detox|balanc\w* (your )?hormone|ovarian[- ]friendly|fertility diet|superfood|—/i) || [''])[0]);
+  check('the notes say plainly what food cannot do', /No one diet has been shown to be best/.test(R.GROUPS[0].note) && /found insufficient evidence to recommend diet changes or soy for treating hot flushes/.test(R.GROUPS[1].note) && /treatments that work/.test(R.GROUPS[1].note) && !/has been shown to ease|does not stop/.test(R.GROUPS[1].note) && /no food has been proven to protect the ovaries/.test(R.GROUPS[2].note) && /not a hormone treatment or a treatment for hot flushes/.test(R.byId('soy-bread').why) && /renamed PMOS/.test(R.GROUPS[0].note) && /worth a doctor/.test(R.GROUPS[0].note) && /tuna to 4 cans a week/.test(R.MEDAS_COPY.pregnancy) && /400 micrograms of folic acid every day/.test(R.GROUPS[2].note) && /higher dose/.test(R.GROUPS[2].note) && /caffeine under 200 mg a day/.test(R.MEDAS_COPY.drinks) && /not that score/.test(R.MEDAS_COPY.intro) && /skip it/.test(R.MEDAS_COPY.intro));
+  check('the Mediterranean check has the 13 MEDAS items and no wine item, and says why wine is left out', R.MEDAS.length === 13 && !R.MEDAS.some(function (m) { return /wine|alcohol/i.test(m.q); }) && /14th question/.test(R.MEDAS_COPY.wine) && /no alcohol when you are trying to get pregnant/.test(R.MEDAS_COPY.wine));
+  check('item 13 is the real MEDAS question (chicken, turkey or rabbit over red and processed meat), not the old page\'s whole-grain bread', /chicken, turkey or rabbit over beef, veal, pork, burgers or sausages/.test(R.MEDAS[11].q) && !R.MEDAS.some(function (m) { return /whole-?grain bread/i.test(m.q); }));
+  /* each item keeps the published criterion for its point (Martínez-González 2012, Table 1) */
+  var MEDAS_T1 = {
+    oil: [/main cooking fat/], oil4: [/About 4 tablespoons of olive oil a day or more/, /cooking, salads and meals out/], veg: [/Two or more servings of vegetables a day/, /raw or as a salad/, /200 g/, /side dish counts as half/],
+    fruit: [/Three or more pieces of fruit a day/, /juice counts/], redmeat: [/Less than one serving a day of red meat, burgers or processed meat/, /100 to 150 g/], butter: [/Less than one serving a day of butter, margarine or cream/, /12 g/],
+    drinks: [/Less than one sweet or fizzy drink a day/, /sweetened packet drinks/], legumes: [/three or more times a week/, /150 g/], fish: [/three or more times a week/, /100 to 150 g of fish, or 4 to 5 pieces or 200 g of shellfish/],
+    sweets: [/sweets or pastries \(not homemade\)/, /custard/, /fewer than three times a week/], nuts: [/three or more times a week/, /Peanuts count/, /30 g/], poultry: [/chicken, turkey or rabbit/], sofrito: [/Twice a week or more/, /tomato with onion, leek or garlic/, /olive oil/]
+  };
+  var t1miss = R.MEDAS.filter(function (m) { var t = m.q + ' ' + (m.hint || ''); return !MEDAS_T1[m.id] || !MEDAS_T1[m.id].every(function (re) { return re.test(t); }); }).map(function (m) { return m.id; });
+  check('every item keeps the published threshold and serving size', t1miss.length === 0 && Object.keys(MEDAS_T1).length === 13, t1miss.join());
+  check('the 13 items are exactly the published ones, once each, in Table 1 order without item 8 (wine)', R.MEDAS.map(function (m) { return m.id; }).join() === 'oil,oil4,veg,fruit,redmeat,butter,drinks,legumes,fish,sweets,nuts,poultry,sofrito', R.MEDAS.map(function (m) { return m.id; }).join());
+  var T1_NUMS = { oil: '', oil4: '4', veg: '200', fruit: '', redmeat: '100,150', butter: '12', drinks: '', legumes: '150', fish: '100,150,4,5,200', sweets: '', nuts: '30', poultry: '', sofrito: '' };
+  var numMiss = R.MEDAS.filter(function (m) { return ((m.q + ' ' + (m.hint || '')).match(/\d+/g) || []).join() !== T1_NUMS[m.id]; }).map(function (m) { return m.id + ':' + ((m.q + ' ' + (m.hint || '')).match(/\d+/g) || []).join('/'); });
+  check('every number in the questions and hints is exactly the published one (no 24 for 4, no stray amounts)', numMiss.length === 0, numMiss.join());
+  check('no line sets a portion or how often to eat a dish, and no leftovers for a week', !/small bowl|weekend dish|for the week|only occasionally|treat yourself/i.test(words));
+  check('every idea on the checklist is a real recipe', R.MEDAS.every(function (m) { return m.ideas.every(function (id) { return !!R.byId(id); }); }));
+  var sc = R.score({ oil: true, veg: false, fish: false, nuts: 'yes', wine: true });
+  check('the score counts only true answers to the 13 items; anything else is unanswered', sc.yes === 1 && sc.answered === 3 && sc.of === 13 && sc.missing.join() === 'veg,fish', JSON.stringify(sc));
+  var ideas = R.ideasFor({ veg: false, fish: false, legumes: false });
+  check('ideas follow the habits marked not yet, each recipe once', ideas.length === 11 && ideas[0].recipe.id === 'chicken-greens' && ideas[10].recipe.id === 'kebabs' && ideas.filter(function (x) { return x.recipe.id === 'cod'; }).length === 1, ideas.map(function (x) { return x.recipe.id; }).join());
+  var roomSrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), cited = [];
+  (roomSrc.match(/recSources\(([^;]*?)\)\)?;?\n/g) || []).join(' ').replace(/'(E\d+)'/g, function (m, id) { cited.push(id); });
+  check('the sheets cite only sources in the register, all under the recipes topic', cited.length >= 8 && cited.every(function (id) { var e = E.get(id); return e && e.topics.indexOf('recipes') > -1; }), cited.join());
+  var dsrc = /function deskSpots\(pos, folders\) \{[\s\S]*?\n    return \{ spots: grid, tidied: true \};\n  \}/.exec(roomSrc);
+  var deskSpots = dsrc ? vm.runInContext('(' + dsrc[0] + ')', vm.createContext({ Math: Math, isFinite: isFinite, Infinity: Infinity })) : null;
+  var desk = [], fre = /\{ id: '([a-z]+)', name: '([^']+)'/g, fm, fsrc = ((/var FOLDERS = \[([\s\S]*?)\n  \];/.exec(roomSrc) || [])[1] || '');
+  while ((fm = fre.exec(fsrc))) desk.push({ id: fm[1], name: fm[2] });
+  var folderIds = desk.map(function (f) { return f.id; });
+  /* measured 21 Oct from 300 to 1280 px with the app's fallback font, Verdana and Courier New: a folder is 22% of the desk
+     wide and at most 30.4% tall (a two-line name at 300 px); the boxes below use that measurement, not deskSpots' own 31 */
+  var hgt = function () { return 30.4; };
+  var over = function (spots) { var k = Object.keys(spots), bad = []; k.forEach(function (a, i) { k.slice(i + 1).forEach(function (b) { if (Math.abs(spots[a][0] - spots[b][0]) < 22 && spots[a][1] < spots[b][1] + hgt(b) && spots[b][1] < spots[a][1] + hgt(a)) bad.push(a + '/' + b); }); }); return bad; };
+  var inside = function (spots) { return Object.keys(spots).every(function (k) { var q = spots[k]; return q[0] >= 0 && q[0] + 22 <= 100 && q[1] >= 0 && q[1] + hgt(k) <= 100; }); };
+  check('the desk has room for every folder on its grid (12 places; a 13th folder needs a new layout)', folderIds.length >= 10 && folderIds.length <= 12, folderIds.join());
+  var d0 = deskSpots ? deskSpots({}, desk) : { spots: {} };
+  check('with no saved spots every folder fits: no two overlap and none past the edge, all pairs checked', !d0.tidied && Object.keys(d0.spots).length === desk.length && over(d0.spots).length === 0 && inside(d0.spots), JSON.stringify(d0.spots) + ' ' + over(d0.spots).join());
+  var saved = { cycle: [14, 19], fertility: [64, 19], chapters: [14, 50], nutrition: [64, 50] };
+  var d1 = deskSpots ? deskSpots(saved, desk) : { spots: {} };
+  check('when new folders cannot fit around hers, the whole desk goes back onto the grid instead of overlapping', d1.tidied === true && over(d1.spots).length === 0 && inside(d1.spots) && JSON.stringify(d1.spots) === JSON.stringify(d0.spots), JSON.stringify(d1) + ' ' + over(d1.spots).join());
+  var roomy = { cycle: [2, 4], fertility: [27, 4], chapters: [52, 4], nutrition: [77, 4] }, d2 = deskSpots ? deskSpots(roomy, desk) : { spots: {} };
+  check('when there is room, her folders stay exactly where she put them and new ones take free places, no overlaps', !d2.tidied && Object.keys(roomy).every(function (k) { return d2.spots[k][0] === roomy[k][0] && d2.spots[k][1] === roomy[k][1]; }) && over(d2.spots).length === 0 && inside(d2.spots), JSON.stringify(d2.spots));
+  /* Codex round three: "Share with doctor" placed top left once let a new folder in just under it */
+  var tallTop = { doctor: [2, 4], fertility: [27, 4], chapters: [52, 4], nutrition: [77, 4], cycle: [2, 66], mind: [27, 35], move: [52, 35], body: [77, 35], videos: [27, 66] }, d4 = deskSpots ? deskSpots(tallTop, desk) : { spots: {} };
+  check('a folder top left with a two-line name: nothing new is placed under it', over(d4.spots).length === 0 && inside(d4.spots), JSON.stringify(d4) + ' ' + over(d4.spots).join());
+  var all = {}; desk.forEach(function (f, i) { all[f.id] = [40, 10 + i]; }); var d3 = deskSpots ? deskSpots(all, desk) : { spots: {} };
+  check('a desk she arranged in full is never tidied for her, even if she stacked folders', !d3.tidied && desk.every(function (f) { return d3.spots[f.id][0] === all[f.id][0] && d3.spots[f.id][1] === all[f.id][1]; }));
+  check('a drag keeps the whole desk as shown, so only a folder added later needs a place, and a tidy is announced', /pr\.pos = \{\}; icons\.querySelectorAll\('\.dicon'\)\.forEach/.test(roomSrc) && /if \(lay\.tidied\) \{ p\.pos = \{\}; setDeskPrefs\(p\);[^\n]*toast\(/.test(roomSrc));
+  check('a folder opens on a click (so Enter and Space work), not on pointer up, and the click that ends a drag is ignored', /icons\.addEventListener\('click', function \(e\) \{\n\s*var b = e\.target\.closest\('\.dicon'\); if \(!b\) return;\n\s*if \(Date\.now\(\) - dragged < 500\) return;\n\s*chime\('tap'\); openFolder\(b\.dataset\.folder\);/.test(roomSrc) && !/else \{ chime\('tap'\); openFolder\(d\.id\); \}/.test(roomSrc) && /if \(d\.moved\) \{ dragged = Date\.now\(\);/.test(roomSrc));
+  var css = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
+  check('the folder icon and name scale with the desk (capped at the usual sizes), so a two-line name stays under 31% of its height', /\.dicons\.free\{container-type:inline-size\}\n\.dicons\.free \.dicon svg\{width:min\(40px,10\.1cqw\);height:min\(34px,8\.6cqw\)\}\n\.dicons\.free \.dicon span\{font-size:min\(9\.5px,2\.9cqw\)\}/.test(css) && /var W = 22, H = 31,/.test(roomSrc));
+  check('a link into the room waits behind the sign-in wall and a new account\'s intro, then opens once, never on a timer; another intro, a wrong account or an intro overtaken by a backup drops it', /function takePending\(\) \{ var r = pendingRoute; pendingRoute = ''; if \(r && r !== 'onboarding'\) openRoute\(r\); \}/.test(roomSrc) && /function introForLink\(\) \{ openOnboarding\(0, \{\}\); pendingOnb = onb; \}/.test(roomSrc) && /if \(!S\.profile\(\)\.onboarded\) introForLink\(\); else if \(pendingRoute\) takePending\(\);/.test(roomSrc) && /if \(hk && hk !== 'onboarding'\) pendingRoute = hk; if \(!wallOpen\(\)\) showWelcome\(\);/.test(roomSrc) && /var fromLink = onb && onb === pendingOnb; pendingOnb = null;/.test(roomSrc) && /if \(fromLink\) takePending\(\); else pendingRoute = '';/.test(roomSrc) && /function wrongAccount\(\) \{\s+pendingRoute = ''; pendingOnb = null;/.test(roomSrc) && /'cloud_done'\); pendingRoute = ''; return; \}/.test(roomSrc));
+  check('for a returning visitor the link opens only if she has not opened another sheet or tapped a tab (Home too) first', /current = id; sheetSeq\+\+;/.test(roomSrc) && /function goTab\(k\) \{\s+navSeq\+\+;/.test(roomSrc) && /chime\('tap'\); navSeq\+\+; \/\* the tap itself counts/.test(roomSrc) && /bootAt = Date\.now\(\), seq0 = sheetSeq, nav0 = navSeq;/.test(roomSrc) && /else \{ setTimeout\(function \(\) \{ requireConsent\(function \(\) \{ if \(hk && \(sheetSeq !== seq0 \|\| navSeq !== nav0 \|\| current\)\) return;/.test(roomSrc));
+  check('a recipe whose uncooked dressing uses mirin says it usually has alcohol and to leave it out when pregnant or trying (Codex round four)', R.RECIPES.filter(function (r) { return r.id === 'red-rice'; }).every(function (r) { return /mirin usually contains alcohol/.test(r.why) && /pregnant or trying/.test(r.why); }));
+  check('the Everyday note does not call all fertility evidence observational', !/are observational and mixed/.test(R.GROUPS.filter(function (g) { return g.id === 'every'; })[0].note) && /limited and mostly observational/.test(R.GROUPS.filter(function (g) { return g.id === 'every'; })[0].note));
+  check('the check starts each answer and Clear from what is on the phone now (not a cached copy) and repaints when another tab saves', /next = stored\(true\);/.test(roomSrc) && /stored\(true\); keep\(\{\}\)/.test(roomSrc) && /S\.reload \? S\.reload\(\) : S\.state\(\)\)\.medas/.test(roomSrc) && /if \(medasRefresh\) medasRefresh\(\);/.test(roomSrc));
+  check('the old Mediterranean page sends people to the check in the room, and the room opens it from that link', /location\.replace\('room\.html#medas'\)/.test(fs.readFileSync(path.join(root, 'medas14.html'), 'utf8')) && /hk === 'medas'\) openMedas\(\)/.test(roomSrc) && /\['action', 'medas', 'checklist'/.test(roomSrc) && !/'medas14\.html'/.test(roomSrc));
 })();
 
 /* the summary waits for every timer and promise the blocks scheduled: the loop drains, then we report, so no async check is ever cut off */
@@ -3120,7 +3580,7 @@ var summarised = false;
   check('a question nobody answered counts nothing (time awake is unknown, not zero minutes)', sn.fields.awake.answered === 0 && sn.fields.awake.marked === 0 && sn.fields.awake.unsure === 0);
   check('hot flush nights come from the sleep details or the symptom note, each night once', sn.flushNights === 2 && sn.woke.flush === 1);
   var rows = A2.sleepNotesRows(sn), r1 = rows.filter(function (r) { return r[0] === 'Over 30 min to fall asleep'; })[0];
-  check('the rows give counts with their own denominators and the not-sure count', rows[0][1] === '2 of 3 recorded nights' && r1 && r1[1] === '1 of 1 answered night, 1 not sure', JSON.stringify(rows));
+  check('the rows give counts with their own denominators and the not-sure count', rows.filter(function (r) { return r[0] === 'Sleep details'; })[0][1] === '2 of 3 recorded nights' && r1 && r1[1] === '1 of 1 answered night, 1 not sure', JSON.stringify(rows));
   check('rows leave out questions nobody answered', !rows.some(function (r) { return /Awake over 30/.test(r[0]); }));
   S2.add('sleep', d1, { bedTime: '14:00', wakeTime: '15:00', details: { latency: 'le15', woke: ['toilet'] } });
   var nd = A2.nightDetails(d1);
@@ -3221,7 +3681,7 @@ var summarised = false;
   var S = w.OvuStore, RW = w.OvuRewards, tdy = S.today();
   function seatEv(seat) { return S.add('mindfulness', tdy, SE.entry(seat, { seconds: 90, confirmed: true, finished: true }), 'room'); }
   var a1 = RW.award(seatEv('street')), a2 = RW.award(seatEv('street')), a3 = RW.award(seatEv('plaza:bench')), a4 = RW.award(seatEv('plaza:bench2')), a5 = RW.award(seatEv('harbour'));
-  check('the street bench pays the flat practice points once; the same bench again pays nothing; the two plaza benches are two seats; the day’s cap still holds', a1.points === 2 && a2.points === 0 && a3.points === 2 && a4.points === 2 && a5.points === 0 && RW.ledger().hearts >= 6, JSON.stringify([a1.points, a2.points, a3.points, a4.points, a5.points]));
+  check('the street bench pays the flat practice points once; the same bench again pays nothing; the two plaza benches are two seats; each other seat pays too (cap 20 since 22 Oct)', a1.points === 2 && a2.points === 0 && a3.points === 2 && a4.points === 2 && a5.points === 2 && RW.ledger().hearts >= 8, JSON.stringify([a1.points, a2.points, a3.points, a4.points, a5.points]));
   var l = RW.ledger(); l.seatDay = null; l.mindDay = null; l.dailyLast = S.addDays(tdy, 1); S.setState({ rewards: l });
   check('a clock set back cannot reopen a seat’s thank-you either', RW.award(seatEv('street')).points === 0);
   /* the cave: both hotspots are one seat */
@@ -3230,13 +3690,20 @@ var summarised = false;
   var CV = w2.OvuBarn.CAVE, cry = CV.hotspots.filter(function (h) { return h.id === 'crystals'; })[0], stone = CV.hotspots.filter(function (h) { return h.id === 'warmstone'; })[0];
   check('the crystals and the warm stone walk her to the same stand point', !!cry && !!stone && cry.wp.x === stone.wp.x && cry.wp.y === stone.wp.y && cry.wp.flip === stone.wp.flip);
   var TS = fs.readFileSync(path.join(root, 'ovu-tones.js'), 'utf8');
-  check('the cave sheet makes no promise and keeps no pill; one Stop stands her up with the sound', !/love frequency|cellular|DNA|repair|transcend/i.test(TS) && TS.indexOf('tonePill') < 0 && /Stop sound and stand up/.test(TS) && /if \(!hz\) standUp\(\)/.test(TS));
+  check('the cave sheet makes no promise and keeps no pill; one Stop stands her up with the sound', !/love frequency|cellular|DNA|repair|transcend/i.test(TS) && TS.indexOf('tonePill') < 0 && /Stop sound and stand up/.test(TS) && /if \(!hz && !bed && sitting && sitting\.snd !== 'none' && endAt === null\) standUp\(\)/.test(TS)); /* a sound that ends on its own stands her up; a quiet sit does not (22 Oct) */
 })();
 
 (function ovulunaFoodArt() {
   console.log('food pictures (21 Oct): every picture the ovarian foods name is on disk, small, and the rest keep their emoji');
   var d = JSON.parse(fs.readFileSync(path.join(root, 'assets/data/ovarian-foods.json'), 'utf8')), withPic = d.foods.filter(function (f) { return f.img; }), missing = withPic.filter(function (f) { return !fs.existsSync(path.join(root, f.img)); });
-  check('fourteen foods carry an Ovuluna picture and every file exists under assets/food', withPic.length === 14 && missing.length === 0, JSON.stringify(missing.map(function (f) { return f.img; })));
+  (function () {
+    var fsrc = fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), ksrc = fs.readFileSync(path.join(root, 'ovu-kitchen.js'), 'utf8');
+    var crops = (/var CROPS = \{([\s\S]*?)\n  \};/.exec(fsrc) || [, ''])[1].match(/^    (\w+):/gm).map(function (x) { return x.trim().slice(0, -1); });
+    var dishes = (ksrc.match(/\{ id: '(\w+)', name: '[^']+', icon: '[^']+', (?:added: true, )?needs:/g) || []).map(function (x) { return /id: '(\w+)'/.exec(x)[1]; });
+    var miss = crops.map(function (k) { return 'assets/food/' + (k === 'sweetpotato' ? 'sweet-potato' : 'crop-' + k) + '.webp'; }).concat(dishes.map(function (d) { return 'assets/food/dish-' + d + '.webp'; })).filter(function (f) { return !fs.existsSync(path.join(root, f)); });
+    check('every crop and every dish has its picture (drawn 22 Oct), small enough for a phone', crops.length >= 10 && dishes.length >= 10 && miss.length === 0, miss.join());
+  })();
+  check('every food card carries a picture (14 from Ovuluna, 10 drawn 22 Oct in the same style) and every file exists under assets/food', withPic.length === d.foods.length && missing.length === 0, JSON.stringify(missing.map(function (f) { return f.img; })));
   check('every food still has an emoji, so the ones without a picture draw as before', d.foods.every(function (f) { return f.emoji; }));
   var big = withPic.filter(function (f) { return fs.statSync(path.join(root, f.img)).size > 40000; });
   check('the pictures are small (under 40 KB each)', big.length === 0, big.map(function (f) { return f.img; }).join());
@@ -3315,6 +3782,95 @@ var summarised = false;
   check('room.html loads the lane after the harbour', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('ovu-lane.js') > h.indexOf('ovu-harbour.js') && h.indexOf('ovu-harbour.js') > -1; })());
 })();
 
+(function harbourLaneScene() {
+  console.log('2k7c. Harbour Lane as a place (21 Oct): the signpost walks her up the lane; the grocer, the boutique and the gym are rooms to walk into; every spot on the floor and reachable; the map shows the lane, not its rooms; nothing new is written');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-harbour.js', 'ovu-lane.js', 'ovu-lanescene.js', 'ovu-map.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var LS = w.OvuLaneScene, LN = w.OvuLane, K = w.OvuWalk, H = w.OvuHarbour, MP = w.OvuMap;
+  var src = fs.readFileSync(path.join(root, 'ovu-lanescene.js'), 'utf8');
+  var ids = Object.keys(LS.LAYOUTS);
+  check('the lane and three rooms: Harbour Lane, Hay & Harvest, Petal & Thread and Tideline Gym, each with its own plate on disk', ids.join() === 'lane,lane-grocer,lane-boutique,lane-gym' && ids.every(function (id) { var L = LS.LAYOUTS[id]; return L.scene === id && fs.existsSync(path.join(root, 'assets/room/dream', L.img)); }));
+  ids.forEach(function (id) {
+    var L = LS.LAYOUTS[id], bad = K.checkLayout(L);
+    check(id + ': home, stand points and doors are on the floor and outside every solid', bad.length === 0, JSON.stringify(bad));
+    var wd = K.world(L, []), starts = (L.doors.length ? L.doors : [L.home]).map(function (x) { return { x: x.x, y: x.y }; });
+    var targets = L.hotspots.map(function (h) { return h.wp; }).concat(starts).concat([L.home]), miss = [];
+    starts.forEach(function (a) { targets.forEach(function (t) { if (Math.abs(a.x - t.x) < 0.01 && Math.abs(a.y - t.y) < 0.01) return; var pl = K.plan(wd, a, t, 2), end = pl && pl.pts[pl.pts.length - 1]; if (!end || Math.hypot(end.x - t.x, end.y - t.y) > 1) miss.push([a.x, a.y, t.x, t.y].join(',')); }); });
+    var med = L.meditator; if (!med || !K.inZones(wd.zones, med.x, med.y) || K.blocked(wd.solids, med.x, med.y) || !L.aura || !L.holo) miss.push('meditator ' + JSON.stringify(med));
+    check(id + ': the planner reaches every stand point, door and resting spot from every way in, ending on it; meditation sits on this floor (Codex, 21 Oct)', miss.length === 0, miss.join(' | '));
+  });
+  var lane = LS.LAYOUTS.lane, door = function (L, id) { return L.doors.filter(function (d) { return d.id === id; })[0]; };
+  check('the lane: four shopfronts and the post box; each front is a place in ovu-lane.js, and only the fish store has no room yet', LS.FRONTS.map(function (f) { return f.place; }).join() === 'grocer,boutique,gym,fish' && LS.FRONTS.every(function (f) { return !!LN.place(f.place); }) && lane.hotspots.some(function (h) { return h.id === 'lanepost'; }) && LS.FRONTS.filter(function (f) { return !f.layout; }).map(function (f) { return f.id; }).join() === 'lanefish');
+  check('a shopfront is a doorstep that opens only where a walk ends; the path back to the harbour takes her the moment she steps on it', LS.FRONTS.every(function (f) { var d = door(lane, f.id); return d && K.passing(d) && d.tap === f.id && d.x === f.wp.x && d.y === f.wp.y && (f.layout ? d.to === f.layout : !d.to); }) && !K.passing(door(lane, 'laneexit')) && door(lane, 'laneexit').to === 'harbour');
+  var hb = Object.assign({}, H.LAYOUT, { doors: H.LAYOUT.doors.concat([LS.SIGNPOST]) }), sign = H.LAYOUT.hotspots.filter(function (h) { return h.id === 'hblane'; })[0];
+  check('on the harbour the signpost is a doorstep to the lane at its own stand point, on the floor and reachable from the farm path', LS.SIGNPOST.to === 'lane' && K.passing(LS.SIGNPOST) && sign && sign.wp.x === LS.SIGNPOST.x && sign.wp.y === LS.SIGNPOST.y && K.checkLayout(hb).length === 0 && !!K.plan(K.world(hb, []), { x: 34, y: 73 }, { x: LS.SIGNPOST.x, y: LS.SIGNPOST.y }, 2));
+  var e1 = K.entryFor(lane, 'harbour', 'harbour'), e2 = K.entryFor(hb, 'lane', 'lane'), e3 = K.entryFor(lane, 'lane-grocer', 'lane-grocer'), e4 = K.entryFor(LS.LAYOUTS['lane-grocer'], 'lane', 'lane'), e5 = K.entryFor(LS.LAYOUTS['lane-gym'], 'lane', 'lane'), e6 = K.entryFor(lane, 'lane-gym', 'lane-gym');
+  check('she arrives where she came in: the lane at its foot from the harbour, the harbour at the signpost, the lane at the door she left by, a room at its mat (the gym, whose drawn door is shut, on its floor)', e1.x === 51 && e1.y === 84 && e2.x === 23 && e2.y === 51 && e3.x === 47 && e3.y === 36 && e4.x === 50 && e4.y === 80 && e5.x === 46 && e5.y === 57 && e6.x === 55 && e6.y === 36, JSON.stringify([e1, e2, e3, e4, e5, e6]));
+  check('the gym has the four stations of the lane, in the same order', LS.GYMSPOTS.map(function (g) { return g.id; }).join() === LN.STATIONS.map(function (s) { return s.id; }).join());
+  var lays = {}; Object.keys(w.LAYOUTS).forEach(function (k) { lays[k] = w.LAYOUTS[k]; });
+  lays.farm = w.OvuFarm.LAYOUT; lays.harbour = hb; ids.forEach(function (id) { lays[id] = LS.LAYOUTS[id]; });
+  var g = MP.graph(lays, 'room'), path_ = MP.route(g, 'home', 'lane');
+  check('the map finds the lane by its doors from home (home, garden, farm, harbour, lane), and its rooms are not places on the map', !!g.nodes.lane && !g.nodes['lane-grocer'] && !g.nodes['lane-boutique'] && !g.nodes['lane-gym'] && !!path_ && path_.map(function (e) { return e.to; }).join() === 'garden,farm,harbour,lane', path_ && path_.map(function (e) { return e.to; }).join());
+  check('the rooms belong to the lane and are hidden from the map, as the barn’s rooms are', ids.slice(1).every(function (id) { var L = LS.LAYOUTS[id]; return L.mapHide === true && L.mapParent === 'lane' && L.indoor === true; }) && LS.onLane(lane) && LS.onLane(LS.LAYOUTS['lane-gym']) && !LS.onLane(H.LAYOUT));
+  check('the lane is cobbles underfoot; the rooms are the default wood', lane.surface === 'stone' && ids.slice(1).every(function (id) { return !LS.LAYOUTS[id].surface; }));
+  check('the places write nothing: no store writes, no hearts, no diary, no energy (every counter opens ovu-lane.js, whose own rules save)', !/setState\(|\.commit\(|\.award\(|\.grant\(|\.spend\(|\bS\.add\(|OvuStore|addMany\(|OvuRewards|OvuStamina/.test(src));
+  check('the rooms never set a store, so the walk engine’s Dream Street hours never apply; the lane checks its own hours', !/\bstore\s*:/.test(src) && /LN\.openNow\(f\.place\)/.test(src) && /LN\.openNow\('gym'\)/.test(src) && /LN\.openNow\('boutique'\)/.test(src));
+  /* the handlers, with stand-ins for the room, the walk and the lane: which place opens, and where she goes */
+  var hw = vm.createContext({ console: console }); hw.window = hw;
+  var calls = [], open = { grocer: true, boutique: true, gym: true, fish: true, post: true }, sleeping = false, napping_ = false, busy_ = false, regs = [];
+  hw.OvuRoom = { LAYOUTS: { harbour: { id: 'harbour', doors: [{ id: 'harbourexit', to: 'farm' }], hotspots: [{ id: 'hblane', prompt: 'Tap to read the signpost' }] } }, hotspotHandlers: {}, asleep: function () { return sleeping; }, busy: function () { return busy_; }, toast: function (t) { calls.push('toast'); }, chime: function () {}, openWardrobe: function () { calls.push('wardrobe'); }, openExercise: function (a) { calls.push('exercise:' + a); }, moment: function (k) { calls.push('moment:' + k); } };
+  hw.OvuWalk = { napping: function () { return napping_; }, travel: function (t) { calls.push('travel:' + t); return true; } };
+  hw.OvuZones = { register: function (L) { regs.push(L.id); hw.OvuRoom.LAYOUTS[L.id] = L; } };
+  hw.OvuLane = { STATIONS: LN.STATIONS, openNow: function (id) { return open[id]; }, openPlace: function (id) { calls.push('place:' + id); } };
+  hw.document = { createElement: function () { return {}; } };
+  vm.runInContext(src, hw, { filename: 'ovu-lanescene.js' });
+  var HH = hw.OvuRoom.hotspotHandlers, Lof = function (id) { return hw.OvuRoom.LAYOUTS[id]; };
+  var run = function (hid, lid) { calls = []; var r = HH[hid](hid, Lof(lid)); return { r: r, calls: calls.join() }; };
+  check('the lane and its rooms register as zones, and the signpost joins the harbour’s doors once', regs.join() === 'lane,lane-grocer,lane-boutique,lane-gym' && Lof('harbour').doors.filter(function (d) { return d.id === 'hblane'; }).length === 1);
+  check('the signpost walks her up the lane; while she naps nothing moves; elsewhere it is not this handler’s', run('hblane', 'harbour').calls === 'travel:lane' && (napping_ = true, run('hblane', 'harbour').calls === '') && (napping_ = false, HH.hblane('hblane', Lof('lane')) === false));
+  check('an open shop takes her inside; the fish store, not drawn yet, opens its sheet; the post box opens the post', run('lanegrocer', 'lane').calls === 'travel:lane-grocer' && run('laneboutique', 'lane').calls === 'travel:lane-boutique' && run('lanegym', 'lane').calls === 'travel:lane-gym' && run('lanefish', 'lane').calls === 'place:fish' && run('lanepost', 'lane').calls === 'place:post');
+  open.grocer = false; var shutG = run('lanegrocer', 'lane'); open.grocer = true; sleeping = true; var sleptB = run('laneboutique', 'lane'); sleeping = false;
+  check('a shut shop or a sleeping avatar: the place’s own card says why (its hours, or that she is asleep) and she stays outside', shutG.calls === 'place:grocer' && sleptB.calls === 'place:boutique');
+  check('inside: the counters open the grocer and the boutique, the fitting room opens her wardrobe, each station opens the movement log with its activity, and every way out goes to the lane', run('grocercounter', 'lane-grocer').calls === 'place:grocer' && run('grocerrack', 'lane-grocer').calls === 'place:grocer' && run('boutiquerail', 'lane-boutique').calls === 'place:boutique' && run('boutiquefit', 'lane-boutique').calls === 'wardrobe' && run('gymtreadmill', 'lane-gym').calls === 'exercise:walk,moment:gym' && run('gymweights', 'lane-gym').calls === 'exercise:strength,moment:gym' && ['grocermat:lane-grocer', 'boutiquemat:lane-boutique', 'gymdoor:lane-gym'].every(function (x) { var q = x.split(':'); return run(q[0], q[1]).calls === 'travel:lane'; }) && run('laneexit', 'lane').calls === 'travel:harbour');
+  open.gym = false; var shutGym = run('gymbike', 'lane-gym'); open.gym = true; open.boutique = false; var shutFit = run('boutiquefit', 'lane-boutique'); open.boutique = true;
+  check('inside after closing time a station or the fitting room shows the closed card instead, and nothing is logged or opened', shutGym.calls === 'place:gym' && shutFit.calls === 'place:boutique');
+  busy_ = true; var bz = ['grocercounter:lane-grocer', 'boutiquefit:lane-boutique', 'gymtreadmill:lane-gym', 'lanepost:lane', 'lanefish:lane', 'lanegrocer:lane'].map(function (x) { var q = x.split(':'); return run(q[0], q[1]).calls; }); busy_ = false;
+  check('while a session, practice or meditation runs, no counter, station, front or post box opens anything: she is told to finish first (Codex, 21 Oct)', bz.every(function (c) { return c === 'toast'; }), bz.join(' | '));
+  var GR = Lof('lane-grocer'); open.grocer = false; calls = []; var adm = GR.admit(); GR.refused(); var refusedCalls = calls.join(); open.grocer = true; sleeping = true; var admSleep = GR.admit(); sleeping = false;
+  check('a room asks again at the end of the walk in: shut or asleep, she stays outside and the place says why (Codex, 21 Oct)', adm === false && refusedCalls === 'place:grocer' && admSleep === false && GR.admit() === true && !Lof('lane-gym').admit === false);
+  check('with the lane drawn the signpost says it walks her up the lane; without it the harbour keeps its own words (Codex, 21 Oct)', Lof('harbour').hotspots[0].prompt === 'Tap to walk up Harbour Lane' && /prompt: 'Tap to read the signpost'/.test(fs.readFileSync(path.join(root, 'ovu-harbour.js'), 'utf8')));
+  check('the gym, whose door is a tap, gives the map its exit; the walk engine asks a room with its own rule before and after the fade', Lof('lane-gym').mapExits[0].to === 'lane' && /if \(T\.admit && !T\.admit\(\)\) \{ if \(T\.refused\) T\.refused\(\); return false; \}/.test(fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8')) && /var refused = !!\(T\.admit && !T\.admit\(\)\);/.test(fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8')));
+  var lsrc = fs.readFileSync(path.join(root, 'ovu-lane.js'), 'utf8'), msrc = fs.readFileSync(path.join(root, 'ovu-map.js'), 'utf8');
+  check('Back inside the drawn lane closes the counter, and the lane\u2019s sheet lists the places without carrying her between them; the map inside a room pins the room\u2019s own doors and starts the way with leaving it (Codex, 21 Oct)', /if \(standing\(\)\) R\.closeSheet\(\); else openLane\(\);/.test(lsrc) && /if \(box && !walkable\(\)\) box\.addEventListener/.test(lsrc) && /concat\(L\.mapExits \|\| \[\]\)/.test(msrc) && /routeHTML\(g, here, first, lead\)/.test(msrc));
+  check('each handler answers only in its own place', HH.lanegrocer('lanegrocer', Lof('harbour')) === false && HH.grocercounter('grocercounter', Lof('lane')) === false && HH.gymdoor('gymdoor', Lof('lane-boutique')) === false);
+  check('room.html loads the lane’s places right after the lane, and the service worker has a new version', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('<script src="ovu-lanescene.js"></script>') === h.indexOf('<script src="ovu-lane.js"></script>') + '<script src="ovu-lane.js"></script>\n'.length; })() && /var VERSION = 'ovumind-2026-1[01]-(2[1-9]|3[01])-[a-z0-9-]+';/.test(fs.readFileSync(path.join(root, 'sw.js'), 'utf8')));
+})();
+
+(function boutiqueTryOn() {
+  console.log('2k7d. trying on at Petal & Thread (21 Oct): any outfit, Plus drops too, shown and never saved; Keep is the only save; the accessory slot is placed per sprite and hidden until its art exists');
+  var w = vm.createContext({ console: console }); w.window = w;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-boutique.js'), 'utf8'), w, { filename: 'ovu-boutique.js' });
+  var B = w.OvuBoutique, rsrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), bsrc = fs.readFileSync(path.join(root, 'ovu-boutique.js'), 'utf8');
+  check('no accessory is ready yet, so the slot ships hidden (no art run without Jamie’s go-ahead)', B.list().length === 0 && B.ACCESSORIES.every(function (a) { return a.ready !== true || fs.existsSync(path.join(root, 'assets/room/dream', a.img)); }));
+  var hat = { id: 'flower', name: 'Hair flower', img: 'accessory-flower.webp', ready: true, at: { base: { u: 0.6, v: 0.1, w: 0.2, rot: -10 }, gown: { u: 0.5, v: 0.08, w: 0.15 }, bad: { u: 2, v: 0.1, w: 0.2 } }, skip: ['tudung'] };
+  var draft = Object.assign({}, hat, { id: 'beret', ready: false });
+  check('only ready pieces with an id, a picture and positions are offered', B.list([hat, draft, { id: 'X!', ready: true, img: 'a', at: {} }]).map(function (a) { return a.id; }).join() === 'flower' && B.byId('beret', [hat, draft]) === null);
+  check('a piece sits only on a sprite it was placed for: a walk strip, a pose or a bad position hides it, and a skipped outfit never wears it (no hair under a tudung)', !!B.spotFor(hat, 'base', 'base') && B.spotFor(hat, 'act-plants', 'base') === null && B.spotFor(hat, 'bad', 'base') === null && B.spotFor(hat, 'base', 'tudung') === null && B.spotFor(hat, null, 'base') === null && B.spotFor(hat, 'toString', 'base') === null);
+  var b1 = B.boxFor([1, 0.5], hat.at.base), b2 = B.boxFor([1.403, 0.518], hat.at.gown);
+  check('placement follows the fitted picture: on a plain sprite u maps straight across; a wider gown canvas scales and shifts it; flipped, it mirrors about her centre', b1.l === 60 && b1.lf === 40 && b1.t === 10 && b1.w === 20 && b1.rot === -10 && Math.abs(b2.l - ((0.5 - 0.518 * 1.403 + 0.5 * 1.403) * 100)) < 0.01 && Math.abs(b2.w - 0.15 * 140.3) < 0.01 && b2.rot === 0, JSON.stringify([b1, b2]));
+  check('the fitting room names each card: what she wears, her own, hers to wear, or Part of Rhythme Plus (no price anywhere)', B.tag('base', { wearing: 'base', trying: false, mine: true, saved: 'base' }) === 'Wearing now' && B.tag('gown', { wearing: 'gown', trying: true, mine: false, saved: 'base' }) === 'Trying on' && B.tag('gown', { wearing: 'base', mine: false, saved: 'base' }) === 'Part of Rhythme Plus' && B.tag('party', { wearing: 'base', mine: true, saved: 'base' }) === 'Yours to wear' && !/♥|S\$|USD|heartTxt|\bcost\b/.test(bsrc.replace(/\/\*[\s\S]*?\*\//g, '')));
+  var tryFn = rsrc.slice(rsrc.indexOf('function tryOn('), rsrc.indexOf('function keepTryOn('));
+  check('trying on, an accessory and going back write nothing: no profile, state, diary or hearts in tryOn, tryAcc or endTryOn', tryFn.length > 200 && !/setProfile|setState|commit\(|\.add\(|spend\(|award/.test(tryFn));
+  check('Keep is the only save, of an outfit she has, and a failed save keeps the try-on', /function keepTryOn\(\) \{[\s\S]*?if \(outfitLocked\(id\)\) return \{ ok: false, plus: true[\s\S]*?try \{ S\.setProfile\(patch\); \} catch \(e\) \{ return \{ ok: false[\s\S]*?trying = null;/.test(rsrc));
+  check('a pose, a blink and a pose that will not load read what she wears and never save an outfit (Codex design review)', /function restorePose\(\) \{ (lastPose = null; )?showOutfit\(wearing\(\), true\); \}/.test(rsrc) && /poseSrc\(pose, wearing\(\)\)/.test(rsrc) && /else showOutfit\(wearing\(\), true\); \};/.test(rsrc) && /var o = wearing\(\), open = 'avatar-'/.test(rsrc));
+  check('she is back in her own clothes when she leaves the room she tried on in, sleeps, sits on the mat, or a practice, session or Morning start begins', /hooks\.on\.layout = [^\n]*L2\.id !== trying\.at\)\) endTryOn\(true\)/.test(rsrc) && /hooks\.on\.activity = [^\n]*endTryOn\(true\)/.test(rsrc) && /function stopEverything\(\) \{\n    try \{ endTryOn\(true\); \}/.test(rsrc) && /function enterMeditation\(\) \{\n    endTryOn\(true\);/.test(rsrc) && /room\.endTryOn\(true\)/.test(fs.readFileSync(path.join(root, 'ovu-morning.js'), 'utf8')));
+  check('sleep and the mat still dress her in what she saved, and the other scenes and the plaza read only her saved outfit', /function wornOutfit\(\) \{ return S\.profile\(\)\.outfit \|\| 'base'; \}/.test(rsrc) && ['ovu-garden.js', 'ovu-harbour.js', 'ovu-barn.js', 'ovu-seats.js', 'ovu-tones.js', 'ovu-friends.js'].every(function (f) { return !/wearing\(\)|tryingOn/.test(fs.readFileSync(path.join(root, f), 'utf8')); }));
+  check('with reduced motion she never turns: going back is a plain change, and the twirl itself checks reduced', /\} else showOutfit\(own, reduced\);/.test(rsrc) && /function twirlOk\(\) \{ return !reduced &&/.test(rsrc));
+  check('a choice made in the fitting room waits for the sheet to step aside and is dropped if anything else began (a walk out, a sheet, sleep)', /if \(tok !== pickTok \|\| !here\(\) \|\| \(R\.busy && R\.busy\(\)\) \|\| \(R\.asleep && R\.asleep\(\)\)\) return;/.test(bsrc));
+  check('the Plus drop opens the in-app purchase hook (OvuPlus.offer) when it exists, else the Plus sheet', /root\.OvuPlus\.offer\(\{ from: 'boutique', item: item \}\)/.test(bsrc) && /R\.openPlus\(\)/.test(bsrc));
+  check('room.html loads the boutique right after the lane’s places', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('<script src="ovu-boutique.js"></script>') === h.indexOf('<script src="ovu-lanescene.js"></script>') + '<script src="ovu-lanescene.js"></script>\n'.length; })());
+})();
+
 (function farmKitchen() {
   console.log('2k8a. the farm kitchen (21 Oct): staples for hearts in one save, recipes from the basket and the barn, cooking in one save with no hearts, no energy and no diary; no fish');
   var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
@@ -3347,6 +3903,7 @@ var summarised = false;
   var n0 = S.list().length, st0 = JSON.stringify(S.state().stamina), c1 = K.cook(S, 'tomatoegg'), f1 = F.farmState(S);
   check('tomato and egg uses two tomatoes, the pantry egg and the rice, all in one save', c1.ok && f1.harvest.tomato === 1 && f1.pantry.egg === 0 && f1.kitchen.rice === 0 && f1.harvest.pakchoy === 2);
   check('cooking earns no hearts, takes no energy and writes no diary entry', RW.ledger().hearts === 5 && RW.ledger().log.length === 0 && JSON.stringify(S.state().stamina) === st0 && S.list().length === n0);
+  check('a cooked dish stays in her bag, one each time it is made (22 Oct)', F.farmState(S).dishes && F.farmState(S).dishes.tomatoegg === 1);
   check('a dish cannot be cooked twice from one set of ingredients', !K.cook(S, 'tomatoegg').ok && F.farmState(S).harvest.tomato === 1);
   S.setState({ farm: Object.assign({}, S.state().farm, { harvest: { pumpkin: 1 }, kitchen: { coconut: 1 } }) });
   var c2 = K.cook(S, 'pumpkinsoup');
@@ -3462,7 +4019,7 @@ var summarised = false;
   check('a finished cup uses one from the basket and earns the flat practice thank-you, and no diary entry is written', br1.ok && br1.points === RW.PRACTICE.points && F.farmState(S).harvest.pandan === 2 && RW.ledger().hearts === afterBuy + RW.PRACTICE.points && S.list().length === n0);
   GH.brewCup(S, RW, 'pandan'); GH.brewCup(S, RW, 'pandan');
   var capped = RW.ledger().mindDay.pts;
-  check('cups after the day’s practice cap earn nothing, and the basket empties to nothing more', capped === RW.PRACTICE.cap && !GH.brewCup(S, RW, 'pandan').ok && !('pandan' in F.farmState(S).harvest) && RW.ledger().hearts === afterBuy + RW.PRACTICE.cap);
+  check('every cup pays the practice thank-you (three cups, six hearts), and the basket empties to nothing more', capped === 3 * RW.PRACTICE.points && !GH.brewCup(S, RW, 'pandan').ok && !('pandan' in F.farmState(S).harvest) && RW.ledger().hearts === afterBuy + 3 * RW.PRACTICE.points);
   S.setState({ farm: { harvest: { chamomile: 1 } }, rewards: { hearts: 0, earned: 0, log: [], owned: [], placed: {}, mindDay: { day: d1, pts: 4 } } });
   var br2 = GH.brewCup(S, RW, 'chamomile');
   check('a cup counts inside the same daily practice cap as every other practice', br2.ok && br2.points === 2 && RW.ledger().mindDay.pts === 6);
@@ -3663,7 +4220,7 @@ var summarised = false;
   var ev = S.add('reflection', S.today(), { text: 'I want to die', mood: 'low' }, 'room'), u = O.entryUrgent(ev, S.profile());
   check('a journal reflection is read for safety: "I want to die" raises the self-harm card', !!u && u.code === 'SELF_HARM_NOW', JSON.stringify(u));
   var html = O.careHTML(u);
-  check('the journal gets the same care card as the room: its words and the SOS and 995 links, escaped', /Please get help now/.test(html) && /tel:995/.test(html) && /1767/.test(html) && html.indexOf('<script') < 0);
+  check('the journal gets the same care card as the room: its words and the helpline link, escaped, with no country-specific number', /Please get help now/.test(html) && /findahelpline\.com/.test(html) && !/tel:995|1767/.test(html) && html.indexOf('<script') < 0);
   var html2 = O.careHTML({ level: 'emergency', code: 'X', title: 'Get <b>care</b>', trigger: 'a <img src=x> test' });
   check('the shared card escapes what it is given', html2.indexOf('<img') < 0 && html2.indexOf('&lt;img') > -1);
   /* the earlier rules still hold: the 95 model-written notes are checked in their own block */
@@ -3706,7 +4263,7 @@ var summarised = false;
   check('a red boob, an opened tear and stitches that came out are checked; healed stitches are not', code('red boob and it hurts', pp) === 'BREAST_TODAY' && code('my tear opened', pp) === 'WOUND_TODAY' && code('stitches came out', pp) === 'WOUND_TODAY' && code('my stitches have healed nicely', pp) === null);
   check('a blood test is not bleeding, sleeping on one side is not one-sided pain, and brown discharge in pregnancy is bleeding', code('blood test tomorrow', preg) === null && code('My period is late and I have a blood test tomorrow') === null && code('I sleep on one side', preg) === null && code('I lie on my left side to sleep', preg) === null && code('Pain in my tummy, only one side', preg) === 'ECTOPIC_NOW' && code('brown discharge today', preg) === 'PREG_BLEED_NOW' && code('brown discharge before my period, as usual') === null);
   var ub = O.urgent('blood in my urine', {});
-  check('blood in the urine asks for an urgent GP appointment, not one this week', !!ub && /urgent GP or polyclinic appointment/.test(ub.message) && !/this week/.test(ub.message));
+  check('blood in the urine asks for an urgent GP appointment, not one this week', !!ub && /urgent GP or clinic appointment/.test(ub.message) && !/this week/.test(ub.message));
   S.setProfile({ pregState: 'pregnant' });
   var u1 = O.entryUrgent(S.add('period', S.today(), { flow: 'light' }, 'room'), S.profile()), u2 = O.entryUrgent(S.add('symptom', S.today(), { symptoms: ['spotting'] }, 'room'), S.profile());
   check('a tapped light flow or the spotting chip in pregnancy gets the same card as the words in a note', !!u1 && u1.code === 'PREG_BLEED_NOW' && !!u2 && u2.code === 'PREG_BLEED_NOW', JSON.stringify([u1 && u1.code, u2 && u2.code]));
@@ -3758,10 +4315,10 @@ var summarised = false;
   var ids = Object.keys(w.LAYOUTS).concat(['farm', 'barn', 'barninside', 'heninside', 'harbour', 'cave']);
   var themes = {}; ids.forEach(function (id) { themes[id] = M.themeFor(w.LAYOUTS[id] || id); });
   var noTheme = ids.filter(function (id) { return !themes[id]; });
-  check('every layout maps to a theme except the cave; the Dream Street shops keep the street\'s tune; an unknown id takes the home tune', noTheme.join() === 'cave' && themes.room === 'home' && themes['shop-pet'] === 'street' && themes['shop-homes'] === 'street' && themes.garden === 'garden' && themes.greenhouse === 'garden' && themes.farm === 'farm' && themes.plaza === 'plaza' && themes.harbour === 'harbour' && M.themeFor({ id: 'nowhere' }) === 'home' && M.themeFor(null) === 'home', JSON.stringify(themes));
+  check('every layout maps to a theme, the cave to its own ambient spring (22 Oct); the Dream Street shops keep the street\'s tune; an unknown id takes the home tune', noTheme.length === 0 && themes.cave === 'cave' && themes.room === 'home' && themes['shop-pet'] === 'street' && themes['shop-homes'] === 'street' && themes.garden === 'garden' && themes.greenhouse === 'garden' && themes.farm === 'farm' && themes.plaza === 'plaza' && themes.harbour === 'harbour' && M.themeFor({ id: 'nowhere' }) === 'home' && M.themeFor(null) === 'home', JSON.stringify(themes));
   check('bands follow the window: sunrise and morning bright, afternoon as written, sunset evening, the dark window evening until 21:00 then night, and the small hours night whatever the phase', M.bandFor('sunrise', 7) === 'morning' && M.bandFor('morning', 10) === 'morning' && M.bandFor('afternoon', 14) === 'day' && M.bandFor('sunset', 18) === 'evening' && M.bandFor('night', 19) === 'evening' && M.bandFor('night', 21) === 'night' && M.bandFor('night', 23) === 'night' && M.bandFor('morning', 3) === 'night');
   var tempos = Object.keys(M.THEMES).map(function (t) { return ['morning', 'day', 'evening', 'night'].map(function (b) { return M.tempoFor(t, b); }); }).reduce(function (a, b) { return a.concat(b); }, []);
-  check('every tempo sits between 56 and 84 beats a minute, night never faster than day', tempos.every(function (x) { return x >= 56 && x <= 84; }) && Object.keys(M.THEMES).every(function (t) { return M.tempoFor(t, 'night') <= M.tempoFor(t, 'day') && M.tempoFor(t, 'evening') <= M.tempoFor(t, 'day'); }), tempos.join());
+  check('every tempo sits between 44 and 84 beats a minute (slower since 22 Oct), night never faster than day', tempos.every(function (x) { return x >= 44 && x <= 84; }) && Object.keys(M.THEMES).every(function (t) { return M.tempoFor(t, 'night') <= M.tempoFor(t, 'day') && M.tempoFor(t, 'evening') <= M.tempoFor(t, 'day'); }), tempos.join());
   /* the form and the bank */
   check('the form is 32 bars, A A\' B A\'\', and bar 32 is a held D6', M.BARS.length === 32 && M.LOOP_BEATS === 128 && M.BARS[31].join() === 'D6' && M.BARS[0].join() === M.BARS[8].join() && M.BARS[16][0] === 'Em7');
   var bankBad = [];
@@ -3777,12 +4334,12 @@ var summarised = false;
     if (/^B2/.test(ph) && M.BANK[ph].some(function (n) { return n[0] < 8; })) bankBad.push(ph + ' plays in the accompaniment-only bars');
   });
   check('every phrase stays in D major, lands chord tones on the beat, keeps the melody register and ends in rest; B2 phrases leave their first two bars to the accompaniment', bankBad.length === 0, bankBad.join('; '));
-  check('the last slot always cadences on the same phrase, and that phrase ends on D', Object.keys(M.THEMES).every(function (t) { return M.arrange(t, 0)[7] === 'A2d' && M.arrange(t, 5)[7] === 'A2d'; }) && M.BANK.A2d[M.BANK.A2d.length - 1][1] === 'D5');
+  check('the last slot always cadences on the same phrase, and that phrase ends on D', Object.keys(M.THEMES).filter(function (t) { return !M.THEMES[t].ambient; }).every(function (t) { return M.arrange(t, 0)[7] === 'A2d' && M.arrange(t, 5)[7] === 'A2d'; }) && M.BANK.A2d[M.BANK.A2d.length - 1][1] === 'D5');
   var a0 = M.arrange('home', 0), a1 = M.arrange('home', 1), a0b = M.arrange('home', 0);
   check('the arrangement is fixed for a loop index and changes a little for the next (bounded variation, never a shuffle)', a0.join() === a0b.join() && a0.join() !== a1.join() && a0.every(function (ph, i) { return M.THEMES.home.slots[i].indexOf(ph) > -1; }) && a1.every(function (ph, i) { return M.THEMES.home.slots[i].indexOf(ph) > -1; }));
   /* events */
   var evBad = [], all = [];
-  Object.keys(M.THEMES).forEach(function (t) { ['morning', 'day', 'evening', 'night'].forEach(function (b) { [0, 1, 2].forEach(function (L) { var ev = M.events(t, b, L); all.push([t, b, L, ev]); }); }); });
+  Object.keys(M.THEMES).filter(function (t) { return !M.THEMES[t].ambient; }).forEach(function (t) { ['morning', 'day', 'evening', 'night'].forEach(function (b) { [0, 1, 2].forEach(function (L) { var ev = M.events(t, b, L); all.push([t, b, L, ev]); }); }); });
   all.forEach(function (x) {
     var t = x[0], b = x[1], ev = x[3];
     for (var i = 1; i < ev.length; i++) if (ev[i].t < ev[i - 1].t) { evBad.push(t + ' ' + b + ' order'); break; }
@@ -3798,6 +4355,8 @@ var summarised = false;
     var dayMel = M.events(t, 'day', x[2]).filter(function (e) { return e.part === 'mel'; }).length;
     if (b === 'night' && (M.THEMES[t].sparse ? mel.length > dayMel : mel.length >= dayMel)) evBad.push(t + ' night is not sparser'); /* the harbour is sparse by day already */
   });
+  var cv = M.events('cave', 'day', 0), cv2 = M.events('cave', 'day', 0);
+  check('the cave is ambient: a drone, singing bowls and drips, no melody, the same events every time for a loop', cv.length && !cv.some(function (e) { return e.part === 'mel'; }) && cv.some(function (e) { return e.part === 'bowl'; }) && cv.some(function (e) { return e.part === 'drip'; }) && cv.some(function (e) { return e.part === 'pad' && e.d > 8; }) && JSON.stringify(cv) === JSON.stringify(cv2) && cv.every(function (e) { return e.t >= 0 && e.t < 128 && (!e.pitch || M.inScale(e.pitch)); }));
   check('for every theme, band and loop: events in time order, in the scale, chord tones on the beat, a D with rest at the end; night drops the light notes, the answering voice and the broken chords', evBad.length === 0, evBad.slice(0, 6).join('; '));
   var gm = M.events('garden', 'morning', 0), gd = M.events('garden', 'day', 0);
   check('the garden adds grace notes and an answering voice in the morning only; the harbour keeps its melody sparse by day', gm.some(function (e) { return e.part === 'grace'; }) && !gd.some(function (e) { return e.part === 'grace'; }) && gm.some(function (e) { return e.part === 'ans'; }) && M.events('harbour', 'day', 0).filter(function (e) { return e.part === 'mel'; }).length < M.events('home', 'day', 0).filter(function (e) { return e.part === 'mel'; }).length);
@@ -3933,7 +4492,7 @@ var summarised = false;
   var luna = rs.slice(rs.indexOf('function openLuna('), rs.indexOf('function openLuna(') + 6000);
   check('the sheet becomes a card only for Luna and shows her face; the title names her a wellness companion', /sheet\.classList\.toggle\('luna-sheet', id === 'luna'\)/.test(rs) && /img class="lunaico" src="assets\/room\/dream\/orb-luna\.webp"/.test(rs) && /'Your wellness companion'/.test(luna));
   check('the state line tells the truth (rules only while AI help is paused or off; reading on otherwise) and there is no upsell, no quota invented, no model name', /Rules only · AI help paused/.test(luna) && /Luna’s reading is on/.test(luna) && !/upgrade|premium|questions left/i.test(luna) && !/gpt|claude|doubao|deepseek|gemini/i.test(luna));
-  check('three ask chips open real guides, the composer asks about her cycle, and the companion note is the last line', /stress\.html/.test(luna) && /hormones\.html/.test(luna) && /foods\.html/.test(luna) && ['stress.html', 'hormones.html', 'foods.html'].every(function (f) { return fs.existsSync(path.join(root, f)); }) && /Tell Luna, or ask about your cycle…/.test(luna) && /Luna is a wellness companion, not a doctor\. For medical concerns, talk to a clinician\./.test(luna));
+  check('three ask chips open real guides (foods: the Food diary, 22 Oct), the composer asks about her cycle, and the companion note is the last line', /stress\.html/.test(luna) && /hormones\.html/.test(luna) && /room\.html#food/.test(luna) && ['stress.html', 'hormones.html'].every(function (f) { return fs.existsSync(path.join(root, f)); }) && /Tell Luna, or ask about your cycle…/.test(luna) && /Luna is a wellness companion, not a doctor\. For medical concerns, talk to a clinician\./.test(luna));
   check('the card’s styles exist and no em dash entered the copy', /\.sheet\.luna-sheet\{/.test(css) && /\.askchip\{/.test(css) && /\.lunanote\{/.test(css) && luna.indexOf('—') < 0);
 })();
 
@@ -4013,7 +4572,335 @@ var summarised = false;
   check('both cards carry a How to practise list of five plain steps, and the flower’s pacing shows the same gentle-breathing line the pond has', steps(lf) === 5 && steps(bt) === 5 && /lf-pacesafe/.test(lf) && /without forcing a deeper or longer breath/.test(lf) && /without forcing a deeper or longer breath/.test(bt));
   var how = (/<details class="btap-how">[\s\S]*?<\/details>/.exec(lf)[0] + /<details class="btap-how">[\s\S]*?<\/details>/.exec(bt)[0]);
   check('the instructions promise nothing and push nothing: no cure, calm-guarantee, score, streak or em dash', !/\b(cure|heal|fix|anxiety|depression|reduce stress|guarantee|score|streak|must)\b/i.test(how) && how.indexOf('—') < 0);
-  check('the mat tiles say the pond breathes with the ring and the flower adds a gentle breath', /Breathe with the ring, watch the koi/.test(rs) && /Light, sound and a gentle breath/.test(rs));
+  check('breathing lives in the koi pond and the Light Flower: no separate Just breathe tiles, and the night and afternoon suggestions open them (Jamie, 22 Oct)', /Breathe with the ring over the koi/.test(rs) && /Breathe with a flower of light/.test(rs) && !/<b>Just breathe<\/b>/.test(rs) && /kind: 'flower'/.test(rs) && /kind: 'koi'/.test(rs) && !/the orb/.test(rs));
+})();
+
+(function fastingTiming() {
+  console.log('2k15. fasting timing (21 Oct): confirmed times only, separate medians, records with no counter, eligibility that withholds on a yes or a not sure');
+  var w = fresh('2026-10-21'); vm.runInContext(fs.readFileSync(path.join(root, 'ovu-fasting.js'), 'utf8'), w, { filename: 'ovu-fasting.js' });
+  var F = w.OvuFasting, S = w.OvuStore, src = fs.readFileSync(path.join(root, 'ovu-fasting.js'), 'utf8');
+  function realDay(back) { var d = new Date(Date.now() - back * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); } /* saved records are validated against the real clock */
+  var Y1 = realDay(1), Y2 = realDay(2);
+  function mk(id, date, time, created, extra) { return Object.assign({ id: id, type: 'food', date: date, createdAt: created, updatedAt: created, data: { meal: 'lunch', time: time } }, extra || {}); }
+  /* which times count */
+  var atMeal = mk('a', '2026-10-21', '08:10', '2026-10-21T08:30:00'), backdated = mk('b', '2026-10-20', '13:00', '2026-10-21T22:00:00'), touched = mk('c', '2026-10-20', '13:00', '2026-10-21T22:00:00'); touched.data.timeSet = true;
+  var noTime = mk('d', '2026-10-21', '', '2026-10-21T22:00:00'), badTime = mk('e', '2026-10-21', '25:00', '2026-10-21T22:00:00');
+  check('a time counts when she set it or when the entry was saved within 90 minutes of it on its own date; a backdated default time, no time or a bad time does not', F.timeStatus(atMeal) === 'confirmed' && F.timeStatus(touched) === 'confirmed' && F.timeStatus(backdated) === 'unconfirmed' && F.timeStatus(noTime) === 'none' && F.timeStatus(badTime) === 'none' && F.timeStatus({ type: 'sleep', date: '2026-10-21', data: { time: '08:00' } }) === 'none');
+  /* one calendar day, literal */
+  var day = [mk('1', '2026-10-21', '00:15', '2026-10-21T00:20:00'), mk('2', '2026-10-21', '23:45', '2026-10-21T23:50:00'), mk('3', '2026-10-21', '23:45', '2026-10-21T23:52:00'), noTime, backdated];
+  var t = F.dayTimes(day, '2026-10-21');
+  check('00:15 and 23:45 on one date are 23 h 30 m apart (calendar days are literal), a duplicate time is one occasion, and missing or unconfirmed entries are counted as left out', t.span === 1410 && t.count === 2 && t.first === 15 && t.last === 1425 && t.untimed === 1 && t.unconfirmed === 0 && F.dayTimes(day, '2026-10-20').unconfirmed === 1, JSON.stringify(t));
+  check('one confirmed entry gives no span (unavailable, not zero); no entries give none', F.dayTimes([atMeal], '2026-10-21').span === null && F.dayTimes([atMeal], '2026-10-21').count === 1 && F.dayTimes([], '2026-10-21').first === null);
+  var two = [mk('p', '2026-10-20', '21:10', '2026-10-20T21:12:00'), atMeal];
+  check('the overnight gap runs from the previous calendar day\'s last confirmed entry to this day\'s first, and is null without either', F.gapFromPrevious(two, '2026-10-21') === 660 && F.gapFromPrevious([atMeal], '2026-10-21') === null && F.gapFromPrevious([two[0]], '2026-10-21') === null);
+  /* the review's counter-example: medians are separate statistics */
+  var md = [mk('1', '2026-10-01', '08:00', '2026-10-01T08:05:00'), mk('2', '2026-10-01', '09:00', '2026-10-01T09:05:00'), mk('3', '2026-10-02', '10:00', '2026-10-02T10:05:00'), mk('4', '2026-10-02', '20:00', '2026-10-02T20:05:00'), mk('5', '2026-10-03', '18:00', '2026-10-03T18:05:00'), mk('6', '2026-10-03', '19:00', '2026-10-03T19:05:00'), mk('7', '2026-10-04', '12:00', '2026-10-04T12:05:00')];
+  var sm = F.summary(md, '2026-10-01', '2026-10-05');
+  check('medians are separate: first 10:00, last 19:00 and a one-hour span, over 3 of 5 days with two or more timed entries', sm.medianFirst === 600 && sm.medianLast === 1140 && sm.medianSpan === 60 && sm.eligible === 3 && sm.days === 5, JSON.stringify(sm));
+  check('no eligible day gives no medians', F.summary([atMeal], '2026-10-21', '2026-10-21').medianSpan === null && F.summary([], '2026-10-21', '2026-10-21').eligible === 0);
+  /* records */
+  var now = new Date('2026-10-21T22:00:00'), r = F.validateRecord({ startLocal: '2026-10-21T20:15', note: ' after dinner ' }, now);
+  check('a record keeps the instant, the device offset and the local wall clock, trims its note, and has no end yet', /Z$/.test(r.startAt) && typeof r.startOffset === 'number' && r.startLocal === '2026-10-21T20:15' && r.note === 'after dinner' && r.endAt === null && r.id.indexOf('fast_') === 0);
+  function fails(rec) { try { F.validateRecord(rec, now); return false; } catch (e) { return e.message; } }
+  check('validation refuses an end before the start, a future start or end, a start over 30 days ago, a non-text note and a non-record', /after the start/.test(fails({ startLocal: '2026-10-21T20:15', endLocal: '2026-10-21T19:00' })) && /future/.test(fails({ startLocal: '2026-10-22T01:00' })) && /future/.test(fails({ startLocal: '2026-10-21T20:00', endLocal: '2026-10-22T01:00' })) && /30 days/.test(fails({ startLocal: '2026-09-01T01:00' })) && /text/.test(fails({ startLocal: '2026-10-21T20:00', note: 5 })) && !!fails(null) && !!fails({ startLocal: '2026-10-21T2015' }));
+  var done = F.validateRecord({ startLocal: '2026-10-20T20:15', endLocal: '2026-10-21T09:40' }, now);
+  check('an ended record shows its length once as a fact: 13 h 25 m', F.fmtMin(F.lengthMs(done) / 60000) === '13 h 25 m' && F.lengthMs(r) === null);
+  check('a record open for more than three days is flagged as probably forgotten, never ended for her', F.forgotten({ startAt: '2026-10-17T10:00:00Z' }, now) === true && F.forgotten({ startAt: '2026-10-21T10:00:00Z' }, now) === false && !/endAt = now|auto/.test(src.split('function forgotten')[1].split('\n')[0]));
+  S.setState({ fasting: { on: true, elig: { answers: { preg: 'no', bf: 'no', dm: 'no', ed: 'no', weight: 'no' }, at: 'x' }, records: [] } });
+  var saved = F.saveRecord({ startLocal: Y2 + 'T20:15' }); var saved2 = F.saveRecord({ startLocal: Y1 + 'T06:00' });
+  check('records are saved in state.fasting through setState (no diary type, nothing for Luna\'s filter to accept), and two open records are a conflict nobody resolves for her', F.records().length === 2 && F.openRecords().length === 2 && F.conflict() === true && S.TYPES.indexOf('fast') < 0 && S.list().length === 0 && !/S\(\)\.add\(|OvuStore\.add\(|TYPES/.test(src));
+  F.saveRecord(Object.assign({}, saved2, { endLocal: Y1 + 'T09:30' })); F.deleteRecord(saved.id);
+  check('ending one and deleting the other leaves one ended record and no conflict; the export carries it', F.records().length === 1 && F.openRecords().length === 0 && JSON.parse(S.exportJSON()).state.fasting.records.length === 1);
+  /* eligibility */
+  var allNo = { preg: 'no', bf: 'no', dm: 'no', ed: 'no', weight: 'no' };
+  check('all five answered no opens the control; a yes or a not sure keeps it closed with the reason; the intro\'s pregnancy, breastfeeding and restrictive-eating answers win; trying to conceive is a labelled precaution', F.eligible(allNo, {}).ok === true && F.eligible(Object.assign({}, allNo, { dm: 'yes' }), {}).reasons.join() === 'dm' && F.eligible(Object.assign({}, allNo, { ed: 'unsure' }), {}).unknown.join() === 'ed' && F.eligible(allNo, { pregState: 'maybe' }).reasons.join() === 'preg' && F.eligible(allNo, { breastfeeding: 'yes' }).reasons.join() === 'bf' && F.eligible(allNo, { signals: ['restrict'] }).reasons.join() === 'ed' && F.eligible(allNo, { plans: 'ttc' }).ok === false && /precaution/.test(F.reasonText(F.eligible(allNo, { plans: 'ttc' }))) && /not sure/.test(F.reasonText(F.eligible(Object.assign({}, allNo, { dm: 'unsure' }), {}))));
+  check('the five questions cover pregnancy, breastfeeding, blood sugar medicines, disordered eating and weight or age', F.QUESTIONS.map(function (q) { return q.key; }).join() === 'preg,bf,dm,ed,weight');
+  /* the meal offer */
+  var rec = { id: 'r1', startAt: '2026-10-21T02:00:00.000Z', updatedAt: 'u1' };
+  check('a meal offers to end the record only when dated today, with a confirmed time, after the start; yesterday\'s meal, an unconfirmed time or a meal before the start offers nothing', !!F.offerFor(mk('m', '2026-10-21', '12:30', '2026-10-21T12:35:00'), rec, '2026-10-21') && F.offerFor(mk('m', '2026-10-20', '12:30', '2026-10-20T12:35:00'), rec, '2026-10-21') === null && F.offerFor(mk('m', '2026-10-21', '12:30', '2026-10-21T22:35:00'), rec, '2026-10-21') === null && F.offerFor(mk('m', '2026-10-21', '01:30', '2026-10-21T01:35:00'), { id: 'r1', startAt: '2026-10-21T04:00:00.000Z' }, '2026-10-21') === null && F.offerFor(mk('m', '2026-10-21', '12:30', '2026-10-21T12:35:00'), Object.assign({}, rec, { endAt: 'x' }), '2026-10-21') === null);
+  /* copy and boundaries */
+  var html = F.stripHTML();
+  check('the strip never shows a running counter, a target, a streak or a heart; the care line says to call the local emergency number and gives the hypo advice; lengths appear only for ended records', !/streak|target|goal|longest|♥|hearts?\b/i.test(html) && /call your local emergency number/.test(html) && /treat a low as your care team/.test(html) && /Entries, not measured fasting/.test(html) && !/since .* \(\d+ h/.test(html) && src.indexOf('—') < 0 && !/gpt|claude|doubao|deepseek/i.test(src));
+  check('the module pays no hearts, writes no diary entry and leaves the summary agents alone', !/OvuRewards|\.award\(|afterSave\(|summary\.food/.test(src));
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), js = fs.readFileSync(path.join(root, 'journal.html'), 'utf8'), ev = fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8');
+  check('the food sheet carries the strip, confirms a time she touched, offers after a save, and the journal loads the block; evidence E81 to E90 exist with no em dash', /id="fastStrip"/.test(rs) && /timeSet: fdTimeTouched/.test(rs) && /OvuFasting\.onMealSaved\(ev\)/.test(rs) && /OvuFasting\.onClick\(e\)/.test(rs) && /ovu-fasting\.js/.test(js) && /fastingBlock/.test(js) && /<script src="ovu-fasting\.js"><\/script>/.test(fs.readFileSync(path.join(root, 'room.html'), 'utf8')) && ['E81', 'E82', 'E83', 'E84', 'E85', 'E86', 'E87', 'E88', 'E89', 'E90'].every(function (e) { return ev.indexOf("id: '" + e + "'") > -1; }) && ev.indexOf('—') < 0);
+})();
+
+(function podcastOrder() {
+  console.log('2k18. Listen with Erin (21 Oct): the playable episodes shuffle by seed, the locked ones sit at the bottom oldest first, Shuffle gives a new order');
+  var w = fresh('2026-10-21'); vm.runInContext(fs.readFileSync(path.join(root, 'ovu-podcast.js'), 'utf8'), w, { filename: 'ovu-podcast.js' });
+  var P = w.OvuPodcast, eps = JSON.parse(fs.readFileSync(path.join(root, 'assets/data/erin-podcasts.json'), 'utf8')).episodes;
+  var ids = function (l) { return l.map(function (e) { return e.id; }); }, prem = function (e) { return e.access === 'premium'; };
+  var free = eps.filter(function (e) { return !prem(e); }), locked = eps.filter(prem), byDate = locked.slice().sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+  var o1 = P.order(eps, false, 7), o2 = P.order(eps, false, 7), o3 = P.order(eps, false, 8);
+  check('every episode appears once, and the same seed gives the same order', o1.length === eps.length && new Set(ids(o1)).size === eps.length && ids(o1).join() === ids(o2).join());
+  check('the locked episodes come last, oldest first, and every playable one comes before them', ids(o1).slice(free.length).join() === ids(byDate).join() && o1.slice(0, free.length).every(function (e) { return !prem(e); }));
+  check('another seed shuffles the playable ones into another order', ids(o1.slice(0, free.length)).join() !== ids(o3.slice(0, free.length)).join() && ids(o1.slice(0, free.length)).join() !== ids(free).join());
+  var all = P.order(eps, true, 7), firstPrem = all.map(prem).indexOf(true), lastFree = all.length - 1 - all.slice().reverse().map(prem).indexOf(false);
+  check('with Plus on nothing is held back: the Plus episodes join the shuffle', all.length === eps.length && firstPrem > -1 && firstPrem < lastFree);
+  check('a missing seed still returns every episode, locked last', (function () { var o = P.order(eps, false); return o.length === eps.length && o.slice(free.length).every(prem); })());
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('the Listen sheet lists through the order with one seed per sheet, a Shuffle button, and a small label before the locked group', /POD\.order\(d\.episodes, on, podSeed\)/.test(rs) && /id="podShuffle"/.test(rs) && /With Rhythme Plus/.test(rs) && /podSeed = Date\.now\(\) \^/.test(rs));
+})();
+
+(function todayTabs() {
+  console.log('2k21. the Today card’s three tabs (21 Oct): Today, Channel once she has joined a plaza group, Inventory from her own state');
+  var w = { document: undefined }; w.window = w;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-today.js'), 'utf8'), vm.createContext(w), { filename: 'ovu-today.js' });
+  var T = w.OvuToday;
+  var so = T.channelModel({ signedIn: false });
+  check('signed out: the channel asks her to sign in from You and offers nothing else', so.state === 'signedout' && so.actions.length === 1 && so.actions[0].id === 'signin' && /Sign in from You/.test(so.text) && /join a group/.test(so.text));
+  var ng = T.channelModel({ signedIn: true, inPlaza: false }), ngp = T.channelModel({ signedIn: true, inPlaza: true });
+  check('signed in with no group: walk to the plaza, or choose a group when she already stands there; the four groups are named', ng.state === 'nogroup' && ng.actions[0].id === 'plaza' && ngp.actions[0].id === 'groups' && /Everyone, Trying to conceive, PCOS or Menopause/.test(ng.text));
+  var rem = T.channelModel({ signedIn: true, inPlaza: false, joined: null, remembered: 'pcos', servers: null, friends: 'No friends yet', badge: 0, prompt: 'What helped today?' });
+  check('a remembered group opens its channel away from the plaza: its name from the local list, the counted-while-there line, the prompt, Plaza friends, and a walk button', rem.state === 'joined' && rem.title === 'PCOS' && rem.icon === 'water_drop' && !rem.live && /counted/.test(rem.text) && /while you stand in the plaza/.test(rem.text) && rem.prompt === 'What helped today?' && rem.friends === 'No friends yet' && rem.actions.map(function (a) { return a.id; }).join() === 'board,friends,plaza');
+  var live = T.channelModel({ signedIn: true, inPlaza: true, joined: { id: 'menopause', name: 'Menopause (server name)', people: 4 }, remembered: 'pcos', servers: [{ id: 'menopause', name: 'Menopause' }], friends: '2 friends · 1 new', badge: 1, prompt: 'p' });
+  var one = T.channelModel({ signedIn: true, inPlaza: true, joined: { id: 'everyone', people: 1 } }), off = T.channelModel({ signedIn: true, inPlaza: true, joined: { id: 'everyone', people: 3 }, offline: true });
+  check('counted in a group now: the live group wins over the remembered one, the count includes her, the badge rides on Plaza friends, and no walk button', live.state === 'joined' && live.live && live.title === 'Menopause (server name)' && live.text === '4 people here, with you' && live.badge === 1 && live.actions.length === 2 && live.actions[1].badge === 1 && one.text === 'Just you here for now' && one.title === 'Everyone' && /Reconnecting/.test(off.text));
+  check('group names: the server list wins, the local list covers the four groups, and an unknown id reads as words', T.groupName('pcos', [{ id: 'pcos', name: 'PCOS circle' }]) === 'PCOS circle' && T.groupName('trying-to-conceive') === 'Trying to conceive' && T.groupName('night-owls') === 'Night owls' && T.hereText(0) === 'Just you here for now' && T.hereText(2) === '2 people here, with you');
+  var items = [{ id: 'lamp', name: 'Crescent floor lamp', kind: 'furniture' }, { id: 'beanbag', name: 'Bunny beanbag', kind: 'furniture' }, { id: 'house', name: 'Two-storey dream house', kind: 'home' }, { id: 'cat', name: 'Kitten', kind: 'pet' }, { id: 'dog', name: 'Puppy', kind: 'pet' }, { id: 'acc-bow', name: 'Satin bow', kind: 'accessory' }, { id: 'acc-hat', name: 'Party hat', kind: 'accessory' }, { id: 'treat-fish', name: 'Fish biscuits', kind: 'treat' }, { id: 'treat-cake', name: 'Pupcake', kind: 'treat' }];
+  var inv = T.inventoryModel({ hearts: 230, earned: 410, items: items, owned: ['lamp', 'beanbag', 'house', 'cat', 'acc-bow', 'acc-hat', 'ghost'], placed: { lamp: true, cat: true }, treats: { 'treat-fish': 3, 'treat-cake': 0 }, wear: { cat: 'acc-bow' }, petNames: { cat: 'Mochi' }, homeId: 'house',
+    farm: { harvest: { radish: 4, tomato: 1, ginger: 2, weeds: 9 }, pantry: { egg: 2, milk: 1, onsenegg: 0 }, seeds: { carrot: 2, radish: 0 }, tools: { bigcan: true, shelf: false } }, crops: { radish: { name: 'Radish', plural: 'radishes' }, tomato: { name: 'Tomato', plural: 'tomatoes' }, carrot: { name: 'Carrot', plural: 'carrots' } }, tools: { bigcan: { name: 'Big watering can' }, shelf: { name: 'Seed shelf' } },
+    herbs: { ginger: { name: 'Ginger', plural: 'pieces of ginger' }, pandan: { name: 'Pandan', plural: 'pandan leaves' } }, herbSeeds: { pandan: 2, ginger: 0 }, herbBeds: { h1: { herb: 'ginger' }, h2: { herb: 'ginger' }, h3: { herb: 'nope' } },
+    staples: { rice: 2, egg: 2, tofu: 0 }, stapleNames: { rice: { name: 'Rice' }, egg: { name: 'Eggs', pantry: true }, tofu: { name: 'Tofu' } }, outfits: [{ id: 'base', name: 'Cosy knit' }, { id: 'party', name: 'Lilac tulle' }], outfit: 'party',
+    book: { grouper: { n: 2 }, unknown: { n: 1 } }, speciesNames: { grouper: { name: 'Orange-spotted grouper' } }, casts: 5, floats: { mint: '2026-10-20' }, float: 'mint', floatNames: { mint: { name: 'Mint' } }, letters: [{ id: 'l1' }] });
+  var sec = {}; inv.sections.forEach(function (s) { sec[s.id] = s; });
+  var row = function (id, i) { return sec[id].rows[i]; }, names = function (id) { return sec[id].rows.map(function (r) { return r.name; }).join('|'); };
+  check('inventory: hearts and the total earned; things say in the room, put away, where she lives; an id no longer in the shop is skipped', inv.hearts === 230 && inv.earned === 410 && names('things') === 'Crescent floor lamp|Bunny beanbag|Two-storey dream house' && row('things', 0).sub === 'In your room' && row('things', 1).sub === 'Put away' && row('things', 2).sub === 'Where you live now');
+  check('inventory: the pet by her name wearing the bow, the bow worn by her, the hat in the drawer, three fish biscuits left and no empty pupcake row', names('pets') === 'Mochi|Satin bow|Party hat|Fish biscuits' && row('pets', 0).sub === 'At home, wearing the satin bow' && row('pets', 1).sub === 'Worn by Mochi' && row('pets', 2).sub === 'In the drawer' && row('pets', 3).count === 3);
+  check('inventory: the wardrobe counts outfits and names the one worn', names('wardrobe') === '2 outfits' && row('wardrobe', 0).sub === 'Wearing the lilac tulle');
+  check('inventory: the basket in plurals with the greenhouse herb, no unknown crop, the pantry in plurals, seeds, the tool in the shed and not the one she lacks', names('farm') === 'Radishes|Tomato|Pieces of ginger|Eggs|Bottle of milk|Carrot seeds|Big watering can' && row('farm', 0).count === 4 && row('farm', 1).count === 1 && row('farm', 6).sub === 'In the shed');
+  check('inventory: cuttings to plant and what grows in how many planters; a bed with an unknown herb is ignored', names('greenhouse') === 'Pandan to plant|Ginger' && row('greenhouse', 0).count === 2 && row('greenhouse', 1).sub === 'Growing in 2 planters');
+  check('inventory: staples skip the pantry egg and zero counts; the harbour names the fish met and the casts; the float on the line and the letter waiting', names('kitchen') === 'Rice' && names('harbour') === 'Orange-spotted grouper|5 casts|Mint float|1 letter' && row('harbour', 0).count === 2 && row('harbour', 2).sub === 'On the line' && row('harbour', 3).sub === 'waiting at the post box' && inv.total === 22);
+  var dinv = T.inventoryModel({ farm: { dishes: { pumpkinsoup: 2, nope: 1 } }, dishNames: { pumpkinsoup: 'Pumpkin soup' } }), dsec = dinv.sections.filter(function (s) { return s.id === 'dishes'; })[0];
+  check('inventory: cooked dishes sit in the bag with their picture and count; unknown ids are left out (22 Oct)', dsec && dsec.rows.length === 1 && dsec.rows[0].name === 'Pumpkin soup' && dsec.rows[0].count === 2 && dsec.rows[0].img === 'assets/food/dish-pumpkinsoup.webp');
+  var empty = T.inventoryModel({});
+  check('inventory: with nothing at all every section carries one plain invitation, no counts, and the total is zero', empty.sections.length === 8 && empty.total === 0 && empty.hearts === 0 && empty.sections.every(function (s) { return s.rows.length === 0 && s.empty.length > 10 && s.empty.indexOf('—') < 0; }));
+  var html = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), css = fs.readFileSync(path.join(root, 'room.css'), 'utf8'), mod = fs.readFileSync(path.join(root, 'ovu-today.js'), 'utf8'), cm = fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8');
+  check('room.html holds the tablist with three tabs and three panes, the check-in inside the Today pane, and loads the module after Plaza friends', /role="tablist"[^>]*id="deckTabs"/.test(html) && (html.match(/data-deck="(today|channel|inventory)"/g) || []).length === 3 && /id="deckToday"[^>]*role="tabpanel"/.test(html) && html.indexOf('id="deckToday"') < html.indexOf('id="tiles"') && html.indexOf('id="tiles"') < html.indexOf('id="deckChannel"') && html.indexOf('ovu-friends.js') < html.indexOf('ovu-today.js'));
+  check('room.js redraws the panes with the deck and exports the outfits; the board opens from the module; the styles and the night rule exist; no em dash in the words', /if \(window\.OvuToday\) OvuToday\.render\(\)/.test(rs) && /OUTFITS: OUTFITS,/.test(rs) && /C\.openBoard = openBoard/.test(cm) && /\.decktabs\{/.test(css) && /\.invlist li\{/.test(css) && /html\[data-sky="night"\] \.decktabs button\.on\{/.test(css) && mod.indexOf('—') < 0);
+})();
+
+(function drops() {
+  console.log('2k22. the drops (21 Oct): her birthday (one wish, who she is when she adds the year, and a direction for the year), and the Starlight gown as a Rhythme Plus drop');
+  var w = { document: undefined }; w.window = w;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-birthday.js'), 'utf8'), vm.createContext(w), { filename: 'ovu-birthday.js' });
+  var B = w.OvuBirthday;
+  check('a birthday is a month and a day only: 10-21 and 2-29 are kept, 13-01, 02-30, a year and nothing are refused', B.clean('10-21') === '10-21' && B.clean('2-29') === '02-29' && B.clean('13-01') === null && B.clean('02-30') === null && B.clean('1987-10-21') === null && B.clean('') === null && B.clean(null) === null);
+  check('the day and the six days after are the week, across a year end; 29 February falls on the 28th in other years', B.dayOf('2026-10-21', '10-21') === 0 && B.dayOf('2026-10-27', '10-21') === 6 && B.dayOf('2026-10-28', '10-21') === -1 && B.dayOf('2026-10-20', '10-21') === -1 && B.dayOf('2027-01-02', '12-30') === 3 && B.dayOf('2026-02-28', '02-29') === 0 && B.dayOf('2028-02-29', '02-29') === 0 && B.dayOf('2028-02-28', '02-29') === -1 && B.dayOf('2026-10-21', null) === -1 && B.dayOf('nope', '10-21') === -1);
+  check('the birthday year the week belongs to follows the day, so a week that crosses New Year keeps its year; outside the week there is none', B.yearOf('2026-10-24', '10-21') === 2026 && B.yearOf('2027-01-02', '12-30') === 2026 && B.yearOf('2026-05-05', '10-21') === null && B.text('10-21') === '21 October' && B.text('02-09') === '9 February');
+  check('the personal year adds the digits of the month, the day and the year the birthday falls in, reduced to 1 to 9', B.personalYear('10-21', 2026) === 5 && B.personalYear('10-21', 2027) === 6 && B.personalYear('02-29', 2027) === 6 && B.personalYear('01-01', 2025) === 2 && B.personalYear('12-31', 2026) === 8 && B.personalYear('07-04', 2026) === 3 && B.personalYear('09-09', 2025) === 9 && B.personalYear('nope', 2026) === 0 && B.personalYear('10-21', 0) === 0);
+  var seenN = {}, badN = 0; for (var yy = 2026; yy < 2035; yy++) for (var mo = 1; mo <= 12; mo++) for (var dd = 1; dd <= 31; dd++) { var mm = B.clean(mo + '-' + dd); if (!mm) continue; var pn = B.personalYear(mm, yy); if (!(pn >= 1 && pn <= 9)) badN++; seenN[pn] = 1; }
+  check('every birthday in every year from 2026 to 2034 gives a number from 1 to 9, and all nine years occur', badN === 0 && Object.keys(seenN).length === 9);
+  var Y = B.YEARS, words = Object.keys(Y).map(function (k) { return Y[k].title + ' ' + Y[k].text + ' ' + Y[k].step; }).join(' ');
+  check('nine directions, each a title, a line and a first step: invitations, not orders or predictions, nothing about health, no em dash', Object.keys(Y).join() === '1,2,3,4,5,6,7,8,9' && Object.keys(Y).every(function (k) { return /^A year for /.test(Y[k].title) && Y[k].text.length > 40 && Y[k].step.length > 10; }) && !/\b(must|should|will happen|guarantee|destiny|diagnos\w*|symptoms?|periods?|fertil\w*|pregnan\w*|cure|treat\w*)\b/i.test(words) && !/answers come|grows slowly/.test(words) && words.indexOf('—') < 0);
+  var cd = B.card({ name: ' Mei ', mmdd: '10-21', year: 2026, canGown: false }), cd2 = B.card({ name: 'Mei', mmdd: '10-21', year: 2026 });
+  check('the card: her name, the date in words, one warm wish (the same for the same birthday and year), and the direction for a 5 year; the party outfit while the gown is locked', cd.title === 'Happy birthday, Mei!' && cd.date === '21 October' && B.LINES.indexOf(cd.wish) > -1 && cd.wish === cd2.wish && cd.number === 5 && cd.direction === B.YEARS[5] && cd.outfit === 'party' && B.card({ mmdd: '10-21', year: 2026, canGown: true }).outfit === 'gown');
+  var blank = B.card({ name: '   ', mmdd: '10-21', year: 2027 }), none = B.card({ mmdd: null, year: 2026 });
+  check('a blank name reads Happy birthday!, the next birthday brings the next direction, and without a birthday there is no direction', blank.title === 'Happy birthday!' && blank.number === 6 && blank.direction === B.YEARS[6] && none.direction === null && none.number === 0);
+  var fake = { getElementById: function (id) { return ({ tMonth: { value: '10' }, tDay: { value: '21' }, tYear: { value: '0' }, uMonth: { value: '10' }, uDay: { value: '21' }, uYear: { value: '1987' }, kMonth: { value: '10' }, kDay: { value: '22' }, kYear: { value: '2008' }, xMonth: { value: '2' }, xDay: { value: '30' }, xYear: { value: '0' } })[id] || null; } }, fh = B.fieldHTML('10-21', 1987, 't', '2026-10-21');
+  check('the shared field: three selects, month, day and an optional year from 18 years back to 1900 (the bounds the year rule accepts), with her choices kept', /id="tMonth"/.test(fh) && /id="tDay"/.test(fh) && /id="tYear"/.test(fh) && /<option value="0">Year \(optional\)<\/option>/.test(fh) && /<option value="10" selected>October/.test(fh) && /<option value="21" selected>21/.test(fh) && /<option value="1987" selected>1987/.test(fh) && /<option value="2008">2008/.test(fh) && fh.indexOf('value="2009"') < 0 && /<option value="1900">1900/.test(fh) && fh.indexOf('value="1899"') < 0);
+  var r1 = B.readField(fake, 't', '2026-10-21'), r2 = B.readField(fake, 'u', '2026-10-21'), r3 = B.readField(fake, 'k', '2026-10-21'), r4 = B.readField(fake, 'x', '2026-10-21'), r5 = B.readField(fake, 'q', '2026-10-21');
+  check('reading the field: no year is fine, a year is kept, a 17-year-old is refused kindly, an impossible day asks again, nothing chosen is nothing', r1.birthday === '10-21' && r1.year === null && !r1.error && r2.birthday === '10-21' && r2.year === 1987 && !r2.error && r3.birthday === '10-22' && r3.year === null && /18 and over/.test(r3.error) && r4.birthday === null && /month and a day/.test(r4.error) && r5.birthday === null && !r5.error);
+  check('the year rule: 18 today is fine, 18 tomorrow is not, 29 February needs a leap year, a year before 1900 or after this year is refused', B.yearError(2008, '10-21', '2026-10-21') === '' && /18 and over/.test(B.yearError(2008, '10-22', '2026-10-21')) && B.yearError(1988, '02-29', '2026-10-21') === '' && /29 February/.test(B.yearError(1987, '02-29', '2026-10-21')) && /from the list/.test(B.yearError(1899, '05-05', '2026-10-21')) && /from the list/.test(B.yearError(2027, '05-05', '2026-10-21')) && /month and the day/.test(B.yearError(1987, null, '2026-10-21')));
+  var fhd = B.fieldHTML(null, null, 'd', '2026-10-21', { m: '2', d: '30', y: '2008' }), rv1 = B.readValues('2', '30', '0', '2026-10-21'), rv2 = B.readValues('10', '21', '1987', '2026-10-21'), rv3 = B.readValues('11', '15', '2008', '2026-10-21');
+  check('a draft she left with something to fix comes back exactly as chosen, and the values read the same way as the field', /<option value="2" selected>February/.test(fhd) && /<option value="30" selected>30/.test(fhd) && /<option value="2008" selected>2008/.test(fhd) && rv1.birthday === null && /month and a day/.test(rv1.error) && rv2.birthday === '10-21' && rv2.year === 1987 && !rv2.error && rv3.year === null && /18 and over/.test(rv3.error));
+  var FIX = '139043489212657110626195177375991605592473450214462185263179251961653481897565078761252949183443954057034674189470922862659531956538950487879646178775173390744717864520477658645435941114778166779231410037993872360307944477868134639952520185777417968039147981874238598069284771163148532893865241339130', mr = (function (seed) { var a = seed >>> 0; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })(2110), dimF = function (m, y) { return [31, (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1]; }, got = '';
+  for (var fi = 0; fi < 300; fi++) { var fy = 1930 + Math.floor(mr() * 80), fm = 1 + Math.floor(mr() * 12), fd = 1 + Math.floor(mr() * dimF(fm, fy)); got += String(B.dayStem(fy, fm, fd)); }
+  check('the Day Master matches YourDigitalDNA\'s engine (hour unknown) on 300 random dates, and the published anchors: 7 January 2000 is a Jia day, 1 January 2000 a Wu day', got === FIX && B.dayStem(2000, 1, 7) === 0 && B.dayStem(2000, 1, 1) === 4 && B.dayMaster(2000, '01-07').name === 'The Pillar' && B.dayMaster(2000, '01-01').name === 'The Mountain');
+  var DMs = B.DAY_MASTERS, dmw = DMs.map(function (x) { return x.name + ' ' + x.line + ' ' + x.reframe; }).join(' ');
+  check('ten Day Masters in stem order, each a name, a line and a reframe, with no em dash and nothing about health', DMs.length === 10 && DMs.map(function (x) { return x.stem; }).join('') === '甲乙丙丁戊己庚辛壬癸' && DMs.every(function (x) { return /^The /.test(x.name) && x.line.length > 20 && x.reframe.length > 30; }) && dmw.indexOf('—') < 0 && !/\b(diagnos\w*|symptoms?|periods?|fertil\w*|pregnan\w*|cure|treat\w*|illness|disease)\b/i.test(dmw));
+  var cw = B.card({ name: 'Mei', mmdd: '01-07', year: 2027, birthYear: 2000 }), cn = B.card({ name: 'Mei', mmdd: '01-07', year: 2027 }), cb = B.card({ name: 'Mei', mmdd: '02-29', year: 2027, birthYear: 1987 });
+  check('with a birth year the card adds who she is; without one, or with a year that has no such day, it does not', cw.who === B.DAY_MASTERS[0] && cw.direction === B.YEARS[B.personalYear('01-07', 2027)] && cn.who === null && cb.who === null && B.dayMaster(2001, '02-29') === null);
+  var SYb = fresh().OvuSync, pc = SYb.profileForCloud({ birthday: '10-21', birthYear: 1987, name: 'Mei' });
+  check('her birthday and birth year never ride in the cloud copy; the rest of the profile does', SYb.DEVICE_KEYS.birthday === 1 && SYb.DEVICE_KEYS.birthYear === 1 && !('birthday' in pc) && !('birthYear' in pc) && pc.name === 'Mei');
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), fr = fs.readFileSync(path.join(root, 'ovu-friends.js'), 'utf8'), css = fs.readFileSync(path.join(root, 'room.css'), 'utf8'), html = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), mod = fs.readFileSync(path.join(root, 'ovu-birthday.js'), 'utf8');
+  var pv = fs.readFileSync(path.join(root, 'privacy.html'), 'utf8'), tm = fs.readFileSync(path.join(root, 'terms.html'), 'utf8');
+  var bstep = rs.indexOf("{ id: 'birthday', icon: 'celebration'"), fstep = rs.indexOf("{ id: 'final', icon: 'waving_hand'");
+  check('the intro asks her birthday, month, day and an optional year, just before her name; it stays on this phone; a year that is not an adult\'s waits to be fixed; the age range no longer says never a date of birth', bstep > 0 && fstep > bstep && /id: 'birthday'[^\n]*type: 'birthday', key: 'birthday', optional: true/.test(rs) && /The year is optional and adds who you are, read from the day you were born\. It stays on this phone/.test(rs) && !/never asks your date of birth/.test(rs) && /Skip if you prefer; Rhythme is for adults\.'/.test(rs) && /OvuBirthday\.fieldHTML\(A\.birthday, A\.birthYear, 'onbB', S\.today\(\), bdr\)/.test(rs) && /if \(bv\.error\) A\._bdraft = OvuBirthday\.rawField\(document, 'onbB'\)/.test(rs) && /if \(bchk\.error\) \{ var bm = \$\('#onbBMsg'\)/.test(rs) && /if \(st\.type === 'birthday'\) \{ delete A\.birthYear; delete A\._bdraft; \}/.test(rs) && /patch\.birthYear = patch\.birthday && A\.birthYear && !OvuBirthday\.yearError\(A\.birthYear, patch\.birthday, S\.today\(\)\) \? Number\(A\.birthYear\) : null/.test(rs));
+  var cj = fs.readFileSync(path.join(root, 'ovu-consent.js'), 'utf8'), NLINE = 'Your birthday is optional: a month and a day, with the year only if you add it, kept on this phone and used only for the birthday card.';
+  check('the notice, the terms and the consent sheet say a birthday may be asked, the year only if she adds it, phone only, exports included, adults only; none still promises never a date of birth; the notice is version 5 and its hash covers the birthday line', /an optional age range and an optional birthday may be asked; a birth year that would make you under 18 is not accepted/.test(pv) && /<dt>Your birthday<\/dt><dd>If you give it, your birthday is a month and a day, with the year only if you add it\. It stays in this browser on this phone and is never part of the cloud backup; a copy of your data that you export yourself includes it/.test(pv) && /may ask for an optional age range and an optional birthday, with the year only if you choose to add it/.test(tm) && /<strong>Birthday<\/strong><\/td><td data-label="What">An optional birthday, a month and a day with the year only if you add it/.test(tm) && /On your phone, and in any copy of your data you export; never in your cloud backup/.test(tm) && html.indexOf(NLINE) > 0 && cj.indexOf(NLINE) > 0 && /NOTICE_LINES\.join/.test(cj) && /Notice version 5, 21 October 2026\./.test(html) && /For the age check we keep only this confirmation\./.test(html) && !/date of birth never is|never ask for your date of birth/.test(pv + tm) && !/never your date of birth|not your date of birth/.test(html) && /New in this notice: Rhythme can ask for your birthday/.test(cj));
+  check('the older pages\' copy of the intro never keeps the birthday, old copies are cleaned, and both intro buttons start from her answers as they are now', /delete mirror\.birthday; delete mirror\.birthYear;/.test(rs) && /source: 'room' \}, mirror\)\)/.test(rs) && /function scrubMirror\(\)/.test(mod) && /scrubMirror\(\);\n/.test(mod) && /function introAnswers\(\)/.test(rs) && /openOnboarding\(0, introAnswers\(\)\)/.test(rs) && /openOnboarding\(0, S\.profile\(\)\.onboarded \? introAnswers\(\) : \{\}\)/.test(rs));
+  check('the card says it is a reflection before the readings, names the BaZi section as one, looks again when a sheet closes or the day turns, and a stray birth year can be removed', /class="bnote">A reflection read from your birthday, not a prediction and not health advice\./.test(mod) && /A reflection from the day you were born, the BaZi way/.test(mod) && mod.indexOf('Who you are') < 0 && /R\.on\('sheetReplace', replaced\)/.test(mod) && /R\.on\('sheetHide', function \(\) \{[^\n]*recheck\(\); \}\)/.test(mod) && /root\.setInterval\(recheck, 30000\)/.test(mod) && /has = !!\(p0\.birthday \|\| p0\.birthYear\)/.test(mod) && /\.bnote\{/.test(css));
+  check('the Starlight gown is in the wardrobe as a Plus drop: locked without Plus or tester mode, never worn from a stale profile, labelled, and in the plaza look list', /id: 'gown', name: 'Starlight gown'[^}]*plus: true/.test(rs) && /function outfitLocked\(id\)/.test(rs) && /if \(outfitLocked\(id\)\) id = 'base'/.test(rs) && /With Rhythme Plus/.test(rs) && /openPlus\(\); return; \} var pick = o\.dataset\.id;/.test(rs) && /\['gown', 'Starlight gown'\]/.test(fr));
+  check('a renewed notice does not send a Help improve logging choice the account already holds, and the intro asks "happening today" afresh', /var held = improve && wasOn && an\.on === true && !!an\.uid && \(!me \|\| an\.uid === me\);/.test(cj) && /\(held && !me\)\) \{ record\(\); open\(\); return; \}/.test(cj) && /if \(held\) \{[\s\S]{0,900}OvuAuth\.syncImprove\(\)/.test(cj) && /off on your account, so it stays off here too/.test(cj) && /delete A0\.urgent;/.test(rs));
+  var odd = B.fieldHTML('10-21', 2009, 'b', '2026-10-21'), old1899 = B.fieldHTML('10-21', 1899, 'b', '2026-10-21'), fine = B.fieldHTML('10-21', 1988, 'b', '2026-10-21');
+  check('a stored year the list no longer offers is shown as it is, once, selected and marked as not used; a usable year is not', odd.split('value="2009"').length === 2 && /<option value="2009" selected>2009, not used<\/option>/.test(odd) && /<option value="1899" selected>1899, not used<\/option>/.test(old1899) && fine.indexOf('not used') < 0 && /<option value="1988" selected>1988<\/option>/.test(fine));
+  var outfitIds = (rs.match(/\{ id: '([a-z-]+)', name: '[^']+', note: /g) || []).map(function (m) { return /id: '([a-z-]+)'/.exec(m)[1]; });
+  var noBlink = outfitIds.filter(function (o) { return !fs.existsSync(path.join(root, 'assets/room/dream/avatar-' + o + '-blink.webp')); });
+  check('she blinks: every outfit in the wardrobe has a closed-eye copy, the copy is fitted like its outfit, and blinking waits for her to stand idle in that outfit (never a pose, a walk, a twirl or reduced motion)', outfitIds.length >= 11 && noBlink.length === 0 && /avatar-\(\[a-z0-9-\]\+\?\)\(\?:-blink\)\?\\\.webp/.test(rs) && /function scheduleBlink\(\) \{ clearTimeout\(blinkT\); if \(reduced \|\| !blinkOn\) return;/.test(rs) && /blinkOn = !\(navigator && navigator\.webdriver\)/.test(rs) && /blinking: function \(on\)/.test(rs) && /cur\.slice\(-open\.length\) === open/.test(rs) && /!avatar\.classList\.contains\('twirling'\)/.test(rs), noBlink.join(','));
+  check('a picked outfit twirls in: whole turns so she ends facing the way she started, the swap drawn exactly edge-on, the gown gets the Cinderella version, a newer pose or outfit is never painted over, any walk or a pose finishes it at once, a hop never takes it over, the walk home gives way to a practice, the wardrobe and the card step aside first, and silent changes or reduced motion never twirl', /var turns = glam \? 3 : 1, dur = glam \? 2300 : 1000, swapAt = glam \? 1\.25 : 0\.75/.test(rs) && /if \(!swapped && turn >= swapAt\) \{ turn = swapAt; swap\(\); \}/.test(rs) && /if \(gen !== undefined && gen !== imgGen\) return;/.test(rs) && /function twirl\(src, glam, done, gen\) \{\n    finishTwirl\(\); quietMoment\(\);/.test(rs) && /function joy\(\) \{ if \(twirlRun\) return;/.test(rs) && /function setPose\(pose\) \{\n    finishTwirl\(\);/.test(rs) && /hooks\.on\.walk = \[function \(\) \{ finishTwirl\(\); endMoment\(\); \}\];/.test(rs) && /if \(current \|\| practice \|\| session \|\| meditating \|\| arranging \|\| asleep\(\)\) return; goHome\(\); return; \}/.test(rs) && /function blink\(again\) \{\n    if \(reduced \|\| !blinkOn\) return;/.test(rs) && /twirl\(img\.src, id === 'gown'/.test(rs) && /if \(!silent && twirlOk\(\)\)/.test(rs) && /function twirlOk\(\) \{ return !reduced && !document\.hidden && !asleep\(\)/.test(rs) && /hooks\.on\.beforeWalk = \[function \(\) \{ finishTwirl\(\); endMoment\(\); \}\];/.test(rs) && /closeSheet\(\); setTimeout\(function \(\) \{ setOutfit\(pick\); \}, 260\);/.test(rs) && /R\.closeSheet\(\); root\.setTimeout\(function \(\) \{ if \(R\.setOutfit\) R\.setOutfit\(m\.outfit\); \}, 260\);/.test(mod) && /\.twirl-fx \.tw-s\{/.test(css) && /@media \(prefers-reduced-motion: reduce\)\{\.twirl-fx\{display:none\}\}/.test(css));
+  check('Codex verification of the twirl (21 Oct): a cut turn (a walk, a pose, another outfit) says no closing line and plays no sound; the walk home waits while she arranges her things; the poof\u2019s wardrobe line is tracked, belongs to its own picture and a new turn clears it; a failed closed-eye picture is asked for again; a new outfit mid-walk drops the old walk strip at once', /function end\(cut\) \{/.test(rs) && /if \(!cut && run\.done\) run\.done\(\);/.test(rs) && /!glam && !cut && window\.OvuSound/.test(rs) && /function finishTwirl\(\) \{ if \(twirlRun\) twirlRun\.end\(true\); \}/.test(rs) && /!current && !arranging && !\(window\.OvuMorning/.test(rs) && /poofTimer = setTimeout\(function \(\) \{ poofTimer = null; avatar\.classList\.remove\('poofing'\); if \(gen === imgGen\) moment\('wardrobe'\); \}, 700\);/.test(rs) && /function quietMoment\(\) \{ clearTimeout\(momentTimer\); clearTimeout\(momentRetry\); momentRetry = null; clearTimeout\(poofTimer\);/.test(rs) && /im\.onerror = function \(\) \{ if \(blinkImgs\[o\] === im\) delete blinkImgs\[o\]; \};/.test(rs) && /if \(cyc\.on && cyc\.key && cyc\.key\.indexOf\(o \+ '-'\) !== 0\) cycleHide\(\);/.test(fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8')));
+  check('the room greets her on the day, You holds the birthday field, the module loads after Plaza friends, the card has its wish and direction styles and no numbers grid, and no em dash in the words', /OvuBirthday\.isToday\(\) \? 'Happy birthday'/.test(rs) && /id="youBirthday"/.test(rs) && /OvuBirthday\.renderField/.test(rs) && html.indexOf('ovu-friends.js') < html.indexOf('ovu-birthday.js') && /\.prop\.event\{/.test(css) && /\.bcard\{/.test(css) && /\.bdir\{/.test(css) && /\.bwish\{/.test(css) && /\.bwho\{/.test(css) && css.indexOf('.bstats') < 0 && /\.outfit\.locked\{/.test(css) && mod.indexOf('—') < 0);
+})();
+
+(function birthdayAutoOpen() {
+  console.log('2k22b. the birthday postcard opens by itself only into a settled, free room, and a sheet that covers it unseen does not use it up (Codex verification, 21 Oct)');
+  function env(opts) {
+    var T = 0, q = [], seq = 0, hooks = {}, sheet = { id: opts.sheet || null, body: node() }, log = [], sleeping = false, state = opts.state || {}, profile = { birthday: opts.mmdd, name: 'Mei' }, subs = [];
+    function node() { var n = { ls: {}, style: {}, setAttribute: function () { }, addEventListener: function (k, f) { (n.ls[k] = n.ls[k] || []).push(f); }, fire: function (k) { (n.ls[k] || []).forEach(function (f) { f({ target: { closest: function () { return null; } }, stopPropagation: function () { } }); }); } }; return n; }
+    var props = opts.cake ? { kids: [], querySelectorAll: function () { return []; }, appendChild: function (n) { props.kids.push(n); } } : null; /* the room's props layer, where the cake stands */
+    function emit(k, a) { (hooks[k] || []).forEach(function (f) { f(a); }); }
+    var w = { console: console }; w.window = w;
+    w.setTimeout = function (fn, ms) { var id = ++seq; q.push({ id: id, at: T + (ms || 0), f: fn, live: true }); return id; };
+    w.clearTimeout = function (id) { q.forEach(function (t) { if (t.id === id) t.live = false; }); };
+    w.setInterval = function (fn, ms) { var id = ++seq, tick = function () { fn(); q.push({ id: id, at: T + ms, f: tick, live: true }); }; q.push({ id: id, at: T + ms, f: tick, live: true }); return id; };
+    var RD = Date; function FD(a) { return arguments.length ? new RD(a) : new RD(); } FD.now = function () { return 1e12 + T; }; FD.parse = RD.parse; FD.UTC = RD.UTC; w.Date = FD;
+    w.OvuStore = { profile: function () { return profile; }, state: function () { return state; }, setState: function (p) { Object.keys(p).forEach(function (k) { state[k] = p[k]; }); subs.forEach(function (f) { f(); }); }, setProfile: function (p) { Object.assign(profile, p); subs.forEach(function (f) { f(); }); }, subscribe: function (f) { subs.push(f); }, today: function () { return opts.today; } };
+    w.OvuRoom = { ART: '', els: { props: props }, on: function (k, f) { (hooks[k] = hooks[k] || []).push(f); }, busy: function () { return !!sheet.id || sleeping; }, layout: function () { return opts.cake ? { id: 'room' } : null; },
+      openSheet: function (id) { if (sheet.id) emit('sheetReplace', id); sheet.id = id; sheet.body = node(); log.push(id); }, closeSheet: function () { if (!sheet.id) return; sheet.id = null; emit('sheetHide'); } };
+    w.document = { hidden: false, createElement: function () { return node(); }, addEventListener: function () { }, getElementById: function (id) { return id === 'sheetBody' ? sheet.body : null; } };
+    vm.runInContext(fs.readFileSync(path.join(root, 'ovu-birthday.js'), 'utf8'), vm.createContext(w), { filename: 'ovu-birthday.js' });
+    (hooks.boot || []).forEach(function (f) { f(); });
+    return { run: function (ms) { var end = T + ms; for (;;) { var due = q.filter(function (t) { return t.live && t.at <= end; }).sort(function (a, b) { return a.at - b.at || a.id - b.id; }); if (!due.length) break; due[0].live = false; T = due[0].at; due[0].f(); } T = end; },
+      R: w.OvuRoom, S: w.OvuStore, log: log, sheet: sheet, sleep: function (v) { sleeping = v; }, shown: function () { return (state.birthday || {}).shown; }, cake: function () { return props && props.kids[props.kids.length - 1]; } };
+  }
+  var DAY = { mmdd: '10-21', today: '2026-10-21' };
+  var a = env(DAY), sync = a.log.length; a.run(450); var early = a.log.length; a.run(100);
+  check('on her birthday the postcard waits a moment, then opens into the free room once and counts as shown', sync === 0 && early === 0 && a.log.join() === 'birthday' && a.shown() === 2026);
+  var b = env(Object.assign({ sheet: 'window' }, DAY)); b.run(100);
+  b.R.closeSheet(); b.sleep(true); b.run(3000); /* Window's Bedtime: its sheet closes, then bedtime starts at once */
+  var asleep = { log: b.log.length, shown: b.shown() };
+  b.sleep(false); b.run(2500);
+  check('a sheet closing on the way to bedtime is not taken for a free room: nothing opens or counts while she sleeps, and the card opens when she is up', asleep.log === 0 && asleep.shown === undefined && b.log.join() === 'birthday' && b.shown() === 2026, JSON.stringify(asleep));
+  var c = env(DAY); c.run(600); c.R.openSheet('plaza'); c.run(5);
+  var undone = { shown: c.shown() }; c.R.closeSheet(); c.run(600);
+  check('a sheet that replaces the postcard before she touched it does not use it up: it opens again once the room is free', c.log.join() === 'birthday,plaza,birthday' && undone.shown === null && c.shown() === 2026, c.log.join() + ' ' + JSON.stringify(undone));
+  var d = env(DAY); d.run(600); d.sheet.body.fire('pointerdown'); d.R.openSheet('plus'); d.run(5); d.R.closeSheet(); d.run(3000);
+  var e = env(DAY); e.run(600); e.run(200); e.R.closeSheet(); e.run(3000);
+  var g = env(DAY); g.run(600); g.run(1600); g.R.openSheet('lane'); g.run(5); g.R.closeSheet(); g.run(3000);
+  check('touched, closed by her, or up long enough to be seen, it counts as shown and does not come back that day', d.log.join() === 'birthday,plus' && d.shown() === 2026 && e.log.join() === 'birthday' && e.shown() === 2026 && g.log.join() === 'birthday,lane' && g.shown() === 2026, [d.log, e.log, g.log].join(' | '));
+  var h = env(DAY); for (var i = 0; i < 5; i++) { h.run(100); h.S.setState({ tick: i }); } h.run(100);
+  var k = env(Object.assign({ state: { birthday: { shown: 2026 } } }, DAY)); k.run(3000);
+  var n = env({ mmdd: '10-22', today: '2026-10-21' }); n.run(3000);
+  check('store changes while it waits never push it back; already shown this year, or not her birthday, it stays shut', h.log.join() === 'birthday' && k.log.length === 0 && n.log.length === 0, [h.log, k.log, n.log].join(' | '));
+  var ck = env(Object.assign({ sheet: 'window', cake: true }, DAY)); ck.run(100); var cakeThere = !!ck.cake();
+  ck.R.closeSheet(); ck.run(350); ck.cake().fire('click'); ck.run(2500); ck.R.closeSheet(); ck.run(3000);
+  check('tapping the cake while the card waits to open counts as shown: it opens once, and closing it brings no second card (Codex verification 2)', cakeThere && ck.log.join() === 'birthday' && ck.shown() === 2026, ck.log.join());
+  var ls = env(Object.assign({ sheet: 'window' }, DAY)); ls.run(100); ls.R.closeSheet(); ls.sleep(true); ls.run(49900);
+  var slept = ls.log.length; ls.sleep(false); ls.run(9000); var beforeLook = ls.log.length; ls.run(2000);
+  check('after a sleep that outlasts the retries, the 30-second look opens the card once she is up', slept === 0 && beforeLook === 0 && ls.log.join() === 'birthday' && ls.shown() === 2026, [slept, beforeLook, ls.log.join()].join(' '));
+})();
+
+(function oneActivityAndRedress() {
+  console.log('2k23. one activity at a time, and a new outfit is drawn in the picture she is in (Codex sweep, 21 Oct)');
+  var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  function fnBody(src, name) { var i = src.indexOf('function ' + name + '('); if (i < 0) return ''; var d = 0, j = src.indexOf('{', i); for (var k = j; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}') { d--; if (!d) return src.slice(i, k + 1); } } return ''; }
+  /* the rule itself: the room's activityNow, run on stand-ins for each activity in turn */
+  var an = fnBody(rs, 'activityNow'), bl = fnBody(rs, 'busyLine'), rb = fnBody(rs, 'refuseBusy');
+  function room(o) {
+    var c = vm.createContext({ practice: o.practice || null, session: o.session || null, window: {}, toasts: [], hud: { on: false, classList: { add: function (k) { if (k === 'on') c.hud.on = true; } } } });
+    c.window.OvuMorning = { active: function () { return !!o.morning; }, reveal: function () { c.revealed = 'morning'; } };
+    c.window.OvuSeats = { active: function () { return !!o.seat; }, state: function () { return o.seat ? { seat: 'street' } : null; }, SEATS: { street: { practice: 'street' } }, SCRIPTS: { street: { name: 'Sounds of the street' } }, reveal: function () { c.revealed = 'seat'; } };
+    c.OvuMorning = c.window.OvuMorning; c.OvuSeats = c.window.OvuSeats; c.toast = function (t) { c.toasts.push(t); };
+    try { vm.runInContext(an + bl + rb, c); } catch (e) { } return c;
+  }
+  function ev(code, c) { try { return vm.runInContext(code, c); } catch (e) { return '(missing: ' + e.message + ')'; } } /* an old room without the rule fails here instead of stopping the run */
+  var none = room({}), pr = room({ practice: { a: { name: 'Brushing teeth' } } }), se = room({ session: { kind: 'breathe' } }), er = room({ session: { kind: 'erin' } }), mo = room({ morning: true }), st = room({ seat: true });
+  var rp = ev('refuseBusy()', pr), rse = ev('refuseBusy()', se), rmo = ev('refuseBusy()', mo), rst = ev('refuseBusy()', st), rn = ev('refuseBusy()', none);
+  check('activityNow names the one running activity: a practice, Just breathe or breathing with Erin, Morning start, a bench practice by its own name, and nothing in a free room', ev('activityNow()', none) === null && ev('activityNow().name', pr) === 'Brushing teeth' && ev('activityNow().name', se) === 'Just breathe' && ev('activityNow().name', er) === 'Breathing with Erin' && ev('activityNow().kind', mo) === 'morning' && ev('activityNow().name', st) === 'Sounds of the street');
+  check('refuseBusy refuses with one line naming it and brings that activity\'s own controls back; a free room is not refused and hears nothing', rp && pr.toasts[0] === 'Brushing teeth is running. Finish it, or tap Stop first.' && pr.hud.on && rse && se.hud.on && rmo && mo.revealed === 'morning' && rst && st.revealed === 'seat' && st.toasts[0].indexOf('Sounds of the street is running') === 0 && rn === false && !none.toasts.length && !none.hud.on);
+  var starts = ['runPractice', 'runSession', 'openMindfulness'].map(function (n) { return fnBody(rs, n).split('\n').slice(1, 3).join('\n'); });
+  check('a practice, a session and the mat each ask the rule before anything else, so nothing of them is half begun (a running one of their own kind just shows its bar)', starts.every(function (s) { return /if \(refuseBusy\(\)\) return;/.test(s); }) && /if \(practice\) \{ hud\.classList\.add\('on'\); return; \}/.test(starts[0]) && /if \(session\) \{ hud\.classList\.add\('on'\); return; \}/.test(starts[1]) && /if \(session\) \{ hud\.classList\.add\('on'\); return; \}/.test(starts[2]));
+  check('the Mind tab is not selected while something else runs, and a practice ending never hides another activity\'s bar', /if \(k === 'mind' && activityNow\(\)\) \{ openMindfulness\(\); return; \}/.test(rs) && (rs.match(/if \(!session\) hud\.classList\.remove\('on'\); avatar\.classList\.remove\('acting'\); restorePose\(\); practice = null;/g) || []).length === 2 && /activityNow: activityNow, busyLine: busyLine, refuseBusy: refuseBusy/.test(rs));
+  /* Morning start, the seats and the care steps, loaded for real, with a room that says a practice is running */
+  function busyRoom() {
+    var R = { calls: 0, sheets: [], toasts: [], hooks: {}, ART: '', LAYOUTS: {}, els: {},
+      on: function (n, f) { (R.hooks[n] = R.hooks[n] || []).push(f); }, asleep: function () { return false; }, layout: function () { return { id: 'street' }; }, sheetOpen: function () { return false; },
+      activityNow: function () { return { kind: 'practice', name: 'Brushing teeth', icon: 'self_improvement' }; }, busyLine: function (a) { return a.name + ' is running. Finish it, or tap Stop first.'; },
+      refuseBusy: function () { R.calls++; R.toasts.push(R.busyLine(R.activityNow())); return true; }, toast: function (t) { R.toasts.push(t); }, openSheet: function (id) { R.sheets.push(id); }, hideSheet: function () { }, emit: function () { }, moment: function () { return ''; },
+      sessionOn: function () { return false; }, practiceOn: function () { return true; }, meditating: function () { return false; }, hudOn: function () { } };
+    return R;
+  }
+  var wm = { console: console, document: { addEventListener: function () { }, querySelector: function () { return null; }, getElementById: function () { return null; } } }; wm.window = wm; vm.createContext(wm);
+  ['ovu-mindful.js', 'ovu-morning.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), wm, { filename: f }); });
+  var Rm = busyRoom(); wm.OvuRoom = Rm; wm.OvuStore = { state: function () { return {}; }, today: function () { return '2026-10-21'; } };
+  function tryRun(f) { try { f(); } catch (e) { } } /* an older module that goes on past the rule fails the check below instead of stopping the run */
+  tryRun(function () { wm.OvuMorning.open(); }); var openCalls = Rm.calls, openSheets = Rm.sheets.length; tryRun(function () { wm.OvuMorning.begin('yourway', true); });
+  check('Morning start neither opens its choice sheet nor begins over a running practice: each asks the rule, which says what is running', openCalls === 1 && openSheets === 0 && Rm.calls === 2 && !wm.OvuMorning.active() && Rm.toasts[1] === 'Brushing teeth is running. Finish it, or tap Stop first.');
+  var ws = fresh('2026-10-21'), Rs = busyRoom(); ws.OvuRoom = Rs; ws.OvuGarden = { reseat: function () { } }; ws.OvuWalk = { walking: function () { return false; }, napping: function () { return false; } };
+  ws.document = { addEventListener: function () { }, getElementById: function () { return null; }, createElement: function () { throw new Error('nothing is drawn when refused'); } };
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), ws, { filename: 'ovu-seats.js' });
+  var played = 0; ws.OvuSound = { play: function () { played++; } };
+  tryRun(function () { ws.OvuSeats.open('street'); }); var seatOpen = { calls: Rs.calls, sheets: Rs.sheets.length }; tryRun(function () { ws.OvuSeats.begin('street'); });
+  check('a bench practice neither opens its sheet nor begins over a running practice, plays no begin sound, and draws no sitter', seatOpen.calls === 1 && seatOpen.sheets === 0 && Rs.calls === 2 && !ws.OvuSeats.active() && played === 0);
+  var wc = fresh('2026-10-21'), Rc = busyRoom(), ran = 0; Rc.layout = function () { return { id: 'farm' }; }; wc.OvuRoom = Rc;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-care.js'), 'utf8'), wc, { filename: 'ovu-care.js' });
+  wc.OvuCare.slowMs = 0; var box = { isConnected: true, className: 'untouched' };
+  var refused; tryRun(function () { refused = wc.OvuCare.step(box, { scene: 'farm', ms: 4000, verb: 'Watering' }, function () { ran++; }); });
+  Rc.refuseBusy = function () { return false; }; var free = wc.OvuCare.step(box, { scene: 'farm', ms: 4000, verb: 'Watering' }, function () { ran++; });
+  check('a care step refuses to begin while another activity runs (the box untouched, its save never run), and begins as before in a free room', refused === false && Rc.calls === 1 && box.className === 'untouched' && free === true && ran === 1);
+  /* the garden bench is refused before she sits down */
+  var gs = fs.readFileSync(path.join(root, 'ovu-garden.js'), 'utf8');
+  check('the garden bench asks the rule before its sheet and again before she sits, so a refusal never leaves her seated or hidden', /if \(R\.sessionOn\(\)\) \{ R\.hudOn\(true\); return; \}\n    if \(R\.refuseBusy && R\.refuseBusy\(\)\) return;/.test(gs) && /if \(R\.sessionOn\(\)\) return; if \(R\.refuseBusy && R\.refuseBusy\(\)\) return;[^\n]*\n\s*sitAt\(spot, holoSpot, back\)/.test(gs));
+  /* a new outfit: whatever picture she is in is redrawn in it */
+  var so = fnBody(rs, 'showOutfit') + fnBody(rs, 'setOutfit'), rd = fnBody(rs, 'redress') + fnBody(rs, 'setOutfit'), tw = fnBody(rs, 'twirlOk'); /* the picture moved to showOutfit with the fitting room (22 Oct integration) */
+  check('a picked outfit (never a silent internal change) is redrawn in the picture she is in: the sleeper, the mat, a practice pose, Morning start\'s step, a held activity pose, and every sitter through the outfit event', /if \(!silent\) redress\(\);/.test(so) && /wearImg\(sleeper\.querySelector\('img'\), sleepSrc\(o\)/.test(rd) && /if \(meditating && !meditator\.classList\.contains\('onseat'\)\) wearImg\(meditator\.querySelector\('img'\), meditateSrc\(o\)/.test(rd) && /if \(practice\) setPose\(practice\.a\.pose\);/.test(rd) && /OvuMorning\.repose\(\)/.test(rd) && /lastPose && avatar\.classList\.contains\('acting'\)\) setPose\(lastPose\)/.test(rd) && /emit\('outfit', o\)/.test(rd) && !/OvuMorning\.repose/.test(so));
+  check('an outfit picked while she sleeps stands when she wakes (the bedtime outfit is not put back over it), and no hop plays on a hidden or seated standing avatar', /if \(sl && sl\.prevOutfit\) S\.setState\(\{ sleeping: Object\.assign\(\{\}, sl, \{ prevOutfit: null \}\) \}\)/.test(rd) && /if \(!silent && !avatar\.classList\.contains\('hidden'\) && !scene\.classList\.contains\('sitting'\)\) \{ avatar\.classList\.add\('poofing'\)/.test(so));
+  check('no twirl over a held activity pose or behind a seated sitter', /!avatar\.classList\.contains\('acting'\) && !scene\.classList\.contains\('sitting'\)/.test(tw) && /var lastPose = null;[\s\S]{0,200}function setPose\(pose\) \{\n    finishTwirl\(\); lastPose = pose;/.test(rs) && /function restorePose\(\) \{ lastPose = null;/.test(rs));
+  var sitters = { 'ovu-seats.js': /R\.on\('outfit', function \(\) \{ if \(run && run\.el && G\.reseat\) G\.reseat\(run\.el, run\.spot\.seat\); \}\)/, 'ovu-barn.js': /R\.on\('outfit'[^\n]*reseat\(sitting\.el, CAVE\.seat\)/, 'ovu-harbour.js': /R\.on\('outfit'[^\n]*reseat\(sitting\.el, HARBOUR\.seat\)/, 'ovu-tones.js': /R\.on\('outfit'[^\n]*reseat\(sitting\.el, CAVE\.seat\)/, 'ovu-garden.js': /R\.on\('outfit', function \(\) \{\n      if \(sitting && sitting\.el\) reseat\(sitting\.el, sitting\.spot && sitting\.spot\.seat\);\n      if \(R\.els\.meditator && R\.els\.meditator\.classList\.contains\('onseat'\) && R\.meditating\(\)\) reseat\(R\.els\.meditator, benchSeat/ };
+  var unwired = Object.keys(sitters).filter(function (f) { return !sitters[f].test(fs.readFileSync(path.join(root, f), 'utf8')); });
+  check('every sitter is redrawn on a new outfit: the garden and plaza benches, Breathe with Erin on the bench, a seated practice, the warm stone, the tones and the harbour bench', unwired.length === 0, unwired.join(', '));
+  var rsBody = fnBody(gs, 'reseat');
+  check('a re-dress keeps her seated: the seated sprite and its lap line land together, with no sit sound, and a slower earlier swap never lands over a newer one', /el\._dress !== tok/.test(rsBody) && /if \(seat\) seatPlace\(el, seat\)/.test(rsBody) && rsBody.indexOf('OvuSound') < 0 && /G\.reseat = reseat;/.test(gs));
+})();
+
+(function sleepQuality() {
+  console.log('sleep quality: stages, time awake and time in bed travel with imported nights; a summary with denominators, no score');
+  var w = fresh('2026-10-18'), H = w.OvuHealth, S = w.OvuStore, A = w.OvuAgents;
+  var r = H.parseAppleXml(fs.readFileSync(path.join(root, 'tools/fixtures/apple-export-mini.xml'), 'utf8')), n1 = r.sleep[0], n2 = r.sleep[1];
+  check('Apple stages are counted one minute one stage: core 190, deep 240, and REM written inside deep is not counted twice', n1 && JSON.stringify(n1.stageMin) === JSON.stringify({ core: 190, deep: 240, rem: 0 }), JSON.stringify(n1));
+  check('the stage minutes never add up to more than the minutes asleep', n1 && n1.stageMin.core + n1.stageMin.deep + n1.stageMin.rem <= n1.asleepMin);
+  check('Apple awake records inside the night become time awake (20 min); hours still leave it out', n1 && n1.awakeMin === 20 && n1.asleepMin === 430);
+  check('the phone\'s in-bed block around the night becomes time in bed (23:05 to 07:10, 485 min)', n1 && n1.inBedMin === 485);
+  check('an old numeric night with no stages, awake or in-bed records carries none of them (unknown, not zero)', n2 && n2.stageMin === undefined && n2.awakeMin === undefined && n2.inBedMin === undefined, JSON.stringify(n2));
+  var gb = H.googleBuilder(); gb.json(fs.readFileSync(path.join(root, 'tools/fixtures/fit-session-sleep.json'), 'utf8'), '2025-05-10T23_12_00+08_00_SLEEP.json');
+  var g = gb.result().sleep[0];
+  check('Google Fit light, deep and REM segments map to core, deep and rem, and its awake segment to time awake', g && JSON.stringify(g.stageMin) === JSON.stringify({ core: 108, deep: 120, rem: 218 }) && g.awakeMin === 20 && g.asleepMin === 446, JSON.stringify(g));
+  var gb2 = H.googleBuilder(); gb2.json(JSON.stringify({ fitnessActivity: 'sleep', startTime: '2025-05-12T23:00:00.000+08:00', endTime: '2025-05-13T06:00:00.000+08:00', segment: [{ sleepSegmentType: 4, startTime: '2025-05-12T23:00:00.000+08:00', endTime: '2025-05-13T02:00:00.000+08:00' }, { sleepSegmentType: 1, startTime: '2025-05-13T02:00:00.000+08:00', endTime: '2025-05-13T02:40:00.000+08:00' }, { sleepSegmentType: 5, startTime: '2025-05-13T02:40:00.000+08:00', endTime: '2025-05-13T06:00:00.000+08:00' }] }), 'b_SLEEP.json');
+  var g2 = gb2.result().sleep[0];
+  check('numeric Fit sleep segment types (4 light, 1 awake, 5 deep) are read too', g2 && g2.stageMin.core === 180 && g2.stageMin.deep === 200 && g2.awakeMin === 40, JSON.stringify(g2));
+
+  var p = H.apply(r, S, { kinds: ['sleep'] }), e1 = S.list('sleep').filter(function (e) { return e.date === '2025-06-02'; })[0];
+  check('an imported night keeps its stages, time awake and time in bed in the diary', p.counts.sleep === 2 && e1 && e1.data.stageMin.deep === 240 && e1.data.awakeMin === 20 && e1.data.inBedMin === 485, JSON.stringify(e1 && e1.data));
+  var w2 = fresh('2025-06-03'), S2 = w2.OvuStore, H2 = w2.OvuHealth;
+  S2.add('sleep', '2025-06-02', { bedTime: '22:00', wakeTime: '06:00' });
+  H2.apply(r, S2, { kinds: ['sleep'] });
+  var hw = S2.list('sleep').filter(function (e) { return e.date === '2025-06-02'; });
+  check('a night she wrote herself still wins: the import adds nothing on that date', hw.length === 1 && hw[0].data.stageMin === undefined && hw[0].source !== 'apple-health', JSON.stringify(hw));
+
+  var w3 = fresh('2026-10-18'), S3 = w3.OvuStore, A3 = w3.OvuAgents, t = S3.today();
+  [[-6, '23:00', '06:30', 390, 40, 450, { core: 200, deep: 90, rem: 100 }], [-5, '23:30', '06:30', 380, 35, 430, { core: 190, deep: 90, rem: 100 }], [-4, '00:15', '07:00', 370, 10, 410, null], [-3, '23:10', '07:10', 450, 45, null, { core: 250, deep: 100, rem: 100 }], [-2, '23:40', '06:40', 400, null, null, null]].forEach(function (x) {
+    var d = { bedTime: x[1], wakeTime: x[2], asleepMin: x[3], hours: Math.round(x[3] / 6) / 10, mode: 'import' };
+    if (x[4] !== null) d.awakeMin = x[4]; if (x[5] !== null) d.inBedMin = x[5]; if (x[6]) d.stageMin = x[6];
+    S3.addMany([{ type: 'sleep', date: addDays(t, x[0]), data: d, source: 'apple-health' }]);
+  });
+  var q = A3.sleepQuality(addDays(t, -27), t);
+  check('the summary counts nights and keeps each measure\'s own denominator', q.nights === 5 && q.withHours === 5 && q.awakeNights === 4 && q.effNights === 3 && q.stagedNights === 3 && q.timed === 5, JSON.stringify(q));
+  check('nights at 7 h or more are counted against nights with hours (one of five)', q.sevenPlus === 1 && q.avgHours === 6.6, JSON.stringify(q));
+  check('typical time awake is the median of measured nights only, and 31 min or more is counted (3 of 4)', q.awakeMedian === 38 && q.awakeOver30 === 3);
+  check('time in bed spent asleep is the median of nights with both measures (88%)', q.effMedian === 88, JSON.stringify(q));
+  check('timing spread is circular, so 23:00 and 00:15 are close, not 23 hours apart', typeof q.midSD === 'number' && q.midSD < 60 && q.bedSD < 60, JSON.stringify(q));
+  check('stage shares are percentages of staged minutes, from staged nights only', q.stages && q.stages.core + q.stages.deep + q.stages.rem >= 99 && q.stages.core === 52, JSON.stringify(q.stages));
+  var rows = A3.sleepQualityRows(q), labels = rows.map(function (x) { return x[0]; });
+  check('rows name each measure with its nights, call stages a device estimate and give no score', labels.indexOf('Awake in the night') > -1 && labels.indexOf('Sleep stages (device estimate)') > -1 && /3 of 4 nights measured/.test(rows[labels.indexOf('Awake in the night')][1]) && !rows.some(function (x) { return /score|good|poor/i.test(x.join(' ')); }), JSON.stringify(rows));
+  check('the journal rows show the quality lines even before any sleep details are answered', A3.sleepNotesRows(A3.sleepNotes(addDays(t, -27), t)).some(function (x) { return x[0] === 'Awake in the night'; }));
+  check('three measured nights awake 31 min or more in a week raise one watch note', A3.allFlags(t).filter(function (f) { return f.code === 'SLEEP_LONG_AWAKE'; }).length === 1);
+  var w4 = fresh('2026-10-18'), S4 = w4.OvuStore, A4 = w4.OvuAgents, t4 = S4.today();
+  [-3, -2, -1].forEach(function (k, i) { S4.add('sleep', addDays(t4, k), { bedTime: '23:00', wakeTime: '07:00' }); });
+  S4.addMany([{ type: 'sleep', date: addDays(t4, -4), data: { bedTime: '23:00', wakeTime: '07:00', asleepMin: 440, awakeMin: 50, mode: 'import' }, source: 'apple-health' }]);
+  check('nights without a measure of time awake never count towards the note', !A4.allFlags(t4).some(function (f) { return f.code === 'SLEEP_LONG_AWAKE'; }));
+  var qe = A4.sleepQuality(addDays(t4, -27), t4);
+  check('hand-written nights add hours and timing but no time awake, efficiency or stages', qe.withHours === 4 && qe.awakeNights === 1 && qe.effNights === 0 && qe.stages === null);
+
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-patterns.js'), 'utf8'), w3);
+  var sn = A3.sleepNotes(addDays(t, -27), t), sh = JSON.parse(JSON.stringify(sn));
+  sh.quality.effMedian = 400; sh.quality.awakeOver30 = 99; sh.quality.stages = { core: '<b>', deep: 1, rem: 1 };
+  var cq = w3.OvuPatterns.cleanShare({ sleepNotes: sh }).sleepNotes.quality;
+  check('a shared summary keeps quality numbers in range, never more marked than measured, and drops a broken stage line', cq.effNights === 0 && cq.awakeOver30 === cq.awakeNights && cq.stages === null && cq.awakeMedian === 38, JSON.stringify(cq));
+  var html = w3.OvuPatterns.sleepNotesHTML(sn);
+  check('the drawn card shows the quality lines and says stages are the device estimate', /Awake in the night/.test(html) && /device/.test(html) && !/—/.test(html), html.slice(0, 300));
+  check('the evidence ledger names the NSF sleep quality panel', /Ohayon/.test(fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8')));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

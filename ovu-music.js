@@ -59,14 +59,17 @@
 
   /* ---------- themes: voice, accompaniment, tempo per band, and the phrases for each slot (first choice, second choice) ---------- */
   var THEMES = {
-    home: { name: 'Music box', voice: 'pluck', acc: 'broken', tempo: { morning: 72, day: 72, evening: 66, night: 58 }, slots: [['A1a', 'A1d'], ['A2a', 'A2b'], ['A1b', 'A1a'], ['A2b', 'A2a'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1a', 'A1b'], ['A2d']] },
-    garden: { name: 'Garden', voice: 'soft', acc: 'pad', tempo: { morning: 76, day: 76, evening: 70, night: 60 }, grace: true, slots: [['A1c', 'A1a'], ['A2c', 'A2a'], ['A1a', 'A1c'], ['A2a', 'A2c'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1c', 'A1a'], ['A2d']] },
-    farm: { name: 'Farm', voice: 'warm', acc: 'broken', tempo: { morning: 70, day: 70, evening: 64, night: 58 }, slots: [['A1d', 'A1a'], ['A2a', 'A2c'], ['A1a', 'A1d'], ['A2c', 'A2a'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1d', 'A1a'], ['A2d']] },
-    street: { name: 'Street', voice: 'pluck', acc: 'light', tempo: { morning: 80, day: 80, evening: 72, night: 60 }, slots: [['A1d', 'A1b'], ['A2b', 'A2a'], ['A1b', 'A1d'], ['A2a', 'A2b'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1d', 'A1b'], ['A2d']] },
-    plaza: { name: 'Plaza', voice: 'bell', acc: 'pad', tempo: { morning: 84, day: 84, evening: 76, night: 62 }, slots: [['A1b', 'A1a'], ['A2b', 'A2a'], ['A1a', 'A1b'], ['A2a', 'A2b'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1b', 'A1a'], ['A2d']] },
-    harbour: { name: 'Harbour', voice: 'soft', acc: 'pad', sparse: true, tempo: { morning: 64, day: 64, evening: 60, night: 56 }, slots: [['A1c', 'A1a'], ['A2c', 'A2a'], ['A1c', 'A1a'], ['A2c', 'A2a'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1c', 'A1a'], ['A2d']] }
+    home: { name: 'Music box', voice: 'pluck', acc: 'broken', tempo: { morning: 61, day: 61, evening: 56, night: 49 }, slots: [['A1a', 'A1d'], ['A2a', 'A2b'], ['A1b', 'A1a'], ['A2b', 'A2a'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1a', 'A1b'], ['A2d']] },
+    garden: { name: 'Garden', voice: 'soft', acc: 'pad', tempo: { morning: 65, day: 65, evening: 60, night: 51 }, grace: true, slots: [['A1c', 'A1a'], ['A2c', 'A2a'], ['A1a', 'A1c'], ['A2a', 'A2c'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1c', 'A1a'], ['A2d']] },
+    farm: { name: 'Farm', voice: 'warm', acc: 'broken', tempo: { morning: 60, day: 60, evening: 54, night: 49 }, slots: [['A1d', 'A1a'], ['A2a', 'A2c'], ['A1a', 'A1d'], ['A2c', 'A2a'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1d', 'A1a'], ['A2d']] },
+    street: { name: 'Street', voice: 'pluck', acc: 'light', tempo: { morning: 68, day: 68, evening: 61, night: 51 }, slots: [['A1d', 'A1b'], ['A2b', 'A2a'], ['A1b', 'A1d'], ['A2a', 'A2b'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1d', 'A1b'], ['A2d']] },
+    plaza: { name: 'Plaza', voice: 'bell', acc: 'pad', tempo: { morning: 71, day: 71, evening: 65, night: 53 }, slots: [['A1b', 'A1a'], ['A2b', 'A2a'], ['A1a', 'A1b'], ['A2a', 'A2b'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1b', 'A1a'], ['A2d']] },
+    /* the secret cave and its hot spring (Jamie, 22 Oct: "mystical background music that is extremely therapeutic"): no tune at all,
+     * a D drone, singing-bowl strikes and slow water drops in a deep hall; built by caveEvents, not the phrase bank */
+    cave: { name: 'Spring', voice: 'bowl', acc: 'drone', ambient: true, tempo: { morning: 48, day: 48, evening: 46, night: 44 }, slots: [['A1a']] },
+    harbour: { name: 'Harbour', voice: 'soft', acc: 'pad', sparse: true, tempo: { morning: 54, day: 54, evening: 51, night: 48 }, slots: [['A1c', 'A1a'], ['A2c', 'A2a'], ['A1c', 'A1a'], ['A2c', 'A2a'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1c', 'A1a'], ['A2d']] }
   };
-  var SCENE_THEME = { room: 'home', house: 'home', bathhouse: 'home', familyhome: 'home', garden: 'garden', greenhouse: 'garden', farm: 'farm', barn: 'farm', barninside: 'farm', heninside: 'farm', street: 'street', plaza: 'plaza', harbour: 'harbour', lane: 'harbour', cave: null };
+  var SCENE_THEME = { room: 'home', house: 'home', bathhouse: 'home', familyhome: 'home', garden: 'garden', greenhouse: 'garden', farm: 'farm', barn: 'farm', barninside: 'farm', heninside: 'farm', street: 'street', plaza: 'plaza', harbour: 'harbour', lane: 'harbour', cave: 'cave' };
   /* the theme for a layout: by id, else by its scene, else the home tune; the cave has none */
   function themeFor(L) {
     if (!L) return 'home';
@@ -96,9 +99,23 @@
     while (cand >= m) cand -= 12; while (m - cand > 12) cand += 12; /* the nearest such pitch below */
     return target + (Math.floor(cand / 12) - 1);
   }
+  /* the cave: deterministic per loop (a small seeded generator), so tests and the offline render hear the same thing */
+  function rng(seed) { var x = (seed * 2654435761) >>> 0 || 1; return function () { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return (x % 100000) / 100000; }; }
+  var BOWLS = ['D4', 'F#4', 'A4', 'B4', 'D5', 'E5', 'A3'], DRIPS = ['A5', 'B5', 'D6', 'E6', 'F#6'];
+  function caveEvents(band, loopIndex) {
+    var r = rng(loopIndex + 7), out = [], len = LOOP_BEATS, night = band === 'night';
+    for (var b = 0; b < len; b += 16) out.push({ t: b, part: 'pad', pitches: ['D2', 'A2', 'D3'], d: 17, w: 1, bar: b / BEATS, chord: 'D' }); /* the drone breathes every four bars */
+    for (var b2 = 0; b2 < len; b2 += 32) out.push({ t: b2 + 8, part: 'pad', pitches: ['A3', 'E4'], d: 14, w: 0, bar: (b2 + 8) / BEATS, chord: 'D' }); /* a fifth that swells and fades */
+    var t = 2 + r() * 4; while (t < len - 4) { out.push({ t: t, part: 'bowl', pitch: BOWLS[Math.floor(r() * BOWLS.length)], d: 12, w: 1, bar: Math.floor(t / BEATS), chord: 'D' }); t += (night ? 14 : 10) + r() * 10; }
+    var u = 5 + r() * 6; while (u < len - 2) { out.push({ t: u, part: 'drip', pitch: DRIPS[Math.floor(r() * DRIPS.length)], d: 0.5, w: 0, bar: Math.floor(u / BEATS), chord: 'D' }); u += 6 + r() * 14; }
+    out.forEach(function (e) { if (e.pitch) e.f = hz(e.pitch); if (e.pitches) e.fs = e.pitches.map(hz); });
+    out.sort(function (a, b) { return a.t - b.t; });
+    return out;
+  }
   /* the events of one loop: melody, grace notes, the answering voice, accompaniment and bass, in beats from the loop start */
   function events(themeId, band, loopIndex) {
     var t = THEMES[themeId] || THEMES.home, out = [], names = arrange(themeId, loopIndex);
+    if (t.ambient) return caveEvents(band, loopIndex);
     var night = band === 'night', evening = band === 'evening', morning = band === 'morning';
     names.forEach(function (ph, slot) {
       var base = slot * 16;
@@ -174,35 +191,39 @@
   }
 
   /* ---------- voices ---------- */
-  var LEVEL = { mel: 0.022, melLight: 0.015, grace: 0.008, ans: 0.011, acc: 0.012, pad: 0.0095, bass: 0.02 }; /* measured 21 Oct on the music bus: peaks about -26 dBFS, a loud second about -40, at the default slider */
+  var LEVEL = { bowl: 0.02, drip: 0.006, mel: 0.022, melLight: 0.015, grace: 0.008, ans: 0.011, acc: 0.012, pad: 0.0095, bass: 0.02 }; /* measured 21 Oct on the music bus: peaks about -26 dBFS, a loud second about -40, at the default slider */
   function hold(param, ctx) { var t = ctx.currentTime; try { if (param.cancelAndHoldAtTime) param.cancelAndHoldAtTime(t); else { param.cancelScheduledValues(t); param.setValueAtTime(param.value, t); } } catch (e) { } return t; }
   function ramp(param, ctx, target, secs) { var t = hold(param, ctx); param.linearRampToValueAtTime(target, t + Math.max(0.01, secs)); }
   /* one note into a layer: the voice shapes the partials and the envelope; every node stops on the clock and is dropped when it ends */
   function note(ctx, layer, ev, when, beatDur, voice) {
     var cap = ev.part === 'mel' || ev.part === 'bass' ? 12 : 10; if (layer.voices >= cap) return false;
     var secs = Math.max(0.12, ev.d * beatDur), peak = ev.part === 'mel' ? (ev.w ? LEVEL.mel : LEVEL.melLight) : LEVEL[ev.part] || 0.01;
+    if (ev.part === 'mel' || ev.part === 'ans' || ev.part === 'acc') { var hum = Math.sin((ev.t + 1) * 12.9898) * 43758.5453; hum = hum - Math.floor(hum); when += (hum - 0.5) * 0.024; peak *= 0.9 + hum * 0.2; } /* a human hand: about 12 ms early or late, 10 per cent softer or louder */
     var g = ctx.createGain(), nodes = [], partials;
-    if (ev.part === 'bass') partials = [[1, 'sine', 1], [2, 'sine', 0.35]];
+    if (ev.part === 'bowl') partials = [[1, 'sine', 1], [2.71, 'sine', 0.32], [5.18, 'sine', 0.1], [1.003, 'sine', 0.6]]; /* a singing bowl's inharmonic overtones, and a slow beat */
+    else if (ev.part === 'drip') partials = [[1, 'sine', 1]];
+    else if (ev.part === 'bass') partials = [[1, 'sine', 1], [2, 'sine', 0.35]];
     else if (ev.part === 'pad') partials = null;
     else if (ev.part === 'acc') partials = [[1, 'sine', 1], [2, 'triangle', 0.12]];
     else if (voice === 'bell') partials = [[1, 'sine', 1], [2, 'sine', 0.4], [3, 'sine', 0.1]];
     else if (voice === 'soft') partials = [[1, 'sine', 1], [1, 'triangle', 0.3]];
     else if (voice === 'warm') partials = [[1, 'triangle', 1], [2, 'sine', 0.2]];
-    else partials = [[1, 'triangle', 1], [2, 'sine', 0.35]]; /* the music box pluck */
-    var attack = ev.part === 'pad' ? 0.35 : ev.part === 'acc' ? 0.06 : ev.part === 'bass' ? 0.02 : voice === 'soft' ? 0.06 : voice === 'bell' ? 0.01 : 0.016;
-    var decay = ev.part === 'pad' ? Math.max(0.3, secs - attack) : ev.part === 'acc' ? 0.9 : ev.part === 'bass' ? Math.min(1.1, secs + 0.2) : voice === 'bell' ? 1.2 : voice === 'soft' ? 1.0 : Math.min(0.85, 0.45 + 0.1 * ev.d);
-    var release = ev.part === 'pad' ? 0.6 : 0;
+    else partials = [[1, 'sine', 1], [1.004, 'sine', 0.55], [4.01, 'sine', 0.08]]; /* a kalimba: a sine with a slightly detuned twin and a faint high tine */
+    var attack = ev.part === 'bowl' ? 0.01 : ev.part === 'drip' ? 0.004 : ev.part === 'pad' ? (ev.d > 8 ? 2.5 : 0.35) : ev.part === 'acc' ? 0.06 : ev.part === 'bass' ? 0.02 : voice === 'soft' ? 0.06 : voice === 'bell' ? 0.01 : 0.016;
+    var decay = ev.part === 'bowl' ? 7 : ev.part === 'drip' ? 0.35 : ev.part === 'pad' ? Math.max(0.3, secs - attack) : ev.part === 'acc' ? 0.9 : ev.part === 'bass' ? Math.min(1.1, secs + 0.2) : voice === 'bell' ? 1.2 : voice === 'soft' ? 1.0 : Math.min(0.85, 0.45 + 0.1 * ev.d);
+    var release = ev.part === 'pad' ? (ev.d > 8 ? 3 : 0.6) : 0;
     var end = when + attack + decay + release;
     g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(peak, when + attack);
     if (ev.part === 'pad') { g.gain.setValueAtTime(peak, when + attack + decay); g.gain.linearRampToValueAtTime(0, end); }
     else g.gain.setTargetAtTime(0, when + attack, decay / 4);
-    var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = ev.part === 'pad' ? 900 : ev.part === 'bass' ? 700 : voice === 'warm' ? 1500 : voice === 'bell' ? 3800 : 2400 + (ev.w ? 600 : 0);
+    var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = ev.part === 'bowl' ? 3200 : ev.part === 'drip' ? 5000 : ev.part === 'pad' ? (ev.d > 8 ? 600 : 900) : ev.part === 'bass' ? 700 : voice === 'warm' ? 1500 : voice === 'bell' ? 3800 : 2400 + (ev.w ? 600 : 0);
     g.connect(lp); lp.connect(layer.dry); if (layer.wet !== layer.dry) lp.connect(layer.wet);
     var freqs = ev.part === 'pad' ? ev.fs : [ev.f];
     freqs.forEach(function (f) {
       (partials || [[1, 'triangle', 0.6], [1, 'sine', 0.5]]).forEach(function (p) {
         var o = ctx.createOscillator(), og = ctx.createGain(); o.type = p[1]; o.frequency.setValueAtTime(f * p[0], when); og.gain.value = p[2] / (ev.part === 'pad' ? freqs.length : 1);
         if (voice === 'soft' && ev.part === 'mel') { try { var lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 5; lg.gain.value = 3; lfo.connect(lg); lg.connect(o.detune); lfo.start(when); lfo.stop(end + 0.05); nodes.push(lfo); } catch (e) { } }
+        if (ev.part === 'drip') o.frequency.exponentialRampToValueAtTime(f * 1.5, when + 0.08);
         o.connect(og); og.connect(g); o.start(when); o.stop(end + 0.05); nodes.push(o);
       });
     });
@@ -212,10 +233,10 @@
   }
   /* a music return of its own: dry and wet sends into a bus, the wet through a convolver made from the kit's impulse */
   function makeReturn(ctx, impulse, out) {
-    var bus = ctx.createGain(), dry = ctx.createGain(), wet = ctx.createGain(); dry.gain.value = 0.86; wet.gain.value = 0.2; dry.connect(bus);
+    var bus = ctx.createGain(), dry = ctx.createGain(), wet = ctx.createGain(); dry.gain.value = 0.8; wet.gain.value = 0.4; dry.connect(bus);
     try {
       var imp = impulse;
-      if (!imp) { var len = Math.round(ctx.sampleRate * 1.8); imp = ctx.createBuffer(2, len, ctx.sampleRate); for (var c = 0; c < 2; c++) { var d = imp.getChannelData(c); for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); } }
+      if (!imp) { var len = Math.round(ctx.sampleRate * 3); imp = ctx.createBuffer(2, len, ctx.sampleRate); for (var c = 0; c < 2; c++) { var d = imp.getChannelData(c); for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); } }
       var verb = ctx.createConvolver(); verb.buffer = imp; wet.connect(verb); verb.connect(bus);
     } catch (e) { wet.connect(bus); }
     bus.connect(out);

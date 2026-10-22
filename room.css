@@ -688,6 +688,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .dicons.free{display:block;inset:0}
 .dicons.free .dicon{position:absolute;width:22%;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .15s,background .15s}
 .dicon.lift{transform:scale(1.1);z-index:3;background:rgba(255,255,255,.22)}
+/* the folder icon and its name scale with the desk (cqw, capped at the usual sizes), so on the 16:10 desk a folder with a
+   two-line name stays under 31% of the desk's height at any width and with any font (the name never takes three lines):
+   the grid's rows are 31% apart, and deskSpots in room.js uses that 31 */
+.dicons.free{container-type:inline-size}
+.dicons.free .dicon svg{width:min(40px,10.1cqw);height:min(34px,8.6cqw)}
+.dicons.free .dicon span{font-size:min(9.5px,2.9cqw)}
 .menubar .mbtn{border:none;background:none;color:var(--rm-plum);cursor:pointer;display:flex;align-items:center;padding:0 4px}
 .menubar .mbtn .ms{font-size:17px}
 .wallpanel{display:none;margin-top:10px;background:#fff;border-radius:16px;padding:12px;box-shadow:var(--rm-shadow)}
@@ -1212,6 +1218,8 @@ html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;bord
 .podsug .ms{color:var(--rm-mauve);font-size:18px;flex:none}
 .linkbtn{border:none;background:none;padding:0;font:800 12.5px var(--sans);color:var(--rm-plum);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .podlist{display:flex;flex-direction:column;gap:6px}
+.podlist .podlocked{margin:10px 0 2px}
+.lbl-row #podShuffle{margin-left:auto;font:800 12px var(--sans)}
 .podep{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:14px;padding:8px 10px;cursor:pointer;font:inherit;color:inherit}
 .podep.on{border-color:var(--rm-mauve);background:#faf6fd}
 .podep i{font-style:normal;flex:none;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);font:900 11px var(--sans);color:var(--rm-plum)}
@@ -1255,6 +1263,7 @@ html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;bord
 .plushero span{display:block;font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}
 
 .c-choices{display:flex;flex-direction:column;gap:8px}
+summary.c-lbl{cursor:pointer;list-style-position:inside}
 .c-lbl{font:800 10.5px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)}
 .c-opt.c-req{border-style:solid;border-color:rgba(122,92,150,.45);background:rgba(255,255,255,.7)}
 .consent #cAgree:disabled{opacity:.5;cursor:not-allowed}
@@ -1850,6 +1859,34 @@ html[data-sky="night"] .moodcare .ms{color:#f6c9d6}
 /* shop names sit side by side on the map: let each wrap under its own shop rather than run into the next */
 .mapnode b{white-space:normal;max-width:66px;line-height:1.15}
 
+/* recipes and the Mediterranean check (ovu-recipes.js): cards that open the source's own page */
+.rnote{font:600 12.5px var(--sans);color:var(--rm-ink-2);line-height:1.55;margin:12px 2px 0}
+.rsub{font-family:var(--serif);font-weight:600;font-size:15px;color:var(--rm-plum);display:flex;align-items:center;gap:6px;margin:16px 2px 0}
+.rsub .ms{font-size:18px;color:var(--rm-mauve)}
+.rlist{display:grid;gap:8px;margin-top:10px}
+.rcard{display:flex;gap:11px;align-items:flex-start;background:#fff;border-radius:18px;padding:11px 12px;box-shadow:0 4px 14px rgba(90,66,116,.10);border:1.5px solid rgba(201,182,230,.45);text-decoration:none;color:var(--rm-ink);transition:transform .15s ease,box-shadow .15s ease}
+.rcard:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(90,66,116,.16)}
+.rcard .ric{flex-shrink:0;width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:21px;color:var(--rm-plum);background:linear-gradient(135deg,var(--rm-blush-2),var(--rm-lilac-2))}
+.rcard .rtx{min-width:0}
+.rcard b{display:block;font:800 13px/1.3 var(--sans);color:var(--rm-ink)}
+.rcard small{display:block;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}
+.rcard i{display:inline-flex;align-items:center;gap:3px;font:800 10px var(--sans);font-style:normal;letter-spacing:.03em;color:var(--rm-mauve);margin-top:5px}
+.rcard i .ms{font-size:13px}
+.mcount{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:12px;background:linear-gradient(135deg,var(--rm-cream),var(--rm-blush-2));border-radius:18px;padding:12px 14px}
+.mcount b{font-family:var(--serif);font-weight:600;font-size:22px;color:var(--rm-plum)}
+.mcount span{font:700 12px var(--sans);color:var(--rm-ink-2)}
+.mqs{display:grid;gap:8px;margin-top:10px}
+.mq{background:#fff;border-radius:18px;padding:11px 12px;box-shadow:0 4px 14px rgba(90,66,116,.08);border:1.5px solid rgba(201,182,230,.4)}
+.mq p{font:700 12.5px/1.45 var(--sans);color:var(--rm-ink)}
+.mq p b{color:var(--rm-mauve)}
+.mq small{display:block;font:600 11px/1.4 var(--sans);color:var(--rm-ink-2);margin-top:2px} /* 5.7:1 on white: these hints say what a serving is */
+.yn{display:flex;gap:6px;margin-top:8px}
+.yn button{flex:1;border:1.5px solid rgba(107,82,142,.16);background:var(--rm-paper);border-radius:99px;padding:7px 10px;font:800 12px var(--sans);color:var(--rm-ink-2);cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease}
+.yn button[data-yn="1"].on{background:#3a7559;border-color:#3a7559;color:#fff} /* white on it is 5.4:1 */
+.yn button[data-yn="0"].on{background:var(--rm-lilac);border-color:var(--rm-lilac);color:var(--rm-plum)}
+.yn button:focus-visible{outline:2px solid var(--rm-mauve);outline-offset:2px}
+.rsafe{display:flex;gap:8px;align-items:flex-start;background:var(--rm-paper-2);border-radius:14px;padding:10px 12px;margin-top:12px}
+.rsafe .ms{font-size:18px;color:var(--rm-mauve);flex-shrink:0;margin-top:1px}
 /* Today's check-in: six tiles, a calm status line, quick answers; a tick only for what she chose to count */
 .cihead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .cichoose{border:none;background:none;font:800 11.5px var(--sans);color:var(--rm-mauve);cursor:pointer;padding:10px 4px;min-height:44px}
@@ -1956,7 +1993,7 @@ html[data-sky="night"] .sqnote.info b{color:#f3eaff}
 @keyframes animalidle{0%,100%{transform:scale(1,1)}50%{transform:scale(1.012,.988)}}
 @keyframes animalidleflip{0%,100%{transform:scaleX(-1) scale(1,1)}50%{transform:scaleX(-1) scale(1.012,.988)}}
 .barnthing.animal:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:12px}
-.barnthing.nestegg{width:2.2%;transform:translate(-50%,-100%);pointer-events:none;transition:transform .9s ease,opacity .9s ease}
+.barnthing.nestegg{width:3.6%;filter:drop-shadow(0 2px 3px rgba(120,90,60,.35));transform:translate(-50%,-100%);pointer-events:none;transition:transform .9s ease,opacity .9s ease}
 .barnthing.nestegg svg{width:100%;display:block}
 .barnthing.nestegg.lifted{transform:translate(-50%,-180%);opacity:0}
 .barnlist{list-style:none;margin:4px 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -2165,6 +2202,18 @@ html[data-sky=night] .winfo summary{color:#b9d2f5}
 .btap-chips button small{display:block;font:600 10.5px var(--sans);opacity:.8}
 .lf-breath{position:absolute;left:50%;top:12%;transform:translateX(-50%);font:600 24px var(--serif);color:rgba(255,255,255,.82);letter-spacing:.08em;pointer-events:none}
 @media (prefers-reduced-motion: reduce){.sheet.luna-sheet:not(.on){transition:none}}
+/* in-app page viewer (ovu-pageview.js): older Rhythme pages slide over the room instead of leaving it */
+.pageview{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;background:var(--rm-bg,#f6f0fb);transform:translateX(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);box-shadow:-12px 0 40px rgba(60,30,90,.18)}
+.pageview.on{transform:none}
+.pv-bar{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 10px) max(14px,env(safe-area-inset-right,0px)) 10px max(14px,env(safe-area-inset-left,0px));background:rgba(255,255,255,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(150,120,190,.18)}
+.pv-back{width:38px;height:38px;border-radius:50%;border:0;background:rgba(122,92,150,.1);color:var(--rm-plum,#5b3f7a);display:grid;place-items:center;cursor:pointer}
+.pv-bar b{font:600 18px/1.2 var(--serif,Georgia,serif);color:var(--rm-plum,#5b3f7a);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pageview iframe{flex:1;width:100%;border:0;background:transparent}
+@media (prefers-reduced-motion:reduce){.pageview{transition:none}}
+/* hint dots and route markers sit lighter on the art (Jamie, 22 Oct: "more transparent ... looks nicer"); a seat's own dot hides while she sits there */
+.hotspot .pulse{opacity:.45}
+.hotspot:hover .pulse,.hotspot:focus-visible .pulse,.hotspot.show-tip .pulse{opacity:.85}
+#scene:has(.nb.sitter) .hotspot[data-id="bench"] .pulse,#scene:has(.nb.sitter) .hotspot[data-id="hbbench"] .pulse{opacity:0}
 /* the data notice, simple (Jamie, 22 Oct): an emoji grid of what Rhythme does, two promises, the full notice folded away */
 .c-caps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .c-caps div{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 9px;border-radius:16px;background:rgba(255,255,255,.62);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.95);box-shadow:0 6px 16px rgba(122,92,150,.12);text-align:center}
@@ -2186,3 +2235,181 @@ html[data-sky=night] .winfo summary{color:#b9d2f5}
 .c-more{margin:2px 0 0 38px}
 .c-more summary{padding:4px 0;font-size:11px;color:var(--rm-ink-3)}
 .c-more p{margin:0 0 6px;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-3)}
+
+/* fasting timing in the food diary (design 2026-10-21-fasting-timing.md): plain, no counter, no colour for lengths */
+.fstrip{margin-top:12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid rgba(160,130,190,.18)}
+.fstrip .lbl{display:block;margin-bottom:6px}
+.fstrip .row{margin-top:8px;flex-wrap:wrap}
+.fstrip .btn.small{padding:7px 11px;font-size:13px;min-height:40px}
+.fstrip .fopen{margin:4px 0 2px;font-size:14px}
+.fstrip .foffer{margin:8px 0;padding:10px;border-radius:12px;background:#f6effd;font-size:14px}
+.fstrip .fconflict{margin:6px 0;padding:10px;border-radius:12px;background:#fff4ea;font-size:14px}
+.fstrip .frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:13px}
+.fstrip .frow span{flex:1 1 180px;min-width:0}
+.fstrip .fgaps,.fstrip .fcare,.fstrip .freason{margin-top:8px;font-size:13px;line-height:1.4}
+.fstrip .muted{color:#8d7fa0}
+.fstrip .evid a{color:#7b5bb5;text-decoration:none;margin-right:4px;font-size:12px}
+.fq .chips{display:flex;gap:6px;flex-wrap:wrap}
+.fq .chipbtn[disabled]{opacity:.6}
+.fastingcard .ilist{margin-top:6px}
+
+/* ---------- the Today card's three tabs (21 Oct): Today, Channel once she has joined a plaza group, Inventory ---------- */
+.decktabs{margin:0 0 4px}
+.decktabs button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:40px;position:relative}
+.decktabs button .ms{font-size:18px}
+.dbadge{position:absolute;top:3px;right:6px;min-width:18px;height:18px;border-radius:9px;background:var(--rm-blush);color:var(--rm-plum);font:800 11px/18px var(--sans);text-align:center;padding:0 5px}
+.dbadge[hidden]{display:none}
+.deckpane[hidden]{display:none}
+.deckpane>h2{margin-bottom:2px}
+.chhead,.chfriends,.invhearts{display:flex;align-items:center;gap:10px;padding:12px;border-radius:16px;background:var(--rm-paper-2);margin-top:10px}
+.chhead>.ms,.chfriends>.ms,.invhearts>.ms{font-size:26px;color:var(--rm-mauve)}
+.chhead>div,.chfriends>div,.invhearts>div{flex:1;min-width:0}
+.chhead b,.chfriends b,.invhearts b{display:block;font:800 14px var(--sans);color:var(--rm-plum)}
+.chhead small,.chfriends small,.invhearts small{display:block;font:600 12.5px/1.35 var(--sans);color:var(--rm-ink-2)}
+.invhearts .btn{flex:0 0 auto;padding:10px 14px;min-height:40px}
+.chprompt{margin-top:10px;padding:12px;border-radius:16px;background:var(--rm-cream)}
+.chprompt .lbl{display:block;font:800 10px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-mauve)}
+.chprompt p{margin:4px 0 0;font:600 13.5px/1.4 var(--sans);color:var(--rm-ink)}
+.chrow{flex-wrap:wrap}
+.chrow .btn{min-height:44px;flex:1 1 40%}
+.chbadge{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:#fff;color:var(--rm-plum);font:800 11px/18px var(--sans);text-align:center;padding:0 5px}
+.invsec{margin-top:12px}
+.invsec h3{display:flex;align-items:center;gap:6px;margin:0;font:800 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-mauve)}
+.invsec h3 .ms{font-size:16px}
+.invsec h3 small{font:800 11px var(--sans);color:var(--rm-ink-3);letter-spacing:0}
+.invlist{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.invlist li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--rm-paper-2);font:600 13px/1.3 var(--sans);color:var(--rm-ink)}
+.invlist li b{font-weight:800;color:var(--rm-plum)}
+.invlist li i{font:800 11px/18px var(--sans);min-width:18px;padding:0 6px;border-radius:9px;background:var(--rm-lilac-2);color:var(--rm-plum);text-align:center}
+.invlist li span{margin-left:auto;font:600 12px var(--sans);color:var(--rm-ink-3);text-align:right}
+.invsec .help{margin-top:6px}
+.invgo{display:inline-flex;align-items:center;gap:2px;margin-top:6px;border:none;background:transparent;padding:6px 2px;font:800 12px var(--sans);color:var(--rm-plum);cursor:pointer}
+.invgo .ms{font-size:18px}
+html[data-sky="night"] .decktabs button.on{background:var(--rm-card)}
+html[data-sky="night"] :is(.chhead,.chfriends,.invhearts,.chprompt,.invlist li){background:var(--rm-card);border:1px solid rgba(255,255,255,.08)}
+html[data-sky="night"] .chbadge{background:var(--rm-lilac-2)}
+
+/* ---------- the drops (21 Oct): the Starlight gown as a Rhythme Plus drop, her birthday week ---------- */
+.outfit.locked{position:relative;opacity:.82}
+.outfit.locked img{filter:saturate(.7)}
+.outfit .olock{position:absolute;top:6px;right:6px;font-size:16px;color:var(--rm-plum);background:#fff;border-radius:50%;padding:3px;box-shadow:0 1px 4px rgba(90,66,116,.18)}
+.prop.event{position:absolute;transform:translate(-50%,-98.5%);z-index:7;pointer-events:auto;cursor:pointer;border:none;background:transparent;padding:0;filter:drop-shadow(0 1px 1.5px rgba(60,30,80,.22));animation:propin .6s ease-out}
+.prop.event img{width:100%;display:block}
+.prop.event:focus-visible{outline:3px solid var(--rm-mauve);outline-offset:3px;border-radius:12px}
+.bcard{border-radius:20px;padding:14px;background:linear-gradient(160deg,var(--rm-cream),var(--rm-lilac-2));border:1px dashed rgba(122,92,150,.35)}
+.bhead{display:flex;align-items:center;gap:12px}
+.bhead img{width:64px;height:auto}
+.bhead b{display:block;font:600 20px var(--serif);color:var(--rm-plum)}
+.bhead small{display:block;font:700 12px var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.bline{margin:0;font:600 14px/1.45 var(--sans);color:var(--rm-ink);padding-left:12px;border-left:3px solid var(--rm-blush)}
+.bcard .lbl{display:block;margin-top:14px;font:800 10px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-mauve)}
+.bwish{margin-top:12px}
+.bnote{margin:8px 0 0;font:600 12px/1.4 var(--sans);color:var(--rm-ink-3)}
+.bwho{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.72)}
+.bcard .bwho .lbl{margin-top:0}
+.bwho b{display:block;margin-top:4px;font:600 18px var(--serif);color:var(--rm-plum)}
+.bwho p{margin:6px 0 0;font:600 14px/1.45 var(--sans);color:var(--rm-ink)}
+.bwho .bquote{font-style:italic;color:var(--rm-ink-2)}
+.bdir{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.72)}
+.bcard .bdir .lbl{margin-top:0}
+.bdir b{display:block;margin-top:4px;font:600 18px var(--serif);color:var(--rm-plum)}
+.bdir p{margin:6px 0 0;font:600 14px/1.45 var(--sans);color:var(--rm-ink)}
+.bdir .bstep{display:flex;gap:6px;align-items:flex-start;font:700 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}
+.bdir .bstep .ms{font-size:18px;color:var(--rm-mauve)}
+.bfrom{margin:12px 0 0;font:600 12.5px var(--serif);font-style:italic;color:var(--rm-ink-2);text-align:right}
+.byrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.byrow select.input{flex:1 1 7rem;min-width:0}
+.byrow .btn{flex:0 0 auto;min-height:44px}
+html[data-sky="night"] .bcard{background:var(--rm-card);border-color:rgba(255,255,255,.14)}
+html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
+
+/* the twirl (room.js twirl): she spins to show a new outfit, Animal Crossing style, and the gown gets the Cinderella
+ * version (.glam). JS turns her picture; these are the sparkles riding around her, the flash at the change and the
+ * starburst as she lands. Inside #avatar (its own stacking context) the picture sits between the back and front sparkles */
+.avatar.twirling img{position:relative;z-index:1}
+.twirl-fx{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+.twirl-fx .tw-s{position:absolute;width:9px;height:9px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#fff 0 32%,rgba(255,238,196,.95) 46%,rgba(255,214,238,0) 72%);opacity:0;filter:drop-shadow(0 0 3px rgba(255,255,255,.9))}
+.twirl-fx .tw-s::before,.twirl-fx .tw-s::after{content:'';position:absolute;left:50%;top:50%;width:15px;height:1.6px;margin:-.8px 0 0 -7.5px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,0),#fff,rgba(255,255,255,0))}
+.twirl-fx .tw-s::after{transform:rotate(90deg)}
+.twirl-fx .tw-s.gold{background:radial-gradient(circle,#fff 0 28%,rgba(255,212,120,.95) 48%,rgba(255,200,120,0) 72%)}
+.twirl-fx .tw-s.lilac{background:radial-gradient(circle,#fff 0 28%,rgba(214,186,255,.95) 48%,rgba(214,186,255,0) 72%)}
+.twirl-fx.glam .tw-s{width:11px;height:11px}
+.twirl-fx .tw-flash{position:absolute;left:50%;top:52%;width:150%;height:90%;transform:translate(-50%,-50%) scale(.6);border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.95),rgba(255,236,250,.6) 45%,rgba(255,236,250,0));opacity:0;z-index:2}
+.twirl-fx.flash .tw-flash{animation:twflash .6s ease-out forwards}
+@keyframes twflash{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+.twirl-fx.glam::before{content:'';position:absolute;left:12%;right:12%;top:-34%;bottom:-2%;border-radius:40%;background:linear-gradient(to top,rgba(255,240,252,0),rgba(255,238,252,.6) 35%,rgba(232,214,255,.35) 70%,rgba(255,255,255,0));filter:blur(5px);opacity:0;animation:twpillar 2.1s ease-in-out forwards}
+@keyframes twpillar{0%{opacity:0;transform:scaleY(.3);transform-origin:50% 100%}30%{opacity:.9}70%{opacity:.85}100%{opacity:0;transform:scaleY(1.05);transform-origin:50% 100%}}
+.twirl-fx .tw-b{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#fff;box-shadow:0 0 6px 2px rgba(255,236,196,.9);opacity:0;z-index:3}
+.twirl-fx.glam .tw-b{width:7px;height:7px;box-shadow:0 0 8px 3px rgba(255,214,150,.9)}
+.twirl-fx.burst .tw-b{animation:twburst .8s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes twburst{0%{opacity:1;transform:rotate(var(--a)) translateX(0) scale(1)}100%{opacity:0;transform:rotate(var(--a)) translateX(46px) scale(.4)}}
+@media (prefers-reduced-motion: reduce){.twirl-fx{display:none}}
+/* ---- 21 Oct: trying on at Petal & Thread (ovu-boutique.js) ---- */
+.trybar{position:absolute;left:10px;right:54px;top:10px;z-index:14;display:none;flex-wrap:wrap;align-items:center;gap:6px 8px;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-radius:14px;padding:8px 10px;font:700 11.5px var(--sans);color:var(--rm-plum);box-shadow:var(--rm-shadow)}
+.trybar.on{display:flex}
+.trybar>.ms{font-size:18px;color:var(--rm-mauve)}
+.trybar .tbname{flex:1 1 auto;min-width:0}
+.trybar button{border:none;background:var(--rm-lilac-2);color:var(--rm-plum);border-radius:99px;padding:6px 10px;font:800 11px var(--sans);display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0}
+.trybar button .ms{font-size:16px}
+.trybar button[data-tb=keep]{background:var(--rm-mauve);color:#fff}
+.trybar .tbplus{background:linear-gradient(135deg,#f3d49b,#e8a3bf);color:#5a3a2a}
+.outfit.plusdrop{position:relative}
+.outfit.plusdrop .pluschip{position:absolute;top:6px;right:6px;margin:0}
+.avatar .acc{position:absolute;display:none;left:var(--acc-l);top:var(--acc-t);width:var(--acc-w);height:auto;transform:translate(-50%,-50%) rotate(var(--acc-r));pointer-events:none;z-index:2}
+.avatar.flip .acc{left:var(--acc-lf);transform:translate(-50%,-50%) scaleX(-1) rotate(var(--acc-r))}
+.avatar .acc.on{display:block}
+.avatar:is(.walking,.cycling,.twirling,.moment,.joy,.landing,.hidden,.acting) .acc{display:none}
+/* animal love (22 Oct): hearts pop when she pets, brushes or treats; a love meter in each sheet; hens wander and peck */
+.lovepop{position:absolute;transform:translate(-50%,-50%);z-index:6;pointer-events:none;color:#ff6f9f;font-size:22px;text-shadow:0 2px 6px rgba(255,255,255,.9);animation:lovepop 1.3s ease-out forwards;opacity:0}
+.lovepop .ms{font-size:inherit}
+@keyframes lovepop{0%{opacity:0;transform:translate(-50%,-30%) scale(.5)}18%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),-260%) scale(.9)}}
+.barnthing.animal.loved img{animation:animalloved .5s ease}
+.barnthing.animal.flip.loved img{animation:animallovedflip .5s ease}
+@keyframes animalloved{0%,100%{transform:scale(1)}40%{transform:scale(1.07,.94)}70%{transform:scale(.97,1.04)}}
+@keyframes animallovedflip{0%,100%{transform:scaleX(-1)}40%{transform:scale(-1.07,.94)}70%{transform:scale(-.97,1.04)}}
+.barnthing.animal.a-mochi,.barnthing.animal.a-kaya{transition:left 1.9s linear,top 1.9s linear}
+.barnthing.animal.peck img{animation:henpeck .7s ease 2}
+.barnthing.animal.flip.peck img{animation:henpeckflip .7s ease 2}
+@keyframes henpeck{0%,100%{transform:rotate(0)}45%{transform:rotate(14deg) translateY(4%)}}
+@keyframes henpeckflip{0%,100%{transform:scaleX(-1) rotate(0)}45%{transform:scaleX(-1) rotate(14deg) translateY(4%)}}
+.lovemeter{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.lovemeter b{font:800 12.5px var(--sans);color:var(--rm-plum);min-width:52px}
+.lovemeter .lm{display:flex;gap:1px}
+.lovemeter .ms{font-size:17px;color:#ff6f9f}
+.lovemeter .ms.off{color:rgba(150,120,190,.35)}
+@media (prefers-reduced-motion: reduce){.lovepop{animation-duration:.01s}.barnthing.animal.peck img,.barnthing.animal.loved img{animation:none}}
+/* fishing actions (22 Oct): a power bar while Cast is held, nibbles on the float, a bite line, and a reel bar with tugs */
+.castpower,.reelbar{height:8px;border-radius:99px;background:rgba(150,120,190,.18);overflow:hidden;margin:2px 0 10px}
+.castpower i,.reelbar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#b9a3ef,#7d5cc4)}
+.reelbar{flex:1 1 100%;margin:0 0 8px}
+.reelbar i{background:linear-gradient(90deg,#9fd7f0,#5f8fd8);transition:width .08s linear}
+.hbpic .hbfloat.nibble{animation:floatnibble .5s ease-in-out 1}
+@keyframes floatnibble{0%,100%{transform:translateY(0)}40%{transform:translateY(2px)}70%{transform:translateY(-1px)}}
+.biteline{animation:bitepulse 1s ease-in-out infinite}
+@keyframes bitepulse{0%,100%{opacity:1}50%{opacity:.6}}
+.reelbtn.tug{animation:reeltug .45s ease-in-out}
+@keyframes reeltug{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px) rotate(-2deg)}75%{transform:translateX(4px) rotate(2deg)}}
+@media (prefers-reduced-motion: reduce){.biteline,.reelbtn.tug,.hbpic .hbfloat.nibble{animation:none}}
+.sqhead{display:flex;align-items:center;gap:6px;margin:10px 0 2px;font:800 13px var(--sans);color:var(--rm-plum)}.sqhead .ms{font-size:18px}
+/* crop and dish pictures on the seed, plant and recipe buttons, and the finished dish (22 Oct) */
+.btn img.croppic{width:34px;height:34px;object-fit:contain;flex:none;border-radius:10px;background:#fff;box-shadow:0 2px 6px rgba(120,90,150,.15);margin-right:2px}
+.dishpic{display:flex;justify-content:center;margin:2px 0 6px}.dishpic img{width:150px;height:150px;object-fit:contain;border-radius:22px;background:#fff;box-shadow:0 8px 22px rgba(120,90,150,.18)}
+.invlist img.invpic{width:30px;height:30px;object-fit:contain;border-radius:8px;background:#fff;margin-right:6px;vertical-align:middle}
+/* villagers (22 Oct, Harvest Moon phase 4) */
+.villager{position:absolute;transform:translate(-50%,-100%);z-index:2;border:0;background:none;padding:0;cursor:pointer}
+.villager img{width:100%;display:block;filter:drop-shadow(0 6px 5px rgba(70,50,100,.25));animation:animalidle 5s ease-in-out infinite;transform-origin:50% 100%}
+.villager .vname{position:absolute;left:50%;top:-6%;transform:translateX(-50%);font:800 10px var(--sans);color:var(--rm-plum);background:rgba(255,255,255,.75);padding:2px 7px;border-radius:99px;white-space:nowrap}
+.vcard,.vevent{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.vcard img,.vevent img{width:78px;flex:none;filter:drop-shadow(0 4px 6px rgba(70,50,100,.2))}
+.vevent p{margin:0 0 6px;font:600 13.5px/1.5 var(--sans);color:var(--rm-ink-2)}
+.vline{margin:6px 0 0;font:600 13px/1.45 var(--sans);color:var(--rm-ink-2)}
+.vhearts{display:flex;gap:1px}.vhearts .ms{font-size:17px}.vhearts .ms.off{color:rgba(150,120,190,.3)}
+/* scores and graphs in the Cycle tab (22 Oct) */
+.scorecard{background:rgba(255,255,255,.7);border-radius:18px;padding:12px 14px;margin:0 0 12px;box-shadow:0 6px 16px rgba(122,92,150,.1)}
+.scorecard h3{display:flex;gap:6px;align-items:center;margin:0 0 4px;font:600 17px var(--serif);color:var(--rm-plum)}
+.scbig{font:700 36px var(--serif);color:var(--rm-plum)}.scbig small{font:700 13px var(--sans);color:var(--rm-ink-3);margin-left:2px}
+.scparts{list-style:none;margin:6px 0;padding:0;display:flex;flex-direction:column;gap:5px}
+.scparts li{display:grid;grid-template-columns:1fr auto;gap:0 8px;font:700 12.5px var(--sans);color:var(--rm-ink-2)}
+.scparts li b{color:var(--rm-plum)}.scparts li small{grid-column:1/-1;font:600 11px var(--sans);color:var(--rm-ink-3)}
+.schead{margin:10px 0 2px;font:800 11px var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--rm-ink-3)}
+.scgraph{width:100%;height:auto;display:block}

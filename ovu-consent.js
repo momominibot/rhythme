@@ -66,7 +66,9 @@
   function boundTo(p) { var s = state()[p]; return !!(s && s.uid); } /* the choice was recorded on an account */
   var PAUSED_LINE = 'Paused for now.';
   function allows(p) { if (AI_IDS[p] && aiPaused()) return false; var s = state()[p]; return !!(s && s.on); }
-  function noticeText() { return PURPOSES.map(function (p) { return p.title + '. ' + p.body; }).join('\n'); }
+  /* the notice's own fixed lines beside the purposes, so the receipt's hash covers them too (v5: the optional birthday; room.html shows the same words) */
+  var NOTICE_LINES = ['Rhythme is for people 18 and over. For that we keep only your confirmation. Your birthday is optional: a month and a day, with the year only if you add it, kept on this phone and used only for the birthday card.'];
+  function noticeText() { return PURPOSES.map(function (p) { return p.title + '. ' + p.body; }).join('\n') + '\n' + NOTICE_LINES.join('\n'); }
   function sha256hex(s) {
     try { return crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s))).then(function (h) { return Array.prototype.map.call(new Uint8Array(h), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }, function () { return ''; }); } catch (e) { return Promise.resolve(''); }
   }
@@ -238,7 +240,8 @@
     var st = state(), returning = !!(S.profile().consent && S.profile().consent.at), minor = legacyMinor(), u = uid();
     var title = c.querySelector('#cTitle'), sub = title && title.nextElementSibling, fine = c.querySelector('#cFine'), lbl = c.querySelector('.c-lbl'), box = c.querySelector('#cChoices'), age = c.querySelector('#cAge'), minorNote = c.querySelector('#cMinor');
     if (title) title.textContent = returning ? 'Your data choices' : 'Before your room opens';
-    if (sub) sub.textContent = returning ? 'Have a quick look at how Rhythme keeps your data and choose what you are happy with. Your diary on this phone is kept as it is.' : 'A cosy diary for your cycle, body and mind.';
+    var prevV = (st.health_tracking && st.health_tracking.notice) || 0; /* what changed since the notice she last agreed to */
+    if (sub) sub.textContent = returning ? (prevV >= 4 ? 'New in this notice: Rhythme can ask for your birthday, for a birthday card. It stays on this phone.' : 'Have a quick look at how Rhythme keeps your data and choose what you are happy with. Your diary on this phone is kept as it is.') : 'A cosy diary for your cycle, body and mind.';
     if (fine) fine.textContent = returning ? 'Your diary on this phone is kept as it is.' : 'No diary entries have been saved yet.';
     if (lbl) lbl.textContent = 'Optional extras';
     if (minorNote) { minorNote.hidden = !minor; minorNote.style.display = minor ? '' : 'none'; } /* the flag's own display rule would beat the hidden attribute */
@@ -254,6 +257,8 @@
     var c = document.getElementById('consent'); if (!c) return;
     c.classList.toggle('returning', !!(S.profile().consent && S.profile().consent.at));
     fillSheet(c);
+    /* the only tick on show is the 18+ one; the optional extras stay folded on a first visit and open for a returning check (Jamie, 22 Oct) */
+    var ex = c.querySelector('#cExtras'); if (ex) ex.open = !!(S.profile().consent && S.profile().consent.at);
     c.hidden = false; try { c.querySelector('.c-scroll').scrollTop = 0; } catch (e) { }
     var age = c.querySelector('#cAge'), health = c.querySelector('#cHealth'), agree = c.querySelector('#cAgree'), under = c.querySelector('#cUnder');
     /* the one required line starts ticked (Jamie, 19 Oct): the diary cannot work without it and tapping I agree is the person's act.
@@ -272,7 +277,25 @@
       function record() { attestAge('sheet'); grant('health_tracking', 'sheet'); setMany(map, 'sheet', true); if (!hasAuth && improve) grant('improve_logging', 'sheet'); }
       function open() { c.hidden = true; if (next) next(); }
       var em = c.querySelector('#cImproveErr'); if (em) em.hidden = true;
-      if (!hasAuth || (!improve && !wasOn)) { record(); open(); return; }
+      /* A choice the account already records is not sent again: a renewed notice that keeps Help improve logging on must not
+         restart the account's consent from now, which would drop the entries it already covered (Codex verification, 21 Oct).
+         The improvement words and their hash are unchanged under this notice, so the account's record and its version stay as
+         they are: keeping a choice is not a new decision. The phone's copy can be stale (it may have been turned off elsewhere),
+         so the account is read first, which changes nothing there, and the phone follows it (Codex verification 2). A tick kept
+         only on this phone (no account yet) still goes through setImprove, so it is recorded under this notice as before. */
+      var an = S.profile().analysis || {}, me = hasAuth && root.OvuAuth.userId ? root.OvuAuth.userId() : null;
+      var held = improve && wasOn && an.on === true && !!an.uid && (!me || an.uid === me);
+      if (!hasAuth || (!improve && !wasOn) || (held && !me)) { record(); open(); return; } /* signed out: nothing to send now; the next sign-in reads the account */
+      if (held) {
+        agree.disabled = true;
+        var settled = false, finish = function () { if (settled) return; settled = true; agree.disabled = !ready(); record(); open(); };
+        var slow = root.setTimeout(finish, 8000); /* a slow account never keeps the room shut; its answer still lands and the phone follows it */
+        (root.OvuAuth.syncImprove ? root.OvuAuth.syncImprove() : Promise.resolve({ action: 'none' })).then(function (r) { return r; }, function () { return { action: 'offline' }; }).then(function (r) {
+          root.clearTimeout(slow); finish();
+          if (r && r.action === 'adopt' && !((S.profile().analysis || {}).on) && ui.toast) ui.toast('Help improve logging is off on your account, so it stays off here too. You can turn it on again in You.', 'info');
+        });
+        return;
+      }
       agree.disabled = true;
       /* a withdrawal has to reach the account before anything on this notice is recorded: if it does not, nothing is saved,
          the notice stays (and comes back after a reload) and says so (Codex legal reviews, 20 Oct: a failed withdrawal was
@@ -354,7 +377,7 @@
 
   root.OvuConsent = {
     aiPaused: aiPaused, boundTo: boundTo, AI_IDS: AI_IDS, PAUSED_LINE: PAUSED_LINE,
-    NOTICE_V: NOTICE_V, AGE_V: AGE_V, PURPOSES: PURPOSES, REGION_AI: REGION_AI, REGION_CLOUD: REGION_CLOUD, AI_WHERE: AI_WHERE, AI_WHERE_HTML: AI_WHERE_HTML,
+    NOTICE_V: NOTICE_V, NOTICE_LINES: NOTICE_LINES, AGE_V: AGE_V, PURPOSES: PURPOSES, REGION_AI: REGION_AI, REGION_CLOUD: REGION_CLOUD, AI_WHERE: AI_WHERE, AI_WHERE_HTML: AI_WHERE_HTML,
     purpose: purpose, events: events, state: state, stateFromEvents: stateFromEvents, allows: allows,
     noticeText: noticeText, noticeHash: noticeHash,
     record: record, grant: grant, withdraw: withdraw, setMany: setMany, apply: apply,

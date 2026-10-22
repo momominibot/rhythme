@@ -29,7 +29,7 @@
     return arr.length;
   }
   function wateredToday(S) { return gardenState(S).watered.indexOf(S.today()) > -1; }
-  /* record a watering day; the mindful minute is saved as a diary entry only the first time that day */
+  /* game progress is separate from a confirmed journal entry */
   function water(S) {
     var g = gardenState(S), today = S.today(), first = g.watered.indexOf(today) < 0;
     if (first) { g.watered.push(today); g.watered.sort(); S.setState({ garden: g }); }
@@ -75,7 +75,7 @@
     zones: [[[50, 36], [92, 58], [50, 77], [8, 58]]],
     solids: [{ id: 'bench', x0: 22, x1: 44, y0: 38, y1: 50 }, { id: 'tree', x0: 12, x1: 26, y0: 40, y1: 48 }, { id: 'greenhouse', x0: 56, x1: 82, y0: 30, y1: 46 }, { id: 'pond', x0: 57, x1: 78, y0: 52, y1: 64 }, { id: 'planter', x0: 41, x1: 61, y0: 60, y1: 69 }, { id: 'can', x0: 39, x1: 47, y0: 65, y1: 70 }],
     doors: [{ id: 'gate', to: 'home', x: 29, y: 58, r: 5, flip: true }, { id: 'arch', to: 'street', x: 80, y: 55, r: 5, flip: false }, { id: 'farmpath', to: 'farm', x: 70, y: 66, r: 4, flip: false }, { id: 'greenhouse', to: 'greenhouse', tap: 'greenhouse', x: 62, y: 49, r: 3.5, flip: false }], /* the greenhouse door opens where a walk ends, like a storefront */
-    meditator: { x: 33, y: 47, w: 11, seat: { x: 32.5, seatY: 45, groundY: 49.5, face: 'left' } }, aura: { x: 33, y: 45, w: 17 }, holo: { x: 43, y: 45, w: 14 },
+    meditator: { x: 34.5, y: 47, w: 11, seat: { x: 34.5, seatY: 45, groundY: 49.5, face: 'right' } }, aura: { x: 33, y: 45, w: 17 }, holo: { x: 43, y: 45, w: 14 },
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 },
     props: { cat: { x: 44, y: 57, w: 9 }, dog: { x: 66, y: 66, w: 9.5 }, mewmew: { x: 36, y: 66, w: 12 } }
   };
@@ -108,11 +108,12 @@
   var S = root.OvuStore, doc = root.document, ART = R.ART;
   R.LAYOUTS.garden = GARDEN;
   var WATER_LINES = ['Pick up the can. Feel its weight before you pour.', 'Let the water fall slowly. Watch the soil darken.', 'Breathe in as you move to the next corner.', 'Nothing to hurry. The plants drink at their own pace.', 'Notice the sound of it, and the smell of wet earth.', 'Set the can down. One ordinary minute, fully lived.'];
-  var watering = null, lastWaterAt = 0, VOICE = 'assets/audio/guide-interim/garden-water-';
+  var watering = null, lastWaterAt = 0, waterAsk = null, waterAskTimer = 0, VOICE = 'assets/audio/guide-interim/garden-water-';
   /* Erin's cloned voice reads each line (pre-recorded clips, like the everyday practices); a missing clip is just silent */
   /* one audio element, created and first played inside the tap that starts the minute, then reused for every later line:
    * a fresh element started from a timer is silent on the iPhone, which is why only the first line used to be heard */
-  function say(i) { try { if (!watering) return; var a = watering.audio || (watering.audio = new Audio()); a.pause(); a.src = VOICE + i + '.mp3'; a.currentTime = 0; a.play().catch(function () { }); } catch (e) { } }
+  function waterLive(w) { return !!w && watering === w && !w.done; }
+  function say(w, i) { try { if (!waterLive(w)) return; var a = w.audio || (w.audio = new Audio()); a.pause(); a.src = VOICE + i + '.mp3'; a.currentTime = 0; a.play().catch(function () { }); } catch (e) { } }
 
   function esc(s) { return R.esc(s); }
   function placeEl(el, p) { if (!el || !p) return; el.style.left = p.x + '%'; el.style.top = p.y + '%'; if (p.w) el.style.width = p.w + '%'; }
@@ -131,47 +132,70 @@
     var sm = summary(S), total = STAGES[STAGES.length - 1].at;
     R.openSheet('plot', 'Your plot', 'It grows with your days, never against them', 'yard',
       '<div class="plotcard"><div class="plotart">' + plantSVG(sm.stage) + '</div><div><b>' + esc(sm.name) + '</b><p>' + esc(sm.note) + '</p><small>' + sm.days + ' day' + (sm.days === 1 ? '' : 's') + ' counted' + (sm.nextAt ? ' · next stage at ' + sm.nextAt : '') + '</small><div class="bar"><i style="width:' + Math.min(100, Math.round(sm.days / total * 100)) + '%"></i></div></div></div>' +
-      '<div class="stat"><span class="ms">' + (sm.wateredToday ? 'check_circle' : 'water_drop') + '</span><div><b>' + (sm.wateredToday ? 'Watered today' : 'Water the plants') + '</b><span>' + (sm.wateredToday ? 'The plants are happy. Another minute is welcome any time; it just will not add hearts twice.' : 'A mindful minute with the watering can. Saved to your journal as one minute of calm.') + '</span></div></div>' +
+      '<div class="stat"><span class="ms">' + (sm.wateredToday ? 'check_circle' : 'water_drop') + '</span><div><b>' + (sm.wateredToday ? 'Watered today' : 'Water the plants') + '</b><span>' + (sm.wateredToday ? 'The plants are happy. Another minute is welcome any time; it just will not add hearts twice.' : 'A mindful minute with the watering can. You can choose whether to save it to your journal.') + '</span></div></div>' +
       '<div class="row"><button type="button" class="btn primary" id="plotWater"><span class="ms">water_drop</span>' + (sm.wateredToday ? 'Another mindful minute' : 'Water, one mindful minute') + '</button></div>' +
       '<p class="help">A day counts once, whether you logged sleep, a period, a meal, a symptom, a reflection or a watering. Entries you delete later never shrink the plant.</p>');
     doc.getElementById('plotWater').addEventListener('click', function () { startWatering(); });
   }
   function startWatering() {
     if (watering || R.sessionOn() || root.OvuWalk.napping()) return;
-    var sm = summary(S);
-    watering = { startedAt: Date.now(), timers: [], done: false, rewarded: !sm.wateredToday };
-    R.hideSheet(); R.hudOn(true, 'Watering'); R.caption(WATER_LINES[0]); say(0);
+    clearWaterAsk();
+    var sm = summary(S), w = { startedAt: Date.now(), timers: [], done: false, rewarded: !sm.wateredToday };
+    watering = w;
+    R.hideSheet(); R.hudOn(true, 'Watering'); R.caption(WATER_LINES[0]); say(w, 0);
     R.setPose('plants'); R.els.avatar.classList.add('acting');
     var wrap = R.els.props, drops = doc.createElement('div'); drops.className = 'drops'; drops.setAttribute('aria-hidden', 'true');
     drops.style.left = PLOT.x + '%'; drops.style.top = (PLOT.y - 2) + '%'; drops.style.width = PLOT.w + '%';
     for (var i = 0; i < 7; i++) drops.innerHTML += '<i style="left:' + (10 + i * 12) + '%;animation-delay:' + (i * 0.17) + 's"></i>';
-    wrap.appendChild(drops); watering.drops = drops;
-    WATER_LINES.forEach(function (line, i) { if (i) watering.timers.push(root.setTimeout(function () { if (watering && !watering.done) { R.caption(line); R.chime('bell', true); root.setTimeout(function () { if (watering && !watering.done) say(i); }, 350); } }, i * 10000)); });
-    watering.timers.push(root.setTimeout(function () { finishWatering(true); }, 60000));
-    R.setHudStop(function () { if (!watering) return false; finishWatering(false); return true; });
+    wrap.appendChild(drops); w.drops = drops;
+    WATER_LINES.forEach(function (line, i) { if (i) w.timers.push(root.setTimeout(function () {
+      if (!waterLive(w)) return; R.caption(line); R.chime('bell', true);
+      w.timers.push(root.setTimeout(function () { if (waterLive(w)) say(w, i); }, 350));
+    }, i * 10000)); });
+    w.timers.push(root.setTimeout(function () { if (waterLive(w)) finishWatering(true, w); }, 60000));
+    R.setHudStop(function () { if (!waterLive(w)) return false; finishWatering(false, w); return true; });
   }
-  /* one completion path, one saved entry, one award, however it ends */
-  function finishWatering(completed) {
-    var w = watering; if (!w || w.done) return; w.done = true;
+  /* a completed minute must not replace a form or follow a newer activity */
+  function clearWaterAsk() { waterAsk = null; root.clearInterval(waterAskTimer); waterAskTimer = 0; }
+  function askWaterSave(ask) {
+    clearWaterAsk(); var token = {}; waterAsk = token;
+    function ready() { return !watering && !(R.sheetOpen && R.sheetOpen()) && !R.sessionOn() && !(R.practiceOn && R.practiceOn()); }
+    function checkAsk() {
+      if (waterAsk !== token) return;
+      if (R.asleep && R.asleep()) { clearWaterAsk(); return; }
+      if (ready()) { clearWaterAsk(); ask(); }
+    }
+    if (ready()) { checkAsk(); return; }
+    waterAskTimer = root.setInterval(checkAsk, 400);
+  }
+  /* timers retain their own run, so an old callback can never finish its replacement */
+  function finishWatering(completed, w, handover) {
+    w = w || watering; if (!waterLive(w)) return; w.done = true;
     w.timers.forEach(root.clearTimeout); if (w.drops) w.drops.remove(); if (w.audio) { try { w.audio.pause(); } catch (e) { } } watering = null; R.setHudStop(null);
-    R.hudOn(false); R.els.avatar.classList.remove('acting'); R.restorePose();
-    if (!completed) { R.toast('Stopped. The plants are glad of the drink anyway.', 'yard'); return; }
+    if (!handover) { R.hudOn(false); R.els.avatar.classList.remove('acting'); R.restorePose(); }
+    if (!completed) { if (!handover) R.toast('Stopped. The plants are glad of the drink anyway.', 'yard'); return; }
     lastWaterAt = Date.now();
-    var res = water(S); renderPlot(); R.chime('bell', true);
-    /* every completed minute is a practice like the everyday ones: the flat practice thank-you (ovu-rewards.js PRACTICE) and a journal entry */
-    /* the very first watering ever: the day list has only today in it and today was just added (no extra field, which
-     * gardenState would drop; Codex caught that the first-time bonus would otherwise pay every time) */
-    var g = gardenState(S), ever = !(res.first && g.watered.length === 1);
-    var ev = null;
-    try { ev = S.add('mindfulness', S.today(), { kind: 'informal', first: !ever, practice: 'garden', minutes: 1, completed: true, startedAt: new Date(w.startedAt).toISOString(), guide: 'Garden watering, one mindful minute' }); } catch (e) { R.toast('The minute could not be saved: ' + e.message, 'error'); }
-    if (ev) R.afterSave(ev, 'One mindful minute in the garden. ' + (res.first && res.stage > stageFor(res.days - 1) ? 'Your plot reached ' + STAGES[res.stage].name.toLowerCase() + '!' : res.first ? 'Saved to your journal.' : 'The plants had their drink already today; the minute still counts.'));
+    var res; try { res = water(S); } catch (e) { R.toast('The watering could not be saved: ' + e.message, 'error'); return; }
+    renderPlot(); R.chime('bell', true);
+    var g = gardenState(S), ever = !(res.first && g.watered.length === 1), day = S.today(), saved = false;
+    askWaterSave(function () {
+      R.openSheet('gardenDone', 'The plants had their drink', 'One mindful minute', 'yard',
+        '<p class="mintro">Save this mindful minute to your journal?</p><div class="row"><button type="button" class="btn primary" id="gardenYes">Yes</button><button type="button" class="btn ghost" id="gardenNo">No</button></div><p class="help">Save it if you really practised. Your plot keeps its watering either way.</p>');
+      doc.getElementById('gardenYes').addEventListener('click', function () {
+        if (saved) return;
+        var ev; try { ev = S.add('mindfulness', day, { kind: 'informal', first: !ever, practice: 'garden', minutes: 1, completed: true, confirmedReal: true, startedAt: new Date(w.startedAt).toISOString(), guide: 'Garden watering, one mindful minute' }); }
+        catch (e) { R.toast('The minute could not be saved: ' + e.message + ' Try Yes again, or tap No.', 'error'); return; }
+        saved = true; R.hideSheet(); R.afterSave(ev, 'One mindful minute in the garden. ' + (res.first && res.stage > stageFor(res.days - 1) ? 'Your plot reached ' + STAGES[res.stage].name.toLowerCase() + '!' : 'Saved to your journal.'));
+      });
+      doc.getElementById('gardenNo').addEventListener('click', function () { saved = true; R.hideSheet(); });
+    });
   }
   /* a seat is a bench or a chair: she sits on it in her own clothes (assets/room/dream/avatar-sit-<outfit>.webp, hips at
    * seat height, feet down); the cross-legged pose stays for the yoga mat. A missing seated sprite falls back to the
    * standing one, never to the cross-legged one */
   /* lap line (where the body meets the seat) and height/width of each seated sprite, measured from the files (the widest
    * row below her middle; the tudung's by eye under her hands, because its tunic hem is wider than its lap) */
-  var SIT = { base: { hip: 0.695, aspect: 2.063 }, sundress: { hip: 0.766, aspect: 2.031 }, pajamas: { hip: 0.765, aspect: 2.019 }, cozy: { hip: 0.705, aspect: 2.035 }, yoga: { hip: 0.762, aspect: 2.013 }, party: { hip: 0.761, aspect: 1.902 }, 'kebaya-blue': { hip: 0.747, aspect: 1.672 }, 'kebaya-green': { hip: 0.746, aspect: 2.031 }, 'kebaya-red': { hip: 0.733, aspect: 1.674 }, tudung: { hip: 0.73, aspect: 2.063 } };
+  var SIT = { base: { hip: 0.695, aspect: 2.063 }, sundress: { hip: 0.766, aspect: 2.031 }, pajamas: { hip: 0.765, aspect: 2.019 }, cozy: { hip: 0.705, aspect: 2.035 }, yoga: { hip: 0.762, aspect: 2.013 }, party: { hip: 0.761, aspect: 1.902 }, 'kebaya-blue': { hip: 0.747, aspect: 1.672 }, 'kebaya-green': { hip: 0.746, aspect: 2.031 }, 'kebaya-red': { hip: 0.733, aspect: 1.674 }, tudung: { hip: 0.73, aspect: 2.063 }, gown: { hip: 0.68, aspect: 1.39 } }; /* the gown's lap by eye under her hands (its hem is the widest row); its canvas is wider so the figure keeps her height */
   /* her own outfit always: an outfit with no seated sprite stands beside the seat in its own clothes, never sits in the knit */
   function outfitId() { return S.profile().outfit || 'base'; }
   function seatedSrc() { return SIT[outfitId()] ? ART + 'avatar-sit-' + outfitId() + '.webp' : ''; }
@@ -184,6 +208,17 @@
     el.classList.toggle('faceright', seat.face === 'right');
   }
   G.seatPlace = function (el, seat) { seatPlace(el, seat); }; G.seatedImg = function (img, fallback) { seatedImg(img, fallback); }; /* the hidden spring's warm stone sits her the same way (ovu-barn.js) */
+  /* a new outfit while she sits: the seated picture changes and is placed again for its own lap line, both on the same
+   * frame, with no sit sound; a slower earlier swap never lands over a newer one (Codex sweep, 21 Oct: a bench, a seated
+   * practice and the stones kept the old clothes) */
+  function reseat(el, seat, fallback) {
+    var img = el && el.querySelector('img'); if (!img) return;
+    var o = /^[a-z0-9-]{1,32}$/.test(outfitId() || '') ? outfitId() : 'base', want = seatedSrc(), fb = fallback || ART + 'avatar-' + o + '.webp', tok = (el._dress = (el._dress || 0) + 1);
+    function land(src, seated) { if (el._dress !== tok) return; img.src = src; img.classList.toggle('seated', seated); if (seat) seatPlace(el, seat); }
+    if (!want) { land(fb, false); return; }
+    var probe = new Image(); probe.onload = function () { land(want, true); }; probe.onerror = function () { land(fb, false); }; probe.src = want;
+  }
+  G.reseat = reseat;
   function seatedImg(img, fallback) {
     var want = seatedSrc(), probe = new Image();
     if (!want) { img.src = fallback; img.classList.remove('seated'); return; }
@@ -192,9 +227,9 @@
     probe.src = want;
   }
   /* the bench: breathing with Erin or the orb, seated on the bench itself */
-  var meditatorWatch = null;
+  var meditatorWatch = null, benchSeat = null;
   function sitAt(spot, holoSpot, back) {
-    var L = R.layout(); placeEl(R.els.meditator, spot); placeEl(doc.getElementById('aura'), { x: spot.x, y: spot.y - 2, w: spot.w * 1.55 }); placeEl(R.els.holo, holoSpot || { x: spot.x + 10, y: spot.y - 2, w: spot.w * 1.27 });
+    var L = R.layout(); placeEl(R.els.meditator, spot); benchSeat = spot.seat || null; placeEl(doc.getElementById('aura'), { x: spot.x, y: spot.y - 2, w: spot.w * 1.55 }); placeEl(R.els.holo, holoSpot || { x: spot.x + 10, y: spot.y - 2, w: spot.w * 1.27 });
     if (back) { L.home.x = back.x; L.home.y = back.y; L.home.flip = !!back.flip; } /* she comes back beside the bench, not to the gate */
     var img = R.els.meditator && R.els.meditator.querySelector('img');
     if (img) {
@@ -210,7 +245,7 @@
   var sitting = null;
   function sitDown(spot, back) {
     if (root.OvuWalk.napping()) return;
-    standUp(); var wrap = R.els.props, el = doc.createElement('div');
+    standUp(); if (R.erin) R.erin('sit'); var wrap = R.els.props, el = doc.createElement('div');
     el.className = 'nb sitter'; el.dataset.id = 'sitter'; el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', 'You are sitting on the bench. Tap to get up.');
     el.style.left = spot.x + '%'; el.style.top = spot.y + '%'; el.style.width = spot.w + '%';
     if (spot.seat) seatPlace(el, spot.seat);
@@ -226,6 +261,7 @@
   function openBench(spot, holoSpot, back) {
     if (root.OvuWalk.napping()) return;
     if (R.sessionOn()) { R.hudOn(true); return; }
+    if (R.refuseBusy && R.refuseBusy()) return; /* one activity at a time (room.js activityNow) */
     var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
     R.openSheet('bench', 'Sit a while', 'The bench is yours for a few minutes', 'chair',
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Breathe with Erin, outdoors</b><small>Pick a length and Erin sits beside you on the bench, speaking in her own voice. Or follow the breathing orb with its soft bell.</small></div></div>' +
@@ -236,7 +272,7 @@
     doc.getElementById('benchSit').addEventListener('click', function () { R.hideSheet(); sitDown(spot, back); });
     doc.getElementById('benchSessions').addEventListener('click', function (e) { var b = e.target.closest('.session'); if (!b) return; Array.prototype.slice.call(doc.querySelectorAll('#benchSessions .session')).forEach(function (x) { x.classList.toggle('on', x === b); }); });
     doc.getElementById('benchStart').addEventListener('click', function () {
-      if (R.sessionOn()) return; var sel = doc.querySelector('#benchSessions .session.on');
+      if (R.sessionOn()) return; if (R.refuseBusy && R.refuseBusy()) return; /* refused before she sits, so nothing is half begun */ var sel = doc.querySelector('#benchSessions .session.on');
       sitAt(spot, holoSpot, back); R.enterMeditation(); R.runSession(sel.dataset.kind, Number(sel.dataset.min));
     });
   }
@@ -294,7 +330,13 @@
   R.hotspotHandlers.bench = function (id, L) { if (!inGarden(L)) return false; openBench(GARDEN.meditator, GARDEN.holo, { x: 37, y: 53, flip: true }); return true; };
   G.openGreenhouse = openGreenhouse; G.herb = { careful: herbCareful, carefulHTML: carefulHTML, refsHTML: refsHTML, teaHTML: teaHTML, ASK_FIRST: ASK_FIRST }; G.openBench = openBench; G.sitAt = sitAt; G.sitDown = sitDown; G.standUp = standUp; G.sitting = function () { return !!sitting; }; G.renderPlot = renderPlot; G.openPlot = openPlot; G.watering = function () { return !!watering; };
   R.on('boot', function () {
+    R.on('outfit', function () {
+      if (sitting && sitting.el) reseat(sitting.el, sitting.spot && sitting.spot.seat);
+      if (R.els.meditator && R.els.meditator.classList.contains('onseat') && R.meditating()) reseat(R.els.meditator, benchSeat, R.meditateSrc ? R.meditateSrc() : ART + 'avatar-meditate.webp'); /* Breathe with Erin on the bench */
+    });
     R.on('props', function (L) { renderPlot(L); if (sitting && !R.els.props.contains(sitting.el)) R.els.props.appendChild(sitting.el); }); /* a props re-render keeps her seated */
+    R.on('activity', function () { clearWaterAsk(); if (watering) finishWatering(false, watering, true); });
+    R.on('beforeWalk', function () { clearWaterAsk(); if (watering) finishWatering(false, watering); });
     R.on('layout', function (L) { if (watering) finishWatering(false); if (sitting) { sitting.el.remove(); sitting = null; R.els.scene.classList.remove('sitting'); } if (inGarden(L)) renderPlot(); });
     /* seated: the first tap anywhere stands her up, then the tap goes on to do what it does */
     R.els.scene.addEventListener('click', function (e) { if (sitting && !e.defaultPrevented) standUp(); }, true);

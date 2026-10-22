@@ -213,7 +213,8 @@
     if (existing) { return update(existing.id, { data: opts && opts.merge ? mergeData(type, existing.data, data) : data, source: IMPORTED[existing.source] ? (source || 'room') : undefined }); }
     var ev = { id: uid(), type: type, date: date, createdAt: nowIso(), updatedAt: nowIso(), source: source || 'room', data: data };
     db.events.push(ev);
-    try { save('add:' + type); } catch (e) { var at = db.events.indexOf(ev); if (at > -1) db.events.splice(at, 1); throw e; } /* a failed write leaves memory as it was, so a retry is clean */
+    /* A confirmed practice and its exploration count share one rollback-capable write. */
+    try { if (opts && opts.statePatch) commit(opts.statePatch); else save('add:' + type); } catch (e) { var at = db.events.indexOf(ev); if (at > -1) db.events.splice(at, 1); throw e; } /* a failed write leaves memory as it was, so a retry is clean */
     mirrorLegacy(ev);
     return ev;
   }
@@ -646,7 +647,7 @@
   function latestOnDate(type, date) { var l = list(type, { from: date, to: date }).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return newestFirst(x.e, y.e) || (y.i - x.i); }); return l.length ? l[0].e : null; }
   root.OvuStore = { registerMerge: registerMerge,
     /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
-    NOTICE_V: 4, /* v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
+    NOTICE_V: 5, /* v5, 21 Oct 2026: an optional birthday, the year only if she adds it, kept on this phone for the birthday card (the sheet promises to ask again when what is collected changes); v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
     KEY: KEY, TYPES: TYPES, checkinAnswers: checkinAnswers, setCheckinAnswer: setCheckinAnswer, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
     load: load, list: list, get: get, latestOnDate: latestOnDate, newestFirst: newestFirst, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
     putEvent: putEvent, applyRemote: applyRemote,

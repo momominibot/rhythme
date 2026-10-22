@@ -189,10 +189,10 @@
   /* called after a practice is confirmed; returns the saved event */
   function complete(id, variationIndex, secsDone, confirmed, finished) {
     var a = byId(id); if (!a) return null;
-    var ex = explored(); var first = !ex[id]; ex[id] = (ex[id] || 0) + 1;
-    S.setState({ explored: ex });
+    var ex = Object.assign({}, explored()); var first = !ex[id]; ex[id] = (ex[id] || 0) + 1;
     var minutes = Math.round(secsDone / 6) / 10; /* the time she practised, not rounded up to a minute (Codex sweep, 21 Oct) */
-    var ev = S.add('mindfulness', S.today(), { kind: 'informal', activity: id, activityName: a.name, variation: variationIndex, minutes: minutes, completed: finished === undefined ? true : !!finished, confirmedReal: !!confirmed, guide: (a.variations[variationIndex] && a.variations[variationIndex].author === 'erin') ? 'Everyday mindfulness, Erin’s own script in her voice' : 'Everyday mindfulness, Erin’s voice (interim script)', first: first });
+    /* The exploration count and entry land together, or neither changes on this phone. */
+    var ev = S.add('mindfulness', S.today(), { kind: 'informal', activity: id, activityName: a.name, variation: variationIndex, minutes: minutes, completed: finished === undefined ? true : !!finished, confirmedReal: !!confirmed, guide: (a.variations[variationIndex] && a.variations[variationIndex].author === 'erin') ? 'Everyday mindfulness, Erin’s own script in her voice' : 'Everyday mindfulness, Erin’s voice (interim script)', first: first }, 'room', { statePatch: { explored: ex } });
     return { event: ev, first: first, count: ex[id] };
   }
   root.OvuMindful = { ACTIVITIES: ACTIVITIES, byId: byId, explored: explored, timesDone: timesDone, nextVariation: nextVariation, partOfDay: partOfDay, totalSecs: totalSecs, complete: complete };

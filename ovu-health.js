@@ -54,9 +54,36 @@
    * minutes) are merged; a gap of more than four hours starts a new session; a session belongs to the
    * date of the morning it ends on, so a night that crosses midnight lands on the morning's date. When
    * two sessions share a date the longer one is the night and the others count as naps. Bedtime is the
-   * first asleep start, wake the last asleep end, and the hours are the asleep minutes added up. */
+   * first asleep start, wake the last asleep end, and the hours are the asleep minutes added up.
+   * Quality detail, when the source has it: stageMin counts the minutes tagged core, deep or rem (one stage a minute,
+   * so a watch and a phone writing the same minutes count once; only kept when any of the three exists), awakeMin is the awake time inside the night's window, inBedMin the in-bed time of the blocks that
+   * overlap the night (kept only when it is at least the asleep time, so sleep efficiency stays meaningful). */
   var GAP = 4 * 3600000;
-  function nightsFrom(segs) {
+  function unionMin(list, lo, hi) {
+    var iv = (list || []).map(function (x) { return { s: Math.max(x.s, lo), e: Math.min(x.e, hi) }; }).filter(function (x) { return x.e > x.s; }).sort(function (a, b) { return a.s - b.s; });
+    var tot = 0, cur = null;
+    iv.forEach(function (x) { if (cur && x.s <= cur.e) { if (x.e > cur.e) cur.e = x.e; } else { if (cur) tot += cur.e - cur.s; cur = { s: x.s, e: x.e }; } });
+    if (cur) tot += cur.e - cur.s;
+    return Math.round(tot / 60000);
+  }
+  function qualityOf(ss, segs, extra) {
+    /* each minute of the night counts for one stage only (deep, then rem, then core), so overlapping records from two
+       devices, or a stage written inside another, never add up to more than the night */
+    var q = {}, n = Math.ceil((ss.e - ss.s) / 60000), mark = new Array(n), st = { core: 0, deep: 0, rem: 0 }, rank = { deep: 3, rem: 2, core: 1 }, any = false;
+    segs.forEach(function (x) {
+      if (!rank[x.st] || x.e <= ss.s || x.s >= ss.e) return;
+      for (var i = Math.max(0, Math.floor((x.s - ss.s) / 60000)), hi = Math.min(n, Math.ceil((x.e - ss.s) / 60000)); i < hi; i++) if (!mark[i] || rank[x.st] > rank[mark[i]]) mark[i] = x.st;
+    });
+    for (var i = 0; i < n; i++) if (mark[i]) { st[mark[i]]++; any = true; }
+    if (any) q.stageMin = st;
+    if (extra && extra.awake && extra.awake.length) { var aw = unionMin(extra.awake, ss.s, ss.e); if (extra.awake.some(function (x) { return x.e > ss.s && x.s < ss.e; })) q.awakeMin = aw; }
+    if (extra && extra.inbed && extra.inbed.length) {
+      var blocks = extra.inbed.filter(function (x) { return x.e > ss.s && x.s < ss.e; });
+      if (blocks.length) { var lo = Math.min.apply(null, blocks.map(function (x) { return x.s; })), hi = Math.max.apply(null, blocks.map(function (x) { return x.e; })), ib = unionMin(blocks, lo, hi); if (ib >= Math.round(ss.asleep / 60000)) q.inBedMin = ib; }
+    }
+    return q;
+  }
+  function nightsFrom(segs, extra) {
     var list = (segs || []).filter(function (x) { return x && isFinite(x.s) && isFinite(x.e) && x.e > x.s; }).sort(function (a, b) { return a.s - b.s; });
     var merged = [];
     list.forEach(function (x) { var l = merged[merged.length - 1]; if (l && x.s <= l.e + 60000) { if (x.e > l.e) l.e = x.e; } else merged.push({ s: x.s, e: x.e }); });
@@ -66,7 +93,7 @@
     sessions.forEach(function (ss) { var d = wallDate(ss.e), cur = byDate[d]; if (!cur) byDate[d] = ss; else { naps++; if (ss.asleep > cur.asleep) byDate[d] = ss; } });
     var nights = Object.keys(byDate).sort().map(function (d) {
       var ss = byDate[d];
-      return { date: d, bedTime: wallHM(ss.s), wakeTime: wallHM(ss.e), asleepMin: Math.round(ss.asleep / 60000), hours: Math.round(ss.asleep / 360000) / 10, segments: ss.n };
+      return Object.assign({ date: d, bedTime: wallHM(ss.s), wakeTime: wallHM(ss.e), asleepMin: Math.round(ss.asleep / 60000), hours: Math.round(ss.asleep / 360000) / 10, segments: ss.n }, qualityOf(ss, list, extra));
     });
     return { nights: nights, naps: naps };
   }
@@ -106,12 +133,20 @@
   function sleepKind(v) {
     if (/Asleep/.test(v) || v === '1' || v === '3' || v === '4' || v === '5') return 'asleep';
     if (/InBed/.test(v) || v === '0') return 'inbed';
+    if (/Awake/.test(v) || v === '2') return 'awake';
     return null;
+  }
+  /* the stage of an asleep value: core, deep, rem, or unspecified (an iPhone or an older watch) */
+  function sleepStage(v) {
+    if (/AsleepCore/.test(v) || v === '3') return 'core';
+    if (/AsleepDeep/.test(v) || v === '4') return 'deep';
+    if (/AsleepREM/i.test(v) || v === '5') return 'rem';
+    return 'unspecified';
   }
   function attrs(s) { var o = {}, m, re = /([\w:.-]+)="([^"]*)"/g; while ((m = re.exec(s))) o[m[1]] = m[2]; return o; }
 
   function appleScanner() {
-    var carry = '', asleep = [], inbed = [], weights = {}, flows = {}, spots = {}, syms = {}, minds = {}, skipped = {}, skipDates = {};
+    var carry = '', asleep = [], inbed = [], awake = [], weights = {}, flows = {}, spots = {}, syms = {}, minds = {}, skipped = {}, skipDates = {};
     var counts = { records: 0, sleepSegments: 0, awake: 0, weighIns: 0, flowRecords: 0, flowNone: 0, spotRecords: 0, symptomRecords: 0, symptomAbsent: 0, mindfulSessions: 0, workouts: 0, unreadable: 0 };
     var RE = /<(Record|Workout)\s([^>]*)>/g;
     /* kinds Rhythme has no place for are counted with their first and last date (the first ten characters of startDate) */
@@ -124,9 +159,11 @@
     function one(a) {
       var t = a.type;
       if (t === SLEEP_T) {
-        var k = sleepKind(a.value || ''); if (!k) { counts.awake++; return; }
+        var k = sleepKind(a.value || ''); if (!k) { counts.unreadable++; return; }
         var s = parseStamp(a.startDate), e = parseStamp(a.endDate); if (!s || !e || e.wall <= s.wall) { counts.unreadable++; return; }
-        (k === 'asleep' ? asleep : inbed).push({ s: s.wall, e: e.wall }); counts.sleepSegments++; return;
+        if (k === 'awake') { awake.push({ s: s.wall, e: e.wall }); counts.awake++; return; }
+        if (k === 'asleep') asleep.push({ s: s.wall, e: e.wall, st: sleepStage(a.value || '') }); else inbed.push({ s: s.wall, e: e.wall });
+        counts.sleepSegments++; return;
       }
       if (t === MASS_T) {
         var kg = toKg(a.value, a.unit), st = parseStamp(a.startDate); if (kg === null || !st) { counts.unreadable++; return; }
@@ -169,7 +206,7 @@
       }
     }
     function result() {
-      var sl = nightsFrom(asleep), nights = sl.nights, have = {};
+      var sl = nightsFrom(asleep, { awake: awake, inbed: inbed }), nights = sl.nights, have = {};
       nights.forEach(function (n) { have[n.date] = 1; n.basis = 'asleep'; });
       /* An iPhone without a watch only writes time in bed; those nights are kept, labelled, where no asleep data exists. */
       var ib = nightsFrom(inbed); ib.nights.forEach(function (n) { if (!have[n.date]) { n.basis = 'in-bed'; nights.push(n); } });
@@ -197,14 +234,17 @@
     var act = String(obj.fitnessActivity || obj.activityType || obj.activity || obj.type || '').toLowerCase();
     if (!(/sleep/.test(act) || /_SLEEP\.json$/i.test(name || ''))) return null;
     var s = parseStamp(obj.startTime), e = parseStamp(obj.endTime); if (!s || !e || e.wall <= s.wall) return null;
-    var segs = [];
+    var segs = [], awake = [];
     (Array.isArray(obj.segment) ? obj.segment : Array.isArray(obj.segments) ? obj.segments : []).forEach(function (sg) {
-      var a = String(sg && (sg.fitnessActivity || sg.activityType || sg.activity || sg.type) || '').toLowerCase();
-      if (/awake|out.?of.?bed|unknown/.test(a)) return;
-      var ss = parseStamp(sg.startTime), se = parseStamp(sg.endTime); if (ss && se && se.wall > ss.wall) segs.push({ s: ss.wall, e: se.wall });
+      var a = String(sg && (sg.fitnessActivity || sg.activityType || sg.activity || sg.type || sg.sleepSegmentType) || '').toLowerCase();
+      var ss = parseStamp(sg && sg.startTime), se = parseStamp(sg && sg.endTime); if (!ss || !se || se.wall <= ss.wall) return;
+      /* Fit sleep stages (sleepSegmentType 1 awake, 2 sleeping, 3 out of bed, 4 light, 5 deep, 6 REM): light is counted as core */
+      if (/awake/.test(a) || a === '1') { awake.push({ s: ss.wall, e: se.wall }); return; }
+      if (/out.?of.?bed|unknown/.test(a) || a === '3') return;
+      segs.push({ s: ss.wall, e: se.wall, st: /deep/.test(a) || a === '5' ? 'deep' : /rem/.test(a) || a === '6' ? 'rem' : /light/.test(a) || a === '4' ? 'core' : 'unspecified' });
     });
-    if (!segs.length) segs.push({ s: s.wall, e: e.wall });
-    return segs;
+    if (!segs.length) segs.push({ s: s.wall, e: e.wall, st: 'unspecified' });
+    return { segs: segs, awake: awake };
   }
   function parseCsv(text) {
     var rows = [], row = [], cell = '', q = false, i, c;
@@ -240,14 +280,14 @@
     return Object.keys(out).sort().map(function (d) { return { date: d, kg: out[d] }; });
   }
   function googleBuilder() {
-    var segs = [], weights = {}, minds = {}, cols = {}, counts = { files: 0, sleepSessions: 0, mindfulSessions: 0, otherSessions: 0, csvFiles: 0, weighIns: 0, unreadable: 0 }, otherKinds = {}, skipDates = {};
+    var segs = [], awakeSegs = [], weights = {}, minds = {}, cols = {}, counts = { files: 0, sleepSessions: 0, mindfulSessions: 0, otherSessions: 0, csvFiles: 0, weighIns: 0, unreadable: 0 }, otherKinds = {}, skipDates = {};
     function seen(k, d) { if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return; var r = skipDates[k]; if (!r) skipDates[k] = { from: d, to: d }; else { if (d < r.from) r.from = d; if (d > r.to) r.to = d; } }
     return {
       json: function (text, name) {
         counts.files++;
         var obj; try { obj = JSON.parse(text); } catch (e) { counts.unreadable++; return; }
         var s = googleSession(obj, name);
-        if (s) { counts.sleepSessions++; segs = segs.concat(s); return; }
+        if (s) { counts.sleepSessions++; segs = segs.concat(s.segs); awakeSegs = awakeSegs.concat(s.awake); return; }
         var act = String(obj && (obj.fitnessActivity || obj.activityType || obj.activity) || 'other').toLowerCase().replace(/_/g, ' ');
         var st = parseStamp(obj && obj.startTime), en = parseStamp(obj && obj.endTime);
         if (/meditat|mindful/.test(act) && st && en && en.ms > st.ms) {
@@ -261,7 +301,7 @@
         var dc = googleDailyColumns(text, name); Object.keys(dc).forEach(function (n) { var m = cols[n] || (cols[n] = {}); dc[n].forEach(function (d) { m[d] = 1; }); });
       },
       result: function () {
-        var sl = nightsFrom(segs); sl.nights.forEach(function (n) { n.basis = 'asleep'; });
+        var sl = nightsFrom(segs, { awake: awakeSegs }); sl.nights.forEach(function (n) { n.basis = 'asleep'; });
         var weight = Object.keys(weights).sort().map(function (d) { return { date: d, kg: weights[d] }; });
         var mindful = mindDays(minds);
         Object.keys(cols).forEach(function (name) { var ds = Object.keys(cols[name]).sort(); if (ds.length) { otherKinds[name] = ds.length; skipDates[name] = { from: ds[0], to: ds[ds.length - 1] }; } });
@@ -479,6 +519,14 @@
    * (or another source did), refresh when this same source wrote it before, otherwise add. Only the kinds
    * named in opts.kinds are considered; with no opts every kind is (kept for tests and older callers).
    * apply() writes the plan in one batch. */
+  /* the quality detail a night carries into its entry, only the parts the source measured */
+  function sleepDetail(n) {
+    var o = {};
+    if (n.stageMin) o.stageMin = { core: n.stageMin.core, deep: n.stageMin.deep, rem: n.stageMin.rem };
+    if (typeof n.awakeMin === 'number') o.awakeMin = n.awakeMin;
+    if (typeof n.inBedMin === 'number') o.inBedMin = n.inBedMin;
+    return o;
+  }
   function plan(result, store, opts) {
     opts = opts || {};
     var want = {}, from = opts.from || null;
@@ -496,7 +544,7 @@
       counts[kind]++; dates.push(date);
     }
     var label = src === SOURCE.apple ? 'Apple Health' : 'Google Takeout (Fit)';
-    if (want.sleep) (result.sleep || []).forEach(function (n) { consider('sleep', 'sleep', n.date, { bedTime: n.bedTime, wakeTime: n.wakeTime, hours: n.hours, asleepMin: n.asleepMin, quality: null, notes: 'From ' + label + (n.basis === 'in-bed' ? ' (time in bed; no sleep stages were recorded)' : ''), mode: 'import', basis: n.basis || 'asleep', segments: n.segments }); });
+    if (want.sleep) (result.sleep || []).forEach(function (n) { consider('sleep', 'sleep', n.date, Object.assign({ bedTime: n.bedTime, wakeTime: n.wakeTime, hours: n.hours, asleepMin: n.asleepMin, quality: null, notes: 'From ' + label + (n.basis === 'in-bed' ? ' (time in bed; no sleep stages were recorded)' : ''), mode: 'import', basis: n.basis || 'asleep', segments: n.segments }, sleepDetail(n))); });
     if (want.weight) (result.weight || []).forEach(function (w) { consider('weight', 'weight', w.date, { kg: w.kg }); });
     if (want.period) (result.period || []).forEach(function (p) { consider('period', 'period', p.date, { flow: p.flow }); });
     if (want.spotting) (result.spotting || []).forEach(function (p) { consider('spotting', 'period', p.date, { flow: 'spotting' }); });

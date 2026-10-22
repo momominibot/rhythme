@@ -37,6 +37,7 @@
       <div class="ct" style="margin-top:10px;font:800 10px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)">Recent 28 days</div>
       <div class="kpis" id="shareKpis"></div>
       <div id="shareBody"></div>
+      <div id="fastingBlock"></div>
       <div id="aiShare"></div>
       <div class="row">
         <button class="btn primary" id="makePdf"><span class="ms">picture_as_pdf</span>Download PDF</button>
@@ -63,8 +64,8 @@
     </section>
 
     <section class="card" id="sleepNotesCard">
-      <h2><span class="ms">bedtime</span>Sleep details</h2>
-      <p class="sub">The last four weeks of the optional sleep questions and the two-week check. Only nights you answered are counted.</p>
+      <h2><span class="ms">bedtime</span>Sleep quality</h2>
+      <p class="sub">The last four weeks: how steady your sleep times were and, from Apple Health or Google, time awake, time in bed and sleep stages. Then your sleep questions and the two-week check. Each line counts only the nights that have it.</p>
       <div id="sleepNotesBody"></div>
     </section>
 
@@ -118,6 +119,7 @@
 <script src="ovu-auth.js"></script>
 <script src="ovu-textsize.js"></script>
 <script src="ovu-food.js"></script>
+<script src="ovu-fasting.js"></script>
 <script src="ovu-agents.js"></script>
 <script src="ovu-orb.js"></script>
 <script src="ovu-insight.js"></script>
@@ -170,7 +172,7 @@
   $('#flags').addEventListener('click',function(e){var b=e.target.closest('[data-dismiss]');if(!b)return;if(!confirm('Hide this note? It comes back if you log bleeding or spotting again. Please still get the check.'))return;A.dismissFlag(b.dataset.dismiss);renderAll();});
   var KICON={coverage:'event_available',period:'water_drop',cycle:'calendar_month',sleep:'bedtime',symptoms:'healing',calm:'self_improvement'};
   function kpi(key,label,val,sub){return '<div class="kpi"><small><span class="ms">'+KICON[key]+'</span>'+label+'</small><b>'+val+'</b><span>'+esc(sub)+'</span></div>';}
-  function renderShare(){
+  function renderShare(){var fb=$('#fastingBlock');if(fb){try{fb.innerHTML=window.OvuFasting?OvuFasting.journalHTML(S.addDays(S.today(),-27),S.today()):'';}catch(e){fb.innerHTML='';}}
     var sum=A.fourWeekSummary(),cov=sum.coverage.daysWithEntries,low=cov<14,eps=sum.cycle.episodes.length,cl=sum.cycle.cycleLengths.length;
     $('#shareKpis').innerHTML=
       kpi('coverage','Logged',cov+'<em>/28</em>','days with entries')+
@@ -286,7 +288,7 @@
     var snp=A.sleepNotes(from,end),snr=A.sleepNotesRows(snp);if(snp.flushNights)snr.push(['Nights woken by a hot flush or night sweat',snp.flushNights+' of '+Math.max(snp.nights,snp.flushNights)+' recorded dates (sleep details or symptom notes; a night without either is not counted as no)']);
     snr.forEach(function(r){B.push({t:'kv',label:r[0],text:r[1]});});
     snp.checks.slice(0,2).forEach(function(c){var nt=A.sleepCheckNotes(c.answers).map(function(x){return x.title.replace(/^Worth raising: /,'');});B.push({t:'kv',label:'Sleep check '+pretty(c.date,{day:'numeric',month:'short'}),text:A.sleepCheckText(c.answers)+(nt.length?'. Notes raised: '+nt.join('; ').toLowerCase():'')});});
-    if(snr.length||snp.checks.length)B.push({t:'small',text:'Sleep details are optional questions in the app’s own words, not a validated scale or a score; counts use only the nights that answered. “Over 30 min” is a research marker (Lichstein 2003), not a diagnosis.'});
+    if(snr.length||snp.checks.length)B.push({t:'small',text:(A.sleepQualityRows(snp.quality).length?'Sleep figures come from the nights recorded, imported or synced; stages are the device’s own estimate. ':'')+'Sleep details are optional questions in the app’s own words, not a validated scale or a score; counts use only the nights that answered. “Over 30 min” is a research marker (Lichstein 2003), not a diagnosis.'});
     var fl=sum.symptoms.flushes||{};if(fl.days)B.push({t:'kv',label:'Hot flushes',text:fl.days+' day'+(fl.days===1?'':'s')+(fl.counted?', '+Math.round(fl.total/fl.counted*10)/10+' a day on average on the '+fl.counted+' day'+(fl.counted===1?'':'s')+' counted':'')+(fl.nightsWoken?', woke her on '+fl.nightsWoken+' night'+(fl.nightsWoken===1?'':'s'):'')});
     var moods=Object.keys(sum.symptoms.moods||{});if(moods.length)B.push({t:'kv',label:'Mood',text:moods.map(function(k){return k+' ('+sum.symptoms.moods[k]+')';}).join(', ')});
     B.push({t:'kv',label:'Food',text:sum.food.meals+' meal'+(sum.food.meals===1?'':'s')+' over '+sum.food.daysLogged+' day'+(sum.food.daysLogged===1?'':'s')+(Object.keys(sum.food.tags||{}).length?'; tags: '+Object.keys(sum.food.tags).map(function(k){return k+' ('+sum.food.tags[k]+')';}).join(', '):'')});

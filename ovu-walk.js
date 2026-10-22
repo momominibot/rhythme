@@ -346,15 +346,20 @@
     sortDepth(cur.y);
   }
   /* ---------- the walk cycle ---------- */
-  function outfitNow() { var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatar.querySelector('#avatarImg').getAttribute('src') || ''); return m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; }
+  function outfitNow() { var m = /avatar-([a-z0-9-]+?)(?:-blink)?\.webp/.exec(avatar.querySelector('#avatarImg').getAttribute('src') || ''); return m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; }
+  /* the outfits with walk strips drawn (tools/art/walkcycle.py). An outfit missing here, or a missing direction, falls back
+     without a request, so a drop without strips yet (the gown, the kebayas, the tudung) does not log a 404 per direction */
+  var STRIPS = { base: 'side away towards', cozy: 'side away towards', pajamas: 'side away towards', party: 'side away', sundress: 'side away towards', yoga: 'side away towards' };
   function sheet(outfit, dir) {
     var k = outfit + '-' + dir, e = cyc.sheets[k];
+    if (!e && (!STRIPS[outfit] || STRIPS[outfit].indexOf(dir) < 0)) return (cyc.sheets[k] = { ok: false, img: { src: '' } });
     if (!e) { e = cyc.sheets[k] = { ok: null, img: new Image() }; e.img.onload = function () { if (e.img.decode) e.img.decode().then(function () { e.ok = true; }, function () { e.ok = true; }); else e.ok = true; }; e.img.onerror = function () { e.ok = false; }; e.img.src = R.ART + 'avatar-walk-' + k + '.webp'; }
     return e;
   }
   var BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
   function preloadCycle() {
     var o = outfitNow(); if (!o) return;
+    if (cyc.on && cyc.key && cyc.key.indexOf(o + '-') !== 0) cycleHide(); /* a new outfit mid-walk: the old strip goes at once, and the walk shows the new one when it is ready (Codex verification, 21 Oct) */
     Object.keys(cyc.sheets).forEach(function (k) { if (k.indexOf(o + '-') !== 0) { cyc.sheets[k].img.src = BLANK; delete cyc.sheets[k]; } }); /* only her current outfit stays decoded; a blank data URI, not an empty src, so Safari lets go of the pixels */
     ['side', 'away', 'towards'].forEach(function (d) { sheet(o, d); });
   }
@@ -511,6 +516,7 @@
     var fromL = R.layout(), from = fromL.id, fromScene = sceneOf(fromL), target = to === 'home' ? R.homeId() : to, T = R.LAYOUTS[target];
     if (!T) return false;
     if (T.store && !storeOpen(T.store)) { hoursCard(T.store); return false; } /* each interior keeps its own store's hours */
+    if (T.admit && !T.admit()) { if (T.refused) T.refused(); return false; } /* a room with its own rule (Harbour Lane's shops keep their own hours) */
     travelling = true; clearInput(); if (active) commit();
     R.emit('travel', target, T); /* the music fades before the plate swaps (the cave is reached in silence) */
     scene.classList.add('fading'); if (root.OvuSound) root.OvuSound.play('door'); else R.chime('tap');
@@ -518,8 +524,10 @@
     Promise.all([preload(R.ART + T.img), occWait(T)]).then(function () { /* the plate, and its cutouts decoded or the cap reached */
       var left = Math.max(0, (reduced ? 80 : 380) - (Date.now() - t0));
       root.setTimeout(function () {
-        if (napping() || (T.store && !storeOpen(T.store))) { /* she fell asleep or the store shut during the fade */
+        var refused = !!(T.admit && !T.admit());
+        if (napping() || (T.store && !storeOpen(T.store)) || refused) { /* she fell asleep or the store shut during the fade */
           if (T.store && !storeOpen(T.store) && !(R.asleep && R.asleep())) hoursCard(T.store);
+          if (refused && !napping() && T.refused) T.refused();
           scene.classList.remove('fading'); travelling = false; return;
         }
         R.applyLayout(target, !!opts.visit);
