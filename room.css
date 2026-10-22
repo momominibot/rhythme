@@ -2205,3 +2205,39 @@ html[data-sky=night] .winfo summary{color:#b9d2f5}
 .fq .chips{display:flex;gap:6px;flex-wrap:wrap}
 .fq .chipbtn[disabled]{opacity:.6}
 .fastingcard .ilist{margin-top:6px}
+
+/* ---------- the Today card's three tabs (21 Oct): Today, Channel once she has joined a plaza group, Inventory ---------- */
+.decktabs{margin:0 0 4px}
+.decktabs button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:40px;position:relative}
+.decktabs button .ms{font-size:18px}
+.dbadge{position:absolute;top:3px;right:6px;min-width:18px;height:18px;border-radius:9px;background:var(--rm-blush);color:var(--rm-plum);font:800 11px/18px var(--sans);text-align:center;padding:0 5px}
+.dbadge[hidden]{display:none}
+.deckpane[hidden]{display:none}
+.deckpane>h2{margin-bottom:2px}
+.chhead,.chfriends,.invhearts{display:flex;align-items:center;gap:10px;padding:12px;border-radius:16px;background:var(--rm-paper-2);margin-top:10px}
+.chhead>.ms,.chfriends>.ms,.invhearts>.ms{font-size:26px;color:var(--rm-mauve)}
+.chhead>div,.chfriends>div,.invhearts>div{flex:1;min-width:0}
+.chhead b,.chfriends b,.invhearts b{display:block;font:800 14px var(--sans);color:var(--rm-plum)}
+.chhead small,.chfriends small,.invhearts small{display:block;font:600 12.5px/1.35 var(--sans);color:var(--rm-ink-2)}
+.invhearts .btn{flex:0 0 auto;padding:10px 14px;min-height:40px}
+.chprompt{margin-top:10px;padding:12px;border-radius:16px;background:var(--rm-cream)}
+.chprompt .lbl{display:block;font:800 10px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-mauve)}
+.chprompt p{margin:4px 0 0;font:600 13.5px/1.4 var(--sans);color:var(--rm-ink)}
+.chrow{flex-wrap:wrap}
+.chrow .btn{min-height:44px;flex:1 1 40%}
+.chbadge{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:#fff;color:var(--rm-plum);font:800 11px/18px var(--sans);text-align:center;padding:0 5px}
+.invsec{margin-top:12px}
+.invsec h3{display:flex;align-items:center;gap:6px;margin:0;font:800 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-mauve)}
+.invsec h3 .ms{font-size:16px}
+.invsec h3 small{font:800 11px var(--sans);color:var(--rm-ink-3);letter-spacing:0}
+.invlist{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.invlist li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--rm-paper-2);font:600 13px/1.3 var(--sans);color:var(--rm-ink)}
+.invlist li b{font-weight:800;color:var(--rm-plum)}
+.invlist li i{font:800 11px/18px var(--sans);min-width:18px;padding:0 6px;border-radius:9px;background:var(--rm-lilac-2);color:var(--rm-plum);text-align:center}
+.invlist li span{margin-left:auto;font:600 12px var(--sans);color:var(--rm-ink-3);text-align:right}
+.invsec .help{margin-top:6px}
+.invgo{display:inline-flex;align-items:center;gap:2px;margin-top:6px;border:none;background:transparent;padding:6px 2px;font:800 12px var(--sans);color:var(--rm-plum);cursor:pointer}
+.invgo .ms{font-size:18px}
+html[data-sky="night"] .decktabs button.on{background:var(--rm-card)}
+html[data-sky="night"] :is(.chhead,.chfriends,.invhearts,.chprompt,.invlist li){background:var(--rm-card);border:1px solid rgba(255,255,255,.08)}
+html[data-sky="night"] .chbadge{background:var(--rm-lilac-2)}

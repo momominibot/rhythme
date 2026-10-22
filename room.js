@@ -2975,6 +2975,7 @@
     var sm = items.length ? FD.sum(items) : null;
     var sym = S.list('symptom', { from: today, to: today })[0];
     renderCheckIn();
+    if (window.OvuToday) OvuToday.render(); /* the Channel and Inventory panes of the card follow every deck redraw */
     var flags = A.allFlags().concat((S.profile().intakeNotes || []).map(function (n) { return { level: n.level || 'watch', title: n.title, detail: n.detail }; }));
     $('#flagCard').style.display = flags.length ? '' : 'none';
     $('#flags').innerHTML = flags.slice(0, 3).map(function (f) { return '<div class="flag ' + f.level + '"><span class="ms">' + (f.level === 'high' ? 'emergency_home' : f.level === 'watch' ? 'flag' : 'info') + '</span><div><b>' + esc(f.title) + '</b><span>' + esc(f.detail) + '</span></div></div>'; }).join('');
@@ -3073,7 +3074,7 @@
   hooks.on.walk = [function () { endMoment(); }];
   function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = {
-    LAYOUTS: LAYOUTS, ART: ART, hotspotHandlers: hooks.hotspotHandlers,
+    LAYOUTS: LAYOUTS, ART: ART, OUTFITS: OUTFITS, hotspotHandlers: hooks.hotspotHandlers,
     on: function (name, f) { (hooks.on[name] = hooks.on[name] || []).push(f); if (name === 'boot' && booted) f(); },
     setFallbackHotspot: function (f) { hooks.fallbackHotspot = f; }, setHudStop: function (f) { hooks.hudStop = f; }, setMoving: function (f) { hooks.moving = f; }, emit: emit,
     /* the camera, for ovu-camera.js: read it, set it, and say where + and − should zoom about */
