@@ -76,7 +76,7 @@
   function farmState(S) {
     var f = S.state().farm || {};
     return Object.assign({}, f, { beds: f.beds || {}, harvest: f.harvest || {}, seeds: f.seeds || {}, seedsByDay: f.seedsByDay || {}, unlocked: f.unlocked || {}, tools: f.tools || {}, can: f.can || 0, guided: !!f.guided,
-      pantry: counts(f.pantry, PANTRY), animals: dates(f.animals, ANIMALS), found: dates(f.found, PLACES) });
+      pantry: counts(f.pantry, PANTRY), animals: dates(f.animals, Object.keys(f.animals || {}).filter(function (k) { return /^[a-z][a-z0-9]{0,23}$/.test(k); })), found: dates(f.found, PLACES), ranch: f.ranch === undefined ? undefined : f.ranch }); /* every animal keeps its collection day, not only the three starters (ranch, 22 Oct) */
   }
   function canGrow(f, crop) { return !!CROPS[crop] && (STARTER.indexOf(crop) > -1 || !!(f.unlocked && f.unlocked[crop])); }
   function growable(f) { return Object.keys(CROPS).filter(function (k) { return canGrow(f, k); }); }

@@ -718,7 +718,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('no energy is ever added in the barn or the spring', !/refill\(|\.v\s*\+=|spend\([^)]*-\s*\d|OvuStamina\.refill/.test(src) && src.indexOf("'egg'") > -1 && w.OvuStamina.COSTS.egg === 1 && w.OvuStamina.COSTS.milk === 2);
   var bad = {}; S.setState({ farm: { pantry: { egg: -3, milk: 1.7, onsenegg: 'x' }, animals: { mochi: 'not a date', bogus: '2026-01-01' }, found: { cave: 5 } } });
   var fs2 = F.farmState(S);
-  check('restored farm values are cleaned: whole non-negative counts, dates only, known animals only', fs2.pantry.egg === 0 && fs2.pantry.milk === 1 && fs2.pantry.onsenegg === 0 && !fs2.animals.mochi && !('bogus' in fs2.animals) && !fs2.found.cave);
+  check('restored farm values are cleaned: whole non-negative counts, dates only; any animal id keeps a valid date (ranch animals, 22 Oct)', fs2.pantry.egg === 0 && fs2.pantry.milk === 1 && fs2.pantry.onsenegg === 0 && !fs2.animals.mochi && (!('bogus' in fs2.animals) || /^\d{4}-\d{2}-\d{2}$/.test(fs2.animals.bogus)) && !fs2.found.cave);
   S.setState({ farm: { pantry: { egg: 99 } } });
   check('a full pantry takes no more eggs and changes nothing', !B.collectEggs(S, d1).ok && F.farmState(S).pantry.egg === 99 && B.eggsReady(S, d1).length === 2);
   S.setState({ farm: null });
@@ -5052,6 +5052,35 @@ var summarised = false;
   check('the PULSE flow asks before saving, ends the break when she leaves the sheet or the app, and joins the one-activity rule', /Log what I did/.test(rs) && /current !== 'pulse' \|\| document\.hidden/.test(rs) && /function openPulse\(id\) \{[\s\S]{0,200}refuseBusy\(\)/.test(rs));
   var lines = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/erin-actions/lines.json'), 'utf8')).map(function (x) { return x.id; });
   check("Erin's voice for before, start, stop and log, each with its clip", ['pulse-before', 'pulse-start', 'pulse-stop', 'pulse-log'].every(function (id) { return lines.indexOf(id) > -1 && fs.existsSync(path.join(root, 'assets/audio/erin-actions/' + id + '.mp3')); }));
+})();
+
+(function () {
+  console.log('2k32. the ranch (22 Oct): herd, barn and coop room, babies on day strings, product size by love; nothing lost, nothing gamed');
+  var c = vm.createContext({ Math: Math, Number: Number, String: String, Array: Array, Object: Object, JSON: JSON, Date: Date, isFinite: isFinite, RegExp: RegExp }); c.window = c;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-ranch.js'), 'utf8'), c);
+  var R = c.OvuRanch, D = '2026-10-22';
+  var farm0 = { pantry: { egg: 3, milk: 1, onsenegg: 0 }, animals: { clover: '2026-10-21', mochi: '2026-10-22' }, love: { clover: { n: 10, day: D, acts: {}, full: '2026-10-10' }, mochi: { n: 5, day: D, acts: {} } }, harvest: {} };
+  var f1 = R.migrate(farm0, D), r1 = R.ranchOf(f1);
+  check('migration once: the three starters become the herd, with their love and collection days kept, and pantry eggs and milk counted as small', r1.herd.map(function (a) { return a.id; }).join() === 'clover,mochi,kaya' && f1.love.clover.n === 10 && f1.animals.mochi === '2026-10-22' && r1.sizes.egg.small === 3 && r1.sizes.milk.small === 1 && R.migrate(f1, '2026-10-23') === f1);
+  check('an unknown or broken ranch record never replaces the herd with starters; a malformed animal is dropped, the rest kept', (function () { var f = JSON.parse(JSON.stringify(f1)); f.ranch.herd.push({ id: 'cow9', kind: 'cow', name: 'Bess' }); f.ranch.herd.push({ kind: 'cat' }); f.ranch.herd.push({ id: 'BAD ID', kind: 'hen' }); var r = R.ranchOf(f); return r.herd.length === 4 && r.herd[3].name === 'Bess' && R.ranchOf(R.migrate(f, D)).herd.length === 4; })());
+  check('starter room: the barn holds 1 cow and the coop 2 hens, so expansion comes first; an upgrade takes the barn to 4 and the coop to 6', R.room(r1, 'barn') === 0 && R.room(r1, 'coop') === 0 && R.upgrade(f1, 'barn').capacity === 4 && R.upgrade(f1, 'coop').capacity === 6 && R.upgrade(R.upgrade(f1, 'barn').farm, 'barn').ok === false);
+  var fb = R.upgrade(f1, 'coop').farm, b1 = R.buy(fb, 'hen', 'Pip <b>x</b>', D);
+  check('buying a hen after the coop upgrade: a named adult that produces from tomorrow (collection day set to today), name cleaned', b1.ok && b1.cost === 120 && b1.animal.name === 'Pip x' && b1.farm.animals[b1.animal.id] === D && R.list(R.ranchOf(b1.farm), 'hen').length === 3 && R.buy(f1, 'hen', 'Z', D).ok === false);
+  check('prices: hen 120, cow 240, barn and coop upgrades 300 each; no way to turn products into hearts', R.KINDS.hen.cost === 120 && R.KINDS.cow.cost === 240 && R.UPGRADE_COST.barn === 300 && R.UPGRADE_COST.coop === 300 && !/hearts \+=|earned/.test(fs.readFileSync(path.join(root, 'ovu-ranch.js'), 'utf8')));
+  var inc = R.incubate(b1.farm, 'small', D);
+  check('an egg in the incubator: one small egg leaves the pantry and the size mix, a coop place is reserved, due in three days', inc.ok && inc.due === '2026-10-25' && inc.farm.pantry.egg === 2 && R.ranchOf(inc.farm).sizes.egg.small === 2 && R.room(R.ranchOf(inc.farm), 'coop') === 2 && R.incubate(inc.farm, 'small', D).ok === false);
+  var hatched = R.advance(inc.farm, '2026-10-25'), rh = R.ranchOf(hatched), chick = R.list(rh, 'hen')[3];
+  check('hatching on the due day, in the same step as the timer clearing: a chick that grows up seven days later and makes nothing until then', chick && chick.name === 'Chick' && chick.born === '2026-10-25' && chick.adultOn === '2026-11-01' && rh.incubator === null && !R.isAdult(chick, '2026-10-31') && R.isAdult(chick, '2026-11-01'));
+  check('a day never moves backwards: a clock set back changes nothing, and the same day again changes nothing', R.advance(hatched, '2026-10-20') === hatched && R.advance(hatched, '2026-10-25') === hatched);
+  var fbarn = R.upgrade(f1, 'barn').farm, cd = R.calfDue(fbarn, 'clover', D), sc = R.startCalf(fbarn, 'clover', D);
+  check('a cow at ten hearts for a week can expect a calf: due today when already qualified, a stall reserved, no second calf at once', cd === D && sc.ok && sc.due === D && R.room(R.ranchOf(sc.farm), 'barn') === 2 && R.startCalf(sc.farm, 'clover', D).ok === false);
+  var born = R.advance(sc.farm, '2026-10-23'), calf = R.list(R.ranchOf(born), 'cow')[1];
+  check('the calf arrives on the next day change and grows up in fourteen days; a repeat calf waits seven days after the last', calf && calf.name === 'Calf' && calf.adultOn === R.addDays(calf.born, 14) && R.calfDue(born, 'clover', '2026-10-24') === '2026-10-29');
+  check('a cow without full love, or a baby, cannot have a calf', R.calfDue(R.upgrade(f1, 'barn').farm, 'nope', D) === null && (function () { var f = JSON.parse(JSON.stringify(fbarn)); f.love.clover.n = 9; return R.calfDue(f, 'clover', D) === null; })());
+  check('product size follows love: 0 to 3 small, 4 to 7 medium, 8 to 10 large', [0, 3, 4, 7, 8, 10].map(R.productSize).join() === 'small,small,medium,medium,large,large');
+  var add = R.addProduct(f1, 'egg', 'large', 2), tkr = R.takeProduct(add, 'egg', 4), tk = tkr.farm;
+  check('the size mix: products added at their size and taken smallest first; it never exceeds the pantry total and a gap fills as small', R.ranchOf(add).sizes.egg.large === 2 && R.ranchOf(tk).sizes.egg.small === 0 && R.ranchOf(tk).sizes.egg.large === 1 && JSON.stringify(tkr.taken) === '{"small":3,"large":1}' && (function () { var f = JSON.parse(JSON.stringify(f1)); f.pantry.egg = 7; f.ranch.sizes.egg.large = 9; var r = R.ranchOf(R.reconcile(f)).sizes.egg; return r.small + r.medium + r.large === 7; })());
+  check('the farm keeps every animal\'s collection day, not only the three starters, and the ranch record rides along in farmState', /Object\.keys\(f\.animals/.test(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8')) && /ranch: f\.ranch/.test(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8')));
 })();
 
 process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
