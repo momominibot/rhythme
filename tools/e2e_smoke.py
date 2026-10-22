@@ -618,8 +618,8 @@ async def main():
             check("Stop ends the brushing and its bar; she stands in the outfit she picked", not a3["practice"] and not a3["session"] and not a3["hud"] and a3["src"] == "avatar-sundress.webp", a3)
             # session first: brushing, Morning start and the bench practice wait for it; a new outfit is drawn on the mat
             await a_reset(pa)
-            await pa.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await pa.wait_for_selector('#sheet[aria-hidden="false"] .mattile[data-kind=breathe][data-min="2"]', timeout=8000)
-            await pa.evaluate("()=>document.querySelector('#sheet .mattile[data-kind=breathe][data-min=\"2\"]').click()"); await pa.wait_for_timeout(700); b0 = await pa.evaluate(AST)
+            await pa.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await pa.wait_for_selector('#sheet[aria-hidden="false"] #mindTap', timeout=8000)
+            await pa.evaluate("()=>OvuRoom.runSession('breathe', 2)"); await pa.wait_for_timeout(700); b0 = await pa.evaluate(AST)
             await pa.evaluate("()=>OvuRoom.openEveryday('teeth')"); await pa.wait_for_selector('#sheet[aria-hidden="false"] #actStart', timeout=10000); await pa.click('#actStart'); await pa.wait_for_timeout(600); b1 = await pa.evaluate(AST)
             check("during Just breathe, Begin on brushing is refused with one line: the breathing goes on, its bar is back and she stays on the mat", b0["session"] and b1["session"] and not b1["practice"] and b1["hud"] and b1["title"] == "Just breathe" and "Just breathe is running" in b1["toast"] and b1["med"], [b0, b1])
             await pa.evaluate("()=>OvuRoom.closeSheet()"); await pa.wait_for_timeout(300)
