@@ -54,13 +54,38 @@
   /* treats from the harvest basket (21 Oct: the basket needed somewhere to go): Clover likes carrots, pumpkins and sweet potatoes,
      the hens kangkong, pak choy and strawberries. A treat is only a treat: nothing is fed, nothing is owed, nothing changes but the basket. */
   var TREATS = { clover: ['carrot', 'pumpkin', 'sweetpotato'], hens: ['kangkong', 'pakchoy', 'strawberry'] };
+  /* friendship, Harvest Moon style (Jamie, 22 Oct: "I can pet my cow and chickens, brush them and they feel love by popping
+   * heart"): each animal has a love meter of 0 to 10. Petting, brushing and a treat each add one a day; nothing takes it away.
+   * It is game state under state.farm.love, apart from the hearts earned by logging, and it never touches the diary. */
+  var LOVE_MAX = 10, LOVE_ACTS = { pet: 1, brush: 1, treat: 1 };
+  function loveOf(f, who) {
+    var l = (f.love || {})[who] || {};
+    return { n: Math.max(0, Math.min(LOVE_MAX, Math.floor(Number(l.n) || 0))), day: typeof l.day === 'string' ? l.day : null, acts: l.acts && typeof l.acts === 'object' ? Object.assign({}, l.acts) : {} };
+  }
+  function addLove(f, who, act, day) {
+    if (!NAMES[who] || !LOVE_ACTS[act]) return false;
+    var l = loveOf(f, who);
+    if (l.day && day < l.day) return false; /* a clock set back never pays a day twice */
+    if (l.day !== day) { l.day = day; l.acts = {}; }
+    if (l.acts[act]) return false;
+    l.acts[act] = 1; var gained = l.n < LOVE_MAX; if (gained) l.n += 1;
+    f.love = Object.assign({}, f.love || {}); f.love[who] = { n: l.n, day: l.day, acts: l.acts };
+    return gained;
+  }
+  function love(S, who) { return loveOf(FM().farmState(S), who).n; }
+  function doneToday(S, who, act, day) { var l = loveOf(FM().farmState(S), who); return l.day === day && !!l.acts[act]; }
+  function care(S, who, act, day) {
+    var f = farm(S), g = addLove(f, who, act, day);
+    return attempt(function () { if (g || f.love) save(S, f, null); return { ok: true, gained: g, n: loveOf(f, who).n }; });
+  }
   function treatOptions(S, who) { var f = FM().farmState(S); return (TREATS[who] || []).filter(function (c) { return (f.harvest[c] || 0) > 0; }); }
   function giveTreat(S, who, crop, day) {
     if (!TREATS[who] || TREATS[who].indexOf(crop) < 0) return { ok: false, why: 'Not something ' + (who === 'hens' ? 'the hens' : NAMES[who]) + ' would eat.' };
     var f = farm(S); if (!((f.harvest[crop] || 0) > 0)) return { ok: false, why: 'None left in the basket.' };
     f.harvest[crop] -= 1; if (!f.harvest[crop]) delete f.harvest[crop];
     f.treats = Object.assign({}, f.treats || {}); f.treats[who] = day;
-    return attempt(function () { save(S, f, null); return { ok: true, crop: crop }; });
+    var gained = (who === 'hens' ? HENS : [who]).map(function (a) { return addLove(f, a, 'treat', day); }).some(Boolean);
+    return attempt(function () { save(S, f, null); return { ok: true, crop: crop, gained: gained }; });
   }
   function treatedToday(S, who, day) { var t = FM().farmState(S).treats; return !!(t && t[who] === day); }
   function caveFound(S) { return !!FM().farmState(S).found.cave; }
@@ -126,7 +151,7 @@
     doors: [{ id: 'heninexit', to: 'barn', x: 41, y: 80, r: 4, flip: false }],
     sleeper: { x: -50, y: -50, w: 1, rot: 0 }, zzz: { x: -50, y: -50 }, window: { x: -50, y: -50, rx: 0, ry: 0 }, props: {}
   };
-  var B = { LAYOUT: BARN, CAVE: CAVE, BARN_IN: BARN_IN, HEN_IN: HEN_IN, CRACK_DOOR: CRACK_DOOR, HENS: HENS, NAMES: NAMES, BATCH: BATCH, TREATS: TREATS, eggsReady: eggsReady, milkReady: milkReady, collectEggs: collectEggs, milk: milk, cookEggs: cookEggs, cookable: cookable, caveFound: caveFound, findCave: findCave, treatOptions: treatOptions, giveTreat: giveTreat, treatedToday: treatedToday };
+  var B = { LOVE_MAX: LOVE_MAX, love: love, care: care, doneToday: doneToday, LAYOUT: BARN, CAVE: CAVE, BARN_IN: BARN_IN, HEN_IN: HEN_IN, CRACK_DOOR: CRACK_DOOR, HENS: HENS, NAMES: NAMES, BATCH: BATCH, TREATS: TREATS, eggsReady: eggsReady, milkReady: milkReady, collectEggs: collectEggs, milk: milk, cookEggs: cookEggs, cookable: cookable, caveFound: caveFound, findCave: findCave, treatOptions: treatOptions, giveTreat: giveTreat, treatedToday: treatedToday };
   root.OvuBarn = B;
 
   /* ---------- the scenes ---------- */
@@ -154,6 +179,47 @@
   /* an egg sits in each nest box that has one */
   var NESTS = { mochi: { x: 52, y: 41 }, kaya: { x: 66, y: 45 } };
   function eggSVG() { return '<svg viewBox="0 0 20 24" aria-hidden="true"><ellipse cx="10" cy="13" rx="7.5" ry="9.5" fill="#fff8ee" stroke="#e6d3bd" stroke-width="1.2"/><ellipse cx="7.5" cy="9" rx="2" ry="3" fill="#fff"/></svg>'; }
+  /* hearts pop out of an animal she pets or brushes, with the soft pet sound; more hearts when the meter went up */
+  function animalEl(who) { return doc.querySelector('#ownedProps .barnthing.animal[data-id="' + who + '"]'); }
+  function heartPop(who, many) {
+    if (root.OvuSound) root.OvuSound.play('pet');
+    var el = animalEl(who); if (!el) return;
+    var wrap = R.els.props, n = many ? 5 : 2;
+    for (var i = 0; i < n; i++) {
+      var h = doc.createElement('span'); h.className = 'lovepop'; h.setAttribute('aria-hidden', 'true');
+      h.innerHTML = '<span class="ms fill">favorite</span>';
+      h.style.left = el.style.left; h.style.top = 'calc(' + el.style.top + ' - ' + (Number(el.style.width.replace('%', '')) * 0.55).toFixed(1) + '%)';
+      h.style.setProperty('--dx', ((i - (n - 1) / 2) * 14) + 'px'); h.style.animationDelay = (i * 90) + 'ms';
+      wrap.appendChild(h); root.setTimeout(function (x) { return function () { x.remove(); }; }(h), 1500 + i * 90);
+    }
+    el.classList.remove('loved'); void el.offsetWidth; el.classList.add('loved');
+  }
+  function meter(who) {
+    var n = love(S, who), out = '';
+    for (var i = 0; i < B.LOVE_MAX; i++) out += '<span class="ms' + (i < n ? ' fill' : ' off') + '">favorite</span>';
+    return '<div class="lovemeter" aria-label="' + esc(NAMES[who]) + ': ' + n + ' of ' + B.LOVE_MAX + ' hearts"><b>' + esc(NAMES[who]) + '</b><span class="lm">' + out + '</span></div>';
+  }
+  function petNow(who) {
+    var r = care(S, who, 'pet', today()); heartPop(who, r.ok && r.gained);
+    if (r.ok && r.gained) R.toast(NAMES[who] + ' loves that. ' + r.n + ' of ' + B.LOVE_MAX + ' hearts.', 'favorite');
+  }
+  /* the hens wander the floor and peck while she is in the hen house */
+  var wander = null;
+  var HEN_AREA = { x0: 34, x1: 78, y0: 68, y1: 82 };
+  function startWander() {
+    if (wander || !at('heninside')) return;
+    var reduce = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches; if (reduce) return;
+    wander = root.setInterval(function () {
+      if (!at('heninside')) { root.clearInterval(wander); wander = null; return; }
+      HENS.forEach(function (h) {
+        if (Math.random() < 0.35) return; var el = animalEl(h); if (!el) return;
+        if (Math.random() < 0.4) { el.classList.remove('peck'); void el.offsetWidth; el.classList.add('peck'); return; }
+        var x0 = parseFloat(el.style.left), x = Math.max(HEN_AREA.x0, Math.min(HEN_AREA.x1, x0 + (Math.random() * 16 - 8))), y = Math.max(HEN_AREA.y0, Math.min(HEN_AREA.y1, parseFloat(el.style.top) + (Math.random() * 6 - 3)));
+        el.classList.toggle('flip', x > x0); el.style.left = x.toFixed(1) + '%'; el.style.top = y.toFixed(1) + '%';
+      });
+      if (W.sortDepth) W.sortDepth();
+    }, 2200);
+  }
   function renderBarn() {
     var L = R.layout(); if (!L || (L.id !== 'barninside' && L.id !== 'heninside')) return;
     var wrap = R.els.props, day = today();
@@ -163,7 +229,7 @@
       var el = doc.createElement('button'); el.type = 'button'; el.className = 'nb barnthing animal' + (a.flip ? ' flip' : '') + ' a-' + a.id; el.dataset.id = a.id;
       el.style.left = a.x + '%'; el.style.top = a.y + '%'; el.style.width = a.w + '%'; el.setAttribute('aria-label', a.label);
       el.innerHTML = '<img src="' + ART + a.img + '" alt="">';
-      el.addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); go(a.id === 'clover' ? 'clover' : 'nests'); });
+      el.addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); petNow(a.id); go(a.id === 'clover' ? 'clover' : 'nests'); });
       wrap.appendChild(el);
     });
     var ready = L.id === 'heninside' ? eggsReady(S, day) : [];
@@ -172,6 +238,7 @@
       var n = NESTS[h], el = doc.createElement('span'); el.className = 'barnthing nestegg'; el.style.left = n.x + '%'; el.style.top = n.y + '%'; el.innerHTML = eggSVG(); el.setAttribute('aria-hidden', 'true'); wrap.appendChild(el);
     });
     if (W.sortDepth) W.sortDepth(); /* the animals were just recreated: she stands in front of or behind them by her feet */
+    if (L.id === 'heninside') startWander();
   }
   function hot(L, id) { return L.hotspots.filter(function (h) { return h.id === id; })[0]; }
   function go(id) {
@@ -192,15 +259,23 @@
     step(acts, { ms: 3000, moment: who === 'hens' ? 'hentreat' : 'treat', verb: 'Holding it out…', cancel: reopen }, function () {
       if (JSON.stringify(FM().farmState(S).harvest) !== seen) { reopen(); return; } /* the basket changed in the meantime */
       var r = giveTreat(S, who, crop, today()); if (!r.ok) { R.toast(r.why, 'info'); reopen(); return; }
-      R.chime('tap'); R.toast(who === 'hens' ? 'The hens shared the ' + name + '.' : 'Clover took the ' + name + ' slowly.', 'nutrition'); reopen();
+      (who === 'hens' ? HENS : [who]).forEach(function (a) { heartPop(a, r.gained); }); R.toast(who === 'hens' ? 'The hens shared the ' + name + '.' : 'Clover took the ' + name + ' slowly.', 'nutrition'); reopen();
     });
   }
   function openNests() {
     var day = today(), ready = eggsReady(S, day);
     var rows = HENS.map(function (h) { return '<li><span class="ms">' + (ready.indexOf(h) > -1 ? 'egg' : 'bedtime') + '</span>' + esc(NAMES[h]) + (ready.indexOf(h) > -1 ? ' laid an egg.' : '’s nest is resting today.') + '</li>'; }).join('');
     R.openSheet('barnnests', 'The hen house', 'Mochi and Kaya', 'egg',
+      HENS.map(meter).join('') + '<div class="row" id="henCare">' + HENS.map(function (h) { return '<button type="button" class="btn soft" data-care="pet" data-who="' + h + '"' + (doneToday(S, h, 'pet', day) ? ' disabled' : '') + '><span class="ms">pan_tool</span>Pet ' + esc(NAMES[h]) + '</button><button type="button" class="btn soft" data-care="brush" data-who="' + h + '"' + (doneToday(S, h, 'brush', day) ? ' disabled' : '') + '><span class="ms">brush</span>Brush ' + esc(NAMES[h]) + '</button>'; }).join('') + '</div>' +
       '<ul class="barnlist">' + rows + (treatedToday(S, 'hens', day) ? '<li><span class="ms">nutrition</span>The hens had a treat from the basket today.</li>' : '') + '</ul><div class="row" id="nestActs">' + (ready.length ? '<button type="button" class="btn primary" data-act="eggs"><span class="ms">egg</span>Collect ' + (ready.length > 1 ? 'the eggs' : 'the egg') + '</button>' : '') + treatButtons('hens') + '</div>' +
       pantryLine() + '<p class="help">The hens are fine on their own. An egg waits in the nest until you come by; the pantry holds 99 of each thing.</p>');
+    var hc = doc.getElementById('henCare');
+    if (hc) hc.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-care]'); if (!b || !idle()) return;
+      var who = b.dataset.who, act = b.dataset.care;
+      if (act === 'pet') { petNow(who); openNests(); return; }
+      step(hc, { ms: 2500, moment: 'brush', verb: 'Smoothing ' + NAMES[who] + '’s feathers…', cancel: openNests }, function () { var r = care(S, who, 'brush', today()); heartPop(who, r.ok && r.gained); if (r.ok && r.gained) R.toast(NAMES[who] + ' fluffs up happily. ' + r.n + ' of ' + B.LOVE_MAX + ' hearts.', 'favorite'); openNests(); });
+    });
     var acts = doc.getElementById('nestActs'); if (!acts) return;
     acts.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
@@ -220,16 +295,18 @@
   function openClover() {
     var day = today(), has = milkReady(S, day);
     R.openSheet('barnclover', 'Clover', 'The cow in the stall', 'pets',
-      '<div class="bedcard"><div class="bedpic pailpic">' + pailSVG() + '</div><div class="bedtext"><b>' + (has ? 'Clover has milk today' : 'Clover is resting today') + '</b><span>' + (has ? 'One pail, when you are ready.' : 'She gives one pail on a new day.') + '</span></div></div><div class="row" id="cloverActs">' +
+      meter('clover') + '<div class="bedcard"><div class="bedpic pailpic">' + pailSVG() + '</div><div class="bedtext"><b>' + (has ? 'Clover has milk today' : 'Clover is resting today') + '</b><span>' + (has ? 'One pail, when you are ready.' : 'She gives one pail on a new day.') + '</span></div></div><div class="row" id="cloverActs">' +
       (has ? '<button type="button" class="btn primary" data-act="milk"><span class="ms">water_full</span>Milk Clover</button>' : '') +
-      '<button type="button" class="btn ' + (has ? 'soft' : 'primary') + '" data-act="brush"><span class="ms">brush</span>Brush Clover</button>' + treatButtons('clover') + '</div>' +
+      '<button type="button" class="btn soft" data-act="pet"' + (doneToday(S, 'clover', 'pet', day) ? ' disabled' : '') + '><span class="ms">pan_tool</span>Pet Clover</button>' +
+      '<button type="button" class="btn ' + (has ? 'soft' : 'primary') + '" data-act="brush"' + (doneToday(S, 'clover', 'brush', day) ? ' disabled' : '') + '><span class="ms">brush</span>Brush Clover</button>' + treatButtons('clover') + '</div>' +
       (treatedToday(S, 'clover', day) ? '<p class="help pantryline"><span class="ms">nutrition</span>Clover had a treat from the basket today.</p>' : '') +
-      pantryLine() + '<p class="help">Brushing and treats are just for the two of you. Clover is fine while you are away.</p>');
+      pantryLine());
     var acts = doc.getElementById('cloverActs'); if (!acts) return;
     acts.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
       if (btn.dataset.act === 'treat') { treatStep(acts, 'clover', btn, openClover); return; }
-      if (btn.dataset.act === 'brush') { step(acts, { ms: 3000, moment: 'brush', verb: 'Brushing slowly…', cancel: openClover }, function () { R.chime('tap'); openClover(); }); return; }
+      if (btn.dataset.act === 'pet') { petNow('clover'); openClover(); return; }
+      if (btn.dataset.act === 'brush') { step(acts, { ms: 3000, moment: 'brush', verb: 'Brushing slowly…', cancel: openClover }, function () { var r = care(S, 'clover', 'brush', today()); heartPop('clover', r.ok && r.gained); if (r.ok && r.gained) R.toast('Clover leans into the brush. ' + r.n + ' of ' + B.LOVE_MAX + ' hearts.', 'favorite'); openClover(); }); return; }
       if (ST && !ST.can('milk')) { R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); return; }
       step(acts, { ms: 3000, moment: 'milk', verb: 'Milking slowly…', stillLine: 'Notice how still Clover stands.', cancel: openClover, start: function (ms, still) { var m = doc.querySelector('#sheet .pailmilk'); if (m) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { m.style.transition = still ? 'none' : 'transform ' + ms + 'ms ease-in-out'; m.style.transform = 'scaleY(1)'; }); }); } }, function () {
         if (today() !== day || !milkReady(S, day)) { openClover(); return; }

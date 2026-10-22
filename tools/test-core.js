@@ -485,6 +485,24 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('care steps are slow and stoppable, and save only when the bar is full and the sheet still open', (function () { var care = fs.readFileSync(path.join(root, 'ovu-care.js'), 'utf8'); return /function step[\s\S]*?!box\.isConnected \|\| !R\.sheetOpen\(\) \|\| here\(\) !== tok\.scene[\s\S]*?asleepNow\(\)/.test(care) && care.indexOf('data-slow="stop"') > -1 && src.indexOf("scene: 'farm'") > -1; })() && true);
 })();
 
+(function animalLove() {
+  console.log('2k3b. animal love (Jamie, 22 Oct): pet, brush and a treat each add one heart a day, up to ten; game state only');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8'), w, { filename: 'ovu-farm.js' });
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8'), w, { filename: 'ovu-barn.js' });
+  var B = w.OvuBarn, S = w.OvuStore, F = w.OvuFarm, n0 = S.list().length;
+  var a = B.care(S, 'clover', 'pet', '2026-10-21'), b = B.care(S, 'clover', 'pet', '2026-10-21'), c = B.care(S, 'clover', 'brush', '2026-10-21');
+  check('a first pet and a first brush each add a heart; a second pet the same day adds nothing', a.gained && !b.gained && c.gained && B.love(S, 'clover') === 2);
+  var back = B.care(S, 'clover', 'brush', '2026-10-20');
+  check('a clock set back to an earlier day adds nothing', !back.gained && B.love(S, 'clover') === 2);
+  for (var i = 0; i < 12; i++) { var d = '2026-11-' + String(i + 1).padStart(2, '0'); B.care(S, 'mochi', 'pet', d); B.care(S, 'mochi', 'brush', d); }
+  check('the meter stops at ten', B.love(S, 'mochi') === B.LOVE_MAX && B.LOVE_MAX === 10);
+  var f = F.farmState(S); f.harvest = { kangkong: 2 }; S.setState({ farm: f });
+  var t = B.giveTreat(S, 'hens', 'kangkong', '2026-12-01');
+  check('a treat for the hens adds a heart to each hen that had none from a treat that day', t.ok && t.gained && B.love(S, 'kaya') === 1);
+  check('love never writes a diary entry and never touches the logging hearts', S.list().length === n0 && !/OvuRewards/.test(fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8').split('function heartPop')[0]));
+})();
+
 (function barnAndSpring() {
   console.log('2k3. the barn, the hens, Clover and the hidden spring (Jamie, 20-21 Oct): no needs, no guilt, nothing that refills energy');
   var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
