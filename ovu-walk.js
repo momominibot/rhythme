@@ -62,11 +62,19 @@
   function cycleAdvance(acc, distIso) { return acc + distIso / STRIDE; }
   function frameOf(acc) { return Math.floor(((acc % 1) + 1) % 1 * FRAMES); }
   /* depth: things lower on the plate draw in front. Ranks are packed into z 2..9 so nothing ever rises
-   * above the hotspot pins (10) or the HUD (11); ties keep DOM order. items: [{y, ...}] */
+   * above the hotspot pins (10) or the HUD (11); ties keep DOM order. items: [{y, x?, w?}]. Up to eight, each has its own
+   * rank. More than eight (a busy plaza: the neighbours, their pets, a villager, her), only sprites that overlap across
+   * need different levels, so each takes one more than the highest overlapping sprite behind it; a sprite without an x
+   * (her) overlaps everything. Only a chain of more than eight overlapping sprites is packed, as before (Codex, 22 Oct:
+   * a villager and her tied at z 2 in the plaza's crowd) */
+  function overlapsAcross(a, b) { return !isFinite(a.x) || !isFinite(b.x) || Math.abs(a.x - b.x) < ((a.w || 8) + (b.w || 8)) / 2; }
   function depthRank(items) {
     var idx = items.map(function (it, i) { return i; }).sort(function (a, b) { return (items[a].y - items[b].y) || (a - b); });
     var n = idx.length, z = new Array(n);
-    idx.forEach(function (i, rank) { z[i] = 2 + (n <= 8 ? rank : Math.floor(rank * 8 / n)); });
+    if (n <= 8) { idx.forEach(function (i, rank) { z[i] = 2 + rank; }); return z; }
+    var lvl = new Array(n), top = 0;
+    idx.forEach(function (i, k) { var l = 0; for (var m = 0; m < k; m++) { var j = idx[m]; if (lvl[j] >= l && overlapsAcross(items[i], items[j])) l = lvl[j] + 1; } lvl[i] = l; if (l > top) top = l; });
+    idx.forEach(function (i) { z[i] = 2 + (top < 8 ? lvl[i] : Math.floor(lvl[i] * 8 / (top + 1))); });
     return z;
   }
   /* the world the avatar walks in: the layout's zones, its baked solids plus the props standing in it */
@@ -255,9 +263,10 @@
   var INTERACTIVE = '.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.nb,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.minimap,.hud,.sleeper,.meditator,.holo,.phase-chip,.greeting,.hint,button,a,input,textarea,select,label';
 
   /* a foreground cutout (.plate-occ) is ranked by its base, not its top edge, and is never a solid: its object's solid is
-   * already in the layout. A shopkeeper (.keeper) is ranked by its feet and is not a solid either: its block is in the layout */
+   * already in the layout. A shopkeeper (.keeper) is ranked by its feet and is not a solid either: its block is in the layout; so is a
+   * villager (.villager, ovu-villagers.js) */
   function sprites() {
-    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #ownedProps .keeper, #plateOcc .plate-occ')).map(function (el) { var occ = el.classList.contains('plate-occ'); return { el: el, id: el.dataset.id, x: parseFloat(el.style.left), y: parseFloat(occ ? el.dataset.base : el.style.top), w: parseFloat(el.style.width) || 8, solid: !occ && !el.classList.contains('plot') && !el.classList.contains('keeper') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #ownedProps .keeper, #ownedProps .villager, #plateOcc .plate-occ')).map(function (el) { var occ = el.classList.contains('plate-occ'); return { el: el, id: el.dataset.id, x: parseFloat(el.style.left), y: parseFloat(occ ? el.dataset.base : el.style.top), w: parseFloat(el.style.width) || 8, solid: !occ && !el.classList.contains('plot') && !el.classList.contains('keeper') && !el.classList.contains('villager') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
   }
   /* the layout's foreground cutouts (L.occluders; only the wide street has any). They live in #plateOcc, a layer of their own
    * beside #ownedProps with no stacking context, so the one depth sort covers them with her and the pets, while a props
@@ -313,7 +322,7 @@
   function herY() { if (active && cur) return cur.y; if (cyc.cssRaf && avatar.classList.contains('walking')) return liveY(); return R.pos().y; }
   function sortDepth(avatarY) {
     var list = sprites(), ay = typeof avatarY === 'number' ? avatarY : herY();
-    var items = list.map(function (p) { return { y: p.y }; }).concat([{ y: ay }]);
+    var items = list.map(function (p) { return { y: p.y, x: p.x, w: p.w }; }).concat([{ y: ay }]);
     var z = depthRank(items);
     list.forEach(function (p, i) { if (p.el.style.zIndex !== String(z[i])) p.el.style.zIndex = z[i]; });
     if (avatar.style.zIndex !== String(z[z.length - 1])) avatar.style.zIndex = z[z.length - 1];
@@ -613,6 +622,7 @@
     if (R.setWalkTo) R.setWalkTo(routeTo); /* the room's own walks route around furniture */
   }
   W.setSpeedScale = function (k) { speedScale = Math.min(1, Math.max(0.4, Number(k) || 1)); }; W.speedScale = function () { return speedScale; };
+  W.canWalkTo = function (wp) { return !!(wp && !travelling && plan(worldNow(), livePos(), { x: wp.x, y: wp.y }, 2)); }; /* a route exists from where she is (a villager's side, 22 Oct) */
   W.sortDepth = function () { sortDepth(); }; /* a scene that recreates its sprites after the props event (the barn's animals) ranks them itself */
   W.travel = travel; W.mount = mount; W.walking = function () { return active; }; W.travelling = function () { return !!travelling; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(); }; W.routeTo = routeTo; W.OCC_CAP = OCC_CAP; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
   R.on('boot', mount);
