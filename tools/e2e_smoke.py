@@ -2029,6 +2029,9 @@ async def main():
             await lane_sheet('grocerrack'); await page.wait_for_timeout(300); z2 = await page.evaluate(DZ)
             await page.evaluate("()=>OvuRoom.hideSheet()"); await page.wait_for_timeout(300)
             check("Auntie Lin stands in the depth order by her feet: at the door she draws in front of her, at the rack behind her", z1["kz"] >= 2 and z1["ay"] > z1["ky"] and z1["az"] > z1["kz"] and z2["ay"] < z2["ky"] and z2["az"] < z2["kz"], [z1, z2])
+            # hit target (22 Oct): a tap on her figure reaches her; a tap on the empty canvas beside her legs passes through to what is behind
+            ht = await page.evaluate("()=>{var k=document.querySelector('#ownedProps .keeper'), r=k.querySelector('img').getBoundingClientRect(); var at=function(fx,fy){var e=document.elementFromPoint(r.left+r.width*fx, r.top+r.height*fy); return !!(e && e.closest('.keeper'));}; return {body: at(0.5, 0.45), side: at(0.05, 0.86), clip: k.querySelector('img').style.clipPath.slice(0, 8)}}")
+            check("a tap on Auntie Lin's figure reaches her, while the empty canvas beside her legs lets a tap through to whatever is behind", ht["body"] and not ht["side"] and ht["clip"] == "polygon(", ht)
             gc = await lane_sheet('grocercounter')
             await page.click('#sheet[aria-hidden="false"] [data-lane=back]'); await page.wait_for_timeout(400)
             gb = await page.evaluate("()=>({open: OvuRoom.sheetOpen(), layout: document.querySelector('#scene').dataset.layout})")

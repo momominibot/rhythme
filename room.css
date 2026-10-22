@@ -2443,8 +2443,8 @@ html[data-mindful=quick] .mindline:not(.keep){display:none}
 .thought .ms{display:block;font-size:20px;line-height:1;color:var(--rm-mauve)}
 .c-emo.ms{font-size:20px;color:var(--rm-mauve);vertical-align:-4px}
 /* shopkeepers (ovu-keepers.js, 22 Oct): at her height, a gentle idle, a bubble with one line on a tap */
-.keeper{position:absolute;transform:translate(-50%,-100%);background:none;border:0;padding:0;cursor:pointer;pointer-events:auto;z-index:2;filter:drop-shadow(0 4px 5px rgba(70,40,100,.18))}
-.keeper img{width:100%;display:block;transform-origin:50% 100%;animation:keeperidle 4.2s ease-in-out infinite}
+.keeper{position:absolute;transform:translate(-50%,-100%);background:none;border:0;padding:0;cursor:pointer;pointer-events:none;z-index:2;filter:drop-shadow(0 4px 5px rgba(70,40,100,.18))}
+.keeper img{width:100%;display:block;transform-origin:50% 100%;animation:keeperidle 4.2s ease-in-out infinite;pointer-events:auto} /* the button lets taps through; only the picture, clipped to her outline, takes them */
 .keeper.flip img{transform:scaleX(-1);animation-name:keeperidleflip}
 @keyframes keeperidle{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.018)}}
 @keyframes keeperidleflip{0%,100%{transform:scaleX(-1) scaleY(1)}50%{transform:scaleX(-1) scaleY(1.018)}}
