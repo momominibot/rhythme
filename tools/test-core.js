@@ -2562,6 +2562,21 @@ function scenes(todayIso) {
     check('after the session ends, an AI choice recorded on the account asks to sign in again and sends nothing anonymously', bound && /sign in again/i.test(m) && sent.length === 0, JSON.stringify({ bound: bound, m: m, sent: sent }));
   });
 })();
+(function supersededImproveMirror() {
+  console.log('phase 0 (22 Oct): an older unsent improve-logging mirror is closed as superseded, never counted as pending or claimed as sent');
+  var w = fresh('2026-10-22'), posts = [];
+  var local = { on: false, uid: 'u1', syncedAt: '2026-10-22T00:00:00Z' }; /* the account's record, as this phone last read it: off */
+  w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; }, setImprove: function () { }, improveLocal: function () { return local; } };
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-consent.js'), 'utf8'), w, { filename: 'ovu-consent.js' });
+  w.fetch = function (u, o) { posts.push(String(u)); return Promise.resolve({ ok: true, status: 200, json: function () { return Promise.resolve({ id: posts.length }); } }); };
+  var C = w.OvuConsent;
+  C.record('improve_logging', 'grant', 'you'); C.record('improve_logging', 'withdraw', 'you'); /* the account adopted the withdrawal */
+  C.flush().then(function () { return C.flush(); }).then(function () {
+    var evs = (w.OvuStore.profile().consentEvents || []).filter(function (e) { return e.purpose === 'improve_logging'; }), r = C.receipt();
+    var grant = evs[0], wd = evs[evs.length - 1];
+    check('the superseded grant is closed (superseded, not sent), the withdrawal is recorded via the account, and nothing is left pending', grant.superseded === true && !grant.sent && wd.sent === true && r.pending === 0 && C.recordedOnAccount('improve_logging') && !posts.some(function (u) { return /consent_record/.test(u); }), JSON.stringify({ evs: evs, pending: r.pending, posts: posts }));
+  });
+})();
 (function plotGrowth() {
   console.log('the plot grows a stage per credited day and never shrinks');
   var w = scenes('2026-10-18'), S = w.OvuStore, G = w.OvuGarden;

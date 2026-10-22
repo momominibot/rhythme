@@ -36,6 +36,7 @@ def check(name, ok, detail=''):
 
 
 def load_sql(c, path):
+    if os.environ.get('PIPE_MIG_OVERRIDE') and path.endswith(ORDER[-1]): path = os.environ['PIPE_MIG_OVERRIDE']  # mutation checks: run the suite against an altered copy
     sql = open(path).read()
     sql = sql.replace('create extension if not exists pg_cron;', '-- (pg_cron is a stand-in locally)')
     c.execute(sql)
@@ -369,6 +370,50 @@ def main():
     held = c.execute("select invalidated_at is not null from staff.agent_runs where id = %s", [r_a['run_id']]).fetchone()[0]
     check('a withdrawal during a running report waits on the worker lock and then holds that report (two real sessions)', waited and 'err' not in outcome and held, {'waited': waited, 'outcome': outcome, 'held': held})
 
+    # 15. the app's own notice version is registered and accepted, and a v4 choice still counts once v5 is current
+    nv = int(__import__('re').search(r"NOTICE_V:\s*(\d+)", open(os.path.join(ROOT, 'ovu-store.js')).read()).group(1))
+    cur = person(c); rr = consent(c, cur, notice=nv)
+    elig_nv = c.execute("select staff.consent_eligible(a) from public.analysis_consent a where user_id = %s", [cur['id']]).fetchone()[0]
+    v4p = person(c); consent(c, v4p, notice=4)
+    elig_v4 = c.execute("select staff.consent_eligible(a) from public.analysis_consent a where user_id = %s", [v4p['id']]).fetchone()[0]
+    check('the notice version the app sends (OvuStore.NOTICE_V = %d) is accepted and eligible, and a choice made under v4 still counts' % nv, 'error' not in rr and elig_nv is True and elig_v4 is True, {'rr': rr, 'nv': elig_nv, 'v4': elig_v4})
+
+    # 16. the no-op sequence: withdraw A, withdraw B while already off, grant C, then a resend of B changes nothing
+    q = person(c); consent(c, q, backdate=0)
+    as_user(c, q['id'])
+    c.execute("select public.analysis_consent_set(false, 4, null, null, null, null, 'seq-a')")
+    c.execute("select public.analysis_consent_set(false, 4, null, null, null, null, 'seq-b')")
+    c.execute("select public.analysis_consent_set(true, 4, '30-34', 'from_now', null, null, 'seq-c')")
+    before = c.execute("select count(*) from public.consent_events where user_id = %s and purpose = 'improve_logging'", [q['id']]).fetchone()[0]
+    rb = c.execute("select public.analysis_consent_set(false, 4, null, null, null, null, 'seq-b')").fetchone()[0]
+    after = c.execute("select count(*) from public.consent_events where user_id = %s and purpose = 'improve_logging'", [q['id']]).fetchone()[0]
+    as_server(c)
+    on_now = c.execute("select withdrawn_at is null from public.analysis_consent where user_id = %s", [q['id']]).fetchone()[0]
+    check('a late resend of a withdrawal made while already off replays as such: no new event, and the later grant stands', rb.get('replayed') is True and after == before and on_now is True, {'rb': rb, 'before': before, 'after': after})
+
+    # 17. two sessions: deleting an entry of a consenting account while a report is being built waits for it and then holds it
+    a_conn = _pg.connect(DSN + ' dbname=' + DB, autocommit=False)
+    a_conn.execute("select set_config('request.jwt.claims', %s, false)", [json.dumps({'sub': str(owner['id']), 'role': 'authenticated'})]); a_conn.execute("set role authenticated")
+    r_d = a_conn.execute("select public.admin_run(28)").fetchone()[0]
+    victim = c.execute("select e.id from public.entries e join public.analysis_consent a on a.user_id = e.user_id where not e.deleted limit 1").fetchone()[0]
+    outcome = {}
+    def delete_b():
+        b_conn = _pg.connect(DSN + ' dbname=' + DB, autocommit=True)
+        try:
+            b_conn.execute("update public.entries set deleted = true, deleted_at = now() where id = %s", [victim]); outcome['ok'] = True
+        except Exception as e:
+            outcome['err'] = str(e)
+        finally:
+            b_conn.close()
+    t = threading.Thread(target=delete_b); t.start()
+    waited = False
+    for _ in range(100):
+        time.sleep(0.05)
+        if c.execute("select count(*) from pg_stat_activity where wait_event_type = 'Lock' and query like '%%update public.entries%%'").fetchone()[0] > 0: waited = True; break
+    a_conn.commit(); t.join(15); a_conn.close()
+    held = c.execute("select invalidated_at is not null from staff.agent_runs where id = %s", [r_d['run_id']]).fetchone()[0]
+    check('a deletion during a running report waits on the worker lock and then holds that report (two real sessions)', waited and outcome.get('ok') and held, {'waited': waited, 'outcome': outcome, 'held': held})
+
     # 14. the suppression rules on their own: a fresh database with exactly one positive or one complement contributor
     c2 = fresh(); owner2 = staff_owner(c2); k2 = c2.execute("select staff.k_floor()").fetchone()[0]
     crowd = [person(c2) for _ in range(k2 + 1)]
@@ -386,6 +431,14 @@ def main():
     entry(c2, crowd[0], 'sleep', d(3), {'hours': 1}, source='room')  # one person now has two records on a night
     r2 = run(c2, owner2); ov2 = overview(c2, owner2); sev = finding(ov2, 'sleep', 'nights_with_several_records')
     check('one person with several records among 21: the positive cell is held back although the count is over everyone', sev['suppressed'] and sev['value'] is None and sev['state'] == 'insufficient', sev)
+    # round four: a NULL source among 20 imported records, one person with a missing duration, both alone on the small side
+    c2.execute("update public.entries set source = 'apple-health' where type = 'sleep'")
+    c2.execute("update public.entries set source = null where type = 'sleep' and user_id = %s", [crowd[1]['id']])
+    c2.execute("update public.entries set data = jsonb_set(data, '{minutes}', '\"abc\"') where type = 'mindfulness' and user_id = %s", [crowd[0]['id']])
+    run(c2, owner2); ov2 = overview(c2, owner2)
+    imp = finding(ov2, 'sleep', 'imported_record_share'); miss = finding(ov2, 'mind', 'practices_missing_duration')
+    check('20 imported sleep records and one with no source: the complement is that one person, so the share is held back', imp['suppressed'] and imp['value'] is None, imp)
+    check('one person among 21 with a missing duration: the positive cell is held back', miss['suppressed'] and miss['value'] is None, miss)
     c2.close()
 
     passed = sum(1 for _, ok in results if ok); failed = len(results) - passed

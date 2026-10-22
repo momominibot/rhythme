@@ -37,12 +37,17 @@ create table if not exists staff.notice_registry (
   hash text,
   note text,
   created_at timestamptz not null default now(),
+  accepted boolean not null default true, /* a choice made under this version still counts; a version whose improve-logging words changed is retired */
   primary key (purpose, version)
 );
-insert into staff.notice_registry (purpose, version, note) values
-  ('improve_logging', 3, 'notice v3, superseded 20 Oct 2026'),
-  ('improve_logging', 4, 'Help improve logging, as worded in ovu-consent.js under notice v4 (OvuStore.NOTICE_V, 20 Oct 2026: says who can reach records); hash registered when the legal read fixes the words')
-on conflict do nothing;
+alter table staff.notice_registry add column if not exists accepted boolean not null default true;
+-- the app's notice version (OvuStore.NOTICE_V) moves when anything on the notice changes; the improve-logging words changed at v4
+-- and not at v5 (v5 added an optional birthday), so v4 and v5 choices both stand and v3 is retired
+insert into staff.notice_registry (purpose, version, accepted, note) values
+  ('improve_logging', 3, false, 'notice v3, retired 20 Oct 2026: the improve-logging words changed at v4'),
+  ('improve_logging', 4, true, 'Help improve logging, as worded in ovu-consent.js under notice v4 (20 Oct 2026: says who can reach records); hash registered when the legal read fixes the words'),
+  ('improve_logging', 5, true, 'notice v5 (21 Oct 2026) added an optional birthday; the improve-logging words are unchanged since v4')
+on conflict (purpose, version) do update set accepted = excluded.accepted, note = excluded.note;
 create or replace function staff.notice_current(p_purpose text) returns integer language sql stable set search_path = '' as $$
   select max(version) from staff.notice_registry where purpose = p_purpose
 $$;
@@ -191,7 +196,7 @@ create table if not exists staff.consent_requests (
 );
 create or replace function public.analysis_consent_set(p_on boolean, p_notice integer default null, p_age_band text default null, p_scope text default 'from_now', p_hash text default null, p_expected_updated_at timestamptz default null, p_request_id text default null, p_expect_none boolean default false)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare uid uuid := auth.uid(); cur timestamptz; cur_scope text; cur_withdrawn timestamptz; need integer; reg_hash text; bands text[]; adult_event boolean; band_ok boolean; row_out public.analysis_consent; rid text := nullif(left(coalesce(p_request_id, ''), 64), ''); prior staff.consent_requests; want_action text := case when p_on then 'grant' else 'withdraw' end; want_hash text;
+declare uid uuid := auth.uid(); cur timestamptz; cur_scope text; cur_withdrawn timestamptz; need integer; reg_hash text; bands text[]; adult_event boolean; band_ok boolean; notice_ok boolean; row_out public.analysis_consent; rid text := nullif(left(coalesce(p_request_id, ''), 64), ''); prior staff.consent_requests; want_action text := case when p_on then 'grant' else 'withdraw' end; want_hash text;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtext('analysis_consent_set'), hashtext(uid::text)); /* one transition at a time per account, row or no row yet */
@@ -213,10 +218,10 @@ begin
     raise exception 'This choice was changed on another phone just now. Reload and look again.' using errcode = '40001';
   end if;
   if p_on then
-    need := staff.notice_current('improve_logging');
-    if p_notice is null or p_notice < coalesce(need, 1) then raise exception 'This phone shows an older notice. Update the app and read the current one first.' using errcode = '22023'; end if;
-    select r.hash into reg_hash from staff.notice_registry r where r.purpose = 'improve_logging' and r.version = p_notice;
-    if not found then raise exception 'This phone shows a notice the server does not know (version %).', p_notice using errcode = '22023'; end if;
+    select r.hash, r.accepted into reg_hash, notice_ok from staff.notice_registry r where r.purpose = 'improve_logging' and r.version = p_notice;
+    if (p_notice is null or not found) and p_notice < coalesce(staff.notice_current('improve_logging'), 0) then notice_ok := false; /* below every registered version: an older notice */
+    elsif p_notice is null or not found then raise exception 'This phone shows a notice the server does not know (version %).', coalesce(p_notice::text, 'none') using errcode = '22023'; end if;
+    if notice_ok is not true then raise exception 'This phone shows an older notice. Update the app and read the current one first.' using errcode = '22023'; end if;
     if reg_hash is not null and p_hash is distinct from reg_hash then raise exception 'The notice text on this phone does not match the registered notice. Update the app.' using errcode = '22023'; end if;
     bands := array(select jsonb_array_elements_text(staff.policy('adult_bands')));
     adult_event := public.consent_allows(uid, 'age_18');
@@ -252,8 +257,8 @@ revoke all on function public.analysis_consent_set(boolean, integer, text, text,
 grant execute on function public.analysis_consent_set(boolean, integer, text, text, text, timestamptz, text, boolean) to authenticated;
 -- the one eligibility rule, shared by the counts and the cohort: on, attested, and made under the registered current notice
 create or replace function staff.consent_eligible(c public.analysis_consent) returns boolean language sql stable set search_path = '' as $$
-  select c.withdrawn_at is null and c.adult_attested_by is not null and c.notice_version = staff.notice_current('improve_logging')
-    and exists (select 1 from staff.notice_registry r where r.purpose = 'improve_logging' and r.version = c.notice_version and (r.hash is null or r.hash = c.notice_hash)) /* once the words are registered, only a choice made over those words counts */
+  select c.withdrawn_at is null and c.adult_attested_by is not null
+    and exists (select 1 from staff.notice_registry r where r.purpose = 'improve_logging' and r.version = c.notice_version and r.accepted and (r.hash is null or r.hash = c.notice_hash)) /* once the words are registered, only a choice made over those words counts */
 $$;
 grant execute on function staff.consent_eligible(public.analysis_consent) to rhythme_staff_fn;
 

@@ -233,3 +233,51 @@ The metadata-only seed, observation-date boundary and scheduled reservation defe
 JavaScript syntax, Python parsing and **1,004 core checks passed**. Focused client probes reproduced the omissions above. I did not rerun the PostgreSQL suite or modify files; the reported 50 database passes remain independently unverified.
 
 **FIX**
+
+# Round four (after the merge with main, commit adaa8fc, verdict FIX; fixed in the following commit)
+
+**Client-first deployment is unsafe. Migration-first is required, but `adaa8fc` still needs fixes before release.**
+
+References: **M** = `supabase/migrations/20261021100000_staff_data_contract_v3.sql`; **T** = `tools/db/test_team_pipeline.py`.
+
+1. **P1: The merge introduces a notice-version mismatch.**  
+   `ovu-store.js:650` declares notice **5**, inherited by `ovu-auth.js:23` and sent at `ovu-auth.js:144`. **M:42–44** registers only **3 and 4**, so **M:218–219** rejects new grants even after migration. I confirmed the actual client emits `p_notice:5`.  
+   **Smallest fix:** give the unchanged improvement wording its own registered notice version, used consistently by sending and first-binding logic. Alternatively, register version 5 with an explicit policy for existing v4 grants. Merely adding 5 changes `notice_current` and makes existing v4 grants ineligible. Add a client-to-migration contract test using the real store constant.
+
+2. **P1: An open dashboard retains invalidated report summaries.**  
+   `admin.js:335–345` only fetches newer feed IDs and prepends them. After withdrawal, the new invalidation event arrives, but previously loaded titles and `detail.summary` remain visible. The corrected server redaction at **M:505–508** never reaches those cached rows. I reproduced this with the real module: `held_runs=1`, `latest_run=null`, yet the old `eligible:21` summary remained.  
+   **Smallest fix:** replace or redact cached feed rows when invalidation is observed, and reconcile through overview refreshes so missed invalidation events cannot preserve stale results. This is an integration gap with inherited main code.
+
+3. **P1: Round-three acceptance coverage remains incomplete.**  
+   **T:348–388** adds genuine withdrawal concurrency and useful isolated suppression fixtures, but still lacks concurrent deletion, an isolated NULL-source complement, and a one-person missing-duration case. **T:342–346** repeats one withdrawal ID after an active grant; it does not test the reported no-op sequence.  
+   **Smallest fix:** add those cases, including `withdraw A → new withdrawal B while off → grant C → replay B`, and verify the relevant fixtures fail when their protections are removed.
+
+4. **P2: Superseded improvement events remain permanently pending.**  
+   `ovu-consent.js:186` skips an old unconfirmed grant after reconciliation adopts a withdrawal, while `receipt()` at line 160 still counts it. The UI at line 354 indefinitely reports a change awaiting delivery. Reproduced: latest withdrawal recorded, but `pending=1` and `recorded=false` after repeated flushes.  
+   **Smallest fix:** mark superseded mirrors with a distinct terminal status and exclude them from pending counts without claiming they were sent.
+
+5. **P2: Agent summaries still confuse no data with suppression.**  
+   `admin.js:182`, also line 91, says every result was held under the floor whenever no numeric result exists. Version 3 explicitly produces `no_data`, `suppressed:false`, `value:null` at **M:389–390**.  
+   **Smallest fix:** distinguish absent data from suppressed findings in both summaries.
+
+The seven round-three findings reconcile as follows:
+
+| Round-three finding | Round-four disposition |
+|---|---|
+| 1. Stale automatic grant | **Resolved in source:** account-locked `p_expect_none` check and conflict reconciliation. |
+| 2. Request idempotency | **Resolved in source:** client IDs, payload validation, and receipts for accepted no-ops. Replay returns current state without another write. Exact no-op regression test remains missing. |
+| 3. Unconfirmed mirror marked recorded | **Resolved:** matching synchronized account state is required. Superseded-event status issue remains above. |
+| 4. Configured notice hash | **Resolved:** eligibility checks the registered hash when configured. |
+| 5. Acceptance tests | **Partially resolved**, detailed above; not an owner-declared deferral. |
+| 6. Rollback reader omission | **Resolved:** **M:514** includes `admin_feed(integer,bigint,bigint)`. |
+| 7. Schedule verification | **P2 remains phase-1 work:** **M:454** checks active status and a command substring, not exact command/cadence. Complete before enabling scheduling. |
+
+The owner’s first-sign-in ordering, metadata-only receipt seed, scheduled reservation, manual rollback, and observation-date decisions remain accepted as stated.
+
+**Required ship order:** fix the notice contract and remaining blockers, apply `20261021100000_staff_data_contract_v3.sql`, refresh/verify PostgREST’s schema cache and eight-argument RPC, verify old and new payload compatibility, then merge/deploy the Pages client.
+
+Before migration, even withdrawals send `p_request_id` at `ovu-auth.js:140–141`. The supplied six-argument RPC cannot match that payload; the client restores its previous local state after failure. PostgREST maps JSON keys to function arguments and requires schema-cache refresh after signature changes. [PostgREST RPC documentation](https://docs.postgrest.org/en/stable/references/api/functions.html)
+
+Independently verified: **1,809 core checks passed**, **81 pages with zero static-check problems**, and scoped diff checks passed. Static checking used stdin instead of temporary files to respect read-only access. The reported **59 PostgreSQL passes were not rerun**. No files or live state changed.
+
+FIX

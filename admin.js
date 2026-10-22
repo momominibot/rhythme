@@ -89,7 +89,7 @@
     var elig = (ent.filter(function (f) { return f.metric === 'eligible_people'; })[0] || {});
     var alive = last ? (last.status === 'ok' ? 'ok' : (last.status === 'running' ? 'running' : 'failed')) : 'never';
     var team = Object.keys(AGENTS), reps = team.map(report), withResults = reps.filter(function (r) { return r.results > 0; }).length, eligible = reps.filter(function (r) { return r.state === 'measured'; }).length;
-    var nim = !hasFindings() ? 'No finished run yet. Press Run now and I will gather the team.' : (alive === 'failed' ? 'The last run failed, so the reports below are from the last finished run. ' : '') + (ov.open_proposals ? ov.open_proposals + ' proposal' + (ov.open_proposals > 1 ? 's are' : ' is') + ' waiting for an owner. ' : 'Nothing is waiting for you. ') + (withResults ? withResults + ' of the four have results from the last finished run.' : eligible ? 'The four met the floor at the last finished run but every result was held back.' : 'None of the four could report a result at the last finished run, so today is counts only: accounts, cloud copies, the plazas and the relay.');
+    var nim = !hasFindings() ? 'No finished run yet. Press Run now and I will gather the team.' : (alive === 'failed' ? 'The last run failed, so the reports below are from the last finished run. ' : '') + (ov.open_proposals ? ov.open_proposals + ' proposal' + (ov.open_proposals > 1 ? 's are' : ' is') + ' waiting for an owner. ' : 'Nothing is waiting for you. ') + (withResults ? withResults + ' of the four have results from the last finished run.' : eligible ? (reps.some(function (r) { return r.held > 0; }) ? 'The four met the floor at the last finished run, but their results were held back under it or had no data.' : 'The four met the floor at the last finished run, but none of their measures had data in that window.') : 'None of the four could report a result at the last finished run, so today is counts only: accounts, cloud copies, the plazas and the relay.');
     var html = '<div class="card nimbus"><div class="nimrow">' + cloudSVG(NIMBUS, true) + bubble('Nimbus, the orchestrator', nim, last ? 'Last run ' + ago(last.started_at) + ', ' + last.kind : 'Runs are deterministic: no model is called and nothing is applied on its own.') + '</div>' +
       '<div class="team">' + team.map(function (k, i) { var a = AGENTS[k], r = reps[i]; return '<button type="button" class="mate" data-mate="' + k + '" title="' + esc(a.name) + '">' + cloudSVG(a) + '<b>' + esc(a.name) + '</b><small>' + esc(a.stream) + '</small><i class="st ' + esc(r.state) + '"></i></button>'; }).join('') + '</div></div>';
     html += '<div class="card"><h2>Status<span>' + (last ? 'last run ' + ago(last.started_at) : 'no run yet') + '</span></h2><div class="tiles">' +
@@ -173,13 +173,13 @@
   function hasFindings() { var l = (ov && ov.latest) || {}; return Object.keys(l).some(function (k) { return (l[k] || []).length > 0; }); }
   function report(k) {
     var rows = ((ov && ov.latest) || {})[k] || [], ready = rows.filter(function (f) { return f.metric === 'eligible_people'; })[0], floor = (ov && ov.floor) || 20, c = (ov && ov.counts) || {};
-    var results = rows.filter(function (f) { return f.metric !== 'eligible_people' && !f.suppressed && f.value != null; });
+    var results = rows.filter(function (f) { return f.metric !== 'eligible_people' && !f.suppressed && f.value != null; }), held = rows.filter(function (f) { return f.metric !== 'eligible_people' && f.suppressed; }).length;
     if (!ov) return { state: 'loading', results: 0, text: 'Still getting my notes together.' };
     if (!ready) return { state: 'norun', results: 0, text: 'No finished run has a report from me yet. ' + (Number(c.consent_active) > 0 ? c.consent_active + ' account' + (c.consent_active > 1 ? 's have' : ' has') + ' the separate "help improve logging" choice on; a run decides who is eligible.' : 'No account has the separate "help improve logging" choice on yet.') };
     if (ready.state === 'not_enabled') return { state: 'not_enabled', results: 0, text: 'At the last finished run no eligible adult had the separate "help improve logging" choice on, so I read no diary rows. I am ready when they do.' };
     if (ready.state === 'insufficient') return { state: 'insufficient', results: 0, text: 'Fewer than ' + floor + ' eligible opted-in adults at the last finished run, so my results are held back under the floor.' };
     var m = results.slice(0, 3).map(function (f) { return f.metric.replace(/_/g, ' ') + ' ' + num(f.value) + ' over ' + f.window + (f.people ? ' from ' + f.people + ' people' : ''); });
-    return { state: 'measured', results: results.length, text: String(ready.value) + ' eligible opted-in adults at the last finished run. ' + (m.length ? 'I measured ' + m.join('; ') + '.' : 'Every result was held back under the floor.') };
+    return { state: 'measured', results: results.length, held: held, text: String(ready.value) + ' eligible opted-in adults at the last finished run. ' + (m.length ? 'I measured ' + m.join('; ') + '.' : held ? held + ' result' + (held === 1 ? ' was' : 's were') + ' held back under the floor; the rest had no data in this window.' : 'None of my measures had data in this window.') };
   }
   /* ---------- charts: small inline SVGs, no library; every chart says what it counts ---------- */
   function dayNum(k) { return Math.round(Date.parse(k + 'T00:00:00Z') / 86400000); }
@@ -332,7 +332,8 @@
   }
 
   /* ---------- loading ---------- */
-  function loadOverview() { return rpc('admin_overview').then(function (j) { if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); if (tab === 'queue') renderQueue(); }).catch(function (e) { pill('bad', 'offline'); }); }
+  var releaseKey = null; /* the published run and the hold count as last seen: when either changes, the feed is reloaded whole, so words from a run held since never stay on screen */
+  function loadOverview() { return rpc('admin_overview').then(function (j) { if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); var rk = String(j && j.latest_run) + '|' + String(j && j.held_runs); if (releaseKey !== null && rk !== releaseKey) loadFeed(true); releaseKey = rk; if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); if (tab === 'queue') renderQueue(); }).catch(function (e) { pill('bad', 'offline'); }); }
   function loadFeed(all) {
     var args = all || !feedTop ? { p_limit: 60 } : { p_limit: 60, p_after: feedTop };
     return rpc('admin_feed', args).then(function (rows) {
