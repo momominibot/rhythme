@@ -25,7 +25,7 @@
     return inside;
   }
   function inZones(zones, x, y) { if (!zones || !zones.length) return true; for (var i = 0; i < zones.length; i++) if (inPoly(zones[i], x, y)) return true; return false; }
-  function inBox(b, x, y) { return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1; }
+  function inBox(b, x, y) { if (b.poly) return inPoly(b.poly, x, y); return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1; } /* a solid may be a polygon: the farm's bed frame (22 Oct) */
   function blocked(solids, x, y) { for (var i = 0; i < (solids || []).length; i++) if (inBox(solids[i], x, y)) return solids[i]; return null; }
   /* the box a prop or pet takes up at its feet: narrower than the sprite and shallow in y */
   function propBox(p) { var w = p.w || 8; return { id: p.id, x0: p.x - w * 0.34, x1: p.x + w * 0.34, y0: p.y - w * 0.22, y1: p.y + w * 0.12 }; }
@@ -592,7 +592,7 @@
     var old = doc.getElementById('walkDebug'); if (old) old.remove(); if (!on) return;
     var L = R.layout(), w = worldNow(), m = rasterise(w), sw = 100 * w.span, s = '<svg id="walkDebug" viewBox="0 0 ' + sw + ' 100" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:' + sw + '%;height:100%;z-index:50;pointer-events:none">';
     for (var r = 0; r < ROWS; r++) for (var c = 0; c < m.cols; c++) if (m[r * m.cols + c]) s += '<rect x="' + (c * CELL) + '" y="' + (r * ROWH) + '" width="' + CELL + '" height="' + ROWH + '" fill="rgba(80,200,120,.16)"/>';
-    (w.solids || []).forEach(function (b) { s += '<rect x="' + b.x0 + '" y="' + b.y0 + '" width="' + (b.x1 - b.x0) + '" height="' + (b.y1 - b.y0) + '" fill="rgba(220,60,60,.2)" stroke="#c33" stroke-width=".3"/>'; });
+    (w.solids || []).forEach(function (b) { s += b.poly ? '<polygon points="' + b.poly.map(function (p) { return p.join(','); }).join(' ') + '" fill="rgba(220,60,60,.2)" stroke="#c33" stroke-width=".3"/>' : '<rect x="' + b.x0 + '" y="' + b.y0 + '" width="' + (b.x1 - b.x0) + '" height="' + (b.y1 - b.y0) + '" fill="rgba(220,60,60,.2)" stroke="#c33" stroke-width=".3"/>'; });
     (w.doors || []).forEach(function (d) { s += '<ellipse cx="' + d.x + '" cy="' + d.y + '" rx="' + (d.r || 4) + '" ry="' + ((d.r || 4) * Y_SCALE) + '" fill="rgba(60,120,240,.25)" stroke="#36c" stroke-width=".3"/>'; });
     (L.hotspots || []).forEach(function (h) { if (h.wp) s += '<circle cx="' + h.wp.x + '" cy="' + h.wp.y + '" r=".8" fill="#fff" stroke="#639" stroke-width=".3"/>'; });
     if (L.home) s += '<circle cx="' + L.home.x + '" cy="' + L.home.y + '" r="1" fill="#fc0"/>';

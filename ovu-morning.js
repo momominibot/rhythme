@@ -133,7 +133,7 @@
   function soundOn() { return root.OvuSound ? root.OvuSound.enabled() : !!(S().state() || {}).sound; } /* the app's own rule: never chosen is on */
   function quietDefault() { return !soundOn() || voiceMuted(); }
   /* she chose to hear the voice here: lift the shared mute, so Voice on is never a silent clip */
-  function hearVoice() { if (voiceMuted()) root.OvuVoice.set(false); }
+  function hearVoice() { if (run && run.audio && root.OvuVoice && root.OvuVoice.allow) root.OvuVoice.allow(run.audio, true); } /* this run only; the app-wide switch stays (Jamie, 22 Oct) */
   /* putting her outfit back writes her profile; if storage fails, the routine and its save prompt still go on */
   function settle(room) { try { if (room.restorePose) room.restorePose(); } catch (e) { } }
   function markToday(patch, day) { day = day || S().today(); var st = S().state(); if (st.morningStart && st.morningStart.date > day) return; /* today's Not today or done stands */ var m = st.morningStart && st.morningStart.date === day ? st.morningStart : { date: day }; for (var k in patch) m[k] = patch[k]; S().setState({ morningStart: m }); }

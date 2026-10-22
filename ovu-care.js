@@ -23,7 +23,8 @@
   function step(box, o, done) {
     if (live() || !box || !o || !o.scene) return false;
     if (R.refuseBusy && R.refuseBusy()) return false; /* never under a practice, a session, a bench practice or Morning start (room.js activityNow) */
-    var ms = C.slowMs != null ? C.slowMs : o.ms, still = reducedMo();
+    var quick = !!(R.mindfulQuick && R.mindfulQuick()); /* Jamie, 22 Oct: mindfulness is a choice; quick pace does the step at once */
+    var ms = quick ? 0 : (C.slowMs != null ? C.slowMs : o.ms), still = reducedMo();
     /* her pose and a small sound; with reduced motion nothing on screen moves, so the line names something still (o.stillLine) */
     var line = R.moment && o.moment ? R.moment(o.moment, { quiet: true, line: still && o.stillLine ? o.stillLine : undefined }) : '';
     if (!ms) { done(); return true; }

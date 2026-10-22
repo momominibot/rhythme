@@ -218,7 +218,7 @@
   }
   function quietToggle() {
     if (!run) return; run.quiet = !run.quiet;
-    if (!run.quiet && root.OvuVoice && root.OvuVoice.muted && root.OvuVoice.muted()) root.OvuVoice.set(false); /* Voice on lifts the app's remembered mute, as Morning start does */
+    if (!run.quiet && root.OvuVoice && root.OvuVoice.allow) root.OvuVoice.allow(run.audio, true); /* Voice on is for this run: the app-wide switch (You tab) stays as she set it (Jamie, 22 Oct) */
     if (run.quiet) { silence(run.audio); run.pending = null; }
     else { var s = step(); if (s && !run.paused) play(s.audio); else if (s) run.pending = s.audio; } /* the voice comes back with the current line from its start */
     paint();

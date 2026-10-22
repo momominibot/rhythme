@@ -496,7 +496,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .confirm label{display:flex;gap:8px;align-items:flex-start;font:600 12px var(--sans);color:var(--rm-ink);padding:6px 0;border-bottom:1px solid rgba(107,82,142,.08);cursor:pointer}
 .confirm label:last-of-type{border-bottom:none}
 .confirm input{accent-color:var(--rm-mauve);margin-top:2px}
-.quick{display:flex;gap:6px;overflow-x:auto;padding:4px 0;scrollbar-width:none}
+.quick{flex-wrap:wrap;display:flex;gap:6px;padding:4px 0;scrollbar-width:none}
 .quick::-webkit-scrollbar{display:none}
 .quick .qchip{flex-shrink:0;display:inline-flex;align-items:center;background:#fff;border:1.5px solid rgba(107,82,142,.14);border-radius:99px;overflow:hidden}
 .quick .qsend{border:none;background:none;padding:8px 6px 8px 12px;font:700 12px var(--sans);color:var(--rm-ink-2);cursor:pointer;white-space:nowrap}
@@ -814,8 +814,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .welcome .btn{min-width:210px;justify-content:center;flex:0 0 auto}
 .welcome .btn.primary{box-shadow:0 10px 26px rgba(117,86,196,.42),0 0 28px rgba(226,210,255,.75)}
 .welcome .btn.ghost{background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-/* the welcome keeps its light look after sunset: the night ghost button (light text, no fill) vanished on it */
-html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);color:#5a4274;border-color:rgba(122,92,150,.28)}
+
 .welcome .btn+.btn{margin-top:8px}
 .w-auth{display:flex;flex-direction:column;gap:8px;width:min(100%,290px);margin-top:2px}
 .w-auth .btn,.w-email .btn{width:100%;min-width:0;margin:0}
@@ -833,8 +832,7 @@ html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);colo
 .w-email .msg.err{color:#b23b5b}
 .w-fine{font:500 11px/1.5 var(--sans);color:var(--rm-ink-2);max-width:290px;margin-top:14px}
 .w-fine a{color:var(--rm-plum);font-weight:700}
-html[data-sky="night"] .welcome .btn.w-apple{background:#111;color:#fff;border-color:#111}
-html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;border-color:#dadce0}
+
 .onb{display:flex;flex-direction:column}
 .onb-head{display:flex;gap:12px;align-items:flex-end;margin-top:4px}
 .onb-head img{width:70px;height:104px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 8px 10px rgba(90,66,116,.25))}
@@ -1597,11 +1595,7 @@ body.btap-open{overflow:hidden}
 .mvperiod .mvflags b{display:inline;font-weight:800;color:var(--rm-plum)}
 .mvperiod .btn{margin-top:8px;flex:none;width:auto;padding:8px 12px}
 .mvsec{display:block}
-html[data-sky="night"] :is(.mvweek,.mvact,.mvvar){background:var(--rm-card);border-color:rgba(255,255,255,.08)}
-html[data-sky="night"] .mvact.on{background:var(--rm-mauve)}
-html[data-sky="night"] .mvvar.on{border-color:#b89be6;background:rgba(155,127,208,.3)}
-html[data-sky="night"] .matnow{background:linear-gradient(135deg,#3b2e5a,#4d3252)}
-html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);border-color:rgba(255,255,255,.08)}
+
 /* ---------- the pets walk (ovu-petwalk.js): a strip box inside the pet's body, shown while it walks; the strip is clipped
  * in its own element so a hat or bow riding on the head anchor can reach past the cell ---------- */
 .petwalk{display:none;position:absolute;left:50%;bottom:0;transform:translateX(-50%);pointer-events:auto}
@@ -1672,11 +1666,16 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 @media (prefers-reduced-motion: reduce){.zonename,.nearpill,.gamehud .gh-stam b{transition:none}}
 
 /* ---------- the farm (ovu-farm.js): beds drawn on the plate, the bed and shed sheets ---------- */
-.bed{position:absolute;transform:translate(-50%,-62%);background:none;border:0;padding:0;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 3px 4px rgba(70,40,100,.16))}
-.bed svg{width:100%;height:auto;display:block;overflow:visible}
+.bed{position:absolute;transform:translate(-50%,-50%);width:16.47%;aspect-ratio:1.838;background:none;border:0;padding:0;margin:0;cursor:pointer;pointer-events:auto;clip-path:polygon(47.8% 4%,96% 51.8%,52.2% 96%,4% 48.2%)} /* one bed's soil: E1 + E2 across, 1472x1840 plate */
+.bedplants{position:absolute;transform:translate(-50%,-100%);width:13%;aspect-ratio:1;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(70,40,100,.16))}
+.bedplants.focus{filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #7a5c96)}
+.bedplants.focus::after{content:"";position:absolute;left:50%;bottom:-25%;width:118%;height:52%;transform:translateX(-50%);border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #7a5c96,0 0 10px rgba(122,92,150,.6)} /* a ring round the bed's soil, so an empty bed shows focus too (Codex, 22 Oct) */
+.bedplants .bedcrop,.bedpic .bedcrop{position:absolute;left:22.5%;bottom:0;width:55%;height:auto;display:block;pointer-events:none}
+.bedplants .bedcrop.back,.bedpic .bedcrop.back{left:2.5%;bottom:10.8%}.bedplants .bedcrop.front,.bedpic .bedcrop.front{left:42.5%;bottom:-10.8%}
+.bedplants .bedover,.bedpic .bedover{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;pointer-events:none}
 .bed:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:10px}
 .bedcard{display:flex;gap:12px;align-items:center;background:var(--rm-card,#fff);border-radius:16px;padding:12px;margin-top:4px}
-.bedcard .bedpic{width:84px;flex:none;background:#f6eefb;border-radius:12px;padding:6px}
+.bedcard .bedpic{position:relative;width:84px;aspect-ratio:1;flex:none;background:#f6eefb;border-radius:12px;padding:6px}
 .bedcard .bedpic svg{width:100%;height:auto;display:block}
 .bedcard .bedtext{display:flex;flex-direction:column;gap:3px;font-size:13.5px}
 .bedcard .bedtext b{font-size:15px}
@@ -1697,7 +1696,8 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .snapbtns + .help,.snapbtns ~ p.help{margin-top:12px;line-height:1.5}
 .phasechips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
 /* the bed card shows soil, not a blank square */
-.bedcard .bedpic{background:radial-gradient(ellipse 46% 30% at 50% 66%,#7a5034 0 62%,#5e3c27 63% 100%,transparent 101%),#f6eefb}
+.bedcard .bedpic{overflow:hidden;background:radial-gradient(ellipse 46% 20% at 50% 74%,#8a5a44 0 62%,#6e4535 64% 100%,transparent 102%),linear-gradient(180deg,#f8f1fd,#efe4f7)}
+.bedpic .bedover{transform:translateY(-24%)}.bedpic .bedcrop{bottom:24%}.bedpic .bedcrop.back{bottom:33%}.bedpic .bedcrop.front{bottom:15%}
 
 /* plaza servers (ovu-plaza.js): a pill in screen space while she is in the plaza, and the chooser sheet */
 .plazapill{position:absolute;left:10px;top:12px;z-index:7;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 120px);padding:7px 12px 7px 9px;border:1.5px solid rgba(255,255,255,.9);border-radius:99px;background:rgba(255,255,255,.86);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(80,50,110,.14);font:800 12px var(--sans);color:var(--rm-ink);cursor:pointer}
@@ -1773,8 +1773,7 @@ span.frchip{cursor:default}
 /* display:flex on these beat the hidden attribute: the low-mood note showed under every mood, and the consent sheet told everyone
    their earlier answers said they were under 18 (Jamie's screenshot, 20 Oct) */
 .flag[hidden],.moodcare[hidden]{display:none}
-html[data-sky="night"] .moodcare{background:#3b2e5a;color:#f1e9fb}
-html[data-sky="night"] .moodcare .ms{color:#f6c9d6}
+
 /* the mindful line under a toast's message (ovu-moments.js) */
 .toast.two{border-radius:18px;align-items:flex-start;text-align:left;padding:10px 14px}
 .toast .toastsub{display:block;margin-top:3px;font:600 12px/1.35 var(--sans);color:#f3e6ff;opacity:.92}
@@ -1917,8 +1916,7 @@ html[data-text="larger"] .tiles.ci{grid-template-columns:minmax(0,1fr)}
 .ciquick:empty{display:none}
 .ciquick .qchip{border:1.5px solid var(--rm-lilac);background:var(--rm-card,#fff);color:var(--rm-plum);border-radius:99px;padding:8px 12px;min-height:40px;font:700 11.5px var(--sans);cursor:pointer}
 .ciquick .qchip.undo{border-style:dashed;color:var(--rm-ink-2)}
-html[data-sky="night"] .cistatus.done .ms{color:#86c7a6}
-html[data-sky="night"] .cimark.uns{background:#2f5a45;color:#c8f0da}
+
 /* farm: the watering can and mindful care steps (Jamie, 20 Oct) */
 .bedcard .bedpic.canpic{background:#eef4fb}
 .bedcard .canline{display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#3f6f96}
@@ -1976,14 +1974,7 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .sqnote.info b{color:var(--rm-ink)}
 .sqnote p{margin:0;font:600 12.5px var(--sans);line-height:1.45}
 .sqsmall{display:block;font:600 11px var(--sans);color:var(--rm-ink-3);line-height:1.4}
-/* night: the shared chip rule in ovu-night.css outranks a plain .chipbtn.on, so the chosen answer gets its own deeper rule */
-html[data-sky="night"] .sqf .chips .chipbtn.on{background:#5b477f;border-color:#8f74b8;color:#fff}
-html[data-sky="night"] .sqbody{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
-html[data-sky="night"] .sqnote{background:#3a2a40;border-color:#8a5a52;color:#f3eaff}
-html[data-sky="night"] .sqnote.today{background:#45252c;border-color:#c0645e}
-html[data-sky="night"] .sqnote.info{background:var(--rm-card);border-color:rgba(255,255,255,.12)}
-html[data-sky="night"] .sqnote b{color:#ffd7c8}
-html[data-sky="night"] .sqnote.info b{color:#f3eaff}
+
 /* the barn and the hidden spring (ovu-barn.js, 21 Oct) */
 .barnthing{position:absolute;pointer-events:auto;border:0;background:none;padding:0}
 .barnthing.animal{transform:translate(-50%,-100%);cursor:pointer;z-index:2}
@@ -2127,7 +2118,7 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .ready .dots{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin:4px 0 8px}
 .ready .dot{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative}
 .ready .dot i{width:40px;height:40px;border-radius:50%;border:2px solid #d9cdee;background:#fff;display:flex;align-items:center;justify-content:center;font:800 15px var(--sans);color:#a394bd;font-style:normal}
-.ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#fff}
+.ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#2a1d44} /* dark plum on the pale gradient (Codex, 22 Oct: white was under 2:1) */
 .ready .dot em{font:700 10px/1.2 var(--sans);font-style:normal;color:var(--rm-ink-2);text-align:center}
 .ready .dot+.dot::before{content:"";position:absolute;left:-50%;right:50%;top:20px;height:2px;background:#e4dbf2;z-index:-1}
 .ready p{margin:0;font:600 13px/1.45 var(--sans);color:var(--rm-ink)}
@@ -2152,7 +2143,7 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .sheet.luna-sheet .lunaico{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(120,90,170,.25))}
 .sheet.luna-sheet h2{font-size:22px}
 .sheet.luna-sheet h2 small{display:flex;align-items:center;gap:6px;color:var(--rm-ink-2)}
-.lunastrip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px -16px 6px;padding:8px 16px;background:#f6f1fc;border-bottom:1px solid rgba(150,120,190,.1);font:700 12px var(--sans);color:var(--rm-ink-2)}
+.lunastrip{flex-wrap:wrap;row-gap:4px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px -16px 6px;padding:8px 16px;background:#f6f1fc;border-bottom:1px solid rgba(150,120,190,.1);font:700 12px var(--sans);color:var(--rm-ink-2)}
 .lunastrip .lstate{display:inline-flex;align-items:center;gap:7px}
 .ldot{width:8px;height:8px;border-radius:50%;background:#c9c2d6;display:inline-block}.ldot.on{background:#4fbf7f;box-shadow:0 0 0 3px rgba(79,191,127,.18)}
 .lunastrip .lmore{border:none;background:none;color:#8a63c9;font:800 12px var(--sans);cursor:pointer;padding:4px 0}
@@ -2165,19 +2156,8 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .lunanote{margin:10px 0 0;text-align:center;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-3)}
 @media(min-width:520px){.sheet.luna-sheet{left:50%;right:auto;width:min(480px,92vw);transform:translate(-50%,105%)}.sheet.luna-sheet.on{transform:translate(-50%,0)}}
 
-/* night: the rhythm panel and Luna's card take the dark surfaces, as every other sheet does (Codex collation review, 21 Oct) */
-html[data-sky=night] .ready,html[data-sky=night] .rcard{background:var(--rm-card);border-color:rgba(255,255,255,.1)}
-html[data-sky=night] .ready .dot i{background:var(--rm-paper-2);border-color:#5b477f;color:#cdbfe4}
-html[data-sky=night] .ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#2a1d44} /* the completed dots keep their gradient at night (Codex re-check) */
-html[data-sky=night] .ready .dot+.dot::before{background:#3b2e5a}
-html[data-sky=night] .rband{background:var(--rm-paper-2)}
-html[data-sky=night] .chip-th{background:#3b2e5a;color:#e3d4fa;border-color:#7a62a6}
-html[data-sky=night] .chip-e{background:#26344d;color:#b9d2f5}
-html[data-sky=night] .sheet.luna-sheet{background:linear-gradient(180deg,#2a2044,#1f1733 60px);border-color:rgba(255,255,255,.08)}
-html[data-sky=night] .lunastrip{background:#2a2044;border-color:rgba(255,255,255,.08)}
-html[data-sky=night] .lunastrip .lmore{color:#cbb2ec}
-html[data-sky=night] .askchip{background:#2b2147;color:#dccdf6;border-color:rgba(203,178,236,.35)}
-html[data-sky=night] .askchip:hover{background:#3b2e5a}
+ /* the completed dots keep their gradient at night (Codex re-check) */
+
 /* closed, Luna's top-anchored card is hidden and untappable once it has slid away: on a tall screen its own height is not enough to leave the frame */
 .sheet.luna-sheet:not(.on){visibility:hidden;pointer-events:none;transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s linear .38s}
 
@@ -2188,10 +2168,7 @@ html[data-sky=night] .askchip:hover{background:#3b2e5a}
 .wlist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}.wlist li{display:flex;justify-content:space-between;align-items:center;gap:8px;font:700 13px var(--sans)}.wlist li small{font-weight:600;color:#6f5f8c;margin-left:6px}
 .winfo{margin-top:10px}.winfo summary{cursor:pointer;font:800 12.5px var(--sans);color:#4b5f8a;display:flex;align-items:center;gap:6px;list-style:none}.winfo summary::-webkit-details-marker{display:none}.winfo p{margin:6px 0 0;font:600 12.5px/1.5 var(--sans);color:#3b2d52}.winfo .evid a{margin-right:6px}
 .wstrip .help,.wstrip .lbl{color:#3b2d52}.wstrip .help.muted{color:#6f5f8c}.wbf{display:flex;align-items:center;gap:8px;margin:8px 0;font:700 13px var(--sans)}
-html[data-sky=night] .wstrip{background:var(--rm-card);border-color:rgba(255,255,255,.1);color:var(--rm-ink)}
-html[data-sky=night] .wstrip .help,html[data-sky=night] .wstrip .lbl,html[data-sky=night] .winfo p,html[data-sky=night] .wlist li{color:var(--rm-ink)}
-html[data-sky=night] .wstrip .whead small,html[data-sky=night] .wlist li small,html[data-sky=night] .wstrip .help.muted{color:var(--rm-ink-2)}
-html[data-sky=night] .winfo summary{color:#b9d2f5}
+
 /* How to practise, on the koi pond and Light Flower cards (Jamie, 21 Oct); the flower's breath words */
 .btap-how{margin:4px 0 2px;text-align:left}
 .btap-how summary{cursor:pointer;font:800 12.5px var(--sans);color:#f1e9fb;display:flex;align-items:center;gap:6px;list-style:none;padding:6px 0}
@@ -2285,9 +2262,6 @@ html[data-sky=night] .winfo summary{color:#b9d2f5}
 .invsec .help{margin-top:6px}
 .invgo{display:inline-flex;align-items:center;gap:2px;margin-top:6px;border:none;background:transparent;padding:6px 2px;font:800 12px var(--sans);color:var(--rm-plum);cursor:pointer}
 .invgo .ms{font-size:18px}
-html[data-sky="night"] .decktabs button.on{background:var(--rm-card)}
-html[data-sky="night"] :is(.chhead,.chfriends,.invhearts,.chprompt,.invlist li){background:var(--rm-card);border:1px solid rgba(255,255,255,.08)}
-html[data-sky="night"] .chbadge{background:var(--rm-lilac-2)}
 
 /* ---------- the drops (21 Oct): the Starlight gown as a Rhythme Plus drop, her birthday week ---------- */
 .outfit.locked{position:relative;opacity:.82}
@@ -2320,8 +2294,6 @@ html[data-sky="night"] .chbadge{background:var(--rm-lilac-2)}
 .byrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .byrow select.input{flex:1 1 7rem;min-width:0}
 .byrow .btn{flex:0 0 auto;min-height:44px}
-html[data-sky="night"] .bcard{background:var(--rm-card);border-color:rgba(255,255,255,.14)}
-html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
 
 /* the twirl (room.js twirl): she spins to show a new outfit, Animal Crossing style, and the gown gets the Cinderella
  * version (.glam). JS turns her picture; these are the sparkles riding around her, the flash at the change and the
@@ -2405,14 +2377,7 @@ html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
 .vline{margin:6px 0 0;font:600 13px/1.45 var(--sans);color:var(--rm-ink-2)}
 .vhearts{display:flex;gap:1px}.vhearts .ms{font-size:17px}.vhearts .ms.off{color:rgba(150,120,190,.3)}
 /* scores and graphs in the Cycle tab (22 Oct) */
-.scorecard{background:rgba(255,255,255,.7);border-radius:18px;padding:12px 14px;margin:0 0 12px;box-shadow:0 6px 16px rgba(122,92,150,.1)}
-.scorecard h3{display:flex;gap:6px;align-items:center;margin:0 0 4px;font:600 17px var(--serif);color:var(--rm-plum)}
-.scbig{font:700 36px var(--serif);color:var(--rm-plum)}.scbig small{font:700 13px var(--sans);color:var(--rm-ink-3);margin-left:2px}
-.scparts{list-style:none;margin:6px 0;padding:0;display:flex;flex-direction:column;gap:5px}
-.scparts li{display:grid;grid-template-columns:1fr auto;gap:0 8px;font:700 12.5px var(--sans);color:var(--rm-ink-2)}
-.scparts li b{color:var(--rm-plum)}.scparts li small{grid-column:1/-1;font:600 11px var(--sans);color:var(--rm-ink-3)}
-.schead{margin:10px 0 2px;font:800 11px var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--rm-ink-3)}
-.scgraph{width:100%;height:auto;display:block}
+.scorecard{background:rgba(255,255,255,.72);border-radius:22px;padding:14px 14px 12px;margin:0 0 14px;box-shadow:0 10px 26px rgba(122,92,150,.12);position:relative;overflow:hidden}.scorecard.dreamy{background:linear-gradient(160deg,rgba(255,255,255,.88),rgba(247,239,252,.9) 60%,rgba(236,246,242,.9))}.scorecard.dreamy:before{content:"";position:absolute;inset:-40% -20% auto auto;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(201,182,230,.35),rgba(201,182,230,0) 70%);pointer-events:none}.scorecard h3{display:flex;gap:6px;align-items:center;margin:0 0 4px;font:600 17px var(--serif);color:var(--rm-plum)}.schero{display:grid;grid-template-columns:112px 1fr 84px;gap:10px;align-items:center;position:relative}.scring{position:relative;width:112px;height:112px}.scring svg{width:112px;height:112px;display:block;background:none;border-radius:0;box-shadow:none}.scnum{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font:800 30px var(--serif);color:var(--rm-plum);line-height:1}.scnum small{font:700 10px var(--sans);color:var(--rm-ink-3);letter-spacing:.04em;margin-top:2px}.scdash{font-size:34px;color:var(--rm-lilac)}.scmood{margin:4px 0 0;font:600 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}.sccloud{width:84px;height:84px;object-fit:contain;justify-self:end;filter:drop-shadow(0 6px 10px rgba(122,92,150,.18));animation:scfloat 4.5s ease-in-out infinite}.sc-sleep .sccloud{animation-delay:-2s}@keyframes scfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@media (prefers-reduced-motion:reduce){.sccloud{animation:none}}.scpills{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}.scpill{background:rgba(255,255,255,.7);border-radius:14px;padding:8px 10px;box-shadow:inset 0 0 0 1px rgba(201,182,230,.35)}.scpill-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font:700 12px var(--sans);color:var(--rm-ink-2)}.scpill-top b{font:800 15px var(--serif);color:var(--rm-plum)}.scpill.empty .scpill-top b{font:700 11px var(--sans);color:var(--rm-ink-3)}.scbar{height:8px;border-radius:99px;background:#efe7f7;margin:6px 0 4px;overflow:hidden}.scbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f6c9d6,#c9b6e6 55%,#bfe3d4);box-shadow:0 0 8px rgba(201,182,230,.6)}.scpill small{display:block;font:600 10.5px/1.35 var(--sans);color:var(--rm-ink-3)}.scneed{display:flex;gap:8px;align-items:flex-start;margin:8px 0 2px;padding:8px 10px;border-radius:14px;background:rgba(243,212,155,.22);font:600 12px/1.4 var(--sans);color:var(--rm-ink-2)}.scneed .ms{color:var(--rm-warn);font-size:18px}.schead{margin:12px 0 4px;font:800 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)}.scgraph{width:100%;height:auto;display:block;background:rgba(255,255,255,.55);border-radius:14px}.scgraph-empty{display:flex;gap:8px;align-items:center;padding:14px 12px;border-radius:14px;background:rgba(255,255,255,.55);font:600 12px var(--sans);color:var(--rm-ink-3)}.scgraph-empty .ms{color:var(--rm-lilac)}.scfoot{margin:10px 0 0}@media (max-width:360px){.schero{grid-template-columns:96px 1fr 64px}.scring,.scring svg{width:96px;height:96px}.sccloud{width:64px;height:64px}}.scparts{display:none}
 
 /* PULSE movement breaks (22 Oct) */
 .pulsecards{display:flex;flex-direction:column;gap:8px}
@@ -2431,3 +2396,6 @@ html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
 .ranchsec small.help{display:block;margin:-4px 0 0;font-size:12px}
 .barnthing.animal.baby img{animation-duration:2.6s}
 .lovemeter .namebtn{margin-left:6px;padding:2px 6px;vertical-align:middle}
+
+html[data-mindful=quick] .mindline:not(.keep){display:none}
+

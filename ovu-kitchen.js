@@ -9,6 +9,9 @@
 (function (root) {
   'use strict';
   /* one purchase is one portion, enough for one dish; eggs go to the barn's pantry */
+  /* each staple's picture (assets/food): the grocer shows it on the tile (Jamie, 22 Oct: "I need pic") */
+  var STAPLE_PIC = { rice: 'staple-rice', egg: 'eggs', noodles: 'staple-noodles', tofu: 'staple-tofu', garlic: 'staple-garlic', coconut: 'staple-coconut', honey: 'staple-honey', yoghurt: 'greek-yogurt' };
+  function staplePic(k) { return '<img class="croppic" src="assets/food/' + (STAPLE_PIC[k] || 'eggs') + '.webp" alt="">'; }
   var STAPLES = {
     rice: { name: 'Rice', cost: 2, icon: 'rice_bowl' },
     egg: { name: 'Eggs', cost: 3, icon: 'egg', pantry: true, pl: true },
@@ -110,7 +113,7 @@
   /* where she can cook: the farm's basket, and a home whose plate draws a kitchen (only the family home today) */
   var STOVES = ['familyhome'];
   var K = { STAPLES: STAPLES, HERBS: HERBS, STEPS: STEPS, STEP_MS: STEP_MS, RECIPES: RECIPES, STOVES: STOVES, recipe: recipe, kitchenOf: kitchenOf, have: have, label: label, needsText: needsText, missing: missing, canCook: canCook, ready: ready, cook: cook, buyStaple: buyStaple, staplesOf: staplesOf, stepMs: null };
-  root.OvuKitchen = K;
+  root.OvuKitchen = K; K.staplePic = staplePic;
 
   /* ---------- the sheets ---------- */
   var S = root.OvuStore, R = root.OvuRoom, W = root.OvuWalk, doc = root.document;
