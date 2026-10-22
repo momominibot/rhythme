@@ -85,7 +85,7 @@
   function takeFromBag(f, it) {
     if (it.kind === 'dish') { f.dishes = Object.assign({}, f.dishes || {}); f.dishes[it.key] = n0(f.dishes[it.key]) - 1; if (!f.dishes[it.key]) delete f.dishes[it.key]; }
     else if (it.kind === 'crop') { f.harvest[it.key] = n0(f.harvest[it.key]) - 1; if (!f.harvest[it.key]) delete f.harvest[it.key]; }
-    else f.pantry[it.key] = n0(f.pantry[it.key]) - 1;
+    else { f.pantry[it.key] = n0(f.pantry[it.key]) - 1; if (root.OvuRanch) { var t = root.OvuRanch.takeProduct(f, it.key, 1).farm; f.ranch = t.ranch; } }
   }
   function save(patch) { if (S.commit) S.commit(patch); else S.setState(patch); }
   function openVillager(id) {

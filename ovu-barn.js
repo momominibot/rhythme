@@ -64,7 +64,7 @@
     var f = farm(S), n = cookable(f); if (want != null) { if (want < 1 || want > n) return { ok: false, why: 'The pantry changed in the meantime. Have another look.' }; n = want; }
     if (f.pantry.egg < 1) return { ok: false, why: 'Bring an egg from the hen house first.' };
     if (n < 1) return { ok: false, why: 'The pantry has all the onsen eggs it can hold.' };
-    f.pantry.egg -= n; f.pantry.onsenegg += n;
+    f.pantry.egg -= n; f.pantry.onsenegg += n; if (RN()) f = RN().takeProduct(f, 'egg', n).farm;
     return attempt(function () { save(S, f, null); return { ok: true, n: n }; });
   }
   /* treats from the harvest basket (21 Oct: the basket needed somewhere to go): Clover likes carrots, pumpkins and sweet potatoes,
@@ -373,6 +373,9 @@
    * Hearts pay for animals and room (OvuRewards.spend writes the hearts and the farm in one save). Babies come from an egg in
    * the incubator (3 days) or a cow at full love for a week (a calf), and take a place of their own while on the way. */
   function RW() { return root.OvuRewards; }
+  /* one farm change at a time across tabs, each reading the farm fresh inside the lock (Codex, 22 Oct: two tabs buying at
+     once could pay for both and keep one); Web Locks where the browser has them, else straight through */
+  function locked(fn) { var L = root.navigator && root.navigator.locks; var run = function () { try { if (S.reload) S.reload(); } catch (e) { } return fn(); }; if (L && L.request) return L.request('ovumind-farm', run); try { return Promise.resolve(run()); } catch (e) { return Promise.reject(e); } }
   function daysTo(d, day) { return Math.max(0, Math.round((Date.parse(d) - Date.parse(day)) / 86400000)); }
   function dueText(d, day) { var n = daysTo(d, day); return n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days'; }
   /* naming a baby born here (the hatch line promises it): a short name, cleaned the way the ranch cleans names */
@@ -382,11 +385,16 @@
       '<div class="field"><label for="rnName">Name</label><input class="input" id="rnName" maxlength="16" value="' + esc(a.name === 'Calf' || a.name === 'Chick' ? '' : a.name) + '" placeholder="' + (a.kind === 'cow' ? 'Buttercup' : 'Pip') + '"></div>' +
       '<div class="row"><button type="button" class="btn primary" id="rnSave"><span class="ms">check</span>Keep this name</button><button type="button" class="btn ghost" id="rnBack">Back</button></div>');
     doc.getElementById('rnBack').addEventListener('click', function () { reopen(); });
+    var opened = { kind: a.kind, born: a.born }; /* the animal this box was opened for */
     doc.getElementById('rnSave').addEventListener('click', function () {
       var nm = RN().cleanName(doc.getElementById('rnName').value); if (!nm) { R.toast('A name needs at least one letter.', 'info'); return; }
-      var f1 = farm(S), r = RN().ranchOf(f1); r.herd.forEach(function (x) { if (x.id === who) x.name = nm; }); f1.ranch = r;
-      try { save(S, f1, null); } catch (e) { R.toast('That could not be saved just now.', 'info'); return; }
-      R.chime('save'); renderBarn(); reopen();
+      locked(function () {
+        var f1 = farm(S), r = RN().ranchOf(f1), now = r.herd.filter(function (x) { return x.id === who; })[0];
+        if (!now || now.kind !== opened.kind || now.born !== opened.born) { R.toast('That animal changed in the meantime. Have another look.', 'info'); reopen(); return; } /* a restore could have put another animal under this id */
+        now.name = nm; f1.ranch = r;
+        try { save(S, f1, null); } catch (e) { R.toast('That could not be saved just now.', 'info'); return; }
+        R.chime('save'); renderBarn(); reopen();
+      });
     });
   }
   function wireRename(reopen) { var body = doc.getElementById('sheetBody'); if (!body) return; body.addEventListener('click', function (e) { var b = e.target.closest('[data-rename]'); if (!b || !idle()) return; e.stopPropagation(); openName(b.dataset.rename, reopen); }); }
@@ -428,9 +436,13 @@
     if (R.erin) R.erin('ranch-open');
     var body = doc.getElementById('sheetBody'); if (!body) return;
     body.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-ranch]'); if (!b || !idle()) return;
-      var act = b.dataset.ranch.split(':'), f1 = farm(S), res, what;
-      if (act[0] === 'buy') { var nm = (doc.getElementById(act[1] === 'cow' ? 'rnCow' : 'rnHen') || {}).value; res = R0.buy(f1, act[1], nm, day); what = 'ranch:' + act[1]; }
+      var b = e.target.closest('[data-ranch]'); if (!b || !idle() || body.dataset.busy) return;
+      body.dataset.busy = '1'; var nm0 = { cow: (doc.getElementById('rnCow') || {}).value, hen: (doc.getElementById('rnHen') || {}).value };
+      locked(function () { delete body.dataset.busy; if (!R.sheetOpen() || R.sheetId() !== 'ranch') return; ranchAct(b.dataset.ranch, nm0); }).catch(function () { delete body.dataset.busy; });
+    });
+    function ranchAct(which, names) {
+      var act = which.split(':'), f1 = farm(S), res, what;
+      if (act[0] === 'buy') { res = R0.buy(f1, act[1], names[act[1]], day); what = 'ranch:' + act[1]; }
       else if (act[0] === 'upgrade') { res = R0.upgrade(f1, act[1]); what = 'ranch:' + act[1] + '-upgrade'; }
       else if (act[0] === 'incubate') { res = R0.incubate(f1, null, day); }
       else if (act[0] === 'calf') { res = R0.startCalf(f1, act[1], day); }
@@ -444,7 +456,7 @@
       else if (act[0] === 'incubate') { R.toast('One egg, tucked into a warm nest. It hatches ' + dueText(res.due, day) + '.', 'egg_alt'); if (R.erin) R.erin('ranch-egg'); }
       else { R.toast('A calf is on the way, due ' + dueText(res.due, day) + '.', 'child_care'); if (R.erin) R.erin('ranch-calf'); }
       renderBarn(); openRanch();
-    });
+    }
   }
   /* pretend onsen eggs: lower, watch the steam, lift; Stop anywhere changes nothing, the eggs change only at the end */
   function openBasket() {
@@ -543,8 +555,10 @@
     function redrawOpen() { var id = R.sheetId ? R.sheetId() : null; var fn = id && SHEETS[id]; if (!fn || !R.sheetOpen()) return; if (CARE && CARE.cancel) CARE.cancel(); fn(); } /* a name box left open keeps her typing */
     if (GT) GT.onNewDay(function () { settle(); renderBarn(); redrawOpen(); });
     root.setTimeout(function () { if (settle()) renderBarn(); }, 1200); /* a baby due while the app was closed arrives at boot */
-    var key = JSON.stringify(S.state().farm || null);
+    var key = JSON.stringify(S.state().farm || null), fixing = false;
     S.subscribe(function (reason) {
+      /* the size mix never outlives the pantry total: a consumer that took eggs or milk without sizes is trimmed at once */
+      if (!fixing && RN() && (reason === 'state' || reason === 'external')) { var f0 = FM().farmState(S), fr = RN().reconcile(f0); if (fr !== f0) { fixing = true; try { save(S, fr, null); } catch (e) { } fixing = false; } }
       if (reason === 'clear' || reason === 'import') { if (CARE && CARE.cancel) CARE.cancel(); key = JSON.stringify(S.state().farm || null); syncCrack(); renderBarn(); redrawOpen(); return; } /* the diary was replaced here: nothing pending survives it */
       if (reason === 'state') { key = JSON.stringify(S.state().farm || null); return; } /* our own saves move the baseline */
       if (!(reason === 'external' || String(reason).indexOf('sync') === 0)) return;

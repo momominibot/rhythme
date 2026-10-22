@@ -44,11 +44,12 @@
   function migrate(farm, today) {
     if (ranchOf(farm)) return farm;
     var f = copy(farm || {}), p = f.pantry || {};
+    Object.keys(f.love || {}).forEach(function (id) { var l = f.love[id]; if (l && n0(l.n) >= 10 && !day(l.full)) l.full = today; }); /* a cow already at full love counts from today */
     f.ranch = { v: 1, lastDay: today, nextId: 1, barnLevel: 0, coopLevel: 0, herd: copy(STARTERS).map(function (a) { a.born = null; a.adultOn = null; return a; }),
       incubator: null, calf: null, sizes: { egg: { small: n0(p.egg), medium: 0, large: 0 }, milk: { small: n0(p.milk), medium: 0, large: 0 } } };
     return f;
   }
-  function isAdult(a, today) { return !a.adultOn || today >= a.adultOn; }
+  function isAdult(a, today) { return !!(a.grown || !a.adultOn || today >= a.adultOn); }
   function list(r, kind) { return r.herd.filter(function (a) { return !kind || a.kind === kind; }); }
   function capacity(r, building) { return CAPACITY[building][building === 'barn' ? r.barnLevel : r.coopLevel]; }
   /* animals in a building, counting the baby on its way */
@@ -61,7 +62,7 @@
     if (r.lastDay && today < r.lastDay) return farm;
     var changed = r.lastDay !== today; r.lastDay = today;
     if (r.incubator && today >= r.incubator.due) { r.herd.push({ id: r.incubator.childId, kind: 'hen', name: 'Chick', born: r.incubator.due, adultOn: addDays(r.incubator.due, KINDS.hen.grow) }); r.incubator = null; changed = true; }
-    if (r.calf && today >= r.calf.due) { r.herd.push({ id: r.calf.childId, kind: 'cow', name: 'Calf', born: r.calf.due, adultOn: addDays(r.calf.due, KINDS.cow.grow) }); r.calf = null; changed = true; }
+    if (r.calf && today >= r.calf.due) { r.herd.push({ id: r.calf.childId, kind: 'cow', name: 'Calf', born: r.calf.due, adultOn: addDays(r.calf.due, KINDS.cow.grow) }); r.calves[r.calf.motherId] = r.calf.due; r.calf = null; changed = true; }
     r.herd.forEach(function (a) { if (a.adultOn && today >= a.adultOn && !a.grown) { a.grown = true; changed = true; } });
     if (!changed) return farm;
     f.ranch = r; return f;
@@ -74,9 +75,11 @@
   }
   function newId(r, kind) { var id = kind + r.nextId; r.nextId += 1; while (r.herd.some(function (a) { return a.id === id; })) { id = kind + r.nextId; r.nextId += 1; } return id; }
   /* buy an adult: it produces from tomorrow (farm.animals[id] = today) */
+  function dayOk(r, today) { return !!day(today) && !(r.lastDay && today < r.lastDay); } /* a clock set back cannot start anything */
   function buy(farm, kind, name, today) {
     var K = KINDS[kind]; if (!K) return { ok: false, why: 'unknown animal' };
     var f = copy(farm), r = ranchOf(f); if (!r) return { ok: false, why: 'no ranch yet' };
+    if (!dayOk(r, today)) return { ok: false, why: 'The ranch runs on today’s date.' };
     if (room(r, K.building) < 1) return { ok: false, why: 'The ' + K.building + ' is full. An upgrade makes room for more.' };
     var id = newId(r, kind), a = { id: id, kind: kind, name: cleanName(name) || K.name, born: null, adultOn: null };
     r.herd.push(a); f.ranch = r; f.animals = Object.assign({}, f.animals || {}); f.animals[id] = today;
@@ -92,6 +95,7 @@
   /* an egg of any size goes into the incubator; it takes one coop place; it hatches after three days */
   function incubate(farm, size, today) {
     var f = copy(farm), r = ranchOf(f); if (!r) return { ok: false, why: 'no ranch yet' };
+    if (!dayOk(r, today)) return { ok: false, why: 'The ranch runs on today’s date.' };
     if (r.incubator) return { ok: false, why: 'The incubator already has an egg in it.' };
     if (room(r, 'coop') < 1) return { ok: false, why: 'The coop is full. A chick needs a place of its own.' };
     size = SIZES.indexOf(size) > -1 ? size : SIZES.filter(function (s) { return r.sizes.egg[s] > 0; })[0];
@@ -105,15 +109,17 @@
     var r = ranchOf(farm), m = r && list(r, 'cow').filter(function (a) { return a.id === motherId; })[0]; if (!m || !isAdult(m, today)) return null;
     var love = (farm.love || {})[motherId], full = love && n0(love.n) >= 10 ? day(love.full) : null;
     if (!full) return null;
-    var last = r.calves[motherId] || null;
+    full = later(full, m.adultOn); /* love filled as a calf counts from the day she grew up */
+    var last = r.calves[motherId] || null; /* the last calf's birth day */
     return later(later(today, addDays(full, CALF_FULL_DAYS)), last ? addDays(last, CALF_FULL_DAYS) : null);
   }
   function startCalf(farm, motherId, today) {
     var f = copy(farm), r = ranchOf(f); if (!r) return { ok: false, why: 'no ranch yet' };
+    if (!dayOk(r, today)) return { ok: false, why: 'The ranch runs on today’s date.' };
     if (r.calf) return { ok: false, why: 'A calf is already on the way.' };
     if (room(r, 'barn') < 1) return { ok: false, why: 'The barn is full. A calf needs a stall of its own.' };
     var due = calfDue(f, motherId, today); if (!due) return { ok: false, why: 'She needs ten hearts of love first.' };
-    r.calf = { childId: newId(r, 'cow'), motherId: motherId, started: today, due: due }; r.calves[motherId] = today; f.ranch = r;
+    r.calf = { childId: newId(r, 'cow'), motherId: motherId, started: today, due: due }; r.calves[motherId] = due; f.ranch = r;
     return { ok: true, farm: f, due: due };
   }
   /* the size mix follows the pantry total: a product added at a size, or taken smallest first; the mix is trimmed to the total */
