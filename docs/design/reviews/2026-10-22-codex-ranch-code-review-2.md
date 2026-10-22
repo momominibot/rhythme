@@ -170,4 +170,14 @@ The unchanged farm planting/watering/harvest writers and greenhouse basket write
 
 **Verdict: HOLD.**
 
-## Round 10 (after the resend honours tester mode entered since the link was packed): see below once it ends
+## Round 10 (after the resend honours tester mode entered since the link was packed): HOLD on one item
+
+1. **The unpaid-cat leak is fixed in both cases**, reproduced using real `OvuStore` and `OvuRewards.buy('cat')` with a mock server. Without an existing account copy, account and phone both finish at **5 hearts, no cat**. With account **10 + phone 5**, the account retains **15**, but the phone finishes at **10**, with no cat. The phone therefore does **not** match the account.
+
+2. **P1 remains: legitimate hearts disappear during recovery.** [ovu-gamesave.js:236](./ovu-gamesave.js#L236) restores the pre-link `p.remote`, although the server accepted `p.save` containing 15 hearts. [ovu-gamesave.js:240](./ovu-gamesave.js#L240) marks that revision acknowledged, clears taint and leaves nothing dirty, preventing reconciliation. Repeated syncs preserve the mismatch. Earning one more heart returns `refused` at [ovu-gamesave.js:294](./ovu-gamesave.js#L294); after earning five total, the account still has **15 instead of 20**. No additional P1 reproduced in the reviewed paths.
+
+`node tools/test-core.js`: **1,791 passed, 0 failed**. No files modified.
+
+**Verdict: HOLD.**
+
+## Round 11 (after the tainted resend takes the copy the server accepted, not the pre-link account copy): see below once it ends

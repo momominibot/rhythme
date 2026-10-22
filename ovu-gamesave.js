@@ -233,7 +233,7 @@
              (what the phone did to its own farm while unlinked yields to the account's farm, as it would have at the first
              link); a tester phone takes the account copy alone, its tester rewards never join (Codex, 22 Oct) */
           var tnt = !!(p.tainted || m.tainted); /* tester mode at the link, or entered since: tester play never joins the account (Codex, 22 Oct) */
-          if (tnt) apply(uid, clone(p.remote || p.save)); /* the account copy alone (what the server now holds); tester play on this phone is let go, as the tainted pull does */
+          if (tnt) apply(uid, clone(p.save)); /* the copy the server accepted at the link (the account's game with this phone's pre-tester rewards joined); tester play on this phone is let go, as the tainted pull does */
           else if (p.remote) apply(uid, linkMerge(now, p.remote));
           /* the hearts earned here since the link was packed ride in the journal, so a pull of a newer account copy
              (another phone wrote first) replays them instead of losing them (Codex, 22 Oct) */
