@@ -39,7 +39,7 @@ YOUR DATA, YOUR CHOICE
 - Your diary is kept on your phone. Cloud backup is a separate choice, off unless you turn it on.
 
 Rhythme is for adults 18 and over. It is a wellness diary, not a medical device: it does not diagnose, treat or work
-as contraception. In an emergency in Singapore, call 995.
+as contraception. In an emergency, call your local emergency number.
 
 Keywords (100): period,cycle,tracker,sleep,mindfulness,diary,wellness,pcos,menopause,women,calm,journal,cosy
 

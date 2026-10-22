@@ -1083,7 +1083,7 @@
         '<div class="field flushrow" id="flushRow"' + ((sd.symptoms || []).indexOf('hot flushes') > -1 ? '' : ' hidden') + '><span class="lbl">Hot flushes</span><div class="chips"><label class="flushn">How many today <input class="input" id="flushN" type="number" min="0" max="60" inputmode="numeric" placeholder="optional" value="' + (typeof sd.flushes === 'number' ? sd.flushes : '') + '"></label><button type="button" class="chipbtn' + (sd.flushNight ? ' on' : '') + '" id="flushNight"><span class="ms">bedtime</span>Woke me at night</button></div></div>' +
         '<div class="field"><div class="lbl-row"><label for="pain" class="lbl" style="margin:0">Pain · <span id="painVal">' + (sd.pain || 0) + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="pain" min="0" max="10" step="1" value="' + (sd.pain || 0) + '">' + guideHTML('pain') + '</div>' +
         '<div class="field"><span class="lbl">Mood</span><div class="faces" id="moodFaces">' + [['great', 'sentiment_very_satisfied'], ['good', 'sentiment_satisfied'], ['ok', 'sentiment_neutral'], ['low', 'sentiment_dissatisfied'], ['bad', 'sentiment_very_dissatisfied']].map(function (m) { return '<button type="button" data-mood="' + m[0] + '" class="' + (sd.mood === m[0] ? 'on' : '') + '"><span class="ms">' + m[1] + '</span>' + cap(m[0]) + '</button>'; }).join('') + '</div></div>' +
-        '<p class="moodcare" id="moodCare"' + (sd.mood === 'low' || sd.mood === 'bad' ? '' : ' hidden') + '><span class="ms">favorite</span><span>If a low mood is weighing on you, you deserve support now, not after more logging. mindline 1771 is open 24 hours, or talk to your GP or polyclinic.</span></p>' +
+        '<p class="moodcare" id="moodCare"' + (sd.mood === 'low' || sd.mood === 'bad' ? '' : ' hidden') + '><span class="ms">favorite</span><span>If a low mood is weighing on you, you deserve support now, not after more logging. mindline 1771 is open 24 hours, or talk to your GP or clinic.</span></p>' +
         '<div class="field"><label for="symNotes">Notes</label><textarea class="input" id="symNotes" placeholder="Anything else you noticed...">' + esc(sd.notes || '') + '</textarea></div>' +
         '<div class="row"><button class="btn primary" id="saveSym"><span class="ms">check</span>Save day</button>' + (cs ? '<button class="btn ghost" id="clearSym">Clear</button>' : '') + '<button class="btn soft" id="acuFromSym"><span class="ms">spa</span>Cramp relief points</button></div><div class="msg" id="calMsg"></div>';
       /* None (Jamie, 19 Oct) is its own answer: it clears the symptoms, and ticking a symptom clears it */
@@ -3140,9 +3140,9 @@
   }
   function openUrgentCard(next) {
     openSheet('urgent', 'Please get care today', 'This is not something to track; it needs a clinician now', 'emergency_home',
-      '<div class="flag high"><span class="ms">emergency_home</span><div><b>Sudden severe pelvic pain, fainting with bleeding, shoulder-tip pain or bleeding you cannot control</b><span>In Singapore call 995 or go to the nearest A&E; KK Women’s and Children’s Hospital runs a 24-hour O&G emergency service. If you could be pregnant, say so when you arrive.</span></div></div>' +
+      '<div class="flag high"><span class="ms">emergency_home</span><div><b>Sudden severe pelvic pain, fainting with bleeding, shoulder-tip pain or bleeding you cannot control</b><span>Call your local emergency number or go to the nearest emergency department. If you could be pregnant, say so when you arrive.</span></div></div>' +
       '<p class="help">Rhythme cannot assess this. Your answers are kept as a note for your records, not sent anywhere.</p>' +
-      '<div class="row"><a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><button type="button" class="btn ghost" id="urgentNext">Continue</button></div>');
+      '<div class="row"><button type="button" class="btn ghost" id="urgentNext">Continue</button></div>');
     $('#urgentNext').addEventListener('click', next);
   }
   function predictionModeFor(A) {
@@ -3312,10 +3312,10 @@
       '<small>Rhythme cannot assess how you are or diagnose. No clinician or helpline receives this alert.</small>';
     return '<b>' + esc(u.title) + '</b>' +
       (emergency
-        ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department, or KK Women’s and Children’s Hospital’s 24-hour Urgent O&amp;G Centre. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call 995 if you faint or feel very weak or dizzy, cannot travel safely, have trouble breathing, or have chest pain.</p>'
-        : '<p>This is not a period. Any bleeding after menopause, even a small spot or a pink or brown discharge, should be checked by a clinician promptly, even if it stops. Book your GP, a polyclinic or a gynaecologist this week. Get same-day care if the bleeding is heavy, you have severe pain, or you feel dizzy. It is usually not serious, but it needs a check.</p><p class="esc">Call 995 if the bleeding is heavy and you feel faint, or you have chest pain or trouble breathing.</p>') +
-      '<div class="row">' + (emergency ? '<a class="btn primary" href="tel:995"><span class="ms">call</span>Call 995</a><a class="btn soft" href="https://www.kkh.com.sg/our-specialties/urgent-og-centre" target="_blank" rel="noopener"><span class="ms">local_hospital</span>KKH Urgent O&amp;G (24h)</a>' : '') + '<a class="btn ghost" href="journal.html"><span class="ms">medical_information</span>Show my chart</a></div>' +
-      '<small>Rhythme cannot assess your condition or diagnose. This alert follows published guidance (KKH, SCDF, NHS). No clinician receives this alert.</small>';
+        ? '<p>' + esc(cap(u.trigger)) + ' needs medical assessment now. Go to the nearest emergency department or urgent maternity unit. Do not wait to finish logging. If pregnancy is possible, say so when you arrive.</p><p class="esc">Call your local emergency number if you faint or feel very weak or dizzy, cannot travel safely, have trouble breathing, or have chest pain.</p>'
+        : '<p>This is not a period. Any bleeding after menopause, even a small spot or a pink or brown discharge, should be checked by a clinician promptly, even if it stops. Book your doctor, a clinic or a gynaecologist this week. Get same-day care if the bleeding is heavy, you have severe pain, or you feel dizzy. It is usually not serious, but it needs a check.</p><p class="esc">Call your local emergency number if the bleeding is heavy and you feel faint, or you have chest pain or trouble breathing.</p>') +
+      '<div class="row">' + (emergency ? '' : '') + '<a class="btn ghost" href="journal.html"><span class="ms">medical_information</span>Show my chart</a></div>' +
+      '<small>Rhythme cannot assess your condition or diagnose. This alert follows published clinical guidance. No clinician receives this alert.</small>';
   }
   /* after a hand-saved entry the card is the whole sheet: the entry is already saved, so nothing is lost by covering the form */
   function careSheet(u) {
@@ -3345,7 +3345,7 @@
     if (care) endMoment(); /* a care card always comes alone */
     /* a care card comes alone: no pose and no cheerful line over it */
     var mk = care ? null : viaLuna ? 'luna' : (MO ? MO.forEntry(ev, A.isPostmenopausal(S.profile())) : null), line = mk ? moment(mk, { quiet: true }) : '';
-    /* the hearts are still earned, but no reward toast or heart pop sits beside "Call 995 now" */
+    /* the hearts are still earned, but no reward toast or heart pop sits beside "Call your local emergency number now" */
     if (care && !viaLuna) { careSheet(care); toast('Saved.', 'check_circle'); }
     else if (hi) toast(hi.title + '. Please see the note in your journal.', 'emergency_home');
     else if (w) toast('Saved. Pattern note added: ' + w.title + '.' + heartsText, 'flag', line);

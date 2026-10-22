@@ -7,7 +7,7 @@
 (function (root) {
   'use strict';
   var MAX_NOTE = 200, FORGOTTEN_H = 72, AT_MEAL_MIN = 90, MAX_BACK_DAYS = 30;
-  var CARE = 'Fasting is not for pregnancy or breastfeeding, for anyone with diabetes medicines that can cause low blood sugar, under 18, or with a history of disordered eating. Stop and eat if you feel faint, shaky, sweaty or confused. With diabetes, treat a low as your care team has shown you. Severe confusion, a fit, fainting that does not pass or trouble swallowing: call 995.';
+  var CARE = 'Fasting is not for pregnancy or breastfeeding, for anyone with diabetes medicines that can cause low blood sugar, under 18, or with a history of disordered eating. Stop and eat if you feel faint, shaky, sweaty or confused. With diabetes, treat a low as your care team has shown you. Severe confusion, a fit, fainting that does not pass or trouble swallowing: call your local emergency number.';
   var EVIDENCE = ['E81', 'E82', 'E83', 'E84', 'E85', 'E86', 'E87', 'E88', 'E89', 'E90'];
   function S() { return root.OvuStore; }
   function R() { return root.OvuRoom; }

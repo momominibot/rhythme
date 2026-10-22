@@ -124,8 +124,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
 (function selfHarmCardComesFirst() {
   console.log('2. thoughts of harming yourself or your baby raise the emergency card before anything is parsed');
   var w = fresh(), O = w.OvuOrb;
-  var COPY = 'If you have thoughts of harming yourself or your baby, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.';
-  var COPY_SELF = 'If you have thoughts of harming yourself, you need help now. Call 995 or go to A&E, and ask someone you trust to stay with you. SOS is available 24 hours on 1767, or WhatsApp 9151 1767.';
+  var COPY = 'If you have thoughts of harming yourself or your baby, you need help now. Call your local emergency number or go to the nearest emergency department, and ask someone you trust to stay with you. A crisis helpline can also help, at any hour.';
+  var COPY_SELF = 'If you have thoughts of harming yourself, you need help now. Call your local emergency number or go to the nearest emergency department, and ask someone you trust to stay with you. A crisis helpline can also help, at any hour.';
   /* the baby is named only when the note or the profile has one (four-persona review, 20 Oct) */
   [['I want to hurt myself', COPY_SELF], ['I feel like killing myself', COPY_SELF], ['thoughts of hurting my baby', COPY], ['I’m scared I might hurt my baby', COPY], ['I don’t want to be alive anymore', COPY_SELF], ['having suicidal thoughts again', COPY_SELF]].forEach(function (c) {
     var u = O.urgent(c[0], {});
@@ -135,7 +135,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var both = O.urgent('soaking through a pad every hour and I want to hurt myself', {});
   check('the self-harm card comes first, even with heavy bleeding', both && both.code === 'SELF_HARM_NOW', JSON.stringify(both));
   var u = O.urgent('I want to hurt myself', { lifeStage: 'post' });
-  check('the card carries call links for 995, SOS 1767 and WhatsApp 9151 1767', u && JSON.stringify(u.actions) === JSON.stringify([{ label: 'Call 995', href: 'tel:995' }, { label: 'Call SOS 1767', href: 'tel:1767' }, { label: 'WhatsApp SOS', href: 'https://wa.me/6591511767' }]), JSON.stringify(u && u.actions));
+  check('the card carries one link, an international helpline directory, and no country-specific number (22 Oct: the app is for the whole world)', u && JSON.stringify(u.actions) === JSON.stringify([{ label: 'Find a helpline', href: 'https://findahelpline.com' }]), JSON.stringify(u && u.actions));
   check('"I think about hurting myself" and "I’d hurt my baby" raise it too, "I’d never hurt my baby" does not', (O.urgent('Sometimes I think about hurting myself', {}) || {}).code === 'SELF_HARM_NOW' && (O.urgent('I’m so tired I’d hurt my baby', {}) || {}).code === 'SELF_HARM_NOW' && O.urgent('I’d never hurt my baby, just so tired', {}) === null);
   check('an ordinary hurt is not a self-harm card', O.urgent('I hurt my back carrying the baby', {}) === null && O.urgent('my feet are killing me', {}) === null && O.urgent('am I hurting my baby by drinking coffee?', {}) === null);
   check('the existing bleeding cards keep their codes and no self-harm copy', (function () { var h = O.urgent('soaking through a pad every hour', {}); return h && h.code === 'HEAVY_BLEED_NOW' && !h.message; })());
@@ -181,7 +181,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
  ['tired, low, didn\'t sleep',{},null],['ate chicken rice for lunch',{},null],['chest of drawers arrived',{},null],
 ];
   cases.forEach(function (c) { var u = O.urgent(c[0], c[1]); check('"' + c[0] + '" -> ' + c[2], (u ? u.code : null) === c[2], u ? u.code : 'null'); });
-  check('every new card brings its own words and a 995 link where it is an emergency', ['chest pain', 'my face is drooping on one side', 'lips swollen', 'hearing voices', 'period is late and pain on my left side'].every(function (t) { var u = O.urgent(t, {}); return u && u.message && (u.level !== 'emergency' || (u.actions || []).some(function (a) { return a.href === 'tel:995'; })); }));
+  check('every new card brings its own words; an emergency card says emergency and names no country\'s number', ['chest pain', 'my face is drooping on one side', 'lips swollen', 'hearing voices', 'period is late and pain on my left side'].every(function (t) { var u = O.urgent(t, {}); return u && u.message && (u.level !== 'emergency' || (/emergency/i.test(u.message + ' ' + u.title) && !/\b995\b|1767|KKH/.test(u.message))); }));
   var w2 = fresh(), O2 = w2.OvuOrb;
   check('Luna reads worry about a period as a feeling, never a period day', ['worried my period is coming', 'dreading my period', 'when will my period come', 'my period is coming soon I think'].every(function (t) { return !O2.parseLocal(t).some(function (e) { return e.type === 'period'; }); }) && O2.parseLocal('anxious about my period this month').some(function (e) { return e.type === 'symptom' && e.data.symptoms.indexOf('anxiety') > -1; }) && O2.parseLocal('worried, period started heavy today').some(function (e) { return e.type === 'period' && e.data.flow === 'heavy'; }));
 })();
@@ -4220,7 +4220,7 @@ var summarised = false;
   var ev = S.add('reflection', S.today(), { text: 'I want to die', mood: 'low' }, 'room'), u = O.entryUrgent(ev, S.profile());
   check('a journal reflection is read for safety: "I want to die" raises the self-harm card', !!u && u.code === 'SELF_HARM_NOW', JSON.stringify(u));
   var html = O.careHTML(u);
-  check('the journal gets the same care card as the room: its words and the SOS and 995 links, escaped', /Please get help now/.test(html) && /tel:995/.test(html) && /1767/.test(html) && html.indexOf('<script') < 0);
+  check('the journal gets the same care card as the room: its words and the helpline link, escaped, with no country-specific number', /Please get help now/.test(html) && /findahelpline\.com/.test(html) && !/tel:995|1767/.test(html) && html.indexOf('<script') < 0);
   var html2 = O.careHTML({ level: 'emergency', code: 'X', title: 'Get <b>care</b>', trigger: 'a <img src=x> test' });
   check('the shared card escapes what it is given', html2.indexOf('<img') < 0 && html2.indexOf('&lt;img') > -1);
   /* the earlier rules still hold: the 95 model-written notes are checked in their own block */
@@ -4263,7 +4263,7 @@ var summarised = false;
   check('a red boob, an opened tear and stitches that came out are checked; healed stitches are not', code('red boob and it hurts', pp) === 'BREAST_TODAY' && code('my tear opened', pp) === 'WOUND_TODAY' && code('stitches came out', pp) === 'WOUND_TODAY' && code('my stitches have healed nicely', pp) === null);
   check('a blood test is not bleeding, sleeping on one side is not one-sided pain, and brown discharge in pregnancy is bleeding', code('blood test tomorrow', preg) === null && code('My period is late and I have a blood test tomorrow') === null && code('I sleep on one side', preg) === null && code('I lie on my left side to sleep', preg) === null && code('Pain in my tummy, only one side', preg) === 'ECTOPIC_NOW' && code('brown discharge today', preg) === 'PREG_BLEED_NOW' && code('brown discharge before my period, as usual') === null);
   var ub = O.urgent('blood in my urine', {});
-  check('blood in the urine asks for an urgent GP appointment, not one this week', !!ub && /urgent GP or polyclinic appointment/.test(ub.message) && !/this week/.test(ub.message));
+  check('blood in the urine asks for an urgent GP appointment, not one this week', !!ub && /urgent GP or clinic appointment/.test(ub.message) && !/this week/.test(ub.message));
   S.setProfile({ pregState: 'pregnant' });
   var u1 = O.entryUrgent(S.add('period', S.today(), { flow: 'light' }, 'room'), S.profile()), u2 = O.entryUrgent(S.add('symptom', S.today(), { symptoms: ['spotting'] }, 'room'), S.profile());
   check('a tapped light flow or the spotting chip in pregnancy gets the same card as the words in a note', !!u1 && u1.code === 'PREG_BLEED_NOW' && !!u2 && u2.code === 'PREG_BLEED_NOW', JSON.stringify([u1 && u1.code, u2 && u2.code]));
@@ -4620,7 +4620,7 @@ var summarised = false;
   check('a meal offers to end the record only when dated today, with a confirmed time, after the start; yesterday\'s meal, an unconfirmed time or a meal before the start offers nothing', !!F.offerFor(mk('m', '2026-10-21', '12:30', '2026-10-21T12:35:00'), rec, '2026-10-21') && F.offerFor(mk('m', '2026-10-20', '12:30', '2026-10-20T12:35:00'), rec, '2026-10-21') === null && F.offerFor(mk('m', '2026-10-21', '12:30', '2026-10-21T22:35:00'), rec, '2026-10-21') === null && F.offerFor(mk('m', '2026-10-21', '01:30', '2026-10-21T01:35:00'), { id: 'r1', startAt: '2026-10-21T04:00:00.000Z' }, '2026-10-21') === null && F.offerFor(mk('m', '2026-10-21', '12:30', '2026-10-21T12:35:00'), Object.assign({}, rec, { endAt: 'x' }), '2026-10-21') === null);
   /* copy and boundaries */
   var html = F.stripHTML();
-  check('the strip never shows a running counter, a target, a streak or a heart; the care line names 995 and the hypo advice; lengths appear only for ended records', !/streak|target|goal|longest|♥|hearts?\b/i.test(html) && /call 995/.test(html) && /treat a low as your care team/.test(html) && /Entries, not measured fasting/.test(html) && !/since .* \(\d+ h/.test(html) && src.indexOf('—') < 0 && !/gpt|claude|doubao|deepseek/i.test(src));
+  check('the strip never shows a running counter, a target, a streak or a heart; the care line says to call the local emergency number and gives the hypo advice; lengths appear only for ended records', !/streak|target|goal|longest|♥|hearts?\b/i.test(html) && /call your local emergency number/.test(html) && /treat a low as your care team/.test(html) && /Entries, not measured fasting/.test(html) && !/since .* \(\d+ h/.test(html) && src.indexOf('—') < 0 && !/gpt|claude|doubao|deepseek/i.test(src));
   check('the module pays no hearts, writes no diary entry and leaves the summary agents alone', !/OvuRewards|\.award\(|afterSave\(|summary\.food/.test(src));
   var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), js = fs.readFileSync(path.join(root, 'journal.html'), 'utf8'), ev = fs.readFileSync(path.join(root, 'ovu-evidence.js'), 'utf8');
   check('the food sheet carries the strip, confirms a time she touched, offers after a save, and the journal loads the block; evidence E81 to E90 exist with no em dash', /id="fastStrip"/.test(rs) && /timeSet: fdTimeTouched/.test(rs) && /OvuFasting\.onMealSaved\(ev\)/.test(rs) && /OvuFasting\.onClick\(e\)/.test(rs) && /ovu-fasting\.js/.test(js) && /fastingBlock/.test(js) && /<script src="ovu-fasting\.js"><\/script>/.test(fs.readFileSync(path.join(root, 'room.html'), 'utf8')) && ['E81', 'E82', 'E83', 'E84', 'E85', 'E86', 'E87', 'E88', 'E89', 'E90'].every(function (e) { return ev.indexOf("id: '" + e + "'") > -1; }) && ev.indexOf('—') < 0);
