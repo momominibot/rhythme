@@ -285,8 +285,8 @@
     R.walkTo(h.wp, function () { if (R.layout() === L && OPEN[id]) OPEN[id](); });
   }
   function pantryLine() {
-    var f = FM().farmState(S), p = f.pantry, bits = [], rr = RN() && RN().ranchOf(f);
-    function mix(k) { var m = rr && rr.sizes && rr.sizes[k]; if (!m) return ''; var b = ['large', 'medium', 'small'].filter(function (s) { return m[s] > 0; }).map(function (s) { return m[s] + ' ' + s; }); return b.length ? ' (' + b.join(', ') + ')' : ''; }
+    var f = FM().farmState(S), p = f.pantry, bits = [], sz = RN() && RN().viewSizes ? RN().viewSizes(f) : null; /* trimmed to the pantry, never a stale stored mix */
+    function mix(k) { var m = sz && sz[k]; if (!m) return ''; var b = ['large', 'medium', 'small'].filter(function (s) { return m[s] > 0; }).map(function (s) { return m[s] + ' ' + s; }); return b.length ? ' (' + b.join(', ') + ')' : ''; }
     if (p.egg) bits.push(p.egg + ' egg' + (p.egg > 1 ? 's' : '') + mix('egg')); if (p.milk) bits.push(p.milk + ' milk' + mix('milk')); if (p.onsenegg) bits.push(p.onsenegg + ' onsen egg' + (p.onsenegg > 1 ? 's' : ''));
     return '<p class="help pantryline"><span class="ms">kitchen</span>' + (bits.length ? 'In the pantry: ' + esc(bits.join(', ')) + '.' : 'The pantry is empty for now.') + ' Saved with your game.</p>';
   }
@@ -421,7 +421,16 @@
     } catch (e) { }
     return true;
   }
-  function openRanch() { if (!RN()) return; settle().then(function () { if (at('barn')) openRanchNow(); }); } /* due babies land first, then the counter reads the farm */
+  var ranchReq = 0;
+  function openRanch() { /* due babies land first, then the counter reads the farm; a later tap, another sheet or a counter she closed while the lock waited all win (Codex, 22 Oct) */
+    if (!RN()) return; var tok = ++ranchReq, wasOpen = R.sheetOpen() && R.sheetId() === 'ranch';
+    settle().then(function () {
+      if (tok !== ranchReq || !at('barn')) return;
+      if (R.sheetOpen() && R.sheetId() !== 'ranch') return; /* she opened something else meanwhile */
+      if (wasOpen && !(R.sheetOpen() && R.sheetId() === 'ranch')) return; /* a redraw of a counter she has since closed */
+      openRanchNow();
+    });
+  }
   function openRanchNow() {
     var R0 = RN();
     var day = today(), f = FM().farmState(S), r = R0.ranchOf(f) || R0.ranchOf(R0.migrate(f, day)), hearts = RW() ? RW().ledger().hearts : 0, K = R0.KINDS, free = !!(RW() && RW().tester && RW().tester());

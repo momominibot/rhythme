@@ -3593,7 +3593,7 @@
     /* a room loaded inside the in-app viewer (a retired page redirected to room.html#x) hands its route to the real room and
        stops here, instead of booting a second app in the frame (live check, 22 Oct: the nested room stripped its hash before
        the viewer could read it, so MEDAS never opened) */
-    try { if (window.frameElement && window.parent !== window && window.parent.OvuPage) { var hh = (location.hash || '').slice(1); window.parent.OvuPage.close(); if (hh) window.parent.dispatchEvent(new CustomEvent('ovu-route', { detail: hh })); return; } } catch (e) { }
+    try { if (window.frameElement && window.parent !== window && window.parent.OvuPage) { var hh = (location.hash || '').slice(1), PP = window.parent.OvuPage; if (PP.handoff) PP.handoff(hh); else { PP.close(); if (hh) window.parent.dispatchEvent(new CustomEvent('ovu-route', { detail: hh })); } return; } } catch (e) { }
     var hk = (location.hash || '').slice(1), bootAt = Date.now(), seq0 = sheetSeq, nav0 = navSeq; /* counted from now: a tap while sign-in is still settling counts too */
     var lift = function () { $('#loading').classList.add('hidden'); joy(); };
     authReady.then(function (r) {

@@ -141,7 +141,9 @@
     if (!changed) return farm; f.ranch = r; return f;
   }
   function sizeWord(size) { return size === 'large' ? 'large' : size === 'medium' ? 'medium' : 'small'; }
-  root.OvuRanch = { KINDS: KINDS, CAPACITY: CAPACITY, UPGRADE_COST: UPGRADE_COST, HATCH_DAYS: HATCH_DAYS, CALF_FULL_DAYS: CALF_FULL_DAYS, STARTERS: STARTERS, SIZES: SIZES,
+  /* the size mix as a reader should show it: trimmed to the pantry total, without writing anything */
+  function viewSizes(farm) { var r = ranchOf(reconcile(farm)); return r ? r.sizes : null; }
+  root.OvuRanch = { viewSizes: viewSizes, KINDS: KINDS, CAPACITY: CAPACITY, UPGRADE_COST: UPGRADE_COST, HATCH_DAYS: HATCH_DAYS, CALF_FULL_DAYS: CALF_FULL_DAYS, STARTERS: STARTERS, SIZES: SIZES,
     ranchOf: ranchOf, migrate: migrate, advance: advance, isAdult: isAdult, list: list, capacity: capacity, occupied: occupied, room: room, productSize: productSize,
     buy: buy, upgrade: upgrade, incubate: incubate, calfDue: calfDue, startCalf: startCalf, addProduct: addProduct, takeProduct: takeProduct, reconcile: reconcile, news: news, sizeWord: sizeWord, addDays: addDays, cleanName: cleanName };
 })(typeof window !== 'undefined' ? window : this);

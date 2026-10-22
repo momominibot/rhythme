@@ -29,8 +29,8 @@
     if (!d || !d.documentElement) return;
     /* an older page sending her back to the room (its back button, a sign-in gate, a redirect stub) closes the sheet
        instead of loading a second room inside it; a #tab it named opens that tab */
-    var loc; try { loc = frame.contentWindow.location; } catch (e) { loc = null; }
-    if (loc && /\/room\.html$|\/$|\/index\.html$/.test(loc.pathname) && frame.src.indexOf('about:') !== 0) { var h = (loc.hash || '').slice(1); close(); if (h) root.dispatchEvent(new CustomEvent('ovu-route', { detail: h })); return; }
+    var p = null, hh = ''; try { p = frame.contentWindow.location.pathname; hh = frame.contentWindow.location.hash || ''; } catch (e) { p = null; }
+    if (p && /\/room\.html$|\/$|\/index\.html$/.test(p) && frame.src.indexOf('about:') !== 0) { handoff(hh.slice(1)); return; }
     if (!d.getElementById('pvEmbedStyle')) {
       var st = d.createElement('style'); st.id = 'pvEmbedStyle';
       st.textContent = 'nav.nav,nav.bottom-nav,.top,.topbar,a.back,.back-link,a.learning-back,#lunaFab,.luna-fab{display:none!important}body{padding-bottom:24px!important}';
@@ -42,25 +42,33 @@
       d.addEventListener('click', function (e) {
         var a = e.target && e.target.closest ? e.target.closest('a[href]') : null; if (!a) return;
         var href = a.getAttribute('href') || '';
-        if (/^room\.html/i.test(href) || href === './' || href === 'index.html') { e.preventDefault(); var h = href.split('#')[1]; close(); if (h) root.dispatchEvent(new CustomEvent('ovu-route', { detail: h })); return; }
+        if (/^room\.html/i.test(href) || href === './' || href === 'index.html') { e.preventDefault(); handoff(href.split('#')[1]); return; }
         if (/^https?:/i.test(href) && a.target !== '_blank') { e.preventDefault(); root.open(href, '_blank', 'noopener'); }
       }, true);
     }
   }
-  var watch = 0;
+  var watch = 0, handed = false;
+  /* the one hand-over per opening: the page inside sent her back to the room, so the viewer closes and the room opens the
+     tab it named. The frame's load, the address poll, a link click and a nested room's boot can all notice; only the first
+     acts (Codex, 22 Oct: two of them dispatched the same route during the 320 ms closing window) */
+  function handoff(h) {
+    if (handed) return; handed = true; root.clearInterval(watch);
+    close(); if (h) root.dispatchEvent(new CustomEvent('ovu-route', { detail: h }));
+  }
   /* a pointer page (location.replace to room.html#tab) is caught the moment the frame's address changes, not two seconds
-     later when a whole second room has loaded inside the sheet (live check, 22 Oct) */
+     later when a whole second room has loaded inside the sheet (live check, 22 Oct); a cross-origin page just ends the poll
+     for that tick */
   function watchFrame() {
     root.clearInterval(watch);
     watch = root.setInterval(function () {
-      if (!view || view.hidden) { root.clearInterval(watch); return; }
-      var loc; try { loc = frame.contentWindow.location; } catch (e) { return; }
-      if (loc && /\/room\.html$|\/index\.html$/.test(loc.pathname)) { var h = (loc.hash || '').slice(1); root.clearInterval(watch); close(); if (h) root.dispatchEvent(new CustomEvent('ovu-route', { detail: h })); }
+      if (!view || view.hidden || handed) { root.clearInterval(watch); return; }
+      var p, h; try { p = frame.contentWindow.location.pathname; h = frame.contentWindow.location.hash || ''; } catch (e) { return; }
+      if (p && /\/room\.html$|\/index\.html$/.test(p)) handoff(h.slice(1));
     }, 120);
   }
   function open(href) {
     build();
-    frame.src = href; watchFrame();
+    handed = false; frame.src = href; watchFrame();
     title.textContent = '';
     view.hidden = false;
     root.requestAnimationFrame(function () { view.classList.add('on'); });
@@ -84,5 +92,5 @@
     if (/^room\.html$/i.test(m[1]) || /^index\.html$/i.test(m[1])) { var h = href.split('#')[1]; if (h) { e.preventDefault(); root.dispatchEvent(new CustomEvent('ovu-route', { detail: h })); } return; } /* a room tab link opens the tab, not just the address bar */
     e.preventDefault(); open(href);
   });
-  root.OvuPage = { open: open, close: close, isOpen: function () { return !!(view && !view.hidden); } };
+  root.OvuPage = { open: open, close: close, handoff: handoff, isOpen: function () { return !!(view && !view.hidden); } };
 })(window);

@@ -345,8 +345,10 @@
       if (btn.dataset.well === 'beds') { R.hideSheet(); R.toast('Tap a bed to water it.', 'yard'); return; }
       if (btn.dataset.well === 'back') { var bb = BEDS.filter(function (x) { return x.id === back; })[0]; R.hideSheet(); if (bb) goTend(bb); return; }
       slowStep(acts, { ms: 3000, moment: 'well', verb: 'Drawing water slowly…', cancel: function () { openWell(back); }, start: function (ms, still) { var wv = doc.querySelector('#sheet .canpic .canwater'); if (wv) root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { wv.style.transition = still ? 'none' : 'transform ' + ms + 'ms ease-in-out'; wv.style.transform = 'scaleY(1)'; }); }); } }, function () {
-        var r = fillCan(S); if (!r.ok) { R.toast(r.why, 'info'); openWell(back); return; }
-        R.chime('save'); renderCan(); openWell(back, true);
+        F.locked(S, function () {
+          var r = fillCan(S); if (!r.ok) { R.toast(r.why, 'info'); openWell(back); return; }
+          R.chime('save'); renderCan(); openWell(back, true);
+        });
       });
     });
   }
@@ -415,7 +417,7 @@
       var kind = btn.dataset.bed, now = today(); /* the date at the tap, not at the sheet's opening: midnight may have passed */
       if (now !== day) { openBed(id); return; } /* the sheet showed yesterday: redraw it for today before anything is done */
       if (kind === 'well') { goWell(id); return; }
-      if (kind === 'harvest') { if (!canAct('harvest')) return; finish('harvest', harvest(S, id, ST)); return; }
+      if (kind === 'harvest') { if (!canAct('harvest')) return; F.locked(S, function () { if (R.sheetOpen() && R.sheetId() !== 'farmbed') return; finish('harvest', harvest(S, id, ST)); }); return; }
       var cost = kind === 'shedplant' ? 'plant' : kind === 'waterall' ? 'water' : kind;
       if (!canAct(cost)) return;
       var crop0 = btn.dataset.crop, seen = JSON.stringify(bed(S, id)), lv0 = canLevel(S), targets = kind === 'waterall' ? bulkTargets(S, now, id, lv0) : null;
@@ -426,7 +428,7 @@
       if (kind === 'plant' || kind === 'shedplant') o.start = function (ms, still) { if (still) return; var svg = doc.querySelector('#sheet .bedpic svg'); if (!svg) return; var c = CROPS[crop0] || {}, el = doc.createElementNS('http://www.w3.org/2000/svg', 'ellipse'); el.setAttribute('cx', '50'); el.setAttribute('cy', '14'); el.setAttribute('rx', '4'); el.setAttribute('ry', '5.5'); el.setAttribute('fill', '#c9a27a'); el.setAttribute('stroke', '#8a6440'); svg.appendChild(el); root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { el.style.transition = 'transform ' + (ms * 0.7) + 'ms ease-in, opacity ' + (ms * 0.3) + 'ms ease ' + (ms * 0.7) + 'ms'; el.style.transform = 'translateY(30px)'; el.style.opacity = '0'; }); }); };
       if (kind === 'clear') o.start = function (ms, still) { if (still) { Array.prototype.forEach.call(doc.querySelectorAll('#sheet .bedpic svg path[stroke="#6f9a62"]'), function (w) { w.style.opacity = '0'; }); return; } var weeds = doc.querySelectorAll('#sheet .bedpic svg path[stroke="#6f9a62"]'); Array.prototype.forEach.call(weeds, function (w, i) { root.setTimeout(function () { w.style.transition = 'opacity ' + (ms / 4) + 'ms ease'; w.style.opacity = '0'; }, (i + 0.4) * ms / (weeds.length + 1)); }); };
       if (kind === 'water' || kind === 'waterall') o.start = function (ms, still) { if (still) return; var svg = doc.querySelector('#sheet .bedpic svg'); if (!svg) return; var el = doc.createElementNS('http://www.w3.org/2000/svg', 'ellipse'); el.setAttribute('cx', '50'); el.setAttribute('cy', '44'); el.setAttribute('rx', '30'); el.setAttribute('ry', '12'); el.setAttribute('fill', 'rgba(70,50,120,.22)'); el.style.opacity = '0'; svg.insertBefore(el, svg.firstChild); root.requestAnimationFrame(function () { root.requestAnimationFrame(function () { el.style.transition = 'opacity ' + ms + 'ms ease-in'; el.style.opacity = '1'; }); }); };
-      slowStep(acts, o, function () {
+      slowStep(acts, o, function () { F.locked(S, function () { /* the farm lock: the bed is read again after other tabs' saves */
         var t = today(), res; if (t !== now) { openBed(id); return; }
         if (JSON.stringify(bed(S, id)) !== seen || ((kind === 'water' || kind === 'waterall') && canLevel(S) !== lv0)) { R.toast('The bed changed in the meantime. Have another look.', 'info'); openBed(id); return; } /* another tab or phone moved first */
         if (!(ST ? ST.can(cost) : true)) { canAct(cost); openBed(id); return; } /* energy is checked again at the end of the step */
@@ -436,7 +438,7 @@
         else if (kind === 'plant') res = plant(S, id, crop0, t, ST);
         else if (kind === 'shedplant') res = plantFromShed(S, id, crop0, t, ST);
         finish(kind === 'shedplant' ? 'plant' : kind === 'waterall' ? 'water' : kind, res);
-      });
+      }); });
     });
     function finish(kind, res) {
       if (!res) return;
@@ -481,14 +483,17 @@
     html += '<p class="help"><button type="button" class="linkbtn" id="farmHow">How the farm works</button></p>';
     R.openSheet('farmshed', 'The shed', 'Seeds and tools', 'home_repair_service', html);
     var how = doc.getElementById('farmHow'); if (how) how.addEventListener('click', openGuide);
-    var acts = doc.getElementById('shedActs'); if (acts) acts.addEventListener('click', function (e) { var btn = e.target.closest('[data-seed]'); if (!btn) return; var res = takeSeed(S, btn.dataset.seed, today()); if (!res.ok) { R.toast(res.why, 'info'); return; } R.chime('tap'); openShed(); });
+    var acts = doc.getElementById('shedActs'); if (acts) acts.addEventListener('click', function (e) { var btn = e.target.closest('[data-seed]'); if (!btn) return; F.locked(S, function () { if (!R.sheetOpen() || R.sheetId() !== 'farmshed') return; var res = takeSeed(S, btn.dataset.seed, today()); if (!res.ok) { R.toast(res.why, 'info'); return; } R.chime('tap'); openShed(); }); });
     var buy = doc.getElementById('shedBuy'); if (buy) buy.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-tool]'); if (!btn || btn.disabled) return;
-      var res = buyTool(S, RW, btn.dataset.tool);
-      if (!res.ok) { R.toast(res.why, 'info'); return; }
-      R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
-      R.toast(TOOLS[res.tool].name + ' is yours.', 'redeem', line);
-      if (R.renderDeck) R.renderDeck(); renderCan(); openShed();
+      F.locked(S, function () { /* hearts and the tool in one save, after other tabs' saves */
+        if (!R.sheetOpen() || R.sheetId() !== 'farmshed') return;
+        var res = buyTool(S, RW, btn.dataset.tool);
+        if (!res.ok) { R.toast(res.why, 'info'); return; }
+        R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
+        R.toast(TOOLS[res.tool].name + ' is yours.', 'redeem', line);
+        if (R.renderDeck) R.renderDeck(); renderCan(); openShed();
+      });
     });
   }
   function openBasket() {

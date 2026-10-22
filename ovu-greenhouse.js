@@ -299,6 +299,7 @@
   /* ---------- the scene ---------- */
   var R = root.OvuRoom; if (!R || !root.document || !root.document.createElement) return;
   var S = root.OvuStore, doc = root.document, ART = R.ART;
+  function lockedF(fn) { var FMl = root.OvuFarm; return FMl && FMl.locked ? FMl.locked(S, fn) : Promise.resolve().then(fn); } /* the one farm lock: the basket and planters are read again inside */
   R.LAYOUTS.greenhouse = LAYOUT;
   function esc(s) { return R.esc(s); }
   function inside(L) { return !!(L && L.id === 'greenhouse'); }
@@ -438,11 +439,13 @@
   /* a finished cup uses one from the basket and says the practice thank-you if today still has one; it writes no diary entry */
   function finishBrew(c, completed) {
     if (!completed) { R.toast('Stopped. The ' + HERBS[c.id].name.toLowerCase() + ' is still in your basket.', 'local_cafe'); return; }
-    var r = brewCup(S, root.OvuRewards, c.id);
-    if (!r.ok) { R.toast(r.why, 'info'); return; }
-    var line = R.moment ? R.moment('brew', { quiet: true }) : '';
-    R.chime('save'); if (R.renderDeck) R.renderDeck();
-    R.toast(c.name + ', sipped slowly.' + (r.points ? ' A thank-you of ' + r.points + ' hearts for the practice.' : ''), 'local_cafe', line);
+    lockedF(function () {
+      var r = brewCup(S, root.OvuRewards, c.id);
+      if (!r.ok) { R.toast(r.why, 'info'); return; }
+      var line = R.moment ? R.moment('brew', { quiet: true }) : '';
+      R.chime('save'); if (R.renderDeck) R.renderDeck();
+      R.toast(c.name + ', sipped slowly.' + (r.points ? ' A thank-you of ' + r.points + ' hearts for the practice.' : ''), 'local_cafe', line);
+    });
   }
 
   /* ---------- the herb planters: tap one, she walks over, and its sheet opens ---------- */
@@ -478,8 +481,10 @@
     R.openSheet('ghbed', 'Planter ' + n, 'The greenhouse herbs', 'yard', html);
     var clr = doc.getElementById('herbClear'); if (clr) clr.addEventListener('click', function () {
       if (!clr.classList.contains('confirm')) { clr.classList.add('confirm'); clr.textContent = 'Tap again: the ' + h.name.toLowerCase() + ' here is let go'; return; }
-      var r = clearHerb(S, id); if (!r.ok) { R.toast(r.why, 'info'); return; }
-      R.chime('tap'); renderBeds(); R.toast('The planter is empty, ready for something new.', 'yard'); openHerbBed(id);
+      lockedF(function () {
+        var r = clearHerb(S, id); if (!r.ok) { R.toast(r.why, 'info'); return; }
+        R.chime('tap'); renderBeds(); R.toast('The planter is empty, ready for something new.', 'yard'); openHerbBed(id);
+      });
     });
     var acts = doc.getElementById('herbActs'); if (!acts) return;
     acts.addEventListener('click', function (e) {
@@ -491,7 +496,7 @@
       var herb = btn.dataset.kind, seen = JSON.stringify(herbState(S).beds[id] || null);
       var o = kind === 'plant' ? { ms: 2200, moment: 'herbplant', verb: 'Pressing it into the soil…' } : kind === 'water' ? { ms: 3000, moment: 'herbwater', verb: 'Pouring slowly…' } : { ms: 3000, moment: 'herbharvest', verb: 'Picking slowly…' };
       o.cancel = function () { openHerbBed(id); };
-      slowStep(acts, o, function () {
+      slowStep(acts, o, function () { lockedF(function () {
         var t = day(); if (t !== now) { openHerbBed(id); return; }
         if (JSON.stringify(herbState(S).beds[id] || null) !== seen) { R.toast('The planter changed in the meantime. Have another look.', 'info'); openHerbBed(id); return; } /* another tab or phone moved first */
         var res = kind === 'plant' ? plantHerb(S, id, herb, t, ST()) : kind === 'water' ? waterHerb(S, id, t, ST()) : harvestHerb(S, id, ST());
@@ -501,7 +506,7 @@
         if (kind === 'water') R.toast(res.ripe ? 'Ready to pick. Tap the planter again.' : 'Watered. ' + res.days + ' of ' + res.need + ' days.', 'water_drop');
         if (kind === 'pick') R.toast(res.n + ' ' + HERBS[res.herb].plural + ' into the basket. It grows again in ' + res.again + ' watered days.', 'shopping_basket');
         openHerbBed(id);
-      });
+      }); });
     });
   }
   /* before the cup: what is in the basket, and the research card when the tea list has one for this herb */
