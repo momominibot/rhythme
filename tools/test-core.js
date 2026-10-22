@@ -4904,7 +4904,7 @@ var summarised = false;
 })();
 
 (function () {
-  console.log('2k30. game save (22 Oct, fifth version): the account copy is the true copy; hearts earned on a phone are never lost or counted twice');
+  console.log('2k30. game save (22 Oct, sixth version): the account copy is the true copy; hearts earned on a phone are never lost or counted twice');
   var G0src = fs.readFileSync(path.join(root, 'ovu-gamesave.js'), 'utf8');
   /* a pretend server with the migration's rules: own row, revision check, operation ids, deletion marker */
   var server = { row: null, puts: 0, bodies: [], tokens: [], lose: false, hold: null, clock: 0 };
@@ -4915,19 +4915,21 @@ var summarised = false;
     if (/rpc\/game_save_put/.test(url)) {
       server.puts++; server.bodies.push(o.body);
       var go = function () {
-        var cur = server.row || { save: {}, rev: 0, deleted: false, ops: [] };
-        if (body.p_op && cur.ops.indexOf(body.p_op) > -1) return respond([{ ok: true, rev: cur.rev, save: cur.save, deleted: cur.deleted }]);
+        var cur = server.row || { save: {}, rev: 0, deleted: false, devs: {} };
+        var dev = body.p_op ? body.p_op.split(':')[0] : null, seqn = body.p_op ? Number(body.p_op.split(':')[1]) : 0;
+        if (dev && (cur.devs[dev] || 0) >= seqn) return respond([{ ok: true, rev: cur.rev, save: cur.save, deleted: cur.deleted }]);
         if (cur.rev !== body.p_base) return respond([{ ok: false, rev: cur.rev, save: cur.save, deleted: cur.deleted }]);
         var signedAt = Number(String(o.headers.Authorization).split('@')[1] || 0); /* the token's sign-in time (amr) */
         if (cur.deleted && !(signedAt > cur.delAt)) return respond([{ ok: false, rev: cur.rev, save: cur.save, deleted: true }]);
-        server.row = { save: body.p_save, rev: cur.rev + 1, deleted: false, ops: [body.p_op].concat(cur.ops).slice(0, 100) };
+        var devs = Object.assign({}, cur.devs); if (dev) devs[dev] = seqn;
+        server.row = { save: body.p_save, rev: cur.rev + 1, deleted: false, devs: devs };
         if (server.lose) { server.lose = false; return Promise.reject(new Error('answer lost')); }
         return respond([{ ok: true, rev: server.row.rev, save: body.p_save, deleted: false }]);
       };
       if (server.hold) { var h = server.hold; server.hold = null; return Promise.resolve(h()).then(go); }
       return go();
     }
-    if (/rpc\/game_save_delete/.test(url)) { var c = server.row || { save: {}, rev: 0 }; server.row = { save: {}, rev: c.rev + 1, deleted: true, ops: [], delAt: ++server.clock }; return respond(server.row.rev); }
+    if (/rpc\/game_save_delete/.test(url)) { var c = server.row || { save: {}, rev: 0 }; server.row = { save: {}, rev: c.rev + 1, deleted: true, devs: c.devs || {}, delAt: ++server.clock }; return respond(server.row.rev); }
     return respond({ message: 'no' }, 404);
   }
   function phone(stateInit, opts) {
@@ -4948,17 +4950,21 @@ var summarised = false;
   }
   function earn(n) { return function (s) { s.rewards = Object.assign({}, s.rewards, { hearts: (s.rewards.hearts || 0) + n, earned: (s.rewards.earned || 0) + n }); }; }
   var G = phone({}).G;
-  var full = { rewards: { hearts: 40, earned: 120, owned: ['lamp'], placed: { lamp: 1 }, treats: { biscuit: 5 }, wear: { cat: 'bow' }, gifts: { birthday: 1 }, daily: { day: '2026-10-22', kinds: { period: 1 } }, log: [{ at: 'x', type: 'period', points: 10 }], receipts: { e1: 1 }, mindDay: { day: 'x', pts: 4 }, seatDay: { day: 'x', seats: { a: 1 } }, mindActs: { day: 'x', acts: {} }, care: { day: 'x', by: {} } },
+  var full = { rewards: { lastDay: '2026-10-21', streak: 4, hearts: 40, earned: 120, owned: ['lamp'], placed: { lamp: 1 }, treats: { biscuit: 5 }, wear: { cat: 'bow' }, gifts: { birthday: 1 }, daily: { day: '2026-10-22', kinds: { period: 1 } }, log: [{ at: 'x', type: 'period', points: 10 }], receipts: { e1: 1 }, mindDay: { day: 'x', pts: 4 }, seatDay: { day: 'x', seats: { a: 1 } }, mindActs: { day: 'x', acts: {} }, care: { day: 'x', by: {} } },
     farm: { seeds: { mint: 2 } }, greenhouse: { pots: ['basil'] }, lane: { visits: 2, letters: [{ text: 'dear me, a private letter' }] }, garden: { credited: ['2026-10-01'], watered: ['2026-10-20'] }, sleeping: { startedAt: 'x' }, insights: { a: 1 }, tester: { hearts: true }, plaza: { x: 1 } };
   var pk = G.pack(full), pj = JSON.stringify(pk);
-  check('only game fields leave the phone: no letters, garden diary dates, hearts log, receipts, which diary kinds earned today, sleep, insights, tester or plaza; the game caps (practice, benches, pet care) go along', !/private letter|2026-10-01|period|kinds|receipts|"daily"|sleeping|insights|tester|plaza/.test(pj) && pk.rewards.seatDay && pk.rewards.mindDay && pk.greenhouse && pk.garden.watered[0] === '2026-10-20' && pk.lane.visits === 2, pj);
+  check('only game fields leave the phone: no letters, garden diary dates, hearts log, receipts, which diary kinds earned today, sleep, insights, tester or plaza; the game caps (practice, benches, pet care) go along', !/private letter|2026-10-01|period|kinds|receipts|"daily"|lastDay|streak|sleeping|insights|tester|plaza/.test(pj) && pk.rewards.seatDay && pk.rewards.mindDay && pk.greenhouse && pk.garden.watered[0] === '2026-10-20' && pk.lane.visits === 2, pj);
   check('pet treats, worn accessories and one-time gifts are game progress and are saved', pk.rewards.treats.biscuit === 5 && pk.rewards.wear.cat === 'bow' && pk.rewards.gifts.birthday === 1);
-  check('a restored save keeps her letters, garden dates and every local-only rewards field on the phone', (function () { var p = G.applyTo(full, { rewards: { hearts: 9, earned: 9 }, lane: { visits: 5 }, garden: { watered: ['2026-10-21'] } }, '2026-10-22'); return p.lane.letters[0].text === 'dear me, a private letter' && p.lane.visits === 5 && p.garden.credited[0] === '2026-10-01' && p.rewards.log.length === 1 && p.rewards.daily.kinds.period === 1 && p.rewards.seatDay.seats.a === 1 && p.rewards.receipts.e1 === 1 && p.rewards.hearts === 9; })());
+  check('a restored save keeps her letters, garden dates and every local-only rewards field on the phone', (function () { var p = G.applyTo(full, { rewards: { hearts: 9, earned: 9 }, lane: { visits: 5 }, garden: { watered: ['2026-10-21'] } }, '2026-10-22'); return p.lane.letters[0].text === 'dear me, a private letter' && p.lane.visits === 5 && p.garden.credited[0] === '2026-10-01' && p.rewards.log.length === 1 && p.rewards.daily.kinds.period === 1 && p.rewards.lastDay === '2026-10-21' && p.rewards.streak === 4 && p.rewards.receipts.e1 === 1 && p.rewards.hearts === 9; })());
   check('a phone that never earned here gets the account\'s hearts but not a second round of today\'s logging hearts (practice caps come with the account)', (function () { var p = G.applyTo({}, { rewards: { hearts: 9 } }, '2026-10-22').rewards; return p.daily.kinds.food === 1 && p.daily.kinds.period === 1 && p.moveDay.pts >= 20 && p.dailyLast === '2026-10-22'; })());
   check('the account copy plus earnings: only hearts are added, never positions, energy or counts', (function () { var w = G.withEarnings({ rewards: { hearts: 10, earned: 50 }, propPos: { lamp: { x: 80 } }, stamina: { v: 100 }, farm: { basket: { carrot: 2 } } }, 6); return w.rewards.hearts === 16 && w.rewards.earned === 56 && w.propPos.lamp.x === 80 && w.stamina.v === 100 && w.farm.basket.carrot === 2 && G.withEarnings({ rewards: { hearts: 3 } }, -9).rewards.hearts === 3; })());
 
   check('a save without a hearts ledger still gives every reader a complete one (owned list, placed map)', (function () { var p = G.applyTo({ rewards: { hearts: 4, log: [] } }, { farm: {} }, '2026-10-22').rewards; return Array.isArray(p.owned) && p.placed && typeof p.placed === 'object' && p.hearts === 0 && Array.isArray(p.log); })());
-  check("today's game caps join across phones: a bench or practice paid on either phone stays paid", (function () { var p = G.applyTo({ rewards: { seatDay: { day: '2026-10-22', seats: { street: 1 } }, mindDay: { day: '2026-10-22', pts: 4 } } }, { rewards: { seatDay: { day: '2026-10-22', seats: { garden: 1 } }, mindDay: { day: '2026-10-22', pts: 10 } } }, '2026-10-22').rewards; return p.seatDay.seats.street === 1 && p.seatDay.seats.garden === 1 && p.mindDay.pts === 10; })());
+  check('a phone\'s unsaved practice awards replay onto the account copy: a bench paid elsewhere is not paid again, and the day\'s cap of 20 holds', (function () {
+    var acct = { rewards: { hearts: 50, earned: 50, mindDay: { day: '2026-10-22', pts: 18 }, seatDay: { day: '2026-10-22', seats: { street: 1 } } } };
+    var j = [{ kind: 'mind', day: '2026-10-22', n: 2, seats: ['street'], acts: [] }, { kind: 'mind', day: '2026-10-22', n: 2, seats: ['garden'], acts: [] }, { kind: 'mind', day: '2026-10-22', n: 2, seats: [], acts: ['teeth'] }, { kind: 'other', n: 6 }];
+    var r = G.replay(acct, j).rewards; return r.hearts === 58 && r.mindDay.pts === 20 && r.seatDay.seats.garden === 1 && !(r.mindActs.acts.teeth) && acct.rewards.hearts === 50; })());
+  check('a change is read into the award journal: practice hearts with the bench they used, and other hearts apart', (function () { var a = G.caps({ earned: 10, mindDay: { day: 'd', pts: 2 }, seatDay: { day: 'd', seats: {} } }), b = G.caps({ earned: 18, mindDay: { day: 'd', pts: 4 }, seatDay: { day: 'd', seats: { street: 1 } } }), j = G.journalFor(a, b); return j.length === 2 && j[0].kind === 'mind' && j[0].n === 2 && j[0].seats[0] === 'street' && j[1].kind === 'other' && j[1].n === 6; })());
   check('first sign-in carries this phone\'s treats and owned items, but placements stay as the account has them (one per slot)', (function () { var m = G.linkMerge({ rewards: { hearts: 88, earned: 100, treats: { biscuit: 5 }, owned: ['armchair'], placed: { armchair: true } } }, { rewards: { hearts: 10, earned: 10, owned: ['beanbag'], placed: { beanbag: true }, treats: { biscuit: 1 } } }).rewards; return m.hearts === 98 && m.treats.biscuit === 6 && m.owned.join() === 'beanbag,armchair' && m.placed.beanbag === true && !m.placed.armchair; })());
   server.row = null;
   var A1 = phone({ rewards: { hearts: 100, earned: 100, owned: [] }, propPos: { lamp: { x: 10 } }, stamina: { v: 10 } });
@@ -4978,7 +4984,7 @@ var summarised = false;
     .then(function () { return B1.G.sync(); })
     /* Codex round three, 2: earnings carried through a clash are counted once */
     .then(function () { A1.change(earn(5)); B1.change(earn(5)); return B1.G.sync(); })
-    .then(function () { server.hold = function () { server.row = { save: JSON.parse(JSON.stringify(server.row.save)), rev: server.row.rev + 1, deleted: false, ops: server.row.ops }; server.row.save.rewards.hearts += 5; server.row.save.rewards.earned += 5; }; return A1.G.sync(); })
+    .then(function () { server.hold = function () { server.row = { save: JSON.parse(JSON.stringify(server.row.save)), rev: server.row.rev + 1, deleted: false, devs: server.row.devs }; server.row.save.rewards.hearts += 5; server.row.save.rewards.earned += 5; }; return A1.G.sync(); })
     .then(function () { return A1.G.sync(); })
     .then(step('earnings carried through a clash count once: 115 + 5 + 5 + 5 = 130', function () { return H() === 130 && A1.st().rewards.hearts === 130; }))
     .then(function () { return B1.G.sync(); }).then(step('and the other phone then shows 130', function () { return B1.st().rewards.hearts === 130; }))
@@ -4989,11 +4995,23 @@ var summarised = false;
     /* two tabs of one phone: one save, acknowledged once */
     .then(function () { var T2 = phone(null, { share: A1 }); A1.change(earn(5)); server.hold = function () { return T2.G.sync(); }; return A1.G.sync().then(function () { return A1.G.sync(); }).then(function () { return T2; }); })
     .then(function (T2) { return T2.G.sync().then(function () { return A1.G.sync(); }); })
-    .then(step('two tabs sending the same save: it is applied once, acknowledged once, and no hearts go missing (135)', function () { return H() === 135 && A1.st().rewards.hearts === 135 && (A1.meta().gain || 0) === 0; }))
+    .then(step('two tabs sending the same save: it is applied once, acknowledged once, and no hearts go missing (135)', function () { return H() === 135 && A1.st().rewards.hearts === 135 && !(A1.meta().journal || []).length; }))
     .then(function () { return B1.G.sync(); })
     /* a cleared phone */
     .then(function () { B1.clear(); return B1.G.sync(); }).then(step('a phone whose data was cleared links again, gets everything back and never uploads an empty game', function () { return B1.st().rewards.hearts >= 130 && H() >= 130; }))
     .then(function () { return A1.G.sync(); })
+    /* Codex round five: a stale phone paying a bench already paid elsewhere */
+    .then(function () { return Promise.all([A1.G.sync(), B1.G.sync()]); })
+    .then(function () { function bench(s) { var r = s.rewards; s.rewards = Object.assign({}, r, { hearts: r.hearts + 2, earned: r.earned + 2, mindDay: { day: '2026-10-22', pts: ((r.mindDay && r.mindDay.day === '2026-10-22') ? r.mindDay.pts : 0) + 2 }, seatDay: { day: '2026-10-22', seats: Object.assign({}, (r.seatDay && r.seatDay.day === '2026-10-22') ? r.seatDay.seats : {}, { street: 1 }) } }); }
+      var before = H(); A1.change(bench); return A1.G.sync().then(function () { B1.change(bench); return B1.G.sync().then(function () { return B1.G.sync(); }); }).then(function () { return before; }); })
+    .then(step('a phone that had not synced pays the same bench: the account counts it once (+2, not +4)', function (before) { return H() === before + 2 && B1.st().rewards.hearts === before + 2; }))
+    /* Codex round five: a lost answer resent after more than a hundred other saves */
+    .then(function () { return A1.G.sync(); })
+    .then(function () { A1.change(earn(5)); server.lose = true; return A1.G.sync(); })
+    .then(function () { var chain = Promise.resolve(); for (var i = 0; i < 101; i++) chain = chain.then(function () { B1.change(earn(1)); return B1.G.sync().then(function () { return B1.G.sync(); }); }); return chain; })
+    .then(function () { var before = H(); return A1.G.sync().then(function () { return A1.G.sync(); }).then(function () { return before; }); })
+    .then(step('a lost answer resent after 101 other saves is still applied once', function (before) { return H() === before && A1.st().rewards.hearts === before; }))
+    .then(function () { return B1.G.sync(); })
     /* tester mode */
     .then(function () { A1.change(function (s) { s.tester = { hearts: true }; }); A1.change(function (s) { s.home = 'familyhome'; }); return A1.G.sync().then(function (r) { A1.change(function (s) { s.tester = null; }); return A1.G.sync().then(function (r2) { return [r, r2]; }); }); })
     .then(step('tester mode never saves, and afterwards the phone takes the account copy instead of uploading what tester mode gave it', function (x) { return x[0] === 'tester' && x[1] === 'pulled' && server.row.save.home !== 'familyhome' && !A1.st().home; }))
@@ -5010,7 +5028,7 @@ var summarised = false;
     .catch(function (e) { steps.push(['the multi-phone run finished without an error', false, String(e && e.stack || e)]); })
     .then(function () { steps.forEach(function (x) { check(x[0], x[1], x[2]); }); });
   var mig = fs.readFileSync(path.join(root, 'supabase/migrations/20261022100000_game_saves.sql'), 'utf8');
-  check('the table is read-own-row only; writes go through revision- and operation-checked functions closed to anon; size-capped; gone with the account', /enable row level security/.test(mig) && /revoke all on public\.game_saves from anon, authenticated, public/.test(mig) && /grant select on public\.game_saves to authenticated/.test(mig) && /cur\.rev <> coalesce\(p_base, -1\)/.test(mig) && /p_op = any\(cur\.ops\)/.test(mig) && /\[1:100\]/.test(mig) && /amr/.test(mig) && /signed_in <= extract\(epoch from cur\.saved_at\)/.test(mig) && /revoke all on function public\.game_save_put\(jsonb, bigint, text\) from public, anon/.test(mig) && /262144/.test(mig) && /on delete cascade/.test(mig));
+  check('the table is read-own-row only; writes go through revision- and operation-checked functions closed to anon; size-capped; gone with the account', /enable row level security/.test(mig) && /revoke all on public\.game_saves from anon, authenticated, public/.test(mig) && /grant select on public\.game_saves to authenticated/.test(mig) && /cur\.rev <> coalesce\(p_base, -1\)/.test(mig) && /coalesce\(\(cur\.devs->>dev\)::bigint, 0\) >= seq/.test(mig) && /cur\.devs \|\| jsonb_build_object\(dev, seq\)/.test(mig) && /amr/.test(mig) && /signed_in <= extract\(epoch from cur\.saved_at\)/.test(mig) && /revoke all on function public\.game_save_put\(jsonb, bigint, text\) from public, anon/.test(mig) && /262144/.test(mig) && /on delete cascade/.test(mig));
   check('room.html loads the game save after the villagers; clearing the phone clears its link; the cloud delete passes its own account and token', /ovu-villagers\.js"><\/script>\s*<script src="ovu-gamesave\.js"/.test(fs.readFileSync(path.join(root, 'room.html'), 'utf8')) && /'ovumind_gamesave_v1'/.test(fs.readFileSync(path.join(root, 'ovu-store.js'), 'utf8')) && /OvuGameSave\.forget\(uid, token\)/.test(fs.readFileSync(path.join(root, 'ovu-sync.js'), 'utf8')));
 })();
 
