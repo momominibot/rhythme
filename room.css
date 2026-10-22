@@ -2413,3 +2413,14 @@ html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
 .scparts li b{color:var(--rm-plum)}.scparts li small{grid-column:1/-1;font:600 11px var(--sans);color:var(--rm-ink-3)}
 .schead{margin:10px 0 2px;font:800 11px var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--rm-ink-3)}
 .scgraph{width:100%;height:auto;display:block}
+
+/* PULSE movement breaks (22 Oct) */
+.pulsecards{display:flex;flex-direction:column;gap:8px}
+.pulsecard{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:14px;border:1px solid var(--rm-line,#e8def5);background:var(--rm-card,#fff);color:inherit;font:inherit;cursor:pointer;position:relative}
+.pulsecard b{display:block;font-size:14px}.pulsecard small{display:block;color:var(--rm-ink-3,#7a6c90);font-size:12px}
+.pulsecard .pdraft{margin-left:auto;font-style:normal;font-size:11px;font-weight:700;color:#8a5a00;background:#fff3d6;border-radius:999px;padding:2px 8px}
+.pulsebefore{background:var(--rm-blush,#fbeef3);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.pulsebefore p{margin:0;font-size:13px;line-height:1.45}.pulseurgent{display:flex;gap:6px;align-items:flex-start;font-weight:700}
+.pulsesetup{margin:6px 0;font-size:13px}.pulserun,.pulsedone{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:8px 0}
+.pulseclock{font:800 56px/1 var(--serif,Georgia,serif);color:var(--rm-plum,#5b3e8a)}.pulsecue{font-size:15px;line-height:1.5;margin:0;max-width:30em}
+.pulsedone .row,.pulserun .row{width:100%;flex-direction:column;align-items:stretch}.pulsedone .btn{width:100%}

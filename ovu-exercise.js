@@ -83,6 +83,7 @@
     var sDays = {}, aDays = {}, byAct = {};
     (entries || []).forEach(function (e) {
       if (!e || e.type !== 'exercise' || !e.data || e.date < from || e.date > end) return;
+      if (e.data.activity === 'pulse') { s.pulse = (s.pulse || 0) + 1; s.pulseSeconds = (s.pulseSeconds || 0) + Math.max(0, Number(e.data.seconds) || 0); aDays[e.date] = 1; return; } /* PULSE breaks: shown apart, never WHO minutes or a strength day */
       var d = e.data, m = Math.max(0, Math.round(Number(d.minutes) || 0)); if (!m) return;
       var it = d.intensity || intensityOf(d.met, null), aerobic = d.aerobic !== false && d.activity !== 'strength';
       s.sessions++; s.minutes += m; aDays[e.date] = 1;
@@ -105,7 +106,7 @@
   }
   /* One plain sentence for the week; never a score, never a judgement. */
   function weekLine(s) {
-    if (!s.sessions) return 'Nothing logged in the last 7 days yet. Some movement is better than none, and every minute counts.';
+    if (!s.sessions) return s.pulse ? 'Short PULSE breaks so far this week. Some movement is better than none.' : 'Nothing logged in the last 7 days yet. Some movement is better than none, and every minute counts.';
     if (s.status === 'below') return s.toGo + ' more moderate minutes would reach WHO’s weekly range. Some movement is better than none.';
     if (s.status === 'in') return 'You are inside WHO’s weekly range of 150 to 300 moderate minutes.';
     return 'You are above WHO’s weekly range. WHO says more can bring extra benefit.';
