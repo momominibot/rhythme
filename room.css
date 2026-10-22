@@ -2389,3 +2389,4 @@ html[data-sky="night"] :is(.bdir,.bwho){background:rgba(255,255,255,.08)}
 .reelbtn.tug{animation:reeltug .45s ease-in-out}
 @keyframes reeltug{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px) rotate(-2deg)}75%{transform:translateX(4px) rotate(2deg)}}
 @media (prefers-reduced-motion: reduce){.biteline,.reelbtn.tug,.hbpic .hbfloat.nibble{animation:none}}
+.sqhead{display:flex;align-items:center;gap:6px;margin:10px 0 2px;font:800 13px var(--sans);color:var(--rm-plum)}.sqhead .ms{font-size:18px}
