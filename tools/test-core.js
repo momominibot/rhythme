@@ -3837,18 +3837,44 @@ var summarised = false;
 })();
 
 (function widerWorld() {
-  console.log('2k16. the wider world (21 Oct): ??? fog around the known map, a zoom that keeps the canvas covering the view, no names or promises');
-  var w = scenes('2026-10-21'); w.OvuRoom = null; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-map.js'), 'utf8'), w, { filename: 'ovu-map.js' });
-  var M = w.OvuMap, src = fs.readFileSync(path.join(root, 'ovu-map.js'), 'utf8');
-  check('eight fog patches sit in the ring around the known world (the middle third), none inside it, three with a hint', M.FOG.length === 8 && M.FOG.every(function (f) { return f.x < 26 || f.x > 74 || f.y < 26 || f.y > 74; }) && M.FOG.filter(function (f) { return f.hint; }).length === 3);
-  var texts = M.FOG.map(function (f) { return M.fogText(f); }).join(' ');
-  check('the fog names no partner, product or brand and promises nothing: "some day" and "may be built", no dates, no em dash', !/disney|pixar|hospital|clinic|functional medicine|coming soon|launch/i.test(texts) && /some day/.test(texts) && /may be built/.test(texts) && texts.indexOf('—') < 0 && src.indexOf('—') < 0);
-  var z0 = M.zoomClamp(0.5, 0, 0, 300, 240), zc = M.zoomClamp(0.5, 500, 500, 300, 240), zf = M.zoomClamp(0.5, -9999, -9999, 300, 240), zs = M.zoomClamp(0.1, 0, 0, 300, 240), zb = M.zoomClamp(9, 0, 0, 300, 240);
-  check('the zoom clamps the scale to its range and keeps the wide canvas covering the view: a pan can never show the edge, and a canvas smaller than the view is centred', z0.s === 0.5 && zc.tx === 0 && zc.ty === 0 && zf.tx === 300 - 450 && zf.ty === 240 - 360 && zs.s === M.ZOOM.min && zs.tx === 0 && M.ZOOM.min * 3 > 1 && zb.s === M.ZOOM.max && M.zoomClamp(0.2, 0, 0, 100, 100).tx === (100 - 300 * M.ZOOM.min) / 2 * 0 + Math.max(100 - 300 * M.ZOOM.min, 0));
-  check('names hide below the naming scale and the start scale shows the whole known world with fog around it', M.ZOOM.start < M.ZOOM.names && M.ZOOM.start * 3 >= 1.2 && M.ZOOM.start * 3 <= 2);
-  var c = M.centred(M.ZOOM.start, 300, 240);
-  check('the start view is centred on the known world: its centre lands in the middle of the view, and the view shows the fog ring\'s inner edge', Math.abs((c.tx + 450 * c.s) - 150) < 0.001 && Math.abs((c.ty + 360 * c.s) - 120) < 0.001 && (-c.tx / (900 * c.s)) * 100 < 22 && M.FOG.every(function (f) { return f.x >= 18 && f.x <= 82 && f.y >= 18 && f.y <= 82; }));
+  console.log('2k16. the wider world (21 Oct, Jamie: "whatever we built will be at a corner of it, the rest of the area will be just the field, the land unbuilt"): land edge to edge, the places in one corner, no ??? and no mist');
+  var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-harbour.js', 'ovu-map.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var M = w.OvuMap, src = fs.readFileSync(path.join(root, 'ovu-map.js'), 'utf8'), css = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
+  check('no ??? markers, no fog and no mist: the module has no FOG list, no fog buttons and no hint text; the stylesheet has no fog rules', M.FOG === undefined && M.fogText === undefined && src.indexOf('???') < 0 && src.indexOf('data-fog') < 0 && !/\.fog\b|fogdrift/.test(css) && !/mist|some day/i.test(src.slice(src.indexOf('the sheet'))) && src.indexOf('—') < 0);
+  /* the plate in units: the built box is 100 x 80 at the top-left; the plate is WORLD.cols x WORLD.rows boxes */
+  var covers = function (z, vw, vh) { var ww = M.WORLD.cols * vw * z.s, wh = M.WORLD.rows * vw * z.s * 0.8; return z.tx <= 1e-9 && z.ty <= 1e-9 && z.tx + ww >= vw - 1e-9 && z.ty + wh >= vh - 1e-9; };
+  var views = [[300, 240], [358, 286.4], [300, 252], [320, 240]], ok = true, bad = null;
+  views.forEach(function (v) { [0.01, 0.2, 1 / 3, 0.5, 0.8, 1, 1.8, 9].forEach(function (s) { [[0, 0], [9999, 9999], [-9999, -9999], [-123, 456], [50, -80]].forEach(function (t) { var z = M.zoomClamp(s, t[0], t[1], v[0], v[1]); if (!covers(z, v[0], v[1])) { ok = false; bad = { v: v, s: s, t: t, z: z }; } }); }); });
+  check('the land always covers the whole view: at every scale and every pan, on views a little taller or wider than the box, nothing past the plate can show', ok, JSON.stringify(bad));
+  var zm = M.zoomClamp(0.01, 0, 0, 300, 240);
+  check('zoomed all the way out the whole world just fills the view (no band of blank), and zooming in stops at the top scale', Math.abs(zm.s - 1 / 3) < 1e-9 && zm.tx === 0 && zm.ty === 0 && M.zoomClamp(99, 0, 0, 300, 240).s === M.ZOOM.max && M.minScale(300, 252) > 1 / 3);
+  check('the stylesheet matches the module: the plate is three boxes wide and three tall, the places sit on its top-left box, and the view keeps the box\'s shape', M.WORLD.cols === 3 && M.WORLD.rows === 3 && /\.worldwide\{[^}]*width:300%[^}]*aspect-ratio:5\/4/.test(css) && /\.worldmap\.known\{[^}]*left:0;top:0;width:33\.3333%;height:33\.3333%/.test(css) && /\.worldmap\.known\{[^}]*background:none/.test(css) && /aspect-ratio:100\/' \+ H \+ '/.test(src) && /var H = 80;/.test(src));
+  /* the real places, the hidden spring once found, and a new place joined by a door, the way Harbour Lane will be */
+  var L = w.LAYOUTS; L.farm = w.OvuFarm.LAYOUT; L.barn = w.OvuBarn.LAYOUT; L.barninside = w.OvuBarn.BARN_IN; L.heninside = w.OvuBarn.HEN_IN; L.harbour = w.OvuHarbour.LAYOUT; L.cave = w.OvuBarn.CAVE;
+  var g = M.graph(L, 'room'), P = M.place(g), ids = Object.keys(P);
+  check('the real map finds its places by their doors: home, garden, greenhouse, farm, barn, harbour, Dream Street, its three shops and the plaza', ['home', 'garden', 'greenhouse', 'farm', 'barn', 'harbour', 'street', 'plaza', 'shop-pet', 'shop-furniture', 'shop-homes'].every(function (k) { return !!g.nodes[k]; }) && !g.nodes.barninside && !g.nodes.heninside, ids.join());
+  var apart = function (Q) { var k = Object.keys(Q); return k.every(function (a) { return k.every(function (b) { return a >= b || Math.hypot(Q[a][0] - Q[b][0], Q[a][1] - Q[b][1]) >= 12; }); }); };
+  check('every place sits in the built corner, apart from the others (the harbour, set by its door, too)', ids.every(function (k) { return M.inCorner(P[k]); }) && apart(P) && P.harbour[0] <= 100 && P.harbour[1] <= 80, JSON.stringify(P));
+  var hb = JSON.parse(JSON.stringify(L.harbour)); hb.doors = (hb.doors || []).concat([{ id: 'lanedoor', to: 'lane', x: 80, y: 60 }]); hb.hotspots = (hb.hotspots || []).concat([{ id: 'lanedoor', label: 'Signpost · Harbour Lane' }]);
+  var bn = JSON.parse(JSON.stringify(L.barn)); bn.doors = (bn.doors || []).concat([{ id: 'crack', to: 'cave', x: 70, y: 50 }]);
+  var L2 = Object.assign({}, L, { harbour: hb, barn: bn, lane: { id: 'lane', name: 'Harbour Lane', img: 'lane.webp', doors: [{ id: 'laneout', to: 'harbour', x: 10, y: 70 }], hotspots: [{ id: 'laneout', label: 'Path · back to the harbour' }] } });
+  var g2 = M.graph(L2, 'room'), P2 = M.place(g2);
+  check('a new place joined by a door (a lane off the harbour) and the found spring are drawn beside their neighbours, still in the corner and apart; the places already there do not move', !!P2.lane && !!P2.cave && M.inCorner(P2.lane) && M.inCorner(P2.cave) && apart(P2) && Math.hypot(P2.lane[0] - P2.harbour[0], P2.lane[1] - P2.harbour[1]) <= 40 && ids.every(function (k) { return P2[k][0] === P[k][0] && P2[k][1] === P[k][1]; }), JSON.stringify({ lane: P2.lane, cave: P2.cave, harbour: P2.harbour }));
+  /* many more places later: the corner grows outward, never across the open land */
+  var L3 = Object.assign({}, L2), prev = 'lane';
+  for (var i = 0; i < 12; i++) { var id = 'new' + i; L3[prev] = Object.assign({}, L3[prev], { doors: (L3[prev].doors || []).concat([{ id: 'to' + id, to: id, x: 50, y: 50 }]) }); L3[id] = { id: id, name: 'Place ' + i, img: 'p.webp', doors: [{ id: 'back', to: prev, x: 50, y: 80 }], hotspots: [] }; prev = i % 3 === 2 ? 'garden' : id; }
+  var g3 = M.graph(L3, 'room'), P3 = M.place(g3), k3 = Object.keys(P3);
+  check('twelve more places still fit the corner: none past its growth limit and none on the open land; a new place goes in the map\'s own box while there is room; the places with a spot of their own never move', P2.lane[0] <= 100 && P2.lane[1] <= 80 && ids.every(function (k) { return !w.OvuMap.POS[k] || (P3[k][0] === P[k][0] && P3[k][1] === P[k][1]); }) && !!M.POS.harbour && k3.length === ids.length + 14 && k3.every(function (k) { return M.inCorner(P3[k]); }) && k3.every(function (k) { return P3[k][0] <= M.GROW.x && P3[k][1] <= M.GROW.y; }) && M.GROW.x <= 300 * 0.45 && M.GROW.y <= 240 * 0.45, JSON.stringify(P3));
+  /* the opening view: the places fitted and centred as far as the land allows, open country at the right and below */
+  var vw = 358, vh = 286.4, z = M.opening(P, vw, vh), u = vw / 100 * z.s;
+  var sx = function (x) { return z.tx + x * u; }, sy = function (y) { return z.ty + y * u; };
+  check('the map opens on the built corner: every place on screen with room for its drawing, the corner filling most of the view, and open land showing at the right and the bottom', ids.every(function (k) { return sx(P[k][0]) >= 20 && sx(P[k][0]) <= vw - 20 && sy(P[k][1]) >= 20 && sy(P[k][1]) <= vh - 20; }) && sx(100) > vw * 0.6 && sx(100) < vw && sy(80) > vh * 0.6 && sy(80) < vh && covers(z, vw, vh) && z.s < M.ZOOM.names, JSON.stringify(z));
+  var zf = M.opening(P2, vw, vh), zo = M.zoomClamp(M.ZOOM.min, 0, 0, vw, vh);
+  check('a corner that has grown opens fitted to all of it, and zooming out shows nine times the corner\'s area, almost all of it open land', Object.keys(P2).every(function (k) { var x = zf.tx + P2[k][0] * vw / 100 * zf.s, y = zf.ty + P2[k][1] * vw / 100 * zf.s; return x >= 10 && x <= vw - 10 && y >= 10 && y <= vh - 10; }) && zo.s === 1 / 3 && M.WORLD.cols * M.WORLD.rows === 9, JSON.stringify(zf));
   check('the map still never moves her: no travel call in the module', !/OvuWalk\.travel|applyLayout\(/.test(src));
+  var plate = fs.statSync(path.join(root, 'assets/room/dream/map-world.webp')).size, sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+  check('the plate is a reasonable size for a phone and the offline cache version moved on with it', plate > 80000 && plate < 400000 && /VERSION = 'ovumind-2026-10-22-map1'/.test(sw), plate);
 })();
 
 (function cycleRhythm() {
