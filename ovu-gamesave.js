@@ -10,16 +10,17 @@
  *  - When the account moved on, the phone takes the account's save whole and adds only the hearts it earned that the
  *    account has not seen yet (kept as its own running count, so a clash never counts them twice). Its other unsaved
  *    changes (a purchase, a planting) are dropped together with what they cost.
- *  - Every write carries an operation id; the server remembers the last twenty, so a write whose answer was lost is never
- *    applied twice, even if another phone saved in between.
+ *  - Every write carries an operation id; the server remembers the last hundred, so a write whose answer was lost is never
+ *    applied twice, even if another phone saved in between. Tabs take turns (a browser lock) and acknowledge a write once.
  *  - Today's game caps (practice hearts, the benches, pet care) are part of the save, so they hold across phones; the
  *    record of which diary kinds earned today stays on the phone, and a phone that never earned here gets none of today's
  *    logging hearts a second time.
  *  - First sign-in on a phone: the account's save, plus this phone's hearts balance, earnings, treats and owned items
  *    (placed items stay as the account has them, so one-per-slot holds).
  *  - A cleared phone links again instead of uploading an empty game; a tester phone never saves and takes the account copy.
- *  - "Delete my cloud copy" marks the save deleted on the server. A phone revives it only after a sign-in that happened
- *    after that deletion. The deletion is sent with the account and token of the delete itself. */
+ *  - "Delete my cloud copy" marks the save deleted on the server. The server brings it back only for a sign-in made after
+ *    the deletion (the sign-in time in the token), so no phone can revive it by itself. The deletion is sent with the
+ *    account and token of the delete itself. */
 (function (root) {
   'use strict';
   var GAME_KEYS = ['rewards', 'farm', 'greenhouse', 'villagers', 'home', 'propPos', 'pets', 'garden', 'harbour', 'lane', 'stamina', 'visited', 'game'];
@@ -68,7 +69,7 @@
       r.hearts += Math.max(0, num(lr.hearts)); r.earned += Math.max(0, num(lr.earned));
       (Array.isArray(lr.owned) ? lr.owned : []).forEach(function (id) { if (r.owned.indexOf(id) < 0) r.owned.push(id); });
       if (plain(lr.treats)) { r.treats = plain(r.treats) ? r.treats : {}; Object.keys(lr.treats).forEach(function (k) { r.treats[k] = num(r.treats[k]) + Math.max(0, num(lr.treats[k])); }); }
-      if (plain(lr.wear)) { r.wear = plain(r.wear) ? r.wear : {}; Object.keys(lr.wear).forEach(function (k) { if (!(k in r.wear)) r.wear[k] = clone(lr.wear[k]); }); }
+      if (plain(lr.wear)) { r.wear = plain(r.wear) ? r.wear : {}; Object.keys(lr.wear).forEach(function (k) { var used = Object.keys(r.wear).map(function (j) { return JSON.stringify(r.wear[j]); }); if (!(k in r.wear) && used.indexOf(JSON.stringify(lr.wear[k])) < 0) r.wear[k] = clone(lr.wear[k]); }); } /* one accessory, one wearer */
     }
     return out;
   }
@@ -168,10 +169,11 @@
         /* the revision this write made is base + 1; a resend reported as already done may come back with a later one,
            which another phone wrote and this phone has not seen yet, so the next sync still takes it */
         var m = metaFor(uid) || {}, mine = num(p.base) + 1;
+        if (!m.pending || m.pending.op !== p.op) return 'saved';         /* another tab already acknowledged this write */
         if (p.kind === 'link') {
           var extra = Math.max(0, earned(pack(S.state())) - num(p.localEarned)); /* hearts she earned while the link was on its way */
           apply(uid, withEarnings(p.save, extra));
-          patchMeta(uid, { linked: true, off: false, reviveRev: null, tainted: false, rev: mine, savedEarned: earned(p.save), gain: extra, pending: null, seq: extra ? 1 : 0, acked: 0 });
+          patchMeta(uid, { linked: true, off: false, tried: null, tainted: false, rev: mine, savedEarned: earned(p.save), gain: extra, pending: null, seq: extra ? 1 : 0, acked: 0 });
           if (extra) schedule();
           return 'linked';
         }
@@ -183,21 +185,27 @@
     });
   }
   function queue(uid, kind, save, base, extra) { patchMeta(uid, { pending: Object.assign({ kind: kind, save: save, base: base, op: opId() }, extra || {}) }); return sendPending(uid); }
-  function canRevive(m, row) { return !!(row && row.deleted && m && m.reviveRev != null && m.reviveRev === row.rev); }
+  /* a deleted save is tried once per sign-in; the server refuses unless that sign-in came after the deletion */
+  function mayTry(m, row) { return !!(row && row.deleted && m && m.tried !== row.rev); }
   function sync() {
+    if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) return navigator.locks.request('ovumind-gamesave', function () { return syncNow(); });
+    return syncNow();
+  }
+  function syncNow() {
     if (!ready()) return Promise.resolve('off');
     var uid = A().userId(); if (!ownerOk(uid)) return Promise.resolve('owner');
     if (tester()) { patchMeta(uid, { tainted: true }); return Promise.resolve('tester'); }
-    if (isOff(uid) && (metaFor(uid) || {}).reviveRev == null) return Promise.resolve('deleted');
+    if (isOff(uid) && (metaFor(uid) || {}).tried != null) return Promise.resolve('deleted');
     if (busy) { again = true; return Promise.resolve('busy'); }
     busy = true;
     return sendPending(uid).then(function () { return getRow(uid); }).then(function (row) {
       if (A().userId() !== uid) return 'stopped';
       var m = metaFor(uid) || { uid: uid }, seq = num(m.seq), dirty = seq > num(m.acked), mine = pack(S.state()), gain = Math.max(0, num(m.gain));
       var live = row && !row.deleted && row.rev > 0;
-      if (row && row.deleted && !canRevive(m, row)) { patchMeta(uid, { off: true, reviveRev: null }); return 'deleted'; }
-      if (m.off && !canRevive(m, row)) return 'deleted';
-      if (!m.linked || m.off) {
+      if (row && row.deleted && !mayTry(m, row)) { patchMeta(uid, { off: true }); return 'deleted'; }
+      if (m.off && !(row && row.deleted)) { patchMeta(uid, { off: false, linked: false }); m = metaFor(uid); } /* revived elsewhere after a later sign-in: link to it */
+      if (row && row.deleted) patchMeta(uid, { tried: row.rev, off: true });
+      if (!m.linked || m.off || (row && row.deleted)) {
         if (m.tainted && !live) return 'tester';                    /* tester progress is never uploaded */
         var target = live ? (m.tainted ? clone(row.save) : linkMerge(mine, row.save)) : mine;
         return queue(uid, 'link', target, row ? row.rev : 0, { localEarned: earned(mine) });
@@ -205,9 +213,8 @@
       if (!row) return queue(uid, 'save', mine, 0, { seq: seq, gain: gain });
       if (m.tainted) { apply(uid, row.save); patchMeta(uid, { tainted: false, rev: row.rev, savedEarned: earned(row.save), gain: 0, acked: seq }); return 'pulled'; }
       if (row.rev > num(m.rev)) {
-        var next = withEarnings(row.save, gain);
-        apply(uid, next);
-        if (gain > 0) return queue(uid, 'save', next, row.rev, { seq: seq, gain: gain });
+        apply(uid, withEarnings(row.save, gain));
+        if (gain > 0) return queue(uid, 'save', pack(S.state()), row.rev, { seq: seq, gain: gain }); /* the joined caps go up too */
         patchMeta(uid, { rev: row.rev, savedEarned: earned(row.save), acked: seq }); return 'pulled';
       }
       if (!dirty) return 'none';
@@ -231,13 +238,11 @@
      not an error; any other failure goes back to the caller. */
   function forget(uid, token) {
     if (!uid || !token) return Promise.reject(new Error('Please sign in again.'));
-    clearTimeout(timer); timer = 0; patchMeta(uid, { off: true, pending: null, reviveRev: null });
+    clearTimeout(timer); timer = 0; patchMeta(uid, { off: true, pending: null, tried: null });
     return call('POST', '/rpc/game_save_delete', {}, token).catch(function (e) { if (e && (e.status === 404 || e.code === 'PGRST202')) return null; throw e; });
   }
-  /* a sign-in records which revision it saw, so a deletion that happens later is never undone by this sign-in */
-  function noteSignIn(uid) {
-    return getRow(uid).then(function (row) { if (A().userId() === uid) patchMeta(uid, { reviveRev: row ? row.rev : 0 }); }).catch(function () { });
-  }
+  /* a new sign-in may try a deleted save once more; the server checks that the sign-in came after the deletion */
+  function noteSignIn(uid) { var m = metaFor(uid); if (m && m.off) patchMeta(uid, { tried: null }); return Promise.resolve(); }
   if (S && S.subscribe && typeof window !== 'undefined' && window.document) {
     S.subscribe(onChange);
     var lastUid = null;

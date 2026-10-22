@@ -4904,10 +4904,10 @@ var summarised = false;
 })();
 
 (function () {
-  console.log('2k30. game save (22 Oct, fourth version): the account copy is the true copy; hearts earned on a phone are never lost or counted twice');
+  console.log('2k30. game save (22 Oct, fifth version): the account copy is the true copy; hearts earned on a phone are never lost or counted twice');
   var G0src = fs.readFileSync(path.join(root, 'ovu-gamesave.js'), 'utf8');
   /* a pretend server with the migration's rules: own row, revision check, operation ids, deletion marker */
-  var server = { row: null, puts: 0, bodies: [], tokens: [], lose: false, hold: null };
+  var server = { row: null, puts: 0, bodies: [], tokens: [], lose: false, hold: null, clock: 0 };
   function respond(obj, status) { return Promise.resolve({ ok: (status || 200) < 300, status: status || 200, text: function () { return Promise.resolve(obj === undefined ? '' : JSON.stringify(obj)); } }); }
   function fakeFetch(url, o) {
     var body = o && o.body ? JSON.parse(o.body) : null; server.tokens.push(o && o.headers && o.headers.Authorization);
@@ -4918,29 +4918,33 @@ var summarised = false;
         var cur = server.row || { save: {}, rev: 0, deleted: false, ops: [] };
         if (body.p_op && cur.ops.indexOf(body.p_op) > -1) return respond([{ ok: true, rev: cur.rev, save: cur.save, deleted: cur.deleted }]);
         if (cur.rev !== body.p_base) return respond([{ ok: false, rev: cur.rev, save: cur.save, deleted: cur.deleted }]);
-        server.row = { save: body.p_save, rev: cur.rev + 1, deleted: false, ops: [body.p_op].concat(cur.ops).slice(0, 20) };
+        var signedAt = Number(String(o.headers.Authorization).split('@')[1] || 0); /* the token's sign-in time (amr) */
+        if (cur.deleted && !(signedAt > cur.delAt)) return respond([{ ok: false, rev: cur.rev, save: cur.save, deleted: true }]);
+        server.row = { save: body.p_save, rev: cur.rev + 1, deleted: false, ops: [body.p_op].concat(cur.ops).slice(0, 100) };
         if (server.lose) { server.lose = false; return Promise.reject(new Error('answer lost')); }
         return respond([{ ok: true, rev: server.row.rev, save: body.p_save, deleted: false }]);
       };
       if (server.hold) { var h = server.hold; server.hold = null; return Promise.resolve(h()).then(go); }
       return go();
     }
-    if (/rpc\/game_save_delete/.test(url)) { var c = server.row || { save: {}, rev: 0 }; server.row = { save: {}, rev: c.rev + 1, deleted: true, ops: [] }; return respond(server.row.rev); }
+    if (/rpc\/game_save_delete/.test(url)) { var c = server.row || { save: {}, rev: 0 }; server.row = { save: {}, rev: c.rev + 1, deleted: true, ops: [], delAt: ++server.clock }; return respond(server.row.rev); }
     return respond({ message: 'no' }, 404);
   }
   function phone(stateInit, opts) {
     opts = opts || {};
-    var ls = {}, listeners = [], authL = [], st = JSON.parse(JSON.stringify(stateInit || {})), who = { uid: 'uid' in opts ? opts.uid : 'u1' };
+    var sh = opts.share, ls = sh ? sh.ls : {}, listeners = sh ? sh.listeners : [], authL = [], box = sh ? sh.box : { st: JSON.parse(JSON.stringify(stateInit || {})) }, who = { uid: 'uid' in opts ? opts.uid : 'u1', at: ++server.clock };
+    var st = box.st;
     var ctx = { JSON: JSON, Date: Date, Math: Math, Number: Number, String: String, Array: Array, Object: Object, Promise: Promise, isFinite: isFinite, setTimeout: function () { return 0; }, clearTimeout: function () { },
       fetch: fakeFetch, localStorage: { getItem: function (k) { return k in ls ? ls[k] : null; }, setItem: function (k, v) { ls[k] = String(v); }, removeItem: function (k) { delete ls[k]; } },
       document: { readyState: 'complete', addEventListener: function () { } }, addEventListener: function () { }, OVU_CONFIG: { supabaseUrl: 'https://x.test', supabaseKey: 'k' } };
     ctx.window = ctx;
     ctx.OvuStore = { state: function () { return st; }, profile: function () { return opts.profile || {}; }, today: function () { return '2026-10-22'; }, isSandbox: function () { return false; },
-      commit: function (p) { Object.assign(st, JSON.parse(JSON.stringify(p))); listeners.forEach(function (f) { f('state'); }); }, subscribe: function (f) { listeners.push(f); } };
-    ctx.OvuAuth = { isSignedIn: function () { return !!who.uid; }, userId: function () { return who.uid; }, token: function () { return Promise.resolve('tok-' + who.uid); }, subscribe: function (f) { authL.push(f); } };
+      commit: function () { }, subscribe: function (f) { listeners.push(f); } };
+    ctx.OvuAuth = { isSignedIn: function () { return !!who.uid; }, userId: function () { return who.uid; }, token: function () { return Promise.resolve('tok-' + who.uid + '@' + who.at); }, subscribe: function (f) { authL.push(f); } };
     vm.createContext(ctx); vm.runInContext(G0src, ctx, { filename: 'ovu-gamesave.js' });
-    return { G: ctx.OvuGameSave, st: function () { return st; }, who: who, signIn: function (u) { who.uid = u; authL.forEach(function (f) { f(); }); },
-      change: function (fn) { fn(st); listeners.forEach(function (f) { f('state'); }); }, clear: function () { st = {}; delete ls['ovumind_gamesave_v1']; }, meta: function () { return JSON.parse(ls['ovumind_gamesave_v1'] || '{}')[who.uid] || {}; } };
+    ctx.OvuStore.state = function () { return box.st; }; ctx.OvuStore.commit = function (p) { Object.assign(box.st, JSON.parse(JSON.stringify(p))); listeners.forEach(function (f) { f('state'); }); };
+    return { G: ctx.OvuGameSave, st: function () { return box.st; }, who: who, ls: ls, listeners: listeners, box: box, signIn: function (u) { who.uid = u; who.at = ++server.clock; authL.forEach(function (f) { f(); }); },
+      change: function (fn) { fn(box.st); listeners.forEach(function (f) { f('state'); }); }, clear: function () { box.st = {}; delete ls['ovumind_gamesave_v1']; }, meta: function () { return JSON.parse(ls['ovumind_gamesave_v1'] || '{}')[who.uid] || {}; } };
   }
   function earn(n) { return function (s) { s.rewards = Object.assign({}, s.rewards, { hearts: (s.rewards.hearts || 0) + n, earned: (s.rewards.earned || 0) + n }); }; }
   var G = phone({}).G;
@@ -4982,6 +4986,11 @@ var summarised = false;
     .then(function () { A1.change(function (s) { s.propPos = { lamp: { x: 80 } }; s.stamina = { v: 100 }; }); B1.change(function (s) { s.propPos = { lamp: { x: 90 } }; s.stamina = { v: 99 }; s.rewards = Object.assign({}, s.rewards, { hearts: s.rewards.hearts - 20, owned: s.rewards.owned.concat(['seedpack']) }); }); return A1.G.sync(); })
     .then(function () { return B1.G.sync().then(function () { return B1.G.sync(); }); })
     .then(step('two phones at once: the account copy wins whole, the unsaved purchase goes with its cost, and positions and energy are never added up', function () { var r = server.row.save; return r.rewards.hearts === 130 && B1.st().rewards.hearts === 130 && r.rewards.owned.indexOf('seedpack') < 0 && B1.st().propPos.lamp.x === 80 && B1.st().stamina.v === 100; }))
+    /* two tabs of one phone: one save, acknowledged once */
+    .then(function () { var T2 = phone(null, { share: A1 }); A1.change(earn(5)); server.hold = function () { return T2.G.sync(); }; return A1.G.sync().then(function () { return A1.G.sync(); }).then(function () { return T2; }); })
+    .then(function (T2) { return T2.G.sync().then(function () { return A1.G.sync(); }); })
+    .then(step('two tabs sending the same save: it is applied once, acknowledged once, and no hearts go missing (135)', function () { return H() === 135 && A1.st().rewards.hearts === 135 && (A1.meta().gain || 0) === 0; }))
+    .then(function () { return B1.G.sync(); })
     /* a cleared phone */
     .then(function () { B1.clear(); return B1.G.sync(); }).then(step('a phone whose data was cleared links again, gets everything back and never uploads an empty game', function () { return B1.st().rewards.hearts >= 130 && H() >= 130; }))
     .then(function () { return A1.G.sync(); })
@@ -4992,16 +5001,16 @@ var summarised = false;
     /* Codex round three, 3: a sign-in before a deletion never revives it */
     .then(function () { var E = phone({ rewards: { hearts: 3, earned: 3 } }, { uid: null }); E.signIn('u1'); return E.G.noteSignIn('u1').then(function () { return E; }); })
     .then(function (E) { server.tokens = []; return A1.G.forget('u1', 'tok-the-delete').then(function () { return E; }); })
-    .then(function (E) { steps.push(['the delete goes with the account and token it was started with, and marks the save deleted', server.tokens.indexOf('Bearer tok-the-delete') > -1 && server.row.deleted === true && JSON.stringify(server.row.save) === '{}']); return E.G.sync(); })
-    .then(step('a phone that signed in before the deletion does not revive it', function (r) { return r === 'deleted' && server.row.deleted === true; }))
-    .then(function () { B1.change(earn(9)); return B1.G.sync(); }).then(step('a linked phone that missed the deletion stops instead of recreating the save', function (r) { return r === 'deleted' && server.row.deleted === true; }))
+    .then(function (E) { steps.push(['the delete goes with the account and token it was started with, and marks the save deleted', server.tokens.indexOf('Bearer tok-the-delete') > -1 && server.row.deleted === true && JSON.stringify(server.row.save) === '{}']); return E.G.sync().then(function () { return E.G.sync(); }); })
+    .then(step('a phone that signed in before the deletion cannot revive it: the server checks the sign-in time', function (r) { return r === 'deleted' && server.row.deleted === true; }))
+    .then(function () { B1.change(earn(9)); return B1.G.sync().then(function () { return B1.G.sync(); }); }).then(step('a linked phone that missed the deletion stops instead of recreating the save', function (r) { return r === 'deleted' && server.row.deleted === true; }))
     .then(function () { var F = phone({ rewards: { hearts: 7, earned: 7 } }, { uid: null }); F.signIn('u1'); return F.G.noteSignIn('u1').then(function () { return F.G.sync(); }); })
     .then(step('a sign-in after the deletion starts saving again', function (r) { return r === 'linked' && server.row.deleted === false && H() === 7; }))
     .then(function () { steps.push(['no upload ever carried a letter, a diary date, a receipt or a diary kind', server.bodies.every(function (t) { return !/private letter|period|kinds|credited|receipts/.test(t); })]); })
     .catch(function (e) { steps.push(['the multi-phone run finished without an error', false, String(e && e.stack || e)]); })
     .then(function () { steps.forEach(function (x) { check(x[0], x[1], x[2]); }); });
   var mig = fs.readFileSync(path.join(root, 'supabase/migrations/20261022100000_game_saves.sql'), 'utf8');
-  check('the table is read-own-row only; writes go through revision- and operation-checked functions closed to anon; size-capped; gone with the account', /enable row level security/.test(mig) && /revoke all on public\.game_saves from anon, authenticated, public/.test(mig) && /grant select on public\.game_saves to authenticated/.test(mig) && /cur\.rev <> coalesce\(p_base, -1\)/.test(mig) && /p_op = any\(cur\.ops\)/.test(mig) && /\[1:20\]/.test(mig) && /revoke all on function public\.game_save_put\(jsonb, bigint, text\) from public, anon/.test(mig) && /262144/.test(mig) && /on delete cascade/.test(mig));
+  check('the table is read-own-row only; writes go through revision- and operation-checked functions closed to anon; size-capped; gone with the account', /enable row level security/.test(mig) && /revoke all on public\.game_saves from anon, authenticated, public/.test(mig) && /grant select on public\.game_saves to authenticated/.test(mig) && /cur\.rev <> coalesce\(p_base, -1\)/.test(mig) && /p_op = any\(cur\.ops\)/.test(mig) && /\[1:100\]/.test(mig) && /amr/.test(mig) && /signed_in <= extract\(epoch from cur\.saved_at\)/.test(mig) && /revoke all on function public\.game_save_put\(jsonb, bigint, text\) from public, anon/.test(mig) && /262144/.test(mig) && /on delete cascade/.test(mig));
   check('room.html loads the game save after the villagers; clearing the phone clears its link; the cloud delete passes its own account and token', /ovu-villagers\.js"><\/script>\s*<script src="ovu-gamesave\.js"/.test(fs.readFileSync(path.join(root, 'room.html'), 'utf8')) && /'ovumind_gamesave_v1'/.test(fs.readFileSync(path.join(root, 'ovu-store.js'), 'utf8')) && /OvuGameSave\.forget\(uid, token\)/.test(fs.readFileSync(path.join(root, 'ovu-sync.js'), 'utf8')));
 })();
 

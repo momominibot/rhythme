@@ -8,7 +8,7 @@ create table if not exists public.game_saves (
   save jsonb not null default '{}'::jsonb check (jsonb_typeof(save) = 'object' and pg_column_size(save) <= 262144),
   rev bigint not null default 0 check (rev >= 0),
   deleted boolean not null default false,
-  ops text[] not null default '{}'::text[] check (cardinality(ops) <= 20),
+  ops text[] not null default '{}'::text[] check (cardinality(ops) <= 100),
   saved_at timestamptz not null default now()
 );
 alter table public.game_saves enable row level security;
@@ -18,12 +18,12 @@ drop policy if exists game_saves_own_select on public.game_saves;
 create policy game_saves_own_select on public.game_saves for select to authenticated using (user_id = (select auth.uid()));
 
 -- Write when the phone saw the latest revision; otherwise return the current row, which the phone takes as the true copy.
--- p_op names the write; the last twenty are kept, so a write sent again after a lost answer is reported as done and never
+-- p_op names the write; the last hundred are kept, so a write sent again after a lost answer is reported as done and never
 -- applied twice, even when another phone saved in between.
 create or replace function public.game_save_put(p_save jsonb, p_base bigint, p_op text default null)
 returns table (ok boolean, rev bigint, save jsonb, deleted boolean)
 language plpgsql security definer set search_path = '' as $$
-declare uid uuid := auth.uid(); cur public.game_saves;
+declare uid uuid := auth.uid(); cur public.game_saves; signed_in bigint;
 begin
   if uid is null then raise exception 'not signed in' using errcode = '28000'; end if;
   if p_save is null or jsonb_typeof(p_save) <> 'object' or pg_column_size(p_save) > 262144 then raise exception 'bad save' using errcode = '22023'; end if;
@@ -35,7 +35,14 @@ begin
   if cur.rev <> coalesce(p_base, -1) then
     return query select false, cur.rev, cur.save, cur.deleted; return;
   end if;
-  update public.game_saves g set save = p_save, rev = cur.rev + 1, deleted = false, ops = case when p_op is null then cur.ops else (array[left(p_op, 64)] || cur.ops)[1:20] end, saved_at = now() where g.user_id = uid;
+  -- a deleted save comes back only for a sign-in made after the deletion (the token's sign-in time, amr)
+  if cur.deleted then
+    select max((e->>'timestamp')::bigint) into signed_in from jsonb_array_elements(coalesce(auth.jwt()->'amr', '[]'::jsonb)) e;
+    if signed_in is null or signed_in <= extract(epoch from cur.saved_at) then
+      return query select false, cur.rev, cur.save, cur.deleted; return;
+    end if;
+  end if;
+  update public.game_saves g set save = p_save, rev = cur.rev + 1, deleted = false, ops = case when p_op is null then cur.ops else (array[left(p_op, 64)] || cur.ops)[1:100] end, saved_at = now() where g.user_id = uid;
   return query select true, cur.rev + 1, p_save, false;
 end $$;
 
