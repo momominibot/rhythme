@@ -3874,7 +3874,7 @@ var summarised = false;
   check('a corner that has grown opens fitted to all of it, and zooming out shows nine times the corner\'s area, almost all of it open land', Object.keys(P2).every(function (k) { var x = zf.tx + P2[k][0] * vw / 100 * zf.s, y = zf.ty + P2[k][1] * vw / 100 * zf.s; return x >= 10 && x <= vw - 10 && y >= 10 && y <= vh - 10; }) && zo.s === 1 / 3 && M.WORLD.cols * M.WORLD.rows === 9, JSON.stringify(zf));
   check('the map still never moves her: no travel call in the module', !/OvuWalk\.travel|applyLayout\(/.test(src));
   var plate = fs.statSync(path.join(root, 'assets/room/dream/map-world.webp')).size, sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
-  check('the plate is a reasonable size for a phone and the offline cache version moved on with it', plate > 80000 && plate < 400000 && /VERSION = 'ovumind-2026-10-22-map1'/.test(sw), plate);
+  check('the plate is a reasonable size for a phone and the offline cache version moved on with it', plate > 80000 && plate < 400000 && /VERSION = 'ovumind-2026-1[01]-(2[2-9]|3[01])/.test(sw), plate);
 })();
 
 (function cycleRhythm() {

@@ -2175,3 +2175,4 @@ html[data-sky=night] .askchip:hover{background:#3b2e5a}
 .c-more{margin:2px 0 0 38px}
 .c-more summary{padding:4px 0;font-size:11px;color:var(--rm-ink-3)}
 .c-more p{margin:0 0 6px;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-3)}
+.sqhead{display:flex;align-items:center;gap:6px;margin:10px 0 2px;font:800 13px var(--sans);color:var(--rm-plum)}.sqhead .ms{font-size:18px}

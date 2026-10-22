@@ -639,20 +639,23 @@
     return out;
   }
   function sleepDetailsHTML() {
-    return '<div class="sqbox"><button type="button" class="btn ghost sqtoggle" aria-expanded="false" aria-controls="sqBody" id="sqToggle"><span class="ms">add</span>Add sleep details (optional)</button>' +
-      '<div class="sqbody" id="sqBody" hidden><p class="help">Skip any question. These notes help you see patterns; they are not a sleep test or a score.</p>' +
+    /* always open and part of the night (Jamie, 22 Oct: "i want the sleep details, dont make it optional"): the first three are
+     * needed to save, and Not sure always counts as an answer, so nothing has to be guessed */
+    return '<div class="sqbox"><h4 class="sqhead"><span class="ms">bedtime</span>Sleep details</h4>' +
+      '<div class="sqbody" id="sqBody"><p class="help">Not sure is a fine answer.</p>' +
       A.DETAIL_ORDER.map(function (k) { return chipGroupHTML(A.SLEEP_LABELS, k, null); }).join('') + '<p class="help sqclearrow"><button type="button" class="linkbtn" id="sqClear">Clear these answers</button></p></div></div>';
   }
   function wireSleepDetails(root) {
-    var t = $('#sqToggle', root), bd = $('#sqBody', root); if (!t || !bd) return;
+    var bd = $('#sqBody', root); if (!bd) return;
     function awakeShown() { var w = $('.sqf[data-sq="wakeups"] .chipbtn.on', bd); $('.sqf[data-sq="awake"]', bd).hidden = !w || w.dataset.v === '0'; }
-    t.addEventListener('click', function () { var open = bd.hidden, n = Object.keys(readChipGroups(bd)).length; bd.hidden = !open; t.setAttribute('aria-expanded', open ? 'true' : 'false'); t.innerHTML = open ? '<span class="ms">remove</span>Hide sleep details' : (n ? '<span class="ms">add</span>Sleep details (' + n + ' answered, kept)' : '<span class="ms">add</span>Add sleep details (optional)'); });
     var cl = $('#sqClear', bd); if (cl) cl.addEventListener('click', function () { Array.prototype.forEach.call(bd.querySelectorAll('.chipbtn.on'), function (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); }); awakeShown(); });
     wireChipGroups(bd, function (k) { if (k === 'wakeups') awakeShown(); });
     awakeShown();
   }
   /* the answers count whether the box is open or folded away (Codex, 21 Oct: folding it used to drop them); Clear these answers is the one way to drop them */
   function readSleepDetails(root) { var bd = $('#sqBody', root); if (!bd) return null; var d = readChipGroups(bd); return Object.keys(d).length ? d : null; }
+  var SLEEP_NEEDED = ['latency', 'wakeups', 'rested'];
+  function sleepDetailsMissing(root) { var d = readSleepDetails(root) || {}; return SLEEP_NEEDED.filter(function (k) { return d[k] == null; }).map(function (k) { return A.SLEEP_LABELS[k].q.toLowerCase(); }); }
   /* the night form survives a trip to the two-week check and back (Codex, 21 Oct), the quality moons included */
   var sleepDraft = null;
   function keepSleepDraft(body) { var bd = $('#sqBody', body); if (!$('#slBed', body)) return; sleepDraft = { q: Number(($('.moons', body) || { dataset: {} }).dataset.value || 0) || 0, date: $('#slDate', body).value, bed: $('#slBed', body).value, wake: $('#slWake', body).value, notes: ($('#slNotes', body) || {}).value || '', open: !!(bd && !bd.hidden), details: bd ? readChipGroups(bd) : {} }; }
@@ -737,6 +740,7 @@
       /* the night is the one still open now: another tab may have saved it already (Codex review, 20 Oct) */
       var cur = (S.reload ? S.reload() : S.state()).sleeping; if (!cur || (cur.startedAt || cur.at) !== (sl.startedAt || sl.at)) { closeSheet(); toast('This night was already saved.', 'wb_sunny'); return; }
       try {
+        var miss = sleepDetailsMissing(body); if (miss.length) throw new Error('One more step: answer ' + miss.join(', ') + '. Not sure is fine.');
         var q = Number($('.moons', body).dataset.value || 0) || null;
         var wd = { bedTime: sl.bedTime, wakeTime: $('#wakeTime').value, quality: q, notes: $('#wakeNotes').value.trim(), mode: 'room' }, det = readSleepDetails(body); if (det) wd.details = det;
         var ev = S.add('sleep', $('#wakeDate').value, wd);
@@ -821,6 +825,7 @@
       try {
         var q = Number($('.moons', body).dataset.value || 0) || null;
         if (!S.validTime($('#slBed').value) || !S.validTime($('#slWake').value)) throw new Error('Enter both bedtime and wake time.');
+        var miss = sleepDetailsMissing(body); if (miss.length) throw new Error('One more step: answer ' + miss.join(', ') + '. Not sure is fine.');
         var nd = { bedTime: $('#slBed').value, wakeTime: $('#slWake').value, quality: q, notes: $('#slNotes').value.trim(), mode: 'manual' }, det = readSleepDetails(body); if (det) nd.details = det;
         var ev = S.add('sleep', $('#slDate').value, nd); sleepDraft = null;
         message($('#sleepMsg'), 'Saved: ' + A.fmtHours(S.sleepHours(ev.data)) + ' from bedtime to waking.', true); chime('save');
