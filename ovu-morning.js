@@ -175,6 +175,7 @@
     var room = R(); if (room.asleep() || run) return;
     var other = otherOwner(room); if (other) { if (!(other[2] && room.refuseBusy && room.refuseBusy())) room.toast(other[0], other[1]); return; } /* nothing, not even a waiting prompt, goes over another activity */
     if (pendingAsk) { room.hideSheet(); pendingAsk(); return; } /* the last one is still waiting to be saved or let go: ask that first */
+    if (room.endTryOn) { try { room.endTryOn(true); } catch (e) { } } /* a try-on in the boutique ends: the routine (and its save) is in her own clothes (Codex design review, 21 Oct) */
     if (root.OvuGarden && root.OvuGarden.sitting && root.OvuGarden.sitting()) { try { root.OvuGarden.standUp(); } catch (e) { } } /* off the bench, where she is, so the brushing pose shows */
     if (root.OvuPodcast) { try { root.OvuPodcast.pause(); } catch (e) { } }
     heard.forEach(function (el) { try { if (!el.paused) el.pause(); } catch (e) { } }); heard = []; /* a greeting still playing (the wake sheet's) stops: one voice at a time */

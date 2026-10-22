@@ -218,12 +218,12 @@
   function openBoutique() {
     R.openSheet('lane-boutique', 'Petal & Thread', 'Boutique · ' + hoursText('boutique'), 'checkroom', nav('hearts') +
       '<div class="row"><button type="button" class="btn primary" id="fitRoom"><span class="ms">checkroom</span>The fitting room</button></div>' +
-      '<p class="help">Every outfit you have is free to wear, and always will be.</p>' +
+      '<p class="help">Try on anything in the fitting room, Plus drops too. Every outfit you have is free to wear, and always will be.</p>' +
       '<p class="shelf"><span class="ms">new_releases</span>The new rail</p>' +
       '<div class="seedlist one" id="railList">' + RAIL.map(function (o) { return '<button type="button" class="btn soft" data-rail="' + o.id + '" disabled><span class="ms">checkroom</span><span><b>' + esc(o.name) + '</b><small>' + esc(o.note) + ' · ' + heartTxt(o.cost) + ' · Arriving with the next art run</small></span></button>'; }).join('') + '</div>' +
       mind('Notice how the fabric feels. Nothing to fix about you.'));
     wireBack();
-    var fr = doc.getElementById('fitRoom'); if (fr) fr.addEventListener('click', function () { R.chime('tap'); if (R.openWardrobe) R.openWardrobe(); });
+    var fr = doc.getElementById('fitRoom'); if (fr) fr.addEventListener('click', function () { R.chime('tap'); var BT = root.OvuBoutique, L = R.layout && R.layout(); if (BT && BT.openFitting && L && L.id === 'lane-boutique') BT.openFitting(); else if (R.openWardrobe) R.openWardrobe(); }); /* in the shop she tries things on; elsewhere it is her wardrobe */
   }
 
   /* Tideline Gym: free, earns nothing by itself, logs nothing; a station opens the movement log with its activity chosen */

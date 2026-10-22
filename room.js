@@ -128,6 +128,13 @@
   ];
   /* a Plus drop is worn only while Plus is on this phone (a preview code or the account), or in tester mode */
   function outfitLocked(id) { var o = OUTFITS.filter(function (x) { return x.id === id; })[0]; return !!(o && o.plus && !(window.OvuPodcast && OvuPodcast.plusActive()) && !(RW.tester && RW.tester())); }
+  /* the boutique's fitting room (ovu-boutique.js, Jamie, 21 Oct: "try on outfit and accessories"): what she tries on is only
+   * shown, never saved. `trying` lives in memory, tied to the room it began in; her own pictures (a blink, a pose) read
+   * wearing(), and everything saved or shared (sleep, the mat, the plaza, the other scenes) reads profile.outfit */
+  var trying = null, tryTok = 0;
+  function isOutfit(id) { return OUTFITS.some(function (x) { return x.id === id; }); }
+  function savedOutfit() { var o = S.profile().outfit || 'base'; return isOutfit(o) && !outfitLocked(o) ? o : 'base'; }
+  function wearing() { return trying ? trying.outfit : savedOutfit(); }
   var VIDEOS = [
     ['normal', 'normal-v4.mp4', 'A normal cycle', 'What typical looks like'],
     ['hormones', 'hormones-v4.mp4', 'Hormones', 'Oestrogen & progesterone'],
@@ -495,10 +502,10 @@
   /* one counter for every image swap of her sprite (an outfit or a pose): a slow load that has been overtaken never lands
    * (Codex branch review, 20 Oct: a late reading pose stayed after the moment ended) */
   var imgGen = 0;
-  function setOutfit(id, silent) {
-    if (!OUTFITS.some(function (o) { return o.id === id; })) id = 'base';
-    if (outfitLocked(id)) id = 'base'; /* a drop needs Plus on this phone; a stale profile never dresses her in it */
+  /* the picture half: she turns into it (or, silent, simply wears it); nothing is saved here */
+  function showOutfit(id, silent, fail) {
     var img = new Image(), gen = ++imgGen;
+    img.onerror = function () { if (gen === imgGen && fail) fail(); }; /* she keeps what she was wearing */
     img.onload = function () {
       if (gen !== imgGen) return;
       if (!silent && twirlOk()) { /* she turns into it (the twirl, below); the wardrobe's words follow with a happy hop, not a pose */
@@ -509,6 +516,12 @@
     };
     preloadBlink(id);
     img.src = ART + 'avatar-' + id + '.webp';
+  }
+  function setOutfit(id, silent) {
+    if (!isOutfit(id)) id = 'base';
+    if (outfitLocked(id)) id = 'base'; /* a drop needs Plus on this phone; a stale profile never dresses her in it */
+    if (trying) { trying = null; tryTok++; emit('tryon', null); } /* choosing from the wardrobe ends a try-on */
+    showOutfit(id, silent);
     S.setProfile({ outfit: id });
     $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
     if (!silent) redress();
@@ -527,6 +540,48 @@
     else if (window.OvuMorning && OvuMorning.active()) OvuMorning.repose();
     else if (lastPose && avatar.classList.contains('acting')) setPose(lastPose); /* watering the garden, a minute with a plant */
     emit('outfit', o); /* a bench, the warm stone and a seated practice redraw their own sitter */
+  }
+  /* ---- trying on: any outfit, a Plus drop too (it is only a look); one at a time, and only her tap changes it ---- */
+  function tryingOn() { return trying ? { outfit: trying.outfit, acc: trying.acc, at: trying.at, tok: trying.tok, mine: !outfitLocked(trying.outfit), saved: savedOutfit() } : null; }
+  function savedAcc() { var a = S.profile().accessory; return typeof a === 'string' && /^[a-z0-9-]{1,32}$/.test(a) ? a : null; }
+  function tryOn(id) {
+    if (!isOutfit(id) || asleep()) return false;
+    var was = trying ? trying.outfit : null, tok = ++tryTok;
+    trying = { outfit: id, acc: trying ? trying.acc : savedAcc(), at: L.id, tok: tok };
+    emit('tryon', tryingOn());
+    showOutfit(id, false, function () { /* a picture that will not load: she stays in what she had on, and the bar says so */
+      if (!trying || trying.tok !== tok) return;
+      if (was && was !== savedOutfit()) trying.outfit = was; else { trying = null; tryTok++; }
+      emit('tryon', tryingOn()); toast('That outfit could not be shown just now.', 'info');
+    });
+    return true;
+  }
+  /* an accessory to try (null takes it off); shown by ovu-boutique.js over her standing picture */
+  function tryAcc(id) {
+    if (asleep()) return false;
+    if (!trying) trying = { outfit: savedOutfit(), acc: savedAcc(), at: L.id, tok: ++tryTok };
+    trying.acc = id || null; emit('tryon', tryingOn()); return true;
+  }
+  /* back to her own clothes. silent: at once, no turn (leaving the room, bedtime, a practice); otherwise she turns back */
+  function endTryOn(silent) {
+    if (!trying) return false;
+    trying = null; tryTok++;
+    var own = savedOutfit();
+    if (silent) {
+      ++imgGen; finishTwirl(); quietMoment(); /* the newer picture owns her first, so a turn still running never swaps its outfit in */
+      if (!avatar.classList.contains('hidden') || (avatarImg.getAttribute('src') || '').indexOf('/avatar-act-') < 0) avatarImg.src = ART + 'avatar-' + own + '.webp';
+    } else showOutfit(own, reduced);
+    emit('tryon', null); return true;
+  }
+  /* Keep: an outfit she has (and the accessory) becomes hers to wear, free, as the wardrobe has always been; the only save */
+  function keepTryOn() {
+    if (!trying) return { ok: false, why: 'Nothing to keep.' };
+    var id = trying.outfit; if (outfitLocked(id)) return { ok: false, plus: true, why: 'Part of Rhythme Plus.' };
+    var patch = { outfit: id }; if (trying.acc !== savedAcc()) patch.accessory = trying.acc;
+    try { S.setProfile(patch); } catch (e) { return { ok: false, why: 'That could not be saved just now.' }; } /* the try-on stays, so she can try again */
+    trying = null; tryTok++; emit('tryon', null);
+    $$('.outfit').forEach(function (el) { el.classList.toggle('on', el.dataset.id === id); });
+    return { ok: true, id: id };
   }
   function placeAvatar(p, flip) { pos = { x: p.x, y: p.y }; avatar.style.left = p.x + '%'; avatar.style.top = p.y + '%'; avatar.classList.toggle('flip', !!flip); emit('placed', pos); } /* the walk engine re-ranks her depth */
   function sameFloor(a, b) { if (!L.stairs) return true; return (a.y < L.upstairsY) === (b.y < L.upstairsY); }
@@ -860,6 +915,7 @@
     body.addEventListener('click', function (e) { var d = e.target.closest('[data-del]'); if (d && confirm('Delete this night?')) { S.remove(d.dataset.del); $('#sleepList').innerHTML = sleepListHTML(); renderDeck(); } });
   }
   function stopEverything() {
+    try { endTryOn(true); } catch (e) { } /* she sleeps in her own clothes */
     /* bedtime: a running practice, breathing session, Moon Tap or garden task ends quietly before she sleeps */
     try { if (practice) stopPractice(); } catch (e) { }
     try { if (session) finishSession(false); } catch (e) { }
@@ -2098,7 +2154,7 @@
   function sleepSrc(o) { return ART + (o === 'pajamas' ? 'avatar-sleeping.webp' : 'avatar-sleeping-' + o + '.webp'); }
   function wearImg(img, src, plain) { if (!img) return; img.onerror = function () { img.onerror = null; img.src = plain; }; if (img.getAttribute('src') !== src) img.src = src; }
   function enterMeditation() {
-    endMoment(); meditating = true; avatar.classList.add('hidden'); if (window.OvuSound) OvuSound.play('sit');
+    endTryOn(true); endMoment(); meditating = true; avatar.classList.add('hidden'); if (window.OvuSound) OvuSound.play('sit');
     if (!meditator.classList.contains('onseat')) wearImg(meditator.querySelector('img'), meditateSrc(wornOutfit()), ART + 'avatar-meditate.webp'); /* a bench keeps her seated sprite */
     clearTimeout(medTimer); medTimer = setTimeout(function () { if (meditating) { meditator.classList.add('on'); $('#aura').classList.add('on'); } }, 350);
   }
@@ -2596,12 +2652,12 @@
   function scheduleBlink() { clearTimeout(blinkT); if (reduced || !blinkOn) return; blinkT = setTimeout(blink, 2400 + Math.random() * 3600); }
   function blink(again) {
     if (reduced || !blinkOn) return;
-    var o = S.profile().outfit || 'base', open = 'avatar-' + o + '.webp', cur = avatarImg.getAttribute('src') || '', shut = preloadBlink(o);
+    var o = wearing(), open = 'avatar-' + o + '.webp', cur = avatarImg.getAttribute('src') || '', shut = preloadBlink(o);
     var free = !document.hidden && avatar.classList.contains('idle') && !avatar.classList.contains('walking') && !avatar.classList.contains('twirling') && !avatar.classList.contains('moment') && !avatar.classList.contains('hidden') && cur.slice(-open.length) === open && shut.complete && shut.naturalWidth > 0;
     if (!free) { scheduleBlink(); return; }
     var gen = imgGen; avatarImg.src = shut.src;
     setTimeout(function () {
-      if ((avatarImg.getAttribute('src') || '').indexOf('-blink.webp') > -1) avatarImg.src = ART + open; /* her eyes open again even while another picture is still loading */
+      if ((avatarImg.getAttribute('src') || '').indexOf('-blink.webp') > -1) avatarImg.src = ART + 'avatar-' + wearing() + '.webp'; /* in what she wears now, if a try-on began or ended mid-blink */ /* her eyes open again even while another picture is still loading */
       if (!again && Math.random() < 0.2) { clearTimeout(blinkT); blinkT = setTimeout(function () { blink(true); }, 170); } else scheduleBlink();
     }, 120);
   }
@@ -2679,9 +2735,11 @@
    * her hair (the silhouette measures 1.16), so it keeps the knit's scale, matched by figure height like its pose copies,
    * and only its head centre is its own. */
   var AVATAR_FIT = {'act-bed':[1.551,0.643],'act-coffee':[1.14,0.563],'act-dishes':[1.523,0.634],'act-outfit':[1.559,0.684],'act-pets':[1.089,0.533],'act-plants':[1.428,0.654],'act-shower':[1.209,0.543],'act-stretch':[1.187,0.479],'act-teeth':[1.165,0.576],'act-note':[1.087,0.549],'act-eat':[1.161,0.558],'act-listen':[0.989,0.515],'act-read':[1.301,0.599],'act-tend':[1.21,0.427],'act-harvest':[1.305,0.615],'act-wave':[1.349,0.63],'act-press':[1.026,0.532],'act-phone':[1.123,0.532],'act-shop':[1.238,0.587],'act-scale':[1.025,0.519],'base':[1.0,0.509],'cozy':[1.0,0.513],'kebaya-blue':[1.236,0.417],'kebaya-green':[1.0,0.509],'kebaya-red':[1.233,0.414],'pajamas':[1.0,0.513],'party':[1.088,0.549],'sundress':[1.0,0.513],'yoga':[1.0,0.513],'tudung':[1.0,0.544],'gown':[1.403,0.518],'act-plants-gown':[1.581,0.574],'act-coffee-gown':[1.424,0.502],'act-teeth-gown':[1.355,0.542],'act-pets-gown':[1.538,0.454],'act-bed-gown':[1.775,0.571],'act-outfit-gown':[1.568,0.643],'act-stretch-gown':[1.502,0.569],'act-note-gown':[1.581,0.522],'act-eat-gown':[1.43,0.539],'act-listen-gown':[1.474,0.532],'act-read-gown':[1.486,0.531],'act-tend-gown':[1.372,0.4],'act-harvest-gown':[1.455,0.53],'act-wave-gown':[1.741,0.522],'act-press-gown':[1.533,0.519],'act-phone-gown':[1.395,0.518],'act-shop-gown':[1.427,0.505],'act-scale-gown':[1.592,0.504]}; /* the gown entries: a skirt wider than the base canvas keeps her height on a wider canvas (scratchpad gown/fit_all.py, 21 Oct) */
+  function spriteKey() { var m = /avatar-([a-z0-9-]+?)(?:-blink)?\.webp/.exec(avatarImg.getAttribute('src') || ''); return m ? m[1] : null; }
+  function fitFor(k) { return k ? AVATAR_FIT[k] || AVATAR_FIT[k.replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung|gown)$/, '')] || null : null; }
   function fitAvatar() {
     /* an outfit's copy of a pose is fitted on the pose's own canvas (tools/art: fit.py), so it shares the pose's numbers */
-    var m = /avatar-([a-z0-9-]+?)(?:-blink)?\.webp/.exec(avatarImg.src || ''), f = m && (AVATAR_FIT[m[1]] || AVATAR_FIT[m[1].replace(/-(?:base|cozy|kebaya-blue|kebaya-green|kebaya-red|pajamas|party|sundress|yoga|tudung|gown)$/, '')]); if (!f) f = [1, 0.5];
+    var f = fitFor(spriteKey()) || [1, 0.5];
     avatarImg.style.width = (f[0] * 100).toFixed(2) + '%'; avatarImg.style.maxWidth = 'none';
     avatarImg.style.marginLeft = ((0.5 - f[1] * f[0]) * 100).toFixed(2) + '%';
     avatarImg.style.transformOrigin = (f[1] * 100).toFixed(1) + '% 100%';
@@ -2696,13 +2754,13 @@
   var lastPose = null; /* the pose she holds, so a new outfit can redraw it (redress) */
   function setPose(pose) {
     finishTwirl(); lastPose = pose;
-    var want = poseSrc(pose, S.profile().outfit || 'base'), plain = poseSrc(pose, 'base'), img = new Image(), gen = ++imgGen;
+    var want = poseSrc(pose, wearing()), plain = poseSrc(pose, 'base'), img = new Image(), gen = ++imgGen;
     img.onload = function () { if (gen === imgGen) avatarImg.src = img.src; };
     /* a missing outfit copy never borrows the default clothes: she keeps standing in her own (Jamie's rule; Codex review) */
-    img.onerror = function () { if (gen !== imgGen) return; if (want === plain) { if (img.src.indexOf(plain) < 0) img.src = plain; } else setOutfit(S.profile().outfit || 'base', true); };
+    img.onerror = function () { if (gen !== imgGen) return; if (want === plain) { if (img.src.indexOf(plain) < 0) img.src = plain; } else showOutfit(wearing(), true); }; /* a pose never saves an outfit (Codex design review, 21 Oct) */
     img.src = want;
   }
-  function restorePose() { lastPose = null; setOutfit(S.profile().outfit || 'base', true); }
+  function restorePose() { lastPose = null; showOutfit(wearing(), true); } /* the picture only, never a save (try-on, Codex design review) */
   function openEveryday(selId) {
     var ex = MF.explored();
     openSheet('everyday', 'Everyday mindfulness', 'Guides for things you are really doing', 'self_improvement',
@@ -3216,6 +3274,9 @@
   /* a walk ends a mindful moment at once: she never slides in a pose (Codex branch review, 20 Oct) */
   hooks.on.beforeWalk = [function () { finishTwirl(); endMoment(); }];
   hooks.on.walk = [function () { finishTwirl(); endMoment(); }]; /* floor taps and keys start walks here: a turn finishes at once */
+  /* a session or practice claims her (and could save in her clothes), or she leaves the room she was trying on in */
+  hooks.on.activity = (hooks.on.activity || []).concat([function () { endTryOn(true); }]);
+  hooks.on.layout = (hooks.on.layout || []).concat([function (L2) { if (trying && (!L2 || L2.id !== trying.at)) endTryOn(true); }]);
   function emit(name, a, b) { (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = {
     LAYOUTS: LAYOUTS, ART: ART, OUTFITS: OUTFITS, hotspotHandlers: hooks.hotspotHandlers,
@@ -3230,8 +3291,10 @@
     sheetOpen: function () { return !!current; }, sheetId: function () { return current; }, cancelIdle: function () { clearTimeout(idleTimer); },
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
-    openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, setOutfit: setOutfit, outfitLocked: outfitLocked, updateGreeting: updateGreeting, openPlus: openPlus, openExercise: openExercise, openMoveGuide: openMoveGuide,
-    moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; }, activityNow: activityNow, busyLine: busyLine, refuseBusy: refuseBusy,
+    openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, setOutfit: setOutfit, outfitLocked: outfitLocked,
+    OUTFITS: OUTFITS, wearing: wearing, tryOn: tryOn, tryAcc: tryAcc, endTryOn: endTryOn, keepTryOn: keepTryOn, tryingOn: tryingOn, savedAcc: savedAcc, spriteKey: spriteKey, fitFor: fitFor, reduced: function () { return reduced; }, updateGreeting: updateGreeting, openPlus: openPlus, openExercise: openExercise, openMoveGuide: openMoveGuide,
+    moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
+    activityNow: activityNow, refuseBusy: refuseBusy, busyLine: busyLine,
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     blinking: function (on) { blinkOn = !!on; if (blinkOn) scheduleBlink(); else clearTimeout(blinkT); return blinkOn; },
     setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on && title) { clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }

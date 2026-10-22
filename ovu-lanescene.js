@@ -130,11 +130,12 @@
   R.hotspotHandlers.boutiquemat = out('lane-boutique');
   R.hotspotHandlers.boutiquerail = counter('lane-boutique', 'boutique');
   R.hotspotHandlers.boutiquecounter = counter('lane-boutique', 'boutique');
-  /* the fitting room is her wardrobe (every outfit she has is free to wear), as the boutique sheet's own button opens */
+  /* the fitting room: she tries on anything (ovu-boutique.js), and keeps what she has, free; without it, her wardrobe */
   R.hotspotHandlers.boutiquefit = function (id, L) {
     if (!at(L, 'lane-boutique')) return false; if (busy()) return true;
-    if (asleep() || !LN.openNow('boutique') || !R.openWardrobe) { LN.openPlace('boutique'); return true; }
-    R.chime('tap'); R.openWardrobe(); return true;
+    var BT = root.OvuBoutique;
+    if (asleep() || !LN.openNow('boutique') || !((BT && BT.openFitting) || R.openWardrobe)) { LN.openPlace('boutique'); return true; }
+    R.chime('tap'); if (BT && BT.openFitting) BT.openFitting(); else R.openWardrobe(); return true;
   };
   R.hotspotHandlers.gymdoor = out('lane-gym');
   GYMSPOTS.forEach(function (g) {
