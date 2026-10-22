@@ -1855,10 +1855,24 @@ async def main():
             try: await page.wait_for_function("()=>OvuSoak.soaking()", timeout=12000)
             except Exception: pass
             await page.wait_for_timeout(300)
+            try: await page.wait_for_function("()=>getComputedStyle(document.querySelector('#avatar')).opacity === '0'", timeout=3000)
+            except Exception: pass
             sk = await page.evaluate("()=>{var e=document.querySelector('#ownedProps .soaker'), a=document.querySelector('#avatar'); return {on: OvuSoak.soaking(), img: e ? e.querySelector('img').getAttribute('src').split('/').pop() : null, loaded: !!(e && e.querySelector('img').naturalWidth>0), hidden: getComputedStyle(a).opacity === '0', stop: !!document.querySelector('#soakStop'), d: OvuStore.list().length, st: JSON.stringify(OvuStore.state().stamina)}}")
-            await page.evaluate("()=>{var b=document.querySelector('#soakStop'); if(b) b.click()}"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>{var b=document.querySelector('#soakStop'); if(b) b.click()}")
+            try: await page.wait_for_function("()=>getComputedStyle(document.querySelector('#avatar')).opacity === '1'", timeout=3000)
+            except Exception: pass
             sk2 = await page.evaluate("()=>({on: OvuSoak.soaking(), shown: getComputedStyle(document.querySelector('#avatar')).opacity !== '0', stop: !!document.querySelector('#soakStop'), d: OvuStore.list().length, st: JSON.stringify(OvuStore.state().stamina)})")
             check("the warm water: she soaks with only her head and shoulders above the water and a towel on her head; her standing picture is hidden; Get out brings her back; nothing is counted", sk["on"] and sk["img"] in ("soak-base.webp", "soak-tudung.webp") and sk["loaded"] and sk["hidden"] and sk["stop"] and not sk2["on"] and sk2["shown"] and not sk2["stop"] and sk2["d"] == sk["d"] and sk2["st"] == sk["st"], [sk, sk2])
+            # Mind while soaking (Codex, 22 Oct): opening the mat ends the soak first, so she is never in the water and on the mat at once
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('springsoak'))")
+            try: await page.wait_for_function("()=>OvuSoak.soaking()", timeout=12000)
+            except Exception: pass
+            sm0 = await page.evaluate("()=>OvuSoak.soaking()")
+            await page.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await page.wait_for_timeout(700)
+            sm = await page.evaluate("()=>({soak: OvuSoak.soaking(), med: OvuRoom.meditating(), stop: !!document.querySelector('#soakStop'), soaker: !!document.querySelector('#ownedProps .soaker'), cls: document.querySelector('#scene').classList.contains('soaking')})")
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(400)
+            sm2 = await page.evaluate("()=>({med: OvuRoom.meditating()})")
+            check("opening Mind while she soaks ends the soak first: the mat opens, the water picture and Get out are gone, and closing Mind lets her up", sm0 and not sm["soak"] and sm["med"] and not sm["stop"] and not sm["soaker"] and not sm["cls"] and not sm2["med"], [sm0, sm, sm2])
             # the hidden spring (21 Oct): sitting by the water is the tone; one Stop for both; no diary, no hearts, no energy
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")
             try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
@@ -2009,6 +2023,12 @@ async def main():
             # the grocer's keeper (22 Oct): at her height by the counter; a tap says hello in a bubble and to screen readers
             kp = await page.evaluate("()=>{var k=document.querySelector('#ownedProps .keeper'); if(!k) return null; k.click(); var r=k.getBoundingClientRect(), a=document.querySelector('#avatar').getBoundingClientRect(); return {id: k.dataset.id, h: r.height, ah: a.height, loaded: k.querySelector('img').naturalWidth>0, saying: k.classList.contains('saying'), line: k.querySelector('.keepsay').textContent, live: (document.getElementById('keeperLive')||{}).textContent||'', label: k.getAttribute('aria-label')}}")
             check("Hay & Harvest has its keeper by the counter at her height; a tap says hello in a bubble and for screen readers", kp and kp["id"] == "keeper-grocer" and kp["loaded"] and abs(kp["h"] - kp["ah"]) < 1.5 and kp["saying"] and kp["line"].startswith("Good ") and kp["line"] in kp["live"] and "Tap to say hello" in kp["label"], kp)
+            # depth (Codex, 22 Oct): at the door she is lower on the floor than Auntie Lin and draws in front of her; at the rack she is higher and draws behind
+            DZ = "()=>{var k=document.querySelector('#ownedProps .keeper'), a=document.querySelector('#avatar'); return {kz: +k.style.zIndex, az: +a.style.zIndex, ky: parseFloat(k.style.top), ay: OvuRoom.pos().y}}"
+            z1 = await page.evaluate(DZ)
+            await lane_sheet('grocerrack'); await page.wait_for_timeout(300); z2 = await page.evaluate(DZ)
+            await page.evaluate("()=>OvuRoom.hideSheet()"); await page.wait_for_timeout(300)
+            check("Auntie Lin stands in the depth order by her feet: at the door she draws in front of her, at the rack behind her", z1["kz"] >= 2 and z1["ay"] > z1["ky"] and z1["az"] > z1["kz"] and z2["ay"] < z2["ky"] and z2["az"] < z2["kz"], [z1, z2])
             gc = await lane_sheet('grocercounter')
             await page.click('#sheet[aria-hidden="false"] [data-lane=back]'); await page.wait_for_timeout(400)
             gb = await page.evaluate("()=>({open: OvuRoom.sheetOpen(), layout: document.querySelector('#scene').dataset.layout})")

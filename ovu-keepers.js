@@ -9,17 +9,17 @@
   var KEEPERS = {
     'lane-grocer': { id: 'grocer', name: 'Auntie Lin', role: 'the grocer', img: 'keeper-grocer.webp', x: 36, y: 60.5, flip: false, block: { x0: 32, x1: 40, y0: 57.5, y1: 62 },
       lines: ['The kangkong came in fresh this morning.', 'Rice, tofu, garlic, coconut: whatever your kitchen needs.', 'Take your time. Shopping slowly is a nice way to spend a minute.', 'Seeds swap at the rack; a good trade is a happy trade.'] },
-    'lane-boutique': { id: 'boutique', name: 'Mira', role: 'the boutique owner', img: 'keeper-boutique.webp', x: 19.5, y: 69.5, flip: false, block: null, /* in the fitting alcove before its curtain, a fitting assistant (by the counter she stood on the stairs) */
+    'lane-boutique': { id: 'boutique', name: 'Mira', role: 'the boutique owner', img: 'keeper-boutique.webp', x: 19.5, y: 69.5, flip: false, block: null, alcove: true, /* in the fitting alcove before its curtain, a fitting assistant (by the counter she stood on the stairs) */
       lines: ['Try anything on. The mirror here is a kind one.', 'Every outfit on the rails comes in your size.', 'New arrivals come in as soon as they are sewn.', 'That colour suits you.'] },
-    'lane-gym': { id: 'gym', name: 'Coach Ren', role: 'the gym coach', img: 'keeper-gym.webp', x: 57.5, y: 60, flip: true, block: { x0: 55.5, x1: 59.5, y0: 58.5, y1: 61.5 }, /* on the floor before the stairs, not on the bottom step */
+    'lane-gym': { id: 'gym', name: 'Coach Ren', role: 'the gym coach', img: 'keeper-gym.webp', x: 40.5, y: 53.2, flip: false, block: { x0: 38.5, x1: 42.5, y0: 51.8, y1: 54.6 }, /* on the floor in front of the rolled yoga mats, between the little plant and the rolls (the old spot had his feet on the banister's base, Codex 22 Oct) */
       lines: ['Move at your own pace. Nothing here counts unless you log it.', 'Water break whenever you like.', 'Rest days are part of training too.', 'The mats are free. So is the stretching.'] },
     'lane': { id: 'fish', name: 'Uncle Hamid', role: 'the tackle seller', img: 'keeper-fish.webp', wk: 1.22, x: 60, y: 77, flip: true, block: { x0: 57.5, x1: 62.5, y0: 75.5, y1: 78.5 }, /* on the grey paving before his shelf, facing the street */
       lines: ['Catch and release only. The fish say thank you.', 'The grouper likes the rocks by the jetty.', 'A slow cast is a good cast.', 'Floats are for looks; the fish do not mind the colour.'] },
-    'shop-pet': { id: 'pet', name: 'Hana', role: 'the pet keeper', img: 'keeper-pet.webp', x: 79, y: 68.5, flip: true, block: { x0: 76.5, x1: 81.5, y0: 66.5, y1: 70 }, /* on the floor under the window, right of the stairs: behind the counter the display bed's pets would hide her */
+    'shop-pet': { id: 'pet', name: 'Hana', role: 'the pet keeper', img: 'keeper-pet.webp', x: 56, y: 71.3, flip: true, block: { x0: 54, x1: 58, y0: 69.8, y1: 72.8 }, /* on the floor between the round rug and the foot of the stairs (under the window she stood on the trim, beside a spare pet spot; behind the counter the display bed's pets would hide her) */
       lines: ['This little one just woke from a nap.', 'Every pet here comes with a cuddle.', 'Treats are in the jars by the till.', 'They all have names already, but you can change them.'] },
-    'shop-furniture': { id: 'furniture', name: 'Ben', role: 'the furniture maker', img: 'keeper-furniture.webp', x: 30.5, y: 65.5, flip: false, block: null,
+    'shop-furniture': { id: 'furniture', name: 'Ben', role: 'the furniture maker', img: 'keeper-furniture.webp', x: 44, y: 70.5, flip: true, block: { x0: 42, x1: 46, y0: 69, y1: 72 }, /* on the rug's front-left, clear of the display platform he stood on and of the purple bench's stock */
       lines: ['A lamp can change a whole room.', 'Pieces that share a spot swap places. Easy.', 'Sit on anything you like. It is a showroom.', 'I sanded this shelf myself this morning.'] },
-    'shop-homes': { id: 'homes', name: 'Ms Clara', role: 'the homes agent', img: 'keeper-homes.webp', x: 27, y: 69.5, flip: false, block: { x0: 23.5, x1: 30.5, y0: 67, y1: 71.5 },
+    'shop-homes': { id: 'homes', name: 'Ms Clara', role: 'the homes agent', img: 'keeper-homes.webp', x: 46, y: 73, flip: false, block: { x0: 44, x1: 48, y0: 71.5, y1: 74.5 }, /* in front of the rug by the way in, off the sofa and clear of the pedestals' models */
       lines: ['Visit any house first. No rush at all.', 'The bathhouse is lovely at night.', 'Move in when your hearts are ready.', 'Every home has a window for the moon.'] }
   };
   function hello(name, hour) { return (hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening') + '! I am ' + name + '.'; }
@@ -56,6 +56,7 @@
     el.innerHTML = '<img src="' + ART + k.img + '" alt="" draggable="false"><span class="keepsay" aria-hidden="true"></span>';
     el.addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); say(el, k); });
     wrap.appendChild(el);
+    if (root.OvuWalk && root.OvuWalk.sortDepth) root.OvuWalk.sortDepth(); /* ranked by its feet with her, the pets and the stock (Codex, 22 Oct) */
     if (!doc.getElementById('keeperLive')) { var lv = doc.createElement('div'); lv.id = 'keeperLive'; lv.className = 'sr-only'; lv.setAttribute('aria-live', 'polite'); doc.body.appendChild(lv); }
   }
   K.render = render;
