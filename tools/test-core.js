@@ -516,6 +516,42 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('moment() plays her line before any early return, and stays quiet while her guided practice speaks', /if \(!opt\.tries\) erin\(/.test(rj) && /function erin\(id\) \{\n    if \(!id \|\| !soundOn\(\) \|\| asleep\(\) \|\| session \|\| practice \|\| meditating/.test(rj));
 })();
 
+(function scoresAndVillagers() {
+  console.log('2k3d. cycle and circadian scores (Codex sol formulas, 22 Oct) and the villagers');
+  var w = { console: console }; w.window = w; vm.createContext(w);
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-scores.js'), 'utf8'), w, { filename: 'ovu-scores.js' });
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-villagers.js'), 'utf8'), w, { filename: 'ovu-villagers.js' });
+  var SC = w.OvuScores, V = w.OvuVillagers;
+  function ep(start, len, pains) { var days = []; for (var k = 0; k < len; k++) { var d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + k); days.push({ date: d.toISOString().slice(0, 10), pain: pains === undefined ? undefined : pains }); } return { start: start, end: days[days.length - 1].date, days: days }; }
+  var eps = [ep('2026-06-01', 5, 2), ep('2026-06-29', 5, 2), ep('2026-07-27', 5, 2), ep('2026-08-24', 5, 2), ep('2026-09-21', 5, 2)];
+  var c = SC.cycleScore(eps, '2026-10-22', '26-41');
+  check('cycle: four 28-day cycles, 5-day periods, pain 2 of 10 give regularity, frequency and length 100 and comfort 80, so 94', c.parts.regularity === 100 && c.parts.frequency === 100 && c.parts.duration === 100 && c.parts.comfort === 80 && c.score === 94 && c.version === 'cycle-v1', JSON.stringify(c));
+  var noPain = SC.cycleScore(eps.map(function (e) { return ep(e.start, 5); }), '2026-10-22', '26-41');
+  check('cycle: no pain answers leave comfort and the total empty (never 0), and say what is needed', noPain.score === null && noPain.parts.comfort === null && noPain.need.join().indexOf('pain answer') > -1);
+  var noAge = SC.cycleScore(eps, '2026-10-22', null);
+  check('cycle: without an age band no regularity limit is invented, so no total', noAge.parts.regularity === null && noAge.score === null && noAge.need.join().indexOf('age range') > -1);
+  check('cycle: two cycles are not enough', SC.cycleScore(eps.slice(0, 3), '2026-10-22', '26-41').score === null);
+  var irregular = SC.cycleScore([ep('2026-05-01', 5, 0), ep('2026-05-23', 5, 0), ep('2026-07-01', 5, 0), ep('2026-07-25', 5, 0), ep('2026-09-02', 5, 0)], '2026-10-22', '26-41');
+  check('cycle: cycles of 22, 39, 24 and 39 days (a 17-day spread, one of four within 24 to 38) score regularity 23 and frequency 25', irregular.parts.regularity === 23 && irregular.parts.frequency === 25, JSON.stringify(irregular.parts));
+  var nights = []; for (var k = 0; k < 14; k++) { var d = new Date('2026-10-09T12:00:00Z'); d.setUTCDate(d.getUTCDate() + k); nights.push({ date: d.toISOString().slice(0, 10), bed: '23:00', wake: '07:00' }); }
+  var sl = SC.sleepScore(nights, '2026-10-22');
+  check('circadian: fourteen nights 23:00 to 07:00 give steady timing 100 and enough sleep 100', sl.score === 100 && sl.parts.timing === 100 && sl.parts.duration === 100 && sl.midSpread === 0, JSON.stringify(sl.parts));
+  var short = SC.sleepScore(nights.map(function (n) { return { date: n.date, bed: '02:00', wake: '06:00' }; }), '2026-10-22');
+  check('circadian: steady four-hour nights score 70, so length always shows beside the total', short.score === 70 && short.parts.duration === 0);
+  check('circadian: seven nights are not enough (10, with 4 in each week)', SC.sleepScore(nights.slice(7), '2026-10-22').score === null);
+  check('circadian: the circular spread treats 23:30 and 00:30 as an hour apart, not a day', Math.round(SC.circular([1410, 30]).sd) > 20 && Math.round(SC.circular([1410, 30]).sd) < 40);
+  var t1 = V.talk({}, 'shen', '2026-10-22'), t2 = V.talk(t1.state, 'shen', '2026-10-22');
+  check('villagers: talking adds 3 points once a day; a second talk adds nothing', t1.gained === 3 && t2.gained === 0 && V.stateOf({ villagers: t2.state }, 'shen').points === 3);
+  var g1 = V.gift(t2.state, 'shen', '2026-10-22', 'pandanrice', 'dish'), g2 = V.gift(g1.state, 'shen', '2026-10-22', 'egg', 'pantry');
+  check('villagers: one gift a day; a loved dish is worth 8', g1.ok && g1.loved && g1.gained === 8 && !g2.ok);
+  var st = {}; for (var day = 1; day <= 12; day++) { var dd = '2026-11-' + String(day).padStart(2, '0'); st = V.talk(st, 'lu', dd).state; st = V.gift(st, 'lu', dd, 'tomatoegg', 'dish').state; }
+  var lu = V.stateOf({ villagers: st }, 'lu');
+  check('villagers: hearts reach 10 at 100 points and the first heart scene waits to be seen', V.hearts(lu.points) === 10 && V.nextEvent(lu) === 2 && !V.canPropose(lu, true));
+  lu.seen = [2, 4, 6, 8, 10];
+  check('villagers: a proposal needs every scene, a red heart and a home of her own', V.canPropose(lu, true) && !V.canPropose(lu, false) && V.colour(10)[0] === 'Red' && V.colour(0)[0] === 'Black');
+  check('villagers: original characters, no real names; game state only, no diary writes', V.VILLAGERS.map(function (v) { return v.name; }).join() === 'Shen Yuan,Lu Chen' && !/S\.add\(|OvuStore\.add\(/.test(fs.readFileSync(path.join(root, 'ovu-villagers.js'), 'utf8')));
+})();
+
 (function barnAndSpring() {
   console.log('2k3. the barn, the hens, Clover and the hidden spring (Jamie, 20-21 Oct): no needs, no guilt, nothing that refills energy');
   var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
