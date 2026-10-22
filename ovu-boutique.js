@@ -36,7 +36,9 @@
   }
   /* what a card in the fitting room says about an outfit */
   function tag(id, o) { return id === o.wearing ? (o.trying ? 'Trying on' : 'Wearing now') : !o.mine ? 'Part of Rhythme Plus' : id === o.saved ? 'Your own' : 'Yours to wear'; }
-  var B = { ACCESSORIES: ACCESSORIES, usable: usable, list: list, byId: byId, spotFor: spotFor, boxFor: boxFor, tag: tag };
+  /* a rail tile's words: what she wears, hers (free), Rhythme Plus (no price here), or a new arrival's hearts */
+  function railTag(it, wear) { return it.id === wear ? 'Wearing now' : it.kind === 'own' ? 'Yours, free' : it.kind === 'plus' ? 'Rhythme Plus' : (it.cost + ' hearts' + (it.wearable ? '' : ' · arriving soon')); }
+  var B = { ACCESSORIES: ACCESSORIES, usable: usable, list: list, byId: byId, spotFor: spotFor, boxFor: boxFor, tag: tag, railTag: railTag };
   root.OvuBoutique = B;
 
   /* ---------- the fitting room, the bar and the accessory layer ---------- */
@@ -80,6 +82,57 @@
     var own = doc.getElementById('tryOwn'); if (own) own.addEventListener('click', function () { pickTok++; R.chime('tap'); R.closeSheet(); setTimeout(function () { R.endTryOn(false); }, 260); });
   }
   B.openFitting = openFitting;
+
+  /* ---------- the rails (Jamie, 22 Oct: "showcase whole range of clothes on the rack and we can click in to view the
+   * outfits... some required cash purchase and some with heart point exchange... see the avatar dresses like on the screen") ----
+   * Every outfit hangs here as its own picture (assets/room/boutique/rail-<id>.webp). Tapping one shows it on its hanger
+   * beside her wearing it; Try it on dresses her in the room. What she has is hers and free; a Plus drop is part of Rhythme
+   * Plus (the paid side); a new arrival is bought with hearts once all its pictures are drawn, and until then it says so. */
+  var RAILPIC = 'assets/room/boutique/rail-';
+  function railItems() {
+    var mine = (R.OUTFITS || []).map(function (o) { return { id: o.id, name: o.name, note: o.note, kind: R.outfitLocked(o.id) ? 'plus' : (o.plus ? 'plus' : 'own'), wearable: true }; });
+    var soon = ((LN && LN.RAIL) || []).map(function (o) { return { id: o.id, name: o.name, note: o.note, kind: 'hearts', cost: o.cost, wearable: !!o.ready }; });
+    return mine.concat(soon);
+  }
+  B.railItems = railItems;
+  function openRail() {
+    if (!here() || (R.asleep && R.asleep()) || !open_()) { if (LN && LN.openPlace) LN.openPlace('boutique'); return; }
+    var wear = R.wearing(), items = railItems();
+    var tile = function (it) {
+      return '<button type="button" class="railtile ' + it.kind + (it.id === wear ? ' on' : '') + '" data-item="' + esc(it.id) + '" aria-label="' + esc(it.name) + ', ' + esc(railTag(it, wear)) + '">' +
+        '<img src="' + RAILPIC + esc(it.id) + '.webp" alt="" loading="lazy"><b>' + esc(it.name) + '</b><small>' + (it.kind === 'hearts' ? '<span class="ms fill">favorite</span>' : it.kind === 'plus' ? '<span class="ms">auto_awesome</span>' : '') + esc(railTag(it, wear)) + '</small></button>';
+    };
+    var own = items.filter(function (it) { return it.kind !== 'hearts'; }), fresh = items.filter(function (it) { return it.kind === 'hearts'; });
+    R.openSheet('rail', 'The rails', 'Petal & Thread · every outfit', 'apparel',
+      '<p class="help" style="margin-top:0">Tap anything to see it on its hanger and on you. Trying on is free and changes nothing.</p>' +
+      '<div class="railgrid" id="railGrid">' + own.map(tile).join('') + '</div>' +
+      (fresh.length ? '<p class="shelf"><span class="ms">new_releases</span>New arrivals</p><div class="railgrid" id="railNew">' + fresh.map(tile).join('') + '</div>' : ''));
+    ['railGrid', 'railNew'].forEach(function (gid) { var g = doc.getElementById(gid); if (g) g.addEventListener('click', function (e) { var b = e.target.closest('[data-item]'); if (!b) return; R.chime('tap'); openItem(b.dataset.item); }); });
+  }
+  B.openRail = openRail;
+  function openItem(id) {
+    if (!here() || (R.asleep && R.asleep()) || !open_()) { if (LN && LN.openPlace) LN.openPlace('boutique'); return; }
+    var it = railItems().filter(function (x) { return x.id === id; })[0]; if (!it) { openRail(); return; }
+    /* on her: her own sprite when the outfit is wearable; a new arrival shows its preview picture (drawn on her, standing)
+       until the rest of her pictures in it exist */
+    var wear = R.wearing(), onHer = it.wearable ? '<img class="railher" src="' + ART + 'avatar-' + esc(it.id) + '.webp" alt="You wearing ' + esc(it.name) + '">' :
+      '<img class="railher" src="' + RAILPIC.replace('rail-', 'preview-') + esc(it.id) + '.webp" alt="You wearing ' + esc(it.name) + '" data-preview="1">';
+    var act = it.id === wear ? '<p class="help"><span class="ms">check</span> You are wearing this.</p>' :
+      it.wearable ? '<div class="row"><button type="button" class="btn primary" id="itemTry"><span class="ms">checkroom</span>Try it on</button></div>' +
+        (it.kind === 'plus' ? '<p class="help">Part of Rhythme Plus. Trying it on is free.</p>' : '<p class="help">Yours to wear, free, always.</p>') :
+      '<div class="row"><button type="button" class="btn soft" disabled><span class="ms fill">favorite</span>' + it.cost + ' hearts · arriving soon</button></div><p class="help">A first look at her in it. It can be bought with hearts once every picture of her in it is drawn: walking, sitting, sleeping and the rest.</p>';
+    R.openSheet('railitem', it.name, 'Petal & Thread · ' + railTag(it, wear), 'apparel',
+      '<div class="railview"><figure><img src="' + RAILPIC + esc(it.id) + '.webp" alt="' + esc(it.name) + ' on its hanger"><figcaption>On the hanger</figcaption></figure><figure>' + onHer + '<figcaption>On you</figcaption></figure></div>' +
+      '<p class="railnote">' + esc(it.note || '') + '</p>' + act +
+      '<div class="row"><button type="button" class="btn ghost" id="itemBack"><span class="ms">arrow_back</span>Back to the rails</button></div>');
+    var pv = doc.querySelector('.railview img[data-preview]'); if (pv) pv.addEventListener('error', function () { var d = doc.createElement('div'); d.className = 'railher soon'; d.innerHTML = '<span class="ms">brush</span><small>Her pictures in this are still being drawn</small>'; if (pv.parentNode) pv.parentNode.replaceChild(d, pv); });
+    var tb = doc.getElementById('itemTry'); if (tb) tb.addEventListener('click', function () {
+      var tok = ++pickTok; R.chime('tap'); R.closeSheet();
+      setTimeout(function () { if (tok !== pickTok || !here() || (R.busy && R.busy()) || (R.asleep && R.asleep())) return; R.tryOn(it.id); }, 260); /* she is seen turning into it */
+    });
+    var bk = doc.getElementById('itemBack'); if (bk) bk.addEventListener('click', function () { R.chime('tap'); openRail(); });
+  }
+  B.openItem = openItem;
 
   /* the bar over the room while she tries something on: what it is, and Keep it or Part of Rhythme Plus, Try another, and
    * Back to my own clothes */
