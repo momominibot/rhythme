@@ -55,6 +55,19 @@ def fresh(mutate=False, rooms=False):
     return c
 
 
+def lift_review_only(c):
+    """The migration holds the mode at 'review' (Codex diff review round 4, A7). Some races want a shown message at once,
+    so this throwaway copy shows that the switch refuses 'live', then lifts the check (staff Show makes the same rows)."""
+    try:
+        c.execute("update public.plaza_flags set value = 'live' where key = 'mode'")
+        refused = False
+    except psycopg.errors.CheckViolation:
+        refused = True
+    mode = c.execute("select value from public.plaza_flags where key = 'mode'").fetchone()[0]
+    c.execute('alter table public.plaza_flags drop constraint plaza_flags_review_only')
+    return refused and mode == 'review'
+
+
 def person(c, name, server=None, friends_with=None):
     u = uuid.uuid4()
     c.execute("insert into auth.users (id, email, aud, role) values (%s, %s, 'authenticated', 'authenticated')", [u, 'race-%s@example.invalid' % u])
@@ -359,6 +372,7 @@ def commit_order(c):
 def main_rooms(mutate, dry):
     print('Plaza rooms and room chat races on a local copy (two real sessions each)')
     c = fresh(rooms=True)
+    check('the migration refuses live mode: every message waits for a person', lift_review_only(c))
     for name, (ok, detail, waited) in room_scenarios(c).items():
         check('race: ' + name.replace('_', ' '), ok, detail)
         check('race: ' + name.replace('_', ' ') + ', the second session waited on a lock', waited, detail)
@@ -368,6 +382,7 @@ def main_rooms(mutate, dry):
     if mutate:
         print('the same races with social.lock() a no-op and the membership lock taken out of staff.plaza_sweep()')
         c = fresh(mutate=True, rooms=True)
+        lift_review_only(c)
         seen = room_scenarios(c)
         wrong = [k for k, (ok, _, _w) in seen.items() if not ok]
         check('without the locks, the races that write after a check go wrong (%d of %d: %s)' % (len(wrong), len(seen), ', '.join(wrong)),

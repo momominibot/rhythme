@@ -144,6 +144,54 @@
   {
    "text": "ok.thanks for that",
    "problem": null
+  },
+  {
+   "text": "nhsinform.scot has a guide",
+   "problem": "link"
+  },
+  {
+   "text": "Email support@findahelpline.com",
+   "problem": "contact"
+  },
+  {
+   "text": "try findahelpline.company",
+   "problem": "link"
+  },
+  {
+   "text": "see findahelpline.com.",
+   "problem": null
+  },
+  {
+   "text": "https://findahelpline.com/countries lists them",
+   "problem": null
+  },
+  {
+   "text": "Call me on 555 1234",
+   "problem": "contact"
+  },
+  {
+   "text": "my number is 91 234",
+   "problem": "contact"
+  },
+  {
+   "text": "she did not text me back",
+   "problem": null
+  },
+  {
+   "text": "my phone is broken again",
+   "problem": null
+  },
+  {
+   "text": "Day 23.10.2026 was rough",
+   "problem": null
+  },
+  {
+   "text": "my no 1 tip is rest",
+   "problem": null
+  },
+  {
+   "text": "Dr.Tan said 3.5kg is fine",
+   "problem": null
   }
  ],
  "hold": [
@@ -331,6 +379,46 @@
    "text": "Stop. Breathe.",
    "noNews": false,
    "hold": null
+  },
+  {
+   "text": "Take a break from citalopram",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "Don't take citalopram",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "Never stop your meds",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "Don’t worry, it gets better",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "Don't take it personally",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "You should take care of yourself",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "Take care of yourself today x",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "my friend said you could try ginger",
+   "noNews": false,
+   "hold": "advice"
   }
  ]
 }

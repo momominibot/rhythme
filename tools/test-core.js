@@ -5052,6 +5052,11 @@ var summarised = false;
     && /id="chGroups"/.test(today) && /id="chRooms"/.test(today) && /if \(!el\.querySelector\('\.chmain'\)\)/.test(today) && /\.rmgroups\{/.test(css) && /\.rmmsgs\{/.test(css) && /\.rmhelp\{/.test(css));
   check('the server keeps reading open only to a shown card in the group now, writing behind Room chat, a review mode by default, and an hourly clean-up', /when exists \(select 1 from public\.social_profiles s where s\.user_id = p_uid and s\.hidden\) then 'hidden'/.test(mig)
     && /if not public\.consent_allows\(uid, 'plaza_chat'\) then return jsonb_build_object\('ok', false, 'why', 'notice'\)/.test(mig) && /\('mode', 'review'\)/.test(mig) && /cron\.schedule\('rhythme-plaza-chat-sweep', '7 \* \* \* \*'/.test(mig));
+  /* no live mode in this migration: word rules cannot catch every way of telling someone to stop a medicine, so every
+     message waits for a person (Codex diff review round 4, A7); a withdrawal reaches the rooms at once (B2) */
+  var consentSrc = fs.readFileSync(path.join(root, 'ovu-consent.js'), 'utf8');
+  check('the migration holds the rooms in review mode with a check (live needs its own migration), and a consent withdrawal reaches the rooms at once', /constraint plaza_flags_review_only check \(key <> 'mode' or value = 'review'\)/.test(mig)
+    && /root\.OvuRoom\.emit\('consent', purposeId, ev\.action\)/.test(consentSrc) && /R\.on\('consent'/.test(src));
 })();
 
 (function todayTabs() {

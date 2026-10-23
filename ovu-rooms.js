@@ -6,7 +6,7 @@
  * messages read-only; joining is one tap; with Room chat on she can write. Every room carries the help card and a short
  * room note; doctor rooms carry the visit card. The server decides everything (supabase/migrations/20261022120000_plaza_
  * rooms_chat.sql): who may read, write, how long messages live, which ones wait for a person to read them first, and in
- * which mode the rooms run ('review': every message is read first; 'live': most show at once). The phone only asks and
+ * which mode the rooms run ('review': every message is read first; a live mode needs its own migration). The phone only asks and
  * shows. Until that migration is applied the server answers that the calls do not exist, and nothing of this appears.
  * Pure rules first (tested in node by tools/test-core.js), then the room wiring. */
 (function (root) {
@@ -78,15 +78,25 @@
     telegram: 'contact', whatsapp: 'contact', kik: 'contact', wechat: 'contact', discord: 'contact', snapchat: 'contact' };
   function squash(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').replace(/^ | $/g, ''); }
   function straight(s) { return s.toLowerCase().replace(/[’‘]/g, "'"); }
+  /* any hostname, whatever its ending, as typed (a lower-case ending after a dot, three or more letters before it), and
+     the one help address the help card names, exactly: its own host, nothing before or after it (Codex round 4, A10, B3) */
+  var HOST = /(^|[^A-Za-z0-9._@-])[A-Za-z0-9][A-Za-z0-9-]{2,}(\.[A-Za-z0-9-]+)*\.[a-z]{2,24}(?![A-Za-z0-9-])/,
+    HELPLINE = /(^|[^a-z0-9.@_-])(https?:\/\/)?(www\.)?findahelpline\.com(\/[a-z0-9\/_-]*)?(?=$|[^a-z0-9@_-])/gi,
+    PHONE7 = /(^|[^0-9])[0-9]{3}[ .-][0-9]{4}($|[^0-9])/,
+    INTENT = /\b((call|text|ring|phone|whatsapp|sms|msg|message|reach|contact|email|e-mail|telegram|wechat|signal|line|add|find) me|my (phone number|number|no|phone|hp|handphone|mobile|cell|contact|whatsapp|telegram|wechat|line|insta|ig|email|e-mail|handle|id))\b/;
+  function isDate(run) { return /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(run) || /^[0-9]{1,2}[-.][0-9]{1,2}[-.][0-9]{2,4}$/.test(run) || /^[0-9]{4}[-.][0-9]{1,2}[-.][0-9]{1,2}$/.test(run); }
+  function digitRuns(low) { return (low.match(/\+?[0-9][0-9 ().-]*[0-9]/g) || []).filter(function (r) { return !isDate(r); }).map(function (r) { return r.replace(/[^0-9]/g, '').length; }); }
   function textProblem(s) {
     var t = squash(s); if (!t) return 'empty';
     if (Array.from(t).length > MAX) return 'long';
-    var low = straight(t).split('findahelpline.com').join(' ');
+    var low = straight(t);
+    /* contact details first, on all of her words, so no exception can hide one */
     if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/.test(low) || /(^|[^a-z0-9])@[a-z0-9_.]{2,}/.test(low)) return 'contact';
-    if (LINK.test(low)) return 'link';
-    var runs = low.match(/\+?[0-9][0-9 ().-]{6,}[0-9]/g) || [];
-    for (var i = 0; i < runs.length; i++) if (runs[i].replace(/[^0-9]/g, '').length >= 8 && !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(runs[i])) return 'contact';
+    if (digitRuns(low).some(function (n) { return n >= 8; }) || PHONE7.test(low)) return 'contact';
+    var at = low.search(INTENT); if (at > -1 && digitRuns(low.slice(at)).some(function (n) { return n >= 5; })) return 'contact';
     if (/\b(dm|pm|message|add) me\b/.test(low) || /\bmy (number|handle|ig|insta) is\b/.test(low)) return 'contact';
+    var bare = t.replace(HELPLINE, '$1 ');
+    if (LINK.test(straight(bare)) || HOST.test(bare)) return 'link';
     var toks = low.split(/[^a-z0-9]+/);
     for (var k = 0; k < toks.length; k++) if (toks[k] && Object.prototype.hasOwnProperty.call(MSG_WORDS, toks[k])) return MSG_WORDS[toks[k]];
     return null;
@@ -110,7 +120,7 @@
     /* everyday kindness that opens like an instruction, and clears that sentence */
     ok: ['take care', 'take it easy', 'take your time', 'take a break', 'take a breath', 'take a deep breath', 'take a nap', 'take a rest', 'take a moment',
       'take a minute', 'take it slow', 'take it one day at a time', 'take each day as it comes', 'take care of yourself', 'try to rest', 'try to sleep',
-      'try to relax', 'try again', 'try your best', 'stop blaming yourself', 'stop being so hard on yourself', 'start small'],
+      'try to relax', 'try again', 'try your best', 'stop blaming yourself', 'stop being so hard on yourself', 'start small', 'take it personally', 'stop trying'],
     news: ["i'm pregnant", 'im pregnant', 'i am pregnant', "we're pregnant", 'we are pregnant', "i'm expecting", 'i am expecting', "we're expecting", 'we are expecting',
       'bfp', 'big fat positive', 'got my positive', "it's a girl", "it's a boy", 'its a girl', 'its a boy', 'gender reveal', 'pregnancy announcement',
       'birth announcement', 'baby is here']
@@ -120,15 +130,19 @@
   var DOSE = / [0-9]+ ?(mg|mcg|iu|ml|g|tablets?|pills?|capsules?|caps|drops?|puffs?|units?) /, EVERY = / every [0-9]+ ?(hours?|hrs?|h|days?) /,
     TIMES = / ([0-9]+|once|twice|three|four) times? (a|per) day /, TIMES2 = / (once|twice) (a|per) day /,
     ACT = / (take|taking|start|starting|stop|stopping|try|use|double|increase|up|skip|quit|buy|swap|switch|avoid|reduce|lower|halve|drop|cut|add) /;
-  /* a sentence that tells someone to take, stop, start or try something, whatever it is called (the server's rule) */
-  var DIRECT_YOU = / you (should|must|need to|have to|gotta|ought to) (take|stop|start|try|quit|skip|use|avoid|switch|swap|double|increase|reduce|come off|go off|get off) [a-z0-9]/,
-    LEAD = /^ ((i think|honestly|so|and|but|just|please|maybe|definitely|really|seriously|i would|i d|you (should|must|need to|have to|could|can|might want to|gotta|ought to)) )+/,
-    DIRECT = /^ (take|stop|start|quit|skip|double|halve|increase|decrease|reduce|lower|switch|swap|avoid|try|use|buy|come off|go off|get off) [a-z0-9]/;
+  /* a sentence that tells someone to take, stop, start or try something, whatever it is called (the server's rule), clause
+     by clause: what leads in ("honestly", "you should", "the nurse said you could") is set aside, a "don't" or "never" too,
+     and an everyday kindness clears its clause only when it is the whole clause (Codex diff review round 4, A7) */
+  var LEAD = /^ ((i think|honestly|so|and|but|just|please|maybe|definitely|really|seriously|i would|i d|you (should|must|need to|have to|could|can|might want to|gotta|ought to)) )+/,
+    YOU = /^.*? you (should|must|need to|have to|gotta|ought to|could|can|might want to) /,
+    NEG = /^ (don't|dont|do not|never) /,
+    DIRECT = /^ (take|stop|start|quit|skip|double|halve|increase|decrease|reduce|lower|switch|swap|avoid|try|use|buy|come off|go off|get off) [a-z0-9]/,
+    OK_TAIL = /^ ((today|tonight|now|please|ok|okay|x|xx|xxx|love|lovely|dear|hun|hon|mama|ladies|everyone|all|friend|friends|sis|babe|girl|girls|too) )*$/;
+  function okClause(c) { return HOLD.ok.some(function (p) { var pre = ' ' + p + ' '; return c.indexOf(pre) === 0 && OK_TAIL.test(c.slice(pre.length - 1)); }); }
   function directive(s) {
-    if (DIRECT_YOU.test(flat(s))) return true;
     return straight(String(s == null ? '' : s)).split(/[.!?;:,\n]+/).some(function (cl) {
-      var c = flat(cl).replace(LEAD, ' ');
-      return DIRECT.test(c) && !HOLD.ok.some(function (p) { return c.indexOf(' ' + p + ' ') === 0; });
+      var c = flat(cl).replace(LEAD, ' ').replace(YOU, ' ').replace(NEG, ' ');
+      return DIRECT.test(c) && !okClause(c);
     });
   }
   function holdWhy(s, noNews) {
@@ -185,6 +199,9 @@
   var missing = false, broken = false, seen = false, probing = null, lastUid = null, wordsHash = '';
   var groups = null, rooms = null, view = null, feed = null, drafts = {}, busy = {}, gens = { groups: 0, rooms: 0, feed: 0 }, els = { groups: null, rooms: null };
   var timers = [], stick = false, joinBusy = false, joinWant = null, chatGen = 0, menuOpen = null;
+  /* the newest Room chat event this phone has seen on this account, from an On, an Off or the rooms list: an older answer
+     never turns chat back on or off (Codex diff review round 4, B1) */
+  var chatKnown = null, DAY = 24 * 3600 * 1000;
 
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s); }
   function noop() { }
@@ -226,7 +243,29 @@
   function closeRoomSheet() { if (doc.getElementById('rmSheet') && R.sheetOpen && R.sheetOpen()) R.closeSheet(); }
   /* the open room goes, with any sheet of the rooms (a report, a care or hold card, Room chat) and any reply still on its way */
   function dropFeed() { view = null; feed = null; gens.feed++; busy.feed = false; closeRoomSheet(); }
-  function forget() { if (groups || rooms || view || feed) { groups = null; rooms = null; dropFeed(); gens.groups++; gens.rooms++; busy = {}; paint(); } }
+  function forget() { chatGen++; joinWant = null; menuOpen = null; if (groups || rooms || view || feed) { groups = null; rooms = null; dropFeed(); gens.groups++; gens.rooms++; busy = {}; paint(); } }
+  /* Plaza friends off, the age answer withdrawn, Room chat off on another phone (the consent hook in ovu-consent.js): what
+     she sees and anything still on its way go at once, here, not at the next refused look (Codex round 4, B2) */
+  function standDown(purpose) {
+    if (purpose === 'plaza_chat') {
+      chatGen++; if (rooms) rooms.talk = false;
+      if (feed) { setRows(feed.rows.filter(function (m) { return !m.mine; })); refetch(); }
+      paint(); return;
+    }
+    forget(); lastKick = 0; kick();
+  }
+  /* messages last 24 hours: past that they leave this phone too, even when the rooms cannot be reached (Codex round 4, B8) */
+  function prune() {
+    if (!feed) return;
+    var now = Date.now(), keep = feed.rows.filter(function (m) { var t = Date.parse(m.at); return !(t && now - t >= DAY); });
+    if (keep.length === feed.rows.length) return;
+    setRows(keep); feed.seen = null;
+    if (menuOpen && !keep.some(function (x) { return String(x.id) === menuOpen.id; })) { closeMine(menuOpen.sh); menuOpen = null; }
+    paint();
+  }
+  /* Room chat as the newest event says: an answer naming an older event than one already seen changes nothing */
+  function chatNews(u, ev) { return ev != null && (!chatKnown || chatKnown.uid !== u || Number(ev) > chatKnown.event); }
+  function chatSeen(u, ev, talk) { if (ev != null && (!chatKnown || chatKnown.uid !== u || Number(ev) >= chatKnown.event)) chatKnown = { uid: u, event: Number(ev), talk: !!talk }; }
 
   /* one request for one account, with one deadline; cancelled if another account is signed in before it leaves or when
      its reply comes back (the Plaza friends pattern) */
@@ -250,6 +289,7 @@
   }
   function failed(e) {
     if (e && e.cancelled) return;
+    prune();
     if (e && e.missing) { missing = true; groups = groups; rooms = null; view = null; feed = null; stop(); }
     paint();
   }
@@ -277,6 +317,8 @@
       seen = true;
       if (!j.ok) { rooms = null; dropFeed(); paint(); return; }
       if (!Array.isArray(j.rooms) || !j.rooms.every(okRoom)) { malformed(); return; }
+      if (chatKnown && chatKnown.uid === u && (j.chat_event == null || Number(j.chat_event) < chatKnown.event)) { j.talk = chatKnown.talk && j.read; j.chat_event = chatKnown.event; }
+      else if (j.read) chatSeen(u, j.chat_event, j.talk);
       rooms = j;
       if (view && (!j.read || !j.rooms.some(function (r) { return r.id === view; }))) dropFeed();
       paint();
@@ -310,6 +352,7 @@
   function tick(which) {
     if (uid() !== lastUid) { authChanged(); return; }
     if (minor()) { forget(); return; }
+    if (which === 'feed') prune();
     if (!active()) return;
     if (which === 'groups') loadGroups(); else if (which === 'rooms') loadRooms(); else loadFeed();
   }
@@ -337,7 +380,7 @@
   /* any change of account, in this tab or another: cancel, forget, close, then start again for whoever is signed in */
   function authChanged() {
     var u = uid(); if (u === lastUid) return; lastUid = u;
-    gens.groups++; gens.rooms++; gens.feed++; busy = {}; joinWant = null; menuOpen = null;
+    gens.groups++; gens.rooms++; gens.feed++; busy = {}; joinWant = null; menuOpen = null; chatKnown = null; chatGen++;
     groups = null; rooms = null; view = null; feed = null; drafts = {}; seen = false;
     if (doc.getElementById('rmSheet') && R.sheetOpen && R.sheetOpen()) R.closeSheet();
     var box = els.rooms && els.rooms.querySelector('.rmcompose textarea'); if (box) box.value = '';
@@ -460,9 +503,12 @@
       if (!j || typeof j.ok !== 'boolean' || (j.ok && typeof j.entry !== 'string')) { malformed(); return; }
       if (joinWant) return; /* a newer choice is on its way: its answer says where she is */
       if (j.ok) {
+        /* she is in one room at a time: the room on screen, whichever it is, takes this answer, and looks asked before it
+           are dropped (Codex round 4, B6) */
         if (rooms) { rooms.room = room; rooms.entry = j.entry; }
-        if (feed && feed.room === room && feed.visit === w.visit) { feed.joined = true; feed.entry = j.entry; }
-        paint(); loadFeed(); loadRooms();
+        if (feed && feed.visit === w.visit) { feed.joined = feed.room === room; feed.entry = feed.room === room ? j.entry : null; }
+        gens.rooms++; busy.rooms = false;
+        paint(); refetch(); loadRooms();
         if (view === room) { if (R.chime) R.chime('tap'); var b = els.rooms && els.rooms.querySelector('#rmText'); if (b) try { b.focus({ preventScroll: true }); } catch (e) { } }
         return;
       }
@@ -476,7 +522,8 @@
       if (uid() !== u) return;
       if (rooms && rooms.entry === entry) { rooms.room = null; rooms.entry = null; }
       if (feed && feed.entry === entry) { feed.joined = false; feed.entry = null; }
-      paint(); loadRooms();
+      gens.rooms++; busy.rooms = false;
+      paint(); refetch(); loadRooms();
     }, function (e) { if (!(e && e.cancelled)) R.toast('Could not reach the rooms. Check the connection and try again.', 'cloud_off'); });
   }
   function rmSheet(id, title, sub, icon, html) { R.openSheet(id, title, sub, icon, '<div id="rmSheet">' + html + '</div>'); var el = doc.getElementById('rmSheet'); el.__seq = R.sheetSeq ? R.sheetSeq() : null; return el; }
@@ -492,9 +539,9 @@
     if (!rooms || !rooms.talk) {
       /* a yes that arrives later sends only this message, from this room, still unchanged in the box (Codex round 2, B1) */
       var pend = { uid: uid(), visit: v && v.visit, room: room, text: text, entry: entryFor(room) };
-      askChat(function () {
+      askChat(function (mine) {
         var b = els.rooms && els.rooms.querySelector('#rmText'), now = visit();
-        if (allowed() && uid() === pend.uid && now && now.visit === pend.visit && view === pend.room && entryFor(pend.room) === pend.entry && b && b.value === pend.text) send();
+        if (mine && allowed() && uid() === pend.uid && now && now.visit === pend.visit && view === pend.room && entryFor(pend.room) === pend.entry && b && b.value === pend.text) send();
         else R.toast('Room chat is on. Tap Send when you are ready.', 'forum');
       });
       return;
@@ -565,21 +612,34 @@
       var ok = sh.querySelector('#rmChatOk').checked, m = sh.querySelector('#rmChatMsg');
       if (!allowed() || uid() !== u || !rooms || !rooms.read) { R.closeSheet(); return; }
       if (!ok) { m.textContent = WHY.consent; return; }
+      var cg = chatGen;
       rpc('plaza_chat_on', { p_notice: noticeV(), p_hash: wordsHash || null, p_device: device() || null, p_opt_in: true, p_expect: card, p_seen: seen }, u).then(function (j) {
         if (uid() !== u) return;
         if (!j || !j.ok) { m.textContent = whyText(j); if (j && j.why === 'stale') loadRooms(); return; }
+        /* an Off since (here, in Plaza friends or on another phone) wins over this older yes: nothing is recorded or said,
+           and the rooms list says where things stand (Codex round 4, B1) */
+        var ev = j.chat_event != null ? j.chat_event : null;
+        if (chatGen !== cg || (ev != null && !chatNews(u, ev))) { closeMine(sh); gens.rooms++; busy.rooms = false; loadRooms(); return; }
+        if (ev != null) chatSeen(u, ev, true);
         try { if ((j.recorded || []).indexOf('plaza_chat') > -1 && root.OvuConsent && root.OvuConsent.grant) root.OvuConsent.grant('plaza_chat', 'jit', { sent: true }); } catch (e) { }
-        if (rooms) { rooms.talk = true; if (j.chat_event) rooms.chat_event = j.chat_event; }
+        if (rooms) { rooms.talk = true; if (ev != null) rooms.chat_event = ev; }
+        /* the message waiting for this yes goes on only from this sheet: if another one opened since, she taps Send herself
+           (Codex round 4, item 4) */
+        var mine = R.sheetSeq ? R.sheetSeq() === sh.__seq : true;
         closeMine(sh); R.toast('Room chat is on. You can turn it off in Plaza friends.', 'forum');
-        if (then) then();
+        if (then) then(mine);
       }, function (e) { if (!(e && e.cancelled)) m.textContent = 'Could not reach the rooms. Check the connection and try again.'; });
     });
   }
   /* Room chat off (from Plaza friends or here): her messages are deleted at once */
   function chatOff() {
     var u = uid(); if (!u) return Promise.resolve();
+    chatGen++; /* a Send or a Room chat yes still on its way says nothing once she has asked for Off */
     return rpc('plaza_chat_off', { p_notice: noticeV(), p_device: device() || null }, u).then(function (j) {
-      if (uid() !== u || !j || !j.ok) return;
+      if (uid() !== u) return;
+      if (!j || !j.ok) { refetch(); return; }
+      if (j.chat_event != null && !chatNews(u, j.chat_event)) { gens.rooms++; busy.rooms = false; loadRooms(); return; } /* an On since is newer */
+      chatSeen(u, j.chat_event, false);
       try { if (root.OvuConsent && root.OvuConsent.withdraw) root.OvuConsent.withdraw('plaza_chat', 'you', { sent: true }); } catch (e) { }
       chatGen++;
       if (rooms) { rooms.talk = false; if (j.chat_event) rooms.chat_event = j.chat_event; }
@@ -657,7 +717,8 @@
     lastUid = uid();
     if (A.subscribe) A.subscribe(authChanged);
     root.addEventListener('storage', function (e) { if (e.key === null || e.key === 'ovumind_auth_v1') authChanged(); }); /* another tab signed in or out */
-    doc.addEventListener('visibilitychange', function () { if (doc.hidden) stop(); else { if (uid() !== lastUid) authChanged(); kick(); } });
+    doc.addEventListener('visibilitychange', function () { if (doc.hidden) stop(); else { if (uid() !== lastUid) authChanged(); prune(); kick(); } });
+    R.on('consent', function (purpose, action) { if (action === 'withdraw' && (purpose === 'social' || purpose === 'age_18' || purpose === 'plaza_chat')) standDown(purpose); });
     if (root.OvuPlaza && root.OvuPlaza.onChange) {
       var lastVisit = null;
       root.OvuPlaza.onChange(function () {

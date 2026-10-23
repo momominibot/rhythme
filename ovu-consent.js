@@ -106,6 +106,7 @@
     S.setProfile({ consentEvents: compact(events().concat([ev])) });
     apply();
     try { if (root.OvuInsight && root.OvuInsight.onConsentChange) root.OvuInsight.onConsentChange(purposeId, ev.action === 'grant'); } catch (e) { }
+    try { if (root.OvuRoom && root.OvuRoom.emit) root.OvuRoom.emit('consent', purposeId, ev.action); } catch (e) { } /* the rooms stand down at once on a withdrawal (ovu-rooms.js) */
     if (ev.uid && !ev.sent) flush();
     return ev;
   }

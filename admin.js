@@ -12,7 +12,7 @@
   var REASONS = { unkind: 'Unkind or upsetting', spam: 'Spam or selling', pretending: 'Pretending to be someone else', under18: 'Seems to be under 18', worried: 'Worried about her safety', other: 'Something else', advice: 'Unsafe health advice', news: 'Pregnancy or birth news in a quiet room' };
   /* why a room message waits for a person (supabase/migrations/20261022120000_plaza_rooms_chat.sql) */
   var HELD = { review: 'Review mode: every message is read first', care: 'Words of self-harm or crisis', advice: 'Tells someone what to take, stop or buy, or a dose', news: 'Pregnancy or birth news in a quiet room', asked: 'Her phone asked for a check (its warning-sign rules matched)', reports: 'Hidden after three reports' };
-  var roomMsgs = null, roomMsgsBad = false, roomMsgsMissing = false, roomMsgsBusy = false; /* admin_plaza_messages: room messages waiting for a person */
+  var roomMsgs = null, roomMsgsBad = false, roomMsgsMissing = false, roomMsgsBusy = false, roomMsgsGen = 0; /* admin_plaza_messages: room messages waiting for a person; Busy is the look on its way */
   var roomMsgsNote = null; /* the last Show or Hide outcome, kept across redraws until the next decision: {text, bad} */
   /* the team (Jamie, 21 Oct: "my agents in there, give them cute names to report the data and I will have one agent to
    * orchestrate"): four little clouds who each own one stream and say what they measured in their own words, and Nimbus,
@@ -303,23 +303,31 @@
     html += '<p class="msg' + (roomMsgsNote && roomMsgsNote.bad ? ' bad' : '') + '" id="roomMsgsMsg">' + esc(roomMsgsNote ? roomMsgsNote.text : '') + '</p><p class="srv">The writer sees her held message as waiting; nobody else does until it is shown. Crisis words and her phone\'s own request mean she may need help now: the room shows her the help card, but nobody is told. ' + (owner ? 'Hide also closes the open reports on that message; Show dismisses them.' : 'An owner decides.') + '</p></div>';
     return html;
   }
-  function loadRoomMsgs() {
-    if (roomMsgsMissing || roomMsgsBusy) return Promise.resolve();
-    roomMsgsBusy = true;
-    return deadline(rpc('admin_plaza_messages', { p_status: 'held' }), 10000).then(function (j) {
+  /* a timed look joins one already on its way; a look after a decision (fresh) starts anew and the older answer, read
+     before the decision, is dropped, so a decided message never comes back (Codex diff review round 4, B5) */
+  function loadRoomMsgs(fresh) {
+    if (roomMsgsMissing) return Promise.resolve();
+    if (roomMsgsBusy && !fresh) return roomMsgsBusy;
+    var rg = ++roomMsgsGen;
+    var p = deadline(rpc('admin_plaza_messages', { p_status: 'held' }), 10000).then(function (j) {
+      if (rg !== roomMsgsGen) return;
       if (denied(j) || !j || !Array.isArray(j.messages)) { roomMsgsBad = true; roomMsgs = null; return; }
       roomMsgs = j; roomMsgsBad = false;
     }).catch(function (e) {
-      if (e && e.cancelled) return;
+      if ((e && e.cancelled) || rg !== roomMsgsGen) return;
       if (/PGRST202|Could not find the function|\b404\b/i.test(String((e && e.message) || ''))) { roomMsgsMissing = true; roomMsgsBad = false; roomMsgs = null; return; }
       roomMsgsBad = true; roomMsgs = null;
-    }).then(function () { roomMsgsBusy = false; });
+    }).then(function () { if (rg === roomMsgsGen) roomMsgsBusy = false; });
+    roomMsgsBusy = p;
+    return p;
   }
   /* while Queue is open: look again every 20 s and redraw only when what waits changed, so a decision under way or its
      message is not wiped by a redraw that changes nothing (Codex round 2, B4) */
+  /* everything the card shows counts: the messages, the mode and the switch, and whether it could load at all (round 4, B7) */
+  function queueKey() { return JSON.stringify([roomMsgs && roomMsgs.messages, roomMsgs && roomMsgs.mode, roomMsgs && roomMsgs.chat_on, roomMsgsBad, roomMsgsMissing, reports, reportsBad, reportsMissing]); }
   function refreshQueue() {
-    var before = JSON.stringify([roomMsgs && roomMsgs.messages, reports]);
-    return Promise.all([loadRoomMsgs(), loadReports()]).then(function () { if (JSON.stringify([roomMsgs && roomMsgs.messages, reports]) !== before) queueAgain(); });
+    var before = queueKey();
+    return Promise.all([loadRoomMsgs(), loadReports()]).then(function () { if (queueKey() !== before) queueAgain(); });
   }
   function renderQueue() {
     var owner = me.role === 'owner', pol = (ov && ov.policy) || {}, blocked = (ov && ov.blocked) || [];
@@ -356,7 +364,7 @@
         var g = acctGen; roomMsgsNote = null; app.querySelectorAll('[data-rdecide]').forEach(function (x) { x.disabled = true; });
         rpc('admin_plaza_decide', { p_id: Number(b.dataset.id), p_decision: b.dataset.rdecide, p_rev: Number(b.dataset.rev) }).then(function (j) {
           if (j && (j.error || j.ok === false)) roomMsgsNote = { text: j.error || 'Not done.', bad: true };
-          return Promise.all([loadRoomMsgs(), loadReports()]);
+          return Promise.all([loadRoomMsgs(true), loadReports()]);
         }).catch(function (e) { if (!(e && e.cancelled) && g === acctGen) roomMsgsNote = { text: e.message, bad: true }; }).then(function () { queueAgain(); });
       });
     });
@@ -437,7 +445,7 @@
   function accountChanged() {
     if (who() === acct) return;
     acctGen++; me = null; stopTimers();
-    reports = null; reportsBad = false; reportsNote = null; reportsGen++; roomMsgs = null; roomMsgsBad = false; roomMsgsNote = null; roomMsgsBusy = false; proposals = null; admins = null; audit = null; ov = null; feed = []; feedTop = 0; findings = null; plaza = null; plazaBad = false;
+    reports = null; reportsBad = false; reportsNote = null; reportsGen++; roomMsgs = null; roomMsgsBad = false; roomMsgsNote = null; roomMsgsBusy = false; roomMsgsGen++; proposals = null; admins = null; audit = null; ov = null; feed = []; feedTop = 0; findings = null; plaza = null; plazaBad = false;
     app.innerHTML = '';
     boot();
   }

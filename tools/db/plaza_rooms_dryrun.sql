@@ -76,7 +76,7 @@ declare
   va uuid; vb uuid; vc uuid; vd uuid; ve uuid; vf uuid; vg uuid; vh uuid; vk uuid; vm1 uuid; vq uuid; vy uuid;
   ea uuid; eb uuid; ec uuid; eg uuid; eh uuid; ek uuid; ey uuid; e2 uuid;
   r jsonb; r2 jsonb; r3 jsonb; out jsonb := '{}'; ok boolean; i integer; mid bigint; mid2 bigint; mid3 bigint; hid bigint; ev bigint; fillers uuid[];
-  expected text[] := array['groups', 'rooms', 'wins_and_vent', 'loss_has_no_wins', 'no_news_rooms', 'review_by_default', 'anon_refused', 'no_sub_refused',
+  expected text[] := array['groups', 'rooms', 'wins_and_vent', 'loss_has_no_wins', 'no_news_rooms', 'review_by_default', 'live_unavailable', 'anon_refused', 'no_sub_refused',
     'tables_closed', 'list_not_here', 'list_rooms', 'list_no_card', 'list_adult_shows_nothing', 'join_needs_card', 'hidden_cannot_read', 'join_room',
     'join_retry_same_entry', 'join_locks_account', 'join_full_suggests', 'say_needs_notice', 'chat_on_needs_opt_in', 'chat_on_stale_card',
     'chat_on_stale_event', 'chat_on', 'review_holds', 'held_only_to_writer', 'staff_queue', 'staff_decide_needs_owner', 'staff_show', 'say_locks_account', 'feed_locks_account',
@@ -238,6 +238,16 @@ begin
   out := out || jsonb_build_object('peek_without_joining', (r2 ->> 'ok')::boolean and not (r2 ->> 'joined')::boolean and pg_temp.bodies(r2) = array['Hello everyone, first time here']
     and not (r2 -> 'messages' -> 0 ->> 'mine')::boolean and (r2 ->> 'people')::int = 2 and r2 -> 'messages' -> 0 ->> 'name' = 'Ann');
 
+  -- live mode is not in this migration: the switch refuses it (Codex diff review round 4, A7). From here on this run lifts
+  -- that check inside its own rolled-back transaction, so shown messages can be said quickly; staff Show makes the same rows
+  begin
+    update public.plaza_flags set value = 'live' where key = 'mode';
+    out := out || jsonb_build_object('live_unavailable', false);
+  exception when check_violation then
+    out := out || jsonb_build_object('live_unavailable', (select value from public.plaza_flags where key = 'mode') = 'review');
+  end;
+  alter table public.plaza_flags drop constraint plaza_flags_review_only;
+
   -- an older held message shown after newer ones: a reader and the writer, each looking with the fingerprint they had,
   -- get the whole window back with it shown (Codex diff review, 3; the commit-order race is in tools/db/race_test.py)
   declare h1 bigint; sb text; sa text; begin
@@ -296,7 +306,8 @@ begin
     and plaza.text_problem('see example.co for more') = 'link' and plaza.text_problem('myprofile.me') = 'link' and plaza.text_problem('x.com/mei') = 'link'
     and plaza.text_problem('t.me/alice') = 'link' and plaza.text_problem('t.co/hello') = 'link' and plaza.text_problem('example.health') = 'link'
     and plaza.text_problem('I need some self care today') is null and plaza.text_problem('half/half and 1/2 a day') is null
-    and plaza.text_problem('medlineplus.gov has it') = 'link' and plaza.text_problem('see hse.ie') = 'link' and plaza.text_problem('ok.thanks for that') is null);
+    and plaza.text_problem('medlineplus.gov has it') = 'link' and plaza.text_problem('see hse.ie') = 'link' and plaza.text_problem('ok.thanks for that') is null
+    and plaza.text_problem('nhsinform.scot has a guide') = 'link' and plaza.text_problem('Email support@findahelpline.com') = 'contact' and plaza.text_problem('try findahelpline.company') = 'link' and plaza.text_problem('see findahelpline.com.') is null and plaza.text_problem('https://findahelpline.com/countries lists them') is null and plaza.text_problem('Call me on 555 1234') = 'contact' and plaza.text_problem('my number is 91 234') = 'contact' and plaza.text_problem('she did not text me back') is null and plaza.text_problem('my phone is broken again') is null and plaza.text_problem('Day 23.10.2026 was rough') is null and plaza.text_problem('my no 1 tip is rest') is null and plaza.text_problem('Dr.Tan said 3.5kg is fine') is null);
   out := out || jsonb_build_object('hold_cases',
     plaza.hold_why('I keep thinking about suicide', false) = 'care' and plaza.hold_why('some days I want to die', false) = 'care'
     and plaza.hold_why('I don’t want to be here any more', false) = 'care' and plaza.hold_why('I used to self-harm', false) = 'care'
@@ -316,7 +327,8 @@ begin
     and plaza.hold_why('Honestly, take amoxicillin for it', false) = 'advice' and plaza.hold_why('the nurse said you should stop the antibiotics', false) = 'advice'
     and plaza.hold_why('Try a heat pad', false) = 'advice' and plaza.hold_why('Take care of yourself', false) is null
     and plaza.hold_why('Take it easy today', false) is null and plaza.hold_why('Try to rest tonight', false) is null
-    and plaza.hold_why('Stop. Breathe.', false) is null);
+    and plaza.hold_why('Stop. Breathe.', false) is null
+    and plaza.hold_why('Take a break from citalopram', false) = 'advice' and plaza.hold_why('Don''t take citalopram', false) = 'advice' and plaza.hold_why('Never stop your meds', false) = 'advice' and plaza.hold_why('Don’t worry, it gets better', false) is null and plaza.hold_why('Don''t take it personally', false) is null and plaza.hold_why('You should take care of yourself', false) is null and plaza.hold_why('Take care of yourself today x', false) is null and plaza.hold_why('my friend said you could try ginger', false) = 'advice');
 
   -- holds in live mode: crisis words (then the help reminder once shown), advice, news in a quiet room; grief and news elsewhere shown
   ec := pg_temp.seat(c, 'everyone-vent');

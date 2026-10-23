@@ -141,8 +141,9 @@ Channel tab exactly as it is. The plaza sheet keeps "There is no open chat" unti
 
 1. Applying the migration (it starts in **review** mode: the rooms, counts, peeks and joining are live at once, and each
    message shows after someone on the team taps Show in the staff Queue).
-2. Who reads the queue, and at what hours. Once that is named, one line switches the rooms to **live**:
-   `update public.plaza_flags set value = 'live' where key = 'mode';` (and back with `'review'`; `chat` to `'off'` closes all).
+2. Who reads the queue, and at what hours. Live mode is **not** in this migration (section 15): a check holds the mode
+   at 'review', so switching to live takes its own migration with its own reviewed boundary for treatment instructions.
+   `chat` to `'off'` still closes everything in one line.
 3. Chat for everyone or Plus: assumed everyone. 4. The Room chat words above.
 5. Real hosts (people or labelled agents who reply): a later step, once someone stands behind them.
 
@@ -267,3 +268,33 @@ filter (pre-existing staff paths); delayed consent ignores a rejoin's new entry.
 | 6 capacity after hide and show | A hidden or paused card keeps its place in the room count, so showing it again cannot overfill a room |
 | 7, 8 staff reports | A failed report decision keeps its reason; a reports answer for a filter no longer chosen is dropped |
 | 9 late yes after a rejoin | The late Room chat yes also checks her entry to the room is the same |
+
+## 15. Codex diff review, round 4 (23 Oct): HOLD, and what changed
+
+Review: `docs/design/reviews/2026-10-23-plaza-rooms-codex-diff-r4.md`. A7 (treatment instructions in live mode) failed for
+the fourth time: "Take a break from citalopram" and "Don't take citalopram" passed, and another word or shape would only move
+the gap. Codex's fix was structural, and it is what changed: **live mode is gone from this migration.** A check on
+`plaza_flags` (`plaza_flags_review_only`) holds the mode at 'review', so every message waits for a person on the team; the
+hold rules now label why a message needs care first, for the writer's card and the staff queue, and can no longer let one
+through. A live mode needs its own migration and its own review of that boundary. The functions keep their live branch for
+it; the dry run and the races show the switch refusing 'live', then lift the check inside their own rolled-back or throwaway
+runs so shown messages can still be said quickly (staff Show makes the same rows).
+
+| Round 4 item | What changed |
+|---|---|
+| A7 instructions | Review only (above). The labels also got better: a "don't", "do not" or "never" is set aside before the instruction is read, "the nurse said you could try ..." is read from "try", and an everyday kindness clears its clause only when it is the whole clause ("take a break" yes, "take a break from citalopram" no) |
+| A10 any hostname | Any name of three or more letters, a dot and a lower-case ending of two or more letters counts as an address, whatever the ending (nhsinform.scot), on the phone and the server alike. "ok.thanks" and "it.in" stay allowed; "fine.thanks" is refused with the existing "add a space after the full stop" |
+| B3 help address | Contact details are checked first on all of her words; then only the exact findahelpline.com host (with its path) is set aside, nothing before or after it, so support@findahelpline.com and findahelpline.company are caught |
+| B4 contact grammar | A phone shape of 3 and 4 digits (555 1234) counts, and so does contact intent ("call me", "text me", "my number") followed by five digits or more. Dates (23.10.2026, 2026.10.23) never count; "call me crazy" and "she did not text me back" stay allowed |
+| 4 late continuations | A late Room chat yes sends the waiting message only from its own sheet; if another sheet opened, she taps Send herself. Plaza friends redraws after a late Room chat off only while it is still the sheet open |
+| B1 older yes after Off | The newest Room chat event wins: an On or Off answer naming an older event than one already seen changes nothing, records nothing and says nothing, and the rooms list is asked; an older rooms list cannot turn chat back on either. An Off asked on this phone also drops a yes still on its way |
+| B2 withdrawals | ovu-consent.js tells the room on every recorded event; on a withdrawal of social (Plaza friends off), age_18 or plaza_chat the rooms stand down at once, and replies still on their way are dropped |
+| B5 staff refresh | A look after a decision starts anew and drops the look already on its way, so a decided message never comes back |
+| B6 join elsewhere | A successful join updates the room on screen too (joined only if it is the joined room) and drops looks asked before it |
+| B7 mode-only change | The queue redraws when the mode, the chat switch or whether it loaded changes, not only the messages |
+| B8 local expiry | Messages past 24 hours leave the phone on every feed tick, on a failed look and on return to the tab, with their report sheet |
+
+New checks: 12 text cases and 8 hold cases in the shared fixture (phone, dry run), `live_unavailable` in the dry run, a
+review-only check in the races and core, and nine browser checks (the late yes now uses words that open the hold card, B1, B2,
+the Plaza friends redraw, B6, B8, B5, B7). Each browser check fails against the round-four commit (305e9f4).
+

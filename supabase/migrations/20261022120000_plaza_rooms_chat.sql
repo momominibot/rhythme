@@ -10,9 +10,11 @@
 --   own entry id and lives only while its group visit does, so leaving the plaza, another phone or the 75 s lapse ends it.
 -- * Reading: a signed-in adult with a shown plaza card reads the rooms of the group she is in now. Writing also needs the
 --   consent purpose `plaza_chat` (Room chat), asked just in time and never granted by sending.
--- * Two modes, one flag (`plaza_flags.mode`): 'review' (the default) holds every message until a person on the Rhythme
---   team shows it; 'live' shows a message at once unless the server holds it: words of self-harm or crisis, treatment
---   instructions and doses, and pregnancy or birth news in rooms that keep it out (After a loss, Trying to conceive).
+-- * Review only: every message waits until a person on the Rhythme team shows it (`plaza_flags.mode` is held at
+--   'review' by a check). The hold rules label why one needs care first: words of self-harm or crisis, treatment
+--   instructions and doses, pregnancy or birth news in rooms that keep it out (After a loss, Trying to conceive). Word
+--   rules cannot catch every way of telling someone to stop a medicine, so a live mode, where most messages show at once,
+--   needs its own migration and its own review (Codex diff review round 4, A7). The functions keep the live branch for it.
 --   The writer's phone may also ask for a hold (its warning-sign rules matched); it can never make a message show.
 --   A held message is seen only by its writer ("waiting for a check") and by staff, in an audited queue.
 -- * A shown message whose own words matched the crisis list carries an automatic, labelled help reminder for everyone;
@@ -174,8 +176,8 @@ create index if not exists plaza_messages_rev on public.plaza_messages (room, re
 -- which hold a message only together with an instruction word (take, start, stop, try, use, double, ...); 'news':
 -- pregnancy and birth announcements, only in rooms that keep news out. Doses and schedules hold on their own, and so
 -- does any sentence that opens by telling someone to take, stop, start or try something, whatever the medicine is
--- called ("Stop citalopram"); 'ok': everyday kindness that opens the same way ("take care", "try to rest") and clears
--- that sentence. This is deliberately cautious ("I take metformin" and "Try a heat pad" wait too): a person shows it in
+-- called ("Stop citalopram", "Don't take citalopram"); 'ok': everyday kindness that opens the same way ("take care",
+-- "try to rest") and clears its clause only when it is the whole clause ("take a break from citalopram" still waits). This is deliberately cautious ("I take metformin" and "Try a heat pad" wait too): a person shows it in
 -- a moment, and review mode is the default. Grief ("we lost the heartbeat", "my due date would have been today",
 -- "I gave birth to my son sleeping") is on no list. Staff can add or remove rows without a release.
 create table if not exists public.plaza_hold_phrases (
@@ -209,7 +211,7 @@ insert into public.plaza_hold_phrases (phrase, kind) values
   ('take a deep breath', 'ok'), ('take a nap', 'ok'), ('take a rest', 'ok'), ('take a moment', 'ok'), ('take a minute', 'ok'),
   ('take it slow', 'ok'), ('take it one day at a time', 'ok'), ('take each day as it comes', 'ok'), ('take care of yourself', 'ok'),
   ('try to rest', 'ok'), ('try to sleep', 'ok'), ('try to relax', 'ok'), ('try again', 'ok'), ('try your best', 'ok'),
-  ('stop blaming yourself', 'ok'), ('stop being so hard on yourself', 'ok'), ('start small', 'ok'),
+  ('stop blaming yourself', 'ok'), ('stop being so hard on yourself', 'ok'), ('start small', 'ok'), ('take it personally', 'ok'), ('stop trying', 'ok'),
   ('i''m pregnant', 'news'), ('im pregnant', 'news'), ('i am pregnant', 'news'), ('we''re pregnant', 'news'), ('we are pregnant', 'news'),
   ('i''m expecting', 'news'), ('i am expecting', 'news'), ('we''re expecting', 'news'), ('we are expecting', 'news'), ('bfp', 'news'),
   ('big fat positive', 'news'), ('got my positive', 'news'), ('it''s a girl', 'news'), ('it''s a boy', 'news'), ('its a girl', 'news'),
@@ -224,8 +226,9 @@ insert into public.plaza_words (word, kind) values
   ('telegram', 'contact'), ('whatsapp', 'contact'), ('kik', 'contact'), ('wechat', 'contact'), ('discord', 'contact'), ('snapchat', 'contact')
 on conflict (word) do update set kind = excluded.kind;
 
--- switches: chat on or off (a missing row reads as off) and the mode ('review' unless a person sets 'live')
-create table if not exists public.plaza_flags (key text primary key check (key in ('chat', 'mode')), value text not null);
+-- switches: chat on or off (a missing row reads as off) and the mode, held at 'review' (see the top of this file)
+create table if not exists public.plaza_flags (key text primary key check (key in ('chat', 'mode')), value text not null,
+  constraint plaza_flags_review_only check (key <> 'mode' or value = 'review'));
 insert into public.plaza_flags (key, value) values ('chat', 'on'), ('mode', 'review') on conflict (key) do nothing;
 
 alter table public.plaza_rooms enable row level security;
@@ -287,20 +290,38 @@ language sql immutable security definer set search_path = '' as $$
   select ' ' || btrim(regexp_replace(regexp_replace(lower(translate(coalesce(p_body, ''), '’‘', '''''')), '[^a-z0-9'']+', ' ', 'g'), '\s+', ' ', 'g')) || ' '
 $$;
 
+-- a run of digits that reads as a date (2026-10-22, 23.10.2026, 2026.10.23), which is never a phone number
+create or replace function plaza.is_date(p_run text) returns boolean
+language sql immutable security definer set search_path = '' as $$
+  select p_run ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' or p_run ~ '^[0-9]{1,2}[-.][0-9]{1,2}[-.][0-9]{2,4}$' or p_run ~ '^[0-9]{4}[-.][0-9]{1,2}[-.][0-9]{1,2}$'
+$$;
+
 -- what a message may not carry, or null; the phone runs the same rules first (ovu-rooms.js textProblem)
 create or replace function plaza.text_problem(p_body text) returns text
 language plpgsql stable security definer set search_path = '' as $$
-declare t text := btrim(regexp_replace(coalesce(p_body, ''), '\s+', ' ', 'g')); low text; tok text; run text; k text;
+declare t text := btrim(regexp_replace(coalesce(p_body, ''), '\s+', ' ', 'g')); low text; bare text; tail text; tok text; run text; k text;
 begin
   if t = '' then return 'empty'; end if;
   if char_length(t) > 280 then return 'long'; end if;
-  low := replace(lower(translate(t, '’‘', '''''')), 'findahelpline.com', ' '); -- the one address the help card itself names
+  low := lower(translate(t, '’‘', ''''''));
+  -- contact details first, on all of her words, so no exception can hide one (Codex diff review round 4, B3 and B4)
   if low ~ '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' or low ~ '(^|[^a-z0-9])@[a-z0-9_.]{2,}' then return 'contact'; end if;
-  if low ~ '(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}/[a-z0-9]|[a-z0-9-]+\.(com|net|org|gov|edu|mil|int|io|ly|gg|app|dev|ai|info|xyz|link|site|online|shop|store|biz|health|care|clinic|life|live|world|today|blog|page|club|fun|art|space|tech|news|media|studio|agency|network|digital|cloud|center|group|email|website|web|wiki|pro|name|mobi|asia|travel)\y|[a-z0-9-]{3,}\.[a-z]{2}\y)' then return 'link'; end if;
-  for run in select m[1] from regexp_matches(low, '(\+?[0-9][0-9 ().-]{6,}[0-9])', 'g') as m loop
-    if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 8 and run !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then return 'contact'; end if;
+  for run in select m[1] from regexp_matches(low, '(\+?[0-9][0-9 ().-]*[0-9])', 'g') as m loop
+    if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 8 and not plaza.is_date(run) then return 'contact'; end if;
   end loop;
+  if low ~ '(^|[^0-9])[0-9]{3}[ .-][0-9]{4}($|[^0-9])' then return 'contact'; end if;
+  tail := (regexp_match(low, '(\y(?:(?:call|text|ring|phone|whatsapp|sms|msg|message|reach|contact|email|e-mail|telegram|wechat|signal|line|add|find) me|my (?:phone number|number|no|phone|hp|handphone|mobile|cell|contact|whatsapp|telegram|wechat|line|insta|ig|email|e-mail|handle|id))\y.*)$'))[1];
+  if tail is not null then
+    for run in select m[1] from regexp_matches(tail, '(\+?[0-9][0-9 ().-]*[0-9])', 'g') as m loop
+      if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 5 and not plaza.is_date(run) then return 'contact'; end if;
+    end loop;
+  end if;
   if low ~ '\y(dm|pm|message|add) me\y' or low ~ '\ymy (number|handle|ig|insta) is\y' then return 'contact'; end if;
+  -- then links: the help card's one address, exactly (its own host, nothing before or after), is set aside; any other
+  -- hostname counts, whatever its ending, as typed (a lower-case ending, three or more letters before the dot; A10)
+  bare := regexp_replace(t, '(^|[^a-z0-9.@_-])(https?://)?(www\.)?findahelpline\.com(/[a-z0-9/_-]*)?(?=$|[^a-z0-9@_-])', '\1 ', 'gi');
+  if lower(translate(bare, '’‘', '''''')) ~ '(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}/[a-z0-9]|[a-z0-9-]+\.(com|net|org|gov|edu|mil|int|io|ly|gg|app|dev|ai|info|xyz|link|site|online|shop|store|biz|health|care|clinic|life|live|world|today|blog|page|club|fun|art|space|tech|news|media|studio|agency|network|digital|cloud|center|group|email|website|web|wiki|pro|name|mobi|asia|travel)\y|[a-z0-9-]{3,}\.[a-z]{2}\y)'
+     or bare ~ '(^|[^A-Za-z0-9._@-])[A-Za-z0-9][A-Za-z0-9-]{2,}(\.[A-Za-z0-9-]+)*\.[a-z]{2,24}(?![A-Za-z0-9-])' then return 'link'; end if;
   foreach tok in array regexp_split_to_array(low, '[^a-z0-9]+') loop
     if tok <> '' then
       select w.kind into k from public.plaza_words w where w.word = tok;
@@ -321,12 +342,16 @@ begin
      or f ~ ' every [0-9]+ ?(hours?|hrs?|h|days?) ' or f ~ ' ([0-9]+|once|twice|three|four) times? (a|per) day ' or f ~ ' (once|twice) (a|per) day '
      or (exists (select 1 from public.plaza_hold_phrases h where h.kind = 'med' and position(' ' || h.phrase || ' ' in f) > 0)
          and f ~ ' (take|taking|start|starting|stop|stopping|try|use|double|increase|up|skip|quit|buy|swap|switch|avoid|reduce|lower|halve|drop|cut|add) ') then return 'advice'; end if;
-  -- a sentence that tells someone to take, stop, start or try something, whatever it is called (Codex diff review round 3)
-  if f ~ ' you (should|must|need to|have to|gotta|ought to) (take|stop|start|try|quit|skip|use|avoid|switch|swap|double|increase|reduce|come off|go off|get off) [a-z0-9]' then return 'advice'; end if;
+  -- a clause that tells someone to take, stop, start or try something, whatever it is called (Codex diff review round 3):
+  -- what leads in ("honestly", "you should", "the nurse said you could") is set aside, a "don't" or "never" too, and an
+  -- everyday kindness clears its clause only when it is the whole clause (round 4, A7)
   foreach cl in array regexp_split_to_array(lower(translate(coalesce(p_body, ''), '’‘', '''''')), '[.!?;:,\n]+') loop
     c := regexp_replace(plaza.flat(cl), '^ ((i think|honestly|so|and|but|just|please|maybe|definitely|really|seriously|i would|i d|you (should|must|need to|have to|could|can|might want to|gotta|ought to)) )+', ' ');
+    c := regexp_replace(c, '^.*? you (should|must|need to|have to|gotta|ought to|could|can|might want to) ', ' ');
+    c := regexp_replace(c, '^ (don''t|dont|do not|never) ', ' ');
     if c ~ '^ (take|stop|start|quit|skip|double|halve|increase|decrease|reduce|lower|switch|swap|avoid|try|use|buy|come off|go off|get off) [a-z0-9]'
-       and not exists (select 1 from public.plaza_hold_phrases h where h.kind = 'ok' and position(' ' || h.phrase || ' ' in c) = 1) then
+       and not exists (select 1 from public.plaza_hold_phrases h where h.kind = 'ok' and position(' ' || h.phrase || ' ' in c) = 1
+                       and substr(c, char_length(h.phrase) + 2) ~ '^ ((today|tonight|now|please|ok|okay|x|xx|xxx|love|lovely|dear|hun|hon|mama|ladies|everyone|all|friend|friends|sis|babe|girl|girls|too) )*$') then
       return 'advice';
     end if;
   end loop;
@@ -671,7 +696,7 @@ end $$;
 
 -- ---------- grants ----------
 revoke all on function plaza.guard_chat_grant(), plaza.chat_on(), plaza.live(), plaza.read_problem(uuid), plaza.can_read(uuid), plaza.here(uuid, text, uuid), plaza.room_count(text),
-  plaza.flat(text), plaza.text_problem(text), plaza.hold_why(text, boolean), plaza.say_rate(uuid), plaza.sweep(), plaza.row(public.plaza_messages, uuid),
+  plaza.flat(text), plaza.is_date(text), plaza.text_problem(text), plaza.hold_why(text, boolean), plaza.say_rate(uuid), plaza.sweep(), plaza.row(public.plaza_messages, uuid),
   plaza.shows(public.plaza_messages, uuid), plaza.on_consent() from public, anon, authenticated;
 revoke all on function staff.plaza_queue(text), staff.plaza_decide(bigint, text, uuid, bigint) from public, anon, authenticated;
 grant execute on function staff.plaza_queue(text), staff.plaza_decide(bigint, text, uuid, bigint) to rhythme_staff_fn;

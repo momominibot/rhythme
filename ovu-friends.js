@@ -460,7 +460,9 @@
       b.innerHTML = what === 'off' ? 'Tap again: turn off and delete my card, friends and notes' + (rooms() ? ' and room messages' : '') : what === 'chatoff' ? 'Tap again: turn Room chat off and delete my messages' : what === 'block' ? 'Tap again to block. ' + esc(CUES.block) : 'Tap again to unfriend. ' + esc(CUES.unfriend);
       return;
     }
-    if (what === 'chatoff') { b.disabled = true; root.OvuRooms.chatOff().then(reshow, function (e) { if (e && e.cancelled) return; offline(e); b.disabled = false; }); return; }
+    /* a late answer redraws Plaza friends only if it is still the sheet she has open (Codex diff review round 4, item 4) */
+    var seq = R.sheetSeq ? R.sheetSeq() : null, still = function () { return R.sheetOpen && R.sheetOpen() && (seq === null || R.sheetSeq() === seq); };
+    if (what === 'chatoff') { b.disabled = true; root.OvuRooms.chatOff().then(function () { if (still()) reshow(); }, function (e) { if (e && e.cancelled) return; offline(e); b.disabled = false; }); return; }
     b.disabled = true;
     var done = function (j, okText, icon) {
       if (!j || !j.ok) { R.toast(whyText(j), 'diversity_1'); b.disabled = false; return; }
@@ -491,7 +493,7 @@
         done(j, 'Plaza friends is off. Your card, friends, requests and notes are deleted.', 'toggle_off');
         if (!j || !j.ok) return;
         try { if (root.OvuConsent && root.OvuConsent.withdraw) root.OvuConsent.withdraw('social', 'you', { sent: true }); } catch (e) { }
-        me.card = null; me.on = false; inbox = null; setPeople([]); badge(); reshow();
+        me.card = null; me.on = false; inbox = null; setPeople([]); badge(); if (still()) reshow();
       });
     }
     if (call) call.catch(function (e) { if (e && e.cancelled) return; offline(e); b.disabled = false; });
