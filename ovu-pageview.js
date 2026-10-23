@@ -33,7 +33,7 @@
     if (p && /\/room\.html$|\/$|\/index\.html$/.test(p) && frame.src.indexOf('about:') !== 0) { handoff(hh.slice(1)); return; }
     if (!d.getElementById('pvEmbedStyle')) {
       var st = d.createElement('style'); st.id = 'pvEmbedStyle';
-      st.textContent = 'nav.nav,nav.bottom-nav,.top,.topbar,a.back,.back-link,a.learning-back,#lunaFab,.luna-fab{display:none!important}body{padding-bottom:24px!important}';
+      st.textContent = 'nav.nav,nav.bottom-nav,.top,.topbar,a.back,.back-link,a.learning-back,a.assessment-back,#lunaBtn,#lunaPanel,#lunaFab,.luna-fab{display:none!important}body{padding-bottom:24px!important}';
       (d.head || d.documentElement).appendChild(st);
     }
     var t = (d.title || '').replace(/^Rhythme\s*[·|-]\s*/, ''); title.textContent = t || 'Rhythme';

@@ -36,7 +36,7 @@
     });
     document.getElementById('assessmentState').textContent = result.reason;
     var summary = document.getElementById('assessmentSummary'); summary.replaceChildren();
-    summary.appendChild(textRow('Core questions answered', result.questions.answered + ' of ' + result.questions.total + ' — not a health score'));
+    summary.appendChild(textRow('Core questions answered', result.questions.answered + ' of ' + result.questions.total + ' (not a health score)'));
     summary.appendChild(textRow('Age at entry', result.input.age !== null && !result.errors.age ? result.input.age + ' years (self-reported)' : 'Not recorded'));
     summary.appendChild(textRow('Cycle pattern', optionText('cycle', result.input.cycle)));
     summary.appendChild(textRow('Current context', optionText('context', result.input.context)));

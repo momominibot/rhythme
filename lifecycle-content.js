@@ -43,7 +43,7 @@ window.OVULUNA_CHAPTERS = [
       },
       {
         "label": "Review medicines",
-        "href": "meds.html"
+        "href": "health-profile.html"
       },
       {
         "label": "Find support in your country",
@@ -192,7 +192,7 @@ window.OVULUNA_CHAPTERS = [
       },
       {
         "label": "Review your medicines",
-        "href": "meds.html"
+        "href": "health-profile.html"
       },
       {
         "label": "Learn about movement",
