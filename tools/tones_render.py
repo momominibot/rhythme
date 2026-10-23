@@ -15,7 +15,8 @@ state's own largest step (a diagnostic, since a high carrier's own slope can hid
 Usage: python3 tools/tones_render.py [--before origin/main] [--rate 44100] [--out DIR] [--pitches 174,528,963] [--beds rain]
        [--scenarios none|name,name] [--json FILE] [--volume 0.25] [--selftest] [--compare BEFORE.json AFTER.json]
 Scripted cases (replacement, the slider during a fade, the switch off during a fade, the slider to zero during a bed's
-arrival) run with the on-disk module and must keep the peak under the loudest ceiling in play and go quiet when told.
+arrival, the switch back on during a fade) run with the on-disk module: every start must be accepted, named seconds must
+sound (above -60 dBFS) or be quiet (under -70), the peak must stay under the loudest ceiling in play, and the end is silent.
 Exit code 1 (for the on-disk module) when a target is missed: a sample or true peak above gainFor(volume), a nonzero first sample,
 a start or stop step larger than the steady maximum, a wobble share above 0.5, a modulation depth above 4 dB for a tone, a tone's two channels more than 1.5 dB apart in RMS, or sound
 left in the last half second (Stop on the audio clock must have silenced it)."""
@@ -28,11 +29,13 @@ BEDS = ['rain', 'stream', 'waves']
 # scripted cases (Codex, 22 Oct): what a single start and Stop never shows. Each is a list of acts at render seconds; `quiet`
 # names one-second windows that must be under -70 dBFS (a fading sound must follow the slider to zero and the switch to off)
 SCENARIOS = [
-    {'name': 'switch-pitch-bed-pitch', 'seconds': 100, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 20, 'op': 'start', 'arg': 963}, {'t': 40, 'op': 'bed', 'arg': 'rain'}, {'t': 60, 'op': 'start', 'arg': 174}, {'t': 80, 'op': 'stop'}], 'quiet': []},
-    {'name': 'slider-up-down-zero-in-fade', 'seconds': 60, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 15, 'op': 'volume', 'arg': 1}, {'t': 30, 'op': 'volume', 'arg': 0.25}, {'t': 45, 'op': 'stop'}, {'t': 47, 'op': 'volume', 'arg': 0}], 'quiet': [49, 50, 51]},
-    {'name': 'switch-off-in-fade', 'seconds': 30, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 20, 'op': 'stop'}, {'t': 21, 'op': 'off'}], 'quiet': [22, 23, 24]},
-    {'name': 'bed-slider-zero-in-fade-in', 'seconds': 30, 'script': [{'t': 0, 'op': 'bed', 'arg': 'stream'}, {'t': 1, 'op': 'volume', 'arg': 0}], 'quiet': [3, 4, 5, 10, 20]}
+    {'name': 'switch-pitch-bed-pitch', 'seconds': 100, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 20, 'op': 'start', 'arg': 963}, {'t': 40, 'op': 'bed', 'arg': 'rain'}, {'t': 60, 'op': 'start', 'arg': 174}, {'t': 80, 'op': 'stop'}], 'quiet': [], 'loud': [15, 35, 55, 75]},
+    {'name': 'slider-up-down-zero-in-fade', 'seconds': 60, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 15, 'op': 'volume', 'arg': 1}, {'t': 30, 'op': 'volume', 'arg': 0.25}, {'t': 45, 'op': 'stop'}, {'t': 47, 'op': 'volume', 'arg': 0}], 'quiet': [49, 50, 51], 'loud': [10, 25, 40]},
+    {'name': 'switch-off-in-fade', 'seconds': 30, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 20, 'op': 'stop'}, {'t': 21, 'op': 'off'}], 'quiet': [22, 23, 24], 'loud': [10, 19]},
+    {'name': 'bed-slider-zero-in-fade-in', 'seconds': 30, 'script': [{'t': 0, 'op': 'bed', 'arg': 'stream'}, {'t': 1, 'op': 'volume', 'arg': 0}], 'quiet': [3, 4, 5, 10, 20], 'loud': []},
+    {'name': 'switch-on-again-in-fade', 'seconds': 30, 'script': [{'t': 0, 'op': 'start', 'arg': 639}, {'t': 15, 'op': 'stop'}, {'t': 16, 'op': 'off'}, {'t': 17, 'op': 'on'}, {'t': 17.5, 'op': 'volume', 'arg': 0.25}], 'quiet': [18, 19, 20, 21], 'loud': [10]}
 ]
+# the sound switch coming back on mid-leaving must not revive the ended tone (Codex, round two): the hushed graph stays hushed
 # the estimator's own check: a plain sine must read as unmodulated, a sine modulated at 3 Hz by 30 per cent must read as a wobble near 3 Hz
 SELFTEST = """(function (root) { var ctx = null, o = null, g = null;
   function gainFor(v) { return Math.round(v * 0.35 * 1000) / 1000; }
@@ -109,6 +112,10 @@ async def main():
                     if r['truePeakDb'] > ceil + 0.3: notes.append('TRUE PEAK OVER'); bad.append(c['name'] + ' true peak %.1f' % r['truePeakDb'])
                     loud = [w for w in c['quiet'] if w < len(wins) and wins[w] > -70]
                     if loud: notes.append('NOT QUIET AT ' + ','.join('%ds %.0f' % (w, wins[w]) for w in loud)); bad.append(c['name'] + ' loud windows ' + ','.join(str(w) for w in loud))
+                    silent = [w for w in c.get('loud', []) if w < len(wins) and wins[w] < -60]
+                    if silent: notes.append('SILENT WHERE IT SHOULD SOUND AT ' + ','.join('%ds %.0f' % (w, wins[w]) for w in silent)); bad.append(c['name'] + ' silent windows ' + ','.join(str(w) for w in silent))
+                    refused = [x for x in r['acts'] if x['op'] in ('start', 'bed') and x['ok'] is not True]
+                    if refused: notes.append('START REFUSED AT ' + ','.join('%gs' % x['t'] for x in refused)); bad.append(c['name'] + ' refused starts')
                     if r['endDb'] > -80: notes.append('STILL SOUNDING AT END %.1f' % r['endDb']); bad.append(c['name'] + ' end %.1f dB' % r['endDb'])
                     print('%-28s peak %6.1f  true %6.1f  end %5.0f  ceiling %6.1f  %s' % (c['name'], r['peakDb'], r['truePeakDb'], r['endDb'], ceil, ' '.join(notes) or 'ok'))
                     rows.append({'case': c['name'], 'module': label, 'peakDb': r['peakDb'], 'truePeakDb': r['truePeakDb'], 'endDb': r['endDb'], 'winPeaksDb': wins}); continue

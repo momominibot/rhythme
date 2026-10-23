@@ -37,9 +37,9 @@ window.renderTone = async function (opts) {
     if (step.op === 'start') return T.start(step.arg, null); if (step.op === 'bed') return T.startBed(step.arg, null); if (step.op === 'stop') return T.stop();
     if (step.op === 'volume') { vol = step.arg; return T.setVolume(); } if (step.op === 'off') { on = false; T.stop(); return T.hush && T.hush(); } if (step.op === 'on') { on = true; return; }
   }
-  var pending = [], stopAt, gainAt = T.gainFor(vol);
-  if (opts.script) { /* every suspend is booked before rendering; each runs its act and resumes */
-    opts.script.forEach(function (step) { if (step.t > 0) pending.push(ctx.suspend(step.t).then(function () { byMe = true; op(step); byMe = false; return realResume(); })); else op(step); });
+  var pending = [], stopAt, gainAt = T.gainFor(vol), acts = [];
+  if (opts.script) { /* every suspend is booked before rendering; each runs its act, records whether it was accepted, and resumes */
+    opts.script.forEach(function (step) { if (step.t > 0) pending.push(ctx.suspend(step.t).then(function () { byMe = true; acts.push({ t: step.t, op: step.op, ok: op(step) }); byMe = false; return realResume(); })); else acts.push({ t: 0, op: step.op, ok: op(step) }); });
     var stops = opts.script.filter(function (x) { return x.op === 'stop' || x.op === 'off'; }); stopAt = stops.length ? stops[stops.length - 1].t : secs - 8;
     opts.script.forEach(function (x) { if (x.op === 'volume') gainAt = Math.max(gainAt, T.gainFor(x.arg)); });
   } else {
@@ -81,7 +81,7 @@ window.renderTone = async function (opts) {
   var db = function (x) { return 20 * Math.log10(x || 1e-9); };
   var winPeaks = []; for (var wp = 0; wp + sr <= n; wp += sr) winPeaks.push(db(peakOf(wp, wp + sr))); /* one peak per second, for the scripted cases */
   return {
-    winPeaksDb: winPeaks, gainMax: gainAt,
+    winPeaksDb: winPeaks, gainMax: gainAt, acts: acts,
     sampleRate: sr, seconds: secs, stopAt: stopAt, steady: [s0 / sr, s1 / sr], gainFor: T.gainFor(opts.volume == null ? 0.25 : opts.volume), live: T.liveNodes ? T.liveNodes() : null,
     peakDb: db(peakOf(0, n)), truePeakDb: db(Math.max(truePeak(L, 0, n), truePeak(R, 0, n))), monoPeakDb: db(monoPeak(0, n)), steadyPeakDb: db(peakOf(s0, s1)),
     rmsLDb: db(Math.sqrt(sl / (s1 - s0))), rmsRDb: db(Math.sqrt(srr / (s1 - s0))), rmsMonoDb: db(Math.sqrt(sm / (s1 - s0))), lufs: -0.691 + 10 * Math.log10(kw || 1e-12),

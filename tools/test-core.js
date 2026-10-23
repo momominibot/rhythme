@@ -921,7 +921,38 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var loop = T.loopable(new Float32Array([1, 2, 3, 4, 5, 6, 7, 8]), 6, 2), bn = T.bedNoise('pink', 48000, 19200, 617), bpk = 0; for (var q = 0; q < bn.length; q++) bpk = Math.max(bpk, Math.abs(bn[q]));
   check('a loopable buffer blends its start with the tail past the loop point by equal power, and a bed’s loop is then scaled so its loudest sample is exactly a half (the overlap can lift a peak)', loop.length === 6 && Math.abs(loop[0] - 7) < 1e-6 && Math.abs(loop[1] - (2 * Math.SQRT1_2 + 8 * Math.SQRT1_2)) < 1e-6 && loop[2] === 3 && loop[5] === 6 && Math.abs(bpk - 0.5) < 1e-4, JSON.stringify([Array.prototype.slice.call(loop), bpk]));
   var TS = fs.readFileSync(path.join(root, 'ovu-tones.js'), 'utf8');
-  check('the sheet says why nothing plays when sound is off; the switch going off ends and hushes everything; the page hidden still ends everything; every node joins its graph the moment it is made', /Sound is switched off in the room/.test(TS) && /else if \(!soundOn\(\)\) \{ endAll\(\); hush\(\); \}/.test(TS) && /visibilitychange[^\n]*if \(doc\.hidden\) endAll\(\)/.test(TS) && !/ctx\.create\w+\(\)(?![^\n]*make\()/.test(TS.split('function stage')[1].split('T.start = start')[0].replace(/make\(nodes, ctx\.create\w+\(\)\)/g, 'M')), (TS.split('function stage')[1].split('T.start = start')[0].replace(/make\(nodes, ctx\.create\w+\(\)\)/g, 'M').match(/ctx\.create\w+\(\)/g) || []).join());
+  var SA = T.stateAction;
+  check('what a store change means (the pure table): sleep or the switch off ends everything; the switch off also hushes whatever is leaving, whichever reason brought the news; another tab, clear, import and a sync end everything; otherwise the slider is followed', SA('state', true, true).join() === 'end' && SA('state', false, false).join() === 'end,hush' && SA('state', true, false).join() === 'end,hush' && SA('state', false, true).join() === 'volume' && SA('external', false, false).join() === 'end,hush' && SA('external', false, true).join() === 'end' && SA('clear', false, true).join() === 'end' && SA('import', false, false).join() === 'end,hush' && SA('sync-pull', false, false).join() === 'end,hush' && SA('props', false, false).join() === '' && SA('entries', false, true).join() === '');
+  var Wh = world(), Th = Wh.T, Lh = Wh.log; Th.start(528, null); Lh.ctx.currentTime = 10; Th.stop(); Th.hush(); Wh.sw.vol = 0.5; Th.setVolume();
+  var hushedVols = vols(Lh, Th.gainFor(0.25));
+  check('a hushed leaving graph stays hushed: the switch back on and a slider move never retarget its vol above zero (Codex round two P1)', hushedVols.length === 1 && hushedVols[0].gain.events[hushedVols[0].gain.events.length - 1][0] === 'setTargetAtTime' && hushedVols[0].gain.events[hushedVols[0].gain.events.length - 1][1] === 0 && !hushedVols[0].gain.events.some(function (e) { return e[0] === 'setTargetAtTime' && e[1] === Th.gainFor(0.5); }), JSON.stringify(hushedVols.map(function (v) { return v.gain.events.slice(-2); })));
+  var Wc = world(), Tc = Wc.T, realCtor = Wc.log.ctx; /* a browser with no working AudioContext: the constructor throws */
+  (function () { var w0 = scenes('2026-10-22'); w0.OvuRoom = null; w0.OvuZones = null; w0.AudioContext = function () { throw new Error('NotSupportedError'); }; w0.OvuSound = { volume: function () { return 0.25; }, enabled: function () { return true; } }; w0.setTimeout = function () { return 1; }; w0.clearTimeout = function () { };
+    ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-tones.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w0, { filename: f }); });
+    var ok = true, r1, r2; try { r1 = w0.OvuTones.start(528, null); r2 = w0.OvuTones.startBed('rain', null); } catch (e) { ok = false; }
+    check('an AudioContext whose constructor throws makes a tone and a bed refuse quietly (false, no exception, nothing held)', ok && r1 === false && r2 === false && w0.OvuTones.playing() === null && w0.OvuTones.liveNodes() === 0, JSON.stringify([ok, r1, r2]));
+  })();
+  var Wg = world(function (log) { log.state = 'suspended'; log.resumeMode = 'reject'; }), Tg = Wg.T, gtold = []; Tg.onChange(function (hz) { gtold.push(hz); });
+  var ga = Tg.start(528, null); Wg.log.resumeMode = 'throw'; var gb = Tg.start(963, null), gArmed = Tg.playing() === 528 && Tg.liveNodes() > 0, gSettled = false;
+  process.on('exit', function () { if (!gSettled) { console.error('  FAIL the generation check never ran'); process.exitCode = 1; } });
+  Promise.resolve().then(function () { }).then(function () {
+    gSettled = true;
+    check('generation ownership (Codex round two P2): a second start whose resume throws takes no generation, so the first start’s later refusal still undoes the first tone', ga === true && gb === false && gArmed && Tg.playing() === null && Tg.liveNodes() === 0 && gtold[gtold.length - 1] === null, JSON.stringify([ga, gb, gArmed, Tg.playing(), Tg.liveNodes(), gtold]));
+  });
+  var Ws = world(function (log) { log.state = 'suspended'; log.resumeMode = 'reject'; }), Ts = Ws.T, stold = []; Ts.onChange(function (hz) { stold.push(hz); });
+  Ts.start(528, null); Ws.log.ctx.currentTime = 5; Ts.stop(); var sAfterStop = stold.length, sHeld = Ts.liveNodes(), sSettled = false;
+  process.on('exit', function () { if (!sSettled) { console.error('  FAIL the stale-refusal check never ran'); process.exitCode = 1; } });
+  Promise.resolve().then(function () { }).then(function () {
+    sSettled = true;
+    var fired = Ws.flush(), again = Ws.timers.filter(function (t) { return t.fn; }).length;
+    check('a refusal that lands after Stop took the stage lets the old graph go but tells no one and clears nothing newer; the released graph’s housekeeping never re-arms (Codex round two P2)', sHeld > 0 && Ts.liveNodes() === 0 && stold.length === sAfterStop && fired.length >= 1 && again === 0, JSON.stringify([sHeld, Ts.liveNodes(), stold.length, sAfterStop, fired.length, again]));
+  });
+  var Wb = world(), Tb = Wb.T, Lb = Wb.log, btold = []; Tb.onChange(function (hz) { btold.push(hz); });
+  Tb.start(741, 10); var nb = Lb.created.length; Lb.ctx.createBufferSource = function () { throw new Error('NotSupportedError'); };
+  check('a bed that fails half way (its source could not be made) returns false, releases what it built, clears the earlier timed sit and tells listeners (the bed’s own catch, Codex round two)', Tb.startBed('rain', null) === false && Tb.bed() === null && Tb.playing() === null && Lb.created.slice(nb).every(function (n) { return n.disconnected; }) && Tb.remaining() === null && btold[btold.length - 1] === null, JSON.stringify([Tb.bed(), Tb.remaining(), btold]));
+  var b44 = T.bedNoise('pink', 44100 * 6, Math.round(44100 * 0.4), 617), p44 = 0; for (var q4 = 0; q4 < b44.length; q4++) p44 = Math.max(p44, Math.abs(b44[q4]));
+  check('the six-second 44.1 kHz pink loop (the case Codex cited) peaks at exactly a half after its seam', Math.abs(p44 - 0.5) < 1e-6, p44);
+  check('the sheet says why nothing plays when sound is off; the store subscription applies the pure table; the page hidden still ends everything; every node joins its graph the moment it is made', /Sound is switched off in the room/.test(TS) && /stateAction\(reason, !!S\.state\(\)\.sleeping, soundOn\(\)\)\.forEach/.test(TS) && /visibilitychange[^\n]*if \(doc\.hidden\) endAll\(\)/.test(TS) && !/ctx\.create\w+\(\)(?![^\n]*make\()/.test(TS.split('function stage')[1].split('T.start = start')[0].replace(/make\(nodes, ctx\.create\w+\(\)\)/g, 'M')), (TS.split('function stage')[1].split('T.start = start')[0].replace(/make\(nodes, ctx\.create\w+\(\)\)/g, 'M').match(/ctx\.create\w+\(\)/g) || []).join());
 })();
 (function phase1ReviewFixes() {
   console.log('2k. Codex review of Phase 1: a full disk never half-buys, update day never pays twice, clocks cannot reopen caps');

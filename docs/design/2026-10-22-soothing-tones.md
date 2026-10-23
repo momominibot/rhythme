@@ -168,7 +168,14 @@ the sum of all voice amplitudes, after the equal-power pans, is 1 in the louder 
   approach), for a bed too (the old code moved only the tone, and only while it played).
 - **The app's sound switch** rules the spring (Codex): with sound off, neither a tone nor a bed starts (the sheet says so
   and she can still just sit); when the switch goes off, a sound playing ends and every graph still leaving is hushed at
-  once (`hush`).
+  once (`hush`), and stays hushed if the switch comes back on mid-leaving. What a store change means is one pure table
+  (`stateAction`, round two): sleep or the switch off ends everything; another tab, clear, import or a sync ends
+  everything; the switch off also hushes whatever is leaving whichever reason brought the news; otherwise the slider is
+  followed.
+- **Generations** (round two): each start owns a generation number taken only after its resume call succeeded, Stop
+  takes a new one, and a refusal that lands later lets that start's graphs (and older ones) go but clears state and
+  timers only if nothing newer has taken the stage. A start whose AudioContext constructor or resume throws returns
+  false and builds nothing. A graph once released is terminal: its housekeeping never re-arms.
 - **One sound by the water**: a tone replaces a bed as a bed replaces a tone; the old code could leave both running
   through the public functions.
 - **The cave's own music** (ovu-music.js, a D drone with D, F sharp, A and B bowl strikes) now steps aside while a tone or
@@ -211,10 +218,11 @@ above 2 kHz, amplitude-modulation depth and dominant rate from 100 ms RMS window
 is a wobble (1.5 to 8 Hz) against a swell (0.05 to 1.5 Hz), the largest sample step at start and around Stop against
 the steady state's own largest step (a diagnostic only), and the level of the last half second. `--selftest` renders
 a plain sine (must read as unmodulated) and a sine modulated 30 per cent at 3 Hz (must read as a 3 Hz wobble) to prove
-the estimator before it judges anything. Four scripted cases run with the on-disk module, because a single start and
-Stop never shows them (Codex, round one): a pitch replaced by a pitch, then a bed, then a pitch; the slider up to one,
-down, Stop, then to zero during the fade; the switch off during a fade; the slider to zero during a bed's arrival. Each
-must keep its peak under the loudest ceiling in play, go quiet in the named seconds (under -70 dBFS) and end silent. Targets for the new voice: no sample or true peak above the ceiling, a zero
+the estimator before it judges anything. Five scripted cases run with the on-disk module, because a single start and
+Stop never shows them (Codex, rounds one and two): a pitch replaced by a pitch, then a bed, then a pitch; the slider up
+to one, down, Stop, then to zero during the fade; the switch off during a fade; the slider to zero during a bed's
+arrival; the switch off and on again during a fade. Every start must be accepted, named seconds must sound (above
+-60 dBFS) or be quiet (under -70), the peak must stay under the loudest ceiling in play, and the end is silent. Targets for the new voice: no sample or true peak above the ceiling, a zero
 first sample, no step at start or Stop above the steady maximum, a wobble share under 0.5, a modulation depth under
 4 dB, the two channels within 1.5 dB, and silence in the last half second. Previews: the first 22 s as WAV at the real
 level, plus loudness-matched copies (-26 LUFS-like) so timbres compare at one level; `ffmpeg` makes old-then-new m4a

@@ -141,24 +141,29 @@
   function soundOn() { var SND = root.OvuSound; try { return SND && SND.enabled ? !!SND.enabled() : true; } catch (e) { return true; } }
   function clearTimer() { clearTimeout(endT); endT = null; endAt = null; }
   /* the context, resumed when the browser suspended it. A resume that throws means nothing can play: the start stops before it builds
-   * anything. A resume that is refused later means the same: whatever that start built is let go at once and listeners told,
-   * unless a later start already owns the stage (the generation) */
+   * anything (and takes no generation). A resume the browser refuses later means the same for whatever that start built: its graphs
+   * (and any older ones) are let go, and, if no later start or Stop has taken the stage since, state and timer are cleared and
+   * listeners told. Each start owns a generation number; Stop takes a new one so a stale refusal cannot clear a newer quiet sit */
   function ensure(myGen) {
     if (!ctx) ctx = new (AC())();
     if (ctx.state === 'suspended' && ctx.resume) {
       var p; try { p = ctx.resume(); } catch (e) { return false; }
-      if (p && p.then) p.then(null, function () { if (gen === myGen) fail(); });
+      if (p && p.then) p.then(null, function () { fail(myGen); });
     }
     return true;
   }
   function make(nodes, n) { nodes.push(n); return n; } /* every node joins its graph's list the moment it is made, so a failure half way releases all of it */
   function hold(g) { held.push(g); return g; }
-  function release(g) { var i = held.indexOf(g); if (i > -1) held.splice(i, 1); g.nodes.forEach(function (x) { try { if (x.stop) x.stop(); } catch (e) { } try { x.disconnect(); } catch (e) { } }); }
+  function release(g) { g.released = true; var i = held.indexOf(g); if (i > -1) held.splice(i, 1); g.nodes.forEach(function (x) { try { if (x.stop) x.stop(); } catch (e) { } try { x.disconnect(); } catch (e) { } }); }
   /* housekeeping only once the audio clock has passed the graph's final zero: a wall-clock timer runs late while the page is hidden
-   * and a suspended context stands still, so a timer that fires early re-arms itself instead of cutting a fade short */
-  function releaseAfter(g) { var wait = ctx && g.deadline != null ? (g.deadline - ctx.currentTime) * 1000 + 300 : 0; if (wait > 50) setTimeout(function () { releaseAfter(g); }, wait); else release(g); }
+   * and a suspended context stands still, so a timer that fires early re-arms itself instead of cutting a fade short; a graph already
+   * let go (a refused resume) is terminal and never re-arms */
+  function releaseAfter(g) { if (g.released) return; var wait = ctx && g.deadline != null ? (g.deadline - ctx.currentTime) * 1000 + 300 : 0; if (wait > 50) setTimeout(function () { releaseAfter(g); }, wait); else release(g); }
   function liveNodes() { return held.reduce(function (n, g) { return n + g.nodes.length; }, 0); }
-  function fail() { held.slice().forEach(release); voice = null; bedG = null; playing = null; bed = null; clearTimer(); notify(); }
+  function fail(myGen) {
+    held.slice().forEach(function (g) { if (g.gen <= myGen) release(g); });
+    if (gen === myGen) { voice = null; bedG = null; playing = null; bed = null; clearTimer(); notify(); }
+  }
   function room(nodes, hz) {
     if (!roomBuf) { roomChans = impulse(ctx.sampleRate, ROOM.seconds, ROOM.seed); roomBuf = ctx.createBuffer(2, roomChans[0].length, ctx.sampleRate); roomBuf.getChannelData(0).set(roomChans[0]); roomBuf.getChannelData(1).set(roomChans[1]); }
     var key = hz + ':' + ctx.sampleRate; if (wets[key] == null) wets[key] = wetFor(roomChans, hz, ctx.sampleRate);
@@ -173,8 +178,9 @@
   }
   function start(hz, minutes) {
     hz = Number(hz); if (!valid(hz) || !AC() || !soundOn()) return false;
-    var nodes = [], myGen = ++gen;
-    if (!ensure(myGen)) return false;
+    var nodes = [], myGen = gen + 1;
+    try { if (!ensure(myGen)) return false; } catch (e) { return false; } /* no context at all: nothing to play, nothing built */
+    gen = myGen;
     try {
       stopNodes(0.6); stopBed(0.6); bed = null; /* one sound by the water: a tone replaces a bed as a bed replaces a tone */
       var now = ctx.currentTime, st = stage(nodes, now);
@@ -189,7 +195,7 @@
         if (v.pan && ctx.createStereoPanner) { var pn = make(nodes, ctx.createStereoPanner()); pn.pan.value = v.pan; vg.connect(pn); pn.connect(env); } else vg.connect(env); /* a centred voice goes straight in: a mono signal copied to both channels at full gain, which panGains(0) counts as such */
         o.start(now);
       });
-      voice = hold({ nodes: nodes, vol: st.vol, close: st.close, env: env, kind: 'tone', deadline: null });
+      voice = hold({ nodes: nodes, vol: st.vol, close: st.close, env: env, kind: 'tone', gen: myGen, deadline: null });
     } catch (e) { release({ nodes: nodes }); voice = null; playing = null; clearTimer(); notify(); return false; } /* a half-built voice is torn down, its timer cleared, never left humming */
     playing = hz; clearTimer();
     if (minutes && isFinite(minutes) && minutes > 0) { endAt = Date.now() + minutes * 60000; endT = setTimeout(function () { stop(); }, minutes * 60000); }
@@ -206,7 +212,7 @@
     setTimeout(function () { releaseAfter(g); }, (secs + 2) * 1000);
   }
   function stopNodes(fade) { if (!ctx || !voice) return; var g = voice; voice = null; letGo(g, fade == null ? ENV.releaseSeconds : fade); }
-  function stop() { if (!playing && !voice && !bed) { notify(); return; } stopNodes(); stopBed(2); playing = null; clearTimer(); notify(); }
+  function stop() { gen++; if (!playing && !voice && !bed) { notify(); return; } stopNodes(); stopBed(2); playing = null; clearTimer(); notify(); } /* Stop takes the stage: a refusal of an earlier start can still let its graphs go, but touches nothing newer */
   /* a bed's loop: seeded noise, made loopable, then scaled so its loudest sample is a half (the overlap can lift a peak a little) */
   function bedNoise(kind, len, ov, seed) { var d = loopable(noise(kind, len + ov, seed), len, ov), peak = 0; for (var i = 0; i < len; i++) peak = Math.max(peak, Math.abs(d[i])); if (peak > 0) for (var j = 0; j < len; j++) d[j] = d[j] * 0.5 / peak; return d; }
   function noiseBuffer(kind) {
@@ -219,8 +225,9 @@
    * their modulation sum to at most 1.2, so a bed's loudest sample stays under 0.6 of its volume (the ceiling itself) */
   function startBed(kind, minutes) {
     if (!BEDS[kind] || !AC() || !soundOn()) return false;
-    var nodes = [], myGen = ++gen;
-    if (!ensure(myGen)) return false;
+    var nodes = [], myGen = gen + 1;
+    try { if (!ensure(myGen)) return false; } catch (e) { return false; }
+    gen = myGen;
     try {
       stopBed(0.4); stopNodes(0.4); playing = null;
       var now = ctx.currentTime, st = stage(nodes, now);
@@ -243,7 +250,7 @@
         pw.connect(bp2); bp2.connect(wash); wash.connect(ramp); var wg = make(nodes, ctx.createGain()); wg.gain.value = 0.05; swl.connect(wg); wg.connect(wash.gain); wash.gain.value = 0.06;
       }
       nodes.forEach(function (x) { if (x.start && x.buffer) x.start(now); });
-      bedG = hold({ nodes: nodes, vol: st.vol, close: st.close, env: ramp, kind: 'bed', deadline: null }); bed = kind;
+      bedG = hold({ nodes: nodes, vol: st.vol, close: st.close, env: ramp, kind: 'bed', gen: myGen, deadline: null }); bed = kind;
     } catch (e) { release({ nodes: nodes }); bedG = null; bed = null; clearTimer(); notify(); return false; }
     clearTimer();
     if (minutes && isFinite(minutes) && minutes > 0) { endAt = Date.now() + minutes * 60000; endT = setTimeout(function () { stop(); }, minutes * 60000); }
@@ -251,11 +258,21 @@
   }
   function stopBed(fade) { if (!bedG || !ctx) { bed = null; return; } var g = bedG; bedG = null; bed = null; letGo(g, fade == null ? 2 : fade); }
   function remaining() { return endAt ? Math.max(0, Math.round((endAt - Date.now()) / 1000)) : null; }
-  /* the slider reaches every graph still alive, a leaving one included: hold where it is, then approach the new volume */
-  function setVolume() { if (!ctx) return; var now = ctx.currentTime, g = gainFor(appVolume()); held.forEach(function (h) { try { var v = h.vol.gain; v.cancelScheduledValues(now); v.setValueAtTime(Math.max(0, v.value), now); v.setTargetAtTime(g, now, 0.3); } catch (e) { } }); }
-  /* the switch went off: every graph alive, leaving ones included, goes quiet at once */
-  function hush() { if (!ctx) return; var now = ctx.currentTime; held.forEach(function (h) { try { var v = h.vol.gain; v.cancelScheduledValues(now); v.setValueAtTime(Math.max(0, v.value), now); v.setTargetAtTime(0, now, 0.05); } catch (e) { } }); }
-  T.start = start; T.startBed = startBed; T.bed = function () { return bed; }; T.stop = stop; T.playing = function () { return playing; }; T.remaining = remaining; T.setVolume = setVolume; T.hush = hush; T.onChange = function (f) { fns.push(f); }; T.liveNodes = liveNodes; T.soundOn = soundOn; T.bedNoise = bedNoise;
+  /* the slider reaches every graph still alive, a leaving one included: hold where it is, then approach the new volume. A graph
+   * once hushed stays hushed: the switch coming back on mid-leaving does not revive an ended sound */
+  function setVolume() { if (!ctx) return; var now = ctx.currentTime, g = gainFor(appVolume()); held.forEach(function (h) { if (h.hushed) return; try { var v = h.vol.gain; v.cancelScheduledValues(now); v.setValueAtTime(Math.max(0, v.value), now); v.setTargetAtTime(g, now, 0.3); } catch (e) { } }); }
+  /* the switch went off: every graph alive, leaving ones included, goes quiet at once and for good */
+  function hush() { if (!ctx) return; var now = ctx.currentTime; held.forEach(function (h) { h.hushed = true; try { var v = h.vol.gain; v.cancelScheduledValues(now); v.setValueAtTime(Math.max(0, v.value), now); v.setTargetAtTime(0, now, 0.05); } catch (e) { } }); }
+  /* what a store change means for the spring (pure, so the table is tested): an ending reason (clear, import, another tab, a sync)
+   * ends everything; a state change ends everything when sleep begins or the sound switch is off, else follows the slider; and
+   * whenever the switch is off, whatever is still leaving is hushed too, whichever reason brought the news (Codex, round two) */
+  function stateAction(reason, sleeping, on) {
+    var r = String(reason), ending = r === 'clear' || r === 'import' || r === 'external' || r.indexOf('sync') === 0, out = [];
+    if (ending || (r === 'state' && (sleeping || !on))) out.push('end'); else if (r === 'state') out.push('volume');
+    if (!on && (ending || r === 'state')) out.push('hush');
+    return out;
+  }
+  T.start = start; T.startBed = startBed; T.bed = function () { return bed; }; T.stop = stop; T.playing = function () { return playing; }; T.remaining = remaining; T.setVolume = setVolume; T.hush = hush; T.onChange = function (f) { fns.push(f); }; T.liveNodes = liveNodes; T.soundOn = soundOn; T.bedNoise = bedNoise; T.stateAction = stateAction;
 
   /* ---------- the hidden spring: sitting by the water is the tone ---------- */
   var S = root.OvuStore, R = root.OvuRoom, W = root.OvuWalk, B = root.OvuBarn, CARE = root.OvuCare, doc = root.document;
@@ -334,8 +351,7 @@
     R.on('outfit', function () { if (sitting && sitting.el && root.OvuGarden && root.OvuGarden.reseat) root.OvuGarden.reseat(sitting.el, CAVE.seat); });
     doc.addEventListener('visibilitychange', function () { if (doc.hidden) endAll(); });
     S.subscribe(function (reason) {
-      if (reason === 'clear' || reason === 'import' || reason === 'external' || String(reason).indexOf('sync') === 0) endAll();
-      else if (reason === 'state') { if (S.state().sleeping) endAll(); else if (!soundOn()) { endAll(); hush(); } else setVolume(); }
+      stateAction(reason, !!S.state().sleeping, soundOn()).forEach(function (act) { if (act === 'end') endAll(); else if (act === 'hush') hush(); else setVolume(); });
     });
   });
   T.openSpring = openSpring; T.openTones = openSpring; T.sitDown = sitDown; T.standUp = function () { endAll(); }; T.sitting = function () { return !!sitting; };
