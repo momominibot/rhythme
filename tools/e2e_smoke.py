@@ -3060,7 +3060,7 @@ async def main():
                 await route.abort()
             await ctx8.route("**/*", sync_gate)
             ctx8.on("requestfailed", lambda r: failed_urls.append(r.url))
-            stub = "()=>{window.OvuAuth={session:()=>({user:{id:'u1'}}),token:()=>Promise.resolve('t'),userId:()=>'u1'}; OvuStore.setProfile({cloud:{v:1,at:'2026-10-20T00:00:00Z',uid:'u1'}}); return true;}"
+            stub = "()=>{window.OvuAuth={session:()=>({user:{id:'u1'}}),token:()=>Promise.resolve('t'),userId:()=>'u1'}; window.OvuConsent={needsSheet:()=>false,allows:p=>p==='cloud_sync',record:()=>{},pullAccountState:()=>Promise.resolve(null),flush:()=>Promise.resolve(0),recordedOnAccount:()=>true}; OvuStore.setProfile({cloud:{v:1,at:'2026-10-20T00:00:00Z',uid:'u1'}}); return true;}"  # ovu-sync fails closed without the consent module: a double that opens only the backup door, already on the account
             tabs8 = []
             for _ in range(2):
                 t = await ctx8.new_page(); await t.goto(BASE + "404.html")

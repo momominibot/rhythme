@@ -130,10 +130,14 @@
   /* records the choice on the account, with the notice version the choice was made under and a hash of the words; resolves to the row.
      rev is the row's last change as this phone saw it (updated_at): when given, the server refuses with SQLSTATE 40001 if another
      phone changed the choice since, and the phone re-reads instead of overwriting. */
-  function improveSend(on, v, rev) {
+  function reqId() { return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+  /* opts.expectNone: an automatic first binding, refused (40001) when any decision already exists on the account; opts.reqId: a
+     stable id for this logical request, so a resend after a lost reply returns the same receipt and writes nothing */
+  function improveSend(on, v, rev, opts) {
+    opts = opts || {};
     return token().then(function (at) {
       if (!at) throw new Error('Please sign in again.');
-      var args = { p_on: !!on }; if (rev) args.p_expected_updated_at = rev;
+      var args = { p_on: !!on, p_request_id: opts.reqId || reqId() }; if (rev) args.p_expected_updated_at = rev; if (opts.expectNone) args.p_expect_none = true;
       if (!on) return call('POST', RPC, args, at);
       var p = root.OvuStore ? OvuStore.profile() : {};
       return sha256hex(improveText()).then(function (h) {
@@ -161,7 +165,7 @@
     }
     /* a withdrawal always reaches the account, whatever this phone's mirror says, so the aggregate and the record never disagree */
     var rev = prev.uid === uid && prev.syncedAt ? (prev.rev || null) : null; /* the row as this phone last saw it, so a change from another phone is caught */
-    return improveSend(on, NOTICE_V, rev).then(function (row) {
+    return improveSend(on, NOTICE_V, rev, { reqId: reqId() }).then(function (row) {
       if (userId() === uid && improveSeq === seq) { writeImprove(fromRow(row, uid)); noteImprove(on, method); }
       return { ok: true };
     }, function (err) {
@@ -182,9 +186,12 @@
       var plan = improvePlan(improveLocal(), uid, server);
       if (plan.action === 'push') {
         writeImprove({ uid: uid }); /* bound to this account before anything is sent, so no other account can inherit the tick */
-        return improveSend(true, improveLocal().v || NOTICE_V).then(
+        return improveSend(true, improveLocal().v || NOTICE_V, null, { expectNone: true, reqId: reqId() }).then(
           function (row) { if (userId() === uid && improveSeq === seq) writeImprove(fromRow(row, uid)); return plan; },
-          function () { if (improveSeq === seq) writeImprove({ on: false, uid: uid, syncedAt: null, scope: null }); return { action: 'failed' }; }); /* not recorded: shown off, the person can tick again */
+          function (err) {
+            if (improveSeq !== seq) return { action: 'failed' };
+            if (isConflict(err)) { delete improveRead[uid]; delete improveInflight[uid]; return syncImprove(); } /* a decision landed on the account meanwhile (a first refusal on another phone): adopt it, never overwrite it */
+            writeImprove({ on: false, uid: uid, syncedAt: null, scope: null }); return { action: 'failed' }; }); /* not recorded: shown off, the person can tick again */
       }
       var l = improveLocal();
       if (l.on !== plan.on || l.uid !== uid || !l.syncedAt || (l.scope || null) !== plan.scope || (l.rev || null) !== plan.rev) writeImprove({ on: plan.on, v: plan.notice || l.v || NOTICE_V, at: plan.since || l.at || nowIso(), uid: uid, syncedAt: nowIso(), scope: plan.scope, rev: plan.rev });

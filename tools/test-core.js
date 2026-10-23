@@ -16,9 +16,13 @@ function fresh(todayIso) {
   ['ovu-store.js', 'ovu-exercise.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-water.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sound.js', 'ovu-breathtap.js', 'ovu-lightflower.js', 'ovu-moments.js', 'ovu-mindful.js', 'ovu-morning.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   ['ovu-store.js', 'ovu-food.js', 'ovu-nova.js', 'ovu-agents.js', 'ovu-orb.js', 'ovu-rewards.js', 'ovu-water.js', 'ovu-pets.js', 'ovu-pdf.js', 'ovu-mascot.js', 'assets/vendor/fflate-0.8.2.umd.min.js', 'ovu-health.js', 'ovu-sync.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); });
   if (todayIso) { var S = w.OvuStore; if (typeof S.today === 'function') { S._today = S.today; S.today = function () { return todayIso; }; } }
+  /* ovu-sync.js fails closed without the consent module (nothing moves); the sync blocks here test the sync, so they get a
+   * double that says the gate is open; blocks that load the real ovu-consent.js replace it */
+  if (!w.OvuConsent) w.OvuConsent = { double: true, needsSheet: function () { return false; }, allows: function (p) { return p === 'cloud_sync'; }, record: function () { }, pullAccountState: function () { return Promise.resolve(null); }, flush: function () { return Promise.resolve(0); }, recordedOnAccount: function () { return true; }, boundTo: function () { return false; }, header: function () { return {}; } }; /* only the backup door is open and already on the account; nothing else is granted */
   return w;
 }
 var fails = 0, passes = 0;
+var openHarness = {}; /* async harnesses register here and clear on finish, so one that stalls fails the run instead of silently dropping its checks */
 function check(name, cond, detail) { if (cond) { passes++; console.log('  ok   ' + name); } else { fails++; console.log('  FAIL ' + name + (detail ? '  ->  ' + detail : '')); } }
 function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
 
@@ -99,6 +103,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('"skipped lunch" is still not a meal', O.parseLocal('skipped lunch, cramps 3/10').every(function (e) { return e.type !== 'food'; }));
   check('"had chicken rice for lunch" is a meal', O.parseLocal('had chicken rice for lunch').some(function (e) { return e.type === 'food' && e.data.meal === 'lunch'; }));
   check('spotting alone is a symptom, not a period day', (function () { var es = O.parseLocal('a bit of spotting today'); return es.some(function (e) { return e.type === 'symptom' && e.data.symptoms.indexOf('spotting') > -1; }) && !es.some(function (e) { return e.type === 'period'; }); })());
+  delete w.OvuConsent; /* the orb's own default, with no consent module present */
   check('model is off by default until permission is given', O.aiConfig().on === false && O.aiConfig().insights === false, JSON.stringify(O.aiConfig()));
 })();
 
@@ -2802,6 +2807,7 @@ function scenes(todayIso) {
 (function launchAiGuards() {
   console.log('launch sweep (20 Oct): Luna\'s AI help is paused, and a signed-in request never goes out without the account');
   var w = fresh('2026-10-20'), O = w.OvuOrb, sent = [];
+  delete w.OvuConsent; /* this sweep is about the account gate, with no consent module present */
   w.localStorage.setItem('ovumind_ai_v1', JSON.stringify({ on: true, provider: 'ovumind', insights: true, photos: true }));
   w.fetch = function (u) { sent.push(String(u)); return Promise.resolve({ ok: true, status: 200, json: function () { return Promise.resolve({ entries: [], reply: 'ok' }); } }); };
   vm.runInContext(fs.readFileSync(path.join(root, 'ovu-insight.js'), 'utf8'), w, { filename: 'ovu-insight.js' });
@@ -2835,6 +2841,194 @@ function scenes(todayIso) {
   w.OvuOrb.parseAI('slept badly').then(function () { return 'sent'; }, function (e) { return e.message; }).then(function (m) {
     check('after the session ends, an AI choice recorded on the account asks to sign in again and sends nothing anonymously', bound && /sign in again/i.test(m) && sent.length === 0, JSON.stringify({ bound: bound, m: m, sent: sent }));
   });
+})();
+(function supersededImproveMirror() {
+  console.log('phase 0 (22 Oct): an older unsent improve-logging mirror is closed as superseded, never counted as pending or claimed as sent');
+  var w = fresh('2026-10-22'), posts = [];
+  var local = { on: false, uid: 'u1', syncedAt: '2026-10-22T00:00:00Z' }; /* the account's record, as this phone last read it: off */
+  w.OvuAuth = { session: function () { return { user: { id: 'u1' } }; }, token: function () { return Promise.resolve('tok'); }, userId: function () { return 'u1'; }, setImprove: function () { }, improveLocal: function () { return local; } };
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-consent.js'), 'utf8'), w, { filename: 'ovu-consent.js' });
+  w.fetch = function (u, o) { posts.push(String(u)); return Promise.resolve({ ok: true, status: 200, json: function () { return Promise.resolve({ id: posts.length }); } }); };
+  var C = w.OvuConsent;
+  C.record('improve_logging', 'grant', 'you'); C.record('improve_logging', 'withdraw', 'you'); /* the account adopted the withdrawal */
+  C.flush().then(function () { return C.flush(); }).then(function () {
+    var evs = (w.OvuStore.profile().consentEvents || []).filter(function (e) { return e.purpose === 'improve_logging'; }), r = C.receipt();
+    var grant = evs[0], wd = evs[evs.length - 1];
+    check('the superseded grant is closed (superseded, not sent), the withdrawal is recorded via the account, and nothing is left pending', grant.superseded === true && !grant.sent && wd.sent === true && r.pending === 0 && C.recordedOnAccount('improve_logging') && !posts.some(function (u) { return /consent_record/.test(u); }), JSON.stringify({ evs: evs, pending: r.pending, posts: posts }));
+  });
+})();
+(function dashboardFeedHold() {
+  console.log('phase 0 (22 Oct): a hold reaches an open dashboard: the cached feed is dropped, late answers are ignored, a failed reload is retried');
+  var el = function () { return { innerHTML: '', textContent: '', className: '', style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };
+  var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } } };
+  w.window = w; w.document = { getElementById: function () { return el(); }, createElement: el, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(), documentElement: el(), hidden: false };
+  w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+  w.OvuAuth = { token: function () { return 't'; }, init: function () { return new Promise(function () { }); }, session: function () { return null; } };
+  w.__ADMIN_TEST__ = {};
+  var answers = {}, pendingFeed = [];
+  w.fetch = function (u, o) {
+    var name = String(u).split('/rpc/')[1], body = JSON.parse(o.body || '{}');
+    if (name === 'admin_feed') return new Promise(function (res, rej) { pendingFeed.push({ args: body, res: function (rows) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(rows)); } }); }, rej: function () { res({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } }); } }); });
+    return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(answers[name] || {})); } });
+  };
+  vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+  var T = w.__ADMIN_TEST__.api; T.setTab('none');
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  var oldRow = [{ id: 5, run_id: 'r1', title: 'cycle: 21 eligible adults', detail: { summary: { eligible: 21 } } }];
+  answers.admin_overview = { latest_run: 'r1', held_runs: 0 };
+  openHarness.dashboardFeedHold = true;
+  T.loadOverview().then(tick).then(tick).then(function () {
+    pendingFeed.shift().res(oldRow); /* the first overview's own full reload */ return tick().then(tick);
+  }).then(function () {
+    var inc = T.loadFeed(false); /* an incremental poll sent before the hold lands, answered late */
+    answers.admin_overview = { latest_run: null, held_runs: 1 };
+    return tick().then(function () { return T.loadOverview(); }).then(tick).then(tick).then(function () {
+      var cleared = T.state().feed.length === 0 && T.state().needsFull;
+      var full = pendingFeed.pop(); full.rej(); /* the full reload fails */
+      var late = pendingFeed.shift(); late.res(oldRow); /* the stale incremental answer arrives afterwards */
+      return Promise.all([inc]).then(tick).then(function () {
+        var st = T.state();
+        check('a hold drops the cached feed at once, and neither a failed reload nor a late older answer brings the held words back', cleared && st.feed.length === 0 && st.needsFull === true, JSON.stringify(st));
+        var retry = T.loadFeed(false); /* the next ordinary poll is turned into the owed full reload */
+        var wasFull = null;
+        return tick().then(function () { var req = pendingFeed.shift(); wasFull = !('p_after' in req.args);
+        req.res([{ id: 6, title: 'orchestrator: (held: an account withdrew the improvement choice)', detail: { held: true } }]);
+        return retry; }).then(function () { var s2 = T.state(); check('the next poll makes the owed full reload, and once it succeeds the feed holds only redacted rows', wasFull && s2.needsFull === false && s2.feed.length === 1 && s2.feed[0].detail.held === true, JSON.stringify({ wasFull: wasFull, s2: s2 })); delete openHarness.dashboardFeedHold; });
+      });
+    });
+  }).catch(function (e) { check('dashboard feed hold harness ran', false, String(e && e.stack || e)); });
+})();
+(function dashboardFeedFirstLoad() {
+  console.log('phase 0 (23 Oct): on first load, a feed answer sent before a hold never outlives the first overview');
+  var el = function () { return { innerHTML: '', textContent: '', className: '', style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };
+  var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } } };
+  w.window = w; w.document = { getElementById: function () { return el(); }, createElement: el, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(), documentElement: el(), hidden: false };
+  w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+  w.OvuAuth = { token: function () { return 't'; }, init: function () { return new Promise(function () { }); }, session: function () { return null; } };
+  w.__ADMIN_TEST__ = {};
+  var pendingFeed = [];
+  w.fetch = function (u, o) {
+    var name = String(u).split('/rpc/')[1], body = JSON.parse(o.body || '{}');
+    if (name === 'admin_feed') return new Promise(function (res) { pendingFeed.push({ args: body, res: function (rows) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(rows)); } }); } }); });
+    return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify({ latest_run: null, held_runs: 1 })); } });
+  };
+  vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+  var T = w.__ADMIN_TEST__.api; T.setTab('none');
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  openHarness.dashboardFeedFirstLoad = true;
+  var boot = T.loadFeed(false); /* boot starts the feed and the overview together */
+  tick().then(function () { return T.loadOverview(); }).then(tick).then(tick).then(function () {
+    var early = pendingFeed.shift(), full = pendingFeed.shift();
+    full.res([{ id: 6, title: 'orchestrator: (held: an account withdrew the improvement choice)', detail: { held: true } }]);
+    return tick().then(function () { early.res([{ id: 5, title: 'cycle: 21 eligible adults', detail: { summary: { eligible: 21 } } }]); return boot; }).then(tick).then(function () {
+      var st = T.state();
+      check('the first overview owes a full reload, and the slower pre-hold answer from boot cannot bring its words back', !!full && !('p_after' in full.args) && st.needsFull === false && st.feed.length === 1 && st.feed[0].detail.held === true, JSON.stringify(st));
+      delete openHarness.dashboardFeedFirstLoad;
+    });
+  }).catch(function (e) { check('dashboard first-load harness ran', false, String(e && e.stack || e)); });
+})();
+(function dashboardFeedFirstLoadFails() {
+  console.log('phase 0 (23 Oct): a boot feed answered before the first overview is dropped even when the owed reload fails');
+  var el = function () { return { innerHTML: '', textContent: '', className: '', style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };
+  var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } } };
+  w.window = w; w.document = { getElementById: function () { return el(); }, createElement: el, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(), documentElement: el(), hidden: false };
+  w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+  w.OvuAuth = { token: function () { return 't'; }, init: function () { return new Promise(function () { }); }, session: function () { return null; } };
+  w.__ADMIN_TEST__ = {};
+  var pendingFeed = [];
+  w.fetch = function (u, o) {
+    var name = String(u).split('/rpc/')[1], body = JSON.parse(o.body || '{}');
+    if (name === 'admin_feed') return new Promise(function (res) { pendingFeed.push({ args: body, res: function (rows) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(rows)); } }); }, rej: function () { res({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } }); } }); });
+    return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify({ latest_run: null, held_runs: 1 })); } });
+  };
+  vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+  var T = w.__ADMIN_TEST__.api; T.setTab('none');
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  openHarness.dashboardFeedFirstLoadFails = true;
+  var boot = T.loadFeed(false);
+  tick().then(function () { pendingFeed.shift().res([{ id: 5, title: 'cycle: 21 eligible adults', detail: { summary: { eligible: 21 } } }]); return boot; }).then(tick).then(function () {
+    var before = T.state().feed.length;
+    return T.loadOverview().then(tick).then(tick).then(function () {
+      pendingFeed.shift().rej(); /* the owed full reload fails */
+      return tick().then(tick).then(function () { return T.loadOverview(); }).then(tick).then(tick).then(function () {
+        var st = T.state();
+        check('a pre-hold boot feed is dropped by the first overview and stays dropped while the owed reload fails', before === 1 && st.feed.length === 0 && st.needsFull === true, JSON.stringify({ before: before, st: st }));
+        delete openHarness.dashboardFeedFirstLoadFails;
+      });
+    });
+  }).catch(function (e) { check('dashboard first-load failure harness ran', false, String(e && e.stack || e)); });
+})();
+(function dashboardHoldPaths() {
+  console.log('phase 0 (23 Oct): a hold that arrives in a feed poll clears the feed, and an older overview answer cannot restore held summaries');
+  function harness() {
+    var el = function () { return { innerHTML: '', textContent: '', className: '', style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };
+    var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } } };
+    w.window = w; w.document = { getElementById: function () { return el(); }, createElement: el, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(), documentElement: el(), hidden: false };
+    w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+    w.OvuAuth = { token: function () { return 't'; }, init: function () { return new Promise(function () { }); }, session: function () { return null; } };
+    w.__ADMIN_TEST__ = {};
+    var h = { feed: [], ov: [] };
+    var pend = function (list, body) { return new Promise(function (res) { list.push({ args: body, res: function (v) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(v)); } }); }, rej: function () { res({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } }); } }); }); };
+    w.fetch = function (u, o) { var name = String(u).split('/rpc/')[1], body = JSON.parse(o.body || '{}'); if (name === 'admin_feed') return pend(h.feed, body); if (name === 'admin_overview') return pend(h.ov, body); return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve('[]'); } }); };
+    vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+    h.T = w.__ADMIN_TEST__.api; h.T.setTab('none');
+    return h;
+  }
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  var oldRow = { id: 5, run_id: 'r1', kind: 'report', title: 'cycle: 21 eligible adults', detail: { summary: { eligible: 21 } } };
+  openHarness.dashboardHoldPaths = true;
+  var a = harness();
+  var ov1 = a.T.loadOverview();
+  tick().then(function () { a.ov.shift().res({ latest_run: 'r1', held_runs: 0 }); return ov1; }).then(tick).then(function () {
+    a.feed.shift().res([oldRow]); return tick().then(tick);
+  }).then(function () {
+    var poll = a.T.loadFeed(false);
+    return tick().then(function () {
+      a.feed.shift().res([{ id: 6, kind: 'invalidated', title: 'orchestrator: 1 published run held until the next run (withdrawal)', detail: { runs: 1 } }]);
+      return tick().then(tick);
+    }).then(function () {
+      var st = a.T.state(), fullSent = a.feed.length === 1 && !('p_after' in a.feed[0].args), ovSent = a.ov.length === 1;
+      a.ov.shift().rej(); a.feed.shift().rej(); /* the overview and the full reload both fail */
+      return poll.then(tick).then(tick).then(function () {
+        var st2 = a.T.state();
+        check('a hold that arrives in a feed poll drops every cached row at once, asks for a full reload and a new overview, and stays dropped when both fail', st.feed.length === 0 && fullSent && ovSent && st2.feed.length === 0 && st2.needsFull === true, JSON.stringify({ st: st, st2: st2, fullSent: fullSent, ovSent: ovSent }));
+      });
+    });
+  }).then(function () {
+    var b = harness();
+    var older = b.T.loadOverview(), newer = b.T.loadOverview(); /* A sent before the withdrawal, B after */
+    return tick().then(function () {
+      b.ov[1].res({ latest_run: null, held_runs: 1 }); return newer;
+    }).then(tick).then(function () {
+      var rkB = b.T.state().releaseKey;
+      b.ov[0].res({ latest_run: 'r1', held_runs: 0 }); /* the older answer lands last */
+      return older.then(tick).then(function () {
+        check('an older overview answer that lands after a newer held one is ignored, so the release key and held summaries never roll back', rkB === 'null|1' && b.T.state().releaseKey === 'null|1', JSON.stringify({ rkB: rkB, now: b.T.state().releaseKey }));
+      });
+    });
+  }).then(function () {
+    var c = harness(), pub = { latest_run: 'r1', held_runs: 0, latest: { cycle: [{ metric: 'eligible_people', value: 21 }] }, runs: [{ id: 'r1', summary: { eligible: 21 } }] };
+    var o1 = c.T.loadOverview();
+    return tick().then(function () { c.ov.shift().res(pub); return o1; }).then(tick).then(function () {
+      var shown = (c.T.state().latest || {}).cycle;
+      c.feed.shift().res([{ id: 9, kind: 'invalidated', title: 'orchestrator: 1 published run held until the next run (withdrawal)', detail: { runs: 1 } }, oldRow]); /* the owed full reload itself carries the hold */
+      return tick().then(tick).then(function () {
+        var st = c.T.state(), asked = c.ov.length === 1;
+        c.ov.shift().rej(); /* the overview it asks for fails */
+        return tick().then(tick).then(function () {
+          var st2 = c.T.state();
+          check('a hold in any feed answer, full or not, clears the summaries on Today and Agents at once, asks for a new overview, and they stay cleared when it fails', !!shown && asked && Object.keys(st.latest || {}).length === 0 && st.held >= 1 && Object.keys(st2.latest || {}).length === 0, JSON.stringify({ shown: shown, asked: asked, st: st, st2: st2 }));
+          var again = c.T.loadFeed(true);
+          return tick().then(function () { c.feed.shift().res([{ id: 9, kind: 'invalidated', title: 'x', detail: { runs: 1 } }]); return again; }).then(tick).then(function () {
+            check('a hold already acted on does not ask again, so old invalidation events never loop', c.ov.length === 0, String(c.ov.length));
+            c.T.dropResults(); var sd = c.T.state();
+            check('a confirmed floor change drops results on Today, Agents and Feed at once and owes a full reload, so a failed refresh cannot leave them up', Object.keys(sd.latest || {}).length === 0 && sd.feed.length === 0 && sd.needsFull === true, JSON.stringify(sd));
+            delete openHarness.dashboardHoldPaths;
+          });
+        });
+      });
+    });
+  }).catch(function (e) { check('dashboard hold paths harness ran', false, String(e && e.stack || e)); });
 })();
 (function plotGrowth() {
   console.log('the plot grows a stage per credited day and never shrinks');
@@ -5606,4 +5800,4 @@ var summarised = false;
   check('the sweep ends on practiceStop, activity, layout, clear and import, sleep and a replaced floor; pauses by the frame clamp while hidden; writes through the farm lock, after a re-read, before any puff', /R\.on\('practiceStop', end\)/.test(tj) && /R\.on\('activity', function \(kind, id\) \{ end\(\);/.test(tj) && /R\.on\('layout', function \(\) \{ end\(\); draw\(\); \}\)/.test(tj) && /reason === 'clear' \|\| reason === 'import'/.test(tj) && /if \(sweep && R\.asleep && R\.asleep\(\)\) \{ end\(\); return; \}/.test(tj) && /FMl\.locked\(S, go\)/.test(tj) && /S\.reload\(\)/.test(tj) && /Math\.min\(0\.1, \(t - last\) \/ 1000\)/.test(tj) && tj.indexOf('puffAt(target.x') > tj.indexOf("(S.commit || S.setState)({ tidy: r.state })"));
 })();
 
-process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
+process.on('beforeExit', function () { if (summarised) return; summarised = true; Object.keys(openHarness).forEach(function (k) { check('async harness ' + k + ' finished', false, 'its promises never settled'); }); console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

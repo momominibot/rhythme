@@ -213,7 +213,7 @@
      one person's diary is never uploaded under another person's account. */
   function consentForUser(p, uid) { var c = (p || {}).cloud; return consentOk(p) && c.uid === uid; }
   /* nothing moves without a session, the cloud choice for this account, the 18+ attestation and the current notice (ovu-consent.js) */
-  function doorOpen() { var C = root.OvuConsent; return !C || (!C.needsSheet() && C.allows('cloud_sync')); }
+  function doorOpen() { var C = root.OvuConsent; return !!C && !C.needsSheet() && C.allows('cloud_sync'); } /* fail closed: without the consent module nothing moves */
   function ownerFits(p, uid) { p = p || {}; var o = typeof p.owner === 'string' ? (p.owner || null) : ((p.cloud && p.cloud.uid) || ((p.consentEvents || []).filter(function (e) { return e && e.uid; })[0] || {}).uid || null); return !o || o === uid; }
   function canSync() { var s = session(); return !!(s && s.user && ownerFits(S.profile(), s.user.id) && consentForUser(S.profile(), s.user.id) && doorOpen()); } /* a diary never backs up to another account (Codex sweep, 21 Oct) */
 
