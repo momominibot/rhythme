@@ -3870,6 +3870,122 @@ async def main():
             await check_legacy_pages(browser)  # the older pages and the Settings sheet (22 Oct)
             await gym_checks(browser, gate)  # Tideline Gym workouts, in a context of their own with a fake clock
 
+            # 1t. tidy up (23 Oct): clutter on the floor by the clock, "Tidy up your room" with the magical broom (ovu-tidy.js).
+            # Seeded floors, the sweep run eight times faster (OvuTidy.fast), every end condition from the Codex design review.
+            import copy as _copy
+            _past = (datetime.datetime.now() - datetime.timedelta(hours=1)).isoformat()
+            def tidy_db(items):
+                d = _copy.deepcopy(DB); d["state"]["tidy"] = {"items": items, "last": _past, "day": {"d": TODAY, "n": len(items)}, "tidiedAt": None, "n": len(items)}; return d
+            TWO = [{"id": "ta", "kind": "sock", "at": _past, "slot": 0}, {"id": "tb", "kind": "cup", "at": _past, "slot": 1}]
+            THREE = TWO + [{"id": "tc", "kind": "books", "at": _past, "slot": 2}]
+            async def tidy_ctx(items, **kw):
+                c = await browser.new_context(viewport={"width": 390, "height": 844}, **kw); await c.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(tidy_db(items)))); await c.add_init_script(SESSION_SEED)
+                pg = await c.new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e))); await pg.route("**/*", gate)
+                await pg.goto(BASE + "room.html", wait_until="networkidle"); await pg.wait_for_timeout(1200)
+                await pg.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); if (window.OvuPetWalk && OvuPetWalk.auto) OvuPetWalk.auto(false); OvuTidy.fast(true); window.__puffs = 0; window.__sparks = 0; new MutationObserver(function(ms){ ms.forEach(function(m){ m.addedNodes.forEach(function(n){ if (n.classList) { if (n.classList.contains('puff')) window.__puffs++; if (n.classList.contains('spark')) window.__sparks++; } }); }); }).observe(document.querySelector('#tidyLayer'), {childList: true}); }")
+                return c, pg, errs
+            TST = "()=>{ var sw = OvuTidy.sweeping(), b = document.querySelector('#tidyLayer .broom'), bi = b && b.querySelector('img'), av = document.querySelector('#avatar img'), L = OvuRoom.layout(); return { practice: OvuRoom.practiceOn(), title: document.querySelector('#hudTitle').textContent, hud: document.querySelector('#hud').classList.contains('on'), sw: sw, broom: !!b, bh: bi ? bi.offsetHeight : 0, ah: av.offsetHeight, onFloor: sw ? OvuWalk.inZones(L.zones, sw.x, sw.y) && !OvuWalk.blocked(L.solids, sw.x, sw.y) : null, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), acting: document.querySelector('#avatar').classList.contains('acting'), bshadow: b ? getComputedStyle(b, '::before').backgroundImage.indexOf('radial-gradient') > -1 : null, items: OvuTidy.items().length, state: ((OvuStore.state().tidy||{}).items||[]).length, puffs: window.__puffs, sparks: window.__sparks, sparksLeft: document.querySelectorAll('#tidyLayer .spark').length, puffsLeft: document.querySelectorAll('#tidyLayer .puff').length, toast: document.querySelector('#toast').textContent, sheet: OvuRoom.sheetId(), hearts: OvuRewards.ledger().hearts, saved: OvuStore.list('mindfulness').filter(function(e){ return e.data && e.data.activity === 'tidy'; }).length }; }"
+            async def begin_tidy(pg):
+                await pg.evaluate("()=>OvuRoom.openEveryday('tidy')"); await pg.wait_for_selector('#sheet[aria-hidden="false"] #actStart', timeout=10000)
+                await pg.click('#actStart'); await pg.wait_for_timeout(500)
+            # a. the floor: two things inside the floor polygon, grounded, smaller than her, with their words
+            ctxT, pt, terr = await tidy_ctx(TWO)
+            f0 = await pt.evaluate("()=>{ var L = OvuRoom.layout(), its = OvuTidy.items(), ah = document.querySelector('#avatar img').offsetHeight; var els = Array.prototype.slice.call(document.querySelectorAll('#tidyLayer .tidyitem')); return { n: its.length, onFloor: its.every(function(i){ return OvuWalk.inZones(L.zones, i.x, i.y) && !OvuWalk.blocked(L.solids, i.x, i.y); }), shadow: els.map(function(el){ var b = getComputedStyle(el, '::before'); return b.backgroundImage.indexOf('radial-gradient') > -1 && parseFloat(b.width) > 0; }), filt: els.map(function(el){ return getComputedStyle(el.querySelector('img')).filter; }), hs: els.map(function(el){ return el.querySelector('img').offsetHeight; }), ah: ah, labels: els.map(function(el){ return el.getAttribute('aria-label'); }), z: els.map(function(el){ return el.style.zIndex; }), kinds: els.map(function(el){ return el.className; }) }; }")
+            check("two things lie on the floor inside the room's floor polygon, each with the ground shadow at its base, an edge shadow with no offset, smaller than her, ranked by depth and named for a screen reader", f0["n"] == 2 and f0["onFloor"] and all(f0["shadow"]) and all("0px 0px 1.5px" in f and "1px 1.5px" not in f.replace("0px 0px 1.5px", "") for f in f0["filt"]) and all(0 < h < f0["ah"] * 0.6 for h in f0["hs"]) and all(z for z in f0["z"]) and all("floor" in (l or "") for l in f0["labels"]) and "sock" in f0["kinds"][0] + f0["kinds"][1], f0)
+            # b. tapping the sock opens Everyday mindfulness on Tidy up your room, with the broom card and the written-guide note
+            await pt.click('#tidyLayer .tidyitem.sock'); await pt.wait_for_selector('#sheet[aria-hidden="false"] #actStart', timeout=8000)
+            f1 = await pt.evaluate("()=>({ sheet: OvuRoom.sheetId(), act: document.querySelector('#actStart').dataset.act, card: (document.querySelector('#actDetail img')||{}).getAttribute ? document.querySelector('#actDetail img').getAttribute('src') : '', text: document.querySelector('#actDetail').textContent, listCard: (document.querySelector('.act[data-act=tidy] img')||{getAttribute:function(){return ''}}).getAttribute('src'), listText: (document.querySelector('.act[data-act=tidy]')||{}).textContent || '' })")
+            check("tapping the sock opens Everyday mindfulness with Tidy up your room selected: the broom on its card, text guide on the list, and the written-guide note in the detail", f1["sheet"] == "everyday" and f1["act"] == "tidy" and "tidy-broom" in f1["card"] and "tidy-broom" in f1["listCard"] and "text guide" in f1["listText"] and "written guide" in f1["text"], f1)
+            # c. Begin: she stands in her own clothes, the broom appears beside her at her scale, sweeps both things with puffs and sparkles, dissolves
+            h0 = await pt.evaluate("()=>OvuRewards.ledger().hearts")
+            await pt.click('#actStart'); await pt.wait_for_timeout(500); s0 = await pt.evaluate(TST)
+            sweptId = None
+            try: sweptId = await pt.wait_for_function("()=>{ var el = document.querySelector('#tidyLayer .tidyitem.swept'); return el ? el.dataset.id : null; }", timeout=20000); sweptId = await sweptId.json_value()
+            except Exception: pass
+            await pt.wait_for_timeout(300); fade = await pt.evaluate("(id)=>{ var el = document.querySelector('#tidyLayer .tidyitem[data-id=\"' + id + '\"]'); return el ? { op: parseFloat(getComputedStyle(el).opacity), anim: getComputedStyle(el).animationName, swept: el.classList.contains('swept') } : { gone: true }; }", sweptId or "")
+            check("a swept thing fades out over half a second: 300 ms after its write the same thing is still there, mid-fade, in its own exit animation (not removed by the game save's props redraw, not held opaque by its entrance animation)", sweptId is not None and fade.get("swept") and 0.02 < fade.get("op", 1) < 0.9 and fade.get("anim") == "tidyout", { "id": sweptId, "fade": fade })
+            check("Begin starts the practice with its name on the bar, she stays standing in her own clothes (no pose), and the broom appears on the floor beside her at 50 to 70 percent of her height with her ground shadow", s0["practice"] and s0["title"] == "Tidy up your room" and s0["hud"] and s0["sw"] is not None and s0["broom"] and s0["onFloor"] and 0.5 * s0["ah"] <= s0["bh"] <= 0.7 * s0["ah"] and s0["bshadow"] and s0["src"] == "avatar-base.webp" and s0["acting"], s0)
+            try: await pt.wait_for_function("()=>!OvuTidy.sweeping()", timeout=30000)
+            except Exception: pass
+            await pt.wait_for_timeout(700); s1 = await pt.evaluate(TST)   # the last swept thing fades for half a second
+            check("the broom sweeps both things away, a puff and a sparkle trail each, then dissolves: nothing on the floor, nothing in the save, no broom, spark or puff left, and the practice goes on with its bar", s1["sw"] is None and s1["items"] == 0 and s1["state"] == 0 and s1["puffs"] >= 2 and s1["sparks"] >= 6 and not s1["broom"] and s1["sparksLeft"] == 0 and s1["puffsLeft"] == 0 and s1["practice"] and s1["hud"], s1)
+            await pt.evaluate("()=>document.querySelector('#hudStop').click()"); await pt.wait_for_timeout(600); s2 = await pt.evaluate(TST)
+            check("Stop before a minute records nothing: the toast says so, no entry, hearts unchanged, she is back to standing", not s2["practice"] and "under a minute" in s2["toast"] and s2["saved"] == 0 and s2["hearts"] == h0 and s2["sheet"] is None, s2)
+            check("tidy: no page errors (floor, tap, full sweep)", not terr, terr[:3]); await ctxT.close()
+            # d. a partial sweep: Stop mid-way leaves the unswept things; stopEverything (sleep) too; the replaced floor ends it; a failed write keeps the thing
+            ctxP, pp, perr = await tidy_ctx(THREE)
+            await pp.evaluate("()=>OvuTidy.fast(false)")   # the real pace: the first thing goes after about five seconds, so Stop lands with two still on the floor
+            await begin_tidy(pp)
+            try: await pp.wait_for_function("()=>{ var s = OvuTidy.sweeping(); return s && s.swept.length >= 1; }", timeout=20000)
+            except Exception: pass
+            await pp.evaluate("()=>document.querySelector('#hudStop').click()"); await pp.wait_for_timeout(300); p1 = await pp.evaluate(TST)
+            await pp.wait_for_timeout(400); p1b = await pp.evaluate(TST)   # the thing it swept finishes its half-second fade after Stop; the broom, sparks and puffs go at once
+            check("Stop mid-sweep ends the broom at once: no broom, spark or puff left, the thing it swept finishes fading and the others stay on the floor and in the save", p1["sw"] is None and not p1["broom"] and p1["sparksLeft"] == 0 and p1["puffsLeft"] == 0 and not p1["practice"] and 1 <= p1b["items"] <= 2 and p1b["items"] == p1b["state"] and p1b["items"] == p1["state"], { "at300": p1, "at700": p1b })
+            await pp.evaluate("()=>OvuTidy.fast(false)")   # at the real pace nothing is swept in the first seconds, so the interruption lands mid-sweep
+            await begin_tidy(pp)
+            try: await pp.wait_for_function("()=>{ var s = OvuTidy.sweeping(); return s && s.phase === 'move'; }", timeout=8000)
+            except Exception: pass
+            n0 = await pp.evaluate("()=>OvuTidy.items().length")
+            await pp.evaluate("()=>OvuRoom.stopEverything()"); await pp.wait_for_timeout(300); p2 = await pp.evaluate(TST)
+            check("stopEverything (bedtime) mid-sweep leaves nothing behind: no broom, spark or puff, the unswept things stay", p2["sw"] is None and not p2["broom"] and p2["sparksLeft"] == 0 and p2["puffsLeft"] == 0 and p2["items"] == p2["state"] and p2["items"] >= 1, {"p2": p2, "n0": n0})
+            await begin_tidy(pp)
+            try: await pp.wait_for_function("()=>{ var s = OvuTidy.sweeping(); return s && s.phase === 'move'; }", timeout=8000)
+            except Exception: pass
+            p3 = await pp.evaluate("()=>{ OvuStore.commit({ tidy: { items: [], last: new Date().toISOString(), day: { d: OvuStore.today(), n: 0 }, tidiedAt: null, n: 9 } }); var r = { sw: OvuTidy.sweeping(), broom: !!document.querySelector('#tidyLayer .broom'), practice: OvuRoom.practiceOn(), items: OvuTidy.items().length }; OvuTidy.fast(true); return r; }")
+            check("an account copy that replaces the floor under the broom ends the sweep at once (the practice itself goes on), and the floor redraws empty by itself", p3["sw"] is None and not p3["broom"] and p3["practice"] and p3["items"] == 0, p3)
+            await pp.evaluate("()=>OvuRoom.stopEverything()"); await pp.wait_for_timeout(300)
+            await pp.evaluate("()=>{ OvuStore.commit({ tidy: { items: %s, last: new Date().toISOString(), day: { d: OvuStore.today(), n: 2 }, tidiedAt: null, n: 2 } }); OvuTidy.draw(); window.__commit = OvuStore.commit; OvuStore.commit = function () { throw new Error('storage full (test)'); }; }" % json.dumps(TWO))
+            puffs0 = await pp.evaluate("()=>window.__puffs")
+            await begin_tidy(pp)
+            try: await pp.wait_for_function("()=>!OvuTidy.sweeping()", timeout=30000)
+            except Exception: pass
+            p4 = await pp.evaluate("()=>{ OvuStore.commit = window.__commit; var r = { items: OvuTidy.items().length, state: ((OvuStore.state().tidy||{}).items||[]).length, puffs: window.__puffs, broom: !!document.querySelector('#tidyLayer .broom'), practice: OvuRoom.practiceOn() }; return r; }")
+            check("when the save fails under the broom the things stay on the floor and in the store, no puff is faked, and the broom still finishes its round", p4["items"] == 2 and p4["state"] == 2 and p4["puffs"] == puffs0 and not p4["broom"] and p4["practice"], {"p4": p4, "puffs0": puffs0})
+            await pp.evaluate("()=>OvuRoom.stopEverything()"); await pp.wait_for_timeout(300)
+            # e. one activity at a time, both ways
+            await pp.evaluate("()=>{ document.querySelector('#toast').textContent = ''; OvuRoom.runSession('breathe', 2); }"); await pp.wait_for_timeout(400)
+            await pp.click('#tidyLayer .tidyitem.sock'); await pp.wait_for_timeout(400); e1 = await pp.evaluate(TST)
+            check("during Just breathe a tap on the sock is refused with one line naming it, no sheet opens and no broom appears", e1["sw"] is None and not e1["broom"] and "Just breathe is running" in e1["toast"] and e1["sheet"] != "everyday", e1)
+            await pp.evaluate("()=>OvuRoom.stopEverything()"); await pp.wait_for_timeout(500)
+            await begin_tidy(pp); await pp.evaluate("()=>{ document.querySelector('#toast').textContent = ''; OvuRoom.runSession('breathe', 2); }"); await pp.wait_for_timeout(300); e2 = await pp.evaluate(TST)
+            check("during Tidy up your room, Just breathe is refused with one line naming it and the broom keeps sweeping", e2["practice"] and e2["sw"] is not None and e2["broom"] and "Tidy up your room is running" in e2["toast"], e2)
+            await pp.evaluate("()=>OvuRoom.stopEverything()"); await pp.wait_for_timeout(300)
+            # a removal that comes due while the page is hidden waits for her to come back: nothing is written or puffed unseen
+            await pp.evaluate("()=>{ OvuStore.commit({ tidy: { items: %s, last: new Date().toISOString(), day: { d: OvuStore.today(), n: 2 }, tidiedAt: null, n: 2 } }); OvuTidy.fast(true); Object.defineProperty(document, 'hidden', { configurable: true, get: function () { return !!window.__hid; } }); }" % json.dumps(TWO))
+            await begin_tidy(pp)
+            try: await pp.wait_for_function("()=>{ var s = OvuTidy.sweeping(); return s && s.phase === 'move'; }", timeout=8000)
+            except Exception: pass
+            hid0 = await pp.evaluate("()=>{ window.__hid = true; document.dispatchEvent(new Event('visibilitychange')); return { state: ((OvuStore.state().tidy||{}).items||[]).length, puffs: window.__puffs }; }")
+            await pp.wait_for_timeout(2500)
+            hid1 = await pp.evaluate("()=>({ state: ((OvuStore.state().tidy||{}).items||[]).length, puffs: window.__puffs, sw: OvuTidy.sweeping() })")
+            await pp.evaluate("()=>{ window.__hid = false; document.dispatchEvent(new Event('visibilitychange')); }")
+            try: await pp.wait_for_function("()=>!OvuTidy.sweeping()", timeout=30000)
+            except Exception: pass
+            await pp.wait_for_timeout(700); hid2 = await pp.evaluate("()=>({ state: ((OvuStore.state().tidy||{}).items||[]).length, puffs: window.__puffs, items: OvuTidy.items().length })")
+            check("a removal due while the page is hidden is not written or puffed until she is back; then the sweep goes on and clears the floor", hid0["state"] >= 1 and hid1["state"] == hid0["state"] and hid1["puffs"] == hid0["puffs"] and hid1["sw"] is not None and hid2["state"] == 0 and hid2["items"] == 0 and hid2["puffs"] >= hid0["puffs"] + hid0["state"], {"hid0": hid0, "hid1": hid1, "hid2": hid2})
+            await pp.evaluate("()=>{ OvuRoom.stopEverything(); delete document.hidden; }"); await pp.wait_for_timeout(300)
+            check("tidy: no page errors (partial sweeps, replaced floor, failed save, one activity, hidden)", not perr, perr[:3]); await ctxP.close()
+            # f. reduced motion: the broom simply appears at each thing, the things fade, no trail, no puff
+            ctxM, pm, merr = await tidy_ctx(TWO, reduced_motion="reduce")
+            await begin_tidy(pm); m0 = await pm.evaluate(TST)
+            try: await pm.wait_for_function("()=>!OvuTidy.sweeping()", timeout=30000)
+            except Exception: pass
+            await pm.wait_for_timeout(700); m1 = await pm.evaluate(TST)
+            check("with reduced motion the broom appears at each thing in turn, the things fade and go, and there is no sparkle trail and no puff", m0["sw"] is not None and m0["sw"]["still"] and m1["sw"] is None and m1["items"] == 0 and m1["state"] == 0 and m1["sparks"] == 0 and m1["puffs"] == 0 and not m1["broom"], {"m0": m0, "m1": m1})
+            check("tidy: no page errors (reduced motion)", not merr, merr[:3]); await ctxM.close()
+            # g. a full minute: with the clock run forward past 60 s, Stop asks, the broom is already gone before the question, and Yes saves one entry for the practice thank-you
+            ctxC, pc, cerr = await tidy_ctx(TWO)
+            await pc.clock.install(); await pc.evaluate("()=>OvuTidy.fast(0.2)")   # five times slower than real: the broom is still sweeping when the minute is up
+            await begin_tidy(pc)
+            await pc.clock.run_for(66000); await pc.wait_for_timeout(300)
+            c0 = await pc.evaluate(TST)
+            check("after a minute with a slow broom the sweep is still going (so the next check means something)", c0["sw"] is not None and c0["broom"] and c0["practice"], c0)
+            await pc.evaluate("()=>document.querySelector('#hudStop').click()"); await pc.wait_for_timeout(300); c1 = await pc.evaluate(TST)
+            check("after a minute Stop opens the save question, and the broom, every spark and puff are gone before it (the sweep ended with the runner, not behind the sheet)", c1["sheet"] == "practiceDone" and c1["sw"] is None and not c1["broom"] and c1["sparksLeft"] == 0 and c1["puffsLeft"] == 0 and c1["practice"], {"c0": c0, "c1": c1})
+            await pc.evaluate("()=>document.querySelector('#pdYes').click()"); await pc.wait_for_timeout(600); c2 = await pc.evaluate(TST)
+            check("Yes saves one entry for the tidy, the flat practice thank-you is paid, and she is back to standing", c2["saved"] == 1 and c2["hearts"] - c0["hearts"] == 2 and not c2["practice"] and c2["src"] == "avatar-base.webp", {"c0h": c0["hearts"], "c2": c2})
+            check("tidy: no page errors (the minute and the save)", not cerr, cerr[:3]); await ctxC.close()
+
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()
     finally:
