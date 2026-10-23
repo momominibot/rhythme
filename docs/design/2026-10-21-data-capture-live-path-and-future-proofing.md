@@ -190,7 +190,7 @@ surfaces; resolving any two-failed-review hold before that work resumes.
 ## 6. Phase 0 as built (21 Oct, branch claude/data-capture-phase0)
 Migration `supabase/migrations/20261021100000_staff_data_contract_v3.sql`, test `tools/db/test_team_pipeline.py` (68 checks on a
 throwaway postgres@17 with `tools/db/local_stub.sql`, which emulates Supabase's default grants so RLS is what the tests prove),
-and small changes to admin.js, ovu-consent.js and ovu-sync.js. Reviewed by Codex gpt-6-astra in ten rounds so far (all FIX: 13, 10, 7, 5, 1, 1, 1, 2, 3 and 2 ranked items, the last two P2 only, every one verified against
+and small changes to admin.js, ovu-consent.js and ovu-sync.js. Reviewed by Codex gpt-6-astra in eleven rounds (ten FIX with 13, 10, 7, 5, 1, 1, 1, 2, 3 and 2 ranked items, then MERGE-AFTER-MIGRATION at 69c1137, every one verified against
 the source before any change and fixed in the following commit; full texts under docs/design/reviews/). A
 self-cancelling dry run of round one on the live project passed every probe and left nothing behind; the final text gets the
 same dry run before the PR is opened. Nothing is applied to production and no schedule is installed.

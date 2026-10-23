@@ -438,3 +438,17 @@ Ship order remains: fresh dry run of the exact final migration, apply migration,
 FIX
 
 Fix: (1) a floor change the server confirms drops results on Today, Agents and Feed at once, ignores answers already on their way and owes a full reload; the client refuses a floor that is not a whole number from 20 to 1000. (2) The setter accepts only whole numbers 20 to 1000, stores the canonical integer, reads the old floor raw so a malformed stored value can still be corrected, and treats an unreadable old floor as raised. Pipeline 68/68, core 1819/1819.
+
+
+# Round eleven (commit 69c1137, verdict MERGE-AFTER-MIGRATION)
+
+Both round-ten P2s are resolved at `69c1137`. No additional P1/P2 found in the reviewed phase-0 scope. Previously accepted deferrals remain unchanged.
+
+- **Cached results:** the actual policy handler clears Today, Agents and Feed immediately after confirmation. Failed refreshes and delayed pre-change responses do not restore reports. The same probes reproduce the leaks at `7cd7991`.
+- **Floor correction:** client validation rejects invalid values before RPC. SQL restricts storage to canonical integers from 20–1000, reads malformed prior values without calling `k_floor()`, and invalidates publications when the prior floor is unreadable. Worker-lock ordering remains intact.
+
+Independently verified **1,819 core checks**, **81 pages with zero static problems**, **10 focused handler scenarios**, Python parsing and scoped code-diff checks. PostgreSQL **68/68 remains owner-reported**, not rerun. No files or live state changed.
+
+Required order remains: fresh dry run of this exact migration → apply → refresh schema cache → verify eight-argument RPC → merge client.
+
+MERGE-AFTER-MIGRATION
